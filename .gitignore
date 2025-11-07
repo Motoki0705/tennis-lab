@@ -1,10 +1,165 @@
 # Python-generated files
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
+*.so
+.Python
 build/
+develop-eggs/
 dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
 wheels/
-*.egg-info
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
 # Virtual environments
-.venv
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Dataset and data files
+data/
+datasets/
+annotation.json
+annotations/
+*.csv
+*.json
+*.xml
+# Ignore all yaml files except GitHub Actions and configs
+*.yml
+*.yaml
+!.github/**/*.yml
+!.github/**/*.yaml
+!configs/**/*.yaml
+!configs/**/*.yml
+!.pre-commit-config.yaml
+
+# Model files and checkpoints
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.pkl
+*.pickle
+*.onnx
+*.trt
+*.tflite
+*.h5
+*.hdf5
+*.safetensors
+
+# Training artifacts
+logs/
+outputs/
+results/
+experiments/
+wandb/
+mlruns/
+tensorboard_logs/
+runs/
+events.out.tfevents.*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+.cache/
+
+# Testing and coverage
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Code formatting and linting
+.ruff_cache/
+.black_cache/
+
+# Documentation build
+docs/_build/
+docs/build/
+site/
+
+# Package management
+uv.lock
+Pipfile.lock
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Large files that should be tracked separately
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Video files (common in computer vision projects)
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.flv
+*.wmv
+
+# Image files that might be generated during processing
+processed_images/
+preprocessed/
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.tiff
+*.tif
+!docs/**/*.png
+!docs/**/*.jpg
+!docs/**/*.jpeg

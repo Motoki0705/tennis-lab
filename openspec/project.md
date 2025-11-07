@@ -1,50 +1,31 @@
-# プロジェクト概要
+# Project Context
 
-## 目的
-- 複数カメラのテニス試合映像を取り込み、選手・ボール・コート構造を3Dで再構成して構造化された統計情報を抽出するエンドツーエンドシステムを構築する。
-- 抽出した統計情報を活用し、ショット分類・ラリーサマリー・戦術的示唆などのAI支援解析を実現する（解析AIの手法は今後選定）。
+## Purpose
+[Describe your project's purpose and goals]
 
-## 技術スタック
-- GPU環境を想定した Python 3.11 を主実装言語とする。
-- コアとなる機械学習ライブラリは PyTorch（学習／推論）、Transformers（基盤モデル利用）、Pillow/OpenCV（フレーム変換）を採用する。
-- マルチビュー幾何ツールキット（例：OpenCV のキャリブレーション機能）やトラッキングライブラリを段階的に統合する。
+## Tech Stack
+- [List your primary technologies]
+- [e.g., TypeScript, React, Node.js]
 
-## プロジェクト規約
+## Project Conventions
 
-### コードスタイル
-- Python コードは PEP 8 に準拠し、公開APIには型注釈を付与する。命名は説明的な snake_case を推奨する。
-- 大きなモジュールを追加する際は、責務や前提をまとめたモジュールレベルの docstring を記載する。関数・クラスの docstring は Google スタイル（Args/Returns/Raises セクションなど）で統一する。
-- カメラキャリブレーション、モデル重み、データセットパスなどの設定値はハードコードせず、Hydra を用いた設定管理を基本とし、必要な設定ファイルは YAML で構成する。
+### Code Style
+[Describe your code style preferences, formatting rules, and naming conventions]
 
-### アーキテクチャパターン
-- 処理は「入力→同期→キャリブレーション→検出／追跡→解析／レポート」というモジュール化されたパイプラインで構成する。
-- モデルごとの実装は明確なインターフェースの裏側に隔離し、検出器／トラッカーを差し替え可能にする。
-- マルチカメラの内部パラメータ・外部パラメータ・タイムスタンプなどのメタデータは専用データ構造で保持し、キャリブレーションの再現性を担保する。
-- 検出結果と解析／示唆生成のレイヤーを分離し、異なるAI手法を試せるようにする。
+### Architecture Patterns
+[Document your architectural decisions and patterns]
 
-### テスト戦略
-- キャリブレーション計算、検出後処理、データ変換を対象とした単体テストをシンセティックなフィクスチャで用意する。
-- 注釈付きの短尺クリップを使い、3D復元精度やイベント検出タイミングを確認する統合テストを追加する。
-- 選手位置誤差、ボール軌道誤差、イベント検出の適合率／再現率などの評価指標を継続的に追跡し、大きな劣化を防ぐ。
+### Testing Strategy
+[Explain your testing approach and requirements]
 
-### Git ワークフロー
-- 機能やchange-idに紐づくブランチ（例：`feature/add-multiview-tracker`）で開発し、レビュー済みプルリクエスト経由でマージする。
-- 可能な限り conventional commits の接頭辞（`feat:`、`fix:`、`chore:`、`docs:`）を用いて履歴を検索しやすくする。
-- 提案／仕様更新と実装変更はコミットを分け、レビューを容易にする。
+### Git Workflow
+[Describe your branching strategy and commit conventions]
 
-## ドメイン知識
-- コート検出は3D復元の基軸となる。ベースライン、サービスライン、ネット高さなどの幾何参照は固定値として扱う。
-- 選手／ボール位置はコート座標系に正規化し、会場が異なっても比較できるようにする。
-- イベント検出対象には、バウンド、サーブ、フォア／バックハンド、ボレー、スマッシュ、ラリー開始／終了が含まれる。
-- マルチカメラ映像は時間同期を必須とし、打球音などの音響情報も併用してイベント時刻の精度を高める。
+## Domain Context
+[Add domain-specific knowledge that AI assistants need to understand]
 
-## 重要な制約
-- 同期済みマルチカメラ映像が利用可能であることを前提とするが、フレーム欠損や遮蔽には堅牢に対応する。
-- パイプラインはバッチ解析を想定したオフライン処理を基本としつつ、将来的な準リアルタイム処理の余地を残す。
-- 放映権・商業利用の権利を尊重できるデータ取り扱いを徹底し、不要な観客や背景は匿名化・マスキングする。
-- 解析AIのアプローチ（ルールベース vs 学習ベース）は、統計情報の信頼性が確立した段階で決定する。
+## Important Constraints
+[List any technical, business, or regulatory constraints]
 
-## 外部依存
-- DINOv2 や ViT 系検出器などの事前学習済みビジョンバックボーンを特徴抽出／追跡に活用する。
-- OpenPose 系フォーマットなどの姿勢・キーポイントデータセットを転移学習に利用する可能性がある。
-- 高解像度マルチカメラ推論を支える CUDA 対応 GPU ハードウェアを前提とする。
+## External Dependencies
+[Document key external services, APIs, or systems]

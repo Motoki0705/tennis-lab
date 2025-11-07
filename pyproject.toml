@@ -1,7 +1,250 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "tennis-lab"
+name = "tracknet"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "accelerate>=1.11.0",
+    "bitsandbytes>=0.48.2",
+    "deep-sort-realtime>=1.3.2",
+    "gdown>=5.2.0",
+    "huggingface-hub>=0.36.0",
+    "matplotlib>=3.10.7",
+    "omegaconf>=2.3.0",
+    "opencv-python>=4.12.0.88",
+    "pandas>=2.3.3",
+    "peft>=0.17.1",
+    "pillow>=12.0.0",
+    "pytorch-lightning>=2.5.5",
+    "tensorboard>=2.20.0",
+    "torch>=2.9.0",
+    "torchreid>=0.2.5",
+    "torchvision>=0.24.0",
+    "tqdm>=4.67.1",
+    "transformers>=4.57.1",
+    "ultralytics>=8.3.223",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.9.0",
+    "mypy>=1.18.2",
+    "pre-commit>=4.3.0",
+    "ruff>=0.14.3",
+    "types-pyyaml>=6.0.12.20250915",
+    "types-requests>=2.32.4.20250913",
+    "pydoclint>=0.4.0",
+    "coverage>=7.6.0",
+    "pytest>=8.4.2",
+    "pytest-cov>=6.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["tracknet*"]
+
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+# Assume Python 3.11
+target-version = "py311"
+
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
+# McCabe complexity (`C901`) by default.
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # pydocstyle (docstring rules)
+    "D",
+]
+ignore = [
+    # Star imports are used for convenience in some modules
+    "F405",
+    "F403",
+    # Line too long (handled by Black)
+    "E501",
+    # We document __init__ via the class docstring's Args
+    "D107",
+]
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.pydocstyle]
+# Enforce Google-style docstrings (Napoleon)
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can be lighter on docstrings; allow missing module/class/function docstrings
+"tests/**" = ["D1", "D101", "D102", "D103", "D104", "D105", "D106", "D401"]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+# Enable auto-formatting of code examples in docstrings. Markdown,
+# reStructuredText code/literal blocks and doctests are all supported.
+#
+# This is currently disabled by default, but it is planned for this
+# to be opt-out in the future.
+docstring-code-format = false
+
+# Set the line length limit used when formatting code snippets in
+# docstrings.
+#
+# This only has an effect when the `docstring-code-format` setting is
+# enabled.
+docstring-code-line-length = "dynamic"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Start with this disabled for gradual adoption
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+# Start with a more permissive configuration
+[[tool.mypy.overrides]]
+module = [
+    "cv2.*",
+    "torch.*",
+    "torchvision.*",
+    "transformers.*",
+    "omegaconf.*",
+    "pytorch_lightning.*",
+    "tensorboard.*",
+    "ultralytics.*",
+    "torchreid.*",
+    "deep_sort_realtime.*",
+    "gdown.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "tracknet.*",
+]
+disallow_untyped_defs = false  # Gradual adoption
+
+
+[tool.coverage.run]
+source = ["tracknet"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+precision = 2
+fail_under = 75
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--cov=tracknet",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml",
+    "--cov-fail-under=75",
+    "--strict-markers",
+    "--disable-warnings",
+    # Enable doctest for docstring Examples (turn on when examples are stable)
+    # "--doctest-modules",
+    # "--doctest-glob=*.md",
+]
+markers = [
+    "unit: Unit tests for individual functions and classes",
+    "integration: Integration tests for multiple components working together",
+    "e2e: End-to-end tests for complete workflows",
+    "slow: Slow running tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
