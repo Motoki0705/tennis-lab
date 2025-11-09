@@ -113,6 +113,7 @@ site/
 
 # Package management
 uv.lock
+.uv-cache/
 Pipfile.lock
 
 # OS generated files
