@@ -1,4 +1,5 @@
 """Recurrent temporal deformable decoder."""
+
 from __future__ import annotations
 
 from typing import cast
@@ -21,7 +22,9 @@ class QueryMergeLayer(nn.Module):
         self.time_proj = nn.Linear(dim, dim)
         self.out_norm = nn.LayerNorm(dim)
 
-    def forward(self, q_prev: Tensor, q_init: Tensor, ctx: Tensor, e_abs: Tensor) -> Tensor:
+    def forward(
+        self, q_prev: Tensor, q_init: Tensor, ctx: Tensor, e_abs: Tensor
+    ) -> Tensor:
         """Blend recurrent state with the learned query anchor."""
         attn_prev = self.w_prev(q_prev)
         attn_init = self.w_init(q_init)
@@ -76,11 +79,14 @@ class RecurrentTemporalDeformableDecoder(nn.Module):
         self.ctx_proj = nn.Linear(dim, dim)
         self.merge = QueryMergeLayer(dim)
         self.layers = nn.ModuleList(
-            [TemporalDeformableDecoderLayer(dim, num_points, offset_mode) for _ in range(num_layers)]
+            [
+                TemporalDeformableDecoderLayer(dim, num_points, offset_mode)
+                for _ in range(num_layers)
+            ]
         )
 
     def forward(self, patch_tokens: Tensor, temporal_tokens: Tensor) -> Tensor:
-        """Iteratively decode temporal tokens into query trajectories."""
+        """Decode temporal tokens into query trajectories."""
         B, T, Np, D = patch_tokens.shape
         if Np != self.grid_h * self.grid_w:
             msg = "Number of patches mismatch"
@@ -108,7 +114,9 @@ class RecurrentTemporalDeformableDecoder(nn.Module):
             prev = q
         return torch.cat(outs, dim=1)
 
-    def build_kv(self, patch_tokens: Tensor, t_center: int) -> tuple[Tensor, Tensor, Tensor]:
+    def build_kv(
+        self, patch_tokens: Tensor, t_center: int
+    ) -> tuple[Tensor, Tensor, Tensor]:
         """Assemble the deformable window around a reference timestep."""
         B, T, Np, D = patch_tokens.shape
         device = patch_tokens.device
@@ -116,18 +124,34 @@ class RecurrentTemporalDeformableDecoder(nn.Module):
         idxs = list(range(t_center - self.k, t_center + self.k + 1))
         feats = []
         masks = []
-        pos2d = cast(Tensor, self.pos2d).to(device=patch_tokens.device, dtype=patch_tokens.dtype)
+        pos2d = cast(Tensor, self.pos2d).to(
+            device=patch_tokens.device, dtype=patch_tokens.dtype
+        )
         for tau in idxs:
             if 0 <= tau < T:
                 base = patch_tokens[:, tau] + pos2d
-                tau_tensor = torch.full((B,), tau / self.fps, device=device, dtype=dtype)
+                tau_tensor = torch.full(
+                    (B,), tau / self.fps, device=device, dtype=dtype
+                )
                 abs_vec = self.abs_proj(self.abs_pe(tau_tensor))
                 base = base + abs_vec.view(B, 1, D)
                 feats.append(base.view(B, self.grid_h, self.grid_w, D))
-                masks.append(torch.zeros(B, self.grid_h, self.grid_w, dtype=torch.bool, device=device))
+                masks.append(
+                    torch.zeros(
+                        B, self.grid_h, self.grid_w, dtype=torch.bool, device=device
+                    )
+                )
             else:
-                feats.append(torch.zeros(B, self.grid_h, self.grid_w, D, device=device, dtype=dtype))
-                masks.append(torch.ones(B, self.grid_h, self.grid_w, dtype=torch.bool, device=device))
+                feats.append(
+                    torch.zeros(
+                        B, self.grid_h, self.grid_w, D, device=device, dtype=dtype
+                    )
+                )
+                masks.append(
+                    torch.ones(
+                        B, self.grid_h, self.grid_w, dtype=torch.bool, device=device
+                    )
+                )
         kv_feats = torch.stack(feats, dim=1)
         kv_mask = torch.stack(masks, dim=1)
         delta_vals = torch.tensor(
@@ -174,10 +198,14 @@ class TemporalDeformableDecoderLayer(nn.Module):
         qn = self.norm1(q)
         rel_feat = rel_proj(rel_pe(delta_sec))
         if self.mode == "per_tau":
-            psi = torch.cat([qn.unsqueeze(2).expand(-1, -1, window_len, -1), rel_feat], dim=-1)
+            psi = torch.cat(
+                [qn.unsqueeze(2).expand(-1, -1, window_len, -1), rel_feat], dim=-1
+            )
         else:
             pooled = rel_feat.mean(dim=2, keepdim=True)
-            psi = torch.cat([qn.unsqueeze(2), pooled], dim=-1).expand(-1, -1, window_len, -1)
+            psi = torch.cat([qn.unsqueeze(2), pooled], dim=-1).expand(
+                -1, -1, window_len, -1
+            )
         delta = self.delta_mlp(psi).view(B, Q, window_len, self.M, 3)
         logits = self.alpha_mlp(psi).view(B, Q, window_len, self.M)
         ref = torch.sigmoid(self.ref_xy(qn)).unsqueeze(2).expand(-1, -1, window_len, -1)
@@ -207,7 +235,9 @@ def sample_trilinear(
     B, window_len, H, W, D = kv_feats.shape
     device = kv_feats.device
     dtype = kv_feats.dtype
-    base = torch.arange(window_len, device=device, dtype=dtype).view(1, 1, window_len, 1)
+    base = torch.arange(window_len, device=device, dtype=dtype).view(
+        1, 1, window_len, 1
+    )
     target = base + delta_t
     t0 = torch.floor(target).clamp(0, window_len - 1)
     t1 = (t0 + 1).clamp(0, window_len - 1)
@@ -231,7 +261,9 @@ def _sample_spatial(
     device = kv_feats.device
     coords_norm = coords * 2 - 1
     flat_coords = coords_norm.view(-1, 1, 1, 2)
-    flat_feats = kv_feats.permute(0, 1, 4, 2, 3).contiguous().view(B * window_len, D, H, W)
+    flat_feats = (
+        kv_feats.permute(0, 1, 4, 2, 3).contiguous().view(B * window_len, D, H, W)
+    )
     mask = (~kv_mask).float().unsqueeze(-1)
     flat_mask = mask.permute(0, 1, 4, 2, 3).contiguous().view(B * window_len, 1, H, W)
     flat_feats = flat_feats * flat_mask

@@ -1,4 +1,5 @@
 """Scene model public API."""
+
 from .config import SceneConfig
 from .model import SceneModel
 

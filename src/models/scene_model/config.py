@@ -1,4 +1,5 @@
 """Configuration objects for the scene model."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

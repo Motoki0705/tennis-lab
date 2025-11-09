@@ -1,4 +1,5 @@
 """Positional encodings used by the scene model."""
+
 from __future__ import annotations
 
 import math
@@ -69,7 +70,9 @@ class RelTimePE(nn.Module):
 
     def forward(self, delta_sec: Tensor) -> Tensor:
         """Return the sine/cosine relative time encoding."""
-        freqs = cast(Tensor, self.freqs).to(device=delta_sec.device, dtype=delta_sec.dtype)
+        freqs = cast(Tensor, self.freqs).to(
+            device=delta_sec.device, dtype=delta_sec.dtype
+        )
         d = delta_sec.unsqueeze(-1)
         arg = d * freqs
         return torch.cat([torch.cos(arg), torch.sin(arg)], dim=-1)
@@ -98,8 +101,7 @@ def _sincos_1d(length: int, dim: int) -> Tensor:
         return torch.zeros(length, 0)
     position = torch.linspace(-1.0, 1.0, steps=length).unsqueeze(1)
     div_term = torch.exp(
-        torch.arange(0, dim, 2, dtype=position.dtype)
-        * -(math.log(10000.0) / dim)
+        torch.arange(0, dim, 2, dtype=position.dtype) * -(math.log(10000.0) / dim)
     )
     pe = torch.zeros(length, dim)
     pe[:, 0::2] = torch.sin(position * div_term)

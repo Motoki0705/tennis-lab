@@ -116,9 +116,11 @@ ignore = [
 fixable = ["ALL"]
 unfixable = []
 
-[tool.ruff.lint.pydocstyle]
-# Enforce Google-style docstrings (Napoleon)
-convention = "google"
+[tool.pydoclint]
+style = "google"
+check-arg-order = true
+require-return-section-when-returning-nothing = true
+require-yield-section-when-yielding-nothing = true
 
 [tool.ruff.lint.per-file-ignores]
 # Tests can be lighter on docstrings; allow missing module/class/function docstrings

@@ -1,4 +1,5 @@
 """Vision backbone built around a lightweight ViT."""
+
 from __future__ import annotations
 
 from typing import cast

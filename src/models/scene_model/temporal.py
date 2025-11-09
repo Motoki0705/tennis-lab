@@ -1,9 +1,10 @@
 """Temporal encoder with RoPE attention."""
+
 from __future__ import annotations
 
-import torch
 from typing import cast
 
+import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
@@ -16,9 +17,7 @@ class TemporalEncoderRoPE(nn.Module):
         if dim % heads != 0:
             msg = "dim must be divisible by heads"
             raise ValueError(msg)
-        self.layers = nn.ModuleList([
-            TemporalBlock(dim, heads) for _ in range(depth)
-        ])
+        self.layers = nn.ModuleList([TemporalBlock(dim, heads) for _ in range(depth)])
 
     def forward(self, cls_tokens: Tensor) -> Tensor:
         """Run temporal self-attention over CLS tokens."""
@@ -30,6 +29,7 @@ class TemporalEncoderRoPE(nn.Module):
 
 class TemporalBlock(nn.Module):
     """Transformer-style block with RoPE attention."""
+
     def __init__(self, dim: int, heads: int) -> None:
         super().__init__()
         self.dim = dim
@@ -68,7 +68,9 @@ class TemporalBlock(nn.Module):
         return residual + ffn_out
 
 
-def _rope_cache(T: int, head_dim: int, device: torch.device, dtype: torch.dtype) -> tuple[Tensor, Tensor]:
+def _rope_cache(
+    T: int, head_dim: int, device: torch.device, dtype: torch.dtype
+) -> tuple[Tensor, Tensor]:
     half = head_dim // 2
     freq_seq = torch.arange(half, device=device, dtype=dtype)
     freq = 1.0 / (10000 ** (freq_seq / half))
