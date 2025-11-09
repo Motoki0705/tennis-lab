@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tracknet"
+name = "src"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -46,7 +46,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["tracknet*"]
+include = ["src*"]
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
@@ -185,13 +185,13 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
-    "tracknet.*",
+    "src.*",
 ]
 disallow_untyped_defs = false  # Gradual adoption
 
 
 [tool.coverage.run]
-source = ["tracknet"]
+source = ["src"]
 omit = [
     "*/tests/*",
     "*/test_*",
@@ -227,7 +227,7 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = [
     "--verbose",
-    "--cov=tracknet",
+    "--cov=src",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
     "--cov-report=xml",
