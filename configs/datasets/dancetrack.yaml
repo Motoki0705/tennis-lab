@@ -1,0 +1,33 @@
+name: dancetrack
+root: ${oc.env:DANCETRACK_ROOT,third_party/DanceTrack/dancetrack}
+split:
+  train: train
+  val: val
+window:
+  size: 8
+  stride: 4
+  sampler: sliding
+image:
+  resize: 224
+  horizontal_flip_prob: 0.5
+  normalize:
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+loader:
+  train:
+    batch_size: 2
+    shuffle: true
+    num_workers: 0
+    pin_memory: false
+    persistent_workers: false
+    drop_last: false
+  val:
+    batch_size: 1
+    shuffle: false
+    num_workers: 0
+    pin_memory: false
+    persistent_workers: false
+    drop_last: false
+cache:
+  enabled: true
+  path: .cache/dancetrack_meta.json

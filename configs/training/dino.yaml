@@ -1,0 +1,30 @@
+seed: 1337
+trainer:
+  max_epochs: 5
+  precision: bf16-mixed
+  gradient_clip_val: 0.5
+  accumulate_grad_batches: 1
+  enable_checkpointing: true
+  log_every_n_steps: 5
+  limit_train_batches: 1.0
+  limit_val_batches: 1.0
+  accelerator: auto
+  devices: 1
+optimizer:
+  name: adamw
+  lr: 0.0002
+  weight_decay: 0.05
+  betas: [0.9, 0.999]
+scheduler:
+  name: cosine
+  warmup_steps: 200
+  min_lr_ratio: 0.01
+denoiser:
+  enabled: true
+  num_noisy_queries: 40
+  label_noise_scale: 0.4
+  box_noise_scale: 0.4
+  lambda_dn: 1.0
+metrics:
+  enabled: true
+  evaluator: simple_id

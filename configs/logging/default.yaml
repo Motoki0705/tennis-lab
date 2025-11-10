@@ -1,0 +1,14 @@
+logger:
+  save_dir: runs
+  name: dancetrack_scene_model
+  version: null
+  default_hp_metric: false
+callbacks:
+  checkpoint:
+    monitor: val/total_loss
+    mode: min
+    save_top_k: 1
+    save_last: true
+    every_n_epochs: 1
+  lr_monitor:
+    logging_interval: step

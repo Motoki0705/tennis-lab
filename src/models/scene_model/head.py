@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import torch
 from torch import Tensor, nn
+import torch.nn.functional as F
 
 
 class PredictionHead(nn.Module):
@@ -36,3 +37,26 @@ class _ZeroProjection(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         shape = x.shape[:-1] + (0,)
         return x.new_zeros(shape)
+
+
+class BBoxHead(nn.Module):
+    """Lightweight DETR-style head that predicts bbox center/size and class logits."""
+
+    def __init__(self, dim: int, num_classes: int = 2) -> None:
+        super().__init__()
+        self.cls = nn.Sequential(nn.LayerNorm(dim), nn.Linear(dim, num_classes))
+        self.exist = nn.Sequential(nn.LayerNorm(dim), nn.Linear(dim, 1))
+        self.center = nn.Sequential(nn.LayerNorm(dim), nn.Linear(dim, 2))
+        self.size = nn.Sequential(nn.LayerNorm(dim), nn.Linear(dim, 2))
+
+    def forward(self, x: Tensor) -> dict[str, Tensor]:
+        logits = self.cls(x)
+        exist = torch.sigmoid(self.exist(x))
+        center = self.center(x)
+        size = F.softplus(self.size(x)) + 1e-3  # sizes must remain positive
+        return {
+            "cls_logits": logits,
+            "exist_conf": exist,
+            "bbox_center": center,
+            "bbox_size": size,
+        }
