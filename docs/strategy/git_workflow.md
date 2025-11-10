@@ -4,19 +4,10 @@
 * **ブランチ命名**: `<type>/<scope>-<short>`（例: `feat/model-loader`, `fix/utils-npe`）。*チケットIDは任意*。
 * **マージ方式**: **Merge commit** を標準。Rebase/Squashは使用しない方針。
 * **コミット単位**: 原則「**1ファイル=1コミット**」。ただし**integrate過程の赤→緑化**やテスト修正では**例外を許容**（連続修正OK）。
-* **コミット規約**: Conventional Commits。ヘッダ+本文テンプレを厳守。
+* **コミット規約**: Conventional Commits。ヘッダのみ。
 
   ```
   <type>(<scope>): <何をしたか1行で>
-
-  Why:
-  - 背景や目的
-
-  How:
-  - 主要な変更点
-
-  Ref:
-  - <参照docsパス>
   ```
 * **pre-commit**: `ruff`/`mypy`を必須。未通過のコミット/PRは禁止。
 * **PR**: 小さく・早く。**自己レビュー**で確認→PR作成→Merge。PR作成時に**integrationテストの要否を評価**。
