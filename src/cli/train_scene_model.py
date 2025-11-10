@@ -6,7 +6,17 @@ import argparse
 import sys
 from collections.abc import Sequence
 
-from pytorch_lightning.utilities.seed import seed_everything
+try:
+    from lightning.pytorch.utilities.seed import seed_everything
+except ImportError:
+    try:  # pragma: no cover - fallback for Fabric-only installs
+        from lightning_fabric.utilities.seed import (
+            seed_everything,
+        )
+    except ImportError:  # pragma: no cover - fallback for legacy PyTorch Lightning
+        from pytorch_lightning.utilities.seed import (
+            seed_everything,
+        )
 
 from src.training.utils.config import ConfigLoader, load_cfg
 

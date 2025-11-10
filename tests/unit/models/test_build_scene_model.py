@@ -6,6 +6,7 @@ from typing import Any
 import torch
 from _pytest.monkeypatch import MonkeyPatch
 from omegaconf import OmegaConf
+from torch import nn
 
 from src.models.scene_model.build import Dinov3BackboneAdapter, build_scene_model
 
@@ -59,15 +60,20 @@ def test_build_scene_model_switches_head() -> None:
     assert "bbox_center" in outputs
 
 
-class _DummyDinov3:
+class _DummyDinov3(nn.Module):
     embed_dim = 32
     patch_size = 16
 
     def __init__(self) -> None:
-        self.device = torch.device("cpu")
+        super().__init__()
+        self.blocks = nn.ModuleList(
+            nn.Sequential(nn.Linear(self.embed_dim, self.embed_dim), nn.GELU())
+            for _ in range(6)
+        )
+        self.norm = nn.LayerNorm(self.embed_dim)
 
     def to(self, device: torch.device) -> _DummyDinov3:
-        self.device = device
+        super().to(device)
         return self
 
     def get_intermediate_layers(
