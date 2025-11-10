@@ -1,0 +1,42 @@
+scene:
+  img_size: 224
+  patch_size: 16
+  vit_depth: 4
+  vit_heads: 4
+  D_model: 128
+  temporal_depth: 2
+  temporal_heads: 4
+  max_T_hint: 8
+  fps: 30.0
+  absK: 16
+  abs_Thorizon: 2.0
+  relQ: 8
+  rel_wmin: 1.0
+  rel_wmax: 12.0
+  num_queries: 8
+  decoder_layers: 2
+  num_points: 4
+  window_k: 3
+  offset_mode: per_tau
+  tbptt_detach: false
+  smpl_param_dim: 0
+backbone:
+  type: dinov3_vits16
+  weights_path: ${oc.env:DINOV3_WEIGHTS,third_party/dinov3/checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth}
+  freeze: false
+  unfreeze_after: 0
+head:
+  type: bbox
+  num_classes: 2
+  matcher:
+    cost_class: 2.0
+    cost_bbox: 5.0
+    cost_giou: 2.0
+loss:
+  cls_weight: 2.0
+  bbox_weight: 5.0
+  giou_weight: 2.0
+  exist_weight: 1.0
+  id_weight: 1.0
+debug:
+  minimal: false
