@@ -1,6 +1,6 @@
 seed: 1337
 trainer:
-  max_epochs: 5
+  max_epochs: 20
   precision: bf16-mixed
   gradient_clip_val: 0.5
   accumulate_grad_batches: 1

@@ -171,7 +171,7 @@ class HeadAdapter:
             if len(src) == 0:
                 continue
             targets[frame_idx, src] = 1.0
-        return F.binary_cross_entropy(exist_logits, targets)
+        return F.binary_cross_entropy_with_logits(exist_logits, targets)
 
     def _bbox_losses(
         self,
