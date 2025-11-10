@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Cache uv dependencies
         uses: actions/cache@v4
         with:
@@ -19,11 +19,11 @@ jobs:
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-uv-
-      
+
       - uses: astral-sh/setup-uv@v3
         with:
           version: "latest"
-      
+
       - name: Install dependencies
         run: |
           uv sync --dev
@@ -43,10 +43,10 @@ jobs:
       matrix:
         python-version: ["3.11"]
     needs: lint
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Cache uv dependencies
         uses: actions/cache@v4
         with:
@@ -55,23 +55,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-uv-${{ matrix.python-version }}-
             ${{ runner.os }}-uv-
-      
+
       - uses: astral-sh/setup-uv@v3
         with:
           version: "latest"
-      
+
       - name: Set up Python ${{ matrix.python-version }}
         run: |
           uv python install ${{ matrix.python-version }}
-      
+
       - name: Install dependencies
         run: |
           uv sync --dev
-      
+
       - name: Run tests
         run: |
           uv run pytest --cov=src --cov-report=xml --cov-report=term-missing --cov-fail-under=75
-      
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
@@ -80,7 +80,7 @@ jobs:
           name: codecov-umbrella
           fail_ci_if_error: false
         if: matrix.python-version == '3.11'  # Only upload once
-      
+
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
         with:

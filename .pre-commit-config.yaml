@@ -12,22 +12,14 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.3
     hooks:
-      # Run the linter.
       - id: ruff
         args: [--fix]
-      # Run the formatter.
       - id: ruff-format
 
-  # Enforce Google-style docstrings & param/return consistency
   - repo: https://github.com/jsh9/pydoclint
     rev: 0.4.0
     hooks:
       - id: pydoclint
-        args:
-          - --style=google
-          - --check-arg-order
-          - --require-return-section-when-returning
-          - --require-yield-section-when-yielding
         exclude: ^tests/
 
   - repo: https://github.com/pre-commit/mirrors-mypy
