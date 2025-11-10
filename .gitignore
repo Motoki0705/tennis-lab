@@ -40,7 +40,6 @@ Thumbs.db
 
 # Dataset and data files
 data/
-datasets/
 annotation.json
 annotations/
 *.csv
