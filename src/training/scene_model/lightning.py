@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, cast
 
-import torch
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import LightningModule
 from torch import Tensor
@@ -54,29 +54,40 @@ class SceneModelLightningModule(LightningModule):
         self.metric_state = _MetricState()
         self.save_hyperparameters(OmegaConf.to_container(cfg, resolve=True))
 
-    def forward(self, frames: Tensor) -> Mapping[str, Tensor]:  # pragma: no cover - thin wrapper
-        return self.model(frames)
+    def forward(
+        self, frames: Tensor
+    ) -> Mapping[str, Tensor]:  # pragma: no cover - thin wrapper
+        """Proxy the PyTorch-style forward pass to the underlying SceneModel."""
+        return cast(Mapping[str, Tensor], self.model(frames))
 
     def training_step(self, batch: SceneBatch, batch_idx: int) -> Tensor:
+        """Execute one optimization step and log individual loss components."""
         outputs = self.model(batch.frames)
         dn_state = self.denoiser.make_noise(batch.targets)
-        loss_dict = self.head_adapter.compute_loss(outputs, batch.targets, batch.padding_mask, dn_state)
+        loss_dict = self.head_adapter.compute_loss(
+            outputs, batch.targets, batch.padding_mask, dn_state
+        )
         self._log_losses(loss_dict, stage="train")
         return loss_dict["total"]
 
     def validation_step(self, batch: SceneBatch, batch_idx: int) -> None:
+        """Compute validation losses/metrics for logging."""
         outputs = self.model(batch.frames)
         dn_state = self.denoiser.make_noise(batch.targets)
-        loss_dict = self.head_adapter.compute_loss(outputs, batch.targets, batch.padding_mask, dn_state)
+        loss_dict = self.head_adapter.compute_loss(
+            outputs, batch.targets, batch.padding_mask, dn_state
+        )
         self._log_losses(loss_dict, stage="val")
         self.metric_state.update(loss_dict)
 
     def on_validation_epoch_end(self) -> None:
+        """Publish aggregate IDF1-style metric at the end of validation."""
         score = self.metric_state.compute()
         self.log("val/idf1", score, prog_bar=True, sync_dist=False)
         self.metric_state.reset()
 
     def configure_optimizers(self) -> Any:
+        """Create the optimizer and optional cosine scheduler."""
         opt_cfg = _to_dict(self.cfg.get("training", {}).get("optimizer"))
         lr = float(opt_cfg.get("lr", 2e-4))
         optimizer = AdamW(
@@ -91,7 +102,9 @@ class SceneModelLightningModule(LightningModule):
         trainer_cfg = _to_dict(self.cfg.get("training", {}).get("trainer"))
         max_epochs = int(trainer_cfg.get("max_epochs", 1))
         min_ratio = float(sched_cfg.get("min_lr_ratio", 0.01))
-        scheduler = CosineAnnealingLR(optimizer, T_max=max_epochs, eta_min=lr * min_ratio)
+        scheduler = CosineAnnealingLR(
+            optimizer, T_max=max_epochs, eta_min=lr * min_ratio
+        )
         return {
             "optimizer": optimizer,
             "lr_scheduler": {
@@ -101,6 +114,7 @@ class SceneModelLightningModule(LightningModule):
         }
 
     def _log_losses(self, loss_dict: Mapping[str, Tensor], stage: str) -> None:
+        """Log every tracked loss/metric entry."""
         for key, value in loss_dict.items():
             if not isinstance(value, Tensor):
                 continue

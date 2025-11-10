@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any
 
 import torch
+from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 from torch.utils.data import Dataset
 from torchvision import tv_tensors
 from torchvision.io import read_image
 from torchvision.transforms import v2
-from omegaconf import DictConfig, OmegaConf
 
 WindowSampler = Callable[[int, int, int], Iterable[tuple[int, int]]]
 
@@ -28,7 +29,8 @@ class TargetFrame:
     confidence: Tensor
 
     @classmethod
-    def empty(cls, device: torch.device | None = None) -> "TargetFrame":
+    def empty(cls, device: torch.device | None = None) -> TargetFrame:
+        """Return a zero-sized target payload aligned with padded frames."""
         center = torch.zeros((0, 2), dtype=torch.float32, device=device)
         size = torch.zeros((0, 2), dtype=torch.float32, device=device)
         scores = torch.zeros(0, dtype=torch.float32, device=device)
@@ -52,6 +54,14 @@ class _Annotation:
     track_id: int
     bbox_xywh: tuple[float, float, float, float]
     confidence: float
+
+
+def _to_bbox(values: tuple[float, ...]) -> tuple[float, float, float, float]:
+    """Return a fixed-length bbox tuple, padding/truncating as needed."""
+    if len(values) >= 4:
+        return (values[0], values[1], values[2], values[3])
+    padded = values + (0.0,) * (4 - len(values))
+    return (padded[0], padded[1], padded[2], padded[3])
 
 
 @dataclass(slots=True)
@@ -83,28 +93,39 @@ class _SequenceMeta:
         }
 
     @classmethod
-    def from_json(cls, data: Mapping[str, Any]) -> "_SequenceMeta":
+    def from_json(cls, data: Mapping[str, Any]) -> _SequenceMeta:
         annotations: dict[int, list[_Annotation]] = {}
         for key, items in data.get("annotations", {}).items():
             annotations[int(key)] = [
                 _Annotation(
                     frame_index=int(item["frame_index"]),
                     track_id=int(item["track_id"]),
-                    bbox_xywh=tuple(float(x) for x in item["bbox_xywh"]),
+                    bbox_xywh=_to_bbox(tuple(float(x) for x in item["bbox_xywh"])),
                     confidence=float(item["confidence"]),
                 )
                 for item in items
             ]
+        image_size = tuple(int(v) for v in data.get("image_size", (0, 0)))
         return cls(
             name=str(data.get("name")),
             frame_paths=[str(p) for p in data.get("frame_paths", [])],
             annotations=annotations,
             frame_rate=float(data.get("frame_rate", 0.0)),
-            image_size=tuple(int(v) for v in data.get("image_size", (0, 0))),
+            image_size=_to_image_size(image_size),
         )
 
 
-def _default_sampler(length: int, window: int, stride: int) -> Iterable[tuple[int, int]]:
+def _to_image_size(values: tuple[int, ...]) -> tuple[int, int]:
+    """Return ``(width, height)`` with a graceful fallback for malformed data."""
+    if len(values) >= 2:
+        return (values[0], values[1])
+    padded = values + (0,) * (2 - len(values))
+    return (padded[0], padded[1])
+
+
+def _default_sampler(
+    length: int, window: int, stride: int
+) -> Iterable[tuple[int, int]]:
     if length <= 0:
         return []
     if length <= window:
@@ -138,7 +159,9 @@ class DancetrackDataset(Dataset[TrackingSample]):
         if self.window_size <= 0:
             msg = "window.size must be > 0"
             raise ValueError(msg)
-        self.root = Path(self.cfg.get("root", "third_party/DanceTrack/dancetrack")).expanduser()
+        self.root = Path(
+            self.cfg.get("root", "third_party/DanceTrack/dancetrack")
+        ).expanduser()
         split_map = self.cfg.get("split", {})
         split_dir = split_map.get(split, split)
         self.split_path = self.root / split_dir
@@ -173,7 +196,9 @@ class DancetrackDataset(Dataset[TrackingSample]):
             ]
         )
 
-    def _build_augment(self, image_cfg: Mapping[str, Any]) -> v2.RandomHorizontalFlip | None:
+    def _build_augment(
+        self, image_cfg: Mapping[str, Any]
+    ) -> v2.RandomHorizontalFlip | None:
         prob = float(image_cfg.get("horizontal_flip_prob", 0.0))
         if prob <= 0:
             return None
@@ -188,7 +213,7 @@ class DancetrackDataset(Dataset[TrackingSample]):
             seq_root = seq_dir.parent
             seq_name = seq_root.name
             info = _parse_seqinfo(seq_dir)
-            frames = sorted((seq_root / info["imDir"]).glob(f"*{info['imExt']}") )
+            frames = sorted((seq_root / info["imDir"]).glob(f"*{info['imExt']}"))
             annotations = _parse_annotations(seq_root / "gt" / "gt.txt")
             rel_paths = [str(frame.relative_to(self.root)) for frame in frames]
             sequences.append(
@@ -228,14 +253,18 @@ class DancetrackDataset(Dataset[TrackingSample]):
         windows: list[tuple[int, int, int]] = []
         for seq_idx, seq in enumerate(self.sequences):
             length = len(seq.frame_paths)
-            for start, end in self.sampler(length, self.window_size, self.window_stride):
+            for start, end in self.sampler(
+                length, self.window_size, self.window_stride
+            ):
                 windows.append((seq_idx, start, end))
         return windows
 
-    def __len__(self) -> int:  # noqa: D401 - inherited doc
+    def __len__(self) -> int:
+        """Return the number of sampled windows in the dataset."""
         return len(self.windows)
 
     def __getitem__(self, index: int) -> TrackingSample:
+        """Load and return a tracked window identified by `index`."""
         seq_idx, start, end = self.windows[index]
         seq = self.sequences[seq_idx]
         frame_ids = list(range(start, end))
@@ -246,9 +275,16 @@ class DancetrackDataset(Dataset[TrackingSample]):
             frames.append(frame)
             targets.append(target)
         stacked = torch.stack(frames, dim=0)
-        return TrackingSample(frames=stacked, targets=targets, sequence_id=seq.name, frame_indices=frame_ids)
+        return TrackingSample(
+            frames=stacked,
+            targets=targets,
+            sequence_id=seq.name,
+            frame_indices=frame_ids,
+        )
 
-    def _load_frame(self, seq: _SequenceMeta, frame_id: int) -> tuple[Tensor, TargetFrame]:
+    def _load_frame(
+        self, seq: _SequenceMeta, frame_id: int
+    ) -> tuple[Tensor, TargetFrame]:
         frame_path = self.root / seq.frame_paths[frame_id]
         try:
             image = read_image(str(frame_path))
@@ -274,7 +310,10 @@ class DancetrackDataset(Dataset[TrackingSample]):
         if not anns:
             return torch.zeros((0, 4), dtype=torch.float32)
         boxes = torch.tensor(
-            [[ann.bbox_xywh[0], ann.bbox_xywh[1], ann.bbox_xywh[2], ann.bbox_xywh[3]] for ann in anns],
+            [
+                [ann.bbox_xywh[0], ann.bbox_xywh[1], ann.bbox_xywh[2], ann.bbox_xywh[3]]
+                for ann in anns
+            ],
             dtype=torch.float32,
         )
         xyxy = boxes.clone()
@@ -282,17 +321,23 @@ class DancetrackDataset(Dataset[TrackingSample]):
         return xyxy
 
 
-def _boxes_to_target(boxes: tv_tensors.BoundingBoxes, anns: Sequence[_Annotation]) -> TargetFrame:
+def _boxes_to_target(
+    boxes: tv_tensors.BoundingBoxes, anns: Sequence[_Annotation]
+) -> TargetFrame:
     tensor = torch.as_tensor(boxes)
     if tensor.numel() == 0:
         return TargetFrame.empty()
     cx = (tensor[:, 0] + tensor[:, 2]) * 0.5
     cy = (tensor[:, 1] + tensor[:, 3]) * 0.5
-    size = torch.stack([tensor[:, 2] - tensor[:, 0], tensor[:, 3] - tensor[:, 1]], dim=-1)
+    size = torch.stack(
+        [tensor[:, 2] - tensor[:, 0], tensor[:, 3] - tensor[:, 1]], dim=-1
+    )
     center = torch.stack([cx, cy], dim=-1)
     track_ids = torch.tensor([ann.track_id for ann in anns], dtype=torch.long)
     confidence = torch.tensor([ann.confidence for ann in anns], dtype=torch.float32)
-    return TargetFrame(center=center, size=size, track_ids=track_ids, confidence=confidence)
+    return TargetFrame(
+        center=center, size=size, track_ids=track_ids, confidence=confidence
+    )
 
 
 def _parse_seqinfo(path: Path) -> dict[str, Any]:

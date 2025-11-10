@@ -13,9 +13,10 @@ def _as_dict(cfg: DictConfig | None) -> dict[str, Any]:
     return {} if cfg is None else dict(OmegaConf.to_container(cfg, resolve=True))
 
 
-def build_logger(logging_cfg: DictConfig | None, experiment_name: str | None = None) -> Logger:
+def build_logger(
+    logging_cfg: DictConfig | None, experiment_name: str | None = None
+) -> Logger:
     """Instantiate the TensorBoard logger described in the config."""
-
     cfg = _as_dict(logging_cfg).get("logger", {})
     save_dir = cfg.get("save_dir", "runs")
     name = experiment_name or cfg.get("name", "scene_model")
@@ -47,7 +48,6 @@ def _build_checkpoint(cfg: dict[str, Any]) -> ModelCheckpoint:
 
 def build_callbacks(logging_cfg: DictConfig | None) -> list[Callback]:
     """Create the callback collection declared in the logging config."""
-
     cfg = _as_dict(logging_cfg).get("callbacks", {})
     callbacks: list[Callback] = []
     checkpoint_cfg = cfg.get("checkpoint")
@@ -56,6 +56,8 @@ def build_callbacks(logging_cfg: DictConfig | None) -> list[Callback]:
     lr_cfg = cfg.get("lr_monitor")
     if isinstance(lr_cfg, dict):
         callbacks.append(
-            LearningRateMonitor(logging_interval=lr_cfg.get("logging_interval", "epoch"))
+            LearningRateMonitor(
+                logging_interval=lr_cfg.get("logging_interval", "epoch")
+            )
         )
     return callbacks

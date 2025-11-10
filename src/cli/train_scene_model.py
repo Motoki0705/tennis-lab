@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Sequence
+from collections.abc import Sequence
 
 from pytorch_lightning.utilities.seed import seed_everything
 
@@ -30,6 +30,7 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """CLI entrypoint that wires configs, modules, and the Lightning trainer."""
     args = _parse_args(argv)
     try:
         cfg = load_cfg(args.config, args.overrides)

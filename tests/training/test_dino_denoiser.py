@@ -13,7 +13,9 @@ def test_denoiser_generates_expected_shape() -> None:
         track_ids=torch.tensor([7], dtype=torch.long),
         confidence=torch.tensor([1.0]),
     )
-    denoiser = DinoDenoiser({"num_noisy_queries": 2, "box_noise_scale": 0.1, "label_noise_scale": 0.5})
+    denoiser = DinoDenoiser(
+        {"num_noisy_queries": 2, "box_noise_scale": 0.1, "label_noise_scale": 0.5}
+    )
     state = denoiser.make_noise([[target]])
     assert state.boxes.shape == (1, 2, 4)
     assert state.labels.shape == (1, 2)
