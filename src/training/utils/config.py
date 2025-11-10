@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import TYPE_CHECKING
 
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.loggers import Logger
+
+if TYPE_CHECKING:
+    from src.training.scene_model.datamodule import DancetrackDataModule
+    from src.training.scene_model.lightning import SceneModelLightningModule
 
 INCLUDE_KEY = "includes"
 _TRUTHY = {"1", "true", "yes", "on"}
@@ -57,24 +62,28 @@ class ConfigLoader:
 
     cfg: DictConfig
 
-    def build_datamodule(self):
+    def build_datamodule(self) -> DancetrackDataModule:
+        """Construct the LightningDataModule declared in ``cfg.dataset``."""
         from src.training.scene_model.datamodule import DancetrackDataModule
 
         dataset_cfg = self.cfg.get("dataset")
         debug_cfg = self.cfg.get("debug")
         return DancetrackDataModule(dataset_cfg, debug_cfg)
 
-    def build_lit_module(self):
+    def build_lit_module(self) -> SceneModelLightningModule:
+        """Instantiate the LightningModule wired to the SceneModel stack."""
         from src.training.scene_model.lightning import SceneModelLightningModule
 
         return SceneModelLightningModule(self.cfg)
 
     def build_callbacks(self) -> list[Callback]:
+        """Create callbacks (checkpoints, LR monitor, etc.) from config."""
         from src.training.scene_model.callbacks import build_callbacks
 
         return build_callbacks(self.cfg.get("logging"))
 
     def build_logger(self) -> Logger:
+        """Create the experiment logger defined under ``cfg.logging``."""
         from src.training.scene_model.callbacks import build_logger
 
         experiment_name = self.cfg.get("experiment_name")
@@ -85,7 +94,10 @@ class ConfigLoader:
         logger: Logger | bool | None = None,
         callbacks: Iterable[Callback] | None = None,
     ) -> Trainer:
+        """Build a Lightning Trainer, optionally overriding logger/callbacks."""
         trainer_cfg = _container(self.cfg.get("training")).get("trainer", {})
         pl_logger = logger if logger is not None else self.build_logger()
-        callback_list = list(callbacks) if callbacks is not None else self.build_callbacks()
+        callback_list = (
+            list(callbacks) if callbacks is not None else self.build_callbacks()
+        )
         return Trainer(logger=pl_logger, callbacks=callback_list, **trainer_cfg)

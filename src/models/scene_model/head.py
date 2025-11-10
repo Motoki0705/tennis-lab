@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import torch
-from torch import Tensor, nn
 import torch.nn.functional as F
+from torch import Tensor, nn
 
 
 class PredictionHead(nn.Module):
@@ -50,6 +50,7 @@ class BBoxHead(nn.Module):
         self.size = nn.Sequential(nn.LayerNorm(dim), nn.Linear(dim, 2))
 
     def forward(self, x: Tensor) -> dict[str, Tensor]:
+        """Convert decoder embeddings into bbox predictions and logits."""
         logits = self.cls(x)
         exist = torch.sigmoid(self.exist(x))
         center = self.center(x)

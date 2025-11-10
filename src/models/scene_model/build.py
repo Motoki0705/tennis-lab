@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import copy
 import warnings
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import torch
-from torch import Tensor, nn
 from omegaconf import DictConfig, OmegaConf
+from torch import Tensor, nn
 
 from .config import SceneConfig
 from .head import BBoxHead
@@ -36,7 +37,6 @@ def build_scene_model(
     debug_cfg: DictConfig | Mapping[str, Any] | None = None,
 ) -> SceneModel:
     """Instantiate SceneModel and apply optional backbone/head overrides declared in config."""
-
     cfg = _to_dict(model_cfg)
     debug = _to_dict(debug_cfg)
     scene_cfg = copy.deepcopy(cfg.get("scene", {}))
@@ -95,10 +95,15 @@ def _load_dinov3_backbone(cfg: Mapping[str, Any]) -> nn.Module | None:
     try:
         dinov3 = torch.hub.load("third_party/dinov3", arch, **hub_kwargs)
     except Exception as exc:  # pragma: no cover - actual import tested via adapter
-        warnings.warn(f"Failed to load {arch} from third_party/dinov3: {exc}", stacklevel=2)
+        warnings.warn(
+            f"Failed to load {arch} from third_party/dinov3: {exc}", stacklevel=2
+        )
         return None
     if not hasattr(dinov3, "get_intermediate_layers"):
-        warnings.warn(f"{arch} missing get_intermediate_layers; falling back to native backbone", stacklevel=2)
+        warnings.warn(
+            f"{arch} missing get_intermediate_layers; falling back to native backbone",
+            stacklevel=2,
+        )
         return None
     return Dinov3BackboneAdapter(dinov3)
 
@@ -109,11 +114,14 @@ class Dinov3BackboneAdapter(nn.Module):
     def __init__(self, backbone: nn.Module) -> None:
         super().__init__()
         self.backbone = backbone
-        self.embed_dim = getattr(backbone, "embed_dim", getattr(backbone, "num_features", 0))
+        self.embed_dim = getattr(
+            backbone, "embed_dim", getattr(backbone, "num_features", 0)
+        )
         if self.embed_dim == 0:
             raise ValueError("Could not infer embed_dim from dinov3 backbone")
 
     def forward(self, frames: Tensor) -> tuple[Tensor, Tensor]:
+        """Run the DINOv3 encoder and reshape outputs to `[B, T, ...]` tensors."""
         if frames.ndim != 5:
             msg = "frames must be [B,T,3,H,W]"
             raise ValueError(msg)

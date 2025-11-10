@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -32,7 +33,6 @@ class DinoDenoiser:
 
     def make_noise(self, targets: Sequence[Sequence[TargetFrame]]) -> DenoiserState:
         """Return perturbed boxes/labels for all valid frames in the batch."""
-
         if self.num_noisy_queries <= 0:
             return DenoiserState(
                 boxes=torch.zeros((0, 0, 4), dtype=torch.float32),
@@ -47,27 +47,43 @@ class DinoDenoiser:
                 boxes_list.append(frame_boxes)
                 labels_list.append(frame_labels)
         if not boxes_list:
-            empty_boxes = torch.zeros((0, self.num_noisy_queries, 4), dtype=torch.float32)
+            empty_boxes = torch.zeros(
+                (0, self.num_noisy_queries, 4), dtype=torch.float32
+            )
             empty_labels = torch.zeros((0, self.num_noisy_queries), dtype=torch.long)
             return DenoiserState(empty_boxes, empty_labels, self.num_noisy_queries)
-        return DenoiserState(torch.stack(boxes_list), torch.stack(labels_list), self.num_noisy_queries)
+        return DenoiserState(
+            torch.stack(boxes_list), torch.stack(labels_list), self.num_noisy_queries
+        )
 
     def _frame_noise(self, target: TargetFrame) -> tuple[Tensor, Tensor]:
         device = target.center.device
-        boxes = torch.cat([target.center, target.size], dim=-1) if target.center.numel() else torch.zeros((0, 4), dtype=torch.float32, device=device)
+        boxes = (
+            torch.cat([target.center, target.size], dim=-1)
+            if target.center.numel()
+            else torch.zeros((0, 4), dtype=torch.float32, device=device)
+        )
         num = min(boxes.size(0), self.num_noisy_queries)
-        padded_boxes = torch.zeros((self.num_noisy_queries, 4), dtype=torch.float32, device=device)
+        padded_boxes = torch.zeros(
+            (self.num_noisy_queries, 4), dtype=torch.float32, device=device
+        )
         if num > 0:
-            noise = self.box_noise_scale * torch.randn((num, 4), dtype=torch.float32, device=device)
+            noise = self.box_noise_scale * torch.randn(
+                (num, 4), dtype=torch.float32, device=device
+            )
             padded_boxes[:num] = boxes[:num].to(torch.float32) + noise
-        labels = torch.full((self.num_noisy_queries,), -1, dtype=torch.long, device=device)
+        labels = torch.full(
+            (self.num_noisy_queries,), -1, dtype=torch.long, device=device
+        )
         if num > 0 and target.track_ids.numel() > 0:
             base = target.track_ids[:num].to(torch.long)
             if self.label_noise_prob > 0:
                 mask = torch.rand(num, device=device) < self.label_noise_prob
                 if mask.any():
                     base = base.clone()
-                    base[mask] = torch.randint(0, 1024, (mask.sum().item(),), device=device)
+                    base[mask] = torch.randint(
+                        0, 1024, (mask.sum().item(),), device=device
+                    )
             labels[:num] = base
         return padded_boxes, labels
 

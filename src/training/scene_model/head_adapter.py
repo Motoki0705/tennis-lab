@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -15,15 +16,16 @@ from torch import Tensor
 from torchvision.ops import generalized_box_iou
 
 from src.datasets.dancetrack import TargetFrame
+from src.training.scene_model.dino_denoiser import DenoiserState
 
 _THIRD_PARTY_DINO = Path(__file__).resolve().parents[3] / "third_party" / "DINO"
 if _THIRD_PARTY_DINO.exists() and str(_THIRD_PARTY_DINO) not in sys.path:
     sys.path.insert(0, str(_THIRD_PARTY_DINO))
 
 try:  # pragma: no cover - exercised in integration tests
-    from models.dino.matcher import HungarianMatcher as _DinoMatcher  # type: ignore
+    from models.dino.matcher import HungarianMatcher as _DinoMatcher
 except Exception:  # pragma: no cover - fallback to avoid hard failure in CI
-    _DinoMatcher = None  # type: ignore
+    _DinoMatcher = None
 
 
 def _to_dict(cfg: DictConfig | Mapping[str, Any] | None) -> dict[str, Any]:
@@ -80,10 +82,9 @@ class HeadAdapter:
         outputs: Mapping[str, Tensor],
         targets: Sequence[Sequence[TargetFrame]],
         padding_mask: Tensor,
-        dn_state: Mapping[str, Any] | None = None,
+        dn_state: DenoiserState | Mapping[str, Any] | None = None,
     ) -> dict[str, Tensor]:
         """Return weighted loss dictionary following the training spec."""
-
         pred_boxes = self._extract_pred_boxes(outputs)
         cls_logits = outputs.get("cls_logits", outputs.get("role_logits"))
         if cls_logits is None:
@@ -95,7 +96,9 @@ class HeadAdapter:
         bs, T, num_queries, _ = pred_boxes.shape
         valid_mask = (~padding_mask.bool()).view(bs * T)
         flat_boxes = pred_boxes.view(bs * T, num_queries, 4)[valid_mask]
-        flat_logits = cls_logits.view(bs * T, num_queries, cls_logits.shape[-1])[valid_mask]
+        flat_logits = cls_logits.view(bs * T, num_queries, cls_logits.shape[-1])[
+            valid_mask
+        ]
         flat_exist = exist_scores.view(bs * T, num_queries)[valid_mask]
         target_list = list(_iter_valid_targets(targets, padding_mask))
         if not target_list:
@@ -149,7 +152,9 @@ class HeadAdapter:
         match_indices: Sequence[tuple[Tensor, Tensor]],
     ) -> Tensor:
         num_frames, num_queries, num_classes = logits.shape
-        targets = torch.zeros((num_frames, num_queries), dtype=torch.long, device=logits.device)
+        targets = torch.zeros(
+            (num_frames, num_queries), dtype=torch.long, device=logits.device
+        )
         for frame_idx, (src, _tgt) in enumerate(match_indices):
             if len(src) == 0:
                 continue
@@ -183,7 +188,9 @@ class HeadAdapter:
             if len(src) == 0:
                 continue
             pred = boxes[frame_idx, src]
-            tgt = torch.cat([targets[frame_idx].center, targets[frame_idx].size], dim=-1)
+            tgt = torch.cat(
+                [targets[frame_idx].center, targets[frame_idx].size], dim=-1
+            )
             tgt = tgt[tgt_idx].to(device)
             bbox_loss = bbox_loss + F.l1_loss(pred, tgt, reduction="sum") / denom
             giou_loss = giou_loss + self._giou_loss(pred, tgt, denom)
@@ -202,8 +209,8 @@ def _iter_valid_targets(
     targets: Sequence[Sequence[TargetFrame]],
     padding_mask: Tensor,
 ) -> Iterable[TargetFrame]:
-    for sample_targets, mask_row in zip(targets, padding_mask):
-        for target, is_pad in zip(sample_targets, mask_row):
+    for sample_targets, mask_row in zip(targets, padding_mask, strict=False):
+        for target, is_pad in zip(sample_targets, mask_row, strict=False):
             if bool(is_pad):
                 continue
             yield target

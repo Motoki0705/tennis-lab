@@ -43,7 +43,12 @@ def _lit_cfg() -> Any:
                     "type": "bbox",
                     "num_classes": 2,
                     "matcher": {"cost_class": 1.0, "cost_bbox": 1.0, "cost_giou": 1.0},
-                    "loss": {"cls_weight": 1.0, "bbox_weight": 1.0, "giou_weight": 1.0, "exist_weight": 1.0},
+                    "loss": {
+                        "cls_weight": 1.0,
+                        "bbox_weight": 1.0,
+                        "giou_weight": 1.0,
+                        "exist_weight": 1.0,
+                    },
                 },
             },
             "training": {
@@ -67,7 +72,9 @@ def _make_batch() -> SceneBatch:
     )
     targets = [[target, TargetFrame.empty()]]
     padding_mask = torch.tensor([[False, False]])
-    return SceneBatch(frames=frames, targets=targets, padding_mask=padding_mask, sequence_ids=["demo"])
+    return SceneBatch(
+        frames=frames, targets=targets, padding_mask=padding_mask, sequence_ids=["demo"]
+    )
 
 
 def test_lightning_module_backward_step(monkeypatch: pytest.MonkeyPatch) -> None:
