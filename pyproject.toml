@@ -155,12 +155,14 @@ docstring-code-line-length = "dynamic"
 
 [tool.mypy]
 python_version = "3.11"
+mypy_path = ["src"]
+explicit_package_bases = true
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = false  # Start with this disabled for gradual adoption
+disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
-disallow_untyped_decorators = false
+disallow_untyped_decorators = true
 no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
@@ -184,13 +186,6 @@ module = [
     "gdown.*",
 ]
 ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = [
-    "src.*",
-]
-disallow_untyped_defs = false  # Gradual adoption
-
 
 [tool.coverage.run]
 source = ["src"]
