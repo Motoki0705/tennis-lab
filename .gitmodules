@@ -1,0 +1,19 @@
+[submodule "third_party/ByteTrack"]
+	path = third_party/ByteTrack
+	url = git@github.com:Motoki0705/ByteTrack.git
+
+[submodule "third_party/DINO"]
+	path = third_party/DINO
+	url = https://github.com/IDEA-Research/DINO.git
+
+[submodule "third_party/DanceTrack"]
+	path = third_party/DanceTrack
+	url = https://github.com/DanceTrack/DanceTrack.git
+
+[submodule "third_party/Deformable-DETR"]
+	path = third_party/Deformable-DETR
+	url = https://github.com/fundamentalvision/Deformable-DETR.git
+
+[submodule "third_party/dinov3"]
+	path = third_party/dinov3
+	url = git@github.com:Motoki0705/dinov3
