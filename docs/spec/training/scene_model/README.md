@@ -72,11 +72,11 @@ backprop(losses.total)
 - パディング: `padding_mask` は `[B, T]`（pad=True）。
 - 予測（BBoxHead）：
   - `bbox_center`: `[B, T, Q, 2]`（cx, cy）
-  - `bbox_size`:   `[B, T, Q, 2]`（w, h; 正）
+  - `bbox_size`:   `[B, T, Q, 2]`（w, h; 0〜1 正規化、`sigmoid` → `clamp(min=1e-3)`）
   - `exist_conf`:  `[B, T, Q, 1]`（ロジット→Sigmoid後）
   - `cls_logits`:  `[B, T, Q, C]`
-- GT（TargetFrame per frame）:
-  - `center`: `[N, 2]`, `size`: `[N, 2]`, `track_ids`: `[N]`
+- GT（TargetFrame per frame）：
+  - `center`: `[N, 2]`, `size`: `[N, 2]`（いずれもリサイズ後キャンバスに対する 0〜1 正規化）, `track_ids`: `[N]`
 
 ## バックボーン凍結ポリシー
 

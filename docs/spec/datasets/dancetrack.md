@@ -7,7 +7,7 @@
 ## 目的
 
 - DanceTrack の各シーケンスから、固定長（ただしデータ不足時は短いこともある）ウィンドウをサンプリングし、学習で扱いやすい `TrackingSample` を提供する。
-- 画像変換（リサイズ、正規化）と必要に応じた左右反転を適用し、画像と対応する 2D バウンディングボックスを整合的に変換する。
+- 画像変換（リサイズ、正規化）と必要に応じた左右反転を適用し、画像と対応する 2D バウンディングボックスを整合的に変換する。`tv_tensors.BoundingBoxes` のキャンバスサイズを用い、変換後に 0〜1 に正規化された中心・サイズを生成する。
 
 ---
 
@@ -15,8 +15,8 @@
 
 - `TargetFrame`
   - 1 フレーム内の全ターゲット注釈。
-  - `center: Tensor[N, 2]`（中心座標 `cx, cy`）
-  - `size: Tensor[N, 2]`（幅高 `w, h`）
+  - `center: Tensor[N, 2]`（中心座標 `cx, cy`、**リサイズ後画像に対する 0〜1 正規化値**）
+  - `size: Tensor[N, 2]`（幅高 `w, h`、**リサイズ後画像に対する 0〜1 正規化値**）
   - `track_ids: Tensor[N]`（トラック ID）
   - `confidence: Tensor[N]`（スコア）
   - `empty(device)`: 長さ 0 の空コンテナを返す（パディング整合用）。
@@ -119,7 +119,7 @@ for t in frame_ids:
   boxes_xyxy = xywh_to_xyxy(anns)
   img_tensor, bbox_tensor = maybe_augment(image, boxes_xyxy)
   img_tensor, bbox_tensor = transform(img_tensor, bbox_tensor)
-  target = boxes_to_TargetFrame(bbox_tensor, anns)
+  target = bbox/ID を `TargetFrame`（center/size/track_id/conf）へ整形。bbox は torchvision の変換後キャンバスサイズで正規化。
   frames.append(img_tensor)
   targets.append(target)
 stacked = stack(frames, dim=0)  # [T, C, H, W]

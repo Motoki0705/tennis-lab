@@ -18,9 +18,8 @@
 - 出力:
   - `cls_logits`: `[B,T,Q,num_classes]`
   - `exist_conf`: `[B,T,Q,1]`
-  - `bbox_center`: `[B,T,Q,2]`
-  - `bbox_size`: `[B,T,Q,2]`（`softplus + 1e-3` で正値）
+  - `bbox_center`: `[B,T,Q,2]`（`sigmoid` により 0〜1 正規化）
+  - `bbox_size`: `[B,T,Q,2]`（`sigmoid` を `clamp(min=1e-3)` した 0〜1 正規化）
 
 ## 例外/備考
 - `smpl_param_dim=0` の場合、内部 `_ZeroProjection` が `[...,0]` 形状の空テンソルを返し、以降の shape を壊さない。
-

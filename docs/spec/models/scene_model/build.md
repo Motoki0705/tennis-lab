@@ -13,14 +13,17 @@ def build_scene_model(model_cfg, debug_cfg=None) -> SceneModel
 ## バックボーン差し替え
 - `_build_backbone(cfg, default, debug)`
   - `debug.minimal` の場合は `default` をそのまま使用。
-  - `type` が `dinov3*` の場合、`_load_dinov3_backbone` で torch.hub から読込。
-  - 失敗（例: 重み未発見, API 不一致）は警告を出し `default` にフォールバック。
+  - `type` が `dinov3*` の場合、`_load_dinov3_backbone` で `load_dinov3()` を通じて torch.hub から読込。
+- `Dinov3BackboneAdapter` は `embed_dim` が `SceneModel.D_model` と一致しない場合 `ValueError` を投げる。
 
 ## DINOv3 アダプタ
+- `load_dinov3(arch, weights_path, **hub_kwargs)`
+  - `third_party/dinov3` からローカルロード。重みパスが存在しない場合は `FileNotFoundError`。
+  - モデルに `get_intermediate_layers` が無い場合 `AttributeError`。
 - `Dinov3BackboneAdapter(backbone)`
   - `get_intermediate_layers(..., n=1, return_class_token=True)` を要求。
   - `[BT, Np, D], [BT, D]` を `[B,T,...]` に整形して返す。
-  - `embed_dim/num_features` が検出できない場合は `ValueError`。
+  - `embed_dim/num_features` が検出できない、あるいは `SceneModel` の `D_model` と不一致の場合は `ValueError`。
 
 ## ヘッド差し替え
 - `_build_head(cfg, default_head, model_dim)`
@@ -31,5 +34,6 @@ def build_scene_model(model_cfg, debug_cfg=None) -> SceneModel
 - `_to_dict` は `DictConfig | Mapping | dict | None` を平易な `dict` に変換。
 
 ## 例外/注意
-- `third_party/dinov3` を `torch.hub.load(..., source="local")` で参照。重みパス未存在時は警告。
+- `debug.minimal=True` ではバックボーン差し替えを行わず、デフォルトをそのまま使用。
+- `load_dinov3` は例外を `RuntimeError` でラップして再送出するため、呼び出し側でキャッチすること。
 
