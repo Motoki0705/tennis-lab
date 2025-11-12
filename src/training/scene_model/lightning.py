@@ -206,19 +206,24 @@ class SceneModelLightningModule(LightningModule):
         centers = centers[0, :valid]
         sizes = sizes[0, :valid]
         exist = exist[0, :valid].squeeze(-1)
+        h = frames_0.shape[-2]
+        w = frames_0.shape[-1]
         boxes = torch.cat(
             [centers - 0.5 * sizes, centers + 0.5 * sizes],
             dim=-1,
         )
+        boxes_px = boxes.clone()
+        boxes_px[:, [0, 2]] = boxes_px[:, [0, 2]] * w
+        boxes_px[:, [1, 3]] = boxes_px[:, [1, 3]] * h
         denorm = self._denormalize_frames(frames_0[:valid]).clamp(0.0, 1.0)
         denorm = denorm.detach().cpu()
-        boxes = boxes.detach().cpu()
+        boxes_px = boxes_px.detach().cpu()
         exist = exist.detach().cpu()
         num_frames = min(valid, self._viz_max_frames)
         annotated: list[Tensor] = []
         for idx in range(num_frames):
             annotated.append(
-                self._draw_boxes_on_frame(denorm[idx], boxes[idx], exist[idx])
+                self._draw_boxes_on_frame(denorm[idx], boxes_px[idx], exist[idx])
             )
         if not annotated:
             return None

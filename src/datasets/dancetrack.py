@@ -324,9 +324,13 @@ class DancetrackDataset(Dataset[TrackingSample]):
 def _boxes_to_target(
     boxes: tv_tensors.BoundingBoxes, anns: Sequence[_Annotation]
 ) -> TargetFrame:
-    tensor = torch.as_tensor(boxes)
+    canvas_h, canvas_w = boxes.canvas_size
+    tensor = torch.as_tensor(boxes, dtype=torch.float32)
     if tensor.numel() == 0:
         return TargetFrame.empty()
+    if canvas_w > 0 and canvas_h > 0:
+        tensor[:, [0, 2]] = torch.clamp(tensor[:, [0, 2]] / float(canvas_w), 0.0, 1.0)
+        tensor[:, [1, 3]] = torch.clamp(tensor[:, [1, 3]] / float(canvas_h), 0.0, 1.0)
     cx = (tensor[:, 0] + tensor[:, 2]) * 0.5
     cy = (tensor[:, 1] + tensor[:, 3]) * 0.5
     size = torch.stack(

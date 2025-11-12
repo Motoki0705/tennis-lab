@@ -79,8 +79,8 @@ def test_build_visual_grid_returns_tensor() -> None:
         sequence_ids=["demo"],
     )
     outputs = {
-        "bbox_center": torch.full((1, 2, 3, 2), 16.0),
-        "bbox_size": torch.full((1, 2, 3, 2), 8.0),
+        "bbox_center": torch.full((1, 2, 3, 2), 0.5),
+        "bbox_size": torch.full((1, 2, 3, 2), 0.25),
         "exist_conf": torch.ones(1, 2, 3, 1),
     }
     grid = module._build_visual_grid(batch, outputs)

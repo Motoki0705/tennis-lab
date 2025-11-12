@@ -8,8 +8,8 @@ from src.training.scene_model.dino_denoiser import DinoDenoiser
 
 def test_denoiser_generates_expected_shape() -> None:
     target = TargetFrame(
-        center=torch.tensor([[5.0, 6.0]]),
-        size=torch.tensor([[2.0, 3.0]]),
+        center=torch.tensor([[0.4, 0.5]]),
+        size=torch.tensor([[0.2, 0.3]]),
         track_ids=torch.tensor([7], dtype=torch.long),
         confidence=torch.tensor([1.0]),
     )

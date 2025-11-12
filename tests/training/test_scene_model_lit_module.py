@@ -65,8 +65,8 @@ def _lit_cfg() -> Any:
 def _make_batch() -> SceneBatch:
     frames = torch.randn(1, 2, 3, 64, 64)
     target = TargetFrame(
-        center=torch.tensor([[10.0, 10.0]]),
-        size=torch.tensor([[5.0, 5.0]]),
+        center=torch.tensor([[0.15, 0.15]]),
+        size=torch.tensor([[0.08, 0.08]]),
         track_ids=torch.tensor([0], dtype=torch.long),
         confidence=torch.tensor([1.0]),
     )
