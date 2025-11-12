@@ -15,21 +15,7 @@ from torch import Tensor, nn
 from .config import SceneConfig
 from .head import BBoxHead
 from .model import SceneModel
-
-_MINIMAL_OVERRIDES: dict[str, Any] = {
-    "img_size": 64,
-    "patch_size": 8,
-    "vit_depth": 1,
-    "vit_heads": 2,
-    "D_model": 64,
-    "temporal_depth": 1,
-    "temporal_heads": 2,
-    "max_T_hint": 4,
-    "num_queries": 4,
-    "decoder_layers": 1,
-    "num_points": 2,
-    "window_k": 1,
-}
+from ..utils.load_dinov3 import load_dinov3
 
 
 def build_scene_model(
@@ -40,13 +26,11 @@ def build_scene_model(
     cfg = _to_dict(model_cfg)
     debug = _to_dict(debug_cfg)
     scene_cfg = copy.deepcopy(cfg.get("scene", {}))
-    if debug.get("minimal"):
-        scene_cfg.update(_MINIMAL_OVERRIDES)
     scene = SceneConfig(**scene_cfg)
     model = SceneModel(scene)
     backbone_cfg = cfg.get("backbone", {})
     head_cfg = cfg.get("head", {})
-    model.backbone = _build_backbone(backbone_cfg, model.backbone, debug)
+    model.backbone = _build_backbone(backbone_cfg, model.backbone, debug, scene.D_model)
     model.head = _build_head(head_cfg, model.head, scene.D_model)
     return model
 
@@ -55,6 +39,7 @@ def _build_backbone(
     cfg: Mapping[str, Any],
     default_backbone: nn.Module,
     debug_cfg: Mapping[str, Any],
+    model_dim: int,
 ) -> nn.Module:
     cfg_dict = _to_dict(cfg)
     backend_type = cfg_dict.get("type", "native")
@@ -63,6 +48,15 @@ def _build_backbone(
     if backend_type.startswith("dinov3"):
         adapter = _load_dinov3_backbone(cfg_dict)
         if adapter is not None:
+            embed_dim = getattr(adapter, "embed_dim", None)
+            if embed_dim is None:
+                raise ValueError("DINOv3 adapter did not expose embed_dim")
+            if embed_dim != model_dim:
+                msg = (
+                    "DINOv3 backbone embed_dim "
+                    f"({embed_dim}) does not match SceneModel D_model ({model_dim})"
+                )
+                raise ValueError(msg)
             return adapter
     return default_backbone
 
@@ -81,30 +75,13 @@ def _build_head(
 
 
 def _load_dinov3_backbone(cfg: Mapping[str, Any]) -> nn.Module | None:
-    arch = cfg.get("type")
-    weights_path = cfg.get("weights_path")
-    if weights_path is not None:
-        resolved = Path(weights_path).expanduser()
-        if not resolved.exists():
-            warnings.warn(f"DINOv3 weights not found at {resolved}", stacklevel=2)
-            return None
-        weights_path = str(resolved)
-    hub_kwargs: dict[str, Any] = {"source": "local"}
-    if weights_path is not None:
-        hub_kwargs["weights"] = weights_path
-    try:
-        dinov3 = torch.hub.load("third_party/dinov3", arch, **hub_kwargs)
-    except Exception as exc:  # pragma: no cover - actual import tested via adapter
-        warnings.warn(
-            f"Failed to load {arch} from third_party/dinov3: {exc}", stacklevel=2
-        )
-        return None
-    if not hasattr(dinov3, "get_intermediate_layers"):
-        warnings.warn(
-            f"{arch} missing get_intermediate_layers; falling back to native backbone",
-            stacklevel=2,
-        )
-        return None
+    arch = cfg.get("type", None)
+    weights_path = cfg.get("weights_path", None)
+    
+    dinov3 = load_dinov3(
+        arch=arch,
+        weights_path=weights_path,
+    )
     return Dinov3BackboneAdapter(dinov3)
 
 
@@ -127,8 +104,6 @@ class Dinov3BackboneAdapter(nn.Module):
             raise ValueError(msg)
         B, T, C, H, W = frames.shape
         flat = frames.view(B * T, C, H, W)
-        device = flat.device
-        self.backbone = self.backbone.to(device)
         features = self.backbone.get_intermediate_layers(
             flat,
             n=1,
@@ -136,8 +111,8 @@ class Dinov3BackboneAdapter(nn.Module):
             return_extra_tokens=False,
         )
         patches, cls_tokens = features[0]
-        patches = patches.view(B, T, patches.shape[1], self.embed_dim)
-        cls_tokens = cls_tokens.view(B, T, self.embed_dim)
+        patches = patches.reshape(B, T, patches.shape[1], self.embed_dim)
+        cls_tokens = cls_tokens.reshape(B, T, self.embed_dim)
         return patches, cls_tokens
 
 
