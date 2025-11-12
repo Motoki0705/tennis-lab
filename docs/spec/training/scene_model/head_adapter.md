@@ -9,7 +9,7 @@
 ## 入出力と形状
 - 入力: `outputs: Mapping[str, Tensor]`, `targets: list[list[TargetFrame]]`, `padding_mask: Bool[B,T]`, `dn_state`（現状未使用）
 - 正規化済みの有効フレームのみを使用:
-  - `flat_boxes:   Float[Nf, Q, 4]`（`[cx,cy,w,h]`）
+  - `flat_boxes:   Float[Nf, Q, 4]`（`[cx,cy,w,h]`、0〜1 正規化）
   - `flat_logits:  Float[Nf, Q, C]`
   - `flat_exist:   Float[Nf, Q]`（ロジット）
   - `target_list:  list[TargetFrame]`（長さ Nf）
@@ -62,7 +62,7 @@ def compute_loss(outputs, targets, padding_mask, dn_state=None):
 
   cls_loss   = classification_loss(flat_logits, match)
   exist_loss = exist_loss(flat_exist, match)
-  bbox_loss, giou_loss = bbox_losses(flat_boxes, match, tgt_list)
+  bbox_loss, giou_loss = bbox_losses(flat_boxes, match, tgt_list)  # 正規化座標で L1/GIoU
   total = w_cls*cls + w_bbox*bbox + w_giou*giou + w_exist*exist
 
   return {...}
