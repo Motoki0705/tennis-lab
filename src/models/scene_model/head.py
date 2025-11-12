@@ -53,8 +53,8 @@ class BBoxHead(nn.Module):
         """Convert decoder embeddings into bbox predictions and logits."""
         logits = self.cls(x)
         exist = torch.sigmoid(self.exist(x))
-        center = self.center(x)
-        size = F.softplus(self.size(x)) + 1e-3  # sizes must remain positive
+        center = torch.sigmoid(self.center(x))
+        size = torch.clamp(torch.sigmoid(self.size(x)), min=1e-3)
         return {
             "cls_logits": logits,
             "exist_conf": exist,
