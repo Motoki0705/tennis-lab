@@ -213,8 +213,8 @@ class SceneModelLightningModule(LightningModule):
             dim=-1,
         )
         boxes_px = boxes.clone()
-        boxes_px[:, [0, 2]] = boxes_px[:, [0, 2]] * w
-        boxes_px[:, [1, 3]] = boxes_px[:, [1, 3]] * h
+        boxes_px[..., [0, 2]] = boxes_px[..., [0, 2]] * w
+        boxes_px[..., [1, 3]] = boxes_px[..., [1, 3]] * h
         denorm = self._denormalize_frames(frames_0[:valid]).clamp(0.0, 1.0)
         denorm = denorm.detach().cpu()
         boxes_px = boxes_px.detach().cpu()
