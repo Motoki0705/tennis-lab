@@ -22,6 +22,7 @@ dependencies = [
     "pillow>=12.0.0",
     "pytorch-lightning>=2.5.5",
     "tensorboard>=2.20.0",
+    "termcolor>=3.2.0",
     "torch>=2.9.0",
     "torchreid>=0.2.5",
     "torchvision>=0.24.0",
@@ -72,6 +73,7 @@ exclude = [
     "dist",
     "node_modules",
     "venv",
+    "third_party",
 ]
 
 # Same as Black.
@@ -80,8 +82,6 @@ indent-width = 4
 
 # Assume Python 3.11
 target-version = "py311"
-
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
@@ -183,8 +183,13 @@ module = [
     "torchreid.*",
     "deep_sort_realtime.*",
     "gdown.*",
+    "MultiScaleDeformableAttention",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["third_party.*"]
+ignore_errors = true
 
 [tool.coverage.run]
 source = ["src"]

@@ -1,0 +1,10 @@
+includes:
+  dataset: datasets/dancetrack.yaml
+  training: training/dino.yaml
+  model: models/scene_model.yaml
+  logging: logging/default.yaml
+
+experiment_name: dancetrack_scene_model
+seed: 1337
+debug:
+  minimal: false
