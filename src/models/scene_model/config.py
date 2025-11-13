@@ -34,6 +34,7 @@ class SceneConfig:
     decoder_layers: int
     num_points: int
     window_k: int
+    decoder_heads: int = 8
     offset_mode: str = "per_tau"
     tbptt_detach: bool = True
 
