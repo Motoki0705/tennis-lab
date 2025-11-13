@@ -1,6 +1,7 @@
 [submodule "third_party/ByteTrack"]
 	path = third_party/ByteTrack
 	url = git@github.com:Motoki0705/ByteTrack.git
+	branch = main
 
 [submodule "third_party/DINO"]
 	path = third_party/DINO
@@ -16,12 +17,15 @@
 
 [submodule "third_party/dinov3"]
 	path = third_party/dinov3
-	url = git@github.com:Motoki0705/dinov3
+	url = git@github.com:Motoki0705/dinov3.git
+	branch = main
 
 [submodule "third_party/GVHMR"]
 	path = third_party/GVHMR
-	url = git@github.com:Motoki0705/GVHMR
+	url = git@github.com:Motoki0705/GVHMR.git
+	branch = main
 
 [submodule "third_party/MOTR"]
 	path = third_party/MOTR
-	url = git@github.com:Motoki0705/MOTR
+	url = git@github.com:Motoki0705/MOTR.git
+	branch = main
