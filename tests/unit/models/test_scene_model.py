@@ -49,10 +49,19 @@ def test_build_kv_handles_padding() -> None:
     cfg = _make_config()
     model = SceneModel(cfg)
     patches = torch.zeros(1, 2, (cfg.img_size // cfg.patch_size) ** 2, cfg.D_model)
-    feats, mask, delta = model.decoder.build_kv(patches, t_center=0)
+    value, pad_mask, spatial_shapes, level_start_index, delta = model.decoder.build_kv(
+        patches, t_center=0
+    )
     # First window slot corresponds to t=-1 and should be masked
-    assert bool(mask[:, 0].all())
+    window_size = 2 * cfg.window_k + 1
+    grid_hw = (cfg.img_size // cfg.patch_size) ** 2
+    mask_view = pad_mask.view(1, window_size, grid_hw)
+    assert bool(mask_view[:, 0].all())
     # Middle slot should be valid
-    assert not bool(mask[:, 1].any())
+    assert not bool(mask_view[:, 1].any())
     # Delta seconds include negative offset for the padded frame
     assert torch.isclose(delta[0, 0, 0], torch.tensor(-1 / cfg.fps)).item()
+    # Shapes align with MSDeformAttn expectations
+    assert spatial_shapes.shape[0] == window_size
+    assert level_start_index.shape[0] == window_size
+    assert value.shape[1] == window_size * grid_hw
