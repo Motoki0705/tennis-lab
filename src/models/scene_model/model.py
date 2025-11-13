@@ -37,6 +37,7 @@ class SceneModel(nn.Module):
             num_queries=cfg.num_queries,
             num_layers=cfg.decoder_layers,
             num_points=cfg.num_points,
+            num_heads=cfg.decoder_heads,
             k=cfg.window_k,
             offset_mode=cfg.offset_mode,
             tbptt_detach=cfg.tbptt_detach,
