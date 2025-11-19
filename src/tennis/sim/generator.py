@@ -1,22 +1,14 @@
-"""Synthetic scene generator for tennis pose (P1 minimal implementation).
-
-Generates a simple scene with:
-- Court 3D keypoints
-- One or more cameras sampled on the fence
-- A static, plausible 3D human skeleton + racket points
-- 2D projections with Gaussian noise and random visibility drops
-
-Note: This is a starter generator for P1. Future phases will replace the
-static skeleton with retargeted motions and richer camera models.
-"""
+"""Synthetic scene generator that instantiates 3DTennisDS clips on a court."""
 
 from __future__ import annotations
 
 import json
+import math
 import random
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping
+from typing import Any
 
 import torch
 from torch import Tensor
@@ -31,121 +23,59 @@ from src.tennis.geometry.court import (
     project_points,
     sample_camera_position_on_fence,
 )
-from src.tennis.geometry.skeleton import VITPOSE_17_NAMES, RACKET_3_NAMES
+from src.tennis.sim.assets import AssetSample, TennisAssetLibrary
 
 
 @dataclass(slots=True)
 class GenConfig:
+    """Configuration values consumed by :class:`TennisPoseSceneGenerator`."""
+
     fps: int = 60
     duration_sec: float = 3.0
     num_cameras: int = 4
     image_size: tuple[int, int] = (1280, 720)
-    # noise ratios
-    person_sigma_ratio_torso: float = 0.02
-    person_sigma_ratio_extremity: float = 0.03
-    person_sigma_ratio_head: float = 0.015
-    racket_sigma_ratio: float = 0.04
-    court_sigma_px_ratio: float = 0.003  # of image height
-    # missing probabilities
-    p_missing_extremity: float = 0.10
-    p_missing_torso: float = 0.02
-    p_missing_racket: float = 0.15
-    p_missing_court: float = 0.01
-    p_camera_drop: float = 0.05
+    asset_root: str = "data/raw/3dtennisds"
+    asset_min_frames: int = 30
+    asset_max_files: int | None = None
+    min_players: int = 1
+    max_players: int = 20
+    player_min_separation: float = 1.5
+    spawn_margin_x: float = 0.5
+    spawn_margin_y: float = 0.5
+    max_anchor_attempts: int = 2000
     seed: int | None = 1234
 
 
-def _static_person_racket_3d() -> tuple[Tensor, Tensor]:
-    """Return a simple static 3D human+raket configuration in court coords.
+@dataclass(slots=True)
+class _PlayerSequence:
+    """Container for a single player's projected trajectory."""
 
-    The pose is a rough, standing configuration with ~1.7m height.
-    """
-    # Pelvis/world anchor
-    pelvis = torch.tensor([0.0, 0.0, 1.0])
-    # Hips and shoulders
-    left_hip = pelvis + torch.tensor([-0.12, 0.0, 0.0])
-    right_hip = pelvis + torch.tensor([+0.12, 0.0, 0.0])
-    left_knee = left_hip + torch.tensor([0.0, 0.0, -0.42])
-    right_knee = right_hip + torch.tensor([0.0, 0.0, -0.42])
-    left_ankle = left_knee + torch.tensor([0.0, 0.0, -0.42])
-    right_ankle = right_knee + torch.tensor([0.0, 0.0, -0.42])
-    left_shoulder = pelvis + torch.tensor([-0.14, 0.0, 0.35])
-    right_shoulder = pelvis + torch.tensor([+0.14, 0.0, 0.35])
-    left_elbow = left_shoulder + torch.tensor([-0.18, 0.0, -0.08])
-    right_elbow = right_shoulder + torch.tensor([+0.18, 0.0, -0.08])
-    left_wrist = left_elbow + torch.tensor([-0.18, 0.0, 0.0])
-    right_wrist = right_elbow + torch.tensor([+0.18, 0.0, 0.0])
-    nose = pelvis + torch.tensor([0.0, 0.0, 0.55])
-    left_eye = nose + torch.tensor([-0.03, 0.0, 0.02])
-    right_eye = nose + torch.tensor([+0.03, 0.0, 0.02])
-    left_ear = nose + torch.tensor([-0.06, 0.0, 0.02])
-    right_ear = nose + torch.tensor([+0.06, 0.0, 0.02])
-
-    person_list = [
-        nose,
-        left_eye,
-        right_eye,
-        left_ear,
-        right_ear,
-        left_shoulder,
-        right_shoulder,
-        left_elbow,
-        right_elbow,
-        left_wrist,
-        right_wrist,
-        left_hip,
-        right_hip,
-        left_knee,
-        right_knee,
-        left_ankle,
-        right_ankle,
-    ]
-    person = torch.stack(person_list, dim=0).float()
-
-    # Racket as rigid relative to right wrist pointing upward
-    racket_handle = right_wrist + torch.tensor([0.05, 0.0, 0.0])
-    racket_throat = racket_handle + torch.tensor([0.20, 0.0, 0.05])
-    racket_head_top = racket_throat + torch.tensor([0.20, 0.0, 0.20])
-    racket = torch.stack([racket_handle, racket_throat, racket_head_top], dim=0).float()
-    return person, racket
-
-
-def _noise_2d_points(uv: Tensor, mask: Tensor, sigma_px: Tensor) -> Tensor:
-    noise = torch.randn_like(uv) * sigma_px.view(-1, 1)
-    noisy = uv + noise
-    return torch.where(mask.view(-1, 1), noisy, uv)
-
-
-def _drop_visibility(vis: Tensor, p: float) -> Tensor:
-    if p <= 0.0:
-        return vis
-    drops = torch.rand_like(vis, dtype=torch.float32) < float(p)
-    return torch.where(drops, torch.zeros_like(vis), vis)
-
-
-def _person_sigma_per_joint(px_height: float, num_joints: int) -> Tensor:
-    # Approximate categories: torso/head/extremities
-    # indices based on COCO17 layout
-    sigma = torch.full((num_joints,), 0.02 * px_height, dtype=torch.float32)
-    # extremities
-    for idx in [9, 10, 15, 16]:
-        sigma[idx] = 0.03 * px_height
-    # head
-    for idx in [0, 1, 2, 3, 4]:
-        sigma[idx] = 0.015 * px_height
-    return sigma
+    joints_3d: Tensor  # (T, 17, 3)
+    racket_3d: Tensor  # (T, 3, 3)
 
 
 class TennisPoseSceneGenerator:
-    def __init__(self, cfg: GenConfig | None = None) -> None:
+    """Generate clean multi-player tennis pose scenes."""
+
+    def __init__(
+        self,
+        cfg: GenConfig | None = None,
+        asset_library: TennisAssetLibrary | None = None,
+    ) -> None:
         self.cfg = cfg or GenConfig()
-        if self.cfg.seed is not None:
-            random.seed(int(self.cfg.seed))
-            torch.manual_seed(int(self.cfg.seed))
+        seed = self.cfg.seed
+        self._rng = random.Random(seed)
+        if seed is not None:
+            torch.manual_seed(int(seed))
+        self.asset_lib = asset_library or TennisAssetLibrary(
+            self.cfg.asset_root,
+            min_frames=self.cfg.asset_min_frames,
+            max_files=self.cfg.asset_max_files,
+        )
 
     def _sample_camera(self) -> Mapping[str, Any]:
-        side = random.choice(["near", "far", "left", "right"])  # noqa: S311
-        t = random.random()  # noqa: S311
+        side = self._rng.choice(["near", "far", "left", "right"])
+        t = self._rng.random()
         x, y, z = sample_camera_position_on_fence(t, side)
         cam = make_look_at_camera((x, y, z), image_size=self.cfg.image_size)
         return {
@@ -154,61 +84,113 @@ class TennisPoseSceneGenerator:
             "_cam_internal": cam,  # kept for projection, not serialized later
         }
 
-    def _build_cameras(self, n: int) -> List[Mapping[str, Any]]:
+    def _build_cameras(self, n: int) -> list[Mapping[str, Any]]:
         return [self._sample_camera() for _ in range(n)]
 
+    def _build_players(self, frames_total: int) -> list[_PlayerSequence]:
+        min_players = max(1, int(self.cfg.min_players))
+        max_players = max(min_players, int(self.cfg.max_players))
+        num_players = self._rng.randint(min_players, max_players)
+        samples = [
+            self.asset_lib.sample_sequence(frames_total, self.cfg.fps, self._rng)
+            for _ in range(num_players)
+        ]
+        anchors = self._sample_player_origins(num_players)
+        sequences: list[_PlayerSequence] = []
+        for sample, anchor in zip(samples, anchors, strict=True):
+            yaw = self._rng.uniform(-math.pi, math.pi)
+            sequences.append(self._place_sample(sample, anchor, yaw))
+        return sequences
+
+    def _sample_player_origins(self, count: int) -> list[Tensor]:
+        anchors: list[Tensor] = []
+        attempts = 0
+        margin_x = max(0.0, float(self.cfg.spawn_margin_x))
+        margin_y = max(0.0, float(self.cfg.spawn_margin_y))
+        min_sep = max(0.1, float(self.cfg.player_min_separation))
+        x_min = X_MIN + margin_x
+        x_max = X_MAX - margin_x
+        y_min = Y_MIN + margin_y
+        y_max = Y_MAX - margin_y
+        max_attempts = max(count * 10, int(self.cfg.max_anchor_attempts))
+        while len(anchors) < count and attempts < max_attempts:
+            attempts += 1
+            x = self._rng.uniform(x_min, x_max)
+            y = self._rng.uniform(y_min, y_max)
+            candidate = torch.tensor([x, y, 0.0], dtype=torch.float32)
+            if all(
+                torch.linalg.norm(candidate[:2] - other[:2]) >= min_sep
+                for other in anchors
+            ):
+                anchors.append(candidate)
+        if len(anchors) < count:
+            raise RuntimeError("failed to place all players without collision")
+        return anchors
+
+    def _place_sample(
+        self,
+        sample: AssetSample,
+        anchor: Tensor,
+        yaw: float,
+    ) -> _PlayerSequence:
+        joints = torch.from_numpy(sample.joints).float()
+        racket = torch.from_numpy(sample.racket).float()
+        pelvis = torch.from_numpy(sample.pelvis).float()
+        rot = _rotation_matrix_z(yaw)
+        joints_rot = torch.matmul(joints, rot.t())
+        racket_rot = torch.matmul(racket, rot.t())
+        pelvis_rot = torch.matmul(pelvis, rot.t()) + anchor.view(1, 3)
+        joints_world = joints_rot + pelvis_rot.unsqueeze(1)
+        racket_world = racket_rot + pelvis_rot.unsqueeze(1)
+        return _PlayerSequence(joints_world, racket_world)
+
     def generate_scene(self, scene_id: str | int) -> Mapping[str, Any]:
+        """Produce a clean multi-player scene dictionary.
+
+        Args:
+            scene_id (str | int): Identifier embedded into the scene output.
+
+        Returns:
+            Mapping[str, Any]: Scene dictionary that passes schema validation.
+
+        """
         fps = int(self.cfg.fps)
         frames_total = max(1, int(round(self.cfg.duration_sec * fps)))
         cameras = self._build_cameras(int(self.cfg.num_cameras))
-
+        players = self._build_players(frames_total)
         court3d = court_keypoints_3d()
-        person3d, racket3d = _static_person_racket_3d()
 
-        frames: List[Dict[str, Any]] = []
+        frames: list[dict[str, Any]] = []
         for t_idx in range(frames_total):
-            frame_payload: Dict[str, Any] = {}
+            frame_payload: dict[str, Any] = {}
+            player_joints_frame = [p.joints_3d[t_idx] for p in players]
+            racket_frame = [p.racket_3d[t_idx] for p in players]
+            frame_payload["player_joints_3d"] = [
+                j.tolist() for j in player_joints_frame
+            ]
+            frame_payload["racket_points_3d"] = [r.tolist() for r in racket_frame]
+            frame_payload["num_players"] = len(players)
             for cam_idx, cam_entry in enumerate(cameras):
                 cam = cam_entry["_cam_internal"]
                 # Project 3D
                 uv_court, mask_court = project_points(cam, court3d)
-                uv_person, mask_person = project_points(cam, person3d)
-                uv_racket, mask_racket = project_points(cam, racket3d)
-
-                # Image size
-                w, h = cam.w, cam.h
-
-                # Person noise based on pixel height
-                if uv_person.numel() > 0:
-                    v_vals = uv_person[:, 1]
-                    H_person = (v_vals.max() - v_vals.min()).abs().item()
-                else:
-                    H_person = float(h)
-                sigma_person = _person_sigma_per_joint(H_person, uv_person.shape[0])
-                sigma_racket = torch.full((uv_racket.shape[0],), 0.04 * H_person)
-                sigma_court = torch.full((uv_court.shape[0],), 0.003 * float(h))
-
-                uv_court = _noise_2d_points(uv_court, mask_court, sigma_court)
-                uv_person = _noise_2d_points(uv_person, mask_person, sigma_person)
-                uv_racket = _noise_2d_points(uv_racket, mask_racket, sigma_racket)
-
                 vis_court = mask_court.to(torch.uint8)
-                vis_person = mask_person.to(torch.uint8)
-                vis_racket = mask_racket.to(torch.uint8)
 
-                # Random visibility drops
-                if random.random() < self.cfg.p_camera_drop:  # noqa: S311
-                    vis_court[:] = 0
-                    vis_person[:] = 0
-                    vis_racket[:] = 0
-                else:
-                    vis_court = _drop_visibility(vis_court, self.cfg.p_missing_court)
-                    # torso drops fewer than extremities
-                    vis_person = _drop_visibility(vis_person, self.cfg.p_missing_torso)
-                    for j in [9, 10, 15, 16]:
-                        if random.random() < self.cfg.p_missing_extremity:  # noqa: S311
-                            vis_person[j] = 0
-                    vis_racket = _drop_visibility(vis_racket, self.cfg.p_missing_racket)
+                player_uv_list: list[list[list[float]]] = []
+                player_vis_list: list[list[int]] = []
+                racket_uv_list: list[list[list[float]]] = []
+                racket_vis_list: list[list[int]] = []
+                for joints3d, racket3d in zip(
+                    player_joints_frame,
+                    racket_frame,
+                    strict=True,
+                ):
+                    uv_person, mask_person = project_points(cam, joints3d)
+                    uv_racket, mask_racket = project_points(cam, racket3d)
+                    player_uv_list.append(uv_person.tolist())
+                    player_vis_list.append(mask_person.to(torch.uint8).tolist())
+                    racket_uv_list.append(uv_racket.tolist())
+                    racket_vis_list.append(mask_racket.to(torch.uint8).tolist())
 
                 cam_key = f"cam_{cam_idx}"
                 frame_payload[cam_key] = {
@@ -217,23 +199,18 @@ class TennisPoseSceneGenerator:
                         "visibility": vis_court.tolist(),
                     },
                     "player_keypoints_2d": {
-                        "joints": uv_person.tolist(),
-                        "visibility": vis_person.tolist(),
+                        "joints": player_uv_list,
+                        "visibility": player_vis_list,
                     },
                     "racket_keypoints_2d": {
-                        "points": uv_racket.tolist(),
-                        "visibility": vis_racket.tolist(),
+                        "points": racket_uv_list,
+                        "visibility": racket_vis_list,
                     },
                 }
-            # Include GT 3D for synthetic data
-            frame_payload["player_joints_3d"] = person3d.tolist()
-            frame_payload["racket_points_3d"] = racket3d.tolist()
             frames.append(frame_payload)
 
         # Serialize cameras without internal objects
-        cameras_pub = [
-            {"id": c["id"], "image_size": c["image_size"]} for c in cameras
-        ]
+        cameras_pub = [{"id": c["id"], "image_size": c["image_size"]} for c in cameras]
         return {
             "scene_id": str(scene_id),
             "fps": fps,
@@ -244,8 +221,35 @@ class TennisPoseSceneGenerator:
 
 
 def write_scene_json(path: Path | str, scene: Mapping[str, Any]) -> None:
+    """Persist a validated scene dictionary to disk as UTF-8 JSON.
+
+    Args:
+        path (Path | str): Target path for the JSON file.
+        scene (Mapping[str, Any]): Scene dictionary produced by the generator.
+
+    Returns:
+        None: Always returns None after writing the file.
+
+    """
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     with p.open("w", encoding="utf-8") as f:
         json.dump(scene, f, ensure_ascii=False)
 
+
+def _rotation_matrix_z(yaw: float) -> Tensor:
+    """Return a 3x3 rotation matrix for a Z-axis rotation.
+
+    Args:
+        yaw (float): Rotation angle in radians.
+
+    Returns:
+        Tensor: 3x3 rotation matrix.
+
+    """
+    c = math.cos(yaw)
+    s = math.sin(yaw)
+    return torch.tensor(
+        [[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]],
+        dtype=torch.float32,
+    )
