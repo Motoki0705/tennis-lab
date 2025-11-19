@@ -210,7 +210,20 @@ class TennisAssetLibrary:
 
     def _load_clip(self, path: Path) -> AssetClip | None:
         """Load and cache a single clip if it meets minimum requirements."""
-        coords, labels, fps = _load_c3d_points(path)
+        try:
+            coords, labels, fps = _load_c3d_points(path)
+        except Exception as exc:  # pragma: no cover - defensive against bad files
+            # Some files under the asset root may not be valid C3D blobs even
+            # if they match the *.c3d pattern. Treat such files as unusable and
+            # let the caller mark them as invalid instead of aborting.
+            import warnings
+
+            warnings.warn(
+                f"Skipping invalid 3DTennisDS C3D file {path}: {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return None
         joints = _build_named_points(coords, labels, VITPOSE_17_NAMES, COCO_TO_MARKERS)
         racket = _build_named_points(coords, labels, RACKET_3_NAMES, RACKET_MARKERS)
         if joints.size == 0 or racket.size == 0:
