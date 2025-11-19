@@ -144,6 +144,8 @@ class TennisSceneWindowDataset(Dataset):
 
         keypoints_2d = torch.zeros((T, V, M, J, 2), dtype=torch.float32)
         player_mask = torch.zeros((T, V, M), dtype=torch.bool)
+        pose_3d = torch.zeros((T, M, J, 3), dtype=torch.float32)
+        exist_3d = torch.zeros((T, M), dtype=torch.bool)
         court_2d = torch.zeros((V, 20, 2), dtype=torch.float32)
 
         # Camera image sizes for normalization (width, height).
@@ -174,8 +176,10 @@ class TennisSceneWindowDataset(Dataset):
                     pts_tensor[:, 1] = (pts_tensor[:, 1] / float(h)) * 2.0 - 1.0
                 court_2d[v, :, :] = pts_tensor
 
-        # Populate per-frame player keypoints.
+        # Populate per-frame player keypoints (2D + 3D).
         for local_t, frame in enumerate(window_frames):
+            players_3d = frame.get("player_joints_3d", [])
+            rackets_3d = frame.get("racket_points_3d", [])
             for v in range(num_cameras):
                 cam_key = f"cam_{v}"
                 cam_payload = frame.get(cam_key, {})
@@ -206,17 +210,44 @@ class TennisSceneWindowDataset(Dataset):
                         racket_tensor[: min(3, racket_src.shape[0]), :] = racket_src[
                             : min(3, racket_src.shape[0]), :
                         ]
-                    combined = torch.cat([pose_tensor, racket_tensor], dim=0)  # [20, 2]
+                    combined = torch.cat([pose_tensor, racket_tensor], dim=0)
                     if w > 0 and h > 0:
                         combined[:, 0] = (combined[:, 0] / float(w)) * 2.0 - 1.0
                         combined[:, 1] = (combined[:, 1] / float(h)) * 2.0 - 1.0
                     keypoints_2d[local_t, v, m, :, :] = combined
                     player_mask[local_t, v, m] = True
 
+            # 3D GT for this frame (per player, view-independent).
+            if isinstance(players_3d, list):
+                num_players_3d = min(len(players_3d), M)
+                if not isinstance(rackets_3d, list):
+                    rackets_3d = [[] for _ in range(len(players_3d))]
+                for m in range(num_players_3d):
+                    pose3d = players_3d[m]
+                    racket3d = rackets_3d[m] if m < len(rackets_3d) else []
+                    if not isinstance(pose3d, list):
+                        continue
+                    pose3d_tensor = torch.zeros((17, 3), dtype=torch.float32)
+                    racket3d_tensor = torch.zeros((3, 3), dtype=torch.float32)
+                    pose3d_src = torch.as_tensor(pose3d, dtype=torch.float32)
+                    pose3d_tensor[: min(17, pose3d_src.shape[0]), :] = pose3d_src[
+                        : min(17, pose3d_src.shape[0]), :
+                    ]
+                    if isinstance(racket3d, list):
+                        racket3d_src = torch.as_tensor(racket3d, dtype=torch.float32)
+                        racket3d_tensor[: min(3, racket3d_src.shape[0]), :] = (
+                            racket3d_src[: min(3, racket3d_src.shape[0]), :]
+                        )
+                    combined3d = torch.cat([pose3d_tensor, racket3d_tensor], dim=0)
+                    pose_3d[local_t, m, :, :] = combined3d
+                    exist_3d[local_t, m] = True
+
         return {
             "keypoints_2d": keypoints_2d,
             "player_mask": player_mask,
             "court_2d": court_2d,
+            "pose_3d_gt": pose_3d,
+            "exist_3d_gt": exist_3d,
             "scene_id": torch.tensor([hash(rec.scene_id)], dtype=torch.long),
             "t_start": torch.tensor([t_start], dtype=torch.long),
             "t_end": torch.tensor([t_end], dtype=torch.long),
