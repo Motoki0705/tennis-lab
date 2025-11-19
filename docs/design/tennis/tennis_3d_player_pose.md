@@ -225,6 +225,32 @@
 
 がコート座標系で得られる。
 
+#### 3.3.1 3DTennisDS アセット統合フロー
+
+実際のシステムでは、以下の 3 ステップで C3D アセットを取り込み、シミュレーターへ供給する。
+
+1. **可視化検証（任意）**
+
+   * `scripts/vis/render_c3d_markers.py <clip.c3d> --mode skeleton --out ...` を実行し、マーカー名の揺らぎ・欠損・測定ノイズを目視確認する。
+   * 想定スケルトンに存在しないラベルはここで洗い出し、`JOINT_MARKERS` マッピングを更新しておく。
+
+2. **前処理パイプライン**
+
+   * `scripts/data/convert_3dtennisds.py`（新規作成予定）で以下を行い、`data/processed/3dtennisds/<player>/<clip>.npz` を出力する。
+     - `ezc3d` で座標列を取り出し、`scripts/vis/render_c3d_markers.py` と同じマッピングで Plug-in Gait → ViTPose+ラケットに変換。
+     - 座標をテニスコート座標系へ正規化（骨盤原点→0, z 軸を上、右手系）。
+     - メタデータ（被験者 ID、球種、サンプリングレート、クリップ長）を JSON で保存。
+   * 生成された `.npz` には `joints_3d[T, 17, 3]`、`racket_3d[T, 3, 3]`、生マーカー `markers_3d[T, M, 3]` を格納し、`assets_index.json` で全クリップを列挙する。
+
+3. **シミュレーター連携**
+
+   * `src/tennis/sim/generator.py` にアセットローダー（例：`src/tennis/sim/assets.py`）を追加し、起動時に `assets_index.json` を読み込む。
+   * シーン生成時は `num_players` 本分のアセットをサンプリングし、各プレーヤーに対して：
+     - 初期位置・進行方向を決めた後、アセットの root 軌跡を移動・回転・スケールしてコート座標系にフィットさせる。
+     - FPS をシーン FPS にリサンプリングし、必要に応じてクリップ長をトリミング or ループ。
+     - 速度ゼロのフレームは除去し、接地していないサンプルは DataLoader でフィルタ可能にする。
+   * こうして得た `player_joints_3d` / `racket_points_3d` を 4.2 の工程に供給すれば、最大 20 体のマルチアセットシーンを合成できる。
+
 ### 3.4 2D キーポイントフォーマット（Stage A 出力）
 
 各カメラ `cam_i` に対して、2D では以下の形式に統一する：
