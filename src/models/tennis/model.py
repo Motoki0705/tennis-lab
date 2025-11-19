@@ -199,6 +199,7 @@ class TennisDETR(nn.Module):
 
         return {
             "pose_3d": pose_3d,
+            "exist_logit": exist_logit,
             "exist_conf": exist_conf,
         }
 
