@@ -62,8 +62,24 @@ class ConfigLoader:
 
     cfg: DictConfig
 
+    def _task(self) -> str:
+        """Return the configured task name with a backward-compatible default."""
+        task = self.cfg.get("task")
+        return str(task) if task else "scene_model"
+
     def build_datamodule(self) -> DancetrackDataModule:
-        """Construct the LightningDataModule declared in ``cfg.dataset``."""
+        """Construct the LightningDataModule declared by the current task.
+
+        Defaults to the existing SceneModel DataModule for backward compatibility.
+        For the tennis_pose task, P0 provides only scaffolding and raises a
+        descriptive error until subsequent phases (P1+) are implemented.
+        """
+        task = self._task()
+        if task == "tennis_pose":
+            raise NotImplementedError(
+                "'tennis_pose' DataModule is not implemented yet (P0 scaffold). "
+                "Proceed to P1 to add tennis_pose datamodule and dataset."
+            )
         from src.training.scene_model.datamodule import DancetrackDataModule
 
         dataset_cfg = self.cfg.get("dataset")
@@ -71,7 +87,17 @@ class ConfigLoader:
         return DancetrackDataModule(dataset_cfg, debug_cfg)
 
     def build_lit_module(self) -> SceneModelLightningModule:
-        """Instantiate the LightningModule wired to the SceneModel stack."""
+        """Instantiate the LightningModule for the configured task.
+
+        Defaults to SceneModel. For tennis_pose, P0 provides only scaffolding
+        and raises a clear error until later phases implement it.
+        """
+        task = self._task()
+        if task == "tennis_pose":
+            raise NotImplementedError(
+                "'tennis_pose' LightningModule is not implemented yet (P0 scaffold). "
+                "Proceed to P3 to implement CourtMVPoseNet and trainer wiring."
+            )
         from src.training.scene_model.lightning import SceneModelLightningModule
 
         return SceneModelLightningModule(self.cfg)
