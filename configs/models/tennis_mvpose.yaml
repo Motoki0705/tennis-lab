@@ -1,0 +1,12 @@
+D_model: 256
+dim_feedforward: 1024
+nheads: 8
+encoder_layers: 6
+decoder_layers: 6
+dropout: 0.1
+
+num_joints: 20
+num_court_points: 20
+num_queries: 20
+max_cameras: 8
+max_frames: 32
