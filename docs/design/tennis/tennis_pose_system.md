@@ -359,6 +359,26 @@ Tennis Pose システムの学習環境は、既存の SceneModel 向けイン�
   - Trainer 側で `accelerator=gpu`, `devices=N` を設定。
   - DDP を利用する場合でも、DataModule / Dataset は現設計のままで対応可能。
 
+### 6.3.1 memmap / npz 前処理による高速化
+
+現状の `TennisSceneWindowDataset` は、各バッチでシーン JSON をロード・パースし、Python ループで `[T,V,M,J,2]` テンソルを構築しているため、データローディングがボトルネックになりやすい。これを改善するために、**コンフィグで切り替え可能な memmap ベースの前処理パス**を導入する。
+
+- フラグ: `dataset.use_memmap: bool`
+  - `false`（既定）: 現行通り JSON からオンザフライでテンソルを構築。
+  - `true` : 事前に npz/memmap に変換された中間フォーマットから読み込む。
+- npz レイアウト（1 シーンあたり）:
+  - `keypoints_2d: float32[T, V, M, J, 2]`
+  - `player_mask: bool[T, V, M]`
+  - `court_2d: float32[V, 20, 2]`
+  - `pose_3d_gt: float32[T, M, J, 3]`
+  - `exist_3d_gt: bool[T, M]`
+  - 必要ならメタデータ（`fps`, `scene_id` など）も含める。
+- 読み込み:
+  - `np.load(path, mmap_mode="r")` で各シーンファイルを開き、`__getitem__` では単に `[t_start:t_end]` をスライスして `torch.from_numpy` するだけにする。
+  - これにより、学習中は JSON パースや Python のネスト dict 操作を完全に回避できる。
+
+このフラグは `configs/datasets/tennis_pose_sim.yaml` に追加し、memmap 前処理を終えた環境では `use_memmap: true` に切り替えるだけで高速パスに乗る設計とする。
+
 ### 6.4 実行フローとコマンド例
 
 1. **データセット生成**
@@ -442,5 +462,15 @@ Tennis Pose システムの学習環境は、既存の SceneModel 向けイン�
    - DataLoader レベルでランダムにカメラを無効化し、少数カメラへのロバスト性を強化。
 4. **オンライン生成モード**
    - 大規模学習用に、データセットをフル保存せず「学習中にシーン生成 + 即学習」するモードを追加。ただし基本はオフライン生成を推奨。
+
+5. **memmap 前処理スクリプト**
+   - `src/cli/preprocess_tennis_memmap.py` のような CLI を追加し、`build_tennis_dataset.py` が生成した JSON シーン＋index をもとに npz/memmap を一括生成する。
+   - 役割:
+     1. `index/train_index.jsonl` 等を読み、出現する `scene_path` を列挙。
+     2. 各シーン JSON に対して:
+        - 現行 `TennisSceneWindowDataset` と同等のロジックで 2D/3D テンソルを numpy 配列として構築。
+        - 上記レイアウトで `arrays/<split>/scene_000000.npz` などに保存。
+     3. `TennisSceneWindowDataset` は `use_memmap=true` のとき、`scenes/...` ではなく `arrays/...` を読む。
+   - これにより、学習ループ中の DataLoader は `np.load(..., mmap_mode="r")` + スライス + `torch.from_numpy` だけで済み、I/O と CPU 負荷の大部分を前処理フェーズに移せる。
 
 この設計に従うことで、シミュレーションから Tennis-DETR による 3D ポーズ推定までの流れを、再現性・拡張性の高い形で一元管理できる。
