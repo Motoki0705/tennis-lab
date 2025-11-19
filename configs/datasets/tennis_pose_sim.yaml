@@ -4,6 +4,7 @@ window_T: 10
 max_cameras: 4
 max_players: 20
 num_joints: 20
+use_memmap: true
 
 loader:
   train:

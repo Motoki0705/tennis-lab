@@ -40,6 +40,8 @@ class TennisSceneWindowDataset(Dataset):
         max_cameras (int): Maximum number of cameras to materialize.
         max_players (int): Maximum number of players per image.
         num_joints (int): Number of keypoints per player.
+        use_memmap (bool): Whether to load from preprocessed npz memmap files
+            instead of parsing JSON scenes directly.
 
     Raises:
         ValueError: If ``window_T``, ``max_cameras``, or ``max_players`` is
@@ -58,6 +60,7 @@ class TennisSceneWindowDataset(Dataset):
         max_cameras: int,
         max_players: int,
         num_joints: int = 20,
+        use_memmap: bool = False,
     ) -> None:
         super().__init__()
         self.dataset_root = Path(dataset_root)
@@ -67,6 +70,7 @@ class TennisSceneWindowDataset(Dataset):
         self.max_cameras = int(max_cameras)
         self.max_players = int(max_players)
         self.num_joints = int(num_joints)
+        self.use_memmap = bool(use_memmap)
 
         if self.window_T <= 0:
             msg = "window_T must be positive"
@@ -84,6 +88,7 @@ class TennisSceneWindowDataset(Dataset):
             msg = f"Index file not found for split '{self.split}': {index_path}"
             raise FileNotFoundError(msg)
         self.records = self._load_index(index_path)
+        self._arrays_cache: dict[str, Any] = {}
 
     @staticmethod
     def _load_index(index_path: Path) -> list[_WindowRecord]:
@@ -113,6 +118,74 @@ class TennisSceneWindowDataset(Dataset):
 
     def __getitem__(self, index: int) -> dict[str, Tensor]:
         """Load and return a single window sample."""
+        if self.use_memmap:
+            return self._getitem_memmap(index)
+        return self._getitem_from_json(index)
+
+    def _getitem_memmap(self, index: int) -> dict[str, Tensor]:
+        rec = self.records[index]
+        rel = Path(rec.scene_path)
+        stem = rel.stem
+        npz_path = self.dataset_dir / "arrays" / self.split / f"{stem}.npz"
+        if stem not in self._arrays_cache:
+            if not npz_path.exists():
+                msg = f"Memmap npz not found for scene '{stem}': {npz_path}"
+                raise FileNotFoundError(msg)
+            self._arrays_cache[stem] = __import__("numpy").load(  # lazy import
+                npz_path, mmap_mode="r"
+            )
+        arrs = self._arrays_cache[stem]
+
+        T_total = int(arrs["keypoints_2d"].shape[0])
+        T = self.window_T
+        if rec.t_end > T_total:
+            msg = f"Window end {rec.t_end} exceeds scene length {T_total}"
+            raise ValueError(msg)
+
+        t_start = rec.t_start
+        t_end = rec.t_end
+        length = t_end - t_start
+        if length > T:
+            msg = f"Window length {length} exceeds configured window_T={T}"
+            raise ValueError(msg)
+
+        keypoints_2d = torch.zeros(
+            (T, self.max_cameras, self.max_players, self.num_joints, 2),
+            dtype=torch.float32,
+        )
+        player_mask = torch.zeros(
+            (T, self.max_cameras, self.max_players), dtype=torch.bool
+        )
+        pose_3d = torch.zeros(
+            (T, self.max_players, self.num_joints, 3), dtype=torch.float32
+        )
+        exist_3d = torch.zeros((T, self.max_players), dtype=torch.bool)
+        court_2d = torch.zeros((self.max_cameras, 20, 2), dtype=torch.float32)
+
+        src_key = torch.from_numpy(arrs["keypoints_2d"][t_start:t_end])  # [len,V,M,J,2]
+        src_mask = torch.from_numpy(arrs["player_mask"][t_start:t_end])  # [len,V,M]
+        src_pose = torch.from_numpy(arrs["pose_3d_gt"][t_start:t_end])  # [len,M,J,3]
+        src_exist = torch.from_numpy(arrs["exist_3d_gt"][t_start:t_end])  # [len,M]
+        src_court = torch.from_numpy(arrs["court_2d"])  # [V,20,2]
+
+        keypoints_2d[:length, : src_key.shape[1], : src_key.shape[2]] = src_key
+        player_mask[:length, : src_mask.shape[1], : src_mask.shape[2]] = src_mask
+        pose_3d[:length, : src_pose.shape[1]] = src_pose
+        exist_3d[:length, : src_exist.shape[1]] = src_exist
+        court_2d[: src_court.shape[0]] = src_court
+
+        return {
+            "keypoints_2d": keypoints_2d,
+            "player_mask": player_mask,
+            "court_2d": court_2d,
+            "pose_3d_gt": pose_3d,
+            "exist_3d_gt": exist_3d,
+            "scene_id": torch.tensor([hash(rec.scene_id)], dtype=torch.long),
+            "t_start": torch.tensor([t_start], dtype=torch.long),
+            "t_end": torch.tensor([t_end], dtype=torch.long),
+        }
+
+    def _getitem_from_json(self, index: int) -> dict[str, Tensor]:
         rec = self.records[index]
         scene_path = self.dataset_dir / rec.scene_path
         with scene_path.open("r", encoding="utf-8") as f:

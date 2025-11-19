@@ -57,6 +57,7 @@ class TennisPoseDataModule(LightningDataModule):
         max_cameras = int(self.dataset_cfg.get("max_cameras", 4))
         max_players = int(self.dataset_cfg.get("max_players", 20))
         num_joints = int(self.dataset_cfg.get("num_joints", 20))
+        use_memmap = bool(self.dataset_cfg.get("use_memmap", False))
         return TennisSceneWindowDataset(
             dataset_root=root,
             dataset_name=name,
@@ -65,6 +66,7 @@ class TennisPoseDataModule(LightningDataModule):
             max_cameras=max_cameras,
             max_players=max_players,
             num_joints=num_joints,
+            use_memmap=use_memmap,
         )
 
     def train_dataloader(self) -> DataLoader[dict[str, Any]]:
