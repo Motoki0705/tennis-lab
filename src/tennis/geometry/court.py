@@ -1,9 +1,10 @@
-# src/tennis/geometry/court.py
+"""Court geometry helpers shared by the tennis simulator."""
 
 from __future__ import annotations
 
+import math
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, Tuple
 
 import torch
 from torch import Tensor
@@ -80,11 +81,11 @@ def court_keypoints_3d() -> Tensor:
         (0.0, +yS, 0.0),  # 12 far service T
         (0.0, -yS, 0.0),  # 13 near service T
         (0.0, 0.0, 0.0),  # 14 net center (ground)
-        (x_post_L, 0.0, 0.0),              # 15 left net post base
+        (x_post_L, 0.0, 0.0),  # 15 left net post base
         (x_post_L, 0.0, NET_HEIGHT_POST),  # 16 left net post top
-        (x_post_R, 0.0, 0.0),              # 17 right net post base
+        (x_post_R, 0.0, 0.0),  # 17 right net post base
         (x_post_R, 0.0, NET_HEIGHT_POST),  # 18 right net post top
-        (0.0, 0.0, NET_HEIGHT_CENTER),     # 19 center strap top
+        (0.0, 0.0, NET_HEIGHT_CENTER),  # 19 center strap top
     ]
     return torch.tensor(pts, dtype=torch.float32)
 
@@ -104,6 +105,7 @@ class Camera:
         f: Focal length in pixels
         cx, cy: Principal point in pixels
         w, h: Image size in pixels
+
     """
 
     C: Tensor
@@ -121,13 +123,17 @@ def make_look_at_camera(
     image_size: tuple[int, int] = (1280, 720),
     hfov_deg: float = 60.0,
 ) -> Camera:
-    """Create a Camera that looks from `center` to `look_at`.
+    """Create a pinhole camera pointed at ``look_at``.
 
     Args:
-        center: Camera position in world coords.
-        look_at: Target point the camera looks at.
-        image_size: (width, height) in pixels.
-        hfov_deg: Horizontal field of view in degrees.
+        center (Iterable[float]): Camera position (x, y, z) in world coordinates.
+        look_at (Iterable[float]): Target the camera should look at.
+        image_size (tuple[int, int]): Output image width/height in pixels.
+        hfov_deg (float): Horizontal field of view in degrees.
+
+    Returns:
+        Camera: Dataclass containing extrinsics and intrinsics.
+
     """
     center_t = torch.tensor(center, dtype=torch.float32)
     look_t = torch.tensor(look_at, dtype=torch.float32)
@@ -136,21 +142,21 @@ def make_look_at_camera(
     z_cam = z_cam / (z_cam.norm() + 1e-8)
 
     up_world = torch.tensor([0.0, 0.0, 1.0], dtype=torch.float32)
-    x_cam = torch.cross(up_world, z_cam)
+    x_cam = torch.cross(up_world, z_cam, dim=0)
     x_norm = x_cam.norm()
     if x_norm < 1e-6:
         # 真上/真下などで up と平行になったときのフォールバック
         up_world = torch.tensor([0.0, 1.0, 0.0], dtype=torch.float32)
-        x_cam = torch.cross(up_world, z_cam)
+        x_cam = torch.cross(up_world, z_cam, dim=0)
         x_norm = x_cam.norm()
     x_cam = x_cam / (x_norm + 1e-8)
-    y_cam = torch.cross(z_cam, x_cam)
+    y_cam = torch.cross(z_cam, x_cam, dim=0)
 
     R = torch.stack([x_cam, y_cam, z_cam], dim=0)  # world -> camera
 
     w, h = image_size
-    hfov_rad = float(hfov_deg) * torch.pi / 180.0
-    f = 0.5 * float(w) / torch.tan(0.5 * hfov_rad)
+    hfov_rad = math.radians(float(hfov_deg))
+    f = 0.5 * float(w) / math.tan(0.5 * hfov_rad)
     cx = 0.5 * float(w)
     cy = 0.5 * float(h)
 
@@ -158,11 +164,16 @@ def make_look_at_camera(
 
 
 def project_points(cam: Camera, xyz: Tensor) -> tuple[Tensor, Tensor]:
-    """Project 3D points to image plane.
+    """Project world coordinates into the camera's image plane.
+
+    Args:
+        cam (Camera): Camera returned by :func:`make_look_at_camera`.
+        xyz (Tensor): ``(N, 3)`` tensor of world coordinates.
 
     Returns:
-        uv: (N,2) tensor of pixel coordinates (u,v).
-        mask: (N,) boolean tensor; True if point is in front of camera (z>0).
+        tuple[Tensor, Tensor]: Pixel coordinates shaped ``(N, 2)`` and a boolean
+        mask indicating whether the projected point lies in front of the camera.
+
     """
     if xyz.numel() == 0:
         return xyz.new_zeros((0, 2)), xyz.new_zeros((0,), dtype=torch.bool)
@@ -188,14 +199,19 @@ def project_points(cam: Camera, xyz: Tensor) -> tuple[Tensor, Tensor]:
 # -----------------------------
 
 
-def sample_camera_position_on_fence(t: float, side: str) -> Tuple[float, float, float]:
-    """Sample a 3D camera position on the fence rectangle.
+def sample_camera_position_on_fence(t: float, side: str) -> tuple[float, float, float]:
+    r"""Sample a camera center along the perimeter fence.
 
     Args:
-        t: Parameter in [0,1] along the chosen side.
-        side: One of {"near", "far", "left", "right"}.
+        t (float): Parameter in ``[0, 1]`` describing the relative position.
+        side (str): One of ``{\"near\", \"far\", \"left\", \"right\"}``.
+
     Returns:
-        (x, y, z) position on the fence at height ~FENCE_HEIGHT.
+        tuple[float, float, float]: Position (x, y, z) near fence height.
+
+    Raises:
+        ValueError: If ``side`` is not supported.
+
     """
     t = float(t)
     t = max(0.0, min(1.0, t))
