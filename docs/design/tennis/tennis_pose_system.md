@@ -282,7 +282,156 @@ class TennisDetrModule(pl.LightningModule):
 
 ---
 
-## 6. 拡張アイデア
+## 6. 学習環境の構築
+
+Tennis Pose システムの学習環境は、既存の SceneModel 向けインフラを再利用しつつ、以下のコンポーネントで構成する。
+
+### 6.1 コンフィグ構成
+
+- トップレベル YAML: `configs/tennis_pose.yaml`
+  - 役割: `task=tennis_pose` を指定し、dataset/model/training サブ設定をインクルードするハブ。
+  - 例:
+    ```yaml
+    task: tennis_pose
+    experiment_name: tennis_mvpose_dev
+
+    includes:
+      dataset: configs/datasets/tennis_pose_sim.yaml
+      model: configs/models/tennis_mvpose.yaml
+      training: configs/training/tennis_mvpose.yaml
+    ```
+- データセット設定: `configs/datasets/tennis_pose_sim.yaml`
+  - 主なキー:
+    - `root`, `name`（`build_tennis_dataset.py` で作った dataset_name）
+    - `window_T`, `max_cameras`, `max_players`, `num_joints`
+    - `loader.train/val/test.{batch_size,num_workers,pin_memory,...}`
+  - 例:
+    ```yaml
+    root: data/tennis_autogen
+    name: sim_fps60_dur3p0_C4_P1-20_T10
+    window_T: 10
+    max_cameras: 4
+    max_players: 20
+    num_joints: 20
+
+    loader:
+      train:
+        batch_size: 4
+        num_workers: 8
+        shuffle: true
+      val:
+        batch_size: 2
+        num_workers: 4
+        shuffle: false
+    ```
+- モデル設定: `configs/models/tennis_mvpose.yaml`
+  - `TennisDetrConfig` に対応するフィールドを定義（`D_model`, `encoder_layers`, `decoder_layers`, `num_queries` など）。
+- トレーニング設定: `configs/training/tennis_mvpose.yaml`
+  - Lightning Trainer 用設定（`max_epochs`, `accelerator`, `devices`, `precision`, `gradient_clip_val` など）。
+
+### 6.2 CLI エントリと ConfigLoader
+
+- CLI: `src/cli/train_tennis_pose.py`
+  - すでに P0 スカフォールドがあり、`--config` と `--set` で YAML を読み込む。
+  - P1 以降では、SceneModel と同様に:
+    1. `load_cfg` で DictConfig を取得。
+    2. `ConfigLoader(cfg)` を使って:
+       - `build_datamodule()` → `TennisPoseDataModule`
+       - `build_lit_module()` → `TennisDetrModule`（LightningModule）
+       - `build_trainer()` → `Trainer`
+    3. `trainer.fit(module, datamodule=dm)` を実行。
+- `ConfigLoader.build_datamodule` / `build_lit_module`
+  - `task == "tennis_pose"` の分岐で、Tennis 用の DataModule / LightningModule を返すように拡張する。
+
+### 6.3 依存関係と環境準備
+
+- Python パッケージ
+  - 既存プロジェクトの環境に加え、以下が必須:
+    - `lightning` または `pytorch_lightning`
+    - `torch`（GPU 利用時は CUDA 対応ビルド）
+    - `ezc3d`（シミュレータで 3DTennisDS を読むため）
+    - ロギング用: `tensorboard` / `wandb`（任意）
+- 推奨セットアップ手順（例）:
+  1. 仮想環境作成（`uv`, `venv`, `conda` など）。
+  2. `uv pip install -r requirements.txt` または `pip install -e .` でローカルインストール。
+  3. `uv pip install ezc3d lightning tensorboard` 等で追加依存を導入。
+- GPU/マルチ GPU
+  - Trainer 側で `accelerator=gpu`, `devices=N` を設定。
+  - DDP を利用する場合でも、DataModule / Dataset は現設計のままで対応可能。
+
+### 6.4 実行フローとコマンド例
+
+1. **データセット生成**
+   - 例:
+     ```bash
+     python src/cli/build_tennis_dataset.py \
+       --dataset_root data/tennis_autogen \
+       --num_scenes_train 500 --num_scenes_val 100 --num_scenes_test 100 \
+       --fps 60 --duration 3.0 --num_cameras 4 \
+       --min_players 1 --max_players 20 \
+       --window_T 10 --window_stride 5 \
+       --seed 1234
+     ```
+   - 生成された `dataset_name` を `configs/datasets/tennis_pose_sim.yaml` の `name` に設定。
+2. **学習実行**
+   - 例:
+     ```bash
+     python src/cli/train_tennis_pose.py \
+       --config configs/tennis_pose.yaml \
+       --set training.trainer.max_epochs=50
+     ```
+   - 必要に応じて `--set dataset.name=... training.trainer.devices=2` などでオーバーライド。
+3. **再現実験**
+   - 同じ `dataset_root` / `dataset_name` / `meta.json` と YAML を用いれば、別環境でもほぼ同条件で再学習可能。
+
+### 6.5 ロギング・チェックポイント・監視
+
+- ロギング:
+  - 既存の SceneModel と同様、`configs/logging/*.yaml` を利用し、
+    - `TensorBoardLogger` で loss/メトリクス・学習率を記録。
+    - 必要であれば `WandbLogger` に切り替え可能。
+  - **GT / Pred レンダリングの保存**:
+    - `validation_step` または `on_validation_epoch_end` 内で、少数バッチについて以下の可視化を行う。
+      - 入力 2D キーポイント（カメラごと）の scatter/render。
+      - GT 3D ポーズ vs 予測 3D ポーズを同一座標系に描画した画像。
+    - 実装イメージ:
+      - `render_3d_pose(scene_meta, pose_3d)` のようなユーティリティ関数を `src/visualize/tennis_pose.py` もしくは新規モジュールに実装。
+      - LightningModule 内で:
+        ```python
+        if batch_idx < cfg.logging.max_vis_batches:
+            img_gt = render_3d_pose(batch_meta, batch["pose_3d_gt"])
+            img_pred = render_3d_pose(batch_meta, pred["pose_3d"])
+            grid = make_comparison_grid(img_gt, img_pred)  # (H, W, 3)
+            self.logger.experiment.add_image(
+                "val/pose3d_gt_vs_pred",
+                grid,
+                global_step=self.global_step,
+                dataformats="HWC",
+            )
+        ```
+      - カメラ視点の 2D オーバーレイ（court + player + racket）についても同様に `add_image` で保存。
+- チェックポイント:
+  - `ModelCheckpoint` コールバックを利用し、`val/Mpjpe` 等の指標でベストモデルを保存。
+  - 保存先は `runs/tennis_pose/<experiment_name>/checkpoints` を想定。
+- モニタリング:
+  - 学習中に GPU メモリ使用量・データローダーのスループットを確認し、
+    - ボトルネックに応じて `num_workers` や `window_T`, `batch_size` を調整。
+
+### 6.6 実験管理と命名規則
+
+- 実験名 (`experiment_name`) は、少なくとも以下を含めるとよい:
+  - データセットバージョン（例: `simv1`）
+  - ウィンドウ長 / カメラ数（例: `T10C4`）
+  - モデルサイズ（例: `D256L6x6`）
+  - 例: `tennis_mvpose_simv1_T10C4_D256L6x6`
+- `runs/tennis_pose/<experiment_name>/` 以下に:
+  - TensorBoard ログ
+  - チェックポイント
+  - 実験で使用した `config_dump.yaml`（実行時のマージ済み設定）を保存しておくと再現が容易。
+
+---
+
+## 7. 拡張アイデア
 
 1. **実データ混合**
    - `index` に `source` カラムを追加し、`sim` / `real` を混在させる。
