@@ -1,85 +1,20 @@
-"""Rendering utilities for tennis pose scenes.
-
-This module turns a single scene frame + camera index into an RGB image that
-shows projected court lines, player skeleton, and racket keypoints.
-"""
+"""Rendering utilities for tennis pose scenes."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping
 from typing import Any
 
 import cv2
 import numpy as np
 
-from src.tennis.geometry.skeleton import COCO_BONES
-
-Color = tuple[int, int, int]
-
-
-COURT_LINE_SEGMENTS = [
-    (0, 1),
-    (1, 3),
-    (2, 3),
-    (0, 2),
-    (4, 6),
-    (5, 7),
-    (4, 5),
-    (6, 7),
-    (8, 9),
-    (10, 11),
-    (8, 12),
-    (12, 9),
-    (10, 13),
-    (13, 11),
-    (14, 15),
-    (15, 16),
-    (14, 17),
-    (17, 18),
-]
-
-
-def _to_int_point(pt: Sequence[float]) -> tuple[int, int]:
-    return int(round(float(pt[0]))), int(round(float(pt[1])))
-
-
-def _draw_segments(
-    image: np.ndarray,
-    points: Sequence[Sequence[float]],
-    visibility: Sequence[int],
-    segments: Iterable[tuple[int, int]],
-    color: Color,
-    thickness: int,
-) -> None:
-    h, w = image.shape[:2]
-    for i, j in segments:
-        if not (0 <= i < len(points) and 0 <= j < len(points)):
-            continue
-        if not (visibility[i] and visibility[j]):
-            continue
-        p1 = _to_int_point(points[i])
-        p2 = _to_int_point(points[j])
-        if not (
-            0 <= p1[0] < w and 0 <= p1[1] < h and 0 <= p2[0] < w and 0 <= p2[1] < h
-        ):
-            continue
-        cv2.line(image, p1, p2, color=color, thickness=thickness)
-
-
-def _draw_points(
-    image: np.ndarray,
-    points: Sequence[Sequence[float]],
-    visibility: Sequence[int],
-    color: Color,
-    radius: int,
-) -> None:
-    h, w = image.shape[:2]
-    for idx, pt in enumerate(points):
-        if not visibility[idx]:
-            continue
-        x, y = _to_int_point(pt)
-        if 0 <= x < w and 0 <= y < h:
-            cv2.circle(image, (x, y), radius, color, thickness=-1)
+from src.visualize.tennis_render import (
+    COCO_BONES,
+    COURT_LINE_SEGMENTS,
+    RACKET_SEGMENTS,
+    draw_points,
+    draw_segments,
+)
 
 
 def render_frame(
@@ -135,17 +70,20 @@ def render_frame(
     racket_tracks = rackets_2d.get("points", [])
     racket_vis_tracks = rackets_2d.get("visibility", [])
 
-    _draw_segments(image, court_2d, court_vis, COURT_LINE_SEGMENTS, (220, 220, 220), 2)
-    _draw_points(image, court_2d, court_vis, (255, 255, 255), 3)
+    court_pts = np.asarray(court_2d, dtype=np.float32)
+    court_vis_arr = list(int(v) for v in court_vis)
+    draw_segments(
+        image, court_pts, court_vis_arr, COURT_LINE_SEGMENTS, (220, 220, 220), 2
+    )
+    draw_points(image, court_pts, court_vis_arr, (255, 255, 255), 3)
 
     for pts, vis in zip(player_tracks, player_vis_tracks, strict=True):
-        _draw_segments(image, pts, vis, COCO_BONES, (0, 255, 255), 2)
-        _draw_points(image, pts, vis, (0, 255, 255), 3)
+        draw_segments(image, pts, vis, COCO_BONES, (0, 255, 255), 2)
+        draw_points(image, pts, vis, (0, 255, 255), 3)
 
-    racket_segments = [(0, 1), (1, 2)]
     for pts, vis in zip(racket_tracks, racket_vis_tracks, strict=True):
-        _draw_segments(image, pts, vis, racket_segments, (0, 165, 255), 2)
-        _draw_points(image, pts, vis, (0, 165, 255), 3)
+        draw_segments(image, pts, vis, RACKET_SEGMENTS, (0, 165, 255), 2)
+        draw_points(image, pts, vis, (0, 165, 255), 3)
 
     return image
 

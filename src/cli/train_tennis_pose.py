@@ -1,9 +1,4 @@
-"""CLI entrypoint (scaffold) for training the Tennis Pose stack.
-
-P0 provides a safe CLI that loads the config and validates `cfg.task`.
-Training hooks are wired in later phases (P1+). This avoids breaking the repo
-while establishing a consistent UX with the SceneModel trainer.
-"""
+"""CLI entrypoint for training the Tennis Pose stack."""
 
 from __future__ import annotations
 
@@ -23,11 +18,21 @@ except ImportError:
             seed_everything,
         )
 
-from src.training.utils.config import load_cfg
+from src.training.utils.config import ConfigLoader, load_cfg
 
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train the Tennis Pose stack (scaffold)")
+    """Parse command-line arguments for the tennis pose trainer.
+
+    Args:
+        argv (Sequence[str] | None): Optional sequence of raw CLI arguments.
+            If ``None``, defaults to ``sys.argv[1:]``.
+
+    Returns:
+        argparse.Namespace: Parsed arguments namespace.
+
+    """
+    parser = argparse.ArgumentParser(description="Train the Tennis Pose stack")
     parser.add_argument(
         "--config",
         required=True,
@@ -45,11 +50,7 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """P0 scaffold: Load config, validate task, and exit with guidance.
-
-    In later phases, this mirrors the SceneModel training flow and calls
-    ConfigLoader to build the datamodule, module, and trainer.
-    """
+    """Run the Tennis Pose training loop using the provided config."""
     args = _parse_args(argv)
     try:
         cfg = load_cfg(args.config, args.overrides)
@@ -69,14 +70,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     if seed_value is not None:
         seed_everything(int(seed_value), workers=True)
 
-    # Scaffold milestone message to avoid failing until P1+ is implemented.
-    sys.stdout.write(
-        "[tennis-pose] P0 scaffold OK: config loaded and task validated.\n"
-        "Next steps: implement P1 (geometry/sim), P2 (dataset), P3 (model).\n"
-    )
+    loader = ConfigLoader(cfg)
+    try:
+        datamodule = loader.build_datamodule()
+        lit_module = loader.build_lit_module()
+        logger = loader.build_logger()
+        callbacks = loader.build_callbacks()
+        trainer = loader.build_trainer(logger=logger, callbacks=callbacks)
+    except NotImplementedError as exc:
+        sys.stderr.write(f"[train-error] {exc}\n")
+        return 2
+
+    trainer.fit(lit_module, datamodule=datamodule)
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -16,6 +16,8 @@ from pytorch_lightning.loggers import Logger
 if TYPE_CHECKING:
     from src.training.scene_model.datamodule import DancetrackDataModule
     from src.training.scene_model.lightning import SceneModelLightningModule
+    from src.training.tennis.datamodule import TennisPoseDataModule
+    from src.training.tennis.lightning import TennisDetrModule
 
 INCLUDE_KEY = "includes"
 _TRUTHY = {"1", "true", "yes", "on"}
@@ -67,7 +69,7 @@ class ConfigLoader:
         task = self.cfg.get("task")
         return str(task) if task else "scene_model"
 
-    def build_datamodule(self) -> DancetrackDataModule:
+    def build_datamodule(self) -> DancetrackDataModule | TennisPoseDataModule:
         """Construct the LightningDataModule declared by the current task.
 
         Defaults to the existing SceneModel DataModule for backward compatibility.
@@ -75,18 +77,17 @@ class ConfigLoader:
         descriptive error until subsequent phases (P1+) are implemented.
         """
         task = self._task()
-        if task == "tennis_pose":
-            raise NotImplementedError(
-                "'tennis_pose' DataModule is not implemented yet (P0 scaffold). "
-                "Proceed to P1 to add tennis_pose datamodule and dataset."
-            )
-        from src.training.scene_model.datamodule import DancetrackDataModule
-
         dataset_cfg = self.cfg.get("dataset")
         debug_cfg = self.cfg.get("debug")
+        if task == "tennis_pose":
+            from src.training.tennis.datamodule import TennisPoseDataModule
+
+            return TennisPoseDataModule(dataset_cfg, debug_cfg)
+        from src.training.scene_model.datamodule import DancetrackDataModule
+
         return DancetrackDataModule(dataset_cfg, debug_cfg)
 
-    def build_lit_module(self) -> SceneModelLightningModule:
+    def build_lit_module(self) -> SceneModelLightningModule | TennisDetrModule:
         """Instantiate the LightningModule for the configured task.
 
         Defaults to SceneModel. For tennis_pose, P0 provides only scaffolding
@@ -94,10 +95,9 @@ class ConfigLoader:
         """
         task = self._task()
         if task == "tennis_pose":
-            raise NotImplementedError(
-                "'tennis_pose' LightningModule is not implemented yet (P0 scaffold). "
-                "Proceed to P3 to implement CourtMVPoseNet and trainer wiring."
-            )
+            from src.training.tennis.lightning import TennisDetrModule
+
+            return TennisDetrModule(self.cfg)
         from src.training.scene_model.lightning import SceneModelLightningModule
 
         return SceneModelLightningModule(self.cfg)
