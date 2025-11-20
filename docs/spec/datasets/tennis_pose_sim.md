@@ -99,15 +99,21 @@ TennisSceneWindowDataset(
     max_cameras: int,
     max_players: int,
     num_joints: int = 20,
+    use_memmap: bool = False,
+    min_cameras: int | None = None,
+    augment_2d: bool = False,
 )
 ```
 
 - `dataset_root` / `dataset_name`: `build_tennis_dataset.py` で生成されたディレクトリを指す。
 - `split`: `"train"`, `"val"`, `"test"` のいずれか。
 - `window_T`: DataLoader が期待する固定時間長。`index.num_frames <= window_T` が前提。
-- `max_cameras`: バッチ整形時のカメラ次元上限。`scene.num_cameras <= max_cameras` 必須。
+- `max_cameras`: バッチ整形時のカメラ次元上限。memmap では npz に保存されたカメラのうち高々 `max_cameras` 本が使用される。
 - `max_players`: 1 フレームあたりのプレーヤー数上限（通常 20）。
 - `num_joints`: プレーヤー 1 人あたりのキーポイント数（20; pose 17 + racket 3）。
+- `use_memmap`: `true` の場合は `arrays/<split>/scene_*.npz` から読み込み、`false` の場合は JSON から直接テンソルを構築する。
+- `min_cameras`: 1 サンプルあたりの使用カメラ数の下限。省略時は `max_cameras` と同じになり、常に `max_cameras` 本使用する。
+- `augment_2d`: `true` の場合、train split において 2D 座標（`keypoints_2d`, `court_2d`）にランダムアフィン変換によるデータ拡張を行う。
 
 前提条件:
 - `<dataset_root>/<dataset_name>/index/<split>_index.jsonl` が存在し、正常にパースできること。
@@ -124,6 +130,7 @@ TennisSceneWindowDataset(
   - `T = window_T`。`index.num_frames < window_T` の場合、末尾フレームはゼロ埋めパディング。
   - `V = max_cameras`, `M = max_players`, `J = num_joints`。
   - 実際のカメラ数 / プレーヤー数が少ない場合、余剰分はゼロ。
+  - memmap/JSON いずれのパスでも、元シーンのカメラから `K` 本をランダムサンプリングして先頭 `K` スロットに詰める設計とする（`min_cameras <= K <= max_cameras`）。
 - `player_mask: Bool[T, V, M]`
   - そのフレーム・カメラにおいて m 番プレーヤーが観測されていれば True。
   - 2D/3D GT どちらの有効性判定にも利用可能。
@@ -149,6 +156,17 @@ TennisSceneWindowDataset(
   - court/player/racket すべて同じ変換。
 - 3D:
   - JSON の値をそのまま使用（メートル単位のコート座標系）。追加の正規化は行わない。
+
+#### 3.2.3 カメラサンプリングと 2D データ拡張
+
+- カメラサンプリング:
+  - 各サンプルごとに、元シーンのカメラ数 `V_src` から `K` 本をランダムにサンプリングする。
+    - `K` は `min_cameras`〜`min(max_cameras, V_src)` の一様乱数。
+  - 選ばれた `K` 本は出力テンソルのカメラ次元先頭 `K` スロットに詰められ、残り `max_cameras - K` スロットはゼロパディング＋`player_mask=False` となる。
+  - memmap パスと JSON パスで同一の挙動となる。
+- 2D データ拡張（`augment_2d=True` かつ `split=="train"` の場合）:
+  - ビューごとにランダムなアフィン変換（小さな回転・スケーリング・平行移動）を `[-1, 1]` 正規化座標上でサンプリングし、`keypoints_2d` と `court_2d` に適用する。
+  - 3D GT（`pose_3d_gt`）およびカメラパラメータ（`camera_C`, `camera_R`, `camera_intr`）は変更しない。あくまで「画像上の見え方」を揺らすための拡張である。
 
 ---
 
