@@ -20,7 +20,7 @@ scheduler:
 
 loss:
   lambda_pose: 1.0
-  lambda_exist: 0.1
+  lambda_exist: 0.05
   lambda_vel: 0.0
   lambda_pose_match: 1.0
-  lambda_exist_match: 1.0
+  lambda_exist_match: 0.05
