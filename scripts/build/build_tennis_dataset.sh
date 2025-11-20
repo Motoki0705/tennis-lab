@@ -7,8 +7,8 @@ set -euo pipefail
 # points to the canonical config used in the specs.
 #
 # Usage:
-#   ./scripts/build_tennis_dataset.sh            # normal run
-#   ./scripts/build_tennis_dataset.sh --overwrite  # allow overwrite
+#   ./scripts/build/build_tennis_dataset.sh            # normal run
+#   ./scripts/build/build_tennis_dataset.sh --overwrite  # allow overwrite
 #
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
