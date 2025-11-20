@@ -16,7 +16,7 @@ from torch import Tensor
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LambdaLR
 
-from src.models.tennis import TennisDETR, TennisDetrConfig
+from src.models.tennis_multi_cam_3d_pose import TennisDETR, TennisDetrConfig
 from src.tennis.geometry.court import (
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,

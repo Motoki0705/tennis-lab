@@ -52,6 +52,8 @@ class TennisSceneWindowDataset(Dataset):
         num_joints (int): Number of keypoints per player.
         use_memmap (bool): Whether to load from preprocessed npz memmap files
             instead of parsing JSON scenes directly.
+        min_cameras (int | None): Minimum number of cameras required.
+        augment_2d (bool): Whether to apply 2D augmentation.
 
     Raises:
         ValueError: If ``window_T``, ``max_cameras``, or ``max_players`` is
@@ -83,7 +85,9 @@ class TennisSceneWindowDataset(Dataset):
         self.max_players = int(max_players)
         self.num_joints = int(num_joints)
         self.use_memmap = bool(use_memmap)
-        self.min_cameras: int | None = int(min_cameras) if min_cameras is not None else None
+        self.min_cameras: int | None = (
+            int(min_cameras) if min_cameras is not None else None
+        )
         self.augment_2d = bool(augment_2d)
 
         if self.window_T <= 0:
@@ -311,7 +315,6 @@ class TennisSceneWindowDataset(Dataset):
             max_cameras=self.max_cameras,
             min_cameras=self.min_cameras,
         )
-        k = int(cam_indices.shape[0])
 
         # Court keypoints are assumed constant across frames; take from the first.
         first_frame = window_frames[0]
@@ -343,7 +346,7 @@ class TennisSceneWindowDataset(Dataset):
                     continue
                 if not isinstance(rackets, list):
                     rackets = [[] for _ in range(len(joints))]
-                w, h = image_sizes[v]
+                w, h = image_sizes[src_v]
                 num_players = min(len(joints), M)
                 for m in range(num_players):
                     pose_pts = joints[m]

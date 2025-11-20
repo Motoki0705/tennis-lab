@@ -51,7 +51,10 @@ class TennisPoseDataModule(LightningDataModule):
         root = self.dataset_cfg.get("root", "data/tennis_autogen")
         name = self.dataset_cfg.get("name") or self.dataset_cfg.get("dataset_name")
         if not name:
-            msg = "dataset_cfg.name (or dataset_cfg.dataset_name) must be set for tennis_pose"
+            msg = (
+                "dataset_cfg.name (or dataset_cfg.dataset_name) must be set for "
+                "tennis_multi_cam_3d_pose"
+            )
             raise ValueError(msg)
         window_T = int(self.dataset_cfg.get("window_T", 10))
         max_cameras = int(self.dataset_cfg.get("max_cameras", 4))

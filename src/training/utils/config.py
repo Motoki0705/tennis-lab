@@ -16,8 +16,8 @@ from pytorch_lightning.loggers import Logger
 if TYPE_CHECKING:
     from src.training.scene_model.datamodule import DancetrackDataModule
     from src.training.scene_model.lightning import SceneModelLightningModule
-    from src.training.tennis.datamodule import TennisPoseDataModule
-    from src.training.tennis.lightning import TennisDetrModule
+    from src.training.tennis_multi_cam_3d_pose.datamodule import TennisPoseDataModule
+    from src.training.tennis_multi_cam_3d_pose.lightning import TennisDetrModule
 
 INCLUDE_KEY = "includes"
 _TRUTHY = {"1", "true", "yes", "on"}
@@ -73,14 +73,16 @@ class ConfigLoader:
         """Construct the LightningDataModule declared by the current task.
 
         Defaults to the existing SceneModel DataModule for backward compatibility.
-        For the tennis_pose task, P0 provides only scaffolding and raises a
-        descriptive error until subsequent phases (P1+) are implemented.
+        For the tennis_multi_cam_3d_pose task, P0 provides only scaffolding and
+        raises a descriptive error until subsequent phases (P1+) are implemented.
         """
         task = self._task()
         dataset_cfg = self.cfg.get("dataset")
         debug_cfg = self.cfg.get("debug")
-        if task == "tennis_pose":
-            from src.training.tennis.datamodule import TennisPoseDataModule
+        if task == "tennis_multi_cam_3d_pose":
+            from src.training.tennis_multi_cam_3d_pose.datamodule import (
+                TennisPoseDataModule,
+            )
 
             return TennisPoseDataModule(dataset_cfg, debug_cfg)
         from src.training.scene_model.datamodule import DancetrackDataModule
@@ -90,12 +92,12 @@ class ConfigLoader:
     def build_lit_module(self) -> SceneModelLightningModule | TennisDetrModule:
         """Instantiate the LightningModule for the configured task.
 
-        Defaults to SceneModel. For tennis_pose, P0 provides only scaffolding
-        and raises a clear error until later phases implement it.
+        Defaults to SceneModel. For tennis_multi_cam_3d_pose, P0 provides only
+        scaffolding and raises a clear error until later phases implement it.
         """
         task = self._task()
-        if task == "tennis_pose":
-            from src.training.tennis.lightning import TennisDetrModule
+        if task == "tennis_multi_cam_3d_pose":
+            from src.training.tennis_multi_cam_3d_pose.lightning import TennisDetrModule
 
             return TennisDetrModule(self.cfg)
         from src.training.scene_model.lightning import SceneModelLightningModule

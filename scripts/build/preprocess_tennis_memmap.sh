@@ -3,8 +3,9 @@ set -euo pipefail
 
 # Preprocess tennis JSON scenes into npz/memmap arrays.
 #
-# This wrapper calls src/cli/preprocess_tennis_memmap.py using the
-# dataset_root/name from configs/datasets/tennis_pose_sim.yaml by default.
+# This wrapper calls src/cli/tennis_multi_cam_3d_pose/preprocess_memmap.py
+# using the dataset_root/name from
+# configs/datasets/tennis_multi_cam_3d_pose_sim.yaml by default.
 #
 # Usage:
 #   ./scripts/preprocess_tennis_memmap.sh
@@ -13,7 +14,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-DATASET_CFG="${DATASET_CFG:-configs/datasets/tennis_pose_sim.yaml}"
+DATASET_CFG="${DATASET_CFG:-configs/datasets/tennis_multi_cam_3d_pose_sim.yaml}"
 
 DATASET_ROOT="${DATASET_ROOT:-data/tennis_autogen}"
 
@@ -24,7 +25,7 @@ if [[ -z "${DATASET_NAME}" ]]; then
   exit 1
 fi
 
-python src/cli/preprocess_tennis_memmap.py \
+python src/cli/tennis_multi_cam_3d_pose/preprocess_memmap.py \
   --dataset_root "${DATASET_ROOT}" \
   --dataset_name "${DATASET_NAME}" \
   "$@"

@@ -3,11 +3,11 @@
 本書は、テニス用マルチビュー 3D ポーズ推定の学習パイプライン（ConfigLoader, DataModule, LightningModule, CLI）の仕様をまとめる。
 
 対象:
-- `src/training/utils/config.py:ConfigLoader`（`task == "tennis_pose"` 分岐）
-- `src/training/tennis/datamodule.py:TennisPoseDataModule`
-- `src/training/tennis/lightning.py:TennisDetrModule`
-- `src/cli/train_tennis_pose.py`
-- YAML 設定: `configs/tennis_pose.yaml` およびその includes
+- `src/training/utils/config.py:ConfigLoader`（`task == "tennis_multi_cam_3d_pose"` 分岐）
+- `src/training/tennis_multi_cam_3d_pose/datamodule.py:TennisPoseDataModule`
+- `src/training/tennis_multi_cam_3d_pose/lightning.py:TennisDetrModule`
+- `src/cli/tennis_multi_cam_3d_pose/train.py`
+- YAML 設定: `configs/tennis_multi_cam_3d_pose.yaml` およびその includes
 
 ---
 
@@ -18,7 +18,7 @@
 ```python
 from src.training.utils.config import load_cfg, ConfigLoader
 
-cfg     = load_cfg("configs/tennis_pose.yaml", overrides)
+cfg     = load_cfg("configs/tennis_multi_cam_3d_pose.yaml", overrides)
 loader  = ConfigLoader(cfg)
 dm      = loader.build_datamodule()       # TennisPoseDataModule
 lit     = loader.build_lit_module()       # TennisDetrModule
@@ -29,11 +29,11 @@ trainer = loader.build_trainer(logger, cbs)
 trainer.fit(lit, datamodule=dm)
 ```
 
-CLI では `src/cli/train_tennis_pose.py` がこのフローをラップする。
+CLI では `src/cli/tennis_multi_cam_3d_pose/train.py` がこのフローをラップする。
 
 ---
 
-## 2. ConfigLoader の `tennis_pose` 分岐
+## 2. ConfigLoader の `tennis_multi_cam_3d_pose` 分岐
 
 実装: `src/training/utils/config.py:ConfigLoader`
 
@@ -44,8 +44,8 @@ def build_datamodule(self) -> DancetrackDataModule | TennisPoseDataModule:
     task = self._task()
     dataset_cfg = self.cfg.get("dataset")
     debug_cfg = self.cfg.get("debug")
-    if task == "tennis_pose":
-        from src.training.tennis.datamodule import TennisPoseDataModule
+    if task == "tennis_multi_cam_3d_pose":
+        from src.training.tennis_multi_cam_3d_pose.datamodule import TennisPoseDataModule
         return TennisPoseDataModule(dataset_cfg, debug_cfg)
     ...
 ```
@@ -55,8 +55,8 @@ def build_datamodule(self) -> DancetrackDataModule | TennisPoseDataModule:
 ```python
 def build_lit_module(self) -> SceneModelLightningModule | TennisDetrModule:
     task = self._task()
-    if task == "tennis_pose":
-        from src.training.tennis.lightning import TennisDetrModule
+    if task == "tennis_multi_cam_3d_pose":
+        from src.training.tennis_multi_cam_3d_pose.lightning import TennisDetrModule
         return TennisDetrModule(self.cfg)
     ...
 ```
@@ -67,14 +67,14 @@ def build_lit_module(self) -> SceneModelLightningModule | TennisDetrModule:
 
 ## 3. YAML 設定構成
 
-### 3.1 トップレベル: `configs/tennis_pose.yaml`
+### 3.1 トップレベル: `configs/tennis_multi_cam_3d_pose.yaml`
 
 ```yaml
-task: tennis_pose
+task: tennis_multi_cam_3d_pose
 experiment_name: tennis_mvpose_dev
 
 includes:
-  dataset: configs/datasets/tennis_pose_sim.yaml
+  dataset: configs/datasets/tennis_multi_cam_3d_pose_sim.yaml
   model: configs/models/tennis_mvpose.yaml
   training: configs/training/tennis_mvpose.yaml
   logging: configs/logging/tennis_mvpose.yaml
@@ -82,7 +82,7 @@ includes:
 
 - `load_cfg` が `includes` を展開し、`cfg.dataset`, `cfg.model`, `cfg.training`, `cfg.logging` を構成する。
 
-### 3.2 データセット: `configs/datasets/tennis_pose_sim.yaml`
+### 3.2 データセット: `configs/datasets/tennis_multi_cam_3d_pose_sim.yaml`
 
 代表例:
 
@@ -160,7 +160,7 @@ loss:
 ```yaml
 logger:
   save_dir: runs
-  name: tennis_pose
+  name: tennis_multi_cam_3d_pose
   default_hp_metric: false
 
 callbacks:
@@ -233,17 +233,17 @@ exist_gt   # [B,T,M]
 
 ---
 
-## 5. CLI: `train_tennis_pose.py`
+## 5. CLI: `tennis_multi_cam_3d_pose/train.py`
 
-実装: `src/cli/train_tennis_pose.py`
+実装: `src/cli/tennis_multi_cam_3d_pose/train.py`
 
 - 役割:
-  - `--config configs/tennis_pose.yaml` と任意の `--set key=value` から DictConfig を構築し、上記パイプラインを起動する。
+  - `--config configs/tennis_multi_cam_3d_pose.yaml` と任意の `--set key=value` から DictConfig を構築し、上記パイプラインを起動する。
 - 主な引数:
 
 | 引数 | 説明 |
 | --- | --- |
-| `--config` | トップレベル YAML (`configs/tennis_pose.yaml`) |
+| `--config` | トップレベル YAML (`configs/tennis_multi_cam_3d_pose.yaml`) |
 | `--set` | `dataset.name=... training.trainer.max_epochs=...` などの dotlist 形式オーバーライド |
 
 - 内部処理:
@@ -257,10 +257,10 @@ exist_gt   # [B,T,M]
 ## 6. 実行例
 
 ```bash
-python src/cli/train_tennis_pose.py \
-  --config configs/tennis_pose.yaml \
+python src/cli/tennis_multi_cam_3d_pose/train.py \
+  --config configs/tennis_multi_cam_3d_pose.yaml \
   --set dataset.name=sim_fps60_dur3p0_C4_P1-20_T10 \
         training.trainer.max_epochs=5
 ```
 
-このコマンドにより、`data/tennis_autogen/sim_fps60_dur3p0_C4_P1-20_T10` を読み込み、`TennisDETR` を 5 エポック訓練する。TensorBoard ログは `runs/tennis_pose/<experiment_name>/` に保存される。
+このコマンドにより、`data/tennis_autogen/sim_fps60_dur3p0_C4_P1-20_T10` を読み込み、`TennisDETR` を 5 エポック訓練する。TensorBoard ログは `runs/tennis_multi_cam_3d_pose/<experiment_name>/` に保存される。

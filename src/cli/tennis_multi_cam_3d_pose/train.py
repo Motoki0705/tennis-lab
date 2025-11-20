@@ -36,7 +36,10 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--config",
         required=True,
-        help="Path to the top-level YAML config (e.g. configs/tennis_pose.yaml)",
+        help=(
+            "Path to the top-level YAML config (e.g. "
+            "configs/tennis_multi_cam_3d_pose.yaml)"
+        ),
     )
     parser.add_argument(
         "--set",
@@ -59,10 +62,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     task = str(cfg.get("task") or "").strip().lower()
-    if task != "tennis_pose":
+    if task != "tennis_multi_cam_3d_pose":
         sys.stderr.write(
-            "[usage-error] cfg.task must be 'tennis_pose' for this CLI. "
-            "Pass --set task=tennis_pose or use configs/tennis_pose.yaml.\n"
+            "[usage-error] cfg.task must be 'tennis_multi_cam_3d_pose' for this CLI. "
+            "Pass --set task=tennis_multi_cam_3d_pose or use configs/tennis_multi_cam_3d_pose.yaml.\n"
         )
         return 2
 
