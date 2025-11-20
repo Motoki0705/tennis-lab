@@ -16,6 +16,12 @@ from pathlib import Path
 
 import numpy as np
 
+from src.tennis.geometry.court import (
+    HALF_DOUBLES_WIDTH,
+    HALF_LENGTH,
+    NET_HEIGHT_POST,
+)
+
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -98,19 +104,34 @@ def _process_scene_json(
     if not isinstance(cameras, list) or len(cameras) != num_cameras:
         msg = f"Invalid cameras metadata in scene: {scene_path}"
         raise ValueError(msg)
-    image_sizes: list[tuple[int, int]] = []
-    for cam in cameras:
-        size = cam.get("image_size", [0, 0])
-        if not isinstance(size, list) or len(size) < 2:
-            image_sizes.append((0, 0))
-        else:
-            image_sizes.append((int(size[0]), int(size[1])))
 
     T_total = len(frames)
     T = T_total
     V = max_cameras
     M = max_players
     J = num_joints
+
+    image_sizes: list[tuple[int, int]] = []
+    camera_C = np.zeros((V, 3), dtype="float32")
+    camera_R = np.zeros((V, 3, 3), dtype="float32")
+    camera_intr = np.zeros((V, 3), dtype="float32")
+    image_size_arr = np.zeros((V, 2), dtype="int32")
+    for idx, cam in enumerate(cameras):
+        size = cam.get("image_size", [0, 0])
+        w, h = 0, 0
+        if isinstance(size, list) and len(size) >= 2:
+            w, h = int(size[0]), int(size[1])
+        image_sizes.append((w, h))
+        image_size_arr[idx, 0] = w
+        image_size_arr[idx, 1] = h
+        cam_C = np.asarray(cam.get("camera_C", [0.0, 0.0, 0.0]), dtype="float32")
+        cam_R = np.asarray(
+            cam.get("camera_R", np.eye(3, dtype="float32")), dtype="float32"
+        )
+        cam_intr = np.asarray(cam.get("camera_intr", [0.0, 0.0, 0.0]), dtype="float32")
+        camera_C[idx, :] = cam_C.reshape(3)
+        camera_R[idx, :, :] = cam_R.reshape(3, 3)
+        camera_intr[idx, :] = cam_intr.reshape(3)
 
     keypoints_2d = np.zeros((T, V, M, J, 2), dtype="float32")
     player_mask = np.zeros((T, V, M), dtype=bool)
@@ -190,6 +211,9 @@ def _process_scene_json(
                         : min(3, racket3d_src.shape[0]), :
                     ]
                 combined3d = np.concatenate([pose3d_np, racket3d_np], axis=0)
+                combined3d[:, 0] = combined3d[:, 0] / float(HALF_DOUBLES_WIDTH)
+                combined3d[:, 1] = combined3d[:, 1] / float(HALF_LENGTH)
+                combined3d[:, 2] = combined3d[:, 2] / float(NET_HEIGHT_POST)
                 pose_3d[t, m, :, :] = combined3d
                 exist_3d[t, m] = True
 
@@ -199,6 +223,10 @@ def _process_scene_json(
         "court_2d": court_2d,
         "pose_3d_gt": pose_3d,
         "exist_3d_gt": exist_3d,
+        "camera_C": camera_C,
+        "camera_R": camera_R,
+        "camera_intr": camera_intr,
+        "image_size": image_size_arr,
     }
 
 

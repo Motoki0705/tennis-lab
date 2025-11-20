@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import math
+from collections.abc import Callable, Mapping
 from typing import Any, cast
 
 import numpy as np
@@ -10,11 +11,17 @@ import torch
 import torch.nn.functional as F
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import LightningModule
+from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, LambdaLR
 
 from src.models.tennis import TennisDETR, TennisDetrConfig
+from src.tennis.geometry.court import (
+    HALF_DOUBLES_WIDTH,
+    HALF_LENGTH,
+    NET_HEIGHT_POST,
+)
 
 
 class TennisDetrModule(LightningModule):
@@ -34,10 +41,13 @@ class TennisDetrModule(LightningModule):
         self._lr = float(optim_cfg.get("lr", 1e-4))
         self._weight_decay = float(optim_cfg.get("weight_decay", 1e-4))
         self._max_steps = int(training_cfg.get("max_steps", 0))
+        self._scheduler_cfg = _to_dict(training_cfg.get("scheduler"))
         loss_cfg = training_cfg.get("loss", {})
         self._lambda_pose = float(loss_cfg.get("lambda_pose", 1.0))
         self._lambda_exist = float(loss_cfg.get("lambda_exist", 1.0))
         self._lambda_vel = float(loss_cfg.get("lambda_vel", 0.0))
+        self._lambda_pose_match = float(loss_cfg.get("lambda_pose_match", 1.0))
+        self._lambda_exist_match = float(loss_cfg.get("lambda_exist_match", 1.0))
         viz_cfg = _to_dict(cfg.get("logging", {})).get("visualizer", {})
         self._viz_max_batches = int(viz_cfg.get("max_batches", 2))
         self._exist_threshold = float(viz_cfg.get("exist_threshold", 0.5))
@@ -83,7 +93,7 @@ class TennisDetrModule(LightningModule):
             if image_gt is not None:
                 self._log_tensorboard_image("val/pose2d_gt", image_gt, step)
             if image_pred is not None:
-                self._log_tensorboard_image("val/pose2d_pred", image_pred, step)
+                self._log_tensorboard_image("val/pose2d_pred_reproj", image_pred, step)
 
     def configure_optimizers(self) -> dict[str, Any]:
         """Configure optimizer and LR scheduler."""
@@ -92,9 +102,9 @@ class TennisDetrModule(LightningModule):
             lr=self._lr,
             weight_decay=self._weight_decay,
         )
-        if self._max_steps <= 0:
+        scheduler = self._build_scheduler(optimizer)
+        if scheduler is None:
             return {"optimizer": optimizer}
-        scheduler = CosineAnnealingLR(optimizer, T_max=self._max_steps)
         return {
             "optimizer": optimizer,
             "lr_scheduler": {
@@ -102,6 +112,39 @@ class TennisDetrModule(LightningModule):
                 "interval": "step",
             },
         }
+
+    def _build_scheduler(self, optimizer: AdamW) -> CosineAnnealingLR | LambdaLR | None:
+        """Return the configured LR scheduler or ``None`` if disabled."""
+        if self._max_steps <= 0:
+            return None
+        scheduler_name = str(self._scheduler_cfg.get("name") or "").lower()
+        if scheduler_name == "cosine_with_warmup":
+            warmup_steps = int(self._scheduler_cfg.get("warmup_steps", 0))
+            min_lr_ratio = float(self._scheduler_cfg.get("min_lr_ratio", 0.0))
+            lr_lambda = self._build_warmup_cosine_lambda(warmup_steps, min_lr_ratio)
+            return LambdaLR(optimizer, lr_lambda=lr_lambda)
+        return CosineAnnealingLR(optimizer, T_max=self._max_steps)
+
+    def _build_warmup_cosine_lambda(
+        self,
+        warmup_steps: int,
+        min_lr_ratio: float,
+    ) -> Callable[[int], float]:
+        """Construct a lambda function implementing warmup + cosine decay."""
+        warmup = max(0, int(warmup_steps))
+        base_min_ratio = float(min_lr_ratio)
+        max_steps = max(1, self._max_steps)
+
+        def _lr_lambda(step: int) -> float:
+            step_f = float(step)
+            if warmup > 0 and step_f < warmup:
+                return step_f / float(max(1, warmup))
+            progress_steps = max(1, max_steps - warmup)
+            progress = min(max((step_f - warmup) / progress_steps, 0.0), 1.0)
+            cos = 0.5 * (1.0 + math.cos(math.pi * progress))
+            return base_min_ratio + (1.0 - base_min_ratio) * cos
+
+        return _lr_lambda
 
     def _compute_loss(
         self,
@@ -120,32 +163,32 @@ class TennisDetrModule(LightningModule):
             msg = "Ground-truth pose shape does not match predictions"
             raise ValueError(msg)
 
-        # Align GT to queries: first M players map to first M queries.
-        max_assign = min(Q, M)
-        pose_gt_expanded = torch.zeros_like(pose_pred)
-        exist_gt_query = torch.zeros(
-            (B, Q, 1), dtype=torch.float32, device=pose_pred.device
+        matches = self._match_queries_to_targets(
+            pose_pred, pose_gt, exist_gt, exist_logit
         )
 
-        pose_gt_perm = pose_gt.permute(0, 2, 1, 3, 4)  # [B, M, T, J, 3]
-        pose_gt_expanded[:, :max_assign, :, :, :] = pose_gt_perm[
-            :, :max_assign, :, :, :
-        ]
+        exist_target = torch.zeros_like(exist_logit)
+        pose_loss_num = pose_pred.new_tensor(0.0)
+        pose_loss_den = pose_pred.new_tensor(0.0)
 
-        exist_gt_any = exist_gt.any(dim=1)  # [B, M]
-        exist_gt_query[:, :max_assign, 0] = exist_gt_any[:, :max_assign].to(
-            dtype=torch.float32
-        )
+        for b, (matched_q, matched_t) in enumerate(matches):
+            if matched_q.numel() == 0:
+                continue
+            exist_target[b, matched_q, 0] = 1.0
+            pred_sel = pose_pred[b, matched_q]  # [K, T, J, 3]
+            gt_sel = pose_gt[b][:, matched_t, :, :].permute(1, 0, 2, 3)  # [K, T, J, 3]
+            mask_sel = exist_gt[b][:, matched_t].permute(1, 0)  # [K, T]
+            mask = mask_sel.unsqueeze(-1).unsqueeze(-1).to(dtype=pred_sel.dtype)
+            diff = torch.abs(pred_sel - gt_sel) * mask
+            pose_loss_num = pose_loss_num + diff.sum()
+            pose_loss_den = pose_loss_den + mask.sum() * float(J * 3)
 
-        pose_mask = exist_gt_query > 0.0  # [B, Q, 1]
-        pose_mask = pose_mask.unsqueeze(-1).unsqueeze(-1)  # [B, Q, 1, 1, 1]
+        if pose_loss_den.item() > 0:
+            pose_loss = pose_loss_num / pose_loss_den
+        else:
+            pose_loss = pose_pred.new_tensor(0.0)
 
-        pose_l1 = torch.abs(pose_pred - pose_gt_expanded)
-        pose_l1 = pose_l1 * pose_mask
-        denom = pose_mask.sum().clamp_min(1.0)
-        pose_loss = pose_l1.sum() / denom
-
-        exist_loss = F.binary_cross_entropy_with_logits(exist_logit, exist_gt_query)
+        exist_loss = F.binary_cross_entropy_with_logits(exist_logit, exist_target)
 
         vel_loss = torch.tensor(0.0, device=pose_pred.device)
         if self._lambda_vel > 0.0:
@@ -164,6 +207,66 @@ class TennisDetrModule(LightningModule):
             "vel_l2": vel_loss.detach(),
         }
 
+    def _match_queries_to_targets(
+        self,
+        pose_pred: Tensor,
+        pose_gt: Tensor,
+        exist_gt: Tensor,
+        exist_logit: Tensor,
+    ) -> list[tuple[Tensor, Tensor]]:
+        """Run Hungarian matching between predicted queries and GT players."""
+        B, Q, _, _, _ = pose_pred.shape
+        _, _, M, J, _ = pose_gt.shape
+        exist_any = exist_gt.any(dim=1)  # [B, M]
+        matches: list[tuple[Tensor, Tensor]] = []
+
+        for b in range(B):
+            valid_mask = exist_any[b]
+            valid_indices = torch.nonzero(valid_mask, as_tuple=False).view(-1)
+            if valid_indices.numel() == 0 or Q == 0:
+                empty = (
+                    pose_pred.new_zeros((0,), dtype=torch.long),
+                    pose_pred.new_zeros((0,), dtype=torch.long),
+                )
+                matches.append(empty)
+                continue
+
+            pose_gt_b = pose_gt[b][:, valid_indices, :, :].permute(1, 0, 2, 3)
+            exist_mask = exist_gt[b][:, valid_indices].permute(1, 0)  # [M_valid, T]
+            pose_pred_b = pose_pred[b]  # [Q, T, J, 3]
+
+            diff = torch.abs(pose_pred_b.unsqueeze(1) - pose_gt_b.unsqueeze(0))
+            mask = exist_mask.unsqueeze(0).unsqueeze(-1).unsqueeze(-1).to(diff.dtype)
+            diff = diff * mask
+            counts = exist_mask.sum(dim=1).clamp_min(1).to(diff.dtype) * float(
+                J * 3
+            )  # [M_valid]
+            pose_cost = diff.sum(dim=(2, 3, 4)) / counts.unsqueeze(0)
+
+            exist_cost_q = F.binary_cross_entropy_with_logits(
+                exist_logit[b, :, 0],
+                torch.ones_like(exist_logit[b, :, 0]),
+                reduction="none",
+            )
+            exist_cost = exist_cost_q[:, None].expand(-1, pose_cost.shape[1])
+
+            total_cost = (
+                self._lambda_pose_match * pose_cost
+                + self._lambda_exist_match * exist_cost
+            )
+            cost_np = total_cost.detach().cpu().numpy()
+            row_ind, col_ind = linear_sum_assignment(cost_np)
+
+            matched_queries = torch.as_tensor(
+                row_ind, dtype=torch.long, device=pose_pred.device
+            )
+            matched_targets = valid_indices[
+                torch.as_tensor(col_ind, dtype=torch.long, device=pose_pred.device)
+            ]
+            matches.append((matched_queries, matched_targets))
+
+        return matches
+
     def _render_debug_images(
         self,
         batch: Mapping[str, Tensor],
@@ -175,46 +278,184 @@ class TennisDetrModule(LightningModule):
         except Exception:  # pragma: no cover - visualization is best-effort
             return None, None
 
-        keypoints_2d = batch["keypoints_2d"]  # [B, T, V, M, J, 2]
-        player_mask = batch["player_mask"]  # [B, T, V, M]
-        court_2d = batch["court_2d"]  # [B, V, 20, 2]
-        pose_pred = outputs["pose_3d"]  # [B, Q, T, J, 3]
+        images = self._render_debug_images_with_cameras(
+            batch, outputs, render_pose2d_frame
+        )
+        if images != (None, None):
+            return images
+        return self._render_debug_images_naive(batch, outputs, render_pose2d_frame)
 
-        if keypoints_2d.ndim != 6 or pose_pred.ndim != 5 or court_2d.ndim != 4:
+    def _render_debug_images_with_cameras(
+        self,
+        batch: Mapping[str, Tensor],
+        outputs: Mapping[str, Tensor],
+        render_pose2d_frame: Any,
+    ) -> tuple[Tensor | None, Tensor | None]:
+        """Render overlays by reprojecting 3D predictions with camera metadata."""
+        required = {"camera_C", "camera_R", "camera_intr", "image_size"}
+        if not required.issubset(batch.keys()):
+            return None, None
+        keypoints_2d = batch.get("keypoints_2d")
+        player_mask = batch.get("player_mask")
+        court_2d = batch.get("court_2d")
+        pose_pred = outputs.get("pose_3d")
+        camera_C = batch.get("camera_C")
+        camera_R = batch.get("camera_R")
+        camera_intr = batch.get("camera_intr")
+        image_size = batch.get("image_size")
+        if (
+            keypoints_2d is None
+            or player_mask is None
+            or court_2d is None
+            or pose_pred is None
+            or camera_C is None
+            or camera_R is None
+            or camera_intr is None
+            or image_size is None
+        ):
+            return None, None
+        if keypoints_2d.ndim != 6 or player_mask.ndim != 4 or pose_pred.ndim != 5:
             return None, None
         B, T, V, M, J, _ = keypoints_2d.shape
-        if B == 0 or T == 0 or V == 0 or M == 0:
+        if B == 0 or T == 0 or V == 0:
             return None, None
 
-        # First batch, first frame, first camera.
-        kp = keypoints_2d[0, 0, 0]  # [M, J, 2], in [-1, 1]
-        mask = player_mask[0, 0, 0]  # [M]
-        court = court_2d[0, 0]  # [20, 2], in [-1, 1]
-        Q = pose_pred.shape[1]
+        b_idx = 0
+        t_idx = 0
+        v_idx = 0
+        size_tensor = image_size[b_idx, v_idx]
+        width = int(size_tensor[0].item())
+        height = int(size_tensor[1].item())
+        if width <= 0 or height <= 0:
+            return None, None
 
-        H, W = 288, 512
+        def _select_cam(tensor: Tensor) -> Tensor:
+            if tensor.ndim == 3:
+                return tensor[b_idx, v_idx]
+            if tensor.ndim == 4:
+                return tensor[b_idx, v_idx]
+            return tensor[v_idx]
 
-        def _denorm_to_px(arr_2d: Tensor) -> np.ndarray:
-            coords = arr_2d.detach().float().cpu().numpy().astype("float32")
-            coords_px = np.empty_like(coords)
-            coords_px[..., 0] = (coords[..., 0] + 1.0) * 0.5 * float(W - 1)
-            coords_px[..., 1] = (coords[..., 1] + 1.0) * 0.5 * float(H - 1)
-            return coords_px
+        cam_C = _select_cam(camera_C).to(device=pose_pred.device, dtype=pose_pred.dtype)
+        cam_R = _select_cam(camera_R).to(device=pose_pred.device, dtype=pose_pred.dtype)
+        cam_intr = _select_cam(camera_intr).to(
+            device=pose_pred.device, dtype=pose_pred.dtype
+        )
 
-        court_px = _denorm_to_px(court)  # [20,2]
+        court = court_2d[b_idx, v_idx] if court_2d.ndim == 4 else court_2d[v_idx]
+        court_px = self._norm_to_px(court, width, height)
+        court_vis = [1] * int(court_px.shape[0])
 
-        # GT image.
+        kp = keypoints_2d[b_idx, t_idx, v_idx]
+        mask = player_mask[b_idx, t_idx, v_idx]
         player_pose_list_gt: list[np.ndarray] = []
         racket_list_gt: list[np.ndarray] = []
         for m in range(M):
             if not bool(mask[m].item()):
                 continue
-            pts = kp[m]  # [J,2]
-            pts_px = _denorm_to_px(pts)  # [J,2]
-            pose_px = pts_px[:17]
-            racket_px = pts_px[17:]
-            player_pose_list_gt.append(pose_px)
-            racket_list_gt.append(racket_px)
+            pts_px = self._norm_to_px(kp[m], width, height)
+            player_pose_list_gt.append(pts_px[:17])
+            racket_list_gt.append(pts_px[17:])
+
+        img_gt_np = render_pose2d_frame(
+            width=width,
+            height=height,
+            court_points=court_px,
+            court_visibility=court_vis,
+            player_poses=player_pose_list_gt,
+            player_pose_visibility=None,
+            racket_points=racket_list_gt,
+            racket_visibility=None,
+        )
+        img_gt = (
+            torch.from_numpy(img_gt_np)
+            .permute(2, 0, 1)
+            .to(device=keypoints_2d.device, dtype=torch.float32)
+            / 255.0
+        )
+
+        pose_slice = pose_pred[b_idx, :, t_idx]  # [Q, J, 3]
+        pose_world = self._denorm_pose3d(pose_slice).detach()
+        exist_conf = outputs.get("exist_conf")
+        if exist_conf is not None and exist_conf.shape[0] > b_idx:
+            exist_mask = exist_conf[b_idx, :, 0] >= self._exist_threshold
+        else:
+            exist_mask = torch.ones(
+                pose_world.shape[0], dtype=torch.bool, device=pose_pred.device
+            )
+
+        player_pose_list_pred: list[np.ndarray] = []
+        pose_vis_list: list[list[int]] = []
+        racket_list_pred: list[np.ndarray] = []
+        racket_vis_list: list[list[int]] = []
+        for q in range(pose_world.shape[0]):
+            if not bool(exist_mask[q].item()):
+                continue
+            uv, vis = self._project_world_points(cam_C, cam_R, cam_intr, pose_world[q])
+            uv_np = uv.detach().float().cpu().numpy().astype("float32")
+            vis_np = vis.detach().cpu().numpy().astype("uint8")
+            player_pose_list_pred.append(uv_np[:17])
+            racket_list_pred.append(uv_np[17:])
+            pose_vis_list.append(vis_np[:17].tolist())
+            racket_vis_list.append(vis_np[17:].tolist())
+
+        img_pred_np = render_pose2d_frame(
+            width=width,
+            height=height,
+            court_points=court_px,
+            court_visibility=court_vis,
+            player_poses=player_pose_list_pred,
+            player_pose_visibility=pose_vis_list if pose_vis_list else None,
+            racket_points=racket_list_pred,
+            racket_visibility=racket_vis_list if racket_vis_list else None,
+        )
+        img_pred = (
+            torch.from_numpy(img_pred_np)
+            .permute(2, 0, 1)
+            .to(device=keypoints_2d.device, dtype=torch.float32)
+            / 255.0
+        )
+
+        return img_gt, img_pred
+
+    def _render_debug_images_naive(
+        self,
+        batch: Mapping[str, Tensor],
+        outputs: Mapping[str, Tensor],
+        render_pose2d_frame: Any,
+    ) -> tuple[Tensor | None, Tensor | None]:
+        """Fallback visualization when camera parameters are unavailable."""
+        keypoints_2d = batch.get("keypoints_2d")
+        player_mask = batch.get("player_mask")
+        court_2d = batch.get("court_2d")
+        pose_pred = outputs.get("pose_3d")
+        if (
+            keypoints_2d is None
+            or player_mask is None
+            or court_2d is None
+            or pose_pred is None
+        ):
+            return None, None
+        if keypoints_2d.ndim != 6 or pose_pred.ndim != 5 or court_2d.ndim != 4:
+            return None, None
+        B, T, V, M, _, _ = keypoints_2d.shape
+        if B == 0 or T == 0 or V == 0 or M == 0:
+            return None, None
+
+        H, W = 288, 512
+        kp = keypoints_2d[0, 0, 0]
+        mask = player_mask[0, 0, 0]
+        court = court_2d[0, 0]
+
+        court_px = self._norm_to_px(court, W, H)
+        player_pose_list_gt: list[np.ndarray] = []
+        racket_list_gt: list[np.ndarray] = []
+        for m in range(M):
+            if not bool(mask[m].item()):
+                continue
+            pts_px = self._norm_to_px(kp[m], W, H)
+            player_pose_list_gt.append(pts_px[:17])
+            racket_list_gt.append(pts_px[17:])
 
         court_vis = [1] * int(court_px.shape[0])
         img_gt_np = render_pose2d_frame(
@@ -234,20 +475,16 @@ class TennisDetrModule(LightningModule):
             / 255.0
         )
 
-        # Pred image: project 3D XY to 2D plane (debug-only).
-        pose_slice = pose_pred[0, :, 0]  # [Q, J, 3]
+        pose_slice = pose_pred[0, :, 0]
         player_pose_list_pred: list[np.ndarray] = []
         racket_list_pred: list[np.ndarray] = []
-        for q in range(Q):
-            pts3d = pose_slice[q]  # [J,3]
+        for pts3d in pose_slice:
             coords = pts3d[:, :2].detach().float().cpu().numpy().astype("float32")
             coords_px = np.empty_like(coords)
             coords_px[..., 0] = (coords[..., 0] * 0.1 + 0.5) * float(W - 1)
             coords_px[..., 1] = (coords[..., 1] * 0.1 + 0.5) * float(H - 1)
-            pose_px = coords_px[:17]
-            racket_px = coords_px[17:]
-            player_pose_list_pred.append(pose_px)
-            racket_list_pred.append(racket_px)
+            player_pose_list_pred.append(coords_px[:17])
+            racket_list_pred.append(coords_px[17:])
 
         img_pred_np = render_pose2d_frame(
             width=W,
@@ -273,6 +510,47 @@ class TennisDetrModule(LightningModule):
         for key, value in loss_dict.items():
             tag = f"{stage}/{key}"
             self.log(tag, value, prog_bar=(key == "total"), sync_dist=False)
+
+    @staticmethod
+    def _norm_to_px(coords: Tensor, width: int, height: int) -> np.ndarray:
+        """Convert normalized [-1,1] coordinates to pixel space."""
+        coords_arr = coords.detach().float().cpu().numpy().astype("float32")
+        out = np.empty_like(coords_arr)
+        w_span = max(width - 1, 1)
+        h_span = max(height - 1, 1)
+        out[..., 0] = (coords_arr[..., 0] + 1.0) * 0.5 * float(w_span)
+        out[..., 1] = (coords_arr[..., 1] + 1.0) * 0.5 * float(h_span)
+        return out
+
+    @staticmethod
+    def _denorm_pose3d(pose_norm: Tensor) -> Tensor:
+        """Convert normalized court coordinates back to world meters."""
+        scales = pose_norm.new_tensor(
+            [HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST],
+            dtype=pose_norm.dtype,
+        )
+        return pose_norm * scales
+
+    @staticmethod
+    def _project_world_points(
+        cam_C: Tensor,
+        cam_R: Tensor,
+        cam_intr: Tensor,
+        xyz_world: Tensor,
+    ) -> tuple[Tensor, Tensor]:
+        """Project world coordinates into the image plane."""
+        rel = xyz_world - cam_C.view(1, 3)
+        Xc = rel @ cam_R.t()
+        z = Xc[:, 2]
+        mask = z > 1e-6
+        z_safe = torch.where(mask, z, torch.ones_like(z))
+        f = cam_intr[0]
+        cx = cam_intr[1]
+        cy = cam_intr[2]
+        u = f * (Xc[:, 0] / z_safe) + cx
+        v = f * (-Xc[:, 1] / z_safe) + cy
+        uv = torch.stack([u, v], dim=-1)
+        return uv, mask
 
     def _log_tensorboard_image(self, tag: str, image: Tensor, step: int) -> None:
         """Log an image tensor to all TensorBoard-compatible loggers."""
