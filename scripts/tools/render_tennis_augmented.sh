@@ -8,8 +8,12 @@ set -euo pipefail
 # outputs/tennis_augmented_viz.
 #
 # Usage examples:
-#   ./scripts/render_tennis_augmented.sh
-#   ./scripts/render_tennis_augmented.sh --num-samples 8 --split val
+#   ./scripts/tools/render_tennis_augmented.sh
+#   ./scripts/tools/render_tennis_augmented.sh --num-samples 8 --split val
 #
 
-python src/datasets/tennis/tools/render_tennis_augmented.py "$@"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+cd "${ROOT_DIR}"
+
+uv run python src/datasets/tennis/tools/render_tennis_augmented.py "$@"

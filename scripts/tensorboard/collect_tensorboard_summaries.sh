@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Collect all TensorBoard events.out.tfevents.* under runs/ and generate CSV + Markdown summaries.
-# Skips processing if CSV/summary already exist for a given event file.
+# Collect all TensorBoard events.out.tfevents.* under runs/ and generate CSV +
+# Markdown summaries. Skips processing if CSV/summary already exist for a
+# given event file.
 
 set -euo pipefail
 
@@ -12,4 +13,4 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUNS_DIR="${1:-runs}"
 
 cd "${PROJECT_ROOT}"
-exec python scripts/tensorboard/collect_and_summarize.py --runs-dir "${RUNS_DIR}"
+exec uv run python scripts/tensorboard/collect_and_summarize.py --runs-dir "${RUNS_DIR}"
