@@ -10,7 +10,7 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
-from src.datasets.dancetrack import TargetFrame
+from src.datasets.scene_model.dancetrack import TargetFrame
 
 
 @dataclass(slots=True)

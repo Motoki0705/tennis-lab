@@ -1,9 +1,16 @@
-"""Dataset primitives for SceneModel training."""
+"""Dataset modules for scene model and tennis pose estimation."""
 
-from .collate_tracking import SceneBatch, collate_tracking
-from .dancetrack import DancetrackDataset, TargetFrame, TrackingSample
+from .scene_model import (
+    DancetrackDataset,
+    SceneBatch,
+    TargetFrame,
+    TrackingSample,
+    collate_tracking,
+)
+from .tennis import TennisSceneWindowDataset
 
 __all__ = [
+    "TennisSceneWindowDataset",
     "DancetrackDataset",
     "TargetFrame",
     "TrackingSample",
