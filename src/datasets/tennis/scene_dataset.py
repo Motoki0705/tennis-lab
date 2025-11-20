@@ -11,6 +11,12 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
+from src.tennis.geometry.court import (
+    HALF_DOUBLES_WIDTH,
+    HALF_LENGTH,
+    NET_HEIGHT_POST,
+)
+
 
 @dataclass(slots=True)
 class _WindowRecord:
@@ -161,18 +167,33 @@ class TennisSceneWindowDataset(Dataset):
         )
         exist_3d = torch.zeros((T, self.max_players), dtype=torch.bool)
         court_2d = torch.zeros((self.max_cameras, 20, 2), dtype=torch.float32)
+        camera_C = torch.zeros((self.max_cameras, 3), dtype=torch.float32)
+        camera_R = torch.zeros((self.max_cameras, 3, 3), dtype=torch.float32)
+        camera_intr = torch.zeros((self.max_cameras, 3), dtype=torch.float32)
+        image_size = torch.zeros((self.max_cameras, 2), dtype=torch.int32)
 
         src_key = torch.from_numpy(arrs["keypoints_2d"][t_start:t_end])  # [len,V,M,J,2]
         src_mask = torch.from_numpy(arrs["player_mask"][t_start:t_end])  # [len,V,M]
         src_pose = torch.from_numpy(arrs["pose_3d_gt"][t_start:t_end])  # [len,M,J,3]
         src_exist = torch.from_numpy(arrs["exist_3d_gt"][t_start:t_end])  # [len,M]
         src_court = torch.from_numpy(arrs["court_2d"])  # [V,20,2]
+        if "camera_C" not in arrs or "camera_R" not in arrs:
+            msg = "Memmap arrays missing required camera metadata"
+            raise KeyError(msg)
+        src_cam_C = torch.from_numpy(arrs["camera_C"]).to(torch.float32)  # [V,3]
+        src_cam_R = torch.from_numpy(arrs["camera_R"]).to(torch.float32)  # [V,3,3]
+        src_cam_intr = torch.from_numpy(arrs["camera_intr"]).to(torch.float32)  # [V,3]
+        src_image_size = torch.from_numpy(arrs["image_size"]).to(torch.int32)  # [V,2]
 
         keypoints_2d[:length, : src_key.shape[1], : src_key.shape[2]] = src_key
         player_mask[:length, : src_mask.shape[1], : src_mask.shape[2]] = src_mask
         pose_3d[:length, : src_pose.shape[1]] = src_pose
         exist_3d[:length, : src_exist.shape[1]] = src_exist
         court_2d[: src_court.shape[0]] = src_court
+        camera_C[: src_cam_C.shape[0]] = src_cam_C
+        camera_R[: src_cam_R.shape[0]] = src_cam_R
+        camera_intr[: src_cam_intr.shape[0]] = src_cam_intr
+        image_size[: src_image_size.shape[0]] = src_image_size
 
         return {
             "keypoints_2d": keypoints_2d,
@@ -180,6 +201,10 @@ class TennisSceneWindowDataset(Dataset):
             "court_2d": court_2d,
             "pose_3d_gt": pose_3d,
             "exist_3d_gt": exist_3d,
+            "camera_C": camera_C,
+            "camera_R": camera_R,
+            "camera_intr": camera_intr,
+            "image_size": image_size,
             "scene_id": torch.tensor([hash(rec.scene_id)], dtype=torch.long),
             "t_start": torch.tensor([t_start], dtype=torch.long),
             "t_end": torch.tensor([t_end], dtype=torch.long),
@@ -220,6 +245,10 @@ class TennisSceneWindowDataset(Dataset):
         pose_3d = torch.zeros((T, M, J, 3), dtype=torch.float32)
         exist_3d = torch.zeros((T, M), dtype=torch.bool)
         court_2d = torch.zeros((V, 20, 2), dtype=torch.float32)
+        camera_C = torch.zeros((V, 3), dtype=torch.float32)
+        camera_R = torch.zeros((V, 3, 3), dtype=torch.float32)
+        camera_intr = torch.zeros((V, 3), dtype=torch.float32)
+        image_size = torch.zeros((V, 2), dtype=torch.int32)
 
         # Camera image sizes for normalization (width, height).
         cameras = scene.get("cameras", [])
@@ -227,12 +256,27 @@ class TennisSceneWindowDataset(Dataset):
             msg = f"Invalid cameras metadata in scene: {scene_path}"
             raise ValueError(msg)
         image_sizes: list[tuple[int, int]] = []
-        for cam in cameras:
+        for idx, cam in enumerate(cameras):
             size = cam.get("image_size", [0, 0])
-            if not isinstance(size, list) or len(size) < 2:
-                image_sizes.append((0, 0))
-            else:
-                image_sizes.append((int(size[0]), int(size[1])))
+            w, h = 0, 0
+            if isinstance(size, list) and len(size) >= 2:
+                w, h = int(size[0]), int(size[1])
+            image_sizes.append((w, h))
+            image_size[idx, 0] = w
+            image_size[idx, 1] = h
+            cam_C = cam.get("camera_C", [0.0, 0.0, 0.0])
+            cam_intr = cam.get("camera_intr", [0.0, 0.0, 0.0])
+            cam_R_data = cam.get("camera_R")
+            try:
+                camera_C[idx] = torch.as_tensor(cam_C, dtype=torch.float32)
+                camera_intr[idx] = torch.as_tensor(cam_intr, dtype=torch.float32)
+                if cam_R_data is None:
+                    camera_R[idx] = torch.eye(3, dtype=torch.float32)
+                else:
+                    camera_R[idx] = torch.as_tensor(cam_R_data, dtype=torch.float32)
+            except Exception as exc:  # pragma: no cover - defensive
+                msg = f"Invalid camera parameters in scene: {scene_path}"
+                raise ValueError(msg) from exc
 
         # Court keypoints are assumed constant across frames; take from the first.
         first_frame = window_frames[0]
@@ -312,6 +356,9 @@ class TennisSceneWindowDataset(Dataset):
                             racket3d_src[: min(3, racket3d_src.shape[0]), :]
                         )
                     combined3d = torch.cat([pose3d_tensor, racket3d_tensor], dim=0)
+                    combined3d[:, 0] = combined3d[:, 0] / float(HALF_DOUBLES_WIDTH)
+                    combined3d[:, 1] = combined3d[:, 1] / float(HALF_LENGTH)
+                    combined3d[:, 2] = combined3d[:, 2] / float(NET_HEIGHT_POST)
                     pose_3d[local_t, m, :, :] = combined3d
                     exist_3d[local_t, m] = True
 
@@ -321,6 +368,10 @@ class TennisSceneWindowDataset(Dataset):
             "court_2d": court_2d,
             "pose_3d_gt": pose_3d,
             "exist_3d_gt": exist_3d,
+            "camera_C": camera_C,
+            "camera_R": camera_R,
+            "camera_intr": camera_intr,
+            "image_size": image_size,
             "scene_id": torch.tensor([hash(rec.scene_id)], dtype=torch.long),
             "t_start": torch.tensor([t_start], dtype=torch.long),
             "t_end": torch.tensor([t_end], dtype=torch.long),

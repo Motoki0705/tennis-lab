@@ -241,7 +241,19 @@ Dataset / DataModule は、`build_tennis_dataset.py` の出力前提で設計す
    - 入力: `decoder_out_time: [B, Q, T, D]`
    - 各 `(q, t)` ごとに `MLP: D → (J*3)` を適用。
    - 出力: `pose_3d: [B, Q, T, J, 3]`
-     - コート座標系の `(x, y, z)`。pelvis 原点ローカルで学習し、必要なら絶対座標に変換。
+     - **正規化コート座標系の `(x, y, z)`** を出力する。
+       - シミュレータの 3D は `src/tennis/geometry/court.py` におけるコート座標系（メートル）で表現されるが、学習時には数値スケールを整えるために正規化する。
+       - 正規化の例（世界座標 `(x_w, y_w, z_w)` → 学習座標 `(x_n, y_n, z_n)`）:
+         - `x_n = x_w / HALF_DOUBLES_WIDTH`
+         - `y_n = y_w / HALF_LENGTH`
+         - `z_n = z_w / NET_HEIGHT_POST`
+         - ここで `HALF_DOUBLES_WIDTH`, `HALF_LENGTH`, `NET_HEIGHT_POST` はいずれも `src/tennis/geometry/court.py` の定数。
+       - 実際のプレーエリアはフェンスを含めても `x_n, y_n` のレンジが概ね `[-2, 2]` 程度に収まるスケールとなる。
+       - 学習時の損失はこの正規化空間で計算し、評価時や可視化時にメートルスケールへ戻す場合は
+         - `x_w = x_n * HALF_DOUBLES_WIDTH`
+         - `y_w = y_n * HALF_LENGTH`
+         - `z_w = z_n * NET_HEIGHT_POST`
+         で逆変換する。
 2. **Existence Head**
    - 時間方向に平均 pooling: `exist_feat = decoder_out_time.mean(dim=2)` → `[B, Q, D]`
    - `exist_head: D → 1` を通し、`exist_conf = sigmoid(exist_logit)` → `[B, Q, 1]`
@@ -266,10 +278,87 @@ class TennisDetrModule(pl.LightningModule):
         )
 ```
 
-- `training_step` では、GT 3D（`[B, Q, T, J, 3]`）との L1/SmoothL1 損失に加え、骨長一貫性や速度正則化、`exist_conf` とのクロスエントロピーなどを組み合わせる。
-- `configure_optimizers` では AdamW + CosineAnnealingLR 等の標準設定を使用。
+- `training_step` では、**Hungarian matching によるセットベース損失**を用いて Query と GT プレーヤーの対応付けを行ったうえで、3D ポーズ L1 / 存在 BCE / 速度正則化を計算する。
+- `configure_optimizers` では AdamW とし、**linear warmup 付き Cosine スケジューラ**を設定する（詳細は後述）。
 
-#### 5.6.2 学習戦略
+#### 5.6.2 セットベース損失（Hungarian Matching）
+
+- 目的:
+  - 各バッチにおいて、**Query スロット `Q` 個と GT プレーヤー `M` 人を 1 対 1 で最適対応**させる。
+  - プレーヤー数が変動しても、Query の解釈が安定し、学習が進みやすくなる（DETR と同様の set-based training）。
+- 入出力テンソル:
+  - 予測:
+    - `pose_pred: [B, Q, T, J, 3]` （TennisDETR の出力）
+    - `exist_logit: [B, Q, 1]`
+  - GT:
+    - `pose_3d_gt: [B, T, M, J, 3]`（DataLoader が返す）
+    - `exist_3d_gt: [B, T, M]`（True = そのフレームで存在）
+- マッチング対象の GT プレーヤー:
+  - 時間方向に OR を取って「そのウィンドウ内で一度でも出現したプレーヤー」を対象とする:
+    - `exist_any: [B, M] = exist_3d_gt.any(dim=1)`
+  - `exist_any[b, m] == False` のプレーヤーはマッチング対象外（完全な背景）として扱う。
+- コスト行列の定義（バッチごとに計算）:
+  - まず `(b, q, m)` ごとの 3D L1 コストを計算:
+    - `pose_cost[b, q, m] = mean_{t,j} |pose_pred[b,q,t,j,:] - pose_3d_gt[b,t,m,j,:]|`
+  - 存在ロジットもコストに含める:
+    - Query `q` がプレーヤー `m` に割り当てられる場合の存在コスト:
+      - `exist_cost[b, q, m] = BCEWithLogits(exist_logit[b,q,0], target=1.0)`
+  - 総コスト:
+    - `total_cost[b, q, m] = λ_pose_match * pose_cost[b,q,m] + λ_exist_match * exist_cost[b,q,m]`
+    - `λ_pose_match` / `λ_exist_match` は `training.loss` に別途ハイパーパラメータとして定義（例: 1.0 / 1.0）。
+- Hungarian matching:
+  - 各バッチ `b` について `total_cost[b]`（形状 `[Q, M]`）を CPU 上に移し、Hungarian アルゴリズム（`scipy.optimize.linear_sum_assignment` もしくは PyTorch 実装）で最小コストの 1 対 1 対応を求める。
+  - 結果は `assignment[b]` として
+    - `matched_queries[b, k]`, `matched_targets[b, k]`
+    - `k=0..K-1`（`K <= min(Q, M)`）を返す。
+- 最終的な損失計算:
+  - 3D ポーズ損失:
+    - マッチしたペアに対してのみ L1 を計算:
+      - `pose_loss = mean_k mean_{t,j} |pose_pred[b, q_k, t, j, :] - pose_3d_gt[b, m_k, t, j, :]|`
+    - 未割り当て Query にはポーズ損失をかけない（空スロット扱い）。
+  - 存在損失:
+    - マッチした Query にはターゲット `1.0`、未割り当て Query にはターゲット `0.0` を割り当て:
+      - `exist_target[b, q, 0] = 1.0` if `q` is in `matched_queries[b]` else `0.0`
+    - `exist_loss = BCEWithLogits(exist_logit, exist_target)` をバッチ平均で計算。
+  - 速度正則化（任意）:
+    - 既存と同様、`vel = pose_pred[:, :, 1:] - pose_pred[:, :, :-1]` として L2 を計算。
+  - 合成損失:
+    - `total = λ_pose * pose_loss + λ_exist * exist_loss + λ_vel * vel_loss`
+    - ここで `λ_pose, λ_exist, λ_vel` は `training.loss` にて設定。
+
+実装上は、既存の `_compute_loss` 内で「先頭 M 人を先頭 Q Query に単純対応」させていた部分を削除し、上記のマッチング処理に置き換える。
+
+#### 5.6.3 学習率スケジューラ（Linear Warmup + Cosine）
+
+- 目的:
+  - Transformer 系モデルで学習初期の発散を防ぐため、**学習率を徐々に立ち上げる warmup** を導入し、その後 **Cosine decay** で滑らかに減衰させる。
+- コンフィグ設計（例: `configs/training/tennis_mvpose.yaml`）:
+  ```yaml
+  training:
+    max_steps: 7000
+    optimizer:
+      lr: 1.0e-4
+      weight_decay: 1.0e-4
+    scheduler:
+      name: cosine_with_warmup
+      warmup_steps: 500        # 線形に 0 → base_lr へ
+      min_lr_ratio: 0.1        # 終了時の lr = base_lr * 0.1
+  ```
+- `TennisDetrModule.configure_optimizers` の挙動:
+  1. Optimizer は従来通り AdamW を使用。
+  2. `training.max_steps` と `training.scheduler.*` からスケジューラ設定を読み取り、`LambdaLR` 等で以下のスケジュールを構成:
+     - ステップ `s` に対して
+       - `s < warmup_steps`: `lr_scale = s / warmup_steps`
+       - `s >= warmup_steps`:
+         - `progress = (s - warmup_steps) / max(1, max_steps - warmup_steps)`
+         - `cos = 0.5 * (1 + cos(pi * progress))`
+         - `lr_scale = min_lr_ratio + (1 - min_lr_ratio) * cos`
+     - 実際の学習率は `lr = base_lr * lr_scale`。
+  3. Lightning には `"interval": "step"` で登録し、1 ステップ毎に更新。
+
+これにより、初期は安定した学習を行いつつ、後半は CosineAnnealingLR と同等の挙動で徐々に学習率を減衰させる。
+
+#### 5.6.4 学習戦略
 
 - バッチあたりのメモリ制約を考慮し、
   - `window_T`, `max_cameras`, `max_players` を適切に設定。
@@ -406,29 +495,75 @@ Tennis Pose システムの学習環境は、既存の SceneModel 向けイン�
 
 ### 6.5 ロギング・チェックポイント・監視
 
-- ロギング:
+  - ロギング:
   - 既存の SceneModel と同様、`configs/logging/*.yaml` を利用し、
     - `TensorBoardLogger` で loss/メトリクス・学習率を記録。
     - 必要であれば `WandbLogger` に切り替え可能。
   - **GT / Pred レンダリングの保存**:
-    - `validation_step` または `on_validation_epoch_end` 内で、少数バッチについて以下の可視化を行う。
+    - `validation_step` 内で、少数バッチについて 2D / 3D の可視化を行う。
       - 入力 2D キーポイント（カメラごと）の scatter/render。
-      - GT 3D ポーズ vs 予測 3D ポーズを同一座標系に描画した画像。
-    - 実装イメージ:
-      - `render_3d_pose(scene_meta, pose_3d)` のようなユーティリティ関数を `src/visualize/tennis_pose.py` もしくは新規モジュールに実装。
-      - LightningModule 内で:
-        ```python
-        if batch_idx < cfg.logging.max_vis_batches:
-            img_gt = render_3d_pose(batch_meta, batch["pose_3d_gt"])
-            img_pred = render_3d_pose(batch_meta, pred["pose_3d"])
-            grid = make_comparison_grid(img_gt, img_pred)  # (H, W, 3)
-            self.logger.experiment.add_image(
-                "val/pose3d_gt_vs_pred",
-                grid,
-                global_step=self.global_step,
-                dataformats="HWC",
-            )
-        ```
+      - **カメラ内部・外部パラメータを用いた 3D→2D 再投影**による GT / Pred オーバーレイ。
+
+#### 6.5.1 カメラパラメータを用いたデバッグレンダリング設計
+
+- 目的:
+  - 予測 3D（正規化座標系）をシミュレーション時と同じカメラ幾何で 2D に再投影し、**GT の 2D 検出とのズレを視覚的に確認**できるようにする。
+  - これにより、「3D が正しいのに可視化だけおかしい」「そもそも 3D が崩れている」といったケースを切り分けやすくする。
+
+- カメラ内部・外部パラメータの取得:
+  - シミュレータ側では、`src/tennis/geometry/court.py` の `Camera` dataclass と `make_look_at_camera` を用いて
+    - カメラ中心 `C: (3,)`
+    - 回転行列 `R: (3,3)`（world→camera）
+    - 焦点距離 `f`, 画素中心 `cx, cy`, 画像サイズ `w, h`
+    を構築し、`project_points(cam, xyz)` で 3D→2D 投影を行っている。
+  - データセット構築時（`build_tennis_dataset.py` / memmap 前処理）で、各カメラについてこれらのパラメータを JSON / npz に書き出し、`TennisSceneWindowDataset` が
+    - `camera_C: float32[V, 3]`
+    - `camera_R: float32[V, 3, 3]`
+    - `camera_intr: float32[V, 3]`（例: `[f, cx, cy]`）
+    - `image_size: int32[V, 2]`
+    を `batch` に含められるように拡張する。
+
+- 3D GT / Pred の正規化と逆変換:
+  - 学習時には 3D を正規化コート座標系 `(x_n, y_n, z_n)` で扱う（5.5 節参照）。
+  - デバッグ投影時には、まず正規化座標から世界座標 `(x_w, y_w, z_w)` へ戻す:
+    - `x_w = x_n * HALF_DOUBLES_WIDTH`
+    - `y_w = y_n * HALF_LENGTH`
+    - `z_w = z_n * NET_HEIGHT_POST`
+  - これにより、シミュレータが使っているものと同一の座標系に戻る。
+
+- 3D→2D 再投影パイプライン:
+  1. LightningModule の `_render_debug_images`（または専用フック）で、
+     - `pose_3d_gt_norm: [B, T, M, J, 3]`（正規化）
+     - `pose_3d_pred_norm: [B, Q, T, J, 3]`（正規化）
+     を受け取る。
+  2. 上記を世界座標に逆変換して
+     - `pose_3d_gt_world`, `pose_3d_pred_world`
+     を得る。
+  3. 任意の `(b, t, v)` を選び、プレーヤーごとに `project_points(cam_v, xyz_world)` を適用:
+     - `xyz_world: [N, 3]`（J=20 なら `N=20`）
+     - 返り値 `uv_px: [N, 2]` を画像ピクセル座標として利用。
+  4. 2D GT（`keypoints_2d`）も、[-1,1] → ピクセルへの逆変換で座標を復元:
+     - `u_px = (u_norm + 1) * 0.5 * (w - 1)`
+     - `v_px = (v_norm + 1) * 0.5 * (h - 1)`
+  5. 共通のキャンバス（`H_vis x W_vis`）に
+     - コート 2D（`court_2d` を同様にピクセル復元）
+     - GT 2D ポーズ（color A）
+     - Pred 2D（再投影）ポーズ（color B）
+     を描画する。
+
+- 実装構成:
+  - 新しい汎用レンダリングモジュールを `src/visualize/tennis_render.py` / もしくは `src/visualize/tennis_pose_render.py` に切り出す。
+    - 例:
+      - `render_pose2d_frame(width, height, court_points, court_visibility, player_poses, ...)`
+      - `project_and_render_3d_pose(cam, pose_3d_world, image_size, ...)`
+  - `src/visualize/tennis_pose.py` はこのモジュールを利用する薄いラッパとし、
+  - LightningModule (`TennisDetrModule`) の `_render_debug_images` からも同じレンダリング関数を呼び出すように統一する。
+
+- TensorBoard への保存方針:
+  - GT と Pred を**別タグ**で保存して比較しやすくする:
+    - `"val/pose2d_gt"`: 再投影なしの純粋な GT 2D overlay。
+    - `"val/pose2d_pred_reproj"`: Pred 3D をカメラ幾何で再投影した overlay。
+  - 必要であれば、`make_comparison_grid` で GT/Pred 並べた画像を `"val/pose2d_gt_vs_pred_reproj"` として追加する。
       - カメラ視点の 2D オーバーレイ（court + player + racket）についても同様に `add_image` で保存。
 - チェックポイント:
   - `ModelCheckpoint` コールバックを利用し、`val/Mpjpe` 等の指標でベストモデルを保存。
