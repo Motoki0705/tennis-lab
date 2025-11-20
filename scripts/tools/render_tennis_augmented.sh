@@ -3,8 +3,9 @@ set -euo pipefail
 
 # Render augmented TennisSceneWindowDataset samples to videos for visual inspection.
 #
-# By default this uses configs/datasets/tennis_pose_sim.yaml to instantiate
-# the dataset and renders a few train windows into outputs/tennis_augmented_viz.
+# By default this uses configs/datasets/tennis_multi_cam_3d_pose_sim.yaml to
+# instantiate the dataset and renders a few train windows into
+# outputs/tennis_augmented_viz.
 #
 # Usage examples:
 #   ./scripts/render_tennis_augmented.sh

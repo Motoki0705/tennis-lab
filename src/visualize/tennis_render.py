@@ -2,7 +2,7 @@
 
 This module provides low-level drawing utilities (court lines, player skeleton,
 racket points) that can be used both from scene-based visualization
-(`tennis_pose.py`) and from training-time debug rendering.
+(`tennis_multi_cam_3d_pose.py`) and from training-time debug rendering.
 """
 
 from __future__ import annotations

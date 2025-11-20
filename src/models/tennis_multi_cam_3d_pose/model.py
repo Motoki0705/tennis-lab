@@ -7,7 +7,7 @@ from collections.abc import Mapping
 import torch
 from torch import Tensor, nn
 
-from src.models.tennis.config import TennisDetrConfig
+from src.models.tennis_multi_cam_3d_pose.config import TennisDetrConfig
 
 
 class TennisDETR(nn.Module):

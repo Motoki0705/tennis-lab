@@ -1,7 +1,7 @@
 """CLI tool to render augmented TennisSceneWindowDataset samples to video.
 
 This script instantiates ``TennisSceneWindowDataset`` from a dataset config
-YAML (e.g. ``configs/datasets/tennis_pose_sim.yaml``), applies on-the-fly
+YAML (e.g. ``configs/datasets/tennis_multi_cam_3d_pose_sim.yaml``), applies on-the-fly
 camera sampling and 2D augmentation (as configured), and uses
 ``src.visualize.tennis_render`` to render pose sequences as videos for
 visual inspection.
@@ -31,8 +31,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dataset-config",
         type=str,
-        default="configs/datasets/tennis_pose_sim.yaml",
-        help="Path to dataset config YAML (used to instantiate TennisSceneWindowDataset).",
+        default="configs/datasets/tennis_multi_cam_3d_pose_sim.yaml",
+        help=(
+            "Path to dataset config YAML (used to instantiate "
+            "TennisSceneWindowDataset)."
+        ),
     )
     parser.add_argument(
         "--split",
@@ -88,10 +91,11 @@ def _load_dataset_from_config(
     split: str,
 ) -> TennisSceneWindowDataset:
     cfg = OmegaConf.load(dataset_cfg_path)
-    cfg_dict: dict[str, Any] = OmegaConf.to_container(cfg, resolve=True) or {}
-    if not isinstance(cfg_dict, dict):
+    cfg_container = OmegaConf.to_container(cfg, resolve=True) or {}
+    if not isinstance(cfg_container, dict):
         msg = f"Dataset config root must be a mapping: {dataset_cfg_path}"
         raise SystemExit(msg)
+    cfg_dict: dict[str, Any] = cfg_container
 
     root = cfg_dict.get("root", "data/tennis_autogen")
     name = cfg_dict.get("name") or cfg_dict.get("dataset_name")
@@ -217,6 +221,7 @@ def _render_sample_to_video(
 
 
 def main() -> int:
+    """Render dataset samples with augmentation applied for quick inspection."""
     args = _parse_args()
 
     torch.manual_seed(int(args.seed))
@@ -258,4 +263,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

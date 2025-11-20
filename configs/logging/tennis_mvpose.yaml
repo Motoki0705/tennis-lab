@@ -1,6 +1,6 @@
 logger:
   save_dir: runs
-  name: tennis_pose
+  name: tennis_multi_cam_3d_pose
   default_hp_metric: false
 
 callbacks:

@@ -177,11 +177,11 @@ data/tennis_autogen/
 
 #### 3.4.5 全体としての効果
 
-- シーン生成時:  
+- シーン生成時:
   - ランダムな 20 カメラ配置 × ランダムアセットにより、**視点と外観の大きな多様性**を確保。
-- memmap 前処理時:  
+- memmap 前処理時:
   - 20 カメラを余さず npz に格納し、**後段で柔軟にサブサンプリングできる基盤**を用意。
-- ローダー時:  
+- ローダー時:
   - `{min_cam, max_cam}` の範囲でカメラ数と組み合わせを毎回変えることで、**カメラ構成に依存しないモデル**を目指す。
   - 2D アフィン変換により、同じポーズ・同じカメラであっても「画面内での向き・スケール・位置」が毎回揺らぎ、**画面配置へのオーバーフィットを抑える**。
 
@@ -427,20 +427,20 @@ class TennisDetrModule(pl.LightningModule):
 Tennis Pose システムの学習環境は、既存の SceneModel 向けインフラを再利用しつつ、以下のコンポーネントで構成する。
 
 ### 6.1 コンフィグ構成
-
-- トップレベル YAML: `configs/tennis_pose.yaml`
-  - 役割: `task=tennis_pose` を指定し、dataset/model/training サブ設定をインクルードするハブ。
+- トップレベル YAML: `configs/tennis_multi_cam_3d_pose.yaml`
+  - 役割: `task=tennis_multi_cam_3d_pose` を指定し、dataset/model/training サブ設定をインクルードするハブ。
   - 例:
     ```yaml
-    task: tennis_pose
+    task: tennis_multi_cam_3d_pose
     experiment_name: tennis_mvpose_dev
 
     includes:
-      dataset: configs/datasets/tennis_pose_sim.yaml
+      dataset: configs/datasets/tennis_multi_cam_3d_pose_sim.yaml
       model: configs/models/tennis_mvpose.yaml
       training: configs/training/tennis_mvpose.yaml
+      logging: configs/logging/tennis_mvpose.yaml
     ```
-- データセット設定: `configs/datasets/tennis_pose_sim.yaml`
+- データセット設定: `configs/datasets/tennis_multi_cam_3d_pose_sim.yaml`
   - 主なキー:
     - `root`, `name`（`build_tennis_dataset.py` で作った dataset_name）
     - `window_T`, `max_cameras`, `max_players`, `num_joints`
@@ -471,7 +471,7 @@ Tennis Pose システムの学習環境は、既存の SceneModel 向けイン�
 
 ### 6.2 CLI エントリと ConfigLoader
 
-- CLI: `src/cli/train_tennis_pose.py`
+- CLI: `src/cli/tennis_multi_cam_3d_pose/train.py`
   - すでに P0 スカフォールドがあり、`--config` と `--set` で YAML を読み込む。
   - P1 以降では、SceneModel と同様に:
     1. `load_cfg` で DictConfig を取得。
@@ -481,7 +481,7 @@ Tennis Pose システムの学習環境は、既存の SceneModel 向けイン�
        - `build_trainer()` → `Trainer`
     3. `trainer.fit(module, datamodule=dm)` を実行。
 - `ConfigLoader.build_datamodule` / `build_lit_module`
-  - `task == "tennis_pose"` の分岐で、Tennis 用の DataModule / LightningModule を返すように拡張する。
+  - `task == "tennis_multi_cam_3d_pose"` の分岐で、Tennis 用の DataModule / LightningModule を返すように拡張する。
 
 ### 6.3 依存関係と環境準備
 
@@ -618,7 +618,7 @@ Tennis Pose システムの学習環境は、既存の SceneModel 向けイン�
       - カメラ視点の 2D オーバーレイ（court + player + racket）についても同様に `add_image` で保存。
 - チェックポイント:
   - `ModelCheckpoint` コールバックを利用し、`val/Mpjpe` 等の指標でベストモデルを保存。
-  - 保存先は `runs/tennis_pose/<experiment_name>/checkpoints` を想定。
+  - 保存先は `runs/tennis_multi_cam_3d_pose/<experiment_name>/checkpoints` を想定。
 - モニタリング:
   - 学習中に GPU メモリ使用量・データローダーのスループットを確認し、
     - ボトルネックに応じて `num_workers` や `window_T`, `batch_size` を調整。
