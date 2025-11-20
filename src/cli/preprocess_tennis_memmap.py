@@ -15,6 +15,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
+from tqdm import tqdm
 
 from src.tennis.geometry.court import (
     HALF_DOUBLES_WIDTH,
@@ -243,7 +244,11 @@ def _process_split(
     arrays_dir.mkdir(parents=True, exist_ok=True)
     if not scenes_dir.exists():
         return
-    for scene_path in sorted(scenes_dir.glob("scene_*.json")):
+    scene_paths = sorted(scenes_dir.glob("scene_*.json"))
+    for scene_path in tqdm(
+        scene_paths,
+        desc=f"Preprocess scenes ({split})",
+    ):
         stem = scene_path.stem
         out_path = arrays_dir / f"{stem}.npz"
         if out_path.exists() and not overwrite:
@@ -267,7 +272,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise SystemExit(msg)
 
     splits = [s.strip() for s in str(args.splits).split(",") if s.strip()]
-    for split in splits:
+    for split in tqdm(
+        splits,
+        desc="Processing splits",
+    ):
         _process_split(
             dataset_dir,
             split,
