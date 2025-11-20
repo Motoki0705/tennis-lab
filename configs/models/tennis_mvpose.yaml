@@ -7,6 +7,6 @@ dropout: 0.1
 
 num_joints: 20
 num_court_points: 20
-num_queries: 20
+num_queries: 50
 max_cameras: 8
 max_frames: 32
