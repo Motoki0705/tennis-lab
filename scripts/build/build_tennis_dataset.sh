@@ -15,9 +15,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 CONFIG_PATH="${CONFIG_PATH:-configs/tennis/build_tennis_dataset_sim.yaml}"
 
-cd "${ROOT_DIR}"
-
 python src/cli/build_tennis_dataset.py \
   --config "${CONFIG_PATH}" \
   "$@"
-
