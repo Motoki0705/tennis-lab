@@ -13,10 +13,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 from types import SimpleNamespace
+from typing import Any
 
 from omegaconf import OmegaConf
+from tqdm import tqdm
 
 from src.tennis.sim.generator import (
     GenConfig,
@@ -50,7 +51,10 @@ def _parse_args(argv: Sequence[str] | None = None) -> SimpleNamespace:
             defaults to ``sys.argv[1:]``.
 
     Returns:
-        argparse.Namespace: Parsed arguments.
+        SimpleNamespace: Parsed arguments.
+
+    Raises:
+        SystemExit: If invalid or missing arguments are provided.
 
     """
     if argv is None:
@@ -63,15 +67,13 @@ def _parse_args(argv: Sequence[str] | None = None) -> SimpleNamespace:
     it = iter(tokens)
     for token in it:
         if token in ("-h", "--help"):
-            msg = (
-                "Usage: build_tennis_dataset.py --config PATH [--overwrite]\n"
-            )
+            msg = "Usage: build_tennis_dataset.py --config PATH [--overwrite]\n"
             raise SystemExit(msg)
         if token == "--config":
             try:
                 cfg_path = next(it)
-            except StopIteration:
-                raise SystemExit("Expected path after --config")
+            except StopIteration as exc:
+                raise SystemExit("Expected path after --config") from exc
         elif token.startswith("--config="):
             cfg_path = token.split("=", 1)[1]
         elif token == "--overwrite":
@@ -129,7 +131,7 @@ def _auto_dataset_name(args: SimpleNamespace) -> str:
     """Derive a dataset name from simulator and window parameters.
 
     Args:
-        args (argparse.Namespace): Parsed CLI arguments.
+        args (SimpleNamespace): Parsed CLI arguments.
 
     Returns:
         str: Auto-generated dataset name.
@@ -221,7 +223,10 @@ def _generate_split_scenes(
         seed=split_cfg.seed,
     )
     gen = TennisPoseSceneGenerator(cfg)
-    for i in range(split_cfg.num_scenes):
+    for i in tqdm(
+        range(split_cfg.num_scenes),
+        desc=f"Generating scenes ({split_cfg.name})",
+    ):
         scene_id = f"{split_cfg.name}_{i}"
         scene = gen.generate_scene(scene_id=scene_id)
         validate_scene_dict(scene)
@@ -257,7 +262,11 @@ def _build_index_for_split(
     index_path = index_dir / f"{split_name}_index.jsonl"
 
     records: list[Mapping[str, Any]] = []
-    for scene_path in sorted(scenes_dir.glob("scene_*.json")):
+    scene_paths = sorted(scenes_dir.glob("scene_*.json"))
+    for scene_path in tqdm(
+        scene_paths,
+        desc=f"Building index ({split_name})",
+    ):
         with scene_path.open("r", encoding="utf-8") as f:
             scene = json.load(f)
         frames = scene.get("frames", [])
@@ -305,7 +314,7 @@ def _write_meta(
 
     Args:
         dataset_dir (Path): Dataset root directory.
-        args (argparse.Namespace): Parsed CLI arguments.
+        args (SimpleNamespace): Parsed CLI arguments.
         splits (Sequence[_SplitConfig]): Per-split configurations.
 
     Returns:
