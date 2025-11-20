@@ -44,7 +44,7 @@
 | --- | --- | --- |
 | `--dataset_root` | `str`, `"data/tennis_autogen"` | `build_tennis_dataset.py` が生成したデータセットルート |
 | `--dataset_name` | `str`, **必須** | `<dataset_root>/<dataset_name>` のサブディレクトリ名 |
-| `--max_cameras` | `int`, `4` | 1 シーンあたりの最大カメラ数（`dataset.max_cameras` と揃える） |
+| `--max_cameras` | `int`, `4` | 1 シーンあたりの最大カメラ数（npz に保持する上限。本番学習時にはこの中からさらにサブサンプリングされ得る） |
 | `--max_players` | `int`, `20` | 1 フレームあたりの最大プレーヤー数（`dataset.max_players` と揃える） |
 | `--num_joints` | `int`, `20` | プレーヤー 1 人あたりのキーポイント数（pose 17 + racket 3 = 20） |
 | `--splits` | `str`, `"train,val,test"` | 前処理対象の split 名（カンマ区切り） |
