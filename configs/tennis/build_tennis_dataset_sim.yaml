@@ -1,0 +1,20 @@
+dataset_root: data/tennis_autogen
+dataset_name: sim_fps60_dur3p0_C4_P1-20_T10
+
+num_scenes_train: 500
+num_scenes_val: 100
+num_scenes_test: 100
+
+fps: 60
+duration: 3.0
+num_cameras: 4
+
+asset_root: data/raw/3dtennisds
+min_players: 1
+max_players: 20
+
+window_T: 10
+window_stride: 5
+
+seed: 1234
+overwrite: false

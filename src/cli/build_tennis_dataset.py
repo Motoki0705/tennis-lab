@@ -6,7 +6,6 @@ train/val/test のシーン JSON と簡易インデックス、およびメタ�
 
 from __future__ import annotations
 
-import argparse
 import json
 import subprocess
 import sys
@@ -15,6 +14,9 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from types import SimpleNamespace
+
+from omegaconf import OmegaConf
 
 from src.tennis.sim.generator import (
     GenConfig,
@@ -40,7 +42,7 @@ class _SplitConfig:
     seed: int
 
 
-def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+def _parse_args(argv: Sequence[str] | None = None) -> SimpleNamespace:
     """Parse CLI arguments.
 
     Args:
@@ -51,105 +53,79 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         argparse.Namespace: Parsed arguments.
 
     """
-    parser = argparse.ArgumentParser(
-        description="Build tennis pose training datasets from simulator scenes"
-    )
-    parser.add_argument(
-        "--dataset_root",
-        type=str,
-        default="data/tennis_autogen",
-        help="Root directory for auto-generated datasets",
-    )
-    parser.add_argument(
-        "--dataset_name",
-        type=str,
-        default=None,
-        help=(
-            "Optional dataset name. If omitted, a name is derived from the "
-            "simulator and window parameters."
-        ),
-    )
-    parser.add_argument(
-        "--num_scenes_train",
-        type=int,
-        default=100,
-        help="Number of training scenes to generate",
-    )
-    parser.add_argument(
-        "--num_scenes_val",
-        type=int,
-        default=20,
-        help="Number of validation scenes to generate",
-    )
-    parser.add_argument(
-        "--num_scenes_test",
-        type=int,
-        default=20,
-        help="Number of test scenes to generate",
-    )
-    parser.add_argument(
-        "--fps",
-        type=int,
-        default=60,
-        help="Simulator frames per second",
-    )
-    parser.add_argument(
-        "--duration",
-        type=float,
-        default=3.0,
-        help="Simulator duration per scene in seconds",
-    )
-    parser.add_argument(
-        "--num_cameras",
-        type=int,
-        default=4,
-        help="Number of cameras per scene",
-    )
-    parser.add_argument(
-        "--asset_root",
-        type=str,
-        default="data/raw/3dtennisds",
-        help="Path to the 3DTennisDS asset directory",
-    )
-    parser.add_argument(
-        "--min_players",
-        type=int,
-        default=1,
-        help="Minimum number of players per scene",
-    )
-    parser.add_argument(
-        "--max_players",
-        type=int,
-        default=20,
-        help="Maximum number of players per scene",
-    )
-    parser.add_argument(
-        "--window_T",
-        type=int,
-        default=10,
-        help="Temporal window length (frames) for index entries",
-    )
-    parser.add_argument(
-        "--window_stride",
-        type=int,
-        default=5,
-        help="Stride (frames) between temporal windows when building the index",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=1234,
-        help="Base random seed; split seeds are derived from this value",
-    )
-    parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Allow overwriting an existing dataset directory",
-    )
-    return parser.parse_args(argv)
+    if argv is None:
+        argv = sys.argv[1:]
+
+    cfg_path: str | None = None
+    overwrite = False
+
+    tokens = list(argv)
+    it = iter(tokens)
+    for token in it:
+        if token in ("-h", "--help"):
+            msg = (
+                "Usage: build_tennis_dataset.py --config PATH [--overwrite]\n"
+            )
+            raise SystemExit(msg)
+        if token == "--config":
+            try:
+                cfg_path = next(it)
+            except StopIteration:
+                raise SystemExit("Expected path after --config")
+        elif token.startswith("--config="):
+            cfg_path = token.split("=", 1)[1]
+        elif token == "--overwrite":
+            overwrite = True
+        else:
+            if cfg_path is None and not token.startswith("-"):
+                cfg_path = token
+            else:
+                msg = f"Unknown argument: {token}"
+                raise SystemExit(msg)
+
+    if cfg_path is None:
+        msg = (
+            "Missing --config PATH\n"
+            "Usage: build_tennis_dataset.py --config PATH [--overwrite]\n"
+        )
+        raise SystemExit(msg)
+
+    cfg = OmegaConf.load(cfg_path)
+    cfg_dict = OmegaConf.to_container(cfg, resolve=True) or {}
+    if not isinstance(cfg_dict, Mapping):
+        msg = f"Config root must be a mapping: {cfg_path}"
+        raise SystemExit(msg)
+
+    defaults: dict[str, Any] = {
+        "dataset_root": "data/tennis_autogen",
+        "dataset_name": None,
+        "num_scenes_train": 100,
+        "num_scenes_val": 20,
+        "num_scenes_test": 20,
+        "fps": 60,
+        "duration": 3.0,
+        "num_cameras": 4,
+        "asset_root": "data/raw/3dtennisds",
+        "min_players": 1,
+        "max_players": 20,
+        "window_T": 10,
+        "window_stride": 5,
+        "seed": 1234,
+        "overwrite": False,
+    }
+
+    merged = {**defaults, **cfg_dict}
+    if "overwrite" in cfg_dict:
+        merged["overwrite"] = bool(cfg_dict["overwrite"])
+    if overwrite:
+        merged["overwrite"] = True
+
+    merged["config"] = cfg_path
+
+    return SimpleNamespace(**merged)
 
 
-def _auto_dataset_name(args: argparse.Namespace) -> str:
+def _auto_dataset_name(args: SimpleNamespace) -> str:
     """Derive a dataset name from simulator and window parameters.
 
     Args:
@@ -322,7 +298,7 @@ def _build_index_for_split(
 
 def _write_meta(
     dataset_dir: Path,
-    args: argparse.Namespace,
+    args: SimpleNamespace,
     splits: Sequence[_SplitConfig],
 ) -> None:
     """Write meta.json summarizing dataset generation parameters.
