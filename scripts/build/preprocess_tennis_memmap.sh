@@ -8,11 +8,12 @@ set -euo pipefail
 # configs/datasets/tennis_multi_cam_3d_pose_sim.yaml by default.
 #
 # Usage:
-#   ./scripts/preprocess_tennis_memmap.sh
-#   ./scripts/preprocess_tennis_memmap.sh --overwrite
-#
+#   ./scripts/build/preprocess_tennis_memmap.sh
+#   ./scripts/build/preprocess_tennis_memmap.sh --overwrite
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+cd "${ROOT_DIR}"
 
 DATASET_CFG="${DATASET_CFG:-configs/datasets/tennis_multi_cam_3d_pose_sim.yaml}"
 
@@ -25,7 +26,7 @@ if [[ -z "${DATASET_NAME}" ]]; then
   exit 1
 fi
 
-python src/cli/tennis_multi_cam_3d_pose/preprocess_memmap.py \
+uv run python src/cli/tennis_multi_cam_3d_pose/preprocess_memmap.py \
   --dataset_root "${DATASET_ROOT}" \
   --dataset_name "${DATASET_NAME}" \
   "$@"
