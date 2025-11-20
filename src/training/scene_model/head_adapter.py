@@ -15,7 +15,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 from torchvision.ops import generalized_box_iou
 
-from src.datasets.dancetrack import TargetFrame
+from src.datasets.scene_model.dancetrack import TargetFrame
 from src.training.scene_model.dino_denoiser import DenoiserState
 
 _THIRD_PARTY_DINO = Path(__file__).resolve().parents[3] / "third_party" / "DINO"

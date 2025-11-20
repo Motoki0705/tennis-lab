@@ -10,8 +10,8 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 
-from src.datasets.collate_tracking import SceneBatch, collate_tracking
-from src.datasets.dancetrack import DancetrackDataset
+from src.datasets.scene_model.collate_tracking import SceneBatch, collate_tracking
+from src.datasets.scene_model.dancetrack import DancetrackDataset
 
 
 class DancetrackDataModule(LightningDataModule):

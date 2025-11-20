@@ -14,7 +14,7 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torchvision.utils import draw_bounding_boxes, make_grid
 
-from src.datasets.collate_tracking import SceneBatch
+from src.datasets.scene_model.collate_tracking import SceneBatch
 from src.models.scene_model.build import build_scene_model
 
 from .dino_denoiser import DinoDenoiser
