@@ -11,6 +11,10 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
+from src.datasets.tennis.augment import (
+    apply_random_2d_affine,
+    sample_camera_indices,
+)
 from src.tennis.geometry.court import (
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
@@ -67,6 +71,8 @@ class TennisSceneWindowDataset(Dataset):
         max_players: int,
         num_joints: int = 20,
         use_memmap: bool = False,
+        min_cameras: int | None = None,
+        augment_2d: bool = False,
     ) -> None:
         super().__init__()
         self.dataset_root = Path(dataset_root)
@@ -77,6 +83,8 @@ class TennisSceneWindowDataset(Dataset):
         self.max_players = int(max_players)
         self.num_joints = int(num_joints)
         self.use_memmap = bool(use_memmap)
+        self.min_cameras: int | None = int(min_cameras) if min_cameras is not None else None
+        self.augment_2d = bool(augment_2d)
 
         if self.window_T <= 0:
             msg = "window_T must be positive"
@@ -86,6 +94,12 @@ class TennisSceneWindowDataset(Dataset):
             raise ValueError(msg)
         if self.max_players <= 0:
             msg = "max_players must be positive"
+            raise ValueError(msg)
+        if self.min_cameras is not None and self.min_cameras <= 0:
+            msg = "min_cameras must be positive if set"
+            raise ValueError(msg)
+        if self.min_cameras is not None and self.min_cameras > self.max_cameras:
+            msg = "min_cameras must be <= max_cameras"
             raise ValueError(msg)
 
         self.dataset_dir = self.dataset_root / self.dataset_name
@@ -185,17 +199,25 @@ class TennisSceneWindowDataset(Dataset):
         src_cam_intr = torch.from_numpy(arrs["camera_intr"]).to(torch.float32)  # [V,3]
         src_image_size = torch.from_numpy(arrs["image_size"]).to(torch.int32)  # [V,2]
 
-        keypoints_2d[:length, : src_key.shape[1], : src_key.shape[2]] = src_key
-        player_mask[:length, : src_mask.shape[1], : src_mask.shape[2]] = src_mask
+        V_src = int(src_key.shape[1])
+        cam_indices = sample_camera_indices(
+            num_available=V_src,
+            max_cameras=self.max_cameras,
+            min_cameras=self.min_cameras,
+        )
+        k = int(cam_indices.shape[0])
+
+        keypoints_2d[:length, :k, : src_key.shape[2]] = src_key[:, cam_indices]
+        player_mask[:length, :k, : src_mask.shape[2]] = src_mask[:, cam_indices]
         pose_3d[:length, : src_pose.shape[1]] = src_pose
         exist_3d[:length, : src_exist.shape[1]] = src_exist
-        court_2d[: src_court.shape[0]] = src_court
-        camera_C[: src_cam_C.shape[0]] = src_cam_C
-        camera_R[: src_cam_R.shape[0]] = src_cam_R
-        camera_intr[: src_cam_intr.shape[0]] = src_cam_intr
-        image_size[: src_image_size.shape[0]] = src_image_size
+        court_2d[:k] = src_court[cam_indices]
+        camera_C[:k] = src_cam_C[cam_indices]
+        camera_R[:k] = src_cam_R[cam_indices]
+        camera_intr[:k] = src_cam_intr[cam_indices]
+        image_size[:k] = src_image_size[cam_indices]
 
-        return {
+        sample = {
             "keypoints_2d": keypoints_2d,
             "player_mask": player_mask,
             "court_2d": court_2d,
@@ -209,6 +231,11 @@ class TennisSceneWindowDataset(Dataset):
             "t_start": torch.tensor([t_start], dtype=torch.long),
             "t_end": torch.tensor([t_end], dtype=torch.long),
         }
+        return apply_random_2d_affine(
+            sample,
+            enabled=self.augment_2d,
+            split=self.split,
+        )
 
     def _getitem_from_json(self, index: int) -> dict[str, Tensor]:
         rec = self.records[index]
@@ -278,27 +305,35 @@ class TennisSceneWindowDataset(Dataset):
                 msg = f"Invalid camera parameters in scene: {scene_path}"
                 raise ValueError(msg) from exc
 
+        # Sample a subset of cameras for this window.
+        cam_indices = sample_camera_indices(
+            num_available=num_cameras,
+            max_cameras=self.max_cameras,
+            min_cameras=self.min_cameras,
+        )
+        k = int(cam_indices.shape[0])
+
         # Court keypoints are assumed constant across frames; take from the first.
         first_frame = window_frames[0]
-        for v in range(num_cameras):
-            cam_key = f"cam_{v}"
+        for out_v, src_v in enumerate(cam_indices.tolist()):
+            cam_key = f"cam_{src_v}"
             cam_payload = first_frame.get(cam_key, {})
             court_bundle = cam_payload.get("court_keypoints_2d", {})
             pts = court_bundle.get("points", [])
             if isinstance(pts, list) and len(pts) >= 20:
                 pts_tensor = torch.as_tensor(pts[:20], dtype=torch.float32)
-                w, h = image_sizes[v]
+                w, h = image_sizes[src_v]
                 if w > 0 and h > 0:
                     pts_tensor[:, 0] = (pts_tensor[:, 0] / float(w)) * 2.0 - 1.0
                     pts_tensor[:, 1] = (pts_tensor[:, 1] / float(h)) * 2.0 - 1.0
-                court_2d[v, :, :] = pts_tensor
+                court_2d[out_v, :, :] = pts_tensor
 
         # Populate per-frame player keypoints (2D + 3D).
         for local_t, frame in enumerate(window_frames):
             players_3d = frame.get("player_joints_3d", [])
             rackets_3d = frame.get("racket_points_3d", [])
-            for v in range(num_cameras):
-                cam_key = f"cam_{v}"
+            for out_v, src_v in enumerate(cam_indices.tolist()):
+                cam_key = f"cam_{src_v}"
                 cam_payload = frame.get(cam_key, {})
                 player_bundle = cam_payload.get("player_keypoints_2d", {})
                 racket_bundle = cam_payload.get("racket_keypoints_2d", {})
@@ -331,8 +366,8 @@ class TennisSceneWindowDataset(Dataset):
                     if w > 0 and h > 0:
                         combined[:, 0] = (combined[:, 0] / float(w)) * 2.0 - 1.0
                         combined[:, 1] = (combined[:, 1] / float(h)) * 2.0 - 1.0
-                    keypoints_2d[local_t, v, m, :, :] = combined
-                    player_mask[local_t, v, m] = True
+                    keypoints_2d[local_t, out_v, m, :, :] = combined
+                    player_mask[local_t, out_v, m] = True
 
             # 3D GT for this frame (per player, view-independent).
             if isinstance(players_3d, list):
@@ -362,7 +397,7 @@ class TennisSceneWindowDataset(Dataset):
                     pose_3d[local_t, m, :, :] = combined3d
                     exist_3d[local_t, m] = True
 
-        return {
+        sample = {
             "keypoints_2d": keypoints_2d,
             "player_mask": player_mask,
             "court_2d": court_2d,
@@ -376,6 +411,11 @@ class TennisSceneWindowDataset(Dataset):
             "t_start": torch.tensor([t_start], dtype=torch.long),
             "t_end": torch.tensor([t_end], dtype=torch.long),
         }
+        return apply_random_2d_affine(
+            sample,
+            enabled=self.augment_2d,
+            split=self.split,
+        )
 
 
 if __name__ == "__main__":
