@@ -144,6 +144,8 @@ CLI はすべて `src/cli/` 以下の Python スクリプトとして実装さ�
   - テニスタスクのトレーニングパイプライン仕様（ConfigLoader 分岐・DataModule / LightningModule・CLI など）。
 - `tennis_multi_cam_3d_pose/quickstart.md`
   - シミュレーション〜データセット生成〜学習〜可視化までを一周する Quickstart。
+- `evaluate/tennis_multi_cam_3d_pose.md`
+  - 学習済みテニス multi-cam 3D pose モデルの評価・動画レンダリング CLI / scripts の仕様。
 
 ---
 
