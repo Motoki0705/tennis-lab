@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
@@ -64,6 +64,14 @@ class ConfigLoader:
     """Factory helpers that build training objects from the DictConfig."""
 
     cfg: DictConfig
+    _logger: Any = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        """Initialize the ConfigLoader after dataclass creation."""
+        import logging
+
+        self._logger = logging.getLogger(__name__)
+        self._logger.debug("ConfigLoader initialized with task=%s", self._task())
 
     def _task(self) -> str:
         """Return the configured task name with a backward-compatible default."""
@@ -80,15 +88,43 @@ class ConfigLoader:
         task = self._task()
         dataset_cfg = self.cfg.get("dataset")
         debug_cfg = self.cfg.get("debug")
-        if task == "tennis_multi_cam_3d_pose":
+        dataset_keys = list(dataset_cfg.keys()) if dataset_cfg else []
+        experiment_name = str(self.cfg.get("experiment_name") or "").lower()
+
+        if task == "tennis_multi_cam_3d_pose" and "v2" in experiment_name:
             from src.training.tennis_multi_cam_3d_pose.datamodule import (
                 TennisPoseDataModule,
             )
 
-            return TennisPoseDataModule(dataset_cfg, debug_cfg)
-        from src.training.scene_model.datamodule import DancetrackDataModule
+            datamodule = TennisPoseDataModule(dataset_cfg, debug_cfg)
+            self._logger.info(
+                "DataModule built for task=%s (dataset_keys=%s)", task, dataset_keys
+            )
+            return datamodule
 
-        return DancetrackDataModule(dataset_cfg, debug_cfg)
+        if task == "tennis_multi_cam_3d_pose" and "v2" not in experiment_name:
+            from src.training.tennis_multi_cam_3d_pose.datamodule import (
+                TennisPoseDataModule,
+            )
+
+            datamodule = TennisPoseDataModule(dataset_cfg, debug_cfg)
+            self._logger.info(
+                "DataModule built for task=%s (dataset_keys=%s)", task, dataset_keys
+            )
+            return datamodule
+
+        if task == "scene_model":
+            from src.training.scene_model.datamodule import DancetrackDataModule
+
+            datamodule = DancetrackDataModule(dataset_cfg, debug_cfg)
+            self._logger.info(
+                "DataModule built for task=%s (dataset_keys=%s)", task, dataset_keys
+            )
+            return datamodule
+
+        msg = f"Unsupported task={task} (experiment_name={experiment_name}) for datamodule"
+        self._logger.error(msg)
+        raise NotImplementedError(msg)
 
     def build_lit_module(
         self,
@@ -99,39 +135,64 @@ class ConfigLoader:
         based on the training._target_ configuration.
         """
         task = self._task()
-        if task == "tennis_multi_cam_3d_pose":
-            training_cfg = self.cfg.get("training", {})
-            target = training_cfg.get("_target_", "")
+        experiment_name = str(self.cfg.get("experiment_name") or "").lower()
+        training_cfg = self.cfg.get("training", {})
+        target = str(training_cfg.get("_target_", ""))
 
-            if "TennisDetrV2Module" in target:
-                from src.training.tennis_multi_cam_3d_pose.lightning_v2 import (
-                    TennisDetrV2Module,
-                )
+        if task == "tennis_multi_cam_3d_pose" and "v2" in experiment_name:
+            self._logger.info(
+                "Building TennisDetrV2Module (experiment_name=%s)", experiment_name
+            )
+            from src.training.tennis_multi_cam_3d_pose.lightning_v2 import (
+                TennisDetrV2Module,
+            )
 
-                return TennisDetrV2Module(self.cfg)
-            else:
-                from src.training.tennis_multi_cam_3d_pose.lightning import (
-                    TennisDetrModule,
-                )
+            module = TennisDetrV2Module(self.cfg)
+            self._logger.info("LightningModule built for task=%s", task)
+            return module
 
-                return TennisDetrModule(self.cfg)
+        if task == "tennis_multi_cam_3d_pose" and "v2" not in experiment_name:
+            self._logger.info(
+                "Building TennisDetrModule (experiment_name=%s)", experiment_name
+            )
+            from src.training.tennis_multi_cam_3d_pose.lightning import (
+                TennisDetrModule,
+            )
 
-        from src.training.scene_model.lightning import SceneModelLightningModule
+            module = TennisDetrModule(self.cfg)
+            self._logger.info("LightningModule built for task=%s", task)
+            return module
 
-        return SceneModelLightningModule(self.cfg)
+        if task == "scene_model":
+            from src.training.scene_model.lightning import SceneModelLightningModule
+
+            module = SceneModelLightningModule(self.cfg)
+            self._logger.info("LightningModule built for task=%s", task)
+            return module
+
+        msg = (
+            "Unsupported LightningModule selection for task="
+            f"{task} (experiment_name={experiment_name}, target={target})"
+        )
+        self._logger.error(msg)
+        raise NotImplementedError(msg)
 
     def build_callbacks(self) -> list[Callback]:
         """Create callbacks (checkpoints, LR monitor, etc.) from config."""
         from src.training.scene_model.callbacks import build_callbacks
 
-        return build_callbacks(self.cfg.get("logging"))
+        callbacks = build_callbacks(self.cfg.get("logging"))
+        self._logger.info("Constructed %d callbacks", len(callbacks))
+        return callbacks
 
     def build_logger(self) -> Logger:
         """Create the experiment logger defined under ``cfg.logging``."""
         from src.training.scene_model.callbacks import build_logger
 
         experiment_name = self.cfg.get("experiment_name")
-        return build_logger(self.cfg.get("logging"), experiment_name)
+        logger = build_logger(self.cfg.get("logging"), experiment_name)
+        self._logger.info("Logger built for experiment=%s", experiment_name)
+        return logger
 
     def build_trainer(
         self,
@@ -141,7 +202,12 @@ class ConfigLoader:
         """Build a Lightning Trainer, optionally overriding logger/callbacks."""
         trainer_cfg = _container(self.cfg.get("training")).get("trainer", {})
         pl_logger = logger if logger is not None else self.build_logger()
-        callback_list = (
-            list(callbacks) if callbacks is not None else self.build_callbacks()
+        trainer = Trainer(
+            logger=pl_logger, callbacks=list(callbacks or []), **trainer_cfg
         )
-        return Trainer(logger=pl_logger, callbacks=callback_list, **trainer_cfg)
+        self._logger.info(
+            "Trainer built with logger=%s, callbacks=%d",
+            pl_logger,
+            len(trainer.callbacks),
+        )
+        return trainer
