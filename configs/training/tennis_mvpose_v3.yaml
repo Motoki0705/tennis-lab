@@ -27,9 +27,9 @@ loss:
   lambda_vel: 0.0
   lambda_pose_match: 1.0
   lambda_exist_match: 0.5
-  lambda_denoise_canonical: 0.0
-  lambda_denoise_root_trans: 0.0
-  lambda_denoise_root_rot: 0.0
+  lambda_denoise_canonical: 0.5
+  lambda_denoise_root_trans: 0.5
+  lambda_denoise_root_rot: 0.5
 
 denoise3d:
   canonical_noise_std: 0.03

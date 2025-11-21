@@ -206,6 +206,7 @@ class TennisDetrV3Module(LightningModule):
         root_rot_pred = cast(Tensor, outputs["root_rot"])
         global_pred = cast(Tensor, outputs["pose_3d"])
         exist_logit = cast(Tensor, outputs["exist_logit"])
+        tracks_enc_all = cast(Tensor, outputs["tracks_enc"])
 
         canonical_gt = batch["canonical_pose_gt"]
         root_trans_gt = batch["root_trans_gt"]
@@ -275,17 +276,41 @@ class TennisDetrV3Module(LightningModule):
             global_loss_num = global_loss_num + global_diff.sum()
             global_loss_den = global_loss_den + mask.sum() * float(J * 3)
 
-            if (
+            use_denoise_canonical = (
                 self._lambda_denoise_canonical > 0.0
                 and self._denoise_canonical_noise_std > 0.0
+            )
+            use_denoise_root_trans = (
+                self._lambda_denoise_root_trans > 0.0
+                and self._denoise_root_trans_noise_std > 0.0
+            )
+            use_denoise_root_rot = (
+                self._lambda_denoise_root_rot > 0.0
+                and self._denoise_root_rot_noise_std > 0.0
+            )
+
+            if not (
+                use_denoise_canonical or use_denoise_root_trans or use_denoise_root_rot
             ):
+                continue
+
+            tracks_enc_sel = tracks_enc_all[b, matched_q]
+
+            if use_denoise_canonical:
                 canonical_noise = torch.randn_like(canonical_gt_sel).mul(
                     self._denoise_canonical_noise_std
                 )
                 canonical_noisy = canonical_gt_sel + canonical_noise
-                canonical_denoised = self.model.denoise_canonical(
-                    canonical_noisy, root_trans_gt_sel, root_rot_gt_sel
+                N_sel, T_sel, J_sel, _ = canonical_gt_sel.shape
+                canon_flat = canonical_noisy.reshape(N_sel, T_sel, J_sel * 3)
+                canon_embed = self.model.canonical_in_proj(canon_flat)
+                trans_embed = self.model.root_trans_in_proj(root_trans_gt_sel)
+                rot_embed = self.model.root_rot_in_proj(root_rot_gt_sel)
+                tokens_canonical = (
+                    tracks_enc_sel + canon_embed + trans_embed + rot_embed
                 )
+                canon_out_flat = self.model.denoise_canonical_head(tokens_canonical)
+                canonical_denoised = canon_out_flat.reshape(N_sel, T_sel, J_sel, 3)
                 canonical_denoise_diff = (
                     torch.abs(canonical_denoised - canonical_gt_sel) * mask
                 )
@@ -296,16 +321,21 @@ class TennisDetrV3Module(LightningModule):
                     J * 3
                 )
 
-            if (
-                self._lambda_denoise_root_trans > 0.0
-                and self._denoise_root_trans_noise_std > 0.0
-            ):
+            if use_denoise_root_trans:
                 root_trans_noise = torch.randn_like(root_trans_gt_sel).mul(
                     self._denoise_root_trans_noise_std
                 )
                 root_trans_noisy = root_trans_gt_sel + root_trans_noise
-                root_trans_denoised = self.model.denoise_root_trans(
-                    canonical_gt_sel, root_trans_noisy, root_rot_gt_sel
+                N_sel, T_sel, _ = root_trans_gt_sel.shape
+                canon_flat_gt = canonical_gt_sel.reshape(N_sel, T_sel, J * 3)
+                canon_embed_gt = self.model.canonical_in_proj(canon_flat_gt)
+                trans_embed_noisy = self.model.root_trans_in_proj(root_trans_noisy)
+                rot_embed_gt = self.model.root_rot_in_proj(root_rot_gt_sel)
+                tokens_root_trans = (
+                    tracks_enc_sel + canon_embed_gt + trans_embed_noisy + rot_embed_gt
+                )
+                root_trans_denoised = self.model.denoise_root_trans_head(
+                    tokens_root_trans
                 )
                 root_trans_denoise_diff = (
                     torch.abs(root_trans_denoised - root_trans_gt_sel) * root_trans_mask
@@ -317,17 +347,20 @@ class TennisDetrV3Module(LightningModule):
                     root_trans_mask.sum() * 3
                 )
 
-            if (
-                self._lambda_denoise_root_rot > 0.0
-                and self._denoise_root_rot_noise_std > 0.0
-            ):
+            if use_denoise_root_rot:
                 root_rot_noise = torch.randn_like(root_rot_gt_sel).mul(
                     self._denoise_root_rot_noise_std
                 )
                 root_rot_noisy = root_rot_gt_sel + root_rot_noise
-                root_rot_denoised = self.model.denoise_root_rot(
-                    canonical_gt_sel, root_trans_gt_sel, root_rot_noisy
+                N_sel, T_sel, _ = root_rot_gt_sel.shape
+                canon_flat_gt = canonical_gt_sel.reshape(N_sel, T_sel, J * 3)
+                canon_embed_gt = self.model.canonical_in_proj(canon_flat_gt)
+                trans_embed_gt = self.model.root_trans_in_proj(root_trans_gt_sel)
+                rot_embed_noisy = self.model.root_rot_in_proj(root_rot_noisy)
+                tokens_root_rot = (
+                    tracks_enc_sel + canon_embed_gt + trans_embed_gt + rot_embed_noisy
                 )
+                root_rot_denoised = self.model.denoise_root_rot_head(tokens_root_rot)
                 root_rot_denoise_diff = (
                     torch.abs(root_rot_denoised - root_rot_gt_sel) * root_rot_mask
                 )
