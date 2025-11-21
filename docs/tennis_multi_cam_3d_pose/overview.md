@@ -24,7 +24,7 @@ Quickstart で 1 周したい場合は `docs/tennis_multi_cam_3d_pose/quickstart
     ↓ TennisSceneWindowDataset
 [5] DataModule (TennisPoseDataModule)
     ↓
-[6] Model (TennisDETR v1/v2)
+[6] Model (TennisDETR v1/v2/v2.5/v3)
     ↓
 [7] 学習・評価・可視化
 ```
@@ -43,11 +43,15 @@ Quickstart で 1 周したい場合は `docs/tennis_multi_cam_3d_pose/quickstart
   - `src/training/tennis_multi_cam_3d_pose/datamodule.py:TennisPoseDataModule`
   - `src/training/tennis_multi_cam_3d_pose/lightning.py:TennisDetrModule` (v1)
   - `src/training/tennis_multi_cam_3d_pose/lightning_v2.py:TennisDetrV2Module` (v2)
+  - `src/training/tennis_multi_cam_3d_pose/lightning_v2_5.py:TennisDetrV25Module` (v2.5)
+  - `src/training/tennis_multi_cam_3d_pose/lightning_v3.py:TennisDetrV3Module` (v3)
   - docs: `docs/training/tennis_multi_cam_3d_pose.md`
 - モデル本体:
   - `src/models/tennis_multi_cam_3d_pose/model.py:TennisDETR` (v1)
   - `src/models/tennis_multi_cam_3d_pose/model_v2.py:TennisDETR_v2` (v2)
-  - docs: `docs/models/tennis_mvpose.md`, `docs/models/tennis_mvpose_v2.md`
+  - `src/models/tennis_multi_cam_3d_pose/model_v2_5.py:TennisDETR_v2_5` (v2.5)
+  - `src/models/tennis_multi_cam_3d_pose/model_v3.py:TennisDETR_v3` (v3)
+  - docs: `docs/models/tennis_mvpose.md`, `docs/models/tennis_mvpose_v2.md`, `docs/models/tennis_mvpose_v3.md`
 - 可視化:
   - `src/cli/tennis_multi_cam_3d_pose/render_scene.py`
   - `src/visualize/tennis_multi_cam_3d_pose.py`, `src/visualize/tennis_render.py`
@@ -63,8 +67,10 @@ Quickstart で 1 周したい場合は `docs/tennis_multi_cam_3d_pose/quickstart
 
 - v1: `configs/tennis_multi_cam_3d_pose.yaml`
 - v2: `configs/tennis_multi_cam_3d_pose_v2.yaml`
+- v2.5: `configs/tennis_multi_cam_3d_pose_v2_5.yaml`
+- v3: `configs/tennis_multi_cam_3d_pose_v3.yaml`
 
-どちらも共通して:
+どれも共通して:
 
 ```yaml
 task: tennis_multi_cam_3d_pose
@@ -72,8 +78,8 @@ experiment_name: ...
 
 includes:
   dataset: datasets/tennis_multi_cam_3d_pose_sim.yaml
-  model: models/tennis_mvpose(_v2).yaml
-  training: training/tennis_mvpose(_v2).yaml
+  model: models/tennis_mvpose(_v2/_v2_5/_v3).yaml
+  training: training/tennis_mvpose(_v2/_v2_5/_v3).yaml
   logging: logging/tennis_mvpose.yaml
 ```
 
@@ -82,7 +88,7 @@ includes:
 ### 2.2 CLI エントリポイント
 
 - v1 学習: `src/cli/tennis_multi_cam_3d_pose/train.py`
-- v2 学習: `src/cli/tennis_multi_cam_3d_pose/train_v2.py`
+- v2/v2.5/v3 学習: `src/cli/tennis_multi_cam_3d_pose/train_v2.py`
 
 どちらも共通して:
 
@@ -94,6 +100,8 @@ scripts ラッパ:
 
 - v1: `scripts/train/run_train_tennis_multi_cam_3d_pose.sh`
 - v2: `scripts/train/run_train_tennis_multi_cam_3d_pose_v2.sh`
+- v2.5: `scripts/train/run_train_tennis_multi_cam_3d_pose_v2_5.sh`
+- v3: `scripts/train/run_train_tennis_multi_cam_3d_pose_v3.sh`
 
 詳細は `docs/cli/tennis_multi_cam_3d_pose.md`, `docs/scripts/train.md` を参照。
 
@@ -141,11 +149,13 @@ scripts ラッパ:
 
 - v1: `TennisDetrModule`
 - v2: `TennisDetrV2Module`
+- v2.5: `TennisDetrV25Module`
+- v3: `TennisDetrV3Module`
 
 主な役割:
 
 - 入力バッチ（`keypoints_2d`, `player_mask`, `court_2d`, `pose_3d_gt` など）からモデルを呼び出し
-- v1/v2 それぞれに応じたロスを計算
+- v1/v2/v2.5/v3 それぞれに応じたロスを計算
 - ロギングやチェックポイント保存を行う
 
 詳細は `docs/training/tennis_multi_cam_3d_pose.md` を参照。
@@ -172,6 +182,22 @@ scripts ラッパ:
   - `canonical_pose`, `root_trans`, `root_rot`, `global_pose`, `exist_conf`
 
 仕様詳細は `docs/models/tennis_mvpose_v2.md` を参照。
+
+### 5.3 v2.5: TennisDETR_v2_5
+
+- 実装: `src/models/tennis_multi_cam_3d_pose/model_v2_5.py:TennisDETR_v2_5`
+- 設定クラス: `TennisDetrV2Config`（v2と共通）
+- 分離出力: v2と同じ
+- 追加機能: エンコーダ入力トークンにカメラ・時間埋め込みを明示的に付与
+
+### 5.4 v3: TennisDETR_v3
+
+- 実装: `src/models/tennis_multi_cam_3d_pose/model_v3.py:TennisDETR_v3`
+- 設定クラス: `TennisDetrV3Config`
+- 分離出力: v2と同じ
+- 追加機能: Decoder出力に対し、クエリごとに時間軸TransformerEncoderを適用（track-aware）
+
+仕様詳細は `docs/models/tennis_mvpose_v3.md` を参照。
 
 ---
 
@@ -210,8 +236,10 @@ scripts ラッパ:
 - **学習パイプラインを理解したい**:
   - `docs/training/tennis_multi_cam_3d_pose.md`
 - **モデルアーキテクチャを理解したい**:
-  - `docs/models/tennis_mvpose.md`
-  - `docs/models/tennis_mvpose_v2.md`
+  - v1: `docs/models/tennis_mvpose.md`
+  - v2: `docs/models/tennis_mvpose_v2.md`
+  - v2.5: v2とほぼ同じ仕様
+  - v3: `docs/models/tennis_mvpose_v3.md`
 - **実行コマンドを把握したい**:
   - `docs/cli/tennis_multi_cam_3d_pose.md`
   - `docs/scripts/*.md`
