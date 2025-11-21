@@ -6,23 +6,25 @@ from torch import nn
 
 from src.models.tennis_multi_cam_3d_pose.config import TennisDetrConfig
 from src.models.tennis_multi_cam_3d_pose.config_v2 import TennisDetrV2Config
+from src.models.tennis_multi_cam_3d_pose.config_v3 import TennisDetrV3Config
 from src.models.tennis_multi_cam_3d_pose.model import TennisDETR
 from src.models.tennis_multi_cam_3d_pose.model_v2 import TennisDETR_v2
 from src.models.tennis_multi_cam_3d_pose.model_v2_5 import TennisDETR_v2_5
+from src.models.tennis_multi_cam_3d_pose.model_v3 import TennisDETR_v3
 
 
 def create_tennis_model(
     model_version: str = "v2",
-    cfg: TennisDetrConfig | TennisDetrV2Config | None = None,
+    cfg: TennisDetrConfig | TennisDetrV2Config | TennisDetrV3Config | None = None,
 ) -> nn.Module:
     """指定されたバージョンのTennis-DETRモデルを生成する.
 
     Args:
-        model_version (str): モデルバージョン ("v1", "v2", "v2_5")
+        model_version (str): モデルバージョン ("v1", "v2", "v2_5", "v3")
             - v1: 元の単一エンコーダモデル（TennisDETR）
             - v2: 階層エンコーダ + 分離出力モデル（TennisDETR_v2）
             - v2_5: v2を拡張したカメラ/時間埋め込み付きモデル（TennisDETR_v2_5）
-        cfg (TennisDetrConfig | TennisDetrV2Config | None): 設定オブジェクト。Noneの場合はデフォルト設定を使用
+        cfg (TennisDetrConfig | TennisDetrV2Config | TennisDetrV3Config | None): 設定オブジェクト。Noneの場合はデフォルト設定を使用
 
     Returns:
         nn.Module: 指定されたバージョンのモデルインスタンス
@@ -34,8 +36,15 @@ def create_tennis_model(
     if cfg is None:
         if model_version in {"v2", "v2_5"}:
             cfg = TennisDetrV2Config()
+        elif model_version == "v3":
+            cfg = TennisDetrV3Config()
         else:
             cfg = TennisDetrConfig()
+
+    if model_version == "v3":
+        if not isinstance(cfg, TennisDetrV3Config):
+            raise ValueError("v3 model requires TennisDetrV3Config")
+        return TennisDETR_v3(cfg)
 
     if model_version == "v2_5":
         if not isinstance(cfg, TennisDetrV2Config):
@@ -50,7 +59,7 @@ def create_tennis_model(
             raise ValueError("v1 model requires TennisDetrConfig")
         return TennisDETR(cfg)
 
-    available_versions = ["v1", "v2", "v2_5"]
+    available_versions = ["v1", "v2", "v2_5", "v3"]
     raise ValueError(
         f"Unsupported model version: {model_version}. "
         f"Available versions: {available_versions}"
@@ -64,17 +73,17 @@ def get_available_model_versions() -> list[str]:
         list[str]: 利用可能なモデルバージョン名のリスト
 
     """
-    return ["v1", "v2", "v2_5"]
+    return ["v1", "v2", "v2_5", "v3"]
 
 
 def validate_config_for_version(
-    cfg: TennisDetrConfig | TennisDetrV2Config,
+    cfg: TennisDetrConfig | TennisDetrV2Config | TennisDetrV3Config,
     model_version: str,
 ) -> None:
     """指定されたバージョンに対して設定が有効かを検証する.
 
     Args:
-        cfg (TennisDetrConfig | TennisDetrV2Config): 検証する設定オブジェクト
+        cfg (TennisDetrConfig | TennisDetrV2Config | TennisDetrV3Config): 検証する設定オブジェクト
         model_version (str): モデルバージョン
 
     Returns:
@@ -95,6 +104,16 @@ def validate_config_for_version(
         if cfg.temporal_layers <= 0:
             raise ValueError("temporal_layers must be positive for v2/v2_5 model")
 
+    elif model_version == "v3":
+        if not isinstance(cfg, TennisDetrV3Config):
+            raise ValueError("v3 model requires TennisDetrV3Config")
+        if cfg.intra_layers <= 0:
+            raise ValueError("intra_layers must be positive for v3 model")
+        if cfg.inter_layers <= 0:
+            raise ValueError("inter_layers must be positive for v3 model")
+        if cfg.temporal_layers <= 0:
+            raise ValueError("temporal_layers must be positive for v3 model")
+
     elif model_version == "v1":
         if not isinstance(cfg, TennisDetrConfig):
             raise ValueError("v1 model requires TennisDetrConfig")
@@ -111,14 +130,16 @@ def validate_config_for_version(
         raise ValueError("num_queries must be positive")
 
 
-def create_default_config(model_version: str) -> TennisDetrConfig | TennisDetrV2Config:
+def create_default_config(
+    model_version: str,
+) -> TennisDetrConfig | TennisDetrV2Config | TennisDetrV3Config:
     """指定されたバージョンのデフォルト設定を生成する.
 
     Args:
         model_version (str): モデルバージョン
 
     Returns:
-        TennisDetrConfig | TennisDetrV2Config: デフォルト設定オブジェクト
+        TennisDetrConfig | TennisDetrV2Config | TennisDetrV3Config: デフォルト設定オブジェクト
 
     Raises:
         ValueError: サポートされていないモデルバージョンが指定された場合
@@ -126,6 +147,8 @@ def create_default_config(model_version: str) -> TennisDetrConfig | TennisDetrV2
     """
     if model_version in {"v2", "v2_5"}:
         return TennisDetrV2Config()
+    if model_version == "v3":
+        return TennisDetrV3Config()
     if model_version == "v1":
         return TennisDetrConfig()
     raise ValueError(f"Unknown model version: {model_version}")
