@@ -58,6 +58,24 @@ class TennisDetrV3Module(LightningModule):
         self._lambda_vel = float(loss_cfg.get("lambda_vel", 0.0))
         self._lambda_pose_match = float(loss_cfg.get("lambda_pose_match", 1.0))
         self._lambda_exist_match = float(loss_cfg.get("lambda_exist_match", 1.0))
+        self._lambda_denoise_canonical = float(
+            loss_cfg.get("lambda_denoise_canonical", 0.0)
+        )
+        self._lambda_denoise_root_trans = float(
+            loss_cfg.get("lambda_denoise_root_trans", 0.0)
+        )
+        self._lambda_denoise_root_rot = float(
+            loss_cfg.get("lambda_denoise_root_rot", 0.0)
+        )
+
+        denoise_cfg = _to_dict(training_cfg.get("denoise3d", {}))
+        self._denoise_canonical_noise_std = float(
+            denoise_cfg.get("canonical_noise_std", 0.0)
+        )
+        self._denoise_root_trans_noise_std = float(
+            denoise_cfg.get("trans_noise_std", 0.0)
+        )
+        self._denoise_root_rot_noise_std = float(denoise_cfg.get("rot_noise_std", 0.0))
 
         viz_cfg = _to_dict(cfg.get("logging", {})).get("visualizer", {})
         self._viz_max_batches = int(viz_cfg.get("max_batches", 2))
@@ -213,6 +231,12 @@ class TennisDetrV3Module(LightningModule):
         root_rot_loss_den = root_rot_pred.new_tensor(0.0)
         global_loss_num = global_pred.new_tensor(0.0)
         global_loss_den = global_pred.new_tensor(0.0)
+        denoise_canonical_num = canonical_pred.new_tensor(0.0)
+        denoise_canonical_den = canonical_pred.new_tensor(0.0)
+        denoise_root_trans_num = root_trans_pred.new_tensor(0.0)
+        denoise_root_trans_den = root_trans_pred.new_tensor(0.0)
+        denoise_root_rot_num = root_rot_pred.new_tensor(0.0)
+        denoise_root_rot_den = root_rot_pred.new_tensor(0.0)
 
         for b, (matched_q, matched_t) in enumerate(matches):
             if matched_q.numel() == 0:
@@ -251,6 +275,67 @@ class TennisDetrV3Module(LightningModule):
             global_loss_num = global_loss_num + global_diff.sum()
             global_loss_den = global_loss_den + mask.sum() * float(J * 3)
 
+            if (
+                self._lambda_denoise_canonical > 0.0
+                and self._denoise_canonical_noise_std > 0.0
+            ):
+                canonical_noise = torch.randn_like(canonical_gt_sel).mul(
+                    self._denoise_canonical_noise_std
+                )
+                canonical_noisy = canonical_gt_sel + canonical_noise
+                canonical_denoised = self.model.denoise_canonical(
+                    canonical_noisy, root_trans_gt_sel, root_rot_gt_sel
+                )
+                canonical_denoise_diff = (
+                    torch.abs(canonical_denoised - canonical_gt_sel) * mask
+                )
+                denoise_canonical_num = (
+                    denoise_canonical_num + canonical_denoise_diff.sum()
+                )
+                denoise_canonical_den = denoise_canonical_den + mask.sum() * float(
+                    J * 3
+                )
+
+            if (
+                self._lambda_denoise_root_trans > 0.0
+                and self._denoise_root_trans_noise_std > 0.0
+            ):
+                root_trans_noise = torch.randn_like(root_trans_gt_sel).mul(
+                    self._denoise_root_trans_noise_std
+                )
+                root_trans_noisy = root_trans_gt_sel + root_trans_noise
+                root_trans_denoised = self.model.denoise_root_trans(
+                    canonical_gt_sel, root_trans_noisy, root_rot_gt_sel
+                )
+                root_trans_denoise_diff = (
+                    torch.abs(root_trans_denoised - root_trans_gt_sel) * root_trans_mask
+                )
+                denoise_root_trans_num = (
+                    denoise_root_trans_num + root_trans_denoise_diff.sum()
+                )
+                denoise_root_trans_den = denoise_root_trans_den + (
+                    root_trans_mask.sum() * 3
+                )
+
+            if (
+                self._lambda_denoise_root_rot > 0.0
+                and self._denoise_root_rot_noise_std > 0.0
+            ):
+                root_rot_noise = torch.randn_like(root_rot_gt_sel).mul(
+                    self._denoise_root_rot_noise_std
+                )
+                root_rot_noisy = root_rot_gt_sel + root_rot_noise
+                root_rot_denoised = self.model.denoise_root_rot(
+                    canonical_gt_sel, root_trans_gt_sel, root_rot_noisy
+                )
+                root_rot_denoise_diff = (
+                    torch.abs(root_rot_denoised - root_rot_gt_sel) * root_rot_mask
+                )
+                denoise_root_rot_num = (
+                    denoise_root_rot_num + root_rot_denoise_diff.sum()
+                )
+                denoise_root_rot_den = denoise_root_rot_den + root_rot_mask.sum() * 2
+
         canonical_loss = (
             (canonical_loss_num / canonical_loss_den)
             if canonical_loss_den.item() > 0
@@ -278,6 +363,22 @@ class TennisDetrV3Module(LightningModule):
             vel = global_pred[:, :, 1:, :, :] - global_pred[:, :, :-1, :, :]
             vel_loss = (vel.pow(2.0)).mean()
 
+        denoise_canonical_loss = (
+            denoise_canonical_num / denoise_canonical_den
+            if denoise_canonical_den.item() > 0
+            else canonical_pred.new_tensor(0.0)
+        )
+        denoise_root_trans_loss = (
+            denoise_root_trans_num / denoise_root_trans_den
+            if denoise_root_trans_den.item() > 0
+            else root_trans_pred.new_tensor(0.0)
+        )
+        denoise_root_rot_loss = (
+            denoise_root_rot_num / denoise_root_rot_den
+            if denoise_root_rot_den.item() > 0
+            else root_rot_pred.new_tensor(0.0)
+        )
+
         total = (
             self._lambda_canonical * canonical_loss
             + self._lambda_root_trans * root_trans_loss
@@ -285,6 +386,9 @@ class TennisDetrV3Module(LightningModule):
             + self._lambda_global * global_loss
             + self._lambda_exist * exist_loss
             + self._lambda_vel * vel_loss
+            + self._lambda_denoise_canonical * denoise_canonical_loss
+            + self._lambda_denoise_root_trans * denoise_root_trans_loss
+            + self._lambda_denoise_root_rot * denoise_root_rot_loss
         )
 
         return {
@@ -295,6 +399,9 @@ class TennisDetrV3Module(LightningModule):
             "global_l1": global_loss.detach(),
             "exist_bce": exist_loss.detach(),
             "vel_l2": vel_loss.detach(),
+            "denoise_canonical_l1": denoise_canonical_loss.detach(),
+            "denoise_root_trans_l1": denoise_root_trans_loss.detach(),
+            "denoise_root_rot_l1": denoise_root_rot_loss.detach(),
         }
 
     def _match_queries_to_targets(
