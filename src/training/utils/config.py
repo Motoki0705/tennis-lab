@@ -19,6 +19,9 @@ if TYPE_CHECKING:
     from src.training.tennis_multi_cam_3d_pose.datamodule import TennisPoseDataModule
     from src.training.tennis_multi_cam_3d_pose.lightning import TennisDetrModule
     from src.training.tennis_multi_cam_3d_pose.lightning_v2 import TennisDetrV2Module
+    from src.training.tennis_multi_cam_3d_pose.lightning_v2_5 import (
+        TennisDetrV25Module,
+    )
 
 INCLUDE_KEY = "includes"
 _TRUTHY = {"1", "true", "yes", "on"}
@@ -128,7 +131,12 @@ class ConfigLoader:
 
     def build_lit_module(
         self,
-    ) -> SceneModelLightningModule | TennisDetrModule | TennisDetrV2Module:
+    ) -> (
+        SceneModelLightningModule
+        | TennisDetrModule
+        | TennisDetrV2Module
+        | TennisDetrV25Module
+    ):
         """Instantiate the LightningModule for the configured task.
 
         Defaults to SceneModel. For tennis_multi_cam_3d_pose, supports both v1 and v2
@@ -138,6 +146,18 @@ class ConfigLoader:
         experiment_name = str(self.cfg.get("experiment_name") or "").lower()
         training_cfg = self.cfg.get("training", {})
         target = str(training_cfg.get("_target_", ""))
+
+        if task == "tennis_multi_cam_3d_pose" and "v2_5" in experiment_name:
+            self._logger.info(
+                "Building TennisDetrV25Module (experiment_name=%s)", experiment_name
+            )
+            from src.training.tennis_multi_cam_3d_pose.lightning_v2_5 import (
+                TennisDetrV25Module,
+            )
+
+            module = TennisDetrV25Module(self.cfg)
+            self._logger.info("LightningModule built for task=%s", task)
+            return module
 
         if task == "tennis_multi_cam_3d_pose" and "v2" in experiment_name:
             self._logger.info(

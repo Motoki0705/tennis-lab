@@ -8,6 +8,7 @@ from src.models.tennis_multi_cam_3d_pose.config import TennisDetrConfig
 from src.models.tennis_multi_cam_3d_pose.config_v2 import TennisDetrV2Config
 from src.models.tennis_multi_cam_3d_pose.model import TennisDETR
 from src.models.tennis_multi_cam_3d_pose.model_v2 import TennisDETR_v2
+from src.models.tennis_multi_cam_3d_pose.model_v2_5 import TennisDETR_v2_5
 
 
 def create_tennis_model(
@@ -17,9 +18,10 @@ def create_tennis_model(
     """指定されたバージョンのTennis-DETRモデルを生成する.
 
     Args:
-        model_version (str): モデルバージョン ("v1" または "v2")
+        model_version (str): モデルバージョン ("v1", "v2", "v2_5")
             - v1: 元の単一エンコーダモデル（TennisDETR）
             - v2: 階層エンコーダ + 分離出力モデル（TennisDETR_v2）
+            - v2_5: v2を拡張したカメラ/時間埋め込み付きモデル（TennisDETR_v2_5）
         cfg (TennisDetrConfig | TennisDetrV2Config | None): 設定オブジェクト。Noneの場合はデフォルト設定を使用
 
     Returns:
@@ -30,22 +32,29 @@ def create_tennis_model(
 
     """
     if cfg is None:
-        cfg = TennisDetrV2Config() if model_version == "v2" else TennisDetrConfig()
+        if model_version in {"v2", "v2_5"}:
+            cfg = TennisDetrV2Config()
+        else:
+            cfg = TennisDetrConfig()
 
+    if model_version == "v2_5":
+        if not isinstance(cfg, TennisDetrV2Config):
+            raise ValueError("v2_5 model requires TennisDetrV2Config")
+        return TennisDETR_v2_5(cfg)
     if model_version == "v2":
         if not isinstance(cfg, TennisDetrV2Config):
             raise ValueError("v2 model requires TennisDetrV2Config")
         return TennisDETR_v2(cfg)
-    elif model_version == "v1":
+    if model_version == "v1":
         if not isinstance(cfg, TennisDetrConfig):
             raise ValueError("v1 model requires TennisDetrConfig")
         return TennisDETR(cfg)
-    else:
-        available_versions = ["v1", "v2"]
-        raise ValueError(
-            f"Unsupported model version: {model_version}. "
-            f"Available versions: {available_versions}"
-        )
+
+    available_versions = ["v1", "v2", "v2_5"]
+    raise ValueError(
+        f"Unsupported model version: {model_version}. "
+        f"Available versions: {available_versions}"
+    )
 
 
 def get_available_model_versions() -> list[str]:
@@ -55,7 +64,7 @@ def get_available_model_versions() -> list[str]:
         list[str]: 利用可能なモデルバージョン名のリスト
 
     """
-    return ["v1", "v2"]
+    return ["v1", "v2", "v2_5"]
 
 
 def validate_config_for_version(
@@ -75,16 +84,16 @@ def validate_config_for_version(
         ValueError: 設定が無効な場合
 
     """
-    if model_version == "v2":
+    if model_version in {"v2", "v2_5"}:
         if not isinstance(cfg, TennisDetrV2Config):
-            raise ValueError("v2 model requires TennisDetrV2Config")
-        # v2では階層エンコーダパラメータが必要
+            raise ValueError(f"{model_version} model requires TennisDetrV2Config")
+        # v2系では階層エンコーダパラメータが必要
         if cfg.intra_layers <= 0:
-            raise ValueError("intra_layers must be positive for v2 model")
+            raise ValueError("intra_layers must be positive for v2/v2_5 model")
         if cfg.inter_layers <= 0:
-            raise ValueError("inter_layers must be positive for v2 model")
+            raise ValueError("inter_layers must be positive for v2/v2_5 model")
         if cfg.temporal_layers <= 0:
-            raise ValueError("temporal_layers must be positive for v2 model")
+            raise ValueError("temporal_layers must be positive for v2/v2_5 model")
 
     elif model_version == "v1":
         if not isinstance(cfg, TennisDetrConfig):
@@ -115,12 +124,11 @@ def create_default_config(model_version: str) -> TennisDetrConfig | TennisDetrV2
         ValueError: サポートされていないモデルバージョンが指定された場合
 
     """
-    if model_version == "v2":
+    if model_version in {"v2", "v2_5"}:
         return TennisDetrV2Config()
-    elif model_version == "v1":
+    if model_version == "v1":
         return TennisDetrConfig()
-    else:
-        raise ValueError(f"Unknown model version: {model_version}")
+    raise ValueError(f"Unknown model version: {model_version}")
 
 
 if __name__ == "__main__":
