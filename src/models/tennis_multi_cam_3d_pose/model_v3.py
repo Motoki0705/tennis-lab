@@ -117,6 +117,29 @@ class TennisDETR_v3(nn.Module):
         )
         self.exist_head = nn.Sequential(nn.LayerNorm(D), nn.Linear(D, 1))
 
+        self.canonical_in_proj = nn.Linear(cfg.num_joints * 3, D)
+        self.root_trans_in_proj = nn.Linear(3, D)
+        self.root_rot_in_proj = nn.Linear(2, D)
+
+        self.denoise_canonical_head = nn.Sequential(
+            nn.LayerNorm(D),
+            nn.Linear(D, D),
+            nn.GELU(),
+            nn.Linear(D, cfg.num_joints * 3),
+        )
+        self.denoise_root_trans_head = nn.Sequential(
+            nn.LayerNorm(D),
+            nn.Linear(D, D),
+            nn.GELU(),
+            nn.Linear(D, 3),
+        )
+        self.denoise_root_rot_head = nn.Sequential(
+            nn.LayerNorm(D),
+            nn.Linear(D, D),
+            nn.GELU(),
+            nn.Linear(D, 2),
+        )
+
     def forward(
         self,
         player_kpts_2d: Tensor,
@@ -216,3 +239,88 @@ class TennisDETR_v3(nn.Module):
             "exist_logit": exist_logit,
             "exist_conf": exist_conf,
         }
+
+    def _build_track_tokens(
+        self,
+        canonical: Tensor,
+        root_trans: Tensor,
+        root_rot: Tensor,
+    ) -> Tensor:
+        N, T, J, _ = canonical.shape
+        canon_flat = canonical.reshape(N, T, J * 3)
+        canon_embed = self.canonical_in_proj(canon_flat)
+        trans_embed = self.root_trans_in_proj(root_trans)
+        rot_embed = self.root_rot_in_proj(root_rot)
+        tokens = canon_embed + trans_embed + rot_embed
+        time_ids = torch.arange(T, device=canonical.device)
+        t_embed = self.time_embed(time_ids)[None, :, :].expand(N, T, -1)
+        tokens = tokens + t_embed
+        return tokens
+
+    def denoise_canonical(
+        self,
+        canonical_noisy: Tensor,
+        root_trans_gt: Tensor,
+        root_rot_gt: Tensor,
+    ) -> Tensor:
+        """Denoise canonical pose tracks while keeping roots fixed.
+
+        Args:
+            canonical_noisy (Tensor): Noisy canonical pose tensor of shape [N, T, J, 3].
+            root_trans_gt (Tensor): Ground-truth root translations [N, T, 3].
+            root_rot_gt (Tensor): Ground-truth root rotations [N, T, 2].
+
+        Returns:
+            Tensor: Denoised canonical pose tensor [N, T, J, 3].
+
+        """
+        tokens = self._build_track_tokens(canonical_noisy, root_trans_gt, root_rot_gt)
+        tracks_enc = self.track_encoder(tokens)
+        N, T, J, _ = canonical_noisy.shape
+        canon_flat = self.denoise_canonical_head(tracks_enc)
+        canonical_out = canon_flat.reshape(N, T, J, 3)
+        return canonical_out
+
+    def denoise_root_trans(
+        self,
+        canonical_gt: Tensor,
+        root_trans_noisy: Tensor,
+        root_rot_gt: Tensor,
+    ) -> Tensor:
+        """Denoise root translations while keeping canonical/rot fixed.
+
+        Args:
+            canonical_gt (Tensor): Ground-truth canonical poses [N, T, J, 3].
+            root_trans_noisy (Tensor): Noisy root translations [N, T, 3].
+            root_rot_gt (Tensor): Ground-truth root rotations [N, T, 2].
+
+        Returns:
+            Tensor: Denoised root translations [N, T, 3].
+
+        """
+        tokens = self._build_track_tokens(canonical_gt, root_trans_noisy, root_rot_gt)
+        tracks_enc = self.track_encoder(tokens)
+        root_trans_out = self.denoise_root_trans_head(tracks_enc)
+        return root_trans_out
+
+    def denoise_root_rot(
+        self,
+        canonical_gt: Tensor,
+        root_trans_gt: Tensor,
+        root_rot_noisy: Tensor,
+    ) -> Tensor:
+        """Denoise root rotations while keeping canonical/trans fixed.
+
+        Args:
+            canonical_gt (Tensor): Ground-truth canonical poses [N, T, J, 3].
+            root_trans_gt (Tensor): Ground-truth root translations [N, T, 3].
+            root_rot_noisy (Tensor): Noisy root rotations [N, T, 2].
+
+        Returns:
+            Tensor: Denoised root rotations [N, T, 2].
+
+        """
+        tokens = self._build_track_tokens(canonical_gt, root_trans_gt, root_rot_noisy)
+        tracks_enc = self.track_encoder(tokens)
+        root_rot_out = self.denoise_root_rot_head(tracks_enc)
+        return root_rot_out
