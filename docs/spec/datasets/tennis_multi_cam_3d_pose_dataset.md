@@ -6,6 +6,7 @@
 - データセットビルド CLI による train/val/test 分割と index
 - 必要に応じた memmap 前処理（npz 中間表現）
 - `TennisSceneWindowDataset` が前提とするディレクトリ構造とテンソル形状
+- **v1/v2両モデル対応**: v2用GTデータの自動生成機能
 
 CLI や scripts による実行方法は `docs/spec/cli/tennis_multi_cam_3d_pose.md` および
 `scripts/tennis_data_pipeline.md` を参照し、本ドキュメントでは **フォーマットと前提条件** に集中する。
@@ -83,6 +84,17 @@ CLI や scripts による実行方法は `docs/spec/cli/tennis_multi_cam_3d_pose
 - `exist_3d_gt`: `[T, M]` — 3D GT の有無
 - `camera_C`, `camera_R`, `camera_intr`, `image_size` などのカメラ情報
 
+### 3.1 v2用GTデータ（オプション）
+
+v2モデル（階層エンコーダ + 分離出力）用のGTデータも含めることができる:
+
+- `canonical_pose_gt`: `[T, M, J, 3]` — ルート相対・回転なしの正規化ポーズ
+- `root_trans_gt`: `[T, M, 3]` — コート上の正規化ルート位置
+- `root_rot_gt`: `[T, M, 2]` — ルート回転（cos, sin）
+- `global_pose_gt`: `[T, M, J, 3]` — 再構成された絶対座標ポーズ
+
+**注意**: v2用GTデータが存在しない場合、`TennisSceneWindowDataset`は既存の`pose_3d_gt`から自動的にv2用GTを生成する。したがって、既存データセットでv2モデルの学習が可能。
+
 これにより、学習時には JSON パースと Python ループを避け、
 
 - `np.load(path, mmap_mode="r")` で npz を開き
@@ -125,3 +137,29 @@ TennisSceneWindowDataset(
 - `__getitem__` = 1 ウィンドウ分のテンソル dict
 
 を返すよう設計されている。
+
+### 4.1 出力テンソル
+
+`__getitem__` は以下のテンソルを含む辞書を返す:
+
+**基本入力データ**:
+- `keypoints_2d`: `[T, K, M, J, 2]` — 選択されたカメラの2Dキーポイント
+- `player_mask`: `[T, K, M]` — プレーヤー存在マスク
+- `court_2d`: `[K, 20, 2]` — コート2Dキーポイント
+- `camera_*`: カメラパラメータ群
+
+**v1用GTデータ**:
+- `pose_3d_gt`: `[T, M, J, 3]` — 3DポーズGT
+- `exist_3d_gt`: `[T, M]` — 存在フラグGT
+
+**v2用GTデータ（条件付き）**:
+- `canonical_pose_gt`: `[T, M, J, 3]` — v2用canonicalポーズGT
+- `root_trans_gt`: `[T, M, 3]` — v2用ルート位置GT
+- `root_rot_gt`: `[T, M, 2]` — v2用ルート回転GT
+- `global_pose_gt`: `[T, M, J, 3]` — v2用グローバルポーズGT
+
+**注意**: v2用GTデータは、
+1. npzファイルに存在する場合はそのまま読み込まれ
+2. 存在しない場合は`pose_3d_gt`から自動生成される
+
+これにより、既存データセットでのv1/v2両モデルの学習がシームレスに可能。

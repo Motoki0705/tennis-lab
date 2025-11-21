@@ -6,8 +6,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 import torch
-from src.datasets.dancetrack import TargetFrame, TrackingSample
 from torch import Tensor
+
+from src.datasets.scene_model.dancetrack import TargetFrame, TrackingSample
 
 
 @dataclass(slots=True)

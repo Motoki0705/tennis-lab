@@ -73,6 +73,18 @@ class TennisPoseSceneGenerator:
             max_files=self.cfg.asset_max_files,
         )
 
+    def reseed(self, seed: int | None) -> None:
+        """Reseed internal RNGs for deterministic multi-process generation.
+
+        This does not reload assets but resets ``random.Random`` and
+        ``torch.manual_seed`` so that each call to :meth:`generate_scene` can
+        use a scene-specific seed.
+        """
+        self.cfg.seed = seed
+        self._rng = random.Random(seed)
+        if seed is not None:
+            torch.manual_seed(int(seed))
+
     def _sample_camera(self) -> Mapping[str, Any]:
         side = self._rng.choice(["near", "far", "left", "right"])
         t = self._rng.random()
@@ -81,6 +93,11 @@ class TennisPoseSceneGenerator:
         return {
             "id": f"{side}-{t:.2f}",
             "image_size": [cam.w, cam.h],
+            # Camera extrinsics and intrinsics are kept both for projection
+            # and for downstream consumers (JSON/memmap/datasets).
+            "camera_C": cam.C.tolist(),
+            "camera_R": cam.R.tolist(),
+            "camera_intr": [cam.f, cam.cx, cam.cy],
             "_cam_internal": cam,  # kept for projection, not serialized later
         }
 
@@ -209,8 +226,17 @@ class TennisPoseSceneGenerator:
                 }
             frames.append(frame_payload)
 
-        # Serialize cameras without internal objects
-        cameras_pub = [{"id": c["id"], "image_size": c["image_size"]} for c in cameras]
+        # Serialize cameras without internal objects, but keep calibration.
+        cameras_pub = [
+            {
+                "id": c["id"],
+                "image_size": c["image_size"],
+                "camera_C": c["camera_C"],
+                "camera_R": c["camera_R"],
+                "camera_intr": c["camera_intr"],
+            }
+            for c in cameras
+        ]
         return {
             "scene_id": str(scene_id),
             "fps": fps,

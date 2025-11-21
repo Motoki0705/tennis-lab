@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Sequence
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -22,6 +23,67 @@ from src.tennis.geometry.court import (
     HALF_LENGTH,
     NET_HEIGHT_POST,
 )
+
+
+def _decompose_pose_for_v2(pose_3d: np.ndarray) -> dict[str, np.ndarray]:
+    """絶対座標ポーズからv2用要素を分解.
+
+    Args:
+        pose_3d (np.ndarray): [T, M, J, 3] 絶対座標ポーズ（正規化済み）
+
+    Returns:
+        dict[str, np.ndarray]: v2用GTデータ
+            - canonical_pose_gt: [T, M, J, 3] ルート相対座標
+            - root_trans_gt: [T, M, 3] ルート位置（x, y, z）
+            - root_rot_gt: [T, M, 2] ルート回転（cos, sin）
+            - global_pose_gt: [T, M, J, 3] 絶対座標（元データ）
+
+    """
+    T, M, J, _ = pose_3d.shape
+
+    # 1. root_trans: ルート関節（腰）の絶対位置 [T, M, 3]
+    # 最初の関節（インデックス0）をルートとして使用
+    root_trans = pose_3d[:, :, 0, :].copy()  # [T, M, 3]
+
+    # 2. ルート相対座標を計算 [T, M, J, 3]
+    pose_rel = pose_3d - root_trans[:, :, None, :]
+
+    # 3. root_rot: 肩ベクトルから向きを計算 [T, M, 2] (cos, sin)
+    # 左肩（インデックス11）と右肩（インデックス12）のベクトルから向きを計算
+    left_shoulder = pose_3d[:, :, 11, :]  # [T, M, 3]
+    right_shoulder = pose_3d[:, :, 12, :]  # [T, M, 3]
+
+    # 肩ベクトルを計算
+    shoulder_vector = right_shoulder - left_shoulder  # [T, M, 3]
+
+    # XZ平面での向きを計算（Y軸は無視）
+    theta = np.arctan2(shoulder_vector[..., 1], shoulder_vector[..., 0])  # [T, M]
+    cos_theta = np.cos(theta)
+    sin_theta = np.sin(theta)
+
+    # 4. canonical_pose: ルート相対かつ yaw を打ち消した座標 [T, M, J, 3]
+    x_rel = pose_rel[..., 0]
+    y_rel = pose_rel[..., 1]
+    z_rel = pose_rel[..., 2]
+
+    # R(-theta) を適用して yaw 成分を除去
+    x_can = cos_theta[..., None] * x_rel + sin_theta[..., None] * y_rel
+    y_can = -sin_theta[..., None] * x_rel + cos_theta[..., None] * y_rel
+    z_can = z_rel
+    canonical_pose = np.stack([x_can, y_can, z_can], axis=-1)
+
+    # 5. root_rot: yaw 角を (cos, sin) で表現
+    root_rot = np.stack([cos_theta, sin_theta], axis=-1)  # [T, M, 2]
+
+    # 6. global_pose: 元の絶対座標（そのまま）
+    global_pose = pose_3d.copy()
+
+    return {
+        "canonical_pose_gt": canonical_pose.astype("float32"),
+        "root_trans_gt": root_trans.astype("float32"),  # [T, M, 3]
+        "root_rot_gt": root_rot.astype("float32"),  # [T, M, 2]
+        "global_pose_gt": global_pose.astype("float32"),
+    }
 
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -68,6 +130,15 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--overwrite",
         action="store_true",
         help="Overwrite existing npz files if they already exist",
+    )
+    parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=0,
+        help=(
+            "Number of worker processes for scene preprocessing "
+            "(0 or 1 for single-process)."
+        ),
     )
     return parser.parse_args(argv)
 
@@ -125,11 +196,18 @@ def _process_scene_json(
         image_sizes.append((w, h))
         image_size_arr[idx, 0] = w
         image_size_arr[idx, 1] = h
-        cam_C = np.asarray(cam.get("camera_C", [0.0, 0.0, 0.0]), dtype="float32")
-        cam_R = np.asarray(
-            cam.get("camera_R", np.eye(3, dtype="float32")), dtype="float32"
-        )
-        cam_intr = np.asarray(cam.get("camera_intr", [0.0, 0.0, 0.0]), dtype="float32")
+
+        # Require real camera calibration from the simulator JSON.
+        if "camera_C" not in cam or "camera_R" not in cam or "camera_intr" not in cam:
+            msg = (
+                f"Camera entry missing calibration fields in scene: {scene_path} "
+                f"(index {idx})"
+            )
+            raise ValueError(msg)
+
+        cam_C = np.asarray(cam["camera_C"], dtype="float32")
+        cam_R = np.asarray(cam["camera_R"], dtype="float32")
+        cam_intr = np.asarray(cam["camera_intr"], dtype="float32")
         camera_C[idx, :] = cam_C.reshape(3)
         camera_R[idx, :, :] = cam_R.reshape(3, 3)
         camera_intr[idx, :] = cam_intr.reshape(3)
@@ -218,6 +296,9 @@ def _process_scene_json(
                 pose_3d[t, m, :, :] = combined3d
                 exist_3d[t, m] = True
 
+    # v2用GTデータを生成
+    v2_gt_data = _decompose_pose_for_v2(pose_3d)
+
     return {
         "keypoints_2d": keypoints_2d,
         "player_mask": player_mask,
@@ -228,7 +309,28 @@ def _process_scene_json(
         "camera_R": camera_R,
         "camera_intr": camera_intr,
         "image_size": image_size_arr,
+        # v2用GTデータ
+        **v2_gt_data,
     }
+
+
+def _process_single_scene(
+    args: tuple[Path, Path, int, int, int, bool],
+) -> None:
+    """Worker function to preprocess a single scene JSON into an npz file."""
+    scene_path, arrays_dir, max_cameras, max_players, num_joints, overwrite = args
+    stem = scene_path.stem
+    out_path = arrays_dir / f"{stem}.npz"
+    if out_path.exists() and not overwrite:
+        return
+    arrays = _process_scene_json(
+        scene_path,
+        max_cameras=max_cameras,
+        max_players=max_players,
+        num_joints=num_joints,
+    )
+    # Use uncompressed npz to allow mmap_mode="r" in np.load.
+    np.savez(out_path, **arrays)
 
 
 def _process_split(
@@ -238,6 +340,7 @@ def _process_split(
     max_players: int,
     num_joints: int,
     overwrite: bool,
+    num_workers: int,
 ) -> None:
     scenes_dir = dataset_dir / "scenes" / split
     arrays_dir = dataset_dir / "arrays" / split
@@ -245,22 +348,40 @@ def _process_split(
     if not scenes_dir.exists():
         return
     scene_paths = sorted(scenes_dir.glob("scene_*.json"))
-    for scene_path in tqdm(
-        scene_paths,
-        desc=f"Preprocess scenes ({split})",
-    ):
-        stem = scene_path.stem
-        out_path = arrays_dir / f"{stem}.npz"
-        if out_path.exists() and not overwrite:
-            continue
-        arrays = _process_scene_json(
-            scene_path,
-            max_cameras=max_cameras,
-            max_players=max_players,
-            num_joints=num_joints,
-        )
-        # Use uncompressed npz to allow mmap_mode="r" in np.load.
-        np.savez(out_path, **arrays)
+    if not scene_paths:
+        return
+
+    num_workers = int(num_workers)
+    if num_workers <= 0 or len(scene_paths) == 1:
+        # Single-process preprocessing (original behavior).
+        for scene_path in tqdm(
+            scene_paths,
+            desc=f"Preprocess scenes ({split})",
+        ):
+            _process_single_scene(
+                (
+                    scene_path,
+                    arrays_dir,
+                    max_cameras,
+                    max_players,
+                    num_joints,
+                    overwrite,
+                )
+            )
+        return
+
+    # Multi-process preprocessing using ProcessPoolExecutor.
+    tasks = [
+        (scene_path, arrays_dir, max_cameras, max_players, num_joints, overwrite)
+        for scene_path in scene_paths
+    ]
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        for _ in tqdm(
+            executor.map(_process_single_scene, tasks),
+            total=len(tasks),
+            desc=f"Preprocess scenes ({split})",
+        ):
+            pass
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -283,6 +404,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             max_players=int(args.max_players),
             num_joints=int(args.num_joints),
             overwrite=bool(args.overwrite),
+            num_workers=int(getattr(args, "num_workers", 0)),
         )
 
     return 0

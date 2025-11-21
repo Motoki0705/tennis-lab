@@ -83,12 +83,14 @@ CLI はすべて `src/cli/` 以下の Python スクリプトとして実装さ�
 
 - `cli/tennis_multi_cam_3d_pose.md`
   - 以下の CLI を一括して説明:
-    - `train.py`
+    - `train.py` (v1用)
+    - `train_v2.py` (v2用)
     - `build_dataset.py`
     - `gen_scenes.py`
     - `preprocess_memmap.py`
     - `render_scene.py`
   - 各 CLI の役割・主要引数・`scripts/` ラッパとの対応関係を記載。
+  - v2は階層エンコーダ + 分離出力の新しいアーキテクチャに対応。
 
 ---
 
@@ -106,7 +108,8 @@ CLI はすべて `src/cli/` 以下の Python スクリプトとして実装さ�
 
 - `scripts/train.md`
   - `scripts/train/run_train_scene_model.sh`
-  - `scripts/train/run_train_tennis_multi_cam_3d_pose.sh`
+  - `scripts/train/run_train_tennis_multi_cam_3d_pose.sh` (v1用)
+  - `scripts/train/run_train_tennis_multi_cam_3d_pose_v2.sh` (v2用)
   - `CONFIG` 環境変数や `--set` を使った実行例。
 
 ### 5.3 テニスデータパイプライン

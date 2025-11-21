@@ -22,6 +22,76 @@ from src.tennis.geometry.court import (
 )
 
 
+def _decompose_pose_for_v2_torch(pose_3d: Tensor) -> dict[str, Tensor]:
+    """Torch implementation of v2 GT decomposition for a single window.
+
+    Args:
+        pose_3d (Tensor): [T, M, J, 3] 絶対座標ポーズ（正規化済み）
+
+    Returns:
+        dict[str, Tensor]: canonical / root / global components.
+
+    """
+    T, M, J, _ = pose_3d.shape
+    if J <= 0:
+        return {
+            "canonical_pose_gt": pose_3d,
+            "root_trans_gt": torch.zeros(
+                (T, M, 3), dtype=pose_3d.dtype, device=pose_3d.device
+            ),
+            "root_rot_gt": torch.zeros(
+                (T, M, 2), dtype=pose_3d.dtype, device=pose_3d.device
+            ),
+            "global_pose_gt": pose_3d,
+        }
+
+    # 1. ルート平行移動を除去
+    root_trans = pose_3d[:, :, 0, :]  # [T, M, 3]
+    pose_rel = pose_3d - root_trans[:, :, None, :]
+
+    # 2. 肩ベクトルから yaw 角を推定
+    # 左肩(11), 右肩(12) が存在しない場合はそのまま返す
+    if J <= 12:
+        canonical_pose = pose_rel
+        root_rot = torch.zeros((T, M, 2), dtype=pose_3d.dtype, device=pose_3d.device)
+        root_rot[..., 0] = 1.0  # cos=1, sin=0
+        global_pose = pose_3d
+        return {
+            "canonical_pose_gt": canonical_pose,
+            "root_trans_gt": root_trans,
+            "root_rot_gt": root_rot,
+            "global_pose_gt": global_pose,
+        }
+
+    left_shoulder = pose_3d[:, :, 11, :]  # [T, M, 3]
+    right_shoulder = pose_3d[:, :, 12, :]  # [T, M, 3]
+    shoulder_vector = right_shoulder - left_shoulder  # [T, M, 3]
+
+    theta = torch.atan2(shoulder_vector[..., 1], shoulder_vector[..., 0])  # [T, M]
+    cos_theta = torch.cos(theta)
+    sin_theta = torch.sin(theta)
+
+    # 3. yaw を打ち消した canonical 座標を計算
+    x_rel = pose_rel[..., 0]
+    y_rel = pose_rel[..., 1]
+    z_rel = pose_rel[..., 2]
+
+    x_can = cos_theta[..., None] * x_rel + sin_theta[..., None] * y_rel
+    y_can = -sin_theta[..., None] * x_rel + cos_theta[..., None] * y_rel
+    z_can = z_rel
+    canonical_pose = torch.stack([x_can, y_can, z_can], dim=-1)
+
+    root_rot = torch.stack([cos_theta, sin_theta], dim=-1)  # [T, M, 2]
+    global_pose = pose_3d
+
+    return {
+        "canonical_pose_gt": canonical_pose,
+        "root_trans_gt": root_trans,
+        "root_rot_gt": root_rot,
+        "global_pose_gt": global_pose,
+    }
+
+
 @dataclass(slots=True)
 class _WindowRecord:
     """Metadata for a single temporal window within a scene."""
@@ -194,6 +264,53 @@ class TennisSceneWindowDataset(Dataset):
         src_mask = torch.from_numpy(arrs["player_mask"][t_start:t_end])  # [len,V,M]
         src_pose = torch.from_numpy(arrs["pose_3d_gt"][t_start:t_end])  # [len,M,J,3]
         src_exist = torch.from_numpy(arrs["exist_3d_gt"][t_start:t_end])  # [len,M]
+
+        # v2用GTデータが存在する場合は読み込む（後で window_T にパディング）
+        canonical_pose_gt = None
+        root_trans_gt = None
+        root_rot_gt = None
+        global_pose_gt = None
+
+        if "canonical_pose_gt" in arrs:
+            canonical_slice = torch.from_numpy(
+                arrs["canonical_pose_gt"][t_start:t_end]
+            )  # [len,M,J,3]
+            canonical_full = torch.zeros(
+                (T, self.max_players, self.num_joints, 3),
+                dtype=torch.float32,
+            )
+            canonical_full[:length, : canonical_slice.shape[1]] = canonical_slice
+            canonical_pose_gt = canonical_full
+        if "root_trans_gt" in arrs:
+            root_trans_slice = torch.from_numpy(
+                arrs["root_trans_gt"][t_start:t_end]
+            )  # [len,M,3]
+            root_trans_full = torch.zeros(
+                (T, self.max_players, 3),
+                dtype=torch.float32,
+            )
+            root_trans_full[:length, : root_trans_slice.shape[1]] = root_trans_slice
+            root_trans_gt = root_trans_full
+        if "root_rot_gt" in arrs:
+            root_rot_slice = torch.from_numpy(
+                arrs["root_rot_gt"][t_start:t_end]
+            )  # [len,M,2]
+            root_rot_full = torch.zeros(
+                (T, self.max_players, 2),
+                dtype=torch.float32,
+            )
+            root_rot_full[:length, : root_rot_slice.shape[1]] = root_rot_slice
+            root_rot_gt = root_rot_full
+        if "global_pose_gt" in arrs:
+            global_slice = torch.from_numpy(
+                arrs["global_pose_gt"][t_start:t_end]
+            )  # [len,M,J,3]
+            global_full = torch.zeros(
+                (T, self.max_players, self.num_joints, 3),
+                dtype=torch.float32,
+            )
+            global_full[:length, : global_slice.shape[1]] = global_slice
+            global_pose_gt = global_full
         src_court = torch.from_numpy(arrs["court_2d"])  # [V,20,2]
         if "camera_C" not in arrs or "camera_R" not in arrs:
             msg = "Memmap arrays missing required camera metadata"
@@ -235,6 +352,26 @@ class TennisSceneWindowDataset(Dataset):
             "t_start": torch.tensor([t_start], dtype=torch.long),
             "t_end": torch.tensor([t_end], dtype=torch.long),
         }
+
+        # v2用GTデータが memmap に存在する場合はそれを利用し、
+        # 存在しない場合は pose_3d_gt から自動生成する。
+        if (
+            canonical_pose_gt is not None
+            and root_trans_gt is not None
+            and root_rot_gt is not None
+            and global_pose_gt is not None
+        ):
+            sample["canonical_pose_gt"] = canonical_pose_gt
+            sample["root_trans_gt"] = root_trans_gt
+            sample["root_rot_gt"] = root_rot_gt
+            sample["global_pose_gt"] = global_pose_gt
+        else:
+            v2_gt_data = _decompose_pose_for_v2_torch(pose_3d)
+            sample["canonical_pose_gt"] = v2_gt_data["canonical_pose_gt"]
+            sample["root_trans_gt"] = v2_gt_data["root_trans_gt"]
+            sample["root_rot_gt"] = v2_gt_data["root_rot_gt"]
+            sample["global_pose_gt"] = v2_gt_data["global_pose_gt"]
+
         return apply_random_2d_affine(
             sample,
             enabled=self.augment_2d,
@@ -414,6 +551,14 @@ class TennisSceneWindowDataset(Dataset):
             "t_start": torch.tensor([t_start], dtype=torch.long),
             "t_end": torch.tensor([t_end], dtype=torch.long),
         }
+
+        # v2用GTデータを pose_3d_gt から生成
+        v2_gt_data = _decompose_pose_for_v2_torch(pose_3d)
+        sample["canonical_pose_gt"] = v2_gt_data["canonical_pose_gt"]  # [T, M, J, 3]
+        sample["root_trans_gt"] = v2_gt_data["root_trans_gt"]  # [T, M, 3]
+        sample["root_rot_gt"] = v2_gt_data["root_rot_gt"]  # [T, M, 2]
+        sample["global_pose_gt"] = v2_gt_data["global_pose_gt"]  # [T, M, J, 3]
+
         return apply_random_2d_affine(
             sample,
             enabled=self.augment_2d,

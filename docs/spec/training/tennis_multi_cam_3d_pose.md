@@ -5,15 +5,19 @@
 対象:
 - `src/training/utils/config.py:ConfigLoader`（`task == "tennis_multi_cam_3d_pose"` 分岐）
 - `src/training/tennis_multi_cam_3d_pose/datamodule.py:TennisPoseDataModule`
-- `src/training/tennis_multi_cam_3d_pose/lightning.py:TennisDetrModule`
-- `src/cli/tennis_multi_cam_3d_pose/train.py`
-- YAML 設定: `configs/tennis_multi_cam_3d_pose.yaml` およびその includes
+- `src/training/tennis_multi_cam_3d_pose/lightning.py:TennisDetrModule` (v1用)
+- `src/training/tennis_multi_cam_3d_pose/lightning_v2.py:TennisDetrV2Module` (v2用)
+- `src/cli/tennis_multi_cam_3d_pose/train.py` (v1用)
+- `src/cli/tennis_multi_cam_3d_pose/train_v2.py` (v2用)
+- YAML 設定: `configs/tennis_multi_cam_3d_pose.yaml` (v1用) および `configs/tennis_multi_cam_3d_pose_v2.yaml` (v2用)
+
+> **注**: v1（元のモデル）とv2（階層エンコーダ + 分離出力）の両バージョンに対応。
 
 ---
 
 ## 1. ワークフロー（概要）
 
-擬似コード:
+### 1.1 v1モデルのワークフロー
 
 ```python
 from src.training.utils.config import load_cfg, ConfigLoader
@@ -21,7 +25,7 @@ from src.training.utils.config import load_cfg, ConfigLoader
 cfg     = load_cfg("configs/tennis_multi_cam_3d_pose.yaml", overrides)
 loader  = ConfigLoader(cfg)
 dm      = loader.build_datamodule()       # TennisPoseDataModule
-lit     = loader.build_lit_module()       # TennisDetrModule
+lit     = loader.build_lit_module()       # TennisDetrModule (v1)
 logger  = loader.build_logger()           # TensorBoardLogger
 cbs     = loader.build_callbacks()        # Checkpoint, LR monitor など
 trainer = loader.build_trainer(logger, cbs)
@@ -29,7 +33,27 @@ trainer = loader.build_trainer(logger, cbs)
 trainer.fit(lit, datamodule=dm)
 ```
 
-CLI では `src/cli/tennis_multi_cam_3d_pose/train.py` がこのフローをラップする。
+### 1.2 v2モデルのワークフロー
+
+```python
+from src.training.utils.config import load_cfg, ConfigLoader
+
+cfg     = load_cfg("configs/tennis_multi_cam_3d_pose_v2.yaml", overrides)
+loader  = ConfigLoader(cfg)
+dm      = loader.build_datamodule()       # TennisPoseDataModule (v2対応)
+lit     = loader.build_lit_module()       # TennisDetrV2Module (v2)
+logger  = loader.build_logger()           # TensorBoardLogger
+cbs     = loader.build_callbacks()        # Checkpoint, LR monitor など
+trainer = loader.build_trainer(logger, cbs)
+
+trainer.fit(lit, datamodule=dm)
+```
+
+**重要**: `ConfigLoader.build_lit_module()` は `training._target_` に基づいて自動的にv1/v2を判定する。
+
+CLI では以下がそれぞれのフローをラップする:
+- `src/cli/tennis_multi_cam_3d_pose/train.py` (v1用)
+- `src/cli/tennis_multi_cam_3d_pose/train_v2.py` (v2用)
 
 ---
 
@@ -52,14 +76,29 @@ def build_datamodule(self) -> DancetrackDataModule | TennisPoseDataModule:
 
 ### 2.2 `build_lit_module`
 
+v1/v2を自動判定する実装:
+
 ```python
-def build_lit_module(self) -> SceneModelLightningModule | TennisDetrModule:
+def build_lit_module(self) -> SceneModelLightningModule | TennisDetrModule | TennisDetrV2Module:
     task = self._task()
     if task == "tennis_multi_cam_3d_pose":
-        from src.training.tennis_multi_cam_3d_pose.lightning import TennisDetrModule
-        return TennisDetrModule(self.cfg)
+        training_cfg = self.cfg.get("training", {})
+        target = training_cfg.get("_target_", "")
+
+        if "TennisDetrV2Module" in target:
+            from src.training.tennis_multi_cam_3d_pose.lightning_v2 import TennisDetrV2Module
+            return TennisDetrV2Module(self.cfg)
+        else:
+            from src.training.tennis_multi_cam_3d_pose.lightning import TennisDetrModule
+            return TennisDetrModule(self.cfg)
     ...
 ```
+
+**判定ロジック**:
+- `training._target_` に `TennisDetrV2Module` を含む → v2
+- それ以外 → v1
+
+これにより、YAML設定だけでv1/v2を切り替え可能。
 
 その他のメソッド（`build_logger`, `build_callbacks`, `build_trainer`）は SceneModel 用と共通で、`cfg.logging` / `cfg.training.trainer` を解釈して TensorBoardLogger / ModelCheckpoint / LRMonitor / Trainer を構築する。
 
@@ -67,7 +106,7 @@ def build_lit_module(self) -> SceneModelLightningModule | TennisDetrModule:
 
 ## 3. YAML 設定構成
 
-### 3.1 トップレベル: `configs/tennis_multi_cam_3d_pose.yaml`
+### 3.1 v1トップレベル: `configs/tennis_multi_cam_3d_pose.yaml`
 
 ```yaml
 task: tennis_multi_cam_3d_pose
@@ -80,9 +119,26 @@ includes:
   logging: configs/logging/tennis_mvpose.yaml
 ```
 
+### 3.2 v2トップレベル: `configs/tennis_multi_cam_3d_pose_v2.yaml`
+
+```yaml
+task: tennis_multi_cam_3d_pose
+experiment_name: tennis_mvpose_v2_dev
+
+includes:
+  dataset: configs/datasets/tennis_multi_cam_3d_pose_sim.yaml
+  model: configs/models/tennis_mvpose_v2.yaml
+  training: configs/training/tennis_mvpose_v2.yaml
+  logging: configs/logging/tennis_mvpose.yaml
+```
+
+**重要な違い**:
+- v2では `model` と `training` がv2専用設定を指す
+- `training._target_` でv1/v2を自動判定
+
 - `load_cfg` が `includes` を展開し、`cfg.dataset`, `cfg.model`, `cfg.training`, `cfg.logging` を構成する。
 
-### 3.2 データセット: `configs/datasets/tennis_multi_cam_3d_pose_sim.yaml`
+### 3.3 データセット: `configs/datasets/tennis_multi_cam_3d_pose_sim.yaml`
 
 代表例:
 
@@ -112,56 +168,108 @@ loader:
     pin_memory: true
 ```
 
-### 3.3 モデル: `configs/models/tennis_mvpose.yaml`
+### 3.4 v1モデル: `configs/models/tennis_mvpose.yaml`
 
 `TennisDetrConfig` に対応:
 
 ```yaml
+_target_: src.models.tennis_multi_cam_3d_pose.TennisDetrConfig
 D_model: 256
 dim_feedforward: 1024
 nheads: 8
 encoder_layers: 6
 decoder_layers: 6
 dropout: 0.1
+num_joints: 20
+num_court_points: 20
+num_queries: 20
+```
+
+### 3.5 v2モデル: `configs/models/tennis_mvpose_v2.yaml`
+
+`TennisDetrV2Config` に対応:
+
+```yaml
+_target_: src.models.tennis_multi_cam_3d_pose.TennisDetrV2Config
+D_model: 256
+dim_feedforward: 1024
+nheads: 8
+decoder_layers: 6
+dropout: 0.1
+
+# v2階層エンコーダパラメータ
+intra_layers: 3
+inter_layers: 3
+temporal_layers: 3
 
 num_joints: 20
 num_court_points: 20
-num_queries: 6
-max_cameras: 8
-max_frames: 32
+num_queries: 20
 ```
 
-### 3.4 トレーニング: `configs/training/tennis_mvpose.yaml`
+### 3.6 v1トレーニング: `configs/training/tennis_mvpose.yaml`
 
 ```yaml
-seed: 42
-
-trainer:
-  max_epochs: 50
-  accelerator: auto
-  devices: 1
-  precision: 16-mixed
-  gradient_clip_val: 1.0
-
+_target_: src.training.tennis_multi_cam_3d_pose.TennisDetrModule
 optimizer:
+  _target_: torch.optim.AdamW
   lr: 1.0e-4
   weight_decay: 1.0e-4
-
-max_steps: 0          # >0 の場合、CosineAnnealingLR(T_max=max_steps) を有効化
-
+scheduler:
+  _target_: torch.optim.lr_scheduler.StepLR
+  step_size: 10
+  gamma: 0.5
 loss:
   lambda_pose: 1.0
-  lambda_exist: 0.1
-  lambda_vel: 0.0
+  lambda_exist: 0.05
+trainer:
+  max_epochs: 50
+  accelerator: gpu
+  devices: 1
 ```
 
-### 3.5 ロギング: `configs/logging/tennis_mvpose.yaml`
+### 3.7 v2トレーニング: `configs/training/tennis_mvpose_v2.yaml`
+
+```yaml
+_target_: src.training.tennis_multi_cam_3d_pose.TennisDetrV2Module
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+scheduler:
+  _target_: torch.optim.lr_scheduler.StepLR
+  step_size: 10
+  gamma: 0.5
+loss:
+  lambda_canonical: 1.0
+  lambda_root_trans: 1.0
+  lambda_root_rot: 0.5
+  lambda_global: 1.0
+  lambda_exist: 0.05
+  lambda_pose_match: 1.0
+  lambda_exist_match: 0.05
+trainer:
+  max_epochs: 50
+  accelerator: gpu
+  devices: 1
+```
+
+**重要な違い**:
+- v2では `_target_` が `TennisDetrV2Module` を指す
+- v2用の4要素損失設定が追加されている
+
+### 3.8 ロギング: `configs/logging/tennis_mvpose.yaml`
+
+v1/v2で共通のロギング設定:
 
 ```yaml
 logger:
   save_dir: runs
   name: tennis_multi_cam_3d_pose
   default_hp_metric: false
+```
+
+---
 
 callbacks:
   checkpoint:
@@ -180,11 +288,13 @@ visualizer:
 
 ---
 
-## 4. LightningModule: `TennisDetrModule`
+## 4. LightningModule
 
-実装: `src/training/tennis/lightning.py:TennisDetrModule`
+### 4.1 v1: `TennisDetrModule`
 
-### 4.1 入出力
+実装: `src/training/tennis_multi_cam_3d_pose/lightning.py:TennisDetrModule`
+
+#### 4.1.1 入出力
 
 - `forward(batch)`:
   - 入力バッチは `TennisPoseDataModule` からの dict:
@@ -195,50 +305,52 @@ visualizer:
     - `"exist_3d_gt": [B,T,M]`
   - `TennisDETR` に渡し、`{"pose_3d": [B,Q,T,J,3], "exist_conf": [B,Q,1]}` を返す。
 
-### 4.2 損失計算（概要）
+#### 4.1.2 損失計算（概要）
 
 ```python
-pose_pred  # [B,Q,T,J,3]
-exist_pred # [B,Q,1]
-pose_gt    # [B,T,M,J,3]
-exist_gt   # [B,T,M]
+pose_pred  # [B,Q,T,J,3] - モデル出力
+pose_gt    # [B,T,M,J,3] - GTデータ
 ```
 
-- 対応付け:
-  - GT を `[B,M,T,J,3]` に permute してから `[B,Q,T,J,3]` にコピー（`Q >= M` 前提で `M` まで）。
-  - `exist_gt.any(dim=1)` を `[B,M]` として、`[B,Q,1]` にコピー。
-- 損失:
-  - `pose_l1`: 存在 Query に対する L1（`pose_mask` でマスクし、非ゼロ要素数で割る）。
-  - `exist_bce`: `binary_cross_entropy(exist_pred, exist_gt_query)`。
-  - `vel_l2`: オプション。`pose_pred[:, :, 1:] - pose_pred[:, :, :-1]` の L2。
-  - 合計: `total = λ_pose * pose_l1 + λ_exist * exist_bce + λ_vel * vel_l2`。
+### 4.2 v2: `TennisDetrV2Module`
 
-### 4.3 ロギングと可視化
+実装: `src/training/tennis_multi_cam_3d_pose/lightning_v2.py:TennisDetrV2Module`
 
-- `training_step` / `validation_step` で `train/total`, `val/total` などを `self.log`。
-- `validation_step` では、`visualizer.max_batches` までのバッチについて、簡易な GT vs Pred 2D オーバーレイ画像を TensorBoard に保存。
-  - 実装イメージ:
+#### 4.2.1 入出力
 
+- `forward(batch)`:
+  - 入力バッチはv1と同じ（v2用GTデータも含む）
+  - `TennisDETR_v2` に渡し、以下を返す:
     ```python
-    if batch_idx < cfg.logging.visualizer.max_batches:
-        img = _render_2d_overlay(batch, outputs)  # [3,H,W]
-        self.logger.experiment.add_image(
-            "val/pose2d_gt_vs_pred",
-            img,
-            global_step=self.global_step,
-        )
+    {
+        "canonical_pose": [B,Q,T,J,3],
+        "root_trans": [B,Q,T,3],
+        "root_rot": [B,Q,T,2],
+        "global_pose": [B,Q,T,J,3],
+        "exist_conf": [B,Q,1]
+    }
     ```
 
-  - 将来的には `src/visualize/tennis_pose.py` 由来の 3D/2D レンダリングユーティリティで置き換え可能。
+#### 4.2.2 損失計算（概要）
+
+```python
+canonical_pred  # [B,Q,T,J,3] - canonical pose
+root_trans_pred # [B,Q,T,3]   - root translation
+root_rot_pred   # [B,Q,T,2]   - root rotation
+global_pred     # [B,Q,T,J,3] - global pose
+
+# v2用GTデータとの損失計算
+canonical_gt, root_trans_gt, root_rot_gt, global_gt
+```
 
 ---
 
-## 5. CLI: `tennis_multi_cam_3d_pose/train.py`
+## 5. CLI
 
-実装: `src/cli/tennis_multi_cam_3d_pose/train.py`
+### 5.1 v1 CLI: `src/cli/tennis_multi_cam_3d_pose/train.py`
 
 - 役割:
-  - `--config configs/tennis_multi_cam_3d_pose.yaml` と任意の `--set key=value` から DictConfig を構築し、上記パイプラインを起動する。
+  - `--config configs/tennis_multi_cam_3d_pose.yaml` と任意の `--set key=value` から DictConfig を構築し、v1パイプラインを起動する。
 - 主な引数:
 
 | 引数 | 説明 |
@@ -246,21 +358,66 @@ exist_gt   # [B,T,M]
 | `--config` | トップレベル YAML (`configs/tennis_multi_cam_3d_pose.yaml`) |
 | `--set` | `dataset.name=... training.trainer.max_epochs=...` などの dotlist 形式オーバーライド |
 
-- 内部処理:
-  1. `load_cfg(config_path, overrides)` で設定を読み込む。
-  2. `cfg.task == "tennis_pose"` を確認（異なる場合は使用法エラー）。
-  3. `ConfigLoader(cfg)` を用いて DataModule, LightningModule, Logger, Callbacks, Trainer を構築。
-  4. `trainer.fit(lit, datamodule=dm)` を起動。
+### 5.2 v2 CLI: `src/cli/tennis_multi_cam_3d_pose/train_v2.py`
+
+- 役割:
+  - `--config configs/tennis_multi_cam_3d_pose_v2.yaml` と任意の `--set key=value` から DictConfig を構築し、v2パイプラインを起動する。
+- 主な引数:
+
+| 引数 | 説明 |
+| --- | --- |
+| `--config` | トップレベル YAML (`configs/tennis_multi_cam_3d_pose_v2.yaml`) |
+| `--set` | `dataset.name=... training.trainer.max_epochs=...` などの dotlist 形式オーバーライド |
+
+**内部処理**（v1/v2共通）:
+1. `load_cfg(config_path, overrides)` で設定を読み込む。
+2. `cfg.task == "tennis_multi_cam_3d_pose"` を確認（異なる場合は使用法エラー）。
+3. `ConfigLoader(cfg)` を用いて DataModule, LightningModule, Logger, Callbacks, Trainer を構築。
+4. `trainer.fit(lit, datamodule=dm)` を起動。
 
 ---
 
 ## 6. 実行例
 
+### 6.1 v1モデルの学習
+
 ```bash
 python src/cli/tennis_multi_cam_3d_pose/train.py \
   --config configs/tennis_multi_cam_3d_pose.yaml \
   --set dataset.name=sim_fps60_dur3p0_C4_P1-20_T10 \
-        training.trainer.max_epochs=5
+  --set training.trainer.max_epochs=50
 ```
 
-このコマンドにより、`data/tennis_autogen/sim_fps60_dur3p0_C4_P1-20_T10` を読み込み、`TennisDETR` を 5 エポック訓練する。TensorBoard ログは `runs/tennis_multi_cam_3d_pose/<experiment_name>/` に保存される。
+### 6.2 v2モデルの学習
+
+```bash
+python src/cli/tennis_multi_cam_3d_pose/train_v2.py \
+  --config configs/tennis_multi_cam_3d_pose_v2.yaml \
+  --set dataset.name=sim_fps60_dur3p0_C4_P1-20_T10 \
+  --set training.trainer.max_epochs=50 \
+  --set model.cfg.intra_layers=4
+```
+
+### 6.3 scriptsラッパの使用
+
+```bash
+# v1
+./scripts/train/run_train_tennis_multi_cam_3d_pose.sh
+
+# v2
+./scripts/train/run_train_tennis_multi_cam_3d_pose_v2.sh
+```
+
+---
+
+## 7. v1/v2の比較
+
+| 項目 | v1 | v2 |
+|------|----|----|
+| モデルアーキテクチャ | 単一エンコーダ | 階層エンコーダ |
+| 出力形式 | pose_3d [B,Q,T,J,3] | 分離出力（4要素） |
+| LightningModule | TennisDetrModule | TennisDetrV2Module |
+| 設定ファイル | tennis_mvpose.yaml | tennis_mvpose_v2.yaml |
+| 損失関数 | 単一ポーズ損失 | 4要素損失 |
+| CLI | train.py | train_v2.py |
+| データセット互換性 | 既存データ | 既存データ（自動GT生成） |

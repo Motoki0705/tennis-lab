@@ -10,17 +10,17 @@ augment_2d: true
 
 loader:
   train:
-    batch_size: 32
+    batch_size: 64
     num_workers: 4
     shuffle: true
     pin_memory: true
   val:
-    batch_size: 64
+    batch_size: 128
     num_workers: 2
     shuffle: false
     pin_memory: true
   test:
-    batch_size: 64
+    batch_size: 128
     num_workers: 2
     shuffle: false
     pin_memory: true
