@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from src.training.tennis_multi_cam_3d_pose.lightning_v2_5 import (
         TennisDetrV25Module,
     )
+    from src.training.tennis_multi_cam_3d_pose.lightning_v3 import TennisDetrV3Module
 
 INCLUDE_KEY = "includes"
 _TRUTHY = {"1", "true", "yes", "on"}
@@ -136,6 +137,7 @@ class ConfigLoader:
         | TennisDetrModule
         | TennisDetrV2Module
         | TennisDetrV25Module
+        | TennisDetrV3Module
     ):
         """Instantiate the LightningModule for the configured task.
 
@@ -146,6 +148,18 @@ class ConfigLoader:
         experiment_name = str(self.cfg.get("experiment_name") or "").lower()
         training_cfg = self.cfg.get("training", {})
         target = str(training_cfg.get("_target_", ""))
+
+        if task == "tennis_multi_cam_3d_pose" and "v3" in experiment_name:
+            self._logger.info(
+                "Building TennisDetrV3Module (experiment_name=%s)", experiment_name
+            )
+            from src.training.tennis_multi_cam_3d_pose.lightning_v3 import (
+                TennisDetrV3Module,
+            )
+
+            module = TennisDetrV3Module(self.cfg)
+            self._logger.info("LightningModule built for task=%s", task)
+            return module
 
         if task == "tennis_multi_cam_3d_pose" and "v2_5" in experiment_name:
             self._logger.info(
