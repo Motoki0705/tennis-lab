@@ -113,12 +113,12 @@ data/tennis_autogen/
 
 ---
 
-## 4. 学習を走らせる（v1 / v2）
+## 4. 学習を走らせる（v1 / v2 / v2.5 / v3）
 
-`TennisSceneWindowDataset` → `TennisPoseDataModule` → `TennisDETR (v1/v2)` というパイプラインで学習を実行する。
+`TennisSceneWindowDataset` → `TennisPoseDataModule` → `TennisDETR (v1/v2/v2.5/v3)` というパイプラインで学習を実行する。
 
 - training spec: `docs/training/tennis_multi_cam_3d_pose.md`
-- model spec: `docs/models/tennis_mvpose.md`, `docs/models/tennis_mvpose_v2.md`
+- model spec: `docs/models/tennis_mvpose.md`, `docs/models/tennis_mvpose_v2.md`, `docs/models/tennis_mvpose_v3.md`
 - CLI spec: `docs/cli/tennis_multi_cam_3d_pose.md`
 
 ### 4.1 v1 モデルの学習
@@ -149,12 +149,36 @@ data/tennis_autogen/
   - `includes.training`: `configs/training/tennis_mvpose_v2.yaml`
   - `includes.logging`: `configs/logging/tennis_mvpose.yaml`
 
+### 4.3 v2.5 モデルの学習
+
+```bash
+./scripts/train/run_train_tennis_multi_cam_3d_pose_v2_5.sh
+```
+
+代表的な設定:
+
+- トップレベル: `configs/tennis_multi_cam_3d_pose_v2_5.yaml`
+  - `includes.model`: `configs/models/tennis_mvpose_v2_5.yaml`
+  - `includes.training`: `configs/training/tennis_mvpose_v2_5.yaml`
+
+### 4.4 v3 モデルの学習
+
+```bash
+./scripts/train/run_train_tennis_multi_cam_3d_pose_v3.sh
+```
+
+代表的な設定:
+
+- トップレベル: `configs/tennis_multi_cam_3d_pose_v3.yaml`
+  - `includes.model`: `configs/models/tennis_mvpose_v3.yaml`
+  - `includes.training`: `configs/training/tennis_mvpose_v3.yaml`
+
 `--set key=value` で設定をその場で上書きできる:
 
 ```bash
-./scripts/train/run_train_tennis_multi_cam_3d_pose_v2.sh \
+./scripts/train/run_train_tennis_multi_cam_3d_pose_v3.sh \
   --set training.trainer.max_epochs=50 \
-  --set model.cfg.intra_layers=4
+  --set model.num_queries=30
 ```
 
 Config システムの詳細は `docs/configs/index.md` を参照。
@@ -204,7 +228,25 @@ uv run python src/cli/tennis_multi_cam_3d_pose/render_scene.py \
   --out outputs/vis/scene_000000.mp4
 ```
 
-### 6.2 データ拡張後のサンプル可視化
+### 6.2 学習済みモデルの評価・可視化
+
+v1/v2/v2.5/v3 いずれも共通の評価 CLI を使用:
+
+```bash
+# v2.5 の例
+./scripts/evaluate/run_eval_tennis_multi_cam_3d_pose_v2_5.sh \
+  --splits train test \
+  --num-samples 4
+
+# v3 の例
+./scripts/evaluate/run_eval_tennis_multi_cam_3d_pose_v3.sh \
+  --splits test \
+  --num-samples 8
+```
+
+詳細は `docs/evaluate/tennis_multi_cam_3d_pose.md` を参照。
+
+### 6.3 データ拡張後のサンプル可視化
 
 ```bash
 ./scripts/tools/render_tennis_augmented.sh --num-samples 8 --split val
@@ -223,5 +265,8 @@ Quickstart で一周したあとに、より深く理解したい場合は次を
 - **モデルアーキテクチャ**:
   - v1: `docs/models/tennis_mvpose.md`
   - v2: `docs/models/tennis_mvpose_v2.md`
+  - v2.5: v2とほぼ同じ仕様
+  - v3: `docs/models/tennis_mvpose_v3.md`
+- **評価・可視化**: `docs/evaluate/tennis_multi_cam_3d_pose.md`
 - **Config/YAML システム**: `docs/configs/index.md`
 - **CLI 全体像**: `docs/cli/tennis_multi_cam_3d_pose.md`
