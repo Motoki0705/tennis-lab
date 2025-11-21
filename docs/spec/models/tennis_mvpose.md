@@ -1,10 +1,13 @@
-# Tennis-DETR モデル仕様（Spec）
+# Tennis-DETR v1 モデル仕様（Spec）
 
-本書は、テニス用マルチビュー 3D ポーズ推定モデル `TennisDETR` と、その設定クラス `TennisDetrConfig` の仕様をまとめる。
+本書は、テニス用マルチビュー 3D ポーズ推定モデル v1 `TennisDETR` と、その設定クラス `TennisDetrConfig` の仕様をまとめる。
 
 実装:
-- モデル本体: `src/models/tennis/model.py:TennisDETR`
-- 設定クラス: `src/models/tennis/config.py:TennisDetrConfig`
+- モデル本体: `src/models/tennis_multi_cam_3d_pose/model.py:TennisDETR`
+- 設定クラス: `src/models/tennis_multi_cam_3d_pose/config.py:TennisDetrConfig`
+- ファクトリ: `src/models/tennis_multi_cam_3d_pose/factory.py:create_tennis_model("v1")`
+
+> **注**: これはv1（元のモデル）の仕様です。v2（階層エンコーダ + 分離出力）については [tennis_mvpose_v2.md](./tennis_mvpose_v2.md) を参照してください。
 
 ---
 

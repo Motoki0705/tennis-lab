@@ -50,7 +50,11 @@
 - `seed`: 乱数シード（`random.Random` と `torch.manual_seed` を初期化）
 
 **処理フロー**
-1. **カメラ構築**: `_sample_camera()` がフェンスの near/far/left/right 辺から一様サンプル。LookAt 先は `(0,0,0.5)` 固定。`make_look_at_camera()` 内では `torch.cross(..., dim=0)` と `math.tan` で姿勢/焦点距離を算出。
+1. **カメラ構築**: `_sample_camera()` がフェンスの near/far/left/right 辺から一様サンプル。LookAt 先は `(0,0,0.5)` 固定。`make_look_at_camera()` 内では `torch.cross(..., dim=0)` と `math.tan` で姿勢/焦点距離を算出し、結果として
+    - `camera_C: [3]` カメラ中心（world座標）
+    - `camera_R: [3][3]` 回転行列（world→camera）
+    - `camera_intr: [f, cx, cy]` ピクセル単位の焦点距離と主点
+    を `cameras[i]` に保持する。
 2. **プレーヤー構築**: `_build_players(frames_total)` がランダム人数を決め、`TennisAssetLibrary.sample_sequence` で各プレーヤーの軌跡を取得。
 3. **配置（アンカーサンプリング）**: `_sample_player_origins(count)` がフェンス内矩形から anchor (x,y,0) を抽出し、`player_min_separation` を満たすまでランダムサーチ。失敗時は RuntimeError。
 4. **回転/平行移動**: `_place_sample(sample, anchor, yaw)` がランダム yaw（-π〜π）を Z 回り回転行列 `_rotation_matrix_z` で適用し、ペルビス軌跡＋anchor を加算してワールド座標へ変換。
@@ -75,7 +79,7 @@
 | `scene_id` | str | CLI が付与する一意 ID（例: `0`, `1`） |
 | `fps` | int | シーン共通フレームレート |
 | `num_cameras` | int | `cameras` の長さ |
-| `cameras[i]` | `{id: str, image_size: [w, h]}` | 内部で持っていた `Camera` から公開属性のみ抜粋 |
+| `cameras[i]` | `{id: str, image_size: [w, h], camera_C: [3], camera_R: [3][3], camera_intr: [3]}` | 内部 `Camera(C,R,f,cx,cy,w,h)` から画素サイズとキャリブレーション（world→camera, intrinsics）を公開 |
 | `frames[t].num_players` | int | プレーヤー数。`player_joints_3d` 長さと一致必須 |
 | `frames[t].player_joints_3d` | `list[list[17][3]]` | 各プレーヤーの 3D ViTPose 座標（メートル） |
 | `frames[t].racket_points_3d` | `list[list[3][3]]` | 各プレーヤーのラケット 3 点 3D |

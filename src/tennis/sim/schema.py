@@ -31,7 +31,7 @@ def validate_scene_dict(scene: Mapping[str, Any]) -> None:
     _require(isinstance(frames, Sequence), "frames must be a sequence")
     _require(len(cams) == num_cams, "len(cameras) must equal num_cameras")
 
-    # Minimal camera shape: id + image_size
+    # Minimal camera shape: id + image_size (+ optional calibration)
     for cam in cams:
         _require(isinstance(cam, Mapping), "camera entry must be a mapping")
         _require("id" in cam, "camera missing id")
@@ -41,6 +41,32 @@ def validate_scene_dict(scene: Mapping[str, Any]) -> None:
             isinstance(size, Sequence) and len(size) == 2,
             "image_size must be [w, h]",
         )
+
+        # Optional: camera_C (3,), camera_R (3x3), camera_intr (3,) for
+        # downstream reprojection and memmap preprocessing.
+        cam_C = cam.get("camera_C")
+        cam_R = cam.get("camera_R")
+        cam_intr = cam.get("camera_intr")
+        if cam_C is not None:
+            _require(
+                isinstance(cam_C, Sequence) and len(cam_C) == 3,
+                "camera_C must be length-3 sequence",
+            )
+        if cam_R is not None:
+            _require(
+                isinstance(cam_R, Sequence) and len(cam_R) == 3,
+                "camera_R must be 3x3 matrix (3 rows)",
+            )
+            for row in cam_R:
+                _require(
+                    isinstance(row, Sequence) and len(row) == 3,
+                    "camera_R rows must be length-3",
+                )
+        if cam_intr is not None:
+            _require(
+                isinstance(cam_intr, Sequence) and len(cam_intr) == 3,
+                "camera_intr must be [f, cx, cy]",
+            )
 
     # Minimal frame payload: 2D keypoints for every camera + optional 3D GT
     for fr in frames:

@@ -10,6 +10,7 @@ import json
 import subprocess
 import sys
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -41,6 +42,47 @@ class _SplitConfig:
     name: str
     num_scenes: int
     seed: int
+
+
+_GENERATOR: TennisPoseSceneGenerator | None = None
+
+
+def _init_generator(gen_cfg_dict: dict[str, Any]) -> None:
+    """Initialize worker processes by constructing a shared generator.
+
+    The GenConfig is passed as a plain mapping to avoid OmegaConf dependence
+    in worker processes.
+    """
+    global _GENERATOR
+    cfg = GenConfig(**gen_cfg_dict)
+    _GENERATOR = TennisPoseSceneGenerator(cfg)
+
+
+def _worker_generate_scene(args: tuple[int, str, int]) -> tuple[int, dict[str, Any]]:
+    """Worker function to generate and validate a single scene.
+
+    Args:
+        args (tuple[int, str, int]): Tuple of (scene_index, split_name, base_seed).
+
+    Returns:
+        tuple[int, dict[str, Any]]: Tuple of (scene_index, scene_dict).
+
+    Raises:
+        RuntimeError: If the worker generator is not initialized.
+
+    """
+    idx, split_name, base_seed = args
+    if _GENERATOR is None:
+        msg = "Worker generator is not initialized"
+        raise RuntimeError(msg)
+    # Use a per-scene seed derived from the split seed and scene index so that
+    # results are deterministic but differ across scenes, independent of
+    # scheduling.
+    _GENERATOR.reseed(int(base_seed) + int(idx))
+    scene_id = f"{split_name}_{idx}"
+    scene = _GENERATOR.generate_scene(scene_id=scene_id)
+    validate_scene_dict(scene)
+    return idx, dict(scene)
 
 
 def _parse_args(argv: Sequence[str] | None = None) -> SimpleNamespace:
@@ -113,6 +155,7 @@ def _parse_args(argv: Sequence[str] | None = None) -> SimpleNamespace:
         "window_T": 10,
         "window_stride": 5,
         "seed": 1234,
+        "num_workers": 0,
         "overwrite": False,
     }
 
@@ -193,6 +236,7 @@ def _generate_split_scenes(
     asset_root: str,
     min_players: int,
     max_players: int,
+    num_workers: int,
 ) -> None:
     """Generate JSON scenes for a given split.
 
@@ -205,6 +249,7 @@ def _generate_split_scenes(
         asset_root (str): Path to 3DTennisDS asset directory.
         min_players (int): Minimum number of players per scene.
         max_players (int): Maximum number of players per scene.
+        num_workers (int): Number of worker processes for parallel generation.
 
     Returns:
         None: This function does not return a value.
@@ -222,16 +267,39 @@ def _generate_split_scenes(
         max_players=max_players,
         seed=split_cfg.seed,
     )
-    gen = TennisPoseSceneGenerator(cfg)
-    for i in tqdm(
-        range(split_cfg.num_scenes),
-        desc=f"Generating scenes ({split_cfg.name})",
-    ):
-        scene_id = f"{split_cfg.name}_{i}"
-        scene = gen.generate_scene(scene_id=scene_id)
-        validate_scene_dict(scene)
-        path = split_dir / f"scene_{i:06d}.json"
-        write_scene_json(path, scene)
+
+    num_workers = int(num_workers)
+    if num_workers <= 0:
+        # Single-process generation (original behavior).
+        gen = TennisPoseSceneGenerator(cfg)
+        for i in tqdm(
+            range(split_cfg.num_scenes),
+            desc=f"Generating scenes ({split_cfg.name})",
+        ):
+            scene_id = f"{split_cfg.name}_{i}"
+            scene = gen.generate_scene(scene_id=scene_id)
+            validate_scene_dict(scene)
+            path = split_dir / f"scene_{i:06d}.json"
+            write_scene_json(path, scene)
+        return
+
+    # Multi-process generation using a shared generator per worker.
+    gen_cfg_dict = asdict(cfg)
+    tasks = [
+        (i, split_cfg.name, int(split_cfg.seed)) for i in range(split_cfg.num_scenes)
+    ]
+    with ProcessPoolExecutor(
+        max_workers=num_workers,
+        initializer=_init_generator,
+        initargs=(gen_cfg_dict,),
+    ) as executor:
+        for idx, scene in tqdm(
+            executor.map(_worker_generate_scene, tasks),
+            total=split_cfg.num_scenes,
+            desc=f"Generating scenes ({split_cfg.name})",
+        ):
+            path = split_dir / f"scene_{idx:06d}.json"
+            write_scene_json(path, scene)
 
 
 def _build_index_for_split(
@@ -387,6 +455,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             asset_root=str(args.asset_root),
             min_players=int(args.min_players),
             max_players=int(args.max_players),
+            num_workers=int(getattr(args, "num_workers", 0)),
         )
 
     # Build simple JSONL indices.
