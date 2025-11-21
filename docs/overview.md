@@ -65,7 +65,7 @@
 ## 4. CLI 仕様
 
 CLI はすべて `src/cli/` 以下の Python スクリプトとして実装されており、
-実行方法や引数は `docs/spec/cli/` にまとめてある。
+実行方法や引数は `docs/cli/` にまとめてある。
 
 ### 4.1 CLI 全体の方針
 
@@ -136,25 +136,28 @@ CLI はすべて `src/cli/` 以下の Python スクリプトとして実装さ�
 
 ## 6. テニス multi-cam 3D pose 専用の設計ドキュメント
 
-タスク固有の詳細設計・アーキテクチャは、次の design/spec にまとまっている。
+タスク固有の詳細設計・アーキテクチャは、次のドキュメントにまとまっている。
 
-- `design/tennis/tennis_multi_cam_3d_pose_system.md`
-  - テニス multi-cam 3D pose システム全体の設計（データフロー・モデル・トレーニング戦略など）。
-- `spec/training/tennis_multi_cam_3d_pose.md`
+- `tennis_multi_cam_3d_pose/overview.md`
+  - テニス multi-cam 3D pose システム全体の設計（データフロー・モデル・トレーニング戦略など）の鳥瞰。
+- `training/tennis_multi_cam_3d_pose.md`
   - テニスタスクのトレーニングパイプライン仕様（ConfigLoader 分岐・DataModule / LightningModule・CLI など）。
+- `tennis_multi_cam_3d_pose/quickstart.md`
+  - シミュレーション〜データセット生成〜学習〜可視化までを一周する Quickstart。
 
 ---
 
 ## 7. 読み方のガイド
 
-- **まず全体像を知りたい**: `design/tennis/tennis_multi_cam_3d_pose_system.md`
-- **SceneModel 系の構造と学習を知りたい**:
-  - モデル: `models/scene_model.md`
-  - トレーニング: `training/scene_model.md`
-  - Dataset / バッチ表現: `datasets/scene_model.md`
+- **とりあえず一周動かしたい**: `tennis_multi_cam_3d_pose/quickstart.md`
+- **まず全体像を知りたい**:
+  - テニス multi-cam 3D pose 全体: `tennis_multi_cam_3d_pose/overview.md`
+  - SceneModel 系: `models/scene_model.md`, `training/scene_model.md`, `datasets/scene_model.md`
 - **テニス multi-cam 3D pose のデータまわりを知りたい**:
   - シーン JSON: `tennis_multi_cam_3d_pose/tennis_simulator.md`
+  - テニス用 Dataset: `datasets/tennis_multi_cam_3d_pose_dataset.md`
   - シーン Dataset 全体: `datasets/scene_datasets.md`
+- **Config / YAML システムを理解したい**: `configs/index.md`
 - **どうやって動かすか（実行コマンド）を知りたい**:
   - CLI: `cli/*.md`
   - scripts: `scripts/*.md`
