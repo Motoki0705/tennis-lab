@@ -7,6 +7,6 @@ cd "${ROOT_DIR}"
 
 CONFIG="${CONFIG:-configs/tennis_multi_cam_3d_pose_v3.yaml}"
 
-uv run python src/cli/tennis_multi_cam_3d_pose/train_v2.py \
+uv run python src/cli/tennis_multi_cam_3d_pose/train.py \
   --config "${CONFIG}" \
   "$@"
