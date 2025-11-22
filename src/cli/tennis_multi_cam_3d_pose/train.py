@@ -3,22 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from collections.abc import Sequence
 
-try:
-    from lightning.pytorch.utilities.seed import seed_everything
-except ImportError:
-    try:  # pragma: no cover - fallback for Fabric-only installs
-        from lightning_fabric.utilities.seed import (
-            seed_everything,
-        )
-    except ImportError:  # pragma: no cover - fallback for legacy PyTorch Lightning
-        from pytorch_lightning.utilities.seed import (
-            seed_everything,
-        )
-
-from src.training.utils.config import ConfigLoader, load_cfg
+from src.cli.tools.train_utils import run_training_from_config
 
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
@@ -55,37 +42,19 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the Tennis Pose training loop using the provided config."""
     args = _parse_args(argv)
-    try:
-        cfg = load_cfg(args.config, args.overrides)
-    except FileNotFoundError as exc:
-        sys.stderr.write(f"[config-error] {exc}\n")
-        return 2
-
-    task = str(cfg.get("task") or "").strip().lower()
-    if task != "tennis_multi_cam_3d_pose":
-        sys.stderr.write(
-            "[usage-error] cfg.task must be 'tennis_multi_cam_3d_pose' for this CLI. "
-            "Pass --set task=tennis_multi_cam_3d_pose or use configs/tennis_multi_cam_3d_pose.yaml.\n"
-        )
-        return 2
-
-    seed_value = cfg.get("seed") or cfg.get("training", {}).get("seed")
-    if seed_value is not None:
-        seed_everything(int(seed_value), workers=True)
-
-    loader = ConfigLoader(cfg)
-    try:
-        datamodule = loader.build_datamodule()
-        lit_module = loader.build_lit_module()
-        logger = loader.build_logger()
-        callbacks = loader.build_callbacks()
-        trainer = loader.build_trainer(logger=logger, callbacks=callbacks)
-    except NotImplementedError as exc:
-        sys.stderr.write(f"[train-error] {exc}\n")
-        return 2
-
-    trainer.fit(lit_module, datamodule=datamodule)
-    return 0
+    usage_msg = (
+        "[usage-error] cfg.task must be 'tennis_multi_cam_3d_pose' for this CLI. "
+        "Pass --set task=tennis_multi_cam_3d_pose or use configs/tennis_multi_cam_3d_pose.yaml.\n"
+    )
+    return run_training_from_config(
+        config_path=args.config,
+        overrides=args.overrides,
+        required_task="tennis_multi_cam_3d_pose",
+        usage_error_message=usage_msg,
+        use_explicit_logger=True,
+        catch_all_train_errors=False,
+        handle_notimplemented_as_usage_error=True,
+    )
 
 
 if __name__ == "__main__":

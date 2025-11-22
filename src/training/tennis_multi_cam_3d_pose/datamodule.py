@@ -5,15 +5,14 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-import torch
 from omegaconf import DictConfig, OmegaConf
-from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 
 from src.datasets.tennis import TennisSceneWindowDataset
+from src.training.base.datamodule import BaseDataModule
 
 
-class TennisPoseDataModule(LightningDataModule):
+class TennisPoseDataModule(BaseDataModule[TennisSceneWindowDataset, dict[str, Any]]):
     """DataModule that provides DataLoaders for Tennis pose training."""
 
     def __init__(
@@ -21,19 +20,7 @@ class TennisPoseDataModule(LightningDataModule):
         dataset_cfg: DictConfig | Mapping[str, Any] | None,
         debug_cfg: DictConfig | Mapping[str, Any] | None,
     ) -> None:
-        super().__init__()
-        self.dataset_cfg = _to_dict(dataset_cfg)
-        self.debug_cfg = _to_dict(debug_cfg)
-        self.train_dataset: TennisSceneWindowDataset | None = None
-        self.val_dataset: TennisSceneWindowDataset | None = None
-        self.test_dataset: TennisSceneWindowDataset | None = None
-
-        seed = self.debug_cfg.get("seed") or self.dataset_cfg.get("seed")
-        self._generator = torch.Generator()
-        if seed is None:
-            self._generator = None
-        else:
-            self._generator.manual_seed(int(seed))
+        super().__init__(dataset_cfg, debug_cfg)
 
     def setup(self, stage: str | None = None) -> None:
         """Instantiate datasets for the requested Lightning stage."""
@@ -79,60 +66,15 @@ class TennisPoseDataModule(LightningDataModule):
 
     def train_dataloader(self) -> DataLoader[dict[str, Any]]:
         """Return the training DataLoader configured via dataset_cfg."""
-        dataset = self._require_dataset(self.train_dataset, "train")
-        loader_cfg = self.dataset_cfg.get("loader", {}).get("train", {})
-        return self._build_loader(
-            dataset, loader_cfg, shuffle=loader_cfg.get("shuffle", True)
-        )
+        return self._make_loader(self.train_dataset, "train", "train", True)
 
     def val_dataloader(self) -> DataLoader[dict[str, Any]]:
         """Return the validation DataLoader configured via dataset_cfg."""
-        dataset = self._require_dataset(self.val_dataset, "val")
-        loader_cfg = self.dataset_cfg.get("loader", {}).get("val", {})
-        return self._build_loader(
-            dataset, loader_cfg, shuffle=loader_cfg.get("shuffle", False)
-        )
+        return self._make_loader(self.val_dataset, "val", "val", False)
 
     def test_dataloader(self) -> DataLoader[dict[str, Any]]:
         """Return the test DataLoader configured via dataset_cfg."""
-        dataset = self._require_dataset(self.test_dataset, "test")
-        loader_cfg = self.dataset_cfg.get("loader", {}).get("test", {})
-        return self._build_loader(
-            dataset, loader_cfg, shuffle=loader_cfg.get("shuffle", False)
-        )
-
-    def _build_loader(
-        self,
-        dataset: TennisSceneWindowDataset,
-        loader_cfg: Mapping[str, Any],
-        shuffle: bool,
-    ) -> DataLoader[dict[str, Any]]:
-        batch_size = int(loader_cfg.get("batch_size", 1))
-        num_workers = int(loader_cfg.get("num_workers", 0))
-        persistent_workers = (
-            bool(loader_cfg.get("persistent_workers", False)) and num_workers > 0
-        )
-        generator = self._generator if shuffle and self._generator is not None else None
-        return DataLoader(
-            dataset,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            num_workers=num_workers,
-            pin_memory=bool(loader_cfg.get("pin_memory", False)),
-            drop_last=bool(loader_cfg.get("drop_last", False)),
-            persistent_workers=persistent_workers,
-            generator=generator,
-        )
-
-    @staticmethod
-    def _require_dataset(
-        dataset: TennisSceneWindowDataset | None,
-        split: str,
-    ) -> TennisSceneWindowDataset:
-        if dataset is None:
-            msg = f"Dataset for split '{split}' has not been set up yet"
-            raise RuntimeError(msg)
-        return dataset
+        return self._make_loader(self.test_dataset, "test", "test", False)
 
 
 def _to_dict(cfg: DictConfig | Mapping[str, Any] | None) -> dict[str, Any]:

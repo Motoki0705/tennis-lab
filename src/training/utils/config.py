@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -26,6 +26,25 @@ if TYPE_CHECKING:
 
 INCLUDE_KEY = "includes"
 _TRUTHY = {"1", "true", "yes", "on"}
+
+_DATAMODULE_REGISTRY: dict[
+    str,
+    Callable[
+        [DictConfig | None, DictConfig | None],
+        DancetrackDataModule | TennisPoseDataModule,
+    ],
+] = {}
+_LIGHTNING_REGISTRY: dict[
+    tuple[str, str],
+    Callable[
+        [DictConfig],
+        SceneModelLightningModule
+        | TennisDetrModule
+        | TennisDetrV2Module
+        | TennisDetrV25Module
+        | TennisDetrV3Module,
+    ],
+] = {}
 
 
 def _container(cfg: DictConfig | None) -> dict:
@@ -82,6 +101,26 @@ class ConfigLoader:
         task = self.cfg.get("task")
         return str(task) if task else "scene_model"
 
+    def _experiment_name(self) -> str:
+        experiment_name = self.cfg.get("experiment_name")
+        return str(experiment_name or "").lower()
+
+    def _lightning_key(self) -> tuple[str, str]:
+        task = self._task()
+        if task == "tennis_multi_cam_3d_pose":
+            experiment_name = self._experiment_name()
+            if "v3" in experiment_name:
+                variant = "v3"
+            elif "v2_5" in experiment_name:
+                variant = "v2_5"
+            elif "v2" in experiment_name:
+                variant = "v2"
+            else:
+                variant = "v1"
+        else:
+            variant = "default"
+        return task, variant
+
     def build_datamodule(self) -> DancetrackDataModule | TennisPoseDataModule:
         """Construct the LightningDataModule declared by the current task.
 
@@ -93,42 +132,18 @@ class ConfigLoader:
         dataset_cfg = self.cfg.get("dataset")
         debug_cfg = self.cfg.get("debug")
         dataset_keys = list(dataset_cfg.keys()) if dataset_cfg else []
-        experiment_name = str(self.cfg.get("experiment_name") or "").lower()
 
-        if task == "tennis_multi_cam_3d_pose" and "v2" in experiment_name:
-            from src.training.tennis_multi_cam_3d_pose.datamodule import (
-                TennisPoseDataModule,
-            )
-
-            datamodule = TennisPoseDataModule(dataset_cfg, debug_cfg)
-            self._logger.info(
-                "DataModule built for task=%s (dataset_keys=%s)", task, dataset_keys
-            )
-            return datamodule
-
-        if task == "tennis_multi_cam_3d_pose" and "v2" not in experiment_name:
-            from src.training.tennis_multi_cam_3d_pose.datamodule import (
-                TennisPoseDataModule,
-            )
-
-            datamodule = TennisPoseDataModule(dataset_cfg, debug_cfg)
-            self._logger.info(
-                "DataModule built for task=%s (dataset_keys=%s)", task, dataset_keys
-            )
-            return datamodule
-
-        if task == "scene_model":
-            from src.training.scene_model.datamodule import DancetrackDataModule
-
-            datamodule = DancetrackDataModule(dataset_cfg, debug_cfg)
-            self._logger.info(
-                "DataModule built for task=%s (dataset_keys=%s)", task, dataset_keys
-            )
-            return datamodule
-
-        msg = f"Unsupported task={task} (experiment_name={experiment_name}) for datamodule"
-        self._logger.error(msg)
-        raise NotImplementedError(msg)
+        builder = _DATAMODULE_REGISTRY.get(task)
+        if builder is None:
+            experiment_name = self._experiment_name()
+            msg = f"Unsupported task={task} (experiment_name={experiment_name}) for datamodule"
+            self._logger.error(msg)
+            raise NotImplementedError(msg)
+        datamodule = builder(dataset_cfg, debug_cfg)
+        self._logger.info(
+            "DataModule built for task=%s (dataset_keys=%s)", task, dataset_keys
+        )
+        return datamodule
 
     def build_lit_module(
         self,
@@ -145,71 +160,24 @@ class ConfigLoader:
         based on the training._target_ configuration.
         """
         task = self._task()
-        experiment_name = str(self.cfg.get("experiment_name") or "").lower()
+        experiment_name = self._experiment_name()
         training_cfg = self.cfg.get("training", {})
         target = str(training_cfg.get("_target_", ""))
-
-        if task == "tennis_multi_cam_3d_pose" and "v3" in experiment_name:
-            self._logger.info(
-                "Building TennisDetrV3Module (experiment_name=%s)", experiment_name
+        key = self._lightning_key()
+        builder = _LIGHTNING_REGISTRY.get(key)
+        if builder is None:
+            msg = (
+                "Unsupported LightningModule selection for task="
+                f"{task} (experiment_name={experiment_name}, target={target})"
             )
-            from src.training.tennis_multi_cam_3d_pose.lightning_v3 import (
-                TennisDetrV3Module,
-            )
-
-            module = TennisDetrV3Module(self.cfg)
-            self._logger.info("LightningModule built for task=%s", task)
-            return module
-
-        if task == "tennis_multi_cam_3d_pose" and "v2_5" in experiment_name:
-            self._logger.info(
-                "Building TennisDetrV25Module (experiment_name=%s)", experiment_name
-            )
-            from src.training.tennis_multi_cam_3d_pose.lightning_v2_5 import (
-                TennisDetrV25Module,
-            )
-
-            module = TennisDetrV25Module(self.cfg)
-            self._logger.info("LightningModule built for task=%s", task)
-            return module
-
-        if task == "tennis_multi_cam_3d_pose" and "v2" in experiment_name:
-            self._logger.info(
-                "Building TennisDetrV2Module (experiment_name=%s)", experiment_name
-            )
-            from src.training.tennis_multi_cam_3d_pose.lightning_v2 import (
-                TennisDetrV2Module,
-            )
-
-            module = TennisDetrV2Module(self.cfg)
-            self._logger.info("LightningModule built for task=%s", task)
-            return module
-
-        if task == "tennis_multi_cam_3d_pose" and "v2" not in experiment_name:
-            self._logger.info(
-                "Building TennisDetrModule (experiment_name=%s)", experiment_name
-            )
-            from src.training.tennis_multi_cam_3d_pose.lightning import (
-                TennisDetrModule,
-            )
-
-            module = TennisDetrModule(self.cfg)
-            self._logger.info("LightningModule built for task=%s", task)
-            return module
-
-        if task == "scene_model":
-            from src.training.scene_model.lightning import SceneModelLightningModule
-
-            module = SceneModelLightningModule(self.cfg)
-            self._logger.info("LightningModule built for task=%s", task)
-            return module
-
-        msg = (
-            "Unsupported LightningModule selection for task="
-            f"{task} (experiment_name={experiment_name}, target={target})"
+            self._logger.error(msg)
+            raise NotImplementedError(msg)
+        self._logger.info(
+            "Building LightningModule for task=%s (variant=%s)", task, key[1]
         )
-        self._logger.error(msg)
-        raise NotImplementedError(msg)
+        module = builder(self.cfg)
+        self._logger.info("LightningModule built for task=%s", task)
+        return module
 
     def build_callbacks(self) -> list[Callback]:
         """Create callbacks (checkpoints, LR monitor, etc.) from config."""
@@ -245,3 +213,64 @@ class ConfigLoader:
             len(trainer.callbacks),
         )
         return trainer
+
+
+def _register_default_builders() -> None:
+    def _build_scene_datamodule(
+        dataset_cfg: DictConfig | None, debug_cfg: DictConfig | None
+    ) -> Any:
+        from src.training.scene_model.datamodule import DancetrackDataModule
+
+        return DancetrackDataModule(dataset_cfg, debug_cfg)
+
+    def _build_tennis_datamodule(
+        dataset_cfg: DictConfig | None, debug_cfg: DictConfig | None
+    ) -> Any:
+        from src.training.tennis_multi_cam_3d_pose.datamodule import (
+            TennisPoseDataModule,
+        )
+
+        return TennisPoseDataModule(dataset_cfg, debug_cfg)
+
+    _DATAMODULE_REGISTRY["scene_model"] = _build_scene_datamodule
+    _DATAMODULE_REGISTRY["tennis_multi_cam_3d_pose"] = _build_tennis_datamodule
+
+    def _build_scene_module(cfg: DictConfig) -> Any:
+        from src.training.scene_model.lightning import SceneModelLightningModule
+
+        return SceneModelLightningModule(cfg)
+
+    def _build_tennis_v1_module(cfg: DictConfig) -> Any:
+        from src.training.tennis_multi_cam_3d_pose.lightning import TennisDetrModule
+
+        return TennisDetrModule(cfg)
+
+    def _build_tennis_v2_module(cfg: DictConfig) -> Any:
+        from src.training.tennis_multi_cam_3d_pose.lightning_v2 import (
+            TennisDetrV2Module,
+        )
+
+        return TennisDetrV2Module(cfg)
+
+    def _build_tennis_v25_module(cfg: DictConfig) -> Any:
+        from src.training.tennis_multi_cam_3d_pose.lightning_v2_5 import (
+            TennisDetrV25Module,
+        )
+
+        return TennisDetrV25Module(cfg)
+
+    def _build_tennis_v3_module(cfg: DictConfig) -> Any:
+        from src.training.tennis_multi_cam_3d_pose.lightning_v3 import (
+            TennisDetrV3Module,
+        )
+
+        return TennisDetrV3Module(cfg)
+
+    _LIGHTNING_REGISTRY[("scene_model", "default")] = _build_scene_module
+    _LIGHTNING_REGISTRY[("tennis_multi_cam_3d_pose", "v1")] = _build_tennis_v1_module
+    _LIGHTNING_REGISTRY[("tennis_multi_cam_3d_pose", "v2")] = _build_tennis_v2_module
+    _LIGHTNING_REGISTRY[("tennis_multi_cam_3d_pose", "v2_5")] = _build_tennis_v25_module
+    _LIGHTNING_REGISTRY[("tennis_multi_cam_3d_pose", "v3")] = _build_tennis_v3_module
+
+
+_register_default_builders()

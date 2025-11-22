@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from collections.abc import Callable, Mapping
 from typing import Any, cast
 
@@ -10,7 +9,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from omegaconf import DictConfig, OmegaConf
-from pytorch_lightning import LightningModule
 from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 from torch.optim import AdamW
@@ -22,9 +20,10 @@ from src.tennis.geometry.court import (
     HALF_LENGTH,
     NET_HEIGHT_POST,
 )
+from src.training.tennis_multi_cam_3d_pose.base import BaseTennisLightningModule
 
 
-class TennisDetrModule(LightningModule):
+class TennisDetrModule(BaseTennisLightningModule):
     """Lightning wrapper that wires TennisDETR with loss and logging.
 
     Initialize the module from the merged experiment config. The
@@ -97,33 +96,11 @@ class TennisDetrModule(LightningModule):
 
     def configure_optimizers(self) -> dict[str, Any]:
         """Configure optimizer and LR scheduler."""
-        optimizer = AdamW(
-            self.parameters(),
-            lr=self._lr,
-            weight_decay=self._weight_decay,
-        )
-        scheduler = self._build_scheduler(optimizer)
-        if scheduler is None:
-            return {"optimizer": optimizer}
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "interval": "step",
-            },
-        }
+        return super().configure_optimizers()
 
     def _build_scheduler(self, optimizer: AdamW) -> CosineAnnealingLR | LambdaLR | None:
         """Return the configured LR scheduler or ``None`` if disabled."""
-        if self._max_steps <= 0:
-            return None
-        scheduler_name = str(self._scheduler_cfg.get("name") or "").lower()
-        if scheduler_name == "cosine_with_warmup":
-            warmup_steps = int(self._scheduler_cfg.get("warmup_steps", 0))
-            min_lr_ratio = float(self._scheduler_cfg.get("min_lr_ratio", 0.0))
-            lr_lambda = self._build_warmup_cosine_lambda(warmup_steps, min_lr_ratio)
-            return LambdaLR(optimizer, lr_lambda=lr_lambda)
-        return CosineAnnealingLR(optimizer, T_max=self._max_steps)
+        return super()._build_scheduler(optimizer)
 
     def _build_warmup_cosine_lambda(
         self,
@@ -131,20 +108,7 @@ class TennisDetrModule(LightningModule):
         min_lr_ratio: float,
     ) -> Callable[[int], float]:
         """Construct a lambda function implementing warmup + cosine decay."""
-        warmup = max(0, int(warmup_steps))
-        base_min_ratio = float(min_lr_ratio)
-        max_steps = max(1, self._max_steps)
-
-        def _lr_lambda(step: int) -> float:
-            step_f = float(step)
-            if warmup > 0 and step_f < warmup:
-                return step_f / float(max(1, warmup))
-            progress_steps = max(1, max_steps - warmup)
-            progress = min(max((step_f - warmup) / progress_steps, 0.0), 1.0)
-            cos = 0.5 * (1.0 + math.cos(math.pi * progress))
-            return base_min_ratio + (1.0 - base_min_ratio) * cos
-
-        return _lr_lambda
+        return super()._build_warmup_cosine_lambda(warmup_steps, min_lr_ratio)
 
     def _compute_loss(
         self,
