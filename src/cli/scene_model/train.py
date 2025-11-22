@@ -3,22 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from collections.abc import Sequence
 
-try:
-    from lightning.pytorch.utilities.seed import seed_everything
-except ImportError:
-    try:  # pragma: no cover - fallback for Fabric-only installs
-        from lightning_fabric.utilities.seed import (
-            seed_everything,
-        )
-    except ImportError:  # pragma: no cover - fallback for legacy PyTorch Lightning
-        from pytorch_lightning.utilities.seed import (
-            seed_everything,
-        )
-
-from src.training.utils.config import ConfigLoader, load_cfg
+from src.cli.tools.train_utils import run_training_from_config
 
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
@@ -42,24 +29,14 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entrypoint that wires configs, modules, and the Lightning trainer."""
     args = _parse_args(argv)
-    try:
-        cfg = load_cfg(args.config, args.overrides)
-    except FileNotFoundError as exc:
-        sys.stderr.write(f"[config-error] {exc}\n")
-        return 2
-    loader = ConfigLoader(cfg)
-    seed_value = cfg.get("seed") or cfg.get("training", {}).get("seed")
-    if seed_value is not None:
-        seed_everything(int(seed_value), workers=True)
-    try:
-        datamodule = loader.build_datamodule()
-        module = loader.build_lit_module()
-        trainer = loader.build_trainer()
-        trainer.fit(module, datamodule=datamodule)
-    except Exception as exc:  # pragma: no cover - surfacing errors with context
-        sys.stderr.write(f"[train-error] {exc}\n")
-        return 1
-    return 0
+    return run_training_from_config(
+        config_path=args.config,
+        overrides=args.overrides,
+        required_task=None,
+        use_explicit_logger=False,
+        catch_all_train_errors=True,
+        handle_notimplemented_as_usage_error=False,
+    )
 
 
 if __name__ == "__main__":
