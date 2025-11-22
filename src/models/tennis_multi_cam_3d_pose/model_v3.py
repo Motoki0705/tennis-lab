@@ -238,6 +238,7 @@ class TennisDETR_v3(nn.Module):
             "pose_3d": global_pose,
             "exist_logit": exist_logit,
             "exist_conf": exist_conf,
+            "tracks_enc": tracks_enc,
         }
 
     def _build_track_tokens(
