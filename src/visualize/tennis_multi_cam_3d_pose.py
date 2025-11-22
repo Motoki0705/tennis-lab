@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
 from typing import Any
 
-import cv2
 import numpy as np
 
 from src.visualize.tennis_render import (
@@ -15,6 +14,7 @@ from src.visualize.tennis_render import (
     draw_points,
     draw_segments,
 )
+from src.visualize.video_io import write_video
 
 
 def render_frame(
@@ -125,14 +125,8 @@ def render_video(
     h, w = tmp_frame.shape[:2]
     out_fps = int(fps or scene.get("fps", 30))
 
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(out_path, fourcc, out_fps, (w, h))
-    if not writer.isOpened():  # pragma: no cover - defensive
-        raise RuntimeError(f"failed to open video writer for {out_path}")
-
-    try:
+    def _iter_frames() -> Generator[np.ndarray, None, None]:
         for idx in range(len(frames)):
-            frame_img = render_frame(scene, idx, camera_index, width=w, height=h)
-            writer.write(frame_img)
-    finally:
-        writer.release()
+            yield render_frame(scene, idx, camera_index, width=w, height=h)
+
+    write_video(out_path, _iter_frames(), fps=out_fps)

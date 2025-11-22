@@ -18,8 +18,9 @@
 3. `runs/` 以下から、`experiment_name` に対応する checkpoint (`*.ckpt`) を自動探索
 4. 指定した split (`train` / `val` / `test`) のウィンドウをサンプリング
 5. モデルで 3D 予測 (`pose_3d`, `exist_conf`) を計算
-6. 予測 3D をカメラパラメータで再投影して simulator 互換の `scene` dict を組み立て
-7. `src/visualize/tennis_multi_cam_3d_pose.render_video()` で mp4 にレンダリング
+6. 予測 3D をカメラパラメータで再投影して、各プレーヤの 2D キーポイント列を構築
+7. `src.visualize.tennis_render.render_pose2d_frame` で各フレームを描画し、
+      `src.visualize.video_io.write_video` で mp4 に書き出し
 
 ※ 目的は **定量評価ではなく視覚的な挙動確認**。
 
@@ -220,4 +221,5 @@ CKPT="runs/tennis_mvpose_dev_v3/version_2/checkpoints/epoch=004-val_total=0.000.
 - モデル出力は v1/v2/v2.5/v3 共通で `outputs["pose_3d"]` / `outputs["exist_conf"]` を使用
 - 3D ポーズは `HALF_DOUBLES_WIDTH` / `HALF_LENGTH` / `NET_HEIGHT_POST` で[m]スケールに戻したあと、
   カメラパラメータで再投影して 2D を得る
-- 再投影した 2D 座標をもとに、`render_video()` に渡す `scene` dict（`scene_*.json` と同形式）を構築している
+- 再投影した 2D 座標をもとに、`render_pose2d_frame()` でフレーム画像を描画し、
+  `write_video()` で mp4 を生成している
