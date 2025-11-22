@@ -3,7 +3,8 @@
 - Load TennisSceneWindowDataset (memmap recommended).
 - Reconstruct global pose from canonical/root_trans/root_rot.
 - Project reconstructed 3D poses to 2D with camera params.
-- Build a simulator-like scene dict and call render_video().
+- Render 2D poses per frame via ``render_pose2d_frame`` and write mp4 videos
+  with ``write_video``.
 
 Used to visually check that the v2 decomposition is correct.
 """
@@ -11,7 +12,7 @@ Used to visually check that the v2 decomposition is correct.
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +27,8 @@ from src.tennis.geometry.court import (
     HALF_LENGTH,
     NET_HEIGHT_POST,
 )
-from src.visualize.tennis_multi_cam_3d_pose import render_video
+from src.visualize.tennis_render import render_pose2d_frame
+from src.visualize.video_io import write_video
 
 
 def _parse_args() -> argparse.Namespace:
@@ -207,92 +209,6 @@ def _project_world_points(
     return uv, mask
 
 
-def _build_scene_from_sample(
-    sample: dict[str, torch.Tensor],
-    global_recon: Tensor,
-    camera_index: int,
-    fps: float,
-) -> tuple[dict[str, Any], int, int]:
-    keypoints_2d = sample["keypoints_2d"]  # [T,V,M,J,2] (shape referenceのみ使用)
-    player_mask = sample["player_mask"]  # [T,V,M]
-    court_2d = sample["court_2d"]  # [V,20,2]
-    camera_C = sample["camera_C"]  # [V,3]
-    camera_R = sample["camera_R"]  # [V,3,3]
-    camera_intr = sample["camera_intr"]  # [V,3]
-    image_size = sample["image_size"]  # [V,2]
-
-    T, V, M, J, _ = keypoints_2d.shape
-    if J < 20:
-        raise ValueError("Expected at least 20 joints (17 body + 3 racket)")
-    if global_recon.shape[:3] != (T, M, J):
-        raise ValueError("global_recon shape does not match sample keypoints shape")
-
-    v_idx = _select_camera_index(sample, camera_index)
-    size_tensor = image_size[v_idx]
-    width = int(size_tensor[0].item())
-    height = int(size_tensor[1].item())
-    if width <= 0 or height <= 0:
-        width, height = 1280, 720
-
-    court = court_2d[v_idx].numpy()
-    court_px = _denormalize_points(court, width, height)
-
-    cam_C = camera_C[v_idx]
-    cam_R = camera_R[v_idx]
-    cam_intr = camera_intr[v_idx]
-
-    frames: list[dict[str, Any]] = []
-    for t in range(T):
-        players_joints: list[list[list[float]]] = []
-        players_joints_vis: list[list[int]] = []
-        players_racket: list[list[list[float]]] = []
-        players_racket_vis: list[list[int]] = []
-
-        for m in range(M):
-            if not bool(player_mask[t, v_idx, m]):
-                continue
-
-            # global_recon: 正規化コート座標 → ワールド座標 → ピクセルに再投影
-            pose_norm = global_recon[t, m]  # [J,3]
-            pose_world = _denorm_pose3d(pose_norm)
-            uv, vis = _project_world_points(cam_C, cam_R, cam_intr, pose_world)
-            uv_np = uv.detach().cpu().numpy().astype("float32")
-            vis_np = vis.detach().cpu().numpy().astype("uint8")
-
-            body_uv = uv_np[:17]
-            racket_uv = uv_np[17:20]
-            body_vis = vis_np[:17].tolist()
-            racket_vis = vis_np[17:20].tolist()
-
-            players_joints.append(body_uv.tolist())
-            players_joints_vis.append(body_vis)
-            players_racket.append(racket_uv.tolist())
-            players_racket_vis.append(racket_vis)
-
-        cam_payload = {
-            "court_keypoints_2d": {
-                "points": court_px.tolist(),
-                "visibility": [1] * int(court_px.shape[0]),
-            },
-            "player_keypoints_2d": {
-                "joints": players_joints,
-                "visibility": players_joints_vis,
-            },
-            "racket_keypoints_2d": {
-                "points": players_racket,
-                "visibility": players_racket_vis,
-            },
-        }
-        frames.append({"cam_0": cam_payload})
-
-    scene = {
-        "fps": float(fps),
-        "cameras": [{"image_size": [width, height]}],
-        "frames": frames,
-    }
-    return scene, width, height
-
-
 def _render_sample(
     sample: dict[str, torch.Tensor],
     out_path: Path,
@@ -317,13 +233,73 @@ def _render_sample(
         mean_err = float(diff.mean().item())
         print(f"[v2-decomp] recon error (max={max_err:.4f}, mean={mean_err:.4f})")
 
-    scene, width, height = _build_scene_from_sample(
-        sample, global_recon, camera_index, fps
-    )
+    keypoints_2d = sample["keypoints_2d"]  # [T,V,M,J,2] (shape referenceのみ使用)
+    player_mask = sample["player_mask"]  # [T,V,M]
+    court_2d = sample["court_2d"]  # [V,20,2]
+    camera_C = sample["camera_C"]  # [V,3]
+    camera_R = sample["camera_R"]  # [V,3,3]
+    camera_intr = sample["camera_intr"]  # [V,3]
+    image_size = sample["image_size"]  # [V,2]
+
+    T, V, M, J, _ = keypoints_2d.shape
+    if J < 20:
+        raise ValueError("Expected at least 20 joints (17 body + 3 racket)")
+
+    v_idx = _select_camera_index(sample, camera_index)
+    size_tensor = image_size[v_idx]
+    width = int(size_tensor[0].item())
+    height = int(size_tensor[1].item())
+    if width <= 0 or height <= 0:
+        width, height = 1280, 720
+
+    court = court_2d[v_idx].numpy()
+    court_px = _denormalize_points(court, width, height)
+    court_vis = [1] * int(court_px.shape[0])
+
+    cam_C = camera_C[v_idx]
+    cam_R = camera_R[v_idx]
+    cam_intr = camera_intr[v_idx]
+
+    def _iter_frames() -> Iterator[np.ndarray]:
+        for t in range(T):
+            players_joints: list[np.ndarray] = []
+            players_joints_vis: list[list[int]] = []
+            players_racket: list[np.ndarray] = []
+            players_racket_vis: list[list[int]] = []
+
+            for m in range(M):
+                if not bool(player_mask[t, v_idx, m]):
+                    continue
+
+                pose_norm = global_recon[t, m]  # [J,3]
+                pose_world = _denorm_pose3d(pose_norm)
+                uv, vis = _project_world_points(cam_C, cam_R, cam_intr, pose_world)
+                uv_np = uv.detach().cpu().numpy().astype("float32")
+                vis_np = vis.detach().cpu().numpy().astype("uint8")
+
+                body_uv = uv_np[:17]
+                racket_uv = uv_np[17:20]
+                body_vis = vis_np[:17].tolist()
+                racket_vis = vis_np[17:20].tolist()
+
+                players_joints.append(body_uv)
+                players_joints_vis.append(body_vis)
+                players_racket.append(racket_uv)
+                players_racket_vis.append(racket_vis)
+
+            yield render_pose2d_frame(
+                width=width,
+                height=height,
+                court_points=court_px,
+                court_visibility=court_vis,
+                player_poses=players_joints,
+                player_pose_visibility=players_joints_vis,
+                racket_points=players_racket,
+                racket_visibility=players_racket_vis,
+            )
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    render_video(
-        scene, str(out_path), camera_index=0, width=width, height=height, fps=int(fps)
-    )
+    write_video(str(out_path), _iter_frames(), fps=float(fps))
 
 
 def main() -> int:

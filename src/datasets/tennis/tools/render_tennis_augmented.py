@@ -10,16 +10,17 @@ visual inspection.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-import cv2
 import numpy as np
 import torch
 from omegaconf import OmegaConf
 
 from src.datasets.tennis import TennisSceneWindowDataset
 from src.visualize.tennis_render import render_pose2d_frame
+from src.visualize.video_io import write_video
 
 
 def _parse_args() -> argparse.Namespace:
@@ -178,19 +179,12 @@ def _render_sample_to_video(
         # Fallback to a sane default if image_size is missing.
         width, height = 1280, 720
 
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    writer = cv2.VideoWriter(str(out_path), fourcc, fps, (width, height))
-    if not writer.isOpened():
-        msg = f"Failed to open VideoWriter for path: {out_path}"
-        raise RuntimeError(msg)
+    k2d = keypoints_2d[:, v].numpy()  # [T, M, J, 2]
+    pm = player_mask[:, v].numpy()  # [T, M]
+    court = court_2d[v].numpy()  # [20, 2]
+    court_pix = _denormalize_points(court, width, height)
 
-    try:
-        k2d = keypoints_2d[:, v].numpy()  # [T, M, J, 2]
-        pm = player_mask[:, v].numpy()  # [T, M]
-        court = court_2d[v].numpy()  # [20, 2]
-        court_pix = _denormalize_points(court, width, height)
-
+    def _iter_frames() -> Iterator[np.ndarray]:
         for t in range(T):
             players_pose: list[np.ndarray] = []
             players_racket: list[np.ndarray] = []
@@ -205,7 +199,7 @@ def _render_sample_to_video(
                 players_pose.append(pose_pix)
                 players_racket.append(racket_pix)
 
-            frame = render_pose2d_frame(
+            yield render_pose2d_frame(
                 width=width,
                 height=height,
                 court_points=court_pix,
@@ -215,9 +209,9 @@ def _render_sample_to_video(
                 racket_points=players_racket,
                 racket_visibility=None,
             )
-            writer.write(frame)
-    finally:
-        writer.release()
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    write_video(str(out_path), _iter_frames(), fps=float(fps))
 
 
 def main() -> int:

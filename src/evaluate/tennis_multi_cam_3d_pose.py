@@ -1,12 +1,13 @@
 """CLI for evaluating Tennis multi-cam 3D pose models and rendering videos.
 
 This script:
-- Loads a hierarchical training config (same style as train.py / train_v2.py).
+- Loads a hierarchical training config (same style as the unified ``train.py``).
 - Uses ConfigLoader to build the TennisPoseDataModule (train/val/test datasets).
 - Automatically finds a checkpoint under runs/<experiment_name>/version_*/checkpoints.
 - Runs inference on selected splits (default: train + test) and windows.
 - Reprojects predicted 3D poses to 2D using camera metadata and renders videos
-  via src.visualize.tennis_multi_cam_3d_pose.render_video.
+  via ``src.visualize.tennis_render.render_pose2d_frame`` and
+  ``src.visualize.video_io.write_video``.
 
 The goal is visual, qualitative inspection of model predictions.
 """
@@ -14,7 +15,7 @@ The goal is visual, qualitative inspection of model predictions.
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +29,8 @@ from src.tennis.geometry.court import (
     NET_HEIGHT_POST,
 )
 from src.training.utils.config import ConfigLoader, load_cfg
-from src.visualize.tennis_multi_cam_3d_pose import render_video
+from src.visualize.tennis_render import render_pose2d_frame
+from src.visualize.video_io import write_video
 
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -185,70 +187,27 @@ def _project_world_points(
     return uv, mask
 
 
-def _build_scene_from_prediction(
-    sample: Mapping[str, Tensor],
-    pose_pred_qt: Tensor,
+def _iter_predicted_frames(
+    pose_pred: Tensor,
     exist_mask: Tensor,
-    camera_index: int,
-    fps: float,
-) -> tuple[dict[str, Any], int, int]:
-    """Build a simulator-like scene dict from model predictions.
-
-    Args:
-        sample (Mapping[str, Tensor]): Single-window sample from TennisSceneWindowDataset.
-        pose_pred_qt (Tensor): Predicted pose_3d with shape [Q, T, J, 3].
-        exist_mask (Tensor): Bool mask [Q] indicating which queries to render.
-        camera_index (int): Requested camera index (or -1 for auto).
-        fps (float): Video FPS.
-
-    Returns:
-        tuple[dict[str, Any], int, int]: Scene dict, width, and height.
-
-    Raises:
-        ValueError: If prediction length doesn't match dataset window or
-            if expected joint count is insufficient.
-
-    """
-    keypoints_2d = sample["keypoints_2d"]  # [T,V,M,J,2] (shape reference only)
-    court_2d = sample["court_2d"]  # [V,20,2]
-    camera_C = sample["camera_C"]  # [V,3]
-    camera_R = sample["camera_R"]  # [V,3,3]
-    camera_intr = sample["camera_intr"]  # [V,3]
-    image_size = sample["image_size"]  # [V,2]
-
-    T, V, _, _, _ = keypoints_2d.shape
-    Q, T_pred, J, _ = pose_pred_qt.shape
-    if T_pred != T:
-        msg = f"Prediction length T={T_pred} does not match dataset window_T={T}"
-        raise ValueError(msg)
-    if J < 20:
-        msg = "Expected at least 20 joints (17 body + 3 racket) in predictions"
-        raise ValueError(msg)
-
-    v_idx = _select_camera_index(sample, camera_index)
-    size_tensor = image_size[v_idx]
-    width = int(size_tensor[0].item())
-    height = int(size_tensor[1].item())
-    if width <= 0 or height <= 0:
-        width, height = 1280, 720
-
-    court = court_2d[v_idx].detach().cpu().numpy()
-    court_px = _denormalize_points(court, width, height)
-
-    cam_C = camera_C[v_idx].to(device=pose_pred_qt.device, dtype=pose_pred_qt.dtype)
-    cam_R = camera_R[v_idx].to(device=pose_pred_qt.device, dtype=pose_pred_qt.dtype)
-    cam_intr = camera_intr[v_idx].to(
-        device=pose_pred_qt.device, dtype=pose_pred_qt.dtype
-    )
-
-    frames: list[dict[str, Any]] = []
+    cam_C: Tensor,
+    cam_R: Tensor,
+    cam_intr: Tensor,
+    width: int,
+    height: int,
+    court_px: np.ndarray,
+    court_vis: Sequence[int],
+) -> Iterator[np.ndarray]:
+    """Yield rendered RGB frames for a predicted pose sequence."""
+    T = pose_pred.shape[1]
+    Q = pose_pred.shape[0]
     for t in range(T):
-        players_joints: list[list[list[float]]] = []
+        players_joints: list[np.ndarray] = []
         players_joints_vis: list[list[int]] = []
-        players_racket: list[list[list[float]]] = []
+        players_racket: list[np.ndarray] = []
         players_racket_vis: list[list[int]] = []
 
-        pose_t = pose_pred_qt[:, t]  # [Q,J,3]
+        pose_t = pose_pred[:, t]
         for q in range(Q):
             if not bool(exist_mask[q].item()):
                 continue
@@ -263,132 +222,21 @@ def _build_scene_from_prediction(
             body_vis = vis_np[:17].tolist()
             racket_vis = vis_np[17:20].tolist()
 
-            players_joints.append(body_uv.tolist())
+            players_joints.append(body_uv)
             players_joints_vis.append(body_vis)
-            players_racket.append(racket_uv.tolist())
+            players_racket.append(racket_uv)
             players_racket_vis.append(racket_vis)
 
-        cam_payload = {
-            "court_keypoints_2d": {
-                "points": court_px.tolist(),
-                "visibility": [1] * int(court_px.shape[0]),
-            },
-            "player_keypoints_2d": {
-                "joints": players_joints,
-                "visibility": players_joints_vis,
-            },
-            "racket_keypoints_2d": {
-                "points": players_racket,
-                "visibility": players_racket_vis,
-            },
-        }
-        frames.append({"cam_0": cam_payload})
-
-    scene = {
-        "fps": float(fps),
-        "cameras": [{"image_size": [width, height]}],
-        "frames": frames,
-    }
-    return scene, width, height
-
-
-def _build_scene_from_prediction_for_camera(
-    sample: Mapping[str, Tensor],
-    pose_pred_qt: Tensor,
-    exist_mask: Tensor,
-    camera_index: int,
-    fps: float,
-) -> tuple[dict[str, Any], int, int]:
-    keypoints_2d = sample["keypoints_2d"]
-    court_2d = sample["court_2d"]
-    camera_C = sample["camera_C"]
-    camera_R = sample["camera_R"]
-    camera_intr = sample["camera_intr"]
-    image_size = sample["image_size"]
-
-    T, V, _, _, _ = keypoints_2d.shape
-    Q, T_pred, J, _ = pose_pred_qt.shape
-    if T_pred != T:
-        msg = f"Prediction length T={T_pred} does not match dataset window_T={T}"
-        raise ValueError(msg)
-    if J < 20:
-        msg = "Expected at least 20 joints (17 body + 3 racket) in predictions"
-        raise ValueError(msg)
-    if not (0 <= camera_index < V):
-        msg = f"camera_index {camera_index} out of range (0..{V - 1})"
-        raise ValueError(msg)
-
-    size_tensor = image_size[camera_index]
-    width = int(size_tensor[0].item())
-    height = int(size_tensor[1].item())
-    if width <= 0 or height <= 0:
-        width, height = 1280, 720
-
-    court = court_2d[camera_index].detach().cpu().numpy()
-    court_px = _denormalize_points(court, width, height)
-
-    cam_C = camera_C[camera_index].to(
-        device=pose_pred_qt.device,
-        dtype=pose_pred_qt.dtype,
-    )
-    cam_R = camera_R[camera_index].to(
-        device=pose_pred_qt.device,
-        dtype=pose_pred_qt.dtype,
-    )
-    cam_intr = camera_intr[camera_index].to(
-        device=pose_pred_qt.device,
-        dtype=pose_pred_qt.dtype,
-    )
-
-    frames: list[dict[str, Any]] = []
-    for t in range(T):
-        players_joints: list[list[list[float]]] = []
-        players_joints_vis: list[list[int]] = []
-        players_racket: list[list[list[float]]] = []
-        players_racket_vis: list[list[int]] = []
-
-        pose_t = pose_pred_qt[:, t]
-        for q in range(Q):
-            if not bool(exist_mask[q].item()):
-                continue
-            pose_norm = pose_t[q]
-            pose_world = _denorm_pose3d(pose_norm)
-            uv, vis = _project_world_points(cam_C, cam_R, cam_intr, pose_world)
-            uv_np = uv.detach().cpu().numpy().astype("float32")
-            vis_np = vis.detach().cpu().numpy().astype("uint8")
-
-            body_uv = uv_np[:17]
-            racket_uv = uv_np[17:20]
-            body_vis = vis_np[:17].tolist()
-            racket_vis = vis_np[17:20].tolist()
-
-            players_joints.append(body_uv.tolist())
-            players_joints_vis.append(body_vis)
-            players_racket.append(racket_uv.tolist())
-            players_racket_vis.append(racket_vis)
-
-        cam_payload = {
-            "court_keypoints_2d": {
-                "points": court_px.tolist(),
-                "visibility": [1] * int(court_px.shape[0]),
-            },
-            "player_keypoints_2d": {
-                "joints": players_joints,
-                "visibility": players_joints_vis,
-            },
-            "racket_keypoints_2d": {
-                "points": players_racket,
-                "visibility": players_racket_vis,
-            },
-        }
-        frames.append({"cam_0": cam_payload})
-
-    scene = {
-        "fps": float(fps),
-        "cameras": [{"image_size": [width, height]}],
-        "frames": frames,
-    }
-    return scene, width, height
+        yield render_pose2d_frame(
+            width=width,
+            height=height,
+            court_points=court_px,
+            court_visibility=list(court_vis),
+            player_poses=players_joints,
+            player_pose_visibility=players_joints_vis,
+            racket_points=players_racket,
+            racket_visibility=players_racket_vis,
+        )
 
 
 def _auto_device(device_arg: str) -> torch.device:
@@ -616,12 +464,27 @@ def main(argv: Sequence[str] | None = None) -> int:
                 t_end = int(sample["t_end"].item()) if "t_end" in sample else 0
 
                 for v_idx in cam_indices:
-                    scene, width, height = _build_scene_from_prediction_for_camera(
-                        sample,
-                        pose_pred,
-                        exist_mask,
-                        camera_index=v_idx,
-                        fps=float(args.fps),
+                    size_tensor = image_size[v_idx]
+                    width = int(size_tensor[0].item())
+                    height = int(size_tensor[1].item())
+                    if width <= 0 or height <= 0:
+                        width, height = 1280, 720
+
+                    court = sample["court_2d"][v_idx].detach().cpu().numpy()
+                    court_px = _denormalize_points(court, width, height)
+                    court_vis = [1] * int(court_px.shape[0])
+
+                    cam_C = sample["camera_C"][v_idx].to(
+                        device=pose_pred.device,
+                        dtype=pose_pred.dtype,
+                    )
+                    cam_R = sample["camera_R"][v_idx].to(
+                        device=pose_pred.device,
+                        dtype=pose_pred.dtype,
+                    )
+                    cam_intr = sample["camera_intr"][v_idx].to(
+                        device=pose_pred.device,
+                        dtype=pose_pred.dtype,
                     )
 
                     out_path = (
@@ -630,14 +493,20 @@ def main(argv: Sequence[str] | None = None) -> int:
                     )
                     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-                    render_video(
-                        scene,
-                        str(out_path),
-                        camera_index=0,
+                    frames_iter = _iter_predicted_frames(
+                        pose_pred=pose_pred,
+                        exist_mask=exist_mask,
+                        cam_C=cam_C,
+                        cam_R=cam_R,
+                        cam_intr=cam_intr,
                         width=width,
                         height=height,
-                        fps=int(args.fps),
+                        court_px=court_px,
+                        court_vis=court_vis,
                     )
+
+                    write_video(str(out_path), frames_iter, fps=float(args.fps))
+
                     print(f"[tennis-eval] Wrote {out_path}")
 
     return 0
