@@ -87,10 +87,9 @@ includes:
 
 ### 2.2 CLI エントリポイント
 
-- v1 学習: `src/cli/tennis_multi_cam_3d_pose/train.py`
-- v2/v2.5/v3 学習: `src/cli/tennis_multi_cam_3d_pose/train_v2.py`
+- 学習 (v1/v2/v2.5/v3 共通): `src/cli/tennis_multi_cam_3d_pose/train.py`
 
-どちらも共通して:
+いずれのバージョンも共通して:
 
 1. `--config` でトップレベル YAML を指定
 2. `--set key=value` で個別パラメータを上書き

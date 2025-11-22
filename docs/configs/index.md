@@ -117,44 +117,106 @@ def _task(self) -> str:
 
 - `cfg.task` が未設定の場合、後方互換のために `"scene_model"` を既定値とする。
 
-### 3.2 DataModule の構築
+### 3.2 DataModule の構築（レジストリ方式）
+
+`ConfigLoader` は内部に **DataModule レジストリ** を持つ:
 
 ```python
-def build_datamodule(self):
+_DATAMODULE_REGISTRY: dict[str, Callable[[Any, Any], Any]] = {}
+
+def build_datamodule(self) -> DancetrackDataModule | TennisPoseDataModule:
     task = self._task()
     dataset_cfg = self.cfg.get("dataset")
     debug_cfg = self.cfg.get("debug")
-    if task == "tennis_multi_cam_3d_pose":
-        from src.training.tennis_multi_cam_3d_pose.datamodule import TennisPoseDataModule
-        return TennisPoseDataModule(dataset_cfg, debug_cfg)
-    from src.training.scene_model.datamodule import DancetrackDataModule
-    return DancetrackDataModule(dataset_cfg, debug_cfg)
+    dataset_keys = list(dataset_cfg.keys()) if dataset_cfg else []
+
+    builder = _DATAMODULE_REGISTRY.get(task)
+    if builder is None:
+        experiment_name = self._experiment_name()
+        msg = (
+            f"Unsupported task={task} (experiment_name={experiment_name}) for datamodule"
+        )
+        self._logger.error(msg)
+        raise NotImplementedError(msg)
+    datamodule = builder(dataset_cfg, debug_cfg)
+    self._logger.info(
+        "DataModule built for task=%s (dataset_keys=%s)", task, dataset_keys
+    )
+    return datamodule
 ```
 
-- SceneModel / テニスで共通のインターフェースを保ちつつ、`task` に応じて DataModule を切り替える。
-
-### 3.3 LightningModule の構築
-
-テニスタスクでは、`training._target_` によって v1/v2 を判定する:
+デフォルトのレジストリ登録（ファイル末尾の `_register_default_builders()`）では、次のように紐づけられている。
 
 ```python
-def build_lit_module(self):
-    task = self._task()
-    if task == "tennis_multi_cam_3d_pose":
-        training_cfg = self.cfg.get("training", {})
-        target = training_cfg.get("_target_", "")
-        if "TennisDetrV2Module" in target:
-            from src.training.tennis_multi_cam_3d_pose.lightning_v2 import TennisDetrV2Module
-            return TennisDetrV2Module(self.cfg)
-        else:
-            from src.training.tennis_multi_cam_3d_pose.lightning import TennisDetrModule
-            return TennisDetrModule(self.cfg)
-    from src.training.scene_model.lightning import SceneModelLightningModule
-    return SceneModelLightningModule(self.cfg)
+_DATAMODULE_REGISTRY["scene_model"] = _build_scene_datamodule
+_DATAMODULE_REGISTRY["tennis_multi_cam_3d_pose"] = _build_tennis_datamodule
 ```
 
-- v1/v2 の切り替えは **YAML 側の `_target_`** を変えるだけでよい。
-- SceneModel の場合は既定の `SceneModelLightningModule` を使用。
+これにより、タスクごとの DataModule を if/else ではなくレジストリで切り替える設計になっている。
+
+### 3.3 LightningModule の構築（タスク × バージョン）
+
+LightningModule も同様に、**(task, variant) → builder 関数** のレジストリで管理される。
+
+```python
+_LIGHTNING_REGISTRY: dict[tuple[str, str], Callable[[DictConfig], Any]] = {}
+
+def _lightning_key(self) -> tuple[str, str]:
+    task = self._task()
+    if task == "tennis_multi_cam_3d_pose":
+        experiment_name = self._experiment_name()
+        if "v3" in experiment_name:
+            variant = "v3"
+        elif "v2_5" in experiment_name:
+            variant = "v2_5"
+        elif "v2" in experiment_name:
+            variant = "v2"
+        else:
+            variant = "v1"
+    else:
+        variant = "default"
+    return task, variant
+
+def build_lit_module(self) -> ...:
+    task = self._task()
+    experiment_name = self._experiment_name()
+    training_cfg = self.cfg.get("training", {})
+    target = str(training_cfg.get("_target_", ""))
+    key = self._lightning_key()
+    builder = _LIGHTNING_REGISTRY.get(key)
+    if builder is None:
+        msg = (
+            "Unsupported LightningModule selection for task="
+            f"{task} (experiment_name={experiment_name}, target={target})"
+        )
+        self._logger.error(msg)
+        raise NotImplementedError(msg)
+    self._logger.info(
+        "Building LightningModule for task=%s (variant=%s)", task, key[1]
+    )
+    module = builder(self.cfg)
+    self._logger.info("LightningModule built for task=%s", task)
+    return module
+```
+
+デフォルト登録では、たとえば次のようにバインドされている。
+
+```python
+_LIGHTNING_REGISTRY[("scene_model", "default")] = _build_scene_module
+_LIGHTNING_REGISTRY[("tennis_multi_cam_3d_pose", "v1")] = _build_tennis_v1_module
+_LIGHTNING_REGISTRY[("tennis_multi_cam_3d_pose", "v2")] = _build_tennis_v2_module
+_LIGHTNING_REGISTRY[("tennis_multi_cam_3d_pose", "v2_5")] = _build_tennis_v25_module
+_LIGHTNING_REGISTRY[("tennis_multi_cam_3d_pose", "v3")] = _build_tennis_v3_module
+```
+
+**判定ロジック（テニスタスク）**:
+
+- `experiment_name` に `v3` を含む → v3
+- `experiment_name` に `v2_5` を含む → v2.5
+- `experiment_name` に `v2` を含む → v2
+- それ以外 → v1
+
+これにより、YAML 側の `experiment_name` だけで v1/v2/v2.5/v3 を切り替えられるようになっている。
 
 ### 3.4 Logger / Callback / Trainer
 
@@ -202,16 +264,20 @@ uv run python src/cli/scene_model/train.py \
   --set training.trainer.max_epochs=2
 ```
 
-### 4.2 テニス multi-cam 3D pose v1/v2
+### 4.2 テニス multi-cam 3D pose v1/v2/v2.5/v3
 
 - トップレベル:
   - v1: `configs/tennis_multi_cam_3d_pose.yaml`
   - v2: `configs/tennis_multi_cam_3d_pose_v2.yaml`
+  - v2.5: `configs/tennis_multi_cam_3d_pose_v2_5.yaml`
+  - v3: `configs/tennis_multi_cam_3d_pose_v3.yaml`
 
 どちらも `includes.dataset` と `includes.logging` は共有し、`includes.model` と `includes.training` だけが異なる。
 
 - v1: `models/tennis_mvpose.yaml`, `training/tennis_mvpose.yaml`
 - v2: `models/tennis_mvpose_v2.yaml`, `training/tennis_mvpose_v2.yaml`
+- v2.5: `models/tennis_mvpose_v2_5.yaml`, `training/tennis_mvpose_v2_5.yaml`
+- v3: `models/tennis_mvpose_v3.yaml`, `training/tennis_mvpose_v3.yaml`
 
 CLI からの利用例:
 
@@ -220,8 +286,8 @@ CLI からの利用例:
 uv run python src/cli/tennis_multi_cam_3d_pose/train.py \
   --config configs/tennis_multi_cam_3d_pose.yaml
 
-# v2
-uv run python src/cli/tennis_multi_cam_3d_pose/train_v2.py \
+# v2 (v2.5/v3 も同じ train CLI を使用)
+uv run python src/cli/tennis_multi_cam_3d_pose/train.py \
   --config configs/tennis_multi_cam_3d_pose_v2.yaml
 ```
 

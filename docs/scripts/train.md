@@ -57,7 +57,7 @@ CONFIG=configs/tennis_multi_cam_3d_pose_debug.yaml \
 ## 3. run_train_tennis_multi_cam_3d_pose_v2.sh (v2用)
 
 - **役割**: テニス multi-cam 3D pose タスク v2（階層エンコーダ + 分離出力）の学習を起動する。
-- **内部で呼び出す CLI**: `src/cli/tennis_multi_cam_3d_pose/train_v2.py`
+- **内部で呼び出す CLI**: `src/cli/tennis_multi_cam_3d_pose/train.py`（v1〜v3 共通のエントリポイント）
 
 ### 3.1 使い方
 
