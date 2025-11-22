@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run tennis_multi_cam_3d_pose v2.5 training via the shared v2 CLI entrypoint.
+# Run tennis_multi_cam_3d_pose v2.5 training via the unified CLI entrypoint.
 #
 # Usage:
 #   ./scripts/train/run_train_tennis_multi_cam_3d_pose_v2_5.sh
@@ -14,6 +14,6 @@ cd "${ROOT_DIR}"
 
 CONFIG="${CONFIG:-configs/tennis_multi_cam_3d_pose_v2_5.yaml}"
 
-uv run python src/cli/tennis_multi_cam_3d_pose/train_v2.py \
+uv run python src/cli/tennis_multi_cam_3d_pose/train.py \
   --config "${CONFIG}" \
   "$@"
