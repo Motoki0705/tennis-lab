@@ -3,14 +3,13 @@
 本書は、テニス用マルチビュー 3D ポーズ推定の学習パイプライン（ConfigLoader, DataModule, LightningModule, CLI）の仕様をまとめる。
 
 対象:
-- `src/training/utils/config.py:ConfigLoader`（`task == "tennis_multi_cam_3d_pose"` 分岐）
+- `src/training/utils/config.py:ConfigLoader`（`task == "tennis_multi_cam_3d_pose"` 用のレジストリと分岐）
 - `src/training/tennis_multi_cam_3d_pose/datamodule.py:TennisPoseDataModule`
 - `src/training/tennis_multi_cam_3d_pose/lightning.py:TennisDetrModule` (v1用)
 - `src/training/tennis_multi_cam_3d_pose/lightning_v2.py:TennisDetrV2Module` (v2用)
 - `src/training/tennis_multi_cam_3d_pose/lightning_v2_5.py:TennisDetrV25Module` (v2.5用)
 - `src/training/tennis_multi_cam_3d_pose/lightning_v3.py:TennisDetrV3Module` (v3用)
-- `src/cli/tennis_multi_cam_3d_pose/train.py` (v1用)
-- `src/cli/tennis_multi_cam_3d_pose/train_v2.py` (v2/v2.5/v3共用)
+- `src/cli/tennis_multi_cam_3d_pose/train.py` (v1/v2/v2.5/v3 共通)
 - YAML 設定: `configs/tennis_multi_cam_3d_pose.yaml` (v1用), `configs/tennis_multi_cam_3d_pose_v2.yaml` (v2用), `configs/tennis_multi_cam_3d_pose_v2_5.yaml` (v2.5用), `configs/tennis_multi_cam_3d_pose_v3.yaml` (v3用)
 
 > **注**: v1（元のモデル）、v2（階層エンコーダ + 分離出力）、v2.5（v2拡張版）、v3（track-aware版）の全バージョンに対応。
@@ -51,7 +50,7 @@ trainer = loader.build_trainer(logger, cbs)
 trainer.fit(lit, datamodule=dm)
 ```
 
-**重要**: `ConfigLoader.build_lit_module()` は `training._target_` に基づいて自動的にv1/v2を判定する。
+**重要**: v1/v2/v2.5/v3 のバージョン選択は `training._target_` ではなく、`experiment_name` に基づいて行う（後述のレジストリにより判定）。
 
 ### 1.3 v2.5モデルのワークフロー
 
@@ -85,64 +84,121 @@ trainer = loader.build_trainer(logger, cbs)
 trainer.fit(lit, datamodule=dm)
 ```
 
-**重要**: `ConfigLoader.build_lit_module()` は `experiment_name` に基づいて自動的にv1/v2/v2.5/v3を判定する。
+**重要**: `ConfigLoader.build_lit_module()` は `experiment_name` に基づいて自動的に v1/v2/v2.5/v3 を判定する。判定ルールは 2.2 節を参照。
 
-CLI では以下がそれぞれのフローをラップする:
-- `src/cli/tennis_multi_cam_3d_pose/train.py` (v1用)
-- `src/cli/tennis_multi_cam_3d_pose/train_v2.py` (v2/v2.5/v3共用)
+CLI では `src/cli/tennis_multi_cam_3d_pose/train.py` が v1〜v3 すべてのフローをラップする。
 
 ---
 
-## 2. ConfigLoader の `tennis_multi_cam_3d_pose` 分岐
+## 2. ConfigLoader の `tennis_multi_cam_3d_pose` 分岐（レジストリ方式）
 
 実装: `src/training/utils/config.py:ConfigLoader`
 
-### 2.1 `build_datamodule`
+### 2.1 DataModule レジストリ
+
+`ConfigLoader` は、タスク名ごとに DataModule を紐づけるレジストリを持つ。
 
 ```python
+_DATAMODULE_REGISTRY: dict[str, Callable[[Any, Any], Any]] = {}
+
 def build_datamodule(self) -> DancetrackDataModule | TennisPoseDataModule:
     task = self._task()
     dataset_cfg = self.cfg.get("dataset")
     debug_cfg = self.cfg.get("debug")
-    if task == "tennis_multi_cam_3d_pose":
-        from src.training.tennis_multi_cam_3d_pose.datamodule import TennisPoseDataModule
-        return TennisPoseDataModule(dataset_cfg, debug_cfg)
-    ...
+    dataset_keys = list(dataset_cfg.keys()) if dataset_cfg else []
+
+    builder = _DATAMODULE_REGISTRY.get(task)
+    if builder is None:
+        experiment_name = self._experiment_name()
+        msg = (
+            f"Unsupported task={task} (experiment_name={experiment_name}) for datamodule"
+        )
+        self._logger.error(msg)
+        raise NotImplementedError(msg)
+    datamodule = builder(dataset_cfg, debug_cfg)
+    self._logger.info(
+        "DataModule built for task=%s (dataset_keys=%s)", task, dataset_keys
+    )
+    return datamodule
 ```
 
-### 2.2 `build_lit_module`
+デフォルト登録では、
 
-v1/v2/v2.5/v3を自動判定する実装:
+- `task == "scene_model"` → `DancetrackDataModule`
+- `task == "tennis_multi_cam_3d_pose"` → `TennisPoseDataModule`
+
+となっており、タスク追加時はレジストリに builder 関数を追加するだけで良い。
+
+### 2.2 LightningModule レジストリとバージョン選択
+
+LightningModule も `(task, variant)` キーのレジストリで管理される。
 
 ```python
-def build_lit_module(self) -> SceneModelLightningModule | TennisDetrModule | TennisDetrV2Module | TennisDetrV25Module | TennisDetrV3Module:
+_LIGHTNING_REGISTRY: dict[tuple[str, str], Callable[[DictConfig], Any]] = {}
+
+def _lightning_key(self) -> tuple[str, str]:
     task = self._task()
-    experiment_name = str(self.cfg.get("experiment_name") or "").lower()
     if task == "tennis_multi_cam_3d_pose":
+        experiment_name = self._experiment_name()
         if "v3" in experiment_name:
-            from src.training.tennis_multi_cam_3d_pose.lightning_v3 import TennisDetrV3Module
-            return TennisDetrV3Module(self.cfg)
-        if "v2_5" in experiment_name:
-            from src.training.tennis_multi_cam_3d_pose.lightning_v2_5 import TennisDetrV25Module
-            return TennisDetrV25Module(self.cfg)
-        if "v2" in experiment_name:
-            from src.training.tennis_multi_cam_3d_pose.lightning_v2 import TennisDetrV2Module
-            return TennisDetrV2Module(self.cfg)
+            variant = "v3"
+        elif "v2_5" in experiment_name:
+            variant = "v2_5"
+        elif "v2" in experiment_name:
+            variant = "v2"
         else:
-            from src.training.tennis_multi_cam_3d_pose.lightning import TennisDetrModule
-            return TennisDetrModule(self.cfg)
-    ...
+            variant = "v1"
+    else:
+        variant = "default"
+    return task, variant
+
+def build_lit_module(self) -> (...):
+    task = self._task()
+    experiment_name = self._experiment_name()
+    training_cfg = self.cfg.get("training", {})
+    target = str(training_cfg.get("_target_", ""))
+    key = self._lightning_key()
+    builder = _LIGHTNING_REGISTRY.get(key)
+    if builder is None:
+        msg = (
+            "Unsupported LightningModule selection for task="
+            f"{task} (experiment_name={experiment_name}, target={target})"
+        )
+        self._logger.error(msg)
+        raise NotImplementedError(msg)
+    self._logger.info(
+        "Building LightningModule for task=%s (variant=%s)", task, key[1]
+    )
+    module = builder(self.cfg)
+    self._logger.info("LightningModule built for task=%s", task)
+    return module
 ```
 
-**判定ロジック**:
+デフォルトでは、以下のようにバインドされる。
+
+- `(task="scene_model", variant="default")` → `SceneModelLightningModule`
+- `(task="tennis_multi_cam_3d_pose", variant="v1")` → `TennisDetrModule`
+- `(task="tennis_multi_cam_3d_pose", variant="v2")` → `TennisDetrV2Module`
+- `(task="tennis_multi_cam_3d_pose", variant="v2_5")` → `TennisDetrV25Module`
+- `(task="tennis_multi_cam_3d_pose", variant="v3")` → `TennisDetrV3Module`
+
+**判定ロジック（テニスタスク）**:
+
 - `experiment_name` に `v3` を含む → v3
 - `experiment_name` に `v2_5` を含む → v2.5
 - `experiment_name` に `v2` を含む → v2
 - それ以外 → v1
 
-これにより、YAML設定だけでv1/v2/v2.5/v3を切り替え可能。
+これにより、`experiment_name` を変更するだけで v1/v2/v2.5/v3 を切り替えられる。`training._target_` はログ上の補助情報として保持されるが、バージョン選択の本質的な条件ではない。
 
-その他のメソッド（`build_logger`, `build_callbacks`, `build_trainer`）は SceneModel 用と共通で、`cfg.logging` / `cfg.training.trainer` を解釈して TensorBoardLogger / ModelCheckpoint / LRMonitor / Trainer を構築する。
+### 2.3 Logger / Callback / Trainer
+
+`build_logger`, `build_callbacks`, `build_trainer` は SceneModel と共通の実装であり、
+
+- `cfg.logging` に基づく TensorBoardLogger / ModelCheckpoint / LearningRateMonitor の構築
+- `cfg.training.trainer` に基づく PyTorch Lightning `Trainer` の構築
+
+を行う。
 
 ---
 
@@ -452,9 +508,6 @@ logger:
   save_dir: runs
   name: tennis_multi_cam_3d_pose
   default_hp_metric: false
-```
-
----
 
 callbacks:
   checkpoint:
@@ -544,33 +597,18 @@ canonical_gt, root_trans_gt, root_rot_gt, global_gt
 
 ## 5. CLI
 
-### 5.1 v1 CLI: `src/cli/tennis_multi_cam_3d_pose/train.py`
+### 5.1 共通 CLI: `src/cli/tennis_multi_cam_3d_pose/train.py`
 
 - 役割:
-  - `--config configs/tennis_multi_cam_3d_pose.yaml` と任意の `--set key=value` から DictConfig を構築し、v1パイプラインを起動する。
+  - `--config configs/tennis_multi_cam_3d_pose(_v2/_v2_5/_v3).yaml` と任意の `--set key=value` から DictConfig を構築し、v1/v2/v2.5/v3 パイプラインを起動する。
 - 主な引数:
 
 | 引数 | 説明 |
 | --- | --- |
-| `--config` | トップレベル YAML (`configs/tennis_multi_cam_3d_pose.yaml`) |
+| `--config` | トップレベル YAML（v1〜v3） |
 | `--set` | `dataset.name=... training.trainer.max_epochs=...` などの dotlist 形式オーバーライド |
 
-### 5.2 v2 CLI: `src/cli/tennis_multi_cam_3d_pose/train_v2.py`
-
-- 役割:
-  - `--config configs/tennis_multi_cam_3d_pose_v2.yaml` / `v2_5.yaml` / `v3.yaml` と任意の `--set key=value` から DictConfig を構築し、v2/v2.5/v3パイプラインを起動する。
-- 主な引数:
-
-| 引数 | 説明 |
-| --- | --- |
-| `--config` | トップレベル YAML（v2/v2.5/v3） |
-| `--set` | `dataset.name=... training.trainer.max_epochs=...` などの dotlist 形式オーバーライド |
-
-**内部処理**（v1/v2/v2.5/v3共通）:
-1. `load_cfg(config_path, overrides)` で設定を読み込む。
-2. `cfg.task == "tennis_multi_cam_3d_pose"` を確認（異なる場合は使用法エラー）。
-3. `ConfigLoader(cfg)` を用いて DataModule, LightningModule, Logger, Callbacks, Trainer を構築。
-4. `trainer.fit(lit, datamodule=dm)` を起動。
+内部処理は `run_training_from_config()` ヘルパと `ConfigLoader` に委譲され、タスク名と `experiment_name` に応じて適切な DataModule / LightningModule / Trainer が選択される。
 
 ---
 
@@ -588,7 +626,7 @@ python src/cli/tennis_multi_cam_3d_pose/train.py \
 ### 6.2 v2モデルの学習
 
 ```bash
-python src/cli/tennis_multi_cam_3d_pose/train_v2.py \
+python src/cli/tennis_multi_cam_3d_pose/train.py \
   --config configs/tennis_multi_cam_3d_pose_v2.yaml \
   --set dataset.name=sim_fps60_dur3p0_C4_P1-20_T10 \
   --set training.trainer.max_epochs=50 \
@@ -598,7 +636,7 @@ python src/cli/tennis_multi_cam_3d_pose/train_v2.py \
 ### 6.3 v2.5モデルの学習
 
 ```bash
-python src/cli/tennis_multi_cam_3d_pose/train_v2.py \
+python src/cli/tennis_multi_cam_3d_pose/train.py \
   --config configs/tennis_multi_cam_3d_pose_v2_5.yaml \
   --set dataset.name=sim_fps60_dur3p0_C4_P1-20_T10 \
   --set training.trainer.max_epochs=50
@@ -607,7 +645,7 @@ python src/cli/tennis_multi_cam_3d_pose/train_v2.py \
 ### 6.4 v3モデルの学習
 
 ```bash
-python src/cli/tennis_multi_cam_3d_pose/train_v2.py \
+python src/cli/tennis_multi_cam_3d_pose/train.py \
   --config configs/tennis_multi_cam_3d_pose_v3.yaml \
   --set dataset.name=sim_fps60_dur3p0_C4_P1-20_T10 \
   --set training.trainer.max_epochs=50 \
@@ -641,6 +679,6 @@ python src/cli/tennis_multi_cam_3d_pose/train_v2.py \
 | LightningModule | TennisDetrModule | TennisDetrV2Module | TennisDetrV25Module | TennisDetrV3Module |
 | 設定ファイル | tennis_mvpose.yaml | tennis_mvpose_v2.yaml | tennis_mvpose_v2_5.yaml | tennis_mvpose_v3.yaml |
 | 損失関数 | 単一ポーズ損失 | 4要素損失 | 4要素損失 | 4要素損失 |
-| CLI | train.py | train_v2.py | train_v2.py | train_v2.py |
+| CLI | train.py | train.py | train.py | train.py |
 | データセット互換性 | 既存データ | 既存データ（自動GT生成） | 既存データ | 既存データ |
 | 主な差分 | - | 階層エンコーダ | カメラ・時間埋め込みを明示的に付与 | Query ごとの時間軸 TransformerEncoder で track-aware |
