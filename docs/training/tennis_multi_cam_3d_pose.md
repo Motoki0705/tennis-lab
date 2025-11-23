@@ -4,6 +4,7 @@
 
 対象:
 - `src/training/utils/config.py:ConfigLoader`（`task == "tennis_multi_cam_3d_pose"` 用のレジストリと分岐）
+- `src/training/base/tennis_multi_cam_3d_pose.py:BaseTennisLightningModule`
 - `src/training/tennis_multi_cam_3d_pose/datamodule.py:TennisPoseDataModule`
 - `src/training/tennis_multi_cam_3d_pose/lightning.py:TennisDetrModule` (v1用)
 - `src/training/tennis_multi_cam_3d_pose/lightning_v2.py:TennisDetrV2Module` (v2用)
@@ -96,7 +97,7 @@ CLI では `src/cli/tennis_multi_cam_3d_pose/train.py` が v1〜v3 すべての�
 
 ### 2.1 DataModule レジストリ
 
-`ConfigLoader` は、タスク名ごとに DataModule を紐づけるレジストリを持つ。
+`ConfigLoader` は、タスク名ごとに DataModule / LightningModule を紐づけるレジストリを持つ。
 
 ```python
 _DATAMODULE_REGISTRY: dict[str, Callable[[Any, Any], Any]] = {}
@@ -521,14 +522,6 @@ callbacks:
 
 visualizer:
   max_batches: 2
-  exist_threshold: 0.5
-```
-
----
-
-## 4. LightningModule
-
-### 4.1 v1: `TennisDetrModule`
 
 実装: `src/training/tennis_multi_cam_3d_pose/lightning.py:TennisDetrModule`
 
@@ -550,21 +543,21 @@ pose_pred  # [B,Q,T,J,3] - モデル出力
 pose_gt    # [B,T,M,J,3] - GTデータ
 ```
 
-### 4.2 v2.5: `TennisDetrV25Module`
+### 4.3 v2.5: `TennisDetrV25Module`
 
 実装: `src/training/tennis_multi_cam_3d_pose/lightning_v2_5.py:TennisDetrV25Module`
 
 - v2と同じ損失・I/O・可視化ロジック
 - モデルのみ `TennisDETR_v2_5` に変更
 
-### 4.3 v3: `TennisDetrV3Module`
+### 4.4 v3: `TennisDetrV3Module`
 
 実装: `src/training/tennis_multi_cam_3d_pose/lightning_v3.py:TennisDetrV3Module`
 
 - v2と同じ損失・I/O・可視化ロジック
 - モデルのみ `TennisDETR_v3` に変更（track-aware temporal encoder 付き）
 
-実装: `src/training/tennis_multi_cam_3d_pose/lightning_v2.py:TennisDetrV2Module`
+### 4.5 v2: `TennisDetrV2Module`
 
 #### 4.2.1 入出力
 
