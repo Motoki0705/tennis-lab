@@ -159,7 +159,17 @@ CLI はすべて `src/cli/` 以下の Python スクリプトとして実装さ�
   - シーン JSON: `tennis_multi_cam_3d_pose/tennis_simulator.md`
   - テニス用 Dataset: `datasets/tennis_multi_cam_3d_pose_dataset.md`
   - シーン Dataset 全体: `datasets/scene_datasets.md`
+- **テニスコート 2D キーポイント推定（Court Pose モデル）について知りたい**: `thrid_party/court_pose.md`
 - **Config / YAML システムを理解したい**: `configs/index.md`
 - **どうやって動かすか（実行コマンド）を知りたい**:
   - CLI: `cli/*.md`
   - scripts: `scripts/*.md`
+
+---
+
+## 8. third_party / 外部ライブラリ
+
+- `thrid_party/gvhmr.md`
+  - `third_party/GVHMR` のコード構造と、GVHMR モデルをテニスシステムから API として利用する際の前提・設計メモ。
+- `thrid_party/sam3.md`
+  - `third_party/sam3` のコード構造と、SAM3 モデルをテニスシステムから API として利用する際の前提・設計メモ。

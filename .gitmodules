@@ -29,3 +29,9 @@
 	path = third_party/MOTR
 	url = git@github.com:Motoki0705/MOTR.git
 	branch = main
+
+[submodule "third_party/sam3"]
+	path = third_party/sam3
+	url = git@github.com:Motoki0705/sam3.git
+	branch = main
+
