@@ -117,6 +117,8 @@ class ConfigLoader:
                 variant = "v2"
             else:
                 variant = "v1"
+        elif task == "tennis_mono_locrot":
+            variant = "mono"
         else:
             variant = "default"
         return task, variant
@@ -234,6 +236,7 @@ def _register_default_builders() -> None:
 
     _DATAMODULE_REGISTRY["scene_model"] = _build_scene_datamodule
     _DATAMODULE_REGISTRY["tennis_multi_cam_3d_pose"] = _build_tennis_datamodule
+    _DATAMODULE_REGISTRY["tennis_mono_locrot"] = _build_tennis_datamodule
 
     def _build_scene_module(cfg: DictConfig) -> Any:
         from src.training.scene_model.lightning import SceneModelLightningModule
@@ -266,11 +269,17 @@ def _register_default_builders() -> None:
 
         return TennisDetrV3Module(cfg)
 
+    def _build_tennis_mono_module(cfg: DictConfig) -> Any:
+        from src.training.tennis_mono_locrot.lightning import TennisMonoLocRotModule
+
+        return TennisMonoLocRotModule(cfg)
+
     _LIGHTNING_REGISTRY[("scene_model", "default")] = _build_scene_module
     _LIGHTNING_REGISTRY[("tennis_multi_cam_3d_pose", "v1")] = _build_tennis_v1_module
     _LIGHTNING_REGISTRY[("tennis_multi_cam_3d_pose", "v2")] = _build_tennis_v2_module
     _LIGHTNING_REGISTRY[("tennis_multi_cam_3d_pose", "v2_5")] = _build_tennis_v25_module
     _LIGHTNING_REGISTRY[("tennis_multi_cam_3d_pose", "v3")] = _build_tennis_v3_module
+    _LIGHTNING_REGISTRY[("tennis_mono_locrot", "mono")] = _build_tennis_mono_module
 
 
 _register_default_builders()

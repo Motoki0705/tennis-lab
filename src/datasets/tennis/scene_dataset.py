@@ -159,6 +159,8 @@ class TennisSceneWindowDataset(Dataset):
             int(min_cameras) if min_cameras is not None else None
         )
         self.augment_2d = bool(augment_2d)
+        self.current_max_cameras = self.max_cameras
+        self.current_min_cameras = self.min_cameras
 
         if self.window_T <= 0:
             msg = "window_T must be positive"
@@ -237,10 +239,10 @@ class TennisSceneWindowDataset(Dataset):
             raise ValueError(msg)
 
         t_start = rec.t_start
-        t_end = rec.t_end
+        t_end = min(rec.t_end, t_start + T)
         length = t_end - t_start
-        if length > T:
-            msg = f"Window length {length} exceeds configured window_T={T}"
+        if length <= 0:
+            msg = "Window length must be positive after clamping"
             raise ValueError(msg)
 
         keypoints_2d = torch.zeros(
@@ -279,7 +281,10 @@ class TennisSceneWindowDataset(Dataset):
                 (T, self.max_players, self.num_joints, 3),
                 dtype=torch.float32,
             )
-            canonical_full[:length, : canonical_slice.shape[1]] = canonical_slice
+            num_joints_canon = min(self.num_joints, canonical_slice.shape[2])
+            canonical_full[:length, : canonical_slice.shape[1], :num_joints_canon] = (
+                canonical_slice[:, :, :num_joints_canon]
+            )
             canonical_pose_gt = canonical_full
         if "root_trans_gt" in arrs:
             root_trans_slice = torch.from_numpy(
@@ -309,7 +314,10 @@ class TennisSceneWindowDataset(Dataset):
                 (T, self.max_players, self.num_joints, 3),
                 dtype=torch.float32,
             )
-            global_full[:length, : global_slice.shape[1]] = global_slice
+            num_joints_global = min(self.num_joints, global_slice.shape[2])
+            global_full[:length, : global_slice.shape[1], :num_joints_global] = (
+                global_slice[:, :, :num_joints_global]
+            )
             global_pose_gt = global_full
         src_court = torch.from_numpy(arrs["court_2d"])  # [V,20,2]
         if "camera_C" not in arrs or "camera_R" not in arrs:
@@ -323,14 +331,21 @@ class TennisSceneWindowDataset(Dataset):
         V_src = int(src_key.shape[1])
         cam_indices = sample_camera_indices(
             num_available=V_src,
-            max_cameras=self.max_cameras,
-            min_cameras=self.min_cameras,
+            max_cameras=self.current_max_cameras,
+            min_cameras=self.current_min_cameras,
         )
         k = int(cam_indices.shape[0])
 
-        keypoints_2d[:length, :k, : src_key.shape[2]] = src_key[:, cam_indices]
+        num_joints_2d = min(self.num_joints, src_key.shape[3])
+        keypoints_2d[:length, :k, : src_key.shape[2], :num_joints_2d] = src_key[
+            :, cam_indices, :, :num_joints_2d
+        ]
         player_mask[:length, :k, : src_mask.shape[2]] = src_mask[:, cam_indices]
-        pose_3d[:length, : src_pose.shape[1]] = src_pose
+
+        num_joints_3d = min(self.num_joints, src_pose.shape[2])
+        pose_3d[:length, : src_pose.shape[1], :num_joints_3d] = src_pose[
+            :, :, :num_joints_3d
+        ]
         exist_3d[:length, : src_exist.shape[1]] = src_exist
         court_2d[:k] = src_court[cam_indices]
         camera_C[:k] = src_cam_C[cam_indices]
@@ -395,12 +410,12 @@ class TennisSceneWindowDataset(Dataset):
         if num_cameras > self.max_cameras:
             msg = f"Scene uses {num_cameras} cameras but max_cameras={self.max_cameras}"
             raise ValueError(msg)
-        if rec.num_frames > self.window_T:
-            msg = f"Window length {rec.num_frames} exceeds configured window_T={self.window_T}"
+        if rec.num_frames <= 0:
+            msg = "Window length must be positive"
             raise ValueError(msg)
 
         t_start = rec.t_start
-        t_end = rec.t_end
+        t_end = min(rec.t_end, t_start + self.window_T)
         window_frames = frames[t_start:t_end]
         # Tensor shapes
         T = self.window_T
@@ -449,8 +464,8 @@ class TennisSceneWindowDataset(Dataset):
         # Sample a subset of cameras for this window.
         cam_indices = sample_camera_indices(
             num_available=num_cameras,
-            max_cameras=self.max_cameras,
-            min_cameras=self.min_cameras,
+            max_cameras=self.current_max_cameras,
+            min_cameras=self.current_min_cameras,
         )
 
         # Court keypoints are assumed constant across frames; take from the first.
@@ -564,6 +579,30 @@ class TennisSceneWindowDataset(Dataset):
             enabled=self.augment_2d,
             split=self.split,
         )
+
+    def set_active_camera_bounds(
+        self,
+        *,
+        max_cameras: int | None = None,
+        min_cameras: int | None = None,
+    ) -> None:
+        """Update the sampling bounds without changing tensor shapes."""
+        if max_cameras is not None:
+            if max_cameras <= 0 or max_cameras > self.max_cameras:
+                msg = "max_cameras must be within (0, self.max_cameras] when ``set_active_camera_bounds`` is called"
+                raise ValueError(msg)
+            self.current_max_cameras = int(max_cameras)
+        if min_cameras is not None:
+            if min_cameras <= 0 or min_cameras > self.current_max_cameras:
+                msg = "min_cameras must satisfy 0 < min_cameras <= current_max_cameras"
+                raise ValueError(msg)
+            self.current_min_cameras = int(min_cameras)
+        # Ensure min does not exceed max after independent updates.
+        if (
+            self.current_min_cameras is not None
+            and self.current_min_cameras > self.current_max_cameras
+        ):
+            self.current_min_cameras = self.current_max_cameras
 
 
 if __name__ == "__main__":
