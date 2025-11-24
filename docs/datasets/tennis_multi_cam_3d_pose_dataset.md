@@ -75,14 +75,39 @@ CLI や scripts による実行方法は `docs/spec/cli/tennis_multi_cam_3d_pose
     test/scene_000000.npz
 ```
 
-各 npz には、少なくとも以下の配列が含まれる想定である（代表例）:
+ 各 npz には、少なくとも以下の配列が含まれる想定である（代表例）:
 
-- `keypoints_2d`: `[T, V, M, J, 2]` — 正規化済み 2D キーポイント
-- `player_mask`: `[T, V, M]` — プレーヤー存在マスク
-- `court_2d`: `[V, 20, 2]` — 正規化済みコート 2D キーポイント
-- `pose_3d_gt`: `[T, M, J, 3]` — 正規化済み 3D GT キーポイント
-- `exist_3d_gt`: `[T, M]` — 3D GT の有無
-- `camera_C`, `camera_R`, `camera_intr`, `image_size` などのカメラ情報
+ - `keypoints_2d`: `[T, V, M, J, 2]` — 正規化済み 2D キーポイント
+ - `player_mask`: `[T, V, M]` — プレーヤー存在マスク
+ - `court_2d`: `[V, 20, 2]` — 正規化済みコート 2D キーポイント
+ - `pose_3d_gt`: `[T, M, J, 3]` — 正規化済み 3D GT キーポイント
+ - `exist_3d_gt`: `[T, M]` — 3D GT の有無
+ - `camera_C`, `camera_R`, `camera_intr`, `image_size` などのカメラ情報
+
+  これらの配列の座標系および正規化は次の通りである:
+
+  - **2D キーポイント (`keypoints_2d`, `court_2d`)**
+    - 元のピクセル座標 `[u, v]` を画像サイズ `(w, h)` でスケーリングし、`[-1, 1]` に線形マッピングする。
+    - 実装: `src/cli/tennis_multi_cam_3d_pose/preprocess_memmap.py::_normalize_2d` および `src/datasets/tennis/scene_dataset.py::_getitem_from_json`。
+    - 具体的には `u_norm = (u / w) * 2 - 1`, `v_norm = (v / h) * 2 - 1`。
+    - 可視化などでピクセル座標に戻す場合は `src/training/utils/tennis_projection.py::norm_to_px` を利用できる。
+
+  - **3D ポーズ (`pose_3d_gt` とそれに由来する v2 用 GT)**
+    - シミュレータのワールド座標系は ITF 規格ベースのコート寸法 (単位メートル) に従う。
+    - 各関節のワールド座標 `[x, y, z]` をテニスコートの代表長さでスケーリングし、無次元化している。
+    - 実装: `src/cli/tennis_multi_cam_3d_pose/preprocess_memmap.py::_process_scene_json` および `src/datasets/tennis/scene_dataset.py::_getitem_from_json`。
+    - 具体的には `x_norm = x / HALF_DOUBLES_WIDTH`, `y_norm = y / HALF_LENGTH`, `z_norm = z / NET_HEIGHT_POST` (`src/tennis/geometry/court.py` を参照)。
+    - `src/training/utils/tennis_projection.py::denorm_pose3d` で `[HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST]` を掛けることでメートル単位に戻せる。
+
+  - **マスク (`player_mask`, `exist_3d_gt`)**
+    - これらはブール値 (`True` / `False`) の存在フラグであり，数値的な正規化は行わない。
+
+  - **カメラ情報 (`camera_C`, `camera_R`, `camera_intr`, `image_size`)**
+    - `camera_C`: シミュレータのワールド座標系におけるカメラ中心 `[x, y, z]` (メートル)。
+    - `camera_R`: ワールド座標 → カメラ座標への回転行列 (3x3)。
+    - `camera_intr`: `[f, cx, cy]` という形式の内部パラメータで，`f` はピクセル単位の焦点距離，`cx, cy` は主点座標 (ピクセル)。
+    - `image_size`: `[w, h]` (ピクセル)。
+    - これらは正規化せず，`src/tennis/sim/schema.py` / `src/tennis/sim/generator.py` で生成された値をそのまま保持し，`src/training/utils/tennis_projection.py::project_world_points` などで利用する。
 
 ### 3.1 v2用GTデータ（オプション）
 
@@ -92,6 +117,14 @@ v2モデル（階層エンコーダ + 分離出力）用のGTデータも含め�
 - `root_trans_gt`: `[T, M, 3]` — コート上の正規化ルート位置
 - `root_rot_gt`: `[T, M, 2]` — ルート回転（cos, sin）
 - `global_pose_gt`: `[T, M, J, 3]` — 再構成された絶対座標ポーズ
+
+  これらの配列の座標系および正規化は次の通りである:
+  - **`canonical_pose_gt`, `root_trans_gt`, `root_rot_gt`, `global_pose_gt`**
+    - いずれも上記の正規化済み `pose_3d_gt` から `_decompose_pose_for_v2` / `_decompose_pose_for_v2_torch` により派生する。
+    - `root_trans_gt`: 関節インデックス 0 (腰) の絶対位置 `[x, y, z]` をそのまま保持（スケールは `pose_3d_gt` と同じ）。
+    - `canonical_pose_gt`: 各フレーム・プレーヤーごとに root を原点に平行移動し，左右肩 (11, 12 番) のベクトルから推定した yaw を打ち消した座標。
+    - `root_rot_gt`: 上記 yaw 角を `(cosθ, sinθ)` で表現した 2 次元ベクトル。
+    - `global_pose_gt`: 元の `pose_3d_gt` をコピーしたもの（スケール・座標系は `pose_3d_gt` と同一）。
 
 **注意**: v2用GTデータが存在しない場合、`TennisSceneWindowDataset`は既存の`pose_3d_gt`から自動的にv2用GTを生成する。したがって、既存データセットでv2モデルの学習が可能。
 
