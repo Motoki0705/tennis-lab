@@ -76,6 +76,21 @@ class TennisPoseDataModule(BaseDataModule[TennisSceneWindowDataset, dict[str, An
         """Return the test DataLoader configured via dataset_cfg."""
         return self._make_loader(self.test_dataset, "test", "test", False)
 
+    def set_camera_schedule(
+        self,
+        *,
+        max_cameras: int | None = None,
+        min_cameras: int | None = None,
+    ) -> None:
+        """Propagate dynamic camera sampling bounds to the training dataset."""
+        train_dataset = getattr(self, "train_dataset", None)
+        if train_dataset is None:
+            return
+        setter = getattr(train_dataset, "set_active_camera_bounds", None)
+        if setter is None:
+            return
+        setter(max_cameras=max_cameras, min_cameras=min_cameras)
+
 
 def _to_dict(cfg: DictConfig | Mapping[str, Any] | None) -> dict[str, Any]:
     if cfg is None:

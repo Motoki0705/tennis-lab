@@ -1,0 +1,8 @@
+task: tennis_mono_locrot
+experiment_name: tennis_mono_locrot_dev
+
+includes:
+  dataset: datasets/tennis_mono_locrot_sim.yaml
+  model: models/tennis_mono_locrot.yaml
+  training: training/tennis_mono_locrot.yaml
+  logging: logging/tennis_mono_locrot.yaml
