@@ -108,6 +108,14 @@ class TennisMonoLocRotModel(nn.Module):
             nn.Linear(D, 2),
         )
 
+        # Existence head for each player query.
+        self.exist_head = nn.Sequential(
+            nn.LayerNorm(D),
+            nn.Linear(D, D),
+            nn.GELU(),
+            nn.Linear(D, 1),
+        )
+
         # Denoising tokens and heads.
         self.noise_token_mlp = nn.Sequential(
             nn.LayerNorm(5),
@@ -243,8 +251,13 @@ class TennisMonoLocRotModel(nn.Module):
 
         root_trans = self.root_trans_head(dec_out)  # [B, M, 3]
         root_rot = self.root_rot_head(dec_out)  # [B, M, 2]
+        exist_logit = self.exist_head(dec_out)  # [B, M, 1]
 
-        outputs: dict[str, Tensor] = {"root_trans": root_trans, "root_rot": root_rot}
+        outputs: dict[str, Tensor] = {
+            "root_trans": root_trans,
+            "root_rot": root_rot,
+            "exist_logit": exist_logit,
+        }
 
         if denoise_inputs is not None:
             noisy_root = denoise_inputs.get("noisy_root")
