@@ -15,81 +15,24 @@ from src.datasets.tennis.augment import (
     apply_random_2d_affine,
     sample_camera_indices,
 )
-from src.tennis.geometry.court import (
-    HALF_DOUBLES_WIDTH,
-    HALF_LENGTH,
-    NET_HEIGHT_POST,
-)
 
 
-def _decompose_pose_for_v2_torch(pose_3d: Tensor) -> dict[str, Tensor]:
-    """Torch implementation of v2 GT decomposition for a single window.
-
-    Args:
-        pose_3d (Tensor): [T, M, J, 3] 絶対座標ポーズ（正規化済み）
-
-    Returns:
-        dict[str, Tensor]: canonical / root / global components.
-
-    """
-    T, M, J, _ = pose_3d.shape
-    if J <= 0:
-        return {
-            "canonical_pose_gt": pose_3d,
-            "root_trans_gt": torch.zeros(
-                (T, M, 3), dtype=pose_3d.dtype, device=pose_3d.device
-            ),
-            "root_rot_gt": torch.zeros(
-                (T, M, 2), dtype=pose_3d.dtype, device=pose_3d.device
-            ),
-            "global_pose_gt": pose_3d,
-        }
-
-    # 1. ルート平行移動を除去
-    root_trans = pose_3d[:, :, 0, :]  # [T, M, 3]
-    pose_rel = pose_3d - root_trans[:, :, None, :]
-
-    # 2. 肩ベクトルから yaw 角を推定
-    # 左肩(11), 右肩(12) が存在しない場合はそのまま返す
-    if J <= 12:
-        canonical_pose = pose_rel
-        root_rot = torch.zeros((T, M, 2), dtype=pose_3d.dtype, device=pose_3d.device)
-        root_rot[..., 0] = 1.0  # cos=1, sin=0
-        global_pose = pose_3d
-        return {
-            "canonical_pose_gt": canonical_pose,
-            "root_trans_gt": root_trans,
-            "root_rot_gt": root_rot,
-            "global_pose_gt": global_pose,
-        }
-
-    left_shoulder = pose_3d[:, :, 11, :]  # [T, M, 3]
-    right_shoulder = pose_3d[:, :, 12, :]  # [T, M, 3]
-    shoulder_vector = right_shoulder - left_shoulder  # [T, M, 3]
-
-    theta = torch.atan2(shoulder_vector[..., 1], shoulder_vector[..., 0])  # [T, M]
-    cos_theta = torch.cos(theta)
-    sin_theta = torch.sin(theta)
-
-    # 3. yaw を打ち消した canonical 座標を計算
-    x_rel = pose_rel[..., 0]
-    y_rel = pose_rel[..., 1]
-    z_rel = pose_rel[..., 2]
-
-    x_can = cos_theta[..., None] * x_rel + sin_theta[..., None] * y_rel
-    y_can = -sin_theta[..., None] * x_rel + cos_theta[..., None] * y_rel
-    z_can = z_rel
-    canonical_pose = torch.stack([x_can, y_can, z_can], dim=-1)
-
-    root_rot = torch.stack([cos_theta, sin_theta], dim=-1)  # [T, M, 2]
-    global_pose = pose_3d
-
-    return {
-        "canonical_pose_gt": canonical_pose,
-        "root_trans_gt": root_trans,
-        "root_rot_gt": root_rot,
-        "global_pose_gt": global_pose,
-    }
+@dataclass
+class _WindowTensors:
+    """Container for pre-allocated window tensors."""
+    keypoints_2d: Tensor
+    player_mask: Tensor
+    pose_3d: Tensor
+    exist_3d: Tensor
+    court_2d: Tensor
+    camera_C: Tensor
+    camera_R: Tensor
+    camera_intr: Tensor
+    image_size: Tensor
+    canonical_pose_gt: Tensor
+    root_trans_gt: Tensor
+    root_rot_gt: Tensor
+    global_pose_gt: Tensor
 
 
 @dataclass(slots=True)
@@ -120,8 +63,6 @@ class TennisSceneWindowDataset(Dataset):
         max_cameras (int): Maximum number of cameras to materialize.
         max_players (int): Maximum number of players per image.
         num_joints (int): Number of keypoints per player.
-        use_memmap (bool): Whether to load from preprocessed npz memmap files
-            instead of parsing JSON scenes directly.
         min_cameras (int | None): Minimum number of cameras required.
         augment_2d (bool): Whether to apply 2D augmentation.
 
@@ -142,7 +83,6 @@ class TennisSceneWindowDataset(Dataset):
         max_cameras: int,
         max_players: int,
         num_joints: int = 20,
-        use_memmap: bool = False,
         min_cameras: int | None = None,
         augment_2d: bool = False,
     ) -> None:
@@ -154,7 +94,6 @@ class TennisSceneWindowDataset(Dataset):
         self.max_cameras = int(max_cameras)
         self.max_players = int(max_players)
         self.num_joints = int(num_joints)
-        self.use_memmap = bool(use_memmap)
         self.min_cameras: int | None = (
             int(min_cameras) if min_cameras is not None else None
         )
@@ -213,372 +152,224 @@ class TennisSceneWindowDataset(Dataset):
         return len(self.records)
 
     def __getitem__(self, index: int) -> dict[str, Tensor]:
-        """Load and return a single window sample."""
-        if self.use_memmap:
-            return self._getitem_memmap(index)
-        return self._getitem_from_json(index)
-
-    def _getitem_memmap(self, index: int) -> dict[str, Tensor]:
+        """Get a single window sample."""
         rec = self.records[index]
+
+        arrs, t_start, t_end, length = self._load_scene_arrays(rec)
+        tensors, _ = self._materialize_window(arrs, t_start, t_end, length)
+        sample = self._build_sample_dict(tensors, rec, t_start, t_end)
+
+        return apply_random_2d_affine(
+            sample,
+            enabled=self.augment_2d,
+            split=self.split,
+        )
+
+
+    def _load_scene_arrays(self, rec: _WindowRecord) -> tuple[Any, int, int, int]:
+        """Load memmap npz and compute time window bounds."""
         rel = Path(rec.scene_path)
         stem = rel.stem
         npz_path = self.dataset_dir / "arrays" / self.split / f"{stem}.npz"
+
         if stem not in self._arrays_cache:
             if not npz_path.exists():
                 msg = f"Memmap npz not found for scene '{stem}': {npz_path}"
                 raise FileNotFoundError(msg)
-            self._arrays_cache[stem] = __import__("numpy").load(  # lazy import
+            self._arrays_cache[stem] = __import__("numpy").load(
                 npz_path, mmap_mode="r"
             )
-        arrs = self._arrays_cache[stem]
 
+        arrs = self._arrays_cache[stem]
+        t_start, t_end, length = self._compute_window_bounds(rec, arrs)
+        return arrs, t_start, t_end, length
+
+    def _compute_window_bounds(
+        self, rec: _WindowRecord, arrs: Any
+    ) -> tuple[int, int, int]:
+        """Compute t_start, t_end, length for the window."""
         T_total = int(arrs["keypoints_2d"].shape[0])
-        T = self.window_T
         if rec.t_end > T_total:
             msg = f"Window end {rec.t_end} exceeds scene length {T_total}"
             raise ValueError(msg)
 
+        T = self.window_T
         t_start = rec.t_start
         t_end = min(rec.t_end, t_start + T)
         length = t_end - t_start
         if length <= 0:
             msg = "Window length must be positive after clamping"
             raise ValueError(msg)
+        return t_start, t_end, length
 
-        keypoints_2d = torch.zeros(
-            (T, self.max_cameras, self.max_players, self.num_joints, 2),
-            dtype=torch.float32,
-        )
-        player_mask = torch.zeros(
-            (T, self.max_cameras, self.max_players), dtype=torch.bool
-        )
-        pose_3d = torch.zeros(
-            (T, self.max_players, self.num_joints, 3), dtype=torch.float32
-        )
-        exist_3d = torch.zeros((T, self.max_players), dtype=torch.bool)
-        court_2d = torch.zeros((self.max_cameras, 20, 2), dtype=torch.float32)
-        camera_C = torch.zeros((self.max_cameras, 3), dtype=torch.float32)
-        camera_R = torch.zeros((self.max_cameras, 3, 3), dtype=torch.float32)
-        camera_intr = torch.zeros((self.max_cameras, 3), dtype=torch.float32)
-        image_size = torch.zeros((self.max_cameras, 2), dtype=torch.int32)
-
-        src_key = torch.from_numpy(arrs["keypoints_2d"][t_start:t_end])  # [len,V,M,J,2]
-        src_mask = torch.from_numpy(arrs["player_mask"][t_start:t_end])  # [len,V,M]
-        src_pose = torch.from_numpy(arrs["pose_3d_gt"][t_start:t_end])  # [len,M,J,3]
-        src_exist = torch.from_numpy(arrs["exist_3d_gt"][t_start:t_end])  # [len,M]
-
-        # v2用GTデータが存在する場合は読み込む（後で window_T にパディング）
-        canonical_pose_gt = None
-        root_trans_gt = None
-        root_rot_gt = None
-        global_pose_gt = None
-
-        if "canonical_pose_gt" in arrs:
-            canonical_slice = torch.from_numpy(
-                arrs["canonical_pose_gt"][t_start:t_end]
-            )  # [len,M,J,3]
-            canonical_full = torch.zeros(
-                (T, self.max_players, self.num_joints, 3),
-                dtype=torch.float32,
-            )
-            num_joints_canon = min(self.num_joints, canonical_slice.shape[2])
-            canonical_full[:length, : canonical_slice.shape[1], :num_joints_canon] = (
-                canonical_slice[:, :, :num_joints_canon]
-            )
-            canonical_pose_gt = canonical_full
-        if "root_trans_gt" in arrs:
-            root_trans_slice = torch.from_numpy(
-                arrs["root_trans_gt"][t_start:t_end]
-            )  # [len,M,3]
-            root_trans_full = torch.zeros(
-                (T, self.max_players, 3),
-                dtype=torch.float32,
-            )
-            root_trans_full[:length, : root_trans_slice.shape[1]] = root_trans_slice
-            root_trans_gt = root_trans_full
-        if "root_rot_gt" in arrs:
-            root_rot_slice = torch.from_numpy(
-                arrs["root_rot_gt"][t_start:t_end]
-            )  # [len,M,2]
-            root_rot_full = torch.zeros(
-                (T, self.max_players, 2),
-                dtype=torch.float32,
-            )
-            root_rot_full[:length, : root_rot_slice.shape[1]] = root_rot_slice
-            root_rot_gt = root_rot_full
-        if "global_pose_gt" in arrs:
-            global_slice = torch.from_numpy(
-                arrs["global_pose_gt"][t_start:t_end]
-            )  # [len,M,J,3]
-            global_full = torch.zeros(
-                (T, self.max_players, self.num_joints, 3),
-                dtype=torch.float32,
-            )
-            num_joints_global = min(self.num_joints, global_slice.shape[2])
-            global_full[:length, : global_slice.shape[1], :num_joints_global] = (
-                global_slice[:, :, :num_joints_global]
-            )
-            global_pose_gt = global_full
-        src_court = torch.from_numpy(arrs["court_2d"])  # [V,20,2]
-        if "camera_C" not in arrs or "camera_R" not in arrs:
-            msg = "Memmap arrays missing required camera metadata"
-            raise KeyError(msg)
-        src_cam_C = torch.from_numpy(arrs["camera_C"]).to(torch.float32)  # [V,3]
-        src_cam_R = torch.from_numpy(arrs["camera_R"]).to(torch.float32)  # [V,3,3]
-        src_cam_intr = torch.from_numpy(arrs["camera_intr"]).to(torch.float32)  # [V,3]
-        src_image_size = torch.from_numpy(arrs["image_size"]).to(torch.int32)  # [V,2]
-
-        V_src = int(src_key.shape[1])
-        cam_indices = sample_camera_indices(
-            num_available=V_src,
+    def _sample_cameras_for_scene(self, num_available: int) -> torch.Tensor:
+        """Sample camera indices for the scene."""
+        return sample_camera_indices(
+            num_available=num_available,
             max_cameras=self.current_max_cameras,
             min_cameras=self.current_min_cameras,
         )
-        k = int(cam_indices.shape[0])
 
-        num_joints_2d = min(self.num_joints, src_key.shape[3])
-        keypoints_2d[:length, :k, : src_key.shape[2], :num_joints_2d] = src_key[
-            :, cam_indices, :, :num_joints_2d
-        ]
-        player_mask[:length, :k, : src_mask.shape[2]] = src_mask[:, cam_indices]
-
-        num_joints_3d = min(self.num_joints, src_pose.shape[2])
-        pose_3d[:length, : src_pose.shape[1], :num_joints_3d] = src_pose[
-            :, :, :num_joints_3d
-        ]
-        exist_3d[:length, : src_exist.shape[1]] = src_exist
-        court_2d[:k] = src_court[cam_indices]
-        camera_C[:k] = src_cam_C[cam_indices]
-        camera_R[:k] = src_cam_R[cam_indices]
-        camera_intr[:k] = src_cam_intr[cam_indices]
-        image_size[:k] = src_image_size[cam_indices]
-
-        sample = {
-            "keypoints_2d": keypoints_2d,
-            "player_mask": player_mask,
-            "court_2d": court_2d,
-            "pose_3d_gt": pose_3d,
-            "exist_3d_gt": exist_3d,
-            "camera_C": camera_C,
-            "camera_R": camera_R,
-            "camera_intr": camera_intr,
-            "image_size": image_size,
-            "scene_id": torch.tensor([hash(rec.scene_id)], dtype=torch.long),
-            "t_start": torch.tensor([t_start], dtype=torch.long),
-            "t_end": torch.tensor([t_end], dtype=torch.long),
-        }
-
-        # v2用GTデータが memmap に存在する場合はそれを利用し、
-        # 存在しない場合は pose_3d_gt から自動生成する。
-        if (
-            canonical_pose_gt is not None
-            and root_trans_gt is not None
-            and root_rot_gt is not None
-            and global_pose_gt is not None
-        ):
-            sample["canonical_pose_gt"] = canonical_pose_gt
-            sample["root_trans_gt"] = root_trans_gt
-            sample["root_rot_gt"] = root_rot_gt
-            sample["global_pose_gt"] = global_pose_gt
-        else:
-            v2_gt_data = _decompose_pose_for_v2_torch(pose_3d)
-            sample["canonical_pose_gt"] = v2_gt_data["canonical_pose_gt"]
-            sample["root_trans_gt"] = v2_gt_data["root_trans_gt"]
-            sample["root_rot_gt"] = v2_gt_data["root_rot_gt"]
-            sample["global_pose_gt"] = v2_gt_data["global_pose_gt"]
-
-        return apply_random_2d_affine(
-            sample,
-            enabled=self.augment_2d,
-            split=self.split,
-        )
-
-    def _getitem_from_json(self, index: int) -> dict[str, Tensor]:
-        rec = self.records[index]
-        scene_path = self.dataset_dir / rec.scene_path
-        with scene_path.open("r", encoding="utf-8") as f:
-            scene = json.load(f)
-
-        frames = scene.get("frames", [])
-        if not isinstance(frames, list) or not frames:
-            msg = f"Scene has no frames: {scene_path}"
-            raise ValueError(msg)
-        num_cameras = int(scene.get("num_cameras", 0))
-        if num_cameras <= 0:
-            msg = f"Scene reports non-positive num_cameras: {scene_path}"
-            raise ValueError(msg)
-        if num_cameras > self.max_cameras:
-            msg = f"Scene uses {num_cameras} cameras but max_cameras={self.max_cameras}"
-            raise ValueError(msg)
-        if rec.num_frames <= 0:
-            msg = "Window length must be positive"
-            raise ValueError(msg)
-
-        t_start = rec.t_start
-        t_end = min(rec.t_end, t_start + self.window_T)
-        window_frames = frames[t_start:t_end]
-        # Tensor shapes
+    def _alloc_window_tensors(self) -> _WindowTensors:
+        """Allocate zero-initialized tensors for the window."""
         T = self.window_T
         V = self.max_cameras
         M = self.max_players
         J = self.num_joints
 
-        keypoints_2d = torch.zeros((T, V, M, J, 2), dtype=torch.float32)
-        player_mask = torch.zeros((T, V, M), dtype=torch.bool)
-        pose_3d = torch.zeros((T, M, J, 3), dtype=torch.float32)
-        exist_3d = torch.zeros((T, M), dtype=torch.bool)
-        court_2d = torch.zeros((V, 20, 2), dtype=torch.float32)
-        camera_C = torch.zeros((V, 3), dtype=torch.float32)
-        camera_R = torch.zeros((V, 3, 3), dtype=torch.float32)
-        camera_intr = torch.zeros((V, 3), dtype=torch.float32)
-        image_size = torch.zeros((V, 2), dtype=torch.int32)
-
-        # Camera image sizes for normalization (width, height).
-        cameras = scene.get("cameras", [])
-        if not isinstance(cameras, list) or len(cameras) != num_cameras:
-            msg = f"Invalid cameras metadata in scene: {scene_path}"
-            raise ValueError(msg)
-        image_sizes: list[tuple[int, int]] = []
-        for idx, cam in enumerate(cameras):
-            size = cam.get("image_size", [0, 0])
-            w, h = 0, 0
-            if isinstance(size, list) and len(size) >= 2:
-                w, h = int(size[0]), int(size[1])
-            image_sizes.append((w, h))
-            image_size[idx, 0] = w
-            image_size[idx, 1] = h
-            cam_C = cam.get("camera_C", [0.0, 0.0, 0.0])
-            cam_intr = cam.get("camera_intr", [0.0, 0.0, 0.0])
-            cam_R_data = cam.get("camera_R")
-            try:
-                camera_C[idx] = torch.as_tensor(cam_C, dtype=torch.float32)
-                camera_intr[idx] = torch.as_tensor(cam_intr, dtype=torch.float32)
-                if cam_R_data is None:
-                    camera_R[idx] = torch.eye(3, dtype=torch.float32)
-                else:
-                    camera_R[idx] = torch.as_tensor(cam_R_data, dtype=torch.float32)
-            except Exception as exc:  # pragma: no cover - defensive
-                msg = f"Invalid camera parameters in scene: {scene_path}"
-                raise ValueError(msg) from exc
-
-        # Sample a subset of cameras for this window.
-        cam_indices = sample_camera_indices(
-            num_available=num_cameras,
-            max_cameras=self.current_max_cameras,
-            min_cameras=self.current_min_cameras,
+        return _WindowTensors(
+            keypoints_2d=torch.zeros((T, V, M, J, 2), dtype=torch.float32),
+            player_mask=torch.zeros((T, V, M), dtype=torch.bool),
+            pose_3d=torch.zeros((T, M, J, 3), dtype=torch.float32),
+            exist_3d=torch.zeros((T, M), dtype=torch.bool),
+            court_2d=torch.zeros((V, 20, 2), dtype=torch.float32),
+            camera_C=torch.zeros((V, 3), dtype=torch.float32),
+            camera_R=torch.zeros((V, 3, 3), dtype=torch.float32),
+            camera_intr=torch.zeros((V, 3), dtype=torch.float32),
+            image_size=torch.zeros((V, 2), dtype=torch.int32),
+            canonical_pose_gt=torch.zeros((T, M, J, 3), dtype=torch.float32),
+            root_trans_gt=torch.zeros((T, M, 3), dtype=torch.float32),
+            root_rot_gt=torch.zeros((T, M, 2), dtype=torch.float32),
+            global_pose_gt=torch.zeros((T, M, J, 3), dtype=torch.float32),
         )
 
-        # Court keypoints are assumed constant across frames; take from the first.
-        first_frame = window_frames[0]
-        for out_v, src_v in enumerate(cam_indices.tolist()):
-            cam_key = f"cam_{src_v}"
-            cam_payload = first_frame.get(cam_key, {})
-            court_bundle = cam_payload.get("court_keypoints_2d", {})
-            pts = court_bundle.get("points", [])
-            if isinstance(pts, list) and len(pts) >= 20:
-                pts_tensor = torch.as_tensor(pts[:20], dtype=torch.float32)
-                w, h = image_sizes[src_v]
-                if w > 0 and h > 0:
-                    pts_tensor[:, 0] = (pts_tensor[:, 0] / float(w)) * 2.0 - 1.0
-                    pts_tensor[:, 1] = (pts_tensor[:, 1] / float(h)) * 2.0 - 1.0
-                court_2d[out_v, :, :] = pts_tensor
+    def _fill_2d_tensors(
+        self,
+        tensors: _WindowTensors,
+        arrs: Any,
+        t_start: int,
+        t_end: int,
+        length: int,
+        cam_indices: torch.Tensor,
+    ) -> None:
+        """Fill 2D keypoints and player mask tensors."""
+        src_key = torch.from_numpy(arrs["keypoints_2d"][t_start:t_end])
+        src_mask = torch.from_numpy(arrs["player_mask"][t_start:t_end])
 
-        # Populate per-frame player keypoints (2D + 3D).
-        for local_t, frame in enumerate(window_frames):
-            players_3d = frame.get("player_joints_3d", [])
-            rackets_3d = frame.get("racket_points_3d", [])
-            for out_v, src_v in enumerate(cam_indices.tolist()):
-                cam_key = f"cam_{src_v}"
-                cam_payload = frame.get(cam_key, {})
-                player_bundle = cam_payload.get("player_keypoints_2d", {})
-                racket_bundle = cam_payload.get("racket_keypoints_2d", {})
-                joints = player_bundle.get("joints", [])
-                rackets = racket_bundle.get("points", [])
-                if not isinstance(joints, list):
-                    continue
-                if not isinstance(rackets, list):
-                    rackets = [[] for _ in range(len(joints))]
-                w, h = image_sizes[src_v]
-                num_players = min(len(joints), M)
-                for m in range(num_players):
-                    pose_pts = joints[m]
-                    racket_pts = rackets[m] if m < len(rackets) else []
-                    if not isinstance(pose_pts, list):
-                        continue
-                    # Expect 17 pose joints and 3 racket points; truncate/pad otherwise.
-                    pose_tensor = torch.zeros((17, 2), dtype=torch.float32)
-                    racket_tensor = torch.zeros((3, 2), dtype=torch.float32)
-                    pose_src = torch.as_tensor(pose_pts, dtype=torch.float32)
-                    pose_tensor[: min(17, pose_src.shape[0]), :] = pose_src[
-                        : min(17, pose_src.shape[0]), :
-                    ]
-                    if isinstance(racket_pts, list):
-                        racket_src = torch.as_tensor(racket_pts, dtype=torch.float32)
-                        racket_tensor[: min(3, racket_src.shape[0]), :] = racket_src[
-                            : min(3, racket_src.shape[0]), :
-                        ]
-                    combined = torch.cat([pose_tensor, racket_tensor], dim=0)
-                    if w > 0 and h > 0:
-                        combined[:, 0] = (combined[:, 0] / float(w)) * 2.0 - 1.0
-                        combined[:, 1] = (combined[:, 1] / float(h)) * 2.0 - 1.0
-                    keypoints_2d[local_t, out_v, m, :, :] = combined
-                    player_mask[local_t, out_v, m] = True
+        num_joints_2d = min(self.num_joints, src_key.shape[3])
+        k = int(cam_indices.shape[0])
 
-            # 3D GT for this frame (per player, view-independent).
-            if isinstance(players_3d, list):
-                num_players_3d = min(len(players_3d), M)
-                if not isinstance(rackets_3d, list):
-                    rackets_3d = [[] for _ in range(len(players_3d))]
-                for m in range(num_players_3d):
-                    pose3d = players_3d[m]
-                    racket3d = rackets_3d[m] if m < len(rackets_3d) else []
-                    if not isinstance(pose3d, list):
-                        continue
-                    pose3d_tensor = torch.zeros((17, 3), dtype=torch.float32)
-                    racket3d_tensor = torch.zeros((3, 3), dtype=torch.float32)
-                    pose3d_src = torch.as_tensor(pose3d, dtype=torch.float32)
-                    pose3d_tensor[: min(17, pose3d_src.shape[0]), :] = pose3d_src[
-                        : min(17, pose3d_src.shape[0]), :
-                    ]
-                    if isinstance(racket3d, list):
-                        racket3d_src = torch.as_tensor(racket3d, dtype=torch.float32)
-                        racket3d_tensor[: min(3, racket3d_src.shape[0]), :] = (
-                            racket3d_src[: min(3, racket3d_src.shape[0]), :]
-                        )
-                    combined3d = torch.cat([pose3d_tensor, racket3d_tensor], dim=0)
-                    combined3d[:, 0] = combined3d[:, 0] / float(HALF_DOUBLES_WIDTH)
-                    combined3d[:, 1] = combined3d[:, 1] / float(HALF_LENGTH)
-                    combined3d[:, 2] = combined3d[:, 2] / float(NET_HEIGHT_POST)
-                    pose_3d[local_t, m, :, :] = combined3d
-                    exist_3d[local_t, m] = True
+        tensors.keypoints_2d[:length, :k, : src_key.shape[2], :num_joints_2d] = (
+            src_key[:, cam_indices, :, :num_joints_2d]
+        )
+        tensors.player_mask[:length, :k, : src_mask.shape[2]] = src_mask[:, cam_indices]
+    
+    def _fill_3d_tensors(
+        self,
+        tensors: _WindowTensors,
+        arrs: Any,
+        t_start: int,
+        t_end: int,
+        length: int,
+    ) -> None:
+        # --- 基本3D (absolute pose + exist) ---
+        src_pose = torch.from_numpy(arrs["pose_3d_gt"][t_start:t_end])   # [len,M,J,3]
+        src_exist = torch.from_numpy(arrs["exist_3d_gt"][t_start:t_end]) # [len,M]
 
-        sample = {
-            "keypoints_2d": keypoints_2d,
-            "player_mask": player_mask,
-            "court_2d": court_2d,
-            "pose_3d_gt": pose_3d,
-            "exist_3d_gt": exist_3d,
-            "camera_C": camera_C,
-            "camera_R": camera_R,
-            "camera_intr": camera_intr,
-            "image_size": image_size,
+        num_joints_3d = min(self.num_joints, src_pose.shape[2])
+
+        tensors.pose_3d[:length, : src_pose.shape[1], :num_joints_3d] = (
+            src_pose[:, :, :num_joints_3d]
+        )
+        tensors.exist_3d[:length, : src_exist.shape[1]] = src_exist
+
+        # --- canonical / root / global も「3D系」としてそのまま埋める ---
+        canonical_slice = torch.from_numpy(arrs["canonical_pose_gt"][t_start:t_end])
+        root_trans_slice = torch.from_numpy(arrs["root_trans_gt"][t_start:t_end])
+        root_rot_slice = torch.from_numpy(arrs["root_rot_gt"][t_start:t_end])
+        global_slice = torch.from_numpy(arrs["global_pose_gt"][t_start:t_end])
+
+        J = self.num_joints
+        num_joints_canon = min(J, canonical_slice.shape[2])
+        num_joints_global = min(J, global_slice.shape[2])
+
+        tensors.canonical_pose_gt[
+            :length,
+            : canonical_slice.shape[1],
+            :num_joints_canon,
+        ] = canonical_slice[:, :, :num_joints_canon]
+
+        tensors.root_trans_gt[:length, : root_trans_slice.shape[1]] = root_trans_slice
+        tensors.root_rot_gt[:length, : root_rot_slice.shape[1]] = root_rot_slice
+
+        tensors.global_pose_gt[
+            :length,
+            : global_slice.shape[1],
+            :num_joints_global,
+        ] = global_slice[:, :, :num_joints_global]
+
+    def _fill_camera_tensors(
+        self,
+        tensors: _WindowTensors,
+        arrs: Any,
+        cam_indices: torch.Tensor,
+    ) -> None:
+        """Fill camera-related tensors."""
+        if "camera_C" not in arrs or "camera_R" not in arrs:
+            msg = "Memmap arrays missing required camera metadata"
+            raise KeyError(msg)
+
+        src_court = torch.from_numpy(arrs["court_2d"])
+        src_cam_C = torch.from_numpy(arrs["camera_C"]).to(torch.float32)
+        src_cam_R = torch.from_numpy(arrs["camera_R"]).to(torch.float32)
+        src_cam_intr = torch.from_numpy(arrs["camera_intr"]).to(torch.float32)
+        src_image_size = torch.from_numpy(arrs["image_size"]).to(torch.int32)
+
+        k = int(cam_indices.shape[0])
+
+        tensors.court_2d[:k] = src_court[cam_indices]
+        tensors.camera_C[:k] = src_cam_C[cam_indices]
+        tensors.camera_R[:k] = src_cam_R[cam_indices]
+        tensors.camera_intr[:k] = src_cam_intr[cam_indices]
+        tensors.image_size[:k] = src_image_size[cam_indices]
+
+    def _materialize_window(
+        self,
+        arrs: Any,
+        t_start: int,
+        t_end: int,
+        length: int,
+    ) -> tuple[_WindowTensors, torch.Tensor]:
+        """Materialize the complete window from arrays."""
+        tensors = self._alloc_window_tensors()
+
+        # Camera sampling
+        V_src = int(arrs["keypoints_2d"].shape[1])
+        cam_indices = self._sample_cameras_for_scene(V_src)
+
+        # v1 + v2 系をまとめて埋める
+        self._fill_2d_tensors(tensors, arrs, t_start, t_end, length, cam_indices)
+        self._fill_3d_tensors(tensors, arrs, t_start, t_end, length)
+        self._fill_camera_tensors(tensors, arrs, cam_indices)
+
+        return tensors, cam_indices
+
+
+    def _build_sample_dict(
+        self,
+        tensors: _WindowTensors,
+        rec: _WindowRecord,
+        t_start: int,
+        t_end: int,
+    ) -> dict[str, Tensor]:
+        return {
+            "keypoints_2d": tensors.keypoints_2d,
+            "player_mask": tensors.player_mask,
+            "court_2d": tensors.court_2d,
+            "pose_3d_gt": tensors.pose_3d,
+            "exist_3d_gt": tensors.exist_3d,
+            "camera_C": tensors.camera_C,
+            "camera_R": tensors.camera_R,
+            "camera_intr": tensors.camera_intr,
+            "image_size": tensors.image_size,
+            "canonical_pose_gt": tensors.canonical_pose_gt,
+            "root_trans_gt": tensors.root_trans_gt,
+            "root_rot_gt": tensors.root_rot_gt,
+            "global_pose_gt": tensors.global_pose_gt,
             "scene_id": torch.tensor([hash(rec.scene_id)], dtype=torch.long),
             "t_start": torch.tensor([t_start], dtype=torch.long),
             "t_end": torch.tensor([t_end], dtype=torch.long),
         }
-
-        # v2用GTデータを pose_3d_gt から生成
-        v2_gt_data = _decompose_pose_for_v2_torch(pose_3d)
-        sample["canonical_pose_gt"] = v2_gt_data["canonical_pose_gt"]  # [T, M, J, 3]
-        sample["root_trans_gt"] = v2_gt_data["root_trans_gt"]  # [T, M, 3]
-        sample["root_rot_gt"] = v2_gt_data["root_rot_gt"]  # [T, M, 2]
-        sample["global_pose_gt"] = v2_gt_data["global_pose_gt"]  # [T, M, J, 3]
-
-        return apply_random_2d_affine(
-            sample,
-            enabled=self.augment_2d,
-            split=self.split,
-        )
 
     def set_active_camera_bounds(
         self,
