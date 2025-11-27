@@ -25,14 +25,14 @@ from src.tennis.geometry.court import (
 )
 
 
-def _decompose_pose_for_v2(pose_3d: np.ndarray) -> dict[str, np.ndarray]:
-    """絶対座標ポーズからv2用要素を分解.
+def _decompose_pose(pose_3d: np.ndarray) -> dict[str, np.ndarray]:
+    """絶対座標ポーズからカノニカルを抽出
 
     Args:
         pose_3d (np.ndarray): [T, M, J, 3] 絶対座標ポーズ（正規化済み）
 
     Returns:
-        dict[str, np.ndarray]: v2用GTデータ
+        dict[str, np.ndarray]:
             - canonical_pose_gt: [T, M, J, 3] ルート相対座標
             - root_trans_gt: [T, M, 3] ルート位置（x, y, z）
             - root_rot_gt: [T, M, 2] ルート回転（cos, sin）
@@ -296,8 +296,7 @@ def _process_scene_json(
                 pose_3d[t, m, :, :] = combined3d
                 exist_3d[t, m] = True
 
-    # v2用GTデータを生成
-    v2_gt_data = _decompose_pose_for_v2(pose_3d)
+    decomposed_pose_3d_gt = _decompose_pose(pose_3d)
 
     return {
         "keypoints_2d": keypoints_2d,
@@ -310,7 +309,7 @@ def _process_scene_json(
         "camera_intr": camera_intr,
         "image_size": image_size_arr,
         # v2用GTデータ
-        **v2_gt_data,
+        **decomposed_pose_3d_gt,
     }
 
 
