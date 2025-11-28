@@ -1,0 +1,26 @@
+root: data/tennis_autogen
+name: sim_fps60_dur3p0_C4_P1-20_T10
+window_T: 10
+max_cameras: 4
+min_cameras: 4
+max_players: 20
+num_joints: 20
+use_memmap: true
+augment_2d: true
+
+loader:
+  train:
+    batch_size: 64
+    num_workers: 4
+    shuffle: true
+    pin_memory: true
+  val:
+    batch_size: 128
+    num_workers: 2
+    shuffle: false
+    pin_memory: true
+  test:
+    batch_size: 128
+    num_workers: 2
+    shuffle: false
+    pin_memory: true

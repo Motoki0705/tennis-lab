@@ -110,6 +110,11 @@ docs/_build/
 docs/build/
 site/
 
+# Web frontend artifacts
+web/**/node_modules/
+web/**/dist/
+web/**/.vite/
+
 # Package management
 uv.lock
 .uv-cache/

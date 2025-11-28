@@ -1,0 +1,26 @@
+seed: 42
+
+trainer:
+  max_epochs: 500
+  accelerator: auto
+  devices: 1
+  precision: bf16-mixed
+  gradient_clip_val: 1.0
+
+optimizer:
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+
+max_steps: 7000
+
+scheduler:
+  name: cosine_with_warmup
+  warmup_steps: 500
+  min_lr_ratio: 0.1
+
+loss:
+  lambda_pose: 1.0
+  lambda_exist: 0.05
+  lambda_vel: 0.0
+  lambda_pose_match: 1.0
+  lambda_exist_match: 0.05

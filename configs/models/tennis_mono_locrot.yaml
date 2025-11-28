@@ -1,0 +1,12 @@
+D_model: 256
+dim_feedforward: 1024
+dropout: 0.1
+nheads: 8
+intra_layers: 3
+inter_layers: 3
+decoder_layers: 3
+
+num_joints: 17
+num_court_points: 4
+max_cameras: 1
+max_players: 20
