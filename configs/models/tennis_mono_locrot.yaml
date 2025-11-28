@@ -7,6 +7,6 @@ inter_layers: 3
 decoder_layers: 3
 
 num_joints: 17
-num_court_points: 20
-max_cameras: 4
+num_court_points: 4
+max_cameras: 1
 max_players: 20

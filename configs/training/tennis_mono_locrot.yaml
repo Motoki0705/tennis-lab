@@ -38,6 +38,6 @@ input_mask:
   drop_court_prob: 0.0
 
 camera_schedule:
-  max_cameras: 4
+  max_cameras: 1
   min_cameras: 1
   transition_steps: 3000
