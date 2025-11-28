@@ -1,8 +1,0 @@
-task: tennis_multi_cam_3d_pose
-experiment_name: tennis_mvpose_dev_v3
-
-includes:
-  dataset: datasets/tennis_multi_cam_3d_pose_sim.yaml
-  model: models/tennis_mvpose_v3.yaml
-  training: training/tennis_mvpose_v3.yaml
-  logging: logging/tennis_mvpose.yaml
