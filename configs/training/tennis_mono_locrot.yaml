@@ -1,0 +1,43 @@
+seed: 42
+
+trainer:
+  max_epochs: 200
+  accelerator: auto
+  devices: 1
+  precision: bf16-mixed
+  gradient_clip_val: 1.0
+
+optimizer:
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+
+max_steps: 5000
+
+scheduler:
+  name: cosine_with_warmup
+  warmup_steps: 500
+  min_lr_ratio: 0.1
+
+loss:
+  lambda_pose2d: 1.0
+  lambda_exist: 1.0
+  lambda_root_trans: 1.0
+  lambda_root_rot: 1.0
+  lambda_denoise_root_trans: 0.5
+  lambda_denoise_root_rot: 0.5
+  lambda_pose_match: 1.0
+  lambda_exist_match: 1.0
+
+denoise:
+  root_trans_noise_std: 0.02
+  root_rot_noise_deg: 10.0
+  num_samples: 1
+
+input_mask:
+  drop_joint_prob: 0.1
+  drop_court_prob: 0.0
+
+camera_schedule:
+  max_cameras: 1
+  min_cameras: 1
+  transition_steps: 3000

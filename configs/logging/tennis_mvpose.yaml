@@ -1,0 +1,18 @@
+logger:
+  save_dir: runs
+  name: tennis_multi_cam_3d_pose
+  default_hp_metric: false
+
+callbacks:
+  checkpoint:
+    monitor: val/total
+    mode: min
+    save_top_k: 1
+    save_last: true
+    filename: "{epoch:03d}-{val_total:.3f}"
+  lr_monitor:
+    logging_interval: epoch
+
+visualizer:
+  max_batches: 2
+  exist_threshold: 0.5
