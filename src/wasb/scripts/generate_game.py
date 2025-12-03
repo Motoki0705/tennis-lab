@@ -41,6 +41,10 @@ import json
 import sys
 from pathlib import Path
 
+import shutil
+
+import cv2
+
 # Add project root to path (src/wasb/scripts -> project root)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -51,6 +55,7 @@ from src.wasb.pipeline import (
     BatchProcessor,
     PipelineConfig,
 )
+from src.wasb.tennis_format import load_label_csv
 
 PREDICTOR_REGISTRY = {
     "wasb": WASBPredictor,
@@ -257,6 +262,205 @@ def reset_videos(args: argparse.Namespace) -> int:
     return 0
 
 
+def _iter_clip_dirs(game_dir: Path) -> list[tuple[int, Path]]:
+    clips: list[tuple[int, Path]] = []
+    if not game_dir.exists():
+        return clips
+    for child in game_dir.iterdir():
+        if child.is_dir() and child.name.startswith("Clip"):
+            suffix = child.name[4:]
+            if suffix.isdigit():
+                clips.append((int(suffix), child))
+    clips.sort(key=lambda x: x[0])
+    return clips
+
+
+def _make_clip_preview_video(clip_dir: Path, output_path: Path, fps: int) -> None:
+    label_path = clip_dir / "Label.csv"
+    if not label_path.exists():
+        return
+    rows = load_label_csv(label_path)
+    if not rows:
+        return
+    rows_sorted = sorted(rows, key=lambda r: r.file_name)
+
+    first_frame_path = clip_dir / f"frame_{rows_sorted[0].file_name}"
+    frame = cv2.imread(str(first_frame_path))
+    if frame is None:
+        return
+
+    height, width = frame.shape[:2]
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    writer = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
+
+    try:
+        for row in rows_sorted:
+            frame_path = clip_dir / f"frame_{row.file_name}"
+            frame = cv2.imread(str(frame_path))
+            if frame is None:
+                continue
+
+            if row.visibility != 0:
+                x = int(round(row.x))
+                y = int(round(row.y))
+                if 0 <= x < width and 0 <= y < height:
+                    cv2.circle(frame, (x, y), 8, (0, 0, 255), 2, cv2.LINE_AA)
+
+            writer.write(frame)
+    finally:
+        writer.release()
+
+
+def _resolve_games(output_dir: Path, games: list[str]) -> list[str]:
+    if len(games) == 1 and games[0].lower() == "all":
+        resolved: list[str] = []
+        if output_dir.exists():
+            for path in sorted(output_dir.iterdir()):
+                if path.is_dir() and path.name.startswith("game"):
+                    resolved.append(path.name)
+        return resolved
+    return games
+
+
+def _generate_samples_for_game(output_dir: Path, game_name: str, fps: int = 15) -> None:
+    game_dir = output_dir / game_name
+    if not game_dir.exists():
+        print(f"Game directory not found: {game_dir}")
+        return
+
+    samples_dir = output_dir / "samples" / game_name
+
+    for index, clip_dir in _iter_clip_dirs(game_dir):
+        output_path = samples_dir / f"Clip_{index}.mp4"
+        _make_clip_preview_video(clip_dir, output_path, fps)
+
+
+def generate_samples(args: argparse.Namespace) -> int:
+    output_dir = Path(args.output_dir)
+    games = _resolve_games(output_dir, args.generate_samples)
+    if not games:
+        print("No games to generate samples for.")
+        return 1
+
+    for game_name in games:
+        print(f"Generating samples for {game_name}...")
+        _generate_samples_for_game(output_dir, game_name)
+
+    return 0
+
+
+def _collect_kept_indices(samples_dir: Path) -> set[int]:
+    kept: set[int] = set()
+    if not samples_dir.exists():
+        return kept
+
+    for path in samples_dir.glob("Clip_*.mp4"):
+        stem = path.stem
+        if not stem.startswith("Clip_"):
+            continue
+        suffix = stem[5:]
+        if suffix.isdigit():
+            kept.add(int(suffix))
+
+    return kept
+
+
+def _delete_clip_dirs(game_dir: Path, indices: set[int]) -> None:
+    for index in sorted(indices):
+        clip_dir = game_dir / f"Clip{index}"
+        if clip_dir.exists() and clip_dir.is_dir():
+            shutil.rmtree(clip_dir)
+
+
+def _reindex_clip_dirs(game_dir: Path) -> None:
+    clips = _iter_clip_dirs(game_dir)
+    if not clips:
+        return
+
+    temp_paths: list[Path] = []
+    for index, path in clips:
+        temp_path = path.with_name(f"__tmp_Clip{index}")
+        path.rename(temp_path)
+        temp_paths.append(temp_path)
+
+    for new_index, temp_path in enumerate(temp_paths, start=1):
+        final_path = game_dir / f"Clip{new_index}"
+        temp_path.rename(final_path)
+
+
+def _update_meta_num_clips(output_dir: Path, game_name: str) -> None:
+    meta_path = output_dir / "meta.json"
+    if not meta_path.exists():
+        return
+
+    with meta_path.open("r") as f:
+        meta = json.load(f)
+
+    videos = meta.get("videos", {})
+    game_dir = output_dir / game_name
+    clip_count = len(_iter_clip_dirs(game_dir))
+
+    updated = False
+    for status in videos.values():
+        if status.get("output_game") == game_name:
+            status["num_clips"] = clip_count
+            updated = True
+
+    if updated:
+        from datetime import datetime
+
+        meta["updated_at"] = datetime.now().isoformat()
+        with meta_path.open("w") as f:
+            json.dump(meta, f, indent=2)
+
+
+def _apply_clip_selection_for_game(output_dir: Path, game_name: str) -> None:
+    game_dir = output_dir / game_name
+    samples_dir = output_dir / "samples" / game_name
+
+    if not game_dir.exists():
+        print(f"Game directory not found: {game_dir}")
+        return
+
+    if not samples_dir.exists():
+        print(f"No samples found for {game_name} at {samples_dir}")
+        return
+
+    clips = _iter_clip_dirs(game_dir)
+    if not clips:
+        print(f"No clips found in {game_dir}")
+        return
+
+    original_indices = {index for index, _ in clips}
+    kept_indices = _collect_kept_indices(samples_dir)
+
+    to_drop = original_indices - kept_indices
+    if to_drop:
+        print(f"Dropping clips for {game_name}: {sorted(to_drop)}")
+        _delete_clip_dirs(game_dir, to_drop)
+
+    _reindex_clip_dirs(game_dir)
+    _update_meta_num_clips(output_dir, game_name)
+
+    # Cleanup samples directory after applying selection
+    shutil.rmtree(samples_dir, ignore_errors=True)
+
+
+def apply_clip_selection(args: argparse.Namespace) -> int:
+    output_dir = Path(args.output_dir)
+    games = _resolve_games(output_dir, args.apply_clip_selection)
+    if not games:
+        print("No games to apply clip selection for.")
+        return 1
+
+    for game_name in games:
+        print(f"Applying clip selection for {game_name}...")
+        _apply_clip_selection_for_game(output_dir, game_name)
+
+    return 0
+
+
 def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -296,6 +500,18 @@ def main() -> int:
         type=str,
         nargs="+",
         help="Reset specific video(s) by name",
+    )
+    mode_group.add_argument(
+        "--generate-samples",
+        type=str,
+        nargs="+",
+        help="Generate preview videos with ball overlay for specified game(s)",
+    )
+    mode_group.add_argument(
+        "--apply-clip-selection",
+        type=str,
+        nargs="+",
+        help="Apply clip selection based on samples for specified game(s)",
     )
 
     # Output arguments
@@ -390,6 +606,12 @@ def main() -> int:
 
     if args.reset_failed or args.reset_all or args.reset_video:
         return reset_videos(args)
+
+    if args.generate_samples:
+        return generate_samples(args)
+
+    if args.apply_clip_selection:
+        return apply_clip_selection(args)
 
     if args.video:
         if not args.output:
