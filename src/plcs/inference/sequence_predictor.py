@@ -11,7 +11,7 @@ from torch import Tensor
 from src.base.api.predictor import BasePredictor
 from src.plcs.models.plcs_sequence_model import PLCSSequenceModel
 from src.plcs.training.sequence_lightning_module import PLCSSequenceLightningModule
-from src.plcs.utils.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
+from src.utils.geometry import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
 
 
 class PLCSSequencePredictor(BasePredictor):

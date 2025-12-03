@@ -24,12 +24,11 @@ from src.blcs.utils.constants import (
     COR_COURT,
     DRAG_COEFFICIENT,
     GRAVITY,
-    NET_HEIGHT_CENTER,
     NORM_SCALE_X,
     NORM_SCALE_Y,
     NORM_SCALE_Z,
 )
-from src.plcs.utils.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
+from src.utils.geometry import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_CENTER
 
 if TYPE_CHECKING:
     pass
@@ -241,7 +240,7 @@ class BallPhysics:
 
         Net sags in the middle (0.914m) and is higher at posts (1.07m).
         """
-        from src.plcs.utils.court import NET_HEIGHT_POST
+        from src.utils.geometry import NET_HEIGHT_POST
 
         # Linear interpolation from center to edge
         x_ratio = abs(x) / HALF_DOUBLES_WIDTH

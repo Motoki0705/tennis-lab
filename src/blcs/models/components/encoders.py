@@ -12,7 +12,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.blcs.utils.constants import MAX_SEQ_LEN, NUM_COURT_KP
+from src.blcs.utils.constants import MAX_SEQ_LEN
+from src.utils.geometry import NUM_COURT_KP
 
 
 class TemporalPositionalEncoding(nn.Module):

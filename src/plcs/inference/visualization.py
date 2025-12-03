@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
 
-from src.rendering import CourtRenderer
+from src.utils.rendering import CourtRenderer
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes

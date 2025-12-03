@@ -31,7 +31,7 @@ import numpy as np
 import torch
 
 from src.blcs.data.dataset_writer import load_scene
-from src.rendering import BLCSSceneRenderer
+from src.utils.rendering import BLCSSceneRenderer
 
 if TYPE_CHECKING:
     from typing import Any

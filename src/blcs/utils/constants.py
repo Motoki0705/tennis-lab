@@ -1,23 +1,15 @@
 """Constants for BLCS module.
 
 Ball physics and normalization constants based on the BLCS specification.
+
+Note:
+    For court geometry constants (HALF_DOUBLES_WIDTH, HALF_LENGTH, etc.),
+    import directly from src.utils.geometry.
 """
 
 from __future__ import annotations
 
-# Re-export court constants from plcs
-from src.plcs.utils.constants import (
-    COURT_KP_IDX,
-    COURT_KP_NAMES,
-    COURT_SKELETON,
-    NUM_COURT_KP,
-)
-from src.plcs.utils.court import (
-    HALF_DOUBLES_WIDTH,
-    HALF_LENGTH,
-    NET_HEIGHT_CENTER,
-    NET_HEIGHT_POST,
-)
+from src.utils.geometry import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
 
 # -----------------------------
 # Ball Physical Constants
@@ -70,15 +62,6 @@ BALL_Z_MIN = 0.0  # ground level
 BALL_Z_MAX = 10.0  # ~10.7m high (lob shots)
 
 __all__ = [
-    # Court constants (re-exported)
-    "NUM_COURT_KP",
-    "COURT_KP_NAMES",
-    "COURT_KP_IDX",
-    "COURT_SKELETON",
-    "HALF_DOUBLES_WIDTH",
-    "HALF_LENGTH",
-    "NET_HEIGHT_CENTER",
-    "NET_HEIGHT_POST",
     # Ball constants
     "BALL_DIAMETER",
     "BALL_RADIUS",

@@ -1,7 +1,7 @@
 """Visualization utilities for BLCS.
 
 This module provides visualization tools for ball trajectory prediction,
-using the shared rendering components from src.rendering.
+using the shared rendering components from src.utils.rendering.
 
 Example:
     >>> from src.blcs.inference.visualization import TrajectoryVisualizer
@@ -17,8 +17,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 from torch import Tensor
 
-from src.rendering import BallRenderer, CourtRenderer
-from src.rendering.ball_renderer import BallStyle
+from src.utils.rendering import BallRenderer, CourtRenderer
+from src.utils.rendering.ball_renderer import BallStyle
 
 if TYPE_CHECKING:
     import matplotlib.pyplot as plt

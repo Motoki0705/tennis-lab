@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.plcs.utils.court import (
+from src.utils.geometry import (
     HALF_LENGTH,
     HALF_SINGLES_WIDTH,
     X_MAX,

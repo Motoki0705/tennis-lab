@@ -15,7 +15,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.plcs.utils.court import (
+from src.utils.geometry import (
     BASELINE_CLEAR,
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
