@@ -9,8 +9,10 @@ Supports:
 - Batch processing of multiple videos in a directory
 - Resume capability with progress tracking (meta.json)
 - Automatic detection of new videos
+- Generating preview clips with ball overlay
+- Applying clip selection based on preview clips
 
-Usage:
+Usage (basic):
     # Single video
     python -m src.wasb.scripts.generate_game \
         --video data/samples/test.mp4 \
@@ -20,17 +22,63 @@ Usage:
     python -m src.wasb.scripts.generate_game \
         --video-dir data/tennis/raw \
         --output-dir data/tennis/ \
-        --resume
+        --resume               # use meta.json if it exists (default)
 
-    # Check status
+    # Batch processing from scratch (ignore existing meta.json)
+    python -m src.wasb.scripts.generate_game \
+        --video-dir data/tennis/raw \
+        --output-dir data/tennis/ \
+        --no-resume
+
+    # Specify starting game id explicitly
+    python -m src.wasb.scripts.generate_game \
+        --video-dir data/tennis/raw \
+        --output-dir data/tennis/ \
+        --start-game-id 100
+
+Status / reset:
+    # Check status (meta.json overview)
     python -m src.wasb.scripts.generate_game \
         --output-dir data/tennis/ \
         --status
 
-    # Reset failed videos
+    # Reset failed videos to pending
     python -m src.wasb.scripts.generate_game \
         --output-dir data/tennis/ \
         --reset-failed
+
+    # Reset all videos to pending
+    python -m src.wasb.scripts.generate_game \
+        --output-dir data/tennis/ \
+        --reset-all
+
+    # Reset specific video(s) by name
+    python -m src.wasb.scripts.generate_game \
+        --output-dir data/tennis/ \
+        --reset-video match1.mp4 match2.mp4
+
+Clip sampling workflow:
+    # 1) Generate preview clips with ball overlay for a game
+    #    (game name like game11, or use "all" for all games)
+    python -m src.wasb.scripts.generate_game \
+        --output-dir data/tennis/ \
+        --generate-samples game11
+
+    # 2) After manually deleting unwanted preview clips under
+    #    data/tennis/samples/game11, apply the selection to dataset clips
+    python -m src.wasb.scripts.generate_game \
+        --output-dir data/tennis/ \
+        --apply-clip-selection game11
+
+Model / pipeline options (common):
+    --checkpoint PATH          # WASB/HRCNet checkpoint path
+    --model {wasb,hrcnet}      # model type (default: wasb)
+    --score-threshold 0.5      # detection score threshold
+    --min-clip-length 30       # minimum frames per clip
+    --min-detection-rate 0.5   # minimum detection rate per clip
+    --max-gap 10               # maximum gap to bridge in segmentation
+    --max-frames N             # limit frames per video (for testing)
+    --quiet                    # suppress verbose output
 
 """
 
@@ -44,6 +92,7 @@ from pathlib import Path
 import shutil
 
 import cv2
+from tqdm import tqdm
 
 # Add project root to path (src/wasb/scripts -> project root)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -315,15 +364,34 @@ def _make_clip_preview_video(clip_dir: Path, output_path: Path, fps: int) -> Non
 def _resolve_games(output_dir: Path, games: list[str]) -> list[str]:
     if len(games) == 1 and games[0].lower() == "all":
         resolved: list[str] = []
-        if output_dir.exists():
-            for path in sorted(output_dir.iterdir()):
-                if path.is_dir() and path.name.startswith("game"):
-                    resolved.append(path.name)
+
+        # Prefer meta.json so we only target games that are actually
+        # registered in the processing metadata.
+        meta_path = output_dir / "meta.json"
+        if meta_path.exists():
+            with meta_path.open("r") as f:
+                meta = json.load(f)
+
+            videos = meta.get("videos", {})
+            for status in videos.values():
+                game_name = status.get("output_game")
+                if isinstance(game_name, str) and game_name not in resolved:
+                    resolved.append(game_name)
+        else:
+            # Fallback: infer game directories directly from filesystem
+            if output_dir.exists():
+                for path in sorted(output_dir.iterdir()):
+                    if path.is_dir() and path.name.startswith("game"):
+                        resolved.append(path.name)
+
         return resolved
+
     return games
 
 
-def _generate_samples_for_game(output_dir: Path, game_name: str, fps: int = 15) -> None:
+def _generate_samples_for_game(
+    output_dir: Path, game_name: str, fps: int = 50, show_progress: bool = True
+) -> None:
     game_dir = output_dir / game_name
     if not game_dir.exists():
         print(f"Game directory not found: {game_dir}")
@@ -331,7 +399,13 @@ def _generate_samples_for_game(output_dir: Path, game_name: str, fps: int = 15) 
 
     samples_dir = output_dir / "samples" / game_name
 
-    for index, clip_dir in _iter_clip_dirs(game_dir):
+    clips = _iter_clip_dirs(game_dir)
+    if show_progress:
+        iterator = tqdm(clips, desc=f"{game_name}", unit="clip")
+    else:
+        iterator = clips
+
+    for index, clip_dir in iterator:
         output_path = samples_dir / f"Clip_{index}.mp4"
         _make_clip_preview_video(clip_dir, output_path, fps)
 
@@ -343,9 +417,17 @@ def generate_samples(args: argparse.Namespace) -> int:
         print("No games to generate samples for.")
         return 1
 
-    for game_name in games:
+    iterable = games
+    if not args.quiet:
+        iterable = tqdm(games, desc="Generating samples", unit="game")
+
+    for game_name in iterable:
         print(f"Generating samples for {game_name}...")
-        _generate_samples_for_game(output_dir, game_name)
+        _generate_samples_for_game(
+            output_dir,
+            game_name,
+            show_progress=not args.quiet,
+        )
 
     return 0
 
