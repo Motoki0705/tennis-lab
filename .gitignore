@@ -39,20 +39,18 @@ venv.bak/
 Thumbs.db
 
 # Dataset and data files
-data/
+data/ACCAD/
+data/samples/
+data/smplh/
+data/smplx/
+data/plcs/
+data/blcs/
+data/demo/
 annotation.json
 annotations/
 *.csv
 *.json
 *.xml
-# Ignore all yaml files except GitHub Actions and configs
-*.yml
-*.yaml
-!.github/**/*.yml
-!.github/**/*.yaml
-!configs/**/*.yaml
-!configs/**/*.yml
-!.pre-commit-config.yaml
 
 # Model files and checkpoints
 checkpoints/

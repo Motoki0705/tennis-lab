@@ -1,0 +1,49 @@
+# PLCS Default Configuration
+# Player Localization in Court System
+
+model:
+  hidden_dim: 256
+  num_layers: 4
+  num_heads: 8
+  dropout: 0.1
+  use_court_context: true
+  # Input dimensions
+  human_kp_dim: 34    # 17 keypoints * 2 (u, v)
+  court_kp_dim: 40    # 20 keypoints * 2 (u, v)
+  # Output dimensions
+  position_dim: 3     # (x, y, z) normalized
+  rotation_dim: 2     # (sin, cos) for yaw
+
+data:
+  # Scene data directory
+  scene_dir: "data/plcs/scenes"
+  # DataLoader settings
+  batch_size: 64
+  num_workers: 4
+  # Train/Val/Test split
+  val_split: 0.1
+  test_split: 0.1
+  # Camera selection mode: "random", "all", or camera index
+  camera_mode: "random"
+  # Augmentation
+  augmentation:
+    keypoint_noise_std: 0.01
+    visibility_drop_prob: 0.05
+
+training:
+  max_epochs: 100
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-5
+  warmup_steps: 1000
+  gradient_clip_val: 1.0
+  # Loss weights
+  position_loss_weight: 1.0
+  rotation_loss_weight: 1.0
+  # Scheduler
+  scheduler: cosine
+  min_lr: 1.0e-6
+
+metrics:
+  # Accuracy thresholds
+  position_threshold_m: 0.5  # Position accuracy threshold (meters)
+  angle_threshold_deg: 15.0  # Angle accuracy threshold (degrees)

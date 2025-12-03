@@ -1,0 +1,66 @@
+# BLCS Default Configuration
+# Ball Localization in Court System
+
+model:
+  hidden_dim: 256
+  num_layers: 6
+  num_heads: 8
+  dropout: 0.1
+  max_seq_len: 120  # Maximum 4 seconds @ 30fps
+  use_cross_attention: true
+
+  # Input dimensions
+  ball_input_dim: 2       # (u, v) normalized coordinates
+  court_kp_dim: 40        # 20 keypoints * 2 (u, v)
+
+  # Output dimensions
+  position_dim: 3         # (x, y, z) normalized
+
+data:
+  # Scene data directory (matches generate_dataset.py default)
+  scene_dir: "data/blcs"
+
+  # DataLoader settings
+  batch_size: 32
+  num_workers: 4
+
+  # Train/Val/Test split
+  val_split: 0.1
+  test_split: 0.1
+
+  # Sequence settings
+  min_seq_len: 15   # Minimum 0.5 seconds
+  max_seq_len: 120  # Maximum 4 seconds
+  fps: 30
+
+  # Camera selection mode: "random", "all", or camera index
+  camera_mode: "random"
+
+  # Augmentation
+  augmentation:
+    uv_noise_std: 0.005        # Gaussian noise on UV coordinates
+    visibility_drop_prob: 0.1  # Probability of dropping ball visibility
+    temporal_dropout_prob: 0.05  # Probability of temporal gaps
+    flip_horizontal: true      # Random horizontal flip
+    scale_range: [0.9, 1.1]    # Random scale augmentation
+
+training:
+  max_epochs: 200
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-5
+  warmup_steps: 2000
+  gradient_clip_val: 1.0
+
+  # Loss weights
+  position_loss_weight: 1.0
+  velocity_loss_weight: 0.0
+  smoothness_loss_weight: 0.0
+
+  # Scheduler
+  scheduler: cosine
+  min_lr: 1.0e-6
+
+metrics:
+  # Accuracy thresholds
+  position_threshold_m: 0.3   # Threshold for position_accuracy_0_3m (meters)
+  endpoint_threshold_m: 0.5   # Threshold for endpoint_accuracy_0_5m (meters)
