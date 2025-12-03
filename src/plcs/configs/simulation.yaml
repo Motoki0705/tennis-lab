@@ -1,0 +1,52 @@
+# PLCS Simulation Configuration
+# This config controls scene generation for training data
+
+# SMPL-H model settings
+smplh_model_path: "data/smplx/smplh"
+
+# Simulation settings
+simulation:
+  num_scenes: 3000
+  num_cameras: 5  # Sample many cameras, then filter
+  output_dir: "data/plcs"
+
+  # Camera filtering criteria
+  human_visibility_threshold: 0.8  # Min 80% of frames with player visible
+  court_visibility_threshold: 15   # Min 15/20 court keypoints visible
+
+# Camera sampling settings
+camera:
+  z_min: 3.0      # Min camera height (meters)
+  z_max: 5.0      # Max camera height (meters)
+  hfov_deg: 60.0  # Horizontal field of view (degrees)
+  image_size: [1280, 720]  # Image resolution
+
+# Motion source configuration
+# Each category has paths and sampling weight
+motion_sources:
+  running:
+    paths:
+      - "data/ACCAD/Female1Running_c3d"
+      - "data/ACCAD/Male1Running_c3d"
+      - "data/ACCAD/Male2Running_c3d"
+      - "data/ACCAD/s008"
+      - "data/ACCAD/s009"
+    weight: 0.5
+
+  walking:
+    paths:
+      - "data/ACCAD/Female1Walking_c3d"
+      - "data/ACCAD/Male1Walking_c3d"
+      - "data/ACCAD/Male2Walking_c3d"
+      - "data/ACCAD/s007"
+      - "data/ACCAD/s011"
+    weight: 0.4
+
+  general:
+    paths:
+      - "data/ACCAD/Female1General_c3d"
+      - "data/ACCAD/Female1Gestures_c3d"
+      - "data/ACCAD/Male1General_c3d"
+      - "data/ACCAD/Male2General_c3d"
+      - "data/ACCAD/s001"
+    weight: 0.1

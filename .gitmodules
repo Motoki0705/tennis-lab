@@ -18,3 +18,7 @@
 	url = git@github.com:Motoki0705/sam3.git
 	branch = main
 
+[submodule "third_party/WASB-SBDT"]
+	path = third_party/WASB-SBDT
+	url = git@github.com:Motoki0705/WASB-SBDT.git
+	branch = main
