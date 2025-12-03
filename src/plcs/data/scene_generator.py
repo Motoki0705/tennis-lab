@@ -16,17 +16,15 @@ import numpy as np
 import torch
 
 from src.plcs.data.motion_sampler import MotionSampler, MotionSequence
-from src.plcs.utils.constants import (
-    FACE_KEYPOINT_OFFSETS,
-    SMPLH_TO_COCO17_MAPPING,
-)
-from src.plcs.utils.court import (
+from src.utils.geometry import (
     BASELINE_CLEAR,
+    FACE_KEYPOINT_OFFSETS,
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
     HALF_SINGLES_WIDTH,
     NET_HEIGHT_POST,
     SIDELINE_CLEAR,
+    SMPLH_TO_COCO17_MAPPING,
     Camera,
     court_keypoints_3d,
     make_look_at_camera,

@@ -7,7 +7,7 @@ import math
 import torch
 from torch import Tensor
 
-from src.plcs.utils.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
+from src.utils.geometry import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
 
 
 class PLCSMetrics:

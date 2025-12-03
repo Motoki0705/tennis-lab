@@ -16,7 +16,7 @@ from src.plcs.models.components.encoders import (
     TransformerKeypointEncoder,
 )
 from src.plcs.models.components.heads import CombinedHead, PositionHead, RotationHead
-from src.plcs.utils.constants import NUM_COURT_KP, NUM_HUMAN_KP
+from src.utils.geometry import NUM_COURT_KP, NUM_HUMAN_KP
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

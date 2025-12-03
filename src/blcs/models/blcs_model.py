@@ -18,7 +18,8 @@ from src.blcs.models.components.encoders import (
     CourtContextEncoder,
 )
 from src.blcs.models.components.heads import Trajectory3DHead, VelocityHead
-from src.blcs.utils.constants import MAX_SEQ_LEN, NUM_COURT_KP
+from src.blcs.utils.constants import MAX_SEQ_LEN
+from src.utils.geometry import NUM_COURT_KP
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

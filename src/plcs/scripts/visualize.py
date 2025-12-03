@@ -31,7 +31,7 @@ import numpy as np
 import torch
 
 from src.plcs.data.scene_generator import SceneGenerator
-from src.rendering import PLCSSceneRenderer as SceneRenderer
+from src.utils.rendering import PLCSSceneRenderer as SceneRenderer
 
 if TYPE_CHECKING:
     from src.plcs.data.scene_generator import SceneData
