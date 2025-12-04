@@ -70,6 +70,25 @@ Clip sampling workflow:
         --output-dir data/tennis/ \
         --apply-clip-selection game11
 
+Trajectory completion (post-processing):
+    # Apply trajectory completion to specific game(s)
+    python -m src.wasb.scripts.generate_game \
+        --output-dir data/tennis/ \
+        --apply-completion game11 game12
+
+    # Apply to all games
+    python -m src.wasb.scripts.generate_game \
+        --output-dir data/tennis/ \
+        --apply-completion all
+
+    # With custom completion settings
+    python -m src.wasb.scripts.generate_game \
+        --output-dir data/tennis/ \
+        --apply-completion game11 \
+        --completion-method hybrid \
+        --physics-gap-threshold 5 \
+        --max-completion-gap 15
+
 Model / pipeline options (common):
     --checkpoint PATH          # WASB/HRCNet checkpoint path
     --model {wasb,hrcnet}      # model type (default: wasb)
@@ -104,7 +123,8 @@ from src.wasb.pipeline import (
     BatchProcessor,
     PipelineConfig,
 )
-from src.wasb.tennis_format import load_label_csv
+from src.wasb.models.trajectory_completer import create_completer
+from src.wasb.tennis_format import load_label_csv, save_label_csv, TennisLabelRow
 
 PREDICTOR_REGISTRY = {
     "wasb": WASBPredictor,
@@ -258,6 +278,16 @@ def show_status(args: argparse.Namespace) -> int:
 
         if status["status"] == "failed" and status.get("error_message"):
             print(f"    Error: {status['error_message']}")
+
+        # Show completion info if available
+        completion = status.get("completion")
+        if completion:
+            method = completion.get("method", "unknown")
+            applied_at = completion.get("applied_at", "unknown")
+            completed = completion.get("frames_completed", 0)
+            detected = completion.get("frames_detected", 0)
+            print(f"    Completion: {method} applied at {applied_at[:10]}")
+            print(f"      Detected: {detected}, Completed: {completed}")
 
     return 0
 
@@ -543,6 +573,236 @@ def apply_clip_selection(args: argparse.Namespace) -> int:
     return 0
 
 
+# =============================================================================
+# Trajectory Completion (Post-processing)
+# =============================================================================
+
+
+def _apply_completion_to_clip(
+    clip_dir: Path,
+    completer,
+    score_threshold: float,
+    verbose: bool = False,
+) -> dict:
+    """Apply trajectory completion to a single clip.
+
+    Returns:
+        Dictionary with completion statistics.
+    """
+    import numpy as np
+
+    label_path = clip_dir / "Label.csv"
+    if not label_path.exists():
+        return {"frames": 0, "detected": 0, "completed": 0, "missing": 0}
+
+    rows = load_label_csv(label_path)
+    if not rows:
+        return {"frames": 0, "detected": 0, "completed": 0, "missing": 0}
+
+    rows_sorted = sorted(rows, key=lambda r: r.file_name)
+    T = len(rows_sorted)
+
+    # Extract trajectory data
+    xy = np.zeros((T, 2), dtype=np.float32)
+    visibility = np.zeros(T, dtype=bool)
+    score = np.zeros(T, dtype=np.float32)
+
+    for i, row in enumerate(rows_sorted):
+        xy[i] = [row.x, row.y]
+        visibility[i] = row.visibility == 1
+        score[i] = row.score
+
+    # Apply completion
+    result = completer.complete(xy, visibility, score)
+
+    # Build new label rows
+    new_rows = []
+    stats = {"frames": T, "detected": 0, "completed": 0, "missing": 0}
+
+    for i, row in enumerate(rows_sorted):
+        vis = int(result.visibility[i])
+        x, y = result.xy[i]
+
+        if vis == 1:
+            # Original detection - keep original score
+            new_score = row.score
+            stats["detected"] += 1
+        elif vis == 2:
+            # Completed by model
+            new_score = 0.0
+            stats["completed"] += 1
+        else:
+            # Missing
+            x, y = 0.0, 0.0
+            new_score = 0.0
+            stats["missing"] += 1
+
+        new_rows.append(
+            TennisLabelRow(
+                file_name=row.file_name,
+                visibility=vis,
+                x=float(x),
+                y=float(y),
+                status=row.status,
+                score=new_score,
+            )
+        )
+
+    # Save updated labels
+    save_label_csv(label_path, new_rows)
+
+    return stats
+
+
+def _apply_completion_to_game(
+    output_dir: Path,
+    game_name: str,
+    completer,
+    score_threshold: float,
+    verbose: bool = True,
+) -> dict:
+    """Apply trajectory completion to all clips in a game.
+
+    Returns:
+        Dictionary with aggregated completion statistics.
+    """
+    game_dir = output_dir / game_name
+    if not game_dir.exists():
+        print(f"Game directory not found: {game_dir}")
+        return {"clips": 0, "frames": 0, "detected": 0, "completed": 0, "missing": 0}
+
+    clips = _iter_clip_dirs(game_dir)
+    if not clips:
+        print(f"No clips found in {game_dir}")
+        return {"clips": 0, "frames": 0, "detected": 0, "completed": 0, "missing": 0}
+
+    total_stats = {"clips": len(clips), "frames": 0, "detected": 0, "completed": 0, "missing": 0}
+
+    iterator = clips
+    if verbose:
+        iterator = tqdm(clips, desc=f"{game_name}", unit="clip")
+
+    for _, clip_dir in iterator:
+        stats = _apply_completion_to_clip(
+            clip_dir, completer, score_threshold, verbose=False
+        )
+        total_stats["frames"] += stats["frames"]
+        total_stats["detected"] += stats["detected"]
+        total_stats["completed"] += stats["completed"]
+        total_stats["missing"] += stats["missing"]
+
+    return total_stats
+
+
+def _update_meta_completion(
+    output_dir: Path,
+    game_name: str,
+    completion_method: str,
+    stats: dict,
+) -> None:
+    """Update meta.json with completion information."""
+    from datetime import datetime
+
+    meta_path = output_dir / "meta.json"
+    if not meta_path.exists():
+        return
+
+    with meta_path.open("r") as f:
+        meta = json.load(f)
+
+    videos = meta.get("videos", {})
+
+    # Find the video entry for this game
+    for video_name, status in videos.items():
+        if status.get("output_game") == game_name:
+            # Add completion info
+            status["completion"] = {
+                "applied_at": datetime.now().isoformat(),
+                "method": completion_method,
+                "frames_completed": stats.get("completed", 0),
+                "frames_detected": stats.get("detected", 0),
+                "frames_missing": stats.get("missing", 0),
+            }
+
+    meta["updated_at"] = datetime.now().isoformat()
+
+    with meta_path.open("w") as f:
+        json.dump(meta, f, indent=2)
+
+
+def apply_completion(args: argparse.Namespace) -> int:
+    """Apply trajectory completion to existing game(s)."""
+    output_dir = Path(args.output_dir)
+    games = _resolve_games(output_dir, args.apply_completion)
+
+    if not games:
+        print("No games to apply completion for.")
+        return 1
+
+    # Create completer
+    completer = create_completer(
+        method=args.completion_method,
+        checkpoint_path=args.completion_checkpoint,
+        physics_gap_threshold=args.physics_gap_threshold,
+        max_gap=args.max_completion_gap,
+        score_threshold=args.score_threshold,
+    )
+
+    if not args.quiet:
+        print(f"Using completion method: {args.completion_method}")
+        print(f"Physics gap threshold: {args.physics_gap_threshold}")
+        print(f"Max completion gap: {args.max_completion_gap}")
+        print()
+
+    total_completed = 0
+    total_frames = 0
+
+    for game_name in games:
+        if not args.quiet:
+            print(f"Applying completion to {game_name}...")
+
+        stats = _apply_completion_to_game(
+            output_dir=output_dir,
+            game_name=game_name,
+            completer=completer,
+            score_threshold=args.score_threshold,
+            verbose=not args.quiet,
+        )
+
+        total_completed += stats["completed"]
+        total_frames += stats["frames"]
+
+        # Update meta.json
+        _update_meta_completion(
+            output_dir=output_dir,
+            game_name=game_name,
+            completion_method=args.completion_method,
+            stats=stats,
+        )
+
+        if not args.quiet:
+            det_pct = 100 * stats["detected"] / stats["frames"] if stats["frames"] > 0 else 0
+            comp_pct = 100 * stats["completed"] / stats["frames"] if stats["frames"] > 0 else 0
+            print(
+                f"  {stats['clips']} clips, {stats['frames']} frames: "
+                f"{stats['detected']} detected ({det_pct:.1f}%), "
+                f"{stats['completed']} completed ({comp_pct:.1f}%)"
+            )
+
+    if not args.quiet:
+        print()
+        print("=" * 50)
+        print("Completion Summary")
+        print("=" * 50)
+        print(f"Games processed: {len(games)}")
+        print(f"Total frames: {total_frames}")
+        print(f"Total completed: {total_completed}")
+        if total_frames > 0:
+            print(f"Completion rate: {100 * total_completed / total_frames:.1f}%")
+
+    return 0
+
+
 def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -594,6 +854,12 @@ def main() -> int:
         type=str,
         nargs="+",
         help="Apply clip selection based on samples for specified game(s)",
+    )
+    mode_group.add_argument(
+        "--apply-completion",
+        type=str,
+        nargs="+",
+        help="Apply trajectory completion to specified game(s), e.g., game11 game12 or 'all'",
     )
 
     # Output arguments
@@ -667,6 +933,33 @@ def main() -> int:
         help="Starting game ID for new videos (auto-detect if not specified)",
     )
 
+    # Trajectory completion options
+    parser.add_argument(
+        "--completion-method",
+        type=str,
+        default="hybrid",
+        choices=["physics", "bilstm", "hybrid"],
+        help="Trajectory completion method (default: hybrid)",
+    )
+    parser.add_argument(
+        "--completion-checkpoint",
+        type=str,
+        default=None,
+        help="Path to trained BiLSTM completion model checkpoint",
+    )
+    parser.add_argument(
+        "--physics-gap-threshold",
+        type=int,
+        default=5,
+        help="Max gap size for physics interpolation (default: 5)",
+    )
+    parser.add_argument(
+        "--max-completion-gap",
+        type=int,
+        default=15,
+        help="Max gap size to attempt any completion (default: 15)",
+    )
+
     # General options
     parser.add_argument(
         "--max-frames",
@@ -694,6 +987,9 @@ def main() -> int:
 
     if args.apply_clip_selection:
         return apply_clip_selection(args)
+
+    if args.apply_completion:
+        return apply_completion(args)
 
     if args.video:
         if not args.output:
