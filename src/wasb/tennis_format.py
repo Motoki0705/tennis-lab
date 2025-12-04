@@ -99,3 +99,59 @@ def row_from_detection(
     return TennisLabelRow(
         file_name=file_name, visibility=1, x=x, y=y, status=0, score=score
     )
+
+
+def row_from_completion(
+    file_name: str, x: float, y: float, confidence: float = 0.0
+) -> TennisLabelRow:
+    """Create a label row for a completed (interpolated) position.
+
+    Completed positions have visibility=2 and score=0.0 (as per format spec).
+    The confidence value is stored separately for internal use but not in
+    the CSV score column.
+
+    Args:
+        file_name: Frame filename (e.g., "0001.jpg").
+        x: Completed x-coordinate in pixels.
+        y: Completed y-coordinate in pixels.
+        confidence: Completion confidence (internal use only).
+
+    Returns:
+        TennisLabelRow with visibility=2.
+
+    """
+    return TennisLabelRow(
+        file_name=file_name, visibility=2, x=x, y=y, status=0, score=0.0
+    )
+
+
+def row_from_visibility(
+    file_name: str,
+    x: float,
+    y: float,
+    visibility: int,
+    score: float = 0.0,
+) -> TennisLabelRow:
+    """Create a label row with explicit visibility.
+
+    Args:
+        file_name: Frame filename.
+        x: X-coordinate in pixels.
+        y: Y-coordinate in pixels.
+        visibility: Visibility flag (0=missing, 1=detected, 2=completed).
+        score: Detection score (only for visibility=1).
+
+    Returns:
+        TennisLabelRow with specified visibility.
+
+    """
+    if visibility not in (0, 1, 2):
+        raise ValueError(f"visibility must be 0, 1, or 2, got {visibility}")
+
+    # For completed (vis=2) and missing (vis=0), score should be 0.0
+    if visibility != 1:
+        score = 0.0
+
+    return TennisLabelRow(
+        file_name=file_name, visibility=visibility, x=x, y=y, status=0, score=score
+    )

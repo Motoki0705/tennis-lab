@@ -120,60 +120,100 @@ with a learned model.
 
 ### 4. Trajectory Completer Model
 
-(Planned) `src/wasb/models/trajectory_completer.py`
+`src/wasb/models/trajectory_completer.py`
 
-Goal: given a noisy and partially missing 2D trajectory `[T, 2]`, predict a
-clean and completed trajectory of the same length.
+**Implemented.** Provides multiple strategies to complete noisy/missing trajectories:
 
-- **Training data source**:
-  - Existing `data/tennis/game1..10` with ground-truth labels.
-  - For each clip, we obtain a full sequence `[T, 2]` where the ball is
-    visible (or nearly so) in all frames.
-- **Input construction**:
-  - Start from the clean trajectory and corrupt it with:
-    - Random masking (set some timesteps as missing).
-    - Additive noise on positions.
-  - Inputs: `obs_xy [T, 2]` + mask or visibility flags.
-- **Outputs**:
-  - Predicted `clean_xy [T, 2]`.
-- **Model examples**:
-  - Bi-LSTM, 1D CNN, or Transformer encoder over the time dimension.
-- **API idea**:
+#### Available Completers
 
-  ```python
-  class TrajectoryCompleter:
-      def complete(
-          self,
-          xy: np.ndarray,   # [T, 2], with NaNs or dummy values where missing
-          vis: np.ndarray,  # [T], 0/1
-          score: np.ndarray # [T]
-      ) -> np.ndarray:      # [T, 2]
-          ...
-  ```
+1. **PhysicsInterpolator** (default for short gaps)
+   - Uses quadratic interpolation (approximates parabolic motion)
+   - Handles gap bridging and outlier detection
+   - Configurable velocity/acceleration thresholds
 
-At inference time we combine this with HRNet predictions:
+2. **BiLSTMCompleter** (learned model)
+   - Bidirectional LSTM for context-aware completion
+   - Requires training on existing tennis data
+   - Optional checkpoint loading
 
-- Frames with strong, reliable HRNet detections become `visibility=1`.
-- The completer fills in the remaining frames; we mark them `visibility=2` and
-  `score=0`.
-- Truly unreliable / outlier frames can be kept as `visibility=0` with dummy
-  coordinates.
+3. **HybridCompleter** (recommended)
+   - Combines physics for short gaps + learned model for complex gaps
+   - Falls back to extended physics if no trained model available
+
+#### API
+
+```python
+from src.wasb.models import create_completer, PhysicsInterpolator
+
+# Factory function
+completer = create_completer(
+    method="hybrid",  # "physics", "bilstm", or "hybrid"
+    checkpoint_path=None,  # Optional path to trained BiLSTM weights
+    physics_gap_threshold=5,
+    max_gap=15,
+)
+
+# Direct usage
+result = completer.complete(
+    xy=xy_array,         # [T, 2] ball positions
+    visibility=vis_mask, # [T] boolean mask
+    score=scores,        # [T] detection scores
+)
+
+# Result contains:
+# - result.xy: Completed trajectory [T, 2]
+# - result.visibility: Updated visibility flags [T]
+#     - 1: Original detection
+#     - 2: Completed by model
+#     - 0: Could not complete
+# - result.confidence: Per-frame confidence [T]
+# - result.gaps_filled: Number of frames filled
+# - result.outliers_removed: Number of outliers detected
+```
+
+#### Pipeline Integration
+
+Trajectory completion is automatically integrated into `AnnotationPipeline`:
+
+```python
+from src.wasb.pipeline import AnnotationPipeline, PipelineConfig
+
+config = PipelineConfig(
+    use_completion=True,           # Enable completion (default: True)
+    completion_method="hybrid",    # Method to use
+    physics_gap_threshold=5,       # Max gap for physics interpolation
+    max_completion_gap=15,         # Max gap to attempt any completion
+)
+```
+
+At inference time:
+- Frames with strong HRNet detections → `visibility=1`
+- Frames completed by model → `visibility=2`, `score=0.0`
+- Unreliable/outlier frames → `visibility=0`
 
 ### 5. Tennis Format I/O Helpers
 
-(Planned) `src/wasb/io/tennis_format.py`
+`src/wasb/tennis_format.py`
 
-Provide small helpers to read/write the tennis `Label.csv` files:
+**Implemented.** Helpers for reading/writing tennis `Label.csv` files:
 
-- `read_label_csv(path) -> pd.DataFrame or List[Record]`.
-- `write_label_csv(records, path)`.
+```python
+from src.wasb.tennis_format import (
+    load_label_csv,
+    save_label_csv,
+    TennisLabelRow,
+    row_from_detection,      # Create visibility=1 row
+    row_from_completion,     # Create visibility=2 row
+    row_from_visibility,     # Create row with explicit visibility
+    make_empty_row,          # Create visibility=0 row
+)
 
-These helpers encapsulate the logic for:
+# Load existing labels
+rows = load_label_csv("data/tennis/game1/Clip1/Label.csv")
 
-- Mapping between `(x, y)`, `visibility`, `status`, `score` and the CSV
-  columns.
-- Ensuring that file names (`0000.jpg`, ...) are consistent with the actual
-  frame files on disk.
+# Save labels
+save_label_csv("output/Label.csv", rows)
+```
 
 ## End-to-end Annotation Workflow (Planned)
 
@@ -214,13 +254,14 @@ For a single raw video (mapped to `gameN`):
 
 ## Development Roadmap (Summary)
 
-1. Implement tennis `Label.csv` I/O helpers.
-2. Implement a small script to run `WASBPredictor` on a single video and save
+1. ✅ Implement tennis `Label.csv` I/O helpers.
+2. ✅ Implement a small script to run `WASBPredictor` on a single video and save
    raw trajectories.
-3. Build and train the trajectory completer model using existing tennis clips.
-4. Implement rule-based clip segmentation and end-to-end generation of
+3. ✅ Build the trajectory completer model (physics-based + Bi-LSTM).
+4. ✅ Implement rule-based clip segmentation and end-to-end generation of
    `game11` from one video.
-5. Collect a small amount of manually segmented data and train a proper
+5. 🔄 Train Bi-LSTM completer on existing tennis clips (optional, physics works well).
+6. 🔲 Collect a small amount of manually segmented data and train a proper
    clip segmenter model.
-6. Replace the rule-based stage with the learned clip segmenter and scale to
+7. 🔲 Replace the rule-based stage with the learned clip segmenter and scale to
    more videos.
