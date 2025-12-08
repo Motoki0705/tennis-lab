@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 from pathlib import Path
 
 import pytorch_lightning as pl
@@ -73,6 +74,29 @@ def build_config(args: argparse.Namespace) -> OmegaConf:
         config = merge_configs(config, overrides)
 
     return config
+
+
+def _setup_logging(config: OmegaConf) -> None:
+    """Initialize Python logging from the config.
+
+    Expects a ``logging`` section in the root config with keys:
+
+        level: str   (e.g. "INFO", "DEBUG", ...)
+        fmt: str     (logging format string)
+        datefmt: str (date format string)
+    """
+
+    log_cfg = getattr(config, "logging", None)
+    if log_cfg is None:
+        return
+
+    level_name = str(getattr(log_cfg, "level", "INFO")).upper()
+    level = getattr(logging, level_name, logging.INFO)
+
+    fmt = getattr(log_cfg, "fmt", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    datefmt = getattr(log_cfg, "datefmt", "%Y-%m-%d %H:%M:%S")
+
+    logging.basicConfig(level=level, format=fmt, datefmt=datefmt)
 
 
 def _save_sample_visuals(batch: dict, out_dir: Path) -> None:
@@ -186,6 +210,7 @@ def main() -> None:
     pl.seed_everything(args.seed)
 
     config = build_config(args)
+    _setup_logging(config)
     print("Configuration:")
     print(OmegaConf.to_yaml(config))
 
@@ -216,9 +241,12 @@ def main() -> None:
         io_handlers=io_handlers,
     )
 
+    logger = TensorBoardLogger(save_dir=output_dir, name="logs")
+
+    checkpoint_dir = Path(logger.log_dir) / "checkpoints"
     callbacks = [
         ModelCheckpoint(
-            dirpath=output_dir / "checkpoints",
+            dirpath=checkpoint_dir,
             filename="wasb-{epoch:02d}",
             monitor="val/loss",
             mode="min",
@@ -228,8 +256,6 @@ def main() -> None:
         LearningRateMonitor(logging_interval="step"),
     ]
 
-    logger = TensorBoardLogger(save_dir=output_dir, name="logs")
-
     trainer = pl.Trainer(
         max_epochs=config.training.max_epochs,
         accelerator="gpu" if args.gpus > 0 else "cpu",
@@ -237,7 +263,6 @@ def main() -> None:
         callbacks=callbacks,
         logger=logger,
         fast_dev_run=args.fast_dev_run,
-        deterministic=True,
         precision=config.training.precision
     )
 
