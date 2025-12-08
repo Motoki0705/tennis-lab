@@ -1,0 +1,34 @@
+defaults:
+  - model: hrnet
+
+data:
+  root_dir: data/tennis
+  train_matches: ["game1", "game2", "game3", "game4", "game5", "game6", "game7", "game8"]
+  val_matches: ["game9"]
+  test_matches: ["game10"]
+  frames_in: 3
+  frames_out: 1
+  step: 1
+  visibility_mode: none
+  image_ext: ".jpg"
+  csv_filename: Label.csv
+  batch_size: 8
+  num_workers: 4
+  resize_hw: [288, 512]
+  heatmap_sigma: 2.0
+  pin_memory: true
+
+training:
+  max_epochs: 50
+  learning_rate: 1e-4
+  weight_decay: 1e-4
+  warmup_steps: 1000
+  min_lr: 1e-6
+  heatmap_loss_weight: 1.0
+  steps_per_epoch: null
+  precision: "bf16-mixed"
+
+metrics:
+  target_rmse_px: 5.0
+  target_detection_rate: 0.9
+  accuracy_thresh_px: 10.0
