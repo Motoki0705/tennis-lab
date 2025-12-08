@@ -24,6 +24,7 @@ class WASBLightningModule(pl.LightningModule):
         self,
         config: DictConfig | dict | None = None,
         model: nn.Module | None = None,
+        steps_per_epoch: int | None = None,
     ) -> None:
         super().__init__()
         self.save_hyperparameters(ignore=["model"])
@@ -54,7 +55,7 @@ class WASBLightningModule(pl.LightningModule):
         self.warmup_steps = train_cfg.get("warmup_steps", 1000)
         self.max_epochs = train_cfg.get("max_epochs", 50)
         self.min_lr = train_cfg.get("min_lr", 1e-6)
-        self.steps_per_epoch_override = train_cfg.get("steps_per_epoch")
+        self.steps_per_epoch = steps_per_epoch
 
     def forward(self, frames: Tensor) -> dict[str, Tensor] | Tensor:
         """Forward pass delegating to the underlying model."""
@@ -166,13 +167,7 @@ class WASBLightningModule(pl.LightningModule):
             weight_decay=self.weight_decay,
         )
 
-        steps_per_epoch = self.steps_per_epoch_override
-        if steps_per_epoch is None and self.trainer is not None:
-            if not torch.isfinite(torch.tensor(self.trainer.num_training_batches)):
-                steps_per_epoch = 1
-            else:
-                steps_per_epoch = max(int(self.trainer.num_training_batches), 1)
-
+        steps_per_epoch = self.steps_per_epoch
         if steps_per_epoch is None:
             steps_per_epoch = 1000
 
