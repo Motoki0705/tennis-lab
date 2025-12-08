@@ -1,10 +1,10 @@
-"""HRNet backbone with ConvGRU temporal head."""
+"""HRNet backbone with (stacked) ConvGRU temporal head."""
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -56,8 +56,83 @@ class ConvGRUCell(nn.Module):
         return h
 
 
+class StackedConvGRU(nn.Module):
+    """Multi-layer ConvGRU over a sequence of spatial feature maps.
+
+    Args:
+        input_channels: Number of channels of the input sequence features.
+        hidden_dims: Hidden channel size for each ConvGRU layer (depth of the stack).
+        kernel_size: Kernel size used in each ConvGRUCell.
+    """
+
+    def __init__(
+        self,
+        input_channels: int,
+        hidden_dims: Sequence[int],
+        kernel_size: int = 3,
+    ) -> None:
+        super().__init__()
+        if not hidden_dims:
+            raise ValueError("hidden_dims must contain at least one element")
+
+        self.hidden_dims = [int(h) for h in hidden_dims]
+        self.layers = nn.ModuleList()
+
+        in_ch = input_channels
+        for hidden_ch in self.hidden_dims:
+            self.layers.append(ConvGRUCell(in_ch, hidden_ch, kernel_size))
+            in_ch = hidden_ch
+
+    def forward(
+        self,
+        x_seq: Tensor,
+        h_states: Sequence[Tensor] | None = None,
+    ) -> tuple[Tensor, list[Tensor]]:
+        """Process a sequence of features with stacked ConvGRU layers.
+
+        Args:
+            x_seq: Input sequence of features, shape ``[B, T, C_in, H, W]``.
+            h_states: Optional list of previous hidden states for each layer.
+                Each element is a tensor of shape ``[B, C_l, H, W]``.
+
+        Returns:
+            y_seq: Output sequence from the top layer, shape ``[B, T, C_L, H, W]``.
+            h_states: Final hidden states of all layers as a list of tensors.
+        """
+        if x_seq.dim() != 5:
+            raise ValueError(
+                f"Expected x_seq shape [B, T, C, H, W], got {tuple(x_seq.shape)}"
+            )
+
+        b, t, _, h, w = x_seq.shape
+        num_layers = len(self.layers)
+
+        if h_states is None:
+            h_states = [None] * num_layers
+        else:
+            h_states = list(h_states)
+            if len(h_states) != num_layers:
+                raise ValueError(
+                    f"h_states length {len(h_states)} does not match "
+                    f"number of layers {num_layers}"
+                )
+
+        outputs: list[Tensor] = []
+        for ti in range(t):
+            x = x_seq[:, ti]  # [B, C_in, H, W]
+            new_h: list[Tensor] = []
+            for layer, h_prev in zip(self.layers, h_states):
+                x = layer(x, h_prev)  # x becomes hidden for this layer
+                new_h.append(x)
+            h_states = new_h
+            outputs.append(x)  # top-layer hidden
+
+        y_seq = torch.stack(outputs, dim=1)  # [B, T, C_L, H, W]
+        return y_seq, h_states
+
+
 class HRNetConvGRU(nn.Module):
-    """Sequence model using HRNet features with a ConvGRU head."""
+    """Sequence model using HRNet features with a stacked ConvGRU head."""
 
     def __init__(self, cfg: DictConfig | dict[str, Any]):
         super().__init__()
@@ -88,22 +163,44 @@ class HRNetConvGRU(nn.Module):
 
         # Channel dimension of the deconvolved HRNet features at scale 0.
         self.feature_channels = self.backbone.final_layers[0].in_channels
-        hidden_channels = cfg.get("gru_hidden_channels", self.feature_channels)
-        kernel_size = cfg.get("gru_kernel_size", 3)
 
-        self.gru_cell = ConvGRUCell(
+        # Allow both int (single layer) and list[int] (multi-layer) configuration.
+        hidden_cfg = cfg.get("gru_hidden_channels", self.feature_channels)
+        if isinstance(hidden_cfg, (list, tuple)):
+            hidden_dims = [int(h) for h in hidden_cfg]
+        else:
+            hidden_dims = [int(hidden_cfg)]
+
+        kernel_size = int(cfg.get("gru_kernel_size", 3))
+
+        self.temporal_core = StackedConvGRU(
             input_channels=self.feature_channels,
-            hidden_channels=hidden_channels,
+            hidden_dims=hidden_dims,
             kernel_size=kernel_size,
         )
-        self.head = nn.Conv2d(hidden_channels, 1, kernel_size=1)
+        self.head = nn.Conv2d(hidden_dims[-1], 1, kernel_size=1)
 
-    def forward(self, frames: Tensor, h_state: Tensor | None = None) -> tuple[Tensor, Tensor]:
+    def forward(
+        self,
+        frames: Tensor,
+        h_state: list[Tensor] | None = None,
+    ) -> tuple[Tensor, list[Tensor]]:
         """Forward pass with optional hidden state carry-over.
 
+        Args:
+            frames:
+                Input video clip, shape ``[B, T, C, H, W]``.
+            h_state:
+                Optional list of hidden states for each ConvGRU layer.
+                Each element has shape ``[B, C_l, H', W']`` where
+                ``H', W'`` are feature map size.
+
         Returns:
-            pred: Heatmaps for the last ``frames_out`` steps, shape ``[B, frames_out, H, W]``.
-            h_state: Final hidden state tensor that can be fed into the next call.
+            pred:
+                Heatmaps for the last ``frames_out`` steps,
+                shape ``[B, frames_out, H', W']``.
+            h_state:
+                Final hidden states list that can be fed into the next call.
         """
         if frames.dim() != 5:
             raise ValueError(
@@ -112,20 +209,21 @@ class HRNetConvGRU(nn.Module):
         b, t, c, h, w = frames.shape
         frames_flat = frames.view(b * t, c, h, w)
 
+        # HRNet feature extraction (scale 0)
         features = self.backbone.forward_features(frames_flat)[0]
         feat_h, feat_w = features.shape[-2:]
         features = features.view(b, t, self.feature_channels, feat_h, feat_w)
 
-        outputs = []
-        for idx in range(t):
-            feat_t = features[:, idx]
-            h_state = self.gru_cell(feat_t, h_state)
-            logits = self.head(h_state)
-            outputs.append(logits)
+        # Stacked ConvGRU over time
+        seq_out, h_state = self.temporal_core(features, h_state)
+        # seq_out: [B, T, C_L, feat_h, feat_w]
 
-        pred = torch.stack(outputs, dim=1)  # [B, T, 1, H, W]
-        pred = pred[:, -self.frames_out :, :, :, :]
-        return pred.squeeze(2), h_state
+        # Use the last frames_out steps for prediction
+        seq_out = seq_out[:, -self.frames_out :, :, :, :]  # [B, frames_out, C_L, H', W']
+        b_out, t_out, c_out, fh, fw = seq_out.shape
+        logits = self.head(seq_out.view(b_out * t_out, c_out, fh, fw))
+        pred = logits.view(b_out, t_out, 1, fh, fw).squeeze(2)  # [B, frames_out, H', W']
+        return pred, h_state
 
     def load_backbone_checkpoint(
         self,
@@ -141,7 +239,11 @@ class HRNetConvGRU(nn.Module):
         if not checkpoint_path.exists():
             raise FileNotFoundError(f"Backbone checkpoint not found: {checkpoint_path}")
 
-        checkpoint = torch.load(checkpoint_path, map_location=map_location, weights_only=False)
+        checkpoint = torch.load(
+            checkpoint_path,
+            map_location=map_location,
+            weights_only=False,
+        )
         if not isinstance(checkpoint, dict) or "state_dict" not in checkpoint:
             raise ValueError(f"Checkpoint must contain a state_dict: {checkpoint_path}")
         state_dict = checkpoint["state_dict"]
@@ -149,10 +251,11 @@ class HRNetConvGRU(nn.Module):
             raise TypeError(f"state_dict must be a dict, got {type(state_dict)}")
 
         backbone_state = self.backbone.state_dict()
-        filtered_state = {}
+        filtered_state: dict[str, Tensor] = {}
         for key, value in state_dict.items():
             trimmed_key = key.removeprefix("model.")
-            filtered_state[trimmed_key] = value
+            if trimmed_key in backbone_state:
+                filtered_state[trimmed_key] = value
 
         if not filtered_state:
             raise ValueError(
@@ -187,4 +290,4 @@ class HRNetConvGRU(nn.Module):
         logger.info(msg)
 
 
-__all__ = ["HRNetConvGRU", "ConvGRUCell"]
+__all__ = ["HRNetConvGRU", "ConvGRUCell", "StackedConvGRU"]
