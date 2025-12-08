@@ -154,6 +154,12 @@ def run_dry_run(config: OmegaConf, output_dir: Path) -> None:
     # Build model and lightning module
     steps_per_epoch = len(train_loader)
     model, io_handlers = build_model(config)
+    backbone_ckpt = None
+    model_cfg = config.get("model")
+    if model_cfg and hasattr(model_cfg, "get"):
+        backbone_ckpt = model_cfg.get("backbone_checkpoint")
+    if backbone_ckpt and hasattr(model, "load_backbone_checkpoint"):
+        model.load_backbone_checkpoint(backbone_ckpt)
     lightning_module = WASBLightningModule(
         config,
         model=model,
@@ -197,6 +203,12 @@ def main() -> None:
     steps_per_epoch = len(train_loader)
 
     model, io_handlers = build_model(config)
+    backbone_ckpt = None
+    model_cfg = config.get("model")
+    if model_cfg and hasattr(model_cfg, "get"):
+        backbone_ckpt = model_cfg.get("backbone_checkpoint")
+    if backbone_ckpt and hasattr(model, "load_backbone_checkpoint"):
+        model.load_backbone_checkpoint(backbone_ckpt)
     lightning_module = WASBLightningModule(
         config,
         model=model,

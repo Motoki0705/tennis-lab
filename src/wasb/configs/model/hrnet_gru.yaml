@@ -5,6 +5,7 @@ out_scales: [0]
 gru_hidden_channels: 64
 gru_kernel_size: 3
 stack_channels: false
+backbone_checkpoint: outputs/wasb/checkpoints/wasb-epoch=06-v1.ckpt
 
 # HRNet backbone for per-frame features (single-frame input/output).
 backbone:

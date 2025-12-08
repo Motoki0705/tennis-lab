@@ -28,7 +28,7 @@ class WASBLightningModule(pl.LightningModule):
         io_handlers: tuple[Callable[[Tensor], Tensor], Callable[[Any], Tensor]] | None = None,
     ) -> None:
         super().__init__()
-        self.save_hyperparameters(ignore=["model"])
+        self.save_hyperparameters(ignore=["model", "io_handlers"])
 
         if model is None:
             raise ValueError("model must be provided to WASBLightningModule")
@@ -63,6 +63,8 @@ class WASBLightningModule(pl.LightningModule):
         self.max_epochs = train_cfg.get("max_epochs", 50)
         self.min_lr = train_cfg.get("min_lr", 1e-6)
         self.steps_per_epoch = steps_per_epoch
+        self.freeze_backbone_epochs = int(train_cfg.get("freeze_backbone_epochs", 0) or 0)
+        self._backbone_frozen = False
 
     def forward(self, frames: Tensor) -> dict[str, Tensor] | Tensor:
         """Forward pass delegating to the underlying model."""
@@ -152,6 +154,25 @@ class WASBLightningModule(pl.LightningModule):
             self.log(f"test/{name}", value)
         self.test_metrics.reset(self.device)
 
+    def on_fit_start(self) -> None:
+        if (
+            self.freeze_backbone_epochs > 0
+            and hasattr(self.model, "freeze_backbone")
+            and not self._backbone_frozen
+        ):
+            self.model.freeze_backbone()
+            self._backbone_frozen = True
+            print("Backbone Frozen")
+    def on_train_epoch_start(self) -> None:
+        if (
+            self.freeze_backbone_epochs > 0
+            and self._backbone_frozen
+            and self.current_epoch >= self.freeze_backbone_epochs
+            and hasattr(self.model, "unfreeze_backbone")
+        ):
+            self.model.unfreeze_backbone()
+            self._backbone_frozen = False
+            print("Backbone Unfrozen")
     def configure_optimizers(self) -> dict[str, Any]:
         optimizer = AdamW(
             self.parameters(),
