@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import csv
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -19,6 +22,7 @@ class TennisLabelRow:
 def load_label_csv(path: str | Path) -> list[TennisLabelRow]:
     p = Path(path)
     rows: list[TennisLabelRow] = []
+    warned_visibility = False
     with p.open("r", newline="") as f:
         reader = csv.DictReader(f)
         header = [c.strip() for c in (reader.fieldnames or [])]
@@ -40,7 +44,8 @@ def load_label_csv(path: str | Path) -> list[TennisLabelRow]:
 
         for line in reader:
             file_name = line["file name"].strip()
-            visibility = int(line["visibility"]) if line["visibility"] != "" else 0
+            visibility_raw = line["visibility"]
+            visibility = int(visibility_raw) if visibility_raw != "" else 0
             status = int(line["status"]) if line["status"] != "" else 0
             x = float(line["x-coordinate"]) if line["x-coordinate"] != "" else 0.0
             y = float(line["y-coordinate"]) if line["y-coordinate"] != "" else 0.0
@@ -50,9 +55,14 @@ def load_label_csv(path: str | Path) -> list[TennisLabelRow]:
             else:
                 score = 0.0
             if visibility not in (0, 1, 2):
-                raise ValueError(
-                    f"visibility must be 0, 1, or 2, got {visibility} at {p}"
-                )
+                if not warned_visibility:
+                    LOGGER.warning(
+                        "Non-standard visibility value %s in %s; mapping to 0.",
+                        visibility,
+                        p,
+                    )
+                    warned_visibility = True
+                visibility = 0
             rows.append(TennisLabelRow(file_name, visibility, x, y, status, score))
     return rows
 
