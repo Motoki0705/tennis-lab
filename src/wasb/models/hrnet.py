@@ -310,6 +310,52 @@ class HRNet(nn.Module):
         self.deconv_layers = self._make_deconv_layers(cfg, pre_stage_channels[0])
         self.final_layers  = self._make_final_layers(cfg, pre_stage_channels)
 
+    def _forward_stage_outputs(self, x: torch.Tensor):
+        """Run the shared stem + stages and return multi-scale outputs."""
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu(x)
+        x = self.layer1(x)
+
+        x_list = []
+        for i in range(self.stage2_cfg['NUM_BRANCHES']):
+            if self.transition1[i] is not None:
+                x_list.append(self.transition1[i](x))
+            else:
+                x_list.append(x)
+        y_list = self.stage2(x_list)
+
+        x_list = []
+        for i in range(self.stage3_cfg['NUM_BRANCHES']):
+            if self.transition2[i] is not None:
+                x_list.append(self.transition2[i](y_list[-1]))
+            else:
+                x_list.append(y_list[i])
+        y_list = self.stage3(x_list)
+
+        x_list = []
+        for i in range(self.stage4_cfg['NUM_BRANCHES']):
+            if self.transition3[i] is not None:
+                x_list.append(self.transition3[i](y_list[-1]))
+            else:
+                x_list.append(y_list[i])
+        y_list = self.stage4(x_list)
+        return y_list
+
+    def forward_features(self, x: torch.Tensor) -> dict[int, torch.Tensor]:
+        """Return deconvolved feature maps per scale (before final conv)."""
+        y_list = self._forward_stage_outputs(x)
+        feats: dict[int, torch.Tensor] = {}
+        for scale in self._out_scales:
+            feat = y_list[scale]
+            for i in range(self.num_deconvs):
+                feat = self.deconv_layers[i][scale](feat)
+            feats[scale] = feat
+        return feats
+
     def _get_deconv_cfg(self, deconv_kernel):
         if deconv_kernel == 4:
             padding = 1
@@ -441,44 +487,10 @@ class HRNet(nn.Module):
         return nn.Sequential(*modules), num_inchannels
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.relu(x)
-        x = self.layer1(x)
-
-        x_list = []
-        for i in range(self.stage2_cfg['NUM_BRANCHES']):
-            if self.transition1[i] is not None:
-                x_list.append(self.transition1[i](x))
-            else:
-                x_list.append(x)
-        y_list = self.stage2(x_list)
-
-        x_list = []
-        for i in range(self.stage3_cfg['NUM_BRANCHES']):
-            if self.transition2[i] is not None:
-                x_list.append(self.transition2[i](y_list[-1]))
-            else:
-                x_list.append(y_list[i])
-        y_list = self.stage3(x_list)
-
-        x_list = []
-        for i in range(self.stage4_cfg['NUM_BRANCHES']):
-            if self.transition3[i] is not None:
-                x_list.append(self.transition3[i](y_list[-1]))
-            else:
-                x_list.append(y_list[i])
-        y_list = self.stage4(x_list)
-
+        feats = self.forward_features(x)
         y_out = {}
-        for scale in self._out_scales:
-            x = y_list[scale]
-            for i in range(self.num_deconvs):
-                x = self.deconv_layers[i][scale](x)
-            y = self.final_layers[scale](x)
+        for scale, feat in feats.items():
+            y = self.final_layers[scale](feat)
             y_out[scale] = y
         # Training pipeline expects a single tensor output; use scale 0.
         return y_out[0]
