@@ -20,7 +20,9 @@ def _apply_defaults(cfg: DictConfig, base_dir: Path) -> DictConfig:
                 if not cfg_path.exists():
                     raise FileNotFoundError(f"Default config file not found: {cfg_path}")
                 part = OmegaConf.load(cfg_path)
-                merged = OmegaConf.merge(merged, part)
+                # Merge each part under its group key, e.g. merged[group] <- merged[group] + part
+                existing_group_cfg = merged.get(group, OmegaConf.create())
+                merged[group] = OmegaConf.merge(existing_group_cfg, part)
         else:
             raise ValueError(f"Unsupported defaults entry: {item}")
 

@@ -152,8 +152,20 @@ def run_dry_run(config: OmegaConf, output_dir: Path) -> None:
     _save_sample_visuals(batch, output_dir / "dry_run")
 
     # Build model and lightning module
-    model = build_model(config)
-    lightning_module = WASBLightningModule(config, model=model)
+    steps_per_epoch = len(train_loader)
+    model, io_handlers = build_model(config)
+    backbone_ckpt = None
+    model_cfg = config.get("model")
+    if model_cfg and hasattr(model_cfg, "get"):
+        backbone_ckpt = model_cfg.get("backbone_checkpoint")
+    if backbone_ckpt and hasattr(model, "load_backbone_checkpoint"):
+        model.load_backbone_checkpoint(backbone_ckpt)
+    lightning_module = WASBLightningModule(
+        config,
+        model=model,
+        steps_per_epoch=steps_per_epoch,
+        io_handlers=io_handlers,
+    )
     trainer = pl.Trainer(
         max_epochs=1,
         limit_train_batches=1,
@@ -186,8 +198,23 @@ def main() -> None:
         return
 
     datamodule = TennisDataModule(config)
-    model = build_model(config)
-    lightning_module = WASBLightningModule(config, model=model)
+    datamodule.setup(stage="fit")
+    train_loader = datamodule.train_dataloader()
+    steps_per_epoch = len(train_loader)
+
+    model, io_handlers = build_model(config)
+    backbone_ckpt = None
+    model_cfg = config.get("model")
+    if model_cfg and hasattr(model_cfg, "get"):
+        backbone_ckpt = model_cfg.get("backbone_checkpoint")
+    if backbone_ckpt and hasattr(model, "load_backbone_checkpoint"):
+        model.load_backbone_checkpoint(backbone_ckpt)
+    lightning_module = WASBLightningModule(
+        config,
+        model=model,
+        steps_per_epoch=steps_per_epoch,
+        io_handlers=io_handlers,
+    )
 
     callbacks = [
         ModelCheckpoint(

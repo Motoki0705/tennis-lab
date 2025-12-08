@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import pytorch_lightning as pl
 import torch
@@ -25,15 +25,22 @@ class WASBLightningModule(pl.LightningModule):
         config: DictConfig | dict | None = None,
         model: nn.Module | None = None,
         steps_per_epoch: int | None = None,
+        io_handlers: tuple[Callable[[Tensor], Tensor], Callable[[Any], Tensor]] | None = None,
     ) -> None:
         super().__init__()
-        self.save_hyperparameters(ignore=["model"])
+        self.save_hyperparameters(ignore=["model", "io_handlers"])
 
         if model is None:
             raise ValueError("model must be provided to WASBLightningModule")
 
         self.config = config or {}
         self.model = model
+
+        if io_handlers is None:
+            raise ValueError(
+                "io_handlers (prepare_frames, extract_heatmaps) must be provided to WASBLightningModule"
+            )
+        self.prepare_frames, self.extract_heatmaps = io_handlers
 
         train_cfg = self.config.get("training", {})
         heatmap_weight = train_cfg.get(
@@ -56,6 +63,8 @@ class WASBLightningModule(pl.LightningModule):
         self.max_epochs = train_cfg.get("max_epochs", 50)
         self.min_lr = train_cfg.get("min_lr", 1e-6)
         self.steps_per_epoch = steps_per_epoch
+        self.freeze_backbone_epochs = int(train_cfg.get("freeze_backbone_epochs", 0) or 0)
+        self._backbone_frozen = False
 
     def forward(self, frames: Tensor) -> dict[str, Tensor] | Tensor:
         """Forward pass delegating to the underlying model."""
@@ -64,26 +73,11 @@ class WASBLightningModule(pl.LightningModule):
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
     ) -> tuple[Tensor, dict[str, float]]:
-        frames: Tensor = batch["frames"]  # [B, T, C, H, W]
-        if frames.dim() == 5:
-            b, t, c, h, w = frames.shape
-            frames_flat = frames.view(b, t * c, h, w)
-        else:
-            frames_flat = frames
+        frames: Tensor = batch["frames"]
+        frames_input = self.prepare_frames(frames)
 
-        outputs = self(frames_flat)
-
-        if isinstance(outputs, Tensor):
-            pred_heatmaps = outputs
-        else:
-            pred_heatmaps = (
-                outputs.get("heatmaps")
-                or outputs.get("pred_heatmaps")
-                or outputs.get("logits")
-            )
-
-        if pred_heatmaps is None:
-            raise ValueError("Model output must be a heatmap tensor.")
+        outputs = self(frames_input)
+        pred_heatmaps = self.extract_heatmaps(outputs)
 
         target_heatmaps: Tensor = batch["target_heatmaps"].to(pred_heatmaps.device)
         visibility: Tensor | None = batch.get("visibility")
@@ -160,6 +154,25 @@ class WASBLightningModule(pl.LightningModule):
             self.log(f"test/{name}", value)
         self.test_metrics.reset(self.device)
 
+    def on_fit_start(self) -> None:
+        if (
+            self.freeze_backbone_epochs > 0
+            and hasattr(self.model, "freeze_backbone")
+            and not self._backbone_frozen
+        ):
+            self.model.freeze_backbone()
+            self._backbone_frozen = True
+            print("Backbone Frozen")
+    def on_train_epoch_start(self) -> None:
+        if (
+            self.freeze_backbone_epochs > 0
+            and self._backbone_frozen
+            and self.current_epoch >= self.freeze_backbone_epochs
+            and hasattr(self.model, "unfreeze_backbone")
+        ):
+            self.model.unfreeze_backbone()
+            self._backbone_frozen = False
+            print("Backbone Unfrozen")
     def configure_optimizers(self) -> dict[str, Any]:
         optimizer = AdamW(
             self.parameters(),
