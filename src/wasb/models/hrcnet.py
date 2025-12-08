@@ -374,6 +374,23 @@ class HRCNet(nn.Module):
                 nn.init.constant_(m.weight, 1.0)
                 nn.init.constant_(m.bias, 0.0)
 
+    def forward_features(self, x: torch.Tensor) -> torch.Tensor:
+        """Run the HRCNet trunk and return the final high-resolution features.
+
+        This mirrors :meth:`HRNet.forward_features` by exposing the feature
+        maps before the prediction head.
+        """
+        if x.dim() != 4:
+            raise ValueError(f"Expected 4D input (B, C, H, W), got shape {x.shape}.")
+
+        high = self.stem(x)
+        low = self.initial_down(high)
+
+        for stage in self.stages:
+            high, low = stage(high, low)
+
+        return high
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Run the HRCNet forward pass.
 
@@ -386,15 +403,7 @@ class HRCNet(nn.Module):
                 - "high": final high-resolution features
                 - "low": final low-resolution features
         """
-        if x.dim() != 4:
-            raise ValueError(f"Expected 4D input (B, C, H, W), got shape {x.shape}.")
-
-        high = self.stem(x)
-        low = self.initial_down(high)
-
-        for stage in self.stages:
-            high, low = stage(high, low)
-
+        high = self.forward_features(x)
         out = self.head(high)
 
         return out
