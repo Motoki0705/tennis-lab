@@ -1,0 +1,60 @@
+name: hrnet_gru
+frames_in: 6
+frames_out: 6
+out_scales: [0]
+gru_hidden_channels: [64, 128, 256]
+gru_kernel_size: 3
+stack_channels: false
+backbone_checkpoint: outputs/wasb/checkpoints/wasb-epoch=06-v1.ckpt
+
+# HRNet backbone for per-frame features (single-frame input/output).
+backbone:
+  name: hrnet
+  frames_in: 1
+  frames_out: 1
+  out_scales: [0]
+  inp_height: 288
+  inp_width: 512
+
+  MODEL:
+    EXTRA:
+      STEM:
+        STRIDES: [2, 2]
+        INPLANES: 64
+      FINAL_CONV_KERNEL: 1
+      DECONV:
+        NUM_DECONVS: 1
+        KERNEL_SIZE: [4]
+      PRETRAINED_LAYERS: ["*"]
+
+      STAGE1:
+        NUM_MODULES: 1
+        NUM_BRANCHES: 1
+        BLOCK: BOTTLENECK
+        NUM_BLOCKS: [4]
+        NUM_CHANNELS: [64]
+        FUSE_METHOD: SUM
+
+      STAGE2:
+        NUM_MODULES: 1
+        NUM_BRANCHES: 2
+        BLOCK: BASIC
+        NUM_BLOCKS: [4, 4]
+        NUM_CHANNELS: [48, 96]
+        FUSE_METHOD: SUM
+
+      STAGE3:
+        NUM_MODULES: 4
+        NUM_BRANCHES: 3
+        BLOCK: BASIC
+        NUM_BLOCKS: [4, 4, 4]
+        NUM_CHANNELS: [48, 96, 192]
+        FUSE_METHOD: SUM
+
+      STAGE4:
+        NUM_MODULES: 3
+        NUM_BRANCHES: 4
+        BLOCK: BASIC
+        NUM_BLOCKS: [4, 4, 4, 4]
+        NUM_CHANNELS: [48, 96, 192, 384]
+        FUSE_METHOD: SUM

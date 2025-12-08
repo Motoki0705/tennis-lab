@@ -1,13 +1,13 @@
 defaults:
-  - model: hrnet
+  - model: hrnet_gru
 
 data:
   root_dir: data/tennis
   train_matches: ["game1", "game2", "game3", "game4", "game5", "game6", "game7", "game8"]
   val_matches: ["game9"]
   test_matches: ["game10"]
-  frames_in: 3
-  frames_out: 1
+  frames_in: 6
+  frames_out: 6
   step: 1
   visibility_mode: none
   image_ext: ".jpg"
@@ -20,12 +20,12 @@ data:
 
 training:
   max_epochs: 50
+  freeze_backbone_epochs: 3
   learning_rate: 1e-4
   weight_decay: 1e-4
   warmup_steps: 1000
   min_lr: 1e-6
   heatmap_loss_weight: 1.0
-  steps_per_epoch: null
   precision: "bf16-mixed"
 
 metrics:
