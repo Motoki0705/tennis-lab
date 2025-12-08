@@ -1,5 +1,5 @@
 name: hrnet
-frames_in: 3
+frames_in: 1
 frames_out: 1
 out_scales: [0]
 inp_height: 288
