@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import pytorch_lightning as pl
 import torch
@@ -25,6 +25,7 @@ class WASBLightningModule(pl.LightningModule):
         config: DictConfig | dict | None = None,
         model: nn.Module | None = None,
         steps_per_epoch: int | None = None,
+        io_handlers: tuple[Callable[[Tensor], Tensor], Callable[[Any], Tensor]] | None = None,
     ) -> None:
         super().__init__()
         self.save_hyperparameters(ignore=["model"])
@@ -34,6 +35,12 @@ class WASBLightningModule(pl.LightningModule):
 
         self.config = config or {}
         self.model = model
+
+        if io_handlers is None:
+            raise ValueError(
+                "io_handlers (prepare_frames, extract_heatmaps) must be provided to WASBLightningModule"
+            )
+        self.prepare_frames, self.extract_heatmaps = io_handlers
 
         train_cfg = self.config.get("training", {})
         heatmap_weight = train_cfg.get(
@@ -64,26 +71,11 @@ class WASBLightningModule(pl.LightningModule):
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
     ) -> tuple[Tensor, dict[str, float]]:
-        frames: Tensor = batch["frames"]  # [B, T, C, H, W]
-        if frames.dim() == 5:
-            b, t, c, h, w = frames.shape
-            frames_flat = frames.view(b, t * c, h, w)
-        else:
-            frames_flat = frames
+        frames: Tensor = batch["frames"]
+        frames_input = self.prepare_frames(frames)
 
-        outputs = self(frames_flat)
-
-        if isinstance(outputs, Tensor):
-            pred_heatmaps = outputs
-        else:
-            pred_heatmaps = (
-                outputs.get("heatmaps")
-                or outputs.get("pred_heatmaps")
-                or outputs.get("logits")
-            )
-
-        if pred_heatmaps is None:
-            raise ValueError("Model output must be a heatmap tensor.")
+        outputs = self(frames_input)
+        pred_heatmaps = self.extract_heatmaps(outputs)
 
         target_heatmaps: Tensor = batch["target_heatmaps"].to(pred_heatmaps.device)
         visibility: Tensor | None = batch.get("visibility")

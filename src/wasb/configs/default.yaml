@@ -25,7 +25,6 @@ training:
   warmup_steps: 1000
   min_lr: 1e-6
   heatmap_loss_weight: 1.0
-  steps_per_epoch: null
   precision: "bf16-mixed"
 
 metrics:
