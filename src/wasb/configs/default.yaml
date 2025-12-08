@@ -1,13 +1,13 @@
 defaults:
-  - model: hrnet_gru
+  - model: hrcnet
 
 data:
   root_dir: data/tennis
   train_matches: ["game1", "game2", "game3", "game4", "game5", "game6", "game7", "game8"]
   val_matches: ["game9"]
   test_matches: ["game10"]
-  frames_in: 6
-  frames_out: 6
+  frames_in: 1
+  frames_out: 1
   step: 1
   visibility_mode: none
   image_ext: ".jpg"
@@ -15,6 +15,7 @@ data:
   batch_size: 8
   num_workers: 4
   resize_hw: [288, 512]
+  heatmap_hw: [288, 512]
   heatmap_sigma: 2.0
   pin_memory: true
 
