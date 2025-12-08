@@ -11,13 +11,6 @@ BLCSは、2Dボール軌道とコートキーポイントから、テニスコ�
 ### 出力
 - **3D軌道** `[T, 3]`: コート座標系でのボール位置 (x, y, z) - 正規化座標
 
-## インストール
-
-```bash
-cd tennis-lab
-pip install -e .
-```
-
 ## 使用方法
 
 ### 1. データセット生成
@@ -119,7 +112,7 @@ blcs/
 └── utils/             # ユーティリティ
 ```
 
-## データセット形式（PLCS統一形式）
+## データセット形式
 
 1シーン = 1ファイル（複数カメラ）:
 
@@ -186,10 +179,3 @@ Input: ball_uv [B, T, 2], court_kp [B, 20, 2]
 - **endpoint_accuracy_0_5m**: 終端位置が GT から 0.5m 以内のシーン割合（`endpoint_threshold_m` の 1倍）
 - **endpoint_accuracy_1m**: 終端位置が GT から 1.0m 以内のシーン割合（`endpoint_threshold_m` の 2倍）
 
-## PLCSとの共通モジュール
-
-以下のモジュールは `plcs/` から再利用しています：
-
-- `plcs.utils.court`: コートジオメトリ、カメラ投影
-- `plcs.utils.constants`: コートキーポイント定義
-- `plcs.rendering`: コート描画（オプション）
