@@ -2,7 +2,7 @@ name: hrnet_gru
 frames_in: 6
 frames_out: 6
 out_scales: [0]
-gru_hidden_channels: 64
+gru_hidden_channels: [64, 128, 256]
 gru_kernel_size: 3
 stack_channels: false
 backbone_checkpoint: outputs/wasb/checkpoints/wasb-epoch=06-v1.ckpt
