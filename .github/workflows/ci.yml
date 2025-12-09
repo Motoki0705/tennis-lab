@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Cache uv dependencies
         uses: actions/cache@v4
@@ -28,7 +30,26 @@ jobs:
         run: |
           uv sync --dev
 
-      - name: Run ruff and mypy
+      - name: Run ruff and mypy on changed files (pull requests)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -e
+          CHANGED_FILES=$(git diff --name-only -z "$BASE_SHA"..."$HEAD_SHA" -- '*.py')
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No Python files changed, skipping ruff and mypy for pull request."
+            exit 0
+          fi
+          echo "Changed Python files:"
+          # Print changed files, one per line
+          printf '%s\0' "$CHANGED_FILES" | xargs -0 -n1 echo
+          printf '%s' "$CHANGED_FILES" | xargs -0 -r uv run ruff check
+          printf '%s' "$CHANGED_FILES" | xargs -0 -r uv run mypy
+
+      - name: Run ruff and mypy on full project (main push)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           uv run ruff check src tests
           uv run mypy src tests
@@ -38,7 +59,6 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
-    needs: lint
 
     steps:
       - uses: actions/checkout@v4
