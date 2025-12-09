@@ -345,16 +345,14 @@ class HRNet(nn.Module):
         y_list = self.stage4(x_list)
         return y_list
 
-    def forward_features(self, x: torch.Tensor) -> dict[int, torch.Tensor]:
-        """Return deconvolved feature maps per scale (before final conv)."""
+    def forward_features(self, x: torch.Tensor) -> torch.Tensor:
+        """Return the deconvolved feature map at scale 0 (before final conv)."""
         y_list = self._forward_stage_outputs(x)
-        feats: dict[int, torch.Tensor] = {}
-        for scale in self._out_scales:
-            feat = y_list[scale]
-            for i in range(self.num_deconvs):
-                feat = self.deconv_layers[i][scale](feat)
-            feats[scale] = feat
-        return feats
+        scale = 0
+        feat = y_list[scale]
+        for i in range(self.num_deconvs):
+            feat = self.deconv_layers[i][scale](feat)
+        return feat
 
     def _get_deconv_cfg(self, deconv_kernel):
         if deconv_kernel == 4:
@@ -487,11 +485,22 @@ class HRNet(nn.Module):
         return nn.Sequential(*modules), num_inchannels
 
     def forward(self, x):
-        feats = self.forward_features(x)
+        """Forward pass returning predictions for all configured scales.
+
+        The training pipeline expects a single tensor output at scale 0, but
+        this method keeps the original dictionary structure for compatibility.
+        """
+        # Compute shared multi-scale trunk outputs once.
+        y_list = self._forward_stage_outputs(x)
+
         y_out = {}
-        for scale, feat in feats.items():
+        for scale in self._out_scales:
+            feat = y_list[scale]
+            for i in range(self.num_deconvs):
+                feat = self.deconv_layers[i][scale](feat)
             y = self.final_layers[scale](feat)
             y_out[scale] = y
+
         # Training pipeline expects a single tensor output; use scale 0.
         return y_out[0]
 

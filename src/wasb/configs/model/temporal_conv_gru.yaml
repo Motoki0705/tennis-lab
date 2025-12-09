@@ -1,4 +1,4 @@
-name: hrnet_gru
+name: temporal_conv_gru
 frames_in: 6
 frames_out: 6
 out_scales: [0]
@@ -7,9 +7,12 @@ gru_kernel_size: 3
 stack_channels: false
 backbone_checkpoint: outputs/wasb/checkpoints/wasb-epoch=06-v1.ckpt
 
-# HRNet backbone for per-frame features (single-frame input/output).
-backbone:
-  name: hrnet
+# Select which backbone sub-config to use: "hrnet" or "hrcnet".
+backbone: hrnet
+
+
+hrnet:
+  # HRNet backbone for per-frame features (single-frame input/output).
   frames_in: 1
   frames_out: 1
   out_scales: [0]
@@ -58,3 +61,30 @@ backbone:
         NUM_BLOCKS: [4, 4, 4, 4]
         NUM_CHANNELS: [48, 96, 192, 384]
         FUSE_METHOD: SUM
+
+
+hrcnet:
+  frames_in: 1
+  frames_out: 1
+  inp_height: 288
+  inp_width: 512
+
+  # HRCNet architecture parameters
+  high_channels: 32
+  low_channels: 128
+  num_stages: 3
+  high_block: BASIC
+  low_block: BASIC
+  num_high_blocks: 2
+  num_low_blocks: 1
+  upsample_mode: nearest
+
+  downsample_kwargs:
+    num_downsample: 4
+
+  transformer_kwargs:
+    d_model: 128
+    num_heads: 8
+    dim_ff: 512
+    dropout: 0.1
+    depth: 2
