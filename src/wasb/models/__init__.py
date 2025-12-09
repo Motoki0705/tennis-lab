@@ -10,7 +10,7 @@ from torch import Tensor
 from .clip_segmenter import ClipSegmenter, RuleBasedClipSegmenter
 from .hrnet import HRNet
 from .hrcnet import HRCNet
-from .rnn_hrnet import TemporalConvGRUModel
+from .temporal_conv_gru import TemporalConvGRUModel
 from .trajectory_completer import (
     BiLSTMCompleter,
     CompletionResult,
@@ -70,22 +70,14 @@ def _build_hrnet_backbone(model_cfg: DictConfig | dict[str, Any]) -> tuple[HRNet
 
     backbone_selector = model_cfg.get("backbone", "hrnet")
 
-    # New style: backbone is a string key selecting a sub-config.
-    if isinstance(backbone_selector, str):
-        if backbone_selector not in model_cfg:
-            raise KeyError(
-                f"Model config missing sub-config for backbone '{backbone_selector}'."
-            )
-        backbone_cfg = model_cfg[backbone_selector]
-    else:
-        # Fallback for old-style dict backbone configs.
-        backbone_cfg = (
-            OmegaConf.create(backbone_selector)
-            if isinstance(backbone_selector, dict)
-            else backbone_selector
+    # backbone must be a string key selecting a sub-config ("hrnet").
+    if not isinstance(backbone_selector, str):
+        raise TypeError("backbone must be a string selector (e.g. 'hrnet').")
+    if backbone_selector not in model_cfg:
+        raise KeyError(
+            f"Model config missing sub-config for backbone '{backbone_selector}'."
         )
-        backbone_dict = OmegaConf.to_container(backbone_cfg, resolve=True)
-        backbone_cfg = OmegaConf.create(backbone_dict)
+    backbone_cfg = model_cfg[backbone_selector]
 
     hrnet = HRNet(backbone_cfg)
     feature_channels = hrnet.final_layers[0].in_channels
@@ -107,14 +99,13 @@ def _build_hrcnet_backbone(model_cfg: DictConfig | dict[str, Any]) -> tuple[HRCN
 
     backbone_selector = model_cfg.get("backbone", "hrcnet")
 
-    if isinstance(backbone_selector, str):
-        if backbone_selector not in model_cfg:
-            raise KeyError(
-                f"Model config missing sub-config for backbone '{backbone_selector}'."
-            )
-        backbone_cfg = model_cfg[backbone_selector]
-    else:
-        backbone_cfg = backbone_selector
+    if not isinstance(backbone_selector, str):
+        raise TypeError("backbone must be a string selector (e.g. 'hrcnet').")
+    if backbone_selector not in model_cfg:
+        raise KeyError(
+            f"Model config missing sub-config for backbone '{backbone_selector}'."
+        )
+    backbone_cfg = model_cfg[backbone_selector]
 
     if isinstance(backbone_cfg, dict):
         backbone_cfg = OmegaConf.create(backbone_cfg)
@@ -158,18 +149,10 @@ def _build_temporal_conv_gru(cfg: DictConfig | dict[str, Any]):
 
     backbone_selector = model_cfg.get("backbone", "hrnet")
 
-    # New style: backbone is a string key selecting a sub-config ("hrnet" /
-    # "hrcnet"). Old style dict with "name" field is still accepted.
-    if isinstance(backbone_selector, str):
-        backbone_name = str(backbone_selector).lower()
-    else:
-        backbone_cfg = (
-            OmegaConf.create(backbone_selector)
-            if isinstance(backbone_selector, dict)
-            else backbone_selector
-        )
-        backbone_dict = OmegaConf.to_container(backbone_cfg, resolve=True)
-        backbone_name = str(backbone_dict.get("name", "hrnet")).lower()
+    # backbone must be a string key selecting a sub-config ("hrnet" / "hrcnet").
+    if not isinstance(backbone_selector, str):
+        raise TypeError("backbone must be a string selector (e.g. 'hrnet' or 'hrcnet').")
+    backbone_name = str(backbone_selector).lower()
 
     if backbone_name == "hrnet":
         backbone, feature_channels = _build_hrnet_backbone(model_cfg)
