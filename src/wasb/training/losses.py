@@ -54,11 +54,15 @@ def heatmap_bce(
     target_heatmaps: Tensor,
     visibility: Tensor | None = None,
     eps: float = 1e-8,
+    logit_clip: float | None = 20.0,
 ) -> Tensor:
     """Frame-wise BCE between predicted and target heatmaps."""
-    loss = F.binary_cross_entropy_with_logits(
-        pred_heatmaps, target_heatmaps, reduction="none"
-    )
+    logits = pred_heatmaps
+    if logit_clip is not None and logit_clip > 0:
+        # Prevent extreme logits that can cause saturated gradients/unstable stats.
+        logits = torch.clamp(pred_heatmaps, -logit_clip, logit_clip)
+
+    loss = F.binary_cross_entropy_with_logits(logits, target_heatmaps, reduction="none")
 
     if visibility is None:
         return loss.mean()

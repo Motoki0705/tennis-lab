@@ -1,0 +1,32 @@
+name: hrnet_gru
+frames_in: 6
+frames_out: 6
+out_scales: [0]
+gru_hidden_channels: [64, 128, 256]
+gru_kernel_size: 3
+stack_channels: false
+backbone_checkpoint: outputs/wasb/checkpoints/wasb-epoch=22.ckpt
+
+backbone:
+  name: hrcnet
+  frames_in: 1
+  frames_out: 1
+
+  high_channels: 32
+  low_channels: 128
+  num_stages: 3
+  high_block: BASIC
+  low_block: BASIC
+  num_high_blocks: 2
+  num_low_blocks: 1
+  upsample_mode: nearest
+
+  downsample_kwargs:
+    num_downsample: 4
+
+  transformer_kwargs:
+    d_model: 128
+    num_heads: 8
+    dim_ff: 512
+    dropout: 0.1
+    depth: 2
