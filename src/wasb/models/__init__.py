@@ -159,7 +159,7 @@ def _build_temporal_conv_gru(cfg: DictConfig | dict[str, Any]):
     elif backbone_name == "hrcnet":
         backbone, feature_channels = _build_hrcnet_backbone(model_cfg)
     else:
-        raise ValueError(f"Unsupported backbone name for HRNetConvGRU: {backbone_name}")
+        raise ValueError(f"Unsupported backbone name for TemporalConvGRUModel: {backbone_name}")
 
     frames_in = int(model_cfg.get("frames_in", 1))
     frames_out = int(model_cfg.get("frames_out", frames_in))
