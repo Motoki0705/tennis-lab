@@ -106,7 +106,7 @@ def test_build_hrcnet_model_minimal():
 
 def test_build_hrnet_gru_with_hrnet_backbone():
     model_cfg = {
-        "name": "hrnet_gru",
+        "name": "temporal_conv_gru",
         "frames_in": 2,
         "frames_out": 2,
         "gru_hidden_channels": [32],
