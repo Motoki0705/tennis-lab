@@ -30,7 +30,7 @@ jobs:
 
       - name: Run ruff and mypy
         run: |
-          uv run ruff src tests
+          uv run ruff check src tests
           uv run mypy src tests
 
   test:
