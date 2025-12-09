@@ -11,6 +11,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch import Tensor, nn
 
 from .hrnet import HRNet
+from .hrcnet import HRCNet
 
 logger = logging.getLogger(__name__)
 
@@ -148,28 +149,55 @@ class HRNetConvGRU(nn.Module):
         if isinstance(backbone_cfg, dict):
             backbone_cfg = OmegaConf.create(backbone_cfg)
 
-        # Use a single-frame HRNet backbone by default and reuse other settings.
         backbone_dict = OmegaConf.to_container(backbone_cfg, resolve=True)
-        backbone_dict["frames_in"] = cfg.get(
+        backbone_name = str(backbone_dict.get("name", "hrnet")).lower()
+
+        # Common frames_in/frames_out settings for the backbone
+        backbone_frames_in = cfg.get(
             "backbone_frames_in",
             self.frames_in if self.stack_channels else 1,
         )
-        backbone_dict["frames_out"] = cfg.get("backbone_frames_out", 1)
-        if "out_scales" not in backbone_dict and cfg.get("out_scales") is not None:
-            backbone_dict["out_scales"] = cfg.get("out_scales")
-        self.backbone = HRNet(OmegaConf.create(backbone_dict))
+        backbone_frames_out = cfg.get("backbone_frames_out", 1)
+
+        if backbone_name == "hrnet":
+            # HRNet expects an HRNet-style config with frames_in/out and out_scales
+            backbone_dict["frames_in"] = backbone_frames_in
+            backbone_dict["frames_out"] = backbone_frames_out
+            if "out_scales" not in backbone_dict and cfg.get("out_scales") is not None:
+                backbone_dict["out_scales"] = cfg.get("out_scales")
+            self.backbone = HRNet(OmegaConf.create(backbone_dict))
+            # Channel dimension of the deconvolved HRNet features at scale 0.
+            self.feature_channels = self.backbone.final_layers[0].in_channels
+
+        elif backbone_name == "hrcnet":
+            # HRCNet uses explicit constructor arguments.
+            in_channels = 3 * backbone_frames_in
+            out_channels = backbone_frames_out
+            self.backbone = HRCNet(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                high_channels=backbone_dict.get("high_channels", 64),
+                low_channels=backbone_dict.get("low_channels", 64),
+                num_stages=backbone_dict.get("num_stages", 3),
+                high_block=backbone_dict.get("high_block", "BASIC"),
+                low_block=backbone_dict.get("low_block", "BASIC"),
+                num_high_blocks=backbone_dict.get("num_high_blocks", 2),
+                num_low_blocks=backbone_dict.get("num_low_blocks", 1),
+                upsample_mode=backbone_dict.get("upsample_mode", "nearest"),
+                downsample_kwargs=backbone_dict.get("downsample_kwargs", {}),
+                transformer_kwargs=backbone_dict.get("transformer_kwargs", {}),
+            )
+            # High-resolution branch channels define feature depth.
+            self.feature_channels = self.backbone.high_channels
+
+        else:
+            raise ValueError(f"Unsupported backbone name for HRNetConvGRU: {backbone_name}")
+
         self._backbone_train_mode: bool | None = None
         self._backbone_frozen = False
 
-        # Channel dimension of the deconvolved HRNet features at scale 0.
-        self.feature_channels = self.backbone.final_layers[0].in_channels
-
-        # Allow both int (single layer) and list[int] (multi-layer) configuration.
         hidden_cfg = cfg.get("gru_hidden_channels", self.feature_channels)
-        if isinstance(hidden_cfg, (list, tuple)):
-            hidden_dims = [int(h) for h in hidden_cfg]
-        else:
-            hidden_dims = [int(hidden_cfg)]
+        hidden_dims = [int(h) for h in hidden_cfg]
 
         kernel_size = int(cfg.get("gru_kernel_size", 3))
 
@@ -209,10 +237,10 @@ class HRNetConvGRU(nn.Module):
         b, t, c, h, w = frames.shape
         frames_flat = frames.view(b * t, c, h, w)
 
-        # HRNet feature extraction (scale 0)
-        features = self.backbone.forward_features(frames_flat)[0]
-        feat_h, feat_w = features.shape[-2:]
-        features = features.view(b, t, self.feature_channels, feat_h, feat_w)
+        # Backbone feature extraction
+        feats_flat = self._extract_backbone_features(frames_flat)
+        feat_h, feat_w = feats_flat.shape[-2:]
+        features = feats_flat.view(b, t, self.feature_channels, feat_h, feat_w)
 
         # Stacked ConvGRU over time
         seq_out, h_state = self.temporal_core(features, h_state)
@@ -224,6 +252,28 @@ class HRNetConvGRU(nn.Module):
         logits = self.head(seq_out.view(b_out * t_out, c_out, fh, fw))
         pred = logits.view(b_out, t_out, 1, fh, fw).squeeze(2)  # [B, frames_out, H', W']
         return pred, h_state
+
+    def _extract_backbone_features(self, x: Tensor) -> Tensor:
+        """Extract per-frame spatial features from the backbone.
+
+        Returns a tensor of shape [B*T, C_feat, H', W'] regardless of the
+        concrete backbone implementation (HRNet or HRCNet).
+        """
+        if isinstance(self.backbone, HRNet):
+            feats_dict = self.backbone.forward_features(x)
+            if 0 not in feats_dict:
+                raise KeyError("HRNet forward_features must contain scale 0.")
+            feat = feats_dict[0]
+        elif isinstance(self.backbone, HRCNet):
+            feat = self.backbone.forward_features(x)
+        else:
+            raise TypeError(f"Unsupported backbone type: {type(self.backbone)}")
+
+        if feat.dim() != 4:
+            raise ValueError(
+                f"Backbone features must be 4D tensor [B*T, C, H, W], got {tuple(feat.shape)}"
+            )
+        return feat
 
     def load_backbone_checkpoint(
         self,

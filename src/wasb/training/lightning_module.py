@@ -10,6 +10,7 @@ from torch import Tensor, nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
+from src.wasb.models import build_model
 from src.wasb.training.losses import LossWeights, WASBLoss
 from src.wasb.training.metrics import WASBMetrics
 
@@ -30,16 +31,27 @@ class WASBLightningModule(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters(ignore=["model", "io_handlers"])
 
-        if model is None:
-            raise ValueError("model must be provided to WASBLightningModule")
+        # When training, the caller usually provides both `model` and
+        # `io_handlers`. When loading from a checkpoint via
+        # `load_from_checkpoint`, these may be omitted and we need to
+        # reconstruct them from the saved config instead.
 
         self.config = config or {}
-        self.model = model
 
-        if io_handlers is None:
+        if (model is None or io_handlers is None) and config is not None:
+            built_model, built_handlers = build_model(self.config)
+            if model is None:
+                model = built_model
+            if io_handlers is None:
+                io_handlers = built_handlers
+
+        if model is None or io_handlers is None:
             raise ValueError(
-                "io_handlers (prepare_frames, extract_heatmaps) must be provided to WASBLightningModule"
+                "model and io_handlers (prepare_frames, extract_heatmaps) must be provided to WASBLightningModule, "
+                "either directly or via a valid config."
             )
+
+        self.model = model
         self.prepare_frames, self.extract_heatmaps = io_handlers
 
         train_cfg = self.config.get("training", {})
