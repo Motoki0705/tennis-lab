@@ -104,16 +104,16 @@ def test_build_hrcnet_model_minimal():
     assert heatmaps.shape[0] == 2
 
 
-def test_build_hrnet_gru_with_hrnet_backbone():
-    model_cfg = {
+def test_build_temporal_conv_gru():
+    hrnet_backbone_cfg = {
         "name": "temporal_conv_gru",
         "frames_in": 2,
         "frames_out": 2,
         "gru_hidden_channels": [32],
         "gru_kernel_size": 3,
         "stack_channels": False,
-        "backbone": {
-            "name": "hrnet",
+        "backbone": "hrnet",
+        "hrnet": {
             "frames_in": 1,
             "frames_out": 1,
             "out_scales": [0],
@@ -159,20 +159,54 @@ def test_build_hrnet_gru_with_hrnet_backbone():
             },
         },
     }
-    cfg = _build_cfg(model_cfg)
 
-    model, (prepare_frames, extract_heatmaps) = build_model(cfg)
+    hrcnet_backbone_cfg = {
+        "name": "temporal_conv_gru",
+        "frames_in": 2,
+        "frames_out": 2,
+        "gru_hidden_channels": [32],
+        "gru_kernel_size": 3,
+        "stack_channels": False,
+        "backbone": "hrcnet",
+        "hrcnet": {
+            "frames_in": 1,
+            "frames_out": 1,
+            "inp_height": 288,
+            "inp_width": 512,
+            "high_channels": 32,
+            "low_channels": 128,
+            "num_stages": 3,
+            "high_block": "BASIC",
+            "low_block": "BASIC",
+            "num_high_blocks": 2,
+            "num_low_blocks": 1,
+            "upsample_mode": "nearest",
+            "downsample_kwargs": {"num_downsample": 4},
+            "transformer_kwargs": {
+                "d_model": 128,
+                "num_heads": 8,
+                "dim_ff": 512,
+                "dropout": 0.1,
+                "depth": 2,
+            },
+        },
+    }
 
-    assert isinstance(model, TemporalConvGRUModel)
+    for model_cfg in (hrnet_backbone_cfg, hrcnet_backbone_cfg):
+        cfg = _build_cfg(model_cfg)
 
-    import torch
+        model, (prepare_frames, extract_heatmaps) = build_model(cfg)
 
-    x = torch.randn(2, 2, 3, 288, 512)
-    frames = prepare_frames(x)
-    assert frames.shape == x.shape
-    y = model(frames)
-    heatmaps = extract_heatmaps(y)
-    assert heatmaps.shape[:2] == (2, 2)
+        assert isinstance(model, TemporalConvGRUModel)
+
+        import torch
+
+        x = torch.randn(2, 2, 3, 288, 512)
+        frames = prepare_frames(x)
+        assert frames.shape == x.shape
+        y = model(frames)
+        heatmaps = extract_heatmaps(y)
+        assert heatmaps.shape[:2] == (2, 2)
 
 
 def test_build_model_invalid_name_raises():
