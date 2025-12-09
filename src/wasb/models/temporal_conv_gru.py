@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import torch
-from omegaconf import DictConfig, OmegaConf
 from torch import Tensor, nn
-
-from .hrnet import HRNet
 
 logger = logging.getLogger(__name__)
 
@@ -131,47 +129,44 @@ class StackedConvGRU(nn.Module):
         return y_seq, h_states
 
 
-class HRNetConvGRU(nn.Module):
-    """Sequence model using HRNet features with a stacked ConvGRU head."""
+class TemporalConvGRUModel(nn.Module):
+    """Sequence model using generic backbone features with a stacked ConvGRU head."""
 
-    def __init__(self, cfg: DictConfig | dict[str, Any]):
+    def __init__(
+        self,
+        *,
+        backbone: nn.Module,
+        feature_channels: int,
+        frames_in: int,
+        frames_out: int | None = None,
+        stack_channels: bool = False,
+        gru_hidden_channels: Sequence[int] | int | None = None,
+        gru_kernel_size: int = 3,
+        expects_sequence_input: bool = True,
+    ) -> None:
         super().__init__()
-        if isinstance(cfg, dict):
-            cfg = OmegaConf.create(cfg)
 
-        self.frames_in = int(cfg.get("frames_in", 1))
-        self.frames_out = int(cfg.get("frames_out", self.frames_in))
-        self.stack_channels = bool(cfg.get("stack_channels", False))
-        self.expects_sequence_input = True
+        self.backbone = backbone
+        self.feature_channels = int(feature_channels)
 
-        backbone_cfg = cfg.get("backbone") or cfg
-        if isinstance(backbone_cfg, dict):
-            backbone_cfg = OmegaConf.create(backbone_cfg)
+        self.frames_in = int(frames_in)
+        self.frames_out = int(frames_out) if frames_out is not None else self.frames_in
+        self.stack_channels = bool(stack_channels)
+        self.expects_sequence_input = bool(expects_sequence_input)
 
-        # Use a single-frame HRNet backbone by default and reuse other settings.
-        backbone_dict = OmegaConf.to_container(backbone_cfg, resolve=True)
-        backbone_dict["frames_in"] = cfg.get(
-            "backbone_frames_in",
-            self.frames_in if self.stack_channels else 1,
-        )
-        backbone_dict["frames_out"] = cfg.get("backbone_frames_out", 1)
-        if "out_scales" not in backbone_dict and cfg.get("out_scales") is not None:
-            backbone_dict["out_scales"] = cfg.get("out_scales")
-        self.backbone = HRNet(OmegaConf.create(backbone_dict))
         self._backbone_train_mode: bool | None = None
         self._backbone_frozen = False
 
-        # Channel dimension of the deconvolved HRNet features at scale 0.
-        self.feature_channels = self.backbone.final_layers[0].in_channels
-
-        # Allow both int (single layer) and list[int] (multi-layer) configuration.
-        hidden_cfg = cfg.get("gru_hidden_channels", self.feature_channels)
-        if isinstance(hidden_cfg, (list, tuple)):
-            hidden_dims = [int(h) for h in hidden_cfg]
+        if gru_hidden_channels is None:
+            hidden_dims = [self.feature_channels]
+        elif isinstance(gru_hidden_channels, int):
+            hidden_dims = [int(gru_hidden_channels)]
         else:
-            hidden_dims = [int(hidden_cfg)]
+            hidden_dims = [int(h) for h in gru_hidden_channels]
+        if not hidden_dims:
+            raise ValueError("gru_hidden_channels must define at least one layer")
 
-        kernel_size = int(cfg.get("gru_kernel_size", 3))
+        kernel_size = int(gru_kernel_size)
 
         self.temporal_core = StackedConvGRU(
             input_channels=self.feature_channels,
@@ -209,10 +204,14 @@ class HRNetConvGRU(nn.Module):
         b, t, c, h, w = frames.shape
         frames_flat = frames.view(b * t, c, h, w)
 
-        # HRNet feature extraction (scale 0)
-        features = self.backbone.forward_features(frames_flat)[0]
-        feat_h, feat_w = features.shape[-2:]
-        features = features.view(b, t, self.feature_channels, feat_h, feat_w)
+        # Backbone feature extraction
+        feats_flat = self.backbone.forward_features(frames_flat)
+        if feats_flat.dim() != 4:
+            raise ValueError(
+                f"Backbone features must be 4D tensor [B*T, C, H, W], got {tuple(feats_flat.shape)}"
+            )
+        feat_h, feat_w = feats_flat.shape[-2:]
+        features = feats_flat.view(b, t, self.feature_channels, feat_h, feat_w)
 
         # Stacked ConvGRU over time
         seq_out, h_state = self.temporal_core(features, h_state)
