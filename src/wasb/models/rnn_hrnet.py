@@ -129,7 +129,7 @@ class StackedConvGRU(nn.Module):
         return y_seq, h_states
 
 
-class HRNetConvGRU(nn.Module):
+class TemporalConvGRUModel(nn.Module):
     """Sequence model using generic backbone features with a stacked ConvGRU head."""
 
     def __init__(
@@ -205,7 +205,11 @@ class HRNetConvGRU(nn.Module):
         frames_flat = frames.view(b * t, c, h, w)
 
         # Backbone feature extraction
-        feats_flat = self._extract_backbone_features(frames_flat)
+        feats_flat = self.backbone.forward_features(frames_flat)
+        if feats_flat.dim() != 4:
+            raise ValueError(
+                f"Backbone features must be 4D tensor [B*T, C, H, W], got {tuple(feats_flat.shape)}"
+            )
         feat_h, feat_w = feats_flat.shape[-2:]
         features = feats_flat.view(b, t, self.feature_channels, feat_h, feat_w)
 
@@ -219,33 +223,6 @@ class HRNetConvGRU(nn.Module):
         logits = self.head(seq_out.view(b_out * t_out, c_out, fh, fw))
         pred = logits.view(b_out, t_out, 1, fh, fw).squeeze(2)  # [B, frames_out, H', W']
         return pred, h_state
-
-    def _extract_backbone_features(self, x: Tensor) -> Tensor:
-        """Extract per-frame spatial features from the backbone.
-
-        Returns a tensor of shape [B*T, C_feat, H', W'] regardless of the
-        concrete backbone implementation.
-        """
-        feats = self.backbone.forward_features(x)
-
-        if isinstance(feats, Mapping):
-            if 0 not in feats:
-                raise KeyError("backbone.forward_features must contain scale 0 when returning a mapping.")
-            feat = feats[0]
-        elif isinstance(feats, Tensor):
-            feat = feats
-        else:
-            raise TypeError(
-                "backbone.forward_features must return either a Tensor or a mapping of tensors. "
-                f"Got {type(feats)!r} instead."
-            )
-
-        if feat.dim() != 4:
-            raise ValueError(
-            	"""Backbone features must be 4D tensor [B*T, C, H, W], got"""
-                f" {tuple(feat.shape)}"
-            )
-        return feat
 
     def load_backbone_checkpoint(
         self,

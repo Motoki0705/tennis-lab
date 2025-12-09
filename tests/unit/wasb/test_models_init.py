@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from omegaconf import OmegaConf
 
-from src.wasb.models import HRNetConvGRU, build_model
+from src.wasb.models import TemporalConvGRUModel, build_model
 
 
 def _build_cfg(model_cfg: dict[str, Any]):
@@ -163,7 +163,7 @@ def test_build_hrnet_gru_with_hrnet_backbone():
 
     model, (prepare_frames, extract_heatmaps) = build_model(cfg)
 
-    assert isinstance(model, HRNetConvGRU)
+    assert isinstance(model, TemporalConvGRUModel)
 
     import torch
 

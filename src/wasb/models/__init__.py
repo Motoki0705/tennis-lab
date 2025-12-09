@@ -10,7 +10,7 @@ from torch import Tensor
 from .clip_segmenter import ClipSegmenter, RuleBasedClipSegmenter
 from .hrnet import HRNet
 from .hrcnet import HRCNet
-from .rnn_hrnet import HRNetConvGRU
+from .rnn_hrnet import TemporalConvGRUModel
 from .trajectory_completer import (
     BiLSTMCompleter,
     CompletionResult,
@@ -149,7 +149,7 @@ def _build_hrnet_gru(cfg: DictConfig | dict[str, Any]):
 
     kernel_size = int(model_cfg.get("gru_kernel_size", 3))
 
-    model = HRNetConvGRU(
+    model = TemporalConvGRUModel(
         backbone=backbone,
         feature_channels=feature_channels,
         frames_in=frames_in,
@@ -210,5 +210,5 @@ __all__ = [
     "CompletionResult",
     "create_completer",
     "build_model",
-    "HRNetConvGRU",
+    "TemporalConvGRUModel",
 ]
