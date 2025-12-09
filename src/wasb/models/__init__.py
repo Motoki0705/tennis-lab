@@ -9,6 +9,7 @@ from torch import Tensor
 
 from .clip_segmenter import ClipSegmenter, RuleBasedClipSegmenter
 from .hrnet import HRNet
+from .hrcnet import HRCNet
 from .rnn_hrnet import HRNetConvGRU
 from .trajectory_completer import (
     BiLSTMCompleter,
@@ -55,6 +56,23 @@ def _hrnet_gru_handlers() -> tuple[Callable, Callable]:
 
 __factory: dict[str, Any] = {
     "hrnet": lambda cfg: (HRNet(cfg), _hrnet_handlers()),
+    "hrcnet": lambda cfg: (
+        HRCNet(
+            in_channels=3 * cfg.get("frames_in", 1),
+            out_channels=cfg.get("frames_out", 1),
+            high_channels=cfg.get("high_channels", 64),
+            low_channels=cfg.get("low_channels", 64),
+            num_stages=cfg.get("num_stages", 3),
+            high_block=cfg.get("high_block", "BASIC"),
+            low_block=cfg.get("low_block", "BASIC"),
+            num_high_blocks=cfg.get("num_high_blocks", 2),
+            num_low_blocks=cfg.get("num_low_blocks", 1),
+            upsample_mode=cfg.get("upsample_mode", "nearest"),
+            downsample_kwargs=cfg.get("downsample_kwargs", {}),
+            transformer_kwargs=cfg.get("transformer_kwargs", {}),
+        ),
+        _hrnet_handlers(),
+    ),
     "hrnet_gru": lambda cfg: (HRNetConvGRU(cfg), _hrnet_gru_handlers()),
 }
 
@@ -68,7 +86,7 @@ def build_model(cfg: DictConfig | dict[str, Any]):
     if model_name not in __factory:
         raise KeyError(f"invalid model: {model_name}")
 
-    if model_name in ("hrnet", "hrnet_gru"):
+    if model_name in ("hrnet", "hrcnet", "hrnet_gru"):
         return __factory[model_name](model_cfg)
 
     raise KeyError(f"Unsupported model: {model_name}")
