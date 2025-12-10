@@ -4,106 +4,52 @@
 This script runs the annotation pipeline to convert raw tennis match videos
 into the tennis dataset format used by WASB-SBDT.
 
-Supports:
-- Single video processing
-- Batch processing of multiple videos in a directory
-- Resume capability with progress tracking (meta.json)
-- Automatic detection of new videos
-- Generating preview clips with ball overlay
-- Applying clip selection based on preview clips
+Configuration is managed via Hydra and OmegaConf using the YAML file
+``src/wasb/configs/generate_game.yaml``. Script-specific CLI flags are not
+used; instead you edit the config or pass Hydra-style overrides.
 
 Usage (basic):
+
+    # Use defaults from configs/generate_game.yaml (mode: batch, etc.)
+    python -m src.wasb.scripts.generate_game
+
     # Single video
     python -m src.wasb.scripts.generate_game \
-        --video data/samples/test.mp4 \
-        --output data/tennis/game11
+        mode=single_video \
+        video=data/samples/test.mp4 \
+        output=data/tennis/game11
 
     # Batch processing (multiple videos)
     python -m src.wasb.scripts.generate_game \
-        --video-dir data/tennis/raw \
-        --output-dir data/tennis/ \
-        --resume               # use meta.json if it exists (default)
+        mode=batch \
+        video_dir=data/tennis/raw \
+        output_dir=data/tennis
 
-    # Batch processing from scratch (ignore existing meta.json)
+    # Status / reset
+    python -m src.wasb.scripts.generate_game mode=status
+    python -m src.wasb.scripts.generate_game mode=reset_failed
+    python -m src.wasb.scripts.generate_game mode=reset_all
     python -m src.wasb.scripts.generate_game \
-        --video-dir data/tennis/raw \
-        --output-dir data/tennis/ \
-        --no-resume
+        mode=reset_video reset_video=[match1.mp4,match2.mp4]
 
-    # Specify starting game id explicitly
+    # Clip sampling workflow
     python -m src.wasb.scripts.generate_game \
-        --video-dir data/tennis/raw \
-        --output-dir data/tennis/ \
-        --start-game-id 100
-
-Status / reset:
-    # Check status (meta.json overview)
+        mode=generate_samples generate_samples=[game11]
     python -m src.wasb.scripts.generate_game \
-        --output-dir data/tennis/ \
-        --status
+        mode=apply_clip_selection apply_clip_selection=[game11]
 
-    # Reset failed videos to pending
+    # Trajectory completion (post-processing)
     python -m src.wasb.scripts.generate_game \
-        --output-dir data/tennis/ \
-        --reset-failed
+        mode=apply_completion apply_completion=[game11,game12] \
+        completion_method=hybrid
 
-    # Reset all videos to pending
-    python -m src.wasb.scripts.generate_game \
-        --output-dir data/tennis/ \
-        --reset-all
-
-    # Reset specific video(s) by name
-    python -m src.wasb.scripts.generate_game \
-        --output-dir data/tennis/ \
-        --reset-video match1.mp4 match2.mp4
-
-Clip sampling workflow:
-    # 1) Generate preview clips with ball overlay for a game
-    #    (game name like game11, or use "all" for all games)
-    python -m src.wasb.scripts.generate_game \
-        --output-dir data/tennis/ \
-        --generate-samples game11
-
-    # 2) After manually deleting unwanted preview clips under
-    #    data/tennis/samples/game11, apply the selection to dataset clips
-    python -m src.wasb.scripts.generate_game \
-        --output-dir data/tennis/ \
-        --apply-clip-selection game11
-
-Trajectory completion (post-processing):
-    # Apply trajectory completion to specific game(s)
-    python -m src.wasb.scripts.generate_game \
-        --output-dir data/tennis/ \
-        --apply-completion game11 game12
-
-    # Apply to all games
-    python -m src.wasb.scripts.generate_game \
-        --output-dir data/tennis/ \
-        --apply-completion all
-
-    # With custom completion settings
-    python -m src.wasb.scripts.generate_game \
-        --output-dir data/tennis/ \
-        --apply-completion game11 \
-        --completion-method hybrid \
-        --physics-gap-threshold 5 \
-        --max-completion-gap 15
-
-Model / pipeline options (common):
-    --checkpoint PATH          # WASB/HRCNet checkpoint path
-    --model {wasb,hrcnet}      # model type (default: wasb)
-    --score-threshold 0.5      # detection score threshold
-    --min-clip-length 30       # minimum frames per clip
-    --min-detection-rate 0.5   # minimum detection rate per clip
-    --max-gap 10               # maximum gap to bridge in segmentation
-    --max-frames N             # limit frames per video (for testing)
-    --quiet                    # suppress verbose output
+See ``src/wasb/configs/generate_game.yaml`` for the full list of options
+and default values.
 
 """
 
 from __future__ import annotations
 
-import argparse
 import json
 import sys
 from pathlib import Path
@@ -111,7 +57,8 @@ from pathlib import Path
 import shutil
 
 import cv2
-import yaml
+import hydra
+from omegaconf import DictConfig
 from tqdm import tqdm
 
 # Add project root to path (src/wasb/scripts -> project root)
@@ -133,190 +80,153 @@ PREDICTOR_REGISTRY = {
 }
 
 
-def load_config(config_path: Path | None = None) -> dict:
-    """Load configuration for generate_game from a YAML file."""
-    if config_path is None:
-        config_path = PROJECT_ROOT / "src" / "wasb" / "configs" / "generate_game.yaml"
-
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
-
-    with config_path.open("r") as f:
-        config = yaml.safe_load(f) or {}
-
-    if not isinstance(config, dict):
-        raise ValueError("Config file must contain a YAML mapping at the top level.")
-
-    return config
+def _resolve_path(path_str: str | None) -> Path | None:
+    """Resolve a possibly relative path string against the project root."""
+    if path_str is None:
+        return None
+    path = Path(path_str)
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+    return path
 
 
-def build_args_from_config(config: dict) -> argparse.Namespace:
-    """Build an argparse-style Namespace from a config dictionary."""
-    mode = config.get("mode", "batch")
-    valid_modes = {
-        "single_video",
-        "batch",
-        "status",
-        "reset_failed",
-        "reset_all",
-        "reset_video",
-        "generate_samples",
-        "apply_clip_selection",
-        "apply_completion",
-    }
-    if mode not in valid_modes:
-        raise ValueError(f"Invalid mode in config: {mode}")
+def run_from_config(cfg: DictConfig) -> int:
+    """Dispatch execution based on the configuration mode."""
+    mode = str(getattr(cfg, "mode", "batch"))
 
-    data: dict[str, object] = {}
-
-    # Common paths and options
-    data["video"] = config.get("video")
-    data["output"] = config.get("output")
-    data["video_dir"] = config.get("video_dir")
-    data["output_dir"] = config.get("output_dir", "data/tennis")
-
-    data["resume"] = bool(config.get("resume", True))
-    data["no_resume"] = bool(config.get("no_resume", False))
-    data["start_game_id"] = config.get("start_game_id")
-
-    # Status / reset
-    data["status"] = mode == "status"
-    data["reset_failed"] = mode == "reset_failed"
-    data["reset_all"] = mode == "reset_all"
-    data["reset_video"] = config.get("reset_video", [])
-
-    # Sampling / clip selection
-    data["generate_samples"] = config.get("generate_samples", [])
-    data["apply_clip_selection"] = config.get("apply_clip_selection", [])
-
-    # Completion
-    data["apply_completion"] = config.get("apply_completion", [])
-    data["completion_method"] = config.get("completion_method", "hybrid")
-    data["completion_checkpoint"] = config.get("completion_checkpoint")
-    data["physics_gap_threshold"] = int(config.get("physics_gap_threshold", 5))
-    data["max_completion_gap"] = int(config.get("max_completion_gap", 15))
-
-    # Model / pipeline
-    data["checkpoint"] = config.get(
-        "checkpoint",
-        "third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar",
-    )
-    data["model"] = config.get("model", "wasb")
-    data["score_threshold"] = float(config.get("score_threshold", 0.5))
-    data["min_clip_length"] = int(config.get("min_clip_length", 30))
-    data["min_detection_rate"] = float(config.get("min_detection_rate", 0.5))
-    data["max_gap"] = int(config.get("max_gap", 10))
-
-    # General
-    data["max_frames"] = config.get("max_frames")
-    data["quiet"] = bool(config.get("quiet", False))
-
-    # Basic validation for required fields per mode
+    if mode == "status":
+        return show_status(cfg)
+    if mode in {"reset_failed", "reset_all", "reset_video"}:
+        return reset_videos(cfg)
+    if mode == "generate_samples":
+        return generate_samples(cfg)
+    if mode == "apply_clip_selection":
+        return apply_clip_selection(cfg)
+    if mode == "apply_completion":
+        return apply_completion(cfg)
     if mode == "single_video":
-        if not data["video"] or not data["output"]:
-            raise ValueError("single_video mode requires 'video' and 'output'.")
-    elif mode == "batch":
-        if not data["video_dir"]:
-            raise ValueError("batch mode requires 'video_dir'.")
-    elif mode == "reset_video":
-        if not data["reset_video"]:
-            raise ValueError("reset_video mode requires non-empty 'reset_video' list.")
-    elif mode == "generate_samples":
-        if not data["generate_samples"]:
-            raise ValueError(
-                "generate_samples mode requires non-empty 'generate_samples' list."
-            )
-    elif mode == "apply_clip_selection":
-        if not data["apply_clip_selection"]:
-            raise ValueError(
-                "apply_clip_selection mode requires non-empty 'apply_clip_selection' list."
-            )
-    elif mode == "apply_completion":
-        if not data["apply_completion"]:
-            raise ValueError(
-                "apply_completion mode requires non-empty 'apply_completion' list."
-            )
+        return process_single_video(cfg)
+    if mode == "batch":
+        return process_video_directory(cfg)
 
-    return argparse.Namespace(**data)
+    raise ValueError(f"Unknown mode: {mode}")
 
 
-def process_single_video(args: argparse.Namespace) -> int:
+def process_single_video(cfg: DictConfig) -> int:
     """Process a single video file."""
-    video_path = Path(args.video)
-    if not video_path.exists():
+    video_str = getattr(cfg, "video", None)
+    if video_str is None:
+        print("Error: 'video' is not set for single_video mode.", file=sys.stderr)
+        return 1
+
+    video_path = _resolve_path(str(video_str))
+    if video_path is None or not video_path.exists():
         print(f"Error: Video not found: {video_path}", file=sys.stderr)
         return 1
 
-    checkpoint_path = Path(args.checkpoint)
-    if not checkpoint_path.exists():
+    checkpoint_str = getattr(
+        cfg,
+        "checkpoint",
+        "third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar",
+    )
+    checkpoint_path = _resolve_path(str(checkpoint_str))
+    if checkpoint_path is None or not checkpoint_path.exists():
         print(f"Error: Checkpoint not found: {checkpoint_path}", file=sys.stderr)
         return 1
 
     # Create config
     config = PipelineConfig(
-        score_threshold=args.score_threshold,
-        min_clip_length=args.min_clip_length,
-        min_detection_rate=args.min_detection_rate,
-        max_gap=args.max_gap,
+        score_threshold=float(getattr(cfg, "score_threshold", 0.5)),
+        min_clip_length=int(getattr(cfg, "min_clip_length", 30)),
+        min_detection_rate=float(getattr(cfg, "min_detection_rate", 0.5)),
+        max_gap=int(getattr(cfg, "max_gap", 10)),
     )
 
     # Load predictor
-    if not args.quiet:
-        print(f"Loading {args.model} model from {args.checkpoint}...")
+    quiet = bool(getattr(cfg, "quiet", False))
+    model_name = str(getattr(cfg, "model", "wasb"))
+    if not quiet:
+        print(f"Loading {model_name} model from {checkpoint_path}...")
 
-    predictor_cls = PREDICTOR_REGISTRY[args.model]
+    predictor_cls = PREDICTOR_REGISTRY[model_name]
     predictor = predictor_cls.load_from_checkpoint(
         checkpoint_path,
         device="cuda",
-        score_threshold=args.score_threshold,
+        score_threshold=float(getattr(cfg, "score_threshold", 0.5)),
     )
+
+    output_str = getattr(cfg, "output", None)
+    if output_str is None:
+        print("Error: 'output' is not set for single_video mode.", file=sys.stderr)
+        return 1
+
+    output_path = _resolve_path(str(output_str))
+    if output_path is None:
+        print("Error: Failed to resolve 'output' path.", file=sys.stderr)
+        return 1
 
     # Run pipeline
     pipeline = AnnotationPipeline(predictor, config=config)
     result = pipeline.run(
         video_path=video_path,
-        output_dir=args.output,
-        max_frames=args.max_frames,
-        verbose=not args.quiet,
+        output_dir=str(output_path),
+        max_frames=getattr(cfg, "max_frames", None),
+        verbose=not quiet,
     )
 
-    if not args.quiet:
+    if not quiet:
         print(f"\nDone! Generated {len(result.clips)} clips in {result.output_dir}")
 
     return 0
 
 
-def process_video_directory(args: argparse.Namespace) -> int:
+def process_video_directory(cfg: DictConfig) -> int:
     """Process all videos in a directory."""
-    video_dir = Path(args.video_dir)
-    if not video_dir.exists():
+    video_dir_str = getattr(cfg, "video_dir", None)
+    if video_dir_str is None:
+        print("Error: 'video_dir' is not set for batch mode.", file=sys.stderr)
+        return 1
+
+    video_dir = _resolve_path(str(video_dir_str))
+    if video_dir is None or not video_dir.exists():
         print(f"Error: Video directory not found: {video_dir}", file=sys.stderr)
         return 1
 
-    checkpoint_path = Path(args.checkpoint)
-    if not checkpoint_path.exists():
+    checkpoint_str = getattr(
+        cfg,
+        "checkpoint",
+        "third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar",
+    )
+    checkpoint_path = _resolve_path(str(checkpoint_str))
+    if checkpoint_path is None or not checkpoint_path.exists():
         print(f"Error: Checkpoint not found: {checkpoint_path}", file=sys.stderr)
         return 1
 
-    output_dir = Path(args.output_dir)
+    output_dir_str = getattr(cfg, "output_dir", "data/tennis")
+    output_dir = _resolve_path(str(output_dir_str))
+    if output_dir is None:
+        print("Error: Failed to resolve 'output_dir' path.", file=sys.stderr)
+        return 1
 
     # Create config
     config = PipelineConfig(
-        score_threshold=args.score_threshold,
-        min_clip_length=args.min_clip_length,
-        min_detection_rate=args.min_detection_rate,
-        max_gap=args.max_gap,
+        score_threshold=float(getattr(cfg, "score_threshold", 0.5)),
+        min_clip_length=int(getattr(cfg, "min_clip_length", 30)),
+        min_detection_rate=float(getattr(cfg, "min_detection_rate", 0.5)),
+        max_gap=int(getattr(cfg, "max_gap", 10)),
     )
 
     # Load predictor
-    if not args.quiet:
-        print(f"Loading {args.model} model from {args.checkpoint}...")
+    quiet = bool(getattr(cfg, "quiet", False))
+    model_name = str(getattr(cfg, "model", "wasb"))
+    if not quiet:
+        print(f"Loading {model_name} model from {checkpoint_path}...")
 
-    predictor_cls = PREDICTOR_REGISTRY[args.model]
+    predictor_cls = PREDICTOR_REGISTRY[model_name]
     predictor = predictor_cls.load_from_checkpoint(
         checkpoint_path,
         device="cuda",
-        score_threshold=args.score_threshold,
+        score_threshold=float(getattr(cfg, "score_threshold", 0.5)),
     )
 
     # Create pipeline and batch processor
@@ -324,26 +234,32 @@ def process_video_directory(args: argparse.Namespace) -> int:
     batch_processor = BatchProcessor(
         pipeline=pipeline,
         output_dir=output_dir,
-        start_game_id=args.start_game_id,
+        start_game_id=getattr(cfg, "start_game_id", None),
     )
+
+    # Determine resume behaviour (no_resume overrides resume)
+    resume_flag = getattr(cfg, "resume", True)
+    no_resume_flag = getattr(cfg, "no_resume", False)
+    resume = bool(resume_flag) and not bool(no_resume_flag)
 
     # Run batch processing
     result = batch_processor.process_directory(
         video_dir=video_dir,
-        resume=args.resume,
-        max_frames=args.max_frames,
-        verbose=not args.quiet,
+        resume=resume,
+        max_frames=getattr(cfg, "max_frames", None),
+        verbose=not quiet,
     )
 
-    if not args.quiet:
+    if not quiet:
         print("\nBatch processing complete!")
 
     return 0 if result.failed == 0 else 1
 
 
-def show_status(args: argparse.Namespace) -> int:
+def show_status(cfg: DictConfig) -> int:
     """Show current processing status."""
-    output_dir = Path(args.output_dir)
+    output_dir_str = getattr(cfg, "output_dir", "data/tennis")
+    output_dir = _resolve_path(str(output_dir_str))
     meta_path = output_dir / "meta.json"
 
     if not meta_path.exists():
@@ -400,9 +316,10 @@ def show_status(args: argparse.Namespace) -> int:
     return 0
 
 
-def reset_videos(args: argparse.Namespace) -> int:
+def reset_videos(cfg: DictConfig) -> int:
     """Reset video processing status."""
-    output_dir = Path(args.output_dir)
+    output_dir_str = getattr(cfg, "output_dir", "data/tennis")
+    output_dir = _resolve_path(str(output_dir_str))
     meta_path = output_dir / "meta.json"
 
     if not meta_path.exists():
@@ -415,16 +332,17 @@ def reset_videos(args: argparse.Namespace) -> int:
     videos = meta.get("videos", {})
     reset_count = 0
 
+    mode = str(getattr(cfg, "mode", ""))
+    reset_video_list = list(getattr(cfg, "reset_video", []))
+
     for name, status in videos.items():
         should_reset = False
 
-        if (
-            args.reset_failed
-            and status["status"] == "failed"
-            or args.reset_all
-            or args.reset_video
-            and name in args.reset_video
-        ):
+        if mode == "reset_failed" and status["status"] == "failed":
+            should_reset = True
+        elif mode == "reset_all":
+            should_reset = True
+        elif mode == "reset_video" and name in reset_video_list:
             should_reset = True
 
         if should_reset:
@@ -548,15 +466,22 @@ def _generate_samples_for_game(
         _make_clip_preview_video(clip_dir, output_path, fps)
 
 
-def generate_samples(args: argparse.Namespace) -> int:
-    output_dir = Path(args.output_dir)
-    games = _resolve_games(output_dir, args.generate_samples)
+def generate_samples(cfg: DictConfig) -> int:
+    output_dir_str = getattr(cfg, "output_dir", "data/tennis")
+    output_dir = _resolve_path(str(output_dir_str))
+    if output_dir is None:
+        print("Error: Failed to resolve 'output_dir' path.", file=sys.stderr)
+        return 1
+
+    games_cfg = list(getattr(cfg, "generate_samples", []))
+    games = _resolve_games(output_dir, games_cfg)
     if not games:
         print("No games to generate samples for.")
         return 1
 
     iterable = games
-    if not args.quiet:
+    quiet = bool(getattr(cfg, "quiet", False))
+    if not quiet:
         iterable = tqdm(games, desc="Generating samples", unit="game")
 
     for game_name in iterable:
@@ -564,7 +489,7 @@ def generate_samples(args: argparse.Namespace) -> int:
         _generate_samples_for_game(
             output_dir,
             game_name,
-            show_progress=not args.quiet,
+            show_progress=not quiet,
         )
 
     return 0
@@ -667,9 +592,15 @@ def _apply_clip_selection_for_game(output_dir: Path, game_name: str) -> None:
     shutil.rmtree(samples_dir, ignore_errors=True)
 
 
-def apply_clip_selection(args: argparse.Namespace) -> int:
-    output_dir = Path(args.output_dir)
-    games = _resolve_games(output_dir, args.apply_clip_selection)
+def apply_clip_selection(cfg: DictConfig) -> int:
+    output_dir_str = getattr(cfg, "output_dir", "data/tennis")
+    output_dir = _resolve_path(str(output_dir_str))
+    if output_dir is None:
+        print("Error: Failed to resolve 'output_dir' path.", file=sys.stderr)
+        return 1
+
+    games_cfg = list(getattr(cfg, "apply_clip_selection", []))
+    games = _resolve_games(output_dir, games_cfg)
     if not games:
         print("No games to apply clip selection for.")
         return 1
@@ -838,10 +769,16 @@ def _update_meta_completion(
         json.dump(meta, f, indent=2)
 
 
-def apply_completion(args: argparse.Namespace) -> int:
+def apply_completion(cfg: DictConfig) -> int:
     """Apply trajectory completion to existing game(s)."""
-    output_dir = Path(args.output_dir)
-    games = _resolve_games(output_dir, args.apply_completion)
+    output_dir_str = getattr(cfg, "output_dir", "data/tennis")
+    output_dir = _resolve_path(str(output_dir_str))
+    if output_dir is None:
+        print("Error: Failed to resolve 'output_dir' path.", file=sys.stderr)
+        return 1
+
+    games_cfg = list(getattr(cfg, "apply_completion", []))
+    games = _resolve_games(output_dir, games_cfg)
 
     if not games:
         print("No games to apply completion for.")
@@ -849,32 +786,33 @@ def apply_completion(args: argparse.Namespace) -> int:
 
     # Create completer
     completer = create_completer(
-        method=args.completion_method,
-        checkpoint_path=args.completion_checkpoint,
-        physics_gap_threshold=args.physics_gap_threshold,
-        max_gap=args.max_completion_gap,
-        score_threshold=args.score_threshold,
+        method=str(getattr(cfg, "completion_method", "hybrid")),
+        checkpoint_path=getattr(cfg, "completion_checkpoint", None),
+        physics_gap_threshold=int(getattr(cfg, "physics_gap_threshold", 5)),
+        max_gap=int(getattr(cfg, "max_completion_gap", 15)),
+        score_threshold=float(getattr(cfg, "score_threshold", 0.5)),
     )
 
-    if not args.quiet:
-        print(f"Using completion method: {args.completion_method}")
-        print(f"Physics gap threshold: {args.physics_gap_threshold}")
-        print(f"Max completion gap: {args.max_completion_gap}")
+    quiet = bool(getattr(cfg, "quiet", False))
+    if not quiet:
+        print(f"Using completion method: {getattr(cfg, 'completion_method', 'hybrid')}")
+        print(f"Physics gap threshold: {getattr(cfg, 'physics_gap_threshold', 5)}")
+        print(f"Max completion gap: {getattr(cfg, 'max_completion_gap', 15)}")
         print()
 
     total_completed = 0
     total_frames = 0
 
     for game_name in games:
-        if not args.quiet:
+        if not quiet:
             print(f"Applying completion to {game_name}...")
 
         stats = _apply_completion_to_game(
             output_dir=output_dir,
             game_name=game_name,
             completer=completer,
-            score_threshold=args.score_threshold,
-            verbose=not args.quiet,
+            score_threshold=float(getattr(cfg, "score_threshold", 0.5)),
+            verbose=not quiet,
         )
 
         total_completed += stats["completed"]
@@ -884,11 +822,11 @@ def apply_completion(args: argparse.Namespace) -> int:
         _update_meta_completion(
             output_dir=output_dir,
             game_name=game_name,
-            completion_method=args.completion_method,
+            completion_method=str(getattr(cfg, "completion_method", "hybrid")),
             stats=stats,
         )
 
-        if not args.quiet:
+        if not quiet:
             det_pct = 100 * stats["detected"] / stats["frames"] if stats["frames"] > 0 else 0
             comp_pct = 100 * stats["completed"] / stats["frames"] if stats["frames"] > 0 else 0
             print(
@@ -897,7 +835,7 @@ def apply_completion(args: argparse.Namespace) -> int:
                 f"{stats['completed']} completed ({comp_pct:.1f}%)"
             )
 
-    if not args.quiet:
+    if not quiet:
         print()
         print("=" * 50)
         print("Completion Summary")
@@ -911,36 +849,16 @@ def apply_completion(args: argparse.Namespace) -> int:
     return 0
 
 
-def main() -> int:
-    """Main entry point."""
-    config = load_config()
-    args = build_args_from_config(config)
-
-    # Handle different modes (mutually exclusive via config.mode)
-    if args.status:
-        return show_status(args)
-
-    if args.reset_failed or args.reset_all or args.reset_video:
-        return reset_videos(args)
-
-    if args.generate_samples:
-        return generate_samples(args)
-
-    if args.apply_clip_selection:
-        return apply_clip_selection(args)
-
-    if args.apply_completion:
-        return apply_completion(args)
-
-    if args.video:
-        return process_single_video(args)
-
-    if args.video_dir:
-        return process_video_directory(args)
-
-    print("Error: invalid configuration; no mode matched.", file=sys.stderr)
-    return 1
+@hydra.main(
+    version_base=None,
+    config_path="../configs",
+    config_name="generate_game",
+)
+def main(cfg: DictConfig) -> None:
+    """Hydra entry point."""
+    exit_code = run_from_config(cfg)
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
