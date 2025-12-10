@@ -261,6 +261,9 @@ def show_status(cfg: DictConfig) -> int:
     """Show current processing status."""
     output_dir_str = getattr(cfg, "output_dir", "data/tennis")
     output_dir = _resolve_path(str(output_dir_str))
+    if output_dir is None:
+        print("Error: Failed to resolve 'output_dir' path.", file=sys.stderr)
+        return 1
     meta_path = output_dir / "meta.json"
 
     if not meta_path.exists():
