@@ -1,0 +1,14 @@
+name: dinov3_heatmap
+
+# Input / output resolutions for the ViT backbone and decoder
+image_hw: [224, 224]
+heatmap_hw: [224, 224]
+
+# Decoder settings (FPN-style upsampling)
+decoder_channels: [256, 128, 64, 32]
+upsample_mode: bilinear
+
+# Optional backbone checkpoint. For now we point to the local DINOv3 repo
+# directory so that load_backbone_checkpoint is a no-op unless a concrete
+# .pth path is provided.
+backbone_checkpoint: third_party/dinov3
