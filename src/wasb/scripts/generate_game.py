@@ -41,7 +41,7 @@ Usage (basic):
     # Trajectory completion (post-processing)
     python -m src.wasb.scripts.generate_game \
         mode=apply_completion apply_completion=[game11,game12] \
-        completion_method=hybrid
+        pipeline.completion_method=hybrid
 
 See ``src/wasb/configs/generate_game.yaml`` for the full list of options
 and default values.
