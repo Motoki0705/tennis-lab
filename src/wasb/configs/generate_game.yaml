@@ -33,19 +33,34 @@ apply_clip_selection: [] # e.g. ["game11"] or ["all"]
 
 # Trajectory completion
 apply_completion: []     # e.g. ["game11", "game12"] or ["all"]
-completion_method: hybrid        # physics | bilstm | hybrid
-completion_checkpoint: null      # path to BiLSTM checkpoint for bilstm/hybrid
-physics_gap_threshold: 5         # default: 5
-max_completion_gap: 15           # default: 15
 
 # Model / pipeline
 checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
 model: wasb                    # wasb | hrcnet
 
-score_threshold: 0.5
-min_clip_length: 30
-min_detection_rate: 0.5
-max_gap: 10
+pipeline:
+  # Clip and detection settings (PipelineConfig)
+  score_threshold: 0.5
+  min_clip_length: 30
+  min_detection_rate: 0.5
+  max_gap: 10
+  clip_padding: 5
+  batch_size: 500
+  frame_format: "frame_{:04d}.jpg"
+  jpeg_quality: 95
+
+  # Streaming settings
+  streaming_batch_size: 64
+  streaming_queue_size: 4
+  use_streaming: true
+  streaming_threshold: 3000
+
+  # Trajectory completion settings within the pipeline
+  use_completion: true
+  completion_method: hybrid
+  completion_checkpoint: null
+  physics_gap_threshold: 5
+  max_completion_gap: 15
 
 # General
 max_frames: null               # limit frames per video (for testing)
