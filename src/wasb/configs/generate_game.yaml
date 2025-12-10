@@ -65,7 +65,3 @@ pipeline:
 # General
 max_frames: null               # limit frames per video (for testing)
 quiet: false
-
-hydra:
-  run:
-    dir: .
