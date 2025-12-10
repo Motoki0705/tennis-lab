@@ -8,6 +8,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
 from .clip_segmenter import ClipSegmenter, RuleBasedClipSegmenter
+from .dinov3_heatmap import DinoV3HeatmapModel
 from .hrnet import HRNet
 from .hrcnet import HRCNet
 from .temporal_conv_gru import TemporalConvGRUModel
@@ -32,6 +33,29 @@ def _hrnet_handlers() -> tuple[Callable, Callable]:
         if isinstance(outputs, Tensor):
             return outputs  
         raise TypeError("Unsupported model output type for HRNet.")
+
+    return prepare_frames, extract_heatmaps
+
+
+def _dinov3_heatmap_handlers() -> tuple[Callable, Callable]:
+    def prepare_frames(frames):
+        if getattr(frames, "dim", None) is None:
+            raise ValueError("DinoV3HeatmapModel expects a tensor input for frames.")
+        if frames.dim() == 5:
+            # [B, T, C, H, W] -> use the last frame in the sequence.
+            return frames[:, -1]
+        if frames.dim() == 4:
+            return frames
+        raise ValueError(
+            "DinoV3HeatmapModel expects frames with shape [B, C, H, W] "
+            "or [B, T, C, H, W], got "
+            f"{getattr(frames, 'shape', None)}"
+        )
+
+    def extract_heatmaps(outputs):
+        if isinstance(outputs, Tensor):
+            return outputs
+        raise TypeError("Unsupported model output type for DinoV3HeatmapModel.")
 
     return prepare_frames, extract_heatmaps
 
@@ -206,6 +230,7 @@ __factory: dict[str, Any] = {
         _hrnet_handlers(),
     ),
     "temporal_conv_gru": _build_temporal_conv_gru,
+    "dinov3_heatmap": lambda cfg: (DinoV3HeatmapModel(cfg), _dinov3_heatmap_handlers()),
 }
 
 
@@ -218,7 +243,7 @@ def build_model(cfg: DictConfig | dict[str, Any]):
     if model_name not in __factory:
         raise KeyError(f"invalid model: {model_name}")
 
-    if model_name in ("hrnet", "hrcnet", "temporal_conv_gru"):
+    if model_name in ("hrnet", "hrcnet", "temporal_conv_gru", "dinov3_heatmap"):
         return __factory[model_name](model_cfg)
 
     raise KeyError(f"Unsupported model: {model_name}")
@@ -235,4 +260,5 @@ __all__ = [
     "create_completer",
     "build_model",
     "TemporalConvGRUModel",
+    "DinoV3HeatmapModel",
 ]
