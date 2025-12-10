@@ -68,35 +68,22 @@ class TrajectoryBiLSTMLightningModule(pl.LightningModule):
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
     ) -> tuple[Tensor, dict[str, float]]:
-        xy_input_px: Tensor = batch["xy_input_px"]
-        target_xy_px: Tensor = batch["target_xy_px"]
-        visibility_input: Tensor = batch["visibility_input"]
-        scores_input: Tensor = batch["scores_input"]
+        xy_input_norm: Tensor = batch["xy_input_norm"]
+        target_xy_norm: Tensor = batch["target_xy_norm"]
         loss_mask_block: Tensor = batch["loss_mask_block"]
         loss_mask_sparse: Tensor = batch["loss_mask_sparse"]
         loss_mask_noise: Tensor = batch["loss_mask_noise"]
 
         device = self.device
-        xy_input_px = xy_input_px.to(device)
-        target_xy_px = target_xy_px.to(device)
-        visibility_input = visibility_input.to(device)
-        scores_input = scores_input.to(device)
+        xy_input_norm = xy_input_norm.to(device)
+        target_xy_norm = target_xy_norm.to(device)
         loss_mask_block = loss_mask_block.to(device)
         loss_mask_sparse = loss_mask_sparse.to(device)
         loss_mask_noise = loss_mask_noise.to(device)
 
         scale = torch.tensor([1920.0, 1080.0], dtype=torch.float32, device=device)
 
-        xy_input_norm = xy_input_px / scale
-        target_xy_norm = target_xy_px / scale
-
-        x_components = [
-            xy_input_norm[..., 0],
-            xy_input_norm[..., 1],
-            visibility_input.to(dtype=torch.float32),
-            scores_input.to(dtype=torch.float32),
-        ]
-        model_in = torch.stack(x_components, dim=-1)
+        model_in = xy_input_norm
 
         pred_norm = self(model_in)
         diff = pred_norm - target_xy_norm
@@ -116,7 +103,8 @@ class TrajectoryBiLSTMLightningModule(pl.LightningModule):
         rmse_px = torch.zeros((), dtype=torch.float32, device=device)
         if total_mask.any():
             pred_px = pred_norm * scale
-            diff_px = pred_px - target_xy_px
+            target_px = target_xy_norm * scale
+            diff_px = pred_px - target_px
             sq = (diff_px * diff_px).sum(dim=-1)
             rmse_px = torch.sqrt(
                 self._masked_mean(sq, total_mask.to(dtype=torch.float32))
