@@ -29,10 +29,10 @@ training:
   weight_decay: 1.0e-4
   warmup_steps: 1000
   min_lr: 1.0e-6
-  lambda_block: 1.0
+  lambda_block: 3.0
   lambda_sparse: 1.0
   lambda_noise: 1.0
-  precision: "bf16-mixed"
+  precision: "32"
 
 logging:
   level: INFO
