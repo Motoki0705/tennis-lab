@@ -104,8 +104,8 @@ def run_dry_run(config: OmegaConf, output_dir: Path) -> None:
     train_loader = datamodule.train_dataloader()
     batch = next(iter(train_loader))
 
-    xy = batch["xy_input_px"]
-    targets = batch["target_xy_px"]
+    xy = batch["xy_input_norm"]
+    targets = batch["target_xy_norm"]
 
     print(
         f"Loaded batch: xy_input {tuple(xy.shape)}, "

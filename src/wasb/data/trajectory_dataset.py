@@ -185,23 +185,17 @@ class TrajectoryWindowDataset(Dataset):
             noise[~noise_mask] = 0.0
             xy_input = xy_input + noise
 
-        visibility_input = torch.where(
-            block_mask | sparse_mask,
-            torch.zeros_like(visibility),
-            (visibility > 0).to(torch.int64),
-        )
-        scores_input = scores.clone()
-        scores_input[block_mask | sparse_mask] = 0.0
-
         loss_mask_block = (block_mask & valid).to(torch.float32)
         loss_mask_sparse = (sparse_mask & valid).to(torch.float32)
         loss_mask_noise = (noise_mask & valid).to(torch.float32)
 
+        scale = torch.tensor([1920.0, 1080.0], dtype=torch.float32)
+        xy_input_norm = xy_input / scale
+        target_xy_norm = xy / scale
+
         return {
-            "xy_input_px": xy_input,
-            "visibility_input": visibility_input,
-            "scores_input": scores_input,
-            "target_xy_px": xy,
+            "xy_input_norm": xy_input_norm,
+            "target_xy_norm": target_xy_norm,
             "loss_mask_block": loss_mask_block,
             "loss_mask_sparse": loss_mask_sparse,
             "loss_mask_noise": loss_mask_noise,
