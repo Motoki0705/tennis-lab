@@ -443,7 +443,7 @@ class BiLSTMCompleter(TrajectoryCompleter):
                 return self.output_proj(h)
 
         self._model = BiLSTMModel(
-            input_dim=4,  # x, y, visibility, score
+            input_dim=2,  # x, y
             hidden_dim=self.hidden_dim,
             num_layers=self.num_layers,
             output_dim=2,  # x, y
@@ -472,8 +472,7 @@ class BiLSTMCompleter(TrajectoryCompleter):
             )
 
         # Prepare input
-        vis_float = visibility.astype(np.float32)
-        input_data = np.stack([xy[:, 0], xy[:, 1], vis_float, score], axis=-1)
+        input_data = xy.astype(np.float32).copy()
 
         # Normalize coordinates (assuming 1920x1080)
         input_data[:, 0] /= 1920.0
