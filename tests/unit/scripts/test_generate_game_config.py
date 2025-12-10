@@ -1,61 +1,33 @@
-import textwrap
-
 import pytest
+from omegaconf import OmegaConf
 
-from src.wasb.scripts.generate_game import build_args_from_config, load_config
-
-
-def test_build_args_batch_mode_minimal() -> None:
-    config = {
-        "mode": "batch",
-        "video_dir": "data/tennis/raw",
-    }
-
-    args = build_args_from_config(config)
-
-    assert args.video_dir == "data/tennis/raw"
-    assert args.output_dir == "data/tennis"
-    assert args.status is False
-    assert args.reset_failed is False
-    assert args.reset_all is False
-    assert args.generate_samples == []
-    assert args.apply_clip_selection == []
-    assert args.apply_completion == []
-    assert args.model == "wasb"
-    assert args.checkpoint.endswith("pretrained/wasb_tennis_best.pth.tar")
+from src.wasb.scripts.generate_game import (
+    process_single_video,
+    process_video_directory,
+    run_from_config,
+)
 
 
-def test_build_args_single_video_requires_fields() -> None:
-    config = {
-        "mode": "single_video",
-        "video": "video.mp4",
-        # "output" is intentionally missing
-    }
+def test_run_from_config_invalid_mode_raises() -> None:
+    cfg = OmegaConf.create({"mode": "invalid_mode"})
 
     with pytest.raises(ValueError):
-        build_args_from_config(config)
+        run_from_config(cfg)
 
 
-def test_build_args_invalid_mode() -> None:
-    config = {
-        "mode": "invalid_mode",
-    }
+def test_process_single_video_requires_video() -> None:
+    # Missing video should fail early without touching filesystem.
+    cfg = OmegaConf.create({"mode": "single_video"})
 
-    with pytest.raises(ValueError):
-        build_args_from_config(config)
+    exit_code = process_single_video(cfg)
+
+    assert exit_code == 1
 
 
-def test_load_config_with_custom_path(tmp_path) -> None:
-    yaml_path = tmp_path / "generate_game.yaml"
-    yaml_content = textwrap.dedent(
-        """
-        mode: status
-        output_dir: data/tennis
-        """
-    )
-    yaml_path.write_text(yaml_content)
+def test_process_video_directory_requires_video_dir() -> None:
+    # Missing video_dir should fail early without touching filesystem.
+    cfg = OmegaConf.create({"mode": "batch"})
 
-    config = load_config(yaml_path)
+    exit_code = process_video_directory(cfg)
 
-    assert config["mode"] == "status"
-    assert config["output_dir"] == "data/tennis"
+    assert exit_code == 1
