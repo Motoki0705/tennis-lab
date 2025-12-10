@@ -111,6 +111,7 @@ from pathlib import Path
 import shutil
 
 import cv2
+import yaml
 from tqdm import tqdm
 
 # Add project root to path (src/wasb/scripts -> project root)
@@ -130,6 +131,113 @@ PREDICTOR_REGISTRY = {
     "wasb": WASBPredictor,
     "hrcnet": HRCNetWASBPredictor,
 }
+
+
+def load_config(config_path: Path | None = None) -> dict:
+    """Load configuration for generate_game from a YAML file."""
+    if config_path is None:
+        config_path = PROJECT_ROOT / "src" / "wasb" / "configs" / "generate_game.yaml"
+
+    if not config_path.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    with config_path.open("r") as f:
+        config = yaml.safe_load(f) or {}
+
+    if not isinstance(config, dict):
+        raise ValueError("Config file must contain a YAML mapping at the top level.")
+
+    return config
+
+
+def build_args_from_config(config: dict) -> argparse.Namespace:
+    """Build an argparse-style Namespace from a config dictionary."""
+    mode = config.get("mode", "batch")
+    valid_modes = {
+        "single_video",
+        "batch",
+        "status",
+        "reset_failed",
+        "reset_all",
+        "reset_video",
+        "generate_samples",
+        "apply_clip_selection",
+        "apply_completion",
+    }
+    if mode not in valid_modes:
+        raise ValueError(f"Invalid mode in config: {mode}")
+
+    data: dict[str, object] = {}
+
+    # Common paths and options
+    data["video"] = config.get("video")
+    data["output"] = config.get("output")
+    data["video_dir"] = config.get("video_dir")
+    data["output_dir"] = config.get("output_dir", "data/tennis")
+
+    data["resume"] = bool(config.get("resume", True))
+    data["no_resume"] = bool(config.get("no_resume", False))
+    data["start_game_id"] = config.get("start_game_id")
+
+    # Status / reset
+    data["status"] = mode == "status"
+    data["reset_failed"] = mode == "reset_failed"
+    data["reset_all"] = mode == "reset_all"
+    data["reset_video"] = config.get("reset_video", [])
+
+    # Sampling / clip selection
+    data["generate_samples"] = config.get("generate_samples", [])
+    data["apply_clip_selection"] = config.get("apply_clip_selection", [])
+
+    # Completion
+    data["apply_completion"] = config.get("apply_completion", [])
+    data["completion_method"] = config.get("completion_method", "hybrid")
+    data["completion_checkpoint"] = config.get("completion_checkpoint")
+    data["physics_gap_threshold"] = int(config.get("physics_gap_threshold", 5))
+    data["max_completion_gap"] = int(config.get("max_completion_gap", 15))
+
+    # Model / pipeline
+    data["checkpoint"] = config.get(
+        "checkpoint",
+        "third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar",
+    )
+    data["model"] = config.get("model", "wasb")
+    data["score_threshold"] = float(config.get("score_threshold", 0.5))
+    data["min_clip_length"] = int(config.get("min_clip_length", 30))
+    data["min_detection_rate"] = float(config.get("min_detection_rate", 0.5))
+    data["max_gap"] = int(config.get("max_gap", 10))
+
+    # General
+    data["max_frames"] = config.get("max_frames")
+    data["quiet"] = bool(config.get("quiet", False))
+
+    # Basic validation for required fields per mode
+    if mode == "single_video":
+        if not data["video"] or not data["output"]:
+            raise ValueError("single_video mode requires 'video' and 'output'.")
+    elif mode == "batch":
+        if not data["video_dir"]:
+            raise ValueError("batch mode requires 'video_dir'.")
+    elif mode == "reset_video":
+        if not data["reset_video"]:
+            raise ValueError("reset_video mode requires non-empty 'reset_video' list.")
+    elif mode == "generate_samples":
+        if not data["generate_samples"]:
+            raise ValueError(
+                "generate_samples mode requires non-empty 'generate_samples' list."
+            )
+    elif mode == "apply_clip_selection":
+        if not data["apply_clip_selection"]:
+            raise ValueError(
+                "apply_clip_selection mode requires non-empty 'apply_clip_selection' list."
+            )
+    elif mode == "apply_completion":
+        if not data["apply_completion"]:
+            raise ValueError(
+                "apply_completion mode requires non-empty 'apply_completion' list."
+            )
+
+    return argparse.Namespace(**data)
 
 
 def process_single_video(args: argparse.Namespace) -> int:
@@ -805,177 +913,10 @@ def apply_completion(args: argparse.Namespace) -> int:
 
 def main() -> int:
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Generate tennis dataset from video files",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+    config = load_config()
+    args = build_args_from_config(config)
 
-    # Mode selection (mutually exclusive)
-    mode_group = parser.add_mutually_exclusive_group()
-    mode_group.add_argument(
-        "--video",
-        type=str,
-        help="Path to single video file",
-    )
-    mode_group.add_argument(
-        "--video-dir",
-        type=str,
-        help="Directory containing video files for batch processing",
-    )
-    mode_group.add_argument(
-        "--status",
-        action="store_true",
-        help="Show processing status from meta.json",
-    )
-    mode_group.add_argument(
-        "--reset-failed",
-        action="store_true",
-        help="Reset failed videos to pending status",
-    )
-    mode_group.add_argument(
-        "--reset-all",
-        action="store_true",
-        help="Reset all videos to pending status",
-    )
-    mode_group.add_argument(
-        "--reset-video",
-        type=str,
-        nargs="+",
-        help="Reset specific video(s) by name",
-    )
-    mode_group.add_argument(
-        "--generate-samples",
-        type=str,
-        nargs="+",
-        help="Generate preview videos with ball overlay for specified game(s)",
-    )
-    mode_group.add_argument(
-        "--apply-clip-selection",
-        type=str,
-        nargs="+",
-        help="Apply clip selection based on samples for specified game(s)",
-    )
-    mode_group.add_argument(
-        "--apply-completion",
-        type=str,
-        nargs="+",
-        help="Apply trajectory completion to specified game(s), e.g., game11 game12 or 'all'",
-    )
-
-    # Output arguments
-    parser.add_argument(
-        "--output",
-        type=str,
-        help="Output directory for single video (e.g., data/tennis/game11)",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="data/tennis",
-        help="Base output directory for batch processing (default: data/tennis)",
-    )
-
-    # Model arguments
-    parser.add_argument(
-        "--checkpoint",
-        type=str,
-        default="third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar",
-        help="Path to WASB/HRCNet checkpoint",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        default="wasb",
-        choices=list(PREDICTOR_REGISTRY.keys()),
-        help="Model type to use (default: wasb)",
-    )
-
-    # Pipeline config
-    parser.add_argument(
-        "--score-threshold",
-        type=float,
-        default=0.5,
-        help="Detection score threshold (default: 0.5)",
-    )
-    parser.add_argument(
-        "--min-clip-length",
-        type=int,
-        default=30,
-        help="Minimum frames per clip (default: 30)",
-    )
-    parser.add_argument(
-        "--min-detection-rate",
-        type=float,
-        default=0.5,
-        help="Minimum detection rate per clip (default: 0.5)",
-    )
-    parser.add_argument(
-        "--max-gap",
-        type=int,
-        default=10,
-        help="Maximum gap to bridge in segmentation (default: 10)",
-    )
-
-    # Batch processing options
-    parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="Resume from meta.json state (default for batch processing)",
-    )
-    parser.add_argument(
-        "--no-resume",
-        action="store_true",
-        help="Start fresh, ignore existing meta.json",
-    )
-    parser.add_argument(
-        "--start-game-id",
-        type=int,
-        help="Starting game ID for new videos (auto-detect if not specified)",
-    )
-
-    # Trajectory completion options
-    parser.add_argument(
-        "--completion-method",
-        type=str,
-        default="hybrid",
-        choices=["physics", "bilstm", "hybrid"],
-        help="Trajectory completion method (default: hybrid)",
-    )
-    parser.add_argument(
-        "--completion-checkpoint",
-        type=str,
-        default=None,
-        help="Path to trained BiLSTM completion model checkpoint",
-    )
-    parser.add_argument(
-        "--physics-gap-threshold",
-        type=int,
-        default=5,
-        help="Max gap size for physics interpolation (default: 5)",
-    )
-    parser.add_argument(
-        "--max-completion-gap",
-        type=int,
-        default=15,
-        help="Max gap size to attempt any completion (default: 15)",
-    )
-
-    # General options
-    parser.add_argument(
-        "--max-frames",
-        type=int,
-        default=None,
-        help="Maximum frames to process per video (for testing)",
-    )
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Suppress progress output",
-    )
-
-    args = parser.parse_args()
-
-    # Handle different modes
+    # Handle different modes (mutually exclusive via config.mode)
     if args.status:
         return show_status(args)
 
@@ -992,21 +933,12 @@ def main() -> int:
         return apply_completion(args)
 
     if args.video:
-        if not args.output:
-            print(
-                "Error: --output is required for single video processing",
-                file=sys.stderr,
-            )
-            return 1
         return process_single_video(args)
 
     if args.video_dir:
-        # Default to resume for batch processing
-        args.resume = not args.no_resume
         return process_video_directory(args)
 
-    # No mode specified
-    parser.print_help()
+    print("Error: invalid configuration; no mode matched.", file=sys.stderr)
     return 1
 
 
