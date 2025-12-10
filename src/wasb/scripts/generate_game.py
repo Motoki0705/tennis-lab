@@ -90,6 +90,17 @@ def _resolve_path(path_str: str | None) -> Path | None:
     return path
 
 
+def _create_pipeline_config_from_cfg(cfg: DictConfig) -> PipelineConfig:
+    pipeline_cfg = getattr(cfg, "pipeline", None)
+    if pipeline_cfg is None:
+        # `pipeline` section is required for WASB pipeline configuration.
+        raise ValueError(
+            "Config is missing required `pipeline` section for WASB pipeline."
+        )
+
+    return PipelineConfig(**pipeline_cfg)  # type: ignore[arg-type]
+
+
 def run_from_config(cfg: DictConfig) -> int:
     """Dispatch execution based on the configuration mode."""
     mode = str(getattr(cfg, "mode", "batch"))
@@ -135,12 +146,7 @@ def process_single_video(cfg: DictConfig) -> int:
         return 1
 
     # Create config
-    config = PipelineConfig(
-        score_threshold=float(getattr(cfg, "score_threshold", 0.5)),
-        min_clip_length=int(getattr(cfg, "min_clip_length", 30)),
-        min_detection_rate=float(getattr(cfg, "min_detection_rate", 0.5)),
-        max_gap=int(getattr(cfg, "max_gap", 10)),
-    )
+    config = _create_pipeline_config_from_cfg(cfg)
 
     # Load predictor
     quiet = bool(getattr(cfg, "quiet", False))
@@ -152,7 +158,7 @@ def process_single_video(cfg: DictConfig) -> int:
     predictor = predictor_cls.load_from_checkpoint(
         checkpoint_path,
         device="cuda",
-        score_threshold=float(getattr(cfg, "score_threshold", 0.5)),
+        score_threshold=config.score_threshold,
     )
 
     output_str = getattr(cfg, "output", None)
@@ -209,12 +215,7 @@ def process_video_directory(cfg: DictConfig) -> int:
         return 1
 
     # Create config
-    config = PipelineConfig(
-        score_threshold=float(getattr(cfg, "score_threshold", 0.5)),
-        min_clip_length=int(getattr(cfg, "min_clip_length", 30)),
-        min_detection_rate=float(getattr(cfg, "min_detection_rate", 0.5)),
-        max_gap=int(getattr(cfg, "max_gap", 10)),
-    )
+    config = _create_pipeline_config_from_cfg(cfg)
 
     # Load predictor
     quiet = bool(getattr(cfg, "quiet", False))
@@ -226,7 +227,7 @@ def process_video_directory(cfg: DictConfig) -> int:
     predictor = predictor_cls.load_from_checkpoint(
         checkpoint_path,
         device="cuda",
-        score_threshold=float(getattr(cfg, "score_threshold", 0.5)),
+        score_threshold=config.score_threshold,
     )
 
     # Create pipeline and batch processor
@@ -784,20 +785,32 @@ def apply_completion(cfg: DictConfig) -> int:
         print("No games to apply completion for.")
         return 1
 
+    pipeline_cfg = getattr(cfg, "pipeline", None)
+    if pipeline_cfg is None:
+        raise ValueError(
+            "Config is missing required `pipeline` section for apply_completion."
+        )
+
+    method = str(pipeline_cfg.get("completion_method", "hybrid"))
+    checkpoint = pipeline_cfg.get("completion_checkpoint", None)
+    physics_gap = int(pipeline_cfg.get("physics_gap_threshold", 5))
+    max_gap = int(pipeline_cfg.get("max_completion_gap", 15))
+    score_threshold = float(pipeline_cfg.get("score_threshold", 0.5))
+
     # Create completer
     completer = create_completer(
-        method=str(getattr(cfg, "completion_method", "hybrid")),
-        checkpoint_path=getattr(cfg, "completion_checkpoint", None),
-        physics_gap_threshold=int(getattr(cfg, "physics_gap_threshold", 5)),
-        max_gap=int(getattr(cfg, "max_completion_gap", 15)),
-        score_threshold=float(getattr(cfg, "score_threshold", 0.5)),
+        method=method,
+        checkpoint_path=checkpoint,
+        physics_gap_threshold=physics_gap,
+        max_gap=max_gap,
+        score_threshold=score_threshold,
     )
 
     quiet = bool(getattr(cfg, "quiet", False))
     if not quiet:
-        print(f"Using completion method: {getattr(cfg, 'completion_method', 'hybrid')}")
-        print(f"Physics gap threshold: {getattr(cfg, 'physics_gap_threshold', 5)}")
-        print(f"Max completion gap: {getattr(cfg, 'max_completion_gap', 15)}")
+        print(f"Using completion method: {method}")
+        print(f"Physics gap threshold: {physics_gap}")
+        print(f"Max completion gap: {max_gap}")
         print()
 
     total_completed = 0
@@ -811,7 +824,7 @@ def apply_completion(cfg: DictConfig) -> int:
             output_dir=output_dir,
             game_name=game_name,
             completer=completer,
-            score_threshold=float(getattr(cfg, "score_threshold", 0.5)),
+            score_threshold=score_threshold,
             verbose=not quiet,
         )
 
@@ -822,7 +835,7 @@ def apply_completion(cfg: DictConfig) -> int:
         _update_meta_completion(
             output_dir=output_dir,
             game_name=game_name,
-            completion_method=str(getattr(cfg, "completion_method", "hybrid")),
+            completion_method=method,
             stats=stats,
         )
 
