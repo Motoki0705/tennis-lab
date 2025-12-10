@@ -1,0 +1,67 @@
+# Configuration for src.wasb.scripts.generate_game
+# All modes are mutually exclusive. Required fields depend on the selected mode.
+
+# One of:
+#   - single_video
+#   - batch
+#   - status
+#   - reset_failed
+#   - reset_all
+#   - reset_video
+#   - generate_samples
+#   - apply_clip_selection
+#   - apply_completion
+mode: batch
+
+# Single video mode
+video: null              # e.g. data/samples/test.mp4
+output: null             # e.g. data/tennis/game11
+
+# Batch mode
+video_dir: data/tennis/raw
+output_dir: data/tennis
+resume: true             # if true, resume from existing meta.json
+no_resume: false         # if true, ignore existing meta.json and start fresh
+start_game_id: null      # e.g. 100; if null, auto-detected from meta.json/filesystem
+
+# Status / reset modes
+reset_video: []          # e.g. ["match1.mp4", "match2.mp4"]
+
+# Clip sampling
+generate_samples: []     # e.g. ["game11"] or ["all"]
+apply_clip_selection: [] # e.g. ["game11"] or ["all"]
+
+# Trajectory completion
+apply_completion: []     # e.g. ["game11", "game12"] or ["all"]
+
+# Model / pipeline
+checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
+model: wasb                    # wasb | hrcnet
+
+pipeline:
+  # Clip and detection settings (PipelineConfig)
+  score_threshold: 0.5
+  min_clip_length: 30
+  min_detection_rate: 0.5
+  max_gap: 10
+  clip_padding: 5
+  batch_size: 500
+  frame_format: "frame_{:04d}.jpg"
+  jpeg_quality: 95
+
+  # Streaming settings
+  streaming_batch_size: 64
+  streaming_queue_size: 4
+  use_streaming: true
+  streaming_threshold: 3000
+
+  # Trajectory completion settings within the pipeline
+  use_completion: true
+  completion_method: hybrid
+  completion_checkpoint: null
+  physics_gap_threshold: 5
+  max_completion_gap: 15
+
+# General
+max_frames: null               # limit frames per video (for testing)
+quiet: false
