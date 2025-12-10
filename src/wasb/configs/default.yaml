@@ -1,5 +1,5 @@
 defaults:
-  - model: hrcnet
+  - model: dinov3_heatmap
 
 data:
   root_dir: data/tennis
@@ -14,8 +14,8 @@ data:
   csv_filename: Label.csv
   batch_size: 8
   num_workers: 4
-  resize_hw: [288, 512]
-  heatmap_hw: [288, 512]
+  resize_hw: [224, 224]
+  heatmap_hw: [224, 224]
   heatmap_sigma: 2.0
   pin_memory: true
 
