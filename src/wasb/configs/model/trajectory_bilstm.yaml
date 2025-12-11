@@ -1,0 +1,5 @@
+name: trajectory_bilstm
+hidden_dim: 64
+num_layers: 2
+dropout: 0.1
+score_threshold: 0.5

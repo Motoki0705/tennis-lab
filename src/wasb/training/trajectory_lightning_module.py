@@ -8,13 +8,13 @@ from torch import Tensor
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
-from src.wasb.models.trajectory_completer import BiLSTMCompleter
+from src.wasb.models.trajectory_completer import BiLSTMCompleter, TransformerCompleter
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class TrajectoryBiLSTMLightningModule(pl.LightningModule):
+class TrajectoryLightningModule(pl.LightningModule):
     def __init__(
         self,
         config: DictConfig | dict | None = None,
@@ -38,21 +38,48 @@ class TrajectoryBiLSTMLightningModule(pl.LightningModule):
         self.lambda_sparse = float(train_cfg.get("lambda_sparse", 1.0))
         self.lambda_noise = float(train_cfg.get("lambda_noise", 1.0))
 
-        hidden_dim = int(model_cfg.get("hidden_dim", 64))
-        num_layers = int(model_cfg.get("num_layers", 2))
-        dropout = float(model_cfg.get("dropout", 0.1))
-        score_threshold = float(model_cfg.get("score_threshold", 0.5))
+        model_name = str(model_cfg.get("name", "trajectory_bilstm"))
 
-        self.completer = BiLSTMCompleter(
-            hidden_dim=hidden_dim,
-            num_layers=num_layers,
-            dropout=dropout,
-            score_threshold=score_threshold,
-            device="cpu",
-        )
-        self.completer._build_model()
-        assert self.completer._model is not None
-        self.model = self.completer._model
+        if model_name == "trajectory_bilstm":
+            hidden_dim = int(model_cfg.get("hidden_dim", 64))
+            num_layers = int(model_cfg.get("num_layers", 2))
+            dropout = float(model_cfg.get("dropout", 0.1))
+            score_threshold = float(model_cfg.get("score_threshold", 0.5))
+
+            self.completer = BiLSTMCompleter(
+                hidden_dim=hidden_dim,
+                num_layers=num_layers,
+                dropout=dropout,
+                score_threshold=score_threshold,
+                device="cpu",
+            )
+            self.completer._build_model()
+            assert self.completer._model is not None
+            self.model = self.completer._model
+
+        elif model_name == "trajectory_transformer":
+            d_model = int(model_cfg.get("d_model", 128))
+            num_layers = int(model_cfg.get("num_layers", 2))
+            num_heads = int(model_cfg.get("num_heads", 4))
+            dim_ff = int(model_cfg.get("dim_feedforward", 256))
+            dropout = float(model_cfg.get("dropout", 0.1))
+            score_threshold = float(model_cfg.get("score_threshold", 0.5))
+
+            self.completer = TransformerCompleter(
+                d_model=d_model,
+                num_layers=num_layers,
+                num_heads=num_heads,
+                dim_feedforward=dim_ff,
+                dropout=dropout,
+                score_threshold=score_threshold,
+                device="cpu",
+            )
+            self.completer._build_model()
+            assert self.completer._model is not None
+            self.model = self.completer._model
+
+        else:
+            raise ValueError(f"Unsupported trajectory model name: {model_name}")
 
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x)
