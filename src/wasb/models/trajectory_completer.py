@@ -558,7 +558,9 @@ class BiLSTMCompleter(TrajectoryCompleter):
 
         if not filtered_state:
             raise ValueError(
-                f"No matching model keys were found in checkpoint: {checkpoint_path}"
+                f"No matching model keys were found in checkpoint: {checkpoint_path}\n"
+                f"Expected model keys (sample): {list(model_state.keys())[:5]}\n"
+                f"Checkpoint keys (sample): {list(state_dict.keys())[:5]}"
             )
 
         model_state.update(filtered_state)
