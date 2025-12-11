@@ -443,7 +443,7 @@ class BiLSTMCompleter(TrajectoryCompleter):
                 return self.output_proj(h)
 
         self._model = BiLSTMModel(
-            input_dim=4,  # x, y, visibility, score
+            input_dim=2,  # x, y
             hidden_dim=self.hidden_dim,
             num_layers=self.num_layers,
             output_dim=2,  # x, y
@@ -472,8 +472,7 @@ class BiLSTMCompleter(TrajectoryCompleter):
             )
 
         # Prepare input
-        vis_float = visibility.astype(np.float32)
-        input_data = np.stack([xy[:, 0], xy[:, 1], vis_float, score], axis=-1)
+        input_data = xy.astype(np.float32).copy()
 
         # Normalize coordinates (assuming 1920x1080)
         input_data[:, 0] /= 1920.0
@@ -514,31 +513,59 @@ class BiLSTMCompleter(TrajectoryCompleter):
             confidence=confidence,
             gaps_filled=gaps_filled,
         )
-
-    def load_weights(self, checkpoint_path: str | Path) -> None:
-        """Load model weights from checkpoint."""
+    def load_from_checkpoint(self, checkpoint_path: str | Path) -> None:
+        """Load model weights from a Lightning-style checkpoint."""
         import torch
 
         if self._model is None:
             self._build_model()
 
-        checkpoint = torch.load(checkpoint_path, map_location=self.device)
-        self._model.load_state_dict(checkpoint["model_state_dict"])
-        self._is_trained = True
+        checkpoint_path = Path(checkpoint_path)
+        if not checkpoint_path.exists():
+            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
-    def save_weights(self, checkpoint_path: str | Path) -> None:
-        """Save model weights to checkpoint."""
-        import torch
+        checkpoint = torch.load(
+            checkpoint_path,
+            map_location=self.device,
+            weights_only=False,
+        )
+        if not isinstance(checkpoint, dict):
+            raise TypeError(f"Checkpoint must be a dict, got {type(checkpoint)}")
+
+        state_dict = None
+        if "state_dict" in checkpoint and isinstance(checkpoint["state_dict"], dict):
+            state_dict = checkpoint["state_dict"]
+        elif "model_state_dict" in checkpoint and isinstance(
+            checkpoint["model_state_dict"], dict
+        ):
+            # Backwards-compatibility with older custom checkpoints.
+            state_dict = checkpoint["model_state_dict"]
+        else:
+            raise ValueError(
+                f"Checkpoint must contain a 'state_dict' or 'model_state_dict': {checkpoint_path}"
+            )
 
         if self._model is None:
-            raise RuntimeError("Model not initialized")
+            self._build_model()
+        model_state = self._model.state_dict()
+        filtered_state = {}
+        for key, value in state_dict.items():
+            trimmed_key = key
+            if key.startswith("model."):
+                trimmed_key = key.removeprefix("model.")
+            if trimmed_key in model_state:
+                filtered_state[trimmed_key] = value
 
-        checkpoint_path = Path(checkpoint_path)
-        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-        torch.save(
-            {"model_state_dict": self._model.state_dict()},
-            checkpoint_path,
-        )
+        if not filtered_state:
+            raise ValueError(
+                f"No matching model keys were found in checkpoint: {checkpoint_path}\n"
+                f"Expected model keys (sample): {list(model_state.keys())[:5]}\n"
+                f"Checkpoint keys (sample): {list(state_dict.keys())[:5]}"
+            )
+
+        model_state.update(filtered_state)
+        self._model.load_state_dict(model_state, strict=False)
+        self._is_trained = True
 
 
 class HybridCompleter(TrajectoryCompleter):
@@ -677,14 +704,14 @@ def create_completer(
     elif method == "bilstm":
         completer = BiLSTMCompleter(score_threshold=score_threshold)
         if checkpoint_path is not None:
-            completer.load_weights(checkpoint_path)
+            completer.load_from_checkpoint(checkpoint_path)
         return completer
 
     elif method == "hybrid":
         learned = None
         if checkpoint_path is not None:
             learned = BiLSTMCompleter(score_threshold=score_threshold)
-            learned.load_weights(checkpoint_path)
+            learned.load_from_checkpoint(checkpoint_path)
         return HybridCompleter(
             learned_model=learned,
             physics_gap_threshold=physics_gap_threshold,
