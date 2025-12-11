@@ -1,8 +1,8 @@
 name: dinov3_heatmap
 
 # Input / output resolutions for the ViT backbone and decoder
-image_hw: [224, 224]
-heatmap_hw: [224, 224]
+image_hw: [288, 512]
+heatmap_hw: [288, 512]
 
 # Decoder settings (FPN-style upsampling)
 decoder_channels: [256, 128, 64, 32]
