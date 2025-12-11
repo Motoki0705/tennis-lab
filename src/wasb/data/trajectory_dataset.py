@@ -166,7 +166,6 @@ class TrajectoryWindowDataset(Dataset):
 
         xy = torch.tensor([[r.x, r.y] for r in labels], dtype=torch.float32)
         visibility = torch.tensor([r.visibility for r in labels], dtype=torch.int64)
-        scores = torch.tensor([r.score for r in labels], dtype=torch.float32)
 
         valid = visibility > 0
 
