@@ -125,7 +125,15 @@ def visualize_batch(
     orig_visibility = batch["orig_visibility"].to(device)
 
     with torch.no_grad():
-        pred_norm = module(xy_input_norm)
+        if getattr(module, "is_iterative", False):
+            xk = xy_input_norm
+            num_steps = int(getattr(module, "num_steps", 1))
+            for _ in range(max(num_steps, 1)):
+                delta = module(xk)
+                xk = xk + delta
+            pred_norm = xk
+        else:
+            pred_norm = module(xy_input_norm)
 
     scale = torch.tensor([1920.0, 1080.0], dtype=torch.float32, device=device)
     xy_input_px = xy_input_norm * scale
@@ -173,6 +181,15 @@ def visualize_batch(
                 s=20,
                 marker="o",
                 label="input noisy",
+            )
+
+            ax.scatter(
+                pred[mask_noise, 0],
+                pred[mask_noise, 1],
+                c="purple",
+                s=30,
+                marker="x",
+                label="pred noise",
             )
 
         if mask_block.any():

@@ -265,6 +265,48 @@ class TestTrajectoryRefinerLightning:
         assert torch.isfinite(loss)
 
 
+class TestVisualizeTrajectoryIterative:
+    def test_visualize_batch_iterates_refiner(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        import torch
+
+        from src.wasb.scripts.visualize_trajectory import visualize_batch
+
+        class DummyIterModule:
+            def __init__(self, num_steps: int) -> None:
+                self.is_iterative = True
+                self.num_steps = num_steps
+                self.calls = 0
+
+            def __call__(self, x: torch.Tensor) -> torch.Tensor:
+                self.calls += 1
+                return torch.zeros_like(x)
+
+        device = torch.device("cpu")
+        module = DummyIterModule(num_steps=4)
+
+        B, T = 1, 5
+        batch = {
+            "xy_input_norm": torch.randn(B, T, 2),
+            "target_xy_norm": torch.randn(B, T, 2),
+            "loss_mask_block": torch.zeros(B, T),
+            "loss_mask_sparse": torch.zeros(B, T),
+            "loss_mask_noise": torch.ones(B, T),
+            "orig_visibility": torch.ones(B, T, dtype=torch.int64),
+        }
+
+        saved = visualize_batch(
+            batch=batch,
+            module=module,  # type: ignore[arg-type]
+            device=device,
+            output_dir=tmp_path,
+            split="test",
+            start_index=0,
+            max_samples=1,
+        )
+        assert saved == 1
+        assert module.calls == 4
+
+
 class TestCreateCompleter:
     """Tests for the factory function."""
 
