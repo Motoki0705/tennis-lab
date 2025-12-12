@@ -8,6 +8,7 @@ import pytest
 from src.wasb.models.trajectory_completer import (
     CompletionResult,
     HybridCompleter,
+    IterativeRefinementCompleter,
     PhysicsInterpolator,
     TrajectoryCompleter,
     create_completer,
@@ -180,6 +181,88 @@ class TestHybridCompleter:
         # Gap should be filled
         assert np.all(result.visibility[8:11] == 2)
         assert result.gaps_filled == 3
+
+
+class TestIterativeRefinementCompleter:
+    def test_refiner_complete_shape_and_visibility(self) -> None:
+        completer = IterativeRefinementCompleter(
+            d_model=32,
+            num_layers=1,
+            num_heads=4,
+            dim_feedforward=64,
+            dropout=0.0,
+            num_steps=2,
+            score_threshold=0.5,
+            device="cpu",
+        )
+        completer._build_model()
+
+        T = 16
+        xy = np.array([[100 + i * 5, 200 + i * 2] for i in range(T)], dtype=np.float32)
+        visibility = np.ones(T, dtype=bool)
+        score = np.ones(T, dtype=np.float32) * 0.9
+
+        visibility[6:9] = False
+        xy[6:9] = 0
+
+        result = completer.complete(xy, visibility, score)
+
+        assert result.xy.shape == (T, 2)
+        assert result.visibility.shape == (T,)
+        assert np.all(result.visibility[6:9] == 2)
+
+
+class TestTrajectoryRefinerLightning:
+    def test_lightning_iterative_loss_computes(self) -> None:
+        import torch
+
+        from src.wasb.training.trajectory_lightning_module import (
+            TrajectoryLightningModule,
+        )
+
+        cfg = {
+            "model": {
+                "name": "trajectory_refiner",
+                "d_model": 32,
+                "num_layers": 1,
+                "num_heads": 4,
+                "dim_feedforward": 64,
+                "dropout": 0.0,
+                "num_steps": 3,
+                "score_threshold": 0.5,
+            },
+            "training": {
+                "learning_rate": 1.0e-3,
+                "weight_decay": 0.0,
+                "warmup_steps": 10,
+                "max_epochs": 1,
+                "min_lr": 1.0e-6,
+                "lambda_block": 1.0,
+                "lambda_sparse": 1.0,
+                "lambda_noise": 1.0,
+            },
+        }
+
+        module = TrajectoryLightningModule(cfg, steps_per_epoch=10)
+        module = module.to(torch.device("cpu"))
+
+        B, T = 2, 8
+        xy_input_norm = torch.randn(B, T, 2, dtype=torch.float32)
+        target_xy_norm = torch.randn(B, T, 2, dtype=torch.float32)
+        mask = torch.ones(B, T, dtype=torch.float32)
+
+        batch = {
+            "xy_input_norm": xy_input_norm,
+            "target_xy_norm": target_xy_norm,
+            "loss_mask_block": mask,
+            "loss_mask_sparse": mask,
+            "loss_mask_noise": mask,
+        }
+
+        loss, metrics = module._shared_step(batch, "train")
+        assert loss.dim() == 0
+        assert "loss_total" in metrics
+        assert torch.isfinite(loss)
 
 
 class TestCreateCompleter:

@@ -569,6 +569,218 @@ class BiLSTMCompleter(TrajectoryCompleter):
         self._is_trained = True
 
 
+class IterativeRefinementCompleter(TrajectoryCompleter):
+    def __init__(
+        self,
+        d_model: int = 128,
+        num_layers: int = 2,
+        num_heads: int = 4,
+        dim_feedforward: int = 256,
+        dropout: float = 0.1,
+        num_steps: int = 3,
+        score_threshold: float = 0.5,
+        device: str = "cuda",
+    ) -> None:
+        self.d_model = d_model
+        self.num_layers = num_layers
+        self.num_heads = num_heads
+        self.dim_feedforward = dim_feedforward
+        self.dropout = dropout
+        self.num_steps = num_steps
+        self.score_threshold = score_threshold
+        self.device = device
+        self._model = None
+        self._is_trained = False
+
+    def _build_model(self) -> None:
+        try:
+            import torch
+            import torch.nn as nn
+        except ImportError as e:
+            raise ImportError(
+                "PyTorch is required for IterativeRefinementCompleter. "
+                "Install with: pip install torch"
+            ) from e
+
+        class PositionalEncoding(nn.Module):
+            def __init__(
+                self,
+                d_model: int,
+                dropout: float = 0.1,
+                max_len: int = 5000,
+            ) -> None:
+                super().__init__()
+                self.dropout = nn.Dropout(p=dropout)
+
+                position = torch.arange(0, max_len, dtype=torch.float32).unsqueeze(1)
+                div_term = torch.exp(
+                    torch.arange(0, d_model, 2, dtype=torch.float32)
+                    * (-math.log(10000.0) / d_model)
+                )
+                pe = torch.zeros(max_len, d_model, dtype=torch.float32)
+                pe[:, 0::2] = torch.sin(position * div_term)
+                pe[:, 1::2] = torch.cos(position * div_term)
+                pe = pe.unsqueeze(0)
+                self.register_buffer("pe", pe)
+
+            def forward(self, x: "torch.Tensor") -> "torch.Tensor":
+                if x.size(1) > self.pe.size(1):
+                    msg = (
+                        "Sequence length exceeds maximum positional encoding length: "
+                        f"{x.size(1)} > {self.pe.size(1)}"
+                    )
+                    raise ValueError(msg)
+                x = x + self.pe[:, : x.size(1)]
+                return self.dropout(x)
+
+        class DeltaTransformerModel(nn.Module):
+            def __init__(
+                self,
+                d_model: int,
+                num_layers: int,
+                num_heads: int,
+                dim_feedforward: int,
+                dropout: float,
+            ) -> None:
+                super().__init__()
+                self.input_proj = nn.Linear(2, d_model)
+                encoder_layer = nn.TransformerEncoderLayer(
+                    d_model=d_model,
+                    nhead=num_heads,
+                    dim_feedforward=dim_feedforward,
+                    dropout=dropout,
+                    batch_first=True,
+                )
+                self.pos_encoder = PositionalEncoding(d_model=d_model, dropout=dropout)
+                self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+                self.output_proj = nn.Sequential(
+                    nn.Linear(d_model, d_model),
+                    nn.ReLU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(d_model, 2),
+                )
+
+            def forward(self, x: "torch.Tensor") -> "torch.Tensor":
+                h = self.input_proj(x)
+                h = self.pos_encoder(h)
+                h = self.encoder(h)
+                return self.output_proj(h)
+
+        if self.device.startswith("cuda") and not torch.cuda.is_available():
+            self.device = "cpu"
+
+        self._model = DeltaTransformerModel(
+            d_model=self.d_model,
+            num_layers=self.num_layers,
+            num_heads=self.num_heads,
+            dim_feedforward=self.dim_feedforward,
+            dropout=self.dropout,
+        )
+        self._model = self._model.to(self.device)
+
+    def complete(
+        self,
+        xy: NDArray[np.float32],
+        visibility: NDArray[np.bool_],
+        score: NDArray[np.float32],
+    ) -> CompletionResult:
+        import torch
+
+        if self._model is None:
+            self._build_model()
+
+        T = len(xy)
+        if T == 0:
+            return CompletionResult(
+                xy=np.zeros((0, 2), dtype=np.float32),
+                visibility=np.zeros(0, dtype=np.int32),
+                confidence=np.zeros(0, dtype=np.float32),
+            )
+
+        input_data = xy.astype(np.float32).copy()
+        input_data[:, 0] /= 1920.0
+        input_data[:, 1] /= 1080.0
+        xk = torch.from_numpy(input_data).float().unsqueeze(0).to(self.device)
+
+        self._model.eval()
+        with torch.no_grad():
+            for _ in range(max(int(self.num_steps), 1)):
+                delta = self._model(xk)
+                xk = xk + delta
+
+        pred_np = xk[0].cpu().numpy()
+        pred_np[:, 0] *= 1920.0
+        pred_np[:, 1] *= 1080.0
+
+        new_visibility = np.where(
+            visibility & (score >= self.score_threshold), 1, 0
+        ).astype(np.int32)
+        confidence = score.copy()
+        gaps_filled = 0
+        for t in range(T):
+            if new_visibility[t] != 1:
+                new_visibility[t] = 2
+                confidence[t] = 0.5
+                gaps_filled += 1
+
+        return CompletionResult(
+            xy=pred_np.astype(np.float32),
+            visibility=new_visibility,
+            confidence=confidence.astype(np.float32),
+            gaps_filled=gaps_filled,
+        )
+
+    def load_from_checkpoint(self, checkpoint_path: str | Path) -> None:
+        import torch
+
+        if self._model is None:
+            self._build_model()
+
+        checkpoint_path = Path(checkpoint_path)
+        if not checkpoint_path.exists():
+            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+
+        checkpoint = torch.load(
+            checkpoint_path,
+            map_location=self.device,
+            weights_only=False,
+        )
+        if not isinstance(checkpoint, dict):
+            raise TypeError(f"Checkpoint must be a dict, got {type(checkpoint)}")
+
+        state_dict = None
+        if "state_dict" in checkpoint and isinstance(checkpoint["state_dict"], dict):
+            state_dict = checkpoint["state_dict"]
+        elif "model_state_dict" in checkpoint and isinstance(
+            checkpoint["model_state_dict"], dict
+        ):
+            state_dict = checkpoint["model_state_dict"]
+        else:
+            raise ValueError(
+                f"Checkpoint must contain a 'state_dict' or 'model_state_dict': {checkpoint_path}"
+            )
+
+        if self._model is None:
+            self._build_model()
+        model_state = self._model.state_dict()
+        filtered_state = {}
+        for key, value in state_dict.items():
+            trimmed_key = key
+            if key.startswith("model."):
+                trimmed_key = key.removeprefix("model.")
+            if trimmed_key in model_state:
+                filtered_state[trimmed_key] = value
+
+        if not filtered_state:
+            raise ValueError(
+                f"No matching model keys were found in checkpoint: {checkpoint_path}"
+            )
+
+        model_state.update(filtered_state)
+        self._model.load_state_dict(model_state, strict=False)
+        self._is_trained = True
+
+
 class TransformerCompleter(TrajectoryCompleter):
     """Transformer-based model for trajectory completion.
 
@@ -829,7 +1041,9 @@ class HybridCompleter(TrajectoryCompleter):
         physics_gap_threshold: int = 5,
         max_gap: int = 30,
         score_threshold: float = 0.5,
-        learned_model: BiLSTMCompleter | None = None,
+        learned_model: TrajectoryCompleter | None = None,
+        coarse_model: TrajectoryCompleter | None = None,
+        refiner: IterativeRefinementCompleter | None = None,
     ) -> None:
         """Initialize hybrid completer.
 
@@ -840,21 +1054,11 @@ class HybridCompleter(TrajectoryCompleter):
             learned_model: Optional learned model for complex gaps.
 
         """
+        self.score_threshold = score_threshold
         self.physics_gap_threshold = physics_gap_threshold
         self.max_gap = max_gap
-        self.score_threshold = score_threshold
-
-        self.physics = PhysicsInterpolator(
-            max_gap=physics_gap_threshold,
-            score_threshold=score_threshold,
-        )
-        self.learned = learned_model
-
-        # Fallback physics for longer gaps
-        self.physics_fallback = PhysicsInterpolator(
-            max_gap=max_gap,
-            score_threshold=score_threshold,
-        )
+        self.coarse = coarse_model or learned_model
+        self.refiner = refiner
 
     def complete(
         self,
@@ -863,51 +1067,24 @@ class HybridCompleter(TrajectoryCompleter):
         score: NDArray[np.float32],
     ) -> CompletionResult:
         """Complete trajectory using hybrid approach."""
-        # Step 1: Physics-based completion for short gaps
-        result = self.physics.complete(xy, visibility, score)
+        if self.coarse is None:
+            coarse = TransformerCompleter(score_threshold=self.score_threshold, device="cpu")
+        else:
+            coarse = self.coarse
 
-        # Check if there are remaining gaps
-        remaining_gaps = np.sum(result.visibility == 0)
-
-        if remaining_gaps == 0:
+        result = coarse.complete(xy, visibility, score)
+        if self.refiner is None or not self.refiner._is_trained:
             return result
 
-        # Step 2: Try learned model for remaining gaps
-        if self.learned is not None and self.learned._is_trained:
-            # Convert visibility back to bool for learned model
-            vis_bool = result.visibility == 1
-            learned_result = self.learned.complete(
-                result.xy, vis_bool, result.confidence
-            )
-
-            # Merge results
-            for t in range(len(result.xy)):
-                if result.visibility[t] == 0 and learned_result.visibility[t] == 2:
-                    result.xy[t] = learned_result.xy[t]
-                    result.visibility[t] = 2
-                    result.confidence[t] = learned_result.confidence[t]
-                    result.gaps_filled += 1
-
-        else:
-            # Fallback to extended physics interpolation
-            vis_bool = result.visibility == 1
-            fallback_result = self.physics_fallback.complete(
-                result.xy, vis_bool, result.confidence
-            )
-
-            # Merge results
-            for t in range(len(result.xy)):
-                if result.visibility[t] == 0 and fallback_result.visibility[t] == 2:
-                    result.xy[t] = fallback_result.xy[t]
-                    result.visibility[t] = 2
-                    result.confidence[t] = fallback_result.confidence[t] * 0.8  # Lower confidence
-                    result.gaps_filled += 1
-
+        refined = self.refiner.complete(result.xy, result.visibility == 1, result.confidence)
+        result.xy = refined.xy
         return result
 
 
 def create_completer(
-    method: Literal["physics", "bilstm", "transformer", "hybrid"] = "hybrid",
+    method: Literal[
+        "physics", "bilstm", "transformer", "refiner", "hybrid"
+    ] = "hybrid",
     checkpoint_path: str | Path | None = None,
     **kwargs,
 ) -> TrajectoryCompleter:
@@ -950,6 +1127,27 @@ def create_completer(
             completer.load_from_checkpoint(checkpoint_path)
         return completer
 
+    elif method == "refiner":
+        d_model = int(kwargs.pop("d_model", 128))
+        num_layers = int(kwargs.pop("num_layers", 2))
+        num_heads = int(kwargs.pop("num_heads", 4))
+        dim_ff = int(kwargs.pop("dim_feedforward", 256))
+        dropout = float(kwargs.pop("dropout", 0.1))
+        num_steps = int(kwargs.pop("num_steps", 3))
+
+        completer = IterativeRefinementCompleter(
+            d_model=d_model,
+            num_layers=num_layers,
+            num_heads=num_heads,
+            dim_feedforward=dim_ff,
+            dropout=dropout,
+            num_steps=num_steps,
+            score_threshold=score_threshold,
+        )
+        if checkpoint_path is not None:
+            completer.load_from_checkpoint(checkpoint_path)
+        return completer
+
     elif method == "transformer":
         d_model = int(kwargs.pop("d_model", 128))
         num_layers = int(kwargs.pop("num_layers", 2))
@@ -970,14 +1168,42 @@ def create_completer(
         return completer
 
     elif method == "hybrid":
-        learned = None
-        if checkpoint_path is not None:
-            learned = BiLSTMCompleter(score_threshold=score_threshold)
-            learned.load_from_checkpoint(checkpoint_path)
+        coarse_method = str(kwargs.pop("coarse_method", "transformer")).lower()
+        coarse_checkpoint = kwargs.pop("coarse_checkpoint_path", checkpoint_path)
+        refiner_checkpoint = kwargs.pop("refiner_checkpoint_path", None)
+        refiner_steps = int(kwargs.pop("num_steps", 3))
+
+        coarse: TrajectoryCompleter | None = None
+        if coarse_method == "bilstm":
+            coarse = BiLSTMCompleter(score_threshold=score_threshold)
+            if coarse_checkpoint is not None:
+                coarse.load_from_checkpoint(coarse_checkpoint)
+        elif coarse_method == "transformer":
+            coarse = TransformerCompleter(score_threshold=score_threshold)
+            if coarse_checkpoint is not None:
+                coarse.load_from_checkpoint(coarse_checkpoint)
+        elif coarse_method == "physics":
+            coarse = PhysicsInterpolator(
+                max_gap=max_gap,
+                min_anchor_points=min_anchor_points,
+                velocity_threshold=velocity_threshold,
+                acceleration_threshold=acceleration_threshold,
+                score_threshold=score_threshold,
+            )
+        else:
+            raise ValueError(f"Unknown coarse_method for hybrid: {coarse_method}")
+
+        refiner = IterativeRefinementCompleter(
+            num_steps=refiner_steps,
+            score_threshold=score_threshold,
+        )
+        if refiner_checkpoint is not None:
+            refiner.load_from_checkpoint(refiner_checkpoint)
+
+        _ = physics_gap_threshold
         return HybridCompleter(
-            learned_model=learned,
-            physics_gap_threshold=physics_gap_threshold,
-            max_gap=max_gap,
+            coarse_model=coarse,
+            refiner=refiner,
             score_threshold=score_threshold,
         )
 
