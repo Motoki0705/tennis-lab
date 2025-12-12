@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytorch_lightning as pl
 import torch
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
@@ -16,6 +16,26 @@ from src.wasb.data.trajectory_datamodule import TrajectoryDataModule
 from src.wasb.training.trajectory_lightning_module import TrajectoryLightningModule
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
 from src.wasb.utils.config import load_config, merge_configs
+
+
+def resolve_model_name(config: DictConfig, config_path: str | Path) -> str:
+    model_cfg = None
+    if hasattr(config, "get"):
+        model_cfg = config.get("model")
+    if model_cfg is None:
+        model_cfg = getattr(config, "model", None)
+
+    name = None
+    if model_cfg is not None:
+        if hasattr(model_cfg, "get"):
+            name = model_cfg.get("name")
+        else:
+            name = getattr(model_cfg, "name", None)
+
+    if name is not None and str(name).strip() != "":
+        return str(name).strip()
+
+    return Path(config_path).stem
 
 
 def parse_args() -> argparse.Namespace:
@@ -138,7 +158,8 @@ def main() -> None:
     print("Configuration:")
     print(OmegaConf.to_yaml(config))
 
-    output_dir = Path(args.output_dir)
+    model_name = resolve_model_name(config, args.config)
+    output_dir = Path(args.output_dir) / model_name
     output_dir.mkdir(parents=True, exist_ok=True)
     OmegaConf.save(config, output_dir / "config.yaml")
 
