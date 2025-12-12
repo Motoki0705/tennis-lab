@@ -8,11 +8,7 @@ from torch import Tensor
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
-from src.wasb.models.trajectory_completer import (
-    BiLSTMCompleter,
-    DiffusionTrajectoryModel,
-    TransformerCompleter,
-)
+from src.wasb.models.trajectory_completer import BiLSTMCompleter, TransformerCompleter
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -43,7 +39,6 @@ class TrajectoryLightningModule(pl.LightningModule):
         self.lambda_noise = float(train_cfg.get("lambda_noise", 1.0))
 
         model_name = str(model_cfg.get("name", "trajectory_bilstm"))
-        self.model_name = model_name
 
         if model_name == "trajectory_bilstm":
             hidden_dim = int(model_cfg.get("hidden_dim", 64))
@@ -83,35 +78,11 @@ class TrajectoryLightningModule(pl.LightningModule):
             assert self.completer._model is not None
             self.model = self.completer._model
 
-        elif model_name == "trajectory_diffusion":
-            d_model = int(model_cfg.get("d_model", 128))
-            num_layers = int(model_cfg.get("num_layers", 4))
-            num_heads = int(model_cfg.get("num_heads", 4))
-            dim_ff = int(model_cfg.get("dim_feedforward", 512))
-            dropout = float(model_cfg.get("dropout", 0.1))
-            diffusion_cfg = model_cfg.get("diffusion", {})
-            num_steps = int(diffusion_cfg.get("num_steps", 50))
-            beta_start = float(diffusion_cfg.get("beta_start", 1e-4))
-            beta_end = float(diffusion_cfg.get("beta_end", 2e-2))
-            conditioning = str(diffusion_cfg.get("conditioning", "add"))
-
-            self.diffusion_model = DiffusionTrajectoryModel(
-                d_model=d_model,
-                num_layers=num_layers,
-                num_heads=num_heads,
-                dim_feedforward=dim_ff,
-                dropout=dropout,
-                num_steps=num_steps,
-                beta_start=beta_start,
-                beta_end=beta_end,
-                conditioning=conditioning,  # type: ignore[arg-type]
-            )
-            self.model = self.diffusion_model
         else:
             raise ValueError(f"Unsupported trajectory model name: {model_name}")
 
-    def forward(self, x: Tensor, *args: Any, **kwargs: Any) -> Tensor:
-        return self.model(x, *args, **kwargs)
+    def forward(self, x: Tensor) -> Tensor:
+        return self.model(x)
 
     @staticmethod
     def _masked_mean(loss: Tensor, mask: Tensor) -> Tensor:
@@ -124,9 +95,6 @@ class TrajectoryLightningModule(pl.LightningModule):
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
     ) -> tuple[Tensor, dict[str, float]]:
-        if self.model_name == "trajectory_diffusion":
-            return self._shared_step_diffusion(batch, stage)
-
         xy_input_norm: Tensor = batch["xy_input_norm"]
         target_xy_norm: Tensor = batch["target_xy_norm"]
         loss_mask_block: Tensor = batch["loss_mask_block"]
@@ -177,52 +145,6 @@ class TrajectoryLightningModule(pl.LightningModule):
             "rmse_px": rmse_px.detach().item(),
         }
         return total_loss, metrics
-
-    def _shared_step_diffusion(
-        self, batch: dict[str, Tensor], stage: str
-    ) -> tuple[Tensor, dict[str, float]]:
-        device = self.device
-        xy_input_norm: Tensor = batch["xy_input_norm"].to(device)
-        target_xy_norm: Tensor = batch["target_xy_norm"].to(device)
-        orig_visibility: Tensor = batch.get(
-            "orig_visibility",
-            torch.ones_like(target_xy_norm[..., 0]),
-        ).to(device)
-
-        assert hasattr(self, "diffusion_model")
-        diffusion: DiffusionTrajectoryModel = self.diffusion_model  # type: ignore[assignment]
-
-        B = target_xy_norm.size(0)
-        t = torch.randint(0, diffusion.num_steps, (B,), device=device, dtype=torch.long)
-        noise = torch.randn_like(target_xy_norm)
-        x_t = diffusion.q_sample(target_xy_norm, t, noise)
-
-        cond = xy_input_norm if diffusion.conditioning == "add" else None
-        pred_eps = diffusion(x_t, t, cond)
-
-        per_frame = (pred_eps - noise).pow(2).sum(dim=-1)
-        valid_mask = (orig_visibility > 0).to(dtype=torch.float32)
-        loss_total = self._masked_mean(per_frame, valid_mask)
-
-        # Estimate x0 for logging
-        alpha_bar = diffusion.alpha_bars[t].view(-1, 1, 1)
-        x0_pred = (x_t - torch.sqrt(1.0 - alpha_bar) * pred_eps) / torch.sqrt(alpha_bar)
-
-        scale = torch.tensor([1920.0, 1080.0], dtype=torch.float32, device=device)
-        pred_px = x0_pred * scale
-        target_px = target_xy_norm * scale
-        diff_px = pred_px - target_px
-        sq = (diff_px * diff_px).sum(dim=-1)
-        rmse_px = torch.sqrt(self._masked_mean(sq, valid_mask))
-
-        metrics = {
-            "loss_total": loss_total.detach().item(),
-            "loss_block": 0.0,
-            "loss_sparse": 0.0,
-            "loss_noise": 0.0,
-            "rmse_px": rmse_px.detach().item(),
-        }
-        return loss_total, metrics
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
         loss, metrics = self._shared_step(batch, "train")
