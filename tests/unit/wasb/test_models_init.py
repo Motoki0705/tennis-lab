@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from omegaconf import OmegaConf
 
-from src.wasb.models import DinoV3HeatmapModel, TemporalConvGRUModel, build_model
+from src.wasb.models import DinoV3FPNHeatmap, TemporalConvGRUModel, build_model
 
 
 def _build_cfg(model_cfg: dict[str, Any]):
@@ -219,7 +219,7 @@ def test_build_dinov3_heatmap_model_minimal():
 
     model, (prepare_frames, extract_heatmaps) = build_model(cfg)
 
-    assert isinstance(model, DinoV3HeatmapModel)
+    assert isinstance(model, DinoV3FPNHeatmap)
     assert callable(prepare_frames)
     assert callable(extract_heatmaps)
 

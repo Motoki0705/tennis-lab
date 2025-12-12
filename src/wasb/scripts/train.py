@@ -17,6 +17,7 @@ from torchvision.utils import save_image
 from src.wasb.data.datamodule import TennisDataModule
 from src.wasb.models import build_model
 from src.wasb.training.lightning_module import WASBLightningModule
+from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
 from src.wasb.utils.config import load_config, merge_configs
 
 
@@ -227,6 +228,12 @@ def main() -> None:
         run_dry_run(config, output_dir)
         return
 
+    resume_ckpt = resolve_resume_ckpt_path(
+        args_resume=args.resume,
+        config=config,
+        output_dir=output_dir,
+    )
+
     datamodule = TennisDataModule(config)
     datamodule.setup(stage="fit")
     train_loader = datamodule.train_dataloader()
@@ -271,7 +278,7 @@ def main() -> None:
         precision=config.training.precision
     )
 
-    trainer.fit(lightning_module, datamodule=datamodule, ckpt_path=args.resume)
+    trainer.fit(lightning_module, datamodule=datamodule, ckpt_path=resume_ckpt)
 
     if not args.fast_dev_run:
         trainer.test(lightning_module, datamodule=datamodule)
