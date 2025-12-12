@@ -70,7 +70,6 @@ checkpoints/
 logs/
 outputs/
 results/
-experiments/
 wandb/
 mlruns/
 tensorboard_logs/

@@ -17,6 +17,7 @@ from torchvision.utils import save_image
 from src.wasb.data.datamodule import TennisDataModule
 from src.wasb.models import build_model
 from src.wasb.training.lightning_module import WASBLightningModule
+from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
 from src.wasb.utils.config import load_config, merge_configs
 
 
@@ -37,6 +38,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=None, help="Max epochs override")
     parser.add_argument("--batch-size", type=int, default=None, help="Batch size override")
     parser.add_argument("--lr", type=float, default=None, help="Learning rate override")
+    parser.add_argument(
+        "--backbone-lr", type=float, default=None, help="Backbone learning rate override"
+    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--gpus", type=int, default=1, help="Number of GPUs (0 for CPU)")
     parser.add_argument(
@@ -69,6 +73,8 @@ def build_config(args: argparse.Namespace) -> OmegaConf:
         overrides.setdefault("data", {})["batch_size"] = args.batch_size
     if args.lr is not None:
         overrides.setdefault("training", {})["learning_rate"] = args.lr
+    if args.backbone_lr is not None:
+        overrides.setdefault("training", {})["backbone_learning_rate"] = args.backbone_lr
 
     if overrides:
         config = merge_configs(config, overrides)
@@ -222,6 +228,12 @@ def main() -> None:
         run_dry_run(config, output_dir)
         return
 
+    resume_ckpt = resolve_resume_ckpt_path(
+        args_resume=args.resume,
+        config=config,
+        output_dir=output_dir,
+    )
+
     datamodule = TennisDataModule(config)
     datamodule.setup(stage="fit")
     train_loader = datamodule.train_dataloader()
@@ -266,7 +278,7 @@ def main() -> None:
         precision=config.training.precision
     )
 
-    trainer.fit(lightning_module, datamodule=datamodule, ckpt_path=args.resume)
+    trainer.fit(lightning_module, datamodule=datamodule, ckpt_path=resume_ckpt)
 
     if not args.fast_dev_run:
         trainer.test(lightning_module, datamodule=datamodule)
