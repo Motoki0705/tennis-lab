@@ -30,6 +30,10 @@ training:
   bce_weight: 1.0
   mse_weight: 1.0
   precision: "bf16-mixed"
+  resume:
+    enabled: false
+    ckpt_path: null
+    auto_last: true
 
 metrics:
   target_rmse_px: 5.0
