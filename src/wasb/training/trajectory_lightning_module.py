@@ -8,7 +8,11 @@ from torch import Tensor
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
-from src.wasb.models.trajectory_completer import BiLSTMCompleter, TransformerCompleter
+from src.wasb.models.trajectory_completer import (
+    BiLSTMCompleter,
+    IterativeRefinementCompleter,
+    TransformerCompleter,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -39,6 +43,8 @@ class TrajectoryLightningModule(pl.LightningModule):
         self.lambda_noise = float(train_cfg.get("lambda_noise", 1.0))
 
         model_name = str(model_cfg.get("name", "trajectory_bilstm"))
+        self.is_iterative = False
+        self.num_steps = 1
 
         if model_name == "trajectory_bilstm":
             hidden_dim = int(model_cfg.get("hidden_dim", 64))
@@ -78,6 +84,31 @@ class TrajectoryLightningModule(pl.LightningModule):
             assert self.completer._model is not None
             self.model = self.completer._model
 
+        elif model_name == "trajectory_refiner":
+            d_model = int(model_cfg.get("d_model", 128))
+            num_layers = int(model_cfg.get("num_layers", 2))
+            num_heads = int(model_cfg.get("num_heads", 4))
+            dim_ff = int(model_cfg.get("dim_feedforward", 256))
+            dropout = float(model_cfg.get("dropout", 0.1))
+            score_threshold = float(model_cfg.get("score_threshold", 0.5))
+            num_steps = int(model_cfg.get("num_steps", 3))
+
+            self.completer = IterativeRefinementCompleter(
+                d_model=d_model,
+                num_layers=num_layers,
+                num_heads=num_heads,
+                dim_feedforward=dim_ff,
+                dropout=dropout,
+                num_steps=num_steps,
+                score_threshold=score_threshold,
+                device="cpu",
+            )
+            self.completer._build_model()
+            assert self.completer._model is not None
+            self.model = self.completer._model
+            self.is_iterative = True
+            self.num_steps = max(num_steps, 1)
+
         else:
             raise ValueError(f"Unsupported trajectory model name: {model_name}")
 
@@ -112,9 +143,22 @@ class TrajectoryLightningModule(pl.LightningModule):
 
         model_in = xy_input_norm
 
-        pred_norm = self(model_in)
-        diff = pred_norm - target_xy_norm
-        mse_per_frame = (diff * diff).sum(dim=-1)
+        if self.is_iterative:
+            xk = model_in
+            mse_sum = torch.zeros(
+                xk.shape[:-1], dtype=torch.float32, device=device
+            )
+            for _ in range(self.num_steps):
+                delta = self(xk)
+                xk = xk + delta
+                diff = xk - target_xy_norm
+                mse_sum = mse_sum + (diff * diff).sum(dim=-1)
+            mse_per_frame = mse_sum / float(self.num_steps)
+            pred_norm = xk
+        else:
+            pred_norm = self(model_in)
+            diff = pred_norm - target_xy_norm
+            mse_per_frame = (diff * diff).sum(dim=-1)
 
         loss_block = self._masked_mean(mse_per_frame, loss_mask_block)
         loss_sparse = self._masked_mean(mse_per_frame, loss_mask_sparse)
