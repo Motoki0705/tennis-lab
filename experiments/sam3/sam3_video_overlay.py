@@ -1,11 +1,27 @@
 import argparse
 from pathlib import Path
+import urllib.request
 
 import cv2
 import numpy as np
 import torch
 
+import sam3.model_builder as sam3_model_builder
 from sam3.model_builder import build_sam3_video_predictor
+
+
+def _ensure_sam3_bpe_vocab() -> Path:
+    assets_dir = Path(sam3_model_builder.__file__).resolve().parent.parent / "assets"
+    bpe_path = assets_dir / "bpe_simple_vocab_16e6.txt.gz"
+    if bpe_path.exists():
+        return bpe_path
+
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    url = "https://raw.githubusercontent.com/openai/CLIP/main/clip/bpe_simple_vocab_16e6.txt.gz"
+    urllib.request.urlretrieve(url, bpe_path)
+    if not bpe_path.exists():
+        raise FileNotFoundError(f"Failed to prepare BPE vocab at: {bpe_path}")
+    return bpe_path
 
 
 def run_sam3_video_inference(video_path: Path, prompt: str) -> None:
@@ -14,8 +30,8 @@ def run_sam3_video_inference(video_path: Path, prompt: str) -> None:
     - 入力:  data/samples/clip.mp4
     - 出力:  data/samples/clip_sam3_overlay.mp4
 
-    現状は frame_index=0 のマスクを同じフレームにオーバーレイする実装。
-    SAM3 の video API による全フレーム伝播は、仕様が分かり次第拡張する。
+    frame_index=0 にテキストプロンプトを与え、video tracking で全フレームへ伝播し、
+    追跡された同一オブジェクトのマスクを全フレームにオーバーレイして保存する。
     """
     if not video_path.exists():
         raise FileNotFoundError(f"Video not found: {video_path}")
@@ -25,6 +41,7 @@ def run_sam3_video_inference(video_path: Path, prompt: str) -> None:
 
     # Sam3VideoPredictorMultiGPU は nn.Module ではなく、.to() は実装していない。
     # デバイス管理は内部で行われるため、そのままインスタンス化して利用する。
+    _ensure_sam3_bpe_vocab()
     video_predictor = build_sam3_video_predictor()
 
     # Start a session on the video
@@ -72,15 +89,20 @@ def run_sam3_video_inference(video_path: Path, prompt: str) -> None:
     if masks.ndim != 3:
         raise ValueError(f"Expected masks with shape (N, H, W), got {masks.shape}")
 
-    # スコア最大のオブジェクトだけを使う（テニスプレーヤー想定）。
+    out_obj_ids = outputs.get("out_obj_ids")
+    if out_obj_ids is None:
+        raise KeyError("SAM3 outputs missing 'out_obj_ids'")
+
+    # frame 0 におけるスコア最大の object id を「追跡対象」として固定する。
     best_idx = int(np.argmax(probs))
+    target_obj_id = int(out_obj_ids[best_idx])
     best_mask = masks[best_idx]  # (H, W), np.ndarray
     print(
-        f"[sam3] Selected object index {best_idx} for overlay, "
+        f"[sam3] Selected target obj_id={target_obj_id} (index={best_idx}), "
         f"mask shape={best_mask.shape}, prob={float(probs[best_idx]):.3f}"
     )
 
-    # OpenCV で入力動画を読み込み、マスクを frame_index に適用して出力動画を書き出す。
+    # OpenCV で入力動画を読み込み、各フレームに対応するマスクを適用して出力動画を書き出す。
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         raise RuntimeError(f"Failed to open video with OpenCV: {video_path}")
@@ -101,52 +123,83 @@ def run_sam3_video_inference(video_path: Path, prompt: str) -> None:
         cap.release()
         raise RuntimeError(f"Failed to open VideoWriter for {output_path}")
 
-    # マスクの解像度が動画と異なる場合はリサイズ。
-    if best_mask.shape != (height, width):
-        print(
-            f"[sam3] Resizing mask from {best_mask.shape} to "
-            f"({height}, {width}) for overlay."
-        )
-        resized_mask = cv2.resize(
-            best_mask.astype(np.float32),
-            (width, height),
-            interpolation=cv2.INTER_NEAREST,
-        )
-        mask_bool = resized_mask > 0.5
-    else:
-        mask_bool = best_mask.astype(bool)
-
     # オーバーレイ色（BGR）とアルファ
     overlay_color = np.array([0, 255, 0], dtype=np.uint8)  # Green
     alpha = 0.5
 
-    current_idx = 0
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        if current_idx == frame_index:
-            # マスク位置だけ overlay_color とブレンド
-            frame_float = frame.astype(np.float32)
-            color_float = overlay_color.astype(np.float32)
-
-            # (H, W, 1) のブールマスクを作成し、チャンネル方向にブロードキャスト
-            mask3 = mask_bool[:, :, None]
-            blended = (
-                alpha * color_float[None, None, :]
-                + (1.0 - alpha) * frame_float
+    def overlay_mask_on_frame(frame: np.ndarray, mask: np.ndarray) -> np.ndarray:
+        if mask.shape != (height, width):
+            resized = cv2.resize(
+                mask.astype(np.float32),
+                (width, height),
+                interpolation=cv2.INTER_NEAREST,
             )
-            frame_float = np.where(mask3, blended, frame_float)
-            frame = frame_float.astype(np.uint8)
+            mask_bool_local = resized > 0.5
+        else:
+            mask_bool_local = mask.astype(bool)
 
-        writer.write(frame)
-        current_idx += 1
+        frame_float = frame.astype(np.float32)
+        color_float = overlay_color.astype(np.float32)
+        mask3 = mask_bool_local[:, :, None]
+        blended = alpha * color_float[None, None, :] + (1.0 - alpha) * frame_float
+        frame_float = np.where(mask3, blended, frame_float)
+        return frame_float.astype(np.uint8)
 
-    cap.release()
-    writer.release()
+    try:
+        # --- 全フレームに伝播（tracking）して出力をストリームで受け取る ---
+        if not hasattr(video_predictor, "handle_stream_request"):
+            raise RuntimeError(
+                "This sam3 video predictor does not support handle_stream_request; "
+                "cannot run full-video propagation."
+            )
 
-    print(f"[sam3] Saved overlay video to: {output_path}")
+        current_idx = 0
+        for resp in video_predictor.handle_stream_request(
+            request={
+                "type": "propagate_in_video",
+                "session_id": session_id,
+            }
+        ):
+            resp_frame_idx = int(resp["frame_index"])
+            resp_outputs = resp["outputs"]
+
+            # resp_frame_idx まで動画を読み進めつつ書き出す
+            while current_idx <= resp_frame_idx:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                if current_idx == resp_frame_idx:
+                    frame_masks = resp_outputs.get("out_binary_masks")
+                    frame_obj_ids = resp_outputs.get("out_obj_ids")
+                    if (
+                        isinstance(frame_masks, np.ndarray)
+                        and isinstance(frame_obj_ids, np.ndarray)
+                        and frame_masks.ndim == 3
+                        and frame_obj_ids.ndim == 1
+                    ):
+                        matches = np.where(frame_obj_ids == target_obj_id)[0]
+                        if matches.size > 0:
+                            frame = overlay_mask_on_frame(
+                                frame, frame_masks[int(matches[0])]
+                            )
+
+                writer.write(frame)
+                current_idx += 1
+
+        # 念のため残りフレームを書き出し（通常は current_idx == frame_count で終わる想定）
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            writer.write(frame)
+            current_idx += 1
+
+        # NOTE: sam3==0.1.2 では end_session が未対応のため呼ばない。
+        print(f"[sam3] Saved overlay video to: {output_path}")
+    finally:
+        cap.release()
+        writer.release()
 
 
 def main() -> None:
@@ -165,7 +218,13 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    run_sam3_video_inference(video_path=args.video, prompt=args.prompt)
+    video_path = args.video
+    if not video_path.exists():
+        fallback = Path("/root/repos/tennis-lab/data/samples/clip.mp4")
+        if fallback.exists():
+            video_path = fallback
+
+    run_sam3_video_inference(video_path=video_path, prompt=args.prompt)
 
 
 if __name__ == "__main__":
