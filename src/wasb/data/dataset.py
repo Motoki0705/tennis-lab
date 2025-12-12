@@ -75,6 +75,8 @@ def build_sequence_index(
 ) -> list[SequenceSample]:
     """Create a list of sequence samples from tennis clips."""
     samples: list[SequenceSample] = []
+    total_windows = 0
+    rejected_windows = 0
     match_list = _resolve_matches(root_dir, matches)
     for match in match_list:
         match_dir = root_dir / match
@@ -94,12 +96,14 @@ def build_sequence_index(
             max_start = len(frame_names) - frames_in
 
             for start_idx in range(0, max_start + 1, step):
+                total_windows += 1
                 window = frame_names[start_idx : start_idx + frames_in]
                 target_names = window[-frames_out:]
                 targets = [
                     labels.get(name, make_empty_row(name)) for name in target_names
                 ]
                 if not _should_keep(targets, visibility_mode):
+                    rejected_windows += 1
                     continue
 
                 frame_paths = [clip_dir / name for name in window]
@@ -112,10 +116,13 @@ def build_sequence_index(
                     )
                 )
     LOGGER.info(
-        "Indexed %d sequences from %d matches under %s",
+        "Indexed %d sequences from %d matches under %s (rejected %d/%d windows by visibility_mode=%s)",
         len(samples),
         len(match_list),
         root_dir,
+        rejected_windows,
+        total_windows,
+        visibility_mode,
     )
     return samples
 
