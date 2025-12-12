@@ -36,6 +36,7 @@ dependencies = [
     "ultralytics>=8.3.223",
     "yt-dlp>=2025.11.12",
     "PyYAML>=6.0.0",
+    "sam3>=0.1.2",
 ]
 
 [dependency-groups]
