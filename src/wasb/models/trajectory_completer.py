@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
+import math
 import numpy as np
 
 if TYPE_CHECKING:
@@ -568,6 +569,248 @@ class BiLSTMCompleter(TrajectoryCompleter):
         self._is_trained = True
 
 
+class TransformerCompleter(TrajectoryCompleter):
+    """Transformer-based model for trajectory completion.
+
+    Uses a Transformer encoder over normalized 2D coordinates [x_norm, y_norm]
+    to predict completed trajectories.
+    """
+
+    def __init__(
+        self,
+        d_model: int = 128,
+        num_layers: int = 2,
+        num_heads: int = 4,
+        dim_feedforward: int = 256,
+        dropout: float = 0.1,
+        score_threshold: float = 0.5,
+        device: str = "cuda",
+    ) -> None:
+        """Initialize Transformer completer.
+
+        Args:
+            d_model: Transformer embedding dimension.
+            num_layers: Number of encoder layers.
+            num_heads: Number of attention heads.
+            dim_feedforward: Feedforward layer dimension.
+            dropout: Dropout probability.
+            score_threshold: Minimum score for reliable detection.
+            device: Device for computation.
+
+        """
+        self.d_model = d_model
+        self.num_layers = num_layers
+        self.num_heads = num_heads
+        self.dim_feedforward = dim_feedforward
+        self.dropout = dropout
+        self.score_threshold = score_threshold
+        self.device = device
+        self._model = None
+        self._is_trained = False
+
+    def _build_model(self) -> None:
+        """Build the PyTorch Transformer model (lazy initialization)."""
+        try:
+            import torch
+            import torch.nn as nn
+        except ImportError as e:
+            raise ImportError(
+                "PyTorch is required for TransformerCompleter. "
+                "Install with: pip install torch"
+            ) from e
+
+        class PositionalEncoding(nn.Module):
+            def __init__(
+                self,
+                d_model: int,
+                dropout: float = 0.1,
+                max_len: int = 5000,
+            ) -> None:
+                super().__init__()
+                self.dropout = nn.Dropout(p=dropout)
+
+                position = torch.arange(0, max_len, dtype=torch.float32).unsqueeze(1)
+                div_term = torch.exp(
+                    torch.arange(0, d_model, 2, dtype=torch.float32)
+                    * (-math.log(10000.0) / d_model)
+                )
+                pe = torch.zeros(max_len, d_model, dtype=torch.float32)
+                pe[:, 0::2] = torch.sin(position * div_term)
+                pe[:, 1::2] = torch.cos(position * div_term)
+                pe = pe.unsqueeze(0)
+                self.register_buffer("pe", pe)
+
+            def forward(self, x: "torch.Tensor") -> "torch.Tensor":
+                # x: [B, T, D]
+                if x.size(1) > self.pe.size(1):
+                    msg = (
+                        "Sequence length exceeds maximum positional encoding length: "
+                        f"{x.size(1)} > {self.pe.size(1)}"
+                    )
+                    raise ValueError(msg)
+                x = x + self.pe[:, : x.size(1)]
+                return self.dropout(x)
+
+        class TransformerModel(nn.Module):
+            def __init__(
+                self,
+                d_model: int,
+                num_layers: int,
+                num_heads: int,
+                dim_feedforward: int,
+                dropout: float,
+            ) -> None:
+                super().__init__()
+                self.input_proj = nn.Linear(2, d_model)
+                encoder_layer = nn.TransformerEncoderLayer(
+                    d_model=d_model,
+                    nhead=num_heads,
+                    dim_feedforward=dim_feedforward,
+                    dropout=dropout,
+                    batch_first=True,
+                )
+                self.pos_encoder = PositionalEncoding(d_model=d_model, dropout=dropout)
+                self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+                self.output_proj = nn.Sequential(
+                    nn.Linear(d_model, d_model),
+                    nn.ReLU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(d_model, 2),
+                )
+
+            def forward(self, x: "torch.Tensor") -> "torch.Tensor":
+                # x: [B, T, 2]
+                h = self.input_proj(x)
+                h = self.pos_encoder(h)
+                h = self.encoder(h)
+                return self.output_proj(h)
+
+        self._model = TransformerModel(
+            d_model=self.d_model,
+            num_layers=self.num_layers,
+            num_heads=self.num_heads,
+            dim_feedforward=self.dim_feedforward,
+            dropout=self.dropout,
+        )
+        self._model = self._model.to(self.device)
+
+    def complete(
+        self,
+        xy: NDArray[np.float32],
+        visibility: NDArray[np.bool_],
+        score: NDArray[np.float32],
+    ) -> CompletionResult:
+        """Complete trajectory using Transformer model."""
+        import torch
+
+        if self._model is None:
+            self._build_model()
+
+        T = len(xy)
+        if T == 0:
+            return CompletionResult(
+                xy=np.zeros((0, 2), dtype=np.float32),
+                visibility=np.zeros(0, dtype=np.int32),
+                confidence=np.zeros(0, dtype=np.float32),
+            )
+
+        # Prepare input
+        input_data = xy.astype(np.float32).copy()
+
+        # Normalize coordinates (assuming 1920x1080)
+        input_data[:, 0] /= 1920.0
+        input_data[:, 1] /= 1080.0
+
+        # Convert to tensor
+        x = torch.from_numpy(input_data).float().unsqueeze(0).to(self.device)
+
+        # Run model
+        self._model.eval()
+        with torch.no_grad():
+            pred = self._model(x)
+
+        # Get predictions
+        pred_np = pred[0].cpu().numpy()
+        pred_np[:, 0] *= 1920.0
+        pred_np[:, 1] *= 1080.0
+
+        # Build output
+        completed_xy = xy.copy()
+        new_visibility = np.where(
+            visibility & (score >= self.score_threshold), 1, 0
+        ).astype(np.int32)
+        confidence = score.copy()
+
+        # Fill missing positions with predictions
+        gaps_filled = 0
+        for t in range(T):
+            if new_visibility[t] == 0:
+                completed_xy[t] = pred_np[t]
+                new_visibility[t] = 2
+                confidence[t] = 0.5  # Model confidence
+                gaps_filled += 1
+
+        return CompletionResult(
+            xy=completed_xy,
+            visibility=new_visibility,
+            confidence=confidence,
+            gaps_filled=gaps_filled,
+        )
+
+    def load_from_checkpoint(self, checkpoint_path: str | Path) -> None:
+        """Load model weights from a Lightning-style checkpoint."""
+        import torch
+
+        if self._model is None:
+            self._build_model()
+
+        checkpoint_path = Path(checkpoint_path)
+        if not checkpoint_path.exists():
+            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+
+        checkpoint = torch.load(
+            checkpoint_path,
+            map_location=self.device,
+            weights_only=False,
+        )
+        if not isinstance(checkpoint, dict):
+            raise TypeError(f"Checkpoint must be a dict, got {type(checkpoint)}")
+
+        state_dict = None
+        if "state_dict" in checkpoint and isinstance(checkpoint["state_dict"], dict):
+            state_dict = checkpoint["state_dict"]
+        elif "model_state_dict" in checkpoint and isinstance(
+            checkpoint["model_state_dict"], dict
+        ):
+            # Backwards-compatibility with older custom checkpoints.
+            state_dict = checkpoint["model_state_dict"]
+        else:
+            raise ValueError(
+                "Checkpoint must contain a 'state_dict' or 'model_state_dict': "
+                f"{checkpoint_path}"
+            )
+
+        if self._model is None:
+            self._build_model()
+        model_state = self._model.state_dict()
+        filtered_state = {}
+        for key, value in state_dict.items():
+            trimmed_key = key
+            if key.startswith("model."):
+                trimmed_key = key.removeprefix("model.")
+            if trimmed_key in model_state:
+                filtered_state[trimmed_key] = value
+
+        if not filtered_state:
+            raise ValueError(
+                f"No matching model keys were found in checkpoint: {checkpoint_path}"
+            )
+
+        model_state.update(filtered_state)
+        self._model.load_state_dict(model_state, strict=False)
+        self._is_trained = True
+
+
 class HybridCompleter(TrajectoryCompleter):
     """Hybrid completer combining physics-based and learned approaches.
 
@@ -664,7 +907,7 @@ class HybridCompleter(TrajectoryCompleter):
 
 
 def create_completer(
-    method: Literal["physics", "bilstm", "hybrid"] = "hybrid",
+    method: Literal["physics", "bilstm", "transformer", "hybrid"] = "hybrid",
     checkpoint_path: str | Path | None = None,
     **kwargs,
 ) -> TrajectoryCompleter:
@@ -703,6 +946,25 @@ def create_completer(
 
     elif method == "bilstm":
         completer = BiLSTMCompleter(score_threshold=score_threshold)
+        if checkpoint_path is not None:
+            completer.load_from_checkpoint(checkpoint_path)
+        return completer
+
+    elif method == "transformer":
+        d_model = int(kwargs.pop("d_model", 128))
+        num_layers = int(kwargs.pop("num_layers", 2))
+        num_heads = int(kwargs.pop("num_heads", 4))
+        dim_ff = int(kwargs.pop("dim_feedforward", 256))
+        dropout = float(kwargs.pop("dropout", 0.1))
+
+        completer = TransformerCompleter(
+            d_model=d_model,
+            num_layers=num_layers,
+            num_heads=num_heads,
+            dim_feedforward=dim_ff,
+            dropout=dropout,
+            score_threshold=score_threshold,
+        )
         if checkpoint_path is not None:
             completer.load_from_checkpoint(checkpoint_path)
         return completer

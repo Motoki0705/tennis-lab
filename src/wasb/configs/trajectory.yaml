@@ -1,3 +1,6 @@
+defaults:
+  - model: trajectory_transformer
+
 data:
   root_dir: data/tennis
   train_matches: ["game1", "game2", "game3", "game4", "game5", "game6", "game7", "game8"]
@@ -17,12 +20,6 @@ data:
   num_workers: 4
   pin_memory: true
 
-model:
-  hidden_dim: 64
-  num_layers: 2
-  dropout: 0.1
-  score_threshold: 0.5
-
 training:
   max_epochs: 50
   learning_rate: 1.0e-3
@@ -31,7 +28,7 @@ training:
   min_lr: 1.0e-6
   lambda_block: 3.0
   lambda_sparse: 1.0
-  lambda_noise: 1.0
+  lambda_noise: 0
   precision: "32"
   resume:
     enabled: false

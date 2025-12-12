@@ -1,12 +1,12 @@
 """
 Example use:
 ```bash
-uv run python src/wasb/scripts/visualize_trajectory_bilstm.py \
-  --config src/wasb/configs/trajectory_bilstm.yaml \
-  --checkpoint outputs/trajectory_bilstm/logs/version_2/checkpoints/last.ckpt \
+uv run python src/wasb/scripts/visualize_trajectory.py \
+  --config src/wasb/configs/trajectory.yaml \
+  --checkpoint outputs/trajectory/logs/version_2/checkpoints/last.ckpt \
   --split test \
   --num-samples 8 \
-  --output-dir outputs/trajectory_bilstm/vis \
+  --output-dir outputs/trajectory/vis \
   --gpus 1
 ```
 """
@@ -22,20 +22,20 @@ from omegaconf import OmegaConf
 
 from src.wasb.data.trajectory_datamodule import TrajectoryDataModule
 from src.wasb.training.trajectory_lightning_module import (
-    TrajectoryBiLSTMLightningModule,
+    TrajectoryLightningModule,
 )
 from src.wasb.utils.config import load_config
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Visualize BiLSTM trajectory completion results",
+        description="Visualize trajectory completion results",
     )
     parser.add_argument(
         "--config",
         type=str,
         default=str(
-            Path(__file__).parents[1] / "configs" / "trajectory_bilstm.yaml"
+            Path(__file__).parents[1] / "configs" / "trajectory.yaml"
         ),
         help="Path to YAML config used for data paths and parameters",
     )
@@ -43,12 +43,12 @@ def parse_args() -> argparse.Namespace:
         "--checkpoint",
         type=str,
         required=True,
-        help="Path to Lightning checkpoint (.ckpt) of the trained BiLSTM model",
+        help="Path to Lightning checkpoint (.ckpt) of the trained model",
     )
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="outputs/trajectory_bilstm/vis",
+        default="outputs/trajectory/vis",
         help="Directory to save visualization images",
     )
     parser.add_argument(
@@ -96,8 +96,8 @@ def get_dataloader(datamodule: TrajectoryDataModule, split: str):  # type: ignor
     return datamodule.test_dataloader()
 
 
-def load_model(checkpoint_path: Path, config: OmegaConf, device: torch.device) -> TrajectoryBiLSTMLightningModule:
-    module = TrajectoryBiLSTMLightningModule.load_from_checkpoint(
+def load_model(checkpoint_path: Path, config: OmegaConf, device: torch.device) -> TrajectoryLightningModule:
+    module = TrajectoryLightningModule.load_from_checkpoint(
         checkpoint_path=str(checkpoint_path),
         config=config,
         steps_per_epoch=None,
@@ -110,7 +110,7 @@ def load_model(checkpoint_path: Path, config: OmegaConf, device: torch.device) -
 
 def visualize_batch(
     batch,  # type: ignore[no-untyped-def]
-    module: TrajectoryBiLSTMLightningModule,
+    module: TrajectoryLightningModule,
     device: torch.device,
     output_dir: Path,
     split: str,

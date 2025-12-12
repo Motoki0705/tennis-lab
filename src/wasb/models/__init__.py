@@ -18,6 +18,7 @@ from .trajectory_completer import (
     HybridCompleter,
     PhysicsInterpolator,
     TrajectoryCompleter,
+    TransformerCompleter,
     create_completer,
 )
 
@@ -257,6 +258,7 @@ __all__ = [
     "PhysicsInterpolator",
     "BiLSTMCompleter",
     "HybridCompleter",
+    "TransformerCompleter",
     "CompletionResult",
     "create_completer",
     "build_model",
