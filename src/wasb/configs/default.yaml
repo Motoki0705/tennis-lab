@@ -3,13 +3,13 @@ defaults:
 
 data:
   root_dir: data/tennis
-  train_matches: ["game1", "game2", "game3", "game4", "game5", "game6", "game7", "game8"]
-  val_matches: ["game9"]
+  train_matches: ["game1", "game2", "game3", "game4", "game5", "game6", "game7", "game11", "game12", "game13", "game15", "game16"]
+  val_matches: ["game8", "game9", "game14"]
   test_matches: ["game10"]
   frames_in: 1
   frames_out: 1
   step: 1
-  visibility_mode: none
+  visibility_mode: all_visible
   image_ext: ".jpg"
   csv_filename: Label.csv
   batch_size: 4
@@ -20,13 +20,15 @@ data:
   pin_memory: true
 
 training:
-  max_epochs: 50
-  freeze_backbone_epochs: 3
+  max_epochs: 20
+  freeze_backbone_epochs: 10
   learning_rate: 1e-4
+  backbone_learning_rate: 1e-5
   weight_decay: 1e-4
   warmup_steps: 1000
   min_lr: 1e-6
-  heatmap_loss_weight: 1.0
+  bce_weight: 1.0
+  mse_weight: 1.0
   precision: "bf16-mixed"
 
 metrics:
