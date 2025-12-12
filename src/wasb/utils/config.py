@@ -50,3 +50,23 @@ def merge_configs(*configs: DictConfig | dict[str, Any]) -> DictConfig:
     if not configs:
         raise ValueError("At least one config must be provided to merge_configs.")
     return OmegaConf.merge(*configs)  # type: ignore[return-value]
+
+
+def resolve_model_name(config: DictConfig, config_path: str | Path) -> str:
+    model_cfg = None
+    if hasattr(config, "get"):
+        model_cfg = config.get("model")
+    if model_cfg is None:
+        model_cfg = getattr(config, "model", None)
+
+    name = None
+    if model_cfg is not None:
+        if hasattr(model_cfg, "get"):
+            name = model_cfg.get("name")
+        else:
+            name = getattr(model_cfg, "name", None)
+
+    if name is not None and str(name).strip() != "":
+        return str(name).strip()
+
+    return Path(config_path).stem
