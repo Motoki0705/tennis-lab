@@ -8,7 +8,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
 from .clip_segmenter import ClipSegmenter, RuleBasedClipSegmenter
-from .dinov3_heatmap import DinoV3HeatmapModel
+from .dinov3_heatmap import DinoV3FPNHeatmap
 from .hrnet import HRNet
 from .hrcnet import HRCNet
 from .temporal_conv_gru import TemporalConvGRUModel
@@ -40,22 +40,23 @@ def _hrnet_handlers() -> tuple[Callable, Callable]:
 def _dinov3_heatmap_handlers() -> tuple[Callable, Callable]:
     def prepare_frames(frames):
         if getattr(frames, "dim", None) is None:
-            raise ValueError("DinoV3HeatmapModel expects a tensor input for frames.")
+            raise ValueError("DinoV3FPNHeatmap expects a tensor input for frames.")
         if frames.dim() == 5:
             # [B, T, C, H, W] -> use the last frame in the sequence.
             return frames[:, -1]
         if frames.dim() == 4:
             return frames
         raise ValueError(
-            "DinoV3HeatmapModel expects frames with shape [B, C, H, W] "
+            "DinoV3FPNHeatmap expects frames with shape [B, C, H, W] "
             "or [B, T, C, H, W], got "
             f"{getattr(frames, 'shape', None)}"
         )
 
     def extract_heatmaps(outputs):
+        # DinoV3FPNHeatmap already returns dense heatmaps as a Tensor.
         if isinstance(outputs, Tensor):
             return outputs
-        raise TypeError("Unsupported model output type for DinoV3HeatmapModel.")
+        raise TypeError("Unsupported model output type for DinoV3FPNHeatmap.")
 
     return prepare_frames, extract_heatmaps
 
@@ -230,7 +231,7 @@ __factory: dict[str, Any] = {
         _hrnet_handlers(),
     ),
     "temporal_conv_gru": _build_temporal_conv_gru,
-    "dinov3_heatmap": lambda cfg: (DinoV3HeatmapModel(cfg), _dinov3_heatmap_handlers()),
+    "dinov3_heatmap": lambda cfg: (DinoV3FPNHeatmap(cfg), _dinov3_heatmap_handlers()),
 }
 
 
@@ -260,5 +261,5 @@ __all__ = [
     "create_completer",
     "build_model",
     "TemporalConvGRUModel",
-    "DinoV3HeatmapModel",
+    "DinoV3FPNHeatmap",
 ]
