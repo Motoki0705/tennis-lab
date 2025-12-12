@@ -55,15 +55,14 @@ def load_label_csv(path: str | Path) -> list[TennisLabelRow]:
             else:
                 score = 0.0
             if visibility not in (0, 1, 2):
-                if not warned_visibility:
-                    LOGGER.warning(
-                        "Non-standard visibility value %s in %s; mapping to 0.",
-                        visibility,
-                        p,
-                    )
-                    warned_visibility = True
+                warned_visibility = True
                 visibility = 0
             rows.append(TennisLabelRow(file_name, visibility, x, y, status, score))
+    if warned_visibility:
+        LOGGER.warning(
+            "Non-standard visibility value(s) in %s; mapping to 0.",
+            p,
+        )
     return rows
 
 

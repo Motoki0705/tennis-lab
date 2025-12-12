@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any, Callable
 
 import pytorch_lightning as pl
 import torch
 from torch import Tensor, nn
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
+from torch.optim.lr_scheduler import LambdaLR
 
 from src.wasb.models import build_model
 from src.wasb.training.losses import LossWeights, WASBLoss
@@ -55,11 +56,11 @@ class WASBLightningModule(pl.LightningModule):
         self.prepare_frames, self.extract_heatmaps = io_handlers
 
         train_cfg = self.config.get("training", {})
-        heatmap_weight = train_cfg.get(
-            "heatmap_loss_weight", train_cfg.get("coord_loss_weight", 1.0)
-        )
+        bce_weight = train_cfg.get("bce_weight", 1.0)
+        mse_weight = train_cfg.get("mse_weight", 1.0)
         loss_weights = LossWeights(
-            heatmap=heatmap_weight,
+            bce=bce_weight,
+            mse=mse_weight,
         )
         self.loss_fn = WASBLoss(weights=loss_weights)
 
@@ -70,6 +71,7 @@ class WASBLightningModule(pl.LightningModule):
         self.test_metrics = WASBMetrics(accuracy_thresh_px=acc_thresh)
 
         self.learning_rate = train_cfg.get("learning_rate", 1e-3)
+        self.backbone_learning_rate = train_cfg.get("backbone_learning_rate", 1e-5)
         self.weight_decay = train_cfg.get("weight_decay", 1e-4)
         self.warmup_steps = train_cfg.get("warmup_steps", 1000)
         self.max_epochs = train_cfg.get("max_epochs", 50)
@@ -143,8 +145,6 @@ class WASBLightningModule(pl.LightningModule):
         self.log("val/loss", loss, prog_bar=True)
         self.log("val/rmse_px", metrics["rmse_px"], prog_bar=True)
         self.log("val/accuracy", metrics["accuracy"], prog_bar=True)
-        self.log("val/pred_min", metrics["pred_min"], prog_bar=True)
-        self.log("val/pred_max", metrics["pred_max"], prog_bar=True)
 
     def on_validation_epoch_end(self) -> None:
         metrics = self.val_metrics.compute()
@@ -157,8 +157,6 @@ class WASBLightningModule(pl.LightningModule):
         self.log("test/loss", loss)
         self.log("test/rmse_px", metrics["rmse_px"])
         self.log("test/accuracy", metrics["accuracy"])
-        self.log("test/pred_min", metrics["pred_min"], prog_bar=True)
-        self.log("test/pred_max", metrics["pred_max"], prog_bar=True)
 
     def on_test_epoch_end(self) -> None:
         metrics = self.test_metrics.compute()
@@ -185,9 +183,62 @@ class WASBLightningModule(pl.LightningModule):
             self.model.unfreeze_backbone()
             self._backbone_frozen = False
             print("Backbone Unfrozen")
+
+    def _build_warmup_cosine_lambda(
+        self,
+        *,
+        total_steps: int,
+        warmup_steps: int,
+        start_step: int,
+        base_lr: float,
+    ) -> Callable[[int], float]:
+        start_factor = 0.01
+        active_steps = max(total_steps - start_step, 1)
+        adjusted_warmup = max(min(warmup_steps, active_steps - 1), 0)
+        cosine_steps = max(active_steps - adjusted_warmup, 1)
+        min_factor = 0.0 if base_lr == 0 else min(self.min_lr / base_lr, 1.0)
+
+        def lr_lambda(current_step: int) -> float:
+            if current_step < start_step:
+                return 0.0
+
+            step = current_step - start_step
+
+            if adjusted_warmup > 0 and step < adjusted_warmup:
+                progress = step / float(adjusted_warmup)
+                return start_factor + (1.0 - start_factor) * progress
+
+            cosine_step = min(step - adjusted_warmup, cosine_steps)
+            cosine_progress = cosine_step / float(cosine_steps)
+            return min_factor + 0.5 * (1.0 - min_factor) * (1.0 + math.cos(math.pi * cosine_progress))
+
+        return lr_lambda
+
     def configure_optimizers(self) -> dict[str, Any]:
+        backbone_params: list[nn.Parameter] = []
+        if hasattr(self.model, "backbone") and isinstance(self.model.backbone, nn.Module):
+            backbone_params = list(self.model.backbone.parameters())
+        backbone_param_ids = {id(p) for p in backbone_params}
+        non_backbone_params = [p for p in self.model.parameters() if id(p) not in backbone_param_ids]
+
+        param_groups: list[dict[str, Any]] = []
+        lr_lambdas: list[Callable[[int], float]] = []
+
+        if non_backbone_params:
+            param_groups.append(
+                {"params": non_backbone_params, "lr": self.learning_rate, "weight_decay": self.weight_decay}
+            )
+        if backbone_params:
+            param_groups.append(
+                {
+                    "params": backbone_params,
+                    "lr": self.backbone_learning_rate,
+                    "weight_decay": self.weight_decay,
+                }
+            )
+
         optimizer = AdamW(
-            self.parameters(),
+            param_groups if param_groups else self.parameters(),
             lr=self.learning_rate,
             weight_decay=self.weight_decay,
         )
@@ -197,27 +248,31 @@ class WASBLightningModule(pl.LightningModule):
             steps_per_epoch = 1000
 
         total_steps = steps_per_epoch * max(self.max_epochs, 1)
-        if total_steps <= self.warmup_steps + 1:
+        freeze_steps = steps_per_epoch * max(self.freeze_backbone_epochs, 0)
+
+        if non_backbone_params:
+            lr_lambdas.append(
+                self._build_warmup_cosine_lambda(
+                    total_steps=total_steps,
+                    warmup_steps=self.warmup_steps,
+                    start_step=0,
+                    base_lr=self.learning_rate,
+                )
+            )
+        if backbone_params:
+            lr_lambdas.append(
+                self._build_warmup_cosine_lambda(
+                    total_steps=total_steps,
+                    warmup_steps=self.warmup_steps,
+                    start_step=freeze_steps,
+                    base_lr=self.backbone_learning_rate,
+                )
+            )
+
+        if not lr_lambdas:
             return {"optimizer": optimizer}
 
-        warmup_scheduler = LinearLR(
-            optimizer,
-            start_factor=0.01,
-            end_factor=1.0,
-            total_iters=self.warmup_steps,
-        )
-
-        cosine_scheduler = CosineAnnealingLR(
-            optimizer,
-            T_max=max(total_steps - self.warmup_steps, 1),
-            eta_min=self.min_lr,
-        )
-
-        scheduler = SequentialLR(
-            optimizer,
-            schedulers=[warmup_scheduler, cosine_scheduler],
-            milestones=[self.warmup_steps],
-        )
+        scheduler = LambdaLR(optimizer, lr_lambda=lr_lambdas if len(lr_lambdas) > 1 else lr_lambdas[0])
 
         return {
             "optimizer": optimizer,

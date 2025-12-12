@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from omegaconf import OmegaConf
 
-from src.wasb.models import TemporalConvGRUModel, build_model
+from src.wasb.models import DinoV3FPNHeatmap, TemporalConvGRUModel, build_model
 
 
 def _build_cfg(model_cfg: dict[str, Any]):
@@ -207,6 +207,36 @@ def test_build_temporal_conv_gru():
         y = model(frames)
         heatmaps = extract_heatmaps(y)
         assert heatmaps.shape[:2] == (2, 2)
+
+
+def test_build_dinov3_heatmap_model_minimal():
+    model_cfg = {
+        "name": "dinov3_heatmap",
+        "image_hw": [224, 224],
+        "heatmap_hw": [224, 224],
+    }
+    cfg = _build_cfg(model_cfg)
+
+    model, (prepare_frames, extract_heatmaps) = build_model(cfg)
+
+    assert isinstance(model, DinoV3FPNHeatmap)
+    assert callable(prepare_frames)
+    assert callable(extract_heatmaps)
+
+    # Ensure that load_backbone_checkpoint can be called with the local
+    # DINOv3 repository path without raising or triggering downloads.
+    model.load_backbone_checkpoint("third_party/dinov3")
+
+    import torch
+
+    # Simulate a sequence batch: [B, T, C, H, W]
+    x = torch.randn(2, 1, 3, 224, 224)
+    frames = prepare_frames(x)
+    assert frames.shape == (2, 3, 224, 224)
+
+    y = model(frames)
+    heatmaps = extract_heatmaps(y)
+    assert heatmaps.shape == (2, 1, 224, 224)
 
 
 def test_build_model_invalid_name_raises():

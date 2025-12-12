@@ -14,6 +14,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.wasb.data.trajectory_datamodule import TrajectoryDataModule
 from src.wasb.training.trajectory_lightning_module import TrajectoryLightningModule
+from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
 from src.wasb.utils.config import load_config, merge_configs
 
 
@@ -145,6 +146,12 @@ def main() -> None:
         run_dry_run(config, output_dir)
         return
 
+    resume_ckpt = resolve_resume_ckpt_path(
+        args_resume=args.resume,
+        config=config,
+        output_dir=output_dir,
+    )
+
     datamodule = TrajectoryDataModule(config)
     datamodule.setup(stage="fit")
     train_loader = datamodule.train_dataloader()
@@ -177,7 +184,7 @@ def main() -> None:
         precision=config.training.precision,
     )
 
-    trainer.fit(module, datamodule=datamodule, ckpt_path=args.resume)
+    trainer.fit(module, datamodule=datamodule, ckpt_path=resume_ckpt)
 
     if not args.fast_dev_run:
         trainer.test(module, datamodule=datamodule)
