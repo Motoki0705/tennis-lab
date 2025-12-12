@@ -18,7 +18,7 @@ from src.wasb.data.datamodule import TennisDataModule
 from src.wasb.models import build_model
 from src.wasb.training.lightning_module import WASBLightningModule
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
-from src.wasb.utils.config import load_config, merge_configs
+from src.wasb.utils.config import load_config, merge_configs, resolve_model_name
 
 
 def parse_args() -> argparse.Namespace:
@@ -220,7 +220,8 @@ def main() -> None:
     print("Configuration:")
     print(OmegaConf.to_yaml(config))
 
-    output_dir = Path(args.output_dir)
+    model_name = resolve_model_name(config, args.config)
+    output_dir = Path(args.output_dir) / model_name
     output_dir.mkdir(parents=True, exist_ok=True)
     OmegaConf.save(config, output_dir / "config.yaml")
 
