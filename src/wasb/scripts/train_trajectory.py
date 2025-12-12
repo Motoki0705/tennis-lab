@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import logging
+import subprocess
+import sys
 from pathlib import Path
 
 import pytorch_lightning as pl
@@ -11,25 +13,23 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.wasb.data.trajectory_datamodule import TrajectoryDataModule
-from src.wasb.training.trajectory_lightning_module import (
-    TrajectoryBiLSTMLightningModule,
-)
+from src.wasb.training.trajectory_lightning_module import TrajectoryLightningModule
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
 from src.wasb.utils.config import load_config, merge_configs
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train BiLSTM trajectory completer")
+    parser = argparse.ArgumentParser(description="Train trajectory completer")
     parser.add_argument(
         "--config",
         type=str,
-        default=str(Path(__file__).parents[1] / "configs" / "trajectory_bilstm.yaml"),
+        default=str(Path(__file__).parents[1] / "configs" / "trajectory.yaml"),
         help="Path to YAML config",
     )
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="outputs/trajectory_bilstm",
+        default="outputs/trajectory",
         help="Directory to save checkpoints and logs",
     )
     parser.add_argument("--epochs", type=int, default=None, help="Max epochs override")
@@ -114,7 +114,7 @@ def run_dry_run(config: OmegaConf, output_dir: Path) -> None:
     )
 
     steps_per_epoch = len(train_loader)
-    module = TrajectoryBiLSTMLightningModule(config, steps_per_epoch=steps_per_epoch)
+    module = TrajectoryLightningModule(config, steps_per_epoch=steps_per_epoch)
     trainer = pl.Trainer(
         max_epochs=1,
         limit_train_batches=1,
@@ -157,7 +157,7 @@ def main() -> None:
     train_loader = datamodule.train_dataloader()
     steps_per_epoch = len(train_loader)
 
-    module = TrajectoryBiLSTMLightningModule(config, steps_per_epoch=steps_per_epoch)
+    module = TrajectoryLightningModule(config, steps_per_epoch=steps_per_epoch)
 
     logger = TensorBoardLogger(save_dir=output_dir, name="logs")
 
@@ -165,7 +165,7 @@ def main() -> None:
     callbacks = [
         ModelCheckpoint(
             dirpath=checkpoint_dir,
-            filename="bilstm-{epoch:02d}",
+            filename="trajectory-{epoch:02d}",
             monitor="val/loss",
             mode="min",
             save_top_k=3,
@@ -188,6 +188,44 @@ def main() -> None:
 
     if not args.fast_dev_run:
         trainer.test(module, datamodule=datamodule)
+
+        last_ckpt = checkpoint_dir / "last.ckpt"
+        vis_dir = Path(logger.log_dir) / "vis"
+        vis_dir.mkdir(parents=True, exist_ok=True)
+        if last_ckpt.exists():
+            visualize_script = (
+                Path(__file__).parents[0]
+                / "visualize_trajectory.py"
+            )
+            cmd = [
+                sys.executable,
+                str(visualize_script),
+                "--config",
+                args.config,
+                "--checkpoint",
+                str(last_ckpt),
+                "--split",
+                "test",
+                "--num-samples",
+                "8",
+                "--output-dir",
+                str(vis_dir),
+                "--gpus",
+                str(args.gpus),
+            ]
+            logging.getLogger(__name__).info(
+                "Running visualization: %s", " ".join(cmd)
+            )
+            try:
+                subprocess.run(cmd, check=True)
+            except subprocess.CalledProcessError as exc:
+                logging.getLogger(__name__).warning(
+                    "Visualization script failed with return code %s", exc.returncode
+                )
+        else:
+            logging.getLogger(__name__).warning(
+                "last.ckpt not found at %s; skipping visualization", last_ckpt
+            )
 
     print(f"Training complete. Checkpoints saved under {checkpoint_dir}")
     print(f"Outputs saved to {output_dir}")
