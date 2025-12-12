@@ -93,14 +93,31 @@ def run_sam3_video_inference(video_path: Path, prompt: str) -> None:
     if out_obj_ids is None:
         raise KeyError("SAM3 outputs missing 'out_obj_ids'")
 
-    # frame 0 におけるスコア最大の object id を「追跡対象」として固定する。
-    best_idx = int(np.argmax(probs))
-    target_obj_id = int(out_obj_ids[best_idx])
-    best_mask = masks[best_idx]  # (H, W), np.ndarray
-    print(
-        f"[sam3] Selected target obj_id={target_obj_id} (index={best_idx}), "
-        f"mask shape={best_mask.shape}, prob={float(probs[best_idx]):.3f}"
-    )
+    # frame 0 における prob 閾値以上の object id を「追跡対象」として固定する。
+    # 少なくとも1つは選ぶ（閾値で0件になった場合は最大probの1つを選択）。
+    threshold = float(getattr(run_sam3_video_inference, "prob_threshold", 0.5))
+    keep_idx = np.where(probs >= threshold)[0]
+    if keep_idx.size == 0:
+        keep_idx = np.array([int(np.argmax(probs))], dtype=np.int64)
+
+    target_obj_ids = [int(x) for x in out_obj_ids[keep_idx]]
+    target_obj_ids = sorted(set(target_obj_ids))
+    print(f"[sam3] Selected target obj_ids (prob>={threshold}): {target_obj_ids}")
+
+    # オブジェクトごとに色を割り当て（BGR）
+    palette = [
+        (0, 255, 0),
+        (0, 0, 255),
+        (255, 0, 0),
+        (0, 255, 255),
+        (255, 0, 255),
+        (255, 255, 0),
+        (255, 255, 255),
+    ]
+    obj_id_to_color: dict[int, np.ndarray] = {
+        obj_id: np.array(palette[i % len(palette)], dtype=np.uint8)
+        for i, obj_id in enumerate(target_obj_ids)
+    }
 
     # OpenCV で入力動画を読み込み、各フレームに対応するマスクを適用して出力動画を書き出す。
     cap = cv2.VideoCapture(str(video_path))
@@ -123,11 +140,11 @@ def run_sam3_video_inference(video_path: Path, prompt: str) -> None:
         cap.release()
         raise RuntimeError(f"Failed to open VideoWriter for {output_path}")
 
-    # オーバーレイ色（BGR）とアルファ
-    overlay_color = np.array([0, 255, 0], dtype=np.uint8)  # Green
     alpha = 0.5
 
-    def overlay_mask_on_frame(frame: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    def overlay_mask_on_frame(
+        frame: np.ndarray, mask: np.ndarray, color: np.ndarray
+    ) -> np.ndarray:
         if mask.shape != (height, width):
             resized = cv2.resize(
                 mask.astype(np.float32),
@@ -139,7 +156,7 @@ def run_sam3_video_inference(video_path: Path, prompt: str) -> None:
             mask_bool_local = mask.astype(bool)
 
         frame_float = frame.astype(np.float32)
-        color_float = overlay_color.astype(np.float32)
+        color_float = color.astype(np.float32)
         mask3 = mask_bool_local[:, :, None]
         blended = alpha * color_float[None, None, :] + (1.0 - alpha) * frame_float
         frame_float = np.where(mask3, blended, frame_float)
@@ -178,10 +195,18 @@ def run_sam3_video_inference(video_path: Path, prompt: str) -> None:
                         and frame_masks.ndim == 3
                         and frame_obj_ids.ndim == 1
                     ):
-                        matches = np.where(frame_obj_ids == target_obj_id)[0]
-                        if matches.size > 0:
+                        # 追跡対象の obj_id を全て重ねる
+                        for obj_id in target_obj_ids:
+                            matches = np.where(frame_obj_ids == obj_id)[0]
+                            if matches.size == 0:
+                                continue
+                            color = obj_id_to_color.get(obj_id)
+                            if color is None:
+                                continue
                             frame = overlay_mask_on_frame(
-                                frame, frame_masks[int(matches[0])]
+                                frame,
+                                frame_masks[int(matches[0])],
+                                color,
                             )
 
                 writer.write(frame)
@@ -213,8 +238,14 @@ def main() -> None:
     parser.add_argument(
         "--prompt",
         type=str,
-        default="tennis player",
+        default="tennis palyer",
         help="Text prompt for SAM3",
+    )
+    parser.add_argument(
+        "--prob-threshold",
+        type=float,
+        default=0.8,
+        help="Keep all objects whose frame-0 probability is >= this threshold.",
     )
     args = parser.parse_args()
 
@@ -224,6 +255,7 @@ def main() -> None:
         if fallback.exists():
             video_path = fallback
 
+    setattr(run_sam3_video_inference, "prob_threshold", float(args.prob_threshold))
     run_sam3_video_inference(video_path=video_path, prompt=args.prompt)
 
 
