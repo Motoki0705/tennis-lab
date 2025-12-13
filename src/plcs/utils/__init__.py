@@ -5,9 +5,4 @@ Note:
     import directly from src.utils.geometry.
 """
 
-from src.plcs.utils.config import load_config, merge_configs
-
-__all__ = [
-    "load_config",
-    "merge_configs",
-]
+__all__ = []

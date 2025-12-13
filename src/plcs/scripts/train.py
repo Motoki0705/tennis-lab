@@ -1,16 +1,12 @@
-"""Training script for PLCS model.
-
-Usage:
-    python -m plcs.scripts.train --config plcs/configs/default.yaml
-    python -m plcs.scripts.train --epochs 50 --batch-size 128
-"""
+"""Training script for PLCS models using Hydra configurations."""
 
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
 
+import hydra
 import pytorch_lightning as pl
+from hydra.utils import to_absolute_path
 from omegaconf import OmegaConf
 from pytorch_lightning.callbacks import (
     EarlyStopping,
@@ -19,132 +15,55 @@ from pytorch_lightning.callbacks import (
 )
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from src.plcs.data.datamodule import PLCSDataModule
+from src.plcs.configs import PLCSConfig, register_configs
+from src.plcs.data.datamodule import PLCSDataModule, PLCSSequenceDataModule
 from src.plcs.training.lightning_module import PLCSLightningModule
-from src.plcs.utils.config import get_default_config, load_config, merge_configs
+from src.plcs.training.sequence_lightning_module import PLCSSequenceLightningModule
+
+register_configs()
 
 
-def parse_args() -> argparse.Namespace:
-    """Parse command line arguments.
+def _select_devices(gpus: int) -> tuple[str, int]:
+    """Return accelerator/devices tuple based on requested GPUs."""
 
-    Returns:
-        argparse.Namespace: Parsed arguments.
-
-    """
-    parser = argparse.ArgumentParser(description="Train PLCS model")
-
-    # Config
-    parser.add_argument(
-        "--config",
-        type=str,
-        default=None,
-        help="Path to YAML config file",
-    )
-
-    # Override common parameters
-    parser.add_argument("--epochs", type=int, default=None, help="Max epochs")
-    parser.add_argument("--batch-size", type=int, default=None, help="Batch size")
-    parser.add_argument("--lr", type=float, default=None, help="Learning rate")
-    parser.add_argument("--hidden-dim", type=int, default=None, help="Hidden dimension")
-    parser.add_argument("--num-layers", type=int, default=None, help="Number of layers")
-
-    # Training options
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="outputs/plcs",
-        help="Output directory for checkpoints and logs",
-    )
-    parser.add_argument("--seed", type=int, default=42, help="Random seed")
-    parser.add_argument(
-        "--gpus",
-        type=int,
-        default=1,
-        help="Number of GPUs (0 for CPU)",
-    )
-    parser.add_argument(
-        "--fast-dev-run",
-        action="store_true",
-        help="Run quick test with 1 batch",
-    )
-    parser.add_argument(
-        "--resume",
-        type=str,
-        default=None,
-        help="Path to checkpoint to resume from",
-    )
-
-    return parser.parse_args()
+    if gpus > 0:
+        return "gpu", gpus
+    return "cpu", 1
 
 
-def build_config(args: argparse.Namespace) -> OmegaConf:
-    """Build configuration from defaults and arguments.
+def _ensure_absolute(path: str | None) -> str | None:
+    """Convert relative paths to absolute paths using the original CWD."""
 
-    Args:
-        args: Parsed command line arguments.
-
-    Returns:
-        OmegaConf: Merged configuration.
-
-    """
-    # Start with defaults
-    config = get_default_config()
-
-    # Load config file if provided
-    if args.config is not None:
-        file_config = load_config(args.config)
-        config = merge_configs(config, file_config)
-
-    # Apply CLI overrides
-    overrides = {}
-
-    if args.epochs is not None:
-        overrides.setdefault("training", {})["max_epochs"] = args.epochs
-    if args.batch_size is not None:
-        overrides.setdefault("data", {})["batch_size"] = args.batch_size
-    if args.lr is not None:
-        overrides.setdefault("training", {})["learning_rate"] = args.lr
-    if args.hidden_dim is not None:
-        overrides.setdefault("model", {})["hidden_dim"] = args.hidden_dim
-    if args.num_layers is not None:
-        overrides.setdefault("model", {})["num_layers"] = args.num_layers
-
-    if overrides:
-        config = merge_configs(config, overrides)
-
-    return config
+    if path is None:
+        return None
+    return to_absolute_path(path)
 
 
-def main() -> None:
-    """Main training function."""
-    args = parse_args()
+def run_training(config: PLCSConfig) -> None:
+    """Execute PLCS training with the provided configuration."""
 
-    # Set seed
-    pl.seed_everything(args.seed)
+    pl.seed_everything(config.training.seed)
 
-    # Build config
-    config = build_config(args)
-    print("Configuration:")
-    print(OmegaConf.to_yaml(config))
-
-    # Create output directory
-    output_dir = Path(args.output_dir)
+    output_dir = Path(to_absolute_path(config.training.output_dir))
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save config
+    # Save resolved config for reproducibility
     OmegaConf.save(config, output_dir / "config.yaml")
 
-    # Create data module
-    data_module = PLCSDataModule(config)
+    is_sequence = config.data.mode == "sequence"
+    if is_sequence:
+        data_module = PLCSSequenceDataModule(config)
+        model = PLCSSequenceLightningModule(config)
+        checkpoint_prefix = "plcs-seq"
+    else:
+        data_module = PLCSDataModule(config)
+        model = PLCSLightningModule(config)
+        checkpoint_prefix = "plcs"
 
-    # Create model
-    model = PLCSLightningModule(config)
-
-    # Callbacks
     callbacks = [
         ModelCheckpoint(
             dirpath=output_dir / "checkpoints",
-            filename="plcs-{epoch:02d}",
+            filename=f"{checkpoint_prefix}-{{epoch:02d}}",
             monitor="val/epoch_position_error_m",
             mode="min",
             save_top_k=3,
@@ -158,36 +77,41 @@ def main() -> None:
         LearningRateMonitor(logging_interval="step"),
     ]
 
-    # Logger
     logger = TensorBoardLogger(
-        save_dir=output_dir,
+        save_dir=str(output_dir),
         name="logs",
     )
 
-    # Trainer
+    accelerator, devices = _select_devices(config.training.gpus)
+
     trainer = pl.Trainer(
         max_epochs=config.training.max_epochs,
-        accelerator="gpu" if args.gpus > 0 else "cpu",
-        devices=args.gpus if args.gpus > 0 else 1,
+        accelerator=accelerator,
+        devices=devices,
         callbacks=callbacks,
         logger=logger,
-        gradient_clip_val=config.training.get("gradient_clip_val", 1.0),
-        fast_dev_run=args.fast_dev_run,
+        gradient_clip_val=config.training.gradient_clip_val,
+        fast_dev_run=config.training.fast_dev_run,
         deterministic=True,
     )
 
-    # Train
     trainer.fit(
         model,
         datamodule=data_module,
-        ckpt_path=args.resume,
+        ckpt_path=_ensure_absolute(config.training.resume),
     )
 
-    # Test
-    if not args.fast_dev_run:
+    if not config.training.fast_dev_run:
         trainer.test(model, datamodule=data_module)
 
     print(f"Training complete. Outputs saved to {output_dir}")
+
+
+@hydra.main(version_base=None, config_name="plcs")
+def main(config: PLCSConfig) -> None:  # pragma: no cover - CLI entry point
+    """Hydra entry point for frame-based PLCS training."""
+
+    run_training(config)
 
 
 if __name__ == "__main__":
