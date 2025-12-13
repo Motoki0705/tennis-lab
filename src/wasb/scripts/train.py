@@ -1,88 +1,36 @@
-"""Training script for WASB tennis models."""
+"""Training script for WASB tennis models.
+
+Run with Hydra-style overrides, for example:
+
+```
+python -m src.wasb.scripts.train training.max_epochs=50 data.batch_size=32
+```
+"""
 
 from __future__ import annotations
 
-import argparse
 import logging
 from pathlib import Path
 
+import hydra
 import pytorch_lightning as pl
 import torch
-from omegaconf import OmegaConf
+from hydra.core.hydra_config import HydraConfig
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.nn import functional as F
 from torchvision.utils import save_image
 
+from src.wasb.configs.schema import register_configs
 from src.wasb.data.datamodule import TennisDataModule
 from src.wasb.models import build_model
 from src.wasb.training.lightning_module import WASBLightningModule
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
-from src.wasb.utils.config import load_config, merge_configs, resolve_model_name
+from src.wasb.utils.config import resolve_model_name
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train WASB tennis model")
-    parser.add_argument(
-        "--config",
-        type=str,
-        default=str(Path(__file__).parents[1] / "configs" / "default.yaml"),
-        help="Path to YAML config",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="outputs/wasb",
-        help="Directory to save checkpoints and logs",
-    )
-    parser.add_argument("--epochs", type=int, default=None, help="Max epochs override")
-    parser.add_argument("--batch-size", type=int, default=None, help="Batch size override")
-    parser.add_argument("--lr", type=float, default=None, help="Learning rate override")
-    parser.add_argument(
-        "--backbone-lr", type=float, default=None, help="Backbone learning rate override"
-    )
-    parser.add_argument("--seed", type=int, default=42, help="Random seed")
-    parser.add_argument("--gpus", type=int, default=1, help="Number of GPUs (0 for CPU)")
-    parser.add_argument(
-        "--fast-dev-run",
-        action="store_true",
-        help="Run a quick test with a single batch",
-    )
-    parser.add_argument(
-        "--resume",
-        type=str,
-        default=None,
-        help="Path to checkpoint to resume from",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Load config and data, fetch one batch, then exit without training.",
-    )
-    return parser.parse_args()
-
-
-def build_config(args: argparse.Namespace) -> OmegaConf:
-    default_config = load_config(args.config)
-    config = default_config
-
-    overrides = {}
-    if args.epochs is not None:
-        overrides.setdefault("training", {})["max_epochs"] = args.epochs
-    if args.batch_size is not None:
-        overrides.setdefault("data", {})["batch_size"] = args.batch_size
-    if args.lr is not None:
-        overrides.setdefault("training", {})["learning_rate"] = args.lr
-    if args.backbone_lr is not None:
-        overrides.setdefault("training", {})["backbone_learning_rate"] = args.backbone_lr
-
-    if overrides:
-        config = merge_configs(config, overrides)
-
-    return config
-
-
-def _setup_logging(config: OmegaConf) -> None:
+def _setup_logging(config: DictConfig) -> None:
     """Initialize Python logging from the config.
 
     Expects a ``logging`` section in the root config with keys:
@@ -148,7 +96,7 @@ def _save_sample_visuals(batch: dict, out_dir: Path) -> None:
         (out_dir / "frame_paths.txt").write_text("\n".join(selected_paths))
 
 
-def run_dry_run(config: OmegaConf, output_dir: Path) -> None:
+def run_dry_run(config: DictConfig, output_dir: Path) -> None:
     """Verify config and dataloader by loading a single batch."""
     print("Running dry run (no training)...")
     # Force CPU-only to avoid CUDA init failures in restricted environments.
@@ -211,26 +159,30 @@ def run_dry_run(config: OmegaConf, output_dir: Path) -> None:
     trainer.fit(lightning_module, datamodule=datamodule)
 
 
-def main() -> None:
-    args = parse_args()
-    pl.seed_everything(args.seed)
 
-    config = build_config(args)
+register_configs()
+
+
+@hydra.main(config_path="../configs", config_name="train", version_base="1.3")
+def main(config: DictConfig) -> None:
+    pl.seed_everything(config.run.seed)
+
     _setup_logging(config)
     print("Configuration:")
     print(OmegaConf.to_yaml(config))
 
-    model_name = resolve_model_name(config, args.config)
-    output_dir = Path(args.output_dir) / model_name
+    cfg_name = HydraConfig.get().job.get("config_name", "train")
+    model_name = resolve_model_name(config, cfg_name)
+    output_dir = Path(config.run.output_dir) / model_name
     output_dir.mkdir(parents=True, exist_ok=True)
     OmegaConf.save(config, output_dir / "config.yaml")
 
-    if args.dry_run:
+    if config.run.dry_run:
         run_dry_run(config, output_dir)
         return
 
     resume_ckpt = resolve_resume_ckpt_path(
-        args_resume=args.resume,
+        args_resume=None,
         config=config,
         output_dir=output_dir,
     )
@@ -271,17 +223,17 @@ def main() -> None:
 
     trainer = pl.Trainer(
         max_epochs=config.training.max_epochs,
-        accelerator="gpu" if args.gpus > 0 else "cpu",
-        devices=args.gpus if args.gpus > 0 else 1,
+        accelerator="gpu" if config.run.gpus > 0 else "cpu",
+        devices=config.run.gpus if config.run.gpus > 0 else 1,
         callbacks=callbacks,
         logger=logger,
-        fast_dev_run=args.fast_dev_run,
-        precision=config.training.precision
+        fast_dev_run=config.run.fast_dev_run,
+        precision=config.training.precision,
     )
 
     trainer.fit(lightning_module, datamodule=datamodule, ckpt_path=resume_ckpt)
 
-    if not args.fast_dev_run:
+    if not config.run.fast_dev_run:
         trainer.test(lightning_module, datamodule=datamodule)
 
     print(f"Training complete. Outputs saved to {output_dir}")
