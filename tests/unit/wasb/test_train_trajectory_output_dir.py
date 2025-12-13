@@ -17,7 +17,7 @@ def test_resolve_model_name_from_defaults() -> None:
 
 def test_resolve_model_name_from_wasb_default_config() -> None:
     repo_root = Path(__file__).resolve().parents[3]
-    config_path = repo_root / "src" / "wasb" / "configs" / "default.yaml"
+    config_path = repo_root / "src" / "wasb" / "configs" / "train.yaml"
     config = load_config(config_path)
 
     assert resolve_model_name(config, config_path) == str(config.model.name)
