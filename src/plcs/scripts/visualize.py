@@ -1,35 +1,19 @@
-#!/usr/bin/env python
-"""Unified CLI for PLCS scene visualization and prediction.
-
-This script provides three modes:
-- visualize: Visualize ground truth scene data
-- predict: Run single-frame model predictions and visualize
-- predict-seq: Run sequence model predictions and visualize
-
-Usage:
-    # Ground truth visualization
-    python -m plcs.scripts.visualize visualize data/plcs_scenes/scene_000000.npz --view 3d
-
-    # Single-frame model prediction
-    python -m plcs.scripts.visualize predict data/plcs_scenes/scene_000000.npz \\
-        --checkpoint outputs/plcs/checkpoints/last.ckpt --view animation
-
-    # Sequence model prediction
-    python -m plcs.scripts.visualize predict-seq data/plcs_scenes/scene_000000.npz \\
-        --checkpoint outputs/plcs_sequence/checkpoints/last.ckpt --view multi
-"""
+"""Unified CLI for PLCS scene visualization and prediction using Hydra."""
 
 from __future__ import annotations
 
-import argparse
+from dataclasses import dataclass
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import hydra
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from hydra.utils import to_absolute_path
 
+from src.plcs.configs import VisualizationConfig, register_configs
 from src.plcs.data.scene_generator import SceneGenerator
 from src.utils.rendering import PLCSSceneRenderer as SceneRenderer
 
@@ -37,77 +21,65 @@ if TYPE_CHECKING:
     from src.plcs.data.scene_generator import SceneData
 
 
+register_configs()
+
+
+@dataclass
+class RuntimeConfig:
+    """Resolved configuration values for visualization workflows."""
+
+    mode: str
+    scene_path: Path
+    frame: int
+    view: str
+    camera: int
+    animation_view: str
+    fps: float | None
+    save: Path | None
+    info: bool
+    checkpoint: str | None
+    device: str
+
+
 # =============================================================================
-# Common Utilities
+# Helpers
 # =============================================================================
 
 
-def add_common_args(parser: argparse.ArgumentParser) -> None:
-    """Add common arguments shared by all subcommands."""
-    parser.add_argument(
-        "scene_path",
-        type=Path,
-        help="Path to scene NPZ file",
-    )
-    parser.add_argument(
-        "--frame",
-        type=int,
-        default=0,
-        help="Frame index to visualize (for static views)",
-    )
-    parser.add_argument(
-        "--view",
-        type=str,
-        choices=["3d", "2d", "camera", "multi", "animation"],
-        default="multi",
-        help="View type",
-    )
-    parser.add_argument(
-        "--camera",
-        type=int,
-        default=0,
-        help="Camera index for camera view and prediction",
-    )
-    parser.add_argument(
-        "--animation-view",
-        type=str,
-        choices=["3d", "2d_topdown", "camera"],
-        default="2d_topdown",
-        help="View type for animation",
-    )
-    parser.add_argument(
-        "--fps",
-        type=float,
-        default=None,
-        help="FPS for animation (default: use scene FPS)",
-    )
-    parser.add_argument(
-        "--save",
-        type=Path,
-        default=None,
-        help="Save figure/animation to file",
-    )
-    parser.add_argument(
-        "--info",
-        action="store_true",
-        help="Print scene info and exit",
+def _resolve_device(device: str) -> str:
+    if device == "auto":
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    return device
+
+
+def build_runtime_config(cfg: VisualizationConfig) -> RuntimeConfig:
+    """Convert Hydra config into runtime-friendly values."""
+
+    return RuntimeConfig(
+        mode=cfg.mode,
+        scene_path=Path(to_absolute_path(cfg.scene_path)),
+        frame=cfg.frame,
+        view=cfg.view,
+        camera=cfg.camera,
+        animation_view=cfg.animation_view,
+        fps=cfg.fps,
+        save=Path(to_absolute_path(cfg.save)) if cfg.save else None,
+        info=cfg.info,
+        checkpoint=to_absolute_path(cfg.checkpoint) if cfg.checkpoint else None,
+        device=_resolve_device(cfg.device),
     )
 
 
-def add_model_args(parser: argparse.ArgumentParser) -> None:
-    """Add model-related arguments for predict subcommands."""
-    parser.add_argument(
-        "--checkpoint",
-        type=str,
-        required=True,
-        help="Path to model checkpoint",
-    )
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="cuda" if torch.cuda.is_available() else "cpu",
-        help="Device to run on",
-    )
+def _require_checkpoint(cfg: RuntimeConfig) -> bool:
+    if cfg.checkpoint is None:
+        print("Error: checkpoint must be provided for prediction modes.")
+        return False
+    return True
+
+
+# =============================================================================
+# Core logic
+# =============================================================================
 
 
 def print_scene_info(scene: SceneData) -> None:
@@ -148,88 +120,80 @@ def print_scene_info(scene: SceneData) -> None:
         )
 
 
-def validate_frame_and_camera(scene: SceneData, args: argparse.Namespace) -> int | None:
-    """Validate frame and camera indices.
+def validate_frame_and_camera(scene: SceneData, cfg: RuntimeConfig) -> int | None:
+    """Validate frame and camera indices."""
 
-    Returns:
-        None if validation passes, error code (int) otherwise.
-
-    """
     num_frames = scene.meta["num_frames"]
-    if args.frame >= num_frames:
-        print(f"Error: Frame {args.frame} out of range (0-{num_frames - 1})")
+    if cfg.frame >= num_frames:
+        print(f"Error: Frame {cfg.frame} out of range (0-{num_frames - 1})")
         return 1
 
     num_cameras = len(scene.cameras)
-    if args.camera >= num_cameras:
-        print(f"Error: Camera {args.camera} out of range (0-{num_cameras - 1})")
+    if cfg.camera >= num_cameras:
+        print(f"Error: Camera {cfg.camera} out of range (0-{num_cameras - 1})")
         return 1
 
     return None
 
 
-def render_scene(scene: SceneData, args: argparse.Namespace) -> int:
-    """Render scene based on view type.
+def render_scene(scene: SceneData, cfg: RuntimeConfig) -> int:
+    """Render scene based on view type."""
 
-    Returns:
-        Exit code (0 for success).
-
-    """
     renderer = SceneRenderer()
 
-    if args.view == "animation":
-        print(f"Creating animation ({args.animation_view} view)...")
+    if cfg.view == "animation":
+        print(f"Creating animation ({cfg.animation_view} view)...")
         anim = renderer.create_animation(
             scene,
-            view=args.animation_view,
-            camera_idx=args.camera,
-            fps=args.fps,
+            view=cfg.animation_view,
+            camera_idx=cfg.camera,
+            fps=cfg.fps,
         )
 
-        if args.save:
-            print(f"Saving animation to {args.save}...")
-            anim.save(str(args.save), fps=args.fps or scene.meta["fps"])
+        if cfg.save:
+            print(f"Saving animation to {cfg.save}...")
+            anim.save(str(cfg.save), fps=cfg.fps or scene.meta["fps"])
             print("Done!")
         else:
             plt.show()
 
-    elif args.view == "3d":
-        print(f"Rendering 3D view (frame {args.frame})...")
-        fig, ax = renderer.render_frame_3d(scene, args.frame)
+    elif cfg.view == "3d":
+        print(f"Rendering 3D view (frame {cfg.frame})...")
+        fig, ax = renderer.render_frame_3d(scene, cfg.frame)
 
-        if args.save:
-            fig.savefig(str(args.save), dpi=150, bbox_inches="tight")
-            print(f"Saved to {args.save}")
+        if cfg.save:
+            fig.savefig(str(cfg.save), dpi=150, bbox_inches="tight")
+            print(f"Saved to {cfg.save}")
         else:
             plt.show()
 
-    elif args.view == "2d":
-        print(f"Rendering 2D top-down view (frame {args.frame})...")
-        fig, ax = renderer.render_frame_2d_topdown(scene, args.frame)
+    elif cfg.view == "2d":
+        print(f"Rendering 2D top-down view (frame {cfg.frame})...")
+        fig, ax = renderer.render_frame_2d_topdown(scene, cfg.frame)
 
-        if args.save:
-            fig.savefig(str(args.save), dpi=150, bbox_inches="tight")
-            print(f"Saved to {args.save}")
+        if cfg.save:
+            fig.savefig(str(cfg.save), dpi=150, bbox_inches="tight")
+            print(f"Saved to {cfg.save}")
         else:
             plt.show()
 
-    elif args.view == "camera":
-        print(f"Rendering camera {args.camera} view (frame {args.frame})...")
-        fig, ax = renderer.render_camera_view(scene, args.frame, args.camera)
+    elif cfg.view == "camera":
+        print(f"Rendering camera {cfg.camera} view (frame {cfg.frame})...")
+        fig, ax = renderer.render_camera_view(scene, cfg.frame, cfg.camera)
 
-        if args.save:
-            fig.savefig(str(args.save), dpi=150, bbox_inches="tight")
-            print(f"Saved to {args.save}")
+        if cfg.save:
+            fig.savefig(str(cfg.save), dpi=150, bbox_inches="tight")
+            print(f"Saved to {cfg.save}")
         else:
             plt.show()
 
-    elif args.view == "multi":
-        print(f"Rendering multi-view (frame {args.frame})...")
-        fig, axes = renderer.render_multi_view(scene, args.frame)
+    elif cfg.view == "multi":
+        print(f"Rendering multi-view (frame {cfg.frame})...")
+        fig, axes = renderer.render_multi_view(scene, cfg.frame)
 
-        if args.save:
-            fig.savefig(str(args.save), dpi=150, bbox_inches="tight")
-            print(f"Saved to {args.save}")
+        if cfg.save:
+            fig.savefig(str(cfg.save), dpi=150, bbox_inches="tight")
+            print(f"Saved to {cfg.save}")
         else:
             plt.show()
 
@@ -241,20 +205,20 @@ def render_scene(scene: SceneData, args: argparse.Namespace) -> int:
 # =============================================================================
 
 
-def main_visualize(args: argparse.Namespace) -> int:
+def main_visualize(cfg: RuntimeConfig) -> int:
     """Visualize ground truth scene data."""
-    print(f"Loading scene from {args.scene_path}...")
-    scene = SceneGenerator.load_scene(args.scene_path)
+    print(f"Loading scene from {cfg.scene_path}...")
+    scene = SceneGenerator.load_scene(cfg.scene_path)
 
-    if args.info:
+    if cfg.info:
         print_scene_info(scene)
         return 0
 
-    err = validate_frame_and_camera(scene, args)
+    err = validate_frame_and_camera(scene, cfg)
     if err is not None:
         return err
 
-    return render_scene(scene, args)
+    return render_scene(scene, cfg)
 
 
 # =============================================================================
@@ -262,29 +226,32 @@ def main_visualize(args: argparse.Namespace) -> int:
 # =============================================================================
 
 
-def main_predict(args: argparse.Namespace) -> int:
+def main_predict(cfg: RuntimeConfig) -> int:
     """Run single-frame model predictions and visualize."""
     from src.plcs.inference.predictor import PLCSPredictor
 
-    print(f"Loading checkpoint from {args.checkpoint}...")
-    predictor = PLCSPredictor.load_from_checkpoint(args.checkpoint, device=args.device)
+    if not _require_checkpoint(cfg):
+        return 1
 
-    print(f"Loading scene from {args.scene_path}...")
-    scene = SceneGenerator.load_scene(args.scene_path)
+    print(f"Loading checkpoint from {cfg.checkpoint}...")
+    predictor = PLCSPredictor.load_from_checkpoint(cfg.checkpoint, device=cfg.device)
 
-    if args.info:
+    print(f"Loading scene from {cfg.scene_path}...")
+    scene = SceneGenerator.load_scene(cfg.scene_path)
+
+    if cfg.info:
         print_scene_info(scene)
         return 0
 
-    err = validate_frame_and_camera(scene, args)
+    err = validate_frame_and_camera(scene, cfg)
     if err is not None:
         return err
 
     # Run predictions and overwrite SceneData
     num_frames = scene.meta["num_frames"]
-    cam = scene.cameras[args.camera]
+    cam = scene.cameras[cfg.camera]
 
-    print(f"Running predictions for {num_frames} frames using camera {args.camera}...")
+    print(f"Running predictions for {num_frames} frames using camera {cfg.camera}...")
     for frame_idx in range(num_frames):
         human_kp = cam.human_kp_uv[frame_idx]
         court_kp = cam.court_kp_uv[frame_idx]
@@ -302,7 +269,7 @@ def main_predict(args: argparse.Namespace) -> int:
         scene.position[frame_idx] = pred["position"].numpy()
         scene.rotation[frame_idx] = pred["rotation"].numpy()
 
-    return render_scene(scene, args)
+    return render_scene(scene, cfg)
 
 
 # =============================================================================
@@ -310,28 +277,29 @@ def main_predict(args: argparse.Namespace) -> int:
 # =============================================================================
 
 
-def main_predict_sequence(args: argparse.Namespace) -> int:
+def main_predict_sequence(cfg: RuntimeConfig) -> int:
     """Run sequence model predictions and visualize."""
     from src.plcs.inference.sequence_predictor import PLCSSequencePredictor
 
-    print(f"Loading sequence checkpoint from {args.checkpoint}...")
-    predictor = PLCSSequencePredictor.load_from_checkpoint(
-        args.checkpoint, device=args.device
-    )
+    if not _require_checkpoint(cfg):
+        return 1
 
-    print(f"Loading scene from {args.scene_path}...")
-    scene = SceneGenerator.load_scene(args.scene_path)
+    print(f"Loading sequence checkpoint from {cfg.checkpoint}...")
+    predictor = PLCSSequencePredictor.load_from_checkpoint(cfg.checkpoint, device=cfg.device)
 
-    if args.info:
+    print(f"Loading scene from {cfg.scene_path}...")
+    scene = SceneGenerator.load_scene(cfg.scene_path)
+
+    if cfg.info:
         print_scene_info(scene)
         return 0
 
-    err = validate_frame_and_camera(scene, args)
+    err = validate_frame_and_camera(scene, cfg)
     if err is not None:
         return err
 
     # Run sequence prediction and overwrite SceneData
-    cam = scene.cameras[args.camera]
+    cam = scene.cameras[cfg.camera]
 
     # Prepare sequence inputs: (T, K, 2) and (T, K)
     human_kp_seq = torch.from_numpy(cam.human_kp_uv).float()  # (T, 17, 2)
@@ -341,7 +309,7 @@ def main_predict_sequence(args: argparse.Namespace) -> int:
 
     num_frames = scene.meta["num_frames"]
     print(
-        f"Running sequence prediction for {num_frames} frames using camera {args.camera}..."
+        f"Running sequence prediction for {num_frames} frames using camera {cfg.camera}..."
     )
 
     pred = predictor.predict(
@@ -356,7 +324,7 @@ def main_predict_sequence(args: argparse.Namespace) -> int:
     scene.position[...] = pred["position"].cpu().numpy()  # (T, 3)
     scene.rotation[...] = pred["rotation"].cpu().numpy()  # (T, 2)
 
-    return render_scene(scene, args)
+    return render_scene(scene, cfg)
 
 
 # =============================================================================
@@ -364,59 +332,21 @@ def main_predict_sequence(args: argparse.Namespace) -> int:
 # =============================================================================
 
 
-def parse_args() -> argparse.Namespace:
-    """Parse command line arguments with subcommands."""
-    parser = argparse.ArgumentParser(
-        description="PLCS scene visualization and prediction CLI",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+@hydra.main(version_base=None, config_name="plcs_visualization")
+def main(cfg: VisualizationConfig) -> int:  # pragma: no cover - CLI entry
+    """Hydra entry point for visualization and prediction."""
 
-    subparsers = parser.add_subparsers(
-        dest="command", required=True, help="Available commands"
-    )
+    runtime_cfg = build_runtime_config(cfg)
 
-    # Subcommand: visualize
-    parser_vis = subparsers.add_parser(
-        "visualize",
-        help="Visualize ground truth scene data",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    add_common_args(parser_vis)
+    if runtime_cfg.mode == "visualize":
+        return main_visualize(runtime_cfg)
+    if runtime_cfg.mode == "predict":
+        return main_predict(runtime_cfg)
+    if runtime_cfg.mode in {"predict-seq", "predict_seq"}:
+        return main_predict_sequence(runtime_cfg)
 
-    # Subcommand: predict
-    parser_pred = subparsers.add_parser(
-        "predict",
-        help="Run single-frame model predictions and visualize",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    add_common_args(parser_pred)
-    add_model_args(parser_pred)
-
-    # Subcommand: predict-seq
-    parser_seq = subparsers.add_parser(
-        "predict-seq",
-        help="Run sequence model predictions and visualize",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    add_common_args(parser_seq)
-    add_model_args(parser_seq)
-
-    return parser.parse_args()
-
-
-def main() -> int:
-    """Main entry point."""
-    args = parse_args()
-
-    if args.command == "visualize":
-        return main_visualize(args)
-    elif args.command == "predict":
-        return main_predict(args)
-    elif args.command == "predict-seq":
-        return main_predict_sequence(args)
-    else:
-        print(f"Unknown command: {args.command}")
-        return 1
+    print(f"Unknown mode: {runtime_cfg.mode}")
+    return 1
 
 
 if __name__ == "__main__":
