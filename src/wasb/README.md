@@ -4,6 +4,18 @@ This directory contains utilities and models built around the WASB-SBDT codebase
 semi-automatic tennis ball annotation and dataset expansion, primarily to train
 transformer-based models such as `hrcnet`.
 
+## Training entrypoints
+
+The WASB training script now uses [Hydra](https://hydra.cc/) for configuration. You can
+launch training with grouped defaults and CLI overrides, for example:
+
+```bash
+python -m src.wasb.scripts.train training.max_epochs=50 data.batch_size=32
+```
+
+Configuration files live under `src/wasb/configs`, with grouped defaults for `data/`,
+`training/`, `logging/`, `metrics/`, and model variants under `model/`.
+
 ## High-level Goal
 
 Extend the original WASB tennis dataset (`data/tennis/game1..10`) with additional

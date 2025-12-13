@@ -15,7 +15,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from src.wasb.data.trajectory_datamodule import TrajectoryDataModule
 from src.wasb.training.trajectory_lightning_module import TrajectoryLightningModule
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
-from src.wasb.utils.config import load_config, merge_configs, resolve_model_name
+from src.wasb.utils.config import load_config, resolve_model_name
 
 
 def parse_args() -> argparse.Namespace:
@@ -57,21 +57,15 @@ def parse_args() -> argparse.Namespace:
 
 
 def build_config(args: argparse.Namespace) -> OmegaConf:
-    default_config = load_config(args.config)
-    config = default_config
-
-    overrides: dict = {}
+    overrides = []
     if args.epochs is not None:
-        overrides.setdefault("training", {})["max_epochs"] = args.epochs
+        overrides.append(f"training.max_epochs={args.epochs}")
     if args.batch_size is not None:
-        overrides.setdefault("data", {})["batch_size"] = args.batch_size
+        overrides.append(f"data.batch_size={args.batch_size}")
     if args.lr is not None:
-        overrides.setdefault("training", {})["learning_rate"] = args.lr
+        overrides.append(f"training.learning_rate={args.lr}")
 
-    if overrides:
-        config = merge_configs(config, overrides)
-
-    return config
+    return load_config(args.config, overrides=overrides)
 
 
 def _setup_logging(config: OmegaConf) -> None:
