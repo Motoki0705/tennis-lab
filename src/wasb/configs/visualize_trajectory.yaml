@@ -1,0 +1,15 @@
+defaults:
+  - data: trajectory
+  - training: trajectory
+  - logging: default
+  - run: visualize_trajectory
+  - model: trajectory_refiner
+  - visualization: trajectory
+  - _self_
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
+

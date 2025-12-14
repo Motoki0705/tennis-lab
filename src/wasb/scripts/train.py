@@ -15,19 +15,16 @@ from pathlib import Path
 import hydra
 import pytorch_lightning as pl
 import torch
-from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.nn import functional as F
 from torchvision.utils import save_image
 
-from src.wasb.configs.schema import register_configs
 from src.wasb.data.datamodule import TennisDataModule
 from src.wasb.models import build_model
 from src.wasb.training.lightning_module import WASBLightningModule
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
-from src.wasb.utils.config import resolve_model_name
 
 
 def _setup_logging(config: DictConfig) -> None:
@@ -39,7 +36,6 @@ def _setup_logging(config: DictConfig) -> None:
         fmt: str     (logging format string)
         datefmt: str (date format string)
     """
-
     log_cfg = getattr(config, "logging", None)
     if log_cfg is None:
         return
@@ -158,21 +154,16 @@ def run_dry_run(config: DictConfig, output_dir: Path) -> None:
 
     trainer.fit(lightning_module, datamodule=datamodule)
 
-
-
-register_configs()
-
-
 @hydra.main(config_path="../configs", config_name="train", version_base="1.3")
 def main(config: DictConfig) -> None:
+    """Hydra entry point."""
     pl.seed_everything(config.run.seed)
 
     _setup_logging(config)
     print("Configuration:")
     print(OmegaConf.to_yaml(config))
 
-    cfg_name = HydraConfig.get().job.get("config_name", "train")
-    model_name = resolve_model_name(config, cfg_name)
+    model_name = str(config.model.name)
     output_dir = Path(config.run.output_dir) / model_name
     output_dir.mkdir(parents=True, exist_ok=True)
     OmegaConf.save(config, output_dir / "config.yaml")

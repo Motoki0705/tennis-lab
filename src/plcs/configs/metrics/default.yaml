@@ -1,0 +1,4 @@
+position_threshold_m: 0.5
+angle_threshold_deg: 15.0
+velocity_threshold_m: 1.0
+

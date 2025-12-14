@@ -1,0 +1,10 @@
+category_ratios:
+  direct_net: 0.05
+  direct_fence: 0.05
+  in_court: 0.60
+  out_court: 0.30
+
+in_court_cell_weights: uniform
+out_court_cell_weights: uniform
+per_from_cell_samples: 100
+
