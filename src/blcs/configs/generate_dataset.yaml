@@ -1,0 +1,15 @@
+defaults:
+  - physics: default
+  - shot: default
+  - camera: default
+  - sampling: default
+  - generator: default
+  - run: generate_dataset
+  - _self_
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
+

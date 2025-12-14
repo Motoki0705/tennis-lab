@@ -15,25 +15,24 @@ Requirements:
 
 Usage:
     # Download all videos in urls.yaml
-    python -m src.wasb.scripts.download_videos
+    uv run python -m src.wasb.scripts.download_videos
 
     # Download with custom urls.yaml location
-    python -m src.wasb.scripts.download_videos --urls path/to/urls.yaml
+    uv run python -m src.wasb.scripts.download_videos urls_path=path/to/urls.yaml
 
     # Check status
-    python -m src.wasb.scripts.download_videos --status
+    uv run python -m src.wasb.scripts.download_videos mode=status
 
     # Reset failed downloads
-    python -m src.wasb.scripts.download_videos --reset-failed
+    uv run python -m src.wasb.scripts.download_videos mode=reset_failed
 
     # Force re-download specific URL
-    python -m src.wasb.scripts.download_videos --reset-url "https://..."
+    uv run python -m src.wasb.scripts.download_videos mode=reset_url reset_url="https://..."
 
 """
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 import subprocess
@@ -43,7 +42,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
+import hydra
 import yaml
+from omegaconf import DictConfig
 
 # Default paths
 DEFAULT_URLS_PATH = Path("data/tennis/raw/urls.yaml")
@@ -156,12 +157,14 @@ class VideoDownloader:
     def __init__(
         self,
         output_dir: str | Path = DEFAULT_OUTPUT_DIR,
+        meta_path: str | Path = DEFAULT_META_PATH,
         format_spec: str = "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/best[vcodec^=avc1]/best",
     ) -> None:
         """Initialize downloader.
 
         Args:
             output_dir: Directory to save downloaded videos.
+            meta_path: Path to the persistent meta.json state file.
             format_spec: yt-dlp format specification.
 
         """
@@ -169,7 +172,7 @@ class VideoDownloader:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.format_spec = format_spec
 
-        self._meta_path = DEFAULT_META_PATH
+        self._meta_path = Path(meta_path)
         self._meta: DownloadMeta | None = None
 
     def download_all(
@@ -300,7 +303,7 @@ class VideoDownloader:
             self._load_meta()
 
         count = 0
-        for key, status in self._meta.downloads.items():
+        for _key, status in self._meta.downloads.items():
             should_reset = False
 
             if (
@@ -444,11 +447,7 @@ class VideoDownloader:
             Downloaded filename.
 
         """
-        # Build output template
-        if entry.name:
-            output_template = f"{entry.name}.%(ext)s"
-        else:
-            output_template = "%(title)s.%(ext)s"
+        output_template = f"{entry.name}.%(ext)s" if entry.name else "%(title)s.%(ext)s"
 
         output_path = self.output_dir / output_template
 
@@ -503,11 +502,7 @@ class VideoDownloader:
 
         # Find downloaded file
         # yt-dlp may change extension, so search for matching files
-        if entry.name:
-            pattern = f"{entry.name}.*"
-        else:
-            # Find most recently modified file
-            pattern = "*"
+        pattern = f"{entry.name}.*" if entry.name else "*"
 
         matching_files = sorted(
             self.output_dir.glob(pattern),
@@ -542,10 +537,8 @@ class VideoDownloader:
         print(f"Skipped: {skipped}")
 
 
-def show_status(args: argparse.Namespace) -> int:
+def show_status(meta_path: Path) -> int:
     """Show download status."""
-    meta_path = DEFAULT_META_PATH
-
     if not meta_path.exists():
         print(f"No meta.json found in {meta_path}")
         return 1
@@ -577,7 +570,7 @@ def show_status(args: argparse.Namespace) -> int:
 
     # Show details
     print("Download details:")
-    for key, status in sorted(downloads.items()):
+    for _key, status in sorted(downloads.items()):
         status_str = status["status"].upper()
         filename = status.get("filename", "-")
         size = status.get("file_size")
@@ -592,111 +585,65 @@ def show_status(args: argparse.Namespace) -> int:
     return 0
 
 
-def main() -> int:
-    """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Download tennis match videos from YouTube",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+def _run(cfg: DictConfig) -> int:
+    mode = str(cfg.mode)
+    meta_path = Path(str(cfg.download.meta_path))
 
-    # Mode selection
-    mode_group = parser.add_mutually_exclusive_group()
-    mode_group.add_argument(
-        "--status",
-        action="store_true",
-        help="Show download status",
-    )
-    mode_group.add_argument(
-        "--reset-failed",
-        action="store_true",
-        help="Reset failed downloads to pending",
-    )
-    mode_group.add_argument(
-        "--reset-all",
-        action="store_true",
-        help="Reset all downloads to pending",
-    )
-    mode_group.add_argument(
-        "--reset-url",
-        type=str,
-        help="Reset specific URL to pending",
-    )
-
-    # Paths
-    parser.add_argument(
-        "--urls",
-        type=str,
-        default=str(DEFAULT_URLS_PATH),
-        help=f"Path to urls.yaml (default: {DEFAULT_URLS_PATH})",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default=str(DEFAULT_OUTPUT_DIR),
-        help=f"Output directory (default: {DEFAULT_OUTPUT_DIR})",
-    )
-
-    # Options
-    parser.add_argument(
-        "--no-resume",
-        action="store_true",
-        help="Start fresh, ignore existing meta.json",
-    )
-    parser.add_argument(
-        "--format",
-        type=str,
-        default="bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/best[vcodec^=avc1]/best",
-        help="yt-dlp format specification",
-    )
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Suppress progress output",
-    )
-
-    args = parser.parse_args()
-
-    # Handle modes
-    if args.status:
-        return show_status(args)
+    if mode == "status":
+        return show_status(meta_path)
 
     downloader = VideoDownloader(
-        output_dir=args.output_dir,
-        format_spec=args.format,
+        output_dir=str(cfg.download.output_dir),
+        meta_path=str(cfg.download.meta_path),
+        format_spec=str(cfg.download.format_spec),
     )
 
-    if args.reset_failed:
+    if mode == "reset_failed":
         count = downloader.reset(failed_only=True)
         print(f"Reset {count} failed download(s) to pending.")
         return 0
 
-    if args.reset_all:
+    if mode == "reset_all":
         count = downloader.reset(all_downloads=True)
         print(f"Reset {count} download(s) to pending.")
         return 0
 
-    if args.reset_url:
-        count = downloader.reset(url=args.reset_url)
+    if mode == "reset_url":
+        if cfg.reset_url is None:
+            print("Error: reset_url must be provided when mode=reset_url", file=sys.stderr)
+            return 1
+        count = downloader.reset(url=str(cfg.reset_url))
         if count > 0:
-            print(f"Reset URL to pending: {args.reset_url}")
-        else:
-            print(f"URL not found: {args.reset_url}")
-        return 0 if count > 0 else 1
+            print(f"Reset URL to pending: {cfg.reset_url}")
+            return 0
+        print(f"URL not found: {cfg.reset_url}")
+        return 1
 
-    # Default: download all
+    if mode != "download":
+        print(
+            f"Error: unknown mode '{mode}' (expected download|status|reset_failed|reset_all|reset_url)",
+            file=sys.stderr,
+        )
+        return 1
+
     try:
         results = downloader.download_all(
-            urls_path=args.urls,
-            resume=not args.no_resume,
-            verbose=not args.quiet,
+            urls_path=str(cfg.urls_path),
+            resume=bool(cfg.resume),
+            verbose=bool(cfg.verbose),
         )
         failed = sum(1 for v in results.values() if v == "failed")
         return 0 if failed == 0 else 1
-
-    except FileNotFoundError as e:
-        print(f"Error: {e}", file=sys.stderr)
+    except FileNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
         return 1
 
 
+@hydra.main(config_path="../configs", config_name="download_videos", version_base="1.3")
+def main(cfg: DictConfig) -> None:  # pragma: no cover - CLI entry point
+    """Hydra entry point."""
+    raise SystemExit(_run(cfg))
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

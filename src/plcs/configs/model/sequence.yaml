@@ -1,0 +1,9 @@
+name: plcs_sequence
+
+hidden_dim: 256
+num_layers: 8
+num_heads: 8
+dropout: 0.1
+max_seq_len: 120
+architecture: sequence
+
