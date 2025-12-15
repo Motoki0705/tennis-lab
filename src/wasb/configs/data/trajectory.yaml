@@ -7,11 +7,11 @@ step: 8
 min_visible_per_window: 4
 image_ext: ".jpg"
 csv_filename: Label.csv
-block_mask_min_len: 0
-block_mask_max_len: 0
-sparse_mask_prob: 0.0
-noise_prob: 0.5
-noise_std_px: 5.0
+block_mask_min_len: 3
+block_mask_max_len: 5
+sparse_mask_prob: 0.1
+noise_prob: 0.1
+noise_std_px: 3.0
 batch_size: 32
 num_workers: 4
 pin_memory: true

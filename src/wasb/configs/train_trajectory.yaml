@@ -3,7 +3,7 @@ defaults:
   - training: trajectory
   - logging: default
   - run: trajectory
-  - model: trajectory_refiner
+  - model: trajectory_bilstm
   - _self_
 
 hydra:
