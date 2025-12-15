@@ -20,11 +20,11 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from tqdm import tqdm
 
-from src.wasb.models.clip_segmenter import ClipSegment, RuleBasedClipSegmenter
-from src.wasb.models.trajectory_completer import (
+from src.wasb.inference.trajectory_completion import (
     TrajectoryCompleter,
-    create_completer,
+    build_completer,
 )
+from src.wasb.models.clip_segmenter import ClipSegment, RuleBasedClipSegmenter
 from src.wasb.tennis_format import TennisLabelRow, row_from_visibility, save_label_csv
 from src.wasb.utils.streaming_loader import StreamingVideoLoader
 from src.wasb.utils.video_extractor import VideoExtractor
@@ -178,7 +178,7 @@ class AnnotationPipeline:
         # Initialize trajectory completer if enabled
         self.completer: TrajectoryCompleter | None = None
         if self.config.use_completion:
-            self.completer = create_completer(
+            self.completer = build_completer(
                 method=self.config.completion_method,
                 checkpoint_path=self.config.completion_checkpoint,
                 physics_gap_threshold=self.config.physics_gap_threshold,
