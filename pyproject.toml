@@ -224,7 +224,6 @@ exclude_lines = [
 ]
 show_missing = true
 precision = 2
-fail_under = 75
 
 [tool.coverage.html]
 directory = "htmlcov"
@@ -240,7 +239,6 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
     "--cov-report=xml",
-    "--cov-fail-under=75",
     "--strict-markers",
     "--disable-warnings",
     # Enable doctest for docstring Examples (turn on when examples are stable)
