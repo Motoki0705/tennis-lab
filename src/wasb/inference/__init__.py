@@ -1,5 +1,10 @@
 """Inference entrypoints and trajectory completion helpers."""
 
+from src.wasb.inference.event_detection import (
+    EventDetectionResult,
+    TrajectoryEventDetector,
+    load_event_detector_from_checkpoint,
+)
 from src.wasb.inference.hrcnet_predictor import HRCNetWASBPredictor
 from src.wasb.inference.trajectory_completion import (
     BiLSTMCompleter,
@@ -22,12 +27,16 @@ __all__ = [
     "HRCNetWASBPredictor",
     "TrajectoryCompleter",
     "CompletionResult",
+    "EventDetectionResult",
     "PhysicsInterpolator",
     "BiLSTMCompleter",
     "TransformerCompleter",
     "IterativeRefinementCompleter",
     "HybridCompleter",
+    "TrajectoryEventDetector",
     "build_completer",
+    "load_event_detector_from_checkpoint",
     "SingleVideoBallLocalizationPipeline",
     "VideoBallLocalizationResult",
+
 ]
