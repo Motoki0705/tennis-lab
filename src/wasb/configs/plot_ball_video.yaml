@@ -1,0 +1,36 @@
+defaults:
+  - _self_
+
+# Configuration for `src.wasb.scripts.plot_ball_video`.
+video_path: null
+output_path: null
+
+checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
+model: wasb            # wasb | hrcnet
+device: cpu            # cpu | cuda
+
+batch_size: 64
+max_frames: null
+score_threshold: 0.5
+
+completion:
+  enabled: true
+  method: hybrid       # physics | bilstm | transformer | refiner | hybrid
+  checkpoint_path: null
+  device: ${device}
+  max_gap: 15
+  physics_gap_threshold: 5
+
+render:
+  use_completion: true
+  radius: 6
+  thickness: -1
+  color_detected_bgr: [0, 255, 0]
+  color_completed_bgr: [0, 255, 255]
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
+
