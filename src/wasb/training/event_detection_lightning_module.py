@@ -48,10 +48,17 @@ class EventDetectionLightningModule(pl.LightningModule):
         self.ignore_index = int(train_cfg.get("ignore_index", -100))
         self.label_smoothing = float(train_cfg.get("label_smoothing", 0.0))
         self.event_boost = float(train_cfg.get("event_boost", 1.0))
+        self.background_weight_scale = float(train_cfg.get("background_weight_scale", 1.0))
 
         cfg_class_weights = train_cfg.get("class_weights")
         if class_weights is None and cfg_class_weights is not None:
             class_weights = torch.tensor(list(cfg_class_weights), dtype=torch.float32)
+        if class_weights is not None:
+            if class_weights.numel() != 3:
+                raise ValueError("class_weights must have 3 elements for classes [0, 1, 2]")
+            if self.background_weight_scale != 1.0:
+                class_weights = class_weights.clone()
+                class_weights[0] = class_weights[0] * float(self.background_weight_scale)
         self.register_buffer("_class_weights", class_weights, persistent=False)
 
         self.model = TrajectoryEventTransformer(
@@ -67,6 +74,7 @@ class EventDetectionLightningModule(pl.LightningModule):
         )
 
     def forward(self, xy_norm: Tensor, *, key_padding_mask: Tensor | None = None) -> Tensor:
+        """Perform a forward pass through the transformer."""
         return self.model(xy_norm, key_padding_mask=key_padding_mask)
 
     def _loss(self, logits: Tensor, target: Tensor) -> Tensor:
@@ -109,7 +117,11 @@ class EventDetectionLightningModule(pl.LightningModule):
 
         pred = pred[valid]
         target = target[valid]
-        acc = (pred == target).to(torch.float32).mean()
+        event_mask = (target == 1) | (target == 2)
+        if event_mask.any():
+            acc = (pred[event_mask] == target[event_mask]).to(torch.float32).mean()
+        else:
+            acc = torch.zeros((), device=target.device, dtype=torch.float32)
 
         pred_event = pred > 0
         target_event = target > 0
@@ -157,6 +169,7 @@ class EventDetectionLightningModule(pl.LightningModule):
         return loss, metrics
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
+        """Run a single training step and log metrics."""
         loss, metrics = self._shared_step(batch, "train")
         self.log("train/loss", loss, prog_bar=True)
         self.log("train/acc", metrics["acc"], prog_bar=True)
@@ -166,6 +179,7 @@ class EventDetectionLightningModule(pl.LightningModule):
         return loss
 
     def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
+        """Run a single validation step and log metrics."""
         loss, metrics = self._shared_step(batch, "val")
         self.log("val/loss", loss, prog_bar=True)
         self.log("val/acc", metrics["acc"], prog_bar=True)
@@ -174,6 +188,7 @@ class EventDetectionLightningModule(pl.LightningModule):
         self.log("val/bounce_f1", metrics["bounce_f1"])
 
     def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
+        """Run a single test step and log metrics."""
         loss, metrics = self._shared_step(batch, "test")
         self.log("test/loss", loss)
         self.log("test/acc", metrics["acc"])
@@ -182,6 +197,7 @@ class EventDetectionLightningModule(pl.LightningModule):
         self.log("test/bounce_f1", metrics["bounce_f1"])
 
     def configure_optimizers(self) -> dict[str, Any]:
+        """Configure optimizer and scheduler."""
         optimizer = AdamW(
             self.parameters(),
             lr=self.learning_rate,
@@ -213,4 +229,3 @@ class EventDetectionLightningModule(pl.LightningModule):
             "optimizer": optimizer,
             "lr_scheduler": {"scheduler": scheduler, "interval": "step"},
         }
-

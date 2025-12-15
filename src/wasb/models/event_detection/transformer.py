@@ -55,7 +55,8 @@ class TrajectoryEventTransformer(nn.Module):
             self.pos_embed = nn.Parameter(torch.zeros(self.max_len, self.d_model))
             nn.init.normal_(self.pos_embed, mean=0.0, std=0.02)
         elif self.positional_encoding == "sin":
-            self.register_buffer("_pos_embed_cache", torch.empty(0), persistent=False)
+            self._pos_embed_cache: Tensor = torch.empty(0)
+            self.register_buffer("_pos_embed_cache", self._pos_embed_cache, persistent=False)
         else:
             raise ValueError("positional_encoding must be 'sin' or 'learned'")
 
@@ -84,10 +85,10 @@ class TrajectoryEventTransformer(nn.Module):
         if self.positional_encoding == "learned":
             return self.pos_embed[:length].to(device=device)
 
-        cache: Tensor = self._pos_embed_cache  # type: ignore[attr-defined]
+        cache: Tensor = self._pos_embed_cache
         if cache.numel() == 0 or cache.shape[0] < length or cache.device != device:
             cache = _sinusoidal_positional_encoding(length, self.d_model, device)
-            self._pos_embed_cache = cache  # type: ignore[attr-defined]
+            self._pos_embed_cache = cache
         return cache[:length]
 
     def forward(self, xy_norm: Tensor, *, key_padding_mask: Tensor | None = None) -> Tensor:
@@ -97,6 +98,7 @@ class TrajectoryEventTransformer(nn.Module):
             xy_norm: Normalized coordinates, shape (B, T, 2).
             key_padding_mask: Optional boolean mask (B, T) where True indicates
                 timesteps to ignore (e.g., invisible ball).
+
         """
         if xy_norm.dim() != 3 or xy_norm.shape[-1] != 2:
             raise ValueError(f"xy_norm must have shape (B, T, 2), got {tuple(xy_norm.shape)}")
@@ -108,4 +110,3 @@ class TrajectoryEventTransformer(nn.Module):
         x = self.encoder(x, src_key_padding_mask=key_padding_mask)
         logits = self.head(x)  # (B, T, C)
         return logits
-

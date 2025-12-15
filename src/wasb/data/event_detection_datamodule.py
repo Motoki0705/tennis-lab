@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 import pytorch_lightning as pl
 import torch
@@ -43,6 +43,7 @@ class TrajectoryEventDataModule(pl.LightningDataModule):
         self.test_dataset: TrajectoryEventWindowDataset | None = None
 
     def setup(self, stage: str | None = None) -> None:
+        """Prepare datasets for the requested stage."""
         if stage in (None, "fit"):
             self.train_dataset = TrajectoryEventWindowDataset(
                 root_dir=self.root_dir,
@@ -52,7 +53,7 @@ class TrajectoryEventDataModule(pl.LightningDataModule):
                 image_ext=self.image_ext,
                 csv_filename=self.csv_filename,
                 min_visible_per_window=self.min_visible_per_window,
-                xy_scale=self.xy_scale,  # type: ignore[arg-type]
+                xy_scale=self.xy_scale,
                 ignore_invisible_targets=self.ignore_invisible_targets,
                 ignore_index=self.ignore_index,
             )
@@ -65,7 +66,7 @@ class TrajectoryEventDataModule(pl.LightningDataModule):
                 image_ext=self.image_ext,
                 csv_filename=self.csv_filename,
                 min_visible_per_window=self.min_visible_per_window,
-                xy_scale=self.xy_scale,  # type: ignore[arg-type]
+                xy_scale=self.xy_scale,
                 ignore_invisible_targets=self.ignore_invisible_targets,
                 ignore_index=self.ignore_index,
             )
@@ -80,7 +81,7 @@ class TrajectoryEventDataModule(pl.LightningDataModule):
                 image_ext=self.image_ext,
                 csv_filename=self.csv_filename,
                 min_visible_per_window=self.min_visible_per_window,
-                xy_scale=self.xy_scale,  # type: ignore[arg-type]
+                xy_scale=self.xy_scale,
                 ignore_invisible_targets=self.ignore_invisible_targets,
                 ignore_index=self.ignore_index,
             )
@@ -100,12 +101,15 @@ class TrajectoryEventDataModule(pl.LightningDataModule):
         )
 
     def train_dataloader(self) -> DataLoader:
+        """Return training dataloader."""
         return self._loader(self.train_dataset, shuffle=True)
 
     def val_dataloader(self) -> DataLoader:
+        """Return validation dataloader."""
         return self._loader(self.val_dataset, shuffle=False)
 
     def test_dataloader(self) -> DataLoader:
+        """Return test dataloader."""
         return self._loader(self.test_dataset, shuffle=False)
 
     def estimate_class_counts(
@@ -121,7 +125,7 @@ class TrajectoryEventDataModule(pl.LightningDataModule):
 
         for i in range(limit):
             sample = self.train_dataset[i]
-            target: torch.Tensor = sample["target_status"]  # type: ignore[assignment]
+            target: torch.Tensor = sample["target_status"]
             valid = target != self.ignore_index
             if not valid.any():
                 continue
@@ -139,4 +143,3 @@ class TrajectoryEventDataModule(pl.LightningDataModule):
         # Normalize to keep weight[0] ~= 1.0 as a stable reference.
         weights = weights / (weights[0].clamp(min=1e-6))
         return weights
-

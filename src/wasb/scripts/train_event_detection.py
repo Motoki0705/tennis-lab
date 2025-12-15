@@ -51,9 +51,9 @@ def _force_cpu_only() -> None:
     import types
 
     os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
-    torch.cuda.is_available = types.MethodType(lambda *_args, **_kwargs: False, torch.cuda)  # type: ignore[assignment]
-    torch.cuda.device_count = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)  # type: ignore[assignment]
-    torch.cuda.current_device = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)  # type: ignore[assignment]
+    torch.cuda.is_available = types.MethodType(lambda *_args, **_kwargs: False, torch.cuda)
+    torch.cuda.device_count = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)
+    torch.cuda.current_device = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)
 
 
 def run_dry_run(config: DictConfig, output_dir: Path) -> None:
@@ -79,6 +79,10 @@ def run_dry_run(config: DictConfig, output_dir: Path) -> None:
             max_windows=int(getattr(compute_cfg, "max_windows", 200))
         )
         weights = datamodule.class_weights_from_counts(counts)
+        bg_scale = float(getattr(config.training, "background_weight_scale", 1.0))
+        if bg_scale != 1.0:
+            weights = weights.clone()
+            weights[0] = weights[0] * bg_scale
 
     steps_per_epoch = len(train_loader)
     module = EventDetectionLightningModule(
@@ -101,7 +105,7 @@ def run_dry_run(config: DictConfig, output_dir: Path) -> None:
     (output_dir / "dry_run_ok.txt").write_text("ok\n", encoding="utf-8")
 
 
-@hydra.main(config_path="../configs", config_name="train_event_detection", version_base="1.3")
+@hydra.main(config_path="../configs", config_name="train_event_detection", version_base="1.3")  # type: ignore[misc]
 def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
     seed = int(config.run.seed)
@@ -139,6 +143,10 @@ def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
                 max_windows=int(getattr(compute_cfg, "max_windows", 5000))
             )
             weights = datamodule.class_weights_from_counts(counts)
+            bg_scale = float(getattr(config.training, "background_weight_scale", 1.0))
+            if bg_scale != 1.0:
+                weights = weights.clone()
+                weights[0] = weights[0] * bg_scale
             print(f"Estimated class counts: {counts.tolist()}")
             print(f"Using class weights: {weights.tolist()}")
 
@@ -185,4 +193,3 @@ def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
 
 if __name__ == "__main__":
     main()
-

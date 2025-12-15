@@ -37,7 +37,6 @@ class TrajectoryEventDetector:
         self.device = torch.device(device)
         self.module.to(self.device)
 
-    @torch.no_grad()
     def predict(
         self,
         *,
@@ -51,6 +50,7 @@ class TrajectoryEventDetector:
             xy: Array of shape (T, 2) in pixel coordinates.
             visibility: Array of shape (T,) where >0 indicates valid positions.
             xy_scale: (width, height) scaling used for normalization.
+
         """
         if xy.ndim != 2 or xy.shape[-1] != 2:
             raise ValueError(f"xy must have shape (T, 2), got {xy.shape}")
@@ -58,16 +58,19 @@ class TrajectoryEventDetector:
         if visibility.shape[0] != t:
             raise ValueError("visibility length must match xy length")
 
-        xy_t = torch.from_numpy(xy.astype(np.float32)).to(self.device)
-        scale_t = torch.tensor(xy_scale, dtype=torch.float32, device=self.device)
-        xy_norm = (xy_t / scale_t).unsqueeze(0)  # (1, T, 2)
+        with torch.no_grad():
+            xy_t = torch.from_numpy(xy.astype(np.float32)).to(self.device)
+            scale_t = torch.tensor(xy_scale, dtype=torch.float32, device=self.device)
+            xy_norm = (xy_t / scale_t).unsqueeze(0)  # (1, T, 2)
 
-        vis_np = visibility.astype(np.int32) if visibility.dtype != np.bool_ else visibility.astype(np.int32)
-        vis_t = torch.from_numpy(vis_np).to(self.device).unsqueeze(0)  # (1, T)
-        key_padding_mask = vis_t <= 0
+            vis_np = (
+                visibility.astype(np.int32) if visibility.dtype != np.bool_ else visibility.astype(np.int32)
+            )
+            vis_t = torch.from_numpy(vis_np).to(self.device).unsqueeze(0)  # (1, T)
+            key_padding_mask = vis_t <= 0
 
-        logits = self.module(xy_norm, key_padding_mask=key_padding_mask)  # (1, T, 3)
-        probs = torch.softmax(logits, dim=-1)[0].to(dtype=torch.float32).cpu().numpy()
+            logits = self.module(xy_norm, key_padding_mask=key_padding_mask)  # (1, T, 3)
+            probs = torch.softmax(logits, dim=-1)[0].to(dtype=torch.float32).cpu().numpy()
         pred = probs.argmax(axis=-1).astype(np.int64)
         return EventDetectionResult(pred_status=pred, probs=probs.astype(np.float32))
 
@@ -80,4 +83,3 @@ def load_event_detector_from_checkpoint(
     """Load an event detector from a Lightning checkpoint."""
     module = EventDetectionLightningModule.load_from_checkpoint(str(checkpoint_path))
     return TrajectoryEventDetector(module, device=device)
-
