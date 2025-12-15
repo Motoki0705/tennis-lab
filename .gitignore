@@ -139,9 +139,6 @@ Thumbs.db
 *.backup
 *.old
 
-# Agent workspace (tmp; never commit)
-agents_workspace/work/
-
 # Large files that should be tracked separately
 *.zip
 *.tar.gz
