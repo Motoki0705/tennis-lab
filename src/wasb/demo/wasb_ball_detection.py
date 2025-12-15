@@ -279,7 +279,7 @@ def create_output_video(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     height, width = frames[0].shape[:2]
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
     writer = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
     # Build frame-indexed results
@@ -408,6 +408,7 @@ def main() -> None:
     )
 
     print("Running ball detection...")
+    predictor.reset_tracker()
     results = predictor.predict(frames)
 
     # Count detections
