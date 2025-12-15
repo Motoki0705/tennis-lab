@@ -1,85 +1,34 @@
+"""Visualize WASB trajectory completion results (Hydra-based).
+
+Example commands:
+    `uv run python -m src.wasb.scripts.visualize_trajectory visualization.checkpoint=outputs/trajectory/logs/version_0/checkpoints/last.ckpt`
+
+Config entry point: `src/wasb/configs/visualize_trajectory.yaml`
 """
-Example use:
-```bash
-uv run python src/wasb/scripts/visualize_trajectory.py \
-  --config src/wasb/configs/trajectory.yaml \
-  --checkpoint outputs/trajectory/logs/version_2/checkpoints/last.ckpt \
-  --split test \
-  --num-samples 8 \
-  --output-dir outputs/trajectory/vis \
-  --gpus 1
-```
-"""
+
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
 
+import hydra
 import matplotlib.pyplot as plt
 import pytorch_lightning as pl
 import torch
-from omegaconf import OmegaConf
+from hydra.utils import to_absolute_path
+from omegaconf import DictConfig
 
 from src.wasb.data.trajectory_datamodule import TrajectoryDataModule
-from src.wasb.training.trajectory_lightning_module import (
-    TrajectoryLightningModule,
-)
-from src.wasb.utils.config import load_config
+from src.wasb.training.trajectory_lightning_module import TrajectoryLightningModule
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Visualize trajectory completion results",
-    )
-    parser.add_argument(
-        "--config",
-        type=str,
-        default=str(
-            Path(__file__).parents[1] / "configs" / "trajectory.yaml"
-        ),
-        help="Path to YAML config used for data paths and parameters",
-    )
-    parser.add_argument(
-        "--checkpoint",
-        type=str,
-        required=True,
-        help="Path to Lightning checkpoint (.ckpt) of the trained model",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="outputs/trajectory/vis",
-        help="Directory to save visualization images",
-    )
-    parser.add_argument(
-        "--split",
-        type=str,
-        choices=["train", "val", "test"],
-        default="test",
-        help="Which split to visualize",
-    )
-    parser.add_argument(
-        "--num-samples",
-        type=int,
-        default=8,
-        help="Number of windows to visualize",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="Random seed for shuffling/selection",
-    )
-    parser.add_argument(
-        "--gpus",
-        type=int,
-        default=0,
-        help="Number of GPUs to use (0 for CPU)",
-    )
-    return parser.parse_args()
+def _resolve_device(gpus: int) -> torch.device:
+    if gpus > 0 and torch.cuda.is_available():
+        return torch.device("cuda")
+    return torch.device("cpu")
 
 
-def load_datamodule(config: OmegaConf, split: str) -> TrajectoryDataModule:
+def load_datamodule(config: DictConfig, split: str) -> TrajectoryDataModule:
+    """Build and set up a trajectory datamodule for the requested split."""
     datamodule = TrajectoryDataModule(config)
     if split in ("train", "val"):
         datamodule.setup(stage="fit")
@@ -89,6 +38,7 @@ def load_datamodule(config: OmegaConf, split: str) -> TrajectoryDataModule:
 
 
 def get_dataloader(datamodule: TrajectoryDataModule, split: str):  # type: ignore[no-untyped-def]
+    """Return the dataloader matching the requested split."""
     if split == "train":
         return datamodule.train_dataloader()
     if split == "val":
@@ -96,7 +46,12 @@ def get_dataloader(datamodule: TrajectoryDataModule, split: str):  # type: ignor
     return datamodule.test_dataloader()
 
 
-def load_model(checkpoint_path: Path, config: OmegaConf, device: torch.device) -> TrajectoryLightningModule:
+def load_model(
+    checkpoint_path: Path,
+    config: DictConfig,
+    device: torch.device,
+) -> TrajectoryLightningModule:
+    """Load a trained lightning module from checkpoint."""
     module = TrajectoryLightningModule.load_from_checkpoint(
         checkpoint_path=str(checkpoint_path),
         config=config,
@@ -117,6 +72,7 @@ def visualize_batch(
     start_index: int,
     max_samples: int,
 ) -> int:
+    """Render up to `max_samples` windows from a single batch."""
     xy_input_norm = batch["xy_input_norm"].to(device)
     target_xy_norm = batch["target_xy_norm"].to(device)
     loss_mask_block = batch["loss_mask_block"].to(device)
@@ -140,7 +96,7 @@ def visualize_batch(
     target_px = target_xy_norm * scale
     pred_px = pred_norm * scale
 
-    bsz, T, _ = target_px.shape
+    bsz, _t, _ = target_px.shape
     num_saved = 0
 
     for b in range(bsz):
@@ -182,7 +138,6 @@ def visualize_batch(
                 marker="o",
                 label="input noisy",
             )
-
             ax.scatter(
                 pred[mask_noise, 0],
                 pred[mask_noise, 1],
@@ -219,7 +174,7 @@ def visualize_batch(
         ax.invert_yaxis()
 
         handles, labels = ax.get_legend_handles_labels()
-        uniq = dict(zip(labels, handles))
+        uniq = dict(zip(labels, handles, strict=False))
         ax.legend(uniq.values(), uniq.keys(), loc="best")
 
         out_path = output_dir / f"{split}_sample_{start_index + num_saved:03d}.png"
@@ -232,45 +187,40 @@ def visualize_batch(
     return num_saved
 
 
-def main() -> None:
-    args = parse_args()
-    pl.seed_everything(args.seed)
+@hydra.main(config_path="../configs", config_name="visualize_trajectory", version_base="1.3")
+def main(cfg: DictConfig) -> None:  # pragma: no cover - CLI entry point
+    """Hydra entry point."""
+    seed = int(cfg.run.seed)
+    pl.seed_everything(seed)
 
-    config = load_config(args.config)
+    if cfg.visualization.checkpoint is None:
+        raise ValueError("visualization.checkpoint is required")
 
-    output_dir = Path(args.output_dir)
+    checkpoint = Path(to_absolute_path(str(cfg.visualization.checkpoint)))
+    output_dir = Path(to_absolute_path(str(cfg.visualization.output_dir)))
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    datamodule = load_datamodule(config, args.split)
-    dataloader = get_dataloader(datamodule, args.split)
+    split = str(cfg.visualization.split)
+    max_samples = int(cfg.visualization.num_samples)
+    device = _resolve_device(int(cfg.run.gpus))
 
-    device = torch.device(
-        "cuda" if args.gpus > 0 and torch.cuda.is_available() else "cpu"
-    )
+    datamodule = load_datamodule(cfg, split=split)
+    dataloader = get_dataloader(datamodule, split=split)
+    module = load_model(checkpoint, cfg, device=device)
 
-    checkpoint_path = Path(args.checkpoint)
-    if not checkpoint_path.exists():
-        msg = f"Checkpoint not found: {checkpoint_path}"
-        raise FileNotFoundError(msg)
-
-    module = load_model(checkpoint_path, config, device)
-
-    num_saved = 0
+    num_done = 0
     for batch in dataloader:
-        if num_saved >= args.num_samples:
-            break
-        saved_now = visualize_batch(
-            batch=batch,
+        num_done += visualize_batch(
+            batch,
             module=module,
             device=device,
             output_dir=output_dir,
-            split=args.split,
-            start_index=num_saved,
-            max_samples=args.num_samples,
+            split=split,
+            start_index=num_done,
+            max_samples=max_samples,
         )
-        num_saved += saved_now
-
-    print(f"Saved {num_saved} samples to {output_dir}")
+        if num_done >= max_samples:
+            break
 
 
 if __name__ == "__main__":

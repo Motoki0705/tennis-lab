@@ -1,16 +1,22 @@
-"""Training script for BLCS.
+"""Train a BLCS model with Hydra-managed configuration.
 
-Usage:
-    python -m blcs.scripts.train [--config CONFIG_PATH] [--gpus NUM_GPUS]
+Example commands:
+    `uv run python -m src.blcs.scripts.train`
+    `uv run python -m src.blcs.scripts.train training.max_epochs=5 run.gpus=0`
+
+Config entry point: `src/blcs/configs/train.yaml`
 """
 
 from __future__ import annotations
 
-import argparse
 import logging
 from pathlib import Path
 
+import hydra
 import pytorch_lightning as pl
+import torch
+from hydra.utils import to_absolute_path
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import (
     EarlyStopping,
     LearningRateMonitor,
@@ -20,48 +26,26 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.blcs.data.datamodule import BLCSDataModule
 from src.blcs.training.lightning_module import BLCSLightningModule
-from src.blcs.utils.config import load_config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def main() -> None:
-    """Main training function."""
-    parser = argparse.ArgumentParser(description="Train BLCS model")
-    parser.add_argument(
-        "--config",
-        type=str,
-        default=None,
-        help="Path to config file (default: configs/default.yaml)",
-    )
-    parser.add_argument(
-        "--gpus",
-        type=int,
-        default=1,
-        help="Number of GPUs to use",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="outputs/blcs",
-        help="Output directory for checkpoints and logs",
-    )
-    parser.add_argument(
-        "--resume",
-        type=str,
-        default=None,
-        help="Path to checkpoint to resume from",
-    )
-    args = parser.parse_args()
+def _select_devices(gpus: int) -> tuple[str, int]:
+    """Return accelerator/devices based on requested GPU count."""
+    if gpus > 0 and torch.cuda.is_available():
+        return "gpu", gpus
+    return "cpu", 1
 
-    # Load config
-    config = load_config(args.config)
-    logger.info(f"Loaded config: {args.config or 'default'}")
 
-    # Create output directory
-    output_dir = Path(args.output_dir)
+def run_training(config: DictConfig) -> None:
+    """Run a single PL training job with the provided config."""
+    pl.seed_everything(int(config.run.seed))
+
+    output_dir = Path(to_absolute_path(str(config.run.output_dir)))
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    OmegaConf.save(config, output_dir / "config.yaml")
 
     # Initialize data module
     data_module = BLCSDataModule(config)
@@ -95,16 +79,19 @@ def main() -> None:
     )
 
     # Trainer
-    train_cfg = config.get("training", {})
+    train_cfg = config.get("training", {}) or {}
+    accelerator, devices = _select_devices(int(config.run.gpus))
     trainer = pl.Trainer(
         max_epochs=train_cfg.get("max_epochs", 200),
-        accelerator="gpu" if args.gpus > 0 else "cpu",
-        devices=args.gpus if args.gpus > 0 else 1,
+        accelerator=accelerator,
+        devices=devices,
         callbacks=callbacks,
         logger=tb_logger,
         gradient_clip_val=train_cfg.get("gradient_clip_val", 1.0),
-        precision="16-mixed" if args.gpus > 0 else 32,
+        fast_dev_run=bool(config.run.fast_dev_run),
+        precision="16-mixed" if accelerator == "gpu" else 32,
         log_every_n_steps=50,
+        deterministic=True,
     )
 
     # Train
@@ -112,14 +99,21 @@ def main() -> None:
     trainer.fit(
         model,
         data_module,
-        ckpt_path=args.resume,
+        ckpt_path=to_absolute_path(config.run.resume) if config.run.resume else None,
     )
 
     # Test
-    logger.info("Running test evaluation...")
-    trainer.test(model, data_module)
+    if not bool(config.run.fast_dev_run):
+        logger.info("Running test evaluation...")
+        trainer.test(model, data_module)
 
     logger.info(f"Training complete. Outputs saved to {output_dir}")
+
+
+@hydra.main(config_path="../configs", config_name="train", version_base="1.3")
+def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
+    """Hydra entry point."""
+    run_training(config)
 
 
 if __name__ == "__main__":

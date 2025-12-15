@@ -1,0 +1,13 @@
+scene_dir: data/plcs/scenes
+batch_size: 64
+num_workers: 4
+val_split: 0.1
+test_split: 0.1
+camera_mode: random
+
+mode: frame
+
+augmentation:
+  keypoint_noise_std: 0.01
+  visibility_drop_prob: 0.05
+

@@ -1,0 +1,14 @@
+defaults:
+  - paths: default
+  - simulation: default
+  - camera: default
+  - motion_sources: default
+  - run: generate_dataset
+  - _self_
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
+

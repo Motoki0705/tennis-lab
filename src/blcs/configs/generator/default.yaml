@@ -1,0 +1,4 @@
+num_cameras_sampled: 8
+ball_visibility_threshold: 0.8
+max_attempts_per_cell: 10000
+

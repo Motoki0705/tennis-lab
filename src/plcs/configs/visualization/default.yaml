@@ -1,0 +1,12 @@
+mode: visualize  # visualize | predict
+scene_path: data/plcs/scenes/scene_000000.npz
+frame: 0
+view: multi               # multi | 3d | 2d | camera | animation
+camera: 0
+animation_view: 2d_topdown  # 2d_topdown | 2d_camera | 3d
+fps: null
+save: null
+info: false
+checkpoint: null
+device: auto
+

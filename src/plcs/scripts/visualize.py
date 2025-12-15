@@ -1,9 +1,16 @@
-"""Unified CLI for PLCS scene visualization and prediction using Hydra."""
+"""Visualize PLCS scenes and optionally run model predictions (Hydra-based).
+
+Example commands:
+    `uv run python -m src.plcs.scripts.visualize`
+    `uv run python -m src.plcs.scripts.visualize visualization.scene_path=data/plcs/scenes/scene_000000.npz visualization.info=true`
+
+Config entry point: `src/plcs/configs/visualize.yaml`
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,16 +19,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from hydra.utils import to_absolute_path
+from omegaconf import DictConfig
 
-from src.plcs.configs import VisualizationConfig, register_configs
 from src.plcs.data.scene_generator import SceneGenerator
 from src.utils.rendering import PLCSSceneRenderer as SceneRenderer
 
 if TYPE_CHECKING:
     from src.plcs.data.scene_generator import SceneData
 
-
-register_configs()
 
 
 @dataclass
@@ -52,21 +57,22 @@ def _resolve_device(device: str) -> str:
     return device
 
 
-def build_runtime_config(cfg: VisualizationConfig) -> RuntimeConfig:
+def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     """Convert Hydra config into runtime-friendly values."""
+    vis = cfg.visualization
 
     return RuntimeConfig(
-        mode=cfg.mode,
-        scene_path=Path(to_absolute_path(cfg.scene_path)),
-        frame=cfg.frame,
-        view=cfg.view,
-        camera=cfg.camera,
-        animation_view=cfg.animation_view,
-        fps=cfg.fps,
-        save=Path(to_absolute_path(cfg.save)) if cfg.save else None,
-        info=cfg.info,
-        checkpoint=to_absolute_path(cfg.checkpoint) if cfg.checkpoint else None,
-        device=_resolve_device(cfg.device),
+        mode=str(vis.mode),
+        scene_path=Path(to_absolute_path(str(vis.scene_path))),
+        frame=int(vis.frame),
+        view=str(vis.view),
+        camera=int(vis.camera),
+        animation_view=str(vis.animation_view),
+        fps=float(vis.fps) if vis.fps is not None else None,
+        save=Path(to_absolute_path(str(vis.save))) if vis.save else None,
+        info=bool(vis.info),
+        checkpoint=to_absolute_path(str(vis.checkpoint)) if vis.checkpoint else None,
+        device=_resolve_device(str(vis.device)),
     )
 
 
@@ -122,7 +128,6 @@ def print_scene_info(scene: SceneData) -> None:
 
 def validate_frame_and_camera(scene: SceneData, cfg: RuntimeConfig) -> int | None:
     """Validate frame and camera indices."""
-
     num_frames = scene.meta["num_frames"]
     if cfg.frame >= num_frames:
         print(f"Error: Frame {cfg.frame} out of range (0-{num_frames - 1})")
@@ -138,7 +143,6 @@ def validate_frame_and_camera(scene: SceneData, cfg: RuntimeConfig) -> int | Non
 
 def render_scene(scene: SceneData, cfg: RuntimeConfig) -> int:
     """Render scene based on view type."""
-
     renderer = SceneRenderer()
 
     if cfg.view == "animation":
@@ -332,10 +336,9 @@ def main_predict_sequence(cfg: RuntimeConfig) -> int:
 # =============================================================================
 
 
-@hydra.main(version_base=None, config_name="plcs_visualization")
-def main(cfg: VisualizationConfig) -> int:  # pragma: no cover - CLI entry
+@hydra.main(config_path="../configs", config_name="visualize", version_base="1.3")
+def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     """Hydra entry point for visualization and prediction."""
-
     runtime_cfg = build_runtime_config(cfg)
 
     if runtime_cfg.mode == "visualize":

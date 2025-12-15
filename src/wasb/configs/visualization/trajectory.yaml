@@ -1,0 +1,5 @@
+checkpoint: null
+output_dir: outputs/trajectory/vis
+split: test   # train | val | test
+num_samples: 8
+

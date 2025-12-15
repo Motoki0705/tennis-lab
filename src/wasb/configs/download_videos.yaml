@@ -1,0 +1,16 @@
+defaults:
+  - download: default
+  - _self_
+
+mode: download   # download | status | reset_failed | reset_all | reset_url
+urls_path: data/tennis/raw/urls.yaml
+reset_url: null
+resume: true
+verbose: true
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
+

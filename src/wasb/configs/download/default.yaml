@@ -1,0 +1,4 @@
+output_dir: data/tennis/raw/videos
+meta_path: data/tennis/raw/meta.json
+format_spec: "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/best[vcodec^=avc1]/best"
+
