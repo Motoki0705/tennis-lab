@@ -16,6 +16,10 @@ from src.wasb.inference.trajectory_completion import (
     TransformerCompleter,
     build_completer,
 )
+from src.wasb.inference.video_ball_localization import (
+    SingleVideoBallLocalizationPipeline,
+    VideoBallLocalizationResult,
+)
 from src.wasb.inference.wasb_predictor import WASBPredictor
 
 __all__ = [
@@ -32,4 +36,7 @@ __all__ = [
     "TrajectoryEventDetector",
     "build_completer",
     "load_event_detector_from_checkpoint",
+    "SingleVideoBallLocalizationPipeline",
+    "VideoBallLocalizationResult",
+
 ]
