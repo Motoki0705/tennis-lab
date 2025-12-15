@@ -5,6 +5,16 @@ set -euo pipefail
 # 0. Argument Parsing & Setup
 # ----------------------------------------------------------------------
 
+ repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+ cd "$repo_root"
+
+ sandbox_env_sh="$repo_root/agents_workspace/sub_agents/sandbox_env.sh"
+ if [[ -f "$sandbox_env_sh" ]]; then
+   # shellcheck disable=SC1090
+   source "$sandbox_env_sh"
+   codex_sandbox_env_setup
+ fi
+
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   echo "Usage: $(basename "$0") [--test-cmd '...']"
   echo "Default test command: uv run --no-sync pytest -q"
@@ -25,9 +35,6 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-
-repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-cd "$repo_root"
 
 # Log directory setup (Keep logs localized, but don't isolate auth/cache)
 log_dir="${CODEX_SUBAGENT_LOG_DIR:-$repo_root/agents_workspace/sub_agents/logs}"
