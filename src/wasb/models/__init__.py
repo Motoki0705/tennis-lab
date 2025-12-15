@@ -2,26 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+# mypy: disable-error-code=no-untyped-def
+from collections.abc import Callable
+from typing import Any
 
 from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
 from .clip_segmenter import ClipSegmenter, RuleBasedClipSegmenter
 from .dinov3_heatmap import DinoV3FPNHeatmap
-from .hrnet import HRNet
 from .hrcnet import HRCNet
+from .hrnet import HRNet
 from .temporal_conv_gru import TemporalConvGRUModel
-from .trajectory_completer import (
-    BiLSTMCompleter,
-    CompletionResult,
-    HybridCompleter,
-    IterativeRefinementCompleter,
-    PhysicsInterpolator,
-    TrajectoryCompleter,
-    TransformerCompleter,
-    create_completer,
-)
 
 
 def _hrnet_handlers() -> tuple[Callable, Callable]:
@@ -239,7 +231,7 @@ __factory: dict[str, Any] = {
 
 def build_model(cfg: DictConfig | dict[str, Any]):
     """Build a model instance and its IO handlers from config."""
-    model_cfg = cfg["model"] if "model" in cfg else cfg
+    model_cfg = cfg.get("model", cfg)
     if isinstance(model_cfg, dict):
         model_cfg = OmegaConf.create(model_cfg)
     model_name = model_cfg.get("name")
@@ -255,14 +247,6 @@ def build_model(cfg: DictConfig | dict[str, Any]):
 __all__ = [
     "ClipSegmenter",
     "RuleBasedClipSegmenter",
-    "TrajectoryCompleter",
-    "PhysicsInterpolator",
-    "BiLSTMCompleter",
-    "HybridCompleter",
-    "IterativeRefinementCompleter",
-    "TransformerCompleter",
-    "CompletionResult",
-    "create_completer",
     "build_model",
     "TemporalConvGRUModel",
     "DinoV3FPNHeatmap",
