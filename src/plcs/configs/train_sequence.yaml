@@ -1,0 +1,14 @@
+defaults:
+  - model: sequence
+  - data: sequence
+  - training: default
+  - metrics: default
+  - run: train_sequence
+  - _self_
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
+

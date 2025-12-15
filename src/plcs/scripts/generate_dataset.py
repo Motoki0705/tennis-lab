@@ -1,4 +1,11 @@
-"""Generate PLCS training dataset using Hydra configurations."""
+"""Generate PLCS scenes for training using Hydra-managed configuration.
+
+Example commands:
+    `uv run python -m src.plcs.scripts.generate_dataset`
+    `uv run python -m src.plcs.scripts.generate_dataset run.output_dir=data/plcs simulation.num_scenes=10`
+
+Config entry point: `src/plcs/configs/generate_dataset.yaml`
+"""
 
 from __future__ import annotations
 
@@ -6,20 +13,16 @@ import json
 import random
 import sys
 from pathlib import Path
-from typing import Dict
 
 import hydra
 import numpy as np
 import torch
 from hydra.utils import to_absolute_path
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
 
-from src.plcs.configs import SimulationConfig, register_configs
 from src.plcs.data.motion_sampler import MotionSampler
 from src.plcs.data.scene_generator import SceneGenerator
-
-register_configs()
 
 
 def _resolve_device(device: str) -> str:
@@ -28,30 +31,32 @@ def _resolve_device(device: str) -> str:
     return device
 
 
-def _prepare_paths(cfg: SimulationConfig) -> SimulationConfig:
-    cfg.device = _resolve_device(cfg.device)
-    cfg.smplh_model_path = to_absolute_path(cfg.smplh_model_path)
-    cfg.simulation.output_dir = to_absolute_path(cfg.simulation.output_dir)
+def _prepare_paths(cfg: DictConfig) -> DictConfig:
+    cfg.run.device = _resolve_device(str(cfg.run.device))
+    cfg.paths.smplh_model_path = to_absolute_path(str(cfg.paths.smplh_model_path))
+    cfg.run.output_dir = to_absolute_path(str(cfg.run.output_dir))
 
-    for source in cfg.motion_sources.values():
-        source.paths = [to_absolute_path(p) for p in source.paths]
+    for _category, source in cfg.motion_sources.items():
+        if source is None:
+            continue
+        source.paths = [to_absolute_path(str(p)) for p in source.paths]
 
     return cfg
 
 
-@hydra.main(version_base=None, config_name="plcs_simulation")
-def main(cfg: SimulationConfig) -> int:  # pragma: no cover - CLI entry
-    """Main function."""
-
+@hydra.main(config_path="../configs", config_name="generate_dataset", version_base="1.3")
+def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
+    """Generate scenes and write them to disk."""
     cfg = _prepare_paths(cfg)
 
     # Set random seeds
-    random.seed(cfg.seed)
-    np.random.seed(cfg.seed)
-    torch.manual_seed(cfg.seed)
+    seed = int(cfg.run.seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
     # Create output directory
-    output_dir = Path(cfg.simulation.output_dir)
+    output_dir = Path(cfg.run.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "scenes").mkdir(parents=True, exist_ok=True)
 
@@ -62,8 +67,8 @@ def main(cfg: SimulationConfig) -> int:  # pragma: no cover - CLI entry
     print("\nInitializing motion sampler...")
     motion_sampler = MotionSampler(
         config=cfg,
-        smplh_model_path=cfg.smplh_model_path,
-        device=cfg.device,
+        smplh_model_path=cfg.paths.smplh_model_path,
+        device=cfg.run.device,
     )
 
     print(f"Available categories: {motion_sampler.get_available_categories()}")
@@ -72,18 +77,18 @@ def main(cfg: SimulationConfig) -> int:  # pragma: no cover - CLI entry
     scene_generator = SceneGenerator(
         config=cfg,
         motion_sampler=motion_sampler,
-        device=cfg.device,
+        device=cfg.run.device,
     )
 
     # Generate scenes
-    num_scenes = cfg.simulation.num_scenes
+    num_scenes = int(cfg.simulation.num_scenes)
     print(f"\nGenerating {num_scenes} scenes...")
 
     successful = 0
     failed = 0
     total_cameras = 0
 
-    stats: Dict[str, object] = {
+    stats: dict[str, object] = {
         "categories": {},
         "total_frames": 0,
         "cameras_per_scene": [],
@@ -97,7 +102,7 @@ def main(cfg: SimulationConfig) -> int:  # pragma: no cover - CLI entry
             # Generate scene
             scene = scene_generator.generate_scene(
                 scene_id=scene_id,
-                category=cfg.category,
+                category=cfg.run.category,
             )
 
             # Check if we have valid cameras after filtering

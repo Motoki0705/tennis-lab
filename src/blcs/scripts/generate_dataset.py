@@ -1,18 +1,24 @@
-#!/usr/bin/env python
-"""Generate BLCS dataset with controlled distribution.
+"""Generate a BLCS dataset with Hydra-managed configuration.
 
-Usage:
-    python -m blcs.scripts.generate_dataset --output-dir data/blcs --samples-per-cell 100
-    python -m blcs.scripts.generate_dataset --config configs/blcs_dataset.yaml
+Example commands:
+    `uv run python -m src.blcs.scripts.generate_dataset`
+    `uv run python -m src.blcs.scripts.generate_dataset run.output_dir=data/blcs sampling.per_from_cell_samples=10`
+
+Config entry point: `src/blcs/configs/generate_dataset.yaml`
 """
 
 from __future__ import annotations
 
-import argparse
 import logging
+import random
 import sys
+from pathlib import Path
 
-import yaml
+import hydra
+import numpy as np
+import torch
+from hydra.utils import to_absolute_path
+from omegaconf import DictConfig, OmegaConf
 from tqdm.auto import tqdm
 
 from src.blcs.data.camera_projector import CameraConfig
@@ -30,159 +36,56 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def parse_args() -> argparse.Namespace:
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Generate BLCS dataset with controlled distribution."
-    )
-
-    parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="data/blcs",
-        help="Output directory for dataset.",
-    )
-    parser.add_argument(
-        "--config",
-        type=str,
-        default=None,
-        help="Path to YAML config file.",
-    )
-    parser.add_argument(
-        "--samples-per-cell",
-        type=int,
-        default=100,
-        help="Target samples per from_cell.",
-    )
-    parser.add_argument(
-        "--num-cameras-sampled",
-        type=int,
-        default=15,
-        help="Number of cameras to try per scene (filtered by visibility).",
-    )
-    parser.add_argument(
-        "--ball-visibility-threshold",
-        type=float,
-        default=0.8,
-        help="Min ball visibility ratio to keep a camera (0.0-1.0).",
-    )
-    parser.add_argument(
-        "--train-ratio",
-        type=float,
-        default=0.8,
-        help="Train split ratio.",
-    )
-    parser.add_argument(
-        "--val-ratio",
-        type=float,
-        default=0.1,
-        help="Validation split ratio.",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="Random seed for splits.",
-    )
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="cpu",
-        help="Device for computation.",
-    )
-
-    return parser.parse_args()
+def _seed_everything(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
 
-def load_config(config_path: str | None) -> dict:
-    """Load configuration from YAML file.
-
-    Args:
-        config_path: Path to config file.
-
-    Returns:
-        dict: Configuration dictionary.
-
-    """
-    if config_path is None:
-        return {}
-
-    with open(config_path) as f:
-        return yaml.safe_load(f)
-
-
-def create_generator_config(
-    args: argparse.Namespace, yaml_config: dict
-) -> GeneratorConfig:
-    """Create generator config from args and YAML.
-
-    Args:
-        args: Command line arguments.
-        yaml_config: YAML configuration.
-
-    Returns:
-        GeneratorConfig instance.
-
-    """
-    # Physics config
-    phys_cfg = yaml_config.get("physics", {})
+def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
     physics_config = PhysicsConfig(
-        gravity=phys_cfg.get("gravity", 9.81),
-        k_drag=phys_cfg.get("k_drag", 0.01),
-        k_magnus=phys_cfg.get("k_magnus", 0.001),
-        e_z=phys_cfg.get("e_z", 0.75),
-        mu=phys_cfg.get("mu", 0.1),
-        alpha_net=phys_cfg.get("alpha_net", 0.3),
-        dt=phys_cfg.get("dt", 1 / 240),
-        use_drag=phys_cfg.get("use_drag", True),
-        use_magnus=phys_cfg.get("use_magnus", True),
+        gravity=float(cfg.physics.gravity),
+        k_drag=float(cfg.physics.k_drag),
+        k_magnus=float(cfg.physics.k_magnus),
+        e_z=float(cfg.physics.e_z),
+        mu=float(cfg.physics.mu),
+        alpha_net=float(cfg.physics.alpha_net),
+        dt=float(cfg.physics.dt),
+        use_drag=bool(cfg.physics.use_drag),
+        use_magnus=bool(cfg.physics.use_magnus),
     )
 
-    # Shot config
-    shot_cfg = yaml_config.get("shot", {})
     shot_config = ShotConfig(
-        z_range=tuple(shot_cfg.get("z_range", [0.8, 1.4])),
-        speed_range=tuple(shot_cfg.get("speed_range", [15.0, 35.0])),
-        azimuth_range_deg=tuple(shot_cfg.get("azimuth_range_deg", [-30.0, 30.0])),
-        elevation_range_deg=tuple(shot_cfg.get("elevation_range_deg", [5.0, 25.0])),
-        spin_x_range=tuple(shot_cfg.get("spin_x_range", [-20.0, 20.0])),
-        spin_y_range=tuple(shot_cfg.get("spin_y_range", [-80.0, -40.0])),
-        spin_z_range=tuple(shot_cfg.get("spin_z_range", [-20.0, 20.0])),
-        max_sim_frames=shot_cfg.get("max_sim_frames", 2000),
-        output_fps=shot_cfg.get("output_fps", 30),
-        sim_fps=shot_cfg.get("sim_fps", 240),
+        z_range=tuple(cfg.shot.z_range),
+        speed_range=tuple(cfg.shot.speed_range),
+        azimuth_range_deg=tuple(cfg.shot.azimuth_range_deg),
+        elevation_range_deg=tuple(cfg.shot.elevation_range_deg),
+        spin_x_range=tuple(cfg.shot.spin_x_range),
+        spin_y_range=tuple(cfg.shot.spin_y_range),
+        spin_z_range=tuple(cfg.shot.spin_z_range),
+        max_sim_frames=int(cfg.shot.max_sim_frames),
+        output_fps=int(cfg.shot.output_fps),
+        sim_fps=int(cfg.shot.sim_fps),
     )
 
-    # Camera config
-    cam_cfg = yaml_config.get("camera", {})
     camera_config = CameraConfig(
-        z_min=cam_cfg.get("z_min", 3.0),
-        z_max=cam_cfg.get("z_max", 5.0),
-        hfov_deg=cam_cfg.get("hfov_deg", 60.0),
-        image_size=tuple(cam_cfg.get("image_size", [1280, 720])),
+        z_min=float(cfg.camera.z_min),
+        z_max=float(cfg.camera.z_max),
+        hfov_deg=float(cfg.camera.hfov_deg),
+        image_size=tuple(cfg.camera.image_size),
     )
 
-    # Sampling config
-    samp_cfg = yaml_config.get("sampling", {})
-    cat_ratios = samp_cfg.get("category_ratios", {})
+    category_ratios = cfg.sampling.category_ratios
     sampling_config = SamplingConfig(
         category_ratios={
-            ShotCategory.DIRECT_NET: cat_ratios.get("direct_net", 0.05),
-            ShotCategory.DIRECT_FENCE: cat_ratios.get("direct_fence", 0.05),
-            ShotCategory.IN_COURT: cat_ratios.get("in_court", 0.60),
-            ShotCategory.OUT_COURT: cat_ratios.get("out_court", 0.30),
+            ShotCategory.DIRECT_NET: float(category_ratios.direct_net),
+            ShotCategory.DIRECT_FENCE: float(category_ratios.direct_fence),
+            ShotCategory.IN_COURT: float(category_ratios.in_court),
+            ShotCategory.OUT_COURT: float(category_ratios.out_court),
         },
-        in_court_cell_weights=samp_cfg.get("in_court_cell_weights", "uniform"),
-        out_court_cell_weights=samp_cfg.get("out_court_cell_weights", "uniform"),
-        per_from_cell_samples=args.samples_per_cell,
-    )
-
-    # Get camera sampling params (CLI overrides YAML)
-    num_cameras_sampled = yaml_config.get(
-        "num_cameras_sampled", args.num_cameras_sampled
-    )
-    ball_visibility_threshold = yaml_config.get(
-        "ball_visibility_threshold", args.ball_visibility_threshold
+        in_court_cell_weights=cfg.sampling.in_court_cell_weights,
+        out_court_cell_weights=cfg.sampling.out_court_cell_weights,
+        per_from_cell_samples=int(cfg.sampling.per_from_cell_samples),
     )
 
     return GeneratorConfig(
@@ -190,80 +93,90 @@ def create_generator_config(
         shot=shot_config,
         camera=camera_config,
         sampling=sampling_config,
-        num_cameras_sampled=num_cameras_sampled,
-        ball_visibility_threshold=ball_visibility_threshold,
-        max_attempts_per_cell=yaml_config.get("max_attempts_per_cell", 10000),
+        num_cameras_sampled=int(cfg.generator.num_cameras_sampled),
+        ball_visibility_threshold=float(cfg.generator.ball_visibility_threshold),
+        max_attempts_per_cell=int(cfg.generator.max_attempts_per_cell),
     )
 
 
-def main() -> int:
-    """Main entry point."""
-    args = parse_args()
-
+@hydra.main(config_path="../configs", config_name="generate_dataset", version_base="1.3")
+def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
+    """Generate scenes and write them to disk."""
     logger.info("=" * 60)
-    logger.info("BLCS Dataset Generator (PLCS-unified format)")
+    logger.info("BLCS Dataset Generator")
     logger.info("=" * 60)
 
-    # Load config
-    yaml_config = load_config(args.config)
+    output_dir = Path(to_absolute_path(str(cfg.run.output_dir)))
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create generator config
-    generator_config = create_generator_config(args, yaml_config)
+    OmegaConf.save(cfg, output_dir / "config.yaml")
 
-    logger.info(f"Output directory: {args.output_dir}")
-    logger.info(f"Samples per cell: {args.samples_per_cell}")
-    logger.info(f"Cameras sampled per scene: {generator_config.num_cameras_sampled}")
-    logger.info(
-        f"Ball visibility threshold: {generator_config.ball_visibility_threshold}"
+    seed = int(cfg.run.seed)
+    _seed_everything(seed)
+
+    train_ratio = float(cfg.run.train_ratio)
+    val_ratio = float(cfg.run.val_ratio)
+    test_ratio = 1.0 - train_ratio - val_ratio
+    if test_ratio < 0:
+        raise ValueError(
+            f"Invalid split ratios: train={train_ratio}, val={val_ratio} (sum > 1.0)"
+        )
+
+    generator_config = _build_generator_config(cfg)
+
+    logger.info("Output directory: %s", output_dir)
+    logger.info("Samples per from-cell: %s", cfg.sampling.per_from_cell_samples)
+    logger.info("Cameras sampled per scene: %s", generator_config.num_cameras_sampled)
+    logger.info("Ball visibility threshold: %s", generator_config.ball_visibility_threshold)
+    logger.info("Device: %s", cfg.run.device)
+
+    generator = BLCSSceneGenerator(
+        config=generator_config,
+        device=str(cfg.run.device),
     )
-    logger.info(f"Device: {args.device}")
+    writer = BLCSDatasetWriter(output_dir)
 
-    # Initialize generator and writer
-    generator = BLCSSceneGenerator(config=generator_config, device=args.device)
-    writer = BLCSDatasetWriter(args.output_dir)
-
-    # Generate and save scenes (1 scene = 1 file with N cameras)
     logger.info("Starting scene generation...")
     total_scenes = 0
     total_cameras = 0
 
-    for scene_data in tqdm(
-        generator.generate_all_scenes(),
-        desc="Generating scenes",
-    ):
-        filepath = writer.save_scene(scene_data)
+    for scene_data in tqdm(generator.generate_all_scenes(), desc="Generating scenes"):
+        writer.save_scene(scene_data)
         total_scenes += 1
         total_cameras += len(scene_data.cameras)
 
         if total_scenes % 100 == 0:
             avg_cams = total_cameras / total_scenes
             logger.info(
-                f"Progress: {total_scenes} scenes, "
-                f"{total_cameras} cameras (avg {avg_cams:.1f}/scene)"
+                "Progress: %s scenes, %s cameras (avg %.1f/scene)",
+                total_scenes,
+                total_cameras,
+                avg_cams,
             )
 
-    logger.info(f"Generation complete: {total_scenes} scenes, {total_cameras} cameras")
-
-    # Save splits
-    logger.info("Creating train/val/test splits...")
-    writer.save_split_info(
-        train_ratio=args.train_ratio,
-        val_ratio=args.val_ratio,
-        test_ratio=1.0 - args.train_ratio - args.val_ratio,
-        seed=args.seed,
+    logger.info(
+        "Generation complete: %s scenes, %s cameras", total_scenes, total_cameras
     )
 
-    # Save meta.json with all scene information
+    logger.info("Creating train/val/test splits...")
+    writer.save_split_info(
+        train_ratio=train_ratio,
+        val_ratio=val_ratio,
+        test_ratio=test_ratio,
+        seed=seed,
+    )
+
     stats = generator.get_statistics()
-    writer.save_meta_json(config=yaml_config)
+    writer.save_meta_json(config=OmegaConf.to_container(cfg, resolve=True))
     writer.save_dataset_info(stats)
 
     logger.info("=" * 60)
     logger.info("Dataset generation complete!")
-    logger.info(f"Output: {args.output_dir}")
-    logger.info(f"Total scenes: {total_scenes}")
-    logger.info(f"Total cameras: {total_cameras}")
-    logger.info(f"Avg cameras/scene: {total_cameras / total_scenes:.2f}")
+    logger.info("Output: %s", output_dir)
+    logger.info("Total scenes: %s", total_scenes)
+    logger.info("Total cameras: %s", total_cameras)
+    if total_scenes > 0:
+        logger.info("Avg cameras/scene: %.2f", total_cameras / total_scenes)
     logger.info("=" * 60)
 
     return 0

@@ -1,0 +1,18 @@
+root_dir: data/tennis
+train_matches: ["game1", "game2", "game3", "game4", "game5", "game6", "game7", "game8"]
+val_matches: ["game9"]
+test_matches: ["game10"]
+sequence_length: 64
+step: 8
+min_visible_per_window: 4
+image_ext: ".jpg"
+csv_filename: Label.csv
+block_mask_min_len: 0
+block_mask_max_len: 0
+sparse_mask_prob: 0.0
+noise_prob: 0.5
+noise_std_px: 5.0
+batch_size: 32
+num_workers: 4
+pin_memory: true
+
