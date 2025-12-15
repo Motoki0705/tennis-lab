@@ -23,6 +23,8 @@ def _sinusoidal_positional_encoding(length: int, d_model: int, device: torch.dev
 class TrajectoryEventTransformer(nn.Module):
     """Transformer encoder that predicts an event class per timestep."""
 
+    _pos_embed_cache: Tensor
+
     def __init__(
         self,
         *,
@@ -55,8 +57,9 @@ class TrajectoryEventTransformer(nn.Module):
             self.pos_embed = nn.Parameter(torch.zeros(self.max_len, self.d_model))
             nn.init.normal_(self.pos_embed, mean=0.0, std=0.02)
         elif self.positional_encoding == "sin":
-            self._pos_embed_cache: Tensor = torch.empty(0)
-            self.register_buffer("_pos_embed_cache", self._pos_embed_cache, persistent=False)
+            self.register_buffer(
+                "_pos_embed_cache", torch.empty(0), persistent=False
+            )
         else:
             raise ValueError("positional_encoding must be 'sin' or 'learned'")
 
