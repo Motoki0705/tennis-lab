@@ -17,6 +17,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from queue import Empty, Full, Queue
+from typing import cast
 
 import cv2
 import numpy as np
@@ -101,14 +102,11 @@ class StreamingVideoLoader:
         self.queue_size = queue_size
         self.max_frames = max_frames
 
-        # Validate video exists
         if not self.video_path.exists():
             raise FileNotFoundError(f"Video not found: {self.video_path}")
 
-        # Load metadata
         self.metadata = self._load_metadata()
 
-        # Internal state
         self._queue: Queue[FrameBatch | None] = Queue(maxsize=queue_size)
         self._producer_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
@@ -126,7 +124,6 @@ class StreamingVideoLoader:
             fps = cap.get(cv2.CAP_PROP_FPS)
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-            # Apply max_frames limit
             if self.max_frames is not None:
                 total_frames = min(total_frames, self.max_frames)
 
@@ -147,7 +144,7 @@ class StreamingVideoLoader:
         cap = cv2.VideoCapture(str(self.video_path))
         if not cap.isOpened():
             self._error = RuntimeError(f"Failed to open video: {self.video_path}")
-            self._queue.put(None)  # Signal end
+            self._queue.put(None)
             return
 
         try:
@@ -161,11 +158,11 @@ class StreamingVideoLoader:
                 if not ret:
                     break
 
+                frame = cast(NDArray[np.uint8], frame)
                 batch_frames.append(frame)
                 batch_indices.append(frame_idx)
                 frame_idx += 1
 
-                # Emit batch when full
                 if len(batch_frames) >= self.batch_size:
                     batch = FrameBatch(
                         frames=np.stack(batch_frames, axis=0),
@@ -175,7 +172,6 @@ class StreamingVideoLoader:
                     batch_frames.clear()
                     batch_indices.clear()
 
-                    # Put with timeout to allow stop check
                     while not self._stop_event.is_set():
                         try:
                             self._queue.put(batch, timeout=0.1)
@@ -183,7 +179,6 @@ class StreamingVideoLoader:
                         except Full:
                             continue
 
-            # Emit final partial batch
             if batch_frames and not self._stop_event.is_set():
                 batch = FrameBatch(
                     frames=np.stack(batch_frames, axis=0),
@@ -201,7 +196,6 @@ class StreamingVideoLoader:
             self._error = e
         finally:
             cap.release()
-            # Signal end of stream
             try:
                 self._queue.put(None, timeout=1.0)
             except Full:
@@ -217,7 +211,6 @@ class StreamingVideoLoader:
             RuntimeError: If producer thread encounters an error.
 
         """
-        # Start producer thread
         self._stop_event.clear()
         self._error = None
         self._producer_thread = threading.Thread(
@@ -228,90 +221,21 @@ class StreamingVideoLoader:
 
         try:
             while True:
-                # Get batch with timeout to allow interrupt
                 try:
                     batch = self._queue.get(timeout=1.0)
                 except Empty:
-                    # Check if producer is still running
                     if not self._producer_thread.is_alive():
                         break
                     continue
 
                 if batch is None:
-                    # End of stream
                     break
 
-                # Check for producer errors
                 if self._error is not None:
-                    raise self._error
+                    raise RuntimeError(f"Streaming loader error: {self._error}") from self._error
 
                 yield batch
-
-            # Final error check
-            if self._error is not None:
-                raise self._error
-
         finally:
-            # Cleanup
             self._stop_event.set()
             if self._producer_thread is not None:
-                self._producer_thread.join(timeout=5.0)
-
-    def stop(self) -> None:
-        """Stop the loader and cleanup resources."""
-        self._stop_event.set()
-        if self._producer_thread is not None:
-            self._producer_thread.join(timeout=5.0)
-
-
-class StreamingFrameIterator:
-    """Simple streaming iterator for frame-by-frame processing.
-
-    Unlike StreamingVideoLoader which batches frames, this yields
-    individual frames. Useful for frame extraction.
-
-    """
-
-    def __init__(
-        self,
-        video_path: str | Path,
-        max_frames: int | None = None,
-    ) -> None:
-        """Initialize iterator.
-
-        Args:
-            video_path: Path to video file.
-            max_frames: Maximum frames to yield.
-
-        """
-        self.video_path = Path(video_path)
-        self.max_frames = max_frames
-
-        if not self.video_path.exists():
-            raise FileNotFoundError(f"Video not found: {self.video_path}")
-
-    def __iter__(self) -> Iterator[tuple[int, NDArray[np.uint8]]]:
-        """Iterate over frames.
-
-        Yields:
-            Tuple of (frame_index, frame_array).
-
-        """
-        cap = cv2.VideoCapture(str(self.video_path))
-        if not cap.isOpened():
-            raise RuntimeError(f"Failed to open video: {self.video_path}")
-
-        try:
-            frame_idx = 0
-            while True:
-                if self.max_frames is not None and frame_idx >= self.max_frames:
-                    break
-
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                yield frame_idx, frame
-                frame_idx += 1
-        finally:
-            cap.release()
+                self._producer_thread.join(timeout=1.0)

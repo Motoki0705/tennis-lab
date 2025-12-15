@@ -182,6 +182,7 @@ module = [
     "cv2.*",
     "torch.*",
     "torchvision.*",
+    "tqdm.*",
     "transformers.*",
     "omegaconf.*",
     "pytorch_lightning.*",
