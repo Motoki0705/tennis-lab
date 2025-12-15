@@ -407,7 +407,7 @@ class AnnotationPipeline:
         try:
             for batch in loader:
                 # Run detection on batch
-                results = self.predictor.predict_batch(
+                results = self.predictor.predict(
                     frames=batch.frames,
                     frame_indices=batch.frame_indices,
                 )
@@ -508,6 +508,7 @@ class AnnotationPipeline:
         frames = extractor.load_all_frames(max_frames=max_frames)
 
         # Run detection
+        self.predictor.reset_tracker()
         results = self.predictor.predict(frames)
 
         return frames, results
