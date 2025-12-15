@@ -20,17 +20,14 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from tqdm import tqdm
 
-from src.wasb.data.streaming_loader import StreamingVideoLoader
-from src.wasb.data.video_extractor import VideoExtractor
 from src.wasb.models.clip_segmenter import ClipSegment, RuleBasedClipSegmenter
 from src.wasb.models.trajectory_completer import (
-    CompletionResult,
-    HybridCompleter,
-    PhysicsInterpolator,
     TrajectoryCompleter,
     create_completer,
 )
 from src.wasb.tennis_format import TennisLabelRow, row_from_visibility, save_label_csv
+from src.wasb.utils.streaming_loader import StreamingVideoLoader
+from src.wasb.utils.video_extractor import VideoExtractor
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -75,7 +72,9 @@ class PipelineConfig:
 
     # Trajectory completion settings
     use_completion: bool = True
-    completion_method: str = "hybrid"  # "physics", "bilstm", "hybrid"
+    completion_method: Literal[
+        "physics", "bilstm", "transformer", "refiner", "hybrid"
+    ] = "hybrid"
     completion_checkpoint: str | None = None  # Path to learned model checkpoint
     physics_gap_threshold: int = 5  # Max gap for physics interpolation
     max_completion_gap: int = 15  # Max gap to attempt completion
@@ -180,7 +179,7 @@ class AnnotationPipeline:
         self.completer: TrajectoryCompleter | None = None
         if self.config.use_completion:
             self.completer = create_completer(
-                method=self.config.completion_method,  # type: ignore[arg-type]
+                method=self.config.completion_method,
                 checkpoint_path=self.config.completion_checkpoint,
                 physics_gap_threshold=self.config.physics_gap_threshold,
                 max_gap=self.config.max_completion_gap,
@@ -258,6 +257,46 @@ class AnnotationPipeline:
                 max_frames=max_frames,
                 verbose=verbose,
             )
+
+    @classmethod
+    def run_pipeline_from_config(
+        cls,
+        video_path: str | Path,
+        output_dir: str | Path,
+        checkpoint_path: str | Path,
+        model_type: Literal["wasb", "hrcnet"] = "wasb",
+        config: PipelineConfig | None = None,
+        **predictor_kwargs: object,
+    ) -> PipelineResult:
+        """Run the pipeline with automatic predictor setup.
+
+        Args:
+            video_path: Path to input video.
+            output_dir: Output directory for generated game.
+            checkpoint_path: Path to model checkpoint.
+            model_type: Model type ("wasb" or "hrcnet").
+            config: Pipeline configuration.
+            **predictor_kwargs: Additional arguments for predictor.
+
+        Returns:
+            PipelineResult with generated clips information.
+
+        """
+        from src.wasb.inference import HRCNetWASBPredictor, WASBPredictor
+
+        if model_type == "wasb":
+            predictor = WASBPredictor.load_from_checkpoint(
+                checkpoint_path, **predictor_kwargs
+            )
+        elif model_type == "hrcnet":
+            predictor = HRCNetWASBPredictor.load_from_checkpoint(
+                checkpoint_path, **predictor_kwargs
+            )
+        else:
+            raise ValueError(f"Unknown model type: {model_type}")
+
+        pipeline = cls(predictor, config=config)
+        return pipeline.run(video_path, output_dir)
 
     def _run_standard(
         self,
@@ -478,10 +517,15 @@ class AnnotationPipeline:
         detection_results: dict[str, NDArray],
     ) -> list[ClipSegment]:
         """Segment video into clips based on detection results."""
-        return self.segmenter.predict_segments(
-            xy=detection_results["ball_xy_px"],
-            score=detection_results["score"],
-            visibility=detection_results["visibility"],
+        from typing import cast
+
+        return cast(
+            list[ClipSegment],
+            self.segmenter.predict_segments(
+                xy=detection_results["ball_xy_px"],
+                score=detection_results["score"],
+                visibility=detection_results["visibility"],
+            ),
         )
 
     def _export_clips(
@@ -760,9 +804,9 @@ def run_pipeline_from_config(
     checkpoint_path: str | Path,
     model_type: Literal["wasb", "hrcnet"] = "wasb",
     config: PipelineConfig | None = None,
-    **predictor_kwargs,
+    **predictor_kwargs: object,
 ) -> PipelineResult:
-    """Convenience function to run pipeline with automatic predictor setup.
+    """Run the pipeline with automatic predictor setup.
 
     Args:
         video_path: Path to input video.
@@ -776,20 +820,11 @@ def run_pipeline_from_config(
         PipelineResult with generated clips information.
 
     """
-    from src.wasb.inference import HRCNetWASBPredictor, WASBPredictor
-
-    # Load predictor
-    if model_type == "wasb":
-        predictor = WASBPredictor.load_from_checkpoint(
-            checkpoint_path, **predictor_kwargs
-        )
-    elif model_type == "hrcnet":
-        predictor = HRCNetWASBPredictor.load_from_checkpoint(
-            checkpoint_path, **predictor_kwargs
-        )
-    else:
-        raise ValueError(f"Unknown model type: {model_type}")
-
-    # Run pipeline
-    pipeline = AnnotationPipeline(predictor, config=config)
-    return pipeline.run(video_path, output_dir)
+    return AnnotationPipeline.run_pipeline_from_config(
+        video_path=video_path,
+        output_dir=output_dir,
+        checkpoint_path=checkpoint_path,
+        model_type=model_type,
+        config=config,
+        **predictor_kwargs,
+    )

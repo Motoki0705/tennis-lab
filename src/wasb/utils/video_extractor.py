@@ -42,7 +42,6 @@ class VideoExtractor:
         if not self.video_path.exists():
             raise FileNotFoundError(f"Video not found: {self.video_path}")
 
-        # Open video to get metadata
         cap = cv2.VideoCapture(str(self.video_path))
         if not cap.isOpened():
             raise ValueError(f"Cannot open video: {self.video_path}")
@@ -103,7 +102,6 @@ class VideoExtractor:
             if not ret:
                 break
 
-            # Convert BGR to RGB
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frames.append(frame_rgb)
 
@@ -124,7 +122,7 @@ class VideoExtractor:
         Args:
             batch_size: Number of frames per batch.
             overlap: Number of overlapping frames between batches.
-                     Useful for models that need temporal context.
+                Useful for models that need temporal context.
 
         Yields:
             Tuple of (frames, start_index) where frames is RGB array
@@ -148,7 +146,6 @@ class VideoExtractor:
             if len(batch) >= batch_size:
                 yield np.array(batch, dtype=np.uint8), batch_start
 
-                # Keep overlap frames for next batch
                 if overlap > 0:
                     batch = batch[-overlap:]
                     batch_start = frame_idx - overlap + 1
@@ -158,7 +155,6 @@ class VideoExtractor:
 
             frame_idx += 1
 
-        # Yield remaining frames
         if batch:
             yield np.array(batch, dtype=np.uint8), batch_start
 
@@ -259,40 +255,3 @@ class VideoExtractor:
 
         cap.release()
         return saved_files
-
-    def get_frame(self, frame_idx: int) -> NDArray[np.uint8]:
-        """Get a single frame by index.
-
-        Args:
-            frame_idx: Frame index (0-indexed).
-
-        Returns:
-            RGB frame with shape (H, W, 3).
-
-        Raises:
-            IndexError: If frame index is out of range.
-
-        """
-        if frame_idx < 0 or frame_idx >= self._frame_count:
-            raise IndexError(
-                f"Frame index {frame_idx} out of range [0, {self._frame_count})"
-            )
-
-        cap = cv2.VideoCapture(str(self.video_path))
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-
-        ret, frame = cap.read()
-        cap.release()
-
-        if not ret:
-            raise IndexError(f"Failed to read frame at index {frame_idx}")
-
-        return cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-    def __repr__(self) -> str:
-        return (
-            f"VideoExtractor('{self.video_path}', "
-            f"{self.width}x{self.height}, "
-            f"{self.frame_count} frames, "
-            f"{self.fps:.1f} fps)"
-        )
