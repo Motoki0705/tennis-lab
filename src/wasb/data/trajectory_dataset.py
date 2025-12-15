@@ -1,8 +1,10 @@
+"""Dataset helpers for building trajectory completion training windows."""
+
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
 
 import torch
 from torch.utils.data import Dataset
@@ -12,6 +14,8 @@ from src.wasb.tennis_format import TennisLabelRow, load_label_csv, make_empty_ro
 
 @dataclass(frozen=True)
 class TrajectoryWindow:
+    """Contiguous clip segment with labels for a single match."""
+
     match: str
     clip: str
     labels: list[TennisLabelRow]
@@ -57,6 +61,7 @@ def build_trajectory_windows(
     csv_filename: str,
     min_visible_per_window: int,
 ) -> list[TrajectoryWindow]:
+    """Generate trajectory windows from labeled matches under the root directory."""
     windows: list[TrajectoryWindow] = []
     match_list = _resolve_matches(root_dir, matches)
     for match in match_list:
@@ -88,6 +93,8 @@ def build_trajectory_windows(
 
 
 class TrajectoryWindowDataset(Dataset):
+    """Torch dataset that yields masked inputs and targets for trajectory models."""
+
     def __init__(
         self,
         root_dir: str | Path,
@@ -130,6 +137,7 @@ class TrajectoryWindowDataset(Dataset):
         )
 
     def __len__(self) -> int:
+        """Return the number of trajectory windows available."""
         return len(self.windows)
 
     def _sample_block_mask(self, valid: torch.Tensor) -> torch.Tensor:
@@ -160,12 +168,14 @@ class TrajectoryWindowDataset(Dataset):
         return (rand < prob) & candidates
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor | str]:
+        """Return tensors for a single trajectory window including masks and status."""
         window = self.windows[index]
         labels = window.labels
         L = len(labels)
 
         xy = torch.tensor([[r.x, r.y] for r in labels], dtype=torch.float32)
         visibility = torch.tensor([r.visibility for r in labels], dtype=torch.int64)
+        status = torch.tensor([r.status for r in labels], dtype=torch.int64)
 
         valid = visibility > 0
 
@@ -199,4 +209,5 @@ class TrajectoryWindowDataset(Dataset):
             "loss_mask_sparse": loss_mask_sparse,
             "loss_mask_noise": loss_mask_noise,
             "orig_visibility": visibility,
+            "status": status,
         }

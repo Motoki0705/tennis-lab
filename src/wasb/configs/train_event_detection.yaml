@@ -1,0 +1,14 @@
+defaults:
+  - data: event_detection
+  - training: event_detection
+  - logging: default
+  - run: event_detection
+  - model: event_detection_transformer
+  - _self_
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
+
