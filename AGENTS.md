@@ -5,8 +5,6 @@
 *   **Hydra必須**（`scripts/` で `argparse` 禁止）
 *   **GPU/大規模DL禁止**（`ML_SANDBOX_DISABLE_GPU` 想定、テストは `tests/fixtures/` を使う）
 *   **main直作業禁止**（必ずブランチを切る）
-*   **チェックボックス駆動**：1項目ごとに「実装 → テスト設計/作成/実行 → pre-commit修正 → commit → [x]」
-*   **`agents_workspace/work/` は tmp（非コミット）**。PR作成後に削除する
 *   **pre-commit/testのノイズはサブエージェントへ**：`agents_workspace/sub_agents/{pre_commit_subagent.sh,test_subagent.sh}` を優先利用する
 *   **メインに貼るのはJSONのみ**：サブのstdout（1行JSON）だけを共有し、詳細ログはパスで参照する
 
@@ -55,7 +53,6 @@
 ## 3. ワークフロー (Workflow)
 
 tennis-lab の開発は、以下のサイクルを標準とします。
-AI Agent は各フェーズの内容を `agents_workspace/work/` に記録し、チェックボックス駆動で進めてください。
 
 ### 3.0 サブエージェント（pre-commit/test）運用
 
@@ -101,60 +98,24 @@ pre-commit / pytest はログが長くなりやすく、メイン会話のコン
 *   **影響範囲**（unit / integration）
 *   **制約チェック**（Hydra / GPU禁止 / integration保護）
 
-このフェーズで必ず以下を作成します（テンプレからコピーして埋める）：
-*   `agents_workspace/work/<branch_name>/design.md`
-*   `agents_workspace/work/<branch_name>/implementation.md`（チェックボックス形式の実装手順/TODO）
-*   `agents_workspace/work/<branch_name>/tests.md`（責務・想定機能・テスト方針）
-
-設計が固まったら **設計確定コミット** を作成して構いません。
-
-### 3.3 実装（チェックボックス駆動）
-実装は `implementation.md` のチェックボックスを最小単位として進めます。
-チェックボックス1項目 = 1作業単位であり、以下を必ず含みます：
-
+### 3.3 実装
 1.  実装（コード変更）
-2.  `tests.md` に **テスト設計を追記**（責務/想定機能/ケース）
+2.  テスト設計の明確化（責務/想定機能/ケース）
 3.  テスト作成（原則 unit、必要なら integration）
 4.  テスト実行
     *   pytestの失敗が出た場合は、原則 `agents_workspace/sub_agents/test_subagent.sh` を実行し、stdoutの **JSON 1行**のみをメインに共有する。
-5.  `tests.md` に **実行結果を記録**（コマンド / PASS・FAIL / 要点）
-6.  `git commit`（ここで pre-commit が走る）
+5.  `git commit`（ここで pre-commit が走る）
     *   pre-commit（ruff/mypy等）のエラーが出た場合は、原則 `agents_workspace/sub_agents/pre_commit_subagent.sh` を実行し、stdoutの **JSON 1行**のみをメインに共有する。
-7.  pre-commit が失敗した場合は修正し、再度 commit する（通るまで繰り返す）
-8.  commit が成功したら、そのチェックボックスを `- [x]` に更新する
-
-> **チェックを付ける条件**：テスト実行が完了し、pre-commitを通過したコミットが作成されていること。
+6.  pre-commit が失敗した場合は修正し、再度 commit する（通るまで繰り返す）
 
 ### 3.4 PR下書き → PR作成
-1.  作業完了後、`agents_workspace/work/<branch_name>/pr.md` を埋める（テンプレから作成）。
-2.  `gh` コマンドでPRを作成する。
+1.  `gh` コマンドでPRを作成する。
 
 PRには以下を明確に記載してください：
 *   変更の目的
 *   設計上の判断
 *   テスト範囲（unit / integration）
-
-### 3.5 PR後の後片付け（必須）
-`agents_workspace/work/` は tmp扱いであり、リポジトリに残しません。
-PR作成後に必ず以下を実施してください：
-
-*   `agents_workspace/work/<branch_name>/` を削除する。
-*   `agents_workspace/work/` は **コミットしない**（`.gitignore` 対象）。
-
----
-
-## 4. agents_workspace 運用（tmp方針）
-
-*   `agents_workspace/templates/`：テンプレ置き場（コミット対象）
-*   `agents_workspace/work/`：作業ログ（非コミット / tmp、PR後削除）
-
-### 4.1 作成ルール
-`agents_workspace/templates/` のテンプレをコピーして `work/<branch>/` を作成してください。
-`work/<branch>/` は少なくとも以下を含む必要があります：
-*   `design.md`
-*   `implementation.md`
-*   `tests.md`
-*   `pr.md`
+*   実行コマンドと結果の要点
 
 ---
 
@@ -171,12 +132,12 @@ PR作成後に必ず以下を実施してください：
 
 ## 6. テスト方針（運用ルール）
 
-*   変更ロジックには原則 **unit test** を追加する（`tests/unit/`）。
+*   変更ロジックには原則 **unit test** を追加する（`tests/unit/{task}/`）。
 *   データやモデルは `tests/fixtures/` の再利用を優先する。
 *   パイプラインに影響する場合のみ **integration test** を実行する（`tests/integration/`）。
 *   `tests/integration/` の既存テストは原則として破壊・削除しない。
 
-テストに関しては `agents_workspace/work/<branch>/tests.md` に以下を必ず残してください：
+テストに関しては PR本文に以下を必ず残してください：
 *   対象モジュールの責務・想定機能
 *   テスト設計（ケース、境界、例外）
 *   実行コマンド
@@ -189,4 +150,3 @@ PR作成後に必ず以下を実施してください：
 
 1.  `git commit` により pre-commit が実行され、lint/format/typeチェックが走ります。
 2.  pre-commit が失敗した場合、Agent は **修正して再コミット**し、成功するまで先へ進みません。
-3.  pre-commitが通ったコミットが作成されて初めて、対応するチェックボックスを完了扱いとします。
