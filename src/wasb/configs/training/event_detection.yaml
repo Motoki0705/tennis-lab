@@ -1,0 +1,31 @@
+max_epochs: 50
+learning_rate: 3.0e-4
+weight_decay: 1.0e-4
+warmup_steps: 1000
+min_lr: 1.0e-6
+precision: "32"
+
+# Targets with this value are ignored in the loss/metrics (used for invisible frames).
+ignore_index: -100
+
+# Optional manual class weights for CrossEntropyLoss over classes [0, 1, 2].
+# If null, the training script can compute inverse-frequency weights from the train split.
+class_weights: null
+compute_class_weights:
+  enabled: true
+  max_windows: 5000
+
+# Additional scaling applied to the background class (0) weight.
+# Set small (e.g. 0.01) to strongly de-emphasize predicting "none".
+background_weight_scale: 0.02
+
+# Additional multiplier applied to tokens with target in {1, 2}.
+event_boost: 2.0
+
+# Use small label smoothing to reduce overconfidence.
+label_smoothing: 0.0
+
+resume:
+  enabled: false
+  ckpt_path: null
+  auto_last: true
