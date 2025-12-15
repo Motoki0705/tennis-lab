@@ -38,6 +38,7 @@ training:
   compute_class_weights:
     enabled: true
     max_windows: 5000
+  background_weight_scale: 0.02
   event_boost: 2.0
   label_smoothing: 0.0
   resume:
@@ -64,4 +65,4 @@ model:
   mlp_hidden_dim: 128
   num_classes: 3
   max_len: 512
-  positional_encoding: sin
+  positional_encoding: learned

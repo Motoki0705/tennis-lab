@@ -7,5 +7,5 @@ dropout: 0.1
 mlp_hidden_dim: 128
 num_classes: 3
 max_len: 512
-positional_encoding: sin
+positional_encoding: learned
 
