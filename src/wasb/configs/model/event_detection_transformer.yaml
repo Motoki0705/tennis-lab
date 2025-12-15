@@ -1,0 +1,11 @@
+name: event_detection_transformer
+d_model: 128
+num_layers: 4
+num_heads: 4
+dim_feedforward: 256
+dropout: 0.1
+mlp_hidden_dim: 128
+num_classes: 3
+max_len: 512
+positional_encoding: sin
+
