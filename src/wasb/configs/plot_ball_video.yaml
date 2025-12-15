@@ -2,12 +2,12 @@ defaults:
   - _self_
 
 # Configuration for `src.wasb.scripts.plot_ball_video`.
-video_path: null
-output_path: null
+video_path: data/samples/clip.mp4
+output_path: outputs/plot_ball_video/clip.mp4
 
 checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
 model: wasb            # wasb | hrcnet
-device: cpu            # cpu | cuda
+device: cuda            # cpu | cuda
 
 batch_size: 64
 max_frames: null
@@ -15,8 +15,8 @@ score_threshold: 0.5
 
 completion:
   enabled: true
-  method: hybrid       # physics | bilstm | transformer | refiner | hybrid
-  checkpoint_path: null
+  method: bilstm       # physics | bilstm | transformer | refiner | hybrid
+  checkpoint_path: outputs/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt
   device: ${device}
   max_gap: 15
   physics_gap_threshold: 5
