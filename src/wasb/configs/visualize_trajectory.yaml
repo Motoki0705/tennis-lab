@@ -3,7 +3,7 @@ defaults:
   - training: trajectory
   - logging: default
   - run: visualize_trajectory
-  - model: trajectory_refiner
+  - model: trajectory_bilstm
   - visualization: trajectory
   - _self_
 
