@@ -13,11 +13,15 @@ Config entry point: `src/wasb/configs/plot_ball_video.yaml`
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any, cast
 
 import cv2
 import hydra
+import numpy as np
 from hydra.utils import to_absolute_path
+from numpy.typing import NDArray
 from omegaconf import DictConfig
 
 from src.wasb.inference import (
@@ -38,8 +42,8 @@ def _render_overlay_video(
     *,
     video_path: Path,
     output_path: Path,
-    xy_px,
-    visibility_code,
+    xy_px: NDArray[np.floating[Any]] | Sequence[tuple[float, float]],
+    visibility_code: NDArray[np.integer[Any]] | Sequence[int],
     fps: float,
     radius: int,
     thickness: int,
@@ -53,7 +57,7 @@ def _render_overlay_video(
     try:
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
         output_path.parent.mkdir(parents=True, exist_ok=True)
         writer = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
@@ -70,7 +74,13 @@ def _render_overlay_video(
                 vis = int(visibility_code[frame_idx])
                 if vis > 0:
                     x, y = xy_px[frame_idx]
-                    xi, yi = int(round(float(x))), int(round(float(y)))
+                    xf, yf = float(x), float(y)
+                    if not (np.isfinite(xf) and np.isfinite(yf)):
+                        writer.write(frame_bgr)
+                        frame_idx += 1
+                        continue
+
+                    xi, yi = int(round(xf)), int(round(yf))
                     if 0 <= xi < width and 0 <= yi < height:
                         color = color_detected_bgr if vis == 1 else color_completed_bgr
                         cv2.circle(frame_bgr, (xi, yi), radius, color, thickness)
@@ -83,10 +93,11 @@ def _render_overlay_video(
         cap.release()
 
 
-@hydra.main(config_path="../configs", config_name="plot_ball_video", version_base="1.3")
+@hydra.main(config_path="../configs", config_name="plot_ball_video", version_base="1.3")  # type: ignore[misc]
 def main(cfg: DictConfig) -> int:
-    video_path = Path(to_absolute_path(str(getattr(cfg, "video_path"))))
-    checkpoint = Path(to_absolute_path(str(getattr(cfg, "checkpoint"))))
+    """Run ball localization and render an overlay video using Hydra config."""
+    video_path = Path(to_absolute_path(str(cfg.video_path)))
+    checkpoint = Path(to_absolute_path(str(cfg.checkpoint)))
     model_name = str(getattr(cfg, "model", "wasb")).lower()
     device = str(getattr(cfg, "device", "cpu"))
     batch_size = int(getattr(cfg, "batch_size", 64))
@@ -133,8 +144,14 @@ def main(cfg: DictConfig) -> int:
         int(getattr(render_cfg, "thickness", -1)) if render_cfg is not None else -1
     )
 
-    detected_bgr = tuple(getattr(render_cfg, "color_detected_bgr", [0, 255, 0]))
-    completed_bgr = tuple(getattr(render_cfg, "color_completed_bgr", [0, 255, 255]))
+    detected_bgr: tuple[int, int, int] = cast(
+        tuple[int, int, int],
+        tuple(int(c) for c in getattr(render_cfg, "color_detected_bgr", [0, 255, 0])),
+    )
+    completed_bgr: tuple[int, int, int] = cast(
+        tuple[int, int, int],
+        tuple(int(c) for c in getattr(render_cfg, "color_completed_bgr", [0, 255, 255])),
+    )
 
     use_completion = bool(getattr(render_cfg, "use_completion", True)) if render_cfg is not None else True
     if use_completion and result.completion is not None:
@@ -152,8 +169,8 @@ def main(cfg: DictConfig) -> int:
         fps=result.fps,
         radius=radius,
         thickness=thickness,
-        color_detected_bgr=detected_bgr,  # type: ignore[arg-type]
-        color_completed_bgr=completed_bgr,  # type: ignore[arg-type]
+        color_detected_bgr=detected_bgr,
+        color_completed_bgr=completed_bgr,
     )
 
     print(f"Saved: {output_path}")
@@ -162,4 +179,3 @@ def main(cfg: DictConfig) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
