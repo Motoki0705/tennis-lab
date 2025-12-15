@@ -1,3 +1,5 @@
+"""Lightning module wrappers around trajectory completion models."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -8,10 +10,10 @@ from torch import Tensor
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
-from src.wasb.models.trajectory_completer import (
-    BiLSTMCompleter,
-    IterativeRefinementCompleter,
-    TransformerCompleter,
+from src.wasb.models.trajectory_completion import (
+    TrajectoryBiLSTM,
+    TrajectoryDeltaTransformer,
+    TrajectoryTransformer,
 )
 
 if TYPE_CHECKING:
@@ -19,6 +21,8 @@ if TYPE_CHECKING:
 
 
 class TrajectoryLightningModule(pl.LightningModule):
+    """Lightning wrapper that trains a trajectory completion network."""
+
     def __init__(
         self,
         config: DictConfig | dict | None = None,
@@ -50,18 +54,11 @@ class TrajectoryLightningModule(pl.LightningModule):
             hidden_dim = int(model_cfg.get("hidden_dim", 64))
             num_layers = int(model_cfg.get("num_layers", 2))
             dropout = float(model_cfg.get("dropout", 0.1))
-            score_threshold = float(model_cfg.get("score_threshold", 0.5))
-
-            self.completer = BiLSTMCompleter(
+            self.model = TrajectoryBiLSTM(
                 hidden_dim=hidden_dim,
                 num_layers=num_layers,
                 dropout=dropout,
-                score_threshold=score_threshold,
-                device="cpu",
             )
-            self.completer._build_model()
-            assert self.completer._model is not None
-            self.model = self.completer._model
 
         elif model_name == "trajectory_transformer":
             d_model = int(model_cfg.get("d_model", 128))
@@ -69,20 +66,13 @@ class TrajectoryLightningModule(pl.LightningModule):
             num_heads = int(model_cfg.get("num_heads", 4))
             dim_ff = int(model_cfg.get("dim_feedforward", 256))
             dropout = float(model_cfg.get("dropout", 0.1))
-            score_threshold = float(model_cfg.get("score_threshold", 0.5))
-
-            self.completer = TransformerCompleter(
+            self.model = TrajectoryTransformer(
                 d_model=d_model,
                 num_layers=num_layers,
                 num_heads=num_heads,
                 dim_feedforward=dim_ff,
                 dropout=dropout,
-                score_threshold=score_threshold,
-                device="cpu",
             )
-            self.completer._build_model()
-            assert self.completer._model is not None
-            self.model = self.completer._model
 
         elif model_name == "trajectory_refiner":
             d_model = int(model_cfg.get("d_model", 128))
@@ -90,22 +80,14 @@ class TrajectoryLightningModule(pl.LightningModule):
             num_heads = int(model_cfg.get("num_heads", 4))
             dim_ff = int(model_cfg.get("dim_feedforward", 256))
             dropout = float(model_cfg.get("dropout", 0.1))
-            score_threshold = float(model_cfg.get("score_threshold", 0.5))
             num_steps = int(model_cfg.get("num_steps", 3))
-
-            self.completer = IterativeRefinementCompleter(
+            self.model = TrajectoryDeltaTransformer(
                 d_model=d_model,
                 num_layers=num_layers,
                 num_heads=num_heads,
                 dim_feedforward=dim_ff,
                 dropout=dropout,
-                num_steps=num_steps,
-                score_threshold=score_threshold,
-                device="cpu",
             )
-            self.completer._build_model()
-            assert self.completer._model is not None
-            self.model = self.completer._model
             self.is_iterative = True
             self.num_steps = max(num_steps, 1)
 
@@ -113,6 +95,7 @@ class TrajectoryLightningModule(pl.LightningModule):
             raise ValueError(f"Unsupported trajectory model name: {model_name}")
 
     def forward(self, x: Tensor) -> Tensor:
+        """Run a forward pass through the underlying trajectory model."""
         return self.model(x)
 
     @staticmethod
@@ -191,6 +174,7 @@ class TrajectoryLightningModule(pl.LightningModule):
         return total_loss, metrics
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
+        """Compute training loss/metrics for a single batch."""
         loss, metrics = self._shared_step(batch, "train")
         self.log("train/loss", loss, prog_bar=True)
         self.log("train/loss_block", metrics["loss_block"], prog_bar=False)
@@ -200,6 +184,7 @@ class TrajectoryLightningModule(pl.LightningModule):
         return loss
 
     def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
+        """Validate model performance on held-out data."""
         loss, metrics = self._shared_step(batch, "val")
         self.log("val/loss", loss, prog_bar=True)
         self.log("val/loss_block", metrics["loss_block"], prog_bar=False)
@@ -208,6 +193,7 @@ class TrajectoryLightningModule(pl.LightningModule):
         self.log("val/rmse_px", metrics["rmse_px"], prog_bar=True)
 
     def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
+        """Run evaluation on the test split."""
         loss, metrics = self._shared_step(batch, "test")
         self.log("test/loss", loss)
         self.log("test/loss_block", metrics["loss_block"])
@@ -216,6 +202,7 @@ class TrajectoryLightningModule(pl.LightningModule):
         self.log("test/rmse_px", metrics["rmse_px"])
 
     def configure_optimizers(self) -> dict[str, Any]:
+        """Configure optimizer and learning rate schedulers."""
         optimizer = AdamW(
             self.parameters(),
             lr=self.learning_rate,
