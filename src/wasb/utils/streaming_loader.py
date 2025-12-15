@@ -6,7 +6,7 @@ queue to pipeline I/O and inference operations.
 Example:
     >>> loader = StreamingVideoLoader(video_path, batch_size=16)
     >>> for batch in loader:
-    ...     results = predictor.predict_batch(batch.frames)
+    ...     results = predictor.predict(batch.frames, frame_indices=batch.frame_indices)
 
 """
 
@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Iterator
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from queue import Empty, Full, Queue
@@ -29,7 +30,7 @@ class FrameBatch:
     """A batch of video frames for inference.
 
     Attributes:
-        frames: Batch of frames with shape (B, H, W, 3) in BGR format.
+        frames: Batch of frames with shape (B, H, W, 3) in RGB format.
         frame_indices: List of original frame indices.
         is_last: Flag indicating this is the final batch.
 
@@ -159,7 +160,8 @@ class StreamingVideoLoader:
                     break
 
                 frame = cast(NDArray[np.uint8], frame)
-                batch_frames.append(frame)
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                batch_frames.append(frame_rgb)
                 batch_indices.append(frame_idx)
                 frame_idx += 1
 
@@ -196,10 +198,8 @@ class StreamingVideoLoader:
             self._error = e
         finally:
             cap.release()
-            try:
+            with suppress(Full):
                 self._queue.put(None, timeout=1.0)
-            except Full:
-                pass
 
     def __iter__(self) -> Iterator[FrameBatch]:
         """Iterate over frame batches.
