@@ -11,6 +11,10 @@ from src.wasb.inference.trajectory_completion import (
     TransformerCompleter,
     build_completer,
 )
+from src.wasb.inference.video_ball_localization import (
+    SingleVideoBallLocalizationPipeline,
+    VideoBallLocalizationResult,
+)
 from src.wasb.inference.wasb_predictor import WASBPredictor
 
 __all__ = [
@@ -24,4 +28,6 @@ __all__ = [
     "IterativeRefinementCompleter",
     "HybridCompleter",
     "build_completer",
+    "SingleVideoBallLocalizationPipeline",
+    "VideoBallLocalizationResult",
 ]
