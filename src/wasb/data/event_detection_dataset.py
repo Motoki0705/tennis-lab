@@ -11,8 +11,8 @@ Status convention:
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Iterable, Sequence
 
 import torch
 from torch.utils.data import Dataset
@@ -64,6 +64,7 @@ class TrajectoryEventWindowDataset(Dataset):
         )
 
     def __len__(self) -> int:
+        """Return number of trajectory windows."""
         return len(self.windows)
 
     def iter_all_targets(self) -> Iterable[torch.Tensor]:
@@ -72,9 +73,9 @@ class TrajectoryEventWindowDataset(Dataset):
             yield torch.tensor([r.status for r in w.labels], dtype=torch.int64)
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor | str]:
+        """Return tensors for the trajectory window at the given index."""
         window: TrajectoryWindow = self.windows[index]
         labels = window.labels
-        L = len(labels)
 
         xy = torch.tensor([[r.x, r.y] for r in labels], dtype=torch.float32)
         visibility = torch.tensor([r.visibility for r in labels], dtype=torch.int64)
@@ -94,4 +95,3 @@ class TrajectoryEventWindowDataset(Dataset):
             "match": window.match,
             "clip": window.clip,
         }
-

@@ -15,6 +15,10 @@ compute_class_weights:
   enabled: true
   max_windows: 5000
 
+# Additional scaling applied to the background class (0) weight.
+# Set small (e.g. 0.01) to strongly de-emphasize predicting "none".
+background_weight_scale: 0.02
+
 # Additional multiplier applied to tokens with target in {1, 2}.
 event_boost: 2.0
 
@@ -25,4 +29,3 @@ resume:
   enabled: false
   ckpt_path: null
   auto_last: true
-
