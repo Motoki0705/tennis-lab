@@ -166,9 +166,7 @@ fi
 # Execute Codex Sub-agent
 set +e
 tmp_json="$(mktemp)"
-codex exec --sandbox danger-full-access --output-schema "$schema_file" -o "$tmp_json" - <"$out_file" 2>"$codex_log"
-codex_out="$(cat "$tmp_json")"
-rm -f "$tmp_json"
+codex_out="$(codex exec --sandbox danger-full-access --output-schema "$schema_file" - <"$out_file" 2>"$codex_log")"
 codex_ec=$?
 set -e
 
