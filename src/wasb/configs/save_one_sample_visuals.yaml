@@ -8,6 +8,14 @@ split: train
 # Dataset index to visualize.
 sample_index: 0
 
+# Number of samples to visualize when sampling randomly.
+# Ignored when `sample_indices` is provided.
+num_samples: 5
+
+# Explicit dataset indices to visualize.
+# If provided, overrides `sample_index` and `num_samples`.
+sample_indices: null
+
 # Which of the target frames (0..frames_out-1) to visualize.
 target_index: 0
 
