@@ -5,6 +5,7 @@ from src.wasb.inference.event_detection import (
     TrajectoryEventDetector,
     load_event_detector_from_checkpoint,
 )
+from src.wasb.inference.heatmap_ensemble_predictor import HeatmapEnsemblePredictor
 from src.wasb.inference.hrcnet_predictor import HRCNetWASBPredictor
 from src.wasb.inference.trajectory_completion import (
     BiLSTMCompleter,
@@ -25,6 +26,7 @@ from src.wasb.inference.wasb_predictor import WASBPredictor
 __all__ = [
     "WASBPredictor",
     "HRCNetWASBPredictor",
+    "HeatmapEnsemblePredictor",
     "TrajectoryCompleter",
     "CompletionResult",
     "EventDetectionResult",
