@@ -1,0 +1,24 @@
+defaults:
+  - data: default
+  - _self_
+
+# Which split to sample from: "train", "val", or "test".
+split: train
+
+# Dataset index to visualize.
+sample_index: 0
+
+# Which of the target frames (0..frames_out-1) to visualize.
+target_index: 0
+
+# Overlay alpha for the heatmap.
+overlay_alpha: 0.5
+
+# RNG seed for deterministic sampling/augmentations where possible.
+seed: 42
+
+hydra:
+  run:
+    dir: outputs/wasb/sample_visuals/${now:%Y-%m-%d_%H-%M-%S}
+  job:
+    chdir: false
