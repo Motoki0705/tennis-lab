@@ -1,0 +1,45 @@
+defaults:
+  - _self_
+
+# Configuration for `src.wasb.scripts.plot_ball_video_ensemble`.
+video_path: data/samples/clip.mp4
+output_path: outputs/plot_ball_video_ensemble/clip.mp4
+
+device: cpu            # cpu | cuda
+batch_size: 64
+max_frames: null
+
+ensemble:
+  # Five-pattern ensemble checkpoints (edit to your trained checkpoints).
+  checkpoints:
+    - outputs/hrcnet_frames3/logs/version_0/checkpoints/last.ckpt
+    - outputs/hrcnet_frames5/logs/version_0/checkpoints/last.ckpt
+    - outputs/hrnet_frames3/logs/version_0/checkpoints/last.ckpt
+    - outputs/hrnet_frames5/logs/version_0/checkpoints/last.ckpt
+    - outputs/dinov3_heatmap_frames1/logs/version_0/checkpoints/last.ckpt
+  heatmap_threshold: 0.5
+  apply_sigmoid: true
+  # If set, resizes each model output heatmap to this size before ensembling.
+  output_heatmap_hw: null  # e.g. [288, 512]
+
+completion:
+  enabled: false
+  method: bilstm       # physics | bilstm | transformer | refiner | hybrid
+  checkpoint_path: outputs/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt
+  device: ${device}
+  max_gap: 15
+  physics_gap_threshold: 5
+
+render:
+  use_completion: true
+  radius: 6
+  thickness: -1
+  color_detected_bgr: [0, 255, 0]
+  color_completed_bgr: [0, 255, 255]
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
+
