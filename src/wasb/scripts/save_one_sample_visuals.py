@@ -18,6 +18,8 @@ Useful overrides:
 - `sample_index=...`
 - `target_index=...` (0..data.frames_out-1)
 - `overlay_alpha=...`
+- `num_samples=...` (default: 1)
+- `sample_indices=[...]` (list of indices)
 """
 
 from __future__ import annotations
@@ -87,6 +89,7 @@ def _save_visuals(
     augmented_sample: dict,
     target_index: int,
     overlay_alpha: float,
+    file_stem: str,
     out_dir: Path,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -111,8 +114,8 @@ def _save_visuals(
     img_orig = frames_orig[frame_idx]
     img_aug = frames_aug[frame_idx]
 
-    save_image(img_orig, out_dir / "original.png")
-    save_image(img_aug, out_dir / "augmented.png")
+    save_image(img_orig, out_dir / f"{file_stem}_original.png")
+    save_image(img_aug, out_dir / f"{file_stem}_augmented.png")
 
     hm = heatmaps[target_index]
     hm_up = F.interpolate(
@@ -129,7 +132,7 @@ def _save_visuals(
         0.0,
         1.0,
     )
-    save_image(overlay, out_dir / "overlay.png")
+    save_image(overlay, out_dir / f"{file_stem}_overlay.png")
 
     meta = {
         "match": original_sample.get("match"),
@@ -148,7 +151,7 @@ def _save_visuals(
             else None
         ),
     }
-    (out_dir / "meta.yaml").write_text(OmegaConf.to_yaml(meta))
+    (out_dir / f"{file_stem}_meta.yaml").write_text(OmegaConf.to_yaml(meta))
 
 
 @hydra.main(
@@ -158,17 +161,17 @@ def _save_visuals(
 )
 def main(cfg: DictConfig) -> None:
     _force_cpu_only()
-    _seed_everything(int(getattr(cfg, "seed", 42)))
+    seed = int(getattr(cfg, "seed", 42))
+    _seed_everything(seed)
 
     split: Split = str(getattr(cfg, "split", "train"))  # type: ignore[assignment]
-    sample_index = int(getattr(cfg, "sample_index", 0))
     target_index = int(getattr(cfg, "target_index", 0))
     overlay_alpha = float(getattr(cfg, "overlay_alpha", 0.5))
+    num_samples = int(getattr(cfg, "num_samples", 1))
+    sample_indices_cfg = getattr(cfg, "sample_indices", None)
 
     runtime_out = Path(HydraConfig.get().runtime.output_dir)
-    out_dir = Path(to_absolute_path(str(runtime_out))) / (
-        f"{split}_idx{sample_index:06d}"
-    )
+    out_dir = Path(to_absolute_path(str(runtime_out)))
 
     dm_orig = _make_datamodule(cfg, augment_enabled=False)
     dm_aug = _make_datamodule(cfg, augment_enabled=True)
@@ -180,25 +183,46 @@ def main(cfg: DictConfig) -> None:
             "Dataset is not initialized; check split and call setup()."
         )
 
-    if not (0 <= sample_index < len(ds_orig) and 0 <= sample_index < len(ds_aug)):
-        raise ValueError(
-            f"sample_index must be within dataset bounds (len={len(ds_orig)}), "
-            f"got {sample_index}."
+    if len(ds_orig) != len(ds_aug):
+        raise RuntimeError(
+            "Original/Augmented datasets have different lengths; check data config."
         )
 
-    original_sample = ds_orig[sample_index]
+    if sample_indices_cfg is not None:
+        sample_indices = [int(x) for x in list(sample_indices_cfg)]
+    else:
+        sample_index = int(getattr(cfg, "sample_index", 0))
+        if num_samples <= 1:
+            sample_indices = [sample_index]
+        else:
+            if num_samples > len(ds_orig):
+                raise ValueError(
+                    f"num_samples must be <= dataset length (len={len(ds_orig)}), "
+                    f"got {num_samples}."
+                )
+            sample_indices = random.sample(range(len(ds_orig)), k=num_samples)
 
-    # Re-seed before fetching the augmented sample for better reproducibility.
-    _seed_everything(int(getattr(cfg, "seed", 42)))
-    augmented_sample = ds_aug[sample_index]
+    for sample_index in sample_indices:
+        if not (0 <= sample_index < len(ds_orig)):
+            raise ValueError(
+                f"sample_index must be within dataset bounds (len={len(ds_orig)}), "
+                f"got {sample_index}."
+            )
 
-    _save_visuals(
-        original_sample=original_sample,
-        augmented_sample=augmented_sample,
-        target_index=target_index,
-        overlay_alpha=overlay_alpha,
-        out_dir=out_dir,
-    )
+        original_sample = ds_orig[sample_index]
+
+        # Re-seed per sample before fetching the augmented sample for reproducibility.
+        _seed_everything(seed + int(sample_index))
+        augmented_sample = ds_aug[sample_index]
+
+        _save_visuals(
+            original_sample=original_sample,
+            augmented_sample=augmented_sample,
+            target_index=target_index,
+            overlay_alpha=overlay_alpha,
+            file_stem=f"{split}_idx{sample_index:06d}",
+            out_dir=out_dir,
+        )
 
     print(f"Saved: {out_dir}")
 
