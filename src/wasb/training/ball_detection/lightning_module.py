@@ -1,4 +1,4 @@
-"""PyTorch Lightning module for WASB tennis training."""
+"""PyTorch Lightning module for WASB ball detection training."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
 
 from src.wasb.models import build_model
-from src.wasb.training.losses import LossWeights, WASBLoss
-from src.wasb.training.metrics import WASBMetrics
+from src.wasb.training.ball_detection.loss import LossWeights, WASBLoss
+from src.wasb.training.ball_detection.metrics import WASBMetrics
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -56,8 +56,9 @@ class WASBLightningModule(pl.LightningModule):
         self.prepare_frames, self.extract_heatmaps = io_handlers
 
         train_cfg = self.config.get("training", {})
-        bce_weight = train_cfg.get("bce_weight", 1.0)
-        mse_weight = train_cfg.get("mse_weight", 1.0)
+        loss_cfg = self.config.get("loss", {})
+        bce_weight = loss_cfg.get("bce_weight", train_cfg.get("bce_weight", 1.0))
+        mse_weight = loss_cfg.get("mse_weight", train_cfg.get("mse_weight", 1.0))
         loss_weights = LossWeights(
             bce=bce_weight,
             mse=mse_weight,

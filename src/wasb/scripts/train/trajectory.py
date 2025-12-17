@@ -22,7 +22,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.wasb.data.trajectory_datamodule import TrajectoryDataModule
-from src.wasb.training.trajectory_lightning_module import TrajectoryLightningModule
+from src.wasb.training import TrajectoryLightningModule
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
 
 

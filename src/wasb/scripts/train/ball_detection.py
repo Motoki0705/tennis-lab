@@ -25,7 +25,7 @@ from torchvision.utils import save_image
 
 from src.wasb.data.ball_detection_datamodule import BallDetectionDataModule
 from src.wasb.models import build_model
-from src.wasb.training.lightning_module import WASBLightningModule
+from src.wasb.training import WASBLightningModule
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
 
 

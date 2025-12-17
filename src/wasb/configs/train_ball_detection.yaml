@@ -1,6 +1,7 @@
 defaults:
   - data: ball_detection
   - training: ball_detection
+  - loss: ball_detection
   - logging: default
   - metrics: ball_detection
   - run: ball_detection

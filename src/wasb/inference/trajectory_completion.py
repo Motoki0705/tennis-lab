@@ -317,7 +317,7 @@ class TransformerCompleter(_TorchModelCompleter):
         if not checkpoint_path.exists():
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
-        from src.wasb.training.trajectory_lightning_module import TrajectoryLightningModule
+        from src.wasb.training import TrajectoryLightningModule
 
         module = TrajectoryLightningModule.load_from_checkpoint(
             str(checkpoint_path), map_location=_ensure_torch_device(device)
@@ -385,7 +385,7 @@ class BiLSTMCompleter(TransformerCompleter):
         if not checkpoint_path.exists():
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
-        from src.wasb.training.trajectory_lightning_module import TrajectoryLightningModule
+        from src.wasb.training import TrajectoryLightningModule
 
         module = TrajectoryLightningModule.load_from_checkpoint(
             str(checkpoint_path), map_location=_ensure_torch_device(device)
@@ -428,7 +428,7 @@ class IterativeRefinementCompleter(_TorchModelCompleter):
         if not checkpoint_path.exists():
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
-        from src.wasb.training.trajectory_lightning_module import TrajectoryLightningModule
+        from src.wasb.training import TrajectoryLightningModule
 
         module = TrajectoryLightningModule.load_from_checkpoint(
             str(checkpoint_path), map_location=_ensure_torch_device(device)
