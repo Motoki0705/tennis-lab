@@ -5,17 +5,22 @@ inp_height: 288
 inp_width: 512
 
 # HRCNet architecture parameters
-high_channels: 32
+high_channels: 64
 low_channels: 128
 num_stages: 3
-high_block: BASIC
-low_block: BASIC
-num_high_blocks: 2
-num_low_blocks: 1
+high_block: CONVNEXT # BOTTLENECK or CONVNEXT
+low_block: CONVNEXT # BOTTLENECK or CONVNEXT
+num_high_blocks: 3
+num_low_blocks: 2
 upsample_mode: nearest
 
 downsample_kwargs:
   num_downsample: 4
+  bn_momentum: BN_MOMENTUM
+  expansion: 4.0
+  kernel_size: 3
+  use_se: True
+  activation: "hswish"
 
 transformer_kwargs:
   d_model: 128
