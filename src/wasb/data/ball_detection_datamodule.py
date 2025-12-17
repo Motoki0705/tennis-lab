@@ -7,13 +7,14 @@ from pathlib import Path
 from typing import Sequence
 
 import pytorch_lightning as pl
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Sampler
 from torchvision import transforms
 
 from src.wasb.data.ball_detection_dataset import (
     BallDetectionSequenceDataset,
     VisibilityMode,
 )
+from src.wasb.data.curriculum_sampling import VisibilityCurriculumSampler
 
 
 class BallDetectionDataModule(pl.LightningDataModule):
@@ -23,6 +24,9 @@ class BallDetectionDataModule(pl.LightningDataModule):
         super().__init__()
         cfg = config or {}
         data_cfg = cfg.get("data", {})
+
+        run_cfg = cfg.get("run", {}) if hasattr(cfg, "get") else {}
+        self.seed = int(run_cfg.get("seed", 0))
 
         self.root_dir = Path(data_cfg.get("root_dir", "data/tennis"))
         self.train_matches: Sequence[str] = data_cfg.get("train_matches", [])
@@ -43,9 +47,23 @@ class BallDetectionDataModule(pl.LightningDataModule):
 
         self.augment_cfg = data_cfg.get("augment", {})
 
+        sampling_cfg = data_cfg.get("sampling", {}) or {}
+        curriculum_cfg = sampling_cfg.get("curriculum", {}) or {}
+        self.curriculum_enabled = bool(curriculum_cfg.get("enabled", False))
+        self.curriculum_switch_step = int(curriculum_cfg.get("switch_step", 0))
+        self.curriculum_balance_visibility = curriculum_cfg.get(
+            "balance_visibility", [1, 2]
+        )
+        self.curriculum_target_ratio = curriculum_cfg.get("target_ratio", [0.5, 0.5])
+        self.curriculum_replacement = bool(curriculum_cfg.get("replacement", True))
+        self.curriculum_num_samples_per_epoch = curriculum_cfg.get(
+            "num_samples_per_epoch", None
+        )
+
         self.train_dataset: BallDetectionSequenceDataset | None = None
         self.val_dataset: BallDetectionSequenceDataset | None = None
         self.test_dataset: BallDetectionSequenceDataset | None = None
+        self.train_sampler: VisibilityCurriculumSampler | None = None
 
     def _build_transform(self, train: bool) -> Callable:
         data_aug = self.augment_cfg or {}
@@ -118,7 +136,7 @@ class BallDetectionDataModule(pl.LightningDataModule):
 
     def setup(self, stage: str | None = None) -> None:
         if stage in (None, "fit"):
-        self.train_dataset = BallDetectionSequenceDataset(
+            self.train_dataset = BallDetectionSequenceDataset(
                 root_dir=self.root_dir,
                 matches=self.train_matches,
                 frames_in=self.frames_in,
@@ -132,7 +150,7 @@ class BallDetectionDataModule(pl.LightningDataModule):
                 heatmap_hw=self.heatmap_hw,
                 heatmap_sigma=self.heatmap_sigma,
             )
-        self.val_dataset = BallDetectionSequenceDataset(
+            self.val_dataset = BallDetectionSequenceDataset(
                 root_dir=self.root_dir,
                 matches=self.val_matches or self.train_matches,
                 frames_in=self.frames_in,
@@ -146,9 +164,20 @@ class BallDetectionDataModule(pl.LightningDataModule):
                 heatmap_hw=self.heatmap_hw,
                 heatmap_sigma=self.heatmap_sigma,
             )
+            self.train_sampler = None
+            if self.curriculum_enabled:
+                self.train_sampler = VisibilityCurriculumSampler(
+                    visibilities=self.train_dataset.sample_visibilities,
+                    switch_step=self.curriculum_switch_step,
+                    balance_values=self.curriculum_balance_visibility,
+                    target_ratio=self.curriculum_target_ratio,
+                    replacement=self.curriculum_replacement,
+                    seed=self.seed,
+                    num_samples=self.curriculum_num_samples_per_epoch,
+                )
 
         if stage in (None, "test"):
-        self.test_dataset = BallDetectionSequenceDataset(
+            self.test_dataset = BallDetectionSequenceDataset(
                 root_dir=self.root_dir,
                 matches=self.test_matches or self.val_matches or self.train_matches,
                 frames_in=self.frames_in,
@@ -164,21 +193,27 @@ class BallDetectionDataModule(pl.LightningDataModule):
             )
 
     def _loader(
-        self, dataset: BallDetectionSequenceDataset | None, shuffle: bool
+        self,
+        dataset: BallDetectionSequenceDataset | None,
+        shuffle: bool,
+        sampler: Sampler[int] | None = None,
     ) -> DataLoader:
         if dataset is None:
             raise RuntimeError("Dataset is not initialized; call setup() first.")
         return DataLoader(
             dataset,
             batch_size=self.batch_size,
-            shuffle=shuffle,
+            shuffle=shuffle if sampler is None else False,
+            sampler=sampler,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             persistent_workers=self.num_workers > 0,
         )
 
     def train_dataloader(self) -> DataLoader:
-        return self._loader(self.train_dataset, shuffle=True)
+        return self._loader(
+            self.train_dataset, shuffle=True, sampler=self.train_sampler
+        )
 
     def val_dataloader(self) -> DataLoader:
         return self._loader(self.val_dataset, shuffle=False)
