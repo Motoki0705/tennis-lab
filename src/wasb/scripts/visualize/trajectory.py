@@ -18,7 +18,7 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
 from src.wasb.data.trajectory_datamodule import TrajectoryDataModule
-from src.wasb.training.trajectory_lightning_module import TrajectoryLightningModule
+from src.wasb.training import TrajectoryLightningModule
 
 
 def _resolve_device(gpus: int) -> torch.device:

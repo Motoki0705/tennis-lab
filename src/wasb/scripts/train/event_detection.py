@@ -26,9 +26,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.wasb.data.event_detection_datamodule import TrajectoryEventDataModule
-from src.wasb.training.event_detection_lightning_module import (
-    EventDetectionLightningModule,
-)
+from src.wasb.training import EventDetectionLightningModule
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
 
 

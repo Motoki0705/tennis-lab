@@ -13,9 +13,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from src.wasb.training.event_detection_lightning_module import (
-    EventDetectionLightningModule,
-)
+from src.wasb.training import EventDetectionLightningModule
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

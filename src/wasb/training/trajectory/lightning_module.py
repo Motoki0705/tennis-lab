@@ -1,4 +1,4 @@
-"""Lightning module wrappers around trajectory completion models."""
+"""Lightning module wrapper around trajectory completion models."""
 
 from __future__ import annotations
 
@@ -15,6 +15,8 @@ from src.wasb.models.trajectory_completion import (
     TrajectoryDeltaTransformer,
     TrajectoryTransformer,
 )
+from src.wasb.training.trajectory.loss import TrajectoryLossWeights, trajectory_losses
+from src.wasb.training.trajectory.metrics import rmse_px_from_norm
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -45,6 +47,15 @@ class TrajectoryLightningModule(pl.LightningModule):
         self.lambda_block = float(train_cfg.get("lambda_block", 1.0))
         self.lambda_sparse = float(train_cfg.get("lambda_sparse", 1.0))
         self.lambda_noise = float(train_cfg.get("lambda_noise", 1.0))
+        loss_cfg = self.config.get("loss", {})
+        self.loss_weights = TrajectoryLossWeights(
+            block=float(loss_cfg.get("lambda_block", self.lambda_block)),
+            sparse=float(loss_cfg.get("lambda_sparse", self.lambda_sparse)),
+            noise=float(loss_cfg.get("lambda_noise", self.lambda_noise)),
+        )
+        metrics_cfg = self.config.get("metrics", {})
+        scale_cfg = metrics_cfg.get("scale_xy_px", [1920.0, 1080.0])
+        self.scale_xy_px = (float(scale_cfg[0]), float(scale_cfg[1]))
 
         model_name = str(model_cfg.get("name", "trajectory_bilstm"))
         self.is_iterative = False
@@ -99,13 +110,6 @@ class TrajectoryLightningModule(pl.LightningModule):
         return self.model(x)
 
     @staticmethod
-    def _masked_mean(loss: Tensor, mask: Tensor) -> Tensor:
-        mask = mask.to(dtype=loss.dtype, device=loss.device)
-        denom = mask.sum()
-        if denom <= 0:
-            return torch.zeros((), dtype=loss.dtype, device=loss.device)
-        return (loss * mask).sum() / (denom + 1e-8)
-
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
     ) -> tuple[Tensor, dict[str, float]]:
@@ -121,8 +125,6 @@ class TrajectoryLightningModule(pl.LightningModule):
         loss_mask_block = loss_mask_block.to(device)
         loss_mask_sparse = loss_mask_sparse.to(device)
         loss_mask_noise = loss_mask_noise.to(device)
-
-        scale = torch.tensor([1920.0, 1080.0], dtype=torch.float32, device=device)
 
         model_in = xy_input_norm
 
@@ -142,33 +144,30 @@ class TrajectoryLightningModule(pl.LightningModule):
             pred_norm = self(model_in)
             diff = pred_norm - target_xy_norm
             mse_per_frame = (diff * diff).sum(dim=-1)
-
-        loss_block = self._masked_mean(mse_per_frame, loss_mask_block)
-        loss_sparse = self._masked_mean(mse_per_frame, loss_mask_sparse)
-        loss_noise = self._masked_mean(mse_per_frame, loss_mask_noise)
-
-        total_loss = (
-            self.lambda_block * loss_block
-            + self.lambda_sparse * loss_sparse
-            + self.lambda_noise * loss_noise
+        losses = trajectory_losses(
+            mse_per_frame=mse_per_frame,
+            loss_mask_block=loss_mask_block,
+            loss_mask_sparse=loss_mask_sparse,
+            loss_mask_noise=loss_mask_noise,
+            weights=self.loss_weights,
         )
+        total_loss = losses["total"]
 
         total_mask = (loss_mask_block + loss_mask_sparse + loss_mask_noise) > 0
         rmse_px = torch.zeros((), dtype=torch.float32, device=device)
         if total_mask.any():
-            pred_px = pred_norm * scale
-            target_px = target_xy_norm * scale
-            diff_px = pred_px - target_px
-            sq = (diff_px * diff_px).sum(dim=-1)
-            rmse_px = torch.sqrt(
-                self._masked_mean(sq, total_mask.to(dtype=torch.float32))
+            rmse_px = rmse_px_from_norm(
+                pred_xy_norm=pred_norm,
+                target_xy_norm=target_xy_norm,
+                mask=total_mask,
+                scale_xy_px=self.scale_xy_px,
             )
 
         metrics = {
             "loss_total": total_loss.detach().item(),
-            "loss_block": loss_block.detach().item(),
-            "loss_sparse": loss_sparse.detach().item(),
-            "loss_noise": loss_noise.detach().item(),
+            "loss_block": losses["block"].detach().item(),
+            "loss_sparse": losses["sparse"].detach().item(),
+            "loss_noise": losses["noise"].detach().item(),
             "rmse_px": rmse_px.detach().item(),
         }
         return total_loss, metrics

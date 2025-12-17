@@ -3,9 +3,7 @@ from __future__ import annotations
 import torch
 
 from src.wasb.models.event_detection import TrajectoryEventTransformer
-from src.wasb.training.event_detection_lightning_module import (
-    EventDetectionLightningModule,
-)
+from src.wasb.training import EventDetectionLightningModule
 
 
 def test_event_transformer_forward_shape() -> None:

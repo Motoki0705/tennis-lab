@@ -1,4 +1,4 @@
-"""Metrics for WASB tennis training."""
+"""Metrics for WASB ball detection training."""
 
 from __future__ import annotations
 

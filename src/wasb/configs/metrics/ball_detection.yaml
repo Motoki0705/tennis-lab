@@ -1,4 +1,3 @@
 target_rmse_px: 5.0
 target_detection_rate: 0.9
 accuracy_thresh_px: 10.0
-
