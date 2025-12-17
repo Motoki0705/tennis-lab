@@ -1,4 +1,6 @@
-from typing import Dict, Any, Optional
+"""HRCNet implementation for WASB ball detection."""
+
+from typing import Any, Dict, Optional
 
 import torch
 import torch.nn as nn

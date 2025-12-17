@@ -6,7 +6,7 @@ Run with Hydra-style overrides, for example:
 uv run python -m src.wasb.scripts.train.ball_detection training.max_epochs=50 data.batch_size=32
 ```
 
-Config entry point: `src/wasb/configs/ball_detection.yaml`
+Config entry point: `src/wasb/configs/train_ball_detection.yaml`
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.nn import functional as F
 from torchvision.utils import save_image
 
-from src.wasb.data.datamodule import TennisDataModule
+from src.wasb.data.ball_detection_datamodule import BallDetectionDataModule
 from src.wasb.models import build_model
 from src.wasb.training.lightning_module import WASBLightningModule
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
@@ -106,7 +106,7 @@ def run_dry_run(config: DictConfig, output_dir: Path) -> None:
     torch.cuda.device_count = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)  # type: ignore[assignment]
     torch.cuda.current_device = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)  # type: ignore[assignment]
 
-    datamodule = TennisDataModule(config)
+    datamodule = BallDetectionDataModule(config)
     datamodule.num_workers = 0  # Avoid multiprocessing in restricted environments
     datamodule.pin_memory = False
     datamodule.setup(stage="fit")
@@ -156,7 +156,7 @@ def run_dry_run(config: DictConfig, output_dir: Path) -> None:
 
     trainer.fit(lightning_module, datamodule=datamodule)
 
-@hydra.main(config_path="../../configs", config_name="ball_detection", version_base="1.3")
+@hydra.main(config_path="../../configs", config_name="train_ball_detection", version_base="1.3")
 def main(config: DictConfig) -> None:
     """Hydra entry point."""
     pl.seed_everything(config.run.seed)
@@ -180,7 +180,7 @@ def main(config: DictConfig) -> None:
         output_dir=output_dir,
     )
 
-    datamodule = TennisDataModule(config)
+    datamodule = BallDetectionDataModule(config)
     datamodule.setup(stage="fit")
     train_loader = datamodule.train_dataloader()
     steps_per_epoch = len(train_loader)

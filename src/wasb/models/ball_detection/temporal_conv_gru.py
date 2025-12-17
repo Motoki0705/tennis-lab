@@ -1,4 +1,4 @@
-"""HRNet backbone with (stacked) ConvGRU temporal head."""
+"""HRNet backbone + ConvGRU temporal head for ball detection."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Lightning DataModule for the WASB tennis dataset."""
+"""Lightning DataModule for WASB ball detection training."""
 
 from __future__ import annotations
 
@@ -10,14 +10,14 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from src.wasb.data.dataset import (
-    TennisSequenceDataset,
+from src.wasb.data.ball_detection_dataset import (
+    BallDetectionSequenceDataset,
     VisibilityMode,
 )
 
 
-class TennisDataModule(pl.LightningDataModule):
-    """Lightning DataModule wrapper around ``TennisSequenceDataset``."""
+class BallDetectionDataModule(pl.LightningDataModule):
+    """Lightning DataModule wrapper around ``BallDetectionSequenceDataset``."""
 
     def __init__(self, config: dict | None = None) -> None:
         super().__init__()
@@ -43,9 +43,9 @@ class TennisDataModule(pl.LightningDataModule):
 
         self.augment_cfg = data_cfg.get("augment", {})
 
-        self.train_dataset: TennisSequenceDataset | None = None
-        self.val_dataset: TennisSequenceDataset | None = None
-        self.test_dataset: TennisSequenceDataset | None = None
+        self.train_dataset: BallDetectionSequenceDataset | None = None
+        self.val_dataset: BallDetectionSequenceDataset | None = None
+        self.test_dataset: BallDetectionSequenceDataset | None = None
 
     def _build_transform(self, train: bool) -> Callable:
         data_aug = self.augment_cfg or {}
@@ -118,7 +118,7 @@ class TennisDataModule(pl.LightningDataModule):
 
     def setup(self, stage: str | None = None) -> None:
         if stage in (None, "fit"):
-            self.train_dataset = TennisSequenceDataset(
+        self.train_dataset = BallDetectionSequenceDataset(
                 root_dir=self.root_dir,
                 matches=self.train_matches,
                 frames_in=self.frames_in,
@@ -132,7 +132,7 @@ class TennisDataModule(pl.LightningDataModule):
                 heatmap_hw=self.heatmap_hw,
                 heatmap_sigma=self.heatmap_sigma,
             )
-            self.val_dataset = TennisSequenceDataset(
+        self.val_dataset = BallDetectionSequenceDataset(
                 root_dir=self.root_dir,
                 matches=self.val_matches or self.train_matches,
                 frames_in=self.frames_in,
@@ -148,7 +148,7 @@ class TennisDataModule(pl.LightningDataModule):
             )
 
         if stage in (None, "test"):
-            self.test_dataset = TennisSequenceDataset(
+        self.test_dataset = BallDetectionSequenceDataset(
                 root_dir=self.root_dir,
                 matches=self.test_matches or self.val_matches or self.train_matches,
                 frames_in=self.frames_in,
@@ -164,7 +164,7 @@ class TennisDataModule(pl.LightningDataModule):
             )
 
     def _loader(
-        self, dataset: TennisSequenceDataset | None, shuffle: bool
+        self, dataset: BallDetectionSequenceDataset | None, shuffle: bool
     ) -> DataLoader:
         if dataset is None:
             raise RuntimeError("Dataset is not initialized; call setup() first.")
