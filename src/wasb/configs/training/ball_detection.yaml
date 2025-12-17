@@ -6,7 +6,7 @@ weight_decay: 1e-4
 warmup_steps: 1000
 min_lr: 1e-6
 bce_weight: 1.0
-mse_weight: 1.0
+mse_weight: 0.0
 precision: "bf16-mixed"
 resume:
   enabled: false
