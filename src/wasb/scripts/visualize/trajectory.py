@@ -1,7 +1,7 @@
 """Visualize WASB trajectory completion results (Hydra-based).
 
 Example commands:
-    `uv run python -m src.wasb.scripts.visualize_trajectory visualization.checkpoint=outputs/trajectory/logs/version_0/checkpoints/last.ckpt`
+    `uv run python -m src.wasb.scripts.visualize.trajectory visualization.checkpoint=outputs/trajectory/logs/version_0/checkpoints/last.ckpt`
 
 Config entry point: `src/wasb/configs/visualize_trajectory.yaml`
 """
@@ -187,7 +187,7 @@ def visualize_batch(
     return num_saved
 
 
-@hydra.main(config_path="../configs", config_name="visualize_trajectory", version_base="1.3")
+@hydra.main(config_path="../../configs", config_name="visualize_trajectory", version_base="1.3")
 def main(cfg: DictConfig) -> None:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
     seed = int(cfg.run.seed)

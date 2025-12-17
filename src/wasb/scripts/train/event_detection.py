@@ -1,17 +1,21 @@
-"""Train the WASB trajectory completer (Hydra-based).
+"""Train a WASB trajectory event detector (Hydra-based).
+
+This trains a per-frame classifier over the `status` label in `Label.csv`:
+    - 0: none
+    - 1: shot
+    - 2: bounce
 
 Example commands:
-    `uv run python -m src.wasb.scripts.train_trajectory`
-    `uv run python -m src.wasb.scripts.train_trajectory training.max_epochs=1 run.gpus=0`
+    `uv run python -m src.wasb.scripts.train.event_detection`
+    `uv run python -m src.wasb.scripts.train.event_detection run.dry_run=true`
+    `uv run python -m src.wasb.scripts.train.event_detection training.max_epochs=1 run.gpus=0`
 
-Config entry point: `src/wasb/configs/train_trajectory.yaml`
+Config entry point: `src/wasb/configs/train_event_detection.yaml`
 """
 
 from __future__ import annotations
 
 import logging
-import subprocess
-import sys
 from pathlib import Path
 
 import hydra
@@ -21,8 +25,10 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from src.wasb.data.trajectory_datamodule import TrajectoryDataModule
-from src.wasb.training.trajectory_lightning_module import TrajectoryLightningModule
+from src.wasb.data.event_detection_datamodule import TrajectoryEventDataModule
+from src.wasb.training.event_detection_lightning_module import (
+    EventDetectionLightningModule,
+)
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
 
 
@@ -40,31 +46,50 @@ def _setup_logging(config: DictConfig) -> None:
     logging.basicConfig(level=level, format=fmt, datefmt=datefmt)
 
 
-def run_dry_run(config: DictConfig, output_dir: Path) -> None:
-    """Load a single batch and run a 1-step fit loop on CPU."""
-    print("Running dry run (no training)...")
+def _force_cpu_only() -> None:
     import os
     import types
 
     os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
-    torch.cuda.is_available = types.MethodType(lambda *_args, **_kwargs: False, torch.cuda)  # type: ignore[assignment]
-    torch.cuda.device_count = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)  # type: ignore[assignment]
-    torch.cuda.current_device = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)  # type: ignore[assignment]
+    torch.cuda.is_available = types.MethodType(lambda *_args, **_kwargs: False, torch.cuda)
+    torch.cuda.device_count = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)
+    torch.cuda.current_device = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)
 
-    datamodule = TrajectoryDataModule(config)
+
+def run_dry_run(config: DictConfig, output_dir: Path) -> None:
+    """Load a single batch and run a 1-step fit loop on CPU."""
+    print("Running dry run (no training)...")
+    _force_cpu_only()
+
+    datamodule = TrajectoryEventDataModule(config)
     datamodule.num_workers = 0
     datamodule.pin_memory = False
     datamodule.setup(stage="fit")
     train_loader = datamodule.train_dataloader()
     batch = next(iter(train_loader))
 
-    xy = batch["xy_input_norm"]
-    targets = batch["target_xy_norm"]
+    xy = batch["xy_norm"]
+    target = batch["target_status"]
+    print(f"Loaded batch: xy_norm {tuple(xy.shape)}, target_status {tuple(target.shape)}")
 
-    print(f"Loaded batch: xy_input {tuple(xy.shape)}, targets {tuple(targets.shape)}")
+    weights = None
+    compute_cfg = getattr(config.training, "compute_class_weights", None)
+    if compute_cfg is not None and bool(getattr(compute_cfg, "enabled", False)):
+        counts = datamodule.estimate_class_counts(
+            max_windows=int(getattr(compute_cfg, "max_windows", 200))
+        )
+        weights = datamodule.class_weights_from_counts(counts)
+        bg_scale = float(getattr(config.training, "background_weight_scale", 1.0))
+        if bg_scale != 1.0:
+            weights = weights.clone()
+            weights[0] = weights[0] * bg_scale
 
     steps_per_epoch = len(train_loader)
-    module = TrajectoryLightningModule(config, steps_per_epoch=steps_per_epoch)
+    module = EventDetectionLightningModule(
+        config,
+        steps_per_epoch=steps_per_epoch,
+        class_weights=weights,
+    )
     trainer = pl.Trainer(
         max_epochs=1,
         limit_train_batches=1,
@@ -77,45 +102,10 @@ def run_dry_run(config: DictConfig, output_dir: Path) -> None:
         enable_progress_bar=False,
     )
     trainer.fit(module, datamodule=datamodule)
-
     (output_dir / "dry_run_ok.txt").write_text("ok\n", encoding="utf-8")
 
 
-def _maybe_run_visualization(
-    *,
-    last_ckpt: Path,
-    vis_dir: Path,
-    gpus: int,
-    seed: int,
-) -> None:
-    if not last_ckpt.exists():
-        logging.getLogger(__name__).warning(
-            "last.ckpt not found at %s; skipping visualization", last_ckpt
-        )
-        return
-
-    vis_dir.mkdir(parents=True, exist_ok=True)
-    cmd = [
-        sys.executable,
-        "-m",
-        "src.wasb.scripts.visualize_trajectory",
-        f"visualization.checkpoint={last_ckpt}",
-        f"visualization.output_dir={vis_dir}",
-        "visualization.split=test",
-        "visualization.num_samples=8",
-        f"run.gpus={gpus}",
-        f"run.seed={seed}",
-    ]
-    logging.getLogger(__name__).info("Running visualization: %s", " ".join(map(str, cmd)))
-    try:
-        subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as exc:
-        logging.getLogger(__name__).warning(
-            "Visualization script failed with return code %s", exc.returncode
-        )
-
-
-@hydra.main(config_path="../configs", config_name="train_trajectory", version_base="1.3")
+@hydra.main(config_path="../../configs", config_name="train_event_detection", version_base="1.3")  # type: ignore[misc]
 def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
     seed = int(config.run.seed)
@@ -140,20 +130,38 @@ def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
         output_dir=output_dir,
     )
 
-    datamodule = TrajectoryDataModule(config)
+    datamodule = TrajectoryEventDataModule(config)
     datamodule.setup(stage="fit")
     train_loader = datamodule.train_dataloader()
     steps_per_epoch = len(train_loader)
 
-    module = TrajectoryLightningModule(config, steps_per_epoch=steps_per_epoch)
+    weights = None
+    if config.training.class_weights is None:
+        compute_cfg = getattr(config.training, "compute_class_weights", None)
+        if compute_cfg is not None and bool(getattr(compute_cfg, "enabled", False)):
+            counts = datamodule.estimate_class_counts(
+                max_windows=int(getattr(compute_cfg, "max_windows", 5000))
+            )
+            weights = datamodule.class_weights_from_counts(counts)
+            bg_scale = float(getattr(config.training, "background_weight_scale", 1.0))
+            if bg_scale != 1.0:
+                weights = weights.clone()
+                weights[0] = weights[0] * bg_scale
+            print(f"Estimated class counts: {counts.tolist()}")
+            print(f"Using class weights: {weights.tolist()}")
+
+    module = EventDetectionLightningModule(
+        config,
+        steps_per_epoch=steps_per_epoch,
+        class_weights=weights,
+    )
 
     logger = TensorBoardLogger(save_dir=str(output_dir), name="logs")
-
     checkpoint_dir = Path(logger.log_dir) / "checkpoints"
     callbacks = [
         ModelCheckpoint(
             dirpath=checkpoint_dir,
-            filename="trajectory-{epoch:02d}",
+            filename="event-{epoch:02d}",
             monitor="val/loss",
             mode="min",
             save_top_k=3,
@@ -178,12 +186,6 @@ def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
 
     if not bool(config.run.fast_dev_run):
         trainer.test(module, datamodule=datamodule)
-        _maybe_run_visualization(
-            last_ckpt=checkpoint_dir / "last.ckpt",
-            vis_dir=Path(logger.log_dir) / "vis",
-            gpus=gpus,
-            seed=seed,
-        )
 
     print(f"Training complete. Checkpoints saved under {checkpoint_dir}")
     print(f"Outputs saved to {output_dir}")

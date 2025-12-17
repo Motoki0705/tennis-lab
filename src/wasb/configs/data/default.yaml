@@ -1,36 +1,3 @@
-root_dir: data/tennis
-train_matches: ["game1", "game2", "game3", "game4", "game5", "game6", "game7", "game11", "game12", "game13", "game15", "game16"]
-val_matches: ["game8", "game9", "game14"]
-test_matches: ["game10"]
-frames_in: 3
-frames_out: 1
-step: 1
-visibility_mode: all_visible
-image_ext: ".jpg"
-csv_filename: Label.csv
-batch_size: 4
-num_workers: 4
-resize_hw: [288, 512]
-heatmap_hw: [288, 512]
-heatmap_sigma: 2.0
-pin_memory: true
-augment:
-  enabled: true
-  color_jitter:
-    prob: 0.8
-    brightness: 0.2
-    contrast: 0.2
-    saturation: 0.1
-    hue: 0.05
-  random_grayscale:
-    prob: 0.1
-  gaussian_blur:
-    prob: 0.1
-    kernel_size: 3
-    sigma_min: 0.1
-    sigma_max: 1.0
-  random_erasing:
-    prob: 0.2
-    scale: [0.02, 0.15]
-    ratio: [0.3, 3.3]
-    value: 0
+defaults:
+  - ball_detection
+  - _self_

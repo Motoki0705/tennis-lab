@@ -11,7 +11,7 @@ This entrypoint is intentionally limited to:
 - `status`: show current `meta.json` processing state
 - `reset_*`: reset processing state in `meta.json`
 
-Clip sampling has been split into `src.wasb.scripts.clip_sampling`.
+Clip sampling has been split into `src.wasb.scripts.generate_dataset.clip_sampling`.
 
 Usage:
     uv run python -m src.wasb.scripts.generate_dataset
@@ -546,7 +546,7 @@ def reset_videos(cfg: DictConfig) -> int:
 
 @hydra.main(
     version_base=None,
-    config_path="../configs",
+    config_path="../../configs",
     config_name="generate_dataset",
 )
 def main(cfg: DictConfig) -> None:

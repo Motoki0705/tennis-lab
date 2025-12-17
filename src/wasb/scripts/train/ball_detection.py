@@ -3,8 +3,10 @@
 Run with Hydra-style overrides, for example:
 
 ```
-python -m src.wasb.scripts.train training.max_epochs=50 data.batch_size=32
+uv run python -m src.wasb.scripts.train.ball_detection training.max_epochs=50 data.batch_size=32
 ```
+
+Config entry point: `src/wasb/configs/ball_detection.yaml`
 """
 
 from __future__ import annotations
@@ -154,7 +156,7 @@ def run_dry_run(config: DictConfig, output_dir: Path) -> None:
 
     trainer.fit(lightning_module, datamodule=datamodule)
 
-@hydra.main(config_path="../configs", config_name="train", version_base="1.3")
+@hydra.main(config_path="../../configs", config_name="ball_detection", version_base="1.3")
 def main(config: DictConfig) -> None:
     """Hydra entry point."""
     pl.seed_everything(config.run.seed)

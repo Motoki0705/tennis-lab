@@ -11,10 +11,10 @@ This script supports the "clip sampling" workflow that was previously part of
 Configuration is managed via Hydra using `src/wasb/configs/clip_sampling.yaml`.
 
 Usage:
-    uv run python -m src.wasb.scripts.clip_sampling mode=generate_samples \
+    uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=generate_samples \
       output_dir=data/tennis generate_samples=[game11]
 
-    uv run python -m src.wasb.scripts.clip_sampling mode=apply_clip_selection \
+    uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=apply_clip_selection \
       output_dir=data/tennis apply_clip_selection=[game11]
 
 """
@@ -295,7 +295,7 @@ def apply_clip_selection(cfg: DictConfig) -> int:
 
 @hydra.main(
     version_base=None,
-    config_path="../configs",
+    config_path="../../configs",
     config_name="clip_sampling",
 )
 def main(cfg: DictConfig) -> None:

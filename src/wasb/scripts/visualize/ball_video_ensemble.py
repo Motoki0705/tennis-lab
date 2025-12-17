@@ -5,9 +5,9 @@ with different `frames_in`, plus a DinoV3 heatmap model), ensembles their per-fr
 heatmaps, then writes an output video with the predicted ball location plotted.
 
 Example commands:
-    `uv run python -m src.wasb.scripts.plot_ball_video_ensemble video_path=data/samples/clip.mp4`
-    `uv run python -m src.wasb.scripts.plot_ball_video_ensemble video_path=... ensemble.heatmap_threshold=0.5`
-    `uv run python -m src.wasb.scripts.plot_ball_video_ensemble video_path=... ensemble.checkpoints='[a.ckpt,b.ckpt,c.ckpt,d.ckpt,e.ckpt]'`
+    `uv run python -m src.wasb.scripts.visualize.ball_video_ensemble video_path=data/samples/clip.mp4`
+    `uv run python -m src.wasb.scripts.visualize.ball_video_ensemble video_path=... ensemble.heatmap_threshold=0.5`
+    `uv run python -m src.wasb.scripts.visualize.ball_video_ensemble video_path=... ensemble.checkpoints='[a.ckpt,b.ckpt,c.ckpt,d.ckpt,e.ckpt]'`
 
 Config entry point: `src/wasb/configs/plot_ball_video_ensemble.yaml`
 """
@@ -94,7 +94,7 @@ def _render_overlay_video(
 
 
 @hydra.main(
-    config_path="../configs",
+    config_path="../../configs",
     config_name="plot_ball_video_ensemble",
     version_base="1.3",
 )
@@ -185,4 +185,3 @@ def main(cfg: DictConfig) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

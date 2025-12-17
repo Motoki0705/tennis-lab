@@ -1,0 +1,15 @@
+defaults:
+  - data: ball_detection
+  - training: ball_detection
+  - logging: ball_detection
+  - metrics: ball_detection
+  - run: ball_detection
+  - model: dinov3_heatmap
+  - _self_
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
+
