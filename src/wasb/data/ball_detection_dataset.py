@@ -27,6 +27,7 @@ class SequenceSample:
 
     frame_paths: list[Path]
     targets: list[TennisLabelRow]
+    target_visibility: int
     match: str
     clip: str
 
@@ -107,10 +108,17 @@ def build_sequence_index(
                     continue
 
                 frame_paths = [clip_dir / name for name in window]
+                # For curriculum sampling we track a single visibility label per
+                # sequence sample. When frames_out > 1, we treat a sample as
+                # "challenging" (vis=2) if any target frame is vis=2.
+                target_visibility = (
+                    int(max(t.visibility for t in targets)) if targets else 0
+                )
                 samples.append(
                     SequenceSample(
                         frame_paths=frame_paths,
                         targets=targets,
+                        target_visibility=target_visibility,
                         match=match,
                         clip=clip_dir.name,
                     )
@@ -183,6 +191,7 @@ class BallDetectionSequenceDataset(Dataset):
             image_ext=image_ext,
             csv_filename=csv_filename,
         )
+        self.sample_visibilities = [s.target_visibility for s in self.samples]
         if not self.samples:
             raise RuntimeError(f"No samples found under {self.root_dir}")
 
