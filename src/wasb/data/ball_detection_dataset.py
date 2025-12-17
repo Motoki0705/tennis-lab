@@ -1,4 +1,4 @@
-"""PyTorch dataset and DataModule for the WASB tennis corpus."""
+"""Ball detection dataset for WASB (ball localization training)."""
 
 from __future__ import annotations
 
@@ -127,8 +127,8 @@ def build_sequence_index(
     return samples
 
 
-class TennisSequenceDataset(Dataset):
-    """Sliding-window dataset for WASB tennis training."""
+class BallDetectionSequenceDataset(Dataset):
+    """Sliding-window dataset for WASB ball detection training."""
 
     def __init__(
         self,

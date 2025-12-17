@@ -11,4 +11,3 @@ hydra:
     dir: .
   job:
     chdir: false
-

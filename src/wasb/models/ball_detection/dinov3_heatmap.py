@@ -1,3 +1,5 @@
+"""DINOv3-based heatmap model for WASB ball detection."""
+
 from __future__ import annotations
 
 import logging
