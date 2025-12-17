@@ -5,8 +5,8 @@ applies trajectory completion, then saves a new video with the ball position
 plotted on each frame.
 
 Example commands:
-    `uv run python -m src.wasb.scripts.plot_ball_video video_path=data/tennis/raw/videos/match.mp4`
-    `uv run python -m src.wasb.scripts.plot_ball_video video_path=... checkpoint=... model=hrcnet device=cuda`
+    `uv run python -m src.wasb.scripts.visualize.ball_video video_path=data/tennis/raw/videos/match.mp4`
+    `uv run python -m src.wasb.scripts.visualize.ball_video video_path=... checkpoint=... model=hrcnet device=cuda`
 
 Config entry point: `src/wasb/configs/plot_ball_video.yaml`
 """
@@ -93,7 +93,7 @@ def _render_overlay_video(
         cap.release()
 
 
-@hydra.main(config_path="../configs", config_name="plot_ball_video", version_base="1.3")  # type: ignore[misc]
+@hydra.main(config_path="../../configs", config_name="plot_ball_video", version_base="1.3")  # type: ignore[misc]
 def main(cfg: DictConfig) -> int:
     """Run ball localization and render an overlay video using Hydra config."""
     video_path = Path(to_absolute_path(str(cfg.video_path)))

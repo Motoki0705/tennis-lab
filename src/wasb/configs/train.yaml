@@ -1,14 +1,3 @@
 defaults:
-  - data: default
-  - training: default
-  - logging: default
-  - metrics: default
-  - run: default
-  - model: dinov3_heatmap
+  - ball_detection
   - _self_
-
-hydra:
-  run:
-    dir: .
-  job:
-    chdir: false
