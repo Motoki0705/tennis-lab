@@ -1,7 +1,7 @@
 defaults:
   - _self_
 
-# Configuration for `src.wasb.scripts.plot_ball_video`.
+# Configuration for `src.wasb.scripts.visualize.ball_video`.
 video_path: data/samples/clip.mp4
 output_path: outputs/plot_ball_video/clip.mp4
 
@@ -33,4 +33,3 @@ hydra:
     dir: .
   job:
     chdir: false
-

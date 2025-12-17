@@ -1,7 +1,9 @@
 defaults:
   - data: event_detection
   - training: event_detection
+  - loss: event_detection
   - logging: default
+  - metrics: event_detection
   - run: event_detection
   - model: event_detection_transformer
   - _self_
@@ -11,4 +13,3 @@ hydra:
     dir: .
   job:
     chdir: false
-

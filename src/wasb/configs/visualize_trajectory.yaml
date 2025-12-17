@@ -2,6 +2,7 @@ defaults:
   - data: trajectory
   - training: trajectory
   - logging: default
+  - metrics: trajectory
   - run: visualize_trajectory
   - model: trajectory_bilstm
   - visualization: trajectory
@@ -12,4 +13,3 @@ hydra:
     dir: .
   job:
     chdir: false
-

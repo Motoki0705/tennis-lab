@@ -14,7 +14,7 @@ from src.wasb.inference.trajectory_completion import (
     TransformerCompleter,
     build_completer,
 )
-from src.wasb.training.trajectory_lightning_module import TrajectoryLightningModule
+from src.wasb.training import TrajectoryLightningModule
 
 
 def test_build_completer_physics() -> None:
@@ -69,4 +69,3 @@ def test_transformer_complete_fills_missing() -> None:
     result = completer.complete(xy, vis, score)
     assert result.xy.shape == (3, 2)
     assert result.visibility.tolist() == [1, 2, 1]
-
