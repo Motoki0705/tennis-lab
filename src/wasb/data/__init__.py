@@ -7,8 +7,8 @@ from src.wasb.utils.streaming_loader import (
 )
 from src.wasb.utils.video_extractor import VideoExtractor
 
-from .datamodule import TennisDataModule
-from .dataset import SequenceSample, TennisSequenceDataset
+from .ball_detection_datamodule import BallDetectionDataModule
+from .ball_detection_dataset import BallDetectionSequenceDataset, SequenceSample
 from .event_detection_datamodule import TrajectoryEventDataModule
 from .event_detection_dataset import TrajectoryEventWindowDataset
 from .trajectory_datamodule import TrajectoryDataModule
@@ -18,8 +18,8 @@ __all__ = [
     "FrameBatch",
     "SequenceSample",
     "StreamingVideoLoader",
-    "TennisDataModule",
-    "TennisSequenceDataset",
+    "BallDetectionDataModule",
+    "BallDetectionSequenceDataset",
     "TrajectoryEventDataModule",
     "TrajectoryEventWindowDataset",
     "TrajectoryDataModule",

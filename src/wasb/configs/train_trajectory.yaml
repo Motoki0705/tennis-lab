@@ -1,7 +1,9 @@
 defaults:
   - data: trajectory
   - training: trajectory
+  - loss: trajectory
   - logging: default
+  - metrics: trajectory
   - run: trajectory
   - model: trajectory_bilstm
   - _self_

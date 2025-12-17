@@ -1,0 +1,4 @@
+# Ball detection loss configuration (WASB heatmap losses).
+bce_weight: 1.0
+mse_weight: 1.0
+

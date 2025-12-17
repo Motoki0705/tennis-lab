@@ -22,7 +22,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from src.wasb.training.lightning_module import WASBLightningModule
+from src.wasb.training import WASBLightningModule
 
 
 def _cfg_get(cfg: Any, key: str, default: Any = None) -> Any:
@@ -355,4 +355,3 @@ class HeatmapEnsemblePredictor:
             "score": peak_score.detach().cpu().numpy().astype(np.float32, copy=False),
             "frame_indices": np.asarray(frame_indices, dtype=np.int64),
         }
-

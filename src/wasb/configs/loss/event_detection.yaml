@@ -1,0 +1,7 @@
+# Event detection loss configuration.
+ignore_index: -100
+label_smoothing: 0.0
+event_boost: 1.0
+background_weight_scale: 1.0
+# class_weights: [1.0, 1.0, 1.0]  # optional override
+
