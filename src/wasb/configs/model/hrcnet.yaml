@@ -1,5 +1,5 @@
 name: hrcnet
-frames_in: 3
+frames_in: 8
 frames_out: 1
 inp_height: 288
 inp_width: 512
@@ -16,7 +16,6 @@ upsample_mode: nearest
 
 downsample_kwargs:
   num_downsample: 4
-  bn_momentum: BN_MOMENTUM
   expansion: 4.0
   kernel_size: 3
   use_se: True
