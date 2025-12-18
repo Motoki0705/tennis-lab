@@ -7,7 +7,7 @@ import math
 import torch
 from torch import Tensor
 
-from src.utils.geometry import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
+from src.utils.geometry.constants import PLCS_NORM_SCALE_XYZ
 
 
 class PLCSMetrics:
@@ -37,10 +37,7 @@ class PLCSMetrics:
         self.angle_threshold_deg = angle_threshold_deg
         self.reset()
 
-        # Denormalization constants
-        self._norm_x = HALF_DOUBLES_WIDTH
-        self._norm_y = HALF_LENGTH
-        self._norm_z = NET_HEIGHT_POST
+        self._norm_scale_xyz = PLCS_NORM_SCALE_XYZ
 
     def reset(self) -> None:
         """Reset all accumulated metrics."""
@@ -71,7 +68,7 @@ class PLCSMetrics:
         """
         # Denormalize positions to meters
         scale = torch.tensor(
-            [self._norm_x, self._norm_y, self._norm_z],
+            list(self._norm_scale_xyz),
             device=pred_position.device,
             dtype=pred_position.dtype,
         )
@@ -185,9 +182,7 @@ class PLCSTemporalMetrics:
                 per frame. Used for temporal_velocity_accuracy.
 
         """
-        self._norm_x = HALF_DOUBLES_WIDTH
-        self._norm_y = HALF_LENGTH
-        self._norm_z = NET_HEIGHT_POST
+        self._norm_scale_xyz = PLCS_NORM_SCALE_XYZ
         self.velocity_threshold_m = velocity_threshold_m
         self.reset()
 
@@ -221,7 +216,7 @@ class PLCSTemporalMetrics:
 
         # Denormalize positions to meters
         scale = torch.tensor(
-            [self._norm_x, self._norm_y, self._norm_z],
+            list(self._norm_scale_xyz),
             device=pred_position_seq.device,
             dtype=pred_position_seq.dtype,
         )

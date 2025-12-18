@@ -30,6 +30,16 @@ from src.utils.geometry.constants import (
     BLCS_NORM_SCALE_Y,
     BLCS_NORM_SCALE_Z,
     BLCS_NORM_SCALE_XYZ,
+    # Court normalization (generic)
+    COURT_NORM_SCALE_X,
+    COURT_NORM_SCALE_Y,
+    COURT_NORM_SCALE_Z,
+    COURT_NORM_SCALE_XYZ,
+    # PLCS normalization
+    PLCS_NORM_SCALE_X,
+    PLCS_NORM_SCALE_Y,
+    PLCS_NORM_SCALE_Z,
+    PLCS_NORM_SCALE_XYZ,
 )
 from src.utils.geometry.court import (
     # Court dimensions
@@ -109,4 +119,12 @@ __all__ = [
     "BLCS_NORM_SCALE_Y",
     "BLCS_NORM_SCALE_Z",
     "BLCS_NORM_SCALE_XYZ",
+    "COURT_NORM_SCALE_X",
+    "COURT_NORM_SCALE_Y",
+    "COURT_NORM_SCALE_Z",
+    "COURT_NORM_SCALE_XYZ",
+    "PLCS_NORM_SCALE_X",
+    "PLCS_NORM_SCALE_Y",
+    "PLCS_NORM_SCALE_Z",
+    "PLCS_NORM_SCALE_XYZ",
 ]

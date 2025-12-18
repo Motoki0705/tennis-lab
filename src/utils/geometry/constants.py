@@ -222,3 +222,14 @@ BLCS_NORM_SCALE_XYZ: tuple[float, float, float] = (
     BLCS_NORM_SCALE_Y,
     BLCS_NORM_SCALE_Z,
 )
+
+# Generic aliases for tasks that normalize court coordinates with the same convention.
+COURT_NORM_SCALE_X: float = BLCS_NORM_SCALE_X
+COURT_NORM_SCALE_Y: float = BLCS_NORM_SCALE_Y
+COURT_NORM_SCALE_Z: float = BLCS_NORM_SCALE_Z
+COURT_NORM_SCALE_XYZ: tuple[float, float, float] = BLCS_NORM_SCALE_XYZ
+
+PLCS_NORM_SCALE_X: float = BLCS_NORM_SCALE_X
+PLCS_NORM_SCALE_Y: float = BLCS_NORM_SCALE_Y
+PLCS_NORM_SCALE_Z: float = BLCS_NORM_SCALE_Z
+PLCS_NORM_SCALE_XYZ: tuple[float, float, float] = BLCS_NORM_SCALE_XYZ
