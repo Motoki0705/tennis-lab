@@ -5,8 +5,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from src.blcs.utils.constants import NORM_SCALE_X, NORM_SCALE_Y, NORM_SCALE_Z
-
+from src.utils.geometry.constants import BLCS_NORM_SCALE_XYZ
 
 class BLCSMetrics:
     """Metrics tracker for BLCS evaluation.
@@ -18,6 +17,7 @@ class BLCSMetrics:
         self,
         position_threshold_m: float = 0.3,
         endpoint_threshold_m: float = 0.5,
+        scale_xyz: tuple[float, float, float] = BLCS_NORM_SCALE_XYZ,
     ) -> None:
         """Initialize metrics tracker.
 
@@ -28,6 +28,7 @@ class BLCSMetrics:
         """
         self.position_threshold_m = position_threshold_m
         self.endpoint_threshold_m = endpoint_threshold_m
+        self.scale_xyz = scale_xyz
         self.position_thresholds_m = (
             self.position_threshold_m,
             2.0 * self.position_threshold_m,
@@ -72,7 +73,7 @@ class BLCSMetrics:
 
         # Denormalize to meters
         scale = torch.tensor(
-            [NORM_SCALE_X, NORM_SCALE_Y, NORM_SCALE_Z],
+            list(self.scale_xyz),
             device=pred_position.device,
         )
         pred_m = pred_position * scale
@@ -162,6 +163,7 @@ def compute_trajectory_metrics(
     pred_position: Tensor,
     target_position: Tensor,
     mask: Tensor | None = None,
+    scale_xyz: tuple[float, float, float] = BLCS_NORM_SCALE_XYZ,
 ) -> dict[str, Tensor]:
     """Compute trajectory metrics for a batch.
 
@@ -176,7 +178,7 @@ def compute_trajectory_metrics(
     """
     # Denormalize to meters
     scale = torch.tensor(
-        [NORM_SCALE_X, NORM_SCALE_Y, NORM_SCALE_Z],
+        list(scale_xyz),
         device=pred_position.device,
     )
     pred_m = pred_position * scale

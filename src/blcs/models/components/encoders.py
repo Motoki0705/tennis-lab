@@ -12,7 +12,6 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.blcs.utils.constants import MAX_SEQ_LEN
 from src.utils.geometry import NUM_COURT_KP
 
 
@@ -26,7 +25,7 @@ class TemporalPositionalEncoding(nn.Module):
     def __init__(
         self,
         d_model: int,
-        max_len: int = MAX_SEQ_LEN,
+        max_len: int = 120,
         dropout: float = 0.1,
     ) -> None:
         """Initialize positional encoding.
@@ -183,7 +182,7 @@ class BallTrajectoryEncoder(nn.Module):
         hidden_dim: int = 256,
         num_heads: int = 8,
         num_layers: int = 4,
-        max_seq_len: int = MAX_SEQ_LEN,
+        max_seq_len: int = 120,
         dropout: float = 0.1,
     ) -> None:
         """Initialize the trajectory encoder.
