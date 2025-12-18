@@ -7,7 +7,7 @@ import math
 import torch
 from torch import Tensor
 
-from src.utils.geometry.constants import PLCS_NORM_SCALE_XYZ
+from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
 
 class PLCSMetrics:
@@ -37,7 +37,7 @@ class PLCSMetrics:
         self.angle_threshold_deg = angle_threshold_deg
         self.reset()
 
-        self._norm_scale_xyz = PLCS_NORM_SCALE_XYZ
+        self._norm_scale_xyz = COURT_COORD_SCALE_XYZ
 
     def reset(self) -> None:
         """Reset all accumulated metrics."""
@@ -182,7 +182,7 @@ class PLCSTemporalMetrics:
                 per frame. Used for temporal_velocity_accuracy.
 
         """
-        self._norm_scale_xyz = PLCS_NORM_SCALE_XYZ
+        self._norm_scale_xyz = COURT_COORD_SCALE_XYZ
         self.velocity_threshold_m = velocity_threshold_m
         self.reset()
 

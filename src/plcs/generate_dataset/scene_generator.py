@@ -30,7 +30,11 @@ from src.utils.geometry import (
     make_look_at_camera,
     project_points,
 )
-from src.utils.geometry.constants import PLCS_NORM_SCALE_X, PLCS_NORM_SCALE_Y, PLCS_NORM_SCALE_Z
+from src.utils.geometry.constants import (
+    COURT_COORD_SCALE_X,
+    COURT_COORD_SCALE_Y,
+    COURT_COORD_SCALE_Z,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -251,9 +255,9 @@ class SceneGenerator:
 
         # Normalize positions
         positions = np.zeros((T, 3), dtype=np.float32)
-        positions[:, 0] = court_trans[:, 0] / PLCS_NORM_SCALE_X
-        positions[:, 1] = court_trans[:, 1] / PLCS_NORM_SCALE_Y
-        positions[:, 2] = court_trans[:, 2] / PLCS_NORM_SCALE_Z
+        positions[:, 0] = court_trans[:, 0] / COURT_COORD_SCALE_X
+        positions[:, 1] = court_trans[:, 1] / COURT_COORD_SCALE_Y
+        positions[:, 2] = court_trans[:, 2] / COURT_COORD_SCALE_Z
 
         # Compute rotations (yaw)
         # Extract yaw from motion (simplified: assume forward is +Y in local frame)

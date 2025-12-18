@@ -208,28 +208,17 @@ FACE_KEYPOINT_OFFSETS: dict[int, tuple[float, float, float]] = {
 }
 
 # -----------------------------
-# BLCS Normalization Scales
+# Court Coordinate Normalization Scales
 # -----------------------------
-# Convention:
+# Shared convention for "court-coordinate normalized position" used across tasks:
 #   x_norm = X / HALF_DOUBLES_WIDTH
 #   y_norm = Y / HALF_LENGTH
 #   z_norm = Z / NET_HEIGHT_POST
-BLCS_NORM_SCALE_X: float = float(HALF_DOUBLES_WIDTH)
-BLCS_NORM_SCALE_Y: float = float(HALF_LENGTH)
-BLCS_NORM_SCALE_Z: float = float(NET_HEIGHT_POST)
-BLCS_NORM_SCALE_XYZ: tuple[float, float, float] = (
-    BLCS_NORM_SCALE_X,
-    BLCS_NORM_SCALE_Y,
-    BLCS_NORM_SCALE_Z,
+COURT_COORD_SCALE_X: float = float(HALF_DOUBLES_WIDTH)
+COURT_COORD_SCALE_Y: float = float(HALF_LENGTH)
+COURT_COORD_SCALE_Z: float = float(NET_HEIGHT_POST)
+COURT_COORD_SCALE_XYZ: tuple[float, float, float] = (
+    COURT_COORD_SCALE_X,
+    COURT_COORD_SCALE_Y,
+    COURT_COORD_SCALE_Z,
 )
-
-# Generic aliases for tasks that normalize court coordinates with the same convention.
-COURT_NORM_SCALE_X: float = BLCS_NORM_SCALE_X
-COURT_NORM_SCALE_Y: float = BLCS_NORM_SCALE_Y
-COURT_NORM_SCALE_Z: float = BLCS_NORM_SCALE_Z
-COURT_NORM_SCALE_XYZ: tuple[float, float, float] = BLCS_NORM_SCALE_XYZ
-
-PLCS_NORM_SCALE_X: float = BLCS_NORM_SCALE_X
-PLCS_NORM_SCALE_Y: float = BLCS_NORM_SCALE_Y
-PLCS_NORM_SCALE_Z: float = BLCS_NORM_SCALE_Z
-PLCS_NORM_SCALE_XYZ: tuple[float, float, float] = BLCS_NORM_SCALE_XYZ

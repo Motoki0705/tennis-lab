@@ -11,7 +11,7 @@ from torch import Tensor
 from src.base.api.predictor import BasePredictor
 from src.blcs.models.blcs_model import BLCSModel
 from src.blcs.training.lightning_module import BLCSLightningModule
-from src.utils.geometry.constants import BLCS_NORM_SCALE_XYZ
+from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
 
 class BLCSPredictor(BasePredictor):
@@ -34,7 +34,7 @@ class BLCSPredictor(BasePredictor):
         self,
         model: BLCSModel,
         device: torch.device,
-        norm_scale_xyz: tuple[float, float, float] = BLCS_NORM_SCALE_XYZ,
+        norm_scale_xyz: tuple[float, float, float] = COURT_COORD_SCALE_XYZ,
     ) -> None:
         """Initialize the predictor.
 

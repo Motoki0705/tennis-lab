@@ -11,7 +11,7 @@ from torch import Tensor
 from src.base.api.predictor import BasePredictor
 from src.plcs.models.plcs_model import PLCSModel
 from src.plcs.training.lightning_module import PLCSLightningModule
-from src.utils.geometry.constants import PLCS_NORM_SCALE_XYZ
+from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
 
 class PLCSPredictor(BasePredictor):
@@ -48,7 +48,7 @@ class PLCSPredictor(BasePredictor):
         self.device = device
         self.model.eval()
 
-        self._norm_scale_xyz = PLCS_NORM_SCALE_XYZ
+        self._norm_scale_xyz = COURT_COORD_SCALE_XYZ
 
     @classmethod
     def load_from_checkpoint(
