@@ -11,7 +11,7 @@ from torch import Tensor
 from src.base.api.predictor import BasePredictor
 from src.plcs.models.plcs_sequence_model import PLCSSequenceModel
 from src.plcs.training.sequence_lightning_module import PLCSSequenceLightningModule
-from src.utils.geometry.constants import PLCS_NORM_SCALE_XYZ
+from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
 
 class PLCSSequencePredictor(BasePredictor):
@@ -48,7 +48,7 @@ class PLCSSequencePredictor(BasePredictor):
         self.device = device
         self.model.eval()
 
-        self._norm_scale_xyz = PLCS_NORM_SCALE_XYZ
+        self._norm_scale_xyz = COURT_COORD_SCALE_XYZ
 
     @classmethod
     def load_from_checkpoint(
