@@ -15,8 +15,6 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from src.blcs.utils.constants import MAX_SEQ_LEN, MIN_SEQ_LEN
-
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
@@ -51,8 +49,8 @@ class BallTrajectoryDataset(Dataset):
         self.augment = augment
 
         data_cfg = self.config.get("data", {})
-        self.min_seq_len = data_cfg.get("min_seq_len", MIN_SEQ_LEN)
-        self.max_seq_len = data_cfg.get("max_seq_len", MAX_SEQ_LEN)
+        self.min_seq_len = int(data_cfg.get("min_seq_len", 15))
+        self.max_seq_len = int(data_cfg.get("max_seq_len", 120))
 
         # Camera selection mode: "random", "all", or camera index (int)
         self.camera_mode = data_cfg.get("camera_mode", "random")

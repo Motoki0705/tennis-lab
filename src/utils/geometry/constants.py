@@ -8,6 +8,11 @@ This module provides unified keypoint definitions used across the project:
 
 from __future__ import annotations
 
+# Import court geometry scalars for shared normalization conventions.
+# NOTE: `src.utils.geometry.__init__` imports this module before `court`, but importing
+# `court` here is safe because `court.py` does not import this module (no cycle).
+from src.utils.geometry.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
+
 # -----------------------------
 # COCO 17 Human Keypoints (HumanKP17)
 # -----------------------------
@@ -201,3 +206,19 @@ FACE_KEYPOINT_OFFSETS: dict[int, tuple[float, float, float]] = {
     3: (-0.07, 0.0, 0.0),  # left_ear: left
     4: (0.07, 0.0, 0.0),  # right_ear: right
 }
+
+# -----------------------------
+# BLCS Normalization Scales
+# -----------------------------
+# Convention:
+#   x_norm = X / HALF_DOUBLES_WIDTH
+#   y_norm = Y / HALF_LENGTH
+#   z_norm = Z / NET_HEIGHT_POST
+BLCS_NORM_SCALE_X: float = float(HALF_DOUBLES_WIDTH)
+BLCS_NORM_SCALE_Y: float = float(HALF_LENGTH)
+BLCS_NORM_SCALE_Z: float = float(NET_HEIGHT_POST)
+BLCS_NORM_SCALE_XYZ: tuple[float, float, float] = (
+    BLCS_NORM_SCALE_X,
+    BLCS_NORM_SCALE_Y,
+    BLCS_NORM_SCALE_Z,
+)

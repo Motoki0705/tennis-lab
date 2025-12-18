@@ -6,8 +6,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.blcs.utils.constants import NORM_SCALE_X, NORM_SCALE_Y, NORM_SCALE_Z
-
+from src.utils.geometry.constants import BLCS_NORM_SCALE_XYZ
 
 def trajectory_position_loss(
     pred: Tensor,
@@ -142,6 +141,7 @@ def position_error_meters(
     pred: Tensor,
     target: Tensor,
     mask: Tensor | None = None,
+    scale_xyz: tuple[float, float, float] = BLCS_NORM_SCALE_XYZ,
 ) -> Tensor:
     """Compute position error in meters.
 
@@ -156,7 +156,7 @@ def position_error_meters(
     """
     # Denormalize to meters
     scale = torch.tensor(
-        [NORM_SCALE_X, NORM_SCALE_Y, NORM_SCALE_Z],
+        list(scale_xyz),
         device=pred.device,
     )
     pred_m = pred * scale
