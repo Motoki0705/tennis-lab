@@ -18,12 +18,10 @@ from src.blcs.models.components.encoders import (
     CourtContextEncoder,
 )
 from src.blcs.models.components.heads import Trajectory3DHead, VelocityHead
-from src.blcs.utils.constants import MAX_SEQ_LEN
 from src.utils.geometry import NUM_COURT_KP
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
-
 
 class BLCSModel(nn.Module):
     """BLCS: Ball Localization in Court System.
@@ -50,7 +48,7 @@ class BLCSModel(nn.Module):
         num_layers: int = 6,
         num_heads: int = 8,
         dropout: float = 0.1,
-        max_seq_len: int = MAX_SEQ_LEN,
+        max_seq_len: int = 120,
         use_cross_attention: bool = True,
         predict_velocity: bool = False,
     ) -> None:
@@ -142,12 +140,15 @@ class BLCSModel(nn.Module):
 
         """
         model_cfg = config.get("model", {})
+        data_cfg = config.get("data", {})
         return cls(
             hidden_dim=model_cfg.get("hidden_dim", 256),
             num_layers=model_cfg.get("num_layers", 6),
             num_heads=model_cfg.get("num_heads", 8),
             dropout=model_cfg.get("dropout", 0.1),
-            max_seq_len=model_cfg.get("max_seq_len", MAX_SEQ_LEN),
+            max_seq_len=model_cfg.get(
+                "max_seq_len", data_cfg.get("max_seq_len", 120)
+            ),
             use_cross_attention=model_cfg.get("use_cross_attention", True),
             predict_velocity=model_cfg.get("predict_velocity", False),
         )

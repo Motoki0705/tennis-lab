@@ -1,4 +1,4 @@
-"""Dataset writer for BLCS (PLCS-unified format).
+"""Dataset writer for BLCS dataset generation (PLCS-unified format).
 
 Saves scene data in npz format with structure:
 - meta: scene metadata (JSON)
@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from src.blcs.data.scene_generator import BLCSSceneData
+    from src.blcs.generate_dataset.scene_generator import BLCSSceneData
 
 logger = logging.getLogger(__name__)
 

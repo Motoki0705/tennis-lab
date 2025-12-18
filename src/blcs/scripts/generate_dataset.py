@@ -15,16 +15,18 @@ import sys
 from pathlib import Path
 
 import hydra
+from omegaconf import DictConfig
+from omegaconf import OmegaConf
+from tqdm.auto import tqdm
+
 import numpy as np
 import torch
 from hydra.utils import to_absolute_path
-from omegaconf import DictConfig, OmegaConf
-from tqdm.auto import tqdm
 
-from src.blcs.data.camera_projector import CameraConfig
-from src.blcs.data.dataset_writer import BLCSDatasetWriter
-from src.blcs.data.distribution_sampler import SamplingConfig
-from src.blcs.data.scene_generator import BLCSSceneGenerator, GeneratorConfig
+from src.blcs.generate_dataset.io.dataset_writer import BLCSDatasetWriter
+from src.blcs.generate_dataset.projection.camera_projector import CameraConfig
+from src.blcs.generate_dataset.sampling.distribution_sampler import SamplingConfig
+from src.blcs.generate_dataset.scene_generator import BLCSSceneGenerator, GeneratorConfig
 from src.blcs.simulation.ball_physics import PhysicsConfig
 from src.blcs.simulation.cell_manager import ShotCategory
 from src.blcs.simulation.shot_simulator import ShotConfig
@@ -130,10 +132,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     logger.info("Ball visibility threshold: %s", generator_config.ball_visibility_threshold)
     logger.info("Device: %s", cfg.run.device)
 
-    generator = BLCSSceneGenerator(
-        config=generator_config,
-        device=str(cfg.run.device),
-    )
+    generator = BLCSSceneGenerator(config=generator_config, device=str(cfg.run.device))
     writer = BLCSDatasetWriter(output_dir)
 
     logger.info("Starting scene generation...")
@@ -154,9 +153,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
                 avg_cams,
             )
 
-    logger.info(
-        "Generation complete: %s scenes, %s cameras", total_scenes, total_cameras
-    )
+    logger.info("Generation complete: %s scenes, %s cameras", total_scenes, total_cameras)
 
     logger.info("Creating train/val/test splits...")
     writer.save_split_info(

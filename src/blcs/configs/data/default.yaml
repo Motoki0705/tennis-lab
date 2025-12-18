@@ -24,4 +24,3 @@ augmentation:
   temporal_dropout_prob: 0.05
   flip_horizontal: true
   scale_range: [0.9, 1.1]
-
