@@ -1,4 +1,4 @@
-"""Camera projection for BLCS (blcs.md §7 compliant).
+"""Camera projection for BLCS dataset generation (blcs.md §7 compliant).
 
 Provides camera generation and 3D to 2D projection for:
 - Court keypoints (CourtKP20)
