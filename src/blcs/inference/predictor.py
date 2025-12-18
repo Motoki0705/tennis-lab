@@ -11,7 +11,7 @@ from torch import Tensor
 from src.base.api.predictor import BasePredictor
 from src.blcs.models.blcs_model import BLCSModel
 from src.blcs.training.lightning_module import BLCSLightningModule
-from src.blcs.utils.constants import NORM_SCALE_X, NORM_SCALE_Y, NORM_SCALE_Z
+from src.utils.geometry.constants import BLCS_NORM_SCALE_XYZ
 
 
 class BLCSPredictor(BasePredictor):
@@ -34,6 +34,7 @@ class BLCSPredictor(BasePredictor):
         self,
         model: BLCSModel,
         device: torch.device,
+        norm_scale_xyz: tuple[float, float, float] = BLCS_NORM_SCALE_XYZ,
     ) -> None:
         """Initialize the predictor.
 
@@ -46,6 +47,7 @@ class BLCSPredictor(BasePredictor):
         """
         self.model = model.to(device)
         self.device = device
+        self.norm_scale_xyz = norm_scale_xyz
         self.model.eval()
 
     @classmethod
@@ -137,7 +139,7 @@ class BLCSPredictor(BasePredictor):
     def _denormalize_position(self, position: Tensor) -> Tensor:
         """Convert normalized position to meters."""
         scale = torch.tensor(
-            [NORM_SCALE_X, NORM_SCALE_Y, NORM_SCALE_Z],
+            list(self.norm_scale_xyz),
             device=position.device,
             dtype=position.dtype,
         )
@@ -146,7 +148,7 @@ class BLCSPredictor(BasePredictor):
     def _denormalize_velocity(self, velocity: Tensor) -> Tensor:
         """Convert normalized velocity to m/s."""
         scale = torch.tensor(
-            [NORM_SCALE_X, NORM_SCALE_Y, NORM_SCALE_Z],
+            list(self.norm_scale_xyz),
             device=velocity.device,
             dtype=velocity.dtype,
         )
