@@ -11,7 +11,7 @@ from torch import Tensor
 from src.base.api.predictor import BasePredictor
 from src.plcs.models.plcs_model import PLCSModel
 from src.plcs.training.lightning_module import PLCSLightningModule
-from src.utils.geometry import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
+from src.utils.geometry.constants import PLCS_NORM_SCALE_XYZ
 
 
 class PLCSPredictor(BasePredictor):
@@ -48,10 +48,7 @@ class PLCSPredictor(BasePredictor):
         self.device = device
         self.model.eval()
 
-        # Denormalization constants
-        self._norm_x = HALF_DOUBLES_WIDTH
-        self._norm_y = HALF_LENGTH
-        self._norm_z = NET_HEIGHT_POST
+        self._norm_scale_xyz = PLCS_NORM_SCALE_XYZ
 
     @classmethod
     def load_from_checkpoint(
@@ -133,7 +130,7 @@ class PLCSPredictor(BasePredictor):
 
         if denormalize:
             scale = torch.tensor(
-                [self._norm_x, self._norm_y, self._norm_z],
+                list(self._norm_scale_xyz),
                 dtype=position.dtype,
             )
             result["position_meters"] = position * scale

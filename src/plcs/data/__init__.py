@@ -2,8 +2,8 @@
 
 from src.plcs.data.datamodule import PLCSDataModule, PLCSSequenceDataModule
 from src.plcs.data.dataset import SceneDataset
-from src.plcs.data.motion_sampler import MotionSampler, MotionSequence
-from src.plcs.data.scene_generator import CameraData, SceneData, SceneGenerator
+from src.plcs.generate_dataset.motion.motion_sampler import MotionSampler, MotionSequence
+from src.plcs.generate_dataset.scene_generator import CameraData, SceneData, SceneGenerator
 from src.plcs.data.sequence_dataset import SceneSequenceDataset
 
 __all__ = [

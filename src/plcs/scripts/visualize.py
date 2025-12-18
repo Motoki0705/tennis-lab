@@ -21,11 +21,11 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.plcs.data.scene_generator import SceneGenerator
+from src.plcs.generate_dataset.scene_generator import SceneGenerator
 from src.utils.rendering import PLCSSceneRenderer as SceneRenderer
 
 if TYPE_CHECKING:
-    from src.plcs.data.scene_generator import SceneData
+    from src.plcs.generate_dataset.scene_generator import SceneData
 
 
 

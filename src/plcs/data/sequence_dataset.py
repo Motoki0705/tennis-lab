@@ -60,7 +60,7 @@ class SceneSequenceDataset(Dataset[dict[str, Tensor]]):
 
         Index entries are (scene_idx, cam_idx, start_frame).
         """
-        from src.plcs.data.scene_generator import SceneGenerator
+        from src.plcs.generate_dataset.scene_generator import SceneGenerator
 
         self.index: list[tuple[int, int, int]] = []
         self.scenes: list = []
