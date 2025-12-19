@@ -18,7 +18,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.blcs.generate_dataset.projection.camera_projector import (
+from src.utils.projection.camera_projector import (
     CameraConfig,
     CameraProjector,
     CameraView,
@@ -142,7 +142,7 @@ class BLCSSceneGenerator:
     def _camera_view_to_data(self, view: CameraView) -> CameraData:
         """Convert CameraView to CameraData with visibility metrics."""
         # Compute ball visibility ratio
-        ball_vis = view.ball_visible.numpy()
+        ball_vis = view.points_visible.numpy()
         T = len(ball_vis)
         ball_visibility_ratio = float(ball_vis.sum()) / T if T > 0 else 0.0
 
@@ -152,7 +152,7 @@ class BLCSSceneGenerator:
 
         return CameraData(
             camera_params=view.camera_params,
-            ball_uv=view.ball_uv.numpy(),
+            ball_uv=view.points_uv.numpy(),
             ball_visible=ball_vis,
             ball_visibility_ratio=ball_visibility_ratio,
             court_kp_uv=view.court_kp_uv.numpy(),

@@ -17,23 +17,19 @@ import torch
 
 from src.plcs.generate_dataset.motion.motion_sampler import MotionSampler, MotionSequence
 from src.utils.geometry import (
-    BASELINE_CLEAR,
     FACE_KEYPOINT_OFFSETS,
-    HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
     HALF_SINGLES_WIDTH,
-    NET_HEIGHT_POST,
-    SIDELINE_CLEAR,
     SMPLH_TO_COCO17_MAPPING,
-    Camera,
-    court_keypoints_3d,
-    make_look_at_camera,
-    project_points,
 )
 from src.utils.geometry.constants import (
     COURT_COORD_SCALE_X,
     COURT_COORD_SCALE_Y,
     COURT_COORD_SCALE_Z,
+)
+from src.utils.projection.camera_projector import (
+    CameraConfig,
+    CameraProjector,
 )
 
 if TYPE_CHECKING:
@@ -110,12 +106,7 @@ class SceneGenerator:
         self.motion_sampler = motion_sampler
 
         # Get court keypoints (convert to numpy)
-        court_kp_tensor = court_keypoints_3d()  # (20, 3)
-        self.court_kp_3d = (
-            court_kp_tensor.numpy()
-            if hasattr(court_kp_tensor, "numpy")
-            else court_kp_tensor
-        )
+        self.court_kp_3d = None
 
         # Parse config
         sim_cfg = self.config.get("simulation", {})
@@ -125,10 +116,17 @@ class SceneGenerator:
 
         # Camera config
         cam_cfg = self.config.get("camera", {})
-        self.cam_z_min = cam_cfg.get("z_min", 3.0)
-        self.cam_z_max = cam_cfg.get("z_max", 5.0)
-        self.cam_hfov_deg = cam_cfg.get("hfov_deg", 60.0)
-        self.image_size = tuple(cam_cfg.get("image_size", [1280, 720]))
+        camera_config = CameraConfig(
+            z_min=cam_cfg.get("z_min", 3.0),
+            z_max=cam_cfg.get("z_max", 5.0),
+            hfov_deg=cam_cfg.get("hfov_deg", 60.0),
+            image_size=tuple(cam_cfg.get("image_size", [1280, 720])),
+            target_x_range=tuple(cam_cfg.get("target_x_range", [-2.0, 2.0])),
+            target_y_range=tuple(cam_cfg.get("target_y_range", [-2.0, 2.0])),
+            target_z_range=tuple(cam_cfg.get("target_z_range", [0.5, 1.5])),
+        )
+        self.camera_projector = CameraProjector(camera_config)
+        self.image_size = self.camera_projector.config.image_size
 
     def _sample_initial_pose(self) -> tuple[float, float, float]:
         """Sample initial player position on court.
@@ -144,55 +142,6 @@ class SceneGenerator:
         yaw = random.uniform(-math.pi, math.pi)
 
         return x, y, yaw
-
-    def _sample_camera(self) -> Camera:
-        """Sample a camera position around the court.
-
-        Returns:
-            Camera instance.
-
-        """
-        # Sample camera on fence perimeter
-        fence_x = HALF_DOUBLES_WIDTH + SIDELINE_CLEAR
-        fence_y = HALF_LENGTH + BASELINE_CLEAR
-
-        # Random position on fence rectangle
-        perimeter = 2 * (fence_x + fence_y)
-        t = random.uniform(0, perimeter)
-
-        if t < fence_x:
-            # Top side
-            cam_x = -fence_x + t * 2
-            cam_y = fence_y
-        elif t < fence_x + fence_y:
-            # Right side
-            cam_x = fence_x
-            cam_y = fence_y - (t - fence_x) * 2
-        elif t < 2 * fence_x + fence_y:
-            # Bottom side
-            cam_x = fence_x - (t - fence_x - fence_y) * 2
-            cam_y = -fence_y
-        else:
-            # Left side
-            cam_x = -fence_x
-            cam_y = -fence_y + (t - 2 * fence_x - fence_y) * 2
-
-        # Random height
-        cam_z = random.uniform(self.cam_z_min, self.cam_z_max)
-
-        # Look at court center with some random offset
-        target_x = random.uniform(-2, 2)
-        target_y = random.uniform(-2, 2)
-        target_z = random.uniform(0.5, 1.5)
-
-        camera = make_look_at_camera(
-            center=(cam_x, cam_y, cam_z),
-            look_at=(target_x, target_y, target_z),
-            hfov_deg=self.cam_hfov_deg,
-            image_size=self.image_size,
-        )
-
-        return camera
 
     def _transform_motion_to_court(
         self,
@@ -323,49 +272,6 @@ class SceneGenerator:
 
         return coco17
 
-    def _project_to_uv(
-        self,
-        points_3d: np.ndarray,
-        camera: Camera,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Project 3D points to UV coordinates.
-
-        Args:
-            points_3d: 3D points, shape (..., 3).
-            camera: Camera for projection.
-
-        Returns:
-            Tuple of (uv, visible):
-            - uv: UV coordinates, shape (..., 2), normalized [0, 1]
-            - visible: Visibility mask, shape (...)
-
-        """
-        original_shape = points_3d.shape[:-1]
-        points_flat = points_3d.reshape(-1, 3)
-
-        # Convert to torch for projection
-        points_t = torch.from_numpy(points_flat).float()
-        uv_t, in_front = project_points(camera, points_t)
-        uv = uv_t.numpy()
-        in_front = in_front.numpy()
-
-        # Normalize UV
-        uv[:, 0] /= self.image_size[0]
-        uv[:, 1] /= self.image_size[1]
-
-        # Check visibility (within [0, 1] range and in front of camera)
-        in_bounds = (
-            (uv[:, 0] >= 0) & (uv[:, 0] <= 1) & (uv[:, 1] >= 0) & (uv[:, 1] <= 1)
-        )
-
-        visible = in_bounds & in_front
-
-        # Reshape
-        uv = uv.reshape(*original_shape, 2)
-        visible = visible.reshape(original_shape)
-
-        return uv, visible
-
     def _evaluate_camera(
         self,
         human_visible: np.ndarray,
@@ -446,23 +352,33 @@ class SceneGenerator:
         coco17_joints = self._smplh_to_coco17(world_joints, init_yaw)  # (T, 17, 3)
 
         # Get court keypoints (static)
+        if self.court_kp_3d is None:
+            self.court_kp_3d = self.camera_projector.court_kp_3d.numpy()
         court_3d = self.court_kp_3d  # (20, 3)
 
         # Generate multiple cameras
         cameras_data = []
         for _ in range(self.num_cameras):
-            camera = self._sample_camera()
+            camera = self.camera_projector.sample_camera()
 
             # Project human keypoints
             human_uv = np.zeros((T, 17, 2), dtype=np.float32)
             human_vis = np.zeros((T, 17), dtype=bool)
             for t in range(T):
-                uv, vis = self._project_to_uv(coco17_joints[t], camera)
-                human_uv[t] = uv
-                human_vis[t] = vis
+                points_t = torch.from_numpy(coco17_joints[t]).float()
+                uv_t, vis_t = self.camera_projector.project_points_to_uv(
+                    points_t, camera
+                )
+                human_uv[t] = uv_t.numpy()
+                human_vis[t] = vis_t.numpy()
 
             # Project court keypoints (same for all frames)
-            court_uv_single, court_vis_single = self._project_to_uv(court_3d, camera)
+            court_points_t = torch.from_numpy(court_3d).float()
+            court_uv_t, court_vis_t = self.camera_projector.project_points_to_uv(
+                court_points_t, camera
+            )
+            court_uv_single = court_uv_t.numpy()
+            court_vis_single = court_vis_t.numpy()
             court_uv = np.tile(court_uv_single[None, ...], (T, 1, 1))
             court_vis = np.tile(court_vis_single[None, ...], (T, 1))
 
