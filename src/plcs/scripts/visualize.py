@@ -21,7 +21,7 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.plcs.generate_dataset.scene_generator import SceneGenerator
+from src.plcs.generate_dataset.io.dataset_io import load_scene
 from src.utils.rendering import PLCSSceneRenderer as SceneRenderer
 
 if TYPE_CHECKING:
@@ -106,7 +106,8 @@ def print_scene_info(scene: SceneData) -> None:
     )
     print(f"Initial yaw:     {np.degrees(meta['initial_yaw']):.1f}°")
     print(f"Cameras sampled: {meta['num_cameras_sampled']}")
-    print(f"Cameras kept:    {meta['num_cameras_filtered']}")
+    num_cameras = meta.get("num_cameras", meta.get("num_cameras_filtered", 0))
+    print(f"Cameras kept:    {num_cameras}")
     print()
     print("Position statistics (normalized):")
     print(
@@ -212,7 +213,7 @@ def render_scene(scene: SceneData, cfg: RuntimeConfig) -> int:
 def main_visualize(cfg: RuntimeConfig) -> int:
     """Visualize ground truth scene data."""
     print(f"Loading scene from {cfg.scene_path}...")
-    scene = SceneGenerator.load_scene(cfg.scene_path)
+    scene = load_scene(cfg.scene_path)
 
     if cfg.info:
         print_scene_info(scene)
@@ -241,7 +242,7 @@ def main_predict(cfg: RuntimeConfig) -> int:
     predictor = PLCSPredictor.load_from_checkpoint(cfg.checkpoint, device=cfg.device)
 
     print(f"Loading scene from {cfg.scene_path}...")
-    scene = SceneGenerator.load_scene(cfg.scene_path)
+    scene = load_scene(cfg.scene_path)
 
     if cfg.info:
         print_scene_info(scene)
@@ -292,7 +293,7 @@ def main_predict_sequence(cfg: RuntimeConfig) -> int:
     predictor = PLCSSequencePredictor.load_from_checkpoint(cfg.checkpoint, device=cfg.device)
 
     print(f"Loading scene from {cfg.scene_path}...")
-    scene = SceneGenerator.load_scene(cfg.scene_path)
+    scene = load_scene(cfg.scene_path)
 
     if cfg.info:
         print_scene_info(scene)

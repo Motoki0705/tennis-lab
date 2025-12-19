@@ -8,6 +8,9 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
+import random as rng
+
+from src.plcs.generate_dataset.io.dataset_io import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -36,8 +39,6 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
             camera_mode: How to select cameras ("random", "all", or camera index).
 
         """
-        from pathlib import Path
-
         self.scene_dir = Path(scene_dir)
         self.config = config or {}
         self.augment = augment
@@ -61,17 +62,16 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
 
     def _build_index(self) -> None:
         """Build sample index from scene files."""
-        from src.plcs.generate_dataset.scene_generator import SceneGenerator
 
         self.index: list[tuple[int, int, int]] = []
         self.scenes: list = []
 
         for scene_idx, scene_file in enumerate(self.scene_files):
-            scene = SceneGenerator.load_scene(scene_file)
+            scene = load_scene(scene_file)
             self.scenes.append(scene)
 
-            num_frames = scene.meta["num_frames"]
-            num_cameras = len(scene.cameras)
+            num_frames = scene["meta"]["num_frames"]
+            num_cameras = len(scene["cameras"])
 
             if self.camera_mode == "all":
                 # All cameras, all frames
@@ -105,26 +105,24 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
             dict: Sample dictionary with input features and targets.
 
         """
-        import random as rng
-
         scene_idx, frame_idx, cam_idx = self.index[idx]
         scene = self.scenes[scene_idx]
 
         # Select camera
         if cam_idx < 0:
-            cam_idx = rng.randint(0, len(scene.cameras) - 1)
+            cam_idx = rng.randint(0, len(scene["cameras"]) - 1)
 
-        cam = scene.cameras[cam_idx]
+        cam = scene["cameras"][cam_idx]
 
         # Get keypoints
-        human_kp = torch.from_numpy(cam.human_kp_uv[frame_idx].copy())  # (17, 2)
-        court_kp = torch.from_numpy(cam.court_kp_uv[frame_idx].copy())  # (20, 2)
-        human_vis = torch.from_numpy(cam.human_kp_visible[frame_idx].copy())
-        court_vis = torch.from_numpy(cam.court_kp_visible[frame_idx].copy())
+        human_kp = torch.from_numpy(cam["human_kp_uv"][frame_idx].copy())  # (17, 2)
+        court_kp = torch.from_numpy(cam["court_kp_uv"][frame_idx].copy())  # (20, 2)
+        human_vis = torch.from_numpy(cam["human_kp_visible"][frame_idx].copy())
+        court_vis = torch.from_numpy(cam["court_kp_visible"][frame_idx].copy())
 
         # Get targets
-        position = torch.from_numpy(scene.position[frame_idx].copy())
-        rotation = torch.from_numpy(scene.rotation[frame_idx].copy())
+        position = torch.from_numpy(scene["position"][frame_idx].copy())
+        rotation = torch.from_numpy(scene["rotation"][frame_idx].copy())
 
         # Apply augmentation
         if self.augment:
