@@ -26,7 +26,7 @@ def __getattr__(name: str):
 
         return SceneGenerator
     if name == "MotionSampler":
-        from src.plcs.generate_dataset.motion.motion_sampler import MotionSampler
+        from src.plcs.generate_dataset.sampling.motion_sampler import MotionSampler
 
         return MotionSampler
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

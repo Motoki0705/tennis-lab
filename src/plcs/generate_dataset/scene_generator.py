@@ -15,7 +15,10 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from src.plcs.generate_dataset.motion.motion_sampler import MotionSampler, MotionSequence
+from src.plcs.generate_dataset.sampling.motion_sampler import (
+    MotionSampler,
+    MotionSequence,
+)
 from src.utils.geometry import (
     FACE_KEYPOINT_OFFSETS,
     HALF_LENGTH,
