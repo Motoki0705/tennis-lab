@@ -22,14 +22,14 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from src.utils.rendering.constants import DEFAULT_BALL_COLOR
-
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.collections import PathCollection
     from matplotlib.lines import Line2D
     from mpl_toolkits.mplot3d import Axes3D
 
+
+DEFAULT_BALL_COLOR: str = "#CCFF00"  # Tennis ball yellow-green
 
 class BallEventType(Enum):
     """Types of ball events that can be marked on trajectories."""
