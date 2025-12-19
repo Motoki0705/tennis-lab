@@ -30,17 +30,18 @@ from src.utils.geometry.court import (
     NET_HEIGHT_POST,
     SERVICE_LINE_DISTANCE,
 )
-from src.utils.rendering.constants import (
-    DEFAULT_COURT_COLOR,
-    DEFAULT_FENCE_MARGIN,
-    DEFAULT_LINE_COLOR,
-    DEFAULT_NET_COLOR,
-)
-
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from mpl_toolkits.mplot3d import Axes3D
 
+
+# Color defaults
+DEFAULT_COURT_COLOR: str = "#2E7D32"  # Tennis court green
+DEFAULT_LINE_COLOR: str = "white"
+DEFAULT_NET_COLOR: str = "#404040"
+
+# Default fence margin (meters)
+DEFAULT_FENCE_MARGIN: float = 3.66  # Standard runback area
 
 @dataclass
 class CourtStyle:
