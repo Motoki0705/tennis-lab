@@ -18,24 +18,11 @@ Example:
 
 from src.utils.rendering.ball_renderer import BallRenderer
 from src.utils.rendering.blcs_scene_renderer import BLCSSceneRenderer
-from src.utils.rendering.constants import (
-    DEFAULT_BALL_COLOR,
-    DEFAULT_COURT_COLOR,
-    DEFAULT_FENCE_MARGIN,
-    DEFAULT_LINE_COLOR,
-    DEFAULT_NET_COLOR,
-)
 from src.utils.rendering.court_renderer import CourtRenderer
 from src.utils.rendering.plcs_scene_renderer import PLCSSceneRenderer
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer
 
 __all__ = [
-    # Style constants
-    "DEFAULT_COURT_COLOR",
-    "DEFAULT_LINE_COLOR",
-    "DEFAULT_NET_COLOR",
-    "DEFAULT_BALL_COLOR",
-    "DEFAULT_FENCE_MARGIN",
     # Renderers
     "CourtRenderer",
     "SkeletonRenderer",
