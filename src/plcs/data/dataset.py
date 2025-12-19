@@ -61,7 +61,7 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
 
     def _build_index(self) -> None:
         """Build sample index from scene files."""
-        from src.plcs.data.scene_generator import SceneGenerator
+        from src.plcs.generate_dataset.scene_generator import SceneGenerator
 
         self.index: list[tuple[int, int, int]] = []
         self.scenes: list = []

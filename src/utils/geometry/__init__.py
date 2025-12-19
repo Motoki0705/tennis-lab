@@ -25,11 +25,11 @@ from src.utils.geometry.constants import (
     SMPLH_BODY_JOINT_NAMES,
     SMPLH_JOINT_IDX,
     SMPLH_TO_COCO17_MAPPING,
-    # BLCS normalization
-    BLCS_NORM_SCALE_X,
-    BLCS_NORM_SCALE_Y,
-    BLCS_NORM_SCALE_Z,
-    BLCS_NORM_SCALE_XYZ,
+    # Court coordinate normalization scales
+    COURT_COORD_SCALE_X,
+    COURT_COORD_SCALE_Y,
+    COURT_COORD_SCALE_Z,
+    COURT_COORD_SCALE_XYZ,
 )
 from src.utils.geometry.court import (
     # Court dimensions
@@ -104,9 +104,9 @@ __all__ = [
     "make_look_at_camera",
     "project_points",
     "sample_camera_position_on_fence",
-    # BLCS normalization
-    "BLCS_NORM_SCALE_X",
-    "BLCS_NORM_SCALE_Y",
-    "BLCS_NORM_SCALE_Z",
-    "BLCS_NORM_SCALE_XYZ",
+    # Court coordinate normalization scales
+    "COURT_COORD_SCALE_X",
+    "COURT_COORD_SCALE_Y",
+    "COURT_COORD_SCALE_Z",
+    "COURT_COORD_SCALE_XYZ",
 ]

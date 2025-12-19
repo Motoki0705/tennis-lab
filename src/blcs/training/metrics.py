@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from src.utils.geometry.constants import BLCS_NORM_SCALE_XYZ
+from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
 class BLCSMetrics:
     """Metrics tracker for BLCS evaluation.
@@ -17,7 +17,7 @@ class BLCSMetrics:
         self,
         position_threshold_m: float = 0.3,
         endpoint_threshold_m: float = 0.5,
-        scale_xyz: tuple[float, float, float] = BLCS_NORM_SCALE_XYZ,
+        scale_xyz: tuple[float, float, float] = COURT_COORD_SCALE_XYZ,
     ) -> None:
         """Initialize metrics tracker.
 
@@ -163,7 +163,7 @@ def compute_trajectory_metrics(
     pred_position: Tensor,
     target_position: Tensor,
     mask: Tensor | None = None,
-    scale_xyz: tuple[float, float, float] = BLCS_NORM_SCALE_XYZ,
+    scale_xyz: tuple[float, float, float] = COURT_COORD_SCALE_XYZ,
 ) -> dict[str, Tensor]:
     """Compute trajectory metrics for a batch.
 

@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.utils.geometry.constants import BLCS_NORM_SCALE_XYZ
+from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
 def trajectory_position_loss(
     pred: Tensor,
@@ -141,7 +141,7 @@ def position_error_meters(
     pred: Tensor,
     target: Tensor,
     mask: Tensor | None = None,
-    scale_xyz: tuple[float, float, float] = BLCS_NORM_SCALE_XYZ,
+    scale_xyz: tuple[float, float, float] = COURT_COORD_SCALE_XYZ,
 ) -> Tensor:
     """Compute position error in meters.
 
