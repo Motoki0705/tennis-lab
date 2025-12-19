@@ -23,7 +23,7 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.blcs.generate_dataset.io.dataset_writer import load_scene
+from src.blcs.generate_dataset.io.dataset_io import load_scene
 from src.utils.rendering import BLCSSceneRenderer
 
 if TYPE_CHECKING:

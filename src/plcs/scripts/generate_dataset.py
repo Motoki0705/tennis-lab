@@ -21,7 +21,8 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
 
-from src.plcs.generate_dataset.motion.motion_sampler import MotionSampler
+from src.plcs.generate_dataset.sampling.motion_sampler import MotionSampler
+from src.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
 from src.plcs.generate_dataset.scene_generator import SceneGenerator
 
 
@@ -58,7 +59,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     # Create output directory
     output_dir = Path(cfg.run.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / "scenes").mkdir(parents=True, exist_ok=True)
 
     # Save resolved config
     OmegaConf.save(cfg, output_dir / "config.yaml")
@@ -79,6 +79,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         motion_sampler=motion_sampler,
         device=cfg.run.device,
     )
+    writer = PLCSDatasetWriter(output_dir)
 
     # Generate scenes
     num_scenes = int(cfg.simulation.num_scenes)
@@ -112,8 +113,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                 continue
 
             # Save scene (NPZ only)
-            output_path = output_dir / "scenes" / f"{scene_id}.npz"
-            scene_generator.save_scene(scene, output_path)
+            writer.save_scene(scene)
 
             # Update statistics
             successful += 1
@@ -144,6 +144,16 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     meta_path = output_dir / "scenes_meta.json"
     with open(meta_path, "w") as f:
         json.dump(scenes_meta, f, indent=2, default=str)
+
+    writer.save_meta_json(config=OmegaConf.to_container(cfg, resolve=True))
+    writer.save_dataset_info(
+        {
+            "total_cameras": total_cameras,
+            "avg_cameras_per_scene": stats["avg_cameras"],
+            "human_visibility_threshold": scene_generator.human_visibility_threshold,
+            "court_visibility_threshold": scene_generator.court_visibility_threshold,
+        }
+    )
 
     print("\nGeneration complete!")
     print(f"  Successful scenes: {successful}")
