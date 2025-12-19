@@ -9,13 +9,15 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
 
-from src.plcs.generate_dataset.motion.motion_sampler import MotionSampler, MotionSequence
+from src.plcs.generate_dataset.sampling.motion_sampler import (
+    MotionSampler,
+    MotionSequence,
+)
 from src.utils.geometry import (
     FACE_KEYPOINT_OFFSETS,
     HALF_LENGTH,
@@ -434,140 +436,4 @@ class SceneGenerator:
             rotation=rotations,
             canonical_pose_3d=canonical_poses,
             cameras=filtered_cameras,
-        )
-
-    def save_scene(
-        self,
-        scene: SceneData,
-        output_path: Path | str,
-    ) -> None:
-        """Save scene to NPZ file.
-
-        Args:
-            scene: Scene data to save.
-            output_path: Path for output NPZ file.
-
-        """
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Prepare data dict
-        data = {
-            # Metadata (stored as object array for dict)
-            "meta": np.array(scene.meta, dtype=object),
-            # 3D data
-            "position": scene.position,
-            "rotation": scene.rotation,
-            "canonical_pose_3d": scene.canonical_pose_3d,
-            # Number of cameras
-            "num_cameras": np.array([len(scene.cameras)]),
-        }
-
-        # Camera data
-        for i, cam in enumerate(scene.cameras):
-            prefix = f"cam_{i}_"
-            data[f"{prefix}params"] = np.array(cam.camera_params, dtype=object)
-            data[f"{prefix}human_kp_uv"] = cam.human_kp_uv
-            data[f"{prefix}court_kp_uv"] = cam.court_kp_uv
-            data[f"{prefix}human_kp_visible"] = cam.human_kp_visible
-            data[f"{prefix}court_kp_visible"] = cam.court_kp_visible
-            data[f"{prefix}human_visibility_ratio"] = np.array(
-                [cam.human_visibility_ratio]
-            )
-            data[f"{prefix}court_visibility_count"] = np.array(
-                [cam.court_visibility_count]
-            )
-
-        np.savez_compressed(output_path, **data)
-
-    def build_scene_meta(self, scene: SceneData) -> dict:
-        """Build JSON-serializable metadata dictionary.
-
-        Args:
-            scene: Scene data.
-
-        Returns:
-            Dictionary suitable for JSON serialization.
-
-        """
-        meta = scene.meta
-        return {
-            "scene_id": meta["scene_id"],
-            "motion_source": meta["motion_source"],
-            "motion_category": meta["motion_category"],
-            "gender": meta["gender"],
-            "fps": meta["fps"],
-            "num_frames": meta["num_frames"],
-            "duration_sec": meta["num_frames"] / meta["fps"],
-            "initial_position": list(meta["initial_position"]),
-            "initial_yaw_deg": float(np.degrees(meta["initial_yaw"])),
-            "num_cameras_sampled": meta["num_cameras_sampled"],
-            "num_cameras": meta["num_cameras_filtered"],
-            "cameras": [
-                {
-                    "human_visibility_ratio": cam.human_visibility_ratio,
-                    "court_visibility_count": cam.court_visibility_count,
-                }
-                for cam in scene.cameras
-            ],
-            # Data statistics
-            "position_range": {
-                "x": [
-                    float(scene.position[:, 0].min()),
-                    float(scene.position[:, 0].max()),
-                ],
-                "y": [
-                    float(scene.position[:, 1].min()),
-                    float(scene.position[:, 1].max()),
-                ],
-                "z": [
-                    float(scene.position[:, 2].min()),
-                    float(scene.position[:, 2].max()),
-                ],
-            },
-        }
-
-    @staticmethod
-    def load_scene(path: Path | str) -> SceneData:
-        """Load scene from NPZ file.
-
-        Args:
-            path: Path to NPZ file.
-
-        Returns:
-            Loaded SceneData.
-
-        """
-        data = np.load(path, allow_pickle=True)
-
-        meta = data["meta"].item()
-        position = data["position"]
-        rotation = data["rotation"]
-        canonical_pose_3d = data["canonical_pose_3d"]
-
-        num_cameras = int(data["num_cameras"][0])
-        cameras = []
-        for i in range(num_cameras):
-            prefix = f"cam_{i}_"
-            cam = CameraData(
-                camera_params=data[f"{prefix}params"].item(),
-                human_kp_uv=data[f"{prefix}human_kp_uv"],
-                court_kp_uv=data[f"{prefix}court_kp_uv"],
-                human_kp_visible=data[f"{prefix}human_kp_visible"],
-                court_kp_visible=data[f"{prefix}court_kp_visible"],
-                human_visibility_ratio=float(
-                    data[f"{prefix}human_visibility_ratio"][0]
-                ),
-                court_visibility_count=float(
-                    data[f"{prefix}court_visibility_count"][0]
-                ),
-            )
-            cameras.append(cam)
-
-        return SceneData(
-            meta=meta,
-            position=position,
-            rotation=rotation,
-            canonical_pose_3d=canonical_pose_3d,
-            cameras=cameras,
         )
