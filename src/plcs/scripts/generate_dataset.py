@@ -21,8 +21,8 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
 
-from src.plcs.data.motion_sampler import MotionSampler
-from src.plcs.data.scene_generator import SceneGenerator
+from src.plcs.generate_dataset.motion.motion_sampler import MotionSampler
+from src.plcs.generate_dataset.scene_generator import SceneGenerator
 
 
 def _resolve_device(device: str) -> str:

@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from src.plcs.data.motion_sampler import MotionSampler, MotionSequence
+from src.plcs.generate_dataset.motion.motion_sampler import MotionSampler, MotionSequence
 from src.utils.geometry import (
     BASELINE_CLEAR,
     FACE_KEYPOINT_OFFSETS,
@@ -29,6 +29,11 @@ from src.utils.geometry import (
     court_keypoints_3d,
     make_look_at_camera,
     project_points,
+)
+from src.utils.geometry.constants import (
+    COURT_COORD_SCALE_X,
+    COURT_COORD_SCALE_Y,
+    COURT_COORD_SCALE_Z,
 )
 
 if TYPE_CHECKING:
@@ -250,9 +255,9 @@ class SceneGenerator:
 
         # Normalize positions
         positions = np.zeros((T, 3), dtype=np.float32)
-        positions[:, 0] = court_trans[:, 0] / HALF_DOUBLES_WIDTH
-        positions[:, 1] = court_trans[:, 1] / HALF_LENGTH
-        positions[:, 2] = court_trans[:, 2] / NET_HEIGHT_POST
+        positions[:, 0] = court_trans[:, 0] / COURT_COORD_SCALE_X
+        positions[:, 1] = court_trans[:, 1] / COURT_COORD_SCALE_Y
+        positions[:, 2] = court_trans[:, 2] / COURT_COORD_SCALE_Z
 
         # Compute rotations (yaw)
         # Extract yaw from motion (simplified: assume forward is +Y in local frame)
