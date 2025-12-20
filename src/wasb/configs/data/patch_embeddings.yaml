@@ -1,3 +1,4 @@
+name: patch_embeddings
 root_dir: data/tennis
 embeddings_dir: data/tennis/patch_embeddings
 heatmaps_dir: ${embeddings_dir}
