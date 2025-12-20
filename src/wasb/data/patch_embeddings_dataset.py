@@ -1,0 +1,183 @@
+"""Dataset for cached DINOv3 patch embeddings and target heatmaps."""
+
+from __future__ import annotations
+
+import logging
+import re
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterable, Sequence
+
+import torch
+from torch.utils.data import Dataset
+
+LOGGER = logging.getLogger(__name__)
+
+_AUG_RE = re.compile(r"^(?P<clip>.+?)(?:_aug(?P<aug>\d+))?$")
+
+
+@dataclass(frozen=True)
+class PatchEmbeddingSample:
+    """Single windowed sample from a clip (optionally with augmentation)."""
+
+    embedding_path: Path | None
+    heatmap_path: Path | None
+    match: str
+    clip: str
+    aug_idx: int | None
+    start_idx: int
+
+
+def _resolve_matches(root_dir: Path, matches: Iterable[str]) -> list[str]:
+    match_list = list(matches)
+    if match_list:
+        return match_list
+    return sorted([p.name for p in root_dir.iterdir() if p.is_dir()])
+
+
+def _parse_embedding_name(filename: str) -> tuple[str, int | None] | None:
+    if filename.endswith("_heatmaps.pt"):
+        return None
+    stem = Path(filename).stem
+    match = _AUG_RE.match(stem)
+    if not match:
+        return None
+    clip = match.group("clip")
+    aug_raw = match.group("aug")
+    aug_idx = int(aug_raw) if aug_raw is not None else None
+    return clip, aug_idx
+
+
+class PatchEmbeddingsDataset(Dataset):
+    """Dataset for cached patch embeddings and heatmaps."""
+
+    def __init__(
+        self,
+        root_dir: str | Path,
+        embeddings_dir: str | Path | None = None,
+        heatmaps_dir: str | Path | None = None,
+        matches: Sequence[str] = (),
+        include_embeddings: bool = True,
+        include_heatmaps: bool = True,
+        frames_in: int = 8,
+        frames_out: int = 1,
+        step: int = 1,
+    ) -> None:
+        if not (include_embeddings or include_heatmaps):
+            raise ValueError("include_embeddings or include_heatmaps must be true.")
+        if frames_out > frames_in:
+            raise ValueError("frames_out cannot exceed frames_in")
+        if frames_in < 1:
+            raise ValueError("frames_in must be >= 1")
+        if step < 1:
+            raise ValueError("step must be >= 1")
+
+        self.root_dir = Path(root_dir)
+        self.embeddings_dir = (
+            Path(embeddings_dir) if embeddings_dir is not None else self.root_dir / "patch_embeddings"
+        )
+        self.heatmaps_dir = (
+            Path(heatmaps_dir) if heatmaps_dir is not None else self.embeddings_dir
+        )
+        self.include_embeddings = include_embeddings
+        self.include_heatmaps = include_heatmaps
+        self.frames_in = int(frames_in)
+        self.frames_out = int(frames_out)
+        self.step = int(step)
+
+        match_list = _resolve_matches(self.embeddings_dir, matches)
+        self.samples = self._build_index(match_list)
+        if not self.samples:
+            raise RuntimeError(f"No patch embedding samples found under {self.embeddings_dir}")
+
+    def _build_index(self, matches: Sequence[str]) -> list[PatchEmbeddingSample]:
+        samples: list[PatchEmbeddingSample] = []
+        for match in matches:
+            match_dir = self.embeddings_dir / match
+            if not match_dir.exists():
+                LOGGER.warning("Match directory missing, skipping: %s", match_dir)
+                continue
+            for entry in sorted(match_dir.iterdir()):
+                if not entry.is_file() or entry.suffix.lower() != ".pt":
+                    continue
+                parsed = _parse_embedding_name(entry.name)
+                if parsed is None:
+                    continue
+                clip, aug_idx = parsed
+                embedding_path = entry if self.include_embeddings else None
+                heatmap_path = None
+                if self.include_heatmaps:
+                    heatmap_path = self.heatmaps_dir / match / f"{clip}_heatmaps.pt"
+                    if not heatmap_path.exists():
+                        raise FileNotFoundError(f"Heatmap not found: {heatmap_path}")
+                length = self._resolve_sequence_length(embedding_path, heatmap_path)
+                if length < self.frames_in:
+                    continue
+                max_start = length - self.frames_in
+                for start_idx in range(0, max_start + 1, self.step):
+                    samples.append(
+                        PatchEmbeddingSample(
+                            embedding_path=embedding_path,
+                            heatmap_path=heatmap_path,
+                            match=match,
+                            clip=clip,
+                            aug_idx=aug_idx,
+                            start_idx=start_idx,
+                        )
+                    )
+        return samples
+
+    def _resolve_sequence_length(
+        self, embedding_path: Path | None, heatmap_path: Path | None
+    ) -> int:
+        length = None
+        if embedding_path is not None:
+            embeddings = torch.load(embedding_path, map_location="cpu")
+            if embeddings.dim() != 3:
+                raise RuntimeError(f"Expected embeddings [T, N, C], got {tuple(embeddings.shape)}")
+            length = int(embeddings.shape[0])
+        if heatmap_path is not None:
+            heatmaps = torch.load(heatmap_path, map_location="cpu")
+            if heatmaps.dim() != 3:
+                raise RuntimeError(f"Expected heatmaps [T, H, W], got {tuple(heatmaps.shape)}")
+            hm_len = int(heatmaps.shape[0])
+            if length is None:
+                length = hm_len
+            elif hm_len != length:
+                raise RuntimeError(
+                    f"Embedding/heatmap length mismatch: {embedding_path} vs {heatmap_path}"
+                )
+        if length is None:
+            raise RuntimeError("Unable to resolve sequence length for sample.")
+        return length
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def __getitem__(self, idx: int) -> dict[str, object]:
+        sample = self.samples[idx]
+        output: dict[str, object] = {
+            "match": sample.match,
+            "clip": sample.clip,
+            "aug_idx": sample.aug_idx,
+            "start_idx": sample.start_idx,
+        }
+        if self.include_embeddings:
+            if sample.embedding_path is None:
+                raise RuntimeError("Embedding path missing for sample.")
+            embeddings = torch.load(sample.embedding_path, map_location="cpu")
+            start = sample.start_idx
+            end = start + self.frames_in
+            output["embeddings"] = embeddings[start:end]
+        if self.include_heatmaps:
+            if sample.heatmap_path is None:
+                raise RuntimeError("Heatmap path missing for sample.")
+            heatmaps = torch.load(sample.heatmap_path, map_location="cpu")
+            start = sample.start_idx
+            end = start + self.frames_in
+            window = heatmaps[start:end]
+            output["target_heatmaps"] = window[-self.frames_out :]
+        return output
+
+    def sample_aug_indices(self) -> list[int | None]:
+        return [s.aug_idx for s in self.samples]
