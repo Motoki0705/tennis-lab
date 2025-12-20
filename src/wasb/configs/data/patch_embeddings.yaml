@@ -1,0 +1,20 @@
+name: patch_embeddings
+root_dir: data/tennis
+embeddings_dir: data/tennis/patch_embeddings
+heatmaps_dir: ${embeddings_dir}
+train_matches: ["game1", "game2", "game3", "game4", "game5", "game6", "game7"]
+val_matches: ["game8", "game9"]
+test_matches: ["game10"]
+include_embeddings: true
+include_heatmaps: true
+frames_in: 8
+frames_out: 1
+step: 1
+batch_size: 4
+num_workers: 4
+pin_memory: true
+shuffle: true
+drop_last: false
+balance_augments: true
+samples_per_epoch: null
+sampler_replacement: true

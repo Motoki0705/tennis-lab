@@ -88,7 +88,8 @@ class WASBLightningModule(pl.LightningModule):
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
     ) -> tuple[Tensor, dict[str, float]]:
-        frames: Tensor = batch["frames"]
+        input_key = self.config.get("training", {}).get("input_key", "frames")
+        frames: Tensor = batch[input_key]
         frames_input = self.prepare_frames(frames)
 
         outputs = self(frames_input)
@@ -109,6 +110,11 @@ class WASBLightningModule(pl.LightningModule):
             visibility=visibility,
         )
 
+        if frames.dim() < 4:
+            raise ValueError(
+                "Expected frames with spatial dims for metrics, got "
+                f"{tuple(frames.shape)}"
+            )
         h, w = frames.shape[-2:]
         metrics = self._metrics_for_stage(stage).update(
             pred_heatmaps=pred_heatmaps,
