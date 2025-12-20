@@ -24,6 +24,7 @@ from torch.nn import functional as F
 from torchvision.utils import save_image
 
 from src.wasb.data.ball_detection_datamodule import BallDetectionDataModule
+from src.wasb.data.patch_embeddings_datamodule import PatchEmbeddingsDataModule
 from src.wasb.data.curriculum_sampling import CurriculumStepCallback
 from src.wasb.models import build_model
 from src.wasb.training import WASBLightningModule
@@ -107,26 +108,35 @@ def run_dry_run(config: DictConfig, output_dir: Path) -> None:
     torch.cuda.device_count = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)  # type: ignore[assignment]
     torch.cuda.current_device = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)  # type: ignore[assignment]
 
-    datamodule = BallDetectionDataModule(config)
+    datamodule = _build_datamodule(config)
     datamodule.num_workers = 0  # Avoid multiprocessing in restricted environments
     datamodule.pin_memory = False
     datamodule.setup(stage="fit")
     train_loader = datamodule.train_dataloader()
     batch = next(iter(train_loader))
 
-    frames = batch["frames"]
-    targets = batch["targets_norm"]
-    target_heatmaps = batch["target_heatmaps"]
-    visibility = batch["visibility"]
+    frames = batch.get("frames")
+    targets = batch.get("targets_norm")
+    target_heatmaps = batch.get("target_heatmaps")
+    visibility = batch.get("visibility")
 
-    print(
-        f"Loaded batch: frames {tuple(frames.shape)}, "
-        f"targets {tuple(targets.shape)}, "
-        f"heatmaps {tuple(target_heatmaps.shape)}, "
-        f"visibility {tuple(visibility.shape)}"
-    )
-    print(f"First sample frame paths: {batch['frame_paths'][0][:3]} ...")
-    _save_sample_visuals(batch, output_dir / "dry_run")
+    if frames is not None:
+        print(f"Loaded batch: frames {tuple(frames.shape)}")
+    if targets is not None:
+        print(f"targets {tuple(targets.shape)}")
+    if target_heatmaps is not None:
+        print(f"heatmaps {tuple(target_heatmaps.shape)}")
+    if visibility is not None:
+        print(f"visibility {tuple(visibility.shape)}")
+    if (
+        "frame_paths" in batch
+        and frames is not None
+        and getattr(frames, "dim", None) is not None
+        and frames.dim() == 5
+        and frames.shape[2] == 3
+    ):
+        print(f"First sample frame paths: {batch['frame_paths'][0][:3]} ...")
+        _save_sample_visuals(batch, output_dir / "dry_run")
 
     # Build model and lightning module
     steps_per_epoch = len(train_loader)
@@ -157,6 +167,14 @@ def run_dry_run(config: DictConfig, output_dir: Path) -> None:
 
     trainer.fit(lightning_module, datamodule=datamodule)
 
+def _build_datamodule(config: DictConfig):
+    data_cfg = config.get("data", {})
+    data_name = str(data_cfg.get("name", "ball_detection")).lower()
+    if data_name == "patch_embeddings":
+        return PatchEmbeddingsDataModule(config)
+    return BallDetectionDataModule(config)
+
+
 @hydra.main(config_path="../../configs", config_name="train_ball_detection", version_base="1.3")
 def main(config: DictConfig) -> None:
     """Hydra entry point."""
@@ -167,6 +185,11 @@ def main(config: DictConfig) -> None:
     print(OmegaConf.to_yaml(config))
 
     model_name = str(config.model.name)
+    data_name = str(config.data.get("name", "ball_detection")).lower()
+    if data_name == "patch_embeddings":
+        logging.getLogger(__name__).warning(
+            "Using patch_embeddings data: ensure model/handlers accept frames shaped [B, T, N, C]."
+        )
     output_dir = Path(config.run.output_dir) / model_name
     output_dir.mkdir(parents=True, exist_ok=True)
     OmegaConf.save(config, output_dir / "config.yaml")
@@ -181,7 +204,7 @@ def main(config: DictConfig) -> None:
         output_dir=output_dir,
     )
 
-    datamodule = BallDetectionDataModule(config)
+    datamodule = _build_datamodule(config)
     datamodule.setup(stage="fit")
     train_loader = datamodule.train_dataloader()
     steps_per_epoch = len(train_loader)

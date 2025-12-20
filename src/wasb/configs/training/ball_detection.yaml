@@ -8,8 +8,8 @@ min_lr: 1e-6
 bce_weight: 1.0
 mse_weight: 0.0
 precision: "bf16-mixed"
+input_key: frames
 resume:
   enabled: false
   ckpt_path: null
   auto_last: true
-
