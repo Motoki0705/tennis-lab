@@ -110,12 +110,10 @@ class WASBLightningModule(pl.LightningModule):
             visibility=visibility,
         )
 
-        if frames.dim() < 4:
-            raise ValueError(
-                "Expected frames with spatial dims for metrics, got "
-                f"{tuple(frames.shape)}"
-            )
-        h, w = frames.shape[-2:]
+        if frames.dim() >= 4 and frames.shape[-3] == 3:
+            h, w = frames.shape[-2:]
+        else:
+            h, w = target_heatmaps.shape[-2:]
         metrics = self._metrics_for_stage(stage).update(
             pred_heatmaps=pred_heatmaps,
             target_coords_norm=batch["targets_norm"],
