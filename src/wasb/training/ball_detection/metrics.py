@@ -49,15 +49,17 @@ class WASBMetrics:
     def update(
         self,
         pred_heatmaps: Tensor,
-        target_coords_norm: Tensor,
+        target_heatmaps: Tensor,
         visibility: Tensor | None,
         image_hw: tuple[int, int],
-    ) -> dict[str, float]:
+    ) -> None:
         """Update metrics with a new batch."""
         if self.state is None:
             self.reset(pred_heatmaps.device)
         assert self.state is not None  # for type checker
 
+        pred_heatmaps = pred_heatmaps.detach()
+        target_heatmaps = target_heatmaps.detach()
         device = pred_heatmaps.device
         mask = None
         if visibility is not None:
@@ -67,7 +69,7 @@ class WASBMetrics:
                 pred_heatmaps.shape[:2], device=device, dtype=torch.float32
             )
 
-        target_coords_norm = target_coords_norm.to(device=device, dtype=torch.float32)
+        target_coords_norm = heatmap_argmax_coords(target_heatmaps)
         pred_coords_norm = heatmap_argmax_coords(pred_heatmaps)
         self.state.pred_min = torch.minimum(
             self.state.pred_min, pred_heatmaps.min().to(device)
@@ -91,8 +93,7 @@ class WASBMetrics:
         self.state.sum_sq_norm += (sq_norm * mask).sum()
         self.state.count += masked_count
         self.state.correct += ((abs_px <= self.accuracy_thresh_px).float() * mask).sum()
-
-        return self.compute()
+        return None
 
     def compute(self) -> dict[str, float]:
         """Compute current metrics."""

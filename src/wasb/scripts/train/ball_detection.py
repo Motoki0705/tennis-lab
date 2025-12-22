@@ -25,7 +25,10 @@ from torchvision.utils import save_image
 
 from src.wasb.data.ball_detection_datamodule import BallDetectionDataModule
 from src.wasb.data.patch_embeddings_datamodule import PatchEmbeddingsDataModule
-from src.wasb.data.curriculum_sampling import CurriculumStepCallback
+from src.wasb.data.curriculum_sampling import (
+    CurriculumStepCallback,
+    VisibilityCurriculumSampler,
+)
 from src.wasb.models import build_model
 from src.wasb.training import WASBLightningModule
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
@@ -237,7 +240,7 @@ def main(config: DictConfig) -> None:
         ),
         LearningRateMonitor(logging_interval="step"),
     ]
-    if datamodule.train_sampler is not None:
+    if isinstance(datamodule.train_sampler, VisibilityCurriculumSampler):
         callbacks.append(CurriculumStepCallback(datamodule.train_sampler))
 
     trainer = pl.Trainer(

@@ -1,0 +1,15 @@
+name: dinov3_detr_heatmap
+
+use_backbone: false
+backbone_checkpoint: null
+
+embed_dim: 384
+num_layers: 4
+num_heads: 6
+ffn_dim: 1536
+dropout: 0.1
+
+patch_size: 16
+patch_grid_hw: [18, 32]
+heatmap_hw: ${data.heatmap_hw}
+frames_out: ${data.frames_out}
