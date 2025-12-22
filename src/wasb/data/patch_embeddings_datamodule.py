@@ -8,6 +8,7 @@ from typing import Sequence
 import pytorch_lightning as pl
 import torch
 from torch.utils.data import DataLoader
+from omegaconf import OmegaConf
 
 from src.wasb.data.patch_embeddings_dataset import PatchEmbeddingsDataset
 
@@ -19,10 +20,15 @@ class PatchEmbeddingsDataModule(pl.LightningDataModule):
         super().__init__()
         cfg = config or {}
         data_cfg = cfg.get("data", {})
+        if OmegaConf.is_config(data_cfg):
+            data_cfg = OmegaConf.to_container(data_cfg, resolve=False)
 
         self.root_dir = Path(data_cfg.get("root_dir", "data/tennis"))
         self.embeddings_dir = data_cfg.get("embeddings_dir", None)
-        self.heatmaps_dir = data_cfg.get("heatmaps_dir", None)
+        heatmaps_dir = data_cfg.get("heatmaps_dir", None)
+        if heatmaps_dir in (None, "${embeddings_dir}"):
+            heatmaps_dir = self.embeddings_dir
+        self.heatmaps_dir = heatmaps_dir
         self.train_matches: Sequence[str] = data_cfg.get("train_matches", [])
         self.val_matches: Sequence[str] = data_cfg.get("val_matches", [])
         self.test_matches: Sequence[str] = data_cfg.get("test_matches", [])
