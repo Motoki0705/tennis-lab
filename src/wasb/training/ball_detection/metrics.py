@@ -58,6 +58,8 @@ class WASBMetrics:
             self.reset(pred_heatmaps.device)
         assert self.state is not None  # for type checker
 
+        pred_heatmaps = pred_heatmaps.detach()
+        target_heatmaps = target_heatmaps.detach()
         device = pred_heatmaps.device
         mask = None
         if visibility is not None:
