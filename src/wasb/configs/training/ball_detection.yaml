@@ -7,6 +7,13 @@ warmup_steps: 1000
 min_lr: 1e-6
 bce_weight: 1.0
 mse_weight: 0.0
+temporal_weight: 0.1
+temporal:
+  order: 2
+  robust: true
+  prob_mode: sigmoid_norm
+  beta: 25.0
+  detach_conf: true
 precision: "bf16-mixed"
 input_key: frames
 use_metrics: true
