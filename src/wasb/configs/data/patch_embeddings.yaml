@@ -10,6 +10,7 @@ include_heatmaps: true
 frames_in: 8
 frames_out: 1
 step: 1
+heatmap_hw: [288, 512]
 batch_size: 4
 num_workers: 4
 pin_memory: true

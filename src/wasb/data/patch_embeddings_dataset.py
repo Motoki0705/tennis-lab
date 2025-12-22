@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass
@@ -84,6 +85,9 @@ class PatchEmbeddingsDataset(Dataset):
         self.frames_in = int(frames_in)
         self.frames_out = int(frames_out)
         self.step = int(step)
+        self._meta_embeddings: dict[str, int] = {}
+        self._meta_heatmaps: dict[str, int] = {}
+        self._load_meta()
 
         match_list = _resolve_matches(self.embeddings_dir, matches)
         self.samples = self._build_index(match_list)
@@ -127,20 +131,54 @@ class PatchEmbeddingsDataset(Dataset):
                     )
         return samples
 
+    def _load_meta(self) -> None:
+        meta_path = self.embeddings_dir / "meta.json"
+        if not meta_path.exists():
+            return
+        try:
+            payload = json.loads(meta_path.read_text())
+        except json.JSONDecodeError as exc:
+            LOGGER.warning("Failed to parse meta.json: %s", exc)
+            return
+        self._meta_embeddings = {
+            str(k): int(v) for k, v in payload.get("embeddings", {}).items()
+        }
+        self._meta_heatmaps = {
+            str(k): int(v) for k, v in payload.get("heatmaps", {}).items()
+        }
+
+    def _meta_length_for(self, path: Path, *, kind: str) -> int | None:
+        rel = str(path.relative_to(self.embeddings_dir))
+        if kind == "embeddings":
+            return self._meta_embeddings.get(rel)
+        return self._meta_heatmaps.get(rel)
+
     def _resolve_sequence_length(
         self, embedding_path: Path | None, heatmap_path: Path | None
     ) -> int:
         length = None
         if embedding_path is not None:
-            embeddings = torch.load(embedding_path, map_location="cpu")
-            if embeddings.dim() != 3:
-                raise RuntimeError(f"Expected embeddings [T, N, C], got {tuple(embeddings.shape)}")
-            length = int(embeddings.shape[0])
+            meta_len = self._meta_length_for(embedding_path, kind="embeddings")
+            if meta_len is not None:
+                length = meta_len
+            else:
+                embeddings = torch.load(embedding_path, map_location="cpu")
+                if embeddings.dim() != 3:
+                    raise RuntimeError(
+                        f"Expected embeddings [T, N, C], got {tuple(embeddings.shape)}"
+                    )
+                length = int(embeddings.shape[0])
         if heatmap_path is not None:
-            heatmaps = torch.load(heatmap_path, map_location="cpu")
-            if heatmaps.dim() != 3:
-                raise RuntimeError(f"Expected heatmaps [T, H, W], got {tuple(heatmaps.shape)}")
-            hm_len = int(heatmaps.shape[0])
+            meta_len = self._meta_length_for(heatmap_path, kind="heatmaps")
+            if meta_len is not None:
+                hm_len = meta_len
+            else:
+                heatmaps = torch.load(heatmap_path, map_location="cpu")
+                if heatmaps.dim() != 3:
+                    raise RuntimeError(
+                        f"Expected heatmaps [T, H, W], got {tuple(heatmaps.shape)}"
+                    )
+                hm_len = int(heatmaps.shape[0])
             if length is None:
                 length = hm_len
             elif hm_len != length:

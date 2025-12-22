@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+import json
 from typing import Iterable, Sequence
 
 import hydra
@@ -369,6 +370,8 @@ def main(cfg: DictConfig) -> None:
         heatmap_sigma = float(heatmap_sigma)
     heatmap_hw = cfg.get("heatmap_hw", None)
     total_clips = 0
+    meta_embeddings: dict[str, int] = {}
+    meta_heatmaps: dict[str, int] = {}
     for match in matches:
         match_dir = root_dir / match
         if not match_dir.exists():
@@ -393,6 +396,14 @@ def main(cfg: DictConfig) -> None:
                     )
                     heatmap_path.parent.mkdir(parents=True, exist_ok=True)
                     torch.save(heatmaps, heatmap_path)
+                    meta_heatmaps[str(heatmap_path.relative_to(output_dir))] = int(
+                        heatmaps.shape[0]
+                    )
+                else:
+                    heatmaps = torch.load(heatmap_path, map_location="cpu")
+                    meta_heatmaps[str(heatmap_path.relative_to(output_dir))] = int(
+                        heatmaps.shape[0]
+                    )
 
             if save_embeddings:
                 if backbone is None:
@@ -406,6 +417,10 @@ def main(cfg: DictConfig) -> None:
                         num_augments=num_augments,
                     )
                     if out_path.exists() and not bool(cfg.get("overwrite", False)):
+                        tokens = torch.load(out_path, map_location="cpu")
+                        meta_embeddings[str(out_path.relative_to(output_dir))] = int(
+                            tokens.shape[0]
+                        )
                         continue
 
                     dataset = ClipFramesDataset(frame_paths, transform)
@@ -424,11 +439,21 @@ def main(cfg: DictConfig) -> None:
                     )
                     out_path.parent.mkdir(parents=True, exist_ok=True)
                     torch.save(tokens, out_path)
+                    meta_embeddings[str(out_path.relative_to(output_dir))] = int(
+                        tokens.shape[0]
+                    )
             total_clips += 1
             if total_clips % 25 == 0:
                 LOGGER.info("Encoded %d clips", total_clips)
 
-    LOGGER.info("Finished encoding %d clips", total_clips)
+    meta_path = output_dir / "meta.json"
+    meta_payload = {
+        "version": 1,
+        "embeddings": meta_embeddings,
+        "heatmaps": meta_heatmaps,
+    }
+    meta_path.write_text(json.dumps(meta_payload, indent=2))
+    LOGGER.info("Finished encoding %d clips (meta saved to %s)", total_clips, meta_path)
 
 
 if __name__ == "__main__":
