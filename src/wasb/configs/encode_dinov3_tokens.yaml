@@ -17,7 +17,7 @@ batch_size: 32
 num_workers: 4
 pin_memory: true
 overwrite: true
-save_dtype: bfloat16  # float32 | float16 | bfloat16
+save_dtype: float32  # float32 | float16 | bfloat16 (saved as float16)
 
 # Optional override list. When null, uses data.train/val/test matches.
 matches: null
