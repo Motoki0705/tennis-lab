@@ -12,7 +12,11 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
 
 from src.wasb.models import build_model
-from src.wasb.training.ball_detection.loss import LossWeights, WASBLoss
+from src.wasb.training.ball_detection.loss import (
+    LossWeights,
+    TemporalPeakLossConfig,
+    WASBLoss,
+)
 from src.wasb.training.ball_detection.metrics import WASBMetrics
 
 if TYPE_CHECKING:
@@ -59,11 +63,19 @@ class WASBLightningModule(pl.LightningModule):
         loss_cfg = self.config.get("loss", {})
         bce_weight = loss_cfg.get("bce_weight", train_cfg.get("bce_weight", 1.0))
         mse_weight = loss_cfg.get("mse_weight", train_cfg.get("mse_weight", 1.0))
+        temporal_weight = loss_cfg.get("temporal_weight", train_cfg.get("temporal_weight", 0.0))
+        temporal_cfg_raw = loss_cfg.get("temporal", train_cfg.get("temporal", {}))
         loss_weights = LossWeights(
             bce=bce_weight,
             mse=mse_weight,
+            temporal=temporal_weight,
         )
-        self.loss_fn = WASBLoss(weights=loss_weights)
+        temporal_cfg = (
+            TemporalPeakLossConfig(**temporal_cfg_raw)
+            if isinstance(temporal_cfg_raw, dict) and temporal_cfg_raw
+            else TemporalPeakLossConfig()
+        )
+        self.loss_fn = WASBLoss(weights=loss_weights, temporal_cfg=temporal_cfg)
 
         self.use_metrics = bool(train_cfg.get("use_metrics", True))
         if self.use_metrics:
