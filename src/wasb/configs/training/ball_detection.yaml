@@ -9,6 +9,7 @@ bce_weight: 1.0
 mse_weight: 0.0
 precision: "bf16-mixed"
 input_key: frames
+use_metrics: true
 resume:
   enabled: false
   ckpt_path: null

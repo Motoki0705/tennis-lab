@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 import torch
+import numpy as np
 from torch.utils.data import Dataset
 
 LOGGER = logging.getLogger(__name__)
@@ -36,7 +38,7 @@ def _resolve_matches(root_dir: Path, matches: Iterable[str]) -> list[str]:
 
 
 def _parse_embedding_name(filename: str) -> tuple[str, int | None] | None:
-    if filename.endswith("_heatmaps.pt"):
+    if filename.endswith("_heatmaps.npy"):
         return None
     stem = Path(filename).stem
     match = _AUG_RE.match(stem)
@@ -79,11 +81,15 @@ class PatchEmbeddingsDataset(Dataset):
         self.heatmaps_dir = (
             Path(heatmaps_dir) if heatmaps_dir is not None else self.embeddings_dir
         )
+        self._memmap_cache: dict[Path, np.ndarray] = {}
         self.include_embeddings = include_embeddings
         self.include_heatmaps = include_heatmaps
         self.frames_in = int(frames_in)
         self.frames_out = int(frames_out)
         self.step = int(step)
+        self._meta_embeddings: dict[str, int] = {}
+        self._meta_heatmaps: dict[str, int] = {}
+        self._load_meta()
 
         match_list = _resolve_matches(self.embeddings_dir, matches)
         self.samples = self._build_index(match_list)
@@ -98,7 +104,7 @@ class PatchEmbeddingsDataset(Dataset):
                 LOGGER.warning("Match directory missing, skipping: %s", match_dir)
                 continue
             for entry in sorted(match_dir.iterdir()):
-                if not entry.is_file() or entry.suffix.lower() != ".pt":
+                if not entry.is_file() or entry.suffix.lower() != ".npy":
                     continue
                 parsed = _parse_embedding_name(entry.name)
                 if parsed is None:
@@ -107,7 +113,7 @@ class PatchEmbeddingsDataset(Dataset):
                 embedding_path = entry if self.include_embeddings else None
                 heatmap_path = None
                 if self.include_heatmaps:
-                    heatmap_path = self.heatmaps_dir / match / f"{clip}_heatmaps.pt"
+                    heatmap_path = self.heatmaps_dir / match / f"{clip}_heatmaps.npy"
                     if not heatmap_path.exists():
                         raise FileNotFoundError(f"Heatmap not found: {heatmap_path}")
                 length = self._resolve_sequence_length(embedding_path, heatmap_path)
@@ -127,20 +133,44 @@ class PatchEmbeddingsDataset(Dataset):
                     )
         return samples
 
+    def _load_meta(self) -> None:
+        meta_path = self.embeddings_dir / "meta.json"
+        if not meta_path.exists():
+            return
+        try:
+            payload = json.loads(meta_path.read_text())
+        except json.JSONDecodeError as exc:
+            LOGGER.warning("Failed to parse meta.json: %s", exc)
+            return
+        self._meta_embeddings = {
+            str(k): int(v) for k, v in payload.get("embeddings", {}).items()
+        }
+        self._meta_heatmaps = {
+            str(k): int(v) for k, v in payload.get("heatmaps", {}).items()
+        }
+
+    def _meta_length_for(self, path: Path, *, kind: str) -> int | None:
+        rel = str(path.relative_to(self.embeddings_dir))
+        if kind == "embeddings":
+            return self._meta_embeddings.get(rel)
+        return self._meta_heatmaps.get(rel)
+
     def _resolve_sequence_length(
         self, embedding_path: Path | None, heatmap_path: Path | None
     ) -> int:
         length = None
         if embedding_path is not None:
-            embeddings = torch.load(embedding_path, map_location="cpu")
-            if embeddings.dim() != 3:
-                raise RuntimeError(f"Expected embeddings [T, N, C], got {tuple(embeddings.shape)}")
-            length = int(embeddings.shape[0])
+            meta_len = self._meta_length_for(embedding_path, kind="embeddings")
+            if meta_len is not None:
+                length = meta_len
+            else:
+                length = self._length_from_file(embedding_path, expected_dims=3, kind="embeddings")
         if heatmap_path is not None:
-            heatmaps = torch.load(heatmap_path, map_location="cpu")
-            if heatmaps.dim() != 3:
-                raise RuntimeError(f"Expected heatmaps [T, H, W], got {tuple(heatmaps.shape)}")
-            hm_len = int(heatmaps.shape[0])
+            meta_len = self._meta_length_for(heatmap_path, kind="heatmaps")
+            if meta_len is not None:
+                hm_len = meta_len
+            else:
+                hm_len = self._length_from_file(heatmap_path, expected_dims=3, kind="heatmaps")
             if length is None:
                 length = hm_len
             elif hm_len != length:
@@ -165,19 +195,37 @@ class PatchEmbeddingsDataset(Dataset):
         if self.include_embeddings:
             if sample.embedding_path is None:
                 raise RuntimeError("Embedding path missing for sample.")
-            embeddings = torch.load(sample.embedding_path, map_location="cpu")
             start = sample.start_idx
             end = start + self.frames_in
-            output["embeddings"] = embeddings[start:end]
+            embeddings = self._load_memmap(sample.embedding_path)
+            window = embeddings[start:end]
+            output["embeddings"] = torch.from_numpy(np.ascontiguousarray(window))
         if self.include_heatmaps:
             if sample.heatmap_path is None:
                 raise RuntimeError("Heatmap path missing for sample.")
-            heatmaps = torch.load(sample.heatmap_path, map_location="cpu")
             start = sample.start_idx
             end = start + self.frames_in
+            heatmaps = self._load_memmap(sample.heatmap_path)
             window = heatmaps[start:end]
-            output["target_heatmaps"] = window[-self.frames_out :]
+            output["target_heatmaps"] = torch.from_numpy(
+                np.ascontiguousarray(window[-self.frames_out :])
+            )
         return output
+
+    def _load_memmap(self, path: Path) -> np.ndarray:
+        mmap = self._memmap_cache.get(path)
+        if mmap is None:
+            mmap = np.load(path, mmap_mode="r")
+            self._memmap_cache[path] = mmap
+        return mmap
+
+    def _length_from_file(self, path: Path, expected_dims: int, *, kind: str) -> int:
+        mmap = np.load(path, mmap_mode="r")
+        if mmap.ndim != expected_dims:
+            raise RuntimeError(
+                f"Expected {kind} {expected_dims}D, got {tuple(mmap.shape)}"
+            )
+        return int(mmap.shape[0])
 
     def sample_aug_indices(self) -> list[int | None]:
         return [s.aug_idx for s in self.samples]

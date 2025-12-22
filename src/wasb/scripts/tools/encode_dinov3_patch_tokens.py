@@ -3,8 +3,8 @@
 This script loads a pretrained DINOv3 heatmap model, extracts its ViT
 backbone, and encodes every frame in game1-10 into patch tokens. Outputs
 are saved under `data/tennis/patch_embeddings` with one file per clip
-and per augmentation pass (e.g., `Clip3.pt`, `Clip3_aug01.pt`, ...).
-Target heatmaps are also cached per clip as `{Clip}_heatmaps.pt`.
+and per augmentation pass (e.g., `Clip3.npy`, `Clip3_aug01.npy`, ...).
+Target heatmaps are also cached per clip as `{Clip}_heatmaps.npy`.
 
 Example:
     uv run python -m src.wasb.scripts.tools.encode_dinov3_patch_tokens \
@@ -21,7 +21,7 @@ Hydra parameters:
     - matches: List of matches to process (defaults to data.train/val/test).
     - preprocess.resize_hw: Resize (H, W) before encoding.
     - preprocess.normalize: Whether to apply mean/std normalization.
-    - save_dtype: Data type for saved tokens (float32/float16/bfloat16).
+    - save_dtype: Data type for saved tokens (float32/float16/bfloat16 -> float16).
     - overwrite: Whether to overwrite existing token files.
     - batch_size / num_workers / device: Data loading and inference settings.
 """
@@ -30,9 +30,11 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+import json
 from typing import Iterable, Sequence
 
 import hydra
+import numpy as np
 import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
@@ -189,6 +191,14 @@ def _resolve_dtype(name: str) -> torch.dtype:
     return mapping[key]
 
 
+def _resolve_save_dtype(name: str) -> torch.dtype:
+    dtype = _resolve_dtype(name)
+    if dtype is torch.bfloat16:
+        LOGGER.warning("bfloat16 is not supported by numpy; saving tokens as float16.")
+        return torch.float16
+    return dtype
+
+
 def _load_backbone(cfg: DictConfig, device: torch.device) -> torch.nn.Module:
     ckpt_path = cfg.get("model_checkpoint", None)
     if ckpt_path:
@@ -251,11 +261,11 @@ def _clip_output_path(
     output_dir: Path, match: str, clip: str, aug_idx: int, num_augments: int
 ) -> Path:
     suffix = "" if num_augments <= 1 else f"_aug{aug_idx:02d}"
-    return output_dir / match / f"{clip}{suffix}.pt"
+    return output_dir / match / f"{clip}{suffix}.npy"
 
 
 def _heatmap_output_path(output_dir: Path, match: str, clip: str) -> Path:
-    return output_dir / match / f"{clip}_heatmaps.pt"
+    return output_dir / match / f"{clip}_heatmaps.npy"
 
 
 def _resolve_heatmap_hw(
@@ -345,7 +355,7 @@ def main(cfg: DictConfig) -> None:
         return
 
     transform = _build_transform(cfg)
-    save_dtype = _resolve_dtype(str(cfg.get("save_dtype", "float32")))
+    save_dtype = _resolve_save_dtype(str(cfg.get("save_dtype", "float32")))
     backbone = None
     if save_embeddings:
         backbone = _load_backbone(cfg, device)
@@ -369,6 +379,8 @@ def main(cfg: DictConfig) -> None:
         heatmap_sigma = float(heatmap_sigma)
     heatmap_hw = cfg.get("heatmap_hw", None)
     total_clips = 0
+    meta_embeddings: dict[str, int] = {}
+    meta_heatmaps: dict[str, int] = {}
     for match in matches:
         match_dir = root_dir / match
         if not match_dir.exists():
@@ -392,7 +404,15 @@ def main(cfg: DictConfig) -> None:
                         heatmap_sigma=heatmap_sigma,
                     )
                     heatmap_path.parent.mkdir(parents=True, exist_ok=True)
-                    torch.save(heatmaps, heatmap_path)
+                    np.save(heatmap_path, heatmaps.cpu().numpy())
+                    meta_heatmaps[str(heatmap_path.relative_to(output_dir))] = int(
+                        heatmaps.shape[0]
+                    )
+                else:
+                    heatmaps = np.load(heatmap_path, mmap_mode="r")
+                    meta_heatmaps[str(heatmap_path.relative_to(output_dir))] = int(
+                        heatmaps.shape[0]
+                    )
 
             if save_embeddings:
                 if backbone is None:
@@ -406,6 +426,10 @@ def main(cfg: DictConfig) -> None:
                         num_augments=num_augments,
                     )
                     if out_path.exists() and not bool(cfg.get("overwrite", False)):
+                        tokens = np.load(out_path, mmap_mode="r")
+                        meta_embeddings[str(out_path.relative_to(output_dir))] = int(
+                            tokens.shape[0]
+                        )
                         continue
 
                     dataset = ClipFramesDataset(frame_paths, transform)
@@ -423,12 +447,22 @@ def main(cfg: DictConfig) -> None:
                         save_dtype=save_dtype,
                     )
                     out_path.parent.mkdir(parents=True, exist_ok=True)
-                    torch.save(tokens, out_path)
+                    np.save(out_path, tokens.cpu().numpy())
+                    meta_embeddings[str(out_path.relative_to(output_dir))] = int(
+                        tokens.shape[0]
+                    )
             total_clips += 1
             if total_clips % 25 == 0:
                 LOGGER.info("Encoded %d clips", total_clips)
 
-    LOGGER.info("Finished encoding %d clips", total_clips)
+    meta_path = output_dir / "meta.json"
+    meta_payload = {
+        "version": 1,
+        "embeddings": meta_embeddings,
+        "heatmaps": meta_heatmaps,
+    }
+    meta_path.write_text(json.dumps(meta_payload, indent=2))
+    LOGGER.info("Finished encoding %d clips (meta saved to %s)", total_clips, meta_path)
 
 
 if __name__ == "__main__":

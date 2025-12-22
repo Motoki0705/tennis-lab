@@ -10,6 +10,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
 from .others.clip_segmenter import ClipSegmenter, RuleBasedClipSegmenter
+from .ball_detection.dinov3_detr_heatmap import DinoV3DETRHeatmap
 from .ball_detection.dinov3_heatmap import DinoV3FPNHeatmap
 from .ball_detection.hrcnet import HRCNet
 from .ball_detection.hrnet import HRNet
@@ -51,6 +52,18 @@ def _dinov3_heatmap_handlers() -> tuple[Callable, Callable]:
         if isinstance(outputs, Tensor):
             return outputs
         raise TypeError("Unsupported model output type for DinoV3FPNHeatmap.")
+
+    return prepare_frames, extract_heatmaps
+
+
+def _dinov3_detr_heatmap_handlers() -> tuple[Callable, Callable]:
+    def prepare_frames(frames):
+        return frames
+
+    def extract_heatmaps(outputs):
+        if isinstance(outputs, Tensor):
+            return outputs
+        raise TypeError("Unsupported model output type for DinoV3DETRHeatmap.")
 
     return prepare_frames, extract_heatmaps
 
@@ -226,6 +239,10 @@ __factory: dict[str, Any] = {
     ),
     "temporal_conv_gru": _build_temporal_conv_gru,
     "dinov3_heatmap": lambda cfg: (DinoV3FPNHeatmap(cfg), _dinov3_heatmap_handlers()),
+    "dinov3_detr_heatmap": lambda cfg: (
+        DinoV3DETRHeatmap(cfg),
+        _dinov3_detr_heatmap_handlers(),
+    ),
 }
 
 
@@ -238,7 +255,13 @@ def build_model(cfg: DictConfig | dict[str, Any]):
     if model_name not in __factory:
         raise KeyError(f"invalid model: {model_name}")
 
-    if model_name in ("hrnet", "hrcnet", "temporal_conv_gru", "dinov3_heatmap"):
+    if model_name in (
+        "hrnet",
+        "hrcnet",
+        "temporal_conv_gru",
+        "dinov3_heatmap",
+        "dinov3_detr_heatmap",
+    ):
         return __factory[model_name](model_cfg)
 
     raise KeyError(f"Unsupported model: {model_name}")
@@ -250,4 +273,5 @@ __all__ = [
     "build_model",
     "TemporalConvGRUModel",
     "DinoV3FPNHeatmap",
+    "DinoV3DETRHeatmap",
 ]
