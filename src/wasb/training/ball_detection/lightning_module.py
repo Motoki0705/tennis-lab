@@ -116,20 +116,19 @@ class WASBLightningModule(pl.LightningModule):
             visibility=visibility,
         )
 
-        metrics: dict[str, float] = {}
         if self.use_metrics:
             if frames.dim() >= 4 and frames.shape[-3] == 3:
                 h, w = frames.shape[-2:]
             else:
                 h, w = target_heatmaps.shape[-2:]
-            metrics = self._metrics_for_stage(stage).update(
+            self._metrics_for_stage(stage).update(
                 pred_heatmaps=pred_heatmaps,
-                target_coords_norm=batch["targets_norm"],
+                target_heatmaps=target_heatmaps,
                 visibility=visibility,
                 image_hw=(h, w),
             )
 
-        return losses["total"], {**metrics, **{f"loss_{k}": v.item() for k, v in losses.items()}}
+        return losses["total"], {f"loss_{k}": v.item() for k, v in losses.items()}
 
     def _metrics_for_stage(self, stage: str) -> WASBMetrics:
         if stage == "train":
@@ -139,13 +138,8 @@ class WASBLightningModule(pl.LightningModule):
         return self.test_metrics
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
-        loss, metrics = self._shared_step(batch, "train")
+        loss, _ = self._shared_step(batch, "train")
         self.log("train/loss", loss, prog_bar=True)
-        if self.use_metrics:
-            self.log("train/rmse_px", metrics["rmse_px"], prog_bar=True)
-            self.log("train/accuracy", metrics["accuracy"], prog_bar=True)
-            self.log("train/pred_min", metrics["pred_min"], prog_bar=True)
-            self.log("train/pred_max", metrics["pred_max"], prog_bar=True)
         return loss
 
     def on_train_epoch_end(self) -> None:
@@ -157,11 +151,8 @@ class WASBLightningModule(pl.LightningModule):
         self.train_metrics.reset(self.device)
 
     def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
-        loss, metrics = self._shared_step(batch, "val")
+        loss, _ = self._shared_step(batch, "val")
         self.log("val/loss", loss, prog_bar=True)
-        if self.use_metrics:
-            self.log("val/rmse_px", metrics["rmse_px"], prog_bar=True)
-            self.log("val/accuracy", metrics["accuracy"], prog_bar=True)
 
     def on_validation_epoch_end(self) -> None:
         if not self.use_metrics or self.val_metrics is None:
@@ -172,11 +163,8 @@ class WASBLightningModule(pl.LightningModule):
         self.val_metrics.reset(self.device)
 
     def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
-        loss, metrics = self._shared_step(batch, "test")
+        loss, _ = self._shared_step(batch, "test")
         self.log("test/loss", loss)
-        if self.use_metrics:
-            self.log("test/rmse_px", metrics["rmse_px"])
-            self.log("test/accuracy", metrics["accuracy"])
 
     def on_test_epoch_end(self) -> None:
         if not self.use_metrics or self.test_metrics is None:
