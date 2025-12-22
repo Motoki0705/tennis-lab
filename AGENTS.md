@@ -4,7 +4,15 @@
 
 *   **Hydra必須**（`scripts/` で `argparse` 禁止）
 *   **main直作業禁止**（必ず適切なブランチをmainから切ること）
+*   作業は必ず **main から新規ブランチを切って** 行う
 
+### ブランチ命名規則
+**形式：**
+`<type>/<task>-<short-desc>`
+
+* **type**: 変更の種類（例：`feature`, `fix`, `chore`, `docs`, `refactor`, `exp`）
+* **task**: 対象領域（例：`wasb`, `plcs`, `blcs`）
+* **short-desc**: 内容が分かる短い説明（英小文字 + `-` 推奨）
 ---
 
 ## 1. コンテキストと環境 (Context & Env)
@@ -23,7 +31,6 @@
 
 ### 依存・環境
 *   **依存管理**: `pyproject.toml`（ロックファイルは `uv.lock`）
-*   **Python実行**: `uv run`
 *   **Git操作**: `git`
 
 ---
@@ -33,14 +40,9 @@
 *   **Hydraの強制**
     *   `scripts/` 配下のスクリプトでは構成管理に必ず **hydra** を使用すること。`argparse` の使用は厳禁。
 
-*   **既存テストの保護**
-    *   `tests/integration/` はパイプラインの健全性を保証するため、原則として破壊・削除しない（ロジック変更に伴う最小修正のみ許容）。
-
 ## 3. スクリプトとドキュメント規約（scripts/）
 
 *   **エントリポイント**: 実行可能なスクリプトは `src/{task}/scripts/` に配置する。
 *   **Docstring必須**: `scripts/` 配下のファイルには、必ずモジュールレベル docstring を記述する。含める内容：
     *   スクリプトの目的
-    *   実行コマンド例（`uv run ...`）
     *   Hydraパラメータの説明
-*   **Hydra必須**: `scripts/` で `argparse` を使用しない。
