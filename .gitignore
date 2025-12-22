@@ -46,6 +46,7 @@ data/smplx/
 data/plcs/
 data/blcs/
 data/demo/
+data/tennis/
 annotation.json
 annotations/
 *.csv
