@@ -65,11 +65,17 @@ class WASBLightningModule(pl.LightningModule):
         )
         self.loss_fn = WASBLoss(weights=loss_weights)
 
-        metrics_cfg = self.config.get("metrics", {})
-        acc_thresh = metrics_cfg.get("accuracy_thresh_px", 5.0)
-        self.train_metrics = WASBMetrics(accuracy_thresh_px=acc_thresh)
-        self.val_metrics = WASBMetrics(accuracy_thresh_px=acc_thresh)
-        self.test_metrics = WASBMetrics(accuracy_thresh_px=acc_thresh)
+        self.use_metrics = bool(train_cfg.get("use_metrics", True))
+        if self.use_metrics:
+            metrics_cfg = self.config.get("metrics", {})
+            acc_thresh = metrics_cfg.get("accuracy_thresh_px", 5.0)
+            self.train_metrics = WASBMetrics(accuracy_thresh_px=acc_thresh)
+            self.val_metrics = WASBMetrics(accuracy_thresh_px=acc_thresh)
+            self.test_metrics = WASBMetrics(accuracy_thresh_px=acc_thresh)
+        else:
+            self.train_metrics = None
+            self.val_metrics = None
+            self.test_metrics = None
 
         self.learning_rate = train_cfg.get("learning_rate", 1e-3)
         self.backbone_learning_rate = train_cfg.get("backbone_learning_rate", 1e-5)
@@ -110,16 +116,18 @@ class WASBLightningModule(pl.LightningModule):
             visibility=visibility,
         )
 
-        if frames.dim() >= 4 and frames.shape[-3] == 3:
-            h, w = frames.shape[-2:]
-        else:
-            h, w = target_heatmaps.shape[-2:]
-        metrics = self._metrics_for_stage(stage).update(
-            pred_heatmaps=pred_heatmaps,
-            target_coords_norm=batch["targets_norm"],
-            visibility=visibility,
-            image_hw=(h, w),
-        )
+        metrics: dict[str, float] = {}
+        if self.use_metrics:
+            if frames.dim() >= 4 and frames.shape[-3] == 3:
+                h, w = frames.shape[-2:]
+            else:
+                h, w = target_heatmaps.shape[-2:]
+            metrics = self._metrics_for_stage(stage).update(
+                pred_heatmaps=pred_heatmaps,
+                target_coords_norm=batch["targets_norm"],
+                visibility=visibility,
+                image_hw=(h, w),
+            )
 
         return losses["total"], {**metrics, **{f"loss_{k}": v.item() for k, v in losses.items()}}
 
@@ -133,13 +141,16 @@ class WASBLightningModule(pl.LightningModule):
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
         loss, metrics = self._shared_step(batch, "train")
         self.log("train/loss", loss, prog_bar=True)
-        self.log("train/rmse_px", metrics["rmse_px"], prog_bar=True)
-        self.log("train/accuracy", metrics["accuracy"], prog_bar=True)
-        self.log("train/pred_min", metrics["pred_min"], prog_bar=True)
-        self.log("train/pred_max", metrics["pred_max"], prog_bar=True)
+        if self.use_metrics:
+            self.log("train/rmse_px", metrics["rmse_px"], prog_bar=True)
+            self.log("train/accuracy", metrics["accuracy"], prog_bar=True)
+            self.log("train/pred_min", metrics["pred_min"], prog_bar=True)
+            self.log("train/pred_max", metrics["pred_max"], prog_bar=True)
         return loss
 
     def on_train_epoch_end(self) -> None:
+        if not self.use_metrics or self.train_metrics is None:
+            return
         metrics = self.train_metrics.compute()
         for name, value in metrics.items():
             self.log(f"train/epoch_{name}", value)
@@ -148,10 +159,13 @@ class WASBLightningModule(pl.LightningModule):
     def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
         loss, metrics = self._shared_step(batch, "val")
         self.log("val/loss", loss, prog_bar=True)
-        self.log("val/rmse_px", metrics["rmse_px"], prog_bar=True)
-        self.log("val/accuracy", metrics["accuracy"], prog_bar=True)
+        if self.use_metrics:
+            self.log("val/rmse_px", metrics["rmse_px"], prog_bar=True)
+            self.log("val/accuracy", metrics["accuracy"], prog_bar=True)
 
     def on_validation_epoch_end(self) -> None:
+        if not self.use_metrics or self.val_metrics is None:
+            return
         metrics = self.val_metrics.compute()
         for name, value in metrics.items():
             self.log(f"val/epoch_{name}", value)
@@ -160,10 +174,13 @@ class WASBLightningModule(pl.LightningModule):
     def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
         loss, metrics = self._shared_step(batch, "test")
         self.log("test/loss", loss)
-        self.log("test/rmse_px", metrics["rmse_px"])
-        self.log("test/accuracy", metrics["accuracy"])
+        if self.use_metrics:
+            self.log("test/rmse_px", metrics["rmse_px"])
+            self.log("test/accuracy", metrics["accuracy"])
 
     def on_test_epoch_end(self) -> None:
+        if not self.use_metrics or self.test_metrics is None:
+            return
         metrics = self.test_metrics.compute()
         for name, value in metrics.items():
             self.log(f"test/{name}", value)
