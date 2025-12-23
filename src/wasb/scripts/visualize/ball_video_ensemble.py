@@ -25,11 +25,8 @@ from hydra.utils import to_absolute_path
 from numpy.typing import NDArray
 from omegaconf import DictConfig
 
-from src.wasb.inference import (
-    HeatmapEnsemblePredictor,
-    SingleVideoBallLocalizationPipeline,
-    build_completer,
-)
+from src.wasb.inference import HeatmapEnsemblePredictor, build_completer
+from src.wasb.pipeline import VideoBallLocalizationPipeline
 
 
 def _resolve_output_path(video_path: Path, output_path: str | None) -> Path:
@@ -141,9 +138,7 @@ def main(cfg: DictConfig) -> int:
             physics_gap_threshold=int(getattr(completion_cfg, "physics_gap_threshold", 5)),
         )
 
-    pipeline = SingleVideoBallLocalizationPipeline(
-        predictor, completer=completer, batch_size=batch_size
-    )
+    pipeline = VideoBallLocalizationPipeline(predictor, completer=completer, batch_size=batch_size)
     result = pipeline.run(video_path, max_frames=max_frames)
 
     render_cfg = getattr(cfg, "render", None)

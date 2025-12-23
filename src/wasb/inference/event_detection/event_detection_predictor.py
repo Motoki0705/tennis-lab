@@ -1,4 +1,4 @@
-"""Trajectory event-detection inference utilities.
+"""Trajectory event-detection predictor utilities.
 
 This module loads a trained event detector and predicts per-frame event labels
 from a ball (x, y) trajectory sequence.

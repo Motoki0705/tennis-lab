@@ -23,8 +23,8 @@ from src.base.api.predictor import BasePredictor
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-# WASB source directory
-_WASB_SRC_DIR = Path(__file__).parents[3] / "third_party" / "WASB-SBDT" / "src"
+# Third-party WASB source directory
+_WASB_SRC_DIR = Path(__file__).resolve().parents[4] / "third_party" / "WASB-SBDT" / "src"
 
 
 def _ensure_wasb_path() -> None:
