@@ -20,10 +20,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from tqdm import tqdm
 
-from src.wasb.inference.trajectory_completion import (
-    TrajectoryCompleter,
-    build_completer,
-)
+from src.wasb.inference import TrajectoryCompleter, build_completer
 from src.wasb.models.others.clip_segmenter import ClipSegment, RuleBasedClipSegmenter
 from src.wasb.tennis_format import TennisLabelRow, row_from_visibility, save_label_csv
 from src.wasb.utils.streaming_loader import StreamingVideoLoader

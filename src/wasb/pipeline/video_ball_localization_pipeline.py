@@ -2,8 +2,8 @@
 
 This module provides a lightweight pipeline for estimating per-frame ball
 positions from a single video by combining:
-- `src.wasb.inference.wasb_predictor.WASBPredictor` (batched/streaming inference)
-- `src.wasb.inference.trajectory_completion.TrajectoryCompleter` (optional)
+- `src.wasb.inference.WASBPredictor`-compatible streaming predictor
+- `src.wasb.inference.TrajectoryCompleter` (optional)
 
 The pipeline only returns coordinates/metadata; video rendering lives in
 `src/wasb/scripts`.
@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
 
-from src.wasb.inference.trajectory_completion import CompletionResult, TrajectoryCompleter
+from src.wasb.inference import CompletionResult, TrajectoryCompleter
 from src.wasb.utils.video_extractor import VideoExtractor
 
 if TYPE_CHECKING:
@@ -50,7 +50,7 @@ class VideoBallLocalizationResult:
     completion: CompletionResult | None = None
 
 
-class SingleVideoBallLocalizationPipeline:
+class VideoBallLocalizationPipeline:
     """Run WASB detection (batched) + optional trajectory completion."""
 
     def __init__(
@@ -138,4 +138,8 @@ class SingleVideoBallLocalizationPipeline:
             score=score,
             completion=completion,
         )
+
+
+# Backward-compatible alias for older code within the repo.
+SingleVideoBallLocalizationPipeline = VideoBallLocalizationPipeline
 

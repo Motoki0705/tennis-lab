@@ -43,7 +43,7 @@ from omegaconf import DictConfig
 from src.wasb.pipeline import AnnotationPipeline, PipelineConfig
 
 if TYPE_CHECKING:
-    from src.wasb.pipeline.annotation_pipeline import PipelineResult
+    from src.wasb.pipeline import PipelineResult
 
 
 def _get_predictor_cls(model_name: str):
