@@ -1,4 +1,4 @@
-"""Ensemble heatmap-based ball predictor for WASB models.
+"""Ensemble heatmap-based ball predictor for WASB models (inference).
 
 This module provides an inference-time ensemble for multiple WASB Lightning
 checkpoints trained to predict dense ball heatmaps.

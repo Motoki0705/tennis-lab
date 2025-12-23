@@ -2,7 +2,7 @@
 
 This package intentionally contains only model architectures (no inference-time
 wrappers such as `complete()` or checkpoint IO). Those live under
-`src/wasb/inference/trajectory_completion.py`.
+`src/wasb/inference/trajectory/trajectory_completion.py`.
 """
 
 from .bilstm import TrajectoryBiLSTM
@@ -14,4 +14,3 @@ __all__ = [
     "TrajectoryDeltaTransformer",
     "TrajectoryTransformer",
 ]
-
