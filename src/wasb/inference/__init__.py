@@ -1,13 +1,16 @@
-"""Inference entrypoints and trajectory completion helpers."""
+"""Inference entrypoints and trajectory completion helpers.
 
-from src.wasb.inference.event_detection import (
+Consumers should prefer importing from this module instead of importing from
+submodules directly, to make refactors of the internal layout less disruptive.
+"""
+
+from .ball_detection import HeatmapEnsemblePredictor, HRCNetWASBPredictor, WASBPredictor
+from .event_detection import (
     EventDetectionResult,
     TrajectoryEventDetector,
     load_event_detector_from_checkpoint,
 )
-from src.wasb.inference.heatmap_ensemble_predictor import HeatmapEnsemblePredictor
-from src.wasb.inference.hrcnet_predictor import HRCNetWASBPredictor
-from src.wasb.inference.trajectory_completion import (
+from .trajectory.trajectory_completion import (
     BiLSTMCompleter,
     CompletionResult,
     HybridCompleter,
@@ -17,11 +20,6 @@ from src.wasb.inference.trajectory_completion import (
     TransformerCompleter,
     build_completer,
 )
-from src.wasb.inference.video_ball_localization import (
-    SingleVideoBallLocalizationPipeline,
-    VideoBallLocalizationResult,
-)
-from src.wasb.inference.wasb_predictor import WASBPredictor
 
 __all__ = [
     "WASBPredictor",
@@ -38,7 +36,4 @@ __all__ = [
     "TrajectoryEventDetector",
     "build_completer",
     "load_event_detector_from_checkpoint",
-    "SingleVideoBallLocalizationPipeline",
-    "VideoBallLocalizationResult",
-
 ]
