@@ -107,8 +107,6 @@ select = [
     "SIM",
     # isort
     "I",
-    # pydocstyle (docstring rules)
-    "D",
 ]
 ignore = [
     # Star imports are used for convenience in some modules
@@ -116,22 +114,10 @@ ignore = [
     "F403",
     # Line too long (handled by Black)
     "E501",
-    # We document __init__ via the class docstring's Args
-    "D107",
 ]
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
 unfixable = []
-
-[tool.pydoclint]
-style = "google"
-check-arg-order = true
-require-return-section-when-returning-nothing = true
-require-yield-section-when-yielding-nothing = true
-
-[tool.ruff.lint.per-file-ignores]
-# Tests can be lighter on docstrings; allow missing module/class/function docstrings
-"tests/**" = ["D1", "D101", "D102", "D103", "D104", "D105", "D106", "D401"]
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
