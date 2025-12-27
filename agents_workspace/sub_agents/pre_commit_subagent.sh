@@ -153,6 +153,7 @@ Task:
 - Analyze the logs and fix the issues so that the command passes:
   ${check_cmd_display}
 - Iterate until clean.
+- Prefer permanent, root-cause fixes; avoid temporary suppression (e.g., `# mypy: ignore-errors`, broad `# type: ignore`, disabling hooks, weakening lint/typecheck configs) unless there is no reasonable alternative—if unavoidable, explain and set `needs_main=true`.
 
 Return JSON matching the schema.
 EOF
