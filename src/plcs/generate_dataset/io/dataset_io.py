@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -16,16 +16,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class AttrDict(dict):
+class AttrDict(dict[str, Any]):
     """Dict with attribute-style access for convenience."""
 
-    def __getattr__(self, key: str):
+    def __getattr__(self, key: str) -> Any:
         try:
             return self[key]
         except KeyError as exc:
             raise AttributeError(key) from exc
 
-    def __setattr__(self, key: str, value) -> None:
+    def __setattr__(self, key: str, value: Any) -> None:
         self[key] = value
 
 
@@ -236,14 +236,21 @@ def load_scene(filepath: str | Path) -> dict:
     """Load a scene from npz file (PLCS-unified format)."""
     data = np.load(filepath, allow_pickle=True)
 
-    meta = data["meta"].item()
+    meta_raw = data["meta"].item()
+    if isinstance(meta_raw, (bytes, bytearray)):
+        meta_raw = meta_raw.decode("utf-8")
+    meta = json.loads(meta_raw) if isinstance(meta_raw, str) else meta_raw
     num_cameras = int(data["num_cameras"])
 
     cameras = []
     for i in range(num_cameras):
         prefix = f"cam_{i}_"
+        params_raw = data[f"{prefix}params"].item()
+        if isinstance(params_raw, (bytes, bytearray)):
+            params_raw = params_raw.decode("utf-8")
+        params = json.loads(params_raw) if isinstance(params_raw, str) else params_raw
         cam_data = AttrDict(
-            params=data[f"{prefix}params"].item(),
+            params=params,
             human_kp_uv=data[f"{prefix}human_kp_uv"],
             human_kp_visible=data[f"{prefix}human_kp_visible"],
             human_visibility_ratio=float(data[f"{prefix}human_visibility_ratio"]),
