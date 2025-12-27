@@ -1,12 +1,13 @@
 mode: visualize  # visualize | predict
-scene_path: data/plcs/scenes/scene_000000.npz
+scene_path: data/plcs/scenes/scene_000001.npz
 frame: 0
 view: multi               # multi | 3d | 2d | camera | animation
 camera: 0
 animation_view: 2d_topdown  # 2d_topdown | 2d_camera | 3d
 fps: null
 save: null
+save_input: null          # Path to save 2D input scene animation (camera view)
 info: false
-checkpoint: null
+checkpoint: outputs/plcs/checkpoints/last.ckpt
 device: auto
 

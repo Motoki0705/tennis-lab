@@ -404,16 +404,30 @@ class BLCSSceneRenderer:
 
             fig, ax = plt.subplots(figsize=figsize)
 
-            # Draw court keypoints (static)
+            # Draw court lines (static)
+            from src.utils.geometry.constants import COURT_LINE_CONNECTIONS
+
             court_uv = cam["court_kp_uv"]
             court_vis = cam["court_kp_visible"]
+
+            for i, j in COURT_LINE_CONNECTIONS:
+                if court_vis[i] and court_vis[j]:
+                    ax.plot(
+                        [court_uv[i, 0], court_uv[j, 0]],
+                        [court_uv[i, 1], court_uv[j, 1]],
+                        c="lime",
+                        linewidth=1.5,
+                        alpha=0.8,
+                    )
+
+            # Draw court keypoints (static)
             for i in range(20):
                 if court_vis[i]:
                     ax.scatter(
                         court_uv[i, 0],
                         court_uv[i, 1],
                         c="lime",
-                        s=50,
+                        s=30,
                         marker="s",
                         alpha=0.7,
                     )
@@ -437,6 +451,114 @@ class BLCSSceneRenderer:
 
         else:
             print(f"Unknown view type: {view}. Use '3d', '2d', or 'camera'.")
+            return None
+
+    def create_comparison_animation(
+        self,
+        gt_positions: Any,
+        pred_positions: Any,
+        view: str = "3d",
+        *,
+        fps: float = 30.0,
+        figsize: tuple[float, float] = (10, 8),
+        title: str = "GT vs Prediction",
+    ) -> FuncAnimation | None:
+        """Create animation comparing GT and predicted trajectories.
+
+        Args:
+            gt_positions: Ground truth ball positions (T, 3).
+            pred_positions: Predicted ball positions (T, 3).
+            view: View type ('3d' or '2d').
+            fps: Frames per second.
+            figsize: Figure size.
+            title: Title prefix for the animation.
+
+        Returns:
+            FuncAnimation object, or None if view is invalid.
+
+        """
+        import numpy as np
+
+        gt_positions = np.asarray(gt_positions)
+        pred_positions = np.asarray(pred_positions)
+        num_frames = len(gt_positions)
+        interval = 1000.0 / fps
+
+        if view == "3d":
+            fig = plt.figure(figsize=figsize)
+            ax = fig.add_subplot(111, projection="3d")
+            self.court_renderer.render_3d(ax, show_net=True)
+
+            # GT trajectory (green)
+            (gt_line,) = ax.plot([], [], [], "g-", linewidth=2, label="GT")
+            gt_point = ax.scatter([], [], [], c="green", s=100, marker="o")
+
+            # Predicted trajectory (red)
+            (pred_line,) = ax.plot([], [], [], "r-", linewidth=2, label="Prediction")
+            pred_point = ax.scatter([], [], [], c="red", s=100, marker="^")
+
+            ax.set_xlim(-HALF_DOUBLES_WIDTH - 2, HALF_DOUBLES_WIDTH + 2)
+            ax.set_ylim(-HALF_LENGTH - 2, HALF_LENGTH + 2)
+            ax.set_zlim(0, 5)
+            ax.legend(loc="upper right")
+
+            def update_3d(frame: int) -> tuple:
+                # GT
+                gt_line.set_data(gt_positions[: frame + 1, 0], gt_positions[: frame + 1, 1])
+                gt_line.set_3d_properties(gt_positions[: frame + 1, 2])
+                gt_point._offsets3d = (
+                    [gt_positions[frame, 0]],
+                    [gt_positions[frame, 1]],
+                    [gt_positions[frame, 2]],
+                )
+                # Prediction
+                pred_line.set_data(pred_positions[: frame + 1, 0], pred_positions[: frame + 1, 1])
+                pred_line.set_3d_properties(pred_positions[: frame + 1, 2])
+                pred_point._offsets3d = (
+                    [pred_positions[frame, 0]],
+                    [pred_positions[frame, 1]],
+                    [pred_positions[frame, 2]],
+                )
+                ax.set_title(f"{title} | Frame {frame}/{num_frames - 1}")
+                return gt_line, gt_point, pred_line, pred_point
+
+            return FuncAnimation(
+                fig, update_3d, frames=num_frames, interval=interval, blit=False
+            )
+
+        elif view == "2d":
+            fig, ax = plt.subplots(figsize=figsize)
+            self.court_renderer.render_2d(ax, show_fence=True, set_limits=False)
+
+            # GT trajectory (green)
+            (gt_line,) = ax.plot([], [], "g-", linewidth=2, label="GT")
+            gt_point = ax.scatter([], [], c="green", s=100, zorder=10, marker="o")
+
+            # Predicted trajectory (red)
+            (pred_line,) = ax.plot([], [], "r-", linewidth=2, label="Prediction")
+            pred_point = ax.scatter([], [], c="red", s=100, zorder=10, marker="^")
+
+            ax.set_xlim(-HALF_DOUBLES_WIDTH - 2, HALF_DOUBLES_WIDTH + 2)
+            ax.set_ylim(-HALF_LENGTH - 2, HALF_LENGTH + 2)
+            ax.set_aspect("equal")
+            ax.legend(loc="upper right")
+
+            def update_2d(frame: int) -> tuple:
+                # GT
+                gt_line.set_data(gt_positions[: frame + 1, 0], gt_positions[: frame + 1, 1])
+                gt_point.set_offsets([[gt_positions[frame, 0], gt_positions[frame, 1]]])
+                # Prediction
+                pred_line.set_data(pred_positions[: frame + 1, 0], pred_positions[: frame + 1, 1])
+                pred_point.set_offsets([[pred_positions[frame, 0], pred_positions[frame, 1]]])
+                ax.set_title(f"{title} | Frame {frame}/{num_frames - 1}")
+                return gt_line, gt_point, pred_line, pred_point
+
+            return FuncAnimation(
+                fig, update_2d, frames=num_frames, interval=interval, blit=False
+            )
+
+        else:
+            print(f"Unknown view type for comparison: {view}. Use '3d' or '2d'.")
             return None
 
     def _extract_events(self, meta: dict[str, Any]) -> list[BallEvent]:

@@ -1,12 +1,13 @@
 mode: visualize  # visualize | predict
-scene_path: data/blcs/scenes/scene_000000.npz
+scene_path: data/blcs/scenes/scene_000003.npz
 frame: 0
 view: multi          # 3d | 2d | camera | multi | animation
 camera: 0
 animation_view: 2d   # 3d | 2d | camera
 fps: null
 save: null
+save_input: null     # Path to save 2D input scene animation (camera view)
 info: false
-checkpoint: null
+checkpoint: outputs/blcs/checkpoints/last.ckpt
 output: null
 
