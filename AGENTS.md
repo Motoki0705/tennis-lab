@@ -1,18 +1,6 @@
 # AGENTS.md: tennis-lab リポジトリ作業ルール (AI Agent / 人間共通)
 
-## 0. ブランチング戦略とワークフロー
-**main直作業禁止**（必ず適切なブランチをmainから切ること）。
-
-### ブランチ命名規則
-**形式：**
-`<type>/<task>-<short-desc>`
-
-* **type**: 変更の種類（例：`feature`, `fix`, `chore`, `docs`, `refactor`, `exp`）
-* **task**: 対象領域（例：`wasb`, `plcs`, `blcs`）
-* **short-desc**: 内容が分かる短い説明（英小文字 + `-` 推奨）
-
 ---
-
 ## 1. コンテキストと環境 (Context & Env)
 
 ### ディレクトリ構造
@@ -31,15 +19,9 @@
 *   **依存管理**: `pyproject.toml`（ロックファイルは `uv.lock`）
 *   **Git操作**: `git`
 
----
-
-## 2. サンドボックスと禁止事項 (Critical Constraints)
-
-*   **Hydraの強制**
-    *   `scripts/` 配下のスクリプトでは構成管理に必ず **hydra** を使用すること。`argparse` の使用は厳禁。
-
 ## 3. スクリプトとドキュメント規約（scripts/）
 
+*   **Hydraの強制**: `scripts/` 配下のスクリプトでは構成管理に必ず **hydra** を使用すること。`argparse` の使用は厳禁。
 *   **エントリポイント**: 実行可能なスクリプトは `src/{task}/scripts/` に配置する。
 *   **Docstring必須**: `scripts/` 配下のファイルには、必ずモジュールレベル docstring を記述する。例えば以下のようなフォーマットで書くこと。
 ```python
@@ -89,4 +71,32 @@ bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync p
 ```
 ```json
 {"status":"fail","fixed":false,"files_touched":[],"remaining_failures":["..."],"summary":"...","needs_main":false,"message_for_main":""}
+```
+
+## 5. 推奨ワークフロー（ブランチ作成→作業→検査→テスト）
+
+1) **ブランチを切る（main から）**
+（`main` 直作業禁止）
+```bash
+git checkout main
+git pull
+git checkout -b feature/<task>-<short-desc>
+```
+命名規則（推奨）: `<type>/<task>-<short-desc>`（例：`feature/wasb-add-foo`）
+
+2) **作業する**
+- 変更・追加を行う（規約は本ドキュメントに従う）
+
+3) **pre-commit を実行（ツール推奨）**
+```bash
+bash agents_workspace/sub_agents/pre_commit_subagent.sh
+```
+
+4) **テストを実行（ツール推奨）**
+```bash
+bash agents_workspace/sub_agents/test_subagent.sh
+```
+テストを絞る場合は `--test-cmd` を使用する（例）:
+```bash
+bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q tests/test_example.py::test_case'
 ```
