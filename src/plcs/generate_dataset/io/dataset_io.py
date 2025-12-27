@@ -236,14 +236,14 @@ def load_scene(filepath: str | Path) -> dict:
     """Load a scene from npz file (PLCS-unified format)."""
     data = np.load(filepath, allow_pickle=True)
 
-    meta = json.loads(str(data["meta"]))
+    meta = data["meta"].item()
     num_cameras = int(data["num_cameras"])
 
     cameras = []
     for i in range(num_cameras):
         prefix = f"cam_{i}_"
         cam_data = AttrDict(
-            params=json.loads(str(data[f"{prefix}params"])),
+            params=data[f"{prefix}params"].item(),
             human_kp_uv=data[f"{prefix}human_kp_uv"],
             human_kp_visible=data[f"{prefix}human_kp_visible"],
             human_visibility_ratio=float(data[f"{prefix}human_visibility_ratio"]),
