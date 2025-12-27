@@ -41,6 +41,7 @@ class RuntimeConfig:
     animation_view: str
     fps: float | None
     save: Path | None
+    save_input: Path | None
     info: bool
     checkpoint: str | None
     device: str
@@ -70,6 +71,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         animation_view=str(vis.animation_view),
         fps=float(vis.fps) if vis.fps is not None else None,
         save=Path(to_absolute_path(str(vis.save))) if vis.save else None,
+        save_input=Path(to_absolute_path(str(vis.save_input))) if vis.save_input else None,
         info=bool(vis.info),
         checkpoint=to_absolute_path(str(vis.checkpoint)) if vis.checkpoint else None,
         device=_resolve_device(str(vis.device)),
@@ -125,6 +127,30 @@ def print_scene_info(scene: SceneData) -> None:
         print(
             f"  Camera {i}: Human {cam.human_visibility_ratio:.1%}, Court {cam.court_visibility_count:.1f}/20"
         )
+
+
+def save_input_scene(scene: SceneData, cfg: RuntimeConfig) -> None:
+    """Save 2D input scene animation (camera view)."""
+    if cfg.save_input is None:
+        return
+
+    renderer = SceneRenderer()
+    meta = getattr(scene, "meta", {})
+    fps = cfg.fps or meta.get("fps", 30.0)
+
+    print("Creating 2D input scene animation (camera view)...")
+    anim = renderer.create_animation(
+        scene,
+        view="camera",
+        camera_idx=cfg.camera,
+        fps=fps,
+    )
+
+    cfg.save_input.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Saving input scene animation to {cfg.save_input}...")
+    anim.save(str(cfg.save_input), fps=fps)
+    plt.close()
+    print("Done!")
 
 
 def validate_frame_and_camera(scene: SceneData, cfg: RuntimeConfig) -> int | None:
@@ -223,6 +249,7 @@ def main_visualize(cfg: RuntimeConfig) -> int:
     if err is not None:
         return err
 
+    save_input_scene(scene, cfg)
     return render_scene(scene, cfg)
 
 
@@ -256,12 +283,14 @@ def main_predict(cfg: RuntimeConfig) -> int:
     num_frames = scene.meta["num_frames"]
     cam = scene.cameras[cfg.camera]
 
+    save_input_scene(scene, cfg)
+
     print(f"Running predictions for {num_frames} frames using camera {cfg.camera}...")
     for frame_idx in range(num_frames):
-        human_kp = cam.human_kp_uv[frame_idx]
-        court_kp = cam.court_kp_uv[frame_idx]
-        human_vis = cam.human_kp_visible[frame_idx]
-        court_vis = cam.court_kp_visible[frame_idx]
+        human_kp = torch.from_numpy(cam.human_kp_uv[frame_idx]).float().unsqueeze(0)  # (1, 17, 2)
+        court_kp = torch.from_numpy(cam.court_kp_uv[frame_idx]).float().unsqueeze(0)  # (1, 20, 2)
+        human_vis = torch.from_numpy(cam.human_kp_visible[frame_idx].astype(np.float32)).unsqueeze(0)  # (1, 17)
+        court_vis = torch.from_numpy(cam.court_kp_visible[frame_idx].astype(np.float32)).unsqueeze(0)  # (1, 20)
 
         pred = predictor.predict(
             human_kp=human_kp,
@@ -302,6 +331,8 @@ def main_predict_sequence(cfg: RuntimeConfig) -> int:
     err = validate_frame_and_camera(scene, cfg)
     if err is not None:
         return err
+
+    save_input_scene(scene, cfg)
 
     # Run sequence prediction and overwrite SceneData
     cam = scene.cameras[cfg.camera]

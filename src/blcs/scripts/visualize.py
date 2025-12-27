@@ -42,6 +42,7 @@ class RuntimeConfig:
     animation_view: str
     fps: float | None
     save: Path | None
+    save_input: Path | None
     info: bool
     checkpoint: str | None
     device: str
@@ -68,6 +69,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         animation_view=str(vis.animation_view),
         fps=float(vis.fps) if vis.fps is not None else None,
         save=Path(to_absolute_path(str(vis.save))) if vis.save else None,
+        save_input=Path(to_absolute_path(str(vis.save_input))) if vis.save_input else None,
         info=bool(vis.info),
         checkpoint=to_absolute_path(str(vis.checkpoint)) if vis.checkpoint else None,
         device=_resolve_device(str(run.device)),
@@ -88,6 +90,34 @@ def validate_frame_and_camera(scene: dict[str, Any], cfg: RuntimeConfig) -> int 
         return 1
 
     return None
+
+
+def save_input_scene(scene: dict[str, Any], cfg: RuntimeConfig) -> None:
+    """Save 2D input scene animation (camera view)."""
+    if cfg.save_input is None:
+        return
+
+    renderer = BLCSSceneRenderer()
+    meta = scene["meta"]
+    fps = cfg.fps or float(meta.get("fps_out", 30.0))
+
+    print(f"Creating 2D input scene animation (camera view)...")
+    anim = renderer.create_animation(
+        scene,
+        view="camera",
+        camera_idx=cfg.camera,
+        fps=fps,
+    )
+
+    if anim is None:
+        print("Error: Failed to create input scene animation")
+        return
+
+    cfg.save_input.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Saving input scene animation to {cfg.save_input}...")
+    anim.save(str(cfg.save_input), fps=fps)
+    plt.close()
+    print("Done!")
 
 
 def render_scene(scene: dict[str, Any], cfg: RuntimeConfig) -> int:
@@ -179,6 +209,7 @@ def main_visualize(cfg: RuntimeConfig) -> int:
     if err is not None:
         return err
 
+    save_input_scene(scene, cfg)
     return render_scene(scene, cfg)
 
 
@@ -244,8 +275,37 @@ def main_predict(cfg: RuntimeConfig) -> int:
             )
         print(f"Saved prediction outputs to {output_path}")
 
-    scene_pred = dict(scene)
+    save_input_scene(scene, cfg)
+
+    gt_pos = scene["ball_pos_world"]
     pred_pos = outputs["position"].squeeze(0).cpu().numpy()
+
+    if cfg.view == "animation" and cfg.animation_view in ("3d", "2d"):
+        meta = scene["meta"]
+        fps = cfg.fps or float(meta.get("fps_out", 30.0))
+        print(f"Creating comparison animation ({cfg.animation_view} view)...")
+        anim = renderer.create_comparison_animation(
+            gt_positions=gt_pos,
+            pred_positions=pred_pos,
+            view=cfg.animation_view,
+            fps=fps,
+            title="GT vs Prediction",
+        )
+
+        if anim is None:
+            return 1
+
+        if cfg.save:
+            cfg.save.parent.mkdir(parents=True, exist_ok=True)
+            print(f"Saving comparison animation to {cfg.save}...")
+            anim.save(str(cfg.save), fps=fps)
+            plt.close()
+            print("Done!")
+        else:
+            plt.show()
+        return 0
+
+    scene_pred = dict(scene)
     scene_pred["ball_pos_world"] = pred_pos
 
     return render_scene(scene_pred, cfg)
