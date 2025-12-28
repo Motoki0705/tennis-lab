@@ -6,26 +6,30 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 import numpy as np
+import numpy.typing as npt
 
 if TYPE_CHECKING:
     from src.plcs.generate_dataset.scene_generator import SceneData
 
+# Type alias for values accepted by np.savez_compressed
+SavezValue: TypeAlias = npt.ArrayLike | bool | int | float | complex | str | bytes
+
 logger = logging.getLogger(__name__)
 
 
-class AttrDict(dict):
+class AttrDict(dict[str, Any]):
     """Dict with attribute-style access for convenience."""
 
-    def __getattr__(self, key: str):
+    def __getattr__(self, key: str) -> Any:
         try:
             return self[key]
         except KeyError as exc:
             raise AttributeError(key) from exc
 
-    def __setattr__(self, key: str, value) -> None:
+    def __setattr__(self, key: str, value: Any) -> None:
         self[key] = value
 
 
@@ -76,11 +80,11 @@ class PLCSDatasetWriter:
             "num_cameras": len(scene.cameras),
         }
 
-        save_dict = {
+        save_dict: dict[str, SavezValue] = {
             "meta": json.dumps(meta),
-            "position": scene.position,
-            "rotation": scene.rotation,
-            "canonical_pose_3d": scene.canonical_pose_3d,
+            "position": np.asarray(scene.position),
+            "rotation": np.asarray(scene.rotation),
+            "canonical_pose_3d": np.asarray(scene.canonical_pose_3d),
             "num_cameras": np.array(len(scene.cameras)),
         }
 
@@ -106,7 +110,7 @@ class PLCSDatasetWriter:
                 }
             )
 
-        np.savez_compressed(filepath, **save_dict)
+        np.savez_compressed(filepath, **cast(Any, save_dict))
 
         self.scene_records.append(
             {
@@ -236,14 +240,21 @@ def load_scene(filepath: str | Path) -> dict:
     """Load a scene from npz file (PLCS-unified format)."""
     data = np.load(filepath, allow_pickle=True)
 
-    meta = data["meta"].item()
+    meta_raw = data["meta"].item()
+    if isinstance(meta_raw, (bytes, bytearray)):
+        meta_raw = meta_raw.decode("utf-8")
+    meta = json.loads(meta_raw) if isinstance(meta_raw, str) else meta_raw
     num_cameras = int(data["num_cameras"])
 
     cameras = []
     for i in range(num_cameras):
         prefix = f"cam_{i}_"
+        params_raw = data[f"{prefix}params"].item()
+        if isinstance(params_raw, (bytes, bytearray)):
+            params_raw = params_raw.decode("utf-8")
+        params = json.loads(params_raw) if isinstance(params_raw, str) else params_raw
         cam_data = AttrDict(
-            params=data[f"{prefix}params"].item(),
+            params=params,
             human_kp_uv=data[f"{prefix}human_kp_uv"],
             human_kp_visible=data[f"{prefix}human_kp_visible"],
             human_visibility_ratio=float(data[f"{prefix}human_visibility_ratio"]),
