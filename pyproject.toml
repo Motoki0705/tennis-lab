@@ -236,6 +236,7 @@ markers = [
     "integration: Integration tests for multiple components working together",
     "e2e: End-to-end tests for complete workflows",
     "slow: Slow running tests",
+    "local_data: Tests requiring large local datasets/models (not for CI)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
