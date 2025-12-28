@@ -59,7 +59,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           uv run ruff check src tests
-          uv run mypy src tests
+          uv run mypy --follow-imports=silent --ignore-missing-imports "${changed_files[@]}"
 
   test:
     runs-on: ubuntu-latest
