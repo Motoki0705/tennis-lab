@@ -6,12 +6,16 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 import numpy as np
+import numpy.typing as npt
 
 if TYPE_CHECKING:
     from src.plcs.generate_dataset.scene_generator import SceneData
+
+# Type alias for values accepted by np.savez_compressed
+SavezValue: TypeAlias = npt.ArrayLike | bool | int | float | complex | str | bytes
 
 logger = logging.getLogger(__name__)
 
@@ -76,11 +80,11 @@ class PLCSDatasetWriter:
             "num_cameras": len(scene.cameras),
         }
 
-        save_dict = {
+        save_dict: dict[str, SavezValue] = {
             "meta": json.dumps(meta),
-            "position": scene.position,
-            "rotation": scene.rotation,
-            "canonical_pose_3d": scene.canonical_pose_3d,
+            "position": np.asarray(scene.position),
+            "rotation": np.asarray(scene.rotation),
+            "canonical_pose_3d": np.asarray(scene.canonical_pose_3d),
             "num_cameras": np.array(len(scene.cameras)),
         }
 
@@ -106,7 +110,7 @@ class PLCSDatasetWriter:
                 }
             )
 
-        np.savez_compressed(filepath, **save_dict)
+        np.savez_compressed(filepath, **cast(Any, save_dict))
 
         self.scene_records.append(
             {
