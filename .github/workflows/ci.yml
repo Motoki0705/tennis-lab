@@ -45,8 +45,8 @@ jobs:
           echo "Changed Python files:"
           # Print changed files, one per line
           printf '%s\0' "$CHANGED_FILES" | xargs -0 -n1 echo
-          printf '%s' "$CHANGED_FILES" | xargs -0 -r uv run ruff check
-          printf '%s' "$CHANGED_FILES" | xargs -0 -r uv run mypy
+          printf '%s\0' "$CHANGED_FILES" | xargs -0 uv run ruff check
+          printf '%s\0' "$CHANGED_FILES" | xargs -0 uv run mypy
 
       - name: Run ruff and mypy on full project (main push)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
