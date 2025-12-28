@@ -53,14 +53,14 @@ jobs:
           printf '%s\n' "${changed_files[@]}"
 
           uv run ruff check "${changed_files[@]}"
-          uv run mypy "${changed_files[@]}"
+          uv run mypy --follow-imports=silent --ignore-missing-imports "${changed_files[@]}"
 
       - name: Run ruff and mypy on full project (main push)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           uv run ruff check src tests
-          uv run mypy --follow-imports=silent --ignore-missing-imports "${changed_files[@]}"
-
+          uv run mypy src tests
+          
   test:
     runs-on: ubuntu-latest
     strategy:
