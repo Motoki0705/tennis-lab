@@ -128,6 +128,7 @@ Task:
 - You may re-run the command multiple times.
 - If the fix is straightforward and can be done within the allowed file set, implement it.
 - If you determine the root cause requires modifying files outside the allowed list, set needs_main=true and explain.
+- Prefer permanent, root-cause fixes; avoid temporary suppression (e.g., skipping/xfail-ing tests, broad `# type: ignore`, loosening configs) unless there is no reasonable alternative—if unavoidable, explain and set `needs_main=true`.
 
 Return JSON that matches the provided output schema.
 EOF

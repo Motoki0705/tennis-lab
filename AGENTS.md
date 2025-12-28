@@ -19,7 +19,7 @@
 *   **依存管理**: `pyproject.toml`（ロックファイルは `uv.lock`）
 *   **Git操作**: `git`
 
-## 3. スクリプトとドキュメント規約（scripts/）
+## 2. スクリプトとドキュメント規約（scripts/）
 
 *   **Hydraの強制**: `scripts/` 配下のスクリプトでは構成管理に必ず **hydra** を使用すること。`argparse` の使用は厳禁。
 *   **エントリポイント**: 実行可能なスクリプトは `src/{task}/scripts/` に配置する。
@@ -35,7 +35,7 @@ Config entry point: `src/plcs/configs/generate_dataset.yaml`
 """
 ```
 
-## 4. 使用可能なツール
+## 3. 使用可能なツール
 
 ### `agents_workspace/sub_agents/pre_commit_subagent.sh`
 変更ファイル（`git diff --name-only HEAD`）に対して `pre-commit` を実行し、失敗した場合は Codex Sub-agent に修正を委譲します（通常は `uv run --no-sync pre-commit ...` を実行）。ログは `agents_workspace/sub_agents/logs/`（または `CODEX_SUBAGENT_LOG_DIR`）に保存され、標準出力には 1 行の JSON を返します。
@@ -73,7 +73,21 @@ bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync p
 {"status":"fail","fixed":false,"files_touched":[],"remaining_failures":["..."],"summary":"...","needs_main":false,"message_for_main":""}
 ```
 
-## 5. 推奨ワークフロー（ブランチ作成→作業→検査→テスト）
+## 4. 推奨ワークフロー（ブランチ作成→作業→検査→テスト）
+
+### AI Agent向け（必須）チェックリスト
+このリポジトリでは、AI Agent はユーザーから明示されていなくても **必ず** 以下を満たしてから作業してください（逸脱する場合は、作業前にユーザーへ確認し、最終報告にも理由を明記すること）。
+
+1) **ブランチ作成（必須）**
+- **`main` / `master` / `develop` での直接編集は禁止**
+- 変更を 1 行でも加える前に、現在ブランチを確認し、`main` 等であれば新規ブランチへ移動する
+
+2) **検査とテスト（必須）**
+- 変更後は必ず `pre_commit_subagent.sh` → `test_subagent.sh` の順で実行する（ユーザーが「実行しないで」と言った場合を除く）
+
+3) **例外の扱い（必須）**
+- 環境都合（例: `uv run` の権限エラー等）で推奨コマンドが失敗した場合も、回避策を適用して **同等の検査/テストを実行する**
+- どうしても実行できない場合は、その理由と、代替で何を確認したかを最終報告に明記する
 
 1) **ブランチを切る（main から）**
 （`main` 直作業禁止）
@@ -99,4 +113,26 @@ bash agents_workspace/sub_agents/test_subagent.sh
 テストを絞る場合は `--test-cmd` を使用する（例）:
 ```bash
 bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q tests/test_example.py::test_case'
+```
+
+---
+## 5. `uv run` の Permission denied 回避（重要）
+
+Codex 実行環境では、`uv` のデフォルトキャッシュが `/root/.cache/uv` を指し、権限の都合で `Permission denied` になることがあります。
+
+### 推奨: `--cache-dir` を workspace 配下に固定
+```bash
+uv --cache-dir agents_workspace/tmp_cache/uv_cache run --no-sync pytest -q
+uv --cache-dir agents_workspace/tmp_cache/uv_cache run --no-sync pre-commit run -a
+```
+
+### 代替: 一時キャッシュ（遅いが確実）
+```bash
+uv --no-cache run --no-sync pytest -q
+```
+
+### subagent 経由で回避する例
+```bash
+bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv --cache-dir agents_workspace/tmp_cache/uv_cache run --no-sync pytest -q tests/...'
+bash agents_workspace/sub_agents/pre_commit_subagent.sh
 ```
