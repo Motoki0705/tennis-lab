@@ -60,7 +60,7 @@ def make_minimal_plcs_scene(*, scene_id: str = "scene_000000") -> SceneData:
     )
 
     cameras: list[CameraData] = []
-    for camera_idx in range(num_cameras):
+    for _camera_idx in range(num_cameras):
         camera_params = {
             "center": [0.0, 0.0, 5.0],
             "R": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
@@ -196,7 +196,7 @@ def create_minimal_plcs_checkpoint(checkpoint_path: Path | str) -> Path:
     lightning_module.model = model
 
     # Save checkpoint
-    trainer = pl.Trainer(
+    pl.Trainer(
         default_root_dir=str(checkpoint_path.parent),
         max_epochs=1,
         enable_checkpointing=False,

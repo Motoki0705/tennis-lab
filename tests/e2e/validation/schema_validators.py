@@ -63,20 +63,17 @@ def validate_blcs_sample(sample: dict[str, Any]) -> list[str]:
 
     # Get sequence length for shape validation
     seq_len = sample["seq_len"]
-    if isinstance(seq_len, torch.Tensor):
-        T = int(seq_len.item())
-    else:
-        T = int(seq_len)
+    T = int(seq_len.item()) if isinstance(seq_len, torch.Tensor) else int(seq_len)
 
-    # Validate shapes (use None for dynamic T dimension)
+    # Validate shapes (T is sequence length for dynamic validation)
     errors.extend(
         collect_errors(
-            validate_tensor_shape(sample["ball_uv"], (None, 2), "ball_uv"),
-            validate_tensor_shape(sample["ball_mask"], (None,), "ball_mask"),
+            validate_tensor_shape(sample["ball_uv"], (T, 2), "ball_uv"),
+            validate_tensor_shape(sample["ball_mask"], (T,), "ball_mask"),
             validate_tensor_shape(sample["court_kp"], (20, 2), "court_kp"),
             validate_tensor_shape(sample["court_vis"], (20,), "court_vis"),
-            validate_tensor_shape(sample["position_3d"], (None, 3), "position_3d"),
-            validate_tensor_shape(sample["velocity_3d"], (None, 3), "velocity_3d"),
+            validate_tensor_shape(sample["position_3d"], (T, 3), "position_3d"),
+            validate_tensor_shape(sample["velocity_3d"], (T, 3), "velocity_3d"),
         )
     )
 
