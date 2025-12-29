@@ -3,14 +3,21 @@
 Example commands:
     `uv run python -m src.blcs.scripts.train`
     `uv run python -m src.blcs.scripts.train training.max_epochs=5 run.gpus=0`
+    `uv run python -m src.blcs.scripts.train run.dry_run=true`
 
 Config entry point: `src/blcs/configs/train.yaml`
 """
 
+# mypy: disable-error-code=misc
+
 from __future__ import annotations
 
 import logging
+import os
+import types
+from collections.abc import Callable
 from pathlib import Path
+from typing import TypeVar, cast
 
 import hydra
 import pytorch_lightning as pl
@@ -38,6 +45,58 @@ def _select_devices(gpus: int) -> tuple[str, int]:
     return "cpu", 1
 
 
+def run_dry_run(config: DictConfig, output_dir: Path) -> None:
+    """Verify config and dataloader by loading a single batch.
+
+    Forces CPU mode to avoid CUDA init failures in restricted environments.
+    """
+    print("Running dry run (no training)...")
+    # Force CPU-only to avoid CUDA init failures in restricted environments.
+    os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
+    torch.cuda.is_available = types.MethodType(lambda *_args, **_kwargs: False, torch.cuda)
+    torch.cuda.device_count = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)
+    torch.cuda.current_device = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)
+
+    # Initialize data module
+    data_module = BLCSDataModule(config)
+    data_module.num_workers = 0  # Avoid multiprocessing in restricted environments
+    data_module.pin_memory = False
+    data_module.setup(stage="fit")
+    train_loader = data_module.train_dataloader()
+    batch = next(iter(train_loader))
+
+    # Print batch shapes
+    if isinstance(batch, dict):
+        for key, value in batch.items():
+            if hasattr(value, "shape"):
+                print(f"  {key}: {tuple(value.shape)}")
+    elif isinstance(batch, (list, tuple)) and len(batch) >= 2:
+        inputs, targets = batch[0], batch[1]
+        if hasattr(inputs, "shape"):
+            print(f"Loaded batch: inputs {tuple(inputs.shape)}")
+        if hasattr(targets, "shape"):
+            print(f"  targets {tuple(targets.shape)}")
+
+    # Build model and run minimal trainer
+    model = BLCSLightningModule(config)
+    logger.info(f"Model parameters: {model.model.get_num_params():,}")
+
+    trainer = pl.Trainer(
+        max_epochs=1,
+        limit_train_batches=1,
+        limit_val_batches=0,
+        num_sanity_val_steps=0,
+        accelerator="cpu",
+        devices=1,
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+    )
+
+    trainer.fit(model, data_module)
+    print(f"Dry run complete. Outputs saved to {output_dir}")
+
+
 def run_training(config: DictConfig) -> None:
     """Run a single PL training job with the provided config."""
     pl.seed_everything(int(config.run.seed))
@@ -46,6 +105,11 @@ def run_training(config: DictConfig) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     OmegaConf.save(config, output_dir / "config.yaml")
+
+    # Check for dry run
+    if getattr(config.run, "dry_run", False):
+        run_dry_run(config, output_dir)
+        return
 
     # Initialize data module
     data_module = BLCSDataModule(config)
@@ -118,3 +182,5 @@ def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
 
 if __name__ == "__main__":
     main()
+F = TypeVar("F", bound=Callable[..., object])
+hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)

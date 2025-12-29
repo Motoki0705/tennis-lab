@@ -15,7 +15,7 @@ from torch.utils.data import Dataset
 
 from src.base.data.augmentation import augment_keypoints
 from src.plcs.data.types import PLCSSequenceBatch
-from src.plcs.generate_dataset.io.dataset_io import load_scene
+from src.plcs.generate_dataset.io.scene_loader import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -51,9 +51,10 @@ class SceneSequenceDataset(Dataset[PLCSSequenceBatch]):
         )
 
         # Index all scene files
-        self.scene_files = sorted(self.scene_dir.glob("scene_*.npz"))
+        scenes_subdir = self.scene_dir / "scenes"
+        self.scene_files = sorted(scenes_subdir.glob("scene_*.npz"))
         if not self.scene_files:
-            raise ValueError(f"No scene files found in {self.scene_dir}")
+            raise ValueError(f"No scene files found in {scenes_subdir}")
 
         print(f"SceneSequenceDataset: found {len(self.scene_files)} scene files")
 

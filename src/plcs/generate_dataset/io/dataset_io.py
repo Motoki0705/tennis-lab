@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, TypeAlias, cast
+from typing import TypeAlias, cast, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -18,23 +18,13 @@ from src.plcs.data.types import (
 )
 from src.plcs.generate_dataset.scene_generator import SceneData
 
+# Re-export load_scene for backwards compatibility
+from src.plcs.generate_dataset.io.scene_loader import load_scene as load_scene
+
 # Type alias for values accepted by np.savez_compressed
 SavezValue: TypeAlias = npt.ArrayLike | bool | int | float | complex | str | bytes
 
 logger = logging.getLogger(__name__)
-
-
-class AttrDict(dict[str, Any]):
-    """Dict with attribute-style access for convenience."""
-
-    def __getattr__(self, key: str) -> Any:
-        try:
-            return self[key]
-        except KeyError as exc:
-            raise AttributeError(key) from exc
-
-    def __setattr__(self, key: str, value: Any) -> None:
-        self[key] = value
 
 
 class PLCSDatasetWriter(BaseDatasetWriter):
@@ -138,41 +128,3 @@ class PLCSDatasetWriter(BaseDatasetWriter):
         self.scene_counter += 1
 
         return filepath
-
-
-def load_scene(filepath: str | Path) -> dict:
-    """Load a scene from npz file (PLCS-unified format)."""
-    data = np.load(filepath, allow_pickle=True)
-
-    meta_raw = data["meta"].item()
-    if isinstance(meta_raw, (bytes, bytearray)):
-        meta_raw = meta_raw.decode("utf-8")
-    meta = json.loads(meta_raw) if isinstance(meta_raw, str) else meta_raw
-    num_cameras = int(data["num_cameras"])
-
-    cameras = []
-    for i in range(num_cameras):
-        prefix = f"cam_{i}_"
-        params_raw = data[f"{prefix}params"].item()
-        if isinstance(params_raw, (bytes, bytearray)):
-            params_raw = params_raw.decode("utf-8")
-        params = json.loads(params_raw) if isinstance(params_raw, str) else params_raw
-        cam_data = AttrDict(
-            params=params,
-            human_kp_uv=data[f"{prefix}human_kp_uv"],
-            human_kp_visible=data[f"{prefix}human_kp_visible"],
-            human_visibility_ratio=float(data[f"{prefix}human_visibility_ratio"]),
-            court_kp_uv=data[f"{prefix}court_kp_uv"],
-            court_kp_visible=data[f"{prefix}court_kp_visible"],
-            court_visibility_count=float(data[f"{prefix}court_visibility_count"]),
-        )
-        cameras.append(cam_data)
-
-    return AttrDict(
-        meta=meta,
-        position=data["position"],
-        rotation=data["rotation"],
-        canonical_pose_3d=data["canonical_pose_3d"],
-        num_cameras=num_cameras,
-        cameras=cameras,
-    )

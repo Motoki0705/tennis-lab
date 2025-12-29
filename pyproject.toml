@@ -52,6 +52,7 @@ dev = [
     "coverage>=7.6.0",
     "pytest>=8.4.2",
     "pytest-cov>=6.0.0",
+    "pytest-xdist>=3.8.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -238,6 +239,7 @@ markers = [
     "e2e: End-to-end tests for complete workflows",
     "slow: Slow running tests",
     "local_data: Tests requiring large local datasets/models (not for CI)",
+    "cuda: Tests requiring CUDA/GPU (skipped if GPU unavailable)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
