@@ -113,9 +113,11 @@ uv run pytest tests/e2e -v -m "not cuda"
 
 | カテゴリ | 説明 | ドキュメント |
 |---------|------|-------------|
-| **データ検証** | 生成データのスキーマ・形状・値範囲の検証 | [validation/](../tests/validation/README.md) |
-| **スクリプトテスト** | generate_dataset, train, visualize の動作確認 | 各タスクの [tests/](../tests/) |
-| **フィクスチャ** | テスト用データ生成ユーティリティ | [fixtures/](../tests/fixtures/README.md) |
+| **データ検証** | 生成データのスキーマ・形状・値範囲の検証 | [validation/](../tests/e2e/validation/README.md) |
+| **BLCSテスト** | generate_dataset, train, visualize の動作確認 | [blcs/](../tests/e2e/blcs/README.md) |
+| **PLCSテスト** | generate_dataset, train, visualize の動作確認 | [plcs/](../tests/e2e/plcs/README.md) |
+| **WASBテスト** | generate_dataset, train, tools, visualize の動作確認 | [wasb/](../tests/e2e/wasb/README.md) |
+| **フィクスチャ** | テスト用データ生成ユーティリティ | [fixtures/](../tests/e2e/fixtures/README.md) |
 
 ### ドライランモード
 
@@ -141,4 +143,4 @@ from tests.e2e.validation import (
 )
 ```
 
-詳細は [バリデーションドキュメント](../tests/validation/README.md) を参照してください。
+詳細は [バリデーションドキュメント](../tests/e2e/validation/README.md) を参照してください。
