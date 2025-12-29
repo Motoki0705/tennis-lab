@@ -52,13 +52,15 @@ def test_wasb_ball_detection_train_dry_run(tmp_path: Path) -> None:
 
 
 @pytest.mark.e2e
+@pytest.mark.cuda
 def test_wasb_ball_detection_train_fast_dev(tmp_path: Path) -> None:
-    """Test WASB ball detection training with fast_dev_run.
+    """Test WASB ball detection training with fast_dev_run (GPU mode).
 
     This test verifies that:
     1. The training script runs with fast_dev_run
     2. Checkpoint files are created
 
+    Note: This test requires CUDA/GPU.
     """
     dataset_dir = tmp_path / "tennis"
     create_minimal_wasb_dataset(dataset_dir)
@@ -77,7 +79,7 @@ def test_wasb_ball_detection_train_fast_dev(tmp_path: Path) -> None:
             "data.train_matches=[game1]",
             "data.val_matches=[game1]",
             "run.fast_dev_run=true",
-            "run.gpus=0",
+            "run.gpus=1",
             "training.max_epochs=1",
         ],
         capture_output=True,
