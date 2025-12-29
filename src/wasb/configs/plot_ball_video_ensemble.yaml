@@ -39,6 +39,7 @@ render:
 
 hydra:
   run:
-    dir: .
+    dir: outputs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  output_subdir: null
   job:
     chdir: false
