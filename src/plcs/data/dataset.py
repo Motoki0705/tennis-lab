@@ -11,7 +11,6 @@ from torch.utils.data import Dataset
 
 from src.base.data.augmentation import augment_keypoints
 from src.plcs.data.types import PLCSFrameBatch
-from src.plcs.generate_dataset.io.dataset_io import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -40,6 +39,8 @@ class SceneDataset(Dataset[PLCSFrameBatch]):
             camera_mode: How to select cameras ("random", "all", or camera index).
 
         """
+        from src.plcs.generate_dataset.io.dataset_io import load_scene
+        
         self.scene_dir = Path(scene_dir)
         self.config = config or {}
         self.augment = augment
