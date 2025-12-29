@@ -13,6 +13,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
+from src.wasb.data.types import BallDetectionSample
 from src.wasb.tennis_format import TennisLabelRow, load_label_csv, make_empty_row
 
 LOGGER = logging.getLogger(__name__)
@@ -197,16 +198,19 @@ class BallDetectionSequenceDataset(Dataset):
 
     @staticmethod
     def _default_transform(resize_hw: tuple[int, int] | None) -> Transform:
+        from typing import cast
+
         ops: list[Callable[[Image.Image], Image.Image] | Transform] = []
         if resize_hw is not None:
             ops.append(transforms.Resize(resize_hw))
         ops.append(transforms.ToTensor())
-        return transforms.Compose(ops)
+        # mypy cannot infer Compose return type, so we cast explicitly
+        return cast(Transform, transforms.Compose(ops))
 
     def __len__(self) -> int:
         return len(self.samples)
 
-    def __getitem__(self, index: int) -> dict[str, torch.Tensor | list[str] | str]:
+    def __getitem__(self, index: int) -> BallDetectionSample:
         sample = self.samples[index]
         frames: list[torch.Tensor] = []
         first_w, first_h = 0, 0
@@ -258,13 +262,15 @@ class BallDetectionSequenceDataset(Dataset):
     def _get_heatmap_hw(self, final_h: int, final_w: int) -> tuple[int, int]:
         """Resolve heatmap height/width, defaulting to half-resolution."""
         if self.heatmap_hw is not None:
-            return self.heatmap_hw
+            cached = self.heatmap_hw
+            return (int(cached[0]), int(cached[1]))
 
         # Default: half-resolution of the processed frames.
         h = max(int(final_h // 2), 1)
         w = max(int(final_w // 2), 1)
-        self.heatmap_hw = (h, w)
-        return self.heatmap_hw
+        result: tuple[int, int] = (h, w)
+        self.heatmap_hw = result
+        return result
 
     @staticmethod
     def _build_heatmaps(
@@ -282,7 +288,7 @@ class BallDetectionSequenceDataset(Dataset):
             ys = torch.arange(h, dtype=torch.float32).view(h, 1)
             xs = torch.arange(w, dtype=torch.float32).view(1, w)
 
-        for idx, (coord, vis) in enumerate(zip(targets_norm, visibility)):
+        for idx, (coord, vis) in enumerate(zip(targets_norm, visibility, strict=False)):
             if vis <= 0:
                 continue
             x = torch.clamp(coord[0], 0.0, 1.0) * max(w - 1, 1)
