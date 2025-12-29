@@ -7,13 +7,39 @@ from types import ModuleType
 from typing import Any, TypeVar, cast
 
 import pytest
+import torch
 
 F = TypeVar("F", bound=Callable[..., object])
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Register the cuda marker with pytest."""
+    config.addinivalue_line(
+        "markers",
+        "cuda: mark test as requiring CUDA/GPU (skipped if GPU unavailable)",
+    )
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Skip tests marked with @pytest.mark.cuda if CUDA is not available."""
+    if torch.cuda.is_available():
+        return
+    skip_cuda = pytest.mark.skip(reason="CUDA not available")
+    for item in items:
+        if "cuda" in item.keywords:
+            item.add_marker(skip_cuda)
 
 
 def typed_fixture(*args: Any, **kwargs: Any) -> Callable[[F], F]:
     """Provide a typed pytest fixture decorator for mypy."""
     return cast(Callable[[F], F], pytest.fixture(*args, **kwargs))
+
+
+def typed_mark(mark: pytest.MarkDecorator) -> Callable[[F], F]:
+    """Provide a typed pytest mark decorator for mypy."""
+    return cast(Callable[[F], F], mark)
 
 
 @typed_fixture(scope="session")
