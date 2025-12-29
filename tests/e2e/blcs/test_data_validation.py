@@ -291,7 +291,7 @@ class TestBLCSDataLoaderBatchValidation:
         seq_lens = batch["seq_len"]
         T_max = batch["ball_uv"].shape[1]
 
-        for i, seq_len in enumerate(seq_lens):
+        for _i, seq_len in enumerate(seq_lens):
             seq_len = int(seq_len.item())
             # Verify that seq_len <= T_max
             assert seq_len <= T_max, f"seq_len {seq_len} > T_max {T_max}"

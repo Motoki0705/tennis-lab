@@ -363,8 +363,7 @@ def main(cfg: DictConfig) -> None:
     else:
         patch_size = None
     resize_hw = cfg.preprocess.get("resize_hw", None)
-    if patch_size and resize_hw is not None:
-        if int(resize_hw[0]) % int(patch_size) != 0 or int(resize_hw[1]) % int(patch_size) != 0:
+    if patch_size and resize_hw is not None and (int(resize_hw[0]) % int(patch_size) != 0 or int(resize_hw[1]) % int(patch_size) != 0):
             LOGGER.warning(
                 "resize_hw %s is not divisible by patch_size=%s; token grid may be cropped.",
                 resize_hw,

@@ -198,7 +198,7 @@ class DinoV3DETRHeatmap(nn.Module):
             temporal_mask = torch.triu(torch.ones(t, t, device=tokens.device, dtype=torch.bool), diagonal=1)
 
         # Alternate: cross-attn (per time) -> temporal self-attn (across time)
-        for cross_blk, temp_blk in zip(self.cross_blocks, self.temporal_blocks):
+        for cross_blk, temp_blk in zip(self.cross_blocks, self.temporal_blocks, strict=True):
             # (1) Cross-attn per-frame: [B*T,1,C] attends to [B*T,N,C]
             q_bt = cross_blk(q_bt, tokens_bt)  # [B*T, 1, C]
 

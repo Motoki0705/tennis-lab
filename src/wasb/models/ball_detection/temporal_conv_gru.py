@@ -118,7 +118,7 @@ class StackedConvGRU(nn.Module):
         for ti in range(t):
             x = x_seq[:, ti]  # [B, C_in, H, W]
             new_h: list[Tensor] = []
-            for layer, h_prev in zip(self.layers, h_states):
+            for layer, h_prev in zip(self.layers, h_states, strict=True):
                 x = layer(x, h_prev)  # x becomes hidden for this layer
                 new_h.append(x)
             h_states = new_h
@@ -288,4 +288,4 @@ class TemporalConvGRUModel(nn.Module):
         logger.info(msg)
 
 
-__all__ = ["HRNetConvGRU", "ConvGRUCell", "StackedConvGRU"]
+__all__ = ["ConvGRUCell", "StackedConvGRU", "TemporalConvGRUModel"]

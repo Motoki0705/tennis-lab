@@ -40,7 +40,7 @@ def validate_tensor_shape(
             f"got {len(actual_shape)} dims (shape={tuple(actual_shape)})"
         )
 
-    for i, (actual, expected) in enumerate(zip(actual_shape, expected_shape)):
+    for i, (actual, expected) in enumerate(zip(actual_shape, expected_shape, strict=True)):
         if expected is not None and actual != expected:
             return (
                 f"{name}: dim {i} expected {expected}, "
