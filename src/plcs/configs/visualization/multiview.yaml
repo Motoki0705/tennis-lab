@@ -1,0 +1,36 @@
+# Multi-view visualization mode
+mode: visualize  # visualize | predict | predict-multiview
+
+# Scene file path
+scene_path: data/plcs/scenes/scene_000001.npz
+
+# Frame index for static views
+frame: 0
+
+# View type
+view: multi               # multi | 3d | 2d | animation
+
+# Cameras to use for multi-view prediction
+# Can be: "all", comma-separated "0,1,2", or list [0, 1, 2]
+cameras: all
+
+# Animation view type (when view=animation)
+animation_view: 3d  # 3d | 2d
+
+# Animation FPS (null = use scene fps)
+fps: null
+
+# Output path for saving visualization
+save: null
+
+# Path to save 2D input scene animation (camera view)
+save_input: null
+
+# Print scene info and exit
+info: false
+
+# Checkpoint path for prediction mode
+checkpoint: outputs/plcs_multiview/checkpoints/last.ckpt
+
+# Device for inference
+device: auto

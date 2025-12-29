@@ -41,6 +41,23 @@ class PLCSSequenceBatch(TypedDict):
     rotation: torch.Tensor  # (T, 2) player orientations over time
 
 
+class PLCSMultiViewBatch(TypedDict):
+    """Schema for multi-view PLCS dataset batch.
+
+    Used by MultiViewSceneDataset.__getitem__(). Contains observations from
+    multiple cameras for the same frame, enabling multi-camera fusion models.
+    """
+
+    human_kp: torch.Tensor  # (N_cam, 17, 2) human keypoints from each camera
+    court_kp: torch.Tensor  # (N_cam, 20, 2) court keypoints from each camera
+    human_vis: torch.Tensor  # (N_cam, 17) visibility flags for human keypoints
+    court_vis: torch.Tensor  # (N_cam, 20) visibility flags for court keypoints
+    camera_params: list[dict]  # List of camera parameter dicts
+    num_views: torch.Tensor  # scalar, number of views in this sample
+    position: torch.Tensor  # (3,) normalized court position (shared GT)
+    rotation: torch.Tensor  # (2,) player orientation (shared GT)
+
+
 @dataclass(frozen=True)
 class PLCSSceneMeta:
     """Metadata schema for PLCS NPZ scene files.

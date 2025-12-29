@@ -9,6 +9,10 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 from src.blcs.data.dataset import BallTrajectoryDataset, collate_trajectories
+from src.blcs.data.multiview_dataset import (
+    MultiViewBallTrajectoryDataset,
+    collate_multiview_trajectories,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -157,4 +161,155 @@ class BLCSDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=True,
             collate_fn=collate_trajectories,
+        )
+
+
+class BLCSMultiViewDataModule(pl.LightningDataModule):
+    """Lightning DataModule for multi-view BLCS training.
+
+    This module creates train/val/test dataloaders using MultiViewBallTrajectoryDataset
+    to provide ball trajectory observations from multiple cameras simultaneously.
+    """
+
+    def __init__(self, config: DictConfig | None = None) -> None:
+        """Initialize the multi-view DataModule.
+
+        Args:
+            config: Configuration dictionary with data parameters.
+
+        """
+        super().__init__()
+        self.config = config or {}
+
+        data_cfg = self.config.get("data", {})
+        self.batch_size = data_cfg.get("batch_size", 16)
+        self.num_workers = data_cfg.get("num_workers", 4)
+        self.pin_memory = True
+        self.scene_dir = Path(data_cfg.get("scene_dir", "data/blcs"))
+        self.num_views = data_cfg.get("num_views", 2)
+        self.min_cameras = data_cfg.get("min_cameras", 2)
+
+        self.train_dataset: MultiViewBallTrajectoryDataset | None = None
+        self.val_dataset: MultiViewBallTrajectoryDataset | None = None
+        self.test_dataset: MultiViewBallTrajectoryDataset | None = None
+
+    def setup(self, stage: str | None = None) -> None:
+        """Set up datasets for the given stage.
+
+        Args:
+            stage: Either 'fit', 'validate', 'test', or None for all.
+
+        """
+        if stage == "fit" or stage is None:
+            # Try to load from split files
+            train_split = self.scene_dir / "train.txt"
+            val_split = self.scene_dir / "val.txt"
+
+            if train_split.exists():
+                self.train_dataset = MultiViewBallTrajectoryDataset(
+                    scene_dir=self.scene_dir,
+                    split_file=train_split,
+                    config=self.config,
+                    augment=True,
+                    num_views=self.num_views,
+                    min_cameras=self.min_cameras,
+                )
+            else:
+                # Fall back to loading all scenes
+                self.train_dataset = MultiViewBallTrajectoryDataset(
+                    scene_dir=self.scene_dir,
+                    config=self.config,
+                    augment=True,
+                    num_views=self.num_views,
+                    min_cameras=self.min_cameras,
+                )
+
+            if val_split.exists():
+                self.val_dataset = MultiViewBallTrajectoryDataset(
+                    scene_dir=self.scene_dir,
+                    split_file=val_split,
+                    config=self.config,
+                    augment=False,
+                    num_views=self.num_views,
+                    min_cameras=self.min_cameras,
+                )
+            else:
+                self.val_dataset = self.train_dataset
+
+        if stage == "test" or stage is None:
+            test_split = self.scene_dir / "test.txt"
+            if test_split.exists():
+                self.test_dataset = MultiViewBallTrajectoryDataset(
+                    scene_dir=self.scene_dir,
+                    split_file=test_split,
+                    config=self.config,
+                    augment=False,
+                    num_views=self.num_views,
+                    min_cameras=self.min_cameras,
+                )
+            else:
+                self.test_dataset = MultiViewBallTrajectoryDataset(
+                    scene_dir=self.scene_dir,
+                    config=self.config,
+                    augment=False,
+                    num_views=self.num_views,
+                    min_cameras=self.min_cameras,
+                )
+
+    def train_dataloader(self) -> DataLoader:
+        """Create training dataloader.
+
+        Returns:
+            DataLoader: Training dataloader.
+
+        """
+        if self.train_dataset is None:
+            raise RuntimeError("Call setup('fit') before train_dataloader()")
+
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
+            drop_last=True,
+            collate_fn=collate_multiview_trajectories,
+        )
+
+    def val_dataloader(self) -> DataLoader:
+        """Create validation dataloader.
+
+        Returns:
+            DataLoader: Validation dataloader.
+
+        """
+        if self.val_dataset is None:
+            raise RuntimeError("Call setup('fit') before val_dataloader()")
+
+        return DataLoader(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
+            collate_fn=collate_multiview_trajectories,
+        )
+
+    def test_dataloader(self) -> DataLoader:
+        """Create test dataloader.
+
+        Returns:
+            DataLoader: Test dataloader.
+
+        """
+        if self.test_dataset is None:
+            raise RuntimeError("Call setup('test') before test_dataloader()")
+
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
+            collate_fn=collate_multiview_trajectories,
         )
