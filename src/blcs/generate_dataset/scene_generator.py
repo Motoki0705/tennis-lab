@@ -18,11 +18,6 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.utils.projection.camera_projector import (
-    CameraConfig,
-    CameraProjector,
-    CameraView,
-)
 from src.blcs.generate_dataset.sampling.distribution_sampler import (
     DistributionSampler,
     SamplingConfig,
@@ -30,6 +25,11 @@ from src.blcs.generate_dataset.sampling.distribution_sampler import (
 from src.blcs.simulation.ball_physics import BallPhysics, PhysicsConfig
 from src.blcs.simulation.cell_manager import CellManager, ShotCategory
 from src.blcs.simulation.shot_simulator import ShotConfig, ShotSimulator
+from src.utils.projection.camera_projector import (
+    CameraConfig,
+    CameraProjector,
+    CameraView,
+)
 
 if TYPE_CHECKING:
     pass

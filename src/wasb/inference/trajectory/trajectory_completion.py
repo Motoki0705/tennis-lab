@@ -312,7 +312,7 @@ class TransformerCompleter(_TorchModelCompleter):
         checkpoint_path: str | Path,
         device: str = "cpu",
         score_threshold: float = 0.5,
-    ) -> "TransformerCompleter":
+    ) -> TransformerCompleter:
         checkpoint_path = Path(checkpoint_path)
         if not checkpoint_path.exists():
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
@@ -380,7 +380,7 @@ class BiLSTMCompleter(TransformerCompleter):
         checkpoint_path: str | Path,
         device: str = "cpu",
         score_threshold: float = 0.5,
-    ) -> "BiLSTMCompleter":
+    ) -> BiLSTMCompleter:
         checkpoint_path = Path(checkpoint_path)
         if not checkpoint_path.exists():
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
@@ -423,7 +423,7 @@ class IterativeRefinementCompleter(_TorchModelCompleter):
         device: str = "cpu",
         score_threshold: float = 0.5,
         num_steps: int | None = None,
-    ) -> "IterativeRefinementCompleter":
+    ) -> IterativeRefinementCompleter:
         checkpoint_path = Path(checkpoint_path)
         if not checkpoint_path.exists():
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")

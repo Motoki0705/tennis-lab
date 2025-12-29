@@ -12,12 +12,11 @@ References (for design inspiration, not runtime dependency):
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 
 BN_MOMENTUM = 0.1
 
@@ -59,7 +58,7 @@ class BasicBlock(nn.Module):
         inplanes: int,
         planes: int,
         stride: int = 1,
-        downsample: Optional[nn.Module] = None,
+        downsample: nn.Module | None = None,
     ) -> None:
         super().__init__()
         self.conv1 = conv3x3(inplanes, planes, stride)
@@ -96,7 +95,7 @@ class Bottleneck(nn.Module):
         inplanes: int,
         planes: int,
         stride: int = 1,
-        downsample: Optional[nn.Module] = None,
+        downsample: nn.Module | None = None,
     ) -> None:
         super().__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
@@ -223,7 +222,7 @@ class ConvNeXtBlock(nn.Module):
         inplanes: int,
         planes: int,
         stride: int = 1,
-        downsample: Optional[nn.Module] = None,
+        downsample: nn.Module | None = None,
     ) -> None:
         super().__init__()
 
@@ -347,7 +346,7 @@ class ConvBNAct(nn.Module):
         stride: int,
         padding: int,
         groups: int = 1,
-        act: Optional[nn.Module] = None,
+        act: nn.Module | None = None,
         bn_momentum: float = BN_MOMENTUM,
     ) -> None:
         super().__init__()
@@ -545,7 +544,7 @@ class ContextFusionBlock(nn.Module):
         num_high_blocks: int = 2,
         num_low_blocks: int = 1,
         upsample_mode: str = "nearest",
-        transformer_kwargs: Optional[Dict[str, Any]] = None,
+        transformer_kwargs: dict[str, Any] | None = None,
     ) -> None:
         super().__init__()
 
@@ -663,8 +662,8 @@ class HRCNet(nn.Module):
         num_high_blocks: int = 2,
         num_low_blocks: int = 1,
         upsample_mode: str = "nearest",
-        downsample_kwargs: Optional[Dict[str, Any]] = None,
-        transformer_kwargs: Optional[Dict[str, Any]] = None,
+        downsample_kwargs: dict[str, Any] | None = None,
+        transformer_kwargs: dict[str, Any] | None = None,
     ) -> None:
         super().__init__()
 

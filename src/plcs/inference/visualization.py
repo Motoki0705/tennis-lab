@@ -54,7 +54,7 @@ def visualize_prediction(
     # Convert position to numpy
     if hasattr(position, "numpy"):
         position = position.numpy()
-    x, y, z = position[0], position[1], position[2]
+    x, y = position[0], position[1]
 
     # Plot player position
     ax.plot(x, y, "o", color=player_color, markersize=12, zorder=10)
@@ -115,7 +115,7 @@ def visualize_batch(
     # Color map for different players
     colors = plt.cm.tab10(np.linspace(0, 1, min(len(positions), max_players)))
 
-    for i, (pos, yaw) in enumerate(zip(positions[:max_players], yaws[:max_players])):
+    for i, (pos, yaw) in enumerate(zip(positions[:max_players], yaws[:max_players], strict=True)):
         if hasattr(pos, "numpy"):
             pos = pos.numpy()
         x, y = pos[0], pos[1]
@@ -396,10 +396,7 @@ def visualize_batch_3d(
     else:
         positions_np = np.asarray(positions)
 
-    if isinstance(yaws, TorchTensor):
-        yaws_np = yaws.cpu().numpy()
-    else:
-        yaws_np = np.asarray(yaws)
+    yaws_np = yaws.cpu().numpy() if isinstance(yaws, TorchTensor) else np.asarray(yaws)
 
     num_players = min(len(positions_np), max_players)
 

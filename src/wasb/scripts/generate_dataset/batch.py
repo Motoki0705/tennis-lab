@@ -124,7 +124,7 @@ class BatchMeta:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "BatchMeta":
+    def from_dict(cls, data: dict) -> BatchMeta:
         """Create from dictionary."""
         videos = {}
         for name, status_dict in data.get("videos", {}).items():
@@ -149,7 +149,7 @@ class BatchResult:
     failed: int = 0
     skipped: int = 0
     new_detected: int = 0
-    results: dict[str, "PipelineResult" | str] = field(default_factory=dict)
+    results: dict[str, PipelineResult | str] = field(default_factory=dict)
 
 
 class BatchProcessor:
@@ -517,11 +517,7 @@ def reset_videos(cfg: DictConfig) -> int:
     for name, status in videos.items():
         should_reset = False
 
-        if mode == "reset_all":
-            should_reset = True
-        elif mode == "reset_failed" and status.get("status") == "failed":
-            should_reset = True
-        elif mode == "reset_video" and name in reset_video_list:
+        if mode == "reset_all" or mode == "reset_failed" and status.get("status") == "failed" or mode == "reset_video" and name in reset_video_list:
             should_reset = True
 
         if should_reset:

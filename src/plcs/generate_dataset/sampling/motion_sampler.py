@@ -206,11 +206,11 @@ class MotionSampler:
             weights = [self._motion_sources[c].weight for c in categories]
             # Filter out categories with no files
             valid = [
-                (c, w) for c, w in zip(categories, weights) if self._motion_files.get(c)
+                (c, w) for c, w in zip(categories, weights, strict=True) if self._motion_files.get(c)
             ]
             if not valid:
                 raise RuntimeError("No motion files available")
-            categories, weights = zip(*valid)
+            categories, weights = zip(*valid, strict=True)
             selected_category = random.choices(categories, weights=weights, k=1)[0]
 
         # Select random file from category

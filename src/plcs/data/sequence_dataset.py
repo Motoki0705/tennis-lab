@@ -5,21 +5,23 @@ Provides fixed-length frame sequences for training sequential PLCS models.
 
 from __future__ import annotations
 
+import random as rng
 from pathlib import Path
 from typing import TYPE_CHECKING
-import random as rng
 
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from src.plcs.generate_dataset.io.dataset_io import load_scene
+from src.base.data.augmentation import augment_keypoints
+from src.plcs.data.types import PLCSSequenceBatch
+from src.plcs.generate_dataset.io.scene_loader import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class SceneSequenceDataset(Dataset[dict[str, Tensor]]):
+class SceneSequenceDataset(Dataset[PLCSSequenceBatch]):
     """Dataset that returns fixed-length temporal clips from PLCS scenes.
 
     Each sample corresponds to a contiguous window of frames from a single
@@ -49,9 +51,10 @@ class SceneSequenceDataset(Dataset[dict[str, Tensor]]):
         )
 
         # Index all scene files
-        self.scene_files = sorted(self.scene_dir.glob("scene_*.npz"))
+        scenes_subdir = self.scene_dir / "scenes"
+        self.scene_files = sorted(scenes_subdir.glob("scene_*.npz"))
         if not self.scene_files:
-            raise ValueError(f"No scene files found in {self.scene_dir}")
+            raise ValueError(f"No scene files found in {scenes_subdir}")
 
         print(f"SceneSequenceDataset: found {len(self.scene_files)} scene files")
 
@@ -104,7 +107,7 @@ class SceneSequenceDataset(Dataset[dict[str, Tensor]]):
         """Return the number of sequence samples."""
         return len(self.index)
 
-    def __getitem__(self, idx: int) -> dict[str, Tensor]:
+    def __getitem__(self, idx: int) -> PLCSSequenceBatch:
         """Get a sequence sample by index.
 
         Returns a dictionary containing:
@@ -137,8 +140,12 @@ class SceneSequenceDataset(Dataset[dict[str, Tensor]]):
 
         # Apply augmentation to human keypoints
         if self.augment:
-            human_kp, human_vis = self._augment_keypoints_sequence(human_kp, human_vis)
-            court_kp, court_vis = self._augment_keypoints_sequence(court_kp, court_vis)
+            human_kp, human_vis = augment_keypoints(
+                human_kp, human_vis, self.kp_noise_std, self.visibility_drop_prob
+            )
+            court_kp, court_vis = augment_keypoints(
+                court_kp, court_vis, self.kp_noise_std, self.visibility_drop_prob
+            )
 
         # Aggregate court keypoints over time (court is time-invariant)
         court_kp_agg, court_vis_agg = self._aggregate_court_keypoints(
@@ -187,30 +194,3 @@ class SceneSequenceDataset(Dataset[dict[str, Tensor]]):
         court_vis_agg = (court_vis.sum(dim=0, keepdim=True) > 0).float()  # (1, 20)
 
         return court_kp_agg, court_vis_agg
-
-    def _augment_keypoints_sequence(
-        self,
-        keypoints: Tensor,
-        visibility: Tensor,
-    ) -> tuple[Tensor, Tensor]:
-        """Apply augmentation to keypoint sequences.
-
-        Args:
-            keypoints: Keypoint coordinates, shape (T, N, 2).
-            visibility: Visibility mask, shape (T, N).
-
-        Returns:
-            tuple: Augmented keypoints and visibility.
-
-        """
-        # Add Gaussian noise
-        if self.kp_noise_std > 0:
-            noise = torch.randn_like(keypoints) * self.kp_noise_std
-            keypoints = keypoints + noise
-
-        # Random visibility dropout
-        if self.visibility_drop_prob > 0:
-            drop_mask = torch.rand_like(visibility.float()) < self.visibility_drop_prob
-            visibility = visibility & ~drop_mask.bool()
-
-        return keypoints, visibility

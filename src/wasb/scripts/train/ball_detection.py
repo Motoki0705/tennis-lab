@@ -24,11 +24,11 @@ from torch.nn import functional as F
 from torchvision.utils import save_image
 
 from src.wasb.data.ball_detection_datamodule import BallDetectionDataModule
-from src.wasb.data.patch_embeddings_datamodule import PatchEmbeddingsDataModule
 from src.wasb.data.curriculum_sampling import (
     CurriculumStepCallback,
     VisibilityCurriculumSampler,
 )
+from src.wasb.data.patch_embeddings_datamodule import PatchEmbeddingsDataModule
 from src.wasb.models import build_model
 from src.wasb.training import WASBLightningModule
 from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
@@ -131,6 +131,11 @@ def run_dry_run(config: DictConfig, output_dir: Path) -> None:
         print(f"heatmaps {tuple(target_heatmaps.shape)}")
     if visibility is not None:
         print(f"visibility {tuple(visibility.shape)}")
+
+    # Create dry_run output directory
+    dry_run_dir = output_dir / "dry_run"
+    dry_run_dir.mkdir(parents=True, exist_ok=True)
+
     if (
         "frame_paths" in batch
         and frames is not None
@@ -139,7 +144,7 @@ def run_dry_run(config: DictConfig, output_dir: Path) -> None:
         and frames.shape[2] == 3
     ):
         print(f"First sample frame paths: {batch['frame_paths'][0][:3]} ...")
-        _save_sample_visuals(batch, output_dir / "dry_run")
+        _save_sample_visuals(batch, dry_run_dir)
 
     # Build model and lightning module
     steps_per_epoch = len(train_loader)

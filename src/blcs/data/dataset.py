@@ -15,6 +15,9 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
+from src.base.data.augmentation import add_gaussian_noise, random_visibility_dropout
+from src.blcs.data.types import BLCSBatch, BLCSSample
+
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
@@ -84,6 +87,8 @@ class BallTrajectoryDataset(Dataset):
         """Load scene list from split file."""
         split_path = Path(split_file)
         if not split_path.is_absolute():
+            if self.scene_dir is None:
+                raise ValueError("scene_dir must be set to use relative split_file")
             split_path = self.scene_dir / split_file
 
         scenes = []
@@ -139,11 +144,11 @@ class BallTrajectoryDataset(Dataset):
         """Return dataset length."""
         return len(self.scenes)
 
-    def __getitem__(self, idx: int) -> dict[str, Tensor]:
+    def __getitem__(self, idx: int) -> BLCSSample:
         """Get a single sample.
 
         Returns:
-            dict: Sample dictionary containing:
+            Sample dictionary containing:
                 - ball_uv: (T, 2) Ball 2D trajectory
                 - ball_mask: (T,) Ball visibility mask
                 - court_kp: (20, 2) Court 2D keypoints
@@ -183,21 +188,16 @@ class BallTrajectoryDataset(Dataset):
         )
 
         # Add Gaussian noise to UV coordinates
-        if self.uv_noise_std > 0:
-            noise = torch.randn_like(sample["ball_uv"]) * self.uv_noise_std
-            sample["ball_uv"] = sample["ball_uv"] + noise
-            sample["ball_uv"] = sample["ball_uv"].clamp(0, 1)
+        sample["ball_uv"] = add_gaussian_noise(sample["ball_uv"], self.uv_noise_std)
+        sample["ball_uv"] = sample["ball_uv"].clamp(0, 1)
 
-            court_noise = torch.randn_like(sample["court_kp"]) * self.uv_noise_std
-            sample["court_kp"] = sample["court_kp"] + court_noise
-            sample["court_kp"] = sample["court_kp"].clamp(0, 1)
+        sample["court_kp"] = add_gaussian_noise(sample["court_kp"], self.uv_noise_std)
+        sample["court_kp"] = sample["court_kp"].clamp(0, 1)
 
         # Random visibility dropout for ball
-        if self.vis_drop_prob > 0:
-            drop_mask = torch.rand(seq_len) < self.vis_drop_prob
-            sample["ball_vis"][:seq_len] = (
-                sample["ball_vis"][:seq_len] * (~drop_mask).float()
-            )
+        sample["ball_vis"][:seq_len] = random_visibility_dropout(
+            sample["ball_vis"][:seq_len], self.vis_drop_prob
+        )
 
         # Temporal dropout (create gaps)
         if self.temporal_dropout_prob > 0:
@@ -221,7 +221,7 @@ class BallTrajectoryDataset(Dataset):
         return sample
 
 
-def collate_trajectories(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
+def collate_trajectories(batch: list[BLCSSample]) -> BLCSBatch:
     """Collate function for variable-length trajectories.
 
     Pads sequences to the maximum length in the batch.
@@ -230,7 +230,7 @@ def collate_trajectories(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
         batch: List of sample dictionaries.
 
     Returns:
-        dict: Batched and padded tensors.
+        Batched and padded tensors.
 
     """
     batch_size = len(batch)

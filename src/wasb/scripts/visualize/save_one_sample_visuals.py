@@ -1,6 +1,6 @@
 """Save a single WASB dataset sample as images.
 
-This script instantiates ``TennisDataModule`` using the data config at
+This script instantiates ``BallDetectionDataModule`` using the data config at
 ``src/wasb/configs/data/default.yaml`` (via Hydra defaults), then saves:
 
 - Original frame (no data augmentation)
@@ -22,12 +22,15 @@ Useful overrides:
 - `sample_indices=[...]` (list of indices)
 """
 
+# mypy: disable-error-code=index
+# mypy: disable-error-code=misc
+
 from __future__ import annotations
 
 import os
 import random
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import hydra
 import torch
@@ -37,7 +40,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch.nn import functional as F
 from torchvision.utils import save_image
 
-from src.wasb.data.datamodule import TennisDataModule
+from src.wasb.data.ball_detection_datamodule import BallDetectionDataModule
 
 Split = Literal["train", "val", "test"]
 
@@ -55,7 +58,7 @@ def _clone_config(cfg: DictConfig) -> DictConfig:
     return OmegaConf.create(OmegaConf.to_container(cfg, resolve=True))
 
 
-def _make_datamodule(cfg: DictConfig, *, augment_enabled: bool) -> TennisDataModule:
+def _make_datamodule(cfg: DictConfig, *, augment_enabled: bool) -> BallDetectionDataModule:
     cfg_copy = _clone_config(cfg)
     data_cfg = getattr(cfg_copy, "data", None)
     if data_cfg is None:
@@ -66,13 +69,13 @@ def _make_datamodule(cfg: DictConfig, *, augment_enabled: bool) -> TennisDataMod
         data_cfg.augment = {}
     data_cfg.augment.enabled = bool(augment_enabled)
 
-    datamodule = TennisDataModule(cfg_copy)
+    datamodule = BallDetectionDataModule(cfg_copy)
     datamodule.num_workers = 0
     datamodule.pin_memory = False
     return datamodule
 
 
-def _get_dataset(datamodule: TennisDataModule, split: Split):
+def _get_dataset(datamodule: BallDetectionDataModule, split: Split) -> Any:
     if split in ("train", "val"):
         datamodule.setup(stage="fit")
         if split == "train":
@@ -155,7 +158,7 @@ def _save_visuals(
 
 
 @hydra.main(
-    config_path="../configs",
+    config_path="../../configs",
     config_name="save_one_sample_visuals",
     version_base="1.3",
 )

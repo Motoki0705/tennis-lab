@@ -109,7 +109,6 @@ class TrajectoryLightningModule(pl.LightningModule):
         """Run a forward pass through the underlying trajectory model."""
         return self.model(x)
 
-    @staticmethod
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
     ) -> tuple[Tensor, dict[str, float]]:

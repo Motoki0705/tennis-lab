@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
+import random as rng
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import torch
-from torch import Tensor
 from torch.utils.data import Dataset
-import random as rng
 
-from src.plcs.generate_dataset.io.dataset_io import load_scene
+from src.base.data.augmentation import augment_keypoints
+from src.plcs.data.types import PLCSFrameBatch
+from src.plcs.generate_dataset.io.scene_loader import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class SceneDataset(Dataset[dict[str, Tensor]]):
+class SceneDataset(Dataset[PLCSFrameBatch]):
     """Dataset for PLCS training from pre-generated scene files.
 
     This dataset loads pre-generated scene NPZ files and provides
@@ -95,14 +96,14 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
         """Return the number of samples."""
         return len(self.index)
 
-    def __getitem__(self, idx: int) -> dict[str, Tensor]:
+    def __getitem__(self, idx: int) -> PLCSFrameBatch:
         """Get a sample by index.
 
         Args:
             idx: Sample index.
 
         Returns:
-            dict: Sample dictionary with input features and targets.
+            Sample dictionary with input features and targets.
 
         """
         scene_idx, frame_idx, cam_idx = self.index[idx]
@@ -126,8 +127,12 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
 
         # Apply augmentation
         if self.augment:
-            human_kp, human_vis = self._augment_keypoints(human_kp, human_vis)
-            court_kp, court_vis = self._augment_keypoints(court_kp, court_vis)
+            human_kp, human_vis = augment_keypoints(
+                human_kp, human_vis, self.kp_noise_std, self.visibility_drop_prob
+            )
+            court_kp, court_vis = augment_keypoints(
+                court_kp, court_vis, self.kp_noise_std, self.visibility_drop_prob
+            )
 
         # Apply visibility mask
         human_kp_masked = human_kp.clone()
@@ -144,30 +149,3 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
             "position": position.float(),  # (3,)
             "rotation": rotation.float(),  # (2,)
         }
-
-    def _augment_keypoints(
-        self,
-        keypoints: Tensor,
-        visibility: Tensor,
-    ) -> tuple[Tensor, Tensor]:
-        """Apply augmentation to keypoints.
-
-        Args:
-            keypoints: Keypoint coordinates, shape (N, 2).
-            visibility: Visibility mask, shape (N,).
-
-        Returns:
-            tuple: Augmented keypoints and visibility.
-
-        """
-        # Add Gaussian noise
-        if self.kp_noise_std > 0:
-            noise = torch.randn_like(keypoints) * self.kp_noise_std
-            keypoints = keypoints + noise
-
-        # Random visibility dropout
-        if self.visibility_drop_prob > 0:
-            drop_mask = torch.rand(visibility.shape) < self.visibility_drop_prob
-            visibility = visibility & ~drop_mask
-
-        return keypoints, visibility
