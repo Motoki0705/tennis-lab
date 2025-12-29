@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
+import random as rng
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
-import random as rng
 
+from src.plcs.data.types import PLCSFrameBatch
 from src.plcs.generate_dataset.io.dataset_io import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class SceneDataset(Dataset[dict[str, Tensor]]):
+class SceneDataset(Dataset[PLCSFrameBatch]):
     """Dataset for PLCS training from pre-generated scene files.
 
     This dataset loads pre-generated scene NPZ files and provides
@@ -95,14 +96,14 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
         """Return the number of samples."""
         return len(self.index)
 
-    def __getitem__(self, idx: int) -> dict[str, Tensor]:
+    def __getitem__(self, idx: int) -> PLCSFrameBatch:
         """Get a sample by index.
 
         Args:
             idx: Sample index.
 
         Returns:
-            dict: Sample dictionary with input features and targets.
+            Sample dictionary with input features and targets.
 
         """
         scene_idx, frame_idx, cam_idx = self.index[idx]

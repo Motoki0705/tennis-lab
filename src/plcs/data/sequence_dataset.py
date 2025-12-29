@@ -5,21 +5,22 @@ Provides fixed-length frame sequences for training sequential PLCS models.
 
 from __future__ import annotations
 
+import random as rng
 from pathlib import Path
 from typing import TYPE_CHECKING
-import random as rng
 
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
+from src.plcs.data.types import PLCSSequenceBatch
 from src.plcs.generate_dataset.io.dataset_io import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class SceneSequenceDataset(Dataset[dict[str, Tensor]]):
+class SceneSequenceDataset(Dataset[PLCSSequenceBatch]):
     """Dataset that returns fixed-length temporal clips from PLCS scenes.
 
     Each sample corresponds to a contiguous window of frames from a single
@@ -104,7 +105,7 @@ class SceneSequenceDataset(Dataset[dict[str, Tensor]]):
         """Return the number of sequence samples."""
         return len(self.index)
 
-    def __getitem__(self, idx: int) -> dict[str, Tensor]:
+    def __getitem__(self, idx: int) -> PLCSSequenceBatch:
         """Get a sequence sample by index.
 
         Returns a dictionary containing:
