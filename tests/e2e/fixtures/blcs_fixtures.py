@@ -53,20 +53,22 @@ def make_minimal_blcs_scene(*, scene_id: str = "scene_000000") -> BLCSSceneData:
     t_fence = -1  # Doesn't hit fence
     t_bounce2 = -1  # No second bounce in this scene
 
-    # Create minimal camera
+    # Create minimal camera with all required keys
     camera_params = {
-        "camera_idx": 0,
-        "K": [[1000.0, 0.0, 640.0], [0.0, 1000.0, 360.0], [0.0, 0.0, 1.0]],
-        "image_size": [1280, 720],
-        "R": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
-        "t": [0.0, 0.0, 5.0],
+        "center": [0.0, 0.0, 5.0],
+        "f": 1000.0,
+        "cx": 640.0,
+        "cy": 360.0,
+        "w": 1280,
+        "h": 720,
     }
 
-    # Simple UV projection (random for testing)
+    # Simple UV projection (normalized to [0, 1])
     ball_uv = np.random.rand(T, 2).astype(np.float32)
     ball_visible = np.ones(T, dtype=bool)
 
-    court_kp_uv = np.random.rand(20, 2).astype(np.float32) * [1280, 720]
+    # Court keypoints: normalized to [0, 1]
+    court_kp_uv = np.random.rand(20, 2).astype(np.float32)
     court_kp_visible = np.ones(20, dtype=bool)
 
     camera = CameraData(
@@ -163,23 +165,27 @@ def create_minimal_blcs_checkpoint(checkpoint_path: Path | str) -> Path:
     checkpoint_path = Path(checkpoint_path)
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Create minimal model
+    # Create minimal model with correct constructor arguments
     model = BLCSModel(
-        input_dim=42,  # 2 (ball_uv) + 20*2 (court_kp)
         hidden_dim=64,
-        output_dim=3,  # 3D position
         num_layers=2,
+        num_heads=4,
         dropout=0.1,
+        max_seq_len=120,
+        use_cross_attention=True,
+        predict_velocity=False,
     )
 
     # Create Lightning module
     config = {
         "model": {
-            "input_dim": 42,
             "hidden_dim": 64,
-            "output_dim": 3,
             "num_layers": 2,
+            "num_heads": 4,
             "dropout": 0.1,
+            "max_seq_len": 120,
+            "use_cross_attention": True,
+            "predict_velocity": False,
         },
         "training": {
             "learning_rate": 1e-4,
@@ -190,12 +196,13 @@ def create_minimal_blcs_checkpoint(checkpoint_path: Path | str) -> Path:
     lightning_module = BLCSLightningModule(config=config)
     lightning_module.model = model
 
-    # Create checkpoint manually
+    # Create checkpoint with pytorch-lightning_version
     checkpoint = {
         "state_dict": lightning_module.state_dict(),
         "hyper_parameters": config,
         "epoch": 0,
         "global_step": 0,
+        "pytorch-lightning_version": pl.__version__,
     }
 
     torch.save(checkpoint, checkpoint_path)

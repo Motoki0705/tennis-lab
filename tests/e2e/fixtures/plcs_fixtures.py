@@ -60,17 +60,20 @@ def make_minimal_plcs_scene(*, scene_id: str = "scene_000000") -> SceneData:
     cameras: list[CameraData] = []
     for camera_idx in range(num_cameras):
         camera_params = {
-            "camera_idx": camera_idx,
-            "K": [[1000.0, 0.0, 640.0], [0.0, 1000.0, 360.0], [0.0, 0.0, 1.0]],
-            "image_size": [1280, 720],
+            "center": [0.0, 0.0, 5.0],
+            "R": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            "f": 1000.0,
+            "cx": 640.0,
+            "cy": 360.0,
+            "w": 1280,
+            "h": 720,
         }
+        # Normalized keypoints (values in [0, 1])
         human_kp_uv: npt.NDArray[np.float32] = (
-            np.arange(num_frames * 17 * 2, dtype=np.float32).reshape(num_frames, 17, 2)
-            + camera_idx * 100
+            np.random.rand(num_frames, 17, 2).astype(np.float32)
         )
         court_kp_uv: npt.NDArray[np.float32] = (
-            np.arange(num_frames * 20 * 2, dtype=np.float32).reshape(num_frames, 20, 2)
-            + camera_idx * 100
+            np.random.rand(num_frames, 20, 2).astype(np.float32)
         )
         human_kp_visible: npt.NDArray[np.bool_] = np.ones((num_frames, 17), dtype=bool)
         court_kp_visible: npt.NDArray[np.bool_] = np.ones((num_frames, 20), dtype=bool)
@@ -197,12 +200,13 @@ def create_minimal_plcs_checkpoint(checkpoint_path: Path | str) -> Path:
         logger=False,
     )
 
-    # Create checkpoint manually
+    # Create checkpoint with pytorch-lightning_version
     checkpoint = {
         "state_dict": lightning_module.state_dict(),
         "hyper_parameters": config,
         "epoch": 0,
         "global_step": 0,
+        "pytorch-lightning_version": pl.__version__,
     }
 
     torch.save(checkpoint, checkpoint_path)
