@@ -5,7 +5,7 @@ defaults:
   - logging: default
   - metrics: ball_detection
   - run: ball_detection
-  - model: dinov3_heatmap
+  - model: hrcnet
   - _self_
 
 hydra:

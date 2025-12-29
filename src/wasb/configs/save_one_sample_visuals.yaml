@@ -1,5 +1,5 @@
 defaults:
-  - data: default
+  - data: ball_detection
   - _self_
 
 # Which split to sample from: "train", "val", or "test".

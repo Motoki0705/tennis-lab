@@ -339,9 +339,20 @@ def main_predict_sequence(cfg: RuntimeConfig) -> int:
 
     # Prepare sequence inputs: (T, K, 2) and (T, K)
     human_kp_seq = torch.from_numpy(cam.human_kp_uv).float()  # (T, 17, 2)
-    court_kp_seq = torch.from_numpy(cam.court_kp_uv).float()  # (T, 20, 2)
+    court_kp_raw = torch.from_numpy(cam.court_kp_uv).float()  # (T, 20, 2)
     human_vis_seq = torch.from_numpy(cam.human_kp_visible).float()  # (T, 17)
-    court_vis_seq = torch.from_numpy(cam.court_kp_visible).float()  # (T, 20)
+    court_vis_raw = torch.from_numpy(cam.court_kp_visible).float()  # (T, 20)
+
+    # Aggregate court keypoints: take mean across temporal dimension
+    # Model expects (B, 1, 20, 2) for court, pre-aggregated anchor
+    court_kp_agg = court_kp_raw.mean(dim=0, keepdim=True)  # (1, 20, 2)
+    court_vis_agg = court_vis_raw.mean(dim=0, keepdim=True)  # (1, 20)
+
+    # Add batch dimension for predictor
+    human_kp_seq = human_kp_seq.unsqueeze(0)  # (1, T, 17, 2)
+    court_kp_seq = court_kp_agg.unsqueeze(0)  # (1, 1, 20, 2)
+    human_vis_seq = human_vis_seq.unsqueeze(0)  # (1, T, 17)
+    court_vis_seq = court_vis_agg.unsqueeze(0)  # (1, 1, 20)
 
     num_frames = scene.meta["num_frames"]
     print(
@@ -356,9 +367,9 @@ def main_predict_sequence(cfg: RuntimeConfig) -> int:
         denormalize=False,  # Keep normalized for SceneData
     )
 
-    # Overwrite SceneData with predictions
-    scene.position[...] = pred["position"].cpu().numpy()  # (T, 3)
-    scene.rotation[...] = pred["rotation"].cpu().numpy()  # (T, 2)
+    # Overwrite SceneData with predictions (squeeze batch dimension)
+    scene.position[...] = pred["position"].squeeze(0).cpu().numpy()  # (T, 3)
+    scene.rotation[...] = pred["rotation"].squeeze(0).cpu().numpy()  # (T, 2)
 
     return render_scene(scene, cfg)
 

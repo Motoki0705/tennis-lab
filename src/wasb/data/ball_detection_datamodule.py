@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Sequence
 
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader, Sampler

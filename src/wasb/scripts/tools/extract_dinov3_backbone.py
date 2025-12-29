@@ -23,7 +23,7 @@ from omegaconf import DictConfig
 def _extract_backbone_state(state_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
     prefixes = ("model.backbone.", "backbone.")
     for prefix in prefixes:
-        keys = [k for k in state_dict.keys() if k.startswith(prefix)]
+        keys = [k for k in state_dict if k.startswith(prefix)]
         if not keys:
             continue
         return {k[len(prefix) :]: state_dict[k] for k in keys}

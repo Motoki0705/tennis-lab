@@ -77,7 +77,7 @@ class VisibilityCurriculumSampler(Sampler[int]):
             return None
 
         per_class_weight: dict[int, float] = {}
-        for v, r in zip(self._balance_values, self._target_ratio):
+        for v, r in zip(self._balance_values, self._target_ratio, strict=True):
             per_class_weight[v] = r / float(counts[v])
 
         weights = torch.tensor(

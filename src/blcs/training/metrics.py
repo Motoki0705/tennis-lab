@@ -7,6 +7,7 @@ from torch import Tensor
 
 from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
+
 class BLCSMetrics:
     """Metrics tracker for BLCS evaluation.
 

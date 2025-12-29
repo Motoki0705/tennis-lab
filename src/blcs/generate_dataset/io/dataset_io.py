@@ -19,38 +19,41 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import numpy as np
 
-if TYPE_CHECKING:
-    from src.blcs.generate_dataset.scene_generator import BLCSSceneData
+from src.base.data.writer import BaseDatasetWriter
+from src.blcs.data.types import (
+    PYDANTIC_AVAILABLE,
+    BLCSSceneMeta,
+    BLCSSceneMetaModel,
+)
+from src.blcs.generate_dataset.scene_generator import BLCSSceneData
 
 logger = logging.getLogger(__name__)
 
 
-class BLCSDatasetWriter:
+class BLCSDatasetWriter(BaseDatasetWriter):
     """Writes BLCS scene data to disk in npz format (PLCS-unified)."""
+    scenes_dir: Path
 
-    def __init__(self, output_dir: str | Path) -> None:
+    def __init__(self, output_dir: str | Path, validate: bool = False) -> None:
         """Initialize dataset writer.
 
         Args:
             output_dir: Output directory for dataset.
+            validate: If True, use Pydantic models for runtime validation.
 
         """
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create subdirectories
-        self.scenes_dir = self.output_dir / "scenes"
-        self.scenes_dir.mkdir(exist_ok=True)
-
-        # Track scenes for meta.json
-        self.scene_records: list[dict] = []
-        self.scene_counter = 0
+        super().__init__(output_dir)
+        self.validate = validate
+        if validate and not PYDANTIC_AVAILABLE:
+            logger.warning(
+                "Pydantic validation requested but pydantic not installed. "
+                "Install with: pip install pydantic>=2.10"
+            )
+            self.validate = False
 
     def save_scene(self, scene: BLCSSceneData) -> Path:
         """Save a single scene to npz file (1 scene = 1 file with N cameras).
@@ -66,8 +69,8 @@ class BLCSDatasetWriter:
         filename = f"{scene.scene_id}.npz"
         filepath = self.scenes_dir / filename
 
-        # Prepare metadata
-        meta = {
+        # Create metadata using dataclass (with optional Pydantic validation)
+        meta_dict = {
             "scene_id": scene.scene_id,
             "from_cell": scene.from_cell,
             "from_side": scene.from_side,
@@ -84,10 +87,17 @@ class BLCSDatasetWriter:
             "num_cameras": len(scene.cameras),
         }
 
+        # Optionally validate with Pydantic (catches errors early)
+        if self.validate and PYDANTIC_AVAILABLE:
+            # This will raise ValidationError if data is invalid
+            BLCSSceneMetaModel(**meta_dict)
+
+        meta = BLCSSceneMeta(**meta_dict)
+
         # Build save dictionary
         save_dict = {
             # Metadata (as JSON string)
-            "meta": json.dumps(meta),
+            "meta": json.dumps(meta.to_dict()),
             # 3D trajectory data (global)
             "ball_pos_world": scene.ball_pos_world.numpy(),
             "ball_pos_norm": scene.ball_pos_norm.numpy(),
@@ -144,123 +154,6 @@ class BLCSDatasetWriter:
         self.scene_counter += 1
 
         return filepath
-
-    def save_split_info(
-        self,
-        train_ratio: float = 0.8,
-        val_ratio: float = 0.1,
-        test_ratio: float = 0.1,
-        seed: int = 42,
-    ) -> None:
-        """Save train/val/test split information.
-
-        Each scene is one file, so splits are straightforward.
-
-        Args:
-            train_ratio: Fraction for training.
-            val_ratio: Fraction for validation.
-            test_ratio: Fraction for testing.
-            seed: Random seed for reproducibility.
-
-        """
-        import random
-
-        # Get all scene files
-        scene_files = [r["file"] for r in self.scene_records]
-
-        # Shuffle
-        random.seed(seed)
-        random.shuffle(scene_files)
-
-        # Split
-        n_total = len(scene_files)
-        n_train = int(n_total * train_ratio)
-        n_val = int(n_total * val_ratio)
-
-        splits = {
-            "train": scene_files[:n_train],
-            "val": scene_files[n_train : n_train + n_val],
-            "test": scene_files[n_train + n_val :],
-        }
-
-        # Save split files
-        for split_name, filenames in splits.items():
-            split_file = self.output_dir / f"{split_name}.txt"
-            with open(split_file, "w") as f:
-                for filename in filenames:
-                    f.write(f"{filename}\n")
-
-            logger.info(f"Saved {split_name} split: {len(filenames)} scenes")
-
-        # Save full split info as JSON
-        split_info = {
-            "train_ratio": train_ratio,
-            "val_ratio": val_ratio,
-            "test_ratio": test_ratio,
-            "seed": seed,
-            "n_scenes": {
-                "train": len(splits["train"]),
-                "val": len(splits["val"]),
-                "test": len(splits["test"]),
-            },
-        }
-
-        with open(self.output_dir / "split_info.json", "w") as f:
-            json.dump(split_info, f, indent=2)
-
-    def save_meta_json(self, config: dict | None = None) -> None:
-        """Save meta.json with all scene information.
-
-        Args:
-            config: Generator configuration (optional).
-
-        """
-        # Calculate statistics
-        total_cameras = sum(r["num_cameras"] for r in self.scene_records)
-        avg_cameras = (
-            total_cameras / len(self.scene_records) if self.scene_records else 0
-        )
-
-        meta = {
-            "generated_at": datetime.now().isoformat(),
-            "config": config or {},
-            "stats": {
-                "total_scenes": len(self.scene_records),
-                "total_cameras": total_cameras,
-                "avg_cameras_per_scene": avg_cameras,
-            },
-            "scenes": self.scene_records,
-        }
-
-        with open(self.output_dir / "meta.json", "w") as f:
-            json.dump(meta, f, indent=2)
-
-        logger.info(
-            f"meta.json saved: {len(self.scene_records)} scenes, "
-            f"{total_cameras} cameras"
-        )
-
-    def save_dataset_info(self, stats: dict) -> None:
-        """Save dataset statistics and metadata.
-
-        Args:
-            stats: Statistics from generator.
-
-        """
-        info = {
-            "total_scenes": len(self.scene_records),
-            "total_cameras": stats.get("total_cameras", 0),
-            "avg_cameras_per_scene": stats.get("avg_cameras_per_scene", 0),
-            "camera_acceptance_rate": stats.get("camera_acceptance_rate", 0),
-            "category_distribution": stats.get("category_counts", {}),
-        }
-
-        with open(self.output_dir / "dataset_info.json", "w") as f:
-            json.dump(info, f, indent=2)
-
-        logger.info(f"Dataset info saved: {len(self.scene_records)} scenes")
-
-
 def load_scene(filepath: str | Path) -> dict:
     """Load a scene from npz file (PLCS-unified format).
 

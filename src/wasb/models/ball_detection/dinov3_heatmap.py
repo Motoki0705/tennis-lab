@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any
-from collections import OrderedDict
 
 import torch
 import torch.nn.functional as F
@@ -14,7 +14,6 @@ from torch import Tensor, nn
 from torchvision.ops import FeaturePyramidNetwork
 
 from third_party.dinov3.api.dinov3_loader import get_dinov3_vits16
-
 
 LOGGER = logging.getLogger(__name__)
 
