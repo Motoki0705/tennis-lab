@@ -14,10 +14,8 @@ import torch
 
 from tests.e2e.fixtures.wasb_fixtures import create_minimal_wasb_dataset
 from tests.e2e.validation.tensor_validators import (
-    validate_tensor_dtype,
     validate_tensor_range,
     validate_tensor_shape,
-    validate_dict_has_keys,
 )
 
 

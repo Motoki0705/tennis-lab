@@ -9,12 +9,12 @@ from typing import Any
 from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
-from .others.clip_segmenter import ClipSegmenter, RuleBasedClipSegmenter
 from .ball_detection.dinov3_detr_heatmap import DinoV3DETRHeatmap
 from .ball_detection.dinov3_heatmap import DinoV3FPNHeatmap
 from .ball_detection.hrcnet import HRCNet
 from .ball_detection.hrnet import HRNet
 from .ball_detection.temporal_conv_gru import TemporalConvGRUModel
+from .others.clip_segmenter import ClipSegmenter, RuleBasedClipSegmenter
 
 
 def _hrnet_handlers() -> tuple[Callable, Callable]:

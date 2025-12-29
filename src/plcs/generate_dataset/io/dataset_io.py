@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import TypeAlias, cast, Any
+from typing import Any, TypeAlias, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -16,10 +16,10 @@ from src.plcs.data.types import (
     PLCSSceneMeta,
     PLCSSceneMetaModel,
 )
-from src.plcs.generate_dataset.scene_generator import SceneData
 
 # Re-export load_scene for backwards compatibility
 from src.plcs.generate_dataset.io.scene_loader import load_scene as load_scene
+from src.plcs.generate_dataset.scene_generator import SceneData
 
 # Type alias for values accepted by np.savez_compressed
 SavezValue: TypeAlias = npt.ArrayLike | bool | int | float | complex | str | bytes

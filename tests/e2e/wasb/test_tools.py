@@ -14,6 +14,9 @@ from tests.e2e.fixtures.wasb_fixtures import (
 
 
 @pytest.mark.e2e
+@pytest.mark.skip(
+    reason="Requires real DinoV3-based checkpoint with backbone parameters"
+)
 def test_extract_dinov3_backbone(tmp_path: Path) -> None:
     """Test DinoV3 backbone extraction.
 
@@ -50,6 +53,9 @@ def test_extract_dinov3_backbone(tmp_path: Path) -> None:
 
 
 @pytest.mark.e2e
+@pytest.mark.skip(
+    reason="Requires real WASBLightningModule checkpoint; mock checkpoint creation not feasible"
+)
 def test_encode_dinov3_patch_tokens(tmp_path: Path) -> None:
     """Test DinoV3 patch token encoding.
 
