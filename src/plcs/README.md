@@ -181,3 +181,27 @@ uv run python -m src.plcs.scripts.train_multiview run.dry_run=true
 - `configs/train_multiview.yaml`: マルチビュー学習メイン設定
 - `configs/data/multiview.yaml`: マルチビュー DataModule 設定
 - `configs/model/multiview.yaml`: マルチビューモデル設定
+
+### マルチビュー可視化
+
+学習済みマルチビューモデルを使用して予測結果を可視化します。
+
+```bash
+# Ground Truth の可視化
+uv run python -m src.plcs.scripts.visualize_multiview \
+    visualization.scene_path=data/plcs/scenes/scene_000003.npz
+
+# チェックポイントからの予測・可視化
+uv run python -m src.plcs.scripts.visualize_multiview \
+    visualization.mode=predict \
+    visualization.checkpoint=outputs/plcs_multiview/checkpoints/last.ckpt \
+    visualization.cameras=all
+
+# 比較アニメーション出力
+uv run python -m src.plcs.scripts.visualize_multiview \
+    visualization.mode=predict \
+    visualization.view=animation \
+    visualization.save=comparison.mp4
+```
+
+詳細は [docs/scripts/plcs/visualize_multiview.md](../../../docs/scripts/plcs/visualize_multiview.md) を参照。

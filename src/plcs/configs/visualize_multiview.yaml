@@ -1,0 +1,9 @@
+defaults:
+  - visualization: multiview
+  - _self_
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
