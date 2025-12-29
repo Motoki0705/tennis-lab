@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 import pytorch_lightning as pl
 import torch
-from torch.utils.data import DataLoader
 from omegaconf import OmegaConf
+from torch.utils.data import DataLoader
 
 from src.wasb.data.patch_embeddings_dataset import PatchEmbeddingsDataset
 

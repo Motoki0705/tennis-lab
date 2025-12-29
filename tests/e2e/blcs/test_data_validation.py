@@ -24,12 +24,10 @@ from tests.e2e.validation import (
     validate_blcs_sample,
     validate_blcs_scene_meta,
     validate_normalized_uv,
-    validate_tensor_range,
-    validate_tensor_shape,
 )
 
 if TYPE_CHECKING:
-    from omegaconf import DictConfig
+    pass
 
 
 @pytest.mark.e2e

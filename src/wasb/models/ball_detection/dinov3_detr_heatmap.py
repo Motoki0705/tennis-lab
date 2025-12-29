@@ -109,7 +109,7 @@ class DinoV3DETRHeatmap(nn.Module):
         # Embedding dim
         self.embed_dim = int(cfg.get("embed_dim", 384))
         if self.backbone is not None and hasattr(self.backbone, "embed_dim"):
-            self.embed_dim = int(getattr(self.backbone, "embed_dim"))
+            self.embed_dim = int(self.backbone.embed_dim)
 
         # Single learnable query token (expanded across B*T)
         self.query = nn.Parameter(torch.randn(1, 1, self.embed_dim) * 0.02)

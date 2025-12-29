@@ -10,6 +10,7 @@ import pytest
 from tests.e2e.fixtures.plcs_fixtures import (
     create_minimal_plcs_checkpoint,
     create_minimal_plcs_dataset,
+    create_minimal_plcs_sequence_checkpoint,
 )
 
 
@@ -106,7 +107,7 @@ def test_plcs_visualize_sequence_predict(tmp_path: Path) -> None:
     create_minimal_plcs_dataset(dataset_dir, num_scenes=1)
 
     checkpoint_path = tmp_path / "plcs_seq_model.ckpt"
-    create_minimal_plcs_checkpoint(checkpoint_path)
+    create_minimal_plcs_sequence_checkpoint(checkpoint_path)
 
     scene_path = next((dataset_dir / "scenes").glob("scene_*.npz"))
     output_path = tmp_path / "vis_seq_pred.png"
