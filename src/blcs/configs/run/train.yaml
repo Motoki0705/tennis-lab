@@ -3,4 +3,4 @@ seed: 42
 gpus: 1
 fast_dev_run: false
 resume: null
-
+dry_run: false
