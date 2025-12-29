@@ -1,79 +1,72 @@
-"""Shared fixtures and configuration for e2e tests."""
-
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import Any
+from types import ModuleType
+from typing import Any, TypeVar, cast
 
 import pytest
 
+F = TypeVar("F", bound=Callable[..., object])
 
-@pytest.fixture(scope="session")
+
+def typed_fixture(*args: Any, **kwargs: Any) -> Callable[[F], F]:
+    """Provide a typed pytest fixture decorator for mypy."""
+    return cast(Callable[[F], F], pytest.fixture(*args, **kwargs))
+
+
+@typed_fixture(scope="session")
+def schema_validators() -> ModuleType:
+    """Provide schema validation utilities module."""
+    from tests.e2e import validation
+
+    return cast(ModuleType, validation)
+
+
+@typed_fixture(scope="session")
 def tmp_output_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """Session-wide temporary output directory for training/inference outputs.
-
-    Args:
-        tmp_path_factory: pytest temp path factory
-
-    Returns:
-        Path: Temporary output directory
-
-    """
-    return tmp_path_factory.mktemp("outputs")
+    """Create a temp output directory for e2e runs."""
+    return Path(tmp_path_factory.mktemp("output"))
 
 
-@pytest.fixture(scope="session")
+@typed_fixture(scope="session")
 def tmp_data_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """Session-wide temporary data directory for test datasets.
-
-    Args:
-        tmp_path_factory: pytest temp path factory
-
-    Returns:
-        Path: Temporary data directory
-
-    """
-    return tmp_path_factory.mktemp("data")
+    """Create a temp data directory for e2e runs."""
+    return Path(tmp_path_factory.mktemp("data"))
 
 
-@pytest.fixture
-def run_hydra_script() -> Any:
-    """Helper fixture to execute Hydra scripts with overrides.
-
-    Returns:
-        Callable that executes a Hydra script and returns subprocess result.
-
-    """
+@typed_fixture(scope="session")
+def run_hydra_script(
+    tmp_output_dir: Path,
+    tmp_data_dir: Path,
+) -> Callable[[str, Sequence[str] | None, Path | None], subprocess.CompletedProcess[str]]:
+    """Run a Hydra-enabled module with standard temp dirs."""
 
     def _run(
-        module_name: str,
-        overrides: list[str] | None = None,
-        timeout: int = 300,
+        module: str,
+        extra_args: Sequence[str] | None = None,
+        cwd: Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
-        """Execute a Hydra script.
-
-        Args:
-            module_name: Python module name (e.g., "src.plcs.scripts.train")
-            overrides: List of Hydra config overrides (e.g., ["run.gpus=0"])
-            timeout: Timeout in seconds (default: 300s = 5 min)
-
-        Returns:
-            subprocess.CompletedProcess with stdout, stderr, and returncode
-
-        """
-        if overrides is None:
-            overrides = []
-
-        cmd = ["uv", "run", "python", "-m", module_name, *overrides]
-
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
+        args: Iterable[str] = (
+            "uv",
+            "run",
+            "--no-sync",
+            "python",
+            "-m",
+            module,
+            f"run.output_dir={tmp_output_dir}",
+            f"run.data_dir={tmp_data_dir}",
         )
-
-        return result
+        command = list(args)
+        if extra_args:
+            command.extend(extra_args)
+        return subprocess.run(
+            command,
+            check=False,
+            cwd=str(cwd) if cwd else None,
+            text=True,
+            capture_output=True,
+        )
 
     return _run
