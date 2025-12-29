@@ -6,8 +6,9 @@ for metadata, ensuring type safety throughout the BLCS pipeline.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, TypeVar
 
 import torch
 
@@ -146,3 +147,98 @@ class BLCSCameraParams:
             w=data["w"],
             h=data["h"],
         )
+
+# Pydantic schemas for runtime validation
+
+_T = TypeVar("_T")
+PYDANTIC_AVAILABLE: bool = False
+
+if TYPE_CHECKING:
+    class BaseModel:  # pragma: no cover - typing-only stub
+        pass
+
+    def Field(*args: Any, **kwargs: Any) -> Any:  # pragma: no cover - typing-only stub
+        return None
+
+    def field_validator(
+        *args: Any, **kwargs: Any
+    ) -> Callable[[Callable[..., _T]], Callable[..., _T]]:  # pragma: no cover
+        def decorator(func: Callable[..., _T]) -> Callable[..., _T]:
+            return func
+
+        return decorator
+
+    PYDANTIC_AVAILABLE = True
+else:
+    try:
+        from pydantic import BaseModel, Field, field_validator
+    except ImportError:
+        BaseModel = object  # type: ignore[assignment]
+
+        def Field(*args: Any, **kwargs: Any) -> Any:
+            return None
+
+        def field_validator(
+            *args: Any, **kwargs: Any
+        ) -> Callable[[Callable[..., _T]], Callable[..., _T]]:
+            def decorator(func: Callable[..., _T]) -> Callable[..., _T]:
+                return func
+
+            return decorator
+    else:
+        PYDANTIC_AVAILABLE = True
+
+
+class BLCSSceneMetaModel(BaseModel):
+    """Pydantic model for BLCS scene metadata with runtime validation.
+
+    Provides stronger validation than dataclass:
+    - Runtime type checking
+    - Value constraints (e.g., fps_out > 0)
+    - Coordinate range validation
+    """
+
+    scene_id: str = Field(..., min_length=1)
+    from_cell: int = Field(..., ge=0, le=11, description="Starting court cell (0-11)")
+    from_side: str = Field(..., pattern="^(near|far)$")
+    category: str = Field(..., description="Shot category")
+    to_cell: int = Field(..., ge=-1, le=11, description="-1 for out, 0-11 for cell")
+    t_net: int = Field(..., ge=-1, description="Frame when ball crosses net")
+    t_fence: int = Field(..., ge=-1)
+    t_bounce1: int = Field(..., ge=-1)
+    t_bounce2: int = Field(..., ge=-1)
+    fps_out: int = Field(..., gt=0)
+    sim_fps: int = Field(..., gt=0)
+    num_frames: int = Field(..., gt=0)
+    num_cameras_sampled: int = Field(..., ge=0)
+    num_cameras: int = Field(..., ge=0)
+
+    model_config = {"frozen": True}
+
+
+class BLCSCameraParamsModel(BaseModel):
+    """Pydantic model for camera parameters (same as PLCS)."""
+
+    center: list[float] = Field(..., min_length=3, max_length=3)
+    R: list[list[float]] = Field(..., description="3x3 rotation matrix")
+    f: float = Field(..., gt=0)
+    cx: float
+    cy: float
+    w: int = Field(..., gt=0)
+    h: int = Field(..., gt=0)
+
+    @field_validator("R")
+    @classmethod
+    def validate_rotation_matrix(cls, v: list[list[float]]) -> list[list[float]]:
+        if len(v) != 3 or any(len(row) != 3 for row in v):
+            raise ValueError("R must be 3x3 matrix")
+        return v
+
+    @field_validator("center")
+    @classmethod
+    def validate_center(cls, v: list[float]) -> list[float]:
+        if len(v) != 3:
+            raise ValueError("Center must have 3 coordinates")
+        return v
+
+    model_config = {"frozen": True}
