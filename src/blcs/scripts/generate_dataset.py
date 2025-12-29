@@ -24,7 +24,7 @@ import torch
 from hydra.utils import to_absolute_path
 
 from src.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
-from src.blcs.generate_dataset.projection.camera_projector import CameraConfig
+from src.utils.projection.camera_projector import CameraConfig
 from src.blcs.generate_dataset.sampling.distribution_sampler import SamplingConfig
 from src.blcs.generate_dataset.scene_generator import BLCSSceneGenerator, GeneratorConfig
 from src.blcs.simulation.ball_physics import PhysicsConfig
