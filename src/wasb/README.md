@@ -1,41 +1,227 @@
-# WASB / HRCNet（半自動アノテーション・データセット拡張）
+# WASB (Where's the Ball)
 
-`src/wasb` は、WASB/HRCNet 系のボール検出モデル等を用いた半自動アノテーション、およびテニスデータセット拡張のための実装です。
-動画からのフレーム抽出、ボール検出、クリップ分割、ラベル出力までを一連のパイプラインとして扱います。
+`src/wasb` は、テニス映像からのボール検出・軌道補完・イベント検出を行うタスク実装です。
+動画からのフレーム抽出、ボール検出、軌道補完、クリップ分割、ラベル出力までを一連のパイプラインとして扱います。
 
-## ディレクトリ構成（要点）
+## 目的 / 想定入出力
 
-- `configs/`: Hydra 設定（学習・生成・可視化などのエントリポイント YAML）
-- `data/`: データセット/動画入出力、DataModule、サンプリング等
-- `models/`: 検出・補完・セグメンテーション等のモデル実装
-- `training/`: LightningModule、学習ループ周辺
-- `inference/`: 予測器（WASB/HRCNet）、軌道補完など
-- `pipeline/`: エンドツーエンドのアノテーションパイプライン（例: `annotation_pipeline.py`）
-- `scripts/`: 実行スクリプト（Hydra 前提、学習/生成/可視化が中心）
-- `tennis_format.py`: `label.csv` 等の I/O ヘルパー（データセット形式の取り扱い）
-- `utils/`: ストリーミングローダ、動画抽出などの補助実装
+- **入力**: テニス映像（動画 or フレームシーケンス）
+- **出力**: フレームごとのボール位置、補完軌道、ショット/バウンスイベント
 
-## 代表的な実行コマンド（Hydra）
+## ディレクトリ構成
 
-データセット生成（入口）:
-- `uv run python -m src.wasb.scripts.generate_dataset`
+```
+src/wasb/
+├── configs/                          # Hydra 設定ファイル群
+│   │
+│   │ # 学習設定
+│   ├── train_ball_detection.yaml     # ボール検出学習メイン設定
+│   ├── train_trajectory.yaml         # 軌道補完学習メイン設定
+│   ├── train_event_detection.yaml    # イベント検出学習メイン設定
+│   │
+│   │ # データセット生成・可視化設定
+│   ├── generate_dataset.yaml         # データ生成メイン設定
+│   ├── download_videos.yaml          # 動画ダウンロード設定
+│   ├── clip_sampling.yaml            # クリップサンプリング設定
+│   ├── plot_ball_video.yaml          # ボール検出可視化設定
+│   ├── plot_ball_video_ensemble.yaml # アンサンブル可視化設定
+│   ├── visualize_trajectory.yaml     # 軌道可視化設定
+│   ├── save_one_sample_visuals.yaml  # サンプル確認設定
+│   ├── extract_dinov3_backbone.yaml  # DINOv3 バックボーン抽出設定
+│   ├── encode_dinov3_tokens.yaml     # パッチトークン事前計算設定
+│   │
+│   ├── run/                          # 実行時設定（タスク別）
+│   │   ├── ball_detection.yaml
+│   │   ├── trajectory.yaml
+│   │   ├── event_detection.yaml
+│   │   └── visualize_trajectory.yaml
+│   │
+│   ├── model/                        # モデルアーキテクチャ設定
+│   │   ├── dinov3_heatmap.yaml       # DINOv3 ViT + Heatmap head
+│   │   ├── dinov3_detr_heatmap.yaml  # DINOv3 + DETR デコーダ
+│   │   ├── hrcnet.yaml               # HRCNet（時間方向 Conv）
+│   │   ├── hrnet.yaml                # HRNet ベースライン
+│   │   ├── temporal_conv_gru.yaml    # Temporal Conv + GRU
+│   │   ├── trajectory_bilstm.yaml    # BiLSTM 軌道補完
+│   │   ├── trajectory_transformer.yaml # Transformer 軌道補完
+│   │   ├── trajectory_refiner.yaml   # 軌道リファイナ
+│   │   └── event_detection_transformer.yaml # イベント検出 Transformer
+│   │
+│   ├── data/                         # DataModule 設定
+│   │   ├── ball_detection.yaml
+│   │   ├── trajectory.yaml
+│   │   ├── event_detection.yaml
+│   │   └── patch_embeddings.yaml     # 事前計算パッチ用
+│   │
+│   ├── training/                     # 学習ハイパーパラメータ
+│   │   ├── ball_detection.yaml
+│   │   ├── trajectory.yaml
+│   │   └── event_detection.yaml
+│   │
+│   ├── loss/                         # 損失関数設定
+│   │   ├── ball_detection.yaml
+│   │   ├── trajectory.yaml
+│   │   └── event_detection.yaml
+│   │
+│   ├── metrics/                      # 評価指標設定
+│   │   ├── ball_detection.yaml
+│   │   ├── trajectory.yaml
+│   │   └── event_detection.yaml
+│   │
+│   ├── visualization/
+│   │   └── trajectory.yaml
+│   ├── pipeline/
+│   │   └── default.yaml
+│   ├── download/
+│   │   └── default.yaml
+│   └── logging/
+│       └── default.yaml
+│
+├── scripts/                          # 実行スクリプト（Hydra エントリポイント）
+│   ├── train/                        # 学習スクリプト
+│   │   ├── ball_detection.py         # ボール検出モデル学習
+│   │   ├── trajectory.py             # 軌道補完モデル学習
+│   │   └── event_detection.py        # イベント検出モデル学習
+│   │
+│   ├── generate_dataset/             # データセット生成
+│   │   ├── __main__.py               # エントリポイント（モード分岐）
+│   │   ├── batch.py                  # バッチ処理（動画→アノテーション）
+│   │   ├── clip_sampling.py          # クリッププレビュー・選別
+│   │   └── download_videos.py        # YouTube 動画ダウンロード
+│   │
+│   ├── visualize/                    # 可視化スクリプト
+│   │   ├── ball_video.py             # 単一モデル検出結果オーバーレイ
+│   │   ├── ball_video_ensemble.py    # アンサンブル検出オーバーレイ
+│   │   ├── trajectory.py             # 軌道補完結果可視化
+│   │   └── save_one_sample_visuals.py # データセットサンプル確認
+│   │
+│   └── tools/                        # ユーティリティ
+│       ├── extract_dinov3_backbone.py # DINOv3 バックボーン抽出
+│       └── encode_dinov3_patch_tokens.py # パッチトークン事前計算
+│
+├── models/                           # モデル実装
+│   ├── ball_detection/               # ボール検出モデル
+│   │   ├── dinov3_heatmap.py         # DINOv3 ViT + Heatmap デコーダ
+│   │   ├── dinov3_detr_heatmap.py    # DINOv3 + DETR スタイル
+│   │   ├── hrcnet.py                 # HRCNet（時間方向 Conv）
+│   │   ├── hrnet.py                  # HRNet ベースライン
+│   │   └── temporal_conv_gru.py      # Temporal Conv + GRU
+│   │
+│   ├── trajectory_completion/        # 軌道補完モデル
+│   │   ├── bilstm.py                 # BiLSTM ベース
+│   │   ├── transformer.py            # Transformer ベース
+│   │   ├── refiner.py                # 軌道リファイナ
+│   │   └── common.py                 # 共通コンポーネント
+│   │
+│   ├── event_detection/              # イベント検出モデル
+│   │   └── transformer.py            # Transformer 分類器
+│   │
+│   └── others/
+│       └── clip_segmenter.py         # クリップセグメンテーション
+│
+├── data/                             # データセット・DataModule
+│   ├── ball_detection_dataset.py     # ボール検出 Dataset
+│   ├── ball_detection_datamodule.py  # ボール検出 DataModule
+│   ├── trajectory_dataset.py         # 軌道補完 Dataset
+│   ├── trajectory_datamodule.py      # 軌道補完 DataModule
+│   ├── event_detection_dataset.py    # イベント検出 Dataset
+│   ├── event_detection_datamodule.py # イベント検出 DataModule
+│   ├── patch_embeddings_dataset.py   # 事前計算パッチ Dataset
+│   ├── patch_embeddings_datamodule.py
+│   └── curriculum_sampling.py        # カリキュラム学習サンプラー
+│
+├── training/                         # 学習関連
+│   ├── ball_detection/
+│   │   ├── lightning_module.py       # ボール検出 LightningModule
+│   │   ├── loss.py                   # Heatmap 損失（MSE、Focal 等）
+│   │   └── metrics.py                # 検出精度指標
+│   │
+│   ├── trajectory/
+│   │   ├── lightning_module.py       # 軌道補完 LightningModule
+│   │   ├── loss.py                   # 軌道損失
+│   │   └── metrics.py                # 補完精度指標
+│   │
+│   └── event_detection/
+│       ├── lightning_module.py       # イベント検出 LightningModule
+│       ├── loss.py                   # 分類損失
+│       └── metrics.py                # 分類精度指標
+│
+├── inference/                        # 推論
+│   ├── ball_detection/
+│   │   ├── wasb_predictor.py         # WASB モデル推論
+│   │   ├── hrcnet_predictor.py       # HRCNet 推論
+│   │   └── heatmap_ensemble_predictor.py # アンサンブル推論
+│   │
+│   ├── trajectory/
+│   │   └── trajectory_completion.py  # 軌道補完推論
+│   │
+│   └── event_detection/
+│       └── event_detection_predictor.py # イベント検出推論
+│
+├── pipeline/                         # エンドツーエンドパイプライン
+│   ├── annotation_pipeline.py        # 半自動アノテーション
+│   └── video_ball_localization_pipeline.py # 動画からボール位置抽出
+│
+├── tennis_format.py                  # label.csv 等の I/O ヘルパー
+│
+├── utils/                            # ユーティリティ
+│   ├── video_extractor.py            # 動画フレーム抽出
+│   ├── streaming_loader.py           # ストリーミングローダ
+│   └── checkpoint.py                 # チェックポイント操作
+│
+└── demo/
+    └── wasb_ball_detection.py        # デモアプリ
+```
 
-データセット生成（各ステップ）:
-- `uv run python -m src.wasb.scripts.generate_dataset.download_videos`
-- `uv run python -m src.wasb.scripts.generate_dataset.clip_sampling`
-- `uv run python -m src.wasb.scripts.generate_dataset.batch`
+## 主要コンポーネントの関係
 
-学習:
-- `uv run python -m src.wasb.scripts.train.ball_detection`
-- `uv run python -m src.wasb.scripts.train.trajectory`
-- `uv run python -m src.wasb.scripts.train.event_detection`
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ データセット生成パイプライン                                     │
+│   download_videos.py → batch.py → clip_sampling.py              │
+│   └── → data/tennis/clips/                                      │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ 学習パイプライン                                                 │
+│   train/ball_detection.py                                       │
+│   ├── data/ball_detection_datamodule.py                         │
+│   ├── models/ball_detection/*.py                                │
+│   └── training/ball_detection/lightning_module.py               │
+│                                                                 │
+│   train/trajectory.py                                           │
+│   ├── data/trajectory_datamodule.py                             │
+│   ├── models/trajectory_completion/*.py                         │
+│   └── training/trajectory/lightning_module.py                   │
+│                                                                 │
+│   train/event_detection.py                                      │
+│   ├── data/event_detection_datamodule.py                        │
+│   ├── models/event_detection/*.py                               │
+│   └── training/event_detection/lightning_module.py              │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ 推論パイプライン                                                 │
+│   pipeline/video_ball_localization_pipeline.py                  │
+│   ├── inference/ball_detection/*_predictor.py                   │
+│   ├── inference/trajectory/trajectory_completion.py             │
+│   └── inference/event_detection/event_detection_predictor.py    │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-可視化:
-- `uv run python -m src.wasb.scripts.visualize.trajectory`
-- `uv run python -m src.wasb.scripts.visualize.ball_video`
-- `uv run python -m src.wasb.scripts.visualize.ball_video_ensemble`
+## 実行コマンド
 
-## 設定の入口（例）
+詳細は [docs/scripts/wasb/](../../../docs/scripts/wasb/) を参照。
 
-- ボール検出学習: `src/wasb/configs/train_ball_detection.yaml`（実行時の共通ランタイムは `src/wasb/configs/run/ball_detection.yaml`）
-- スクリプトごとの `Config entry point` は、各 `src/wasb/scripts/**.py` の docstring を参照してください。
+```bash
+# データセット生成
+uv run python -m src.wasb.scripts.generate_dataset
+
+# 学習
+uv run python -m src.wasb.scripts.train.ball_detection
+uv run python -m src.wasb.scripts.train.trajectory
+uv run python -m src.wasb.scripts.train.event_detection
+
+# 可視化
+uv run python -m src.wasb.scripts.visualize.ball_video
+```
