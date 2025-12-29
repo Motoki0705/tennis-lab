@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import torch
-from torch import Tensor
 from torch.utils.data import Dataset
 
+from src.base.data.augmentation import augment_keypoints
 from src.plcs.data.types import PLCSFrameBatch
 from src.plcs.generate_dataset.io.dataset_io import load_scene
 
@@ -127,8 +127,12 @@ class SceneDataset(Dataset[PLCSFrameBatch]):
 
         # Apply augmentation
         if self.augment:
-            human_kp, human_vis = self._augment_keypoints(human_kp, human_vis)
-            court_kp, court_vis = self._augment_keypoints(court_kp, court_vis)
+            human_kp, human_vis = augment_keypoints(
+                human_kp, human_vis, self.kp_noise_std, self.visibility_drop_prob
+            )
+            court_kp, court_vis = augment_keypoints(
+                court_kp, court_vis, self.kp_noise_std, self.visibility_drop_prob
+            )
 
         # Apply visibility mask
         human_kp_masked = human_kp.clone()
@@ -145,30 +149,3 @@ class SceneDataset(Dataset[PLCSFrameBatch]):
             "position": position.float(),  # (3,)
             "rotation": rotation.float(),  # (2,)
         }
-
-    def _augment_keypoints(
-        self,
-        keypoints: Tensor,
-        visibility: Tensor,
-    ) -> tuple[Tensor, Tensor]:
-        """Apply augmentation to keypoints.
-
-        Args:
-            keypoints: Keypoint coordinates, shape (N, 2).
-            visibility: Visibility mask, shape (N,).
-
-        Returns:
-            tuple: Augmented keypoints and visibility.
-
-        """
-        # Add Gaussian noise
-        if self.kp_noise_std > 0:
-            noise = torch.randn_like(keypoints) * self.kp_noise_std
-            keypoints = keypoints + noise
-
-        # Random visibility dropout
-        if self.visibility_drop_prob > 0:
-            drop_mask = torch.rand(visibility.shape) < self.visibility_drop_prob
-            visibility = visibility & ~drop_mask
-
-        return keypoints, visibility
