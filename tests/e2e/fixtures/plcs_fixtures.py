@@ -13,6 +13,8 @@ from src.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
 from src.plcs.generate_dataset.scene_generator import CameraData, SceneData
 from src.plcs.models.plcs_model import PLCSModel
 from src.plcs.training.lightning_module import PLCSLightningModule
+from src.plcs.models.plcs_sequence_model import PLCSSequenceModel
+from src.plcs.training.sequence_lightning_module import PLCSSequenceLightningModule
 
 
 def make_minimal_plcs_scene(*, scene_id: str = "scene_000000") -> SceneData:
@@ -219,7 +221,7 @@ def create_minimal_plcs_sequence_checkpoint(checkpoint_path: Path | str) -> Path
     """Create a minimal PLCS sequence model checkpoint for testing.
 
     This creates a minimal PyTorch Lightning checkpoint for the sequence model
-    that can be loaded by PLCSPredictor.load_from_checkpoint().
+    that can be loaded by PLCSSequencePredictor.load_from_checkpoint().
 
     Args:
         checkpoint_path: Path where checkpoint will be saved
@@ -233,24 +235,22 @@ def create_minimal_plcs_sequence_checkpoint(checkpoint_path: Path | str) -> Path
 
     # Create model matching sequence config
     # See: src/plcs/configs/model/sequence.yaml
-    model = PLCSModel(
+    model = PLCSSequenceModel(
         hidden_dim=256,
-        num_layers=8,
+        num_layers=4,  # Use smaller for faster test
         num_heads=8,
         dropout=0.1,
-        use_transformer=True,
-        use_combined_head=False,
+        max_seq_len=120,
     )
 
     # Create Lightning module with matching config
     config = {
         "model": {
             "hidden_dim": 256,
-            "num_layers": 8,
+            "num_layers": 4,
             "num_heads": 8,
             "dropout": 0.1,
-            "use_transformer": True,
-            "use_combined_head": False,
+            "max_seq_len": 120,
         },
         "training": {
             "learning_rate": 1e-4,
@@ -258,7 +258,7 @@ def create_minimal_plcs_sequence_checkpoint(checkpoint_path: Path | str) -> Path
         },
     }
 
-    lightning_module = PLCSLightningModule(config=config)
+    lightning_module = PLCSSequenceLightningModule(config=config)
     lightning_module.model = model
 
     # Create checkpoint with pytorch-lightning_version
