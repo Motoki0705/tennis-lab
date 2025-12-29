@@ -56,6 +56,7 @@ def make_minimal_blcs_scene(*, scene_id: str = "scene_000000") -> BLCSSceneData:
     # Create minimal camera with all required keys
     camera_params = {
         "center": [0.0, 0.0, 5.0],
+        "R": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
         "f": 1000.0,
         "cx": 640.0,
         "cy": 360.0,
