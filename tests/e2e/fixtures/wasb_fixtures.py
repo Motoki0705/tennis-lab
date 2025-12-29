@@ -6,6 +6,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import pytorch_lightning as pl
 import torch
 
 
@@ -93,6 +94,7 @@ def create_minimal_wasb_checkpoint(checkpoint_path: Path | str) -> Path:
         },
         "epoch": 0,
         "global_step": 0,
+        "pytorch-lightning_version": pl.__version__,
     }
 
     torch.save(checkpoint, checkpoint_path)

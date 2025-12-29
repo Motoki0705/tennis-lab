@@ -1,4 +1,4 @@
-scene_dir: data/plcs/scenes
+scene_dir: data/plcs
 batch_size: 64
 num_workers: 4
 val_split: 0.1
