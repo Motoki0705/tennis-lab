@@ -122,3 +122,62 @@ uv run python -m src.plcs.scripts.train_sequence
 # 可視化
 uv run python -m src.plcs.scripts.visualize
 ```
+
+## マルチビュー推定（Multi-View Inference）
+
+複数カメラからの観測を統合して、より高精度にプレイヤーの位置・回転を推定する機能です。
+
+### 概要
+
+単一カメラでは遮蔽や視野角の制約により推定精度が制限される場合がありますが、
+マルチビューでは複数視点からの情報を融合することで、より堅牢な推定が可能になります。
+
+### 主要コンポーネント
+
+- **MultiViewSceneDataset** (`data/multiview_dataset.py`):
+  複数カメラの観測をまとめて返す Dataset。`num_views` パラメータで同時に使用するカメラ数を指定。
+
+- **PLCSMultiViewModel** (`models/plcs_multiview_model.py`):
+  複数視点からの入力を受け取り、統合した上で3D位置・回転を出力するモデル。
+  ※現在はスケルトン実装（view mean pooling）のみ。アーキテクチャは今後拡張予定。
+
+- **PLCSMultiViewLightningModule** (`training/multiview_lightning_module.py`):
+  マルチビューモデル用の Lightning モジュール。
+
+- **PLCSMultiViewDataModule** (`data/datamodule.py`):
+  マルチビュー Dataset を管理する DataModule。
+
+### 入出力形式
+
+**入力**:
+- `human_kp`: `(B, N, 17, 2)` - 各カメラからの2D人物キーポイント（B: バッチ, N: カメラ数）
+- `court_kp`: `(B, N, 20, 2)` - 各カメラからの2Dコートキーポイント
+- `human_kp_mask`: `(B, N, 17)` - 人物キーポイント可視性マスク
+- `court_kp_mask`: `(B, N, 20)` - コートキーポイント可視性マスク
+- `view_mask`: `(B, N)` - 有効なカメラのマスク（パディング用）
+
+**出力**:
+- `position`: `(B, 3)` - 3D位置（コート座標系）
+- `rotation`: `(B, 2)` - 回転（sin/cos）
+
+### 実行コマンド
+
+```bash
+# マルチビュー学習
+uv run python -m src.plcs.scripts.train_multiview
+
+# カスタム設定
+uv run python -m src.plcs.scripts.train_multiview \
+    data.num_views=4 \
+    data.min_cameras=2 \
+    training.max_epochs=100
+
+# Dry Run（データローディングのみ確認）
+uv run python -m src.plcs.scripts.train_multiview run.dry_run=true
+```
+
+### 設定ファイル
+
+- `configs/train_multiview.yaml`: マルチビュー学習メイン設定
+- `configs/data/multiview.yaml`: マルチビュー DataModule 設定
+- `configs/model/multiview.yaml`: マルチビューモデル設定
