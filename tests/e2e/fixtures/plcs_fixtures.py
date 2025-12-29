@@ -12,14 +12,16 @@ import torch
 from src.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
 from src.plcs.generate_dataset.scene_generator import CameraData, SceneData
 from src.plcs.models.plcs_model import PLCSModel
+from src.plcs.models.plcs_sequence_model import PLCSSequenceModel
 from src.plcs.training.lightning_module import PLCSLightningModule
+from src.plcs.training.sequence_lightning_module import PLCSSequenceLightningModule
 
 
 def make_minimal_plcs_scene(*, scene_id: str = "scene_000000") -> SceneData:
     """Create a minimal PLCS scene for testing.
 
     This function creates a minimal SceneData object with:
-    - 2 frames
+    - 64 frames (enough for sequence model with seq_len=32)
     - 5 joints (reduced from full 17)
     - 1 camera
 
@@ -32,7 +34,7 @@ def make_minimal_plcs_scene(*, scene_id: str = "scene_000000") -> SceneData:
         SceneData: Minimal scene data for testing
 
     """
-    num_frames = 2
+    num_frames = 64  # Needs to be >= seq_len (32) for sequence models
     num_joints = 5
     num_cameras = 1
 
@@ -49,7 +51,7 @@ def make_minimal_plcs_scene(*, scene_id: str = "scene_000000") -> SceneData:
     }
 
     position = np.arange(num_frames * 3, dtype=np.float32).reshape(num_frames, 3) / 10
-    rotation = np.array([[0.0, 1.0], [0.5, 0.5]], dtype=np.float32)
+    rotation = np.tile(np.array([[0.0, 1.0]], dtype=np.float32), (num_frames, 1))
     canonical_pose_3d = (
         np.arange(num_frames * num_joints * 3, dtype=np.float32).reshape(
             num_frames, num_joints, 3
@@ -129,8 +131,8 @@ def create_minimal_plcs_dataset(
         scene = make_minimal_plcs_scene(scene_id=scene_id)
         writer.save_scene(scene)
 
-    # Create split files
-    scene_ids = [f"scene_{i:06d}" for i in range(num_scenes)]
+    # Create split files (include .npz extension for dataset loader compatibility)
+    scene_ids = [f"scene_{i:06d}.npz" for i in range(num_scenes)]
 
     # 70% train, 15% val, 15% test
     num_train = int(num_scenes * 0.7)
@@ -163,22 +165,23 @@ def create_minimal_plcs_checkpoint(checkpoint_path: Path | str) -> Path:
     checkpoint_path = Path(checkpoint_path)
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Create minimal model with small dimensions for fast initialization
+    # Create model matching default config
+    # See: src/plcs/configs/model/frame.yaml
     model = PLCSModel(
-        hidden_dim=64,
-        num_layers=2,
-        num_heads=4,
+        hidden_dim=256,
+        num_layers=4,
+        num_heads=8,
         dropout=0.1,
         use_transformer=True,
         use_combined_head=False,
     )
 
-    # Create Lightning module
+    # Create Lightning module with matching config
     config = {
         "model": {
-            "hidden_dim": 64,
-            "num_layers": 2,
-            "num_heads": 4,
+            "hidden_dim": 256,
+            "num_layers": 4,
+            "num_heads": 8,
             "dropout": 0.1,
             "use_transformer": True,
             "use_combined_head": False,
@@ -199,6 +202,64 @@ def create_minimal_plcs_checkpoint(checkpoint_path: Path | str) -> Path:
         enable_checkpointing=False,
         logger=False,
     )
+
+    # Create checkpoint with pytorch-lightning_version
+    checkpoint = {
+        "state_dict": lightning_module.state_dict(),
+        "hyper_parameters": config,
+        "epoch": 0,
+        "global_step": 0,
+        "pytorch-lightning_version": pl.__version__,
+    }
+
+    torch.save(checkpoint, checkpoint_path)
+
+    return checkpoint_path
+
+
+def create_minimal_plcs_sequence_checkpoint(checkpoint_path: Path | str) -> Path:
+    """Create a minimal PLCS sequence model checkpoint for testing.
+
+    This creates a minimal PyTorch Lightning checkpoint for the sequence model
+    that can be loaded by PLCSSequencePredictor.load_from_checkpoint().
+
+    Args:
+        checkpoint_path: Path where checkpoint will be saved
+
+    Returns:
+        Path: Checkpoint path
+
+    """
+    checkpoint_path = Path(checkpoint_path)
+    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Create model matching sequence config
+    # See: src/plcs/configs/model/sequence.yaml
+    model = PLCSSequenceModel(
+        hidden_dim=256,
+        num_layers=4,  # Use smaller for faster test
+        num_heads=8,
+        dropout=0.1,
+        max_seq_len=120,
+    )
+
+    # Create Lightning module with matching config
+    config = {
+        "model": {
+            "hidden_dim": 256,
+            "num_layers": 4,
+            "num_heads": 8,
+            "dropout": 0.1,
+            "max_seq_len": 120,
+        },
+        "training": {
+            "learning_rate": 1e-4,
+            "weight_decay": 0.0,
+        },
+    }
+
+    lightning_module = PLCSSequenceLightningModule(config=config)
+    lightning_module.model = model
 
     # Create checkpoint with pytorch-lightning_version
     checkpoint = {

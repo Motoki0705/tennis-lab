@@ -158,7 +158,7 @@ def _save_visuals(
 
 
 @hydra.main(
-    config_path="../configs",
+    config_path="../../configs",
     config_name="save_one_sample_visuals",
     version_base="1.3",
 )

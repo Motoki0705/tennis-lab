@@ -46,9 +46,10 @@ def test_wasb_ball_detection_train_dry_run(tmp_path: Path) -> None:
 
     assert result.returncode == 0, f"Dry run failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
 
-    # Check dry run directory exists
-    dry_run_dir = output_dir / "dry_run"
-    assert dry_run_dir.exists(), "Dry run directory was not created"
+    # Check dry run directory exists (output is in {output_dir}/{model_name}/dry_run)
+    # The default model is dinov3_fpn_heatmap
+    dry_run_dirs = list(output_dir.glob("*/dry_run"))
+    assert len(dry_run_dirs) > 0, f"Dry run directory was not created in {output_dir}"
 
 
 @pytest.mark.e2e
@@ -89,9 +90,8 @@ def test_wasb_ball_detection_train_fast_dev(tmp_path: Path) -> None:
 
     assert result.returncode == 0, f"Training failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
 
-    # Check that checkpoint directory exists
-    checkpoint_pattern = output_dir / "logs" / "version_*" / "checkpoints"
-    checkpoint_dirs = list(output_dir.glob("logs/version_*/checkpoints"))
+    # Check that checkpoint directory exists (output is in {output_dir}/{model_name}/logs/...)
+    checkpoint_dirs = list(output_dir.glob("*/logs/version_*/checkpoints"))
 
     assert len(checkpoint_dirs) > 0, "No checkpoint directory was created"
 

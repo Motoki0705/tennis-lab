@@ -28,10 +28,10 @@ Hydra parameters:
 
 from __future__ import annotations
 
-import logging
-from pathlib import Path
 import json
-from typing import Iterable, Sequence
+import logging
+from collections.abc import Sequence
+from pathlib import Path
 
 import hydra
 import numpy as np

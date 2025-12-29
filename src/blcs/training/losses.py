@@ -8,6 +8,7 @@ from torch import Tensor
 
 from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
+
 def trajectory_position_loss(
     pred: Tensor,
     target: Tensor,
