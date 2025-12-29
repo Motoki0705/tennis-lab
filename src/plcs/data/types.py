@@ -6,8 +6,9 @@ for metadata, ensuring type safety throughout the PLCS pipeline.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, TypeVar
 
 import torch
 
@@ -130,3 +131,108 @@ class PLCSCameraParams:
             w=data["w"],
             h=data["h"],
         )
+
+# Pydantic schemas for runtime validation
+# These provide stronger validation than dataclasses
+
+_T = TypeVar("_T")
+PYDANTIC_AVAILABLE: bool = False
+
+if TYPE_CHECKING:
+    class BaseModel:  # pragma: no cover - typing-only stub
+        pass
+
+    def Field(*args: Any, **kwargs: Any) -> Any:  # pragma: no cover - typing-only stub
+        return None
+
+    def field_validator(
+        *args: Any, **kwargs: Any
+    ) -> Callable[[Callable[..., _T]], Callable[..., _T]]:  # pragma: no cover
+        def decorator(func: Callable[..., _T]) -> Callable[..., _T]:
+            return func
+
+        return decorator
+
+    PYDANTIC_AVAILABLE = True
+else:
+    try:
+        from pydantic import BaseModel, Field, field_validator
+    except ImportError:
+        BaseModel = object  # type: ignore[assignment]
+
+        def Field(*args: Any, **kwargs: Any) -> Any:
+            return None
+
+        def field_validator(
+            *args: Any, **kwargs: Any
+        ) -> Callable[[Callable[..., _T]], Callable[..., _T]]:
+            def decorator(func: Callable[..., _T]) -> Callable[..., _T]:
+                return func
+
+            return decorator
+    else:
+        PYDANTIC_AVAILABLE = True
+
+
+class PLCSSceneMetaModel(BaseModel):
+    """Pydantic model for PLCS scene metadata with runtime validation.
+
+    This provides stronger validation than the dataclass version:
+    - Type validation at runtime
+    - Value constraints (e.g., fps > 0)
+    - Automatic JSON serialization/deserialization
+    """
+
+    scene_id: str = Field(..., min_length=1, description="Unique scene identifier")
+    motion_source: str = Field(..., description="Motion data source (e.g., 'amass')")
+    motion_category: str = Field(..., description="Motion category (e.g., 'walk', 'run')")
+    gender: str = Field(..., pattern="^(male|female|neutral)$", description="Gender")
+    fps: int = Field(..., gt=0, description="Frames per second")
+    num_frames: int = Field(..., gt=0, description="Total number of frames")
+    initial_position: list[float] = Field(..., min_length=3, max_length=3)
+    initial_yaw: float
+    num_cameras_sampled: int = Field(..., ge=0)
+    num_cameras: int = Field(..., ge=0)
+
+    @field_validator("initial_position")
+    @classmethod
+    def validate_position(cls, v: list[float]) -> list[float]:
+        """Validate that position has exactly 3 coordinates."""
+        if len(v) != 3:
+            raise ValueError(f"Position must have 3 coordinates, got {len(v)}")
+        return v
+
+    model_config = {"frozen": True}  # Immutable like dataclass(frozen=True)
+
+
+class PLCSCameraParamsModel(BaseModel):
+    """Pydantic model for camera parameters with validation."""
+
+    center: list[float] = Field(..., min_length=3, max_length=3)
+    R: list[list[float]] = Field(..., description="3x3 rotation matrix")
+    f: float = Field(..., gt=0, description="Focal length in pixels")
+    cx: float = Field(..., description="Principal point x")
+    cy: float = Field(..., description="Principal point y")
+    w: int = Field(..., gt=0, description="Image width")
+    h: int = Field(..., gt=0, description="Image height")
+
+    @field_validator("R")
+    @classmethod
+    def validate_rotation_matrix(cls, v: list[list[float]]) -> list[list[float]]:
+        """Validate 3x3 rotation matrix shape."""
+        if len(v) != 3:
+            raise ValueError(f"R must have 3 rows, got {len(v)}")
+        for i, row in enumerate(v):
+            if len(row) != 3:
+                raise ValueError(f"R row {i} must have 3 columns, got {len(row)}")
+        return v
+
+    @field_validator("center")
+    @classmethod
+    def validate_center(cls, v: list[float]) -> list[float]:
+        """Validate center has 3 coordinates."""
+        if len(v) != 3:
+            raise ValueError(f"Center must have 3 coordinates, got {len(v)}")
+        return v
+
+    model_config = {"frozen": True}
