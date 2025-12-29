@@ -10,6 +10,11 @@ from src.utils.geometry.constants import (
     # Human keypoints (COCO-17)
     COCO_KP_IDX,
     COCO_KP_NAMES,
+    # Court coordinate normalization scales
+    COURT_COORD_SCALE_X,
+    COURT_COORD_SCALE_XYZ,
+    COURT_COORD_SCALE_Y,
+    COURT_COORD_SCALE_Z,
     # Court keypoints
     COURT_KP_IDX,
     COURT_KP_NAMES,
@@ -25,11 +30,6 @@ from src.utils.geometry.constants import (
     SMPLH_BODY_JOINT_NAMES,
     SMPLH_JOINT_IDX,
     SMPLH_TO_COCO17_MAPPING,
-    # Court coordinate normalization scales
-    COURT_COORD_SCALE_X,
-    COURT_COORD_SCALE_Y,
-    COURT_COORD_SCALE_Z,
-    COURT_COORD_SCALE_XYZ,
 )
 from src.utils.geometry.court import (
     # Court dimensions

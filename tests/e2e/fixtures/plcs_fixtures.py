@@ -12,8 +12,8 @@ import torch
 from src.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
 from src.plcs.generate_dataset.scene_generator import CameraData, SceneData
 from src.plcs.models.plcs_model import PLCSModel
-from src.plcs.training.lightning_module import PLCSLightningModule
 from src.plcs.models.plcs_sequence_model import PLCSSequenceModel
+from src.plcs.training.lightning_module import PLCSLightningModule
 from src.plcs.training.sequence_lightning_module import PLCSSequenceLightningModule
 
 

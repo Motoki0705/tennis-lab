@@ -101,7 +101,7 @@ def save_input_scene(scene: dict[str, Any], cfg: RuntimeConfig) -> None:
     meta = scene["meta"]
     fps = cfg.fps or float(meta.get("fps_out", 30.0))
 
-    print(f"Creating 2D input scene animation (camera view)...")
+    print("Creating 2D input scene animation (camera view)...")
     anim = renderer.create_animation(
         scene,
         view="camera",

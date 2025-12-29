@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
 
 import torch
 from torch import Tensor, nn

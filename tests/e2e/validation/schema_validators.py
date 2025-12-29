@@ -20,7 +20,6 @@ from tests.e2e.validation.tensor_validators import (
     validate_visibility_mask,
 )
 
-
 # =============================================================================
 # BLCS Schema Validators
 # =============================================================================
@@ -265,9 +264,7 @@ def validate_blcs_camera_params(params: dict[str, Any]) -> list[str]:
 
     # Validate R (3x3 matrix)
     R = params["R"]
-    if not isinstance(R, list) or len(R) != 3:
-        errors.append("R: expected 3x3 matrix")
-    elif any(not isinstance(row, list) or len(row) != 3 for row in R):
+    if not isinstance(R, list) or len(R) != 3 or any(not isinstance(row, list) or len(row) != 3 for row in R):
         errors.append("R: expected 3x3 matrix")
 
     # Validate scalar fields
