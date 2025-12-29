@@ -8,6 +8,6 @@ Subpackages:
 
 from __future__ import annotations
 
-from src.wasb.scripts.generate_dataset import clip_sampling
+# from src.wasb.scripts.generate_dataset import clip_sampling
 
-__all__ = ["clip_sampling"]
+# __all__ = ["clip_sampling"]
