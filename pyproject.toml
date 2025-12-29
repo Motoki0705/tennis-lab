@@ -239,6 +239,7 @@ markers = [
     "e2e: End-to-end tests for complete workflows",
     "slow: Slow running tests",
     "local_data: Tests requiring large local datasets/models (not for CI)",
+    "cuda: Tests requiring CUDA/GPU (skipped if GPU unavailable)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
