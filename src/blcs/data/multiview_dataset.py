@@ -90,10 +90,13 @@ class MultiViewBallTrajectoryDataset(Dataset):
     def _load_split_file(self, split_file: str | Path) -> list[Path]:
         """Load scene list from split file."""
         split_path = Path(split_file)
-        if not split_path.is_absolute():
+        # If path exists as-is, use it directly
+        if not split_path.exists() and not split_path.is_absolute():
             if self.scene_dir is None:
                 raise ValueError("scene_dir must be set to use relative split_file")
-            split_path = self.scene_dir / split_file
+            # Only prepend scene_dir for simple filenames like "train.txt"
+            if split_path.parent == Path("."):
+                split_path = self.scene_dir / split_file
 
         scenes = []
         with open(split_path) as f:

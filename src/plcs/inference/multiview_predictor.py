@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, ParamSpec, Self, TypeVar, cast
 
 import torch
 from torch import Tensor
@@ -12,6 +13,13 @@ from src.base.api.predictor import BasePredictor
 from src.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.plcs.training.multiview_lightning_module import PLCSMultiViewLightningModule
 from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def _no_grad(func: Callable[P, R]) -> Callable[P, R]:
+    return cast(Callable[P, R], torch.no_grad()(func))
 
 
 class PLCSMultiViewPredictor(BasePredictor):
@@ -82,11 +90,12 @@ class PLCSMultiViewPredictor(BasePredictor):
             strict=False,
             checkpoint_path=checkpoint_path,
             map_location=device,
+            weights_only=False,
         )
 
         return cls(model=lightning_module.model, device=device)
 
-    @torch.no_grad()
+    @_no_grad
     def predict(
         self,
         human_kp: Tensor,
@@ -163,7 +172,7 @@ class PLCSMultiViewPredictor(BasePredictor):
 
         return result
 
-    @torch.no_grad()
+    @_no_grad
     def predict_sequence(
         self,
         human_kp_seq: Tensor,
