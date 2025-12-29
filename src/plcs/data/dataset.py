@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 
 from src.base.data.augmentation import augment_keypoints
 from src.plcs.data.types import PLCSFrameBatch
-from src.plcs.generate_dataset.io.dataset_io import load_scene
+from src.plcs.generate_dataset.io.scene_loader import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

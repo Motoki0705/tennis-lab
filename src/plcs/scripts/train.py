@@ -3,16 +3,24 @@
 Example commands:
     `uv run python -m src.plcs.scripts.train`
     `uv run python -m src.plcs.scripts.train run.gpus=0 training.max_epochs=1`
+    `uv run python -m src.plcs.scripts.train run.dry_run=true`
 
 Config entry point: `src/plcs/configs/train.yaml`
 """
 
+# mypy: disable-error-code=misc
+
 from __future__ import annotations
 
+import os
+import types
+from collections.abc import Callable
 from pathlib import Path
+from typing import TypeVar, cast
 
 import hydra
 import pytorch_lightning as pl
+import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import (
@@ -38,7 +46,66 @@ def _ensure_absolute(path: str | None) -> str | None:
     """Convert relative paths to absolute paths using the original CWD."""
     if path is None:
         return None
-    return to_absolute_path(path)
+    return str(to_absolute_path(path))
+
+
+F = TypeVar("F", bound=Callable[..., object])
+hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)
+
+
+def run_dry_run(config: DictConfig, output_dir: Path) -> None:
+    """Verify config and dataloader by loading a single batch.
+
+    Forces CPU mode to avoid CUDA init failures in restricted environments.
+    """
+    print("Running dry run (no training)...")
+    # Force CPU-only to avoid CUDA init failures in restricted environments.
+    os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
+    torch.cuda.is_available = types.MethodType(lambda *_args, **_kwargs: False, torch.cuda)
+    torch.cuda.device_count = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)
+    torch.cuda.current_device = types.MethodType(lambda *_args, **_kwargs: 0, torch.cuda)
+
+    is_sequence = str(config.data.mode) == "sequence"
+    if is_sequence:
+        data_module = PLCSSequenceDataModule(config)
+        model = PLCSSequenceLightningModule(config)
+    else:
+        data_module = PLCSDataModule(config)
+        model = PLCSLightningModule(config)
+
+    data_module.num_workers = 0  # Avoid multiprocessing in restricted environments
+    data_module.pin_memory = False
+    data_module.setup(stage="fit")
+    train_loader = data_module.train_dataloader()
+    batch = next(iter(train_loader))
+
+    # Print batch shapes
+    if isinstance(batch, dict):
+        print("Loaded batch:")
+        for key, value in batch.items():
+            if hasattr(value, "shape"):
+                print(f"  {key}: {tuple(value.shape)}")
+    elif isinstance(batch, (list, tuple)) and len(batch) >= 2:
+        inputs, targets = batch[0], batch[1]
+        if hasattr(inputs, "shape"):
+            print(f"Loaded batch: inputs {tuple(inputs.shape)}")
+        if hasattr(targets, "shape"):
+            print(f"  targets {tuple(targets.shape)}")
+
+    trainer = pl.Trainer(
+        max_epochs=1,
+        limit_train_batches=1,
+        limit_val_batches=0,
+        num_sanity_val_steps=0,
+        accelerator="cpu",
+        devices=1,
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+    )
+
+    trainer.fit(model, datamodule=data_module)
+    print(f"Dry run complete. Outputs saved to {output_dir}")
 
 
 def run_training(config: DictConfig) -> None:
@@ -50,6 +117,11 @@ def run_training(config: DictConfig) -> None:
 
     # Save resolved config for reproducibility
     OmegaConf.save(config, output_dir / "config.yaml")
+
+    # Check for dry run
+    if getattr(config.run, "dry_run", False):
+        run_dry_run(config, output_dir)
+        return
 
     is_sequence = str(config.data.mode) == "sequence"
     if is_sequence:
