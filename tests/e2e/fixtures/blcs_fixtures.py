@@ -132,8 +132,8 @@ def create_minimal_blcs_dataset(
         scene = make_minimal_blcs_scene(scene_id=scene_id)
         writer.save_scene(scene)
 
-    # Create split files
-    scene_ids = [f"scene_{i:06d}" for i in range(num_scenes)]
+    # Create split files (include .npz extension for dataset loader compatibility)
+    scene_ids = [f"scene_{i:06d}.npz" for i in range(num_scenes)]
 
     # 70% train, 15% val, 15% test
     num_train = int(num_scenes * 0.7)
@@ -166,23 +166,24 @@ def create_minimal_blcs_checkpoint(checkpoint_path: Path | str) -> Path:
     checkpoint_path = Path(checkpoint_path)
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Create minimal model with correct constructor arguments
+    # Create model matching default config
+    # See: src/blcs/configs/model/default.yaml
     model = BLCSModel(
-        hidden_dim=64,
-        num_layers=2,
-        num_heads=4,
+        hidden_dim=256,
+        num_layers=6,
+        num_heads=8,
         dropout=0.1,
         max_seq_len=120,
         use_cross_attention=True,
         predict_velocity=False,
     )
 
-    # Create Lightning module
+    # Create Lightning module with matching config
     config = {
         "model": {
-            "hidden_dim": 64,
-            "num_layers": 2,
-            "num_heads": 4,
+            "hidden_dim": 256,
+            "num_layers": 6,
+            "num_heads": 8,
             "dropout": 0.1,
             "max_seq_len": 120,
             "use_cross_attention": True,
