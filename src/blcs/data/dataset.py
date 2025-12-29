@@ -15,6 +15,8 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
+from src.blcs.data.types import BLCSBatch, BLCSSample
+
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
@@ -84,6 +86,8 @@ class BallTrajectoryDataset(Dataset):
         """Load scene list from split file."""
         split_path = Path(split_file)
         if not split_path.is_absolute():
+            if self.scene_dir is None:
+                raise ValueError("scene_dir must be set to use relative split_file")
             split_path = self.scene_dir / split_file
 
         scenes = []
@@ -139,11 +143,11 @@ class BallTrajectoryDataset(Dataset):
         """Return dataset length."""
         return len(self.scenes)
 
-    def __getitem__(self, idx: int) -> dict[str, Tensor]:
+    def __getitem__(self, idx: int) -> BLCSSample:
         """Get a single sample.
 
         Returns:
-            dict: Sample dictionary containing:
+            Sample dictionary containing:
                 - ball_uv: (T, 2) Ball 2D trajectory
                 - ball_mask: (T,) Ball visibility mask
                 - court_kp: (20, 2) Court 2D keypoints
@@ -221,7 +225,7 @@ class BallTrajectoryDataset(Dataset):
         return sample
 
 
-def collate_trajectories(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
+def collate_trajectories(batch: list[BLCSSample]) -> BLCSBatch:
     """Collate function for variable-length trajectories.
 
     Pads sequences to the maximum length in the batch.
@@ -230,7 +234,7 @@ def collate_trajectories(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
         batch: List of sample dictionaries.
 
     Returns:
-        dict: Batched and padded tensors.
+        Batched and padded tensors.
 
     """
     batch_size = len(batch)
