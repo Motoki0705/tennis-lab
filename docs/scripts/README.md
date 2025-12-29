@@ -87,3 +87,58 @@ uv run python -m src.wasb.scripts.visualize.ball_video video_path=...
 - [PLCS Scripts](plcs/README.md)
 - [BLCS Scripts](blcs/README.md)
 - [WASB Scripts](wasb/README.md)
+
+---
+
+## テストとバリデーション
+
+スクリプトの動作確認には E2E テストを使用します。テストドキュメントは [docs/tests/](../tests/README.md) を参照してください。
+
+### テストの実行
+
+```bash
+# 全E2Eテストを実行
+uv run pytest tests/e2e -v
+
+# 特定タスクのテストのみ実行
+uv run pytest tests/e2e/blcs -v
+uv run pytest tests/e2e/plcs -v
+uv run pytest tests/e2e/wasb -v
+
+# GPUテストをスキップ（CUDAなし環境）
+uv run pytest tests/e2e -v -m "not cuda"
+```
+
+### テストカテゴリ
+
+| カテゴリ | 説明 | ドキュメント |
+|---------|------|-------------|
+| **データ検証** | 生成データのスキーマ・形状・値範囲の検証 | [validation/](../tests/validation/README.md) |
+| **スクリプトテスト** | generate_dataset, train, visualize の動作確認 | 各タスクの [tests/](../tests/) |
+| **フィクスチャ** | テスト用データ生成ユーティリティ | [fixtures/](../tests/fixtures/README.md) |
+
+### ドライランモード
+
+実際の学習を行わずにデータローダーの動作を確認できます：
+
+```bash
+# 各タスクのドライラン
+uv run python -m src.blcs.scripts.train run.dry_run=true
+uv run python -m src.plcs.scripts.train run.dry_run=true
+uv run python -m src.wasb.scripts.train.ball_detection run.dry_run=true run.gpus=0
+```
+
+### バリデーションユーティリティ
+
+テスト用のバリデーションユーティリティはプロダクションコードでも活用できます：
+
+```python
+from tests.e2e.validation import (
+    validate_blcs_sample,      # BLCSSample スキーマ検証
+    validate_plcs_frame_batch, # PLCSFrameBatch スキーマ検証
+    validate_tensor_shape,     # テンソル形状検証
+    validate_normalized_uv,    # UV座標正規化検証
+)
+```
+
+詳細は [バリデーションドキュメント](../tests/validation/README.md) を参照してください。
