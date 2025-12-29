@@ -31,5 +31,8 @@ render:
 hydra:
   run:
     dir: .
+  output_subdir: null
   job:
     chdir: false
+  job_logging: null
+  hydra_logging: null

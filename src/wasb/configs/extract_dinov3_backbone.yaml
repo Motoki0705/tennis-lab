@@ -8,5 +8,8 @@ output_path: outputs/wasb/dinov3_backbone.pth
 hydra:
   run:
     dir: .
+  output_subdir: null
   job:
     chdir: false
+  job_logging: null
+  hydra_logging: null

@@ -28,5 +28,8 @@ seed: 42
 hydra:
   run:
     dir: outputs/wasb/sample_visuals/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
   job:
     chdir: false
+  job_logging: null
+  hydra_logging: null
