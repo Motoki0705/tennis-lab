@@ -1,0 +1,31 @@
+# Multi-view BLCS data configuration
+scene_dir: "data/blcs"
+
+# DataLoader settings
+batch_size: 16
+num_workers: 4
+
+# Train/Val/Test split
+val_split: 0.1
+test_split: 0.1
+
+# Sequence settings
+min_seq_len: 15
+max_seq_len: 120
+fps: 30
+
+# Multi-view specific settings
+mode: multiview
+num_views: 2
+min_cameras: 2
+
+# Camera selection mode: "random" for multi-view
+camera_mode: "random"
+
+# Augmentation
+augmentation:
+  uv_noise_std: 0.005
+  visibility_drop_prob: 0.1
+  temporal_dropout_prob: 0.05
+  flip_horizontal: true
+  scale_range: [0.9, 1.1]

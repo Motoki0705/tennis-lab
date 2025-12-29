@@ -1,0 +1,16 @@
+# Multi-view PLCS data configuration
+scene_dir: data/plcs
+batch_size: 32
+num_workers: 4
+val_split: 0.1
+test_split: 0.1
+
+mode: multiview
+
+# Multi-view specific settings
+num_views: 2
+min_cameras: 2
+
+augmentation:
+  keypoint_noise_std: 0.01
+  visibility_drop_prob: 0.05
