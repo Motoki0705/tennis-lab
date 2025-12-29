@@ -178,6 +178,7 @@ def test_wasb_save_one_sample_visuals(tmp_path: Path) -> None:
             "sample_index=0",
             "target_index=0",
             "num_samples=1",
+            "data.batch_size=1",
         ],
         capture_output=True,
         text=True,
