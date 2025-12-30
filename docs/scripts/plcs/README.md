@@ -11,7 +11,9 @@ Player Location from Court Skeleton (PLCS) タスクのスクリプト群。
 | `generate_dataset` | 合成トレーニングデータの生成 | [generate_dataset.md](generate_dataset.md) |
 | `train` | フレーム単位モデルの学習 | [train.md](train.md) |
 | `train_sequence` | シーケンスモデルの学習 | [train_sequence.md](train_sequence.md) |
+| `train_multiview` | マルチビューシーケンスモデルの学習 | [train_multiview.md](train_multiview.md) |
 | `visualize` | シーン・予測結果の可視化 | [visualize.md](visualize.md) |
+| `visualize_multiview` | マルチビュー予測結果の可視化 | [visualize_multiview.md](visualize_multiview.md) |
 
 ## 典型的なワークフロー
 
@@ -27,10 +29,18 @@ uv run python -m src.plcs.scripts.train
 # 3. または シーケンスモデル学習
 uv run python -m src.plcs.scripts.train_sequence
 
-# 4. 結果の可視化
+# 4. または マルチビューシーケンスモデル学習
+uv run python -m src.plcs.scripts.train_multiview
+
+# 5. 結果の可視化
 uv run python -m src.plcs.scripts.visualize \
   visualization.mode=predict \
   visualization.checkpoint=outputs/plcs/checkpoints/last.ckpt
+
+# 6. マルチビュー結果の可視化
+uv run python -m src.plcs.scripts.visualize_multiview \
+  visualization.mode=predict \
+  visualization.checkpoint=outputs/plcs_multiview/checkpoints/last.ckpt
 ```
 
 ## ディレクトリ構成
@@ -41,12 +51,20 @@ src/plcs/
 │   ├── generate_dataset.py
 │   ├── train.py
 │   ├── train_sequence.py
-│   └── visualize.py
+│   ├── train_multiview.py
+│   ├── visualize.py
+│   └── visualize_multiview.py
 ├── configs/
 │   ├── generate_dataset.yaml
 │   ├── train.yaml
 │   ├── train_sequence.yaml
-│   └── visualize.yaml
+│   ├── train_multiview.yaml
+│   ├── visualize.yaml
+│   ├── visualize_multiview.yaml
+│   └── loss/
+│       ├── frame.yaml
+│       ├── sequence.yaml
+│       └── multiview_sequence.yaml
 ├── data/
 ├── models/
 ├── training/
