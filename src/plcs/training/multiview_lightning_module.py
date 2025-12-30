@@ -53,8 +53,7 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
             )
         self.loss_fn = PLCSLoss(config=loss_cfg)
 
-        # Metrics
-        self.train_metrics = PLCSMetrics()
+        # Metrics (only for val and test)
         self.val_metrics = PLCSMetrics()
         self.test_metrics = PLCSMetrics()
 
@@ -125,28 +124,24 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
             target_rotation=batch["rotation"],
         )
 
-        # Update metrics
-        if stage == "train":
-            metrics = self.train_metrics.update(
-                outputs["position"],
-                outputs["rotation"],
-                batch["position"],
-                batch["rotation"],
-            )
-        elif stage == "val":
+        # Update metrics (only for val and test)
+        if stage == "val":
             metrics = self.val_metrics.update(
                 outputs["position"],
                 outputs["rotation"],
                 batch["position"],
                 batch["rotation"],
             )
-        else:
+        elif stage == "test":
             metrics = self.test_metrics.update(
                 outputs["position"],
                 outputs["rotation"],
                 batch["position"],
                 batch["rotation"],
             )
+        else:
+            # For train, return empty metrics dict
+            metrics = {}
 
         return losses["total"], {
             **metrics,
@@ -166,19 +161,14 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
         """
         loss, metrics = self._shared_step(batch, "train")
 
-        # Log metrics
+        # Log losses only (no metrics for train)
         self.log("train/loss", loss, prog_bar=True)
-        self.log("train/pos_error_m", metrics["position_error_m"], prog_bar=True)
-        self.log("train/ang_error_deg", metrics["angular_error_deg"], prog_bar=True)
+        for k in ["position", "rotation", "temporal"]:
+            loss_key = f"loss_{k}"
+            if loss_key in metrics:
+                self.log(f"train/{loss_key}", metrics[loss_key], prog_bar=False)
 
         return loss
-
-    def on_train_epoch_end(self) -> None:
-        """Called at end of training epoch."""
-        metrics = self.train_metrics.compute()
-        for name, value in metrics.items():
-            self.log(f"train/epoch_{name}", value)
-        self.train_metrics.reset()
 
     def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
         """Validation step.
@@ -193,6 +183,10 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
         self.log("val/loss", loss, prog_bar=True)
         self.log("val/pos_error_m", metrics["position_error_m"], prog_bar=True)
         self.log("val/ang_error_deg", metrics["angular_error_deg"], prog_bar=True)
+        for k in ["position", "rotation", "temporal"]:
+            loss_key = f"loss_{k}"
+            if loss_key in metrics:
+                self.log(f"val/{loss_key}", metrics[loss_key], prog_bar=False)
 
     def on_validation_epoch_end(self) -> None:
         """Called at end of validation epoch."""
@@ -214,6 +208,10 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
         self.log("test/loss", loss)
         self.log("test/pos_error_m", metrics["position_error_m"])
         self.log("test/ang_error_deg", metrics["angular_error_deg"])
+        for k in ["position", "rotation", "temporal"]:
+            loss_key = f"loss_{k}"
+            if loss_key in metrics:
+                self.log(f"test/{loss_key}", metrics[loss_key])
 
     def on_test_epoch_end(self) -> None:
         """Called at end of test epoch."""
