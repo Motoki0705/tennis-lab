@@ -136,6 +136,19 @@ def build_sequence_index(
     return samples
 
 
+@dataclass(frozen=True)
+class BallMaskingConfig:
+    """Configuration for ball position masking augmentation.
+
+    This simulates occlusion by zeroing out heatmaps for some frames,
+    forcing the model to predict ball positions from temporal context.
+    """
+
+    enabled: bool = False
+    prob: float = 0.3
+    max_masked_ratio: float = 0.5
+
+
 class BallDetectionSequenceDataset(Dataset):
     """Sliding-window dataset for WASB ball detection training."""
 
@@ -153,6 +166,7 @@ class BallDetectionSequenceDataset(Dataset):
         resize_hw: tuple[int, int] | None = None,
         heatmap_hw: tuple[int, int] | None = None,
         heatmap_sigma: float | None = None,
+        ball_masking: BallMaskingConfig | None = None,
     ) -> None:
         """Initialize the dataset.
 
@@ -167,6 +181,7 @@ class BallDetectionSequenceDataset(Dataset):
             csv_filename: Annotation file name inside each clip directory.
             transform: Optional transform applied to each PIL image.
             resize_hw: Optional ``(height, width)`` resize before ``ToTensor``.
+            ball_masking: Configuration for ball position masking augmentation.
         """
         if frames_out > frames_in:
             raise ValueError("frames_out cannot exceed frames_in")
@@ -180,6 +195,7 @@ class BallDetectionSequenceDataset(Dataset):
         self.resize_hw = resize_hw
         self.heatmap_hw = tuple(heatmap_hw) if heatmap_hw is not None else None
         self.heatmap_sigma = heatmap_sigma
+        self.ball_masking = ball_masking or BallMaskingConfig()
 
         self.transform = transform or self._default_transform(resize_hw)
         self.samples = build_sequence_index(
@@ -237,7 +253,9 @@ class BallDetectionSequenceDataset(Dataset):
         else:
             final_w, final_h = first_w, first_h
 
-        targets_norm = targets_px / torch.tensor([final_w, final_h], dtype=torch.float32)
+        targets_norm = targets_px / torch.tensor(
+            [final_w, final_h], dtype=torch.float32
+        )
         visibility = torch.tensor(
             [t.visibility for t in sample.targets], dtype=torch.int64
         )
@@ -246,6 +264,9 @@ class BallDetectionSequenceDataset(Dataset):
         target_heatmaps = self._build_heatmaps(
             targets_norm, visibility, heatmap_hw, sigma=self.heatmap_sigma
         )
+
+        # Apply ball position masking for occlusion simulation.
+        masked_indices = self._apply_ball_masking(target_heatmaps)
 
         return {
             "frames": frames_tensor,
@@ -257,7 +278,47 @@ class BallDetectionSequenceDataset(Dataset):
             "match": sample.match,
             "clip": sample.clip,
             "frame_paths": [str(p) for p in sample.frame_paths],
+            "masked_indices": masked_indices,
         }
+
+    def _apply_ball_masking(self, target_heatmaps: torch.Tensor) -> torch.Tensor:
+        """Apply ball position masking to simulate occlusion.
+
+        Randomly masks (zeros out) heatmaps for some frames, simulating
+        scenarios where the ball is occluded. The model must learn to
+        predict ball positions from temporal context (preceding/following frames).
+
+        Args:
+            target_heatmaps: Heatmaps of shape (frames_out, H, W).
+
+        Returns:
+            Boolean tensor of shape (frames_out,) indicating which frames
+            were masked (True = masked).
+        """
+        num_frames = target_heatmaps.shape[0]
+        masked_indices = torch.zeros(num_frames, dtype=torch.bool)
+
+        if not self.ball_masking.enabled:
+            return masked_indices
+
+        # Determine if we apply masking this sample (based on prob).
+        if torch.rand(1).item() > self.ball_masking.prob:
+            return masked_indices
+
+        # Decide how many frames to mask (at least 1, up to max_masked_ratio).
+        max_masked = max(1, int(num_frames * self.ball_masking.max_masked_ratio))
+        num_to_mask = torch.randint(1, max_masked + 1, (1,)).item()
+        num_to_mask = int(num_to_mask)
+
+        # Randomly select frame indices to mask.
+        mask_indices = torch.randperm(num_frames)[:num_to_mask]
+
+        # Zero out the heatmaps for masked frames.
+        for idx in mask_indices:
+            target_heatmaps[idx] = 0.0
+            masked_indices[idx] = True
+
+        return masked_indices
 
     def _get_heatmap_hw(self, final_h: int, final_w: int) -> tuple[int, int]:
         """Resolve heatmap height/width, defaulting to half-resolution."""
