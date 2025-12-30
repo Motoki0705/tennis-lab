@@ -36,6 +36,7 @@ defaults:
   - model: frame
   - data: frame
   - training: default
+  - loss: frame
   - metrics: default
   - run: train
 ```
@@ -88,10 +89,20 @@ defaults:
 | `weight_decay` | `1.0e-5` | 重み減衰 |
 | `warmup_steps` | `1000` | ウォームアップステップ数 |
 | `gradient_clip_val` | `1.0` | 勾配クリッピング値 |
-| `position_loss_weight` | `1.0` | 位置ロスの重み |
-| `rotation_loss_weight` | `1.0` | 回転ロスの重み |
 | `scheduler` | `cosine` | 学習率スケジューラ |
 | `min_lr` | `1.0e-6` | 最小学習率 |
+
+### loss (ロス設定)
+
+ロス設定は `src/plcs/configs/loss/` ディレクトリに分離されています。
+
+| パラメータ | デフォルト | 説明 |
+|-----------|-----------|------|
+| `position_weight` | `1.0` | 位置ロスの重み |
+| `rotation_weight` | `1.0` | 回転ロスの重み |
+| `temporal_weight` | `0.0` | 時間一貫性ロスの重み（フレームモードでは0） |
+| `temporal.order` | `2` | 時間微分の次数（1=速度、2=加速度） |
+| `temporal.robust` | `true` | SmoothL1Lossを使用するか |
 
 ## アーキテクチャ・フロー
 

@@ -1,0 +1,7 @@
+# Frame-level PLCS loss configuration (single frame, no temporal loss).
+position_weight: 1.0
+rotation_weight: 1.0
+temporal_weight: 0.0
+temporal:
+  order: 2
+  robust: true

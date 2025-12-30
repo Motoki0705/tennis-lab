@@ -11,6 +11,14 @@ mode: multiview
 num_views: 2
 min_cameras: 2
 
+# Sequential settings
+seq_len: 16
+
+# Range sampling for dynamic view/seq (optional)
+# When enabled, each sample will randomly pick a value from the range
+# num_views_range: [1, 8]  # min, max inclusive
+# seq_len_range: [4, 32]   # min, max inclusive
+
 augmentation:
   keypoint_noise_std: 0.01
   visibility_drop_prob: 0.05

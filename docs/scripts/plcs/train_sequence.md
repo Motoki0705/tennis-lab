@@ -33,9 +33,22 @@ defaults:
   - model: sequence
   - data: sequence
   - training: default
+  - loss: sequence
   - metrics: default
   - run: train_sequence
 ```
+
+### loss (ロス設定)
+
+シーケンスモデルでは時間一貫性ロスが有効になります。
+
+| パラメータ | デフォルト | 説明 |
+|-----------|-----------|------|
+| `position_weight` | `1.0` | 位置ロスの重み |
+| `rotation_weight` | `1.0` | 回転ロスの重み |
+| `temporal_weight` | `0.1` | 時間一貫性ロスの重み |
+| `temporal.order` | `2` | 時間微分の次数（2=加速度平滑化） |
+| `temporal.robust` | `true` | SmoothL1Lossを使用 |
 
 ### run (実行設定)
 
