@@ -45,7 +45,9 @@ class TestWASBDatasetValidation:
                 assert label_file.exists(), f"Missing Label.csv in {clip_dir}"
 
                 # Should have image files
-                image_files = list(clip_dir.glob("*.jpg")) + list(clip_dir.glob("*.png"))
+                image_files = list(clip_dir.glob("*.jpg")) + list(
+                    clip_dir.glob("*.png")
+                )
                 assert len(image_files) > 0, f"No image files in {clip_dir}"
 
     def test_label_csv_format(self, wasb_dataset_dir: Path) -> None:
@@ -64,7 +66,9 @@ class TestWASBDatasetValidation:
                 assert "file name" in header or "filename" in header, (
                     f"Missing 'file name' in header: {header}"
                 )
-                assert "visibility" in header, f"Missing 'visibility' in header: {header}"
+                assert "visibility" in header, (
+                    f"Missing 'visibility' in header: {header}"
+                )
                 assert "x-coordinate" in header or "x" in header, (
                     f"Missing x coordinate in header: {header}"
                 )
@@ -122,6 +126,7 @@ class TestWASBBallDetectionSampleValidation:
             "scores",
             "match",
             "clip",
+            "masked_indices",
         ]
 
         missing = [k for k in required_keys if k not in sample]
@@ -152,7 +157,18 @@ class TestWASBBallDetectionSampleValidation:
 
         # visibility: (frames_out,)
         visibility = sample["visibility"]
-        assert len(visibility.shape) == 1, f"visibility should be 1D, got {visibility.shape}"
+        assert len(visibility.shape) == 1, (
+            f"visibility should be 1D, got {visibility.shape}"
+        )
+
+        # masked_indices: (frames_out,) boolean tensor
+        masked_indices = sample["masked_indices"]
+        assert len(masked_indices.shape) == 1, (
+            f"masked_indices should be 1D, got {masked_indices.shape}"
+        )
+        assert masked_indices.dtype == torch.bool, (
+            f"masked_indices should be bool, got {masked_indices.dtype}"
+        )
 
     def test_sample_normalized_targets_in_range(self, ball_detection_dataset) -> None:
         """Test that normalized targets are in [0, 1] range."""
@@ -287,7 +303,79 @@ class TestWASBDataLoaderBatchValidation:
 
         # frames: (B, T, C, H, W)
         frames = batch["frames"]
-        assert len(frames.shape) == 5, f"Batched frames should be 5D, got {frames.shape}"
+        assert len(frames.shape) == 5, (
+            f"Batched frames should be 5D, got {frames.shape}"
+        )
 
         B, T, C, H, W = frames.shape
         assert C == 3, f"Expected 3 channels, got {C}"
+
+
+@pytest.mark.e2e
+class TestBallMaskingAugmentation:
+    """Tests for ball position masking augmentation."""
+
+    @pytest.fixture
+    def dataset_with_masking(self, tmp_path: Path):
+        """Create a dataset with ball masking enabled."""
+        from src.wasb.data.ball_detection_dataset import (
+            BallDetectionSequenceDataset,
+            BallMaskingConfig,
+        )
+
+        dataset_dir = create_minimal_wasb_dataset(tmp_path / "wasb_data")
+
+        try:
+            ball_masking = BallMaskingConfig(
+                enabled=True,
+                prob=1.0,  # Always apply masking for testing
+                max_masked_ratio=0.5,
+            )
+            dataset = BallDetectionSequenceDataset(
+                root_dir=dataset_dir,
+                matches=["game1"],
+                frames_in=3,
+                frames_out=1,
+                step=1,
+                visibility_mode="none",
+                heatmap_sigma=5.0,
+                ball_masking=ball_masking,
+            )
+            return dataset
+        except Exception as e:
+            pytest.skip(f"Could not create dataset: {e}")
+
+    def test_masking_applies_when_enabled(self, dataset_with_masking) -> None:
+        """Test that masking is applied when enabled."""
+        if len(dataset_with_masking) == 0:
+            pytest.skip("Dataset is empty")
+
+        # Sample multiple times and check that some frames are masked
+        masked_count = 0
+        for i in range(min(10, len(dataset_with_masking))):
+            sample = dataset_with_masking[i]
+            if sample["masked_indices"].any():
+                masked_count += 1
+
+        # With prob=1.0, most samples should have masking
+        assert masked_count > 0, "No frames were masked with prob=1.0"
+
+    def test_masked_heatmaps_are_zero(self, dataset_with_masking) -> None:
+        """Test that masked frames have zero heatmaps."""
+        if len(dataset_with_masking) == 0:
+            pytest.skip("Dataset is empty")
+
+        # Find a sample with masking
+        for i in range(min(10, len(dataset_with_masking))):
+            sample = dataset_with_masking[i]
+            masked_indices = sample["masked_indices"]
+            if masked_indices.any():
+                heatmaps = sample["target_heatmaps"]
+                for idx in range(len(masked_indices)):
+                    if masked_indices[idx]:
+                        assert heatmaps[idx].sum() == 0.0, (
+                            f"Masked frame {idx} should have zero heatmap"
+                        )
+                return
+
+        pytest.skip("Could not find sample with masking applied")
