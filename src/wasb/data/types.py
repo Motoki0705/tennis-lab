@@ -27,6 +27,7 @@ class BallDetectionSample(TypedDict):
     match: str  # match/game directory name
     clip: str  # clip directory name
     frame_paths: list[str]  # paths to frame images
+    masked_indices: torch.Tensor  # (T,) boolean mask; True for masked frames
 
 
 class TrajectoryWindowSample(TypedDict):

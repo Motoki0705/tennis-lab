@@ -34,6 +34,13 @@ augment:
     scale: [0.02, 0.05]
     ratio: [0.3, 3.3]
     value: 0
+  # Ball position masking for occlusion simulation.
+  # Masks the heatmap of selected frames so the model must predict
+  # the ball location from temporal context.
+  ball_masking:
+    enabled: false
+    prob: 0.3
+    max_masked_ratio: 0.5
 
 # Sampling strategy (curriculum).
 # - Warmup: standard shuffle sampling (as before).
