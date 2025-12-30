@@ -84,11 +84,18 @@ class SequentialAttentionBlock(nn.Module):
 
         # Build attention mask if provided
         key_padding_mask = None
+        fully_masked: Tensor | None = None
         if mask is not None:
             # mask: (B, T, N) -> (B*N, T)
             key_padding_mask = ~mask.permute(0, 2, 1).reshape(
                 batch_size * n_cameras, seq_len
             )
+            fully_masked = key_padding_mask.all(dim=1)
+            if fully_masked.any():
+                key_padding_mask = key_padding_mask.clone()
+                key_padding_mask[fully_masked] = False
+                x_reshaped = x_reshaped.clone()
+                x_reshaped[fully_masked] = 0.0
 
         # Self-attention
         x_norm = self.norm1(x_reshaped)
@@ -101,9 +108,12 @@ class SequentialAttentionBlock(nn.Module):
         x_reshaped = x_reshaped + self.ffn(self.norm2(x_reshaped))
 
         # Reshape back to (B, T, N, D)
-        return x_reshaped.reshape(batch_size, n_cameras, seq_len, hidden_dim).permute(
+        out = x_reshaped.reshape(batch_size, n_cameras, seq_len, hidden_dim).permute(
             0, 2, 1, 3
         )
+        if mask is not None:
+            out = out * mask.unsqueeze(-1).to(dtype=out.dtype)
+        return out
 
 
 class CameraAttentionBlock(nn.Module):
@@ -162,9 +172,16 @@ class CameraAttentionBlock(nn.Module):
 
         # Build attention mask if provided
         key_padding_mask = None
+        fully_masked: Tensor | None = None
         if mask is not None:
             # mask: (B, T, N) -> (B*T, N)
             key_padding_mask = ~mask.reshape(batch_size * seq_len, n_cameras)
+            fully_masked = key_padding_mask.all(dim=1)
+            if fully_masked.any():
+                key_padding_mask = key_padding_mask.clone()
+                key_padding_mask[fully_masked] = False
+                x_reshaped = x_reshaped.clone()
+                x_reshaped[fully_masked] = 0.0
 
         # Self-attention
         x_norm = self.norm1(x_reshaped)
@@ -177,7 +194,10 @@ class CameraAttentionBlock(nn.Module):
         x_reshaped = x_reshaped + self.ffn(self.norm2(x_reshaped))
 
         # Reshape back to (B, T, N, D)
-        return x_reshaped.reshape(batch_size, seq_len, n_cameras, hidden_dim)
+        out = x_reshaped.reshape(batch_size, seq_len, n_cameras, hidden_dim)
+        if mask is not None:
+            out = out * mask.unsqueeze(-1).to(dtype=out.dtype)
+        return out
 
 
 class PLCSMultiViewModel(nn.Module):
