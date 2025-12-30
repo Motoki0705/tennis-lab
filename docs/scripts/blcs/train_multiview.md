@@ -7,8 +7,19 @@
 `train_multiview.py` は、複数カメラからの2Dボール観測（画像座標シーケンス）とコートキーポイントを入力として、
 コート座標系での3Dボール軌道を推定するモデルを学習します。
 
-単一カメラの `train.py` とは異なり、複数視点の情報を三角測量的に融合することで、
+単一カメラの `train.py` とは異なり、複数視点の情報を融合することで、
 深度推定の曖昧さを解消し、より正確な3D軌道復元を実現します。
+
+## アーキテクチャ
+
+PLCS multiview modelと同様の**Alternating Attention Architecture**を採用しています：
+
+1. **BallCourtEncoder**: 各(フレーム, カメラ)ペアのボール位置とコートキーポイントをトークンにエンコード
+2. **Alternating Attention Blocks**: Sequential AttentionとCamera Attentionを交互に適用
+   - **Sequential Attention**: 各カメラについて時系列方向のアテンション
+   - **Camera Attention**: 各フレームについてカメラ間のアテンション
+3. **Aggregation MLP**: カメラトークンを集約してヘッドの入力次元に射影
+4. **Trajectory3DHead**: 最終的な3D位置を出力
 
 ## 実行方法
 
@@ -97,29 +108,36 @@ max_seq_len: 120  # 最大シーケンス長
 
 ```yaml
 hidden_dim: 256
-num_layers: 4
+num_layers: 4      # Alternating attention layer pairs
 num_heads: 8
 dropout: 0.1
 max_seq_len: 120
+max_views: 8
+encoder_layers: 2  # Number of MLP layers in BallCourtEncoder
 ```
 
 ## 入出力形式
 
 ### 入力（バッチ）
 
+モデルは `(B, T, N, ...)` 形式のテンソルを受け取ります：
+
 | フィールド | 形状 | 説明 |
 |-----------|------|------|
-| `ball_uv` | `(B, N, T, 2)` | 2Dボール観測 |
-| `court_kp` | `(B, N, 20, 2)` | 2Dコートキーポイント |
-| `ball_mask` | `(B, N, T)` | ボール可視性マスク |
-| `court_kp_mask` | `(B, N, 20)` | コートKP可視性マスク |
-| `view_mask` | `(B, N)` | 有効カメラマスク |
+| `ball_uv` | `(B, T, N, 2)` | 2Dボール観測 |
+| `court_kp` | `(B, T, N, 20, 2)` | 2Dコートキーポイント（各フレームに展開） |
+| `ball_mask` | `(B, T, N)` | ボール可視性マスク |
+| `court_vis` | `(B, T, N, 20)` | コートKP可視性マスク |
+| `num_views` | `(B,)` | 有効カメラ数 |
 | `seq_len` | `(B,)` | 実シーケンス長 |
-| `position_gt` | `(B, T, 3)` | 軌道Ground Truth |
+| `position_3d` | `(B, T, 3)` | 軌道Ground Truth |
 
 - `B`: バッチサイズ
-- `N`: カメラ数（`num_views`）
 - `T`: シーケンス長（パディング後は `max_seq_len`）
+- `N`: カメラ数（`num_views`）
+
+**Note**: コートキーポイントは従来の `(B, N, 20, 2)` 形式から `(B, T, N, 20, 2)` 形式に変更されました。
+これにより、Alternating Attentionアーキテクチャで時系列方向のアテンションを効果的に適用できます。
 
 ### 出力
 
@@ -152,6 +170,7 @@ outputs/blcs_multiview/
 ## 関連ファイル
 
 - モデル: `src/blcs/models/blcs_multiview_model.py`
+- エンコーダ: `src/blcs/models/components/encoders.py` (`BallCourtEncoder`)
 - データセット: `src/blcs/data/multiview_dataset.py`
 - Lightning Module: `src/blcs/training/multiview_lightning_module.py`
 - DataModule: `src/blcs/data/datamodule.py` (`BLCSMultiViewDataModule`)
