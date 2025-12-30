@@ -24,8 +24,8 @@ camera_mode: "random"
 
 # Range sampling for dynamic view/seq (optional)
 # When enabled, each sample will randomly pick a value from the range
-# num_views_range: [1, 8]  # min, max inclusive
-# seq_len_range: [15, 60]  # min, max inclusive
+num_views_range: [1, 8]  # min, max inclusive
+seq_len_range: [15, 120]  # min, max inclusive
 
 # Augmentation
 augmentation:
