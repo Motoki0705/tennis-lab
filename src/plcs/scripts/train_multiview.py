@@ -124,9 +124,17 @@ def run_training(config: DictConfig) -> None:
     data_module = PLCSMultiViewDataModule(config)
     model = PLCSMultiViewLightningModule(config)
 
+    logger = TensorBoardLogger(
+        save_dir=str(output_dir),
+        name="logs",
+    )
+
+    # Store checkpoints under the versioned log directory (like WASB)
+    checkpoint_dir = Path(logger.log_dir) / "checkpoints"
+
     callbacks = [
         ModelCheckpoint(
-            dirpath=output_dir / "checkpoints",
+            dirpath=checkpoint_dir,
             filename="plcs-multiview-{epoch:02d}",
             monitor="val/epoch_position_error_m",
             mode="min",
@@ -140,11 +148,6 @@ def run_training(config: DictConfig) -> None:
         ),
         LearningRateMonitor(logging_interval="step"),
     ]
-
-    logger = TensorBoardLogger(
-        save_dir=str(output_dir),
-        name="logs",
-    )
 
     accelerator, devices = _select_devices(int(config.run.gpus))
 

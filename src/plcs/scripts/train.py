@@ -133,9 +133,17 @@ def run_training(config: DictConfig) -> None:
         model = PLCSLightningModule(config)
         checkpoint_prefix = "plcs"
 
+    logger = TensorBoardLogger(
+        save_dir=str(output_dir),
+        name="logs",
+    )
+
+    # Store checkpoints under the versioned log directory (like WASB)
+    checkpoint_dir = Path(logger.log_dir) / "checkpoints"
+
     callbacks = [
         ModelCheckpoint(
-            dirpath=output_dir / "checkpoints",
+            dirpath=checkpoint_dir,
             filename=f"{checkpoint_prefix}-{{epoch:02d}}",
             monitor="val/epoch_position_error_m",
             mode="min",
@@ -149,11 +157,6 @@ def run_training(config: DictConfig) -> None:
         ),
         LearningRateMonitor(logging_interval="step"),
     ]
-
-    logger = TensorBoardLogger(
-        save_dir=str(output_dir),
-        name="logs",
-    )
 
     accelerator, devices = _select_devices(int(config.run.gpus))
 
