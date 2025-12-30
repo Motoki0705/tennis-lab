@@ -74,7 +74,7 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
         court_vis: Tensor | None = None,
         num_views: Tensor | None = None,
         camera_params: list[list[dict]] | None = None,
-    ) -> dict[str, Tensor]:
+    ) -> dict[str, Any]:
         """Forward pass.
 
         Args:
@@ -89,9 +89,10 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
             dict: Model outputs.
 
         """
-        return self.model(
+        outputs: dict[str, Any] = self.model(
             human_kp, court_kp, human_vis, court_vis, num_views, camera_params
         )
+        return outputs
 
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
