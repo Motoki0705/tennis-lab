@@ -300,3 +300,23 @@ class DinoV3DETRHeatmap(nn.Module):
         loaded_backbone = get_dinov3_vits16(checkpoint_path=str(checkpoint_path))
         self.backbone.load_state_dict(loaded_backbone.state_dict(), strict=True)
         LOGGER.info("Loaded DINOv3 backbone parameters from %s", checkpoint_path)
+
+    def freeze_backbone(self) -> None:
+        """Disable gradient updates for the DINOv3 backbone."""
+        self._backbone_train_mode = self.backbone.training
+        for param in self.backbone.parameters():
+            param.requires_grad = False
+        self.backbone.eval()
+        self._backbone_frozen = True
+        LOGGER.info("Backbone frozen")
+
+    def unfreeze_backbone(self) -> None:
+        """Re-enable gradient updates for the DINOv3 backbone."""
+        for param in self.backbone.parameters():
+            param.requires_grad = True
+        if self._backbone_train_mode is not None:
+            if self._backbone_train_mode:
+                self.backbone.train()
+            self._backbone_train_mode = None
+        self._backbone_frozen = False
+        LOGGER.info("Backbone unfrozen")
