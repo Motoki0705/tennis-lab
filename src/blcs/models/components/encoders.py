@@ -150,10 +150,7 @@ class CourtContextEncoder(nn.Module):
         feat = feat + self.kp_embed(kp_idx)
 
         # Create attention mask from visibility
-        if court_vis is not None:
-            mask = ~court_vis.bool()
-        else:
-            mask = None
+        mask = ~court_vis.bool() if court_vis is not None else None
 
         # Apply transformer
         encoded = self.transformer(feat, src_key_padding_mask=mask)  # (B, 20, D)
@@ -250,10 +247,7 @@ class BallTrajectoryEncoder(nn.Module):
         feat = self.pos_encoding(feat)
 
         # Create attention mask (True = masked/ignored)
-        if ball_mask is not None:
-            attn_mask = ~ball_mask.bool()
-        else:
-            attn_mask = None
+        attn_mask = ~ball_mask.bool() if ball_mask is not None else None
 
         # Apply transformer
         encoded = self.transformer(feat, src_key_padding_mask=attn_mask)
@@ -339,3 +333,95 @@ class CourtBallCrossAttention(nn.Module):
         x = self.norm2(x + self.ffn(x))
 
         return x
+
+
+class BallCourtEncoder(nn.Module):
+    """Encode ball position and court keypoints into a unified token.
+
+    This encoder processes ball 2D position and court 2D keypoints separately,
+    then combines them into a unified representation for each (frame, camera) pair.
+    Similar architecture to PLCS KeypointEncoder but adapted for ball tracking.
+    """
+
+    def __init__(
+        self,
+        ball_input_dim: int = 2,
+        court_kp_dim: int = 40,
+        hidden_dim: int = 256,
+        num_layers: int = 2,
+        dropout: float = 0.1,
+    ) -> None:
+        """Initialize the encoder.
+
+        Args:
+            ball_input_dim: Dimension of ball input (2 for UV).
+            court_kp_dim: Dimension of court keypoint input (20 * 2 = 40).
+            hidden_dim: Hidden dimension for the encoder.
+            num_layers: Number of MLP layers.
+            dropout: Dropout probability.
+
+        """
+        super().__init__()
+        self.hidden_dim = hidden_dim
+
+        # Ball position encoder
+        ball_layers: list[nn.Module] = []
+        in_dim = ball_input_dim
+        for _ in range(num_layers):
+            out_dim = hidden_dim
+            ball_layers.extend(
+                [
+                    nn.Linear(in_dim, out_dim),
+                    nn.LayerNorm(out_dim),
+                    nn.GELU(),
+                    nn.Dropout(dropout),
+                ]
+            )
+            in_dim = out_dim
+        self.ball_encoder = nn.Sequential(*ball_layers)
+
+        # Court keypoint encoder
+        court_layers: list[nn.Module] = []
+        in_dim = court_kp_dim
+        for _ in range(num_layers):
+            out_dim = hidden_dim
+            court_layers.extend(
+                [
+                    nn.Linear(in_dim, out_dim),
+                    nn.LayerNorm(out_dim),
+                    nn.GELU(),
+                    nn.Dropout(dropout),
+                ]
+            )
+            in_dim = out_dim
+        self.court_encoder = nn.Sequential(*court_layers)
+
+        # Fusion layer
+        self.fusion = nn.Sequential(
+            nn.Linear(hidden_dim * 2, hidden_dim),
+            nn.LayerNorm(hidden_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+        )
+
+    def forward(
+        self,
+        ball_uv: Tensor,
+        court_kp: Tensor,
+    ) -> Tensor:
+        """Encode ball position and court keypoints.
+
+        Args:
+            ball_uv: Ball UV position, shape (batch, 2).
+            court_kp: Court keypoints, shape (batch, 40).
+
+        Returns:
+            Tensor: Fused representation, shape (batch, hidden_dim).
+
+        """
+        ball_feat = self.ball_encoder(ball_uv)
+        court_feat = self.court_encoder(court_kp)
+
+        # Concatenate and fuse
+        combined = torch.cat([ball_feat, court_feat], dim=-1)
+        return self.fusion(combined)
