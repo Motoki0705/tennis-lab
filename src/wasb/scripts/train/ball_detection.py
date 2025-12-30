@@ -19,6 +19,7 @@ import pytorch_lightning as pl
 import torch
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.nn import functional as F
 from torchvision.utils import save_image
@@ -258,7 +259,7 @@ def main(config: DictConfig) -> None:
         precision=config.training.precision,
     )
 
-    trainer.fit(lightning_module, datamodule=datamodule, ckpt_path=resume_ckpt)
+    trainer.fit(lightning_module, datamodule=datamodule, ckpt_path=resume_ckpt, weights_only=False)
 
     if not config.run.fast_dev_run:
         trainer.test(lightning_module, datamodule=datamodule)
