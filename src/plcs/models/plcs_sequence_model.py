@@ -1,6 +1,7 @@
 """Sequential PLCS model implementation.
 
-Token-based architecture with court anchor and player temporal tokens.
+Token-based architecture using KeypointEncoder to generate per-frame tokens,
+processed through a simple Transformer, with PositionHead and RotationHead outputs.
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.plcs.models.components.encoders import InputProjection
+from src.plcs.models.components.encoders import KeypointEncoder
 from src.plcs.models.components.heads import PositionHead, RotationHead
 from src.utils.geometry import NUM_COURT_KP, NUM_HUMAN_KP
 
@@ -19,63 +20,19 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class TemporalTransformerEncoder(nn.Module):
-    """Transformer encoder for temporal token sequences.
-
-    Processes tokens with self-attention over the temporal dimension.
-    """
-
-    def __init__(
-        self,
-        hidden_dim: int = 256,
-        num_heads: int = 8,
-        num_layers: int = 4,
-        dropout: float = 0.1,
-    ) -> None:
-        super().__init__()
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=hidden_dim,
-            nhead=num_heads,
-            dim_feedforward=hidden_dim * 4,
-            dropout=dropout,
-            activation="gelu",
-            batch_first=True,
-        )
-        self.transformer = nn.TransformerEncoder(
-            encoder_layer,
-            num_layers=num_layers,
-        )
-
-    def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
-        """Encode token sequence.
-
-        Args:
-            x: Input tokens, shape (B, S, D) where S = 1 + T.
-            mask: Optional boolean mask, shape (B, S), True = valid.
-
-        Returns:
-            Tensor: Encoded tokens, shape (B, S, D).
-
-        """
-        src_key_padding_mask = None
-        if mask is not None:
-            src_key_padding_mask = ~mask.bool()
-        return self.transformer(x, src_key_padding_mask=src_key_padding_mask)
-
-
 class PLCSSequenceModel(nn.Module):
-    """PLCS sequence model with token-based architecture.
+    """PLCS sequence model with KeypointEncoder + Transformer architecture.
 
     Architecture:
-        1. Project player keypoints to [B, T, D] and court keypoints to [B, 1, D]
-        2. Concatenate: tokens[:, 0, :] = court, tokens[:, 1:, :] = player
-        3. Add type embeddings (court=0, player=1) and time embeddings
-        4. Process through Temporal Transformer Encoder
-        5. Output heads on player tokens (tokens[:, 1:, :])
+        1. KeypointEncoder encodes each frame's human+court keypoints into tokens
+        2. Add positional embeddings for temporal ordering
+        3. Process tokens through a simple Transformer encoder
+        4. Apply PositionHead and RotationHead to each output token
 
     Input:
         - human_kp: Human 2D keypoints, shape (B, T, 34) or (B, T, 17, 2)
-        - court_kp: Court 2D keypoints, shape (B, 1, 40) or (B, 1, 20, 2) (pre-aggregated)
+        - court_kp: Court 2D keypoints, shape (B, T, 40) or (B, T, 20, 2),
+            or legacy (B, 1, 40) / (B, 1, 20, 2) (will be expanded to T)
 
     Output:
         - position: Normalized (x, y, z) per frame, shape (B, T, 3)
@@ -89,36 +46,48 @@ class PLCSSequenceModel(nn.Module):
         num_heads: int = 8,
         dropout: float = 0.1,
         max_seq_len: int = 120,
+        encoder_layers: int = 2,
     ) -> None:
+        """Initialize the sequence model.
+
+        Args:
+            hidden_dim: Hidden dimension for all components.
+            num_layers: Number of transformer layers.
+            num_heads: Number of attention heads.
+            dropout: Dropout probability.
+            max_seq_len: Maximum sequence length.
+            encoder_layers: Number of MLP layers in KeypointEncoder.
+
+        """
         super().__init__()
 
         self.hidden_dim = hidden_dim
         self.max_seq_len = max_seq_len
 
-        # Input projections
-        self.player_proj = InputProjection(
-            input_dim=NUM_HUMAN_KP * 2,
+        # KeypointEncoder for generating per-frame tokens
+        self.keypoint_encoder = KeypointEncoder(
+            human_kp_dim=NUM_HUMAN_KP * 2,
+            court_kp_dim=NUM_COURT_KP * 2,
             hidden_dim=hidden_dim,
-            dropout=dropout,
-        )
-        self.court_proj = InputProjection(
-            input_dim=NUM_COURT_KP * 2,
-            hidden_dim=hidden_dim,
+            num_layers=encoder_layers,
             dropout=dropout,
         )
 
-        # Type embeddings: 0 = court, 1 = player
-        self.type_embed = nn.Embedding(2, hidden_dim)
+        # Positional embeddings for temporal ordering
+        self.pos_embed = nn.Embedding(max_seq_len, hidden_dim)
 
-        # Time embeddings: 0 = court (anchor), 1..T = player frames
-        self.time_embed = nn.Embedding(max_seq_len + 1, hidden_dim)
-
-        # Temporal transformer encoder
-        self.temporal_encoder = TemporalTransformerEncoder(
-            hidden_dim=hidden_dim,
-            num_heads=num_heads,
+        # Transformer encoder for sequence processing
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=hidden_dim,
+            nhead=num_heads,
+            dim_feedforward=hidden_dim * 4,
+            dropout=dropout,
+            activation="gelu",
+            batch_first=True,
+        )
+        self.transformer = nn.TransformerEncoder(
+            encoder_layer,
             num_layers=num_layers,
-            dropout=dropout,
         )
 
         # Output heads
@@ -154,6 +123,7 @@ class PLCSSequenceModel(nn.Module):
             num_heads=model_cfg.get("num_heads", 8),
             dropout=model_cfg.get("dropout", 0.1),
             max_seq_len=int(model_cfg.get("max_seq_len", 120)),
+            encoder_layers=model_cfg.get("encoder_layers", 2),
         )
 
     def forward(
@@ -168,7 +138,7 @@ class PLCSSequenceModel(nn.Module):
         Args:
             human_kp: Human keypoints, shape (B, T, 34) or (B, T, 17, 2).
             court_kp: Court keypoints, shape (B, T, 40), (B, T, 20, 2),
-                or legacy (B, 1, 40) / (B, 1, 20, 2) (pre-aggregated).
+                or legacy (B, 1, 40) / (B, 1, 20, 2) (will be expanded to T).
             human_vis: Human visibility mask, shape (B, T, 17). Optional.
             court_vis: Court visibility mask, shape (B, T, 20). Optional.
 
@@ -195,46 +165,31 @@ class PLCSSequenceModel(nn.Module):
         if court_t == 1 and seq_len > 1:
             court_kp = court_kp.expand(batch_size, seq_len, -1)  # (B, T, 40)
 
-        # Project player keypoints: (B, T, 34) -> (B, T, D)
-        player_tokens = self.player_proj(human_kp)
+        # Generate tokens for each frame using KeypointEncoder
+        # Reshape to (B*T, kp_dim) for encoder, then reshape back
+        human_flat = human_kp.reshape(batch_size * seq_len, -1)  # (B*T, 34)
+        court_flat = court_kp.reshape(batch_size * seq_len, -1)  # (B*T, 40)
+        tokens_flat = self.keypoint_encoder(human_flat, court_flat)  # (B*T, D)
+        tokens = tokens_flat.view(batch_size, seq_len, self.hidden_dim)  # (B, T, D)
 
-        # Project court keypoints and aggregate to single token
-        # Use mean over time to create anchor token
-        court_proj = self.court_proj(court_kp)  # (B, T, D)
-        court_token = court_proj.mean(dim=1, keepdim=True)  # (B, 1, D)
-
-        # Assemble tokens: [court, player_1, player_2, ..., player_T]
-        tokens = torch.cat([court_token, player_tokens], dim=1)  # (B, 1+T, D)
-
-        # Add type embeddings
-        type_ids = torch.zeros(batch_size, 1 + seq_len, dtype=torch.long, device=device)
-        type_ids[:, 1:] = 1  # court=0, player=1
-        tokens = tokens + self.type_embed(type_ids)
-
-        # Add time embeddings
-        time_ids = torch.arange(1 + seq_len, dtype=torch.long, device=device)
-        time_ids = time_ids.unsqueeze(0).expand(batch_size, -1)  # (B, 1+T)
-        tokens = tokens + self.time_embed(time_ids)
+        # Add positional embeddings
+        positions = torch.arange(seq_len, device=device)
+        tokens = tokens + self.pos_embed(positions).unsqueeze(0)  # (B, T, D)
 
         # Build attention mask if visibility provided
         attn_mask: Tensor | None = None
         if human_vis is not None:
-            # Player frames are valid if any keypoint is visible
-            player_valid = human_vis.sum(dim=-1) > 0  # (B, T)
-            # Court token is always valid
-            court_valid = torch.ones(batch_size, 1, dtype=torch.bool, device=device)
-            attn_mask = torch.cat([court_valid, player_valid], dim=1)  # (B, 1+T)
+            # Frames are valid if any keypoint is visible
+            frame_valid = human_vis.sum(dim=-1) > 0  # (B, T)
+            attn_mask = ~frame_valid  # Transformer uses True for masked positions
 
-        # Temporal transformer encoding
-        encoded = self.temporal_encoder(tokens, attn_mask)  # (B, 1+T, D)
+        # Process through transformer
+        encoded = self.transformer(tokens, src_key_padding_mask=attn_mask)  # (B, T, D)
 
-        # Extract player tokens for output heads
-        player_encoded = encoded[:, 1:, :]  # (B, T, D)
-
-        # Decode outputs
-        player_flat = player_encoded.reshape(batch_size * seq_len, self.hidden_dim)
-        position_flat = self.position_head(player_flat)  # (B*T, 3)
-        rotation_flat = self.rotation_head(player_flat)  # (B*T, 2)
+        # Apply output heads to each token
+        encoded_flat = encoded.reshape(batch_size * seq_len, self.hidden_dim)
+        position_flat = self.position_head(encoded_flat)  # (B*T, 3)
+        rotation_flat = self.rotation_head(encoded_flat)  # (B*T, 2)
 
         position = position_flat.view(batch_size, seq_len, 3)
         rotation = rotation_flat.view(batch_size, seq_len, 2)
