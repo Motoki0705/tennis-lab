@@ -1,11 +1,14 @@
-"""Multi-view BLCS model implementation (skeleton).
+"""Multi-view BLCS model implementation with alternating attention architecture.
 
-This module provides a skeleton implementation for multi-view ball
-trajectory estimation. The architecture is intentionally minimal - only
-the I/O interface is defined. The actual fusion mechanism should be
-implemented based on experimentation.
+This module provides a multi-view ball trajectory estimation model using
+separate sequential and camera attention mechanisms, similar to the PLCS
+multiview model architecture.
 
-TODO: Implement actual multi-view fusion architecture.
+Architecture:
+    1. BallCourtEncoder encodes each (frame, camera) pair into tokens
+    2. Alternating Sequential Attention and Camera Attention blocks
+    3. Aggregate camera tokens and project to head input dimension
+    4. Trajectory3DHead produces final 3D position outputs
 """
 
 from __future__ import annotations
@@ -16,57 +19,230 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from src.blcs.models.components.encoders import BallCourtEncoder
+from src.blcs.models.components.heads import Trajectory3DHead, VelocityHead
 from src.utils.geometry import NUM_COURT_KP
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class BLCSMultiViewModel(nn.Module):
-    """Multi-view BLCS model skeleton.
+class SequentialAttentionBlock(nn.Module):
+    """Self-attention over the temporal/sequential dimension.
 
-    This model takes ball 2D trajectories from multiple camera views
-    and predicts the ball's 3D trajectory in the court coordinate system.
-
-    Input:
-        - ball_uv: Ball 2D positions from N cameras, shape (B, N, T, 2)
-        - court_kp: Court 2D keypoints from N cameras, shape (B, N, 20, 2)
-        - ball_mask: Ball visibility masks, shape (B, N, T)
-        - court_vis: Court visibility masks, shape (B, N, 20)
-        - num_views: Number of valid views per sample, shape (B,)
-        - seq_len: Sequence lengths, shape (B,)
-        - camera_params: List of camera parameter dicts (optional)
-
-    Output:
-        - position: Normalized (x, y, z) trajectory, shape (B, T, 3)
-        - velocity: Velocities (optional), shape (B, T, 3)
-
-    Note:
-        This is a skeleton implementation. The actual multi-view fusion
-        mechanism (cross-view attention, triangulation, etc.) should be
-        implemented based on experimentation.
+    For each camera, applies attention across time steps.
+    Input shape: (B, T, N, D) - processes attention over T for each camera N.
     """
 
     def __init__(
         self,
         hidden_dim: int = 256,
-        num_layers: int = 6,
+        num_heads: int = 8,
+        dropout: float = 0.1,
+    ) -> None:
+        """Initialize sequential attention block.
+
+        Args:
+            hidden_dim: Hidden dimension.
+            num_heads: Number of attention heads.
+            dropout: Dropout probability.
+
+        """
+        super().__init__()
+        self.attn = nn.MultiheadAttention(
+            embed_dim=hidden_dim,
+            num_heads=num_heads,
+            dropout=dropout,
+            batch_first=True,
+        )
+        self.norm1 = nn.LayerNorm(hidden_dim)
+        self.norm2 = nn.LayerNorm(hidden_dim)
+        self.ffn = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim * 4),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim * 4, hidden_dim),
+            nn.Dropout(dropout),
+        )
+
+    def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
+        """Apply sequential attention.
+
+        Args:
+            x: Input tensor, shape (B, T, N, D).
+            mask: Optional mask, shape (B, T, N), True = valid.
+
+        Returns:
+            Tensor: Output tensor, shape (B, T, N, D).
+
+        """
+        batch_size, seq_len, n_cameras, hidden_dim = x.shape
+
+        # Reshape to (B*N, T, D) for attention over sequence
+        x_reshaped = x.permute(0, 2, 1, 3).reshape(
+            batch_size * n_cameras, seq_len, hidden_dim
+        )
+
+        # Build attention mask if provided
+        key_padding_mask = None
+        fully_masked: Tensor | None = None
+        if mask is not None:
+            # mask: (B, T, N) -> (B*N, T)
+            key_padding_mask = ~mask.permute(0, 2, 1).reshape(
+                batch_size * n_cameras, seq_len
+            )
+            fully_masked = key_padding_mask.all(dim=1)
+            if fully_masked.any():
+                key_padding_mask = key_padding_mask.clone()
+                key_padding_mask[fully_masked] = False
+                x_reshaped = x_reshaped.clone()
+                x_reshaped[fully_masked] = 0.0
+
+        # Self-attention
+        x_norm = self.norm1(x_reshaped)
+        attn_out, _ = self.attn(
+            x_norm, x_norm, x_norm, key_padding_mask=key_padding_mask
+        )
+        x_reshaped = x_reshaped + attn_out
+
+        # FFN
+        x_reshaped = x_reshaped + self.ffn(self.norm2(x_reshaped))
+
+        # Reshape back to (B, T, N, D)
+        out = x_reshaped.reshape(batch_size, n_cameras, seq_len, hidden_dim).permute(
+            0, 2, 1, 3
+        )
+        if mask is not None:
+            out = out * mask.unsqueeze(-1).to(dtype=out.dtype)
+        return out
+
+
+class CameraAttentionBlock(nn.Module):
+    """Self-attention over the camera dimension.
+
+    For each time step, applies attention across cameras.
+    Input shape: (B, T, N, D) - processes attention over N for each time T.
+    """
+
+    def __init__(
+        self,
+        hidden_dim: int = 256,
+        num_heads: int = 8,
+        dropout: float = 0.1,
+    ) -> None:
+        """Initialize camera attention block.
+
+        Args:
+            hidden_dim: Hidden dimension.
+            num_heads: Number of attention heads.
+            dropout: Dropout probability.
+
+        """
+        super().__init__()
+        self.attn = nn.MultiheadAttention(
+            embed_dim=hidden_dim,
+            num_heads=num_heads,
+            dropout=dropout,
+            batch_first=True,
+        )
+        self.norm1 = nn.LayerNorm(hidden_dim)
+        self.norm2 = nn.LayerNorm(hidden_dim)
+        self.ffn = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim * 4),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim * 4, hidden_dim),
+            nn.Dropout(dropout),
+        )
+
+    def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
+        """Apply camera attention.
+
+        Args:
+            x: Input tensor, shape (B, T, N, D).
+            mask: Optional mask, shape (B, T, N), True = valid.
+
+        Returns:
+            Tensor: Output tensor, shape (B, T, N, D).
+
+        """
+        batch_size, seq_len, n_cameras, hidden_dim = x.shape
+
+        # Reshape to (B*T, N, D) for attention over cameras
+        x_reshaped = x.reshape(batch_size * seq_len, n_cameras, hidden_dim)
+
+        # Build attention mask if provided
+        key_padding_mask = None
+        fully_masked: Tensor | None = None
+        if mask is not None:
+            # mask: (B, T, N) -> (B*T, N)
+            key_padding_mask = ~mask.reshape(batch_size * seq_len, n_cameras)
+            fully_masked = key_padding_mask.all(dim=1)
+            if fully_masked.any():
+                key_padding_mask = key_padding_mask.clone()
+                key_padding_mask[fully_masked] = False
+                x_reshaped = x_reshaped.clone()
+                x_reshaped[fully_masked] = 0.0
+
+        # Self-attention
+        x_norm = self.norm1(x_reshaped)
+        attn_out, _ = self.attn(
+            x_norm, x_norm, x_norm, key_padding_mask=key_padding_mask
+        )
+        x_reshaped = x_reshaped + attn_out
+
+        # FFN
+        x_reshaped = x_reshaped + self.ffn(self.norm2(x_reshaped))
+
+        # Reshape back to (B, T, N, D)
+        out = x_reshaped.reshape(batch_size, seq_len, n_cameras, hidden_dim)
+        if mask is not None:
+            out = out * mask.unsqueeze(-1).to(dtype=out.dtype)
+        return out
+
+
+class BLCSMultiViewModel(nn.Module):
+    """Multi-view BLCS model with alternating attention architecture.
+
+    This model takes ball 2D trajectories and court keypoints from multiple
+    camera views and time steps, processes them with alternating Sequential
+    and Camera attention blocks, and predicts the ball's 3D trajectory.
+
+    Input:
+        - ball_uv: Ball 2D positions, shape (B, T, N, 2)
+        - court_kp: Court 2D keypoints, shape (B, T, N, 20, 2)
+        - ball_mask: Ball visibility masks, shape (B, T, N)
+        - court_vis: Court visibility masks, shape (B, T, N, 20)
+        - num_views: Number of valid views per sample, shape (B,)
+        - seq_len: Sequence lengths, shape (B,)
+
+    Output:
+        - position: Normalized (x, y, z) trajectory, shape (B, T, 3)
+        - velocity: Velocities (optional), shape (B, T, 3)
+    """
+
+    def __init__(
+        self,
+        hidden_dim: int = 256,
+        num_layers: int = 4,
         num_heads: int = 8,
         dropout: float = 0.1,
         max_seq_len: int = 120,
         max_views: int = 8,
         predict_velocity: bool = False,
+        encoder_layers: int = 2,
     ) -> None:
         """Initialize the multi-view BLCS model.
 
         Args:
-            hidden_dim: Hidden dimension for encoder and heads.
-            num_layers: Number of transformer layers.
+            hidden_dim: Hidden dimension for all components.
+            num_layers: Number of alternating attention layer pairs.
             num_heads: Number of attention heads.
             dropout: Dropout probability.
             max_seq_len: Maximum sequence length.
             max_views: Maximum number of camera views.
             predict_velocity: Also predict velocities.
+            encoder_layers: Number of MLP layers in BallCourtEncoder.
 
         """
         super().__init__()
@@ -77,69 +253,57 @@ class BLCSMultiViewModel(nn.Module):
         self.predict_velocity = predict_velocity
         self.num_court_kp = NUM_COURT_KP
 
-        # Per-view court context encoder
-        self.court_proj = nn.Sequential(
-            nn.Linear(NUM_COURT_KP * 2, hidden_dim),
+        # BallCourtEncoder for generating per-(frame, camera) tokens
+        self.ball_court_encoder = BallCourtEncoder(
+            ball_input_dim=2,
+            court_kp_dim=NUM_COURT_KP * 2,
+            hidden_dim=hidden_dim,
+            num_layers=encoder_layers,
+            dropout=dropout,
+        )
+
+        # Positional embeddings
+        self.time_embed = nn.Embedding(max_seq_len, hidden_dim)
+        self.camera_embed = nn.Embedding(max_views, hidden_dim)
+
+        # Alternating Sequential and Camera Attention blocks
+        self.seq_attn_blocks = nn.ModuleList(
+            [
+                SequentialAttentionBlock(hidden_dim, num_heads, dropout)
+                for _ in range(num_layers)
+            ]
+        )
+        self.cam_attn_blocks = nn.ModuleList(
+            [
+                CameraAttentionBlock(hidden_dim, num_heads, dropout)
+                for _ in range(num_layers)
+            ]
+        )
+
+        # Aggregation MLP: concat camera tokens -> project to head input dim
+        self.aggregate_mlp = nn.Sequential(
+            nn.Linear(hidden_dim * max_views, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.GELU(),
             nn.Dropout(dropout),
         )
 
-        # Per-view ball trajectory encoder
-        self.ball_proj = nn.Sequential(
-            nn.Linear(2, hidden_dim),
-            nn.LayerNorm(hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
+        # Output heads
+        self.position_head = Trajectory3DHead(
+            input_dim=hidden_dim,
+            hidden_dim=hidden_dim // 2,
+            output_dim=3,
+            num_layers=2,
+            dropout=dropout,
         )
 
-        # Temporal positional encoding
-        self.pos_embed = nn.Parameter(torch.randn(1, max_seq_len, hidden_dim) * 0.02)
-
-        # TODO: Implement multi-view fusion mechanism
-        # Options:
-        # 1. Cross-view attention at each timestep
-        # 2. Triangulation-based geometric fusion
-        # 3. View-time factorized attention
-        # 4. Hybrid approach
-
-        # Placeholder: simple view-wise mean pooling + temporal transformer
-        self.temporal_encoder = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(
-                d_model=hidden_dim,
-                nhead=num_heads,
-                dim_feedforward=hidden_dim * 4,
-                dropout=dropout,
-                activation="gelu",
-                batch_first=True,
-            ),
-            num_layers=num_layers,
-        )
-
-        # View fusion layer
-        self.view_fusion = nn.Sequential(
-            nn.Linear(hidden_dim * 2, hidden_dim),  # ball + court
-            nn.LayerNorm(hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-        )
-
-        # Output head for 3D positions
-        self.position_head = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim // 2, 3),
-            nn.Sigmoid(),  # Normalized to [0, 1]
-        )
-
-        # Optional velocity head
         if predict_velocity:
-            self.velocity_head = nn.Sequential(
-                nn.Linear(hidden_dim, hidden_dim // 2),
-                nn.GELU(),
-                nn.Dropout(dropout),
-                nn.Linear(hidden_dim // 2, 3),
+            self.velocity_head = VelocityHead(
+                input_dim=hidden_dim,
+                hidden_dim=hidden_dim // 2,
+                output_dim=3,
+                num_layers=2,
+                dropout=dropout,
             )
         else:
             self.velocity_head = None
@@ -159,12 +323,13 @@ class BLCSMultiViewModel(nn.Module):
         data_cfg = config.get("data", {})
         return cls(
             hidden_dim=model_cfg.get("hidden_dim", 256),
-            num_layers=model_cfg.get("num_layers", 6),
+            num_layers=model_cfg.get("num_layers", 4),
             num_heads=model_cfg.get("num_heads", 8),
             dropout=model_cfg.get("dropout", 0.1),
             max_seq_len=model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120)),
             max_views=model_cfg.get("max_views", 8),
             predict_velocity=model_cfg.get("predict_velocity", False),
+            encoder_layers=model_cfg.get("encoder_layers", 2),
         )
 
     def forward(
@@ -180,82 +345,94 @@ class BLCSMultiViewModel(nn.Module):
         """Forward pass.
 
         Args:
-            ball_uv: Ball 2D positions, shape (B, N, T, 2).
-            court_kp: Court keypoints, shape (B, N, 20, 2).
-            ball_mask: Ball visibility mask, shape (B, N, T). Optional.
-            court_vis: Court visibility mask, shape (B, N, 20). Optional.
+            ball_uv: Ball 2D positions, shape (B, T, N, 2).
+            court_kp: Court keypoints, shape (B, T, N, 20, 2).
+            ball_mask: Ball visibility mask, shape (B, T, N). Optional.
+            court_vis: Court visibility mask, shape (B, T, N, 20). Optional.
             num_views: Number of valid views, shape (B,). Optional.
             seq_len: Sequence lengths, shape (B,). Optional.
-            camera_params: Camera parameters per view. Optional.
+            camera_params: Camera parameters per view. Optional (unused).
 
         Returns:
             dict: Dictionary with 'position' (B, T, 3) and optionally 'velocity'.
 
         """
-        batch_size, n_views, seq_length, _ = ball_uv.shape
+        batch_size, seq_length, n_cameras = ball_uv.shape[:3]
+        device = ball_uv.device
 
-        # Encode court context per view: (B, N, 20, 2) -> (B, N, D)
-        court_flat = court_kp.flatten(start_dim=2)  # (B, N, 40)
-        court_feat = self.court_proj(court_flat)  # (B, N, D)
+        # Flatten keypoints and ball for encoder: (B, T, N, ...) -> (B*T*N, ...)
+        ball_flat = ball_uv.reshape(batch_size * seq_length * n_cameras, 2)
+        court_flat = court_kp.flatten(start_dim=3).reshape(
+            batch_size * seq_length * n_cameras, -1
+        )
 
-        # Encode ball trajectory per view: (B, N, T, 2) -> (B, N, T, D)
-        ball_feat = self.ball_proj(ball_uv)  # (B, N, T, D)
+        # Encode each (frame, camera) pair
+        tokens_flat = self.ball_court_encoder(ball_flat, court_flat)  # (B*T*N, D)
+        tokens = tokens_flat.reshape(
+            batch_size, seq_length, n_cameras, self.hidden_dim
+        )  # (B, T, N, D)
 
-        # Add positional encoding
-        ball_feat = ball_feat + self.pos_embed[:, :seq_length, :].unsqueeze(1)
+        # Add positional embeddings
+        time_ids = torch.arange(seq_length, device=device)
+        camera_ids = torch.arange(n_cameras, device=device)
+        tokens = tokens + self.time_embed(time_ids).view(1, seq_length, 1, -1)
+        tokens = tokens + self.camera_embed(camera_ids).view(1, 1, n_cameras, -1)
 
-        # Create view mask if num_views provided
+        # Create view mask if num_views provided: (B, T, N)
+        view_mask: Tensor | None = None
         if num_views is not None:
-            view_mask = torch.arange(n_views, device=num_views.device).unsqueeze(0)
-            view_mask = view_mask < num_views.unsqueeze(1)  # (B, N)
-        else:
-            view_mask = torch.ones(
-                batch_size, n_views, device=ball_uv.device, dtype=torch.bool
-            )
+            camera_idx = torch.arange(n_cameras, device=device).view(1, 1, n_cameras)
+            view_mask = camera_idx < num_views.view(batch_size, 1, 1)
+            view_mask = view_mask.expand(batch_size, seq_length, n_cameras)
 
-        # TODO: Replace with proper multi-view fusion
-        # Current: masked mean pooling over views at each timestep
-
-        # Expand court context to temporal dimension
-        court_feat_expanded = court_feat.unsqueeze(2).expand(-1, -1, seq_length, -1)
-        # (B, N, T, D)
-
-        # Fuse ball and court features
-        combined = torch.cat([ball_feat, court_feat_expanded], dim=-1)  # (B, N, T, 2D)
-        fused_per_view = self.view_fusion(combined)  # (B, N, T, D)
-
-        # Apply ball mask if provided
+        # Combine with ball visibility mask
+        token_mask = view_mask
         if ball_mask is not None:
-            ball_mask_expanded = ball_mask.unsqueeze(-1)  # (B, N, T, 1)
-            fused_per_view = fused_per_view * ball_mask_expanded
+            # ball_mask: (B, T, N)
+            frame_camera_valid = ball_mask > 0
+            if token_mask is not None:
+                token_mask = token_mask & frame_camera_valid
+            else:
+                token_mask = frame_camera_valid
 
-        # Mean pooling over views
-        view_mask_expanded = view_mask.unsqueeze(2).unsqueeze(3)  # (B, N, 1, 1)
-        masked_fused = fused_per_view * view_mask_expanded.float()
-        view_pooled = masked_fused.sum(dim=1) / (
-            view_mask_expanded.float().sum(dim=1) + 1e-8
-        )  # (B, T, D)
-
-        # Apply temporal transformer
-        # Create temporal mask if seq_len provided
+        # Apply sequence length mask
         if seq_len is not None:
-            time_mask = torch.arange(seq_length, device=seq_len.device).unsqueeze(0)
-            time_mask = time_mask >= seq_len.unsqueeze(1)  # (B, T), True = masked
-        else:
-            time_mask = None
+            time_idx = torch.arange(seq_length, device=device).view(1, seq_length, 1)
+            time_mask = time_idx < seq_len.view(batch_size, 1, 1)
+            time_mask = time_mask.expand(batch_size, seq_length, n_cameras)
+            token_mask = token_mask & time_mask if token_mask is not None else time_mask
 
-        temporal_feat = self.temporal_encoder(
-            view_pooled, src_key_padding_mask=time_mask
-        )  # (B, T, D)
+        # Apply alternating Sequential and Camera Attention
+        for seq_attn, cam_attn in zip(
+            self.seq_attn_blocks, self.cam_attn_blocks, strict=True
+        ):
+            tokens = seq_attn(tokens, token_mask)
+            tokens = cam_attn(tokens, token_mask)
+
+        # Aggregate camera tokens: (B, T, N, D) -> (B, T, N*D)
+        # Pad to max_views if necessary
+        if n_cameras < self.max_views:
+            pad_size = self.max_views - n_cameras
+            padding = torch.zeros(
+                batch_size, seq_length, pad_size, self.hidden_dim, device=device
+            )
+            tokens = torch.cat([tokens, padding], dim=2)
+
+        tokens_cat = tokens.reshape(
+            batch_size, seq_length, self.max_views * self.hidden_dim
+        )
+
+        # Project to head input dimension
+        aggregated = self.aggregate_mlp(tokens_cat)  # (B, T, D)
 
         # Predict 3D positions
-        position = self.position_head(temporal_feat)  # (B, T, 3)
+        position = self.position_head(aggregated)  # (B, T, 3)
 
         outputs = {"position": position}
 
         # Optionally predict velocities
         if self.predict_velocity and self.velocity_head is not None:
-            velocity = self.velocity_head(temporal_feat)  # (B, T, 3)
+            velocity = self.velocity_head(aggregated)  # (B, T, 3)
             outputs["velocity"] = velocity
 
         return outputs

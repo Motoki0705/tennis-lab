@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 from typing import TYPE_CHECKING, Any
 
 import pytorch_lightning as pl
@@ -95,8 +96,17 @@ class BLCSMultiViewLightningModule(pl.LightningModule):
             dict: Model outputs.
 
         """
-        return self.model(
-            ball_uv, court_kp, ball_mask, court_vis, num_views, seq_len, camera_params
+        return typing.cast(
+            dict[str, Any],
+            self.model(
+                ball_uv,
+                court_kp,
+                ball_mask,
+                court_vis,
+                num_views,
+                seq_len,
+                camera_params,
+            ),
         )
 
     def _shared_step(
@@ -113,11 +123,12 @@ class BLCSMultiViewLightningModule(pl.LightningModule):
 
         """
         # Forward pass with multi-view inputs
-        outputs = self.model(
-            ball_uv=batch["ball_uv"],  # (B, N, T, 2)
-            court_kp=batch["court_kp"],  # (B, N, 20, 2)
-            ball_mask=batch.get("ball_mask"),
-            court_vis=batch.get("court_vis"),
+        # New tensor format: (B, T, N, ...) for alternating attention architecture
+        outputs: dict[str, Any] = self.model(
+            ball_uv=batch["ball_uv"],  # (B, T, N, 2)
+            court_kp=batch["court_kp"],  # (B, T, N, 20, 2)
+            ball_mask=batch.get("ball_mask"),  # (B, T, N)
+            court_vis=batch.get("court_vis"),  # (B, T, N, 20)
             num_views=batch.get("num_views"),
             seq_len=batch.get("seq_len"),
             camera_params=batch.get("camera_params"),

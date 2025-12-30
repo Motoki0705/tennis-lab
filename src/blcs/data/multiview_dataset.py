@@ -30,6 +30,10 @@ class MultiViewBallTrajectoryDataset(Dataset):
     Unlike BallTrajectoryDataset which returns single-camera samples, this
     dataset returns observations from multiple cameras for the same trajectory,
     enabling multi-camera triangulation and fusion approaches.
+
+    Supports dynamic range-based sampling for views and sequence length:
+        - num_views_range: [min, max] - randomly sample view count per sample
+        - seq_len_range: [min, max] - randomly sample sequence length per sample
     """
 
     def __init__(
@@ -62,6 +66,19 @@ class MultiViewBallTrajectoryDataset(Dataset):
         data_cfg = self.config.get("data", {})
         self.min_seq_len = int(data_cfg.get("min_seq_len", 15))
         self.max_seq_len = int(data_cfg.get("max_seq_len", 120))
+
+        # Range sampling (optional)
+        # Format: [min, max] inclusive
+        self.num_views_range: tuple[int, int] | None = None
+        self.seq_len_range: tuple[int, int] | None = None
+
+        if "num_views_range" in data_cfg:
+            r = data_cfg["num_views_range"]
+            self.num_views_range = (int(r[0]), int(r[1]))
+
+        if "seq_len_range" in data_cfg:
+            r = data_cfg["seq_len_range"]
+            self.seq_len_range = (int(r[0]), int(r[1]))
 
         # Augmentation parameters
         aug_cfg = data_cfg.get("augmentation", {})
@@ -131,9 +148,37 @@ class MultiViewBallTrajectoryDataset(Dataset):
         # Parse metadata
         meta = json.loads(str(data["meta"]))
         num_cameras = int(data["num_cameras"])
+        num_frames = int(meta["num_frames"])
+
+        # Determine actual seq_len for this sample
+        if self.seq_len_range is not None:
+            min_seq, max_seq = self.seq_len_range
+            max_possible = min(max_seq, num_frames)
+            # Clamp min_seq to not exceed max_possible
+            effective_min = min(min_seq, max_possible)
+            actual_seq_len = rng.randint(effective_min, max_possible)
+        else:
+            actual_seq_len = num_frames
+
+        # Random start frame for sequence sampling
+        if actual_seq_len < num_frames:
+            start_frame = rng.randint(0, num_frames - actual_seq_len)
+        else:
+            start_frame = 0
+        end_frame = start_frame + actual_seq_len
+
+        # Determine actual num_views for this sample
+        if self.num_views_range is not None:
+            min_views, max_views = self.num_views_range
+            max_possible_views = min(max_views, num_cameras)
+            # Clamp min_views to not exceed max_possible_views
+            effective_min_views = min(min_views, max_possible_views)
+            actual_num_views = rng.randint(effective_min_views, max_possible_views)
+        else:
+            actual_num_views = min(self.num_views, num_cameras)
 
         # Select random subset of cameras
-        selected_cams = rng.sample(range(num_cameras), min(self.num_views, num_cameras))
+        selected_cams = rng.sample(range(num_cameras), actual_num_views)
 
         # Collect data from each camera
         ball_uv_list: list[Tensor] = []
@@ -145,10 +190,23 @@ class MultiViewBallTrajectoryDataset(Dataset):
         for cam_idx in selected_cams:
             prefix = f"cam_{cam_idx}_"
 
-            ball_uv = torch.from_numpy(data[f"{prefix}ball_uv"]).float()
-            ball_vis = torch.from_numpy(data[f"{prefix}ball_visible"]).float()
-            court_kp = torch.from_numpy(data[f"{prefix}court_kp_uv"]).float()
-            court_vis = torch.from_numpy(data[f"{prefix}court_kp_visible"]).float()
+            # Load and slice to the selected sequence range
+            ball_uv = torch.from_numpy(
+                data[f"{prefix}ball_uv"][start_frame:end_frame].copy()
+            ).float()
+            ball_vis = torch.from_numpy(
+                data[f"{prefix}ball_visible"][start_frame:end_frame].copy()
+            ).float()
+            court_kp = torch.from_numpy(data[f"{prefix}court_kp_uv"]).float()  # (20, 2)
+            court_vis = torch.from_numpy(
+                data[f"{prefix}court_kp_visible"]
+            ).float()  # (20,)
+
+            # Expand court_kp and court_vis to temporal dimension
+            # (20, 2) -> (T, 20, 2)
+            court_kp_expanded = court_kp.unsqueeze(0).expand(actual_seq_len, -1, -1)
+            # (20,) -> (T, 20)
+            court_vis_expanded = court_vis.unsqueeze(0).expand(actual_seq_len, -1)
 
             # Load camera params if available
             params_key = f"{prefix}params"
@@ -166,21 +224,25 @@ class MultiViewBallTrajectoryDataset(Dataset):
 
             ball_uv_list.append(ball_uv)
             ball_vis_list.append(ball_vis)
-            court_kp_list.append(court_kp)
-            court_vis_list.append(court_vis)
+            court_kp_list.append(court_kp_expanded)
+            court_vis_list.append(court_vis_expanded)
             camera_params_list.append(cam_params)
 
         # Stack into tensors: (N_cam, ...)
         return {
             "ball_uv": torch.stack(ball_uv_list, dim=0),  # (N_cam, T, 2)
             "ball_vis": torch.stack(ball_vis_list, dim=0),  # (N_cam, T)
-            "court_kp": torch.stack(court_kp_list, dim=0),  # (N_cam, 20, 2)
-            "court_vis": torch.stack(court_vis_list, dim=0),  # (N_cam, 20)
+            "court_kp": torch.stack(court_kp_list, dim=0),  # (N_cam, T, 20, 2)
+            "court_vis": torch.stack(court_vis_list, dim=0),  # (N_cam, T, 20)
             "camera_params": camera_params_list,
             "num_views": torch.tensor(len(selected_cams)),
-            "position_3d": torch.from_numpy(data["ball_pos_norm"]).float(),
-            "velocity_3d": torch.from_numpy(data["ball_vel_world"]).float(),
-            "seq_len": torch.tensor(meta["num_frames"]),
+            "position_3d": torch.from_numpy(
+                data["ball_pos_norm"][start_frame:end_frame].copy()
+            ).float(),
+            "velocity_3d": torch.from_numpy(
+                data["ball_vel_world"][start_frame:end_frame].copy()
+            ).float(),
+            "seq_len": torch.tensor(actual_seq_len),
             "meta": meta,
         }
 
@@ -205,8 +267,8 @@ class MultiViewBallTrajectoryDataset(Dataset):
         return {
             "ball_uv": sample["ball_uv"],  # (N_cam, T, 2)
             "ball_mask": sample["ball_vis"],  # (N_cam, T)
-            "court_kp": sample["court_kp"],  # (N_cam, 20, 2)
-            "court_vis": sample["court_vis"],  # (N_cam, 20)
+            "court_kp": sample["court_kp"],  # (N_cam, T, 20, 2)
+            "court_vis": sample["court_vis"],  # (N_cam, T, 20)
             "camera_params": sample["camera_params"],
             "num_views": sample["num_views"],
             "position_3d": sample["position_3d"],  # (T, 3)
@@ -249,12 +311,13 @@ def collate_multiview_trajectories(
     """Collate function for multi-view trajectory batches.
 
     Handles variable sequence lengths and number of views by padding.
+    Outputs tensors in model input format: (B, T, N, ...) for ball/court data.
 
     Args:
         batch: List of multi-view samples.
 
     Returns:
-        Collated batch with padded tensors.
+        Collated batch with padded tensors in (B, T, N, ...) format.
 
     """
     max_views = max(sample["num_views"].item() for sample in batch)
@@ -275,11 +338,11 @@ def collate_multiview_trajectories(
         pad_views = max_views - n_views
         pad_seq = max_seq_len - seq_len
 
-        # Pad views dimension
+        # Input tensors from dataset: (N, T, ...) format
         ball_uv = sample["ball_uv"]  # (N, T, 2)
         ball_mask = sample["ball_mask"]  # (N, T)
-        court_kp = sample["court_kp"]  # (N, 20, 2)
-        court_vis = sample["court_vis"]  # (N, 20)
+        court_kp = sample["court_kp"]  # (N, T, 20, 2)
+        court_vis = sample["court_vis"]  # (N, T, 20)
         position_3d = sample["position_3d"]  # (T, 3)
         velocity_3d = sample["velocity_3d"]  # (T, 3)
 
@@ -287,6 +350,12 @@ def collate_multiview_trajectories(
         if pad_seq > 0:
             ball_uv = torch.cat([ball_uv, torch.zeros(n_views, pad_seq, 2)], dim=1)
             ball_mask = torch.cat([ball_mask, torch.zeros(n_views, pad_seq)], dim=1)
+            court_kp = torch.cat(
+                [court_kp, torch.zeros(n_views, pad_seq, 20, 2)], dim=1
+            )
+            court_vis = torch.cat(
+                [court_vis, torch.zeros(n_views, pad_seq, 20)], dim=1
+            )
             position_3d = torch.cat([position_3d, torch.zeros(pad_seq, 3)], dim=0)
             velocity_3d = torch.cat([velocity_3d, torch.zeros(pad_seq, 3)], dim=0)
 
@@ -298,8 +367,18 @@ def collate_multiview_trajectories(
             ball_mask = torch.cat(
                 [ball_mask, torch.zeros(pad_views, max_seq_len)], dim=0
             )
-            court_kp = torch.cat([court_kp, torch.zeros(pad_views, 20, 2)], dim=0)
-            court_vis = torch.cat([court_vis, torch.zeros(pad_views, 20)], dim=0)
+            court_kp = torch.cat(
+                [court_kp, torch.zeros(pad_views, max_seq_len, 20, 2)], dim=0
+            )
+            court_vis = torch.cat(
+                [court_vis, torch.zeros(pad_views, max_seq_len, 20)], dim=0
+            )
+
+        # Transpose from (N, T, ...) to (T, N, ...) for model input format
+        ball_uv = ball_uv.permute(1, 0, 2)  # (T, N, 2)
+        ball_mask = ball_mask.permute(1, 0)  # (T, N)
+        court_kp = court_kp.permute(1, 0, 2, 3)  # (T, N, 20, 2)
+        court_vis = court_vis.permute(1, 0, 2)  # (T, N, 20)
 
         ball_uv_batch.append(ball_uv)
         ball_mask_batch.append(ball_mask)
@@ -311,11 +390,11 @@ def collate_multiview_trajectories(
         num_views_batch.append(sample["num_views"])
 
     return {
-        "ball_uv": torch.stack(ball_uv_batch, dim=0),  # (B, N_max, T_max, 2)
-        "ball_mask": torch.stack(ball_mask_batch, dim=0),  # (B, N_max, T_max)
-        "court_kp": torch.stack(court_kp_batch, dim=0),  # (B, N_max, 20, 2)
-        "court_vis": torch.stack(court_vis_batch, dim=0),  # (B, N_max, 20)
-        "camera_params": [s["camera_params"] for s in batch],
+        "ball_uv": torch.stack(ball_uv_batch, dim=0),  # (B, T_max, N_max, 2)
+        "ball_mask": torch.stack(ball_mask_batch, dim=0),  # (B, T_max, N_max)
+        "court_kp": torch.stack(court_kp_batch, dim=0),  # (B, T_max, N_max, 20, 2)
+        "court_vis": torch.stack(court_vis_batch, dim=0),  # (B, T_max, N_max, 20)
+        "camera_params": [cam for sample in batch for cam in sample["camera_params"]],
         "num_views": torch.stack(num_views_batch, dim=0),  # (B,)
         "position_3d": torch.stack(position_3d_batch, dim=0),  # (B, T_max, 3)
         "velocity_3d": torch.stack(velocity_3d_batch, dim=0),  # (B, T_max, 3)
