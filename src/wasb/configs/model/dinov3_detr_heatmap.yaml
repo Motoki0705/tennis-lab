@@ -1,4 +1,4 @@
-name: dinov3_detr_heatmap
+name: dinov3_detr_heatmap_fpn
 
 use_backbone: false
 backbone_checkpoint: null
@@ -8,6 +8,16 @@ num_layers: 4
 num_heads: 6
 ffn_dim: 1536
 dropout: 0.1
+
+# --- temporal ---
+max_frames: 256
+temporal_causal: false
+time_pos_each_layer: false
+
+# --- DETRsegm-like head（薄さ改善の本丸） ---
+max_upsample_stages: 4
+head_dropout: 0.05
+head_min_dim: 32
 
 patch_size: 16
 patch_grid_hw: [18, 32]
