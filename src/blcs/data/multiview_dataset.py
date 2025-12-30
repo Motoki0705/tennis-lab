@@ -154,7 +154,9 @@ class MultiViewBallTrajectoryDataset(Dataset):
         if self.seq_len_range is not None:
             min_seq, max_seq = self.seq_len_range
             max_possible = min(max_seq, num_frames)
-            actual_seq_len = rng.randint(min_seq, max_possible)
+            # Clamp min_seq to not exceed max_possible
+            effective_min = min(min_seq, max_possible)
+            actual_seq_len = rng.randint(effective_min, max_possible)
         else:
             actual_seq_len = num_frames
 
@@ -169,7 +171,9 @@ class MultiViewBallTrajectoryDataset(Dataset):
         if self.num_views_range is not None:
             min_views, max_views = self.num_views_range
             max_possible_views = min(max_views, num_cameras)
-            actual_num_views = rng.randint(min_views, max_possible_views)
+            # Clamp min_views to not exceed max_possible_views
+            effective_min_views = min(min_views, max_possible_views)
+            actual_num_views = rng.randint(effective_min_views, max_possible_views)
         else:
             actual_num_views = min(self.num_views, num_cameras)
 
