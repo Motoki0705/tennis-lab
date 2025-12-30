@@ -295,7 +295,7 @@ class TokenFPNHeatmapHead(nn.Module):
         return logits
 
 
-class DinoV3DETRHeatmapFPN(nn.Module):
+class DinoV3DETRHeatmap(nn.Module):
     """Temporal DETR-style heatmap model with DETRsegm-like (attention + FPN-ish) head."""
 
     def __init__(self, cfg: DictConfig | dict[str, Any] | None = None) -> None:
