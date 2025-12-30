@@ -63,6 +63,7 @@ class PLCSMultiViewSequenceBatch(TypedDict):
 
     Used by MultiViewSequenceDataset.__getitem__(). Contains observations from
     multiple cameras over a temporal sequence for multi-camera sequential models.
+
     """
 
     human_kp: torch.Tensor  # (N_cam, T, 17, 2) human keypoints from each camera
@@ -71,8 +72,40 @@ class PLCSMultiViewSequenceBatch(TypedDict):
     court_vis: torch.Tensor  # (N_cam, T, 20) visibility flags for court keypoints
     camera_params: list[dict]  # List of camera parameter dicts
     num_views: torch.Tensor  # scalar, number of views in this sample
+    seq_len: torch.Tensor  # scalar, actual sequence length in this sample
+    view_mask: torch.Tensor  # (N_cam,) True for valid camera views
+    seq_mask: torch.Tensor  # (T,) True for valid frames
     position: torch.Tensor  # (T, 3) normalized court positions over time
     rotation: torch.Tensor  # (T, 2) player orientations over time
+
+
+class PLCSMultiViewBatchCollated(TypedDict):
+    """Schema for collated multi-view PLCS dataset batches."""
+
+    human_kp: torch.Tensor  # (B, N_cam, 17, 2) human keypoints from each camera
+    court_kp: torch.Tensor  # (B, N_cam, 20, 2) court keypoints from each camera
+    human_vis: torch.Tensor  # (B, N_cam, 17) visibility flags for human keypoints
+    court_vis: torch.Tensor  # (B, N_cam, 20) visibility flags for court keypoints
+    camera_params: list[list[dict]]  # Per-sample list of camera parameter dicts
+    num_views: torch.Tensor  # (B,) number of views in each sample
+    position: torch.Tensor  # (B, 3) normalized court position (shared GT)
+    rotation: torch.Tensor  # (B, 2) player orientation (shared GT)
+
+
+class PLCSMultiViewSequenceBatchCollated(TypedDict):
+    """Schema for collated multi-view sequential PLCS dataset batches."""
+
+    human_kp: torch.Tensor  # (B, N_cam, T, 17, 2) human keypoints from each camera
+    court_kp: torch.Tensor  # (B, N_cam, T, 20, 2) court keypoints from each camera
+    human_vis: torch.Tensor  # (B, N_cam, T, 17) visibility flags for human keypoints
+    court_vis: torch.Tensor  # (B, N_cam, T, 20) visibility flags for court keypoints
+    camera_params: list[list[dict]]  # Per-sample list of camera parameter dicts
+    num_views: torch.Tensor  # (B,) number of views in each sample
+    seq_len: torch.Tensor  # (B,) sequence length per sample
+    view_mask: torch.Tensor  # (B, N_cam) True for valid camera views
+    seq_mask: torch.Tensor  # (B, T) True for valid frames
+    position: torch.Tensor  # (B, T, 3) normalized court positions over time
+    rotation: torch.Tensor  # (B, T, 2) player orientations over time
 
 
 @dataclass(frozen=True)
