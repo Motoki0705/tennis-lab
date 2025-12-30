@@ -7,6 +7,9 @@
 `train_multiview.py` は、複数カメラからの2D人物キーポイントとコートキーポイントを入力として、
 コート座標系でのプレイヤーの3D位置と回転（向き）を推定するモデルを学習します。
 
+**シーケンシャル入力に対応**: 複数カメラ×時系列 `(N_cam, T, ...)` の入力をサポートし、
+時間一貫性ロスによるスムーズな軌道推定が可能です。
+
 単一カメラの `train.py` とは異なり、複数視点の情報を統合することで、
 遮蔽やカメラ配置の制約を克服し、より堅牢な推定を実現します。
 
@@ -33,6 +36,23 @@ uv run python -m src.plcs.scripts.train_multiview \
 uv run python -m src.plcs.scripts.train_multiview \
     data.num_views=4 \
     data.min_cameras=2
+```
+
+### シーケンス長の設定
+
+```bash
+# シーケンス長を32フレームに設定
+uv run python -m src.plcs.scripts.train_multiview \
+    data.seq_len=32
+```
+
+### ランダムレンジサンプリング
+
+```bash
+# カメラ数とシーケンス長を範囲からランダムにサンプリング
+uv run python -m src.plcs.scripts.train_multiview \
+    'data.num_views_range=[1, 8]' \
+    'data.seq_len_range=[4, 32]'
 ```
 
 ### Dry Run（データローディング確認のみ）
@@ -83,11 +103,29 @@ hydra:
 `src/plcs/configs/data/multiview.yaml`:
 
 ```yaml
-scene_dir: data/plcs/scenes
+scene_dir: data/plcs
 batch_size: 32
 num_workers: 4
-num_views: 3      # 同時に使用するカメラ数
-min_cameras: 2    # シーンに必要な最小カメラ数
+num_views: 2          # 同時に使用するカメラ数
+min_cameras: 2        # シーンに必要な最小カメラ数
+seq_len: 16           # シーケンス長
+
+# ランダムレンジサンプリング（オプション）
+# num_views_range: [1, 8]   # 各サンプルでランダムにカメラ数を選択
+# seq_len_range: [4, 32]    # 各サンプルでランダムにシーケンス長を選択
+```
+
+### ロス設定
+
+`src/plcs/configs/loss/multiview_sequence.yaml`:
+
+```yaml
+position_weight: 1.0
+rotation_weight: 1.0
+temporal_weight: 0.1      # 時間一貫性ロス
+temporal:
+  order: 2                 # 加速度の平滑化
+  robust: true             # SmoothL1Loss使用
 ```
 
 ### モデル設定
@@ -105,31 +143,40 @@ dropout: 0.1
 
 ### 入力（バッチ）
 
+マルチビューモデルはシーケンシャル入力に対応しています。
+
 | フィールド | 形状 | 説明 |
 |-----------|------|------|
-| `human_kp` | `(B, N, 17, 2)` | 2D人物キーポイント |
-| `court_kp` | `(B, N, 20, 2)` | 2Dコートキーポイント |
-| `human_kp_mask` | `(B, N, 17)` | 人物KP可視性マスク |
-| `court_kp_mask` | `(B, N, 20)` | コートKP可視性マスク |
-| `view_mask` | `(B, N)` | 有効カメラマスク |
-| `position_gt` | `(B, 3)` | 位置Ground Truth |
-| `rotation_gt` | `(B, 2)` | 回転Ground Truth（sin/cos） |
+| `human_kp` | `(B, N, T, 17, 2)` | 2D人物キーポイント（マルチカメラ×時系列） |
+| `court_kp` | `(B, N, T, 20, 2)` | 2Dコートキーポイント |
+| `human_vis` | `(B, N, T, 17)` | 人物KP可視性マスク |
+| `court_vis` | `(B, N, T, 20)` | コートKP可視性マスク |
+| `view_mask` | `(B, N)` | 有効カメラマスク（パディング用） |
+| `seq_mask` | `(B, T)` | 有効フレームマスク（パディング用） |
+| `num_views` | `(B,)` | 各サンプルの実際のカメラ数 |
+| `seq_len` | `(B,)` | 各サンプルの実際のシーケンス長 |
+| `position` | `(B, T, 3)` | 位置Ground Truth |
+| `rotation` | `(B, T, 2)` | 回転Ground Truth（sin/cos） |
 
 - `B`: バッチサイズ
-- `N`: カメラ数（`num_views`）
+- `N`: 最大カメラ数（バッチ内でパディング）
+- `T`: 最大シーケンス長（バッチ内でパディング）
 
 ### 出力
 
 | フィールド | 形状 | 説明 |
 |-----------|------|------|
-| `position` | `(B, 3)` | 推定3D位置 |
-| `rotation` | `(B, 2)` | 推定回転（sin/cos） |
+| `position` | `(B, T, 3)` | 推定3D位置（時系列） |
+| `rotation` | `(B, T, 2)` | 推定回転（sin/cos、時系列） |
 
 ## 損失関数
 
 - **位置損失**: MSE（平均二乗誤差）
 - **回転損失**: MSE（sin/cos表現）
-- **総合損失**: `position_loss + rotation_weight * rotation_loss`
+- **時間一貫性損失**: 速度・加速度の平滑化（`temporal_weight > 0` の場合）
+- **総合損失**: `position_weight * pos_loss + rotation_weight * rot_loss + temporal_weight * temporal_loss`
+
+ロス設定は `src/plcs/configs/loss/multiview_sequence.yaml` で管理されます。
 
 ## 評価指標
 

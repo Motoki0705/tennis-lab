@@ -4,9 +4,6 @@ weight_decay: 1.0e-5
 warmup_steps: 1000
 gradient_clip_val: 1.0
 
-position_loss_weight: 1.0
-rotation_loss_weight: 1.0
-
 scheduler: cosine
 min_lr: 1.0e-6
 

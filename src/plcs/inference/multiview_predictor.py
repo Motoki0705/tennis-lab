@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, ParamSpec, Self, TypeVar, cast
+from typing import Any, Self, TypeVar, cast
 
 import torch
 from torch import Tensor
@@ -14,18 +14,19 @@ from src.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.plcs.training.multiview_lightning_module import PLCSMultiViewLightningModule
 from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
-P = ParamSpec("P")
-R = TypeVar("R")
+F = TypeVar("F", bound=Callable[..., Any])
 
 
-def _no_grad(func: Callable[P, R]) -> Callable[P, R]:
-    return cast(Callable[P, R], torch.no_grad()(func))
+def inference_mode(fn: F) -> F:
+    """Apply torch.inference_mode with typing preserved."""
+    return cast(F, torch.inference_mode()(fn))
 
 
 class PLCSMultiViewPredictor(BasePredictor):
-    """PLCS multi-view model inference predictor.
+    """PLCS multi-view sequential model inference predictor.
 
-    Predicts 3D position and orientation from multiple camera views.
+    Predicts 3D position and orientation sequences from multiple camera views
+    over time. Always expects sequential input (N_cam, T, ...).
 
     Attributes:
         model: The PLCS multi-view model.
@@ -35,8 +36,10 @@ class PLCSMultiViewPredictor(BasePredictor):
         >>> predictor = PLCSMultiViewPredictor.load_from_checkpoint(
         ...     "model.ckpt", device="cuda"
         ... )
+        >>> # Input: (B, N, T, 17, 2) -> Output: (B, T, 3)
         >>> results = predictor.predict(human_kp, court_kp)
-        >>> print(results["position"].shape)  # (B, 3)
+        >>> print(results["position"].shape)  # (B, T, 3)
+        >>> print(results["rotation"].shape)  # (B, T, 2)
 
     """
 
@@ -95,7 +98,7 @@ class PLCSMultiViewPredictor(BasePredictor):
 
         return cls(model=lightning_module.model, device=device)
 
-    @_no_grad
+    @inference_mode
     def predict(
         self,
         human_kp: Tensor,
@@ -103,37 +106,41 @@ class PLCSMultiViewPredictor(BasePredictor):
         human_kp_mask: Tensor | None = None,
         court_kp_mask: Tensor | None = None,
         view_mask: Tensor | None = None,
+        seq_mask: Tensor | None = None,
         denormalize: bool = True,
     ) -> dict[str, Tensor]:
-        """Predict player 3D position and orientation from multiple views.
+        """Predict player 3D position and orientation from multi-view sequences.
 
         Args:
-            human_kp: Human keypoints. Shape (B, N, 17, 2) or (N, 17, 2).
-            court_kp: Court keypoints. Shape (B, N, 20, 2) or (N, 20, 2).
-            human_kp_mask: Human keypoint visibility mask. Shape (B, N, 17).
-            court_kp_mask: Court keypoint visibility mask. Shape (B, N, 20).
-            view_mask: Valid view mask. Shape (B, N).
+            human_kp: Human keypoints. Shape (B, N, T, 17, 2) or (N, T, 17, 2).
+            court_kp: Court keypoints. Shape (B, N, T, 20, 2) or (N, T, 20, 2).
+            human_kp_mask: Human keypoint visibility mask. Shape (B, N, T, 17).
+            court_kp_mask: Court keypoint visibility mask. Shape (B, N, T, 20).
+            view_mask: Valid view mask. Shape (B, N) where True = valid view.
+            seq_mask: Valid sequence mask. Shape (B, T) where True = valid frame.
             denormalize: If True, convert positions to meters.
 
         Returns:
             Inference results dictionary:
-                - position: Normalized position (B, 3)
-                - position_meters: Position in meters (B, 3) (if denormalize=True)
-                - rotation: (sin, cos) (B, 2)
-                - yaw_radians: Yaw angle in radians (B,) (if denormalize=True)
+                - position: Normalized position (B, T, 3)
+                - position_meters: Position in meters (B, T, 3) (if denormalize=True)
+                - rotation: (sin, cos) (B, T, 2)
+                - yaw_radians: Yaw angle in radians (B, T) (if denormalize=True)
 
         """
-        # Add batch dimension if needed
-        if human_kp.dim() == 3:
+        # Add batch dimension if needed: (N, T, K, 2) -> (1, N, T, K, 2)
+        if human_kp.dim() == 4:
             human_kp = human_kp.unsqueeze(0)
-        if court_kp.dim() == 3:
+        if court_kp.dim() == 4:
             court_kp = court_kp.unsqueeze(0)
-        if human_kp_mask is not None and human_kp_mask.dim() == 2:
+        if human_kp_mask is not None and human_kp_mask.dim() == 3:
             human_kp_mask = human_kp_mask.unsqueeze(0)
-        if court_kp_mask is not None and court_kp_mask.dim() == 2:
+        if court_kp_mask is not None and court_kp_mask.dim() == 3:
             court_kp_mask = court_kp_mask.unsqueeze(0)
         if view_mask is not None and view_mask.dim() == 1:
             view_mask = view_mask.unsqueeze(0)
+        if seq_mask is not None and seq_mask.dim() == 1:
+            seq_mask = seq_mask.unsqueeze(0)
 
         # Move to device
         human_kp = human_kp.to(self.device)
@@ -144,87 +151,35 @@ class PLCSMultiViewPredictor(BasePredictor):
             court_kp_mask = court_kp_mask.to(self.device)
         if view_mask is not None:
             view_mask = view_mask.to(self.device)
+        if seq_mask is not None:
+            seq_mask = seq_mask.to(self.device)
 
-        # Forward pass
-        outputs = self.model(
-            human_kp=human_kp,
-            court_kp=court_kp,
-            human_kp_mask=human_kp_mask,
-            court_kp_mask=court_kp_mask,
-            view_mask=view_mask,
-        )
+        # Input shape: (B, N, T, K, 2)
+        B, N, T = human_kp.shape[:3]
 
-        position = outputs["position"].cpu()
-        rotation = outputs["rotation"].cpu()
-
-        result: dict[str, Tensor] = {
-            "position": position,
-            "rotation": rotation,
-        }
-
-        if denormalize:
-            scale = torch.tensor(
-                list(self._norm_scale_xyz),
-                dtype=position.dtype,
-            )
-            result["position_meters"] = position * scale
-            result["yaw_radians"] = torch.atan2(rotation[:, 0], rotation[:, 1])
-
-        return result
-
-    @_no_grad
-    def predict_sequence(
-        self,
-        human_kp_seq: Tensor,
-        court_kp_seq: Tensor,
-        human_kp_mask_seq: Tensor | None = None,
-        court_kp_mask_seq: Tensor | None = None,
-        view_mask: Tensor | None = None,
-        denormalize: bool = True,
-    ) -> dict[str, Tensor]:
-        """Predict player 3D position and orientation for a sequence.
-
-        Args:
-            human_kp_seq: Human keypoints sequence. Shape (T, N, 17, 2).
-            court_kp_seq: Court keypoints sequence. Shape (T, N, 20, 2).
-            human_kp_mask_seq: Visibility mask. Shape (T, N, 17).
-            court_kp_mask_seq: Visibility mask. Shape (T, N, 20).
-            view_mask: Valid view mask. Shape (N,) - shared across frames.
-            denormalize: If True, convert positions to meters.
-
-        Returns:
-            Inference results dictionary:
-                - position: Normalized position (T, 3)
-                - position_meters: Position in meters (T, 3) (if denormalize=True)
-                - rotation: (sin, cos) (T, 2)
-                - yaw_radians: Yaw angle in radians (T,) (if denormalize=True)
-
-        """
-        T = human_kp_seq.shape[0]
-
+        # Process each frame through the model
         positions = []
         rotations = []
 
         for t in range(T):
-            human_kp = human_kp_seq[t : t + 1]  # (1, N, 17, 2)
-            court_kp = court_kp_seq[t : t + 1]  # (1, N, 20, 2)
-            hm = human_kp_mask_seq[t : t + 1] if human_kp_mask_seq is not None else None
-            cm = court_kp_mask_seq[t : t + 1] if court_kp_mask_seq is not None else None
-            vm = view_mask.unsqueeze(0) if view_mask is not None else None
+            frame_human = human_kp[:, :, t]  # (B, N, 17, 2)
+            frame_court = court_kp[:, :, t]  # (B, N, 20, 2)
+            frame_hm = human_kp_mask[:, :, t] if human_kp_mask is not None else None
+            frame_cm = court_kp_mask[:, :, t] if court_kp_mask is not None else None
 
-            out = self.predict(
-                human_kp=human_kp,
-                court_kp=court_kp,
-                human_kp_mask=hm,
-                court_kp_mask=cm,
-                view_mask=vm,
-                denormalize=False,
+            outputs = self.model(
+                human_kp=frame_human,
+                court_kp=frame_court,
+                human_vis=frame_hm,
+                court_vis=frame_cm,
+                num_views=None,
+                camera_params=None,
             )
-            positions.append(out["position"])
-            rotations.append(out["rotation"])
+            positions.append(outputs["position"])
+            rotations.append(outputs["rotation"])
 
-        position = torch.cat(positions, dim=0)  # (T, 3)
-        rotation = torch.cat(rotations, dim=0)  # (T, 2)
+        position = torch.stack(positions, dim=1).cpu()  # (B, T, 3)
+        rotation = torch.stack(rotations, dim=1).cpu()  # (B, T, 2)
 
         result: dict[str, Tensor] = {
             "position": position,
@@ -237,6 +192,6 @@ class PLCSMultiViewPredictor(BasePredictor):
                 dtype=position.dtype,
             )
             result["position_meters"] = position * scale
-            result["yaw_radians"] = torch.atan2(rotation[:, 0], rotation[:, 1])
+            result["yaw_radians"] = torch.atan2(rotation[..., 0], rotation[..., 1])
 
         return result

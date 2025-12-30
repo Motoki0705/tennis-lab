@@ -14,14 +14,17 @@ PLCS は、テニスコート座標系におけるプレイヤーの位置・向
 |--------|-------------|------|------|
 | 単一カメラ (Frame) | `human_kp` | `(B, 17, 2)` | 2D人物キーポイント |
 | 単一カメラ (Sequence) | `human_kp` | `(B, T, 17, 2)` | 時系列2D人物キーポイント |
-| マルチビュー | `human_kp` | `(B, N, 17, 2)` | 複数カメラからの2D人物キーポイント |
+| マルチビュー (Frame) | `human_kp` | `(B, N, 17, 2)` | 複数カメラからの2D人物キーポイント |
+| マルチビュー (Sequence) | `human_kp` | `(B, N, T, 17, 2)` | 複数カメラ×時系列2D人物キーポイント |
 
 ※ コートキーポイント `court_kp` も同様に各モードに対応
 
 ### 出力形式
 
-- `position`: `(B, 3)` - 3D位置（コート座標系）
-- `rotation`: `(B, 2)` - 回転（sin/cos）
+| モード | position | rotation |
+|--------|----------|----------|
+| Frame | `(B, 3)` | `(B, 2)` |
+| Sequence | `(B, T, 3)` | `(B, T, 2)` |
 
 ## ディレクトリ構成
 
@@ -45,6 +48,10 @@ src/plcs/
 │   │   └── multiview.yaml            # マルチビュー DataModule 設定
 │   ├── training/
 │   │   └── default.yaml              # 学習ハイパーパラメータ
+│   ├── loss/
+│   │   ├── frame.yaml                # フレームロス設定（temporal=0）
+│   │   ├── sequence.yaml             # シーケンスロス設定（temporal有効）
+│   │   └── multiview_sequence.yaml   # マルチビューシーケンスロス設定
 │   ├── simulation/
 │   │   └── default.yaml              # シミュレーション設定（シーン数等）
 │   ├── camera/
@@ -192,7 +199,13 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 
 ### マルチビューモデル (`PLCSMultiViewModel`)
 
-複数カメラからの観測を統合して推定。単一カメラでは遮蔽や視野角の制約により推定精度が制限される場合がありますが、マルチビューでは複数視点からの情報を融合することで、より堅牢な推定が可能です。
+複数カメラからの観測を統合して推定。シーケンシャル入力 `(N_cam, T, ...)` に対応し、
+時系列全体の位置・回転を推定します。
+
+- **入力**: 複数カメラ×時系列のキーポイント `(B, N, T, 17, 2)`
+- **出力**: 時系列の位置・回転 `(B, T, 3)`, `(B, T, 2)`
+- **動的サンプリング**: `num_views_range`, `seq_len_range` で学習時に範囲からランダムにサンプリング可能
+- **時間一貫性ロス**: 速度・加速度の平滑化による安定した軌道推定
 
 現在の実装は view mean pooling によるスケルトン構造で、今後より高度な attention ベースの融合手法への拡張を予定しています。
 
@@ -200,11 +213,21 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 
 | 用途 | メイン設定 | 補助設定 |
 |------|----------|---------|
-| フレーム学習 | `train.yaml` | `model/frame.yaml`, `data/frame.yaml` |
-| シーケンス学習 | `train_sequence.yaml` | `model/sequence.yaml`, `data/sequence.yaml` |
-| マルチビュー学習 | `train_multiview.yaml` | `model/multiview.yaml`, `data/multiview.yaml` |
+| フレーム学習 | `train.yaml` | `model/frame.yaml`, `data/frame.yaml`, `loss/frame.yaml` |
+| シーケンス学習 | `train_sequence.yaml` | `model/sequence.yaml`, `data/sequence.yaml`, `loss/sequence.yaml` |
+| マルチビュー学習 | `train_multiview.yaml` | `model/multiview.yaml`, `data/multiview.yaml`, `loss/multiview_sequence.yaml` |
 | 単一カメラ可視化 | `visualize.yaml` | `visualization/default.yaml` |
 | マルチビュー可視化 | `visualize_multiview.yaml` | `visualization/multiview.yaml` |
+
+### ロス設定ファイル
+
+ロス関数のウェイトは `configs/loss/` ディレクトリで管理されています：
+
+| ファイル | 用途 | temporal_weight |
+|---------|------|-----------------|
+| `frame.yaml` | フレーム単位学習 | 0.0 |
+| `sequence.yaml` | シーケンス学習 | 0.1 |
+| `multiview_sequence.yaml` | マルチビューシーケンス学習 | 0.1 |
 
 詳細なドキュメントは以下を参照:
 - [visualize_multiview.md](../../../docs/scripts/plcs/visualize_multiview.md) - マルチビュー可視化スクリプト
