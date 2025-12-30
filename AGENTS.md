@@ -84,8 +84,16 @@ bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync p
 
 2) **検査とテスト（必須）**
 - 変更後は必ず `pre_commit_subagent.sh` → `test_subagent.sh` の順で実行する（ユーザーが「実行しないで」と言った場合を除く）
+- **テストは全て実行するのではなく、変更に影響するテストのみを `--test-cmd` で指定して実行する**
+  - 例: `bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q -n auto tests/unit/test_affected.py'`
+  - 変更したモジュールに対応するテストファイルを特定し、必要最小限のテストを実行する
 
-3) **例外の扱い（必須）**
+3) **ドキュメントの整合性確認（必須）**
+- 変更内容が各タスクの `README.md` やドキュメントに影響する場合は、必ず更新する
+- 特に `src/{task}/README.md` は実装と矛盾がないよう常に最新に保つ
+- 新機能追加・API変更・設定変更があった場合は、関連ドキュメントの更新を確認する
+
+4) **例外の扱い（必須）**
 - 環境都合（例: `uv run` の権限エラー等）で推奨コマンドが失敗した場合も、回避策を適用して **同等の検査/テストを実行する**
 - どうしても実行できない場合は、その理由と、代替で何を確認したかを最終報告に明記する
 
@@ -107,13 +115,21 @@ bash agents_workspace/sub_agents/pre_commit_subagent.sh
 ```
 
 4) **テストを実行（ツール推奨）**
+- **変更に影響するテストのみを `--test-cmd` で指定して実行する（全テスト実行は禁止）**
 ```bash
-bash agents_workspace/sub_agents/test_subagent.sh
-```
-テストを絞る場合は `--test-cmd` を使用する（例）:
-```bash
+# 変更に関連するテストファイルを特定して実行（-n auto で並列実行）
+bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q -n auto tests/unit/test_affected.py'
+
+# 複数のテストファイルを指定する場合
+bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q -n auto tests/unit/test_foo.py tests/integration/test_bar.py'
+
+# 特定のテストケースを指定する場合
 bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q tests/test_example.py::test_case'
 ```
+
+5) **ドキュメントの更新確認**
+- 変更がREADMEやドキュメントに影響する場合は更新する
+- 特に `src/{task}/README.md` は実装と矛盾がないよう最新に保つ
 
 ---
 ## 5. `uv run` の Permission denied 回避（重要）
