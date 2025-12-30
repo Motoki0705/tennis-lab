@@ -30,6 +30,10 @@ class MultiViewBallTrajectoryDataset(Dataset):
     Unlike BallTrajectoryDataset which returns single-camera samples, this
     dataset returns observations from multiple cameras for the same trajectory,
     enabling multi-camera triangulation and fusion approaches.
+
+    Supports dynamic range-based sampling for views and sequence length:
+        - num_views_range: [min, max] - randomly sample view count per sample
+        - seq_len_range: [min, max] - randomly sample sequence length per sample
     """
 
     def __init__(
@@ -62,6 +66,19 @@ class MultiViewBallTrajectoryDataset(Dataset):
         data_cfg = self.config.get("data", {})
         self.min_seq_len = int(data_cfg.get("min_seq_len", 15))
         self.max_seq_len = int(data_cfg.get("max_seq_len", 120))
+
+        # Range sampling (optional)
+        # Format: [min, max] inclusive
+        self.num_views_range: tuple[int, int] | None = None
+        self.seq_len_range: tuple[int, int] | None = None
+
+        if "num_views_range" in data_cfg:
+            r = data_cfg["num_views_range"]
+            self.num_views_range = (int(r[0]), int(r[1]))
+
+        if "seq_len_range" in data_cfg:
+            r = data_cfg["seq_len_range"]
+            self.seq_len_range = (int(r[0]), int(r[1]))
 
         # Augmentation parameters
         aug_cfg = data_cfg.get("augmentation", {})
@@ -133,8 +150,31 @@ class MultiViewBallTrajectoryDataset(Dataset):
         num_cameras = int(data["num_cameras"])
         num_frames = int(meta["num_frames"])
 
+        # Determine actual seq_len for this sample
+        if self.seq_len_range is not None:
+            min_seq, max_seq = self.seq_len_range
+            max_possible = min(max_seq, num_frames)
+            actual_seq_len = rng.randint(min_seq, max_possible)
+        else:
+            actual_seq_len = num_frames
+
+        # Random start frame for sequence sampling
+        if actual_seq_len < num_frames:
+            start_frame = rng.randint(0, num_frames - actual_seq_len)
+        else:
+            start_frame = 0
+        end_frame = start_frame + actual_seq_len
+
+        # Determine actual num_views for this sample
+        if self.num_views_range is not None:
+            min_views, max_views = self.num_views_range
+            max_possible_views = min(max_views, num_cameras)
+            actual_num_views = rng.randint(min_views, max_possible_views)
+        else:
+            actual_num_views = min(self.num_views, num_cameras)
+
         # Select random subset of cameras
-        selected_cams = rng.sample(range(num_cameras), min(self.num_views, num_cameras))
+        selected_cams = rng.sample(range(num_cameras), actual_num_views)
 
         # Collect data from each camera
         ball_uv_list: list[Tensor] = []
@@ -146,8 +186,13 @@ class MultiViewBallTrajectoryDataset(Dataset):
         for cam_idx in selected_cams:
             prefix = f"cam_{cam_idx}_"
 
-            ball_uv = torch.from_numpy(data[f"{prefix}ball_uv"]).float()
-            ball_vis = torch.from_numpy(data[f"{prefix}ball_visible"]).float()
+            # Load and slice to the selected sequence range
+            ball_uv = torch.from_numpy(
+                data[f"{prefix}ball_uv"][start_frame:end_frame].copy()
+            ).float()
+            ball_vis = torch.from_numpy(
+                data[f"{prefix}ball_visible"][start_frame:end_frame].copy()
+            ).float()
             court_kp = torch.from_numpy(data[f"{prefix}court_kp_uv"]).float()  # (20, 2)
             court_vis = torch.from_numpy(
                 data[f"{prefix}court_kp_visible"]
@@ -155,9 +200,9 @@ class MultiViewBallTrajectoryDataset(Dataset):
 
             # Expand court_kp and court_vis to temporal dimension
             # (20, 2) -> (T, 20, 2)
-            court_kp_expanded = court_kp.unsqueeze(0).expand(num_frames, -1, -1)
+            court_kp_expanded = court_kp.unsqueeze(0).expand(actual_seq_len, -1, -1)
             # (20,) -> (T, 20)
-            court_vis_expanded = court_vis.unsqueeze(0).expand(num_frames, -1)
+            court_vis_expanded = court_vis.unsqueeze(0).expand(actual_seq_len, -1)
 
             # Load camera params if available
             params_key = f"{prefix}params"
@@ -187,9 +232,13 @@ class MultiViewBallTrajectoryDataset(Dataset):
             "court_vis": torch.stack(court_vis_list, dim=0),  # (N_cam, T, 20)
             "camera_params": camera_params_list,
             "num_views": torch.tensor(len(selected_cams)),
-            "position_3d": torch.from_numpy(data["ball_pos_norm"]).float(),
-            "velocity_3d": torch.from_numpy(data["ball_vel_world"]).float(),
-            "seq_len": torch.tensor(meta["num_frames"]),
+            "position_3d": torch.from_numpy(
+                data["ball_pos_norm"][start_frame:end_frame].copy()
+            ).float(),
+            "velocity_3d": torch.from_numpy(
+                data["ball_vel_world"][start_frame:end_frame].copy()
+            ).float(),
+            "seq_len": torch.tensor(actual_seq_len),
             "meta": meta,
         }
 
