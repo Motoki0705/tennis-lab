@@ -1,0 +1,7 @@
+# Multi-view sequence PLCS loss configuration (multi-camera sequential).
+position_weight: 1.0
+rotation_weight: 1.0
+temporal_weight: 0.1
+temporal:
+  order: 2
+  robust: true

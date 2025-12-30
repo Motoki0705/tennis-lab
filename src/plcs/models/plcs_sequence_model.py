@@ -167,9 +167,10 @@ class PLCSSequenceModel(nn.Module):
 
         Args:
             human_kp: Human keypoints, shape (B, T, 34) or (B, T, 17, 2).
-            court_kp: Court keypoints, shape (B, 1, 40) or (B, 1, 20, 2) (pre-aggregated).
+            court_kp: Court keypoints, shape (B, T, 40), (B, T, 20, 2),
+                or legacy (B, 1, 40) / (B, 1, 20, 2) (pre-aggregated).
             human_vis: Human visibility mask, shape (B, T, 17). Optional.
-            court_vis: Court visibility mask, shape (B, 1, 20). Optional (unused).
+            court_vis: Court visibility mask, shape (B, T, 20). Optional.
 
         Returns:
             dict: Dictionary with 'position' (B, T, 3) and 'rotation' (B, T, 2).
@@ -182,14 +183,25 @@ class PLCSSequenceModel(nn.Module):
         # Flatten keypoints if needed: (B, T, K, 2) -> (B, T, K*2)
         if human_kp.dim() == 4:
             human_kp = human_kp.view(batch_size, seq_len, -1)
+
+        # Handle court_kp: can be (B, T, 20, 2), (B, T, 40), or legacy (B, 1, ...)
         if court_kp.dim() == 4:
-            court_kp = court_kp.view(batch_size, 1, -1)  # (B, 1, 40)
+            court_t = court_kp.size(1)
+            court_kp = court_kp.view(batch_size, court_t, -1)  # (B, T or 1, 40)
+        else:
+            court_t = court_kp.size(1)
+
+        # If court_kp has T=1 (legacy aggregated), expand to T
+        if court_t == 1 and seq_len > 1:
+            court_kp = court_kp.expand(batch_size, seq_len, -1)  # (B, T, 40)
 
         # Project player keypoints: (B, T, 34) -> (B, T, D)
         player_tokens = self.player_proj(human_kp)
 
-        # Project court keypoints: (B, 1, 40) -> (B, 1, D)
-        court_token = self.court_proj(court_kp)  # (B, 1, D)
+        # Project court keypoints and aggregate to single token
+        # Use mean over time to create anchor token
+        court_proj = self.court_proj(court_kp)  # (B, T, D)
+        court_token = court_proj.mean(dim=1, keepdim=True)  # (B, 1, D)
 
         # Assemble tokens: [court, player_1, player_2, ..., player_T]
         tokens = torch.cat([court_token, player_tokens], dim=1)  # (B, 1+T, D)

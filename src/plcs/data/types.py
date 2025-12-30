@@ -34,9 +34,9 @@ class PLCSSequenceBatch(TypedDict):
     """
 
     human_kp: torch.Tensor  # (T, 17, 2) human keypoints over time
-    court_kp: torch.Tensor  # (1, 20, 2) aggregated court keypoints (time-invariant)
+    court_kp: torch.Tensor  # (T, 20, 2) court keypoints over time (not aggregated)
     human_vis: torch.Tensor  # (T, 17) visibility flags for human keypoints
-    court_vis: torch.Tensor  # (1, 20) aggregated visibility flags for court
+    court_vis: torch.Tensor  # (T, 20) visibility flags for court keypoints
     position: torch.Tensor  # (T, 3) normalized court positions over time
     rotation: torch.Tensor  # (T, 2) player orientations over time
 
@@ -56,6 +56,23 @@ class PLCSMultiViewBatch(TypedDict):
     num_views: torch.Tensor  # scalar, number of views in this sample
     position: torch.Tensor  # (3,) normalized court position (shared GT)
     rotation: torch.Tensor  # (2,) player orientation (shared GT)
+
+
+class PLCSMultiViewSequenceBatch(TypedDict):
+    """Schema for multi-view sequential PLCS dataset batch.
+
+    Used by MultiViewSequenceDataset.__getitem__(). Contains observations from
+    multiple cameras over a temporal sequence for multi-camera sequential models.
+    """
+
+    human_kp: torch.Tensor  # (N_cam, T, 17, 2) human keypoints from each camera
+    court_kp: torch.Tensor  # (N_cam, T, 20, 2) court keypoints from each camera
+    human_vis: torch.Tensor  # (N_cam, T, 17) visibility flags for human keypoints
+    court_vis: torch.Tensor  # (N_cam, T, 20) visibility flags for court keypoints
+    camera_params: list[dict]  # List of camera parameter dicts
+    num_views: torch.Tensor  # scalar, number of views in this sample
+    position: torch.Tensor  # (T, 3) normalized court positions over time
+    rotation: torch.Tensor  # (T, 2) player orientations over time
 
 
 @dataclass(frozen=True)

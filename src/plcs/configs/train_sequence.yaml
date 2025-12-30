@@ -3,6 +3,7 @@ defaults:
   - data: sequence
   - training: default
   - metrics: default
+  - loss: sequence
   - run: train_sequence
   - _self_
 

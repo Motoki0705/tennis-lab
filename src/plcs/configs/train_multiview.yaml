@@ -3,6 +3,7 @@ defaults:
   - data: multiview
   - training: default
   - metrics: default
+  - loss: frame
   - run: train
   - _self_
 

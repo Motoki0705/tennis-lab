@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import torch
-from torch import Tensor
 from torch.utils.data import Dataset
 
 from src.base.data.augmentation import augment_keypoints
@@ -112,9 +111,9 @@ class SceneSequenceDataset(Dataset[PLCSSequenceBatch]):
 
         Returns a dictionary containing:
             - human_kp: (T, 17, 2)
-            - court_kp: (1, 20, 2) - aggregated over time (court is time-invariant)
+            - court_kp: (T, 20, 2) - full sequence (not aggregated)
             - human_vis: (T, 17)
-            - court_vis: (1, 20) - aggregated over time
+            - court_vis: (T, 20)
             - position: (T, 3)
             - rotation: (T, 2)
         """
@@ -147,50 +146,15 @@ class SceneSequenceDataset(Dataset[PLCSSequenceBatch]):
                 court_kp, court_vis, self.kp_noise_std, self.visibility_drop_prob
             )
 
-        # Aggregate court keypoints over time (court is time-invariant)
-        court_kp_agg, court_vis_agg = self._aggregate_court_keypoints(
-            court_kp, court_vis
-        )  # (1, 20, 2), (1, 20)
-
         # Apply visibility mask (zero-out invisible keypoints)
         human_kp_masked = human_kp * human_vis.unsqueeze(-1)
-        court_kp_masked = court_kp_agg * court_vis_agg.unsqueeze(-1)
+        court_kp_masked = court_kp * court_vis.unsqueeze(-1)
 
         return {
             "human_kp": human_kp_masked.float(),
             "court_kp": court_kp_masked.float(),
             "human_vis": human_vis.float(),
-            "court_vis": court_vis_agg.float(),
+            "court_vis": court_vis.float(),
             "position": position.float(),
             "rotation": rotation.float(),
         }
-
-    def _aggregate_court_keypoints(
-        self,
-        court_kp: Tensor,
-        court_vis: Tensor,
-    ) -> tuple[Tensor, Tensor]:
-        """Aggregate court keypoints over time using visibility-weighted mean.
-
-        Court keypoints are time-invariant (the court doesn't move), so we
-        aggregate them into a single representation.
-
-        Args:
-            court_kp: Court keypoints, shape (T, 20, 2).
-            court_vis: Court visibility, shape (T, 20).
-
-        Returns:
-            tuple: Aggregated court_kp (1, 20, 2) and court_vis (1, 20).
-
-        """
-        # Visibility-weighted mean over time
-        vis_weight = court_vis.unsqueeze(-1).float()  # (T, 20, 1)
-        vis_sum = vis_weight.sum(dim=0, keepdim=True).clamp(min=1e-8)  # (1, 20, 1)
-        court_kp_agg = (court_kp * vis_weight).sum(
-            dim=0, keepdim=True
-        ) / vis_sum  # (1, 20, 2)
-
-        # Aggregated visibility: keypoint is visible if visible in any frame
-        court_vis_agg = (court_vis.sum(dim=0, keepdim=True) > 0).float()  # (1, 20)
-
-        return court_kp_agg, court_vis_agg

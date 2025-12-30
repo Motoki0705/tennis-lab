@@ -10,7 +10,7 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
 from src.plcs.models.plcs_sequence_model import PLCSSequenceModel
-from src.plcs.training.losses import PLCSLoss
+from src.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.plcs.training.metrics import PLCSMetrics, PLCSTemporalMetrics
 
 if TYPE_CHECKING:
@@ -39,12 +39,19 @@ class PLCSSequenceLightningModule(pl.LightningModule):
         # Build model
         self.model = PLCSSequenceModel.from_config(self.config)
 
-        # Loss function
-        train_cfg = self.config.get("training", {})
-        self.loss_fn = PLCSLoss(
-            position_weight=train_cfg.get("position_loss_weight", 1.0),
-            rotation_weight=train_cfg.get("rotation_loss_weight", 1.0),
-        )
+        # Loss function (config-based)
+        loss_cfg_dict = self.config.get("loss", {})
+        if loss_cfg_dict:
+            loss_cfg = PLCSLossConfig.from_dict(dict(loss_cfg_dict))
+        else:
+            # Legacy fallback: read from training config
+            train_cfg = self.config.get("training", {})
+            loss_cfg = PLCSLossConfig(
+                position_weight=train_cfg.get("position_loss_weight", 1.0),
+                rotation_weight=train_cfg.get("rotation_loss_weight", 1.0),
+                temporal_weight=0.0,
+            )
+        self.loss_fn = PLCSLoss(config=loss_cfg)
 
         # Metrics
         metrics_cfg = self.config.get("metrics", {})
@@ -74,6 +81,7 @@ class PLCSSequenceLightningModule(pl.LightningModule):
         )
 
         # Training parameters
+        train_cfg = self.config.get("training", {})
         self.learning_rate = train_cfg.get("learning_rate", 1e-4)
         self.weight_decay = train_cfg.get("weight_decay", 1e-5)
         self.warmup_steps = train_cfg.get("warmup_steps", 1000)
