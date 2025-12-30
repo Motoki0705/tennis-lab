@@ -124,10 +124,19 @@ def run_training(config: DictConfig) -> None:
     # Initialize model
     model = BLCSMultiViewLightningModule(config)
 
+    # Logger
+    tb_logger = TensorBoardLogger(
+        save_dir=output_dir,
+        name="logs",
+    )
+
+    # Store checkpoints under the versioned log directory (like WASB)
+    checkpoint_dir = Path(tb_logger.log_dir) / "checkpoints"
+
     # Callbacks
     callbacks = [
         ModelCheckpoint(
-            dirpath=output_dir / "checkpoints",
+            dirpath=checkpoint_dir,
             filename="blcs-multiview-{epoch:02d}",
             monitor="val/loss",
             mode="min",
@@ -141,12 +150,6 @@ def run_training(config: DictConfig) -> None:
         ),
         LearningRateMonitor(logging_interval="step"),
     ]
-
-    # Logger
-    tb_logger = TensorBoardLogger(
-        save_dir=output_dir,
-        name="logs",
-    )
 
     # Trainer
     train_cfg = config.get("training", {}) or {}

@@ -60,9 +60,10 @@ def test_blcs_train_basic(tmp_path: Path) -> None:
     # Check output files
     assert output_dir.exists(), "Output directory was not created"
 
-    # Check checkpoint directory exists
-    checkpoint_dir = output_dir / "checkpoints"
-    assert checkpoint_dir.exists(), "Checkpoint directory was not created"
+    # Check checkpoint directory exists (under versioned log directory)
+    checkpoint_dirs = list(output_dir.glob("logs/version_*/checkpoints"))
+    assert len(checkpoint_dirs) > 0, "Checkpoint directory was not created"
+    checkpoint_dir = checkpoint_dirs[0]
 
     # Check that at least one checkpoint was created
     checkpoint_files = list(checkpoint_dir.glob("*.ckpt"))
@@ -108,8 +109,10 @@ def test_blcs_train_with_custom_params(tmp_path: Path) -> None:
 
     assert result.returncode == 0, f"Training failed:\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
 
-    checkpoint_dir = output_dir / "checkpoints"
-    assert checkpoint_dir.exists(), "Checkpoint directory was not created"
+    # Check checkpoint directory exists (under versioned log directory)
+    checkpoint_dirs = list(output_dir.glob("logs/version_*/checkpoints"))
+    assert len(checkpoint_dirs) > 0, "Checkpoint directory was not created"
+    checkpoint_dir = checkpoint_dirs[0]
 
     checkpoint_files = list(checkpoint_dir.glob("*.ckpt"))
     assert len(checkpoint_files) > 0, "No checkpoint files were created"
