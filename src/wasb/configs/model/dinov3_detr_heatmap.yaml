@@ -1,4 +1,4 @@
-name: dinov3_detr_heatmap_fpn
+name: dinov3_detr_heatmap
 
 use_backbone: false
 backbone_checkpoint: null
