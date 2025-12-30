@@ -100,6 +100,24 @@ num_workers: 4
 num_views: 3      # 同時に使用するカメラ数
 min_cameras: 2    # シーンに必要な最小カメラ数
 max_seq_len: 120  # 最大シーケンス長
+
+# Range sampling for dynamic view/seq (optional)
+# num_views_range: [1, 8]  # min, max inclusive
+# seq_len_range: [15, 60]  # min, max inclusive
+```
+
+#### Range Sampling
+
+学習時のデータ多様性を向上させるため、各サンプルごとにビュー数やシーケンス長をランダムにサンプリングできます：
+
+```bash
+# ビュー数を1〜4の範囲でランダムサンプリング
+uv run python -m src.blcs.scripts.train_multiview \
+    'data.num_views_range=[1, 4]'
+
+# シーケンス長を15〜60の範囲でランダムサンプリング
+uv run python -m src.blcs.scripts.train_multiview \
+    'data.seq_len_range=[15, 60]'
 ```
 
 ### モデル設定
