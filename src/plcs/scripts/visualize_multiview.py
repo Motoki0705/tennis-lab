@@ -13,9 +13,10 @@ Config entry point: `src/plcs/configs/visualize_multiview.yaml`
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import hydra
 import matplotlib.pyplot as plt
@@ -29,6 +30,12 @@ from src.utils.rendering import PLCSSceneRenderer as SceneRenderer
 
 if TYPE_CHECKING:
     from src.plcs.generate_dataset.scene_generator import SceneData
+
+TFunc = TypeVar("TFunc", bound=Callable[..., object])
+
+
+def _typed_hydra_main(*args: Any, **kwargs: Any) -> Callable[[TFunc], TFunc]:
+    return cast(Callable[[TFunc], TFunc], hydra.main(*args, **kwargs))
 
 
 @dataclass
@@ -47,6 +54,8 @@ class RuntimeConfig:
     info: bool
     checkpoint: str | None
     device: str
+    seq_len: int | None
+    num_views: int | None
 
 
 def _resolve_device(device: str) -> str:
@@ -68,6 +77,17 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     else:
         cameras = list(cameras_raw)
 
+    # Parse num_views: can be null, "all", or int
+    num_views_raw = vis.get("num_views", None)
+    if num_views_raw is None or num_views_raw == "all":
+        num_views = None
+    else:
+        num_views = int(num_views_raw)
+
+    # Parse seq_len: can be null or int
+    seq_len_raw = vis.get("seq_len", None)
+    seq_len = int(seq_len_raw) if seq_len_raw is not None else None
+
     return RuntimeConfig(
         mode=str(vis.mode),
         scene_path=Path(to_absolute_path(str(vis.scene_path))),
@@ -85,6 +105,8 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
             to_absolute_path(str(vis.checkpoint)) if vis.checkpoint else None
         ),
         device=_resolve_device(str(vis.device)),
+        seq_len=seq_len,
+        num_views=num_views,
     )
 
 
@@ -244,8 +266,11 @@ def main_predict_multiview(cfg: RuntimeConfig) -> int:
         return 1
 
     print(f"Loading multi-view checkpoint from {cfg.checkpoint}...")
+    checkpoint = cfg.checkpoint
+    if checkpoint is None:
+        return 1
     predictor = PLCSMultiViewPredictor.load_from_checkpoint(
-        cfg.checkpoint, device=cfg.device
+        checkpoint, device=cfg.device
     )
 
     print(f"Loading scene from {cfg.scene_path}...")
@@ -259,10 +284,30 @@ def main_predict_multiview(cfg: RuntimeConfig) -> int:
     if err is not None:
         return err
 
-    num_views = len(cameras)
+    # Determine number of views to use (from config or cameras list)
+    num_views = cfg.num_views if cfg.num_views is not None else len(cameras)
+    if num_views > len(cameras):
+        print(
+            f"Warning: Requested num_views={num_views} but only "
+            f"{len(cameras)} cameras available. Using {len(cameras)}."
+        )
+        num_views = len(cameras)
+
+    # Select cameras to use
+    cameras = cameras[:num_views]
+
+    # Determine sequence length
     num_frames = scene.meta["num_frames"]
+    seq_len = cfg.seq_len if cfg.seq_len is not None else num_frames
+    if seq_len > num_frames:
+        print(
+            f"Warning: Requested seq_len={seq_len} but scene only has "
+            f"{num_frames} frames. Using {num_frames}."
+        )
+        seq_len = num_frames
+
     print(f"Running multi-view predictions using {num_views} cameras: {cameras}")
-    print(f"Processing {num_frames} frames...")
+    print(f"Processing {num_frames} frames with seq_len={seq_len}...")
 
     # Collect multi-view data for all frames
     human_kp_list = []
@@ -288,30 +333,69 @@ def main_predict_multiview(cfg: RuntimeConfig) -> int:
         human_vis_list.append(np.stack(frame_human_vis, axis=0))
         court_vis_list.append(np.stack(frame_court_vis, axis=0))
 
-    # Stack to (T, N, ...)
-    human_kp_seq = torch.from_numpy(np.stack(human_kp_list, axis=0)).float()
-    court_kp_seq = torch.from_numpy(np.stack(court_kp_list, axis=0)).float()
-    human_vis_seq = torch.from_numpy(np.stack(human_vis_list, axis=0)).float()
-    court_vis_seq = torch.from_numpy(np.stack(court_vis_list, axis=0)).float()
+    # Stack to (T, N, ...) where T=num_frames, N=num_views
+    human_kp_all = np.stack(human_kp_list, axis=0)  # (T, N, 17, 2)
+    court_kp_all = np.stack(court_kp_list, axis=0)  # (T, N, 20, 2)
+    human_vis_all = np.stack(human_vis_list, axis=0)  # (T, N, 17)
+    court_vis_all = np.stack(court_vis_list, axis=0)  # (T, N, 20)
 
-    # Run sequence prediction
-    pred = predictor.predict_sequence(
-        human_kp_seq=human_kp_seq,
-        court_kp_seq=court_kp_seq,
-        human_kp_mask_seq=human_vis_seq,
-        court_kp_mask_seq=court_vis_seq,
-        view_mask=None,
-        denormalize=False,
-    )
+    # Process in chunks of seq_len with sliding window
+    all_positions = []
+    all_rotations = []
+
+    for start_idx in range(0, num_frames, seq_len):
+        end_idx = min(start_idx + seq_len, num_frames)
+        chunk_len = end_idx - start_idx
+
+        # Extract chunk: (chunk_len, N, ...)
+        human_kp_chunk = torch.from_numpy(human_kp_all[start_idx:end_idx]).float()
+        court_kp_chunk = torch.from_numpy(court_kp_all[start_idx:end_idx]).float()
+        human_vis_chunk = torch.from_numpy(human_vis_all[start_idx:end_idx]).float()
+        court_vis_chunk = torch.from_numpy(court_vis_all[start_idx:end_idx]).float()
+
+        # Pad to seq_len if needed (last chunk may be shorter)
+        if chunk_len < seq_len:
+            pad_len = seq_len - chunk_len
+            human_kp_chunk = torch.nn.functional.pad(
+                human_kp_chunk, (0, 0, 0, 0, 0, 0, 0, pad_len)
+            )
+            court_kp_chunk = torch.nn.functional.pad(
+                court_kp_chunk, (0, 0, 0, 0, 0, 0, 0, pad_len)
+            )
+            human_vis_chunk = torch.nn.functional.pad(
+                human_vis_chunk, (0, 0, 0, 0, 0, pad_len)
+            )
+            court_vis_chunk = torch.nn.functional.pad(
+                court_vis_chunk, (0, 0, 0, 0, 0, pad_len)
+            )
+
+        # Run prediction on chunk: input (T, N, K, 2), output (1, T, 3)
+        pred = predictor.predict(
+            human_kp=human_kp_chunk,
+            court_kp=court_kp_chunk,
+            human_kp_mask=human_vis_chunk,
+            court_kp_mask=court_vis_chunk,
+            view_mask=None,
+            denormalize=False,
+        )
+
+        # Collect only valid frames (remove padding)
+        # pred shapes: (1, T, 3), squeeze batch dim and slice valid frames
+        all_positions.append(pred["position"].squeeze(0)[:chunk_len].numpy())
+        all_rotations.append(pred["rotation"].squeeze(0)[:chunk_len].numpy())
+
+    # Concatenate all chunks
+    pred_positions = np.concatenate(all_positions, axis=0)  # (T, 3)
+    pred_rotations = np.concatenate(all_rotations, axis=0)  # (T, 2)
 
     # Overwrite SceneData with predictions
-    scene.position[...] = pred["position"].numpy()
-    scene.rotation[...] = pred["rotation"].numpy()
+    scene.position[...] = pred_positions
+    scene.rotation[...] = pred_rotations
 
     return render_scene(scene, cfg)
 
 
-@hydra.main(
+@_typed_hydra_main(
     config_path="../configs", config_name="visualize_multiview", version_base="1.3"
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
@@ -328,4 +412,4 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(cast(Callable[[], int], main)())

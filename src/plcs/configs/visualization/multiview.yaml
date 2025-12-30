@@ -32,5 +32,13 @@ info: false
 # Checkpoint path for prediction mode
 checkpoint: outputs/plcs_multiview/checkpoints/last.ckpt
 
+# Sequence length for temporal prediction (must match training config)
+# Use null to process all frames in the scene
+seq_len: 16
+
+# Number of camera views for prediction (must match training config)
+# Use null or "all" to use all available cameras
+num_views: 2
+
 # Device for inference
 device: auto
