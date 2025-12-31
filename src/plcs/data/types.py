@@ -64,6 +64,7 @@ class PLCSMultiViewSequenceBatch(TypedDict):
     Used by MultiViewSequenceDataset.__getitem__(). Contains observations from
     multiple cameras over a temporal sequence for multi-camera sequential models.
 
+    Uses camera-time ordering: (N_cam, T, ...) where N_cam=cameras, T=time.
     """
 
     human_kp: torch.Tensor  # (N_cam, T, 17, 2) human keypoints from each camera
@@ -93,7 +94,10 @@ class PLCSMultiViewBatchCollated(TypedDict):
 
 
 class PLCSMultiViewSequenceBatchCollated(TypedDict):
-    """Schema for collated multi-view sequential PLCS dataset batches."""
+    """Schema for collated multi-view sequential PLCS dataset batches.
+
+    Uses camera-time ordering: (B, N_cam, T, ...) where N_cam=cameras, T=time.
+    """
 
     human_kp: torch.Tensor  # (B, N_cam, T, 17, 2) human keypoints from each camera
     court_kp: torch.Tensor  # (B, N_cam, T, 20, 2) court keypoints from each camera
