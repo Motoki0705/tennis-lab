@@ -3,7 +3,7 @@
 name: blcs_multiview
 
 hidden_dim: 256
-num_layers: 4      # Number of alternating attention layer pairs
+num_layers: 12      # Number of alternating attention layer pairs
 num_heads: 8
 dropout: 0.1
 max_seq_len: 120
