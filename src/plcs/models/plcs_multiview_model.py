@@ -207,11 +207,13 @@ class PLCSMultiViewModel(nn.Module):
     processes them with alternating Sequential and Camera attention blocks,
     and predicts the player's 3D position and rotation.
 
+    Uses camera-time ordering throughout: (B, N, T, ...) where N=cameras, T=time.
+
     Input:
-        - human_kp: Human 2D keypoints, shape (B, T, N, 17, 2) or (B, N, 17, 2)
-        - court_kp: Court 2D keypoints, shape (B, T, N, 20, 2) or (B, N, 20, 2)
-        - human_vis: Human visibility masks, shape (B, T, N, 17) or (B, N, 17)
-        - court_vis: Court visibility masks, shape (B, T, N, 20) or (B, N, 20)
+        - human_kp: Human 2D keypoints, shape (B, N, T, 17, 2) or (B, N, 17, 2)
+        - court_kp: Court 2D keypoints, shape (B, N, T, 20, 2) or (B, N, 20, 2)
+        - human_vis: Human visibility masks, shape (B, N, T, 17) or (B, N, 17)
+        - court_vis: Court visibility masks, shape (B, N, T, 20) or (B, N, 20)
         - num_views: Number of valid views per sample, shape (B,)
 
     Output:
@@ -332,11 +334,13 @@ class PLCSMultiViewModel(nn.Module):
     ) -> dict[str, Tensor]:
         """Forward pass.
 
+        Uses camera-time ordering: (B, N, T, ...) where N=cameras, T=time.
+
         Args:
-            human_kp: Human keypoints, shape (B, T, N, 17, 2) or (B, N, 17, 2).
-            court_kp: Court keypoints, shape (B, T, N, 20, 2) or (B, N, 20, 2).
-            human_vis: Human visibility mask, shape (B, T, N, 17) or (B, N, 17).
-            court_vis: Court visibility mask, shape (B, T, N, 20) or (B, N, 20).
+            human_kp: Human keypoints, shape (B, N, T, 17, 2) or (B, N, 17, 2).
+            court_kp: Court keypoints, shape (B, N, T, 20, 2) or (B, N, 20, 2).
+            human_vis: Human visibility mask, shape (B, N, T, 17) or (B, N, 17).
+            court_vis: Court visibility mask, shape (B, N, T, 20) or (B, N, 20).
             num_views: Number of valid views per sample, shape (B,). Optional.
             camera_params: Camera parameters per view. Optional (unused).
 
@@ -346,16 +350,27 @@ class PLCSMultiViewModel(nn.Module):
                 For single-frame input: (B, 3) and (B, 2).
 
         """
-        # Handle both temporal (B, T, N, K, 2) and single-frame (B, N, K, 2) inputs
+        # Handle both temporal (B, N, T, K, 2) and single-frame (B, N, K, 2) inputs
+        # Input uses camera-time order: (B, N, T, ...)
         is_temporal = human_kp.dim() == 5
         if not is_temporal:
-            # Add temporal dimension: (B, N, K, 2) -> (B, 1, N, K, 2)
-            human_kp = human_kp.unsqueeze(1)
-            court_kp = court_kp.unsqueeze(1)
+            # Add temporal dimension: (B, N, K, 2) -> (B, N, 1, K, 2)
+            human_kp = human_kp.unsqueeze(2)
+            court_kp = court_kp.unsqueeze(2)
             if human_vis is not None:
-                human_vis = human_vis.unsqueeze(1)
+                human_vis = human_vis.unsqueeze(2)
             if court_vis is not None:
-                court_vis = court_vis.unsqueeze(1)
+                court_vis = court_vis.unsqueeze(2)
+
+        # Input: (B, N, T, K, 2) - camera-time order
+        # Internal processing uses (B, T, N, D) for attention blocks
+        # Permute from camera-time to time-camera for internal processing
+        human_kp = human_kp.permute(0, 2, 1, 3, 4)  # (B, N, T, K, 2) -> (B, T, N, K, 2)
+        court_kp = court_kp.permute(0, 2, 1, 3, 4)  # (B, N, T, K, 2) -> (B, T, N, K, 2)
+        if human_vis is not None:
+            human_vis = human_vis.permute(0, 2, 1, 3)  # (B, N, T, K) -> (B, T, N, K)
+        if court_vis is not None:
+            court_vis = court_vis.permute(0, 2, 1, 3)  # (B, N, T, K) -> (B, T, N, K)
 
         batch_size, seq_len, n_cameras = human_kp.shape[:3]
         device = human_kp.device
