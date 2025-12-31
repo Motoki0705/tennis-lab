@@ -315,29 +315,18 @@ def main_predict_multiview(cfg: RuntimeConfig) -> int:
     human_vis_list = []
     court_vis_list = []
 
-    for frame_idx in range(num_frames):
-        frame_human_kp = []
-        frame_court_kp = []
-        frame_human_vis = []
-        frame_court_vis = []
+    for cam_idx in cameras:
+        cam = scene.cameras[cam_idx]
+        human_kp_list.append(cam.human_kp_uv)  # (T, 17, 2)
+        court_kp_list.append(cam.court_kp_uv)  # (T, 20, 2)
+        human_vis_list.append(cam.human_kp_visible.astype(np.float32))  # (T, 17)
+        court_vis_list.append(cam.court_kp_visible.astype(np.float32))  # (T, 20)
 
-        for cam_idx in cameras:
-            cam = scene.cameras[cam_idx]
-            frame_human_kp.append(cam.human_kp_uv[frame_idx])
-            frame_court_kp.append(cam.court_kp_uv[frame_idx])
-            frame_human_vis.append(cam.human_kp_visible[frame_idx].astype(np.float32))
-            frame_court_vis.append(cam.court_kp_visible[frame_idx].astype(np.float32))
-
-        human_kp_list.append(np.stack(frame_human_kp, axis=0))
-        court_kp_list.append(np.stack(frame_court_kp, axis=0))
-        human_vis_list.append(np.stack(frame_human_vis, axis=0))
-        court_vis_list.append(np.stack(frame_court_vis, axis=0))
-
-    # Stack to (T, N, ...) where T=num_frames, N=num_views
-    human_kp_all = np.stack(human_kp_list, axis=0)  # (T, N, 17, 2)
-    court_kp_all = np.stack(court_kp_list, axis=0)  # (T, N, 20, 2)
-    human_vis_all = np.stack(human_vis_list, axis=0)  # (T, N, 17)
-    court_vis_all = np.stack(court_vis_list, axis=0)  # (T, N, 20)
+    # Stack to (N, T, ...) where N=num_views, T=num_frames (camera-time order)
+    human_kp_all = np.stack(human_kp_list, axis=0)  # (N, T, 17, 2)
+    court_kp_all = np.stack(court_kp_list, axis=0)  # (N, T, 20, 2)
+    human_vis_all = np.stack(human_vis_list, axis=0)  # (N, T, 17)
+    court_vis_all = np.stack(court_vis_list, axis=0)  # (N, T, 20)
 
     # Process in chunks of seq_len with sliding window
     all_positions = []
@@ -347,29 +336,32 @@ def main_predict_multiview(cfg: RuntimeConfig) -> int:
         end_idx = min(start_idx + seq_len, num_frames)
         chunk_len = end_idx - start_idx
 
-        # Extract chunk: (chunk_len, N, ...)
-        human_kp_chunk = torch.from_numpy(human_kp_all[start_idx:end_idx]).float()
-        court_kp_chunk = torch.from_numpy(court_kp_all[start_idx:end_idx]).float()
-        human_vis_chunk = torch.from_numpy(human_vis_all[start_idx:end_idx]).float()
-        court_vis_chunk = torch.from_numpy(court_vis_all[start_idx:end_idx]).float()
+        # Extract chunk: (N, chunk_len, ...) - camera-time order
+        human_kp_chunk = torch.from_numpy(human_kp_all[:, start_idx:end_idx]).float()
+        court_kp_chunk = torch.from_numpy(court_kp_all[:, start_idx:end_idx]).float()
+        human_vis_chunk = torch.from_numpy(human_vis_all[:, start_idx:end_idx]).float()
+        court_vis_chunk = torch.from_numpy(court_vis_all[:, start_idx:end_idx]).float()
 
         # Pad to seq_len if needed (last chunk may be shorter)
         if chunk_len < seq_len:
             pad_len = seq_len - chunk_len
+            # Padding format: (left, right) for each dimension from last to first
+            # Shape (N, T, K, 2): pad T dimension -> (0,0, 0,0, 0,pad_len, 0,0)
             human_kp_chunk = torch.nn.functional.pad(
-                human_kp_chunk, (0, 0, 0, 0, 0, 0, 0, pad_len)
+                human_kp_chunk, (0, 0, 0, 0, 0, pad_len, 0, 0)
             )
             court_kp_chunk = torch.nn.functional.pad(
-                court_kp_chunk, (0, 0, 0, 0, 0, 0, 0, pad_len)
+                court_kp_chunk, (0, 0, 0, 0, 0, pad_len, 0, 0)
             )
+            # Shape (N, T, K): pad T dimension -> (0,0, 0,pad_len, 0,0)
             human_vis_chunk = torch.nn.functional.pad(
-                human_vis_chunk, (0, 0, 0, 0, 0, pad_len)
+                human_vis_chunk, (0, 0, 0, pad_len, 0, 0)
             )
             court_vis_chunk = torch.nn.functional.pad(
-                court_vis_chunk, (0, 0, 0, 0, 0, pad_len)
+                court_vis_chunk, (0, 0, 0, pad_len, 0, 0)
             )
 
-        # Run prediction on chunk: input (T, N, K, 2), output (1, T, 3)
+        # Run prediction on chunk: input (N, T, K, 2), output (1, T, 3)
         pred = predictor.predict(
             human_kp=human_kp_chunk,
             court_kp=court_kp_chunk,
