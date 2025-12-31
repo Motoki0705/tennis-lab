@@ -24,6 +24,8 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
     - Frame-based: observations from multiple cameras for a single frame.
     - Sequence-based: observations from multiple cameras over a temporal sequence.
 
+    Uses camera-time ordering throughout: (B, N, T, ...) where N=cameras, T=time.
+
     The data module determines which type of input is provided based on
     config.data.mode ('multiview' or 'multiview_sequence').
     """
