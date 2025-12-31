@@ -1,8 +1,12 @@
 """Generate a BLCS dataset with Hydra-managed configuration.
 
 Example commands:
+    # Shot mode (default):
     `uv run python -m src.blcs.scripts.generate_dataset`
     `uv run python -m src.blcs.scripts.generate_dataset run.output_dir=data/blcs sampling.per_from_cell_samples=10`
+
+    # Rally mode:
+    `uv run python -m src.blcs.scripts.generate_dataset generator.mode=rally generator.num_rally_scenes=100`
 
 Config entry point: `src/blcs/configs/generate_dataset.yaml`
 """
@@ -12,7 +16,9 @@ from __future__ import annotations
 import logging
 import random
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from typing import TypeVar, cast
 
 import hydra
 import numpy as np
@@ -25,10 +31,12 @@ from src.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
 from src.blcs.generate_dataset.sampling.distribution_sampler import SamplingConfig
 from src.blcs.generate_dataset.scene_generator import (
     BLCSSceneGenerator,
+    GenerationMode,
     GeneratorConfig,
 )
 from src.blcs.simulation.ball_physics import PhysicsConfig
 from src.blcs.simulation.cell_manager import ShotCategory
+from src.blcs.simulation.rally_simulator import RallyConfig
 from src.blcs.simulation.shot_simulator import ShotConfig
 from src.utils.projection.camera_projector import CameraConfig
 
@@ -37,6 +45,8 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+F = TypeVar("F", bound=Callable[..., int])
 
 
 def _seed_everything(seed: int) -> None:
@@ -71,6 +81,14 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         sim_fps=int(cfg.shot.sim_fps),
     )
 
+    rally_config = RallyConfig(
+        max_rallies=int(cfg.rally.max_rallies),
+        max_total_frames=int(cfg.rally.max_total_frames),
+        court_margin=float(cfg.rally.court_margin),
+        hit_timing_range=tuple(cfg.rally.hit_timing_range),
+        return_z_range=tuple(cfg.rally.return_z_range),
+    )
+
     camera_config = CameraConfig(
         z_min=float(cfg.camera.z_min),
         z_max=float(cfg.camera.z_max),
@@ -91,18 +109,33 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         per_from_cell_samples=int(cfg.sampling.per_from_cell_samples),
     )
 
+    # Parse generation mode
+    mode_str = str(cfg.generator.mode).lower()
+    mode = GenerationMode.RALLY if mode_str == "rally" else GenerationMode.SHOT
+
     return GeneratorConfig(
         physics=physics_config,
         shot=shot_config,
+        rally=rally_config,
         camera=camera_config,
         sampling=sampling_config,
+        mode=mode,
         num_cameras_sampled=int(cfg.generator.num_cameras_sampled),
         ball_visibility_threshold=float(cfg.generator.ball_visibility_threshold),
         max_attempts_per_cell=int(cfg.generator.max_attempts_per_cell),
     )
 
 
-@hydra.main(config_path="../configs", config_name="generate_dataset", version_base="1.3")
+def _hydra_main(func: F) -> F:
+    return cast(
+        F,
+        hydra.main(config_path="../configs", config_name="generate_dataset", version_base="1.3")(
+            func
+        ),
+    )
+
+
+@_hydra_main
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Generate scenes and write them to disk."""
     logger.info("=" * 60)
@@ -126,9 +159,15 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         )
 
     generator_config = _build_generator_config(cfg)
+    mode = generator_config.mode
 
     logger.info("Output directory: %s", output_dir)
-    logger.info("Samples per from-cell: %s", cfg.sampling.per_from_cell_samples)
+    logger.info("Generation mode: %s", mode.value)
+    if mode == GenerationMode.SHOT:
+        logger.info("Samples per from-cell: %s", cfg.sampling.per_from_cell_samples)
+    else:
+        logger.info("Number of rally scenes: %s", cfg.generator.num_rally_scenes)
+        logger.info("Max rallies per scene: %s", cfg.rally.max_rallies)
     logger.info("Cameras sampled per scene: %s", generator_config.num_cameras_sampled)
     logger.info("Ball visibility threshold: %s", generator_config.ball_visibility_threshold)
     logger.info("Device: %s", cfg.run.device)
@@ -140,19 +179,41 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     total_scenes = 0
     total_cameras = 0
 
-    for scene_data in tqdm(generator.generate_all_scenes(), desc="Generating scenes"):
-        writer.save_scene(scene_data)
-        total_scenes += 1
-        total_cameras += len(scene_data.cameras)
+    if mode == GenerationMode.SHOT:
+        # Shot mode: use distribution-controlled generation
+        for scene_data in tqdm(generator.generate_all_scenes(), desc="Generating shots"):
+            writer.save_scene(scene_data)
+            total_scenes += 1
+            total_cameras += len(scene_data.cameras)
 
-        if total_scenes % 100 == 0:
-            avg_cams = total_cameras / total_scenes
-            logger.info(
-                "Progress: %s scenes, %s cameras (avg %.1f/scene)",
-                total_scenes,
-                total_cameras,
-                avg_cams,
-            )
+            if total_scenes % 100 == 0:
+                avg_cams = total_cameras / total_scenes
+                logger.info(
+                    "Progress: %s scenes, %s cameras (avg %.1f/scene)",
+                    total_scenes,
+                    total_cameras,
+                    avg_cams,
+                )
+    else:
+        # Rally mode: generate fixed number of rally scenes
+        num_rally_scenes = int(cfg.generator.num_rally_scenes)
+        for scene_data in tqdm(
+            generator.generate_rally_scenes(num_rally_scenes),
+            desc="Generating rallies",
+            total=num_rally_scenes,
+        ):
+            writer.save_rally_scene(scene_data)
+            total_scenes += 1
+            total_cameras += len(scene_data.cameras)
+
+            if total_scenes % 100 == 0:
+                avg_cams = total_cameras / total_scenes
+                logger.info(
+                    "Progress: %s rally scenes, %s cameras (avg %.1f/scene)",
+                    total_scenes,
+                    total_cameras,
+                    avg_cams,
+                )
 
     logger.info("Generation complete: %s scenes, %s cameras", total_scenes, total_cameras)
 
@@ -171,6 +232,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     logger.info("=" * 60)
     logger.info("Dataset generation complete!")
     logger.info("Output: %s", output_dir)
+    logger.info("Mode: %s", mode.value)
     logger.info("Total scenes: %s", total_scenes)
     logger.info("Total cameras: %s", total_cameras)
     if total_scenes > 0:
@@ -181,4 +243,4 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(cast(Callable[[], int], main)())
