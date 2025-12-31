@@ -103,7 +103,7 @@ class BLCSMultiViewPredictor(BasePredictor):
         court_kp: Tensor,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
-        view_mask: Tensor | None = None,
+        num_views: Tensor | None = None,
         seq_len: Tensor | None = None,
         denormalize: bool = True,
     ) -> dict[str, Tensor]:
@@ -114,7 +114,7 @@ class BLCSMultiViewPredictor(BasePredictor):
             court_kp: Court 2D keypoints. Shape (B, N, 20, 2) or (N, 20, 2).
             ball_mask: Ball visibility mask. Shape (B, N, T) or (N, T).
             court_vis: Court keypoint visibility. Shape (B, N, 20) or (N, 20).
-            view_mask: Valid view mask. Shape (B, N) or (N,).
+            num_views: Number of valid views. Shape (B,) or scalar.
             seq_len: Sequence lengths. Shape (B,) or scalar.
             denormalize: If True, convert positions to meters.
 
@@ -124,17 +124,24 @@ class BLCSMultiViewPredictor(BasePredictor):
                 - position_meters: Position in meters (if denormalize=True)
 
         """
-        # Add batch dimension if needed
+        # Add batch dimension if needed (keep (N, T, ...) -> (B, N, T, ...))
         if ball_uv.dim() == 3:
-            ball_uv = ball_uv.unsqueeze(0)
+            ball_uv = ball_uv.unsqueeze(0)  # (N, T, 2) -> (1, N, T, 2)
         if court_kp.dim() == 3:
-            court_kp = court_kp.unsqueeze(0)
+            court_kp = court_kp.unsqueeze(0)  # (N, 20, 2) -> (1, N, 20, 2)
         if ball_mask is not None and ball_mask.dim() == 2:
-            ball_mask = ball_mask.unsqueeze(0)
+            ball_mask = ball_mask.unsqueeze(0)  # (N, T) -> (1, N, T)
         if court_vis is not None and court_vis.dim() == 2:
-            court_vis = court_vis.unsqueeze(0)
-        if view_mask is not None and view_mask.dim() == 1:
-            view_mask = view_mask.unsqueeze(0)
+            court_vis = court_vis.unsqueeze(0)  # (N, 20) -> (1, N, 20)
+        
+        # Get sequence length for court_kp/court_vis expansion
+        seq_len_val = ball_uv.shape[2]  # T dimension
+        
+        # Expand court_kp and court_vis along time dimension if needed
+        if court_kp.shape[2] == 20:  # (B, N, 20, 2) needs time dimension
+            court_kp = court_kp.unsqueeze(2).expand(-1, -1, seq_len_val, -1, -1)  # (B, N, T, 20, 2)
+        if court_vis is not None and court_vis.dim() == 3:  # (B, N, 20) needs time dimension
+            court_vis = court_vis.unsqueeze(2).expand(-1, -1, seq_len_val, -1)  # (B, N, T, 20)
 
         # Move to device
         ball_uv = ball_uv.to(self.device)
@@ -143,8 +150,8 @@ class BLCSMultiViewPredictor(BasePredictor):
             ball_mask = ball_mask.to(self.device)
         if court_vis is not None:
             court_vis = court_vis.to(self.device)
-        if view_mask is not None:
-            view_mask = view_mask.to(self.device)
+        if num_views is not None:
+            num_views = num_views.to(self.device)
         if seq_len is not None:
             seq_len = seq_len.to(self.device)
 
@@ -154,7 +161,7 @@ class BLCSMultiViewPredictor(BasePredictor):
             court_kp=court_kp,
             ball_mask=ball_mask,
             court_vis=court_vis,
-            view_mask=view_mask,
+            num_views=num_views,
         )
 
         position = outputs["position"].cpu()

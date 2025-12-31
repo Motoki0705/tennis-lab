@@ -266,7 +266,7 @@ def main_predict_multiview(cfg: RuntimeConfig) -> int:
         court_kp=court_kp,
         ball_mask=ball_mask,
         court_vis=court_vis,
-        view_mask=None,
+        num_views=None,
         denormalize=True,
     )
 
