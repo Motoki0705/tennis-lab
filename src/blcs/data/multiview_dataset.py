@@ -311,13 +311,13 @@ def collate_multiview_trajectories(
     """Collate function for multi-view trajectory batches.
 
     Handles variable sequence lengths and number of views by padding.
-    Outputs tensors in model input format: (B, T, N, ...) for ball/court data.
+    Outputs tensors in model input format: (B, N, T, ...) for ball/court data.
 
     Args:
         batch: List of multi-view samples.
 
     Returns:
-        Collated batch with padded tensors in (B, T, N, ...) format.
+        Collated batch with padded tensors in (B, N, T, ...) format.
 
     """
     max_views = max(sample["num_views"].item() for sample in batch)
@@ -374,12 +374,7 @@ def collate_multiview_trajectories(
                 [court_vis, torch.zeros(pad_views, max_seq_len, 20)], dim=0
             )
 
-        # Transpose from (N, T, ...) to (T, N, ...) for model input format
-        ball_uv = ball_uv.permute(1, 0, 2)  # (T, N, 2)
-        ball_mask = ball_mask.permute(1, 0)  # (T, N)
-        court_kp = court_kp.permute(1, 0, 2, 3)  # (T, N, 20, 2)
-        court_vis = court_vis.permute(1, 0, 2)  # (T, N, 20)
-
+        # Keep (N, T, ...) format for model input
         ball_uv_batch.append(ball_uv)
         ball_mask_batch.append(ball_mask)
         court_kp_batch.append(court_kp)
@@ -390,10 +385,10 @@ def collate_multiview_trajectories(
         num_views_batch.append(sample["num_views"])
 
     return {
-        "ball_uv": torch.stack(ball_uv_batch, dim=0),  # (B, T_max, N_max, 2)
-        "ball_mask": torch.stack(ball_mask_batch, dim=0),  # (B, T_max, N_max)
-        "court_kp": torch.stack(court_kp_batch, dim=0),  # (B, T_max, N_max, 20, 2)
-        "court_vis": torch.stack(court_vis_batch, dim=0),  # (B, T_max, N_max, 20)
+        "ball_uv": torch.stack(ball_uv_batch, dim=0),  # (B, N_max, T_max, 2)
+        "ball_mask": torch.stack(ball_mask_batch, dim=0),  # (B, N_max, T_max)
+        "court_kp": torch.stack(court_kp_batch, dim=0),  # (B, N_max, T_max, 20, 2)
+        "court_vis": torch.stack(court_vis_batch, dim=0),  # (B, N_max, T_max, 20)
         "camera_params": [cam for sample in batch for cam in sample["camera_params"]],
         "num_views": torch.stack(num_views_batch, dim=0),  # (B,)
         "position_3d": torch.stack(position_3d_batch, dim=0),  # (B, T_max, 3)

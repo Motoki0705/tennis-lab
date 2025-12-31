@@ -124,23 +124,24 @@ class BLCSMultiViewPredictor(BasePredictor):
                 - position_meters: Position in meters (if denormalize=True)
 
         """
-        # Add batch dimension and transpose to (B, T, N, ...) if needed
+        # Add batch dimension if needed (keep (N, T, ...) -> (B, N, T, ...))
         if ball_uv.dim() == 3:
-            # (N, T, 2) -> (1, T, N, 2)
-            ball_uv = ball_uv.permute(1, 0, 2).unsqueeze(0)
-        
-        # Get sequence length for court_kp expansion
-        seq_len_val = ball_uv.shape[1]
-        
+            ball_uv = ball_uv.unsqueeze(0)  # (N, T, 2) -> (1, N, T, 2)
         if court_kp.dim() == 3:
-            # (N, 20, 2) -> (1, T, N, 20, 2) - expand T dimension
-            court_kp = court_kp.unsqueeze(0).unsqueeze(1).expand(-1, seq_len_val, -1, -1, -1)
+            court_kp = court_kp.unsqueeze(0)  # (N, 20, 2) -> (1, N, 20, 2)
         if ball_mask is not None and ball_mask.dim() == 2:
-            # (N, T) -> (1, T, N)
-            ball_mask = ball_mask.permute(1, 0).unsqueeze(0)
+            ball_mask = ball_mask.unsqueeze(0)  # (N, T) -> (1, N, T)
         if court_vis is not None and court_vis.dim() == 2:
-            # (N, 20) -> (1, T, N, 20) - expand T dimension
-            court_vis = court_vis.unsqueeze(0).unsqueeze(1).expand(-1, seq_len_val, -1, -1)
+            court_vis = court_vis.unsqueeze(0)  # (N, 20) -> (1, N, 20)
+        
+        # Get sequence length for court_kp/court_vis expansion
+        seq_len_val = ball_uv.shape[2]  # T dimension
+        
+        # Expand court_kp and court_vis along time dimension if needed
+        if court_kp.shape[2] == 20:  # (B, N, 20, 2) needs time dimension
+            court_kp = court_kp.unsqueeze(2).expand(-1, -1, seq_len_val, -1, -1)  # (B, N, T, 20, 2)
+        if court_vis is not None and court_vis.dim() == 3:  # (B, N, 20) needs time dimension
+            court_vis = court_vis.unsqueeze(2).expand(-1, -1, seq_len_val, -1)  # (B, N, T, 20)
 
         # Move to device
         ball_uv = ball_uv.to(self.device)
