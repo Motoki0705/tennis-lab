@@ -2,7 +2,7 @@
 scene_dir: "data/blcs"
 
 # DataLoader settings
-batch_size: 16
+batch_size: 64
 num_workers: 4
 
 # Train/Val/Test split

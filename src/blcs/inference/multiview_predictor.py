@@ -102,7 +102,7 @@ class BLCSMultiViewPredictor(BasePredictor):
         ball_uv: Tensor,
         court_kp: Tensor,
         ball_mask: Tensor | None = None,
-        court_kp_mask: Tensor | None = None,
+        court_vis: Tensor | None = None,
         view_mask: Tensor | None = None,
         seq_len: Tensor | None = None,
         denormalize: bool = True,
@@ -113,7 +113,7 @@ class BLCSMultiViewPredictor(BasePredictor):
             ball_uv: Ball 2D trajectory. Shape (B, N, T, 2) or (N, T, 2).
             court_kp: Court 2D keypoints. Shape (B, N, 20, 2) or (N, 20, 2).
             ball_mask: Ball visibility mask. Shape (B, N, T) or (N, T).
-            court_kp_mask: Court keypoint visibility. Shape (B, N, 20) or (N, 20).
+            court_vis: Court keypoint visibility. Shape (B, N, 20) or (N, 20).
             view_mask: Valid view mask. Shape (B, N) or (N,).
             seq_len: Sequence lengths. Shape (B,) or scalar.
             denormalize: If True, convert positions to meters.
@@ -131,8 +131,8 @@ class BLCSMultiViewPredictor(BasePredictor):
             court_kp = court_kp.unsqueeze(0)
         if ball_mask is not None and ball_mask.dim() == 2:
             ball_mask = ball_mask.unsqueeze(0)
-        if court_kp_mask is not None and court_kp_mask.dim() == 2:
-            court_kp_mask = court_kp_mask.unsqueeze(0)
+        if court_vis is not None and court_vis.dim() == 2:
+            court_vis = court_vis.unsqueeze(0)
         if view_mask is not None and view_mask.dim() == 1:
             view_mask = view_mask.unsqueeze(0)
 
@@ -141,8 +141,8 @@ class BLCSMultiViewPredictor(BasePredictor):
         court_kp = court_kp.to(self.device)
         if ball_mask is not None:
             ball_mask = ball_mask.to(self.device)
-        if court_kp_mask is not None:
-            court_kp_mask = court_kp_mask.to(self.device)
+        if court_vis is not None:
+            court_vis = court_vis.to(self.device)
         if view_mask is not None:
             view_mask = view_mask.to(self.device)
         if seq_len is not None:
@@ -153,7 +153,7 @@ class BLCSMultiViewPredictor(BasePredictor):
             ball_uv=ball_uv,
             court_kp=court_kp,
             ball_mask=ball_mask,
-            court_kp_mask=court_kp_mask,
+            court_vis=court_vis,
             view_mask=view_mask,
         )
 
