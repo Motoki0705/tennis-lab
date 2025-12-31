@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar, cast
 
 import hydra
 import matplotlib.pyplot as plt
@@ -212,9 +213,14 @@ def main_predict_multiview(cfg: RuntimeConfig) -> int:
     if not _require_checkpoint(cfg):
         return 1
 
-    print(f"Loading multi-view checkpoint from {cfg.checkpoint}...")
+    checkpoint = cfg.checkpoint
+    if checkpoint is None:
+        print("Error: checkpoint is required for prediction.")
+        return 1
+
+    print(f"Loading multi-view checkpoint from {checkpoint}...")
     predictor = BLCSMultiViewPredictor.load_from_checkpoint(
-        cfg.checkpoint, device=cfg.device
+        checkpoint, device=cfg.device
     )
 
     print(f"Loading scene from {cfg.scene_path}...")
@@ -259,7 +265,7 @@ def main_predict_multiview(cfg: RuntimeConfig) -> int:
         ball_uv=ball_uv,
         court_kp=court_kp,
         ball_mask=ball_mask,
-        court_kp_mask=court_vis,
+        court_vis=court_vis,
         view_mask=None,
         denormalize=True,
     )
@@ -322,7 +328,15 @@ def main_predict_multiview(cfg: RuntimeConfig) -> int:
     return render_scene(scene_pred, cfg)
 
 
-@hydra.main(
+TFunc = TypeVar("TFunc", bound=Callable[..., Any])
+
+
+def hydra_main(**kwargs: Any) -> Callable[[TFunc], TFunc]:
+    """Typed wrapper around hydra.main for mypy."""
+    return cast(Callable[[TFunc], TFunc], hydra.main(**kwargs))
+
+
+@hydra_main(
     config_path="../configs", config_name="visualize_multiview", version_base="1.3"
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
@@ -340,4 +354,4 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(cast(Callable[[], int], main)())
