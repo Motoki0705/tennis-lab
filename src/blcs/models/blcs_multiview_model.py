@@ -31,7 +31,7 @@ class SequentialAttentionBlock(nn.Module):
     """Self-attention over the temporal/sequential dimension.
 
     For each camera, applies attention across time steps.
-    Input shape: (B, T, N, D) - processes attention over T for each camera N.
+    Input shape: (B, N, T, D) - processes attention over T for each camera N.
     """
 
     def __init__(
@@ -69,17 +69,17 @@ class SequentialAttentionBlock(nn.Module):
         """Apply sequential attention.
 
         Args:
-            x: Input tensor, shape (B, T, N, D).
-            mask: Optional mask, shape (B, T, N), True = valid.
+            x: Input tensor, shape (B, N, T, D).
+            mask: Optional mask, shape (B, N, T), True = valid.
 
         Returns:
-            Tensor: Output tensor, shape (B, T, N, D).
+            Tensor: Output tensor, shape (B, N, T, D).
 
         """
-        batch_size, seq_len, n_cameras, hidden_dim = x.shape
+        batch_size, n_cameras, seq_len, hidden_dim = x.shape
 
         # Reshape to (B*N, T, D) for attention over sequence
-        x_reshaped = x.permute(0, 2, 1, 3).reshape(
+        x_reshaped = x.reshape(
             batch_size * n_cameras, seq_len, hidden_dim
         )
 
@@ -87,8 +87,8 @@ class SequentialAttentionBlock(nn.Module):
         key_padding_mask = None
         fully_masked: Tensor | None = None
         if mask is not None:
-            # mask: (B, T, N) -> (B*N, T)
-            key_padding_mask = ~mask.permute(0, 2, 1).reshape(
+            # mask: (B, N, T) -> (B*N, T)
+            key_padding_mask = ~mask.reshape(
                 batch_size * n_cameras, seq_len
             )
             fully_masked = key_padding_mask.all(dim=1)
@@ -108,10 +108,8 @@ class SequentialAttentionBlock(nn.Module):
         # FFN
         x_reshaped = x_reshaped + self.ffn(self.norm2(x_reshaped))
 
-        # Reshape back to (B, T, N, D)
-        out = x_reshaped.reshape(batch_size, n_cameras, seq_len, hidden_dim).permute(
-            0, 2, 1, 3
-        )
+        # Reshape back to (B, N, T, D)
+        out = x_reshaped.reshape(batch_size, n_cameras, seq_len, hidden_dim)
         if mask is not None:
             out = out * mask.unsqueeze(-1).to(dtype=out.dtype)
         return out
@@ -121,7 +119,7 @@ class CameraAttentionBlock(nn.Module):
     """Self-attention over the camera dimension.
 
     For each time step, applies attention across cameras.
-    Input shape: (B, T, N, D) - processes attention over N for each time T.
+    Input shape: (B, N, T, D) - processes attention over N for each time T.
     """
 
     def __init__(
@@ -159,24 +157,24 @@ class CameraAttentionBlock(nn.Module):
         """Apply camera attention.
 
         Args:
-            x: Input tensor, shape (B, T, N, D).
-            mask: Optional mask, shape (B, T, N), True = valid.
+            x: Input tensor, shape (B, N, T, D).
+            mask: Optional mask, shape (B, N, T), True = valid.
 
         Returns:
-            Tensor: Output tensor, shape (B, T, N, D).
+            Tensor: Output tensor, shape (B, N, T, D).
 
         """
-        batch_size, seq_len, n_cameras, hidden_dim = x.shape
+        batch_size, n_cameras, seq_len, hidden_dim = x.shape
 
         # Reshape to (B*T, N, D) for attention over cameras
-        x_reshaped = x.reshape(batch_size * seq_len, n_cameras, hidden_dim)
+        x_reshaped = x.permute(0, 2, 1, 3).reshape(batch_size * seq_len, n_cameras, hidden_dim)
 
         # Build attention mask if provided
         key_padding_mask = None
         fully_masked: Tensor | None = None
         if mask is not None:
-            # mask: (B, T, N) -> (B*T, N)
-            key_padding_mask = ~mask.reshape(batch_size * seq_len, n_cameras)
+            # mask: (B, N, T) -> (B*T, N)
+            key_padding_mask = ~mask.permute(0, 2, 1).reshape(batch_size * seq_len, n_cameras)
             fully_masked = key_padding_mask.all(dim=1)
             if fully_masked.any():
                 key_padding_mask = key_padding_mask.clone()
@@ -194,8 +192,8 @@ class CameraAttentionBlock(nn.Module):
         # FFN
         x_reshaped = x_reshaped + self.ffn(self.norm2(x_reshaped))
 
-        # Reshape back to (B, T, N, D)
-        out = x_reshaped.reshape(batch_size, seq_len, n_cameras, hidden_dim)
+        # Reshape back to (B, N, T, D)
+        out = x_reshaped.reshape(batch_size, seq_len, n_cameras, hidden_dim).permute(0, 2, 1, 3)
         if mask is not None:
             out = out * mask.unsqueeze(-1).to(dtype=out.dtype)
         return out
@@ -345,10 +343,10 @@ class BLCSMultiViewModel(nn.Module):
         """Forward pass.
 
         Args:
-            ball_uv: Ball 2D positions, shape (B, T, N, 2).
-            court_kp: Court keypoints, shape (B, T, N, 20, 2).
-            ball_mask: Ball visibility mask, shape (B, T, N). Optional.
-            court_vis: Court visibility mask, shape (B, T, N, 20). Optional.
+            ball_uv: Ball 2D positions, shape (B, N, T, 2).
+            court_kp: Court keypoints, shape (B, N, T, 20, 2).
+            ball_mask: Ball visibility mask, shape (B, N, T). Optional.
+            court_vis: Court visibility mask, shape (B, N, T, 20). Optional.
             num_views: Number of valid views, shape (B,). Optional.
             seq_len: Sequence lengths, shape (B,). Optional.
             camera_params: Camera parameters per view. Optional (unused).
@@ -357,38 +355,38 @@ class BLCSMultiViewModel(nn.Module):
             dict: Dictionary with 'position' (B, T, 3) and optionally 'velocity'.
 
         """
-        batch_size, seq_length, n_cameras = ball_uv.shape[:3]
+        batch_size, n_cameras, seq_length = ball_uv.shape[:3]
         device = ball_uv.device
 
-        # Flatten keypoints and ball for encoder: (B, T, N, ...) -> (B*T*N, ...)
-        ball_flat = ball_uv.reshape(batch_size * seq_length * n_cameras, 2)
+        # Flatten keypoints and ball for encoder: (B, N, T, ...) -> (B*N*T, ...)
+        ball_flat = ball_uv.reshape(batch_size * n_cameras * seq_length, 2)
         court_flat = court_kp.flatten(start_dim=3).reshape(
-            batch_size * seq_length * n_cameras, -1
+            batch_size * n_cameras * seq_length, -1
         )
 
         # Encode each (frame, camera) pair
-        tokens_flat = self.ball_court_encoder(ball_flat, court_flat)  # (B*T*N, D)
+        tokens_flat = self.ball_court_encoder(ball_flat, court_flat)  # (B*N*T, D)
         tokens = tokens_flat.reshape(
-            batch_size, seq_length, n_cameras, self.hidden_dim
-        )  # (B, T, N, D)
+            batch_size, n_cameras, seq_length, self.hidden_dim
+        )  # (B, N, T, D)
 
         # Add positional embeddings
         time_ids = torch.arange(seq_length, device=device)
         camera_ids = torch.arange(n_cameras, device=device)
-        tokens = tokens + self.time_embed(time_ids).view(1, seq_length, 1, -1)
-        tokens = tokens + self.camera_embed(camera_ids).view(1, 1, n_cameras, -1)
+        tokens = tokens + self.time_embed(time_ids).view(1, 1, seq_length, -1)
+        tokens = tokens + self.camera_embed(camera_ids).view(1, n_cameras, 1, -1)
 
-        # Create view mask if num_views provided: (B, T, N)
+        # Create view mask if num_views provided: (B, N, T)
         view_mask: Tensor | None = None
         if num_views is not None:
-            camera_idx = torch.arange(n_cameras, device=device).view(1, 1, n_cameras)
+            camera_idx = torch.arange(n_cameras, device=device).view(1, n_cameras, 1)
             view_mask = camera_idx < num_views.view(batch_size, 1, 1)
-            view_mask = view_mask.expand(batch_size, seq_length, n_cameras)
+            view_mask = view_mask.expand(batch_size, n_cameras, seq_length)
 
         # Combine with ball visibility mask
         token_mask = view_mask
         if ball_mask is not None:
-            # ball_mask: (B, T, N)
+            # ball_mask: (B, N, T)
             frame_camera_valid = ball_mask > 0
             if token_mask is not None:
                 token_mask = token_mask & frame_camera_valid
@@ -397,9 +395,9 @@ class BLCSMultiViewModel(nn.Module):
 
         # Apply sequence length mask
         if seq_len is not None:
-            time_idx = torch.arange(seq_length, device=device).view(1, seq_length, 1)
+            time_idx = torch.arange(seq_length, device=device).view(1, 1, seq_length)
             time_mask = time_idx < seq_len.view(batch_size, 1, 1)
-            time_mask = time_mask.expand(batch_size, seq_length, n_cameras)
+            time_mask = time_mask.expand(batch_size, n_cameras, seq_length)
             token_mask = token_mask & time_mask if token_mask is not None else time_mask
 
         # Apply alternating Sequential and Camera Attention
@@ -409,7 +407,10 @@ class BLCSMultiViewModel(nn.Module):
             tokens = seq_attn(tokens, token_mask)
             tokens = cam_attn(tokens, token_mask)
 
-        # Aggregate camera tokens: (B, T, N, D) -> (B, T, N*D)
+        # Aggregate camera tokens: (B, N, T, D) -> (B, T, N*D)
+        # First permute to (B, T, N, D)
+        tokens = tokens.permute(0, 2, 1, 3)  # (B, N, T, D) -> (B, T, N, D)
+        
         # Pad to max_views if necessary
         if n_cameras < self.max_views:
             pad_size = self.max_views - n_cameras
