@@ -5,7 +5,8 @@ num_workers: 4
 val_split: 0.1
 test_split: 0.1
 
-mode: multiview
+# Mode: "multiview" (frame-based) or "multiview_sequence" (temporal)
+mode: multiview_sequence
 
 # Multi-view specific settings
 num_views: 2
