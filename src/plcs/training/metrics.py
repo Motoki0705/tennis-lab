@@ -57,15 +57,23 @@ class PLCSMetrics:
         """Update metrics with new predictions.
 
         Args:
-            pred_position: Predicted normalized position, shape (B, 3).
-            pred_rotation: Predicted rotation (sin, cos), shape (B, 2).
-            target_position: Target normalized position, shape (B, 3).
-            target_rotation: Target rotation (sin, cos), shape (B, 2).
+            pred_position: Predicted normalized position, shape (B, 3) or (B, T, 3).
+            pred_rotation: Predicted rotation (sin, cos), shape (B, 2) or (B, T, 2).
+            target_position: Target normalized position, shape (B, 3) or (B, T, 3).
+            target_rotation: Target rotation (sin, cos), shape (B, 2) or (B, T, 2).
 
         Returns:
             dict: Current batch metrics.
 
         """
+        # Flatten temporal dimension if present: (B, T, D) -> (B*T, D)
+        if pred_position.dim() == 3:
+            pred_position = pred_position.flatten(0, 1)
+            target_position = target_position.flatten(0, 1)
+        if pred_rotation.dim() == 3:
+            pred_rotation = pred_rotation.flatten(0, 1)
+            target_rotation = target_rotation.flatten(0, 1)
+
         # Denormalize positions to meters
         scale = torch.tensor(
             list(self._norm_scale_xyz),
