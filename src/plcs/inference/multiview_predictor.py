@@ -111,11 +111,18 @@ class PLCSMultiViewPredictor(BasePredictor):
     ) -> dict[str, Tensor]:
         """Predict player 3D position and orientation from multi-view sequences.
 
+        The model expects input shape (B, T, N, K, 2) where:
+        - B: Batch size
+        - T: Sequence length (temporal dimension)
+        - N: Number of camera views
+        - K: Number of keypoints (17 for human, 20 for court)
+        - 2: (u, v) coordinates
+
         Args:
-            human_kp: Human keypoints. Shape (B, N, T, 17, 2) or (N, T, 17, 2).
-            court_kp: Court keypoints. Shape (B, N, T, 20, 2) or (N, T, 20, 2).
-            human_kp_mask: Human keypoint visibility mask. Shape (B, N, T, 17).
-            court_kp_mask: Court keypoint visibility mask. Shape (B, N, T, 20).
+            human_kp: Human keypoints. Shape (B, T, N, 17, 2) or (T, N, 17, 2).
+            court_kp: Court keypoints. Shape (B, T, N, 20, 2) or (T, N, 20, 2).
+            human_kp_mask: Human keypoint visibility mask. Shape (B, T, N, 17).
+            court_kp_mask: Court keypoint visibility mask. Shape (B, T, N, 20).
             view_mask: Valid view mask. Shape (B, N) where True = valid view.
             seq_mask: Valid sequence mask. Shape (B, T) where True = valid frame.
             denormalize: If True, convert positions to meters.
@@ -128,7 +135,7 @@ class PLCSMultiViewPredictor(BasePredictor):
                 - yaw_radians: Yaw angle in radians (B, T) (if denormalize=True)
 
         """
-        # Add batch dimension if needed: (N, T, K, 2) -> (1, N, T, K, 2)
+        # Add batch dimension if needed: (T, N, K, 2) -> (1, T, N, K, 2)
         if human_kp.dim() == 4:
             human_kp = human_kp.unsqueeze(0)
         if court_kp.dim() == 4:
@@ -154,32 +161,19 @@ class PLCSMultiViewPredictor(BasePredictor):
         if seq_mask is not None:
             seq_mask = seq_mask.to(self.device)
 
-        # Input shape: (B, N, T, K, 2)
-        B, N, T = human_kp.shape[:3]
+        # Input shape: (B, T, N, K, 2) - model expects this directly
+        # Pass directly to model (model handles temporal input natively)
+        outputs = self.model(
+            human_kp=human_kp,
+            court_kp=court_kp,
+            human_vis=human_kp_mask,
+            court_vis=court_kp_mask,
+            num_views=None,
+            camera_params=None,
+        )
 
-        # Process each frame through the model
-        positions = []
-        rotations = []
-
-        for t in range(T):
-            frame_human = human_kp[:, :, t]  # (B, N, 17, 2)
-            frame_court = court_kp[:, :, t]  # (B, N, 20, 2)
-            frame_hm = human_kp_mask[:, :, t] if human_kp_mask is not None else None
-            frame_cm = court_kp_mask[:, :, t] if court_kp_mask is not None else None
-
-            outputs = self.model(
-                human_kp=frame_human,
-                court_kp=frame_court,
-                human_vis=frame_hm,
-                court_vis=frame_cm,
-                num_views=None,
-                camera_params=None,
-            )
-            positions.append(outputs["position"])
-            rotations.append(outputs["rotation"])
-
-        position = torch.stack(positions, dim=1).cpu()  # (B, T, 3)
-        rotation = torch.stack(rotations, dim=1).cpu()  # (B, T, 2)
+        position = outputs["position"].cpu()  # (B, T, 3)
+        rotation = outputs["rotation"].cpu()  # (B, T, 2)
 
         result: dict[str, Tensor] = {
             "position": position,

@@ -20,8 +20,12 @@ if TYPE_CHECKING:
 class PLCSMultiViewLightningModule(pl.LightningModule):
     """Lightning module for training multi-view PLCS models.
 
-    Similar to PLCSLightningModule but handles multi-view inputs
-    where observations come from multiple cameras simultaneously.
+    This module supports both frame-based and sequence-based multi-view inputs:
+    - Frame-based: observations from multiple cameras for a single frame.
+    - Sequence-based: observations from multiple cameras over a temporal sequence.
+
+    The data module determines which type of input is provided based on
+    config.data.mode ('multiview' or 'multiview_sequence').
     """
 
     def __init__(self, config: DictConfig | None = None) -> None:
@@ -53,8 +57,7 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
             )
         self.loss_fn = PLCSLoss(config=loss_cfg)
 
-        # Metrics
-        self.train_metrics = PLCSMetrics()
+        # Metrics (only for val and test)
         self.val_metrics = PLCSMetrics()
         self.test_metrics = PLCSMetrics()
 
@@ -75,14 +78,22 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
         court_vis: Tensor | None = None,
         num_views: Tensor | None = None,
         camera_params: list[list[dict]] | None = None,
-    ) -> dict[str, Tensor]:
+    ) -> dict[str, Any]:
         """Forward pass.
 
         Args:
-            human_kp: Human keypoints from multiple views, shape (B, N, 17, 2).
-            court_kp: Court keypoints from multiple views, shape (B, N, 20, 2).
-            human_vis: Human visibility mask, shape (B, N, 17).
-            court_vis: Court visibility mask, shape (B, N, 20).
+            human_kp: Human keypoints from multiple views.
+                - Frame-based: shape (B, N, 17, 2)
+                - Sequence-based: shape (B, N, T, 17, 2)
+            court_kp: Court keypoints from multiple views.
+                - Frame-based: shape (B, N, 20, 2)
+                - Sequence-based: shape (B, N, T, 20, 2)
+            human_vis: Human visibility mask.
+                - Frame-based: shape (B, N, 17)
+                - Sequence-based: shape (B, N, T, 17)
+            court_vis: Court visibility mask.
+                - Frame-based: shape (B, N, 20)
+                - Sequence-based: shape (B, N, T, 20)
             num_views: Number of valid views per sample, shape (B,).
             camera_params: Camera parameters per view.
 
@@ -90,9 +101,10 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
             dict: Model outputs.
 
         """
-        return self.model(
+        outputs: dict[str, Any] = self.model(
             human_kp, court_kp, human_vis, court_vis, num_views, camera_params
         )
+        return outputs
 
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
@@ -101,16 +113,18 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
 
         Args:
             batch: Batch dictionary from dataloader.
+                - Frame-based: human_kp/court_kp shape (B, N, K, 2)
+                - Sequence-based: human_kp/court_kp shape (B, N, T, K, 2)
             stage: One of 'train', 'val', 'test'.
 
         Returns:
             tuple: (loss tensor, metrics dict).
 
         """
-        # Forward pass with multi-view inputs
+        # Forward pass with multi-view inputs (frame or sequence)
         outputs = self.model(
-            human_kp=batch["human_kp"],  # (B, N, 17, 2)
-            court_kp=batch["court_kp"],  # (B, N, 20, 2)
+            human_kp=batch["human_kp"],
+            court_kp=batch["court_kp"],
             human_vis=batch.get("human_vis"),
             court_vis=batch.get("court_vis"),
             num_views=batch.get("num_views"),
@@ -125,28 +139,24 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
             target_rotation=batch["rotation"],
         )
 
-        # Update metrics
-        if stage == "train":
-            metrics = self.train_metrics.update(
-                outputs["position"],
-                outputs["rotation"],
-                batch["position"],
-                batch["rotation"],
-            )
-        elif stage == "val":
+        # Update metrics (only for val and test)
+        if stage == "val":
             metrics = self.val_metrics.update(
                 outputs["position"],
                 outputs["rotation"],
                 batch["position"],
                 batch["rotation"],
             )
-        else:
+        elif stage == "test":
             metrics = self.test_metrics.update(
                 outputs["position"],
                 outputs["rotation"],
                 batch["position"],
                 batch["rotation"],
             )
+        else:
+            # For train, return empty metrics dict
+            metrics = {}
 
         return losses["total"], {
             **metrics,
@@ -166,19 +176,14 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
         """
         loss, metrics = self._shared_step(batch, "train")
 
-        # Log metrics
+        # Log losses only (no metrics for train)
         self.log("train/loss", loss, prog_bar=True)
-        self.log("train/pos_error_m", metrics["position_error_m"], prog_bar=True)
-        self.log("train/ang_error_deg", metrics["angular_error_deg"], prog_bar=True)
+        for k in ["position", "rotation", "temporal"]:
+            loss_key = f"loss_{k}"
+            if loss_key in metrics:
+                self.log(f"train/{loss_key}", metrics[loss_key], prog_bar=False)
 
         return loss
-
-    def on_train_epoch_end(self) -> None:
-        """Called at end of training epoch."""
-        metrics = self.train_metrics.compute()
-        for name, value in metrics.items():
-            self.log(f"train/epoch_{name}", value)
-        self.train_metrics.reset()
 
     def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
         """Validation step.
@@ -193,6 +198,10 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
         self.log("val/loss", loss, prog_bar=True)
         self.log("val/pos_error_m", metrics["position_error_m"], prog_bar=True)
         self.log("val/ang_error_deg", metrics["angular_error_deg"], prog_bar=True)
+        for k in ["position", "rotation", "temporal"]:
+            loss_key = f"loss_{k}"
+            if loss_key in metrics:
+                self.log(f"val/{loss_key}", metrics[loss_key], prog_bar=False)
 
     def on_validation_epoch_end(self) -> None:
         """Called at end of validation epoch."""
@@ -214,6 +223,10 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
         self.log("test/loss", loss)
         self.log("test/pos_error_m", metrics["position_error_m"])
         self.log("test/ang_error_deg", metrics["angular_error_deg"])
+        for k in ["position", "rotation", "temporal"]:
+            loss_key = f"loss_{k}"
+            if loss_key in metrics:
+                self.log(f"test/{loss_key}", metrics[loss_key])
 
     def on_test_epoch_end(self) -> None:
         """Called at end of test epoch."""
