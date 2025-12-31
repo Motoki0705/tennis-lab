@@ -9,7 +9,15 @@ cd /root/repos/tennis-lab
 BRANCH="${1:-feature/wt-$(date +%Y%m%d-%H%M%S)}"
 WT_PARENT="/root/repos/wt"
 ORIG="$(pwd -P)"
-BASE_REF="HEAD"  # 新規ブランチ作成時の起点（必要なら main などに変更）
+BASE_REF="main"  # 新規ブランチは必ずmainから作成
+
+# 現在のブランチがmainでない場合、mainをチェックアウト
+CURRENT_BRANCH="$(git branch --show-current)"
+if [[ "$CURRENT_BRANCH" != "main" ]]; then
+  echo "現在のブランチ ($CURRENT_BRANCH) からmainに切り替えます..."
+  git checkout main
+  git pull origin main 2>/dev/null || echo "Warning: Could not pull from origin/main"
+fi
 
 mkdir -p "$WT_PARENT"
 
