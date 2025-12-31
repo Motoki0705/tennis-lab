@@ -30,7 +30,10 @@ from pytorch_lightning.callbacks import (
 )
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from src.plcs.data.datamodule import PLCSMultiViewDataModule
+from src.plcs.data.datamodule import (
+    PLCSMultiViewDataModule,
+    PLCSMultiViewSequenceDataModule,
+)
 from src.plcs.training.multiview_lightning_module import PLCSMultiViewLightningModule
 
 
@@ -52,6 +55,30 @@ F = TypeVar("F", bound=Callable[..., object])
 hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)
 
 
+def _select_datamodule(config: DictConfig) -> pl.LightningDataModule:
+    """Select the appropriate data module based on config.data.mode.
+
+    Args:
+        config: Configuration dictionary.
+
+    Returns:
+        The appropriate Lightning DataModule.
+
+    """
+    data_cfg = config.get("data", {})
+    mode = data_cfg.get("mode", "multiview")
+
+    if mode == "multiview_sequence":
+        return PLCSMultiViewSequenceDataModule(config)
+    elif mode == "multiview":
+        return PLCSMultiViewDataModule(config)
+    else:
+        raise ValueError(
+            f"Unknown data mode '{mode}'. "
+            "Expected 'multiview' or 'multiview_sequence'."
+        )
+
+
 def run_dry_run(config: DictConfig, output_dir: Path) -> None:
     """Verify config and dataloader by loading a single batch.
 
@@ -68,7 +95,7 @@ def run_dry_run(config: DictConfig, output_dir: Path) -> None:
         lambda *_args, **_kwargs: 0, torch.cuda
     )
 
-    data_module = PLCSMultiViewDataModule(config)
+    data_module = _select_datamodule(config)
     model = PLCSMultiViewLightningModule(config)
 
     data_module.num_workers = 0  # Avoid multiprocessing in restricted environments
@@ -121,7 +148,7 @@ def run_training(config: DictConfig) -> None:
         run_dry_run(config, output_dir)
         return
 
-    data_module = PLCSMultiViewDataModule(config)
+    data_module = _select_datamodule(config)
     model = PLCSMultiViewLightningModule(config)
 
     logger = TensorBoardLogger(

@@ -20,8 +20,12 @@ if TYPE_CHECKING:
 class PLCSMultiViewLightningModule(pl.LightningModule):
     """Lightning module for training multi-view PLCS models.
 
-    Similar to PLCSLightningModule but handles multi-view inputs
-    where observations come from multiple cameras simultaneously.
+    This module supports both frame-based and sequence-based multi-view inputs:
+    - Frame-based: observations from multiple cameras for a single frame.
+    - Sequence-based: observations from multiple cameras over a temporal sequence.
+
+    The data module determines which type of input is provided based on
+    config.data.mode ('multiview' or 'multiview_sequence').
     """
 
     def __init__(self, config: DictConfig | None = None) -> None:
@@ -78,10 +82,18 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
         """Forward pass.
 
         Args:
-            human_kp: Human keypoints from multiple views, shape (B, N, 17, 2).
-            court_kp: Court keypoints from multiple views, shape (B, N, 20, 2).
-            human_vis: Human visibility mask, shape (B, N, 17).
-            court_vis: Court visibility mask, shape (B, N, 20).
+            human_kp: Human keypoints from multiple views.
+                - Frame-based: shape (B, N, 17, 2)
+                - Sequence-based: shape (B, N, T, 17, 2)
+            court_kp: Court keypoints from multiple views.
+                - Frame-based: shape (B, N, 20, 2)
+                - Sequence-based: shape (B, N, T, 20, 2)
+            human_vis: Human visibility mask.
+                - Frame-based: shape (B, N, 17)
+                - Sequence-based: shape (B, N, T, 17)
+            court_vis: Court visibility mask.
+                - Frame-based: shape (B, N, 20)
+                - Sequence-based: shape (B, N, T, 20)
             num_views: Number of valid views per sample, shape (B,).
             camera_params: Camera parameters per view.
 
@@ -101,16 +113,18 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
 
         Args:
             batch: Batch dictionary from dataloader.
+                - Frame-based: human_kp/court_kp shape (B, N, K, 2)
+                - Sequence-based: human_kp/court_kp shape (B, N, T, K, 2)
             stage: One of 'train', 'val', 'test'.
 
         Returns:
             tuple: (loss tensor, metrics dict).
 
         """
-        # Forward pass with multi-view inputs
+        # Forward pass with multi-view inputs (frame or sequence)
         outputs = self.model(
-            human_kp=batch["human_kp"],  # (B, N, 17, 2)
-            court_kp=batch["court_kp"],  # (B, N, 20, 2)
+            human_kp=batch["human_kp"],
+            court_kp=batch["court_kp"],
             human_vis=batch.get("human_vis"),
             court_vis=batch.get("court_vis"),
             num_views=batch.get("num_views"),
