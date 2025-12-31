@@ -6,7 +6,7 @@
 
 `visualize_multiview.py` は、複数カメラからの2Dボール観測を統合して3D軌道を推定し、
 その結果を様々な視点で可視化します。
-
+入力データ形式: (N, T, ...) → Predictor内部で (B, N, T, ...) に変換
 ## 実行方法
 
 ### 基本実行（Ground Truth可視化）
@@ -29,7 +29,7 @@ uv run python -m src.blcs.scripts.visualize_multiview \
 uv run python -m src.blcs.scripts.visualize_multiview \
     visualization.scene_path=data/blcs/scenes/scene_000003.npz \
     visualization.mode=predict \
-    visualization.checkpoint=outputs/blcs_multiview/checkpoints/last.ckpt \
+    visualization.checkpoint=outputs/blcs/logs/version_3/checkpoints/last.ckpt \
     visualization.save=output.png
 ```
 

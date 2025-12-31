@@ -123,12 +123,12 @@ class BLCSMultiViewLightningModule(pl.LightningModule):
 
         """
         # Forward pass with multi-view inputs
-        # New tensor format: (B, T, N, ...) for alternating attention architecture
+        # Tensor format: (B, N, T, ...) for alternating attention architecture
         outputs: dict[str, Any] = self.model(
-            ball_uv=batch["ball_uv"],  # (B, T, N, 2)
-            court_kp=batch["court_kp"],  # (B, T, N, 20, 2)
-            ball_mask=batch.get("ball_mask"),  # (B, T, N)
-            court_vis=batch.get("court_vis"),  # (B, T, N, 20)
+            ball_uv=batch["ball_uv"],  # (B, N, T, 2)
+            court_kp=batch["court_kp"],  # (B, N, T, 20, 2)
+            ball_mask=batch.get("ball_mask"),  # (B, N, T)
+            court_vis=batch.get("court_vis"),  # (B, N, T, 20)
             num_views=batch.get("num_views"),
             seq_len=batch.get("seq_len"),
             camera_params=batch.get("camera_params"),
