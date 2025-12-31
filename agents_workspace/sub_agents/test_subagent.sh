@@ -16,12 +16,14 @@ set -euo pipefail
  fi
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-  echo "Usage: $(basename "$0") [--test-cmd '...']"
-  echo "Default test command: uv run --no-sync pytest -q"
+  echo "Usage: $(basename "$0") [--test-cmd '...'] [--workers N]"
+  echo "Default test command: uv run --no-sync pytest -q -n auto"
+  echo "  -n auto uses pytest-xdist for parallel execution"
   exit 0
 fi
 
-test_cmd="uv run --no-sync pytest -q"
+# Default: parallel execution with pytest-xdist (-n auto)
+test_cmd="uv run --no-sync pytest -q -n auto"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

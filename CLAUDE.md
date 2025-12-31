@@ -199,11 +199,16 @@ def predict(self, *args, **kwargs) -> dict[str, Any]:
    # Run linting/type checking
    bash agents_workspace/sub_agents/pre_commit_subagent.sh
 
-   # Run tests
-   bash agents_workspace/sub_agents/test_subagent.sh
+   # Run ONLY affected tests (do NOT run all tests)
+   # Identify test files related to your changes and specify them
+   bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q -n auto tests/unit/test_affected.py'
    ```
 
-3. **Exception handling**: If tools fail due to environment issues (e.g., permission errors), apply workarounds and document in final report.
+3. **Check documentation consistency**:
+   - Update `src/{task}/README.md` if your changes affect the documented behavior
+   - Keep READMEs in sync with implementation (new features, API changes, config changes)
+
+4. **Exception handling**: If tools fail due to environment issues (e.g., permission errors), apply workarounds and document in final report.
 
 ### UV Cache Workaround
 
