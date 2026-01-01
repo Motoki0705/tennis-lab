@@ -147,6 +147,21 @@ src/plcs/
 uv run python -m src.plcs.scripts.generate_dataset
 ```
 
+### データ分布の調査（位置・向き・カメラ数）
+
+生成済み PLCS データセット（`data/plcs/scenes/*.npz`）について、プレイヤー位置や yaw の分布、
+原点近傍への偏り（半径しきい値内の割合）などを集計します。
+
+```bash
+uv run python -m src.plcs.scripts.analysis.analyze_dataset_distribution
+
+# 出力先やサンプル数の変更例
+uv run python -m src.plcs.scripts.analysis.analyze_dataset_distribution \
+    run.output_dir=outputs/plcs_dist \
+    analysis.max_scenes=200 \
+    analysis.max_frames_per_scene=256
+```
+
 ### 学習
 
 ```bash
