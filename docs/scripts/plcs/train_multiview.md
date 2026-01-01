@@ -122,10 +122,23 @@ seq_len: 16           # シーケンス長
 ```yaml
 position_weight: 1.0
 rotation_weight: 1.0
-temporal_weight: 0.1      # 時間一貫性ロス
 temporal:
-  order: 2                 # 加速度の平滑化
-  robust: true             # SmoothL1Loss使用
+  position_gt:
+    weight: 0.1
+    order: 2
+    robust: true
+  position_inertia:
+    weight: 0.0
+    order: 2
+    robust: true
+  rotation_gt:
+    weight: 0.0
+    order: 2
+    robust: true
+  rotation_inertia:
+    weight: 0.0
+    order: 2
+    robust: true
 ```
 
 ### モデル設定
@@ -171,10 +184,10 @@ dropout: 0.1
 
 ## 損失関数
 
-- **位置損失**: MSE（平均二乗誤差）
-- **回転損失**: MSE（sin/cos表現）
-- **時間一貫性損失**: 速度・加速度の平滑化（`temporal_weight > 0` の場合）
-- **総合損失**: `position_weight * pos_loss + rotation_weight * rot_loss + temporal_weight * temporal_loss`
+- **位置損失**: SmoothL1Loss（Huber）
+- **回転損失**: `1 - cosine_similarity`（sin/cos表現の単位ベクトル）
+- **時間一貫性損失**: `temporal.*.weight > 0` の項目を加算（位置/回転 × GT/慣性）
+- **総合損失**: `position_weight * pos_loss + rotation_weight * rot_loss + Σ temporal_term_weight * temporal_term_loss`
 
 ロス設定は `src/plcs/configs/loss/multiview_sequence.yaml` で管理されます。
 
