@@ -18,3 +18,10 @@ hit_timing_range: [0.2, 0.8]
 
 # Height range for return shot (meters)
 return_z_range: [0.8, 1.4]
+
+# Maximum retries for sampling a valid return shot (2nd shot onwards)
+# A valid return shot is one that doesn't immediately end the rally
+max_return_retries: 100
+
+# Minimum rally length to accept (for filtering short rallies)
+min_rally_length: 2

@@ -15,8 +15,7 @@ returns the ball between the 1st and 2nd bounce. The rally ends when:
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -71,6 +70,13 @@ class RallyConfig:
 
     # Height range for return shot (meters)
     return_z_range: tuple[float, float] = (0.8, 1.4)
+
+    # Maximum retries for sampling a valid return shot (2nd shot onwards)
+    # A valid return shot is one that doesn't immediately end the rally
+    max_return_retries: int = 100
+
+    # Minimum rally length to accept (for filtering short rallies)
+    min_rally_length: int = 2
 
 
 @dataclass
@@ -262,7 +268,6 @@ class RallySimulator:
 
         """
         cfg = self.rally_config
-        shot_cfg = self.shot_config
 
         # Adjust position to return height
         z_min, z_max = cfg.return_z_range
@@ -298,16 +303,10 @@ class RallySimulator:
         # Cells are arranged in a grid on each side
         if side == "near":
             # Near side: y < 0
-            if y > -self.COURT_Y_LIMIT / 2:
-                base_cell = 0  # Service box area
-            else:
-                base_cell = 6  # Baseline area
+            base_cell = 0 if y > -self.COURT_Y_LIMIT / 2 else 6  # Service box/baseline
         else:
             # Far side: y > 0
-            if y < self.COURT_Y_LIMIT / 2:
-                base_cell = 10  # Service box area
-            else:
-                base_cell = 16  # Baseline area
+            base_cell = 10 if y < self.COURT_Y_LIMIT / 2 else 16  # Service box/baseline
 
         # Adjust for x position (left/center/right)
         if x < -self.COURT_X_LIMIT / 3:
@@ -319,12 +318,75 @@ class RallySimulator:
 
         return min(base_cell + cell_offset, 19)
 
+    def _sample_valid_return_shot(
+        self,
+        ball_pos_at_return: Tensor,
+        from_side: str,
+        from_cell: int,
+        max_frames: int,
+    ) -> tuple[dict, BallState] | None:
+        """Sample a return shot that continues the rally (doesn't end immediately).
+
+        For 2nd shot onwards, we retry sampling until we find a shot that:
+        - Doesn't hit the net before first bounce
+        - Bounces within court + margin
+
+        Args:
+            ball_pos_at_return: Ball position at return timing.
+            from_side: Side making the return.
+            from_cell: Cell ID for the return.
+            max_frames: Maximum frames for this shot.
+
+        Returns:
+            Tuple of (shot_result, initial_state) if valid shot found, None otherwise.
+
+        """
+        cfg = self.rally_config
+
+        for _ in range(cfg.max_return_retries):
+            # Sample initial state for return
+            initial_state = self._sample_return_initial_state(
+                ball_pos_at_return=ball_pos_at_return,
+                from_side=from_side,
+            )
+
+            # Simulate the shot
+            shot_result = self._simulate_single_shot(
+                initial_state=initial_state,
+                from_cell=from_cell,
+                from_side=from_side,
+                max_frames=max_frames,
+            )
+
+            # Check if this shot continues the rally
+            should_end, reason = self.check_rally_end(
+                bounce_pos=shot_result["bounce1_pos"],
+                hit_net_before_bounce=shot_result["hit_net_before_bounce"],
+            )
+
+            # Accept shots that don't end the rally immediately
+            # (or end with double bounce, which is a valid rally continuation)
+            if not should_end:
+                return shot_result, initial_state
+
+            # Also accept if double bounce occurred (opponent didn't return)
+            if shot_result["t_bounce2_sim"] >= 0:
+                return shot_result, initial_state
+
+        # Failed to find valid return shot after max retries
+        return None
+
     def simulate_rally(
         self,
         from_cell: int,
         from_side: str,
     ) -> RallyResult:
         """Simulate a complete rally.
+
+        For the first shot, we use the standard sampling from from_cell.
+        For subsequent shots (2nd onwards), we sample multiple times until
+        we find a shot that continues the rally (doesn't immediately end
+        with net fault or out).
 
         Args:
             from_cell: Starting cell ID (0-19).
@@ -350,22 +412,31 @@ class RallySimulator:
         end_reason = RallyEndReason.ONGOING
         winner_side: str | None = None
 
-        # Generate initial state
-        current_state = self.shot_simulator.sample_initial_condition(
-            from_cell=from_cell,
-            from_side=from_side,
-        )
+        # For first shot, use standard sampling
+        # For 2nd+ shots, use pre-simulated valid return
+        pending_shot_result: dict | None = None
+        current_state: BallState | None = None
 
         while rally_count < cfg.max_rallies:
             target_side = "far" if current_side == "near" else "near"
 
-            # Simulate this shot
-            shot_result = self._simulate_single_shot(
-                initial_state=current_state,
-                from_cell=current_cell,
-                from_side=current_side,
-                max_frames=cfg.max_total_frames - total_sim_frames,
-            )
+            # Get shot result - either from pending (pre-simulated) or new simulation
+            if pending_shot_result is not None:
+                # Use pre-simulated valid return shot
+                shot_result = pending_shot_result
+                pending_shot_result = None
+            else:
+                # First shot: sample and simulate normally
+                current_state = self.shot_simulator.sample_initial_condition(
+                    from_cell=from_cell,
+                    from_side=from_side,
+                )
+                shot_result = self._simulate_single_shot(
+                    initial_state=current_state,
+                    from_cell=current_cell,
+                    from_side=current_side,
+                    max_frames=cfg.max_total_frames - total_sim_frames,
+                )
 
             # Calculate frame offsets for this shot
             t_offset = len(all_positions_sim)
@@ -451,15 +522,47 @@ class RallySimulator:
             current_side = target_side
             current_cell = self._find_cell_for_position(ball_pos_at_return, target_side)
 
-            # Sample return initial state
-            current_state = self._sample_return_initial_state(
+            # Sample a valid return shot (one that continues the rally)
+            # This pre-simulates the shot and only accepts ones that don't
+            # immediately end the rally (net fault or out)
+            valid_return = self._sample_valid_return_shot(
                 ball_pos_at_return=ball_pos_at_return,
                 from_side=current_side,
+                from_cell=current_cell,
+                max_frames=cfg.max_total_frames - total_sim_frames,
             )
+
+            if valid_return is None:
+                # Failed to find valid return shot after max retries
+                # End rally here (opponent couldn't return)
+                end_reason = RallyEndReason.OUT
+                winner_side = "far" if current_side == "near" else "near"
+                break
+
+            # Store pre-simulated shot for next iteration
+            pending_shot_result, current_state = valid_return
 
         # Check if we exited due to max rallies
         if end_reason == RallyEndReason.ONGOING:
             end_reason = RallyEndReason.MAX_RALLIES
+
+        # Handle empty trajectory case
+        if len(all_positions_sim) == 0:
+            # Return a minimal result
+            return RallyResult(
+                trajectory=torch.zeros(1, 3),
+                velocities=torch.zeros(1, 3),
+                trajectory_sim=torch.zeros(1, 3),
+                shot_events=[],
+                rally_length=0,
+                end_reason=end_reason,
+                total_frames=0,
+                winner_side=winner_side,
+                initial_from_cell=from_cell,
+                initial_from_side=from_side,
+                fps_out=shot_cfg.output_fps,
+                sim_fps=shot_cfg.sim_fps,
+            )
 
         # Stack trajectories
         trajectory_sim = torch.stack(all_positions_sim, dim=0)
