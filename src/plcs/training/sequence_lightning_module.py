@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytorch_lightning as pl
 from torch import Tensor
@@ -37,7 +37,7 @@ class PLCSSequenceLightningModule(pl.LightningModule):
         self.config = config or {}
 
         # Build model
-        self.model = PLCSSequenceModel.from_config(self.config)
+        self.model: PLCSSequenceModel = PLCSSequenceModel.from_config(self.config)
 
         # Loss function (config-based)
         loss_cfg_dict = self.config.get("loss", {})
@@ -49,7 +49,6 @@ class PLCSSequenceLightningModule(pl.LightningModule):
             loss_cfg = PLCSLossConfig(
                 position_weight=train_cfg.get("position_loss_weight", 1.0),
                 rotation_weight=train_cfg.get("rotation_loss_weight", 1.0),
-                temporal_weight=0.0,
             )
         self.loss_fn = PLCSLoss(config=loss_cfg)
 
@@ -107,7 +106,7 @@ class PLCSSequenceLightningModule(pl.LightningModule):
             dict: Model outputs.
 
         """
-        return self.model(human_kp, court_kp, human_vis, court_vis)
+        return cast(dict[str, Tensor], self.model(human_kp, court_kp, human_vis, court_vis))
 
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
@@ -131,11 +130,12 @@ class PLCSSequenceLightningModule(pl.LightningModule):
         )
 
         # Compute loss (supports (B, T, 3/2) shapes)
-        losses = self.loss_fn(
+        losses: dict[str, Tensor] = self.loss_fn(
             pred_position=outputs["position"],
             pred_rotation=outputs["rotation"],
             target_position=batch["position"],
             target_rotation=batch["rotation"],
+            seq_mask=batch.get("seq_mask"),
         )
 
         # Flatten sequences for frame-wise metrics: (B, T, C) -> (B*T, C)
