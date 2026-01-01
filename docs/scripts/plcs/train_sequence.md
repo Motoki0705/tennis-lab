@@ -46,9 +46,12 @@ defaults:
 |-----------|-----------|------|
 | `position_weight` | `1.0` | 位置ロスの重み |
 | `rotation_weight` | `1.0` | 回転ロスの重み |
-| `temporal_weight` | `0.1` | 時間一貫性ロスの重み |
-| `temporal.order` | `2` | 時間微分の次数（2=加速度平滑化） |
-| `temporal.robust` | `true` | SmoothL1Lossを使用 |
+| `temporal.position_gt.weight` | `0.1` | 位置の速度/加速度をGTに合わせる |
+| `temporal.position_gt.order` | `2` | 1=速度, 2=加速度 |
+| `temporal.position_gt.robust` | `true` | SmoothL1Loss（Huber）を使用 |
+| `temporal.position_inertia.weight` | `0.0` | 位置の慣性（加速度が小さい）を促す |
+| `temporal.rotation_gt.weight` | `0.0` | 角度の角速度/角加速度をGTに合わせる |
+| `temporal.rotation_inertia.weight` | `0.0` | 回転の慣性（角加速度が小さい）を促す |
 
 ### run (実行設定)
 
