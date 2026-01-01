@@ -55,7 +55,6 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
             loss_cfg = PLCSLossConfig(
                 position_weight=train_cfg.get("position_loss_weight", 1.0),
                 rotation_weight=train_cfg.get("rotation_loss_weight", 1.0),
-                temporal_weight=0.0,
             )
         self.loss_fn = PLCSLoss(config=loss_cfg)
 

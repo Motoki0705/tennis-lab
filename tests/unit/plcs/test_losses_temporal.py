@@ -1,20 +1,30 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
+from typing import TypeVar, cast
 
 import pytest
 import torch
 
-from src.plcs.training.losses import PLCSLoss, PLCSLossConfig, TemporalTermConfig, TemporalTermsConfig
+from src.plcs.training.losses import (
+    PLCSLoss,
+    PLCSLossConfig,
+    TemporalTermConfig,
+    TemporalTermsConfig,
+)
+
+_T = TypeVar("_T", bound=Callable[..., object])
+unit = cast(Callable[[_T], _T], pytest.mark.unit)
 
 
-@pytest.mark.unit
+@unit
 def test_loss_masks_padded_frames() -> None:
     loss_fn = PLCSLoss(
         config=PLCSLossConfig(
             position_weight=1.0,
             rotation_weight=1.0,
-            temporal_terms=TemporalTermsConfig(
+            temporal=TemporalTermsConfig(
                 position_gt=TemporalTermConfig(weight=0.0),
                 position_inertia=TemporalTermConfig(weight=0.0),
                 rotation_gt=TemporalTermConfig(weight=0.0),
@@ -44,12 +54,12 @@ def test_loss_masks_padded_frames() -> None:
     assert losses["rotation"].item() == pytest.approx(0.0)
 
 
-@pytest.mark.unit
+@unit
 def test_rotation_temporal_gt_handles_wraparound() -> None:
     cfg = PLCSLossConfig(
         position_weight=0.0,
         rotation_weight=0.0,
-        temporal_terms=TemporalTermsConfig(
+        temporal=TemporalTermsConfig(
             rotation_gt=TemporalTermConfig(weight=1.0, order=1, robust=True)
         ),
     )
@@ -76,12 +86,12 @@ def test_rotation_temporal_gt_handles_wraparound() -> None:
     assert losses["rotation_temporal_gt"].item() == pytest.approx(0.0, abs=1e-6)
 
 
-@pytest.mark.unit
+@unit
 def test_position_inertia_order2_is_zero_for_constant_velocity() -> None:
     cfg = PLCSLossConfig(
         position_weight=0.0,
         rotation_weight=0.0,
-        temporal_terms=TemporalTermsConfig(
+        temporal=TemporalTermsConfig(
             position_inertia=TemporalTermConfig(weight=1.0, order=2, robust=False)
         ),
     )
@@ -101,4 +111,3 @@ def test_position_inertia_order2_is_zero_for_constant_velocity() -> None:
     )
 
     assert losses["position_temporal_inertia"].item() == pytest.approx(0.0, abs=1e-8)
-

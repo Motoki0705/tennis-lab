@@ -100,9 +100,10 @@ defaults:
 |-----------|-----------|------|
 | `position_weight` | `1.0` | 位置ロスの重み |
 | `rotation_weight` | `1.0` | 回転ロスの重み |
-| `temporal_weight` | `0.0` | 時間一貫性ロスの重み（フレームモードでは0） |
-| `temporal.order` | `2` | 時間微分の次数（1=速度、2=加速度） |
-| `temporal.robust` | `true` | SmoothL1Lossを使用するか |
+| `temporal.position_gt.weight` | `0.0` | 位置の速度/加速度をGTに合わせる（フレーム学習では通常0） |
+| `temporal.position_inertia.weight` | `0.0` | 位置の慣性（加速度が小さい）を促す |
+| `temporal.rotation_gt.weight` | `0.0` | 角度の角速度/角加速度をGTに合わせる |
+| `temporal.rotation_inertia.weight` | `0.0` | 回転の慣性（角加速度が小さい）を促す |
 
 ## アーキテクチャ・フロー
 
