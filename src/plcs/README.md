@@ -225,8 +225,14 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 
 ロス関数のウェイトは `configs/loss/` ディレクトリで管理されています：
 
-| ファイル | 用途 | temporal_weight |
-|---------|------|-----------------|
+時系列一貫性ロスは以下の4項目を個別に重み付けできます（`loss.*.yaml` の `temporal.*.weight`）：
+- `temporal.position_gt`: 位置の速度/加速度を GT に合わせる
+- `temporal.position_inertia`: 位置の慣性（加速度が小さい）を促す
+- `temporal.rotation_gt`: 角度の角速度/角加速度を GT に合わせる
+- `temporal.rotation_inertia`: 回転の慣性（角加速度が小さい）を促す
+
+| ファイル | 用途 | `temporal.position_gt.weight` |
+|---------|------|------------------------------|
 | `frame.yaml` | フレーム単位学習 | 0.0 |
 | `sequence.yaml` | シーケンス学習 | 0.1 |
 | `multiview_sequence.yaml` | マルチビューシーケンス学習 | 0.1 |
