@@ -139,6 +139,7 @@ class PLCSMultiViewLightningModule(pl.LightningModule):
             pred_rotation=outputs["rotation"],
             target_position=batch["position"],
             target_rotation=batch["rotation"],
+            seq_mask=batch.get("seq_mask"),
         )
 
         # Update metrics (only for val and test)
