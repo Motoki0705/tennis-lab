@@ -45,8 +45,8 @@ uv run pytest tests/unit/test_example.py::test_case
 uv run pytest --cov=src --cov-report=html --cov-report=term-missing
 
 # Using the test subagent (recommended)
-bash agents_workspace/sub_agents/test_subagent.sh
-bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run pytest tests/...'
+uv run python -m src.agents.scripts.test
+uv run python -m src.agents.scripts.test 'task.test_cmd=uv run pytest tests/...'
 ```
 
 ### Linting and Type Checking
@@ -59,7 +59,7 @@ uv run ruff check --fix src tests
 uv run mypy src tests
 
 # Using pre-commit subagent (recommended, runs both)
-bash agents_workspace/sub_agents/pre_commit_subagent.sh
+uv run python -m src.agents.scripts.pre_commit
 ```
 
 ### Training
