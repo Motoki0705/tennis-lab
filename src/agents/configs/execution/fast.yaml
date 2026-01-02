@@ -1,0 +1,4 @@
+# Fast execution configuration (shorter timeout)
+parallel: true
+max_workers: 4
+timeout_s: 60.0

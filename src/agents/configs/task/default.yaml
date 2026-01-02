@@ -1,0 +1,3 @@
+# Default task configuration
+prompt: ""
+cwd: ${hydra:runtime.cwd}

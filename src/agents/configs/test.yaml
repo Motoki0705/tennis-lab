@@ -1,0 +1,18 @@
+# Test sub-agent configuration
+defaults:
+  - _self_
+  - claude: default
+  - gemini: default
+  - codex: default
+  - copilot: default
+  - system_prompt: test
+  - execution: default
+  - output: default
+  - task: default
+
+hydra:
+  run:
+    dir: ${hydra:runtime.cwd}
+  output_subdir: null
+  job:
+    chdir: false
