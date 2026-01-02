@@ -1,0 +1,10 @@
+# GitHub Copilot provider configuration
+enable: true
+model: claude-sonnet-4
+# Available models:
+#   - claude-sonnet-4
+#   - claude-opus-4
+#   - gpt-4.1
+#   - gpt-5
+#   - gemini-2.5-pro
+#   - gemini-3-flash

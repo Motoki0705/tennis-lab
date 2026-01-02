@@ -1,0 +1,4 @@
+# Default execution configuration
+parallel: true
+max_workers: 4
+timeout_s: 120.0

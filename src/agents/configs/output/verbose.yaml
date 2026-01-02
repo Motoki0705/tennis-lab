@@ -1,0 +1,4 @@
+# Verbose output configuration (show commands and detailed info)
+format: text
+show_commands: true
+show_errors: true
