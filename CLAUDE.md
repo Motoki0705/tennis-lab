@@ -187,6 +187,19 @@ def predict(self, *args, **kwargs) -> dict[str, Any]:
 
 ## Development Workflow
 
+### Multi-LLM Consultation Tools
+
+This project provides tools for consulting multiple LLM providers:
+
+```bash
+# Before development: Get approach suggestions from multiple LLMs
+uv run python -m src.agents.scripts.consult system_prompt=approach 'task.prompt=...'
+
+# After development: Review changes with multiple LLMs
+uv run python -m src.agents.scripts.review
+uv run python -m src.agents.scripts.review review.scope=staged
+```
+
 ### Mandatory Workflow (AI Agents MUST follow)
 
 1. **NEVER work directly on main/master/develop**:
@@ -194,19 +207,31 @@ def predict(self, *args, **kwargs) -> dict[str, Any]:
    git checkout -b feature/<task>-<short-desc>
    ```
 
-2. **After ANY code changes**:
+2. **Before complex tasks** (recommended):
    ```bash
-   # Run linting/type checking
-   bash agents_workspace/sub_agents/pre_commit_subagent.sh
-
-   # Run ONLY affected tests (do NOT run all tests)
-   # Identify test files related to your changes and specify them
-   bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q -n auto tests/unit/test_affected.py'
+   # Consult multiple LLMs for approach suggestions
+   uv run python -m src.agents.scripts.consult system_prompt=approach 'task.prompt=...'
    ```
 
-3. **Check documentation consistency**:
+3. **After ANY code changes**:
+   ```bash
+   # Run linting/type checking
+   uv run python -m src.agents.scripts.pre_commit
+
+   # Run ONLY affected tests (do NOT run all tests)
+   uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest -q -n auto tests/unit/test_affected.py'
+   ```
+
+4. **Before commit** (recommended):
+   ```bash
+   # Review changes with multiple LLMs
+   uv run python -m src.agents.scripts.review review.scope=staged
+   ```
+
+5. **Check documentation consistency**:
    - Update `src/{task}/README.md` if your changes affect the documented behavior
    - Keep READMEs in sync with implementation (new features, API changes, config changes)
+
 
 4. **Exception handling**: If tools fail due to environment issues (e.g., permission errors), apply workarounds and document in final report.
 
