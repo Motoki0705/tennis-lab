@@ -1,7 +1,8 @@
 """Scene generator for BLCS dataset generation (blcs.md §7 compliant).
 
 Orchestrates:
-- Shot simulation
+- Shot simulation (single shot mode)
+- Rally simulation (multi-shot rally mode)
 - Camera projection with visibility filtering
 - Distribution-controlled sampling
 - Scene data packaging (PLCS-unified format)
@@ -12,6 +13,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -24,6 +26,10 @@ from src.blcs.generate_dataset.sampling.distribution_sampler import (
 )
 from src.blcs.simulation.ball_physics import BallPhysics, PhysicsConfig
 from src.blcs.simulation.cell_manager import CellManager, ShotCategory
+from src.blcs.simulation.rally_simulator import (
+    RallyConfig,
+    RallySimulator,
+)
 from src.blcs.simulation.shot_simulator import ShotConfig, ShotSimulator
 from src.utils.projection.camera_projector import (
     CameraConfig,
@@ -35,6 +41,13 @@ if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger(__name__)
+
+
+class GenerationMode(Enum):
+    """Generation mode for scene generator."""
+
+    SHOT = "shot"  # Single shot per scene (original behavior)
+    RALLY = "rally"  # Multi-shot rally per scene
 
 
 @dataclass
@@ -91,13 +104,54 @@ class BLCSSceneData:
 
 
 @dataclass
+class RallySceneData:
+    """Complete rally scene data for BLCS (1 rally = 1 file with N cameras).
+
+    A rally is a sequence of shots. The trajectory is continuous across all shots,
+    with per-shot event timing recorded in the shots list.
+    """
+
+    # Identifiers
+    scene_id: str
+
+    # Origin info
+    initial_from_cell: int
+    initial_from_side: str  # "near" or "far"
+
+    # Rally-level metadata
+    rally_length: int  # Number of shots in rally
+    end_reason: str  # RallyEndReason value
+    winner_side: str | None  # "near", "far", or None
+
+    # Per-shot metadata (list of dicts matching RallyShotMeta.to_dict())
+    shots: list[dict]
+
+    # 3D trajectory data (continuous across all shots)
+    ball_pos_world: Tensor  # [T, 3] world coordinates (meters)
+    ball_pos_norm: Tensor  # [T, 3] normalized coordinates
+    ball_vel_world: Tensor  # [T, 3] velocities (m/s)
+
+    # Multiple valid camera views (fixed for entire rally)
+    cameras: list[CameraData]
+    num_cameras_sampled: int  # Total cameras tried (before filtering)
+
+    # Simulation metadata
+    fps_out: int
+    sim_fps: int
+
+
+@dataclass
 class GeneratorConfig:
     """Configuration for scene generator."""
 
     physics: PhysicsConfig = field(default_factory=PhysicsConfig)
     shot: ShotConfig = field(default_factory=ShotConfig)
+    rally: RallyConfig = field(default_factory=RallyConfig)
     camera: CameraConfig = field(default_factory=CameraConfig)
     sampling: SamplingConfig = field(default_factory=SamplingConfig)
+
+    # Generation mode
+    mode: GenerationMode = GenerationMode.SHOT
 
     # Camera sampling parameters
     num_cameras_sampled: int = 15  # Number of cameras to try per scene
@@ -109,8 +163,12 @@ class GeneratorConfig:
 class BLCSSceneGenerator:
     """Generates BLCS training scenes with controlled distribution.
 
-    New workflow (PLCS-aligned):
-    1. Generate shot via physics simulation
+    Supports two modes:
+    - SHOT: Single shot per scene (original behavior)
+    - RALLY: Multi-shot rally per scene
+
+    Workflow (PLCS-aligned):
+    1. Generate shot/rally via physics simulation
     2. Sample multiple candidate cameras (num_cameras_sampled)
     3. Filter by ball visibility threshold
     4. If any valid cameras, yield scene with all valid cameras
@@ -128,6 +186,13 @@ class BLCSSceneGenerator:
         self.shot_simulator = ShotSimulator(
             physics_config=self.config.physics,
             shot_config=self.config.shot,
+            cell_manager=self.cell_manager,
+            device=device,
+        )
+        self.rally_simulator = RallySimulator(
+            physics_config=self.config.physics,
+            shot_config=self.config.shot,
+            rally_config=self.config.rally,
             cell_manager=self.cell_manager,
             device=device,
         )
@@ -272,7 +337,7 @@ class BLCSSceneGenerator:
         )
 
     def generate_all_scenes(self) -> Iterator[BLCSSceneData]:
-        """Generate scenes for all from_cells and sides.
+        """Generate scenes for all from_cells and sides (shot mode).
 
         Yields:
             BLCSSceneData for each generated scene.
@@ -292,6 +357,140 @@ class BLCSSceneGenerator:
         logger.info(f"Generation complete. Total scenes: {stats['total_scenes']}")
         logger.info(f"Total cameras: {stats['total_cameras']}")
         logger.info(f"Avg cameras per scene: {stats['avg_cameras_per_scene']:.2f}")
+
+    def generate_rally_scene(
+        self,
+        from_cell: int,
+        side: str,
+        scene_id: str,
+    ) -> RallySceneData | None:
+        """Generate a single rally scene.
+
+        Args:
+            from_cell: Starting cell ID (0-19).
+            side: "near" or "far".
+            scene_id: Scene identifier.
+
+        Returns:
+            RallySceneData if valid cameras found, None otherwise.
+
+        """
+        cfg = self.config
+
+        # 1. Generate rally
+        rally_result = self.rally_simulator.generate_rally(from_cell, side)
+
+        # 2. Generate and filter cameras
+        valid_cameras = self._generate_valid_cameras(rally_result.trajectory)
+
+        # 3. If no valid cameras, return None
+        if not valid_cameras:
+            return None
+
+        # 4. Convert shot events to metadata dicts
+        shots_meta = []
+        for event in rally_result.shot_events:
+            shots_meta.append({
+                "shot_index": event.shot_index,
+                "from_side": event.from_side,
+                "from_cell": event.from_cell,
+                "category": event.category.value,
+                "t_start": event.t_start,
+                "t_net": event.t_net,
+                "t_bounce1": event.t_bounce1,
+                "t_bounce2": event.t_bounce2,
+                "t_return": event.t_return,
+                "to_cell": event.to_cell,
+            })
+
+        # 5. Normalize trajectory
+        ball_pos_norm = self.physics.normalize_position(rally_result.trajectory)
+
+        return RallySceneData(
+            scene_id=scene_id,
+            initial_from_cell=rally_result.initial_from_cell,
+            initial_from_side=rally_result.initial_from_side,
+            rally_length=rally_result.rally_length,
+            end_reason=rally_result.end_reason.value,
+            winner_side=rally_result.winner_side,
+            shots=shots_meta,
+            ball_pos_world=rally_result.trajectory,
+            ball_pos_norm=ball_pos_norm,
+            ball_vel_world=rally_result.velocities,
+            cameras=valid_cameras,
+            num_cameras_sampled=cfg.num_cameras_sampled,
+            fps_out=rally_result.fps_out,
+            sim_fps=rally_result.sim_fps,
+        )
+
+    def generate_rally_scenes(
+        self,
+        num_scenes: int,
+    ) -> Iterator[RallySceneData]:
+        """Generate rally scenes.
+
+        Unlike shot mode which uses distribution sampling, rally mode
+        generates a fixed number of scenes with random starting positions.
+
+        Args:
+            num_scenes: Number of rally scenes to generate.
+
+        Yields:
+            RallySceneData for each generated rally scene.
+
+        """
+        scene_counter = 0
+        attempts = 0
+        max_attempts = num_scenes * 10  # Allow 10x attempts
+
+        while scene_counter < num_scenes and attempts < max_attempts:
+            attempts += 1
+
+            # Random starting position
+            from_cell = torch.randint(0, 20, (1,)).item()
+            side = "near" if torch.rand(1).item() < 0.5 else "far"
+
+            scene_id = f"rally_{scene_counter:06d}"
+            rally_scene = self.generate_rally_scene(from_cell, side, scene_id)
+
+            if rally_scene is not None:
+                scene_counter += 1
+                yield rally_scene
+
+                if scene_counter % 100 == 0:
+                    logger.info(
+                        f"Progress: {scene_counter}/{num_scenes} rally scenes generated"
+                    )
+
+        if scene_counter < num_scenes:
+            logger.warning(
+                f"Only generated {scene_counter}/{num_scenes} rally scenes "
+                f"after {attempts} attempts"
+            )
+
+        stats = self.get_statistics()
+        logger.info(f"Rally generation complete. Total scenes: {scene_counter}")
+        logger.info(f"Total cameras: {stats['total_cameras']}")
+
+    def generate(
+        self,
+        num_scenes: int | None = None,
+    ) -> Iterator[BLCSSceneData | RallySceneData]:
+        """Generate scenes based on configured mode.
+
+        Args:
+            num_scenes: Number of scenes for rally mode (ignored in shot mode).
+
+        Yields:
+            Scene data (BLCSSceneData or RallySceneData depending on mode).
+
+        """
+        if self.config.mode == GenerationMode.SHOT:
+            yield from self.generate_all_scenes()
+        else:
+            if num_scenes is None:
+                raise ValueError("num_scenes is required for rally mode")
+            yield from self.generate_rally_scenes(num_scenes)
 
     def get_statistics(self) -> dict:
         """Get current generation statistics.

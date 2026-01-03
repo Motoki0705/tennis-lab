@@ -1,0 +1,27 @@
+# Rally simulation configuration
+# Extends shot configuration with rally-specific parameters
+
+# Maximum number of shots in a rally before forced termination
+max_rallies: 10
+
+# Maximum total simulation frames across entire rally
+# At 240Hz, 12000 frames = 50 seconds
+max_total_frames: 12000
+
+# Court margin for out-of-bounds detection (meters)
+# Ball is considered "in" if it bounces within court + margin
+court_margin: 0.5
+
+# Hit timing range: fraction of time between 1st and 2nd bounce
+# (0.0 = at 1st bounce, 1.0 = at 2nd bounce)
+hit_timing_range: [0.2, 0.8]
+
+# Height range for return shot (meters)
+return_z_range: [0.8, 1.4]
+
+# Maximum retries for sampling a valid return shot (2nd shot onwards)
+# A valid return shot is one that doesn't immediately end the rally
+max_return_retries: 10000
+
+# Minimum rally length to accept (for filtering short rallies)
+min_rally_length: 2
