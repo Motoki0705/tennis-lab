@@ -13,15 +13,19 @@ class GeminiRunner(ProviderRunner):
 
     def get_command(self, request: ProviderRequest) -> list[str]:
         """Build the gemini CLI command."""
-        cmd = ["gemini", "-p"]
+        # -y (yolo mode): automatically accept all actions
+        # NOTE: gemini does not support --system-prompt, use prompt prefix instead
+        cmd = ["gemini", "-y"]
 
         if request.model:
             cmd.extend(["--model", request.model])
 
+        # Build prompt with system prompt prefix if provided
+        prompt = request.prompt
         if request.system_prompt:
-            cmd.extend(["--system-prompt", request.system_prompt])
+            prompt = f"{request.system_prompt}\n\n{request.prompt}"
 
-        cmd.append(request.prompt)
+        cmd.append(prompt)
         return cmd
 
     def check_binary(self) -> bool:

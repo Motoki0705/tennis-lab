@@ -13,7 +13,9 @@ class ClaudeRunner(ProviderRunner):
 
     def get_command(self, request: ProviderRequest) -> list[str]:
         """Build the claude CLI command."""
-        cmd = ["claude", "-p"]
+        # -p: print mode (non-interactive)
+        # --dangerously-skip-permissions: bypass all permission checks
+        cmd = ["claude", "-p", "--dangerously-skip-permissions"]
 
         if request.model:
             cmd.extend(["--model", request.model])

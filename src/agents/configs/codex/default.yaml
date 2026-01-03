@@ -1,13 +1,8 @@
 # Codex (OpenAI) provider configuration
 enable: true
-model: gpt-5.1-codex
+model: gpt-5.2-codex
 # Available models:
-#   - gpt-5.2 (最新・最強)
-#   - gpt-5.2-pro (高精度版)
-#   - gpt-5.1-codex (Codex最適化)
-#   - gpt-5.1-codex-max (長時間エージェント向け)
-#   - gpt-5.1-codex-mini (軽量版)
-#   - gpt-5-codex
-#   - gpt-5 (推論モデル)
-#   - gpt-5-mini (高速版)
-#   - gpt-4.1 (非推論モデル最強)
+#   - gpt-5.2-codex
+#   - gpt-5.2
+#   - gpt-5.1-codex-max
+#   - gpt-5.1-codex-mini
