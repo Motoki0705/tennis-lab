@@ -1,0 +1,6 @@
+# Gemini provider configuration
+enable: false
+model: gemini-2.5-pro
+# Available models:
+#   - gemini-2.5-pro (推論・長文コンテキスト)
+#   - gemini-2.5-flash (高速・大規模処理)

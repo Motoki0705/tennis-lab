@@ -1,0 +1,4 @@
+# Default task configuration
+prompt: ""
+test_cmd: "uv run --no-sync pytest -q -n auto"
+cwd: ${hydra:runtime.cwd}
