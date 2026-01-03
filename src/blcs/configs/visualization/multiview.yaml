@@ -2,7 +2,7 @@
 mode: visualize  # visualize | predict | predict-multiview
 
 # Scene file path
-scene_path: data/blcs/scenes/scene_000003.npz
+scene_path: data/blcs/scenes/rally_000000.npz
 
 # Frame index for static views
 frame: 0
