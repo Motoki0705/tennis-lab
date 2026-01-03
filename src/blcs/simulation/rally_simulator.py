@@ -318,6 +318,57 @@ class RallySimulator:
 
         return min(base_cell + cell_offset, 19)
 
+    def _sample_valid_first_shot(
+        self,
+        from_cell: int,
+        from_side: str,
+        max_frames: int,
+    ) -> tuple[dict, BallState] | None:
+        """Sample a first shot that continues the rally (doesn't end immediately).
+
+        For the 1st shot, we retry sampling until we find a shot that:
+        - Doesn't hit the net before first bounce
+        - Bounces within court + margin
+
+        Args:
+            from_cell: Starting cell ID.
+            from_side: Side making the shot.
+            max_frames: Maximum frames for this shot.
+
+        Returns:
+            Tuple of (shot_result, initial_state) if valid shot found, None otherwise.
+
+        """
+        cfg = self.rally_config
+
+        for _ in range(cfg.max_return_retries):
+            # Sample initial state using standard shot simulator
+            initial_state = self.shot_simulator.sample_initial_condition(
+                from_cell=from_cell,
+                from_side=from_side,
+            )
+
+            # Simulate the shot
+            shot_result = self._simulate_single_shot(
+                initial_state=initial_state,
+                from_cell=from_cell,
+                from_side=from_side,
+                max_frames=max_frames,
+            )
+
+            # Check if this shot continues the rally
+            should_end, reason = self.check_rally_end(
+                bounce_pos=shot_result["bounce1_pos"],
+                hit_net_before_bounce=shot_result["hit_net_before_bounce"],
+            )
+
+            # Accept shots that don't end the rally immediately
+            if not should_end:
+                return shot_result, initial_state
+
+        # Failed to find valid first shot after max retries
+        return None
+
     def _sample_valid_return_shot(
         self,
         ball_pos_at_return: Tensor,
@@ -426,17 +477,18 @@ class RallySimulator:
                 shot_result = pending_shot_result
                 pending_shot_result = None
             else:
-                # First shot: sample and simulate normally
-                current_state = self.shot_simulator.sample_initial_condition(
+                # First shot: sample a valid shot that continues the rally
+                valid_first = self._sample_valid_first_shot(
                     from_cell=from_cell,
                     from_side=from_side,
-                )
-                shot_result = self._simulate_single_shot(
-                    initial_state=current_state,
-                    from_cell=current_cell,
-                    from_side=current_side,
                     max_frames=cfg.max_total_frames - total_sim_frames,
                 )
+                if valid_first is None:
+                    # Failed to find valid first shot
+                    end_reason = RallyEndReason.OUT
+                    winner_side = "far" if from_side == "near" else "near"
+                    break
+                shot_result, current_state = valid_first
 
             # Calculate frame offsets for this shot
             t_offset = len(all_positions_sim)
@@ -462,42 +514,44 @@ class RallySimulator:
                 to_cell=shot_result["to_cell"] if shot_result["to_cell"] else -1,
             )
 
-            # Append trajectory
-            all_positions_sim.extend(shot_result["trajectory_sim"])
-            all_velocities_sim.extend(shot_result["velocities_sim"])
-            total_sim_frames += len(shot_result["trajectory_sim"])
-
-            # Check rally termination
+            # Check rally termination (net fault or out)
             should_end, reason = self.check_rally_end(
                 bounce_pos=shot_result["bounce1_pos"],
                 hit_net_before_bounce=shot_result["hit_net_before_bounce"],
             )
 
             if should_end:
+                # Shot failed - append full trajectory and end
+                all_positions_sim.extend(shot_result["trajectory_sim"])
+                all_velocities_sim.extend(shot_result["velocities_sim"])
+                total_sim_frames += len(shot_result["trajectory_sim"])
                 end_reason = reason
-                winner_side = current_side  # Opponent wins if we fault
+                winner_side = target_side  # Opponent wins if we fault
                 shot_events.append(shot_info)
                 break
 
-            # Check if second bounce occurred (valid point end)
-            if shot_result["t_bounce2_sim"] >= 0:
-                end_reason = RallyEndReason.DOUBLE_BOUNCE
-                winner_side = current_side  # We win if opponent doesn't return
-                shot_events.append(shot_info)
-                break
-
-            # Check max frames
-            if total_sim_frames >= cfg.max_total_frames:
-                end_reason = RallyEndReason.MAX_FRAMES
-                shot_events.append(shot_info)
-                break
-
-            # Prepare for return shot
+            # Shot is valid (landed in court) - now determine return timing
             # Sample return timing between 1st and 2nd bounce
             t_return_sim = self._sample_return_timing(
                 t_bounce1_sim=shot_result["t_bounce1_sim"],
                 t_bounce2_sim=shot_result["t_bounce2_sim"],
             )
+
+            # Check if 2nd bounce occurred BEFORE return timing
+            # This means opponent couldn't reach the ball in time
+            if (
+                shot_result["t_bounce2_sim"] >= 0
+                and shot_result["t_bounce2_sim"] <= t_return_sim
+            ):
+                # Double bounce before return - point ends
+                # Append trajectory up to 2nd bounce
+                all_positions_sim.extend(shot_result["trajectory_sim"])
+                all_velocities_sim.extend(shot_result["velocities_sim"])
+                total_sim_frames += len(shot_result["trajectory_sim"])
+                end_reason = RallyEndReason.DOUBLE_BOUNCE
+                winner_side = current_side  # We win if opponent doesn't return
+                shot_events.append(shot_info)
+                break
 
             # Clamp return timing to available trajectory
             t_return_sim = min(t_return_sim, len(shot_result["trajectory_sim"]) - 1)
@@ -505,13 +559,18 @@ class RallySimulator:
             # Get ball position at return time
             ball_pos_at_return = shot_result["trajectory_sim"][t_return_sim]
 
-            # Trim trajectory to return point
-            # Remove frames after return
-            frames_to_remove = len(shot_result["trajectory_sim"]) - t_return_sim - 1
-            if frames_to_remove > 0:
-                all_positions_sim = all_positions_sim[:-frames_to_remove]
-                all_velocities_sim = all_velocities_sim[:-frames_to_remove]
-                total_sim_frames -= frames_to_remove
+            # Append trajectory only up to return point
+            trajectory_to_add = shot_result["trajectory_sim"][: t_return_sim + 1]
+            velocities_to_add = shot_result["velocities_sim"][: t_return_sim + 1]
+            all_positions_sim.extend(trajectory_to_add)
+            all_velocities_sim.extend(velocities_to_add)
+            total_sim_frames += len(trajectory_to_add)
+
+            # Check max frames
+            if total_sim_frames >= cfg.max_total_frames:
+                end_reason = RallyEndReason.MAX_FRAMES
+                shot_events.append(shot_info)
+                break
 
             # Update shot info with return frame
             shot_info.t_return = self._convert_time(t_return_sim, downsample, t_offset)
