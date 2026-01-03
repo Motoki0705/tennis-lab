@@ -1,7 +1,7 @@
 # Claude provider configuration
 enable: true
-model: claude-sonnet-4-20250514
+model: sonnet
 # Available models:
-#   - claude-opus-4-20250514 (最強・複雑な推論)
-#   - claude-sonnet-4-20250514 (バランス・高速)
-#   - claude-3-5-sonnet-20241022 (旧世代)
+#   - opus (最強・複雑な推論)
+#   - sonnet (バランス・高速)
+#   - huiku (低コスト・高速)

@@ -1,27 +1,45 @@
-"""Pre-commit sub-agent script that delegates fixes to Codex.
+"""Pre-commit sub-agent script that delegates fixes to configurable LLM provider.
 
 This script runs pre-commit on changed files and delegates failures to
-the Codex sub-agent for automatic fixing (similar to pre_commit_subagent.sh).
+the configured LLM provider for automatic fixing.
 
 Example commands:
     `uv run python -m src.agents.scripts.pre_commit`
-    `uv run python -m src.agents.scripts.pre_commit codex.enable=false`
+    `uv run python -m src.agents.scripts.pre_commit provider=codex`
+    `uv run python -m src.agents.scripts.pre_commit provider=claude`
 
 Config entry point: `src/agents/configs/pre_commit.yaml`
 """
 
-import contextlib
-import json
-import os
 import re
 import subprocess
-import tempfile
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
 from pathlib import Path
 
 import hydra
 from omegaconf import DictConfig
+
+from src.agents.providers import Provider, ProviderRequest, get_provider
+
+# Patterns for paths to exclude from editable files
+EXCLUDE_PATTERNS = (
+    ".venv/",
+    "venv/",
+    ".env/",
+    "__pycache__/",
+    ".git/",
+    "node_modules/",
+    ".mypy_cache/",
+    ".pytest_cache/",
+    ".ruff_cache/",
+    "site-packages/",
+    "dist/",
+    "build/",
+    ".tox/",
+    ".nox/",
+    ".eggs/",
+    "*.egg-info/",
+)
 
 
 @dataclass
@@ -36,9 +54,22 @@ class PreCommitResult:
     needs_main: bool = False
     message_for_main: str = ""
 
-    def to_json(self) -> str:
-        """Convert to JSON string."""
-        return json.dumps(asdict(self), ensure_ascii=False)
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return asdict(self)
+
+    def format_output(self) -> str:
+        """Format as structured text output."""
+        lines = [
+            f"STATUS: {self.status}",
+            f"FIXED: {str(self.fixed).lower()}",
+            f"FILES_TOUCHED: {','.join(self.files_touched) if self.files_touched else ''}",
+            f"REMAINING_ERRORS: {','.join(self.remaining_errors) if self.remaining_errors else ''}",
+            f"SUMMARY: {self.summary}",
+            f"NEEDS_MAIN: {str(self.needs_main).lower()}",
+            f"MESSAGE_FOR_MAIN: {self.message_for_main}",
+        ]
+        return "\n".join(lines)
 
 
 def get_repo_root() -> Path:
@@ -74,6 +105,41 @@ def get_changed_files() -> list[str]:
         return []
 
 
+def is_excluded_path(path: str) -> bool:
+    """Check if path should be excluded from editable files."""
+    import fnmatch
+    for pattern in EXCLUDE_PATTERNS:
+        if pattern.endswith("/"):
+            # Directory pattern
+            bare_pattern = pattern.rstrip("/")
+            # Check if path starts with pattern or contains /pattern/
+            if path.startswith(bare_pattern + "/"):
+                return True
+            if f"/{bare_pattern}/" in path:
+                return True
+            # Also handle patterns with wildcards like *.egg-info/
+            if "*" in bare_pattern:
+                # Split path and check each component
+                parts = path.replace("\\", "/").split("/")
+                for part in parts:
+                    if fnmatch.fnmatch(part, bare_pattern):
+                        return True
+        elif "*" in pattern:
+            # Glob pattern matching anywhere in path
+            parts = path.replace("\\", "/").split("/")
+            for part in parts:
+                if fnmatch.fnmatch(part, pattern):
+                    return True
+        elif pattern in path:
+            return True
+    return False
+
+
+def filter_editable_files(files: list[str]) -> list[str]:
+    """Filter out files that should not be editable (e.g., .venv/)."""
+    return [f for f in files if not is_excluded_path(f)]
+
+
 def run_pre_commit(files: list[str]) -> tuple[int, str]:
     """Run pre-commit on specified files.
 
@@ -92,7 +158,8 @@ def run_pre_commit(files: list[str]) -> tuple[int, str]:
             "run",
             "--show-diff-on-failure",
             "--files",
-        ] + files
+            *files,
+        ]
         result = subprocess.run(
             cmd,
             capture_output=True,
@@ -122,160 +189,119 @@ def extract_error_files(log_content: str) -> list[str]:
     files.add(".pre-commit-config.yaml")
     files.add("pyproject.toml")
 
-    return sorted(files)
+    # Filter out excluded paths
+    return filter_editable_files(sorted(files))
 
 
-def run_codex_fix(
+def build_prompt(
     error_files: list[str],
     check_cmd: str,
-    check_log_path: Path,
-    codex_log_path: Path,
-) -> PreCommitResult:
-    """Delegate fix to Codex sub-agent."""
-    # Check if network is disabled
-    if os.environ.get("CODEX_SANDBOX_NETWORK_DISABLED") == "1":
-        return PreCommitResult(
-            status="fail",
-            fixed=False,
-            summary="pre-commit failed (network disabled; cannot run codex exec)",
-            needs_main=True,
-            message_for_main=f"Re-run in a network-enabled environment. Logs: {check_log_path}",
-        )
+    log_content: str,
+) -> str:
+    """Build the prompt for the LLM provider."""
+    error_files_list = "\n".join(f"- {f}" for f in error_files)
+    return f"""## Task: Fix Pre-commit Failures
 
-    # Create output schema
-    schema = {
-        "type": "object",
-        "properties": {
-            "status": {"type": "string", "enum": ["pass", "fail"]},
-            "fixed": {"type": "boolean"},
-            "files_touched": {"type": "array", "items": {"type": "string"}},
-            "remaining_errors": {"type": "array", "items": {"type": "string"}},
-            "summary": {"type": "string"},
-            "needs_main": {"type": "boolean"},
-            "message_for_main": {"type": "string"},
-        },
-        "required": [
-            "status",
-            "fixed",
-            "files_touched",
-            "remaining_errors",
-            "summary",
-            "needs_main",
-            "message_for_main",
-        ],
-        "additionalProperties": False,
-    }
+### Target Files (you may ONLY modify these):
+{error_files_list}
 
-    # Create prompt for Codex
-    error_files_csv = ",".join(error_files)
-    prompt = f"""You are a specialized sub-agent for fixing pre-commit failures (ruff, mypy, etc.) in a Python repo.
+### Command to pass:
+```
+{check_cmd}
+```
 
-Target Files (Modify these):
-{error_files_csv}
+### Pre-commit Output:
+```
+{log_content}
+```
 
-Constraints & Permissions:
-1. **Modification**: You may ONLY modify the "Target Files" listed above.
-2. **Read Access**: You are ALLOWED to read any file in the repository if it helps resolve the error.
-3. **Command**: Do not run any commands other than the provided pre-commit command.
-
-Task:
-- Analyze the logs and fix the issues so that the command passes:
-  {check_cmd}
-- Iterate until clean.
-- Prefer permanent, root-cause fixes; avoid temporary suppression unless there is no reasonable alternative.
-
-Return JSON matching the schema.
+Analyze the errors and fix all issues so the command passes with exit code 0.
 """
 
-    schema_file = None
-    prompt_file = None
+
+def run_provider_fix(
+    cfg: DictConfig,
+    error_files: list[str],
+    check_cmd: str,
+    log_content: str,
+) -> PreCommitResult:
+    """Delegate fix to configured LLM provider."""
+    provider_name = cfg.get("provider", "codex")
+
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as sf:
-            json.dump(schema, sf)
-            schema_file = sf.name
-
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as pf:
-            pf.write(prompt)
-            prompt_file = pf.name
-
-        # Run codex exec
-        with open(prompt_file) as stdin_file:
-            result = subprocess.run(
-                [
-                    "codex",
-                    "exec",
-                    "--sandbox",
-                    "danger-full-access",
-                    "--output-schema",
-                    schema_file,
-                    "-",
-                ],
-                stdin=stdin_file,
-                capture_output=True,
-                text=True,
-                timeout=600,
-            )
-
-        # Save codex log
-        codex_log_path.write_text(result.stderr)
-
-        if result.returncode != 0 or not result.stdout.strip():
-            return PreCommitResult(
-                status="fail",
-                fixed=False,
-                summary="pre-commit failed (codex exec failed)",
-                needs_main=True,
-                message_for_main=f"Inspect logs: {check_log_path} and {codex_log_path}",
-            )
-
-        # Parse Codex output
-        codex_result = json.loads(result.stdout.strip())
-        return PreCommitResult(**codex_result)
-
-    except json.JSONDecodeError as e:
+        provider = Provider(provider_name)
+    except ValueError:
         return PreCommitResult(
             status="fail",
             fixed=False,
-            summary=f"Failed to parse codex output: {e}",
+            summary=f"Unknown provider: {provider_name}",
             needs_main=True,
-            message_for_main=f"Inspect logs: {check_log_path} and {codex_log_path}",
+            message_for_main=f"Configure a valid provider: {[p.value for p in Provider]}",
         )
-    except subprocess.TimeoutExpired:
+
+    # Get provider config
+    provider_cfg = cfg.get(provider_name, {})
+    model = provider_cfg.get("model")
+
+    # Build request
+    prompt = build_prompt(error_files, check_cmd, log_content)
+    request = ProviderRequest(
+        prompt=prompt,
+        system_prompt=cfg.system_prompt.content,
+        timeout_s=cfg.execution.timeout_s,
+        cwd=str(get_repo_root()),
+        model=model,
+    )
+
+    # Run provider
+    runner = get_provider(provider)
+    result = runner.run(request)
+
+    if not result.success:
         return PreCommitResult(
             status="fail",
             fixed=False,
-            summary="codex exec timed out",
+            summary=f"Provider {provider_name} failed: {result.error}",
             needs_main=True,
-            message_for_main=f"Inspect logs: {check_log_path}",
+            message_for_main=f"Error from {provider_name}: {result.error}",
         )
-    except FileNotFoundError:
-        return PreCommitResult(
-            status="fail",
-            fixed=False,
-            summary="codex CLI not found",
-            needs_main=True,
-            message_for_main="Install codex CLI or fix manually",
-        )
-    except Exception as e:
-        return PreCommitResult(
-            status="fail",
-            fixed=False,
-            summary=f"Error running codex: {e}",
-            needs_main=True,
-            message_for_main=f"Inspect logs: {check_log_path}",
-        )
-    finally:
-        # Cleanup temp files
-        if schema_file:
-            with contextlib.suppress(Exception):
-                os.unlink(schema_file)
-        if prompt_file:
-            with contextlib.suppress(Exception):
-                os.unlink(prompt_file)
+
+    # Parse output to extract result
+    return parse_provider_output(result.output, provider_name)
+
+
+def parse_provider_output(output: str, provider_name: str) -> PreCommitResult:
+    """Parse structured output from provider response."""
+    # Look for structured output format
+    lines = output.strip().split("\n")
+    parsed = {}
+
+    for line in lines:
+        if ": " in line:
+            key, _, value = line.partition(": ")
+            key = key.strip().lower()
+            parsed[key] = value.strip()
+
+    # Map parsed values
+    status = parsed.get("status", "fail")
+    fixed = parsed.get("fixed", "false").lower() == "true"
+    files_touched_str = parsed.get("files_touched", "")
+    files_touched = [f.strip() for f in files_touched_str.split(",") if f.strip()]
+    remaining_errors_str = parsed.get("remaining_errors", "")
+    remaining_errors = [e.strip() for e in remaining_errors_str.split(",") if e.strip()]
+    summary = parsed.get("summary", f"Processed by {provider_name}")
+    needs_main = parsed.get("needs_main", "false").lower() == "true"
+    message_for_main = parsed.get("message_for_main", "")
+
+    return PreCommitResult(
+        status=status,
+        fixed=fixed,
+        files_touched=files_touched,
+        remaining_errors=remaining_errors,
+        summary=summary,
+        needs_main=needs_main,
+        message_for_main=message_for_main,
+    )
 
 
 @hydra.main(  # type: ignore[misc]
@@ -285,16 +311,6 @@ Return JSON matching the schema.
 )
 def main(cfg: DictConfig) -> None:
     """Main entry point for pre-commit sub-agent."""
-    repo_root = get_repo_root()
-
-    # Setup log directory
-    log_dir = repo_root / "agents_workspace" / "sub_agents" / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    check_log_path = log_dir / f"pre_commit_{run_id}.log"
-    codex_log_path = log_dir / f"pre_commit_codex_{run_id}.log"
-
     # Get changed files
     files = get_changed_files()
 
@@ -304,7 +320,7 @@ def main(cfg: DictConfig) -> None:
             fixed=False,
             summary="No changed files to check",
         )
-        print(result.to_json())
+        print(result.format_output())
         return
 
     # Build check command for display
@@ -315,7 +331,6 @@ def main(cfg: DictConfig) -> None:
 
     # Run pre-commit (Pass 1)
     exit_code, output = run_pre_commit(files)
-    check_log_path.write_text(output)
 
     if exit_code == 0:
         result = PreCommitResult(
@@ -323,15 +338,14 @@ def main(cfg: DictConfig) -> None:
             fixed=False,
             summary="pre-commit passed",
         )
-        print(result.to_json())
+        print(result.format_output())
         return
 
     # Check if auto-fix modified files and retry (Pass 2)
-    fixed = False
+    auto_fixed = False
     if "files were modified by this hook" in output:
-        fixed = True
+        auto_fixed = True
         exit_code, output2 = run_pre_commit(files)
-        check_log_path.write_text(output + "\n\n--- RETRY ---\n\n" + output2)
 
         if exit_code == 0:
             # Get files that were modified
@@ -354,17 +368,17 @@ def main(cfg: DictConfig) -> None:
                 files_touched=files_touched,
                 summary="pre-commit passed after auto-fix",
             )
-            print(result.to_json())
+            print(result.format_output())
             return
 
         output = output2
 
-    # Delegate to Codex
+    # Delegate to configured provider
     error_files = extract_error_files(output)
-    result = run_codex_fix(error_files, check_cmd, check_log_path, codex_log_path)
-    result.fixed = fixed or result.fixed
+    result = run_provider_fix(cfg, error_files, check_cmd, output)
+    result.fixed = auto_fixed or result.fixed
 
-    print(result.to_json())
+    print(result.format_output())
 
 
 if __name__ == "__main__":

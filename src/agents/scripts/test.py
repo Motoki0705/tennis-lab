@@ -1,27 +1,45 @@
-"""Test sub-agent script that delegates fixes to Codex.
+"""Test sub-agent script that delegates fixes to configurable LLM provider.
 
-This script runs tests and delegates failures to the Codex sub-agent
-for automatic fixing (similar to test_subagent.sh).
+This script runs tests and delegates failures to the configured LLM provider
+for automatic fixing.
 
 Example commands:
     `uv run python -m src.agents.scripts.test`
     `uv run python -m src.agents.scripts.test 'task.test_cmd=uv run pytest tests/unit/ -q'`
+    `uv run python -m src.agents.scripts.test provider=claude`
 
 Config entry point: `src/agents/configs/test.yaml`
 """
 
-import contextlib
-import json
-import os
 import re
 import subprocess
-import tempfile
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
 from pathlib import Path
 
 import hydra
 from omegaconf import DictConfig
+
+from src.agents.providers import Provider, ProviderRequest, get_provider
+
+# Patterns for paths to exclude from editable files
+EXCLUDE_PATTERNS = (
+    ".venv/",
+    "venv/",
+    ".env/",
+    "__pycache__/",
+    ".git/",
+    "node_modules/",
+    ".mypy_cache/",
+    ".pytest_cache/",
+    ".ruff_cache/",
+    "site-packages/",
+    "dist/",
+    "build/",
+    ".tox/",
+    ".nox/",
+    ".eggs/",
+    "*.egg-info/",
+)
 
 
 @dataclass
@@ -36,9 +54,22 @@ class TestResult:
     needs_main: bool = False
     message_for_main: str = ""
 
-    def to_json(self) -> str:
-        """Convert to JSON string."""
-        return json.dumps(asdict(self), ensure_ascii=False)
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return asdict(self)
+
+    def format_output(self) -> str:
+        """Format as structured text output."""
+        lines = [
+            f"STATUS: {self.status}",
+            f"FIXED: {str(self.fixed).lower()}",
+            f"FILES_TOUCHED: {','.join(self.files_touched) if self.files_touched else ''}",
+            f"REMAINING_FAILURES: {','.join(self.remaining_failures) if self.remaining_failures else ''}",
+            f"SUMMARY: {self.summary}",
+            f"NEEDS_MAIN: {str(self.needs_main).lower()}",
+            f"MESSAGE_FOR_MAIN: {self.message_for_main}",
+        ]
+        return "\n".join(lines)
 
 
 def get_repo_root() -> Path:
@@ -55,6 +86,41 @@ def get_repo_root() -> Path:
     except Exception:
         pass
     return Path.cwd()
+
+
+def is_excluded_path(path: str) -> bool:
+    """Check if path should be excluded from editable files."""
+    import fnmatch
+    for pattern in EXCLUDE_PATTERNS:
+        if pattern.endswith("/"):
+            # Directory pattern
+            bare_pattern = pattern.rstrip("/")
+            # Check if path starts with pattern or contains /pattern/
+            if path.startswith(bare_pattern + "/"):
+                return True
+            if f"/{bare_pattern}/" in path:
+                return True
+            # Also handle patterns with wildcards like *.egg-info/
+            if "*" in bare_pattern:
+                # Split path and check each component
+                parts = path.replace("\\", "/").split("/")
+                for part in parts:
+                    if fnmatch.fnmatch(part, bare_pattern):
+                        return True
+        elif "*" in pattern:
+            # Glob pattern matching anywhere in path
+            parts = path.replace("\\", "/").split("/")
+            for part in parts:
+                if fnmatch.fnmatch(part, pattern):
+                    return True
+        elif pattern in path:
+            return True
+    return False
+
+
+def filter_editable_files(files: list[str]) -> list[str]:
+    """Filter out files that should not be editable (e.g., .venv/)."""
+    return [f for f in files if not is_excluded_path(f)]
 
 
 def run_tests(test_cmd: str, timeout_s: float = 300.0) -> tuple[int, str]:
@@ -105,7 +171,7 @@ def extract_error_files(log_content: str, repo_root: Path) -> list[str]:
         files.add(match)
 
     # Filter to only .py files and clean up
-    result = set()
+    result_files = set()
     for f in files:
         f = f.strip()
         if f.endswith(".py") or f.endswith(".pyi"):
@@ -116,164 +182,121 @@ def extract_error_files(log_content: str, repo_root: Path) -> list[str]:
             except Exception:
                 pass
             if f:
-                result.add(f)
+                result_files.add(f)
 
-    return sorted(result)
+    # Filter out excluded paths
+    return filter_editable_files(sorted(result_files))
 
 
-def run_codex_fix(
+def build_prompt(
     error_files: list[str],
     test_cmd: str,
-    test_log_path: Path,
-    codex_log_path: Path,
-) -> TestResult:
-    """Delegate fix to Codex sub-agent."""
-    # Check if network is disabled
-    if os.environ.get("CODEX_SANDBOX_NETWORK_DISABLED") == "1":
-        return TestResult(
-            status="fail",
-            fixed=False,
-            summary="tests failed (network disabled; cannot run codex exec)",
-            needs_main=True,
-            message_for_main=f"Re-run in a network-enabled environment. Logs: {test_log_path}",
-        )
+    log_content: str,
+) -> str:
+    """Build the prompt for the LLM provider."""
+    error_files_list = "\n".join(f"- {f}" for f in error_files)
+    return f"""## Task: Fix Test Failures
 
-    # Create output schema
-    schema = {
-        "type": "object",
-        "properties": {
-            "status": {"type": "string", "enum": ["pass", "fail"]},
-            "fixed": {"type": "boolean"},
-            "files_touched": {"type": "array", "items": {"type": "string"}},
-            "remaining_failures": {"type": "array", "items": {"type": "string"}},
-            "summary": {"type": "string"},
-            "needs_main": {"type": "boolean"},
-            "message_for_main": {"type": "string"},
-        },
-        "required": [
-            "status",
-            "fixed",
-            "files_touched",
-            "remaining_failures",
-            "summary",
-            "needs_main",
-            "message_for_main",
-        ],
-        "additionalProperties": False,
-    }
+### Target Files (you may ONLY modify these):
+{error_files_list}
 
-    # Create prompt for Codex
-    error_files_csv = ",".join(error_files)
-    prompt = f"""You are a specialized sub-agent for triaging and fixing failing Python tests.
+### Command to pass:
+```
+{test_cmd}
+```
 
-Target Files (Modify these):
-{error_files_csv}
+### Test Output:
+```
+{log_content}
+```
 
-Constraints & Permissions:
-1. **Modification**: You may ONLY modify the "Target Files" listed above.
-2. **Read Access**: You are ALLOWED to read any file in the repository if it helps fix the test.
-3. **Command**: Do not run any commands other than the provided test command.
-
-Task:
-- Fix the failures so that this command passes with exit code 0:
-  {test_cmd}
-- You may re-run the command multiple times.
-- If the fix is straightforward and can be done within the allowed file set, implement it.
-- If you determine the root cause requires modifying files outside the allowed list, set needs_main=true and explain.
-- Prefer permanent, root-cause fixes; avoid temporary suppression unless there is no reasonable alternative.
-
-Return JSON that matches the provided output schema.
+Analyze the failures and fix all issues so the command passes with exit code 0.
 """
 
-    schema_file = None
-    prompt_file = None
+
+def run_provider_fix(
+    cfg: DictConfig,
+    error_files: list[str],
+    test_cmd: str,
+    log_content: str,
+) -> TestResult:
+    """Delegate fix to configured LLM provider."""
+    provider_name = cfg.get("provider", "codex")
+
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as sf:
-            json.dump(schema, sf)
-            schema_file = sf.name
-
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as pf:
-            pf.write(prompt)
-            prompt_file = pf.name
-
-        # Run codex exec
-        with open(prompt_file) as stdin_file:
-            result = subprocess.run(
-                [
-                    "codex",
-                    "exec",
-                    "--sandbox",
-                    "danger-full-access",
-                    "--output-schema",
-                    schema_file,
-                    "-",
-                ],
-                stdin=stdin_file,
-                capture_output=True,
-                text=True,
-                timeout=600,
-            )
-
-        # Save codex log
-        codex_log_path.write_text(result.stderr)
-
-        if result.returncode != 0 or not result.stdout.strip():
-            return TestResult(
-                status="fail",
-                fixed=False,
-                summary="tests failed (codex exec failed)",
-                needs_main=True,
-                message_for_main=f"Inspect logs: {test_log_path} and {codex_log_path}",
-            )
-
-        # Parse Codex output
-        codex_result = json.loads(result.stdout.strip())
-        return TestResult(**codex_result)
-
-    except json.JSONDecodeError as e:
+        provider = Provider(provider_name)
+    except ValueError:
         return TestResult(
             status="fail",
             fixed=False,
-            summary=f"Failed to parse codex output: {e}",
+            summary=f"Unknown provider: {provider_name}",
             needs_main=True,
-            message_for_main=f"Inspect logs: {test_log_path} and {codex_log_path}",
+            message_for_main=f"Configure a valid provider: {[p.value for p in Provider]}",
         )
-    except subprocess.TimeoutExpired:
+
+    # Get provider config
+    provider_cfg = cfg.get(provider_name, {})
+    model = provider_cfg.get("model")
+
+    # Build request
+    prompt = build_prompt(error_files, test_cmd, log_content)
+    request = ProviderRequest(
+        prompt=prompt,
+        system_prompt=cfg.system_prompt.content,
+        timeout_s=cfg.execution.timeout_s,
+        cwd=str(get_repo_root()),
+        model=model,
+    )
+
+    # Run provider
+    runner = get_provider(provider)
+    result = runner.run(request)
+
+    if not result.success:
         return TestResult(
             status="fail",
             fixed=False,
-            summary="codex exec timed out",
+            summary=f"Provider {provider_name} failed: {result.error}",
             needs_main=True,
-            message_for_main=f"Inspect logs: {test_log_path}",
+            message_for_main=f"Error from {provider_name}: {result.error}",
         )
-    except FileNotFoundError:
-        return TestResult(
-            status="fail",
-            fixed=False,
-            summary="codex CLI not found",
-            needs_main=True,
-            message_for_main="Install codex CLI or fix manually",
-        )
-    except Exception as e:
-        return TestResult(
-            status="fail",
-            fixed=False,
-            summary=f"Error running codex: {e}",
-            needs_main=True,
-            message_for_main=f"Inspect logs: {test_log_path}",
-        )
-    finally:
-        # Cleanup temp files
-        if schema_file:
-            with contextlib.suppress(Exception):
-                os.unlink(schema_file)
-        if prompt_file:
-            with contextlib.suppress(Exception):
-                os.unlink(prompt_file)
+
+    # Parse output to extract result
+    return parse_provider_output(result.output, provider_name)
+
+
+def parse_provider_output(output: str, provider_name: str) -> TestResult:
+    """Parse structured output from provider response."""
+    # Look for structured output format
+    lines = output.strip().split("\n")
+    parsed = {}
+
+    for line in lines:
+        if ": " in line:
+            key, _, value = line.partition(": ")
+            key = key.strip().lower()
+            parsed[key] = value.strip()
+
+    # Map parsed values
+    status = parsed.get("status", "fail")
+    fixed = parsed.get("fixed", "false").lower() == "true"
+    files_touched_str = parsed.get("files_touched", "")
+    files_touched = [f.strip() for f in files_touched_str.split(",") if f.strip()]
+    remaining_failures_str = parsed.get("remaining_failures", "")
+    remaining_failures = [e.strip() for e in remaining_failures_str.split(",") if e.strip()]
+    summary = parsed.get("summary", f"Processed by {provider_name}")
+    needs_main = parsed.get("needs_main", "false").lower() == "true"
+    message_for_main = parsed.get("message_for_main", "")
+
+    return TestResult(
+        status=status,
+        fixed=fixed,
+        files_touched=files_touched,
+        remaining_failures=remaining_failures,
+        summary=summary,
+        needs_main=needs_main,
+        message_for_main=message_for_main,
+    )
 
 
 @hydra.main(  # type: ignore[misc]
@@ -285,20 +308,11 @@ def main(cfg: DictConfig) -> None:
     """Main entry point for test sub-agent."""
     repo_root = get_repo_root()
 
-    # Setup log directory
-    log_dir = repo_root / "agents_workspace" / "sub_agents" / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    test_log_path = log_dir / f"pytest_{run_id}.log"
-    codex_log_path = log_dir / f"pytest_codex_{run_id}.log"
-
     # Get test command from config
     test_cmd = cfg.task.get("test_cmd", "uv run --no-sync pytest -q -n auto")
 
     # Run tests
     exit_code, output = run_tests(test_cmd, timeout_s=cfg.execution.timeout_s)
-    test_log_path.write_text(output)
 
     if exit_code == 0:
         result = TestResult(
@@ -306,14 +320,14 @@ def main(cfg: DictConfig) -> None:
             fixed=False,
             summary="tests passed",
         )
-        print(result.to_json())
+        print(result.format_output())
         return
 
-    # Delegate to Codex
+    # Delegate to configured provider
     error_files = extract_error_files(output, repo_root)
-    result = run_codex_fix(error_files, test_cmd, test_log_path, codex_log_path)
+    result = run_provider_fix(cfg, error_files, test_cmd, output)
 
-    print(result.to_json())
+    print(result.format_output())
 
 
 if __name__ == "__main__":

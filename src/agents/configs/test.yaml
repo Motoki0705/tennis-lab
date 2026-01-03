@@ -10,6 +10,10 @@ defaults:
   - output: default
   - task: default
 
+# Provider to use for fixing test failures
+# Options: claude, gemini, codex, copilot
+provider: codex
+
 hydra:
   run:
     dir: ${hydra:runtime.cwd}

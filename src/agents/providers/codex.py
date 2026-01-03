@@ -14,11 +14,16 @@ class CodexRunner(ProviderRunner):
 
     def get_command(self, request: ProviderRequest) -> list[str]:
         """Build the codex CLI command."""
-        cmd = ["codex", "-q"]
+        # Use codex exec for non-interactive execution
+        cmd = ["codex", "exec"]
 
         if request.model:
             cmd.extend(["--model", request.model])
 
+        # Use sandbox mode for file modifications
+        cmd.extend(["--sandbox", "danger-full-access"])
+
+        # Add the prompt
         cmd.append(request.prompt)
         return cmd
 
