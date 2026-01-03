@@ -3,7 +3,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 
 class Provider(str, Enum):
@@ -22,8 +21,8 @@ class ProviderRequest:
     prompt: str
     system_prompt: str = ""
     timeout_s: float = 120.0
-    cwd: Optional[str] = None
-    model: Optional[str] = None
+    cwd: str | None = None
+    model: str | None = None
 
 
 @dataclass
@@ -80,11 +79,20 @@ class ProviderRunner(ABC):
             )
             duration = time.time() - start
 
+            # Combine stdout and stderr for full output
+            # Some CLIs output to stderr even on success
+            output = result.stdout
+            if result.stderr:
+                # Append stderr if there's content
+                if output and not output.endswith("\n"):
+                    output += "\n"
+                output += result.stderr
+
             if result.returncode == 0:
                 return ProviderResult(
                     provider=self.provider,
                     success=True,
-                    output=result.stdout,
+                    output=output,
                     command=cmd,
                     duration_s=duration,
                 )
@@ -93,6 +101,7 @@ class ProviderRunner(ABC):
                     provider=self.provider,
                     success=False,
                     error=result.stderr or f"Exit code: {result.returncode}",
+                    output=output,  # Include output even on failure
                     command=cmd,
                     duration_s=duration,
                 )
@@ -112,3 +121,4 @@ class ProviderRunner(ABC):
                 command=cmd,
                 duration_s=time.time() - start,
             )
+
