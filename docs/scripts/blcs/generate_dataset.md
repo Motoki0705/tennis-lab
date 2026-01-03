@@ -6,14 +6,25 @@
 
 このスクリプトは、テニスボールの物理シミュレーション（重力、空気抵抗、マグナス効果、バウンス）を使用して、様々なショットパターンのボール軌道データを生成します。生成されたデータは、2Dボール位置シーケンスから3D軌道を推定するモデルの学習に使用されます。
 
+### 生成モード
+
+- **Shot モード** (デフォルト): 単発ショットを生成。コート上の各セルから発射し、2回目のバウンドまたはフェンス到達で終了。
+- **Rally モード**: 複数ショットを連結したラリーを生成。1バウンド後〜2バウンド前のタイミングで打ち返しを行い、ネット/アウト/最大ラリー数到達で終了。
+
 ## コマンド例
 
 ```bash
-# デフォルト設定で実行
+# デフォルト設定で実行 (Shot モード)
 uv run python -m src.blcs.scripts.generate_dataset
 
 # 出力先とサンプル数を指定
 uv run python -m src.blcs.scripts.generate_dataset run.output_dir=data/blcs sampling.per_from_cell_samples=10
+
+# Rally モードで実行
+uv run python -m src.blcs.scripts.generate_dataset generator.mode=rally generator.num_rally_scenes=100
+
+# Rally モードでラリー設定をカスタマイズ
+uv run python -m src.blcs.scripts.generate_dataset generator.mode=rally rally.max_rallies=5 rally.court_margin=1.0
 
 # シード値を変更
 uv run python -m src.blcs.scripts.generate_dataset run.seed=123
@@ -32,6 +43,7 @@ uv run python -m src.blcs.scripts.generate_dataset run.train_ratio=0.7 run.val_r
 defaults:
   - physics: default
   - shot: default
+  - rally: default
   - camera: default
   - sampling: default
   - generator: default
@@ -77,6 +89,16 @@ defaults:
 | `output_fps` | `30` | 出力FPS |
 | `sim_fps` | `240` | シミュレーションFPS |
 
+### rally (ラリー設定) - Rally モード専用
+
+| パラメータ | デフォルト | 説明 |
+|-----------|-----------|------|
+| `max_rallies` | `10` | 最大ラリー数（ショット数） |
+| `max_total_frames` | `12000` | ラリー全体の最大フレーム数 |
+| `court_margin` | `0.5` | コート外判定の余裕 (m) |
+| `hit_timing_range` | `[0.2, 0.8]` | 打ち返しタイミング範囲（1st〜2ndバウンド間の割合） |
+| `return_z_range` | `[0.8, 1.4]` | 打ち返し時の高さ範囲 (m) |
+
 ### camera (カメラ設定)
 
 | パラメータ | デフォルト | 説明 |
@@ -86,7 +108,7 @@ defaults:
 | `hfov_deg` | `60.0` | 水平視野角 (度) |
 | `image_size` | `[1280, 720]` | 画像サイズ |
 
-### sampling (サンプリング設定)
+### sampling (サンプリング設定) - Shot モード専用
 
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
@@ -102,11 +124,15 @@ defaults:
 
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
+| `mode` | `shot` | 生成モード (`shot` または `rally`) |
+| `num_rally_scenes` | `1000` | Rally モードでの生成シーン数 |
 | `num_cameras_sampled` | `8` | サンプリングするカメラ数 |
 | `ball_visibility_threshold` | `0.8` | ボール可視性閾値 |
 | `max_attempts_per_cell` | `10000` | セルあたりの最大試行回数 |
 
 ## アーキテクチャ・フロー
+
+### Shot モード
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -119,30 +145,42 @@ defaults:
 │  │ - 軌道生成      │      │ - 投影計算      │      │ - Split 情報        │  │
 │  │ - イベント検出  │      │ - 可視性判定    │      │ - メタデータ        │  │
 │  └─────────────────┘      └─────────────────┘      └─────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Rally モード
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         generate_dataset.py                                  │
+│                                                                              │
+│  ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────────┐  │
+│  │ RallySimulator  │      │BLCSSceneGenerat │      │  BLCSDatasetWriter  │  │
+│  │                 │──────▶│                 │──────▶│                     │  │
+│  │ - ショット連結  │      │ - カメラ配置    │      │ - NPZ 保存          │  │
+│  │ - 打ち返し生成  │      │ - 投影計算      │      │ - Split 情報        │  │
+│  │ - ラリー終了判定│      │ - 可視性判定    │      │ - メタデータ        │  │
+│  └─────────────────┘      └─────────────────┘      └─────────────────────┘  │
 │           ▲                                                                  │
 │           │                                                                  │
 │  ┌─────────────────┐                                                        │
-│  │   CellManager   │                                                        │
-│  │                 │                                                        │
-│  │ - コート分割    │                                                        │
-│  │ - ショットカテゴリ                                                        │
-│  │ - サンプリング  │                                                        │
+│  │  ShotSimulator  │  (初期条件生成に使用)                                   │
 │  └─────────────────┘                                                        │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-処理フロー:
-1. CellManager がコートをセルに分割し、ショットカテゴリを管理
-2. 各セルからの発射点について:
-   a. ShotSimulator がボール軌道を物理シミュレーション
-   b. バウンス、ネット衝突などのイベントを検出
-3. BLCSSceneGenerator が:
-   a. ランダムなカメラ位置を生成
-   b. 3D軌道を各カメラ視点に投影
-   c. 可視性チェックを実行
-4. BLCSDatasetWriter がシーンごとに NPZ ファイルを保存
+Rally 処理フロー:
+1. 開始位置から初回ショットを生成
+2. 1st バウンド後、2nd バウンド前のランダムなタイミングで打ち返し
+3. 相手コートに向けて新たな初期条件でショット生成
+4. ラリー終了条件まで繰り返し:
+   - NET_FAULT: ネット直撃
+   - OUT: コート外+margin でバウンド
+   - MAX_RALLIES: 最大ラリー数到達
+   - MAX_FRAMES: 最大フレーム数到達
+   - DOUBLE_BOUNCE: 2バウンド（正常終了）
 ```
 
-## ショットカテゴリ
+## ショットカテゴリ (Shot モード)
 
 | カテゴリ | 説明 |
 |---------|------|
@@ -150,6 +188,16 @@ defaults:
 | `DIRECT_FENCE` | フェンスに直接当たるショット |
 | `IN_COURT` | コート内にバウンドするショット |
 | `OUT_COURT` | コート外にバウンドするショット |
+
+## ラリー終了理由 (Rally モード)
+
+| 終了理由 | 説明 |
+|---------|------|
+| `net_fault` | ボールがネットに当たった |
+| `out` | ボールがコート外（+margin）にバウンドした |
+| `double_bounce` | 2バウンド（正常な得点終了） |
+| `max_rallies` | 最大ラリー数に到達した |
+| `max_frames` | 最大フレーム数に到達した |
 
 ## 出力構造
 
@@ -160,26 +208,43 @@ data/blcs/
 ├── dataset_info.json    # データセット統計
 ├── split_info.json      # Train/Val/Test 分割情報
 └── scenes/
-    ├── scene_000000.npz
-    ├── scene_000001.npz
+    ├── scene_000000.npz  # Shot モード
+    ├── rally_000000.npz  # Rally モード
     └── ...
 ```
 
 ## NPZ ファイル内容
 
+### Shot モード
+
 各シーンには以下のデータが含まれます:
 
+- `meta`: シーンメタデータ (JSON)
 - `ball_pos_world`: [T, 3] ワールド座標系でのボール位置
-- `ball_pos_2d`: [C, T, 2] 各カメラでの2D投影位置
-- `court_kp_2d`: [C, 20, 2] 各カメラでのコートキーポイント
-- `camera_matrices`: [C, 3, 4] カメラ投影行列
-- `visibility`: [C, T] 各カメラでの可視性フラグ
-- `meta`: シーンメタデータ
+- `ball_pos_norm`: [T, 3] 正規化されたボール位置
+- `ball_vel_world`: [T, 3] ボール速度
+- `num_cameras`: カメラ数
+- `cam_{i}_params`: カメラパラメータ
+- `cam_{i}_ball_uv`: [T, 2] 2D投影位置
+- `cam_{i}_ball_visible`: [T] 可視性フラグ
+- `cam_{i}_court_kp_uv`: [20, 2] コートキーポイント
+
+### Rally モード
+
+Shot モードに加えて以下のデータが含まれます:
+
+- `rally_length`: ラリー内のショット数
+- `end_reason`: ラリー終了理由
+- `meta.shots`: 各ショットのイベント情報
+  - `shot_index`: ショット番号 (0-indexed)
+  - `from_side`: 打ち手側 ("near" or "far")
+  - `t_start`, `t_net`, `t_bounce1`, `t_bounce2`, `t_return`: フレームタイミング
 
 ## 関連モジュール
 
 - `src.blcs.simulation.ball_physics`: 物理シミュレーション
 - `src.blcs.simulation.shot_simulator`: ショットシミュレータ
+- `src.blcs.simulation.rally_simulator`: ラリーシミュレータ
 - `src.blcs.simulation.cell_manager`: セル管理
 - `src.blcs.generate_dataset.scene_generator`: シーン生成
 - `src.blcs.generate_dataset.io.dataset_io`: データ入出力

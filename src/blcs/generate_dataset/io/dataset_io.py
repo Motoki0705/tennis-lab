@@ -28,8 +28,9 @@ from src.blcs.data.types import (
     PYDANTIC_AVAILABLE,
     BLCSSceneMeta,
     BLCSSceneMetaModel,
+    RallySceneMeta,
 )
-from src.blcs.generate_dataset.scene_generator import BLCSSceneData
+from src.blcs.generate_dataset.scene_generator import BLCSSceneData, RallySceneData
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +146,102 @@ class BLCSDatasetWriter(BaseDatasetWriter):
                 "file": filename,
                 "scene_id": scene.scene_id,
                 "category": scene.category.value,
+                "num_frames": int(scene.ball_pos_world.shape[0]),
+                "num_cameras_sampled": scene.num_cameras_sampled,
+                "num_cameras": len(scene.cameras),
+                "cameras": camera_metas,
+            }
+        )
+        self.scene_counter += 1
+
+        return filepath
+
+    def save_rally_scene(self, scene: RallySceneData) -> Path:
+        """Save a rally scene to npz file (1 rally = 1 file with N cameras).
+
+        Args:
+            scene: Rally scene data to save.
+
+        Returns:
+            Path: Path to saved file.
+
+        """
+        # Generate filename
+        filename = f"{scene.scene_id}.npz"
+        filepath = self.scenes_dir / filename
+
+        # Create metadata
+        meta = RallySceneMeta(
+            scene_id=scene.scene_id,
+            initial_from_cell=scene.initial_from_cell,
+            initial_from_side=scene.initial_from_side,
+            rally_length=scene.rally_length,
+            end_reason=scene.end_reason,
+            winner_side=scene.winner_side,
+            shots=scene.shots,
+            fps_out=scene.fps_out,
+            sim_fps=scene.sim_fps,
+            num_frames=scene.ball_pos_world.shape[0],
+            num_cameras_sampled=scene.num_cameras_sampled,
+            num_cameras=len(scene.cameras),
+        )
+
+        # Build save dictionary
+        save_dict = {
+            # Metadata (as JSON string)
+            "meta": json.dumps(meta.to_dict()),
+            # 3D trajectory data (global)
+            "ball_pos_world": scene.ball_pos_world.numpy(),
+            "ball_pos_norm": scene.ball_pos_norm.numpy(),
+            "ball_vel_world": scene.ball_vel_world.numpy(),
+            # Number of cameras
+            "num_cameras": np.array(len(scene.cameras)),
+            # Rally-specific data
+            "rally_length": np.array(scene.rally_length),
+            "end_reason": scene.end_reason,
+        }
+
+        # Add per-camera data with cam_{i}_... keys
+        camera_metas = []
+        for i, cam in enumerate(scene.cameras):
+            prefix = f"cam_{i}_"
+
+            # Camera parameters
+            save_dict[f"{prefix}params"] = json.dumps(cam.camera_params)
+
+            # Ball projections
+            save_dict[f"{prefix}ball_uv"] = cam.ball_uv.astype(np.float32)
+            save_dict[f"{prefix}ball_visible"] = cam.ball_visible.astype(bool)
+            save_dict[f"{prefix}ball_visibility_ratio"] = np.array(
+                cam.ball_visibility_ratio, dtype=np.float32
+            )
+
+            # Court keypoint projections
+            save_dict[f"{prefix}court_kp_uv"] = cam.court_kp_uv.astype(np.float32)
+            save_dict[f"{prefix}court_kp_visible"] = cam.court_kp_visible.astype(bool)
+            save_dict[f"{prefix}court_visibility_count"] = np.array(
+                cam.court_visibility_count, dtype=np.float32
+            )
+
+            # Track camera meta for meta.json
+            camera_metas.append(
+                {
+                    "ball_visibility_ratio": float(cam.ball_visibility_ratio),
+                    "court_visibility_count": float(cam.court_visibility_count),
+                }
+            )
+
+        # Save to npz
+        np.savez_compressed(filepath, **save_dict)
+
+        # Track for meta.json
+        self.scene_records.append(
+            {
+                "file": filename,
+                "scene_id": scene.scene_id,
+                "rally_length": scene.rally_length,
+                "end_reason": scene.end_reason,
+                "winner_side": scene.winner_side,
                 "num_frames": int(scene.ball_pos_world.shape[0]),
                 "num_cameras_sampled": scene.num_cameras_sampled,
                 "num_cameras": len(scene.cameras),
