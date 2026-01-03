@@ -1,0 +1,4 @@
+# Default output configuration
+format: text
+show_commands: false
+show_errors: true

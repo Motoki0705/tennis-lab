@@ -1,0 +1,22 @@
+# Test sub-agent configuration
+defaults:
+  - _self_
+  - claude: default
+  - gemini: default
+  - codex: default
+  - copilot: default
+  - system_prompt: test
+  - execution: default
+  - output: default
+  - task: default
+
+# Provider to use for fixing test failures
+# Options: claude, gemini, codex, copilot
+provider: codex
+
+hydra:
+  run:
+    dir: ${hydra:runtime.cwd}
+  output_subdir: null
+  job:
+    chdir: false

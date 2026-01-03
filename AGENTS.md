@@ -37,32 +37,32 @@ Config entry point: `src/plcs/configs/generate_dataset.yaml`
 
 ## 3. 使用可能なツール
 
-### `agents_workspace/sub_agents/pre_commit_subagent.sh`
-変更ファイル（`git diff --name-only HEAD`）に対して `pre-commit` を実行し、失敗した場合は Codex Sub-agent に修正を委譲します（通常は `uv run --no-sync pre-commit ...` を実行）。ログは `agents_workspace/sub_agents/logs/`（または `CODEX_SUBAGENT_LOG_DIR`）に保存され、標準出力には 1 行の JSON を返します。
+### `src.agents.scripts.pre_commit`
+変更ファイル（`git diff --name-only HEAD`）に対して `pre-commit` を実行し、失敗した場合は Codex Sub-agent に修正を委譲します。ログは `agents_workspace/sub_agents/logs/` に保存され、標準出力には 1 行の JSON を返します。
 
 **実行例**
 ```bash
-bash agents_workspace/sub_agents/pre_commit_subagent.sh
+uv run python -m src.agents.scripts.pre_commit
 ```
-（ヘルプ：`bash agents_workspace/sub_agents/pre_commit_subagent.sh -h`）
+（ヘルプ：`uv run python -m src.agents.scripts.pre_commit --help`）
 
 **想定出力（例）**
 ```json
 {"status":"pass","fixed":false,"files_touched":[],"remaining_errors":[],"summary":"pre-commit passed","needs_main":false,"message_for_main":""}
 ```
 
-### `agents_workspace/sub_agents/test_subagent.sh`（推奨：テスト用）
-指定したテストコマンド（デフォルトは `uv run --no-sync pytest -q`）を実行し、失敗した場合はログから対象ファイルを抽出して Codex Sub-agent に修正を委譲します。ログは `agents_workspace/sub_agents/logs/pytest_*.log`（または `CODEX_SUBAGENT_LOG_DIR`）に保存され、標準出力には 1 行の JSON を返します。
+### `src.agents.scripts.test`（推奨：テスト用）
+指定したテストコマンド（デフォルトは `uv run --no-sync pytest -q -n auto`）を実行し、失敗した場合はログから対象ファイルを抽出して Codex Sub-agent に修正を委譲します。ログは `agents_workspace/sub_agents/logs/pytest_*.log` に保存され、標準出力には 1 行の JSON を返します。
 
 **基本（デフォルトの pytest）**
 ```bash
-bash agents_workspace/sub_agents/test_subagent.sh
+uv run python -m src.agents.scripts.test
 ```
-（ヘルプ：`bash agents_workspace/sub_agents/test_subagent.sh -h`）
+（ヘルプ：`uv run python -m src.agents.scripts.test --help`）
 
 **テスト対象を絞る（例：単体テスト/ケース指定）**
 ```bash
-bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q tests/test_example.py::test_case'
+uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest -q tests/test_example.py::test_case'
 ```
 
 **想定出力（例）**
@@ -83,9 +83,9 @@ bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync p
 - 変更を 1 行でも加える前に、現在ブランチを確認し、`main` 等であれば新規ブランチへ移動する
 
 2) **検査とテスト（必須）**
-- 変更後は必ず `pre_commit_subagent.sh` → `test_subagent.sh` の順で実行する（ユーザーが「実行しないで」と言った場合を除く）
-- **テストは全て実行するのではなく、変更に影響するテストのみを `--test-cmd` で指定して実行する**
-  - 例: `bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q -n auto tests/unit/test_affected.py'`
+- 変更後は必ず `src.agents.scripts.pre_commit` → `src.agents.scripts.test` の順で実行する（ユーザーが「実行しないで」と言った場合を除く）
+- **テストは全て実行するのではなく、変更に影響するテストのみを `task.test_cmd` で指定して実行する**
+  - 例: `uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest -q -n auto tests/unit/test_affected.py'`
   - 変更したモジュールに対応するテストファイルを特定し、必要最小限のテストを実行する
 
 3) **ドキュメントの整合性確認（必須）**
@@ -111,20 +111,20 @@ git checkout -b feature/<task>-<short-desc>
 
 3) **pre-commit を実行（ツール推奨）**
 ```bash
-bash agents_workspace/sub_agents/pre_commit_subagent.sh
+uv run python -m src.agents.scripts.pre_commit
 ```
 
 4) **テストを実行（ツール推奨）**
-- **変更に影響するテストのみを `--test-cmd` で指定して実行する（全テスト実行は禁止）**
+- **変更に影響するテストのみを `task.test_cmd` で指定して実行する（全テスト実行は禁止）**
 ```bash
 # 変更に関連するテストファイルを特定して実行（-n auto で並列実行）
-bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q -n auto tests/unit/test_affected.py'
+uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest -q -n auto tests/unit/test_affected.py'
 
 # 複数のテストファイルを指定する場合
-bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q -n auto tests/unit/test_foo.py tests/integration/test_bar.py'
+uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest -q -n auto tests/unit/test_foo.py tests/integration/test_bar.py'
 
 # 特定のテストケースを指定する場合
-bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv run --no-sync pytest -q tests/test_example.py::test_case'
+uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest -q tests/test_example.py::test_case'
 ```
 
 5) **ドキュメントの更新確認**
@@ -149,6 +149,6 @@ uv --no-cache run --no-sync pytest -q
 
 ### subagent 経由で回避する例
 ```bash
-bash agents_workspace/sub_agents/test_subagent.sh --test-cmd 'uv --cache-dir agents_workspace/tmp_cache/uv_cache run --no-sync pytest -q tests/...'
-bash agents_workspace/sub_agents/pre_commit_subagent.sh
+uv run python -m src.agents.scripts.test 'task.test_cmd=uv --cache-dir agents_workspace/tmp_cache/uv_cache run --no-sync pytest -q tests/...'
+uv run python -m src.agents.scripts.pre_commit
 ```
