@@ -13,7 +13,6 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -31,6 +30,7 @@ from src.blcs.simulation.rally_simulator import (
     RallySimulator,
 )
 from src.blcs.simulation.shot_simulator import ShotConfig, ShotSimulator
+from src.blcs.simulation.targeted_velocity_sampler import TargetedVelocityConfig
 from src.utils.projection.camera_projector import (
     CameraConfig,
     CameraProjector,
@@ -43,11 +43,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class GenerationMode(Enum):
-    """Generation mode for scene generator."""
-
-    SHOT = "shot"  # Single shot per scene (original behavior)
-    RALLY = "rally"  # Multi-shot rally per scene
 
 
 @dataclass
@@ -149,9 +144,9 @@ class GeneratorConfig:
     rally: RallyConfig = field(default_factory=RallyConfig)
     camera: CameraConfig = field(default_factory=CameraConfig)
     sampling: SamplingConfig = field(default_factory=SamplingConfig)
-
-    # Generation mode
-    mode: GenerationMode = GenerationMode.SHOT
+    targeted_velocity: TargetedVelocityConfig = field(
+        default_factory=TargetedVelocityConfig
+    )
 
     # Camera sampling parameters
     num_cameras_sampled: int = 15  # Number of cameras to try per scene
@@ -163,12 +158,12 @@ class GeneratorConfig:
 class BLCSSceneGenerator:
     """Generates BLCS training scenes with controlled distribution.
 
-    Supports two modes:
-    - SHOT: Single shot per scene (original behavior)
-    - RALLY: Multi-shot rally per scene
+    Generates rally scenes with distribution-controlled shot sampling.
+    Each shot in a rally (including 2nd+ shots) uses the DistributionSampler
+    to control (from_cell, side, category, to_cell) distribution.
 
-    Workflow (PLCS-aligned):
-    1. Generate shot/rally via physics simulation
+    Workflow:
+    1. Generate rally via physics simulation with distribution control
     2. Sample multiple candidate cameras (num_cameras_sampled)
     3. Filter by ball visibility threshold
     4. If any valid cameras, yield scene with all valid cameras
@@ -183,21 +178,26 @@ class BLCSSceneGenerator:
         self.device = torch.device(device)
 
         self.cell_manager = CellManager()
+        self.distribution_sampler = DistributionSampler(self.config.sampling)
+
         self.shot_simulator = ShotSimulator(
             physics_config=self.config.physics,
             shot_config=self.config.shot,
             cell_manager=self.cell_manager,
             device=device,
         )
+
+        # Rally simulator with distribution sampler for 2nd+ shot control
         self.rally_simulator = RallySimulator(
             physics_config=self.config.physics,
             shot_config=self.config.shot,
             rally_config=self.config.rally,
             cell_manager=self.cell_manager,
+            targeted_velocity_config=self.config.targeted_velocity,
+            distribution_sampler=self.distribution_sampler,
             device=device,
         )
         self.camera_projector = CameraProjector(self.config.camera)
-        self.distribution_sampler = DistributionSampler(self.config.sampling)
         self.physics = BallPhysics(self.config.physics)
 
         # Track statistics
@@ -447,7 +447,7 @@ class BLCSSceneGenerator:
             attempts += 1
 
             # Random starting position
-            from_cell = torch.randint(0, 20, (1,)).item()
+            from_cell = int(torch.randint(0, 20, (1,)).item())
             side = "near" if torch.rand(1).item() < 0.5 else "far"
 
             scene_id = f"rally_{scene_counter:06d}"
@@ -474,23 +474,18 @@ class BLCSSceneGenerator:
 
     def generate(
         self,
-        num_scenes: int | None = None,
-    ) -> Iterator[BLCSSceneData | RallySceneData]:
-        """Generate scenes based on configured mode.
+        num_scenes: int,
+    ) -> Iterator[RallySceneData]:
+        """Generate rally scenes with distribution-controlled sampling.
 
         Args:
-            num_scenes: Number of scenes for rally mode (ignored in shot mode).
+            num_scenes: Number of rally scenes to generate.
 
         Yields:
-            Scene data (BLCSSceneData or RallySceneData depending on mode).
+            RallySceneData for each generated rally scene.
 
         """
-        if self.config.mode == GenerationMode.SHOT:
-            yield from self.generate_all_scenes()
-        else:
-            if num_scenes is None:
-                raise ValueError("num_scenes is required for rally mode")
-            yield from self.generate_rally_scenes(num_scenes)
+        yield from self.generate_rally_scenes(num_scenes)
 
     def get_statistics(self) -> dict:
         """Get current generation statistics.

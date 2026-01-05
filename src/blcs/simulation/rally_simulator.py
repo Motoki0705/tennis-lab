@@ -29,10 +29,16 @@ from src.blcs.simulation.ball_physics import (
 )
 from src.blcs.simulation.cell_manager import CellManager, ShotCategory
 from src.blcs.simulation.shot_simulator import ShotConfig, ShotSimulator
+from src.blcs.simulation.targeted_velocity_sampler import (
+    TargetedVelocityConfig,
+    TargetedVelocitySampler,
+)
 from src.utils.geometry import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
 if TYPE_CHECKING:
-    pass
+    from src.blcs.generate_dataset.sampling.distribution_sampler import (
+        DistributionSampler,
+    )
 
 
 class RallyEndReason(Enum):
@@ -156,6 +162,8 @@ class RallySimulator:
         shot_config: ShotConfig | None = None,
         rally_config: RallyConfig | None = None,
         cell_manager: CellManager | None = None,
+        targeted_velocity_config: TargetedVelocityConfig | None = None,
+        distribution_sampler: DistributionSampler | None = None,
         device: str | torch.device = "cpu",
     ) -> None:
         """Initialize rally simulator.
@@ -165,6 +173,9 @@ class RallySimulator:
             shot_config: Shot generation parameters.
             rally_config: Rally-specific parameters.
             cell_manager: Cell manager for position sampling.
+            targeted_velocity_config: Configuration for targeted velocity sampling.
+            distribution_sampler: Distribution sampler for controlled shot distribution.
+                When provided, 2nd+ shots will use distribution-controlled sampling.
             device: Torch device.
 
         """
@@ -182,6 +193,16 @@ class RallySimulator:
             cell_manager=cell_manager,
             device=device,
         )
+
+        # Create targeted velocity sampler for cell-to-cell shots
+        self.targeted_velocity_sampler = TargetedVelocitySampler(
+            cell_manager=self.cell_manager,
+            config=targeted_velocity_config,
+            device=device,
+        )
+
+        # Distribution sampler for controlled shot distribution
+        self.distribution_sampler = distribution_sampler
 
     def check_rally_end(
         self,
@@ -253,6 +274,7 @@ class RallySimulator:
         self,
         ball_pos_at_return: Tensor,
         from_side: str,
+        target_cell: int | None = None,
     ) -> BallState:
         """Sample initial state for return shot.
 
@@ -262,12 +284,15 @@ class RallySimulator:
         Args:
             ball_pos_at_return: Ball position at return timing.
             from_side: Side of the court making the return ("near" or "far").
+            target_cell: Optional target cell ID to aim for. If provided,
+                uses TargetedVelocitySampler for velocity calculation.
 
         Returns:
             BallState for the return shot.
 
         """
         cfg = self.rally_config
+        target_side = "far" if from_side == "near" else "near"
 
         # Adjust position to return height
         z_min, z_max = cfg.return_z_range
@@ -276,8 +301,16 @@ class RallySimulator:
         position = ball_pos_at_return.clone()
         position[2] = return_height
 
-        # Sample velocity using shot simulator's method
-        velocity = self.shot_simulator._sample_velocity(from_side)
+        # Sample velocity - targeted if target_cell specified, random otherwise
+        if target_cell is not None:
+            velocity = self.targeted_velocity_sampler.sample_velocity_for_target_cell(
+                start_pos=position,
+                target_cell=target_cell,
+                target_side=target_side,
+                from_side=from_side,
+            )
+        else:
+            velocity = self.shot_simulator._sample_velocity(from_side)
 
         # Sample spin
         spin = self.shot_simulator._sample_spin()
@@ -292,31 +325,10 @@ class RallySimulator:
             side: "near" or "far".
 
         Returns:
-            Cell ID (0-19), or 0 if position is outside all cells.
+            Cell ID (0-19).
 
         """
-        # Use cell manager to find closest cell
-        # For now, use a simple approximation
-        x, y, _ = position.tolist()
-
-        # Determine cell based on x position (simplified)
-        # Cells are arranged in a grid on each side
-        if side == "near":
-            # Near side: y < 0
-            base_cell = 0 if y > -self.COURT_Y_LIMIT / 2 else 6  # Service box/baseline
-        else:
-            # Far side: y > 0
-            base_cell = 10 if y < self.COURT_Y_LIMIT / 2 else 16  # Service box/baseline
-
-        # Adjust for x position (left/center/right)
-        if x < -self.COURT_X_LIMIT / 3:
-            cell_offset = 0
-        elif x > self.COURT_X_LIMIT / 3:
-            cell_offset = 2
-        else:
-            cell_offset = 1
-
-        return min(base_cell + cell_offset, 19)
+        return self.cell_manager.position_to_cell_id(position, side)
 
     def _sample_valid_first_shot(
         self,
@@ -369,6 +381,67 @@ class RallySimulator:
         # Failed to find valid first shot after max retries
         return None
 
+    def _get_needed_target_cells(
+        self,
+        from_cell: int,
+        from_side: str,
+    ) -> list[int]:
+        """Get target cells that need more samples based on distribution.
+
+        If distribution_sampler is not set, returns all in-court cells.
+
+        Args:
+            from_cell: Origin cell ID.
+            from_side: Side making the shot.
+
+        Returns:
+            List of target cell IDs that need more samples.
+
+        """
+        if self.distribution_sampler is None:
+            # No distribution control - return all in-court cells
+            return list(range(9))
+
+        # Get cells that still need samples
+        needed: list[tuple[int, int]] = []  # (cell_id, deficit)
+
+        # Check IN_COURT cells (0-8) - prioritize these
+        for to_cell in range(9):
+            if self.distribution_sampler.should_accept(
+                from_cell, from_side, ShotCategory.IN_COURT, to_cell
+            ):
+                current = self.distribution_sampler.get_current_count(
+                    from_cell, from_side, ShotCategory.IN_COURT, to_cell
+                )
+                target = self.distribution_sampler.get_target_count(
+                    from_cell, from_side, ShotCategory.IN_COURT, to_cell
+                )
+                deficit = target - current
+                needed.append((to_cell, deficit))
+
+        # Check OUT_COURT cells (9-19) with lower priority
+        for to_cell in range(9, 20):
+            if self.distribution_sampler.should_accept(
+                from_cell, from_side, ShotCategory.OUT_COURT, to_cell
+            ):
+                current = self.distribution_sampler.get_current_count(
+                    from_cell, from_side, ShotCategory.OUT_COURT, to_cell
+                )
+                target = self.distribution_sampler.get_target_count(
+                    from_cell, from_side, ShotCategory.OUT_COURT, to_cell
+                )
+                deficit = target - current
+                # Lower priority for out-court
+                needed.append((to_cell, deficit // 2))
+
+        if not needed:
+            # All targets met - return random in-court cells
+            return list(range(9))
+
+        # Sort by deficit (highest first) and return cell IDs
+        needed.sort(key=lambda x: -x[1])
+        return [cell_id for cell_id, _ in needed]
+
     def _sample_valid_return_shot(
         self,
         ball_pos_at_return: Tensor,
@@ -376,11 +449,10 @@ class RallySimulator:
         from_cell: int,
         max_frames: int,
     ) -> tuple[dict, BallState] | None:
-        """Sample a return shot that continues the rally (doesn't end immediately).
+        """Sample a return shot with distribution control.
 
-        For 2nd shot onwards, we retry sampling until we find a shot that:
-        - Doesn't hit the net before first bounce
-        - Bounces within court + margin
+        For 2nd shot onwards, uses TargetedVelocitySampler to aim at specific
+        cells and DistributionSampler to control the distribution of shots.
 
         Args:
             ball_pos_at_return: Ball position at return timing.
@@ -394,11 +466,18 @@ class RallySimulator:
         """
         cfg = self.rally_config
 
-        for _ in range(cfg.max_return_retries):
-            # Sample initial state for return
+        # Get target cells that need more samples
+        needed_targets = self._get_needed_target_cells(from_cell, from_side)
+
+        for attempt in range(cfg.max_return_retries):
+            # Cycle through needed targets
+            target_cell = needed_targets[attempt % len(needed_targets)]
+
+            # Sample initial state with targeted velocity
             initial_state = self._sample_return_initial_state(
                 ball_pos_at_return=ball_pos_at_return,
                 from_side=from_side,
+                target_cell=target_cell,
             )
 
             # Simulate the shot
@@ -415,13 +494,35 @@ class RallySimulator:
                 hit_net_before_bounce=shot_result["hit_net_before_bounce"],
             )
 
-            # Accept shots that don't end the rally immediately
-            # (or end with double bounce, which is a valid rally continuation)
-            if not should_end:
+            # Get actual category and to_cell
+            category = shot_result["category"]
+            to_cell = shot_result["to_cell"]
+
+            # Check distribution acceptance
+            should_accept_distribution = True
+            if self.distribution_sampler is not None:
+                should_accept_distribution = self.distribution_sampler.should_accept(
+                    from_cell, from_side, category, to_cell
+                )
+
+            # Accept shots that:
+            # 1. Don't end the rally immediately AND meet distribution requirements
+            # 2. Or have double bounce (valid rally end)
+            if not should_end and should_accept_distribution:
+                # Record sample if distribution sampler is set
+                if self.distribution_sampler is not None:
+                    self.distribution_sampler.record_sample(
+                        from_cell, from_side, category, to_cell
+                    )
                 return shot_result, initial_state
 
             # Also accept if double bounce occurred (opponent didn't return)
+            # These are valid rally endings regardless of distribution
             if shot_result["t_bounce2_sim"] >= 0:
+                if self.distribution_sampler is not None:
+                    self.distribution_sampler.record_sample(
+                        from_cell, from_side, category, to_cell
+                    )
                 return shot_result, initial_state
 
         # Failed to find valid return shot after max retries

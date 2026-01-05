@@ -1,0 +1,22 @@
+# Targeted velocity sampler configuration
+# Used for computing velocity to aim at specific target cells
+
+# Azimuth noise (degrees, added to computed azimuth)
+azimuth_noise_deg: 5.0
+
+# Elevation noise (degrees, added to computed elevation)
+elevation_noise_deg: 3.0
+
+# Speed variation factor (multiplier range: 1 +/- speed_variation)
+speed_variation: 0.15
+
+# Minimum/maximum elevation constraints (degrees)
+min_elevation_deg: 3.0
+max_elevation_deg: 35.0
+
+# Minimum/maximum speed constraints (m/s)
+min_speed: 12.0
+max_speed: 40.0
+
+# Gravity for projectile calculation (m/s^2)
+gravity: 9.81
