@@ -13,8 +13,18 @@ import torch
 from torch.utils.data import Dataset
 
 from src.base.data.augmentation import augment_keypoints
+from src.plcs.data.index_cache import (
+    compute_config_hash,
+    compute_scene_files_hash,
+    get_index_cache_path,
+    load_cached_index,
+    save_cached_index,
+)
+from src.plcs.data.scene_cache import (
+    extract_scene_meta_parallel,
+    get_scene_cache,
+)
 from src.plcs.data.types import PLCSSequenceBatch
-from src.plcs.generate_dataset.io.scene_loader import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -33,6 +43,8 @@ class SceneSequenceDataset(Dataset[PLCSSequenceBatch]):
         config: DictConfig | None = None,
         augment: bool = True,
         camera_mode: str = "random",  # "random", "all", or specific index
+        cache_maxsize: int = 128,  # LRU cache size for scenes
+        parallel_workers: int = 8,  # Threads for metadata extraction
     ) -> None:
         super().__init__()
 
@@ -40,6 +52,7 @@ class SceneSequenceDataset(Dataset[PLCSSequenceBatch]):
         self.config = config or {}
         self.augment = augment
         self.camera_mode = camera_mode
+        self.parallel_workers = parallel_workers
 
         data_cfg = self.config.get("data", {})
         self.seq_len: int = int(data_cfg.get("seq_len", 16))
@@ -48,6 +61,12 @@ class SceneSequenceDataset(Dataset[PLCSSequenceBatch]):
         self.visibility_drop_prob: float = float(
             data_cfg.get("visibility_drop_prob", 0.05)
         )
+
+        # Get shared scene cache (lazy loading with LRU)
+        self._scene_cache = get_scene_cache(maxsize=cache_maxsize)
+
+        # Scene paths (no longer loading all scenes into memory)
+        self.scene_paths: list[Path] = []
 
         # Index all scene files
         scenes_subdir = self.scene_dir / "scenes"
@@ -61,41 +80,87 @@ class SceneSequenceDataset(Dataset[PLCSSequenceBatch]):
         self._build_index()
 
     def _build_index(self) -> None:
-        """Build sample index from scene files.
+        """Build sample index with parallel metadata extraction.
 
         Index entries are (scene_idx, cam_idx, start_frame).
         """
-        self.index: list[tuple[int, int, int]] = []
-        self.scenes: list = []
+        # Check for cached index
+        config_hash = compute_config_hash(
+            {
+                "camera_mode": self.camera_mode,
+                "seq_len": self.seq_len,
+                "seq_stride": self.seq_stride,
+            },
+            ["camera_mode", "seq_len", "seq_stride"],
+        )
+        scene_hash = compute_scene_files_hash(self.scene_files)
+        cache_path = get_index_cache_path(
+            self.scene_dir, "SceneSequenceDataset", config_hash
+        )
 
-        for scene_idx, scene_file in enumerate(self.scene_files):
-            scene = load_scene(scene_file)
-            self.scenes.append(scene)
+        cached = load_cached_index(cache_path, scene_hash)
+        if cached is not None:
+            self.index = cached.index
+            self.scene_paths = [Path(m["path"]) for m in cached.scene_metas]
+            print(
+                f"SceneSequenceDataset: loaded cached index "
+                f"({len(self.index)} sequences)"
+            )
+            return
 
-            num_frames = scene["meta"]["num_frames"]
-            num_cameras = len(scene["cameras"])
+        # Extract metadata in parallel (no full scene loading!)
+        print(
+            f"SceneSequenceDataset: extracting metadata from "
+            f"{len(self.scene_files)} scenes..."
+        )
+        scene_metas = extract_scene_meta_parallel(
+            self.scene_files,
+            max_workers=self.parallel_workers,
+        )
 
-            if num_frames < self.seq_len:
+        # Build index from metadata only
+        self.index = []
+        self.scene_paths = []
+
+        for meta in scene_metas:
+            if meta.num_frames < self.seq_len:
                 # Skip scenes shorter than the desired sequence length
                 continue
 
-            max_start = num_frames - self.seq_len
+            self.scene_paths.append(meta.scene_path)
+            actual_idx = len(self.scene_paths) - 1
+
+            max_start = meta.num_frames - self.seq_len
 
             if self.camera_mode == "all":
                 # All cameras, sliding window over frames
                 for start in range(0, max_start + 1, self.seq_stride):
-                    for cam_idx in range(num_cameras):
-                        self.index.append((scene_idx, cam_idx, start))
+                    for cam_idx in range(meta.num_cameras):
+                        self.index.append((actual_idx, cam_idx, start))
             elif self.camera_mode == "random":
                 # Camera is selected randomly at __getitem__ time
                 for start in range(0, max_start + 1, self.seq_stride):
-                    self.index.append((scene_idx, -1, start))  # -1 = random
+                    self.index.append((actual_idx, -1, start))  # -1 = random
             else:
                 # Specific camera index
                 cam_idx = int(self.camera_mode)
-                if cam_idx < num_cameras:
+                if cam_idx < meta.num_cameras:
                     for start in range(0, max_start + 1, self.seq_stride):
-                        self.index.append((scene_idx, cam_idx, start))
+                        self.index.append((actual_idx, cam_idx, start))
+
+        # Save to cache
+        scene_metas_serializable = [
+            {
+                "path": str(m.scene_path),
+                "num_frames": m.num_frames,
+                "num_cameras": m.num_cameras,
+            }
+            for m in scene_metas
+            if m.num_frames >= self.seq_len
+        ]
+        save_cached_index(
+            cache_path, self.index, scene_metas_serializable, config_hash, scene_hash
+        )
 
         print(
             "SceneSequenceDataset: indexed "
@@ -118,7 +183,8 @@ class SceneSequenceDataset(Dataset[PLCSSequenceBatch]):
             - rotation: (T, 2)
         """
         scene_idx, cam_idx, start = self.index[idx]
-        scene = self.scenes[scene_idx]
+        # Load scene on-demand via LRU cache
+        scene = self._scene_cache.get(self.scene_paths[scene_idx])
 
         # Select camera
         if cam_idx < 0:

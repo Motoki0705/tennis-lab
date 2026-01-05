@@ -15,13 +15,23 @@ from torch import Tensor
 from torch.utils.data import Dataset
 
 from src.base.data.augmentation import augment_keypoints
+from src.plcs.data.index_cache import (
+    compute_config_hash,
+    compute_scene_files_hash,
+    get_index_cache_path,
+    load_cached_index,
+    save_cached_index,
+)
+from src.plcs.data.scene_cache import (
+    extract_scene_meta_parallel,
+    get_scene_cache,
+)
 from src.plcs.data.types import (
     PLCSMultiViewBatch,
     PLCSMultiViewBatchCollated,
     PLCSMultiViewSequenceBatch,
     PLCSMultiViewSequenceBatchCollated,
 )
-from src.plcs.generate_dataset.io.scene_loader import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -42,6 +52,8 @@ class MultiViewSceneDataset(Dataset[PLCSMultiViewBatch]):
         augment: bool = True,
         num_views: int = 2,
         min_cameras: int = 2,
+        cache_maxsize: int = 128,  # LRU cache size for scenes
+        parallel_workers: int = 8,  # Threads for metadata extraction
     ) -> None:
         """Initialize the multi-view scene dataset.
 
@@ -51,6 +63,8 @@ class MultiViewSceneDataset(Dataset[PLCSMultiViewBatch]):
             augment: Whether to apply data augmentation.
             num_views: Number of camera views to return per sample.
             min_cameras: Minimum cameras required in a scene (skip otherwise).
+            cache_maxsize: Maximum number of scenes to keep in LRU cache.
+            parallel_workers: Number of threads for parallel metadata extraction.
 
         """
         self.scene_dir = Path(scene_dir)
@@ -58,11 +72,18 @@ class MultiViewSceneDataset(Dataset[PLCSMultiViewBatch]):
         self.augment = augment
         self.num_views = num_views
         self.min_cameras = min_cameras
+        self.parallel_workers = parallel_workers
 
         # Augmentation parameters
         data_cfg = self.config.get("data", {})
         self.kp_noise_std = data_cfg.get("keypoint_noise_std", 0.01)
         self.visibility_drop_prob = data_cfg.get("visibility_drop_prob", 0.05)
+
+        # Get shared scene cache (lazy loading with LRU)
+        self._scene_cache = get_scene_cache(maxsize=cache_maxsize)
+
+        # Scene paths (no longer loading all scenes into memory)
+        self.scene_paths: list[Path] = []
 
         # Index all scene files
         scenes_subdir = self.scene_dir / "scenes"
@@ -76,31 +97,72 @@ class MultiViewSceneDataset(Dataset[PLCSMultiViewBatch]):
         self._build_index()
 
     def _build_index(self) -> None:
-        """Build sample index from scene files.
+        """Build sample index with parallel metadata extraction.
 
         Only includes scenes with at least min_cameras cameras.
         """
-        self.index: list[tuple[int, int]] = []
-        self.scenes: list = []
+        # Check for cached index
+        config_hash = compute_config_hash(
+            {"min_cameras": self.min_cameras},
+            ["min_cameras"],
+        )
+        scene_hash = compute_scene_files_hash(self.scene_files)
+        cache_path = get_index_cache_path(
+            self.scene_dir, "MultiViewSceneDataset", config_hash
+        )
 
-        for _scene_idx, scene_file in enumerate(self.scene_files):
-            scene = load_scene(scene_file)
-            num_cameras = len(scene["cameras"])
+        cached = load_cached_index(cache_path, scene_hash)
+        if cached is not None:
+            self.index = cached.index
+            self.scene_paths = [Path(m["path"]) for m in cached.scene_metas]
+            print(
+                f"MultiViewSceneDataset: loaded cached index "
+                f"({len(self.index)} samples from {len(self.scene_paths)} scenes)"
+            )
+            return
 
+        # Extract metadata in parallel (no full scene loading!)
+        print(
+            f"MultiViewSceneDataset: extracting metadata from "
+            f"{len(self.scene_files)} scenes..."
+        )
+        scene_metas = extract_scene_meta_parallel(
+            self.scene_files,
+            max_workers=self.parallel_workers,
+        )
+
+        # Build index from metadata only
+        self.index = []
+        self.scene_paths = []
+
+        for meta in scene_metas:
             # Skip scenes without enough cameras
-            if num_cameras < self.min_cameras:
+            if meta.num_cameras < self.min_cameras:
                 continue
 
-            self.scenes.append(scene)
-            actual_scene_idx = len(self.scenes) - 1
+            self.scene_paths.append(meta.scene_path)
+            actual_scene_idx = len(self.scene_paths) - 1
 
-            num_frames = scene["meta"]["num_frames"]
-            for frame_idx in range(num_frames):
+            for frame_idx in range(meta.num_frames):
                 self.index.append((actual_scene_idx, frame_idx))
+
+        # Save to cache
+        scene_metas_serializable = [
+            {
+                "path": str(m.scene_path),
+                "num_frames": m.num_frames,
+                "num_cameras": m.num_cameras,
+            }
+            for m in scene_metas
+            if m.num_cameras >= self.min_cameras
+        ]
+        save_cached_index(
+            cache_path, self.index, scene_metas_serializable, config_hash, scene_hash
+        )
 
         print(
             f"MultiViewSceneDataset: indexed {len(self.index)} samples "
-            f"from {len(self.scenes)} scenes (min_cameras={self.min_cameras})"
+            f"from {len(self.scene_paths)} scenes (min_cameras={self.min_cameras})"
         )
 
     def __len__(self) -> int:
@@ -118,7 +180,8 @@ class MultiViewSceneDataset(Dataset[PLCSMultiViewBatch]):
 
         """
         scene_idx, frame_idx = self.index[idx]
-        scene = self.scenes[scene_idx]
+        # Load scene on-demand via LRU cache
+        scene = self._scene_cache.get(self.scene_paths[scene_idx])
         num_cameras = len(scene["cameras"])
 
         # Select random subset of cameras
@@ -285,6 +348,8 @@ class MultiViewSequenceDataset(Dataset[PLCSMultiViewSequenceBatch]):
         augment: bool = True,
         num_views: int = 2,
         min_cameras: int = 2,
+        cache_maxsize: int = 128,  # LRU cache size for scenes
+        parallel_workers: int = 8,  # Threads for metadata extraction
     ) -> None:
         """Initialize the multi-view sequence dataset.
 
@@ -294,6 +359,8 @@ class MultiViewSequenceDataset(Dataset[PLCSMultiViewSequenceBatch]):
             augment: Whether to apply data augmentation.
             num_views: Number of camera views to return per sample.
             min_cameras: Minimum cameras required in a scene.
+            cache_maxsize: Maximum number of scenes to keep in LRU cache.
+            parallel_workers: Number of threads for parallel metadata extraction.
 
         """
         self.scene_dir = Path(scene_dir)
@@ -301,6 +368,7 @@ class MultiViewSequenceDataset(Dataset[PLCSMultiViewSequenceBatch]):
         self.augment = augment
         self.num_views = num_views
         self.min_cameras = min_cameras
+        self.parallel_workers = parallel_workers
 
         # Sequence parameters
         data_cfg = self.config.get("data", {})
@@ -322,6 +390,12 @@ class MultiViewSequenceDataset(Dataset[PLCSMultiViewSequenceBatch]):
             r = data_cfg["seq_len_range"]
             self.seq_len_range = (int(r[0]), int(r[1]))
 
+        # Get shared scene cache (lazy loading with LRU)
+        self._scene_cache = get_scene_cache(maxsize=cache_maxsize)
+
+        # Scene paths (no longer loading all scenes into memory)
+        self.scene_paths: list[Path] = []
+
         # Index all scene files
         scenes_subdir = self.scene_dir / "scenes"
         self.scene_files = sorted(scenes_subdir.glob("scene_*.npz"))
@@ -334,33 +408,80 @@ class MultiViewSequenceDataset(Dataset[PLCSMultiViewSequenceBatch]):
         self._build_index()
 
     def _build_index(self) -> None:
-        """Build sample index from scene files."""
-        self.index: list[tuple[int, int]] = []
-        self.scenes: list = []
-
+        """Build sample index with parallel metadata extraction."""
         # Determine minimum seq_len for indexing
         min_seq_for_index = self.seq_len
         if self.seq_len_range is not None:
             min_seq_for_index = self.seq_len_range[0]
 
-        for _scene_idx, scene_file in enumerate(self.scene_files):
-            scene = load_scene(scene_file)
-            num_cameras = len(scene["cameras"])
-            num_frames = scene["meta"]["num_frames"]
+        # Check for cached index
+        config_hash = compute_config_hash(
+            {
+                "min_cameras": self.min_cameras,
+                "min_seq_for_index": min_seq_for_index,
+                "seq_stride": self.seq_stride,
+            },
+            ["min_cameras", "min_seq_for_index", "seq_stride"],
+        )
+        scene_hash = compute_scene_files_hash(self.scene_files)
+        cache_path = get_index_cache_path(
+            self.scene_dir, "MultiViewSequenceDataset", config_hash
+        )
 
-            if num_cameras < self.min_cameras or num_frames < min_seq_for_index:
+        cached = load_cached_index(cache_path, scene_hash)
+        if cached is not None:
+            self.index = cached.index
+            self.scene_paths = [Path(m["path"]) for m in cached.scene_metas]
+            print(
+                f"MultiViewSequenceDataset: loaded cached index "
+                f"({len(self.index)} samples from {len(self.scene_paths)} scenes)"
+            )
+            return
+
+        # Extract metadata in parallel (no full scene loading!)
+        print(
+            f"MultiViewSequenceDataset: extracting metadata from "
+            f"{len(self.scene_files)} scenes..."
+        )
+        scene_metas = extract_scene_meta_parallel(
+            self.scene_files,
+            max_workers=self.parallel_workers,
+        )
+
+        # Build index from metadata only
+        self.index = []
+        self.scene_paths = []
+
+        for meta in scene_metas:
+            if meta.num_cameras < self.min_cameras:
+                continue
+            if meta.num_frames < min_seq_for_index:
                 continue
 
-            self.scenes.append(scene)
-            actual_scene_idx = len(self.scenes) - 1
+            self.scene_paths.append(meta.scene_path)
+            actual_scene_idx = len(self.scene_paths) - 1
 
-            max_start = num_frames - min_seq_for_index
+            max_start = meta.num_frames - min_seq_for_index
             for start in range(0, max_start + 1, self.seq_stride):
                 self.index.append((actual_scene_idx, start))
 
+        # Save to cache
+        scene_metas_serializable = [
+            {
+                "path": str(m.scene_path),
+                "num_frames": m.num_frames,
+                "num_cameras": m.num_cameras,
+            }
+            for m in scene_metas
+            if m.num_cameras >= self.min_cameras and m.num_frames >= min_seq_for_index
+        ]
+        save_cached_index(
+            cache_path, self.index, scene_metas_serializable, config_hash, scene_hash
+        )
+
         print(
             f"MultiViewSequenceDataset: indexed {len(self.index)} samples "
-            f"from {len(self.scenes)} scenes"
+            f"from {len(self.scene_paths)} scenes"
         )
 
     def __len__(self) -> int:
@@ -376,7 +497,8 @@ class MultiViewSequenceDataset(Dataset[PLCSMultiViewSequenceBatch]):
 
         """
         scene_idx, start = self.index[idx]
-        scene = self.scenes[scene_idx]
+        # Load scene on-demand via LRU cache
+        scene = self._scene_cache.get(self.scene_paths[scene_idx])
         num_cameras = len(scene["cameras"])
         num_frames = scene["meta"]["num_frames"]
 
