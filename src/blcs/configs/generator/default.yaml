@@ -1,7 +1,4 @@
-# Generation mode: "shot" for single shots, "rally" for multi-shot rallies
-mode: shot
-
-# Number of scenes for rally mode (ignored in shot mode)
+# Number of rally scenes to generate
 num_rally_scenes: 1000
 
 num_cameras_sampled: 8

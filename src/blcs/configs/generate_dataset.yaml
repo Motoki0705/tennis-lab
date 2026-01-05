@@ -4,6 +4,7 @@ defaults:
   - rally: default
   - camera: default
   - sampling: default
+  - targeted_velocity: default
   - generator: default
   - run: generate_dataset
   - _self_
