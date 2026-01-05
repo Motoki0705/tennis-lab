@@ -340,3 +340,54 @@ class CellManager:
 
         """
         return list(range(9, 20))
+
+    def get_cell_center(
+        self,
+        cell_id: int,
+        side: str,
+        device: str | torch.device = "cpu",
+    ) -> Tensor:
+        """Get the center position of a cell.
+
+        Args:
+            cell_id: Cell ID (0-19).
+            side: "near" or "far".
+            device: Torch device.
+
+        Returns:
+            Tensor: Center position [3] (x, y, z=0).
+
+        """
+        bounds = self.cell_id_to_bounds(cell_id, side)
+
+        x = (bounds.x_min + bounds.x_max) / 2
+        y = (bounds.y_min + bounds.y_max) / 2
+
+        return torch.tensor([x, y, 0.0], device=device)
+
+    def sample_bounce_position_in_cell(
+        self,
+        cell_id: int,
+        side: str,
+        device: str | torch.device = "cpu",
+    ) -> Tensor:
+        """Sample a random ground-level position within a cell for targeting.
+
+        Unlike sample_position_in_cell which includes height, this returns z=0
+        for use as a bounce target position.
+
+        Args:
+            cell_id: Cell ID (0-19).
+            side: "near" or "far".
+            device: Torch device.
+
+        Returns:
+            Tensor: Position [3] (x, y, z=0).
+
+        """
+        bounds = self.cell_id_to_bounds(cell_id, side)
+
+        x = bounds.x_min + torch.rand(1).item() * (bounds.x_max - bounds.x_min)
+        y = bounds.y_min + torch.rand(1).item() * (bounds.y_max - bounds.y_min)
+
+        return torch.tensor([x, y, 0.0], device=device)
