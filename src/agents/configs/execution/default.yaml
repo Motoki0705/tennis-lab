@@ -1,4 +1,4 @@
 # Default execution configuration
 parallel: true
 max_workers: 4
-timeout_s: 120.0
+timeout_s: 600.0  # 10 minutes - LLM providers often need extended time for complex tasks
