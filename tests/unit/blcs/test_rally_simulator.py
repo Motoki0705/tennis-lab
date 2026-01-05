@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 import torch
 
-from src.blcs.simulation.ball_physics import PhysicsConfig
 from src.blcs.simulation.rally_simulator import (
     RallyConfig,
     RallyEndReason,
