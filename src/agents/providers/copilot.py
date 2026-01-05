@@ -12,10 +12,13 @@ class CopilotRunner(ProviderRunner):
     provider = Provider.COPILOT
 
     def get_command(self, request: ProviderRequest) -> list[str]:
-        """Build the copilot CLI command."""
-        # -p: non-interactive mode (print response and exit)
+        """Build the copilot CLI command.
+
+        Note: The -p/--prompt option requires the text directly after it.
+        """
         # --allow-all-tools: skip all tool permission prompts
-        cmd = ["copilot", "-p", "--allow-all-tools"]
+        # --allow-all-paths: allow access to any file path
+        cmd = ["copilot", "--allow-all-tools", "--allow-all-paths"]
 
         if request.model:
             cmd.extend(["--model", request.model])
@@ -23,7 +26,8 @@ class CopilotRunner(ProviderRunner):
         if request.system_prompt:
             cmd.extend(["--system-prompt", request.system_prompt])
 
-        cmd.append(request.prompt)
+        # -p/--prompt must come last with the prompt text
+        cmd.extend(["-p", request.prompt])
         return cmd
 
     def check_binary(self) -> bool:

@@ -59,17 +59,11 @@ class PreCommitResult:
         return asdict(self)
 
     def format_output(self) -> str:
-        """Format as structured text output."""
-        lines = [
-            f"STATUS: {self.status}",
-            f"FIXED: {str(self.fixed).lower()}",
-            f"FILES_TOUCHED: {','.join(self.files_touched) if self.files_touched else ''}",
-            f"REMAINING_ERRORS: {','.join(self.remaining_errors) if self.remaining_errors else ''}",
-            f"SUMMARY: {self.summary}",
-            f"NEEDS_MAIN: {str(self.needs_main).lower()}",
-            f"MESSAGE_FOR_MAIN: {self.message_for_main}",
-        ]
-        return "\n".join(lines)
+        """Format as JSON output (single line for easy parsing)."""
+        import json
+
+        return json.dumps(self.to_dict())
+
 
 
 def get_repo_root() -> Path:
