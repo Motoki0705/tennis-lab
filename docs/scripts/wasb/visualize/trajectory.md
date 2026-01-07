@@ -11,12 +11,12 @@
 ```bash
 # 基本的な使用法
 uv run python -m src.wasb.scripts.visualize.trajectory \
-  visualization.checkpoint=outputs/trajectory/logs/version_0/checkpoints/last.ckpt
+  visualization.checkpoint=outputs/wasb/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt
 
 # 出力ディレクトリとサンプル数を指定
 uv run python -m src.wasb.scripts.visualize.trajectory \
   visualization.checkpoint=... \
-  visualization.output_dir=outputs/trajectory/vis \
+  visualization.output_dir=outputs/wasb/trajectory/visualize/trajectory_bilstm \
   visualization.num_samples=16
 
 # データ分割を指定
@@ -47,7 +47,7 @@ defaults:
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
 | `checkpoint` | `null` | チェックポイントパス |
-| `output_dir` | `outputs/trajectory/vis` | 出力ディレクトリ |
+| `output_dir` | `outputs/wasb/trajectory/visualize/trajectory_bilstm` | 出力ディレクトリ |
 | `split` | `test` | データ分割 (train/val/test) |
 | `num_samples` | `8` | 可視化するサンプル数 |
 
@@ -115,7 +115,7 @@ defaults:
 ## 出力構造
 
 ```
-outputs/trajectory/vis/
+outputs/wasb/trajectory/visualize/trajectory_bilstm/
 ├── sample_0.png
 ├── sample_1.png
 ├── sample_2.png
@@ -130,11 +130,11 @@ uv run python -m src.wasb.scripts.train.trajectory
 
 # 2. 結果を可視化
 uv run python -m src.wasb.scripts.visualize.trajectory \
-  visualization.checkpoint=outputs/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt \
+  visualization.checkpoint=outputs/wasb/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt \
   visualization.num_samples=20
 
 # 3. 出力を確認
-ls outputs/trajectory/vis/
+ls outputs/wasb/trajectory/visualize/trajectory_bilstm/
 ```
 
 ## 評価のポイント

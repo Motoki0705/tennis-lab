@@ -15,7 +15,7 @@ uv run python -m src.wasb.scripts.visualize.ball_video video_path=data/tennis/ra
 # モデルとチェックポイントを指定
 uv run python -m src.wasb.scripts.visualize.ball_video \
   video_path=data/samples/clip.mp4 \
-  checkpoint=outputs/wasb/checkpoints/last.ckpt \
+  checkpoint=outputs/wasb/ball_detection/hrcnet/logs/version_0/checkpoints/last.ckpt \
   model=hrcnet \
   device=cuda
 
@@ -24,7 +24,7 @@ uv run python -m src.wasb.scripts.visualize.ball_video \
   video_path=... \
   completion.enabled=true \
   completion.method=bilstm \
-  completion.checkpoint_path=outputs/trajectory/checkpoints/last.ckpt
+  completion.checkpoint_path=outputs/wasb/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt
 
 # 出力パスを指定
 uv run python -m src.wasb.scripts.visualize.ball_video \
@@ -46,7 +46,7 @@ uv run python -m src.wasb.scripts.visualize.ball_video \
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
 | `video_path` | `data/samples/clip.mp4` | 入力動画パス |
-| `output_path` | `outputs/plot_ball_video/clip.mp4` | 出力動画パス |
+| `output_path` | `outputs/wasb/ball_detection/visualize/ball_video/clip.mp4` | 出力動画パス |
 | `checkpoint` | (WASB pretrained) | モデルチェックポイント |
 | `model` | `wasb` | モデル名 (wasb/hrcnet) |
 | `device` | `cuda` | デバイス |
@@ -125,7 +125,7 @@ uv run python -m src.wasb.scripts.visualize.ball_video \
 ## 出力例
 
 ```
-outputs/plot_ball_video/
+outputs/wasb/ball_detection/visualize/ball_video/
 └── clip.mp4    # ボール位置オーバーレイ動画
 ```
 

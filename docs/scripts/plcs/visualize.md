@@ -22,7 +22,7 @@ uv run python -m src.plcs.scripts.visualize visualization.frame=10 visualization
 uv run python -m src.plcs.scripts.visualize visualization.view=animation visualization.save=output.mp4
 
 # 予測モードで実行
-uv run python -m src.plcs.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/plcs/checkpoints/last.ckpt
+uv run python -m src.plcs.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt
 
 # 3Dビューを表示
 uv run python -m src.plcs.scripts.visualize visualization.view=3d
@@ -53,7 +53,7 @@ defaults:
 | `save` | `null` | 出力ファイルパス |
 | `save_input` | `null` | 入力シーンアニメーション保存パス |
 | `info` | `false` | シーン情報を表示するか |
-| `checkpoint` | `outputs/plcs/checkpoints/last.ckpt` | 予測モード用チェックポイント |
+| `checkpoint` | `outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt` | 予測モード用チェックポイント |
 | `device` | `auto` | デバイス (auto/cuda/cpu) |
 
 ### view オプション

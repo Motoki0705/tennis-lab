@@ -11,7 +11,7 @@
 ```bash
 # 基本的な使用法
 uv run python -m src.wasb.scripts.tools.encode_dinov3_patch_tokens \
-  model_checkpoint=outputs/wasb/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
+  model_checkpoint=outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
   output_dir=data/tennis/patch_embeddings
 
 # 拡張パスを増やす
@@ -150,7 +150,7 @@ heatmaps = np.load("Clip1_heatmaps.npy")  # shape: [T, H', W']
 ```bash
 # 1. パッチトークンをエンコード
 uv run python -m src.wasb.scripts.tools.encode_dinov3_patch_tokens \
-  model_checkpoint=outputs/wasb/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
+  model_checkpoint=outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
   output_dir=data/tennis/patch_embeddings \
   num_augments=3
 

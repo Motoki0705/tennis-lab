@@ -35,12 +35,12 @@ uv run python -m src.plcs.scripts.train_multiview
 # 5. 結果の可視化
 uv run python -m src.plcs.scripts.visualize \
   visualization.mode=predict \
-  visualization.checkpoint=outputs/plcs/checkpoints/last.ckpt
+  visualization.checkpoint=outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt
 
 # 6. マルチビュー結果の可視化
 uv run python -m src.plcs.scripts.visualize_multiview \
   visualization.mode=predict \
-  visualization.checkpoint=outputs/plcs_multiview/checkpoints/last.ckpt
+  visualization.checkpoint=outputs/plcs/multiview/logs/version_0/checkpoints/last.ckpt
 ```
 
 ## ディレクトリ構成

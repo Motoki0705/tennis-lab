@@ -27,7 +27,7 @@ seed: 42
 
 hydra:
   run:
-    dir: outputs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: outputs/wasb/ball_detection/visualize/save_one_sample_visuals/${now:%Y-%m-%d}/${now:%H-%M-%S}
   output_subdir: null
   job:
     chdir: false
