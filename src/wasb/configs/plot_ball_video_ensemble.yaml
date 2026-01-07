@@ -17,10 +17,33 @@ ensemble:
     - outputs/hrnet_frames3/logs/version_0/checkpoints/last.ckpt
     - outputs/hrnet_frames5/logs/version_0/checkpoints/last.ckpt
     - outputs/dinov3_heatmap_frames1/logs/version_0/checkpoints/last.ckpt
-  heatmap_threshold: 0.5
-  apply_sigmoid: true
   # If set, resizes each model output heatmap to this size before ensembling.
   output_heatmap_hw: null  # e.g. [288, 512]
+  tta:
+    enabled: false
+    transforms:
+      - type: identity
+  calibration:
+    temperature: 1.0
+    bias: 0.0
+  fusion:
+    weight_mode: fixed     # fixed | entropy | peak
+    model_weights: 1.0
+    eps: 1.0e-6
+  smoothing:
+    enabled: true
+    kernel:
+      type: disk           # disk | gaussian
+      radius: 4
+    accel_weight: 0.0
+    warmup_tau: 5.0
+  decode:
+    mode: fit              # expected | map | fit
+    fit_mode: quadratic    # quadratic | gaussian
+    fit_window: 3
+    confidence_mode: peak  # peak | entropy
+    visibility_threshold: 0.0
+    return_heatmap: true
 
 completion:
   enabled: false
