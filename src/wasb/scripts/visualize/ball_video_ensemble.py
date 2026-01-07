@@ -6,7 +6,6 @@ heatmaps, then writes an output video with the predicted ball location plotted.
 
 Example commands:
     `uv run python -m src.wasb.scripts.visualize.ball_video_ensemble video_path=data/samples/clip.mp4`
-    `uv run python -m src.wasb.scripts.visualize.ball_video_ensemble video_path=... ensemble.heatmap_threshold=0.5`
     `uv run python -m src.wasb.scripts.visualize.ball_video_ensemble video_path=... ensemble.checkpoints='[a.ckpt,b.ckpt,c.ckpt,d.ckpt,e.ckpt]'`
 
 Config entry point: `src/wasb/configs/plot_ball_video_ensemble.yaml`
@@ -121,19 +120,20 @@ def main(cfg: DictConfig) -> int:
     predictor = HeatmapEnsemblePredictor.load_from_checkpoint(
         tuple(checkpoints),
         device=device,
-        heatmap_threshold=float(getattr(ensemble_cfg, "heatmap_threshold", 0.5)),
-        apply_sigmoid=bool(getattr(ensemble_cfg, "apply_sigmoid", True)),
+        ensemble_cfg=ensemble_cfg,
         output_heatmap_hw=output_hw_tuple,
     )
 
     completer = None
     completion_cfg = getattr(cfg, "completion", None)
     if completion_cfg is not None and bool(getattr(completion_cfg, "enabled", True)):
+        decode_cfg = getattr(ensemble_cfg, "decode", None)
+        visibility_threshold = float(getattr(decode_cfg, "visibility_threshold", 0.0)) if decode_cfg else 0.0
         completer = build_completer(
             method=str(getattr(completion_cfg, "method", "hybrid")),
             checkpoint_path=getattr(completion_cfg, "checkpoint_path", None),
             device=str(getattr(completion_cfg, "device", device)),
-            score_threshold=float(getattr(ensemble_cfg, "heatmap_threshold", 0.5)),
+            score_threshold=visibility_threshold,
             max_gap=int(getattr(completion_cfg, "max_gap", 15)),
             physics_gap_threshold=int(getattr(completion_cfg, "physics_gap_threshold", 5)),
         )
