@@ -8,6 +8,5 @@ fps: null
 save: null
 save_input: null     # Path to save 2D input scene animation (camera view)
 info: false
-checkpoint: outputs/blcs/checkpoints/last.ckpt
+checkpoint: outputs/blcs/single/logs/version_0/checkpoints/last.ckpt
 output: null
-

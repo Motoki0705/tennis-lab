@@ -37,7 +37,7 @@ uv run python -m src.wasb.scripts.visualize.ball_video_ensemble \
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
 | `video_path` | `data/samples/clip.mp4` | 入力動画パス |
-| `output_path` | `outputs/plot_ball_video_ensemble/clip.mp4` | 出力動画パス |
+| `output_path` | `outputs/wasb/ball_detection/visualize/ball_video_ensemble/clip.mp4` | 出力動画パス |
 | `device` | `cpu` | デバイス |
 | `batch_size` | `64` | バッチサイズ |
 | `max_frames` | `null` | 最大フレーム数 |
@@ -54,11 +54,11 @@ uv run python -m src.wasb.scripts.visualize.ball_video_ensemble \
 デフォルトのチェックポイント構成例:
 ```yaml
 checkpoints:
-  - outputs/hrcnet_frames3/logs/version_0/checkpoints/last.ckpt
-  - outputs/hrcnet_frames5/logs/version_0/checkpoints/last.ckpt
-  - outputs/hrnet_frames3/logs/version_0/checkpoints/last.ckpt
-  - outputs/hrnet_frames5/logs/version_0/checkpoints/last.ckpt
-  - outputs/dinov3_heatmap_frames1/logs/version_0/checkpoints/last.ckpt
+  - outputs/wasb/ball_detection/hrcnet_frames3/logs/version_0/checkpoints/last.ckpt
+  - outputs/wasb/ball_detection/hrcnet_frames5/logs/version_0/checkpoints/last.ckpt
+  - outputs/wasb/ball_detection/hrnet_frames3/logs/version_0/checkpoints/last.ckpt
+  - outputs/wasb/ball_detection/hrnet_frames5/logs/version_0/checkpoints/last.ckpt
+  - outputs/wasb/ball_detection/dinov3_heatmap_frames1/logs/version_0/checkpoints/last.ckpt
 ```
 
 ### completion (軌道補完設定)
@@ -147,7 +147,7 @@ checkpoints:
 ## 出力構造
 
 ```
-outputs/plot_ball_video_ensemble/
+outputs/wasb/ball_detection/visualize/ball_video_ensemble/
 └── clip.mp4    # アンサンブル検出結果のオーバーレイ動画
 ```
 

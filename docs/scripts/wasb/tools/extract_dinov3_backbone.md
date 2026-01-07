@@ -11,8 +11,8 @@
 ```bash
 # 基本的な使用法
 uv run python -m src.wasb.scripts.tools.extract_dinov3_backbone \
-  checkpoint_path=outputs/wasb/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
-  output_path=outputs/wasb/dinov3_backbone.pth
+  checkpoint_path=outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
+  output_path=outputs/wasb/ball_detection/dinov3_heatmap/dinov3_backbone.pth
 
 # 別の出力パスを指定
 uv run python -m src.wasb.scripts.tools.extract_dinov3_backbone \
@@ -28,8 +28,8 @@ uv run python -m src.wasb.scripts.tools.extract_dinov3_backbone \
 
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
-| `checkpoint_path` | `outputs/wasb/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt` | 入力チェックポイント |
-| `output_path` | `outputs/wasb/dinov3_backbone.pth` | 出力ファイルパス |
+| `checkpoint_path` | `outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt` | 入力チェックポイント |
+| `output_path` | `outputs/wasb/ball_detection/dinov3_heatmap/dinov3_backbone.pth` | 出力ファイルパス |
 
 ## アーキテクチャ・フロー
 
@@ -84,17 +84,17 @@ uv run python -m src.wasb.scripts.train.ball_detection model=dinov3_heatmap
 
 # 2. バックボーン重みを抽出
 uv run python -m src.wasb.scripts.tools.extract_dinov3_backbone \
-  checkpoint_path=outputs/wasb/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
-  output_path=outputs/wasb/finetuned_dinov3_backbone.pth
+  checkpoint_path=outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
+  output_path=outputs/wasb/ball_detection/dinov3_heatmap/finetuned_dinov3_backbone.pth
 
 # 3. 別のモデルで再利用
-# model.load_backbone_checkpoint("outputs/wasb/finetuned_dinov3_backbone.pth")
+# model.load_backbone_checkpoint("outputs/wasb/ball_detection/dinov3_heatmap/finetuned_dinov3_backbone.pth")
 ```
 
 ## 出力ファイル
 
 ```
-outputs/wasb/
+outputs/wasb/ball_detection/dinov3_heatmap/
 └── dinov3_backbone.pth    # バックボーン重みのみ
 ```
 

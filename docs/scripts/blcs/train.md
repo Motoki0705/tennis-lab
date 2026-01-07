@@ -19,7 +19,7 @@ uv run python -m src.blcs.scripts.train training.max_epochs=5 run.gpus=0
 uv run python -m src.blcs.scripts.train run.fast_dev_run=true
 
 # 学習を再開
-uv run python -m src.blcs.scripts.train run.resume=outputs/blcs/checkpoints/last.ckpt
+uv run python -m src.blcs.scripts.train run.resume=outputs/blcs/single/logs/version_0/checkpoints/last.ckpt
 
 # バッチサイズと学習率を変更
 uv run python -m src.blcs.scripts.train data.batch_size=64 training.learning_rate=5e-5
@@ -44,7 +44,7 @@ defaults:
 
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
-| `output_dir` | `outputs/blcs` | 出力ディレクトリ |
+| `output_dir` | `outputs/blcs/single` | 出力ディレクトリ |
 | `seed` | `42` | 乱数シード |
 | `gpus` | `1` | 使用するGPU数 (0=CPU) |
 | `fast_dev_run` | `false` | デバッグ用高速実行 |
@@ -169,7 +169,7 @@ Input: ball_uv [B, T, 2] + court_kp [B, 20, 2]
 ## 出力構造
 
 ```
-outputs/blcs/
+outputs/blcs/single/
 ├── config.yaml              # 使用した設定
 ├── checkpoints/
 │   ├── blcs-epoch=XX.ckpt   # ベストモデル

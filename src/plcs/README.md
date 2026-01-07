@@ -126,7 +126,7 @@ src/plcs/
 │   │   ├── plcs_model.py            (フレームモデル)              │
 │   │   ├── plcs_sequence_model.py   (シーケンスモデル)            │
 │   │   └── plcs_multiview_model.py  (マルチビューモデル)          │
-│   └── → outputs/plcs*/checkpoints/                              │
+│   └── → outputs/plcs/*/logs/version_*/checkpoints/              │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -157,7 +157,7 @@ uv run python -m src.plcs.scripts.analysis.analyze_dataset_distribution
 
 # 出力先やサンプル数の変更例
 uv run python -m src.plcs.scripts.analysis.analyze_dataset_distribution \
-    run.output_dir=outputs/plcs_dist \
+    run.output_dir=outputs/plcs/analysis/dataset_distribution \
     analysis.max_scenes=200 \
     analysis.max_frames_per_scene=256
 ```
@@ -194,7 +194,7 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 # マルチビュー（チェックポイントからの予測）
 uv run python -m src.plcs.scripts.visualize_multiview \
     visualization.mode=predict \
-    visualization.checkpoint=outputs/plcs_multiview/checkpoints/last.ckpt \
+    visualization.checkpoint=outputs/plcs/multiview/logs/version_0/checkpoints/last.ckpt \
     visualization.cameras=all
 
 # 比較アニメーション出力

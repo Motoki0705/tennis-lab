@@ -8,7 +8,7 @@ Target heatmaps are also cached per clip as `{Clip}_heatmaps.npy`.
 
 Example:
     uv run python -m src.wasb.scripts.tools.encode_dinov3_patch_tokens \
-      model_checkpoint=outputs/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
+      model_checkpoint=outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
       output_dir=data/tennis/patch_embeddings
 
 Hydra parameters:
@@ -30,8 +30,9 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import Any, TypeVar, cast
 
 import hydra
 import numpy as np
@@ -49,6 +50,17 @@ from src.wasb.training.ball_detection.lightning_module import WASBLightningModul
 
 LOGGER = logging.getLogger(__name__)
 
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
+    """Typed wrapper for hydra.main to keep mypy satisfied."""
+    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
+
+
+def torch_no_grad(func: F) -> F:
+    """Typed wrapper for torch.no_grad to keep mypy satisfied."""
+    return cast(F, torch.no_grad()(func))
 
 class ClipFramesDataset(Dataset):
     """Dataset for per-clip frame encoding."""
@@ -229,7 +241,7 @@ def _load_backbone(cfg: DictConfig, device: torch.device) -> torch.nn.Module:
     return backbone
 
 
-@torch.no_grad()
+@torch_no_grad
 def _encode_clip(
     *,
     loader: DataLoader,
@@ -321,7 +333,7 @@ def _build_clip_heatmaps(
     )
 
 
-@hydra.main(config_path="../../configs", config_name="encode_dinov3_tokens", version_base="1.3")
+@hydra_main(config_path="../../configs", config_name="encode_dinov3_tokens", version_base="1.3")
 def main(cfg: DictConfig) -> None:
     """Hydra entry point."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -465,4 +477,4 @@ def main(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cast(Callable[[], None], main)()

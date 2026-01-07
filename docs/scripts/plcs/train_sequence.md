@@ -57,7 +57,7 @@ defaults:
 
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
-| `output_dir` | `outputs/plcs_sequence` | 出力ディレクトリ |
+| `output_dir` | `outputs/plcs/sequence` | 出力ディレクトリ |
 | `seed` | `42` | 乱数シード |
 | `gpus` | `1` | 使用するGPU数 |
 | `fast_dev_run` | `false` | デバッグ用高速実行 |
@@ -127,7 +127,7 @@ defaults:
 ## 出力構造
 
 ```
-outputs/plcs_sequence/
+outputs/plcs/sequence/
 ├── config.yaml                  # 使用した設定
 ├── checkpoints/
 │   ├── plcs-seq-epoch=XX.ckpt   # ベストモデル

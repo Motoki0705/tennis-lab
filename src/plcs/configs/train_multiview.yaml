@@ -4,7 +4,7 @@ defaults:
   - training: default
   - metrics: default
   - loss: multiview_sequence
-  - run: train
+  - run: train_multiview
   - _self_
 
 hydra:

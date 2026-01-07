@@ -1,3 +1,2 @@
-output_dir: outputs/plcs_dataset_distribution
+output_dir: outputs/plcs/analysis/dataset_distribution
 seed: 42
-

@@ -30,7 +30,7 @@ save_input: null
 info: false
 
 # Checkpoint path for prediction mode
-checkpoint: outputs/blcs_multiview/checkpoints/last.ckpt
+checkpoint: outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt
 
 # Output path for saving prediction results (.pt or .json)
 output: null

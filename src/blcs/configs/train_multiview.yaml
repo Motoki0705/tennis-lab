@@ -3,7 +3,7 @@ defaults:
   - data: multiview
   - training: default
   - metrics: default
-  - run: train
+  - run: train_multiview
   - _self_
 
 hydra:

@@ -32,7 +32,7 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 uv run python -m src.plcs.scripts.visualize_multiview \
     visualization.scene_path=data/plcs/scenes/scene_000001.npz \
     visualization.mode=predict \
-    visualization.checkpoint=outputs/plcs_multiview/checkpoints/last.ckpt \
+    visualization.checkpoint=outputs/plcs/multiview/logs/version_0/checkpoints/last.ckpt \
     visualization.save=output.png
 ```
 

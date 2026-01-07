@@ -49,7 +49,7 @@ defaults:
 
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
-| `output_dir` | `outputs/wasb` | 出力ディレクトリ |
+| `output_dir` | `outputs/wasb/ball_detection` | 出力ディレクトリ |
 | `seed` | `42` | 乱数シード |
 | `gpus` | `1` | 使用するGPU数 (0=CPU) |
 | `fast_dev_run` | `false` | デバッグ用高速実行 |
@@ -180,7 +180,7 @@ Input: frames [B, T, 3, H, W]
 ## 出力構造
 
 ```
-outputs/wasb/dinov3_heatmap/
+outputs/wasb/ball_detection/dinov3_heatmap/
 ├── config.yaml              # 使用した設定
 ├── logs/
 │   └── version_X/
