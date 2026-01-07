@@ -23,7 +23,7 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from src.wasb.training import WASBLightningModule
-
+from src.base.api import BasePredictor
 
 def _cfg_get(cfg: Any, key: str, default: Any = None) -> Any:
     if cfg is None:
@@ -154,7 +154,7 @@ class _Runner:
         return heatmaps.detach()
 
 
-class HeatmapEnsemblePredictor:
+class HeatmapEnsemblePredictor(BasePredictor):
     """Ensemble predictor over multiple trained WASB Lightning checkpoints.
 
     Public API:
