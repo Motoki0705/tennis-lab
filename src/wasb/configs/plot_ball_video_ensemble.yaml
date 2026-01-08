@@ -3,7 +3,7 @@ defaults:
 
 # Configuration for `src.wasb.scripts.visualize.ball_video_ensemble`.
 video_path: data/samples/clip.mp4
-output_path: outputs/plot_ball_video_ensemble/clip.mp4
+output_path: outputs/wasb/ball_detection/visualize/ball_video_ensemble/clip.mp4
 
 device: cpu            # cpu | cuda
 batch_size: 64
@@ -12,11 +12,13 @@ max_frames: null
 ensemble:
   # Five-pattern ensemble checkpoints (edit to your trained checkpoints).
   checkpoints:
-    - outputs/hrcnet_frames3/logs/version_0/checkpoints/last.ckpt
-    - outputs/hrcnet_frames5/logs/version_0/checkpoints/last.ckpt
-    - outputs/hrnet_frames3/logs/version_0/checkpoints/last.ckpt
-    - outputs/hrnet_frames5/logs/version_0/checkpoints/last.ckpt
-    - outputs/dinov3_heatmap_frames1/logs/version_0/checkpoints/last.ckpt
+    - outputs/wasb/ball_detection/hrcnet_frames3/logs/version_0/checkpoints/last.ckpt
+    - outputs/wasb/ball_detection/hrcnet_frames5/logs/version_0/checkpoints/last.ckpt
+    - outputs/wasb/ball_detection/hrnet_frames3/logs/version_0/checkpoints/last.ckpt
+    - outputs/wasb/ball_detection/hrnet_frames5/logs/version_0/checkpoints/last.ckpt
+    - outputs/wasb/ball_detection/dinov3_heatmap_frames1/logs/version_0/checkpoints/last.ckpt
+  heatmap_threshold: 0.5
+  apply_sigmoid: true
   # If set, resizes each model output heatmap to this size before ensembling.
   output_heatmap_hw: null  # e.g. [288, 512]
   tta:
@@ -48,7 +50,7 @@ ensemble:
 completion:
   enabled: false
   method: bilstm       # physics | bilstm | transformer | refiner | hybrid
-  checkpoint_path: outputs/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt
+  checkpoint_path: outputs/wasb/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt
   device: ${device}
   max_gap: 15
   physics_gap_threshold: 5

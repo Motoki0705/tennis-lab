@@ -25,7 +25,7 @@ uv run python -m src.plcs.scripts.train_multiview
 
 ```bash
 uv run python -m src.plcs.scripts.train_multiview \
-    run.output_dir=outputs/plcs_multiview \
+    run.output_dir=outputs/plcs/multiview \
     data.scene_dir=data/plcs/scenes
 ```
 
@@ -89,7 +89,7 @@ defaults:
 run:
   seed: 42
   gpus: 0
-  output_dir: outputs/plcs_multiview
+  output_dir: outputs/plcs/multiview
   dry_run: false
   fast_dev_run: false
 
@@ -201,7 +201,7 @@ dropout: 0.1
 学習完了後、`run.output_dir` に以下が生成されます：
 
 ```
-outputs/plcs_multiview/
+outputs/plcs/multiview/
 ├── config.yaml          # 使用した設定のコピー
 ├── checkpoints/
 │   ├── last.ckpt        # 最終チェックポイント

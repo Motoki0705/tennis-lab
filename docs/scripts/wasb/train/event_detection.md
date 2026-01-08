@@ -43,7 +43,7 @@ defaults:
 
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
-| `output_dir` | `outputs/event_detection` | 出力ディレクトリ |
+| `output_dir` | `outputs/wasb/event_detection` | 出力ディレクトリ |
 | `seed` | `42` | 乱数シード |
 | `gpus` | `0` | 使用するGPU数 |
 | `fast_dev_run` | `false` | デバッグ用高速実行 |
@@ -139,7 +139,7 @@ bounce (2): ~3%   → weight: 0.33 × 2.0  = 0.66
 ## 出力構造
 
 ```
-outputs/event_detection/event_detection_transformer/
+outputs/wasb/event_detection/event_detection_transformer/
 ├── config.yaml
 ├── logs/
 │   └── version_X/

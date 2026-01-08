@@ -29,7 +29,7 @@ uv run python -m src.blcs.scripts.visualize_multiview \
 uv run python -m src.blcs.scripts.visualize_multiview \
     visualization.scene_path=data/blcs/scenes/scene_000003.npz \
     visualization.mode=predict \
-    visualization.checkpoint=outputs/blcs/logs/version_3/checkpoints/last.ckpt \
+    visualization.checkpoint=outputs/blcs/multiview/logs/version_3/checkpoints/last.ckpt \
     visualization.save=output.png
 ```
 

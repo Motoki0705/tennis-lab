@@ -1,14 +1,16 @@
 """Visualize WASB trajectory completion results (Hydra-based).
 
 Example commands:
-    `uv run python -m src.wasb.scripts.visualize.trajectory visualization.checkpoint=outputs/trajectory/logs/version_0/checkpoints/last.ckpt`
+    `uv run python -m src.wasb.scripts.visualize.trajectory visualization.checkpoint=outputs/wasb/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt`
 
 Config entry point: `src/wasb/configs/visualize_trajectory.yaml`
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from pathlib import Path
+from typing import Any, TypeVar, cast
 
 import hydra
 import matplotlib.pyplot as plt
@@ -16,9 +18,17 @@ import pytorch_lightning as pl
 import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
+from torch.utils.data import DataLoader
 
 from src.wasb.data.trajectory_datamodule import TrajectoryDataModule
 from src.wasb.training import TrajectoryLightningModule
+
+TFunc = TypeVar("TFunc", bound=Callable[..., Any])
+
+
+def hydra_main(**kwargs: Any) -> Callable[[TFunc], TFunc]:
+    """Typed wrapper for hydra.main to keep mypy satisfied."""
+    return cast(Callable[[TFunc], TFunc], hydra.main(**kwargs))
 
 
 def _resolve_device(gpus: int) -> torch.device:
@@ -37,7 +47,9 @@ def load_datamodule(config: DictConfig, split: str) -> TrajectoryDataModule:
     return datamodule
 
 
-def get_dataloader(datamodule: TrajectoryDataModule, split: str):  # type: ignore[no-untyped-def]
+def get_dataloader(
+    datamodule: TrajectoryDataModule, split: str
+) -> DataLoader[dict[str, torch.Tensor]]:
     """Return the dataloader matching the requested split."""
     if split == "train":
         return datamodule.train_dataloader()
@@ -64,7 +76,7 @@ def load_model(
 
 
 def visualize_batch(
-    batch,  # type: ignore[no-untyped-def]
+    batch: Mapping[str, torch.Tensor],
     module: TrajectoryLightningModule,
     device: torch.device,
     output_dir: Path,
@@ -187,7 +199,7 @@ def visualize_batch(
     return num_saved
 
 
-@hydra.main(config_path="../../configs", config_name="visualize_trajectory", version_base="1.3")
+@hydra_main(config_path="../../configs", config_name="visualize_trajectory", version_base="1.3")
 def main(cfg: DictConfig) -> None:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
     seed = int(cfg.run.seed)
@@ -224,4 +236,4 @@ def main(cfg: DictConfig) -> None:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    main()
+    cast(Callable[[], None], main)()

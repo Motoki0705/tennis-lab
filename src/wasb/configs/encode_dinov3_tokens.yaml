@@ -5,7 +5,7 @@ defaults:
 
 # Configuration for `src.wasb.scripts.tools.encode_dinov3_patch_tokens`.
 device: cuda
-model_checkpoint: outputs/wasb/dinov3_heatmap/logs/version_2/checkpoints/wasb-epoch=14.ckpt  # Optional Lightning checkpoint (.ckpt) for dinov3_heatmap.
+model_checkpoint: outputs/wasb/ball_detection/dinov3_heatmap/logs/version_2/checkpoints/wasb-epoch=14.ckpt  # Optional Lightning checkpoint (.ckpt) for dinov3_heatmap.
 
 output_dir: data/tennis/patch_embeddings
 num_augments: 3

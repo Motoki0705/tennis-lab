@@ -26,7 +26,7 @@ uv run python -m src.blcs.scripts.train
 # 3. 結果の可視化
 uv run python -m src.blcs.scripts.visualize \
   visualization.mode=predict \
-  visualization.checkpoint=outputs/blcs/checkpoints/last.ckpt
+  visualization.checkpoint=outputs/blcs/single/logs/version_0/checkpoints/last.ckpt
 ```
 
 ## ディレクトリ構成

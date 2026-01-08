@@ -3,7 +3,7 @@
 Example commands:
     `uv run python -m src.blcs.scripts.visualize`
     `uv run python -m src.blcs.scripts.visualize visualization.scene_path=data/blcs/scenes/scene_000000.npz visualization.info=true`
-    `uv run python -m src.blcs.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/blcs/checkpoints/last.ckpt`
+    `uv run python -m src.blcs.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/blcs/single/logs/version_0/checkpoints/last.ckpt`
 
 Config entry point: `src/blcs/configs/visualize.yaml`
 """
@@ -12,9 +12,10 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import hydra
 import matplotlib.pyplot as plt
@@ -28,6 +29,13 @@ from src.utils.rendering import BLCSSceneRenderer
 
 if TYPE_CHECKING:
     pass
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
+    """Typed wrapper for hydra.main to keep mypy satisfied."""
+    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
 
 
 @dataclass(frozen=True)
@@ -311,7 +319,7 @@ def main_predict(cfg: RuntimeConfig) -> int:
     return render_scene(scene_pred, cfg)
 
 
-@hydra.main(config_path="../configs", config_name="visualize", version_base="1.3")
+@hydra_main(config_path="../configs", config_name="visualize", version_base="1.3")
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
     runtime = build_runtime_config(cfg)
@@ -324,4 +332,4 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(cast(Callable[[], int], main)())

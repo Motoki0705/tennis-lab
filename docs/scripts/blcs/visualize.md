@@ -25,7 +25,7 @@ uv run python -m src.blcs.scripts.visualize visualization.view=3d
 uv run python -m src.blcs.scripts.visualize visualization.view=animation visualization.save=output.mp4
 
 # 予測モードで実行
-uv run python -m src.blcs.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/blcs/checkpoints/last.ckpt
+uv run python -m src.blcs.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/blcs/single/logs/version_0/checkpoints/last.ckpt
 
 # 入力シーンアニメーションも保存
 uv run python -m src.blcs.scripts.visualize visualization.save_input=input_anim.mp4
@@ -57,7 +57,7 @@ defaults:
 | `save` | `null` | 出力ファイルパス |
 | `save_input` | `null` | 入力シーンアニメーション保存パス |
 | `info` | `false` | シーン情報を表示するか |
-| `checkpoint` | `outputs/blcs/checkpoints/last.ckpt` | 予測モード用チェックポイント |
+| `checkpoint` | `outputs/blcs/single/logs/version_0/checkpoints/last.ckpt` | 予測モード用チェックポイント |
 | `output` | `null` | 予測結果出力パス |
 
 ### run (実行設定)

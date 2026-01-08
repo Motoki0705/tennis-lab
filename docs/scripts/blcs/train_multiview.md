@@ -33,7 +33,7 @@ uv run python -m src.blcs.scripts.train_multiview
 
 ```bash
 uv run python -m src.blcs.scripts.train_multiview \
-    run.output_dir=outputs/blcs_multiview \
+    run.output_dir=outputs/blcs/multiview \
     data.scene_dir=data/blcs/scenes
 ```
 
@@ -80,7 +80,7 @@ defaults:
 run:
   seed: 42
   gpus: 0
-  output_dir: outputs/blcs_multiview
+  output_dir: outputs/blcs/multiview
   dry_run: false
   fast_dev_run: false
 
@@ -176,7 +176,7 @@ encoder_layers: 2  # Number of MLP layers in BallCourtEncoder
 学習完了後、`run.output_dir` に以下が生成されます：
 
 ```
-outputs/blcs_multiview/
+outputs/blcs/multiview/
 ├── config.yaml          # 使用した設定のコピー
 ├── checkpoints/
 │   ├── last.ckpt        # 最終チェックポイント

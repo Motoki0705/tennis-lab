@@ -1,4 +1,4 @@
-output_dir: outputs/plcs
+output_dir: outputs/plcs/frame
 seed: 42
 gpus: 1
 fast_dev_run: false
