@@ -64,6 +64,38 @@ class BLCSSceneRenderer:
         self.court_renderer = court_renderer or CourtRenderer()
         self.ball_renderer = ball_renderer or BallRenderer()
 
+    def _is_rally_scene(self, meta: dict[str, Any]) -> bool:
+        """Detect if scene is rally (new format) or shot (legacy).
+
+        Args:
+            meta: Scene metadata dictionary.
+
+        Returns:
+            True if rally scene, False if legacy shot scene.
+
+        """
+        return "shots" in meta
+
+    def _get_display_title(self, meta: dict[str, Any]) -> str:
+        """Generate title string for scene visualization.
+
+        Args:
+            meta: Scene metadata dictionary.
+
+        Returns:
+            Formatted title string.
+
+        """
+        scene_id = meta.get("scene_id", "Unknown")
+
+        if self._is_rally_scene(meta):
+            rally_len = meta.get("rally_length", 0)
+            end_reason = meta.get("end_reason", "Unknown")
+            return f"Rally: {scene_id} | {rally_len} shots | End: {end_reason}"
+        else:
+            category = meta.get("category", "Unknown")
+            return f"Scene: {scene_id} | Category: {category}"
+
     def render_3d_view(
         self,
         scene: dict[str, Any],
@@ -109,7 +141,7 @@ class BLCSSceneRenderer:
         )
 
         # Title
-        ax.set_title(f"Scene: {meta['scene_id']} | Category: {meta['category']}")
+        ax.set_title(self._get_display_title(meta))
 
         return fig, ax
 
@@ -163,7 +195,8 @@ class BLCSSceneRenderer:
         )
 
         # Title
-        ax.set_title(f"Top-down: {meta['scene_id']} | {meta['category']}")
+        title = self._get_display_title(meta)
+        ax.set_title(f"Top-down: {title}")
 
         return fig, ax
 
@@ -573,19 +606,63 @@ class BLCSSceneRenderer:
         """
         events = []
 
-        # Bounce events
-        if meta.get("t_bounce1", -1) >= 0:
-            events.append(
-                BallEvent(BallEventType.BOUNCE, meta["t_bounce1"], "Bounce 1")
-            )
-        if meta.get("t_bounce2", -1) >= 0:
-            events.append(
-                BallEvent(BallEventType.BOUNCE, meta["t_bounce2"], "Bounce 2")
-            )
+        if self._is_rally_scene(meta):
+            # Rally scene: extract events from all shots
+            shots = meta.get("shots", [])
+            for i, shot in enumerate(shots):
+                shot_idx = shot.get("shot_index", i)
 
-        # Net hit event
-        if meta.get("t_net", -1) >= 0:
-            events.append(BallEvent(BallEventType.NET_HIT, meta["t_net"], "Net hit"))
+                # Shot boundary marker (except first shot)
+                if shot.get("t_start", -1) >= 0 and i > 0:
+                    events.append(
+                        BallEvent(
+                            BallEventType.SHOT_BOUNDARY,
+                            shot["t_start"],
+                            f"Shot {shot_idx + 1} start",
+                        )
+                    )
+
+                # Bounce events with shot index
+                if shot.get("t_bounce1", -1) >= 0:
+                    events.append(
+                        BallEvent(
+                            BallEventType.BOUNCE,
+                            shot["t_bounce1"],
+                            f"S{shot_idx + 1} Bounce 1",
+                        )
+                    )
+                if shot.get("t_bounce2", -1) >= 0:
+                    events.append(
+                        BallEvent(
+                            BallEventType.BOUNCE,
+                            shot["t_bounce2"],
+                            f"S{shot_idx + 1} Bounce 2",
+                        )
+                    )
+
+                # Net hit with shot index
+                if shot.get("t_net", -1) >= 0:
+                    events.append(
+                        BallEvent(
+                            BallEventType.NET_HIT,
+                            shot["t_net"],
+                            f"S{shot_idx + 1} Net hit",
+                        )
+                    )
+        else:
+            # Legacy shot scene format
+            if meta.get("t_bounce1", -1) >= 0:
+                events.append(
+                    BallEvent(BallEventType.BOUNCE, meta["t_bounce1"], "Bounce 1")
+                )
+            if meta.get("t_bounce2", -1) >= 0:
+                events.append(
+                    BallEvent(BallEventType.BOUNCE, meta["t_bounce2"], "Bounce 2")
+                )
+            if meta.get("t_net", -1) >= 0:
+                events.append(
+                    BallEvent(BallEventType.NET_HIT, meta["t_net"], "Net hit")
+                )
 
         return events
 
@@ -598,39 +675,83 @@ class BLCSSceneRenderer:
         """
         meta = scene["meta"]
         print("=" * 60)
-        print("BLCS Scene Information")
+        print("SCENE INFORMATION")
         print("=" * 60)
-        print(f"Scene ID:        {meta['scene_id']}")
-        print(f"From cell:       {meta['from_cell']} ({meta['from_side']})")
-        print(f"Category:        {meta['category']}")
-        print(f"To cell:         {meta['to_cell']}")
-        print(f"Num frames:      {meta['num_frames']}")
-        print(f"FPS (output):    {meta['fps_out']}")
-        print(f"Duration:        {meta['num_frames'] / meta['fps_out']:.2f} seconds")
-        print()
-        print("Events (frame index, -1 = not occurred):")
-        print(f"  t_net:     {meta['t_net']}")
-        print(f"  t_fence:   {meta['t_fence']}")
-        print(f"  t_bounce1: {meta['t_bounce1']}")
-        print(f"  t_bounce2: {meta['t_bounce2']}")
-        print()
+        print(f"Scene ID: {meta.get('scene_id', 'Unknown')}")
+
+        if self._is_rally_scene(meta):
+            # Rally scene info
+            print(f"Type: Rally Scene")
+            print(f"Rally Length: {meta.get('rally_length', 'N/A')} shots")
+            print(f"End Reason: {meta.get('end_reason', 'N/A')}")
+            print(f"Winner: {meta.get('winner_side', 'N/A')}")
+            print(
+                f"Initial From: Cell {meta.get('initial_from_cell', 'N/A')}, "
+                f"Side {meta.get('initial_from_side', 'N/A')}"
+            )
+
+            # Per-shot breakdown
+            shots = meta.get("shots", [])
+            print(f"\nShot Breakdown ({len(shots)} shots):")
+            for shot in shots:
+                print(f"  Shot {shot.get('shot_index', '?') + 1}:")
+                print(
+                    f"    From: Cell {shot.get('from_cell', '?')}, "
+                    f"Side {shot.get('from_side', '?')}"
+                )
+                print(f"    Category: {shot.get('category', '?')}")
+                print(f"    To Cell: {shot.get('to_cell', '?')}")
+                print(
+                    f"    Events: t_start={shot.get('t_start', -1)}, "
+                    f"t_net={shot.get('t_net', -1)}, "
+                    f"t_bounce1={shot.get('t_bounce1', -1)}, "
+                    f"t_return={shot.get('t_return', -1)}"
+                )
+        else:
+            # Legacy shot scene info
+            print(f"Type: Shot Scene (Legacy)")
+            print(f"Category: {meta.get('category', 'N/A')}")
+            print(
+                f"From: Cell {meta.get('from_cell', 'N/A')}, "
+                f"Side {meta.get('from_side', 'N/A')}"
+            )
+            print(f"To Cell: {meta.get('to_cell', 'N/A')}")
+            print(
+                f"Events: t_net={meta.get('t_net', -1)}, "
+                f"t_fence={meta.get('t_fence', -1)}, "
+                f"t_bounce1={meta.get('t_bounce1', -1)}, "
+                f"t_bounce2={meta.get('t_bounce2', -1)}"
+            )
+
+        # Common info
+        print(f"\nTrajectory:")
+        print(f"  Frames: {meta.get('num_frames', 'N/A')}")
+        print(
+            f"  FPS: {meta.get('fps_out', 'N/A')} (output), "
+            f"{meta.get('sim_fps', 'N/A')} (sim)"
+        )
+        fps_out = meta.get("fps_out")
+        num_frames = meta.get("num_frames")
+        if fps_out and num_frames:
+            print(f"  Duration: {num_frames / fps_out:.2f} seconds")
 
         # Position statistics
         pos = scene["ball_pos_world"]
-        print("Ball position statistics (world coordinates, meters):")
+        print("\nBall position statistics (world coordinates, meters):")
         print(f"  X range: [{pos[:, 0].min():.2f}, {pos[:, 0].max():.2f}]")
         print(f"  Y range: [{pos[:, 1].min():.2f}, {pos[:, 1].max():.2f}]")
         print(f"  Z range: [{pos[:, 2].min():.2f}, {pos[:, 2].max():.2f}]")
-        print()
 
         # Camera info
         num_cameras = scene["num_cameras"]
-        print(f"Cameras sampled: {meta['num_cameras_sampled']}")
-        print(f"Cameras kept:    {num_cameras}")
-        print()
+        print(
+            f"\nCameras: {num_cameras} valid "
+            f"(from {meta.get('num_cameras_sampled', 'N/A')} sampled)"
+        )
         print("Camera visibility:")
         for i, cam in enumerate(scene["cameras"]):
             print(
                 f"  Camera {i}: Ball {cam['ball_visibility_ratio']:.1%}, "
                 f"Court {cam['court_visibility_count']:.1f}/20"
             )
+        print("=" * 60)
