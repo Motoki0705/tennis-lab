@@ -2,8 +2,8 @@
 
 Example:
     uv run python -m src.wasb.scripts.tools.extract_dinov3_backbone \
-      checkpoint_path=outputs/wasb/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
-      output_path=outputs/wasb/dinov3_backbone.pth
+      checkpoint_path=outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
+      output_path=outputs/wasb/ball_detection/dinov3_heatmap/dinov3_backbone.pth
 
 Hydra parameters:
     - checkpoint_path: Path to a Lightning checkpoint (.ckpt or .pth.tar).
@@ -12,13 +12,21 @@ Hydra parameters:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, TypeVar, cast
 
 import hydra
 import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
+    """Typed wrapper for hydra.main to keep mypy satisfied."""
+    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
 
 def _extract_backbone_state(state_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
     prefixes = ("model.backbone.", "backbone.")
@@ -30,7 +38,11 @@ def _extract_backbone_state(state_dict: dict[str, torch.Tensor]) -> dict[str, to
     raise KeyError("No backbone parameters found in the checkpoint state_dict.")
 
 
-@hydra.main(config_path="../../configs", config_name="extract_dinov3_backbone", version_base="1.3")
+@hydra_main(
+    config_path="../../configs",
+    config_name="extract_dinov3_backbone",
+    version_base="1.3",
+)
 def main(cfg: DictConfig) -> None:
     """Hydra entry point."""
     checkpoint_path = Path(to_absolute_path(str(cfg.checkpoint_path)))
@@ -55,4 +67,4 @@ def main(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cast(Callable[[], None], main)()

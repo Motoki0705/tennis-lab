@@ -117,7 +117,7 @@ src/blcs/
 │   ├── models/                                                   │
 │   │   ├── blcs_model.py            (単一カメラモデル)            │
 │   │   └── blcs_multiview_model.py  (マルチビューモデル)          │
-│   └── → outputs/blcs*/checkpoints/                              │
+│   └── → outputs/blcs/*/logs/version_*/checkpoints/              │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -167,7 +167,7 @@ uv run python -m src.blcs.scripts.visualize_multiview \
 # マルチビュー（チェックポイントからの予測）
 uv run python -m src.blcs.scripts.visualize_multiview \
     visualization.mode=predict \
-    visualization.checkpoint=outputs/blcs_multiview/checkpoints/last.ckpt \
+    visualization.checkpoint=outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt \
     visualization.cameras=all
 
 # 予測結果をファイルに出力

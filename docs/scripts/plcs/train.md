@@ -19,7 +19,7 @@ uv run python -m src.plcs.scripts.train run.gpus=0 training.max_epochs=1
 uv run python -m src.plcs.scripts.train run.fast_dev_run=true
 
 # 学習を再開
-uv run python -m src.plcs.scripts.train run.resume=outputs/plcs/checkpoints/last.ckpt
+uv run python -m src.plcs.scripts.train run.resume=outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt
 
 # バッチサイズを変更
 uv run python -m src.plcs.scripts.train data.batch_size=128
@@ -45,7 +45,7 @@ defaults:
 
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
-| `output_dir` | `outputs/plcs` | 出力ディレクトリ |
+| `output_dir` | `outputs/plcs/frame` | 出力ディレクトリ |
 | `seed` | `42` | 乱数シード |
 | `gpus` | `1` | 使用するGPU数 (0=CPU) |
 | `fast_dev_run` | `false` | デバッグ用高速実行 |
@@ -132,7 +132,7 @@ defaults:
 ## 出力構造
 
 ```
-outputs/plcs/
+outputs/plcs/frame/
 ├── config.yaml              # 使用した設定
 ├── checkpoints/
 │   ├── plcs-epoch=XX.ckpt   # ベストモデル

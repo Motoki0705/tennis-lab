@@ -82,7 +82,7 @@ uv run python -m src.wasb.scripts.visualize.save_one_sample_visuals \
 ## 出力ファイル
 
 ```
-outputs/save_one_sample_visuals/
+outputs/wasb/ball_detection/visualize/save_one_sample_visuals/
 ├── sample_0_original.png    # 元フレーム
 ├── sample_0_augmented.png   # 拡張後フレーム
 └── sample_0_overlay.png     # ヒートマップオーバーレイ
@@ -119,7 +119,7 @@ uv run python -m src.wasb.scripts.visualize.save_one_sample_visuals \
   sample_index=0
 
 # 画像を確認
-ls outputs/save_one_sample_visuals/
+ls outputs/wasb/ball_detection/visualize/save_one_sample_visuals/
 # sample_0_original.png
 # sample_0_augmented.png
 # sample_0_overlay.png

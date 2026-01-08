@@ -5,7 +5,7 @@ Example commands:
     `uv run python -m src.blcs.scripts.visualize_multiview \
         visualization.scene_path=data/blcs/scenes/scene_000000.npz \
         visualization.mode=predict \
-        visualization.checkpoint=outputs/blcs_multiview/checkpoints/last.ckpt`
+        visualization.checkpoint=outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt`
 
 Config entry point: `src/blcs/configs/visualize_multiview.yaml`
 """

@@ -46,7 +46,7 @@ defaults:
 
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
-| `output_dir` | `outputs/trajectory` | 出力ディレクトリ |
+| `output_dir` | `outputs/wasb/trajectory` | 出力ディレクトリ |
 | `seed` | `42` | 乱数シード |
 | `gpus` | `1` | 使用するGPU数 |
 | `fast_dev_run` | `false` | デバッグ用高速実行 |
@@ -186,7 +186,7 @@ Input: xy_input [B, T, 2]
 ## 出力構造
 
 ```
-outputs/trajectory/trajectory_bilstm/
+outputs/wasb/trajectory/trajectory_bilstm/
 ├── config.yaml
 ├── logs/
 │   └── version_X/

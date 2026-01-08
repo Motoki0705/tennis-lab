@@ -74,7 +74,7 @@ uv run python -m src.wasb.scripts.train.event_detection
 # ボール検出結果を動画に出力
 uv run python -m src.wasb.scripts.visualize.ball_video \
   video_path=data/samples/clip.mp4 \
-  checkpoint=outputs/wasb/checkpoints/last.ckpt
+  checkpoint=outputs/wasb/ball_detection/hrcnet/logs/version_0/checkpoints/last.ckpt
 ```
 
 ## ディレクトリ構成

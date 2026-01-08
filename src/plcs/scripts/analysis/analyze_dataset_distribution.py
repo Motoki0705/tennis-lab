@@ -8,7 +8,7 @@ This script inspects pre-generated PLCS scene NPZ files and summarizes:
 
 Example commands:
     `uv run python -m src.plcs.scripts.analysis.analyze_dataset_distribution`
-    `uv run python -m src.plcs.scripts.analysis.analyze_dataset_distribution run.output_dir=outputs/plcs_dist analysis.max_scenes=200`
+    `uv run python -m src.plcs.scripts.analysis.analyze_dataset_distribution run.output_dir=outputs/plcs/analysis/dataset_distribution analysis.max_scenes=200`
 
 Config entry point: `src/plcs/configs/analyze_dataset_distribution.yaml`
 """
@@ -19,10 +19,10 @@ import csv
 import json
 import math
 import random
-import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar, cast
 
 import hydra
 import numpy as np
@@ -31,6 +31,12 @@ from omegaconf import DictConfig, OmegaConf
 
 from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
+    """Typed wrapper for hydra.main to keep mypy satisfied."""
+    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
 
 @dataclass
 class RunningStats:
@@ -107,7 +113,7 @@ def _iter_scene_files(scene_dir: Path) -> list[Path]:
 
 
 def _safe_initial_xyz(meta: dict[str, Any]) -> tuple[float, float, float]:
-    init = meta.get("initial_position", None)
+    init = meta.get("initial_position")
     if init is None:
         return (float("nan"), float("nan"), float("nan"))
     if isinstance(init, (list, tuple)) and len(init) >= 2:
@@ -124,7 +130,7 @@ def _circular_mean_from_sincos(sum_sin: float, sum_cos: float) -> float | None:
     return float(math.atan2(sum_sin, sum_cos))
 
 
-@hydra.main(
+@hydra_main(
     config_path="../../configs",
     config_name="analyze_dataset_distribution",
     version_base="1.3",
@@ -185,8 +191,8 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     yaw_bins = int(yaw_hist_cfg.bins)
     yaw_range = (-math.pi, math.pi)
 
-    xy_hist = np.zeros((bins_x, bins_y), dtype=np.int64)
-    yaw_hist = np.zeros((yaw_bins,), dtype=np.int64)
+    xy_hist: np.ndarray = np.zeros((bins_x, bins_y), dtype=np.int64)
+    yaw_hist: np.ndarray = np.zeros((yaw_bins,), dtype=np.int64)
     x_edges = np.linspace(x_range[0], x_range[1], bins_x + 1, dtype=np.float64)
     y_edges = np.linspace(y_range[0], y_range[1], bins_y + 1, dtype=np.float64)
     yaw_edges = np.linspace(yaw_range[0], yaw_range[1], yaw_bins + 1, dtype=np.float64)
@@ -375,4 +381,4 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(cast(Callable[[], int], main)())
