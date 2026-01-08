@@ -1,5 +1,5 @@
 mode: visualize  # visualize | predict
-scene_path: data/blcs/scenes/scene_000003.npz
+scene_path: data/blcs/scenes/rally_000000.npz
 frame: 0
 view: multi          # 3d | 2d | camera | multi | animation
 camera: 0
