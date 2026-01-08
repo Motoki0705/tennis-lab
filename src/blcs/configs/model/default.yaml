@@ -1,16 +1,29 @@
+# BLCS Model Configuration
+# Decoder-Only Transformer with GQA + RoPE + SDPA
+
 name: blcs
 
+# Architecture
 hidden_dim: 256
 num_layers: 6
 num_heads: 8
+num_kv_heads: 2      # Grouped-Query Attention: num_heads / num_kv_heads = 4 groups
+ffn_dim: null        # Defaults to 8/3 * hidden_dim (rounded to 64)
 dropout: 0.1
-max_seq_len: 120  # Maximum 4 seconds @ 30fps
-use_cross_attention: true
+max_seq_len: 120     # Maximum 4 seconds @ 30fps
 
-# Input dimensions
-ball_input_dim: 2       # (u, v) normalized coordinates
-court_kp_dim: 40        # 20 keypoints * 2 (u, v)
+# RoPE (Rotary Position Embedding)
+rope_dim: null       # Defaults to head_dim (hidden_dim / num_heads)
+rope_theta: 10000.0
 
-# Output dimensions
-position_dim: 3         # (x, y, z) normalized
+# Attention
+causal: false        # Use causal attention mask
+
+# Output
+predict_velocity: false
+
+# Input dimensions (for reference)
+ball_input_dim: 2    # (u, v) normalized coordinates
+court_kp_dim: 40     # 20 keypoints * 2 (u, v)
+position_dim: 3      # (x, y, z) normalized output
 
