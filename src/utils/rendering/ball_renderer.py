@@ -39,6 +39,7 @@ class BallEventType(Enum):
     START = "start"
     END = "end"
     IMPACT = "impact"  # Racket hit
+    SHOT_BOUNDARY = "shot_boundary"  # Rally shot transition
 
 
 @dataclass
@@ -117,6 +118,13 @@ EVENT_STYLES: dict[BallEventType, dict] = {
         "size": 150,
         "edgecolor": "black",
         "linewidth": 1,
+    },
+    BallEventType.SHOT_BOUNDARY: {
+        "color": "cyan",
+        "marker": "D",  # Diamond
+        "size": 100,
+        "edgecolor": "blue",
+        "linewidth": 1.5,
     },
 }
 
