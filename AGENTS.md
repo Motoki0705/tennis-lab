@@ -37,92 +37,12 @@ Config entry point: `src/plcs/configs/generate_dataset.yaml`
 
 ## 3. 使用可能なツール
 
-### `src.agents.scripts.consult`（推奨：開発前のアプローチ相談）
-複数のLLMプロバイダーに同時に相談し、タスクへのアプローチを提案させます。開発前に使用することで、より良い実装方針を得られます。
+Sub-agent ツールの詳細な使い方はスキル化済みのドキュメントを参照してください。
 
-**実行例**
-```bash
-# 基本的な相談
-uv run python -m src.agents.scripts.consult 'task.prompt=BLCSのgenerate_datasetの改善案を提案してください'
-
-# アプローチ相談用のシステムプロンプトを使用
-uv run python -m src.agents.scripts.consult system_prompt=approach 'task.prompt=...'
-
-# 特定のプロバイダーを無効化
-uv run python -m src.agents.scripts.consult claude.enable=false 'task.prompt=...'
-```
-
-**想定出力（例）**
-```
-============================================================
-Sub-agent Consultation Results
-============================================================
-
-[CLAUDE] ✓
-----------------------------------------
-（提案内容）
-
-[CODEX] ✓
-----------------------------------------
-（提案内容）
-
-============================================================
-```
-
-### `src.agents.scripts.review`（推奨：開発後のレビュー）
-複数のLLMプロバイダーにコード変更をレビューさせ、問題点や改善点、新しいタスクを発見します。
-
-**実行例**
-```bash
-# 全ての変更をレビュー
-uv run python -m src.agents.scripts.review
-
-# ステージされた変更のみをレビュー
-uv run python -m src.agents.scripts.review review.scope=staged
-
-# 最後のコミットをレビュー
-uv run python -m src.agents.scripts.review review.scope=head
-
-# 特定の観点でレビュー
-uv run python -m src.agents.scripts.review 'review.focus=security'
-```
-
-### `src.agents.scripts.pre_commit`
-変更ファイル（`git diff --name-only HEAD`）に対して `pre-commit` を実行し、失敗した場合は Codex Sub-agent に修正を委譲します。ログは `agents_workspace/sub_agents/logs/` に保存され、標準出力には 1 行の JSON を返します。
-
-**実行例**
-```bash
-uv run python -m src.agents.scripts.pre_commit
-```
-（ヘルプ：`uv run python -m src.agents.scripts.pre_commit --help`）
-
-**想定出力（例）**
-```json
-{"status":"pass","fixed":false,"files_touched":[],"remaining_errors":[],"summary":"pre-commit passed","needs_main":false,"message_for_main":""}
-```
-
-
-### `src.agents.scripts.test`（推奨：テスト用）
-指定したテストコマンド（デフォルトは `uv run --no-sync pytest -q -n auto`）を実行し、失敗した場合はログから対象ファイルを抽出して Codex Sub-agent に修正を委譲します。ログは `agents_workspace/sub_agents/logs/pytest_*.log` に保存され、標準出力には 1 行の JSON を返します。
-
-**基本（デフォルトの pytest）**
-```bash
-uv run python -m src.agents.scripts.test
-```
-（ヘルプ：`uv run python -m src.agents.scripts.test --help`）
-
-**テスト対象を絞る（例：単体テスト/ケース指定）**
-```bash
-uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest -q tests/test_example.py::test_case'
-```
-
-**想定出力（例）**
-```json
-{"status":"pass","fixed":false,"files_touched":[],"remaining_failures":[],"summary":"tests passed","needs_main":false,"message_for_main":""}
-```
-```json
-{"status":"fail","fixed":false,"files_touched":[],"remaining_failures":["..."],"summary":"...","needs_main":false,"message_for_main":""}
-```
+- `skills/agents-consult/SKILL.md`
+- `skills/agents-review/SKILL.md`
+- `skills/agents-pre-commit/SKILL.md`
+- `skills/agents-test/SKILL.md`
 
 ## 4. 推奨ワークフロー（ブランチ作成→相談→作業→レビュー→検査→テスト）
 
@@ -135,18 +55,18 @@ uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest 
 
 2) **開発前の相談（推奨）**
 - 複雑なタスクの場合は、`src.agents.scripts.consult` を使用して複数のLLMにアプローチを提案させる
-- 例: `uv run python -m src.agents.scripts.consult system_prompt=approach 'task.prompt=...'`
+- 実行例は `skills/agents-consult/SKILL.md` を参照
 - 複数の視点からのフィードバックを得ることで、より良い実装方針を決定できる
 
 3) **検査とテスト（必須）**
 - 変更後は必ず `src.agents.scripts.pre_commit` → `src.agents.scripts.test` の順で実行する（ユーザーが「実行しないで」と言った場合を除く）
 - **テストは全て実行するのではなく、変更に影響するテストのみを `task.test_cmd` で指定して実行する**
-  - 例: `uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest -q -n auto tests/unit/test_affected.py'`
+  - 実行例は `skills/agents-test/SKILL.md` を参照
   - 変更したモジュールに対応するテストファイルを特定し、必要最小限のテストを実行する
 
 4) **開発後のレビュー（推奨）**
 - 変更完了後、`src.agents.scripts.review` を使用してコード変更をレビューさせる
-- 例: `uv run python -m src.agents.scripts.review review.scope=staged`
+- 実行例は `skills/agents-review/SKILL.md` を参照
 - 問題点の発見、改善提案、新しいタスクの特定に役立つ
 
 5) **ドキュメントの整合性確認（必須）**
