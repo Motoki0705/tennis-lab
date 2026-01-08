@@ -43,10 +43,6 @@ uv run pytest tests/unit/test_example.py::test_case
 
 # Run with coverage
 uv run pytest --cov=src --cov-report=html --cov-report=term-missing
-
-# Using the test subagent (recommended)
-uv run python -m src.agents.scripts.test
-uv run python -m src.agents.scripts.test 'task.test_cmd=uv run pytest tests/...'
 ```
 
 ### Linting and Type Checking
@@ -57,9 +53,6 @@ uv run ruff check --fix src tests
 
 # Run mypy
 uv run mypy src tests
-
-# Using pre-commit subagent (recommended, runs both)
-uv run python -m src.agents.scripts.pre_commit
 ```
 
 ### Training
@@ -189,16 +182,10 @@ def predict(self, *args, **kwargs) -> dict[str, Any]:
 
 ### Multi-LLM Consultation Tools
 
-This project provides tools for consulting multiple LLM providers:
-
-```bash
-# Before development: Get approach suggestions from multiple LLMs
-uv run python -m src.agents.scripts.consult system_prompt=approach 'task.prompt=...'
-
-# After development: Review changes with multiple LLMs
-uv run python -m src.agents.scripts.review
-uv run python -m src.agents.scripts.review review.scope=staged
-```
+This project provides sub-agent tools for consultation and review.
+Usage examples are documented in:
+- `skills/agents-consult/SKILL.md`
+- `skills/agents-review/SKILL.md`
 
 ### Mandatory Workflow (AI Agents MUST follow)
 
@@ -208,25 +195,15 @@ uv run python -m src.agents.scripts.review review.scope=staged
    ```
 
 2. **Before complex tasks** (recommended):
-   ```bash
-   # Consult multiple LLMs for approach suggestions
-   uv run python -m src.agents.scripts.consult system_prompt=approach 'task.prompt=...'
-   ```
+   - See `skills/agents-consult/SKILL.md` for commands.
 
 3. **After ANY code changes**:
-   ```bash
-   # Run linting/type checking
-   uv run python -m src.agents.scripts.pre_commit
-
-   # Run ONLY affected tests (do NOT run all tests)
-   uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest -q -n auto tests/unit/test_affected.py'
-   ```
+   - Run lint/type checks via `src.agents.scripts.pre_commit`.
+   - Run ONLY affected tests via `src.agents.scripts.test`.
+   - See `skills/agents-pre-commit/SKILL.md` and `skills/agents-test/SKILL.md` for commands.
 
 4. **Before commit** (recommended):
-   ```bash
-   # Review changes with multiple LLMs
-   uv run python -m src.agents.scripts.review review.scope=staged
-   ```
+   - See `skills/agents-review/SKILL.md` for commands.
 
 5. **Check documentation consistency**:
    - Update `src/{task}/README.md` if your changes affect the documented behavior
