@@ -209,6 +209,13 @@ src/wasb/
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## Heatmap アンサンブル推論
+
+`src/wasb/inference/ball_detection/heatmap_ensemble_predictor.py` は、複数モデルの
+logit ヒートマップを TTA で生成し、逆変換で同一の `output_heatmap_hw` に整列した後、
+温度校正 → TTA 平均 → PoE 融合 → forward-backward 平滑化を行います。最終的な座標は
+平滑化後の分布から期待値/MAP/2次またはガウスフィットで復元します。
+
 ## 実行コマンド
 
 詳細は [docs/scripts/wasb/](../../../docs/scripts/wasb/) を参照。
