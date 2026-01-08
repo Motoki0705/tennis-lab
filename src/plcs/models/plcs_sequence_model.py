@@ -151,7 +151,6 @@ class PLCSSequenceModel(nn.Module):
         rope_dim: Optional[int] = None,
         rope_theta: float = 10000.0,
         causal: bool = False,
-        max_seq_len: int = 120,
     ) -> None:
         """Initialize the PLCS sequence model.
 
@@ -165,12 +164,10 @@ class PLCSSequenceModel(nn.Module):
             rope_dim: RoPE dimension. Defaults to head_dim.
             rope_theta: RoPE theta parameter.
             causal: Use causal attention mask.
-            max_seq_len: Maximum sequence length.
 
         """
         super().__init__()
         self.hidden_dim = hidden_dim
-        self.max_seq_len = max_seq_len
         self.causal = causal
 
         head_dim = hidden_dim // num_heads
@@ -242,7 +239,6 @@ class PLCSSequenceModel(nn.Module):
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=model_cfg.get("rope_theta", 10000.0),
             causal=model_cfg.get("causal", False),
-            max_seq_len=int(model_cfg.get("max_seq_len", 120)),
         )
 
     def _build_positions(self, T: int, device: torch.device) -> Tensor:
