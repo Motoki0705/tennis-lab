@@ -7,10 +7,13 @@ suitable for the main PLCS model.
 from __future__ import annotations
 
 import math
+from typing import Optional
 
 import torch
 import torch.nn as nn
 from torch import Tensor
+
+from src.utils.geometry import NUM_COURT_KP, NUM_HUMAN_KP
 
 
 class PositionalEncoding(nn.Module):
@@ -331,3 +334,121 @@ class TransformerKeypointEncoder(nn.Module):
             pooled = encoded.mean(dim=1)
 
         return self.output_proj(pooled)
+
+
+class CourtTokenEmbedding(nn.Module):
+    """Embed court keypoints as individual tokens.
+
+    Each of the 20 court keypoints becomes a separate token.
+    This preserves per-keypoint information for the Transformer.
+
+    Input:
+        - court_kp: Court 2D keypoints, shape (B, 40) or (B, 20, 2).
+        - court_vis: Court visibility mask, shape (B, 20). Optional.
+
+    Output:
+        - Tokens of shape (B, NUM_COURT_KP, D).
+
+    """
+
+    def __init__(self, dim: int, dropout: float = 0.1) -> None:
+        """Initialize court token embedding.
+
+        Args:
+            dim: Output embedding dimension.
+            dropout: Dropout probability.
+
+        """
+        super().__init__()
+        # Input: (u, v) + visibility
+        in_dim = 2 + 1
+        self.proj = nn.Sequential(
+            nn.Linear(in_dim, dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(dim, dim),
+            nn.LayerNorm(dim),
+        )
+
+    def forward(self, court_kp: Tensor, court_vis: Optional[Tensor] = None) -> Tensor:
+        """Embed court keypoints as tokens.
+
+        Args:
+            court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
+            court_vis: Court visibility, shape (B, 20). Optional.
+
+        Returns:
+            Tensor: Token embeddings, shape (B, NUM_COURT_KP, D).
+
+        """
+        B = court_kp.shape[0]
+        if court_kp.dim() == 2:
+            court_kp = court_kp.view(B, NUM_COURT_KP, 2)
+
+        if court_vis is None:
+            vis = torch.ones(B, NUM_COURT_KP, device=court_kp.device, dtype=court_kp.dtype)
+        else:
+            vis = court_vis.to(court_kp.dtype)
+
+        # Concatenate coordinates and visibility: (B, 20, 3)
+        x = torch.cat([court_kp, vis.unsqueeze(-1)], dim=-1)
+        return self.proj(x)
+
+
+class PlayerTokenEmbedding(nn.Module):
+    """Embed player keypoints as individual tokens.
+
+    Each of the 17 player keypoints becomes a separate token.
+    This preserves per-keypoint information for the Transformer.
+
+    Input:
+        - human_kp: Human 2D keypoints, shape (B, 34) or (B, 17, 2).
+        - human_vis: Human visibility mask, shape (B, 17). Optional.
+
+    Output:
+        - Tokens of shape (B, NUM_HUMAN_KP, D).
+
+    """
+
+    def __init__(self, dim: int, dropout: float = 0.1) -> None:
+        """Initialize player token embedding.
+
+        Args:
+            dim: Output embedding dimension.
+            dropout: Dropout probability.
+
+        """
+        super().__init__()
+        # Input: (u, v) + visibility
+        in_dim = 2 + 1
+        self.proj = nn.Sequential(
+            nn.Linear(in_dim, dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(dim, dim),
+            nn.LayerNorm(dim),
+        )
+
+    def forward(self, human_kp: Tensor, human_vis: Optional[Tensor] = None) -> Tensor:
+        """Embed player keypoints as tokens.
+
+        Args:
+            human_kp: Human keypoints, shape (B, 34) or (B, 17, 2).
+            human_vis: Human visibility, shape (B, 17). Optional.
+
+        Returns:
+            Tensor: Token embeddings, shape (B, NUM_HUMAN_KP, D).
+
+        """
+        B = human_kp.shape[0]
+        if human_kp.dim() == 2:
+            human_kp = human_kp.view(B, NUM_HUMAN_KP, 2)
+
+        if human_vis is None:
+            vis = torch.ones(B, NUM_HUMAN_KP, device=human_kp.device, dtype=human_kp.dtype)
+        else:
+            vis = human_vis.to(human_kp.dtype)
+
+        # Concatenate coordinates and visibility: (B, 17, 3)
+        x = torch.cat([human_kp, vis.unsqueeze(-1)], dim=-1)
+        return self.proj(x)
