@@ -3,8 +3,11 @@ name: plcs
 hidden_dim: 256
 num_layers: 4
 num_heads: 8
+num_kv_heads: 2
 dropout: 0.1
-use_court_context: true
+
+# RoPE settings
+rope_theta: 10000.0
 
 # Input dimensions
 human_kp_dim: 34
