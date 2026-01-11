@@ -2,20 +2,29 @@
 
 Player Localization in Court System: estimates player position and
 rotation in tennis court coordinates from 2D pose observations.
+
+Architecture:
+    - Llama-style Decoder-Only Transformer with GQA + RoPE + SDPA
+    - Court keypoints (20) are tokenized as individual tokens
+    - Player keypoints (17) are tokenized as individual tokens
+    - Both court and player tokens are processed together
+    - PositionHead and RotationHead outputs from pooled player tokens
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
+import torch
 import torch.nn as nn
 from torch import Tensor
 
+from src.common.models import RMSNorm, RoPE, RoPEConfig, TransformerBlock
 from src.plcs.models.components.encoders import (
-    KeypointEncoder,
-    TransformerKeypointEncoder,
+    CourtTokenEmbedding,
+    PlayerTokenEmbedding,
 )
-from src.plcs.models.components.heads import CombinedHead, PositionHead, RotationHead
+from src.plcs.models.components.heads import PositionHead, RotationHead
 from src.utils.geometry import NUM_COURT_KP, NUM_HUMAN_KP
 
 if TYPE_CHECKING:
@@ -25,13 +34,23 @@ if TYPE_CHECKING:
 class PLCSModel(nn.Module):
     """PLCS: Player Localization in Court System.
 
+    Llama-style architecture with:
+    - Grouped-Query Attention (GQA) with SDPA for efficiency
+    - Rotary Position Embedding (RoPE)
+    - SwiGLU MLP and RMSNorm
+
     This model takes 2D keypoints (human pose + court landmarks) from a
     camera view and predicts the player's 3D position and rotation in
     the court coordinate system.
 
+    Tokens = [court_tokens(NUM_COURT_KP), player_tokens(NUM_HUMAN_KP)]
+    Predicts 3D position and rotation from pooled player tokens.
+
     Input:
         - human_kp: Human 2D keypoints (COCO 17), shape (B, 34) or (B, 17, 2)
         - court_kp: Court 2D keypoints (20 landmarks), shape (B, 40) or (B, 20, 2)
+        - human_vis: Human visibility mask, shape (B, 17). Optional.
+        - court_vis: Court visibility mask, shape (B, 20). Optional.
 
     Output:
         - position: Normalized (x, y, z) in court coordinates, shape (B, 3)
@@ -44,71 +63,75 @@ class PLCSModel(nn.Module):
         hidden_dim: int = 256,
         num_layers: int = 4,
         num_heads: int = 8,
+        num_kv_heads: int = 2,
+        ffn_dim: Optional[int] = None,
         dropout: float = 0.1,
-        use_transformer: bool = True,
-        use_combined_head: bool = False,
+        rope_dim: Optional[int] = None,
+        rope_theta: float = 10000.0,
     ) -> None:
         """Initialize the PLCS model.
 
         Args:
-            hidden_dim: Hidden dimension for encoder and heads.
-            num_layers: Number of layers in encoder.
-            num_heads: Number of attention heads (for transformer encoder).
+            hidden_dim: Hidden dimension for all components.
+            num_layers: Number of Transformer blocks.
+            num_heads: Number of query attention heads.
+            num_kv_heads: Number of key/value heads (for GQA).
+            ffn_dim: FFN intermediate dimension. Defaults to 8/3 * hidden_dim.
             dropout: Dropout probability.
-            use_transformer: Use transformer encoder instead of MLP.
-            use_combined_head: Use combined head instead of separate heads.
+            rope_dim: RoPE dimension. Defaults to head_dim.
+            rope_theta: RoPE theta parameter.
 
         """
         super().__init__()
 
         self.hidden_dim = hidden_dim
-        self.use_transformer = use_transformer
-        self.use_combined_head = use_combined_head
 
-        # Encoder
-        if use_transformer:
-            self.encoder = TransformerKeypointEncoder(
-                num_human_kp=NUM_HUMAN_KP,
-                num_court_kp=NUM_COURT_KP,
-                hidden_dim=hidden_dim,
-                num_heads=num_heads,
-                num_layers=num_layers,
-                dropout=dropout,
-            )
-        else:
-            self.encoder = KeypointEncoder(
-                human_kp_dim=NUM_HUMAN_KP * 2,
-                court_kp_dim=NUM_COURT_KP * 2,
-                hidden_dim=hidden_dim,
-                num_layers=num_layers,
-                dropout=dropout,
-            )
+        head_dim = hidden_dim // num_heads
+        rope_dim = head_dim if rope_dim is None else rope_dim
+        self.rope = RoPE(RoPEConfig(rope_dim=rope_dim, rope_theta=rope_theta))
+
+        if ffn_dim is None:
+            ffn_dim = int((8 * hidden_dim) / 3)
+            ffn_dim = (ffn_dim + 63) // 64 * 64  # Round to multiple of 64
+
+        # Token embeddings
+        self.court_embed = CourtTokenEmbedding(dim=hidden_dim, dropout=dropout)
+        self.player_embed = PlayerTokenEmbedding(dim=hidden_dim, dropout=dropout)
+
+        # Type embedding: 0 = court, 1 = player
+        self.type_embed = nn.Embedding(2, hidden_dim)
+
+        # Transformer blocks
+        self.blocks = nn.ModuleList(
+            [
+                TransformerBlock(
+                    dim=hidden_dim,
+                    num_heads=num_heads,
+                    num_kv_heads=num_kv_heads,
+                    ffn_dim=ffn_dim,
+                    dropout=dropout,
+                    rope=self.rope,
+                    causal=False,
+                )
+                for _ in range(num_layers)
+            ]
+        )
+        self.final_norm = RMSNorm(hidden_dim)
 
         # Output heads
-        if use_combined_head:
-            self.combined_head = CombinedHead(
-                input_dim=hidden_dim,
-                hidden_dim=hidden_dim,
-                num_layers=2,
-                dropout=dropout,
-            )
-            self.position_head = None
-            self.rotation_head = None
-        else:
-            self.combined_head = None
-            self.position_head = PositionHead(
-                input_dim=hidden_dim,
-                hidden_dim=hidden_dim // 2,
-                output_dim=3,
-                num_layers=2,
-                dropout=dropout,
-            )
-            self.rotation_head = RotationHead(
-                input_dim=hidden_dim,
-                hidden_dim=hidden_dim // 2,
-                num_layers=2,
-                dropout=dropout,
-            )
+        self.position_head = PositionHead(
+            input_dim=hidden_dim,
+            hidden_dim=hidden_dim // 2,
+            output_dim=3,
+            num_layers=2,
+            dropout=dropout,
+        )
+        self.rotation_head = RotationHead(
+            input_dim=hidden_dim,
+            hidden_dim=hidden_dim // 2,
+            num_layers=2,
+            dropout=dropout,
+        )
 
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSModel:
@@ -126,10 +149,17 @@ class PLCSModel(nn.Module):
             hidden_dim=model_cfg.get("hidden_dim", 256),
             num_layers=model_cfg.get("num_layers", 4),
             num_heads=model_cfg.get("num_heads", 8),
+            num_kv_heads=model_cfg.get("num_kv_heads", 2),
+            ffn_dim=model_cfg.get("ffn_dim", None),
             dropout=model_cfg.get("dropout", 0.1),
-            use_transformer=model_cfg.get("use_transformer", True),
-            use_combined_head=model_cfg.get("use_combined_head", False),
+            rope_dim=model_cfg.get("rope_dim", None),
+            rope_theta=model_cfg.get("rope_theta", 10000.0),
         )
+
+    def _build_positions(self, device: torch.device) -> Tensor:
+        """Build position indices for court + player tokens."""
+        S = NUM_COURT_KP + NUM_HUMAN_KP
+        return torch.arange(S, device=device, dtype=torch.long)
 
     def forward(
         self,
@@ -150,25 +180,70 @@ class PLCSModel(nn.Module):
             dict: Dictionary with 'position' (B, 3) and 'rotation' (B, 2).
 
         """
-        # Encode keypoints
-        if self.use_transformer:
-            features = self.encoder(human_kp, court_kp, human_vis, court_vis)
-        else:
-            # Flatten if needed
-            if human_kp.dim() == 3:
-                human_kp = human_kp.flatten(1)
-            if court_kp.dim() == 3:
-                court_kp = court_kp.flatten(1)
-            features = self.encoder(human_kp, court_kp)
+        B = human_kp.size(0)
 
-        # Decode outputs
-        if self.use_combined_head:
-            position, rotation = self.combined_head(features)
+        # Tokenize court and player keypoints
+        court_tok = self.court_embed(court_kp, court_vis)  # (B, 20, D)
+        player_tok = self.player_embed(human_kp, human_vis)  # (B, 17, D)
+
+        # Add type embeddings
+        court_type = self.type_embed(
+            torch.zeros(NUM_COURT_KP, device=human_kp.device, dtype=torch.long)
+        )[None, :, :]  # (1, 20, D)
+        player_type = self.type_embed(
+            torch.ones(NUM_HUMAN_KP, device=human_kp.device, dtype=torch.long)
+        )[None, :, :]  # (1, 17, D)
+
+        x = torch.cat(
+            [court_tok + court_type, player_tok + player_type], dim=1
+        )  # (B, 37, D)
+
+        pos = self._build_positions(device=x.device)  # (37,)
+
+        # Build key_padding_mask if visibility provided
+        key_padding_mask: Optional[Tensor] = None
+        if human_vis is not None or court_vis is not None:
+            if court_vis is not None:
+                court_mask = court_vis.bool()  # (B, 20)
+            else:
+                court_mask = torch.ones(
+                    B, NUM_COURT_KP, device=x.device, dtype=torch.bool
+                )
+            if human_vis is not None:
+                player_mask = human_vis.bool()  # (B, 17)
+            else:
+                player_mask = torch.ones(
+                    B, NUM_HUMAN_KP, device=x.device, dtype=torch.bool
+                )
+            key_padding_mask = torch.cat([court_mask, player_mask], dim=1)  # (B, 37)
+
+        # Apply Transformer blocks
+        for blk in self.blocks:
+            x = blk(x, pos=pos, key_padding_mask=key_padding_mask)
+
+        x = self.final_norm(x)
+
+        # Extract player tokens and pool
+        player_out = x[:, NUM_COURT_KP:, :]  # (B, 17, D)
+
+        # Pool player tokens (mean pooling with visibility mask)
+        if human_vis is not None:
+            vis_mask = human_vis.to(player_out.dtype).unsqueeze(-1)  # (B, 17, 1)
+            pooled = (player_out * vis_mask).sum(dim=1) / (
+                vis_mask.sum(dim=1) + 1e-8
+            )  # (B, D)
         else:
-            position = self.position_head(features)
-            rotation = self.rotation_head(features)
+            pooled = player_out.mean(dim=1)  # (B, D)
+
+        # Apply output heads
+        position = self.position_head(pooled)  # (B, 3)
+        rotation = self.rotation_head(pooled)  # (B, 2)
 
         return {
             "position": position,
             "rotation": rotation,
         }
+
+    def get_num_params(self) -> int:
+        """Get total number of trainable parameters."""
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
