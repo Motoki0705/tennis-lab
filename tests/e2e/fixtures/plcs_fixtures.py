@@ -171,9 +171,8 @@ def create_minimal_plcs_checkpoint(checkpoint_path: Path | str) -> Path:
         hidden_dim=256,
         num_layers=4,
         num_heads=8,
+        num_kv_heads=2,
         dropout=0.1,
-        use_transformer=True,
-        use_combined_head=False,
     )
 
     # Create Lightning module with matching config
@@ -182,9 +181,8 @@ def create_minimal_plcs_checkpoint(checkpoint_path: Path | str) -> Path:
             "hidden_dim": 256,
             "num_layers": 4,
             "num_heads": 8,
+            "num_kv_heads": 2,
             "dropout": 0.1,
-            "use_transformer": True,
-            "use_combined_head": False,
         },
         "training": {
             "learning_rate": 1e-4,
