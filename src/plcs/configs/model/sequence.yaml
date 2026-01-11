@@ -1,9 +1,22 @@
+# PLCS Sequence Model Configuration
+# Decoder-Only Transformer with GQA + RoPE + SDPA
+
 name: plcs_sequence
 
+# Architecture
 hidden_dim: 256
 num_layers: 8
 num_heads: 8
+num_kv_heads: 2      # Grouped-Query Attention: num_heads / num_kv_heads = 4 groups
+ffn_dim: null        # Defaults to 8/3 * hidden_dim (rounded to 64)
 dropout: 0.1
-max_seq_len: 120
-architecture: sequence
 
+# RoPE (Rotary Position Embedding)
+rope_dim: null       # Defaults to head_dim (hidden_dim / num_heads)
+rope_theta: 10000.0
+
+# Attention
+causal: false        # Use causal attention mask
+
+# Model type
+architecture: sequence
