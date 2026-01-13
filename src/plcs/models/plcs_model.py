@@ -13,7 +13,7 @@ Architecture:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import torch
 import torch.nn as nn
@@ -64,9 +64,9 @@ class PLCSModel(nn.Module):
         num_layers: int = 4,
         num_heads: int = 8,
         num_kv_heads: int = 2,
-        ffn_dim: Optional[int] = None,
+        ffn_dim: int | None = None,
         dropout: float = 0.1,
-        rope_dim: Optional[int] = None,
+        rope_dim: int | None = None,
         rope_theta: float = 10000.0,
     ) -> None:
         """Initialize the PLCS model.
@@ -201,7 +201,7 @@ class PLCSModel(nn.Module):
         pos = self._build_positions(device=x.device)  # (37,)
 
         # Build key_padding_mask if visibility provided
-        key_padding_mask: Optional[Tensor] = None
+        key_padding_mask: Tensor | None = None
         if human_vis is not None or court_vis is not None:
             if court_vis is not None:
                 court_mask = court_vis.bool()  # (B, 20)
