@@ -7,7 +7,6 @@ suitable for the main PLCS model.
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -370,7 +369,7 @@ class CourtTokenEmbedding(nn.Module):
             nn.LayerNorm(dim),
         )
 
-    def forward(self, court_kp: Tensor, court_vis: Optional[Tensor] = None) -> Tensor:
+    def forward(self, court_kp: Tensor, court_vis: Tensor | None = None) -> Tensor:
         """Embed court keypoints as tokens.
 
         Args:
@@ -429,7 +428,7 @@ class PlayerTokenEmbedding(nn.Module):
             nn.LayerNorm(dim),
         )
 
-    def forward(self, human_kp: Tensor, human_vis: Optional[Tensor] = None) -> Tensor:
+    def forward(self, human_kp: Tensor, human_vis: Tensor | None = None) -> Tensor:
         """Embed player keypoints as tokens.
 
         Args:

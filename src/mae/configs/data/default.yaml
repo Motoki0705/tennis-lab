@@ -1,0 +1,23 @@
+# Default Data Configuration for MAE Training
+#
+# Uses tennis videos from data/tennis/raw/videos/
+
+# Video source
+video_dir: data/tennis/raw/videos
+
+# Resolution range (variable resolution training)
+min_resolution: 160
+max_resolution: 320
+
+# Frame sampling
+frames_per_video: 100
+patch_size: 16
+
+# Data loading
+batch_size: 32
+num_workers: 4
+val_split: 0.1
+pin_memory: true
+
+# Video reading backend
+use_decord: true  # Faster than OpenCV if available

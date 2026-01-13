@@ -1,0 +1,55 @@
+# Large MAE Model Configuration (ViT-Large equivalent with MoE)
+#
+# Large model with MoE for maximum capacity.
+
+# Encoder (ViT-Large with MoE)
+hidden_dim: 1024
+num_layers: 24
+num_heads: 16
+num_kv_heads: 4
+ffn_dim: null
+dropout: 0.0
+
+# Patch embedding
+patch_size: 16
+in_channels: 3
+image_size: 224
+
+# Special tokens
+num_register_tokens: 8
+
+# Positional encoding
+rope_dim: null
+rope_theta: 10000.0
+rope_interleave: true
+
+# Advanced options (MoE enabled)
+use_moe: true
+moe_layer_freq: 2  # MoE every 2 layers
+use_mla: false
+mla_kv_lora_rank: 128
+
+# MoE configuration (used when use_moe=true)
+moe:
+  num_experts: 8
+  num_shared_experts: 1
+  top_k: 2
+  aux_loss_weight: 0.01
+  use_bias_balancing: true
+
+# Decoder
+decoder_hidden_dim: 512
+decoder_num_layers: 8
+decoder_num_heads: 16
+decoder_num_kv_heads: 4
+
+# Masking
+mask_ratio: 0.75
+mask_token_init: normal
+
+# Loss
+norm_pix_loss: true
+
+# Resolution range (larger for more context)
+min_resolution: 192
+max_resolution: 384

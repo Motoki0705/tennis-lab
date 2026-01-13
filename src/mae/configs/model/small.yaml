@@ -1,0 +1,47 @@
+# Small MAE Model Configuration (ViT-Small equivalent)
+#
+# Smaller model for faster experimentation and limited GPU memory.
+
+# Encoder (ViT-Small)
+hidden_dim: 384
+num_layers: 12
+num_heads: 6
+num_kv_heads: 2
+ffn_dim: null
+dropout: 0.0
+
+# Patch embedding
+patch_size: 16
+in_channels: 3
+image_size: 224
+
+# Special tokens
+num_register_tokens: 4
+
+# Positional encoding
+rope_dim: null
+rope_theta: 10000.0
+rope_interleave: true
+
+# Advanced options (disabled for small model)
+use_moe: false
+moe_layer_freq: 2
+use_mla: false
+mla_kv_lora_rank: 32
+
+# Decoder (smaller)
+decoder_hidden_dim: 256
+decoder_num_layers: 4
+decoder_num_heads: 8
+decoder_num_kv_heads: 2
+
+# Masking
+mask_ratio: 0.75
+mask_token_init: normal
+
+# Loss
+norm_pix_loss: true
+
+# Resolution range
+min_resolution: 128
+max_resolution: 256
