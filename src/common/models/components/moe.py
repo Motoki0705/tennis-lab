@@ -218,3 +218,46 @@ class MoE(nn.Module):
 
         y = y.type_as(x_flat)
         return y.view(orig_shape)
+
+
+if __name__ == "__main__":
+    torch.manual_seed(0)
+    demo_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    demo_cfg = MoEConfig(
+        dim=16,
+        inter_dim=32,
+        moe_inter_dim=32,
+        n_routed_experts=4,
+        n_shared_experts=1,
+        n_activated_experts=2,
+    )
+    demo_moe = MoE(demo_cfg).eval().to(demo_device)
+    demo_input = torch.randn(2, 3, demo_cfg.dim, device=demo_device)
+
+    with torch.no_grad():
+        demo_output = demo_moe(demo_input)
+
+    print(demo_output)
+
+    with torch.no_grad():
+        x_flat = demo_input.view(-1, demo_cfg.dim)
+        demo_weights, demo_indices = demo_moe.gate(x_flat)
+
+    print("selected experts (first 6 tokens):")
+    print(demo_indices[:6])
+
+    usage_counts = torch.zeros(demo_cfg.n_routed_experts, device=demo_device)
+    num_runs = 50
+    tokens_per_run = 64
+
+    with torch.no_grad():
+        for _ in range(num_runs):
+            sample = torch.randn(tokens_per_run, demo_cfg.dim, device=demo_device)
+            _, indices = demo_moe.gate(sample)
+            usage_counts += torch.bincount(indices.flatten(), minlength=demo_cfg.n_routed_experts)
+
+    usage_ratio = usage_counts / usage_counts.sum()
+    print("expert usage counts:")
+    print(usage_counts.cpu())
+    print("expert usage ratio:")
+    print(usage_ratio.cpu())

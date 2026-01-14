@@ -370,3 +370,15 @@ class MultiHeadSelfAttention(nn.Module):
         )
         out = out.transpose(1, 2).contiguous().view(bsz, q_len, self.n_heads * self.head_dim)
         return self.wo(out)
+
+
+if __name__ == "__main__":
+    torch.manual_seed(0)
+    demo_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    demo_attn = MultiHeadSelfAttention(dim=32, n_heads=4).eval().to(demo_device)
+    demo_input = torch.randn(2, 8, 32, device=demo_device)
+
+    with torch.no_grad():
+        demo_output = demo_attn(demo_input, start_pos=0, is_causal=False)
+
+    print(demo_output)

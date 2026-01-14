@@ -38,18 +38,18 @@ class ViTConfig:
     num_heads: int = 12
     num_kv_heads: int = 4  # unused (kept for config compatibility)
     ffn_dim: int | None = None
-    dropout: float = 0.0
+    dropout: float = 0.1
 
     # Special tokens
-    num_register_tokens: int = 0
+    num_register_tokens: int = 4
     use_cls_token: bool = True
 
     # 2D RoPE
     rope_dim: int | None = None
-    rope_theta: float = 100.0  # RoPE base (theta) for 2D axial RoPE
+    rope_theta: float = 1000.0  # RoPE base (theta) for 2D axial RoPE
 
     # MoE (optional)
-    use_moe: bool = False
+    use_moe: bool = True
     moe_config: MoEConfig | None = None
     moe_layer_freq: int = 2
 
@@ -58,7 +58,7 @@ class ViTConfig:
     mla_kv_lora_rank: int = 64
 
     # Output selection
-    pooling: Literal["cls", "mean", "all"] = "cls"
+    pooling: Literal["cls", "mean", "all"] = "all"
 
 
 class PatchEmbedding(nn.Module):
@@ -194,3 +194,25 @@ class ViTEncoder(nn.Module):
             start += self.cfg.num_register_tokens
             return tok[:, start:].mean(dim=1)
         raise ValueError(f"Unknown pooling={pooling!r}")
+
+
+if __name__ == "__main__":
+    torch.manual_seed(0)
+    demo_cfg = ViTConfig(
+        image_size=64,
+        patch_size=8,
+        hidden_dim=128,
+        num_layers=2,
+        num_heads=4,
+        num_register_tokens=2,
+        use_moe=False,
+        pooling="cls",
+    )
+    demo_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    demo_model = ViTEncoder(demo_cfg).eval().to(demo_device)
+    demo_input = torch.randn(1, demo_cfg.in_channels, demo_cfg.image_size, demo_cfg.image_size).to(demo_device)
+
+    with torch.no_grad():
+        demo_output = demo_model(demo_input)
+
+    print(demo_output)
