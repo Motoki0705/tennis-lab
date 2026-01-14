@@ -54,6 +54,7 @@ src/blcs/
 │   ├── generate_dataset.py           # 物理シミュレーションによるデータ生成
 │   ├── train.py                      # 単一カメラモデル学習
 │   ├── train_multiview.py            # マルチビューモデル学習
+│   ├── run_hparam_sweep.sh           # 単一カメラモデルのハイパラ探索
 │   ├── visualize.py                  # 単一カメラ可視化
 │   └── visualize_multiview.py        # マルチビュー可視化
 │
@@ -152,6 +153,14 @@ uv run python -m src.blcs.scripts.train_multiview \
     data.num_views=4 \
     data.min_cameras=2 \
     training.max_epochs=100
+```
+
+### ハイパーパラメータ探索
+
+```bash
+UV_CACHE_DIR=agents_workspace/tmp_cache/uv_cache \
+RUN_ROOT=outputs/blcs/sweep_$(date +%Y-%m-%d_%H-%M-%S) \
+bash src/blcs/scripts/run_hparam_sweep.sh
 ```
 
 ### 可視化
