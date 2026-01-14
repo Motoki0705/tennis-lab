@@ -138,9 +138,10 @@ def run_training(config: DictConfig) -> None:
             save_last=True,
         ),
         EarlyStopping(
-            monitor="val/loss",
-            patience=20,
+            monitor="val/pos_error_m",
+            patience=5,
             mode="min",
+            min_delta=1.0e-3,
         ),
         LearningRateMonitor(logging_interval="step"),
     ]
