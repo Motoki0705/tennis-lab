@@ -1,544 +1,357 @@
-"""Attention mechanisms for Transformer models.
+# ==============================================================================
+# NOTE ON ORIGIN / LICENSE
+#
+# This file is derived from (and/or inspired by) DeepSeek's inference reference:
+#   https://github.com/deepseek-ai/DeepSeek-V3.2-Exp/blob/main/inference/model.py
+#
+# MIT License
+#
+# Copyright (c) 2025 DeepSeek
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+# ==============================================================================
 
-This module provides attention mechanisms including:
-- MHA: Multi-Head Attention (standard)
-- GQA: Grouped-Query Attention
-- MLA: Multi-head Latent Attention (DeepSeek-V2/V3)
+"""
+attention.py (pure PyTorch)
 
-All attention classes support a common interface for easy switching.
+- Implements Multi-Head Self-Attention (MHA) using torch.nn.functional.scaled_dot_product_attention.
+- Supports:
+  - Optional KV-cache (for autoregressive decoding)
+  - Optional 1D RoPE (complex cis) via rope.apply_rotary_emb
+  - Optional 2D RoPE (for ViT-like patch grids) via rope.RotaryPositionEmbedding2D
 
-Reference:
-    - MHA: https://arxiv.org/abs/1706.03762 (Attention Is All You Need)
-    - GQA: https://arxiv.org/abs/2305.13245 (GQA: Training Generalized Multi-Query)
-    - MLA: https://arxiv.org/abs/2405.04434 (DeepSeek-V2)
+Mask conventions (important):
+- torch.nn.functional.scaled_dot_product_attention supports:
+  - float mask: added to attention scores (use 0 for keep, -inf for mask)
+  - bool mask: True means "take part in attention" (KEEP), False means MASK
+  See official docs for SDPA for details.
+- To avoid ambiguity with nn.MultiheadAttention (where bool True often means MASK),
+  this module primarily uses float additive masks internally.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
-from typing import Literal, Optional
+from typing import Optional, Tuple
 
 import torch
-import torch.nn as nn
+from torch import nn
 import torch.nn.functional as F
-from torch import Tensor
 
-from src.common.models.components.rope import RoPE
-
-
-class AttentionType(str, Enum):
-    """Attention mechanism type."""
-
-    MHA = "mha"
-    GQA = "gqa"
-    MLA = "mla"
+from src.common.models.components.rope import apply_rotary_emb, RotaryPositionEmbedding2D
 
 
-@dataclass
-class GQAConfig:
-    """Configuration for Grouped-Query Attention.
-
-    Attributes:
-        dim: Model dimension.
-        num_heads: Number of query heads.
-        num_kv_heads: Number of key/value heads (must divide num_heads).
-        dropout: Dropout probability.
-        rope_dim: Dimension for RoPE. None to disable.
-        rope_theta: Base frequency for RoPE.
-        causal: Whether to use causal attention.
-
+def _make_additive_causal_mask(
+    q_len: int,
+    k_len: int,
+    *,
+    start_pos: int,
+    device: torch.device,
+    dtype: torch.dtype,
+) -> torch.Tensor:
     """
-
-    dim: int
-    num_heads: int
-    num_kv_heads: int = 4
-    dropout: float = 0.0
-    rope_dim: int | None = None
-    rope_theta: float = 10000.0
-    causal: bool = False
-
-
-class GQA(nn.Module):
-    """Grouped-Query Attention with Scaled Dot-Product Attention (SDPA).
-
-    Uses F.scaled_dot_product_attention for efficiency:
-      - Q has num_heads query heads
-      - K/V have num_kv_heads key/value heads (GQA)
-      - K/V are expanded via view/expand (no memory copy) to match num_heads
-
-    Special cases:
-      - num_kv_heads == num_heads: Standard MHA
-      - num_kv_heads == 1: Multi-Query Attention (MQA)
-
-    Reference: https://arxiv.org/abs/2305.13245
-    """
-
-    def __init__(self, cfg: GQAConfig) -> None:
-        """Initialize GQA.
-
-        Args:
-            cfg: GQA configuration.
-
-        """
-        super().__init__()
-        dim = cfg.dim
-        num_heads = cfg.num_heads
-        num_kv_heads = cfg.num_kv_heads
-
-        assert dim % num_heads == 0, "dim must be divisible by num_heads"
-        assert (
-            num_heads % num_kv_heads == 0
-        ), "num_heads must be divisible by num_kv_heads"
-
-        self.dim = dim
-        self.num_heads = num_heads
-        self.num_kv_heads = num_kv_heads
-        self.head_dim = dim // num_heads
-        self.num_groups = num_heads // num_kv_heads
-        self.dropout = cfg.dropout
-        self.causal = cfg.causal
-
-        # RoPE (optional)
-        self.rope: RoPE | None = None
-        if cfg.rope_dim is not None and cfg.rope_dim > 0:
-            from src.common.models.components.rope import RoPE, RoPEConfig
-
-            self.rope = RoPE(RoPEConfig(rope_dim=cfg.rope_dim, rope_theta=cfg.rope_theta))
-
-        # Projections
-        self.wq = nn.Linear(dim, num_heads * self.head_dim, bias=False)
-        self.wk = nn.Linear(dim, num_kv_heads * self.head_dim, bias=False)
-        self.wv = nn.Linear(dim, num_kv_heads * self.head_dim, bias=False)
-        self.wo = nn.Linear(num_heads * self.head_dim, dim, bias=False)
-
-    def forward(
-        self,
-        x: Tensor,
-        pos: Optional[Tensor] = None,
-        key_padding_mask: Optional[Tensor] = None,
-    ) -> Tensor:
-        """Forward pass with SDPA.
-
-        Args:
-            x: Input tensor, shape (B, S, D).
-            pos: Position indices for RoPE, shape (S,).
-            key_padding_mask: Mask where True = keep, False = mask out, shape (B, S).
-
-        Returns:
-            Output tensor, shape (B, S, D).
-
-        """
-        B, S, _ = x.shape
-
-        # Project to Q, K, V
-        q = self.wq(x).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
-        k = self.wk(x).view(B, S, self.num_kv_heads, self.head_dim).transpose(1, 2)
-        v = self.wv(x).view(B, S, self.num_kv_heads, self.head_dim).transpose(1, 2)
-
-        # Apply RoPE
-        if self.rope is not None and pos is not None:
-            q = self.rope(q, pos)
-            k = self.rope(k, pos)
-
-        # GQA: expand K/V to match num_heads using view/expand (no memory copy)
-        k = k.unsqueeze(2).expand(B, self.num_kv_heads, self.num_groups, S, self.head_dim)
-        k = k.reshape(B, self.num_heads, S, self.head_dim)
-        v = v.unsqueeze(2).expand(B, self.num_kv_heads, self.num_groups, S, self.head_dim)
-        v = v.reshape(B, self.num_heads, S, self.head_dim)
-
-        # Build attention mask for SDPA
-        attn_mask: Optional[Tensor] = None
-        if key_padding_mask is not None:
-            # key_padding_mask: (B, S) True=keep, False=mask
-            # SDPA expects additive mask where -inf = masked
-            mask = ~key_padding_mask
-            attn_mask = torch.zeros(B, 1, 1, S, device=x.device, dtype=x.dtype)
-            attn_mask = attn_mask.masked_fill(mask.unsqueeze(1).unsqueeze(2), float("-inf"))
-
-        # Use SDPA for efficient attention computation
-        dropout_p = self.dropout if self.training else 0.0
-        out = F.scaled_dot_product_attention(
-            q,
-            k,
-            v,
-            attn_mask=attn_mask,
-            dropout_p=dropout_p,
-            is_causal=self.causal and attn_mask is None,
-        )
-
-        out = out.transpose(1, 2).contiguous().view(B, S, self.num_heads * self.head_dim)
-        return self.wo(out)
-
-
-@dataclass
-class MHAConfig:
-    """Configuration for Multi-Head Attention.
-
-    Attributes:
-        dim: Model dimension.
-        num_heads: Number of attention heads.
-        dropout: Dropout probability.
-        rope_dim: Dimension for RoPE. None to disable.
-        rope_theta: Base frequency for RoPE.
-        causal: Whether to use causal attention.
-
-    """
-
-    dim: int
-    num_heads: int
-    dropout: float = 0.0
-    rope_dim: int | None = None
-    rope_theta: float = 10000.0
-    causal: bool = False
-
-
-class MHA(nn.Module):
-    """Multi-Head Attention (standard implementation).
-
-    This is equivalent to GQA with num_kv_heads == num_heads.
-    Provided for clarity and backward compatibility.
-
-    Reference: https://arxiv.org/abs/1706.03762
-    """
-
-    def __init__(self, cfg: MHAConfig) -> None:
-        """Initialize MHA.
-
-        Args:
-            cfg: MHA configuration.
-
-        """
-        super().__init__()
-        # MHA is GQA with num_kv_heads == num_heads
-        gqa_cfg = GQAConfig(
-            dim=cfg.dim,
-            num_heads=cfg.num_heads,
-            num_kv_heads=cfg.num_heads,  # Full attention
-            dropout=cfg.dropout,
-            rope_dim=cfg.rope_dim,
-            rope_theta=cfg.rope_theta,
-            causal=cfg.causal,
-        )
-        self.attn = GQA(gqa_cfg)
-
-        # Expose attributes for compatibility
-        self.dim = cfg.dim
-        self.num_heads = cfg.num_heads
-        self.head_dim = cfg.dim // cfg.num_heads
-        self.dropout = cfg.dropout
-        self.causal = cfg.causal
-
-    def forward(
-        self,
-        x: Tensor,
-        pos: Optional[Tensor] = None,
-        key_padding_mask: Optional[Tensor] = None,
-    ) -> Tensor:
-        """Forward pass.
-
-        Args:
-            x: Input tensor, shape (B, S, D).
-            pos: Position indices for RoPE, shape (S,).
-            key_padding_mask: Mask where True = keep, False = mask out.
-
-        Returns:
-            Output tensor, shape (B, S, D).
-
-        """
-        return self.attn(x, pos=pos, key_padding_mask=key_padding_mask)
-
-
-@dataclass
-class MLAConfig:
-    """Configuration for Multi-head Latent Attention.
-
-    Attributes:
-        dim: Model dimension.
-        num_heads: Number of attention heads.
-        head_dim: Dimension per head. Defaults to dim // num_heads.
-        kv_lora_rank: Rank for KV compression. Lower = more compression.
-        q_lora_rank: Rank for Q compression (optional). None = no compression.
-        rope_dim: Dimension for RoPE. Applied to decoupled position keys.
-        rope_theta: Base frequency for RoPE.
-        dropout: Dropout probability.
-        causal: Whether to use causal attention.
-
-    """
-
-    dim: int
-    num_heads: int
-    head_dim: int | None = None
-    kv_lora_rank: int = 64
-    q_lora_rank: int | None = None
-    rope_dim: int = 64
-    rope_theta: float = 10000.0
-    dropout: float = 0.0
-    causal: bool = False
-
-
-class MLA(nn.Module):
-    """Multi-head Latent Attention (DeepSeek-V2/V3).
-
-    Key innovations:
-    1. KV cache compression: Instead of caching full K/V, we cache a
-       compressed latent vector c_kv which is projected back to K/V.
-    2. Decoupled RoPE: Position information is kept in separate "rope keys"
-       that don't go through the compression, ensuring positional info
-       is preserved.
-    3. Optional Q compression for further efficiency.
-
-    The attention computation:
-        c_kv = W_dkv(x)  # Compress to latent
-        k_c, v_c = split(W_ukv(c_kv))  # Decompress content K/V
-        k_pe = W_kpe(x)  # Decoupled position key
-        k = [k_c; k_pe]  # Concatenate content and position keys
-
-    Memory savings:
-        - Standard MHA: O(S * D)
-        - GQA: O(S * D / G) where G is group size
-        - MLA: O(S * r) where r << D is the latent rank
-
-    Reference: https://arxiv.org/abs/2405.04434
-    """
-
-    def __init__(self, cfg: MLAConfig) -> None:
-        """Initialize MLA.
-
-        Args:
-            cfg: MLA configuration.
-
-        """
-        super().__init__()
-        self.cfg = cfg
-        self.dim = cfg.dim
-        self.num_heads = cfg.num_heads
-        self.head_dim = cfg.head_dim or (cfg.dim // cfg.num_heads)
-        self.kv_lora_rank = cfg.kv_lora_rank
-        self.q_lora_rank = cfg.q_lora_rank
-        self.rope_dim = cfg.rope_dim
-        self.dropout = cfg.dropout
-        self.causal = cfg.causal
-
-        # Total dimension for content K/V per head
-        self.kv_head_dim = self.head_dim
-
-        # Q projection (optionally with LoRA compression)
-        if self.q_lora_rank is not None:
-            self.q_down = nn.Linear(cfg.dim, self.q_lora_rank, bias=False)
-            self.q_up = nn.Linear(
-                self.q_lora_rank,
-                self.num_heads * self.head_dim,
-                bias=False,
-            )
-        else:
-            self.wq = nn.Linear(cfg.dim, self.num_heads * self.head_dim, bias=False)
-
-        # KV compression: down-project to latent, up-project to K and V
-        self.kv_down = nn.Linear(cfg.dim, self.kv_lora_rank, bias=False)
-        self.kv_up = nn.Linear(
-            self.kv_lora_rank,
-            self.num_heads * (self.kv_head_dim + self.kv_head_dim),
-            bias=False,
-        )
-
-        # Decoupled position key (separate from content)
-        self.k_pe = nn.Linear(cfg.dim, self.num_heads * self.rope_dim, bias=False)
-
-        # Output projection
-        self.wo = nn.Linear(self.num_heads * self.head_dim, cfg.dim, bias=False)
-
-        # RoPE inverse frequencies (precomputed)
-        self._init_rope()
-
-    def _init_rope(self) -> None:
-        """Initialize RoPE inverse frequencies."""
-        half = self.rope_dim // 2
-        inv_freq = self.cfg.rope_theta ** (
-            -torch.arange(half, dtype=torch.float32) / half
-        )
-        self.register_buffer("inv_freq", inv_freq, persistent=False)
-
-    def _apply_rope(self, x: Tensor, pos: Tensor) -> Tensor:
-        """Apply RoPE to the position key dimensions.
-
-        Args:
-            x: Tensor of shape (B, H, S, rope_dim).
-            pos: Position indices of shape (S,).
-
-        Returns:
-            Rotated tensor of same shape.
-
-        """
-        B, H, S, D = x.shape
-        device, dtype = x.device, x.dtype
-
-        inv_freq = self.inv_freq.to(device=device, dtype=dtype)
-        pos = pos.to(device=device, dtype=dtype)
-
-        angles = torch.outer(pos, inv_freq)  # (S, rope_dim/2)
-        cos = angles.cos()[None, None, :, :]  # (1, 1, S, rope_dim/2)
-        sin = angles.sin()[None, None, :, :]
-
-        x1 = x[..., 0::2]
-        x2 = x[..., 1::2]
-        y1 = x1 * cos - x2 * sin
-        y2 = x1 * sin + x2 * cos
-
-        y = torch.empty_like(x)
-        y[..., 0::2] = y1
-        y[..., 1::2] = y2
-        return y
-
-    def forward(
-        self,
-        x: Tensor,
-        pos: Optional[Tensor] = None,
-        key_padding_mask: Optional[Tensor] = None,
-    ) -> Tensor:
-        """Forward pass for MLA.
-
-        Args:
-            x: Input tensor of shape (B, S, D).
-            pos: Position indices of shape (S,). Required for RoPE.
-            key_padding_mask: Boolean mask where True = keep, False = mask.
-
-        Returns:
-            Output tensor of shape (B, S, D).
-
-        """
-        B, S, _ = x.shape
-
-        # Compute Q
-        if self.q_lora_rank is not None:
-            q = self.q_up(self.q_down(x))
-        else:
-            q = self.wq(x)
-        q = q.view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
-
-        # Compute compressed KV
-        c_kv = self.kv_down(x)
-        kv = self.kv_up(c_kv)
-        kv = kv.view(B, S, self.num_heads, 2 * self.kv_head_dim)
-
-        # Split into K_content and V
-        k_c, v = kv.split([self.kv_head_dim, self.kv_head_dim], dim=-1)
-        k_c = k_c.transpose(1, 2)
-        v = v.transpose(1, 2)
-
-        # Compute decoupled position key
-        k_pe = self.k_pe(x)
-        k_pe = k_pe.view(B, S, self.num_heads, self.rope_dim).transpose(1, 2)
-
-        # Apply RoPE to Q and position key
-        if pos is not None:
-            q_rope = q[..., : self.rope_dim]
-            q_pass = q[..., self.rope_dim :]
-            q_rope = self._apply_rope(q_rope, pos)
-            q = torch.cat([q_rope, q_pass], dim=-1)
-            k_pe = self._apply_rope(k_pe, pos)
-
-        # Attention with content + position keys
-        scale = (self.head_dim) ** -0.5
-
-        # Build attention mask
-        attn_mask: Optional[Tensor] = None
-        if key_padding_mask is not None:
-            mask = ~key_padding_mask
-            attn_mask = torch.zeros(B, 1, 1, S, device=x.device, dtype=x.dtype)
-            attn_mask = attn_mask.masked_fill(mask.unsqueeze(1).unsqueeze(2), float("-inf"))
-
-        # Compute attention scores
-        attn_content = torch.matmul(q, k_c.transpose(-2, -1)) * scale
-        q_for_pe = q[..., : self.rope_dim]
-        attn_pos = torch.matmul(q_for_pe, k_pe.transpose(-2, -1)) * (self.rope_dim**-0.5)
-        attn = attn_content + attn_pos
-
-        if attn_mask is not None:
-            attn = attn + attn_mask
-
-        if self.causal:
-            causal_mask = torch.triu(
-                torch.ones(S, S, device=x.device, dtype=torch.bool), diagonal=1
-            )
-            attn = attn.masked_fill(causal_mask[None, None, :, :], float("-inf"))
-
-        attn = F.softmax(attn, dim=-1)
-        attn = F.dropout(attn, p=self.dropout, training=self.training)
-
-        out = torch.matmul(attn, v)
-        out = out.transpose(1, 2).contiguous().view(B, S, -1)
-        return self.wo(out)
-
-
-def build_attention(
-    attn_type: AttentionType | str,
-    dim: int,
-    num_heads: int,
-    num_kv_heads: int | None = None,
-    dropout: float = 0.0,
-    rope_dim: int | None = None,
-    rope_theta: float = 10000.0,
-    causal: bool = False,
-    # MLA-specific
-    kv_lora_rank: int = 64,
-    q_lora_rank: int | None = None,
-) -> nn.Module:
-    """Factory function to build attention module.
-
-    Args:
-        attn_type: Type of attention ('mha', 'gqa', 'mla').
-        dim: Model dimension.
-        num_heads: Number of query heads.
-        num_kv_heads: Number of KV heads (for GQA). Defaults to num_heads.
-        dropout: Dropout probability.
-        rope_dim: RoPE dimension. None to disable.
-        rope_theta: RoPE base frequency.
-        causal: Whether to use causal masking.
-        kv_lora_rank: KV compression rank (MLA only).
-        q_lora_rank: Q compression rank (MLA only).
+    Builds an additive causal mask for absolute-positioned queries.
+
+    Allowed attention: key_pos <= query_pos_abs
+      - query_pos_abs spans [start_pos, start_pos + q_len - 1]
+      - key_pos spans   [0, k_len - 1]
 
     Returns:
-        Attention module.
-
+        Tensor of shape (q_len, k_len) with 0 for allowed and -inf for disallowed.
     """
-    attn_type = AttentionType(attn_type) if isinstance(attn_type, str) else attn_type
+    q_pos = torch.arange(start_pos, start_pos + q_len, device=device)
+    k_pos = torch.arange(k_len, device=device)
+    disallow = k_pos[None, :] > q_pos[:, None]  # (q_len, k_len) bool
+    mask = torch.zeros((q_len, k_len), device=device, dtype=dtype)
+    mask = mask.masked_fill(disallow, torch.finfo(dtype).min)
+    return mask
 
-    if attn_type == AttentionType.MHA:
-        return MHA(
-            MHAConfig(
-                dim=dim,
-                num_heads=num_heads,
-                dropout=dropout,
-                rope_dim=rope_dim,
-                rope_theta=rope_theta,
-                causal=causal,
-            )
-        )
-    elif attn_type == AttentionType.GQA:
-        return GQA(
-            GQAConfig(
-                dim=dim,
-                num_heads=num_heads,
-                num_kv_heads=num_kv_heads or num_heads,
-                dropout=dropout,
-                rope_dim=rope_dim,
-                rope_theta=rope_theta,
-                causal=causal,
-            )
-        )
-    elif attn_type == AttentionType.MLA:
-        return MLA(
-            MLAConfig(
-                dim=dim,
-                num_heads=num_heads,
-                kv_lora_rank=kv_lora_rank,
-                q_lora_rank=q_lora_rank,
-                rope_dim=rope_dim or 64,
-                rope_theta=rope_theta,
-                dropout=dropout,
-                causal=causal,
-            )
-        )
+
+def _normalize_attn_mask(
+    attn_mask: torch.Tensor,
+    *,
+    q_len: int,
+    k_len: int,
+    device: torch.device,
+    dtype: torch.dtype,
+) -> torch.Tensor:
+    """
+    Normalizes a user-provided mask into a float additive mask broadcastable to (B, H, q_len, k_len).
+
+    Accepts:
+      - (q_len, k_len)
+      - (B, q_len, k_len)
+      - (B, 1, q_len, k_len)
+      - (B, H, q_len, k_len)
+
+    For bool masks: SDPA semantics are used (True=KEEP, False=MASK).
+    """
+    if attn_mask.device != device:
+        attn_mask = attn_mask.to(device)
+
+    if attn_mask.dtype == torch.bool:
+        # SDPA expects True=KEEP; convert to additive float.
+        keep = attn_mask
+        add = torch.zeros_like(keep, dtype=dtype)
+        add = add.masked_fill(~keep, torch.finfo(dtype).min)
+        attn_mask = add
     else:
-        raise ValueError(f"Unknown attention type: {attn_type}")
+        attn_mask = attn_mask.to(dtype)
+
+    if attn_mask.dim() == 2:
+        if attn_mask.shape != (q_len, k_len):
+            raise ValueError(f"attn_mask shape must be {(q_len, k_len)}, got {tuple(attn_mask.shape)}")
+        attn_mask = attn_mask[None, None, :, :]  # (1,1,q,k)
+    elif attn_mask.dim() == 3:
+        if attn_mask.shape[1:] != (q_len, k_len):
+            raise ValueError(f"attn_mask shape must be (B,{q_len},{k_len}), got {tuple(attn_mask.shape)}")
+        attn_mask = attn_mask[:, None, :, :]  # (B,1,q,k)
+    elif attn_mask.dim() == 4:
+        if attn_mask.shape[-2:] != (q_len, k_len):
+            raise ValueError(f"attn_mask last dims must be ({q_len},{k_len}), got {tuple(attn_mask.shape)}")
+        # keep as-is; should be broadcastable to (B,H,q,k)
+    else:
+        raise ValueError(f"Unsupported attn_mask rank: {attn_mask.dim()}")
+
+    return attn_mask
+
+
+@dataclass
+class KVCache:
+    """
+    Simple KV cache for autoregressive decoding.
+
+    Stores keys/values as:
+        k: (B, max_seq_len, n_heads, head_dim)
+        v: (B, max_seq_len, n_heads, head_dim)
+
+    Notes:
+    - This cache is optional. For ViT / bidirectional encoders, pass kv_cache=None.
+    - This implementation is "pure PyTorch" and trades performance for clarity.
+    """
+    max_batch_size: int
+    max_seq_len: int
+    n_heads: int
+    head_dim: int
+    device: torch.device
+    dtype: torch.dtype
+
+    def __post_init__(self) -> None:
+        self.k = torch.empty(
+            (self.max_batch_size, self.max_seq_len, self.n_heads, self.head_dim),
+            device=self.device,
+            dtype=self.dtype,
+        )
+        self.v = torch.empty_like(self.k)
+
+    def update(self, k_new: torch.Tensor, v_new: torch.Tensor, start_pos: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Inserts new keys/values into the cache and returns the cached prefix up to end_pos.
+
+        Args:
+            k_new: (B, T, H, D)
+            v_new: (B, T, H, D)
+            start_pos: starting absolute position to write
+        """
+        bsz, t, h, d = k_new.shape
+        end_pos = start_pos + t
+        if bsz > self.max_batch_size:
+            raise ValueError(f"bsz={bsz} exceeds cache max_batch_size={self.max_batch_size}")
+        if end_pos > self.max_seq_len:
+            raise ValueError(f"end_pos={end_pos} exceeds cache max_seq_len={self.max_seq_len}")
+        if h != self.n_heads or d != self.head_dim:
+            raise ValueError(f"Head shape mismatch: cache (H,D)=({self.n_heads},{self.head_dim}), got ({h},{d})")
+        self.k[:bsz, start_pos:end_pos] = k_new
+        self.v[:bsz, start_pos:end_pos] = v_new
+        return self.k[:bsz, :end_pos], self.v[:bsz, :end_pos]
+
+
+class MultiHeadSelfAttention(nn.Module):
+    """
+    Pure PyTorch Multi-Head Self-Attention using SDPA.
+
+    Supports:
+      - Optional KV cache (decode)
+      - Optional 1D RoPE (freqs_cis) applied to first `rope_dim` of head_dim
+      - Optional 2D RoPE (rope2d + positions_2d) applied to first `rope_dim` of head_dim
+
+    Args:
+        dim: model dimension
+        n_heads: number of attention heads
+        head_dim: per-head dimension (defaults to dim // n_heads)
+        rope_dim: rotary-embedded sub-dimension of head_dim (defaults to head_dim)
+        attn_dropout: dropout probability used inside SDPA (training)
+    """
+
+    def __init__(
+        self,
+        dim: int,
+        n_heads: int,
+        *,
+        head_dim: Optional[int] = None,
+        rope_dim: Optional[int] = None,
+        attn_dropout: float = 0.0,
+        bias: bool = False,
+    ) -> None:
+        super().__init__()
+        if head_dim is None:
+            if dim % n_heads != 0:
+                raise ValueError(f"dim={dim} must be divisible by n_heads={n_heads}")
+            head_dim = dim // n_heads
+        if rope_dim is None:
+            rope_dim = head_dim
+        if rope_dim % 2 != 0:
+            raise ValueError(f"rope_dim must be even, got {rope_dim}")
+        if rope_dim > head_dim:
+            raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
+
+        self.dim = int(dim)
+        self.n_heads = int(n_heads)
+        self.head_dim = int(head_dim)
+        self.rope_dim = int(rope_dim)
+        self.attn_dropout = float(attn_dropout)
+
+        self.wqkv = nn.Linear(self.dim, 3 * self.n_heads * self.head_dim, bias=bias)
+        self.wo = nn.Linear(self.n_heads * self.head_dim, self.dim, bias=bias)
+
+    def _shape_qkv(self, qkv: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        bsz, seqlen, _ = qkv.shape
+        qkv = qkv.view(bsz, seqlen, 3, self.n_heads, self.head_dim)
+        q, k, v = qkv.unbind(dim=2)  # each: (B, T, H, D)
+        return q, k, v
+
+    def _apply_rope_1d(self, q: torch.Tensor, k: torch.Tensor, freqs_cis: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        if self.rope_dim == 0:
+            return q, k
+        q_pe, q_rest = q[..., : self.rope_dim], q[..., self.rope_dim :]
+        k_pe, k_rest = k[..., : self.rope_dim], k[..., self.rope_dim :]
+        q_pe = apply_rotary_emb(q_pe, freqs_cis, interleaved=True)
+        k_pe = apply_rotary_emb(k_pe, freqs_cis, interleaved=True)
+        q = torch.cat([q_pe, q_rest], dim=-1)
+        k = torch.cat([k_pe, k_rest], dim=-1)
+        return q, k
+
+    def _apply_rope_2d(
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        *,
+        rope2d: RotaryPositionEmbedding2D,
+        positions_2d: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        if self.rope_dim == 0:
+            return q, k
+
+        # vggt rope2d expects (B, H, T, D)
+        q_pe, q_rest = q[..., : self.rope_dim], q[..., self.rope_dim :]
+        k_pe, k_rest = k[..., : self.rope_dim], k[..., self.rope_dim :]
+
+        q_pe = q_pe.transpose(1, 2)  # (B, H, T, D)
+        k_pe = k_pe.transpose(1, 2)  # (B, H, T, D)
+        q_pe = rope2d(q_pe, positions_2d)
+        k_pe = rope2d(k_pe, positions_2d)
+        q_pe = q_pe.transpose(1, 2)  # (B, T, H, D)
+        k_pe = k_pe.transpose(1, 2)
+
+        q = torch.cat([q_pe, q_rest], dim=-1)
+        k = torch.cat([k_pe, k_rest], dim=-1)
+        return q, k
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        *,
+        start_pos: int = 0,
+        freqs_cis: Optional[torch.Tensor] = None,
+        rope2d: Optional[RotaryPositionEmbedding2D] = None,
+        positions_2d: Optional[torch.Tensor] = None,
+        kv_cache: Optional[KVCache] = None,
+        attn_mask: Optional[torch.Tensor] = None,
+        is_causal: Optional[bool] = None,
+    ) -> torch.Tensor:
+        """
+        Args:
+            x: (B, T, dim)
+            start_pos: absolute start position for RoPE and/or causal masking (decode)
+            freqs_cis: (T, rope_dim//2) complex cis for 1D RoPE (when used)
+            rope2d: 2D rotary module (when used)
+            positions_2d: (B, T, 2) y/x integer coordinates for each token (when used with rope2d)
+            kv_cache: KVCache for autoregressive decode (optional)
+            attn_mask: optional user mask; see module docstring
+            is_causal: controls causal masking behavior. If None, it is inferred:
+                      - True if no kv_cache and attn_mask is None
+                      - False otherwise
+
+        Returns:
+            (B, T, dim)
+        """
+        bsz, q_len, _ = x.shape
+        qkv = self.wqkv(x)
+        q, k, v = self._shape_qkv(qkv)
+
+        if (freqs_cis is not None) and (rope2d is not None or positions_2d is not None):
+            raise ValueError("Use either 1D RoPE (freqs_cis) OR 2D RoPE (rope2d + positions_2d), not both.")
+
+        # Apply RoPE (optional)
+        if freqs_cis is not None:
+            q, k = self._apply_rope_1d(q, k, freqs_cis)
+        if rope2d is not None:
+            if positions_2d is None:
+                raise ValueError("positions_2d must be provided when rope2d is provided.")
+            q, k = self._apply_rope_2d(q, k, rope2d=rope2d, positions_2d=positions_2d)
+
+        # Cache (optional)
+        if kv_cache is not None:
+            k, v = kv_cache.update(k, v, start_pos=start_pos)
+
+        k_len = k.shape[1]
+
+        # SDPA expects (B, H, L, D)
+        q_ = q.transpose(1, 2)  # (B, H, q_len, D)
+        k_ = k.transpose(1, 2)  # (B, H, k_len, D)
+        v_ = v.transpose(1, 2)  # (B, H, k_len, D)
+
+        # Decide causal vs explicit mask
+        if is_causal is None:
+            # Default: causal only when "simple" (no external mask, no cache offset).
+            is_causal = (attn_mask is None) and (kv_cache is None)
+
+        sdpa_is_causal = bool(is_causal)
+        sdpa_mask: Optional[torch.Tensor] = None
+
+        if attn_mask is not None:
+            # If any explicit mask is provided, avoid is_causal=True to maximize backend compatibility.
+            sdpa_is_causal = False
+            sdpa_mask = _normalize_attn_mask(attn_mask, q_len=q_len, k_len=k_len, device=x.device, dtype=x.dtype)
+
+        if bool(is_causal) and (kv_cache is not None or start_pos != 0 or k_len != q_len):
+            # Causal with cache/offset requires explicit additive mask.
+            sdpa_is_causal = False
+            causal = _make_additive_causal_mask(q_len, k_len, start_pos=start_pos, device=x.device, dtype=x.dtype)
+            causal = causal[None, None, :, :]  # (1,1,q,k)
+            sdpa_mask = causal if sdpa_mask is None else (sdpa_mask + causal)
+
+        out = F.scaled_dot_product_attention(
+            q_, k_, v_,
+            attn_mask=sdpa_mask,
+            dropout_p=self.attn_dropout if self.training else 0.0,
+            is_causal=sdpa_is_causal,
+        )
+        out = out.transpose(1, 2).contiguous().view(bsz, q_len, self.n_heads * self.head_dim)
+        return self.wo(out)
