@@ -53,8 +53,8 @@ from src.common.models.components.moe import MoE, MoEConfig, SwiGLU
 from src.common.models.components.norm import RMSNorm
 from src.common.models.components.rope import (
     PositionGetter,
-    RotaryPositionEmbedding2D,
     YaRNConfig,
+    precompute_freqs_cis_2d,
 )
 
 
@@ -165,7 +165,9 @@ class ViTBlock(nn.Module):
 
     Expected input:
         x: (B, N, C)
-        positions_2d: (B, N, 2) if use_2d_rope is enabled
+        positions_2d: (B, T_rope, 2) if use_2d_rope is enabled.
+                     If T_rope < N, 2D RoPE is applied to the last T_rope tokens and
+                     the prefix (e.g., [CLS]/[REG...]) is left unchanged.
     """
 
     def __init__(self, cfg: ViTBlockConfig) -> None:
@@ -188,17 +190,36 @@ class ViTBlock(nn.Module):
         else:
             self.ffn = SwiGLU(cfg.dim, cfg.mlp_inter_dim)
 
-        self.rope2d: RotaryPositionEmbedding2D | None
+        self.use_2d_rope = bool(cfg.use_2d_rope)
+        self.rope2d_base = float(cfg.rope2d_frequency)
+        self.rope2d_scaling_factor = float(cfg.rope2d_scaling_factor)
+        self._rope2d_cache: dict[tuple[int, int, int, torch.device], tuple[torch.Tensor, torch.Tensor]] = {}
+
         self.pos_getter: PositionGetter | None
         if cfg.use_2d_rope:
-            self.rope2d = RotaryPositionEmbedding2D(
-                frequency=cfg.rope2d_frequency,
-                scaling_factor=cfg.rope2d_scaling_factor,
-            )
             self.pos_getter = PositionGetter()
         else:
-            self.rope2d = None
             self.pos_getter = None
+
+    def _get_rope2d_freqs(
+        self,
+        *,
+        dim: int,
+        height: int,
+        width: int,
+        device: torch.device,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        key = (dim, height, width, device)
+        if key not in self._rope2d_cache:
+            freqs_y, freqs_x = precompute_freqs_cis_2d(
+                dim=dim,
+                height=height,
+                width=width,
+                base=self.rope2d_base,
+                device=device,
+            )
+            self._rope2d_cache[key] = (freqs_y, freqs_x)
+        return self._rope2d_cache[key]
 
     def forward(
         self,
@@ -211,9 +232,9 @@ class ViTBlock(nn.Module):
         """
         Args:
             x: (B, N, C)
-            positions_2d: (B, N, 2) integer y/x coordinates for each token
+            positions_2d: (B, T_rope, 2) integer y/x coordinates for tokens that receive 2D RoPE.
             grid_hw: convenience for patch tokens: if provided and positions_2d is None,
-                     positions are generated for a HxW grid and assume N == H*W.
+                     positions are generated for a HxW grid (patch tokens only).
             attn_mask: optional SDPA mask (usually None for ViT)
 
         Returns:
@@ -221,14 +242,24 @@ class ViTBlock(nn.Module):
         """
         bsz, n, _ = x.shape
 
-        rope2d = self.rope2d
-        if rope2d is not None and positions_2d is None:
-            if grid_hw is None or self.pos_getter is None:
-                raise ValueError("use_2d_rope=True requires positions_2d or grid_hw.")
-            h, w = grid_hw
-            positions_2d = self.pos_getter(bsz, h, w, x.device)
-            if positions_2d.shape[1] != n:
-                raise ValueError(f"grid_hw produced {positions_2d.shape[1]} tokens, but x has N={n}")
+        rope2d: tuple[torch.Tensor, torch.Tensor] | None = None
+        if self.use_2d_rope:
+            if positions_2d is None:
+                if grid_hw is None or self.pos_getter is None:
+                    raise ValueError("use_2d_rope=True requires positions_2d or grid_hw.")
+                h, w = grid_hw
+                positions_2d = self.pos_getter(bsz, h, w, x.device)
+
+            if positions_2d.size(1) > n:
+                raise ValueError(f"positions_2d has T={positions_2d.size(1)} but x has N={n}")
+
+            if grid_hw is not None:
+                h, w = grid_hw
+            else:
+                h = int(positions_2d[..., 0].max().item()) + 1
+                w = int(positions_2d[..., 1].max().item()) + 1
+
+            rope2d = self._get_rope2d_freqs(dim=self.attn.rope_dim, height=h, width=w, device=x.device)
 
         x = x + self.attn(
             self.norm1(x),

@@ -34,7 +34,7 @@ attention.py (pure PyTorch)
 - Supports:
   - Optional KV-cache (for autoregressive decoding)
   - Optional 1D RoPE (complex cis) via rope.apply_rotary_emb
-  - Optional 2D RoPE (for ViT-like patch grids) via rope.RotaryPositionEmbedding2D
+  - Optional 2D axial RoPE (for ViT-like patch grids) via rope.apply_rotary_emb_2d
 
 Mask conventions (important):
 - torch.nn.functional.scaled_dot_product_attention supports:
@@ -48,13 +48,12 @@ Mask conventions (important):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
 
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
-from src.common.models.components.rope import apply_rotary_emb, RotaryPositionEmbedding2D
+from src.common.models.components.rope import apply_rotary_emb, apply_rotary_emb_2d
 
 
 def _make_additive_causal_mask(
@@ -160,7 +159,7 @@ class KVCache:
         )
         self.v = torch.empty_like(self.k)
 
-    def update(self, k_new: torch.Tensor, v_new: torch.Tensor, start_pos: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def update(self, k_new: torch.Tensor, v_new: torch.Tensor, start_pos: int) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Inserts new keys/values into the cache and returns the cached prefix up to end_pos.
 
@@ -204,8 +203,8 @@ class MultiHeadSelfAttention(nn.Module):
         dim: int,
         n_heads: int,
         *,
-        head_dim: Optional[int] = None,
-        rope_dim: Optional[int] = None,
+        head_dim: int | None = None,
+        rope_dim: int | None = None,
         attn_dropout: float = 0.0,
         bias: bool = False,
     ) -> None:
@@ -230,13 +229,13 @@ class MultiHeadSelfAttention(nn.Module):
         self.wqkv = nn.Linear(self.dim, 3 * self.n_heads * self.head_dim, bias=bias)
         self.wo = nn.Linear(self.n_heads * self.head_dim, self.dim, bias=bias)
 
-    def _shape_qkv(self, qkv: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _shape_qkv(self, qkv: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         bsz, seqlen, _ = qkv.shape
         qkv = qkv.view(bsz, seqlen, 3, self.n_heads, self.head_dim)
         q, k, v = qkv.unbind(dim=2)  # each: (B, T, H, D)
         return q, k, v
 
-    def _apply_rope_1d(self, q: torch.Tensor, k: torch.Tensor, freqs_cis: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _apply_rope_1d(self, q: torch.Tensor, k: torch.Tensor, freqs_cis: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         if self.rope_dim == 0:
             return q, k
         q_pe, q_rest = q[..., : self.rope_dim], q[..., self.rope_dim :]
@@ -252,22 +251,38 @@ class MultiHeadSelfAttention(nn.Module):
         q: torch.Tensor,
         k: torch.Tensor,
         *,
-        rope2d: RotaryPositionEmbedding2D,
+        rope2d: tuple[torch.Tensor, torch.Tensor],
         positions_2d: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         if self.rope_dim == 0:
             return q, k
 
-        # vggt rope2d expects (B, H, T, D)
+        if positions_2d.ndim != 3 or positions_2d.size(-1) != 2:
+            raise ValueError(f"positions_2d must be (B,T,2), got {tuple(positions_2d.shape)}")
+
+        bsz = q.size(0)
+        if positions_2d.size(0) != bsz:
+            raise ValueError(f"Batch mismatch: q.B={bsz} vs positions_2d.B={positions_2d.size(0)}")
+
+        t_total = q.size(1)
+        t_rope = positions_2d.size(1)
+        prefix = t_total - t_rope
+        if prefix < 0:
+            raise ValueError(f"positions_2d.T={t_rope} exceeds q.T={t_total}")
+
+        freqs_cis_y, freqs_cis_x = rope2d
+
         q_pe, q_rest = q[..., : self.rope_dim], q[..., self.rope_dim :]
         k_pe, k_rest = k[..., : self.rope_dim], k[..., self.rope_dim :]
 
-        q_pe = q_pe.transpose(1, 2)  # (B, H, T, D)
-        k_pe = k_pe.transpose(1, 2)  # (B, H, T, D)
-        q_pe = rope2d(q_pe, positions_2d)
-        k_pe = rope2d(k_pe, positions_2d)
-        q_pe = q_pe.transpose(1, 2)  # (B, T, H, D)
-        k_pe = k_pe.transpose(1, 2)
+        q_prefix, q_tail = q_pe[:, :prefix], q_pe[:, prefix:]
+        k_prefix, k_tail = k_pe[:, :prefix], k_pe[:, prefix:]
+
+        q_tail = apply_rotary_emb_2d(q_tail, freqs_cis_y, freqs_cis_x, positions_2d, interleaved=True)
+        k_tail = apply_rotary_emb_2d(k_tail, freqs_cis_y, freqs_cis_x, positions_2d, interleaved=True)
+
+        q_pe = torch.cat([q_prefix, q_tail], dim=1)
+        k_pe = torch.cat([k_prefix, k_tail], dim=1)
 
         q = torch.cat([q_pe, q_rest], dim=-1)
         k = torch.cat([k_pe, k_rest], dim=-1)
@@ -278,20 +293,20 @@ class MultiHeadSelfAttention(nn.Module):
         x: torch.Tensor,
         *,
         start_pos: int = 0,
-        freqs_cis: Optional[torch.Tensor] = None,
-        rope2d: Optional[RotaryPositionEmbedding2D] = None,
-        positions_2d: Optional[torch.Tensor] = None,
-        kv_cache: Optional[KVCache] = None,
-        attn_mask: Optional[torch.Tensor] = None,
-        is_causal: Optional[bool] = None,
+        freqs_cis: torch.Tensor | None = None,
+        rope2d: tuple[torch.Tensor, torch.Tensor] | None = None,
+        positions_2d: torch.Tensor | None = None,
+        kv_cache: KVCache | None = None,
+        attn_mask: torch.Tensor | None = None,
+        is_causal: bool | None = None,
     ) -> torch.Tensor:
         """
         Args:
             x: (B, T, dim)
             start_pos: absolute start position for RoPE and/or causal masking (decode)
             freqs_cis: (T, rope_dim//2) complex cis for 1D RoPE (when used)
-            rope2d: 2D rotary module (when used)
-            positions_2d: (B, T, 2) y/x integer coordinates for each token (when used with rope2d)
+            rope2d: 2D RoPE freqs tuple `(freqs_cis_y, freqs_cis_x)` (when used)
+            positions_2d: (B, T_rope, 2) y/x integer coordinates for tokens that receive 2D RoPE
             kv_cache: KVCache for autoregressive decode (optional)
             attn_mask: optional user mask; see module docstring
             is_causal: controls causal masking behavior. If None, it is inferred:
@@ -333,7 +348,7 @@ class MultiHeadSelfAttention(nn.Module):
             is_causal = (attn_mask is None) and (kv_cache is None)
 
         sdpa_is_causal = bool(is_causal)
-        sdpa_mask: Optional[torch.Tensor] = None
+        sdpa_mask: torch.Tensor | None = None
 
         if attn_mask is not None:
             # If any explicit mask is provided, avoid is_causal=True to maximize backend compatibility.
