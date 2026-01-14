@@ -15,13 +15,18 @@ Architecture:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.common.models import RMSNorm, RoPE, RoPEConfig, TransformerBlock
+from src.common.models import (
+    RMSNorm,
+    TransformerBlock,
+    TransformerBlockConfig,
+    precompute_freqs_cis,
+)
 from src.plcs.models.components.heads import PositionHead, RotationHead
 from src.utils.geometry import NUM_COURT_KP, NUM_HUMAN_KP
 
@@ -54,7 +59,7 @@ class CourtTokenEmbedding(nn.Module):
             nn.Dropout(dropout),
         )
 
-    def forward(self, court_kp: Tensor, court_vis: Optional[Tensor]) -> Tensor:
+    def forward(self, court_kp: Tensor, court_vis: Tensor | None) -> Tensor:
         B = court_kp.shape[0]
         if court_kp.dim() == 2:
             court_kp = court_kp.view(B, NUM_COURT_KP, 2)
@@ -90,7 +95,7 @@ class PlayerTokenEmbedding(nn.Module):
             nn.Dropout(dropout),
         )
 
-    def forward(self, human_kp: Tensor, human_vis: Optional[Tensor]) -> Tensor:
+    def forward(self, human_kp: Tensor, human_vis: Tensor | None) -> Tensor:
         B, T = human_kp.shape[:2]
 
         # Flatten keypoints if needed: (B, T, K, 2) -> (B, T, K*2)
@@ -146,9 +151,9 @@ class PLCSSequenceModel(nn.Module):
         num_layers: int = 8,
         num_heads: int = 8,
         num_kv_heads: int = 2,
-        ffn_dim: Optional[int] = None,
+        ffn_dim: int | None = None,
         dropout: float = 0.1,
-        rope_dim: Optional[int] = None,
+        rope_dim: int | None = None,
         rope_theta: float = 10000.0,
         causal: bool = False,
     ) -> None:
@@ -172,7 +177,8 @@ class PLCSSequenceModel(nn.Module):
 
         head_dim = hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else rope_dim
-        self.rope = RoPE(RoPEConfig(rope_dim=rope_dim, rope_theta=rope_theta))
+        self.rope_dim = int(rope_dim)
+        self.rope_theta = float(rope_theta)
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
@@ -189,13 +195,15 @@ class PLCSSequenceModel(nn.Module):
         self.blocks = nn.ModuleList(
             [
                 TransformerBlock(
-                    dim=hidden_dim,
-                    num_heads=num_heads,
-                    num_kv_heads=num_kv_heads,
-                    ffn_dim=ffn_dim,
-                    dropout=dropout,
-                    rope=self.rope,
-                    causal=causal,
+                    TransformerBlockConfig(
+                        dim=hidden_dim,
+                        n_heads=num_heads,
+                        mlp_inter_dim=ffn_dim,
+                        head_dim=head_dim,
+                        rope_dim=self.rope_dim,
+                        attn_dropout=dropout,
+                        use_moe=False,
+                    )
                 )
                 for _ in range(num_layers)
             ]
@@ -241,17 +249,12 @@ class PLCSSequenceModel(nn.Module):
             causal=model_cfg.get("causal", False),
         )
 
-    def _build_positions(self, T: int, device: torch.device) -> Tensor:
-        """Build position indices for court + player tokens."""
-        S = NUM_COURT_KP + T
-        return torch.arange(S, device=device, dtype=torch.long)
-
     def forward(
         self,
         human_kp: Tensor,
         court_kp: Tensor,
-        human_vis: Optional[Tensor] = None,
-        court_vis: Optional[Tensor] = None,
+        human_vis: Tensor | None = None,
+        court_vis: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Forward pass.
 
@@ -279,10 +282,9 @@ class PLCSSequenceModel(nn.Module):
         # Now court_kp is (B, 40) or (B, 20, 2)
 
         # Handle court_vis similarly
-        if court_vis is not None:
-            if court_vis.dim() == 3:
-                # (B, T, 20) -> (B, 20)
-                court_vis = court_vis[:, 0, :]
+        if court_vis is not None and court_vis.dim() == 3:
+            # (B, T, 20) -> (B, 20)
+            court_vis = court_vis[:, 0, :]
 
         # Tokenize court and player
         court_tok = self.court_embed(court_kp, court_vis)  # (B, 20, D)
@@ -300,10 +302,8 @@ class PLCSSequenceModel(nn.Module):
             [court_tok + court_type, player_tok + player_type], dim=1
         )  # (B, S, D)
 
-        pos = self._build_positions(T, device=x.device)  # (S,)
-
         # Build key_padding_mask if human_vis provided
-        key_padding_mask: Optional[Tensor] = None
+        key_padding_mask: Tensor | None = None
         if human_vis is not None:
             # Court tokens are always valid
             court_mask = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
@@ -311,10 +311,32 @@ class PLCSSequenceModel(nn.Module):
             player_mask = human_vis.sum(dim=-1) > 0  # (B, T)
             key_padding_mask = torch.cat([court_mask, player_mask], dim=1)  # (B, S)
 
-        for blk in self.blocks:
-            x = blk(x, pos=pos, key_padding_mask=key_padding_mask)
+        freqs_cis = precompute_freqs_cis(
+            dim=self.rope_dim,
+            seqlen=x.shape[1],
+            base=self.rope_theta,
+            device=x.device,
+        )
 
-        x = self.final_norm(x)
+        attn_mask: Tensor | None = None
+        if key_padding_mask is not None:
+            attn_mask = key_padding_mask[:, None, :].expand(B, x.shape[1], x.shape[1])
+
+        residual = None
+        for blk in self.blocks:
+            x, residual = blk(
+                x,
+                residual,
+                start_pos=0,
+                freqs_cis=freqs_cis,
+                attn_mask=attn_mask,
+                is_causal=self.causal,
+            )
+
+        if residual is None:
+            x = self.final_norm(x)
+        else:
+            x, _ = self.final_norm(x, residual)
         player_out = x[:, NUM_COURT_KP:, :]  # (B, T, D)
 
         # Apply output heads
@@ -334,4 +356,3 @@ class PLCSSequenceModel(nn.Module):
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
-

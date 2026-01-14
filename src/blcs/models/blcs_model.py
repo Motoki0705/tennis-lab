@@ -22,11 +22,11 @@ import torch.nn as nn
 from torch import Tensor
 
 from src.blcs.models.components.heads import Trajectory3DHead, VelocityHead
-from src.common.models.components import (
+from src.common.models import (
     RMSNorm,
-    RoPE,
-    RoPEConfig,
     TransformerBlock,
+    TransformerBlockConfig,
+    precompute_freqs_cis,
 )
 from src.utils.geometry import NUM_COURT_KP
 
@@ -167,7 +167,8 @@ class BLCSModel(nn.Module):
 
         head_dim = hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else rope_dim
-        self.rope = RoPE(RoPEConfig(rope_dim=rope_dim, rope_theta=rope_theta))
+        self.rope_dim = int(rope_dim)
+        self.rope_theta = float(rope_theta)
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
@@ -182,13 +183,15 @@ class BLCSModel(nn.Module):
         self.blocks = nn.ModuleList(
             [
                 TransformerBlock(
-                    dim=hidden_dim,
-                    num_heads=num_heads,
-                    num_kv_heads=num_kv_heads,
-                    ffn_dim=ffn_dim,
-                    dropout=dropout,
-                    rope=self.rope,
-                    causal=causal,
+                    TransformerBlockConfig(
+                        dim=hidden_dim,
+                        n_heads=num_heads,
+                        mlp_inter_dim=ffn_dim,
+                        head_dim=head_dim,
+                        rope_dim=self.rope_dim,
+                        attn_dropout=dropout,
+                        use_moe=False,
+                    )
                 )
                 for _ in range(num_layers)
             ]
@@ -241,11 +244,6 @@ class BLCSModel(nn.Module):
             ),
         )
 
-    def _build_positions(self, T: int, device: torch.device) -> Tensor:
-        """Build position indices for court + ball tokens."""
-        S = NUM_COURT_KP + T
-        return torch.arange(S, device=device, dtype=torch.long)
-
     def forward(
         self,
         ball_uv: Tensor,
@@ -283,8 +281,6 @@ class BLCSModel(nn.Module):
             [court_tok + court_type, ball_tok + ball_type], dim=1
         )  # (B, S, D)
 
-        pos = self._build_positions(T, device=x.device)  # (S,)
-
         # Build key_padding_mask if ball_mask provided
         key_padding_mask: Tensor | None = None
         if ball_mask is not None:
@@ -292,10 +288,32 @@ class BLCSModel(nn.Module):
             court_mask = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
             key_padding_mask = torch.cat([court_mask, ball_mask > 0], dim=1)  # (B, S)
 
-        for blk in self.blocks:
-            x = blk(x, pos=pos, key_padding_mask=key_padding_mask)
+        freqs_cis = precompute_freqs_cis(
+            dim=self.rope_dim,
+            seqlen=x.shape[1],
+            base=self.rope_theta,
+            device=x.device,
+        )
 
-        x = self.final_norm(x)
+        attn_mask: Tensor | None = None
+        if key_padding_mask is not None:
+            attn_mask = key_padding_mask[:, None, :].expand(B, x.shape[1], x.shape[1])
+
+        residual = None
+        for blk in self.blocks:
+            x, residual = blk(
+                x,
+                residual,
+                start_pos=0,
+                freqs_cis=freqs_cis,
+                attn_mask=attn_mask,
+                is_causal=self.causal,
+            )
+
+        if residual is None:
+            x = self.final_norm(x)
+        else:
+            x, _ = self.final_norm(x, residual)
         ball_out = x[:, NUM_COURT_KP:, :]  # (B, T, D)
 
         out: dict[str, Tensor] = {"position": self.position_head(ball_out)}  # (B, T, 3)

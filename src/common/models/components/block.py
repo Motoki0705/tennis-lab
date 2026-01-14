@@ -41,32 +41,38 @@ attention / norm / MoE implementations from sibling modules.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Union
 
 import torch
 from torch import nn
 
-from src.common.models.components.attention import MultiHeadSelfAttention, KVCache  # type: ignore
-from src.common.models.components.norm import RMSNorm, LayerNorm  # type: ignore
-from src.common.models.components.moe import SwiGLU, MoE, MoEArgs  # type: ignore
-from src.common.models.components.rope import YaRNConfig, precompute_freqs_cis, RotaryPositionEmbedding2D, PositionGetter  # type: ignore
+from src.common.models.components.attention import (
+    KVCache,
+    MultiHeadSelfAttention,
+)
+from src.common.models.components.moe import MoE, MoEConfig, SwiGLU
+from src.common.models.components.norm import RMSNorm
+from src.common.models.components.rope import (
+    PositionGetter,
+    RotaryPositionEmbedding2D,
+    YaRNConfig,
+)
 
 
 @dataclass
-class TransformerBlockArgs:
+class TransformerBlockConfig:
     dim: int
     n_heads: int
     mlp_inter_dim: int
     # attention
-    head_dim: Optional[int] = None
-    rope_dim: Optional[int] = None
+    head_dim: int | None = None
+    rope_dim: int | None = None
     attn_dropout: float = 0.0
     # RoPE
     rope_base: float = 10000.0
-    yarn: Optional[YaRNConfig] = None
+    yarn: YaRNConfig | None = None
     # MoE (optional)
     use_moe: bool = False
-    moe_args: Optional[MoEArgs] = None
+    moe_config: MoEConfig | None = None
 
 
 class TransformerBlock(nn.Module):
@@ -81,38 +87,38 @@ class TransformerBlock(nn.Module):
         x, residual = block(x, residual=None, start_pos=0, freqs_cis=freqs, is_causal=True)
     """
 
-    def __init__(self, args: TransformerBlockArgs) -> None:
+    def __init__(self, cfg: TransformerBlockConfig) -> None:
         super().__init__()
-        self.args = args
+        self.cfg = cfg
 
-        self.attn_norm = RMSNorm(args.dim)
+        self.attn_norm = RMSNorm(cfg.dim)
         self.attn = MultiHeadSelfAttention(
-            dim=args.dim,
-            n_heads=args.n_heads,
-            head_dim=args.head_dim,
-            rope_dim=args.rope_dim,
-            attn_dropout=args.attn_dropout,
+            dim=cfg.dim,
+            n_heads=cfg.n_heads,
+            head_dim=cfg.head_dim,
+            rope_dim=cfg.rope_dim,
+            attn_dropout=cfg.attn_dropout,
         )
 
-        self.ffn_norm = RMSNorm(args.dim)
-        if args.use_moe:
-            if args.moe_args is None:
-                raise ValueError("use_moe=True requires moe_args.")
-            self.ffn: nn.Module = MoE(args.moe_args)
+        self.ffn_norm = RMSNorm(cfg.dim)
+        if cfg.use_moe:
+            if cfg.moe_config is None:
+                raise ValueError("use_moe=True requires moe_config.")
+            self.ffn: nn.Module = MoE(cfg.moe_config)
         else:
-            self.ffn = SwiGLU(args.dim, args.mlp_inter_dim)
+            self.ffn = SwiGLU(cfg.dim, cfg.mlp_inter_dim)
 
     def forward(
         self,
         x: torch.Tensor,
-        residual: Optional[torch.Tensor],
+        residual: torch.Tensor | None,
         *,
         start_pos: int,
-        freqs_cis: Optional[torch.Tensor] = None,
-        kv_cache: Optional[KVCache] = None,
-        attn_mask: Optional[torch.Tensor] = None,
-        is_causal: Optional[bool] = True,
-    ):
+        freqs_cis: torch.Tensor | None = None,
+        kv_cache: KVCache | None = None,
+        attn_mask: torch.Tensor | None = None,
+        is_causal: bool | None = True,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         if residual is None:
             x_norm = self.attn_norm(x)
             residual = x
@@ -134,33 +140,20 @@ class TransformerBlock(nn.Module):
 
 
 @dataclass
-class ViTBlockArgs:
+class ViTBlockConfig:
     dim: int
     n_heads: int
-    mlp_ratio: float = 4.0
+    mlp_inter_dim: int
     attn_dropout: float = 0.0
     mlp_dropout: float = 0.0
     # optional 2D RoPE
     use_2d_rope: bool = False
     rope2d_frequency: float = 100.0
     rope2d_scaling_factor: float = 1.0
-    rope_dim: Optional[int] = None  # by default full head_dim
-
-
-class ViTMLP(nn.Module):
-    """Standard ViT MLP (GELU)."""
-
-    def __init__(self, dim: int, hidden_dim: int, dropout: float = 0.0) -> None:
-        super().__init__()
-        self.fc1 = nn.Linear(dim, hidden_dim)
-        self.act = nn.GELU()
-        self.fc2 = nn.Linear(hidden_dim, dim)
-        self.drop = nn.Dropout(dropout)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.drop(self.act(self.fc1(x)))
-        x = self.drop(self.fc2(x))
-        return x
+    rope_dim: int | None = None  # by default full head_dim
+    # MoE (optional)
+    use_moe: bool = False
+    moe_config: MoEConfig | None = None
 
 
 class ViTBlock(nn.Module):
@@ -175,28 +168,32 @@ class ViTBlock(nn.Module):
         positions_2d: (B, N, 2) if use_2d_rope is enabled
     """
 
-    def __init__(self, args: ViTBlockArgs) -> None:
+    def __init__(self, cfg: ViTBlockConfig) -> None:
         super().__init__()
-        self.args = args
+        self.cfg = cfg
 
-        self.norm1 = nn.LayerNorm(args.dim)
+        self.norm1 = nn.LayerNorm(cfg.dim)
         self.attn = MultiHeadSelfAttention(
-            dim=args.dim,
-            n_heads=args.n_heads,
-            attn_dropout=args.attn_dropout,
-            rope_dim=args.rope_dim,
+            dim=cfg.dim,
+            n_heads=cfg.n_heads,
+            attn_dropout=cfg.attn_dropout,
+            rope_dim=cfg.rope_dim,
         )
-        self.norm2 = nn.LayerNorm(args.dim)
+        self.norm2 = nn.LayerNorm(cfg.dim)
 
-        hidden_dim = int(args.dim * args.mlp_ratio)
-        self.mlp = ViTMLP(args.dim, hidden_dim, dropout=args.mlp_dropout)
+        if cfg.use_moe:
+            if cfg.moe_config is None:
+                raise ValueError("use_moe=True requires moe_config.")
+            self.ffn: nn.Module = MoE(cfg.moe_config)
+        else:
+            self.ffn = SwiGLU(cfg.dim, cfg.mlp_inter_dim)
 
-        self.rope2d: Optional[RotaryPositionEmbedding2D]
-        self.pos_getter: Optional[PositionGetter]
-        if args.use_2d_rope:
+        self.rope2d: RotaryPositionEmbedding2D | None
+        self.pos_getter: PositionGetter | None
+        if cfg.use_2d_rope:
             self.rope2d = RotaryPositionEmbedding2D(
-                frequency=args.rope2d_frequency,
-                scaling_factor=args.rope2d_scaling_factor,
+                frequency=cfg.rope2d_frequency,
+                scaling_factor=cfg.rope2d_scaling_factor,
             )
             self.pos_getter = PositionGetter()
         else:
@@ -207,9 +204,9 @@ class ViTBlock(nn.Module):
         self,
         x: torch.Tensor,
         *,
-        positions_2d: Optional[torch.Tensor] = None,
-        grid_hw: Optional[tuple[int, int]] = None,
-        attn_mask: Optional[torch.Tensor] = None,
+        positions_2d: torch.Tensor | None = None,
+        grid_hw: tuple[int, int] | None = None,
+        attn_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Args:
@@ -225,14 +222,13 @@ class ViTBlock(nn.Module):
         bsz, n, _ = x.shape
 
         rope2d = self.rope2d
-        if rope2d is not None:
-            if positions_2d is None:
-                if grid_hw is None or self.pos_getter is None:
-                    raise ValueError("use_2d_rope=True requires positions_2d or grid_hw.")
-                h, w = grid_hw
-                positions_2d = self.pos_getter(bsz, h, w, x.device)
-                if positions_2d.shape[1] != n:
-                    raise ValueError(f"grid_hw produced {positions_2d.shape[1]} tokens, but x has N={n}")
+        if rope2d is not None and positions_2d is None:
+            if grid_hw is None or self.pos_getter is None:
+                raise ValueError("use_2d_rope=True requires positions_2d or grid_hw.")
+            h, w = grid_hw
+            positions_2d = self.pos_getter(bsz, h, w, x.device)
+            if positions_2d.shape[1] != n:
+                raise ValueError(f"grid_hw produced {positions_2d.shape[1]} tokens, but x has N={n}")
 
         x = x + self.attn(
             self.norm1(x),
@@ -242,5 +238,5 @@ class ViTBlock(nn.Module):
             attn_mask=attn_mask,
             is_causal=False,
         )
-        x = x + self.mlp(self.norm2(x))
+        x = x + self.ffn(self.norm2(x))
         return x

@@ -45,15 +45,15 @@ Notes:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Optional, Tuple
+from typing import Literal
 
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 
 @dataclass
-class MoEArgs:
+class MoEConfig:
     dim: int
     inter_dim: int
     moe_inter_dim: int
@@ -79,7 +79,7 @@ class SwiGLU(nn.Module):
         self.w3 = nn.Linear(dim, inter_dim, bias=bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.w2((F.silu(self.w1(x)) * self.w3(x)))
+        return self.w2(F.silu(self.w1(x)) * self.w3(x))
 
 
 class Gate(nn.Module):
@@ -91,22 +91,22 @@ class Gate(nn.Module):
         indices: (N, topk) expert ids
     """
 
-    def __init__(self, args: MoEArgs) -> None:
+    def __init__(self, cfg: MoEConfig) -> None:
         super().__init__()
-        self.dim = int(args.dim)
-        self.topk = int(args.n_activated_experts)
-        self.n_groups = int(args.n_expert_groups)
-        self.topk_groups = int(args.n_limited_groups)
-        self.score_func = args.score_func
-        self.route_scale = float(args.route_scale)
+        self.dim = int(cfg.dim)
+        self.topk = int(cfg.n_activated_experts)
+        self.n_groups = int(cfg.n_expert_groups)
+        self.topk_groups = int(cfg.n_limited_groups)
+        self.score_func = cfg.score_func
+        self.route_scale = float(cfg.route_scale)
 
-        self.weight = nn.Parameter(torch.empty(args.n_routed_experts, args.dim))
+        self.weight = nn.Parameter(torch.empty(cfg.n_routed_experts, cfg.dim))
         nn.init.normal_(self.weight, std=0.02)
 
         # DeepSeek special-case bias at a specific dim; keep optional for compatibility.
-        self.bias = nn.Parameter(torch.zeros(args.n_routed_experts, dtype=torch.float32)) if self.dim == 7168 else None
+        self.bias = nn.Parameter(torch.zeros(cfg.n_routed_experts, dtype=torch.float32)) if self.dim == 7168 else None
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         # x: (N, dim)
         scores = F.linear(x.float(), self.weight.float())  # (N, E)
 
@@ -168,18 +168,18 @@ class MoE(nn.Module):
       - weighted sum + shared experts (optional)
     """
 
-    def __init__(self, args: MoEArgs, *, bias: bool = False) -> None:
+    def __init__(self, cfg: MoEConfig, *, bias: bool = False) -> None:
         super().__init__()
-        self.dim = int(args.dim)
-        self.n_routed_experts = int(args.n_routed_experts)
-        self.n_activated_experts = int(args.n_activated_experts)
+        self.dim = int(cfg.dim)
+        self.n_routed_experts = int(cfg.n_routed_experts)
+        self.n_activated_experts = int(cfg.n_activated_experts)
 
-        self.gate = Gate(args)
-        self.experts = nn.ModuleList([Expert(self.dim, args.moe_inter_dim, bias=bias) for _ in range(self.n_routed_experts)])
+        self.gate = Gate(cfg)
+        self.experts = nn.ModuleList([Expert(self.dim, cfg.moe_inter_dim, bias=bias) for _ in range(self.n_routed_experts)])
 
-        self.shared_experts: Optional[SwiGLU]
-        if args.n_shared_experts > 0:
-            self.shared_experts = SwiGLU(self.dim, args.n_shared_experts * args.moe_inter_dim, bias=bias)
+        self.shared_experts: SwiGLU | None
+        if cfg.n_shared_experts > 0:
+            self.shared_experts = SwiGLU(self.dim, cfg.n_shared_experts * cfg.moe_inter_dim, bias=bias)
         else:
             self.shared_experts = None
 

@@ -20,15 +20,14 @@ Reference: https://arxiv.org/abs/2111.06377
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Any, Literal
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
 
 from src.common.models import ViTConfig, ViTEncoder
-from src.common.models.components import RMSNorm, SwiGLUMLP
+from src.common.models.components import MultiHeadSelfAttention, RMSNorm, SwiGLU
 
 
 @dataclass
@@ -248,23 +247,21 @@ class DecoderBlock(nn.Module):
     ) -> None:
         """Initialize decoder block."""
         super().__init__()
-        from src.common.models.components import GQA, GQAConfig
-
         self.attn_norm = RMSNorm(dim)
-        attn_config = GQAConfig(
+        self.attn = MultiHeadSelfAttention(
             dim=dim,
-            num_heads=num_heads,
-            num_kv_heads=num_kv_heads,
-            dropout=dropout,
+            n_heads=num_heads,
+            attn_dropout=dropout,
+            rope_dim=0,
         )
-        self.attn = GQA(attn_config)
         self.mlp_norm = RMSNorm(dim)
-        self.mlp = SwiGLUMLP(dim=dim, ffn_dim=ffn_dim, dropout=dropout)
+        self.mlp = SwiGLU(dim, ffn_dim)
+        self.dropout = float(dropout)
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward pass."""
-        x = x + self.attn(self.attn_norm(x))
-        x = x + self.mlp(self.mlp_norm(x))
+        x = x + self.attn(self.attn_norm(x), start_pos=0, is_causal=False)
+        x = x + torch.nn.functional.dropout(self.mlp(self.mlp_norm(x)), p=self.dropout, training=self.training)
         return x
 
 
@@ -347,7 +344,7 @@ class MAEModel(nn.Module):
         """
         B, C, H, W = x.shape
         P = self.patch_size
-        assert H % P == 0 and W % P == 0, f"Image size must be divisible by patch size"
+        assert H % P == 0 and W % P == 0, "Image size must be divisible by patch size"
 
         h = H // P
         w = W // P
@@ -461,55 +458,52 @@ class MAEModel(nn.Module):
         # Apply encoder blocks
         # Note: We use a simplified forward that doesn't use encoder.forward
         # because we need to handle masking specially
-        pos_h, pos_w = self._build_visible_positions(
-            ids_restore, mask, H, W, x.device
-        )
-
         # Process through encoder blocks
         x = x_masked
+        len_keep = x_masked.shape[1] - 1  # exclude CLS
+        positions_2d = self._build_visible_positions_2d(ids_restore, len_keep, H, W, x.device)
         for block in self.encoder.blocks:
-            x = block(x, pos_h=pos_h, pos_w=pos_w)
+            x = block(x, positions_2d=positions_2d)
         x = self.encoder.norm(x)
 
         return x, mask, ids_restore, H, W
 
-    def _build_visible_positions(
+    def _build_visible_positions_2d(
         self,
         ids_restore: Tensor,
-        mask: Tensor,
+        len_keep: int,
         H: int,
         W: int,
         device: torch.device,
-    ) -> tuple[Tensor, Tensor]:
+    ) -> Tensor:
         """Build position indices for visible patches.
 
         Args:
             ids_restore: Indices to restore order, shape (B, N).
-            mask: Binary mask (1 = masked), shape (B, N).
+            len_keep: Number of visible patches per sample.
             H: Number of patches in height.
             W: Number of patches in width.
             device: Device for tensors.
 
         Returns:
-            Tuple of (pos_h, pos_w) for visible patches + CLS.
+            positions_2d: (B, 1 + N_vis, 2) integer (y,x) coordinates for CLS + visible patches.
 
         """
         B = ids_restore.shape[0]
-        N = H * W
+        # ids_restore is the inverse permutation of ids_shuffle, so:
+        # ids_shuffle = argsort(ids_restore)
+        ids_shuffle = torch.argsort(ids_restore, dim=1)
+        ids_keep = ids_shuffle[:, :len_keep]  # (B, N_vis)
 
-        # Get visible patch indices
-        visible_indices = (mask[0] == 0).nonzero(as_tuple=True)[0]
-        num_vis = len(visible_indices)
+        patch_y = (ids_keep // W) + 1  # offset row 0 for CLS
+        patch_x = ids_keep % W
 
-        # Convert 1D indices to 2D positions
-        patch_h = visible_indices // W
-        patch_w = visible_indices % W
+        cls_y = torch.zeros((B, 1), device=device, dtype=torch.long)
+        cls_x = torch.zeros((B, 1), device=device, dtype=torch.long)
 
-        # Add CLS position (0, 0)
-        pos_h = torch.cat([torch.tensor([0], device=device), patch_h + 1])
-        pos_w = torch.cat([torch.tensor([0], device=device), patch_w])
-
-        return pos_h, pos_w
+        pos_y = torch.cat([cls_y, patch_y.to(torch.long)], dim=1)
+        pos_x = torch.cat([cls_x, patch_x.to(torch.long)], dim=1)
+        return torch.stack([pos_y, pos_x], dim=-1)
 
     def forward_decoder(
         self,
@@ -569,7 +563,7 @@ class MAEModel(nn.Module):
     def forward(
         self,
         images: Tensor,
-        mask_ratio: Optional[float] = None,
+        mask_ratio: float | None = None,
     ) -> tuple[Tensor, Tensor, Tensor]:
         """Forward pass.
 
@@ -603,7 +597,7 @@ class MAEModel(nn.Module):
         return self.encoder
 
     @classmethod
-    def from_config(cls, config) -> "MAEModel":
+    def from_config(cls, config: Any) -> MAEModel:
         """Create model from Hydra config.
 
         Args:
