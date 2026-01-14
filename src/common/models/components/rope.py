@@ -464,3 +464,41 @@ def apply_rotary_emb_2d(
     if layout == "BHTD":
         out = out.permute(0, 2, 1, 3).contiguous()
     return out
+
+
+if __name__ == "__main__":
+    torch.manual_seed(0)
+    demo_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    demo_seq_len = 4
+    demo_dim = 8
+    demo_freqs = precompute_freqs_cis(dim=demo_dim, seqlen=demo_seq_len, device=demo_device)
+    demo_input = torch.randn(1, demo_seq_len, demo_dim, device=demo_device)
+
+    with torch.no_grad():
+        demo_output = apply_rotary_emb(demo_input, demo_freqs)
+
+    print("1D RoPE output:")
+    print(demo_output)
+
+    demo_height = 2
+    demo_width = 3
+    demo_dim_2d = 8
+    demo_freqs_y, demo_freqs_x = precompute_freqs_cis_2d(
+        dim=demo_dim_2d,
+        height=demo_height,
+        width=demo_width,
+        device=demo_device,
+    )
+    demo_positions = PositionGetter()(1, demo_height, demo_width, demo_device)
+    demo_input_2d = torch.randn(1, demo_height * demo_width, demo_dim_2d, device=demo_device)
+
+    with torch.no_grad():
+        demo_output_2d = apply_rotary_emb_2d(
+            demo_input_2d,
+            freqs_cis_y=demo_freqs_y,
+            freqs_cis_x=demo_freqs_x,
+            positions=demo_positions,
+        )
+
+    print("2D RoPE output:")
+    print(demo_output_2d)

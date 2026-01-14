@@ -271,3 +271,24 @@ class ViTBlock(nn.Module):
         )
         x = x + self.ffn(self.norm2(x))
         return x
+
+
+if __name__ == "__main__":
+    torch.manual_seed(0)
+    demo_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    demo_cfg = ViTBlockConfig(
+        dim=32,
+        n_heads=4,
+        mlp_inter_dim=64,
+        attn_dropout=0.0,
+        mlp_dropout=0.0,
+        use_2d_rope=False,
+        use_moe=False,
+    )
+    demo_block = ViTBlock(demo_cfg).eval().to(demo_device)
+    demo_input = torch.randn(1, 6, 32, device=demo_device)
+
+    with torch.no_grad():
+        demo_output = demo_block(demo_input)
+
+    print(demo_output)
