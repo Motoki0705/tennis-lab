@@ -19,7 +19,12 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.common.models import RMSNorm, RoPE, RoPEConfig, TransformerBlock
+from src.common.models import (
+    RMSNorm,
+    TransformerBlock,
+    TransformerBlockConfig,
+    precompute_freqs_cis,
+)
 from src.plcs.models.components.encoders import (
     CourtTokenEmbedding,
     PlayerTokenEmbedding,
@@ -88,7 +93,8 @@ class PLCSModel(nn.Module):
 
         head_dim = hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else rope_dim
-        self.rope = RoPE(RoPEConfig(rope_dim=rope_dim, rope_theta=rope_theta))
+        self.rope_dim = int(rope_dim)
+        self.rope_theta = float(rope_theta)
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
@@ -105,13 +111,15 @@ class PLCSModel(nn.Module):
         self.blocks = nn.ModuleList(
             [
                 TransformerBlock(
-                    dim=hidden_dim,
-                    num_heads=num_heads,
-                    num_kv_heads=num_kv_heads,
-                    ffn_dim=ffn_dim,
-                    dropout=dropout,
-                    rope=self.rope,
-                    causal=False,
+                    TransformerBlockConfig(
+                        dim=hidden_dim,
+                        n_heads=num_heads,
+                        mlp_inter_dim=ffn_dim,
+                        head_dim=head_dim,
+                        rope_dim=self.rope_dim,
+                        attn_dropout=dropout,
+                        use_moe=False,
+                    )
                 )
                 for _ in range(num_layers)
             ]
@@ -156,11 +164,6 @@ class PLCSModel(nn.Module):
             rope_theta=model_cfg.get("rope_theta", 10000.0),
         )
 
-    def _build_positions(self, device: torch.device) -> Tensor:
-        """Build position indices for court + player tokens."""
-        S = NUM_COURT_KP + NUM_HUMAN_KP
-        return torch.arange(S, device=device, dtype=torch.long)
-
     def forward(
         self,
         human_kp: Tensor,
@@ -198,8 +201,6 @@ class PLCSModel(nn.Module):
             [court_tok + court_type, player_tok + player_type], dim=1
         )  # (B, 37, D)
 
-        pos = self._build_positions(device=x.device)  # (37,)
-
         # Build key_padding_mask if visibility provided
         key_padding_mask: Tensor | None = None
         if human_vis is not None or court_vis is not None:
@@ -217,11 +218,33 @@ class PLCSModel(nn.Module):
                 )
             key_padding_mask = torch.cat([court_mask, player_mask], dim=1)  # (B, 37)
 
-        # Apply Transformer blocks
-        for blk in self.blocks:
-            x = blk(x, pos=pos, key_padding_mask=key_padding_mask)
+        freqs_cis = precompute_freqs_cis(
+            dim=self.rope_dim,
+            seqlen=x.shape[1],
+            base=self.rope_theta,
+            device=x.device,
+        )
 
-        x = self.final_norm(x)
+        attn_mask: Tensor | None = None
+        if key_padding_mask is not None:
+            # bool mask semantics follow SDPA: True=KEEP, False=MASK
+            attn_mask = key_padding_mask[:, None, :].expand(B, x.shape[1], x.shape[1])
+
+        residual = None
+        for blk in self.blocks:
+            x, residual = blk(
+                x,
+                residual,
+                start_pos=0,
+                freqs_cis=freqs_cis,
+                attn_mask=attn_mask,
+                is_causal=False,
+            )
+
+        if residual is None:
+            x = self.final_norm(x)
+        else:
+            x, _ = self.final_norm(x, residual)
 
         # Extract player tokens and pool
         player_out = x[:, NUM_COURT_KP:, :]  # (B, 17, D)
