@@ -60,6 +60,21 @@ from src.common.models.components.rope import (
 
 @dataclass
 class TransformerBlockConfig:
+    """Configuration for TransformerBlock.
+
+    Args:
+        dim: Token embedding dimension.
+        n_heads: Number of attention heads.
+        mlp_inter_dim: Hidden dimension for the MLP/FFN.
+        head_dim: Per-head dimension (defaults to dim // n_heads).
+        rope_dim: Rotary dimension per head for 1D RoPE.
+        attn_dropout: Dropout probability for attention.
+        rope_base: Base theta for 1D RoPE.
+        yarn: Optional YaRN correction config.
+        use_moe: Whether to use MoE FFN.
+        moe_config: MoE configuration when `use_moe=True`.
+    """
+
     dim: int
     n_heads: int
     mlp_inter_dim: int
@@ -141,6 +156,21 @@ class TransformerBlock(nn.Module):
 
 @dataclass
 class ViTBlockConfig:
+    """Configuration for ViTBlock.
+
+    Args:
+        dim: Token embedding dimension.
+        n_heads: Number of attention heads.
+        mlp_inter_dim: Hidden dimension for the MLP/FFN.
+        attn_dropout: Dropout probability for attention.
+        mlp_dropout: Dropout probability for the MLP/FFN.
+        use_2d_rope: Whether to apply 2D axial RoPE.
+        rope2d_frequency: Base theta for 2D RoPE.
+        rope_dim: Rotary dimension per head for 2D RoPE.
+        use_moe: Whether to use MoE FFN.
+        moe_config: MoE configuration when `use_moe=True`.
+    """
+
     dim: int
     n_heads: int
     mlp_inter_dim: int
@@ -149,7 +179,6 @@ class ViTBlockConfig:
     # optional 2D RoPE
     use_2d_rope: bool = False
     rope2d_frequency: float = 100.0
-    rope2d_scaling_factor: float = 1.0
     rope_dim: int | None = None  # by default full head_dim
     # MoE (optional)
     use_moe: bool = False
@@ -192,7 +221,6 @@ class ViTBlock(nn.Module):
 
         self.use_2d_rope = bool(cfg.use_2d_rope)
         self.rope2d_base = float(cfg.rope2d_frequency)
-        self.rope2d_scaling_factor = float(cfg.rope2d_scaling_factor)
         self._rope2d_cache: dict[tuple[int, int, int, torch.device], tuple[torch.Tensor, torch.Tensor]] = {}
 
         self.pos_getter: PositionGetter | None

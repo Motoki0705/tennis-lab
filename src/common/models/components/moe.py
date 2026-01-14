@@ -54,8 +54,21 @@ from torch import nn
 
 @dataclass
 class MoEConfig:
+    """Configuration for MoE.
+
+    Args:
+        dim: Token embedding dimension.
+        moe_inter_dim: Per-expert hidden dimension.
+        n_routed_experts: Number of routed experts.
+        n_shared_experts: Number of shared experts (dense FFN).
+        n_activated_experts: Top-k experts to activate per token.
+        n_expert_groups: Number of expert groups for group limiting.
+        n_limited_groups: Number of groups allowed per token.
+        score_func: Gating score normalization ("softmax" or "sigmoid").
+        route_scale: Scaling factor applied to routing weights.
+    """
+
     dim: int
-    inter_dim: int
     moe_inter_dim: int
     n_routed_experts: int = 64
     n_shared_experts: int = 0
@@ -225,7 +238,6 @@ if __name__ == "__main__":
     demo_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     demo_cfg = MoEConfig(
         dim=16,
-        inter_dim=32,
         moe_inter_dim=32,
         n_routed_experts=4,
         n_shared_experts=1,

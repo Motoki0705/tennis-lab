@@ -617,7 +617,6 @@ class MAEModel(nn.Module):
             hidden_dim=model_cfg.get("hidden_dim", 768),
             num_layers=model_cfg.get("num_layers", 12),
             num_heads=model_cfg.get("num_heads", 12),
-            num_kv_heads=model_cfg.get("num_kv_heads", 4),
             ffn_dim=model_cfg.get("ffn_dim", None),
             dropout=model_cfg.get("dropout", 0.0),
             num_register_tokens=model_cfg.get("num_register_tokens", 4),
@@ -626,8 +625,6 @@ class MAEModel(nn.Module):
             rope_theta=model_cfg.get("rope_theta", 10000.0),
             use_moe=model_cfg.get("use_moe", False),
             moe_layer_freq=model_cfg.get("moe_layer_freq", 2),
-            use_mla=model_cfg.get("use_mla", False),
-            mla_kv_lora_rank=model_cfg.get("mla_kv_lora_rank", 64),
             pooling="all",
         )
 

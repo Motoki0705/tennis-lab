@@ -53,10 +53,13 @@ from torch import nn
 # -------------------------
 @dataclass(frozen=True)
 class YaRNConfig:
-    """
-    Optional YaRN-style frequency correction config for long context extrapolation.
+    """YaRN frequency correction config for long-context extrapolation.
 
-    If seqlen <= original_seq_len, YaRN correction is not applied.
+    Args:
+        original_seq_len: Pretraining sequence length.
+        rope_factor: Scaling factor applied beyond `original_seq_len`.
+        beta_fast: Fast decay hyperparameter for correction range.
+        beta_slow: Slow decay hyperparameter for correction range.
     """
     original_seq_len: int
     rope_factor: float
@@ -107,11 +110,14 @@ def _yarn_corrected_inv_freq(
 # -------------------------
 @dataclass(frozen=True)
 class YaRNConfig2D:
-    """
-    YaRN config for 2D axial RoPE.
+    """YaRN config for 2D axial RoPE.
 
-    - original_height/width are the pretraining (or base) grid extents.
-    - rope_factor/betas are shared (common case).
+    Args:
+        original_height: Pretraining grid height.
+        original_width: Pretraining grid width.
+        rope_factor: Scaling factor applied beyond the base grid.
+        beta_fast: Fast decay hyperparameter for correction range.
+        beta_slow: Slow decay hyperparameter for correction range.
     """
     original_height: int
     original_width: int
