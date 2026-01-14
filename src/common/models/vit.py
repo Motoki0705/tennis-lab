@@ -46,7 +46,7 @@ class ViTConfig:
 
     # 2D RoPE
     rope_dim: int | None = None
-    rope_theta: float = 100.0  # mapped to RotaryPositionEmbedding2D.frequency
+    rope_theta: float = 100.0  # RoPE base (theta) for 2D axial RoPE
 
     # MoE (optional)
     use_moe: bool = False
@@ -145,25 +145,17 @@ class ViTEncoder(nn.Module):
         self.norm = RMSNorm(cfg.hidden_dim)
 
     def _build_positions_2d(self, bsz: int, num_patches_h: int, num_patches_w: int, device: torch.device) -> Tensor:
-        """Build (y,x) integer positions for [CLS][REG...][PATCH...] token order."""
+        """Build (y,x) integer positions for patch tokens.
+
+        Special tokens ([CLS]/[REG...]) are treated as a prefix and are not rotated by 2D RoPE.
+        """
         n_patches = num_patches_h * num_patches_w
 
         patch_idx = torch.arange(n_patches, device=device, dtype=torch.long)
-        patch_y = (patch_idx // num_patches_w) + 1  # offset row 0 for special tokens
+        patch_y = patch_idx // num_patches_w
         patch_x = patch_idx % num_patches_w
         patch_pos = torch.stack([patch_y, patch_x], dim=-1)  # (N, 2)
-
-        positions: list[Tensor] = []
-        if self.cfg.use_cls_token:
-            positions.append(torch.tensor([[0, 0]], device=device, dtype=torch.long))
-        if self.cfg.num_register_tokens > 0:
-            reg_x = torch.arange(1, self.cfg.num_register_tokens + 1, device=device, dtype=torch.long)
-            reg_pos = torch.stack([torch.zeros_like(reg_x), reg_x], dim=-1)  # (R, 2)
-            positions.append(reg_pos)
-        positions.append(patch_pos)
-
-        pos = torch.cat(positions, dim=0)  # (T, 2)
-        return pos.unsqueeze(0).expand(bsz, -1, -1).contiguous()
+        return patch_pos.unsqueeze(0).expand(bsz, -1, -1).contiguous()
 
     def forward(self, x: Tensor, *, return_all_tokens: bool = False) -> Tensor:
         """Forward pass.
@@ -186,7 +178,7 @@ class ViTEncoder(nn.Module):
         positions_2d = self._build_positions_2d(bsz, h, w, x.device)
 
         for block in self.blocks:
-            tok = block(tok, positions_2d=positions_2d)
+            tok = block(tok, positions_2d=positions_2d, grid_hw=(h, w))
 
         tok = self.norm(tok)
 

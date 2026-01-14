@@ -19,7 +19,10 @@ from src.common.models.components import (
     ViTBlock,
     ViTBlockConfig,
     YaRNConfig,
+    YaRNConfig2D,
+    apply_rotary_emb_2d,
     precompute_freqs_cis,
+    precompute_freqs_cis_2d,
 )
 from src.common.models.vit import ViTConfig, ViTEncoder
 
@@ -32,7 +35,10 @@ __all__ = [
     "LayerNorm",
     # RoPE
     "YaRNConfig",
+    "YaRNConfig2D",
     "precompute_freqs_cis",
+    "precompute_freqs_cis_2d",
+    "apply_rotary_emb_2d",
     "RotaryPositionEmbedding2D",
     "PositionGetter",
     # MLP / MoE
