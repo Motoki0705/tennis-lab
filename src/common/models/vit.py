@@ -22,9 +22,23 @@ from src.common.models.components import MoEConfig, RMSNorm, ViTBlock, ViTBlockC
 class ViTConfig:
     """Configuration for ViTEncoder.
 
-    Notes:
-        Some fields (e.g., `num_kv_heads`, `use_mla`) are currently kept for
-        configuration compatibility but are not used by the DeepSeek-style MHA.
+    Args:
+        patch_size: Patch size for image tokenization.
+        in_channels: Number of input image channels.
+        image_size: Input image size (assumed square).
+        hidden_dim: Token embedding dimension.
+        num_layers: Number of transformer blocks.
+        num_heads: Number of attention heads.
+        ffn_dim: MLP hidden dimension (defaults to 8/3 rule if None).
+        dropout: Dropout probability for attention/MLP.
+        num_register_tokens: Number of register tokens (inserted after CLS).
+        use_cls_token: Whether to prepend a CLS token.
+        rope_dim: Rotary dimension per head for 2D RoPE.
+        rope_theta: Base theta for 2D RoPE.
+        use_moe: Whether to use MoE FFNs.
+        moe_config: MoE configuration when `use_moe=True`.
+        moe_layer_freq: Apply MoE every N layers.
+        pooling: Output pooling mode for encoder outputs.
     """
 
     # Patch embedding
@@ -36,7 +50,6 @@ class ViTConfig:
     hidden_dim: int = 768
     num_layers: int = 12
     num_heads: int = 12
-    num_kv_heads: int = 4  # unused (kept for config compatibility)
     ffn_dim: int | None = None
     dropout: float = 0.1
 
@@ -52,10 +65,6 @@ class ViTConfig:
     use_moe: bool = True
     moe_config: MoEConfig | None = None
     moe_layer_freq: int = 2
-
-    # Kept for compatibility (unused in this implementation)
-    use_mla: bool = False
-    mla_kv_lora_rank: int = 64
 
     # Output selection
     pooling: Literal["cls", "mean", "all"] = "all"
@@ -121,7 +130,6 @@ class ViTEncoder(nn.Module):
             if use_moe:
                 moe_cfg = cfg.moe_config or MoEConfig(
                     dim=cfg.hidden_dim,
-                    inter_dim=ffn_dim,
                     moe_inter_dim=ffn_dim,
                     n_routed_experts=8,
                     n_shared_experts=1,
