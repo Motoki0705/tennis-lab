@@ -1,4 +1,4 @@
-mode: all
+mode: clip
 video_path: null
 
 output:
@@ -10,15 +10,11 @@ output:
   overwrite: false
   skip_existing: true
 
-sampling:
-  method: uniform  # uniform | random
-  clip_length: 90
-  num_clips: 10
-  min_gap: 30
-  start_frame: null
-  end_frame: null
-  explicit_starts: []
-  random_seed: 7
+clip:
+  window_name: WASB Clip Selector
+  step_small: 1
+  step_large: 10
+  display_scale: 1.0
 
 annotate:
   clip_indices: []
