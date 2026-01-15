@@ -9,7 +9,7 @@ num_layers: 6
 num_heads: 8
 ffn_dim: null        # Defaults to 8/3 * hidden_dim (rounded to 64)
 dropout: 0.1
-max_seq_len: 120     # Maximum 4 seconds @ 30fps
+max_seq_len: 2048     # Maximum 4 seconds @ 30fps
 
 # RoPE (Rotary Position Embedding)
 rope_dim: null       # Defaults to head_dim (hidden_dim / num_heads)
@@ -33,7 +33,7 @@ moe_config:
   moe_inter_dim: 704
   n_routed_experts: 8
   n_shared_experts: 2
-  n_activated_experts: 4
+  n_activated_experts: 2
   n_expert_groups: 1
   n_limited_groups: 1
   score_func: softmax
