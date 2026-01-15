@@ -282,3 +282,27 @@ class PLCSModel(nn.Module):
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+if __name__ == "__main__":
+    torch.manual_seed(0)
+
+    model = PLCSModel(
+        hidden_dim=64,
+        num_layers=2,
+        num_heads=4,
+        dropout=0.0,
+    )
+
+    B = 2
+    human_kp = torch.randn(B, NUM_HUMAN_KP, 2)
+    court_kp = torch.randn(B, NUM_COURT_KP, 2)
+    human_vis = (torch.rand(B, NUM_HUMAN_KP) > 0.2).to(torch.float32)
+    court_vis = (torch.rand(B, NUM_COURT_KP) > 0.1).to(torch.float32)
+
+    with torch.no_grad():
+        out = model(human_kp=human_kp, court_kp=court_kp, human_vis=human_vis, court_vis=court_vis)
+
+    print("PLCSModel:")
+    for key, value in out.items():
+        print(f"  {key}: {tuple(value.shape)}")

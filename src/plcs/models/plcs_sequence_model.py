@@ -290,9 +290,17 @@ class PLCSSequenceModel(nn.Module):
         if court_kp.dim() == 4:
             # (B, T, 20, 2) -> (B, 20, 2) using first frame
             court_kp = court_kp[:, 0, :, :]
-        elif court_kp.dim() == 3 and court_kp.size(1) > 1:
-            # (B, T, 40) -> (B, 40) using first frame
-            court_kp = court_kp[:, 0, :]
+        elif court_kp.dim() == 3:
+            # Either (B, 20, 2) (scene-level) or (B, T, 40) (per-frame flattened)
+            if court_kp.size(1) == NUM_COURT_KP and court_kp.size(2) == 2:
+                pass
+            elif court_kp.size(2) == NUM_COURT_KP * 2:
+                court_kp = court_kp[:, 0, :]
+            else:
+                raise ValueError(
+                    f"Unsupported court_kp shape {tuple(court_kp.shape)}. "
+                    "Expected (B,40), (B,20,2), (B,T,40), or (B,T,20,2)."
+                )
         # Now court_kp is (B, 40) or (B, 20, 2)
 
         # Handle court_vis similarly
@@ -373,3 +381,30 @@ class PLCSSequenceModel(nn.Module):
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+if __name__ == "__main__":
+    torch.manual_seed(0)
+
+    model = PLCSSequenceModel(
+        hidden_dim=64,
+        num_layers=2,
+        num_heads=4,
+        dropout=0.0,
+        max_seq_len=16,
+        causal=False,
+    )
+
+    B = 2
+    T = 8
+    human_kp = torch.randn(B, T, NUM_HUMAN_KP, 2)
+    court_kp = torch.randn(B, NUM_COURT_KP, 2)
+    human_vis = (torch.rand(B, T, NUM_HUMAN_KP) > 0.2).to(torch.float32)
+    court_vis = (torch.rand(B, NUM_COURT_KP) > 0.1).to(torch.float32)
+
+    with torch.no_grad():
+        out = model(human_kp=human_kp, court_kp=court_kp, human_vis=human_vis, court_vis=court_vis)
+
+    print("PLCSSequenceModel:")
+    for key, value in out.items():
+        print(f"  {key}: {tuple(value.shape)}")
