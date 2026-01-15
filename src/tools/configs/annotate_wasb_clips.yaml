@@ -1,0 +1,11 @@
+# Configuration for `src.tools.annotate_wasb_clips`.
+
+video_path: data/tennis/raw/sample.mp4
+output_dir: outputs/wasb/clip_annotations
+manifest_name: clip_manifest.json
+
+sampling:
+  method: manual # manual = OpenCV UI selection
+  preview_stride: 3
+  preview_scale: 0.5
+  min_clip_length: 15
