@@ -25,7 +25,7 @@ class ViTConfig:
     Args:
         patch_size: Patch size for image tokenization.
         in_channels: Number of input image channels.
-        image_size: Input image size (assumed square).
+        max_resolution: Maximum input resolution (assumed square).
         hidden_dim: Token embedding dimension.
         num_layers: Number of transformer blocks.
         num_heads: Number of attention heads.
@@ -44,7 +44,7 @@ class ViTConfig:
     # Patch embedding
     patch_size: int = 16
     in_channels: int = 3
-    image_size: int = 224
+    max_resolution: int = 224
 
     # Architecture
     hidden_dim: int = 768
@@ -96,9 +96,11 @@ class ViTEncoder(nn.Module):
     def __init__(self, cfg: ViTConfig) -> None:
         super().__init__()
         self.cfg = cfg
+        self.patch_size = int(cfg.patch_size)
+        self.max_resolution = int(cfg.max_resolution)
 
         self.patch_embed = PatchEmbedding(
-            patch_size=cfg.patch_size,
+            patch_size=self.patch_size,
             in_channels=cfg.in_channels,
             hidden_dim=cfg.hidden_dim,
         )
@@ -152,18 +154,40 @@ class ViTEncoder(nn.Module):
 
         self.norm = RMSNorm(cfg.hidden_dim)
 
-    def _build_positions_2d(self, bsz: int, num_patches_h: int, num_patches_w: int, device: torch.device) -> Tensor:
-        """Build (y,x) integer positions for patch tokens.
+        max_patches_h = self.max_resolution // self.patch_size
+        max_patches_w = self.max_resolution // self.patch_size
+        if max_patches_h <= 0 or max_patches_w <= 0:
+            raise ValueError(
+                f"max_resolution={self.max_resolution} must be >= patch_size={self.patch_size}."
+            )
+
+        positions_2d_grid = self._build_positions_2d_grid(max_patches_h, max_patches_w)
+        self.register_buffer("_positions_2d_grid", positions_2d_grid, persistent=False)
+
+    @staticmethod
+    def _build_positions_2d_grid(num_patches_h: int, num_patches_w: int) -> Tensor:
+        """Build a (H, W, 2) integer (y,x) position grid for patch tokens."""
+        y = torch.arange(num_patches_h, dtype=torch.long)
+        x = torch.arange(num_patches_w, dtype=torch.long)
+        return torch.cartesian_prod(y, x).view(num_patches_h, num_patches_w, 2)
+
+    def _slice_positions_2d(self, bsz: int, num_patches_h: int, num_patches_w: int, device: torch.device) -> Tensor:
+        """Slice cached (y,x) integer positions for patch tokens.
 
         Special tokens ([CLS]/[REG...]) are treated as a prefix and are not rotated by 2D RoPE.
         """
-        n_patches = num_patches_h * num_patches_w
+        max_patches_h, max_patches_w, _ = self._positions_2d_grid.shape
+        if num_patches_h > max_patches_h or num_patches_w > max_patches_w:
+            raise ValueError(
+                f"Patch grid (h={num_patches_h}, w={num_patches_w}) exceeds cached "
+                f"max grid (h={max_patches_h}, w={max_patches_w}). "
+                f"Increase max_resolution={self.max_resolution}."
+            )
 
-        patch_idx = torch.arange(n_patches, device=device, dtype=torch.long)
-        patch_y = patch_idx // num_patches_w
-        patch_x = patch_idx % num_patches_w
-        patch_pos = torch.stack([patch_y, patch_x], dim=-1)  # (N, 2)
-        return patch_pos.unsqueeze(0).expand(bsz, -1, -1).contiguous()
+        patch_pos = self._positions_2d_grid[:num_patches_h, :num_patches_w].reshape(1, -1, 2)
+        if patch_pos.device != device:
+            patch_pos = patch_pos.to(device)
+        return patch_pos.expand(bsz, -1, -1).contiguous()
 
     def forward(self, x: Tensor, *, return_all_tokens: bool = False) -> Tensor:
         """Forward pass.
@@ -183,7 +207,7 @@ class ViTEncoder(nn.Module):
             insert_at = 1 if self.cfg.use_cls_token else 0
             tok = torch.cat([tok[:, :insert_at], reg, tok[:, insert_at:]], dim=1)
 
-        positions_2d = self._build_positions_2d(bsz, h, w, x.device)
+        positions_2d = self._slice_positions_2d(bsz, h, w, x.device)
 
         for block in self.blocks:
             tok = block(tok, positions_2d=positions_2d, grid_hw=(h, w))
@@ -207,7 +231,7 @@ class ViTEncoder(nn.Module):
 if __name__ == "__main__":
     torch.manual_seed(0)
     demo_cfg = ViTConfig(
-        image_size=64,
+        max_resolution=64,
         patch_size=8,
         hidden_dim=128,
         num_layers=2,
@@ -218,7 +242,7 @@ if __name__ == "__main__":
     )
     demo_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     demo_model = ViTEncoder(demo_cfg).eval().to(demo_device)
-    demo_input = torch.randn(1, demo_cfg.in_channels, demo_cfg.image_size, demo_cfg.image_size).to(demo_device)
+    demo_input = torch.randn(1, demo_cfg.in_channels, 56, 56).to(demo_device)
 
     with torch.no_grad():
         demo_output = demo_model(demo_input)

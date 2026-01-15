@@ -613,7 +613,7 @@ class MAEModel(nn.Module):
         encoder_cfg = ViTConfig(
             patch_size=model_cfg.get("patch_size", 16),
             in_channels=model_cfg.get("in_channels", 3),
-            image_size=model_cfg.get("image_size", 224),
+            max_resolution=model_cfg.get("max_resolution", 224),
             hidden_dim=model_cfg.get("hidden_dim", 768),
             num_layers=model_cfg.get("num_layers", 12),
             num_heads=model_cfg.get("num_heads", 12),
