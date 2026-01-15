@@ -363,3 +363,30 @@ class BLCSModel(nn.Module):
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+if __name__ == "__main__":
+    torch.manual_seed(0)
+
+    model = BLCSModel(
+        hidden_dim=64,
+        num_layers=2,
+        num_heads=4,
+        dropout=0.0,
+        max_seq_len=16,
+        predict_velocity=True,
+    )
+
+    B = 2
+    T = 8
+    ball_uv = torch.randn(B, T, 2)
+    court_kp = torch.randn(B, NUM_COURT_KP, 2)
+    ball_mask = (torch.rand(B, T) > 0.2).to(torch.float32)
+    court_vis = (torch.rand(B, NUM_COURT_KP) > 0.1).to(torch.float32)
+
+    with torch.no_grad():
+        out = model(ball_uv=ball_uv, court_kp=court_kp, ball_mask=ball_mask, court_vis=court_vis)
+
+    print("BLCSModel:")
+    for key, value in out.items():
+        print(f"  {key}: {tuple(value.shape)}")
