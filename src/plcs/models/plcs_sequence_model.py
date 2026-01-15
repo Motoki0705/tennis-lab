@@ -1,6 +1,6 @@
 """Sequential PLCS model implementation.
 
-Decoder-Only Transformer architecture with GQA + RoPE + SDPA.
+Decoder-Only Transformer architecture with MHA + RoPE + SDPA.
 Estimates player 3D position and rotation in tennis court coordinates
 from 2D player keypoints and court keypoints.
 
@@ -8,7 +8,7 @@ Architecture:
     - Court keypoints (20) are tokenized as prefix tokens (fixed per scene)
     - Player keypoints per frame (T) are tokenized as sequence tokens
     - Decoder-only Transformer with RoPE positional encoding
-    - Grouped-Query Attention (GQA) using F.scaled_dot_product_attention (SDPA)
+    - Multi-Head Self-Attention (MHA) using F.scaled_dot_product_attention (SDPA)
     - SwiGLU MLP and RMSNorm for efficiency
     - PositionHead and RotationHead outputs from player tokens only
 """
@@ -22,9 +22,11 @@ import torch.nn as nn
 from torch import Tensor
 
 from src.common.models import (
+    MoEConfig,
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
+    YaRNConfig,
     precompute_freqs_cis,
 )
 from src.plcs.models.components.heads import PositionHead, RotationHead
@@ -125,7 +127,7 @@ class PLCSSequenceModel(nn.Module):
     """PLCS sequence model with Decoder-Only Transformer architecture.
 
     Llama-style architecture with:
-    - Grouped-Query Attention (GQA) with SDPA for efficiency
+    - Multi-Head Self-Attention (MHA) with SDPA for efficiency
     - Rotary Position Embedding (RoPE)
     - SwiGLU MLP and RMSNorm
 
@@ -150,11 +152,13 @@ class PLCSSequenceModel(nn.Module):
         hidden_dim: int = 256,
         num_layers: int = 8,
         num_heads: int = 8,
-        num_kv_heads: int = 2,
         ffn_dim: int | None = None,
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
+        yarn: YaRNConfig | None = None,
+        use_moe: bool = False,
+        moe_config: MoEConfig | None = None,
         causal: bool = False,
         max_seq_len: int = 120,
     ) -> None:
@@ -164,17 +168,20 @@ class PLCSSequenceModel(nn.Module):
             hidden_dim: Hidden dimension for all components.
             num_layers: Number of Transformer blocks.
             num_heads: Number of query attention heads.
-            num_kv_heads: Number of key/value heads (for GQA).
             ffn_dim: FFN intermediate dimension. Defaults to 8/3 * hidden_dim.
             dropout: Dropout probability.
             rope_dim: RoPE dimension. Defaults to head_dim.
             rope_theta: RoPE theta parameter.
+            yarn: Optional YaRN config for long-context extrapolation.
+            use_moe: Use Mixture-of-Experts FFN in each Transformer block.
+            moe_config: MoE configuration (required when use_moe=True).
             causal: Use causal attention mask.
             max_seq_len: Maximum number of player tokens (frames).
 
         """
         super().__init__()
         self.hidden_dim = hidden_dim
+        self.yarn = yarn
         self.causal = causal
         self.max_seq_len = int(max_seq_len)
         self.max_tokens = int(NUM_COURT_KP + self.max_seq_len)
@@ -187,6 +194,11 @@ class PLCSSequenceModel(nn.Module):
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
             ffn_dim = (ffn_dim + 63) // 64 * 64  # Round to multiple of 64
+
+        if use_moe and moe_config is None:
+            raise ValueError("use_moe=True requires moe_config.")
+        if moe_config is not None and moe_config.dim != hidden_dim:
+            raise ValueError(f"moe_config.dim={moe_config.dim} must match hidden_dim={hidden_dim}")
 
         # Token embeddings
         self.court_embed = CourtTokenEmbedding(dim=hidden_dim, dropout=dropout)
@@ -206,7 +218,10 @@ class PLCSSequenceModel(nn.Module):
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
-                        use_moe=False,
+                        rope_base=self.rope_theta,
+                        yarn=self.yarn,
+                        use_moe=use_moe,
+                        moe_config=moe_config,
                     )
                 )
                 for _ in range(num_layers)
@@ -233,6 +248,7 @@ class PLCSSequenceModel(nn.Module):
             dim=self.rope_dim,
             seqlen=self.max_tokens,
             base=self.rope_theta,
+            yarn=self.yarn,
             device=None,  # initialized on CPU; moved by `model.to(device)`
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
@@ -249,18 +265,33 @@ class PLCSSequenceModel(nn.Module):
 
         """
         model_cfg = config.get("model", {})
-        data_cfg = config.get("data", {})
+
+        yarn_cfg = model_cfg.get("yarn", None)
+        yarn: YaRNConfig | None = None
+        if yarn_cfg is not None:
+            yarn_cfg = dict(yarn_cfg)
+            if yarn_cfg.get("original_seq_len", None) is not None:
+                yarn = YaRNConfig(**yarn_cfg)
+
+        use_moe = bool(model_cfg.get("use_moe", False))
+        moe_cfg = model_cfg.get("moe_config", None)
+        moe_config: MoEConfig | None = None
+        if use_moe and moe_cfg is not None:
+            moe_config = MoEConfig(dim=int(model_cfg.get("hidden_dim", 256)), **dict(moe_cfg))
+
         return cls(
             hidden_dim=model_cfg.get("hidden_dim", 256),
             num_layers=model_cfg.get("num_layers", 8),
             num_heads=model_cfg.get("num_heads", 8),
-            num_kv_heads=model_cfg.get("num_kv_heads", 2),
             ffn_dim=model_cfg.get("ffn_dim", None),
             dropout=model_cfg.get("dropout", 0.1),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=model_cfg.get("rope_theta", 10000.0),
+            yarn=yarn,
+            use_moe=use_moe,
+            moe_config=moe_config,
             causal=model_cfg.get("causal", False),
-            max_seq_len=model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120)),
+            max_seq_len=model_cfg.get("max_seq_len", 120),
         )
 
     def forward(
