@@ -112,7 +112,7 @@ class BLCSModel(nn.Module):
     """BLCS: Ball Localization in Court System.
 
     Decoder-Only Transformer architecture with:
-    - Grouped-Query Attention (GQA) with SDPA for efficiency
+    - Multi-Head Self-Attention (MHA) with SDPA for efficiency
     - Rotary Position Embedding (RoPE)
     - SwiGLU MLP and RMSNorm
 
