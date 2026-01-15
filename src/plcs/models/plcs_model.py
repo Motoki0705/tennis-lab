@@ -90,6 +90,7 @@ class PLCSModel(nn.Module):
         super().__init__()
 
         self.hidden_dim = hidden_dim
+        self.max_tokens = int(NUM_COURT_KP + NUM_HUMAN_KP)
 
         head_dim = hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else rope_dim
@@ -140,6 +141,14 @@ class PLCSModel(nn.Module):
             num_layers=2,
             dropout=dropout,
         )
+
+        freqs_cis = precompute_freqs_cis(
+            dim=self.rope_dim,
+            seqlen=self.max_tokens,
+            base=self.rope_theta,
+            device=None,  # initialized on CPU; moved by `model.to(device)`
+        )
+        self.register_buffer("freqs_cis", freqs_cis, persistent=False)
 
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSModel:
@@ -200,6 +209,7 @@ class PLCSModel(nn.Module):
         x = torch.cat(
             [court_tok + court_type, player_tok + player_type], dim=1
         )  # (B, 37, D)
+        S = x.shape[1]
 
         # Build key_padding_mask if visibility provided
         key_padding_mask: Tensor | None = None
@@ -218,17 +228,19 @@ class PLCSModel(nn.Module):
                 )
             key_padding_mask = torch.cat([court_mask, player_mask], dim=1)  # (B, 37)
 
-        freqs_cis = precompute_freqs_cis(
-            dim=self.rope_dim,
-            seqlen=x.shape[1],
-            base=self.rope_theta,
-            device=x.device,
-        )
+        if S > self.freqs_cis.shape[0]:
+            raise ValueError(
+                f"Sequence length S={S} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
+                "Increase max_tokens."
+            )
+        freqs_cis = self.freqs_cis[:S]
+        if freqs_cis.device != x.device:
+            freqs_cis = freqs_cis.to(x.device)
 
         attn_mask: Tensor | None = None
         if key_padding_mask is not None:
             # bool mask semantics follow SDPA: True=KEEP, False=MASK
-            attn_mask = key_padding_mask[:, None, :].expand(B, x.shape[1], x.shape[1])
+            attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
 
         residual = None
         for blk in self.blocks:
