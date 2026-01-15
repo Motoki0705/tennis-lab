@@ -1,0 +1,30 @@
+mode: all
+video_path: null
+
+output:
+  output_dir: data/tennis
+  game_name: game_manual
+  frame_format: frame_{:04d}.jpg
+  label_format: '{:04d}.jpg'
+  jpeg_quality: 95
+  overwrite: false
+  skip_existing: true
+
+sampling:
+  method: uniform  # uniform | random
+  clip_length: 90
+  num_clips: 10
+  min_gap: 30
+  start_frame: null
+  end_frame: null
+  explicit_starts: []
+  random_seed: 7
+
+annotate:
+  clip_indices: []
+  window_name: WASB Annotator
+  circle_radius: 6
+  circle_color_bgr: [0, 0, 255]
+  text_color_bgr: [255, 255, 255]
+  font_scale: 0.6
+  line_thickness: 2
