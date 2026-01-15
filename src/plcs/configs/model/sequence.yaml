@@ -1,5 +1,5 @@
 # PLCS Sequence Model Configuration
-# Decoder-Only Transformer with GQA + RoPE + SDPA
+# Decoder-Only Transformer with MHA + RoPE + SDPA
 
 name: plcs_sequence
 
@@ -7,13 +7,33 @@ name: plcs_sequence
 hidden_dim: 256
 num_layers: 8
 num_heads: 8
-num_kv_heads: 2      # Grouped-Query Attention: num_heads / num_kv_heads = 4 groups
 ffn_dim: null        # Defaults to 8/3 * hidden_dim (rounded to 64)
 dropout: 0.1
+
+max_seq_len: 2048
 
 # RoPE (Rotary Position Embedding)
 rope_dim: null       # Defaults to head_dim (hidden_dim / num_heads)
 rope_theta: 10000.0
+
+# YaRN (optional long-context extrapolation for RoPE)
+# Set to null to disable.
+yarn: null
+
+# MoE (optional; applied to all blocks)
+use_moe: true
+# MoEConfig fields (src/common/models/components/moe.py:MoEConfig)
+# Note: `dim` is always `hidden_dim` and is not configured here.
+# `moe_inter_dim` should be set explicitly when use_moe=true.
+moe_config:
+  moe_inter_dim: 704
+  n_routed_experts: 8
+  n_shared_experts: 2
+  n_activated_experts: 2
+  n_expert_groups: 1
+  n_limited_groups: 1
+  score_func: softmax
+  route_scale: 1.0
 
 # Attention
 causal: false        # Use causal attention mask
