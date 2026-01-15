@@ -46,10 +46,34 @@ Where's the Ball (WASB) タスクのスクリプト群。
 # 1. 動画をダウンロード
 uv run python -m src.wasb.scripts.generate_dataset.download_videos
 
-# 2. ボール位置をアノテーション
-uv run python -m src.wasb.scripts.generate_dataset mode=batch
+# 2. クリップの manifest を作成（フレーム抽出なし）
+python - <<'PY'
+from src.wasb.inference import WASBPredictor
+from src.wasb.pipeline import AnnotationPipeline, SamplingConfig
 
-# 3. プレビュー生成と手動選別
+predictor = WASBPredictor.load_from_checkpoint("path/to/checkpoint")
+pipeline = AnnotationPipeline(predictor)
+pipeline.sample_clips(
+    video_path="data/tennis/raw/match1.mp4",
+    output_dir="data/tennis/game11",
+    sampling=SamplingConfig(export_frames=False),
+)
+PY
+
+# 3. 必要なクリップのみ抽出・アノテーション
+python - <<'PY'
+from src.wasb.inference import WASBPredictor
+from src.wasb.pipeline import AnnotationPipeline
+
+predictor = WASBPredictor.load_from_checkpoint("path/to/checkpoint")
+pipeline = AnnotationPipeline(predictor)
+pipeline.annotate_clips(
+    video_path="data/tennis/raw/match1.mp4",
+    output_dir="data/tennis/game11",
+)
+PY
+
+# 4. プレビュー生成と手動選別（必要に応じて）
 uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=generate_samples generate_samples=[all]
 # （不要なプレビューを手動削除）
 uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=apply_clip_selection apply_clip_selection=[all]

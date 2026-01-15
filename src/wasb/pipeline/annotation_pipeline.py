@@ -13,6 +13,7 @@ Supports two modes:
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -25,6 +26,8 @@ from src.wasb.models.others.clip_segmenter import ClipSegment, RuleBasedClipSegm
 from src.wasb.tennis_format import TennisLabelRow, row_from_visibility, save_label_csv
 from src.wasb.utils.streaming_loader import StreamingVideoLoader
 from src.wasb.utils.video_extractor import VideoExtractor
+
+CLIP_MANIFEST_FILENAME = "clip_manifest.json"
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -78,6 +81,13 @@ class PipelineConfig:
 
 
 @dataclass
+class SamplingConfig:
+    """Configuration for clip sampling workflows."""
+
+    export_frames: bool = True
+
+
+@dataclass
 class PipelineResult:
     """Result from running the annotation pipeline.
 
@@ -125,6 +135,15 @@ class ClipInfo:
     detection_rate: float = 0.0
     completion_rate: float = 0.0
     avg_score: float = 0.0
+
+
+def _split_frame_format(frame_format: str) -> tuple[str, str]:
+    """Split a frame format string into prefix and suffix."""
+    prefix = frame_format.split("{", 1)[0]
+    suffix = ""
+    if "}" in frame_format:
+        suffix = frame_format.rsplit("}", 1)[1]
+    return prefix, suffix
 
 
 class AnnotationPipeline:
@@ -255,6 +274,246 @@ class AnnotationPipeline:
                 verbose=verbose,
             )
 
+    def sample_clips(
+        self,
+        video_path: str | Path,
+        output_dir: str | Path,
+        sampling: SamplingConfig | None = None,
+        max_frames: int | None = None,
+        verbose: bool = True,
+    ) -> Path:
+        """Generate a clip manifest and optionally extract clip frames."""
+        video_path = Path(video_path)
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        sampling = sampling or SamplingConfig()
+
+        extractor = VideoExtractor(video_path)
+        frame_count = extractor.frame_count
+        if max_frames is not None:
+            frame_count = min(frame_count, max_frames)
+
+        if verbose:
+            print(f"Sampling clips for {video_path}")
+            print(f"Output directory: {output_dir}")
+            print(
+                f"Video: {extractor.width}x{extractor.height}, "
+                f"{frame_count} frames, {extractor.fps:.1f} fps"
+            )
+
+        use_streaming = (
+            self.config.use_streaming and frame_count > self.config.streaming_threshold
+        )
+
+        if use_streaming:
+            detection_results, _ = self._run_detection_streaming(
+                video_path=video_path,
+                max_frames=max_frames,
+                verbose=verbose,
+            )
+        else:
+            _, detection_results = self._run_detection(
+                extractor, max_frames=max_frames, verbose=verbose
+            )
+
+        segments = self._segment_video(detection_results)
+        if verbose:
+            print(f"Found {len(segments)} rally segments")
+
+        manifest_entries: list[dict[str, int | str]] = []
+        for clip_idx, segment in enumerate(segments, start=1):
+            clip_name = f"Clip{clip_idx}"
+            manifest_entries.append(
+                {
+                    "clip_name": clip_name,
+                    "start_frame": int(segment.start),
+                    "end_frame": int(segment.end),
+                }
+            )
+
+            if sampling.export_frames:
+                extractor.extract_segment(
+                    start_frame=segment.start,
+                    end_frame=segment.end,
+                    output_dir=output_dir / clip_name,
+                    frame_format=self.config.frame_format,
+                    jpeg_quality=self.config.jpeg_quality,
+                )
+
+        manifest = {
+            "version": "1.0",
+            "video_path": str(video_path),
+            "clips": manifest_entries,
+        }
+        manifest_path = output_dir / CLIP_MANIFEST_FILENAME
+        manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
+        )
+
+        if verbose:
+            print(f"Saved clip manifest to {manifest_path}")
+
+        return manifest_path
+
+    def annotate_clips(
+        self,
+        video_path: str | Path,
+        output_dir: str | Path,
+        manifest_path: str | Path | None = None,
+        verbose: bool = True,
+    ) -> list[ClipInfo]:
+        """Annotate clips using the manifest, extracting frames if missing."""
+        import cv2
+
+        video_path = Path(video_path)
+        output_dir = Path(output_dir)
+        manifest_path = (
+            Path(manifest_path)
+            if manifest_path is not None
+            else output_dir / CLIP_MANIFEST_FILENAME
+        )
+
+        if not manifest_path.exists():
+            raise FileNotFoundError(f"Clip manifest not found: {manifest_path}")
+
+        with manifest_path.open("r", encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        manifest_clips = list(manifest.get("clips", []))
+        if not manifest_clips:
+            return []
+
+        extractor = VideoExtractor(video_path)
+        prefix, suffix = _split_frame_format(self.config.frame_format)
+
+        clips: list[ClipInfo] = []
+        for clip_idx, clip_entry in enumerate(manifest_clips, start=1):
+            clip_name = clip_entry.get("clip_name") or f"Clip{clip_idx}"
+            start_frame = int(clip_entry["start_frame"])
+            end_frame = int(clip_entry["end_frame"])
+
+            clip_dir = output_dir / clip_name
+            if clip_dir.exists():
+                frame_paths = sorted(
+                    [
+                        path
+                        for path in clip_dir.iterdir()
+                        if path.is_file()
+                        and path.name.startswith(prefix)
+                        and path.name.endswith(suffix)
+                    ]
+                )
+            else:
+                frame_paths = []
+
+            if not frame_paths:
+                if verbose:
+                    print(f"Extracting frames for {clip_name}...")
+                extractor.extract_segment(
+                    start_frame=start_frame,
+                    end_frame=end_frame,
+                    output_dir=clip_dir,
+                    frame_format=self.config.frame_format,
+                    jpeg_quality=self.config.jpeg_quality,
+                )
+                frame_paths = sorted(
+                    [
+                        path
+                        for path in clip_dir.iterdir()
+                        if path.is_file()
+                        and path.name.startswith(prefix)
+                        and path.name.endswith(suffix)
+                    ]
+                )
+
+            if not frame_paths:
+                continue
+
+            frames_rgb: list[NDArray[np.uint8]] = []
+            for frame_path in frame_paths:
+                frame_bgr = cv2.imread(str(frame_path))
+                if frame_bgr is None:
+                    continue
+                frames_rgb.append(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB))
+
+            if not frames_rgb:
+                continue
+
+            frames = np.stack(frames_rgb, axis=0)
+
+            self.predictor.reset_tracker()
+            results = self.predictor.predict(frames)
+            segment_xy = results["ball_xy_px"].copy()
+            segment_vis = results["visibility"].copy()
+            segment_score = results["score"].copy()
+
+            num_completed = 0
+            if self.completer is not None:
+                completion_result = self.completer.complete(
+                    xy=segment_xy.astype(np.float32),
+                    visibility=segment_vis,
+                    score=segment_score.astype(np.float32),
+                )
+                segment_xy = completion_result.xy
+                completed_vis = completion_result.visibility
+                num_completed = int(np.sum(completed_vis == 2))
+            else:
+                completed_vis = np.where(
+                    segment_vis & (segment_score >= self.config.score_threshold), 1, 0
+                ).astype(np.int32)
+
+            label_rows: list[TennisLabelRow] = []
+            num_detections = 0
+
+            for local_idx in range(len(frames)):
+                vis = int(completed_vis[local_idx])
+                x, y = segment_xy[local_idx]
+                score = float(segment_score[local_idx]) if vis == 1 else 0.0
+
+                if vis == 1:
+                    num_detections += 1
+                elif vis == 0:
+                    x, y = 0.0, 0.0
+
+                label_filename = f"{local_idx:04d}.jpg"
+                label_rows.append(
+                    row_from_visibility(
+                        file_name=label_filename,
+                        x=float(x),
+                        y=float(y),
+                        visibility=vis,
+                        score=score,
+                    )
+                )
+
+            label_path = clip_dir / "Label.csv"
+            save_label_csv(label_path, label_rows)
+
+            detection_rate = num_detections / len(frames) if len(frames) > 0 else 0.0
+            completion_rate = num_completed / len(frames) if len(frames) > 0 else 0.0
+            detected_scores = segment_score[
+                segment_vis & (segment_score >= self.config.score_threshold)
+            ]
+            avg_score = (
+                float(np.mean(detected_scores)) if len(detected_scores) > 0 else 0.0
+            )
+
+            clips.append(
+                ClipInfo(
+                    clip_name=clip_name,
+                    clip_dir=clip_dir,
+                    num_frames=len(frames),
+                    num_detections=num_detections,
+                    num_completed=num_completed,
+                    detection_rate=detection_rate,
+                    completion_rate=completion_rate,
+                    avg_score=avg_score,
+                )
+            )
+
+        return clips
+
     @classmethod
     def run_pipeline_from_config(
         cls,
@@ -363,6 +622,69 @@ class AnnotationPipeline:
 
         return result
 
+    def _run_detection_streaming(
+        self,
+        video_path: Path,
+        max_frames: int | None = None,
+        verbose: bool = True,
+    ) -> tuple[dict[str, NDArray], int]:
+        """Run detection in streaming mode and return detection results."""
+        loader = StreamingVideoLoader(
+            video_path=video_path,
+            batch_size=self.config.streaming_batch_size,
+            queue_size=self.config.streaming_queue_size,
+            max_frames=max_frames,
+        )
+
+        total_frames = loader.metadata.total_frames
+        height, width = loader.metadata.height, loader.metadata.width
+
+        all_xy: list[tuple[float, float]] = []
+        all_visibility: list[bool] = []
+        all_scores: list[float] = []
+        all_frame_indices: list[int] = []
+
+        self.predictor.reset_tracker()
+
+        pbar = None
+        if verbose:
+            print("Running ball detection (streaming mode)...")
+            pbar = tqdm(total=total_frames, desc="Processing frames")
+
+        try:
+            for batch in loader:
+                results = self.predictor.predict(
+                    frames=batch.frames,
+                    frame_indices=batch.frame_indices,
+                )
+
+                for i, idx in enumerate(batch.frame_indices):
+                    all_frame_indices.append(idx)
+                    all_xy.append(tuple(results["ball_xy_px"][i]))
+                    all_visibility.append(bool(results["visibility"][i]))
+                    all_scores.append(float(results["score"][i]))
+
+                if verbose:
+                    pbar.update(len(batch.frames))
+        finally:
+            if pbar is not None:
+                pbar.close()
+            loader.stop()
+
+        detection_results = {
+            "ball_xy_px": np.array(all_xy, dtype=np.float32),
+            "visibility": np.array(all_visibility, dtype=bool),
+            "score": np.array(all_scores, dtype=np.float32),
+            "frame_indices": np.array(all_frame_indices, dtype=np.int64),
+            "ball_uv": np.array(all_xy, dtype=np.float32),
+        }
+
+        if len(detection_results["ball_uv"]) > 0:
+            detection_results["ball_uv"][:, 0] /= width
+            detection_results["ball_uv"][:, 1] /= height
+
+        return detection_results, total_frames
+
     def _run_streaming(
         self,
         video_path: Path,
@@ -377,65 +699,11 @@ class AnnotationPipeline:
         and then re-opens the video to export clips for detected segments
         without keeping all frames in memory (Pass 2).
         """
-        # Initialize streaming loader
-        loader = StreamingVideoLoader(
+        detection_results, _ = self._run_detection_streaming(
             video_path=video_path,
-            batch_size=self.config.streaming_batch_size,
-            queue_size=self.config.streaming_queue_size,
             max_frames=max_frames,
+            verbose=verbose,
         )
-
-        total_frames = loader.metadata.total_frames
-        height, width = loader.metadata.height, loader.metadata.width
-
-        # Prepare result accumulators (per-frame detection results)
-        all_xy: list[tuple[float, float]] = []
-        all_visibility: list[bool] = []
-        all_scores: list[float] = []
-        all_frame_indices: list[int] = []
-
-        # Reset predictor for streaming
-        self.predictor.reset_tracker()
-
-        if verbose:
-            print("Running ball detection (streaming mode)...")
-            pbar = tqdm(total=total_frames, desc="Processing frames")
-
-        try:
-            for batch in loader:
-                # Run detection on batch
-                results = self.predictor.predict(
-                    frames=batch.frames,
-                    frame_indices=batch.frame_indices,
-                )
-
-                # Accumulate results for each frame in batch
-                for i, idx in enumerate(batch.frame_indices):
-                    all_frame_indices.append(idx)
-                    all_xy.append(tuple(results["ball_xy_px"][i]))
-                    all_visibility.append(bool(results["visibility"][i]))
-                    all_scores.append(float(results["score"][i]))
-
-                if verbose:
-                    pbar.update(len(batch.frames))
-
-        finally:
-            if verbose:
-                pbar.close()
-            loader.stop()
-
-        # Convert to arrays
-        detection_results = {
-            "ball_xy_px": np.array(all_xy, dtype=np.float32),
-            "visibility": np.array(all_visibility, dtype=bool),
-            "score": np.array(all_scores, dtype=np.float32),
-            "frame_indices": np.array(all_frame_indices, dtype=np.int64),
-            "ball_uv": np.array(all_xy, dtype=np.float32),
-        }
-        # Normalize UV coordinates
-        if len(detection_results["ball_uv"]) > 0:
-            detection_results["ball_uv"][:, 0] /= width
-            detection_results["ball_uv"][:, 1] /= height
 
         # Segment into clips
         if verbose:
