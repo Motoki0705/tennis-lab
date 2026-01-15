@@ -216,6 +216,18 @@ logit ヒートマップを TTA で生成し、逆変換で同一の `output_hea
 温度校正 → TTA 平均 → PoE 融合 → forward-backward 平滑化を行います。最終的な座標は
 平滑化後の分布から期待値/MAP/2次またはガウスフィットで復元します。
 
+## アノテーションの2ステップ運用例
+
+`clip_manifest.json` を基点に、手動選別 → 必要分だけアノテーションする流れの例です。
+
+**Step1: manual select only**
+- `sampling.method=manual` でプレビュークリップを人手で選別。
+- `sampling.export_frames=false` にして軽量に選別だけ行い、`clip_manifest.json` へ選別結果を記録。
+
+**Step2: annotate (auto-extract if needed)**
+- `annotate.clip_indices=[1,3]` などで対象クリップのみアノテーション。
+- `clip_manifest.json` を参照し、未抽出のフレームがあればこのステップで自動抽出（既存なら再利用）。
+
 ## 実行コマンド
 
 詳細は [docs/scripts/wasb/](../../../docs/scripts/wasb/) を参照。

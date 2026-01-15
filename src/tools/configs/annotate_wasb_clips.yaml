@@ -1,0 +1,19 @@
+# WASB clip annotation configuration
+# Usage: uv run python -m src.tools.annotate_wasb_clips ...
+
+# Base options
+sampling:
+  method: auto  # How to sample clips (auto/manual)
+  export_frames: true  # Export frames for annotation
+
+annotate:
+  clip_indices: null  # Null = annotate all clips from clip_manifest.json
+
+# Example: manual select only (lightweight selection)
+# sampling:
+#   method: manual
+#   export_frames: false
+#
+# Example: limited annotation
+# annotate:
+#   clip_indices: [1, 3]
