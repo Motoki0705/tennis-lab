@@ -18,7 +18,6 @@ dropout: 0.0
 # Patch embedding
 patch_size: 16
 in_channels: 3
-image_size: 224  # Default (can vary at runtime)
 
 # Special tokens
 num_register_tokens: 4
