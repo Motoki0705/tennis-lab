@@ -199,6 +199,21 @@ src/wasb/
 │   ├── models/event_detection/*.py                               │
 │   └── training/event_detection/lightning_module.py              │
 └─────────────────────────────────────────────────────────────────┘
+
+## 手動アノテーション（クリップサンプリング）
+
+動画全体ではなく、クリップをサンプリングして手動でボール位置をアノテーションする場合は
+`src.tools.annotate_wasb_clips` を利用します。Hydra の設定でサンプリング方法と保存先を指定し、
+WASB が期待する `Clip*/Label.csv` 形式で保存します。
+
+```bash
+uv run python -m src.tools.annotate_wasb_clips mode=all \
+  video_path=data/raw/match.mp4 output.output_dir=data/tennis output.game_name=game_manual
+
+# 既存の Clip を手動アノテーションする場合
+uv run python -m src.tools.annotate_wasb_clips mode=annotate \
+  output.output_dir=data/tennis output.game_name=game_manual annotate.clip_indices=[1,3]
+```
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │ 推論パイプライン                                                 │
