@@ -1,13 +1,13 @@
 """Main BLCS model implementation.
 
-Ball Localization in Court System: Decoder-Only Transformer with GQA + RoPE + SDPA.
+Ball Localization in Court System: Decoder-Only Transformer with MHA + RoPE + SDPA.
 Estimates ball 3D trajectory in tennis court coordinates from 2D ball observations
 and court keypoints.
 
 Architecture:
     - Court keypoints and ball trajectory are tokenized and concatenated
     - Decoder-only Transformer with RoPE positional encoding
-    - Grouped-Query Attention (GQA) using F.scaled_dot_product_attention (SDPA)
+    - Multi-Head Self-Attention (MHA) using F.scaled_dot_product_attention (SDPA)
     - SwiGLU MLP and RMSNorm for efficiency
 
 Uses shared components from src.common.models.components.
@@ -23,9 +23,11 @@ from torch import Tensor
 
 from src.blcs.models.components.heads import Trajectory3DHead, VelocityHead
 from src.common.models import (
+    MoEConfig,
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
+    YaRNConfig,
     precompute_freqs_cis,
 )
 from src.utils.geometry import NUM_COURT_KP
@@ -134,11 +136,13 @@ class BLCSModel(nn.Module):
         hidden_dim: int = 256,
         num_layers: int = 6,
         num_heads: int = 8,
-        num_kv_heads: int = 2,
         ffn_dim: int | None = None,
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
+        yarn: YaRNConfig | None = None,
+        use_moe: bool = False,
+        moe_config: MoEConfig | None = None,
         causal: bool = False,
         predict_velocity: bool = False,
         max_seq_len: int = 120,
@@ -149,11 +153,13 @@ class BLCSModel(nn.Module):
             hidden_dim: Hidden dimension for all components.
             num_layers: Number of Transformer blocks.
             num_heads: Number of query attention heads.
-            num_kv_heads: Number of key/value heads (for GQA).
             ffn_dim: FFN intermediate dimension. Defaults to 8/3 * hidden_dim.
             dropout: Dropout probability.
             rope_dim: RoPE dimension. Defaults to head_dim.
             rope_theta: RoPE theta parameter.
+            yarn: Optional YaRN config for long-context extrapolation.
+            use_moe: Use Mixture-of-Experts FFN in each Transformer block.
+            moe_config: MoE configuration (required when use_moe=True).
             causal: Use causal attention mask.
             predict_velocity: Also predict velocities (for auxiliary loss).
             max_seq_len: Maximum sequence length.
@@ -166,14 +172,23 @@ class BLCSModel(nn.Module):
         self.causal = causal
         self.max_tokens = int(NUM_COURT_KP + self.max_seq_len)
 
+        if hidden_dim % num_heads != 0:
+            raise ValueError(f"hidden_dim={hidden_dim} must be divisible by num_heads={num_heads}")
         head_dim = hidden_dim // num_heads
+
         rope_dim = head_dim if rope_dim is None else rope_dim
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
+        self.yarn = yarn
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
             ffn_dim = (ffn_dim + 63) // 64 * 64  # Round to multiple of 64
+
+        if use_moe and moe_config is None:
+            raise ValueError("use_moe=True requires moe_config.")
+        if moe_config is not None and moe_config.dim != hidden_dim:
+            raise ValueError(f"moe_config.dim={moe_config.dim} must match hidden_dim={hidden_dim}")
 
         self.court_embed = CourtTokenEmbedding(dim=hidden_dim, dropout=dropout)
         self.ball_embed = BallTokenEmbedding(dim=hidden_dim, dropout=dropout)
@@ -191,7 +206,10 @@ class BLCSModel(nn.Module):
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
-                        use_moe=False,
+                        rope_base=self.rope_theta,
+                        yarn=self.yarn,
+                        use_moe=use_moe,
+                        moe_config=moe_config,
                     )
                 )
                 for _ in range(num_layers)
@@ -220,6 +238,7 @@ class BLCSModel(nn.Module):
             dim=self.rope_dim,
             seqlen=self.max_tokens,
             base=self.rope_theta,
+            yarn=self.yarn,
             device=None,  # initialized on CPU; moved by `model.to(device)`
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
@@ -237,15 +256,32 @@ class BLCSModel(nn.Module):
         """
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
+
+        yarn_cfg = model_cfg.get("yarn", None)
+        yarn: YaRNConfig | None = None
+        if yarn_cfg is not None:
+            yarn_cfg = dict(yarn_cfg)
+            if yarn_cfg.get("original_seq_len", None) is not None:
+                yarn = YaRNConfig(**yarn_cfg)
+
+        use_moe = bool(model_cfg.get("use_moe", False))
+        moe_cfg = model_cfg.get("moe_config", None)
+        moe_config: MoEConfig | None = None
+        if use_moe:
+            if moe_cfg is not None:
+                moe_config = MoEConfig(dim=int(model_cfg.get("hidden_dim", 256)), **dict(moe_cfg))
+
         return cls(
             hidden_dim=model_cfg.get("hidden_dim", 256),
             num_layers=model_cfg.get("num_layers", 6),
             num_heads=model_cfg.get("num_heads", 8),
-            num_kv_heads=model_cfg.get("num_kv_heads", 2),
             ffn_dim=model_cfg.get("ffn_dim", None),
             dropout=model_cfg.get("dropout", 0.1),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=model_cfg.get("rope_theta", 10000.0),
+            yarn=yarn,
+            use_moe=use_moe,
+            moe_config=moe_config,
             causal=model_cfg.get("causal", False),
             predict_velocity=model_cfg.get("predict_velocity", False),
             max_seq_len=model_cfg.get(

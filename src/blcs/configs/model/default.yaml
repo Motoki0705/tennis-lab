@@ -1,5 +1,5 @@
 # BLCS Model Configuration
-# Decoder-Only Transformer with GQA + RoPE + SDPA
+# Decoder-Only Transformer with MHA + RoPE + SDPA
 
 name: blcs
 
@@ -7,7 +7,6 @@ name: blcs
 hidden_dim: 256
 num_layers: 6
 num_heads: 8
-num_kv_heads: 2      # Grouped-Query Attention: num_heads / num_kv_heads = 4 groups
 ffn_dim: null        # Defaults to 8/3 * hidden_dim (rounded to 64)
 dropout: 0.1
 max_seq_len: 120     # Maximum 4 seconds @ 30fps
@@ -16,14 +15,32 @@ max_seq_len: 120     # Maximum 4 seconds @ 30fps
 rope_dim: null       # Defaults to head_dim (hidden_dim / num_heads)
 rope_theta: 10000.0
 
+# YaRN (optional long-context extrapolation for RoPE)
+# Set to null to disable. Example:
+# yarn:
+#   original_seq_len: 140
+#   rope_factor: 4.0
+#   beta_fast: 32
+#   beta_slow: 1
+yarn: null
+
+# MoE (optional; applied to all blocks)
+use_moe: true
+# MoEConfig fields (src/common/models/components/moe.py:MoEConfig)
+# Note: `dim` is always `hidden_dim` and is not configured here.
+# `moe_inter_dim` should be set explicitly when use_moe=true.
+moe_config:
+  moe_inter_dim: 704
+  n_routed_experts: 8
+  n_shared_experts: 2
+  n_activated_experts: 4
+  n_expert_groups: 1
+  n_limited_groups: 1
+  score_func: softmax
+  route_scale: 1.0
+
 # Attention
 causal: false        # Use causal attention mask
 
 # Output
 predict_velocity: false
-
-# Input dimensions (for reference)
-ball_input_dim: 2    # (u, v) normalized coordinates
-court_kp_dim: 40     # 20 keypoints * 2 (u, v)
-position_dim: 3      # (x, y, z) normalized output
-
