@@ -1,20 +1,16 @@
-"""Sample clips from a video and annotate tennis ball positions for WASB.
+"""Manually create clips from a video and annotate tennis ball positions for WASB.
 
 This tool supports a two-phase workflow:
-1) Sample clip segments from a video and export them in WASB's dataset structure.
-2) Manually annotate ball positions per frame for the sampled clips.
+1) Manually create clip segments from a video and export them in WASB's dataset structure.
+2) Manually annotate ball positions per frame for the created clips.
 
 Example commands:
-    # Sample clips and then annotate them
-    `uv run python -m src.tools.annotate_wasb_clips mode=all video_path=data/raw/match.mp4 \
+    # Manually create clips
+    `uv run python -m src.tools.annotate_wasb_clips mode=clip video_path=data/raw/match.mp4 \
         output.output_dir=data/tennis output.game_name=game_manual`
 
-    # Only sample clips
-    `uv run python -m src.tools.annotate_wasb_clips mode=sample video_path=data/raw/match.mp4 \
-        sampling.num_clips=8 sampling.clip_length=90`
-
     # Only annotate existing clips
-    `uv run python -m src.tools.annotate_wasb_clips mode=annotate output.output_dir=data/tennis \
+    `uv run python -m src.tools.annotate_wasb_clips mode=annotation output.output_dir=data/tennis \
         output.game_name=game_manual annotate.clip_indices=[1,3]`
 
 Config entry point: `src/tools/configs/annotate_wasb_clips.yaml`
@@ -24,7 +20,6 @@ from __future__ import annotations
 
 import json
 import logging
-import random
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -45,17 +40,13 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
-class SamplingConfig:
-    """Configuration for clip sampling from a video."""
+class ClipConfig:
+    """Configuration for manual clip selection UI."""
 
-    method: Literal["uniform", "random"] = "uniform"
-    clip_length: int = 90
-    num_clips: int = 10
-    min_gap: int = 30
-    start_frame: int | None = None
-    end_frame: int | None = None
-    explicit_starts: list[int] = field(default_factory=list)
-    random_seed: int = 7
+    window_name: str = "WASB Clip Selector"
+    step_small: int = 1
+    step_large: int = 10
+    display_scale: float = 1.0
 
 
 @dataclass
@@ -88,10 +79,10 @@ class AnnotationConfig:
 class ToolConfig:
     """Top-level configuration for the annotation tool."""
 
-    mode: Literal["sample", "annotate", "all"] = "all"
+    mode: Literal["clip", "annotation"] = "clip"
     video_path: str | None = None
     output: OutputConfig = field(default_factory=OutputConfig)
-    sampling: SamplingConfig = field(default_factory=SamplingConfig)
+    clip: ClipConfig = field(default_factory=ClipConfig)
     annotate: AnnotationConfig = field(default_factory=AnnotationConfig)
 
 
@@ -106,113 +97,6 @@ class ClipPlan:
 
 def _resolve_game_dir(output: OutputConfig) -> Path:
     return Path(output.output_dir) / output.game_name
-
-
-def _resolve_frame_bounds(
-    extractor: VideoExtractor, sampling: SamplingConfig
-) -> tuple[int, int]:
-    start = sampling.start_frame or 0
-    end = sampling.end_frame or extractor.frame_count
-
-    if start < 0 or end <= start:
-        raise ValueError("Invalid start/end frame range")
-
-    end = min(end, extractor.frame_count)
-
-    return start, end
-
-
-def _build_uniform_starts(
-    start: int, end: int, clip_length: int, num_clips: int
-) -> list[int]:
-    max_start = end - clip_length
-    if max_start < start:
-        raise ValueError("Clip length is longer than the available frame range")
-
-    if num_clips <= 0:
-        raise ValueError("num_clips must be >= 1")
-
-    if num_clips == 1:
-        return [int(round((start + max_start) / 2))]
-
-    step = (max_start - start) / (num_clips - 1)
-    starts = [int(round(start + step * idx)) for idx in range(num_clips)]
-
-    deduped: list[int] = []
-    for value in starts:
-        value = min(max(value, start), max_start)
-        if not deduped or value != deduped[-1]:
-            deduped.append(value)
-    return deduped
-
-
-def _build_random_starts(
-    start: int,
-    end: int,
-    clip_length: int,
-    num_clips: int,
-    min_gap: int,
-    seed: int,
-) -> list[int]:
-    max_start = end - clip_length
-    if max_start < start:
-        raise ValueError("Clip length is longer than the available frame range")
-
-    candidates = list(range(start, max_start + 1))
-    rng = random.Random(seed)
-    rng.shuffle(candidates)
-
-    starts: list[int] = []
-    for candidate in candidates:
-        if all(abs(candidate - chosen) >= min_gap for chosen in starts):
-            starts.append(candidate)
-            if len(starts) >= num_clips:
-                break
-
-    if len(starts) < num_clips:
-        raise ValueError("Unable to sample enough clips with the requested gap")
-
-    return sorted(starts)
-
-
-def build_clip_plan(extractor: VideoExtractor, sampling: SamplingConfig) -> list[ClipPlan]:
-    """Build a list of clips to sample from the video."""
-    start_frame, end_frame = _resolve_frame_bounds(extractor, sampling)
-
-    if sampling.explicit_starts:
-        starts = []
-        max_start = end_frame - sampling.clip_length
-        for value in sampling.explicit_starts:
-            if start_frame <= value <= max_start:
-                starts.append(value)
-        if not starts:
-            raise ValueError("No valid explicit start frames within range")
-    elif sampling.method == "uniform":
-        starts = _build_uniform_starts(
-            start_frame, end_frame, sampling.clip_length, sampling.num_clips
-        )
-    elif sampling.method == "random":
-        starts = _build_random_starts(
-            start_frame,
-            end_frame,
-            sampling.clip_length,
-            sampling.num_clips,
-            sampling.min_gap,
-            sampling.random_seed,
-        )
-    else:
-        raise ValueError(f"Unknown sampling method: {sampling.method}")
-
-    plans: list[ClipPlan] = []
-    for idx, clip_start in enumerate(starts, 1):
-        plans.append(
-            ClipPlan(
-                index=idx,
-                start_frame=clip_start,
-                end_frame=clip_start + sampling.clip_length,
-            )
-        )
-    return plans
 
 
 def save_manifest(
@@ -242,19 +126,143 @@ def save_manifest(
         json.dump(manifest, f, indent=2)
 
 
-def sample_clips(cfg: ToolConfig) -> list[ClipPlan]:
-    """Sample clips from a video and export frames to WASB dataset structure."""
+def _read_frame(cap: cv2.VideoCapture, frame_idx: int) -> cv2.Mat | None:
+    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+    ret, frame = cap.read()
+    if not ret:
+        return None
+    return frame
+
+
+def _draw_clip_overlay(
+    frame: cv2.Mat,
+    frame_idx: int,
+    frame_count: int,
+    in_mark: int | None,
+    out_mark: int | None,
+    clip_count: int,
+    config: ClipConfig,
+) -> cv2.Mat:
+    annotated = frame.copy()
+    text_lines = [
+        f"Frame {frame_idx + 1}/{frame_count}",
+        f"In: {in_mark + 1 if in_mark is not None else '-'}",
+        f"Out: {out_mark + 1 if out_mark is not None else '-'}",
+        f"Clips: {clip_count}",
+        "I: set in | O: set out | S: add clip | D: delete last | C: clear",
+        "N/P: next/prev | F/B: jump | Q: save+quit",
+    ]
+    for idx, text in enumerate(text_lines):
+        cv2.putText(
+            annotated,
+            text,
+            (12, 24 + idx * 22),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
+        )
+    if config.display_scale != 1.0:
+        annotated = cv2.resize(
+            annotated,
+            None,
+            fx=config.display_scale,
+            fy=config.display_scale,
+            interpolation=cv2.INTER_AREA,
+        )
+    return annotated
+
+
+def manual_clip_selection(video_path: Path, config: ClipConfig) -> list[tuple[int, int]]:
+    """Launch a UI for manually selecting clip ranges."""
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        raise ValueError(f"Cannot open video: {video_path}")
+
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    frame_idx = 0
+    in_mark: int | None = None
+    out_mark: int | None = None
+    clips: list[tuple[int, int]] = []
+
+    cv2.namedWindow(config.window_name, cv2.WINDOW_NORMAL)
+    try:
+        while True:
+            frame = _read_frame(cap, frame_idx)
+            if frame is None:
+                LOGGER.warning("Failed to read frame: %s", frame_idx)
+                break
+
+            overlay = _draw_clip_overlay(
+                frame,
+                frame_idx,
+                frame_count,
+                in_mark,
+                out_mark,
+                len(clips),
+                config,
+            )
+            cv2.imshow(config.window_name, overlay)
+            key = cv2.waitKey(0) & 0xFF
+
+            if key in {ord("n"), ord(" ")}:
+                frame_idx = min(frame_idx + config.step_small, frame_count - 1)
+            elif key == ord("p"):
+                frame_idx = max(frame_idx - config.step_small, 0)
+            elif key == ord("f"):
+                frame_idx = min(frame_idx + config.step_large, frame_count - 1)
+            elif key == ord("b"):
+                frame_idx = max(frame_idx - config.step_large, 0)
+            elif key == ord("i"):
+                in_mark = frame_idx
+            elif key == ord("o"):
+                out_mark = frame_idx
+            elif key == ord("c"):
+                in_mark = None
+                out_mark = None
+            elif key == ord("d"):
+                if clips:
+                    clips.pop()
+            elif key == ord("s"):
+                if in_mark is None or out_mark is None:
+                    LOGGER.info("Set both in/out before adding a clip.")
+                else:
+                    start = min(in_mark, out_mark)
+                    end = max(in_mark, out_mark) + 1
+                    if end > start:
+                        clips.append((start, end))
+                    in_mark = None
+                    out_mark = None
+            elif key in {ord("q"), 27}:
+                break
+    finally:
+        cap.release()
+        cv2.destroyWindow(config.window_name)
+
+    if not clips:
+        raise ValueError("No clips selected in manual clip UI")
+
+    return clips
+
+
+def export_clips(cfg: ToolConfig, clip_ranges: list[tuple[int, int]]) -> list[ClipPlan]:
+    """Export manually selected clips to WASB dataset structure."""
     if cfg.video_path is None:
-        raise ValueError("video_path is required for sampling")
+        raise ValueError("video_path is required for clip export")
 
     video_path = Path(cfg.video_path)
     extractor = VideoExtractor(video_path)
     output_dir = _resolve_game_dir(cfg.output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    plans = build_clip_plan(extractor, cfg.sampling)
-    if not plans:
-        raise ValueError("No clips selected for sampling")
+    plans: list[ClipPlan] = []
+    for idx, (start_frame, end_frame) in enumerate(clip_ranges, 1):
+        if end_frame <= start_frame:
+            raise ValueError("Clip end must be greater than start")
+        if start_frame < 0 or end_frame > extractor.frame_count:
+            raise ValueError("Clip range is out of bounds")
+        plans.append(ClipPlan(index=idx, start_frame=start_frame, end_frame=end_frame))
 
     for plan in plans:
         clip_dir = output_dir / f"Clip{plan.index}"
@@ -463,7 +471,7 @@ def annotate_clips(cfg: ToolConfig) -> None:
 def main(cfg: DictConfig) -> None:
     """Run the annotation tool based on Hydra config."""
     config = ToolConfig(
-        mode=cfg.get("mode", "all"),
+        mode=cfg.get("mode", "clip"),
         video_path=cfg.get("video_path", None),
         output=OutputConfig(
             output_dir=cfg.output.get("output_dir", "data/tennis"),
@@ -474,15 +482,11 @@ def main(cfg: DictConfig) -> None:
             overwrite=bool(cfg.output.get("overwrite", False)),
             skip_existing=bool(cfg.output.get("skip_existing", True)),
         ),
-        sampling=SamplingConfig(
-            method=cfg.sampling.get("method", "uniform"),
-            clip_length=int(cfg.sampling.get("clip_length", 90)),
-            num_clips=int(cfg.sampling.get("num_clips", 10)),
-            min_gap=int(cfg.sampling.get("min_gap", 30)),
-            start_frame=cfg.sampling.get("start_frame", None),
-            end_frame=cfg.sampling.get("end_frame", None),
-            explicit_starts=list(cfg.sampling.get("explicit_starts", [])),
-            random_seed=int(cfg.sampling.get("random_seed", 7)),
+        clip=ClipConfig(
+            window_name=cfg.clip.get("window_name", "WASB Clip Selector"),
+            step_small=int(cfg.clip.get("step_small", 1)),
+            step_large=int(cfg.clip.get("step_large", 10)),
+            display_scale=float(cfg.clip.get("display_scale", 1.0)),
         ),
         annotate=AnnotationConfig(
             clip_indices=list(cfg.annotate.get("clip_indices", [])),
@@ -495,10 +499,13 @@ def main(cfg: DictConfig) -> None:
         ),
     )
 
-    if config.mode in {"sample", "all"}:
-        sample_clips(config)
+    if config.mode == "clip":
+        if config.video_path is None:
+            raise ValueError("video_path is required for clip mode")
+        clip_ranges = manual_clip_selection(Path(config.video_path), config.clip)
+        export_clips(config, clip_ranges)
 
-    if config.mode in {"annotate", "all"}:
+    if config.mode == "annotation":
         annotate_clips(config)
 
 
