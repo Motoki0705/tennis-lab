@@ -156,6 +156,7 @@ class PLCSSequenceModel(nn.Module):
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
         causal: bool = False,
+        max_seq_len: int = 120,
     ) -> None:
         """Initialize the PLCS sequence model.
 
@@ -169,11 +170,14 @@ class PLCSSequenceModel(nn.Module):
             rope_dim: RoPE dimension. Defaults to head_dim.
             rope_theta: RoPE theta parameter.
             causal: Use causal attention mask.
+            max_seq_len: Maximum number of player tokens (frames).
 
         """
         super().__init__()
         self.hidden_dim = hidden_dim
         self.causal = causal
+        self.max_seq_len = int(max_seq_len)
+        self.max_tokens = int(NUM_COURT_KP + self.max_seq_len)
 
         head_dim = hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else rope_dim
@@ -225,6 +229,14 @@ class PLCSSequenceModel(nn.Module):
             dropout=dropout,
         )
 
+        freqs_cis = precompute_freqs_cis(
+            dim=self.rope_dim,
+            seqlen=self.max_tokens,
+            base=self.rope_theta,
+            device=None,  # initialized on CPU; moved by `model.to(device)`
+        )
+        self.register_buffer("freqs_cis", freqs_cis, persistent=False)
+
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSSequenceModel:
         """Create model from configuration.
@@ -237,6 +249,7 @@ class PLCSSequenceModel(nn.Module):
 
         """
         model_cfg = config.get("model", {})
+        data_cfg = config.get("data", {})
         return cls(
             hidden_dim=model_cfg.get("hidden_dim", 256),
             num_layers=model_cfg.get("num_layers", 8),
@@ -247,6 +260,7 @@ class PLCSSequenceModel(nn.Module):
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=model_cfg.get("rope_theta", 10000.0),
             causal=model_cfg.get("causal", False),
+            max_seq_len=model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120)),
         )
 
     def forward(
@@ -301,6 +315,7 @@ class PLCSSequenceModel(nn.Module):
         x = torch.cat(
             [court_tok + court_type, player_tok + player_type], dim=1
         )  # (B, S, D)
+        S = x.shape[1]
 
         # Build key_padding_mask if human_vis provided
         key_padding_mask: Tensor | None = None
@@ -311,16 +326,18 @@ class PLCSSequenceModel(nn.Module):
             player_mask = human_vis.sum(dim=-1) > 0  # (B, T)
             key_padding_mask = torch.cat([court_mask, player_mask], dim=1)  # (B, S)
 
-        freqs_cis = precompute_freqs_cis(
-            dim=self.rope_dim,
-            seqlen=x.shape[1],
-            base=self.rope_theta,
-            device=x.device,
-        )
+        if S > self.freqs_cis.shape[0]:
+            raise ValueError(
+                f"Sequence length S={S} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
+                "Increase max_seq_len."
+            )
+        freqs_cis = self.freqs_cis[:S]
+        if freqs_cis.device != x.device:
+            freqs_cis = freqs_cis.to(x.device)
 
         attn_mask: Tensor | None = None
         if key_padding_mask is not None:
-            attn_mask = key_padding_mask[:, None, :].expand(B, x.shape[1], x.shape[1])
+            attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
 
         residual = None
         for blk in self.blocks:

@@ -164,6 +164,7 @@ class BLCSModel(nn.Module):
         self.max_seq_len = max_seq_len
         self.predict_velocity = predict_velocity
         self.causal = causal
+        self.max_tokens = int(NUM_COURT_KP + self.max_seq_len)
 
         head_dim = hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else rope_dim
@@ -214,6 +215,14 @@ class BLCSModel(nn.Module):
                 num_layers=2,
                 dropout=dropout,
             )
+
+        freqs_cis = precompute_freqs_cis(
+            dim=self.rope_dim,
+            seqlen=self.max_tokens,
+            base=self.rope_theta,
+            device=None,  # initialized on CPU; moved by `model.to(device)`
+        )
+        self.register_buffer("freqs_cis", freqs_cis, persistent=False)
 
     @classmethod
     def from_config(cls, config: DictConfig) -> BLCSModel:
@@ -280,6 +289,7 @@ class BLCSModel(nn.Module):
         x = torch.cat(
             [court_tok + court_type, ball_tok + ball_type], dim=1
         )  # (B, S, D)
+        S = x.shape[1]
 
         # Build key_padding_mask if ball_mask provided
         key_padding_mask: Tensor | None = None
@@ -288,16 +298,18 @@ class BLCSModel(nn.Module):
             court_mask = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
             key_padding_mask = torch.cat([court_mask, ball_mask > 0], dim=1)  # (B, S)
 
-        freqs_cis = precompute_freqs_cis(
-            dim=self.rope_dim,
-            seqlen=x.shape[1],
-            base=self.rope_theta,
-            device=x.device,
-        )
+        if S > self.freqs_cis.shape[0]:
+            raise ValueError(
+                f"Sequence length S={S} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
+                "Increase max_seq_len."
+            )
+        freqs_cis = self.freqs_cis[:S]
+        if freqs_cis.device != x.device:
+            freqs_cis = freqs_cis.to(x.device)
 
         attn_mask: Tensor | None = None
         if key_padding_mask is not None:
-            attn_mask = key_padding_mask[:, None, :].expand(B, x.shape[1], x.shape[1])
+            attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
 
         residual = None
         for blk in self.blocks:
@@ -351,7 +363,3 @@ class BLCSModel(nn.Module):
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
-
-
-# Legacy alias for backward compatibility
-BLCSTransformerModel = BLCSModel
