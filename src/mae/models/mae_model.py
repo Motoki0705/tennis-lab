@@ -8,7 +8,7 @@ implements MAE using our modern ViT architecture with:
 - GQA/MLA for efficient attention
 - Optional MoE for FFN layers
 - Register tokens for improved representations
-- Configurable resolution range support
+- Configurable maximum input resolution support
 
 The encoder processes only visible patches (75% masked by default),
 making training efficient. The decoder reconstructs all patches
@@ -53,10 +53,6 @@ class MAEConfig:
         patch_size: Patch size (must match encoder).
         in_channels: Number of input channels.
 
-        # Resolution range
-        min_resolution: Minimum resolution for training.
-        max_resolution: Maximum resolution for training.
-
     """
 
     # Encoder
@@ -76,10 +72,6 @@ class MAEConfig:
     norm_pix_loss: bool = True
     patch_size: int = 16
     in_channels: int = 3
-
-    # Resolution range (for variable resolution training)
-    min_resolution: int = 160
-    max_resolution: int = 320
 
 
 class MAEDecoder(nn.Module):
@@ -638,8 +630,6 @@ class MAEModel(nn.Module):
             norm_pix_loss=model_cfg.get("norm_pix_loss", True),
             patch_size=model_cfg.get("patch_size", 16),
             in_channels=model_cfg.get("in_channels", 3),
-            min_resolution=model_cfg.get("min_resolution", 160),
-            max_resolution=model_cfg.get("max_resolution", 320),
         )
 
         return cls(mae_cfg)
