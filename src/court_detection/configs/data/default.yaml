@@ -1,0 +1,24 @@
+_target_: src.court_detection.data.datamodule.CourtKeypointDataModule
+
+data_dir: data/court_detection/scenes
+batch_size: 32
+num_workers: 4
+pin_memory: true
+
+train_split: 0.8
+val_split: 0.1
+test_split: 0.1
+
+input_size: [256, 256]
+heatmap_size: [64, 64]
+
+augmentation:
+  enabled: true
+  horizontal_flip: true
+  rotation_range: [-15, 15]
+  scale_range: [0.9, 1.1]
+  color_jitter:
+    brightness: 0.2
+    contrast: 0.2
+    saturation: 0.2
+    hue: 0.1

@@ -1,0 +1,20 @@
+mode: image  # image or video
+input_path: data/tennis/tennis-court-dimensions-1024x576.webp  # path to image file or directory of images
+
+output:
+  output_dir: data/court_keypoints
+  annotation_format: "{stem}_keypoints.json"
+  overwrite: false
+
+ui:
+  window_name: Court Keypoints Annotator
+  point_radius: 5
+  point_color_bgr: [0, 255, 0]  # green for visible
+  point_color_occluded_bgr: [0, 165, 255]  # orange for occluded
+  line_color_bgr: [255, 255, 0]  # cyan for court lines
+  text_color_bgr: [255, 255, 255]
+  font_scale: 0.5
+  line_thickness: 1
+  display_scale: 1.0
+  show_court_lines: true
+  show_keypoint_ids: true
