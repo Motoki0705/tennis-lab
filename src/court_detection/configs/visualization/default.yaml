@@ -1,0 +1,8 @@
+point_radius: 5
+point_color: [0, 255, 0]
+line_color: [255, 255, 0]
+text_color: [255, 255, 255]
+line_thickness: 2
+show_keypoint_ids: true
+show_court_lines: true
+save_format: png
