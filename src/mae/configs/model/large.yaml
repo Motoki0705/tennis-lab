@@ -49,6 +49,5 @@ mask_token_init: normal
 # Loss
 norm_pix_loss: true
 
-# Resolution range (larger for more context)
-min_resolution: 192
-max_resolution: 384
+# Maximum square input resolution (must cover data buckets).
+max_resolution: 1024

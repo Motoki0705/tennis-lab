@@ -3,7 +3,7 @@
 Example commands:
     `uv run python -m src.mae.scripts.train`
     `uv run python -m src.mae.scripts.train model.hidden_dim=512 training.max_epochs=200`
-    `uv run python -m src.mae.scripts.train data.max_resolution=448 model.use_moe=true`
+    `uv run python -m src.mae.scripts.train data=cached_batches data.bucket_alpha=2.5`
 
 Config entry point: `src/mae/configs/train.yaml`
 """
@@ -11,7 +11,9 @@ Config entry point: `src/mae/configs/train.yaml`
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, TypeVar, cast
 
 import hydra
 import pytorch_lightning as pl
@@ -24,9 +26,21 @@ from pytorch_lightning.callbacks import (
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.mae.data import MAEDataModule
+from src.mae.data.producer import CacheProducerConfig, PreprocessConfig
 from src.mae.training import MAELightningModule
+from src.mae.training.epoch_cache_callback import (
+    EpochCacheCallbackConfig,
+    MAEEpochCacheCallback,
+)
 
 log = logging.getLogger(__name__)
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
+    """Typed wrapper for hydra.main to keep mypy satisfied."""
+    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
 
 
 def setup_callbacks(cfg: DictConfig) -> list:
@@ -43,10 +57,16 @@ def setup_callbacks(cfg: DictConfig) -> list:
 
     # Model checkpoint
     checkpoint_cfg = cfg.get("checkpoint", {})
+    data_cfg = cfg.get("data", {})
+    val_split = float(data_cfg.get("val_split", 0.1))
+    monitor = checkpoint_cfg.get("monitor", "val/loss")
+    if val_split == 0.0 and str(monitor).startswith("val/"):
+        monitor = "train/loss"
+    default_filename = "mae-{epoch:03d}-{" + str(monitor) + ":.4f}"
     checkpoint = ModelCheckpoint(
         dirpath=checkpoint_cfg.get("dirpath", "checkpoints"),
-        filename=checkpoint_cfg.get("filename", "mae-{epoch:03d}-{val/loss:.4f}"),
-        monitor=checkpoint_cfg.get("monitor", "val/loss"),
+        filename=checkpoint_cfg.get("filename", default_filename),
+        monitor=monitor,
         mode=checkpoint_cfg.get("mode", "min"),
         save_top_k=checkpoint_cfg.get("save_top_k", 3),
         save_last=checkpoint_cfg.get("save_last", True),
@@ -87,7 +107,7 @@ def setup_logger(cfg: DictConfig) -> TensorBoardLogger:
     )
 
 
-@hydra.main(config_path="../configs", config_name="train", version_base="1.3")
+@hydra_main(config_path="../configs", config_name="train", version_base="1.3")
 def main(cfg: DictConfig) -> None:
     """Train MAE model.
 
@@ -115,6 +135,31 @@ def main(cfg: DictConfig) -> None:
 
     # Setup callbacks and logger
     callbacks = setup_callbacks(cfg)
+    data_cfg = cfg.get("data", {})
+    if str(data_cfg.get("mode", "video")) == "cached_batches":
+        preprocess_cfg = data_cfg.get("preprocess", None)
+        preprocess_dict = (
+            OmegaConf.to_container(preprocess_cfg, resolve=True) if preprocess_cfg is not None else {}
+        )
+        pp_cfg = PreprocessConfig(**(preprocess_dict or {}))
+        producer_cfg = CacheProducerConfig(
+            cache_root=str(data_cfg.get("cache_root", "data/mae/cache")),
+            video_dir=str(data_cfg.get("video_dir", "data/tennis/raw/videos")),
+            use_decord=bool(data_cfg.get("use_decord", True)),
+            min_frames=int(data_cfg.get("min_frames", 10)),
+            samples_per_video=int(data_cfg.get("samples_per_video", 4)),
+            buckets=tuple(int(x) for x in data_cfg.get("buckets", [256, 320, 384, 448, 512, 640, 768, 1024])),
+            bucket_alpha=float(data_cfg.get("bucket_alpha", 2.0)),
+            base_batch_size=int(data_cfg.get("base_batch_size", 32)),
+            min_batch_size=int(data_cfg.get("min_batch_size", 1)),
+            upsample_limit=float(data_cfg.get("upsample_limit", 1.0)),
+            frame_sample_ratio=float(data_cfg.get("frame_sample_ratio", 1.0)),
+            seed=int(cfg.get("seed", 42)),
+            val_split=float(data_cfg.get("val_split", 0.1)),
+            static_val=True,
+            preprocess=pp_cfg,
+        )
+        callbacks.append(MAEEpochCacheCallback(EpochCacheCallbackConfig(producer=producer_cfg)))
     logger = setup_logger(cfg)
 
     # Setup trainer
@@ -149,4 +194,4 @@ def main(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    cast(Callable[[], None], main)()

@@ -6,7 +6,7 @@ for downstream tasks like ball tracking, player pose estimation, etc.
 
 Components:
     - models/: MAE encoder-decoder architecture
-    - data/: Video frame dataset with resolution range sampling
+    - data/: Cached-batch pipeline (planning/producer/dataset)
     - training/: Lightning module for MAE training
     - configs/: Hydra configurations
     - scripts/: Training and evaluation scripts

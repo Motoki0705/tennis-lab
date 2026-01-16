@@ -46,6 +46,5 @@ mask_token_init: normal
 # Loss
 norm_pix_loss: true
 
-# Resolution range for variable resolution training
-min_resolution: 160
-max_resolution: 320
+# Maximum square input resolution (must cover data buckets).
+max_resolution: 1024

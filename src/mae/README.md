@@ -20,8 +20,8 @@ Token structure: `[CLS, Register_1, ..., Register_R, Patch_1, ..., Patch_N]`
 
 ## Features
 
-- **Variable Resolution Training**: Sample images from a configurable resolution range
-- **Efficient Video Loading**: Uses decord or OpenCV for fast frame extraction
+- **Cached-Batch Training**: No padding; preprocessing (decode/augment/resize/normalize) is done in background
+- **Efficient Video Decoding**: Uses decord or OpenCV during cache production
 - **Configurable Architecture**: All hyperparameters exposed via Hydra configs
 - **Lightning Integration**: Full PyTorch Lightning support for training
 
@@ -36,14 +36,12 @@ uv run python -m src.mae.scripts.train
 # With custom settings
 uv run python -m src.mae.scripts.train \
     model=small \
-    data.max_resolution=256 \
+    data=cached_batches data.bucket_alpha=2.5 \
     training=fast
 
-# High-resolution training with MoE
+# Cached-batch training (no padding; preprocessing in background)
 uv run python -m src.mae.scripts.train \
-    model=large \
-    data=high_res \
-    training.max_epochs=200
+    data=cached_batches
 ```
 
 ### Configuration
@@ -52,7 +50,7 @@ Main config: `src/mae/configs/train.yaml`
 
 Available presets:
 - **Model**: `base` (ViT-B), `small` (ViT-S), `large` (ViT-L + MoE)
-- **Data**: `default`, `high_res`
+- **Data**: `cached_batches`
 - **Training**: `default` (400 epochs), `fast` (100 epochs)
 
 ### Key Configuration Options
@@ -71,9 +69,15 @@ model:
 
 # Data
 data:
-  min_resolution: 160  # Min training resolution
-  max_resolution: 320  # Max training resolution
-  patch_size: 16
+  mode: cached_batches
+  cache_root: data/mae/cache
+  samples_per_video: 4
+  buckets: [256, 320, 384, 448, 512, 640, 768, 1024]
+  bucket_alpha: 2.0  # Higher => lower-res heavier
+  preprocess:
+    patch_size: 16
+    scale_min: 0.8
+    scale_max: 1.2
 
 # Training
 training:
@@ -122,24 +126,27 @@ src/mae/
 │   │   ├── small.yaml
 │   │   └── large.yaml
 │   ├── data/             # Data configs
-│   │   ├── default.yaml
-│   │   └── high_res.yaml
+│   │   └── cached_batches.yaml
 │   └── training/         # Training configs
 │       ├── default.yaml
 │       └── fast.yaml
 ├── data/                 # Data loading
 │   ├── __init__.py
 │   ├── datamodule.py     # Lightning DataModule
-│   └── dataset.py        # Video frame dataset
+│   ├── dataset_cached.py # Cached-batch dataset
+│   ├── planning.py       # Epoch/bucket planning
+│   └── producer.py       # Cache producer
 ├── models/               # Model implementations
 │   ├── __init__.py
 │   └── mae_model.py      # MAE encoder-decoder
 ├── scripts/              # Training scripts
 │   ├── __init__.py
-│   └── train.py          # Main training script
+│   ├── train.py          # Main training script
+│   └── produce_epoch_cache.py # Cache generation helper
 └── training/             # Training utilities
     ├── __init__.py
-    └── lightning_module.py  # Lightning module
+    ├── lightning_module.py  # Lightning module
+    └── epoch_cache_callback.py # Background cache callback
 
 ```
 

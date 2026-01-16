@@ -5,12 +5,12 @@
 # Usage:
 #   uv run python -m src.mae.scripts.train
 #   uv run python -m src.mae.scripts.train model.hidden_dim=512
-#   uv run python -m src.mae.scripts.train data.max_resolution=448
+#   uv run python -m src.mae.scripts.train data=cached_batches data.bucket_alpha=2.5
 
 defaults:
   - _self_
   - model: base
-  - data: default
+  - data: cached_batches
   - training: default
   - optional override trainer: default
 
