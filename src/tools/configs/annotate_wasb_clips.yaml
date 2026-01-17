@@ -7,6 +7,7 @@ output:
   frame_format: frame_{:04d}.jpg
   label_format: '{:04d}.jpg'
   jpeg_quality: 95
+  frame_step: 2
   precise_seek: true
   overwrite: false
   skip_existing: true

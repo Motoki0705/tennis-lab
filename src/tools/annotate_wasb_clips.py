@@ -59,6 +59,7 @@ class OutputConfig:
     frame_format: str = "frame_{:04d}.jpg"
     label_format: str = "{:04d}.jpg"
     jpeg_quality: int = 95
+    frame_step: int = 1
     precise_seek: bool = True
     overwrite: bool = False
     skip_existing: bool = True
@@ -302,6 +303,7 @@ def export_clips(cfg: ToolConfig, clip_ranges: list[tuple[int, int]]) -> list[Cl
             output_dir=clip_dir,
             frame_format=cfg.output.frame_format,
             jpeg_quality=cfg.output.jpeg_quality,
+            frame_step=cfg.output.frame_step,
             seek_every_frame=cfg.output.precise_seek,
         )
 
@@ -414,6 +416,22 @@ def annotate_clip(clip_dir: Path, output: OutputConfig, config: AnnotationConfig
                 visibility=0,
                 score=0.0,
             )
+        else:
+            return
+
+        frame = state.get("frame")
+        if frame is None:
+            return
+
+        overlay = _draw_overlay(
+            frame,
+            label_rows[state["index"]],
+            state["index"],
+            len(frame_files),
+            config,
+        )
+        cv2.imshow(config.window_name, overlay)
+        cv2.waitKey(1)
 
     cv2.namedWindow(config.window_name, cv2.WINDOW_NORMAL)
     cv2.setMouseCallback(config.window_name, on_mouse)
@@ -425,6 +443,8 @@ def annotate_clip(clip_dir: Path, output: OutputConfig, config: AnnotationConfig
             if frame is None:
                 LOGGER.warning("Failed to read frame: %s", frame_files[idx])
                 break
+
+            state["frame"] = frame
 
             overlay = _draw_overlay(
                 frame,
@@ -497,6 +517,7 @@ def main(cfg: DictConfig) -> None:
             frame_format=cfg.output.get("frame_format", "frame_{:04d}.jpg"),
             label_format=cfg.output.get("label_format", "{:04d}.jpg"),
             jpeg_quality=int(cfg.output.get("jpeg_quality", 95)),
+            frame_step=int(cfg.output.get("frame_step", 1)),
             precise_seek=bool(cfg.output.get("precise_seek", True)),
             overwrite=bool(cfg.output.get("overwrite", False)),
             skip_existing=bool(cfg.output.get("skip_existing", True)),
