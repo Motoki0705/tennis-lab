@@ -217,6 +217,7 @@ class VideoExtractor:
         output_dir: str | Path,
         frame_format: str = "frame_{:04d}.jpg",
         jpeg_quality: int = 95,
+        seek_every_frame: bool = False,
     ) -> list[str]:
         """Extract a segment of frames and save to directory.
 
@@ -226,6 +227,7 @@ class VideoExtractor:
             output_dir: Directory to save frames.
             frame_format: Format string for frame filenames.
             jpeg_quality: JPEG quality (0-100).
+            seek_every_frame: Seek on every frame for accuracy (slower).
 
         Returns:
             List of saved frame filenames.
@@ -235,23 +237,40 @@ class VideoExtractor:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         cap = cv2.VideoCapture(str(self.video_path))
-        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
         saved_files = []
-        for local_idx in range(end_frame - start_frame):
-            ret, frame = cap.read()
-            if not ret:
-                break
+        if seek_every_frame:
+            for frame_idx in range(start_frame, end_frame):
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-            filename = frame_format.format(local_idx)
-            filepath = output_dir / filename
+                filename = frame_format.format(frame_idx - start_frame)
+                filepath = output_dir / filename
 
-            cv2.imwrite(
-                str(filepath),
-                frame,
-                [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality],
-            )
-            saved_files.append(filename)
+                cv2.imwrite(
+                    str(filepath),
+                    frame,
+                    [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality],
+                )
+                saved_files.append(filename)
+        else:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+            for local_idx in range(end_frame - start_frame):
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                filename = frame_format.format(local_idx)
+                filepath = output_dir / filename
+
+                cv2.imwrite(
+                    str(filepath),
+                    frame,
+                    [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality],
+                )
+                saved_files.append(filename)
 
         cap.release()
         return saved_files
