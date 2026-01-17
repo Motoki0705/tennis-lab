@@ -1,0 +1,10 @@
+heatmap:
+  type: mse  # mse, focal, awing
+  weight: 1.0
+
+visibility:
+  type: bce
+  weight: 0.1
+
+regularization:
+  weight: 0.0

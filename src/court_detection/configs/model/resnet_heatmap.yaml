@@ -1,0 +1,14 @@
+_target_: src.court_detection.models.court_keypoint_model.CourtKeypointModel
+
+backbone:
+  name: resnet50
+  pretrained: true
+  freeze_bn: false
+
+head:
+  type: heatmap
+  num_keypoints: 20
+  heatmap_size: [64, 64]
+  sigma: 2.0
+
+input_size: [256, 256]
