@@ -1,0 +1,15 @@
+# Default Training Configuration for MAE
+#
+# Standard MAE training schedule (400 epochs with warmup).
+
+# Learning rate
+learning_rate: 1.5e-4  # Base LR, scaled by batch size
+weight_decay: 0.05
+min_lr: 1.0e-6
+
+# Schedule
+warmup_epochs: 40
+max_epochs: 400
+
+# Logging
+log_reconstruction_every_n_epochs: 10

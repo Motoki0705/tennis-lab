@@ -4,7 +4,7 @@ Player Localization in Court System: estimates player position and
 rotation in tennis court coordinates from 2D pose observations.
 
 Architecture:
-    - Llama-style Decoder-Only Transformer with GQA + RoPE + SDPA
+    - Decoder-only Transformer with MHA + RoPE + SDPA
     - Court keypoints (20) are tokenized as individual tokens
     - Player keypoints (17) are tokenized as individual tokens
     - Both court and player tokens are processed together
@@ -13,13 +13,20 @@ Architecture:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.common.models import RMSNorm, RoPE, RoPEConfig, TransformerBlock
+from src.common.models import (
+    MoEConfig,
+    RMSNorm,
+    TransformerBlock,
+    TransformerBlockConfig,
+    YaRNConfig,
+    precompute_freqs_cis,
+)
 from src.plcs.models.components.encoders import (
     CourtTokenEmbedding,
     PlayerTokenEmbedding,
@@ -35,7 +42,7 @@ class PLCSModel(nn.Module):
     """PLCS: Player Localization in Court System.
 
     Llama-style architecture with:
-    - Grouped-Query Attention (GQA) with SDPA for efficiency
+    - Multi-Head Self-Attention (MHA) with SDPA for efficiency
     - Rotary Position Embedding (RoPE)
     - SwiGLU MLP and RMSNorm
 
@@ -63,11 +70,13 @@ class PLCSModel(nn.Module):
         hidden_dim: int = 256,
         num_layers: int = 4,
         num_heads: int = 8,
-        num_kv_heads: int = 2,
-        ffn_dim: Optional[int] = None,
+        ffn_dim: int | None = None,
         dropout: float = 0.1,
-        rope_dim: Optional[int] = None,
+        rope_dim: int | None = None,
         rope_theta: float = 10000.0,
+        yarn: YaRNConfig | None = None,
+        use_moe: bool = False,
+        moe_config: MoEConfig | None = None,
     ) -> None:
         """Initialize the PLCS model.
 
@@ -75,24 +84,34 @@ class PLCSModel(nn.Module):
             hidden_dim: Hidden dimension for all components.
             num_layers: Number of Transformer blocks.
             num_heads: Number of query attention heads.
-            num_kv_heads: Number of key/value heads (for GQA).
             ffn_dim: FFN intermediate dimension. Defaults to 8/3 * hidden_dim.
             dropout: Dropout probability.
             rope_dim: RoPE dimension. Defaults to head_dim.
             rope_theta: RoPE theta parameter.
+            yarn: Optional YaRN config for long-context extrapolation.
+            use_moe: Use Mixture-of-Experts FFN in each Transformer block.
+            moe_config: MoE configuration (required when use_moe=True).
 
         """
         super().__init__()
 
         self.hidden_dim = hidden_dim
+        self.yarn = yarn
+        self.max_tokens = int(NUM_COURT_KP + NUM_HUMAN_KP)
 
         head_dim = hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else rope_dim
-        self.rope = RoPE(RoPEConfig(rope_dim=rope_dim, rope_theta=rope_theta))
+        self.rope_dim = int(rope_dim)
+        self.rope_theta = float(rope_theta)
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
             ffn_dim = (ffn_dim + 63) // 64 * 64  # Round to multiple of 64
+
+        if use_moe and moe_config is None:
+            raise ValueError("use_moe=True requires moe_config.")
+        if moe_config is not None and moe_config.dim != hidden_dim:
+            raise ValueError(f"moe_config.dim={moe_config.dim} must match hidden_dim={hidden_dim}")
 
         # Token embeddings
         self.court_embed = CourtTokenEmbedding(dim=hidden_dim, dropout=dropout)
@@ -105,13 +124,18 @@ class PLCSModel(nn.Module):
         self.blocks = nn.ModuleList(
             [
                 TransformerBlock(
-                    dim=hidden_dim,
-                    num_heads=num_heads,
-                    num_kv_heads=num_kv_heads,
-                    ffn_dim=ffn_dim,
-                    dropout=dropout,
-                    rope=self.rope,
-                    causal=False,
+                    TransformerBlockConfig(
+                        dim=hidden_dim,
+                        n_heads=num_heads,
+                        mlp_inter_dim=ffn_dim,
+                        head_dim=head_dim,
+                        rope_dim=self.rope_dim,
+                        attn_dropout=dropout,
+                        rope_base=self.rope_theta,
+                        yarn=self.yarn,
+                        use_moe=use_moe,
+                        moe_config=moe_config,
+                    )
                 )
                 for _ in range(num_layers)
             ]
@@ -133,6 +157,15 @@ class PLCSModel(nn.Module):
             dropout=dropout,
         )
 
+        freqs_cis = precompute_freqs_cis(
+            dim=self.rope_dim,
+            seqlen=self.max_tokens,
+            base=self.rope_theta,
+            yarn=self.yarn,
+            device=None,  # initialized on CPU; moved by `model.to(device)`
+        )
+        self.register_buffer("freqs_cis", freqs_cis, persistent=False)
+
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSModel:
         """Create model from configuration.
@@ -145,21 +178,32 @@ class PLCSModel(nn.Module):
 
         """
         model_cfg = config.get("model", {})
+
+        yarn_cfg = model_cfg.get("yarn", None)
+        yarn: YaRNConfig | None = None
+        if yarn_cfg is not None:
+            yarn_cfg = dict(yarn_cfg)
+            if yarn_cfg.get("original_seq_len", None) is not None:
+                yarn = YaRNConfig(**yarn_cfg)
+
+        use_moe = bool(model_cfg.get("use_moe", False))
+        moe_cfg = model_cfg.get("moe_config", None)
+        moe_config: MoEConfig | None = None
+        if use_moe and moe_cfg is not None:
+            moe_config = MoEConfig(dim=int(model_cfg.get("hidden_dim", 256)), **dict(moe_cfg))
+
         return cls(
             hidden_dim=model_cfg.get("hidden_dim", 256),
             num_layers=model_cfg.get("num_layers", 4),
             num_heads=model_cfg.get("num_heads", 8),
-            num_kv_heads=model_cfg.get("num_kv_heads", 2),
             ffn_dim=model_cfg.get("ffn_dim", None),
             dropout=model_cfg.get("dropout", 0.1),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=model_cfg.get("rope_theta", 10000.0),
+            yarn=yarn,
+            use_moe=use_moe,
+            moe_config=moe_config,
         )
-
-    def _build_positions(self, device: torch.device) -> Tensor:
-        """Build position indices for court + player tokens."""
-        S = NUM_COURT_KP + NUM_HUMAN_KP
-        return torch.arange(S, device=device, dtype=torch.long)
 
     def forward(
         self,
@@ -197,11 +241,10 @@ class PLCSModel(nn.Module):
         x = torch.cat(
             [court_tok + court_type, player_tok + player_type], dim=1
         )  # (B, 37, D)
-
-        pos = self._build_positions(device=x.device)  # (37,)
+        S = x.shape[1]
 
         # Build key_padding_mask if visibility provided
-        key_padding_mask: Optional[Tensor] = None
+        key_padding_mask: Tensor | None = None
         if human_vis is not None or court_vis is not None:
             if court_vis is not None:
                 court_mask = court_vis.bool()  # (B, 20)
@@ -217,11 +260,35 @@ class PLCSModel(nn.Module):
                 )
             key_padding_mask = torch.cat([court_mask, player_mask], dim=1)  # (B, 37)
 
-        # Apply Transformer blocks
-        for blk in self.blocks:
-            x = blk(x, pos=pos, key_padding_mask=key_padding_mask)
+        if S > self.freqs_cis.shape[0]:
+            raise ValueError(
+                f"Sequence length S={S} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
+                "Increase max_tokens."
+            )
+        freqs_cis = self.freqs_cis[:S]
+        if freqs_cis.device != x.device:
+            freqs_cis = freqs_cis.to(x.device)
 
-        x = self.final_norm(x)
+        attn_mask: Tensor | None = None
+        if key_padding_mask is not None:
+            # bool mask semantics follow SDPA: True=KEEP, False=MASK
+            attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
+
+        residual = None
+        for blk in self.blocks:
+            x, residual = blk(
+                x,
+                residual,
+                start_pos=0,
+                freqs_cis=freqs_cis,
+                attn_mask=attn_mask,
+                is_causal=False,
+            )
+
+        if residual is None:
+            x = self.final_norm(x)
+        else:
+            x, _ = self.final_norm(x, residual)
 
         # Extract player tokens and pool
         player_out = x[:, NUM_COURT_KP:, :]  # (B, 17, D)
@@ -247,3 +314,27 @@ class PLCSModel(nn.Module):
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+if __name__ == "__main__":
+    torch.manual_seed(0)
+
+    model = PLCSModel(
+        hidden_dim=64,
+        num_layers=2,
+        num_heads=4,
+        dropout=0.0,
+    )
+
+    B = 2
+    human_kp = torch.randn(B, NUM_HUMAN_KP, 2)
+    court_kp = torch.randn(B, NUM_COURT_KP, 2)
+    human_vis = (torch.rand(B, NUM_HUMAN_KP) > 0.2).to(torch.float32)
+    court_vis = (torch.rand(B, NUM_COURT_KP) > 0.1).to(torch.float32)
+
+    with torch.no_grad():
+        out = model(human_kp=human_kp, court_kp=court_kp, human_vis=human_vis, court_vis=court_vis)
+
+    print("PLCSModel:")
+    for key, value in out.items():
+        print(f"  {key}: {tuple(value.shape)}")

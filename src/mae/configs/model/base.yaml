@@ -1,0 +1,50 @@
+# Base MAE Model Configuration (ViT-Base equivalent)
+#
+# Architecture:
+#   - ViT encoder with 12 layers, 768 hidden dim
+#   - 2D RoPE for positional encoding
+#   - GQA with 4 KV heads (12 query heads)
+#   - 4 register tokens
+#   - Lightweight decoder (8 layers, 512 hidden dim)
+
+# Encoder (ViT)
+hidden_dim: 768
+num_layers: 12
+num_heads: 12
+num_kv_heads: 4
+ffn_dim: null  # Auto-computed as 8/3 * hidden_dim
+dropout: 0.0
+
+# Patch embedding
+patch_size: 16
+in_channels: 3
+
+# Special tokens
+num_register_tokens: 4
+
+# Positional encoding (2D RoPE)
+rope_dim: null  # Auto-computed from head_dim
+rope_theta: 10000.0
+rope_interleave: true
+
+# Advanced architecture options
+use_moe: false  # Enable MoE for FFN
+moe_layer_freq: 2  # Apply MoE every N layers
+use_mla: false  # Enable MLA (Multi-head Latent Attention)
+mla_kv_lora_rank: 64  # KV compression rank for MLA
+
+# Decoder
+decoder_hidden_dim: 512
+decoder_num_layers: 8
+decoder_num_heads: 16
+decoder_num_kv_heads: 4
+
+# Masking
+mask_ratio: 0.75
+mask_token_init: normal
+
+# Loss
+norm_pix_loss: true
+
+# Maximum square input resolution (must cover data buckets).
+max_resolution: 1024

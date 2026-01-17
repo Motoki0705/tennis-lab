@@ -1,23 +1,56 @@
-"""Common model components for Llama-style Transformer architecture.
+"""Common model components (DeepSeek-style).
 
-This module provides reusable components:
-- RMSNorm: Root Mean Square Layer Normalization
-- RoPE / RoPEConfig: Rotary Position Embedding
-- GQASelfAttention: Grouped-Query Attention with SDPA
-- SwiGLUMLP: SwiGLU Feed-Forward Network
-- TransformerBlock: Pre-norm Transformer block with GQA + SwiGLU
+Strategy A: treat the DeepSeek-style, pure PyTorch implementation in
+`src.common.models.components` as canonical and re-export it here.
 """
 
-from src.common.models.attention import GQASelfAttention, RoPE, RoPEConfig
-from src.common.models.blocks import TransformerBlock
-from src.common.models.mlp import SwiGLUMLP
-from src.common.models.norm import RMSNorm
+from src.common.models.components import (
+    KVCache,
+    LayerNorm,
+    MoE,
+    MoEConfig,
+    MultiHeadSelfAttention,
+    PositionGetter,
+    RMSNorm,
+    RotaryPositionEmbedding2D,
+    SwiGLU,
+    TransformerBlock,
+    TransformerBlockConfig,
+    ViTBlock,
+    ViTBlockConfig,
+    YaRNConfig,
+    YaRNConfig2D,
+    apply_rotary_emb_2d,
+    precompute_freqs_cis,
+    precompute_freqs_cis_2d,
+)
+from src.common.models.vit import ViTConfig, ViTEncoder
 
 __all__ = [
+    # Attention
+    "KVCache",
+    "MultiHeadSelfAttention",
+    # Norm
     "RMSNorm",
-    "RoPE",
-    "RoPEConfig",
-    "GQASelfAttention",
-    "SwiGLUMLP",
+    "LayerNorm",
+    # RoPE
+    "YaRNConfig",
+    "YaRNConfig2D",
+    "precompute_freqs_cis",
+    "precompute_freqs_cis_2d",
+    "apply_rotary_emb_2d",
+    "RotaryPositionEmbedding2D",
+    "PositionGetter",
+    # MLP / MoE
+    "SwiGLU",
+    "MoEConfig",
+    "MoE",
+    # Blocks
+    "TransformerBlockConfig",
     "TransformerBlock",
+    "ViTBlockConfig",
+    "ViTBlock",
+    # ViT
+    "ViTConfig",
+    "ViTEncoder",
 ]

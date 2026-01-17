@@ -1,0 +1,15 @@
+# Fast Training Configuration for MAE
+#
+# Shorter training for quick experiments.
+
+# Learning rate
+learning_rate: 3.0e-4  # Higher LR for faster convergence
+weight_decay: 0.05
+min_lr: 1.0e-6
+
+# Schedule (shorter)
+warmup_epochs: 10
+max_epochs: 100
+
+# Logging
+log_reconstruction_every_n_epochs: 5
