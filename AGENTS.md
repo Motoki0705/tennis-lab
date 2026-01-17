@@ -12,6 +12,19 @@
 *   `src/wasb`: ボールの位置を画面上の点として特定するモデルの学習環境などを提供する
 *   `src/utils`: 共有ユーティリティ（`geometry/`, `rendering/` など）
 
+### リポジトリ全体の構成
+*   `assets/`: 可視化や資料で利用する静的ファイル
+*   `data/`: 生成データや入力データ（大容量になりやすい）
+*   `docs/`: 仕様・設計・運用のドキュメント
+*   `experiments/`: 実験ログや検証メモ
+*   `outputs/`: 実行結果・推論結果・生成物
+*   `tests/`: ユニット/統合テスト
+*   `third_party/`: 外部コードのミラーやサブモジュール
+*   `docker/`: 開発・検証用のコンテナ定義
+
+### 設定ファイル
+各タスクの設定は原則 `src/{task}/configs/` に配置し、実行スクリプトはその YAML をエントリポイントとして参照する。
+
 ### 共通実装
 複数タスクで共通するロジックは、必ず `src/` 直下または `src/base/`, `src/utils/` に実装し、docstringでその旨を明文化すること。**タスク内での再実装は禁止。**
 
@@ -34,17 +47,65 @@ Example commands:
 Config entry point: `src/plcs/configs/generate_dataset.yaml`
 """
 ```
+*   **関数/クラスのDocstring**: 関数やクラスのDocstringは必ず Google スタイルで記述すること。
+    例:
+```python
+def sample_points(points: np.ndarray, num_samples: int) -> np.ndarray:
+    """Sample points uniformly from a point cloud.
 
-## 3. 使用可能なツール
+    Args:
+        points: Input point cloud with shape (N, 3).
+        num_samples: Number of points to sample.
 
-Sub-agent ツールの詳細な使い方はスキル化済みのドキュメントを参照してください。
+    Returns:
+        Sampled points with shape (num_samples, 3).
+    """
 
-- `skills/agents-consult/SKILL.md`
-- `skills/agents-review/SKILL.md`
-- `skills/agents-pre-commit/SKILL.md`
-- `skills/agents-test/SKILL.md`
+class ExampleModel(nn.Module):
+    """Small example model for smoke testing.
 
-## 4. 推奨ワークフロー（ブランチ作成→相談→作業→レビュー→検査→テスト）
+    Args:
+        in_channels: Number of input channels.
+        hidden_dim: Hidden feature dimension.
+    """
+```
+
+## 3. モジュール単体のスモークテスト（必須の自己確認）
+
+AI Agent が作成・変更したモジュールは、簡単な実行確認ができるように `if __name__ == "__main__":` で小さなスモークテストを提供すること。特に `src/base/` や `src/utils/`、各タスクのモデル/データ処理コンポーネントは、最小限の入力で「実行できる」「期待する形状や型を返す」を確認できるようにする。
+
+例（あくまで最小限・短時間で終わる内容にすること）:
+```python
+if __name__ == "__main__":
+    # quick smoke test for shape/type sanity
+    dummy = torch.zeros(1, 3, 224, 224)
+    model = ExampleModel()
+    out = model(dummy)
+    assert out.shape[0] == 1
+```
+
+## 4. Git操作ルール（固定フォーマット）
+
+### ブランチ命名
+`<type>/<task>-<short-desc>`（例: `feature/wasb-add-foo`）
+
+### コミットメッセージ
+`type(scope): summary` を基本とする。`type` は `feat`, `fix`, `refactor`, `docs`, `test`, `chore` を使用する。
+例: `feat(plcs): add camera pose sampler`
+
+### PR タイトル/本文テンプレート
+タイトル: `type(scope): summary`
+
+本文（簡潔に）:
+```
+## Summary
+- ...
+
+## Testing
+- ...
+```
+
+## 5. 推奨ワークフロー（ブランチ作成→作業→スモークテスト→ドキュメント）
 
 ### AI Agent向け（必須）チェックリスト
 このリポジトリでは、AI Agent はユーザーから明示されていなくても **必ず** 以下を満たしてから作業してください（逸脱する場合は、作業前にユーザーへ確認し、最終報告にも理由を明記すること）。
@@ -53,29 +114,17 @@ Sub-agent ツールの詳細な使い方はスキル化済みのドキュメン�
 - **`main` / `master` / `develop` での直接編集は禁止**
 - 変更を 1 行でも加える前に、現在ブランチを確認し、`main` 等であれば新規ブランチへ移動する
 
-2) **開発前の相談（推奨）**
-- 複雑なタスクの場合は、`src.agents.scripts.consult` を使用して複数のLLMにアプローチを提案させる
-- 実行例は `skills/agents-consult/SKILL.md` を参照
-- 複数の視点からのフィードバックを得ることで、より良い実装方針を決定できる
+2) **スモークテストの用意と実行（必須）**
+- 変更したモジュールに `if __name__ == "__main__":` の実行確認コードを用意し、短時間で実行できることを確認する
+- 可能な限り小さな入力で、形状/型の期待値を assert する
 
-3) **検査とテスト（必須）**
-- 変更後は必ず `src.agents.scripts.pre_commit` → `src.agents.scripts.test` の順で実行する（ユーザーが「実行しないで」と言った場合を除く）
-- **テストは全て実行するのではなく、変更に影響するテストのみを `task.test_cmd` で指定して実行する**
-  - 実行例は `skills/agents-test/SKILL.md` を参照
-  - 変更したモジュールに対応するテストファイルを特定し、必要最小限のテストを実行する
-
-4) **開発後のレビュー（推奨）**
-- 変更完了後、`src.agents.scripts.review` を使用してコード変更をレビューさせる
-- 実行例は `skills/agents-review/SKILL.md` を参照
-- 問題点の発見、改善提案、新しいタスクの特定に役立つ
-
-5) **ドキュメントの整合性確認（必須）**
+3) **ドキュメントの整合性確認（必須）**
 - 変更内容が各タスクの `README.md` やドキュメントに影響する場合は、必ず更新する
 - 特に `src/{task}/README.md` は実装と矛盾がないよう常に最新に保つ
 - 新機能追加・API変更・設定変更があった場合は、関連ドキュメントの更新を確認する
 
-6) **例外の扱い（必須）**
-- 環境都合（例: `uv run` の権限エラー等）で推奨コマンドが失敗した場合も、回避策を適用して **同等の検査/テストを実行する**
+4) **例外の扱い（必須）**
+- 環境都合（例: `uv run` の権限エラー等）で推奨コマンドが失敗した場合も、回避策を適用して **同等の自己確認を実行する**
 - どうしても実行できない場合は、その理由と、代替で何を確認したかを最終報告に明記する
 
 ### ステップバイステップの手順
@@ -93,46 +142,24 @@ git checkout -b feature/<task>-<short-desc>
 2) **作業する**
 - 変更・追加を行う（規約は本ドキュメントに従う）
 
-3) **pre-commit を実行（ツール推奨）**
-```bash
-uv run python -m src.agents.scripts.pre_commit
-```
+3) **スモークテストを実行**
+- `if __name__ == "__main__":` の確認コードを実行して、短時間で動作確認する
 
-4) **テストを実行（ツール推奨）**
-- **変更に影響するテストのみを `task.test_cmd` で指定して実行する（全テスト実行は禁止）**
-```bash
-# 変更に関連するテストファイルを特定して実行（-n auto で並列実行）
-uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest -q -n auto tests/unit/test_affected.py'
-
-# 複数のテストファイルを指定する場合
-uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest -q -n auto tests/unit/test_foo.py tests/integration/test_bar.py'
-
-# 特定のテストケースを指定する場合
-uv run python -m src.agents.scripts.test 'task.test_cmd=uv run --no-sync pytest -q tests/test_example.py::test_case'
-```
-
-5) **ドキュメントの更新確認**
+4) **ドキュメントの更新確認**
 - 変更がREADMEやドキュメントに影響する場合は更新する
 - 特に `src/{task}/README.md` は実装と矛盾がないよう最新に保つ
 
 ---
-## 5. `uv run` の Permission denied 回避（重要）
+## 6. `uv run` の Permission denied 回避（重要）
 
 Codex 実行環境では、`uv` のデフォルトキャッシュが `/root/.cache/uv` を指し、権限の都合で `Permission denied` になることがあります。
 
 ### 推奨: `--cache-dir` を workspace 配下に固定
 ```bash
-uv --cache-dir agents_workspace/tmp_cache/uv_cache run --no-sync pytest -q
-uv --cache-dir agents_workspace/tmp_cache/uv_cache run --no-sync pre-commit run -a
+uv --cache-dir agents_workspace/tmp_cache/uv_cache run --no-sync python -m src.plcs.scripts.generate_dataset
 ```
 
 ### 代替: 一時キャッシュ（遅いが確実）
 ```bash
-uv --no-cache run --no-sync pytest -q
-```
-
-### subagent 経由で回避する例
-```bash
-uv run python -m src.agents.scripts.test 'task.test_cmd=uv --cache-dir agents_workspace/tmp_cache/uv_cache run --no-sync pytest -q tests/...'
-uv run python -m src.agents.scripts.pre_commit
+uv --no-cache run --no-sync python -m src.plcs.scripts.generate_dataset
 ```
