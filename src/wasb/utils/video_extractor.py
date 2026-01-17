@@ -217,6 +217,7 @@ class VideoExtractor:
         output_dir: str | Path,
         frame_format: str = "frame_{:04d}.jpg",
         jpeg_quality: int = 95,
+        frame_step: int = 1,
         seek_every_frame: bool = False,
     ) -> list[str]:
         """Extract a segment of frames and save to directory.
@@ -227,6 +228,7 @@ class VideoExtractor:
             output_dir: Directory to save frames.
             frame_format: Format string for frame filenames.
             jpeg_quality: JPEG quality (0-100).
+            frame_step: Interval between saved frames (1 saves every frame).
             seek_every_frame: Seek on every frame for accuracy (slower).
 
         Returns:
@@ -238,15 +240,19 @@ class VideoExtractor:
 
         cap = cv2.VideoCapture(str(self.video_path))
 
+        if frame_step < 1:
+            raise ValueError("frame_step must be >= 1")
+
         saved_files = []
+        saved_count = 0
         if seek_every_frame:
-            for frame_idx in range(start_frame, end_frame):
+            for frame_idx in range(start_frame, end_frame, frame_step):
                 cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
                 ret, frame = cap.read()
                 if not ret:
                     break
 
-                filename = frame_format.format(frame_idx - start_frame)
+                filename = frame_format.format(saved_count)
                 filepath = output_dir / filename
 
                 cv2.imwrite(
@@ -255,14 +261,17 @@ class VideoExtractor:
                     [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality],
                 )
                 saved_files.append(filename)
+                saved_count += 1
         else:
             cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
             for local_idx in range(end_frame - start_frame):
                 ret, frame = cap.read()
                 if not ret:
                     break
+                if local_idx % frame_step != 0:
+                    continue
 
-                filename = frame_format.format(local_idx)
+                filename = frame_format.format(saved_count)
                 filepath = output_dir / filename
 
                 cv2.imwrite(
@@ -271,6 +280,7 @@ class VideoExtractor:
                     [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality],
                 )
                 saved_files.append(filename)
+                saved_count += 1
 
         cap.release()
         return saved_files
