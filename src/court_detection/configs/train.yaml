@@ -1,0 +1,14 @@
+defaults:
+  - run: default
+  - model: resnet_heatmap
+  - data: default
+  - training: default
+  - loss: default
+  - _self_
+
+hydra:
+  run:
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  sweep:
+    dir: ${run.output_dir}
+    subdir: ${now:%Y-%m-%d_%H-%M-%S}
