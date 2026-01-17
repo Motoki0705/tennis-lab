@@ -1,0 +1,37 @@
+# Cache production configuration for MAE cached-batch training
+#
+# Generates a cache of preprocessed, resolution-bucketed batches for a given epoch.
+
+defaults:
+  - _self_
+
+task:
+  split: train  # train | val
+  epoch: 0
+
+producer:
+  cache_root: data/tennis/mae/cache
+  video_dir: data/tennis/raw/videos
+  use_decord: true
+  min_frames: 10
+
+  samples_per_video: 4
+  buckets: [256, 320, 384, 448, 512, 640, 768, 1024]
+  bucket_alpha: 2.0
+  base_batch_size: 32
+  min_batch_size: 1
+  upsample_limit: 1.0
+  frame_sample_ratio: 1.0
+  seed: 42
+  val_split: 0.1
+  static_val: true
+
+  preprocess:
+    patch_size: 16
+    scale_min: 0.8
+    scale_max: 1.2
+    hflip_prob: 0.5
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+    output_dtype: float16
+
