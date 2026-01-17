@@ -10,7 +10,7 @@ task:
   epoch: 0
 
 producer:
-  cache_root: data/mae/cache
+  cache_root: data/tennis/mae/cache
   video_dir: data/tennis/raw/videos
   use_decord: true
   min_frames: 10
