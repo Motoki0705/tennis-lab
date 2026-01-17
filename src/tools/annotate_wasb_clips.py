@@ -46,6 +46,7 @@ class ClipConfig:
     window_name: str = "WASB Clip Selector"
     step_small: int = 1
     step_large: int = 10
+    skip_multipliers: tuple[int, ...] = (1, 5, 10, 20)
     display_scale: float = 1.0
 
 
@@ -58,6 +59,8 @@ class OutputConfig:
     frame_format: str = "frame_{:04d}.jpg"
     label_format: str = "{:04d}.jpg"
     jpeg_quality: int = 95
+    frame_step: int = 1
+    precise_seek: bool = True
     overwrite: bool = False
     skip_existing: bool = True
 
@@ -141,6 +144,7 @@ def _draw_clip_overlay(
     in_mark: int | None,
     out_mark: int | None,
     clip_count: int,
+    skip_multiplier: int,
     config: ClipConfig,
 ) -> cv2.Mat:
     annotated = frame.copy()
@@ -149,6 +153,7 @@ def _draw_clip_overlay(
         f"In: {in_mark + 1 if in_mark is not None else '-'}",
         f"Out: {out_mark + 1 if out_mark is not None else '-'}",
         f"Clips: {clip_count}",
+        f"Skip: x{skip_multiplier} (1-{len(config.skip_multipliers)} set, [/] cycle)",
         "I: set in | O: set out | S: add clip | D: delete last | C: clear",
         "N/P: next/prev | F/B: jump | Q: save+quit",
     ]
@@ -185,6 +190,8 @@ def manual_clip_selection(video_path: Path, config: ClipConfig) -> list[tuple[in
     in_mark: int | None = None
     out_mark: int | None = None
     clips: list[tuple[int, int]] = []
+    skip_multipliers = list(config.skip_multipliers) or [1]
+    skip_index = 0
 
     cv2.namedWindow(config.window_name, cv2.WINDOW_NORMAL)
     try:
@@ -201,19 +208,30 @@ def manual_clip_selection(video_path: Path, config: ClipConfig) -> list[tuple[in
                 in_mark,
                 out_mark,
                 len(clips),
+                skip_multipliers[skip_index],
                 config,
             )
             cv2.imshow(config.window_name, overlay)
             key = cv2.waitKey(0) & 0xFF
 
             if key in {ord("n"), ord(" ")}:
-                frame_idx = min(frame_idx + config.step_small, frame_count - 1)
+                step = config.step_small * skip_multipliers[skip_index]
+                frame_idx = min(frame_idx + step, frame_count - 1)
             elif key == ord("p"):
-                frame_idx = max(frame_idx - config.step_small, 0)
+                step = config.step_small * skip_multipliers[skip_index]
+                frame_idx = max(frame_idx - step, 0)
             elif key == ord("f"):
                 frame_idx = min(frame_idx + config.step_large, frame_count - 1)
             elif key == ord("b"):
                 frame_idx = max(frame_idx - config.step_large, 0)
+            elif key == ord("["):
+                skip_index = (skip_index - 1) % len(skip_multipliers)
+            elif key == ord("]"):
+                skip_index = (skip_index + 1) % len(skip_multipliers)
+            elif ord("1") <= key <= ord("9"):
+                candidate = key - ord("1")
+                if candidate < len(skip_multipliers):
+                    skip_index = candidate
             elif key == ord("i"):
                 in_mark = frame_idx
             elif key == ord("o"):
@@ -285,6 +303,8 @@ def export_clips(cfg: ToolConfig, clip_ranges: list[tuple[int, int]]) -> list[Cl
             output_dir=clip_dir,
             frame_format=cfg.output.frame_format,
             jpeg_quality=cfg.output.jpeg_quality,
+            frame_step=cfg.output.frame_step,
+            seek_every_frame=cfg.output.precise_seek,
         )
 
     save_manifest(output_dir, video_path, extractor, cfg.output, plans)
@@ -396,6 +416,22 @@ def annotate_clip(clip_dir: Path, output: OutputConfig, config: AnnotationConfig
                 visibility=0,
                 score=0.0,
             )
+        else:
+            return
+
+        frame = state.get("frame")
+        if frame is None:
+            return
+
+        overlay = _draw_overlay(
+            frame,
+            label_rows[state["index"]],
+            state["index"],
+            len(frame_files),
+            config,
+        )
+        cv2.imshow(config.window_name, overlay)
+        cv2.waitKey(1)
 
     cv2.namedWindow(config.window_name, cv2.WINDOW_NORMAL)
     cv2.setMouseCallback(config.window_name, on_mouse)
@@ -407,6 +443,8 @@ def annotate_clip(clip_dir: Path, output: OutputConfig, config: AnnotationConfig
             if frame is None:
                 LOGGER.warning("Failed to read frame: %s", frame_files[idx])
                 break
+
+            state["frame"] = frame
 
             overlay = _draw_overlay(
                 frame,
@@ -479,6 +517,8 @@ def main(cfg: DictConfig) -> None:
             frame_format=cfg.output.get("frame_format", "frame_{:04d}.jpg"),
             label_format=cfg.output.get("label_format", "{:04d}.jpg"),
             jpeg_quality=int(cfg.output.get("jpeg_quality", 95)),
+            frame_step=int(cfg.output.get("frame_step", 1)),
+            precise_seek=bool(cfg.output.get("precise_seek", True)),
             overwrite=bool(cfg.output.get("overwrite", False)),
             skip_existing=bool(cfg.output.get("skip_existing", True)),
         ),
@@ -486,6 +526,7 @@ def main(cfg: DictConfig) -> None:
             window_name=cfg.clip.get("window_name", "WASB Clip Selector"),
             step_small=int(cfg.clip.get("step_small", 1)),
             step_large=int(cfg.clip.get("step_large", 10)),
+            skip_multipliers=tuple(cfg.clip.get("skip_multipliers", (1, 5, 10, 20))),
             display_scale=float(cfg.clip.get("display_scale", 1.0)),
         ),
         annotate=AnnotationConfig(

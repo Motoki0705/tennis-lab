@@ -1,4 +1,4 @@
-mode: clip
+mode: clip # clip or annotation
 video_path: null
 
 output:
@@ -7,6 +7,8 @@ output:
   frame_format: frame_{:04d}.jpg
   label_format: '{:04d}.jpg'
   jpeg_quality: 95
+  frame_step: 2
+  precise_seek: true
   overwrite: false
   skip_existing: true
 
@@ -14,6 +16,7 @@ clip:
   window_name: WASB Clip Selector
   step_small: 1
   step_large: 10
+  skip_multipliers: [1, 5, 10, 20]
   display_scale: 1.0
 
 annotate:
