@@ -17,6 +17,21 @@ The system consists of four main modules that work together:
 
 All modules use a common **court coordinate system** with 20 keypoints (CourtKP20) and COCO-17 format for human poses.
 
+## Repository Context
+
+### Top-level Structure
+- `assets/`: Static files for visualization or documentation
+- `data/`: Generated and input datasets
+- `docs/`: Specifications and design docs
+- `experiments/`: Experiment logs and notes
+- `outputs/`: Training/inference outputs
+- `tests/`: Unit and integration tests
+- `third_party/`: External code mirrors or submodules
+- `docker/`: Container definitions for development
+
+### Configuration Placement
+Per-task configs live in `src/{task}/configs/`, and scripts should reference those YAML entry points.
+
 ## Core Commands
 
 ### Development Setup
@@ -180,12 +195,26 @@ def predict(self, *args, **kwargs) -> dict[str, Any]:
 
 ## Development Workflow
 
-### Multi-LLM Consultation Tools
+### Git Conventions (Fixed Format)
 
-This project provides sub-agent tools for consultation and review.
-Usage examples are documented in:
-- `skills/agents-consult/SKILL.md`
-- `skills/agents-review/SKILL.md`
+Branch names:
+`<type>/<task>-<short-desc>` (e.g., `feature/wasb-add-foo`)
+
+Commit messages:
+`type(scope): summary` where `type` is `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
+Example: `feat(plcs): add camera pose sampler`
+
+PR title/body:
+Title: `type(scope): summary`
+
+Body:
+```
+## Summary
+- ...
+
+## Testing
+- ...
+```
 
 ### Mandatory Workflow (AI Agents MUST follow)
 
@@ -194,23 +223,16 @@ Usage examples are documented in:
    git checkout -b feature/<task>-<short-desc>
    ```
 
-2. **Before complex tasks** (recommended):
-   - See `skills/agents-consult/SKILL.md` for commands.
+2. **Provide and run a smoke test**:
+   - For any created or modified module, add a small `if __name__ == "__main__":` block
+   - Use minimal inputs and assert basic shape/type expectations
 
-3. **After ANY code changes**:
-   - Run lint/type checks via `src.agents.scripts.pre_commit`.
-   - Run ONLY affected tests via `src.agents.scripts.test`.
-   - See `skills/agents-pre-commit/SKILL.md` and `skills/agents-test/SKILL.md` for commands.
-
-4. **Before commit** (recommended):
-   - See `skills/agents-review/SKILL.md` for commands.
-
-5. **Check documentation consistency**:
+3. **Check documentation consistency**:
    - Update `src/{task}/README.md` if your changes affect the documented behavior
    - Keep READMEs in sync with implementation (new features, API changes, config changes)
 
-
-4. **Exception handling**: If tools fail due to environment issues (e.g., permission errors), apply workarounds and document in final report.
+4. **Exception handling**:
+   - If environment issues block execution, apply a workaround and document what was verified
 
 ### UV Cache Workaround
 
@@ -218,13 +240,11 @@ If you encounter `Permission denied` errors with `uv`, use one of these:
 
 ```bash
 # Option 1: Specify cache directory
-uv --cache-dir agents_workspace/tmp_cache/uv_cache run pytest
+uv --cache-dir agents_workspace/tmp_cache/uv_cache run --no-sync python -m src.plcs.scripts.generate_dataset
 
 # Option 2: Disable cache (slower but reliable)
-uv --no-cache run pytest
+uv --no-cache run --no-sync python -m src.plcs.scripts.generate_dataset
 ```
-
-The subagent scripts handle this automatically.
 
 ## Code Quality Standards
 
@@ -236,6 +256,7 @@ All executable scripts in `src/{task}/scripts/` must:
   - Brief description
   - Example commands
   - Config entry point path
+ - Use Google-style docstrings for functions and classes
 
 Example:
 ```python
@@ -249,27 +270,34 @@ Config entry point: `src/plcs/configs/train.yaml`
 """
 ```
 
+Function/class docstring example (Google style):
+```python
+def sample_points(points: np.ndarray, num_samples: int) -> np.ndarray:
+    """Sample points uniformly from a point cloud.
+
+    Args:
+        points: Input point cloud with shape (N, 3).
+        num_samples: Number of points to sample.
+
+    Returns:
+        Sampled points with shape (num_samples, 3).
+    """
+
+class ExampleModel(nn.Module):
+    """Small example model for smoke testing.
+
+    Args:
+        in_channels: Number of input channels.
+        hidden_dim: Hidden feature dimension.
+    """
+```
+
 ### Type Checking
 
 This project enforces strict type checking:
 - All functions must have type hints (`disallow_untyped_defs = true`)
 - mypy runs in CI on changed files (PRs) or full codebase (main branch)
 - Third-party library types are ignored where necessary (see pyproject.toml)
-
-### Testing
-
-- Use pytest with markers: `unit`, `integration`, `e2e`, `slow`, `local_data`
-- CI skips tests marked `local_data` (for large datasets/models)
-- Coverage reports generated in `htmlcov/`
-- All tests in `tests/` directory
-
-### Pre-commit Hooks
-
-Pre-commit runs:
-1. ruff (linting + auto-fix)
-2. mypy (type checking)
-
-Only on files matching `^(src|tests)/` pattern.
 
 ## CI/CD
 
@@ -302,5 +330,5 @@ GitHub Actions runs on:
 1. **No code duplication**: Always check `src/base/` and `src/utils/` before implementing shared functionality
 2. **Coordinate system**: Use the normalized court coordinate convention consistently
 3. **Configuration**: All scripts use Hydra, never argparse
-4. **Testing**: Always run pre-commit and tests before committing
+4. **Smoke tests**: Provide a minimal `__main__` block for quick sanity checks
 5. **Branching**: Never commit directly to main
