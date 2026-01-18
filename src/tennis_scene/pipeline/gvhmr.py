@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -28,8 +28,6 @@ class GVHMRConfig:
         yolo_checkpoint: Path to YOLO checkpoint for tracking.
         vitpose_checkpoint: Path to ViTPose checkpoint.
         hmr2_checkpoint: Path to HMR2 checkpoint for feature extraction.
-        venv_path: Path to GVHMR virtual environment directory.
-        output_root: Root directory for GVHMR subprocess outputs.
         device: Inference device.
 
     """
@@ -38,8 +36,6 @@ class GVHMRConfig:
     yolo_checkpoint: str | Path = "inputs/checkpoints/yolo/yolov8x.pt"
     vitpose_checkpoint: str | Path = "inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
     hmr2_checkpoint: str | Path = "inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt"
-    venv_path: str | Path = "third_party/GVHMR/.venv"
-    output_root: str | Path = "outputs/tennis_scene/gvhmr"
     device: str = "cuda"
 
 
@@ -83,42 +79,94 @@ class GVHMRModule(BasePipelineModule):
 
         """
         self.config = config
+        self._model = None
+        self._tracker = None
+        self._vitpose = None
+        self._extractor = None
         self._gvhmr_root: Path | None = None
-        self._repo_root: Path | None = None
-        self._venv_python: Path | None = None
 
     def load(self) -> None:
-        """Validate GVHMR subprocess environment."""
-        if self._venv_python is not None:
+        """Load all GVHMR models and preprocessing utilities."""
+        if self._model is not None:
             return
 
-        self._repo_root = Path(__file__).parents[3]
-        self._gvhmr_root = self._repo_root / "third_party" / "GVHMR"
-        self._venv_python = self._resolve_venv_python()
+        self._gvhmr_root = Path(__file__).parents[3] / "third_party" / "GVHMR"
+        sys.path.insert(0, str(self._gvhmr_root))
 
-        if not self._venv_python.exists():
-            raise FileNotFoundError(
-                "GVHMR venv python not found. Run third_party/GVHMR/setup_gvhmr.sh first."
-            )
+        self._load_tracker()
+        self._load_vitpose()
+        self._load_extractor()
+        self._load_gvhmr_model()
 
-    def _resolve_repo_path(self, path: str | Path) -> Path:
-        """Resolve a path relative to the repo root if not absolute."""
-        if self._repo_root is None:
-            self._repo_root = Path(__file__).parents[3]
+    def _load_tracker(self) -> None:
+        """Load YOLO tracker with custom checkpoint path."""
+        LOGGER.info(f"Loading YOLO tracker from {self.config.yolo_checkpoint}")
+
+        yolo_path = self._resolve_path(self.config.yolo_checkpoint)
+
+        from hmr4d.utils.preproc.tracker import Tracker
+
+        self._tracker = Tracker(
+            yolo_checkpoint=str(yolo_path),
+            device=self.config.device,
+        )
+
+    def _load_vitpose(self) -> None:
+        """Load ViTPose with custom checkpoint path."""
+        LOGGER.info(f"Loading ViTPose from {self.config.vitpose_checkpoint}")
+
+        vitpose_path = self._resolve_path(self.config.vitpose_checkpoint)
+
+        from hmr4d.utils.preproc.vitpose import VitPoseExtractor
+
+        self._vitpose = VitPoseExtractor(
+            checkpoint_path=str(vitpose_path),
+            device=self.config.device,
+            flip_test=True,
+            tqdm_leave=True,
+        )
+
+    def _load_extractor(self) -> None:
+        """Load HMR2 feature extractor with custom checkpoint path."""
+        LOGGER.info(f"Loading HMR2 extractor from {self.config.hmr2_checkpoint}")
+
+        hmr2_path = self._resolve_path(self.config.hmr2_checkpoint)
+
+        from hmr4d.utils.preproc.vitfeat_extractor import Extractor
+
+        self._extractor = Extractor(
+            checkpoint_path=str(hmr2_path),
+            device=self.config.device,
+            tqdm_leave=True,
+        )
+
+    def _load_gvhmr_model(self) -> None:
+        """Load GVHMR model."""
+        LOGGER.info(f"Loading GVHMR model from {self.config.model_checkpoint}")
+
+        model_path = self._resolve_path(self.config.model_checkpoint)
+
+        from hmr4d.model.gvhmr.gvhmr_pl_demo import DemoPL
+
+        self._model = DemoPL.load_pretrained_model(str(model_path))
+        self._model.eval()
+        if self.config.device == "cuda":
+            self._model = self._model.cuda()
+
+    def _resolve_path(self, path: str | Path) -> Path:
+        """Resolve path relative to GVHMR root if not absolute."""
         path = Path(path)
-        return path if path.is_absolute() else self._repo_root / path
-
-    def _resolve_venv_python(self) -> Path:
-        """Resolve the GVHMR venv python executable path."""
-        venv_path = self._resolve_repo_path(self.config.venv_path)
-        if venv_path.is_dir():
-            return venv_path / "bin" / "python"
-        return venv_path
+        if path.is_absolute():
+            return path
+        resolved = self._gvhmr_root / path
+        if resolved.exists():
+            return resolved
+        return path
 
     @property
     def is_loaded(self) -> bool:
         """Check if all models are loaded."""
-        return self._venv_python is not None
+        return self._model is not None
 
     def process(
         self,
@@ -138,25 +186,13 @@ class GVHMRModule(BasePipelineModule):
         if not self.is_loaded:
             self.load()
 
-        video_path = Path(video_path)
+        video_path = str(video_path)
 
-        outputs = self._run_subprocess(video_path)
-        kp2d = outputs["kp2d"]
-        bbx_xys = outputs["bbx_xys"]
+        preproc = self._run_preprocessing(video_path, max_frames)
+        inference = self._run_inference(preproc)
 
-        inference = outputs["inference"]
-        human_kp_2d = kp2d[..., :2].cpu().numpy()
-        human_kp_vis = kp2d[..., 2].cpu().numpy()
-
-        if max_frames is not None:
-            max_frames = int(max_frames)
-            human_kp_2d = human_kp_2d[:max_frames]
-            human_kp_vis = human_kp_vis[:max_frames]
-            bbx_xys = bbx_xys[:max_frames]
-            inference["smpl_body_pose"] = inference["smpl_body_pose"][:max_frames]
-            inference["smpl_global_orient"] = inference["smpl_global_orient"][:max_frames]
-            if inference["smpl_vertices_local"] is not None:
-                inference["smpl_vertices_local"] = inference["smpl_vertices_local"][:max_frames]
+        human_kp_2d = preproc["kp2d"][..., :2].cpu().numpy()
+        human_kp_vis = preproc["kp2d"][..., 2].cpu().numpy()
 
         return GVHMRResult(
             smpl_body_pose=inference["smpl_body_pose"],
@@ -165,41 +201,70 @@ class GVHMRModule(BasePipelineModule):
             smpl_vertices_local=inference["smpl_vertices_local"],
             human_kp_2d=human_kp_2d.astype(np.float32),
             human_kp_vis=human_kp_vis.astype(np.float32),
-            bbx_xys=bbx_xys.cpu().numpy().astype(np.float32),
+            bbx_xys=preproc["bbx_xys"].cpu().numpy().astype(np.float32),
         )
 
-    def _run_subprocess(self, video_path: Path) -> dict[str, Any]:
-        """Run GVHMR via subprocess and load outputs."""
-        if self._gvhmr_root is None or self._venv_python is None:
-            raise RuntimeError("GVHMRModule.load() must be called before subprocess execution.")
+    def _run_preprocessing(
+        self, video_path: str, max_frames: int | None
+    ) -> dict[str, Any]:
+        """Run GVHMR preprocessing pipeline."""
+        LOGGER.info("Running GVHMR preprocessing...")
 
-        output_root = self._resolve_repo_path(self.config.output_root)
-        output_root.mkdir(parents=True, exist_ok=True)
+        from hmr4d.utils.geo.hmr_cam import get_bbx_xys_from_xyxy, estimate_K
+        from hmr4d.utils.video_io_utils import get_video_lwh
 
-        cmd = [
-            str(self._venv_python),
-            "tools/demo/demo.py",
-            "--video",
-            str(video_path),
-            "--output_root",
-            str(output_root),
-            "-s",
-        ]
+        length, width, height = get_video_lwh(video_path)
 
-        LOGGER.info("Running GVHMR subprocess: %s", " ".join(cmd))
-        subprocess.run(cmd, cwd=str(self._gvhmr_root), check=True)
+        bbx_xyxy = self._tracker.get_one_track(video_path, max_frames=max_frames)
+        if bbx_xyxy is None:
+            raise RuntimeError("No person detected in video")
 
-        output_dir = output_root / video_path.stem
-        preprocess_dir = output_dir / "preprocess"
-        results_path = output_dir / "hmr4d_results.pt"
-        if not results_path.exists():
-            raise FileNotFoundError(f"GVHMR results not found at {results_path}")
+        bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy)
+        kp2d = self._vitpose.extract(video_path, bbx_xys)
+        f_imgseq = self._extractor.extract_video_features(video_path, bbx_xys)
+        K_fullimg = estimate_K(width, height)
 
-        bbx_bundle = torch.load(preprocess_dir / "bbx.pt", weights_only=False)
-        kp2d = torch.load(preprocess_dir / "vitpose.pt", weights_only=False)
-        pred = torch.load(results_path, weights_only=False)
+        return {
+            "bbx_xys": bbx_xys,
+            "kp2d": kp2d,
+            "f_imgseq": f_imgseq,
+            "K_fullimg": K_fullimg,
+            "width": width,
+            "height": height,
+        }
+
+    def _run_inference(self, preproc: dict[str, Any]) -> dict[str, NDArray]:
+        """Run GVHMR inference with static_cam=True."""
+        LOGGER.info("Running GVHMR inference...")
+
+        bbx_xys = preproc["bbx_xys"]
+        kp2d = preproc["kp2d"]
+        f_imgseq = preproc["f_imgseq"]
+        K_fullimg = preproc["K_fullimg"]
+
+        T = len(bbx_xys)
+        K_fullimg_batch = K_fullimg.unsqueeze(0).expand(T, -1, -1)
+        cam_angvel = torch.zeros(T, 3)
+
+        data = {
+            "length": T,
+            "bbx_xys": bbx_xys,
+            "kp2d": kp2d,
+            "K_fullimg": K_fullimg_batch,
+            "cam_angvel": cam_angvel,
+            "f_imgseq": f_imgseq,
+        }
+
+        if self.config.device == "cuda":
+            for k, v in data.items():
+                if isinstance(v, torch.Tensor):
+                    data[k] = v.cuda()
+
+        with torch.no_grad():
+            pred = self._model.predict(data, static_cam=True)
 
         smpl_params = pred["smpl_params_incam"]
+
         body_pose = smpl_params["body_pose"].cpu().numpy()
         global_orient = smpl_params["global_orient"].cpu().numpy()
         betas = smpl_params["betas"].cpu().numpy()
@@ -212,20 +277,13 @@ class GVHMRModule(BasePipelineModule):
             vertices = pred["verts"].cpu().numpy()
 
         return {
-            "bbx_xys": bbx_bundle["bbx_xys"],
-            "kp2d": kp2d,
-            "inference": {
-                "smpl_body_pose": body_pose.astype(np.float32),
-                "smpl_global_orient": global_orient.astype(np.float32),
-                "smpl_betas": betas.astype(np.float32),
-                "smpl_vertices_local": vertices,
-            },
+            "smpl_body_pose": body_pose.astype(np.float32),
+            "smpl_global_orient": global_orient.astype(np.float32),
+            "smpl_betas": betas.astype(np.float32),
+            "smpl_vertices_local": vertices,
         }
 
 
 if __name__ == "__main__":
-    module = GVHMRModule(GVHMRConfig(model_checkpoint="inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt"))
-    python_path = module._resolve_venv_python()
-    print("GVHMRModule: subprocess runner")
-    print(f"Resolved venv python: {python_path}")
-    print(f"Exists: {python_path.exists()}")
+    print("GVHMRModule: GVHMR 3D human mesh estimation module")
+    print("Use GVHMRModule(GVHMRConfig(...)) to create")
