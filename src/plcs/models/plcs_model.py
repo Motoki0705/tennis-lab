@@ -50,8 +50,8 @@ class PLCSModel(nn.Module):
     camera view and predicts the player's 3D position and rotation in
     the court coordinate system.
 
-    Tokens = [court_tokens(NUM_COURT_KP), player_tokens(NUM_HUMAN_KP)]
-    Predicts 3D position and rotation from pooled player tokens.
+    Tokens = [CLS, court_tokens(NUM_COURT_KP), player_tokens(NUM_HUMAN_KP)]
+    Predicts 3D position and rotation from the CLS token.
 
     Input:
         - human_kp: Human 2D keypoints (COCO 17), shape (B, 34) or (B, 17, 2)
@@ -119,6 +119,10 @@ class PLCSModel(nn.Module):
 
         # Type embedding: 0 = court, 1 = player
         self.type_embed = nn.Embedding(2, hidden_dim)
+
+        # CLS token (no RoPE applied)
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, hidden_dim))
+        nn.init.trunc_normal_(self.cls_token, std=0.02)
 
         # Transformer blocks
         self.blocks = nn.ModuleList(
@@ -238,10 +242,14 @@ class PLCSModel(nn.Module):
             torch.ones(NUM_HUMAN_KP, device=human_kp.device, dtype=torch.long)
         )[None, :, :]  # (1, 17, D)
 
-        x = torch.cat(
+        token_body = torch.cat(
             [court_tok + court_type, player_tok + player_type], dim=1
         )  # (B, 37, D)
-        S = x.shape[1]
+        S_body = token_body.shape[1]
+
+        cls = self.cls_token.expand(B, -1, -1)
+        x = torch.cat([cls, token_body], dim=1)  # (B, 38, D)
+        S_total = x.shape[1]
 
         # Build key_padding_mask if visibility provided
         key_padding_mask: Tensor | None = None
@@ -258,21 +266,28 @@ class PLCSModel(nn.Module):
                 player_mask = torch.ones(
                     B, NUM_HUMAN_KP, device=x.device, dtype=torch.bool
                 )
-            key_padding_mask = torch.cat([court_mask, player_mask], dim=1)  # (B, 37)
+            cls_mask = torch.ones(B, 1, device=x.device, dtype=torch.bool)
+            key_padding_mask = torch.cat(
+                [cls_mask, court_mask, player_mask], dim=1
+            )  # (B, 38)
 
-        if S > self.freqs_cis.shape[0]:
+        if S_body > self.freqs_cis.shape[0]:
             raise ValueError(
-                f"Sequence length S={S} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
+                f"Sequence length S={S_body} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
                 "Increase max_tokens."
             )
-        freqs_cis = self.freqs_cis[:S]
-        if freqs_cis.device != x.device:
-            freqs_cis = freqs_cis.to(x.device)
+        freqs_cis_body = self.freqs_cis[:S_body]
+        if freqs_cis_body.device != x.device:
+            freqs_cis_body = freqs_cis_body.to(x.device)
+        cls_freqs = torch.ones(
+            1, freqs_cis_body.shape[1], device=x.device, dtype=freqs_cis_body.dtype
+        )
+        freqs_cis = torch.cat([cls_freqs, freqs_cis_body], dim=0)
 
         attn_mask: Tensor | None = None
         if key_padding_mask is not None:
             # bool mask semantics follow SDPA: True=KEEP, False=MASK
-            attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
+            attn_mask = key_padding_mask[:, None, :].expand(B, S_total, S_total)
 
         residual = None
         for blk in self.blocks:
@@ -290,21 +305,12 @@ class PLCSModel(nn.Module):
         else:
             x, _ = self.final_norm(x, residual)
 
-        # Extract player tokens and pool
-        player_out = x[:, NUM_COURT_KP:, :]  # (B, 17, D)
-
-        # Pool player tokens (mean pooling with visibility mask)
-        if human_vis is not None:
-            vis_mask = human_vis.to(player_out.dtype).unsqueeze(-1)  # (B, 17, 1)
-            pooled = (player_out * vis_mask).sum(dim=1) / (
-                vis_mask.sum(dim=1) + 1e-8
-            )  # (B, D)
-        else:
-            pooled = player_out.mean(dim=1)  # (B, D)
+        # Extract CLS token
+        cls_out = x[:, 0, :]  # (B, D)
 
         # Apply output heads
-        position = self.position_head(pooled)  # (B, 3)
-        rotation = self.rotation_head(pooled)  # (B, 2)
+        position = self.position_head(cls_out)  # (B, 3)
+        rotation = self.rotation_head(cls_out)  # (B, 2)
 
         return {
             "position": position,
