@@ -38,11 +38,7 @@ class CourtKeypointLightningModule(pl.LightningModule):
         self.loss_config = loss_config
 
         # Build model
-        self.model = CourtKeypointModel(
-            backbone=model_config.get("backbone", {}),
-            head=model_config.get("head", {}),
-            input_size=model_config.get("input_size", [256, 256]),
-        )
+        self.model = CourtKeypointModel(model_config)
 
         # Build loss
         self.loss_fn = CourtKeypointLoss(
