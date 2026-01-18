@@ -229,8 +229,8 @@ class PLCSLightningModule(pl.LightningModule):
 
         # Estimate total steps
         estimated_steps = None
-        if self.trainer is not None:
-            estimated_steps = getattr(self.trainer, "estimated_stepping_batches", None)
+        if getattr(self, "_trainer", None) is not None:
+            estimated_steps = getattr(self._trainer, "estimated_stepping_batches", None)
         if estimated_steps is None:
             data_cfg = self.config.get("data", {})
             num_samples = data_cfg.get("num_scenes_per_epoch", 10000)
