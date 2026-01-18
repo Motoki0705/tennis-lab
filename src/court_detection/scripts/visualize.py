@@ -6,11 +6,6 @@ Example:
         visualization.checkpoint=outputs/court_detection/checkpoints/last.ckpt \
         visualization.input_path=data/test_images/
 
-    # Visualize ground truth
-    uv run python -m src.court_detection.scripts.visualize \
-        visualization.mode=gt \
-        visualization.input_path=data/court_detection/scenes/
-
 Config entry point: `src/court_detection/configs/visualize.yaml`
 """
 
@@ -25,57 +20,10 @@ import numpy as np
 from omegaconf import DictConfig, OmegaConf
 from PIL import Image
 
-from src.court_detection.generate_dataset.io.dataset_io import load_scene
 from src.court_detection.inference.predictor import CourtKeypointPredictor
-from src.court_detection.inference.visualization import (
-    draw_court_overlay,
-    visualize_keypoints,
-)
+from src.court_detection.inference.visualization import visualize_keypoints
 
 LOGGER = logging.getLogger(__name__)
-
-
-def visualize_ground_truth(
-    input_path: Path,
-    output_dir: Path,
-    num_samples: int = 10,
-    vis_config: dict | None = None,
-) -> None:
-    """Visualize ground truth keypoints from dataset."""
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Find scene files
-    scene_files = sorted(input_path.glob("*.npz"))[:num_samples]
-
-    for scene_file in scene_files:
-        scene = load_scene(scene_file)
-
-        # Create blank image or load if present
-        if "image" in scene:
-            image = scene["image"]
-        else:
-            image_size = scene["camera_params"].get("image_size", [1280, 720])
-            image = np.zeros((image_size[1], image_size[0], 3), dtype=np.uint8)
-            image[:] = (40, 40, 40)  # Dark gray background
-
-        # Scale keypoints to image size
-        h, w = image.shape[:2]
-        keypoints = scene["keypoints"].copy()
-        keypoints[:, 0] *= w
-        keypoints[:, 1] *= h
-
-        # Visualize
-        vis = visualize_keypoints(
-            image,
-            keypoints,
-            scene["visibility"],
-            config=vis_config,
-        )
-
-        # Save
-        output_path = output_dir / f"{scene_file.stem}_gt.png"
-        cv2.imwrite(str(output_path), vis)
-        LOGGER.info("Saved: %s", output_path)
 
 
 def visualize_predictions(
@@ -101,44 +49,6 @@ def visualize_predictions(
         for ext in ["*.jpg", "*.jpeg", "*.png"]:
             image_files.extend(input_path.glob(ext))
         image_files = sorted(image_files)[:num_samples]
-
-        # If no images, check for scene files
-        if not image_files:
-            scene_files = sorted(input_path.glob("*.npz"))[:num_samples]
-            for scene_file in scene_files:
-                scene = load_scene(scene_file)
-
-                # Create image
-                if "image" in scene:
-                    image = scene["image"]
-                else:
-                    image_size = scene["camera_params"].get("image_size", [1280, 720])
-                    image = np.zeros((image_size[1], image_size[0], 3), dtype=np.uint8)
-                    image[:] = (40, 40, 40)
-
-                # Run prediction
-                result = predictor.predict(image)
-
-                # Scale GT keypoints
-                h, w = image.shape[:2]
-                gt_keypoints = scene["keypoints"].copy()
-                gt_keypoints[:, 0] *= w
-                gt_keypoints[:, 1] *= h
-
-                # Visualize comparison
-                vis = draw_court_overlay(
-                    image,
-                    gt_keypoints,
-                    scene["visibility"],
-                    result["keypoints"],
-                    result["visibility"],
-                )
-
-                # Save
-                output_path = output_dir / f"{scene_file.stem}_pred.png"
-                cv2.imwrite(str(output_path), vis)
-                LOGGER.info("Saved: %s", output_path)
-            return
 
         # Process images
         for image_file in image_files:
@@ -188,7 +98,6 @@ def main(cfg: DictConfig) -> None:
     """Visualize court keypoint detection results."""
     LOGGER.info("Starting visualization")
 
-    mode = cfg.visualization.get("mode", "predict")
     input_path = cfg.visualization.get("input_path")
     output_dir = Path(cfg.visualization.get("output_dir", "outputs/court_detection/visualize"))
     num_samples = cfg.visualization.get("num_samples", 10)
@@ -201,23 +110,15 @@ def main(cfg: DictConfig) -> None:
 
     input_path = Path(input_path)
 
-    if mode == "gt":
-        visualize_ground_truth(
-            input_path=input_path,
-            output_dir=output_dir,
-            num_samples=num_samples,
-            vis_config=vis_config,
-        )
-    else:
-        if checkpoint_path is None:
-            raise ValueError("visualization.checkpoint is required for predict mode")
-        visualize_predictions(
-            checkpoint_path=Path(checkpoint_path),
-            input_path=input_path,
-            output_dir=output_dir,
-            num_samples=num_samples,
-            vis_config=vis_config,
-        )
+    if checkpoint_path is None:
+        raise ValueError("visualization.checkpoint is required")
+    visualize_predictions(
+        checkpoint_path=Path(checkpoint_path),
+        input_path=input_path,
+        output_dir=output_dir,
+        num_samples=num_samples,
+        vis_config=vis_config,
+    )
 
     LOGGER.info("Visualization complete")
 
