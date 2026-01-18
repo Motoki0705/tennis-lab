@@ -13,7 +13,10 @@ court_kp:
   frame_index: 0
 
 gvhmr:
-  checkpoint: inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
+  checkpoint: third_party/GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
+  yolo_checkpoint: third_party/GVHMR/inputs/checkpoints/yolo/yolov8x.pt
+  vitpose_checkpoint: third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
+  hmr2_checkpoint: third_party/GVHMR/inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt
   skip: false
 
 wasb:

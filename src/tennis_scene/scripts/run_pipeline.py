@@ -26,13 +26,6 @@ from omegaconf import DictConfig
 LOGGER = logging.getLogger(__name__)
 
 
-def _resolve_checkpoint(path: str | None) -> Path | None:
-    """Resolve checkpoint path to absolute path."""
-    if path is None:
-        return None
-    return Path(to_absolute_path(str(path)))
-
-
 @hydra.main(
     version_base=None,
     config_path="../configs",
@@ -40,18 +33,12 @@ def _resolve_checkpoint(path: str | None) -> Path | None:
 )
 def main(cfg: DictConfig) -> int:
     """Run the tennis scene reconstruction pipeline."""
-    from src.tennis_scene.pipeline import TennisScenePipeline
-
-    LOGGER.info("=" * 60)
-    LOGGER.info("Tennis Scene 3D Reconstruction Pipeline")
-    LOGGER.info("=" * 60)
+    from src.tennis_scene.pipeline import TennisSceneOrchestrator
 
     video_path = Path(to_absolute_path(str(cfg.video_path)))
     if not video_path.exists():
         LOGGER.error(f"Video not found: {video_path}")
         return 1
-
-    LOGGER.info(f"Video: {video_path}")
 
     output_dir = Path(to_absolute_path(str(cfg.output_dir)))
     output_name = cfg.get("output_name")
@@ -60,48 +47,23 @@ def main(cfg: DictConfig) -> int:
 
     output_path = output_dir / f"{output_name}.npz"
 
-    court_kp_ckpt = _resolve_checkpoint(cfg.court_kp.checkpoint)
-    wasb_ckpt = _resolve_checkpoint(cfg.wasb.checkpoint)
-    plcs_ckpt = _resolve_checkpoint(cfg.plcs.checkpoint)
-    blcs_ckpt = _resolve_checkpoint(cfg.blcs.checkpoint)
-    gvhmr_ckpt = _resolve_checkpoint(cfg.gvhmr.checkpoint)
-
-    wasb_completion_ckpt = None
-    if cfg.wasb.completion.enabled:
-        wasb_completion_ckpt = _resolve_checkpoint(cfg.wasb.completion.checkpoint)
-
-    device = str(cfg.device)
     max_frames = cfg.get("max_frames")
     court_kp_frame = int(cfg.court_kp.frame_index)
-    skip_ball = bool(cfg.wasb.get("skip", False))
-    skip_gvhmr = bool(cfg.gvhmr.get("skip", False))
 
     LOGGER.info("Configuration:")
-    LOGGER.info(f"  Device: {device}")
+    LOGGER.info(f"  Device: {cfg.device}")
     LOGGER.info(f"  Max frames: {max_frames}")
     LOGGER.info(f"  Court KP frame: {court_kp_frame}")
-    LOGGER.info(f"  Skip ball: {skip_ball}")
-    LOGGER.info(f"  Skip GVHMR: {skip_gvhmr}")
+    LOGGER.info(f"  Skip GVHMR: {cfg.gvhmr.get('skip', False)}")
+    LOGGER.info(f"  Skip ball: {cfg.wasb.get('skip', False)}")
 
-    pipeline = TennisScenePipeline.from_checkpoints(
-        court_kp_checkpoint=court_kp_ckpt,
-        wasb_checkpoint=wasb_ckpt,
-        plcs_checkpoint=plcs_ckpt,
-        blcs_checkpoint=blcs_ckpt,
-        device=device,
-        wasb_batch_size=int(cfg.wasb.batch_size),
-        wasb_completion_enabled=bool(cfg.wasb.completion.enabled),
-        wasb_completion_checkpoint=wasb_completion_ckpt,
-    )
+    orchestrator = TennisSceneOrchestrator.from_config(cfg)
 
     LOGGER.info("Running pipeline...")
-    result = pipeline.run(
+    result = orchestrator.run(
         video_path=video_path,
-        gvhmr_checkpoint=gvhmr_ckpt,
         max_frames=max_frames,
         court_kp_frame=court_kp_frame,
-        skip_ball=skip_ball,
-        skip_gvhmr=skip_gvhmr,
     )
 
     LOGGER.info("Saving results...")

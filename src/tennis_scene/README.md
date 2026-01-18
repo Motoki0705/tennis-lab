@@ -12,6 +12,21 @@
 - **PLCS**: プレーヤー3D位置 + yaw推定
 - **BLCS**: ボール3D軌道推定
 
+## アーキテクチャ
+
+オーケストレーション型のモジュラー設計を採用しています：
+
+```
+TennisSceneOrchestrator (オーケストレーター)
+├── CourtKPModule      # コートKP検出
+├── GVHMRModule        # 3D人物メッシュ推定
+├── WASBModule         # ボール検出
+├── PLCSModule         # プレーヤー3D位置推定
+└── BLCSModule         # ボール3D軌道推定
+```
+
+各モジュールは独立して設定・ロード可能で、`BasePipelineModule` を継承しています。
+
 ## 固定カメラ前提
 
 - コートKPは1フレーム（デフォルト: frame 0）から推定し、全フレーム共通
@@ -46,11 +61,20 @@ uv run python -m src.tennis_scene.scripts.run_pipeline \
     gvhmr.skip=true
 ```
 
+### カスタムモデルパス指定
+
+```bash
+uv run python -m src.tennis_scene.scripts.run_pipeline \
+    video_path=inputs/demo/match.mp4 \
+    gvhmr.yolo_checkpoint=/path/to/yolov8.pt \
+    gvhmr.vitpose_checkpoint=/path/to/vitpose.pth
+```
+
 ## 設定
 
 設定ファイル: `src/tennis_scene/configs/pipeline.yaml`
 
-主要な設定項目：
+### 主要な設定項目
 
 | キー | 説明 | デフォルト |
 |------|------|----------|
@@ -59,9 +83,22 @@ uv run python -m src.tennis_scene.scripts.run_pipeline \
 | `max_frames` | 最大フレーム数 | `null`（全フレーム） |
 | `court_kp.checkpoint` | Court KPモデル | `outputs/court_detection/checkpoints/last.ckpt` |
 | `court_kp.frame_index` | Court KP検出フレーム | `0` |
-| `gvhmr.checkpoint` | GVHMRモデル | `inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt` |
+
+### GVHMR設定
+
+| キー | 説明 | デフォルト |
+|------|------|----------|
+| `gvhmr.checkpoint` | GVHMRモデル | `third_party/GVHMR/inputs/checkpoints/gvhmr/...` |
+| `gvhmr.yolo_checkpoint` | YOLOトラッカー | `third_party/GVHMR/inputs/checkpoints/yolo/yolov8x.pt` |
+| `gvhmr.vitpose_checkpoint` | ViTPose | `third_party/GVHMR/inputs/checkpoints/vitpose/...` |
+| `gvhmr.hmr2_checkpoint` | HMR2特徴抽出 | `third_party/GVHMR/inputs/checkpoints/hmr2/...` |
 | `gvhmr.skip` | GVHMRスキップ | `false` |
-| `wasb.checkpoint` | WASBモデル | `third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar` |
+
+### WASB/PLCS/BLCS設定
+
+| キー | 説明 | デフォルト |
+|------|------|----------|
+| `wasb.checkpoint` | WASBモデル | `third_party/WASB-SBDT/pretrained/...` |
 | `wasb.skip` | ボール検出スキップ | `false` |
 | `plcs.checkpoint` | PLCSモデル | `outputs/plcs/checkpoints/last.ckpt` |
 | `blcs.checkpoint` | BLCSモデル | `outputs/blcs/checkpoints/last.ckpt` |
@@ -109,13 +146,21 @@ global_smpl_verts = rotate_y(local_smpl_verts, yaw) + position
 
 ```
 src/tennis_scene/
-├── __init__.py          # パッケージ定義
-├── io.py                # SceneResultデータ構造
-├── transforms.py        # 座標変換ユーティリティ
-├── pipeline.py          # 統合パイプライン
+├── __init__.py              # パッケージ定義
+├── io.py                    # SceneResultデータ構造
+├── transforms.py            # 座標変換ユーティリティ
+├── pipeline/                # モジュラーパイプライン
+│   ├── __init__.py          # エクスポート
+│   ├── base.py              # BasePipelineModule基底クラス
+│   ├── orchestrator.py      # TennisSceneOrchestrator
+│   ├── court_kp.py          # CourtKPModule
+│   ├── gvhmr.py             # GVHMRModule + GVHMRConfig
+│   ├── wasb.py              # WASBModule + WASBConfig
+│   ├── plcs.py              # PLCSModule
+│   └── blcs.py              # BLCSModule
 ├── configs/
-│   └── pipeline.yaml    # Hydra設定
+│   └── pipeline.yaml        # Hydra設定
 ├── scripts/
-│   └── run_pipeline.py  # エントリポイント
-└── README.md            # このファイル
+│   └── run_pipeline.py      # エントリポイント
+└── README.md                # このファイル
 ```
