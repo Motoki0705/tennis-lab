@@ -127,6 +127,20 @@ class PLCSDataModule(pl.LightningDataModule):
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader()")
 
+        if self.scene_batch_sampler:
+            batch_sampler = SceneBatchSampler(
+                self.val_dataset,
+                batch_size=self.batch_size,
+                drop_last=False,
+                shuffle=False,
+            )
+            return DataLoader(
+                self.val_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=True,
+            )
+
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
@@ -144,6 +158,20 @@ class PLCSDataModule(pl.LightningDataModule):
         """
         if self.test_dataset is None:
             raise RuntimeError("Call setup('test') before test_dataloader()")
+
+        if self.scene_batch_sampler:
+            batch_sampler = SceneBatchSampler(
+                self.test_dataset,
+                batch_size=self.batch_size,
+                drop_last=False,
+                shuffle=False,
+            )
+            return DataLoader(
+                self.test_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=True,
+            )
 
         return DataLoader(
             self.test_dataset,
@@ -515,3 +543,29 @@ class PLCSMultiViewSequenceDataModule(pl.LightningDataModule):
             pin_memory=self.pin_memory,
             collate_fn=collate_multiview_sequence,
         )
+
+
+if __name__ == "__main__":
+    # quick smoke test for SceneBatchSampler functionality
+    from omegaconf import OmegaConf
+    
+    # test config with scene_batch_sampler enabled
+    test_config = OmegaConf.create({
+        "data": {
+            "batch_size": 4,
+            "num_workers": 0,
+            "scene_dir": "data/plcs_scenes",
+            "val_split": 0.2,
+            "test_split": 0.2,
+            "camera_mode": "random",
+            "scene_batch_sampler": True
+        }
+    })
+    
+    # test PLCSDataModule initialization
+    datamodule = PLCSDataModule(test_config)
+    assert datamodule.scene_batch_sampler == True
+    assert datamodule.batch_size == 4
+    
+    print("✓ PLCSDataModule with SceneBatchSampler initialized successfully")
+    print("✓ SceneBatchSampler will be applied to train, val, and test dataloaders")
