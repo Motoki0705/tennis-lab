@@ -7,6 +7,8 @@
 - **入力**: テニスコート画像（RGB）
 - **出力**: 20個のコートキーポイントの2D座標 + 可視性フラグ
 
+学習データは `src.tools.annotate_court_keypoints` で生成した JSON アノテーションを前提とします。
+
 ### キーポイント仕様 (CourtKP20)
 
 `src/utils/geometry/court.court_keypoints_3d()` で定義される20点：
@@ -40,7 +42,6 @@
 src/court_detection/
 ├── configs/                          # Hydra 設定ファイル群
 │   ├── train.yaml                    # 学習メイン設定
-│   ├── generate_dataset.yaml         # データ生成設定
 │   ├── visualize.yaml                # 可視化設定
 │   ├── run/                          # 実行時設定
 │   │   └── default.yaml
@@ -57,7 +58,6 @@ src/court_detection/
 │       └── default.yaml
 │
 ├── scripts/                          # 実行スクリプト
-│   ├── generate_dataset.py           # シミュレーションによるデータ生成
 │   ├── train.py                      # モデル学習
 │   └── visualize.py                  # 推論結果の可視化
 │
@@ -80,23 +80,11 @@ src/court_detection/
 │   ├── predictor.py                  # 推論クラス
 │   └── visualization.py              # 可視化ヘルパー
 │
-└── generate_dataset/                 # データセット生成
-    ├── scene_generator.py            # シーン生成
-    └── io/
-        └── dataset_io.py             # 保存・読込
 ```
 
 ## 主要コンポーネントの関係
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ generate_dataset.py                                             │
-│   ├── generate_dataset/scene_generator.py                       │
-│   │   └── src/utils/geometry/court.py からコート形状を取得        │
-│   ├── ランダムカメラ視点からの投影 → 2D キーポイント生成           │
-│   └── → data/court_detection/scenes/*.npz                       │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │ train.py                                                        │
 │   ├── data/datamodule.py           (DataModule)                 │
@@ -111,12 +99,6 @@ src/court_detection/
 ```
 
 ## 実行コマンド
-
-### データ生成
-
-```bash
-uv run python -m src.court_detection.scripts.generate_dataset
-```
 
 ### 学習
 
