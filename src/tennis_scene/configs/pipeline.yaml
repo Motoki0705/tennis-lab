@@ -17,6 +17,8 @@ gvhmr:
   yolo_checkpoint: third_party/GVHMR/inputs/checkpoints/yolo/yolov8x.pt
   vitpose_checkpoint: third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
   hmr2_checkpoint: third_party/GVHMR/inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt
+  venv_path: third_party/GVHMR/.venv
+  output_root: outputs/tennis_scene/gvhmr
   skip: false
 
 wasb:
