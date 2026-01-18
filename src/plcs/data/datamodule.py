@@ -9,6 +9,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader, random_split
 
 from src.plcs.data.dataset import SceneDataset
+from src.plcs.data.scene_batch_sampler import SceneBatchSampler
 from src.plcs.data.multiview_dataset import (
     MultiViewSceneDataset,
     MultiViewSequenceDataset,
@@ -45,6 +46,7 @@ class PLCSDataModule(pl.LightningDataModule):
         self.val_split = data_cfg.get("val_split", 0.1)
         self.test_split = data_cfg.get("test_split", 0.1)
         self.camera_mode = data_cfg.get("camera_mode", "random")
+        self.scene_batch_sampler = bool(data_cfg.get("scene_batch_sampler", False))
 
         self.train_dataset: SceneDataset | None = None
         self.val_dataset: SceneDataset | None = None
@@ -91,6 +93,20 @@ class PLCSDataModule(pl.LightningDataModule):
         """
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader()")
+
+        if self.scene_batch_sampler:
+            batch_sampler = SceneBatchSampler(
+                self.train_dataset,
+                batch_size=self.batch_size,
+                drop_last=True,
+                shuffle=True,
+            )
+            return DataLoader(
+                self.train_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=True,
+            )
 
         return DataLoader(
             self.train_dataset,

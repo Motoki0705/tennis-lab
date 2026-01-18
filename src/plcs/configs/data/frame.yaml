@@ -4,6 +4,7 @@ num_workers: 4
 val_split: 0.1
 test_split: 0.1
 camera_mode: random
+scene_batch_sampler: false
 
 mode: frame
 

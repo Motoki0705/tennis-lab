@@ -236,6 +236,9 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 | 単一カメラ可視化 | `visualize.yaml` | `visualization/default.yaml` |
 | マルチビュー可視化 | `visualize_multiview.yaml` | `visualization/multiview.yaml` |
 
+`data/frame.yaml` には `scene_batch_sampler` オプションがあり、`true` にすると
+バッチを同一シーンで構成してシーンキャッシュのヒット率を高めます。
+
 ### ロス設定ファイル
 
 ロス関数のウェイトは `configs/loss/` ディレクトリで管理されています：
