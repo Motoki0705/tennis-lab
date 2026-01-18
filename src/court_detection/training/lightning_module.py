@@ -6,6 +6,7 @@ from typing import Any
 
 import pytorch_lightning as pl
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
@@ -71,8 +72,17 @@ class CourtKeypointLightningModule(pl.LightningModule):
         outputs = self.model(images)
 
         # Compute loss
+        pred_heatmaps = outputs["heatmaps"]
+        if pred_heatmaps.shape[-2:] != target_heatmaps.shape[-2:]:
+            pred_heatmaps = F.interpolate(
+                pred_heatmaps,
+                size=target_heatmaps.shape[-2:],
+                mode="bilinear",
+                align_corners=False,
+            )
+
         losses = self.loss_fn(
-            pred_heatmaps=outputs["heatmaps"],
+            pred_heatmaps=pred_heatmaps,
             target_heatmaps=target_heatmaps,
             pred_visibility=outputs["visibility"],
             target_visibility=target_visibility,
@@ -83,13 +93,42 @@ class CourtKeypointLightningModule(pl.LightningModule):
         self.log(f"{stage}/loss_heatmap", losses["heatmap"])
         self.log(f"{stage}/loss_visibility", losses["visibility"])
 
+        pred_keypoints = self._heatmaps_to_coords(pred_heatmaps)
+
         return {
             "loss": losses["total"],
-            "pred_keypoints": outputs["keypoints"],
+            "pred_keypoints": pred_keypoints,
             "pred_visibility": torch.sigmoid(outputs["visibility"]),
             "target_keypoints": target_keypoints,
             "target_visibility": target_visibility,
         }
+
+    @staticmethod
+    def _heatmaps_to_coords(heatmaps: Tensor) -> Tensor:
+        """Convert heatmaps to keypoint coordinates using soft-argmax.
+
+        Args:
+            heatmaps: Heatmaps of shape (B, K, H, W).
+
+        Returns:
+            Coordinates of shape (B, K, 2) in normalized [0, 1] range.
+        """
+        bsz, num_kp, height, width = heatmaps.shape
+        device = heatmaps.device
+
+        heatmaps_flat = heatmaps.view(bsz, num_kp, -1)
+        probs = F.softmax(heatmaps_flat, dim=-1)
+
+        y_coords = torch.linspace(0, 1, height, device=device)
+        x_coords = torch.linspace(0, 1, width, device=device)
+        yy, xx = torch.meshgrid(y_coords, x_coords, indexing="ij")
+        xx_flat = xx.reshape(-1)
+        yy_flat = yy.reshape(-1)
+
+        x = (probs * xx_flat.view(1, 1, -1)).sum(dim=-1)
+        y = (probs * yy_flat.view(1, 1, -1)).sum(dim=-1)
+
+        return torch.stack([x, y], dim=-1)
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
         """Training step."""

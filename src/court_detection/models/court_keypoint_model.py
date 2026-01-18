@@ -10,7 +10,6 @@ from typing import Any
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import Tensor
 
 from src.common.models import ViTConfig, ViTEncoder
@@ -30,12 +29,10 @@ class CourtKeypointModel(nn.Module):
         super().__init__()
 
         self.config = config
-        self.input_size = tuple(config.get("input_size", [256, 256]))
-        self.heatmap_size = tuple(config.get("heatmap_size", [64, 64]))
         self.num_keypoints = int(config.get("num_keypoints", NUM_KEYPOINTS))
 
         encoder_cfg = config.get("encoder", {})
-        max_resolution = int(encoder_cfg.get("max_resolution", max(self.input_size)))
+        max_resolution = int(encoder_cfg.get("max_resolution", 1024))
         encoder_config = ViTConfig(
             patch_size=encoder_cfg.get("patch_size", 16),
             in_channels=encoder_cfg.get("in_channels", 3),
@@ -49,19 +46,28 @@ class CourtKeypointModel(nn.Module):
             use_cls_token=encoder_cfg.get("use_cls_token", True),
             rope_dim=encoder_cfg.get("rope_dim", None),
             rope_theta=encoder_cfg.get("rope_theta", 1000.0),
-            use_moe=encoder_cfg.get("use_moe", False),
+            use_moe=encoder_cfg.get("use_moe", True),
             moe_layer_freq=encoder_cfg.get("moe_layer_freq", 2),
             pooling="all",
         )
 
-        if encoder_cfg.get("use_moe", False) and "moe_config" in encoder_cfg:
-            moe_cfg = encoder_cfg["moe_config"]
+        encoder_ffn_dim = encoder_config.ffn_dim
+        if encoder_ffn_dim is None:
+            encoder_ffn_dim = int((8 * encoder_config.hidden_dim) / 3)
+            encoder_ffn_dim = (encoder_ffn_dim + 63) // 64 * 64
+
+        if encoder_cfg.get("use_moe", True):
+            moe_cfg = encoder_cfg.get("moe_config", {})
             encoder_config.moe_config = MoEConfig(
                 dim=encoder_config.hidden_dim,
-                moe_inter_dim=moe_cfg.get("moe_inter_dim", encoder_config.ffn_dim),
+                moe_inter_dim=moe_cfg.get("moe_inter_dim", encoder_ffn_dim),
                 n_routed_experts=moe_cfg.get("n_routed_experts", 8),
-                n_shared_experts=moe_cfg.get("n_shared_experts", 1),
+                n_shared_experts=moe_cfg.get("n_shared_experts", 2),
                 n_activated_experts=moe_cfg.get("n_activated_experts", 2),
+                n_expert_groups=moe_cfg.get("n_expert_groups", 1),
+                n_limited_groups=moe_cfg.get("n_limited_groups", 1),
+                score_func=moe_cfg.get("score_func", "softmax"),
+                route_scale=moe_cfg.get("route_scale", 1.0),
             )
 
         self.encoder = ViTEncoder(encoder_config)
@@ -213,14 +219,6 @@ class CourtKeypointModel(nn.Module):
         patch_tokens = self.decoder_norm(patch_tokens)
         pred = self.decoder_pred(patch_tokens)
         heatmaps = self._unpatchify(pred, h, w)
-
-        if (heatmaps.shape[2], heatmaps.shape[3]) != self.heatmap_size:
-            heatmaps = F.interpolate(
-                heatmaps,
-                size=self.heatmap_size,
-                mode="bilinear",
-                align_corners=False,
-            )
         return heatmaps
 
     def forward(self, x: Tensor) -> dict[str, Tensor]:
@@ -233,82 +231,20 @@ class CourtKeypointModel(nn.Module):
             Dictionary with:
                 - 'heatmaps': Predicted heatmaps, shape (B, K, Hm, Wm)
                 - 'visibility': Visibility logits, shape (B, K)
-                - 'keypoints': Predicted keypoint coordinates, shape (B, K, 2)
         """
         tokens, h, w = self._forward_encoder(x)
         heatmaps = self._forward_decoder(tokens, h, w)
         visibility = self.visibility_head(self._pool_visibility_features(tokens))
-        keypoints = self._heatmaps_to_coords(heatmaps)
 
         return {
             "heatmaps": heatmaps,
             "visibility": visibility,
-            "keypoints": keypoints,
         }
-
-    def _heatmaps_to_coords(self, heatmaps: Tensor) -> Tensor:
-        """Convert heatmaps to keypoint coordinates using soft-argmax.
-
-        Args:
-            heatmaps: Heatmaps of shape (B, K, H, W).
-
-        Returns:
-            Coordinates of shape (B, K, 2) in normalized [0, 1] range.
-        """
-        B, K, H, W = heatmaps.shape
-        device = heatmaps.device
-
-        # Flatten spatial dimensions
-        heatmaps_flat = heatmaps.view(B, K, -1)
-
-        # Apply softmax to get probability distribution
-        probs = F.softmax(heatmaps_flat, dim=-1)
-
-        # Create coordinate grids
-        y_coords = torch.linspace(0, 1, H, device=device)
-        x_coords = torch.linspace(0, 1, W, device=device)
-        yy, xx = torch.meshgrid(y_coords, x_coords, indexing="ij")
-
-        # Flatten coordinate grids
-        xx_flat = xx.reshape(-1)
-        yy_flat = yy.reshape(-1)
-
-        # Compute expected coordinates (soft-argmax)
-        x = (probs * xx_flat.view(1, 1, -1)).sum(dim=-1)
-        y = (probs * yy_flat.view(1, 1, -1)).sum(dim=-1)
-
-        # Stack to (B, K, 2)
-        coords = torch.stack([x, y], dim=-1)
-
-        return coords
-
-    def predict(self, x: Tensor) -> tuple[Tensor, Tensor]:
-        """Predict keypoints and visibility.
-
-        Args:
-            x: Input images, shape (B, 3, H, W).
-
-        Returns:
-            Tuple of:
-                - keypoints: Predicted coordinates in pixel space, shape (B, K, 2)
-                - visibility: Visibility probabilities, shape (B, K)
-        """
-        output = self.forward(x)
-
-        keypoints = output["keypoints"].clone()
-        keypoints[..., 0] *= self.input_size[1]
-        keypoints[..., 1] *= self.input_size[0]
-
-        visibility = torch.sigmoid(output["visibility"])
-
-        return keypoints, visibility
 
 
 if __name__ == "__main__":
     torch.manual_seed(0)
     demo_cfg = {
-        "input_size": [64, 64],
-        "heatmap_size": [32, 32],
         "num_keypoints": 20,
         "encoder": {
             "patch_size": 8,
@@ -336,5 +272,5 @@ if __name__ == "__main__":
     demo_model = CourtKeypointModel(demo_cfg)
     demo_input = torch.zeros(1, 3, 64, 64)
     demo_output = demo_model(demo_input)
-    assert demo_output["heatmaps"].shape == (1, 20, 32, 32)
-    assert demo_output["keypoints"].shape == (1, 20, 2)
+    assert demo_output["heatmaps"].shape == (1, 20, 64, 64)
+    assert demo_output["visibility"].shape == (1, 20)
