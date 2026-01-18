@@ -11,6 +11,8 @@ device: cuda
 court_kp:
   checkpoint: outputs/court_detection/checkpoints/last.ckpt
   frame_index: 0
+  mode: model  # model/manual/manual_ui
+  manual_keypoints_path: null
 
 gvhmr:
   checkpoint: third_party/GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
