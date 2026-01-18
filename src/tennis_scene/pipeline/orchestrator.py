@@ -92,6 +92,8 @@ class TennisSceneOrchestrator:
 
         court_kp_module = CourtKPModule(
             checkpoint_path=to_absolute_path(cfg.court_kp.checkpoint),
+            mode=str(cfg.court_kp.get("mode", "model")),
+            manual_keypoints_path=cfg.court_kp.get("manual_keypoints_path"),
             device=device,
         )
 
