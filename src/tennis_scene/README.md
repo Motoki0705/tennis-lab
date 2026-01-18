@@ -53,6 +53,28 @@ uv run python -m src.tennis_scene.scripts.run_pipeline \
     output_dir=outputs/tennis_scene
 ```
 
+### Court KPを手動指定
+
+モデルが未用意の場合は、JSONで用意したキーポイントを利用できます。
+
+```bash
+uv run python -m src.tennis_scene.scripts.run_pipeline \
+    video_path=inputs/demo/match.mp4 \
+    court_kp.mode=manual \
+    court_kp.manual_keypoints_path=data/court_keypoints/match_keypoints.json
+```
+
+### Court KPをUIで入力
+
+手動入力UIを使う場合は `manual_ui` を指定します。必要なら結果JSONを保存できます。
+
+```bash
+uv run python -m src.tennis_scene.scripts.run_pipeline \
+    video_path=inputs/demo/match.mp4 \
+    court_kp.mode=manual_ui \
+    court_kp.manual_keypoints_path=outputs/tennis_scene/court_keypoints.json
+```
+
 ### GVHMRスキップ（デバッグ用）
 
 ```bash
@@ -83,6 +105,8 @@ uv run python -m src.tennis_scene.scripts.run_pipeline \
 | `max_frames` | 最大フレーム数 | `null`（全フレーム） |
 | `court_kp.checkpoint` | Court KPモデル | `outputs/court_detection/checkpoints/last.ckpt` |
 | `court_kp.frame_index` | Court KP検出フレーム | `0` |
+| `court_kp.mode` | Court KPの入力モード（`model`/`manual`/`manual_ui`） | `model` |
+| `court_kp.manual_keypoints_path` | 手動キー ポイントJSON（manualで必須 / manual_uiで保存先） | `null` |
 
 ### GVHMR設定
 
