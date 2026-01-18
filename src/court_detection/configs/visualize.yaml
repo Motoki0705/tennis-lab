@@ -8,7 +8,6 @@ visualization:
   checkpoint: null
   input_path: null
   output_dir: outputs/court_detection/visualize
-  mode: predict  # predict or gt
   num_samples: 10
 
 hydra:
