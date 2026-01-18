@@ -228,15 +228,21 @@ class PLCSLightningModule(pl.LightningModule):
         )
 
         # Estimate total steps
-        data_cfg = self.config.get("data", {})
-        num_samples = data_cfg.get("num_scenes_per_epoch", 10000)
-        batch_size = data_cfg.get("batch_size", 64)
-        steps_per_epoch = num_samples // batch_size
-        total_steps = steps_per_epoch * self.max_epochs
+        estimated_steps = None
+        if getattr(self, "_trainer", None) is not None:
+            estimated_steps = getattr(self._trainer, "estimated_stepping_batches", None)
+        if estimated_steps is None:
+            data_cfg = self.config.get("data", {})
+            num_samples = data_cfg.get("num_scenes_per_epoch", 10000)
+            batch_size = data_cfg.get("batch_size", 64)
+            steps_per_epoch = max(num_samples // batch_size, 1)
+            total_steps = steps_per_epoch * self.max_epochs
+        else:
+            total_steps = int(estimated_steps)
 
         cosine_scheduler = CosineAnnealingLR(
             optimizer,
-            T_max=total_steps - self.warmup_steps,
+            T_max=max(total_steps - self.warmup_steps, 1),
             eta_min=self.min_lr,
         )
 
@@ -253,3 +259,28 @@ class PLCSLightningModule(pl.LightningModule):
                 "interval": "step",
             },
         }
+
+
+if __name__ == "__main__":
+    import torch
+
+    torch.manual_seed(0)
+
+    config = {
+        "training": {
+            "learning_rate": 1.0e-4,
+            "weight_decay": 1.0e-5,
+            "warmup_steps": 5,
+            "max_epochs": 1,
+            "min_lr": 1.0e-6,
+        },
+        "data": {
+            "num_scenes_per_epoch": 64,
+            "batch_size": 16,
+        },
+    }
+
+    module = PLCSLightningModule(config)
+    optim_config = module.configure_optimizers()
+    scheduler = optim_config["lr_scheduler"]["scheduler"]
+    assert scheduler is not None
