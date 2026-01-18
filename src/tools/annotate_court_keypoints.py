@@ -23,6 +23,14 @@ Example commands:
         input_path=data/raw/court_images/ \
         output.output_dir=data/court_keypoints
 
+    # Sample frames from videos, then annotate sampled frames
+    uv run python -m src.tools.annotate_court_keypoints \
+        mode=sample \
+        sampling.video_dir=data/raw/videos \
+        sampling.output_dir=data/raw/sampled_frames \
+        sampling.frames_per_video=20 \
+        output.output_dir=data/court_keypoints
+
 Config entry point: `src/tools/configs/annotate_court_keypoints.yaml`
 """
 
@@ -115,13 +123,26 @@ class OutputConfig:
 
 
 @dataclass
+class SamplingConfig:
+    """Configuration for sampling frames from videos."""
+
+    video_dir: str | None = None
+    output_dir: str = "data/court_keypoints/frames"
+    frames_per_video: int = 20
+    seed: int = 42
+    extensions: tuple[str, ...] = (".mp4", ".mov", ".avi", ".mkv")
+    overwrite: bool = False
+
+
+@dataclass
 class ToolConfig:
     """Top-level configuration for the annotation tool."""
 
-    mode: Literal["image", "video"] = "image"
+    mode: Literal["image", "sample"] = "image"
     input_path: str | None = None
     output: OutputConfig = field(default_factory=OutputConfig)
     ui: UIConfig = field(default_factory=UIConfig)
+    sampling: SamplingConfig = field(default_factory=SamplingConfig)
 
 
 @dataclass
@@ -184,6 +205,83 @@ def save_annotations(
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w") as f:
         json.dump(data, f, indent=2)
+
+
+def _resolve_annotation_path(image_path: Path, output_config: OutputConfig) -> Path:
+    output_dir = Path(output_config.output_dir)
+    annotation_name = output_config.annotation_format.format(stem=image_path.stem)
+    return output_dir / annotation_name
+
+
+def _is_annotation_complete(annotations: list[KeypointAnnotation]) -> bool:
+    return all(ann.visibility > 0 for ann in annotations)
+
+
+def sample_frames_from_videos(
+    video_dir: Path,
+    output_dir: Path,
+    frames_per_video: int,
+    seed: int,
+    extensions: tuple[str, ...],
+    overwrite: bool,
+) -> list[Path]:
+    """Sample frames from each video in a directory.
+
+    Args:
+        video_dir: Directory containing videos.
+        output_dir: Directory to save sampled frames.
+        frames_per_video: Number of frames to sample per video.
+        seed: Random seed for sampling.
+        extensions: Video file extensions to include.
+        overwrite: Whether to overwrite existing frames.
+
+    Returns:
+        List of saved frame paths.
+    """
+    video_files = sorted(
+        [path for path in video_dir.iterdir() if path.suffix.lower() in extensions]
+    )
+    if not video_files:
+        raise FileNotFoundError(f"No video files found in {video_dir}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    rng = np.random.default_rng(seed)
+    saved_frames: list[Path] = []
+
+    for video_path in video_files:
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            raise ValueError(f"Cannot open video: {video_path}")
+
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if total_frames <= 0:
+            cap.release()
+            raise ValueError(f"Invalid frame count for video: {video_path}")
+
+        num_samples = min(frames_per_video, total_frames)
+        indices = rng.choice(total_frames, size=num_samples, replace=False)
+        indices.sort()
+
+        for frame_idx in indices:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(frame_idx))
+            ok, frame = cap.read()
+            if not ok:
+                LOGGER.warning("Failed to read frame %d from %s", frame_idx, video_path.name)
+                continue
+
+            frame_name = f"{video_path.stem}_frame_{frame_idx:06d}.jpg"
+            frame_path = output_dir / frame_name
+            if frame_path.exists() and not overwrite:
+                saved_frames.append(frame_path)
+                continue
+
+            cv2.imwrite(str(frame_path), frame)
+            saved_frames.append(frame_path)
+
+        cap.release()
+
+    LOGGER.info("Sampled %d frames from %d videos", len(saved_frames), len(video_files))
+    return saved_frames
 
 
 def _draw_overlay(
@@ -295,10 +393,7 @@ def annotate_image(
 
     h, w = frame.shape[:2]
 
-    # Resolve output path
-    output_dir = Path(output_config.output_dir)
-    annotation_name = output_config.annotation_format.format(stem=image_path.stem)
-    annotation_path = output_dir / annotation_name
+    annotation_path = _resolve_annotation_path(image_path, output_config)
 
     if annotation_path.exists() and not output_config.overwrite:
         annotations = load_annotations(annotation_path)
@@ -379,6 +474,13 @@ def annotate_directory(
     LOGGER.info("Found %d images to annotate", len(image_files))
 
     for i, image_path in enumerate(image_files):
+        annotation_path = _resolve_annotation_path(image_path, output_config)
+        if annotation_path.exists() and not output_config.overwrite:
+            existing = load_annotations(annotation_path)
+            if _is_annotation_complete(existing):
+                LOGGER.info("Skipping completed annotation: %s", image_path.name)
+                continue
+
         LOGGER.info("Annotating image %d/%d: %s", i + 1, len(image_files), image_path.name)
         annotate_image(image_path, output_config, ui_config)
 
@@ -411,7 +513,34 @@ def main(cfg: DictConfig) -> None:
             show_court_lines=bool(cfg.ui.get("show_court_lines", True)),
             show_keypoint_ids=bool(cfg.ui.get("show_keypoint_ids", True)),
         ),
+        sampling=SamplingConfig(
+            video_dir=cfg.sampling.get("video_dir", None),
+            output_dir=cfg.sampling.get("output_dir", "data/court_keypoints/frames"),
+            frames_per_video=int(cfg.sampling.get("frames_per_video", 20)),
+            seed=int(cfg.sampling.get("seed", 42)),
+            extensions=tuple(cfg.sampling.get("extensions", [".mp4", ".mov", ".avi", ".mkv"])),
+            overwrite=bool(cfg.sampling.get("overwrite", False)),
+        ),
     )
+
+    if config.mode == "sample":
+        if config.sampling.video_dir is None:
+            raise ValueError("sampling.video_dir is required for mode=sample")
+        video_dir = Path(config.sampling.video_dir)
+        if not video_dir.exists():
+            raise FileNotFoundError(f"Video directory not found: {video_dir}")
+
+        sampled_dir = Path(config.sampling.output_dir)
+        sample_frames_from_videos(
+            video_dir=video_dir,
+            output_dir=sampled_dir,
+            frames_per_video=config.sampling.frames_per_video,
+            seed=config.sampling.seed,
+            extensions=config.sampling.extensions,
+            overwrite=config.sampling.overwrite,
+        )
+        annotate_directory(sampled_dir, config.output, config.ui)
+        return
 
     if config.input_path is None:
         raise ValueError("input_path is required")
