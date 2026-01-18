@@ -1,7 +1,4 @@
 # ViT encoder + decoder heatmap model config
-
-input_size: [256, 256]
-heatmap_size: [64, 64]
 num_keypoints: 20
 
 encoder:
