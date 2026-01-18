@@ -1,0 +1,43 @@
+defaults:
+  - _self_
+
+video_path: ???
+
+output_dir: outputs/tennis_scene
+output_name: null
+
+device: cuda
+
+court_kp:
+  checkpoint: outputs/court_detection/checkpoints/last.ckpt
+  frame_index: 0
+
+gvhmr:
+  checkpoint: third_party/GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
+  yolo_checkpoint: third_party/GVHMR/inputs/checkpoints/yolo/yolov8x.pt
+  vitpose_checkpoint: third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
+  hmr2_checkpoint: third_party/GVHMR/inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt
+  skip: false
+
+wasb:
+  checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
+  batch_size: 64
+  skip: false
+  completion:
+    enabled: true
+    checkpoint: outputs/wasb/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt
+
+plcs:
+  checkpoint: outputs/plcs/checkpoints/last.ckpt
+
+blcs:
+  checkpoint: outputs/blcs/checkpoints/last.ckpt
+
+max_frames: null
+
+hydra:
+  run:
+    dir: ${output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
