@@ -1,5 +1,3 @@
-_target_: src.court_detection.data.datamodule.CourtKeypointDataModule
-
 data_dir: data/court_detection/scenes
 batch_size: 32
 num_workers: 4
@@ -9,8 +7,8 @@ train_split: 0.8
 val_split: 0.1
 test_split: 0.1
 
-input_size: [256, 256]
-heatmap_size: [64, 64]
+input_size: [320, 640]
+heatmap_size: [320, 640]
 
 augmentation:
   enabled: true
