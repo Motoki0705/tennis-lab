@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 import torch
 from PIL import Image
+import torch.nn.functional as F
 from torch import Tensor
 
 from src.court_detection.models.court_keypoint_model import CourtKeypointModel
@@ -150,8 +151,7 @@ class CourtKeypointPredictor:
         # Run inference
         outputs = self.model(image_tensor)
 
-        # Extract keypoints (scale to original image size)
-        keypoints = outputs["keypoints"][0].cpu().numpy()  # (K, 2) normalized
+        keypoints = self._heatmaps_to_coords(outputs["heatmaps"])[0].cpu().numpy()
         keypoints[:, 0] *= orig_w
         keypoints[:, 1] *= orig_h
 
@@ -203,7 +203,7 @@ class CourtKeypointPredictor:
         for i in range(len(batch_tensor)):
             orig_h, orig_w = orig_sizes[i]
 
-            keypoints = outputs["keypoints"][i].cpu().numpy()
+            keypoints = self._heatmaps_to_coords(outputs["heatmaps"][i : i + 1])[0].cpu().numpy()
             keypoints[:, 0] *= orig_w
             keypoints[:, 1] *= orig_h
 
@@ -215,3 +215,30 @@ class CourtKeypointPredictor:
             })
 
         return results
+
+    @staticmethod
+    def _heatmaps_to_coords(heatmaps: Tensor) -> Tensor:
+        """Convert heatmaps to keypoint coordinates using soft-argmax.
+
+        Args:
+            heatmaps: Heatmaps of shape (B, K, H, W).
+
+        Returns:
+            Coordinates of shape (B, K, 2) in normalized [0, 1] range.
+        """
+        bsz, num_kp, height, width = heatmaps.shape
+        device = heatmaps.device
+
+        heatmaps_flat = heatmaps.view(bsz, num_kp, -1)
+        probs = F.softmax(heatmaps_flat, dim=-1)
+
+        y_coords = torch.linspace(0, 1, height, device=device)
+        x_coords = torch.linspace(0, 1, width, device=device)
+        yy, xx = torch.meshgrid(y_coords, x_coords, indexing="ij")
+        xx_flat = xx.reshape(-1)
+        yy_flat = yy.reshape(-1)
+
+        x = (probs * xx_flat.view(1, 1, -1)).sum(dim=-1)
+        y = (probs * yy_flat.view(1, 1, -1)).sum(dim=-1)
+
+        return torch.stack([x, y], dim=-1)
