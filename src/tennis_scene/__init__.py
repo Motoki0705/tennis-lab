@@ -13,8 +13,12 @@ Fixed camera assumption:
 - No camera rotation estimation (static_cam=True for GVHMR)
 - GVHMR provides local SMPL only
 - PLCS position and yaw are applied to SMPL mesh
+
+The pipeline uses an orchestration pattern with modular components
+in `src.tennis_scene.pipeline`.
 """
 
 from src.tennis_scene.io import SceneResult
+from src.tennis_scene.pipeline import TennisSceneOrchestrator
 
-__all__ = ["SceneResult"]
+__all__ = ["SceneResult", "TennisSceneOrchestrator"]
