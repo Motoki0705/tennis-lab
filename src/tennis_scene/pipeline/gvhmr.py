@@ -102,15 +102,14 @@ class GVHMRModule(BasePipelineModule):
         """Load YOLO tracker with custom checkpoint path."""
         LOGGER.info(f"Loading YOLO tracker from {self.config.yolo_checkpoint}")
 
-        from ultralytics import YOLO
-
         yolo_path = self._resolve_path(self.config.yolo_checkpoint)
-        self._yolo = YOLO(str(yolo_path))
 
         from hmr4d.utils.preproc.tracker import Tracker
 
-        self._tracker = Tracker.__new__(Tracker)
-        self._tracker.yolo = self._yolo
+        self._tracker = Tracker(
+            yolo_checkpoint=str(yolo_path),
+            device=self.config.device,
+        )
 
     def _load_vitpose(self) -> None:
         """Load ViTPose with custom checkpoint path."""
@@ -119,13 +118,13 @@ class GVHMRModule(BasePipelineModule):
         vitpose_path = self._resolve_path(self.config.vitpose_checkpoint)
 
         from hmr4d.utils.preproc.vitpose import VitPoseExtractor
-        from hmr4d.utils.preproc.vitpose_pytorch import build_model
 
-        self._vitpose = VitPoseExtractor.__new__(VitPoseExtractor)
-        self._vitpose.pose = build_model("ViTPose_huge_coco_256x192", str(vitpose_path))
-        self._vitpose.pose.cuda().eval()
-        self._vitpose.flip_test = True
-        self._vitpose.tqdm_leave = True
+        self._vitpose = VitPoseExtractor(
+            checkpoint_path=str(vitpose_path),
+            device=self.config.device,
+            flip_test=True,
+            tqdm_leave=True,
+        )
 
     def _load_extractor(self) -> None:
         """Load HMR2 feature extractor with custom checkpoint path."""
@@ -133,12 +132,13 @@ class GVHMRModule(BasePipelineModule):
 
         hmr2_path = self._resolve_path(self.config.hmr2_checkpoint)
 
-        from hmr4d.network.hmr2 import load_hmr2
         from hmr4d.utils.preproc.vitfeat_extractor import Extractor
 
-        self._extractor = Extractor.__new__(Extractor)
-        self._extractor.extractor = load_hmr2(str(hmr2_path)).cuda().eval()
-        self._extractor.tqdm_leave = True
+        self._extractor = Extractor(
+            checkpoint_path=str(hmr2_path),
+            device=self.config.device,
+            tqdm_leave=True,
+        )
 
     def _load_gvhmr_model(self) -> None:
         """Load GVHMR model."""
