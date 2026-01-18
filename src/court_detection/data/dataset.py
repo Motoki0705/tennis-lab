@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import torch
 from PIL import Image
 from torch import Tensor
@@ -19,7 +18,7 @@ class CourtKeypointDataset(Dataset):
     """Dataset for court keypoint detection.
 
     Loads images and their corresponding keypoint annotations.
-    Supports both synthetic data (npz format) and manual annotations (json format).
+    Supports manual annotations (json format) created by the annotation tool.
 
     Args:
         data_dir: Path to data directory.
@@ -54,22 +53,6 @@ class CourtKeypointDataset(Dataset):
         """Load sample list from data directory."""
         samples = []
 
-        # Check for synthetic data (npz files)
-        npz_files = sorted(self.data_dir.glob("*.npz"))
-        if npz_files:
-            # Split files by index
-            n_files = len(npz_files)
-            if self.split == "train":
-                files = npz_files[: int(n_files * 0.8)]
-            elif self.split == "val":
-                files = npz_files[int(n_files * 0.8) : int(n_files * 0.9)]
-            else:
-                files = npz_files[int(n_files * 0.9) :]
-
-            for npz_file in files:
-                samples.append({"type": "npz", "path": npz_file})
-            return samples
-
         # Check for manual annotations (json files)
         json_files = sorted(self.data_dir.glob("*_keypoints.json"))
         if json_files:
@@ -82,7 +65,7 @@ class CourtKeypointDataset(Dataset):
                 files = json_files[int(n_files * 0.9) :]
 
             for json_file in files:
-                samples.append({"type": "json", "path": json_file})
+                samples.append({"path": json_file})
             return samples
 
         return samples
@@ -92,46 +75,7 @@ class CourtKeypointDataset(Dataset):
 
     def __getitem__(self, idx: int) -> dict[str, Tensor]:
         sample = self.samples[idx]
-
-        if sample["type"] == "npz":
-            return self._load_npz_sample(sample["path"])
-        else:
-            return self._load_json_sample(sample["path"])
-
-    def _load_npz_sample(self, path: Path) -> dict[str, Tensor]:
-        """Load a synthetic sample from npz file."""
-        data = np.load(path)
-
-        # Load image
-        if "image" in data:
-            image = data["image"]
-        else:
-            # Generate simple synthetic image if not present
-            image = np.zeros((*self.input_size, 3), dtype=np.uint8)
-
-        # Load keypoints (normalized 0-1 coordinates)
-        keypoints = data["keypoints"]  # (K, 2)
-        visibility = data.get("visibility", np.ones(NUM_KEYPOINTS))  # (K,)
-
-        # Convert image to tensor
-        image = Image.fromarray(image)
-        image = image.resize((self.input_size[1], self.input_size[0]))
-        image = np.array(image, dtype=np.float32) / 255.0
-        image = torch.from_numpy(image).permute(2, 0, 1)  # (3, H, W)
-
-        # Convert keypoints to tensor
-        keypoints = torch.from_numpy(keypoints.astype(np.float32))
-        visibility = torch.from_numpy(visibility.astype(np.float32))
-
-        # Generate heatmaps
-        heatmaps = self._generate_heatmaps(keypoints, visibility)
-
-        return {
-            "image": image,
-            "keypoints": keypoints,
-            "visibility": visibility,
-            "heatmaps": heatmaps,
-        }
+        return self._load_json_sample(sample["path"])
 
     def _load_json_sample(self, path: Path) -> dict[str, Tensor]:
         """Load a manually annotated sample from json file."""
