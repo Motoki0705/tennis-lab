@@ -1,0 +1,34 @@
+# ViT encoder + decoder heatmap model config
+
+input_size: [256, 256]
+heatmap_size: [64, 64]
+num_keypoints: 20
+
+encoder:
+  patch_size: 16
+  in_channels: 3
+  max_resolution: 256
+  hidden_dim: 768
+  num_layers: 12
+  num_heads: 12
+  ffn_dim: null
+  dropout: 0.1
+  num_register_tokens: 4
+  use_cls_token: true
+  rope_dim: null
+  rope_theta: 1000.0
+  use_moe: false
+  moe_layer_freq: 2
+
+decoder:
+  embed_dim: 512
+  depth: 4
+  num_heads: 8
+  ffn_dim: null
+  dropout: 0.0
+  rope_dim: null
+  rope_theta: 1000.0
+
+visibility_head:
+  hidden_dim: 256
+  dropout: 0.2

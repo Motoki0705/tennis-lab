@@ -1,6 +1,6 @@
 defaults:
   - run: default
-  - model: resnet_heatmap
+  - model: vit_heatmap
   - data: default
   - training: default
   - loss: default

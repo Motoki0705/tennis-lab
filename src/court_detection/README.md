@@ -46,8 +46,7 @@ src/court_detection/
 │   ├── run/                          # 実行時設定
 │   │   └── default.yaml
 │   ├── model/                        # モデル設定
-│   │   ├── resnet_heatmap.yaml       # ResNet + Heatmap
-│   │   └── hrnet_heatmap.yaml        # HRNet + Heatmap
+│   │   └── vit_heatmap.yaml          # ViT encoder/decoder + Heatmap
 │   ├── data/                         # DataModule 設定
 │   │   └── default.yaml
 │   ├── training/                     # 学習ハイパーパラメータ
@@ -62,10 +61,10 @@ src/court_detection/
 │   └── visualize.py                  # 推論結果の可視化
 │
 ├── models/                           # モデル実装
-│   ├── court_keypoint_model.py       # メインモデル
+│   ├── court_keypoint_model.py       # ViT encoder/decoder モデル
 │   └── components/
-│       ├── backbones.py              # バックボーン（ResNet, HRNet等）
-│       └── heads.py                  # 出力ヘッド（Heatmap, Regression）
+│       ├── backbones.py              # 旧バックボーン実装
+│       └── heads.py                  # 旧ヘッド実装
 │
 ├── data/                             # データセット・DataModule
 │   ├── dataset.py                    # Dataset

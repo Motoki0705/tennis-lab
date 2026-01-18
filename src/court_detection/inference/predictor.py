@@ -84,11 +84,7 @@ class CourtKeypointPredictor:
         Returns:
             CourtKeypointPredictor instance.
         """
-        model = CourtKeypointModel(
-            backbone=model_config.get("backbone", {}),
-            head=model_config.get("head", {}),
-            input_size=model_config.get("input_size", [256, 256]),
-        )
+        model = CourtKeypointModel(model_config)
 
         if weights_path is not None:
             state_dict = torch.load(weights_path, map_location=device)
