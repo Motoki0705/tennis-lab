@@ -1,4 +1,4 @@
-mode: image  # image or video
+mode: image  # image or sample
 input_path: data/tennis/tennis-court-dimensions-1024x576.webp  # path to image file or directory of images
 
 output:
@@ -18,3 +18,11 @@ ui:
   display_scale: 1.0
   show_court_lines: true
   show_keypoint_ids: true
+
+sampling:
+  video_dir: null
+  output_dir: data/court_keypoints/frames
+  frames_per_video: 20
+  seed: 42
+  extensions: [".mp4", ".mov", ".avi", ".mkv"]
+  overwrite: false
