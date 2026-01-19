@@ -38,6 +38,8 @@ class GVHMRConfig:
         python_executable: Python executable for subprocess mode.
         save_result: Whether to save result to file.
         output_path: Path to save result JSON file.
+        load_path: Path to load pre-computed result from (skips inference).
+        track_ids: Specific track IDs for multi-player mode. If None, auto-select.
 
     """
 
@@ -50,11 +52,14 @@ class GVHMRConfig:
     python_executable: str | Path | None = None
     save_result: bool = False
     output_path: str | Path | None = None
+    load_path: str | Path | None = None
+    track_ids: list[int] | None = None
+    multi_player: bool = False  # Enable multi-player tracking
 
 
 @dataclass
 class GVHMRResult:
-    """Result of GVHMR inference.
+    """Result of GVHMR inference for a single player.
 
     Attributes:
         smpl_body_pose: SMPL body pose parameters (T, 63).
@@ -64,6 +69,7 @@ class GVHMRResult:
         human_kp_2d: 2D keypoints (T, 17, 2) in pixels.
         human_kp_vis: Keypoint visibility/confidence (T, 17).
         bbx_xys: Bounding boxes (T, 3) - center_x, center_y, size.
+        track_id: Track ID for this player (optional).
 
     """
 
@@ -74,6 +80,7 @@ class GVHMRResult:
     human_kp_2d: NDArray[np.float32]
     human_kp_vis: NDArray[np.float32]
     bbx_xys: NDArray[np.float32]
+    track_id: int | None = None
 
     def to_dict(self) -> dict:
         """Convert result to JSON-serializable dict."""
@@ -87,6 +94,8 @@ class GVHMRResult:
         }
         if self.smpl_vertices_local is not None:
             result["smpl_vertices_local"] = self.smpl_vertices_local.tolist()
+        if self.track_id is not None:
+            result["track_id"] = self.track_id
         return result
 
     @classmethod
@@ -103,6 +112,7 @@ class GVHMRResult:
             human_kp_2d=np.array(data["human_kp_2d"], dtype=np.float32),
             human_kp_vis=np.array(data["human_kp_vis"], dtype=np.float32),
             bbx_xys=np.array(data["bbx_xys"], dtype=np.float32),
+            track_id=data.get("track_id"),
         )
 
     def save(self, path: str | Path) -> None:
@@ -117,7 +127,65 @@ class GVHMRResult:
     def load(cls, path: str | Path) -> "GVHMRResult":
         """Load result from JSON file."""
         with Path(path).open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            # Check if this is a multi-player result
+            if "players" in data:
+                # Load as multi-player but return first player for compatibility
+                multi = GVHMRMultiResult.from_dict(data)
+                if multi.players:
+                    first_id = next(iter(multi.players))
+                    return multi.players[first_id]
+            return cls.from_dict(data)
+
+
+@dataclass
+class GVHMRMultiResult:
+    """Result of GVHMR inference for multiple players.
+
+    Attributes:
+        players: Dict mapping track_id to GVHMRResult.
+
+    """
+
+    players: dict[int, GVHMRResult]
+
+    def to_dict(self) -> dict:
+        """Convert result to JSON-serializable dict."""
+        return {
+            "players": {str(k): v.to_dict() for k, v in self.players.items()},
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "GVHMRMultiResult":
+        """Create result from dict."""
+        players = {}
+        for k, v in data.get("players", {}).items():
+            track_id = int(k)
+            result = GVHMRResult.from_dict(v)
+            result.track_id = track_id
+            players[track_id] = result
+        return cls(players=players)
+
+    def save(self, path: str | Path) -> None:
+        """Save result to JSON file."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, indent=2)
+        LOGGER.info(f"Saved GVHMR multi-player result to {path}")
+
+    @classmethod
+    def load(cls, path: str | Path) -> "GVHMRMultiResult":
+        """Load result from JSON file."""
+        with Path(path).open("r", encoding="utf-8") as f:
             return cls.from_dict(json.load(f))
+
+    def get_first(self) -> GVHMRResult | None:
+        """Get the first player result (for single-player compatibility)."""
+        if self.players:
+            first_id = next(iter(self.players))
+            return self.players[first_id]
+        return None
 
 
 class GVHMRModule(BasePipelineModule):
@@ -256,6 +324,15 @@ class GVHMRModule(BasePipelineModule):
             GVHMRResult with SMPL parameters and 2D keypoints.
 
         """
+        # Check if we should load from pre-computed result
+        if self.config.load_path is not None:
+            load_path = Path(self.config.load_path)
+            if load_path.exists():
+                LOGGER.info(f"Loading GVHMR result from {load_path} (skipping inference)")
+                return GVHMRResult.load(load_path)
+            else:
+                LOGGER.warning(f"load_path specified but not found: {load_path}, running inference")
+
         if self.config.subprocess_mode:
             return self._process_subprocess(video_path, max_frames)
 

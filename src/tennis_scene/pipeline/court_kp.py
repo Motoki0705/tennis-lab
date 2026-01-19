@@ -31,6 +31,7 @@ class CourtKPConfig:
         device: Inference device.
         save_result: Whether to save result to file.
         output_path: Path to save result JSON file.
+        load_path: Path to load pre-computed result from (skips inference).
 
     """
 
@@ -40,6 +41,7 @@ class CourtKPConfig:
     device: str = "cuda"
     save_result: bool = False
     output_path: str | Path | None = None
+    load_path: str | Path | None = None
 
 
 @dataclass
@@ -410,6 +412,15 @@ class CourtKPModule(BasePipelineModule):
             CourtKPResult with normalized keypoints.
 
         """
+        # Check if we should load from pre-computed result
+        if self.config.load_path is not None:
+            load_path = Path(self.config.load_path)
+            if load_path.exists():
+                LOGGER.info(f"Loading CourtKP result from {load_path} (skipping detection)")
+                return CourtKPResult.load(load_path)
+            else:
+                LOGGER.warning(f"load_path specified but not found: {load_path}, running detection")
+
         if self.mode in {"manual", "manual_ui"}:
             if not self.is_loaded:
                 self.load()
