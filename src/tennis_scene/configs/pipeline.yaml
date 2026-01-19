@@ -25,9 +25,6 @@ wasb:
   checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
   batch_size: 64
   skip: false
-  completion:
-    enabled: true
-    checkpoint: outputs/wasb/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt
 
 plcs:
   checkpoint: outputs/plcs/checkpoints/last.ckpt
