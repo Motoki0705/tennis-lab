@@ -22,11 +22,11 @@ import numpy as np
 
 from src.tennis_scene.io import SceneResult
 from src.tennis_scene.transforms import apply_plcs_transform_batch
-from src.tennis_scene.pipeline.court_kp import CourtKPModule
+from src.tennis_scene.pipeline.court_kp import CourtKPModule, CourtKPConfig
 from src.tennis_scene.pipeline.gvhmr import GVHMRModule, GVHMRConfig
 from src.tennis_scene.pipeline.wasb import WASBModule, WASBConfig
-from src.tennis_scene.pipeline.plcs import PLCSModule
-from src.tennis_scene.pipeline.blcs import BLCSModule
+from src.tennis_scene.pipeline.plcs import PLCSModule, PLCSConfig
+from src.tennis_scene.pipeline.blcs import BLCSModule, BLCSConfig
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -90,12 +90,20 @@ class TennisSceneOrchestrator:
 
         device = str(cfg.device)
 
-        court_kp_module = CourtKPModule(
+        # Determine output directory for module results
+        output_dir = Path(to_absolute_path(cfg.output_dir))
+
+        court_kp_config = CourtKPConfig(
             checkpoint_path=to_absolute_path(cfg.court_kp.checkpoint),
             mode=str(cfg.court_kp.get("mode", "model")),
             manual_keypoints_path=cfg.court_kp.get("manual_keypoints_path"),
             device=device,
+            save_result=cfg.court_kp.get("save_result", False),
+            output_path=str(output_dir / "court_kp_result.json")
+            if cfg.court_kp.get("save_result", False)
+            else None,
         )
+        court_kp_module = CourtKPModule(court_kp_config)
 
         gvhmr_module = None
         if not cfg.gvhmr.get("skip", False):
@@ -105,35 +113,48 @@ class TennisSceneOrchestrator:
                 vitpose_checkpoint=to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
                 hmr2_checkpoint=to_absolute_path(cfg.gvhmr.hmr2_checkpoint),
                 device=device,
+                subprocess_mode=cfg.gvhmr.get("subprocess_mode", False),
+                python_executable=cfg.gvhmr.get("python_executable"),
+                save_result=cfg.gvhmr.get("save_result", False)
+                or cfg.gvhmr.get("subprocess_mode", False),
+                output_path=str(output_dir / "gvhmr_result.json"),
             )
             gvhmr_module = GVHMRModule(gvhmr_config)
 
         wasb_module = None
         if not cfg.wasb.get("skip", False):
-            completion_ckpt = None
-            if cfg.wasb.completion.enabled:
-                completion_ckpt = to_absolute_path(cfg.wasb.completion.checkpoint)
-
             wasb_config = WASBConfig(
                 checkpoint=to_absolute_path(cfg.wasb.checkpoint),
                 batch_size=int(cfg.wasb.batch_size),
-                completion_enabled=bool(cfg.wasb.completion.enabled),
-                completion_checkpoint=completion_ckpt,
                 device=device,
+                save_result=cfg.wasb.get("save_result", False),
+                output_path=str(output_dir / "wasb_result.json")
+                if cfg.wasb.get("save_result", False)
+                else None,
             )
             wasb_module = WASBModule(wasb_config)
 
-        plcs_module = PLCSModule(
+        plcs_config = PLCSConfig(
             checkpoint_path=to_absolute_path(cfg.plcs.checkpoint),
             device=device,
+            save_result=cfg.plcs.get("save_result", False),
+            output_path=str(output_dir / "plcs_result.json")
+            if cfg.plcs.get("save_result", False)
+            else None,
         )
+        plcs_module = PLCSModule(plcs_config)
 
         blcs_module = None
         if wasb_module is not None:
-            blcs_module = BLCSModule(
+            blcs_config = BLCSConfig(
                 checkpoint_path=to_absolute_path(cfg.blcs.checkpoint),
                 device=device,
+                save_result=cfg.blcs.get("save_result", False),
+                output_path=str(output_dir / "blcs_result.json")
+                if cfg.blcs.get("save_result", False)
+                else None,
             )
+            blcs_module = BLCSModule(blcs_config)
 
         return cls(
             court_kp_module=court_kp_module,

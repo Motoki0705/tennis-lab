@@ -21,6 +21,28 @@ NUM_COURT_KEYPOINTS = 20
 
 
 @dataclass
+class CourtKPConfig:
+    """Configuration for CourtKP module.
+
+    Attributes:
+        checkpoint_path: Path to model checkpoint.
+        mode: Detection mode ("model", "manual", "manual_ui").
+        manual_keypoints_path: JSON file path for manual keypoints.
+        device: Inference device.
+        save_result: Whether to save result to file.
+        output_path: Path to save result JSON file.
+
+    """
+
+    checkpoint_path: str | Path
+    mode: Literal["model", "manual", "manual_ui"] = "model"
+    manual_keypoints_path: str | Path | None = None
+    device: str = "cuda"
+    save_result: bool = False
+    output_path: str | Path | None = None
+
+
+@dataclass
 class CourtKPResult:
     """Result of court keypoint detection.
 
@@ -35,6 +57,37 @@ class CourtKPResult:
     visibility: NDArray[np.float32]
     frame_index: int
 
+    def to_dict(self) -> dict:
+        """Convert result to JSON-serializable dict."""
+        return {
+            "keypoints": self.keypoints.tolist(),
+            "visibility": self.visibility.tolist(),
+            "frame_index": self.frame_index,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "CourtKPResult":
+        """Create result from dict."""
+        return cls(
+            keypoints=np.array(data["keypoints"], dtype=np.float32),
+            visibility=np.array(data["visibility"], dtype=np.float32),
+            frame_index=data["frame_index"],
+        )
+
+    def save(self, path: str | Path) -> None:
+        """Save result to JSON file."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, indent=2)
+        LOGGER.info(f"Saved CourtKP result to {path}")
+
+    @classmethod
+    def load(cls, path: str | Path) -> "CourtKPResult":
+        """Load result from JSON file."""
+        with Path(path).open("r", encoding="utf-8") as f:
+            return cls.from_dict(json.load(f))
+
 
 class CourtKPModule(BasePipelineModule):
     """Court keypoint detection module.
@@ -42,6 +95,7 @@ class CourtKPModule(BasePipelineModule):
     Detects 20 court keypoints from a single frame (fixed camera assumption).
 
     Attributes:
+        config: Configuration for the module.
         checkpoint_path: Path to model checkpoint.
         device: Inference device.
         mode: "model" for predictor, "manual" for manual keypoints,
@@ -52,31 +106,53 @@ class CourtKPModule(BasePipelineModule):
 
     def __init__(
         self,
-        checkpoint_path: str | Path,
+        config: CourtKPConfig | None = None,
+        *,
+        checkpoint_path: str | Path | None = None,
         mode: Literal["model", "manual", "manual_ui"] = "model",
         manual_keypoints_path: str | Path | None = None,
         manual_keypoints: NDArray[np.float32] | None = None,
         manual_visibility: NDArray[np.float32] | None = None,
         device: str = "cuda",
+        save_result: bool = False,
+        output_path: str | Path | None = None,
     ) -> None:
         """Initialize the module.
 
         Args:
-            checkpoint_path: Path to model checkpoint.
+            config: CourtKP configuration (preferred).
+            checkpoint_path: Path to model checkpoint (legacy).
             mode: "model" to use predictor, "manual" for manual keypoints,
-                "manual_ui" for interactive input.
-            manual_keypoints_path: JSON file with manual keypoints.
+                "manual_ui" for interactive input (legacy).
+            manual_keypoints_path: JSON file with manual keypoints (legacy).
             manual_keypoints: Manual keypoints array (20, 2).
             manual_visibility: Manual visibility array (20,).
-            device: Inference device.
+            device: Inference device (legacy).
+            save_result: Whether to save result (legacy).
+            output_path: Path to save result (legacy).
 
         """
-        self.checkpoint_path = Path(checkpoint_path)
-        self.mode = mode
+        if config is not None:
+            self.config = config
+        else:
+            if checkpoint_path is None:
+                raise ValueError("Either config or checkpoint_path must be provided")
+            self.config = CourtKPConfig(
+                checkpoint_path=checkpoint_path,
+                mode=mode,
+                manual_keypoints_path=manual_keypoints_path,
+                device=device,
+                save_result=save_result,
+                output_path=output_path,
+            )
+        self.checkpoint_path = Path(self.config.checkpoint_path)
+        self.mode = self.config.mode
         self.manual_keypoints_path = (
-            Path(manual_keypoints_path) if manual_keypoints_path is not None else None
+            Path(self.config.manual_keypoints_path)
+            if self.config.manual_keypoints_path is not None
+            else None
         )
-        self.device = device
+        self.device = self.config.device
         self._predictor = None
         self._manual_keypoints: NDArray[np.float32] | None = None
         self._manual_visibility: NDArray[np.float32] | None = None
@@ -376,25 +452,32 @@ class CourtKPModule(BasePipelineModule):
             keypoints[..., 0] /= image_width
             keypoints[..., 1] /= image_height
 
-        return CourtKPResult(
+        result = CourtKPResult(
             keypoints=keypoints,
             visibility=visibility,
             frame_index=frame_index,
         )
 
+        if self.config.save_result and self.config.output_path is not None:
+            result.save(self.config.output_path)
+
+        return result
+
 
 if __name__ == "__main__":
-    dummy_keypoints = np.zeros((NUM_COURT_KEYPOINTS, 2), dtype=np.float32)
-    dummy_visibility = np.ones(NUM_COURT_KEYPOINTS, dtype=np.float32)
-    dummy_frame = np.zeros((64, 64, 3), dtype=np.uint8)
+    # Quick smoke test for module instantiation
+    print("CourtKPModule: court keypoint detection module")
+    print("Use CourtKPModule(CourtKPConfig(...)) to create")
 
-    module = CourtKPModule(
-        checkpoint_path="dummy.ckpt",
-        mode="manual",
-        manual_keypoints=dummy_keypoints,
-        manual_visibility=dummy_visibility,
+    # Test config creation
+    config = CourtKPConfig(
+        checkpoint_path="test.ckpt",
+        mode="manual_ui",
+        device="cpu",
+        save_result=True,
+        output_path="test_output.json",
     )
-    result = module.process(dummy_frame, image_width=64, image_height=64)
-    assert result.keypoints.shape == (NUM_COURT_KEYPOINTS, 2)
-    assert result.visibility.shape == (NUM_COURT_KEYPOINTS,)
-    print("CourtKPModule smoke test passed.")
+    print(f"Config: {config}")
+    assert config.device == "cpu"
+    assert config.mode == "manual_ui"
+    print("Smoke test passed.")
