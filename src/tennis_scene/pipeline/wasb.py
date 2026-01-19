@@ -24,16 +24,12 @@ class WASBConfig:
     Attributes:
         checkpoint: Path to WASB model checkpoint.
         batch_size: Batch size for inference.
-        completion_enabled: Enable trajectory completion.
-        completion_checkpoint: Path to completion model checkpoint.
         device: Inference device.
 
     """
 
     checkpoint: str | Path
     batch_size: int = 64
-    completion_enabled: bool = True
-    completion_checkpoint: str | Path | None = None
     device: str = "cuda"
 
 
@@ -58,8 +54,7 @@ class WASBResult:
 class WASBModule(BasePipelineModule):
     """WASB module for ball detection.
 
-    Detects ball positions in video frames using WASB predictor
-    with optional trajectory completion.
+    Detects ball positions in video frames using WASB predictor.
 
     """
 
@@ -80,24 +75,15 @@ class WASBModule(BasePipelineModule):
 
         LOGGER.info(f"Loading WASB model from {self.config.checkpoint}")
 
-        from src.wasb.inference import WASBPredictor, build_completer
+        from src.wasb.inference import WASBPredictor
         from src.wasb.pipeline import VideoBallLocalizationPipeline
 
         predictor = WASBPredictor.load_from_checkpoint(
             self.config.checkpoint, device=self.config.device
         )
 
-        completer = None
-        if self.config.completion_enabled and self.config.completion_checkpoint:
-            LOGGER.info(f"Loading WASB completer from {self.config.completion_checkpoint}")
-            completer = build_completer(
-                method="bilstm",
-                checkpoint_path=str(self.config.completion_checkpoint),
-                device=self.config.device,
-            )
-
         self._pipeline = VideoBallLocalizationPipeline(
-            predictor, completer=completer, batch_size=self.config.batch_size
+            predictor, batch_size=self.config.batch_size
         )
 
     @property

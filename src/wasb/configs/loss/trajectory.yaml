@@ -1,5 +1,0 @@
-# Trajectory completion loss configuration.
-lambda_block: 1.0
-lambda_sparse: 1.0
-lambda_noise: 1.0
-
