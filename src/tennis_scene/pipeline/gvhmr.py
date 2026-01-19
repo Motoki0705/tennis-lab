@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -18,6 +20,9 @@ if TYPE_CHECKING:
 
 LOGGER = logging.getLogger(__name__)
 
+# Default GVHMR virtual environment path
+DEFAULT_GVHMR_VENV = Path("third_party/GVHMR/.venv/bin/python")
+
 
 @dataclass
 class GVHMRConfig:
@@ -29,6 +34,10 @@ class GVHMRConfig:
         vitpose_checkpoint: Path to ViTPose checkpoint.
         hmr2_checkpoint: Path to HMR2 checkpoint for feature extraction.
         device: Inference device.
+        subprocess_mode: If True, run GVHMR in a subprocess with separate venv.
+        python_executable: Python executable for subprocess mode.
+        save_result: Whether to save result to file.
+        output_path: Path to save result JSON file.
 
     """
 
@@ -37,6 +46,10 @@ class GVHMRConfig:
     vitpose_checkpoint: str | Path = "inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
     hmr2_checkpoint: str | Path = "inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt"
     device: str = "cuda"
+    subprocess_mode: bool = False
+    python_executable: str | Path | None = None
+    save_result: bool = False
+    output_path: str | Path | None = None
 
 
 @dataclass
@@ -61,6 +74,50 @@ class GVHMRResult:
     human_kp_2d: NDArray[np.float32]
     human_kp_vis: NDArray[np.float32]
     bbx_xys: NDArray[np.float32]
+
+    def to_dict(self) -> dict:
+        """Convert result to JSON-serializable dict."""
+        result = {
+            "smpl_body_pose": self.smpl_body_pose.tolist(),
+            "smpl_global_orient": self.smpl_global_orient.tolist(),
+            "smpl_betas": self.smpl_betas.tolist(),
+            "human_kp_2d": self.human_kp_2d.tolist(),
+            "human_kp_vis": self.human_kp_vis.tolist(),
+            "bbx_xys": self.bbx_xys.tolist(),
+        }
+        if self.smpl_vertices_local is not None:
+            result["smpl_vertices_local"] = self.smpl_vertices_local.tolist()
+        return result
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "GVHMRResult":
+        """Create result from dict."""
+        vertices = None
+        if "smpl_vertices_local" in data and data["smpl_vertices_local"] is not None:
+            vertices = np.array(data["smpl_vertices_local"], dtype=np.float32)
+        return cls(
+            smpl_body_pose=np.array(data["smpl_body_pose"], dtype=np.float32),
+            smpl_global_orient=np.array(data["smpl_global_orient"], dtype=np.float32),
+            smpl_betas=np.array(data["smpl_betas"], dtype=np.float32),
+            smpl_vertices_local=vertices,
+            human_kp_2d=np.array(data["human_kp_2d"], dtype=np.float32),
+            human_kp_vis=np.array(data["human_kp_vis"], dtype=np.float32),
+            bbx_xys=np.array(data["bbx_xys"], dtype=np.float32),
+        )
+
+    def save(self, path: str | Path) -> None:
+        """Save result to JSON file."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, indent=2)
+        LOGGER.info(f"Saved GVHMR result to {path}")
+
+    @classmethod
+    def load(cls, path: str | Path) -> "GVHMRResult":
+        """Load result from JSON file."""
+        with Path(path).open("r", encoding="utf-8") as f:
+            return cls.from_dict(json.load(f))
 
 
 class GVHMRModule(BasePipelineModule):
@@ -148,7 +205,7 @@ class GVHMRModule(BasePipelineModule):
 
         from hmr4d.model.gvhmr.gvhmr_pl_demo import DemoPL
 
-        self._model = DemoPL.load_pretrained_model(str(model_path))
+        self._model = DemoPL.load_pretrained_model(ckpt_path=str(model_path))
         self._model.eval()
         if self.config.device == "cuda":
             self._model = self._model.cuda()
@@ -183,6 +240,72 @@ class GVHMRModule(BasePipelineModule):
             GVHMRResult with SMPL parameters and 2D keypoints.
 
         """
+        if self.config.subprocess_mode:
+            return self._process_subprocess(video_path, max_frames)
+
+        return self._process_direct(video_path, max_frames)
+
+    def _process_subprocess(
+        self,
+        video_path: str | Path,
+        max_frames: int | None = None,
+    ) -> GVHMRResult:
+        """Run GVHMR in a subprocess with separate virtual environment."""
+        LOGGER.info("Running GVHMR in subprocess mode...")
+
+        output_path = self.config.output_path
+        if output_path is None:
+            raise ValueError("output_path must be set for subprocess mode")
+        output_path = Path(output_path)
+
+        python_exec = self.config.python_executable
+        if python_exec is None:
+            python_exec = DEFAULT_GVHMR_VENV
+        python_exec = Path(python_exec)
+
+        if not python_exec.exists():
+            raise FileNotFoundError(
+                f"GVHMR Python executable not found: {python_exec}. "
+                "Run third_party/GVHMR/setup_gvhmr.sh to set up the environment."
+            )
+
+        cmd = [
+            str(python_exec),
+            "-m",
+            "src.tennis_scene.pipeline.gvhmr",
+            "--video", str(video_path),
+            "--output", str(output_path),
+            "--model-checkpoint", str(self.config.model_checkpoint),
+            "--yolo-checkpoint", str(self.config.yolo_checkpoint),
+            "--vitpose-checkpoint", str(self.config.vitpose_checkpoint),
+            "--hmr2-checkpoint", str(self.config.hmr2_checkpoint),
+            "--device", self.config.device,
+        ]
+        if max_frames is not None:
+            cmd.extend(["--max-frames", str(max_frames)])
+
+        LOGGER.info(f"Subprocess command: {' '.join(cmd)}")
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parents[3],
+        )
+
+        if result.returncode != 0:
+            LOGGER.error(f"GVHMR subprocess failed:\n{result.stderr}")
+            raise RuntimeError(f"GVHMR subprocess failed: {result.stderr}")
+
+        LOGGER.info(f"GVHMR subprocess completed, loading result from {output_path}")
+        return GVHMRResult.load(output_path)
+
+    def _process_direct(
+        self,
+        video_path: str | Path,
+        max_frames: int | None = None,
+    ) -> GVHMRResult:
+        """Run GVHMR directly in current process."""
         if not self.is_loaded:
             self.load()
 
@@ -194,7 +317,7 @@ class GVHMRModule(BasePipelineModule):
         human_kp_2d = preproc["kp2d"][..., :2].cpu().numpy()
         human_kp_vis = preproc["kp2d"][..., 2].cpu().numpy()
 
-        return GVHMRResult(
+        result = GVHMRResult(
             smpl_body_pose=inference["smpl_body_pose"],
             smpl_global_orient=inference["smpl_global_orient"],
             smpl_betas=inference["smpl_betas"],
@@ -203,6 +326,11 @@ class GVHMRModule(BasePipelineModule):
             human_kp_vis=human_kp_vis.astype(np.float32),
             bbx_xys=preproc["bbx_xys"].cpu().numpy().astype(np.float32),
         )
+
+        if self.config.save_result and self.config.output_path is not None:
+            result.save(self.config.output_path)
+
+        return result
 
     def _run_preprocessing(
         self, video_path: str, max_frames: int | None
@@ -285,5 +413,80 @@ class GVHMRModule(BasePipelineModule):
 
 
 if __name__ == "__main__":
-    print("GVHMRModule: GVHMR 3D human mesh estimation module")
-    print("Use GVHMRModule(GVHMRConfig(...)) to create")
+    """CLI entry point for GVHMR subprocess execution.
+
+    This allows running GVHMR in a separate virtual environment.
+
+    Example:
+        third_party/GVHMR/.venv/bin/python -m src.tennis_scene.pipeline.gvhmr \
+            --video data/samples/clip.mp4 \
+            --output outputs/gvhmr_result.json \
+            --model-checkpoint third_party/GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
+    """
+    import argparse
+    # --- Torch 2.6+ の "weights_only=True" 既定への互換処理（Ultralyticsの重み読み込み用） ---
+    from ultralytics.nn import tasks as _utasks
+    def _torch_safe_load(file):
+        # 公式の .pt を使う前提で weights_only=False で読み込む
+        ckpt = torch.load(file, map_location="cpu", weights_only=False)
+        return ckpt, str(file)  # ★ Ultralytics 側が (ckpt, weight) の2値を期待
+    _utasks.torch_safe_load = _torch_safe_load
+    # --------------------------------------------------------------------------------------------
+    parser = argparse.ArgumentParser(description="GVHMR CLI for subprocess execution")
+    parser.add_argument("--video", type=str, required=True, help="Path to input video")
+    parser.add_argument("--output", type=str, required=True, help="Path to output JSON")
+    parser.add_argument(
+        "--model-checkpoint",
+        type=str,
+        required=True,
+        help="Path to GVHMR model checkpoint",
+    )
+    parser.add_argument(
+        "--yolo-checkpoint",
+        type=str,
+        default="inputs/checkpoints/yolo/yolov8x.pt",
+        help="Path to YOLO checkpoint",
+    )
+    parser.add_argument(
+        "--vitpose-checkpoint",
+        type=str,
+        default="inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+        help="Path to ViTPose checkpoint",
+    )
+    parser.add_argument(
+        "--hmr2-checkpoint",
+        type=str,
+        default="inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt",
+        help="Path to HMR2 checkpoint",
+    )
+    parser.add_argument("--device", type=str, default="cuda", help="Inference device")
+    parser.add_argument(
+        "--max-frames", type=int, default=None, help="Maximum frames to process"
+    )
+
+    args = parser.parse_args()
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
+
+    config = GVHMRConfig(
+        model_checkpoint=args.model_checkpoint,
+        yolo_checkpoint=args.yolo_checkpoint,
+        vitpose_checkpoint=args.vitpose_checkpoint,
+        hmr2_checkpoint=args.hmr2_checkpoint,
+        device=args.device,
+        subprocess_mode=False,
+        save_result=True,
+        output_path=args.output,
+    )
+
+    module = GVHMRModule(config)
+    result = module.process(args.video, max_frames=args.max_frames)
+
+    print(f"GVHMR completed. Result saved to {args.output}")
+    print(f"  - smpl_body_pose shape: {result.smpl_body_pose.shape}")
+    print(f"  - smpl_global_orient shape: {result.smpl_global_orient.shape}")
+    print(f"  - smpl_betas shape: {result.smpl_betas.shape}")
+    print(f"  - human_kp_2d shape: {result.human_kp_2d.shape}")
