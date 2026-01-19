@@ -1,7 +1,0 @@
-name: trajectory_transformer
-d_model: 128
-num_layers: 2
-num_heads: 4
-dim_feedforward: 256
-dropout: 0.1
-score_threshold: 0.5

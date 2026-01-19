@@ -20,7 +20,6 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from tqdm import tqdm
 
-from src.wasb.inference import TrajectoryCompleter, build_completer
 from src.wasb.models.others.clip_segmenter import ClipSegment, RuleBasedClipSegmenter
 from src.wasb.tennis_format import TennisLabelRow, row_from_visibility, save_label_csv
 from src.wasb.utils.streaming_loader import StreamingVideoLoader
@@ -67,15 +66,6 @@ class PipelineConfig:
     use_streaming: bool = True
     streaming_threshold: int = 3000  # Auto-enable streaming above this frame count
 
-    # Trajectory completion settings
-    use_completion: bool = True
-    completion_method: Literal[
-        "physics", "bilstm", "transformer", "refiner", "hybrid"
-    ] = "hybrid"
-    completion_checkpoint: str | None = None  # Path to learned model checkpoint
-    physics_gap_threshold: int = 5  # Max gap for physics interpolation
-    max_completion_gap: int = 15  # Max gap to attempt completion
-
 
 @dataclass
 class PipelineResult:
@@ -87,7 +77,6 @@ class PipelineResult:
         clips: List of generated clip information.
         total_frames: Total frames processed.
         total_detections: Total frames with ball detection.
-        total_completed: Total frames completed by trajectory completer.
         total_outliers_removed: Total outliers detected and removed.
 
     """
@@ -97,7 +86,6 @@ class PipelineResult:
     clips: list[ClipInfo] = field(default_factory=list)
     total_frames: int = 0
     total_detections: int = 0
-    total_completed: int = 0
     total_outliers_removed: int = 0
 
 
@@ -110,9 +98,7 @@ class ClipInfo:
         clip_dir: Path to the clip directory.
         num_frames: Number of frames in clip.
         num_detections: Number of frames with detection (visibility=1).
-        num_completed: Number of frames completed (visibility=2).
         detection_rate: Fraction of frames with detection.
-        completion_rate: Fraction of frames completed.
         avg_score: Average detection score.
 
     """
@@ -121,9 +107,7 @@ class ClipInfo:
     clip_dir: Path
     num_frames: int
     num_detections: int
-    num_completed: int = 0
     detection_rate: float = 0.0
-    completion_rate: float = 0.0
     avg_score: float = 0.0
 
 
@@ -172,16 +156,6 @@ class AnnotationPipeline:
             padding_frames=self.config.clip_padding,
         )
 
-        # Initialize trajectory completer if enabled
-        self.completer: TrajectoryCompleter | None = None
-        if self.config.use_completion:
-            self.completer = build_completer(
-                method=self.config.completion_method,
-                checkpoint_path=self.config.completion_checkpoint,
-                physics_gap_threshold=self.config.physics_gap_threshold,
-                max_gap=self.config.max_completion_gap,
-                score_threshold=self.config.score_threshold,
-            )
 
     def run(
         self,
@@ -347,7 +321,6 @@ class AnnotationPipeline:
 
         # Aggregate statistics from clips
         total_detections = sum(c.num_detections for c in clips)
-        total_completed = sum(c.num_completed for c in clips)
 
         result = PipelineResult(
             game_name=game_name,
@@ -355,7 +328,6 @@ class AnnotationPipeline:
             clips=clips,
             total_frames=len(frames),
             total_detections=total_detections,
-            total_completed=total_completed,
         )
 
         if verbose:
@@ -473,7 +445,6 @@ class AnnotationPipeline:
 
         # Aggregate statistics from clips
         total_detections = sum(c.num_detections for c in clips)
-        total_completed = sum(c.num_completed for c in clips)
 
         result = PipelineResult(
             game_name=game_name,
@@ -481,7 +452,6 @@ class AnnotationPipeline:
             clips=clips,
             total_frames=total_frames_detected,
             total_detections=total_detections,
-            total_completed=total_completed,
         )
 
         if verbose:
@@ -535,7 +505,7 @@ class AnnotationPipeline:
         extractor: VideoExtractor,
         verbose: bool = True,
     ) -> list[ClipInfo]:
-        """Export clips to tennis dataset format with trajectory completion."""
+        """Export clips to tennis dataset format."""
         import cv2
 
         clips = []
@@ -554,22 +524,10 @@ class AnnotationPipeline:
             segment_vis = detection_results["visibility"][segment.start : segment.end].copy()
             segment_score = detection_results["score"][segment.start : segment.end].copy()
 
-            # Apply trajectory completion if enabled
-            num_completed = 0
-            if self.completer is not None:
-                completion_result = self.completer.complete(
-                    xy=segment_xy.astype(np.float32),
-                    visibility=segment_vis,
-                    score=segment_score.astype(np.float32),
-                )
-                segment_xy = completion_result.xy
-                completed_vis = completion_result.visibility
-                num_completed = int(np.sum(completed_vis == 2))
-            else:
-                # No completion - mark valid detections as 1, rest as 0
-                completed_vis = np.where(
-                    segment_vis & (segment_score >= self.config.score_threshold), 1, 0
-                ).astype(np.int32)
+            # Mark valid detections as 1, rest as 0
+            completed_vis = np.where(
+                segment_vis & (segment_score >= self.config.score_threshold), 1, 0
+            ).astype(np.int32)
 
             # Save frames and build labels
             label_rows = []
@@ -586,7 +544,7 @@ class AnnotationPipeline:
                     [cv2.IMWRITE_JPEG_QUALITY, self.config.jpeg_quality],
                 )
 
-                # Get visibility and coordinates from completion result
+                # Get visibility and coordinates
                 vis = int(completed_vis[local_idx])
                 x, y = segment_xy[local_idx]
                 score = float(segment_score[local_idx]) if vis == 1 else 0.0
@@ -616,9 +574,6 @@ class AnnotationPipeline:
             detection_rate = (
                 num_detections / len(segment_frames) if len(segment_frames) > 0 else 0.0
             )
-            completion_rate = (
-                num_completed / len(segment_frames) if len(segment_frames) > 0 else 0.0
-            )
             detected_scores = segment_score[
                 segment_vis & (segment_score >= self.config.score_threshold)
             ]
@@ -632,9 +587,7 @@ class AnnotationPipeline:
                     clip_dir=clip_dir,
                     num_frames=len(segment_frames),
                     num_detections=num_detections,
-                    num_completed=num_completed,
                     detection_rate=detection_rate,
-                    completion_rate=completion_rate,
                     avg_score=avg_score,
                 )
             )
@@ -649,7 +602,7 @@ class AnnotationPipeline:
         extractor: VideoExtractor,
         verbose: bool = True,
     ) -> list[ClipInfo]:
-        """Export clips in streaming mode with trajectory completion.
+        """Export clips in streaming mode.
 
         This function re-opens the source video and uses VideoExtractor to
         extract frames for each segment directly to disk, while using the
@@ -685,22 +638,10 @@ class AnnotationPipeline:
             segment_vis = detection_results["visibility"][start:end].copy()
             segment_score = detection_results["score"][start:end].copy()
 
-            # Apply trajectory completion if enabled
-            num_completed = 0
-            if self.completer is not None:
-                completion_result = self.completer.complete(
-                    xy=segment_xy.astype(np.float32),
-                    visibility=segment_vis,
-                    score=segment_score.astype(np.float32),
-                )
-                segment_xy = completion_result.xy
-                completed_vis = completion_result.visibility
-                num_completed = int(np.sum(completed_vis == 2))
-            else:
-                # No completion - mark valid detections as 1, rest as 0
-                completed_vis = np.where(
-                    segment_vis & (segment_score >= self.config.score_threshold), 1, 0
-                ).astype(np.int32)
+            # Mark valid detections as 1, rest as 0
+            completed_vis = np.where(
+                segment_vis & (segment_score >= self.config.score_threshold), 1, 0
+            ).astype(np.int32)
 
             # Save labels
             label_rows: list[TennisLabelRow] = []
@@ -736,9 +677,6 @@ class AnnotationPipeline:
             detection_rate = (
                 num_detections / segment_length if segment_length > 0 else 0.0
             )
-            completion_rate = (
-                num_completed / segment_length if segment_length > 0 else 0.0
-            )
             detected_scores = segment_score[
                 segment_vis & (segment_score >= self.config.score_threshold)
             ]
@@ -752,9 +690,7 @@ class AnnotationPipeline:
                     clip_dir=clip_dir,
                     num_frames=segment_length,
                     num_detections=num_detections,
-                    num_completed=num_completed,
                     detection_rate=detection_rate,
-                    completion_rate=completion_rate,
                     avg_score=avg_score,
                 )
             )
@@ -773,10 +709,6 @@ class AnnotationPipeline:
         det_pct = 100 * result.total_detections / result.total_frames if result.total_frames > 0 else 0
         print(f"Total detections (vis=1): {result.total_detections} ({det_pct:.1f}%)")
 
-        if result.total_completed > 0:
-            comp_pct = 100 * result.total_completed / result.total_frames if result.total_frames > 0 else 0
-            print(f"Total completed (vis=2): {result.total_completed} ({comp_pct:.1f}%)")
-
         if result.total_outliers_removed > 0:
             print(f"Outliers removed: {result.total_outliers_removed}")
 
@@ -786,13 +718,10 @@ class AnnotationPipeline:
         if result.clips:
             print("Clip details:")
             for clip in result.clips:
-                completion_info = ""
-                if clip.num_completed > 0:
-                    completion_info = f", {clip.num_completed} completed ({100 * clip.completion_rate:.1f}%)"
                 print(
                     f"  {clip.clip_name}: {clip.num_frames} frames, "
-                    f"{clip.num_detections} detections ({100 * clip.detection_rate:.1f}%)"
-                    f"{completion_info}, avg score: {clip.avg_score:.2f}"
+                    f"{clip.num_detections} detections ({100 * clip.detection_rate:.1f}%), "
+                    f"avg score: {clip.avg_score:.2f}"
                 )
 
 

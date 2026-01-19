@@ -1,5 +1,0 @@
-output_dir: outputs/wasb/event_detection
-seed: 42
-gpus: 0
-fast_dev_run: false
-dry_run: false

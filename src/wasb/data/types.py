@@ -30,31 +30,6 @@ class BallDetectionSample(TypedDict):
     masked_indices: torch.Tensor  # (T,) boolean mask; True for masked frames
 
 
-class TrajectoryWindowSample(TypedDict):
-    """Schema for trajectory window dataset sample.
-
-    Used by TrajectoryWindowDataset for ball trajectory prediction tasks.
-    """
-
-    frames: torch.Tensor  # (T, C, H, W) input frames
-    ball_positions: torch.Tensor  # (T, 2) ball positions over time
-    visibility: torch.Tensor  # (T,) visibility mask
-    match: str
-    clip: str
-
-
-class EventDetectionSample(TypedDict):
-    """Schema for event detection dataset sample.
-
-    Used by EventDetectionDataset for detecting bounce/net events.
-    """
-
-    frames: torch.Tensor  # (T, C, H, W) input frames
-    event_labels: torch.Tensor  # (num_event_types,) binary event occurrence
-    match: str
-    clip: str
-
-
 class PatchEmbeddingSample(TypedDict):
     """Schema for patch embedding dataset sample.
 
