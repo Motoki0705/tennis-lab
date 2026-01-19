@@ -1,0 +1,40 @@
+defaults:
+  - _self_
+
+# Input scene result file (required)
+input: null
+
+# View type: "3d" or "2d"
+view: "3d"
+
+# Output video path (optional, if null only displays or saves preview)
+output: null
+
+# Display animation in matplotlib window
+display: false
+
+# Frame range
+start_frame: 0
+end_frame: null  # null for all frames
+
+# FPS (null to use scene's original FPS)
+fps: null
+
+# Video output settings
+dpi: 100
+writer: ffmpeg
+
+# Rendering style
+style:
+  player_color: "#FF4444"
+  trail_length: 30
+  show_direction: true
+  show_trail: true
+  figsize: [12, 8]
+
+hydra:
+  run:
+    dir: outputs/visualization/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

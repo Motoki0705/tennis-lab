@@ -28,6 +28,7 @@ class PLCSConfig:
         device: Inference device.
         save_result: Whether to save result to file.
         output_path: Path to save result JSON file.
+        load_path: Path to load pre-computed result from (skips inference).
 
     """
 
@@ -35,27 +36,33 @@ class PLCSConfig:
     device: str = "cuda"
     save_result: bool = False
     output_path: str | Path | None = None
+    load_path: str | Path | None = None
 
 
 @dataclass
 class PLCSResult:
-    """Result of PLCS inference.
+    """Result of PLCS inference for a single player.
 
     Attributes:
         position: Player 3D position in court coords (T, 3), meters.
         yaw: Player yaw angle (T,), radians.
+        track_id: Track ID for this player (optional).
 
     """
 
     position: NDArray[np.float32]
     yaw: NDArray[np.float32]
+    track_id: int | None = None
 
     def to_dict(self) -> dict:
         """Convert result to JSON-serializable dict."""
-        return {
+        result = {
             "position": self.position.tolist(),
             "yaw": self.yaw.tolist(),
         }
+        if self.track_id is not None:
+            result["track_id"] = self.track_id
+        return result
 
     @classmethod
     def from_dict(cls, data: dict) -> "PLCSResult":
@@ -63,6 +70,7 @@ class PLCSResult:
         return cls(
             position=np.array(data["position"], dtype=np.float32),
             yaw=np.array(data["yaw"], dtype=np.float32),
+            track_id=data.get("track_id"),
         )
 
     def save(self, path: str | Path) -> None:
@@ -77,7 +85,64 @@ class PLCSResult:
     def load(cls, path: str | Path) -> "PLCSResult":
         """Load result from JSON file."""
         with Path(path).open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            # Check if this is a multi-player result
+            if "players" in data:
+                multi = PLCSMultiResult.from_dict(data)
+                if multi.players:
+                    first_id = next(iter(multi.players))
+                    return multi.players[first_id]
+            return cls.from_dict(data)
+
+
+@dataclass
+class PLCSMultiResult:
+    """Result of PLCS inference for multiple players.
+
+    Attributes:
+        players: Dict mapping track_id to PLCSResult.
+
+    """
+
+    players: dict[int, PLCSResult]
+
+    def to_dict(self) -> dict:
+        """Convert result to JSON-serializable dict."""
+        return {
+            "players": {str(k): v.to_dict() for k, v in self.players.items()},
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "PLCSMultiResult":
+        """Create result from dict."""
+        players = {}
+        for k, v in data.get("players", {}).items():
+            track_id = int(k)
+            result = PLCSResult.from_dict(v)
+            result.track_id = track_id
+            players[track_id] = result
+        return cls(players=players)
+
+    def save(self, path: str | Path) -> None:
+        """Save result to JSON file."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, indent=2)
+        LOGGER.info(f"Saved PLCS multi-player result to {path}")
+
+    @classmethod
+    def load(cls, path: str | Path) -> "PLCSMultiResult":
+        """Load result from JSON file."""
+        with Path(path).open("r", encoding="utf-8") as f:
             return cls.from_dict(json.load(f))
+
+    def get_first(self) -> PLCSResult | None:
+        """Get the first player result (for single-player compatibility)."""
+        if self.players:
+            first_id = next(iter(self.players))
+            return self.players[first_id]
+        return None
 
 
 class PLCSModule(BasePipelineModule):
@@ -159,6 +224,15 @@ class PLCSModule(BasePipelineModule):
             PLCSResult with 3D position and yaw.
 
         """
+        # Check if we should load from pre-computed result
+        if self.config.load_path is not None:
+            load_path = Path(self.config.load_path)
+            if load_path.exists():
+                LOGGER.info(f"Loading PLCS result from {load_path} (skipping inference)")
+                return PLCSResult.load(load_path)
+            else:
+                LOGGER.warning(f"load_path specified but not found: {load_path}, running inference")
+
         if not self.is_loaded:
             self.load()
 

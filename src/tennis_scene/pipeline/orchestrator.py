@@ -93,6 +93,13 @@ class TennisSceneOrchestrator:
         # Determine output directory for module results
         output_dir = Path(to_absolute_path(cfg.output_dir))
 
+        # Helper to resolve load_path
+        def get_load_path(section: str) -> str | None:
+            load_path = cfg[section].get("load_path")
+            if load_path is not None:
+                return to_absolute_path(str(load_path))
+            return None
+
         court_kp_config = CourtKPConfig(
             checkpoint_path=to_absolute_path(cfg.court_kp.checkpoint),
             mode=str(cfg.court_kp.get("mode", "model")),
@@ -102,6 +109,7 @@ class TennisSceneOrchestrator:
             output_path=str(output_dir / "court_kp_result.json")
             if cfg.court_kp.get("save_result", False)
             else None,
+            load_path=get_load_path("court_kp"),
         )
         court_kp_module = CourtKPModule(court_kp_config)
 
@@ -118,6 +126,8 @@ class TennisSceneOrchestrator:
                 save_result=cfg.gvhmr.get("save_result", False)
                 or cfg.gvhmr.get("subprocess_mode", False),
                 output_path=str(output_dir / "gvhmr_result.json"),
+                load_path=get_load_path("gvhmr"),
+                track_ids=list(cfg.gvhmr.track_ids) if cfg.gvhmr.get("track_ids") else None,
             )
             gvhmr_module = GVHMRModule(gvhmr_config)
 
@@ -131,6 +141,7 @@ class TennisSceneOrchestrator:
                 output_path=str(output_dir / "wasb_result.json")
                 if cfg.wasb.get("save_result", False)
                 else None,
+                load_path=get_load_path("wasb"),
             )
             wasb_module = WASBModule(wasb_config)
 
@@ -141,6 +152,7 @@ class TennisSceneOrchestrator:
             output_path=str(output_dir / "plcs_result.json")
             if cfg.plcs.get("save_result", False)
             else None,
+            load_path=get_load_path("plcs"),
         )
         plcs_module = PLCSModule(plcs_config)
 
@@ -153,6 +165,7 @@ class TennisSceneOrchestrator:
                 output_path=str(output_dir / "blcs_result.json")
                 if cfg.blcs.get("save_result", False)
                 else None,
+                load_path=get_load_path("blcs"),
             )
             blcs_module = BLCSModule(blcs_config)
 

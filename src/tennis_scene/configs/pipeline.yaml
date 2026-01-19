@@ -14,6 +14,7 @@ court_kp:
   mode: manual_ui  # model/manual/manual_ui
   manual_keypoints_path: null
   save_result: false
+  load_path: null  # Path to load pre-computed result (skips inference)
 
 gvhmr:
   checkpoint: third_party/GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
@@ -24,20 +25,25 @@ gvhmr:
   subprocess_mode: false  # If true, run GVHMR in separate venv
   python_executable: third_party/GVHMR/.venv/bin/python  # Python for subprocess
   save_result: false
+  load_path: null  # Path to load pre-computed result (skips inference)
+  track_ids: null  # Specific track IDs for multi-player mode
 
 wasb:
   checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
   batch_size: 64
   skip: false
   save_result: false
+  load_path: null  # Path to load pre-computed result (skips inference)
 
 plcs:
   checkpoint: checkpoints/plcs/frame/last.ckpt
   save_result: false
+  load_path: null  # Path to load pre-computed result (skips inference)
 
 blcs:
   checkpoint: checkpoints/blcs/single/last.ckpt
   save_result: false
+  load_path: null  # Path to load pre-computed result (skips inference)
 
 max_frames: null
 
