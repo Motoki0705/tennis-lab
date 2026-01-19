@@ -1,4 +1,0 @@
-checkpoint: null
-output_dir: outputs/wasb/trajectory/visualize/${model.name}
-split: test   # train | val | test
-num_samples: 8
