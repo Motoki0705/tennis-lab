@@ -160,12 +160,21 @@ class BLCSModule(BasePipelineModule):
 
         LOGGER.info("Running BLCS ball localization...")
 
-        ball_uv_t = torch.from_numpy(ball_uv).float()
+        # Handle NaN values from WASB (undetected frames)
+        ball_uv_clean = ball_uv.copy()
+        nan_mask = ~np.isfinite(ball_uv_clean).all(axis=-1)
+        ball_uv_clean[nan_mask] = 0.0  # Replace NaN with 0
+
+        # Combine visibility mask with NaN mask
+        if ball_vis is not None:
+            effective_vis = ball_vis & ~nan_mask
+        else:
+            effective_vis = ~nan_mask
+
+        ball_uv_t = torch.from_numpy(ball_uv_clean).float()
         court_kp_t = torch.from_numpy(court_kp).float()
 
-        ball_mask_t = None
-        if ball_vis is not None:
-            ball_mask_t = torch.from_numpy(ball_vis.astype(np.float32))
+        ball_mask_t = torch.from_numpy(effective_vis.astype(np.float32))
 
         court_vis_t = None
         if court_vis is not None:
@@ -180,6 +189,9 @@ class BLCSModule(BasePipelineModule):
         )
 
         ball_3d = pred["position"].squeeze(0).cpu().numpy().astype(np.float32)
+
+        # Set NaN for frames where ball was not visible
+        ball_3d[~effective_vis] = np.nan
 
         result = BLCSResult(ball_3d=ball_3d)
 
