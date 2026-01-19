@@ -2,7 +2,10 @@
 
 from src.plcs.data.datamodule import PLCSDataModule, PLCSSequenceDataModule
 from src.plcs.data.dataset import SceneDataset
-from src.plcs.data.scene_batch_sampler import SceneBatchSampler
+from src.plcs.data.scene_batch_sampler import (
+    MixedSceneBatchSampler,
+    SceneBatchSampler,
+)
 from src.plcs.data.sequence_dataset import SceneSequenceDataset
 from src.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSampler,
@@ -20,6 +23,7 @@ __all__ = [
     "MotionSequence",
     "PLCSDataModule",
     "PLCSSequenceDataModule",
+    "MixedSceneBatchSampler",
     "SceneBatchSampler",
     "SceneData",
     "SceneDataset",
