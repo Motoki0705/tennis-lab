@@ -2,7 +2,7 @@ defaults:
   - _self_
 
 # Input scene result file (required)
-input: null
+input: outputs/tennis_scene/clip.npz
 
 # View type: "3d" or "2d"
 view: "3d"
@@ -11,7 +11,7 @@ view: "3d"
 output: null
 
 # Display animation in matplotlib window
-display: false
+display: true
 
 # Frame range
 start_frame: 0
