@@ -155,25 +155,30 @@ class WASBModule(BasePipelineModule):
         result = self._pipeline.run(video_path, max_frames=max_frames)
 
         ball_uv_px = result.ball_xy_px.astype(np.float32)
+        visibility = result.visibility
+
+        # Replace -Infinity values (undetected frames) with NaN to avoid downstream issues
+        invalid_mask = ~visibility | ~np.isfinite(ball_uv_px).all(axis=-1)
+        ball_uv_px[invalid_mask] = np.nan
 
         if image_width is not None and image_height is not None:
             ball_uv = ball_uv_px.copy()
             ball_uv[..., 0] /= image_width
             ball_uv[..., 1] /= image_height
         else:
-            ball_uv = ball_uv_px
+            ball_uv = ball_uv_px.copy()
 
-        result = WASBResult(
+        wasb_result = WASBResult(
             ball_uv=ball_uv,
             ball_uv_px=ball_uv_px,
-            visibility=result.visibility,
+            visibility=visibility,
             score=result.score.astype(np.float32),
         )
 
         if self.config.save_result and self.config.output_path is not None:
-            result.save(self.config.output_path)
+            wasb_result.save(self.config.output_path)
 
-        return result
+        return wasb_result
 
 
 if __name__ == "__main__":

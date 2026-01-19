@@ -198,14 +198,30 @@ class GVHMRModule(BasePipelineModule):
         )
 
     def _load_gvhmr_model(self) -> None:
-        """Load GVHMR model."""
+        """Load GVHMR model using Hydra configuration."""
         LOGGER.info(f"Loading GVHMR model from {self.config.model_checkpoint}")
 
         model_path = self._resolve_path(self.config.model_checkpoint)
 
-        from hmr4d.model.gvhmr.gvhmr_pl_demo import DemoPL
+        import hydra
+        from hydra import initialize_config_module, compose
+        from hmr4d.configs import register_store_gvhmr
 
-        self._model = DemoPL.load_pretrained_model(ckpt_path=str(model_path))
+        # Import gvhmr_pl_demo to register it with MainStore
+        import hmr4d.model.gvhmr.gvhmr_pl_demo  # noqa: F401
+
+        # Register GVHMR config store and compose config
+        register_store_gvhmr()
+        with initialize_config_module(version_base="1.3", config_module="hmr4d.configs"):
+            cfg = compose(config_name="demo", overrides=[
+                f"ckpt_path={model_path}",
+                "static_cam=True",
+                "video_name=dummy",
+            ])
+
+        # Instantiate model using Hydra
+        self._model = hydra.utils.instantiate(cfg.model, _recursive_=False)
+        self._model.load_pretrained_model(str(model_path))
         self._model.eval()
         if self.config.device == "cuda":
             self._model = self._model.cuda()
@@ -343,9 +359,14 @@ class GVHMRModule(BasePipelineModule):
 
         length, width, height = get_video_lwh(video_path)
 
-        bbx_xyxy = self._tracker.get_one_track(video_path, max_frames=max_frames)
+        # Tracker does not support max_frames, process full video
+        bbx_xyxy = self._tracker.get_one_track(video_path)
         if bbx_xyxy is None:
             raise RuntimeError("No person detected in video")
+
+        # Truncate to max_frames if specified
+        if max_frames is not None and len(bbx_xyxy) > max_frames:
+            bbx_xyxy = bbx_xyxy[:max_frames]
 
         bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy)
         kp2d = self._vitpose.extract(video_path, bbx_xys)
@@ -365,6 +386,8 @@ class GVHMRModule(BasePipelineModule):
         """Run GVHMR inference with static_cam=True."""
         LOGGER.info("Running GVHMR inference...")
 
+        from hmr4d.utils.geo_transform import compute_cam_angvel
+
         bbx_xys = preproc["bbx_xys"]
         kp2d = preproc["kp2d"]
         f_imgseq = preproc["f_imgseq"]
@@ -372,10 +395,13 @@ class GVHMRModule(BasePipelineModule):
 
         T = len(bbx_xys)
         K_fullimg_batch = K_fullimg.unsqueeze(0).expand(T, -1, -1)
-        cam_angvel = torch.zeros(T, 3)
+
+        # For static_cam, use identity rotation matrices
+        R_w2c = torch.eye(3).repeat(T, 1, 1)
+        cam_angvel = compute_cam_angvel(R_w2c)
 
         data = {
-            "length": T,
+            "length": torch.tensor(T),
             "bbx_xys": bbx_xys,
             "kp2d": kp2d,
             "K_fullimg": K_fullimg_batch,
