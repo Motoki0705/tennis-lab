@@ -104,8 +104,6 @@ class TennisSceneOrchestrator:
                 yolo_checkpoint=to_absolute_path(cfg.gvhmr.yolo_checkpoint),
                 vitpose_checkpoint=to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
                 hmr2_checkpoint=to_absolute_path(cfg.gvhmr.hmr2_checkpoint),
-                venv_path=to_absolute_path(cfg.gvhmr.venv_path),
-                output_root=to_absolute_path(cfg.gvhmr.output_root),
                 device=device,
             )
             gvhmr_module = GVHMRModule(gvhmr_config)
