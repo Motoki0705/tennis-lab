@@ -1,9 +1,8 @@
 """Single-video ball localization pipeline (WASB inference).
 
 This module provides a lightweight pipeline for estimating per-frame ball
-positions from a single video by combining:
-- `src.wasb.inference.WASBPredictor`-compatible streaming predictor
-- `src.wasb.inference.TrajectoryCompleter` (optional)
+positions from a single video using `src.wasb.inference.WASBPredictor`-compatible
+streaming predictor.
 
 The pipeline only returns coordinates/metadata; video rendering lives in
 `src/wasb/scripts`.
@@ -17,7 +16,6 @@ from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
 
-from src.wasb.inference import CompletionResult, TrajectoryCompleter
 from src.wasb.utils.video_extractor import VideoExtractor
 
 if TYPE_CHECKING:
@@ -47,21 +45,18 @@ class VideoBallLocalizationResult:
     ball_xy_px: NDArray[np.float32]
     visibility: NDArray[np.bool_]
     score: NDArray[np.float32]
-    completion: CompletionResult | None = None
 
 
 class VideoBallLocalizationPipeline:
-    """Run WASB detection (batched) + optional trajectory completion."""
+    """Run WASB detection (batched)."""
 
     def __init__(
         self,
         predictor: StreamingBallPredictor,
         *,
-        completer: TrajectoryCompleter | None = None,
         batch_size: int = 64,
     ) -> None:
         self.predictor = predictor
-        self.completer = completer
         self.batch_size = int(batch_size)
 
     def run(
@@ -111,21 +106,12 @@ class VideoBallLocalizationPipeline:
                 ball_xy_px=empty_xy,
                 visibility=empty_bool,
                 score=empty_f32,
-                completion=None,
             )
 
         frame_indices_arr = np.concatenate(all_indices, axis=0)
         ball_xy_px = np.concatenate(all_xy, axis=0)
         visibility = np.concatenate(all_vis, axis=0)
         score = np.concatenate(all_score, axis=0)
-
-        completion: CompletionResult | None = None
-        if self.completer is not None:
-            completion = self.completer.complete(
-                xy=ball_xy_px.astype(np.float32, copy=False),
-                visibility=visibility.astype(np.bool_, copy=False),
-                score=score.astype(np.float32, copy=False),
-            )
 
         return VideoBallLocalizationResult(
             video_path=video_path,
@@ -136,7 +122,6 @@ class VideoBallLocalizationPipeline:
             ball_xy_px=ball_xy_px,
             visibility=visibility,
             score=score,
-            completion=completion,
         )
 
 
