@@ -1,10 +1,11 @@
 scene_dir: data/plcs
-batch_size: 64
+batch_size: 256
 num_workers: 4
 val_split: 0.1
 test_split: 0.1
 camera_mode: random
-scene_batch_sampler: false
+scene_batch_sampler: true
+scenes_per_batch: 16
 
 mode: frame
 

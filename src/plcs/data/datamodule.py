@@ -9,7 +9,10 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader, random_split
 
 from src.plcs.data.dataset import SceneDataset
-from src.plcs.data.scene_batch_sampler import SceneBatchSampler
+from src.plcs.data.scene_batch_sampler import (
+    MixedSceneBatchSampler,
+    SceneBatchSampler,
+)
 from src.plcs.data.multiview_dataset import (
     MultiViewSceneDataset,
     MultiViewSequenceDataset,
@@ -47,6 +50,7 @@ class PLCSDataModule(pl.LightningDataModule):
         self.test_split = data_cfg.get("test_split", 0.1)
         self.camera_mode = data_cfg.get("camera_mode", "random")
         self.scene_batch_sampler = bool(data_cfg.get("scene_batch_sampler", False))
+        self.scenes_per_batch = data_cfg.get("scenes_per_batch", 1)
 
         self.train_dataset: SceneDataset | None = None
         self.val_dataset: SceneDataset | None = None
@@ -95,12 +99,21 @@ class PLCSDataModule(pl.LightningDataModule):
             raise RuntimeError("Call setup('fit') before train_dataloader()")
 
         if self.scene_batch_sampler:
-            batch_sampler = SceneBatchSampler(
-                self.train_dataset,
-                batch_size=self.batch_size,
-                drop_last=True,
-                shuffle=True,
-            )
+            if self.scenes_per_batch > 1:
+                batch_sampler = MixedSceneBatchSampler(
+                    self.train_dataset,
+                    batch_size=self.batch_size,
+                    scenes_per_batch=self.scenes_per_batch,
+                    drop_last=True,
+                    shuffle=True,
+                )
+            else:
+                batch_sampler = SceneBatchSampler(
+                    self.train_dataset,
+                    batch_size=self.batch_size,
+                    drop_last=True,
+                    shuffle=True,
+                )
             return DataLoader(
                 self.train_dataset,
                 batch_sampler=batch_sampler,
@@ -128,12 +141,21 @@ class PLCSDataModule(pl.LightningDataModule):
             raise RuntimeError("Call setup('fit') before val_dataloader()")
 
         if self.scene_batch_sampler:
-            batch_sampler = SceneBatchSampler(
-                self.val_dataset,
-                batch_size=self.batch_size,
-                drop_last=False,
-                shuffle=False,
-            )
+            if self.scenes_per_batch > 1:
+                batch_sampler = MixedSceneBatchSampler(
+                    self.val_dataset,
+                    batch_size=self.batch_size,
+                    scenes_per_batch=self.scenes_per_batch,
+                    drop_last=False,
+                    shuffle=False,
+                )
+            else:
+                batch_sampler = SceneBatchSampler(
+                    self.val_dataset,
+                    batch_size=self.batch_size,
+                    drop_last=False,
+                    shuffle=False,
+                )
             return DataLoader(
                 self.val_dataset,
                 batch_sampler=batch_sampler,
@@ -160,12 +182,21 @@ class PLCSDataModule(pl.LightningDataModule):
             raise RuntimeError("Call setup('test') before test_dataloader()")
 
         if self.scene_batch_sampler:
-            batch_sampler = SceneBatchSampler(
-                self.test_dataset,
-                batch_size=self.batch_size,
-                drop_last=False,
-                shuffle=False,
-            )
+            if self.scenes_per_batch > 1:
+                batch_sampler = MixedSceneBatchSampler(
+                    self.test_dataset,
+                    batch_size=self.batch_size,
+                    scenes_per_batch=self.scenes_per_batch,
+                    drop_last=False,
+                    shuffle=False,
+                )
+            else:
+                batch_sampler = SceneBatchSampler(
+                    self.test_dataset,
+                    batch_size=self.batch_size,
+                    drop_last=False,
+                    shuffle=False,
+                )
             return DataLoader(
                 self.test_dataset,
                 batch_sampler=batch_sampler,
