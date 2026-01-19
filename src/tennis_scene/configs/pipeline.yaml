@@ -13,7 +13,8 @@ court_kp:
   frame_index: 0
   mode: manual_ui  # model/manual/manual_ui
   manual_keypoints_path: null
-  save_result: false
+  save_result: true
+  output_path: ${output_dir}/court_kp_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
 
 gvhmr:
@@ -22,9 +23,9 @@ gvhmr:
   vitpose_checkpoint: third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
   hmr2_checkpoint: third_party/GVHMR/inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt
   skip: false
-  subprocess_mode: false  # If true, run GVHMR in separate venv
-  python_executable: third_party/GVHMR/.venv/bin/python  # Python for subprocess
-  save_result: false
+  # GVHMR runs as CLI subprocess in separate venv
+  python_executable: third_party/GVHMR/.venv/bin/python
+  output_path: ${output_dir}/gvhmr_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
   track_ids: null  # Specific track IDs for multi-player mode
 
@@ -32,17 +33,20 @@ wasb:
   checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
   batch_size: 64
   skip: false
-  save_result: false
+  save_result: true
+  output_path: ${output_dir}/wasb_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
 
 plcs:
   checkpoint: checkpoints/plcs/frame/last.ckpt
-  save_result: false
+  save_result: true
+  output_path: ${output_dir}/plcs_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
 
 blcs:
   checkpoint: checkpoints/blcs/single/last.ckpt
-  save_result: false
+  save_result: true
+  output_path: ${output_dir}/blcs_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
 
 max_frames: null
