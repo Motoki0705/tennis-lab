@@ -116,8 +116,6 @@ uv run python -m src.tennis_scene.scripts.run_pipeline \
 | `gvhmr.yolo_checkpoint` | YOLOトラッカー | `third_party/GVHMR/inputs/checkpoints/yolo/yolov8x.pt` |
 | `gvhmr.vitpose_checkpoint` | ViTPose | `third_party/GVHMR/inputs/checkpoints/vitpose/...` |
 | `gvhmr.hmr2_checkpoint` | HMR2特徴抽出 | `third_party/GVHMR/inputs/checkpoints/hmr2/...` |
-| `gvhmr.venv_path` | GVHMRサブプロセス用venv | `third_party/GVHMR/.venv` |
-| `gvhmr.output_root` | GVHMR出力ルート | `outputs/tennis_scene/gvhmr` |
 | `gvhmr.skip` | GVHMRスキップ | `false` |
 
 ### WASB/PLCS/BLCS設定
