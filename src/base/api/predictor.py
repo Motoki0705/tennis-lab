@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Iterable, Self
 
 import torch
+from torch import Tensor
 
 
 class BasePredictor(ABC):
@@ -33,7 +34,7 @@ class BasePredictor(ABC):
     @abstractmethod
     def load_from_checkpoint(
         cls,
-        checkpoint_path: str | Path,
+        checkpoint_path: str | Path | Iterable[str | Path],
         device: str | torch.device = "cpu",
         **kwargs: Any,
     ) -> Self:
@@ -66,3 +67,71 @@ class BasePredictor(ABC):
 
         """
         ...
+
+    @staticmethod
+    def _resolve_device(
+        device: str | torch.device,
+        *,
+        allow_fallback: bool = True,
+    ) -> torch.device:
+        """Resolve device string to torch.device with optional CUDA fallback.
+
+        Args:
+            device: Device string or torch.device.
+            allow_fallback: If True, fall back to CPU when CUDA is unavailable.
+
+        Returns:
+            Resolved torch.device.
+
+        Raises:
+            RuntimeError: If CUDA is requested but unavailable and fallback is disabled.
+        """
+        resolved = torch.device(device)
+        if resolved.type == "cuda" and not torch.cuda.is_available():
+            if allow_fallback:
+                return torch.device("cpu")
+            raise RuntimeError("CUDA is not available")
+        return resolved
+
+    @staticmethod
+    def _ensure_checkpoint(
+        checkpoint_path: str | Path | Iterable[str | Path],
+    ) -> list[Path]:
+        """Normalize and validate checkpoint paths.
+
+        Args:
+            checkpoint_path: Path or iterable of paths to checkpoint files.
+
+        Returns:
+            List of resolved checkpoint paths.
+
+        Raises:
+            FileNotFoundError: If any checkpoint file does not exist.
+            ValueError: If no checkpoints are provided.
+        """
+        paths = checkpoint_path
+        if isinstance(paths, (str, Path)):
+            paths = [paths]
+        checkpoints: list[Path] = [Path(p) for p in paths]
+        if not checkpoints:
+            raise ValueError("checkpoint_path must be non-empty")
+        for path in checkpoints:
+            if not path.exists():
+                raise FileNotFoundError(f"Checkpoint not found: {path}")
+        return checkpoints
+
+    @staticmethod
+    def _to_device(device: torch.device, *tensors: Tensor | None) -> tuple[Tensor | None, ...]:
+        """Move tensors to the requested device, preserving None entries.
+
+        Args:
+            device: Target device.
+            *tensors: Tensors or None values.
+
+        Returns:
+            Tuple with tensors moved to device (None preserved).
+        """
+        moved: list[Tensor | None] = []
+        for tensor in tensors:
+            moved.append(tensor.to(device) if tensor is not None else None)
+        return tuple(moved)
