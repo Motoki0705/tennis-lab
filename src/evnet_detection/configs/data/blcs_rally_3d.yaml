@@ -1,0 +1,12 @@
+scene_dir: "data/blcs"
+
+batch_size: 16
+num_workers: 4
+
+max_seq_len: 256
+
+label:
+  sigma_frames: 2.5
+  shot_time_key: "t_start"
+  bounce_time_key: "t_bounce1"
+
