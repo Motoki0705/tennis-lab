@@ -33,7 +33,7 @@ from src.blcs.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
     TargetedVelocitySampler,
 )
-from src.utils.geometry import HALF_DOUBLES_WIDTH, HALF_LENGTH
+from src.utils.geometry import HALF_LENGTH, HALF_SINGLES_WIDTH
 
 if TYPE_CHECKING:
     from src.blcs.generate_dataset.sampling.distribution_sampler import (
@@ -153,7 +153,7 @@ class RallySimulator:
     """
 
     # Court boundaries for out detection (with margin applied at runtime)
-    COURT_X_LIMIT = HALF_DOUBLES_WIDTH
+    COURT_X_LIMIT = HALF_SINGLES_WIDTH
     COURT_Y_LIMIT = HALF_LENGTH
 
     def __init__(
@@ -612,7 +612,9 @@ class RallySimulator:
                 bounce1_pos=shot_result["bounce1_pos"],
                 bounce2_pos=shot_result["bounce2_pos"],
                 category=shot_result["category"],
-                to_cell=shot_result["to_cell"] if shot_result["to_cell"] else -1,
+                to_cell=(
+                    shot_result["to_cell"] if shot_result["to_cell"] is not None else -1
+                ),
             )
 
             # Check rally termination (net fault or out)
@@ -877,3 +879,28 @@ class RallySimulator:
 
         """
         return self.simulate_rally(from_cell, from_side)
+
+
+if __name__ == "__main__":
+    torch.manual_seed(0)
+
+    simulator = RallySimulator(device="cpu")
+    assert simulator.COURT_X_LIMIT == HALF_SINGLES_WIDTH
+
+    result = simulator.generate_rally(from_cell=0, from_side="near")
+    assert result.rally_length == len(result.shot_events)
+
+    for idx, ev in enumerate(result.shot_events):
+        assert ev.shot_index == idx
+        if ev.category == ShotCategory.IN_COURT:
+            assert 0 <= ev.to_cell <= 8
+        elif ev.category == ShotCategory.OUT_COURT:
+            assert 9 <= ev.to_cell <= 19
+        elif ev.category == ShotCategory.DIRECT_NET:
+            assert ev.to_cell == -1
+
+    print(
+        "smoke ok:",
+        f"rally_length={result.rally_length}",
+        f"end_reason={result.end_reason.value}",
+    )
