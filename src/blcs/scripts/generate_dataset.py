@@ -34,6 +34,7 @@ from src.blcs.simulation.ball_physics import PhysicsConfig
 from src.blcs.simulation.cell_manager import ShotCategory
 from src.blcs.simulation.rally_simulator import RallyConfig
 from src.blcs.simulation.shot_simulator import ShotConfig
+from src.blcs.simulation.targeted_velocity_sampler import TargetedVelocityConfig
 from src.utils.projection.camera_projector import CameraConfig
 
 logging.basicConfig(
@@ -83,6 +84,8 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         court_margin=float(cfg.rally.court_margin),
         hit_timing_range=tuple(cfg.rally.hit_timing_range),
         return_z_range=tuple(cfg.rally.return_z_range),
+        max_return_retries=int(cfg.rally.max_return_retries),
+        min_rally_length=int(cfg.rally.min_rally_length),
     )
 
     camera_config = CameraConfig(
@@ -105,12 +108,24 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         per_from_cell_samples=int(cfg.sampling.per_from_cell_samples),
     )
 
+    targeted_velocity_config = TargetedVelocityConfig(
+        azimuth_noise_deg=float(cfg.targeted_velocity.azimuth_noise_deg),
+        elevation_noise_deg=float(cfg.targeted_velocity.elevation_noise_deg),
+        speed_variation=float(cfg.targeted_velocity.speed_variation),
+        min_elevation_deg=float(cfg.targeted_velocity.min_elevation_deg),
+        max_elevation_deg=float(cfg.targeted_velocity.max_elevation_deg),
+        min_speed=float(cfg.targeted_velocity.min_speed),
+        max_speed=float(cfg.targeted_velocity.max_speed),
+        gravity=float(cfg.targeted_velocity.gravity),
+    )
+
     return GeneratorConfig(
         physics=physics_config,
         shot=shot_config,
         rally=rally_config,
         camera=camera_config,
         sampling=sampling_config,
+        targeted_velocity=targeted_velocity_config,
         num_cameras_sampled=int(cfg.generator.num_cameras_sampled),
         ball_visibility_threshold=float(cfg.generator.ball_visibility_threshold),
         max_attempts_per_cell=int(cfg.generator.max_attempts_per_cell),
