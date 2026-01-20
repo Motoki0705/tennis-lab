@@ -19,6 +19,7 @@ import pytorch_lightning as pl
 import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
+from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.trajectory_completion.data.datamodule import TrajectoryCompletionDataModule
 from src.trajectory_completion.training.lightning_module import (
@@ -85,13 +86,14 @@ def run_training(cfg: DictConfig) -> None:
 
     train_cfg = cfg.get("training", {}) or {}
     accelerator, devices = _select_devices(int(cfg.run.gpus))
+    tb_logger = TensorBoardLogger(save_dir=output_dir, name="logs")
 
     trainer = pl.Trainer(
         max_epochs=int(train_cfg.get("max_epochs", 50)),
         accelerator=accelerator,
         devices=devices,
         gradient_clip_val=float(train_cfg.get("gradient_clip_val", 1.0)),
-        logger=False,
+        logger=tb_logger,
         enable_checkpointing=False,
         enable_progress_bar=True,
         fast_dev_run=bool(cfg.run.fast_dev_run),
@@ -111,4 +113,3 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
