@@ -22,6 +22,7 @@ import pytorch_lightning as pl
 import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
+from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.evnet_detection.data.datamodule import EventDetectionDataModule
 from src.evnet_detection.training.lightning_module import EventDetectionLightningModule
@@ -85,11 +86,13 @@ def run_training(cfg: DictConfig) -> None:
         return
 
     accelerator, devices = _select_devices(int(cfg.run.gpus))
+    tb_logger = TensorBoardLogger(save_dir=output_dir, name="logs")
     trainer = pl.Trainer(
         max_epochs=int(cfg.training.max_epochs),
         accelerator=accelerator,
         devices=devices,
         gradient_clip_val=float(cfg.training.gradient_clip_val),
+        logger=tb_logger,
         precision="16-mixed" if accelerator == "gpu" else 32,
         log_every_n_steps=50,
         deterministic=True,
@@ -104,4 +107,3 @@ def main(cfg: DictConfig) -> None:  # pragma: no cover - CLI entry point
 
 if __name__ == "__main__":
     main()
-
