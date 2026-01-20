@@ -1,7 +1,7 @@
 defaults:
   - _self_
 
-video_path: ???
+video_path: data/samples/clip.mp4
 
 output_dir: outputs/tennis_scene
 output_name: null
@@ -11,8 +11,11 @@ device: cuda
 court_kp:
   checkpoint: outputs/court_detection/checkpoints/last.ckpt
   frame_index: 0
-  mode: model  # model/manual/manual_ui
+  mode: manual_ui  # model/manual/manual_ui
   manual_keypoints_path: null
+  save_result: true
+  output_path: ${output_dir}/court_kp_result.json
+  load_path: null  # Path to load pre-computed result (skips inference)
 
 gvhmr:
   checkpoint: third_party/GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
@@ -20,17 +23,31 @@ gvhmr:
   vitpose_checkpoint: third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
   hmr2_checkpoint: third_party/GVHMR/inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt
   skip: false
+  # GVHMR runs as CLI subprocess in separate venv
+  python_executable: third_party/GVHMR/.venv/bin/python
+  output_path: ${output_dir}/gvhmr_result.json
+  load_path: null  # Path to load pre-computed result (skips inference)
+  track_ids: null  # Specific track IDs for multi-player mode
 
 wasb:
   checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
   batch_size: 64
   skip: false
+  save_result: true
+  output_path: ${output_dir}/wasb_result.json
+  load_path: null  # Path to load pre-computed result (skips inference)
 
 plcs:
-  checkpoint: outputs/plcs/checkpoints/last.ckpt
+  checkpoint: checkpoints/plcs/frame/last.ckpt
+  save_result: true
+  output_path: ${output_dir}/plcs_result.json
+  load_path: null  # Path to load pre-computed result (skips inference)
 
 blcs:
-  checkpoint: outputs/blcs/checkpoints/last.ckpt
+  checkpoint: checkpoints/blcs/single/last.ckpt
+  save_result: true
+  output_path: ${output_dir}/blcs_result.json
+  load_path: null  # Path to load pre-computed result (skips inference)
 
 max_frames: null
 
