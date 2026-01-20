@@ -45,22 +45,28 @@ class BLCSResult:
 
     Attributes:
         ball_3d: Ball 3D position in court coords (T, 3), meters.
+        visibility: Ball visibility mask (T,).
 
     """
 
     ball_3d: NDArray[np.float32]
+    visibility: NDArray[np.bool_] | None = None
 
     def to_dict(self) -> dict:
         """Convert result to JSON-serializable dict."""
-        return {
-            "ball_3d": self.ball_3d.tolist(),
-        }
+        data = {"ball_3d": self.ball_3d.tolist()}
+        if self.visibility is not None:
+            data["visibility"] = self.visibility.tolist()
+        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "BLCSResult":
         """Create result from dict."""
         return cls(
             ball_3d=np.array(data["ball_3d"], dtype=np.float32),
+            visibility=np.array(data["visibility"], dtype=np.bool_)
+            if "visibility" in data
+            else None,
         )
 
     def save(self, path: str | Path) -> None:
@@ -171,18 +177,12 @@ class BLCSModule(BasePipelineModule):
 
         LOGGER.info("Running BLCS ball localization...")
 
-        # Handle NaN values from WASB (undetected frames)
-        ball_uv_clean = ball_uv.copy()
-        nan_mask = ~np.isfinite(ball_uv_clean).all(axis=-1)
-        ball_uv_clean[nan_mask] = 0.0  # Replace NaN with 0
-
-        # Combine visibility mask with NaN mask
         if ball_vis is not None:
-            effective_vis = ball_vis & ~nan_mask
+            effective_vis = ball_vis.astype(np.bool_)
         else:
-            effective_vis = ~nan_mask
+            effective_vis = np.ones(len(ball_uv), dtype=bool)
 
-        ball_uv_t = torch.from_numpy(ball_uv_clean).float()
+        ball_uv_t = torch.from_numpy(ball_uv).float()
         court_kp_t = torch.from_numpy(court_kp).float()
 
         ball_mask_t = torch.from_numpy(effective_vis.astype(np.float32))
@@ -201,10 +201,10 @@ class BLCSModule(BasePipelineModule):
 
         ball_3d = pred["position"].squeeze(0).cpu().numpy().astype(np.float32)
 
-        # Set NaN for frames where ball was not visible
-        ball_3d[~effective_vis] = np.nan
+        # Mask out invalid frames with zeros to keep JSON strictly numeric
+        ball_3d[~effective_vis] = 0.0
 
-        result = BLCSResult(ball_3d=ball_3d)
+        result = BLCSResult(ball_3d=ball_3d, visibility=effective_vis)
 
         if self.config.save_result and self.config.output_path is not None:
             result.save(self.config.output_path)

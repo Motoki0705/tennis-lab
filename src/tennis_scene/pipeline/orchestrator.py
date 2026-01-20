@@ -111,7 +111,6 @@ class TennisSceneOrchestrator:
         court_kp_config = CourtKPConfig(
             checkpoint_path=to_absolute_path(cfg.court_kp.checkpoint),
             mode=str(cfg.court_kp.get("mode", "model")),
-            manual_keypoints_path=cfg.court_kp.get("manual_keypoints_path"),
             device=device,
             save_result=cfg.court_kp.get("save_result", True),
             output_path=get_output_path("court_kp", "court_kp_result.json"),

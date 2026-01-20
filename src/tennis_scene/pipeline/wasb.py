@@ -168,9 +168,14 @@ class WASBModule(BasePipelineModule):
         ball_uv_px = result.ball_xy_px.astype(np.float32)
         visibility = result.visibility
 
-        # Replace -Infinity values (undetected frames) with NaN to avoid downstream issues
-        invalid_mask = ~visibility | ~np.isfinite(ball_uv_px).all(axis=-1)
-        ball_uv_px[invalid_mask] = np.nan
+        score = result.score.astype(np.float32)
+        finite_uv = np.isfinite(ball_uv_px).all(axis=-1)
+        finite_score = np.isfinite(score)
+        valid_mask = visibility & finite_uv & finite_score
+
+        # Replace invalid values with zeros to keep JSON strictly numeric
+        ball_uv_px[~valid_mask] = 0.0
+        score[~valid_mask] = 0.0
 
         if image_width is not None and image_height is not None:
             ball_uv = ball_uv_px.copy()
@@ -182,8 +187,8 @@ class WASBModule(BasePipelineModule):
         wasb_result = WASBResult(
             ball_uv=ball_uv,
             ball_uv_px=ball_uv_px,
-            visibility=visibility,
-            score=result.score.astype(np.float32),
+            visibility=valid_mask.astype(np.bool_),
+            score=score,
         )
 
         if self.config.save_result and self.config.output_path is not None:
