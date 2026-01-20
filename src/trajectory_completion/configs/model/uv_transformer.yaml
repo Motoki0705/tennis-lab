@@ -1,0 +1,13 @@
+name: uv_transformer
+
+hidden_dim: 256
+num_layers: 6
+num_heads: 8
+dropout: 0.1
+
+rope_theta: 10000.0
+yarn: null
+
+causal: false
+max_seq_len: ${data.max_seq_len}
+
