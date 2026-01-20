@@ -1,0 +1,7 @@
+defaults:
+  - _self_
+  - data: blcs_rally_uv
+  - model: uv_transformer
+  - training: default
+  - run: train
+
