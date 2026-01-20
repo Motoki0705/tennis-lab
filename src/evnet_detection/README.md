@@ -10,3 +10,15 @@ Entry points:
 - `uv run python -m src.evnet_detection.scripts.train_uv`
 - `uv run python -m src.evnet_detection.scripts.train_3d`
 
+Inference:
+- `src/evnet_detection/inference/uv_predictor.py` for UV-based event detection
+- `src/evnet_detection/inference/traj3d_predictor.py` for 3D-trajectory event detection
+
+Example:
+```python
+from src.evnet_detection.inference import UVEventPredictor
+
+predictor = UVEventPredictor.load_from_checkpoint("path/to/checkpoint.ckpt", device="cpu")
+outputs = predictor.predict(ball_uv, court_kp, ball_mask=ball_mask, court_vis=court_vis)
+event_peaks = outputs["event_peaks"]  # list[B][E][N]
+```
