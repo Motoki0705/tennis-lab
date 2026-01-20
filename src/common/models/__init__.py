@@ -25,6 +25,7 @@ from src.common.models.components import (
     precompute_freqs_cis_2d,
 )
 from src.common.models.vit import ViTConfig, ViTEncoder
+from src.common.models.token_embeddings import CourtKPUVTokenEmbedding, UVObsTokenEmbedding
 
 __all__ = [
     # Attention
@@ -53,4 +54,7 @@ __all__ = [
     # ViT
     "ViTConfig",
     "ViTEncoder",
+    # Token embeddings
+    "CourtKPUVTokenEmbedding",
+    "UVObsTokenEmbedding",
 ]
