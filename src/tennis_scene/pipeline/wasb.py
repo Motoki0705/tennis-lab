@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,12 +26,18 @@ class WASBConfig:
         checkpoint: Path to WASB model checkpoint.
         batch_size: Batch size for inference.
         device: Inference device.
+        save_result: Whether to save result to file.
+        output_path: Path to save result JSON file.
+        load_path: Path to load pre-computed result from (skips inference).
 
     """
 
     checkpoint: str | Path
     batch_size: int = 64
     device: str = "cuda"
+    save_result: bool = False
+    output_path: str | Path | None = None
+    load_path: str | Path | None = None
 
 
 @dataclass
@@ -49,6 +56,39 @@ class WASBResult:
     ball_uv_px: NDArray[np.float32]
     visibility: NDArray[np.bool_]
     score: NDArray[np.float32]
+
+    def to_dict(self) -> dict:
+        """Convert result to JSON-serializable dict."""
+        return {
+            "ball_uv": self.ball_uv.tolist(),
+            "ball_uv_px": self.ball_uv_px.tolist(),
+            "visibility": self.visibility.tolist(),
+            "score": self.score.tolist(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "WASBResult":
+        """Create result from dict."""
+        return cls(
+            ball_uv=np.array(data["ball_uv"], dtype=np.float32),
+            ball_uv_px=np.array(data["ball_uv_px"], dtype=np.float32),
+            visibility=np.array(data["visibility"], dtype=np.bool_),
+            score=np.array(data["score"], dtype=np.float32),
+        )
+
+    def save(self, path: str | Path) -> None:
+        """Save result to JSON file."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, indent=2)
+        LOGGER.info(f"Saved WASB result to {path}")
+
+    @classmethod
+    def load(cls, path: str | Path) -> "WASBResult":
+        """Load result from JSON file."""
+        with Path(path).open("r", encoding="utf-8") as f:
+            return cls.from_dict(json.load(f))
 
 
 class WASBModule(BasePipelineModule):
@@ -110,6 +150,15 @@ class WASBModule(BasePipelineModule):
             WASBResult with ball positions.
 
         """
+        # Check if we should load from pre-computed result
+        if self.config.load_path is not None:
+            load_path = Path(self.config.load_path)
+            if load_path.exists():
+                LOGGER.info(f"Loading WASB result from {load_path} (skipping inference)")
+                return WASBResult.load(load_path)
+            else:
+                LOGGER.warning(f"load_path specified but not found: {load_path}, running inference")
+
         if not self.is_loaded:
             self.load()
 
@@ -117,22 +166,44 @@ class WASBModule(BasePipelineModule):
         result = self._pipeline.run(video_path, max_frames=max_frames)
 
         ball_uv_px = result.ball_xy_px.astype(np.float32)
+        visibility = result.visibility
+
+        # Replace -Infinity values (undetected frames) with NaN to avoid downstream issues
+        invalid_mask = ~visibility | ~np.isfinite(ball_uv_px).all(axis=-1)
+        ball_uv_px[invalid_mask] = np.nan
 
         if image_width is not None and image_height is not None:
             ball_uv = ball_uv_px.copy()
             ball_uv[..., 0] /= image_width
             ball_uv[..., 1] /= image_height
         else:
-            ball_uv = ball_uv_px
+            ball_uv = ball_uv_px.copy()
 
-        return WASBResult(
+        wasb_result = WASBResult(
             ball_uv=ball_uv,
             ball_uv_px=ball_uv_px,
-            visibility=result.visibility,
+            visibility=visibility,
             score=result.score.astype(np.float32),
         )
 
+        if self.config.save_result and self.config.output_path is not None:
+            wasb_result.save(self.config.output_path)
+
+        return wasb_result
+
 
 if __name__ == "__main__":
+    # Quick smoke test for module instantiation
     print("WASBModule: ball detection module")
     print("Use WASBModule(WASBConfig(...)) to create")
+
+    # Test config creation
+    config = WASBConfig(
+        checkpoint="test.ckpt",
+        device="cpu",
+        save_result=True,
+        output_path="test_output.json",
+    )
+    print(f"Config: {config}")
+    assert config.device == "cpu"
+    print("Smoke test passed.")

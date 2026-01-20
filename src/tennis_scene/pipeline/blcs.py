@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,6 +20,26 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
+class BLCSConfig:
+    """Configuration for BLCS module.
+
+    Attributes:
+        checkpoint_path: Path to BLCS model checkpoint.
+        device: Inference device.
+        save_result: Whether to save result to file.
+        output_path: Path to save result JSON file.
+        load_path: Path to load pre-computed result from (skips inference).
+
+    """
+
+    checkpoint_path: str | Path
+    device: str = "cuda"
+    save_result: bool = False
+    output_path: str | Path | None = None
+    load_path: str | Path | None = None
+
+
+@dataclass
 class BLCSResult:
     """Result of BLCS inference.
 
@@ -28,6 +49,33 @@ class BLCSResult:
     """
 
     ball_3d: NDArray[np.float32]
+
+    def to_dict(self) -> dict:
+        """Convert result to JSON-serializable dict."""
+        return {
+            "ball_3d": self.ball_3d.tolist(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "BLCSResult":
+        """Create result from dict."""
+        return cls(
+            ball_3d=np.array(data["ball_3d"], dtype=np.float32),
+        )
+
+    def save(self, path: str | Path) -> None:
+        """Save result to JSON file."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, indent=2)
+        LOGGER.info(f"Saved BLCS result to {path}")
+
+    @classmethod
+    def load(cls, path: str | Path) -> "BLCSResult":
+        """Load result from JSON file."""
+        with Path(path).open("r", encoding="utf-8") as f:
+            return cls.from_dict(json.load(f))
 
 
 class BLCSModule(BasePipelineModule):
@@ -40,18 +88,36 @@ class BLCSModule(BasePipelineModule):
 
     def __init__(
         self,
-        checkpoint_path: str | Path,
+        config: BLCSConfig | None = None,
+        *,
+        checkpoint_path: str | Path | None = None,
         device: str = "cuda",
+        save_result: bool = False,
+        output_path: str | Path | None = None,
     ) -> None:
         """Initialize the module.
 
         Args:
-            checkpoint_path: Path to BLCS model checkpoint.
-            device: Inference device.
+            config: BLCS configuration (preferred).
+            checkpoint_path: Path to BLCS model checkpoint (legacy).
+            device: Inference device (legacy).
+            save_result: Whether to save result (legacy).
+            output_path: Path to save result (legacy).
 
         """
-        self.checkpoint_path = Path(checkpoint_path)
-        self.device = device
+        if config is not None:
+            self.config = config
+        else:
+            if checkpoint_path is None:
+                raise ValueError("Either config or checkpoint_path must be provided")
+            self.config = BLCSConfig(
+                checkpoint_path=checkpoint_path,
+                device=device,
+                save_result=save_result,
+                output_path=output_path,
+            )
+        self.checkpoint_path = Path(self.config.checkpoint_path)
+        self.device = self.config.device
         self._predictor = None
 
     def load(self) -> None:
@@ -91,17 +157,35 @@ class BLCSModule(BasePipelineModule):
             BLCSResult with 3D ball trajectory.
 
         """
+        # Check if we should load from pre-computed result
+        if self.config.load_path is not None:
+            load_path = Path(self.config.load_path)
+            if load_path.exists():
+                LOGGER.info(f"Loading BLCS result from {load_path} (skipping inference)")
+                return BLCSResult.load(load_path)
+            else:
+                LOGGER.warning(f"load_path specified but not found: {load_path}, running inference")
+
         if not self.is_loaded:
             self.load()
 
         LOGGER.info("Running BLCS ball localization...")
 
-        ball_uv_t = torch.from_numpy(ball_uv).float()
+        # Handle NaN values from WASB (undetected frames)
+        ball_uv_clean = ball_uv.copy()
+        nan_mask = ~np.isfinite(ball_uv_clean).all(axis=-1)
+        ball_uv_clean[nan_mask] = 0.0  # Replace NaN with 0
+
+        # Combine visibility mask with NaN mask
+        if ball_vis is not None:
+            effective_vis = ball_vis & ~nan_mask
+        else:
+            effective_vis = ~nan_mask
+
+        ball_uv_t = torch.from_numpy(ball_uv_clean).float()
         court_kp_t = torch.from_numpy(court_kp).float()
 
-        ball_mask_t = None
-        if ball_vis is not None:
-            ball_mask_t = torch.from_numpy(ball_vis.astype(np.float32))
+        ball_mask_t = torch.from_numpy(effective_vis.astype(np.float32))
 
         court_vis_t = None
         if court_vis is not None:
@@ -115,11 +199,31 @@ class BLCSModule(BasePipelineModule):
             denormalize=True,
         )
 
-        ball_3d = pred["position"].squeeze(0).numpy().astype(np.float32)
+        ball_3d = pred["position"].squeeze(0).cpu().numpy().astype(np.float32)
 
-        return BLCSResult(ball_3d=ball_3d)
+        # Set NaN for frames where ball was not visible
+        ball_3d[~effective_vis] = np.nan
+
+        result = BLCSResult(ball_3d=ball_3d)
+
+        if self.config.save_result and self.config.output_path is not None:
+            result.save(self.config.output_path)
+
+        return result
 
 
 if __name__ == "__main__":
+    # Quick smoke test for module instantiation
     print("BLCSModule: 3D ball localization module")
-    print("Use BLCSModule(checkpoint_path, device) to create")
+    print("Use BLCSModule(BLCSConfig(...)) to create")
+
+    # Test config creation
+    config = BLCSConfig(
+        checkpoint_path="test.ckpt",
+        device="cpu",
+        save_result=True,
+        output_path="test_output.json",
+    )
+    print(f"Config: {config}")
+    assert config.device == "cpu"
+    print("Smoke test passed.")

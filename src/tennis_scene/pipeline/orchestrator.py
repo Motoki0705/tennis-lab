@@ -14,6 +14,7 @@ Config entry point: `src/tennis_scene/configs/pipeline.yaml`
 from __future__ import annotations
 
 import logging
+import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -22,11 +23,11 @@ import numpy as np
 
 from src.tennis_scene.io import SceneResult
 from src.tennis_scene.transforms import apply_plcs_transform_batch
-from src.tennis_scene.pipeline.court_kp import CourtKPModule
-from src.tennis_scene.pipeline.gvhmr import GVHMRModule, GVHMRConfig
+from src.tennis_scene.pipeline.court_kp import CourtKPModule, CourtKPConfig
+from src.tennis_scene.pipeline.gvhmr import GVHMRResult
 from src.tennis_scene.pipeline.wasb import WASBModule, WASBConfig
-from src.tennis_scene.pipeline.plcs import PLCSModule
-from src.tennis_scene.pipeline.blcs import BLCSModule
+from src.tennis_scene.pipeline.plcs import PLCSModule, PLCSConfig
+from src.tennis_scene.pipeline.blcs import BLCSModule, BLCSConfig
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -40,7 +41,7 @@ class TennisSceneOrchestrator:
 
     Coordinates the execution of pipeline modules in the correct order:
     1. Court KP Detection (single frame)
-    2. GVHMR preprocessing and inference (parallel with WASB)
+    2. GVHMR via CLI subprocess (parallel with WASB)
     3. WASB ball detection (parallel with GVHMR)
     4. PLCS player localization (depends on Court KP + GVHMR)
     5. BLCS ball localization (depends on Court KP + WASB)
@@ -51,7 +52,7 @@ class TennisSceneOrchestrator:
     def __init__(
         self,
         court_kp_module: CourtKPModule,
-        gvhmr_module: GVHMRModule | None,
+        gvhmr_config: dict[str, Any] | None,
         wasb_module: WASBModule | None,
         plcs_module: PLCSModule,
         blcs_module: BLCSModule | None,
@@ -61,7 +62,7 @@ class TennisSceneOrchestrator:
 
         Args:
             court_kp_module: Court keypoint detection module.
-            gvhmr_module: GVHMR module (None to skip).
+            gvhmr_config: GVHMR configuration dict for subprocess execution.
             wasb_module: WASB module (None to skip ball detection).
             plcs_module: PLCS module.
             blcs_module: BLCS module (None to skip).
@@ -69,7 +70,7 @@ class TennisSceneOrchestrator:
 
         """
         self.court_kp_module = court_kp_module
-        self.gvhmr_module = gvhmr_module
+        self.gvhmr_config = gvhmr_config
         self.wasb_module = wasb_module
         self.plcs_module = plcs_module
         self.blcs_module = blcs_module
@@ -90,66 +91,156 @@ class TennisSceneOrchestrator:
 
         device = str(cfg.device)
 
-        court_kp_module = CourtKPModule(
+        # Determine output directory for module results
+        output_dir = Path(to_absolute_path(cfg.output_dir))
+
+        # Helper to resolve load_path
+        def get_load_path(section: str) -> str | None:
+            load_path = cfg[section].get("load_path")
+            if load_path is not None:
+                return to_absolute_path(str(load_path))
+            return None
+
+        # Helper to get output_path
+        def get_output_path(section: str, default_name: str) -> str:
+            output_path = cfg[section].get("output_path")
+            if output_path is not None:
+                return to_absolute_path(str(output_path))
+            return str(output_dir / default_name)
+
+        court_kp_config = CourtKPConfig(
             checkpoint_path=to_absolute_path(cfg.court_kp.checkpoint),
             mode=str(cfg.court_kp.get("mode", "model")),
             manual_keypoints_path=cfg.court_kp.get("manual_keypoints_path"),
             device=device,
+            save_result=cfg.court_kp.get("save_result", True),
+            output_path=get_output_path("court_kp", "court_kp_result.json"),
+            load_path=get_load_path("court_kp"),
         )
+        court_kp_module = CourtKPModule(court_kp_config)
 
-        gvhmr_module = None
+        # GVHMR runs as CLI subprocess - store config dict instead of module
+        gvhmr_config = None
         if not cfg.gvhmr.get("skip", False):
-            gvhmr_config = GVHMRConfig(
-                model_checkpoint=to_absolute_path(cfg.gvhmr.checkpoint),
-                yolo_checkpoint=to_absolute_path(cfg.gvhmr.yolo_checkpoint),
-                vitpose_checkpoint=to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
-                hmr2_checkpoint=to_absolute_path(cfg.gvhmr.hmr2_checkpoint),
-                device=device,
-            )
-            gvhmr_module = GVHMRModule(gvhmr_config)
+            gvhmr_config = {
+                "python_executable": to_absolute_path(cfg.gvhmr.python_executable),
+                "model_checkpoint": to_absolute_path(cfg.gvhmr.checkpoint),
+                "yolo_checkpoint": to_absolute_path(cfg.gvhmr.yolo_checkpoint),
+                "vitpose_checkpoint": to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
+                "hmr2_checkpoint": to_absolute_path(cfg.gvhmr.hmr2_checkpoint),
+                "output_path": get_output_path("gvhmr", "gvhmr_result.json"),
+                "load_path": get_load_path("gvhmr"),
+                "device": device,
+            }
 
         wasb_module = None
         if not cfg.wasb.get("skip", False):
-            completion_ckpt = None
-            if cfg.wasb.completion.enabled:
-                completion_ckpt = to_absolute_path(cfg.wasb.completion.checkpoint)
-
             wasb_config = WASBConfig(
                 checkpoint=to_absolute_path(cfg.wasb.checkpoint),
                 batch_size=int(cfg.wasb.batch_size),
-                completion_enabled=bool(cfg.wasb.completion.enabled),
-                completion_checkpoint=completion_ckpt,
                 device=device,
+                save_result=cfg.wasb.get("save_result", True),
+                output_path=get_output_path("wasb", "wasb_result.json"),
+                load_path=get_load_path("wasb"),
             )
             wasb_module = WASBModule(wasb_config)
 
-        plcs_module = PLCSModule(
+        plcs_config = PLCSConfig(
             checkpoint_path=to_absolute_path(cfg.plcs.checkpoint),
             device=device,
+            save_result=cfg.plcs.get("save_result", True),
+            output_path=get_output_path("plcs", "plcs_result.json"),
+            load_path=get_load_path("plcs"),
         )
+        plcs_module = PLCSModule(plcs_config)
 
         blcs_module = None
         if wasb_module is not None:
-            blcs_module = BLCSModule(
+            blcs_config = BLCSConfig(
                 checkpoint_path=to_absolute_path(cfg.blcs.checkpoint),
                 device=device,
+                save_result=cfg.blcs.get("save_result", True),
+                output_path=get_output_path("blcs", "blcs_result.json"),
+                load_path=get_load_path("blcs"),
             )
+            blcs_module = BLCSModule(blcs_config)
 
         return cls(
             court_kp_module=court_kp_module,
-            gvhmr_module=gvhmr_module,
+            gvhmr_config=gvhmr_config,
             wasb_module=wasb_module,
             plcs_module=plcs_module,
             blcs_module=blcs_module,
             device=device,
         )
 
+    def _run_gvhmr(
+        self,
+        video_path: Path,
+        max_frames: int | None = None,
+    ) -> GVHMRResult:
+        """Run GVHMR via CLI subprocess or load from cached result.
+
+        Args:
+            video_path: Path to input video.
+            max_frames: Maximum frames to process.
+
+        Returns:
+            GVHMRResult with SMPL and keypoint data.
+
+        """
+        if self.gvhmr_config is None:
+            raise RuntimeError("GVHMR config not set")
+
+        load_path = self.gvhmr_config.get("load_path")
+        output_path = self.gvhmr_config["output_path"]
+
+        # If load_path is specified and exists, load from it
+        if load_path is not None and Path(load_path).exists():
+            LOGGER.info(f"Loading GVHMR result from: {load_path}")
+            return GVHMRResult.load(load_path)
+
+        # Run GVHMR CLI subprocess
+        LOGGER.info("Running GVHMR via CLI subprocess...")
+        python_exe = self.gvhmr_config["python_executable"]
+        cmd = [
+            python_exe,
+            "-m",
+            "src.tennis_scene.pipeline.gvhmr",
+            f"--video={video_path}",
+            f"--output={output_path}",
+            f"--model-checkpoint={self.gvhmr_config['model_checkpoint']}",
+            f"--yolo-checkpoint={self.gvhmr_config['yolo_checkpoint']}",
+            f"--vitpose-checkpoint={self.gvhmr_config['vitpose_checkpoint']}",
+            f"--hmr2-checkpoint={self.gvhmr_config['hmr2_checkpoint']}",
+            f"--device={self.gvhmr_config['device']}",
+        ]
+        if max_frames is not None:
+            cmd.append(f"--max_frames={max_frames}")
+
+        LOGGER.info(f"Command: {' '.join(cmd)}")
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).parents[3]),  # tennis-lab root
+        )
+
+        if result.returncode != 0:
+            LOGGER.error(f"GVHMR subprocess failed:\n{result.stderr}")
+            raise RuntimeError(f"GVHMR subprocess failed: {result.stderr}")
+
+        LOGGER.info("GVHMR subprocess completed successfully")
+
+        # Load result from output JSON
+        return GVHMRResult.load(output_path)
+
     def load_all(self) -> None:
-        """Pre-load all modules."""
+        """Pre-load all modules (except GVHMR which runs as subprocess)."""
         LOGGER.info("Pre-loading all modules...")
         self.court_kp_module.load()
-        if self.gvhmr_module is not None:
-            self.gvhmr_module.load()
+        # GVHMR runs as subprocess, no pre-loading needed
         if self.wasb_module is not None:
             self.wasb_module.load()
         self.plcs_module.load()
@@ -229,8 +320,8 @@ class TennisSceneOrchestrator:
         court_kp = court_result.keypoints
         court_vis = court_result.visibility
 
-        if self.gvhmr_module is not None:
-            gvhmr_result = self.gvhmr_module.process(video_path, max_frames)
+        if self.gvhmr_config is not None:
+            gvhmr_result = self._run_gvhmr(video_path, max_frames)
 
             human_kp_2d_norm = gvhmr_result.human_kp_2d.copy()
             human_kp_2d_norm[..., 0] /= width
