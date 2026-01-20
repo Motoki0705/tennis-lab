@@ -1,0 +1,12 @@
+learning_rate: 1.0e-3
+weight_decay: 1.0e-4
+
+max_epochs: 50
+gradient_clip_val: 1.0
+
+loss:
+  masked_weight: 1.0
+  observed_weight: 0.1
+  smoothness_weight: 0.0
+  huber_delta: 0.02
+
