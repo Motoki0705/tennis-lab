@@ -123,6 +123,82 @@ class GVHMRResult:
             json.dump(self.to_dict(), f, indent=2)
         LOGGER.info(f"Saved GVHMR result to {path}")
 
+    def validate(self) -> tuple[bool, list[str]]:
+        """Validate result content.
+
+        Returns:
+            Tuple of (is_valid, errors).
+        """
+        errors: list[str] = []
+        if self.smpl_body_pose.ndim != 2 or self.smpl_body_pose.shape[1] != 63:
+            errors.append(
+                f"smpl_body_pose shape must be (T, 63), got {self.smpl_body_pose.shape}"
+            )
+        if self.smpl_global_orient.ndim != 2 or self.smpl_global_orient.shape[1] != 3:
+            errors.append(
+                "smpl_global_orient shape must be (T, 3), "
+                f"got {self.smpl_global_orient.shape}"
+            )
+        if self.smpl_betas.shape != (10,):
+            errors.append(f"smpl_betas shape must be (10,), got {self.smpl_betas.shape}")
+        if self.human_kp_2d.ndim != 3 or self.human_kp_2d.shape[1:] != (17, 2):
+            errors.append(
+                f"human_kp_2d shape must be (T, 17, 2), got {self.human_kp_2d.shape}"
+            )
+        if self.human_kp_vis.ndim != 2 or self.human_kp_vis.shape[1] != 17:
+            errors.append(
+                f"human_kp_vis shape must be (T, 17), got {self.human_kp_vis.shape}"
+            )
+        if self.bbx_xys.ndim != 2 or self.bbx_xys.shape[1] != 3:
+            errors.append(f"bbx_xys shape must be (T, 3), got {self.bbx_xys.shape}")
+
+        t_pose = self.smpl_body_pose.shape[0]
+        if self.smpl_global_orient.shape[0] != t_pose:
+            errors.append("smpl_global_orient length does not match smpl_body_pose")
+        if self.human_kp_2d.shape[0] != t_pose:
+            errors.append("human_kp_2d length does not match smpl_body_pose")
+        if self.human_kp_vis.shape[0] != t_pose:
+            errors.append("human_kp_vis length does not match smpl_body_pose")
+        if self.bbx_xys.shape[0] != t_pose:
+            errors.append("bbx_xys length does not match smpl_body_pose")
+
+        if not np.isfinite(self.smpl_body_pose).all():
+            errors.append("smpl_body_pose contains non-finite values")
+        if not np.isfinite(self.smpl_global_orient).all():
+            errors.append("smpl_global_orient contains non-finite values")
+        if not np.isfinite(self.smpl_betas).all():
+            errors.append("smpl_betas contains non-finite values")
+        if not np.isfinite(self.human_kp_2d).all():
+            errors.append("human_kp_2d contains non-finite values")
+        if not np.isfinite(self.human_kp_vis).all():
+            errors.append("human_kp_vis contains non-finite values")
+        if not np.isfinite(self.bbx_xys).all():
+            errors.append("bbx_xys contains non-finite values")
+
+        if self.smpl_vertices_local is not None:
+            if (
+                self.smpl_vertices_local.ndim != 3
+                or self.smpl_vertices_local.shape[0] != t_pose
+                or self.smpl_vertices_local.shape[2] != 3
+            ):
+                errors.append(
+                    "smpl_vertices_local shape must be (T, V, 3), "
+                    f"got {self.smpl_vertices_local.shape}"
+                )
+            if not np.isfinite(self.smpl_vertices_local).all():
+                errors.append("smpl_vertices_local contains non-finite values")
+
+        if not np.isin(self.human_kp_vis, [0.0, 1.0]).all():
+            errors.append("human_kp_vis must contain only 0 or 1")
+
+        if np.any(self.bbx_xys[:, 2] <= 0):
+            errors.append("bbx_xys size must be positive")
+
+        if self.track_id is not None and self.track_id < 0:
+            errors.append(f"track_id must be non-negative, got {self.track_id}")
+
+        return len(errors) == 0, errors
+
     @classmethod
     def load(cls, path: str | Path) -> "GVHMRResult":
         """Load result from JSON file."""
@@ -173,6 +249,26 @@ class GVHMRMultiResult:
         with path.open("w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2)
         LOGGER.info(f"Saved GVHMR multi-player result to {path}")
+
+    def validate(self) -> tuple[bool, list[str]]:
+        """Validate result content.
+
+        Returns:
+            Tuple of (is_valid, errors).
+        """
+        errors: list[str] = []
+        if not self.players:
+            errors.append("players must not be empty")
+            return False, errors
+        for track_id, result in self.players.items():
+            ok, result_errors = result.validate()
+            if not ok:
+                errors.extend([f"player {track_id}: {msg}" for msg in result_errors])
+            if result.track_id is not None and result.track_id != track_id:
+                errors.append(
+                    f"player {track_id}: track_id mismatch ({result.track_id})"
+                )
+        return len(errors) == 0, errors
 
     @classmethod
     def load(cls, path: str | Path) -> "GVHMRMultiResult":

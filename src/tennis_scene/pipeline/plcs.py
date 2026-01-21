@@ -81,6 +81,27 @@ class PLCSResult:
             json.dump(self.to_dict(), f, indent=2)
         LOGGER.info(f"Saved PLCS result to {path}")
 
+    def validate(self) -> tuple[bool, list[str]]:
+        """Validate result content.
+
+        Returns:
+            Tuple of (is_valid, errors).
+        """
+        errors: list[str] = []
+        if self.position.ndim != 2 or self.position.shape[1] != 3:
+            errors.append(f"position shape must be (T, 3), got {self.position.shape}")
+        if self.yaw.ndim != 1:
+            errors.append(f"yaw shape must be (T,), got {self.yaw.shape}")
+        if self.position.shape[0] != self.yaw.shape[0]:
+            errors.append("position length does not match yaw length")
+        if not np.isfinite(self.position).all():
+            errors.append("position contains non-finite values")
+        if not np.isfinite(self.yaw).all():
+            errors.append("yaw contains non-finite values")
+        if self.track_id is not None and self.track_id < 0:
+            errors.append(f"track_id must be non-negative, got {self.track_id}")
+        return len(errors) == 0, errors
+
     @classmethod
     def load(cls, path: str | Path) -> "PLCSResult":
         """Load result from JSON file."""
@@ -130,6 +151,26 @@ class PLCSMultiResult:
         with path.open("w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2)
         LOGGER.info(f"Saved PLCS multi-player result to {path}")
+
+    def validate(self) -> tuple[bool, list[str]]:
+        """Validate result content.
+
+        Returns:
+            Tuple of (is_valid, errors).
+        """
+        errors: list[str] = []
+        if not self.players:
+            errors.append("players must not be empty")
+            return False, errors
+        for track_id, result in self.players.items():
+            ok, result_errors = result.validate()
+            if not ok:
+                errors.extend([f"player {track_id}: {msg}" for msg in result_errors])
+            if result.track_id is not None and result.track_id != track_id:
+                errors.append(
+                    f"player {track_id}: track_id mismatch ({result.track_id})"
+                )
+        return len(errors) == 0, errors
 
     @classmethod
     def load(cls, path: str | Path) -> "PLCSMultiResult":
