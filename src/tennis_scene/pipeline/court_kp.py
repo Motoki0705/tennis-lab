@@ -82,6 +82,30 @@ class CourtKPResult:
             json.dump(self.to_dict(), f, indent=2)
         LOGGER.info(f"Saved CourtKP result to {path}")
 
+    def validate(self) -> tuple[bool, list[str]]:
+        """Validate result content.
+
+        Returns:
+            Tuple of (is_valid, errors).
+        """
+        errors: list[str] = []
+        if self.keypoints.shape != (NUM_COURT_KEYPOINTS, 2):
+            errors.append(f"keypoints shape must be (20, 2), got {self.keypoints.shape}")
+        if self.visibility.shape != (NUM_COURT_KEYPOINTS,):
+            errors.append(f"visibility shape must be (20,), got {self.visibility.shape}")
+        if self.frame_index < 0:
+            errors.append(f"frame_index must be non-negative, got {self.frame_index}")
+        if not np.isfinite(self.keypoints).all():
+            errors.append("keypoints contain non-finite values")
+        if not np.isfinite(self.visibility).all():
+            errors.append("visibility contains non-finite values")
+        if not np.isin(self.visibility, [0.0, 1.0]).all():
+            errors.append("visibility must contain only 0 or 1")
+        tol = 1e-6
+        if np.any(self.keypoints < -tol) or np.any(self.keypoints > 1.0 + tol):
+            errors.append("keypoints must be normalized to [0, 1]")
+        return len(errors) == 0, errors
+
     @classmethod
     def load(cls, path: str | Path) -> "CourtKPResult":
         """Load result from JSON file."""

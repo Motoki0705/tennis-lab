@@ -77,6 +77,33 @@ class BLCSResult:
             json.dump(self.to_dict(), f, indent=2)
         LOGGER.info(f"Saved BLCS result to {path}")
 
+    def validate(self) -> tuple[bool, list[str]]:
+        """Validate result content.
+        
+        Returns:
+            Tuple of (is_valid, errors).
+        """
+        errors: list[str] = []
+        if self.ball_3d.ndim != 2 or self.ball_3d.shape[1] != 3:
+            errors.append(f"ball_3d shape must be (T, 3), got {self.ball_3d.shape}")
+        if not np.isfinite(self.ball_3d).all():
+            errors.append("ball_3d contains non-finite values")
+        if self.visibility is not None:
+            if self.visibility.ndim != 1:
+                errors.append(
+                    f"visibility shape must be (T,), got {self.visibility.shape}"
+                )
+            if self.visibility.shape[0] != self.ball_3d.shape[0]:
+                errors.append("visibility length does not match ball_3d length")
+            if not np.isin(self.visibility, [0, 1, False, True]).all():
+                errors.append("visibility must contain only 0 or 1")
+            invalid = ~self.visibility.astype(bool)
+            if invalid.any():
+                tol = 1e-6
+                if np.any(np.abs(self.ball_3d[invalid]) > tol):
+                    errors.append("ball_3d must be zero for invalid frames")
+        return len(errors) == 0, errors
+
     @classmethod
     def load(cls, path: str | Path) -> "BLCSResult":
         """Load result from JSON file."""
