@@ -5,9 +5,9 @@ This script renders the output of the tennis scene pipeline as:
 - MP4 video file (saved to disk)
 
 Example commands:
-    `uv run python -m src.tennis_scene.scripts.visualization input=outputs/tennis_scene/clip.npz`
-    `uv run python -m src.tennis_scene.scripts.visualization input=... view=2d output=animation.mp4`
-    `uv run python -m src.tennis_scene.scripts.visualization input=... display=true`
+    `third_party/GVHMR/.venv/bin/python -m src.tennis_scene.scripts.visualization input=outputs/tennis_scene/clip.npz`
+    `third_party/GVHMR/.venv/bin/python -m src.tennis_scene.scripts.visualization input=... view=2d output=animation.mp4`
+    `third_party/GVHMR/.venv/bin/python -m src.tennis_scene.scripts.visualization input=... display=true`
 
 Config entry point: `src/tennis_scene/configs/visualization.yaml`
 """

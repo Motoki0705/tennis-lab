@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+import warnings
 
 import numpy as np
 from numpy.typing import NDArray
@@ -127,8 +128,15 @@ class SceneResult:
         data = np.load(path, allow_pickle=True)
 
         metadata = {}
-        if "metadata" in data:
-            metadata = data["metadata"].item()
+        if "metadata" in data.files:
+            try:
+                metadata = data["metadata"].item()
+            except Exception as exc:
+                warnings.warn(
+                    f"Failed to load metadata from {path}: {exc}. "
+                    "Proceeding without metadata.",
+                    RuntimeWarning,
+                )
 
         return cls(
             num_frames=int(data["num_frames"]),
