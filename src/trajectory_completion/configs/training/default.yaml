@@ -1,4 +1,4 @@
-learning_rate: 1.0e-3
+learning_rate: 1.0e-4
 weight_decay: 1.0e-4
 
 max_epochs: 50
