@@ -1,9 +1,9 @@
 scene_dir: "data/blcs"
 
-batch_size: 16
+batch_size: 32
 num_workers: 4
 
-max_seq_len: 256
+max_seq_len: 1024
 
 label:
   sigma_frames: 2.5
