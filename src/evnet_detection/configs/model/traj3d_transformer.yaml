@@ -1,5 +1,5 @@
 name: traj3d_transformer
-hidden_dim: 256
+hidden_dim: 512
 num_layers: 6
 num_heads: 8
 dropout: 0.1
@@ -7,10 +7,10 @@ mlp_inter_dim: null
 use_moe: false
 
 moe:
-  moe_inter_dim: 256
-  n_routed_experts: 64
-  n_shared_experts: 0
-  n_activated_experts: 6
+  moe_inter_dim: 512
+  n_routed_experts: 8
+  n_shared_experts: 2
+  n_activated_experts: 2
   n_expert_groups: 1
   n_limited_groups: 1
   score_func: softmax
@@ -19,5 +19,5 @@ moe:
 rope_theta: 10000.0
 yarn: null
 causal: false
-max_seq_len: 256
+max_seq_len: 1024
 num_events: 2  # [shot, bounce]
