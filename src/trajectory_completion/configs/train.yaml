@@ -3,6 +3,7 @@ defaults:
   - data: blcs_rally_uv
   - model: uv_transformer
   - training: default
+  - metrics: default
   - run: train
 
 hydra:

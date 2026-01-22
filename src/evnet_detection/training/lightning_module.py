@@ -12,6 +12,7 @@ from torch.optim import AdamW
 
 from src.evnet_detection.models.traj3d_event_model import Traj3DEventModel
 from src.evnet_detection.models.uv_event_model import UVEventModel
+from src.evnet_detection.utils.peaks import extract_event_peaks
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -44,6 +45,10 @@ class EventDetectionLightningModule(pl.LightningModule):
         train_cfg = self.config.get("training", {}) or {}
         self.learning_rate = float(train_cfg.get("learning_rate", 1e-4))
         self.weight_decay = float(train_cfg.get("weight_decay", 1e-5))
+
+        metrics_cfg = self.config.get("metrics", {}) or {}
+        self.peak_threshold = float(metrics_cfg.get("peak_threshold", 0.5))
+        self.match_tolerance_frames = int(metrics_cfg.get("match_tolerance_frames", 3))
 
         pos_weight_cfg = train_cfg.get("pos_weight", [1.0, 1.0])
         pos_weight = torch.tensor(pos_weight_cfg, dtype=torch.float32)
@@ -87,7 +92,10 @@ class EventDetectionLightningModule(pl.LightningModule):
         time_mask = _make_time_mask(batch["seq_len"], T).to(loss_per.dtype)  # (B, T)
         loss = (loss_per * time_mask.unsqueeze(-1)).sum() / (time_mask.sum() * E + 1e-8)
 
+        accuracy = self._peak_match_accuracy(logits, targets, batch.get("seq_len"))
+
         self.log(f"{stage}/loss", loss, prog_bar=(stage != "test"))
+        self.log(f"{stage}/accuracy", accuracy, prog_bar=(stage != "test"), on_step=False, on_epoch=True)
         return loss
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
@@ -101,6 +109,45 @@ class EventDetectionLightningModule(pl.LightningModule):
     def configure_optimizers(self) -> dict[str, Any]:
         optimizer = AdamW(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
         return {"optimizer": optimizer}
+
+    def _peak_match_accuracy(self, logits: Tensor, targets: Tensor, seq_len: Tensor | None) -> Tensor:
+        probs = torch.sigmoid(logits)
+        pred_peaks, _ = extract_event_peaks(
+            probs,
+            seq_len,
+            threshold=self.peak_threshold,
+            min_distance=max(self.match_tolerance_frames, 1),
+            top_k=None,
+        )
+        gt_peaks, _ = extract_event_peaks(
+            targets,
+            seq_len,
+            threshold=self.peak_threshold,
+            min_distance=1,
+            top_k=None,
+        )
+
+        B, _, E = probs.shape
+        correct = 0
+        total = B * E
+        tolerance = max(self.match_tolerance_frames, 0)
+        for b in range(B):
+            for e in range(E):
+                pred = pred_peaks[b][e]
+                gt = gt_peaks[b][e]
+                if not gt and not pred:
+                    correct += 1
+                    continue
+                if not gt or not pred:
+                    continue
+                matched = False
+                for g in gt:
+                    if any(abs(g - p) <= tolerance for p in pred):
+                        matched = True
+                        break
+                if matched:
+                    correct += 1
+        return logits.new_tensor(correct / max(total, 1))
 
 
 if __name__ == "__main__":
