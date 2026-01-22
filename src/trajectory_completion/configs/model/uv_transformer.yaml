@@ -6,6 +6,7 @@ num_heads: 8
 dropout: 0.1
 mlp_inter_dim: null
 use_moe: true
+invisible_init_std: 0.02
 
 moe:
   moe_inter_dim: 512

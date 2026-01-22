@@ -8,6 +8,7 @@ num_layers: 4
 num_heads: 8
 ffn_dim: null        # Defaults to 8/3 * hidden_dim (rounded to 64)
 dropout: 0.1
+invisible_init_std: 0.02
 
 # RoPE settings
 rope_dim: null       # Defaults to head_dim (hidden_dim / num_heads)

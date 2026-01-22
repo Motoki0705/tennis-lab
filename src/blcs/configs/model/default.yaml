@@ -10,6 +10,7 @@ num_heads: 8
 ffn_dim: null        # Defaults to 8/3 * hidden_dim (rounded to 64)
 dropout: 0.1
 max_seq_len: 2048     # Maximum 4 seconds @ 30fps
+invisible_init_std: 0.02
 
 # RoPE (Rotary Position Embedding)
 rope_dim: null       # Defaults to head_dim (hidden_dim / num_heads)

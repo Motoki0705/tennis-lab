@@ -27,10 +27,7 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
-from src.plcs.models.components.encoders import (
-    CourtTokenEmbedding,
-    PlayerTokenEmbedding,
-)
+from src.common.models.embeddings import CourtKPUVEmbedding, InvisibleTokenEmbedding, PlayerKPUVEmbedding
 from src.plcs.models.components.heads import PositionHead, RotationHead
 from src.utils.geometry import NUM_COURT_KP, NUM_HUMAN_KP
 
@@ -77,6 +74,7 @@ class PLCSModel(nn.Module):
         yarn: YaRNConfig | None = None,
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
+        invisible_init_std: float = 0.02,
     ) -> None:
         """Initialize the PLCS model.
 
@@ -91,6 +89,7 @@ class PLCSModel(nn.Module):
             yarn: Optional YaRN config for long-context extrapolation.
             use_moe: Use Mixture-of-Experts FFN in each Transformer block.
             moe_config: MoE configuration (required when use_moe=True).
+            invisible_init_std: Initialization std for invisible tokens.
 
         """
         super().__init__()
@@ -114,8 +113,19 @@ class PLCSModel(nn.Module):
             raise ValueError(f"moe_config.dim={moe_config.dim} must match hidden_dim={hidden_dim}")
 
         # Token embeddings
-        self.court_embed = CourtTokenEmbedding(dim=hidden_dim, dropout=dropout)
-        self.player_embed = PlayerTokenEmbedding(dim=hidden_dim, dropout=dropout)
+        self.invisible_token = InvisibleTokenEmbedding(
+            dim=hidden_dim, init_std=invisible_init_std
+        )
+        self.court_embed = CourtKPUVEmbedding(
+            dim=hidden_dim,
+            dropout=dropout,
+            invisible_token=self.invisible_token,
+        )
+        self.player_embed = PlayerKPUVEmbedding(
+            dim=hidden_dim,
+            dropout=dropout,
+            invisible_token=self.invisible_token,
+        )
 
         # Type embedding: 0 = court, 1 = player
         self.type_embed = nn.Embedding(2, hidden_dim)
@@ -207,6 +217,7 @@ class PLCSModel(nn.Module):
             yarn=yarn,
             use_moe=use_moe,
             moe_config=moe_config,
+            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
         )
 
     def forward(
@@ -251,26 +262,6 @@ class PLCSModel(nn.Module):
         x = torch.cat([cls, token_body], dim=1)  # (B, 38, D)
         S_total = x.shape[1]
 
-        # Build key_padding_mask if visibility provided
-        key_padding_mask: Tensor | None = None
-        if human_vis is not None or court_vis is not None:
-            if court_vis is not None:
-                court_mask = court_vis.bool()  # (B, 20)
-            else:
-                court_mask = torch.ones(
-                    B, NUM_COURT_KP, device=x.device, dtype=torch.bool
-                )
-            if human_vis is not None:
-                player_mask = human_vis.bool()  # (B, 17)
-            else:
-                player_mask = torch.ones(
-                    B, NUM_HUMAN_KP, device=x.device, dtype=torch.bool
-                )
-            cls_mask = torch.ones(B, 1, device=x.device, dtype=torch.bool)
-            key_padding_mask = torch.cat(
-                [cls_mask, court_mask, player_mask], dim=1
-            )  # (B, 38)
-
         if S_body > self.freqs_cis.shape[0]:
             raise ValueError(
                 f"Sequence length S={S_body} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
@@ -285,9 +276,6 @@ class PLCSModel(nn.Module):
         freqs_cis = torch.cat([cls_freqs, freqs_cis_body], dim=0)
 
         attn_mask: Tensor | None = None
-        if key_padding_mask is not None:
-            # bool mask semantics follow SDPA: True=KEEP, False=MASK
-            attn_mask = key_padding_mask[:, None, :].expand(B, S_total, S_total)
 
         residual = None
         for blk in self.blocks:
