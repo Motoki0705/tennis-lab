@@ -13,6 +13,10 @@ from src.blcs.data.multiview_dataset import (
     MultiViewBallTrajectoryDataset,
     collate_multiview_trajectories,
 )
+from src.common.data.scene_batch_sampler import (
+    build_scene_sampler,
+    resolve_scene_sampler_mode,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -39,7 +43,11 @@ class BLCSDataModule(pl.LightningDataModule):
         data_cfg = self.config.get("data", {})
         self.batch_size = data_cfg.get("batch_size", 32)
         self.num_workers = data_cfg.get("num_workers", 4)
+        self.pin_memory = bool(data_cfg.get("pin_memory", True))
         self.scene_dir = Path(data_cfg.get("scene_dir", "data/blcs"))
+        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
+        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
+        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
 
         self.train_dataset: BallTrajectoryDataset | None = None
         self.val_dataset: BallTrajectoryDataset | None = None
@@ -115,12 +123,30 @@ class BLCSDataModule(pl.LightningDataModule):
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=True,
+            shuffle=True,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.train_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=True,
+                collate_fn=collate_trajectories,
+            )
+
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
             shuffle=True,
             num_workers=self.num_workers,
-            pin_memory=True,
+            pin_memory=self.pin_memory,
             drop_last=True,
             collate_fn=collate_trajectories,
         )
@@ -135,12 +161,30 @@ class BLCSDataModule(pl.LightningDataModule):
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.val_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=True,
+                collate_fn=collate_trajectories,
+            )
+
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,
-            pin_memory=True,
+            pin_memory=self.pin_memory,
             collate_fn=collate_trajectories,
         )
 
@@ -154,12 +198,30 @@ class BLCSDataModule(pl.LightningDataModule):
         if self.test_dataset is None:
             raise RuntimeError("Call setup('test') before test_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.test_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=True,
+                collate_fn=collate_trajectories,
+            )
+
         return DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,
-            pin_memory=True,
+            pin_memory=self.pin_memory,
             collate_fn=collate_trajectories,
         )
 
@@ -184,10 +246,13 @@ class BLCSMultiViewDataModule(pl.LightningDataModule):
         data_cfg = self.config.get("data", {})
         self.batch_size = data_cfg.get("batch_size", 16)
         self.num_workers = data_cfg.get("num_workers", 4)
-        self.pin_memory = True
+        self.pin_memory = bool(data_cfg.get("pin_memory", True))
         self.scene_dir = Path(data_cfg.get("scene_dir", "data/blcs"))
         self.num_views = data_cfg.get("num_views", 2)
         self.min_cameras = data_cfg.get("min_cameras", 2)
+        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
+        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
+        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
 
         self.train_dataset: MultiViewBallTrajectoryDataset | None = None
         self.val_dataset: MultiViewBallTrajectoryDataset | None = None
@@ -266,6 +331,24 @@ class BLCSMultiViewDataModule(pl.LightningDataModule):
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=True,
+            shuffle=True,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.train_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory,
+                collate_fn=collate_multiview_trajectories,
+            )
+
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -286,6 +369,24 @@ class BLCSMultiViewDataModule(pl.LightningDataModule):
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.val_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory,
+                collate_fn=collate_multiview_trajectories,
+            )
+
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
@@ -305,6 +406,24 @@ class BLCSMultiViewDataModule(pl.LightningDataModule):
         if self.test_dataset is None:
             raise RuntimeError("Call setup('test') before test_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.test_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory,
+                collate_fn=collate_multiview_trajectories,
+            )
+
         return DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,
@@ -313,3 +432,33 @@ class BLCSMultiViewDataModule(pl.LightningDataModule):
             pin_memory=self.pin_memory,
             collate_fn=collate_multiview_trajectories,
         )
+
+
+if __name__ == "__main__":
+    import json
+    from tempfile import TemporaryDirectory
+
+    import numpy as np
+
+    with TemporaryDirectory() as tmp_dir:
+        base = Path(tmp_dir)
+        scene_path = base / "scene_000.npz"
+        np.savez(
+            scene_path,
+            meta=json.dumps({"num_frames": 2}),
+            num_cameras=np.array(1),
+            cam_0_ball_uv=np.zeros((2, 2), dtype=np.float32),
+            cam_0_ball_visible=np.ones((2,), dtype=np.float32),
+            cam_0_court_kp_uv=np.zeros((20, 2), dtype=np.float32),
+            cam_0_court_kp_visible=np.ones((20,), dtype=np.float32),
+            ball_pos_norm=np.zeros((2, 3), dtype=np.float32),
+            ball_vel_world=np.zeros((2, 3), dtype=np.float32),
+        )
+        cfg = {"data": {"scene_dir": str(base), "batch_size": 1, "num_workers": 0}}
+        dm = BLCSDataModule(cfg)
+        dm.num_workers = 0
+        dm.pin_memory = False
+        dm.setup("fit")
+        batch = next(iter(dm.train_dataloader()))
+        assert batch["ball_uv"].shape[0] == 1
+        print("blcs.data.datamodule smoke ok")
