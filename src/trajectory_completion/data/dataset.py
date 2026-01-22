@@ -272,9 +272,8 @@ class BLCSUVTrajectoryCompletionDataset(Dataset):
 
         return {
             "ball_uv_in": ball_uv_in,
-            "ball_obs_mask": ball_obs_mask,
+            "ball_vis": ball_obs_mask,
             "ball_uv_gt": ball_uv_gt,
-            "ball_gt_mask": ball_gt_visible,
             "court_kp": sample["court_kp"],
             "court_vis": sample["court_vis"],
             "seq_len": sample["seq_len"],
@@ -315,9 +314,8 @@ class DummyUVTrajectoryCompletionDataset(Dataset):
 
         return {
             "ball_uv_in": ball_uv_in,
-            "ball_obs_mask": ball_obs_mask,
+            "ball_vis": ball_obs_mask,
             "ball_uv_gt": ball_uv_gt,
-            "ball_gt_mask": ball_gt_visible,
             "court_kp": court_kp,
             "court_vis": court_vis,
             "seq_len": torch.tensor(seq_len, dtype=torch.long),
@@ -329,6 +327,6 @@ if __name__ == "__main__":
     item = ds[0]
     assert item["ball_uv_in"].shape == (32, 2)
     assert item["ball_uv_gt"].shape == (32, 2)
-    assert item["ball_obs_mask"].shape == (32,)
+    assert item["ball_vis"].shape == (32,)
     assert item["court_kp"].shape == (20, 2)
     print("trajectory_completion.dataset smoke ok")

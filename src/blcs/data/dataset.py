@@ -167,7 +167,7 @@ class BallTrajectoryDataset(Dataset):
         Returns:
             Sample dictionary containing:
                 - ball_uv: (T, 2) Ball 2D trajectory
-                - ball_mask: (T,) Ball visibility mask
+                - ball_vis: (T,) Ball visibility flags
                 - court_kp: (20, 2) Court 2D keypoints
                 - court_vis: (20,) Court keypoint visibility
                 - position_3d: (T, 3) GT 3D trajectory (normalized)
@@ -184,7 +184,7 @@ class BallTrajectoryDataset(Dataset):
         # Return standardized format
         return {
             "ball_uv": sample["ball_uv"],
-            "ball_mask": sample["ball_vis"],
+            "ball_vis": sample["ball_vis"],
             "court_kp": sample["court_kp"],
             "court_vis": sample["court_vis"],
             "position_3d": sample["position_3d"],
@@ -283,6 +283,7 @@ def collate_trajectories(batch: list[BLCSSample]) -> BLCSBatch:
 
     # Initialize padded tensors
     ball_uv = torch.zeros(batch_size, max_len, 2)
+    ball_vis = torch.zeros(batch_size, max_len)
     ball_mask = torch.zeros(batch_size, max_len)
     position_3d = torch.zeros(batch_size, max_len, 3)
     velocity_3d = torch.zeros(batch_size, max_len, 3)
@@ -297,7 +298,8 @@ def collate_trajectories(batch: list[BLCSSample]) -> BLCSBatch:
             else sample["seq_len"]
         )
         ball_uv[i, :seq_len] = sample["ball_uv"][:seq_len]
-        ball_mask[i, :seq_len] = sample["ball_mask"][:seq_len]
+        ball_vis[i, :seq_len] = sample["ball_vis"][:seq_len]
+        ball_mask[i, :seq_len] = 1.0
         position_3d[i, :seq_len] = sample["position_3d"][:seq_len]
         velocity_3d[i, :seq_len] = sample["velocity_3d"][:seq_len]
         court_kp[i] = sample["court_kp"]
@@ -306,6 +308,7 @@ def collate_trajectories(batch: list[BLCSSample]) -> BLCSBatch:
 
     return {
         "ball_uv": ball_uv,
+        "ball_vis": ball_vis,
         "ball_mask": ball_mask,
         "court_kp": court_kp,
         "court_vis": court_vis,

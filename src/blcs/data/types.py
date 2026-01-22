@@ -21,7 +21,7 @@ class BLCSSample(TypedDict):
     """
 
     ball_uv: torch.Tensor  # (T, 2) ball 2D trajectory in normalized UV
-    ball_mask: torch.Tensor  # (T,) ball visibility mask
+    ball_vis: torch.Tensor  # (T,) ball visibility flags
     court_kp: torch.Tensor  # (20, 2) court 2D keypoints in normalized UV
     court_vis: torch.Tensor  # (20,) court keypoint visibility flags
     position_3d: torch.Tensor  # (T, 3) ground truth 3D trajectory (normalized)
@@ -36,7 +36,8 @@ class BLCSBatch(TypedDict):
     """
 
     ball_uv: torch.Tensor  # (B, T_max, 2) padded ball trajectories
-    ball_mask: torch.Tensor  # (B, T_max) padded visibility masks
+    ball_vis: torch.Tensor  # (B, T_max) padded visibility flags
+    ball_mask: torch.Tensor  # (B, T_max) padding mask (1=valid)
     court_kp: torch.Tensor  # (B, 20, 2) court keypoints
     court_vis: torch.Tensor  # (B, 20) court keypoint visibility
     position_3d: torch.Tensor  # (B, T_max, 3) padded ground truth trajectories

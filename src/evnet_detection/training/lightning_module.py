@@ -63,6 +63,7 @@ class EventDetectionLightningModule(pl.LightningModule):
         return self.model(
             batch["ball_uv"],
             batch["court_kp"],
+            ball_vis=batch.get("ball_vis"),
             ball_mask=batch.get("ball_mask"),
             court_vis=batch.get("court_vis"),
             seq_len=batch.get("seq_len"),
@@ -111,6 +112,7 @@ if __name__ == "__main__":
     module = EventDetectionLightningModule(cfg)  # type: ignore[arg-type]
     batch = {
         "ball_uv": torch.rand(2, 16, 2),
+        "ball_vis": torch.ones(2, 16),
         "ball_mask": torch.ones(2, 16),
         "court_kp": torch.rand(2, 20, 2),
         "court_vis": torch.ones(2, 20),
