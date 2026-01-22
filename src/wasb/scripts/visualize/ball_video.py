@@ -1,8 +1,7 @@
 """Infer ball positions and render an overlay video (Hydra-based).
 
-This script runs batched WASB inference on a single input video, optionally
-applies trajectory completion, then saves a new video with the ball position
-plotted on each frame.
+This script runs batched WASB inference on a single input video and saves a new
+video with the ball position plotted on each frame.
 
 Example commands:
     `uv run python -m src.wasb.scripts.visualize.ball_video video_path=data/tennis/raw/videos/match.mp4`
@@ -24,8 +23,10 @@ from hydra.utils import to_absolute_path
 from numpy.typing import NDArray
 from omegaconf import DictConfig
 
-from src.wasb.inference import HRCNetWASBPredictor, WASBPredictor, build_completer
-from src.wasb.pipeline import VideoBallLocalizationPipeline
+from src.wasb.inference.ball_detection import HRCNetWASBPredictor, WASBPredictor
+from src.wasb.pipeline.video_ball_localization_pipeline import (
+    VideoBallLocalizationPipeline,
+)
 
 
 def _resolve_output_path(video_path: Path, output_path: str | None) -> Path:
@@ -44,7 +45,6 @@ def _render_overlay_video(
     radius: int,
     thickness: int,
     color_detected_bgr: tuple[int, int, int],
-    color_completed_bgr: tuple[int, int, int],
 ) -> None:
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
@@ -67,8 +67,8 @@ def _render_overlay_video(
                 if frame_idx >= len(visibility_code):
                     break
 
-                vis = int(visibility_code[frame_idx])
-                if vis > 0:
+                vis = bool(visibility_code[frame_idx])
+                if vis:
                     x, y = xy_px[frame_idx]
                     xf, yf = float(x), float(y)
                     if not (np.isfinite(xf) and np.isfinite(yf)):
@@ -78,8 +78,7 @@ def _render_overlay_video(
 
                     xi, yi = int(round(xf)), int(round(yf))
                     if 0 <= xi < width and 0 <= yi < height:
-                        color = color_detected_bgr if vis == 1 else color_completed_bgr
-                        cv2.circle(frame_bgr, (xi, yi), radius, color, thickness)
+                        cv2.circle(frame_bgr, (xi, yi), radius, color_detected_bgr, thickness)
 
                 writer.write(frame_bgr)
                 frame_idx += 1
@@ -117,19 +116,7 @@ def main(cfg: DictConfig) -> int:
     else:
         raise ValueError(f"Unknown model: {model_name}")
 
-    completer = None
-    completion_cfg = getattr(cfg, "completion", None)
-    if completion_cfg is not None and bool(getattr(completion_cfg, "enabled", True)):
-        completer = build_completer(
-            method=str(getattr(completion_cfg, "method", "hybrid")),
-            checkpoint_path=getattr(completion_cfg, "checkpoint_path", None),
-            device=str(getattr(completion_cfg, "device", device)),
-            score_threshold=score_threshold,
-            max_gap=int(getattr(completion_cfg, "max_gap", 15)),
-            physics_gap_threshold=int(getattr(completion_cfg, "physics_gap_threshold", 5)),
-        )
-
-    pipeline = VideoBallLocalizationPipeline(predictor, completer=completer, batch_size=batch_size)
+    pipeline = VideoBallLocalizationPipeline(predictor, batch_size=batch_size)
     result = pipeline.run(video_path, max_frames=max_frames)
 
     render_cfg = getattr(cfg, "render", None)
@@ -142,18 +129,8 @@ def main(cfg: DictConfig) -> int:
         tuple[int, int, int],
         tuple(int(c) for c in getattr(render_cfg, "color_detected_bgr", [0, 255, 0])),
     )
-    completed_bgr: tuple[int, int, int] = cast(
-        tuple[int, int, int],
-        tuple(int(c) for c in getattr(render_cfg, "color_completed_bgr", [0, 255, 255])),
-    )
-
-    use_completion = bool(getattr(render_cfg, "use_completion", True)) if render_cfg is not None else True
-    if use_completion and result.completion is not None:
-        xy_px = result.completion.xy
-        visibility_code = result.completion.visibility
-    else:
-        xy_px = result.ball_xy_px
-        visibility_code = result.visibility.astype("int32")
+    xy_px = result.ball_xy_px
+    visibility_code = result.visibility.astype("int32")
 
     _render_overlay_video(
         video_path=video_path,
@@ -164,7 +141,6 @@ def main(cfg: DictConfig) -> int:
         radius=radius,
         thickness=thickness,
         color_detected_bgr=detected_bgr,
-        color_completed_bgr=completed_bgr,
     )
 
     print(f"Saved: {output_path}")
