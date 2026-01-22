@@ -4,6 +4,8 @@ num_workers: 4
 val_split: 0.1
 test_split: 0.1
 camera_mode: all
+scene_sampler_mode: none
+chunk_max_scenes: 64
 
 mode: sequence
 seq_len: 128
@@ -12,4 +14,3 @@ seq_stride: 64
 augmentation:
   keypoint_noise_std: 0.01
   visibility_drop_prob: 0.05
-

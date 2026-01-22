@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import torch
@@ -13,6 +13,7 @@ from torch import Tensor
 from torch.utils.data import Dataset
 
 from src.evnet_detection.data.types import Event3DSample, EventUVSample
+from src.common.data.scene_cache import get_scene_cache, load_npz_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -49,13 +50,17 @@ def _gaussian_soft_labels(
     return out
 
 
-def _load_meta(npz: np.lib.npyio.NpzFile) -> dict:
-    meta_raw = npz["meta"].item() if hasattr(npz["meta"], "item") else npz["meta"]
+def _load_meta(data: dict[str, Any] | np.lib.npyio.NpzFile) -> dict:
+    """Load and decode metadata from a scene payload."""
+    if isinstance(data, dict):
+        meta_raw = data.get("meta", {})
+    else:
+        meta_raw = data["meta"].item() if hasattr(data["meta"], "item") else data["meta"]
     if isinstance(meta_raw, (bytes, bytearray)):
         meta_raw = meta_raw.decode("utf-8")
     if isinstance(meta_raw, str):
         return json.loads(meta_raw)
-    return meta_raw
+    return meta_raw if isinstance(meta_raw, dict) else {}
 
 
 def _resolve_scenes_base(scene_dir: Path) -> Path:
@@ -112,6 +117,12 @@ class BLCSRallyEventDataset(Dataset):
         data_cfg = self.config.get("data", {}) or {}
         self.max_seq_len = int(data_cfg.get("max_seq_len", 256))
         self.camera_mode = data_cfg.get("camera_mode", "random")
+        self.cache_max_scenes = int(data_cfg.get("cache_max_scenes", 128))
+        self._scene_cache = (
+            get_scene_cache(load_fn=load_npz_scene, maxsize=self.cache_max_scenes)
+            if self.cache_max_scenes > 0
+            else None
+        )
 
         label_cfg = data_cfg.get("label", {}) or {}
         self.label_cfg = LabelConfig(
@@ -164,10 +175,14 @@ class BLCSRallyEventDataset(Dataset):
 
     def __getitem__(self, idx: int) -> EventUVSample | Event3DSample:
         path = self.scenes[idx]
-        npz = np.load(path, allow_pickle=True)
-        meta = _load_meta(npz)
+        data = (
+            self._scene_cache.get(path)
+            if self._scene_cache is not None
+            else load_npz_scene(path)
+        )
+        meta = _load_meta(data)
 
-        T_full = int(meta.get("num_frames", int(npz["ball_pos_world"].shape[0])))
+        T_full = int(meta.get("num_frames", int(data["ball_pos_world"].shape[0])))
         T = min(T_full, self.max_seq_len)
         device = torch.device("cpu")
 
@@ -175,7 +190,7 @@ class BLCSRallyEventDataset(Dataset):
         seq_len = torch.tensor(T, dtype=torch.long)
 
         if self.input_type == "3d":
-            ball_pos_world = torch.from_numpy(npz["ball_pos_world"][:T]).float()
+            ball_pos_world = torch.from_numpy(data["ball_pos_world"][:T]).float()
             return {
                 "ball_pos_world": ball_pos_world,
                 "targets": targets,
@@ -183,14 +198,14 @@ class BLCSRallyEventDataset(Dataset):
             }
 
         # UV input (single camera selected)
-        num_cameras = int(npz["num_cameras"])
+        num_cameras = int(data["num_cameras"])
         cam_idx = self._select_camera(num_cameras)
         prefix = f"cam_{cam_idx}_"
 
-        ball_uv = torch.from_numpy(npz[f"{prefix}ball_uv"][:T]).float()
-        ball_mask = torch.from_numpy(npz[f"{prefix}ball_visible"][:T]).float()
-        court_kp = torch.from_numpy(npz[f"{prefix}court_kp_uv"]).float()
-        court_vis = torch.from_numpy(npz[f"{prefix}court_kp_visible"]).float()
+        ball_uv = torch.from_numpy(data[f"{prefix}ball_uv"][:T]).float()
+        ball_mask = torch.from_numpy(data[f"{prefix}ball_visible"][:T]).float()
+        court_kp = torch.from_numpy(data[f"{prefix}court_kp_uv"]).float()
+        court_vis = torch.from_numpy(data[f"{prefix}court_kp_visible"]).float()
 
         return {
             "ball_uv": ball_uv,
@@ -251,4 +266,3 @@ if __name__ == "__main__":
     assert sample_3d["ball_pos_world"].shape == (32, 3)
     assert sample_3d["targets"].shape == (32, 2)
     print("dataset smoke ok")
-

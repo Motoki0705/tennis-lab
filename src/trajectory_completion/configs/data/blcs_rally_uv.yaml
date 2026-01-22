@@ -13,6 +13,12 @@ min_seq_len: 16
 batch_size: 32
 num_workers: 4
 pin_memory: true
+cache_max_scenes: 128
+
+# Scene sampler settings: none | scene | mixed | chunked
+scene_sampler_mode: none
+scenes_per_batch: 1
+chunk_max_scenes: 64
 
 supervise_visible_only: true
 
@@ -29,4 +35,3 @@ corruption:
   outlier_prob: 0.0
 
 allow_dummy: false
-

@@ -19,6 +19,7 @@ from torch.utils.data import Dataset
 
 from src.base.data.augmentation import add_gaussian_noise, random_visibility_dropout
 from src.blcs.data.types import BLCSMultiViewSample
+from src.common.data.scene_cache import get_scene_cache, load_npz_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -66,6 +67,12 @@ class MultiViewBallTrajectoryDataset(Dataset):
         data_cfg = self.config.get("data", {})
         self.min_seq_len = int(data_cfg.get("min_seq_len", 15))
         self.max_seq_len = int(data_cfg.get("max_seq_len", 120))
+        self.cache_max_scenes = int(data_cfg.get("cache_max_scenes", 128))
+        self._scene_cache = (
+            get_scene_cache(load_fn=load_npz_scene, maxsize=self.cache_max_scenes)
+            if self.cache_max_scenes > 0
+            else None
+        )
 
         # Range sampling (optional)
         # Format: [min, max] inclusive
@@ -143,10 +150,20 @@ class MultiViewBallTrajectoryDataset(Dataset):
 
     def _load_scene_multiview(self, path: Path) -> dict[str, Tensor | list]:
         """Load a single scene with multiple camera views."""
-        data = np.load(path, allow_pickle=True)
+        data = (
+            self._scene_cache.get(path)
+            if self._scene_cache is not None
+            else load_npz_scene(path)
+        )
 
         # Parse metadata
-        meta = json.loads(str(data["meta"]))
+        meta_raw = data.get("meta", {})
+        if isinstance(meta_raw, (bytes, bytearray)):
+            meta_raw = meta_raw.decode("utf-8")
+        if isinstance(meta_raw, str):
+            meta = json.loads(meta_raw)
+        else:
+            meta = meta_raw if isinstance(meta_raw, dict) else {}
         num_cameras = int(data["num_cameras"])
         num_frames = int(meta["num_frames"])
 
@@ -395,3 +412,38 @@ def collate_multiview_trajectories(
         "velocity_3d": torch.stack(velocity_3d_batch, dim=0),  # (B, T_max, 3)
         "seq_len": torch.stack(seq_len_batch, dim=0),  # (B,)
     }
+
+
+if __name__ == "__main__":
+    import json as _json
+    from tempfile import TemporaryDirectory
+
+    with TemporaryDirectory() as tmp_dir:
+        base = Path(tmp_dir)
+        scene_path = base / "scene_000.npz"
+        np.savez(
+            scene_path,
+            meta=_json.dumps({"num_frames": 2}),
+            num_cameras=np.array(2),
+            cam_0_ball_uv=np.zeros((2, 2), dtype=np.float32),
+            cam_0_ball_visible=np.ones((2,), dtype=np.float32),
+            cam_0_court_kp_uv=np.zeros((20, 2), dtype=np.float32),
+            cam_0_court_kp_visible=np.ones((20,), dtype=np.float32),
+            cam_1_ball_uv=np.zeros((2, 2), dtype=np.float32),
+            cam_1_ball_visible=np.ones((2,), dtype=np.float32),
+            cam_1_court_kp_uv=np.zeros((20, 2), dtype=np.float32),
+            cam_1_court_kp_visible=np.ones((20,), dtype=np.float32),
+            ball_pos_norm=np.zeros((2, 3), dtype=np.float32),
+            ball_vel_world=np.zeros((2, 3), dtype=np.float32),
+        )
+        ds = MultiViewBallTrajectoryDataset(
+            scene_dir=base,
+            config={"data": {"cache_max_scenes": 1}},
+            augment=False,
+            num_views=2,
+            min_cameras=1,
+        )
+        sample = ds[0]
+        assert sample["ball_uv"].shape[-1] == 2
+        assert sample["num_views"].item() >= 1
+        print("blcs.data.multiview_dataset smoke ok")

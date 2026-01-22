@@ -6,13 +6,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytorch_lightning as pl
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Dataset, random_split
 
-from src.plcs.data.dataset import SceneDataset
-from src.plcs.data.scene_batch_sampler import (
-    MixedSceneBatchSampler,
-    SceneBatchSampler,
+from src.common.data.scene_batch_sampler import (
+    build_scene_sampler,
+    resolve_scene_sampler_mode,
 )
+from src.plcs.data.dataset import SceneDataset
 from src.plcs.data.multiview_dataset import (
     MultiViewSceneDataset,
     MultiViewSequenceDataset,
@@ -23,6 +23,8 @@ from src.plcs.data.sequence_dataset import SceneSequenceDataset
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
+
+
 
 
 class PLCSDataModule(pl.LightningDataModule):
@@ -49,8 +51,12 @@ class PLCSDataModule(pl.LightningDataModule):
         self.val_split = data_cfg.get("val_split", 0.1)
         self.test_split = data_cfg.get("test_split", 0.1)
         self.camera_mode = data_cfg.get("camera_mode", "random")
-        self.scene_batch_sampler = bool(data_cfg.get("scene_batch_sampler", False))
-        self.scenes_per_batch = data_cfg.get("scenes_per_batch", 1)
+        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
+        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
+        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
+        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
+        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
+        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
 
         self.train_dataset: SceneDataset | None = None
         self.val_dataset: SceneDataset | None = None
@@ -98,22 +104,16 @@ class PLCSDataModule(pl.LightningDataModule):
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader()")
 
-        if self.scene_batch_sampler:
-            if self.scenes_per_batch > 1:
-                batch_sampler = MixedSceneBatchSampler(
-                    self.train_dataset,
-                    batch_size=self.batch_size,
-                    scenes_per_batch=self.scenes_per_batch,
-                    drop_last=True,
-                    shuffle=True,
-                )
-            else:
-                batch_sampler = SceneBatchSampler(
-                    self.train_dataset,
-                    batch_size=self.batch_size,
-                    drop_last=True,
-                    shuffle=True,
-                )
+        batch_sampler = build_scene_sampler(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=True,
+            shuffle=True,
+        )
+        if batch_sampler is not None:
             return DataLoader(
                 self.train_dataset,
                 batch_sampler=batch_sampler,
@@ -140,22 +140,16 @@ class PLCSDataModule(pl.LightningDataModule):
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader()")
 
-        if self.scene_batch_sampler:
-            if self.scenes_per_batch > 1:
-                batch_sampler = MixedSceneBatchSampler(
-                    self.val_dataset,
-                    batch_size=self.batch_size,
-                    scenes_per_batch=self.scenes_per_batch,
-                    drop_last=False,
-                    shuffle=False,
-                )
-            else:
-                batch_sampler = SceneBatchSampler(
-                    self.val_dataset,
-                    batch_size=self.batch_size,
-                    drop_last=False,
-                    shuffle=False,
-                )
+        batch_sampler = build_scene_sampler(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
+        if batch_sampler is not None:
             return DataLoader(
                 self.val_dataset,
                 batch_sampler=batch_sampler,
@@ -181,22 +175,16 @@ class PLCSDataModule(pl.LightningDataModule):
         if self.test_dataset is None:
             raise RuntimeError("Call setup('test') before test_dataloader()")
 
-        if self.scene_batch_sampler:
-            if self.scenes_per_batch > 1:
-                batch_sampler = MixedSceneBatchSampler(
-                    self.test_dataset,
-                    batch_size=self.batch_size,
-                    scenes_per_batch=self.scenes_per_batch,
-                    drop_last=False,
-                    shuffle=False,
-                )
-            else:
-                batch_sampler = SceneBatchSampler(
-                    self.test_dataset,
-                    batch_size=self.batch_size,
-                    drop_last=False,
-                    shuffle=False,
-                )
+        batch_sampler = build_scene_sampler(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
+        if batch_sampler is not None:
             return DataLoader(
                 self.test_dataset,
                 batch_sampler=batch_sampler,
@@ -284,6 +272,23 @@ class PLCSSequenceDataModule(pl.LightningDataModule):
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=True,
+            shuffle=True,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.train_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=True,
+            )
+
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -303,6 +308,23 @@ class PLCSSequenceDataModule(pl.LightningDataModule):
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.val_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=True,
+            )
+
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
@@ -320,6 +342,23 @@ class PLCSSequenceDataModule(pl.LightningDataModule):
         """
         if self.test_dataset is None:
             raise RuntimeError("Call setup('test') before test_dataloader()")
+
+        batch_sampler = build_scene_sampler(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.test_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=True,
+            )
 
         return DataLoader(
             self.test_dataset,
@@ -356,6 +395,12 @@ class PLCSMultiViewDataModule(pl.LightningDataModule):
         self.test_split = data_cfg.get("test_split", 0.1)
         self.num_views = data_cfg.get("num_views", 2)
         self.min_cameras = data_cfg.get("min_cameras", 2)
+        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
+        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
+        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
+        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
+        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
+        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
 
         self.train_dataset: MultiViewSceneDataset | None = None
         self.val_dataset: MultiViewSceneDataset | None = None
@@ -404,6 +449,24 @@ class PLCSMultiViewDataModule(pl.LightningDataModule):
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=True,
+            shuffle=True,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.train_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory,
+                collate_fn=collate_multiview,
+            )
+
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -424,6 +487,24 @@ class PLCSMultiViewDataModule(pl.LightningDataModule):
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.val_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory,
+                collate_fn=collate_multiview,
+            )
+
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
@@ -442,6 +523,24 @@ class PLCSMultiViewDataModule(pl.LightningDataModule):
         """
         if self.test_dataset is None:
             raise RuntimeError("Call setup('test') before test_dataloader()")
+
+        batch_sampler = build_scene_sampler(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.test_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory,
+                collate_fn=collate_multiview,
+            )
 
         return DataLoader(
             self.test_dataset,
@@ -527,6 +626,24 @@ class PLCSMultiViewSequenceDataModule(pl.LightningDataModule):
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=True,
+            shuffle=True,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.train_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory,
+                collate_fn=collate_multiview_sequence,
+            )
+
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -547,6 +664,24 @@ class PLCSMultiViewSequenceDataModule(pl.LightningDataModule):
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.val_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory,
+                collate_fn=collate_multiview_sequence,
+            )
+
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
@@ -566,6 +701,24 @@ class PLCSMultiViewSequenceDataModule(pl.LightningDataModule):
         if self.test_dataset is None:
             raise RuntimeError("Call setup('test') before test_dataloader()")
 
+        batch_sampler = build_scene_sampler(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            mode=self.scene_sampler_mode,
+            scenes_per_batch=self.scenes_per_batch,
+            chunk_max_scenes=self.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.test_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory,
+                collate_fn=collate_multiview_sequence,
+            )
+
         return DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,
@@ -580,23 +733,24 @@ if __name__ == "__main__":
     # quick smoke test for SceneBatchSampler functionality
     from omegaconf import OmegaConf
     
-    # test config with scene_batch_sampler enabled
-    test_config = OmegaConf.create({
-        "data": {
-            "batch_size": 4,
-            "num_workers": 0,
-            "scene_dir": "data/plcs_scenes",
-            "val_split": 0.2,
-            "test_split": 0.2,
-            "camera_mode": "random",
-            "scene_batch_sampler": True
+    # test config with scene sampler enabled
+    test_config = OmegaConf.create(
+        {
+            "data": {
+                "batch_size": 4,
+                "num_workers": 0,
+                "scene_dir": "data/plcs_scenes",
+                "val_split": 0.2,
+                "test_split": 0.2,
+                "camera_mode": "random",
+                "scene_batch_sampler": True,
+            }
         }
-    })
-    
+    )
+
     # test PLCSDataModule initialization
     datamodule = PLCSDataModule(test_config)
-    assert datamodule.scene_batch_sampler == True
+    assert datamodule.scene_sampler_mode in {"scene", "mixed"}
     assert datamodule.batch_size == 4
-    
-    print("✓ PLCSDataModule with SceneBatchSampler initialized successfully")
-    print("✓ SceneBatchSampler will be applied to train, val, and test dataloaders")
+
+    print("plcs.data.datamodule smoke ok")

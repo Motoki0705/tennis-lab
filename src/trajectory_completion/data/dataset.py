@@ -17,6 +17,7 @@ from torch import Tensor
 from torch.utils.data import Dataset
 
 from src.base.data.augmentation import add_gaussian_noise
+from src.common.data.scene_cache import get_scene_cache, load_npz_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -165,6 +166,12 @@ class BLCSUVTrajectoryCompletionDataset(Dataset):
         self.min_seq_len = int(data_cfg.get("min_seq_len", 16))
         self.supervise_visible_only = bool(data_cfg.get("supervise_visible_only", True))
         self.augment = bool(augment)
+        self.cache_max_scenes = int(data_cfg.get("cache_max_scenes", 128))
+        self._scene_cache = (
+            get_scene_cache(load_fn=load_npz_scene, maxsize=self.cache_max_scenes)
+            if self.cache_max_scenes > 0
+            else None
+        )
 
         corr_cfg = data_cfg.get("corruption", {}) or {}
         self.corruption = CorruptionConfig(
@@ -182,10 +189,18 @@ class BLCSUVTrajectoryCompletionDataset(Dataset):
         return len(self.scenes)
 
     def _load_scene(self, path: Path) -> dict[str, Tensor]:
-        data = np.load(path, allow_pickle=True)
-        meta: dict[str, Any] = {}
-        if "meta" in data:
-            meta = json.loads(str(data["meta"]))
+        data = (
+            self._scene_cache.get(path)
+            if self._scene_cache is not None
+            else load_npz_scene(path)
+        )
+        meta_raw: Any = data.get("meta", {})
+        if isinstance(meta_raw, (bytes, bytearray)):
+            meta_raw = meta_raw.decode("utf-8")
+        if isinstance(meta_raw, str):
+            meta = json.loads(meta_raw)
+        else:
+            meta = meta_raw if isinstance(meta_raw, dict) else {}
 
         num_cameras = int(data["num_cameras"])
         cam_idx = _select_camera(self.camera_mode, num_cameras)
@@ -317,4 +332,3 @@ if __name__ == "__main__":
     assert item["ball_obs_mask"].shape == (32,)
     assert item["court_kp"].shape == (20, 2)
     print("trajectory_completion.dataset smoke ok")
-

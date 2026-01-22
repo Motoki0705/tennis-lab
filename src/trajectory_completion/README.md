@@ -16,3 +16,9 @@ predictor = UVTrajectoryCompletionPredictor.load_from_checkpoint("path/to/checkp
 outputs = predictor.predict(ball_uv_in, ball_obs_mask, court_kp, court_vis=court_vis)
 completed = outputs["ball_uv_completed"]
 ```
+
+## Data loading optimization
+
+- `data.cache_max_scenes`: LRU cache size for scene NPZ files.
+- `data.scene_sampler_mode`: `none | scene | mixed | chunked`.
+- `data.chunk_max_scenes`: Number of scenes per chunk for chunked sampling.
