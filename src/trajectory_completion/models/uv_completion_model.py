@@ -22,7 +22,7 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
-from src.common.models.token_embeddings import CourtKPUVTokenEmbedding, UVObsTokenEmbedding
+from src.common.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
 from src.utils.geometry import NUM_COURT_KP
 
 if TYPE_CHECKING:
@@ -46,6 +46,7 @@ class UVTrajectoryCompletionModel(nn.Module):
         mlp_inter_dim: int | None = None,
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
+        invisible_init_std: float = 0.02,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -64,8 +65,19 @@ class UVTrajectoryCompletionModel(nn.Module):
         if use_moe and moe_config is None:
             raise ValueError("use_moe=True requires moe_config.")
 
-        self.court_embed = CourtKPUVTokenEmbedding(dim=self.hidden_dim, dropout=float(dropout))
-        self.ball_embed = UVObsTokenEmbedding(dim=self.hidden_dim, dropout=float(dropout))
+        self.invisible_token = InvisibleTokenEmbedding(
+            dim=self.hidden_dim, init_std=invisible_init_std
+        )
+        self.court_embed = CourtKPUVEmbedding(
+            dim=self.hidden_dim,
+            dropout=float(dropout),
+            invisible_token=self.invisible_token,
+        )
+        self.ball_embed = BallUVEmbedding(
+            dim=self.hidden_dim,
+            dropout=float(dropout),
+            invisible_token=self.invisible_token,
+        )
         self.type_embed = nn.Embedding(2, self.hidden_dim)
 
         self.blocks = nn.ModuleList(
@@ -160,6 +172,7 @@ class UVTrajectoryCompletionModel(nn.Module):
             mlp_inter_dim=mlp_inter_dim_value,
             use_moe=use_moe,
             moe_config=moe_config,
+            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
         )
 
     def forward(
