@@ -15,6 +15,10 @@ from src.trajectory_completion.data.dataset import (
     CorruptionConfig,
     DummyUVTrajectoryCompletionDataset,
 )
+from src.common.data.scene_batch_sampler import (
+    build_scene_sampler,
+    resolve_scene_sampler_mode,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -71,6 +75,9 @@ class TrajectoryCompletionDataModule(pl.LightningDataModule):
         self.num_workers = int(data_cfg.get("num_workers", 4))
         self.pin_memory = bool(data_cfg.get("pin_memory", True))
         self.allow_dummy = bool(data_cfg.get("allow_dummy", True))
+        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
+        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
+        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
 
         corr_cfg = data_cfg.get("corruption", {}) or {}
         self.corruption = CorruptionConfig(
@@ -136,6 +143,25 @@ class TrajectoryCompletionDataModule(pl.LightningDataModule):
     def train_dataloader(self) -> DataLoader:
         if self.train_dataset is None:
             raise RuntimeError("Call setup() before train_dataloader().")
+        batch_sampler = None
+        if not isinstance(self.train_dataset, DummyUVTrajectoryCompletionDataset):
+            batch_sampler = build_scene_sampler(
+                self.train_dataset,
+                batch_size=self.batch_size,
+                mode=self.scene_sampler_mode,
+                scenes_per_batch=self.scenes_per_batch,
+                chunk_max_scenes=self.chunk_max_scenes,
+                drop_last=True,
+                shuffle=True,
+            )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.train_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory,
+                collate_fn=collate_uv_trajectories,
+            )
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -149,6 +175,25 @@ class TrajectoryCompletionDataModule(pl.LightningDataModule):
     def val_dataloader(self) -> DataLoader:
         if self.val_dataset is None:
             raise RuntimeError("Call setup() before val_dataloader().")
+        batch_sampler = None
+        if not isinstance(self.val_dataset, DummyUVTrajectoryCompletionDataset):
+            batch_sampler = build_scene_sampler(
+                self.val_dataset,
+                batch_size=self.batch_size,
+                mode=self.scene_sampler_mode,
+                scenes_per_batch=self.scenes_per_batch,
+                chunk_max_scenes=self.chunk_max_scenes,
+                drop_last=False,
+                shuffle=False,
+            )
+        if batch_sampler is not None:
+            return DataLoader(
+                self.val_dataset,
+                batch_sampler=batch_sampler,
+                num_workers=self.num_workers,
+                pin_memory=self.pin_memory,
+                collate_fn=collate_uv_trajectories,
+            )
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
@@ -177,4 +222,3 @@ if __name__ == "__main__":
     assert batch["ball_uv_in"].shape == (2, 32, 2)
     assert batch["court_kp"].shape == (2, 20, 2)
     print("trajectory_completion.datamodule smoke ok")
-
