@@ -28,5 +28,5 @@ corruption:
 
   outlier_prob: 0.0
 
-allow_dummy: true
+allow_dummy: false
 
