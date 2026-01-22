@@ -10,17 +10,18 @@ import torch
 from torch.utils.data import Dataset
 
 from src.base.data.augmentation import augment_keypoints
-from src.plcs.data.index_cache import (
+from src.common.data.index_cache import (
     compute_config_hash,
     compute_scene_files_hash,
     get_index_cache_path,
     load_cached_index,
     save_cached_index,
 )
-from src.plcs.data.scene_cache import (
+from src.common.data.scene_cache import (
     extract_scene_meta_parallel,
     get_scene_cache,
 )
+from src.plcs.generate_dataset.io.scene_loader import load_scene
 from src.plcs.data.types import PLCSFrameBatch
 
 if TYPE_CHECKING:
@@ -66,7 +67,7 @@ class SceneDataset(Dataset[PLCSFrameBatch]):
         self.visibility_drop_prob = data_cfg.get("visibility_drop_prob", 0.05)
 
         # Get shared scene cache (lazy loading with LRU)
-        self._scene_cache = get_scene_cache(maxsize=cache_maxsize)
+        self._scene_cache = get_scene_cache(load_fn=load_scene, maxsize=cache_maxsize)
 
         # Scene paths (no longer loading all scenes into memory)
         self.scene_paths: list[Path] = []
@@ -206,3 +207,36 @@ class SceneDataset(Dataset[PLCSFrameBatch]):
             "position": position.float(),  # (3,)
             "rotation": rotation.float(),  # (2,)
         }
+
+
+if __name__ == "__main__":
+    import json
+    from tempfile import TemporaryDirectory
+
+    import numpy as np
+
+    with TemporaryDirectory() as tmp_dir:
+        base = Path(tmp_dir)
+        scenes_dir = base / "scenes"
+        scenes_dir.mkdir(parents=True, exist_ok=True)
+        scene_path = scenes_dir / "scene_000.npz"
+        np.savez(
+            scene_path,
+            meta=json.dumps({"num_frames": 1}),
+            num_cameras=np.array(1),
+            position=np.zeros((1, 3), dtype=np.float32),
+            rotation=np.zeros((1, 2), dtype=np.float32),
+            canonical_pose_3d=np.zeros((17, 3), dtype=np.float32),
+            cam_0_params=json.dumps({"fx": 1.0}),
+            cam_0_human_kp_uv=np.zeros((1, 17, 2), dtype=np.float32),
+            cam_0_human_kp_visible=np.ones((1, 17), dtype=np.bool_),
+            cam_0_human_visibility_ratio=np.array(1.0),
+            cam_0_court_kp_uv=np.zeros((1, 20, 2), dtype=np.float32),
+            cam_0_court_kp_visible=np.ones((1, 20), dtype=np.bool_),
+            cam_0_court_visibility_count=np.array(20.0),
+        )
+        ds = SceneDataset(scene_dir=base, config={"data": {}}, augment=False)
+        sample = ds[0]
+        assert sample["human_kp"].shape == (34,)
+        assert sample["court_kp"].shape == (40,)
+        print("plcs.data.dataset smoke ok")

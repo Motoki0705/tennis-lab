@@ -6,10 +6,10 @@ test_split: 0.1
 camera_mode: random
 scene_batch_sampler: true
 scenes_per_batch: 16
+chunk_max_scenes: 64
 
 mode: frame
 
 augmentation:
   keypoint_noise_std: 0.01
   visibility_drop_prob: 0.05
-

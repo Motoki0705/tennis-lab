@@ -22,3 +22,9 @@ predictor = UVEventPredictor.load_from_checkpoint("path/to/checkpoint.ckpt", dev
 outputs = predictor.predict(ball_uv, court_kp, ball_mask=ball_mask, court_vis=court_vis)
 event_peaks = outputs["event_peaks"]  # list[B][E][N]
 ```
+
+## Data loading optimization
+
+- `data.cache_max_scenes`: LRU cache size for scene NPZ files.
+- `data.scene_sampler_mode`: `none | scene | mixed | chunked`.
+- `data.chunk_max_scenes`: Number of scenes per chunk for chunked sampling.
