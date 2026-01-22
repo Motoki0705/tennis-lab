@@ -255,14 +255,14 @@ def main_predict(cfg: RuntimeConfig) -> int:
 
     ball_uv_t = torch.from_numpy(ball_uv).float()
     court_kp_t = torch.from_numpy(court_kp).float()
-    ball_mask_t = torch.from_numpy(ball_vis.astype(np.float32))
+    ball_vis_t = torch.from_numpy(ball_vis.astype(np.float32))
     court_vis_t = torch.from_numpy(court_vis.astype(np.float32))
 
     print("Running BLCS prediction...")
     outputs = predictor.predict(
         ball_uv=ball_uv_t,
         court_kp=court_kp_t,
-        ball_mask=ball_mask_t,
+        ball_vis=ball_vis_t,
         court_vis=court_vis_t,
         denormalize=True,
     )
