@@ -1,5 +1,5 @@
 name: traj3d_transformer
-hidden_dim: 512
+hidden_dim: 256
 num_layers: 6
 num_heads: 8
 dropout: 0.1
@@ -8,7 +8,7 @@ use_moe: false
 invisible_init_std: 0.02
 
 moe:
-  moe_inter_dim: 512
+  moe_inter_dim: 704
   n_routed_experts: 8
   n_shared_experts: 2
   n_activated_experts: 2

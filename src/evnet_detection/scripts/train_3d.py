@@ -64,6 +64,10 @@ def run_training(cfg: DictConfig) -> None:
             num_workers=0,
             input_type=data_module._resolved.input_type,
             allow_dummy=True,
+            pin_memory=False,
+            scene_sampler_mode=data_module._resolved.scene_sampler_mode,
+            scenes_per_batch=data_module._resolved.scenes_per_batch,
+            chunk_max_scenes=data_module._resolved.chunk_max_scenes,
         )
         data_module.setup("fit")
         batch = next(iter(data_module.train_dataloader()))

@@ -1,6 +1,6 @@
 output_dir: outputs/evnet_detection
 seed: 42
-gpus: 0
-dry_run: true
+gpus: 1
+dry_run: false
 fast_dev_run: false
 
