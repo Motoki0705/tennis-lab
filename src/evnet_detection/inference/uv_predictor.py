@@ -181,6 +181,7 @@ class UVEventPredictor(BasePredictor):
         self,
         ball_uv: Tensor,
         court_kp: Tensor,
+        ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
         seq_len: Tensor | None = None,
@@ -194,7 +195,8 @@ class UVEventPredictor(BasePredictor):
         Args:
             ball_uv: Ball UV trajectory. Shape (B, T, 2) or (T, 2).
             court_kp: Court keypoints. Shape (B, 20, 2) or (20, 2).
-            ball_mask: Ball visibility mask. Shape (B, T) or (T,).
+            ball_vis: Ball visibility flags. Shape (B, T) or (T,).
+            ball_mask: Ball padding mask. Shape (B, T) or (T,).
             court_vis: Court visibility mask. Shape (B, 20) or (20,).
             seq_len: Optional sequence lengths. Shape (B,) or scalar.
             threshold: Minimum probability for peak detection.
@@ -209,10 +211,15 @@ class UVEventPredictor(BasePredictor):
                 - event_peak_scores: list[B][E][N] of peak scores
                 - event_names: list of event labels
         """
+        if ball_vis is None and ball_mask is not None:
+            ball_vis, ball_mask = ball_mask, None
+
         if ball_uv.dim() == 2:
             ball_uv = ball_uv.unsqueeze(0)
         if court_kp.dim() == 2:
             court_kp = court_kp.unsqueeze(0)
+        if ball_vis is not None and ball_vis.dim() == 1:
+            ball_vis = ball_vis.unsqueeze(0)
         if ball_mask is not None and ball_mask.dim() == 1:
             ball_mask = ball_mask.unsqueeze(0)
         if court_vis is not None and court_vis.dim() == 1:
@@ -220,15 +227,18 @@ class UVEventPredictor(BasePredictor):
         if seq_len is not None and seq_len.dim() == 0:
             seq_len = seq_len.unsqueeze(0)
 
-        ball_uv, court_kp, ball_mask, court_vis = self._to_device(
-            self.device, ball_uv, court_kp, ball_mask, court_vis
+        ball_uv, court_kp, ball_vis, court_vis = self._to_device(
+            self.device, ball_uv, court_kp, ball_vis, court_vis
         )
+        if ball_mask is not None:
+            ball_mask = ball_mask.to(self.device)
         if seq_len is not None:
             seq_len = seq_len.to(self.device)
 
         logits = self.model(
             ball_uv,
             court_kp,
+            ball_vis=ball_vis,
             ball_mask=ball_mask,
             court_vis=court_vis,
             seq_len=seq_len,
@@ -258,12 +268,14 @@ if __name__ == "__main__":
     predictor = UVEventPredictor(model=model, device=torch.device("cpu"), event_names=["shot", "bounce"])
     ball_uv = torch.rand(1, 16, 2)
     court_kp = torch.rand(1, 20, 2)
+    ball_vis = torch.ones(1, 16)
     ball_mask = torch.ones(1, 16)
     court_vis = torch.ones(1, 20)
     seq_len = torch.tensor([16])
     out = predictor.predict(
         ball_uv,
         court_kp,
+        ball_vis=ball_vis,
         ball_mask=ball_mask,
         court_vis=court_vis,
         seq_len=seq_len,

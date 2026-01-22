@@ -191,16 +191,9 @@ class SceneDataset(Dataset[PLCSFrameBatch]):
                 court_kp, court_vis, self.kp_noise_std, self.visibility_drop_prob
             )
 
-        # Apply visibility mask
-        human_kp_masked = human_kp.clone()
-        human_kp_masked[~human_vis] = 0.0
-
-        court_kp_masked = court_kp.clone()
-        court_kp_masked[~court_vis] = 0.0
-
         return {
-            "human_kp": human_kp_masked.flatten().float(),  # (34,)
-            "court_kp": court_kp_masked.flatten().float(),  # (40,)
+            "human_kp": human_kp.flatten().float(),  # (34,)
+            "court_kp": court_kp.flatten().float(),  # (40,)
             "human_vis": human_vis.float(),  # (17,)
             "court_vis": court_vis.float(),  # (20,)
             "position": position.float(),  # (3,)

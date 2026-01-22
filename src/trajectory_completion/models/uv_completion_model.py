@@ -179,19 +179,21 @@ class UVTrajectoryCompletionModel(nn.Module):
         self,
         *,
         ball_uv_in: Tensor,
-        ball_obs_mask: Tensor,
+        ball_vis: Tensor,
         court_kp: Tensor,
         court_vis: Tensor | None = None,
         seq_len: Tensor | None = None,
+        ball_mask: Tensor | None = None,
     ) -> Tensor:
         """Forward.
 
         Args:
             ball_uv_in: (B, T, 2) corrupted inputs (missing frames should be 0).
-            ball_obs_mask: (B, T) observed mask (1=observed, 0=missing).
+            ball_vis: (B, T) observed mask (1=observed, 0=missing).
             court_kp: (B, 20, 2) court keypoints.
             court_vis: (B, 20) court visibility mask.
             seq_len: (B,) valid sequence lengths.
+            ball_mask: (B, T) padding mask (1=valid).
 
         Returns:
             Completed UV predictions: (B, T, 2)
@@ -199,13 +201,15 @@ class UVTrajectoryCompletionModel(nn.Module):
         B, T, _ = ball_uv_in.shape
         if T > self.max_seq_len:
             ball_uv_in = ball_uv_in[:, : self.max_seq_len]
-            ball_obs_mask = ball_obs_mask[:, : self.max_seq_len]
+            ball_vis = ball_vis[:, : self.max_seq_len]
+            if ball_mask is not None:
+                ball_mask = ball_mask[:, : self.max_seq_len]
             if seq_len is not None:
                 seq_len = torch.clamp(seq_len, max=self.max_seq_len)
             T = self.max_seq_len
 
         court_tok = self.court_embed(court_kp, court_vis)  # (B, 20, D)
-        ball_tok = self.ball_embed(ball_uv_in, ball_obs_mask)  # (B, T, D)
+        ball_tok = self.ball_embed(ball_uv_in, ball_vis)  # (B, T, D)
 
         court_type = self.type_embed(
             torch.zeros(NUM_COURT_KP, device=ball_uv_in.device, dtype=torch.long)
@@ -218,10 +222,12 @@ class UVTrajectoryCompletionModel(nn.Module):
         S = x.shape[1]
 
         key_padding_mask: Tensor | None = None
-        if seq_len is not None:
-            court_valid = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
+        if ball_mask is None and seq_len is not None:
             t = torch.arange(T, device=x.device)[None, :]
-            ball_valid = t < seq_len.to(torch.long).view(B, 1)
+            ball_mask = t < seq_len.to(torch.long).view(B, 1)
+        if ball_mask is not None:
+            court_valid = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
+            ball_valid = ball_mask > 0
             key_padding_mask = torch.cat([court_valid, ball_valid], dim=1)
 
         if S > self.freqs_cis.shape[0]:
@@ -257,13 +263,13 @@ class UVTrajectoryCompletionModel(nn.Module):
 if __name__ == "__main__":
     model = UVTrajectoryCompletionModel(hidden_dim=64, num_layers=2, num_heads=4, max_seq_len=32)
     ball_uv_in = torch.rand(2, 32, 2)
-    ball_obs_mask = torch.randint(0, 2, (2, 32)).float()
+    ball_vis = torch.randint(0, 2, (2, 32)).float()
     court_kp = torch.rand(2, 20, 2)
     court_vis = torch.ones(2, 20)
     seq_len = torch.tensor([32, 24])
     out = model(
         ball_uv_in=ball_uv_in,
-        ball_obs_mask=ball_obs_mask,
+        ball_vis=ball_vis,
         court_kp=court_kp,
         court_vis=court_vis,
         seq_len=seq_len,

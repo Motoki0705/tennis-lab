@@ -54,10 +54,11 @@ class TrajectoryCompletionLightningModule(pl.LightningModule):
     def forward(self, batch: dict[str, Tensor]) -> Tensor:
         return self.model(
             ball_uv_in=batch["ball_uv_in"],
-            ball_obs_mask=batch["ball_obs_mask"],
+            ball_vis=batch["ball_vis"],
             court_kp=batch["court_kp"],
             court_vis=batch.get("court_vis"),
             seq_len=batch.get("seq_len"),
+            ball_mask=batch.get("ball_mask"),
         )
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:  # noqa: ARG002
@@ -75,26 +76,26 @@ class TrajectoryCompletionLightningModule(pl.LightningModule):
 
     def _compute_losses(self, pred: Tensor, batch: dict[str, Tensor]) -> tuple[Tensor, dict[str, Tensor]]:
         ball_uv_gt = batch["ball_uv_gt"]
-        ball_gt_mask = batch["ball_gt_mask"]
-        ball_obs_mask = batch["ball_obs_mask"]
+        ball_mask = batch["ball_mask"]
+        ball_vis = batch["ball_vis"]
         seq_len = batch.get("seq_len")
 
         B, T, _ = pred.shape
         if ball_uv_gt.shape[1] != T:
             ball_uv_gt = ball_uv_gt[:, :T]
-            ball_gt_mask = ball_gt_mask[:, :T]
-            ball_obs_mask = ball_obs_mask[:, :T]
+            ball_mask = ball_mask[:, :T]
+            ball_vis = ball_vis[:, :T]
             if seq_len is not None:
                 seq_len = torch.clamp(seq_len, max=T)
 
         if seq_len is None:
-            valid = ball_gt_mask > 0
+            valid = ball_mask > 0
         else:
             t = torch.arange(T, device=pred.device)[None, :]
-            valid = (t < seq_len.to(torch.long).view(B, 1)) & (ball_gt_mask > 0)
+            valid = (t < seq_len.to(torch.long).view(B, 1)) & (ball_mask > 0)
 
-        masked = valid & (ball_obs_mask <= 0)
-        observed = valid & (ball_obs_mask > 0)
+        masked = valid & (ball_vis <= 0)
+        observed = valid & (ball_vis > 0)
 
         loss_masked = _masked_huber(pred, ball_uv_gt, masked, delta=self.huber_delta)
         loss_observed = _masked_huber(pred, ball_uv_gt, observed, delta=self.huber_delta)
@@ -133,9 +134,9 @@ if __name__ == "__main__":
     module = TrajectoryCompletionLightningModule(cfg)
     batch = {
         "ball_uv_in": torch.rand(2, 32, 2),
-        "ball_obs_mask": torch.randint(0, 2, (2, 32)).float(),
+        "ball_vis": torch.randint(0, 2, (2, 32)).float(),
         "ball_uv_gt": torch.rand(2, 32, 2),
-        "ball_gt_mask": torch.ones(2, 32),
+        "ball_mask": torch.ones(2, 32),
         "court_kp": torch.rand(2, 20, 2),
         "court_vis": torch.ones(2, 20),
         "seq_len": torch.tensor([32, 20]),
@@ -145,4 +146,3 @@ if __name__ == "__main__":
     loss, _ = module._compute_losses(out, batch)
     assert torch.isfinite(loss)
     print("trajectory_completion.lightning smoke ok")
-

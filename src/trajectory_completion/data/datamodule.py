@@ -27,8 +27,8 @@ def collate_uv_trajectories(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]
 
     ball_uv_in = torch.zeros(B, max_len, 2)
     ball_uv_gt = torch.zeros(B, max_len, 2)
-    ball_obs_mask = torch.zeros(B, max_len)
-    ball_gt_mask = torch.zeros(B, max_len)
+    ball_vis = torch.zeros(B, max_len)
+    ball_mask = torch.zeros(B, max_len)
     court_kp = torch.zeros(B, 20, 2)
     court_vis = torch.zeros(B, 20)
     seq_len = torch.zeros(B, dtype=torch.long)
@@ -37,17 +37,17 @@ def collate_uv_trajectories(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]
         T = int(s["ball_uv_gt"].shape[0])
         ball_uv_in[i, :T] = s["ball_uv_in"]
         ball_uv_gt[i, :T] = s["ball_uv_gt"]
-        ball_obs_mask[i, :T] = s["ball_obs_mask"]
-        ball_gt_mask[i, :T] = s["ball_gt_mask"]
+        ball_vis[i, :T] = s["ball_vis"]
+        ball_mask[i, :T] = 1.0
         court_kp[i] = s["court_kp"]
         court_vis[i] = s["court_vis"]
         seq_len[i] = s["seq_len"].to(torch.long)
 
     return {
         "ball_uv_in": ball_uv_in,
-        "ball_obs_mask": ball_obs_mask,
+        "ball_vis": ball_vis,
         "ball_uv_gt": ball_uv_gt,
-        "ball_gt_mask": ball_gt_mask,
+        "ball_mask": ball_mask,
         "court_kp": court_kp,
         "court_vis": court_vis,
         "seq_len": seq_len,
@@ -177,4 +177,3 @@ if __name__ == "__main__":
     assert batch["ball_uv_in"].shape == (2, 32, 2)
     assert batch["court_kp"].shape == (2, 20, 2)
     print("trajectory_completion.datamodule smoke ok")
-
