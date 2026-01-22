@@ -61,26 +61,13 @@ checkpoints:
   - outputs/wasb/ball_detection/dinov3_heatmap_frames1/logs/version_0/checkpoints/last.ckpt
 ```
 
-### completion (軌道補完設定)
-
-| パラメータ | デフォルト | 説明 |
-|-----------|-----------|------|
-| `enabled` | `false` | 補完を有効化 |
-| `method` | `bilstm` | 補完方法 |
-| `checkpoint_path` | (trajectory model) | 補完モデルパス |
-| `device` | `${device}` | デバイス |
-| `max_gap` | `15` | 最大ギャップ |
-| `physics_gap_threshold` | `5` | 物理補完閾値 |
-
 ### render (レンダリング設定)
 
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
-| `use_completion` | `true` | 補完結果を表示 |
 | `radius` | `6` | マーカー半径 |
 | `thickness` | `-1` | 線幅 |
 | `color_detected_bgr` | `[0, 255, 0]` | 検出色 |
-| `color_completed_bgr` | `[0, 255, 255]` | 補完色 |
 
 ## アーキテクチャ・フロー
 
@@ -153,5 +140,5 @@ outputs/wasb/ball_detection/visualize/ball_video_ensemble/
 
 ## 関連モジュール
 
-- `src.wasb.inference.HeatmapEnsemblePredictor`: アンサンブル推論
-- `src.wasb.pipeline.VideoBallLocalizationPipeline`: パイプライン
+- `src.wasb.inference.ball_detection.HeatmapEnsemblePredictor`: アンサンブル推論
+- `src.wasb.pipeline.video_ball_localization_pipeline.VideoBallLocalizationPipeline`: パイプライン

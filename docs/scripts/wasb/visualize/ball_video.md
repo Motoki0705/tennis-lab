@@ -4,7 +4,7 @@
 
 ## 概要
 
-このスクリプトは、入力動画に対してWASB/HRCNetモデルで推論を行い、検出されたボール位置をオーバーレイした出力動画を生成します。オプションで軌道補完も適用できます。
+このスクリプトは、入力動画に対してWASB/HRCNetモデルで推論を行い、検出されたボール位置をオーバーレイした出力動画を生成します。
 
 ## コマンド例
 
@@ -18,13 +18,6 @@ uv run python -m src.wasb.scripts.visualize.ball_video \
   checkpoint=outputs/wasb/ball_detection/hrcnet/logs/version_0/checkpoints/last.ckpt \
   model=hrcnet \
   device=cuda
-
-# 軌道補完を有効化
-uv run python -m src.wasb.scripts.visualize.ball_video \
-  video_path=... \
-  completion.enabled=true \
-  completion.method=bilstm \
-  completion.checkpoint_path=outputs/wasb/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt
 
 # 出力パスを指定
 uv run python -m src.wasb.scripts.visualize.ball_video \
@@ -54,26 +47,13 @@ uv run python -m src.wasb.scripts.visualize.ball_video \
 | `max_frames` | `null` | 最大フレーム数 |
 | `score_threshold` | `0.5` | 検出スコア閾値 |
 
-### completion (軌道補完設定)
-
-| パラメータ | デフォルト | 説明 |
-|-----------|-----------|------|
-| `enabled` | `true` | 補完を有効化 |
-| `method` | `bilstm` | 補完方法 (physics/bilstm/transformer/refiner/hybrid) |
-| `checkpoint_path` | (trajectory model) | 補完モデルのチェックポイント |
-| `device` | `${device}` | デバイス |
-| `max_gap` | `15` | 補完する最大ギャップ |
-| `physics_gap_threshold` | `5` | 物理ベース補完の閾値 |
-
 ### render (レンダリング設定)
 
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
-| `use_completion` | `true` | 補完結果を表示するか |
 | `radius` | `6` | ボールマーカーの半径 |
 | `thickness` | `-1` | マーカーの線幅 (-1=塗りつぶし) |
 | `color_detected_bgr` | `[0, 255, 0]` | 検出ボールの色 (緑) |
-| `color_completed_bgr` | `[0, 255, 255]` | 補完ボールの色 (黄) |
 
 ## アーキテクチャ・フロー
 
@@ -82,19 +62,11 @@ uv run python -m src.wasb.scripts.visualize.ball_video \
 │                           ball_video.py                                      │
 │                                                                              │
 │  ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────────┐  │
-│  │  Input Video    │──────▶│ WASB/HRCNet     │──────▶│   Completer         │  │
-│  │                 │      │ Predictor       │      │   (optional)        │  │
-│  │ - cv2.VideoCapture     │ - バッチ推論    │      │ - BiLSTM等          │  │
-│  │ - フレーム抽出  │      │ - ヒートマップ  │      │ - ギャップ補完      │  │
+│  │  Input Video    │──────▶│ WASB/HRCNet     │──────▶│   VideoBall         │  │
+│  │                 │      │ Predictor       │      │   Localization       │  │
+│  │ - cv2.VideoCapture     │ - バッチ推論    │      │   Pipeline           │  │
+│  │ - フレーム抽出  │      │ - ヒートマップ  │      │   → xy_px, visibility│  │
 │  └─────────────────┘      └─────────────────┘      └─────────────────────┘  │
-│                                                               │              │
-│                                                               ▼              │
-│                                               ┌─────────────────────────────┐│
-│                                               │   VideoBallLocalization     ││
-│                                               │   Pipeline                  ││
-│                                               │                             ││
-│                                               │ → xy_px, visibility_code    ││
-│                                               └─────────────────────────────┘│
 │                                                               │              │
 │                                                               ▼              │
 │                                               ┌─────────────────────────────┐│
@@ -109,9 +81,8 @@ uv run python -m src.wasb.scripts.visualize.ball_video \
 処理フロー:
 1. 入力動画をバッチでフレーム抽出
 2. WASB/HRCNet でボール位置を検出
-3. (completion.enabled=true) 軌道補完を適用
-4. フレームを再読み込みし、ボール位置をオーバーレイ
-5. 出力動画を書き出し
+3. フレームを再読み込みし、ボール位置をオーバーレイ
+4. 出力動画を書き出し
 ```
 
 ## visibility_code の値
@@ -120,7 +91,6 @@ uv run python -m src.wasb.scripts.visualize.ball_video \
 |----|------|--------|
 | `0` | 不可視（検出なし） | 表示なし |
 | `1` | 検出（モデル出力） | 緑 |
-| `2` | 補完（軌道補完） | 黄 |
 
 ## 出力例
 
@@ -129,19 +99,8 @@ outputs/wasb/ball_detection/visualize/ball_video/
 └── clip.mp4    # ボール位置オーバーレイ動画
 ```
 
-## 補完方法
-
-| 方法 | 説明 |
-|------|------|
-| `physics` | 物理ベースの補間（放物線） |
-| `bilstm` | BiLSTM モデルによる補完 |
-| `transformer` | Transformer モデルによる補完 |
-| `refiner` | 反復精緻化モデルによる補完 |
-| `hybrid` | 短いギャップは物理、長いギャップはモデル |
-
 ## 関連モジュール
 
-- `src.wasb.inference.WASBPredictor`: WASB 推論
-- `src.wasb.inference.HRCNetWASBPredictor`: HRCNet 推論
-- `src.wasb.inference.build_completer`: 補完器の構築
-- `src.wasb.pipeline.VideoBallLocalizationPipeline`: パイプライン
+- `src.wasb.inference.ball_detection.WASBPredictor`: WASB 推論
+- `src.wasb.inference.ball_detection.HRCNetWASBPredictor`: HRCNet 推論
+- `src.wasb.pipeline.video_ball_localization_pipeline.VideoBallLocalizationPipeline`: パイプライン

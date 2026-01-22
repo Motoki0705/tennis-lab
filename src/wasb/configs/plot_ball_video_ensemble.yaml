@@ -47,20 +47,10 @@ ensemble:
     visibility_threshold: 0.0
     return_heatmap: true
 
-completion:
-  enabled: false
-  method: bilstm       # physics | bilstm | transformer | refiner | hybrid
-  checkpoint_path: outputs/wasb/trajectory/trajectory_bilstm/logs/version_0/checkpoints/last.ckpt
-  device: ${device}
-  max_gap: 15
-  physics_gap_threshold: 5
-
 render:
-  use_completion: true
   radius: 6
   thickness: -1
   color_detected_bgr: [0, 255, 0]
-  color_completed_bgr: [0, 255, 255]
 
 hydra:
   run:
