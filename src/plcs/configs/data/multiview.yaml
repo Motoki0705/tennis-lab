@@ -4,6 +4,8 @@ batch_size: 64
 num_workers: 4
 val_split: 0.1
 test_split: 0.1
+scene_sampler_mode: none
+chunk_max_scenes: 64
 
 # Mode: "multiview" (frame-based) or "multiview_sequence" (temporal)
 mode: multiview_sequence
