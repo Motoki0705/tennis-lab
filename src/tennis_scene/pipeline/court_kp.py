@@ -26,8 +26,7 @@ class CourtKPConfig:
 
     Attributes:
         checkpoint_path: Path to model checkpoint.
-        mode: Detection mode ("model", "manual", "manual_ui").
-        manual_keypoints_path: JSON file path for manual keypoints.
+        mode: Detection mode ("model", "manual_ui").
         device: Inference device.
         save_result: Whether to save result to file.
         output_path: Path to save result JSON file.
@@ -36,8 +35,7 @@ class CourtKPConfig:
     """
 
     checkpoint_path: str | Path
-    mode: Literal["model", "manual", "manual_ui"] = "model"
-    manual_keypoints_path: str | Path | None = None
+    mode: Literal["model", "manual_ui"] = "model"
     device: str = "cuda"
     save_result: bool = False
     output_path: str | Path | None = None
@@ -84,6 +82,30 @@ class CourtKPResult:
             json.dump(self.to_dict(), f, indent=2)
         LOGGER.info(f"Saved CourtKP result to {path}")
 
+    def validate(self) -> tuple[bool, list[str]]:
+        """Validate result content.
+
+        Returns:
+            Tuple of (is_valid, errors).
+        """
+        errors: list[str] = []
+        if self.keypoints.shape != (NUM_COURT_KEYPOINTS, 2):
+            errors.append(f"keypoints shape must be (20, 2), got {self.keypoints.shape}")
+        if self.visibility.shape != (NUM_COURT_KEYPOINTS,):
+            errors.append(f"visibility shape must be (20,), got {self.visibility.shape}")
+        if self.frame_index < 0:
+            errors.append(f"frame_index must be non-negative, got {self.frame_index}")
+        if not np.isfinite(self.keypoints).all():
+            errors.append("keypoints contain non-finite values")
+        if not np.isfinite(self.visibility).all():
+            errors.append("visibility contains non-finite values")
+        if not np.isin(self.visibility, [0.0, 1.0]).all():
+            errors.append("visibility must contain only 0 or 1")
+        tol = 1e-6
+        if np.any(self.keypoints < -tol) or np.any(self.keypoints > 1.0 + tol):
+            errors.append("keypoints must be normalized to [0, 1]")
+        return len(errors) == 0, errors
+
     @classmethod
     def load(cls, path: str | Path) -> "CourtKPResult":
         """Load result from JSON file."""
@@ -100,9 +122,7 @@ class CourtKPModule(BasePipelineModule):
         config: Configuration for the module.
         checkpoint_path: Path to model checkpoint.
         device: Inference device.
-        mode: "model" for predictor, "manual" for manual keypoints,
-            "manual_ui" for interactive input.
-        manual_keypoints_path: JSON file path for manual keypoints.
+        mode: "model" for predictor or "manual_ui" for interactive input.
 
     """
 
@@ -111,10 +131,7 @@ class CourtKPModule(BasePipelineModule):
         config: CourtKPConfig | None = None,
         *,
         checkpoint_path: str | Path | None = None,
-        mode: Literal["model", "manual", "manual_ui"] = "model",
-        manual_keypoints_path: str | Path | None = None,
-        manual_keypoints: NDArray[np.float32] | None = None,
-        manual_visibility: NDArray[np.float32] | None = None,
+        mode: Literal["model", "manual_ui"] = "model",
         device: str = "cuda",
         save_result: bool = False,
         output_path: str | Path | None = None,
@@ -124,11 +141,7 @@ class CourtKPModule(BasePipelineModule):
         Args:
             config: CourtKP configuration (preferred).
             checkpoint_path: Path to model checkpoint (legacy).
-            mode: "model" to use predictor, "manual" for manual keypoints,
-                "manual_ui" for interactive input (legacy).
-            manual_keypoints_path: JSON file with manual keypoints (legacy).
-            manual_keypoints: Manual keypoints array (20, 2).
-            manual_visibility: Manual visibility array (20,).
+            mode: "model" to use predictor or "manual_ui" for interactive input.
             device: Inference device (legacy).
             save_result: Whether to save result (legacy).
             output_path: Path to save result (legacy).
@@ -142,40 +155,21 @@ class CourtKPModule(BasePipelineModule):
             self.config = CourtKPConfig(
                 checkpoint_path=checkpoint_path,
                 mode=mode,
-                manual_keypoints_path=manual_keypoints_path,
                 device=device,
                 save_result=save_result,
                 output_path=output_path,
             )
         self.checkpoint_path = Path(self.config.checkpoint_path)
         self.mode = self.config.mode
-        self.manual_keypoints_path = (
-            Path(self.config.manual_keypoints_path)
-            if self.config.manual_keypoints_path is not None
-            else None
-        )
         self.device = self.config.device
         self._predictor = None
         self._manual_keypoints: NDArray[np.float32] | None = None
         self._manual_visibility: NDArray[np.float32] | None = None
         self._manual_needs_normalization = False
 
-        if manual_keypoints is not None:
-            self._set_manual_keypoints(manual_keypoints, manual_visibility)
-
     def load(self) -> None:
         """Load the court keypoint predictor."""
-        if self.mode in {"manual", "manual_ui"}:
-            if self._manual_keypoints is not None:
-                return
-            if self.manual_keypoints_path is None:
-                if self.mode == "manual":
-                    raise ValueError(
-                        "manual_keypoints_path must be set for manual mode when no "
-                        "manual_keypoints are provided."
-                    )
-                return
-            self._load_manual_keypoints(self.manual_keypoints_path)
+        if self.mode == "manual_ui":
             return
 
         if self._predictor is not None:
@@ -191,42 +185,9 @@ class CourtKPModule(BasePipelineModule):
     @property
     def is_loaded(self) -> bool:
         """Check if the model is loaded."""
-        if self.mode in {"manual", "manual_ui"}:
+        if self.mode == "manual_ui":
             return self._manual_keypoints is not None
         return self._predictor is not None
-
-    def _save_manual_keypoints(self, path: Path, image_size: tuple[int, int]) -> None:
-        """Save manual keypoints to JSON in annotation format.
-
-        Args:
-            path: Output JSON path.
-            image_size: Image size (width, height).
-        """
-        if self._manual_keypoints is None or self._manual_visibility is None:
-            raise RuntimeError("Manual keypoints are not set.")
-
-        width, height = image_size
-        keypoints = []
-        for i in range(NUM_COURT_KEYPOINTS):
-            kp = self._manual_keypoints[i]
-            vis = int(self._manual_visibility[i])
-            if kp.max() <= 1.0:
-                x = float(kp[0] * width)
-                y = float(kp[1] * height)
-            else:
-                x = float(kp[0])
-                y = float(kp[1])
-            keypoints.append({"x": x, "y": y, "visibility": vis})
-
-        data = {
-            "image_width": width,
-            "image_height": height,
-            "num_keypoints": NUM_COURT_KEYPOINTS,
-            "keypoints": keypoints,
-        }
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
 
     def _collect_manual_keypoints_ui(self, frame: NDArray[np.uint8]) -> None:
         """Collect manual keypoints via an interactive UI.
@@ -322,76 +283,6 @@ class CourtKPModule(BasePipelineModule):
         self._manual_visibility = visibility.astype(np.float32)
         self._manual_needs_normalization = True
 
-    def _set_manual_keypoints(
-        self,
-        keypoints: NDArray[np.float32],
-        visibility: NDArray[np.float32] | None = None,
-    ) -> None:
-        keypoints = np.asarray(keypoints, dtype=np.float32)
-        if keypoints.shape != (NUM_COURT_KEYPOINTS, 2):
-            raise ValueError(
-                "manual_keypoints must have shape (20, 2), "
-                f"got {keypoints.shape}."
-            )
-
-        if visibility is None:
-            visibility = np.where(np.min(keypoints, axis=1) >= 0.0, 1.0, 0.0)
-        else:
-            visibility = np.asarray(visibility, dtype=np.float32)
-            if visibility.shape != (NUM_COURT_KEYPOINTS,):
-                raise ValueError(
-                    "manual_visibility must have shape (20,), "
-                    f"got {visibility.shape}."
-                )
-
-        self._manual_keypoints = keypoints.astype(np.float32)
-        self._manual_visibility = visibility.astype(np.float32)
-        self._manual_needs_normalization = bool(np.nanmax(self._manual_keypoints) > 1.0)
-
-    def _load_manual_keypoints(self, path: Path) -> None:
-        if not path.exists():
-            raise FileNotFoundError(f"Manual keypoints file not found: {path}")
-
-        with path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        keypoints_raw = data.get("keypoints", [])
-        keypoints = np.zeros((NUM_COURT_KEYPOINTS, 2), dtype=np.float32)
-        visibility = np.zeros(NUM_COURT_KEYPOINTS, dtype=np.float32)
-
-        if keypoints_raw and isinstance(keypoints_raw[0], dict):
-            for i, kp in enumerate(keypoints_raw[:NUM_COURT_KEYPOINTS]):
-                x = float(kp.get("x", 0.0))
-                y = float(kp.get("y", 0.0))
-                vis = float(kp.get("visibility", 0.0))
-                if vis > 0:
-                    keypoints[i] = [x, y]
-                    visibility[i] = 1.0
-        elif keypoints_raw:
-            arr = np.asarray(keypoints_raw, dtype=np.float32)
-            count = min(len(arr), NUM_COURT_KEYPOINTS)
-            keypoints[:count] = arr[:count, :2]
-            if "visibility" in data:
-                visibility_raw = np.asarray(data.get("visibility"), dtype=np.float32)
-                visibility[:count] = visibility_raw[:count]
-            else:
-                visibility[:count] = np.where(
-                    np.min(keypoints[:count], axis=1) >= 0.0, 1.0, 0.0
-                )
-
-        self._manual_keypoints = keypoints.astype(np.float32)
-        self._manual_visibility = visibility.astype(np.float32)
-
-        image_width = data.get("image_width") or data.get("width")
-        image_height = data.get("image_height") or data.get("height")
-        if image_width and image_height:
-            self._manual_keypoints[..., 0] /= float(image_width)
-            self._manual_keypoints[..., 1] /= float(image_height)
-            self._manual_needs_normalization = False
-        else:
-            self._manual_needs_normalization = bool(
-                np.nanmax(self._manual_keypoints) > 1.0
-            )
 
     def process(
         self,
@@ -421,17 +312,12 @@ class CourtKPModule(BasePipelineModule):
             else:
                 LOGGER.warning(f"load_path specified but not found: {load_path}, running detection")
 
-        if self.mode in {"manual", "manual_ui"}:
+        if self.mode == "manual_ui":
             if not self.is_loaded:
                 self.load()
 
-            if self.mode == "manual_ui" and self._manual_keypoints is None:
+            if self._manual_keypoints is None:
                 self._collect_manual_keypoints_ui(frame)
-                if self.manual_keypoints_path is not None:
-                    self._save_manual_keypoints(
-                        self.manual_keypoints_path,
-                        image_size=(frame.shape[1], frame.shape[0]),
-                    )
 
             keypoints = np.array(self._manual_keypoints, copy=True)
             visibility = np.array(self._manual_visibility, copy=True)
@@ -445,11 +331,16 @@ class CourtKPModule(BasePipelineModule):
                 keypoints[..., 0] /= image_width
                 keypoints[..., 1] /= image_height
 
-            return CourtKPResult(
+            result = CourtKPResult(
                 keypoints=keypoints.astype(np.float32),
                 visibility=visibility.astype(np.float32),
                 frame_index=frame_index,
             )
+
+            if self.config.save_result and self.config.output_path is not None:
+                result.save(self.config.output_path)
+
+            return result
 
         if not self.is_loaded:
             self.load()

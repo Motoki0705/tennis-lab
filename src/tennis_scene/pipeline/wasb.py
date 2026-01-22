@@ -84,6 +84,62 @@ class WASBResult:
             json.dump(self.to_dict(), f, indent=2)
         LOGGER.info(f"Saved WASB result to {path}")
 
+    def validate(self) -> tuple[bool, list[str]]:
+        """Validate result content.
+
+        Returns:
+            Tuple of (is_valid, errors).
+        """
+        errors: list[str] = []
+        if self.ball_uv.ndim != 2 or self.ball_uv.shape[1] != 2:
+            errors.append(f"ball_uv shape must be (T, 2), got {self.ball_uv.shape}")
+        if self.ball_uv_px.ndim != 2 or self.ball_uv_px.shape[1] != 2:
+            errors.append(
+                f"ball_uv_px shape must be (T, 2), got {self.ball_uv_px.shape}"
+            )
+        if self.visibility.ndim != 1:
+            errors.append(f"visibility shape must be (T,), got {self.visibility.shape}")
+        if self.score.ndim != 1:
+            errors.append(f"score shape must be (T,), got {self.score.shape}")
+
+        t_uv = self.ball_uv.shape[0]
+        if self.ball_uv_px.shape[0] != t_uv:
+            errors.append("ball_uv_px length does not match ball_uv length")
+        if self.visibility.shape[0] != t_uv:
+            errors.append("visibility length does not match ball_uv length")
+        if self.score.shape[0] != t_uv:
+            errors.append("score length does not match ball_uv length")
+
+        if not np.isfinite(self.ball_uv).all():
+            errors.append("ball_uv contains non-finite values")
+        if not np.isfinite(self.ball_uv_px).all():
+            errors.append("ball_uv_px contains non-finite values")
+        if not np.isfinite(self.score).all():
+            errors.append("score contains non-finite values")
+
+        if not np.isin(self.visibility, [0, 1, False, True]).all():
+            errors.append("visibility must contain only 0 or 1")
+
+        tol = 1e-6
+        if np.any(self.ball_uv < -tol) or np.any(self.ball_uv > 1.0 + tol):
+            errors.append("ball_uv must be normalized to [0, 1]")
+        if np.any(self.ball_uv_px < -tol):
+            errors.append("ball_uv_px must be non-negative")
+        if np.any(self.score < -tol):
+            errors.append("score must be non-negative")
+
+        if self.visibility.size:
+            invalid = ~self.visibility.astype(bool)
+            if invalid.any():
+                if np.any(np.abs(self.ball_uv[invalid]) > tol):
+                    errors.append("ball_uv must be zero for invalid frames")
+                if np.any(np.abs(self.ball_uv_px[invalid]) > tol):
+                    errors.append("ball_uv_px must be zero for invalid frames")
+                if np.any(np.abs(self.score[invalid]) > tol):
+                    errors.append("score must be zero for invalid frames")
+
+        return len(errors) == 0, errors
+
     @classmethod
     def load(cls, path: str | Path) -> "WASBResult":
         """Load result from JSON file."""
@@ -168,9 +224,14 @@ class WASBModule(BasePipelineModule):
         ball_uv_px = result.ball_xy_px.astype(np.float32)
         visibility = result.visibility
 
-        # Replace -Infinity values (undetected frames) with NaN to avoid downstream issues
-        invalid_mask = ~visibility | ~np.isfinite(ball_uv_px).all(axis=-1)
-        ball_uv_px[invalid_mask] = np.nan
+        score = result.score.astype(np.float32)
+        finite_uv = np.isfinite(ball_uv_px).all(axis=-1)
+        finite_score = np.isfinite(score)
+        valid_mask = visibility & finite_uv & finite_score
+
+        # Replace invalid values with zeros to keep JSON strictly numeric
+        ball_uv_px[~valid_mask] = 0.0
+        score[~valid_mask] = 0.0
 
         if image_width is not None and image_height is not None:
             ball_uv = ball_uv_px.copy()
@@ -182,8 +243,8 @@ class WASBModule(BasePipelineModule):
         wasb_result = WASBResult(
             ball_uv=ball_uv,
             ball_uv_px=ball_uv_px,
-            visibility=visibility,
-            score=result.score.astype(np.float32),
+            visibility=valid_mask.astype(np.bool_),
+            score=score,
         )
 
         if self.config.save_result and self.config.output_path is not None:
