@@ -4,8 +4,8 @@ warmup_steps: 200
 max_epochs: 1
 min_lr: 1e-6
 gradient_clip_val: 1.0
+scheduler: cosine
 
 # BCE-with-logits positive class weighting (per event)
 # Use 1.0 for neutral weighting.
 pos_weight: [5.0, 5.0]
-
