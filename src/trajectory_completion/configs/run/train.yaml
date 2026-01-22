@@ -3,12 +3,4 @@ seed: 0
 gpus: 0
 resume: null
 fast_dev_run: false
-dry_run: true
-
-hydra:
-  run:
-    dir: ${output_dir}/${now:%Y-%m-%d_%H-%M-%S}
-  output_subdir: null
-  job:
-    chdir: false
-
+dry_run: false
