@@ -8,6 +8,8 @@ import pytorch_lightning as pl
 import torch
 from torch import Tensor
 from torch.nn import functional as F
+from torch.optim import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
 from src.trajectory_completion.models.uv_completion_model import UVTrajectoryCompletionModel
 
@@ -44,6 +46,7 @@ class TrajectoryCompletionLightningModule(pl.LightningModule):
         train_cfg = config.get("training", {}) or {}
         loss_cfg = train_cfg.get("loss", {}) or {}
         metrics_cfg = config.get("metrics", {}) or {}
+
         self.learning_rate = float(train_cfg.get("learning_rate", 1e-3))
         self.weight_decay = float(train_cfg.get("weight_decay", 1e-4))
         self.warmup_steps = int(train_cfg.get("warmup_steps", 200))
@@ -141,7 +144,43 @@ class TrajectoryCompletionLightningModule(pl.LightningModule):
         return loss, logs
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.wd)
+        optimizer = AdamW(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
+        if self.scheduler != "cosine":
+            return {"optimizer": optimizer}
+
+        total_steps = 0
+        if self.trainer is not None:
+            total_steps = int(getattr(self.trainer, "estimated_stepping_batches", 0))
+        if total_steps <= 0:
+            total_steps = max(self.max_epochs * 1000, self.warmup_steps + 1)
+        else:
+            total_steps = max(total_steps, self.warmup_steps + 1)
+
+        if self.warmup_steps > 0:
+            warmup_scheduler = LinearLR(
+                optimizer,
+                start_factor=0.01,
+                end_factor=1.0,
+                total_iters=self.warmup_steps,
+            )
+            cosine_scheduler = CosineAnnealingLR(
+                optimizer,
+                T_max=max(total_steps - self.warmup_steps, 1),
+                eta_min=self.min_lr,
+            )
+            scheduler = SequentialLR(
+                optimizer,
+                schedulers=[warmup_scheduler, cosine_scheduler],
+                milestones=[self.warmup_steps],
+            )
+        else:
+            scheduler = CosineAnnealingLR(
+                optimizer,
+                T_max=max(total_steps, 1),
+                eta_min=self.min_lr,
+            )
+
+        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step"}}
 
 
 if __name__ == "__main__":

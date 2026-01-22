@@ -9,6 +9,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 from torch.optim import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
 from src.evnet_detection.models.traj3d_event_model import Traj3DEventModel
 from src.evnet_detection.models.uv_event_model import UVEventModel
@@ -45,6 +46,10 @@ class EventDetectionLightningModule(pl.LightningModule):
         train_cfg = self.config.get("training", {}) or {}
         self.learning_rate = float(train_cfg.get("learning_rate", 1e-4))
         self.weight_decay = float(train_cfg.get("weight_decay", 1e-5))
+        self.warmup_steps = int(train_cfg.get("warmup_steps", 200))
+        self.max_epochs = int(train_cfg.get("max_epochs", 1))
+        self.min_lr = float(train_cfg.get("min_lr", 1e-6))
+        self.scheduler = str(train_cfg.get("scheduler", "cosine"))
 
         metrics_cfg = self.config.get("metrics", {}) or {}
         self.peak_threshold = float(metrics_cfg.get("peak_threshold", 0.5))
@@ -108,7 +113,42 @@ class EventDetectionLightningModule(pl.LightningModule):
 
     def configure_optimizers(self) -> dict[str, Any]:
         optimizer = AdamW(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
-        return {"optimizer": optimizer}
+        if self.scheduler != "cosine":
+            return {"optimizer": optimizer}
+
+        total_steps = 0
+        if self.trainer is not None:
+            total_steps = int(getattr(self.trainer, "estimated_stepping_batches", 0))
+        if total_steps <= 0:
+            total_steps = max(self.max_epochs * 1000, self.warmup_steps + 1)
+        else:
+            total_steps = max(total_steps, self.warmup_steps + 1)
+
+        if self.warmup_steps > 0:
+            warmup_scheduler = LinearLR(
+                optimizer,
+                start_factor=0.01,
+                end_factor=1.0,
+                total_iters=self.warmup_steps,
+            )
+            cosine_scheduler = CosineAnnealingLR(
+                optimizer,
+                T_max=max(total_steps - self.warmup_steps, 1),
+                eta_min=self.min_lr,
+            )
+            scheduler = SequentialLR(
+                optimizer,
+                schedulers=[warmup_scheduler, cosine_scheduler],
+                milestones=[self.warmup_steps],
+            )
+        else:
+            scheduler = CosineAnnealingLR(
+                optimizer,
+                T_max=max(total_steps, 1),
+                eta_min=self.min_lr,
+            )
+
+        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "interval": "step"}}
 
     def _peak_match_accuracy(self, logits: Tensor, targets: Tensor, seq_len: Tensor | None) -> Tensor:
         probs = torch.sigmoid(logits)
