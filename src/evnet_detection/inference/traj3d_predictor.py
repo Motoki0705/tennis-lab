@@ -12,7 +12,7 @@ from src.base.api.predictor import BasePredictor
 from src.evnet_detection.models.traj3d_event_model import Traj3DEventModel
 from src.evnet_detection.training.lightning_module import EventDetectionLightningModule
 
-from src.evnet_detection.inference.uv_predictor import _extract_event_peaks
+from src.evnet_detection.utils.peaks import extract_event_peaks
 
 
 class Traj3DEventPredictor(BasePredictor):
@@ -113,7 +113,7 @@ class Traj3DEventPredictor(BasePredictor):
         logits = self.model(ball_pos_world, seq_len=seq_len)
         probs = torch.sigmoid(logits)
 
-        peaks, peak_scores = _extract_event_peaks(
+        peaks, peak_scores = extract_event_peaks(
             probs,
             seq_len,
             threshold=threshold,
