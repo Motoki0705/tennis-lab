@@ -21,3 +21,9 @@ outputs = predictor.predict(
 )
 completed = outputs["ball_uv_completed"]
 ```
+
+## Data loading optimization
+
+- `data.cache_max_scenes`: LRU cache size for scene NPZ files.
+- `data.scene_sampler_mode`: `none | scene | mixed | chunked`.
+- `data.chunk_max_scenes`: Number of scenes per chunk for chunked sampling.

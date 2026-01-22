@@ -163,6 +163,12 @@ RUN_ROOT=outputs/blcs/sweep_$(date +%Y-%m-%d_%H-%M-%S) \
 bash src/blcs/scripts/run_hparam_sweep.sh
 ```
 
+## データローディング最適化
+
+- `data.cache_max_scenes`: シーンNPZのLRUキャッシュ容量。
+- `data.scene_sampler_mode`: `none | scene | mixed | chunked` を指定。
+- `data.chunk_max_scenes`: `chunked` モード時のチャンク内シーン数上限。
+
 ### 可視化
 
 ```bash
