@@ -1,6 +1,6 @@
 output_dir: outputs/trajectory_completion
-seed: 0
-gpus: 0
+seed: 42
+gpus: 1
 resume: null
 fast_dev_run: false
 dry_run: false

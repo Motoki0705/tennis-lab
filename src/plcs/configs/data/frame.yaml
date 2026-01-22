@@ -4,7 +4,8 @@ num_workers: 4
 val_split: 0.1
 test_split: 0.1
 camera_mode: random
-scene_batch_sampler: true
+# Scene sampler settings: none | scene | mixed | chunked
+scene_sampler_mode: chunked
 scenes_per_batch: 16
 chunk_max_scenes: 64
 

@@ -202,10 +202,10 @@ class BLCSRallyEventDataset(Dataset):
         cam_idx = self._select_camera(num_cameras)
         prefix = f"cam_{cam_idx}_"
 
-        ball_uv = torch.from_numpy(npz[f"{prefix}ball_uv"][:T]).float()
-        ball_vis = torch.from_numpy(npz[f"{prefix}ball_visible"][:T]).float()
-        court_kp = torch.from_numpy(npz[f"{prefix}court_kp_uv"]).float()
-        court_vis = torch.from_numpy(npz[f"{prefix}court_kp_visible"]).float()
+        ball_uv = torch.from_numpy(data[f"{prefix}ball_uv"][:T]).float()
+        ball_vis = torch.from_numpy(data[f"{prefix}ball_visible"][:T]).float()
+        court_kp = torch.from_numpy(data[f"{prefix}court_kp_uv"]).float()
+        court_vis = torch.from_numpy(data[f"{prefix}court_kp_visible"]).float()
 
         return {
             "ball_uv": ball_uv,
@@ -265,4 +265,31 @@ if __name__ == "__main__":
     sample_3d = ds_3d[0]
     assert sample_3d["ball_pos_world"].shape == (32, 3)
     assert sample_3d["targets"].shape == (32, 2)
+
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        scene_dir = Path(tmp_dir)
+        scene_path = scene_dir / "scene_000.npz"
+        T = 8
+        meta = {"num_frames": T, "shots": [{"t_start": 2, "t_bounce1": 5}]}
+        np.savez(
+            scene_path,
+            ball_pos_world=np.zeros((T, 3), dtype=np.float32),
+            num_cameras=np.array(1),
+            cam_0_ball_uv=np.zeros((T, 2), dtype=np.float32),
+            cam_0_ball_visible=np.ones((T,), dtype=np.float32),
+            cam_0_court_kp_uv=np.zeros((20, 2), dtype=np.float32),
+            cam_0_court_kp_visible=np.ones((20,), dtype=np.float32),
+            meta=json.dumps(meta),
+        )
+        cfg = {"data": {"max_seq_len": T, "cache_max_scenes": 0}}
+        blcs_uv = BLCSRallyEventDataset(scene_dir, split="train", input_type="uv", config=cfg)
+        sample_uv = blcs_uv[0]
+        assert sample_uv["ball_uv"].shape == (T, 2)
+        assert sample_uv["court_kp"].shape == (20, 2)
+
+        blcs_3d = BLCSRallyEventDataset(scene_dir, split="train", input_type="3d", config=cfg)
+        sample_3d = blcs_3d[0]
+        assert sample_3d["ball_pos_world"].shape == (T, 3)
     print("dataset smoke ok")

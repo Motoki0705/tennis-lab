@@ -1,5 +1,5 @@
 learning_rate: 1.0e-4
-weight_decay: 1.0e-4
+weight_decay: 1.0e-5
 
 max_epochs: 20
 gradient_clip_val: 1.0
