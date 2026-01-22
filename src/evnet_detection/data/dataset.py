@@ -202,14 +202,14 @@ class BLCSRallyEventDataset(Dataset):
         cam_idx = self._select_camera(num_cameras)
         prefix = f"cam_{cam_idx}_"
 
-        ball_uv = torch.from_numpy(data[f"{prefix}ball_uv"][:T]).float()
-        ball_mask = torch.from_numpy(data[f"{prefix}ball_visible"][:T]).float()
-        court_kp = torch.from_numpy(data[f"{prefix}court_kp_uv"]).float()
-        court_vis = torch.from_numpy(data[f"{prefix}court_kp_visible"]).float()
+        ball_uv = torch.from_numpy(npz[f"{prefix}ball_uv"][:T]).float()
+        ball_vis = torch.from_numpy(npz[f"{prefix}ball_visible"][:T]).float()
+        court_kp = torch.from_numpy(npz[f"{prefix}court_kp_uv"]).float()
+        court_vis = torch.from_numpy(npz[f"{prefix}court_kp_visible"]).float()
 
         return {
             "ball_uv": ball_uv,
-            "ball_mask": ball_mask,
+            "ball_vis": ball_vis,
             "court_kp": court_kp,
             "court_vis": court_vis,
             "targets": targets,
@@ -242,12 +242,12 @@ class DummyEventDataset(Dataset):
             return {"ball_pos_world": ball_pos_world, "targets": targets, "seq_len": seq_len}
 
         ball_uv = torch.rand(T, 2)
-        ball_mask = torch.ones(T)
+        ball_vis = torch.ones(T)
         court_kp = torch.rand(20, 2)
         court_vis = torch.ones(20)
         return {
             "ball_uv": ball_uv,
-            "ball_mask": ball_mask,
+            "ball_vis": ball_vis,
             "court_kp": court_kp,
             "court_vis": court_vis,
             "targets": targets,

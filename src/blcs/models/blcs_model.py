@@ -30,77 +30,11 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
+from src.common.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
 from src.utils.geometry import NUM_COURT_KP
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
-
-
-# -------------------------
-# Token embeddings
-# -------------------------
-class CourtTokenEmbedding(nn.Module):
-    """Embed court keypoints as tokens.
-
-    Args:
-        court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
-        court_vis: Court visibility, shape (B, 20). Optional.
-
-    Returns:
-        Tokens of shape (B, NUM_COURT_KP, D).
-
-    """
-
-    def __init__(self, dim: int, dropout: float) -> None:
-        super().__init__()
-        in_dim = 2 + 1  # (u, v) + visibility
-        self.proj = nn.Sequential(
-            nn.Linear(in_dim, dim),
-            nn.Dropout(dropout),
-        )
-
-    def forward(self, court_kp: Tensor, court_vis: Tensor | None) -> Tensor:
-        B = court_kp.shape[0]
-        if court_kp.dim() == 2:
-            court_kp = court_kp.view(B, NUM_COURT_KP, 2)
-        vis = (
-            torch.ones(B, NUM_COURT_KP, device=court_kp.device, dtype=court_kp.dtype)
-            if court_vis is None
-            else court_vis.to(court_kp.dtype)
-        )
-        x = torch.cat([court_kp, vis.unsqueeze(-1)], dim=-1)
-        return self.proj(x)
-
-
-class BallTokenEmbedding(nn.Module):
-    """Embed ball trajectory as tokens.
-
-    Args:
-        ball_uv: Ball 2D positions, shape (B, T, 2).
-        ball_mask: Ball visibility mask, shape (B, T). Optional.
-
-    Returns:
-        Tokens of shape (B, T, D).
-
-    """
-
-    def __init__(self, dim: int, dropout: float) -> None:
-        super().__init__()
-        in_dim = 2 + 1  # (u, v) + visibility
-        self.proj = nn.Sequential(
-            nn.Linear(in_dim, dim),
-            nn.Dropout(dropout),
-        )
-
-    def forward(self, ball_uv: Tensor, ball_mask: Tensor | None) -> Tensor:
-        B, T, _ = ball_uv.shape
-        vis = (
-            torch.ones(B, T, device=ball_uv.device, dtype=ball_uv.dtype)
-            if ball_mask is None
-            else ball_mask.to(ball_uv.dtype)
-        )
-        x = torch.cat([ball_uv, vis.unsqueeze(-1)], dim=-1)
-        return self.proj(x)
 
 
 # -------------------------
@@ -122,7 +56,8 @@ class BLCSModel(nn.Module):
     Input:
         - ball_uv: Ball 2D positions (u, v), shape (B, T, 2)
         - court_kp: Court 2D keypoints (20 landmarks), shape (B, 40) or (B, 20, 2)
-        - ball_mask: Ball visibility mask, shape (B, T). Optional.
+        - ball_vis: Ball visibility flags, shape (B, T). Optional.
+        - ball_mask: Ball padding mask, shape (B, T). Optional.
         - court_vis: Court keypoint visibility, shape (B, 20). Optional.
 
     Output:
@@ -146,6 +81,7 @@ class BLCSModel(nn.Module):
         causal: bool = False,
         predict_velocity: bool = False,
         max_seq_len: int = 120,
+        invisible_init_std: float = 0.02,
     ) -> None:
         """Initialize the BLCS model.
 
@@ -163,6 +99,7 @@ class BLCSModel(nn.Module):
             causal: Use causal attention mask.
             predict_velocity: Also predict velocities (for auxiliary loss).
             max_seq_len: Maximum sequence length.
+            invisible_init_std: Initialization std for invisible tokens.
 
         """
         super().__init__()
@@ -190,8 +127,19 @@ class BLCSModel(nn.Module):
         if moe_config is not None and moe_config.dim != hidden_dim:
             raise ValueError(f"moe_config.dim={moe_config.dim} must match hidden_dim={hidden_dim}")
 
-        self.court_embed = CourtTokenEmbedding(dim=hidden_dim, dropout=dropout)
-        self.ball_embed = BallTokenEmbedding(dim=hidden_dim, dropout=dropout)
+        self.invisible_token = InvisibleTokenEmbedding(
+            dim=hidden_dim, init_std=invisible_init_std
+        )
+        self.court_embed = CourtKPUVEmbedding(
+            dim=hidden_dim,
+            dropout=dropout,
+            invisible_token=self.invisible_token,
+        )
+        self.ball_embed = BallUVEmbedding(
+            dim=hidden_dim,
+            dropout=dropout,
+            invisible_token=self.invisible_token,
+        )
 
         # Type embedding: 0 = court, 1 = ball
         self.type_embed = nn.Embedding(2, hidden_dim)
@@ -287,12 +235,14 @@ class BLCSModel(nn.Module):
             max_seq_len=model_cfg.get(
                 "max_seq_len", data_cfg.get("max_seq_len", 120)
             ),
+            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
         )
 
     def forward(
         self,
         ball_uv: Tensor,
         court_kp: Tensor,
+        ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
     ) -> dict[str, Tensor]:
@@ -301,7 +251,8 @@ class BLCSModel(nn.Module):
         Args:
             ball_uv: Ball 2D positions, shape (B, T, 2).
             court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
-            ball_mask: Ball visibility mask, shape (B, T). Optional.
+            ball_vis: Ball visibility flags, shape (B, T). Optional.
+            ball_mask: Ball padding mask, shape (B, T). Optional.
             court_vis: Court visibility mask, shape (B, 20). Optional.
 
         Returns:
@@ -312,7 +263,7 @@ class BLCSModel(nn.Module):
 
         # Tokenize court and ball
         court_tok = self.court_embed(court_kp, court_vis)  # (B, 20, D)
-        ball_tok = self.ball_embed(ball_uv, ball_mask)  # (B, T, D)
+        ball_tok = self.ball_embed(ball_uv, ball_vis)  # (B, T, D)
 
         # Add type embeddings
         court_type = self.type_embed(
@@ -327,13 +278,6 @@ class BLCSModel(nn.Module):
         )  # (B, S, D)
         S = x.shape[1]
 
-        # Build key_padding_mask if ball_mask provided
-        key_padding_mask: Tensor | None = None
-        if ball_mask is not None:
-            # Court tokens are always valid, ball tokens use ball_mask
-            court_mask = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
-            key_padding_mask = torch.cat([court_mask, ball_mask > 0], dim=1)  # (B, S)
-
         if S > self.freqs_cis.shape[0]:
             raise ValueError(
                 f"Sequence length S={S} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
@@ -342,9 +286,11 @@ class BLCSModel(nn.Module):
         freqs_cis = self.freqs_cis[:S]
         if freqs_cis.device != x.device:
             freqs_cis = freqs_cis.to(x.device)
-
         attn_mask: Tensor | None = None
-        if key_padding_mask is not None:
+        if ball_mask is not None:
+            court_valid = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
+            ball_valid = ball_mask > 0
+            key_padding_mask = torch.cat([court_valid, ball_valid], dim=1)
             attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
 
         residual = None
@@ -375,6 +321,7 @@ class BLCSModel(nn.Module):
         self,
         ball_uv: Tensor,
         court_kp: Tensor,
+        ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
     ) -> dict[str, Tensor]:
@@ -385,7 +332,8 @@ class BLCSModel(nn.Module):
         Args:
             ball_uv: Ball 2D positions.
             court_kp: Court keypoints.
-            ball_mask: Ball visibility mask.
+            ball_vis: Ball visibility flags.
+            ball_mask: Ball padding mask.
             court_vis: Court visibility mask.
 
         Returns:
@@ -394,7 +342,7 @@ class BLCSModel(nn.Module):
         """
         self.eval()
         with torch.no_grad():
-            return self.forward(ball_uv, court_kp, ball_mask, court_vis)
+            return self.forward(ball_uv, court_kp, ball_vis=ball_vis, ball_mask=ball_mask, court_vis=court_vis)
 
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""
@@ -417,11 +365,18 @@ if __name__ == "__main__":
     T = 8
     ball_uv = torch.randn(B, T, 2)
     court_kp = torch.randn(B, NUM_COURT_KP, 2)
-    ball_mask = (torch.rand(B, T) > 0.2).to(torch.float32)
+    ball_vis = (torch.rand(B, T) > 0.2).to(torch.float32)
+    ball_mask = torch.ones(B, T)
     court_vis = (torch.rand(B, NUM_COURT_KP) > 0.1).to(torch.float32)
 
     with torch.no_grad():
-        out = model(ball_uv=ball_uv, court_kp=court_kp, ball_mask=ball_mask, court_vis=court_vis)
+        out = model(
+            ball_uv=ball_uv,
+            court_kp=court_kp,
+            ball_vis=ball_vis,
+            ball_mask=ball_mask,
+            court_vis=court_vis,
+        )
 
     print("BLCSModel:")
     for key, value in out.items():

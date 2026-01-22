@@ -16,7 +16,7 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
-from src.evnet_detection.models.components.embeddings import Ball3DTokenEmbedding
+from src.common.models.embeddings import Ball3DEmbedding, InvisibleTokenEmbedding
 from src.evnet_detection.models.components.heads import EventLogitsHead
 
 if TYPE_CHECKING:
@@ -40,6 +40,7 @@ class Traj3DEventModel(nn.Module):
         mlp_inter_dim: int | None = None,
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
+        invisible_init_std: float = 0.02,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -58,7 +59,14 @@ class Traj3DEventModel(nn.Module):
         if use_moe and moe_config is None:
             raise ValueError("use_moe=True requires moe_config.")
 
-        self.embed = Ball3DTokenEmbedding(dim=self.hidden_dim, dropout=dropout)
+        self.invisible_token = InvisibleTokenEmbedding(
+            dim=self.hidden_dim, init_std=invisible_init_std
+        )
+        self.embed = Ball3DEmbedding(
+            dim=self.hidden_dim,
+            dropout=dropout,
+            invisible_token=self.invisible_token,
+        )
         self.blocks = nn.ModuleList(
             [
                 TransformerBlock(
@@ -146,6 +154,7 @@ class Traj3DEventModel(nn.Module):
             mlp_inter_dim=mlp_inter_dim_value,
             use_moe=use_moe,
             moe_config=moe_config,
+            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
         )
 
     def forward(self, ball_pos_world: Tensor, seq_len: Tensor | None = None) -> Tensor:

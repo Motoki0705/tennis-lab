@@ -22,7 +22,7 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
-from src.evnet_detection.models.components.embeddings import BallUVTokenEmbedding, CourtTokenEmbedding
+from src.common.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
 from src.evnet_detection.models.components.heads import EventLogitsHead
 from src.utils.geometry import NUM_COURT_KP
 
@@ -47,6 +47,7 @@ class UVEventModel(nn.Module):
         mlp_inter_dim: int | None = None,
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
+        invisible_init_std: float = 0.02,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -66,8 +67,19 @@ class UVEventModel(nn.Module):
         if use_moe and moe_config is None:
             raise ValueError("use_moe=True requires moe_config.")
 
-        self.court_embed = CourtTokenEmbedding(dim=self.hidden_dim, dropout=dropout)
-        self.ball_embed = BallUVTokenEmbedding(dim=self.hidden_dim, dropout=dropout)
+        self.invisible_token = InvisibleTokenEmbedding(
+            dim=self.hidden_dim, init_std=invisible_init_std
+        )
+        self.court_embed = CourtKPUVEmbedding(
+            dim=self.hidden_dim,
+            dropout=dropout,
+            invisible_token=self.invisible_token,
+        )
+        self.ball_embed = BallUVEmbedding(
+            dim=self.hidden_dim,
+            dropout=dropout,
+            invisible_token=self.invisible_token,
+        )
         self.type_embed = nn.Embedding(2, self.hidden_dim)
 
         self.blocks = nn.ModuleList(
@@ -157,12 +169,14 @@ class UVEventModel(nn.Module):
             mlp_inter_dim=mlp_inter_dim_value,
             use_moe=use_moe,
             moe_config=moe_config,
+            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
         )
 
     def forward(
         self,
         ball_uv: Tensor,
         court_kp: Tensor,
+        ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
         seq_len: Tensor | None = None,
@@ -172,6 +186,7 @@ class UVEventModel(nn.Module):
         Args:
             ball_uv: (B, T, 2)
             court_kp: (B, 20, 2)
+            ball_vis: (B, T) or None
             ball_mask: (B, T) or None
             court_vis: (B, 20) or None
 
@@ -181,6 +196,8 @@ class UVEventModel(nn.Module):
         B, T, _ = ball_uv.shape
         if T > self.max_seq_len:
             ball_uv = ball_uv[:, : self.max_seq_len]
+            if ball_vis is not None:
+                ball_vis = ball_vis[:, : self.max_seq_len]
             if ball_mask is not None:
                 ball_mask = ball_mask[:, : self.max_seq_len]
             if seq_len is not None:
@@ -188,7 +205,7 @@ class UVEventModel(nn.Module):
             T = self.max_seq_len
 
         court_tokens = self.court_embed(court_kp, court_vis)  # (B, 20, D)
-        ball_tokens = self.ball_embed(ball_uv, ball_mask)  # (B, T, D)
+        ball_tokens = self.ball_embed(ball_uv, ball_vis)  # (B, T, D)
 
         court_type = self.type_embed(
             torch.zeros(NUM_COURT_KP, device=ball_uv.device, dtype=torch.long)
@@ -201,15 +218,12 @@ class UVEventModel(nn.Module):
         S = x.shape[1]
 
         key_padding_mask: Tensor | None = None
-        if ball_mask is not None or seq_len is not None:
+        if ball_mask is None and seq_len is not None:
+            t = torch.arange(T, device=x.device)[None, :]
+            ball_mask = t < seq_len.to(torch.long).view(B, 1)
+        if ball_mask is not None:
             court_valid = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
-            if ball_mask is None:
-                ball_valid = torch.ones(B, T, device=x.device, dtype=torch.bool)
-            else:
-                ball_valid = ball_mask > 0
-            if seq_len is not None:
-                t = torch.arange(T, device=x.device)[None, :]
-                ball_valid = ball_valid & (t < seq_len.to(torch.long).view(B, 1))
+            ball_valid = ball_mask > 0
             key_padding_mask = torch.cat([court_valid, ball_valid], dim=1)  # (B, S)
 
         if S > self.freqs_cis.shape[0]:
@@ -245,10 +259,11 @@ class UVEventModel(nn.Module):
 if __name__ == "__main__":
     model = UVEventModel(hidden_dim=64, num_layers=2, num_heads=4, max_seq_len=32, num_events=2)
     ball_uv = torch.rand(2, 32, 2)
+    ball_vis = torch.ones(2, 32)
     ball_mask = torch.ones(2, 32)
     court_kp = torch.rand(2, 20, 2)
     court_vis = torch.ones(2, 20)
     seq_len = torch.tensor([32, 16])
-    logits = model(ball_uv, court_kp, ball_mask, court_vis, seq_len=seq_len)
+    logits = model(ball_uv, court_kp, ball_vis=ball_vis, ball_mask=ball_mask, court_vis=court_vis, seq_len=seq_len)
     assert logits.shape == (2, 32, 2)
     print("uv model smoke ok")

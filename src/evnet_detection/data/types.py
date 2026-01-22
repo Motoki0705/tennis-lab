@@ -11,7 +11,7 @@ class EventUVSample(TypedDict):
     """Single-sample schema for UV-based event detection."""
 
     ball_uv: torch.Tensor  # (T, 2)
-    ball_mask: torch.Tensor  # (T,)
+    ball_vis: torch.Tensor  # (T,)
     court_kp: torch.Tensor  # (20, 2)
     court_vis: torch.Tensor  # (20,)
     targets: torch.Tensor  # (T, E)
@@ -30,6 +30,7 @@ class EventUVBatch(TypedDict):
     """Batched schema for UV-based event detection."""
 
     ball_uv: torch.Tensor  # (B, T, 2)
+    ball_vis: torch.Tensor  # (B, T)
     ball_mask: torch.Tensor  # (B, T)
     court_kp: torch.Tensor  # (B, 20, 2)
     court_vis: torch.Tensor  # (B, 20)
@@ -43,4 +44,3 @@ class Event3DBatch(TypedDict):
     ball_pos_world: torch.Tensor  # (B, T, 3)
     targets: torch.Tensor  # (B, T, E)
     seq_len: torch.Tensor  # (B,)
-
