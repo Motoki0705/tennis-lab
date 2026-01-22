@@ -1,9 +1,9 @@
 defaults:
-  - _self_
-  - data: blcs_rally_uv
   - model: uv_transformer
+  - data: blcs_rally_uv
   - training: default
   - run: train
+  - _self_
 
 hydra:
   run:
