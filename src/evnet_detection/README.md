@@ -19,6 +19,12 @@ Example:
 from src.evnet_detection.inference import UVEventPredictor
 
 predictor = UVEventPredictor.load_from_checkpoint("path/to/checkpoint.ckpt", device="cpu")
-outputs = predictor.predict(ball_uv, court_kp, ball_mask=ball_mask, court_vis=court_vis)
+outputs = predictor.predict(
+    ball_uv,
+    court_kp,
+    ball_vis=ball_vis,  # visibility (1=visible)
+    ball_mask=ball_mask,  # padding mask (1=valid)
+    court_vis=court_vis,
+)
 event_peaks = outputs["event_peaks"]  # list[B][E][N]
 ```
