@@ -45,6 +45,8 @@ class TrajectoryCompletionLightningModule(pl.LightningModule):
 
         train_cfg = config.get("training", {}) or {}
         loss_cfg = train_cfg.get("loss", {}) or {}
+        metrics_cfg = config.get("metrics", {}) or {}
+
         self.learning_rate = float(train_cfg.get("learning_rate", 1e-3))
         self.weight_decay = float(train_cfg.get("weight_decay", 1e-4))
         self.warmup_steps = int(train_cfg.get("warmup_steps", 200))
@@ -56,6 +58,9 @@ class TrajectoryCompletionLightningModule(pl.LightningModule):
         self.observed_weight = float(loss_cfg.get("observed_weight", 0.1))
         self.smoothness_weight = float(loss_cfg.get("smoothness_weight", 0.0))
         self.huber_delta = float(loss_cfg.get("huber_delta", 0.02))
+
+        self.masked_accuracy_threshold = float(metrics_cfg.get("masked_accuracy_threshold_px", 2.0))
+        self.observed_accuracy_threshold = float(metrics_cfg.get("observed_accuracy_threshold_px", 2.0))
 
     def forward(self, batch: dict[str, Tensor]) -> Tensor:
         return self.model(
@@ -113,6 +118,19 @@ class TrajectoryCompletionLightningModule(pl.LightningModule):
             loss_smooth = _smoothness_loss(pred, valid)
             loss = loss + self.smoothness_weight * loss_smooth
 
+        acc_masked = pred.new_tensor(0.0)
+        acc_observed = pred.new_tensor(0.0)
+        if self.masked_accuracy_threshold > 0 or self.observed_accuracy_threshold > 0:
+            error = torch.linalg.vector_norm(pred - ball_uv_gt, dim=-1)
+            if self.masked_accuracy_threshold > 0:
+                masked_denom = masked.to(torch.float32).sum().clamp_min(1.0)
+                acc_masked = (error <= self.masked_accuracy_threshold).to(torch.float32)
+                acc_masked = (acc_masked * masked.to(torch.float32)).sum() / masked_denom
+            if self.observed_accuracy_threshold > 0:
+                observed_denom = observed.to(torch.float32).sum().clamp_min(1.0)
+                acc_observed = (error <= self.observed_accuracy_threshold).to(torch.float32)
+                acc_observed = (acc_observed * observed.to(torch.float32)).sum() / observed_denom
+
         denom = valid.to(torch.float32).sum().clamp_min(1.0)
         masked_ratio = masked.to(torch.float32).sum() / denom
         logs = {
@@ -120,6 +138,8 @@ class TrajectoryCompletionLightningModule(pl.LightningModule):
             "loss_observed": loss_observed.detach(),
             "loss_smooth": loss_smooth.detach(),
             "masked_ratio": masked_ratio.detach(),
+            "accuracy_masked": acc_masked.detach(),
+            "accuracy_observed": acc_observed.detach(),
         }
         return loss, logs
 
