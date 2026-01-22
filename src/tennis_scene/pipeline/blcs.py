@@ -79,7 +79,6 @@ class BLCSResult:
 
     def validate(self) -> tuple[bool, list[str]]:
         """Validate result content.
-        
         Returns:
             Tuple of (is_valid, errors).
         """
