@@ -2,6 +2,7 @@ defaults:
   - model: uv_transformer
   - data: blcs_rally_uv
   - training: default
+  - metrics: default
   - run: train
   - _self_
 
