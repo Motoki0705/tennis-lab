@@ -73,6 +73,7 @@ class BLCSLightningModule(pl.LightningModule):
         self,
         ball_uv: Tensor,
         court_kp: Tensor,
+        ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
     ) -> dict[str, Tensor]:
@@ -81,14 +82,15 @@ class BLCSLightningModule(pl.LightningModule):
         Args:
             ball_uv: Ball 2D trajectory.
             court_kp: Court keypoints.
-            ball_mask: Ball visibility mask.
+            ball_vis: Ball visibility flags.
+            ball_mask: Ball padding mask.
             court_vis: Court visibility mask.
 
         Returns:
             dict: Model outputs.
 
         """
-        return self.model(ball_uv, court_kp, ball_mask, court_vis)
+        return self.model(ball_uv, court_kp, ball_vis=ball_vis, ball_mask=ball_mask, court_vis=court_vis)
 
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
@@ -107,6 +109,7 @@ class BLCSLightningModule(pl.LightningModule):
         outputs = self.model(
             ball_uv=batch["ball_uv"],
             court_kp=batch["court_kp"],
+            ball_vis=batch.get("ball_vis"),
             ball_mask=batch.get("ball_mask"),
             court_vis=batch.get("court_vis"),
         )

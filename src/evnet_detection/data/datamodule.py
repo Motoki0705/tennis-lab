@@ -24,6 +24,7 @@ def collate_uv(batch: list[EventUVSample]) -> EventUVBatch:
     E = int(batch[0]["targets"].shape[-1])
 
     ball_uv = torch.zeros(B, max_len, 2)
+    ball_vis = torch.zeros(B, max_len)
     ball_mask = torch.zeros(B, max_len)
     targets = torch.zeros(B, max_len, E)
     court_kp = torch.zeros(B, 20, 2)
@@ -33,7 +34,8 @@ def collate_uv(batch: list[EventUVSample]) -> EventUVBatch:
     for i, s in enumerate(batch):
         L = int(s["seq_len"])
         ball_uv[i, :L] = s["ball_uv"][:L]
-        ball_mask[i, :L] = s["ball_mask"][:L]
+        ball_vis[i, :L] = s["ball_vis"][:L]
+        ball_mask[i, :L] = 1.0
         targets[i, :L] = s["targets"][:L]
         court_kp[i] = s["court_kp"]
         court_vis[i] = s["court_vis"]
@@ -41,6 +43,7 @@ def collate_uv(batch: list[EventUVSample]) -> EventUVBatch:
 
     return {
         "ball_uv": ball_uv,
+        "ball_vis": ball_vis,
         "ball_mask": ball_mask,
         "court_kp": court_kp,
         "court_vis": court_vis,

@@ -56,7 +56,8 @@ class BLCSModel(nn.Module):
     Input:
         - ball_uv: Ball 2D positions (u, v), shape (B, T, 2)
         - court_kp: Court 2D keypoints (20 landmarks), shape (B, 40) or (B, 20, 2)
-        - ball_mask: Ball visibility mask, shape (B, T). Optional.
+        - ball_vis: Ball visibility flags, shape (B, T). Optional.
+        - ball_mask: Ball padding mask, shape (B, T). Optional.
         - court_vis: Court keypoint visibility, shape (B, 20). Optional.
 
     Output:
@@ -241,6 +242,7 @@ class BLCSModel(nn.Module):
         self,
         ball_uv: Tensor,
         court_kp: Tensor,
+        ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
     ) -> dict[str, Tensor]:
@@ -249,7 +251,8 @@ class BLCSModel(nn.Module):
         Args:
             ball_uv: Ball 2D positions, shape (B, T, 2).
             court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
-            ball_mask: Ball visibility mask, shape (B, T). Optional.
+            ball_vis: Ball visibility flags, shape (B, T). Optional.
+            ball_mask: Ball padding mask, shape (B, T). Optional.
             court_vis: Court visibility mask, shape (B, 20). Optional.
 
         Returns:
@@ -260,7 +263,7 @@ class BLCSModel(nn.Module):
 
         # Tokenize court and ball
         court_tok = self.court_embed(court_kp, court_vis)  # (B, 20, D)
-        ball_tok = self.ball_embed(ball_uv, ball_mask)  # (B, T, D)
+        ball_tok = self.ball_embed(ball_uv, ball_vis)  # (B, T, D)
 
         # Add type embeddings
         court_type = self.type_embed(
@@ -284,6 +287,11 @@ class BLCSModel(nn.Module):
         if freqs_cis.device != x.device:
             freqs_cis = freqs_cis.to(x.device)
         attn_mask: Tensor | None = None
+        if ball_mask is not None:
+            court_valid = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
+            ball_valid = ball_mask > 0
+            key_padding_mask = torch.cat([court_valid, ball_valid], dim=1)
+            attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
 
         residual = None
         for blk in self.blocks:
@@ -313,6 +321,7 @@ class BLCSModel(nn.Module):
         self,
         ball_uv: Tensor,
         court_kp: Tensor,
+        ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
     ) -> dict[str, Tensor]:
@@ -323,7 +332,8 @@ class BLCSModel(nn.Module):
         Args:
             ball_uv: Ball 2D positions.
             court_kp: Court keypoints.
-            ball_mask: Ball visibility mask.
+            ball_vis: Ball visibility flags.
+            ball_mask: Ball padding mask.
             court_vis: Court visibility mask.
 
         Returns:
@@ -332,7 +342,7 @@ class BLCSModel(nn.Module):
         """
         self.eval()
         with torch.no_grad():
-            return self.forward(ball_uv, court_kp, ball_mask, court_vis)
+            return self.forward(ball_uv, court_kp, ball_vis=ball_vis, ball_mask=ball_mask, court_vis=court_vis)
 
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""
@@ -355,11 +365,18 @@ if __name__ == "__main__":
     T = 8
     ball_uv = torch.randn(B, T, 2)
     court_kp = torch.randn(B, NUM_COURT_KP, 2)
-    ball_mask = (torch.rand(B, T) > 0.2).to(torch.float32)
+    ball_vis = (torch.rand(B, T) > 0.2).to(torch.float32)
+    ball_mask = torch.ones(B, T)
     court_vis = (torch.rand(B, NUM_COURT_KP) > 0.1).to(torch.float32)
 
     with torch.no_grad():
-        out = model(ball_uv=ball_uv, court_kp=court_kp, ball_mask=ball_mask, court_vis=court_vis)
+        out = model(
+            ball_uv=ball_uv,
+            court_kp=court_kp,
+            ball_vis=ball_vis,
+            ball_mask=ball_mask,
+            court_vis=court_vis,
+        )
 
     print("BLCSModel:")
     for key, value in out.items():
