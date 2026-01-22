@@ -54,9 +54,6 @@ class PLCSDataModule(pl.LightningDataModule):
         self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
         self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
         self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
-        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
-        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
-        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
 
         self.train_dataset: SceneDataset | None = None
         self.val_dataset: SceneDataset | None = None
