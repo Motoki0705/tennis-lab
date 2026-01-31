@@ -16,7 +16,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from src.base.data.augmentation import add_gaussian_noise
+from src.common.dataset.augmentation import add_gaussian_noise
 from src.common.data.scene_cache import get_scene_cache, load_npz_scene
 
 if TYPE_CHECKING:

@@ -18,7 +18,7 @@ from omegaconf import DictConfig, OmegaConf
 from PIL import Image
 from torch import nn
 
-from src.base.api.predictor import BasePredictor
+from src.base.inference.predictor import BasePredictor
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

@@ -8,7 +8,7 @@ from typing import Any, Self
 import torch
 from torch import Tensor
 
-from src.base.api.predictor import BasePredictor
+from src.base.inference.predictor import BasePredictor
 from src.evnet_detection.models.traj3d_event_model import Traj3DEventModel
 from src.evnet_detection.training.lightning_module import EventDetectionLightningModule
 
