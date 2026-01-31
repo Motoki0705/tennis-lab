@@ -8,7 +8,7 @@ from typing import Any, Self
 import torch
 from torch import Tensor
 
-from src.base.api.predictor import BasePredictor
+from src.base.inference.predictor import BasePredictor
 from src.blcs.models.blcs_model import BLCSModel
 from src.blcs.training.lightning_module import BLCSLightningModule
 from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ

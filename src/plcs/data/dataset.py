@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import torch
 from torch.utils.data import Dataset
 
-from src.base.data.augmentation import augment_keypoints
+from src.common.dataset.augmentation import augment_keypoints
 from src.common.data.index_cache import (
     compute_config_hash,
     compute_scene_files_hash,
