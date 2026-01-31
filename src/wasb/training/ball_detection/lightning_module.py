@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import math
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-import pytorch_lightning as pl
 from torch import Tensor, nn
-from torch.optim import AdamW
-from torch.optim.lr_scheduler import LambdaLR
 
+from src.base.training.lightning_module import BaseLightningModule
 from src.wasb.models import build_model
 from src.wasb.training.ball_detection.loss import (
     LossWeights,
@@ -23,7 +20,7 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class WASBLightningModule(pl.LightningModule):
+class WASBLightningModule(BaseLightningModule):
     """Lightning module wrapping a WASB-style ball localization model."""
 
     def __init__(
@@ -33,7 +30,7 @@ class WASBLightningModule(pl.LightningModule):
         steps_per_epoch: int | None = None,
         io_handlers: tuple[Callable[[Tensor], Tensor], Callable[[Any], Tensor]] | None = None,
     ) -> None:
-        super().__init__()
+        super().__init__(config)
         self.save_hyperparameters(ignore=["model", "io_handlers"])
 
         # When training, the caller usually provides both `model` and
@@ -89,12 +86,8 @@ class WASBLightningModule(pl.LightningModule):
             self.val_metrics = None
             self.test_metrics = None
 
-        self.learning_rate = train_cfg.get("learning_rate", 1e-3)
+        self.learning_rate = train_cfg.get("learning_rate", self.learning_rate)
         self.backbone_learning_rate = train_cfg.get("backbone_learning_rate", 1e-5)
-        self.weight_decay = train_cfg.get("weight_decay", 1e-4)
-        self.warmup_steps = train_cfg.get("warmup_steps", 1000)
-        self.max_epochs = train_cfg.get("max_epochs", 50)
-        self.min_lr = train_cfg.get("min_lr", 1e-6)
         self.steps_per_epoch = steps_per_epoch
         self.freeze_backbone_epochs = int(train_cfg.get("freeze_backbone_epochs", 0) or 0)
         self._backbone_frozen = False
@@ -206,37 +199,7 @@ class WASBLightningModule(pl.LightningModule):
             self._backbone_frozen = False
             print("Backbone Unfrozen")
 
-    def _build_warmup_cosine_lambda(
-        self,
-        *,
-        total_steps: int,
-        warmup_steps: int,
-        start_step: int,
-        base_lr: float,
-    ) -> Callable[[int], float]:
-        start_factor = 0.01
-        active_steps = max(total_steps - start_step, 1)
-        adjusted_warmup = max(min(warmup_steps, active_steps - 1), 0)
-        cosine_steps = max(active_steps - adjusted_warmup, 1)
-        min_factor = 0.0 if base_lr == 0 else min(self.min_lr / base_lr, 1.0)
-
-        def lr_lambda(current_step: int) -> float:
-            if current_step < start_step:
-                return 0.0
-
-            step = current_step - start_step
-
-            if adjusted_warmup > 0 and step < adjusted_warmup:
-                progress = step / float(adjusted_warmup)
-                return start_factor + (1.0 - start_factor) * progress
-
-            cosine_step = min(step - adjusted_warmup, cosine_steps)
-            cosine_progress = cosine_step / float(cosine_steps)
-            return min_factor + 0.5 * (1.0 - min_factor) * (1.0 + math.cos(math.pi * cosine_progress))
-
-        return lr_lambda
-
-    def configure_optimizers(self) -> dict[str, Any]:
+    def optimizer_param_groups(self) -> list[dict[str, Any]] | None:
         backbone_params: list[nn.Parameter] = []
         if hasattr(self.model, "backbone") and isinstance(self.model.backbone, nn.Module):
             backbone_params = list(self.model.backbone.parameters())
@@ -244,7 +207,6 @@ class WASBLightningModule(pl.LightningModule):
         non_backbone_params = [p for p in self.model.parameters() if id(p) not in backbone_param_ids]
 
         param_groups: list[dict[str, Any]] = []
-        lr_lambdas: list[Callable[[int], float]] = []
 
         if non_backbone_params:
             param_groups.append(
@@ -258,48 +220,4 @@ class WASBLightningModule(pl.LightningModule):
                     "weight_decay": self.weight_decay,
                 }
             )
-
-        optimizer = AdamW(
-            param_groups if param_groups else self.parameters(),
-            lr=self.learning_rate,
-            weight_decay=self.weight_decay,
-        )
-
-        steps_per_epoch = self.steps_per_epoch
-        if steps_per_epoch is None:
-            steps_per_epoch = 1000
-
-        total_steps = steps_per_epoch * max(self.max_epochs, 1)
-        freeze_steps = steps_per_epoch * max(self.freeze_backbone_epochs, 0)
-
-        if non_backbone_params:
-            lr_lambdas.append(
-                self._build_warmup_cosine_lambda(
-                    total_steps=total_steps,
-                    warmup_steps=self.warmup_steps,
-                    start_step=0,
-                    base_lr=self.learning_rate,
-                )
-            )
-        if backbone_params:
-            lr_lambdas.append(
-                self._build_warmup_cosine_lambda(
-                    total_steps=total_steps,
-                    warmup_steps=self.warmup_steps,
-                    start_step=freeze_steps,
-                    base_lr=self.backbone_learning_rate,
-                )
-            )
-
-        if not lr_lambdas:
-            return {"optimizer": optimizer}
-
-        scheduler = LambdaLR(optimizer, lr_lambda=lr_lambdas if len(lr_lambdas) > 1 else lr_lambdas[0])
-
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "interval": "step",
-            },
-        }
+        return param_groups if param_groups else None

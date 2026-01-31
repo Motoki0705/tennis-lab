@@ -5,19 +5,19 @@ Handles training loop, logging, and checkpointing for MAE pre-training.
 
 from __future__ import annotations
 
-from typing import Any, Optional
-
-import pytorch_lightning as pl
+from typing import TYPE_CHECKING, Optional
 import torch
 import torch.nn as nn
 from torch import Tensor
-from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
-
-from src.mae.models import MAEConfig, MAEModel
+from src.base.training.lightning_module import BaseLightningModule
+from src.mae.models import MAEModel
 
 
-class MAELightningModule(pl.LightningModule):
+if TYPE_CHECKING:
+    from omegaconf import DictConfig
+
+
+class MAELightningModule(BaseLightningModule):
     """Lightning module for MAE pre-training.
 
     Handles:
@@ -29,39 +29,25 @@ class MAELightningModule(pl.LightningModule):
 
     def __init__(
         self,
-        model_config: MAEConfig,
-        learning_rate: float = 1.5e-4,
-        weight_decay: float = 0.05,
-        warmup_epochs: int = 40,
-        max_epochs: int = 400,
-        min_lr: float = 1e-6,
-        mask_ratio: float = 0.75,
-        log_reconstruction_every_n_epochs: int = 10,
+        config: DictConfig,
     ) -> None:
         """Initialize MAE Lightning module.
 
         Args:
-            model_config: Configuration for MAE model.
-            learning_rate: Base learning rate.
-            weight_decay: Weight decay for AdamW.
-            warmup_epochs: Number of warmup epochs.
-            max_epochs: Total training epochs.
-            min_lr: Minimum learning rate.
-            mask_ratio: Ratio of patches to mask.
-            log_reconstruction_every_n_epochs: Frequency of reconstruction logging.
+            config: Hydra configuration.
 
         """
-        super().__init__()
+        super().__init__(config)
         self.save_hyperparameters()
 
-        self.model = MAEModel(model_config)
-        self.learning_rate = learning_rate
-        self.weight_decay = weight_decay
-        self.warmup_epochs = warmup_epochs
-        self.max_epochs = max_epochs
-        self.min_lr = min_lr
-        self.mask_ratio = mask_ratio
-        self.log_reconstruction_every_n_epochs = log_reconstruction_every_n_epochs
+        self.config = config
+        self.model = MAEModel.from_config(config)
+        training_cfg = config.get("training", {}) or {}
+        model_cfg = config.get("model", {}) or {}
+        self.mask_ratio = model_cfg.get("mask_ratio", 0.75)
+        self.log_reconstruction_every_n_epochs = training_cfg.get(
+            "log_reconstruction_every_n_epochs", 10
+        )
 
     def forward(
         self,
@@ -209,14 +195,7 @@ class MAELightningModule(pl.LightningModule):
             # Silently ignore visualization errors
             pass
 
-    def configure_optimizers(self) -> dict:
-        """Configure optimizer and learning rate scheduler.
-
-        Returns:
-            Dictionary with optimizer and scheduler.
-
-        """
-        # Separate params for weight decay
+    def optimizer_param_groups(self):
         decay_params = []
         no_decay_params = []
 
@@ -228,41 +207,11 @@ class MAELightningModule(pl.LightningModule):
             else:
                 decay_params.append(param)
 
-        optimizer = AdamW(
-            [
-                {"params": decay_params, "weight_decay": self.weight_decay},
-                {"params": no_decay_params, "weight_decay": 0.0},
-            ],
-            lr=self.learning_rate,
-            betas=(0.9, 0.95),
-        )
-
-        # Warmup + cosine decay scheduler
-        warmup_scheduler = LinearLR(
-            optimizer,
-            start_factor=0.01,
-            end_factor=1.0,
-            total_iters=self.warmup_epochs,
-        )
-        cosine_scheduler = CosineAnnealingLR(
-            optimizer,
-            T_max=self.max_epochs - self.warmup_epochs,
-            eta_min=self.min_lr,
-        )
-        scheduler = SequentialLR(
-            optimizer,
-            schedulers=[warmup_scheduler, cosine_scheduler],
-            milestones=[self.warmup_epochs],
-        )
-
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "interval": "epoch",
-                "frequency": 1,
-            },
-        }
+        betas = self.optimizer_betas if self.optimizer_betas is not None else (0.9, 0.95)
+        return [
+            {"params": decay_params, "weight_decay": self.weight_decay, "betas": betas},
+            {"params": no_decay_params, "weight_decay": 0.0, "betas": betas},
+        ]
 
     def get_encoder(self) -> nn.Module:
         """Get the pre-trained encoder for downstream tasks.
@@ -284,18 +233,4 @@ class MAELightningModule(pl.LightningModule):
             Initialized module.
 
         """
-        model_config = MAEModel.from_config(config).cfg
-
-        training_cfg = config.get("training", {})
-        return cls(
-            model_config=model_config,
-            learning_rate=training_cfg.get("learning_rate", 1.5e-4),
-            weight_decay=training_cfg.get("weight_decay", 0.05),
-            warmup_epochs=training_cfg.get("warmup_epochs", 40),
-            max_epochs=training_cfg.get("max_epochs", 400),
-            min_lr=training_cfg.get("min_lr", 1e-6),
-            mask_ratio=config.get("model", {}).get("mask_ratio", 0.75),
-            log_reconstruction_every_n_epochs=training_cfg.get(
-                "log_reconstruction_every_n_epochs", 10
-            ),
-        )
+        return cls(config)

@@ -15,7 +15,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from src.base.data.augmentation import add_gaussian_noise, random_visibility_dropout
+from src.common.dataset.augmentation import add_gaussian_noise, random_visibility_dropout
 from src.blcs.data.types import BLCSBatch, BLCSSample
 from src.common.data.scene_cache import get_scene_cache, load_npz_scene
 

@@ -4,20 +4,20 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
+from src.base.training.lightning_module import BaseLightningModule
 from src.court_detection.models.court_keypoint_model import CourtKeypointModel
 from src.court_detection.training.losses import CourtKeypointLoss
 from src.court_detection.training.metrics import CourtKeypointMetrics
 
 
-class CourtKeypointLightningModule(pl.LightningModule):
+class CourtKeypointLightningModule(BaseLightningModule):
     """Lightning module for training court keypoint detection.
+
+    Inherits training and optimization behavior from BaseLightningModule.
 
     Args:
         model_config: Model configuration dict.
@@ -30,8 +30,15 @@ class CourtKeypointLightningModule(pl.LightningModule):
         model_config: dict[str, Any],
         training_config: dict[str, Any],
         loss_config: dict[str, Any],
+        data_config: dict[str, Any] | None = None,
     ) -> None:
-        super().__init__()
+        # BaseLightningModule expects a config with 'training' key
+        # but we maintain backward compatibility with direct dicts
+        base_config = {
+            "training": training_config,
+            "data": data_config or {},
+        }
+        super().__init__(config=base_config)
         self.save_hyperparameters()
 
         self.model_config = model_config
@@ -189,44 +196,4 @@ class CourtKeypointLightningModule(pl.LightningModule):
             self.log(f"test/{name}", value)
         self.test_metrics.reset()
 
-    def configure_optimizers(self) -> dict[str, Any]:
-        """Configure optimizer and scheduler."""
-        lr = self.training_config.get("learning_rate", 1e-4)
-        weight_decay = self.training_config.get("weight_decay", 1e-4)
-        max_epochs = self.training_config.get("max_epochs", 100)
-        warmup_epochs = self.training_config.get("warmup_epochs", 5)
-        min_lr = self.training_config.get("scheduler", {}).get("min_lr", 1e-6)
-
-        # Optimizer
-        optimizer = AdamW(
-            self.parameters(),
-            lr=lr,
-            weight_decay=weight_decay,
-            betas=tuple(self.training_config.get("optimizer", {}).get("betas", [0.9, 0.999])),
-        )
-
-        # Scheduler with warmup
-        warmup_scheduler = LinearLR(
-            optimizer,
-            start_factor=0.01,
-            end_factor=1.0,
-            total_iters=warmup_epochs,
-        )
-        main_scheduler = CosineAnnealingLR(
-            optimizer,
-            T_max=max_epochs - warmup_epochs,
-            eta_min=min_lr,
-        )
-        scheduler = SequentialLR(
-            optimizer,
-            schedulers=[warmup_scheduler, main_scheduler],
-            milestones=[warmup_epochs],
-        )
-
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "interval": "epoch",
-            },
-        }
+    # configure_optimizers inherited from BaseLightningModule

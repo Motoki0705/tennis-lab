@@ -20,7 +20,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from src.base.api import BasePredictor
+from src.base.inference import BasePredictor
 
 if TYPE_CHECKING:
     from src.wasb.training import WASBLightningModule

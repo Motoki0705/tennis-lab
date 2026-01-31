@@ -2,25 +2,27 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import numpy as np
 import torch
-from PIL import Image
 import torch.nn.functional as F
+from PIL import Image
 from torch import Tensor
 
+from src.base.inference.predictor import BasePredictor
 from src.court_detection.models.court_keypoint_model import CourtKeypointModel
 from src.court_detection.training.lightning_module import CourtKeypointLightningModule
 
 
-class CourtKeypointPredictor:
+class CourtKeypointPredictor(BasePredictor):
     """Predictor for court keypoint detection.
 
     Provides a simple API for running inference with trained models.
 
-    Args:
+    Attributes:
         model: CourtKeypointModel instance.
         device: Device to run inference on.
         input_size: Input image size [H, W].
@@ -29,44 +31,50 @@ class CourtKeypointPredictor:
     def __init__(
         self,
         model: CourtKeypointModel,
-        device: str | torch.device = "cpu",
+        device: torch.device,
         input_size: tuple[int, int] = (256, 256),
     ) -> None:
         self.model = model
-        self.device = torch.device(device)
+        self.device = device
         self.input_size = input_size
 
         self.model.to(self.device)
         self.model.eval()
 
     @classmethod
-    def from_checkpoint(
+    def load_from_checkpoint(
         cls,
-        checkpoint_path: str | Path,
+        checkpoint_path: str | Path | Iterable[str | Path],
         device: str | torch.device = "cpu",
-    ) -> "CourtKeypointPredictor":
+        **kwargs: Any,
+    ) -> Self:
         """Load predictor from a Lightning checkpoint.
 
         Args:
-            checkpoint_path: Path to checkpoint file.
+            checkpoint_path: Path to checkpoint file(s).
             device: Device to run inference on.
+            **kwargs: Additional arguments (unused).
 
         Returns:
             CourtKeypointPredictor instance.
-        """
-        checkpoint_path = Path(checkpoint_path)
 
-        # Load Lightning module
+        Raises:
+            FileNotFoundError: If checkpoint file does not exist.
+        """
+        checkpoints = cls._ensure_checkpoint(checkpoint_path)
+        resolved_device = cls._resolve_device(device)
+
+        # Load Lightning module from first checkpoint
         lightning_module = CourtKeypointLightningModule.load_from_checkpoint(
-            checkpoint_path,
-            map_location=device,
+            checkpoints[0],
+            map_location=resolved_device,
         )
 
         # Extract model and config
         model = lightning_module.model
         input_size = tuple(lightning_module.model_config.get("input_size", [256, 256]))
 
-        return cls(model=model, device=device, input_size=input_size)
+        return cls(model=model, device=resolved_device, input_size=input_size)
 
     @classmethod
     def from_config(
@@ -74,7 +82,7 @@ class CourtKeypointPredictor:
         model_config: dict[str, Any],
         weights_path: str | Path | None = None,
         device: str | torch.device = "cpu",
-    ) -> "CourtKeypointPredictor":
+    ) -> Self:
         """Create predictor from configuration.
 
         Args:
@@ -85,15 +93,16 @@ class CourtKeypointPredictor:
         Returns:
             CourtKeypointPredictor instance.
         """
+        resolved_device = cls._resolve_device(device)
         model = CourtKeypointModel(model_config)
 
         if weights_path is not None:
-            state_dict = torch.load(weights_path, map_location=device)
+            state_dict = torch.load(weights_path, map_location=resolved_device)
             model.load_state_dict(state_dict)
 
         input_size = tuple(model_config.get("input_size", [256, 256]))
 
-        return cls(model=model, device=device, input_size=input_size)
+        return cls(model=model, device=resolved_device, input_size=input_size)
 
     def preprocess(self, image: np.ndarray | Image.Image) -> Tensor:
         """Preprocess image for inference.
