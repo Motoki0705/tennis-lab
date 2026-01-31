@@ -23,7 +23,7 @@ from pathlib import Path
 
 import numpy as np
 
-from src.base.data.writer import BaseDatasetWriter
+from src.common.dataset.writer import BaseDatasetWriter
 from src.blcs.data.types import (
     PYDANTIC_AVAILABLE,
     BLCSSceneMeta,

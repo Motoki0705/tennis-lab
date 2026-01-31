@@ -8,7 +8,7 @@ from typing import Any, Self
 import torch
 from torch import Tensor
 
-from src.base.api.predictor import BasePredictor
+from src.base.inference.predictor import BasePredictor
 from src.trajectory_completion.models.uv_completion_model import UVTrajectoryCompletionModel
 from src.trajectory_completion.training.lightning_module import (
     TrajectoryCompletionLightningModule,

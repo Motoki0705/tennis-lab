@@ -10,7 +10,7 @@ from typing import Any, TypeAlias, cast
 import numpy as np
 import numpy.typing as npt
 
-from src.base.data.writer import BaseDatasetWriter
+from src.common.dataset.writer import BaseDatasetWriter
 from src.plcs.data.types import (
     PYDANTIC_AVAILABLE,
     PLCSSceneMeta,
