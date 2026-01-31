@@ -86,7 +86,7 @@ class WASBLightningModule(BaseLightningModule):
             self.val_metrics = None
             self.test_metrics = None
 
-        self.learning_rate = train_cfg.get("learning_rate", 1e-3)
+        self.learning_rate = train_cfg.get("learning_rate", self.learning_rate)
         self.backbone_learning_rate = train_cfg.get("backbone_learning_rate", 1e-5)
         self.steps_per_epoch = steps_per_epoch
         self.freeze_backbone_epochs = int(train_cfg.get("freeze_backbone_epochs", 0) or 0)

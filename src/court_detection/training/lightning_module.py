@@ -17,8 +17,7 @@ from src.court_detection.training.metrics import CourtKeypointMetrics
 class CourtKeypointLightningModule(BaseLightningModule):
     """Lightning module for training court keypoint detection.
 
-    Inherits from BaseLightningModule but overrides configure_optimizers
-    to use epoch-based warmup (matching original behavior).
+    Inherits training and optimization behavior from BaseLightningModule.
 
     Args:
         model_config: Model configuration dict.
