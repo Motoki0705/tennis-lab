@@ -78,36 +78,14 @@ gh api -X POST repos/Motoki0705/tennis-lab/issues/<BLOCKED_NUMBER>/dependencies/
 
 ## Handling newlines in issue body
 
-When passing multi-line text to `--body`, use one of the following approaches:
+When passing multi-line text to `--body`, write actual newlines directly in the string:
 
-### Option 1: Use actual newlines with backslash continuation
 ```bash
 gh issue create --repo Motoki0705/tennis-lab \
   --title "Example" \
   --body "First line
 Second line
 Third line"
-```
-Note: Multi-line strings in double quotes work in bash/zsh but may not be portable to all shells.
-
-### Option 2: Use `$'...'` syntax (bash/zsh)
-Allows escape sequences like `\n` to be interpreted:
-```bash
-gh issue create --repo Motoki0705/tennis-lab \
-  --title "Example" \
-  --body $'First line\nSecond line\nThird line'
-```
-
-### Option 3: Use heredoc (recommended for long text)
-```bash
-gh issue create --repo Motoki0705/tennis-lab \
-  --title "Example" \
-  --body "$(cat << 'EOF'
-First line
-Second line
-Third line
-EOF
-)"
 ```
 
 **⚠️ Common mistake**: Do NOT use `"...\n..."` or `'...\n...'` as the `\n` will appear literally in the issue body, breaking Markdown formatting.
