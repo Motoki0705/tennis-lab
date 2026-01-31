@@ -76,6 +76,41 @@ gh api -X POST repos/Motoki0705/tennis-lab/issues/<BLOCKED_NUMBER>/dependencies/
   -F issue_id="$blocking_id"
 ```
 
+## Handling newlines in issue body
+
+When passing multi-line text to `--body`, use one of the following approaches:
+
+### Option 1: Use actual newlines (recommended for short text)
+```bash
+gh issue create --repo Motoki0705/tennis-lab \
+  --title "Example" \
+  --body "First line
+Second line
+Third line"
+```
+
+### Option 2: Use `$'...'` syntax (bash/zsh)
+Allows escape sequences like `\n` to be interpreted:
+```bash
+gh issue create --repo Motoki0705/tennis-lab \
+  --title "Example" \
+  --body $'First line\nSecond line\nThird line'
+```
+
+### Option 3: Use heredoc (recommended for long text)
+```bash
+gh issue create --repo Motoki0705/tennis-lab \
+  --title "Example" \
+  --body "$(cat << 'EOF'
+First line
+Second line
+Third line
+EOF
+)"
+```
+
+**⚠️ Common mistake**: Do NOT use `"...\n..."` or `'...\n...'` as the `\n` will appear literally in the issue body, breaking Markdown formatting.
+
 ## Common gotchas
 - `gh issue create` does not support `--json`; capture URL from stdout.
 - Use repeated `--label` flags (avoid comma lists).
