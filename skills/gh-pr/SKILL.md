@@ -24,7 +24,16 @@ Use this skill for Motoki0705/tennis-lab PR creation and maintenance via gh CLI.
   - Done: `98236657`
 
 ## Labels in this repo (from `gh label list`)
-- `bug`, `documentation`, `duplicate`, `enhancement`, `good first issue`, `help wanted`, `invalid`, `question`, `wontfix`, `codex`, `Survay`, `research`, `gh-cli`, `skills`
+- `bug`: use for defects or regressions.
+- `documentation`: use for docs-only changes.
+- `duplicate`: use when the issue already exists elsewhere.
+- `enhancement`: use for new features or improvements.
+- `good first issue`: use for newcomer-friendly, well-scoped tasks.
+- `help wanted`: use when extra help is explicitly desired.
+- `invalid`: use when the report is not actionable or incorrect.
+- `question`: use when more information is required.
+- `wontfix`: use when the issue will not be addressed.
+- `research`: use for investigation or exploratory tasks.
 
 ## Create a PR (standard)
 1) Ensure the branch has at least one commit different from `main`.
