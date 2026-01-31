@@ -80,7 +80,7 @@ gh api -X POST repos/Motoki0705/tennis-lab/issues/<BLOCKED_NUMBER>/dependencies/
 
 When passing multi-line text to `--body`, use one of the following approaches:
 
-### Option 1: Use actual newlines (recommended for short text)
+### Option 1: Use actual newlines with backslash continuation
 ```bash
 gh issue create --repo Motoki0705/tennis-lab \
   --title "Example" \
@@ -88,6 +88,7 @@ gh issue create --repo Motoki0705/tennis-lab \
 Second line
 Third line"
 ```
+Note: Multi-line strings in double quotes work in bash/zsh but may not be portable to all shells.
 
 ### Option 2: Use `$'...'` syntax (bash/zsh)
 Allows escape sequences like `\n` to be interpreted:
