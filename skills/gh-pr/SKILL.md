@@ -23,9 +23,8 @@ Use this skill for Motoki0705/tennis-lab PR creation and maintenance via gh CLI.
   - In review: `df73e18b`
   - Done: `98236657`
 
-## Labels in this repo
-- Core: `bug`, `documentation`, `enhancement`, `question`, `help wanted`, `good first issue`, `duplicate`, `invalid`, `wontfix`
-- GH workflow: `gh-cli`, `research`, `skills`
+## Labels in this repo (from `gh label list`)
+- `bug`, `documentation`, `duplicate`, `enhancement`, `good first issue`, `help wanted`, `invalid`, `question`, `wontfix`, `codex`, `Survay`, `research`, `gh-cli`, `skills`
 
 ## Create a PR (standard)
 1) Ensure the branch has at least one commit different from `main`.

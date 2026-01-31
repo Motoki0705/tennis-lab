@@ -22,9 +22,8 @@ Use this skill for Motoki0705/tennis-lab issue creation and maintenance via gh C
   - In review: `df73e18b`
   - Done: `98236657`
 
-## Labels in this repo
-- Core: `bug`, `documentation`, `enhancement`, `question`, `help wanted`, `good first issue`, `duplicate`, `invalid`, `wontfix`
-- GH workflow: `gh-cli`, `research`, `skills`
+## Labels in this repo (from `gh label list`)
+- `bug`, `documentation`, `duplicate`, `enhancement`, `good first issue`, `help wanted`, `invalid`, `question`, `wontfix`, `codex`, `Survay`, `research`, `gh-cli`, `skills`
 
 ## Create an issue (standard)
 1) Compose title/body using the repo conventions.
