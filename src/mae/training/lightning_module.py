@@ -5,12 +5,16 @@ Handles training loop, logging, and checkpointing for MAE pre-training.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 import torch
 import torch.nn as nn
 from torch import Tensor
 from src.base.training.lightning_module import BaseLightningModule
 from src.mae.models import MAEModel
+
+
+if TYPE_CHECKING:
+    from omegaconf import DictConfig
 
 
 class MAELightningModule(BaseLightningModule):
@@ -25,7 +29,7 @@ class MAELightningModule(BaseLightningModule):
 
     def __init__(
         self,
-        config,
+        config: DictConfig,
     ) -> None:
         """Initialize MAE Lightning module.
 
@@ -203,7 +207,7 @@ class MAELightningModule(BaseLightningModule):
             else:
                 decay_params.append(param)
 
-        betas = (0.9, 0.95)
+        betas = self.optimizer_betas if self.optimizer_betas is not None else (0.9, 0.95)
         return [
             {"params": decay_params, "weight_decay": self.weight_decay, "betas": betas},
             {"params": no_decay_params, "weight_decay": 0.0, "betas": betas},

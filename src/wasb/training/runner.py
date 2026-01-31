@@ -99,6 +99,7 @@ class WASBTrainingRunner(BaseTrainingRunner):
             return len(train_loader)
 
         # Setup datamodule to get train loader length
+        # Note: datamodule.setup should be idempotent if called multiple times.
         if hasattr(datamodule, "setup"):
             datamodule.setup(stage="fit")
         loader = datamodule.train_dataloader()

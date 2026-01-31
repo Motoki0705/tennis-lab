@@ -96,24 +96,31 @@ class BaseLightningModule(pl.LightningModule):
         """
         optimizer = self._build_optimizer()
 
-        if self.warmup_epochs:
+        if self.warmup_epochs is not None:
             warmup_epochs = int(self.warmup_epochs)
-            warmup_scheduler = LinearLR(
-                optimizer,
-                start_factor=0.01,
-                end_factor=1.0,
-                total_iters=warmup_epochs,
-            )
-            cosine_scheduler = CosineAnnealingLR(
-                optimizer,
-                T_max=max(int(self.max_epochs) - warmup_epochs, 1),
-                eta_min=self.min_lr,
-            )
-            scheduler = SequentialLR(
-                optimizer,
-                schedulers=[warmup_scheduler, cosine_scheduler],
-                milestones=[warmup_epochs],
-            )
+            if warmup_epochs > 0:
+                warmup_scheduler = LinearLR(
+                    optimizer,
+                    start_factor=0.01,
+                    end_factor=1.0,
+                    total_iters=warmup_epochs,
+                )
+                cosine_scheduler = CosineAnnealingLR(
+                    optimizer,
+                    T_max=max(int(self.max_epochs) - warmup_epochs, 1),
+                    eta_min=self.min_lr,
+                )
+                scheduler = SequentialLR(
+                    optimizer,
+                    schedulers=[warmup_scheduler, cosine_scheduler],
+                    milestones=[warmup_epochs],
+                )
+            else:
+                scheduler = CosineAnnealingLR(
+                    optimizer,
+                    T_max=max(int(self.max_epochs), 1),
+                    eta_min=self.min_lr,
+                )
             interval = "epoch"
         else:
             warmup_steps = int(self.warmup_steps or 0)
