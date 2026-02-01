@@ -29,6 +29,7 @@ from src.utils.geometry.court import (
     NET_HEIGHT_CENTER,
     NET_HEIGHT_POST,
     SERVICE_LINE_DISTANCE,
+    court_keypoints_3d,
 )
 
 if TYPE_CHECKING:
@@ -356,45 +357,21 @@ class CourtRenderer:
         ax.plot(x_net, y_net, z_net, color=style.net_color, linewidth=2, zorder=3)
 
     def get_court_keypoints_3d(self) -> np.ndarray:
-        """Get 3D coordinates of standard court keypoints.
+        """Get 3D coordinates of standard court keypoints (CourtKP20).
+
+        Returns CourtKP20 keypoints as defined in `src.utils.geometry.court.court_keypoints_3d()`.
+
+        Keypoint indices follow the CourtKP20 specification:
+        - 0..3:  far/near doubles corners
+        - 4..7:  far/near singles corners
+        - 8..11: service line endpoints
+        - 12,13: service T (far, near)
+        - 14:    net center (ground)
+        - 15..18: net posts (base/top, left/right)
+        - 19:    center strap top
 
         Returns:
-            Array of shape (20, 3) containing court keypoint positions.
+            Array of shape (20, 3) containing CourtKP20 keypoint positions in meters.
 
         """
-        xd = HALF_DOUBLES_WIDTH
-        xs = HALF_SINGLES_WIDTH
-        yb = HALF_LENGTH
-        ys = SERVICE_LINE_DISTANCE
-
-        # 20 keypoints in standard order
-        return np.array(
-            [
-                # Near baseline (0-4)
-                [-xd, -yb, 0],
-                [-xs, -yb, 0],
-                [0, -yb, 0],
-                [xs, -yb, 0],
-                [xd, -yb, 0],
-                # Near service line (5-8)
-                [-xs, -ys, 0],
-                [0, -ys, 0],
-                [0, -ys, 0],  # Note: 6 and 7 are same point (center)
-                [xs, -ys, 0],
-                # Net (9-13)
-                [-xd, 0, 0],
-                [-xs, 0, 0],
-                [0, 0, 0],
-                [xs, 0, 0],
-                [xd, 0, 0],
-                # Far service line (14-17)
-                [-xs, ys, 0],
-                [0, ys, 0],
-                [0, ys, 0],  # Note: 15 and 16 are same point (center)
-                [xs, ys, 0],
-                # Far baseline (18-19)
-                [-xd, yb, 0],
-                [xd, yb, 0],
-            ],
-            dtype=np.float32,
-        )
+        return court_keypoints_3d().cpu().numpy()

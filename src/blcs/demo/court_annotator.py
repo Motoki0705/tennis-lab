@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.widgets import Button
 
+from src.utils.geometry.constants import COURT_KP_NAMES, NUM_COURT_KP
+
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.backend_bases import MouseEvent
@@ -18,31 +20,18 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 
-# Court keypoint names (20 points) matching BLCS definition
+# Court keypoint names (20 points) using CourtKP20 definition
+# Convert to human-readable format for UI display
+def _format_name_for_display(name: str) -> str:
+    """Convert snake_case keypoint name to human-readable format."""
+    return name.replace("_", " ")
+
+
 COURT_KEYPOINT_NAMES: list[str] = [
-    "far doubles corner left",  # 0
-    "far doubles corner right",  # 1
-    "near doubles corner left",  # 2
-    "near doubles corner right",  # 3
-    "far singles corner left",  # 4
-    "near singles corner left",  # 5
-    "far singles corner right",  # 6
-    "near singles corner right",  # 7
-    "far service line left",  # 8
-    "far service line right",  # 9
-    "near service line left",  # 10
-    "near service line right",  # 11
-    "far service T",  # 12
-    "near service T",  # 13
-    "net center (ground)",  # 14
-    "left net post base",  # 15
-    "left net post top",  # 16
-    "right net post base",  # 17
-    "right net post top",  # 18
-    "center strap top",  # 19
+    _format_name_for_display(name) for name in COURT_KP_NAMES
 ]
 
-NUM_COURT_KEYPOINTS = len(COURT_KEYPOINT_NAMES)
+NUM_COURT_KEYPOINTS = NUM_COURT_KP
 
 
 class CourtAnnotator:
