@@ -2,45 +2,85 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { CourtPicker } from "../components/CourtPicker";
-import { MetricsPanel } from "../components/MetricsPanel";
-import { ControlsPanel } from "../components/ControlsPanel";
-import { Trajectory2D } from "../components/Trajectory2D";
-import { Trajectory3D } from "../components/Trajectory3D";
+import { apiGetCells, apiGetCourtGeometry, apiSimulateShot } from "../lib/api";
 import type {
   CellInfo,
+  CourtGeometryResponse,
   Side,
   SimulateShotRequest,
   SimulateShotResponse,
   TargetMode,
 } from "../lib/types";
-import { apiGetCells, apiSimulateShot } from "../lib/api";
+import { ControlsDrawer } from "../components/ControlsDrawer";
+import { MetricsPanel } from "../components/MetricsPanel";
+import { Trajectory3D } from "../components/Trajectory3D";
+
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t;
+}
+
+function deg2rad(d: number) {
+  return (d * Math.PI) / 180;
+}
+
+function computeVelocityFromAngles(params: {
+  speed: number;
+  azimuthDeg: number;
+  elevationDeg: number;
+  fromSide: Side;
+}) {
+  const az = deg2rad(params.azimuthDeg);
+  const el = deg2rad(params.elevationDeg);
+  const baseDir = params.fromSide === "near" ? 1 : -1;
+
+  const cosEl = Math.cos(el);
+  const sinEl = Math.sin(el);
+  const sinAz = Math.sin(az);
+  const cosAz = Math.cos(az);
+
+  const vx = params.speed * cosEl * sinAz;
+  const vy = params.speed * cosEl * cosAz * baseDir;
+  const vz = params.speed * sinEl;
+  return { vx, vy, vz };
+}
 
 export default function Page() {
+  const [drawerOpen, setDrawerOpen] = useState(true);
+
   const [cells, setCells] = useState<CellInfo[]>([]);
-  const [loadingCells, setLoadingCells] = useState(true);
-  const [cellsError, setCellsError] = useState<string | null>(null);
+  const [court, setCourt] = useState<CourtGeometryResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [fromSide, setFromSide] = useState<Side>("near");
   const [fromCell, setFromCell] = useState<number>(0);
   const [targetMode, setTargetMode] = useState<TargetMode>("none");
   const [toCell, setToCell] = useState<number>(0);
 
-  const [posX, setPosX] = useState<string>("");
-  const [posY, setPosY] = useState<string>("");
-  const [posZ, setPosZ] = useState<string>("");
+  // Start position is represented as "cell-relative offsets" for slider control.
+  const [offsetX, setOffsetX] = useState(0.5);
+  const [offsetY, setOffsetY] = useState(0.5);
+  const [z0, setZ0] = useState(1.0);
 
-  const [velX, setVelX] = useState<string>("");
-  const [velY, setVelY] = useState<string>("");
-  const [velZ, setVelZ] = useState<string>("");
+  // Launch parameters (sliders).
+  const [speed, setSpeed] = useState(25.0);
+  const [azimuthDeg, setAzimuthDeg] = useState(0.0);
+  const [elevationDeg, setElevationDeg] = useState(18.0);
 
-  const [spinX, setSpinX] = useState<string>("");
-  const [spinY, setSpinY] = useState<string>("");
-  const [spinZ, setSpinZ] = useState<string>("");
+  // Spin (sliders).
+  const [spinX, setSpinX] = useState(0);
+  const [spinY, setSpinY] = useState(-60);
+  const [spinZ, setSpinZ] = useState(0);
 
+  // Physics toggles.
   const [useDrag, setUseDrag] = useState(true);
   const [useMagnus, setUseMagnus] = useState(true);
 
+  // Camera controls.
+  const [cameraMode, setCameraMode] = useState<"orbit" | "fps">("orbit");
+  const [fpsMoveSpeed, setFpsMoveSpeed] = useState(8);
+
+  // Simulation state.
   const [running, setRunning] = useState(false);
   const [simError, setSimError] = useState<string | null>(null);
   const [simResult, setSimResult] = useState<SimulateShotResponse | null>(null);
@@ -49,46 +89,48 @@ export default function Page() {
 
   useEffect(() => {
     let mounted = true;
-    setLoadingCells(true);
-    apiGetCells()
-      .then((res) => {
+    setLoading(true);
+    Promise.all([apiGetCells(), apiGetCourtGeometry()])
+      .then(([cellsRes, courtRes]) => {
         if (!mounted) return;
-        setCells(res.cells);
-        setCellsError(null);
+        setCells(cellsRes.cells);
+        setCourt(courtRes);
+        setLoadError(null);
       })
       .catch((e) => {
         if (!mounted) return;
-        setCellsError(String(e));
+        setLoadError(String(e));
       })
       .finally(() => {
         if (!mounted) return;
-        setLoadingCells(false);
+        setLoading(false);
       });
     return () => {
       mounted = false;
     };
   }, []);
 
-  const fromCells = useMemo(
-    () => cells.filter((c) => c.side === fromSide),
-    [cells, fromSide]
-  );
-  const toCells = useMemo(
-    () => cells.filter((c) => c.side === targetSide),
-    [cells, targetSide]
+  const fromCellInfo = useMemo(
+    () => cells.find((c) => c.side === fromSide && c.cell_id === fromCell) ?? null,
+    [cells, fromSide, fromCell]
   );
 
-  function parseMaybeFloat(s: string): number | undefined {
-    const t = s.trim();
-    if (!t) return undefined;
-    const v = Number(t);
-    return Number.isFinite(v) ? v : undefined;
-  }
+  const startPos = useMemo(() => {
+    if (!fromCellInfo) return null;
+    const b = fromCellInfo.bounds;
+    const x = lerp(b.x_min, b.x_max, offsetX);
+    const y = lerp(b.y_min, b.y_max, offsetY);
+    return { x, y, z: z0 };
+  }, [fromCellInfo, offsetX, offsetY, z0]);
+
+  const launchVel = useMemo(
+    () => computeVelocityFromAngles({ speed, azimuthDeg, elevationDeg, fromSide }),
+    [speed, azimuthDeg, elevationDeg, fromSide]
+  );
 
   async function onRun() {
     setRunning(true);
     setSimError(null);
-    setSimResult(null);
     try {
       const req: SimulateShotRequest = {
         from_side: fromSide,
@@ -96,41 +138,13 @@ export default function Page() {
         target_mode: targetMode,
         to_cell: targetMode === "cell" ? toCell : undefined,
         shot: {
-          position:
-            parseMaybeFloat(posX) !== undefined &&
-            parseMaybeFloat(posY) !== undefined &&
-            parseMaybeFloat(posZ) !== undefined
-              ? {
-                  x: parseMaybeFloat(posX)!,
-                  y: parseMaybeFloat(posY)!,
-                  z: parseMaybeFloat(posZ)!,
-                }
-              : undefined,
-          velocity:
-            parseMaybeFloat(velX) !== undefined &&
-            parseMaybeFloat(velY) !== undefined &&
-            parseMaybeFloat(velZ) !== undefined
-              ? {
-                  x: parseMaybeFloat(velX)!,
-                  y: parseMaybeFloat(velY)!,
-                  z: parseMaybeFloat(velZ)!,
-                }
-              : undefined,
-          spin:
-            parseMaybeFloat(spinX) !== undefined &&
-            parseMaybeFloat(spinY) !== undefined &&
-            parseMaybeFloat(spinZ) !== undefined
-              ? {
-                  x: parseMaybeFloat(spinX)!,
-                  y: parseMaybeFloat(spinY)!,
-                  z: parseMaybeFloat(spinZ)!,
-                }
-              : undefined,
+          position: startPos ?? undefined,
+          velocity: { x: launchVel.vx, y: launchVel.vy, z: launchVel.vz },
+          spin: { x: spinX, y: spinY, z: spinZ },
         },
         physics: { use_drag: useDrag, use_magnus: useMagnus },
         sim: {},
       };
-
       const res = await apiSimulateShot(req);
       setSimResult(res);
     } catch (e) {
@@ -141,100 +155,116 @@ export default function Page() {
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "380px 1fr",
-        height: "100vh",
-      }}
-    >
-      <div
+    <div style={{ height: "100vh", width: "100vw", background: "#000" }}>
+      <Trajectory3D
+        positions={simResult?.positions ?? null}
+        court={court}
+        cells={cells}
+        fromSide={fromSide}
+        fromCell={fromCell}
+        toCell={targetMode === "cell" ? toCell : null}
+        targetSide={targetSide}
+        cameraMode={cameraMode}
+        fpsMoveSpeed={fpsMoveSpeed}
+        bounce1Pos={simResult?.events.bounce1_pos ?? null}
+        bounce2Pos={simResult?.events.bounce2_pos ?? null}
+        netPos={simResult?.events.net_pos ?? null}
+      />
+
+      {/* Minimal HUD */}
+      <button
+        onClick={() => setDrawerOpen(true)}
         style={{
-          borderRight: "1px solid #ddd",
-          padding: 16,
-          overflow: "auto",
+          position: "fixed",
+          top: 16,
+          left: 16,
+          zIndex: 9,
+          display: drawerOpen ? "none" : "block",
+          border: "1px solid rgba(255,255,255,0.22)",
+          background: "rgba(10,10,10,0.6)",
+          color: "#fff",
+          borderRadius: 12,
+          padding: "10px 12px",
+          cursor: "pointer",
+          backdropFilter: "blur(6px)",
         }}
       >
-        <h1 style={{ margin: "0 0 12px 0", fontSize: 18 }}>BLCS Simulator</h1>
-        {loadingCells ? (
-          <div>Loading cells...</div>
-        ) : cellsError ? (
-          <div style={{ color: "crimson" }}>Cells error: {cellsError}</div>
+        Open Controls
+      </button>
+
+      <ControlsDrawer
+        open={drawerOpen}
+        setOpen={setDrawerOpen}
+        fromSide={fromSide}
+        setFromSide={(s) => {
+          setFromSide(s);
+          setFromCell(0);
+        }}
+        fromCell={fromCell}
+        setFromCell={setFromCell}
+        targetMode={targetMode}
+        setTargetMode={setTargetMode}
+        toCell={toCell}
+        setToCell={setToCell}
+        offsetX={offsetX}
+        setOffsetX={setOffsetX}
+        offsetY={offsetY}
+        setOffsetY={setOffsetY}
+        z0={z0}
+        setZ0={setZ0}
+        speed={speed}
+        setSpeed={setSpeed}
+        azimuthDeg={azimuthDeg}
+        setAzimuthDeg={setAzimuthDeg}
+        elevationDeg={elevationDeg}
+        setElevationDeg={setElevationDeg}
+        spinX={spinX}
+        setSpinX={setSpinX}
+        spinY={spinY}
+        setSpinY={setSpinY}
+        spinZ={spinZ}
+        setSpinZ={setSpinZ}
+        useDrag={useDrag}
+        setUseDrag={setUseDrag}
+        useMagnus={useMagnus}
+        setUseMagnus={setUseMagnus}
+        cameraMode={cameraMode}
+        setCameraMode={setCameraMode}
+        fpsMoveSpeed={fpsMoveSpeed}
+        setFpsMoveSpeed={setFpsMoveSpeed}
+        running={running}
+        onRun={onRun}
+      />
+
+      <div style={{ position: "fixed", right: 16, top: 16, zIndex: 9, width: 360 }}>
+        <MetricsPanel result={simResult} />
+        {loading ? (
+          <div style={hudBox()}>Loading geometry...</div>
+        ) : loadError ? (
+          <div style={{ ...hudBox(), borderColor: "rgba(255,0,0,0.35)" }}>
+            <div style={{ color: "#fff", fontSize: 12 }}>Load error</div>
+            <div style={{ color: "#fff", fontSize: 12, opacity: 0.8 }}>{loadError}</div>
+          </div>
         ) : null}
-
-        <ControlsPanel
-          fromSide={fromSide}
-          setFromSide={(v) => {
-            setFromSide(v);
-            // Keep selection valid on side switch.
-            setFromCell(0);
-          }}
-          fromCell={fromCell}
-          setFromCell={setFromCell}
-          fromCells={fromCells}
-          targetMode={targetMode}
-          setTargetMode={setTargetMode}
-          toCell={toCell}
-          setToCell={setToCell}
-          toCells={toCells}
-          posX={posX}
-          setPosX={setPosX}
-          posY={posY}
-          setPosY={setPosY}
-          posZ={posZ}
-          setPosZ={setPosZ}
-          velX={velX}
-          setVelX={setVelX}
-          velY={velY}
-          setVelY={setVelY}
-          velZ={velZ}
-          setVelZ={setVelZ}
-          spinX={spinX}
-          setSpinX={setSpinX}
-          spinY={spinY}
-          setSpinY={setSpinY}
-          spinZ={spinZ}
-          setSpinZ={setSpinZ}
-          useDrag={useDrag}
-          setUseDrag={setUseDrag}
-          useMagnus={useMagnus}
-          setUseMagnus={setUseMagnus}
-          running={running}
-          onRun={onRun}
-        />
-
-        {simError ? <div style={{ color: "crimson" }}>{simError}</div> : null}
-      </div>
-
-      <div style={{ padding: 16, overflow: "auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: 16 }}>
-          <div>
-            <h2 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Court (2D)</h2>
-            <CourtPicker
-              cells={cells}
-              fromSide={fromSide}
-              fromCell={fromCell}
-              toCell={targetMode === "cell" ? toCell : null}
-              targetSide={targetSide}
-              onPickFrom={(id) => setFromCell(id)}
-              onPickTo={(id) => setToCell(id)}
-              pickMode={targetMode === "cell" ? "both" : "from"}
-              trajectory={simResult?.positions ?? null}
-              bounce1Pos={simResult?.events.bounce1_pos ?? null}
-            />
-            <div style={{ height: 8 }} />
-            <Trajectory2D positions={simResult?.positions ?? null} />
+        {simError ? (
+          <div style={{ ...hudBox(), borderColor: "rgba(255,0,0,0.35)" }}>
+            <div style={{ color: "#fff", fontSize: 12 }}>Sim error</div>
+            <div style={{ color: "#fff", fontSize: 12, opacity: 0.8 }}>{simError}</div>
           </div>
-
-          <div>
-            <h2 style={{ margin: "0 0 8px 0", fontSize: 14 }}>3D</h2>
-            <Trajectory3D positions={simResult?.positions ?? null} />
-            <div style={{ height: 16 }} />
-            <MetricsPanel result={simResult} />
-          </div>
-        </div>
+        ) : null}
       </div>
     </div>
   );
+}
+
+function hudBox(): React.CSSProperties {
+  return {
+    marginTop: 12,
+    background: "rgba(10,10,10,0.78)",
+    border: "1px solid rgba(255,255,255,0.14)",
+    borderRadius: 14,
+    padding: 12,
+    backdropFilter: "blur(6px)",
+  };
 }
 
