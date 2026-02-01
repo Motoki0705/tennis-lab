@@ -71,7 +71,8 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 export default function Page() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const renderTokenRef = useRef<number>(0);
   const [meta, setMeta] = useState<VideoMeta | null>(null);
   const [mode, setMode] = useState<"ball" | "court">("ball");
@@ -150,11 +151,19 @@ export default function Page() {
     (async () => {
       try {
         if (mode === "ball") {
+          setBallAnn({
+            visibility: 0,
+            x_px: 0,
+            y_px: 0,
+            score: 0,
+            source: "manual"
+          });
           const ann = await apiGet<BallFrameAnnotation>(
             `/api/ball/annotations/${ballLocalIdx}`
           );
           setBallAnn(ann);
         } else {
+          setCourtAnn(null);
           const ann = await apiGet<CourtFrameAnnotation>(
             `/api/court/annotations/${courtFrameIdx}`
           );
@@ -167,21 +176,18 @@ export default function Page() {
     })();
   }, [mode, ballLocalIdx, courtFrameIdx]);
 
-  // Draw frame + overlays
+  // Draw frame image (keeps previous frame until new one is ready)
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !meta) return;
+    const frameCanvas = frameCanvasRef.current;
+    if (!frameCanvas || !meta) return;
 
     const token = ++renderTokenRef.current;
     let canceled = false;
 
-    canvas.width = meta.width;
-    canvas.height = meta.height;
-    const ctx = canvas.getContext("2d");
+    frameCanvas.width = meta.width;
+    frameCanvas.height = meta.height;
+    const ctx = frameCanvas.getContext("2d");
     if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -189,49 +195,56 @@ export default function Page() {
     img.onload = () => {
       if (canceled) return;
       if (token !== renderTokenRef.current) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      // overlays
-      if (mode === "ball") {
-        if (ballAnn.visibility > 0) {
-          ctx.fillStyle = "#00E5FF";
-          ctx.strokeStyle = "#001018";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(ballAnn.x_px, ballAnn.y_px, 8, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-        }
-      } else if (mode === "court" && courtAnn) {
-        for (let i = 0; i < courtAnn.keypoints.length; i++) {
-          const kp = courtAnn.keypoints[i];
-          if (kp.visibility === 0) continue;
-          ctx.fillStyle = i === activeKp ? "#FFB020" : "#22C55E";
-          ctx.strokeStyle = "#111827";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(kp.x_px, kp.y_px, 6, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-        }
-      }
+      ctx.clearRect(0, 0, frameCanvas.width, frameCanvas.height);
+      ctx.drawImage(img, 0, 0, frameCanvas.width, frameCanvas.height);
     };
     img.onerror = () => {
       if (canceled) return;
       if (token !== renderTokenRef.current) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "16px ui-sans-serif, system-ui, -apple-system";
-      ctx.fillText("Failed to load frame image.", 16, 32);
       setStatus("failed to load frame image (check backend / video / frame idx)");
     };
 
     return () => {
       canceled = true;
     };
+  }, [meta, globalFrameIdx]);
+
+  // Draw overlays (cleared immediately on frame change)
+  useEffect(() => {
+    const overlayCanvas = overlayCanvasRef.current;
+    if (!overlayCanvas || !meta) return;
+    overlayCanvas.width = meta.width;
+    overlayCanvas.height = meta.height;
+    const ctx = overlayCanvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+    if (mode === "ball") {
+      if (ballAnn.visibility > 0) {
+        ctx.fillStyle = "#00E5FF";
+        ctx.strokeStyle = "#001018";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(ballAnn.x_px, ballAnn.y_px, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      return;
+    }
+
+    if (mode === "court" && courtAnn) {
+      for (let i = 0; i < courtAnn.keypoints.length; i++) {
+        const kp = courtAnn.keypoints[i];
+        if (kp.visibility === 0) continue;
+        ctx.fillStyle = i === activeKp ? "#FFB020" : "#22C55E";
+        ctx.strokeStyle = "#111827";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(kp.x_px, kp.y_px, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
   }, [meta, mode, globalFrameIdx, ballAnn, courtAnn, activeKp]);
 
   async function saveBall() {
@@ -465,9 +478,17 @@ export default function Page() {
   return (
     <div className="root">
       <div className="canvasWrap">
-        <canvas
-          ref={canvasRef}
-          onMouseDown={(e) => {
+        <div
+          className="canvasStage"
+          style={{
+            aspectRatio: meta ? `${meta.width} / ${meta.height}` : "16 / 9"
+          }}
+        >
+          <canvas ref={frameCanvasRef} className="frameCanvas" />
+          <canvas
+            ref={overlayCanvasRef}
+            className="overlayCanvas"
+            onMouseDown={(e) => {
             if (!meta) return;
             const { x, y } = toCanvasXY(e);
             if (mode === "ball") {
@@ -513,7 +534,7 @@ export default function Page() {
               }
             }
           }}
-          onMouseMove={(e) => {
+            onMouseMove={(e) => {
             if (!meta) return;
             const drag = dragRef.current;
             if (!drag.kind) return;
@@ -546,16 +567,17 @@ export default function Page() {
               setCourtAnn(next);
             }
           }}
-          onMouseUp={async () => {
+            onMouseUp={async () => {
             const drag = dragRef.current;
             dragRef.current = { kind: null, kpIndex: -1 };
             if (drag.kind === "ball") await saveBall();
             if (drag.kind === "court" && courtAnn) await saveCourt(courtAnn);
           }}
-          onMouseLeave={() => {
+            onMouseLeave={() => {
             dragRef.current = { kind: null, kpIndex: -1 };
           }}
-        />
+          />
+        </div>
       </div>
 
       <div className="panel">
