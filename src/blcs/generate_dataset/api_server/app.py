@@ -6,8 +6,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.blcs.generate_dataset.api_server.cells import build_cells_response
+from src.blcs.generate_dataset.api_server.court_geometry import (
+    build_court_geometry_response,
+)
 from src.blcs.generate_dataset.api_server.schemas import (
     CellsResponse,
+    CourtGeometryResponse,
     SimulateShotRequest,
     SimulateShotResponse,
 )
@@ -36,6 +40,10 @@ def create_app() -> FastAPI:
     def get_cells() -> CellsResponse:
         return build_cells_response(cm)
 
+    @app.get("/court_geometry", response_model=CourtGeometryResponse)
+    def get_court_geometry() -> CourtGeometryResponse:
+        return build_court_geometry_response()
+
     @app.post("/simulate_shot", response_model=SimulateShotResponse)
     def post_simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
         return simulate_shot(req)
@@ -44,4 +52,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-

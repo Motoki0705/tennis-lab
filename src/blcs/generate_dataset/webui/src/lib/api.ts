@@ -1,4 +1,9 @@
-import type { CellsResponse, SimulateShotRequest, SimulateShotResponse } from "./types";
+import type {
+  CellsResponse,
+  CourtGeometryResponse,
+  SimulateShotRequest,
+  SimulateShotResponse,
+} from "./types";
 
 // We prefer relative URLs so Next rewrites can proxy to the Python server.
 const API_BASE = "/api/blcs";
@@ -16,6 +21,10 @@ export async function apiGetCells(): Promise<CellsResponse> {
   return fetchJson<CellsResponse>(`${API_BASE}/cells`);
 }
 
+export async function apiGetCourtGeometry(): Promise<CourtGeometryResponse> {
+  return fetchJson<CourtGeometryResponse>(`${API_BASE}/court_geometry`);
+}
+
 export async function apiSimulateShot(
   req: SimulateShotRequest
 ): Promise<SimulateShotResponse> {
@@ -25,4 +34,3 @@ export async function apiSimulateShot(
     body: JSON.stringify(req),
   });
 }
-

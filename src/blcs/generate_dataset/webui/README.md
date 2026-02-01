@@ -36,14 +36,12 @@ src/blcs/generate_dataset/webui/
 ```
 
 ## UX requirements (minimum viable)
-- click to select `from_cell` and (optionally) `to_cell`
-- run simulation and render:
-  - a 2D top-down trajectory + bounce points
-  - a 3D trajectory with a time scrubber
-  - derived metrics (apex, time to bounce, net clearance)
-- allow manual fine-tuning:
-  - initial position/velocity/spin
-  - physics params (drag/magnus on/off at least)
+- 3D-only view renders a recognizable tennis court (lines + net) and the ball trajectory
+- camera navigation:
+  - orbit mode (mouse)
+  - fps mode (click to lock pointer + WASD to move, ESC to unlock)
+- sliders for initial conditions (launch angles/speed/spin) for fast exploration
+- show derived metrics (apex, time to bounce, net clearance)
 
 ## How to run (local dev)
 

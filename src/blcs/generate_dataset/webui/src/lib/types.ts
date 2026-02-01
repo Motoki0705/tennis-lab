@@ -20,6 +20,11 @@ export type CellInfo = {
 
 export type CellsResponse = { cells: CellInfo[] };
 
+export type CourtGeometryResponse = {
+  keypoints: number[][]; // [20][3]
+  segments: number[][]; // [[i,j], ...]
+};
+
 export type SimulateShotRequest = {
   from_side: Side;
   from_cell: number;
@@ -67,4 +72,3 @@ export type SimulateShotResponse = {
     net_clearance_m: number | null;
   };
 };
-

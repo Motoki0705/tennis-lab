@@ -29,6 +29,10 @@ src/blcs/generate_dataset/api_server/
     - render the 0..19 cell grid consistently
     - map click coordinates to cell IDs
 
+- `GET /court_geometry`
+  - Returns CourtKP20 keypoints and a set of line segments for 3D court rendering.
+  - This reuses `src/utils/geometry/court.py` so visualization matches simulation coords.
+
 - `POST /simulate_shot`
   - Runs a single shot simulation.
   - Input supports:
