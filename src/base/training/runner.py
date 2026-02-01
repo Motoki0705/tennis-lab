@@ -16,7 +16,30 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 
 class BaseTrainingRunner:
-    """Base training runner with overridable hooks for task-specific behavior."""
+    """Base training runner with overridable hooks for task-specific behavior.
+    
+    **Standard Configuration Structure**:
+    This base runner expects a nested config with `config.run.*` containing
+    runtime/environment settings (seed, gpus, output_dir, etc.).
+    
+    Example standard config structure:
+        run:
+          seed: 42
+          gpus: 1
+          output_dir: outputs/<task>
+        training:
+          max_epochs: 100
+        model: {...}
+        data: {...}
+    
+    Most tasks (WASB, PLCS, BLCS, Court Detection) follow this structure.
+    
+    **Exception**: MAE uses a flattened config structure. See MAETrainingRunner
+    and docs/config_architecture.md for details.
+    
+    Subclasses can override hooks to customize behavior while maintaining
+    the base training flow.
+    """
 
     def run(self, config: Any) -> None:
         """Run training with the provided config."""

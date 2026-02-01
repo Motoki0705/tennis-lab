@@ -29,3 +29,9 @@ This file defines implementation-time conventions for this repository.
 - Use clear error messages for invalid inputs and boundary cases; avoid silent failures.
 - Docstrings are required for public APIs and non-trivial logic; keep comments concise and purpose-driven.
 - Minimize global state and side effects; keep I/O at the edges of modules.
+
+## 4) Configuration structure
+- Most tasks use **nested `config.run.*` structure** (WASB, PLCS, BLCS, Court Detection).
+- **MAE is an exception**: uses flattened top-level config (seed, trainer, training) for Hydra integration.
+- See `docs/config_architecture.md` for detailed policy and rationale.
+- Default to standard structure for new tasks unless you have pre-training-specific requirements.

@@ -192,3 +192,23 @@ tennis-lab/
 ## 引用
 
 （関連論文の引用情報をここに記載）
+
+---
+
+## 開発者向けドキュメント
+
+### 設定ファイル (Configuration)
+
+Tennis-Labでは、タスクごとに異なる設定構造を使用しています：
+
+- **標準構造** (WASB, PLCS, BLCS, Court Detection): `config.run.*` を含むネスト構造
+- **MAE例外**: フラットな構造（事前学習タスクの特性に合わせた設計）
+
+詳細は以下のドキュメントを参照してください：
+- [設定アーキテクチャ (詳細)](docs/config_architecture.md) - 設計方針と理論的根拠
+- [設定クイックリファレンス](docs/config_quick_reference.md) - 実装時のクイックガイド
+
+### その他の規約
+
+- [AGENTS.md](AGENTS.md) - 実装時の全般的な規約
+- [docs/](docs/) - タスク別のドキュメント

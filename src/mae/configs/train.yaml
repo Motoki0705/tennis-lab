@@ -2,6 +2,12 @@
 #
 # Train Masked Autoencoder on tennis domain videos.
 #
+# **Configuration Structure Note**:
+# MAE uses a flattened config structure (seed, trainer, training at top-level)
+# instead of the nested config.run.* schema used by other tasks.
+# This is documented in docs/config_architecture.md as an intentional exception
+# for pre-training workflows.
+#
 # Usage:
 #   uv run python -m src.mae.scripts.train
 #   uv run python -m src.mae.scripts.train model.hidden_dim=512

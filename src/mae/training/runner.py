@@ -22,9 +22,21 @@ from src.mae.training.epoch_cache_callback import (
 class MAETrainingRunner(BaseTrainingRunner):
     """Training runner for MAE pre-training task.
 
-    MAE config uses top-level keys (seed, trainer, training) instead of
-    nested config.run structure. This runner overrides base methods to
-    adapt to MAE's config layout.
+    **Configuration Exception Policy**:
+    MAE uses a flattened config structure (seed, trainer, training at top-level)
+    instead of the standard nested config.run.* schema used by other tasks
+    (WASB, PLCS, BLCS, Court Detection).
+
+    This design choice aligns with MAE's unique requirements:
+    - Hydra-managed working directory (no explicit output_dir)
+    - Direct PyTorch Lightning Trainer parameter exposure
+    - No test phase (pre-training only)
+    - Epoch-based caching callbacks
+
+    See docs/config_architecture.md for the full exception policy and rationale.
+
+    This runner overrides base methods to translate MAE's config layout to
+    the base runner interface.
     """
 
     # ---- config access helpers ----
