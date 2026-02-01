@@ -19,7 +19,18 @@ BLCS は、テニスコート座標系におけるボールの 3D 軌道を、2D
 
 ### 出力形式
 
-- `position`: `(B, T, 3)` - 3D軌道（コート座標系）
+**Predictor 返り値（`BLCSPredictor.predict()`）:**
+
+推論結果は `dict[str, torch.Tensor]` 形式で返されます。全てのテンソルは CPU 上にあります。
+
+| キー | 形状 | 型 | 説明 |
+|------|------|-----|------|
+| `position` | `(B, T, 3)` | `torch.Tensor` | 3D軌道（メートル単位、`denormalize=True` の場合）<br>正規化座標（`denormalize=False` の場合） |
+| `velocity` | `(B, T, 3)` | `torch.Tensor` | 速度ベクトル（m/s、`denormalize=True` かつモデルが出力する場合）<br>※モデルによっては含まれない場合があります |
+
+**注意**: 
+- すべてのテンソルは CPU に配置されます（統合側での device 変換は不要）
+- バッチ次元は常に保持されます
 
 ## ディレクトリ構成
 
