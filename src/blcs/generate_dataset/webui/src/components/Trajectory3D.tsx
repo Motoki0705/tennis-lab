@@ -1,5 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
+import { useMemo } from "react";
 import * as THREE from "three";
 
 import { Court3D } from "./Court3D";
@@ -29,12 +30,19 @@ export function Trajectory3D(props: {
   bounce2Pos: Vec3 | null;
   netPos: Vec3 | null;
 }) {
+  const trajectoryPoints = useMemo(() => {
+    if (!props.positions || props.positions.length <= 1) return null;
+    return props.positions.map((p) => new THREE.Vector3(p[0], p[1], p[2]));
+  }, [props.positions]);
+
   return (
     <div style={{ height: "100vh", width: "100vw" }}>
       <Canvas
-        camera={{ position: [0, -18, 6], fov: 55, near: 0.05, far: 500 }}
+        camera={{ position: [0, -18, 6], fov: 55, near: 0.05, far: 500, up: [0, 0, 1] }}
         onCreated={({ camera }) => {
           // Ensure the initial view is sane even before controls take over.
+          // Use Z-up to match `src/utils/geometry/court.py`.
+          camera.up.set(0, 0, 1);
           camera.lookAt(0, 0, 0);
         }}
       >
@@ -51,9 +59,9 @@ export function Trajectory3D(props: {
           targetSide={props.targetSide}
         />
 
-        {props.positions && props.positions.length > 1 ? (
+        {trajectoryPoints ? (
           <Line
-            points={props.positions.map((p) => new THREE.Vector3(p[0], p[1], p[2]))}
+            points={trajectoryPoints}
             color="#e11d48"
             lineWidth={2}
           />

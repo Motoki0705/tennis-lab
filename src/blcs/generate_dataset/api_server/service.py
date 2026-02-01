@@ -41,14 +41,33 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
         torch.manual_seed(req.seed)
 
     # ---- Sim params ----
-    # NOTE: In current code, BallPhysics uses physics.dt while ShotSimulator
-    # uses ShotConfig.sim_fps/output_fps for downsampling. We keep them consistent.
-    sim_fps = int(req.sim.sim_fps) if req.sim.sim_fps is not None else 240
+    # BallPhysics integrates using `physics.dt` while ShotSimulator downsamples based on
+    # `shot_config.sim_fps/output_fps`. Keep them consistent by deriving dt from sim_fps,
+    # or (if dt is provided) validating that dt and sim_fps agree.
+    sim_fps_req = int(req.sim.sim_fps) if req.sim.sim_fps is not None else None
+    dt_req = float(req.physics.dt) if req.physics.dt is not None else None
+
+    if dt_req is not None:
+        sim_fps_from_dt = int(round(1.0 / dt_req))
+        if sim_fps_from_dt <= 0:
+            raise ValueError(
+                f"Derived sim_fps from dt must be positive, got {sim_fps_from_dt}"
+            )
+        if sim_fps_req is not None and sim_fps_req != sim_fps_from_dt:
+            raise ValueError(
+                "Inconsistent simulation timing: physics.dt and sim.sim_fps disagree "
+                f"(dt={dt_req} -> sim_fps≈{sim_fps_from_dt}, but sim_fps={sim_fps_req})."
+            )
+        sim_fps = sim_fps_from_dt
+        dt = dt_req
+    else:
+        sim_fps = sim_fps_req if sim_fps_req is not None else 240
+        dt = 1.0 / float(sim_fps)
+
     output_fps = int(req.sim.output_fps) if req.sim.output_fps is not None else 30
     if sim_fps % output_fps != 0:
+        # Redundant with schema validation when both are provided, but also catches defaults.
         raise ValueError(f"sim_fps ({sim_fps}) must be divisible by output_fps ({output_fps})")
-
-    dt = float(req.physics.dt) if req.physics.dt is not None else 1.0 / float(sim_fps)
 
     max_sim_frames = (
         int(req.sim.max_sim_frames) if req.sim.max_sim_frames is not None else 2000
@@ -187,4 +206,3 @@ def _tensor_to_vec3(t: torch.Tensor | None) -> Vec3 | None:
     if t is None:
         return None
     return Vec3(x=float(t[0].item()), y=float(t[1].item()), z=float(t[2].item()))
-

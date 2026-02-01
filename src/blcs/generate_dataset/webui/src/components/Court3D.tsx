@@ -26,7 +26,7 @@ function CellHighlight(props: { cell: CellInfo; color: string; opacity: number }
   const cx = props.cell.center.x;
   const cy = props.cell.center.y;
   return (
-    <mesh position={[cx, cy, 0.001]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh position={[cx, cy, 0.001]}>
       <planeGeometry args={[w, h]} />
       <meshStandardMaterial color={props.color} transparent opacity={props.opacity} />
     </mesh>
@@ -61,7 +61,7 @@ export function Court3D(props: {
   return (
     <group>
       {/* Court ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+      <mesh position={[0, 0, 0]}>
         <planeGeometry args={[40, 70]} />
         <meshStandardMaterial color="#0b5" />
       </mesh>
@@ -70,7 +70,7 @@ export function Court3D(props: {
       {lines ? <primitive object={lines} /> : null}
 
       {/* Net (visual only) */}
-      <mesh position={[0, 0, 0.6]} rotation={[0, 0, 0]}>
+      <mesh position={[0, 0, 0.6]} rotation={[Math.PI / 2, 0, 0]}>
         <planeGeometry args={[12, 1.2]} />
         <meshStandardMaterial color="#222" transparent opacity={0.15} />
       </mesh>
@@ -81,4 +81,3 @@ export function Court3D(props: {
     </group>
   );
 }
-

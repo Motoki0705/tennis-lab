@@ -36,15 +36,25 @@ class PhysicsParams(BaseModel):
     e_z: float | None = None
     mu: float | None = None
     alpha_net: float | None = None
-    dt: float | None = None
+    dt: float | None = Field(default=None, gt=0)
     use_drag: bool | None = None
     use_magnus: bool | None = None
 
 
 class SimParams(BaseModel):
-    max_sim_frames: int | None = None
-    sim_fps: int | None = None
-    output_fps: int | None = None
+    max_sim_frames: int | None = Field(default=None, ge=1)
+    sim_fps: int | None = Field(default=None, gt=0)
+    output_fps: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def _validate_fps(self) -> SimParams:
+        if (
+            self.sim_fps is not None
+            and self.output_fps is not None
+            and self.sim_fps % self.output_fps != 0
+        ):
+            raise ValueError("sim_fps must be divisible by output_fps")
+        return self
 
 
 class ShotParams(BaseModel):
