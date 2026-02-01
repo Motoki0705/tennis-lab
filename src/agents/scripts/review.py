@@ -270,7 +270,7 @@ def format_results(results: list[ReviewResult]) -> str:
 @hydra.main(  # type: ignore[misc]
     config_path="../configs",
     config_name="review",
-    version_base=None,
+    version_base="1.3",
 )
 def main(cfg: DictConfig) -> None:
     """Main entry point for code review."""

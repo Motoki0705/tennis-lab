@@ -505,7 +505,7 @@ def annotate_clips(cfg: ToolConfig) -> None:
         annotate_clip(clip_dir, cfg.output, cfg.annotate)
 
 
-@hydra.main(version_base=None, config_path="configs", config_name="annotate_wasb_clips")
+@hydra.main(version_base="1.3", config_path="configs", config_name="annotate_wasb_clips")
 def main(cfg: DictConfig) -> None:
     """Run the annotation tool based on Hydra config."""
     config = ToolConfig(
