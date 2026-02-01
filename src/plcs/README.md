@@ -29,10 +29,10 @@ PLCSでは**camera-time順序**を採用しています: `(B, N, T, ...)` の順
 
 | キー | 形状（Frame / Sequence） | 型 | 説明 |
 |------|------|-----|------|
-| `position` | `(B, 3)` / `(B, T, 3)` | `torch.Tensor` | 正規化座標での3D位置 |
-| `rotation` | `(B, 2)` / `(B, T, 2)` | `torch.Tensor` | 回転の (sin, cos) 表現 |
-| `position_meters` | `(B, 3)` / `(B, T, 3)` | `torch.Tensor` | メートル単位の3D位置（`denormalize=True` の場合のみ） |
-| `yaw_radians` | `(B,)` / `(B, T)` | `torch.Tensor` | ヨー角（ラジアン）（`denormalize=True` の場合のみ） |
+| `position` | `(B, 3)` / `(B, T, 3)` | `torch.Tensor` | 正規化座標での3D位置（常に含まれる） |
+| `rotation` | `(B, 2)` / `(B, T, 2)` | `torch.Tensor` | 回転の (sin, cos) 表現（常に含まれる） |
+| `position_meters` | `(B, 3)` / `(B, T, 3)` | `torch.Tensor` | メートル単位の3D位置（デフォルトで含まれる、`denormalize=False` の場合は含まれない） |
+| `yaw_radians` | `(B,)` / `(B, T)` | `torch.Tensor` | ヨー角（ラジアン）（デフォルトで含まれる、`denormalize=False` の場合は含まれない） |
 
 **注意**: 
 - すべてのテンソルは CPU に配置されます（統合側での device 変換は不要）
