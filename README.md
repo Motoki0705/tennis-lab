@@ -112,7 +112,7 @@ uv run python -m src.plcs.scripts.visualize \
     visualization.mode=predict \
     visualization.view=animation \
     visualization.animation_view=3d \
-    visualization.checkpoint=outputs/plcs/checkpoints/last.ckpt \
+    visualization.checkpoint=outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt \
     visualization.save=assets/plcs/output.mp4 \
     visualization.save_input=assets/plcs/input.mp4
 ```
@@ -143,7 +143,7 @@ uv run python -m src.blcs.scripts.visualize \
     visualization.mode=predict \
     visualization.view=animation \
     visualization.animation_view=3d \
-    visualization.checkpoint=outputs/blcs/checkpoints/last.ckpt \
+    visualization.checkpoint=outputs/blcs/single/logs/version_0/checkpoints/last.ckpt \
     visualization.save=assets/blcs/output.mp4 \
     visualization.save_input=assets/blcs/input.mp4
 ```
