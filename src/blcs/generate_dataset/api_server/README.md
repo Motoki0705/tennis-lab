@@ -51,7 +51,7 @@ src/blcs/generate_dataset/api_server/
 From the repo root:
 
 ```bash
-UV_CACHE_DIR=/tmp/uv_cache uv run python -m src.blcs.generate_dataset.api_server --reload --port 8001
+UV_CACHE_DIR=/tmp/uv_cache uv run --group webui -m src.blcs.generate_dataset.api_server --reload --port 8001
 ```
 
 Quick smoke test:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.blcs.generate_dataset.api_server.cells import build_cells_response
@@ -46,7 +46,11 @@ def create_app() -> FastAPI:
 
     @app.post("/simulate_shot", response_model=SimulateShotResponse)
     def post_simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
-        return simulate_shot(req)
+        try:
+            return simulate_shot(req)
+        except ValueError as e:
+            # Map input validation failures to a 4xx for better UX in the WebUI.
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     return app
 

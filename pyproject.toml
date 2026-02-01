@@ -38,9 +38,6 @@ dependencies = [
     "PyYAML>=6.0.0",
     "sam3>=0.1.2",
     "pydantic>=2.10.0",
-    # Local WebUI API server (optional tooling; used by src/blcs/generate_dataset/webui)
-    "fastapi>=0.110.0",
-    "uvicorn>=0.30.0",
 ]
 
 [dependency-groups]
@@ -56,6 +53,14 @@ dev = [
     "pytest>=8.4.2",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.8.0",
+]
+
+# Optional group for the BLCS WebUI API server (FastAPI + Uvicorn).
+# Usage:
+#   uv run --group webui -m src.blcs.generate_dataset.api_server --reload --port 8001
+webui = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.30.0",
 ]
 
 [tool.setuptools.packages.find]
