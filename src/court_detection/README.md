@@ -9,6 +9,22 @@
 
 学習データは `src.tools.annotate_court_keypoints` で生成した JSON アノテーションを前提とします。
 
+### Predictor 出力形式
+
+**Predictor 返り値（`CourtKeypointPredictor.predict()`）:**
+
+推論結果は `dict[str, torch.Tensor]` 形式で返されます。全てのテンソルは CPU 上にあります。
+
+| キー | 形状 | 型 | 説明 |
+|------|------|-----|------|
+| `keypoints` | `(K, 2)` | `torch.Tensor` | キーポイント座標（ピクセル空間）、K=20 |
+| `visibility` | `(K,)` | `torch.Tensor` | 可視性確率（0-1の範囲） |
+| `heatmaps` | `(K, H, W)` | `torch.Tensor` | ヒートマップ（`return_heatmaps=True` の場合のみ） |
+
+**注意**: 
+- すべてのテンソルは CPU に配置されます（統合側での device 変換は不要）
+- キーポイント座標は元画像のサイズにスケーリング済みです
+
 ### キーポイント仕様 (CourtKP20)
 
 `src/utils/geometry/court.court_keypoints_3d()` で定義される20点：
