@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 import torch
 import torch.nn.functional as F
@@ -13,6 +13,9 @@ from src.court_detection.models.court_keypoint_model import CourtKeypointModel
 from src.court_detection.training.losses import CourtKeypointLoss
 from src.court_detection.training.metrics import CourtKeypointMetrics
 
+if TYPE_CHECKING:
+    from omegaconf import DictConfig
+
 
 class CourtKeypointLightningModule(BaseLightningModule):
     """Lightning module for training court keypoint detection.
@@ -20,30 +23,22 @@ class CourtKeypointLightningModule(BaseLightningModule):
     Inherits training and optimization behavior from BaseLightningModule.
 
     Args:
-        model_config: Model configuration dict.
-        training_config: Training configuration dict.
-        loss_config: Loss configuration dict.
+        config: Configuration dictionary with model and training parameters.
     """
 
-    def __init__(
-        self,
-        model_config: dict[str, Any],
-        training_config: dict[str, Any],
-        loss_config: dict[str, Any],
-        data_config: dict[str, Any] | None = None,
-    ) -> None:
-        # BaseLightningModule expects a config with 'training' key
-        # but we maintain backward compatibility with direct dicts
-        base_config = {
-            "training": training_config,
-            "data": data_config or {},
-        }
-        super().__init__(config=base_config)
+    def __init__(self, config: DictConfig | None = None) -> None:
+        """Initialize the Lightning module.
+
+        Args:
+            config: Configuration dictionary with model and training parameters.
+
+        """
+        super().__init__(config)
         self.save_hyperparameters()
 
-        self.model_config = model_config
-        self.training_config = training_config
-        self.loss_config = loss_config
+        # Extract configuration sections
+        model_config = self.config.get("model", {})
+        loss_config = self.config.get("loss", {})
 
         # Build model
         self.model = CourtKeypointModel(model_config)
