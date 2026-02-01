@@ -38,6 +38,9 @@ dependencies = [
     "PyYAML>=6.0.0",
     "sam3>=0.1.2",
     "pydantic>=2.10.0",
+    # Local WebUI API server (optional tooling; used by src/blcs/generate_dataset/webui)
+    "fastapi>=0.110.0",
+    "uvicorn>=0.30.0",
 ]
 
 [dependency-groups]
