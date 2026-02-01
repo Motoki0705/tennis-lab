@@ -130,6 +130,8 @@ uv run python -m src.tools.annotate_court_keypoints \
 ```python
 from src.court_detection.inference.predictor import CourtKeypointPredictor
 
-predictor = CourtKeypointPredictor.from_checkpoint("path/to/checkpoint.ckpt")
-keypoints, visibility = predictor.predict(image)
+predictor = CourtKeypointPredictor.load_from_checkpoint("path/to/checkpoint.ckpt")
+result = predictor.predict(image)
+keypoints = result["keypoints"]
+visibility = result["visibility"]
 ```
