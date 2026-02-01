@@ -47,53 +47,17 @@ import hydra
 import numpy as np
 from omegaconf import DictConfig
 
+from src.utils.geometry.constants import (
+    COURT_KP_NAMES,
+    COURT_LINE_CONNECTIONS,
+    NUM_COURT_KP,
+)
+
 LOGGER = logging.getLogger(__name__)
 
-NUM_KEYPOINTS = 20
-
-KEYPOINT_NAMES = [
-    "far_doubles_corner_left",      # 0
-    "far_doubles_corner_right",     # 1
-    "near_doubles_corner_left",     # 2
-    "near_doubles_corner_right",    # 3
-    "far_singles_corner_left",      # 4
-    "near_singles_corner_left",     # 5
-    "far_singles_corner_right",     # 6
-    "near_singles_corner_right",    # 7
-    "far_service_left",             # 8
-    "far_service_right",            # 9
-    "near_service_left",            # 10
-    "near_service_right",           # 11
-    "far_service_T",                # 12
-    "near_service_T",               # 13
-    "net_center",                   # 14
-    "net_post_left_base",           # 15
-    "net_post_left_top",            # 16
-    "net_post_right_base",          # 17
-    "net_post_right_top",           # 18
-    "center_strap_top",             # 19
-]
-
-COURT_LINE_CONNECTIONS = [
-    # Doubles sidelines
-    (0, 2),   # far left to near left doubles
-    (1, 3),   # far right to near right doubles
-    # Baselines (doubles)
-    (0, 1),   # far baseline
-    (2, 3),   # near baseline
-    # Singles sidelines
-    (4, 5),   # left singles
-    (6, 7),   # right singles
-    # Service lines
-    (8, 9),   # far service line
-    (10, 11), # near service line
-    # Center service line
-    (12, 13), # service T far to near
-    # Net
-    (15, 17), # net posts base
-    (16, 18), # net posts top
-    (14, 19), # net center to strap top
-]
+# Use CourtKP20 definitions as the single source of truth
+NUM_KEYPOINTS = NUM_COURT_KP
+KEYPOINT_NAMES = list(COURT_KP_NAMES)  # Convert tuple to list for backwards compatibility
 
 
 @dataclass
