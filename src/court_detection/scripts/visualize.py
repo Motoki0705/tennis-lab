@@ -58,11 +58,15 @@ def visualize_predictions(
             # Run prediction
             result = predictor.predict(image)
 
+            # Convert tensors to numpy for visualization
+            keypoints = result["keypoints"].numpy()
+            visibility = result["visibility"].numpy()
+
             # Visualize
             vis = visualize_keypoints(
                 image_bgr,
-                result["keypoints"],
-                result["visibility"],
+                keypoints,
+                visibility,
                 config=vis_config,
             )
 
@@ -77,10 +81,14 @@ def visualize_predictions(
 
         result = predictor.predict(image)
 
+        # Convert tensors to numpy for visualization
+        keypoints = result["keypoints"].numpy()
+        visibility = result["visibility"].numpy()
+
         vis = visualize_keypoints(
             image_bgr,
-            result["keypoints"],
-            result["visibility"],
+            keypoints,
+            visibility,
             config=vis_config,
         )
 
