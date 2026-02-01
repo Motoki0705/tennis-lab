@@ -21,9 +21,6 @@ class CourtKeypointLightningModule(BaseLightningModule):
     """Lightning module for training court keypoint detection.
 
     Inherits training and optimization behavior from BaseLightningModule.
-
-    Args:
-        config: Configuration dictionary with model and training parameters.
     """
 
     def __init__(self, config: DictConfig | None = None) -> None:
