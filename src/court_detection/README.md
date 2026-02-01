@@ -36,6 +36,8 @@
 | 18 | net_post_right_top | 右ネットポスト（上） |
 | 19 | center_strap_top | センターストラップ（上） |
 
+**注**: このキーポイント仕様は `src/utils/geometry/constants.py` の `COURT_KP_NAMES` / `COURT_KP_IDX` として定義され、プロジェクト全体で共有されています。各モジュール（CourtDetection / PLCS / BLCS / Rendering など）は全てこの定義を参照しており、indexの解釈が統一されています。
+
 ## ディレクトリ構成
 
 ```
