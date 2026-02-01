@@ -27,7 +27,9 @@ def _format_name_for_display(name: str) -> str:
     return name.replace("_", " ")
 
 
-COURT_KEYPOINT_NAMES: list[str] = [_format_name_for_display(name) for name in COURT_KP_NAMES]
+COURT_KEYPOINT_NAMES: list[str] = [
+    _format_name_for_display(name) for name in COURT_KP_NAMES
+]
 
 NUM_COURT_KEYPOINTS = NUM_COURT_KP
 

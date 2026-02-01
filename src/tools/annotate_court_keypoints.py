@@ -49,7 +49,7 @@ from omegaconf import DictConfig
 
 from src.utils.geometry.constants import (
     COURT_KP_NAMES,
-    COURT_LINE_CONNECTIONS,
+    COURT_SKELETON,
     NUM_COURT_KP,
 )
 
@@ -58,6 +58,7 @@ LOGGER = logging.getLogger(__name__)
 # Use CourtKP20 definitions as the single source of truth
 NUM_KEYPOINTS = NUM_COURT_KP
 KEYPOINT_NAMES = list(COURT_KP_NAMES)  # Convert tuple to list for backwards compatibility
+COURT_LINE_CONNECTIONS = COURT_SKELETON  # Use full skeleton for annotation display
 
 
 @dataclass
