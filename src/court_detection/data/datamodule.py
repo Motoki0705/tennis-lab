@@ -35,7 +35,7 @@ class CourtKeypointDataModule(pl.LightningDataModule):
         self.data_dir = Path(data_cfg.get("data_dir", "data/court_detection/scenes"))
         self.batch_size = data_cfg.get("batch_size", 32)
         self.num_workers = data_cfg.get("num_workers", 4)
-        self.pin_memory = bool(data_cfg.get("pin_memory", True))
+        self.pin_memory = data_cfg.get("pin_memory", True)
         self.input_size = tuple(data_cfg.get("input_size", [256, 256]))
         self.heatmap_size = tuple(data_cfg.get("heatmap_size", [64, 64]))
         self.train_split = data_cfg.get("train_split", 0.8)
