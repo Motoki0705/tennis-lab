@@ -75,6 +75,7 @@ export default function Page() {
   const [meta, setMeta] = useState<VideoMeta | null>(null);
   const [mode, setMode] = useState<"ball" | "court">("ball");
   const [status, setStatus] = useState<string>("");
+  const statusTimeoutRef = useRef<number | null>(null);
 
   // Ball (sequential clip)
   const [ballCfg, setBallCfg] = useState<BallClipConfig>({
@@ -89,6 +90,8 @@ export default function Page() {
     score: 0,
     source: "manual"
   });
+  const [ballClipMarkStart, setBallClipMarkStart] = useState<number | null>(null);
+  const [ballClipMarkEnd, setBallClipMarkEnd] = useState<number | null>(null);
 
   // Court (sparse frames)
   const [courtFrameIdx, setCourtFrameIdx] = useState<number>(0);
@@ -105,6 +108,24 @@ export default function Page() {
     kind: "ball" | "court" | null;
     kpIndex: number;
   }>({ kind: null, kpIndex: -1 });
+
+  function setStatusWithTimeout(msg: string, ms: number = 1200) {
+    setStatus(msg);
+    if (statusTimeoutRef.current) {
+      window.clearTimeout(statusTimeoutRef.current);
+    }
+    statusTimeoutRef.current = window.setTimeout(() => {
+      setStatus("");
+      statusTimeoutRef.current = null;
+    }, ms);
+  }
+
+  function isTypingInField(): boolean {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName.toLowerCase();
+    return tag === "input" || tag === "textarea" || tag === "select";
+  }
 
   useEffect(() => {
     (async () => {
@@ -188,10 +209,108 @@ export default function Page() {
     };
   }, [meta, mode, globalFrameIdx, ballAnn, courtAnn, activeKp]);
 
-  // Keyboard navigation (minimal)
+  async function saveBall() {
+    try {
+      const saved = await apiPut<BallFrameAnnotation>(
+        `/api/ball/annotations/${ballLocalIdx}`,
+        ballAnn
+      );
+      setBallAnn(saved);
+      setStatusWithTimeout("saved");
+    } catch (e) {
+      setStatus(String(e));
+    }
+  }
+
+  async function saveCourt(next: CourtFrameAnnotation) {
+    try {
+      const saved = await apiPut<CourtFrameAnnotation>(
+        `/api/court/annotations/${courtFrameIdx}`,
+        next
+      );
+      setCourtAnn(saved);
+      setStatusWithTimeout("saved");
+    } catch (e) {
+      setStatus(String(e));
+    }
+  }
+
+  async function exportCurrentMode() {
+    try {
+      if (mode === "ball") {
+        const r = await apiPost<ExportResult>("/api/export/wasb");
+        setStatus(`exported: ${r.output_dir}`);
+        return;
+      }
+      const r = await apiPost<ExportResult>("/api/export/court");
+      setStatus(`exported: ${r.output_dir}`);
+    } catch (e) {
+      setStatus(String(e));
+    }
+  }
+
+  function nextUnsetKpIndex(
+    ann: CourtFrameAnnotation,
+    fromIdx: number
+  ): number | null {
+    for (let i = fromIdx + 1; i < ann.keypoints.length; i++) {
+      if (ann.keypoints[i].visibility === 0) return i;
+    }
+    for (let i = 0; i <= fromIdx; i++) {
+      if (ann.keypoints[i].visibility === 0) return i;
+    }
+    return null;
+  }
+
+  async function applyBallClipMarks() {
+    if (!meta) return;
+    if (ballClipMarkStart === null || ballClipMarkEnd === null) {
+      setStatus("set both clip start/end first ([ and ])");
+      return;
+    }
+    const start = clamp(
+      Math.min(ballClipMarkStart, ballClipMarkEnd),
+      0,
+      meta.frame_count - 1
+    );
+    const end = clamp(
+      Math.max(ballClipMarkStart, ballClipMarkEnd),
+      0,
+      meta.frame_count - 1
+    );
+    const clip_length = end - start + 1;
+    try {
+      const saved = await apiPut<BallClipConfig>("/api/ball/clip_config", {
+        start_frame: start,
+        clip_length
+      });
+      setBallCfg(saved);
+      setBallLocalIdx(0);
+      setStatusWithTimeout(`clip set: ${start}..${end}`);
+    } catch (e) {
+      setStatus(String(e));
+    }
+  }
+
+  // Keyboard shortcuts (common + per-mode)
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (!meta) return;
+      if (isTypingInField()) return;
+
+      // Common
+      if (e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        if (mode === "ball") void saveBall();
+        if (mode === "court" && courtAnn) void saveCourt(courtAnn);
+        return;
+      }
+      if (e.key === "e" || e.key === "E") {
+        e.preventDefault();
+        void exportCurrentMode();
+        return;
+      }
+
       const step = e.shiftKey ? 10 : 1;
       if (e.key === "ArrowLeft") {
         if (mode === "ball") {
@@ -207,10 +326,74 @@ export default function Page() {
           setCourtFrameIdx((v) => clamp(v + step, 0, meta.frame_count - 1));
         }
       }
+
+      // Ball: clip marking from current frame
+      if (mode === "ball") {
+        if (e.key === "[") {
+          e.preventDefault();
+          setBallClipMarkStart(globalFrameIdx);
+          setStatusWithTimeout(`clip start = ${globalFrameIdx}`);
+          return;
+        }
+        if (e.key === "]") {
+          e.preventDefault();
+          setBallClipMarkEnd(globalFrameIdx);
+          setStatusWithTimeout(`clip end = ${globalFrameIdx}`);
+          return;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          void applyBallClipMarks();
+          return;
+        }
+      }
+
+      // Court: keypoint navigation / edit
+      if (mode === "court" && courtAnn) {
+        if (e.key === "Tab") {
+          e.preventDefault();
+          setActiveKp((v) => {
+            const next = e.shiftKey ? v - 1 : v + 1;
+            return ((next % courtAnn.keypoints.length) + courtAnn.keypoints.length) % courtAnn.keypoints.length;
+          });
+          return;
+        }
+        if (e.key === "n" || e.key === "N") {
+          e.preventDefault();
+          const next = nextUnsetKpIndex(courtAnn, activeKp);
+          if (next !== null) setActiveKp(next);
+          return;
+        }
+        if (e.key === "Backspace") {
+          e.preventDefault();
+          const next = {
+            ...courtAnn,
+            keypoints: courtAnn.keypoints.map((kp, i) =>
+              i === activeKp
+                ? { ...kp, visibility: 0, x_px: 0, y_px: 0, source: "manual" }
+                : kp
+            )
+          };
+          setCourtAnn(next);
+          void saveCourt(next);
+          return;
+        }
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [meta, mode, ballCfg.clip_length]);
+  }, [
+    meta,
+    mode,
+    globalFrameIdx,
+    ballCfg.clip_length,
+    ballLocalIdx,
+    ballAnn,
+    courtAnn,
+    activeKp,
+    ballClipMarkStart,
+    ballClipMarkEnd
+  ]);
 
   function toCanvasXY(e: React.MouseEvent<HTMLCanvasElement>): {
     x: number;
@@ -245,32 +428,6 @@ export default function Page() {
     return best;
   }
 
-  async function saveBall() {
-    try {
-      const saved = await apiPut<BallFrameAnnotation>(
-        `/api/ball/annotations/${ballLocalIdx}`,
-        ballAnn
-      );
-      setBallAnn(saved);
-      setStatus("saved");
-    } catch (e) {
-      setStatus(String(e));
-    }
-  }
-
-  async function saveCourt(next: CourtFrameAnnotation) {
-    try {
-      const saved = await apiPut<CourtFrameAnnotation>(
-        `/api/court/annotations/${courtFrameIdx}`,
-        next
-      );
-      setCourtAnn(saved);
-      setStatus("saved");
-    } catch (e) {
-      setStatus(String(e));
-    }
-  }
-
   return (
     <div className="root">
       <div className="canvasWrap">
@@ -301,6 +458,7 @@ export default function Page() {
                 dragRef.current = { kind: "court", kpIndex: nearest };
                 setActiveKp(nearest);
               } else {
+                const autoNext = nextUnsetKpIndex(courtAnn, activeKp);
                 const next = {
                   ...courtAnn,
                   keypoints: courtAnn.keypoints.map((kp, i) =>
@@ -311,6 +469,7 @@ export default function Page() {
                 };
                 setCourtAnn(next);
                 dragRef.current = { kind: "court", kpIndex: activeKp };
+                if (autoNext !== null && autoNext !== activeKp) setActiveKp(autoNext);
               }
             }
           }}
@@ -416,13 +575,38 @@ export default function Page() {
                     );
                     setBallCfg(saved);
                     setBallLocalIdx(0);
-                    setStatus("clip config saved");
+                    setStatusWithTimeout("clip config saved");
                   } catch (e) {
                     setStatus(String(e));
                   }
                 }}
               >
                 Set clip
+              </button>
+            </div>
+
+            <div className="row">
+              <button
+                onClick={() => {
+                  setBallClipMarkStart(globalFrameIdx);
+                  setStatusWithTimeout(`clip start = ${globalFrameIdx}`);
+                }}
+              >
+                Mark start [
+              </button>
+              <button
+                onClick={() => {
+                  setBallClipMarkEnd(globalFrameIdx);
+                  setStatusWithTimeout(`clip end = ${globalFrameIdx}`);
+                }}
+              >
+                Mark end ]
+              </button>
+              <div className="small">
+                marked: {ballClipMarkStart ?? "—"} .. {ballClipMarkEnd ?? "—"}
+              </div>
+              <button className="primary" onClick={applyBallClipMarks}>
+                Apply (Enter)
               </button>
             </div>
 
@@ -440,14 +624,7 @@ export default function Page() {
                 Save
               </button>
               <button
-                onClick={async () => {
-                  try {
-                    const r = await apiPost<ExportResult>("/api/export/wasb");
-                    setStatus(`exported: ${r.output_dir}`);
-                  } catch (e) {
-                    setStatus(String(e));
-                  }
-                }}
+                onClick={exportCurrentMode}
               >
                 Export WASB
               </button>
@@ -455,7 +632,12 @@ export default function Page() {
 
             <div className="row">
               <div className="small">
-                click to place; drag to move (auto-save on mouse up)
+                click to place; drag to move; auto-save on mouse up
+              </div>
+            </div>
+            <div className="row">
+              <div className="small">
+                keys: [ ] mark clip, Enter apply, S save, E export, ←/→ navigate
               </div>
             </div>
           </>
@@ -481,14 +663,7 @@ export default function Page() {
                 Save
               </button>
               <button
-                onClick={async () => {
-                  try {
-                    const r = await apiPost<ExportResult>("/api/export/court");
-                    setStatus(`exported: ${r.output_dir}`);
-                  } catch (e) {
-                    setStatus(String(e));
-                  }
-                }}
+                onClick={exportCurrentMode}
               >
                 Export Court
               </button>
@@ -496,6 +671,9 @@ export default function Page() {
 
             <div className="small">
               Select a keypoint, then click to place. Drag existing points to move.
+            </div>
+            <div className="small">
+              keys: Tab/Shift+Tab next/prev kp, N next unset, Backspace clear, S save, E export
             </div>
 
             <div className="kpList">
