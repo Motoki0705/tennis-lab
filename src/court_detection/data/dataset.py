@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 from PIL import Image
 from torch import Tensor
