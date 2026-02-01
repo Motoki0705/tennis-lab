@@ -69,10 +69,28 @@ button.primary {
   justify-content: center;
 }
 
-canvas {
+.canvasStage {
+  position: relative;
   width: 100%;
-  height: auto;
+  height: 100%;
   max-height: calc(100vh - 24px);
+  aspect-ratio: 16 / 9;
+}
+
+.canvasStage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.frameCanvas {
+  pointer-events: none;
+}
+
+.overlayCanvas {
+  pointer-events: auto;
 }
 
 .small {
@@ -100,4 +118,3 @@ canvas {
 .kpItem.active {
   border-color: #111827;
 }
-
