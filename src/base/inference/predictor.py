@@ -55,15 +55,35 @@ class BasePredictor(ABC):
         ...
 
     @abstractmethod
-    def predict(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+    def predict(self, *args: Any, **kwargs: Any) -> dict[str, Tensor]:
         """Run batch inference.
 
         Input/output formats vary by implementation.
         See subclass documentation for details.
 
         Returns:
-            Dictionary of inference results. Keys and value types are
-            implementation-dependent.
+            Dictionary of inference results. All predictors must follow this contract:
+            
+            **Return Type Contract:**
+            - All values MUST be `torch.Tensor` (not numpy arrays)
+            - All tensors MUST be on CPU (callers should not handle device transfers)
+            - Batch dimension MUST be preserved in outputs
+            
+            **Key Naming Contract:**
+            - Use snake_case for all keys
+            - Use descriptive names matching the semantic meaning
+            - Suffix denormalized/physical units (e.g., `_meters`, `_radians`)
+            - Common keys across tasks:
+              - `position`: 3D position in normalized or world coordinates
+              - `position_meters`: 3D position in meters (denormalized)
+              - `velocity`: Velocity vector
+              - `rotation`: Rotation representation (e.g., sin/cos, quaternion)
+              - `yaw_radians`: Yaw angle in radians
+              - `keypoints`: 2D/3D keypoint coordinates
+              - `visibility`: Visibility flags/probabilities
+              - `heatmaps`: Spatial probability maps
+            
+            Implementation-specific keys are allowed but should follow the naming convention.
 
         """
         ...
