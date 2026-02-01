@@ -541,7 +541,7 @@ def reset_videos(cfg: DictConfig) -> int:
 
 
 @hydra.main(
-    version_base=None,
+    version_base="1.3",
     config_path="../../configs",
     config_name="generate_dataset",
 )

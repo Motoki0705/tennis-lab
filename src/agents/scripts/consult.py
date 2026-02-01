@@ -82,7 +82,7 @@ def consult_subagents(cfg: DictConfig) -> None:
 @hydra.main(
     config_path="../configs",
     config_name="consult",
-    version_base=None,
+    version_base="1.3",
 )
 def main(cfg: DictConfig) -> None:
     """Main entry point for sub-agent consultation."""
