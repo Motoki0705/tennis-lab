@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# The repo root .gitignore ignores all *.json/*.csv to avoid committing datasets.
+# This frontend needs JSON config files tracked, so we explicitly unignore them here.
+!package.json
+!package-lock.json
+!tsconfig.json
+
