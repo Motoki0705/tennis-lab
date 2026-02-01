@@ -186,6 +186,9 @@ else:
     output_dir = Path.cwd()  # Hydra-managed
 ```
 
+**See also**: `docs/examples/config_detection_example.py` for a complete example
+showing how to write code that works with both config structures.
+
 ---
 
 ## Migration Considerations
