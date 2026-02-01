@@ -131,7 +131,7 @@ class CourtKeypointPredictor(BasePredictor):
         self,
         image: np.ndarray | Image.Image | Tensor,
         return_heatmaps: bool = False,
-    ) -> dict[str, np.ndarray | Tensor]:
+    ) -> dict[str, Tensor]:
         """Run inference on a single image.
 
         Args:
@@ -139,10 +139,10 @@ class CourtKeypointPredictor(BasePredictor):
             return_heatmaps: Whether to return heatmaps.
 
         Returns:
-            Dictionary with:
-                - 'keypoints': Keypoint coordinates in pixel space (K, 2)
-                - 'visibility': Visibility probabilities (K,)
-                - 'heatmaps': Optional heatmaps (K, H, W)
+            Dictionary with CPU tensors:
+                - keypoints: Keypoint coordinates in pixel space (K, 2)
+                - visibility: Visibility probabilities (K,)
+                - heatmaps: Optional heatmaps (K, H, W) if return_heatmaps=True
         """
         # Preprocess if needed
         if isinstance(image, (np.ndarray, Image.Image)):
@@ -160,20 +160,22 @@ class CourtKeypointPredictor(BasePredictor):
         # Run inference
         outputs = self.model(image_tensor)
 
-        keypoints = self._heatmaps_to_coords(outputs["heatmaps"])[0].cpu().numpy()
+        # Convert heatmaps to keypoint coordinates
+        keypoints = self._heatmaps_to_coords(outputs["heatmaps"])[0].cpu()
         keypoints[:, 0] *= orig_w
         keypoints[:, 1] *= orig_h
 
-        # Extract visibility
-        visibility = torch.sigmoid(outputs["visibility"][0]).cpu().numpy()  # (K,)
+        # Extract visibility (apply sigmoid for probabilities)
+        visibility = torch.sigmoid(outputs["visibility"][0]).cpu()  # (K,)
 
-        result = {
+        # Return CPU tensors (following predictor contract)
+        result: dict[str, Tensor] = {
             "keypoints": keypoints,
             "visibility": visibility,
         }
 
         if return_heatmaps:
-            result["heatmaps"] = outputs["heatmaps"][0].cpu().numpy()
+            result["heatmaps"] = outputs["heatmaps"][0].cpu()
 
         return result
 
@@ -181,14 +183,14 @@ class CourtKeypointPredictor(BasePredictor):
     def predict_batch(
         self,
         images: list[np.ndarray | Image.Image] | Tensor,
-    ) -> list[dict[str, np.ndarray]]:
+    ) -> list[dict[str, Tensor]]:
         """Run inference on a batch of images.
 
         Args:
             images: List of images or batched tensor.
 
         Returns:
-            List of prediction dictionaries.
+            List of prediction dictionaries with CPU tensors.
         """
         if isinstance(images, Tensor):
             batch_tensor = images.to(self.device)
@@ -212,11 +214,11 @@ class CourtKeypointPredictor(BasePredictor):
         for i in range(len(batch_tensor)):
             orig_h, orig_w = orig_sizes[i]
 
-            keypoints = self._heatmaps_to_coords(outputs["heatmaps"][i : i + 1])[0].cpu().numpy()
+            keypoints = self._heatmaps_to_coords(outputs["heatmaps"][i : i + 1])[0].cpu()
             keypoints[:, 0] *= orig_w
             keypoints[:, 1] *= orig_h
 
-            visibility = torch.sigmoid(outputs["visibility"][i]).cpu().numpy()
+            visibility = torch.sigmoid(outputs["visibility"][i]).cpu()
 
             results.append({
                 "keypoints": keypoints,

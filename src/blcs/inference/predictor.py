@@ -104,9 +104,11 @@ class BLCSPredictor(BasePredictor):
             denormalize: If True, convert positions to meters.
 
         Returns:
-            Inference results dictionary:
-                - position: 3D position (B, T, 3)
-                - velocity: Velocity (B, T, 3) (if model outputs it)
+            Inference results dictionary (CPU tensors):
+                - position: 3D position (B, T, 3) in meters if denormalize=True,
+                           else in normalized coordinates
+                - velocity: Velocity (B, T, 3) in m/s if denormalize=True and
+                           model outputs it, else in normalized units
 
         """
         if ball_vis is None and ball_mask is not None:
@@ -148,6 +150,9 @@ class BLCSPredictor(BasePredictor):
             outputs["position"] = self._denormalize_position(outputs["position"])
             if "velocity" in outputs:
                 outputs["velocity"] = self._denormalize_velocity(outputs["velocity"])
+
+        # Move all tensors to CPU for consistency (contract: return CPU tensors)
+        outputs = {k: v.cpu() if isinstance(v, Tensor) else v for k, v in outputs.items()}
 
         return outputs
 
