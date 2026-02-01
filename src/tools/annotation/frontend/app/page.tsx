@@ -72,6 +72,7 @@ function clamp(v: number, lo: number, hi: number): number {
 
 export default function Page() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const renderTokenRef = useRef<number>(0);
   const [meta, setMeta] = useState<VideoMeta | null>(null);
   const [mode, setMode] = useState<"ball" | "court">("ball");
   const [status, setStatus] = useState<string>("");
@@ -171,14 +172,23 @@ export default function Page() {
     const canvas = canvasRef.current;
     if (!canvas || !meta) return;
 
+    const token = ++renderTokenRef.current;
+    let canceled = false;
+
+    canvas.width = meta.width;
+    canvas.height = meta.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = `${apiBase()}/api/frame/${globalFrameIdx}.jpg`;
     img.onload = () => {
-      canvas.width = meta.width;
-      canvas.height = meta.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+      if (canceled) return;
+      if (token !== renderTokenRef.current) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
@@ -206,6 +216,21 @@ export default function Page() {
           ctx.stroke();
         }
       }
+    };
+    img.onerror = () => {
+      if (canceled) return;
+      if (token !== renderTokenRef.current) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "16px ui-sans-serif, system-ui, -apple-system";
+      ctx.fillText("Failed to load frame image.", 16, 32);
+      setStatus("failed to load frame image (check backend / video / frame idx)");
+    };
+
+    return () => {
+      canceled = true;
     };
   }, [meta, mode, globalFrameIdx, ballAnn, courtAnn, activeKp]);
 
@@ -354,7 +379,10 @@ export default function Page() {
           e.preventDefault();
           setActiveKp((v) => {
             const next = e.shiftKey ? v - 1 : v + 1;
-            return ((next % courtAnn.keypoints.length) + courtAnn.keypoints.length) % courtAnn.keypoints.length;
+            return (
+              ((next % courtAnn.keypoints.length) + courtAnn.keypoints.length) %
+              courtAnn.keypoints.length
+            );
           });
           return;
         }
@@ -366,11 +394,17 @@ export default function Page() {
         }
         if (e.key === "Backspace") {
           e.preventDefault();
-          const next = {
+          const next: CourtFrameAnnotation = {
             ...courtAnn,
             keypoints: courtAnn.keypoints.map((kp, i) =>
               i === activeKp
-                ? { ...kp, visibility: 0, x_px: 0, y_px: 0, source: "manual" }
+                ? {
+                    ...kp,
+                    visibility: 0 as const,
+                    x_px: 0,
+                    y_px: 0,
+                    source: "manual" as const
+                  }
                 : kp
             )
           };
@@ -459,11 +493,17 @@ export default function Page() {
                 setActiveKp(nearest);
               } else {
                 const autoNext = nextUnsetKpIndex(courtAnn, activeKp);
-                const next = {
+                const next: CourtFrameAnnotation = {
                   ...courtAnn,
                   keypoints: courtAnn.keypoints.map((kp, i) =>
                     i === activeKp
-                      ? { ...kp, visibility: 1, x_px: x, y_px: y, source: "manual" }
+                      ? {
+                          ...kp,
+                          visibility: 1 as const,
+                          x_px: x,
+                          y_px: y,
+                          source: "manual" as const
+                        }
                       : kp
                   )
                 };
@@ -489,11 +529,17 @@ export default function Page() {
             } else if (drag.kind === "court" && courtAnn) {
               const idx = drag.kpIndex;
               if (idx < 0) return;
-              const next = {
+              const next: CourtFrameAnnotation = {
                 ...courtAnn,
                 keypoints: courtAnn.keypoints.map((kp, i) =>
                   i === idx
-                    ? { ...kp, visibility: 1, x_px: x, y_px: y, source: "manual" }
+                    ? {
+                        ...kp,
+                        visibility: 1 as const,
+                        x_px: x,
+                        y_px: y,
+                        source: "manual" as const
+                      }
                     : kp
                 )
               };
