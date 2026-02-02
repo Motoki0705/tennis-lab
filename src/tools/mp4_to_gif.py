@@ -237,7 +237,7 @@ def convert_mp4_to_gif(config: ConversionConfig) -> Path:
 
 
 @hydra.main(
-    version_base="None",
+    version_base=None,
     config_path="configs",
     config_name="mp4_to_gif",
 )
