@@ -84,6 +84,9 @@ class RallyConfig:
     # Minimum rally length to accept (for filtering short rallies)
     min_rally_length: int = 2
 
+    # Probability to accept a net-fault return shot (0.0 - 1.0)
+    net_fault_accept_prob: float = 0.05
+
 
 @dataclass
 class ShotEventInfo:
@@ -301,6 +304,9 @@ class RallySimulator:
         position = ball_pos_at_return.clone()
         position[2] = return_height
 
+        # Sample spin (used by refinement if enabled)
+        spin = self.shot_simulator._sample_spin()
+
         # Sample velocity - targeted if target_cell specified, random otherwise
         if target_cell is not None:
             velocity = self.targeted_velocity_sampler.sample_velocity_for_target_cell(
@@ -308,12 +314,11 @@ class RallySimulator:
                 target_cell=target_cell,
                 target_side=target_side,
                 from_side=from_side,
+                physics=self.physics,
+                spin=spin,
             )
         else:
             velocity = self.shot_simulator._sample_velocity(from_side)
-
-        # Sample spin
-        spin = self.shot_simulator._sample_spin()
 
         return BallState(position=position, velocity=velocity, spin=spin)
 
@@ -442,6 +447,13 @@ class RallySimulator:
         needed.sort(key=lambda x: -x[1])
         return [cell_id for cell_id, _ in needed]
 
+    def _should_accept_net_fault(self) -> bool:
+        """Decide whether to accept a net-fault return shot."""
+        prob = self.rally_config.net_fault_accept_prob
+        if prob <= 0.0:
+            return False
+        return torch.rand(1).item() < prob
+
     def _sample_valid_return_shot(
         self,
         ball_pos_at_return: Tensor,
@@ -507,7 +519,8 @@ class RallySimulator:
 
             # Accept shots that:
             # 1. Don't end the rally immediately AND meet distribution requirements
-            # 2. Or have double bounce (valid rally end)
+            # 2. Or end by net fault with probabilistic acceptance
+            # 3. Or have double bounce (valid rally end)
             if not should_end and should_accept_distribution:
                 # Record sample if distribution sampler is set
                 if self.distribution_sampler is not None:
@@ -515,6 +528,15 @@ class RallySimulator:
                         from_cell, from_side, category, to_cell
                     )
                 return shot_result, initial_state
+
+            if reason == RallyEndReason.NET_FAULT:
+                if self._should_accept_net_fault():
+                    if self.distribution_sampler is not None:
+                        self.distribution_sampler.record_sample(
+                            from_cell, from_side, category, to_cell
+                        )
+                    return shot_result, initial_state
+                continue
 
             # Also accept if double bounce occurred (opponent didn't return)
             # These are valid rally endings regardless of distribution
@@ -821,7 +843,7 @@ class RallySimulator:
                 if hit_net:
                     t_net_sim = frame + 1
                     hit_net_before_bounce = True
-                    state = self.physics.apply_net_collision(state)
+                    state = self.physics.apply_net_collision(state, net_pos=pos_at_net)
 
             # Check fence collision (terminates shot)
             if self.physics.check_fence_collision(state.position):

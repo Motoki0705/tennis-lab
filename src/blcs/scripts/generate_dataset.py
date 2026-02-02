@@ -86,6 +86,7 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         return_z_range=tuple(cfg.rally.return_z_range),
         max_return_retries=int(cfg.rally.max_return_retries),
         min_rally_length=int(cfg.rally.min_rally_length),
+        net_fault_accept_prob=float(cfg.rally.net_fault_accept_prob),
     )
 
     camera_config = CameraConfig(
@@ -114,9 +115,26 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         speed_variation=float(cfg.targeted_velocity.speed_variation),
         min_elevation_deg=float(cfg.targeted_velocity.min_elevation_deg),
         max_elevation_deg=float(cfg.targeted_velocity.max_elevation_deg),
+        drive_elevation_range_deg=tuple(cfg.targeted_velocity.drive_elevation_range_deg),
+        lob_elevation_range_deg=tuple(cfg.targeted_velocity.lob_elevation_range_deg),
+        lob_probability=float(cfg.targeted_velocity.lob_probability),
         min_speed=float(cfg.targeted_velocity.min_speed),
         max_speed=float(cfg.targeted_velocity.max_speed),
         gravity=float(cfg.targeted_velocity.gravity),
+        speed_solve_max_iters=int(cfg.targeted_velocity.speed_solve_max_iters),
+        speed_solve_tol=float(cfg.targeted_velocity.speed_solve_tol),
+        refine_enabled=bool(cfg.targeted_velocity.refine_enabled),
+        refine_iters=int(cfg.targeted_velocity.refine_iters),
+        refine_speed_scale_min=float(cfg.targeted_velocity.refine_speed_scale_min),
+        refine_speed_scale_max=float(cfg.targeted_velocity.refine_speed_scale_max),
+        refine_max_azimuth_adjust_deg=float(
+            cfg.targeted_velocity.refine_max_azimuth_adjust_deg
+        ),
+        refine_max_frames=int(cfg.targeted_velocity.refine_max_frames),
+        net_clearance_enabled=bool(cfg.targeted_velocity.net_clearance_enabled),
+        net_clearance_min=float(cfg.targeted_velocity.net_clearance_min),
+        net_clearance_max_attempts=int(cfg.targeted_velocity.net_clearance_max_attempts),
+        net_clearance_max_frames=int(cfg.targeted_velocity.net_clearance_max_frames),
     )
 
     return GeneratorConfig(

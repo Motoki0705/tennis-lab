@@ -1,10 +1,10 @@
 z_range: [0.8, 1.4]
-speed_range: [15.0, 35.0]
+speed_range: [5.0, 25.0]
 azimuth_range_deg: [-30.0, 30.0]
-elevation_range_deg: [5.0, 25.0]
-spin_x_range: [-20.0, 20.0]
+elevation_range_deg: [5.0, 70.0]
+spin_x_range: [-200.0, 200.0]
 spin_y_range: [-80.0, -40.0]
-spin_z_range: [-20.0, 20.0]
+spin_z_range: [-200.0, 200.0]
 max_sim_frames: 2000
 output_fps: 30
 sim_fps: 240
