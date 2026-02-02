@@ -84,6 +84,14 @@ training:
   learning_rate: 1.5e-4
   max_epochs: 400
   warmup_epochs: 40
+
+# Run
+run:
+  output_dir: outputs/mae
+  seed: 42
+  gpus: 1
+  fast_dev_run: false
+  dry_run: false
 ```
 
 ## Data Preparation
