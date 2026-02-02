@@ -37,7 +37,7 @@ def visualize_predictions(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Load predictor
-    predictor = CourtKeypointPredictor.from_checkpoint(
+    predictor = CourtKeypointPredictor.load_from_checkpoint(
         checkpoint_path,
         device="cuda" if __import__("torch").cuda.is_available() else "cpu",
     )
