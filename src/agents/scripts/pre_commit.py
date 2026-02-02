@@ -301,7 +301,7 @@ def parse_provider_output(output: str, provider_name: str) -> PreCommitResult:
 @hydra.main(  # type: ignore[misc]
     config_path="../configs",
     config_name="pre_commit",
-    version_base=None,
+    version_base="1.3",
 )
 def main(cfg: DictConfig) -> None:
     """Main entry point for pre-commit sub-agent."""

@@ -294,7 +294,7 @@ def apply_clip_selection(cfg: DictConfig) -> int:
 
 
 @hydra.main(
-    version_base=None,
+    version_base="1.3",
     config_path="../../configs",
     config_name="clip_sampling",
 )
