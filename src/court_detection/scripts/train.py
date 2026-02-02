@@ -18,7 +18,7 @@ from src.court_detection.training.runner import CourtDetectionTrainingRunner
 
 
 @hydra.main(
-    version_base=None,
+    version_base="1.3",
     config_path="../configs",
     config_name="train",
 )

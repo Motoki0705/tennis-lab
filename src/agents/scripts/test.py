@@ -296,7 +296,7 @@ def parse_provider_output(output: str, provider_name: str) -> TestResult:
 @hydra.main(  # type: ignore[misc]
     config_path="../configs",
     config_name="test",
-    version_base=None,
+    version_base="1.3",
 )
 def main(cfg: DictConfig) -> None:
     """Main entry point for test sub-agent."""
