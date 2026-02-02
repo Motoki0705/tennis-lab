@@ -274,8 +274,8 @@ class ShotSimulator:
                     t_net_sim = frame + 1
                     net_pos = pos_at_net
                     hit_net_before_bounce = True
-                    # Apply net collision (reduce velocity)
-                    state = self.physics.apply_net_collision(state)
+                    # Apply net collision (reflect and reduce velocity)
+                    state = self.physics.apply_net_collision(state, net_pos=pos_at_net)
 
             # Check fence collision
             if self.physics.check_fence_collision(state.position):

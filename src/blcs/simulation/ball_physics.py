@@ -241,44 +241,92 @@ class BallPhysics:
 
         # Interpolate position at y=0
         t = prev_pos[1] / (prev_pos[1] - curr_pos[1] + 1e-8)
-        x_at_net = prev_pos[0] + t * (curr_pos[0] - prev_pos[0])
-        z_at_net = prev_pos[2] + t * (curr_pos[2] - prev_pos[2])
+        x_at_net = (prev_pos[0] + t * (curr_pos[0] - prev_pos[0])).item()
+        z_at_net = (prev_pos[2] + t * (curr_pos[2] - prev_pos[2])).item()
 
         # Check if within net width
         if abs(x_at_net) <= HALF_DOUBLES_WIDTH:
-            # Get net height at this x position
-            x_ratio = abs(x_at_net.item()) / HALF_DOUBLES_WIDTH
-            net_height = NET_HEIGHT_CENTER + x_ratio * (
-                NET_HEIGHT_POST - NET_HEIGHT_CENTER
-            )
+            net_height = self._net_height_at_x(x_at_net)
 
             if z_at_net < net_height:
                 net_pos = torch.tensor(
-                    [x_at_net.item(), 0.0, z_at_net.item()],
+                    [x_at_net, 0.0, z_at_net],
                     device=prev_pos.device,
                 )
                 return True, net_pos
 
         return False, None
 
-    def apply_net_collision(self, state: BallState) -> BallState:
-        """Apply net collision velocity reduction (blcs.md §3.2).
+    def compute_net_clearance(
+        self,
+        prev_pos: Tensor,
+        curr_pos: Tensor,
+    ) -> float | None:
+        """Compute net clearance when crossing the net plane.
 
-        v' = α_net * v
+        Args:
+            prev_pos: Previous position [3].
+            curr_pos: Current position [3].
+
+        Returns:
+            float: Clearance in meters (positive = above net).
+            None: If net plane was not crossed in this segment.
+
+        """
+        if not (
+            (prev_pos[1] > 0 and curr_pos[1] <= 0)
+            or (prev_pos[1] < 0 and curr_pos[1] >= 0)
+        ):
+            return None
+
+        t = prev_pos[1] / (prev_pos[1] - curr_pos[1] + 1e-8)
+        x_at_net = (prev_pos[0] + t * (curr_pos[0] - prev_pos[0])).item()
+        z_at_net = (prev_pos[2] + t * (curr_pos[2] - prev_pos[2])).item()
+
+        if abs(x_at_net) > HALF_DOUBLES_WIDTH:
+            return float("inf")
+
+        net_height = self._net_height_at_x(x_at_net)
+        return z_at_net - net_height
+
+    def apply_net_collision(
+        self,
+        state: BallState,
+        net_pos: Tensor | None = None,
+    ) -> BallState:
+        """Apply net collision response (blcs.md §3.2).
+
+        The collision reflects the Y velocity (bounce-back) and reduces
+        overall speed by alpha_net.
 
         Args:
             state: Current ball state.
+            net_pos: Optional collision position at the net plane.
 
         Returns:
-            BallState: State with reduced velocity.
+            BallState: State with reflected and reduced velocity.
 
         """
         cfg = self.config
+        new_pos = state.position.clone()
+        if net_pos is not None:
+            new_pos = net_pos.clone()
+        else:
+            new_pos[1] = 0.0
+
+        new_vel = state.velocity * cfg.alpha_net
+        new_vel[1] = -new_vel[1]
+
         return BallState(
-            position=state.position.clone(),
-            velocity=state.velocity * cfg.alpha_net,
+            position=new_pos,
+            velocity=new_vel,
             spin=state.spin.clone(),
         )
+
+    def _net_height_at_x(self, x_at_net: float) -> float:
+        """Get net height at a given x position (meters)."""
+        x_ratio = min(abs(x_at_net) / HALF_DOUBLES_WIDTH, 1.0)
+        return NET_HEIGHT_CENTER + x_ratio * (NET_HEIGHT_POST - NET_HEIGHT_CENTER)
 
     def check_fence_collision(self, pos: Tensor) -> bool:
         """Check if ball has reached fence boundary (blcs.md §3.3).
