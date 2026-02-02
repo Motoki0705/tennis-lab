@@ -40,6 +40,61 @@ class BallFrameAnnotation(BaseModel):
     source: Literal["manual", "assist", "unknown"] = "manual"
 
 
+class BallAssistMeta(BaseModel):
+    """Metadata for a cached ball assist run."""
+
+    checkpoint_path: str | None = None
+    model_type: Literal["wasb", "hrcnet"] = "wasb"
+    device: Literal["cpu", "cuda"] = "cpu"
+    batch_size: int = Field(default=64, ge=1)
+    score_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    max_disp: int = Field(default=300, ge=1)
+    created_at: str = ""
+
+
+class BallAssistState(BaseModel):
+    """Cached ball assist annotations for a clip."""
+
+    clip: BallClipConfig
+    meta: BallAssistMeta
+    annotations: dict[int, BallFrameAnnotation] = Field(default_factory=dict)
+
+
+class BallAssistSummary(BaseModel):
+    """Summary of cached ball assist availability."""
+
+    available: bool
+    clip_matches_current: bool
+    clip: BallClipConfig | None = None
+    meta: BallAssistMeta | None = None
+    count: int = 0
+
+
+class BallAssistRunRequest(BaseModel):
+    """Optional overrides when running ball assist."""
+
+    checkpoint_path: str | None = None
+    model_type: Literal["wasb", "hrcnet"] | None = None
+    device: Literal["cpu", "cuda"] | None = None
+    batch_size: int | None = Field(default=None, ge=1)
+    score_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+    max_disp: int | None = Field(default=None, ge=1)
+
+
+class BallAssistRunResult(BaseModel):
+    """Result of a ball assist run."""
+
+    clip: BallClipConfig
+    meta: BallAssistMeta
+    count: int
+
+
+class BallAssistAll(BaseModel):
+    """Container for all cached assist annotations."""
+
+    annotations: dict[int, BallFrameAnnotation]
+
+
 class CourtKeypoint(BaseModel):
     """Court keypoint annotation in pixel coordinates."""
 
