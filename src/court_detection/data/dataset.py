@@ -6,12 +6,15 @@ import json
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
 
-NUM_KEYPOINTS = 20
+from src.utils.geometry.constants import NUM_COURT_KP
+
+NUM_KEYPOINTS = NUM_COURT_KP  # CourtKP20 specification
 
 
 class CourtKeypointDataset(Dataset):

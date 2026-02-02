@@ -7,51 +7,16 @@ from typing import Any
 import cv2
 import numpy as np
 
-NUM_KEYPOINTS = 20
+from src.utils.geometry.constants import (
+    COURT_KP_NAMES,
+    COURT_SKELETON,
+    NUM_COURT_KP,
+)
 
-KEYPOINT_NAMES = [
-    "far_doubles_corner_left",
-    "far_doubles_corner_right",
-    "near_doubles_corner_left",
-    "near_doubles_corner_right",
-    "far_singles_corner_left",
-    "near_singles_corner_left",
-    "far_singles_corner_right",
-    "near_singles_corner_right",
-    "far_service_left",
-    "far_service_right",
-    "near_service_left",
-    "near_service_right",
-    "far_service_T",
-    "near_service_T",
-    "net_center",
-    "net_post_left_base",
-    "net_post_left_top",
-    "net_post_right_base",
-    "net_post_right_top",
-    "center_strap_top",
-]
-
-COURT_LINE_CONNECTIONS = [
-    # Doubles sidelines
-    (0, 2),
-    (1, 3),
-    # Baselines (doubles)
-    (0, 1),
-    (2, 3),
-    # Singles sidelines
-    (4, 5),
-    (6, 7),
-    # Service lines
-    (8, 9),
-    (10, 11),
-    # Center service line
-    (12, 13),
-    # Net
-    (15, 17),
-    (16, 18),
-    (14, 19),
-]
+# Use CourtKP20 definitions as the single source of truth
+NUM_KEYPOINTS = NUM_COURT_KP
+KEYPOINT_NAMES = list(COURT_KP_NAMES)  # Convert tuple to list for backwards compatibility
+COURT_LINE_CONNECTIONS = COURT_SKELETON  # Use full skeleton for 2D visualization
 
 
 def visualize_keypoints(

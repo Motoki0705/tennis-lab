@@ -3,55 +3,45 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 from src.court_detection.data.dataset import CourtKeypointDataset
 
+if TYPE_CHECKING:
+    from omegaconf import DictConfig
+
 
 class CourtKeypointDataModule(pl.LightningDataModule):
     """Lightning DataModule for court keypoint detection.
 
     Args:
-        data_dir: Path to data directory.
-        batch_size: Batch size.
-        num_workers: Number of data loading workers.
-        pin_memory: Whether to pin memory.
-        input_size: Input image size [H, W].
-        heatmap_size: Output heatmap size [H, W].
-        train_split: Training split ratio.
-        val_split: Validation split ratio.
-        test_split: Test split ratio.
-        augmentation: Augmentation config dict.
+        config: Configuration dictionary with data parameters.
     """
 
-    def __init__(
-        self,
-        data_dir: str | Path = "data/court_detection/scenes",
-        batch_size: int = 32,
-        num_workers: int = 4,
-        pin_memory: bool = True,
-        input_size: list[int] | tuple[int, int] = (256, 256),
-        heatmap_size: list[int] | tuple[int, int] = (64, 64),
-        train_split: float = 0.8,
-        val_split: float = 0.1,
-        test_split: float = 0.1,
-        augmentation: dict[str, Any] | None = None,
-    ) -> None:
-        super().__init__()
+    def __init__(self, config: DictConfig | None = None) -> None:
+        """Initialize the DataModule.
 
-        self.data_dir = Path(data_dir)
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.pin_memory = pin_memory
-        self.input_size = tuple(input_size)
-        self.heatmap_size = tuple(heatmap_size)
-        self.train_split = train_split
-        self.val_split = val_split
-        self.test_split = test_split
-        self.augmentation = augmentation or {}
+        Args:
+            config: Configuration dictionary with data parameters.
+
+        """
+        super().__init__()
+        self.config = config or {}
+
+        data_cfg = self.config.get("data", {})
+        self.data_dir = Path(data_cfg.get("data_dir", "data/court_detection/scenes"))
+        self.batch_size = data_cfg.get("batch_size", 32)
+        self.num_workers = data_cfg.get("num_workers", 4)
+        self.pin_memory = data_cfg.get("pin_memory", True)
+        self.input_size = tuple(data_cfg.get("input_size", [256, 256]))
+        self.heatmap_size = tuple(data_cfg.get("heatmap_size", [64, 64]))
+        self.train_split = data_cfg.get("train_split", 0.8)
+        self.val_split = data_cfg.get("val_split", 0.1)
+        self.test_split = data_cfg.get("test_split", 0.1)
+        self.augmentation = data_cfg.get("augmentation", {})
 
         self.train_dataset: CourtKeypointDataset | None = None
         self.val_dataset: CourtKeypointDataset | None = None
