@@ -163,6 +163,50 @@ cd third_party/GVHMR
 
 ---
 
+## 共通 CLI オプション
+
+すべてのトレーニングスクリプトは、統一された実行設定（`run.*`）をサポートしています。
+
+### 基本的な使用法
+
+```bash
+# デフォルト設定で学習
+uv run python -m src.blcs.scripts.train
+
+# 出力ディレクトリを指定
+uv run python -m src.plcs.scripts.train run.output_dir=custom/path
+
+# チェックポイントから再開
+uv run python -m src.wasb.scripts.train run.resume=outputs/wasb/checkpoints/last.ckpt
+
+# クイック動作確認（1バッチのみ実行）
+uv run python -m src.court_detection.scripts.train run.fast_dev_run=true
+
+# データ読み込み確認（学習なし、シェイプ表示のみ）
+uv run python -m src.blcs.scripts.train run.dry_run=true
+
+# CPU のみで実行
+uv run python -m src.plcs.scripts.train run.gpus=0
+
+# カスタムシードで実行
+uv run python -m src.blcs.scripts.train run.seed=123
+```
+
+### 利用可能なオプション
+
+| オプション | 型 | デフォルト | 説明 |
+|-----------|-----|-----------|------|
+| `run.output_dir` | string | タスク固有 | 学習結果（チェックポイント、ログ、設定）の保存先 |
+| `run.seed` | int/null | 42 | 再現性のためのランダムシード |
+| `run.gpus` | int | 1 | 使用する GPU 数（0 で CPU、CUDA 未検出時も CPU） |
+| `run.resume` | string/null | null | 学習を再開するチェックポイントのパス |
+| `run.fast_dev_run` | bool | false | 動作確認モード（1バッチのみ実行、テストスキップ） |
+| `run.dry_run` | bool | false | データ確認モード（1バッチ読込、シェイプ表示、学習なし） |
+
+詳細は [`docs/run_config_schema.md`](docs/run_config_schema.md) を参照してください。
+
+---
+
 ## ディレクトリ構造
 
 ```
