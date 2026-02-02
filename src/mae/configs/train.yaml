@@ -12,10 +12,7 @@ defaults:
   - model: base
   - data: cached_batches
   - training: default
-  - optional override trainer: default
-
-# Random seed
-seed: 42
+  - run: train
 
 # Checkpoint configuration
 checkpoint:
@@ -39,15 +36,9 @@ logger:
   name: mae
   version: null
 
-# Trainer configuration
-trainer:
-  accelerator: auto
-  devices: auto
-  strategy: auto
-  precision: 16-mixed
-  gradient_clip_val: 1.0
-  accumulate_grad_batches: 1
-  log_every_n_steps: 50
-  val_check_interval: 1.0
-  enable_progress_bar: true
-  deterministic: false
+hydra:
+  run:
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
