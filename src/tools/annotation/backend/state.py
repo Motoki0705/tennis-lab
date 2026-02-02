@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from src.tools.annotation.backend.models import (
+    BallAssistState,
     BallClipConfig,
     BallFrameAnnotation,
     CourtFrameAnnotation,
@@ -50,6 +51,10 @@ class StatePaths:
     def court_state_path(self) -> Path:
         return self.state_dir / "court.json"
 
+    @property
+    def ball_assist_path(self) -> Path:
+        return self.state_dir / "ball_assist.json"
+
 
 class AnnotationState:
     """Loads/saves ball and court annotations."""
@@ -84,6 +89,54 @@ class AnnotationState:
         annotations = data.setdefault("annotations", {})
         annotations[str(local_idx)] = ann.model_dump()
         _atomic_write_json(self._paths.ball_state_path, data)
+
+    def delete_ball_annotation(self, local_idx: int) -> None:
+        data = _read_json(self._paths.ball_state_path)
+        annotations = data.get("annotations") or {}
+        if str(local_idx) in annotations:
+            annotations.pop(str(local_idx), None)
+            data["annotations"] = annotations
+            _atomic_write_json(self._paths.ball_state_path, data)
+
+    def has_ball_annotation(self, local_idx: int) -> bool:
+        data = _read_json(self._paths.ball_state_path)
+        annotations = data.get("annotations") or {}
+        return str(local_idx) in annotations
+
+    def list_ball_annotated_frames(self) -> list[int]:
+        data = _read_json(self._paths.ball_state_path)
+        annotations = data.get("annotations") or {}
+        out: list[int] = []
+        for k in annotations.keys():
+            try:
+                out.append(int(k))
+            except ValueError:
+                continue
+        return sorted(out)
+
+    def load_ball_assist_state(self) -> BallAssistState | None:
+        data = _read_json(self._paths.ball_assist_path)
+        if not data:
+            return None
+        try:
+            return BallAssistState.model_validate(data)
+        except Exception:
+            return None
+
+    def save_ball_assist_state(self, state: BallAssistState) -> None:
+        _atomic_write_json(self._paths.ball_assist_path, state.model_dump())
+
+    def load_ball_assist_annotation(self, local_idx: int) -> BallFrameAnnotation | None:
+        data = _read_json(self._paths.ball_assist_path)
+        if not data:
+            return None
+        ann = (data.get("annotations") or {}).get(str(local_idx))
+        if not ann:
+            return None
+        try:
+            return BallFrameAnnotation.model_validate(ann)
+        except Exception:
+            return None
 
     def list_court_annotated_frames(self) -> list[int]:
         data = _read_json(self._paths.court_state_path)
@@ -125,4 +178,12 @@ class AnnotationState:
         annotations = data.setdefault("annotations", {})
         annotations[str(ann.frame_idx)] = ann.model_dump()
         _atomic_write_json(self._paths.court_state_path, data)
+
+    def delete_court_annotation(self, frame_idx: int) -> None:
+        data = _read_json(self._paths.court_state_path)
+        annotations = data.get("annotations") or {}
+        if str(frame_idx) in annotations:
+            annotations.pop(str(frame_idx), None)
+            data["annotations"] = annotations
+            _atomic_write_json(self._paths.court_state_path, data)
 

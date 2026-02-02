@@ -2,81 +2,24 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-type VideoMeta = {
-  fps: number;
-  frame_count: number;
-  width: number;
-  height: number;
-};
-
-type BallClipConfig = {
-  start_frame: number;
-  clip_length: number;
-};
-
-type BallFrameAnnotation = {
-  visibility: 0 | 1 | 2;
-  x_px: number;
-  y_px: number;
-  score: number;
-  source: "manual" | "assist" | "unknown";
-};
-
-type CourtKeypoint = {
-  x_px: number;
-  y_px: number;
-  visibility: 0 | 1;
-  source: "manual" | "assist" | "homography" | "unknown";
-};
-
-type CourtFrameAnnotation = {
-  frame_idx: number;
-  keypoints: CourtKeypoint[];
-};
-
-type ExportResult = { output_dir: string };
-
-function apiBase(): string {
-  return process.env.NEXT_PUBLIC_ANNOTATION_BACKEND ?? "http://127.0.0.1:8000";
-}
-
-async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${apiBase()}${path}`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return (await res.json()) as T;
-}
-
-async function apiPut<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${apiBase()}${path}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return (await res.json()) as T;
-}
-
-async function apiPost<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${apiBase()}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body)
-  });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return (await res.json()) as T;
-}
-
-function clamp(v: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, v));
-}
+import { apiDelete, apiGet, apiPost, apiPut } from "./shared/api";
+import { clamp, isTypingInField } from "./shared/utils";
+import type {
+  BallAssistAll,
+  BallAssistRunResult,
+  BallAssistSummary,
+  BallClipConfig,
+  BallFrameAnnotation,
+  CourtFrameAnnotation,
+  ExportResult,
+  VideoMeta
+} from "./shared/types";
+import BallPanel from "./components/BallPanel";
+import CanvasStage from "./components/CanvasStage";
+import CourtPanel from "./components/CourtPanel";
+import SeekBar from "./components/SeekBar";
 
 export default function Page() {
-  const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const renderTokenRef = useRef<number>(0);
-  const frameCacheRef = useRef<Map<number, HTMLImageElement>>(new Map());
-  const frameLoadRef = useRef<Map<number, Promise<HTMLImageElement>>>(new Map());
-  const preloadGenRef = useRef<number>(0);
   const [meta, setMeta] = useState<VideoMeta | null>(null);
   const [mode, setMode] = useState<"ball" | "court">("ball");
   const [status, setStatus] = useState<string>("");
@@ -84,6 +27,7 @@ export default function Page() {
   const statusTimeoutRef = useRef<number | null>(null);
   const [seekPreviewIdx, setSeekPreviewIdx] = useState<number | null>(null);
   const [isSeeking, setIsSeeking] = useState<boolean>(false);
+  const [resetCacheToken, setResetCacheToken] = useState<number>(0);
 
   // Ball (sequential clip)
   const [ballCfg, setBallCfg] = useState<BallClipConfig>({
@@ -100,6 +44,16 @@ export default function Page() {
   });
   const [ballClipMarkStart, setBallClipMarkStart] = useState<number | null>(null);
   const [ballClipMarkEnd, setBallClipMarkEnd] = useState<number | null>(null);
+  const [ballAssistSummary, setBallAssistSummary] = useState<
+    BallAssistSummary | null
+  >(null);
+  const [ballAssistMap, setBallAssistMap] = useState<
+    Map<number, BallFrameAnnotation>
+  >(new Map());
+  const [ballAssistLoading, setBallAssistLoading] = useState<boolean>(false);
+  const [ballAnnotatedFrames, setBallAnnotatedFrames] = useState<Set<number>>(
+    new Set()
+  );
 
   // Court (sparse frames)
   const [courtFrameIdx, setCourtFrameIdx] = useState<number>(0);
@@ -112,10 +66,17 @@ export default function Page() {
     return courtFrameIdx;
   }, [mode, ballCfg.start_frame, ballLocalIdx, courtFrameIdx]);
 
-  const dragRef = useRef<{
-    kind: "ball" | "court" | null;
-    kpIndex: number;
-  }>({ kind: null, kpIndex: -1 });
+  const ballAssistAnn = useMemo(() => {
+    return ballAssistMap.get(ballLocalIdx) ?? null;
+  }, [ballAssistMap, ballLocalIdx]);
+
+  const manualCount = useMemo(() => {
+    let count = 0;
+    for (const idx of ballAnnotatedFrames) {
+      if (idx >= 0 && idx < ballCfg.clip_length) count += 1;
+    }
+    return count;
+  }, [ballAnnotatedFrames, ballCfg.clip_length]);
 
   function setStatusWithTimeout(msg: string, ms: number = 1200) {
     setStatus(msg);
@@ -128,11 +89,33 @@ export default function Page() {
     }, ms);
   }
 
-  function isTypingInField(): boolean {
-    const el = document.activeElement;
-    if (!el) return false;
-    const tag = el.tagName.toLowerCase();
-    return tag === "input" || tag === "textarea" || tag === "select";
+  async function refreshBallAssistSummary(): Promise<BallAssistSummary | null> {
+    try {
+      const summary = await apiGet<BallAssistSummary>("/api/ball/assist/summary");
+      setBallAssistSummary(summary);
+      return summary;
+    } catch (e) {
+      setBallAssistSummary(null);
+      return null;
+    }
+  }
+
+  async function loadBallAssistAll(): Promise<void> {
+    const data = await apiGet<BallAssistAll>("/api/ball/assist/all");
+    const next = new Map<number, BallFrameAnnotation>();
+    for (const [k, v] of Object.entries(data.annotations)) {
+      next.set(Number(k), v);
+    }
+    setBallAssistMap(next);
+  }
+
+  async function refreshBallAnnotatedFrames(): Promise<void> {
+    try {
+      const frames = await apiGet<number[]>("/api/ball/annotated_frames");
+      setBallAnnotatedFrames(new Set(frames));
+    } catch (e) {
+      setBallAnnotatedFrames(new Set());
+    }
   }
 
   useEffect(() => {
@@ -145,78 +128,19 @@ export default function Page() {
         setBallLocalIdx(0);
         const names = await apiGet<string[]>("/api/court/kp_names");
         setKpNames(names);
+        await refreshBallAnnotatedFrames();
+        const summary = await refreshBallAssistSummary();
+        if (summary?.available && summary.clip_matches_current) {
+          await loadBallAssistAll();
+        } else {
+          setBallAssistMap(new Map());
+        }
         setStatus("");
       } catch (e) {
         setStatus(String(e));
       }
     })();
   }, []);
-
-  function frameUrl(idx: number): string {
-    return `${apiBase()}/api/frame/${idx}.jpg`;
-  }
-
-  function getCachedFrame(idx: number): HTMLImageElement | null {
-    const cached = frameCacheRef.current.get(idx);
-    if (cached && cached.complete && cached.naturalWidth > 0) return cached;
-    return null;
-  }
-
-  function preloadFrame(idx: number): Promise<HTMLImageElement> {
-    const cached = getCachedFrame(idx);
-    if (cached) return Promise.resolve(cached);
-    const inflight = frameLoadRef.current.get(idx);
-    if (inflight) return inflight;
-
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    const promise = new Promise<HTMLImageElement>((resolve, reject) => {
-      img.onload = () => {
-        frameCacheRef.current.set(idx, img);
-        frameLoadRef.current.delete(idx);
-        resolve(img);
-      };
-      img.onerror = () => {
-        frameLoadRef.current.delete(idx);
-        reject(new Error(`failed to load frame ${idx}`));
-      };
-    });
-    frameLoadRef.current.set(idx, promise);
-    img.src = frameUrl(idx);
-    return promise;
-  }
-
-  function pruneFrameCache(centerIdx: number, maxSize: number) {
-    const cache = frameCacheRef.current;
-    if (cache.size <= maxSize) return;
-    const entries = Array.from(cache.keys());
-    entries.sort((a, b) => Math.abs(b - centerIdx) - Math.abs(a - centerIdx));
-    const toRemove = entries.slice(0, Math.max(0, entries.length - maxSize));
-    for (const idx of toRemove) cache.delete(idx);
-  }
-
-  function preloadRange(centerIdx: number, radius: number, maxSize: number) {
-    const gen = ++preloadGenRef.current;
-    const indices: number[] = [centerIdx];
-    for (let i = 1; i <= radius; i++) {
-      indices.push(centerIdx + i, centerIdx - i);
-    }
-    for (const idx of indices) {
-      if (!meta) return;
-      if (idx < 0 || idx >= meta.frame_count) continue;
-      if (getCachedFrame(idx)) continue;
-      void preloadFrame(idx).catch(() => {
-        if (gen !== preloadGenRef.current) return;
-      });
-    }
-    pruneFrameCache(centerIdx, maxSize);
-  }
-
-  function resetFrameCache() {
-    frameCacheRef.current.clear();
-    frameLoadRef.current.clear();
-    preloadGenRef.current += 1;
-  }
 
   function setGlobalFrameIdx(next: number) {
     if (!meta) return;
@@ -263,96 +187,6 @@ export default function Page() {
     })();
   }, [mode, ballLocalIdx, courtFrameIdx]);
 
-  // Set canvas sizes once meta is loaded
-  useEffect(() => {
-    if (!meta) return;
-    const frameCanvas = frameCanvasRef.current;
-    const overlayCanvas = overlayCanvasRef.current;
-    if (frameCanvas) {
-      frameCanvas.width = meta.width;
-      frameCanvas.height = meta.height;
-    }
-    if (overlayCanvas) {
-      overlayCanvas.width = meta.width;
-      overlayCanvas.height = meta.height;
-    }
-  }, [meta]);
-
-  // Draw frame image (keeps previous frame until new one is ready)
-  useEffect(() => {
-    const frameCanvas = frameCanvasRef.current;
-    if (!frameCanvas || !meta) return;
-
-    const token = ++renderTokenRef.current;
-    let canceled = false;
-    const ctx = frameCanvas.getContext("2d");
-    if (!ctx) return;
-    const cached = getCachedFrame(globalFrameIdx);
-    if (cached) {
-      ctx.clearRect(0, 0, frameCanvas.width, frameCanvas.height);
-      ctx.drawImage(cached, 0, 0, frameCanvas.width, frameCanvas.height);
-      setIsFrameLoading(false);
-    } else {
-      setIsFrameLoading(true);
-      void preloadFrame(globalFrameIdx)
-        .then((img) => {
-          if (canceled) return;
-          if (token !== renderTokenRef.current) return;
-          ctx.clearRect(0, 0, frameCanvas.width, frameCanvas.height);
-          ctx.drawImage(img, 0, 0, frameCanvas.width, frameCanvas.height);
-          setIsFrameLoading(false);
-        })
-        .catch(() => {
-          if (canceled) return;
-          if (token !== renderTokenRef.current) return;
-          setIsFrameLoading(false);
-          setStatus("failed to load frame image (check backend / video / frame idx)");
-        });
-    }
-
-    preloadRange(globalFrameIdx, 6, 48);
-
-    return () => {
-      canceled = true;
-    };
-  }, [meta, globalFrameIdx]);
-
-  // Draw overlays (cleared immediately on frame change)
-  useEffect(() => {
-    const overlayCanvas = overlayCanvasRef.current;
-    if (!overlayCanvas || !meta) return;
-    const ctx = overlayCanvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-
-    if (mode === "ball") {
-      if (ballAnn.visibility > 0) {
-        ctx.fillStyle = "#00E5FF";
-        ctx.strokeStyle = "#001018";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(ballAnn.x_px, ballAnn.y_px, 8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      }
-      return;
-    }
-
-    if (mode === "court" && courtAnn) {
-      for (let i = 0; i < courtAnn.keypoints.length; i++) {
-        const kp = courtAnn.keypoints[i];
-        if (kp.visibility === 0) continue;
-        ctx.fillStyle = i === activeKp ? "#FFB020" : "#22C55E";
-        ctx.strokeStyle = "#111827";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(kp.x_px, kp.y_px, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      }
-    }
-  }, [meta, mode, globalFrameIdx, ballAnn, courtAnn, activeKp]);
-
   async function saveBall() {
     try {
       const saved = await apiPut<BallFrameAnnotation>(
@@ -360,7 +194,33 @@ export default function Page() {
         ballAnn
       );
       setBallAnn(saved);
+      setBallAnnotatedFrames((prev) => {
+        const next = new Set(prev);
+        next.add(ballLocalIdx);
+        return next;
+      });
       setStatusWithTimeout("saved");
+    } catch (e) {
+      setStatus(String(e));
+    }
+  }
+
+  async function resetBall() {
+    try {
+      await apiDelete<{ ok: boolean }>(`/api/ball/annotations/${ballLocalIdx}`);
+      setBallAnn({
+        visibility: 0,
+        x_px: 0,
+        y_px: 0,
+        score: 0,
+        source: "manual"
+      });
+      setBallAnnotatedFrames((prev) => {
+        const next = new Set(prev);
+        next.delete(ballLocalIdx);
+        return next;
+      });
+      setStatusWithTimeout("reset");
     } catch (e) {
       setStatus(String(e));
     }
@@ -374,6 +234,19 @@ export default function Page() {
       );
       setCourtAnn(saved);
       setStatusWithTimeout("saved");
+    } catch (e) {
+      setStatus(String(e));
+    }
+  }
+
+  async function resetCourt() {
+    try {
+      await apiDelete<{ ok: boolean }>(`/api/court/annotations/${courtFrameIdx}`);
+      const ann = await apiGet<CourtFrameAnnotation>(
+        `/api/court/annotations/${courtFrameIdx}`
+      );
+      setCourtAnn(ann);
+      setStatusWithTimeout("reset");
     } catch (e) {
       setStatus(String(e));
     }
@@ -431,10 +304,85 @@ export default function Page() {
       setBallCfg(saved);
       setBallLocalIdx(0);
       setStatusWithTimeout(`clip set: ${start}..${end}`);
+      await refreshBallAnnotatedFrames();
+      await refreshBallAssistSummary();
+      setBallAssistMap(new Map());
     } catch (e) {
       setStatus(String(e));
     }
   }
+
+  async function runBallAssist() {
+    setBallAssistLoading(true);
+    try {
+      const result = await apiPost<BallAssistRunResult>("/api/ball/assist/run");
+      setStatusWithTimeout(`assist done: ${result.count} frames`);
+      const summary = await refreshBallAssistSummary();
+      if (summary?.available && summary.clip_matches_current) {
+        await loadBallAssistAll();
+      }
+    } catch (e) {
+      setStatus(String(e));
+    } finally {
+      setBallAssistLoading(false);
+    }
+  }
+
+  async function applyAssistCurrent() {
+    if (!ballAssistAnn) {
+      setStatus("assist not available for current frame");
+      return;
+    }
+    const next: BallFrameAnnotation = {
+      ...ballAssistAnn,
+      source: "assist"
+    };
+    setBallAnn(next);
+    try {
+      const saved = await apiPut<BallFrameAnnotation>(
+        `/api/ball/annotations/${ballLocalIdx}`,
+        next
+      );
+      setBallAnn(saved);
+      setBallAnnotatedFrames((prev) => {
+        const updated = new Set(prev);
+        updated.add(ballLocalIdx);
+        return updated;
+      });
+      setStatusWithTimeout("assist applied");
+    } catch (e) {
+      setStatus(String(e));
+    }
+  }
+
+  async function runCourtHomography() {
+    if (!courtAnn) return;
+    try {
+      const filled = await apiPost<CourtFrameAnnotation>(
+        "/api/court/homography",
+        courtAnn
+      );
+      setCourtAnn(filled);
+      setStatusWithTimeout("homography filled");
+    } catch (e) {
+      setStatus(String(e));
+    }
+  }
+
+  useEffect(() => {
+    (async () => {
+      const summary = await refreshBallAssistSummary();
+      if (summary?.available && summary.clip_matches_current) {
+        try {
+          await loadBallAssistAll();
+        } catch (e) {
+          setBallAssistMap(new Map());
+        }
+        return;
+      }
+      setBallAssistMap(new Map());
+    })();
+  }, [ballCfg.start_frame, ballCfg.clip_length]);
 
   // Keyboard shortcuts (common + per-mode)
   useEffect(() => {
@@ -548,184 +496,46 @@ export default function Page() {
     ballClipMarkEnd
   ]);
 
-  function toCanvasXY(e: React.MouseEvent<HTMLCanvasElement>): {
-    x: number;
-    y: number;
-  } {
-    const canvas = e.currentTarget;
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-    return { x, y };
-  }
-
-  function findNearestCourtKp(
-    x: number,
-    y: number,
-    ann: CourtFrameAnnotation,
-    radiusPx: number
-  ): number {
-    let best = -1;
-    let bestD2 = radiusPx * radiusPx;
-    for (let i = 0; i < ann.keypoints.length; i++) {
-      const kp = ann.keypoints[i];
-      if (kp.visibility === 0) continue;
-      const dx = kp.x_px - x;
-      const dy = kp.y_px - y;
-      const d2 = dx * dx + dy * dy;
-      if (d2 <= bestD2) {
-        bestD2 = d2;
-        best = i;
-      }
-    }
-    return best;
-  }
-
   return (
     <div className="root">
-      <div className="canvasWrap">
-        <div
-          className="canvasStage"
-          style={{
-            aspectRatio: meta ? `${meta.width} / ${meta.height}` : "16 / 9"
-          }}
-        >
-          <div className={`loadingBadge ${isFrameLoading ? "show" : ""}`}>
-            Loading...
-          </div>
-          <canvas ref={frameCanvasRef} className="frameCanvas" />
-          <canvas
-            ref={overlayCanvasRef}
-            className="overlayCanvas"
-            onMouseDown={(e) => {
-            if (!meta) return;
-            const { x, y } = toCanvasXY(e);
-            if (mode === "ball") {
-              const dx = ballAnn.x_px - x;
-              const dy = ballAnn.y_px - y;
-              const near = ballAnn.visibility > 0 && dx * dx + dy * dy <= 12 * 12;
-              if (near) {
-                dragRef.current = { kind: "ball", kpIndex: -1 };
-              } else {
-                setBallAnn({
-                  ...ballAnn,
-                  visibility: 1,
-                  x_px: x,
-                  y_px: y,
-                  source: "manual"
-                });
-                dragRef.current = { kind: "ball", kpIndex: -1 };
-              }
-            } else if (mode === "court" && courtAnn) {
-              const nearest = findNearestCourtKp(x, y, courtAnn, 10);
-              if (nearest >= 0) {
-                dragRef.current = { kind: "court", kpIndex: nearest };
-                setActiveKp(nearest);
-              } else {
-                const autoNext = nextUnsetKpIndex(courtAnn, activeKp);
-                const next: CourtFrameAnnotation = {
-                  ...courtAnn,
-                  keypoints: courtAnn.keypoints.map((kp, i) =>
-                    i === activeKp
-                      ? {
-                          ...kp,
-                          visibility: 1 as const,
-                          x_px: x,
-                          y_px: y,
-                          source: "manual" as const
-                        }
-                      : kp
-                  )
-                };
-                setCourtAnn(next);
-                dragRef.current = { kind: "court", kpIndex: activeKp };
-                if (autoNext !== null && autoNext !== activeKp) setActiveKp(autoNext);
-              }
-            }
-          }}
-            onMouseMove={(e) => {
-            if (!meta) return;
-            const drag = dragRef.current;
-            if (!drag.kind) return;
-            const { x, y } = toCanvasXY(e);
-            if (drag.kind === "ball") {
-              setBallAnn({
-                ...ballAnn,
-                visibility: 1,
-                x_px: x,
-                y_px: y,
-                source: "manual"
-              });
-            } else if (drag.kind === "court" && courtAnn) {
-              const idx = drag.kpIndex;
-              if (idx < 0) return;
-              const next: CourtFrameAnnotation = {
-                ...courtAnn,
-                keypoints: courtAnn.keypoints.map((kp, i) =>
-                  i === idx
-                    ? {
-                        ...kp,
-                        visibility: 1 as const,
-                        x_px: x,
-                        y_px: y,
-                        source: "manual" as const
-                      }
-                    : kp
-                )
-              };
-              setCourtAnn(next);
-            }
-          }}
-            onMouseUp={async () => {
-            const drag = dragRef.current;
-            dragRef.current = { kind: null, kpIndex: -1 };
-            if (drag.kind === "ball") await saveBall();
-            if (drag.kind === "court" && courtAnn) await saveCourt(courtAnn);
-          }}
-            onMouseLeave={() => {
-            dragRef.current = { kind: null, kpIndex: -1 };
-          }}
-          />
-        </div>
-      </div>
+      <CanvasStage
+        meta={meta}
+        mode={mode}
+        globalFrameIdx={globalFrameIdx}
+        ballAnn={ballAnn}
+        ballAssistAnn={ballAssistAnn}
+        courtAnn={courtAnn}
+        activeKp={activeKp}
+        isFrameLoading={isFrameLoading}
+        resetCacheToken={resetCacheToken}
+        onBallAnnChange={setBallAnn}
+        onCourtAnnChange={setCourtAnn}
+        onActiveKpChange={setActiveKp}
+        onBallSave={saveBall}
+        onCourtSave={saveCourt}
+        onFrameLoadingChange={setIsFrameLoading}
+        onStatus={setStatus}
+      />
 
       <div className="panel">
-        <div className="row">
-          <label>seek</label>
-          <input
-            type="range"
-            min={0}
-            max={meta ? meta.frame_count - 1 : 0}
-            value={seekPreviewIdx ?? globalFrameIdx}
-            onMouseDown={() => setIsSeeking(true)}
-            onTouchStart={() => setIsSeeking(true)}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              setSeekPreviewIdx(v);
-              if (!isSeeking) setIsSeeking(true);
-            }}
-            onMouseUp={() => {
-              const target = seekPreviewIdx ?? globalFrameIdx;
-              const jump = Math.abs(target - globalFrameIdx);
-              if (jump > 18) resetFrameCache();
-              setGlobalFrameIdx(target);
-              setIsSeeking(false);
-              setSeekPreviewIdx(null);
-            }}
-            onTouchEnd={() => {
-              const target = seekPreviewIdx ?? globalFrameIdx;
-              const jump = Math.abs(target - globalFrameIdx);
-              if (jump > 18) resetFrameCache();
-              setGlobalFrameIdx(target);
-              setIsSeeking(false);
-              setSeekPreviewIdx(null);
-            }}
-          />
-          <div className="small">
-            {seekPreviewIdx ?? globalFrameIdx}
-            {meta ? ` / ${meta.frame_count - 1}` : ""}
-          </div>
-        </div>
+        <SeekBar
+          meta={meta}
+          globalFrameIdx={globalFrameIdx}
+          seekPreviewIdx={seekPreviewIdx}
+          isSeeking={isSeeking}
+          onSeekStart={() => setIsSeeking(true)}
+          onSeekPreviewChange={(idx) => {
+            setSeekPreviewIdx(idx);
+            if (!isSeeking) setIsSeeking(true);
+          }}
+          onSeekCommit={(target) => {
+            const jump = Math.abs(target - globalFrameIdx);
+            if (jump > 18) setResetCacheToken((v) => v + 1);
+            setGlobalFrameIdx(target);
+            setIsSeeking(false);
+            setSeekPreviewIdx(null);
+          }}
+        />
 
         <div className="row">
           <label>Mode</label>
@@ -749,169 +559,70 @@ export default function Page() {
         </div>
 
         {mode === "ball" ? (
-          <>
-            <div className="row">
-              <label>clip start</label>
-              <input
-                type="number"
-                value={ballCfg.start_frame}
-                onChange={(e) =>
-                  setBallCfg({
-                    ...ballCfg,
-                    start_frame: Number(e.target.value)
-                  })
-                }
-              />
-              <label>clip length</label>
-              <input
-                type="number"
-                value={ballCfg.clip_length}
-                onChange={(e) =>
-                  setBallCfg({
-                    ...ballCfg,
-                    clip_length: Number(e.target.value)
-                  })
-                }
-              />
-              <button
-                className="primary"
-                onClick={async () => {
-                  if (!meta) return;
-                  try {
-                    const next = {
-                      start_frame: clamp(ballCfg.start_frame, 0, meta.frame_count - 1),
-                      clip_length: clamp(
-                        ballCfg.clip_length,
-                        1,
-                        meta.frame_count
-                      )
-                    };
-                    const saved = await apiPut<BallClipConfig>(
-                      "/api/ball/clip_config",
-                      next
-                    );
-                    setBallCfg(saved);
-                    setBallLocalIdx(0);
-                    setStatusWithTimeout("clip config saved");
-                  } catch (e) {
-                    setStatus(String(e));
-                  }
-                }}
-              >
-                Set clip
-              </button>
-            </div>
-
-            <div className="row">
-              <button
-                onClick={() => {
-                  setBallClipMarkStart(globalFrameIdx);
-                  setStatusWithTimeout(`clip start = ${globalFrameIdx}`);
-                }}
-              >
-                Mark start [
-              </button>
-              <button
-                onClick={() => {
-                  setBallClipMarkEnd(globalFrameIdx);
-                  setStatusWithTimeout(`clip end = ${globalFrameIdx}`);
-                }}
-              >
-                Mark end ]
-              </button>
-              <div className="small">
-                marked: {ballClipMarkStart ?? "—"} .. {ballClipMarkEnd ?? "—"}
-              </div>
-              <button className="primary" onClick={applyBallClipMarks}>
-                Apply (Enter)
-              </button>
-            </div>
-
-            <div className="row">
-              <label>local idx</label>
-              <input
-                type="number"
-                value={ballLocalIdx}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setBallLocalIdx(clamp(v, 0, ballCfg.clip_length - 1));
-                }}
-              />
-              <button className="primary" onClick={saveBall}>
-                Save
-              </button>
-              <button
-                onClick={exportCurrentMode}
-              >
-                Export WASB
-              </button>
-            </div>
-
-            <div className="row">
-              <div className="small">
-                click to place; drag to move; auto-save on mouse up
-              </div>
-            </div>
-            <div className="row">
-              <div className="small">
-                keys: [ ] mark clip, Enter apply, S save, E export, ←/→ navigate
-              </div>
-            </div>
-          </>
+          <BallPanel
+            meta={meta}
+            ballCfg={ballCfg}
+            ballLocalIdx={ballLocalIdx}
+            ballClipMarkStart={ballClipMarkStart}
+            ballClipMarkEnd={ballClipMarkEnd}
+            assistSummary={ballAssistSummary}
+            assistLoading={ballAssistLoading}
+            assistAnn={ballAssistAnn}
+            manualCount={manualCount}
+            onBallCfgChange={setBallCfg}
+            onSetClip={async () => {
+              if (!meta) return;
+              try {
+                const next = {
+                  start_frame: clamp(ballCfg.start_frame, 0, meta.frame_count - 1),
+                  clip_length: clamp(ballCfg.clip_length, 1, meta.frame_count)
+                };
+                const saved = await apiPut<BallClipConfig>(
+                  "/api/ball/clip_config",
+                  next
+                );
+                setBallCfg(saved);
+                setBallLocalIdx(0);
+                setStatusWithTimeout("clip config saved");
+                await refreshBallAnnotatedFrames();
+                await refreshBallAssistSummary();
+                setBallAssistMap(new Map());
+              } catch (e) {
+                setStatus(String(e));
+              }
+            }}
+            onMarkStart={() => {
+              setBallClipMarkStart(globalFrameIdx);
+              setStatusWithTimeout(`clip start = ${globalFrameIdx}`);
+            }}
+            onMarkEnd={() => {
+              setBallClipMarkEnd(globalFrameIdx);
+              setStatusWithTimeout(`clip end = ${globalFrameIdx}`);
+            }}
+            onApplyClipMarks={applyBallClipMarks}
+            onBallLocalIdxChange={setBallLocalIdx}
+            onSaveBall={saveBall}
+            onResetBall={resetBall}
+            onExportBall={exportCurrentMode}
+            onRunAssist={runBallAssist}
+            onApplyAssist={applyAssistCurrent}
+          />
         ) : (
-          <>
-            <div className="row">
-              <label>frame idx</label>
-              <input
-                type="number"
-                value={courtFrameIdx}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  if (!meta) return;
-                  setCourtFrameIdx(clamp(v, 0, meta.frame_count - 1));
-                }}
-              />
-              <button
-                className="primary"
-                onClick={async () => {
-                  if (courtAnn) await saveCourt(courtAnn);
-                }}
-              >
-                Save
-              </button>
-              <button
-                onClick={exportCurrentMode}
-              >
-                Export Court
-              </button>
-            </div>
-
-            <div className="small">
-              Select a keypoint, then click to place. Drag existing points to move.
-            </div>
-            <div className="small">
-              keys: Tab/Shift+Tab next/prev kp, N next unset, Backspace clear, S save, E export
-            </div>
-
-            <div className="kpList">
-              {(kpNames.length ? kpNames : Array.from({ length: 20 }, (_, i) => `kp_${i}`)).map(
-                (name, i) => (
-                  <div
-                    key={i}
-                    className={`kpItem ${i === activeKp ? "active" : ""}`}
-                    onClick={() => setActiveKp(i)}
-                  >
-                    <div className="small">
-                      {i}: {name}
-                    </div>
-                    <div className="small">
-                      {courtAnn?.keypoints?.[i]?.visibility ? "set" : "—"}
-                    </div>
-                  </div>
-                )
-              )}
-            </div>
-          </>
+          <CourtPanel
+            meta={meta}
+            courtFrameIdx={courtFrameIdx}
+            courtAnn={courtAnn}
+            kpNames={kpNames}
+            activeKp={activeKp}
+            onCourtFrameIdxChange={setCourtFrameIdx}
+            onActiveKpChange={setActiveKp}
+            onSaveCourt={() => {
+              if (courtAnn) void saveCourt(courtAnn);
+            }}
+            onResetCourt={resetCourt}
+            onExportCourt={exportCurrentMode}
+            onRunHomography={runCourtHomography}
+          />
         )}
 
         <div className="row">
