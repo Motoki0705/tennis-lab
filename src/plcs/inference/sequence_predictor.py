@@ -102,10 +102,10 @@ class PLCSSequencePredictor(BasePredictor):
             denormalize: If True, convert positions to meters.
 
         Returns:
-            Inference results dictionary:
+            Inference results dictionary (CPU tensors):
                 - position: Normalized position (B, T, 3)
+                - rotation: (sin, cos) representation (B, T, 2)
                 - position_meters: Position in meters (B, T, 3) (if denormalize=True)
-                - rotation: (sin, cos) (B, T, 2)
                 - yaw_radians: Yaw angle in radians (B, T) (if denormalize=True)
 
         """

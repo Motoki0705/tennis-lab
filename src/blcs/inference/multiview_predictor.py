@@ -119,9 +119,11 @@ class BLCSMultiViewPredictor(BasePredictor):
             denormalize: If True, convert positions to meters.
 
         Returns:
-            Inference results dictionary:
-                - position: 3D position (B, T, 3)
-                - position_meters: Position in meters (if denormalize=True)
+            Inference results dictionary (CPU tensors):
+                - position: 3D position (B, T, 3) in normalized coordinates
+                - position_meters: Position in meters (B, T, 3) (if denormalize=True)
+                - velocity: Velocity (B, T, 3) in normalized units (if model outputs it)
+                - velocity_meters: Velocity in m/s (B, T, 3) (if denormalize=True and model outputs it)
 
         """
         # Add batch dimension if needed (keep (N, T, ...) -> (B, N, T, ...))

@@ -347,8 +347,9 @@ class CourtKPModule(BasePipelineModule):
 
         result = self._predictor.predict(frame)
 
-        keypoints = result["keypoints"].astype(np.float32)
-        visibility = result["visibility"].astype(np.float32)
+        # Convert tensors to numpy arrays
+        keypoints = result["keypoints"].numpy().astype(np.float32)
+        visibility = result["visibility"].numpy().astype(np.float32)
 
         if image_width is not None and image_height is not None:
             keypoints[..., 0] /= image_width
