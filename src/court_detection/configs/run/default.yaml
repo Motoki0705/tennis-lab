@@ -1,3 +1,6 @@
+output_dir: outputs/court_detection
 seed: 42
 gpus: 1
-output_dir: outputs/court_detection
+resume: null
+fast_dev_run: false
+dry_run: false
