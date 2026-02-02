@@ -45,6 +45,10 @@ select {
   border-radius: 8px;
 }
 
+input[type="range"] {
+  width: 100%;
+}
+
 button {
   padding: 8px 10px;
   border-radius: 8px;
@@ -75,6 +79,25 @@ button.primary {
   height: 100%;
   max-height: calc(100vh - 24px);
   aspect-ratio: 16 / 9;
+}
+
+.loadingBadge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(17, 24, 39, 0.85);
+  color: #ffffff;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.loadingBadge.show {
+  opacity: 1;
 }
 
 .canvasStage canvas {

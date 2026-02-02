@@ -74,10 +74,16 @@ export default function Page() {
   const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const renderTokenRef = useRef<number>(0);
+  const frameCacheRef = useRef<Map<number, HTMLImageElement>>(new Map());
+  const frameLoadRef = useRef<Map<number, Promise<HTMLImageElement>>>(new Map());
+  const preloadGenRef = useRef<number>(0);
   const [meta, setMeta] = useState<VideoMeta | null>(null);
   const [mode, setMode] = useState<"ball" | "court">("ball");
   const [status, setStatus] = useState<string>("");
+  const [isFrameLoading, setIsFrameLoading] = useState<boolean>(false);
   const statusTimeoutRef = useRef<number | null>(null);
+  const [seekPreviewIdx, setSeekPreviewIdx] = useState<number | null>(null);
+  const [isSeeking, setIsSeeking] = useState<boolean>(false);
 
   // Ball (sequential clip)
   const [ballCfg, setBallCfg] = useState<BallClipConfig>({
@@ -146,6 +152,87 @@ export default function Page() {
     })();
   }, []);
 
+  function frameUrl(idx: number): string {
+    return `${apiBase()}/api/frame/${idx}.jpg`;
+  }
+
+  function getCachedFrame(idx: number): HTMLImageElement | null {
+    const cached = frameCacheRef.current.get(idx);
+    if (cached && cached.complete && cached.naturalWidth > 0) return cached;
+    return null;
+  }
+
+  function preloadFrame(idx: number): Promise<HTMLImageElement> {
+    const cached = getCachedFrame(idx);
+    if (cached) return Promise.resolve(cached);
+    const inflight = frameLoadRef.current.get(idx);
+    if (inflight) return inflight;
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    const promise = new Promise<HTMLImageElement>((resolve, reject) => {
+      img.onload = () => {
+        frameCacheRef.current.set(idx, img);
+        frameLoadRef.current.delete(idx);
+        resolve(img);
+      };
+      img.onerror = () => {
+        frameLoadRef.current.delete(idx);
+        reject(new Error(`failed to load frame ${idx}`));
+      };
+    });
+    frameLoadRef.current.set(idx, promise);
+    img.src = frameUrl(idx);
+    return promise;
+  }
+
+  function pruneFrameCache(centerIdx: number, maxSize: number) {
+    const cache = frameCacheRef.current;
+    if (cache.size <= maxSize) return;
+    const entries = Array.from(cache.keys());
+    entries.sort((a, b) => Math.abs(b - centerIdx) - Math.abs(a - centerIdx));
+    const toRemove = entries.slice(0, Math.max(0, entries.length - maxSize));
+    for (const idx of toRemove) cache.delete(idx);
+  }
+
+  function preloadRange(centerIdx: number, radius: number, maxSize: number) {
+    const gen = ++preloadGenRef.current;
+    const indices: number[] = [centerIdx];
+    for (let i = 1; i <= radius; i++) {
+      indices.push(centerIdx + i, centerIdx - i);
+    }
+    for (const idx of indices) {
+      if (!meta) return;
+      if (idx < 0 || idx >= meta.frame_count) continue;
+      if (getCachedFrame(idx)) continue;
+      void preloadFrame(idx).catch(() => {
+        if (gen !== preloadGenRef.current) return;
+      });
+    }
+    pruneFrameCache(centerIdx, maxSize);
+  }
+
+  function resetFrameCache() {
+    frameCacheRef.current.clear();
+    frameLoadRef.current.clear();
+    preloadGenRef.current += 1;
+  }
+
+  function setGlobalFrameIdx(next: number) {
+    if (!meta) return;
+    const clamped = clamp(next, 0, meta.frame_count - 1);
+    if (mode === "ball") {
+      const local = clamp(
+        clamped - ballCfg.start_frame,
+        0,
+        ballCfg.clip_length - 1
+      );
+      setBallLocalIdx(local);
+    } else {
+      setCourtFrameIdx(clamped);
+    }
+  }
+
   // Load annotations when frame changes
   useEffect(() => {
     (async () => {
@@ -176,6 +263,21 @@ export default function Page() {
     })();
   }, [mode, ballLocalIdx, courtFrameIdx]);
 
+  // Set canvas sizes once meta is loaded
+  useEffect(() => {
+    if (!meta) return;
+    const frameCanvas = frameCanvasRef.current;
+    const overlayCanvas = overlayCanvasRef.current;
+    if (frameCanvas) {
+      frameCanvas.width = meta.width;
+      frameCanvas.height = meta.height;
+    }
+    if (overlayCanvas) {
+      overlayCanvas.width = meta.width;
+      overlayCanvas.height = meta.height;
+    }
+  }, [meta]);
+
   // Draw frame image (keeps previous frame until new one is ready)
   useEffect(() => {
     const frameCanvas = frameCanvasRef.current;
@@ -183,26 +285,32 @@ export default function Page() {
 
     const token = ++renderTokenRef.current;
     let canceled = false;
-
-    frameCanvas.width = meta.width;
-    frameCanvas.height = meta.height;
     const ctx = frameCanvas.getContext("2d");
     if (!ctx) return;
-
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = `${apiBase()}/api/frame/${globalFrameIdx}.jpg`;
-    img.onload = () => {
-      if (canceled) return;
-      if (token !== renderTokenRef.current) return;
+    const cached = getCachedFrame(globalFrameIdx);
+    if (cached) {
       ctx.clearRect(0, 0, frameCanvas.width, frameCanvas.height);
-      ctx.drawImage(img, 0, 0, frameCanvas.width, frameCanvas.height);
-    };
-    img.onerror = () => {
-      if (canceled) return;
-      if (token !== renderTokenRef.current) return;
-      setStatus("failed to load frame image (check backend / video / frame idx)");
-    };
+      ctx.drawImage(cached, 0, 0, frameCanvas.width, frameCanvas.height);
+      setIsFrameLoading(false);
+    } else {
+      setIsFrameLoading(true);
+      void preloadFrame(globalFrameIdx)
+        .then((img) => {
+          if (canceled) return;
+          if (token !== renderTokenRef.current) return;
+          ctx.clearRect(0, 0, frameCanvas.width, frameCanvas.height);
+          ctx.drawImage(img, 0, 0, frameCanvas.width, frameCanvas.height);
+          setIsFrameLoading(false);
+        })
+        .catch(() => {
+          if (canceled) return;
+          if (token !== renderTokenRef.current) return;
+          setIsFrameLoading(false);
+          setStatus("failed to load frame image (check backend / video / frame idx)");
+        });
+    }
+
+    preloadRange(globalFrameIdx, 6, 48);
 
     return () => {
       canceled = true;
@@ -213,8 +321,6 @@ export default function Page() {
   useEffect(() => {
     const overlayCanvas = overlayCanvasRef.current;
     if (!overlayCanvas || !meta) return;
-    overlayCanvas.width = meta.width;
-    overlayCanvas.height = meta.height;
     const ctx = overlayCanvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
@@ -484,6 +590,9 @@ export default function Page() {
             aspectRatio: meta ? `${meta.width} / ${meta.height}` : "16 / 9"
           }}
         >
+          <div className={`loadingBadge ${isFrameLoading ? "show" : ""}`}>
+            Loading...
+          </div>
           <canvas ref={frameCanvasRef} className="frameCanvas" />
           <canvas
             ref={overlayCanvasRef}
@@ -582,6 +691,43 @@ export default function Page() {
 
       <div className="panel">
         <div className="row">
+          <label>seek</label>
+          <input
+            type="range"
+            min={0}
+            max={meta ? meta.frame_count - 1 : 0}
+            value={seekPreviewIdx ?? globalFrameIdx}
+            onMouseDown={() => setIsSeeking(true)}
+            onTouchStart={() => setIsSeeking(true)}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setSeekPreviewIdx(v);
+              if (!isSeeking) setIsSeeking(true);
+            }}
+            onMouseUp={() => {
+              const target = seekPreviewIdx ?? globalFrameIdx;
+              const jump = Math.abs(target - globalFrameIdx);
+              if (jump > 18) resetFrameCache();
+              setGlobalFrameIdx(target);
+              setIsSeeking(false);
+              setSeekPreviewIdx(null);
+            }}
+            onTouchEnd={() => {
+              const target = seekPreviewIdx ?? globalFrameIdx;
+              const jump = Math.abs(target - globalFrameIdx);
+              if (jump > 18) resetFrameCache();
+              setGlobalFrameIdx(target);
+              setIsSeeking(false);
+              setSeekPreviewIdx(null);
+            }}
+          />
+          <div className="small">
+            {seekPreviewIdx ?? globalFrameIdx}
+            {meta ? ` / ${meta.frame_count - 1}` : ""}
+          </div>
+        </div>
+
+        <div className="row">
           <label>Mode</label>
           <select
             value={mode}
@@ -596,6 +742,9 @@ export default function Page() {
           <div className="small">
             frame: {globalFrameIdx}
             {meta ? ` / ${meta.frame_count - 1}` : ""}
+          </div>
+          <div className="small">
+            {isFrameLoading ? "loading frame..." : "ready"}
           </div>
         </div>
 
