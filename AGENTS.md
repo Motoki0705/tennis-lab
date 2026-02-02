@@ -23,15 +23,6 @@ This file defines implementation-time conventions for this repository.
   - any licensing/usage constraints
 - Use placeholder files or small samples when needed for tests.
 
-### Output directory structure
-- All training outputs are organized under `outputs/{module}/{task}/` (e.g., `outputs/plcs/frame/`, `outputs/blcs/single/`)
-- Hydra run directories follow the pattern: `${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}`
-  - This creates timestamped subdirectories for each training run
-  - Config: set in `hydra.run.dir` within training config files
-- Checkpoints are saved at: `{run.output_dir}/logs/version_X/checkpoints/`
-  - Example: `outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt`
-  - The `version_X` directory is automatically managed by PyTorch Lightning's TensorBoardLogger
-
 ## 3) Implementation conventions
 - Keep changes within the existing repo structure; do not add new top-level directories.
 - Favor explicit, typed interfaces for public functions and module boundaries.
