@@ -46,6 +46,7 @@ class RallyEndReason(Enum):
 
     ONGOING = "ongoing"  # Rally still in progress
     NET_FAULT = "net_fault"  # Ball hit net before first bounce
+    OWN_SIDE_BOUNCE = "own_side_bounce"  # Ball bounced on hitter's side
     OUT = "out"  # Ball bounced outside court + margin
     MAX_RALLIES = "max_rallies"  # Maximum rally count reached
     MAX_FRAMES = "max_frames"  # Maximum simulation frames reached
@@ -211,12 +212,14 @@ class RallySimulator:
         self,
         bounce_pos: Tensor | None,
         hit_net_before_bounce: bool,
+        target_side: str,
     ) -> tuple[bool, RallyEndReason]:
         """Check if rally should end based on current shot result.
 
         Args:
             bounce_pos: Position of first bounce (None if no bounce).
             hit_net_before_bounce: Whether ball hit net before bouncing.
+            target_side: Expected landing side ("near" or "far").
 
         Returns:
             Tuple of (should_end, reason).
@@ -232,8 +235,13 @@ class RallySimulator:
         if bounce_pos is None:
             return True, RallyEndReason.NET_FAULT
 
-        # Check if bounce is outside court + margin
+        # Check if bounce occurred on the correct (target) side
         x, y, _ = bounce_pos.tolist()
+        is_target_side = y > 0 if target_side == "far" else y < 0
+        if not is_target_side:
+            return True, RallyEndReason.OWN_SIDE_BOUNCE
+
+        # Check if bounce is outside court + margin
         x_limit = self.COURT_X_LIMIT + margin
         y_limit = self.COURT_Y_LIMIT + margin
 
@@ -246,12 +254,14 @@ class RallySimulator:
         self,
         t_bounce1_sim: int,
         t_bounce2_sim: int,
+        trajectory_sim: list[Tensor],
     ) -> int:
         """Sample the frame at which return hit occurs.
 
         Args:
             t_bounce1_sim: Frame of first bounce (sim fps).
             t_bounce2_sim: Frame of second bounce (sim fps, -1 if not occurred).
+            trajectory_sim: Full-resolution trajectory for this shot.
 
         Returns:
             Frame index for return hit (sim fps).
@@ -271,7 +281,27 @@ class RallySimulator:
         frac = min_frac + torch.rand(1).item() * (max_frac - min_frac)
 
         t_return = int(t_bounce1_sim + frac * (estimated_t_bounce2 - t_bounce1_sim))
-        return t_return
+
+        # Prefer return timing where Z is within return_z_range (continuity)
+        z_min, z_max = cfg.return_z_range
+        max_idx = len(trajectory_sim) - 1
+        if max_idx >= 0:
+            start = max(0, t_bounce1_sim)
+            if t_bounce2_sim >= 0:
+                end = min(t_bounce2_sim, max_idx)
+            else:
+                end = min(estimated_t_bounce2, max_idx)
+
+            if start <= end:
+                candidates = []
+                for i in range(start, end + 1):
+                    z_val = float(trajectory_sim[i][2].item())
+                    if z_min <= z_val <= z_max:
+                        candidates.append(i)
+                if candidates:
+                    t_return = min(candidates, key=lambda i: abs(i - t_return))
+
+        return min(t_return, max_idx)
 
     def _sample_return_initial_state(
         self,
@@ -294,15 +324,10 @@ class RallySimulator:
             BallState for the return shot.
 
         """
-        cfg = self.rally_config
         target_side = "far" if from_side == "near" else "near"
 
-        # Adjust position to return height
-        z_min, z_max = cfg.return_z_range
-        return_height = z_min + torch.rand(1).item() * (z_max - z_min)
-
+        # Keep the exact position at return timing to preserve trajectory continuity
         position = ball_pos_at_return.clone()
-        position[2] = return_height
 
         # Sample spin (used by refinement if enabled)
         spin = self.shot_simulator._sample_spin()
@@ -377,6 +402,7 @@ class RallySimulator:
             should_end, reason = self.check_rally_end(
                 bounce_pos=shot_result["bounce1_pos"],
                 hit_net_before_bounce=shot_result["hit_net_before_bounce"],
+                target_side="far" if from_side == "near" else "near",
             )
 
             # Accept shots that don't end the rally immediately
@@ -504,6 +530,7 @@ class RallySimulator:
             should_end, reason = self.check_rally_end(
                 bounce_pos=shot_result["bounce1_pos"],
                 hit_net_before_bounce=shot_result["hit_net_before_bounce"],
+                target_side="far" if from_side == "near" else "near",
             )
 
             # Get actual category and to_cell
@@ -528,6 +555,9 @@ class RallySimulator:
                         from_cell, from_side, category, to_cell
                     )
                 return shot_result, initial_state
+
+            if reason == RallyEndReason.OWN_SIDE_BOUNCE:
+                continue
 
             if reason == RallyEndReason.NET_FAULT:
                 if self._should_accept_net_fault():
@@ -643,6 +673,7 @@ class RallySimulator:
             should_end, reason = self.check_rally_end(
                 bounce_pos=shot_result["bounce1_pos"],
                 hit_net_before_bounce=shot_result["hit_net_before_bounce"],
+                target_side=target_side,
             )
 
             if should_end:
@@ -660,6 +691,7 @@ class RallySimulator:
             t_return_sim = self._sample_return_timing(
                 t_bounce1_sim=shot_result["t_bounce1_sim"],
                 t_bounce2_sim=shot_result["t_bounce2_sim"],
+                trajectory_sim=shot_result["trajectory_sim"],
             )
 
             # Check if 2nd bounce occurred BEFORE return timing

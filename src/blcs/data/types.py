@@ -198,7 +198,7 @@ class RallySceneMeta:
 
     # Rally-level information
     rally_length: int  # Number of shots in rally
-    end_reason: str  # Rally termination reason (net_fault/out/max_rallies/etc.)
+    end_reason: str  # Rally termination reason (net_fault/own_side_bounce/out/etc.)
     winner_side: str | None  # "near", "far", or None
 
     # Per-shot metadata
