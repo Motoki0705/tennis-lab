@@ -72,7 +72,8 @@ class CourtKeypointPredictor(BasePredictor):
 
         # Extract model and config
         model = lightning_module.model
-        input_size = tuple(lightning_module.model_config.get("input_size", [256, 256]))
+        model_config = lightning_module.config.get("model", {})
+        input_size = tuple(model_config.get("input_size", [256, 256]))
 
         return cls(model=model, device=resolved_device, input_size=input_size)
 

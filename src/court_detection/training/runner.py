@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 import pytorch_lightning as pl
-from omegaconf import OmegaConf
 
 from src.base.training.runner import BaseTrainingRunner
 from src.court_detection.data.datamodule import CourtKeypointDataModule
@@ -20,15 +19,7 @@ class CourtDetectionTrainingRunner(BaseTrainingRunner):
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
         """Build CourtKeypointDataModule from config."""
-        return CourtKeypointDataModule(
-            data_dir=config.data.get("data_dir", "data/court_detection/scenes"),
-            batch_size=config.data.get("batch_size", 32),
-            num_workers=config.data.get("num_workers", 4),
-            pin_memory=config.data.get("pin_memory", True),
-            input_size=tuple(config.data.get("input_size", [256, 256])),
-            heatmap_size=tuple(config.data.get("heatmap_size", [64, 64])),
-            augmentation=OmegaConf.to_container(config.data.get("augmentation", {})),
-        )
+        return CourtKeypointDataModule(config)
 
     def build_lightning_module(
         self,
@@ -38,17 +29,7 @@ class CourtDetectionTrainingRunner(BaseTrainingRunner):
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
         """Build CourtKeypointLightningModule from config."""
-        model_config = OmegaConf.to_container(config.model, resolve=True)
-        training_config = OmegaConf.to_container(config.training, resolve=True)
-        loss_config = OmegaConf.to_container(config.loss, resolve=True)
-        data_config = OmegaConf.to_container(config.data, resolve=True)
-
-        return CourtKeypointLightningModule(
-            model_config=model_config,
-            training_config=training_config,
-            loss_config=loss_config,
-            data_config=data_config,
-        )
+        return CourtKeypointLightningModule(config)
 
     def checkpoint_monitor(self, config: Any) -> str:
         """Monitor PCK for checkpointing."""

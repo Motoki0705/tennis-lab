@@ -112,8 +112,8 @@ uv run python -m src.tennis_scene.scripts.run_pipeline \
 |------|------|----------|
 | `wasb.checkpoint` | WASBモデル | `third_party/WASB-SBDT/pretrained/...` |
 | `wasb.skip` | ボール検出スキップ | `false` |
-| `plcs.checkpoint` | PLCSモデル | `outputs/plcs/checkpoints/last.ckpt` |
-| `blcs.checkpoint` | BLCSモデル | `outputs/blcs/checkpoints/last.ckpt` |
+| `plcs.checkpoint` | PLCSモデル | `outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt` |
+| `blcs.checkpoint` | BLCSモデル | `outputs/blcs/single/logs/version_0/checkpoints/last.ckpt` |
 
 ## 出力
 

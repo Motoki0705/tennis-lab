@@ -132,5 +132,5 @@ checkpoint_path = create_minimal_blcs_checkpoint(tmp_path / "model.ckpt")
 
 # 予測テストに使用
 from src.blcs.api import BLCSPredictor
-predictor = BLCSPredictor.from_checkpoint(checkpoint_path)
+predictor = BLCSPredictor.load_from_checkpoint(checkpoint_path)
 ```

@@ -36,6 +36,8 @@
 | 18 | net_post_right_top | 右ネットポスト（上） |
 | 19 | center_strap_top | センターストラップ（上） |
 
+**注**: このキーポイント仕様は `src/utils/geometry/constants.py` の `COURT_KP_NAMES` / `COURT_KP_IDX` として定義されており、プロジェクト全体で参照すべき canonical reference となっています。各モジュール（CourtDetection / PLCS / BLCS / Rendering など）はこの定義を参照することで、indexの解釈が統一されます。
+
 ## ディレクトリ構成
 
 ```
@@ -128,6 +130,8 @@ uv run python -m src.tools.annotate_court_keypoints \
 ```python
 from src.court_detection.inference.predictor import CourtKeypointPredictor
 
-predictor = CourtKeypointPredictor.from_checkpoint("path/to/checkpoint.ckpt")
-keypoints, visibility = predictor.predict(image)
+predictor = CourtKeypointPredictor.load_from_checkpoint("path/to/checkpoint.ckpt")
+result = predictor.predict(image)
+keypoints = result["keypoints"]
+visibility = result["visibility"]
 ```
