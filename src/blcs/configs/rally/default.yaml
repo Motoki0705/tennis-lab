@@ -25,3 +25,6 @@ max_return_retries: 10000
 
 # Minimum rally length to accept (for filtering short rallies)
 min_rally_length: 2
+
+# Probability to accept net-fault return shots (0.0 - 1.0)
+net_fault_accept_prob: 0.05

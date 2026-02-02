@@ -37,3 +37,9 @@ refine_speed_scale_min: 0.7
 refine_speed_scale_max: 1.4
 refine_max_azimuth_adjust_deg: 15.0
 refine_max_frames: 1200
+
+# Net clearance constraint (optional)
+net_clearance_enabled: true
+net_clearance_min: 0.1
+net_clearance_max_attempts: 12
+net_clearance_max_frames: 600
