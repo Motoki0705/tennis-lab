@@ -102,10 +102,10 @@ class PLCSPredictor(BasePredictor):
             denormalize: If True, convert positions to meters.
 
         Returns:
-            Inference results dictionary:
+            Inference results dictionary (CPU tensors):
                 - position: Normalized position (B, 3)
+                - rotation: (sin, cos) representation (B, 2)
                 - position_meters: Position in meters (B, 3) (if denormalize=True)
-                - rotation: (sin, cos) (B, 2)
                 - yaw_radians: Yaw angle in radians (B,) (if denormalize=True)
 
         """
