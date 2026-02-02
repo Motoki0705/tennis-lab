@@ -301,6 +301,9 @@ class RallySimulator:
         position = ball_pos_at_return.clone()
         position[2] = return_height
 
+        # Sample spin (used by refinement if enabled)
+        spin = self.shot_simulator._sample_spin()
+
         # Sample velocity - targeted if target_cell specified, random otherwise
         if target_cell is not None:
             velocity = self.targeted_velocity_sampler.sample_velocity_for_target_cell(
@@ -308,12 +311,11 @@ class RallySimulator:
                 target_cell=target_cell,
                 target_side=target_side,
                 from_side=from_side,
+                physics=self.physics,
+                spin=spin,
             )
         else:
             velocity = self.shot_simulator._sample_velocity(from_side)
-
-        # Sample spin
-        spin = self.shot_simulator._sample_spin()
 
         return BallState(position=position, velocity=velocity, spin=spin)
 
