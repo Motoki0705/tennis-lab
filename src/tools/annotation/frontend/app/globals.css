@@ -1,0 +1,143 @@
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
+    Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.root {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 12px;
+  padding: 12px;
+  height: 100vh;
+}
+
+.panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  overflow: auto;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+label {
+  font-size: 12px;
+  color: #111827;
+}
+
+input[type="number"],
+select {
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+input[type="range"] {
+  width: 100%;
+}
+
+button {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+button.primary {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
+}
+
+.canvasWrap {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvasStage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-height: calc(100vh - 24px);
+  aspect-ratio: 16 / 9;
+}
+
+.loadingBadge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(17, 24, 39, 0.85);
+  color: #ffffff;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.loadingBadge.show {
+  opacity: 1;
+}
+
+.canvasStage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.frameCanvas {
+  pointer-events: none;
+}
+
+.overlayCanvas {
+  pointer-events: auto;
+}
+
+.small {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.kpList {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.kpItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.kpItem.active {
+  border-color: #111827;
+}

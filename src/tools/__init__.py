@@ -1,5 +1,6 @@
-"""Tools for tennis-lab project.
+"""Developer tools and interactive utilities.
 
-This module contains utility tools for various tasks such as
-video format conversion (MP4 to GIF) for README documentation.
+Note: The code under this package is primarily intended for local usage
+to generate and inspect datasets.
 """
+
