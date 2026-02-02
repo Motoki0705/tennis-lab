@@ -86,6 +86,7 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         return_z_range=tuple(cfg.rally.return_z_range),
         max_return_retries=int(cfg.rally.max_return_retries),
         min_rally_length=int(cfg.rally.min_rally_length),
+        net_fault_accept_prob=float(cfg.rally.net_fault_accept_prob),
     )
 
     camera_config = CameraConfig(
@@ -130,6 +131,10 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
             cfg.targeted_velocity.refine_max_azimuth_adjust_deg
         ),
         refine_max_frames=int(cfg.targeted_velocity.refine_max_frames),
+        net_clearance_enabled=bool(cfg.targeted_velocity.net_clearance_enabled),
+        net_clearance_min=float(cfg.targeted_velocity.net_clearance_min),
+        net_clearance_max_attempts=int(cfg.targeted_velocity.net_clearance_max_attempts),
+        net_clearance_max_frames=int(cfg.targeted_velocity.net_clearance_max_frames),
     )
 
     return GeneratorConfig(

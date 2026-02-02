@@ -22,6 +22,8 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
+from src.utils.geometry import HALF_DOUBLES_WIDTH, NET_HEIGHT_CENTER, NET_HEIGHT_POST
+
 if TYPE_CHECKING:
     from src.blcs.simulation.cell_manager import CellManager
     from src.blcs.simulation.ball_physics import BallPhysics
@@ -67,6 +69,12 @@ class TargetedVelocityConfig:
     refine_speed_scale_max: float = 1.4
     refine_max_azimuth_adjust_deg: float = 15.0
     refine_max_frames: int = 1200
+
+    # Net clearance constraint (optional)
+    net_clearance_enabled: bool = False
+    net_clearance_min: float = 0.1
+    net_clearance_max_attempts: int = 12
+    net_clearance_max_frames: int = 600
 
 
 class TargetedVelocitySampler:
@@ -131,6 +139,60 @@ class TargetedVelocitySampler:
             Tensor: Velocity [3] in m/s.
 
         """
+        cfg = self.config
+
+        max_attempts = 1
+        if cfg.net_clearance_enabled:
+            max_attempts = max(1, cfg.net_clearance_max_attempts)
+
+        last_velocity: Tensor | None = None
+
+        for _ in range(max_attempts):
+            velocity = self._compute_velocity_to_target_once(
+                start_pos=start_pos,
+                target_pos=target_pos,
+                from_side=from_side,
+                elevation_deg=elevation_deg,
+                profile=profile,
+                physics=physics,
+                spin=spin,
+            )
+            last_velocity = velocity
+
+            if not cfg.net_clearance_enabled:
+                return velocity
+
+            if self._passes_net_clearance(
+                start_pos=start_pos,
+                velocity=velocity,
+                physics=physics,
+                spin=spin,
+            ):
+                return velocity
+
+        if last_velocity is None:
+            last_velocity = self._compute_velocity_to_target_once(
+                start_pos=start_pos,
+                target_pos=target_pos,
+                from_side=from_side,
+                elevation_deg=elevation_deg,
+                profile=profile,
+                physics=physics,
+                spin=spin,
+            )
+
+        return last_velocity
+
+    def _compute_velocity_to_target_once(
+        self,
+        start_pos: Tensor,
+        target_pos: Tensor,
+        from_side: str,
+        elevation_deg: float | None = None,
+        profile: str | None = None,
+        physics: "BallPhysics | None" = None,
+        spin: Tensor | None = None,
+    ) -> Tensor:
         cfg = self.config
 
         # Horizontal displacement
@@ -391,6 +453,99 @@ class TargetedVelocitySampler:
             )
 
         return refined
+
+    def _passes_net_clearance(
+        self,
+        start_pos: Tensor,
+        velocity: Tensor,
+        physics: "BallPhysics | None",
+        spin: Tensor | None,
+    ) -> bool:
+        clearance = self._estimate_net_clearance(
+            start_pos=start_pos,
+            velocity=velocity,
+            physics=physics,
+            spin=spin,
+        )
+        if clearance is None:
+            return False
+        return clearance >= self.config.net_clearance_min
+
+    def _estimate_net_clearance(
+        self,
+        start_pos: Tensor,
+        velocity: Tensor,
+        physics: "BallPhysics | None",
+        spin: Tensor | None,
+    ) -> float | None:
+        if physics is None:
+            return self._estimate_net_clearance_gravity(start_pos, velocity)
+        return self._estimate_net_clearance_with_physics(
+            start_pos=start_pos,
+            velocity=velocity,
+            spin=spin,
+            physics=physics,
+        )
+
+    def _estimate_net_clearance_gravity(
+        self,
+        start_pos: Tensor,
+        velocity: Tensor,
+    ) -> float | None:
+        cfg = self.config
+        vy = float(velocity[1].item())
+        if abs(vy) < 1e-6:
+            return None
+
+        t = -float(start_pos[1].item()) / vy
+        if t <= 0:
+            return None
+
+        x_at_net = float(start_pos[0].item()) + float(velocity[0].item()) * t
+        if abs(x_at_net) > HALF_DOUBLES_WIDTH:
+            return float("inf")
+
+        z_at_net = (
+            float(start_pos[2].item())
+            + float(velocity[2].item()) * t
+            - 0.5 * cfg.gravity * t**2
+        )
+        net_height = self._net_height_at_x(x_at_net)
+        return z_at_net - net_height
+
+    def _estimate_net_clearance_with_physics(
+        self,
+        start_pos: Tensor,
+        velocity: Tensor,
+        spin: Tensor | None,
+        physics: "BallPhysics",
+    ) -> float | None:
+        from src.blcs.simulation.ball_physics import BallState
+
+        spin_vec = spin if spin is not None else torch.zeros_like(velocity)
+        state = BallState(
+            position=start_pos.clone(),
+            velocity=velocity.clone(),
+            spin=spin_vec.clone(),
+        )
+
+        for _ in range(self.config.net_clearance_max_frames):
+            prev_pos = state.position.clone()
+            state = physics.step(state)
+
+            clearance = physics.compute_net_clearance(prev_pos, state.position)
+            if clearance is not None:
+                return clearance
+
+            state, bounced = physics.handle_bounce(state)
+            if bounced:
+                return None
+
+        return None
+
+    def _net_height_at_x(self, x_at_net: float) -> float:
+        x_ratio = min(abs(x_at_net) / HALF_DOUBLES_WIDTH, 1.0)
+        return NET_HEIGHT_CENTER + x_ratio * (NET_HEIGHT_POST - NET_HEIGHT_CENTER)
 
     def _simulate_to_first_bounce(
         self,
