@@ -1,5 +1,5 @@
 ## PLCS frame model configuration
-## Decoder-only Transformer with MHA + RoPE + SDPA
+## Decoder-only Transformer with MHA (+ optional RoPE) + SDPA
 
 name: plcs
 
@@ -9,6 +9,11 @@ num_heads: 8
 ffn_dim: null        # Defaults to 8/3 * hidden_dim (rounded to 64)
 dropout: 0.1
 invisible_init_std: 0.02
+
+# Token identity / robustness settings
+num_register_tokens: 4
+use_kp_id_embedding: true
+use_rope: false
 
 # RoPE settings
 rope_dim: null       # Defaults to head_dim (hidden_dim / num_heads)
