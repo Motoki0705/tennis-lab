@@ -75,7 +75,6 @@ class EventDetectionTrainingRunner(BaseTrainingRunner):
             "data": {
                 "batch_size": 2,
                 "num_workers": 0,
-                "allow_dummy": True,
             },
         })
         OmegaConf.set_struct(config, False)

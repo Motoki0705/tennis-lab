@@ -217,55 +217,7 @@ class BLCSRallyEventDataset(Dataset):
         }
 
 
-class DummyEventDataset(Dataset):
-    """Small synthetic dataset for dry-run and smoke tests."""
-
-    def __init__(self, input_type: Literal["uv", "3d"], T: int = 64, n: int = 8) -> None:
-        super().__init__()
-        self.input_type = input_type
-        self.T = int(T)
-        self.n = int(n)
-
-    def __len__(self) -> int:
-        return self.n
-
-    def __getitem__(self, idx: int) -> EventUVSample | Event3DSample:
-        _ = idx
-        T = self.T
-        seq_len = torch.tensor(T, dtype=torch.long)
-        targets = torch.zeros(T, 2)
-        targets[T // 4, 0] = 1.0
-        targets[T // 2, 1] = 1.0
-
-        if self.input_type == "3d":
-            ball_pos_world = torch.randn(T, 3) * 5.0
-            return {"ball_pos_world": ball_pos_world, "targets": targets, "seq_len": seq_len}
-
-        ball_uv = torch.rand(T, 2)
-        ball_vis = torch.ones(T)
-        court_kp = torch.rand(20, 2)
-        court_vis = torch.ones(20)
-        return {
-            "ball_uv": ball_uv,
-            "ball_vis": ball_vis,
-            "court_kp": court_kp,
-            "court_vis": court_vis,
-            "targets": targets,
-            "seq_len": seq_len,
-        }
-
-
 if __name__ == "__main__":
-    ds_uv = DummyEventDataset("uv", T=32, n=2)
-    sample_uv = ds_uv[0]
-    assert sample_uv["ball_uv"].shape == (32, 2)
-    assert sample_uv["targets"].shape == (32, 2)
-
-    ds_3d = DummyEventDataset("3d", T=32, n=2)
-    sample_3d = ds_3d[0]
-    assert sample_3d["ball_pos_world"].shape == (32, 3)
-    assert sample_3d["targets"].shape == (32, 2)
-
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp_dir:
