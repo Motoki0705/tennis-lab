@@ -37,12 +37,12 @@
 - UVEventModel
   - visibility は不可視トークンに差し替え
   - Attention Mask は padding/seq_len にのみ使用
-  - 参照: `src/evnet_detection/models/uv_event_model.py`
+  - 参照: `src/event_detection/models/uv_event_model.py`
 
 - Traj3DEventModel
   - visibility 入力なし（不可視トークンは未使用）
   - Attention Mask は seq_len のみ
-  - 参照: `src/evnet_detection/models/traj3d_event_model.py`
+  - 参照: `src/event_detection/models/traj3d_event_model.py`
 
 - PLCSModel
   - visibility は不可視トークンに差し替え

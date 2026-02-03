@@ -1,16 +1,16 @@
-"""Visualize 3D trajectory event detection inputs and predictions (Hydra-based).
+"""Visualize UV event detection inputs and predictions (Hydra-based).
 
-This script focuses on the 3D-input event detector:
-- Dataset-side: visualize soft targets and GT event timings.
+This script is intended for fast debugging of event detection:
+- Dataset-side: visualize soft targets (Gaussian labels) and GT event timings.
 - Inference-side: visualize event probabilities and extracted peaks.
 - Animation: the ball color changes on event frames (GT and prediction).
 
 Example commands:
-    `uv run python -m src.evnet_detection.scripts.visualize_3d`
-    `uv run python -m src.evnet_detection.scripts.visualize_3d visualization.scene_path=data/blcs/scenes/rally_000000.npz`
-    `uv run python -m src.evnet_detection.scripts.visualize_3d visualization.mode=predict visualization.checkpoint=outputs/evnet_detection/.../last.ckpt`
+    `uv run python -m src.event_detection.scripts.visualize_uv`
+    `uv run python -m src.event_detection.scripts.visualize_uv visualization.scene_path=data/blcs/scenes/rally_000000.npz`
+    `uv run python -m src.event_detection.scripts.visualize_uv visualization.mode=predict visualization.checkpoint=outputs/event_detection/.../last.ckpt`
 
-Config entry point: `src/evnet_detection/configs/visualize_3d.yaml`
+Config entry point: `src/event_detection/configs/visualize_uv.yaml`
 """
 
 from __future__ import annotations
@@ -34,16 +34,16 @@ from matplotlib.lines import Line2D
 from omegaconf import DictConfig
 
 from src.common.data.scene_cache import load_npz_scene
-from src.evnet_detection.inference.traj3d_predictor import Traj3DEventPredictor
-from src.evnet_detection.utils.visualization import (
+from src.event_detection.inference.uv_predictor import UVEventPredictor
+from src.event_detection.utils.visualization import (
     EventLabelConfig,
     build_targets,
     decode_meta,
     extract_event_indices,
     save_outputs,
+    select_camera,
 )
-from src.utils.geometry.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
-from src.utils.rendering.court_renderer import CourtRenderer
+from src.utils.geometry.constants import COURT_LINE_CONNECTIONS
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -67,6 +67,7 @@ class RuntimeConfig:
 
     mode: str
     scene_path: Path
+    camera: Any
     view: str
     frame: int
     fps: float
@@ -79,17 +80,22 @@ class RuntimeConfig:
     threshold: float
     min_distance: int
     top_k: int | None
+    show_court_lines: bool
 
 
 @dataclass(frozen=True)
-class Traj3DEventInputs:
-    """Loaded 3D inputs + GT labels for a single scene."""
+class UVEventInputs:
+    """Loaded UV inputs + GT labels for a single scene."""
 
-    ball_pos_world: np.ndarray  # (T, 3)
+    ball_uv: np.ndarray  # (T, 2)
+    ball_vis: np.ndarray  # (T,) bool
+    court_kp: np.ndarray  # (20, 2)
+    court_vis: np.ndarray  # (20,) bool
     targets: np.ndarray  # (T, 2)
     shot_indices: list[int]
     bounce_indices: list[int]
     meta: dict[str, Any]
+    camera_idx: int
 
 
 def _resolve_device(device: str) -> str:
@@ -105,6 +111,8 @@ def _set_seed(seed: int) -> None:
 
 
 def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
+    """Build a runtime config from the composed Hydra config."""
+
     vis = cfg.visualization
     run = cfg.run
 
@@ -114,6 +122,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     return RuntimeConfig(
         mode=str(vis.mode),
         scene_path=Path(to_absolute_path(str(vis.scene_path))),
+        camera=vis.camera,
         view=str(vis.view),
         frame=int(vis.frame),
         fps=float(vis.fps),
@@ -126,6 +135,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         threshold=float(vis.threshold),
         min_distance=max(1, int(vis.min_distance)),
         top_k=top_k_value,
+        show_court_lines=bool(vis.show_court_lines),
     )
 
 
@@ -139,25 +149,61 @@ def _label_cfg_from_hydra(cfg: DictConfig) -> EventLabelConfig:
     )
 
 
-def prepare_inputs(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> Traj3DEventInputs:
-    """Load a BLCS NPZ and prepare 3D inputs + GT targets."""
+def _load_uv_arrays(
+    payload: dict[str, Any], camera_idx: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    prefix = f"cam_{camera_idx}_"
+
+    ball_uv_key = f"{prefix}ball_uv" if f"{prefix}ball_uv" in payload else "ball_uv"
+    ball_vis_key = (
+        f"{prefix}ball_visible"
+        if f"{prefix}ball_visible" in payload
+        else "ball_visible"
+    )
+    court_kp_key = (
+        f"{prefix}court_kp_uv" if f"{prefix}court_kp_uv" in payload else "court_kp_uv"
+    )
+    court_vis_key = (
+        f"{prefix}court_kp_visible"
+        if f"{prefix}court_kp_visible" in payload
+        else "court_kp_visible"
+    )
+
+    missing = [
+        k
+        for k in (ball_uv_key, ball_vis_key, court_kp_key, court_vis_key)
+        if k not in payload
+    ]
+    if missing:
+        raise KeyError(f"Missing keys in scene NPZ: {missing}")
+
+    ball_uv = np.asarray(payload[ball_uv_key], dtype=np.float32)
+    ball_vis = np.asarray(payload[ball_vis_key], dtype=np.float32)
+    court_kp = np.asarray(payload[court_kp_key], dtype=np.float32)
+    court_vis = np.asarray(payload[court_vis_key], dtype=np.float32)
+    return ball_uv, ball_vis, court_kp, court_vis
+
+
+def prepare_inputs(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> UVEventInputs:
+    """Load a BLCS NPZ and prepare UV inputs + GT targets."""
 
     _set_seed(cfg.seed)
 
     payload = load_npz_scene(cfg.scene_path)
     meta = decode_meta(payload.get("meta", {}))
 
-    if "ball_pos_world" not in payload:
-        raise KeyError("Missing key in scene NPZ: ball_pos_world")
+    num_cameras = int(payload.get("num_cameras", 1))
+    cam_idx = select_camera(cfg.camera, num_cameras)
 
-    pos_full = np.asarray(payload["ball_pos_world"], dtype=np.float32)
+    ball_uv_full, ball_vis_full, court_kp, court_vis = _load_uv_arrays(payload, cam_idx)
 
-    T_full = int(pos_full.shape[0])
+    T_full = int(ball_uv_full.shape[0])
     num_frames_meta = int(meta.get("num_frames", T_full))
     max_seq_len = int((hydra_cfg.get("data", {}) or {}).get("max_seq_len", T_full))
     T = min(T_full, max(0, num_frames_meta), max_seq_len)
 
-    pos = pos_full[:T]
+    ball_uv = ball_uv_full[:T]
+    ball_vis = ball_vis_full[:T] > 0
 
     label_cfg = _label_cfg_from_hydra(hydra_cfg)
     shot_idx, bounce_idx = extract_event_indices(meta, cfg=label_cfg)
@@ -170,18 +216,43 @@ def prepare_inputs(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> Traj3DEventInpu
         device=torch.device("cpu"),
     )
 
-    return Traj3DEventInputs(
-        ball_pos_world=pos,
+    return UVEventInputs(
+        ball_uv=ball_uv,
+        ball_vis=ball_vis,
+        court_kp=court_kp,
+        court_vis=(court_vis > 0),
         targets=targets_t.numpy(),
         shot_indices=[i for i in shot_idx if 0 <= i < T],
         bounce_indices=[i for i in bounce_idx if 0 <= i < T],
         meta=meta,
+        camera_idx=cam_idx,
     )
+
+
+def _draw_court_uv(
+    ax: Axes, *, kp: np.ndarray, vis: np.ndarray, show_lines: bool
+) -> None:
+    ax.set_facecolor("#1a1a1a")
+
+    if show_lines:
+        for i, j in COURT_LINE_CONNECTIONS:
+            if bool(vis[i]) and bool(vis[j]):
+                ax.plot(
+                    [kp[i, 0], kp[j, 0]],
+                    [kp[i, 1], kp[j, 1]],
+                    c="lime",
+                    linewidth=1.5,
+                    alpha=0.8,
+                )
+
+    for i in range(int(kp.shape[0])):
+        if bool(vis[i]):
+            ax.scatter(kp[i, 0], kp[i, 1], c="lime", s=25, marker="s", alpha=0.7)
 
 
 def _event_sets(
     *,
-    inputs: Traj3DEventInputs,
+    inputs: UVEventInputs,
     pred_peaks: list[list[int]] | None,
 ) -> tuple[set[int], set[int], set[int], set[int]]:
     gt_shot = set(inputs.shot_indices)
@@ -223,58 +294,64 @@ def _colors_for_frame(
     elif pred_event == "shot":
         face = PRED_SHOT_COLOR
 
+    # If GT exists, show pred via edge color.
     if gt_event is not None and pred_event is not None:
         edge = PRED_BOUNCE_COLOR if pred_event == "bounce" else PRED_SHOT_COLOR
 
     return face, edge
 
 
-def render_topdown_trajectory(
+def render_trajectory(
     ax: Axes,
     *,
-    inputs: Traj3DEventInputs,
+    cfg: RuntimeConfig,
+    inputs: UVEventInputs,
     pred_peaks: list[list[int]] | None = None,
 ) -> None:
-    """Render top-down 2D trajectory (XY) with event markers."""
+    """Render UV trajectory with GT (and optionally predicted) events."""
 
-    court = CourtRenderer()
-    court.render_2d(ax, show_fence=True, set_limits=False)
-
-    pos = inputs.ball_pos_world
-    ax.plot(
-        pos[:, 0],
-        pos[:, 1],
-        color="#FF6B6B",
-        alpha=0.5,
-        linewidth=1.2,
-        label="Trajectory",
+    _draw_court_uv(
+        ax, kp=inputs.court_kp, vis=inputs.court_vis, show_lines=cfg.show_court_lines
     )
+
+    uv = inputs.ball_uv
+    vis = inputs.ball_vis
+
+    ax.plot(uv[:, 0], uv[:, 1], color="#FF6B6B", alpha=0.35, linewidth=1.0, zorder=1)
+
+    ax.scatter(
+        uv[vis, 0], uv[vis, 1], c=DEFAULT_BALL_COLOR, s=30, alpha=0.8, label="Visible"
+    )
+    if (~vis).any():
+        ax.scatter(
+            uv[~vis, 0], uv[~vis, 1], c="gray", s=14, alpha=0.3, label="Not visible"
+        )
 
     if inputs.shot_indices:
         idx = np.asarray(inputs.shot_indices, dtype=int)
         ax.scatter(
-            pos[idx, 0],
-            pos[idx, 1],
+            uv[idx, 0],
+            uv[idx, 1],
             c=GT_SHOT_COLOR,
             s=120,
             marker="*",
             edgecolors="black",
             linewidths=1.0,
             label="GT shot",
-            zorder=6,
+            zorder=5,
         )
     if inputs.bounce_indices:
         idx = np.asarray(inputs.bounce_indices, dtype=int)
         ax.scatter(
-            pos[idx, 0],
-            pos[idx, 1],
+            uv[idx, 0],
+            uv[idx, 1],
             c=GT_BOUNCE_COLOR,
             s=90,
             marker="o",
             edgecolors="black",
             linewidths=1.0,
             label="GT bounce",
-            zorder=6,
+            zorder=5,
         )
 
     if pred_peaks is not None:
@@ -285,37 +362,50 @@ def render_topdown_trajectory(
         if pred_shot:
             idx = np.asarray(sorted(pred_shot), dtype=int)
             ax.scatter(
-                pos[idx, 0],
-                pos[idx, 1],
+                uv[idx, 0],
+                uv[idx, 1],
                 facecolors="none",
                 edgecolors=PRED_SHOT_COLOR,
                 s=110,
                 marker="*",
                 linewidths=1.5,
                 label="Pred shot",
-                zorder=7,
+                zorder=6,
             )
         if pred_bounce:
             idx = np.asarray(sorted(pred_bounce), dtype=int)
             ax.scatter(
-                pos[idx, 0],
-                pos[idx, 1],
+                uv[idx, 0],
+                uv[idx, 1],
                 facecolors="none",
                 edgecolors=PRED_BOUNCE_COLOR,
                 s=90,
                 marker="o",
                 linewidths=1.5,
                 label="Pred bounce",
-                zorder=7,
+                zorder=6,
             )
 
-    ax.set_xlim(-HALF_DOUBLES_WIDTH - 2, HALF_DOUBLES_WIDTH + 2)
-    ax.set_ylim(-HALF_LENGTH - 2, HALF_LENGTH + 2)
-    ax.set_aspect("equal")
-    ax.grid(True, alpha=0.25)
+    if 0 <= cfg.frame < uv.shape[0]:
+        ax.scatter(
+            [uv[cfg.frame, 0]],
+            [uv[cfg.frame, 1]],
+            c="yellow",
+            s=120,
+            marker="D",
+            edgecolors="black",
+            linewidths=1.0,
+            label=f"Frame {cfg.frame}",
+            zorder=10,
+        )
 
     scene_id = inputs.meta.get("scene_id", "Unknown")
-    ax.set_title(f"3D top-down | scene={scene_id}")
+    ax.set_title(f"UV Trajectory | scene={scene_id} cam={inputs.camera_idx}")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(1, 0)
+    ax.set_xlabel("U (normalized)")
+    ax.set_ylabel("V (normalized)")
+    ax.grid(True, alpha=0.25)
     ax.legend(loc="upper right", fontsize=8)
 
 
@@ -344,7 +434,7 @@ def render_timeline_axes(
     axes: list[Axes],
     *,
     cfg: RuntimeConfig,
-    inputs: Traj3DEventInputs,
+    inputs: UVEventInputs,
     probs: np.ndarray | None = None,  # (T, E)
     pred_peaks: list[list[int]] | None = None,
     pred_scores: list[list[float]] | None = None,
@@ -421,13 +511,15 @@ def render_timeline_axes(
 def create_timeline_figure(
     *,
     cfg: RuntimeConfig,
-    inputs: Traj3DEventInputs,
+    inputs: UVEventInputs,
     probs: np.ndarray | None = None,  # (T, E)
     pred_peaks: list[list[int]] | None = None,
     pred_scores: list[list[float]] | None = None,
     event_names: list[str] | None = None,
 ) -> Figure:
-    _, E = inputs.targets.shape
+    """Create a per-event timeline plot (targets vs probs)."""
+
+    T, E = inputs.targets.shape
 
     fig, axes_raw = plt.subplots(E, 1, figsize=(14, 2.6 * E), sharex=True)
     axes: list[Axes] = (
@@ -446,7 +538,7 @@ def create_timeline_figure(
     _ = names
 
     scene_id = inputs.meta.get("scene_id", "Unknown")
-    fig.suptitle(f"Event timeline | scene={scene_id}")
+    fig.suptitle(f"Event timeline | scene={scene_id} cam={inputs.camera_idx}")
     plt.tight_layout()
     return fig
 
@@ -454,13 +546,13 @@ def create_timeline_figure(
 def create_multi_figure(
     *,
     cfg: RuntimeConfig,
-    inputs: Traj3DEventInputs,
+    inputs: UVEventInputs,
     probs: np.ndarray | None = None,
     pred_peaks: list[list[int]] | None = None,
     pred_scores: list[list[float]] | None = None,
     event_names: list[str] | None = None,
 ) -> Figure:
-    """Create a combined figure (top-down trajectory + timeline)."""
+    """Create a combined figure (trajectory + timeline)."""
 
     _, E = inputs.targets.shape
 
@@ -468,7 +560,7 @@ def create_multi_figure(
     gs = fig.add_gridspec(E, 2, width_ratios=[1.0, 1.2])
 
     ax_traj = fig.add_subplot(gs[:, 0])
-    render_topdown_trajectory(ax_traj, inputs=inputs, pred_peaks=pred_peaks)
+    render_trajectory(ax_traj, cfg=cfg, inputs=inputs, pred_peaks=pred_peaks)
 
     axes: list[Axes] = []
     for e in range(E):
@@ -489,7 +581,7 @@ def create_multi_figure(
     )
 
     scene_id = inputs.meta.get("scene_id", "Unknown")
-    fig.suptitle(f"3D top-down + timeline | scene={scene_id}")
+    fig.suptitle(f"UV trajectory + timeline | scene={scene_id} cam={inputs.camera_idx}")
     plt.tight_layout()
     return fig
 
@@ -497,15 +589,18 @@ def create_multi_figure(
 def create_animation(
     *,
     cfg: RuntimeConfig,
-    inputs: Traj3DEventInputs,
+    inputs: UVEventInputs,
     pred_peaks: list[list[int]] | None = None,
 ) -> FuncAnimation:
-    pos = inputs.ball_pos_world
-    T = int(pos.shape[0])
+    """Create a UV animation (ball color changes on event frames)."""
+
+    uv = inputs.ball_uv
+    T = int(uv.shape[0])
 
     fig, ax = plt.subplots(figsize=(10, 8))
-    court = CourtRenderer()
-    court.render_2d(ax, show_fence=True, set_limits=False)
+    _draw_court_uv(
+        ax, kp=inputs.court_kp, vis=inputs.court_vis, show_lines=cfg.show_court_lines
+    )
 
     (line,) = ax.plot([], [], color="#FF6B6B", alpha=0.5, linewidth=1.2)
     point = ax.scatter(
@@ -522,14 +617,13 @@ def create_animation(
         inputs=inputs, pred_peaks=pred_peaks
     )
 
-    ax.set_xlim(-HALF_DOUBLES_WIDTH - 2, HALF_DOUBLES_WIDTH + 2)
-    ax.set_ylim(-HALF_LENGTH - 2, HALF_LENGTH + 2)
-    ax.set_aspect("equal")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(1, 0)
     ax.grid(True, alpha=0.25)
 
     def update(frame: int) -> tuple[Line2D, PathCollection]:
-        line.set_data(pos[: frame + 1, 0], pos[: frame + 1, 1])
-        point.set_offsets([[pos[frame, 0], pos[frame, 1]]])
+        line.set_data(uv[: frame + 1, 0], uv[: frame + 1, 1])
+        point.set_offsets([[uv[frame, 0], uv[frame, 1]]])
         face, edge = _colors_for_frame(
             frame,
             gt_shot=gt_shot,
@@ -539,7 +633,7 @@ def create_animation(
         )
         point.set_facecolor([face])
         point.set_edgecolor([edge])
-        ax.set_title(f"3D top-down animation | frame {frame}/{T - 1}")
+        ax.set_title(f"UV animation | frame {frame}/{T - 1}")
         return line, point
 
     return FuncAnimation(
@@ -547,14 +641,15 @@ def create_animation(
     )
 
 
-def print_info(cfg: RuntimeConfig, inputs: Traj3DEventInputs) -> None:
+def print_info(cfg: RuntimeConfig, inputs: UVEventInputs) -> None:
     scene_id = inputs.meta.get("scene_id", "Unknown")
     print("=" * 60)
-    print("EVNET_DETECTION 3D VISUALIZATION")
+    print("EVENT_DETECTION UV VISUALIZATION")
     print("=" * 60)
     print(f"Scene:   {scene_id}")
     print(f"Path:    {cfg.scene_path}")
-    print(f"Frames:  {inputs.ball_pos_world.shape[0]}")
+    print(f"Camera:  {inputs.camera_idx}")
+    print(f"Frames:  {inputs.ball_uv.shape[0]}")
     print(f"GT shot indices:   {inputs.shot_indices}")
     print(f"GT bounce indices: {inputs.bounce_indices}")
 
@@ -576,15 +671,15 @@ def main_visualize(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> int:
         print_info(cfg, inputs)
         return 0
 
-    if cfg.frame < 0 or cfg.frame >= inputs.ball_pos_world.shape[0]:
+    if cfg.frame < 0 or cfg.frame >= inputs.ball_uv.shape[0]:
         print(
-            f"Error: Frame {cfg.frame} out of range (0-{inputs.ball_pos_world.shape[0] - 1})"
+            f"Error: Frame {cfg.frame} out of range (0-{inputs.ball_uv.shape[0] - 1})"
         )
         return 1
 
     if cfg.view == "trajectory":
         fig, ax = plt.subplots(figsize=(10, 8))
-        render_topdown_trajectory(ax, inputs=inputs)
+        render_trajectory(ax, cfg=cfg, inputs=inputs)
     elif cfg.view == "timeline":
         fig = create_timeline_figure(cfg=cfg, inputs=inputs)
     elif cfg.view == "multi":
@@ -624,15 +719,21 @@ def main_predict(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> int:
         return 0
 
     print(f"Loading checkpoint from {cfg.checkpoint}...")
-    predictor = Traj3DEventPredictor.load_from_checkpoint(
+    predictor = UVEventPredictor.load_from_checkpoint(
         checkpoint_path=cfg.checkpoint,
         device=cfg.device,
     )
 
-    pos_t = torch.from_numpy(inputs.ball_pos_world).float()
+    ball_uv_t = torch.from_numpy(inputs.ball_uv).float()
+    court_kp_t = torch.from_numpy(inputs.court_kp).float()
+    ball_vis_t = torch.from_numpy(inputs.ball_vis.astype(np.float32))
+    court_vis_t = torch.from_numpy(inputs.court_vis.astype(np.float32))
 
     outputs = predictor.predict(
-        ball_pos_world=pos_t,
+        ball_uv=ball_uv_t,
+        court_kp=court_kp_t,
+        ball_vis=ball_vis_t,
+        court_vis=court_vis_t,
         threshold=float(cfg.threshold),
         min_distance=int(cfg.min_distance),
         top_k=cfg.top_k,
@@ -649,7 +750,7 @@ def main_predict(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> int:
 
     if cfg.view == "trajectory":
         fig, ax = plt.subplots(figsize=(10, 8))
-        render_topdown_trajectory(ax, inputs=inputs, pred_peaks=peaks)
+        render_trajectory(ax, cfg=cfg, inputs=inputs, pred_peaks=peaks)
     elif cfg.view == "timeline":
         fig = create_timeline_figure(
             cfg=cfg,
@@ -691,7 +792,7 @@ def main_predict(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> int:
     return 0
 
 
-@hydra_main(config_path="../configs", config_name="visualize_3d", version_base="1.3")
+@hydra_main(config_path="../configs", config_name="visualize_uv", version_base="1.3")
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     runtime = build_runtime_config(cfg)
     if runtime.mode == "visualize":

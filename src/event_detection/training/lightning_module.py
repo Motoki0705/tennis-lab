@@ -7,9 +7,9 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 from src.base.training.lightning_module import BaseLightningModule
-from src.evnet_detection.models.traj3d_event_model import Traj3DEventModel
-from src.evnet_detection.models.uv_event_model import UVEventModel
-from src.evnet_detection.utils.peaks import extract_event_peaks
+from src.event_detection.models.traj3d_event_model import Traj3DEventModel
+from src.event_detection.models.uv_event_model import UVEventModel
+from src.event_detection.utils.peaks import extract_event_peaks
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
