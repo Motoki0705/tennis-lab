@@ -9,7 +9,7 @@ trajectory completion:
 
 Example commands:
     `uv run python -m src.trajectory_completion.scripts.visualize`
-    `uv run python -m src.trajectory_completion.scripts.visualize visualization.scene_path=data/blcs/scenes/scene_000000.npz`
+    `uv run python -m src.trajectory_completion.scripts.visualize visualization.scene_path=data/blcs/scenes/rally_000000.npz`
     `uv run python -m src.trajectory_completion.scripts.visualize run.seed=0 data.corruption.noise_std=0.02`
     `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/trajectory_completion/.../last.ckpt`
 
