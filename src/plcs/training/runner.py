@@ -48,33 +48,6 @@ class PLCSTrainingRunner(BaseTrainingRunner):
             return PLCSSequenceLightningModule(config)
         return PLCSLightningModule(config)
 
-    def checkpoint_prefix(self, config: Any) -> str:
-        """Return checkpoint filename prefix based on mode."""
-        if self._is_sequence_mode(config):
-            return "plcs-seq"
-        return "plcs"
-
-    def checkpoint_monitor(self, config: Any) -> str:
-        """Return metric to monitor for checkpointing."""
-        return "val/epoch_position_error_m"
-
-    def early_stopping_monitor(self, config: Any) -> str:
-        """Return metric to monitor for early stopping."""
-        return "val/epoch_position_error_m"
-
-    def early_stopping_patience(self, config: Any) -> int:
-        """Return early stopping patience."""
-        return 10
-
-    def trainer_kwargs(
-        self, config: Any, accelerator: str, devices: int
-    ) -> dict[str, Any]:
-        """Return additional trainer kwargs."""
-        kwargs: dict[str, Any] = {}
-        if accelerator == "gpu":
-            kwargs["precision"] = "16-mixed"
-        return kwargs
-
 
 class PLCSMultiViewTrainingRunner(BaseTrainingRunner):
     """Training runner for PLCS multi-view model.
@@ -104,28 +77,3 @@ class PLCSMultiViewTrainingRunner(BaseTrainingRunner):
     ) -> pl.LightningModule:
         """Build PLCS multi-view lightning module."""
         return PLCSMultiViewLightningModule(config)
-
-    def checkpoint_prefix(self, config: Any) -> str:
-        """Return checkpoint filename prefix."""
-        return "plcs-multiview"
-
-    def checkpoint_monitor(self, config: Any) -> str:
-        """Return metric to monitor for checkpointing."""
-        return "val/epoch_position_error_m"
-
-    def early_stopping_monitor(self, config: Any) -> str:
-        """Return metric to monitor for early stopping."""
-        return "val/epoch_position_error_m"
-
-    def early_stopping_patience(self, config: Any) -> int:
-        """Return early stopping patience."""
-        return 10
-
-    def trainer_kwargs(
-        self, config: Any, accelerator: str, devices: int
-    ) -> dict[str, Any]:
-        """Return additional trainer kwargs."""
-        kwargs: dict[str, Any] = {}
-        if accelerator == "gpu":
-            kwargs["precision"] = "16-mixed"
-        return kwargs
