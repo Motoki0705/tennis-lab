@@ -24,7 +24,7 @@ supervise_visible_only: true
 
 corruption:
   enabled: true
-  noise_std: 0.01
+  noise_std: 0.0001
   clamp_unit: true
   point_dropout_prob: 0.05
   gap_dropout_prob: 0.1
