@@ -224,7 +224,7 @@ class PLCSModel(nn.Module):
         model_cfg = config.get("model", {})
 
         yarn_cfg = model_cfg.get("yarn", None)
-            yarn: YaRNConfig | None = None
+        yarn: YaRNConfig | None = None
         if yarn_cfg is not None:
             yarn_cfg = dict(yarn_cfg)
             if yarn_cfg.get("original_seq_len", None) is not None:
