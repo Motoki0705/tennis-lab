@@ -27,7 +27,7 @@ completed = outputs["ball_uv_completed"]
 Dataset-side visualization (how much GT is masked / how much observed points jitter):
 
 - `uv run python -m src.trajectory_completion.scripts.visualize`
-- `uv run python -m src.trajectory_completion.scripts.visualize visualization.scene_path=data/blcs/scenes/scene_000000.npz`
+- `uv run python -m src.trajectory_completion.scripts.visualize visualization.scene_path=data/blcs/scenes/rally_000000.npz`
 - Corruption tuning (reproducible with `run.seed`):
     - `uv run python -m src.trajectory_completion.scripts.visualize run.seed=0 data.corruption.noise_std=0.02 data.corruption.point_dropout_prob=0.2`
 
