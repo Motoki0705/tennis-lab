@@ -10,7 +10,7 @@ import pytorch_lightning as pl
 import torch
 from torch.utils.data import DataLoader
 
-from src.evnet_detection.data.dataset import BLCSRallyEventDataset, DummyEventDataset
+from src.evnet_detection.data.dataset import BLCSRallyEventDataset
 from src.evnet_detection.data.types import Event3DBatch, Event3DSample, EventUVBatch, EventUVSample
 from src.common.data.scene_batch_sampler import (
     build_scene_sampler,
@@ -83,7 +83,6 @@ class DataConfig:
     batch_size: int
     num_workers: int
     input_type: Literal["uv", "3d"]
-    allow_dummy: bool
     pin_memory: bool
     scene_sampler_mode: str
     scenes_per_batch: int
@@ -107,7 +106,6 @@ class EventDetectionDataModule(pl.LightningDataModule):
             batch_size=int(data_cfg.get("batch_size", 16)),
             num_workers=int(data_cfg.get("num_workers", 4)),
             input_type=input_type,
-            allow_dummy=bool(data_cfg.get("allow_dummy", True)),
             pin_memory=bool(data_cfg.get("pin_memory", torch.cuda.is_available())),
             scene_sampler_mode=resolve_scene_sampler_mode(data_cfg),
             scenes_per_batch=int(data_cfg.get("scenes_per_batch", 1)),
@@ -119,15 +117,6 @@ class EventDetectionDataModule(pl.LightningDataModule):
 
     def setup(self, stage: str | None = None) -> None:
         scene_dir = self._resolved.scene_dir
-        run_cfg = self.config.get("run", {}) or {}
-        is_dry_run = bool(getattr(run_cfg, "dry_run", run_cfg.get("dry_run", False)))
-        use_dummy = self._resolved.allow_dummy and (is_dry_run or not scene_dir.exists())
-
-        if use_dummy:
-            self.train_dataset = DummyEventDataset(self._resolved.input_type, T=64, n=8)
-            self.val_dataset = DummyEventDataset(self._resolved.input_type, T=64, n=4)
-            return
-
         if not scene_dir.exists():
             raise RuntimeError(
                 f"Scene directory not found: {scene_dir}. "
@@ -154,17 +143,15 @@ class EventDetectionDataModule(pl.LightningDataModule):
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader().")
         collate = collate_3d if self._resolved.input_type == "3d" else collate_uv
-        batch_sampler = None
-        if not isinstance(self.train_dataset, DummyEventDataset):
-            batch_sampler = build_scene_sampler(
-                self.train_dataset,
-                batch_size=self._resolved.batch_size,
-                mode=self._resolved.scene_sampler_mode,
-                scenes_per_batch=self._resolved.scenes_per_batch,
-                chunk_max_scenes=self._resolved.chunk_max_scenes,
-                drop_last=True,
-                shuffle=True,
-            )
+        batch_sampler = build_scene_sampler(
+            self.train_dataset,
+            batch_size=self._resolved.batch_size,
+            mode=self._resolved.scene_sampler_mode,
+            scenes_per_batch=self._resolved.scenes_per_batch,
+            chunk_max_scenes=self._resolved.chunk_max_scenes,
+            drop_last=True,
+            shuffle=True,
+        )
         if batch_sampler is not None:
             return DataLoader(
                 self.train_dataset,
@@ -187,17 +174,15 @@ class EventDetectionDataModule(pl.LightningDataModule):
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader().")
         collate = collate_3d if self._resolved.input_type == "3d" else collate_uv
-        batch_sampler = None
-        if not isinstance(self.val_dataset, DummyEventDataset):
-            batch_sampler = build_scene_sampler(
-                self.val_dataset,
-                batch_size=self._resolved.batch_size,
-                mode=self._resolved.scene_sampler_mode,
-                scenes_per_batch=self._resolved.scenes_per_batch,
-                chunk_max_scenes=self._resolved.chunk_max_scenes,
-                drop_last=False,
-                shuffle=False,
-            )
+        batch_sampler = build_scene_sampler(
+            self.val_dataset,
+            batch_size=self._resolved.batch_size,
+            mode=self._resolved.scene_sampler_mode,
+            scenes_per_batch=self._resolved.scenes_per_batch,
+            chunk_max_scenes=self._resolved.chunk_max_scenes,
+            drop_last=False,
+            shuffle=False,
+        )
         if batch_sampler is not None:
             return DataLoader(
                 self.val_dataset,
@@ -215,20 +200,3 @@ class EventDetectionDataModule(pl.LightningDataModule):
             collate_fn=collate,
         )
 
-
-if __name__ == "__main__":
-    cfg = {
-        "model": {"name": "uv_transformer"},
-        "data": {
-            "allow_dummy": True,
-            "num_workers": 0,
-            "batch_size": 4,
-            "pin_memory": False,
-        },
-        "run": {"dry_run": True},
-    }
-    dm = EventDetectionDataModule(cfg)  # type: ignore[arg-type]
-    dm.setup("fit")
-    batch = next(iter(dm.train_dataloader()))
-    assert batch["targets"].shape[-1] == 2
-    print("datamodule smoke ok")
