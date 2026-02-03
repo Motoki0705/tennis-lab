@@ -154,119 +154,31 @@ class BaseTrainingRunner:
     def build_callbacks(
         self, config: Any, datamodule: pl.LightningDataModule, logger: TensorBoardLogger
     ) -> list[Any]:
-        """Build callbacks for training.
-
-        Callback settings can be provided via `config.training.*` and take precedence
-        over runner hook methods. For backward compatibility, missing values fall back
-        to the hook defaults.
-        """
-        missing = object()
-
-        def _select(path: str, *, default: Any = missing) -> Any:
-            if OmegaConf.is_config(config):
-                value = OmegaConf.select(config, path, default=missing)
-                if value is not missing:
-                    return value
-                return default
-
-            current: Any = config
-            for key in path.split("."):
-                if isinstance(current, dict) and key in current:
-                    current = current[key]
-                else:
-                    return default
-            return current
-
         checkpoint_dir = Path(logger.log_dir) / "checkpoints"
-        callbacks: list[Any] = []
-
-        ckpt_enabled = bool(_select("training.checkpoint.enabled", default=True))
-        if ckpt_enabled:
-            callbacks.append(
-                ModelCheckpoint(
-                    dirpath=checkpoint_dir,
-                    filename=str(
-                        _select(
-                            "training.checkpoint.filename",
-                            default=f"{self.checkpoint_prefix(config)}-{{epoch:02d}}",
-                        )
-                    ),
-                    monitor=str(
-                        _select(
-                            "training.checkpoint.monitor",
-                            default=self.checkpoint_monitor(config),
-                        )
-                    ),
-                    mode=str(
-                        _select(
-                            "training.checkpoint.mode",
-                            default=self.checkpoint_mode(config),
-                        )
-                    ),
-                    save_top_k=int(
-                        _select(
-                            "training.checkpoint.save_top_k",
-                            default=self.checkpoint_save_top_k(config),
-                        )
-                    ),
-                    save_last=bool(
-                        _select(
-                            "training.checkpoint.save_last",
-                            default=self.checkpoint_save_last(config),
-                        )
-                    ),
-                )
+        callbacks: list[Any] = [
+            ModelCheckpoint(
+                dirpath=checkpoint_dir,
+                filename=f"{self.checkpoint_prefix(config)}-{{epoch:02d}}",
+                monitor=self.checkpoint_monitor(config),
+                mode=self.checkpoint_mode(config),
+                save_top_k=self.checkpoint_save_top_k(config),
+                save_last=self.checkpoint_save_last(config),
             )
+        ]
 
-        early_enabled = bool(
-            _select(
-                "training.early_stopping.enabled",
-                default=self.early_stopping_enabled(config),
-            )
-        )
-        if early_enabled:
+        if self.early_stopping_enabled(config):
             kwargs: dict[str, Any] = {
-                "monitor": str(
-                    _select(
-                        "training.early_stopping.monitor",
-                        default=self.early_stopping_monitor(config),
-                    )
-                ),
-                "patience": int(
-                    _select(
-                        "training.early_stopping.patience",
-                        default=self.early_stopping_patience(config),
-                    )
-                ),
-                "mode": str(
-                    _select(
-                        "training.early_stopping.mode",
-                        default=self.early_stopping_mode(config),
-                    )
-                ),
+                "monitor": self.early_stopping_monitor(config),
+                "patience": self.early_stopping_patience(config),
+                "mode": self.early_stopping_mode(config),
             }
-            min_delta = _select(
-                "training.early_stopping.min_delta",
-                default=self.early_stopping_min_delta(config),
-            )
+            min_delta = self.early_stopping_min_delta(config)
             if min_delta is not None:
                 kwargs["min_delta"] = min_delta
             callbacks.append(EarlyStopping(**kwargs))
 
-        lr_enabled = bool(
-            _select("training.lr_monitor.enabled", default=self.lr_monitor_enabled(config))
-        )
-        if lr_enabled:
-            callbacks.append(
-                LearningRateMonitor(
-                    logging_interval=str(
-                        _select(
-                            "training.lr_monitor.interval",
-                            default=self.lr_monitor_interval(config),
-                        )
-                    )
-                )
-            )
+        if self.lr_monitor_enabled(config):
+            callbacks.append(LearningRateMonitor(logging_interval=self.lr_monitor_interval(config)))
 
         callbacks.extend(self.callbacks_extra(config, datamodule, logger))
         return callbacks
@@ -275,23 +187,6 @@ class BaseTrainingRunner:
         self, config: Any, callbacks: list[Any], logger: TensorBoardLogger
     ) -> pl.Trainer:
         accelerator, devices = self.select_devices(config)
-        missing = object()
-
-        def _select(path: str, *, default: Any = missing) -> Any:
-            if OmegaConf.is_config(config):
-                value = OmegaConf.select(config, path, default=missing)
-                if value is not missing:
-                    return value
-                return default
-
-            current: Any = config
-            for key in path.split("."):
-                if isinstance(current, dict) and key in current:
-                    current = current[key]
-                else:
-                    return default
-            return current
-
         base_kwargs: dict[str, Any] = {
             "max_epochs": int(getattr(config.training, "max_epochs", 1)),
             "accelerator": accelerator,
@@ -302,19 +197,8 @@ class BaseTrainingRunner:
             "fast_dev_run": bool(getattr(config.run, "fast_dev_run", False)),
             "deterministic": True,
         }
-
-        trainer_cfg = _select("training.trainer", default={})
-        if trainer_cfg is not None:
-            if OmegaConf.is_config(trainer_cfg):
-                trainer_cfg = OmegaConf.to_container(trainer_cfg, resolve=True)
-            if isinstance(trainer_cfg, dict):
-                for key, value in trainer_cfg.items():
-                    if value is not None:
-                        base_kwargs[key] = value
-
         extra_kwargs = self.trainer_kwargs(config, accelerator, devices)
-        for key, value in extra_kwargs.items():
-            base_kwargs.setdefault(key, value)
+        base_kwargs.update(extra_kwargs)
         return pl.Trainer(**base_kwargs)
 
     def select_devices(self, config: Any) -> tuple[str, int]:
