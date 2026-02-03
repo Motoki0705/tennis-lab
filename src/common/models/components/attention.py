@@ -304,7 +304,7 @@ class MultiHeadSelfAttention(nn.Module):
         Args:
             x: (B, T, dim)
             start_pos: absolute start position for RoPE and/or causal masking (decode)
-            freqs_cis: (T, rope_dim//2) complex cis for 1D RoPE (when used)
+            freqs_cis: (T, rope_dim//2) complex cis for 1D RoPE. If None, 1D RoPE is skipped.
             rope2d: 2D RoPE freqs tuple `(freqs_cis_y, freqs_cis_x)` (when used)
             positions_2d: (B, T_rope, 2) y/x integer coordinates for tokens that receive 2D RoPE
             kv_cache: KVCache for autoregressive decode (optional)
