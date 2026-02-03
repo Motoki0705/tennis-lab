@@ -25,7 +25,7 @@ camera_mode: "random"
 
 # Augmentation
 augmentation:
-  uv_noise_std: 0.005
+  uv_noise_std: 0.0001
   visibility_drop_prob: 0.1
   temporal_dropout_prob: 0.05
   flip_horizontal: true
