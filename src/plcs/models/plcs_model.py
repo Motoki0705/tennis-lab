@@ -4,11 +4,19 @@ Player Localization in Court System: estimates player position and
 rotation in tennis court coordinates from 2D pose observations.
 
 Architecture:
-    - Decoder-only Transformer with MHA + RoPE + SDPA
+    - Decoder-only Transformer with MHA (+ optional RoPE) + SDPA
     - Court keypoints (20) are tokenized as individual tokens
     - Player keypoints (17) are tokenized as individual tokens
     - Both court and player tokens are processed together
-    - PositionHead and RotationHead outputs from pooled player tokens
+    - Outputs are computed from the CLS token
+
+Notes:
+    PLCS input is a *set* of fixed-identity tokens (court/human keypoints), not a
+    sequence where order has semantic meaning. This model optionally supports:
+      - Register tokens: extra learnable tokens inserted after CLS to stabilize
+        representations under missing/noisy observations.
+      - KP-ID embeddings: explicit embeddings for each keypoint index to reduce
+        reliance on token order / RoPE for identity.
 """
 
 from __future__ import annotations
@@ -72,6 +80,9 @@ class PLCSModel(nn.Module):
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
         yarn: YaRNConfig | None = None,
+        num_register_tokens: int = 4,
+        use_kp_id_embedding: bool = True,
+        use_rope: bool = False,
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
         invisible_init_std: float = 0.02,
@@ -87,6 +98,9 @@ class PLCSModel(nn.Module):
             rope_dim: RoPE dimension. Defaults to head_dim.
             rope_theta: RoPE theta parameter.
             yarn: Optional YaRN config for long-context extrapolation.
+            num_register_tokens: Number of register tokens inserted after CLS.
+            use_kp_id_embedding: Whether to add explicit KP-ID embeddings.
+            use_rope: Whether to apply RoPE in attention.
             use_moe: Use Mixture-of-Experts FFN in each Transformer block.
             moe_config: MoE configuration (required when use_moe=True).
             invisible_init_std: Initialization std for invisible tokens.
@@ -96,6 +110,9 @@ class PLCSModel(nn.Module):
 
         self.hidden_dim = hidden_dim
         self.yarn = yarn
+        self.num_register_tokens = int(num_register_tokens)
+        self.use_kp_id_embedding = bool(use_kp_id_embedding)
+        self.use_rope = bool(use_rope)
         self.max_tokens = int(NUM_COURT_KP + NUM_HUMAN_KP)
 
         head_dim = hidden_dim // num_heads
@@ -111,6 +128,8 @@ class PLCSModel(nn.Module):
             raise ValueError("use_moe=True requires moe_config.")
         if moe_config is not None and moe_config.dim != hidden_dim:
             raise ValueError(f"moe_config.dim={moe_config.dim} must match hidden_dim={hidden_dim}")
+        if self.num_register_tokens < 0:
+            raise ValueError(f"num_register_tokens must be >= 0, got {self.num_register_tokens}")
 
         # Token embeddings
         self.invisible_token = InvisibleTokenEmbedding(
@@ -133,6 +152,16 @@ class PLCSModel(nn.Module):
         # CLS token (no RoPE applied)
         self.cls_token = nn.Parameter(torch.zeros(1, 1, hidden_dim))
         nn.init.trunc_normal_(self.cls_token, std=0.02)
+
+        # Register tokens (prefix tokens; no RoPE applied)
+        if self.num_register_tokens > 0:
+            self.register_tokens = nn.Parameter(torch.zeros(1, self.num_register_tokens, hidden_dim))
+            nn.init.trunc_normal_(self.register_tokens, std=0.02)
+
+        # Optional KP-ID embeddings
+        if self.use_kp_id_embedding:
+            self.court_id_embed = nn.Embedding(NUM_COURT_KP, hidden_dim)
+            self.player_id_embed = nn.Embedding(NUM_HUMAN_KP, hidden_dim)
 
         # Transformer blocks
         self.blocks = nn.ModuleList(
@@ -171,14 +200,15 @@ class PLCSModel(nn.Module):
             dropout=dropout,
         )
 
-        freqs_cis = precompute_freqs_cis(
-            dim=self.rope_dim,
-            seqlen=self.max_tokens,
-            base=self.rope_theta,
-            yarn=self.yarn,
-            device=None,  # initialized on CPU; moved by `model.to(device)`
-        )
-        self.register_buffer("freqs_cis", freqs_cis, persistent=False)
+        if self.use_rope:
+            freqs_cis = precompute_freqs_cis(
+                dim=self.rope_dim,
+                seqlen=self.max_tokens,
+                base=self.rope_theta,
+                yarn=self.yarn,
+                device=None,  # initialized on CPU; moved by `model.to(device)`
+            )
+            self.register_buffer("freqs_cis", freqs_cis, persistent=False)
 
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSModel:
@@ -215,6 +245,9 @@ class PLCSModel(nn.Module):
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=model_cfg.get("rope_theta", 10000.0),
             yarn=yarn,
+            num_register_tokens=int(model_cfg.get("num_register_tokens", 4)),
+            use_kp_id_embedding=bool(model_cfg.get("use_kp_id_embedding", True)),
+            use_rope=bool(model_cfg.get("use_rope", False)),
             use_moe=use_moe,
             moe_config=moe_config,
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
@@ -253,27 +286,44 @@ class PLCSModel(nn.Module):
             torch.ones(NUM_HUMAN_KP, device=human_kp.device, dtype=torch.long)
         )[None, :, :]  # (1, 17, D)
 
+        if self.use_kp_id_embedding:
+            court_id = self.court_id_embed(
+                torch.arange(NUM_COURT_KP, device=human_kp.device, dtype=torch.long)
+            )[None, :, :]
+            player_id = self.player_id_embed(
+                torch.arange(NUM_HUMAN_KP, device=human_kp.device, dtype=torch.long)
+            )[None, :, :]
+            court_tok = court_tok + court_id
+            player_tok = player_tok + player_id
+
         token_body = torch.cat(
             [court_tok + court_type, player_tok + player_type], dim=1
         )  # (B, 37, D)
         S_body = token_body.shape[1]
 
         cls = self.cls_token.expand(B, -1, -1)
-        x = torch.cat([cls, token_body], dim=1)  # (B, 38, D)
-        S_total = x.shape[1]
+        if self.num_register_tokens > 0:
+            reg = self.register_tokens.expand(B, -1, -1)
+            x = torch.cat([cls, reg, token_body], dim=1)  # (B, 1+R+37, D)
+        else:
+            x = torch.cat([cls, token_body], dim=1)  # (B, 38, D)
 
-        if S_body > self.freqs_cis.shape[0]:
-            raise ValueError(
-                f"Sequence length S={S_body} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
-                "Increase max_tokens."
+        freqs_cis: Tensor | None = None
+        if self.use_rope:
+            if S_body > self.freqs_cis.shape[0]:
+                raise ValueError(
+                    f"Sequence length S={S_body} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
+                    "Increase max_tokens."
+                )
+            freqs_cis_body = self.freqs_cis[:S_body]
+            if freqs_cis_body.device != x.device:
+                freqs_cis_body = freqs_cis_body.to(x.device)
+
+            prefix_len = 1 + self.num_register_tokens
+            prefix_freqs = torch.ones(
+                prefix_len, freqs_cis_body.shape[1], device=x.device, dtype=freqs_cis_body.dtype
             )
-        freqs_cis_body = self.freqs_cis[:S_body]
-        if freqs_cis_body.device != x.device:
-            freqs_cis_body = freqs_cis_body.to(x.device)
-        cls_freqs = torch.ones(
-            1, freqs_cis_body.shape[1], device=x.device, dtype=freqs_cis_body.dtype
-        )
-        freqs_cis = torch.cat([cls_freqs, freqs_cis_body], dim=0)
+            freqs_cis = torch.cat([prefix_freqs, freqs_cis_body], dim=0)
 
         attn_mask: Tensor | None = None
 
