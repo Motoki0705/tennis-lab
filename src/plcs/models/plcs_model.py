@@ -80,9 +80,9 @@ class PLCSModel(nn.Module):
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
         yarn: YaRNConfig | None = None,
-        num_register_tokens: int = 0,
-        use_kp_id_embedding: bool = False,
-        use_rope: bool = True,
+        num_register_tokens: int = 4,
+        use_kp_id_embedding: bool = True,
+        use_rope: bool = False,
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
         invisible_init_std: float = 0.02,
@@ -224,7 +224,7 @@ class PLCSModel(nn.Module):
         model_cfg = config.get("model", {})
 
         yarn_cfg = model_cfg.get("yarn", None)
-        yarn: YaRNConfig | None = None
+            yarn: YaRNConfig | None = None
         if yarn_cfg is not None:
             yarn_cfg = dict(yarn_cfg)
             if yarn_cfg.get("original_seq_len", None) is not None:
@@ -245,9 +245,9 @@ class PLCSModel(nn.Module):
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=model_cfg.get("rope_theta", 10000.0),
             yarn=yarn,
-            num_register_tokens=int(model_cfg.get("num_register_tokens", 0)),
-            use_kp_id_embedding=bool(model_cfg.get("use_kp_id_embedding", False)),
-            use_rope=bool(model_cfg.get("use_rope", True)),
+            num_register_tokens=int(model_cfg.get("num_register_tokens", 4)),
+            use_kp_id_embedding=bool(model_cfg.get("use_kp_id_embedding", True)),
+            use_rope=bool(model_cfg.get("use_rope", False)),
             use_moe=use_moe,
             moe_config=moe_config,
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
