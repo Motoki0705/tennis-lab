@@ -5,7 +5,7 @@ visualization CLIs.
 
 Notes:
 - We keep the label generation logic consistent with
-  `src.evnet_detection.data.dataset.BLCSRallyEventDataset`.
+  `src.event_detection.data.dataset.BLCSRallyEventDataset`.
 """
 
 from __future__ import annotations

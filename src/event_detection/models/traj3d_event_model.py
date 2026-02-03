@@ -1,10 +1,4 @@
-"""UV-based event detection model.
-
-Architecture is aligned with src/blcs/models/blcs_model.py:
-- Tokenize court keypoints + ball UV as tokens
-- Decoder-only Transformer blocks with RoPE
-- Predict per-frame event logits from ball tokens
-"""
+"""3D-trajectory-based event detection model (trajectory only, no velocity)."""
 
 from __future__ import annotations
 
@@ -22,16 +16,15 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
-from src.common.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
-from src.evnet_detection.models.components.heads import EventLogitsHead
-from src.utils.geometry import NUM_COURT_KP
+from src.common.models.embeddings import Ball3DEmbedding, InvisibleTokenEmbedding
+from src.event_detection.models.components.heads import EventLogitsHead
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class UVEventModel(nn.Module):
-    """Predict event logits from ball UV trajectory and court keypoints."""
+class Traj3DEventModel(nn.Module):
+    """Predict event logits from 3D ball trajectory points."""
 
     def __init__(
         self,
@@ -59,7 +52,6 @@ class UVEventModel(nn.Module):
             raise ValueError("hidden_dim must be divisible by num_heads.")
         head_dim = self.hidden_dim // int(num_heads)
         rope_dim = head_dim
-        max_tokens = int(NUM_COURT_KP + self.max_seq_len)
         mlp_inter_dim_value = (
             int(mlp_inter_dim) if mlp_inter_dim is not None else int((8 * self.hidden_dim) / 3)
         )
@@ -70,18 +62,11 @@ class UVEventModel(nn.Module):
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim, init_std=invisible_init_std
         )
-        self.court_embed = CourtKPUVEmbedding(
+        self.embed = Ball3DEmbedding(
             dim=self.hidden_dim,
             dropout=dropout,
             invisible_token=self.invisible_token,
         )
-        self.ball_embed = BallUVEmbedding(
-            dim=self.hidden_dim,
-            dropout=dropout,
-            invisible_token=self.invisible_token,
-        )
-        self.type_embed = nn.Embedding(2, self.hidden_dim)
-
         self.blocks = nn.ModuleList(
             [
                 TransformerBlock(
@@ -106,7 +91,7 @@ class UVEventModel(nn.Module):
 
         freqs_cis = precompute_freqs_cis(
             dim=rope_dim,
-            seqlen=max_tokens,
+            seqlen=self.max_seq_len,
             base=float(rope_theta),
             yarn=yarn,
             device=None,
@@ -143,7 +128,7 @@ class UVEventModel(nn.Module):
         )
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> UVEventModel:
+    def from_config(cls, config: DictConfig) -> Traj3DEventModel:
         model_cfg = config.get("model", {}) or {}
         hidden_dim = int(model_cfg.get("hidden_dim", 256))
         mlp_inter_dim = model_cfg.get("mlp_inter_dim")
@@ -172,68 +157,31 @@ class UVEventModel(nn.Module):
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
         )
 
-    def forward(
-        self,
-        ball_uv: Tensor,
-        court_kp: Tensor,
-        ball_vis: Tensor | None = None,
-        ball_mask: Tensor | None = None,
-        court_vis: Tensor | None = None,
-        seq_len: Tensor | None = None,
-    ) -> Tensor:
+    def forward(self, ball_pos_world: Tensor, seq_len: Tensor | None = None) -> Tensor:
         """Forward.
 
         Args:
-            ball_uv: (B, T, 2)
-            court_kp: (B, 20, 2)
-            ball_vis: (B, T) or None
-            ball_mask: (B, T) or None
-            court_vis: (B, 20) or None
+            ball_pos_world: (B, T, 3)
+            seq_len: (B,) optional sequence lengths.
 
         Returns:
             Logits (B, T, E)
         """
-        B, T, _ = ball_uv.shape
-        if T > self.max_seq_len:
-            ball_uv = ball_uv[:, : self.max_seq_len]
-            if ball_vis is not None:
-                ball_vis = ball_vis[:, : self.max_seq_len]
-            if ball_mask is not None:
-                ball_mask = ball_mask[:, : self.max_seq_len]
+        if ball_pos_world.shape[1] > self.max_seq_len:
+            ball_pos_world = ball_pos_world[:, : self.max_seq_len]
             if seq_len is not None:
                 seq_len = torch.clamp(seq_len, max=self.max_seq_len)
-            T = self.max_seq_len
-
-        court_tokens = self.court_embed(court_kp, court_vis)  # (B, 20, D)
-        ball_tokens = self.ball_embed(ball_uv, ball_vis)  # (B, T, D)
-
-        court_type = self.type_embed(
-            torch.zeros(NUM_COURT_KP, device=ball_uv.device, dtype=torch.long)
-        )[None, :, :]
-        ball_type = self.type_embed(
-            torch.ones(T, device=ball_uv.device, dtype=torch.long)
-        )[None, :, :]
-
-        x = torch.cat([court_tokens + court_type, ball_tokens + ball_type], dim=1)  # (B, S, D)
+        x = self.embed(ball_pos_world)
         S = x.shape[1]
-
-        key_padding_mask: Tensor | None = None
-        if ball_mask is None and seq_len is not None:
-            t = torch.arange(T, device=x.device)[None, :]
-            ball_mask = t < seq_len.to(torch.long).view(B, 1)
-        if ball_mask is not None:
-            court_valid = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
-            ball_valid = ball_mask > 0
-            key_padding_mask = torch.cat([court_valid, ball_valid], dim=1)  # (B, S)
-
-        if S > self.freqs_cis.shape[0]:
-            raise ValueError("Sequence length exceeds max_seq_len; increase model.max_seq_len.")
         freqs_cis = self.freqs_cis[:S]
         if freqs_cis.device != x.device:
             freqs_cis = freqs_cis.to(x.device)
 
         attn_mask: Tensor | None = None
-        if key_padding_mask is not None:
+        if seq_len is not None:
+            B = x.shape[0]
+            t = torch.arange(S, device=x.device)[None, :]
+            key_padding_mask = t < seq_len.to(torch.long).view(B, 1)  # (B, S)
             attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
 
         residual = None
@@ -246,24 +194,17 @@ class UVEventModel(nn.Module):
                 attn_mask=attn_mask,
                 is_causal=self.causal,
             )
-
         if residual is None:
             x = self.final_norm(x)
         else:
             x, _ = self.final_norm(x, residual)
-
-        ball_h = x[:, NUM_COURT_KP:, :]
-        return self.head(ball_h)
+        return self.head(x)
 
 
 if __name__ == "__main__":
-    model = UVEventModel(hidden_dim=64, num_layers=2, num_heads=4, max_seq_len=32, num_events=2)
-    ball_uv = torch.rand(2, 32, 2)
-    ball_vis = torch.ones(2, 32)
-    ball_mask = torch.ones(2, 32)
-    court_kp = torch.rand(2, 20, 2)
-    court_vis = torch.ones(2, 20)
+    model = Traj3DEventModel(hidden_dim=64, num_layers=2, num_heads=4, max_seq_len=32, num_events=2)
+    ball_pos = torch.randn(2, 32, 3)
     seq_len = torch.tensor([32, 16])
-    logits = model(ball_uv, court_kp, ball_vis=ball_vis, ball_mask=ball_mask, court_vis=court_vis, seq_len=seq_len)
+    logits = model(ball_pos, seq_len=seq_len)
     assert logits.shape == (2, 32, 2)
-    print("uv model smoke ok")
+    print("3d model smoke ok")

@@ -9,9 +9,9 @@ import torch
 from torch import Tensor
 
 from src.base.inference.predictor import BasePredictor
-from src.evnet_detection.models.uv_event_model import UVEventModel
-from src.evnet_detection.training.lightning_module import EventDetectionLightningModule
-from src.evnet_detection.utils.peaks import extract_event_peaks
+from src.event_detection.models.uv_event_model import UVEventModel
+from src.event_detection.training.lightning_module import EventDetectionLightningModule
+from src.event_detection.utils.peaks import extract_event_peaks
 
 
 class UVEventPredictor(BasePredictor):
@@ -181,4 +181,4 @@ if __name__ == "__main__":
     )
     assert out["event_logits"].shape == (1, 16, 2)
     assert out["event_probs"].shape == (1, 16, 2)
-    print("evnet_detection.uv_predictor smoke ok")
+    print("event_detection.uv_predictor smoke ok")
