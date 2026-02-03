@@ -10,8 +10,8 @@ from omegaconf import OmegaConf
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.base.training.runner import BaseTrainingRunner
-from src.evnet_detection.data.datamodule import EventDetectionDataModule
-from src.evnet_detection.training.lightning_module import EventDetectionLightningModule
+from src.event_detection.data.datamodule import EventDetectionDataModule
+from src.event_detection.training.lightning_module import EventDetectionLightningModule
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

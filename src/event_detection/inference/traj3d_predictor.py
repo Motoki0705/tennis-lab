@@ -9,10 +9,10 @@ import torch
 from torch import Tensor
 
 from src.base.inference.predictor import BasePredictor
-from src.evnet_detection.models.traj3d_event_model import Traj3DEventModel
-from src.evnet_detection.training.lightning_module import EventDetectionLightningModule
+from src.event_detection.models.traj3d_event_model import Traj3DEventModel
+from src.event_detection.training.lightning_module import EventDetectionLightningModule
 
-from src.evnet_detection.utils.peaks import extract_event_peaks
+from src.event_detection.utils.peaks import extract_event_peaks
 
 
 class Traj3DEventPredictor(BasePredictor):
@@ -139,4 +139,4 @@ if __name__ == "__main__":
     out = predictor.predict(ball_pos_world, seq_len=seq_len, threshold=0.2, min_distance=2)
     assert out["event_logits"].shape == (1, 16, 2)
     assert out["event_probs"].shape == (1, 16, 2)
-    print("evnet_detection.traj3d_predictor smoke ok")
+    print("event_detection.traj3d_predictor smoke ok")

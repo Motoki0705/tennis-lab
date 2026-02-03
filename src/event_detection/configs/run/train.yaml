@@ -1,4 +1,4 @@
-output_dir: outputs/evnet_detection
+output_dir: outputs/event_detection
 seed: 42
 gpus: 1
 resume: null

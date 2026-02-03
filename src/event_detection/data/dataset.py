@@ -12,7 +12,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from src.evnet_detection.data.types import Event3DSample, EventUVSample
+from src.event_detection.data.types import Event3DSample, EventUVSample
 from src.common.data.scene_cache import get_scene_cache, load_npz_scene
 
 if TYPE_CHECKING:
