@@ -7,3 +7,27 @@ gradient_clip_val: 1.0
 scheduler: cosine
 min_lr: 1.0e-6
 
+# ---- Lightning Trainer 相当（直下）----
+log_every_n_steps: 50
+precision: null
+deterministic: true
+
+# ---- Callbacks（BaseTrainingRunnerが参照）----
+checkpoint:
+  enabled: true
+  filename: "plcs-{epoch:02d}"
+  monitor: val/epoch_position_error_m
+  mode: min
+  save_top_k: 3
+  save_last: true
+
+early_stopping:
+  enabled: true
+  monitor: val/epoch_position_error_m
+  mode: min
+  patience: 10
+  min_delta: null
+
+lr_monitor:
+  enabled: true
+  interval: step

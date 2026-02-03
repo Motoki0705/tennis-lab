@@ -12,3 +12,28 @@ loss:
   observed_weight: 0.1
   smoothness_weight: 0.0
   huber_delta: 0.02
+
+# ---- Lightning Trainer 相当（直下）----
+log_every_n_steps: 50
+precision: null
+deterministic: true
+
+# ---- Callbacks（BaseTrainingRunnerが参照）----
+checkpoint:
+  enabled: true
+  filename: "trajectory-completion-{epoch:02d}"
+  monitor: val/loss
+  mode: min
+  save_top_k: 3
+  save_last: true
+
+early_stopping:
+  enabled: true
+  monitor: val/loss
+  mode: min
+  patience: 5
+  min_delta: 1.0e-3
+
+lr_monitor:
+  enabled: true
+  interval: step

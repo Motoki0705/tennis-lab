@@ -303,14 +303,24 @@ class BaseTrainingRunner:
             "deterministic": True,
         }
 
-        trainer_cfg = _select("training.trainer", default={})
-        if trainer_cfg is not None:
-            if OmegaConf.is_config(trainer_cfg):
-                trainer_cfg = OmegaConf.to_container(trainer_cfg, resolve=True)
-            if isinstance(trainer_cfg, dict):
-                for key, value in trainer_cfg.items():
-                    if value is not None:
-                        base_kwargs[key] = value
+        # Prefer flattened `training.*` keys for Trainer configuration.
+        # Temporarily accept legacy `training.trainer.*` during migration.
+        trainer_keys = (
+            "precision",
+            "log_every_n_steps",
+            "deterministic",
+            "accumulate_grad_batches",
+            "val_check_interval",
+            "check_val_every_n_epoch",
+            "enable_progress_bar",
+            "strategy",
+        )
+        for key in trainer_keys:
+            value = _select(f"training.{key}", default=missing)
+            if value is missing:
+                value = _select(f"training.trainer.{key}", default=missing)
+            if value is not missing and value is not None:
+                base_kwargs[key] = value
 
         extra_kwargs = self.trainer_kwargs(config, accelerator, devices)
         for key, value in extra_kwargs.items():

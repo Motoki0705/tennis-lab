@@ -13,12 +13,27 @@ scheduler:
 
 gradient_clip_val: 1.0
 
+# ---- Lightning Trainer 相当（直下）----
+log_every_n_steps: 10
+check_val_every_n_epoch: 1
+precision: null
+deterministic: true
+
 early_stopping:
+  enabled: true
   patience: 20
   monitor: val/loss
   mode: min
+  min_delta: null
 
 checkpoint:
+  enabled: true
   save_top_k: 3
+  save_last: true
+  filename: "epoch_{epoch:03d}_pck_{val/pck:.4f}"
   monitor: val/pck
   mode: max
+
+lr_monitor:
+  enabled: true
+  interval: epoch

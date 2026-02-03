@@ -2,6 +2,7 @@
 max_epochs: 20
 gradient_clip_val: 1.0
 log_every_n_steps: 50
+deterministic: true
 
 # Use null for CPU compatibility. Override per run when using GPU:
 #   training.precision=16-mixed

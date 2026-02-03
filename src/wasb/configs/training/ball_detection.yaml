@@ -15,9 +15,31 @@ temporal:
   beta: 25.0
   detach_conf: true
 precision: "bf16-mixed"
+log_every_n_steps: 50
+deterministic: false
 input_key: frames
 use_metrics: true
 resume:
   enabled: false
   ckpt_path: null
   auto_last: true
+
+# ---- Callbacks（BaseTrainingRunnerが参照）----
+checkpoint:
+  enabled: true
+  filename: "wasb-{epoch:02d}"
+  monitor: val/loss
+  mode: min
+  save_top_k: 3
+  save_last: true
+
+early_stopping:
+  enabled: false
+  monitor: val/loss
+  mode: min
+  patience: 0
+  min_delta: null
+
+lr_monitor:
+  enabled: true
+  interval: step
