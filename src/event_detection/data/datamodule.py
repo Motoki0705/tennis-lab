@@ -10,8 +10,8 @@ import pytorch_lightning as pl
 import torch
 from torch.utils.data import DataLoader
 
-from src.evnet_detection.data.dataset import BLCSRallyEventDataset
-from src.evnet_detection.data.types import Event3DBatch, Event3DSample, EventUVBatch, EventUVSample
+from src.event_detection.data.dataset import BLCSRallyEventDataset
+from src.event_detection.data.types import Event3DBatch, Event3DSample, EventUVBatch, EventUVSample
 from src.common.data.scene_batch_sampler import (
     build_scene_sampler,
     resolve_scene_sampler_mode,
@@ -199,4 +199,3 @@ class EventDetectionDataModule(pl.LightningDataModule):
             pin_memory=self._resolved.pin_memory,
             collate_fn=collate,
         )
-
