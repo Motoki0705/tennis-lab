@@ -33,5 +33,3 @@ corruption:
   max_masked_ratio: 0.3
 
   outlier_prob: 0.0
-
-allow_dummy: false
