@@ -1,15 +1,40 @@
+# ---- Trainer (Lightning Trainer settings) ----
 max_epochs: 20
+gradient_clip_val: 1.0
+log_every_n_steps: 50
+
+# Use null for CPU compatibility. Override per run when using GPU:
+#   training.precision=16-mixed
+precision: null
+
+# ---- Optimizer / schedule（LightningModuleが参照）----
 learning_rate: 1.0e-4
 weight_decay: 1.0e-5
 warmup_steps: 2000
-gradient_clip_val: 1.0
+scheduler: cosine
+min_lr: 1.0e-6
 
-# Loss weights
+# ---- Loss weights（task-specific）----
 position_loss_weight: 1.0
 velocity_loss_weight: 0.0
 smoothness_loss_weight: 0.0
 
-# Scheduler
-scheduler: cosine
-min_lr: 1.0e-6
+# ---- Callbacks（BaseTrainingRunnerが参照）----
+checkpoint:
+  enabled: true
+  filename: "blcs-{epoch:02d}"
+  monitor: val/loss
+  mode: min
+  save_top_k: 3
+  save_last: true
 
+early_stopping:
+  enabled: true
+  monitor: val/pos_error_m
+  mode: min
+  patience: 5
+  min_delta: 1.0e-3
+
+lr_monitor:
+  enabled: true
+  interval: step
