@@ -1,0 +1,11 @@
+defaults:
+  - inference: default
+  - run: predict
+  - _self_
+
+hydra:
+  run:
+    dir: outputs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
