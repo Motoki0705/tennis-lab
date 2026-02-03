@@ -6,11 +6,11 @@ This script focuses on the 3D-input event detector:
 - Animation: the ball color changes on event frames (GT and prediction).
 
 Example commands:
-    `uv run python -m src.evnet_detection.scripts.visualize_3d`
-    `uv run python -m src.evnet_detection.scripts.visualize_3d visualization.scene_path=data/blcs/scenes/rally_000000.npz`
-    `uv run python -m src.evnet_detection.scripts.visualize_3d visualization.mode=predict visualization.checkpoint=outputs/evnet_detection/.../last.ckpt`
+    `uv run python -m src.event_detection.scripts.visualize_3d`
+    `uv run python -m src.event_detection.scripts.visualize_3d visualization.scene_path=data/blcs/scenes/rally_000000.npz`
+    `uv run python -m src.event_detection.scripts.visualize_3d visualization.mode=predict visualization.checkpoint=outputs/event_detection/.../last.ckpt`
 
-Config entry point: `src/evnet_detection/configs/visualize_3d.yaml`
+Config entry point: `src/event_detection/configs/visualize_3d.yaml`
 """
 
 from __future__ import annotations
@@ -34,8 +34,8 @@ from matplotlib.lines import Line2D
 from omegaconf import DictConfig
 
 from src.common.data.scene_cache import load_npz_scene
-from src.evnet_detection.inference.traj3d_predictor import Traj3DEventPredictor
-from src.evnet_detection.utils.visualization import (
+from src.event_detection.inference.traj3d_predictor import Traj3DEventPredictor
+from src.event_detection.utils.visualization import (
     EventLabelConfig,
     build_targets,
     decode_meta,
@@ -550,7 +550,7 @@ def create_animation(
 def print_info(cfg: RuntimeConfig, inputs: Traj3DEventInputs) -> None:
     scene_id = inputs.meta.get("scene_id", "Unknown")
     print("=" * 60)
-    print("EVNET_DETECTION 3D VISUALIZATION")
+    print("EVENT_DETECTION 3D VISUALIZATION")
     print("=" * 60)
     print(f"Scene:   {scene_id}")
     print(f"Path:    {cfg.scene_path}")
