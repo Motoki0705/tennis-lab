@@ -1,0 +1,18 @@
+# Visualization defaults for 3D trajectory event detection.
+
+mode: visualize  # visualize | predict
+scene_path: data/blcs/scenes/rally_000000.npz
+
+view: multi  # trajectory | timeline | multi | animation
+frame: 0
+fps: 30.0
+save: null
+
+info: false
+checkpoint: null
+output: null
+
+# Peak extraction (predict mode)
+threshold: 0.5
+min_distance: 2
+top_k: null
