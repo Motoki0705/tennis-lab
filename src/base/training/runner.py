@@ -1,4 +1,9 @@
-"""Base training runner with overridable hooks."""
+"""Base training runner with strict config-driven behavior.
+
+All training infrastructure settings (trainer, checkpoint, early_stopping, lr_monitor)
+must be defined in config. The runner does NOT provide fallback values - missing keys
+cause immediate errors to catch misconfigurations early.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +21,14 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 
 class BaseTrainingRunner:
-    """Base training runner with overridable hooks for task-specific behavior."""
+    """Base training runner with strict config-driven behavior.
+
+    Design principles:
+    - Config is the single source of truth for training infrastructure settings.
+    - No fallback values in runner methods - missing config keys cause errors.
+    - Subclasses only implement build_datamodule() and build_lightning_module().
+    - callbacks_extra() is the only extension point for additional callbacks.
+    """
 
     def run(self, config: Any) -> None:
         """Run training with the provided config."""
@@ -53,8 +65,9 @@ class BaseTrainingRunner:
 
         print(f"Training complete. Outputs saved to {output_dir}")
 
-    # ---- template methods (override as needed) ----
+    # ---- abstract methods (must be implemented by subclasses) ----
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
+        """Build the data module. Must be implemented by subclasses."""
         raise NotImplementedError
 
     def build_lightning_module(
@@ -64,64 +77,29 @@ class BaseTrainingRunner:
         *,
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
+        """Build the lightning module. Must be implemented by subclasses."""
         raise NotImplementedError
 
+    # ---- overridable hooks ----
     def prepare_output_dir(self, config: Any) -> Path:
+        """Prepare output directory path."""
         return Path(self._ensure_absolute(str(config.run.output_dir)))
 
     def resolve_resume(self, config: Any, output_dir: Path) -> str | None:
-        resume = getattr(config.run, "resume", None)
+        """Resolve resume checkpoint path."""
+        resume = config.run.resume
         if not resume:
             return None
         return self._ensure_absolute(str(resume))
 
-    def checkpoint_monitor(self, config: Any) -> str:
-        return "val/loss"
-
-    def checkpoint_mode(self, config: Any) -> str:
-        return "min"
-
-    def checkpoint_prefix(self, config: Any) -> str:
-        return "model"
-
-    def checkpoint_save_top_k(self, config: Any) -> int:
-        return 3
-
-    def checkpoint_save_last(self, config: Any) -> bool:
-        return True
-
-    def early_stopping_enabled(self, config: Any) -> bool:
-        return True
-
-    def early_stopping_monitor(self, config: Any) -> str:
-        return self.checkpoint_monitor(config)
-
-    def early_stopping_mode(self, config: Any) -> str:
-        return "min"
-
-    def early_stopping_patience(self, config: Any) -> int:
-        return 10
-
-    def early_stopping_min_delta(self, config: Any) -> float | None:
-        return None
-
-    def lr_monitor_enabled(self, config: Any) -> bool:
-        return True
-
-    def lr_monitor_interval(self, config: Any) -> str:
-        return "step"
-
     def callbacks_extra(
         self, config: Any, datamodule: pl.LightningDataModule, logger: TensorBoardLogger
     ) -> list[Any]:
+        """Return additional callbacks. Override in subclasses for task-specific callbacks."""
         return []
 
-    def trainer_kwargs(
-        self, config: Any, accelerator: str, devices: int
-    ) -> dict[str, Any]:
-        return {}
-
     def dry_run_postprocess(self, batch: Any, output_dir: Path) -> None:
+        """Post-process after dry run batch loading. Override in subclasses if needed."""
         return None
 
     def resolve_steps_per_epoch(
@@ -131,83 +109,111 @@ class BaseTrainingRunner:
         *,
         train_loader: Any | None,
     ) -> int | None:
+        """Resolve steps per epoch for scheduler warmup. Override if needed."""
         return None
 
-    # ---- shared helpers ----
+    # ---- shared helpers (config-driven) ----
     def seed_everything(self, config: Any) -> None:
-        seed = getattr(config.run, "seed", None)
+        """Seed all random number generators."""
+        seed = config.run.seed
         if seed is not None:
             pl.seed_everything(int(seed))
 
     def is_dry_run(self, config: Any) -> bool:
-        return bool(getattr(config.run, "dry_run", False))
+        """Check if dry run mode is enabled."""
+        return bool(config.run.dry_run)
 
     def skip_test(self, config: Any) -> bool:
-        return bool(getattr(config.run, "fast_dev_run", False))
+        """Check if test phase should be skipped."""
+        return bool(config.run.fast_dev_run)
 
     def save_config(self, config: Any, output_dir: Path) -> None:
+        """Save resolved config to output directory."""
         OmegaConf.save(config, output_dir / "config.yaml")
 
     def build_logger(self, config: Any, output_dir: Path) -> TensorBoardLogger:
+        """Build TensorBoard logger."""
         return TensorBoardLogger(save_dir=str(output_dir), name="logs")
 
     def build_callbacks(
         self, config: Any, datamodule: pl.LightningDataModule, logger: TensorBoardLogger
     ) -> list[Any]:
-        checkpoint_dir = Path(logger.log_dir) / "checkpoints"
-        callbacks: list[Any] = [
-            ModelCheckpoint(
-                dirpath=checkpoint_dir,
-                filename=f"{self.checkpoint_prefix(config)}-{{epoch:02d}}",
-                monitor=self.checkpoint_monitor(config),
-                mode=self.checkpoint_mode(config),
-                save_top_k=self.checkpoint_save_top_k(config),
-                save_last=self.checkpoint_save_last(config),
-            )
-        ]
+        """Build all callbacks from config."""
+        callbacks: list[Any] = []
 
-        if self.early_stopping_enabled(config):
+        # Checkpoint callback (required)
+        checkpoint_cfg = config.training.checkpoint
+        if checkpoint_cfg.enabled:
+            checkpoint_dir = Path(logger.log_dir) / "checkpoints"
+            callbacks.append(
+                ModelCheckpoint(
+                    dirpath=checkpoint_dir,
+                    filename=checkpoint_cfg.filename,
+                    monitor=checkpoint_cfg.monitor,
+                    mode=checkpoint_cfg.mode,
+                    save_top_k=checkpoint_cfg.save_top_k,
+                    save_last=checkpoint_cfg.save_last,
+                )
+            )
+
+        # Early stopping callback (optional)
+        early_cfg = config.training.early_stopping
+        if early_cfg.enabled:
             kwargs: dict[str, Any] = {
-                "monitor": self.early_stopping_monitor(config),
-                "patience": self.early_stopping_patience(config),
-                "mode": self.early_stopping_mode(config),
+                "monitor": early_cfg.monitor,
+                "patience": early_cfg.patience,
+                "mode": early_cfg.mode,
             }
-            min_delta = self.early_stopping_min_delta(config)
-            if min_delta is not None:
-                kwargs["min_delta"] = min_delta
+            if early_cfg.min_delta is not None:
+                kwargs["min_delta"] = early_cfg.min_delta
             callbacks.append(EarlyStopping(**kwargs))
 
-        if self.lr_monitor_enabled(config):
-            callbacks.append(LearningRateMonitor(logging_interval=self.lr_monitor_interval(config)))
+        # LR monitor callback (optional)
+        lr_cfg = config.training.lr_monitor
+        if lr_cfg.enabled:
+            callbacks.append(LearningRateMonitor(logging_interval=lr_cfg.interval))
 
+        # Add task-specific callbacks
         callbacks.extend(self.callbacks_extra(config, datamodule, logger))
         return callbacks
 
     def build_trainer(
         self, config: Any, callbacks: list[Any], logger: TensorBoardLogger
     ) -> pl.Trainer:
+        """Build PyTorch Lightning Trainer from config."""
         accelerator, devices = self.select_devices(config)
-        base_kwargs: dict[str, Any] = {
-            "max_epochs": int(getattr(config.training, "max_epochs", 1)),
+        trainer_cfg = config.training.trainer
+
+        kwargs: dict[str, Any] = {
+            "max_epochs": trainer_cfg.max_epochs,
             "accelerator": accelerator,
             "devices": devices,
             "callbacks": callbacks,
             "logger": logger,
-            "gradient_clip_val": getattr(config.training, "gradient_clip_val", None),
-            "fast_dev_run": bool(getattr(config.run, "fast_dev_run", False)),
-            "deterministic": True,
+            "deterministic": trainer_cfg.deterministic,
+            "log_every_n_steps": trainer_cfg.log_every_n_steps,
+            "check_val_every_n_epoch": trainer_cfg.check_val_every_n_epoch,
+            "fast_dev_run": bool(config.run.fast_dev_run),
         }
-        extra_kwargs = self.trainer_kwargs(config, accelerator, devices)
-        base_kwargs.update(extra_kwargs)
-        return pl.Trainer(**base_kwargs)
+
+        # Optional parameters
+        if trainer_cfg.gradient_clip_val is not None:
+            kwargs["gradient_clip_val"] = trainer_cfg.gradient_clip_val
+
+        if trainer_cfg.precision is not None:
+            kwargs["precision"] = trainer_cfg.precision
+
+        return pl.Trainer(**kwargs)
 
     def select_devices(self, config: Any) -> tuple[str, int]:
-        gpus = int(getattr(config.run, "gpus", 0))
+        """Select accelerator and device count."""
+        gpus = int(config.run.gpus)
         if gpus > 0 and torch.cuda.is_available():
             return "gpu", gpus
         return "cpu", 1
 
     def run_dry_run(self, config: Any, output_dir: Path) -> None:
+        """Run dry run mode without full training."""
         print("Running dry run (no training)...")
         self._force_cpu_for_dry_run()
 
@@ -245,15 +251,18 @@ class BaseTrainingRunner:
         print(f"Dry run complete. Outputs saved to {output_dir}")
 
     def _ensure_absolute(self, path: str) -> str:
+        """Convert path to absolute path."""
         return str(to_absolute_path(path))
 
     def _force_cpu_for_dry_run(self) -> None:
+        """Force CPU usage during dry run."""
         os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
         torch.cuda.is_available = types.MethodType(lambda *_a, **_k: False, torch.cuda)
         torch.cuda.device_count = types.MethodType(lambda *_a, **_k: 0, torch.cuda)
         torch.cuda.current_device = types.MethodType(lambda *_a, **_k: 0, torch.cuda)
 
     def _print_batch_shapes(self, batch: Any) -> None:
+        """Print batch tensor shapes for debugging."""
         if isinstance(batch, dict):
             print("Loaded batch:")
             for key, value in batch.items():

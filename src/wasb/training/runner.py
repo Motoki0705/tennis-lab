@@ -105,26 +105,6 @@ class WASBTrainingRunner(BaseTrainingRunner):
         loader = datamodule.train_dataloader()
         return len(loader)
 
-    def checkpoint_prefix(self, config: Any) -> str:
-        """Use 'wasb' as checkpoint filename prefix."""
-        return "wasb"
-
-    def early_stopping_enabled(self, config: Any) -> bool:
-        """Disable early stopping by default for WASB."""
-        return False
-
-    def trainer_kwargs(
-        self, config: Any, accelerator: str, devices: int
-    ) -> dict[str, Any]:
-        """Add precision setting from config."""
-        kwargs: dict[str, Any] = {}
-        precision = getattr(config.training, "precision", None)
-        if precision is not None:
-            kwargs["precision"] = precision
-        # Disable deterministic mode for WASB (some ops may not support it)
-        kwargs["deterministic"] = False
-        return kwargs
-
     def callbacks_extra(
         self, config: Any, datamodule: pl.LightningDataModule, logger: TensorBoardLogger
     ) -> list[Any]:

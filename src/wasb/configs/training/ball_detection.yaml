@@ -1,10 +1,21 @@
-max_epochs: 20
+# ---- Trainer (Lightning Trainer settings) ----
+trainer:
+  max_epochs: 20
+  gradient_clip_val: null
+  deterministic: false
+  precision: "bf16-mixed"
+  log_every_n_steps: 50
+  check_val_every_n_epoch: 1
+
+# ---- Optimizer / schedule (LightningModule references) ----
 freeze_backbone_epochs: 10
 learning_rate: 1e-4
 backbone_learning_rate: 1e-5
 weight_decay: 1e-4
 warmup_steps: 1000
 min_lr: 1e-6
+
+# ---- Loss weights (task-specific) ----
 bce_weight: 1.0
 mse_weight: 0.0
 temporal_weight: 0.1
@@ -14,10 +25,31 @@ temporal:
   prob_mode: sigmoid_norm
   beta: 25.0
   detach_conf: true
-precision: "bf16-mixed"
+
+# ---- Input / Output settings ----
 input_key: frames
 use_metrics: true
 resume:
   enabled: false
   ckpt_path: null
   auto_last: true
+
+# ---- Callbacks (BaseTrainingRunner references) ----
+checkpoint:
+  enabled: true
+  filename: "wasb-{epoch:02d}"
+  monitor: val/loss
+  mode: min
+  save_top_k: 3
+  save_last: true
+
+early_stopping:
+  enabled: false
+  monitor: val/loss
+  mode: min
+  patience: 10
+  min_delta: null
+
+lr_monitor:
+  enabled: true
+  interval: step

@@ -1,14 +1,42 @@
+# ---- Trainer (Lightning Trainer settings) ----
+trainer:
+  max_epochs: 20
+  gradient_clip_val: 1.0
+  deterministic: true
+  precision: "16-mixed"
+  log_every_n_steps: 50
+  check_val_every_n_epoch: 1
+
+# ---- Optimizer / schedule (LightningModule references) ----
 learning_rate: 1.0e-4
 weight_decay: 1.0e-5
-
-max_epochs: 20
 warmup_steps: 200
-min_lr: 1.0e-6
-gradient_clip_val: 1.0
 scheduler: cosine
+min_lr: 1.0e-6
 
+# ---- Loss weights ----
 loss:
   masked_weight: 1.0
   observed_weight: 0.1
   smoothness_weight: 0.0
   huber_delta: 0.02
+
+# ---- Callbacks (BaseTrainingRunner references) ----
+checkpoint:
+  enabled: true
+  filename: "trajectory-completion-{epoch:02d}"
+  monitor: val/loss
+  mode: min
+  save_top_k: 3
+  save_last: true
+
+early_stopping:
+  enabled: true
+  monitor: val/loss
+  mode: min
+  patience: 5
+  min_delta: 1.0e-3
+
+lr_monitor:
+  enabled: true
+  interval: step
