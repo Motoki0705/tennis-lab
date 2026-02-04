@@ -117,7 +117,6 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
         config: DictConfig | None = None,
         augment: bool = True,
     ) -> None:
-        super().__init__()
         self.config = config or {}
         data_cfg = self.config.get("data", {}) if hasattr(self.config, "get") else {}
         data_cfg = data_cfg or {}
