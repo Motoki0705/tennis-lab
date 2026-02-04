@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -12,6 +11,7 @@ from typing import Any
 
 import numpy as np
 
+from src.common.data.npz_meta import decode_meta
 
 @dataclass(frozen=True)
 class SceneMeta:
@@ -30,28 +30,6 @@ class SceneMeta:
     num_cameras: int
 
 
-def _decode_meta(meta_raw: Any) -> Any:
-    """Decode meta payload from NPZ.
-
-    Args:
-        meta_raw: Raw meta field from numpy.
-
-    Returns:
-        Decoded meta object.
-    """
-
-    if hasattr(meta_raw, "item"):
-        meta_raw = meta_raw.item()
-    if isinstance(meta_raw, (bytes, bytearray)):
-        meta_raw = meta_raw.decode("utf-8")
-    if isinstance(meta_raw, str):
-        try:
-            return json.loads(meta_raw)
-        except json.JSONDecodeError:
-            return meta_raw
-    return meta_raw
-
-
 def load_npz_scene(scene_path: Path) -> dict[str, Any]:
     """Load a full NPZ scene into memory.
 
@@ -66,7 +44,7 @@ def load_npz_scene(scene_path: Path) -> dict[str, Any]:
     with np.load(scene_path, allow_pickle=True) as data:
         for key in data.files:
             if key == "meta":
-                payload[key] = _decode_meta(data[key])
+                payload[key] = decode_meta(data[key])
             else:
                 payload[key] = data[key].copy()
     return payload
@@ -86,7 +64,7 @@ def extract_scene_meta(scene_path: Path, scene_idx: int) -> SceneMeta:
     with np.load(scene_path, allow_pickle=True, mmap_mode="r") as data:
         meta = {}
         if "meta" in data:
-            meta = _decode_meta(data["meta"])
+            meta = decode_meta(data["meta"])
         num_cameras = int(data["num_cameras"]) if "num_cameras" in data else 0
     num_frames = int(meta.get("num_frames", 0)) if isinstance(meta, dict) else 0
     return SceneMeta(
