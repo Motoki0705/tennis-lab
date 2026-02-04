@@ -48,8 +48,6 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSSample]):
             augment: Apply data augmentation.
 
         """
-        super().__init__()
-
         self.config = config or {}
         self.augment = augment
 
