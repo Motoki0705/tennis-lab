@@ -22,6 +22,19 @@ outputs = predictor.predict(
 completed = outputs["ball_uv_completed"]
 ```
 
+## Dataset output keys (breaking change)
+
+`BLCSUVTrajectoryCompletionDataset` now returns visibility signals with clear semantics:
+
+- `ball_vis`: ground-truth visibility (1=visible, 0=invisible/invalid).
+- `ball_obs_mask`: observed mask after corruption (1=observed, 0=missing).
+
+If you previously used `ball_vis` as the observed mask, update your training
+and inference pipelines to consume `ball_obs_mask` instead.
+
+The dataset also accepts `split` (train/val/test) or `split_file` for scene
+resolution. Provide only one of them per dataset instance.
+
 ## Visualization
 
 Dataset-side visualization (how much GT is masked / how much observed points jitter):
