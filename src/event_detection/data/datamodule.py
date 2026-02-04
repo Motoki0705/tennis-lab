@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 
 from src.event_detection.data.dataset import BLCSRallyEventDataset
 from src.event_detection.data.types import Event3DBatch, Event3DSample, EventUVBatch, EventUVSample
+from src.common.dataset.collate import collate_padded_batch
 from src.common.data.scene_batch_sampler import (
     build_scene_sampler,
     resolve_scene_sampler_mode,
@@ -23,56 +24,24 @@ if TYPE_CHECKING:
 
 def collate_uv(batch: list[EventUVSample]) -> EventUVBatch:
     """Collate UV samples with padding."""
-    B = len(batch)
-    max_len = max(int(s["seq_len"]) for s in batch)
-    E = int(batch[0]["targets"].shape[-1])
-
-    ball_uv = torch.zeros(B, max_len, 2)
-    ball_vis = torch.zeros(B, max_len)
-    ball_mask = torch.zeros(B, max_len)
-    targets = torch.zeros(B, max_len, E)
-    court_kp = torch.zeros(B, 20, 2)
-    court_vis = torch.zeros(B, 20)
-    seq_len = torch.zeros(B, dtype=torch.long)
-
-    for i, s in enumerate(batch):
-        L = int(s["seq_len"])
-        ball_uv[i, :L] = s["ball_uv"][:L]
-        ball_vis[i, :L] = s["ball_vis"][:L]
-        ball_mask[i, :L] = 1.0
-        targets[i, :L] = s["targets"][:L]
-        court_kp[i] = s["court_kp"]
-        court_vis[i] = s["court_vis"]
-        seq_len[i] = L
-
-    return {
-        "ball_uv": ball_uv,
-        "ball_vis": ball_vis,
-        "ball_mask": ball_mask,
-        "court_kp": court_kp,
-        "court_vis": court_vis,
-        "targets": targets,
-        "seq_len": seq_len,
-    }
+    return collate_padded_batch(
+        batch,
+        sequence_keys=["ball_uv", "ball_vis", "targets"],
+        static_keys=["court_kp", "court_vis"],
+        seq_len_key="seq_len",
+        mask_key="ball_mask",
+    )
 
 
 def collate_3d(batch: list[Event3DSample]) -> Event3DBatch:
     """Collate 3D samples with padding."""
-    B = len(batch)
-    max_len = max(int(s["seq_len"]) for s in batch)
-    E = int(batch[0]["targets"].shape[-1])
-
-    ball_pos = torch.zeros(B, max_len, 3)
-    targets = torch.zeros(B, max_len, E)
-    seq_len = torch.zeros(B, dtype=torch.long)
-
-    for i, s in enumerate(batch):
-        L = int(s["seq_len"])
-        ball_pos[i, :L] = s["ball_pos_world"][:L]
-        targets[i, :L] = s["targets"][:L]
-        seq_len[i] = L
-
-    return {"ball_pos_world": ball_pos, "targets": targets, "seq_len": seq_len}
+    return collate_padded_batch(
+        batch,
+        sequence_keys=["ball_pos_world", "targets"],
+        static_keys=[],
+        seq_len_key="seq_len",
+        mask_key=None,
+    )
 
 
 @dataclass(frozen=True)

@@ -101,7 +101,7 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
 
         pred = self.model(
             ball_uv_in=ball_uv_in,
-            ball_vis=ball_obs_mask,
+            ball_obs_mask=ball_obs_mask,
             court_kp=court_kp,
             court_vis=court_vis,
             seq_len=seq_len,
