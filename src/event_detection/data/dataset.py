@@ -76,7 +76,6 @@ class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
         config: DictConfig | None = None,
         augment: bool = False,
     ) -> None:
-        super().__init__()
         self.scene_dir = Path(scene_dir)
         self.input_type = input_type
         self.config = config or {}
