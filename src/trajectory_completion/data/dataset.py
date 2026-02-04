@@ -6,56 +6,21 @@ corrupted inputs (noise + masking) paired with the original UV trajectory.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-import numpy as np
 import torch
 from torch import Tensor
-from torch.utils.data import Dataset
 
 from src.common.dataset.augmentation import add_gaussian_noise
-from src.common.data.scene_cache import get_scene_cache, load_npz_scene
+from src.common.data.blcs_npz_adapter import load_camera_view
+from src.common.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
+from src.common.dataset.sequence import build_valid_mask, crop_to_max_len
+from src.trajectory_completion.data.types import TrajectoryCompletionSample
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
-
-
-def _load_split_file(scene_dir: Path, split_file: str | Path) -> list[Path]:
-    split_path = Path(split_file)
-    if not split_path.is_absolute():
-        split_path = scene_dir / split_path
-    if not split_path.exists():
-        return []
-    scenes_base = scene_dir / "scenes" if (scene_dir / "scenes").exists() else scene_dir
-    files: list[Path] = []
-    for line in split_path.read_text().splitlines():
-        name = line.strip()
-        if not name:
-            continue
-        files.append(scenes_base / name)
-    return files
-
-
-def _resolve_scenes(scene_dir: Path, split_file: str | Path | None) -> list[Path]:
-    scenes_base = scene_dir / "scenes" if (scene_dir / "scenes").exists() else scene_dir
-    if split_file is not None:
-        scenes = _load_split_file(scene_dir, split_file)
-        if scenes:
-            return scenes
-    return sorted(scenes_base.glob("*.npz"))
-
-
-def _select_camera(camera_mode: Any, num_cameras: int) -> int:
-    if camera_mode == "random":
-        return int(np.random.randint(0, num_cameras))
-    if isinstance(camera_mode, int):
-        return min(int(camera_mode), num_cameras - 1)
-    if isinstance(camera_mode, str) and camera_mode.isdigit():
-        return min(int(camera_mode), num_cameras - 1)
-    return 0
 
 
 @dataclass(frozen=True)
@@ -140,38 +105,28 @@ def _apply_corruption(
     return ball_uv_in, ball_obs_mask
 
 
-class BLCSUVTrajectoryCompletionDataset(Dataset):
+class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletionSample]):
     """Trajectory completion dataset backed by BLCS rally scenes (npz)."""
 
     def __init__(
         self,
         *,
         scene_dir: str | Path,
-        split_file: str | Path | None,
+        split: str | None = None,
+        split_file: str | Path | None = None,
         config: DictConfig | None = None,
         augment: bool = True,
     ) -> None:
-        super().__init__()
         self.config = config or {}
         data_cfg = self.config.get("data", {}) if hasattr(self.config, "get") else {}
         data_cfg = data_cfg or {}
 
         self.scene_dir = Path(scene_dir)
-        self.scenes = _resolve_scenes(self.scene_dir, split_file)
-        if not self.scenes:
-            raise RuntimeError(f"No scenes found under {self.scene_dir}")
-
-        self.camera_mode = data_cfg.get("camera_mode", "random")
         self.max_seq_len = int(data_cfg.get("max_seq_len", 256))
         self.min_seq_len = int(data_cfg.get("min_seq_len", 16))
         self.supervise_visible_only = bool(data_cfg.get("supervise_visible_only", True))
         self.augment = bool(augment)
-        self.cache_max_scenes = int(data_cfg.get("cache_max_scenes", 128))
-        self._scene_cache = (
-            get_scene_cache(load_fn=load_npz_scene, maxsize=self.cache_max_scenes)
-            if self.cache_max_scenes > 0
-            else None
-        )
+        crop_mode = "random" if self.augment else "center"
 
         corr_cfg = data_cfg.get("corruption", {}) or {}
         self.corruption = CorruptionConfig(
@@ -184,99 +139,62 @@ class BLCSUVTrajectoryCompletionDataset(Dataset):
             max_masked_ratio=float(corr_cfg.get("max_masked_ratio", 0.6)),
             outlier_prob=float(corr_cfg.get("outlier_prob", 0.0)),
         )
-
-    def __len__(self) -> int:
-        return len(self.scenes)
-
-    def _load_scene(self, path: Path) -> dict[str, Tensor]:
-        data = (
-            self._scene_cache.get(path)
-            if self._scene_cache is not None
-            else load_npz_scene(path)
+        super().__init__(
+            config=SceneDatasetConfig(
+                scene_dir=self.scene_dir,
+                split=split,
+                split_file=Path(split_file) if split_file is not None else None,
+                min_seq_len=self.min_seq_len,
+                max_seq_len=self.max_seq_len,
+                cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
+                camera_mode=data_cfg.get("camera_mode", "random"),
+                crop_mode=crop_mode,
+            )
         )
-        meta_raw: Any = data.get("meta", {})
-        if isinstance(meta_raw, (bytes, bytearray)):
-            meta_raw = meta_raw.decode("utf-8")
-        if isinstance(meta_raw, str):
-            meta = json.loads(meta_raw)
-        else:
-            meta = meta_raw if isinstance(meta_raw, dict) else {}
 
-        num_cameras = int(data["num_cameras"])
-        cam_idx = _select_camera(self.camera_mode, num_cameras)
-        prefix = f"cam_{cam_idx}_"
+    def build_sample(self, scene: NPZScene) -> TrajectoryCompletionSample:
+        view = load_camera_view(scene.data, scene.camera_idx)
+        ball_uv_gt = torch.from_numpy(view.ball_uv).float()
+        ball_visible = torch.from_numpy(view.ball_vis).to(torch.float32)
+        court_kp = torch.from_numpy(view.court_kp).float()
+        court_vis = torch.from_numpy(view.court_vis).to(torch.float32)
 
-        ball_uv = torch.from_numpy(data[f"{prefix}ball_uv"]).float()
-        ball_visible = torch.from_numpy(data[f"{prefix}ball_visible"]).to(torch.float32)
-        court_kp = torch.from_numpy(data[f"{prefix}court_kp_uv"]).float()
-        court_vis = torch.from_numpy(data[f"{prefix}court_kp_visible"]).to(torch.float32)
-
-        seq_len = int(meta.get("num_frames", ball_uv.shape[0]))
-        seq_len = min(seq_len, int(ball_uv.shape[0]))
-
-        return {
-            "ball_uv_gt": ball_uv,
-            "ball_visible": ball_visible,
-            "court_kp": court_kp,
-            "court_vis": court_vis,
-            "seq_len": torch.tensor(seq_len, dtype=torch.long),
-        }
-
-    def _crop(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
-        T = int(sample["ball_uv_gt"].shape[0])
-        seq_len = int(sample["seq_len"].item())
-
+        seq_len = min(scene.num_frames, int(ball_uv_gt.shape[0]))
         if seq_len < self.min_seq_len:
-            seq_len = min(self.min_seq_len, T)
-            sample["seq_len"] = torch.tensor(seq_len, dtype=torch.long)
+            seq_len = min(self.min_seq_len, int(ball_uv_gt.shape[0]))
+        if ball_uv_gt.shape[0] > self.max_seq_len:
+            cropped, seq_len = crop_to_max_len(
+                {"ball_uv_gt": ball_uv_gt, "ball_visible": ball_visible},
+                seq_len=seq_len,
+                max_seq_len=self.max_seq_len,
+                mode=self.config.crop_mode,
+            )
+            ball_uv_gt = cropped["ball_uv_gt"]
+            ball_visible = cropped["ball_visible"]
 
-        if T <= self.max_seq_len:
-            return sample
-
-        crop_len = self.max_seq_len
-        max_start = max(0, seq_len - crop_len)
-        if self.augment and max_start > 0:
-            start = int(torch.randint(0, max_start + 1, (1,)).item())
-        else:
-            start = max_start // 2
-        end = start + crop_len
-
-        sample["ball_uv_gt"] = sample["ball_uv_gt"][start:end]
-        sample["ball_visible"] = sample["ball_visible"][start:end]
-        sample["seq_len"] = torch.clamp(sample["seq_len"] - start, min=0, max=crop_len)
-        return sample
-
-    def __getitem__(self, idx: int) -> dict[str, Tensor]:
-        sample = self._load_scene(self.scenes[idx])
-        sample = self._crop(sample)
-
-        ball_uv_gt = sample["ball_uv_gt"]
-        seq_len = int(sample["seq_len"].item())
-        ball_visible = sample["ball_visible"]
-
-        valid_t = torch.arange(ball_uv_gt.shape[0]) < seq_len
+        seq_len_t = torch.tensor(seq_len, dtype=torch.long)
+        valid_t = build_valid_mask(ball_uv_gt.shape[0], seq_len_t).to(torch.float32)
         if self.supervise_visible_only:
-            ball_gt_visible = (ball_visible > 0).to(torch.float32) * valid_t.to(torch.float32)
+            ball_vis = (ball_visible > 0).to(torch.float32) * valid_t
         else:
-            ball_gt_visible = valid_t.to(torch.float32)
+            ball_vis = valid_t
 
         if self.augment:
             ball_uv_in, ball_obs_mask = _apply_corruption(
                 ball_uv_gt=ball_uv_gt,
-                ball_gt_visible=ball_gt_visible,
+                ball_gt_visible=ball_vis,
                 cfg=self.corruption,
             )
         else:
             ball_uv_in = ball_uv_gt.clone()
-            ball_obs_mask = ball_gt_visible.clone()
+            ball_obs_mask = ball_vis.clone()
 
         return {
             "ball_uv_in": ball_uv_in,
-            "ball_vis": ball_obs_mask,
+            "ball_obs_mask": ball_obs_mask,
             "ball_uv_gt": ball_uv_gt,
-            "court_kp": sample["court_kp"],
-            "court_vis": sample["court_vis"],
-            "seq_len": sample["seq_len"],
+            "ball_vis": ball_vis,
+            "court_kp": court_kp,
+            "court_vis": court_vis,
+            "seq_len": seq_len_t,
         }
-
-

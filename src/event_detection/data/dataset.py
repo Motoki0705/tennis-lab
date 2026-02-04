@@ -5,15 +5,16 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import torch
 from torch import Tensor
-from torch.utils.data import Dataset
 
 from src.event_detection.data.types import Event3DSample, EventUVSample
-from src.common.data.scene_cache import get_scene_cache, load_npz_scene
+from src.common.data.blcs_npz_adapter import load_3d_arrays, load_camera_view
+from src.common.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
+from src.common.dataset.sequence import crop_to_max_len
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -50,38 +51,6 @@ def _gaussian_soft_labels(
     return out
 
 
-def _load_meta(data: dict[str, Any] | np.lib.npyio.NpzFile) -> dict:
-    """Load and decode metadata from a scene payload."""
-    if isinstance(data, dict):
-        meta_raw = data.get("meta", {})
-    else:
-        meta_raw = data["meta"].item() if hasattr(data["meta"], "item") else data["meta"]
-    if isinstance(meta_raw, (bytes, bytearray)):
-        meta_raw = meta_raw.decode("utf-8")
-    if isinstance(meta_raw, str):
-        return json.loads(meta_raw)
-    return meta_raw if isinstance(meta_raw, dict) else {}
-
-
-def _resolve_scenes_base(scene_dir: Path) -> Path:
-    scenes_subdir = scene_dir / "scenes"
-    return scenes_subdir if scenes_subdir.exists() else scene_dir
-
-
-def _load_split(scene_dir: Path, split: str) -> list[Path]:
-    split_path = scene_dir / f"{split}.txt"
-    if not split_path.exists():
-        return sorted(_resolve_scenes_base(scene_dir).glob("*.npz"))
-    base = _resolve_scenes_base(scene_dir)
-    paths: list[Path] = []
-    with open(split_path) as f:
-        for line in f:
-            name = line.strip()
-            if name:
-                paths.append(base / name)
-    return paths
-
-
 @dataclass(frozen=True)
 class LabelConfig:
     """Configuration for event label generation."""
@@ -91,7 +60,7 @@ class LabelConfig:
     bounce_time_key: str = "t_bounce1"
 
 
-class BLCSRallyEventDataset(Dataset):
+class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
     """Event detection dataset from BLCS rally NPZ files.
 
     Supports two input modes:
@@ -107,22 +76,13 @@ class BLCSRallyEventDataset(Dataset):
         config: DictConfig | None = None,
         augment: bool = False,
     ) -> None:
-        super().__init__()
         self.scene_dir = Path(scene_dir)
-        self.split = split
         self.input_type = input_type
         self.config = config or {}
         self.augment = augment
 
         data_cfg = self.config.get("data", {}) or {}
-        self.max_seq_len = int(data_cfg.get("max_seq_len", 256))
-        self.camera_mode = data_cfg.get("camera_mode", "random")
-        self.cache_max_scenes = int(data_cfg.get("cache_max_scenes", 128))
-        self._scene_cache = (
-            get_scene_cache(load_fn=load_npz_scene, maxsize=self.cache_max_scenes)
-            if self.cache_max_scenes > 0
-            else None
-        )
+        crop_mode = str(data_cfg.get("crop_mode", "center"))
 
         label_cfg = data_cfg.get("label", {}) or {}
         self.label_cfg = LabelConfig(
@@ -131,19 +91,17 @@ class BLCSRallyEventDataset(Dataset):
             bounce_time_key=str(label_cfg.get("bounce_time_key", "t_bounce1")),
         )
 
-        self.scenes = _load_split(self.scene_dir, split)
-
-    def __len__(self) -> int:
-        return len(self.scenes)
-
-    def _select_camera(self, num_cameras: int) -> int:
-        if num_cameras <= 0:
-            return 0
-        if self.camera_mode == "random":
-            return int(np.random.randint(0, num_cameras))
-        if isinstance(self.camera_mode, int):
-            return min(int(self.camera_mode), num_cameras - 1)
-        return 0
+        super().__init__(
+            config=SceneDatasetConfig(
+                scene_dir=self.scene_dir,
+                split=split,
+                split_file=None,
+                max_seq_len=int(data_cfg.get("max_seq_len", 256)),
+                cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
+                camera_mode=data_cfg.get("camera_mode", "random"),
+                crop_mode=crop_mode,
+            )
+        )
 
     def _make_targets(self, meta: dict, T: int, device: torch.device) -> Tensor:
         shots = meta.get("shots", []) or []
@@ -173,39 +131,57 @@ class BLCSRallyEventDataset(Dataset):
         )
         return torch.stack([y_shot, y_bounce], dim=-1)  # (T, 2)
 
-    def __getitem__(self, idx: int) -> EventUVSample | Event3DSample:
-        path = self.scenes[idx]
-        data = (
-            self._scene_cache.get(path)
-            if self._scene_cache is not None
-            else load_npz_scene(path)
-        )
-        meta = _load_meta(data)
-
-        T_full = int(meta.get("num_frames", int(data["ball_pos_world"].shape[0])))
-        T = min(T_full, self.max_seq_len)
+    def build_sample(self, scene: NPZScene) -> EventUVSample | Event3DSample:
+        data = scene.data
+        meta = scene.meta
+        max_seq_len = self.config.max_seq_len
         device = torch.device("cpu")
 
-        targets = self._make_targets(meta=meta, T=T, device=device)
-        seq_len = torch.tensor(T, dtype=torch.long)
-
         if self.input_type == "3d":
-            ball_pos_world = torch.from_numpy(data["ball_pos_world"][:T]).float()
+            arrays = load_3d_arrays(data, position_world_key="ball_pos_world")
+            ball_pos_world = torch.from_numpy(arrays["ball_pos_world"]).float()
+            T_full = min(scene.num_frames, int(ball_pos_world.shape[0]))
+            targets = self._make_targets(meta=meta, T=T_full, device=device)
+            seq_len = torch.tensor(T_full, dtype=torch.long)
+            if ball_pos_world.shape[0] > max_seq_len:
+                cropped, T = crop_to_max_len(
+                    {"ball_pos_world": ball_pos_world},
+                    seq_len=int(seq_len.item()),
+                    max_seq_len=max_seq_len,
+                    mode=self.config.crop_mode,
+                )
+                ball_pos_world = cropped["ball_pos_world"]
+                seq_len = torch.tensor(T, dtype=torch.long)
+                targets = targets[:T]
             return {
                 "ball_pos_world": ball_pos_world,
                 "targets": targets,
                 "seq_len": seq_len,
             }
 
-        # UV input (single camera selected)
-        num_cameras = int(data["num_cameras"])
-        cam_idx = self._select_camera(num_cameras)
-        prefix = f"cam_{cam_idx}_"
+        view = load_camera_view(data, scene.camera_idx)
+        ball_uv = torch.from_numpy(view.ball_uv).float()
+        ball_vis = torch.from_numpy(view.ball_vis).float()
+        court_kp = torch.from_numpy(view.court_kp).float()
+        court_vis = torch.from_numpy(view.court_vis).float()
+        T_full = min(scene.num_frames, int(ball_uv.shape[0]))
+        targets = self._make_targets(meta=meta, T=T_full, device=device)
+        seq_len = torch.tensor(T_full, dtype=torch.long)
 
-        ball_uv = torch.from_numpy(data[f"{prefix}ball_uv"][:T]).float()
-        ball_vis = torch.from_numpy(data[f"{prefix}ball_visible"][:T]).float()
-        court_kp = torch.from_numpy(data[f"{prefix}court_kp_uv"]).float()
-        court_vis = torch.from_numpy(data[f"{prefix}court_kp_visible"]).float()
+        if ball_uv.shape[0] > max_seq_len:
+            cropped, T = crop_to_max_len(
+                {
+                    "ball_uv": ball_uv,
+                    "ball_vis": ball_vis,
+                },
+                seq_len=int(seq_len.item()),
+                max_seq_len=max_seq_len,
+                mode=self.config.crop_mode,
+            )
+            ball_uv = cropped["ball_uv"]
+            ball_vis = cropped["ball_vis"]
+            seq_len = torch.tensor(T, dtype=torch.long)
+            targets = targets[:T]
 
         return {
             "ball_uv": ball_uv,
