@@ -1,9 +1,8 @@
-"""BLCS data modules."""
+"""BLCS data modules.
 
-from src.blcs.data.datamodule import BLCSDataModule
-from src.blcs.data.dataset import BallTrajectoryDataset
+Note: Heavy imports (datamodule, dataset) are not re-exported to avoid circular dependencies.
+Import them directly from their respective modules when needed.
+"""
 
-__all__ = [
-    "BLCSDataModule",
-    "BallTrajectoryDataset",
-]
+__all__ = []
+
