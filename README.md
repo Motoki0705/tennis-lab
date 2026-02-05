@@ -1,238 +1,133 @@
 # Tennis-Lab 🎾
 
-単眼動画からテニスシーンを3D再構築するためのモジュラーパイプライン
+単眼テニス動画から、プレーヤー/ボール/コートを推定して「コート座標系の3Dシーン」に統合するための研究用モジュラーパイプライン。
 
-## 概要
+## 成果（GT vs Pred）
 
-Tennis-Labは、単眼カメラで撮影されたテニスの試合動画から、プレーヤーとボールの3D軌道を復元するための研究プロジェクトです。
+> `assets/` 配下にタスク別の比較GIFを置く想定です（GTとPredを同一画面で比較）。
 
-### パイプライン全体像
+### WASB（2Dボール検出）
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         入力: 単眼テニス動画                                  │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                 ┌────────────────────┼────────────────────┐
-                 ▼                    ▼                    ▼
-        ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-        │     GVHMR       │  │      WASB       │  │   Court KP      │
-        │  (third_party)  │  │   (src/wasb)    │  │   Detection     │
-        │                 │  │                 │  │                 │
-        │ • SMPL推定      │  │ • ボール位置    │  │ • コートKP検出  │
-        │ • ViTPose(2D)   │  │   (2D画像上)    │  │   (2D画像上)    │
-        └────────┬────────┘  └────────┬────────┘  └────────┬────────┘
-                 │                    │                    │
-                 │ 2Dスケルトン       │ 2Dボール位置       │ 2Dコートキーポイント
-                 │                    │                    │
-                 ▼                    ▼                    ▼
-        ┌─────────────────┐  ┌─────────────────┐
-        │      PLCS       │  │      BLCS       │
-        │   (src/plcs)    │  │   (src/blcs)    │
-        │                 │  │                 │
-        │ • 2Dスケルトン  │  │ • 2Dボール位置  │
-        │   → 3D位置      │  │   → 3D軌道      │
-        └────────┬────────┘  └────────┬────────┘
-                 │                    │
-                 ▼                    ▼
-        ┌─────────────────────────────────────────┐
-        │           3D Tennis Scene               │
-        │                                         │
-        │  • プレーヤー: コート上の3D位置 + SMPL  │
-        │  • ボール: 3D軌道（バウンス検出含む）   │
-        └─────────────────────────────────────────┘
-```
+<p align="center">
+  <img src="assets/wasb/gt_vs_pred.gif" width="840" />
+</p>
 
----
+- 実装: [src/wasb/README.md](src/wasb/README.md) / 実行: [docs/scripts/wasb/README.md](docs/scripts/wasb/README.md)
 
-## モジュール詳細
+### Court Detection（CourtKP20）
 
-### GVHMR (third_party/)
+<p align="center">
+  <img src="assets/court_detection/gt_vs_pred.gif" width="840" />
+</p>
 
-**機能**: 動画からプレーヤーの3Dメッシュ（SMPL）を推定
+- 実装: [src/court_detection/README.md](src/court_detection/README.md)
 
-- 入力: 単眼動画
-- 出力:
-  - SMPLパラメータ（ローカル空間）
-  - 2Dスケルトン（ViTPoseによる副産物）
+### PLCS（プレーヤー3D位置・yaw推定）
 
-#### 可視化例
+<p align="center">
+  <img src="assets/plcs/gt_vs_pred.gif" width="840" />
+</p>
 
-| 入力動画 | SMPL重畳出力 |
-|:--------:|:------------:|
-| ![入力動画](assets/gvhmr/input.mp4) | ![SMPL出力](assets/gvhmr/output.mp4) |
+- 実装: [src/plcs/README.md](src/plcs/README.md) / 実行: [docs/scripts/plcs/README.md](docs/scripts/plcs/README.md)
+
+### BLCS（ボール3D軌道推定）
+
+<p align="center">
+  <img src="assets/blcs/gt_vs_pred.gif" width="840" />
+</p>
+
+- 実装: [src/blcs/README.md](src/blcs/README.md) / 実行: [docs/scripts/blcs/README.md](docs/scripts/blcs/README.md)
+
+### Trajectory Completion（UV軌道補完）
+
+<p align="center">
+  <img src="assets/trajectory_completion/gt_vs_pred.gif" width="840" />
+</p>
+
+- 実装: [src/trajectory_completion/README.md](src/trajectory_completion/README.md)
+
+### Event Detection（ショット/バウンス時刻推定）
+
+<p align="center">
+  <img src="assets/event_detection/gt_vs_pred.gif" width="840" />
+</p>
+
+- 実装: [src/event_detection/README.md](src/event_detection/README.md)
+
+## クイックスタート
+
+### 1) セットアップ
 
 ```bash
-# GVHMRの実行
-uv run python third_party/GVHMR/tools/demo/demo_multi.py --video inputs/demo/match.mp4
-```
-
----
-
-### WASB (src/wasb/)
-
-**機能**: 画像上のボール位置を特定（Where is the Ball?）
-
-- 入力: 単眼動画
-- 出力: フレームごとのボール2D座標 (u, v)
-
-#### 可視化例
-
-| 入力動画 | ボール検出オーバーレイ |
-|:--------:|:----------------------:|
-| ![入力動画](assets/wasb/input.mp4) | ![ボール検出](assets/wasb/output.mp4) |
-
-```bash
-# WASBの実行（アンサンブル推論）
-uv run python -m src.wasb.scripts.visualize.ball_video_ensemble \
-    video_path=inputs/demo/match.mp4 \
-    output_path=assets/wasb/output.mp4
-```
-
----
-
-### PLCS (src/plcs/)
-
-**機能**: 2Dスケルトンからコート上の3Dプレーヤー位置を推定
-
-- 入力:
-  - 2D人物スケルトン（17キーポイント, COCO形式）
-  - 2Dコートキーポイント（20点）
-- 出力: コート座標系での3D位置 (x, y, z) + 向き (yaw)
-
-#### 可視化例
-
-| 2D入力シーン | 3D推論結果 |
-|:------------:|:----------:|
-| ![2D入力](assets/plcs/input.mp4) | ![3D出力](assets/plcs/output.mp4) |
-
-```bash
-# PLCSの可視化（入力シーン + 3D推論結果を保存）
-uv run python -m src.plcs.scripts.visualize \
-    visualization.mode=predict \
-    visualization.view=animation \
-    visualization.animation_view=3d \
-    visualization.checkpoint=outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt \
-    visualization.save=assets/plcs/output.mp4 \
-    visualization.save_input=assets/plcs/input.mp4
-```
-
----
-
-### BLCS (src/blcs/)
-
-**機能**: 2Dボール位置からコート上の3Dボール軌道を推定
-
-- 入力:
-  - 2Dボール位置 (u, v)
-  - 2Dコートキーポイント（20点）
-- 出力: コート座標系での3Dボール軌道 (x, y, z)
-
-#### 可視化例
-
-| 2D入力シーン | GT vs 予測（3D比較） |
-|:------------:|:--------------------:|
-| ![2D入力](assets/blcs/input.mp4) | ![GT vs 予測](assets/blcs/output.mp4) |
-
-> **Note**: 予測モードでは、**緑色がGT軌道**、**赤色が予測軌道**で描画されます。
-> これによりモデルの精度と限界を直感的に把握できます。
-
-```bash
-# BLCSの可視化（入力シーン + GT vs 予測の比較アニメーションを保存）
-uv run python -m src.blcs.scripts.visualize \
-    visualization.mode=predict \
-    visualization.view=animation \
-    visualization.animation_view=3d \
-    visualization.checkpoint=outputs/blcs/single/logs/version_0/checkpoints/last.ckpt \
-    visualization.save=assets/blcs/output.mp4 \
-    visualization.save_input=assets/blcs/input.mp4
-```
-
----
-
-## セットアップ
-
-```bash
-# 依存関係のインストール
 uv sync
-
-# GVHMRのセットアップ（サブモジュール）
-cd third_party/GVHMR
-# ... GVHMRの依存関係をインストール
 ```
 
----
+### 2) スクリプト実行（共通形）
 
-## 共通 CLI オプション
-
-すべてのトレーニングスクリプトは、統一された実行設定（`run.*`）をサポートしています。
-
-### 基本的な使用法
+すべてのタスクは Hydra を使って設定を管理しています。
 
 ```bash
-# デフォルト設定で学習
-uv run python -m src.blcs.scripts.train
-
-# 出力ディレクトリを指定
-uv run python -m src.plcs.scripts.train run.output_dir=custom/path
-
-# チェックポイントから再開
-uv run python -m src.wasb.scripts.train run.resume=outputs/wasb/checkpoints/last.ckpt
-
-# クイック動作確認（1バッチのみ実行）
-uv run python -m src.court_detection.scripts.train run.fast_dev_run=true
-
-# データ読み込み確認（学習なし、シェイプ表示のみ）
-uv run python -m src.blcs.scripts.train run.dry_run=true
-
-# CPU のみで実行
-uv run python -m src.plcs.scripts.train run.gpus=0
-
-# カスタムシードで実行
-uv run python -m src.blcs.scripts.train run.seed=123
+uv run python -m src.<task>.scripts.<entrypoint> key=value
 ```
 
-### 利用可能なオプション
+### 3) まずは可視化
 
-| オプション | 型 | デフォルト | 説明 |
-|-----------|-----|-----------|------|
-| `run.output_dir` | string | タスク固有 | 学習結果（チェックポイント、ログ、設定）の保存先 |
-| `run.seed` | int/null | 42 | 再現性のためのランダムシード |
-| `run.gpus` | int | 1 | 使用する GPU 数（0 で CPU、CUDA 未検出時も CPU） |
-| `run.resume` | string/null | null | 学習を再開するチェックポイントのパス |
-| `run.fast_dev_run` | bool | false | 動作確認モード（1バッチのみ実行、テストスキップ） |
-| `run.dry_run` | bool | false | データ確認モード（1バッチ読込、シェイプ表示、学習なし） |
+コマンド例はタスクごとのドキュメントに集約しています。
 
-詳細は [`docs/run_config_schema.md`](docs/run_config_schema.md) を参照してください。
+- [docs/scripts/README.md](docs/scripts/README.md)（BLCS/PLCS/WASB）
+- [src/court_detection/README.md](src/court_detection/README.md)
+- [src/trajectory_completion/README.md](src/trajectory_completion/README.md)
+- [src/event_detection/README.md](src/event_detection/README.md)
 
----
+### 4) テスト（E2E）
 
-## ディレクトリ構造
+```bash
+uv run pytest tests/e2e -v
 
-```
-tennis-lab/
-├── src/
-│   ├── base/           # 共通抽象化・ベースクラス
-│   ├── blcs/           # Ball Localization in Court System
-│   ├── plcs/           # Player Localization in Court System
-│   ├── wasb/           # Where's the Ball (ボール検出)
-│   └── utils/          # 共有ユーティリティ
-├── third_party/
-│   └── GVHMR/          # 3D人物メッシュ推定
-├── data/               # データセット
-├── outputs/            # 学習結果・チェックポイント
-├── assets/             # README用可視化素材
-└── configs/            # 設定ファイル
+# CUDAなし環境:
+uv run pytest tests/e2e -v -m "not cuda"
 ```
 
----
+### Docker
 
-## ライセンス
+GPU環境をまとめて立ち上げたい場合は [docs/docker/README.md](docs/docker/README.md) を参照。
 
-（ライセンス情報をここに記載）
+## ライセンス / 引用
 
----
+TBD（必要に応じて追記）
 
-## 引用
+## 構造（成果の裏側）
 
-（関連論文の引用情報をここに記載）
+### どこに何があるか（タスク）
+
+- WASB: 画像上の2Dボール位置（`src/wasb`）
+- Court Detection: 20点コートキーポイント（`src/court_detection`）
+- PLCS: 2Dスケルトン → コート上3Dプレーヤー位置/yaw（`src/plcs`）
+- BLCS: 2Dボール位置 → コート上3Dボール軌道（`src/blcs`）
+- Trajectory Completion: 欠損した2Dボール軌道を補完（`src/trajectory_completion`）
+- Event Detection: ショット/バウンスのタイミング推定（`src/event_detection`）
+- 統合: 上記をまとめて1本のパイプラインとして回す（[src/tennis_scene/README.md](src/tennis_scene/README.md)）
+
+※ 外部モジュール（例: GVHMR）は `third_party/` に隔離しています。
+
+### 典型データフロー
+
+```
+Video
+  ├─ Court Detection  → court_kp (2D)
+  ├─ WASB             → ball_uv (2D)
+  ├─ (optional) GVHMR → human_kp (2D) + SMPL (local)
+  ├─ PLCS             → player_pos/yaw (3D on court)
+  ├─ BLCS             → ball_pos_world (3D on court)
+  ├─ Traj Completion  → completed ball_uv (2D)
+  └─ Event Detection  → shot/bounce peaks
+```
+
+### ディレクトリの役割
+
+- `src/`: タスク実装（各タスクは `configs/` + `scripts/` + `training/` などを持つ）
+- `third_party/`: 外部モジュール（例: GVHMR）。vendor codeは隔離
+- `data/`: データセット/入力（大きなデータやモデルはコミットしない）
+- `outputs/`: 学習ログ・チェックポイント・生成物（大きなartifactはコミットしない）
+- `assets/`: README用の軽量デモ素材（GIF/PNGなど）
+- `docs/`: 使い方/テスト/Dockerなどの補助ドキュメント
