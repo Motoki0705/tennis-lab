@@ -21,6 +21,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
@@ -45,6 +46,8 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 F = TypeVar("F", bound=Callable[..., Any])
+
+TMP_LOG_PATH = Path("data/tmp/trajectory_completion_visualize.log")
 
 
 def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
@@ -168,6 +171,26 @@ def _build_argumenter(cfg: DictConfig) -> TrajectoryArgumenter:
     return TrajectoryArgumenter(arg_cfg)
 
 
+def _append_tmp_log(lines: list[str]) -> None:
+    try:
+        TMP_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with TMP_LOG_PATH.open("a", encoding="utf-8") as f:
+            for line in lines:
+                f.write(f"{line}\n")
+    except OSError:
+        return
+
+
+def _format_tensor_indices(tensor: torch.Tensor, *, limit: int = 20) -> str:
+    if tensor.numel() == 0:
+        return "[]"
+    total = int(tensor.numel())
+    sample = tensor[:limit].detach().cpu().tolist()
+    if total > limit:
+        return f"{sample} ... (total={total})"
+    return str(sample)
+
+
 def _load_uv_from_scene(
     payload: dict[str, Any], camera_idx: int
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -244,9 +267,11 @@ def prepare_inputs(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> TrajectoryInput
     ball_uv_gt_t = torch.from_numpy(ball_uv_gt).float()
     ball_gt_visible_t = torch.from_numpy(ball_gt_visible.astype(np.float32))
 
+    event_frames = extract_event_frames(meta, ball_uv_gt.shape[0], offset=start)
+    argumenter: TrajectoryArgumenter | None = None
+
     if cfg.apply_corruption:
         argumenter = _build_argumenter(hydra_cfg)
-        event_frames = extract_event_frames(meta, ball_uv_gt.shape[0])
         ball_uv_in_t, ball_obs_mask_t = argumenter(
             ball_uv_gt_t,
             ball_gt_visible_t,
@@ -258,6 +283,41 @@ def prepare_inputs(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> TrajectoryInput
         miss = ball_obs_mask_t <= 0
         if miss.any():
             ball_uv_in_t[miss] = 0.0
+
+    log_lines = [
+        "=" * 60,
+        f"time={datetime.now().isoformat(timespec='seconds')}",
+        f"scene={cfg.scene_path}",
+        f"camera_idx={cam_idx}",
+        f"slice=start:{start} end:{end} length:{ball_uv_gt.shape[0]}",
+        f"event_frames(bounce)={_format_tensor_indices(event_frames.get('bounce', torch.empty(0)))}",
+        f"event_frames(shot)={_format_tensor_indices(event_frames.get('shot', torch.empty(0)))}",
+    ]
+    if argumenter is not None:
+        event_candidates = TrajectoryArgumenter._expand_event_candidates(
+            event_frames=event_frames,
+            length=ball_obs_mask_t.shape[0],
+            window=argumenter.config.event_window,
+            device=ball_obs_mask_t.device,
+        )
+        orig_vis = ball_gt_visible_t > 0
+        newly_masked = (ball_obs_mask_t <= 0) & orig_vis
+        masked_event = newly_masked & event_candidates
+        log_lines.extend(
+            [
+                f"event_dropout_prob={argumenter.config.event_dropout_prob}",
+                f"event_window={argumenter.config.event_window}",
+                f"event_ratio={argumenter.config.event_ratio}",
+                f"event_candidates_count={int(event_candidates.sum().item())}",
+                f"newly_masked_count={int(newly_masked.sum().item())}",
+                f"newly_masked_event_count={int(masked_event.sum().item())}",
+                f"masked_indices_sample={_format_tensor_indices(torch.where(newly_masked)[0])}",
+                f"masked_event_indices_sample={_format_tensor_indices(torch.where(masked_event)[0])}",
+            ]
+        )
+    else:
+        log_lines.append("event_dropout=disabled")
+    _append_tmp_log(log_lines)
 
     return TrajectoryInputs(
         ball_uv_gt=ball_uv_gt_t.cpu().numpy(),
