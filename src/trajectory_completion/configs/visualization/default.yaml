@@ -1,6 +1,6 @@
 # Visualization settings for trajectory completion.
 
-mode: visualize  # visualize | predict
+mode: predict  # visualize | predict
 
 # Input scene (BLCS rally NPZ)
 scene_path: data/blcs/scenes/rally_000000.npz
@@ -14,7 +14,7 @@ save: null
 
 # Output
 info: false
-checkpoint: null
+checkpoint: outputs/trajectory_completion/logs/version_2/checkpoints/last.ckpt
 output: null
 
 # Input construction
