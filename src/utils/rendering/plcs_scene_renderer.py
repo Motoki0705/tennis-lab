@@ -74,6 +74,8 @@ class PLCSSceneRenderer:
         scene: Any,
         frame_idx: int,
         *,
+        ax: Axes3D | None = None,
+        clear_axes: bool = True,
         figsize: tuple[float, float] = (12, 8),
         show_direction: bool = True,
         title: str | None = None,
@@ -83,6 +85,8 @@ class PLCSSceneRenderer:
         Args:
             scene: PLCS scene data object with position, rotation, canonical_pose_3d.
             frame_idx: Frame index to render.
+            ax: Optional existing 3D axes. If None, creates new figure.
+            clear_axes: Whether to clear axes before rendering (for overlay).
             figsize: Figure size in inches.
             show_direction: Whether to show player facing direction arrow.
             title: Custom title. If None, generates from scene metadata.
@@ -91,8 +95,13 @@ class PLCSSceneRenderer:
             Tuple of (figure, 3D axes).
 
         """
-        fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111, projection="3d")
+        if ax is None:
+            fig = plt.figure(figsize=figsize)
+            ax = fig.add_subplot(111, projection="3d")
+        else:
+            fig = ax.get_figure()
+            if clear_axes:
+                ax.clear()
 
         # Render court
         self.court_renderer.render_3d(ax, show_net=True)
@@ -160,6 +169,8 @@ class PLCSSceneRenderer:
         scene: Any,
         frame_idx: int,
         *,
+        ax: Axes | None = None,
+        clear_axes: bool = True,
         figsize: tuple[float, float] = (10, 12),
         show_direction: bool = True,
         show_trail: bool = True,
@@ -171,6 +182,8 @@ class PLCSSceneRenderer:
         Args:
             scene: PLCS scene data object.
             frame_idx: Frame index to render.
+            ax: Optional existing axes. If None, creates new figure.
+            clear_axes: Whether to clear axes before rendering (for overlay).
             figsize: Figure size in inches.
             show_direction: Whether to show facing direction arrow.
             show_trail: Whether to show movement trail.
@@ -181,7 +194,12 @@ class PLCSSceneRenderer:
             Tuple of (figure, axes).
 
         """
-        fig, ax = plt.subplots(figsize=figsize)
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.get_figure()
+            if clear_axes:
+                ax.clear()
 
         # Render court
         self.court_renderer.render_2d(ax, show_fence=True)
@@ -240,6 +258,7 @@ class PLCSSceneRenderer:
         *,
         figsize: tuple[float, float] = (12, 8),
         show_court_lines: bool = True,
+        court_kp_size: float = 30.0,
     ) -> tuple[Figure, Axes]:
         """Render a camera view (2D UV space).
 
@@ -249,6 +268,7 @@ class PLCSSceneRenderer:
             camera_idx: Camera index.
             figsize: Figure size.
             show_court_lines: Whether to draw court line connections.
+            court_kp_size: Size of court keypoint markers.
 
         Returns:
             Tuple of (figure, axes).
@@ -279,7 +299,7 @@ class PLCSSceneRenderer:
             visible_court[:, 0],
             visible_court[:, 1],
             c="lime",
-            s=50,
+            s=court_kp_size,
             marker="s",
             label=f"Court KP ({court_vis.sum()}/20)",
         )
@@ -477,9 +497,23 @@ class PLCSSceneRenderer:
         ax.arrow(x, y, -sin_yaw, cos_yaw, head_width=0.3, fc="yellow", ec="black")
 
     def _render_camera_subplot(
-        self, ax: Axes, scene: Any, frame_idx: int, camera_idx: int
+        self,
+        ax: Axes,
+        scene: Any,
+        frame_idx: int,
+        camera_idx: int,
+        *,
+        court_kp_size: float = 30.0,
     ) -> None:
-        """Render camera view on given axes."""
+        """Render camera view on given axes.
+        
+        Args:
+            ax: Matplotlib axes.
+            scene: PLCS scene data.
+            frame_idx: Frame index.
+            camera_idx: Camera index.
+            court_kp_size: Size of court keypoint markers.
+        """
         ax.set_facecolor("#1a1a1a")
         ax.set_xlim(0, 1)
         ax.set_ylim(1, 0)
@@ -491,7 +525,7 @@ class PLCSSceneRenderer:
         court_vis = cam.court_kp_visible[frame_idx]
 
         visible_court = court_uv[court_vis]
-        ax.scatter(visible_court[:, 0], visible_court[:, 1], c="lime", s=30, marker="s")
+        ax.scatter(visible_court[:, 0], visible_court[:, 1], c="lime", s=court_kp_size, marker="s")
 
         for i, j in COURT_SKELETON:
             alpha = 0.5 if (court_vis[i] and court_vis[j]) else 0.2
