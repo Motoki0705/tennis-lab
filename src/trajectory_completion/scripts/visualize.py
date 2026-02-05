@@ -18,7 +18,6 @@ Config entry point: `src/trajectory_completion/configs/visualize.yaml`
 
 from __future__ import annotations
 
-import json
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -32,6 +31,7 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
+from src.common.data.npz_meta import decode_meta
 from src.common.data.scene_cache import load_npz_scene
 from src.trajectory_completion.data.dataset import CorruptionConfig, _apply_corruption
 from src.trajectory_completion.inference.uv_predictor import (
@@ -133,18 +133,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     )
 
 
-def _decode_meta(meta_raw: Any) -> dict[str, Any]:
-    if isinstance(meta_raw, dict):
-        return meta_raw
-    if isinstance(meta_raw, (bytes, bytearray)):
-        meta_raw = meta_raw.decode("utf-8")
-    if isinstance(meta_raw, str):
-        try:
-            decoded = json.loads(meta_raw)
-        except json.JSONDecodeError:
-            return {}
-        return decoded if isinstance(decoded, dict) else {}
-    return {}
+
 
 
 def _select_camera(camera: Any, num_cameras: int) -> int:
@@ -229,7 +218,7 @@ def prepare_inputs(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> TrajectoryInput
     _set_seed(cfg.seed)
 
     payload = load_npz_scene(cfg.scene_path)
-    meta = _decode_meta(payload.get("meta", {}))
+    meta = decode_meta(payload.get("meta", {}))
 
     num_cameras = int(payload.get("num_cameras", 1))
     cam_idx = _select_camera(cfg.camera, num_cameras)
