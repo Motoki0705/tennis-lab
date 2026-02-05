@@ -10,13 +10,14 @@ Notes:
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import torch
 from torch import Tensor
+
+from src.common.data.npz_meta import decode_meta
 
 
 @dataclass(frozen=True)
@@ -26,24 +27,6 @@ class EventLabelConfig:
     sigma_frames: float = 2.5
     shot_time_key: str = "t_start"
     bounce_time_key: str = "t_bounce1"
-
-
-def decode_meta(meta_raw: Any) -> dict[str, Any]:
-    """Decode a meta payload into a dictionary."""
-
-    if isinstance(meta_raw, dict):
-        return meta_raw
-    if hasattr(meta_raw, "item"):
-        meta_raw = meta_raw.item()
-    if isinstance(meta_raw, (bytes, bytearray)):
-        meta_raw = meta_raw.decode("utf-8")
-    if isinstance(meta_raw, str):
-        try:
-            decoded = json.loads(meta_raw)
-        except json.JSONDecodeError:
-            return {}
-        return decoded if isinstance(decoded, dict) else {}
-    return {}
 
 
 def select_camera(camera: Any, num_cameras: int) -> int:
