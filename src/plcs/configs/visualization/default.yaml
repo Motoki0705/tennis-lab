@@ -1,4 +1,4 @@
-mode: visualize  # visualize | predict
+mode: visualize  # visualize | predict | compare
 scene_path: data/plcs/scenes/scene_000001.npz
 frame: 0
 view: multi               # multi | 3d | 2d | camera | animation
@@ -10,3 +10,16 @@ save_input: null          # Path to save 2D input scene animation (camera view)
 info: false
 checkpoint: outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt
 device: auto
+
+# Comparison settings (for mode=compare)
+compare:
+  layout: overlay         # overlay | side-by-side
+  gt_color: "#00FF00"    # Green for GT
+  pred_color: "#FF00FF"  # Magenta for predictions
+  show_error: true       # Show L2 error in title/legend
+
+# Rendering settings
+rendering:
+  human_kp_size: 8.0     # Size of human keypoint markers (camera view)
+  court_kp_size: 30.0    # Size of court keypoint markers (camera view)
+  bone_width: 2.0        # Width of skeleton bones
