@@ -18,7 +18,8 @@ class ArgumentConfig:
     point_dropout_prob: float = 0.05
     event_dropout_prob: float = 0.0
     event_window: int = 2
-    event_ratio: tuple[int, int] = (2, 1)  # naive:event
+    event_ratio: tuple[int, int] = (2, 1)  # naive:event (block count ratio)
+    event_center_std: float | None = None
     noise_std: float = 0.01
     clamp_unit: bool = True
     outlier_prob: float = 0.0
@@ -39,6 +40,9 @@ class TrajectoryArgumenter:
             event_dropout_prob=float(cfg.get("event_dropout_prob", 0.0)),
             event_window=int(cfg.get("event_window", 2)),
             event_ratio=ratio_tuple,
+            event_center_std=(
+                None if cfg.get("event_center_std", None) is None else float(cfg.get("event_center_std"))
+            ),
             noise_std=float(cfg.get("noise_std", 0.01)),
             clamp_unit=bool(cfg.get("clamp_unit", True)),
             outlier_prob=float(cfg.get("outlier_prob", 0.0)),
@@ -67,6 +71,7 @@ class TrajectoryArgumenter:
                 ratio=use_ratio,
                 window=self.config.event_window,
                 drop_prob=self.config.event_dropout_prob,
+                event_center_std=self.config.event_center_std,
             )
 
         if self.config.noise_std > 0:
@@ -104,8 +109,20 @@ class TrajectoryArgumenter:
         ratio: tuple[int, int],
         window: int,
         drop_prob: float,
+        event_center_std: float | None = None,
     ) -> Tensor:
-        """Preferentially drop frames around events with a naive:event ratio."""
+        """Preferentially drop contiguous blocks around events with a naive:event block ratio.
+
+        Notes:
+            - The dropout rate is computed against the number of currently visible frames.
+            - Masking is applied as contiguous blocks of length ``2*window+1`` (clipped at ends).
+            - ``ratio`` controls the *number of blocks* drawn from event vs non-event regions,
+              not the number of frames masked.
+            - Event blocks are centered by sampling around the event time with a Gaussian
+              distribution (highest probability at the event frame), constrained to
+              ``[t-window, t+window]`` (and clipped to valid frame indices).
+            - Block overlaps are allowed and are not de-duplicated.
+        """
         if drop_prob <= 0:
             return ball_obs_mask
 
@@ -114,46 +131,114 @@ class TrajectoryArgumenter:
             return ball_obs_mask
 
         num_visible = int(obs_idx.numel())
-        num_total = int(round(float(drop_prob) * num_visible))
-        if num_total <= 0:
+        num_total_frames = int(round(float(drop_prob) * num_visible))
+        if num_total_frames <= 0:
             return ball_obs_mask
 
         naive_ratio, event_ratio = ratio
         if naive_ratio < 0 or event_ratio < 0:
             naive_ratio, event_ratio = (2, 1)
-        denom = max(1, naive_ratio + event_ratio)
-        num_event = int(round(num_total * float(event_ratio) / float(denom)))
-        num_naive = num_total - num_event
+        denom = naive_ratio + event_ratio
+        if denom <= 0:
+            naive_ratio, event_ratio = (2, 1)
+            denom = 3
 
-        event_candidates = TrajectoryArgumenter._expand_event_candidates(
-            event_frames=event_frames,
-            length=ball_obs_mask.shape[0],
-            window=window,
-            device=ball_obs_mask.device,
-        )
-        event_candidates = event_candidates & (ball_obs_mask > 0)
-        event_idx = torch.where(event_candidates)[0]
+        length = int(ball_obs_mask.shape[0])
+        block_len = max(1, 2 * int(window) + 1)
+        num_blocks = max(1, int((num_total_frames + block_len - 1) // block_len))
 
-        if event_idx.numel() < num_event:
-            num_naive += num_event - int(event_idx.numel())
-            num_event = int(event_idx.numel())
+        num_event_blocks = int(round(num_blocks * float(event_ratio) / float(denom)))
+        num_naive_blocks = num_blocks - num_event_blocks
 
-        if num_event > 0:
-            perm = event_idx[torch.randperm(event_idx.numel(), device=ball_obs_mask.device)]
-            mask_idx = perm[:num_event]
-            ball_obs_mask[mask_idx] = 0.0
+        # Enumerate event-centered blocks (bounce/shot). Sampling is without replacement
+        # from the list of event centers, but duplicate centers are allowed if provided.
+        event_centers: list[int] = []
+        if event_frames:
+            for key in ("bounce", "shot"):
+                frames = event_frames.get(key)
+                if frames is None or frames.numel() == 0:
+                    continue
+                frames = frames.to(device=ball_obs_mask.device).to(torch.long)
+                event_centers.extend(int(t) for t in frames.tolist())
 
-        if num_naive > 0:
-            naive_candidates = (ball_obs_mask > 0) & ~event_candidates
-            naive_idx = torch.where(naive_candidates)[0]
-            if naive_idx.numel() <= num_naive:
-                ball_obs_mask[naive_idx] = 0.0
+        if num_event_blocks > len(event_centers):
+            num_naive_blocks += num_event_blocks - len(event_centers)
+            num_event_blocks = len(event_centers)
+
+        if num_event_blocks > 0:
+            centers = torch.tensor(event_centers, device=ball_obs_mask.device, dtype=torch.long)
+            perm = centers[torch.randperm(centers.numel(), device=ball_obs_mask.device)]
+            chosen = perm[:num_event_blocks].tolist()
+            for t in chosen:
+                center = TrajectoryArgumenter._sample_event_block_center(
+                    event_t=int(t),
+                    length=length,
+                    window=int(window),
+                    std=event_center_std,
+                    device=ball_obs_mask.device,
+                )
+                start = max(0, int(center) - int(window))
+                end = min(length, int(center) + int(window) + 1)
+                ball_obs_mask[start:end] = 0.0
+
+        if num_naive_blocks > 0:
+            if length <= 0:
+                return ball_obs_mask
+            event_candidates = TrajectoryArgumenter._expand_event_candidates(
+                event_frames=event_frames,
+                length=length,
+                window=window,
+                device=ball_obs_mask.device,
+            )
+            naive_pool = torch.where(~event_candidates)[0]
+            if naive_pool.numel() == 0:
+                centers = torch.randint(0, length, (int(num_naive_blocks),), device=ball_obs_mask.device)
             else:
-                perm = naive_idx[torch.randperm(naive_idx.numel(), device=ball_obs_mask.device)]
-                mask_idx = perm[:num_naive]
-                ball_obs_mask[mask_idx] = 0.0
+                pick = torch.randint(0, int(naive_pool.numel()), (int(num_naive_blocks),), device=ball_obs_mask.device)
+                centers = naive_pool[pick]
+            centers = centers.tolist()
+            for t in centers:
+                start = max(0, int(t) - int(window))
+                end = min(length, int(t) + int(window) + 1)
+                ball_obs_mask[start:end] = 0.0
 
         return ball_obs_mask
+
+    @staticmethod
+    def _sample_event_block_center(
+        *,
+        event_t: int,
+        length: int,
+        window: int,
+        std: float | None,
+        device: torch.device,
+    ) -> int:
+        """Sample a block center around an event frame using a truncated Gaussian.
+
+        The sampled center is constrained to ``[event_t-window, event_t+window]`` and then
+        clipped into ``[0, length-1]``.
+        """
+        if length <= 0:
+            return 0
+
+        w = max(0, int(window))
+        low = max(0, int(event_t) - w)
+        high = min(int(length) - 1, int(event_t) + w)
+        if low >= high:
+            return int(low)
+
+        sigma = float(std) if std is not None else max(1.0, float(w) / 2.0)
+        if sigma <= 0:
+            return int(min(max(event_t, low), high))
+
+        mean = float(event_t)
+        # Rejection sampling for a truncated normal; fall back to clamping if rare failures.
+        for _ in range(8):
+            x = torch.normal(mean=mean, std=sigma, size=(1,), device=device).round().to(torch.long).item()
+            if low <= int(x) <= high:
+                return int(x)
+        x = int(torch.normal(mean=mean, std=sigma, size=(1,), device=device).round().to(torch.long).item())
+        return int(min(max(x, low), high))
 
     @staticmethod
     def apply_noise(ball_uv_in: Tensor, ball_obs_mask: Tensor, *, noise_std: float, clamp_unit: bool) -> Tensor:

@@ -344,13 +344,13 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--video",
         type=str,
-        default="data/tmp/input.mp4",
+        default="data/tennis/raw/videos/10 Minutes Of Kei Nishikori MAGIC.mp4",
         help="Path to input video (default: data/tmp/input.mp4)",
     )
     parser.add_argument(
         "--out",
         type=str,
-        default="data/tmp",
+        default="data/tennis/game11",
         help="Output root directory (default: data/tmp)",
     )
     parser.add_argument("--host", type=str, default="127.0.0.1")
