@@ -10,7 +10,7 @@ trajectory completion:
 Example commands:
     `uv run python -m src.trajectory_completion.scripts.visualize`
     `uv run python -m src.trajectory_completion.scripts.visualize visualization.scene_path=data/blcs/scenes/rally_000000.npz`
-    `uv run python -m src.trajectory_completion.scripts.visualize run.seed=0 data.corruption.noise_std=0.02`
+    `uv run python -m src.trajectory_completion.scripts.visualize run.seed=0 data.argument.noise_std=0.02`
     `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/trajectory_completion/.../last.ckpt`
 
 Config entry point: `src/trajectory_completion/configs/visualize.yaml`
@@ -33,7 +33,8 @@ from omegaconf import DictConfig
 
 from src.common.data.npz_meta import decode_meta
 from src.common.data.scene_cache import load_npz_scene
-from src.trajectory_completion.data.dataset import CorruptionConfig, _apply_corruption
+from src.trajectory_completion.data.argument import TrajectoryArgumenter
+from src.trajectory_completion.data.event_masking import extract_event_frames
 from src.trajectory_completion.inference.uv_predictor import (
     UVTrajectoryCompletionPredictor,
 )
@@ -84,7 +85,7 @@ class TrajectoryInputs:
     ball_uv_gt: np.ndarray  # (T, 2)
     ball_uv_in: np.ndarray  # (T, 2)
     ball_gt_visible: np.ndarray  # (T,) bool  (visibility from the scene)
-    ball_obs_mask: np.ndarray  # (T,) bool  (after corruption)
+    ball_obs_mask: np.ndarray  # (T,) bool  (after augmentation)
     court_kp: np.ndarray  # (20, 2)
     court_vis: np.ndarray  # (20,) bool
     meta: dict[str, Any]
@@ -161,19 +162,10 @@ def _slice_sequence(arr: np.ndarray, *, start: int, end: int) -> np.ndarray:
     return arr[start:end, ...]
 
 
-def _build_corruption_config(cfg: DictConfig) -> CorruptionConfig:
+def _build_argumenter(cfg: DictConfig) -> TrajectoryArgumenter:
     data_cfg = cfg.get("data", {}) or {}
-    corr_cfg = data_cfg.get("corruption", {}) or {}
-    return CorruptionConfig(
-        enabled=bool(corr_cfg.get("enabled", True)),
-        noise_std=float(corr_cfg.get("noise_std", 0.01)),
-        clamp_unit=bool(corr_cfg.get("clamp_unit", True)),
-        point_dropout_prob=float(corr_cfg.get("point_dropout_prob", 0.05)),
-        gap_dropout_prob=float(corr_cfg.get("gap_dropout_prob", 0.25)),
-        max_gap_len=int(corr_cfg.get("max_gap_len", 12)),
-        max_masked_ratio=float(corr_cfg.get("max_masked_ratio", 0.6)),
-        outlier_prob=float(corr_cfg.get("outlier_prob", 0.0)),
-    )
+    arg_cfg = data_cfg.get("argument", {}) or {}
+    return TrajectoryArgumenter(arg_cfg)
 
 
 def _load_uv_from_scene(
@@ -253,11 +245,12 @@ def prepare_inputs(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> TrajectoryInput
     ball_gt_visible_t = torch.from_numpy(ball_gt_visible.astype(np.float32))
 
     if cfg.apply_corruption:
-        corr = _build_corruption_config(hydra_cfg)
-        ball_uv_in_t, ball_obs_mask_t = _apply_corruption(
-            ball_uv_gt=ball_uv_gt_t,
-            ball_gt_visible=ball_gt_visible_t,
-            cfg=corr,
+        argumenter = _build_argumenter(hydra_cfg)
+        event_frames = extract_event_frames(meta, ball_uv_gt.shape[0])
+        ball_uv_in_t, ball_obs_mask_t = argumenter(
+            ball_uv_gt_t,
+            ball_gt_visible_t,
+            event_frames=event_frames,
         )
     else:
         ball_uv_in_t = ball_uv_gt_t.clone()
@@ -324,7 +317,7 @@ def _summarize_inputs(inputs: TrajectoryInputs) -> dict[str, float]:
     newly_masked = orig_vis & (~obs)
     newly_masked_count = int(newly_masked.sum())
 
-    # Jitter only makes sense on frames that are observed after corruption.
+    # Jitter only makes sense on frames that are observed after augmentation.
     err_in = np.linalg.norm(inputs.ball_uv_in - inputs.ball_uv_gt, axis=-1)
     jitter = err_in[obs]
 
@@ -364,7 +357,7 @@ def print_info(cfg: RuntimeConfig, inputs: TrajectoryInputs) -> None:
         f"  Observed (input):  {stats['observed_count']:.0f}"
         f" ({stats['observed_ratio']:.1%})"
     )
-    print(f"  Newly masked by corruption: {stats['newly_masked_count']:.0f}")
+    print(f"  Newly masked by augmentation: {stats['newly_masked_count']:.0f}")
 
     print("\nObserved-point jitter (|input - GT|):")
     print(
@@ -420,7 +413,7 @@ def render_uv_panel(
             s=22,
             marker="x",
             alpha=0.9,
-            label="GT (masked by corruption)",
+            label="GT (masked by augmentation)",
             zorder=5,
         )
 
@@ -553,7 +546,7 @@ def render_timeline_panel(
             c="#FF4444",
             marker="x",
             alpha=0.9,
-            label="Masked by corruption",
+            label="Masked by augmentation",
         )
 
     ax_mask.set_ylim(-0.2, 1.2)
