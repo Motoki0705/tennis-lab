@@ -7,8 +7,6 @@ from typing import Any
 
 import numpy as np
 
-from src.blcs.data.types import BLCSSceneMeta, RallySceneMeta
-
 
 def decode_meta(meta_raw: Any) -> dict[str, Any]:
     """Decode a meta payload from NPZ into a dictionary.
@@ -52,23 +50,3 @@ def get_num_frames(meta: dict[str, Any], fallback_T: int) -> int:
         return int(num_frames)
     except (TypeError, ValueError):
         return int(fallback_T)
-
-
-def to_blcs_scene_meta(meta: dict[str, Any]) -> BLCSSceneMeta | None:
-    """Convert a metadata dictionary into BLCSSceneMeta when possible."""
-    if not isinstance(meta, dict):
-        return None
-    try:
-        return BLCSSceneMeta.from_dict(meta)
-    except (KeyError, TypeError, ValueError):
-        return None
-
-
-def to_rally_scene_meta(meta: dict[str, Any]) -> RallySceneMeta | None:
-    """Convert a metadata dictionary into RallySceneMeta when possible."""
-    if not isinstance(meta, dict):
-        return None
-    try:
-        return RallySceneMeta.from_dict(meta)
-    except (KeyError, TypeError, ValueError):
-        return None
