@@ -18,7 +18,7 @@ min_lr: 1.0e-6
 loss:
   masked_weight: 1.0
   observed_weight: 0.1
-  smoothness_weight: 0.0
+  smoothness_weight: 0.1
   huber_delta: 0.02
 
 # ---- Callbacks (BaseTrainingRunner references) ----
@@ -34,8 +34,8 @@ early_stopping:
   enabled: true
   monitor: val/loss
   mode: min
-  patience: 5
-  min_delta: 1.0e-3
+  patience: 20
+  min_delta: 1.0e-5
 
 lr_monitor:
   enabled: true
