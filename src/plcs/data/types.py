@@ -25,6 +25,7 @@ class PLCSFrameBatch(TypedDict):
     court_vis: torch.Tensor  # (20,) visibility flags for court keypoints
     position: torch.Tensor  # (3,) normalized court position [x_norm, y_norm, z_norm]
     rotation: torch.Tensor  # (2,) player orientation [sin(yaw), cos(yaw)]
+    human_kp_3d: torch.Tensor  # (17, 3) COCO17 world/court-coordinate keypoints
 
 
 class PLCSSequenceBatch(TypedDict):

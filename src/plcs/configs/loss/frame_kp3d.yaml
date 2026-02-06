@@ -1,0 +1,2 @@
+# Frame-level PLCS keypoint-3D loss configuration.
+keypoint_3d_weight: 1.0
