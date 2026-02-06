@@ -14,7 +14,7 @@ save: null
 
 # Output
 info: false
-checkpoint: outputs/trajectory_completion/logs/version_2/checkpoints/last.ckpt
+checkpoint: null
 output: null
 
 # Input construction
