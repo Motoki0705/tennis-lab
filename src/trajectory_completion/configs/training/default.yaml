@@ -20,6 +20,18 @@ loss:
   observed_weight: 0.16
   smoothness_weight: 0.01
   huber_delta: 0.02
+  masked_schedule:
+    enabled: true
+    start_epoch: 0
+    end_epoch: 20
+    weight_min: 0.0
+    weight_max: 1.0
+  auxiliary_observed:
+    enabled: true
+    weight: 0.2
+    depth_weighting: linear  # linear | exp
+    exp_gamma: 1.5
+    predictor_hidden_dim: ${model.hidden_dim}
 
 # ---- Callbacks (BaseTrainingRunner references) ----
 checkpoint:

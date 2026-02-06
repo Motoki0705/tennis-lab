@@ -50,6 +50,34 @@ Inference visualization (distinguishes predictions at observed vs masked frames)
 - Save the figure:
     - `uv run python -m src.trajectory_completion.scripts.visualize visualization.save=outputs/tmp/vis.png`
 
+## Training design: observed drift mitigation
+
+`src/trajectory_completion/training/lightning_module.py` supports two mechanisms to reduce
+drift propagation from `observed` to `masked`.
+
+- Masked-loss schedule:
+    - `training.loss.masked_schedule.enabled`
+    - `training.loss.masked_schedule.start_epoch`
+    - `training.loss.masked_schedule.end_epoch`
+    - `training.loss.masked_schedule.weight_min`
+    - `training.loss.masked_schedule.weight_max`
+- Auxiliary observed loss on intermediate layers:
+    - `training.loss.auxiliary_observed.enabled`
+    - `training.loss.auxiliary_observed.weight`
+    - `training.loss.auxiliary_observed.depth_weighting` (`linear` or `exp`)
+    - `training.loss.auxiliary_observed.exp_gamma`
+    - `training.loss.auxiliary_observed.predictor_hidden_dim`
+
+Recommended recipe:
+- Early training: keep masked weight small (`weight_min`) and optimize observed + smoothness.
+- Later training: ramp masked weight to `weight_max`.
+- Keep auxiliary observed loss enabled to retain token-local coordinate information.
+
+New logs:
+- `train/val masked_weight_t`: effective masked loss weight after scheduling.
+- `train/val loss_aux`: summed auxiliary observed loss (before global aux scaling).
+- `train/val boundary_jump_pred`, `boundary_jump_gt`, `boundary_jump_error`: boundary jump diagnostics at observed/masked transitions.
+
 ## Data loading optimization
 
 - `data.cache_max_scenes`: LRU cache size for scene NPZ files.
