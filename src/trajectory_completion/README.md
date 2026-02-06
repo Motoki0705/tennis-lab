@@ -27,7 +27,7 @@ completed = outputs["ball_uv_completed"]
 `BLCSUVTrajectoryCompletionDataset` now returns visibility signals with clear semantics:
 
 - `ball_vis`: ground-truth visibility (1=visible, 0=invisible/invalid).
-- `ball_obs_mask`: observed mask after corruption (1=observed, 0=missing).
+- `ball_obs_mask`: observed mask after augmentation (1=observed, 0=missing).
 
 If you previously used `ball_vis` as the observed mask, update your training
 and inference pipelines to consume `ball_obs_mask` instead.
@@ -41,8 +41,8 @@ Dataset-side visualization (how much GT is masked / how much observed points jit
 
 - `uv run python -m src.trajectory_completion.scripts.visualize`
 - `uv run python -m src.trajectory_completion.scripts.visualize visualization.scene_path=data/blcs/scenes/rally_000000.npz`
-- Corruption tuning (reproducible with `run.seed`):
-    - `uv run python -m src.trajectory_completion.scripts.visualize run.seed=0 data.corruption.noise_std=0.02 data.corruption.point_dropout_prob=0.2`
+- Argument tuning (reproducible with `run.seed`):
+    - `uv run python -m src.trajectory_completion.scripts.visualize run.seed=0 data.argument.noise_std=0.02 data.argument.point_dropout_prob=0.2`
 
 Inference visualization (distinguishes predictions at observed vs masked frames):
 

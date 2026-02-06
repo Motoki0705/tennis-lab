@@ -1,6 +1,6 @@
 # ---- Trainer (Lightning Trainer settings) ----
 trainer:
-  max_epochs: 20
+  max_epochs: 100
   gradient_clip_val: 1.0
   deterministic: true
   precision: "16-mixed"
@@ -10,15 +10,15 @@ trainer:
 # ---- Optimizer / schedule (LightningModule references) ----
 learning_rate: 1.0e-4
 weight_decay: 1.0e-5
-warmup_steps: 200
+warmup_steps: 500
 scheduler: cosine
 min_lr: 1.0e-6
 
 # ---- Loss weights ----
 loss:
   masked_weight: 1.0
-  observed_weight: 0.1
-  smoothness_weight: 0.0
+  observed_weight: 0.16
+  smoothness_weight: 0.01
   huber_delta: 0.02
 
 # ---- Callbacks (BaseTrainingRunner references) ----
@@ -34,8 +34,8 @@ early_stopping:
   enabled: true
   monitor: val/loss
   mode: min
-  patience: 5
-  min_delta: 1.0e-3
+  patience: 200
+  min_delta: 1.0e-5
 
 lr_monitor:
   enabled: true
