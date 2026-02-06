@@ -184,7 +184,8 @@ class UVTrajectoryCompletionModel(nn.Module):
         court_vis: Tensor | None = None,
         seq_len: Tensor | None = None,
         ball_mask: Tensor | None = None,
-    ) -> Tensor:
+        return_intermediate_ball_hidden: bool = False,
+    ) -> Tensor | tuple[Tensor, list[Tensor]]:
         """Forward.
 
         Args:
@@ -194,9 +195,13 @@ class UVTrajectoryCompletionModel(nn.Module):
             court_vis: (B, 20) court visibility mask.
             seq_len: (B,) valid sequence lengths.
             ball_mask: (B, T) padding mask (1=valid).
+            return_intermediate_ball_hidden: If True, also return ball token
+                hidden states after each transformer block.
 
         Returns:
-            Completed UV predictions: (B, T, 2)
+            Completed UV predictions: (B, T, 2). If
+            ``return_intermediate_ball_hidden=True``, returns
+            ``(pred, intermediate_ball_hidden_list)``.
         """
         B, T, _ = ball_uv_in.shape
         if T > self.max_seq_len:
@@ -241,6 +246,7 @@ class UVTrajectoryCompletionModel(nn.Module):
             attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
 
         residual = None
+        intermediate_ball_hidden: list[Tensor] = []
         for block in self.blocks:
             x, residual = block(
                 x,
@@ -250,6 +256,8 @@ class UVTrajectoryCompletionModel(nn.Module):
                 attn_mask=attn_mask,
                 is_causal=self.causal,
             )
+            if return_intermediate_ball_hidden:
+                intermediate_ball_hidden.append(x[:, NUM_COURT_KP:, :])
 
         if residual is None:
             x = self.final_norm(x)
@@ -257,7 +265,10 @@ class UVTrajectoryCompletionModel(nn.Module):
             x, _ = self.final_norm(x, residual)
 
         ball_h = x[:, NUM_COURT_KP:, :]
-        return self.head(ball_h)
+        pred = self.head(ball_h)
+        if return_intermediate_ball_hidden:
+            return pred, intermediate_ball_hidden
+        return pred
 
 
 if __name__ == "__main__":
