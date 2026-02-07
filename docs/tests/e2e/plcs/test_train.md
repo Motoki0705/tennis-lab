@@ -6,7 +6,7 @@
 
 **対象スクリプト**: 
 - `src.plcs.scripts.train` (フレームモデル)
-- `src.plcs.scripts.train_sequence` (シーケンスモデル)
+- `src.plcs.scripts.train --config-name train_sequence` (シーケンスモデル)
 
 ## 概要
 
@@ -60,7 +60,7 @@ data.batch_size=2
 
 ### 対象スクリプト
 
-`src.plcs.scripts.train_sequence`
+`src.plcs.scripts.train --config-name train_sequence`
 
 ### 検証内容
 
@@ -129,7 +129,7 @@ data.batch_size=2
 
 ### 対象スクリプト
 
-`src.plcs.scripts.train_sequence`
+`src.plcs.scripts.train --config-name train_sequence`
 
 ### 検証内容
 

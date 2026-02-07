@@ -29,7 +29,7 @@ uv run pytest tests/e2e/wasb/test_train.py -v -m "not cuda"
 
 | スクリプト | モデル | 説明 |
 |-----------|--------|------|
-| `train.ball_detection` | DinoV3 FPN Heatmap | ヒートマップベースのボール検出 |
+| `train` | DinoV3 FPN Heatmap | ヒートマップベースのボール検出 |
 | `train.trajectory` | TrajectoryBiLSTM | 軌道補完（欠損フレームの補間） |
 | `train.event_detection` | イベント検出器 | バウンス/ヒット等のイベント検出 |
 

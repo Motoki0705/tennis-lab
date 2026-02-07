@@ -7,8 +7,8 @@ Models:
 - **3D model**: predicts shot/bounce timings from `ball_pos_world` only (for within-scene event timing).
 
 Entry points:
-- `uv run python -m src.event_detection.scripts.train_uv`
-- `uv run python -m src.event_detection.scripts.train_3d`
+- `uv run python -m src.event_detection.scripts.train` (UV model, default)
+- `uv run python -m src.event_detection.scripts.train --config-name train_3d` (3D model)
 
 Inference:
 - `src/event_detection/inference/uv_predictor.py` for UV-based event detection

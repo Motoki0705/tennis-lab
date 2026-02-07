@@ -18,13 +18,13 @@
 ### 基本実行
 
 ```bash
-uv run python -m src.plcs.scripts.train_multiview
+uv run python -m src.plcs.scripts.train --config-name train_multiview
 ```
 
 ### 出力先・データセット指定
 
 ```bash
-uv run python -m src.plcs.scripts.train_multiview \
+uv run python -m src.plcs.scripts.train --config-name train_multiview \
     run.output_dir=outputs/plcs/multiview \
     data.scene_dir=data/plcs/scenes
 ```
@@ -33,7 +33,7 @@ uv run python -m src.plcs.scripts.train_multiview \
 
 ```bash
 # 4カメラ同時使用、最低2カメラ必須
-uv run python -m src.plcs.scripts.train_multiview \
+uv run python -m src.plcs.scripts.train --config-name train_multiview \
     data.num_views=4 \
     data.min_cameras=2
 ```
@@ -42,7 +42,7 @@ uv run python -m src.plcs.scripts.train_multiview \
 
 ```bash
 # シーケンス長を32フレームに設定
-uv run python -m src.plcs.scripts.train_multiview \
+uv run python -m src.plcs.scripts.train --config-name train_multiview \
     data.seq_len=32
 ```
 
@@ -50,7 +50,7 @@ uv run python -m src.plcs.scripts.train_multiview \
 
 ```bash
 # カメラ数とシーケンス長を範囲からランダムにサンプリング
-uv run python -m src.plcs.scripts.train_multiview \
+uv run python -m src.plcs.scripts.train --config-name train_multiview \
     'data.num_views_range=[1, 8]' \
     'data.seq_len_range=[4, 32]'
 ```
@@ -58,19 +58,19 @@ uv run python -m src.plcs.scripts.train_multiview \
 ### Dry Run（データローディング確認のみ）
 
 ```bash
-uv run python -m src.plcs.scripts.train_multiview run.dry_run=true
+uv run python -m src.plcs.scripts.train --config-name train_multiview run.dry_run=true
 ```
 
 ### GPU学習
 
 ```bash
-uv run python -m src.plcs.scripts.train_multiview run.gpus=1
+uv run python -m src.plcs.scripts.train --config-name train_multiview run.gpus=1
 ```
 
 ### 高速開発モード（1バッチのみ）
 
 ```bash
-uv run python -m src.plcs.scripts.train_multiview run.fast_dev_run=true
+uv run python -m src.plcs.scripts.train --config-name train_multiview run.fast_dev_run=true
 ```
 
 ## 設定ファイル構成

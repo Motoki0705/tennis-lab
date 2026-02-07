@@ -59,7 +59,7 @@ uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=apply_clip
 
 ```bash
 # 1. ボール検出モデル
-uv run python -m src.wasb.scripts.train.ball_detection
+uv run python -m src.wasb.scripts.train
 
 # 2. 軌道補完モデル
 uv run python -m src.wasb.scripts.train.trajectory

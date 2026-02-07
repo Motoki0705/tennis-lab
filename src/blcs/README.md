@@ -63,8 +63,7 @@ src/blcs/
 │
 ├── scripts/                          # 実行スクリプト（Hydra エントリポイント）
 │   ├── generate_dataset.py           # 物理シミュレーションによるデータ生成
-│   ├── train.py                      # 単一カメラモデル学習
-│   ├── train_multiview.py            # マルチビューモデル学習
+│   ├── train.py                      # 学習エントリポイント（全モード統一、--config-name で切替）
 │   ├── run_hparam_sweep.sh           # 単一カメラモデルのハイパラ探索
 │   ├── visualize.py                  # 単一カメラ可視化
 │   └── visualize_multiview.py        # マルチビュー可視化
@@ -122,7 +121,7 @@ src/blcs/
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│ train.py / train_multiview.py                                   │
+│ train.py (--config-name でモード切替)                         │
 │   ├── data/datamodule.py           (DataModule)                 │
 │   │   ├── BLCSDataModule           (単一カメラ)                  │
 │   │   └── BLCSMultiViewDataModule  (マルチビュー)                │
@@ -157,10 +156,10 @@ uv run python -m src.blcs.scripts.generate_dataset
 uv run python -m src.blcs.scripts.train
 
 # マルチビューモデル（複数カメラ統合）
-uv run python -m src.blcs.scripts.train_multiview
+uv run python -m src.blcs.scripts.train --config-name train_multiview
 
 # マルチビュー学習のカスタム設定例
-uv run python -m src.blcs.scripts.train_multiview \
+uv run python -m src.blcs.scripts.train --config-name train_multiview \
     data.num_views=4 \
     data.min_cameras=2 \
     training.max_epochs=100

@@ -1,25 +1,29 @@
-"""Train a UV-based event detection model using Hydra-managed configuration.
+"""**Deprecated** \u2013 use ``python -m src.event_detection.scripts.train``.
 
-Example commands:
-    `uv run python -m src.event_detection.scripts.train_uv`
-    `uv run python -m src.event_detection.scripts.train_uv run.dry_run=true`
-    `uv run python -m src.event_detection.scripts.train_uv data.scene_dir=data/blcs run.dry_run=false`
-
-Config entry point: `src/event_detection/configs/train_uv.yaml`
+This wrapper is kept for backward compatibility and will be removed in a
+future release.
 """
 
 from __future__ import annotations
 
+import warnings
+
 import hydra
 from omegaconf import DictConfig
 
-from src.event_detection.training.runner import EventDetectionTrainingRunner
+from src.event_detection.scripts.train import run_training
+
+warnings.warn(
+    "train_uv.py is deprecated. "
+    "Use `python -m src.event_detection.scripts.train` instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
 
 
 @hydra.main(config_path="../configs", config_name="train_uv", version_base="1.3")
 def main(cfg: DictConfig) -> None:  # pragma: no cover - CLI entry point
-    runner = EventDetectionTrainingRunner()
-    runner.run(cfg)
+    run_training(cfg)
 
 
 if __name__ == "__main__":

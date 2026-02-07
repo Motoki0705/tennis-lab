@@ -26,13 +26,13 @@ PLCS multiview modelと同様の**Alternating Attention Architecture**を採用�
 ### 基本実行
 
 ```bash
-uv run python -m src.blcs.scripts.train_multiview
+uv run python -m src.blcs.scripts.train --config-name train_multiview
 ```
 
 ### 出力先・データセット指定
 
 ```bash
-uv run python -m src.blcs.scripts.train_multiview \
+uv run python -m src.blcs.scripts.train --config-name train_multiview \
     run.output_dir=outputs/blcs/multiview \
     data.scene_dir=data/blcs/scenes
 ```
@@ -41,7 +41,7 @@ uv run python -m src.blcs.scripts.train_multiview \
 
 ```bash
 # 4カメラ同時使用、最低2カメラ必須
-uv run python -m src.blcs.scripts.train_multiview \
+uv run python -m src.blcs.scripts.train --config-name train_multiview \
     data.num_views=4 \
     data.min_cameras=2
 ```
@@ -49,19 +49,19 @@ uv run python -m src.blcs.scripts.train_multiview \
 ### Dry Run（データローディング確認のみ）
 
 ```bash
-uv run python -m src.blcs.scripts.train_multiview run.dry_run=true
+uv run python -m src.blcs.scripts.train --config-name train_multiview run.dry_run=true
 ```
 
 ### GPU学習
 
 ```bash
-uv run python -m src.blcs.scripts.train_multiview run.gpus=1
+uv run python -m src.blcs.scripts.train --config-name train_multiview run.gpus=1
 ```
 
 ### 高速開発モード（1バッチのみ）
 
 ```bash
-uv run python -m src.blcs.scripts.train_multiview run.fast_dev_run=true
+uv run python -m src.blcs.scripts.train --config-name train_multiview run.fast_dev_run=true
 ```
 
 ## 設定ファイル構成
@@ -112,11 +112,11 @@ max_seq_len: 120  # 最大シーケンス長
 
 ```bash
 # ビュー数を1〜4の範囲でランダムサンプリング
-uv run python -m src.blcs.scripts.train_multiview \
+uv run python -m src.blcs.scripts.train --config-name train_multiview \
     'data.num_views_range=[1, 4]'
 
 # シーケンス長を15〜60の範囲でランダムサンプリング
-uv run python -m src.blcs.scripts.train_multiview \
+uv run python -m src.blcs.scripts.train --config-name train_multiview \
     'data.seq_len_range=[15, 60]'
 ```
 

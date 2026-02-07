@@ -18,7 +18,37 @@ from src.plcs.training.lightning_module_kp3d import PLCSKeypoint3DLightningModul
 from src.plcs.training.multiview_lightning_module import PLCSMultiViewLightningModule
 from src.plcs.training.sequence_lightning_module import PLCSSequenceLightningModule
 
+_RUNNER_REGISTRY: dict[str, type[BaseTrainingRunner]] = {}
 
+
+def _register(name: str):  # noqa: ANN202
+    """Decorator to register a runner class under *name*."""
+
+    def _wrap(cls: type[BaseTrainingRunner]) -> type[BaseTrainingRunner]:
+        _RUNNER_REGISTRY[name] = cls
+        return cls
+
+    return _wrap
+
+
+def select_runner(config: Any) -> BaseTrainingRunner:
+    """Return the appropriate PLCS training runner for *config*.
+
+    Selection is based on ``config.data.mode``:
+
+    * ``"multiview"`` / ``"multiview_sequence"`` → :class:`PLCSMultiViewTrainingRunner`
+    * anything else (``"frame"`` / ``"sequence"`` / ``"kp3d"``) → :class:`PLCSTrainingRunner`
+    """
+    mode = str(getattr(config.data, "mode", "frame"))
+    if mode in _RUNNER_REGISTRY:
+        return _RUNNER_REGISTRY[mode]()
+    if mode.startswith("multiview"):
+        return PLCSMultiViewTrainingRunner()
+    return PLCSTrainingRunner()
+
+
+@_register("frame")
+@_register("sequence")
 class PLCSTrainingRunner(BaseTrainingRunner):
     """Training runner for PLCS single-view model (frame and sequence modes).
 
@@ -56,6 +86,8 @@ class PLCSTrainingRunner(BaseTrainingRunner):
         return PLCSLightningModule(config)
 
 
+@_register("multiview")
+@_register("multiview_sequence")
 class PLCSMultiViewTrainingRunner(BaseTrainingRunner):
     """Training runner for PLCS multi-view model.
 

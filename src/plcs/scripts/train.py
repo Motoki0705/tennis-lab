@@ -1,32 +1,34 @@
 """Train a PLCS model with Hydra-managed configuration.
 
-Example commands:
-    `uv run python -m src.plcs.scripts.train`
-    `uv run python -m src.plcs.scripts.train run.gpus=0 training.max_epochs=1`
-    `uv run python -m src.plcs.scripts.train run.dry_run=true`
+This is the **single** Hydra entry point for all PLCS training variants.
+Use ``--config-name`` to select the training configuration:
 
-Config entry point: `src/plcs/configs/train.yaml`
+    # frame-based (default)
+    uv run python -m src.plcs.scripts.train
+
+    # sequence-based
+    uv run python -m src.plcs.scripts.train --config-name train_sequence
+
+    # multiview
+    uv run python -m src.plcs.scripts.train --config-name train_multiview
+
+    # keypoint-3D
+    uv run python -m src.plcs.scripts.train --config-name train_kp3d
+
+Config entry point: ``src/plcs/configs/train.yaml`` (default)
 """
 
-# mypy: disable-error-code=misc
-
 from __future__ import annotations
-
-from collections.abc import Callable
-from typing import TypeVar, cast
 
 import hydra
 from omegaconf import DictConfig
 
-from src.plcs.training.runner import PLCSTrainingRunner
-
-F = TypeVar("F", bound=Callable[..., object])
-hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)
+from src.plcs.training.runner import select_runner
 
 
 def run_training(config: DictConfig) -> None:
     """Execute PLCS training with the provided configuration."""
-    runner = PLCSTrainingRunner()
+    runner = select_runner(config)
     runner.run(config)
 
 

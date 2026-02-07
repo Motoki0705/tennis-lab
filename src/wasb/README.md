@@ -132,7 +132,7 @@ src/wasb/
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │ 学習パイプライン                                                 │
-│   train/ball_detection.py                                       │
+│   scripts/train.py                                              │
 │   ├── data/ball_detection_datamodule.py                         │
 │   ├── models/ball_detection/*.py                                │
 │   └── training/ball_detection/lightning_module.py               │
@@ -176,7 +176,7 @@ logit ヒートマップを TTA で生成し、逆変換で同一の `output_hea
 uv run python -m src.wasb.scripts.generate_dataset
 
 # 学習
-uv run python -m src.wasb.scripts.train.ball_detection
+uv run python -m src.wasb.scripts.train
 
 # 可視化
 uv run python -m src.wasb.scripts.visualize.ball_video

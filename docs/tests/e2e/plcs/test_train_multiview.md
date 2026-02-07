@@ -2,7 +2,7 @@
 
 ## 概要
 
-`test_train_multiview.py` は、PLCSマルチビュー学習スクリプト (`src.plcs.scripts.train_multiview`) のE2Eテストです。
+`test_train_multiview.py` は、PLCSマルチビュー学習スクリプト (`src.plcs.scripts.train --config-name train_multiview`) のE2Eテストです。
 
 ## テスト対象
 

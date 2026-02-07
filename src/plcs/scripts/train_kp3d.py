@@ -1,29 +1,24 @@
-"""Train PLCS keypoint-3D model with Hydra-managed configuration.
+"""**Deprecated** – use ``python -m src.plcs.scripts.train --config-name train_kp3d``.
 
-Example:
-    `uv run python -m src.plcs.scripts.train_kp3d`
+This wrapper is kept for backward compatibility and will be removed in a
+future release.
 """
-
-# mypy: disable-error-code=misc
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import TypeVar, cast
+import warnings
 
 import hydra
 from omegaconf import DictConfig
 
-from src.plcs.training.runner import PLCSTrainingRunner
+from src.plcs.scripts.train import run_training
 
-F = TypeVar("F", bound=Callable[..., object])
-hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)
-
-
-def run_training(config: DictConfig) -> None:
-    """Execute PLCS kp3d training with provided configuration."""
-    runner = PLCSTrainingRunner()
-    runner.run(config)
+warnings.warn(
+    "train_kp3d.py is deprecated. "
+    "Use `python -m src.plcs.scripts.train --config-name train_kp3d` instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
 
 
 @hydra.main(config_path="../configs", config_name="train_kp3d", version_base="1.3")

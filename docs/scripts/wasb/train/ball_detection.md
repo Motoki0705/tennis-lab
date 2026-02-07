@@ -10,22 +10,22 @@
 
 ```bash
 # デフォルト設定で学習
-uv run python -m src.wasb.scripts.train.ball_detection
+uv run python -m src.wasb.scripts.train
 
 # エポック数とバッチサイズを変更
-uv run python -m src.wasb.scripts.train.ball_detection training.max_epochs=50 data.batch_size=32
+uv run python -m src.wasb.scripts.train training.max_epochs=50 data.batch_size=32
 
 # ドライランモード（データ確認用）
-uv run python -m src.wasb.scripts.train.ball_detection run.dry_run=true
+uv run python -m src.wasb.scripts.train run.dry_run=true
 
 # CPU で実行
-uv run python -m src.wasb.scripts.train.ball_detection run.gpus=0
+uv run python -m src.wasb.scripts.train run.gpus=0
 
 # モデルを変更
-uv run python -m src.wasb.scripts.train.ball_detection model=hrcnet
+uv run python -m src.wasb.scripts.train model=hrcnet
 
 # 高速デバッグモード
-uv run python -m src.wasb.scripts.train.ball_detection run.fast_dev_run=true
+uv run python -m src.wasb.scripts.train run.fast_dev_run=true
 ```
 
 ## コンフィグ

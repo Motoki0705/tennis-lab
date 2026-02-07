@@ -80,7 +80,7 @@ backbone_state = {
 
 ```bash
 # 1. DINOv3 ヒートマップモデルを学習
-uv run python -m src.wasb.scripts.train.ball_detection model=dinov3_heatmap
+uv run python -m src.wasb.scripts.train model=dinov3_heatmap
 
 # 2. バックボーン重みを抽出
 uv run python -m src.wasb.scripts.tools.extract_dinov3_backbone \

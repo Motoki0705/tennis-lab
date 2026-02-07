@@ -1,33 +1,24 @@
-"""Train a multi-view PLCS model with Hydra-managed configuration.
+"""**Deprecated** – use ``python -m src.plcs.scripts.train --config-name train_multiview``.
 
-Example commands:
-    `uv run python -m src.plcs.scripts.train_multiview`
-    `uv run python -m src.plcs.scripts.train_multiview run.gpus=0 training.max_epochs=1`
-    `uv run python -m src.plcs.scripts.train_multiview run.dry_run=true`
-
-Config entry point: `src/plcs/configs/train_multiview.yaml`
+This wrapper is kept for backward compatibility and will be removed in a
+future release.
 """
-
-# mypy: disable-error-code=misc
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import TypeVar, cast
+import warnings
 
 import hydra
 from omegaconf import DictConfig
 
-from src.plcs.training.runner import PLCSMultiViewTrainingRunner
+from src.plcs.scripts.train import run_training
 
-F = TypeVar("F", bound=Callable[..., object])
-hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)
-
-
-def run_training(config: DictConfig) -> None:
-    """Execute multi-view PLCS training with the provided configuration."""
-    runner = PLCSMultiViewTrainingRunner()
-    runner.run(config)
+warnings.warn(
+    "train_multiview.py is deprecated. "
+    "Use `python -m src.plcs.scripts.train --config-name train_multiview` instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
 
 
 @hydra.main(config_path="../configs", config_name="train_multiview", version_base="1.3")

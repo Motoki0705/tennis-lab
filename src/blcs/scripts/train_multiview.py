@@ -1,34 +1,30 @@
-"""Train a multi-view BLCS model with Hydra-managed configuration.
+"""**Deprecated** – use ``python -m src.blcs.scripts.train --config-name train_multiview``.
 
-Example commands:
-    `uv run python -m src.blcs.scripts.train_multiview`
-    `uv run python -m src.blcs.scripts.train_multiview training.max_epochs=5 run.gpus=0`
-    `uv run python -m src.blcs.scripts.train_multiview run.dry_run=true`
-
-Config entry point: `src/blcs/configs/train_multiview.yaml`
+This wrapper is kept for backward compatibility and will be removed in a
+future release.
 """
-
-# mypy: disable-error-code=misc
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import TypeVar, cast
+import warnings
 
 import hydra
 from omegaconf import DictConfig
 
-from src.blcs.training.runner import BLCSMultiViewTrainingRunner
+from src.blcs.scripts.train import run_training
 
-F = TypeVar("F", bound=Callable[..., object])
-hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)
+warnings.warn(
+    "train_multiview.py is deprecated. "
+    "Use `python -m src.blcs.scripts.train --config-name train_multiview` instead.",
+    DeprecationWarning,
+    stacklevel=1,
+)
 
 
 @hydra.main(config_path="../configs", config_name="train_multiview", version_base="1.3")
 def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
     """Hydra entry point for multi-view BLCS training."""
-    runner = BLCSMultiViewTrainingRunner()
-    runner.run(config)
+    run_training(config)
 
 
 if __name__ == "__main__":

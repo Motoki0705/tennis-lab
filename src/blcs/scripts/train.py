@@ -1,34 +1,35 @@
 """Train a BLCS model with Hydra-managed configuration.
 
-Example commands:
-    `uv run python -m src.blcs.scripts.train`
-    `uv run python -m src.blcs.scripts.train training.max_epochs=5 run.gpus=0`
-    `uv run python -m src.blcs.scripts.train run.dry_run=true`
+This is the **single** Hydra entry point for all BLCS training variants.
+Use ``--config-name`` to select the training configuration:
 
-Config entry point: `src/blcs/configs/train.yaml`
+    # single-view (default)
+    uv run python -m src.blcs.scripts.train
+
+    # multiview
+    uv run python -m src.blcs.scripts.train --config-name train_multiview
+
+Config entry point: ``src/blcs/configs/train.yaml`` (default)
 """
 
-# mypy: disable-error-code=misc
-
 from __future__ import annotations
-
-from collections.abc import Callable
-from typing import TypeVar, cast
 
 import hydra
 from omegaconf import DictConfig
 
-from src.blcs.training.runner import BLCSTrainingRunner
+from src.blcs.training.runner import select_runner
 
-F = TypeVar("F", bound=Callable[..., object])
-hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)
+
+def run_training(config: DictConfig) -> None:
+    """Execute BLCS training with the provided configuration."""
+    runner = select_runner(config)
+    runner.run(config)
 
 
 @hydra.main(config_path="../configs", config_name="train", version_base="1.3")
 def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
-    runner = BLCSTrainingRunner()
-    runner.run(config)
+    run_training(config)
 
 
 if __name__ == "__main__":

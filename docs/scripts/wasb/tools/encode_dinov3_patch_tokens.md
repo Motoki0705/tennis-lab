@@ -155,7 +155,7 @@ uv run python -m src.wasb.scripts.tools.encode_dinov3_patch_tokens \
   num_augments=3
 
 # 2. 事前計算された埋め込みで学習
-uv run python -m src.wasb.scripts.train.ball_detection \
+uv run python -m src.wasb.scripts.train \
   data=patch_embeddings \
   data.embeddings_dir=data/tennis/patch_embeddings
 ```

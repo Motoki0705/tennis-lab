@@ -76,7 +76,7 @@ uv run python -m src.blcs.scripts.visualize visualization.mode=predict
 ```bash
 # データ生成 → 学習 → 推論可視化
 uv run python -m src.wasb.scripts.generate_dataset mode=batch
-uv run python -m src.wasb.scripts.train.ball_detection
+uv run python -m src.wasb.scripts.train
 uv run python -m src.wasb.scripts.visualize.ball_video video_path=...
 ```
 
@@ -127,7 +127,7 @@ uv run pytest tests/e2e -v -m "not cuda"
 # 各タスクのドライラン
 uv run python -m src.blcs.scripts.train run.dry_run=true
 uv run python -m src.plcs.scripts.train run.dry_run=true
-uv run python -m src.wasb.scripts.train.ball_detection run.dry_run=true run.gpus=0
+uv run python -m src.wasb.scripts.train run.dry_run=true run.gpus=0
 ```
 
 ### バリデーションユーティリティ

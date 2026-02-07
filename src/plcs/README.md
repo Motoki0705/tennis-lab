@@ -74,9 +74,7 @@ src/plcs/
 │
 ├── scripts/                          # 実行スクリプト（Hydra エントリポイント）
 │   ├── generate_dataset.py           # SMPL-H モーションからの合成データ生成
-│   ├── train.py                      # フレーム単位モデル学習
-│   ├── train_sequence.py             # シーケンスモデル学習
-│   ├── train_multiview.py            # マルチビューモデル学習
+│   ├── train.py                      # 学習エントリポイント（全モード統一、--config-name で切替）
 │   ├── visualize.py                  # 単一カメラ可視化
 │   └── visualize_multiview.py        # マルチビュー可視化
 │
@@ -124,7 +122,7 @@ src/plcs/
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│ train.py / train_sequence.py / train_multiview.py               │
+│ train.py (--config-name でモード切替)                         │
 │   ├── data/datamodule.py           (DataModule)                 │
 │   │   ├── PLCSDataModule           (単一カメラ・フレーム)         │
 │   │   ├── PLCSSequenceDataModule   (単一カメラ・シーケンス)       │
@@ -176,13 +174,16 @@ uv run python -m src.plcs.scripts.analysis.analyze_dataset_distribution \
 uv run python -m src.plcs.scripts.train
 
 # シーケンスモデル（単一カメラ・時系列）
-uv run python -m src.plcs.scripts.train_sequence
+uv run python -m src.plcs.scripts.train --config-name train_sequence
 
 # マルチビューモデル（複数カメラ統合）
-uv run python -m src.plcs.scripts.train_multiview
+uv run python -m src.plcs.scripts.train --config-name train_multiview
+
+# Keypoint-3D モデル
+uv run python -m src.plcs.scripts.train --config-name train_kp3d
 
 # マルチビュー学習のカスタム設定例
-uv run python -m src.plcs.scripts.train_multiview \
+uv run python -m src.plcs.scripts.train --config-name train_multiview \
     data.num_views=4 \
     data.min_cameras=2 \
     training.max_epochs=100
