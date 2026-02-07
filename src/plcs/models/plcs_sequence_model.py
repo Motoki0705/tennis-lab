@@ -202,15 +202,30 @@ class PLCSSequenceModel(nn.Module):
         """Forward pass.
 
         Args:
-            human_kp: (B, T, 34) or (B, T, 17, 2).
-            court_kp: (B,40)/(B,20,2)/(B,T,40)/(B,T,20,2).
-            human_vis: (B, T, 17) visibility (optional).
-            court_vis: (B, 20) or (B, T, 20) visibility (optional).
+            human_kp:
+                Human 2D keypoints in normalized image UV.
+                Shape: (B, T, 34) or (B, T, 17, 2).
+            court_kp:
+                Court 2D keypoints in normalized image UV.
+                Supported shapes:
+                - (B, 40), (B, 20, 2) as scene-level court keypoints
+                - (B, T, 40), (B, T, 20, 2) as per-frame court keypoints
+                For per-frame input, frame 0 is used as scene-level court.
+            human_vis:
+                Human keypoint visibility flags aligned with `human_kp`.
+                Shape: (B, T, 17). Each element is interpreted as visible if > 0
+                (bool/0-1). Optional; if None, all human keypoints are treated
+                as visible.
+            court_vis:
+                Court keypoint visibility flags aligned with `court_kp`.
+                Shape: (B, 20) or (B, T, 20). Each element is interpreted as
+                visible if > 0. For per-frame input, frame 0 is used.
+                Optional; if None, all court keypoints are treated as visible.
 
         Returns:
             dict with:
-              - position: (B, T, 3)
-              - rotation: (B, T, 2)
+              - position: (B, T, 3) normalized court-space xyz per frame
+              - rotation: (B, T, 2) per frame as (sin(yaw), cos(yaw))
         """
         B, T = human_kp.shape[:2]
 

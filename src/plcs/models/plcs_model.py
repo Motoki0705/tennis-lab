@@ -263,13 +263,26 @@ class PLCSModel(nn.Module):
         """Forward pass.
 
         Args:
-            human_kp: Human keypoints, shape (B, 34) or (B, 17, 2).
-            court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
-            human_vis: Human visibility mask, shape (B, 17). Optional.
-            court_vis: Court visibility mask, shape (B, 20). Optional.
+            human_kp:
+                Human 2D keypoints in normalized image UV.
+                Shape: (B, 34) or (B, 17, 2).
+            court_kp:
+                Court 2D keypoints in normalized image UV.
+                Shape: (B, 40) or (B, 20, 2).
+            human_vis:
+                Human keypoint visibility flags aligned with `human_kp`.
+                Shape: (B, 17). Each element is interpreted as visible if > 0
+                (e.g., bool, 0/1 float, or 0/1 int). Optional; if None, all
+                human keypoints are treated as visible.
+            court_vis:
+                Court keypoint visibility flags aligned with `court_kp`.
+                Shape: (B, 20). Each element is interpreted as visible if > 0.
+                Optional; if None, all court keypoints are treated as visible.
 
         Returns:
-            dict: Dictionary with 'position' (B, 3) and 'rotation' (B, 2).
+            dict:
+                - position: (B, 3) normalized court-space xyz
+                - rotation: (B, 2) as (sin(yaw), cos(yaw))
 
         """
         B = human_kp.size(0)
