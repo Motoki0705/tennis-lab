@@ -260,8 +260,46 @@ class PLCSMultiViewModel(nn.Module):
     ) -> dict[str, Tensor]:
         """Forward pass.
 
-        Input uses camera-time order `(B, N, T, ...)` for temporal mode.
-        Single-frame input `(B, N, ...)` is also supported.
+        Args:
+            human_kp:
+                Human 2D keypoints in normalized image UV.
+                - Temporal: (B, N, T, 17, 2)
+                - Single frame: (B, N, 17, 2)
+            court_kp:
+                Court 2D keypoints in normalized image UV.
+                - Temporal: (B, N, T, 20, 2)
+                - Single frame: (B, N, 20, 2)
+            human_vis:
+                Human keypoint visibility flags aligned with `human_kp`.
+                - Temporal: (B, N, T, 17)
+                - Single frame: (B, N, 17)
+                Each element is interpreted as visible if > 0 (bool/0-1).
+                Optional; if None, all human keypoints are treated as visible.
+            court_vis:
+                Court keypoint visibility flags aligned with `court_kp`.
+                - Temporal: (B, N, T, 20)
+                - Single frame: (B, N, 20)
+                Each element is interpreted as visible if > 0.
+                Optional; if None, all court keypoints are treated as visible.
+            num_views:
+                Number of valid camera views per sample. Shape: (B,).
+                Cameras with index >= num_views[b] are treated as padded/invalid.
+                Optional; if None, all N views are treated as valid.
+            camera_params:
+                Camera metadata per sample/view (currently unused by this model).
+
+        Returns:
+            dict:
+                - position:
+                    - Temporal input: (B, T, 3)
+                    - Single-frame input: (B, 3)
+                - rotation:
+                    - Temporal input: (B, T, 2)
+                    - Single-frame input: (B, 2)
+
+        Notes:
+            Input ordering is camera-time: (B, N, T, ...). Single-frame input
+            is internally converted to T=1 and squeezed back before return.
         """
         del camera_params  # currently unused
 
