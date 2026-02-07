@@ -1,15 +1,8 @@
-"""Reusable model components for PLCS."""
+"""Reusable PLCS-specific model components."""
 
-from src.plcs.models.components.encoders import KeypointEncoder
-from src.plcs.models.components.heads import (
-    PerTokenKeypoint3DHead,
-    PositionHead,
-    RotationHead,
-)
+from src.plcs.models.components.heads import PositionHead, RotationHead
 
 __all__ = [
-    "KeypointEncoder",
-    "PerTokenKeypoint3DHead",
     "PositionHead",
     "RotationHead",
 ]

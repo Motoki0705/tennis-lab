@@ -1,16 +1,12 @@
-"""Sequential PLCS model implementation.
+"""Sequential PLCS model with per-timestep CLS tokens.
 
-Decoder-Only Transformer architecture with MHA + RoPE + SDPA.
-Estimates player 3D position and rotation in tennis court coordinates
-from 2D player keypoints and court keypoints.
+Token layout:
+    [court(20), frame_0(2+17), frame_1(2+17), ..., frame_{T-1}(2+17)]
+where each frame block is:
+    [CLS_po_t, CLS_ro_t, player_kp_0..player_kp_16]
 
-Architecture:
-    - Court keypoints (20) are tokenized as prefix tokens (fixed per scene)
-    - Player keypoints per frame (T) are tokenized as sequence tokens
-    - Decoder-only Transformer with RoPE positional encoding
-    - Multi-Head Self-Attention (MHA) using F.scaled_dot_product_attention (SDPA)
-    - SwiGLU MLP and RMSNorm for efficiency
-    - PositionHead and RotationHead outputs from player tokens only
+Total token length:
+    S = NUM_COURT_KP + T * (2 + NUM_HUMAN_KP)
 """
 
 from __future__ import annotations
@@ -29,6 +25,7 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
+from src.common.models.embeddings import CourtKPUVEmbedding, InvisibleTokenEmbedding, PlayerKPUVEmbedding
 from src.plcs.models.components.heads import PositionHead, RotationHead
 from src.utils.geometry import NUM_COURT_KP, NUM_HUMAN_KP
 
@@ -36,116 +33,8 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-# -------------------------
-# Token embeddings
-# -------------------------
-class CourtTokenEmbedding(nn.Module):
-    """Embed court keypoints as tokens.
-
-    Each of the 20 court keypoints becomes a separate token.
-
-    Args:
-        court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
-        court_vis: Court visibility, shape (B, 20). Optional.
-
-    Returns:
-        Tokens of shape (B, NUM_COURT_KP, D).
-
-    """
-
-    def __init__(self, dim: int, dropout: float) -> None:
-        super().__init__()
-        in_dim = 2 + 1  # (u, v) + visibility
-        self.proj = nn.Sequential(
-            nn.Linear(in_dim, dim),
-            nn.Dropout(dropout),
-        )
-
-    def forward(self, court_kp: Tensor, court_vis: Tensor | None) -> Tensor:
-        B = court_kp.shape[0]
-        if court_kp.dim() == 2:
-            court_kp = court_kp.view(B, NUM_COURT_KP, 2)
-        vis = (
-            torch.ones(B, NUM_COURT_KP, device=court_kp.device, dtype=court_kp.dtype)
-            if court_vis is None
-            else court_vis.to(court_kp.dtype)
-        )
-        x = torch.cat([court_kp, vis.unsqueeze(-1)], dim=-1)
-        return self.proj(x)
-
-
-class PlayerTokenEmbedding(nn.Module):
-    """Embed player keypoints per frame as tokens.
-
-    Each frame's player keypoints are flattened and projected to a single token.
-
-    Args:
-        human_kp: Human keypoints, shape (B, T, 34) or (B, T, 17, 2).
-        human_vis: Human visibility, shape (B, T, 17). Optional.
-
-    Returns:
-        Tokens of shape (B, T, D).
-
-    """
-
-    def __init__(self, dim: int, dropout: float) -> None:
-        super().__init__()
-        # 17 keypoints * (2 coords + 1 visibility) = 51
-        in_dim = NUM_HUMAN_KP * 3
-        self.proj = nn.Sequential(
-            nn.Linear(in_dim, dim),
-            nn.Dropout(dropout),
-        )
-
-    def forward(self, human_kp: Tensor, human_vis: Tensor | None) -> Tensor:
-        B, T = human_kp.shape[:2]
-
-        # Flatten keypoints if needed: (B, T, K, 2) -> (B, T, K*2)
-        if human_kp.dim() == 4:
-            human_kp = human_kp.view(B, T, -1)  # (B, T, 34)
-
-        # Reshape to (B, T, 17, 2)
-        human_kp = human_kp.view(B, T, NUM_HUMAN_KP, 2)
-
-        # Build visibility
-        if human_vis is None:
-            vis = torch.ones(B, T, NUM_HUMAN_KP, device=human_kp.device, dtype=human_kp.dtype)
-        else:
-            vis = human_vis.to(human_kp.dtype)
-
-        # Concatenate coords and visibility: (B, T, 17, 3)
-        x = torch.cat([human_kp, vis.unsqueeze(-1)], dim=-1)
-        # Flatten to (B, T, 51)
-        x = x.view(B, T, -1)
-        return self.proj(x)
-
-
-# -------------------------
-# Main model
-# -------------------------
 class PLCSSequenceModel(nn.Module):
-    """PLCS sequence model with Decoder-Only Transformer architecture.
-
-    Llama-style architecture with:
-    - Multi-Head Self-Attention (MHA) with SDPA for efficiency
-    - Rotary Position Embedding (RoPE)
-    - SwiGLU MLP and RMSNorm
-
-    Tokens = [court_tokens(NUM_COURT_KP), player_tokens(T)]
-    Predicts 3D position and rotation from player tokens only.
-
-    Input:
-        - human_kp: Human 2D keypoints, shape (B, T, 34) or (B, T, 17, 2)
-        - court_kp: Court 2D keypoints, shape (B, 40) or (B, 20, 2)
-            Note: Court keypoints are scene-level (not per-frame)
-        - human_vis: Human visibility mask, shape (B, T, 17). Optional.
-        - court_vis: Court visibility mask, shape (B, 20). Optional.
-
-    Output:
-        - position: Normalized (x, y, z) per frame, shape (B, T, 3)
-        - rotation: (sin(yaw), cos(yaw)) per frame, shape (B, T, 2)
-
-    """
+    """Sequential PLCS model using decoder-style Transformer blocks."""
 
     def __init__(
         self,
@@ -159,32 +48,17 @@ class PLCSSequenceModel(nn.Module):
         yarn: YaRNConfig | None = None,
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
-        causal: bool = False,
         max_seq_len: int = 120,
+        invisible_init_std: float = 0.02,
     ) -> None:
-        """Initialize the PLCS sequence model.
-
-        Args:
-            hidden_dim: Hidden dimension for all components.
-            num_layers: Number of Transformer blocks.
-            num_heads: Number of query attention heads.
-            ffn_dim: FFN intermediate dimension. Defaults to 8/3 * hidden_dim.
-            dropout: Dropout probability.
-            rope_dim: RoPE dimension. Defaults to head_dim.
-            rope_theta: RoPE theta parameter.
-            yarn: Optional YaRN config for long-context extrapolation.
-            use_moe: Use Mixture-of-Experts FFN in each Transformer block.
-            moe_config: MoE configuration (required when use_moe=True).
-            causal: Use causal attention mask.
-            max_seq_len: Maximum number of player tokens (frames).
-
-        """
         super().__init__()
-        self.hidden_dim = hidden_dim
-        self.yarn = yarn
-        self.causal = causal
+
+        self.hidden_dim = int(hidden_dim)
         self.max_seq_len = int(max_seq_len)
-        self.max_tokens = int(NUM_COURT_KP + self.max_seq_len)
+        self.yarn = yarn
+
+        self.frame_block_tokens = 2 + NUM_HUMAN_KP
+        self.max_tokens = int(NUM_COURT_KP + self.max_seq_len * self.frame_block_tokens)
 
         head_dim = hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else rope_dim
@@ -193,21 +67,30 @@ class PLCSSequenceModel(nn.Module):
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
-            ffn_dim = (ffn_dim + 63) // 64 * 64  # Round to multiple of 64
+            ffn_dim = (ffn_dim + 63) // 64 * 64
 
         if use_moe and moe_config is None:
             raise ValueError("use_moe=True requires moe_config.")
         if moe_config is not None and moe_config.dim != hidden_dim:
             raise ValueError(f"moe_config.dim={moe_config.dim} must match hidden_dim={hidden_dim}")
 
-        # Token embeddings
-        self.court_embed = CourtTokenEmbedding(dim=hidden_dim, dropout=dropout)
-        self.player_embed = PlayerTokenEmbedding(dim=hidden_dim, dropout=dropout)
+        self.invisible_token = InvisibleTokenEmbedding(dim=hidden_dim, init_std=invisible_init_std)
+        self.court_embed = CourtKPUVEmbedding(
+            dim=hidden_dim,
+            dropout=dropout,
+            invisible_token=self.invisible_token,
+        )
+        self.player_embed = PlayerKPUVEmbedding(
+            dim=hidden_dim,
+            dropout=dropout,
+            invisible_token=self.invisible_token,
+        )
 
-        # Type embedding: 0 = court, 1 = player
-        self.type_embed = nn.Embedding(2, hidden_dim)
+        self.cls_po_token = nn.Parameter(torch.zeros(1, 1, hidden_dim))
+        self.cls_ro_token = nn.Parameter(torch.zeros(1, 1, hidden_dim))
+        nn.init.trunc_normal_(self.cls_po_token, std=0.02)
+        nn.init.trunc_normal_(self.cls_ro_token, std=0.02)
 
-        # Transformer blocks
         self.blocks = nn.ModuleList(
             [
                 TransformerBlock(
@@ -229,7 +112,6 @@ class PLCSSequenceModel(nn.Module):
         )
         self.final_norm = RMSNorm(hidden_dim)
 
-        # Output heads
         self.position_head = PositionHead(
             input_dim=hidden_dim,
             hidden_dim=hidden_dim // 2,
@@ -249,21 +131,13 @@ class PLCSSequenceModel(nn.Module):
             seqlen=self.max_tokens,
             base=self.rope_theta,
             yarn=self.yarn,
-            device=None,  # initialized on CPU; moved by `model.to(device)`
+            device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
 
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSSequenceModel:
-        """Create model from configuration.
-
-        Args:
-            config: Configuration dictionary.
-
-        Returns:
-            PLCSSequenceModel: Initialized model.
-
-        """
+        """Create model from hydra config."""
         model_cfg = config.get("model", {})
 
         yarn_cfg = model_cfg.get("yarn", None)
@@ -290,9 +164,33 @@ class PLCSSequenceModel(nn.Module):
             yarn=yarn,
             use_moe=use_moe,
             moe_config=moe_config,
-            causal=model_cfg.get("causal", False),
             max_seq_len=model_cfg.get("max_seq_len", 120),
+            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
         )
+
+    def _normalize_court_inputs(
+        self,
+        court_kp: Tensor,
+        court_vis: Tensor | None,
+    ) -> tuple[Tensor, Tensor | None]:
+        """Normalize court tensors to scene-level shapes: (B,20,2)/(B,20)."""
+        if court_kp.dim() == 4:
+            court_kp = court_kp[:, 0, :, :]
+        elif court_kp.dim() == 3:
+            if court_kp.size(1) == NUM_COURT_KP and court_kp.size(2) == 2:
+                pass
+            elif court_kp.size(2) == NUM_COURT_KP * 2:
+                court_kp = court_kp[:, 0, :]
+            else:
+                raise ValueError(
+                    f"Unsupported court_kp shape {tuple(court_kp.shape)}. "
+                    "Expected (B,40), (B,20,2), (B,T,40), or (B,T,20,2)."
+                )
+
+        if court_vis is not None and court_vis.dim() == 3:
+            court_vis = court_vis[:, 0, :]
+
+        return court_kp, court_vis
 
     def forward(
         self,
@@ -304,79 +202,72 @@ class PLCSSequenceModel(nn.Module):
         """Forward pass.
 
         Args:
-            human_kp: Human keypoints, shape (B, T, 34) or (B, T, 17, 2).
-            court_kp: Court keypoints, shape (B, T, 40), (B, T, 20, 2),
-                or (B, 40) / (B, 20, 2). If per-frame, only first frame is used.
-            human_vis: Human visibility mask, shape (B, T, 17). Optional.
-            court_vis: Court visibility mask, shape (B, T, 20) or (B, 20). Optional.
+            human_kp:
+                Human 2D keypoints in normalized image UV.
+                Shape: (B, T, 34) or (B, T, 17, 2).
+            court_kp:
+                Court 2D keypoints in normalized image UV.
+                Supported shapes:
+                - (B, 40), (B, 20, 2) as scene-level court keypoints
+                - (B, T, 40), (B, T, 20, 2) as per-frame court keypoints
+                For per-frame input, frame 0 is used as scene-level court.
+            human_vis:
+                Human keypoint visibility flags aligned with `human_kp`.
+                Shape: (B, T, 17). Each element is interpreted as visible if > 0
+                (bool/0-1). Optional; if None, all human keypoints are treated
+                as visible.
+            court_vis:
+                Court keypoint visibility flags aligned with `court_kp`.
+                Shape: (B, 20) or (B, T, 20). Each element is interpreted as
+                visible if > 0. For per-frame input, frame 0 is used.
+                Optional; if None, all court keypoints are treated as visible.
 
         Returns:
-            dict: Dictionary with 'position' (B, T, 3) and 'rotation' (B, T, 2).
-
+            dict with:
+              - position: (B, T, 3) normalized court-space xyz per frame
+              - rotation: (B, T, 2) per frame as (sin(yaw), cos(yaw))
         """
-        B = human_kp.size(0)
-        T = human_kp.size(1)
+        B, T = human_kp.shape[:2]
 
-        # Handle court_kp: extract first frame if per-frame format
-        if court_kp.dim() == 4:
-            # (B, T, 20, 2) -> (B, 20, 2) using first frame
-            court_kp = court_kp[:, 0, :, :]
-        elif court_kp.dim() == 3:
-            # Either (B, 20, 2) (scene-level) or (B, T, 40) (per-frame flattened)
-            if court_kp.size(1) == NUM_COURT_KP and court_kp.size(2) == 2:
-                pass
-            elif court_kp.size(2) == NUM_COURT_KP * 2:
-                court_kp = court_kp[:, 0, :]
-            else:
-                raise ValueError(
-                    f"Unsupported court_kp shape {tuple(court_kp.shape)}. "
-                    "Expected (B,40), (B,20,2), (B,T,40), or (B,T,20,2)."
-                )
-        # Now court_kp is (B, 40) or (B, 20, 2)
+        if T > self.max_seq_len:
+            raise ValueError(
+                f"Sequence length T={T} exceeds configured max_seq_len={self.max_seq_len}."
+            )
 
-        # Handle court_vis similarly
-        if court_vis is not None and court_vis.dim() == 3:
-            # (B, T, 20) -> (B, 20)
-            court_vis = court_vis[:, 0, :]
+        court_kp, court_vis = self._normalize_court_inputs(court_kp, court_vis)
 
-        # Tokenize court and player
-        court_tok = self.court_embed(court_kp, court_vis)  # (B, 20, D)
-        player_tok = self.player_embed(human_kp, human_vis)  # (B, T, D)
+        # court: (B, 20, D)
+        court_tok = self.court_embed(court_kp, court_vis)
 
-        # Add type embeddings
-        court_type = self.type_embed(
-            torch.zeros(NUM_COURT_KP, device=human_kp.device, dtype=torch.long)
-        )[None, :, :]  # (1, 20, D)
-        player_type = self.type_embed(
-            torch.ones(T, device=human_kp.device, dtype=torch.long)
-        )[None, :, :]  # (1, T, D)
+        # player: (B, T, 17, D)
+        if human_kp.dim() == 3:
+            human_kp = human_kp.view(B, T, NUM_HUMAN_KP, 2)
+        human_kp_flat = human_kp.reshape(B * T, NUM_HUMAN_KP, 2)
 
-        x = torch.cat(
-            [court_tok + court_type, player_tok + player_type], dim=1
-        )  # (B, S, D)
-        S = x.shape[1]
-
-        # Build key_padding_mask if human_vis provided
-        key_padding_mask: Tensor | None = None
+        human_vis_flat: Tensor | None = None
         if human_vis is not None:
-            # Court tokens are always valid
-            court_mask = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
-            # Player tokens are valid if any keypoint is visible
-            player_mask = human_vis.sum(dim=-1) > 0  # (B, T)
-            key_padding_mask = torch.cat([court_mask, player_mask], dim=1)  # (B, S)
+            human_vis_flat = human_vis.reshape(B * T, NUM_HUMAN_KP)
+
+        player_tok = self.player_embed(human_kp_flat, human_vis_flat)
+        player_tok = player_tok.view(B, T, NUM_HUMAN_KP, self.hidden_dim)
+
+        cls_po = self.cls_po_token.expand(B, T, -1, -1)
+        cls_ro = self.cls_ro_token.expand(B, T, -1, -1)
+        frame_tokens = torch.cat([cls_po, cls_ro, player_tok], dim=2)  # (B,T,19,D)
+        frame_tokens = frame_tokens.reshape(B, T * self.frame_block_tokens, self.hidden_dim)
+
+        x = torch.cat([court_tok, frame_tokens], dim=1)
+        S = x.size(1)
 
         if S > self.freqs_cis.shape[0]:
             raise ValueError(
-                f"Sequence length S={S} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
+                f"Token length S={S} exceeds cached RoPE length {self.freqs_cis.shape[0]}. "
                 "Increase max_seq_len."
             )
+
         freqs_cis = self.freqs_cis[:S]
         if freqs_cis.device != x.device:
             freqs_cis = freqs_cis.to(x.device)
-
-        attn_mask: Tensor | None = None
-        if key_padding_mask is not None:
-            attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
 
         residual = None
         for blk in self.blocks:
@@ -385,24 +276,31 @@ class PLCSSequenceModel(nn.Module):
                 residual,
                 start_pos=0,
                 freqs_cis=freqs_cis,
-                attn_mask=attn_mask,
-                is_causal=self.causal,
+                attn_mask=None,
+                is_causal=False,
             )
 
         if residual is None:
             x = self.final_norm(x)
         else:
             x, _ = self.final_norm(x, residual)
-        player_out = x[:, NUM_COURT_KP:, :]  # (B, T, D)
 
-        # Apply output heads
-        B_T = B * T
-        player_flat = player_out.reshape(B_T, self.hidden_dim)
-        position_flat = self.position_head(player_flat)  # (B*T, 3)
-        rotation_flat = self.rotation_head(player_flat)  # (B*T, 2)
+        time_offsets = NUM_COURT_KP + torch.arange(
+            T,
+            device=x.device,
+            dtype=torch.long,
+        ) * self.frame_block_tokens
+        po_idx = time_offsets
+        ro_idx = time_offsets + 1
 
-        position = position_flat.view(B, T, 3)
-        rotation = rotation_flat.view(B, T, 2)
+        po_feat = x.gather(1, po_idx.view(1, T, 1).expand(B, T, self.hidden_dim))
+        ro_feat = x.gather(1, ro_idx.view(1, T, 1).expand(B, T, self.hidden_dim))
+
+        po_flat = po_feat.reshape(B * T, self.hidden_dim)
+        ro_flat = ro_feat.reshape(B * T, self.hidden_dim)
+
+        position = self.position_head(po_flat).view(B, T, 3)
+        rotation = self.rotation_head(ro_flat).view(B, T, 2)
 
         return {
             "position": position,
@@ -410,7 +308,7 @@ class PLCSSequenceModel(nn.Module):
         }
 
     def get_num_params(self) -> int:
-        """Get total number of trainable parameters."""
+        """Get number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
@@ -423,7 +321,6 @@ if __name__ == "__main__":
         num_heads=4,
         dropout=0.0,
         max_seq_len=16,
-        causal=False,
     )
 
     B = 2
