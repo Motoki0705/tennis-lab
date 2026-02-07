@@ -270,6 +270,7 @@ def collate_multiview(
     position_batch = []
     rotation_batch = []
     num_views_batch = []
+    view_mask_batch = []
 
     for sample in batch:
         n_views = sample["num_views"].item()
@@ -311,6 +312,9 @@ def collate_multiview(
             human_vis = sample["human_vis"]
             court_vis = sample["court_vis"]
 
+        view_mask = torch.zeros(max_views, dtype=torch.bool)
+        view_mask[:n_views] = True
+
         human_kp_batch.append(human_kp)
         court_kp_batch.append(court_kp)
         human_vis_batch.append(human_vis)
@@ -318,6 +322,7 @@ def collate_multiview(
         position_batch.append(sample["position"])
         rotation_batch.append(sample["rotation"])
         num_views_batch.append(sample["num_views"])
+        view_mask_batch.append(view_mask)
 
     return {
         "human_kp": torch.stack(human_kp_batch, dim=0),  # (B, N_max, 17, 2)
@@ -326,6 +331,7 @@ def collate_multiview(
         "court_vis": torch.stack(court_vis_batch, dim=0),  # (B, N_max, 20)
         "camera_params": [s["camera_params"] for s in batch],  # List of lists
         "num_views": torch.stack(num_views_batch, dim=0),  # (B,)
+        "view_mask": torch.stack(view_mask_batch, dim=0),  # (B, N_max)
         "position": torch.stack(position_batch, dim=0),  # (B, 3)
         "rotation": torch.stack(rotation_batch, dim=0),  # (B, 2)
     }

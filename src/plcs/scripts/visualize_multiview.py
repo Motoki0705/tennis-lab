@@ -361,13 +361,17 @@ def main_predict_multiview(cfg: RuntimeConfig) -> int:
                 court_vis_chunk, (0, 0, 0, pad_len, 0, 0)
             )
 
+        seq_mask = torch.zeros(seq_len, dtype=torch.bool)
+        seq_mask[:chunk_len] = True
+
         # Run prediction on chunk: input (N, T, K, 2), output (1, T, 3)
         pred = predictor.predict(
             human_kp=human_kp_chunk,
             court_kp=court_kp_chunk,
-            human_kp_mask=human_vis_chunk,
-            court_kp_mask=court_vis_chunk,
+            human_vis=human_vis_chunk,
+            court_vis=court_vis_chunk,
             view_mask=None,
+            seq_mask=seq_mask,
             denormalize=False,
         )
 

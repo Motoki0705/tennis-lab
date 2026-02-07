@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from torch import Tensor
 
 from src.base.training.lightning_module import BaseLightningModule
@@ -62,7 +62,8 @@ class PLCSMultiViewLightningModule(BaseLightningModule):
         court_kp: Tensor,
         human_vis: Tensor | None = None,
         court_vis: Tensor | None = None,
-        num_views: Tensor | None = None,
+        view_mask: Tensor | None = None,
+        seq_mask: Tensor | None = None,
         camera_params: list[list[dict]] | None = None,
     ) -> dict[str, Any]:
         """Forward pass.
@@ -80,7 +81,8 @@ class PLCSMultiViewLightningModule(BaseLightningModule):
             court_vis: Court visibility mask.
                 - Frame-based: shape (B, N, 20)
                 - Sequence-based: shape (B, N, T, 20)
-            num_views: Number of valid views per sample, shape (B,).
+            view_mask: Valid view mask, shape (B, N), True = non-padding.
+            seq_mask: Valid frame mask, shape (B, T), True = non-padding.
             camera_params: Camera parameters per view.
 
         Returns:
@@ -88,7 +90,7 @@ class PLCSMultiViewLightningModule(BaseLightningModule):
 
         """
         outputs: dict[str, Any] = self.model(
-            human_kp, court_kp, human_vis, court_vis, num_views, camera_params
+            human_kp, court_kp, human_vis, court_vis, view_mask, seq_mask, camera_params
         )
         return outputs
 
@@ -113,7 +115,8 @@ class PLCSMultiViewLightningModule(BaseLightningModule):
             court_kp=batch["court_kp"],
             human_vis=batch.get("human_vis"),
             court_vis=batch.get("court_vis"),
-            num_views=batch.get("num_views"),
+            view_mask=batch.get("view_mask"),
+            seq_mask=batch.get("seq_mask"),
             camera_params=batch.get("camera_params"),
         )
 
