@@ -82,11 +82,8 @@ src/plcs/
 │
 ├── models/                           # 推定モデル
 │   ├── plcs_model.py                 # PLCSModel: フレーム単位 2D→3D 推定
-│   ├── plcs_sequence_model.py        # PLCSSequenceModel: シーケンス対応
-│   ├── plcs_multiview_model.py       # PLCSMultiViewModel: 複数視点統合
-│   └── components/
-│       ├── encoders.py               # 入力エンコーダ（キーポイント処理）
-│       └── heads.py                  # 出力ヘッド（位置・回転回帰）
+│   ├── plcs_sequence_model.py        # PLCSSequenceModel: 時系列CLSトークン構成
+│   └── plcs_multiview_model.py       # PLCSMultiViewModel: camera-time 2D RoPE統合
 │
 ├── data/                             # データセット・DataModule
 │   ├── dataset.py                    # フレーム Dataset
@@ -218,23 +215,25 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 
 ### フレームモデル (`PLCSModel`)
 
-単一フレーム・単一カメラからの推定。MLP ベースのシンプルな構造。
+単一フレーム・単一カメラからの推定。Transformer ベースのトークンモデル。
 
 ### シーケンスモデル (`PLCSSequenceModel`)
 
-時系列情報を活用した推定。LSTM または Transformer ベース。
+トークン列を `court(20) + T * (CLS_po, CLS_ro, player_kp[17])` で構成し、
+全トークンに 1D RoPE を適用します。各時刻の `CLS_po_t` / `CLS_ro_t` から
+`PositionHead` / `RotationHead` で出力を抽出します。
 
 ### マルチビューモデル (`PLCSMultiViewModel`)
 
-複数カメラからの観測を統合して推定。シーケンシャル入力 `(N_cam, T, ...)` に対応し、
-時系列全体の位置・回転を推定します。
+複数カメラからの観測を統合して推定。カメラごとに
+`court_m + T * (CLS_po_{m,t}, CLS_ro_{m,t}, player_{m,t}[17])`
+のトークン列を持ち、camera-time 軸の 2D RoPE を適用します。
+推論時は camera-time 入力 `(B, N, T, ...)` を受け取り、時系列全体の位置・回転を推定します。
 
 - **入力**: 複数カメラ×時系列のキーポイント `(B, N, T, 17, 2)`
 - **出力**: 時系列の位置・回転 `(B, T, 3)`, `(B, T, 2)`
 - **動的サンプリング**: `num_views_range`, `seq_len_range` で学習時に範囲からランダムにサンプリング可能
 - **時間一貫性ロス**: 速度・加速度の平滑化による安定した軌道推定
-
-現在の実装は view mean pooling によるスケルトン構造で、今後より高度な attention ベースの融合手法への拡張を予定しています。
 
 ## 設定ファイル
 
