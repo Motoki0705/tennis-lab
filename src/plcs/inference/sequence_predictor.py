@@ -90,6 +90,7 @@ class PLCSSequencePredictor(BasePredictor):
         court_kp: Tensor,
         human_vis: Tensor | None = None,
         court_vis: Tensor | None = None,
+        seq_mask: Tensor | None = None,
         denormalize: bool = True,
     ) -> dict[str, Tensor]:
         """Predict player 3D position and orientation sequences.
@@ -99,6 +100,7 @@ class PLCSSequencePredictor(BasePredictor):
             court_kp: Court keypoints. Shape (B, T, 40) or (B, T, 20, 2).
             human_vis: Human keypoint visibility mask. Shape (B, T, 17).
             court_vis: Court keypoint visibility mask. Shape (B, T, 20).
+            seq_mask: Sequence padding mask. Shape (B, T), True = valid frame.
             denormalize: If True, convert positions to meters.
 
         Returns:
@@ -116,9 +118,11 @@ class PLCSSequencePredictor(BasePredictor):
             human_vis = human_vis.to(self.device)
         if court_vis is not None:
             court_vis = court_vis.to(self.device)
+        if seq_mask is not None:
+            seq_mask = seq_mask.to(self.device)
 
         # Forward pass
-        outputs = self.model(human_kp, court_kp, human_vis, court_vis)
+        outputs = self.model(human_kp, court_kp, human_vis, court_vis, seq_mask)
 
         position = outputs["position"].cpu()  # (B, T, 3)
         rotation = outputs["rotation"].cpu()  # (B, T, 2)
