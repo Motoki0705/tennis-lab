@@ -35,7 +35,11 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
-from src.common.models.embeddings import CourtKPUVEmbedding, InvisibleTokenEmbedding, PlayerKPUVEmbedding
+from src.common.models.embeddings import (
+    CourtKPUVEmbedding,
+    InvisibleTokenEmbedding,
+    PlayerKPUVEmbedding,
+)
 from src.plcs.models.components.heads import PositionHead, RotationHead
 from src.utils.geometry import NUM_COURT_KP, NUM_HUMAN_KP
 
@@ -227,7 +231,7 @@ class PLCSModel(nn.Module):
         yarn: YaRNConfig | None = None
         if yarn_cfg is not None:
             yarn_cfg = dict(yarn_cfg)
-            if yarn_cfg.get("original_seq_len", None) is not None:
+            if yarn_cfg.get("original_seq_len") is not None:
                 yarn = YaRNConfig(**yarn_cfg)
 
         use_moe = bool(model_cfg.get("use_moe", False))
@@ -253,7 +257,7 @@ class PLCSModel(nn.Module):
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
         )
 
-    def forward(
+    def _build_body_tokens(
         self,
         human_kp: Tensor,
         court_kp: Tensor,
@@ -312,14 +316,20 @@ class PLCSModel(nn.Module):
         token_body = torch.cat(
             [court_tok + court_type, player_tok + player_type], dim=1
         )  # (B, 37, D)
-        S_body = token_body.shape[1]
+        return token_body
 
+    def _add_prefix_tokens(self, token_body: Tensor) -> Tensor:
+        """Add CLS/register prefix tokens to body tokens."""
+        B = token_body.size(0)
         cls = self.cls_token.expand(B, -1, -1)
         if self.num_register_tokens > 0:
             reg = self.register_tokens.expand(B, -1, -1)
-            x = torch.cat([cls, reg, token_body], dim=1)  # (B, 1+R+37, D)
-        else:
-            x = torch.cat([cls, token_body], dim=1)  # (B, 38, D)
+            return torch.cat([cls, reg, token_body], dim=1)  # (B, 1+R+37, D)
+        return torch.cat([cls, token_body], dim=1)  # (B, 38, D)
+
+    def _forward_transformer(self, x: Tensor, S_body: int) -> Tensor:
+        """Run transformer stack and final normalization."""
+        prefix_len = x.size(1) - S_body
 
         freqs_cis: Tensor | None = None
         if self.use_rope:
@@ -332,7 +342,6 @@ class PLCSModel(nn.Module):
             if freqs_cis_body.device != x.device:
                 freqs_cis_body = freqs_cis_body.to(x.device)
 
-            prefix_len = 1 + self.num_register_tokens
             prefix_freqs = torch.ones(
                 prefix_len, freqs_cis_body.shape[1], device=x.device, dtype=freqs_cis_body.dtype
             )
@@ -355,6 +364,53 @@ class PLCSModel(nn.Module):
             x = self.final_norm(x)
         else:
             x, _ = self.final_norm(x, residual)
+        return x
+
+    def _encode_tokens(
+        self,
+        human_kp: Tensor,
+        court_kp: Tensor,
+        human_vis: Tensor | None = None,
+        court_vis: Tensor | None = None,
+    ) -> tuple[Tensor, int]:
+        """Encode tokens and return contextualized outputs and player start index."""
+        token_body = self._build_body_tokens(
+            human_kp=human_kp,
+            court_kp=court_kp,
+            human_vis=human_vis,
+            court_vis=court_vis,
+        )
+        S_body = token_body.shape[1]
+        x = self._add_prefix_tokens(token_body)
+        x = self._forward_transformer(x=x, S_body=S_body)
+        player_start_idx = 1 + self.num_register_tokens + NUM_COURT_KP
+        return x, player_start_idx
+
+    def forward(
+        self,
+        human_kp: Tensor,
+        court_kp: Tensor,
+        human_vis: Tensor | None = None,
+        court_vis: Tensor | None = None,
+    ) -> dict[str, Tensor]:
+        """Forward pass.
+
+        Args:
+            human_kp: Human keypoints, shape (B, 34) or (B, 17, 2).
+            court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
+            human_vis: Human visibility mask, shape (B, 17). Optional.
+            court_vis: Court visibility mask, shape (B, 20). Optional.
+
+        Returns:
+            dict: Dictionary with 'position' (B, 3) and 'rotation' (B, 2).
+
+        """
+        x, _ = self._encode_tokens(
+            human_kp=human_kp,
+            court_kp=court_kp,
+            human_vis=human_vis,
+            court_vis=court_vis,
+        )
 
         # Extract CLS token
         cls_out = x[:, 0, :]  # (B, D)

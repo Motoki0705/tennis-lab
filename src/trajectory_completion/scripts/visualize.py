@@ -10,7 +10,7 @@ trajectory completion:
 Example commands:
     `uv run python -m src.trajectory_completion.scripts.visualize`
     `uv run python -m src.trajectory_completion.scripts.visualize visualization.scene_path=data/blcs/scenes/rally_000000.npz`
-    `uv run python -m src.trajectory_completion.scripts.visualize run.seed=0 data.corruption.noise_std=0.02`
+    `uv run python -m src.trajectory_completion.scripts.visualize run.seed=0 data.argument.noise_std=0.02`
     `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/trajectory_completion/.../last.ckpt`
 
 Config entry point: `src/trajectory_completion/configs/visualize.yaml`
@@ -18,9 +18,11 @@ Config entry point: `src/trajectory_completion/configs/visualize.yaml`
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
@@ -33,7 +35,8 @@ from omegaconf import DictConfig
 
 from src.common.data.npz_meta import decode_meta
 from src.common.data.scene_cache import load_npz_scene
-from src.trajectory_completion.data.dataset import CorruptionConfig, _apply_corruption
+from src.trajectory_completion.data.argument import TrajectoryArgumenter
+from src.trajectory_completion.data.event_masking import extract_event_frames
 from src.trajectory_completion.inference.uv_predictor import (
     UVTrajectoryCompletionPredictor,
 )
@@ -44,6 +47,8 @@ if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
 F = TypeVar("F", bound=Callable[..., Any])
+
+TMP_LOG_PATH = Path("data/tmp/trajectory_completion_visualize.log")
 
 
 def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
@@ -84,7 +89,7 @@ class TrajectoryInputs:
     ball_uv_gt: np.ndarray  # (T, 2)
     ball_uv_in: np.ndarray  # (T, 2)
     ball_gt_visible: np.ndarray  # (T,) bool  (visibility from the scene)
-    ball_obs_mask: np.ndarray  # (T,) bool  (after corruption)
+    ball_obs_mask: np.ndarray  # (T,) bool  (after augmentation)
     court_kp: np.ndarray  # (20, 2)
     court_vis: np.ndarray  # (20,) bool
     meta: dict[str, Any]
@@ -161,19 +166,30 @@ def _slice_sequence(arr: np.ndarray, *, start: int, end: int) -> np.ndarray:
     return arr[start:end, ...]
 
 
-def _build_corruption_config(cfg: DictConfig) -> CorruptionConfig:
+def _build_argumenter(cfg: DictConfig) -> TrajectoryArgumenter:
     data_cfg = cfg.get("data", {}) or {}
-    corr_cfg = data_cfg.get("corruption", {}) or {}
-    return CorruptionConfig(
-        enabled=bool(corr_cfg.get("enabled", True)),
-        noise_std=float(corr_cfg.get("noise_std", 0.01)),
-        clamp_unit=bool(corr_cfg.get("clamp_unit", True)),
-        point_dropout_prob=float(corr_cfg.get("point_dropout_prob", 0.05)),
-        gap_dropout_prob=float(corr_cfg.get("gap_dropout_prob", 0.25)),
-        max_gap_len=int(corr_cfg.get("max_gap_len", 12)),
-        max_masked_ratio=float(corr_cfg.get("max_masked_ratio", 0.6)),
-        outlier_prob=float(corr_cfg.get("outlier_prob", 0.0)),
-    )
+    arg_cfg = data_cfg.get("argument", {}) or {}
+    return TrajectoryArgumenter(arg_cfg)
+
+
+def _append_tmp_log(lines: list[str]) -> None:
+    try:
+        TMP_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with TMP_LOG_PATH.open("a", encoding="utf-8") as f:
+            for line in lines:
+                f.write(f"{line}\n")
+    except OSError:
+        return
+
+
+def _format_tensor_indices(tensor: torch.Tensor, *, limit: int = 20) -> str:
+    if tensor.numel() == 0:
+        return "[]"
+    total = int(tensor.numel())
+    sample = tensor[:limit].detach().cpu().tolist()
+    if total > limit:
+        return f"{sample} ... (total={total})"
+    return str(sample)
 
 
 def _load_uv_from_scene(
@@ -252,12 +268,15 @@ def prepare_inputs(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> TrajectoryInput
     ball_uv_gt_t = torch.from_numpy(ball_uv_gt).float()
     ball_gt_visible_t = torch.from_numpy(ball_gt_visible.astype(np.float32))
 
+    event_frames = extract_event_frames(meta, ball_uv_gt.shape[0], offset=start)
+    argumenter: TrajectoryArgumenter | None = None
+
     if cfg.apply_corruption:
-        corr = _build_corruption_config(hydra_cfg)
-        ball_uv_in_t, ball_obs_mask_t = _apply_corruption(
-            ball_uv_gt=ball_uv_gt_t,
-            ball_gt_visible=ball_gt_visible_t,
-            cfg=corr,
+        argumenter = _build_argumenter(hydra_cfg)
+        ball_uv_in_t, ball_obs_mask_t = argumenter(
+            ball_uv_gt_t,
+            ball_gt_visible_t,
+            event_frames=event_frames,
         )
     else:
         ball_uv_in_t = ball_uv_gt_t.clone()
@@ -265,6 +284,41 @@ def prepare_inputs(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> TrajectoryInput
         miss = ball_obs_mask_t <= 0
         if miss.any():
             ball_uv_in_t[miss] = 0.0
+
+    log_lines = [
+        "=" * 60,
+        f"time={datetime.now().isoformat(timespec='seconds')}",
+        f"scene={cfg.scene_path}",
+        f"camera_idx={cam_idx}",
+        f"slice=start:{start} end:{end} length:{ball_uv_gt.shape[0]}",
+        f"event_frames(bounce)={_format_tensor_indices(event_frames.get('bounce', torch.empty(0)))}",
+        f"event_frames(shot)={_format_tensor_indices(event_frames.get('shot', torch.empty(0)))}",
+    ]
+    if argumenter is not None:
+        event_candidates = TrajectoryArgumenter._expand_event_candidates(
+            event_frames=event_frames,
+            length=ball_obs_mask_t.shape[0],
+            window=argumenter.config.event_window,
+            device=ball_obs_mask_t.device,
+        )
+        orig_vis = ball_gt_visible_t > 0
+        newly_masked = (ball_obs_mask_t <= 0) & orig_vis
+        masked_event = newly_masked & event_candidates
+        log_lines.extend(
+            [
+                f"event_dropout_prob={argumenter.config.event_dropout_prob}",
+                f"event_window={argumenter.config.event_window}",
+                f"event_ratio={argumenter.config.event_ratio}",
+                f"event_candidates_count={int(event_candidates.sum().item())}",
+                f"newly_masked_count={int(newly_masked.sum().item())}",
+                f"newly_masked_event_count={int(masked_event.sum().item())}",
+                f"masked_indices_sample={_format_tensor_indices(torch.where(newly_masked)[0])}",
+                f"masked_event_indices_sample={_format_tensor_indices(torch.where(masked_event)[0])}",
+            ]
+        )
+    else:
+        log_lines.append("event_dropout=disabled")
+    _append_tmp_log(log_lines)
 
     return TrajectoryInputs(
         ball_uv_gt=ball_uv_gt_t.cpu().numpy(),
@@ -324,7 +378,7 @@ def _summarize_inputs(inputs: TrajectoryInputs) -> dict[str, float]:
     newly_masked = orig_vis & (~obs)
     newly_masked_count = int(newly_masked.sum())
 
-    # Jitter only makes sense on frames that are observed after corruption.
+    # Jitter only makes sense on frames that are observed after augmentation.
     err_in = np.linalg.norm(inputs.ball_uv_in - inputs.ball_uv_gt, axis=-1)
     jitter = err_in[obs]
 
@@ -340,6 +394,206 @@ def _summarize_inputs(inputs: TrajectoryInputs) -> dict[str, float]:
         "jitter_max": float(jitter.max()) if jitter.size > 0 else 0.0,
     }
     return stats
+
+
+def _basic_stats(values: np.ndarray) -> dict[str, float]:
+    if values.size == 0:
+        return {"count": 0.0, "mean": 0.0, "p95": 0.0, "max": 0.0}
+    return {
+        "count": float(values.size),
+        "mean": float(values.mean()),
+        "p95": float(np.quantile(values, 0.95)),
+        "max": float(values.max()),
+    }
+
+
+def _masked_stats(values: np.ndarray, mask: np.ndarray) -> dict[str, float]:
+    return _basic_stats(values[mask]) if mask.size > 0 else _basic_stats(np.empty((0,), dtype=np.float32))
+
+
+def _safe_corrcoef(x: np.ndarray, y: np.ndarray) -> float:
+    if x.size < 2 or y.size < 2:
+        return 0.0
+    x_std = float(x.std())
+    y_std = float(y.std())
+    if x_std <= 1e-9 or y_std <= 1e-9:
+        return 0.0
+    return float(np.corrcoef(x, y)[0, 1])
+
+
+def _motion_stats(track: np.ndarray) -> dict[str, dict[str, float]]:
+    speed = np.linalg.norm(track[1:] - track[:-1], axis=-1) if track.shape[0] >= 2 else np.empty((0,), dtype=np.float32)
+    accel = (
+        np.linalg.norm(track[2:] - 2.0 * track[1:-1] + track[:-2], axis=-1)
+        if track.shape[0] >= 3
+        else np.empty((0,), dtype=np.float32)
+    )
+    return {"speed": _basic_stats(speed), "accel": _basic_stats(accel)}
+
+
+def _boundary_jump_stats(track: np.ndarray, obs_mask: np.ndarray) -> tuple[dict[str, float], list[tuple[int, float]]]:
+    if track.shape[0] < 2 or obs_mask.shape[0] < 2:
+        return _basic_stats(np.empty((0,), dtype=np.float32)), []
+    switch = obs_mask[1:] != obs_mask[:-1]
+    idx = np.where(switch)[0] + 1
+    if idx.size == 0:
+        return _basic_stats(np.empty((0,), dtype=np.float32)), []
+    jump = np.linalg.norm(track[idx] - track[idx - 1], axis=-1)
+    pairs = [(int(i), float(j)) for i, j in zip(idx.tolist(), jump.tolist(), strict=False)]
+    return _basic_stats(jump), pairs
+
+
+def _directional_error_stats(pred_uv: np.ndarray, gt_uv: np.ndarray) -> dict[str, dict[str, float]]:
+    if pred_uv.shape[0] < 2 or gt_uv.shape[0] < 2:
+        empty = _basic_stats(np.empty((0,), dtype=np.float32))
+        return {"parallel_abs": empty, "perp_abs": empty}
+    err = pred_uv - gt_uv
+    gt_vel = gt_uv[1:] - gt_uv[:-1]
+    err_aligned = err[1:]
+    vel_norm = np.linalg.norm(gt_vel, axis=-1)
+    valid = vel_norm > 1e-9
+    if not np.any(valid):
+        empty = _basic_stats(np.empty((0,), dtype=np.float32))
+        return {"parallel_abs": empty, "perp_abs": empty}
+
+    direction = gt_vel[valid] / vel_norm[valid, None]
+    e = err_aligned[valid]
+    parallel = np.abs(np.sum(e * direction, axis=-1))
+    perp = np.sqrt(np.clip(np.sum(e * e, axis=-1) - parallel * parallel, a_min=0.0, a_max=None))
+    return {"parallel_abs": _basic_stats(parallel), "perp_abs": _basic_stats(perp)}
+
+
+def _event_mask(length: int, event_frames: dict[str, torch.Tensor], window: int) -> np.ndarray:
+    mask = np.zeros((length,), dtype=bool)
+    if length <= 0:
+        return mask
+    w = max(0, int(window))
+    for key in ("bounce", "shot"):
+        frames = event_frames.get(key)
+        if frames is None or frames.numel() == 0:
+            continue
+        for t in frames.detach().cpu().to(torch.long).tolist():
+            start = max(0, int(t) - w)
+            end = min(length, int(t) + w + 1)
+            mask[start:end] = True
+    return mask
+
+
+def _mask_runs(masked: np.ndarray) -> list[tuple[int, int]]:
+    runs: list[tuple[int, int]] = []
+    start: int | None = None
+    for i, m in enumerate(masked.tolist()):
+        if m and start is None:
+            start = i
+        elif (not m) and start is not None:
+            runs.append((start, i))
+            start = None
+    if start is not None:
+        runs.append((start, int(masked.shape[0])))
+    return runs
+
+
+def _summarize_predictions(
+    *,
+    inputs: TrajectoryInputs,
+    pred_uv: np.ndarray,
+    completed_uv: np.ndarray,
+    event_frames: dict[str, torch.Tensor],
+    event_window: int,
+    topk: int = 20,
+) -> dict[str, Any]:
+    gt = inputs.ball_uv_gt
+    obs = inputs.ball_obs_mask
+    orig_vis = inputs.ball_gt_visible
+    masked = ~obs
+    newly_masked = orig_vis & masked
+    orig_missing = ~orig_vis
+    event_near = _event_mask(gt.shape[0], event_frames, event_window)
+
+    err_pred = np.linalg.norm(pred_uv - gt, axis=-1)
+    err_completed = np.linalg.norm(completed_uv - gt, axis=-1)
+    err_in = np.linalg.norm(inputs.ball_uv_in - gt, axis=-1)
+    merge_delta = np.linalg.norm(completed_uv - pred_uv, axis=-1)
+
+    top_idx = np.argsort(err_pred)[::-1][: max(0, int(topk))]
+    top_frames = [
+        {
+            "frame": int(i),
+            "err_pred": float(err_pred[i]),
+            "err_completed": float(err_completed[i]),
+            "is_observed": bool(obs[i]),
+            "is_newly_masked": bool(newly_masked[i]),
+            "is_orig_missing": bool(orig_missing[i]),
+            "is_event_near": bool(event_near[i]),
+        }
+        for i in top_idx.tolist()
+    ]
+
+    run_summaries: list[dict[str, float]] = []
+    for start, end in _mask_runs(masked):
+        run_err = err_pred[start:end]
+        if run_err.size == 0:
+            continue
+        run_summaries.append(
+            {
+                "start": float(start),
+                "end": float(end),
+                "length": float(end - start),
+                "err_mean": float(run_err.mean()),
+                "err_p95": float(np.quantile(run_err, 0.95)),
+                "err_max": float(run_err.max()),
+            }
+        )
+    run_summaries = sorted(run_summaries, key=lambda x: x["err_mean"], reverse=True)
+
+    pred_motion = _motion_stats(pred_uv)
+    completed_motion = _motion_stats(completed_uv)
+    pred_boundary, pred_boundary_pairs = _boundary_jump_stats(pred_uv, obs)
+    completed_boundary, completed_boundary_pairs = _boundary_jump_stats(completed_uv, obs)
+
+    return {
+        "error": {
+            "pred_all": _basic_stats(err_pred),
+            "pred_observed": _masked_stats(err_pred, obs),
+            "pred_masked": _masked_stats(err_pred, masked),
+            "pred_newly_masked": _masked_stats(err_pred, newly_masked),
+            "pred_orig_missing": _masked_stats(err_pred, orig_missing),
+            "pred_event_near": _masked_stats(err_pred, event_near),
+            "pred_event_far": _masked_stats(err_pred, ~event_near),
+            "completed_all": _basic_stats(err_completed),
+        },
+        "motion": {
+            "pred": pred_motion,
+            "completed": completed_motion,
+        },
+        "boundary_jump": {
+            "pred": pred_boundary,
+            "completed": completed_boundary,
+            "pred_pairs": pred_boundary_pairs,
+            "completed_pairs": completed_boundary_pairs,
+        },
+        "directional_error": _directional_error_stats(pred_uv, gt),
+        "input_pred_corr_observed": _safe_corrcoef(err_in[obs], err_pred[obs]),
+        "merge_delta": {
+            "all": _basic_stats(merge_delta),
+            "observed": _masked_stats(merge_delta, obs),
+            "masked": _masked_stats(merge_delta, masked),
+        },
+        "mask_runs": run_summaries,
+        "top_frames": top_frames,
+        "summary_scores": {
+            "masked_err_p95": _masked_stats(err_pred, masked)["p95"],
+            "pred_accel_p95": pred_motion["accel"]["p95"],
+            "boundary_jump_p95": pred_boundary["p95"],
+        },
+    }
+
+
+def _print_stat_line(name: str, stats: dict[str, float]) -> None:
+    print(
+        f"  {name:<20} count={int(stats['count']):4d} "
+        f"mean={stats['mean']:.4f} p95={stats['p95']:.4f} max={stats['max']:.4f}"
+    )
 
 
 def print_info(cfg: RuntimeConfig, inputs: TrajectoryInputs) -> None:
@@ -364,12 +618,84 @@ def print_info(cfg: RuntimeConfig, inputs: TrajectoryInputs) -> None:
         f"  Observed (input):  {stats['observed_count']:.0f}"
         f" ({stats['observed_ratio']:.1%})"
     )
-    print(f"  Newly masked by corruption: {stats['newly_masked_count']:.0f}")
+    print(f"  Newly masked by augmentation: {stats['newly_masked_count']:.0f}")
 
     print("\nObserved-point jitter (|input - GT|):")
     print(
         f"  mean={stats['jitter_mean']:.4f}  p95={stats['jitter_p95']:.4f}  max={stats['jitter_max']:.4f}"
     )
+
+
+def print_predict_info(
+    cfg: RuntimeConfig,
+    inputs: TrajectoryInputs,
+    pred_uv: np.ndarray,
+    completed_uv: np.ndarray,
+    *,
+    event_frames: dict[str, torch.Tensor],
+    event_window: int,
+) -> None:
+    print_info(cfg, inputs)
+    analysis = _summarize_predictions(
+        inputs=inputs,
+        pred_uv=pred_uv,
+        completed_uv=completed_uv,
+        event_frames=event_frames,
+        event_window=event_window,
+    )
+
+    print("\nPrediction error (|pred - GT|):")
+    _print_stat_line("all", analysis["error"]["pred_all"])
+    _print_stat_line("observed", analysis["error"]["pred_observed"])
+    _print_stat_line("masked", analysis["error"]["pred_masked"])
+    _print_stat_line("newly_masked", analysis["error"]["pred_newly_masked"])
+    _print_stat_line("orig_missing", analysis["error"]["pred_orig_missing"])
+    _print_stat_line("event_near", analysis["error"]["pred_event_near"])
+    _print_stat_line("event_far", analysis["error"]["pred_event_far"])
+
+    print("\nCompleted error (|completed - GT|):")
+    _print_stat_line("all", analysis["error"]["completed_all"])
+
+    print("\nTemporal motion stats:")
+    _print_stat_line("pred_speed", analysis["motion"]["pred"]["speed"])
+    _print_stat_line("pred_accel", analysis["motion"]["pred"]["accel"])
+    _print_stat_line("completed_speed", analysis["motion"]["completed"]["speed"])
+    _print_stat_line("completed_accel", analysis["motion"]["completed"]["accel"])
+
+    print("\nBoundary jump at observed/masked switch:")
+    _print_stat_line("pred_jump", analysis["boundary_jump"]["pred"])
+    _print_stat_line("completed_jump", analysis["boundary_jump"]["completed"])
+
+    print("\nDirectional error (pred vs GT motion):")
+    _print_stat_line("parallel_abs", analysis["directional_error"]["parallel_abs"])
+    _print_stat_line("perp_abs", analysis["directional_error"]["perp_abs"])
+
+    print("\nCorrelation and merge effect:")
+    print(f"  corr(|input-GT|, |pred-GT|) on observed = {analysis['input_pred_corr_observed']:.4f}")
+    _print_stat_line("merge_delta_all", analysis["merge_delta"]["all"])
+    _print_stat_line("merge_delta_obs", analysis["merge_delta"]["observed"])
+    _print_stat_line("merge_delta_masked", analysis["merge_delta"]["masked"])
+
+    print("\nTop error frames (pred):")
+    for row in analysis["top_frames"][:20]:
+        print(
+            f"  t={row['frame']:4d} err={row['err_pred']:.4f} "
+            f"completed={row['err_completed']:.4f} "
+            f"obs={int(row['is_observed'])} new_mask={int(row['is_newly_masked'])} "
+            f"orig_missing={int(row['is_orig_missing'])} event_near={int(row['is_event_near'])}"
+        )
+
+    print("\nWorst masked runs by mean error:")
+    for run in analysis["mask_runs"][:10]:
+        print(
+            f"  [{int(run['start'])},{int(run['end'])}) len={int(run['length'])} "
+            f"mean={run['err_mean']:.4f} p95={run['err_p95']:.4f} max={run['err_max']:.4f}"
+        )
+
+    print("\nSummary scores:")
+    print(f"  masked_err_p95={analysis['summary_scores']['masked_err_p95']:.4f}")
+    print(f"  pred_accel_p95={analysis['summary_scores']['pred_accel_p95']:.4f}")
+    print(f"  boundary_jump_p95={analysis['summary_scores']['boundary_jump_p95']:.4f}")
 
 
 def render_uv_panel(
@@ -420,7 +746,7 @@ def render_uv_panel(
             s=22,
             marker="x",
             alpha=0.9,
-            label="GT (masked by corruption)",
+            label="GT (masked by augmentation)",
             zorder=5,
         )
 
@@ -553,7 +879,7 @@ def render_timeline_panel(
             c="#FF4444",
             marker="x",
             alpha=0.9,
-            label="Masked by corruption",
+            label="Masked by augmentation",
         )
 
     ax_mask.set_ylim(-0.2, 1.2)
@@ -718,16 +1044,6 @@ def main_predict(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> int:
 
     inputs = prepare_inputs(cfg, hydra_cfg)
 
-    if cfg.info:
-        print_info(cfg, inputs)
-        return 0
-
-    if cfg.frame < 0 or cfg.frame >= inputs.ball_uv_gt.shape[0]:
-        print(
-            f"Error: Frame {cfg.frame} out of range (0-{inputs.ball_uv_gt.shape[0] - 1})"
-        )
-        return 1
-
     print(f"Loading checkpoint from {cfg.checkpoint}...")
     predictor = UVTrajectoryCompletionPredictor.load_from_checkpoint(
         checkpoint_path=cfg.checkpoint,
@@ -755,6 +1071,28 @@ def main_predict(cfg: RuntimeConfig, hydra_cfg: DictConfig) -> int:
         .cpu()
         .numpy()
     )
+
+    event_window = int(
+        ((hydra_cfg.get("data", {}) or {}).get("argument", {}) or {}).get("event_window", 2)
+    )
+    event_frames = extract_event_frames(inputs.meta, inputs.ball_uv_gt.shape[0], offset=inputs.start)
+
+    if cfg.info:
+        print_predict_info(
+            cfg,
+            inputs,
+            pred_uv,
+            completed_uv,
+            event_frames=event_frames,
+            event_window=event_window,
+        )
+        return 0
+
+    if cfg.frame < 0 or cfg.frame >= inputs.ball_uv_gt.shape[0]:
+        print(
+            f"Error: Frame {cfg.frame} out of range (0-{inputs.ball_uv_gt.shape[0] - 1})"
+        )
+        return 1
 
     if cfg.output is not None:
         _save_outputs(outputs, Path(cfg.output))

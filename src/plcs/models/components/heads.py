@@ -77,3 +77,58 @@ class RotationHead(nn.Module):
         """Predict unit-normalized (sin, cos)."""
         out = self.mlp(x)
         return torch.nn.functional.normalize(out, dim=-1)
+
+class PerTokenKeypoint3DHead(nn.Module):
+    """Predict per-token 3D keypoints from token features.
+
+    Applies a shared MLP to each token independently.
+    """
+
+    def __init__(
+        self,
+        input_dim: int = 256,
+        hidden_dim: int = 128,
+        output_dim: int = 3,
+        num_layers: int = 2,
+        dropout: float = 0.1,
+    ) -> None:
+        """Initialize per-token 3D head.
+
+        Args:
+            input_dim: Input feature dimension per token.
+            hidden_dim: Hidden layer dimension.
+            output_dim: Output dimension (default 3 for x, y, z).
+            num_layers: Number of hidden layers.
+            dropout: Dropout probability.
+
+        """
+        super().__init__()
+
+        layers: list[nn.Module] = []
+        in_dim = input_dim
+
+        for _ in range(num_layers):
+            layers.extend(
+                [
+                    nn.Linear(in_dim, hidden_dim),
+                    nn.LayerNorm(hidden_dim),
+                    nn.GELU(),
+                    nn.Dropout(dropout),
+                ]
+            )
+            in_dim = hidden_dim
+
+        layers.append(nn.Linear(hidden_dim, output_dim))
+        self.mlp = nn.Sequential(*layers)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Predict per-token 3D coordinates.
+
+        Args:
+            x: Input token features, shape (batch, num_tokens, input_dim).
+
+        Returns:
+            Tensor: Predicted 3D coordinates, shape (batch, num_tokens, 3).
+
+        """
+        return self.mlp(x)
