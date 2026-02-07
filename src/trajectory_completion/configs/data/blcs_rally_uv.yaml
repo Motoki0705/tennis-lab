@@ -17,19 +17,16 @@ cache_max_scenes: 128
 
 # Scene sampler settings: none | scene | mixed | chunked
 scene_sampler_mode: chunked
-scenes_per_batch: 1
+scenes_per_batch: 16
 chunk_max_scenes: 64
 
 supervise_visible_only: true
 
-corruption:
-  enabled: true
-  noise_std: 0.01
-  clamp_unit: true
-
+argument:
   point_dropout_prob: 0.05
-  gap_dropout_prob: 0.1
-  max_gap_len: 8
-  max_masked_ratio: 0.3
-
+  event_dropout_prob: 0.1
+  event_window: 2
+  event_ratio: [1, 1] # naive : event
+  noise_std: 0.0001
+  clamp_unit: true
   outlier_prob: 0.0

@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 import torch
 from torch.utils.data import Dataset
 
-from src.common.dataset.augmentation import augment_keypoints
 from src.common.data.index_cache import (
     compute_config_hash,
     compute_scene_files_hash,
@@ -21,8 +20,10 @@ from src.common.data.scene_cache import (
     extract_scene_meta_parallel,
     get_scene_cache,
 )
-from src.plcs.generate_dataset.io.scene_loader import load_scene
+from src.common.dataset.augmentation import augment_keypoints
+from src.plcs.data.targets import build_coco17_world_targets
 from src.plcs.data.types import PLCSFrameBatch
+from src.plcs.generate_dataset.io.scene_loader import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -182,6 +183,9 @@ class SceneDataset(Dataset[PLCSFrameBatch]):
         # Get targets
         position = torch.from_numpy(scene["position"][frame_idx].copy())
         rotation = torch.from_numpy(scene["rotation"][frame_idx].copy())
+        if "human_kp_3d" not in scene:
+            scene["human_kp_3d"] = build_coco17_world_targets(scene)
+        human_kp_3d = torch.from_numpy(scene["human_kp_3d"][frame_idx].copy())
 
         # Apply augmentation
         if self.augment:
@@ -199,6 +203,7 @@ class SceneDataset(Dataset[PLCSFrameBatch]):
             "court_vis": court_vis.float(),  # (20,)
             "position": position.float(),  # (3,)
             "rotation": rotation.float(),  # (2,)
+            "human_kp_3d": human_kp_3d.float(),  # (17, 3)
         }
 
 
