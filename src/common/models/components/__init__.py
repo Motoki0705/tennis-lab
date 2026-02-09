@@ -14,8 +14,14 @@ This repository previously had a separate "unified MHA/GQA/MLA" implementation.
 Strategy A treats the DeepSeek-style implementation as canonical.
 """
 
-from src.common.models.components.attention import KVCache, MultiHeadSelfAttention
+from src.common.models.components.attention import (
+    KVCache,
+    MultiHeadCrossAttention,
+    MultiHeadSelfAttention,
+)
 from src.common.models.components.block import (
+    CrossAttnBlock,
+    CrossAttnBlockConfig,
     TransformerBlock,
     TransformerBlockConfig,
     ViTBlock,
@@ -36,6 +42,7 @@ from src.common.models.components.rope import (
 __all__ = [
     # Attention
     "KVCache",
+    "MultiHeadCrossAttention",
     "MultiHeadSelfAttention",
     # Norm
     "RMSNorm",
@@ -55,6 +62,8 @@ __all__ = [
     # Blocks
     "TransformerBlockConfig",
     "TransformerBlock",
+    "CrossAttnBlockConfig",
+    "CrossAttnBlock",
     "ViTBlockConfig",
     "ViTBlock",
 ]
