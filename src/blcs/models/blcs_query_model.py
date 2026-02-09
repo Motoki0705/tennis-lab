@@ -255,7 +255,6 @@ class BLCSQueryModel(nn.Module):
                 ball_a,
                 court_tok,
                 key_valid=court_valid,
-                query_valid=ball_valid,
             )
 
         # Stage B: ball temporal self-attention (time RoPE)
@@ -266,8 +265,6 @@ class BLCSQueryModel(nn.Module):
             if empty_ball.any():
                 ball_key_valid = ball_key_valid.clone()
                 ball_key_valid[empty_ball, 0] = True
-                ball_a = ball_a.clone()
-                ball_a[empty_ball] = 0.0
             ball_attn_mask = ball_key_valid[:, None, :].expand(batch_size, seq_len, seq_len)
 
         ball_b = ball_a
@@ -286,7 +283,6 @@ class BLCSQueryModel(nn.Module):
             ball_b = self.ball_temporal_norm(ball_b)
         else:
             ball_b, _ = self.ball_temporal_norm(ball_b, residual)
-        ball_b = ball_b * ball_valid.unsqueeze(-1).to(dtype=ball_b.dtype)
 
         # Stage C: query -> ball readout (time RoPE on query and ball)
         query_c = query_tok
@@ -295,13 +291,11 @@ class BLCSQueryModel(nn.Module):
                 query_c,
                 ball_b,
                 key_valid=ball_valid,
-                query_valid=ball_valid,
                 freqs_q_cis=freqs_cis,
                 freqs_k_cis=freqs_cis,
             )
 
         query_c = self.final_norm(query_c)
-        query_c = query_c * ball_valid.unsqueeze(-1).to(dtype=query_c.dtype)
 
         out: dict[str, Tensor] = {"position": self.position_head(query_c)}
         if self.predict_velocity and self.velocity_head is not None:

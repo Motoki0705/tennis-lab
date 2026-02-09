@@ -201,7 +201,6 @@ class CrossAttnBlock(nn.Module):
         kv: torch.Tensor,
         *,
         key_valid: torch.Tensor | None = None,
-        query_valid: torch.Tensor | None = None,
         freqs_q_cis: torch.Tensor | None = None,
         freqs_k_cis: torch.Tensor | None = None,
     ) -> torch.Tensor:
@@ -233,12 +232,7 @@ class CrossAttnBlock(nn.Module):
             freqs_k_cis=freqs_k_cis,
             attn_mask=attn_mask,
         )
-        if query_valid is not None:
-            q = q * (query_valid > 0).unsqueeze(-1).to(dtype=q.dtype)
-
         q = q + self.ffn(self.ffn_norm(q))
-        if query_valid is not None:
-            q = q * (query_valid > 0).unsqueeze(-1).to(dtype=q.dtype)
         return q
 
 
