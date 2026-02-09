@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
 from torch import Tensor
 
 from src.base.training.lightning_module import BaseLightningModule
-from src.blcs.models.blcs_model import BLCSModel
+from src.blcs.models import build_blcs_model
 from src.blcs.training.losses import BLCSLoss
 from src.blcs.training.metrics import BLCSMetrics
 
@@ -31,7 +32,7 @@ class BLCSLightningModule(BaseLightningModule):
         super().__init__(config)
 
         # Build model
-        self.model = BLCSModel.from_config(self.config)
+        self.model = build_blcs_model(self.config)
 
         # Loss function
         train_cfg = self.config.get("training", {})

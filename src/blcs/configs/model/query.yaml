@@ -1,0 +1,26 @@
+# BLCS Query-based Model Configuration
+
+name: blcs_query
+
+# Architecture
+hidden_dim: 256
+num_heads: 8
+ffn_dim: null
+dropout: 0.1
+max_seq_len: 10240
+num_court_tokens: 20
+invisible_init_std: 0.02
+query_init_std: 0.02
+
+# Stage depths
+num_ball2court_layers: 2
+num_ball_temporal_layers: 4
+num_query2ball_layers: 2
+
+# RoPE (used in Stage B and Stage C)
+rope_dim: null
+rope_theta: 10000.0
+yarn: null
+
+# Output
+predict_velocity: false
