@@ -76,30 +76,35 @@ def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
 
     meta = scene.get("meta", {})
     init_yaw = float(meta.get("initial_yaw", 0.0))
-    cos_yaw = math.cos(init_yaw)
-    sin_yaw = math.sin(init_yaw)
-    rot = np.array(
-        [
-            [cos_yaw, -sin_yaw, 0.0],
-            [sin_yaw, cos_yaw, 0.0],
-            [0.0, 0.0, 1.0],
-        ],
-        dtype=np.float32,
-    )
 
-    world_smplh = np.einsum("tji,ki->tjk", canonical, rot) + pelvis_world[:, None, :]
-
-    # Prefer per-frame yaw from scene.rotation (cos, sin); fallback to initial yaw.
-    yaw_for_face: float | np.ndarray
+    # Use per-frame rotation (cos, sin) when available.
     if "rotation" in scene:
         rot_cs = np.asarray(scene["rotation"], dtype=np.float32)
         if rot_cs.ndim == 1 and rot_cs.shape[0] == 2:
-            yaw_for_face = float(np.arctan2(rot_cs[1], rot_cs[0]))
+            cos_yaw = np.full((canonical.shape[0],), rot_cs[0], dtype=np.float32)
+            sin_yaw = np.full((canonical.shape[0],), rot_cs[1], dtype=np.float32)
         elif rot_cs.ndim == 2 and rot_cs.shape[1] == 2:
-            yaw_for_face = np.arctan2(rot_cs[:, 1], rot_cs[:, 0]).astype(np.float32)
+            cos_yaw = rot_cs[:, 0].astype(np.float32)
+            sin_yaw = rot_cs[:, 1].astype(np.float32)
         else:
-            yaw_for_face = init_yaw
+            cos_yaw = np.full((canonical.shape[0],), math.cos(init_yaw), dtype=np.float32)
+            sin_yaw = np.full((canonical.shape[0],), math.sin(init_yaw), dtype=np.float32)
     else:
-        yaw_for_face = init_yaw
+        cos_yaw = np.full((canonical.shape[0],), math.cos(init_yaw), dtype=np.float32)
+        sin_yaw = np.full((canonical.shape[0],), math.sin(init_yaw), dtype=np.float32)
 
+    world_smplh = np.empty_like(canonical, dtype=np.float32)
+    world_smplh[..., 0] = (
+        canonical[..., 0] * cos_yaw[:, None]
+        - canonical[..., 1] * sin_yaw[:, None]
+        + pelvis_world[:, None, 0]
+    )
+    world_smplh[..., 1] = (
+        canonical[..., 0] * sin_yaw[:, None]
+        + canonical[..., 1] * cos_yaw[:, None]
+        + pelvis_world[:, None, 1]
+    )
+    world_smplh[..., 2] = canonical[..., 2] + pelvis_world[:, None, 2]
+
+    yaw_for_face = np.arctan2(sin_yaw, cos_yaw).astype(np.float32)
     return _smplh_to_coco17(world_smplh, yaw_for_face)

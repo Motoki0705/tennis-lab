@@ -63,7 +63,7 @@ class SceneData:
     # Per-frame 3D data (T frames)
     position: np.ndarray  # (T, 3) normalized court coordinates
     rotation: np.ndarray  # (T, 2) sin/cos yaw
-    canonical_pose_3d: np.ndarray  # (T, J, 3) local coordinate pose
+    canonical_pose_3d: np.ndarray  # (T, J, 3) yaw-canonical local coordinate pose
 
     # Per-camera data
     cameras: list[CameraData]
@@ -164,7 +164,7 @@ class SceneGenerator:
             Tuple of (positions, rotations, canonical_poses):
             - positions: (T, 3) normalized court coordinates
             - rotations: (T, 2) cos/sin yaw
-            - canonical_poses: (T, J, 3) local coordinate poses
+            - canonical_poses: (T, J, 3) yaw-canonical local coordinate poses
 
         """
         if motion.joints_3d is None:
@@ -219,9 +219,21 @@ class SceneGenerator:
         rotations[:, 0] = np.cos(world_yaw).astype(np.float32)  # cos(yaw)
         rotations[:, 1] = np.sin(world_yaw).astype(np.float32)  # sin(yaw)
 
-        # Canonical poses: joints relative to pelvis, in local frame
+        # Canonical poses: joints relative to pelvis, then remove per-frame global yaw
         pelvis = joints_3d[:, 0:1, :]  # (T, 1, 3)
-        canonical_poses = joints_3d - pelvis  # (T, J, 3)
+        root_relative = joints_3d - pelvis  # (T, J, 3)
+        cos_m = np.cos(motion_yaw).astype(np.float32)
+        sin_m = np.sin(motion_yaw).astype(np.float32)
+        canonical_poses = np.empty_like(root_relative, dtype=np.float32)
+        canonical_poses[..., 0] = (
+            root_relative[..., 0] * cos_m[:, None]
+            + root_relative[..., 1] * sin_m[:, None]
+        )
+        canonical_poses[..., 1] = (
+            -root_relative[..., 0] * sin_m[:, None]
+            + root_relative[..., 1] * cos_m[:, None]
+        )
+        canonical_poses[..., 2] = root_relative[..., 2]
 
         return positions, rotations, canonical_poses
 
@@ -361,29 +373,25 @@ class SceneGenerator:
 
         # Get world-space joints for projection
         T = motion.num_frames
-        joints_3d = motion.joints_3d  # (T, J, 3)
+        pelvis_world = np.zeros((T, 3), dtype=np.float32)
+        pelvis_world[:, 0] = positions[:, 0] * COURT_COORD_SCALE_X
+        pelvis_world[:, 1] = positions[:, 1] * COURT_COORD_SCALE_Y
+        pelvis_world[:, 2] = positions[:, 2] * COURT_COORD_SCALE_Z
 
-        # Transform joints to world (court) coordinates
-        cos_yaw = math.cos(init_yaw)
-        sin_yaw = math.sin(init_yaw)
-        rot_mat = np.array(
-            [
-                [cos_yaw, -sin_yaw, 0],
-                [sin_yaw, cos_yaw, 0],
-                [0, 0, 1],
-            ],
-            dtype=np.float32,
+        cos_yaw = rotations[:, 0].astype(np.float32)
+        sin_yaw = rotations[:, 1].astype(np.float32)
+        world_joints = np.empty_like(canonical_poses, dtype=np.float32)
+        world_joints[..., 0] = (
+            canonical_poses[..., 0] * cos_yaw[:, None]
+            - canonical_poses[..., 1] * sin_yaw[:, None]
+            + pelvis_world[:, None, 0]
         )
-
-        # Center and rotate joints (XY only, keep original Z)
-        init_offset_xy = motion.trans[0, :2]
-        centered_joints = joints_3d.copy()
-        centered_joints[..., 0] -= init_offset_xy[0]
-        centered_joints[..., 1] -= init_offset_xy[1]
-        # Apply rotation to all joints
-        world_joints = np.einsum("tji,ki->tjk", centered_joints, rot_mat)
-        world_joints[..., 0] += init_x
-        world_joints[..., 1] += init_y
+        world_joints[..., 1] = (
+            canonical_poses[..., 0] * sin_yaw[:, None]
+            + canonical_poses[..., 1] * cos_yaw[:, None]
+            + pelvis_world[:, None, 1]
+        )
+        world_joints[..., 2] = canonical_poses[..., 2] + pelvis_world[:, None, 2]
 
         # Convert to COCO 17 (face keypoints use per-frame yaw)
         yaw_world = np.arctan2(rotations[:, 1], rotations[:, 0]).astype(np.float32)
