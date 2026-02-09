@@ -104,7 +104,7 @@ class PLCSPredictor(BasePredictor):
         Returns:
             Inference results dictionary (CPU tensors):
                 - position: Normalized position (B, 3)
-                - rotation: (sin, cos) representation (B, 2)
+                - rotation: (cos, sin) representation (B, 2)
                 - position_meters: Position in meters (B, 3) (if denormalize=True)
                 - yaw_radians: Yaw angle in radians (B,) (if denormalize=True)
 
@@ -134,6 +134,6 @@ class PLCSPredictor(BasePredictor):
                 dtype=position.dtype,
             )
             result["position_meters"] = position * scale
-            result["yaw_radians"] = torch.atan2(rotation[:, 0], rotation[:, 1])
+            result["yaw_radians"] = torch.atan2(rotation[:, 1], rotation[:, 0])
 
         return result

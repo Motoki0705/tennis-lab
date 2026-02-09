@@ -58,9 +58,9 @@ class PLCSMetrics:
 
         Args:
             pred_position: Predicted normalized position, shape (B, 3) or (B, T, 3).
-            pred_rotation: Predicted rotation (sin, cos), shape (B, 2) or (B, T, 2).
+            pred_rotation: Predicted rotation (cos, sin), shape (B, 2) or (B, T, 2).
             target_position: Target normalized position, shape (B, 3) or (B, T, 3).
-            target_rotation: Target rotation (sin, cos), shape (B, 2) or (B, T, 2).
+            target_rotation: Target rotation (cos, sin), shape (B, 2) or (B, T, 2).
 
         Returns:
             dict: Current batch metrics.
@@ -96,8 +96,8 @@ class PLCSMetrics:
         self._z_errors.append(z_error.detach().cpu())
 
         # Angular error
-        pred_angle = torch.atan2(pred_rotation[:, 0], pred_rotation[:, 1])
-        target_angle = torch.atan2(target_rotation[:, 0], target_rotation[:, 1])
+        pred_angle = torch.atan2(pred_rotation[:, 1], pred_rotation[:, 0])
+        target_angle = torch.atan2(target_rotation[:, 1], target_rotation[:, 0])
         angle_diff = pred_angle - target_angle
         angle_diff = torch.atan2(torch.sin(angle_diff), torch.cos(angle_diff))
         angular_error_rad = angle_diff.abs()
