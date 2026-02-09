@@ -178,8 +178,8 @@ def angular_error(pred: Tensor, target: Tensor) -> Tensor:
 
     """
     # Convert to angles
-    pred_angle = torch.atan2(pred[:, 0], pred[:, 1])
-    target_angle = torch.atan2(target[:, 0], target[:, 1])
+    pred_angle = torch.atan2(pred[:, 1], pred[:, 0])
+    target_angle = torch.atan2(target[:, 1], target[:, 0])
 
     # Angular difference (handle wraparound)
     diff = pred_angle - target_angle
