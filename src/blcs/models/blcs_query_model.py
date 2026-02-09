@@ -32,8 +32,7 @@ class BLCSQueryModel(nn.Module):
     """BLCS query-based 3D reconstruction model.
 
     Stages:
-    - Stage A: Ball->Court cross-attention (no time RoPE)
-    - Stage B: Ball temporal self-attention (time RoPE on Q,K)
+    - Stage A/B: Interleaved Ball->Court cross-attention and Ball temporal self-attention
     - Stage C: Query->Ball cross-attention (time RoPE on query/ball Q,K)
     """
 
@@ -46,8 +45,7 @@ class BLCSQueryModel(nn.Module):
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
         yarn: YaRNConfig | None = None,
-        num_ball2court_layers: int = 2,
-        num_ball_temporal_layers: int = 4,
+        num_ball_layers: int = 4,
         num_query2ball_layers: int = 2,
         predict_velocity: bool = False,
         max_seq_len: int = 120,
@@ -62,6 +60,8 @@ class BLCSQueryModel(nn.Module):
             )
         if max_seq_len <= 0:
             raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
+        if num_ball_layers < 0:
+            raise ValueError(f"num_ball_layers must be non-negative, got {num_ball_layers}")
 
         self.hidden_dim = int(hidden_dim)
         self.max_seq_len = int(max_seq_len)
@@ -98,7 +98,7 @@ class BLCSQueryModel(nn.Module):
 
         self.query_base = nn.Parameter(torch.randn(1, 1, hidden_dim) * query_init_std)
 
-        self.ball2court_layers = nn.ModuleList(
+        self.ball_cross_layers = nn.ModuleList(
             [
                 CrossAttnBlock(
                     CrossAttnBlockConfig(
@@ -110,10 +110,10 @@ class BLCSQueryModel(nn.Module):
                         attn_dropout=dropout,
                     )
                 )
-                for _ in range(num_ball2court_layers)
+                for _ in range(num_ball_layers)
             ]
         )
-        self.ball_temporal_layers = nn.ModuleList(
+        self.ball_self_layers = nn.ModuleList(
             [
                 TransformerBlock(
                     TransformerBlockConfig(
@@ -127,7 +127,7 @@ class BLCSQueryModel(nn.Module):
                         yarn=yarn,
                     )
                 )
-                for _ in range(num_ball_temporal_layers)
+                for _ in range(num_ball_layers)
             ]
         )
         self.ball_temporal_norm = RMSNorm(hidden_dim)
@@ -188,6 +188,13 @@ class BLCSQueryModel(nn.Module):
             if yarn_cfg.get("original_seq_len") is not None:
                 yarn = YaRNConfig(**yarn_cfg)
 
+        num_ball_layers = model_cfg.get("num_ball_layers", None)
+        if num_ball_layers is None:
+            num_ball_layers = model_cfg.get(
+                "num_ball_temporal_layers",
+                model_cfg.get("num_ball2court_layers", model_cfg.get("num_layers", 4)),
+            )
+
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_heads=int(model_cfg.get("num_heads", 8)),
@@ -196,10 +203,7 @@ class BLCSQueryModel(nn.Module):
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
             yarn=yarn,
-            num_ball2court_layers=int(model_cfg.get("num_ball2court_layers", 2)),
-            num_ball_temporal_layers=int(
-                model_cfg.get("num_ball_temporal_layers", model_cfg.get("num_layers", 4))
-            ),
+            num_ball_layers=int(num_ball_layers),
             num_query2ball_layers=int(model_cfg.get("num_query2ball_layers", 2)),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
@@ -248,16 +252,6 @@ class BLCSQueryModel(nn.Module):
         if freqs_cis.device != ball_uv.device:
             freqs_cis = freqs_cis.to(ball_uv.device)
 
-        # Stage A: ball -> court (no time RoPE)
-        ball_a = ball_tok
-        for layer in self.ball2court_layers:
-            ball_a = layer(
-                ball_a,
-                court_tok,
-                key_valid=court_valid,
-            )
-
-        # Stage B: ball temporal self-attention (time RoPE)
         ball_attn_mask: Tensor | None = None
         if ball_mask is not None:
             ball_key_valid = ball_valid
@@ -267,22 +261,31 @@ class BLCSQueryModel(nn.Module):
                 ball_key_valid[empty_ball, 0] = True
             ball_attn_mask = ball_key_valid[:, None, :].expand(batch_size, seq_len, seq_len)
 
-        ball_b = ball_a
+        # Stage A/B: interleaved ball->court cross-attn and ball temporal self-attn
+        ball_x = ball_tok
         residual: Tensor | None = None
-        for layer in self.ball_temporal_layers:
-            ball_b, residual = layer(
-                ball_b,
-                residual,
+        for cross_layer, self_layer in zip(self.ball_cross_layers, self.ball_self_layers):
+            ball_x = cross_layer(
+                ball_x,
+                court_tok,
+                key_valid=court_valid,
+            )
+            ball_x, residual = self_layer(
+                ball_x,
+                residual=None,
                 start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=ball_attn_mask,
                 is_causal=False,
             )
 
-        if residual is None:
-            ball_b = self.ball_temporal_norm(ball_b)
+        if len(self.ball_self_layers) > 0:
+            if residual is None:
+                ball_b = self.ball_temporal_norm(ball_x)
+            else:
+                ball_b, _ = self.ball_temporal_norm(ball_x, residual)
         else:
-            ball_b, _ = self.ball_temporal_norm(ball_b, residual)
+            ball_b = ball_x
 
         # Stage C: query -> ball readout (time RoPE on query and ball)
         query_c = query_tok

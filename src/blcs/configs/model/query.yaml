@@ -13,8 +13,7 @@ invisible_init_std: 0.02
 query_init_std: 0.02
 
 # Stage depths
-num_ball2court_layers: 2
-num_ball_temporal_layers: 4
+num_ball_layers: 4
 num_query2ball_layers: 2
 
 # RoPE (used in Stage B and Stage C)
