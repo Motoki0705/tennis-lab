@@ -112,9 +112,9 @@ class PLCSSceneRenderer:
         y = pos[1] * HALF_LENGTH
         z = pos[2] * NET_HEIGHT_POST if len(pos) > 2 else 0
 
-        # Get rotation (sin, cos representation)
-        sin_yaw = scene.rotation[frame_idx, 0]
-        cos_yaw = scene.rotation[frame_idx, 1]
+        # Get rotation (cos, sin representation)
+        cos_yaw = scene.rotation[frame_idx, 0]
+        sin_yaw = scene.rotation[frame_idx, 1]
         yaw = np.arctan2(sin_yaw, cos_yaw)
 
         # Rotation matrix for transforming canonical pose
@@ -222,8 +222,8 @@ class PLCSSceneRenderer:
 
         # Draw direction arrow
         if show_direction:
-            sin_yaw = scene.rotation[frame_idx, 0]
-            cos_yaw = scene.rotation[frame_idx, 1]
+            cos_yaw = scene.rotation[frame_idx, 0]
+            sin_yaw = scene.rotation[frame_idx, 1]
             arrow_length = 1.5
             dx = arrow_length * (-sin_yaw)
             dy = arrow_length * cos_yaw
@@ -464,8 +464,8 @@ class PLCSSceneRenderer:
         z = pos[2] * NET_HEIGHT_POST if len(pos) > 2 else 0
 
         canonical_pose = scene.canonical_pose_3d[frame_idx]
-        sin_yaw = scene.rotation[frame_idx, 0]
-        cos_yaw = scene.rotation[frame_idx, 1]
+        cos_yaw = scene.rotation[frame_idx, 0]
+        sin_yaw = scene.rotation[frame_idx, 1]
 
         rot = np.array([[cos_yaw, -sin_yaw, 0], [sin_yaw, cos_yaw, 0], [0, 0, 1]])
         world_pose = canonical_pose @ rot.T
@@ -491,9 +491,8 @@ class PLCSSceneRenderer:
         ax.plot(trail_x, trail_y, "c-", linewidth=2, alpha=0.5)
 
         ax.scatter([x], [y], c="red", s=100)
-
-        sin_yaw = scene.rotation[frame_idx, 0]
-        cos_yaw = scene.rotation[frame_idx, 1]
+        cos_yaw = scene.rotation[frame_idx, 0]
+        sin_yaw = scene.rotation[frame_idx, 1]
         ax.arrow(x, y, -sin_yaw, cos_yaw, head_width=0.3, fc="yellow", ec="black")
 
     def _render_camera_subplot(
