@@ -208,36 +208,6 @@ class BLCSQueryModel(nn.Module):
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
         )
 
-    def _build_ball_valid(
-        self,
-        *,
-        ball_vis: Tensor | None,
-        ball_mask: Tensor | None,
-        batch_size: int,
-        seq_len: int,
-        device: torch.device,
-    ) -> Tensor:
-        valid = torch.ones(batch_size, seq_len, device=device, dtype=torch.bool)
-        if ball_mask is not None:
-            valid = valid & (ball_mask > 0)
-        if ball_vis is not None:
-            valid = valid & (ball_vis > 0)
-        return valid
-
-    def _build_court_valid(
-        self,
-        *,
-        court_vis: Tensor | None,
-        batch_size: int,
-        num_court_tokens: int,
-        device: torch.device,
-    ) -> Tensor:
-        if court_vis is None:
-            return torch.ones(
-                batch_size, num_court_tokens, device=device, dtype=torch.bool
-            )
-        return court_vis > 0
-
     def forward(
         self,
         ball_uv: Tensor,
@@ -254,28 +224,21 @@ class BLCSQueryModel(nn.Module):
                 "Increase model.max_seq_len."
             )
 
-        ball_valid = self._build_ball_valid(
-            ball_vis=ball_vis,
-            ball_mask=ball_mask,
-            batch_size=batch_size,
-            seq_len=seq_len,
-            device=ball_uv.device,
-        )
-
-        ball_embed_mask = ball_vis if ball_vis is not None else ball_mask
         court_tok = self.court_embed(court_kp, court_vis)
         if court_tok.shape[1] != self.num_court_tokens:
             raise ValueError(
                 f"Expected {self.num_court_tokens} court tokens, got {court_tok.shape[1]}"
             )
-        ball_tok = self.ball_embed(ball_uv, ball_embed_mask)
+        ball_tok = self.ball_embed(ball_uv, ball_vis)
 
-        court_valid = self._build_court_valid(
-            court_vis=court_vis,
-            batch_size=batch_size,
-            num_court_tokens=court_tok.shape[1],
-            device=ball_uv.device,
+        court_valid = torch.ones(
+            batch_size, court_tok.shape[1], device=ball_uv.device, dtype=torch.bool
         )
+        ball_valid = torch.ones(
+            batch_size, seq_len, device=ball_uv.device, dtype=torch.bool
+        )
+        if ball_mask is not None:
+            ball_valid = ball_mask > 0
 
         court_ids = torch.arange(court_tok.shape[1], device=ball_uv.device, dtype=torch.long)
         court_tok = court_tok + self.court_id_embed(court_ids).unsqueeze(0)
@@ -296,14 +259,16 @@ class BLCSQueryModel(nn.Module):
             )
 
         # Stage B: ball temporal self-attention (time RoPE)
-        ball_key_valid = ball_valid
-        empty_ball = ~ball_key_valid.any(dim=1)
-        if empty_ball.any():
-            ball_key_valid = ball_key_valid.clone()
-            ball_key_valid[empty_ball, 0] = True
-            ball_a = ball_a.clone()
-            ball_a[empty_ball] = 0.0
-        ball_attn_mask = ball_key_valid[:, None, :].expand(batch_size, seq_len, seq_len)
+        ball_attn_mask: Tensor | None = None
+        if ball_mask is not None:
+            ball_key_valid = ball_valid
+            empty_ball = ~ball_key_valid.any(dim=1)
+            if empty_ball.any():
+                ball_key_valid = ball_key_valid.clone()
+                ball_key_valid[empty_ball, 0] = True
+                ball_a = ball_a.clone()
+                ball_a[empty_ball] = 0.0
+            ball_attn_mask = ball_key_valid[:, None, :].expand(batch_size, seq_len, seq_len)
 
         ball_b = ball_a
         residual: Tensor | None = None
