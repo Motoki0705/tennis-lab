@@ -210,11 +210,14 @@ class SceneGenerator:
         positions[:, 1] = court_trans[:, 1] / COURT_COORD_SCALE_Y
         positions[:, 2] = court_trans[:, 2] / COURT_COORD_SCALE_Z
 
-        # Compute rotations (yaw)
-        # Extract yaw from motion (simplified: assume forward is +Y in local frame)
+        # Compute rotations (yaw): motion-relative yaw with randomized initial yaw.
+        motion_yaw = self._extract_global_yaw_from_motion(motion)  # (T,)
+        relative_yaw = self._wrap_angle(motion_yaw - motion_yaw[0])  # t=0 -> 0
+        world_yaw = self._wrap_angle(relative_yaw + init_yaw)  # add random initial yaw
+
         rotations = np.zeros((T, 2), dtype=np.float32)
-        rotations[:, 0] = cos_yaw  # cos(yaw)
-        rotations[:, 1] = sin_yaw  # sin(yaw)
+        rotations[:, 0] = np.cos(world_yaw).astype(np.float32)  # cos(yaw)
+        rotations[:, 1] = np.sin(world_yaw).astype(np.float32)  # sin(yaw)
 
         # Canonical poses: joints relative to pelvis, in local frame
         pelvis = joints_3d[:, 0:1, :]  # (T, 1, 3)
@@ -222,16 +225,42 @@ class SceneGenerator:
 
         return positions, rotations, canonical_poses
 
+    def _extract_global_yaw_from_motion(self, motion: MotionSequence) -> np.ndarray:
+        """Extract per-frame global yaw (Z axis) from AMASS global_orient."""
+        aa = motion.poses.reshape(motion.num_frames, 52, 3)[:, 0, :]  # (T, 3)
+        theta = np.linalg.norm(aa, axis=1)  # (T,)
+
+        axis = np.zeros_like(aa, dtype=np.float32)
+        valid = theta > 1e-8
+        axis[valid] = aa[valid] / theta[valid, None]
+
+        x = axis[:, 0]
+        y = axis[:, 1]
+        z = axis[:, 2]
+        c = np.cos(theta)
+        s = np.sin(theta)
+        one_minus_c = 1.0 - c
+
+        # Rodrigues (need R[0,0], R[1,0] only for yaw = atan2(R10, R00))
+        r00 = c + x * x * one_minus_c
+        r10 = y * x * one_minus_c + z * s
+
+        return np.arctan2(r10, r00).astype(np.float32)
+
+    def _wrap_angle(self, angle: np.ndarray) -> np.ndarray:
+        """Wrap angles to [-pi, pi]."""
+        return np.arctan2(np.sin(angle), np.cos(angle)).astype(np.float32)
+
     def _smplh_to_coco17(
         self,
         joints_3d: np.ndarray,
-        yaw: float,
+        yaw: float | np.ndarray,
     ) -> np.ndarray:
         """Convert SMPL-H joints to COCO 17 format.
 
         Args:
             joints_3d: SMPL-H joints, shape (T, J, 3) or (J, 3).
-            yaw: Yaw angle for face keypoint orientation.
+            yaw: Yaw angle for face keypoint orientation, scalar or (T,).
 
         Returns:
             COCO 17 keypoints, shape (T, 17, 3) or (17, 3).
@@ -252,21 +281,25 @@ class SceneGenerator:
         # Compute face keypoints from head
         head_pos = joints_3d[:, 15, :]  # head joint
 
-        # Rotation for face direction
-        cos_yaw = math.cos(yaw)
-        sin_yaw = math.sin(yaw)
-        rot = np.array(
-            [
-                [cos_yaw, -sin_yaw, 0],
-                [sin_yaw, cos_yaw, 0],
-                [0, 0, 1],
-            ],
-            dtype=np.float32,
-        )
+        yaw_arr = np.asarray(yaw, dtype=np.float32)
+        if yaw_arr.ndim == 0:
+            yaw_arr = np.full((T,), float(yaw_arr), dtype=np.float32)
+        elif yaw_arr.shape != (T,):
+            raise ValueError(f"yaw must be scalar or shape ({T},), got {yaw_arr.shape}")
+
+        cos_yaw = np.cos(yaw_arr).astype(np.float32)
+        sin_yaw = np.sin(yaw_arr).astype(np.float32)
 
         for coco_idx, offset in FACE_KEYPOINT_OFFSETS.items():
             offset_arr = np.array(offset, dtype=np.float32)
-            rotated_offset = offset_arr @ rot.T
+            rotated_offset = np.stack(
+                [
+                    offset_arr[0] * cos_yaw - offset_arr[1] * sin_yaw,
+                    offset_arr[0] * sin_yaw + offset_arr[1] * cos_yaw,
+                    np.full((T,), offset_arr[2], dtype=np.float32),
+                ],
+                axis=1,
+            )
             coco17[:, coco_idx, :] = head_pos + rotated_offset
 
         if squeeze:
@@ -352,8 +385,9 @@ class SceneGenerator:
         world_joints[..., 0] += init_x
         world_joints[..., 1] += init_y
 
-        # Convert to COCO 17
-        coco17_joints = self._smplh_to_coco17(world_joints, init_yaw)  # (T, 17, 3)
+        # Convert to COCO 17 (face keypoints use per-frame yaw)
+        yaw_world = np.arctan2(rotations[:, 1], rotations[:, 0]).astype(np.float32)
+        coco17_joints = self._smplh_to_coco17(world_joints, yaw_world)  # (T, 17, 3)
 
         # Get court keypoints (static)
         if self.court_kp_3d is None:

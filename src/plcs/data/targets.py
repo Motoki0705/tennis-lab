@@ -15,7 +15,7 @@ from src.utils.geometry.constants import (
 )
 
 
-def _smplh_to_coco17(joints_3d: np.ndarray, yaw: float) -> np.ndarray:
+def _smplh_to_coco17(joints_3d: np.ndarray, yaw: float | np.ndarray) -> np.ndarray:
     """Convert SMPL-H joints to COCO17 with synthetic face keypoints."""
     T = joints_3d.shape[0]
     coco17 = np.zeros((T, 17, 3), dtype=np.float32)
@@ -26,20 +26,24 @@ def _smplh_to_coco17(joints_3d: np.ndarray, yaw: float) -> np.ndarray:
 
     head_idx = min(15, joints_3d.shape[1] - 1)
     head_pos = joints_3d[:, head_idx, :]
-    cos_yaw = math.cos(yaw)
-    sin_yaw = math.sin(yaw)
-    rot = np.array(
-        [
-            [cos_yaw, -sin_yaw, 0],
-            [sin_yaw, cos_yaw, 0],
-            [0, 0, 1],
-        ],
-        dtype=np.float32,
-    )
+    yaw_arr = np.asarray(yaw, dtype=np.float32)
+    if yaw_arr.ndim == 0:
+        yaw_arr = np.full((T,), float(yaw_arr), dtype=np.float32)
+    elif yaw_arr.shape != (T,):
+        raise ValueError(f"yaw must be scalar or shape ({T},), got {yaw_arr.shape}")
+    cos_yaw = np.cos(yaw_arr).astype(np.float32)
+    sin_yaw = np.sin(yaw_arr).astype(np.float32)
 
     for coco_idx, offset in FACE_KEYPOINT_OFFSETS.items():
         offset_arr = np.array(offset, dtype=np.float32)
-        rotated_offset = offset_arr @ rot.T
+        rotated_offset = np.stack(
+            [
+                offset_arr[0] * cos_yaw - offset_arr[1] * sin_yaw,
+                offset_arr[0] * sin_yaw + offset_arr[1] * cos_yaw,
+                np.full((T,), offset_arr[2], dtype=np.float32),
+            ],
+            axis=1,
+        )
         coco17[:, coco_idx, :] = head_pos + rotated_offset
 
     return coco17
@@ -71,9 +75,9 @@ def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
     pelvis_world[:, 2] = position_norm[:, 2] * COURT_COORD_SCALE_Z
 
     meta = scene.get("meta", {})
-    yaw = float(meta.get("initial_yaw", 0.0))
-    cos_yaw = math.cos(yaw)
-    sin_yaw = math.sin(yaw)
+    init_yaw = float(meta.get("initial_yaw", 0.0))
+    cos_yaw = math.cos(init_yaw)
+    sin_yaw = math.sin(init_yaw)
     rot = np.array(
         [
             [cos_yaw, -sin_yaw, 0.0],
@@ -84,4 +88,18 @@ def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
     )
 
     world_smplh = np.einsum("tji,ki->tjk", canonical, rot) + pelvis_world[:, None, :]
-    return _smplh_to_coco17(world_smplh, yaw)
+
+    # Prefer per-frame yaw from scene.rotation (cos, sin); fallback to initial yaw.
+    yaw_for_face: float | np.ndarray
+    if "rotation" in scene:
+        rot_cs = np.asarray(scene["rotation"], dtype=np.float32)
+        if rot_cs.ndim == 1 and rot_cs.shape[0] == 2:
+            yaw_for_face = float(np.arctan2(rot_cs[1], rot_cs[0]))
+        elif rot_cs.ndim == 2 and rot_cs.shape[1] == 2:
+            yaw_for_face = np.arctan2(rot_cs[:, 1], rot_cs[:, 0]).astype(np.float32)
+        else:
+            yaw_for_face = init_yaw
+    else:
+        yaw_for_face = init_yaw
+
+    return _smplh_to_coco17(world_smplh, yaw_for_face)

@@ -250,7 +250,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                     continue
 
                 pos_norm = np.asarray(data["position"], dtype=np.float64)  # (T, 3)
-                rot = np.asarray(data["rotation"], dtype=np.float64)  # (T, 2)
+                rot = np.asarray(data["rotation"], dtype=np.float64)  # (T, 2) as (cos, sin)
 
                 if max_frames_per_scene is not None and pos_norm.shape[0] > max_frames_per_scene:
                     idx = np.random.choice(pos_norm.shape[0], size=max_frames_per_scene, replace=False)
@@ -275,7 +275,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                     xy_within_counts[t] += int((xy_r <= t).sum())
                     xyz_within_counts[t] += int((xyz_r <= t).sum())
 
-                yaw = np.arctan2(rot[:, 0], rot[:, 1])
+                yaw = np.arctan2(rot[:, 1], rot[:, 0])
                 yaw_stats.update(yaw)
                 yaw_sum_sin += float(np.sin(yaw).sum())
                 yaw_sum_cos += float(np.cos(yaw).sum())
