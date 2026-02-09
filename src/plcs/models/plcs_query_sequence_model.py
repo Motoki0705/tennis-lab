@@ -35,10 +35,9 @@ class PLCSQuerySequenceModel(nn.Module):
 
     Stage 1:
     - Interleaved Player->Court cross-attention and joint-wise temporal self-attention.
-    - Optional frame aggregation (mean over joints) to produce frame-level states.
 
     Stage 2:
-    - Position/rotation readout queries attend to frame states, then temporal self-attend.
+    - Position/rotation readout queries attend to per-frame joint states, then temporal self-attend.
     - Independent query streams for position and rotation.
     """
 
@@ -56,7 +55,6 @@ class PLCSQuerySequenceModel(nn.Module):
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
         query_init_std: float = 0.02,
-        frame_aggregation: str = "mean",
     ) -> None:
         super().__init__()
         if hidden_dim % num_heads != 0:
@@ -71,16 +69,10 @@ class PLCSQuerySequenceModel(nn.Module):
             )
         if num_query_layers < 0:
             raise ValueError(f"num_query_layers must be non-negative, got {num_query_layers}")
-        if frame_aggregation != "mean":
-            raise ValueError(
-                f"Unsupported frame_aggregation='{frame_aggregation}'. Only 'mean' is supported."
-            )
-
         self.hidden_dim = int(hidden_dim)
         self.max_seq_len = int(max_seq_len)
         self.num_court_tokens = int(NUM_COURT_KP)
         self.num_joints = int(NUM_HUMAN_KP)
-        self.frame_aggregation = str(frame_aggregation)
 
         head_dim = hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
@@ -260,7 +252,6 @@ class PLCSQuerySequenceModel(nn.Module):
             max_seq_len=int(model_cfg.get("max_seq_len", 120)),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
-            frame_aggregation=str(model_cfg.get("frame_aggregation", "mean")),
         )
 
     def _normalize_court_inputs(
@@ -459,9 +450,6 @@ class PLCSQuerySequenceModel(nn.Module):
             player_x = player_btjd.reshape(batch_size, self.num_joints, seq_len, self.hidden_dim)
             player_x = player_x.permute(0, 2, 1, 3).contiguous()
 
-        # Frame aggregation (J -> 1): mean over joints.
-        frame_x = player_x.mean(dim=2)
-
         po_query = self.po_query_base.expand(batch_size, seq_len, -1)
         ro_query = self.ro_query_base.expand(batch_size, seq_len, -1)
 
@@ -472,13 +460,21 @@ class PLCSQuerySequenceModel(nn.Module):
             frame_attn_mask[empty_frame, :, 0] = True
 
         for cross_layer, self_layer in zip(self.po_cross_layers, self.po_self_layers):
-            po_query = cross_layer(
-                po_query,
-                frame_x,
-                key_valid=frame_valid_t,
-                freqs_q_cis=freqs_cis,
-                freqs_k_cis=freqs_cis,
+            # Per-timestep readout: (B,T,J,D) -> (B*T,J,D), (B,T,D) -> (B*T,1,D)
+            player_keys = player_x.reshape(batch_size * seq_len, self.num_joints, self.hidden_dim)
+            key_valid_btj = player_valid_tj.reshape(batch_size * seq_len, self.num_joints)
+            empty_bt = ~key_valid_btj.any(dim=1)
+            if empty_bt.any():
+                key_valid_btj = key_valid_btj.clone()
+                key_valid_btj[empty_bt, 0] = True
+
+            po_q = po_query.reshape(batch_size * seq_len, 1, self.hidden_dim)
+            po_q = cross_layer(
+                po_q,
+                player_keys,
+                key_valid=key_valid_btj,
             )
+            po_query = po_q.reshape(batch_size, seq_len, self.hidden_dim)
             po_query, _ = self_layer(
                 po_query,
                 residual=None,
@@ -489,13 +485,21 @@ class PLCSQuerySequenceModel(nn.Module):
             )
 
         for cross_layer, self_layer in zip(self.ro_cross_layers, self.ro_self_layers):
-            ro_query = cross_layer(
-                ro_query,
-                frame_x,
-                key_valid=frame_valid_t,
-                freqs_q_cis=freqs_cis,
-                freqs_k_cis=freqs_cis,
+            # Per-timestep readout: (B,T,J,D) -> (B*T,J,D), (B,T,D) -> (B*T,1,D)
+            player_keys = player_x.reshape(batch_size * seq_len, self.num_joints, self.hidden_dim)
+            key_valid_btj = player_valid_tj.reshape(batch_size * seq_len, self.num_joints)
+            empty_bt = ~key_valid_btj.any(dim=1)
+            if empty_bt.any():
+                key_valid_btj = key_valid_btj.clone()
+                key_valid_btj[empty_bt, 0] = True
+
+            ro_q = ro_query.reshape(batch_size * seq_len, 1, self.hidden_dim)
+            ro_q = cross_layer(
+                ro_q,
+                player_keys,
+                key_valid=key_valid_btj,
             )
+            ro_query = ro_q.reshape(batch_size, seq_len, self.hidden_dim)
             ro_query, _ = self_layer(
                 ro_query,
                 residual=None,
@@ -533,4 +537,3 @@ def build_plcs_sequence_model(config: DictConfig) -> nn.Module:
         f"Unknown sequence model.name='{model_name}'. "
         "Supported: ['plcs_sequence', 'plcs_query_sequence']"
     )
-

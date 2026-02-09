@@ -18,9 +18,6 @@ max_seq_len: 2048
 num_player_layers: 4
 num_query_layers: 2
 
-# Stage-1 frame aggregation
-frame_aggregation: mean
-
 # RoPE (temporal only)
 rope_dim: null
 rope_theta: 10000.0
