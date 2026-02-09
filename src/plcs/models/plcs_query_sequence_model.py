@@ -37,8 +37,7 @@ class PLCSQuerySequenceModel(nn.Module):
     - Interleaved Player->Court cross-attention and joint-wise temporal self-attention.
 
     Stage 2:
-    - Position/rotation readout queries attend to per-frame joint states, then temporal self-attend.
-    - Independent query streams for position and rotation.
+    - Shared readout query stream attends to per-frame joint states, then temporal self-attend.
     """
 
     def __init__(
@@ -100,8 +99,7 @@ class PLCSQuerySequenceModel(nn.Module):
         self.court_id_embed = nn.Embedding(self.num_court_tokens, hidden_dim)
         self.joint_id_embed = nn.Embedding(self.num_joints, hidden_dim)
 
-        self.po_query_base = nn.Parameter(torch.randn(1, 1, hidden_dim) * query_init_std)
-        self.ro_query_base = nn.Parameter(torch.randn(1, 1, hidden_dim) * query_init_std)
+        self.query_base = nn.Parameter(torch.randn(1, 1, 2, hidden_dim) * query_init_std)
 
         self.player_cross_layers = nn.ModuleList(
             [
@@ -136,7 +134,7 @@ class PLCSQuerySequenceModel(nn.Module):
             ]
         )
 
-        self.po_cross_layers = nn.ModuleList(
+        self.query_cross_layers = nn.ModuleList(
             [
                 CrossAttnBlock(
                     CrossAttnBlockConfig(
@@ -151,40 +149,7 @@ class PLCSQuerySequenceModel(nn.Module):
                 for _ in range(num_query_layers)
             ]
         )
-        self.po_self_layers = nn.ModuleList(
-            [
-                TransformerBlock(
-                    TransformerBlockConfig(
-                        dim=hidden_dim,
-                        n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
-                        head_dim=head_dim,
-                        rope_dim=rope_dim,
-                        attn_dropout=dropout,
-                        rope_base=rope_theta,
-                        yarn=yarn,
-                    )
-                )
-                for _ in range(num_query_layers)
-            ]
-        )
-
-        self.ro_cross_layers = nn.ModuleList(
-            [
-                CrossAttnBlock(
-                    CrossAttnBlockConfig(
-                        dim=hidden_dim,
-                        n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
-                        head_dim=head_dim,
-                        rope_dim=rope_dim,
-                        attn_dropout=dropout,
-                    )
-                )
-                for _ in range(num_query_layers)
-            ]
-        )
-        self.ro_self_layers = nn.ModuleList(
+        self.query_self_layers = nn.ModuleList(
             [
                 TransformerBlock(
                     TransformerBlockConfig(
@@ -450,8 +415,7 @@ class PLCSQuerySequenceModel(nn.Module):
             player_x = player_btjd.reshape(batch_size, self.num_joints, seq_len, self.hidden_dim)
             player_x = player_x.permute(0, 2, 1, 3).contiguous()
 
-        po_query = self.po_query_base.expand(batch_size, seq_len, -1)
-        ro_query = self.ro_query_base.expand(batch_size, seq_len, -1)
+        query = self.query_base.expand(batch_size, seq_len, -1, -1)
 
         frame_attn_mask = frame_valid_t[:, None, :].expand(batch_size, seq_len, seq_len)
         empty_frame = ~frame_valid_t.any(dim=1)
@@ -459,58 +423,41 @@ class PLCSQuerySequenceModel(nn.Module):
             frame_attn_mask = frame_attn_mask.clone()
             frame_attn_mask[empty_frame, :, 0] = True
 
-        for cross_layer, self_layer in zip(self.po_cross_layers, self.po_self_layers):
-            # Per-timestep readout: (B,T,J,D) -> (B*T,J,D), (B,T,D) -> (B*T,1,D)
-            player_keys = player_x.reshape(batch_size * seq_len, self.num_joints, self.hidden_dim)
-            key_valid_btj = player_valid_tj.reshape(batch_size * seq_len, self.num_joints)
-            empty_bt = ~key_valid_btj.any(dim=1)
-            if empty_bt.any():
-                key_valid_btj = key_valid_btj.clone()
-                key_valid_btj[empty_bt, 0] = True
+        player_keys = player_x.reshape(batch_size * seq_len, self.num_joints, self.hidden_dim)
+        key_valid_btj = player_valid_tj.reshape(batch_size * seq_len, self.num_joints)
+        empty_bt = ~key_valid_btj.any(dim=1)
+        if empty_bt.any():
+            key_valid_btj = key_valid_btj.clone()
+            key_valid_btj[empty_bt, 0] = True
 
-            po_q = po_query.reshape(batch_size * seq_len, 1, self.hidden_dim)
-            po_q = cross_layer(
-                po_q,
+        frame_attn_mask_b2 = frame_attn_mask.repeat_interleave(2, dim=0)
+
+        for cross_layer, self_layer in zip(self.query_cross_layers, self.query_self_layers):
+            # Per-timestep readout: (B,T,2,D) -> (B*T,2,D), keys (B*T,J,D)
+            query_bt2 = query.reshape(batch_size * seq_len, 2, self.hidden_dim)
+            query_bt2 = cross_layer(
+                query_bt2,
                 player_keys,
                 key_valid=key_valid_btj,
             )
-            po_query = po_q.reshape(batch_size, seq_len, self.hidden_dim)
-            po_query, _ = self_layer(
-                po_query,
+            query = query_bt2.reshape(batch_size, seq_len, 2, self.hidden_dim)
+
+            # Temporal self-attn with shared layers over query types.
+            query_b2t = query.permute(0, 2, 1, 3).reshape(batch_size * 2, seq_len, self.hidden_dim)
+            query_b2t, _ = self_layer(
+                query_b2t,
                 residual=None,
                 start_pos=0,
                 freqs_cis=freqs_cis,
-                attn_mask=frame_attn_mask,
+                attn_mask=frame_attn_mask_b2,
                 is_causal=False,
             )
+            query = query_b2t.reshape(batch_size, 2, seq_len, self.hidden_dim).permute(0, 2, 1, 3)
 
-        for cross_layer, self_layer in zip(self.ro_cross_layers, self.ro_self_layers):
-            # Per-timestep readout: (B,T,J,D) -> (B*T,J,D), (B,T,D) -> (B*T,1,D)
-            player_keys = player_x.reshape(batch_size * seq_len, self.num_joints, self.hidden_dim)
-            key_valid_btj = player_valid_tj.reshape(batch_size * seq_len, self.num_joints)
-            empty_bt = ~key_valid_btj.any(dim=1)
-            if empty_bt.any():
-                key_valid_btj = key_valid_btj.clone()
-                key_valid_btj[empty_bt, 0] = True
-
-            ro_q = ro_query.reshape(batch_size * seq_len, 1, self.hidden_dim)
-            ro_q = cross_layer(
-                ro_q,
-                player_keys,
-                key_valid=key_valid_btj,
-            )
-            ro_query = ro_q.reshape(batch_size, seq_len, self.hidden_dim)
-            ro_query, _ = self_layer(
-                ro_query,
-                residual=None,
-                start_pos=0,
-                freqs_cis=freqs_cis,
-                attn_mask=frame_attn_mask,
-                is_causal=False,
-            )
-
-        po_query = self.final_norm(po_query)
-        ro_query = self.final_norm(ro_query)
+        query = self.final_norm(query.reshape(batch_size * seq_len * 2, self.hidden_dim))
+        query = query.view(batch_size, seq_len, 2, self.hidden_dim)
+        po_query = query[:, :, 0, :]
+        ro_query = query[:, :, 1, :]
 
         position = self.position_head(po_query.reshape(batch_size * seq_len, self.hidden_dim))
         rotation = self.rotation_head(ro_query.reshape(batch_size * seq_len, self.hidden_dim))
