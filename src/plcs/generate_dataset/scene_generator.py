@@ -113,9 +113,6 @@ class SceneGenerator:
         # Parse config
         sim_cfg = self.config.get("simulation", {})
         self.num_cameras = sim_cfg.get("num_cameras", 15)
-        self.human_keypoint_visibility_threshold = sim_cfg.get(
-            "human_keypoint_visibility_threshold", 0.8
-        )
         self.human_visibility_threshold = sim_cfg.get("human_visibility_threshold", 0.8)
         self.court_visibility_threshold = sim_cfg.get("court_visibility_threshold", 15)
 
@@ -339,7 +336,7 @@ class SceneGenerator:
         """
         # Human: fraction of frames where configured keypoint visibility is satisfied
         human_per_frame = human_visible.mean(axis=1)  # (T,)
-        human_ratio = (human_per_frame >= self.human_keypoint_visibility_threshold).mean()
+        human_ratio = (human_per_frame >= self.human_visibility_threshold).mean()
 
         # Court: average number of visible keypoints
         court_per_frame = court_visible.sum(axis=1)  # (T,)
