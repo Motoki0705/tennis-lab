@@ -130,7 +130,6 @@ class BLCSQueryModel(nn.Module):
                 for _ in range(num_ball_layers)
             ]
         )
-        self.ball_temporal_norm = RMSNorm(hidden_dim)
         self.query_cross_layers = nn.ModuleList(
             [
                 CrossAttnBlock(
@@ -163,8 +162,6 @@ class BLCSQueryModel(nn.Module):
                 for _ in range(num_query2ball_layers)
             ]
         )
-        self.query_temporal_norm = RMSNorm(hidden_dim)
-
         self.final_norm = RMSNorm(hidden_dim)
 
         self.position_head = Trajectory3DHead(
@@ -281,14 +278,13 @@ class BLCSQueryModel(nn.Module):
 
         # Stage A/B: interleaved ball->court cross-attn and ball temporal self-attn
         ball_x = ball_tok
-        residual: Tensor | None = None
         for cross_layer, self_layer in zip(self.ball_cross_layers, self.ball_self_layers):
             ball_x = cross_layer(
                 ball_x,
                 court_tok,
                 key_valid=court_valid,
             )
-            ball_x, residual = self_layer(
+            ball_x, _ = self_layer(
                 ball_x,
                 residual=None,
                 start_pos=0,
@@ -297,17 +293,10 @@ class BLCSQueryModel(nn.Module):
                 is_causal=False,
             )
 
-        if len(self.ball_self_layers) > 0:
-            if residual is None:
-                ball_b = self.ball_temporal_norm(ball_x)
-            else:
-                ball_b, _ = self.ball_temporal_norm(ball_x, residual)
-        else:
-            ball_b = ball_x
+        ball_b = ball_x
 
         # Stage C: interleaved query->ball cross-attn and query temporal self-attn
         query_c = query_tok
-        query_residual: Tensor | None = None
         for cross_layer, self_layer in zip(self.query_cross_layers, self.query_self_layers):
             query_c = cross_layer(
                 query_c,
@@ -316,7 +305,7 @@ class BLCSQueryModel(nn.Module):
                 freqs_q_cis=freqs_cis,
                 freqs_k_cis=freqs_cis,
             )
-            query_c, query_residual = self_layer(
+            query_c, _ = self_layer(
                 query_c,
                 residual=None,
                 start_pos=0,
@@ -324,12 +313,6 @@ class BLCSQueryModel(nn.Module):
                 attn_mask=ball_attn_mask,
                 is_causal=False,
             )
-
-        if len(self.query_self_layers) > 0:
-            if query_residual is None:
-                query_c = self.query_temporal_norm(query_c)
-            else:
-                query_c, _ = self.query_temporal_norm(query_c, query_residual)
 
         query_c = self.final_norm(query_c)
 
