@@ -229,7 +229,7 @@ class PLCSSequenceModel(nn.Module):
         Returns:
             dict with:
               - position: (B, T, 3) normalized court-space xyz per frame
-              - rotation: (B, T, 2) per frame as (sin(yaw), cos(yaw))
+              - rotation: (B, T, 2) per frame as (cos(yaw), sin(yaw))
         """
         B, T = human_kp.shape[:2]
 

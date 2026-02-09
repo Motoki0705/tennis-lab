@@ -163,7 +163,7 @@ class SceneGenerator:
         Returns:
             Tuple of (positions, rotations, canonical_poses):
             - positions: (T, 3) normalized court coordinates
-            - rotations: (T, 2) sin/cos yaw
+            - rotations: (T, 2) cos/sin yaw
             - canonical_poses: (T, J, 3) local coordinate poses
 
         """
@@ -213,8 +213,8 @@ class SceneGenerator:
         # Compute rotations (yaw)
         # Extract yaw from motion (simplified: assume forward is +Y in local frame)
         rotations = np.zeros((T, 2), dtype=np.float32)
-        rotations[:, 0] = sin_yaw  # sin(yaw)
-        rotations[:, 1] = cos_yaw  # cos(yaw)
+        rotations[:, 0] = cos_yaw  # cos(yaw)
+        rotations[:, 1] = sin_yaw  # sin(yaw)
 
         # Canonical poses: joints relative to pelvis, in local frame
         pelvis = joints_3d[:, 0:1, :]  # (T, 1, 3)

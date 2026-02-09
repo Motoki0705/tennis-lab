@@ -70,7 +70,7 @@ class PLCSModel(nn.Module):
 
     Output:
         - position: Normalized (x, y, z) in court coordinates, shape (B, 3)
-        - rotation: (sin(yaw), cos(yaw)), shape (B, 2)
+        - rotation: (cos(yaw), sin(yaw)), shape (B, 2)
 
     """
 
@@ -286,7 +286,7 @@ class PLCSModel(nn.Module):
         Returns:
             dict:
                 - position: (B, 3) normalized court-space xyz
-                - rotation: (B, 2) as (sin(yaw), cos(yaw))
+                - rotation: (B, 2) as (cos(yaw), sin(yaw))
 
         """
         B = human_kp.size(0)

@@ -131,7 +131,7 @@ class PLCSMultiViewPredictor(BasePredictor):
             Inference results dictionary:
                 - position: Normalized position (B, T, 3)
                 - position_meters: Position in meters (B, T, 3) (if denormalize=True)
-                - rotation: (sin, cos) (B, T, 2)
+                - rotation: (cos, sin) (B, T, 2)
                 - yaw_radians: Yaw angle in radians (B, T) (if denormalize=True)
 
         """
@@ -187,6 +187,6 @@ class PLCSMultiViewPredictor(BasePredictor):
                 dtype=position.dtype,
             )
             result["position_meters"] = position * scale
-            result["yaw_radians"] = torch.atan2(rotation[..., 0], rotation[..., 1])
+            result["yaw_radians"] = torch.atan2(rotation[..., 1], rotation[..., 0])
 
         return result
