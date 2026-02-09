@@ -1,5 +1,5 @@
 num_scenes: 3000
 num_cameras: 5
+human_keypoint_visibility_threshold: 0.8
 human_visibility_threshold: 0.8
 court_visibility_threshold: 15
-
