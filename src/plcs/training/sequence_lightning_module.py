@@ -79,6 +79,7 @@ class PLCSSequenceLightningModule(BaseLightningModule):
         court_kp: Tensor,
         human_vis: Tensor | None = None,
         court_vis: Tensor | None = None,
+        seq_mask: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Forward pass.
 
@@ -87,12 +88,16 @@ class PLCSSequenceLightningModule(BaseLightningModule):
             court_kp: Court keypoint sequences.
             human_vis: Human visibility mask sequences.
             court_vis: Court visibility mask sequences.
+            seq_mask: Sequence padding mask.
 
         Returns:
             dict: Model outputs.
 
         """
-        return cast(dict[str, Tensor], self.model(human_kp, court_kp, human_vis, court_vis))
+        return cast(
+            dict[str, Tensor],
+            self.model(human_kp, court_kp, human_vis, court_vis, seq_mask),
+        )
 
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
@@ -113,6 +118,7 @@ class PLCSSequenceLightningModule(BaseLightningModule):
             court_kp=batch["court_kp"],
             human_vis=batch.get("human_vis"),
             court_vis=batch.get("court_vis"),
+            seq_mask=batch.get("seq_mask"),
         )
 
         # Compute loss (supports (B, T, 3/2) shapes)

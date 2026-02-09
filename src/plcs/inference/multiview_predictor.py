@@ -103,8 +103,8 @@ class PLCSMultiViewPredictor(BasePredictor):
         self,
         human_kp: Tensor,
         court_kp: Tensor,
-        human_kp_mask: Tensor | None = None,
-        court_kp_mask: Tensor | None = None,
+        human_vis: Tensor | None = None,
+        court_vis: Tensor | None = None,
         view_mask: Tensor | None = None,
         seq_mask: Tensor | None = None,
         denormalize: bool = True,
@@ -121,8 +121,8 @@ class PLCSMultiViewPredictor(BasePredictor):
         Args:
             human_kp: Human keypoints. Shape (B, N, T, 17, 2) or (N, T, 17, 2).
             court_kp: Court keypoints. Shape (B, N, T, 20, 2) or (N, T, 20, 2).
-            human_kp_mask: Human keypoint visibility mask. Shape (B, N, T, 17).
-            court_kp_mask: Court keypoint visibility mask. Shape (B, N, T, 20).
+            human_vis: Human keypoint visibility mask. Shape (B, N, T, 17).
+            court_vis: Court keypoint visibility mask. Shape (B, N, T, 20).
             view_mask: Valid view mask. Shape (B, N) where True = valid view.
             seq_mask: Valid sequence mask. Shape (B, T) where True = valid frame.
             denormalize: If True, convert positions to meters.
@@ -140,10 +140,10 @@ class PLCSMultiViewPredictor(BasePredictor):
             human_kp = human_kp.unsqueeze(0)
         if court_kp.dim() == 4:
             court_kp = court_kp.unsqueeze(0)
-        if human_kp_mask is not None and human_kp_mask.dim() == 3:
-            human_kp_mask = human_kp_mask.unsqueeze(0)
-        if court_kp_mask is not None and court_kp_mask.dim() == 3:
-            court_kp_mask = court_kp_mask.unsqueeze(0)
+        if human_vis is not None and human_vis.dim() == 3:
+            human_vis = human_vis.unsqueeze(0)
+        if court_vis is not None and court_vis.dim() == 3:
+            court_vis = court_vis.unsqueeze(0)
         if view_mask is not None and view_mask.dim() == 1:
             view_mask = view_mask.unsqueeze(0)
         if seq_mask is not None and seq_mask.dim() == 1:
@@ -152,10 +152,10 @@ class PLCSMultiViewPredictor(BasePredictor):
         # Move to device
         human_kp = human_kp.to(self.device)
         court_kp = court_kp.to(self.device)
-        if human_kp_mask is not None:
-            human_kp_mask = human_kp_mask.to(self.device)
-        if court_kp_mask is not None:
-            court_kp_mask = court_kp_mask.to(self.device)
+        if human_vis is not None:
+            human_vis = human_vis.to(self.device)
+        if court_vis is not None:
+            court_vis = court_vis.to(self.device)
         if view_mask is not None:
             view_mask = view_mask.to(self.device)
         if seq_mask is not None:
@@ -166,9 +166,10 @@ class PLCSMultiViewPredictor(BasePredictor):
         outputs = self.model(
             human_kp=human_kp,
             court_kp=court_kp,
-            human_vis=human_kp_mask,
-            court_vis=court_kp_mask,
-            num_views=None,
+            human_vis=human_vis,
+            court_vis=court_vis,
+            view_mask=view_mask,
+            seq_mask=seq_mask,
             camera_params=None,
         )
 

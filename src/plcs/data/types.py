@@ -90,6 +90,7 @@ class PLCSMultiViewBatchCollated(TypedDict):
     court_vis: torch.Tensor  # (B, N_cam, 20) visibility flags for court keypoints
     camera_params: list[list[dict]]  # Per-sample list of camera parameter dicts
     num_views: torch.Tensor  # (B,) number of views in each sample
+    view_mask: torch.Tensor  # (B, N_cam) True for valid camera views
     position: torch.Tensor  # (B, 3) normalized court position (shared GT)
     rotation: torch.Tensor  # (B, 2) player orientation (shared GT)
 
