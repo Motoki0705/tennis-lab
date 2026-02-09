@@ -18,16 +18,16 @@ min_lr: 1.0e-6
 checkpoint:
   enabled: true
   filename: "plcs-{epoch:02d}"
-  monitor: val/epoch_position_error_m
+  monitor: train/epoch_position_error_m
   mode: min
   save_top_k: 3
   save_last: true
 
 early_stopping:
   enabled: true
-  monitor: val/epoch_position_error_m
+  monitor: train/epoch_position_error_m
   mode: min
-  patience: 10
+  patience: 100
   min_delta: null
 
 lr_monitor:

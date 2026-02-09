@@ -1,6 +1,5 @@
 """PLCS model architectures."""
 from src.plcs.models.components import (
-    PerTokenKeypoint3DHead,
     PositionHead,
     RotationHead,
 )
