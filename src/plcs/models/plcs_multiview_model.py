@@ -255,7 +255,8 @@ class PLCSMultiViewModel(nn.Module):
         court_kp: Tensor,
         human_vis: Tensor | None = None,
         court_vis: Tensor | None = None,
-        num_views: Tensor | None = None,
+        view_mask: Tensor | None = None,
+        seq_mask: Tensor | None = None,
         camera_params: list[list[dict]] | None = None,
     ) -> dict[str, Tensor]:
         """Forward pass.
@@ -281,10 +282,12 @@ class PLCSMultiViewModel(nn.Module):
                 - Single frame: (B, N, 20)
                 Each element is interpreted as visible if > 0.
                 Optional; if None, all court keypoints are treated as visible.
-            num_views:
-                Number of valid camera views per sample. Shape: (B,).
-                Cameras with index >= num_views[b] are treated as padded/invalid.
+            view_mask:
+                Padding mask for camera views. Shape: (B, N), True = valid view.
                 Optional; if None, all N views are treated as valid.
+            seq_mask:
+                Padding mask for sequence frames. Shape: (B, T), True = valid frame.
+                Optional; if None, all T frames are treated as valid.
             camera_params:
                 Camera metadata per sample/view (currently unused by this model).
 
@@ -321,6 +324,28 @@ class PLCSMultiViewModel(nn.Module):
         if T > self.max_seq_len:
             raise ValueError(f"Sequence length T={T} exceeds max_seq_len={self.max_seq_len}.")
 
+        if view_mask is not None:
+            if view_mask.dim() == 1:
+                view_mask = view_mask.unsqueeze(0)
+            if view_mask.shape != (B, N):
+                raise ValueError(
+                    f"view_mask must have shape {(B, N)}, got {tuple(view_mask.shape)}"
+                )
+            view_valid = view_mask > 0
+        else:
+            view_valid = torch.ones(B, N, dtype=torch.bool, device=device)
+
+        if seq_mask is not None:
+            if seq_mask.dim() == 1:
+                seq_mask = seq_mask.unsqueeze(0)
+            if seq_mask.shape != (B, T):
+                raise ValueError(
+                    f"seq_mask must have shape {(B, T)}, got {tuple(seq_mask.shape)}"
+                )
+            seq_valid = seq_mask > 0
+        else:
+            seq_valid = torch.ones(B, T, dtype=torch.bool, device=device)
+
         # court is camera-level (use first frame per camera)
         court_scene = court_kp[:, :, 0, :, :]  # (B,N,20,2)
         court_scene_flat = court_scene.reshape(B * N, NUM_COURT_KP, 2)
@@ -351,31 +376,19 @@ class PLCSMultiViewModel(nn.Module):
         tokens_per_camera = torch.cat([court_tok, frame_tok], dim=2)  # (B,N,L_cam,D)
         x = tokens_per_camera.reshape(B, N * camera_block_tokens, self.hidden_dim)
 
-        # Build token validity mask for padded views/empty frames.
-        if num_views is None:
-            view_valid = torch.ones(B, N, dtype=torch.bool, device=device)
-        else:
-            view_idx = torch.arange(N, device=device).view(1, N)
-            view_valid = view_idx < num_views.view(B, 1)
-
-        if human_vis is None:
-            frame_valid = torch.ones(B, N, T, dtype=torch.bool, device=device)
-        else:
-            frame_valid = human_vis.sum(dim=-1) > 0
-
-        if court_vis is None:
-            court_valid = torch.ones(B, N, dtype=torch.bool, device=device)
-        else:
-            court_valid = court_vis[:, :, 0, :].sum(dim=-1) > 0
-
-        court_token_valid = view_valid & court_valid
-        frame_token_valid = frame_valid & view_valid.unsqueeze(-1)
+        # Build token validity mask from padding masks only.
+        frame_token_valid = view_valid.unsqueeze(-1) & seq_valid.unsqueeze(1)
+        court_token_valid = view_valid
 
         court_rep = court_token_valid.unsqueeze(-1).expand(B, N, NUM_COURT_KP)
-        frame_rep = frame_token_valid.unsqueeze(-1).expand(B, N, T, self.frame_block_tokens)
+        frame_rep = frame_token_valid.unsqueeze(-1).expand(
+            B, N, T, self.frame_block_tokens
+        )
         frame_rep = frame_rep.reshape(B, N, T * self.frame_block_tokens)
 
-        token_valid = torch.cat([court_rep, frame_rep], dim=-1).reshape(B, N * camera_block_tokens)
+        token_valid = torch.cat([court_rep, frame_rep], dim=-1).reshape(
+            B, N * camera_block_tokens
+        )
 
         x = x * token_valid.unsqueeze(-1).to(dtype=x.dtype)
 

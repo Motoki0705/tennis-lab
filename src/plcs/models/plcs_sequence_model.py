@@ -198,6 +198,7 @@ class PLCSSequenceModel(nn.Module):
         court_kp: Tensor,
         human_vis: Tensor | None = None,
         court_vis: Tensor | None = None,
+        seq_mask: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Forward pass.
 
@@ -221,6 +222,9 @@ class PLCSSequenceModel(nn.Module):
                 Shape: (B, 20) or (B, T, 20). Each element is interpreted as
                 visible if > 0. For per-frame input, frame 0 is used.
                 Optional; if None, all court keypoints are treated as visible.
+            seq_mask:
+                Sequence padding mask. Shape: (B, T), True = valid frame.
+                Optional; if None, all frames are treated as valid.
 
         Returns:
             dict with:
@@ -269,6 +273,21 @@ class PLCSSequenceModel(nn.Module):
         if freqs_cis.device != x.device:
             freqs_cis = freqs_cis.to(x.device)
 
+        attn_mask: Tensor | None = None
+        if seq_mask is not None:
+            if seq_mask.dim() == 1:
+                seq_mask = seq_mask.unsqueeze(0)
+            if seq_mask.shape != (B, T):
+                raise ValueError(
+                    f"seq_mask must have shape {(B, T)}, got {tuple(seq_mask.shape)}"
+                )
+            seq_valid = seq_mask > 0
+            court_valid = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
+            frame_valid = seq_valid.unsqueeze(-1).expand(B, T, self.frame_block_tokens)
+            frame_valid = frame_valid.reshape(B, T * self.frame_block_tokens)
+            token_valid = torch.cat([court_valid, frame_valid], dim=1)
+            attn_mask = token_valid[:, None, :] & token_valid[:, :, None]
+
         residual = None
         for blk in self.blocks:
             x, residual = blk(
@@ -276,7 +295,7 @@ class PLCSSequenceModel(nn.Module):
                 residual,
                 start_pos=0,
                 freqs_cis=freqs_cis,
-                attn_mask=None,
+                attn_mask=attn_mask,
                 is_causal=False,
             )
 
