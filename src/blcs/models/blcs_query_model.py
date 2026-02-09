@@ -33,7 +33,7 @@ class BLCSQueryModel(nn.Module):
 
     Stages:
     - Stage A/B: Interleaved Ball->Court cross-attention and Ball temporal self-attention
-    - Stage C: Query->Ball cross-attention (time RoPE on query/ball Q,K)
+    - Stage C: Interleaved Query->Ball cross-attention and Query temporal self-attention
     """
 
     def __init__(
@@ -131,7 +131,7 @@ class BLCSQueryModel(nn.Module):
             ]
         )
         self.ball_temporal_norm = RMSNorm(hidden_dim)
-        self.query2ball_layers = nn.ModuleList(
+        self.query_cross_layers = nn.ModuleList(
             [
                 CrossAttnBlock(
                     CrossAttnBlockConfig(
@@ -146,6 +146,24 @@ class BLCSQueryModel(nn.Module):
                 for _ in range(num_query2ball_layers)
             ]
         )
+        self.query_self_layers = nn.ModuleList(
+            [
+                TransformerBlock(
+                    TransformerBlockConfig(
+                        dim=hidden_dim,
+                        n_heads=num_heads,
+                        mlp_inter_dim=ffn_dim,
+                        head_dim=head_dim,
+                        rope_dim=rope_dim,
+                        attn_dropout=dropout,
+                        rope_base=rope_theta,
+                        yarn=yarn,
+                    )
+                )
+                for _ in range(num_query2ball_layers)
+            ]
+        )
+        self.query_temporal_norm = RMSNorm(hidden_dim)
 
         self.final_norm = RMSNorm(hidden_dim)
 
@@ -287,16 +305,31 @@ class BLCSQueryModel(nn.Module):
         else:
             ball_b = ball_x
 
-        # Stage C: query -> ball readout (time RoPE on query and ball)
+        # Stage C: interleaved query->ball cross-attn and query temporal self-attn
         query_c = query_tok
-        for layer in self.query2ball_layers:
-            query_c = layer(
+        query_residual: Tensor | None = None
+        for cross_layer, self_layer in zip(self.query_cross_layers, self.query_self_layers):
+            query_c = cross_layer(
                 query_c,
                 ball_b,
                 key_valid=ball_valid,
                 freqs_q_cis=freqs_cis,
                 freqs_k_cis=freqs_cis,
             )
+            query_c, query_residual = self_layer(
+                query_c,
+                residual=None,
+                start_pos=0,
+                freqs_cis=freqs_cis,
+                attn_mask=ball_attn_mask,
+                is_causal=False,
+            )
+
+        if len(self.query_self_layers) > 0:
+            if query_residual is None:
+                query_c = self.query_temporal_norm(query_c)
+            else:
+                query_c, _ = self.query_temporal_norm(query_c, query_residual)
 
         query_c = self.final_norm(query_c)
 
