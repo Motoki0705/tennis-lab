@@ -342,9 +342,11 @@ class SceneGenerator:
             dtype=np.float32,
         )
 
-        # Center and rotate joints
-        init_offset = motion.trans[0]
-        centered_joints = joints_3d - init_offset
+        # Center and rotate joints (XY only, keep original Z)
+        init_offset_xy = motion.trans[0, :2]
+        centered_joints = joints_3d.copy()
+        centered_joints[..., 0] -= init_offset_xy[0]
+        centered_joints[..., 1] -= init_offset_xy[1]
         # Apply rotation to all joints
         world_joints = np.einsum("tji,ki->tjk", centered_joints, rot_mat)
         world_joints[..., 0] += init_x
