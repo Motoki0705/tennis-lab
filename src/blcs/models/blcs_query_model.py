@@ -94,7 +94,6 @@ class BLCSQueryModel(nn.Module):
             invisible_token=self.invisible_token,
         )
 
-        self.type_embed = nn.Embedding(3, hidden_dim)  # 0:court, 1:ball, 2:query
         self.court_id_embed = nn.Embedding(self.num_court_tokens, hidden_dim)
 
         self.query_base = nn.Parameter(
@@ -280,20 +279,9 @@ class BLCSQueryModel(nn.Module):
             device=ball_uv.device,
         )
 
-        type_court = self.type_embed(
-            torch.tensor(0, device=ball_uv.device, dtype=torch.long)
-        ).view(1, 1, -1)
-        type_ball = self.type_embed(
-            torch.tensor(1, device=ball_uv.device, dtype=torch.long)
-        ).view(1, 1, -1)
-        type_query = self.type_embed(
-            torch.tensor(2, device=ball_uv.device, dtype=torch.long)
-        ).view(1, 1, -1)
-
         court_ids = torch.arange(court_tok.shape[1], device=ball_uv.device, dtype=torch.long)
-        court_tok = court_tok + type_court + self.court_id_embed(court_ids).unsqueeze(0)
-        ball_tok = ball_tok + type_ball
-        query_tok = self.query_base[:, :seq_len, :].expand(batch_size, -1, -1) + type_query
+        court_tok = court_tok + self.court_id_embed(court_ids).unsqueeze(0)
+        query_tok = self.query_base[:, :seq_len, :].expand(batch_size, -1, -1)
 
         freqs_cis = self.freqs_cis[:seq_len]
         if freqs_cis.device != ball_uv.device:
