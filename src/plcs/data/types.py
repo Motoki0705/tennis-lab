@@ -128,7 +128,7 @@ class PLCSSceneMeta:
     gender: str  # "male", "female", or "neutral"
     fps: int  # frames per second
     num_frames: int  # total number of frames in the scene
-    initial_position: list[float]  # [x, y, z] starting position
+    initial_position: list[float]  # [x, y] starting position on court
     initial_yaw: float  # initial yaw angle in radians
     num_cameras_sampled: int  # number of cameras generated for this scene
     num_cameras: int  # number of valid cameras (after filtering)
@@ -262,7 +262,7 @@ class PLCSSceneMetaModel(BaseModel):
     gender: str = Field(..., pattern="^(male|female|neutral)$", description="Gender")
     fps: int = Field(..., gt=0, description="Frames per second")
     num_frames: int = Field(..., gt=0, description="Total number of frames")
-    initial_position: list[float] = Field(..., min_length=3, max_length=3)
+    initial_position: list[float] = Field(..., min_length=2, max_length=2)
     initial_yaw: float
     num_cameras_sampled: int = Field(..., ge=0)
     num_cameras: int = Field(..., ge=0)
@@ -270,9 +270,9 @@ class PLCSSceneMetaModel(BaseModel):
     @field_validator("initial_position")
     @classmethod
     def validate_position(cls, v: list[float]) -> list[float]:
-        """Validate that position has exactly 3 coordinates."""
-        if len(v) != 3:
-            raise ValueError(f"Position must have 3 coordinates, got {len(v)}")
+        """Validate that position has exactly 2 coordinates."""
+        if len(v) != 2:
+            raise ValueError(f"Position must have 2 coordinates, got {len(v)}")
         return v
 
     model_config = {"frozen": True}  # Immutable like dataclass(frozen=True)
