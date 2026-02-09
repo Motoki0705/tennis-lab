@@ -356,26 +356,3 @@ class BLCSQueryModel(nn.Module):
         if self.predict_velocity and self.velocity_head is not None:
             out["velocity"] = self.velocity_head(query_c)
         return out
-
-    def predict(
-        self,
-        ball_uv: Tensor,
-        court_kp: Tensor,
-        ball_vis: Tensor | None = None,
-        ball_mask: Tensor | None = None,
-        court_vis: Tensor | None = None,
-    ) -> dict[str, Tensor]:
-        """Inference mode prediction wrapper."""
-        self.eval()
-        with torch.no_grad():
-            return self.forward(
-                ball_uv,
-                court_kp,
-                ball_vis=ball_vis,
-                ball_mask=ball_mask,
-                court_vis=court_vis,
-            )
-
-    def get_num_params(self) -> int:
-        """Get total number of trainable parameters."""
-        return sum(p.numel() for p in self.parameters() if p.requires_grad)
