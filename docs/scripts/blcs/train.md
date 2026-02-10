@@ -33,8 +33,8 @@ uv run python -m src.blcs.scripts.train data.batch_size=64 training.learning_rat
 
 ```yaml
 defaults:
-  - model: default
-  - data: default
+  - model: single
+  - data: single
   - training: default
   - metrics: default
   - run: train

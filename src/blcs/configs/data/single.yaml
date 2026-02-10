@@ -1,5 +1,6 @@
 # Scene data directory (matches dataset generation default)
 scene_dir: "data/blcs"
+output_mode: single
 
 # DataLoader settings
 batch_size: 32

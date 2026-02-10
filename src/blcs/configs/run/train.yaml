@@ -1,4 +1,4 @@
-output_dir: outputs/blcs/single
+output_dir: outputs/blcs/${data.output_mode}
 seed: 42
 gpus: 1
 resume: null

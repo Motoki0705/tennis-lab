@@ -1,6 +1,6 @@
 defaults:
-  - model: default
-  - data: default
+  - model: single
+  - data: single
   - training: default
   - metrics: default
   - run: train

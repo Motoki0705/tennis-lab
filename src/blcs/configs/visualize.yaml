@@ -1,5 +1,5 @@
 defaults:
-  - visualization: default
+  - visualization: single
   - run: visualize
   - _self_
 
@@ -9,4 +9,3 @@ hydra:
   output_subdir: null
   job:
     chdir: false
-

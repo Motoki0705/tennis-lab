@@ -39,7 +39,7 @@ uv run python -m src.blcs.scripts.visualize visualization.save_input=input_anim.
 
 ```yaml
 defaults:
-  - visualization: default
+  - visualization: single
   - run: visualize
 ```
 

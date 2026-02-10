@@ -3,29 +3,22 @@
 Example commands:
     `uv run python -m src.blcs.scripts.train`
     `uv run python -m src.blcs.scripts.train training.max_epochs=5 run.gpus=0`
+    `uv run python -m src.blcs.scripts.train model=multiview data=multiview`
     `uv run python -m src.blcs.scripts.train run.dry_run=true`
 
 Config entry point: `src/blcs/configs/train.yaml`
 """
 
-# mypy: disable-error-code=misc
-
 from __future__ import annotations
-
-from collections.abc import Callable
-from typing import TypeVar, cast
 
 import hydra
 from omegaconf import DictConfig
 
 from src.blcs.training.runner import BLCSTrainingRunner
 
-F = TypeVar("F", bound=Callable[..., object])
-hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)
-
 
 @hydra.main(config_path="../configs", config_name="train", version_base="1.3")
-def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
+def main(config: DictConfig) -> None:
     """Hydra entry point."""
     runner = BLCSTrainingRunner()
     runner.run(config)
