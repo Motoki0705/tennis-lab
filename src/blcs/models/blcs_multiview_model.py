@@ -115,7 +115,7 @@ class BLCSMultiViewModel(nn.Module):
 
         self.query_base = nn.Parameter(torch.randn(1, 1, hidden_dim) * query_init_std)
 
-        self.stage1_cross_layers = nn.ModuleList(
+        self.ball_to_court_cross_layers = nn.ModuleList(
             [
                 CrossAttnBlock(
                     CrossAttnBlockConfig(
@@ -130,7 +130,7 @@ class BLCSMultiViewModel(nn.Module):
                 for _ in range(num_stage1_blocks)
             ]
         )
-        self.stage1_temporal_layers = nn.ModuleList(
+        self.cam_wise_ball_temporal_layers = nn.ModuleList(
             [
                 TransformerBlock(
                     TransformerBlockConfig(
@@ -147,7 +147,7 @@ class BLCSMultiViewModel(nn.Module):
                 for _ in range(num_stage1_blocks)
             ]
         )
-        self.stage1_camera_layers = nn.ModuleList(
+        self.time_wise_ball_camera_layers = nn.ModuleList(
             [
                 TransformerBlock(
                     TransformerBlockConfig(
@@ -165,7 +165,7 @@ class BLCSMultiViewModel(nn.Module):
             ]
         )
 
-        self.stage2_cross_layers = nn.ModuleList(
+        self.query_to_ball_cross_layers = nn.ModuleList(
             [
                 CrossAttnBlock(
                     CrossAttnBlockConfig(
@@ -180,7 +180,7 @@ class BLCSMultiViewModel(nn.Module):
                 for _ in range(num_stage2_layers)
             ]
         )
-        self.stage2_temporal_layers = nn.ModuleList(
+        self.query_temporal_layers = nn.ModuleList(
             [
                 TransformerBlock(
                     TransformerBlockConfig(
@@ -425,9 +425,9 @@ class BLCSMultiViewModel(nn.Module):
         # Stage 1: cross (per camera/frame) -> temporal self (per camera) -> camera self (per frame)
         ball_x = ball_tok
         for cross_layer, temporal_layer, camera_layer in zip(
-            self.stage1_cross_layers,
-            self.stage1_temporal_layers,
-            self.stage1_camera_layers,
+            self.ball_to_court_cross_layers,
+            self.cam_wise_ball_temporal_layers,
+            self.time_wise_ball_camera_layers,
             strict=True,
         ):
             q = ball_x.reshape(batch_size * n_cams * seq_len_in, 1, self.hidden_dim)
@@ -479,8 +479,8 @@ class BLCSMultiViewModel(nn.Module):
         query_mask, query_valid_fixed = self._build_self_attn_mask(frame_valid)
 
         for cross_layer, temporal_layer in zip(
-            self.stage2_cross_layers,
-            self.stage2_temporal_layers,
+            self.query_to_ball_cross_layers,
+            self.query_temporal_layers,
             strict=True,
         ):
             query_bt = query_x.reshape(batch_size * seq_len_in, 1, self.hidden_dim)

@@ -32,8 +32,8 @@ class BLCSQueryModel(nn.Module):
     """BLCS query-based 3D reconstruction model.
 
     Stages:
-    - Stage A/B: Interleaved Ball->Court cross-attention and Ball temporal self-attention
-    - Stage C: Interleaved Query->Ball cross-attention and Query temporal self-attention
+    - Stage 1: Interleaved Ball->Court cross-attention and Ball temporal self-attention
+    - Stage 2: Interleaved Query->Ball cross-attention and Query temporal self-attention
     """
 
     def __init__(
@@ -116,7 +116,7 @@ class BLCSQueryModel(nn.Module):
 
         self.query_base = nn.Parameter(torch.randn(1, 1, hidden_dim) * query_init_std)
 
-        self.ball_cross_layers = nn.ModuleList(
+        self.ball_to_court_cross_layers = nn.ModuleList(
             [
                 CrossAttnBlock(
                     CrossAttnBlockConfig(
@@ -131,7 +131,7 @@ class BLCSQueryModel(nn.Module):
                 for _ in range(num_ball_layers)
             ]
         )
-        self.ball_self_layers = nn.ModuleList(
+        self.ball_temporal_layers = nn.ModuleList(
             [
                 TransformerBlock(
                     TransformerBlockConfig(
@@ -148,7 +148,7 @@ class BLCSQueryModel(nn.Module):
                 for _ in range(num_ball_layers)
             ]
         )
-        self.query_cross_layers = nn.ModuleList(
+        self.query_to_ball_cross_layers = nn.ModuleList(
             [
                 CrossAttnBlock(
                     CrossAttnBlockConfig(
@@ -163,7 +163,7 @@ class BLCSQueryModel(nn.Module):
                 for _ in range(num_query2ball_layers)
             ]
         )
-        self.query_self_layers = nn.ModuleList(
+        self.query_temporal_layers = nn.ModuleList(
             [
                 TransformerBlock(
                     TransformerBlockConfig(
@@ -306,9 +306,9 @@ class BLCSQueryModel(nn.Module):
                 ball_key_valid[empty_ball, 0] = True
             ball_attn_mask = ball_key_valid[:, None, :].expand(batch_size, seq_len, seq_len)
 
-        # Stage A/B: interleaved ball->court cross-attn and ball temporal self-attn
+        # Stage 1: interleaved ball->court cross-attn and ball temporal self-attn
         ball_x = ball_tok
-        for cross_layer, self_layer in zip(self.ball_cross_layers, self.ball_self_layers):
+        for cross_layer, self_layer in zip(self.ball_to_court_cross_layers, self.ball_temporal_layers):
             ball_x = cross_layer(
                 ball_x,
                 court_tok,
@@ -325,9 +325,9 @@ class BLCSQueryModel(nn.Module):
 
         ball_b = ball_x
 
-        # Stage C: interleaved query->ball cross-attn and query temporal self-attn
+        # Stage 2: interleaved query->ball cross-attn and query temporal self-attn
         query_c = query_tok
-        for cross_layer, self_layer in zip(self.query_cross_layers, self.query_self_layers):
+        for cross_layer, self_layer in zip(self.query_to_ball_cross_layers, self.query_temporal_layers):
             query_c = cross_layer(
                 query_c,
                 ball_b,
