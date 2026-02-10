@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import torch
 from torch import Tensor
@@ -80,21 +80,17 @@ class BLCSLightningModule(BaseLightningModule):
         *,
         ball_uv: Tensor,
         court_kp: Tensor,
+        ball_vis: Tensor | None,
         ball_mask: Tensor | None,
         court_vis: Tensor | None,
-        num_views: Tensor | None,
-        seq_len: Tensor | None,
-        camera_params: list[dict[str, Any]] | None,
     ) -> dict[str, Tensor]:
         """Forward pass for multiview model."""
         return self.model(
             ball_uv=ball_uv,
             court_kp=court_kp,
+            ball_vis=ball_vis,
             ball_mask=ball_mask,
             court_vis=court_vis,
-            num_views=num_views,
-            seq_len=seq_len,
-            camera_params=camera_params,
         )
 
     def _forward_from_batch(self, batch: BLCSBatch | BLCSMultiViewBatch) -> dict[str, Tensor]:
@@ -104,11 +100,9 @@ class BLCSLightningModule(BaseLightningModule):
             return self._forward_multiview(
                 ball_uv=mv_batch["ball_uv"],
                 court_kp=mv_batch["court_kp"],
+                ball_vis=mv_batch.get("ball_vis"),
                 ball_mask=mv_batch.get("ball_mask"),
                 court_vis=mv_batch.get("court_vis"),
-                num_views=mv_batch.get("num_views"),
-                seq_len=mv_batch.get("seq_len"),
-                camera_params=mv_batch.get("camera_params"),
             )
         elif self.model_name == "single":
             single_batch = batch
@@ -128,11 +122,10 @@ class BLCSLightningModule(BaseLightningModule):
     def _build_loss_mask(self, batch: BLCSBatch | BLCSMultiViewBatch) -> Tensor | None:
         """Build sequence mask used for loss and metrics."""
         if self.model_name == "multiview":
-            seq_len = batch.get("seq_len")
-            if seq_len is None:
+            ball_mask = batch.get("ball_mask")
+            if ball_mask is None:
                 return None
-            max_len = batch["position_3d"].shape[1]
-            return torch.arange(max_len, device=seq_len.device).unsqueeze(0) < seq_len.unsqueeze(1)
+            return (ball_mask > 0).any(dim=1)
         elif self.model_name == "single":
             return batch.get("ball_mask")
         else:
