@@ -19,7 +19,7 @@ BLCS は、テニスコート座標系におけるボールの 3D 軌道を、2D
 
 ### 出力形式
 
-**Predictor 返り値（`BLCSPredictor.predict()` / `BLCSMultiViewPredictor.predict()`）:**
+**Predictor 返り値（`BLCSPredictor.predict()`）:**
 
 推論結果は `dict[str, torch.Tensor]` 形式で返されます。全てのテンソルは CPU 上にあります。
 
@@ -27,8 +27,9 @@ BLCS は、テニスコート座標系におけるボールの 3D 軌道を、2D
 |-----------|------|------|-----|------|
 | `BLCSPredictor` | `position` | `(B, T, 3)` | `torch.Tensor` | 3D軌道。デフォルト（`denormalize=True`）ではメートル単位、`denormalize=False` の場合は正規化座標 |
 | `BLCSPredictor` | `velocity` | `(B, T, 3)` | `torch.Tensor` | 速度ベクトル。デフォルト（`denormalize=True`）かつモデルが出力する場合は m/s 単位。モデルにより含まれない場合あり |
-| `BLCSMultiViewPredictor` | `position` | `(B, T, 3)` | `torch.Tensor` | マルチビュー統合後の 3D 軌道 |
-| `BLCSMultiViewPredictor` | `velocity` | `(B, T, 3)` | `torch.Tensor` | 速度ベクトル。モデルにより含まれない場合あり |
+
+`BLCSPredictor` は `blcs` / `blcs_query` / `blcs_multiview` を単一クラスで扱います。  
+`BLCSMultiViewPredictor` は後方互換のためのエイリアスとして残しています。
 
 **注意**:
 - すべてのテンソルは CPU に配置されます（統合側での device 変換は不要）

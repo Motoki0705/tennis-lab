@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
-from src.blcs.data.dataset import BallTrajectoryDataset, collate_trajectories
-from src.blcs.data.multiview_dataset import (
-    MultiViewBallTrajectoryDataset,
+from src.blcs.data.dataset import (
+    BallTrajectoryDataset,
     collate_multiview_trajectories,
+    collate_trajectories,
 )
 from src.common.data.scene_batch_sampler import (
     build_scene_sampler,
@@ -75,6 +75,7 @@ class BLCSDataModule(pl.LightningDataModule):
                     split_file="train.txt",
                     config=self.config,
                     augment=True,
+                    output_mode="single",
                 )
             else:
                 # Fallback: use all data
@@ -82,6 +83,7 @@ class BLCSDataModule(pl.LightningDataModule):
                     scene_dir=self.scene_dir,
                     config=self.config,
                     augment=True,
+                    output_mode="single",
                 )
 
             # Validation dataset without augmentation
@@ -92,6 +94,7 @@ class BLCSDataModule(pl.LightningDataModule):
                     split_file="val.txt",
                     config=self.config,
                     augment=False,
+                    output_mode="single",
                 )
             else:
                 self.val_dataset = self.train_dataset
@@ -105,12 +108,14 @@ class BLCSDataModule(pl.LightningDataModule):
                     split_file="test.txt",
                     config=self.config,
                     augment=False,
+                    output_mode="single",
                 )
             else:
                 self.test_dataset = BallTrajectoryDataset(
                     scene_dir=self.scene_dir,
                     config=self.config,
                     augment=False,
+                    output_mode="single",
                 )
 
     def train_dataloader(self) -> DataLoader:
@@ -229,7 +234,7 @@ class BLCSDataModule(pl.LightningDataModule):
 class BLCSMultiViewDataModule(pl.LightningDataModule):
     """Lightning DataModule for multi-view BLCS training.
 
-    This module creates train/val/test dataloaders using MultiViewBallTrajectoryDataset
+    This module creates train/val/test dataloaders using BallTrajectoryDataset
     to provide ball trajectory observations from multiple cameras simultaneously.
     """
 
@@ -254,9 +259,9 @@ class BLCSMultiViewDataModule(pl.LightningDataModule):
         self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
         self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
 
-        self.train_dataset: MultiViewBallTrajectoryDataset | None = None
-        self.val_dataset: MultiViewBallTrajectoryDataset | None = None
-        self.test_dataset: MultiViewBallTrajectoryDataset | None = None
+        self.train_dataset: BallTrajectoryDataset | None = None
+        self.val_dataset: BallTrajectoryDataset | None = None
+        self.test_dataset: BallTrajectoryDataset | None = None
 
     def setup(self, stage: str | None = None) -> None:
         """Set up datasets for the given stage.
@@ -271,30 +276,33 @@ class BLCSMultiViewDataModule(pl.LightningDataModule):
             val_split = self.scene_dir / "val.txt"
 
             if train_split.exists():
-                self.train_dataset = MultiViewBallTrajectoryDataset(
+                self.train_dataset = BallTrajectoryDataset(
                     scene_dir=self.scene_dir,
                     split_file=train_split,
                     config=self.config,
                     augment=True,
+                    output_mode="multiview",
                     num_views=self.num_views,
                     min_cameras=self.min_cameras,
                 )
             else:
                 # Fall back to loading all scenes
-                self.train_dataset = MultiViewBallTrajectoryDataset(
+                self.train_dataset = BallTrajectoryDataset(
                     scene_dir=self.scene_dir,
                     config=self.config,
                     augment=True,
+                    output_mode="multiview",
                     num_views=self.num_views,
                     min_cameras=self.min_cameras,
                 )
 
             if val_split.exists():
-                self.val_dataset = MultiViewBallTrajectoryDataset(
+                self.val_dataset = BallTrajectoryDataset(
                     scene_dir=self.scene_dir,
                     split_file=val_split,
                     config=self.config,
                     augment=False,
+                    output_mode="multiview",
                     num_views=self.num_views,
                     min_cameras=self.min_cameras,
                 )
@@ -304,19 +312,21 @@ class BLCSMultiViewDataModule(pl.LightningDataModule):
         if stage == "test" or stage is None:
             test_split = self.scene_dir / "test.txt"
             if test_split.exists():
-                self.test_dataset = MultiViewBallTrajectoryDataset(
+                self.test_dataset = BallTrajectoryDataset(
                     scene_dir=self.scene_dir,
                     split_file=test_split,
                     config=self.config,
                     augment=False,
+                    output_mode="multiview",
                     num_views=self.num_views,
                     min_cameras=self.min_cameras,
                 )
             else:
-                self.test_dataset = MultiViewBallTrajectoryDataset(
+                self.test_dataset = BallTrajectoryDataset(
                     scene_dir=self.scene_dir,
                     config=self.config,
                     augment=False,
+                    output_mode="multiview",
                     num_views=self.num_views,
                     min_cameras=self.min_cameras,
                 )
