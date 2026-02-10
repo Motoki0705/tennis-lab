@@ -34,7 +34,6 @@ class BLCSLightningModule(BaseLightningModule):
         super().__init__(config)
 
         self.model = build_blcs_model(self.config)
-        self.model_name = str(self.config.data.output_mode)
 
         train_cfg = self.config.get("training", {})
         self.loss_fn = BLCSLoss(
@@ -57,82 +56,28 @@ class BLCSLightningModule(BaseLightningModule):
             endpoint_threshold_m=metrics_cfg.get("endpoint_threshold_m", 0.5),
         )
 
-    def _forward_single(
-        self,
-        *,
-        ball_uv: Tensor,
-        court_kp: Tensor,
-        ball_vis: Tensor | None,
-        ball_mask: Tensor | None,
-        court_vis: Tensor | None,
-    ) -> dict[str, Tensor]:
-        """Forward pass for single-view model."""
-        return self.model(
-            ball_uv,
-            court_kp,
-            ball_vis=ball_vis,
-            ball_mask=ball_mask,
-            court_vis=court_vis,
-        )
-
-    def _forward_multiview(
-        self,
-        *,
-        ball_uv: Tensor,
-        court_kp: Tensor,
-        ball_vis: Tensor | None,
-        ball_mask: Tensor | None,
-        court_vis: Tensor | None,
-    ) -> dict[str, Tensor]:
-        """Forward pass for multiview model."""
-        return self.model(
-            ball_uv=ball_uv,
-            court_kp=court_kp,
-            ball_vis=ball_vis,
-            ball_mask=ball_mask,
-            court_vis=court_vis,
-        )
-
     def _forward_from_batch(self, batch: BLCSBatch | BLCSMultiViewBatch) -> dict[str, Tensor]:
-        """Forward model using a training batch."""
-        if self.model_name == "multiview":
-            mv_batch = batch
-            return self._forward_multiview(
-                ball_uv=mv_batch["ball_uv"],
-                court_kp=mv_batch["court_kp"],
-                ball_vis=mv_batch.get("ball_vis"),
-                ball_mask=mv_batch.get("ball_mask"),
-                court_vis=mv_batch.get("court_vis"),
-            )
-        elif self.model_name == "single":
-            single_batch = batch
-            return self._forward_single(
-                ball_uv=single_batch["ball_uv"],
-                court_kp=single_batch["court_kp"],
-                ball_vis=single_batch.get("ball_vis"),
-                ball_mask=single_batch.get("ball_mask"),
-                court_vis=single_batch.get("court_vis"),
-            )
-        else:
-            raise ValueError(
-                f"Unsupported model_name='{self.model_name}'. "
-                "Supported: ['single', 'multiview']"
-            )
+        """Forward model from a batch."""
+        return self.model(
+            ball_uv=batch["ball_uv"],
+            court_kp=batch["court_kp"],
+            ball_vis=batch.get("ball_vis"),
+            ball_mask=batch.get("ball_mask"),
+            court_vis=batch.get("court_vis"),
+        )
 
-    def _build_loss_mask(self, batch: BLCSBatch | BLCSMultiViewBatch) -> Tensor | None:
-        """Build sequence mask used for loss and metrics."""
-        if self.model_name == "multiview":
-            ball_mask = batch.get("ball_mask")
-            if ball_mask is None:
-                return None
+    def _normalize_loss_mask(self, batch: BLCSBatch | BLCSMultiViewBatch) -> Tensor | None:
+        """Normalize loss/metric mask to shape (B, T)."""
+        ball_mask = batch.get("ball_mask")
+        if ball_mask is None:
+            return None
+        if ball_mask.ndim == 2:
+            return ball_mask
+        if ball_mask.ndim == 3:
             return (ball_mask > 0).any(dim=1)
-        elif self.model_name == "single":
-            return batch.get("ball_mask")
-        else:
-            raise ValueError(
-                f"Unsupported model_name='{self.model_name}'. "
-                "Supported: ['single', 'multiview']"
-            )
+        raise ValueError(
+            f"ball_mask must have 2 or 3 dims, got shape {tuple(ball_mask.shape)}"
+        )
 
     def _select_metrics(self, stage: str) -> BLCSMetrics:
         """Return metrics object for the current stage."""
@@ -147,7 +92,7 @@ class BLCSLightningModule(BaseLightningModule):
     ) -> tuple[Tensor, dict[str, float]]:
         """Shared step for training, validation, and test."""
         outputs = self._forward_from_batch(batch)
-        mask = self._build_loss_mask(batch)
+        mask = self._normalize_loss_mask(batch)
 
         losses = self.loss_fn(
             pred_position=outputs["position"],
