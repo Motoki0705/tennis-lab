@@ -38,16 +38,15 @@ BLCS は、テニスコート座標系におけるボールの 3D 軌道を、2D
 src/blcs/
 ├── configs/                          # Hydra 設定ファイル群
 │   ├── train.yaml                    # 単一カメラ学習設定
-│   ├── train_multiview.yaml          # マルチビュー学習設定
 │   ├── generate_dataset.yaml         # データ生成設定
 │   ├── visualize.yaml                # 単一カメラ可視化設定
 │   ├── visualize_multiview.yaml      # マルチビュー可視化設定
 │   ├── run/                          # 実行時設定（seed, gpus, output_dir）
 │   ├── model/
-│   │   ├── default.yaml              # 単一カメラモデル設定
+│   │   ├── single.yaml               # 単一カメラモデル設定
 │   │   └── multiview.yaml            # マルチビューモデル設定
 │   ├── data/
-│   │   ├── default.yaml              # 単一カメラ DataModule 設定
+│   │   ├── single.yaml               # 単一カメラ DataModule 設定
 │   │   └── multiview.yaml            # マルチビュー DataModule 設定
 │   ├── training/
 │   │   └── default.yaml              # 学習ハイパーパラメータ
@@ -58,13 +57,12 @@ src/blcs/
 │   ├── camera/
 │   │   └── default.yaml              # カメラ投影パラメータ
 │   └── visualization/
-│       ├── default.yaml              # 単一カメラ可視化オプション
+│       ├── single.yaml               # 単一カメラ可視化オプション
 │       └── multiview.yaml            # マルチビュー可視化オプション
 │
 ├── scripts/                          # 実行スクリプト（Hydra エントリポイント）
 │   ├── generate_dataset.py           # 物理シミュレーションによるデータ生成
-│   ├── train.py                      # 単一カメラモデル学習
-│   ├── train_multiview.py            # マルチビューモデル学習
+│   ├── train.py                      # 学習（output_modeで単一/マルチビュー切替）
 │   ├── run_hparam_sweep.sh           # 単一カメラモデルのハイパラ探索
 │   ├── visualize.py                  # 単一カメラ可視化
 │   └── visualize_multiview.py        # マルチビュー可視化
@@ -122,7 +120,7 @@ src/blcs/
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│ train.py / train_multiview.py                                   │
+│ train.py                                                       │
 │   ├── data/datamodule.py           (DataModule)                 │
 │   │   ├── BLCSDataModule           (単一カメラ)                  │
 │   │   └── BLCSMultiViewDataModule  (マルチビュー)                │
@@ -157,10 +155,14 @@ uv run python -m src.blcs.scripts.generate_dataset
 uv run python -m src.blcs.scripts.train
 
 # マルチビューモデル（複数カメラ統合）
-uv run python -m src.blcs.scripts.train_multiview
+uv run python -m src.blcs.scripts.train \
+    model=multiview \
+    data=multiview
 
-# マルチビュー学習のカスタム設定例
-uv run python -m src.blcs.scripts.train_multiview \
+# マルチビュー学習のカスタム設定例（単一エントリ）
+uv run python -m src.blcs.scripts.train \
+    model=multiview \
+    data=multiview \
     data.num_views=4 \
     data.min_cameras=2 \
     training.max_epochs=100
@@ -225,9 +227,9 @@ Temporal Encoder + MLP ベースの構造。
 
 | 用途 | メイン設定 | 補助設定 |
 |------|----------|---------|
-| 単一カメラ学習 | `train.yaml` | `model/default.yaml`, `data/default.yaml` |
-| マルチビュー学習 | `train_multiview.yaml` | `model/multiview.yaml`, `data/multiview.yaml` |
-| 単一カメラ可視化 | `visualize.yaml` | `visualization/default.yaml` |
+| 単一カメラ学習 | `train.yaml` | `model/single.yaml`, `data/single.yaml` |
+| マルチビュー学習 | `train.yaml` | `model=multiview`, `data=multiview` |
+| 単一カメラ可視化 | `visualize.yaml` | `visualization/single.yaml` |
 | マルチビュー可視化 | `visualize_multiview.yaml` | `visualization/multiview.yaml` |
 
 詳細なドキュメントは以下を参照:

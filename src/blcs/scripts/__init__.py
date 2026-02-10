@@ -1,5 +1,5 @@
 """BLCS scripts."""
 
-from src.blcs.training.runner import BLCSMultiViewTrainingRunner, BLCSTrainingRunner
+from src.blcs.training.runner import BLCSTrainingRunner
 
-__all__ = ["BLCSTrainingRunner", "BLCSMultiViewTrainingRunner"]
+__all__ = ["BLCSTrainingRunner"]

@@ -1,5 +1,6 @@
 # Multi-view BLCS data configuration
 scene_dir: "data/blcs"
+output_mode: multiview
 
 # DataLoader settings
 batch_size: 16
