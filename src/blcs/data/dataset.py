@@ -176,7 +176,7 @@ class BallTrajectoryDataset(Dataset):
 
         return rng.sample(range(num_cameras), actual_num_views)
 
-    def _load_multiview_sample(self, path: Path) -> dict[str, Tensor | list[dict]]:
+    def _load_multiview_sample(self, path: Path) -> dict[str, Tensor]:
         data = self._scene_cache.get(path) if self._scene_cache is not None else load_npz_scene(path)
 
         meta_raw = data.get("meta", {})
@@ -197,7 +197,6 @@ class BallTrajectoryDataset(Dataset):
         ball_vis_list: list[Tensor] = []
         court_kp_list: list[Tensor] = []
         court_vis_list: list[Tensor] = []
-        camera_params_list: list[dict] = []
 
         for cam_idx in selected_cams:
             prefix = f"cam_{cam_idx}_"
@@ -209,29 +208,17 @@ class BallTrajectoryDataset(Dataset):
             court_kp_expanded = court_kp.unsqueeze(0).expand(seq_len, -1, -1)
             court_vis_expanded = court_vis.unsqueeze(0).expand(seq_len, -1)
 
-            params_key = f"{prefix}params"
-            if params_key in data:
-                params_raw = data[params_key].item()
-                if isinstance(params_raw, (bytes, bytearray)):
-                    params_raw = params_raw.decode("utf-8")
-                cam_params = json.loads(params_raw) if isinstance(params_raw, str) else params_raw
-            else:
-                cam_params = {}
-
             ball_uv_list.append(ball_uv)
             ball_vis_list.append(ball_vis)
             court_kp_list.append(court_kp_expanded)
             court_vis_list.append(court_vis_expanded)
-            camera_params_list.append(cam_params)
 
-        sample: dict[str, Tensor | list[dict]] = {
+        sample: dict[str, Tensor] = {
             "ball_uv": torch.stack(ball_uv_list, dim=0),
             "ball_vis": torch.stack(ball_vis_list, dim=0),
             "ball_mask": torch.ones(len(selected_cams), seq_len, dtype=torch.float32),
             "court_kp": torch.stack(court_kp_list, dim=0),
             "court_vis": torch.stack(court_vis_list, dim=0),
-            "camera_params": camera_params_list,
-            "num_views": torch.tensor(len(selected_cams), dtype=torch.long),
             "position_3d": torch.from_numpy(data["ball_pos_norm"][start_frame:end_frame].copy()).float(),
             "velocity_3d": torch.from_numpy(data["ball_vel_world"][start_frame:end_frame].copy()).float(),
             "seq_len": torch.tensor(seq_len, dtype=torch.long),
@@ -239,8 +226,8 @@ class BallTrajectoryDataset(Dataset):
         return sample
 
     def _apply_augmentation_multiview(
-        self, sample: dict[str, Tensor | list[dict]]
-    ) -> dict[str, Tensor | list[dict]]:
+        self, sample: dict[str, Tensor]
+    ) -> dict[str, Tensor]:
         sample = {k: (v.clone() if isinstance(v, Tensor) else v) for k, v in sample.items()}
 
         ball_uv = sample["ball_uv"]
@@ -257,7 +244,7 @@ class BallTrajectoryDataset(Dataset):
 
         return sample
 
-    def _to_single_sample(self, sample: dict[str, Tensor | list[dict]]) -> BLCSSample:
+    def _to_single_sample(self, sample: dict[str, Tensor]) -> BLCSSample:
         # N=1 expected for single mode.
         ball_uv = sample["ball_uv"]
         ball_vis = sample["ball_vis"]
@@ -307,8 +294,6 @@ class BallTrajectoryDataset(Dataset):
             "ball_mask": sample["ball_mask"],
             "court_kp": sample["court_kp"],
             "court_vis": sample["court_vis"],
-            "camera_params": sample["camera_params"],
-            "num_views": sample["num_views"],
             "position_3d": sample["position_3d"],
             "velocity_3d": sample["velocity_3d"],
             "seq_len": sample["seq_len"],
@@ -330,7 +315,7 @@ def collate_multiview_trajectories(
     batch: list[BLCSMultiViewSample],
 ) -> BLCSMultiViewBatch:
     """Collate function for multiview trajectory batches."""
-    max_views = max(sample["num_views"].item() for sample in batch)
+    max_views = max(int(sample["ball_uv"].shape[0]) for sample in batch)
     max_seq_len = max(sample["seq_len"].item() for sample in batch)
 
     ball_uv_batch = []
@@ -341,10 +326,8 @@ def collate_multiview_trajectories(
     position_3d_batch = []
     velocity_3d_batch = []
     seq_len_batch = []
-    num_views_batch = []
-
     for sample in batch:
-        n_views = sample["num_views"].item()
+        n_views = int(sample["ball_uv"].shape[0])
         seq_len = sample["seq_len"].item()
         pad_views = max_views - n_views
         pad_seq = max_seq_len - seq_len
@@ -381,16 +364,12 @@ def collate_multiview_trajectories(
         position_3d_batch.append(position_3d)
         velocity_3d_batch.append(velocity_3d)
         seq_len_batch.append(sample["seq_len"])
-        num_views_batch.append(sample["num_views"])
-
     return {
         "ball_uv": torch.stack(ball_uv_batch, dim=0),
         "ball_vis": torch.stack(ball_vis_batch, dim=0),
         "ball_mask": torch.stack(ball_mask_batch, dim=0),
         "court_kp": torch.stack(court_kp_batch, dim=0),
         "court_vis": torch.stack(court_vis_batch, dim=0),
-        "camera_params": [cam for sample in batch for cam in sample["camera_params"]],
-        "num_views": torch.stack(num_views_batch, dim=0),
         "position_3d": torch.stack(position_3d_batch, dim=0),
         "velocity_3d": torch.stack(velocity_3d_batch, dim=0),
         "seq_len": torch.stack(seq_len_batch, dim=0),
