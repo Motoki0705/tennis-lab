@@ -92,10 +92,9 @@ class BLCSMultiViewPredictor(BasePredictor):
         self,
         ball_uv: Tensor,
         court_kp: Tensor,
+        ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
-        num_views: Tensor | None = None,
-        seq_len: Tensor | None = None,
         denormalize: bool = True,
     ) -> dict[str, Tensor]:
         """Predict 3D ball trajectory from multiple views.
@@ -103,10 +102,9 @@ class BLCSMultiViewPredictor(BasePredictor):
         Args:
             ball_uv: Ball 2D trajectory. Shape (B, N, T, 2) or (N, T, 2).
             court_kp: Court 2D keypoints. Shape (B, N, 20, 2) or (N, 20, 2).
-            ball_mask: Ball visibility mask. Shape (B, N, T) or (N, T).
+            ball_vis: Ball visibility mask. Shape (B, N, T) or (N, T).
+            ball_mask: Ball padding mask. Shape (B, N, T) or (N, T).
             court_vis: Court keypoint visibility. Shape (B, N, 20) or (N, 20).
-            num_views: Number of valid views. Shape (B,) or scalar.
-            seq_len: Sequence lengths. Shape (B,) or scalar.
             denormalize: If True, convert positions to meters.
 
         Returns:
@@ -122,10 +120,15 @@ class BLCSMultiViewPredictor(BasePredictor):
             ball_uv = ball_uv.unsqueeze(0)  # (N, T, 2) -> (1, N, T, 2)
         if court_kp.dim() == 3:
             court_kp = court_kp.unsqueeze(0)  # (N, 20, 2) -> (1, N, 20, 2)
+        if ball_vis is not None and ball_vis.dim() == 2:
+            ball_vis = ball_vis.unsqueeze(0)  # (N, T) -> (1, N, T)
         if ball_mask is not None and ball_mask.dim() == 2:
             ball_mask = ball_mask.unsqueeze(0)  # (N, T) -> (1, N, T)
         if court_vis is not None and court_vis.dim() == 2:
             court_vis = court_vis.unsqueeze(0)  # (N, 20) -> (1, N, 20)
+
+        if ball_vis is None or ball_mask is None:
+            raise ValueError("Both ball_vis and ball_mask are required for multiview inference.")
         
         # Get sequence length for court_kp/court_vis expansion
         seq_len_val = ball_uv.shape[2]  # T dimension
@@ -139,23 +142,21 @@ class BLCSMultiViewPredictor(BasePredictor):
         # Move to device
         ball_uv = ball_uv.to(self.device)
         court_kp = court_kp.to(self.device)
+        if ball_vis is not None:
+            ball_vis = ball_vis.to(self.device)
         if ball_mask is not None:
             ball_mask = ball_mask.to(self.device)
         if court_vis is not None:
             court_vis = court_vis.to(self.device)
-        if num_views is not None:
-            num_views = num_views.to(self.device)
-        if seq_len is not None:
-            seq_len = seq_len.to(self.device)
 
         # Forward pass
         with torch.no_grad():
             outputs = self.model(
                 ball_uv=ball_uv,
                 court_kp=court_kp,
+                ball_vis=ball_vis,
                 ball_mask=ball_mask,
                 court_vis=court_vis,
-                num_views=num_views,
             )
 
         position = outputs["position"].cpu()

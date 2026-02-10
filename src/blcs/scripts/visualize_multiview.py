@@ -257,16 +257,17 @@ def main_predict_multiview(cfg: RuntimeConfig) -> int:
     # Stack to (N, T, 2) and (N, 20, 2)
     ball_uv = torch.from_numpy(np.stack(ball_uv_list, axis=0)).float()  # (N, T, 2)
     court_kp = torch.from_numpy(np.stack(court_kp_list, axis=0)).float()  # (N, 20, 2)
-    ball_mask = torch.from_numpy(np.stack(ball_vis_list, axis=0)).float()  # (N, T)
+    ball_vis = torch.from_numpy(np.stack(ball_vis_list, axis=0)).float()  # (N, T)
+    ball_mask = torch.ones_like(ball_vis)  # (N, T)
     court_vis = torch.from_numpy(np.stack(court_vis_list, axis=0)).float()  # (N, 20)
 
     # Run prediction
     outputs = predictor.predict(
         ball_uv=ball_uv,
         court_kp=court_kp,
+        ball_vis=ball_vis,
         ball_mask=ball_mask,
         court_vis=court_vis,
-        num_views=None,
         denormalize=True,
     )
 

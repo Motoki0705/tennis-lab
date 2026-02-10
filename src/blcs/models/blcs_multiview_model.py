@@ -226,15 +226,6 @@ class BLCSMultiViewModel(nn.Module):
         )
         self.register_buffer("freqs_time_cis", freqs_time_cis, persistent=False)
 
-        freqs_cam_cis = precompute_freqs_cis(
-            dim=rope_dim,
-            seqlen=self.max_num_cameras,
-            base=rope_theta,
-            yarn=yarn,
-            device=None,
-        )
-        self.register_buffer("freqs_cam_cis", freqs_cam_cis, persistent=False)
-
     @classmethod
     def from_config(cls, config: DictConfig) -> BLCSMultiViewModel:
         """Create model from Hydra/OmegaConf config."""
@@ -303,27 +294,19 @@ class BLCSMultiViewModel(nn.Module):
         ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
-        num_views: Tensor | None = None,
-        seq_len: Tensor | None = None,
-        camera_params: list[list[dict]] | None = None,
     ) -> dict[str, Tensor]:
         """Forward pass.
 
         Args:
             ball_uv: Ball 2D positions, shape (B, N, T, 2).
             court_kp: Court keypoints, shape (B, N, T, 20, 2) or (B, N, 20, 2).
-            ball_vis: Ball visibility flags, shape (B, N, T). Optional.
-            ball_mask: Ball validity mask, shape (B, N, T). Optional.
+            ball_vis: Ball visibility mask, shape (B, N, T). 1=visible.
+            ball_mask: Ball validity mask, shape (B, N, T).
             court_vis: Court visibility mask, shape (B, N, T, 20) or (B, N, 20). Optional.
-            num_views: Number of valid views per sample, shape (B,). Optional.
-            seq_len: Valid sequence length per sample, shape (B,). Optional.
-            camera_params: Camera parameters. Optional and currently unused.
 
         Returns:
             dict: Dictionary with 'position' (B, T, 3) and optionally 'velocity'.
         """
-        del camera_params
-
         if ball_uv.dim() != 4:
             raise ValueError(f"ball_uv must have shape (B, N, T, 2), got {tuple(ball_uv.shape)}")
 
@@ -354,27 +337,23 @@ class BLCSMultiViewModel(nn.Module):
                     "court_vis must have shape (B, N, T, 20) or (B, N, 20), "
                     f"got {tuple(court_vis.shape)}"
                 )
-
-        if ball_vis is None and ball_mask is not None:
-            ball_vis = ball_mask
-
-        if ball_vis is not None and ball_vis.shape != (batch_size, n_cams, seq_len_in):
+        if ball_vis is None:
+            raise ValueError("ball_vis is required for BLCSMultiViewModel forward.")
+        if ball_mask is None:
+            raise ValueError("ball_mask is required for BLCSMultiViewModel forward.")
+        if ball_vis.shape != (batch_size, n_cams, seq_len_in):
             raise ValueError(
                 f"ball_vis must have shape {(batch_size, n_cams, seq_len_in)}, "
                 f"got {tuple(ball_vis.shape)}"
             )
-        if ball_mask is not None and ball_mask.shape != (batch_size, n_cams, seq_len_in):
+        if ball_mask.shape != (batch_size, n_cams, seq_len_in):
             raise ValueError(
                 f"ball_mask must have shape {(batch_size, n_cams, seq_len_in)}, "
                 f"got {tuple(ball_mask.shape)}"
             )
 
         ball_uv_bn = ball_uv.reshape(batch_size * n_cams, seq_len_in, 2)
-        ball_vis_bn = (
-            ball_vis.reshape(batch_size * n_cams, seq_len_in)
-            if ball_vis is not None
-            else None
-        )
+        ball_vis_bn = ball_vis.reshape(batch_size * n_cams, seq_len_in)
         ball_tok = self.ball_embed(ball_uv_bn, ball_vis_bn).reshape(
             batch_size, n_cams, seq_len_in, self.hidden_dim
         )
@@ -400,27 +379,11 @@ class BLCSMultiViewModel(nn.Module):
         ball_tok = ball_tok + cam_emb
         court_tok = court_tok + court_id_emb + cam_emb.unsqueeze(3)
 
-        valid = torch.ones(batch_size, n_cams, seq_len_in, device=device, dtype=torch.bool)
-        if ball_mask is not None:
-            valid = valid & (ball_mask > 0)
-        elif ball_vis is not None:
-            valid = valid & (ball_vis > 0)
-
-        if num_views is not None:
-            cam_idx = torch.arange(n_cams, device=device).view(1, n_cams, 1)
-            valid = valid & (cam_idx < num_views.view(batch_size, 1, 1))
-
-        if seq_len is not None:
-            t_idx = torch.arange(seq_len_in, device=device).view(1, 1, seq_len_in)
-            valid = valid & (t_idx < seq_len.view(batch_size, 1, 1))
+        valid = ball_mask > 0
 
         freqs_time = self.freqs_time_cis[:seq_len_in]
         if freqs_time.device != device:
             freqs_time = freqs_time.to(device)
-
-        freqs_cam = self.freqs_cam_cis[:n_cams]
-        if freqs_cam.device != device:
-            freqs_cam = freqs_cam.to(device)
 
         # Stage 1: cross (per camera/frame) -> temporal self (per camera) -> camera self (per frame)
         ball_x = ball_tok
@@ -467,7 +430,7 @@ class BLCSMultiViewModel(nn.Module):
                 camera_x,
                 residual=None,
                 start_pos=0,
-                freqs_cis=freqs_cam,
+                freqs_cis=None,
                 attn_mask=camera_mask,
                 is_causal=False,
             )

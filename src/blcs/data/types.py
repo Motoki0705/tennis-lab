@@ -57,7 +57,8 @@ class BLCSMultiViewSample(TypedDict):
     """
 
     ball_uv: torch.Tensor  # (N_cam, T, 2) ball 2D trajectories from each camera
-    ball_mask: torch.Tensor  # (N_cam, T) ball visibility masks
+    ball_vis: torch.Tensor  # (N_cam, T) ball visibility masks (1=visible)
+    ball_mask: torch.Tensor  # (N_cam, T) sequence padding masks (1=valid token)
     court_kp: torch.Tensor  # (N_cam, T, 20, 2) court keypoints expanded to T
     court_vis: torch.Tensor  # (N_cam, T, 20) court visibility expanded to T
     camera_params: list[dict]  # List of camera parameter dicts
@@ -71,7 +72,8 @@ class BLCSMultiViewBatch(TypedDict):
     """Schema for batched multi-view BLCS dataset samples."""
 
     ball_uv: torch.Tensor  # (B, N_max, T_max, 2)
-    ball_mask: torch.Tensor  # (B, N_max, T_max)
+    ball_vis: torch.Tensor  # (B, N_max, T_max)
+    ball_mask: torch.Tensor  # (B, N_max, T_max) padding mask
     court_kp: torch.Tensor  # (B, N_max, T_max, 20, 2)
     court_vis: torch.Tensor  # (B, N_max, T_max, 20)
     camera_params: list[dict[str, Any]]  # flattened camera params

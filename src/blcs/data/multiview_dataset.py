@@ -283,7 +283,8 @@ class MultiViewBallTrajectoryDataset(Dataset):
 
         return {
             "ball_uv": sample["ball_uv"],  # (N_cam, T, 2)
-            "ball_mask": sample["ball_vis"],  # (N_cam, T)
+            "ball_vis": sample["ball_vis"],  # (N_cam, T)
+            "ball_mask": torch.ones_like(sample["ball_vis"]),  # (N_cam, T)
             "court_kp": sample["court_kp"],  # (N_cam, T, 20, 2)
             "court_vis": sample["court_vis"],  # (N_cam, T, 20)
             "camera_params": sample["camera_params"],
@@ -341,6 +342,7 @@ def collate_multiview_trajectories(
     max_seq_len = max(sample["seq_len"].item() for sample in batch)
 
     ball_uv_batch = []
+    ball_vis_batch = []
     ball_mask_batch = []
     court_kp_batch = []
     court_vis_batch = []
@@ -357,6 +359,7 @@ def collate_multiview_trajectories(
 
         # Input tensors from dataset: (N, T, ...) format
         ball_uv = sample["ball_uv"]  # (N, T, 2)
+        ball_vis = sample["ball_vis"]  # (N, T)
         ball_mask = sample["ball_mask"]  # (N, T)
         court_kp = sample["court_kp"]  # (N, T, 20, 2)
         court_vis = sample["court_vis"]  # (N, T, 20)
@@ -366,6 +369,7 @@ def collate_multiview_trajectories(
         # Pad sequence dimension first
         if pad_seq > 0:
             ball_uv = torch.cat([ball_uv, torch.zeros(n_views, pad_seq, 2)], dim=1)
+            ball_vis = torch.cat([ball_vis, torch.zeros(n_views, pad_seq)], dim=1)
             ball_mask = torch.cat([ball_mask, torch.zeros(n_views, pad_seq)], dim=1)
             court_kp = torch.cat(
                 [court_kp, torch.zeros(n_views, pad_seq, 20, 2)], dim=1
@@ -381,6 +385,9 @@ def collate_multiview_trajectories(
             ball_uv = torch.cat(
                 [ball_uv, torch.zeros(pad_views, max_seq_len, 2)], dim=0
             )
+            ball_vis = torch.cat(
+                [ball_vis, torch.zeros(pad_views, max_seq_len)], dim=0
+            )
             ball_mask = torch.cat(
                 [ball_mask, torch.zeros(pad_views, max_seq_len)], dim=0
             )
@@ -393,6 +400,7 @@ def collate_multiview_trajectories(
 
         # Keep (N, T, ...) format for model input
         ball_uv_batch.append(ball_uv)
+        ball_vis_batch.append(ball_vis)
         ball_mask_batch.append(ball_mask)
         court_kp_batch.append(court_kp)
         court_vis_batch.append(court_vis)
@@ -403,6 +411,7 @@ def collate_multiview_trajectories(
 
     return {
         "ball_uv": torch.stack(ball_uv_batch, dim=0),  # (B, N_max, T_max, 2)
+        "ball_vis": torch.stack(ball_vis_batch, dim=0),  # (B, N_max, T_max)
         "ball_mask": torch.stack(ball_mask_batch, dim=0),  # (B, N_max, T_max)
         "court_kp": torch.stack(court_kp_batch, dim=0),  # (B, N_max, T_max, 20, 2)
         "court_vis": torch.stack(court_vis_batch, dim=0),  # (B, N_max, T_max, 20)
