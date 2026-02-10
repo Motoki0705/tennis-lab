@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, TypedDict, TypeVar
+from typing import TYPE_CHECKING, TypedDict, TypeVar
 
 import torch
 
@@ -48,7 +48,7 @@ class BLCSBatch(TypedDict):
 class BLCSMultiViewSample(TypedDict):
     """Schema for multi-view BLCS dataset sample.
 
-    Used by MultiViewBallTrajectoryDataset.__getitem__(). Contains observations
+    Used by BallTrajectoryDataset.__getitem__() in multiview mode. Contains observations
     from multiple cameras for the same ball trajectory.
 
     Note: court_kp is expanded to match the temporal dimension (T) for the
@@ -57,14 +57,26 @@ class BLCSMultiViewSample(TypedDict):
     """
 
     ball_uv: torch.Tensor  # (N_cam, T, 2) ball 2D trajectories from each camera
-    ball_mask: torch.Tensor  # (N_cam, T) ball visibility masks
+    ball_vis: torch.Tensor  # (N_cam, T) ball visibility masks (1=visible)
+    ball_mask: torch.Tensor  # (N_cam, T) sequence padding masks (1=valid token)
     court_kp: torch.Tensor  # (N_cam, T, 20, 2) court keypoints expanded to T
     court_vis: torch.Tensor  # (N_cam, T, 20) court visibility expanded to T
-    camera_params: list[dict]  # List of camera parameter dicts
-    num_views: torch.Tensor  # scalar, number of views in this sample
     position_3d: torch.Tensor  # (T, 3) ground truth 3D trajectory (shared)
     velocity_3d: torch.Tensor  # (T, 3) 3D velocity vectors (shared)
     seq_len: torch.Tensor  # scalar, actual sequence length
+
+
+class BLCSMultiViewBatch(TypedDict):
+    """Schema for batched multi-view BLCS dataset samples."""
+
+    ball_uv: torch.Tensor  # (B, N_max, T_max, 2)
+    ball_vis: torch.Tensor  # (B, N_max, T_max)
+    ball_mask: torch.Tensor  # (B, N_max, T_max) padding mask
+    court_kp: torch.Tensor  # (B, N_max, T_max, 20, 2)
+    court_vis: torch.Tensor  # (B, N_max, T_max, 20)
+    position_3d: torch.Tensor  # (B, T_max, 3)
+    velocity_3d: torch.Tensor  # (B, T_max, 3)
+    seq_len: torch.Tensor  # (B,)
 
 
 @dataclass(frozen=True)

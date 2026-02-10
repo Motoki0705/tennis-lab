@@ -1,292 +1,205 @@
-"""Multi-view BLCS model implementation with alternating attention architecture.
-
-This module provides a multi-view ball trajectory estimation model using
-separate sequential and camera attention mechanisms, similar to the PLCS
-multiview model architecture.
-
-Architecture:
-    1. BallCourtEncoder encodes each (frame, camera) pair into tokens
-    2. Alternating Sequential Attention and Camera Attention blocks
-    3. Aggregate camera tokens and project to head input dimension
-    4. Trajectory3DHead produces final 3D position outputs
-"""
+"""Query-based multi-view BLCS model (2-stage)."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 import torch
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
-from src.blcs.models.components.encoders import BallCourtEncoder
 from src.blcs.models.components.heads import Trajectory3DHead, VelocityHead
+from src.common.models import (
+    CrossAttnBlock,
+    CrossAttnBlockConfig,
+    RMSNorm,
+    TransformerBlock,
+    TransformerBlockConfig,
+    YaRNConfig,
+    precompute_freqs_cis,
+)
+from src.common.models.embeddings import (
+    BallUVEmbedding,
+    CourtKPUVEmbedding,
+    InvisibleTokenEmbedding,
+)
 from src.utils.geometry import NUM_COURT_KP
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class SequentialAttentionBlock(nn.Module):
-    """Self-attention over the temporal/sequential dimension.
-
-    For each camera, applies attention across time steps.
-    Input shape: (B, N, T, D) - processes attention over T for each camera N.
-    """
-
-    def __init__(
-        self,
-        hidden_dim: int = 256,
-        num_heads: int = 8,
-        dropout: float = 0.1,
-    ) -> None:
-        """Initialize sequential attention block.
-
-        Args:
-            hidden_dim: Hidden dimension.
-            num_heads: Number of attention heads.
-            dropout: Dropout probability.
-
-        """
-        super().__init__()
-        self.attn = nn.MultiheadAttention(
-            embed_dim=hidden_dim,
-            num_heads=num_heads,
-            dropout=dropout,
-            batch_first=True,
-        )
-        self.norm1 = nn.LayerNorm(hidden_dim)
-        self.norm2 = nn.LayerNorm(hidden_dim)
-        self.ffn = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim * 4),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim * 4, hidden_dim),
-            nn.Dropout(dropout),
-        )
-
-    def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
-        """Apply sequential attention.
-
-        Args:
-            x: Input tensor, shape (B, N, T, D).
-            mask: Optional mask, shape (B, N, T), True = valid.
-
-        Returns:
-            Tensor: Output tensor, shape (B, N, T, D).
-
-        """
-        batch_size, n_cameras, seq_len, hidden_dim = x.shape
-
-        # Reshape to (B*N, T, D) for attention over sequence
-        x_reshaped = x.reshape(
-            batch_size * n_cameras, seq_len, hidden_dim
-        )
-
-        # Build attention mask if provided
-        key_padding_mask = None
-        fully_masked: Tensor | None = None
-        if mask is not None:
-            # mask: (B, N, T) -> (B*N, T)
-            key_padding_mask = ~mask.reshape(
-                batch_size * n_cameras, seq_len
-            )
-            fully_masked = key_padding_mask.all(dim=1)
-            if fully_masked.any():
-                key_padding_mask = key_padding_mask.clone()
-                key_padding_mask[fully_masked] = False
-                x_reshaped = x_reshaped.clone()
-                x_reshaped[fully_masked] = 0.0
-
-        # Self-attention
-        x_norm = self.norm1(x_reshaped)
-        attn_out, _ = self.attn(
-            x_norm, x_norm, x_norm, key_padding_mask=key_padding_mask
-        )
-        x_reshaped = x_reshaped + attn_out
-
-        # FFN
-        x_reshaped = x_reshaped + self.ffn(self.norm2(x_reshaped))
-
-        # Reshape back to (B, N, T, D)
-        out = x_reshaped.reshape(batch_size, n_cameras, seq_len, hidden_dim)
-        if mask is not None:
-            out = out * mask.unsqueeze(-1).to(dtype=out.dtype)
-        return out
-
-
-class CameraAttentionBlock(nn.Module):
-    """Self-attention over the camera dimension.
-
-    For each time step, applies attention across cameras.
-    Input shape: (B, N, T, D) - processes attention over N for each time T.
-    """
-
-    def __init__(
-        self,
-        hidden_dim: int = 256,
-        num_heads: int = 8,
-        dropout: float = 0.1,
-    ) -> None:
-        """Initialize camera attention block.
-
-        Args:
-            hidden_dim: Hidden dimension.
-            num_heads: Number of attention heads.
-            dropout: Dropout probability.
-
-        """
-        super().__init__()
-        self.attn = nn.MultiheadAttention(
-            embed_dim=hidden_dim,
-            num_heads=num_heads,
-            dropout=dropout,
-            batch_first=True,
-        )
-        self.norm1 = nn.LayerNorm(hidden_dim)
-        self.norm2 = nn.LayerNorm(hidden_dim)
-        self.ffn = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim * 4),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim * 4, hidden_dim),
-            nn.Dropout(dropout),
-        )
-
-    def forward(self, x: Tensor, mask: Tensor | None = None) -> Tensor:
-        """Apply camera attention.
-
-        Args:
-            x: Input tensor, shape (B, N, T, D).
-            mask: Optional mask, shape (B, N, T), True = valid.
-
-        Returns:
-            Tensor: Output tensor, shape (B, N, T, D).
-
-        """
-        batch_size, n_cameras, seq_len, hidden_dim = x.shape
-
-        # Reshape to (B*T, N, D) for attention over cameras
-        x_reshaped = x.permute(0, 2, 1, 3).reshape(batch_size * seq_len, n_cameras, hidden_dim)
-
-        # Build attention mask if provided
-        key_padding_mask = None
-        fully_masked: Tensor | None = None
-        if mask is not None:
-            # mask: (B, N, T) -> (B*T, N)
-            key_padding_mask = ~mask.permute(0, 2, 1).reshape(batch_size * seq_len, n_cameras)
-            fully_masked = key_padding_mask.all(dim=1)
-            if fully_masked.any():
-                key_padding_mask = key_padding_mask.clone()
-                key_padding_mask[fully_masked] = False
-                x_reshaped = x_reshaped.clone()
-                x_reshaped[fully_masked] = 0.0
-
-        # Self-attention
-        x_norm = self.norm1(x_reshaped)
-        attn_out, _ = self.attn(
-            x_norm, x_norm, x_norm, key_padding_mask=key_padding_mask
-        )
-        x_reshaped = x_reshaped + attn_out
-
-        # FFN
-        x_reshaped = x_reshaped + self.ffn(self.norm2(x_reshaped))
-
-        # Reshape back to (B, N, T, D)
-        out = x_reshaped.reshape(batch_size, seq_len, n_cameras, hidden_dim).permute(0, 2, 1, 3)
-        if mask is not None:
-            out = out * mask.unsqueeze(-1).to(dtype=out.dtype)
-        return out
-
-
 class BLCSMultiViewModel(nn.Module):
-    """Multi-view BLCS model with alternating attention architecture.
+    """Query-based multi-view BLCS model (2-stage).
 
-    This model takes ball 2D trajectories and court keypoints from multiple
-    camera views and time steps, processes them with alternating Sequential
-    and Camera attention blocks, and predicts the ball's 3D trajectory.
+    Stage 1:
+    - Interleaved Ball->Court cross-attention, camera-wise temporal self-attention,
+      and time-wise camera self-attention.
 
-    Input:
-        - ball_uv: Ball 2D positions, shape (B, T, N, 2)
-        - court_kp: Court 2D keypoints, shape (B, T, N, 20, 2)
-        - ball_mask: Ball visibility masks, shape (B, T, N)
-        - court_vis: Court visibility masks, shape (B, T, N, 20)
-        - num_views: Number of valid views per sample, shape (B,)
-        - seq_len: Sequence lengths, shape (B,)
-
-    Output:
-        - position: Normalized (x, y, z) trajectory, shape (B, T, 3)
-        - velocity: Velocities (optional), shape (B, T, 3)
+    Stage 2:
+    - Shared readout query stream attends to per-frame all-camera ball states,
+      then temporal self-attend.
     """
 
     def __init__(
         self,
         hidden_dim: int = 256,
-        num_layers: int = 4,
         num_heads: int = 8,
+        ffn_dim: int | None = None,
         dropout: float = 0.1,
-        max_seq_len: int = 120,
-        max_views: int = 8,
+        rope_dim: int | None = None,
+        rope_theta: float = 10000.0,
+        yarn: YaRNConfig | None = None,
+        num_stage1_blocks: int = 4,
+        num_stage2_layers: int = 2,
         predict_velocity: bool = False,
-        encoder_layers: int = 2,
+        max_seq_len: int = 120,
+        max_num_cameras: int = 8,
+        num_court_tokens: int = NUM_COURT_KP,
+        invisible_init_std: float = 0.02,
+        query_init_std: float = 0.02,
     ) -> None:
-        """Initialize the multi-view BLCS model.
-
-        Args:
-            hidden_dim: Hidden dimension for all components.
-            num_layers: Number of alternating attention layer pairs.
-            num_heads: Number of attention heads.
-            dropout: Dropout probability.
-            max_seq_len: Maximum sequence length.
-            max_views: Maximum number of camera views.
-            predict_velocity: Also predict velocities.
-            encoder_layers: Number of MLP layers in BallCourtEncoder.
-
-        """
         super().__init__()
+        if hidden_dim % num_heads != 0:
+            raise ValueError(
+                f"hidden_dim={hidden_dim} must be divisible by num_heads={num_heads}"
+            )
+        if max_seq_len <= 0:
+            raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
+        if max_num_cameras <= 0:
+            raise ValueError(
+                f"max_num_cameras must be positive, got {max_num_cameras}"
+            )
+        if num_stage1_blocks < 0:
+            raise ValueError(
+                f"num_stage1_blocks must be non-negative, got {num_stage1_blocks}"
+            )
+        if num_stage2_layers < 0:
+            raise ValueError(
+                f"num_stage2_layers must be non-negative, got {num_stage2_layers}"
+            )
 
-        self.hidden_dim = hidden_dim
-        self.max_seq_len = max_seq_len
-        self.max_views = max_views
-        self.predict_velocity = predict_velocity
-        self.num_court_kp = NUM_COURT_KP
+        self.hidden_dim = int(hidden_dim)
+        self.max_seq_len = int(max_seq_len)
+        self.max_num_cameras = int(max_num_cameras)
+        self.predict_velocity = bool(predict_velocity)
+        self.num_court_tokens = int(num_court_tokens)
 
-        # BallCourtEncoder for generating per-(frame, camera) tokens
-        self.ball_court_encoder = BallCourtEncoder(
-            ball_input_dim=2,
-            court_kp_dim=NUM_COURT_KP * 2,
-            hidden_dim=hidden_dim,
-            num_layers=encoder_layers,
+        head_dim = hidden_dim // num_heads
+        rope_dim = head_dim if rope_dim is None else int(rope_dim)
+        if rope_dim % 2 != 0:
+            raise ValueError(f"rope_dim must be even, got {rope_dim}")
+        if rope_dim > head_dim:
+            raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
+
+        if ffn_dim is None:
+            ffn_dim = int((8 * hidden_dim) / 3)
+            ffn_dim = (ffn_dim + 63) // 64 * 64
+
+        self.invisible_token = InvisibleTokenEmbedding(
+            dim=hidden_dim,
+            init_std=invisible_init_std,
+        )
+        self.court_embed = CourtKPUVEmbedding(
+            dim=hidden_dim,
             dropout=dropout,
+            invisible_token=self.invisible_token,
+        )
+        self.ball_embed = BallUVEmbedding(
+            dim=hidden_dim,
+            dropout=dropout,
+            invisible_token=self.invisible_token,
         )
 
-        # Positional embeddings
-        self.time_embed = nn.Embedding(max_seq_len, hidden_dim)
-        self.camera_embed = nn.Embedding(max_views, hidden_dim)
+        self.court_id_embed = nn.Embedding(self.num_court_tokens, hidden_dim)
+        self.cam_id_embed = nn.Embedding(self.max_num_cameras, hidden_dim)
 
-        # Alternating Sequential and Camera Attention blocks
-        self.seq_attn_blocks = nn.ModuleList(
+        self.query_base = nn.Parameter(torch.randn(1, 1, hidden_dim) * query_init_std)
+
+        self.ball_to_court_cross_layers = nn.ModuleList(
             [
-                SequentialAttentionBlock(hidden_dim, num_heads, dropout)
-                for _ in range(num_layers)
+                CrossAttnBlock(
+                    CrossAttnBlockConfig(
+                        dim=hidden_dim,
+                        n_heads=num_heads,
+                        mlp_inter_dim=ffn_dim,
+                        head_dim=head_dim,
+                        rope_dim=rope_dim,
+                        attn_dropout=dropout,
+                    )
+                )
+                for _ in range(num_stage1_blocks)
             ]
         )
-        self.cam_attn_blocks = nn.ModuleList(
+        self.cam_wise_ball_temporal_layers = nn.ModuleList(
             [
-                CameraAttentionBlock(hidden_dim, num_heads, dropout)
-                for _ in range(num_layers)
+                TransformerBlock(
+                    TransformerBlockConfig(
+                        dim=hidden_dim,
+                        n_heads=num_heads,
+                        mlp_inter_dim=ffn_dim,
+                        head_dim=head_dim,
+                        rope_dim=rope_dim,
+                        attn_dropout=dropout,
+                        rope_base=rope_theta,
+                        yarn=yarn,
+                    )
+                )
+                for _ in range(num_stage1_blocks)
+            ]
+        )
+        self.time_wise_ball_camera_layers = nn.ModuleList(
+            [
+                TransformerBlock(
+                    TransformerBlockConfig(
+                        dim=hidden_dim,
+                        n_heads=num_heads,
+                        mlp_inter_dim=ffn_dim,
+                        head_dim=head_dim,
+                        rope_dim=rope_dim,
+                        attn_dropout=dropout,
+                        rope_base=rope_theta,
+                        yarn=yarn,
+                    )
+                )
+                for _ in range(num_stage1_blocks)
             ]
         )
 
-        # Aggregation MLP: concat camera tokens -> project to head input dim
-        self.aggregate_mlp = nn.Sequential(
-            nn.Linear(hidden_dim * max_views, hidden_dim),
-            nn.LayerNorm(hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
+        self.query_to_ball_cross_layers = nn.ModuleList(
+            [
+                CrossAttnBlock(
+                    CrossAttnBlockConfig(
+                        dim=hidden_dim,
+                        n_heads=num_heads,
+                        mlp_inter_dim=ffn_dim,
+                        head_dim=head_dim,
+                        rope_dim=rope_dim,
+                        attn_dropout=dropout,
+                    )
+                )
+                for _ in range(num_stage2_layers)
+            ]
+        )
+        self.query_temporal_layers = nn.ModuleList(
+            [
+                TransformerBlock(
+                    TransformerBlockConfig(
+                        dim=hidden_dim,
+                        n_heads=num_heads,
+                        mlp_inter_dim=ffn_dim,
+                        head_dim=head_dim,
+                        rope_dim=rope_dim,
+                        attn_dropout=dropout,
+                        rope_base=rope_theta,
+                        yarn=yarn,
+                    )
+                )
+                for _ in range(num_stage2_layers)
+            ]
         )
 
-        # Output heads
+        self.final_norm = RMSNorm(hidden_dim)
+
         self.position_head = Trajectory3DHead(
             input_dim=hidden_dim,
             hidden_dim=hidden_dim // 2,
@@ -294,8 +207,8 @@ class BLCSMultiViewModel(nn.Module):
             num_layers=2,
             dropout=dropout,
         )
-
-        if predict_velocity:
+        self.velocity_head = None
+        if self.predict_velocity:
             self.velocity_head = VelocityHead(
                 input_dim=hidden_dim,
                 hidden_dim=hidden_dim // 2,
@@ -303,137 +216,255 @@ class BLCSMultiViewModel(nn.Module):
                 num_layers=2,
                 dropout=dropout,
             )
-        else:
-            self.velocity_head = None
+
+        freqs_time_cis = precompute_freqs_cis(
+            dim=rope_dim,
+            seqlen=self.max_seq_len,
+            base=rope_theta,
+            yarn=yarn,
+            device=None,
+        )
+        self.register_buffer("freqs_time_cis", freqs_time_cis, persistent=False)
 
     @classmethod
     def from_config(cls, config: DictConfig) -> BLCSMultiViewModel:
-        """Create model from configuration.
-
-        Args:
-            config: Configuration dictionary.
-
-        Returns:
-            BLCSMultiViewModel: Initialized model.
-
-        """
+        """Create model from Hydra/OmegaConf config."""
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
+
+        yarn_cfg = model_cfg.get("yarn", None)
+        yarn: YaRNConfig | None = None
+        if yarn_cfg is not None:
+            yarn_cfg = dict(yarn_cfg)
+            if yarn_cfg.get("original_seq_len") is not None:
+                yarn = YaRNConfig(**yarn_cfg)
+
+        num_stage1_blocks = model_cfg.get("num_stage1_blocks", None)
+        if num_stage1_blocks is None:
+            num_stage1_blocks = model_cfg.get(
+                "num_ball_layers",
+                model_cfg.get(
+                    "num_ball_temporal_layers",
+                    model_cfg.get("num_ball2court_layers", model_cfg.get("num_layers", 4)),
+                ),
+            )
+
         return cls(
-            hidden_dim=model_cfg.get("hidden_dim", 256),
-            num_layers=model_cfg.get("num_layers", 4),
-            num_heads=model_cfg.get("num_heads", 8),
-            dropout=model_cfg.get("dropout", 0.1),
-            max_seq_len=model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120)),
-            max_views=model_cfg.get("max_views", 8),
-            predict_velocity=model_cfg.get("predict_velocity", False),
-            encoder_layers=model_cfg.get("encoder_layers", 2),
+            hidden_dim=int(model_cfg.get("hidden_dim", 256)),
+            num_heads=int(model_cfg.get("num_heads", 8)),
+            ffn_dim=model_cfg.get("ffn_dim", None),
+            dropout=float(model_cfg.get("dropout", 0.1)),
+            rope_dim=model_cfg.get("rope_dim", None),
+            rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
+            yarn=yarn,
+            num_stage1_blocks=int(num_stage1_blocks),
+            num_stage2_layers=int(model_cfg.get("num_stage2_layers", model_cfg.get("num_query2ball_layers", 2))),
+            predict_velocity=bool(model_cfg.get("predict_velocity", False)),
+            max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
+            max_num_cameras=int(model_cfg.get("max_num_cameras", model_cfg.get("max_views", 8))),
+            num_court_tokens=int(model_cfg.get("num_court_tokens", NUM_COURT_KP)),
+            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
+            query_init_std=float(model_cfg.get("query_init_std", 0.02)),
         )
+
+    @staticmethod
+    def _build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
+        """Build self-attention mask from valid mask.
+
+        Args:
+            valid: Boolean valid mask, shape (B*, S).
+
+        Returns:
+            tuple:
+              - attn_mask: Attention keep mask, shape (B*, S, S).
+              - valid_fixed: Potentially fixed valid mask with at least one valid token.
+        """
+        valid_fixed = valid.bool()
+        fully_masked = ~valid_fixed.any(dim=1)
+        if fully_masked.any():
+            valid_fixed = valid_fixed.clone()
+            valid_fixed[fully_masked, 0] = True
+        attn_mask = valid_fixed[:, None, :].expand(valid_fixed.shape[0], valid_fixed.shape[1], valid_fixed.shape[1])
+        return attn_mask, valid_fixed
 
     def forward(
         self,
         ball_uv: Tensor,
         court_kp: Tensor,
+        ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
-        num_views: Tensor | None = None,
-        seq_len: Tensor | None = None,
-        camera_params: list[list[dict]] | None = None,
     ) -> dict[str, Tensor]:
         """Forward pass.
 
         Args:
             ball_uv: Ball 2D positions, shape (B, N, T, 2).
-            court_kp: Court keypoints, shape (B, N, T, 20, 2).
-            ball_mask: Ball visibility mask, shape (B, N, T). Optional.
-            court_vis: Court visibility mask, shape (B, N, T, 20). Optional.
-            num_views: Number of valid views, shape (B,). Optional.
-            seq_len: Sequence lengths, shape (B,). Optional.
-            camera_params: Camera parameters per view. Optional (unused).
+            court_kp: Court keypoints, shape (B, N, T, 20, 2) or (B, N, 20, 2).
+            ball_vis: Ball visibility mask, shape (B, N, T). 1=visible.
+            ball_mask: Ball validity mask, shape (B, N, T).
+            court_vis: Court visibility mask, shape (B, N, T, 20) or (B, N, 20). Optional.
 
         Returns:
             dict: Dictionary with 'position' (B, T, 3) and optionally 'velocity'.
-
         """
-        batch_size, n_cameras, seq_length = ball_uv.shape[:3]
-        device = ball_uv.device
+        if ball_uv.dim() != 4:
+            raise ValueError(f"ball_uv must have shape (B, N, T, 2), got {tuple(ball_uv.shape)}")
 
-        # Flatten keypoints and ball for encoder: (B, N, T, ...) -> (B*N*T, ...)
-        ball_flat = ball_uv.reshape(batch_size * n_cameras * seq_length, 2)
-        court_flat = court_kp.flatten(start_dim=3).reshape(
-            batch_size * n_cameras * seq_length, -1
-        )
-
-        # Encode each (frame, camera) pair
-        tokens_flat = self.ball_court_encoder(ball_flat, court_flat)  # (B*N*T, D)
-        tokens = tokens_flat.reshape(
-            batch_size, n_cameras, seq_length, self.hidden_dim
-        )  # (B, N, T, D)
-
-        # Add positional embeddings
-        time_ids = torch.arange(seq_length, device=device)
-        camera_ids = torch.arange(n_cameras, device=device)
-        tokens = tokens + self.time_embed(time_ids).view(1, 1, seq_length, -1)
-        tokens = tokens + self.camera_embed(camera_ids).view(1, n_cameras, 1, -1)
-
-        # Create view mask if num_views provided: (B, N, T)
-        view_mask: Tensor | None = None
-        if num_views is not None:
-            camera_idx = torch.arange(n_cameras, device=device).view(1, n_cameras, 1)
-            view_mask = camera_idx < num_views.view(batch_size, 1, 1)
-            view_mask = view_mask.expand(batch_size, n_cameras, seq_length)
-
-        # Combine with ball visibility mask
-        token_mask = view_mask
-        if ball_mask is not None:
-            # ball_mask: (B, N, T)
-            frame_camera_valid = ball_mask > 0
-            if token_mask is not None:
-                token_mask = token_mask & frame_camera_valid
-            else:
-                token_mask = frame_camera_valid
-
-        # Apply sequence length mask
-        if seq_len is not None:
-            time_idx = torch.arange(seq_length, device=device).view(1, 1, seq_length)
-            time_mask = time_idx < seq_len.view(batch_size, 1, 1)
-            time_mask = time_mask.expand(batch_size, n_cameras, seq_length)
-            token_mask = token_mask & time_mask if token_mask is not None else time_mask
-
-        # Apply alternating Sequential and Camera Attention
-        for seq_attn, cam_attn in zip(
-            self.seq_attn_blocks, self.cam_attn_blocks, strict=True
-        ):
-            tokens = seq_attn(tokens, token_mask)
-            tokens = cam_attn(tokens, token_mask)
-
-        # Aggregate camera tokens: (B, N, T, D) -> (B, T, N*D)
-        # First permute to (B, T, N, D)
-        tokens = tokens.permute(0, 2, 1, 3)  # (B, N, T, D) -> (B, T, N, D)
-        
-        # Pad to max_views if necessary
-        if n_cameras < self.max_views:
-            pad_size = self.max_views - n_cameras
-            padding = torch.zeros(
-                batch_size, seq_length, pad_size, self.hidden_dim, device=device
+        batch_size, n_cams, seq_len_in, _ = ball_uv.shape
+        if seq_len_in > self.max_seq_len:
+            raise ValueError(
+                f"seq_len={seq_len_in} exceeds max_seq_len={self.max_seq_len}. "
+                "Increase model.max_seq_len."
             )
-            tokens = torch.cat([tokens, padding], dim=2)
+        if n_cams > self.max_num_cameras:
+            raise ValueError(
+                f"n_cams={n_cams} exceeds max_num_cameras={self.max_num_cameras}."
+            )
 
-        tokens_cat = tokens.reshape(
-            batch_size, seq_length, self.max_views * self.hidden_dim
+        if court_kp.dim() == 4:
+            court_kp = court_kp.unsqueeze(2).expand(-1, -1, seq_len_in, -1, -1)
+        if court_kp.dim() != 5:
+            raise ValueError(
+                "court_kp must have shape (B, N, T, 20, 2) or (B, N, 20, 2), "
+                f"got {tuple(court_kp.shape)}"
+            )
+
+        if court_vis is not None:
+            if court_vis.dim() == 3:
+                court_vis = court_vis.unsqueeze(2).expand(-1, -1, seq_len_in, -1)
+            if court_vis.dim() != 4:
+                raise ValueError(
+                    "court_vis must have shape (B, N, T, 20) or (B, N, 20), "
+                    f"got {tuple(court_vis.shape)}"
+                )
+        if ball_vis is None:
+            raise ValueError("ball_vis is required for BLCSMultiViewModel forward.")
+        if ball_mask is None:
+            raise ValueError("ball_mask is required for BLCSMultiViewModel forward.")
+        if ball_vis.shape != (batch_size, n_cams, seq_len_in):
+            raise ValueError(
+                f"ball_vis must have shape {(batch_size, n_cams, seq_len_in)}, "
+                f"got {tuple(ball_vis.shape)}"
+            )
+        if ball_mask.shape != (batch_size, n_cams, seq_len_in):
+            raise ValueError(
+                f"ball_mask must have shape {(batch_size, n_cams, seq_len_in)}, "
+                f"got {tuple(ball_mask.shape)}"
+            )
+
+        ball_uv_bn = ball_uv.reshape(batch_size * n_cams, seq_len_in, 2)
+        ball_vis_bn = ball_vis.reshape(batch_size * n_cams, seq_len_in)
+        ball_tok = self.ball_embed(ball_uv_bn, ball_vis_bn).reshape(
+            batch_size, n_cams, seq_len_in, self.hidden_dim
         )
 
-        # Project to head input dimension
-        aggregated = self.aggregate_mlp(tokens_cat)  # (B, T, D)
+        court_kp_flat = court_kp.reshape(batch_size * n_cams * seq_len_in, self.num_court_tokens, 2)
+        court_vis_flat = (
+            court_vis.reshape(batch_size * n_cams * seq_len_in, self.num_court_tokens)
+            if court_vis is not None
+            else None
+        )
+        court_tok = self.court_embed(court_kp_flat, court_vis_flat).reshape(
+            batch_size, n_cams, seq_len_in, self.num_court_tokens, self.hidden_dim
+        )
 
-        # Predict 3D positions
-        position = self.position_head(aggregated)  # (B, T, 3)
+        device = ball_uv.device
+        cam_ids = torch.arange(n_cams, device=device, dtype=torch.long)
+        cam_emb = self.cam_id_embed(cam_ids).view(1, n_cams, 1, self.hidden_dim)
 
-        outputs = {"position": position}
+        court_ids = torch.arange(self.num_court_tokens, device=device, dtype=torch.long)
+        court_id_emb = self.court_id_embed(court_ids).view(1, 1, 1, self.num_court_tokens, self.hidden_dim)
 
-        # Optionally predict velocities
+        # Apply camera/token identity before Stage 1.
+        ball_tok = ball_tok + cam_emb
+        court_tok = court_tok + court_id_emb + cam_emb.unsqueeze(3)
+
+        valid = ball_mask > 0
+
+        freqs_time = self.freqs_time_cis[:seq_len_in]
+        if freqs_time.device != device:
+            freqs_time = freqs_time.to(device)
+
+        # Stage 1: cross (per camera/frame) -> temporal self (per camera) -> camera self (per frame)
+        ball_x = ball_tok
+        for cross_layer, temporal_layer, camera_layer in zip(
+            self.ball_to_court_cross_layers,
+            self.cam_wise_ball_temporal_layers,
+            self.time_wise_ball_camera_layers,
+            strict=True,
+        ):
+            q = ball_x.reshape(batch_size * n_cams * seq_len_in, 1, self.hidden_dim)
+            kv = court_tok.reshape(
+                batch_size * n_cams * seq_len_in,
+                self.num_court_tokens,
+                self.hidden_dim,
+            )
+            court_valid = torch.ones(
+                batch_size * n_cams * seq_len_in,
+                self.num_court_tokens,
+                dtype=torch.bool,
+                device=device,
+            )
+            q = cross_layer(q, kv, key_valid=court_valid)
+            ball_x = q.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim)
+
+            temporal_x = ball_x.reshape(batch_size * n_cams, seq_len_in, self.hidden_dim)
+            temporal_valid = valid.reshape(batch_size * n_cams, seq_len_in)
+            temporal_mask, temporal_valid_fixed = self._build_self_attn_mask(temporal_valid)
+            temporal_x = temporal_x * temporal_valid_fixed.unsqueeze(-1).to(dtype=temporal_x.dtype)
+            temporal_x, _ = temporal_layer(
+                temporal_x,
+                residual=None,
+                start_pos=0,
+                freqs_cis=freqs_time,
+                attn_mask=temporal_mask,
+                is_causal=False,
+            )
+            ball_x = temporal_x.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim)
+
+            camera_x = ball_x.permute(0, 2, 1, 3).reshape(batch_size * seq_len_in, n_cams, self.hidden_dim)
+            camera_valid = valid.permute(0, 2, 1).reshape(batch_size * seq_len_in, n_cams)
+            camera_mask, camera_valid_fixed = self._build_self_attn_mask(camera_valid)
+            camera_x = camera_x * camera_valid_fixed.unsqueeze(-1).to(dtype=camera_x.dtype)
+            camera_x, _ = camera_layer(
+                camera_x,
+                residual=None,
+                start_pos=0,
+                freqs_cis=None,
+                attn_mask=camera_mask,
+                is_causal=False,
+            )
+            ball_x = camera_x.reshape(batch_size, seq_len_in, n_cams, self.hidden_dim).permute(0, 2, 1, 3)
+
+        # Stage 2: query_t -> ball_all_cam_t cross-attn, then temporal self-attn on query
+        query_x = self.query_base.expand(batch_size, seq_len_in, -1)
+        frame_valid = valid.any(dim=1)
+        query_mask, query_valid_fixed = self._build_self_attn_mask(frame_valid)
+
+        for cross_layer, temporal_layer in zip(
+            self.query_to_ball_cross_layers,
+            self.query_temporal_layers,
+            strict=True,
+        ):
+            query_bt = query_x.reshape(batch_size * seq_len_in, 1, self.hidden_dim)
+            ball_bt = ball_x.permute(0, 2, 1, 3).reshape(batch_size * seq_len_in, n_cams, self.hidden_dim)
+            key_valid = valid.permute(0, 2, 1).reshape(batch_size * seq_len_in, n_cams)
+            query_bt = cross_layer(query_bt, ball_bt, key_valid=key_valid)
+            query_x = query_bt.reshape(batch_size, seq_len_in, self.hidden_dim)
+
+            query_x = query_x * query_valid_fixed.unsqueeze(-1).to(dtype=query_x.dtype)
+            query_x, _ = temporal_layer(
+                query_x,
+                residual=None,
+                start_pos=0,
+                freqs_cis=freqs_time,
+                attn_mask=query_mask,
+                is_causal=False,
+            )
+
+        query_x = self.final_norm(query_x)
+
+        out: dict[str, Tensor] = {"position": self.position_head(query_x)}
         if self.predict_velocity and self.velocity_head is not None:
-            velocity = self.velocity_head(aggregated)  # (B, T, 3)
-            outputs["velocity"] = velocity
-
-        return outputs
+            out["velocity"] = self.velocity_head(query_x)
+        return out

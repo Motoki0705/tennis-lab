@@ -1,23 +1,26 @@
-"""Predictor class for BLCS inference."""
+"""Unified predictor class for BLCS inference."""
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Self
 
 import torch
-from torch import Tensor
+from torch import Tensor, nn
 
 from src.base.inference.predictor import BasePredictor
-from src.blcs.models.blcs_model import BLCSModel
 from src.blcs.training.lightning_module import BLCSLightningModule
 from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
 
 class BLCSPredictor(BasePredictor):
-    """BLCS model inference predictor.
+    """Unified BLCS model inference predictor.
 
-    Predicts 3D ball trajectory from 2D ball trajectory and court keypoints.
+    Supports:
+    - `blcs` (single-view)
+    - `blcs_query` (single-view query-based)
+    - `blcs_multiview` (multi-view)
 
     Attributes:
         model: The BLCS model.
@@ -32,7 +35,7 @@ class BLCSPredictor(BasePredictor):
 
     def __init__(
         self,
-        model: BLCSModel,
+        model: nn.Module,
         device: torch.device,
         norm_scale_xyz: tuple[float, float, float] = COURT_COORD_SCALE_XYZ,
     ) -> None:
@@ -53,7 +56,7 @@ class BLCSPredictor(BasePredictor):
     @classmethod
     def load_from_checkpoint(
         cls,
-        checkpoint_path: str | Path,
+        checkpoint_path: str | Path | Iterable[str | Path],
         device: str | torch.device = "cpu",
         **kwargs: Any,
     ) -> Self:
@@ -62,7 +65,7 @@ class BLCSPredictor(BasePredictor):
         Args:
             checkpoint_path: Path to checkpoint file (.ckpt).
             device: Inference device.
-            **kwargs: Unused (for compatibility).
+            **kwargs: Forwarded to `BLCSLightningModule.load_from_checkpoint`.
 
         Returns:
             Initialized BLCSPredictor instance.
@@ -71,19 +74,23 @@ class BLCSPredictor(BasePredictor):
             FileNotFoundError: If checkpoint file does not exist.
 
         """
-        checkpoint_path = Path(checkpoint_path)
-        if not checkpoint_path.exists():
-            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
-
-        device = torch.device(device)
+        checkpoints = cls._ensure_checkpoint(checkpoint_path)
+        if len(checkpoints) != 1:
+            raise ValueError(
+                "BLCSPredictor expects a single checkpoint, "
+                f"got {len(checkpoints)} checkpoints."
+            )
+        checkpoint = checkpoints[0]
+        device = cls._resolve_device(device)
         lightning_module = BLCSLightningModule.load_from_checkpoint(
-            checkpoint_path,
+            checkpoint_path=checkpoint,
             map_location=device,
+            strict=bool(kwargs.pop("strict", False)),
+            weights_only=bool(kwargs.pop("weights_only", False)),
+            **kwargs,
         )
-
         return cls(model=lightning_module.model, device=device)
 
-    @torch.no_grad()
     def predict(
         self,
         ball_uv: Tensor,
@@ -96,11 +103,11 @@ class BLCSPredictor(BasePredictor):
         """Predict 3D ball trajectory.
 
         Args:
-            ball_uv: Ball 2D trajectory. Shape (B, T, 2) or (T, 2).
-            court_kp: Court 2D keypoints. Shape (B, 20, 2) or (20, 2).
-            ball_vis: Ball visibility flags. Shape (B, T) or (T,).
-            ball_mask: Ball padding mask. Shape (B, T) or (T,).
-            court_vis: Court keypoint visibility. Shape (B, 20) or (20,).
+            ball_uv: Ball 2D trajectory tensor accepted by the loaded model.
+            court_kp: Court keypoint tensor accepted by the loaded model.
+            ball_vis: Optional ball visibility tensor.
+            ball_mask: Optional ball validity/padding mask tensor.
+            court_vis: Optional court keypoint visibility tensor.
             denormalize: If True, convert positions to meters.
 
         Returns:
@@ -111,49 +118,27 @@ class BLCSPredictor(BasePredictor):
                            model outputs it, else in normalized units
 
         """
-        if ball_vis is None and ball_mask is not None:
-            ball_vis, ball_mask = ball_mask, None
-
-        # Add batch dimension if needed
-        if ball_uv.dim() == 2:
-            ball_uv = ball_uv.unsqueeze(0)
-        if court_kp.dim() == 2:
-            court_kp = court_kp.unsqueeze(0)
-        if ball_vis is not None and ball_vis.dim() == 1:
-            ball_vis = ball_vis.unsqueeze(0)
-        if ball_mask is not None and ball_mask.dim() == 1:
-            ball_mask = ball_mask.unsqueeze(0)
-        if court_vis is not None and court_vis.dim() == 1:
-            court_vis = court_vis.unsqueeze(0)
-
-        # Move to device
         ball_uv = ball_uv.to(self.device)
         court_kp = court_kp.to(self.device)
-        if ball_vis is not None:
-            ball_vis = ball_vis.to(self.device)
-        if ball_mask is not None:
-            ball_mask = ball_mask.to(self.device)
-        if court_vis is not None:
-            court_vis = court_vis.to(self.device)
+        ball_vis = ball_vis.to(self.device) if ball_vis is not None else None
+        ball_mask = ball_mask.to(self.device) if ball_mask is not None else None
+        court_vis = court_vis.to(self.device) if court_vis is not None else None
 
-        # Forward pass
-        outputs = self.model.predict(
-            ball_uv,
-            court_kp,
-            ball_vis=ball_vis,
-            ball_mask=ball_mask,
-            court_vis=court_vis,
-        )
+        with torch.no_grad():
+            outputs = self.model(
+                ball_uv=ball_uv,
+                court_kp=court_kp,
+                ball_vis=ball_vis,
+                ball_mask=ball_mask,
+                court_vis=court_vis,
+            )
 
-        # Denormalize if requested
         if denormalize:
             outputs["position"] = self._denormalize_position(outputs["position"])
             if "velocity" in outputs:
                 outputs["velocity"] = self._denormalize_velocity(outputs["velocity"])
 
-        # Move all tensors to CPU for consistency (contract: return CPU tensors)
         outputs = {k: v.cpu() if isinstance(v, Tensor) else v for k, v in outputs.items()}
-
         return outputs
 
     def _denormalize_position(self, position: Tensor) -> Tensor:
