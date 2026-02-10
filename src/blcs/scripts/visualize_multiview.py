@@ -208,7 +208,7 @@ def main_visualize(cfg: RuntimeConfig) -> int:
 
 def main_predict_multiview(cfg: RuntimeConfig) -> int:
     """Run multi-view model predictions and visualize."""
-    from src.blcs.inference.multiview_predictor import BLCSMultiViewPredictor
+    from src.blcs.inference.predictor import BLCSPredictor
 
     if not _require_checkpoint(cfg):
         return 1
@@ -219,7 +219,7 @@ def main_predict_multiview(cfg: RuntimeConfig) -> int:
         return 1
 
     print(f"Loading multi-view checkpoint from {checkpoint}...")
-    predictor = BLCSMultiViewPredictor.load_from_checkpoint(
+    predictor = BLCSPredictor.load_from_checkpoint(
         checkpoint, device=cfg.device
     )
 
