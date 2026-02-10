@@ -222,6 +222,9 @@ class PLCSSequenceDataModule(pl.LightningDataModule):
         self.val_split = data_cfg.get("val_split", 0.1)
         self.test_split = data_cfg.get("test_split", 0.1)
         self.camera_mode = data_cfg.get("camera_mode", "random")
+        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
+        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 16))
+        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
 
         self.train_dataset: SceneSequenceDataset | None = None
         self.val_dataset: SceneSequenceDataset | None = None
