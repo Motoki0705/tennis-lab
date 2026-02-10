@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, TypedDict, TypeVar
+from typing import TYPE_CHECKING, TypedDict, TypeVar
 
 import torch
 
@@ -61,8 +61,6 @@ class BLCSMultiViewSample(TypedDict):
     ball_mask: torch.Tensor  # (N_cam, T) sequence padding masks (1=valid token)
     court_kp: torch.Tensor  # (N_cam, T, 20, 2) court keypoints expanded to T
     court_vis: torch.Tensor  # (N_cam, T, 20) court visibility expanded to T
-    camera_params: list[dict]  # List of camera parameter dicts
-    num_views: torch.Tensor  # scalar, number of views in this sample
     position_3d: torch.Tensor  # (T, 3) ground truth 3D trajectory (shared)
     velocity_3d: torch.Tensor  # (T, 3) 3D velocity vectors (shared)
     seq_len: torch.Tensor  # scalar, actual sequence length
@@ -76,8 +74,6 @@ class BLCSMultiViewBatch(TypedDict):
     ball_mask: torch.Tensor  # (B, N_max, T_max) padding mask
     court_kp: torch.Tensor  # (B, N_max, T_max, 20, 2)
     court_vis: torch.Tensor  # (B, N_max, T_max, 20)
-    camera_params: list[dict[str, Any]]  # flattened camera params
-    num_views: torch.Tensor  # (B,)
     position_3d: torch.Tensor  # (B, T_max, 3)
     velocity_3d: torch.Tensor  # (B, T_max, 3)
     seq_len: torch.Tensor  # (B,)
