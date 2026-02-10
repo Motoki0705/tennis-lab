@@ -83,7 +83,6 @@ class BLCSPredictor(BasePredictor):
 
         return cls(model=lightning_module.model, device=device)
 
-    @torch.no_grad()
     def predict(
         self,
         ball_uv: Tensor,
@@ -137,13 +136,14 @@ class BLCSPredictor(BasePredictor):
             court_vis = court_vis.to(self.device)
 
         # Forward pass
-        outputs = self.model.predict(
-            ball_uv,
-            court_kp,
-            ball_vis=ball_vis,
-            ball_mask=ball_mask,
-            court_vis=court_vis,
-        )
+        with torch.no_grad():
+            outputs = self.model(
+                ball_uv=ball_uv,
+                court_kp=court_kp,
+                ball_vis=ball_vis,
+                ball_mask=ball_mask,
+                court_vis=court_vis,
+            )
 
         # Denormalize if requested
         if denormalize:

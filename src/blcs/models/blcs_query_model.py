@@ -53,6 +53,24 @@ class BLCSQueryModel(nn.Module):
         invisible_init_std: float = 0.02,
         query_init_std: float = 0.02,
     ) -> None:
+        """Initialize the BLCS model.
+
+        Args:
+            hidden_dim: Hidden dimension for all components.
+            num_heads: Number of query attention heads.
+            ffn_dim: FFN intermediate dimension. Defaults to 8/3 * hidden_dim.
+            dropout: Dropout probability.
+            rope_dim: RoPE dimension. Defaults to head_dim.
+            rope_theta: RoPE theta parameter.
+            yarn: Optional YaRN config for long-context extrapolation.
+            num_ball_layers: Number of interleaved Ball->Court cross/self attention layers.
+            num_query2ball_layers: Number of interleaved Query->Ball cross/self attention layers.
+            predict_velocity: If True, also predict per-frame velocity.
+            max_seq_len: Maximum sequence length used for RoPE precomputation.
+            num_court_tokens: Number of court keypoint tokens.
+            invisible_init_std: Initialization std for invisible-token embedding.
+            query_init_std: Initialization std for learned query token.
+        """
         super().__init__()
         if hidden_dim % num_heads != 0:
             raise ValueError(
@@ -235,7 +253,19 @@ class BLCSQueryModel(nn.Module):
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
     ) -> dict[str, Tensor]:
-        """Forward pass."""
+        """Forward pass.
+
+        Args:
+            ball_uv: Ball 2D positions, shape (B, T, 2).
+            court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
+            ball_vis: Ball visibility flags, shape (B, T). Optional.
+            ball_mask: Ball padding mask, shape (B, T). Optional.
+            court_vis: Court visibility mask, shape (B, 20). Optional.
+
+        Returns:
+            dict: Dictionary with 'position' (B, T, 3) and optionally 'velocity'.
+
+        """
         batch_size, seq_len, _ = ball_uv.shape
         if seq_len > self.max_seq_len:
             raise ValueError(

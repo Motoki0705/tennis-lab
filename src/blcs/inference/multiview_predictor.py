@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any, ParamSpec, Self, TypeVar, cast
+from typing import Any, Self
 
 import torch
 from torch import Tensor
@@ -13,13 +12,6 @@ from src.base.inference.predictor import BasePredictor
 from src.blcs.models.blcs_multiview_model import BLCSMultiViewModel
 from src.blcs.training.lightning_module import BLCSLightningModule
 from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
-
-P = ParamSpec("P")
-R = TypeVar("R")
-
-
-def _no_grad(func: Callable[P, R]) -> Callable[P, R]:
-    return cast(Callable[P, R], torch.no_grad()(func))
 
 
 class BLCSMultiViewPredictor(BasePredictor):
@@ -96,7 +88,6 @@ class BLCSMultiViewPredictor(BasePredictor):
 
         return cls(model=lightning_module.model, device=device)
 
-    @_no_grad
     def predict(
         self,
         ball_uv: Tensor,
@@ -158,13 +149,14 @@ class BLCSMultiViewPredictor(BasePredictor):
             seq_len = seq_len.to(self.device)
 
         # Forward pass
-        outputs = self.model(
-            ball_uv=ball_uv,
-            court_kp=court_kp,
-            ball_mask=ball_mask,
-            court_vis=court_vis,
-            num_views=num_views,
-        )
+        with torch.no_grad():
+            outputs = self.model(
+                ball_uv=ball_uv,
+                court_kp=court_kp,
+                ball_mask=ball_mask,
+                court_vis=court_vis,
+                num_views=num_views,
+            )
 
         position = outputs["position"].cpu()
 
