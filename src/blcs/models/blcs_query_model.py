@@ -245,6 +245,28 @@ class BLCSQueryModel(nn.Module):
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
         )
 
+    @staticmethod
+    def _build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
+        """Build self-attention mask from valid mask.
+
+        Args:
+            valid: Boolean valid mask, shape (B, S).
+
+        Returns:
+            tuple:
+              - attn_mask: Attention keep mask, shape (B, S, S).
+              - valid_fixed: Potentially fixed valid mask with at least one valid token.
+        """
+        valid_fixed = valid.bool()
+        fully_masked = ~valid_fixed.any(dim=1)
+        if fully_masked.any():
+            valid_fixed = valid_fixed.clone()
+            valid_fixed[fully_masked, 0] = True
+        attn_mask = valid_fixed[:, None, :].expand(
+            valid_fixed.shape[0], valid_fixed.shape[1], valid_fixed.shape[1]
+        )
+        return attn_mask, valid_fixed
+
     def forward(
         self,
         ball_uv: Tensor,
@@ -297,14 +319,7 @@ class BLCSQueryModel(nn.Module):
         if freqs_cis.device != ball_uv.device:
             freqs_cis = freqs_cis.to(ball_uv.device)
 
-        ball_attn_mask: Tensor | None = None
-        if ball_mask is not None:
-            ball_key_valid = ball_valid
-            empty_ball = ~ball_key_valid.any(dim=1)
-            if empty_ball.any():
-                ball_key_valid = ball_key_valid.clone()
-                ball_key_valid[empty_ball, 0] = True
-            ball_attn_mask = ball_key_valid[:, None, :].expand(batch_size, seq_len, seq_len)
+        ball_attn_mask, ball_valid = self._build_self_attn_mask(ball_valid)
 
         # Stage 1: interleaved ball->court cross-attn and ball temporal self-attn
         ball_x = ball_tok
