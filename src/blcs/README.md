@@ -13,134 +13,28 @@ BLCS は、テニスコート座標系におけるボールの 3D 軌道を、2D
 | モード | 入力テンソル | 形状 | 説明 |
 |--------|-------------|------|------|
 | 単一カメラ | `ball_uv` | `(B, T, 2)` | 2Dボール観測シーケンス |
+| 単一カメラ | `court_kp` | `(B, 20, 2)` | 2Dコートキーポイント |
 | マルチビュー | `ball_uv` | `(B, N, T, 2)` | 複数カメラからの2Dボール観測 |
-
-※ コートキーポイント `court_kp` も同様に各モードに対応
+| マルチビュー | `court_kp` | `(B, N, T, 20, 2)` | 複数カメラからの2Dコートキーポイント |
 
 ### 出力形式
 
-**Predictor 返り値（`BLCSPredictor.predict()`）:**
+**Predictor 返り値（`BLCSPredictor.predict()` / `BLCSMultiViewPredictor.predict()`）:**
 
 推論結果は `dict[str, torch.Tensor]` 形式で返されます。全てのテンソルは CPU 上にあります。
 
-| キー | 形状 | 型 | 説明 |
-|------|------|-----|------|
-| `position` | `(B, T, 3)` | `torch.Tensor` | 3D軌道。デフォルト（`denormalize=True`）ではメートル単位、`denormalize=False` の場合は正規化座標 |
-| `velocity` | `(B, T, 3)` | `torch.Tensor` | 速度ベクトル。デフォルト（`denormalize=True`）かつモデルが出力する場合は m/s 単位。※モデルによっては含まれない場合があります |
+| Predictor | キー | 形状 | 型 | 説明 |
+|-----------|------|------|-----|------|
+| `BLCSPredictor` | `position` | `(B, T, 3)` | `torch.Tensor` | 3D軌道。デフォルト（`denormalize=True`）ではメートル単位、`denormalize=False` の場合は正規化座標 |
+| `BLCSPredictor` | `velocity` | `(B, T, 3)` | `torch.Tensor` | 速度ベクトル。デフォルト（`denormalize=True`）かつモデルが出力する場合は m/s 単位。モデルにより含まれない場合あり |
+| `BLCSMultiViewPredictor` | `position` | `(B, T, 3)` | `torch.Tensor` | マルチビュー統合後の 3D 軌道 |
+| `BLCSMultiViewPredictor` | `velocity` | `(B, T, 3)` | `torch.Tensor` | 速度ベクトル。モデルにより含まれない場合あり |
 
-**注意**: 
+**注意**:
 - すべてのテンソルは CPU に配置されます（統合側での device 変換は不要）
 - バッチ次元は常に保持されます
 
-## ディレクトリ構成
-
-```
-src/blcs/
-├── configs/                          # Hydra 設定ファイル群
-│   ├── train.yaml                    # 単一カメラ学習設定
-│   ├── generate_dataset.yaml         # データ生成設定
-│   ├── visualize.yaml                # 単一カメラ可視化設定
-│   ├── visualize_multiview.yaml      # マルチビュー可視化設定
-│   ├── run/                          # 実行時設定（seed, gpus, output_dir）
-│   ├── model/
-│   │   ├── single.yaml               # 単一カメラモデル設定
-│   │   └── multiview.yaml            # マルチビューモデル設定
-│   ├── data/
-│   │   ├── single.yaml               # 単一カメラ DataModule 設定
-│   │   └── multiview.yaml            # マルチビュー DataModule 設定
-│   ├── training/
-│   │   └── default.yaml              # 学習ハイパーパラメータ
-│   ├── physics/
-│   │   └── default.yaml              # ボール物理パラメータ
-│   ├── shot/
-│   │   └── default.yaml              # ショット種別・初速設定
-│   ├── camera/
-│   │   └── default.yaml              # カメラ投影パラメータ
-│   └── visualization/
-│       ├── single.yaml               # 単一カメラ可視化オプション
-│       └── multiview.yaml            # マルチビュー可視化オプション
-│
-├── scripts/                          # 実行スクリプト（Hydra エントリポイント）
-│   ├── generate_dataset.py           # 物理シミュレーションによるデータ生成
-│   ├── train.py                      # 学習（output_modeで単一/マルチビュー切替）
-│   ├── run_hparam_sweep.sh           # 単一カメラモデルのハイパラ探索
-│   ├── visualize.py                  # 単一カメラ可視化
-│   └── visualize_multiview.py        # マルチビュー可視化
-│
-├── simulation/                       # 物理シミュレーション
-│   ├── ball_physics.py               # ボール運動の物理計算
-│   ├── shot_simulator.py             # ショットシミュレータ（軌道生成）
-│   └── cell_manager.py               # コートセル分割・打点管理
-│
-├── models/                           # 推定モデル
-│   ├── blcs_model.py                 # BLCSModel: 単一カメラ 2D→3D 軌道推定
-│   ├── blcs_multiview_model.py       # BLCSMultiViewModel: 複数視点統合
-│   └── components/
-│       ├── encoders.py               # 入力エンコーダ
-│       └── heads.py                  # 出力ヘッド（3D 座標回帰）
-│
-├── data/                             # データセット・DataModule
-│   ├── dataset.py                    # 単一カメラ Dataset
-│   ├── multiview_dataset.py          # マルチビュー Dataset
-│   └── datamodule.py                 # LightningDataModule（全モード共用）
-│
-├── training/                         # 学習関連
-│   ├── lightning_module.py           # 単一カメラ用 LightningModule
-│   ├── multiview_lightning_module.py # マルチビュー用 LightningModule
-│   ├── losses.py                     # 損失関数（MSE、軌道損失等）
-│   └── metrics.py                    # 評価指標（3D 位置誤差等）
-│
-├── inference/                        # 推論
-│   ├── predictor.py                  # 単一カメラ推論
-│   ├── multiview_predictor.py        # マルチビュー推論
-│   └── visualization.py              # 3D 軌道の描画
-│
-├── generate_dataset/                 # データセット生成ロジック
-│   ├── scene_generator.py            # シーン生成オーケストレータ
-│   ├── sampling/
-│   │   └── distribution_sampler.py   # 打点・方向の確率分布サンプリング
-│   └── io/
-│       └── dataset_io.py             # シーン保存・読込
-│
-└── demo/                             # デモ・プロトタイプ
-    ├── app.py                        # Gradio/Streamlit デモアプリ
-    ├── pipeline.py                   # デモ用パイプライン
-    └── ...
-```
-
-## 主要コンポーネントの関係
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ generate_dataset.py                                             │
-│   ├── simulation/shot_simulator.py  (物理軌道生成)               │
-│   ├── simulation/ball_physics.py    (物理計算)                  │
-│   ├── 複数カメラへの投影 → 2D ボール座標生成                      │
-│   └── → data/blcs/scenes/*.npz（各シーンに複数カメラ情報含む）    │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ train.py                                                       │
-│   ├── data/datamodule.py           (DataModule)                 │
-│   │   ├── BLCSDataModule           (単一カメラ)                  │
-│   │   └── BLCSMultiViewDataModule  (マルチビュー)                │
-│   ├── models/                                                   │
-│   │   ├── blcs_model.py            (単一カメラモデル)            │
-│   │   └── blcs_multiview_model.py  (マルチビューモデル)          │
-│   └── → outputs/blcs/*/logs/version_*/checkpoints/              │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ visualize.py / visualize_multiview.py                           │
-│   ├── inference/predictor.py            (単一カメラ推論)         │
-│   ├── inference/multiview_predictor.py  (マルチビュー推論)       │
-│   └── inference/visualization.py        (描画)                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
 ## 実行コマンド
-
-詳細は [docs/scripts/blcs/](../../../docs/scripts/blcs/) を参照。
 
 ### データ生成
 
@@ -159,7 +53,7 @@ uv run python -m src.blcs.scripts.train \
     model=multiview \
     data=multiview
 
-# マルチビュー学習のカスタム設定例（単一エントリ）
+# マルチビュー学習のカスタム設定例
 uv run python -m src.blcs.scripts.train \
     model=multiview \
     data=multiview \
@@ -197,17 +91,6 @@ uv run python -m src.blcs.scripts.visualize_multiview \
     visualization.mode=predict \
     visualization.checkpoint=outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt \
     visualization.cameras=all
-
-# 予測結果をファイルに出力
-uv run python -m src.blcs.scripts.visualize_multiview \
-    visualization.mode=predict \
-    visualization.output=predictions.json
-
-# 比較アニメーション出力
-uv run python -m src.blcs.scripts.visualize_multiview \
-    visualization.mode=predict \
-    visualization.view=animation \
-    visualization.save=comparison.mp4
 ```
 
 ## モデルアーキテクチャ
@@ -217,20 +100,17 @@ uv run python -m src.blcs.scripts.visualize_multiview \
 単一カメラからの2D観測シーケンスを入力として3D軌道を推定。
 Temporal Encoder + MLP ベースの構造。
 
+実装: `src/blcs/models/blcs_model.py`
+
 ### マルチビューモデル (`BLCSMultiViewModel`)
 
-複数カメラからの観測を統合して推定。単一カメラではボールの深度情報の推定が困難ですが、マルチビューでは複数視点からの2D観測を三角測量的に融合することで、より正確な3D軌道復元が可能です。
+複数カメラからの観測を統合して推定。複数視点からの2D観測を融合することで、
+単一視点より高精度な3D軌道復元を狙う構成。
 
-現在の実装は view pooling + temporal transformer によるスケルトン構造で、今後より高度な融合手法への拡張を予定しています。
+実装: `src/blcs/models/blcs_multiview_model.py`
 
-## 設定ファイル
+### クエリモデル (`BLCSQueryModel`)
 
-| 用途 | メイン設定 | 補助設定 |
-|------|----------|---------|
-| 単一カメラ学習 | `train.yaml` | `model/single.yaml`, `data/single.yaml` |
-| マルチビュー学習 | `train.yaml` | `model=multiview`, `data=multiview` |
-| 単一カメラ可視化 | `visualize.yaml` | `visualization/single.yaml` |
-| マルチビュー可視化 | `visualize_multiview.yaml` | `visualization/multiview.yaml` |
+クエリベースでボール軌道を推定するモデル。
 
-詳細なドキュメントは以下を参照:
-- [visualize_multiview.md](../../../docs/scripts/blcs/visualize_multiview.md) - マルチビュー可視化スクリプト
+実装: `src/blcs/models/blcs_query_model.py`

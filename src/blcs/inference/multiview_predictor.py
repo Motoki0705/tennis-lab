@@ -11,7 +11,7 @@ from torch import Tensor
 
 from src.base.inference.predictor import BasePredictor
 from src.blcs.models.blcs_multiview_model import BLCSMultiViewModel
-from src.blcs.training.multiview_lightning_module import BLCSMultiViewLightningModule
+from src.blcs.training.lightning_module import BLCSLightningModule
 from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
 P = ParamSpec("P")
@@ -87,7 +87,7 @@ class BLCSMultiViewPredictor(BasePredictor):
             raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
         device = torch.device(device)
-        lightning_module = BLCSMultiViewLightningModule.load_from_checkpoint(
+        lightning_module = BLCSLightningModule.load_from_checkpoint(
             strict=False,
             checkpoint_path=checkpoint_path,
             map_location=device,
