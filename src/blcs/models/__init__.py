@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from torch import nn
 
 from src.blcs.models.blcs_model import BLCSModel
+from src.blcs.models.blcs_multiview_model import BLCSMultiViewModel
 from src.blcs.models.blcs_query_model import BLCSQueryModel
 
 if TYPE_CHECKING:
@@ -19,11 +20,14 @@ def build_blcs_model(config: DictConfig) -> nn.Module:
     model_name = str(model_cfg.get("name", "blcs"))
     if model_name == "blcs":
         return BLCSModel.from_config(config)
+    if model_name == "blcs_multiview":
+        return BLCSMultiViewModel.from_config(config)
     if model_name == "blcs_query":
         return BLCSQueryModel.from_config(config)
     raise ValueError(
-        f"Unknown BLCS model.name='{model_name}'. Supported: ['blcs', 'blcs_query']"
+        "Unknown BLCS model.name="
+        f"'{model_name}'. Supported: ['blcs', 'blcs_multiview', 'blcs_query']"
     )
 
 
-__all__ = ["BLCSModel", "BLCSQueryModel", "build_blcs_model"]
+__all__ = ["BLCSModel", "BLCSMultiViewModel", "BLCSQueryModel", "build_blcs_model"]

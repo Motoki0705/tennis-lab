@@ -67,6 +67,20 @@ class BLCSMultiViewSample(TypedDict):
     seq_len: torch.Tensor  # scalar, actual sequence length
 
 
+class BLCSMultiViewBatch(TypedDict):
+    """Schema for batched multi-view BLCS dataset samples."""
+
+    ball_uv: torch.Tensor  # (B, N_max, T_max, 2)
+    ball_mask: torch.Tensor  # (B, N_max, T_max)
+    court_kp: torch.Tensor  # (B, N_max, T_max, 20, 2)
+    court_vis: torch.Tensor  # (B, N_max, T_max, 20)
+    camera_params: list[dict[str, Any]]  # flattened camera params
+    num_views: torch.Tensor  # (B,)
+    position_3d: torch.Tensor  # (B, T_max, 3)
+    velocity_3d: torch.Tensor  # (B, T_max, 3)
+    seq_len: torch.Tensor  # (B,)
+
+
 @dataclass(frozen=True)
 class BLCSSceneMeta:
     """Metadata schema for BLCS NPZ scene files.

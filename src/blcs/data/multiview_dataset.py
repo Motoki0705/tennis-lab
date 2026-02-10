@@ -18,7 +18,7 @@ from torch import Tensor
 from torch.utils.data import Dataset
 
 from src.common.dataset.augmentation import add_gaussian_noise, random_visibility_dropout
-from src.blcs.data.types import BLCSMultiViewSample
+from src.blcs.data.types import BLCSMultiViewBatch, BLCSMultiViewSample
 from src.common.data.scene_cache import get_scene_cache, load_npz_scene
 
 if TYPE_CHECKING:
@@ -324,7 +324,7 @@ class MultiViewBallTrajectoryDataset(Dataset):
 
 def collate_multiview_trajectories(
     batch: list[BLCSMultiViewSample],
-) -> BLCSMultiViewSample:
+) -> BLCSMultiViewBatch:
     """Collate function for multi-view trajectory batches.
 
     Handles variable sequence lengths and number of views by padding.

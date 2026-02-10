@@ -10,7 +10,6 @@ import pytorch_lightning as pl
 from src.base.training.runner import BaseTrainingRunner
 from src.blcs.data.datamodule import BLCSDataModule, BLCSMultiViewDataModule
 from src.blcs.training.lightning_module import BLCSLightningModule
-from src.blcs.training.multiview_lightning_module import BLCSMultiViewLightningModule
 
 
 class BLCSTrainingRunner(BaseTrainingRunner):
@@ -57,12 +56,7 @@ class BLCSTrainingRunner(BaseTrainingRunner):
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
         """Build BLCS lightning module according to `config.data.output_mode`."""
-        return self._select_by_output_mode(
-            config,
-            single_factory=lambda: BLCSLightningModule(config),
-            multiview_factory=lambda: BLCSMultiViewLightningModule(config),
-            component_name="lightning_module",
-        )
+        return BLCSLightningModule(config)
 
     def dry_run_postprocess(self, batch: Any, output_dir: Path) -> None:
         """Log model parameters after dry run batch loading."""

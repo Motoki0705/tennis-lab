@@ -7,7 +7,6 @@ tennis-lab の各タスクで使用するスクリプトのドキュメントで
 | タスク | 説明 | ドキュメント |
 |--------|------|-------------|
 | **PLCS** | Player Location from Court Skeleton - 2Dキーポイントから3Dプレーヤー位置推定 | [plcs/README.md](plcs/README.md) |
-| **BLCS** | Ball Location from Court Skeleton - 2Dボール位置から3D軌道推定 | [blcs/README.md](blcs/README.md) |
 | **WASB** | Where's the Ball - 映像からのボール検出・軌道補完・イベント検出 | [wasb/README.md](wasb/README.md) |
 
 ## 共通パターン
@@ -62,15 +61,6 @@ uv run python -m src.plcs.scripts.train
 uv run python -m src.plcs.scripts.visualize visualization.mode=predict
 ```
 
-### BLCS (ボール軌道推定)
-
-```bash
-# データ生成 → 学習 → 可視化
-uv run python -m src.blcs.scripts.generate_dataset
-uv run python -m src.blcs.scripts.train
-uv run python -m src.blcs.scripts.visualize visualization.mode=predict
-```
-
 ### WASB (ボール検出)
 
 ```bash
@@ -85,7 +75,6 @@ uv run python -m src.wasb.scripts.visualize.ball_video video_path=...
 各スクリプトの詳細（コマンド例、設定パラメータ、アーキテクチャ）は、タスクごとのサブディレクトリを参照してください:
 
 - [PLCS Scripts](plcs/README.md)
-- [BLCS Scripts](blcs/README.md)
 - [WASB Scripts](wasb/README.md)
 
 ---
