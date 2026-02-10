@@ -5,10 +5,13 @@ Strategy A: treat the DeepSeek-style, pure PyTorch implementation in
 """
 
 from src.common.models.components import (
+    CrossAttnBlock,
+    CrossAttnBlockConfig,
     KVCache,
     LayerNorm,
     MoE,
     MoEConfig,
+    MultiHeadCrossAttention,
     MultiHeadSelfAttention,
     PositionGetter,
     RMSNorm,
@@ -24,7 +27,6 @@ from src.common.models.components import (
     precompute_freqs_cis,
     precompute_freqs_cis_2d,
 )
-from src.common.models.vit import ViTConfig, ViTEncoder
 from src.common.models.embeddings import (
     Ball3DEmbedding,
     BallUVEmbedding,
@@ -32,11 +34,16 @@ from src.common.models.embeddings import (
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
 )
-from src.common.models.token_embeddings import CourtKPUVTokenEmbedding, UVObsTokenEmbedding
+from src.common.models.token_embeddings import (
+    CourtKPUVTokenEmbedding,
+    UVObsTokenEmbedding,
+)
+from src.common.models.vit import ViTConfig, ViTEncoder
 
 __all__ = [
     # Attention
     "KVCache",
+    "MultiHeadCrossAttention",
     "MultiHeadSelfAttention",
     # Norm
     "RMSNorm",
@@ -56,6 +63,8 @@ __all__ = [
     # Blocks
     "TransformerBlockConfig",
     "TransformerBlock",
+    "CrossAttnBlockConfig",
+    "CrossAttnBlock",
     "ViTBlockConfig",
     "ViTBlock",
     # ViT
