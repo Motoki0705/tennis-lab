@@ -8,7 +8,7 @@ trainer:
   check_val_every_n_epoch: 1
 
 # ---- Optimizer / schedule (LightningModule references) ----
-learning_rate: 1.0e-4
+learning_rate: 1.0e-5
 weight_decay: 1.0e-5
 warmup_steps: 1000
 scheduler: cosine
@@ -18,20 +18,19 @@ min_lr: 1.0e-6
 checkpoint:
   enabled: true
   filename: "plcs-{epoch:02d}"
-  monitor: val/epoch_position_error_m
+  monitor: train/epoch_position_error_m
   mode: min
   save_top_k: 3
   save_last: true
 
 early_stopping:
   enabled: true
-  monitor: val/epoch_position_error_m
+  monitor: train/epoch_position_error_m
   mode: min
   patience: 20
   min_delta: 2.0e-5
-  min_delta: null
+  check_on_train_epoch_end: false
 
 lr_monitor:
   enabled: true
   interval: step
-
