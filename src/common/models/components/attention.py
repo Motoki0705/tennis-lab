@@ -372,6 +372,121 @@ class MultiHeadSelfAttention(nn.Module):
         return self.wo(out)
 
 
+class MultiHeadCrossAttention(nn.Module):
+    """
+    Pure PyTorch Multi-Head Cross-Attention using SDPA.
+
+    Supports optional 1D RoPE for query and key streams independently.
+    """
+
+    def __init__(
+        self,
+        dim: int,
+        n_heads: int,
+        *,
+        head_dim: int | None = None,
+        rope_dim: int | None = None,
+        attn_dropout: float = 0.0,
+        bias: bool = False,
+    ) -> None:
+        super().__init__()
+        if head_dim is None:
+            if dim % n_heads != 0:
+                raise ValueError(f"dim={dim} must be divisible by n_heads={n_heads}")
+            head_dim = dim // n_heads
+        if rope_dim is None:
+            rope_dim = head_dim
+        if rope_dim % 2 != 0:
+            raise ValueError(f"rope_dim must be even, got {rope_dim}")
+        if rope_dim > head_dim:
+            raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
+
+        self.dim = int(dim)
+        self.n_heads = int(n_heads)
+        self.head_dim = int(head_dim)
+        self.rope_dim = int(rope_dim)
+        self.attn_dropout = float(attn_dropout)
+
+        self.wq = nn.Linear(self.dim, self.n_heads * self.head_dim, bias=bias)
+        self.wk = nn.Linear(self.dim, self.n_heads * self.head_dim, bias=bias)
+        self.wv = nn.Linear(self.dim, self.n_heads * self.head_dim, bias=bias)
+        self.wo = nn.Linear(self.n_heads * self.head_dim, self.dim, bias=bias)
+
+    def _shape(self, x: torch.Tensor) -> torch.Tensor:
+        bsz, seqlen, _ = x.shape
+        return x.view(bsz, seqlen, self.n_heads, self.head_dim)
+
+    def _apply_rope_1d(
+        self,
+        x: torch.Tensor,
+        freqs_cis: torch.Tensor | None,
+    ) -> torch.Tensor:
+        if freqs_cis is None or self.rope_dim == 0:
+            return x
+        if freqs_cis.size(0) != x.size(1):
+            raise ValueError(
+                f"freqs_cis length mismatch: freqs_cis.T={freqs_cis.size(0)} vs x.T={x.size(1)}"
+            )
+        x_pe, x_rest = x[..., : self.rope_dim], x[..., self.rope_dim :]
+        x_pe = apply_rotary_emb(x_pe, freqs_cis, interleaved=True)
+        return torch.cat([x_pe, x_rest], dim=-1)
+
+    def forward(
+        self,
+        q_in: torch.Tensor,
+        kv_in: torch.Tensor,
+        *,
+        freqs_q_cis: torch.Tensor | None = None,
+        freqs_k_cis: torch.Tensor | None = None,
+        attn_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """
+        Args:
+            q_in: query tokens (B, Q, D)
+            kv_in: key/value tokens (B, K, D)
+            freqs_q_cis: (Q, rope_dim//2) complex cis for query RoPE
+            freqs_k_cis: (K, rope_dim//2) complex cis for key RoPE
+            attn_mask: optional mask broadcastable to (B, H, Q, K)
+
+        Returns:
+            (B, Q, D)
+        """
+        bsz, q_len, _ = q_in.shape
+        _, k_len, _ = kv_in.shape
+
+        q = self._shape(self.wq(q_in))
+        k = self._shape(self.wk(kv_in))
+        v = self._shape(self.wv(kv_in))
+
+        q = self._apply_rope_1d(q, freqs_q_cis)
+        k = self._apply_rope_1d(k, freqs_k_cis)
+
+        q_ = q.transpose(1, 2)  # (B, H, Q, D)
+        k_ = k.transpose(1, 2)  # (B, H, K, D)
+        v_ = v.transpose(1, 2)  # (B, H, K, D)
+
+        sdpa_mask: torch.Tensor | None = None
+        if attn_mask is not None:
+            sdpa_mask = _normalize_attn_mask(
+                attn_mask,
+                q_len=q_len,
+                k_len=k_len,
+                device=q_in.device,
+                dtype=q_in.dtype,
+            )
+
+        out = F.scaled_dot_product_attention(
+            q_,
+            k_,
+            v_,
+            attn_mask=sdpa_mask,
+            dropout_p=self.attn_dropout if self.training else 0.0,
+            is_causal=False,
+        )
+        out = out.transpose(1, 2).contiguous().view(bsz, q_len, self.n_heads * self.head_dim)
+        return self.wo(out)
+
+
 if __name__ == "__main__":
     torch.manual_seed(0)
     demo_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
