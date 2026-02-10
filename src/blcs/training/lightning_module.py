@@ -34,8 +34,7 @@ class BLCSLightningModule(BaseLightningModule):
         super().__init__(config)
 
         self.model = build_blcs_model(self.config)
-        self.model_name = str(self.config.model.name)
-        self.is_multiview = self.model_name == "blcs_multiview"
+        self.model_name = str(self.config.data.output_mode)
 
         train_cfg = self.config.get("training", {})
         self.loss_fn = BLCSLoss(
@@ -100,7 +99,7 @@ class BLCSLightningModule(BaseLightningModule):
 
     def _forward_from_batch(self, batch: BLCSBatch | BLCSMultiViewBatch) -> dict[str, Tensor]:
         """Forward model using a training batch."""
-        if self.is_multiview:
+        if self.model_name == "multiview":
             mv_batch = batch
             return self._forward_multiview(
                 ball_uv=mv_batch["ball_uv"],
@@ -111,7 +110,7 @@ class BLCSLightningModule(BaseLightningModule):
                 seq_len=mv_batch.get("seq_len"),
                 camera_params=mv_batch.get("camera_params"),
             )
-        elif self.model_name in {"blcs", "blcs_query"}:
+        elif self.model_name == "single":
             single_batch = batch
             return self._forward_single(
                 ball_uv=single_batch["ball_uv"],
@@ -122,24 +121,24 @@ class BLCSLightningModule(BaseLightningModule):
             )
         else:
             raise ValueError(
-                f"Unsupported model.name='{self.model_name}'. "
-                "Supported: ['blcs', 'blcs_query', 'blcs_multiview']"
+                f"Unsupported model_name='{self.model_name}'. "
+                "Supported: ['single', 'multiview']"
             )
 
     def _build_loss_mask(self, batch: BLCSBatch | BLCSMultiViewBatch) -> Tensor | None:
         """Build sequence mask used for loss and metrics."""
-        if self.is_multiview:
+        if self.model_name == "multiview":
             seq_len = batch.get("seq_len")
             if seq_len is None:
                 return None
             max_len = batch["position_3d"].shape[1]
             return torch.arange(max_len, device=seq_len.device).unsqueeze(0) < seq_len.unsqueeze(1)
-        elif self.model_name in {"blcs", "blcs_query"}:
+        elif self.model_name == "single":
             return batch.get("ball_mask")
         else:
             raise ValueError(
-                f"Unsupported model.name='{self.model_name}'. "
-                "Supported: ['blcs', 'blcs_query', 'blcs_multiview']"
+                f"Unsupported model_name='{self.model_name}'. "
+                "Supported: ['single', 'multiview']"
             )
 
     def _select_metrics(self, stage: str) -> BLCSMetrics:
