@@ -9,11 +9,22 @@ from torch import Tensor
 from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
 
 
+def _masked_mean(loss: Tensor, mask: Tensor | None = None) -> Tensor:
+    """Compute mean loss with an optional mask."""
+    if mask is None:
+        return loss.mean()
+
+    mask_expanded = mask.to(dtype=loss.dtype)
+    while mask_expanded.ndim < loss.ndim:
+        mask_expanded = mask_expanded.unsqueeze(-1)
+    mask_expanded = mask_expanded.expand_as(loss)
+    return (loss * mask_expanded).sum() / (mask_expanded.sum() + 1e-8)
+
+
 def trajectory_position_loss(
     pred: Tensor,
     target: Tensor,
     mask: Tensor | None = None,
-    reduction: str = "mean",
 ) -> Tensor:
     """Compute position loss for trajectory prediction.
 
@@ -23,37 +34,19 @@ def trajectory_position_loss(
         pred: Predicted positions, shape (B, T, 3).
         target: Target positions, shape (B, T, 3).
         mask: Visibility mask, shape (B, T). 1 = valid, 0 = ignore.
-        reduction: Reduction method ('mean', 'sum', 'none').
 
     Returns:
         Tensor: Position loss.
 
     """
     loss = nn.functional.smooth_l1_loss(pred, target, reduction="none")
-
-    if mask is not None:
-        # Expand mask for 3D coords
-        mask_expanded = mask.unsqueeze(-1).expand_as(loss)
-        loss = loss * mask_expanded
-
-        if reduction == "mean":
-            return loss.sum() / (mask_expanded.sum() + 1e-8)
-        elif reduction == "sum":
-            return loss.sum()
-        return loss
-    else:
-        if reduction == "mean":
-            return loss.mean()
-        elif reduction == "sum":
-            return loss.sum()
-        return loss
+    return _masked_mean(loss, mask)
 
 
 def velocity_loss(
     pred_pos: Tensor,
     target_pos: Tensor,
     mask: Tensor | None = None,
-    reduction: str = "mean",
 ) -> Tensor:
     """Compute velocity consistency loss.
 
@@ -64,7 +57,6 @@ def velocity_loss(
         pred_pos: Predicted positions, shape (B, T, 3).
         target_pos: Target positions, shape (B, T, 3).
         mask: Visibility mask, shape (B, T).
-        reduction: Reduction method.
 
     Returns:
         Tensor: Velocity loss.
@@ -75,30 +67,14 @@ def velocity_loss(
     target_vel = target_pos[:, 1:] - target_pos[:, :-1]
 
     loss = nn.functional.smooth_l1_loss(pred_vel, target_vel, reduction="none")
-
-    if mask is not None:
-        # Mask for velocity needs both frames to be valid
-        vel_mask = mask[:, 1:] * mask[:, :-1]
-        mask_expanded = vel_mask.unsqueeze(-1).expand_as(loss)
-        loss = loss * mask_expanded
-
-        if reduction == "mean":
-            return loss.sum() / (mask_expanded.sum() + 1e-8)
-        elif reduction == "sum":
-            return loss.sum()
-        return loss
-    else:
-        if reduction == "mean":
-            return loss.mean()
-        elif reduction == "sum":
-            return loss.sum()
-        return loss
+    # Velocity is valid only when both adjacent frames are valid.
+    vel_mask = mask[:, 1:] * mask[:, :-1] if mask is not None else None
+    return _masked_mean(loss, vel_mask)
 
 
 def smoothness_loss(
     pred_pos: Tensor,
     mask: Tensor | None = None,
-    reduction: str = "mean",
 ) -> Tensor:
     """Compute trajectory smoothness loss.
 
@@ -108,7 +84,6 @@ def smoothness_loss(
     Args:
         pred_pos: Predicted positions, shape (B, T, 3).
         mask: Visibility mask, shape (B, T).
-        reduction: Reduction method.
 
     Returns:
         Tensor: Smoothness loss.
@@ -119,56 +94,9 @@ def smoothness_loss(
     accel = vel[:, 1:] - vel[:, :-1]
 
     loss = (accel**2).sum(dim=-1)  # (B, T-2)
-
-    if mask is not None:
-        # Mask needs three consecutive frames
-        accel_mask = mask[:, 2:] * mask[:, 1:-1] * mask[:, :-2]
-        loss = loss * accel_mask
-
-        if reduction == "mean":
-            return loss.sum() / (accel_mask.sum() + 1e-8)
-        elif reduction == "sum":
-            return loss.sum()
-        return loss
-    else:
-        if reduction == "mean":
-            return loss.mean()
-        elif reduction == "sum":
-            return loss.sum()
-        return loss
-
-
-def position_error_meters(
-    pred: Tensor,
-    target: Tensor,
-    mask: Tensor | None = None,
-    scale_xyz: tuple[float, float, float] = COURT_COORD_SCALE_XYZ,
-) -> Tensor:
-    """Compute position error in meters.
-
-    Args:
-        pred: Predicted positions (normalized), shape (B, T, 3).
-        target: Target positions (normalized), shape (B, T, 3).
-        mask: Visibility mask, shape (B, T).
-
-    Returns:
-        Tensor: Mean position error in meters.
-
-    """
-    # Denormalize to meters
-    scale = torch.tensor(
-        list(scale_xyz),
-        device=pred.device,
-    )
-    pred_m = pred * scale
-    target_m = target * scale
-
-    # Compute Euclidean distance
-    error = torch.sqrt(((pred_m - target_m) ** 2).sum(dim=-1) + 1e-8)  # (B, T)
-
-    if mask is not None:
-        return (error * mask).sum() / (mask.sum() + 1e-8)
-    return error.mean()
+    # Acceleration is valid only when three consecutive frames are valid.
+    accel_mask = mask[:, 2:] * mask[:, 1:-1] * mask[:, :-2] if mask is not None else None
+    return _masked_mean(loss, accel_mask)
 
 
 class BLCSLoss(nn.Module):
