@@ -63,7 +63,6 @@ class BLCSModel(nn.Module):
     Output:
         - position: Normalized (x, y, z) trajectory, shape (B, T, 3)
         - velocity: Normalized velocities (optional), shape (B, T, 3)
-
     """
 
     def __init__(
@@ -100,7 +99,6 @@ class BLCSModel(nn.Module):
             predict_velocity: Also predict velocities (for auxiliary loss).
             max_seq_len: Maximum sequence length.
             invisible_init_std: Initialization std for invisible tokens.
-
         """
         super().__init__()
         self.hidden_dim = hidden_dim
@@ -200,7 +198,6 @@ class BLCSModel(nn.Module):
 
         Returns:
             BLCSModel: Initialized model.
-
         """
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
@@ -257,7 +254,6 @@ class BLCSModel(nn.Module):
 
         Returns:
             dict: Dictionary with 'position' (B, T, 3) and optionally 'velocity'.
-
         """
         B, T, _ = ball_uv.shape
 
@@ -316,33 +312,6 @@ class BLCSModel(nn.Module):
             out["velocity"] = self.velocity_head(ball_out)  # (B, T, 3)
 
         return out
-
-    def predict(
-        self,
-        ball_uv: Tensor,
-        court_kp: Tensor,
-        ball_vis: Tensor | None = None,
-        ball_mask: Tensor | None = None,
-        court_vis: Tensor | None = None,
-    ) -> dict[str, Tensor]:
-        """Inference mode prediction.
-
-        Same as forward but ensures eval mode and no gradients.
-
-        Args:
-            ball_uv: Ball 2D positions.
-            court_kp: Court keypoints.
-            ball_vis: Ball visibility flags.
-            ball_mask: Ball padding mask.
-            court_vis: Court visibility mask.
-
-        Returns:
-            dict: Predictions with position (and optionally velocity).
-
-        """
-        self.eval()
-        with torch.no_grad():
-            return self.forward(ball_uv, court_kp, ball_vis=ball_vis, ball_mask=ball_mask, court_vis=court_vis)
 
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""
