@@ -4,13 +4,15 @@ num_workers: 4
 val_split: 0.1
 test_split: 0.1
 camera_mode: all
-scene_sampler_mode: none
+# Scene sampler settings: none | scene | mixed | chunked
+scene_sampler_mode: chunked
+scenes_per_batch: 16
 chunk_max_scenes: 64
 
 mode: sequence
-seq_len: 128
-seq_stride: 64
+seq_len: 32
+seq_stride: 16
 
 augmentation:
-  keypoint_noise_std: 0.01
+  keypoint_noise_std: 0.0001
   visibility_drop_prob: 0.05

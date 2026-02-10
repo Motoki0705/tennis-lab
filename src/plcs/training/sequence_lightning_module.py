@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
+from torch import nn
 from torch import Tensor
 
 from src.base.training.lightning_module import BaseLightningModule
-from src.plcs.models.plcs_sequence_model import PLCSSequenceModel
+from src.plcs.models.plcs_query_sequence_model import build_plcs_sequence_model
 from src.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.plcs.training.metrics import PLCSMetrics, PLCSTemporalMetrics
 
@@ -31,7 +32,7 @@ class PLCSSequenceLightningModule(BaseLightningModule):
         super().__init__(config)
 
         # Build model
-        self.model: PLCSSequenceModel = PLCSSequenceModel.from_config(self.config)
+        self.model: nn.Module = build_plcs_sequence_model(self.config)
 
         # Loss function (config-based)
         loss_cfg_dict = self.config.get("loss", {})

@@ -1,0 +1,27 @@
+# PLCS Query-based Sequence Model Configuration
+# 2-stage: player state encoding + query readout refinement
+
+name: plcs_query_sequence
+
+# Architecture
+hidden_dim: 256
+num_heads: 8
+ffn_dim: null
+dropout: 0.1
+invisible_init_std: 0.02
+query_init_std: 0.02
+
+# Maximum temporal length T
+max_seq_len: 2048
+
+# Stage depths
+num_player_layers: 4
+num_query_layers: 2
+
+# RoPE (temporal only)
+rope_dim: null
+rope_theta: 10000.0
+yarn: null
+
+# Model type
+architecture: sequence
