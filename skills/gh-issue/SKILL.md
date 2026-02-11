@@ -78,17 +78,21 @@ gh api -X POST repos/Motoki0705/tennis-lab/issues/<BLOCKED_NUMBER>/dependencies/
 
 ## Handling newlines in issue body
 
-When passing multi-line text to `--body`, write actual newlines directly in the string:
+Use `--body-file` for multi-line markdown bodies (recommended and safest):
 
 ```bash
+cat <<'EOF' > /tmp/issue_body.md
+First line
+Second line
+Third line with `code`
+EOF
+
 gh issue create --repo Motoki0705/tennis-lab \
   --title "Example" \
-  --body "First line
-Second line
-Third line"
+  --body-file /tmp/issue_body.md
 ```
 
-**⚠️ Common mistake**: Do NOT use `"...\n..."` or `'...\n...'` as the `\n` will appear literally in the issue body, breaking Markdown formatting.
+This avoids newline escaping problems and prevents shell command substitution from backticks in inline `--body` text.
 
 ## Common gotchas
 - `gh issue create` does not support `--json`; capture URL from stdout.
