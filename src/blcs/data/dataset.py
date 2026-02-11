@@ -62,8 +62,20 @@ class BallTrajectoryDataset(Dataset):
         aug_cfg = data_cfg.get("augmentation", {})
         self.uv_noise_std = float(aug_cfg.get("uv_noise_std", 0.005))
         self.vis_drop_prob = float(aug_cfg.get("visibility_drop_prob", 0.1))
-        self.temporal_dropout_prob = float(aug_cfg.get("temporal_dropout_prob", 0.05))
-        self.flip_horizontal = bool(aug_cfg.get("flip_horizontal", True))
+        scale_range_cfg = aug_cfg.get("scale_range", [1.0, 1.0])
+        if not isinstance(scale_range_cfg, (list, tuple)) or len(scale_range_cfg) != 2:
+            raise ValueError(
+                "augmentation.scale_range must be a list/tuple of two numbers: [min_scale, max_scale]."
+            )
+        self.scale_range = (float(scale_range_cfg[0]), float(scale_range_cfg[1]))
+        if self.scale_range[0] <= 0 or self.scale_range[1] <= 0:
+            raise ValueError(
+                f"augmentation.scale_range must be positive, got {self.scale_range}."
+            )
+        if self.scale_range[0] > self.scale_range[1]:
+            raise ValueError(
+                f"augmentation.scale_range min must be <= max, got {self.scale_range}."
+            )
 
         # Multiview parameters (also used as unified internal representation)
         default_num_views = 1 if self.output_mode == "single" else int(data_cfg.get("num_views", 2))
@@ -229,6 +241,7 @@ class BallTrajectoryDataset(Dataset):
         self, sample: dict[str, Tensor]
     ) -> dict[str, Tensor]:
         sample = {k: (v.clone() if isinstance(v, Tensor) else v) for k, v in sample.items()}
+        sample = self._apply_scale_augmentation_multiview(sample)
 
         ball_uv = sample["ball_uv"]
         if isinstance(ball_uv, Tensor):
@@ -242,6 +255,57 @@ class BallTrajectoryDataset(Dataset):
         if isinstance(ball_vis, Tensor):
             sample["ball_vis"] = random_visibility_dropout(ball_vis, self.vis_drop_prob)
 
+        return sample
+
+    def _apply_scale_augmentation_multiview(
+        self, sample: dict[str, Tensor]
+    ) -> dict[str, Tensor]:
+        scale_min, scale_max = self.scale_range
+        if scale_min == 1.0 and scale_max == 1.0:
+            return sample
+
+        scale = rng.uniform(scale_min, scale_max)
+        if abs(scale - 1.0) < 1e-8:
+            return sample
+
+        ball_uv = sample["ball_uv"]
+        court_kp = sample["court_kp"]
+        ball_vis = sample["ball_vis"]
+        court_vis = sample["court_vis"]
+        if not isinstance(ball_uv, Tensor) or not isinstance(court_kp, Tensor):
+            raise ValueError("ball_uv/court_kp must be tensors")
+        if not isinstance(ball_vis, Tensor) or not isinstance(court_vis, Tensor):
+            raise ValueError("ball_vis/court_vis must be tensors")
+
+        # Isotropic scaling around image center in normalized UV space.
+        ball_uv_scaled = (ball_uv - 0.5) * scale + 0.5
+        court_kp_scaled = (court_kp - 0.5) * scale + 0.5
+
+        ball_in_bounds = (
+            (ball_uv_scaled[..., 0] >= 0.0)
+            & (ball_uv_scaled[..., 0] <= 1.0)
+            & (ball_uv_scaled[..., 1] >= 0.0)
+            & (ball_uv_scaled[..., 1] <= 1.0)
+        )
+        court_in_bounds = (
+            (court_kp_scaled[..., 0] >= 0.0)
+            & (court_kp_scaled[..., 0] <= 1.0)
+            & (court_kp_scaled[..., 1] >= 0.0)
+            & (court_kp_scaled[..., 1] <= 1.0)
+        )
+
+        if ball_vis.dtype == torch.bool:
+            sample["ball_vis"] = ball_vis & ball_in_bounds
+        else:
+            sample["ball_vis"] = ball_vis * ball_in_bounds.to(ball_vis.dtype)
+
+        if court_vis.dtype == torch.bool:
+            sample["court_vis"] = court_vis & court_in_bounds
+        else:
+            sample["court_vis"] = court_vis * court_in_bounds.to(court_vis.dtype)
+
+        sample["ball_uv"] = ball_uv_scaled.clamp(0.0, 1.0)
+        sample["court_kp"] = court_kp_scaled.clamp(0.0, 1.0)
         return sample
 
     def _to_single_sample(self, sample: dict[str, Tensor]) -> BLCSSample:
