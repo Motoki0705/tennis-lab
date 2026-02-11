@@ -79,20 +79,45 @@ bash src/blcs/scripts/run_hparam_sweep.sh
 
 ### 可視化
 
+統一された単一エントリポイント `python -m src.blcs.scripts.visualize` で全ての可視化タスクを実行できます。
+
 ```bash
-# 単一カメラ
+# Ground Truthシーンの可視化（単一カメラ、デフォルト設定）
 uv run python -m src.blcs.scripts.visualize
 
-# マルチビュー（Ground Truth）
-uv run python -m src.blcs.scripts.visualize_multiview \
+# 3Dアニメーションビューで可視化
+uv run python -m src.blcs.scripts.visualize \
+    visualization.animation_view=3d
+
+# 特定のシーンを可視化
+uv run python -m src.blcs.scripts.visualize \
     visualization.scene_path=data/blcs/scenes/scene_000003.npz
 
-# マルチビュー（チェックポイントからの予測）
-uv run python -m src.blcs.scripts.visualize_multiview \
+# シーン情報の表示
+uv run python -m src.blcs.scripts.visualize \
+    visualization.info=true
+
+# 単一カメラモデルによる予測と可視化
+uv run python -m src.blcs.scripts.visualize \
     visualization.mode=predict \
-    visualization.checkpoint=outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt \
-    visualization.cameras=all
+    visualization.checkpoint=outputs/blcs/single/logs/version_0/checkpoints/last.ckpt
+
+# マルチビューモデルによる予測と可視化
+uv run python -m src.blcs.scripts.visualize \
+    visualization.mode=predict \
+    visualization.cameras=all \
+    visualization.checkpoint=outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt
+
+# アニメーションを保存
+uv run python -m src.blcs.scripts.visualize \
+    visualization.animation_view=3d \
+    visualization.save=outputs/blcs/animations/scene_3d.mp4
 ```
+
+**注意:** 
+- 全ての可視化はアニメーションベースです（`visualization.view` は廃止されました）
+- `visualization.animation_view` は `2d_camera` または `3d` のみサポートします
+- マルチビューの場合は `visualization.cameras=all` または特定カメラリスト（例: `"0,1,2"`）を指定します
 
 ## モデルアーキテクチャ
 

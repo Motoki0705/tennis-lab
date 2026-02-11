@@ -1,12 +1,28 @@
+# BLCS Visualization Configuration (Single-Camera Mode)
+# All visualization is now animation-based
 mode: visualize  # visualize | predict
+
+# Scene and frame selection
 scene_path: data/blcs/scenes/rally_000000.npz
 frame: 0
-view: multi          # 3d | 2d | camera | multi | animation
+
+# Animation view: 2d_camera (camera perspective) or 3d (top-down with height)
+animation_view: 2d_camera  # 2d_camera | 3d
+
+# Camera selection (for single-camera mode)
 camera: 0
-animation_view: 2d   # 3d | 2d | camera
-fps: null
-save: null
-save_input: null     # Path to save 2D input scene animation (camera view)
+
+# Optional: specify multiple cameras (enables multi-camera mode)
+# cameras: null  # Can be "all", "0,1,2", or [0, 1, 2]
+
+# Output settings
+fps: null  # null = use scene fps
+save: null  # Output path for animation
+save_input: null  # Path to save 2D input scene animation (camera view)
+
+# Info mode: print scene details and exit
 info: false
+
+# Prediction mode settings
 checkpoint: outputs/blcs/single/logs/version_0/checkpoints/last.ckpt
-output: null
+output: null  # Path to save prediction outputs (.pt or .json)
