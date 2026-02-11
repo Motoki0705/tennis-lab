@@ -19,7 +19,9 @@ def create_animation(
     
     Args:
         scene: Scene dictionary.
-        animation_view: View type ('2d_camera' or '3d').
+        animation_view: View type ('2d_camera' or '3d'). This is the external
+            parameter name used throughout the BLCS visualization module. Internally,
+            it's mapped to the renderer's 'view' parameter.
         camera_idx: Camera index (for 2d_camera view).
         fps: Frames per second.
         
@@ -28,7 +30,9 @@ def create_animation(
     """
     renderer = BLCSSceneRenderer()
     
-    # Map animation_view to renderer's expected format
+    # Map our external 'animation_view' parameter to the renderer's internal 'view' parameter.
+    # External: 2d_camera, 3d
+    # Internal renderer: camera, 3d
     view_mapping = {
         "2d_camera": "camera",
         "3d": "3d",

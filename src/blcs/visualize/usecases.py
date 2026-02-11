@@ -203,7 +203,7 @@ def _visualize_prediction_single(cfg: VisualizationConfig) -> int:
     anim = create_comparison_animation(
         gt_positions=gt_pos,
         pred_positions=pred_pos,
-        view=cfg.animation_view,
+        animation_view=cfg.animation_view,  # Consistent parameter naming
         fps=fps,
         title="GT vs Prediction",
     )
@@ -303,7 +303,7 @@ def _visualize_prediction_multiview(cfg: VisualizationConfig) -> int:
     anim = create_comparison_animation(
         gt_positions=gt_pos,
         pred_positions=pred_pos,
-        view=cfg.animation_view,
+        animation_view=cfg.animation_view,  # Consistent parameter naming
         fps=fps,
         title="GT vs Multi-View Prediction",
     )
