@@ -16,6 +16,7 @@ from __future__ import annotations
 import sys
 import warnings
 
+# Show deprecation warning
 warnings.warn(
     "src.blcs.scripts.visualize_multiview is deprecated. "
     "Use 'python -m src.blcs.scripts.visualize' with visualization.cameras=all instead. "
@@ -24,8 +25,18 @@ warnings.warn(
     stacklevel=2,
 )
 
-# Re-export the main entry point for backward compatibility
-from src.blcs.scripts.visualize import main
-
+# Forward all arguments to the unified visualize script
 if __name__ == "__main__":
-    sys.exit(main())
+    import subprocess
+    
+    # Build command to call the main visualize script
+    args = sys.argv[1:]
+    
+    # If no config override is specified, use visualize_multiview config
+    has_config_override = any(arg.startswith("--config-name") for arg in args)
+    if not has_config_override:
+        args = ["--config-name=visualize_multiview"] + args
+    
+    # Call the main script
+    cmd = [sys.executable, "-m", "src.blcs.scripts.visualize"] + args
+    sys.exit(subprocess.call(cmd))
