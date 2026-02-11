@@ -44,12 +44,32 @@ gh pr create --repo Motoki0705/tennis-lab \
   --base main \
   --head "<branch>" \
   --title "<Title>" \
-  --body "<Body>" \
+  --body-file "<BodyFile>" \
   --label "<label>" \
   --label "<label>" \
   --assignee "@me" \
   --project "prj-tennis-lab"
 ```
+
+## Handling newlines in PR body
+
+Use `--body-file` for multi-line markdown bodies (recommended and safest):
+
+```bash
+cat <<'EOF' > /tmp/pr_body.md
+First line
+Second line
+Third line with `code`
+EOF
+
+gh pr create --repo Motoki0705/tennis-lab \
+  --base main \
+  --head "<branch>" \
+  --title "Example" \
+  --body-file /tmp/pr_body.md
+```
+
+This avoids newline escaping problems and prevents shell command substitution from backticks in inline `--body` text.
 
 ## Set project Status
 1) Get the item ID with `gh project item-list` and match by PR URL/number.
