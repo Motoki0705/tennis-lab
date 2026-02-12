@@ -10,6 +10,45 @@ import torch
 from torch import Tensor
 
 
+def scale_uv_with_visibility(
+    uv: Tensor,
+    visibility: Tensor,
+    scale: float,
+    center: float = 0.5,
+) -> tuple[Tensor, Tensor]:
+    """Scale normalized UV coordinates and update visibility by bounds.
+
+    Args:
+        uv: UV tensor of shape (..., 2) in normalized coordinates [0, 1].
+        visibility: Visibility tensor matching uv prefix shape (...,).
+        scale: Isotropic scaling factor.
+        center: Scaling center in normalized UV space.
+
+    Returns:
+        Tuple of (scaled_uv, updated_visibility).
+
+    """
+    if scale <= 0:
+        raise ValueError(f"scale must be positive, got {scale}.")
+    if uv.shape[-1] != 2:
+        raise ValueError(f"uv must have last dimension 2, got shape {tuple(uv.shape)}.")
+
+    uv_scaled = (uv - center) * scale + center
+    in_bounds = (
+        (uv_scaled[..., 0] >= 0.0)
+        & (uv_scaled[..., 0] <= 1.0)
+        & (uv_scaled[..., 1] >= 0.0)
+        & (uv_scaled[..., 1] <= 1.0)
+    )
+
+    if visibility.dtype == torch.bool:
+        visibility_scaled = visibility & in_bounds
+    else:
+        visibility_scaled = visibility * in_bounds.to(visibility.dtype)
+
+    return uv_scaled.clamp(0.0, 1.0), visibility_scaled
+
+
 def add_gaussian_noise(
     tensor: Tensor,
     noise_std: float,
