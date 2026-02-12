@@ -82,6 +82,50 @@ gh project item-edit --project-id PVT_kwHOB-BMQ84BKNof \
   --single-select-option-id "<STATUS_OPTION_ID>"
 ```
 
+## Robust project sync (recommended)
+Use this sequence to avoid common environment/network failures:
+
+1) Prefer `--owner "@me"` for user-owned projects in this repo workflow.
+2) Ensure the PR is in the project first (`item-add`), then fetch/edit.
+3) Use `gh --jq` instead of external `jq` (which may be missing).
+4) Guard against empty `ITEM_ID` before calling `item-edit`.
+5) Retry GraphQL operations (TLS/network flakiness) with backoff.
+
+```bash
+PR_URL="https://github.com/Motoki0705/tennis-lab/pull/<PR_NUMBER>"
+PROJECT_NUMBER=3
+PROJECT_ID="PVT_kwHOB-BMQ84BKNof"
+STATUS_FIELD_ID="PVTSSF_lAHOB-BMQ84BKNofzg6JZvQ"
+STATUS_IN_REVIEW="df73e18b"
+
+# 1) Ensure project item exists (idempotent enough for this workflow)
+gh project item-add "$PROJECT_NUMBER" --owner "@me" --url "$PR_URL" || true
+
+# 2) Retry item-list and extract ITEM_ID without external jq
+ITEM_ID=""
+for i in 1 2 3; do
+  ITEM_ID="$(gh project item-list "$PROJECT_NUMBER" --owner "@me" --format json \
+    --jq '.items[] | select(.content.type=="PullRequest" and .content.url=="'"$PR_URL"'") | .id' \
+    2>/tmp/gh_project_err.log || true)"
+  if [ -n "$ITEM_ID" ]; then
+    break
+  fi
+  sleep $((i * 2))
+done
+
+if [ -z "$ITEM_ID" ]; then
+  echo "Failed to resolve project item id for $PR_URL"
+  cat /tmp/gh_project_err.log
+  exit 1
+fi
+
+# 3) Update status
+gh project item-edit --project-id "$PROJECT_ID" \
+  --id "$ITEM_ID" \
+  --field-id "$STATUS_FIELD_ID" \
+  --single-select-option-id "$STATUS_IN_REVIEW"
+```
+
 ## Link issues via Development
 To link an issue in Development, add closing keywords to the PR body.
 
@@ -105,3 +149,7 @@ References #148
 - PR create fails if there are no commits between base and head.
 - `gh pr edit` uses `--add-assignee` / `--remove-assignee`.
 - Use repeated `--label` flags (avoid comma lists).
+- If `unknown owner type` appears, switch `gh project` owner to `@me`.
+- Avoid external `jq`; prefer built-in `--jq` for portability.
+- If `TLS handshake timeout` appears, retry GraphQL commands with short backoff.
+- Never call `gh project item-edit` with an empty `ITEM_ID`.
