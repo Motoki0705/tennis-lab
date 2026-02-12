@@ -4,7 +4,6 @@ This module provides reusable rendering components for:
 - Tennis court visualization (2D and 3D)
 - Human skeleton rendering
 - Ball trajectory visualization
-- Complete scene composition
 
 Example:
     >>> from src.utils.rendering import CourtRenderer, BallRenderer
@@ -17,9 +16,7 @@ Example:
 """
 
 from src.utils.rendering.ball_renderer import BallRenderer
-from src.utils.rendering.blcs_scene_renderer import BLCSSceneRenderer
 from src.utils.rendering.court_renderer import CourtRenderer
-from src.utils.rendering.plcs_scene_renderer import PLCSSceneRenderer
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer
 
 __all__ = [
@@ -27,7 +24,4 @@ __all__ = [
     "CourtRenderer",
     "SkeletonRenderer",
     "BallRenderer",
-    # Scene renderers
-    "PLCSSceneRenderer",
-    "BLCSSceneRenderer",
 ]
