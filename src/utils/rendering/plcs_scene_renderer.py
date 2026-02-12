@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
 
-from src.utils.geometry.constants import COURT_LINE_CONNECTIONS
+from src.utils.schema.keypoint_schema import COURT_LINE_CONNECTIONS
 from src.utils.geometry.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
 from src.utils.rendering.court_renderer import CourtRenderer
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 
 # Court keypoint skeleton for drawing lines between keypoints
-# Use the unified definition from geometry.constants
+# Use the unified definition from schema.keypoint_schema
 COURT_SKELETON: list[tuple[int, int]] = COURT_LINE_CONNECTIONS
 
 

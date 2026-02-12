@@ -1,6 +1,6 @@
-"""Constants for tennis court and human pose geometry.
+"""Shared keypoint schema definitions for court and human pose.
 
-This module provides unified keypoint definitions used across the project:
+This module provides unified schema definitions used across the project:
 - Court 3D keypoints (CourtKP20)
 - Human keypoints (COCO-17)
 - SMPL-H joint definitions

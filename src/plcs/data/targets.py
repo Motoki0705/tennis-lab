@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 
 from src.utils.geometry import FACE_KEYPOINT_OFFSETS, SMPLH_TO_COCO17_MAPPING
-from src.utils.geometry.constants import (
+from src.utils.schema.keypoint_schema import (
     COURT_COORD_SCALE_X,
     COURT_COORD_SCALE_Y,
     COURT_COORD_SCALE_Z,

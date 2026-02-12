@@ -438,7 +438,7 @@ class BLCSSceneRenderer:
             fig, ax = plt.subplots(figsize=figsize)
 
             # Draw court lines (static)
-            from src.utils.geometry.constants import COURT_LINE_CONNECTIONS
+            from src.utils.schema.keypoint_schema import COURT_LINE_CONNECTIONS
 
             court_uv = cam["court_kp_uv"]
             court_vis = cam["court_kp_visible"]
