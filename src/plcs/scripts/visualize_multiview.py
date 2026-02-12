@@ -26,7 +26,7 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
 from src.plcs.generate_dataset.io.dataset_io import load_scene
-from src.utils.rendering import PLCSSceneRenderer as SceneRenderer
+from src.plcs.visualization.rendering import PLCSSceneRenderer as SceneRenderer
 
 if TYPE_CHECKING:
     from src.plcs.generate_dataset.scene_generator import SceneData

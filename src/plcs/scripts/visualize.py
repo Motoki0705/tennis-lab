@@ -23,7 +23,7 @@ from omegaconf import DictConfig
 
 from src.plcs.generate_dataset.io.dataset_io import load_scene
 from src.plcs.generate_dataset.scene_generator import CameraData
-from src.utils.rendering import PLCSSceneRenderer as SceneRenderer
+from src.plcs.visualization.rendering import PLCSSceneRenderer as SceneRenderer
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer
 
 if TYPE_CHECKING:
