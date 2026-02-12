@@ -5,7 +5,7 @@ and pose from Court keypoints and Skeleton) data, combining court and
 skeleton visualization.
 
 Example:
-    >>> from src.utils.rendering import PLCSSceneRenderer
+    >>> from src.plcs.visualization.rendering import PLCSSceneRenderer
     >>>
     >>> renderer = PLCSSceneRenderer()
     >>> fig, ax = renderer.render_frame_3d(scene_data, frame_idx=0)
