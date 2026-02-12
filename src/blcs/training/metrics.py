@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
+from src.utils.schema.keypoint_schema import COURT_COORD_SCALE_XYZ
 
 
 class BLCSMetrics:

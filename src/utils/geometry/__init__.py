@@ -5,7 +5,7 @@ This module provides:
 - Human keypoint definitions (COCO-17, SMPL-H)
 """
 
-from src.utils.geometry.constants import (
+from src.utils.schema.keypoint_schema import (
     # Human keypoints (COCO-17)
     COCO_KP_IDX,
     COCO_KP_NAMES,

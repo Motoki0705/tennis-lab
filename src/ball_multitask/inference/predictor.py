@@ -12,7 +12,7 @@ from src.base.inference.predictor import BasePredictor
 from src.ball_multitask.models.multitask_model import BallMultitaskModel
 from src.ball_multitask.training.lightning_module import BallMultitaskLightningModule
 from src.event_detection.utils.peaks import extract_event_peaks
-from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
+from src.utils.schema.keypoint_schema import COURT_COORD_SCALE_XYZ
 
 
 class BallMultitaskPredictor(BasePredictor):

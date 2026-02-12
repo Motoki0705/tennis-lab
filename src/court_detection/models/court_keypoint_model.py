@@ -14,7 +14,7 @@ from torch import Tensor
 
 from src.common.models import ViTConfig, ViTEncoder
 from src.common.models.components import MoEConfig, RMSNorm, ViTBlock, ViTBlockConfig
-from src.utils.geometry.constants import NUM_COURT_KP
+from src.utils.schema.keypoint_schema import NUM_COURT_KP
 
 NUM_KEYPOINTS = NUM_COURT_KP  # CourtKP20 specification
 

@@ -7,7 +7,7 @@ from typing import Any
 import cv2
 import numpy as np
 
-from src.utils.geometry.constants import (
+from src.utils.schema.keypoint_schema import (
     COURT_KP_NAMES,
     COURT_SKELETON,
     NUM_COURT_KP,
