@@ -23,6 +23,11 @@ Use this skill for Motoki0705/tennis-lab PR creation and maintenance via gh CLI.
   - In review: `df73e18b`
   - Done: `98236657`
 
+## CLI preflight (before project operations)
+- Run `gh auth status` and confirm the active account is authenticated (no timeout).
+- If auth is unstable, retry once before `gh project` commands.
+- Keep PR creation and project-status update as separate steps so PR creation can still succeed when GraphQL is flaky.
+
 ## Labels in this repo (from `gh label list`)
 - `bug`: use for defects or regressions.
 - `documentation`: use for docs-only changes.
@@ -161,4 +166,5 @@ References #148
 - If `unknown owner type` appears, switch `gh project` owner to `@me`.
 - Avoid external `jq`; prefer built-in `--jq` for portability.
 - If `TLS handshake timeout` appears, retry `item-add`, `item-list`, and `item-edit` separately with short backoff.
+- If `gh auth status` shows account timeout, restore auth/session first; project updates may fail even when `gh pr create` succeeds.
 - Never call `gh project item-edit` with an empty `ITEM_ID`.
