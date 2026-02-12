@@ -43,7 +43,7 @@ from src.event_detection.utils.visualization import (
     save_outputs,
     select_camera,
 )
-from src.utils.geometry.constants import COURT_LINE_CONNECTIONS
+from src.utils.schema.keypoint_schema import COURT_LINE_CONNECTIONS
 
 F = TypeVar("F", bound=Callable[..., Any])
 

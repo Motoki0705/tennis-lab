@@ -12,7 +12,7 @@ from torch import Tensor
 from src.base.inference.predictor import BasePredictor
 from src.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.plcs.training.multiview_lightning_module import PLCSMultiViewLightningModule
-from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
+from src.utils.schema.keypoint_schema import COURT_COORD_SCALE_XYZ
 
 F = TypeVar("F", bound=Callable[..., Any])
 

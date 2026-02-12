@@ -40,7 +40,7 @@ from src.tools.annotation.backend.models import (
 )
 from src.tools.annotation.backend.state import AnnotationState, StatePaths
 from src.tools.annotation.backend.video import VideoFrameProvider
-from src.utils.geometry.constants import COURT_KP_NAMES, NUM_COURT_KP
+from src.utils.schema.keypoint_schema import COURT_KP_NAMES, NUM_COURT_KP
 
 
 def create_app(

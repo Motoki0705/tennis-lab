@@ -11,7 +11,7 @@ from torch import Tensor
 from src.base.inference.predictor import BasePredictor
 from src.plcs.models.plcs_sequence_model import PLCSSequenceModel
 from src.plcs.training.sequence_lightning_module import PLCSSequenceLightningModule
-from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
+from src.utils.schema.keypoint_schema import COURT_COORD_SCALE_XYZ
 
 
 class PLCSSequencePredictor(BasePredictor):
