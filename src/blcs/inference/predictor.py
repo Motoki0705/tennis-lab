@@ -11,7 +11,7 @@ from torch import Tensor, nn
 
 from src.base.inference.predictor import BasePredictor
 from src.blcs.training.lightning_module import BLCSLightningModule
-from src.utils.geometry.constants import COURT_COORD_SCALE_XYZ
+from src.utils.schema.keypoint_schema import COURT_COORD_SCALE_XYZ
 
 
 class BLCSPredictor(BasePredictor):
