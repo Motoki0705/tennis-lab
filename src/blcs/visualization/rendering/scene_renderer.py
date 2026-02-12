@@ -5,7 +5,7 @@ Court keypoints and Skeleton) data, combining court and ball trajectory
 visualization.
 
 Example:
-    >>> from src.utils.rendering import BLCSSceneRenderer
+    >>> from src.blcs.visualization.rendering import BLCSSceneRenderer
     >>>
     >>> renderer = BLCSSceneRenderer()
     >>> fig = renderer.render_multi_view(scene_data, frame_idx=0)

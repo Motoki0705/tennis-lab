@@ -25,7 +25,7 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
 from src.blcs.generate_dataset.io.dataset_io import load_scene
-from src.utils.rendering import BLCSSceneRenderer
+from src.blcs.visualization.rendering import BLCSSceneRenderer
 
 if TYPE_CHECKING:
     pass
