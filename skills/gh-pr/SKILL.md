@@ -6,15 +6,13 @@ description: Create or edit GitHub pull requests via gh CLI with consistent titl
 # GH PR Workflow
 
 ## Scope
-Use this skill for Motoki0705/tennis-lab PR creation and maintenance via gh CLI.
+Use this skill for PR creation/maintenance in `Motoki0705/tennis-lab`.
 
-## Defaults and fixed values
+## Fixed defaults
 - Repo: `Motoki0705/tennis-lab`
 - Base branch: `main`
-- Project (Projects v2):
-  - Title: `prj-tennis-lab`
-  - Number: `3`
-  - Project ID: `PVT_kwHOB-BMQ84BKNof`
+- Project title/number: `prj-tennis-lab` / `3`
+- Project ID: `PVT_kwHOB-BMQ84BKNof`
 - Status field ID: `PVTSSF_lAHOB-BMQ84BKNofzg6JZvQ`
 - Status options:
   - Backlog: `f75ad846`
@@ -23,22 +21,14 @@ Use this skill for Motoki0705/tennis-lab PR creation and maintenance via gh CLI.
   - In review: `df73e18b`
   - Done: `98236657`
 
-## Labels in this repo (from `gh label list`)
-- `bug`: use for defects or regressions.
-- `documentation`: use for docs-only changes.
-- `duplicate`: use when the issue already exists elsewhere.
-- `enhancement`: use for new features or improvements.
-- `good first issue`: use for newcomer-friendly, well-scoped tasks.
-- `help wanted`: use when extra help is explicitly desired.
-- `invalid`: use when the report is not actionable or incorrect.
-- `question`: use when more information is required.
-- `wontfix`: use when the issue will not be addressed.
-- `research`: use for investigation or exploratory tasks.
+## Minimal flow
 
-## Create a PR (standard)
-1) Ensure the branch has at least one commit different from `main`.
-2) Create with explicit flags:
+### 1) Preflight
+- Run `gh auth status` and confirm no timeout.
+- Ensure current branch has commits vs `main`.
+- Prepare PR body with `--body-file` (avoid inline multiline body).
 
+### 2) Create PR
 ```bash
 gh pr create --repo Motoki0705/tennis-lab \
   --base main \
@@ -46,62 +36,58 @@ gh pr create --repo Motoki0705/tennis-lab \
   --title "<Title>" \
   --body-file "<BodyFile>" \
   --label "<label>" \
-  --label "<label>" \
   --assignee "@me" \
   --project "prj-tennis-lab"
 ```
 
-## Handling newlines in PR body
-
-Use `--body-file` for multi-line markdown bodies (recommended and safest):
-
+### 3) Set project status (robust)
 ```bash
-cat <<'EOF' > /tmp/pr_body.md
-First line
-Second line
-Third line with `code`
-EOF
+PR_URL="https://github.com/Motoki0705/tennis-lab/pull/<PR_NUMBER>"
+PROJECT_NUMBER=3
+PROJECT_ID="PVT_kwHOB-BMQ84BKNof"
+STATUS_FIELD_ID="PVTSSF_lAHOB-BMQ84BKNofzg6JZvQ"
+STATUS_IN_REVIEW="df73e18b"
 
-gh pr create --repo Motoki0705/tennis-lab \
-  --base main \
-  --head "<branch>" \
-  --title "Example" \
-  --body-file /tmp/pr_body.md
+# Ensure PR is added to project (retry)
+for i in 1 2 3; do
+  gh project item-add "$PROJECT_NUMBER" --owner "@me" --url "$PR_URL" >/tmp/gh_project_add.log 2>&1 && break
+  sleep $((i * 2))
+done
+
+# Resolve item id (retry, no external jq)
+ITEM_ID=""
+for i in 1 2 3; do
+  ITEM_ID="$(gh project item-list "$PROJECT_NUMBER" --owner "@me" --format json \
+    --jq '.items[] | select(.content.type=="PullRequest" and .content.url=="'"$PR_URL"'") | .id' \
+    2>/tmp/gh_project_err.log || true)"
+  [ -n "$ITEM_ID" ] && break
+  sleep $((i * 2))
+done
+
+if [ -z "$ITEM_ID" ]; then
+  echo "Failed to resolve ITEM_ID for $PR_URL"
+  cat /tmp/gh_project_add.log 2>/dev/null || true
+  cat /tmp/gh_project_err.log
+  exit 1
+fi
+
+# Update status (retry)
+for i in 1 2 3; do
+  gh project item-edit --project-id "$PROJECT_ID" \
+    --id "$ITEM_ID" \
+    --field-id "$STATUS_FIELD_ID" \
+    --single-select-option-id "$STATUS_IN_REVIEW" && break
+  sleep $((i * 2))
+done
 ```
 
-This avoids newline escaping problems and prevents shell command substitution from backticks in inline `--body` text.
+## Notes
+- Use repeated `--label` flags when multiple labels are needed.
+- Add `Closes #...` / `References #...` in PR body when linking issues.
+- Use `--reviewer`, `--draft`, `--milestone` only when needed.
 
-## Set project Status
-1) Get the item ID with `gh project item-list` and match by PR URL/number.
-2) Edit the Status field with `--project-id`.
-
-```bash
-gh project item-edit --project-id PVT_kwHOB-BMQ84BKNof \
-  --id "<ITEM_ID>" \
-  --field-id PVTSSF_lAHOB-BMQ84BKNofzg6JZvQ \
-  --single-select-option-id "<STATUS_OPTION_ID>"
-```
-
-## Link issues via Development
-To link an issue in Development, add closing keywords to the PR body.
-
-```text
-Closes #149
-References #148
-```
-
-- `Closes/Fixes/Resolves` links the issue and auto-closes on merge.
-- `References` is contextual only; no Development link.
-
-## Optional PR flags to consider
-- Reviewers: `--reviewer <user|team>`
-- Draft: `--draft`
-- Milestone: `--milestone <name>`
-- Autofill: `--fill` / `--fill-verbose`
-- No maintainer edits: `--no-maintainer-edit`
-- Template: `--template <name>`
-
-## Common gotchas
-- PR create fails if there are no commits between base and head.
-- `gh pr edit` uses `--add-assignee` / `--remove-assignee`.
-- Use repeated `--label` flags (avoid comma lists).
+## Failure quick fixes
+- `unknown owner type` -> use `--owner "@me"`.
+- `jq: command not found` -> use `gh --jq` (built-in).
+- `TLS handshake timeout` -> retry `item-add`, `item-list`, `item-edit` separately.
+- `ITEM_ID` empty -> do not run `item-edit`; inspect logs and auth first.
