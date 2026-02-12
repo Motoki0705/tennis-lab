@@ -3,7 +3,6 @@
 This module provides:
 - Court dimensions and keypoint definitions (ITF standard)
 - Human keypoint definitions (COCO-17, SMPL-H)
-- Camera models and projection utilities
 """
 
 from src.utils.geometry.constants import (
@@ -51,12 +50,7 @@ from src.utils.geometry.court import (
     X_MIN,
     Y_MAX,
     Y_MIN,
-    # Camera utilities
-    Camera,
     court_keypoints_3d,
-    make_look_at_camera,
-    project_points,
-    sample_camera_position_on_fence,
 )
 
 __all__ = [
@@ -99,11 +93,6 @@ __all__ = [
     "SMPLH_JOINT_IDX",
     "SMPLH_TO_COCO17_MAPPING",
     "FACE_KEYPOINT_OFFSETS",
-    # Camera
-    "Camera",
-    "make_look_at_camera",
-    "project_points",
-    "sample_camera_position_on_fence",
     # Court coordinate normalization scales
     "COURT_COORD_SCALE_X",
     "COURT_COORD_SCALE_Y",
