@@ -98,8 +98,11 @@ PROJECT_ID="PVT_kwHOB-BMQ84BKNof"
 STATUS_FIELD_ID="PVTSSF_lAHOB-BMQ84BKNofzg6JZvQ"
 STATUS_IN_REVIEW="df73e18b"
 
-# 1) Ensure project item exists (idempotent enough for this workflow)
-gh project item-add "$PROJECT_NUMBER" --owner "@me" --url "$PR_URL" || true
+# 1) Ensure project item exists (retry because GraphQL can timeout)
+for i in 1 2 3; do
+  gh project item-add "$PROJECT_NUMBER" --owner "@me" --url "$PR_URL" >/tmp/gh_project_add.log 2>&1 && break
+  sleep $((i * 2))
+done
 
 # 2) Retry item-list and extract ITEM_ID without external jq
 ITEM_ID=""
@@ -115,15 +118,21 @@ done
 
 if [ -z "$ITEM_ID" ]; then
   echo "Failed to resolve project item id for $PR_URL"
+  cat /tmp/gh_project_add.log 2>/dev/null || true
   cat /tmp/gh_project_err.log
   exit 1
 fi
 
-# 3) Update status
-gh project item-edit --project-id "$PROJECT_ID" \
-  --id "$ITEM_ID" \
-  --field-id "$STATUS_FIELD_ID" \
-  --single-select-option-id "$STATUS_IN_REVIEW"
+# 3) Update status (retry because GraphQL can timeout)
+for i in 1 2 3; do
+  if gh project item-edit --project-id "$PROJECT_ID" \
+    --id "$ITEM_ID" \
+    --field-id "$STATUS_FIELD_ID" \
+    --single-select-option-id "$STATUS_IN_REVIEW"; then
+    break
+  fi
+  sleep $((i * 2))
+done
 ```
 
 ## Link issues via Development
@@ -151,5 +160,5 @@ References #148
 - Use repeated `--label` flags (avoid comma lists).
 - If `unknown owner type` appears, switch `gh project` owner to `@me`.
 - Avoid external `jq`; prefer built-in `--jq` for portability.
-- If `TLS handshake timeout` appears, retry GraphQL commands with short backoff.
+- If `TLS handshake timeout` appears, retry `item-add`, `item-list`, and `item-edit` separately with short backoff.
 - Never call `gh project item-edit` with an empty `ITEM_ID`.
