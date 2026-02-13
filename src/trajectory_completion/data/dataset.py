@@ -7,20 +7,52 @@ corrupted inputs (noise + masking) paired with the original UV trajectory.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import torch
 from torch import Tensor
 
 from src.common.data.blcs_npz_adapter import load_camera_view
 from src.common.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
-from src.common.dataset.sequence import build_valid_mask
 from src.trajectory_completion.data.argument import TrajectoryArgumenter
 from src.trajectory_completion.data.event_masking import extract_event_frames
 from src.trajectory_completion.data.types import TrajectoryCompletionSample
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
+
+
+def _build_valid_mask(T: int, seq_len: Tensor) -> Tensor:
+    """Build a valid-length mask for a single sequence."""
+    t = torch.arange(T, device=seq_len.device)
+    return t < seq_len.to(torch.long)
+
+
+def _crop_to_max_len(
+    tensors: dict[str, Tensor],
+    *,
+    seq_len: int,
+    max_seq_len: int,
+    mode: Literal["random", "center"],
+) -> tuple[dict[str, Tensor], int, int]:
+    """Crop temporal tensors to max_seq_len with a shared offset."""
+    if max_seq_len <= 0:
+        raise ValueError(f"max_seq_len must be positive, got {max_seq_len}.")
+    first = next(iter(tensors.values()))
+    T = int(first.shape[0])
+    if T <= max_seq_len:
+        return tensors, min(seq_len, T), 0
+
+    crop_len = max_seq_len
+    max_start = max(0, seq_len - crop_len)
+    if mode == "random" and max_start > 0:
+        start = int(torch.randint(0, max_start + 1, (1,)).item())
+    else:
+        start = max_start // 2
+    end = start + crop_len
+    cropped = {k: v[start:end] for k, v in tensors.items()}
+    new_seq_len = max(0, min(seq_len - start, crop_len))
+    return cropped, new_seq_len, start
 
 
 class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletionSample]):
@@ -79,19 +111,20 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
             seq_len = min(self.min_seq_len, int(ball_uv_gt.shape[0]))
         crop_start = 0
         if ball_uv_gt.shape[0] > self.max_seq_len:
-            crop_len = self.max_seq_len
-            max_start = max(0, seq_len - crop_len)
-            if self.config.crop_mode == "random" and max_start > 0:
-                crop_start = int(torch.randint(0, max_start + 1, (1,)).item())
-            else:
-                crop_start = max_start // 2
-            end = crop_start + crop_len
-            ball_uv_gt = ball_uv_gt[crop_start:end]
-            ball_visible = ball_visible[crop_start:end]
-            seq_len = max(0, min(seq_len - crop_start, crop_len))
+            cropped, seq_len, crop_start = _crop_to_max_len(
+                {
+                    "ball_uv_gt": ball_uv_gt,
+                    "ball_visible": ball_visible,
+                },
+                seq_len=seq_len,
+                max_seq_len=self.max_seq_len,
+                mode=self.config.crop_mode,
+            )
+            ball_uv_gt = cropped["ball_uv_gt"]
+            ball_visible = cropped["ball_visible"]
 
         seq_len_t = torch.tensor(seq_len, dtype=torch.long)
-        valid_t = build_valid_mask(ball_uv_gt.shape[0], seq_len_t).to(torch.float32)
+        valid_t = _build_valid_mask(ball_uv_gt.shape[0], seq_len_t).to(torch.float32)
         if self.supervise_visible_only:
             ball_vis = (ball_visible > 0).to(torch.float32) * valid_t
         else:
