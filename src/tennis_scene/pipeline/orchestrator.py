@@ -22,12 +22,12 @@ import cv2
 import numpy as np
 
 from src.tennis_scene.io import SceneResult
-from src.tennis_scene.transforms import apply_plcs_transform_batch
-from src.tennis_scene.pipeline.court_kp import CourtKPModule, CourtKPConfig
-from src.tennis_scene.pipeline.gvhmr import GVHMRResult
-from src.tennis_scene.pipeline.wasb import WASBModule, WASBConfig
-from src.tennis_scene.pipeline.plcs import PLCSModule, PLCSConfig
-from src.tennis_scene.pipeline.blcs import BLCSModule, BLCSConfig
+from src.tennis_scene.utils.transforms import apply_plcs_transform_batch
+from src.tennis_scene.pipeline.components.court_kp import CourtKPModule, CourtKPConfig
+from src.tennis_scene.pipeline.components.gvhmr import GVHMRMultiResult
+from src.tennis_scene.pipeline.components.wasb import WASBModule, WASBConfig
+from src.tennis_scene.pipeline.components.plcs import PLCSModule, PLCSConfig
+from src.tennis_scene.pipeline.components.blcs import BLCSModule, BLCSConfig
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -130,6 +130,8 @@ class TennisSceneOrchestrator:
                 "output_path": get_output_path("gvhmr", "gvhmr_result.json"),
                 "load_path": get_load_path("gvhmr"),
                 "device": device,
+                "multi_player": bool(cfg.gvhmr.get("multi_player", False)),
+                "track_ids": cfg.gvhmr.get("track_ids"),
             }
 
         wasb_module = None
@@ -177,7 +179,7 @@ class TennisSceneOrchestrator:
         self,
         video_path: Path,
         max_frames: int | None = None,
-    ) -> GVHMRResult:
+    ) -> GVHMRMultiResult:
         """Run GVHMR via CLI subprocess or load from cached result.
 
         Args:
@@ -185,7 +187,7 @@ class TennisSceneOrchestrator:
             max_frames: Maximum frames to process.
 
         Returns:
-            GVHMRResult with SMPL and keypoint data.
+            GVHMRMultiResult with SMPL and keypoint data.
 
         """
         if self.gvhmr_config is None:
@@ -197,7 +199,7 @@ class TennisSceneOrchestrator:
         # If load_path is specified and exists, load from it
         if load_path is not None and Path(load_path).exists():
             LOGGER.info(f"Loading GVHMR result from: {load_path}")
-            return GVHMRResult.load(load_path)
+            return GVHMRMultiResult.load(load_path)
 
         # Run GVHMR CLI subprocess
         LOGGER.info("Running GVHMR via CLI subprocess...")
@@ -205,7 +207,7 @@ class TennisSceneOrchestrator:
         cmd = [
             python_exe,
             "-m",
-            "src.tennis_scene.pipeline.gvhmr",
+            "src.tennis_scene.pipeline.components.gvhmr",
             f"--video={video_path}",
             f"--output={output_path}",
             f"--model-checkpoint={self.gvhmr_config['model_checkpoint']}",
@@ -215,7 +217,13 @@ class TennisSceneOrchestrator:
             f"--device={self.gvhmr_config['device']}",
         ]
         if max_frames is not None:
-            cmd.append(f"--max_frames={max_frames}")
+            cmd.append(f"--max-frames={max_frames}")
+        if self.gvhmr_config.get("multi_player", False):
+            cmd.append("--multi-player")
+        track_ids = self.gvhmr_config.get("track_ids")
+        if track_ids:
+            cmd.append("--track-ids")
+            cmd.extend([str(track_id) for track_id in track_ids])
 
         LOGGER.info(f"Command: {' '.join(cmd)}")
 
@@ -233,7 +241,7 @@ class TennisSceneOrchestrator:
         LOGGER.info("GVHMR subprocess completed successfully")
 
         # Load result from output JSON
-        return GVHMRResult.load(output_path)
+        return GVHMRMultiResult.load(output_path)
 
     def load_all(self) -> None:
         """Pre-load all modules (except GVHMR which runs as subprocess)."""
@@ -321,37 +329,82 @@ class TennisSceneOrchestrator:
 
         if self.gvhmr_config is not None:
             gvhmr_result = self._run_gvhmr(video_path, max_frames)
+            track_ids = sorted(gvhmr_result.players.keys())
+            gvhmr_players = [gvhmr_result.players[track_id] for track_id in track_ids]
+            frame_lengths = {player.human_kp_2d.shape[0] for player in gvhmr_players}
+            if len(frame_lengths) != 1:
+                raise RuntimeError(
+                    f"GVHMR players have inconsistent frame lengths: {sorted(frame_lengths)}"
+                )
 
-            human_kp_2d_norm = gvhmr_result.human_kp_2d.copy()
+            human_kp_2d_norm = np.stack(
+                [player.human_kp_2d.copy() for player in gvhmr_players],
+                axis=0,
+            ).astype(np.float32)
             human_kp_2d_norm[..., 0] /= width
             human_kp_2d_norm[..., 1] /= height
+            human_kp_vis = np.stack(
+                [player.human_kp_vis.copy() for player in gvhmr_players],
+                axis=0,
+            ).astype(np.float32)
+            smpl_body_pose = np.stack(
+                [player.smpl_body_pose.copy() for player in gvhmr_players],
+                axis=0,
+            ).astype(np.float32)
+            smpl_global_orient = np.stack(
+                [player.smpl_global_orient.copy() for player in gvhmr_players],
+                axis=0,
+            ).astype(np.float32)
+            smpl_betas = np.stack(
+                [player.smpl_betas.copy() for player in gvhmr_players],
+                axis=0,
+            ).astype(np.float32)
 
-            smpl_body_pose = gvhmr_result.smpl_body_pose
-            smpl_global_orient = gvhmr_result.smpl_global_orient
-            smpl_betas = gvhmr_result.smpl_betas
-            smpl_vertices_local = gvhmr_result.smpl_vertices_local
-            human_kp_vis = gvhmr_result.human_kp_vis
+            if all(player.smpl_vertices_local is not None for player in gvhmr_players):
+                smpl_vertices_local = np.stack(
+                    [player.smpl_vertices_local for player in gvhmr_players if player.smpl_vertices_local is not None],
+                    axis=0,
+                ).astype(np.float32)
+            else:
+                smpl_vertices_local = None
         else:
             T = max_frames or video_info["num_frames"]
-            human_kp_2d_norm = np.zeros((T, 17, 2), dtype=np.float32)
-            human_kp_vis = np.ones((T, 17), dtype=np.float32)
-            smpl_body_pose = np.zeros((T, 63), dtype=np.float32)
-            smpl_global_orient = np.zeros((T, 3), dtype=np.float32)
-            smpl_betas = np.zeros(10, dtype=np.float32)
+            track_ids = [0]
+            human_kp_2d_norm = np.zeros((1, T, 17, 2), dtype=np.float32)
+            human_kp_vis = np.ones((1, T, 17), dtype=np.float32)
+            smpl_body_pose = np.zeros((1, T, 63), dtype=np.float32)
+            smpl_global_orient = np.zeros((1, T, 3), dtype=np.float32)
+            smpl_betas = np.zeros((1, 10), dtype=np.float32)
             smpl_vertices_local = None
 
-        plcs_result = self.plcs_module.process(
+        plcs_result = self.plcs_module.process_multi(
             human_kp_2d=human_kp_2d_norm,
             court_kp=court_kp,
             human_kp_vis=human_kp_vis,
             court_vis=court_vis,
+            track_ids=track_ids,
         )
+        players_position = np.stack(
+            [plcs_result.players[track_id].position for track_id in track_ids],
+            axis=0,
+        ).astype(np.float32)
+        players_yaw = np.stack(
+            [plcs_result.players[track_id].yaw for track_id in track_ids],
+            axis=0,
+        ).astype(np.float32)
 
         if smpl_vertices_local is not None:
-            smpl_vertices_global = apply_plcs_transform_batch(
-                smpl_vertices_local,
-                plcs_result.position,
-                plcs_result.yaw,
+            smpl_vertices_global_list = []
+            for player_idx in range(len(track_ids)):
+                smpl_vertices_global_list.append(
+                    apply_plcs_transform_batch(
+                        smpl_vertices_local[player_idx],
+                        players_position[player_idx],
+                        players_yaw[player_idx],
+                    )
+                )
+            smpl_vertices_global = np.stack(smpl_vertices_global_list, axis=0).astype(
+                np.float32
             )
         else:
             smpl_vertices_global = None
@@ -379,7 +432,7 @@ class TennisSceneOrchestrator:
                 )
                 ball_3d = blcs_result.ball_3d
 
-        T = len(plcs_result.position)
+        T = players_position.shape[1]
 
         return SceneResult(
             num_frames=T,
@@ -388,21 +441,32 @@ class TennisSceneOrchestrator:
             height=height,
             court_kp=court_kp,
             court_vis=court_vis,
-            player_position=plcs_result.position,
-            player_yaw=plcs_result.yaw,
-            smpl_body_pose=smpl_body_pose,
-            smpl_global_orient=smpl_global_orient,
-            smpl_betas=smpl_betas,
-            smpl_vertices_local=smpl_vertices_local,
-            smpl_vertices_global=smpl_vertices_global,
+            player_position=players_position[0],
+            player_yaw=players_yaw[0],
+            smpl_body_pose=smpl_body_pose[0],
+            smpl_global_orient=smpl_global_orient[0],
+            smpl_betas=smpl_betas[0],
+            smpl_vertices_local=smpl_vertices_local[0] if smpl_vertices_local is not None else None,
+            smpl_vertices_global=smpl_vertices_global[0] if smpl_vertices_global is not None else None,
             ball_uv=ball_uv,
             ball_visibility=ball_visibility,
             ball_3d=ball_3d,
-            human_kp_2d=human_kp_2d_norm,
-            human_kp_vis=human_kp_vis,
+            human_kp_2d=human_kp_2d_norm[0],
+            human_kp_vis=human_kp_vis[0],
+            player_track_ids=np.array(track_ids, dtype=np.int32),
+            players_position=players_position,
+            players_yaw=players_yaw,
+            players_smpl_body_pose=smpl_body_pose,
+            players_smpl_global_orient=smpl_global_orient,
+            players_smpl_betas=smpl_betas,
+            players_smpl_vertices_local=smpl_vertices_local,
+            players_smpl_vertices_global=smpl_vertices_global,
+            players_human_kp_2d=human_kp_2d_norm,
+            players_human_kp_vis=human_kp_vis,
             metadata={
                 "video_path": str(video_path),
                 "court_kp_frame": court_kp_frame,
+                "track_ids": track_ids,
             },
         )
 

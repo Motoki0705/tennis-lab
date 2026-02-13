@@ -160,16 +160,20 @@ global_smpl_verts = rotate_y(local_smpl_verts, yaw) + position
 src/tennis_scene/
 ├── __init__.py              # パッケージ定義
 ├── io.py                    # SceneResultデータ構造
-├── transforms.py            # 座標変換ユーティリティ
+├── utils/
+│   ├── __init__.py
+│   └── transforms.py        # 座標変換ユーティリティ
 ├── pipeline/                # モジュラーパイプライン
 │   ├── __init__.py          # エクスポート
-│   ├── base.py              # BasePipelineModule基底クラス
 │   ├── orchestrator.py      # TennisSceneOrchestrator
-│   ├── court_kp.py          # CourtKPModule
-│   ├── gvhmr.py             # GVHMRModule + GVHMRConfig
-│   ├── wasb.py              # WASBModule + WASBConfig
-│   ├── plcs.py              # PLCSModule
-│   └── blcs.py              # BLCSModule
+│   └── components/
+│       ├── __init__.py
+│       ├── base.py          # BasePipelineModule基底クラス
+│       ├── court_kp.py      # CourtKPModule
+│       ├── gvhmr.py         # GVHMRModule + GVHMRConfig
+│       ├── wasb.py          # WASBModule + WASBConfig
+│       ├── plcs.py          # PLCSModule
+│       └── blcs.py          # BLCSModule
 ├── configs/
 │   └── pipeline.yaml        # Hydra設定
 ├── scripts/

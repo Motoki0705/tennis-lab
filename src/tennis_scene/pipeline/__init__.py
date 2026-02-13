@@ -6,11 +6,11 @@ implemented as a separate module.
 """
 
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
-from src.tennis_scene.pipeline.court_kp import CourtKPModule
-from src.tennis_scene.pipeline.gvhmr import GVHMRModule
-from src.tennis_scene.pipeline.wasb import WASBModule
-from src.tennis_scene.pipeline.plcs import PLCSModule
-from src.tennis_scene.pipeline.blcs import BLCSModule
+from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
+from src.tennis_scene.pipeline.components.gvhmr import GVHMRModule
+from src.tennis_scene.pipeline.components.wasb import WASBModule
+from src.tennis_scene.pipeline.components.plcs import PLCSModule
+from src.tennis_scene.pipeline.components.blcs import BLCSModule
 
 __all__ = [
     "TennisSceneOrchestrator",
