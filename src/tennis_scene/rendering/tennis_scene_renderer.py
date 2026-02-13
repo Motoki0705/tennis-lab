@@ -131,32 +131,21 @@ class TennisSceneRenderer:
         return _DEFAULT_PLAYER_COLORS[player_idx % len(_DEFAULT_PLAYER_COLORS)]
 
     def _get_player_tracks(self, scene: SceneResult) -> list[int]:
-        if scene.player_track_ids is not None:
-            return [int(track_id) for track_id in scene.player_track_ids.tolist()]
-        players_position = self._get_players_position(scene)
-        return list(range(players_position.shape[0]))
+        if scene.player_track_ids is None:
+            raise RuntimeError("scene.player_track_ids is required for 3D rendering.")
+        return [int(track_id) for track_id in scene.player_track_ids.tolist()]
 
     def _get_players_position(self, scene: SceneResult) -> NDArray[np.float32]:
-        if scene.player_position.ndim == 2:
-            return scene.player_position[None, ...]
         return scene.player_position
 
     def _get_players_yaw(self, scene: SceneResult) -> NDArray[np.float32]:
-        if scene.player_yaw.ndim == 1:
-            return scene.player_yaw[None, ...]
         return scene.player_yaw
 
     def _get_players_smpl_vertices_global(self, scene: SceneResult) -> NDArray[np.float32] | None:
-        if scene.smpl_vertices_global is not None:
-            if scene.smpl_vertices_global.ndim == 3:
-                return scene.smpl_vertices_global[None, ...]
-            return scene.smpl_vertices_global
-        return None
+        return scene.smpl_vertices_global
 
     def _get_players_kp_3d(self, scene: SceneResult) -> NDArray[np.float32] | None:
         if scene.player_kp_3d is not None:
-            if scene.player_kp_3d.ndim == 3:
-                return scene.player_kp_3d[None, ...]
             return scene.player_kp_3d
 
         smpl_vertices = self._get_players_smpl_vertices_global(scene)
