@@ -10,13 +10,11 @@ from src.tennis_scene.pipeline.components.court_kp import (
 from src.tennis_scene.pipeline.components.gvhmr import (
     GVHMRConfig,
     GVHMRModule,
-    GVHMRMultiResult,
     GVHMRResult,
 )
 from src.tennis_scene.pipeline.components.plcs import (
     PLCSConfig,
     PLCSModule,
-    PLCSMultiResult,
     PLCSResult,
 )
 from src.tennis_scene.pipeline.components.wasb import WASBConfig, WASBModule, WASBResult
@@ -29,14 +27,12 @@ __all__ = [
     "GVHMRConfig",
     "GVHMRModule",
     "GVHMRResult",
-    "GVHMRMultiResult",
     "WASBConfig",
     "WASBModule",
     "WASBResult",
     "PLCSConfig",
     "PLCSModule",
     "PLCSResult",
-    "PLCSMultiResult",
     "BLCSConfig",
     "BLCSModule",
     "BLCSResult",

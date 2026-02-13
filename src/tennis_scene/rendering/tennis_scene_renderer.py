@@ -133,30 +133,31 @@ class TennisSceneRenderer:
     def _get_player_tracks(self, scene: SceneResult) -> list[int]:
         if scene.player_track_ids is not None:
             return [int(track_id) for track_id in scene.player_track_ids.tolist()]
-        if scene.players_position is not None:
-            return list(range(scene.players_position.shape[0]))
-        return [0]
+        players_position = self._get_players_position(scene)
+        return list(range(players_position.shape[0]))
 
     def _get_players_position(self, scene: SceneResult) -> NDArray[np.float32]:
-        if scene.players_position is not None:
-            return scene.players_position
-        return scene.player_position[None, ...]
+        if scene.player_position.ndim == 2:
+            return scene.player_position[None, ...]
+        return scene.player_position
 
     def _get_players_yaw(self, scene: SceneResult) -> NDArray[np.float32]:
-        if scene.players_yaw is not None:
-            return scene.players_yaw
-        return scene.player_yaw[None, ...]
+        if scene.player_yaw.ndim == 1:
+            return scene.player_yaw[None, ...]
+        return scene.player_yaw
 
     def _get_players_smpl_vertices_global(self, scene: SceneResult) -> NDArray[np.float32] | None:
-        if scene.players_smpl_vertices_global is not None:
-            return scene.players_smpl_vertices_global
         if scene.smpl_vertices_global is not None:
-            return scene.smpl_vertices_global[None, ...]
+            if scene.smpl_vertices_global.ndim == 3:
+                return scene.smpl_vertices_global[None, ...]
+            return scene.smpl_vertices_global
         return None
 
     def _get_players_kp_3d(self, scene: SceneResult) -> NDArray[np.float32] | None:
-        if scene.players_kp_3d is not None:
-            return scene.players_kp_3d
+        if scene.player_kp_3d is not None:
+            if scene.player_kp_3d.ndim == 3:
+                return scene.player_kp_3d[None, ...]
+            return scene.player_kp_3d
 
         smpl_vertices = self._get_players_smpl_vertices_global(scene)
         if smpl_vertices is None:
@@ -164,7 +165,7 @@ class TennisSceneRenderer:
 
         if self._smpl_joint_regressor is None:
             raise RuntimeError(
-                "players_kp_3d is not available and SMPL joint regressor could not be loaded."
+                "player_kp_3d is not available and SMPL joint regressor could not be loaded."
             )
 
         # (J, V) x (P, T, V, 3) -> (P, T, J, 3)
@@ -276,7 +277,7 @@ class TennisSceneRenderer:
             if players_smpl is None:
                 raise RuntimeError(
                     "player_representation='smpl' requires SMPL vertices in scene "
-                    "(players_smpl_vertices_global or smpl_vertices_global)."
+                    "(smpl_vertices_global)."
                 )
             for player_idx, track_id in enumerate(track_ids):
                 color = self._player_color(player_idx)
@@ -298,7 +299,7 @@ class TennisSceneRenderer:
             players_kp_3d = self._get_players_kp_3d(scene)
             if players_kp_3d is None:
                 raise RuntimeError(
-                    "player_representation='skeleton' requires players_kp_3d or SMPL vertices "
+                    "player_representation='skeleton' requires player_kp_3d or SMPL vertices "
                     "with a valid joint regressor."
                 )
             for player_idx, track_id in enumerate(track_ids):
