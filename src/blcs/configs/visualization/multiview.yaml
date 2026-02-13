@@ -1,36 +1,9 @@
-# Multi-view visualization mode
-mode: visualize  # visualize | predict | predict-multiview
-
-# Scene file path
+mode: visualize  # visualize | predict
 scene_path: data/blcs/scenes/rally_000000.npz
-
-# Frame index for static views
-frame: 0
-
-# View type
-view: multi          # 3d | 2d | camera | multi | animation
-
-# Cameras to use for multi-view prediction
-# Can be: "all", comma-separated "0,1,2", or list [0, 1, 2]
+# Multi-view camera selection for predictor input.
 cameras: all
-
-# Animation view type (when view=animation)
-animation_view: 3d   # 3d | 2d | camera
-
-# Animation FPS (null = use scene fps)
+animation_view: 3d   # 3d | 2d (create_comparison_animation)
 fps: null
-
-# Output path for saving visualization
-save: null
-
-# Path to save 2D input scene animation (camera view)
-save_input: null
-
-# Print scene info and exit
+save: null           # Optional output file for comparison animation (e.g., .mp4, .gif)
 info: false
-
-# Checkpoint path for prediction mode
 checkpoint: outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt
-
-# Output path for saving prediction results (.pt or .json)
-output: null
