@@ -1,12 +1,9 @@
 mode: visualize  # visualize | predict
 scene_path: data/blcs/scenes/rally_000000.npz
-frame: 0
-view: multi          # 3d | 2d | camera | multi | animation
+# Single-view camera index used to build predictor input.
 camera: 0
-animation_view: 2d   # 3d | 2d | camera
+animation_view: 2d   # 3d | 2d (create_comparison_animation)
 fps: null
-save: null
-save_input: null     # Path to save 2D input scene animation (camera view)
+save: null           # Optional output file for comparison animation (e.g., .mp4, .gif)
 info: false
 checkpoint: outputs/blcs/single/logs/version_0/checkpoints/last.ckpt
-output: null

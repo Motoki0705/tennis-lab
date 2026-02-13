@@ -80,19 +80,34 @@ bash src/blcs/scripts/run_hparam_sweep.sh
 ### 可視化
 
 ```bash
-# 単一カメラ
+# 単一カメラ（GT vs Prediction 比較アニメーション）
 uv run python -m src.blcs.scripts.visualize
 
-# マルチビュー（Ground Truth）
-uv run python -m src.blcs.scripts.visualize_multiview \
-    visualization.scene_path=data/blcs/scenes/scene_000003.npz
+# 単一カメラ（view指定）
+uv run python -m src.blcs.scripts.visualize \
+    visualization.animation_view=3d
 
-# マルチビュー（チェックポイントからの予測）
-uv run python -m src.blcs.scripts.visualize_multiview \
+# マルチビュー（GT vs Prediction 比較アニメーション）
+uv run python -m src.blcs.scripts.visualize \
+    visualization=multiview \
+    visualization.scene_path=data/blcs/scenes/scene_000003.npz \
     visualization.mode=predict \
     visualization.checkpoint=outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt \
     visualization.cameras=all
+
+# 保存する場合
+uv run python -m src.blcs.scripts.visualize \
+    visualization=multiview \
+    visualization.mode=predict \
+    visualization.checkpoint=outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt \
+    visualization.cameras=all \
+    visualization.save=outputs/blcs/visualize/compare_multiview.mp4
 ```
+
+可視化スクリプトは `src/blcs/visualization/orchestrator.py` を通して、
+`visualization.mode=visualize` では `BLCSSceneRenderer.create_animation()`、
+`visualization.mode=predict` では `BLCSSceneRenderer.create_comparison_animation()` を呼び出します。  
+`visualization.animation_view` は `2d|3d` をサポートします。
 
 ## モデルアーキテクチャ
 
