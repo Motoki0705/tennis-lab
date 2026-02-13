@@ -14,10 +14,37 @@ from torch import Tensor
 from src.event_detection.data.types import Event3DSample, EventUVSample
 from src.common.data.blcs_npz_adapter import load_3d_arrays, load_camera_view
 from src.common.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
-from src.common.dataset.sequence import crop_to_max_len
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
+
+
+def _crop_to_max_len(
+    tensors: dict[str, Tensor],
+    *,
+    seq_len: int,
+    max_seq_len: int,
+    mode: Literal["random", "center"] = "random",
+) -> tuple[dict[str, Tensor], int]:
+    """Crop temporal tensors to max_seq_len with a shared offset."""
+    if max_seq_len <= 0:
+        raise ValueError(f"max_seq_len must be positive, got {max_seq_len}.")
+    first = next(iter(tensors.values()))
+    T = int(first.shape[0])
+    if T <= max_seq_len:
+        return tensors, min(seq_len, T)
+
+    crop_len = max_seq_len
+    max_start = max(0, seq_len - crop_len)
+    if mode == "random" and max_start > 0:
+        start = int(torch.randint(0, max_start + 1, (1,)).item())
+    else:
+        start = max_start // 2
+    end = start + crop_len
+
+    cropped = {k: v[start:end] for k, v in tensors.items()}
+    new_seq_len = max(0, min(seq_len - start, crop_len))
+    return cropped, new_seq_len
 
 
 def _gaussian_soft_labels(
@@ -144,7 +171,7 @@ class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
             targets = self._make_targets(meta=meta, T=T_full, device=device)
             seq_len = torch.tensor(T_full, dtype=torch.long)
             if ball_pos_world.shape[0] > max_seq_len:
-                cropped, T = crop_to_max_len(
+                cropped, T = _crop_to_max_len(
                     {"ball_pos_world": ball_pos_world},
                     seq_len=int(seq_len.item()),
                     max_seq_len=max_seq_len,
@@ -169,7 +196,7 @@ class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
         seq_len = torch.tensor(T_full, dtype=torch.long)
 
         if ball_uv.shape[0] > max_seq_len:
-            cropped, T = crop_to_max_len(
+            cropped, T = _crop_to_max_len(
                 {
                     "ball_uv": ball_uv,
                     "ball_vis": ball_vis,
