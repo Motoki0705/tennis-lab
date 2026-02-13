@@ -26,8 +26,6 @@ gvhmr:
   python_executable: third_party/GVHMR/.venv/bin/python
   output_path: ${output_dir}/gvhmr_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
-  multi_player: false
-  track_ids: null  # Example: [0, 3]
 
 wasb:
   checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
