@@ -19,7 +19,11 @@ from torch.utils.data import Dataset
 
 from src.blcs.data.types import BLCSBatch, BLCSMultiViewBatch, BLCSMultiViewSample, BLCSSample
 from src.common.data.scene_cache import get_scene_cache, load_npz_scene
-from src.common.dataset.augmentation import add_gaussian_noise, random_visibility_dropout
+from src.common.dataset.augmentation import (
+    add_gaussian_noise,
+    random_visibility_dropout,
+    scale_uv_with_visibility,
+)
 from src.common.dataset.collate import collate_padded_batch
 
 if TYPE_CHECKING:
@@ -241,7 +245,29 @@ class BallTrajectoryDataset(Dataset):
         self, sample: dict[str, Tensor]
     ) -> dict[str, Tensor]:
         sample = {k: (v.clone() if isinstance(v, Tensor) else v) for k, v in sample.items()}
-        sample = self._apply_scale_augmentation_multiview(sample)
+        scale_min, scale_max = self.scale_range
+        if not (scale_min == 1.0 and scale_max == 1.0):
+            scale = rng.uniform(scale_min, scale_max)
+            if abs(scale - 1.0) >= 1e-8:
+                ball_uv = sample["ball_uv"]
+                court_kp = sample["court_kp"]
+                ball_vis = sample["ball_vis"]
+                court_vis = sample["court_vis"]
+                if not isinstance(ball_uv, Tensor) or not isinstance(court_kp, Tensor):
+                    raise ValueError("ball_uv/court_kp must be tensors")
+                if not isinstance(ball_vis, Tensor) or not isinstance(court_vis, Tensor):
+                    raise ValueError("ball_vis/court_vis must be tensors")
+
+                sample["ball_uv"], sample["ball_vis"] = scale_uv_with_visibility(
+                    uv=ball_uv,
+                    visibility=ball_vis,
+                    scale=scale,
+                )
+                sample["court_kp"], sample["court_vis"] = scale_uv_with_visibility(
+                    uv=court_kp,
+                    visibility=court_vis,
+                    scale=scale,
+                )
 
         ball_uv = sample["ball_uv"]
         if isinstance(ball_uv, Tensor):
@@ -255,57 +281,6 @@ class BallTrajectoryDataset(Dataset):
         if isinstance(ball_vis, Tensor):
             sample["ball_vis"] = random_visibility_dropout(ball_vis, self.vis_drop_prob)
 
-        return sample
-
-    def _apply_scale_augmentation_multiview(
-        self, sample: dict[str, Tensor]
-    ) -> dict[str, Tensor]:
-        scale_min, scale_max = self.scale_range
-        if scale_min == 1.0 and scale_max == 1.0:
-            return sample
-
-        scale = rng.uniform(scale_min, scale_max)
-        if abs(scale - 1.0) < 1e-8:
-            return sample
-
-        ball_uv = sample["ball_uv"]
-        court_kp = sample["court_kp"]
-        ball_vis = sample["ball_vis"]
-        court_vis = sample["court_vis"]
-        if not isinstance(ball_uv, Tensor) or not isinstance(court_kp, Tensor):
-            raise ValueError("ball_uv/court_kp must be tensors")
-        if not isinstance(ball_vis, Tensor) or not isinstance(court_vis, Tensor):
-            raise ValueError("ball_vis/court_vis must be tensors")
-
-        # Isotropic scaling around image center in normalized UV space.
-        ball_uv_scaled = (ball_uv - 0.5) * scale + 0.5
-        court_kp_scaled = (court_kp - 0.5) * scale + 0.5
-
-        ball_in_bounds = (
-            (ball_uv_scaled[..., 0] >= 0.0)
-            & (ball_uv_scaled[..., 0] <= 1.0)
-            & (ball_uv_scaled[..., 1] >= 0.0)
-            & (ball_uv_scaled[..., 1] <= 1.0)
-        )
-        court_in_bounds = (
-            (court_kp_scaled[..., 0] >= 0.0)
-            & (court_kp_scaled[..., 0] <= 1.0)
-            & (court_kp_scaled[..., 1] >= 0.0)
-            & (court_kp_scaled[..., 1] <= 1.0)
-        )
-
-        if ball_vis.dtype == torch.bool:
-            sample["ball_vis"] = ball_vis & ball_in_bounds
-        else:
-            sample["ball_vis"] = ball_vis * ball_in_bounds.to(ball_vis.dtype)
-
-        if court_vis.dtype == torch.bool:
-            sample["court_vis"] = court_vis & court_in_bounds
-        else:
-            sample["court_vis"] = court_vis * court_in_bounds.to(court_vis.dtype)
-
-        sample["ball_uv"] = ball_uv_scaled.clamp(0.0, 1.0)
-        sample["court_kp"] = court_kp_scaled.clamp(0.0, 1.0)
         return sample
 
     def _to_single_sample(self, sample: dict[str, Tensor]) -> BLCSSample:
