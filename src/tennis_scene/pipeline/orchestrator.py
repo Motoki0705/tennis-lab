@@ -13,7 +13,10 @@ import numpy as np
 from src.tennis_scene.io import SceneResult
 from src.tennis_scene.pipeline.components.blcs import BLCSConfig, BLCSModule
 from src.tennis_scene.pipeline.components.court_kp import CourtKPConfig, CourtKPModule
+from src.tennis_scene.pipeline.components.event_3d import Event3DConfig, Event3DModule
+from src.tennis_scene.pipeline.components.event_uv import EventUVConfig, EventUVModule
 from src.tennis_scene.pipeline.components.plcs import PLCSConfig, PLCSModule
+from src.tennis_scene.pipeline.components.trajectory import TrajectoryConfig, TrajectoryModule
 from src.tennis_scene.pipeline.components.wasb import WASBConfig, WASBModule
 from src.tennis_scene.utils.transforms import apply_plcs_transform_batch
 
@@ -32,15 +35,21 @@ class TennisSceneOrchestrator:
         court_kp_module: CourtKPModule,
         gvhmr_config: dict[str, Any] | None,
         wasb_module: WASBModule | None,
+        trajectory_module: TrajectoryModule | None,
+        event_uv_module: EventUVModule | None,
         plcs_module: PLCSModule,
         blcs_module: BLCSModule | None,
+        event_3d_module: Event3DModule | None,
         device: str = "cuda",
     ) -> None:
         self.court_kp_module = court_kp_module
         self.gvhmr_config = gvhmr_config
         self.wasb_module = wasb_module
+        self.trajectory_module = trajectory_module
+        self.event_uv_module = event_uv_module
         self.plcs_module = plcs_module
         self.blcs_module = blcs_module
+        self.event_3d_module = event_3d_module
         self.device = device
 
     @classmethod
@@ -99,6 +108,34 @@ class TennisSceneOrchestrator:
                 )
             )
 
+        trajectory_module = None
+        if wasb_module is not None and not cfg.trajectory.get("skip", True):
+            trajectory_module = TrajectoryModule(
+                TrajectoryConfig(
+                    checkpoint_path=to_absolute_path(cfg.trajectory.checkpoint),
+                    device=device,
+                    merge_observed=cfg.trajectory.get("merge_observed", True),
+                    save_result=cfg.trajectory.get("save_result", True),
+                    output_path=get_output_path("trajectory", "trajectory_result.json"),
+                    load_path=get_load_path("trajectory"),
+                )
+            )
+
+        event_uv_module = None
+        if wasb_module is not None and not cfg.event_uv.get("skip", True):
+            event_uv_module = EventUVModule(
+                EventUVConfig(
+                    checkpoint_path=to_absolute_path(cfg.event_uv.checkpoint),
+                    device=device,
+                    threshold=float(cfg.event_uv.get("threshold", 0.5)),
+                    min_distance=int(cfg.event_uv.get("min_distance", 1)),
+                    top_k=cfg.event_uv.get("top_k"),
+                    save_result=cfg.event_uv.get("save_result", True),
+                    output_path=get_output_path("event_uv", "event_uv_result.json"),
+                    load_path=get_load_path("event_uv"),
+                )
+            )
+
         plcs_module = PLCSModule(
             PLCSConfig(
                 checkpoint_path=to_absolute_path(cfg.plcs.checkpoint),
@@ -110,7 +147,7 @@ class TennisSceneOrchestrator:
         )
 
         blcs_module = None
-        if wasb_module is not None:
+        if wasb_module is not None and not cfg.blcs.get("skip", False):
             blcs_module = BLCSModule(
                 BLCSConfig(
                     checkpoint_path=to_absolute_path(cfg.blcs.checkpoint),
@@ -121,12 +158,30 @@ class TennisSceneOrchestrator:
                 )
             )
 
+        event_3d_module = None
+        if blcs_module is not None and not cfg.event_3d.get("skip", True):
+            event_3d_module = Event3DModule(
+                Event3DConfig(
+                    checkpoint_path=to_absolute_path(cfg.event_3d.checkpoint),
+                    device=device,
+                    threshold=float(cfg.event_3d.get("threshold", 0.5)),
+                    min_distance=int(cfg.event_3d.get("min_distance", 1)),
+                    top_k=cfg.event_3d.get("top_k"),
+                    save_result=cfg.event_3d.get("save_result", True),
+                    output_path=get_output_path("event_3d", "event_3d_result.json"),
+                    load_path=get_load_path("event_3d"),
+                )
+            )
+
         return cls(
             court_kp_module=court_kp_module,
             gvhmr_config=gvhmr_config,
             wasb_module=wasb_module,
+            trajectory_module=trajectory_module,
+            event_uv_module=event_uv_module,
             plcs_module=plcs_module,
             blcs_module=blcs_module,
+            event_3d_module=event_3d_module,
             device=device,
         )
 
@@ -177,9 +232,15 @@ class TennisSceneOrchestrator:
         self.court_kp_module.load()
         if self.wasb_module is not None:
             self.wasb_module.load()
+        if self.trajectory_module is not None:
+            self.trajectory_module.load()
+        if self.event_uv_module is not None:
+            self.event_uv_module.load()
         self.plcs_module.load()
         if self.blcs_module is not None:
             self.blcs_module.load()
+        if self.event_3d_module is not None:
+            self.event_3d_module.load()
 
     def _read_video_info(self, video_path: Path) -> dict[str, Any]:
         cap = cv2.VideoCapture(str(video_path))
@@ -275,8 +336,16 @@ class TennisSceneOrchestrator:
             smpl_vertices_global = None
 
         ball_uv = None
+        ball_uv_pred = None
+        ball_uv_completed = None
         ball_visibility = None
         ball_3d = None
+        event_uv_probs = None
+        event_uv_peak_mask = None
+        event_uv_names = None
+        event_3d_probs = None
+        event_3d_peak_mask = None
+        event_3d_names = None
         if self.wasb_module is not None:
             wasb_result = self.wasb_module.process(
                 video_path,
@@ -286,15 +355,43 @@ class TennisSceneOrchestrator:
             )
             ball_uv = wasb_result.ball_uv
             ball_visibility = wasb_result.visibility
+            ball_uv_for_downstream = ball_uv
 
-            if self.blcs_module is not None:
-                blcs_result = self.blcs_module.process(
+            if self.trajectory_module is not None:
+                trajectory_result = self.trajectory_module.process(
                     ball_uv=ball_uv,
                     court_kp=court_kp,
                     ball_vis=ball_visibility,
                     court_vis=court_vis,
                 )
+                ball_uv_pred = trajectory_result.ball_uv_pred
+                ball_uv_completed = trajectory_result.ball_uv_completed
+                ball_uv_for_downstream = ball_uv_completed
+
+            if self.event_uv_module is not None:
+                event_uv_result = self.event_uv_module.process(
+                    ball_uv=ball_uv_for_downstream,
+                    court_kp=court_kp,
+                    ball_vis=ball_visibility,
+                    court_vis=court_vis,
+                )
+                event_uv_probs = event_uv_result.event_probs[0]
+                event_uv_peak_mask = event_uv_result.event_peak_mask[0]
+                event_uv_names = event_uv_result.event_names
+
+            if self.blcs_module is not None:
+                blcs_result = self.blcs_module.process(
+                    ball_uv=ball_uv_for_downstream,
+                    court_kp=court_kp,
+                    ball_vis=ball_visibility,
+                    court_vis=court_vis,
+                )
                 ball_3d = blcs_result.ball_3d
+                if self.event_3d_module is not None:
+                    event_3d_result = self.event_3d_module.process(ball_3d=ball_3d)
+                    event_3d_probs = event_3d_result.event_probs[0]
+                    event_3d_peak_mask = event_3d_result.event_peak_mask[0]
+                    event_3d_names = event_3d_result.event_names
 
         T = plcs_result.position.shape[1]
 
@@ -313,8 +410,16 @@ class TennisSceneOrchestrator:
             smpl_vertices_local=smpl_vertices_local,
             smpl_vertices_global=smpl_vertices_global,
             ball_uv=ball_uv,
+            ball_uv_pred=ball_uv_pred,
+            ball_uv_completed=ball_uv_completed,
             ball_visibility=ball_visibility,
             ball_3d=ball_3d,
+            event_uv_probs=event_uv_probs,
+            event_uv_peak_mask=event_uv_peak_mask,
+            event_uv_names=event_uv_names,
+            event_3d_probs=event_3d_probs,
+            event_3d_peak_mask=event_3d_peak_mask,
+            event_3d_names=event_3d_names,
             human_kp_2d=human_kp_2d_norm,
             human_kp_vis=human_kp_vis,
             player_track_ids=track_ids,
