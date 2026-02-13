@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
-from src.tennis_scene.pipeline.base import BasePipelineModule
+from src.tennis_scene.pipeline.components.base import BasePipelineModule
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from src.tennis_scene.pipeline.base import BasePipelineModule
+from src.tennis_scene.pipeline.components.base import BasePipelineModule
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -274,45 +274,118 @@ class PLCSModule(BasePipelineModule):
             else:
                 LOGGER.warning(f"load_path specified but not found: {load_path}, running inference")
 
-        if not self.is_loaded:
-            self.load()
-
-        LOGGER.info("Running PLCS player localization...")
-
-        T = len(human_kp_2d)
-        positions = []
-        yaws = []
-
-        court_kp_t = torch.from_numpy(court_kp).float()
-        court_vis_t = None
-        if court_vis is not None:
-            court_vis_t = torch.from_numpy(court_vis).float()
-
-        for t in range(T):
-            human_kp_t = torch.from_numpy(human_kp_2d[t]).float().unsqueeze(0)
-            human_vis_t = None
-            if human_kp_vis is not None:
-                human_vis_t = torch.from_numpy(human_kp_vis[t]).float().unsqueeze(0)
-
-            pred = self._predictor.predict(
-                human_kp=human_kp_t,
-                court_kp=court_kp_t.unsqueeze(0),
-                human_vis=human_vis_t,
-                court_vis=court_vis_t.unsqueeze(0) if court_vis_t is not None else None,
-                denormalize=True,
-            )
-
-            positions.append(pred["position_meters"].squeeze(0).numpy())
-            yaws.append(pred["yaw_radians"].item())
-
-        result = PLCSResult(
-            position=np.stack(positions, axis=0).astype(np.float32),
-            yaw=np.array(yaws, dtype=np.float32),
+        multi = self.process_multi(
+            human_kp_2d=human_kp_2d[None, ...],
+            court_kp=court_kp,
+            human_kp_vis=human_kp_vis[None, ...] if human_kp_vis is not None else None,
+            court_vis=court_vis,
+            track_ids=[0],
         )
+        first = multi.get_first()
+        if first is None:
+            raise RuntimeError("PLCS returned no player result")
+        result = first
 
         if self.config.save_result and self.config.output_path is not None:
             result.save(self.config.output_path)
 
+        return result
+
+    def process_multi(
+        self,
+        human_kp_2d: NDArray[np.float32],
+        court_kp: NDArray[np.float32],
+        human_kp_vis: NDArray[np.float32] | None = None,
+        court_vis: NDArray[np.float32] | None = None,
+        track_ids: list[int] | None = None,
+    ) -> PLCSMultiResult:
+        """Run batched PLCS inference for multiple players.
+
+        Args:
+            human_kp_2d: Human 2D keypoints (P, T, 17, 2), normalized [0, 1].
+            court_kp: Court keypoints (20, 2), normalized [0, 1].
+            human_kp_vis: Human keypoint visibility (P, T, 17).
+            court_vis: Court keypoint visibility (20,).
+            track_ids: Track IDs for players. If None, uses [0..P-1].
+
+        Returns:
+            PLCSMultiResult indexed by track_id.
+        """
+        if self.config.load_path is not None:
+            load_path = Path(self.config.load_path)
+            if load_path.exists():
+                LOGGER.info(f"Loading PLCS result from {load_path} (skipping inference)")
+                with load_path.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if "players" in data:
+                    return PLCSMultiResult.from_dict(data)
+                single = PLCSResult.from_dict(data)
+                track_id = 0 if single.track_id is None else int(single.track_id)
+                single.track_id = track_id
+                return PLCSMultiResult(players={track_id: single})
+            LOGGER.warning(
+                f"load_path specified but not found: {load_path}, running inference"
+            )
+
+        if not self.is_loaded:
+            self.load()
+
+        if human_kp_2d.ndim != 4 or human_kp_2d.shape[2:] != (17, 2):
+            raise ValueError(
+                "human_kp_2d shape must be (P, T, 17, 2), "
+                f"got {human_kp_2d.shape}"
+            )
+
+        num_players, num_frames = human_kp_2d.shape[:2]
+        if track_ids is None:
+            track_ids = list(range(num_players))
+        if len(track_ids) != num_players:
+            raise ValueError(
+                f"track_ids length ({len(track_ids)}) must match num_players ({num_players})"
+            )
+
+        LOGGER.info(f"Running PLCS multi-player localization for {num_players} players...")
+
+        court_kp_t = torch.from_numpy(court_kp).float()
+        court_kp_batch = court_kp_t.unsqueeze(0).repeat(num_players, 1, 1)
+        court_vis_batch = None
+        if court_vis is not None:
+            court_vis_t = torch.from_numpy(court_vis).float()
+            court_vis_batch = court_vis_t.unsqueeze(0).repeat(num_players, 1)
+
+        positions_per_frame: list[np.ndarray] = []
+        yaws_per_frame: list[np.ndarray] = []
+
+        for t in range(num_frames):
+            human_kp_t = torch.from_numpy(human_kp_2d[:, t]).float()  # (P, 17, 2)
+            human_vis_t = None
+            if human_kp_vis is not None:
+                human_vis_t = torch.from_numpy(human_kp_vis[:, t]).float()  # (P, 17)
+
+            pred = self._predictor.predict(
+                human_kp=human_kp_t,
+                court_kp=court_kp_batch,
+                human_vis=human_vis_t,
+                court_vis=court_vis_batch,
+                denormalize=True,
+            )
+            positions_per_frame.append(pred["position_meters"].numpy())  # (P, 3)
+            yaws_per_frame.append(pred["yaw_radians"].numpy())  # (P,)
+
+        positions = np.stack(positions_per_frame, axis=0).astype(np.float32)  # (T, P, 3)
+        yaws = np.stack(yaws_per_frame, axis=0).astype(np.float32)  # (T, P)
+
+        players: dict[int, PLCSResult] = {}
+        for idx, track_id in enumerate(track_ids):
+            players[int(track_id)] = PLCSResult(
+                position=positions[:, idx, :],
+                yaw=yaws[:, idx],
+                track_id=int(track_id),
+            )
+
+        result = PLCSMultiResult(players=players)
+        if self.config.save_result and self.config.output_path is not None:
+            result.save(self.config.output_path)
         return result
 
 

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from src.tennis_scene.pipeline.base import BasePipelineModule
+from src.tennis_scene.pipeline.components.base import BasePipelineModule
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import torch
 
-from src.tennis_scene.pipeline.base import BasePipelineModule
+from src.tennis_scene.pipeline.components.base import BasePipelineModule
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -234,6 +234,8 @@ class GVHMRMultiResult:
     @classmethod
     def from_dict(cls, data: dict) -> "GVHMRMultiResult":
         """Create result from dict."""
+        if "players" not in data:
+            return cls.from_single(GVHMRResult.from_dict(data))
         players = {}
         for k, v in data.get("players", {}).items():
             track_id = int(k)
@@ -282,6 +284,13 @@ class GVHMRMultiResult:
             first_id = next(iter(self.players))
             return self.players[first_id]
         return None
+
+    @classmethod
+    def from_single(cls, result: GVHMRResult) -> "GVHMRMultiResult":
+        """Create a multi-player wrapper from a single-player result."""
+        track_id = 0 if result.track_id is None else int(result.track_id)
+        result.track_id = track_id
+        return cls(players={track_id: result})
 
 
 class GVHMRModule(BasePipelineModule):
@@ -409,7 +418,7 @@ class GVHMRModule(BasePipelineModule):
         self,
         video_path: str | Path,
         max_frames: int | None = None,
-    ) -> GVHMRResult:
+    ) -> GVHMRMultiResult:
         """Run GVHMR preprocessing and inference.
 
         Args:
@@ -417,7 +426,7 @@ class GVHMRModule(BasePipelineModule):
             max_frames: Maximum frames to process.
 
         Returns:
-            GVHMRResult with SMPL parameters and 2D keypoints.
+            GVHMRMultiResult with SMPL parameters and 2D keypoints.
 
         """
         # Check if we should load from pre-computed result
@@ -425,7 +434,11 @@ class GVHMRModule(BasePipelineModule):
             load_path = Path(self.config.load_path)
             if load_path.exists():
                 LOGGER.info(f"Loading GVHMR result from {load_path} (skipping inference)")
-                return GVHMRResult.load(load_path)
+                with load_path.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if "players" in data:
+                    return GVHMRMultiResult.from_dict(data)
+                return GVHMRMultiResult.from_single(GVHMRResult.from_dict(data))
             else:
                 LOGGER.warning(f"load_path specified but not found: {load_path}, running inference")
 
@@ -438,7 +451,7 @@ class GVHMRModule(BasePipelineModule):
         self,
         video_path: str | Path,
         max_frames: int | None = None,
-    ) -> GVHMRResult:
+    ) -> GVHMRMultiResult:
         """Run GVHMR in a subprocess with separate virtual environment."""
         LOGGER.info("Running GVHMR in subprocess mode...")
 
@@ -461,7 +474,7 @@ class GVHMRModule(BasePipelineModule):
         cmd = [
             str(python_exec),
             "-m",
-            "src.tennis_scene.pipeline.gvhmr",
+            "src.tennis_scene.pipeline.components.gvhmr",
             "--video", str(video_path),
             "--output", str(output_path),
             "--model-checkpoint", str(self.config.model_checkpoint),
@@ -470,6 +483,10 @@ class GVHMRModule(BasePipelineModule):
             "--hmr2-checkpoint", str(self.config.hmr2_checkpoint),
             "--device", self.config.device,
         ]
+        if self.config.multi_player:
+            cmd.append("--multi-player")
+        if self.config.track_ids:
+            cmd.extend(["--track-ids", *[str(track_id) for track_id in self.config.track_ids]])
         if max_frames is not None:
             cmd.extend(["--max-frames", str(max_frames)])
 
@@ -487,59 +504,103 @@ class GVHMRModule(BasePipelineModule):
             raise RuntimeError(f"GVHMR subprocess failed: {result.stderr}")
 
         LOGGER.info(f"GVHMR subprocess completed, loading result from {output_path}")
-        return GVHMRResult.load(output_path)
+        return GVHMRMultiResult.load(output_path)
 
     def _process_direct(
         self,
         video_path: str | Path,
         max_frames: int | None = None,
-    ) -> GVHMRResult:
+    ) -> GVHMRMultiResult:
         """Run GVHMR directly in current process."""
         if not self.is_loaded:
             self.load()
 
         video_path = str(video_path)
+        track_boxes = self._select_tracks(video_path, max_frames=max_frames)
+        players: dict[int, GVHMRResult] = {}
 
-        preproc = self._run_preprocessing(video_path, max_frames)
-        inference = self._run_inference(preproc)
+        for track_id, bbx_xyxy in track_boxes.items():
+            LOGGER.info(f"Running GVHMR for track_id={track_id}")
+            preproc = self._run_preprocessing_for_track(video_path, bbx_xyxy)
+            inference = self._run_inference(preproc)
 
-        human_kp_2d = preproc["kp2d"][..., :2].cpu().numpy()
-        human_kp_vis = preproc["kp2d"][..., 2].cpu().numpy()
+            human_kp_2d = preproc["kp2d"][..., :2].cpu().numpy()
+            human_kp_vis = preproc["kp2d"][..., 2].cpu().numpy()
 
-        result = GVHMRResult(
-            smpl_body_pose=inference["smpl_body_pose"],
-            smpl_global_orient=inference["smpl_global_orient"],
-            smpl_betas=inference["smpl_betas"],
-            smpl_vertices_local=inference["smpl_vertices_local"],
-            human_kp_2d=human_kp_2d.astype(np.float32),
-            human_kp_vis=human_kp_vis.astype(np.float32),
-            bbx_xys=preproc["bbx_xys"].cpu().numpy().astype(np.float32),
-        )
+            players[track_id] = GVHMRResult(
+                smpl_body_pose=inference["smpl_body_pose"],
+                smpl_global_orient=inference["smpl_global_orient"],
+                smpl_betas=inference["smpl_betas"],
+                smpl_vertices_local=inference["smpl_vertices_local"],
+                human_kp_2d=human_kp_2d.astype(np.float32),
+                human_kp_vis=human_kp_vis.astype(np.float32),
+                bbx_xys=preproc["bbx_xys"].cpu().numpy().astype(np.float32),
+                track_id=track_id,
+            )
 
+        result = GVHMRMultiResult(players=players)
         if self.config.save_result and self.config.output_path is not None:
             result.save(self.config.output_path)
 
         return result
 
-    def _run_preprocessing(
-        self, video_path: str, max_frames: int | None
+    def _select_tracks(
+        self,
+        video_path: str,
+        max_frames: int | None,
+    ) -> dict[int, torch.Tensor]:
+        """Select track IDs and build per-track bounding-box tensors."""
+        from hmr4d.utils.video_io_utils import get_video_lwh
+
+        track_history = self._tracker.track(video_path)
+        id_to_frame_ids, id_to_bbx_xyxys, id_sorted = self._tracker.sort_track_length(
+            track_history,
+            video_path,
+        )
+        if not id_sorted:
+            raise RuntimeError("No person tracks detected in video")
+
+        if self.config.multi_player:
+            if not self.config.track_ids:
+                raise ValueError(
+                    "gvhmr.multi_player=true requires explicit gvhmr.track_ids"
+                )
+            selected_ids = [int(track_id) for track_id in self.config.track_ids]
+        else:
+            selected_ids = [int(id_sorted[0])]
+
+        missing = [track_id for track_id in selected_ids if track_id not in id_to_frame_ids]
+        if missing:
+            available = [int(track_id) for track_id in id_sorted]
+            raise ValueError(
+                f"Requested track_ids not found: {missing}. Available track_ids: {available}"
+            )
+
+        num_frames = get_video_lwh(video_path)[0]
+        track_boxes: dict[int, torch.Tensor] = {}
+        for track_id in selected_ids:
+            bbx_xyxy = self._tracker._build_track_tensor(
+                id_to_frame_ids[track_id],
+                id_to_bbx_xyxys[track_id],
+                num_frames,
+            )
+            if max_frames is not None and len(bbx_xyxy) > max_frames:
+                bbx_xyxy = bbx_xyxy[:max_frames]
+            track_boxes[track_id] = bbx_xyxy
+        return track_boxes
+
+    def _run_preprocessing_for_track(
+        self,
+        video_path: str,
+        bbx_xyxy: torch.Tensor,
     ) -> dict[str, Any]:
-        """Run GVHMR preprocessing pipeline."""
+        """Run GVHMR preprocessing pipeline for a selected track."""
         LOGGER.info("Running GVHMR preprocessing...")
 
         from hmr4d.utils.geo.hmr_cam import get_bbx_xys_from_xyxy, estimate_K
         from hmr4d.utils.video_io_utils import get_video_lwh
 
-        length, width, height = get_video_lwh(video_path)
-
-        # Tracker does not support max_frames, process full video
-        bbx_xyxy = self._tracker.get_one_track(video_path)
-        if bbx_xyxy is None:
-            raise RuntimeError("No person detected in video")
-
-        # Truncate to max_frames if specified
-        if max_frames is not None and len(bbx_xyxy) > max_frames:
-            bbx_xyxy = bbx_xyxy[:max_frames]
+        _, width, height = get_video_lwh(video_path)
 
         bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy)
         kp2d = self._vitpose.extract(video_path, bbx_xys)
@@ -617,7 +678,7 @@ if __name__ == "__main__":
     This allows running GVHMR in a separate virtual environment.
 
     Example:
-        third_party/GVHMR/.venv/bin/python -m src.tennis_scene.pipeline.gvhmr \
+        third_party/GVHMR/.venv/bin/python -m src.tennis_scene.pipeline.components.gvhmr \
             --video data/samples/clip.mp4 \
             --output outputs/gvhmr_result.json \
             --model-checkpoint third_party/GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
@@ -662,6 +723,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-frames", type=int, default=None, help="Maximum frames to process"
     )
+    parser.add_argument(
+        "--multi-player",
+        action="store_true",
+        help="Enable multi-player tracking/inference mode",
+    )
+    parser.add_argument(
+        "--track-ids",
+        type=int,
+        nargs="*",
+        default=None,
+        help="Track IDs to run in multi-player mode (space-separated)",
+    )
 
     args = parser.parse_args()
 
@@ -679,13 +752,18 @@ if __name__ == "__main__":
         subprocess_mode=False,
         save_result=True,
         output_path=args.output,
+        multi_player=bool(args.multi_player),
+        track_ids=args.track_ids,
     )
 
     module = GVHMRModule(config)
     result = module.process(args.video, max_frames=args.max_frames)
 
     print(f"GVHMR completed. Result saved to {args.output}")
-    print(f"  - smpl_body_pose shape: {result.smpl_body_pose.shape}")
-    print(f"  - smpl_global_orient shape: {result.smpl_global_orient.shape}")
-    print(f"  - smpl_betas shape: {result.smpl_betas.shape}")
-    print(f"  - human_kp_2d shape: {result.human_kp_2d.shape}")
+    print(f"  - players: {len(result.players)}")
+    for track_id, player in sorted(result.players.items()):
+        print(f"  - track_id={track_id}")
+        print(f"      smpl_body_pose: {player.smpl_body_pose.shape}")
+        print(f"      smpl_global_orient: {player.smpl_global_orient.shape}")
+        print(f"      smpl_betas: {player.smpl_betas.shape}")
+        print(f"      human_kp_2d: {player.human_kp_2d.shape}")
