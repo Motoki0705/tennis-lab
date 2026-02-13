@@ -128,37 +128,15 @@ class CourtKPModule(BasePipelineModule):
 
     def __init__(
         self,
-        config: CourtKPConfig | None = None,
-        *,
-        checkpoint_path: str | Path | None = None,
-        mode: Literal["model", "manual_ui"] = "model",
-        device: str = "cuda",
-        save_result: bool = False,
-        output_path: str | Path | None = None,
+        config: CourtKPConfig,
     ) -> None:
         """Initialize the module.
 
         Args:
-            config: CourtKP configuration (preferred).
-            checkpoint_path: Path to model checkpoint (legacy).
-            mode: "model" to use predictor or "manual_ui" for interactive input.
-            device: Inference device (legacy).
-            save_result: Whether to save result (legacy).
-            output_path: Path to save result (legacy).
+            config: CourtKP configuration.
 
         """
-        if config is not None:
-            self.config = config
-        else:
-            if checkpoint_path is None:
-                raise ValueError("Either config or checkpoint_path must be provided")
-            self.config = CourtKPConfig(
-                checkpoint_path=checkpoint_path,
-                mode=mode,
-                device=device,
-                save_result=save_result,
-                output_path=output_path,
-            )
+        self.config = config
         self.checkpoint_path = Path(self.config.checkpoint_path)
         self.mode = self.config.mode
         self.device = self.config.device

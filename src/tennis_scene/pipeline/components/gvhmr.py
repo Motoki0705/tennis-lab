@@ -80,54 +80,6 @@ class GVHMRResult:
 
     @classmethod
     def from_dict(cls, data: dict) -> "GVHMRResult":
-        if "players" in data:
-            players = sorted((int(k), v) for k, v in data["players"].items())
-            smpl_body_pose = np.stack(
-                [np.array(v["smpl_body_pose"], dtype=np.float32) for _, v in players],
-                axis=0,
-            )
-            smpl_global_orient = np.stack(
-                [np.array(v["smpl_global_orient"], dtype=np.float32) for _, v in players],
-                axis=0,
-            )
-            smpl_betas = np.stack(
-                [np.array(v["smpl_betas"], dtype=np.float32) for _, v in players],
-                axis=0,
-            )
-            human_kp_2d = np.stack(
-                [np.array(v["human_kp_2d"], dtype=np.float32) for _, v in players],
-                axis=0,
-            )
-            human_kp_vis = np.stack(
-                [np.array(v["human_kp_vis"], dtype=np.float32) for _, v in players],
-                axis=0,
-            )
-            bbx_xys = np.stack(
-                [np.array(v["bbx_xys"], dtype=np.float32) for _, v in players],
-                axis=0,
-            )
-            if all(v.get("smpl_vertices_local") is not None for _, v in players):
-                smpl_vertices_local = np.stack(
-                    [
-                        np.array(v["smpl_vertices_local"], dtype=np.float32)
-                        for _, v in players
-                    ],
-                    axis=0,
-                )
-            else:
-                smpl_vertices_local = None
-            track_ids = np.array([k for k, _ in players], dtype=np.int32)
-            return cls(
-                smpl_body_pose=smpl_body_pose,
-                smpl_global_orient=smpl_global_orient,
-                smpl_betas=smpl_betas,
-                smpl_vertices_local=smpl_vertices_local,
-                human_kp_2d=human_kp_2d,
-                human_kp_vis=human_kp_vis,
-                bbx_xys=bbx_xys,
-                track_ids=track_ids,
-            )
-
         smpl_body_pose = np.array(data["smpl_body_pose"], dtype=np.float32)
         smpl_global_orient = np.array(data["smpl_global_orient"], dtype=np.float32)
         smpl_betas = np.array(data["smpl_betas"], dtype=np.float32)
@@ -135,29 +87,13 @@ class GVHMRResult:
         human_kp_vis = np.array(data["human_kp_vis"], dtype=np.float32)
         bbx_xys = np.array(data["bbx_xys"], dtype=np.float32)
 
-        # Backward compatibility with old single-player shape.
-        if smpl_body_pose.ndim == 2:
-            smpl_body_pose = smpl_body_pose[None, ...]
-            smpl_global_orient = smpl_global_orient[None, ...]
-            smpl_betas = smpl_betas[None, ...]
-            human_kp_2d = human_kp_2d[None, ...]
-            human_kp_vis = human_kp_vis[None, ...]
-            bbx_xys = bbx_xys[None, ...]
-
         vertices = data.get("smpl_vertices_local")
         smpl_vertices_local = None
         if vertices is not None:
             smpl_vertices_local = np.array(vertices, dtype=np.float32)
-            if smpl_vertices_local.ndim == 3:
-                smpl_vertices_local = smpl_vertices_local[None, ...]
 
         track_ids = data.get("track_ids")
-        if track_ids is None:
-            if "track_id" in data:
-                track_ids = np.array([int(data["track_id"])], dtype=np.int32)
-            else:
-                track_ids = np.arange(smpl_body_pose.shape[0], dtype=np.int32)
-        else:
+        if track_ids is not None:
             track_ids = np.array(track_ids, dtype=np.int32)
 
         return cls(

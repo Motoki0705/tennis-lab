@@ -58,19 +58,9 @@ class PLCSResult:
         position = np.array(data["position"], dtype=np.float32)
         yaw = np.array(data["yaw"], dtype=np.float32)
 
-        # Backward compatibility with old single-player format.
-        if position.ndim == 2:
-            position = position[None, ...]
-        if yaw.ndim == 1:
-            yaw = yaw[None, ...]
-
         track_ids = data.get("track_ids")
         if track_ids is not None:
             track_ids = np.array(track_ids, dtype=np.int32)
-        elif "track_id" in data:
-            track_ids = np.array([int(data["track_id"])], dtype=np.int32)
-        else:
-            track_ids = np.arange(position.shape[0], dtype=np.int32)
 
         return cls(position=position, yaw=yaw, track_ids=track_ids)
 
@@ -113,20 +103,7 @@ class PLCSResult:
     @classmethod
     def load(cls, path: str | Path) -> "PLCSResult":
         with Path(path).open("r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        if "players" in data:
-            players = sorted((int(k), v) for k, v in data["players"].items())
-            position = np.stack(
-                [np.array(v["position"], dtype=np.float32) for _, v in players], axis=0
-            )
-            yaw = np.stack(
-                [np.array(v["yaw"], dtype=np.float32) for _, v in players], axis=0
-            )
-            track_ids = np.array([k for k, _ in players], dtype=np.int32)
-            return cls(position=position, yaw=yaw, track_ids=track_ids)
-
-        return cls.from_dict(data)
+            return cls.from_dict(json.load(f))
 
 
 class PLCSModule(BasePipelineModule):
@@ -203,8 +180,6 @@ class PLCSModule(BasePipelineModule):
         if not self.is_loaded:
             self.load()
 
-        if human_kp_2d.ndim == 3:
-            human_kp_2d = human_kp_2d[None, ...]
         if human_kp_2d.ndim != 4 or human_kp_2d.shape[2:] != (17, 2):
             raise ValueError(
                 "human_kp_2d shape must be (P, T, 17, 2), "
@@ -213,9 +188,7 @@ class PLCSModule(BasePipelineModule):
 
         num_players, num_frames = human_kp_2d.shape[:2]
         if human_kp_vis is not None:
-            if human_kp_vis.ndim == 2:
-                human_kp_vis = human_kp_vis[None, ...]
-            if human_kp_vis.shape[:2] != (num_players, num_frames):
+            if human_kp_vis.shape != (num_players, num_frames, 17):
                 raise ValueError(
                     "human_kp_vis shape must match (P, T, 17), "
                     f"got {human_kp_vis.shape}"
