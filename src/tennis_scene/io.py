@@ -36,8 +36,16 @@ class SceneResult:
     smpl_vertices_global: NDArray[np.float32] | None = None  # (P, T, V, 3)
 
     ball_uv: NDArray[np.float32] | None = None
+    ball_uv_pred: NDArray[np.float32] | None = None
+    ball_uv_completed: NDArray[np.float32] | None = None
     ball_visibility: NDArray[np.bool_] | None = None
     ball_3d: NDArray[np.float32] | None = None
+    event_uv_probs: NDArray[np.float32] | None = None  # (T, E)
+    event_uv_peak_mask: NDArray[np.bool_] | None = None  # (T, E)
+    event_uv_names: list[str] | None = None
+    event_3d_probs: NDArray[np.float32] | None = None  # (T, E)
+    event_3d_peak_mask: NDArray[np.bool_] | None = None  # (T, E)
+    event_3d_names: list[str] | None = None
 
     human_kp_2d: NDArray[np.float32] | None = None  # (P, T, 17, 2)
     human_kp_vis: NDArray[np.float32] | None = None  # (P, T, 17)
@@ -71,10 +79,26 @@ class SceneResult:
             data["smpl_vertices_global"] = self.smpl_vertices_global
         if self.ball_uv is not None:
             data["ball_uv"] = self.ball_uv
+        if self.ball_uv_pred is not None:
+            data["ball_uv_pred"] = self.ball_uv_pred
+        if self.ball_uv_completed is not None:
+            data["ball_uv_completed"] = self.ball_uv_completed
         if self.ball_visibility is not None:
             data["ball_visibility"] = self.ball_visibility
         if self.ball_3d is not None:
             data["ball_3d"] = self.ball_3d
+        if self.event_uv_probs is not None:
+            data["event_uv_probs"] = self.event_uv_probs
+        if self.event_uv_peak_mask is not None:
+            data["event_uv_peak_mask"] = self.event_uv_peak_mask
+        if self.event_uv_names is not None:
+            data["event_uv_names"] = np.array(self.event_uv_names, dtype=object)
+        if self.event_3d_probs is not None:
+            data["event_3d_probs"] = self.event_3d_probs
+        if self.event_3d_peak_mask is not None:
+            data["event_3d_peak_mask"] = self.event_3d_peak_mask
+        if self.event_3d_names is not None:
+            data["event_3d_names"] = np.array(self.event_3d_names, dtype=object)
         if self.human_kp_2d is not None:
             data["human_kp_2d"] = self.human_kp_2d
         if self.human_kp_vis is not None:
@@ -149,8 +173,20 @@ class SceneResult:
             smpl_vertices_local=smpl_vertices_local,
             smpl_vertices_global=smpl_vertices_global,
             ball_uv=data.get("ball_uv"),
+            ball_uv_pred=data.get("ball_uv_pred"),
+            ball_uv_completed=data.get("ball_uv_completed"),
             ball_visibility=data.get("ball_visibility"),
             ball_3d=data.get("ball_3d"),
+            event_uv_probs=data.get("event_uv_probs"),
+            event_uv_peak_mask=data.get("event_uv_peak_mask"),
+            event_uv_names=[
+                str(x) for x in data["event_uv_names"].tolist()
+            ] if "event_uv_names" in data.files else None,
+            event_3d_probs=data.get("event_3d_probs"),
+            event_3d_peak_mask=data.get("event_3d_peak_mask"),
+            event_3d_names=[
+                str(x) for x in data["event_3d_names"].tolist()
+            ] if "event_3d_names" in data.files else None,
             human_kp_2d=human_kp_2d,
             human_kp_vis=human_kp_vis,
             player_track_ids=player_track_ids,
