@@ -10,7 +10,7 @@ import numpy as np
 from torch.utils.data import Dataset
 
 from src.common.data.camera_selection import select_camera
-from src.common.data.npz_meta import decode_meta, get_num_frames
+from src.common.data.npz_meta import decode_meta
 from src.common.data.scene_cache import SceneCache, get_scene_cache, load_npz_scene
 from src.common.data.scene_paths import resolve_scene_files
 
@@ -70,30 +70,16 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
     def __len__(self) -> int:
         return len(self.scenes)
 
-    def _infer_fallback_len(self, data: dict[str, Any]) -> int:
-        for key in ("ball_pos_world", "ball_pos_norm", "ball_uv"):
-            if key in data:
-                return int(data[key].shape[0])
-        for value in data.values():
-            if hasattr(value, "shape") and len(value.shape) >= 1:
-                return int(value.shape[0])
-        return 0
-
     def _load_scene(self, path: Path) -> NPZScene:
         data = (
             self._scene_cache.get(path)
             if self._scene_cache is not None
             else load_npz_scene(path)
         )
-        meta = decode_meta(data.get("meta", {}))
-        fallback_T = self._infer_fallback_len(data)
-        num_frames = get_num_frames(meta, fallback_T)
-        num_cameras = int(data.get("num_cameras", 0))
-        camera_idx = (
-            select_camera(self.config.camera_mode, num_cameras, self.rng)
-            if num_cameras > 0
-            else 0
-        )
+        meta = decode_meta(data["meta"])
+        num_frames = num_frames = int(meta["num_frames"])
+        num_cameras = num_cameras = int(data["num_cameras"])
+        camera_idx = select_camera(self.config.camera_mode, num_cameras, self.rng)
         return NPZScene(
             path=path,
             data=data,
