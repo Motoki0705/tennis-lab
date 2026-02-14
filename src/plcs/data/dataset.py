@@ -6,6 +6,7 @@ import random as rng
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from omegaconf import DictConfig, ListConfig
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
@@ -69,7 +70,7 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
             self.seq_len_range = (64, 512)
 
         augmentation_cfg = data_cfg.get("augmentation")
-        if not isinstance(augmentation_cfg, dict):
+        if not isinstance(augmentation_cfg, (dict, DictConfig)):
             raise ValueError(
                 "data.augmentation must be provided with keys "
                 "['keypoint_noise_std', 'visibility_drop_prob']."
