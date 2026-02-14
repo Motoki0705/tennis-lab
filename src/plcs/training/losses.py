@@ -212,6 +212,8 @@ def _to_frame_mask(human_mask: Tensor | None) -> Tensor | None:
     """Normalize human padding mask to frame-level validity mask ``(B, T)``."""
     if human_mask is None:
         return None
+    if human_mask.dim() == 1:
+        return human_mask > 0
     if human_mask.dim() == 2:
         return human_mask > 0
     if human_mask.dim() == 3:
@@ -219,7 +221,7 @@ def _to_frame_mask(human_mask: Tensor | None) -> Tensor | None:
     if human_mask.dim() == 4:
         return (human_mask > 0).any(dim=1).any(dim=-1)
     raise ValueError(
-        "human_mask must be (B,T), (B,N,T), or (B,N,T,J), "
+        "human_mask must be (B,), (B,T), (B,N,T), or (B,N,T,J), "
         f"got shape {tuple(human_mask.shape)}"
     )
 

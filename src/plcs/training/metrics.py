@@ -17,7 +17,9 @@ def _flatten_valid(valid: Tensor, values: Tensor) -> Tensor:
 def _valid_from_human_mask(human_mask: Tensor | None) -> Tensor | None:
     if human_mask is None:
         return None
-    if human_mask.dim() == 2:
+    if human_mask.dim() == 1:
+        frame_valid = human_mask > 0
+    elif human_mask.dim() == 2:
         frame_valid = human_mask > 0
     elif human_mask.dim() == 3:
         frame_valid = (human_mask > 0).any(dim=1)
@@ -25,7 +27,7 @@ def _valid_from_human_mask(human_mask: Tensor | None) -> Tensor | None:
         frame_valid = (human_mask > 0).any(dim=1).any(dim=-1)
     else:
         raise ValueError(
-            "human_mask must be (B,T), (B,N,T), or (B,N,T,J), "
+            "human_mask must be (B,), (B,T), (B,N,T), or (B,N,T,J), "
             f"got shape {tuple(human_mask.shape)}"
         )
     return frame_valid.reshape(-1)
