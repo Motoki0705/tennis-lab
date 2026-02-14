@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from functools import partial
 import random as rng
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -54,24 +53,29 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
         self.is_multiview = self.mode in {"multiview", "multiview_sequence"}
         self.is_sequence = self.mode in {"sequence", "multiview_sequence"}
 
-        self.seq_len = int(data_cfg.get("seq_len", 32 if self.is_sequence else 1))
-        self.seq_stride = int(data_cfg.get("seq_stride", self.seq_len if self.is_sequence else 1))
-
-        self.num_views = int(data_cfg.get("num_views", 2))
+        self.seq_stride = int(data_cfg.get("seq_stride", 1))
         self.min_cameras = int(data_cfg.get("min_cameras", 2 if self.is_multiview else 1))
 
-        self.num_views_range: tuple[int, int] | None = None
         if "num_views_range" in data_cfg:
             r = data_cfg["num_views_range"]
-            self.num_views_range = (int(r[0]), int(r[1]))
+            self.num_views_range: tuple[int, int] = (int(r[0]), int(r[1]))
+        else:
+            self.num_views_range = (1, 2)
 
-        self.seq_len_range: tuple[int, int] | None = None
         if "seq_len_range" in data_cfg:
             r = data_cfg["seq_len_range"]
-            self.seq_len_range = (int(r[0]), int(r[1]))
+            self.seq_len_range: tuple[int, int] = (int(r[0]), int(r[1]))
+        else:
+            self.seq_len_range = (64, 512)
 
-        self.kp_noise_std = float(data_cfg.get("keypoint_noise_std", 0.01))
-        self.visibility_drop_prob = float(data_cfg.get("visibility_drop_prob", 0.05))
+        augmentation_cfg = data_cfg.get("augmentation")
+        if not isinstance(augmentation_cfg, dict):
+            raise ValueError(
+                "data.augmentation must be provided with keys "
+                "['keypoint_noise_std', 'visibility_drop_prob']."
+            )
+        self.kp_noise_std = float(augmentation_cfg["keypoint_noise_std"])
+        self.visibility_drop_prob = float(augmentation_cfg["visibility_drop_prob"])
 
         self._scene_cache = get_scene_cache(load_fn=load_scene, maxsize=cache_maxsize)
 
@@ -85,9 +89,7 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
         self._build_index()
 
     def _build_index(self) -> None:
-        min_seq_for_index = self.seq_len
-        if self.seq_len_range is not None:
-            min_seq_for_index = max(1, int(self.seq_len_range[0]))
+        min_seq_for_index = max(1, int(self.seq_len_range[0]))
 
         scene_metas = extract_scene_meta_parallel(
             self.scene_files,
@@ -126,13 +128,10 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
                 return num_cameras
             return 1
 
-        if self.num_views_range is not None:
-            min_views, max_views = self.num_views_range
-            max_possible = min(max_views, num_cameras)
-            min_possible = min(min_views, max_possible)
-            return rng.randint(min_possible, max_possible)
-
-        return min(self.num_views, num_cameras)
+        min_views, max_views = self.num_views_range
+        max_possible = min(max_views, num_cameras)
+        min_possible = min(min_views, max_possible)
+        return rng.randint(min_possible, max_possible)
 
     def _select_cameras(self, num_cameras: int) -> list[int]:
         if self.is_multiview:
@@ -158,13 +157,10 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
         if remaining <= 0:
             return 1
 
-        if self.seq_len_range is not None:
-            min_len, max_len = self.seq_len_range
-            max_len = min(max_len, remaining)
-            min_len = min(min_len, max_len)
-            return rng.randint(min_len, max_len)
-
-        return min(self.seq_len, remaining)
+        min_len, max_len = self.seq_len_range
+        max_len = min(max_len, remaining)
+        min_len = min(min_len, max_len)
+        return rng.randint(min_len, max_len)
 
     def __getitem__(self, idx: int) -> dict[str, Tensor]:
         scene_idx, start_frame = self.index[idx]
@@ -372,4 +368,3 @@ def collate_and_adapt_plcs_batch(
         input_profile=input_profile,
         camera_index=camera_index,
     )
-
