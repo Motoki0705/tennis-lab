@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import torch
 from torch import Tensor, nn
 
 from src.base.training.lightning_module import BaseLightningModule
@@ -49,15 +48,6 @@ class PLCSLightningModule(BaseLightningModule):
             angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
         )
 
-    def _build_seq_mask(self, human_mask: Tensor | None) -> Tensor | None:
-        if human_mask is None:
-            return None
-        if human_mask.dim() != 3:
-            raise ValueError(
-                f"human_mask must be (B,N,T), got shape {tuple(human_mask.shape)}"
-            )
-        return (human_mask > 0).any(dim=1)
-
     def _forward_from_batch(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:
         return self.model(
             human_kp=batch["human_kp"],
@@ -65,47 +55,6 @@ class PLCSLightningModule(BaseLightningModule):
             human_vis=batch.get("human_vis"),
             human_mask=batch.get("human_mask"),
             court_vis=batch.get("court_vis"),
-        )
-
-    def _filter_valid_for_metrics(
-        self,
-        pred_position: Tensor,
-        pred_rotation: Tensor,
-        target_position: Tensor,
-        target_rotation: Tensor,
-        seq_mask: Tensor | None,
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
-        if pred_position.dim() == 2:
-            return pred_position, pred_rotation, target_position, target_rotation
-
-        if seq_mask is None:
-            return (
-                pred_position.reshape(-1, pred_position.shape[-1]),
-                pred_rotation.reshape(-1, pred_rotation.shape[-1]),
-                target_position.reshape(-1, target_position.shape[-1]),
-                target_rotation.reshape(-1, target_rotation.shape[-1]),
-            )
-
-        valid = seq_mask.reshape(-1) > 0
-        pred_pos_flat = pred_position.reshape(-1, pred_position.shape[-1])
-        pred_rot_flat = pred_rotation.reshape(-1, pred_rotation.shape[-1])
-        tgt_pos_flat = target_position.reshape(-1, target_position.shape[-1])
-        tgt_rot_flat = target_rotation.reshape(-1, target_rotation.shape[-1])
-
-        if valid.any():
-            return (
-                pred_pos_flat[valid],
-                pred_rot_flat[valid],
-                tgt_pos_flat[valid],
-                tgt_rot_flat[valid],
-            )
-
-        # no valid tokens: return first entry to keep metric code safe
-        return (
-            pred_pos_flat[:1],
-            pred_rot_flat[:1],
-            tgt_pos_flat[:1],
-            tgt_rot_flat[:1],
         )
 
     def _select_metrics(self, stage: str) -> PLCSMetrics:
@@ -119,28 +68,22 @@ class PLCSLightningModule(BaseLightningModule):
         self, batch: dict[str, Tensor], stage: str
     ) -> tuple[Tensor, dict[str, float]]:
         outputs = self._forward_from_batch(batch)
-        seq_mask = self._build_seq_mask(batch.get("human_mask"))
+        human_mask = batch.get("human_mask")
 
         losses = self.loss_fn(
             pred_position=outputs["position"],
             pred_rotation=outputs["rotation"],
             target_position=batch["position"],
             target_rotation=batch["rotation"],
-            seq_mask=seq_mask,
+            human_mask=human_mask,
         )
 
-        pred_pos, pred_rot, tgt_pos, tgt_rot = self._filter_valid_for_metrics(
+        metrics = self._select_metrics(stage).update(
             outputs["position"],
             outputs["rotation"],
             batch["position"],
             batch["rotation"],
-            seq_mask,
-        )
-        metrics = self._select_metrics(stage).update(
-            pred_pos,
-            pred_rot,
-            tgt_pos,
-            tgt_rot,
+            human_mask=human_mask,
         )
 
         return losses["total"], {

@@ -1,4 +1,4 @@
-output_dir: outputs/plcs/frame
+output_dir: outputs/plcs/${model.name}
 seed: 42
 gpus: 1
 resume: null
