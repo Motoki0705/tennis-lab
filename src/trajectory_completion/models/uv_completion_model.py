@@ -39,26 +39,29 @@ class UVTrajectoryCompletionModel(nn.Module):
     def __init__(
         self,
         *,
+        # Core
         hidden_dim: int = 256,
-        num_layers: int = 6,
         num_heads: int = 8,
         dropout: float = 0.1,
-        rope_theta: float = 10000.0,
-        yarn: YaRNConfig | None = None,
-        causal: bool = False,
         max_seq_len: int = 256,
+        # Architecture depth
+        num_ball_layers: int = 6,
+        num_query_layers: int = 2,
+        # Positional encoding
+        rope_theta: float = 10000.0,
+        rope_dim: int | None = None,
+        yarn: YaRNConfig | None = None,
+        # Attention behavior
+        causal: bool = False,
+        # FFN / MoE
         mlp_inter_dim: int | None = None,
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
+        # Embedding init
         invisible_init_std: float = 0.02,
-        num_query2ball_layers: int = 2,
-        rope_dim: int | None = None,
         query_init_std: float = 0.02,
+        # Court tokens
         num_court_tokens: int = NUM_COURT_KP,
-        use_rope_stage1_cross: bool = False,
-        use_rope_stage1_self: bool = True,
-        use_rope_stage2_cross: bool = True,
-        use_rope_stage2_self: bool = True,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -68,10 +71,10 @@ class UVTrajectoryCompletionModel(nn.Module):
 
         if self.hidden_dim % int(num_heads) != 0:
             raise ValueError("hidden_dim must be divisible by num_heads.")
-        if num_layers < 0:
-            raise ValueError("num_layers must be non-negative.")
-        if num_query2ball_layers < 0:
-            raise ValueError("num_query2ball_layers must be non-negative.")
+        if num_ball_layers < 0:
+            raise ValueError("num_ball_layers must be non-negative.")
+        if num_query_layers < 0:
+            raise ValueError("num_query_layers must be non-negative.")
 
         head_dim = self.hidden_dim // int(num_heads)
         rope_dim_value = head_dim if rope_dim is None else int(rope_dim)
@@ -85,11 +88,6 @@ class UVTrajectoryCompletionModel(nn.Module):
         )
         if use_moe and moe_config is None:
             raise ValueError("use_moe=True requires moe_config.")
-
-        self.use_rope_stage1_cross = bool(use_rope_stage1_cross)
-        self.use_rope_stage1_self = bool(use_rope_stage1_self)
-        self.use_rope_stage2_cross = bool(use_rope_stage2_cross)
-        self.use_rope_stage2_self = bool(use_rope_stage2_self)
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
@@ -108,11 +106,6 @@ class UVTrajectoryCompletionModel(nn.Module):
         self.court_id_embed = nn.Embedding(self.num_court_tokens, self.hidden_dim)
         self.query_base = nn.Parameter(torch.randn(1, 1, self.hidden_dim) * float(query_init_std))
 
-        stage1_cross_rope_dim = rope_dim_value if self.use_rope_stage1_cross else 0
-        stage1_self_rope_dim = rope_dim_value if self.use_rope_stage1_self else 0
-        stage2_cross_rope_dim = rope_dim_value if self.use_rope_stage2_cross else 0
-        stage2_self_rope_dim = rope_dim_value if self.use_rope_stage2_self else 0
-
         self.ball_to_court_cross_layers = nn.ModuleList(
             [
                 CrossAttnBlock(
@@ -121,13 +114,14 @@ class UVTrajectoryCompletionModel(nn.Module):
                         n_heads=int(num_heads),
                         mlp_inter_dim=mlp_inter_dim_value,
                         head_dim=head_dim,
-                        rope_dim=stage1_cross_rope_dim,
+                        # Stage1 cross does not use RoPE by architecture.
+                        rope_dim=0,
                         attn_dropout=float(dropout),
                         use_moe=bool(use_moe),
                         moe_config=moe_config,
                     )
                 )
-                for _ in range(int(num_layers))
+                for _ in range(int(num_ball_layers))
             ]
         )
         self.ball_temporal_layers = nn.ModuleList(
@@ -138,7 +132,7 @@ class UVTrajectoryCompletionModel(nn.Module):
                         n_heads=int(num_heads),
                         mlp_inter_dim=mlp_inter_dim_value,
                         head_dim=head_dim,
-                        rope_dim=stage1_self_rope_dim,
+                        rope_dim=rope_dim_value,
                         attn_dropout=float(dropout),
                         rope_base=float(rope_theta),
                         yarn=yarn,
@@ -146,7 +140,7 @@ class UVTrajectoryCompletionModel(nn.Module):
                         moe_config=moe_config,
                     )
                 )
-                for _ in range(int(num_layers))
+                for _ in range(int(num_ball_layers))
             ]
         )
         self.query_to_ball_cross_layers = nn.ModuleList(
@@ -157,13 +151,13 @@ class UVTrajectoryCompletionModel(nn.Module):
                         n_heads=int(num_heads),
                         mlp_inter_dim=mlp_inter_dim_value,
                         head_dim=head_dim,
-                        rope_dim=stage2_cross_rope_dim,
+                        rope_dim=rope_dim_value,
                         attn_dropout=float(dropout),
                         use_moe=bool(use_moe),
                         moe_config=moe_config,
                     )
                 )
-                for _ in range(int(num_query2ball_layers))
+                for _ in range(int(num_query_layers))
             ]
         )
         self.query_temporal_layers = nn.ModuleList(
@@ -174,7 +168,7 @@ class UVTrajectoryCompletionModel(nn.Module):
                         n_heads=int(num_heads),
                         mlp_inter_dim=mlp_inter_dim_value,
                         head_dim=head_dim,
-                        rope_dim=stage2_self_rope_dim,
+                        rope_dim=rope_dim_value,
                         attn_dropout=float(dropout),
                         rope_base=float(rope_theta),
                         yarn=yarn,
@@ -182,7 +176,7 @@ class UVTrajectoryCompletionModel(nn.Module):
                         moe_config=moe_config,
                     )
                 )
-                for _ in range(int(num_query2ball_layers))
+                for _ in range(int(num_query_layers))
             ]
         )
 
@@ -197,30 +191,14 @@ class UVTrajectoryCompletionModel(nn.Module):
             nn.Linear(self.hidden_dim, 2),
         )
 
-        freqs_ball_tokens = precompute_freqs_cis(
+        freqs_cis = precompute_freqs_cis(
             dim=rope_dim_value,
             seqlen=self.max_seq_len,
             base=float(rope_theta),
             yarn=yarn,
             device=None,
         )
-        freqs_ball_raw = precompute_freqs_cis(
-            dim=rope_dim_value,
-            seqlen=self.max_seq_len,
-            base=float(rope_theta),
-            yarn=yarn,
-            device=None,
-        )
-        freqs_query = precompute_freqs_cis(
-            dim=rope_dim_value,
-            seqlen=self.max_seq_len,
-            base=float(rope_theta),
-            yarn=yarn,
-            device=None,
-        )
-        self.register_buffer("freqs_ball_tokens", freqs_ball_tokens, persistent=False)
-        self.register_buffer("freqs_ball_raw", freqs_ball_raw, persistent=False)
-        self.register_buffer("freqs_query", freqs_query, persistent=False)
+        self.register_buffer("freqs_cis", freqs_cis, persistent=False)
 
     @staticmethod
     def _parse_yarn_config(model_cfg: DictConfig) -> YaRNConfig | None:
@@ -270,28 +248,25 @@ class UVTrajectoryCompletionModel(nn.Module):
             )
 
         num_ball_layers = model_cfg.get("num_ball_layers", model_cfg.get("num_layers", 6))
+        num_query_layers = model_cfg.get("num_query_layers", model_cfg.get("num_query2ball_layers", 2))
 
         return cls(
             hidden_dim=hidden_dim,
-            num_layers=int(num_ball_layers),
             num_heads=int(model_cfg.get("num_heads", 8)),
             dropout=float(model_cfg.get("dropout", 0.1)),
+            max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 256))),
+            num_ball_layers=int(num_ball_layers),
+            num_query_layers=int(num_query_layers),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
+            rope_dim=model_cfg.get("rope_dim", None),
             yarn=cls._parse_yarn_config(model_cfg),
             causal=bool(model_cfg.get("causal", False)),
-            max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 256))),
             mlp_inter_dim=mlp_inter_dim_value,
             use_moe=use_moe,
             moe_config=moe_config,
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
-            num_query2ball_layers=int(model_cfg.get("num_query2ball_layers", 2)),
-            rope_dim=model_cfg.get("rope_dim", None),
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
             num_court_tokens=int(model_cfg.get("num_court_tokens", NUM_COURT_KP)),
-            use_rope_stage1_cross=bool(model_cfg.get("use_rope_stage1_cross", False)),
-            use_rope_stage1_self=bool(model_cfg.get("use_rope_stage1_self", True)),
-            use_rope_stage2_cross=bool(model_cfg.get("use_rope_stage2_cross", True)),
-            use_rope_stage2_self=bool(model_cfg.get("use_rope_stage2_self", True)),
         )
 
     @staticmethod
@@ -308,24 +283,22 @@ class UVTrajectoryCompletionModel(nn.Module):
 
     def forward(
         self,
-        *,
-        ball_uv_in: Tensor,
-        ball_obs_mask: Tensor,
+        ball_uv: Tensor,
         court_kp: Tensor,
-        court_vis: Tensor | None = None,
-        seq_len: Tensor | None = None,
+        ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
+        court_vis: Tensor | None = None,
+        *,
         return_intermediate_ball_hidden: bool = False,
     ) -> Tensor | tuple[Tensor, list[Tensor]]:
         """Forward.
 
         Args:
-            ball_uv_in: (B, T, 2) corrupted inputs (missing frames should be 0).
-            ball_obs_mask: (B, T) observed mask (1=observed, 0=missing).
+            ball_uv: (B, T, 2) corrupted inputs (missing frames should be 0).
             court_kp: (B, 20, 2) court keypoints.
-            court_vis: (B, 20) court visibility mask.
-            seq_len: (B,) valid sequence lengths.
+            ball_vis: (B, T) observed mask (1=observed, 0=missing).
             ball_mask: (B, T) padding mask (1=valid).
+            court_vis: (B, 20) court visibility mask.
             return_intermediate_ball_hidden: If True, also return stage-1 ball token
                 hidden states after each temporal layer.
 
@@ -334,14 +307,13 @@ class UVTrajectoryCompletionModel(nn.Module):
             ``return_intermediate_ball_hidden=True``, returns
             ``(pred, intermediate_ball_hidden_list)``.
         """
-        B, T, _ = ball_uv_in.shape
+        B, T, _ = ball_uv.shape
         if T > self.max_seq_len:
-            ball_uv_in = ball_uv_in[:, : self.max_seq_len]
-            ball_obs_mask = ball_obs_mask[:, : self.max_seq_len]
+            ball_uv = ball_uv[:, : self.max_seq_len]
+            if ball_vis is not None:
+                ball_vis = ball_vis[:, : self.max_seq_len]
             if ball_mask is not None:
                 ball_mask = ball_mask[:, : self.max_seq_len]
-            if seq_len is not None:
-                seq_len = torch.clamp(seq_len, max=self.max_seq_len)
             T = self.max_seq_len
 
         court_tok = self.court_embed(court_kp, court_vis)
@@ -349,36 +321,27 @@ class UVTrajectoryCompletionModel(nn.Module):
             raise ValueError(
                 f"Expected {self.num_court_tokens} court tokens, got {court_tok.shape[1]}"
             )
-        ball_tok = self.ball_embed(ball_uv_in, ball_obs_mask)
+        ball_tok = self.ball_embed(ball_uv, ball_vis)
 
-        court_ids = torch.arange(self.num_court_tokens, device=ball_uv_in.device, dtype=torch.long)
+        court_ids = torch.arange(self.num_court_tokens, device=ball_uv.device, dtype=torch.long)
         court_tokens = court_tok + self.court_id_embed(court_ids).unsqueeze(0)
 
-        if ball_mask is None and seq_len is not None:
-            t = torch.arange(T, device=ball_uv_in.device)[None, :]
-            ball_mask = t < seq_len.to(torch.long).view(B, 1)
-
-        ball_valid = torch.ones(B, T, device=ball_uv_in.device, dtype=torch.bool)
+        ball_valid = torch.ones(B, T, device=ball_uv.device, dtype=torch.bool)
         if ball_mask is not None:
             ball_valid = ball_mask > 0
 
         ball_attn_mask, ball_valid = self._build_self_attn_mask(ball_valid)
-        court_valid = torch.ones(B, self.num_court_tokens, device=ball_uv_in.device, dtype=torch.bool)
+        court_valid = torch.ones(B, self.num_court_tokens, device=ball_uv.device, dtype=torch.bool)
 
-        freqs_ball_tokens = self.freqs_ball_tokens[:T]
-        if freqs_ball_tokens.device != ball_uv_in.device:
-            freqs_ball_tokens = freqs_ball_tokens.to(ball_uv_in.device)
-
-        freqs_ball_raw = self.freqs_ball_raw[:T]
-        if freqs_ball_raw.device != ball_uv_in.device:
-            freqs_ball_raw = freqs_ball_raw.to(ball_uv_in.device)
-
-        freqs_query = self.freqs_query[:T]
-        if freqs_query.device != ball_uv_in.device:
-            freqs_query = freqs_query.to(ball_uv_in.device)
+        freqs_ball_tokens = self.freqs_cis[:T]
+        if freqs_ball_tokens.device != ball_uv.device:
+            freqs_ball_tokens = freqs_ball_tokens.to(ball_uv.device)
+        freqs_ball_tok = freqs_ball_tokens
+        freqs_query = freqs_ball_tokens
 
         # Stage 1: ball tokens attend to court, then temporal self-attention.
-        ball_tokens = ball_tok
+        ball_raw = ball_tok
+        ball_tokens = ball_raw
         intermediate_ball_hidden: list[Tensor] = []
         for cross_layer, self_layer in zip(
             self.ball_to_court_cross_layers,
@@ -389,14 +352,14 @@ class UVTrajectoryCompletionModel(nn.Module):
                 ball_tokens,
                 court_tokens,
                 key_valid=court_valid,
-                freqs_q_cis=freqs_ball_tokens if self.use_rope_stage1_cross else None,
+                freqs_q_cis=None,
                 freqs_k_cis=None,
             )
             ball_tokens, _ = self_layer(
                 ball_tokens,
                 residual=None,
                 start_pos=0,
-                freqs_cis=freqs_ball_tokens if self.use_rope_stage1_self else None,
+                freqs_cis=freqs_ball_tokens,
                 attn_mask=ball_attn_mask,
                 is_causal=self.causal,
             )
@@ -404,11 +367,11 @@ class UVTrajectoryCompletionModel(nn.Module):
                 intermediate_ball_hidden.append(ball_tokens)
 
         # Preserve raw token memory to anchor observed-frame representation.
-        ball_memory = torch.cat([ball_tokens, ball_tok], dim=1)
+        ball_memory = torch.cat([ball_tokens, ball_raw], dim=1)
         ball_memory_valid = torch.cat([ball_valid, ball_valid], dim=1)
 
         # Independent RoPE streams for query and memory branches.
-        freqs_ball_memory = torch.cat([freqs_ball_tokens, freqs_ball_raw], dim=0)
+        freqs_ball_memory = torch.cat([freqs_ball_tokens, freqs_ball_tok], dim=0)
 
         # Stage 2: learned query attends to processed+raw memories, then temporal self-attention.
         query = self.query_base.expand(B, T, -1)
@@ -421,14 +384,14 @@ class UVTrajectoryCompletionModel(nn.Module):
                 query,
                 ball_memory,
                 key_valid=ball_memory_valid,
-                freqs_q_cis=freqs_query if self.use_rope_stage2_cross else None,
-                freqs_k_cis=freqs_ball_memory if self.use_rope_stage2_cross else None,
+                freqs_q_cis=freqs_query,
+                freqs_k_cis=freqs_ball_memory,
             )
             query, _ = self_layer(
                 query,
                 residual=None,
                 start_pos=0,
-                freqs_cis=freqs_query if self.use_rope_stage2_self else None,
+                freqs_cis=freqs_query,
                 attn_mask=ball_attn_mask,
                 is_causal=self.causal,
             )
@@ -442,18 +405,18 @@ class UVTrajectoryCompletionModel(nn.Module):
 
 
 if __name__ == "__main__":
-    model = UVTrajectoryCompletionModel(hidden_dim=64, num_layers=2, num_heads=4, max_seq_len=32)
-    ball_uv_in = torch.rand(2, 32, 2)
-    ball_obs_mask = torch.randint(0, 2, (2, 32)).float()
+    model = UVTrajectoryCompletionModel(hidden_dim=64, num_ball_layers=2, num_query_layers=2, num_heads=4, max_seq_len=32)
+    ball_uv = torch.rand(2, 32, 2)
+    ball_vis = torch.randint(0, 2, (2, 32)).float()
     court_kp = torch.rand(2, 20, 2)
     court_vis = torch.ones(2, 20)
-    seq_len = torch.tensor([32, 24])
+    ball_mask = torch.ones(2, 32)
     out = model(
-        ball_uv_in=ball_uv_in,
-        ball_obs_mask=ball_obs_mask,
-        court_kp=court_kp,
-        court_vis=court_vis,
-        seq_len=seq_len,
+        ball_uv,
+        court_kp,
+        ball_vis,
+        ball_mask,
+        court_vis,
     )
     assert out.shape == (2, 32, 2)
     print("trajectory_completion.model smoke ok")
