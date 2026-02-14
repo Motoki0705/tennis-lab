@@ -391,20 +391,44 @@ class PLCSModel(nn.Module):
         human_kp: Tensor,
         court_kp: Tensor,
         human_vis: Tensor | None = None,
+        human_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
     ) -> dict[str, Tensor]:
-        """Forward pass.
+        """Forward pass for frame model.
 
-        Args:
-            human_kp: Human keypoints, shape (B, 34) or (B, 17, 2).
-            court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
-            human_vis: Human visibility mask, shape (B, 17). Optional.
-            court_vis: Court visibility mask, shape (B, 20). Optional.
-
-        Returns:
-            dict: Dictionary with 'position' (B, 3) and 'rotation' (B, 2).
-
+        Expected shapes:
+        - ``human_kp``: ``(B,17,2)`` or ``(B,34)``
+        - ``court_kp``: ``(B,20,2)`` or ``(B,40)``
+        - ``human_vis``: ``(B,17)``, optional
+        - ``court_vis``: ``(B,20)``, optional
+        - ``human_mask``: ``(B,)`` or ``None`` (unused by frame model)
         """
+        if human_kp.dim() not in {2, 3}:
+            raise ValueError(
+                "PLCSModel expects human_kp as (B,17,2) or (B,34), "
+                f"got shape {tuple(human_kp.shape)}"
+            )
+        if court_kp.dim() not in {2, 3}:
+            raise ValueError(
+                "PLCSModel expects court_kp as (B,20,2) or (B,40), "
+                f"got shape {tuple(court_kp.shape)}"
+            )
+        if human_vis is not None and human_vis.dim() != 2:
+            raise ValueError(
+                "PLCSModel expects human_vis as (B,17), "
+                f"got shape {tuple(human_vis.shape)}"
+            )
+        if court_vis is not None and court_vis.dim() != 2:
+            raise ValueError(
+                "PLCSModel expects court_vis as (B,20), "
+                f"got shape {tuple(court_vis.shape)}"
+            )
+        if human_mask is not None and human_mask.dim() != 1:
+            raise ValueError(
+                "PLCSModel expects human_mask as (B,) or None, "
+                f"got shape {tuple(human_mask.shape)}"
+            )
+
         x, _ = self._encode_tokens(
             human_kp=human_kp,
             court_kp=court_kp,

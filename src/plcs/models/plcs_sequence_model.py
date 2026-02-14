@@ -197,8 +197,8 @@ class PLCSSequenceModel(nn.Module):
         human_kp: Tensor,
         court_kp: Tensor,
         human_vis: Tensor | None = None,
+        human_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
-        seq_mask: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Forward pass.
 
@@ -222,15 +222,46 @@ class PLCSSequenceModel(nn.Module):
                 Shape: (B, 20) or (B, T, 20). Each element is interpreted as
                 visible if > 0. For per-frame input, frame 0 is used.
                 Optional; if None, all court keypoints are treated as visible.
-            seq_mask:
-                Sequence padding mask. Shape: (B, T), True = valid frame.
-                Optional; if None, all frames are treated as valid.
+            human_mask:
+                Padding mask with shape (B, T). Optional.
+                Optional; if None, all frames are valid.
 
         Returns:
             dict with:
               - position: (B, T, 3) normalized court-space xyz per frame
               - rotation: (B, T, 2) per frame as (sin(yaw), cos(yaw))
         """
+        if human_kp.dim() not in {3, 4}:
+            raise ValueError(
+                "PLCSSequenceModel expects human_kp as (B,T,17,2) or (B,T,34), "
+                f"got shape {tuple(human_kp.shape)}"
+            )
+        if human_vis is not None and human_vis.dim() != 3:
+            raise ValueError(
+                "PLCSSequenceModel expects human_vis as (B,T,17), "
+                f"got shape {tuple(human_vis.shape)}"
+            )
+        if court_kp.dim() not in {2, 3, 4}:
+            raise ValueError(
+                "PLCSSequenceModel expects court_kp as (B,40)/(B,20,2)/(B,T,40)/(B,T,20,2), "
+                f"got shape {tuple(court_kp.shape)}"
+            )
+        if court_vis is not None and court_vis.dim() not in {2, 3}:
+            raise ValueError(
+                "PLCSSequenceModel expects court_vis as (B,20) or (B,T,20), "
+                f"got shape {tuple(court_vis.shape)}"
+            )
+
+        seq_mask: Tensor | None = None
+        if human_mask is not None:
+            if human_mask.dim() == 2:  # (B, T)
+                seq_mask = human_mask > 0
+            else:
+                raise ValueError(
+                    "human_mask for sequence models must be (B,T), "
+                    f"got shape {tuple(human_mask.shape)}"
+                )
+
         B, T = human_kp.shape[:2]
 
         if T > self.max_seq_len:

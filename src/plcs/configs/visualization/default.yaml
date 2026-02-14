@@ -1,25 +1,11 @@
-mode: visualize  # visualize | predict | compare
+mode: visualize  # visualize | predict
 scene_path: data/plcs/scenes/scene_000001.npz
-frame: 0
-view: multi               # multi | 3d | 2d | camera | animation
+# Single-view camera index used when cameras is unset.
 camera: 0
-animation_view: 2d_topdown  # 2d_topdown | 2d_camera | 3d
+# Optional multi-camera selector: "all" or comma-separated "0,1,2"
+cameras: null
+animation_view: camera  # 3d | 2d_topdown | camera
 fps: null
 save: null
-save_input: null          # Path to save 2D input scene animation (camera view)
 info: false
 checkpoint: outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt
-device: auto
-
-# Comparison settings (for mode=compare)
-compare:
-  layout: overlay         # overlay | side-by-side
-  gt_color: "#00FF00"    # Green for GT
-  pred_color: "#FF00FF"  # Magenta for predictions
-  show_error: true       # Show L2 error in title/legend
-
-# Rendering settings
-rendering:
-  human_kp_size: 8.0     # Size of human keypoint markers (camera view)
-  court_kp_size: 30.0    # Size of court keypoint markers (camera view)
-  bone_width: 2.0        # Width of skeleton bones
