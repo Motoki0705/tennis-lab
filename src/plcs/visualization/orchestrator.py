@@ -14,6 +14,10 @@ from omegaconf import DictConfig
 
 from src.plcs.generate_dataset.io.dataset_io import load_scene
 from src.plcs.inference.predictor import PLCSPredictor
+from src.plcs.models.plcs_model import PLCSModel
+from src.plcs.models.plcs_multiview_model import PLCSMultiViewModel
+from src.plcs.models.plcs_query_sequence_model import PLCSQuerySequenceModel
+from src.plcs.models.plcs_sequence_model import PLCSSequenceModel
 from src.plcs.visualization.rendering import PLCSSceneRenderer
 
 
@@ -103,20 +107,40 @@ def _predict_full_sequence(
     human_vis = np.stack([scene.cameras[c].human_kp_visible.astype(np.float32) for c in cameras], axis=0)
     court_vis = np.stack([scene.cameras[c].court_kp_visible.astype(np.float32) for c in cameras], axis=0)
 
-    human_kp_t = torch.from_numpy(human_kp).float()
-    court_kp_t = torch.from_numpy(court_kp).float()
-    human_vis_t = torch.from_numpy(human_vis).float()
-    court_vis_t = torch.from_numpy(court_vis).float()
-    human_mask_t = torch.ones(human_kp_t.shape[0], human_kp_t.shape[1], dtype=torch.float32)
-
-    pred = predictor.predict(
-        human_kp=human_kp_t,
-        court_kp=court_kp_t,
-        human_vis=human_vis_t,
-        human_mask=human_mask_t,
-        court_vis=court_vis_t,
-        denormalize=False,
-    )
+    model = predictor.model
+    if isinstance(model, PLCSMultiViewModel):
+        human_kp_t = torch.from_numpy(human_kp).float().unsqueeze(0)  # (B,N,T,17,2)
+        court_kp_t = torch.from_numpy(court_kp).float().unsqueeze(0)  # (B,N,T,20,2)
+        human_vis_t = torch.from_numpy(human_vis).float().unsqueeze(0)  # (B,N,T,17)
+        court_vis_t = torch.from_numpy(court_vis).float().unsqueeze(0)  # (B,N,T,20)
+        human_mask_t = torch.ones(
+            (1, human_kp.shape[0], human_kp.shape[1]),
+            dtype=torch.float32,
+        )
+        pred = predictor.predict(
+            human_kp=human_kp_t,
+            court_kp=court_kp_t,
+            human_vis=human_vis_t,
+            human_mask=human_mask_t,
+            court_vis=court_vis_t,
+            denormalize=False,
+        )
+    elif isinstance(model, (PLCSSequenceModel, PLCSQuerySequenceModel)):
+        human_kp_t = torch.from_numpy(human_kp[0]).float().unsqueeze(0)  # (B,T,17,2)
+        court_kp_t = torch.from_numpy(court_kp[0]).float().unsqueeze(0)  # (B,T,20,2)
+        human_vis_t = torch.from_numpy(human_vis[0]).float().unsqueeze(0)  # (B,T,17)
+        court_vis_t = torch.from_numpy(court_vis[0]).float().unsqueeze(0)  # (B,T,20)
+        human_mask_t = torch.ones((1, human_kp.shape[1]), dtype=torch.float32)  # (B,T)
+        pred = predictor.predict(
+            human_kp=human_kp_t,
+            court_kp=court_kp_t,
+            human_vis=human_vis_t,
+            human_mask=human_mask_t,
+            court_vis=court_vis_t,
+            denormalize=False,
+        )
+    else:
+        raise ValueError("frame-model requires frame-by-frame prediction")
     position = pred["position"]
     rotation = pred["rotation"]
     if position.dim() == 2:
@@ -137,6 +161,7 @@ def _predict_frame_by_frame(
     rot_list: list[np.ndarray] = []
 
     for frame_idx in range(num_frames):
+        model = predictor.model
         human_kp = np.stack([scene.cameras[c].human_kp_uv[frame_idx : frame_idx + 1] for c in cameras], axis=0)
         court_kp = np.stack([scene.cameras[c].court_kp_uv[frame_idx : frame_idx + 1] for c in cameras], axis=0)
         human_vis = np.stack(
@@ -148,14 +173,35 @@ def _predict_frame_by_frame(
             axis=0,
         )
 
-        pred = predictor.predict(
-            human_kp=torch.from_numpy(human_kp).float(),
-            court_kp=torch.from_numpy(court_kp).float(),
-            human_vis=torch.from_numpy(human_vis).float(),
-            human_mask=torch.ones(len(cameras), 1, dtype=torch.float32),
-            court_vis=torch.from_numpy(court_vis).float(),
-            denormalize=False,
-        )
+        if isinstance(model, PLCSMultiViewModel):
+            pred = predictor.predict(
+                human_kp=torch.from_numpy(human_kp).float().unsqueeze(0),
+                court_kp=torch.from_numpy(court_kp).float().unsqueeze(0),
+                human_vis=torch.from_numpy(human_vis).float().unsqueeze(0),
+                human_mask=torch.ones((1, len(cameras), 1), dtype=torch.float32),
+                court_vis=torch.from_numpy(court_vis).float().unsqueeze(0),
+                denormalize=False,
+            )
+        elif isinstance(model, (PLCSSequenceModel, PLCSQuerySequenceModel)):
+            pred = predictor.predict(
+                human_kp=torch.from_numpy(human_kp[0]).float().unsqueeze(0),
+                court_kp=torch.from_numpy(court_kp[0]).float().unsqueeze(0),
+                human_vis=torch.from_numpy(human_vis[0]).float().unsqueeze(0),
+                human_mask=torch.ones((1, 1), dtype=torch.float32),
+                court_vis=torch.from_numpy(court_vis[0]).float().unsqueeze(0),
+                denormalize=False,
+            )
+        elif isinstance(model, PLCSModel):
+            pred = predictor.predict(
+                human_kp=torch.from_numpy(human_kp[0, 0]).float().unsqueeze(0),
+                court_kp=torch.from_numpy(court_kp[0, 0]).float().unsqueeze(0),
+                human_vis=torch.from_numpy(human_vis[0, 0]).float().unsqueeze(0),
+                human_mask=torch.ones((1,), dtype=torch.float32),
+                court_vis=torch.from_numpy(court_vis[0, 0]).float().unsqueeze(0),
+                denormalize=False,
+            )
+        else:
+            raise ValueError(f"Unsupported model type for predictor: {type(model).__name__}")
         pos = pred["position"]
         rot = pred["rotation"]
         if pos.dim() == 3:
@@ -199,7 +245,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         try:
             pred_pos, pred_rot = _predict_full_sequence(predictor, scene, cameras)
         except ValueError as exc:
-            if "supports T=1 only" not in str(exc):
+            if "frame-model requires frame-by-frame prediction" not in str(exc):
                 raise
             pred_pos, pred_rot = _predict_frame_by_frame(predictor, scene, cameras)
 

@@ -394,43 +394,40 @@ class PLCSModel(nn.Module):
         human_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
     ) -> dict[str, Tensor]:
-        """Forward pass with unified PLCS I/O.
+        """Forward pass for frame model.
 
-        Accepted input shapes are unified as ``(B, N, T, K, 2)`` and compatible
-        aliases. This frame model consumes frame-level single-view tensors,
-        therefore it uses the first camera/time slice when extra axes exist.
+        Expected shapes:
+        - ``human_kp``: ``(B,17,2)`` or ``(B,34)``
+        - ``court_kp``: ``(B,20,2)`` or ``(B,40)``
+        - ``human_vis``: ``(B,17)``, optional
+        - ``court_vis``: ``(B,20)``, optional
+        - ``human_mask``: ``(B,)`` or ``None`` (unused by frame model)
         """
-        del human_mask  # frame model does not use padding mask directly
-
-        had_time_axis = False
-        if human_kp.dim() == 5:  # (B, N, T, 17, 2)
-            if human_kp.shape[2] != 1:
-                raise ValueError(
-                    f"PLCSModel supports T=1 only, got T={human_kp.shape[2]}"
-                )
-            had_time_axis = True
-            human_kp = human_kp[:, 0, 0]
-        elif human_kp.dim() == 4:  # (B, T, 17, 2)
-            if human_kp.shape[1] != 1:
-                raise ValueError(
-                    f"PLCSModel supports T=1 only, got T={human_kp.shape[1]}"
-                )
-            had_time_axis = True
-            human_kp = human_kp[:, 0]
-        if court_kp.dim() == 5:  # (B, N, T, 20, 2)
-            court_kp = court_kp[:, 0, 0]
-        elif court_kp.dim() == 4:  # (B, T, 20, 2)
-            court_kp = court_kp[:, 0]
-        if human_vis is not None:
-            if human_vis.dim() == 4:  # (B, N, T, 17)
-                human_vis = human_vis[:, 0, 0]
-            elif human_vis.dim() == 3:  # (B, T, 17)
-                human_vis = human_vis[:, 0]
-        if court_vis is not None:
-            if court_vis.dim() == 4:  # (B, N, T, 20)
-                court_vis = court_vis[:, 0, 0]
-            elif court_vis.dim() == 3:  # (B, T, 20)
-                court_vis = court_vis[:, 0]
+        if human_kp.dim() not in {2, 3}:
+            raise ValueError(
+                "PLCSModel expects human_kp as (B,17,2) or (B,34), "
+                f"got shape {tuple(human_kp.shape)}"
+            )
+        if court_kp.dim() not in {2, 3}:
+            raise ValueError(
+                "PLCSModel expects court_kp as (B,20,2) or (B,40), "
+                f"got shape {tuple(court_kp.shape)}"
+            )
+        if human_vis is not None and human_vis.dim() != 2:
+            raise ValueError(
+                "PLCSModel expects human_vis as (B,17), "
+                f"got shape {tuple(human_vis.shape)}"
+            )
+        if court_vis is not None and court_vis.dim() != 2:
+            raise ValueError(
+                "PLCSModel expects court_vis as (B,20), "
+                f"got shape {tuple(court_vis.shape)}"
+            )
+        if human_mask is not None and human_mask.dim() != 1:
+            raise ValueError(
+                "PLCSModel expects human_mask as (B,) or None, "
+                f"got shape {tuple(human_mask.shape)}"
+            )
 
         x, _ = self._encode_tokens(
             human_kp=human_kp,
@@ -445,10 +442,6 @@ class PLCSModel(nn.Module):
         # Apply output heads
         position = self.position_head(cls_out)  # (B, 3)
         rotation = self.rotation_head(cls_out)  # (B, 2)
-
-        if had_time_axis:
-            position = position.unsqueeze(1)  # (B, 1, 3)
-            rotation = rotation.unsqueeze(1)  # (B, 1, 2)
 
         return {
             "position": position,

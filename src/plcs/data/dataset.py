@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import partial
 import random as rng
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -303,3 +304,72 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
         collated["human_kp_3d"] = torch.stack(human_kp_3d_batch, dim=0)
 
     return collated
+
+
+def adapt_batch_for_model_profile(
+    batch: dict[str, Tensor],
+    *,
+    input_profile: str,
+    camera_index: int = 0,
+) -> dict[str, Tensor]:
+    """Adapt canonical ``(B,N,T,...)`` batch to model-specific input profile."""
+    b, n, _t = batch["human_kp"].shape[:3]
+    del b
+    if camera_index < 0 or camera_index >= n:
+        raise ValueError(
+            f"camera_index={camera_index} is out of range for batch with N={n} views."
+        )
+
+    if input_profile == "multiview":
+        return batch
+
+    if input_profile in {"frame", "frame_kp3d"}:
+        adapted: dict[str, Tensor] = {
+            "human_kp": batch["human_kp"][:, camera_index, 0],
+            "court_kp": batch["court_kp"][:, camera_index, 0],
+            "human_vis": batch["human_vis"][:, camera_index, 0],
+            "court_vis": batch["court_vis"][:, camera_index, 0],
+            "human_mask": batch["human_mask"][:, camera_index, 0],
+            "position": batch["position"][:, 0],
+            "rotation": batch["rotation"][:, 0],
+        }
+        if "human_kp_3d" in batch:
+            adapted["human_kp_3d"] = batch["human_kp_3d"][:, 0]
+        return adapted
+
+    if input_profile == "sequence":
+        adapted = {
+            "human_kp": batch["human_kp"][:, camera_index],
+            "court_kp": batch["court_kp"][:, camera_index],
+            "human_vis": batch["human_vis"][:, camera_index],
+            "court_vis": batch["court_vis"][:, camera_index],
+            "human_mask": batch["human_mask"][:, camera_index],
+            "position": batch["position"],
+            "rotation": batch["rotation"],
+        }
+        if "human_kp_3d" in batch:
+            adapted["human_kp_3d"] = batch["human_kp_3d"]
+        return adapted
+
+    raise ValueError(
+        "Unknown model input profile: "
+        f"{input_profile}. Supported: ['frame', 'frame_kp3d', 'sequence', 'multiview']"
+    )
+
+
+def collate_and_adapt_plcs_batch(
+    batch: list[dict[str, Tensor]],
+    *,
+    input_profile: str,
+    camera_index: int = 0,
+) -> dict[str, Tensor]:
+    """Collate canonical PLCS samples and adapt to model-specific input profile."""
+    collated = collate_plcs_batch(batch)
+    if not isinstance(collated, dict):
+        raise TypeError("Expected dict[str, Tensor] from collate_plcs_batch.")
+    return adapt_batch_for_model_profile(
+        collated,
+        input_profile=input_profile,
+        camera_index=camera_index,
+    )
+
