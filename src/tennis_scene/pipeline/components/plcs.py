@@ -207,31 +207,28 @@ class PLCSModule(BasePipelineModule):
             court_vis_t = torch.from_numpy(court_vis).float()
             court_vis_batch = court_vis_t.unsqueeze(0).repeat(num_players, 1)
 
-        positions_per_frame: list[np.ndarray] = []
-        yaws_per_frame: list[np.ndarray] = []
+        human_kp_t = torch.from_numpy(human_kp_2d).float()  # (P, T, 17, 2)
+        human_vis_t = None
+        if human_kp_vis is not None:
+            human_vis_t = torch.from_numpy(human_kp_vis).float()  # (P, T, 17)
+        # In pipeline inference, player axis (P) is a batch axis, not padding.
+        human_mask_t = torch.ones((num_players, num_frames), dtype=torch.float32)
 
-        for t in range(num_frames):
-            human_kp_t = torch.from_numpy(human_kp_2d[:, t]).float()  # (P, 17, 2)
-            human_vis_t = None
-            if human_kp_vis is not None:
-                human_vis_t = torch.from_numpy(human_kp_vis[:, t]).float()  # (P, 17)
+        pred = self._predictor.predict(
+            human_kp=human_kp_t,
+            court_kp=court_kp_batch,
+            human_vis=human_vis_t,
+            human_mask=human_mask_t,
+            court_vis=court_vis_batch,
+            denormalize=True,
+        )
 
-            pred = self._predictor.predict(
-                human_kp=human_kp_t,
-                court_kp=court_kp_batch,
-                human_vis=human_vis_t,
-                court_vis=court_vis_batch,
-                denormalize=True,
-            )
-            positions_per_frame.append(pred["position_meters"].numpy())  # (P, 3)
-            yaws_per_frame.append(pred["yaw_radians"].numpy())  # (P,)
-
-        positions = np.stack(positions_per_frame, axis=0).astype(np.float32)  # (T, P, 3)
-        yaws = np.stack(yaws_per_frame, axis=0).astype(np.float32)  # (T, P)
+        positions = pred["position_meters"].numpy().astype(np.float32)  # (P, T, 3)
+        yaws = pred["yaw_radians"].numpy().astype(np.float32)  # (P, T)
 
         result = PLCSResult(
-            position=np.transpose(positions, (1, 0, 2)),  # (P, T, 3)
-            yaw=np.transpose(yaws, (1, 0)),  # (P, T)
+            position=positions,  # (P, T, 3)
+            yaw=yaws,  # (P, T)
             track_ids=track_ids.astype(np.int32),
         )
 
