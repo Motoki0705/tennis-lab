@@ -1,27 +1,24 @@
-# Multi-view PLCS data configuration
 scene_dir: data/plcs
-batch_size: 64
+batch_size: 4
 num_workers: 4
+pin_memory: true
 val_split: 0.1
 test_split: 0.1
-scene_sampler_mode: none
-chunk_max_scenes: 64
 
-# Mode: "multiview" (frame-based) or "multiview_sequence" (temporal)
 mode: multiview_sequence
 
-# Multi-view specific settings
-num_views: 2
+# Scene sampler: none | scene | mixed | chunked
+scene_sampler_mode: chunked
+scenes_per_batch: 8
+chunk_max_scenes: 64
+
+# Multi-view sampling
 min_cameras: 2
+num_views_range: [1, 8]  # [min, max]
 
-# Sequential settings
-seq_len: 16
-
-# Range sampling for dynamic view/seq (optional)
-# When enabled, each sample will randomly pick a value from the range
-num_views_range: [1, 8]  # min, max inclusive
-seq_len_range: [8, 64]   # min, max inclusive
+# Sequence sampling
+seq_len_range: [64, 512]  # [min, max]
 
 augmentation:
-  keypoint_noise_std: 0.01
+  keypoint_noise_std: 0.0001
   visibility_drop_prob: 0.05
