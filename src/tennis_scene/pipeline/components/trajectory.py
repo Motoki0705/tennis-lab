@@ -129,17 +129,17 @@ class TrajectoryModule(BasePipelineModule):
             else np.ones((ball_uv.shape[0],), dtype=np.bool_)
         )
         ball_uv_t = torch.from_numpy(ball_uv).float()
-        ball_obs_mask_t = torch.from_numpy(obs_mask.astype(np.float32))
+        ball_vis_t = torch.from_numpy(obs_mask.astype(np.float32))
+        ball_mask_t = torch.ones_like(ball_vis_t)
         court_kp_t = torch.from_numpy(court_kp).float()
         court_vis_t = torch.from_numpy(court_vis).float() if court_vis is not None else None
-        seq_len_t = torch.tensor([ball_uv.shape[0]], dtype=torch.long)
 
         pred = self._predictor.predict(
-            ball_uv_in=ball_uv_t,
-            ball_obs_mask=ball_obs_mask_t,
+            ball_uv=ball_uv_t,
             court_kp=court_kp_t,
+            ball_vis=ball_vis_t,
+            ball_mask=ball_mask_t,
             court_vis=court_vis_t,
-            seq_len=seq_len_t,
             merge_observed=self.config.merge_observed,
         )
 

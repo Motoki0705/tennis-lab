@@ -269,7 +269,14 @@ if __name__ == "__main__":
     cfg = OmegaConf.create(
         {
             "data": {"max_seq_len": 32},
-            "model": {"name": "uv_transformer", "hidden_dim": 64, "num_layers": 2, "num_heads": 4, "max_seq_len": 32},
+            "model": {
+                "name": "uv_transformer",
+                "hidden_dim": 64,
+                "num_ball_layers": 2,
+                "num_query_layers": 2,
+                "num_heads": 4,
+                "max_seq_len": 32,
+            },
             "training": {"learning_rate": 1e-3, "weight_decay": 0.0, "loss": {"masked_weight": 1.0, "observed_weight": 0.1}},
         }
     )

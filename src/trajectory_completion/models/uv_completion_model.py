@@ -247,8 +247,8 @@ class UVTrajectoryCompletionModel(nn.Module):
                 mlp_inter_dim=int(mlp_inter_dim_value or (8 * hidden_dim / 3)),
             )
 
-        num_ball_layers = model_cfg.get("num_ball_layers", model_cfg.get("num_layers", 6))
-        num_query_layers = model_cfg.get("num_query_layers", model_cfg.get("num_query2ball_layers", 2))
+        num_ball_layers = model_cfg.get("num_ball_layers", 6)
+        num_query_layers = model_cfg.get("num_query_layers", 2)
 
         return cls(
             hidden_dim=hidden_dim,
