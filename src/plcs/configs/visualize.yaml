@@ -1,5 +1,6 @@
 defaults:
   - visualization: default
+  - run: visualize
   - _self_
 
 hydra:

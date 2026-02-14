@@ -1,87 +1,95 @@
-"""PyTorch Lightning DataModule for PLCS."""
+"""Unified PyTorch Lightning DataModule for PLCS."""
 
 from __future__ import annotations
 
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytorch_lightning as pl
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import DataLoader, random_split
 
-from src.common.data.scene_batch_sampler import (
-    build_scene_sampler,
-    resolve_scene_sampler_mode,
-)
-from src.plcs.data.dataset import SceneDataset
-from src.plcs.data.multiview_dataset import (
-    MultiViewSceneDataset,
-    MultiViewSequenceDataset,
-    collate_multiview,
-    collate_multiview_sequence,
-)
-from src.plcs.data.sequence_dataset import SceneSequenceDataset
+from src.common.data.scene_batch_sampler import build_scene_sampler, resolve_scene_sampler_mode
+from src.plcs.data.dataset import SceneDataset, collate_and_adapt_plcs_batch
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-
-
 class PLCSDataModule(pl.LightningDataModule):
-    """Lightning DataModule for PLCS training.
-
-    This module handles the creation of training, validation, and test
-    dataloaders from pre-generated scene files.
-    """
+    """Lightning DataModule for unified PLCS frame/sequence/multiview training."""
 
     def __init__(self, config: DictConfig | None = None) -> None:
-        """Initialize the DataModule.
-
-        Args:
-            config: Configuration dictionary with data parameters.
-
-        """
         super().__init__()
         self.config = config or {}
 
         data_cfg = self.config.get("data", {})
-        self.batch_size = data_cfg.get("batch_size", 64)
-        self.num_workers = data_cfg.get("num_workers", 4)
-        self.scene_dir = Path(data_cfg.get("scene_dir", "data/plcs_scenes"))
-        self.val_split = data_cfg.get("val_split", 0.1)
-        self.test_split = data_cfg.get("test_split", 0.1)
-        self.camera_mode = data_cfg.get("camera_mode", "random")
+        self.batch_size = int(data_cfg.get("batch_size", 64))
+        self.num_workers = int(data_cfg.get("num_workers", 4))
+        self.pin_memory = bool(data_cfg.get("pin_memory", True))
+        self.scene_dir = Path(data_cfg.get("scene_dir", "data/plcs"))
+
+        self.val_split = float(data_cfg.get("val_split", 0.1))
+        self.test_split = float(data_cfg.get("test_split", 0.1))
+
         self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
         self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
         self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
+        self.adapter_camera_index = int(data_cfg.get("adapter_camera_index", 0))
 
-        self.train_dataset: SceneDataset | None = None
-        self.val_dataset: SceneDataset | None = None
-        self.test_dataset: SceneDataset | None = None
+        model_cfg = self.config.get("model", {})
+        io_cfg = model_cfg.get("io", {})
+        self.input_profile = str(
+            io_cfg.get(
+                "input_profile",
+                self._infer_input_profile_from_model_name(str(model_cfg.get("name", "plcs"))),
+            )
+        )
+        self.collate_fn = partial(
+            collate_and_adapt_plcs_batch,
+            input_profile=self.input_profile,
+            camera_index=self.adapter_camera_index,
+        )
+
+        self.train_dataset = None
+        self.val_dataset = None
+        self.test_dataset = None
+
+    @staticmethod
+    def _infer_input_profile_from_model_name(model_name: str) -> str:
+        if model_name in {"plcs", "plcs_kp3d"}:
+            return "frame_kp3d" if model_name == "plcs_kp3d" else "frame"
+        if model_name in {"plcs_sequence", "plcs_query_sequence"}:
+            return "sequence"
+        if model_name == "plcs_multiview":
+            return "multiview"
+        raise ValueError(f"Unknown model.name='{model_name}' for input profile inference.")
 
     def setup(self, stage: str | None = None) -> None:
-        """Set up datasets for the given stage.
+        if not self.scene_dir.exists():
+            raise RuntimeError(
+                f"Scene directory not found: {self.scene_dir}. "
+                "Run plcs.scripts.generate_dataset to create the dataset."
+            )
 
-        Args:
-            stage: Either 'fit', 'validate', 'test', or None for all.
-
-        """
-        # Load full dataset
         full_dataset = SceneDataset(
             scene_dir=self.scene_dir,
             config=self.config,
             augment=True,
-            camera_mode=self.camera_mode,
         )
 
-        # Split into train/val/test
         total_len = len(full_dataset)
         val_len = int(total_len * self.val_split)
         test_len = int(total_len * self.test_split)
         train_len = total_len - val_len - test_len
+        if train_len <= 0:
+            raise ValueError(
+                f"Invalid split sizes: train={train_len}, val={val_len}, test={test_len}."
+            )
 
         train_ds, val_ds, test_ds = random_split(
-            full_dataset, [train_len, val_len, test_len]
+            full_dataset,
+            [train_len, val_len, test_len],
         )
 
         if stage == "fit" or stage is None:
@@ -91,666 +99,46 @@ class PLCSDataModule(pl.LightningDataModule):
         if stage == "test" or stage is None:
             self.test_dataset = test_ds
 
-    def train_dataloader(self) -> DataLoader:
-        """Create training dataloader.
-
-        Returns:
-            DataLoader: Training dataloader.
-
-        """
-        if self.train_dataset is None:
-            raise RuntimeError("Call setup('fit') before train_dataloader()")
-
+    def _build_loader(self, dataset, *, train: bool) -> DataLoader:
         batch_sampler = build_scene_sampler(
-            self.train_dataset,
+            dataset,
             batch_size=self.batch_size,
             mode=self.scene_sampler_mode,
             scenes_per_batch=self.scenes_per_batch,
             chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=True,
-            shuffle=True,
+            drop_last=train,
+            shuffle=train,
         )
         if batch_sampler is not None:
             return DataLoader(
-                self.train_dataset,
+                dataset,
                 batch_sampler=batch_sampler,
                 num_workers=self.num_workers,
-                pin_memory=True,
+                pin_memory=self.pin_memory,
+                collate_fn=self.collate_fn,
             )
 
         return DataLoader(
-            self.train_dataset,
+            dataset,
             batch_size=self.batch_size,
-            shuffle=True,
+            shuffle=train,
             num_workers=self.num_workers,
-            pin_memory=True,
-            drop_last=True,
+            pin_memory=self.pin_memory,
+            drop_last=train,
+            collate_fn=self.collate_fn,
         )
-
-    def val_dataloader(self) -> DataLoader:
-        """Create validation dataloader.
-
-        Returns:
-            DataLoader: Validation dataloader.
-
-        """
-        if self.val_dataset is None:
-            raise RuntimeError("Call setup('fit') before val_dataloader()")
-
-        batch_sampler = build_scene_sampler(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            mode=self.scene_sampler_mode,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=False,
-            shuffle=False,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.val_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=True,
-            )
-
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=True,
-        )
-
-    def test_dataloader(self) -> DataLoader:
-        """Create test dataloader.
-
-        Returns:
-            DataLoader: Test dataloader.
-
-        """
-        if self.test_dataset is None:
-            raise RuntimeError("Call setup('test') before test_dataloader()")
-
-        batch_sampler = build_scene_sampler(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            mode=self.scene_sampler_mode,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=False,
-            shuffle=False,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.test_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=True,
-            )
-
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=True,
-        )
-
-
-class PLCSSequenceDataModule(pl.LightningDataModule):
-    """Lightning DataModule for sequential PLCS training.
-
-    This module creates train/val/test dataloaders using SceneSequenceDataset
-    to provide fixed-length temporal clips.
-    """
-
-    def __init__(self, config: DictConfig | None = None) -> None:
-        """Initialize the sequence DataModule.
-
-        Args:
-            config: Configuration dictionary with data parameters.
-
-        """
-        super().__init__()
-        self.config = config or {}
-
-        data_cfg = self.config.get("data", {})
-        self.batch_size = data_cfg.get("batch_size", 64)
-        self.num_workers = data_cfg.get("num_workers", 4)
-        self.scene_dir = Path(data_cfg.get("scene_dir", "data/plcs_scenes"))
-        self.val_split = data_cfg.get("val_split", 0.1)
-        self.test_split = data_cfg.get("test_split", 0.1)
-        self.camera_mode = data_cfg.get("camera_mode", "random")
-        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
-        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 16))
-        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
-
-        self.train_dataset: SceneSequenceDataset | None = None
-        self.val_dataset: SceneSequenceDataset | None = None
-        self.test_dataset: SceneSequenceDataset | None = None
-
-    def setup(self, stage: str | None = None) -> None:
-        """Set up datasets for the given stage.
-
-        Args:
-            stage: Either 'fit', 'validate', 'test', or None for all.
-
-        """
-        # Load full sequence dataset
-        full_dataset = SceneSequenceDataset(
-            scene_dir=self.scene_dir,
-            config=self.config,
-            augment=True,
-            camera_mode=self.camera_mode,
-        )
-
-        # Split into train/val/test
-        total_len = len(full_dataset)
-        val_len = int(total_len * self.val_split)
-        test_len = int(total_len * self.test_split)
-        train_len = total_len - val_len - test_len
-
-        train_ds, val_ds, test_ds = random_split(
-            full_dataset, [train_len, val_len, test_len]
-        )
-
-        if stage == "fit" or stage is None:
-            self.train_dataset = train_ds
-            self.val_dataset = val_ds
-
-        if stage == "test" or stage is None:
-            self.test_dataset = test_ds
 
     def train_dataloader(self) -> DataLoader:
-        """Create training dataloader.
-
-        Returns:
-            DataLoader: Training dataloader.
-
-        """
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader()")
-
-        batch_sampler = build_scene_sampler(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            mode=self.scene_sampler_mode,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=True,
-            shuffle=True,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.train_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=True,
-            )
-
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            pin_memory=True,
-            drop_last=True,
-        )
+        return self._build_loader(self.train_dataset, train=True)
 
     def val_dataloader(self) -> DataLoader:
-        """Create validation dataloader.
-
-        Returns:
-            DataLoader: Validation dataloader.
-
-        """
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader()")
-
-        batch_sampler = build_scene_sampler(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            mode=self.scene_sampler_mode,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=False,
-            shuffle=False,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.val_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=True,
-            )
-
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=True,
-        )
+        return self._build_loader(self.val_dataset, train=False)
 
     def test_dataloader(self) -> DataLoader:
-        """Create test dataloader.
-
-        Returns:
-            DataLoader: Test dataloader.
-
-        """
         if self.test_dataset is None:
             raise RuntimeError("Call setup('test') before test_dataloader()")
-
-        batch_sampler = build_scene_sampler(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            mode=self.scene_sampler_mode,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=False,
-            shuffle=False,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.test_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=True,
-            )
-
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=True,
-        )
-
-
-class PLCSMultiViewDataModule(pl.LightningDataModule):
-    """Lightning DataModule for multi-view PLCS training.
-
-    This module creates train/val/test dataloaders using MultiViewSceneDataset
-    to provide observations from multiple cameras simultaneously.
-    """
-
-    def __init__(self, config: DictConfig | None = None) -> None:
-        """Initialize the multi-view DataModule.
-
-        Args:
-            config: Configuration dictionary with data parameters.
-
-        """
-        super().__init__()
-        self.config = config or {}
-
-        data_cfg = self.config.get("data", {})
-        self.batch_size = data_cfg.get("batch_size", 32)
-        self.num_workers = data_cfg.get("num_workers", 4)
-        self.pin_memory = True
-        self.scene_dir = Path(data_cfg.get("scene_dir", "data/plcs"))
-        self.val_split = data_cfg.get("val_split", 0.1)
-        self.test_split = data_cfg.get("test_split", 0.1)
-        self.num_views = data_cfg.get("num_views", 2)
-        self.min_cameras = data_cfg.get("min_cameras", 2)
-        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
-        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
-        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
-        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
-        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
-        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
-
-        self.train_dataset: MultiViewSceneDataset | None = None
-        self.val_dataset: MultiViewSceneDataset | None = None
-        self.test_dataset: MultiViewSceneDataset | None = None
-
-    def setup(self, stage: str | None = None) -> None:
-        """Set up datasets for the given stage.
-
-        Args:
-            stage: Either 'fit', 'validate', 'test', or None for all.
-
-        """
-        # Load full multi-view dataset
-        full_dataset = MultiViewSceneDataset(
-            scene_dir=self.scene_dir,
-            config=self.config,
-            augment=True,
-            num_views=self.num_views,
-            min_cameras=self.min_cameras,
-        )
-
-        # Split into train/val/test
-        total_len = len(full_dataset)
-        val_len = int(total_len * self.val_split)
-        test_len = int(total_len * self.test_split)
-        train_len = total_len - val_len - test_len
-
-        train_ds, val_ds, test_ds = random_split(
-            full_dataset, [train_len, val_len, test_len]
-        )
-
-        if stage == "fit" or stage is None:
-            self.train_dataset = train_ds
-            self.val_dataset = val_ds
-
-        if stage == "test" or stage is None:
-            self.test_dataset = test_ds
-
-    def train_dataloader(self) -> DataLoader:
-        """Create training dataloader.
-
-        Returns:
-            DataLoader: Training dataloader.
-
-        """
-        if self.train_dataset is None:
-            raise RuntimeError("Call setup('fit') before train_dataloader()")
-
-        batch_sampler = build_scene_sampler(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            mode=self.scene_sampler_mode,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=True,
-            shuffle=True,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.train_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=self.pin_memory,
-                collate_fn=collate_multiview,
-            )
-
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            drop_last=True,
-            collate_fn=collate_multiview,
-        )
-
-    def val_dataloader(self) -> DataLoader:
-        """Create validation dataloader.
-
-        Returns:
-            DataLoader: Validation dataloader.
-
-        """
-        if self.val_dataset is None:
-            raise RuntimeError("Call setup('fit') before val_dataloader()")
-
-        batch_sampler = build_scene_sampler(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            mode=self.scene_sampler_mode,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=False,
-            shuffle=False,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.val_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=self.pin_memory,
-                collate_fn=collate_multiview,
-            )
-
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            collate_fn=collate_multiview,
-        )
-
-    def test_dataloader(self) -> DataLoader:
-        """Create test dataloader.
-
-        Returns:
-            DataLoader: Test dataloader.
-
-        """
-        if self.test_dataset is None:
-            raise RuntimeError("Call setup('test') before test_dataloader()")
-
-        batch_sampler = build_scene_sampler(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            mode=self.scene_sampler_mode,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=False,
-            shuffle=False,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.test_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=self.pin_memory,
-                collate_fn=collate_multiview,
-            )
-
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            collate_fn=collate_multiview,
-        )
-
-
-class PLCSMultiViewSequenceDataModule(pl.LightningDataModule):
-    """Lightning DataModule for multi-view sequential PLCS training.
-
-    This module creates train/val/test dataloaders using MultiViewSequenceDataset
-    to provide observations from multiple cameras over temporal sequences.
-    """
-
-    def __init__(self, config: DictConfig | None = None) -> None:
-        """Initialize the multi-view sequence DataModule.
-
-        Args:
-            config: Configuration dictionary with data parameters.
-
-        """
-        super().__init__()
-        self.config = config or {}
-
-        data_cfg = self.config.get("data", {})
-        self.batch_size = data_cfg.get("batch_size", 32)
-        self.num_workers = data_cfg.get("num_workers", 4)
-        self.pin_memory = True
-        self.scene_dir = Path(data_cfg.get("scene_dir", "data/plcs"))
-        self.val_split = data_cfg.get("val_split", 0.1)
-        self.test_split = data_cfg.get("test_split", 0.1)
-        self.num_views = data_cfg.get("num_views", 2)
-        self.min_cameras = data_cfg.get("min_cameras", 2)
-
-        self.train_dataset: MultiViewSequenceDataset | None = None
-        self.val_dataset: MultiViewSequenceDataset | None = None
-        self.test_dataset: MultiViewSequenceDataset | None = None
-
-    def setup(self, stage: str | None = None) -> None:
-        """Set up datasets for the given stage.
-
-        Args:
-            stage: Either 'fit', 'validate', 'test', or None for all.
-
-        """
-        # Load full multi-view sequence dataset
-        full_dataset = MultiViewSequenceDataset(
-            scene_dir=self.scene_dir,
-            config=self.config,
-            augment=True,
-            num_views=self.num_views,
-            min_cameras=self.min_cameras,
-        )
-
-        # Split into train/val/test
-        total_len = len(full_dataset)
-        val_len = int(total_len * self.val_split)
-        test_len = int(total_len * self.test_split)
-        train_len = total_len - val_len - test_len
-
-        train_ds, val_ds, test_ds = random_split(
-            full_dataset, [train_len, val_len, test_len]
-        )
-
-        if stage == "fit" or stage is None:
-            self.train_dataset = train_ds
-            self.val_dataset = val_ds
-
-        if stage == "test" or stage is None:
-            self.test_dataset = test_ds
-
-    def train_dataloader(self) -> DataLoader:
-        """Create training dataloader.
-
-        Returns:
-            DataLoader: Training dataloader.
-
-        """
-        if self.train_dataset is None:
-            raise RuntimeError("Call setup('fit') before train_dataloader()")
-
-        batch_sampler = build_scene_sampler(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            mode=self.scene_sampler_mode,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=True,
-            shuffle=True,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.train_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=self.pin_memory,
-                collate_fn=collate_multiview_sequence,
-            )
-
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            drop_last=True,
-            collate_fn=collate_multiview_sequence,
-        )
-
-    def val_dataloader(self) -> DataLoader:
-        """Create validation dataloader.
-
-        Returns:
-            DataLoader: Validation dataloader.
-
-        """
-        if self.val_dataset is None:
-            raise RuntimeError("Call setup('fit') before val_dataloader()")
-
-        batch_sampler = build_scene_sampler(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            mode=self.scene_sampler_mode,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=False,
-            shuffle=False,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.val_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=self.pin_memory,
-                collate_fn=collate_multiview_sequence,
-            )
-
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            collate_fn=collate_multiview_sequence,
-        )
-
-    def test_dataloader(self) -> DataLoader:
-        """Create test dataloader.
-
-        Returns:
-            DataLoader: Test dataloader.
-
-        """
-        if self.test_dataset is None:
-            raise RuntimeError("Call setup('test') before test_dataloader()")
-
-        batch_sampler = build_scene_sampler(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            mode=self.scene_sampler_mode,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=False,
-            shuffle=False,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.test_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=self.pin_memory,
-                collate_fn=collate_multiview_sequence,
-            )
-
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-            collate_fn=collate_multiview_sequence,
-        )
-
-
-if __name__ == "__main__":
-    # quick smoke test for SceneBatchSampler functionality
-    from omegaconf import OmegaConf
-    
-    # test config with scene sampler enabled
-    test_config = OmegaConf.create(
-        {
-            "data": {
-                "batch_size": 4,
-                "num_workers": 0,
-                "scene_dir": "data/plcs_scenes",
-                "val_split": 0.2,
-                "test_split": 0.2,
-                "camera_mode": "random",
-                "scene_batch_sampler": True,
-            }
-        }
-    )
-
-    # test PLCSDataModule initialization
-    datamodule = PLCSDataModule(test_config)
-    assert datamodule.scene_sampler_mode in {"scene", "mixed"}
-    assert datamodule.batch_size == 4
-
-    print("plcs.data.datamodule smoke ok")
+        return self._build_loader(self.test_dataset, train=False)

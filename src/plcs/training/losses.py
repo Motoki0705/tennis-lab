@@ -191,7 +191,7 @@ def angular_error(pred: Tensor, target: Tensor) -> Tensor:
 def _masked_mean(values: Tensor, mask: Tensor | None) -> Tensor:
     if mask is None:
         return values.mean()
-    mask_f = mask.to(dtype=values.dtype)
+    mask_f = (mask > 0).to(dtype=values.dtype)
     denom = mask_f.sum().clamp_min(1.0)
     return (values * mask_f).sum() / denom
 
@@ -206,6 +206,22 @@ def _sequence_frame_mask(seq_mask: Tensor | None, *, order: int) -> Tensor | Non
     if order == 1:
         return seq_mask[:, 1:] & seq_mask[:, :-1]
     return seq_mask[:, 2:] & seq_mask[:, 1:-1] & seq_mask[:, :-2]
+
+
+def _to_frame_mask(human_mask: Tensor | None) -> Tensor | None:
+    """Normalize human padding mask to frame-level validity mask ``(B, T)``."""
+    if human_mask is None:
+        return None
+    if human_mask.dim() == 2:
+        return human_mask > 0
+    if human_mask.dim() == 3:
+        return (human_mask > 0).any(dim=1)
+    if human_mask.dim() == 4:
+        return (human_mask > 0).any(dim=1).any(dim=-1)
+    raise ValueError(
+        "human_mask must be (B,T), (B,N,T), or (B,N,T,J), "
+        f"got shape {tuple(human_mask.shape)}"
+    )
 
 
 def position_temporal_match_loss(
@@ -378,7 +394,7 @@ class PLCSLoss(nn.Module):
         target_position: Tensor,
         target_rotation: Tensor,
         *,
-        seq_mask: Tensor | None = None,
+        human_mask: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Compute combined loss.
 
@@ -398,22 +414,23 @@ class PLCSLoss(nn.Module):
 
         """
         zero = pred_position.new_zeros(())
+        frame_mask = _to_frame_mask(human_mask)
 
         # Position loss (optionally mask padded frames)
-        if pred_position.dim() == 3 and seq_mask is not None:
+        if pred_position.dim() == 3 and frame_mask is not None:
             per_elem = nn.functional.smooth_l1_loss(
                 pred_position, target_position, reduction="none"
             ).mean(dim=-1)  # (B, T)
-            pos_loss = _masked_mean(per_elem, seq_mask)
+            pos_loss = _masked_mean(per_elem, frame_mask)
         else:
             pos_loss = position_loss(pred_position, target_position)
 
         # Rotation loss (optionally mask padded frames)
-        if pred_rotation.dim() == 3 and seq_mask is not None:
+        if pred_rotation.dim() == 3 and frame_mask is not None:
             pred_norm = nn.functional.normalize(pred_rotation, dim=-1)
             cos_sim = (pred_norm * target_rotation).sum(dim=-1)  # (B, T)
             per_frame = 1.0 - cos_sim
-            rot_loss = _masked_mean(per_frame, seq_mask)
+            rot_loss = _masked_mean(per_frame, frame_mask)
         else:
             rot_loss = rotation_loss(pred_rotation, target_rotation)
 
@@ -432,28 +449,28 @@ class PLCSLoss(nn.Module):
         cfg = self.config.temporal
         if cfg.position_gt.weight > 0.0:
             pos_temp_gt = position_temporal_match_loss(
-                pred_position, target_position, cfg.position_gt, seq_mask=seq_mask
+                pred_position, target_position, cfg.position_gt, seq_mask=frame_mask
             )
             total = total + cfg.position_gt.weight * pos_temp_gt
             temp_loss = temp_loss + pos_temp_gt
 
         if cfg.position_inertia.weight > 0.0:
             pos_temp_inertia = position_temporal_inertia_loss(
-                pred_position, cfg.position_inertia, seq_mask=seq_mask
+                pred_position, cfg.position_inertia, seq_mask=frame_mask
             )
             total = total + cfg.position_inertia.weight * pos_temp_inertia
             temp_loss = temp_loss + pos_temp_inertia
 
         if cfg.rotation_gt.weight > 0.0:
             rot_temp_gt = rotation_temporal_match_loss(
-                pred_rotation, target_rotation, cfg.rotation_gt, seq_mask=seq_mask
+                pred_rotation, target_rotation, cfg.rotation_gt, seq_mask=frame_mask
             )
             total = total + cfg.rotation_gt.weight * rot_temp_gt
             temp_loss = temp_loss + rot_temp_gt
 
         if cfg.rotation_inertia.weight > 0.0:
             rot_temp_inertia = rotation_temporal_inertia_loss(
-                pred_rotation, cfg.rotation_inertia, seq_mask=seq_mask
+                pred_rotation, cfg.rotation_inertia, seq_mask=frame_mask
             )
             total = total + cfg.rotation_inertia.weight * rot_temp_inertia
             temp_loss = temp_loss + rot_temp_inertia

@@ -3,6 +3,10 @@
 
 name: plcs_kp3d
 
+io:
+  input_profile: frame_kp3d
+  strict_input: true
+
 hidden_dim: 256
 num_layers: 4
 num_heads: 8

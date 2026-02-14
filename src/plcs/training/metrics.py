@@ -10,6 +10,27 @@ from torch import Tensor
 from src.utils.schema.keypoint_schema import COURT_COORD_SCALE_XYZ
 
 
+def _flatten_valid(valid: Tensor, values: Tensor) -> Tensor:
+    return values.reshape(-1, values.shape[-1])[valid]
+
+
+def _valid_from_human_mask(human_mask: Tensor | None) -> Tensor | None:
+    if human_mask is None:
+        return None
+    if human_mask.dim() == 2:
+        frame_valid = human_mask > 0
+    elif human_mask.dim() == 3:
+        frame_valid = (human_mask > 0).any(dim=1)
+    elif human_mask.dim() == 4:
+        frame_valid = (human_mask > 0).any(dim=1).any(dim=-1)
+    else:
+        raise ValueError(
+            "human_mask must be (B,T), (B,N,T), or (B,N,T,J), "
+            f"got shape {tuple(human_mask.shape)}"
+        )
+    return frame_valid.reshape(-1)
+
+
 class PLCSMetrics:
     """Compute and track PLCS evaluation metrics.
 
@@ -53,6 +74,8 @@ class PLCSMetrics:
         pred_rotation: Tensor,
         target_position: Tensor,
         target_rotation: Tensor,
+        *,
+        human_mask: Tensor | None = None,
     ) -> dict[str, float]:
         """Update metrics with new predictions.
 
@@ -66,13 +89,31 @@ class PLCSMetrics:
             dict: Current batch metrics.
 
         """
+        valid = _valid_from_human_mask(human_mask)
+
         # Flatten temporal dimension if present: (B, T, D) -> (B*T, D)
         if pred_position.dim() == 3:
-            pred_position = pred_position.flatten(0, 1)
-            target_position = target_position.flatten(0, 1)
+            if valid is not None:
+                if not valid.any():
+                    return {
+                        "position_error_m": 0.0,
+                        "angular_error_deg": 0.0,
+                        "x_error_m": 0.0,
+                        "y_error_m": 0.0,
+                        "z_error_m": 0.0,
+                    }
+                pred_position = _flatten_valid(valid, pred_position)
+                target_position = _flatten_valid(valid, target_position)
+            else:
+                pred_position = pred_position.flatten(0, 1)
+                target_position = target_position.flatten(0, 1)
         if pred_rotation.dim() == 3:
-            pred_rotation = pred_rotation.flatten(0, 1)
-            target_rotation = target_rotation.flatten(0, 1)
+            if valid is not None:
+                pred_rotation = _flatten_valid(valid, pred_rotation)
+                target_rotation = _flatten_valid(valid, target_rotation)
+            else:
+                pred_rotation = pred_rotation.flatten(0, 1)
+                target_rotation = target_rotation.flatten(0, 1)
 
         # Denormalize positions to meters
         scale = torch.tensor(

@@ -39,41 +39,73 @@ class PLCSKeypoint3DLightningModule(BaseLightningModule):
         human_vis: Tensor | None = None,
         court_vis: Tensor | None = None,
     ) -> dict[str, Tensor]:
+        if human_kp.dim() != 3:
+            raise ValueError(
+                "PLCSKeypoint3DLightningModule expects human_kp as (B,17,2), "
+                f"got shape {tuple(human_kp.shape)}"
+            )
+        if court_kp.dim() != 3:
+            raise ValueError(
+                "PLCSKeypoint3DLightningModule expects court_kp as (B,20,2), "
+                f"got shape {tuple(court_kp.shape)}"
+            )
         return cast(dict[str, Tensor], self.model(human_kp, court_kp, human_vis, court_vis))
 
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str
     ) -> tuple[Tensor, dict[str, float]]:
+        human_kp = batch["human_kp"]
+        court_kp = batch["court_kp"]
+        human_vis = batch.get("human_vis")
+        court_vis = batch.get("court_vis")
+        human_kp_3d = batch["human_kp_3d"]
+
+        if human_kp.dim() != 3:
+            raise ValueError(
+                "Expected human_kp as (B,17,2) for kp3d training, "
+                f"got shape {tuple(human_kp.shape)}"
+            )
+        if court_kp.dim() != 3:
+            raise ValueError(
+                "Expected court_kp as (B,20,2) for kp3d training, "
+                f"got shape {tuple(court_kp.shape)}"
+            )
+        if human_kp_3d.dim() != 3:
+            raise ValueError(
+                "Expected human_kp_3d as (B,17,3) for kp3d training, "
+                f"got shape {tuple(human_kp_3d.shape)}"
+            )
+
         outputs = self.model(
-            human_kp=batch["human_kp"],
-            court_kp=batch["court_kp"],
-            human_vis=batch.get("human_vis"),
-            court_vis=batch.get("court_vis"),
+            human_kp=human_kp,
+            court_kp=court_kp,
+            human_vis=human_vis,
+            court_vis=court_vis,
         )
 
         losses = self.loss_fn(
             pred_player_kp_3d=outputs["player_kp_3d"],
-            target_player_kp_3d=batch["human_kp_3d"],
-            human_vis=batch.get("human_vis"),
+            target_player_kp_3d=human_kp_3d,
+            human_vis=human_vis,
         )
 
         if stage == "train":
             metrics = self.train_metrics.update(
                 outputs["player_kp_3d"],
-                batch["human_kp_3d"],
-                human_vis=batch.get("human_vis"),
+                human_kp_3d,
+                human_vis=human_vis,
             )
         elif stage == "val":
             metrics = self.val_metrics.update(
                 outputs["player_kp_3d"],
-                batch["human_kp_3d"],
-                human_vis=batch.get("human_vis"),
+                human_kp_3d,
+                human_vis=human_vis,
             )
         else:
             metrics = self.test_metrics.update(
                 outputs["player_kp_3d"],
-                batch["human_kp_3d"],
-                human_vis=batch.get("human_vis"),
+                human_kp_3d,
+                human_vis=human_vis,
             )
 
         return losses["total"], {
