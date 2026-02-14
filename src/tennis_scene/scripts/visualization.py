@@ -1,12 +1,12 @@
 """Visualize tennis scene reconstruction results.
 
 This script renders the output of the tennis scene pipeline as:
-- Interactive matplotlib animation (view in UI)
+- Interactive matplotlib 3D animation (view in UI)
 - MP4 video file (saved to disk)
 
 Example commands:
     `third_party/GVHMR/.venv/bin/python -m src.tennis_scene.scripts.visualization input=outputs/tennis_scene/clip.npz`
-    `third_party/GVHMR/.venv/bin/python -m src.tennis_scene.scripts.visualization input=... view=2d output=animation.mp4`
+    `third_party/GVHMR/.venv/bin/python -m src.tennis_scene.scripts.visualization input=... output=animation.mp4 style.player_representation=skeleton`
     `third_party/GVHMR/.venv/bin/python -m src.tennis_scene.scripts.visualization input=... display=true`
 
 Config entry point: `src/tennis_scene/configs/visualization.yaml`
@@ -50,11 +50,12 @@ def main(cfg: DictConfig) -> int:
 
     # Create style
     style = TennisSceneStyle(
-        player_color=str(cfg.style.player_color),
         trail_length=int(cfg.style.trail_length),
         show_direction=bool(cfg.style.show_direction),
         show_trail=bool(cfg.style.show_trail),
         figsize=tuple(cfg.style.figsize),
+        player_representation=str(cfg.style.player_representation),
+        mesh_alpha=float(cfg.style.mesh_alpha),
     )
 
     renderer = TennisSceneRenderer(style)
@@ -73,10 +74,9 @@ def main(cfg: DictConfig) -> int:
     else:
         fps = scene.fps
 
-    view = str(cfg.view)
     display = bool(cfg.get("display", False))
 
-    LOGGER.info(f"View: {view}, FPS: {fps:.1f}")
+    LOGGER.info(f"3D mode, FPS: {fps:.1f}")
     LOGGER.info(f"Frame range: {start_frame}-{end_frame}")
 
     # Output path
@@ -90,7 +90,6 @@ def main(cfg: DictConfig) -> int:
         renderer.save_animation(
             scene,
             output_path,
-            view=view,
             fps=fps,
             start_frame=start_frame,
             end_frame=end_frame,
@@ -104,7 +103,6 @@ def main(cfg: DictConfig) -> int:
         LOGGER.info("Displaying animation in UI (close window to exit)")
         anim = renderer.create_animation(
             scene,
-            view=view,
             fps=fps,
             start_frame=start_frame,
             end_frame=end_frame,
@@ -115,10 +113,7 @@ def main(cfg: DictConfig) -> int:
     if output_path is None and not display:
         LOGGER.info("Rendering single frame preview")
         frame_idx = start_frame
-        if view == "3d":
-            fig, ax = renderer.render_frame_3d(scene, frame_idx)
-        else:
-            fig, ax = renderer.render_frame_2d(scene, frame_idx)
+        fig, ax = renderer.render_frame_3d(scene, frame_idx)
         plt.savefig("preview.png", dpi=150)
         LOGGER.info("Saved preview to preview.png")
         plt.close()

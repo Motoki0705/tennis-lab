@@ -4,8 +4,11 @@ This script runs the integrated pipeline combining:
 - Court KP Detection (single frame, fixed camera)
 - GVHMR (local SMPL, static_cam=True)
 - WASB (ball detection)
+- Trajectory Completion (optional)
+- UV Event Detection
 - PLCS (3D player position + yaw)
 - BLCS (3D ball trajectory)
+- 3D Event Detection
 
 Example commands:
     `uv run python -m src.tennis_scene.scripts.run_pipeline video_path=inputs/demo/match.mp4`
@@ -56,6 +59,10 @@ def main(cfg: DictConfig) -> int:
     LOGGER.info(f"  Court KP frame: {court_kp_frame}")
     LOGGER.info(f"  Skip GVHMR: {cfg.gvhmr.get('skip', False)}")
     LOGGER.info(f"  Skip ball: {cfg.wasb.get('skip', False)}")
+    LOGGER.info(f"  Skip trajectory: {cfg.trajectory.get('skip', True)}")
+    LOGGER.info(f"  Skip UV event: {cfg.event_uv.get('skip', True)}")
+    LOGGER.info(f"  Skip BLCS: {cfg.blcs.get('skip', False)}")
+    LOGGER.info(f"  Skip 3D event: {cfg.event_3d.get('skip', True)}")
 
     orchestrator = TennisSceneOrchestrator.from_config(cfg)
 
@@ -79,6 +86,12 @@ def main(cfg: DictConfig) -> int:
     if result.ball_3d is not None:
         visible_ball = result.ball_visibility.sum() if result.ball_visibility is not None else 0
         LOGGER.info(f"  Ball visible frames: {visible_ball}/{result.num_frames}")
+    if result.event_uv_peak_mask is not None and result.event_uv_names is not None:
+        uv_counts = result.event_uv_peak_mask.sum(axis=0).tolist()
+        LOGGER.info(f"  UV events ({result.event_uv_names}): {uv_counts}")
+    if result.event_3d_peak_mask is not None and result.event_3d_names is not None:
+        event_3d_counts = result.event_3d_peak_mask.sum(axis=0).tolist()
+        LOGGER.info(f"  3D events ({result.event_3d_names}): {event_3d_counts}")
     LOGGER.info("=" * 60)
 
     return 0
