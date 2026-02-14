@@ -18,7 +18,7 @@ from typing import TypeVar, cast
 import hydra
 from omegaconf import DictConfig
 
-from src.plcs.training.runner import PLCSMultiViewTrainingRunner
+from src.plcs.training.runner import PLCSTrainingRunner
 
 F = TypeVar("F", bound=Callable[..., object])
 hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)
@@ -26,7 +26,7 @@ hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)
 
 def run_training(config: DictConfig) -> None:
     """Execute multi-view PLCS training with the provided configuration."""
-    runner = PLCSMultiViewTrainingRunner()
+    runner = PLCSTrainingRunner()
     runner.run(config)
 
 

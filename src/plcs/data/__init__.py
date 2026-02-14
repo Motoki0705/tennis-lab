@@ -1,13 +1,12 @@
 """Data loading and generation for PLCS."""
 
-from src.plcs.data.datamodule import PLCSDataModule, PLCSSequenceDataModule
-from src.plcs.data.dataset import SceneDataset
+from src.plcs.data.datamodule import PLCSDataModule
+from src.plcs.data.dataset import SceneDataset, collate_plcs_batch
 from src.common.data.scene_batch_sampler import (
     ChunkedSceneBatchSampler,
     MixedSceneBatchSampler,
     SceneBatchSampler,
 )
-from src.plcs.data.sequence_dataset import SceneSequenceDataset
 from src.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSampler,
     MotionSequence,
@@ -23,12 +22,11 @@ __all__ = [
     "MotionSampler",
     "MotionSequence",
     "PLCSDataModule",
-    "PLCSSequenceDataModule",
     "ChunkedSceneBatchSampler",
     "MixedSceneBatchSampler",
     "SceneBatchSampler",
     "SceneData",
     "SceneDataset",
-    "SceneSequenceDataset",
+    "collate_plcs_batch",
     "SceneGenerator",
 ]
