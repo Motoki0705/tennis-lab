@@ -2,7 +2,7 @@
 
 This module provides functions to load scene data from npz files.
 It is separated from dataset_io.py to avoid circular imports when
-used by src.plcs.data.dataset and src.plcs.data.sequence_dataset.
+used by dataset and visualization modules.
 """
 
 from __future__ import annotations

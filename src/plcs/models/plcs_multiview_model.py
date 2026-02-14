@@ -254,10 +254,8 @@ class PLCSMultiViewModel(nn.Module):
         human_kp: Tensor,
         court_kp: Tensor,
         human_vis: Tensor | None = None,
+        human_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
-        view_mask: Tensor | None = None,
-        seq_mask: Tensor | None = None,
-        camera_params: list[list[dict]] | None = None,
     ) -> dict[str, Tensor]:
         """Forward pass.
 
@@ -282,14 +280,9 @@ class PLCSMultiViewModel(nn.Module):
                 - Single frame: (B, N, 20)
                 Each element is interpreted as visible if > 0.
                 Optional; if None, all court keypoints are treated as visible.
-            view_mask:
-                Padding mask for camera views. Shape: (B, N), True = valid view.
-                Optional; if None, all N views are treated as valid.
-            seq_mask:
-                Padding mask for sequence frames. Shape: (B, T), True = valid frame.
-                Optional; if None, all T frames are treated as valid.
-            camera_params:
-                Camera metadata per sample/view (currently unused by this model).
+            human_mask:
+                Padding mask with shape (B, N, T), True/1 for valid tokens.
+                Optional; if None, all views/frames are treated as valid.
 
         Returns:
             dict:
@@ -304,8 +297,6 @@ class PLCSMultiViewModel(nn.Module):
             Input ordering is camera-time: (B, N, T, ...). Single-frame input
             is internally converted to T=1 and squeezed back before return.
         """
-        del camera_params  # currently unused
-
         is_temporal = human_kp.dim() == 5
         if not is_temporal:
             human_kp = human_kp.unsqueeze(2)
@@ -314,6 +305,8 @@ class PLCSMultiViewModel(nn.Module):
                 human_vis = human_vis.unsqueeze(2)
             if court_vis is not None:
                 court_vis = court_vis.unsqueeze(2)
+            if human_mask is not None and human_mask.dim() == 2:
+                human_mask = human_mask.unsqueeze(2)
 
         # (B, N, T, K, 2)
         B, N, T = human_kp.shape[:3]
@@ -324,26 +317,17 @@ class PLCSMultiViewModel(nn.Module):
         if T > self.max_seq_len:
             raise ValueError(f"Sequence length T={T} exceeds max_seq_len={self.max_seq_len}.")
 
-        if view_mask is not None:
-            if view_mask.dim() == 1:
-                view_mask = view_mask.unsqueeze(0)
-            if view_mask.shape != (B, N):
+        if human_mask is not None:
+            if human_mask.dim() != 3 or human_mask.shape != (B, N, T):
                 raise ValueError(
-                    f"view_mask must have shape {(B, N)}, got {tuple(view_mask.shape)}"
+                    "human_mask for multiview models must be (B,N,T), "
+                    f"got {tuple(human_mask.shape)}"
                 )
-            view_valid = view_mask > 0
+            token_mask = human_mask > 0
+            view_valid = token_mask.any(dim=2)
+            seq_valid = token_mask.any(dim=1)
         else:
             view_valid = torch.ones(B, N, dtype=torch.bool, device=device)
-
-        if seq_mask is not None:
-            if seq_mask.dim() == 1:
-                seq_mask = seq_mask.unsqueeze(0)
-            if seq_mask.shape != (B, T):
-                raise ValueError(
-                    f"seq_mask must have shape {(B, T)}, got {tuple(seq_mask.shape)}"
-                )
-            seq_valid = seq_mask > 0
-        else:
             seq_valid = torch.ones(B, T, dtype=torch.bool, device=device)
 
         # court is camera-level (use first frame per camera)
