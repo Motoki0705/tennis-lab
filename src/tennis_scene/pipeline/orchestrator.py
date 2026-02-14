@@ -18,6 +18,11 @@ from src.tennis_scene.pipeline.components.event_uv import EventUVConfig, EventUV
 from src.tennis_scene.pipeline.components.plcs import PLCSConfig, PLCSModule
 from src.tennis_scene.pipeline.components.trajectory import TrajectoryConfig, TrajectoryModule
 from src.tennis_scene.pipeline.components.wasb import WASBConfig, WASBModule
+from src.tennis_scene.pipeline.dependency_graph import (
+    ResolutionResult,
+    Stage,
+    build_default_dependency_graph,
+)
 from src.tennis_scene.utils.transforms import apply_plcs_transform_batch
 
 if TYPE_CHECKING:
@@ -40,6 +45,7 @@ class TennisSceneOrchestrator:
         plcs_module: PLCSModule,
         blcs_module: BLCSModule | None,
         event_3d_module: Event3DModule | None,
+        resolution: ResolutionResult,
         device: str = "cuda",
     ) -> None:
         self.court_kp_module = court_kp_module
@@ -50,6 +56,9 @@ class TennisSceneOrchestrator:
         self.plcs_module = plcs_module
         self.blcs_module = blcs_module
         self.event_3d_module = event_3d_module
+        self.resolution = resolution
+        self.enabled_stages = resolution.enabled_set
+        self.execution_order = resolution.enabled_order
         self.device = device
 
     @classmethod
@@ -58,6 +67,10 @@ class TennisSceneOrchestrator:
 
         device = str(cfg.device)
         output_dir = Path(to_absolute_path(cfg.output_dir))
+        graph = build_default_dependency_graph()
+        resolution = graph.resolve_from_config(cfg)
+        for line in graph.format_resolution_messages(resolution):
+            LOGGER.info(line)
 
         def get_load_path(section: str) -> str | None:
             load_path = cfg[section].get("load_path")
@@ -71,6 +84,8 @@ class TennisSceneOrchestrator:
                 return to_absolute_path(str(output_path))
             return str(output_dir / default_name)
 
+        if Stage.COURT_KP not in resolution.enabled_set:
+            raise ValueError("COURT_KP stage must be enabled.")
         court_kp_module = CourtKPModule(
             CourtKPConfig(
                 checkpoint_path=to_absolute_path(cfg.court_kp.checkpoint),
@@ -83,7 +98,7 @@ class TennisSceneOrchestrator:
         )
 
         gvhmr_config = None
-        if not cfg.gvhmr.get("skip", False):
+        if Stage.GVHMR in resolution.enabled_set:
             gvhmr_config = {
                 "python_executable": to_absolute_path(cfg.gvhmr.python_executable),
                 "model_checkpoint": to_absolute_path(cfg.gvhmr.checkpoint),
@@ -96,7 +111,7 @@ class TennisSceneOrchestrator:
             }
 
         wasb_module = None
-        if not cfg.wasb.get("skip", False):
+        if Stage.WASB in resolution.enabled_set:
             wasb_module = WASBModule(
                 WASBConfig(
                     checkpoint=to_absolute_path(cfg.wasb.checkpoint),
@@ -109,7 +124,7 @@ class TennisSceneOrchestrator:
             )
 
         trajectory_module = None
-        if wasb_module is not None and not cfg.trajectory.get("skip", True):
+        if Stage.TRAJECTORY in resolution.enabled_set:
             trajectory_module = TrajectoryModule(
                 TrajectoryConfig(
                     checkpoint_path=to_absolute_path(cfg.trajectory.checkpoint),
@@ -122,7 +137,7 @@ class TennisSceneOrchestrator:
             )
 
         event_uv_module = None
-        if wasb_module is not None and not cfg.event_uv.get("skip", True):
+        if Stage.EVENT_UV in resolution.enabled_set:
             event_uv_module = EventUVModule(
                 EventUVConfig(
                     checkpoint_path=to_absolute_path(cfg.event_uv.checkpoint),
@@ -136,6 +151,8 @@ class TennisSceneOrchestrator:
                 )
             )
 
+        if Stage.PLCS not in resolution.enabled_set:
+            raise ValueError("PLCS stage must be enabled.")
         plcs_module = PLCSModule(
             PLCSConfig(
                 checkpoint_path=to_absolute_path(cfg.plcs.checkpoint),
@@ -147,7 +164,7 @@ class TennisSceneOrchestrator:
         )
 
         blcs_module = None
-        if wasb_module is not None and not cfg.blcs.get("skip", False):
+        if Stage.BLCS in resolution.enabled_set:
             blcs_module = BLCSModule(
                 BLCSConfig(
                     checkpoint_path=to_absolute_path(cfg.blcs.checkpoint),
@@ -159,7 +176,7 @@ class TennisSceneOrchestrator:
             )
 
         event_3d_module = None
-        if blcs_module is not None and not cfg.event_3d.get("skip", True):
+        if Stage.EVENT_3D in resolution.enabled_set:
             event_3d_module = Event3DModule(
                 Event3DConfig(
                     checkpoint_path=to_absolute_path(cfg.event_3d.checkpoint),
@@ -182,6 +199,7 @@ class TennisSceneOrchestrator:
             plcs_module=plcs_module,
             blcs_module=blcs_module,
             event_3d_module=event_3d_module,
+            resolution=resolution,
             device=device,
         )
 
@@ -230,16 +248,16 @@ class TennisSceneOrchestrator:
     def load_all(self) -> None:
         LOGGER.info("Pre-loading all modules...")
         self.court_kp_module.load()
-        if self.wasb_module is not None:
+        if Stage.WASB in self.enabled_stages and self.wasb_module is not None:
             self.wasb_module.load()
-        if self.trajectory_module is not None:
+        if Stage.TRAJECTORY in self.enabled_stages and self.trajectory_module is not None:
             self.trajectory_module.load()
-        if self.event_uv_module is not None:
+        if Stage.EVENT_UV in self.enabled_stages and self.event_uv_module is not None:
             self.event_uv_module.load()
         self.plcs_module.load()
-        if self.blcs_module is not None:
+        if Stage.BLCS in self.enabled_stages and self.blcs_module is not None:
             self.blcs_module.load()
-        if self.event_3d_module is not None:
+        if Stage.EVENT_3D in self.enabled_stages and self.event_3d_module is not None:
             self.event_3d_module.load()
 
     def _read_video_info(self, video_path: Path) -> dict[str, Any]:
@@ -288,7 +306,7 @@ class TennisSceneOrchestrator:
         court_kp = court_result.keypoints
         court_vis = court_result.visibility
 
-        if self.gvhmr_config is not None:
+        if Stage.GVHMR in self.enabled_stages and self.gvhmr_config is not None:
             gvhmr_result = self._run_gvhmr(video_path, max_frames)
 
             human_kp_2d_norm = gvhmr_result.human_kp_2d.copy()  # (P, T, 17, 2)
@@ -302,15 +320,7 @@ class TennisSceneOrchestrator:
             smpl_vertices_local = gvhmr_result.smpl_vertices_local
             track_ids = gvhmr_result.track_ids
         else:
-            T = max_frames or video_info["num_frames"]
-            P = 1
-            human_kp_2d_norm = np.zeros((P, T, 17, 2), dtype=np.float32)
-            human_kp_vis = np.ones((P, T, 17), dtype=np.float32)
-            smpl_body_pose = np.zeros((P, T, 63), dtype=np.float32)
-            smpl_global_orient = np.zeros((P, T, 3), dtype=np.float32)
-            smpl_betas = np.zeros((P, 10), dtype=np.float32)
-            smpl_vertices_local = None
-            track_ids = np.arange(P, dtype=np.int32)
+            raise RuntimeError("GVHMR stage is required because PLCS depends on GVHMR.")
 
         plcs_result = self.plcs_module.process(
             human_kp_2d=human_kp_2d_norm,
@@ -346,7 +356,7 @@ class TennisSceneOrchestrator:
         event_3d_probs = None
         event_3d_peak_mask = None
         event_3d_names = None
-        if self.wasb_module is not None:
+        if Stage.WASB in self.enabled_stages and self.wasb_module is not None:
             wasb_result = self.wasb_module.process(
                 video_path,
                 max_frames=max_frames,
@@ -357,7 +367,7 @@ class TennisSceneOrchestrator:
             ball_visibility = wasb_result.visibility
             ball_uv_for_downstream = ball_uv
 
-            if self.trajectory_module is not None:
+            if Stage.TRAJECTORY in self.enabled_stages and self.trajectory_module is not None:
                 trajectory_result = self.trajectory_module.process(
                     ball_uv=ball_uv,
                     court_kp=court_kp,
@@ -368,7 +378,7 @@ class TennisSceneOrchestrator:
                 ball_uv_completed = trajectory_result.ball_uv_completed
                 ball_uv_for_downstream = ball_uv_completed
 
-            if self.event_uv_module is not None:
+            if Stage.EVENT_UV in self.enabled_stages and self.event_uv_module is not None:
                 event_uv_result = self.event_uv_module.process(
                     ball_uv=ball_uv_for_downstream,
                     court_kp=court_kp,
@@ -379,7 +389,7 @@ class TennisSceneOrchestrator:
                 event_uv_peak_mask = event_uv_result.event_peak_mask[0]
                 event_uv_names = event_uv_result.event_names
 
-            if self.blcs_module is not None:
+            if Stage.BLCS in self.enabled_stages and self.blcs_module is not None:
                 blcs_result = self.blcs_module.process(
                     ball_uv=ball_uv_for_downstream,
                     court_kp=court_kp,
@@ -387,7 +397,7 @@ class TennisSceneOrchestrator:
                     court_vis=court_vis,
                 )
                 ball_3d = blcs_result.ball_3d
-                if self.event_3d_module is not None:
+                if Stage.EVENT_3D in self.enabled_stages and self.event_3d_module is not None:
                     event_3d_result = self.event_3d_module.process(ball_3d=ball_3d)
                     event_3d_probs = event_3d_result.event_probs[0]
                     event_3d_peak_mask = event_3d_result.event_peak_mask[0]
@@ -427,6 +437,7 @@ class TennisSceneOrchestrator:
                 "video_path": str(video_path),
                 "court_kp_frame": court_kp_frame,
                 "track_ids": track_ids.tolist(),
+                "enabled_stages": [stage.value for stage in self.execution_order],
             },
         )
 
