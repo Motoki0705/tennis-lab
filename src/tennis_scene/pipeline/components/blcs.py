@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from src.tennis_scene.pipeline.base import BasePipelineModule
+from src.tennis_scene.pipeline.components.base import BasePipelineModule
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -120,34 +120,15 @@ class BLCSModule(BasePipelineModule):
 
     def __init__(
         self,
-        config: BLCSConfig | None = None,
-        *,
-        checkpoint_path: str | Path | None = None,
-        device: str = "cuda",
-        save_result: bool = False,
-        output_path: str | Path | None = None,
+        config: BLCSConfig,
     ) -> None:
         """Initialize the module.
 
         Args:
-            config: BLCS configuration (preferred).
-            checkpoint_path: Path to BLCS model checkpoint (legacy).
-            device: Inference device (legacy).
-            save_result: Whether to save result (legacy).
-            output_path: Path to save result (legacy).
+            config: BLCS configuration.
 
         """
-        if config is not None:
-            self.config = config
-        else:
-            if checkpoint_path is None:
-                raise ValueError("Either config or checkpoint_path must be provided")
-            self.config = BLCSConfig(
-                checkpoint_path=checkpoint_path,
-                device=device,
-                save_result=save_result,
-                output_path=output_path,
-            )
+        self.config = config
         self.checkpoint_path = Path(self.config.checkpoint_path)
         self.device = self.config.device
         self._predictor = None

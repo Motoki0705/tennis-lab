@@ -26,7 +26,6 @@ gvhmr:
   python_executable: third_party/GVHMR/.venv/bin/python
   output_path: ${output_dir}/gvhmr_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
-  track_ids: null  # Specific track IDs for multi-player mode
 
 wasb:
   checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
@@ -34,6 +33,24 @@ wasb:
   skip: false
   save_result: true
   output_path: ${output_dir}/wasb_result.json
+  load_path: null  # Path to load pre-computed result (skips inference)
+
+trajectory:
+  checkpoint: checkpoints/trajectory_completion/uv/last.ckpt
+  skip: true
+  merge_observed: true
+  save_result: true
+  output_path: ${output_dir}/trajectory_result.json
+  load_path: null  # Path to load pre-computed result (skips inference)
+
+event_uv:
+  checkpoint: checkpoints/event_detection/uv/last.ckpt
+  skip: true
+  threshold: 0.5
+  min_distance: 1
+  top_k: null
+  save_result: true
+  output_path: ${output_dir}/event_uv_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
 
 plcs:
@@ -44,8 +61,19 @@ plcs:
 
 blcs:
   checkpoint: checkpoints/blcs/single/last.ckpt
+  skip: false
   save_result: true
   output_path: ${output_dir}/blcs_result.json
+  load_path: null  # Path to load pre-computed result (skips inference)
+
+event_3d:
+  checkpoint: checkpoints/event_detection/traj3d/last.ckpt
+  skip: true
+  threshold: 0.5
+  min_distance: 1
+  top_k: null
+  save_result: true
+  output_path: ${output_dir}/event_3d_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
 
 max_frames: null

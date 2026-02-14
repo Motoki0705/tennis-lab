@@ -4,9 +4,6 @@ defaults:
 # Input scene result file (required)
 input: outputs/tennis_scene/clip.npz
 
-# View type: "3d" or "2d"
-view: "3d"
-
 # Output video path (optional, if null only displays or saves preview)
 output: null
 
@@ -26,11 +23,13 @@ writer: ffmpeg
 
 # Rendering style
 style:
-  player_color: "#FF4444"
   trail_length: 30
   show_direction: true
   show_trail: true
   figsize: [12, 8]
+  # "smpl" or "skeleton"
+  player_representation: skeleton
+  mesh_alpha: 0.6
 
 hydra:
   run:
