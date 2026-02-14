@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,6 +14,8 @@ from omegaconf import DictConfig
 from src.plcs.visualization.api.predict import predict_scene
 from src.plcs.visualization.io.scene import load_scene_bundle
 from src.plcs.visualization.rendering import PLCSSceneRenderer
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -75,13 +78,15 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
 def run_visualization(cfg: RuntimeConfig) -> int:
     """Run PLCS visualization orchestration."""
     try:
+        logger.info(f"Loading scene bundle from: {cfg.scene_path}")
         bundle = load_scene_bundle(
             scene_path=cfg.scene_path,
             camera=cfg.camera,
             cameras=cfg.cameras,
         )
+        logger.info(f"Scene loaded successfully. Num frames: {len(bundle.scene.position)}")
     except ValueError as exc:
-        print(f"Error: {exc}")
+        logger.error(f"Error: {exc}")
         return 1
 
     renderer = PLCSSceneRenderer()
@@ -90,14 +95,15 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         return 0
 
     if cfg.animation_view not in {"3d", "2d_topdown", "camera"}:
-        print("Error: visualization.animation_view must be one of '3d', '2d_topdown', 'camera'.")
+        logger.error("Error: visualization.animation_view must be one of '3d', '2d_topdown', 'camera'.")
         return 1
 
     mode = cfg.mode.strip().lower()
     if mode == "predict":
         if cfg.checkpoint is None:
-            print("Error: visualization.checkpoint must be set for predict mode.")
+            logger.error("Error: visualization.checkpoint must be set for predict mode.")
             return 1
+        logger.info(f"Predict mode: loading model with checkpoint: {cfg.checkpoint}")
         try:
             render_scene = predict_scene(
                 checkpoint_path=cfg.checkpoint,
@@ -106,16 +112,18 @@ def run_visualization(cfg: RuntimeConfig) -> int:
                 cameras=bundle.cameras,
             )
         except ValueError as exc:
-            print(f"Error: {exc}")
+            logger.error(f"Error: {exc}")
             return 1
     elif mode == "visualize":
+        logger.info("Visualize mode: using existing scene data.")
         render_scene = bundle.scene
     else:
-        print(f"Error: unknown visualization.mode '{cfg.mode}'.")
+        logger.error(f"Error: unknown visualization.mode '{cfg.mode}'.")
         return 1
 
     fps = cfg.fps or bundle.fps
     camera_idx = bundle.cameras[0]
+    logger.info(f"Creating {cfg.animation_view} animation...")
     anim = renderer.create_animation(
         render_scene,
         view=cfg.animation_view,
@@ -127,7 +135,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         cfg.save.parent.mkdir(parents=True, exist_ok=True)
         anim.save(str(cfg.save), fps=fps)
         plt.close()
-        print(f"Saved animation to {cfg.save}")
+        logger.info(f"Saved animation to {cfg.save}")
     else:
         plt.show()
 

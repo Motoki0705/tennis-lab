@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,8 @@ from src.plcs.models.plcs_model import PLCSModel
 from src.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.plcs.models.plcs_query_sequence_model import PLCSQuerySequenceModel
 from src.plcs.models.plcs_sequence_model import PLCSSequenceModel
+
+logger = logging.getLogger(__name__)
 
 
 def _build_multiview_inputs(scene: Any, cameras: list[int]) -> dict[str, torch.Tensor]:
@@ -77,6 +80,8 @@ def _predict_frame_model(
             .unsqueeze(0),
             denormalize=False,
         )
+        if (frame_idx + 1) % 10 == 0 or frame_idx == 0 or frame_idx == num_frames - 1:
+            logger.info(f"  [Inference] Processing frame {frame_idx + 1}/{num_frames}...")
         pred_pos_list.append(outputs["position"].squeeze(0).numpy())
         pred_rot_list.append(outputs["rotation"].squeeze(0).numpy())
 
@@ -88,6 +93,7 @@ def _predict_sequence_model(
     scene: Any,
     camera_idx: int,
 ) -> tuple[np.ndarray, np.ndarray]:
+    logger.info("  [Inference] Running sequence model inference...")
     outputs = predictor.predict(
         denormalize=False,
         **_build_sequence_inputs(scene, camera_idx),
@@ -100,6 +106,7 @@ def _predict_multiview_model(
     scene: Any,
     cameras: list[int],
 ) -> tuple[np.ndarray, np.ndarray]:
+    logger.info("  [Inference] Running multiview model inference...")
     outputs = predictor.predict(
         denormalize=False,
         **_build_multiview_inputs(scene, cameras),
@@ -137,6 +144,7 @@ def predict_scene(
         checkpoint_path=checkpoint_path,
         device=device,
     )
+    logger.info(f"Model loaded successfully on {device}.")
     model = predictor.model
     primary_camera = cameras[0]
 
