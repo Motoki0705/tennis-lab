@@ -33,6 +33,14 @@ TennisSceneOrchestrator (オーケストレーター)
 
 各モジュールは独立して設定・ロード可能で、`BasePipelineModule` を継承しています。
 
+### ステージ依存関係
+
+- `PLCS <- COURT_KP, GVHMR`（PLCSはcourt_kpとGVHMRのhuman_kpを使用）
+- `BLCS <- COURT_KP, WASB`
+- `TRAJECTORY <- WASB`（optional）
+- `EVENT_UV <- WASB`
+- `EVENT_3D <- BLCS`
+
 ## 固定カメラ前提
 
 - コートKPは1フレーム（デフォルト: frame 0）から推定し、全フレーム共通
@@ -186,6 +194,7 @@ src/tennis_scene/
 │   └── transforms.py        # 座標変換ユーティリティ
 ├── pipeline/                # モジュラーパイプライン
 │   ├── __init__.py          # エクスポート
+│   ├── dependency_graph.py  # ステージ依存の保持/解決/検証
 │   ├── orchestrator.py      # TennisSceneOrchestrator
 │   └── components/
 │       ├── __init__.py
