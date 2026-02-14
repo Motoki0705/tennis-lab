@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -9,7 +10,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader, random_split
 
 from src.common.data.scene_batch_sampler import build_scene_sampler, resolve_scene_sampler_mode
-from src.plcs.data.dataset import SceneDataset, collate_plcs_batch
+from src.plcs.data.dataset import SceneDataset, collate_and_adapt_plcs_batch
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -34,10 +35,35 @@ class PLCSDataModule(pl.LightningDataModule):
         self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
         self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
         self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
+        self.adapter_camera_index = int(data_cfg.get("adapter_camera_index", 0))
+
+        model_cfg = self.config.get("model", {})
+        io_cfg = model_cfg.get("io", {})
+        self.input_profile = str(
+            io_cfg.get(
+                "input_profile",
+                self._infer_input_profile_from_model_name(str(model_cfg.get("name", "plcs"))),
+            )
+        )
+        self.collate_fn = partial(
+            collate_and_adapt_plcs_batch,
+            input_profile=self.input_profile,
+            camera_index=self.adapter_camera_index,
+        )
 
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
+
+    @staticmethod
+    def _infer_input_profile_from_model_name(model_name: str) -> str:
+        if model_name in {"plcs", "plcs_kp3d"}:
+            return "frame_kp3d" if model_name == "plcs_kp3d" else "frame"
+        if model_name in {"plcs_sequence", "plcs_query_sequence"}:
+            return "sequence"
+        if model_name == "plcs_multiview":
+            return "multiview"
+        raise ValueError(f"Unknown model.name='{model_name}' for input profile inference.")
 
     def setup(self, stage: str | None = None) -> None:
         if not self.scene_dir.exists():
@@ -89,7 +115,7 @@ class PLCSDataModule(pl.LightningDataModule):
                 batch_sampler=batch_sampler,
                 num_workers=self.num_workers,
                 pin_memory=self.pin_memory,
-                collate_fn=collate_plcs_batch,
+                collate_fn=self.collate_fn,
             )
 
         return DataLoader(
@@ -99,7 +125,7 @@ class PLCSDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             drop_last=train,
-            collate_fn=collate_plcs_batch,
+            collate_fn=self.collate_fn,
         )
 
     def train_dataloader(self) -> DataLoader:

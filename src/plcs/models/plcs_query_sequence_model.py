@@ -312,7 +312,6 @@ class PLCSQuerySequenceModel(nn.Module):
             court_vis: Court visibility, shape (B,20) or (B,T,20). Used for invisible tokens.
             human_mask:
                 Padding mask. Supported shapes:
-                - (B, N, T): unified mask (reduced to frame/joint validity)
                 - (B, T): frame validity
                 - (B, T, J): joint-wise frame validity
 
@@ -321,26 +320,36 @@ class PLCSQuerySequenceModel(nn.Module):
               - position: (B,T,3)
               - rotation: (B,T,2)
         """
-        if human_kp.dim() == 5:  # (B, N, T, 17, 2)
-            human_kp = human_kp[:, 0]
-        if human_vis is not None and human_vis.dim() == 4:  # (B, N, T, 17)
-            human_vis = human_vis[:, 0]
-        if court_kp.dim() == 5:  # (B, N, T, 20, 2)
-            court_kp = court_kp[:, 0]
-        if court_vis is not None and court_vis.dim() == 4:  # (B, N, T, 20)
-            court_vis = court_vis[:, 0]
+        if human_kp.dim() not in {3, 4}:
+            raise ValueError(
+                "PLCSQuerySequenceModel expects human_kp as (B,T,17,2) or (B,T,34), "
+                f"got shape {tuple(human_kp.shape)}"
+            )
+        if human_vis is not None and human_vis.dim() != 3:
+            raise ValueError(
+                "PLCSQuerySequenceModel expects human_vis as (B,T,17), "
+                f"got shape {tuple(human_vis.shape)}"
+            )
+        if court_kp.dim() not in {2, 3, 4}:
+            raise ValueError(
+                "PLCSQuerySequenceModel expects court_kp as (B,40)/(B,20,2)/(B,T,40)/(B,T,20,2), "
+                f"got shape {tuple(court_kp.shape)}"
+            )
+        if court_vis is not None and court_vis.dim() not in {2, 3}:
+            raise ValueError(
+                "PLCSQuerySequenceModel expects court_vis as (B,20) or (B,T,20), "
+                f"got shape {tuple(court_vis.shape)}"
+            )
 
         seq_mask: Tensor | None = None
         if human_mask is not None:
-            if human_mask.dim() == 3:  # (B, N, T)
-                seq_mask = (human_mask > 0).any(dim=1)
-            elif human_mask.dim() == 2:  # (B, T)
+            if human_mask.dim() == 2:  # (B, T)
                 seq_mask = human_mask > 0
-            elif human_mask.dim() == 4:  # (B, N, T, J)
-                seq_mask = (human_mask > 0).any(dim=1)
+            elif human_mask.dim() == 3:  # (B, T, J)
+                seq_mask = (human_mask > 0).any(dim=-1)
             else:
                 raise ValueError(
-                    "human_mask for query sequence models must be (B,N,T), (B,T), or (B,N,T,J), "
+                    "human_mask for query sequence models must be (B,T) or (B,T,J), "
                     f"got shape {tuple(human_mask.shape)}"
                 )
 

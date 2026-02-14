@@ -286,27 +286,29 @@ class PLCSMultiViewModel(nn.Module):
 
         Returns:
             dict:
-                - position:
-                    - Temporal input: (B, T, 3)
-                    - Single-frame input: (B, 3)
-                - rotation:
-                    - Temporal input: (B, T, 2)
-                    - Single-frame input: (B, 2)
-
-        Notes:
-            Input ordering is camera-time: (B, N, T, ...). Single-frame input
-            is internally converted to T=1 and squeezed back before return.
+                - position: (B, T, 3)
+                - rotation: (B, T, 2)
         """
-        is_temporal = human_kp.dim() == 5
-        if not is_temporal:
-            human_kp = human_kp.unsqueeze(2)
-            court_kp = court_kp.unsqueeze(2)
-            if human_vis is not None:
-                human_vis = human_vis.unsqueeze(2)
-            if court_vis is not None:
-                court_vis = court_vis.unsqueeze(2)
-            if human_mask is not None and human_mask.dim() == 2:
-                human_mask = human_mask.unsqueeze(2)
+        if human_kp.dim() != 5:
+            raise ValueError(
+                "PLCSMultiViewModel expects human_kp as (B,N,T,17,2), "
+                f"got shape {tuple(human_kp.shape)}"
+            )
+        if court_kp.dim() != 5:
+            raise ValueError(
+                "PLCSMultiViewModel expects court_kp as (B,N,T,20,2), "
+                f"got shape {tuple(court_kp.shape)}"
+            )
+        if human_vis is not None and human_vis.dim() != 4:
+            raise ValueError(
+                "PLCSMultiViewModel expects human_vis as (B,N,T,17), "
+                f"got shape {tuple(human_vis.shape)}"
+            )
+        if court_vis is not None and court_vis.dim() != 4:
+            raise ValueError(
+                "PLCSMultiViewModel expects court_vis as (B,N,T,20), "
+                f"got shape {tuple(court_vis.shape)}"
+            )
 
         # (B, N, T, K, 2)
         B, N, T = human_kp.shape[:3]
@@ -433,10 +435,6 @@ class PLCSMultiViewModel(nn.Module):
 
         position = self.position_head(po_flat).view(B, T, 3)
         rotation = self.rotation_head(ro_flat).view(B, T, 2)
-
-        if not is_temporal:
-            position = position.squeeze(1)
-            rotation = rotation.squeeze(1)
 
         return {
             "position": position,

@@ -3,6 +3,10 @@
 
 name: plcs_query_sequence
 
+io:
+  input_profile: sequence
+  strict_input: true
+
 # Architecture
 hidden_dim: 256
 num_heads: 8
