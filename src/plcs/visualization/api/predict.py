@@ -13,7 +13,6 @@ from src.plcs.inference.predictor import PLCSPredictor
 from src.plcs.models.plcs_model import PLCSModel
 from src.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.plcs.models.plcs_query_sequence_model import PLCSQuerySequenceModel
-from src.plcs.models.plcs_sequence_model import PLCSSequenceModel
 
 
 def _build_multiview_inputs(scene: Any, cameras: list[int]) -> dict[str, torch.Tensor]:
@@ -142,7 +141,7 @@ def predict_scene(
 
     if isinstance(model, PLCSMultiViewModel):
         pred_pos, pred_rot = _predict_multiview_model(predictor, scene, cameras)
-    elif isinstance(model, (PLCSSequenceModel, PLCSQuerySequenceModel)):
+    elif isinstance(model, PLCSQuerySequenceModel):
         pred_pos, pred_rot = _predict_sequence_model(predictor, scene, primary_camera)
     elif isinstance(model, PLCSModel):
         pred_pos, pred_rot = _predict_frame_model(predictor, scene, primary_camera)
