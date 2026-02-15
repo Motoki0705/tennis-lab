@@ -25,7 +25,7 @@ def predict_uv_completion(
         ball_obs_mask=inputs.ball_obs_mask,
         court_kp=inputs.court_kp,
         court_vis=inputs.court_vis,
-        merge_observed=True,
+        merge_observed=False,
     )
 
     pred_uv = outputs["ball_uv_pred"].squeeze(0).cpu().numpy()

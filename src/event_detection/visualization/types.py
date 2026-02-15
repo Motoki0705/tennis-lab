@@ -18,8 +18,6 @@ class RuntimeConfig:
     mode: str
     scene_path: Path
     camera: Any
-    view: str
-    frame: int
     fps: float
     save: Path | None
     info: bool
@@ -30,6 +28,8 @@ class RuntimeConfig:
     threshold: float
     min_distance: int
     top_k: int | None
+    event_radius_frames: int
+    event_sigma_frames: float
     show_court_lines: bool
     hydra_cfg: DictConfig
 
