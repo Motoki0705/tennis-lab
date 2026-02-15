@@ -6,7 +6,7 @@ ViT encoder + lightweight decoder that predicts per-keypoint heatmaps.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import torch
 import torch.nn as nn
@@ -15,6 +15,9 @@ from torch import Tensor
 from src.common.models import ViTConfig, ViTEncoder
 from src.common.models.components import MoEConfig, RMSNorm, ViTBlock, ViTBlockConfig
 from src.utils.schema.court import NUM_COURT_KP
+
+if TYPE_CHECKING:
+    from omegaconf import DictConfig
 
 NUM_KEYPOINTS = NUM_COURT_KP  # CourtKP20 specification
 
@@ -135,6 +138,12 @@ class CourtKeypointModel(nn.Module):
         self.register_buffer("_decoder_positions_2d_grid", positions_2d_grid, persistent=False)
 
         self._initialize_decoder_weights()
+
+    @classmethod
+    def from_config(cls, config: "DictConfig") -> "CourtKeypointModel":
+        """Create model from composed Hydra config."""
+        model_cfg = config.get("model", {}) or {}
+        return cls(dict(model_cfg))
 
     @staticmethod
     def _build_positions_2d_grid(num_patches_h: int, num_patches_w: int) -> Tensor:
