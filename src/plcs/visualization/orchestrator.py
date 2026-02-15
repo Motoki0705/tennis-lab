@@ -114,6 +114,12 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         except ValueError as exc:
             logger.error(f"Error: {exc}")
             return 1
+        if cfg.animation_view == "camera":
+            logger.error(
+                "Error: visualization.animation_view='camera' is not supported in predict mode. "
+                "Use '3d' or '2d_topdown' for GT vs Prediction comparison."
+            )
+            return 1
     elif mode == "visualize":
         logger.info("Visualize mode: using existing scene data.")
         render_scene = bundle.scene
@@ -124,12 +130,22 @@ def run_visualization(cfg: RuntimeConfig) -> int:
     fps = cfg.fps or bundle.fps
     camera_idx = bundle.cameras[0]
     logger.info(f"Creating {cfg.animation_view} animation...")
-    anim = renderer.create_animation(
-        render_scene,
-        view=cfg.animation_view,
-        camera_idx=camera_idx,
-        fps=fps,
-    )
+    if mode == "predict":
+        anim = renderer.create_comparison_animation(
+            gt_scene=bundle.scene,
+            pred_scene=render_scene,
+            view=cfg.animation_view,
+            camera_idx=camera_idx,
+            fps=fps,
+            title="GT vs Prediction",
+        )
+    else:
+        anim = renderer.create_animation(
+            render_scene,
+            view=cfg.animation_view,
+            camera_idx=camera_idx,
+            fps=fps,
+        )
 
     if cfg.save is not None:
         cfg.save.parent.mkdir(parents=True, exist_ok=True)
