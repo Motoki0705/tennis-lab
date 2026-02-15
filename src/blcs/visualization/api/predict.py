@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -10,6 +11,8 @@ import torch
 from torch import Tensor
 
 from src.blcs.inference.predictor import BLCSPredictor
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -56,6 +59,7 @@ def predict_positions(
         checkpoint_path=checkpoint_path,
         device=device,
     )
+    logger.info(f"Model loaded successfully on {device}.")
     outputs = predictor.predict(
         ball_uv=inputs.ball_uv,
         court_kp=inputs.court_kp,
@@ -64,4 +68,5 @@ def predict_positions(
         court_vis=inputs.court_vis,
         denormalize=True,
     )
+    logger.info("  [Inference] Running prediction...")
     return outputs["position"].squeeze(0).cpu().numpy()
