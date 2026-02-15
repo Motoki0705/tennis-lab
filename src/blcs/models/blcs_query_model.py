@@ -22,7 +22,7 @@ from src.common.models.embeddings import (
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
 )
-from src.utils.geometry import NUM_COURT_KP
+from src.utils.schema.court import NUM_COURT_KP
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

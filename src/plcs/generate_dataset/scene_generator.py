@@ -18,11 +18,13 @@ from src.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSampler,
     MotionSequence,
 )
-from src.utils.geometry import (
+from src.utils.schema.player import (
     FACE_KEYPOINT_OFFSETS,
+    SMPLH_TO_COCO17_MAPPING,
+)
+from src.utils.schema.court import (
     HALF_LENGTH,
     HALF_SINGLES_WIDTH,
-    SMPLH_TO_COCO17_MAPPING,
 )
 from src.utils.schema.court import (
     COURT_COORD_SCALE_X,

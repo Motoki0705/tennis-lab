@@ -24,7 +24,7 @@ from src.common.models import (
 )
 from src.common.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
 from src.event_detection.models.components.heads import EventLogitsHead
-from src.utils.geometry import NUM_COURT_KP
+from src.utils.schema.court import NUM_COURT_KP
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

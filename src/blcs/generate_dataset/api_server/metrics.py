@@ -8,7 +8,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from src.utils.geometry import HALF_DOUBLES_WIDTH, NET_HEIGHT_CENTER, NET_HEIGHT_POST
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, NET_HEIGHT_CENTER, NET_HEIGHT_POST
 
 
 def apex_height_m(positions: Tensor) -> float:

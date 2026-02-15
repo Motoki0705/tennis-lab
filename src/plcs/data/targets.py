@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from src.utils.geometry import FACE_KEYPOINT_OFFSETS, SMPLH_TO_COCO17_MAPPING
+from src.utils.schema.player import FACE_KEYPOINT_OFFSETS, SMPLH_TO_COCO17_MAPPING
 from src.utils.schema.court import (
     COURT_COORD_SCALE_X,
     COURT_COORD_SCALE_Y,

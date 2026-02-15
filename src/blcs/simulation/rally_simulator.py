@@ -33,7 +33,7 @@ from src.blcs.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
     TargetedVelocitySampler,
 )
-from src.utils.geometry import HALF_LENGTH, HALF_SINGLES_WIDTH
+from src.utils.schema.court import HALF_LENGTH, HALF_SINGLES_WIDTH
 
 if TYPE_CHECKING:
     from src.blcs.generate_dataset.sampling.distribution_sampler import (
