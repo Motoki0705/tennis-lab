@@ -35,109 +35,12 @@ class SkeletonType(Enum):
     SMPL = "smpl"
 
 
-# COCO 17-keypoint skeleton connections
-COCO17_SKELETON: list[tuple[int, int]] = [
-    # Head
-    (0, 1),  # nose -> left_eye
-    (0, 2),  # nose -> right_eye
-    (1, 3),  # left_eye -> left_ear
-    (2, 4),  # right_eye -> right_ear
-    # Torso
-    (5, 6),  # left_shoulder -> right_shoulder
-    (5, 11),  # left_shoulder -> left_hip
-    (6, 12),  # right_shoulder -> right_hip
-    (11, 12),  # left_hip -> right_hip
-    # Left arm
-    (5, 7),  # left_shoulder -> left_elbow
-    (7, 9),  # left_elbow -> left_wrist
-    # Right arm
-    (6, 8),  # right_shoulder -> right_elbow
-    (8, 10),  # right_elbow -> right_wrist
-    # Left leg
-    (11, 13),  # left_hip -> left_knee
-    (13, 15),  # left_knee -> left_ankle
-    # Right leg
-    (12, 14),  # right_hip -> right_knee
-    (14, 16),  # right_knee -> right_ankle
-]
+from src.utils.schema.player import (
+    COCO17_SKELETON,
+    SMPL_SKELETON,
+    SMPLH_SKELETON,
+)
 
-COCO17_KEYPOINT_NAMES: list[str] = [
-    "nose",
-    "left_eye",
-    "right_eye",
-    "left_ear",
-    "right_ear",
-    "left_shoulder",
-    "right_shoulder",
-    "left_elbow",
-    "right_elbow",
-    "left_wrist",
-    "right_wrist",
-    "left_hip",
-    "right_hip",
-    "left_knee",
-    "right_knee",
-    "left_ankle",
-    "right_ankle",
-]
-
-# SMPL-H 22-joint skeleton connections (body joints only, excluding hands)
-SMPLH_SKELETON: list[tuple[int, int]] = [
-    # Spine
-    (0, 3),  # pelvis -> spine1
-    (3, 6),  # spine1 -> spine2
-    (6, 9),  # spine2 -> spine3
-    (9, 12),  # spine3 -> neck
-    (12, 15),  # neck -> head
-    # Left side
-    (0, 1),  # pelvis -> left_hip
-    (1, 4),  # left_hip -> left_knee
-    (4, 7),  # left_knee -> left_ankle
-    (7, 10),  # left_ankle -> left_foot
-    (9, 13),  # spine3 -> left_collar
-    (13, 16),  # left_collar -> left_shoulder
-    (16, 18),  # left_shoulder -> left_elbow
-    (18, 20),  # left_elbow -> left_wrist
-    # Right side
-    (0, 2),  # pelvis -> right_hip
-    (2, 5),  # right_hip -> right_knee
-    (5, 8),  # right_knee -> right_ankle
-    (8, 11),  # right_ankle -> right_foot
-    (9, 14),  # spine3 -> right_collar
-    (14, 17),  # right_collar -> right_shoulder
-    (17, 19),  # right_shoulder -> right_elbow
-    (19, 21),  # right_elbow -> right_wrist
-]
-
-# SMPL 24-joint skeleton (standard SMPL body model)
-SMPL_SKELETON: list[tuple[int, int]] = [
-    # Spine
-    (0, 3),  # pelvis -> spine1
-    (3, 6),  # spine1 -> spine2
-    (6, 9),  # spine2 -> spine3
-    (9, 12),  # spine3 -> neck
-    (12, 15),  # neck -> head
-    # Left side
-    (0, 1),  # pelvis -> left_hip
-    (1, 4),  # left_hip -> left_knee
-    (4, 7),  # left_knee -> left_ankle
-    (7, 10),  # left_ankle -> left_foot
-    (9, 13),  # spine3 -> left_collar
-    (13, 16),  # left_collar -> left_shoulder
-    (16, 18),  # left_shoulder -> left_elbow
-    (18, 20),  # left_elbow -> left_wrist
-    (20, 22),  # left_wrist -> left_hand
-    # Right side
-    (0, 2),  # pelvis -> right_hip
-    (2, 5),  # right_hip -> right_knee
-    (5, 8),  # right_knee -> right_ankle
-    (8, 11),  # right_ankle -> right_foot
-    (9, 14),  # spine3 -> right_collar
-    (14, 17),  # right_collar -> right_shoulder
-    (17, 19),  # right_shoulder -> right_elbow
-    (19, 21),  # right_elbow -> right_wrist
-    (21, 23),  # right_wrist -> right_hand
-]
 
 SKELETON_DEFINITIONS: dict[str, list[tuple[int, int]]] = {
     "coco17": COCO17_SKELETON,

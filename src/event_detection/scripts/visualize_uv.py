@@ -43,7 +43,7 @@ from src.event_detection.utils.visualization import (
     save_outputs,
     select_camera,
 )
-from src.utils.schema.keypoint_schema import COURT_LINE_CONNECTIONS
+from src.utils.schema.court import COURT_SKELETON
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -235,7 +235,7 @@ def _draw_court_uv(
     ax.set_facecolor("#1a1a1a")
 
     if show_lines:
-        for i, j in COURT_LINE_CONNECTIONS:
+        for i, j in COURT_SKELETON:
             if bool(vis[i]) and bool(vis[j]):
                 ax.plot(
                     [kp[i, 0], kp[j, 0]],

@@ -21,8 +21,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from src.utils.geometry.court import (
+from src.utils.schema.court import (
     CENTER_MARK_LENGTH,
+    COURT_SKELETON,
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
     HALF_SINGLES_WIDTH,
@@ -92,31 +93,33 @@ class CourtLines:
             List of line segments as ((x1, y1), (x2, y2)) tuples.
 
         """
-        xd = HALF_DOUBLES_WIDTH
-        xs = HALF_SINGLES_WIDTH
-        yb = HALF_LENGTH
-        ys = SERVICE_LINE_DISTANCE
-        cm = CENTER_MARK_LENGTH
+        # Get 3D keypoints from shared geometry definition
+        pts = court_keypoints_3d().numpy()  # (20, 3)
 
-        return [
-            # Baselines
-            ((-xd, -yb), (xd, -yb)),
-            ((-xd, yb), (xd, yb)),
-            # Doubles sidelines
-            ((-xd, -yb), (-xd, yb)),
-            ((xd, -yb), (xd, yb)),
-            # Singles sidelines
-            ((-xs, -yb), (-xs, yb)),
-            ((xs, -yb), (xs, yb)),
-            # Service lines
-            ((-xs, -ys), (xs, -ys)),
-            ((-xs, ys), (xs, ys)),
-            # Center service line
-            ((0, -ys), (0, ys)),
-            # Center marks
-            ((0, -yb), (0, -yb + cm)),
-            ((0, yb), (0, yb - cm)),
-        ]
+        segments = []
+
+        # 1. Main court lines from COURT_SKELETON
+        # Filter out net-related lines (indices >= 14) as we render net separately
+        for i, j in COURT_SKELETON:
+            # Skip if either keypoint is part of the net structure (14..19)
+            if i >= 14 or j >= 14:
+                continue
+            
+            p1 = pts[i]
+            p2 = pts[j]
+            segments.append(((float(p1[0]), float(p1[1])), (float(p2[0]), float(p2[1]))))
+
+        # 2. Add Center Marks (not in COURT_SKELETON but needed for rendering)
+        # Center mark is a small line extending from baseline inward
+        # Coordinates: (0, +/-HALF_LENGTH) to (0, +/-HALF_LENGTH -/+ CENTER_MARK_LENGTH)
+        
+        # Far center mark
+        segments.append(((0.0, HALF_LENGTH), (0.0, HALF_LENGTH - CENTER_MARK_LENGTH)))
+        
+        # Near center mark
+        segments.append(((0.0, -HALF_LENGTH), (0.0, -HALF_LENGTH + CENTER_MARK_LENGTH)))
+
+        return segments
 
     @property
     def net_line(self) -> tuple[tuple[float, float], tuple[float, float]]:

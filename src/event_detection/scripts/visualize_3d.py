@@ -42,7 +42,7 @@ from src.event_detection.utils.visualization import (
     extract_event_indices,
     save_outputs,
 )
-from src.utils.geometry.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 from src.utils.rendering.court_renderer import CourtRenderer
 
 F = TypeVar("F", bound=Callable[..., Any])

@@ -12,7 +12,7 @@ from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from src.utils.schema.keypoint_schema import NUM_COURT_KP
+from src.utils.schema.court import NUM_COURT_KP
 
 NUM_KEYPOINTS = NUM_COURT_KP  # CourtKP20 specification
 
