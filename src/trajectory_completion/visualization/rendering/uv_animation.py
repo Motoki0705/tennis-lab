@@ -59,8 +59,13 @@ def create_uv_completion_animation(
 ) -> FuncAnimation:
     """Create animation with GT line and prediction point color-coded by completion."""
     gt = inputs.ball_uv_gt
-    point_xy = pred_uv if pred_uv is not None else inputs.ball_uv_in
     obs_mask = inputs.ball_obs_mask
+    if pred_uv is not None:
+        point_xy = pred_uv
+    else:
+        # In visualize mode, missing points in ball_uv_in are often [0, 0].
+        # Use GT coordinates for unobserved frames to avoid plotting at the corner.
+        point_xy = np.where(obs_mask[:, None], inputs.ball_uv_in, gt)
     num_frames = int(gt.shape[0])
     fps = float(cfg.fps) if cfg.fps is not None else 30.0
 
@@ -105,4 +110,3 @@ def create_uv_completion_animation(
         return gt_line, pred_point
 
     return FuncAnimation(fig, update, frames=num_frames, interval=1000.0 / fps, blit=False)
-
