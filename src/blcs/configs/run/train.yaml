@@ -1,4 +1,4 @@
-output_dir: outputs/blcs/${data.output_mode}
+output_dir: outputs/blcs/${model.name}
 seed: 42
 gpus: 1
 resume: null
