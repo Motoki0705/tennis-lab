@@ -320,7 +320,7 @@ def adapt_batch_for_model_profile(
     if input_profile == "multiview":
         return batch
 
-    if input_profile in {"frame", "frame_kp3d"}:
+    if input_profile == "frame":
         adapted: dict[str, Tensor] = {
             "human_kp": batch["human_kp"][:, camera_index, 0],
             "court_kp": batch["court_kp"][:, camera_index, 0],
@@ -350,7 +350,7 @@ def adapt_batch_for_model_profile(
 
     raise ValueError(
         "Unknown model input profile: "
-        f"{input_profile}. Supported: ['frame', 'frame_kp3d', 'sequence', 'multiview']"
+        f"{input_profile}. Supported: ['frame', 'sequence', 'multiview']"
     )
 
 

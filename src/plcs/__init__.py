@@ -5,19 +5,13 @@ and rotation in tennis court coordinates from 2D pose observations.
 """
 
 from src.plcs.inference.predictor import PLCSPredictor
-from src.plcs.inference.predictor_kp3d import PLCSKeypoint3DPredictor
-from src.plcs.models.plcs_kp3d_model import PLCSKeypoint3DModel
 from src.plcs.models.plcs_model import PLCSModel
 from src.plcs.training.lightning_module import PLCSLightningModule
-from src.plcs.training.lightning_module_kp3d import PLCSKeypoint3DLightningModule
 
 __all__ = [
     "PLCSModel",
-    "PLCSKeypoint3DModel",
     "PLCSLightningModule",
-    "PLCSKeypoint3DLightningModule",
     "PLCSPredictor",
-    "PLCSKeypoint3DPredictor",
 ]
 
 
