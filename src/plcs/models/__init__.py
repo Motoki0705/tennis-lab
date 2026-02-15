@@ -28,11 +28,7 @@ def build_plcs_model(config: DictConfig) -> nn.Module:
     raise ValueError(
         "Unknown PLCS model.name="
         f"'{model_name}'. Supported: "
-<<<<<<< chore/remove-plcs-sequence-model
-        "['plcs', 'plcs_query_sequence', 'plcs_multiview', 'plcs_kp3d']"
-=======
-        "['plcs', 'plcs_sequence', 'plcs_query_sequence', 'plcs_multiview']"
->>>>>>> main
+        "['plcs', 'plcs_query_sequence', 'plcs_multiview']"
     )
 
 __all__ = [
