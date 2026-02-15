@@ -10,7 +10,7 @@ camera_mode: random  # random | int camera index
 max_seq_len: 1024
 min_seq_len: 16
 
-batch_size: 32
+batch_size: 16
 num_workers: 4
 pin_memory: true
 cache_max_scenes: 128

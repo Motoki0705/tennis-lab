@@ -1,17 +1,17 @@
 # Visualization defaults for UV event detection.
 task: uv  # uv | traj3d
 
-mode: visualize  # visualize | predict
+mode: predict  # visualize | predict
 scene_path: data/blcs/scenes/rally_000000.npz
 camera: random  # random | int
 
 view: multi  # trajectory | timeline | multi | animation
 frame: 0
 fps: 30.0
-save: null
+save: assets/event_detection/uv/gt_vs_pred.gif
 
 info: false
-checkpoint: null
+checkpoint: checkpoints/event_detection/uv/last.ckpt
 output: null
 
 # Peak extraction (predict mode)
