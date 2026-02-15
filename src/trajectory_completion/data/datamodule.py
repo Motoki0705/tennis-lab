@@ -26,7 +26,7 @@ def collate_uv_trajectories(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]
     """Pad variable-length UV trajectories to the maximum length in the batch."""
     return collate_padded_batch(
         batch,
-        sequence_keys=["ball_uv_in", "ball_obs_mask", "ball_uv_gt", "ball_vis"],
+        sequence_keys=["ball_uv", "ball_vis", "ball_uv_gt", "ball_gt_vis"],
         static_keys=["court_kp", "court_vis"],
         seq_len_key="seq_len",
         mask_key="ball_mask",
