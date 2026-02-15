@@ -10,7 +10,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from src.base.training.lightning_module import BaseLightningModule
-from src.trajectory_completion.models.uv_completion_model import UVTrajectoryCompletionModel
+from src.trajectory_completion.models import build_trajectory_completion_model
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -47,7 +47,7 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
 
     def __init__(self, config: DictConfig) -> None:
         super().__init__(config)
-        self.model = UVTrajectoryCompletionModel.from_config(config)
+        self.model = build_trajectory_completion_model(self.config)
 
         train_cfg = config.get("training", {}) or {}
         loss_cfg = train_cfg.get("loss", {}) or {}
