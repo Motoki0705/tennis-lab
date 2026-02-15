@@ -15,6 +15,10 @@ from src.event_detection.visualization.analysis.report import (
     save_figure,
     save_outputs,
 )
+from src.event_detection.visualization.adapters.predict_inputs import (
+    build_traj3d_predict_inputs,
+    build_uv_predict_inputs,
+)
 from src.event_detection.visualization.api.predict import (
     predict_traj3d_events,
     predict_uv_events,
@@ -211,10 +215,11 @@ def run_visualization(cfg: RuntimeConfig) -> int:
 
     if task == "uv":
         inputs = load_uv_inputs(cfg)
+        predict_inputs = build_uv_predict_inputs(inputs)
         pred = predict_uv_events(
             checkpoint_path=cfg.checkpoint,
             device=cfg.device,
-            inputs=inputs,
+            inputs=predict_inputs,
             threshold=cfg.threshold,
             min_distance=cfg.min_distance,
             top_k=cfg.top_k,
@@ -231,10 +236,11 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         )
 
     inputs3d = load_traj3d_inputs(cfg)
+    predict_inputs3d = build_traj3d_predict_inputs(inputs3d)
     pred3d = predict_traj3d_events(
         checkpoint_path=cfg.checkpoint,
         device=cfg.device,
-        inputs=inputs3d,
+        inputs=predict_inputs3d,
         threshold=cfg.threshold,
         min_distance=cfg.min_distance,
         top_k=cfg.top_k,
