@@ -1,4 +1,5 @@
 # Visualization defaults for UV event detection.
+task: uv  # uv | traj3d
 
 mode: visualize  # visualize | predict
 scene_path: data/blcs/scenes/rally_000000.npz
