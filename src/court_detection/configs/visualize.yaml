@@ -1,15 +1,9 @@
 defaults:
-  - run: default
+  - run: visualize
   - model: vit_heatmap
   - visualization: default
   - _self_
 
-visualization:
-  checkpoint: null
-  input_path: null
-  output_dir: outputs/court_detection/visualize
-  num_samples: 10
-
 hydra:
   run:
-    dir: ${visualization.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}

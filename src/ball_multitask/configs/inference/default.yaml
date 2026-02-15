@@ -1,9 +1,0 @@
-scene_path: data/blcs/scenes/rally_000000.npz
-camera: 0
-checkpoint: outputs/ball_multitask/logs/version_0/checkpoints/last.ckpt
-device: cpu
-threshold: 0.5
-min_distance: 1
-top_k: null
-denormalize: true
-output: null
