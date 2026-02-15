@@ -32,7 +32,7 @@ class BLCSSample(TypedDict):
 class BLCSBatch(TypedDict):
     """Schema for batched BLCS dataset samples.
 
-    Used by collate_trajectories(). Sequences are padded to max length in batch.
+    Used by single-profile batch adaptation. Sequences are padded to max length in batch.
     """
 
     ball_uv: torch.Tensor  # (B, T_max, 2) padded ball trajectories
