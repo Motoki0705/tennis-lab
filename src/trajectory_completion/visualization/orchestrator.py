@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 import torch
 
 from src.trajectory_completion.data.event_masking import extract_event_frames
+from src.trajectory_completion.visualization.adapters.predict_inputs import (
+    build_uv_completion_predict_inputs,
+)
 from src.trajectory_completion.visualization.analysis.metrics import (
     print_info,
     print_predict_info,
@@ -118,11 +121,12 @@ def run_visualization(runtime: RuntimeConfig) -> int:
         return 1
 
     inputs = load_trajectory_inputs(runtime)
+    predict_inputs = build_uv_completion_predict_inputs(inputs)
     print(f"Loading checkpoint from {runtime.checkpoint}...")
     pred = predict_uv_completion(
         checkpoint_path=runtime.checkpoint,
         device=runtime.device,
-        inputs=inputs,
+        inputs=predict_inputs,
     )
 
     pred_uv = pred["pred_uv"]
