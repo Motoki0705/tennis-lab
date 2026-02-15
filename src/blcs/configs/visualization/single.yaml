@@ -1,9 +1,9 @@
-mode: visualize  # visualize | predict
+mode: predict  # visualize | predict
 scene_path: data/blcs/scenes/rally_000000.npz
 # Single-view camera index used to build predictor input.
 camera: 0
-animation_view: 2d   # 3d | 2d (create_comparison_animation)
-fps: null
-save: null           # Optional output file for comparison animation (e.g., .mp4, .gif)
+animation_view: 3d   # 3d | 2d (create_comparison_animation)
+fps: 30
+save: assets/blcs/gt_vs_pred.gif           # Optional output file for comparison animation (e.g., .mp4, .gif)
 info: false
-checkpoint: outputs/blcs/single/logs/version_0/checkpoints/last.ckpt
+checkpoint: checkpoints/blcs/single/last.ckpt

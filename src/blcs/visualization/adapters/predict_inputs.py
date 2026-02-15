@@ -24,10 +24,10 @@ class PredictorInputs:
 def _build_single_view_input(scene: dict[str, Any], camera_idx: int) -> PredictorInputs:
     cam = scene["cameras"][camera_idx]
     return PredictorInputs(
-        ball_uv=torch.from_numpy(cam["ball_uv"]).float(),
-        court_kp=torch.from_numpy(cam["court_kp_uv"]).float(),
-        ball_vis=torch.from_numpy(cam["ball_visible"].astype(np.float32)),
-        court_vis=torch.from_numpy(cam["court_kp_visible"].astype(np.float32)),
+        ball_uv=torch.from_numpy(cam["ball_uv"]).float().unsqueeze(0),
+        court_kp=torch.from_numpy(cam["court_kp_uv"]).float().unsqueeze(0),
+        ball_vis=torch.from_numpy(cam["ball_visible"].astype(np.float32)).unsqueeze(0),
+        court_vis=torch.from_numpy(cam["court_kp_visible"].astype(np.float32)).unsqueeze(0),
         ball_mask=None,
     )
 

@@ -1,6 +1,6 @@
 # ---- Trainer (Lightning Trainer settings) ----
 trainer:
-  max_epochs: 100
+  max_epochs: 20
   gradient_clip_val: 1.0
   deterministic: true
   precision: "16-mixed"
@@ -8,7 +8,7 @@ trainer:
   check_val_every_n_epoch: 1
 
 # ---- Optimizer / schedule (LightningModule references) ----
-learning_rate: 1.0e-4
+learning_rate: 1.0e-5
 weight_decay: 1.0e-5
 warmup_steps: 500
 scheduler: cosine
