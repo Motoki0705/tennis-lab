@@ -20,7 +20,7 @@ from typing import Iterable
 
 import numpy as np
 
-from src.utils.geometry import HALF_DOUBLES_WIDTH, NET_HEIGHT_CENTER, NET_HEIGHT_POST
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, NET_HEIGHT_CENTER, NET_HEIGHT_POST
 
 
 @dataclass(frozen=True)

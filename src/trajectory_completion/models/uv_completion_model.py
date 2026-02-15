@@ -23,7 +23,7 @@ from src.common.models import (
     precompute_freqs_cis,
 )
 from src.common.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
-from src.utils.geometry import NUM_COURT_KP
+from src.utils.schema.court import NUM_COURT_KP
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

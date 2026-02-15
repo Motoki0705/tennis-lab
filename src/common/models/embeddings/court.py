@@ -6,7 +6,7 @@ import torch
 from torch import nn, Tensor
 
 from src.common.models.embeddings.shared import InvisibleTokenEmbedding
-from src.utils.geometry import NUM_COURT_KP
+from src.utils.schema.court import NUM_COURT_KP
 
 
 class CourtKPUVEmbedding(nn.Module):

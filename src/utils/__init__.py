@@ -5,6 +5,6 @@ This package provides common utilities used across multiple modules:
 - rendering: Visualization components for courts, skeletons, and balls
 """
 
-from src.utils import geometry, rendering
+from src.utils import rendering
 
-__all__ = ["geometry", "rendering"]
+__all__ = ["rendering"]

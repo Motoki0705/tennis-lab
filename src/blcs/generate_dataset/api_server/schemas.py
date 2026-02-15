@@ -147,7 +147,7 @@ class CellsResponse(BaseModel):
 class CourtGeometryResponse(BaseModel):
     """3D geometry hints for rendering a tennis court in the WebUI.
 
-    - keypoints are CourtKP20 points from `src.utils.geometry.court.court_keypoints_3d`.
+    - keypoints are CourtKP20 points from `src.utils.schema.court.court_keypoints_3d`.
     - segments are pairs of indices into `keypoints` to draw as line segments.
     """
 

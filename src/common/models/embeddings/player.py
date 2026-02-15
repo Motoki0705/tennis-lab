@@ -6,7 +6,7 @@ import torch
 from torch import nn, Tensor
 
 from src.common.models.embeddings.shared import InvisibleTokenEmbedding
-from src.utils.geometry import NUM_HUMAN_KP
+from src.utils.schema.player import NUM_HUMAN_KP
 
 
 class PlayerKPUVEmbedding(nn.Module):

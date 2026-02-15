@@ -362,7 +362,7 @@ class CourtRenderer:
     def get_court_keypoints_3d(self) -> np.ndarray:
         """Get 3D coordinates of standard court keypoints (CourtKP20).
 
-        Returns CourtKP20 keypoints as defined in `src.utils.geometry.court.court_keypoints_3d()`.
+        Returns CourtKP20 keypoints as defined in `src.utils.schema.court.court_keypoints_3d()`
 
         Keypoint indices follow the CourtKP20 specification:
         - 0..3:  far/near doubles corners

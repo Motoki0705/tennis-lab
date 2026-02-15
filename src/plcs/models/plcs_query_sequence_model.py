@@ -23,7 +23,8 @@ from src.common.models.embeddings import (
     PlayerKPUVEmbedding,
 )
 from src.plcs.models.components.heads import PositionHead, RotationHead
-from src.utils.geometry import NUM_COURT_KP, NUM_HUMAN_KP
+from src.utils.schema.court import NUM_COURT_KP
+from src.utils.schema.player import NUM_HUMAN_KP
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

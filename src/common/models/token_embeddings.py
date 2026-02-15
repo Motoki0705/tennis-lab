@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.utils.geometry import NUM_COURT_KP
+from src.utils.schema.court import NUM_COURT_KP
 
 
 class CourtKPUVTokenEmbedding(nn.Module):
