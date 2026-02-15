@@ -7,7 +7,7 @@ from typing import Any
 import cv2
 import numpy as np
 
-from src.utils.schema.keypoint_schema import (
+from src.utils.schema.court import (
     COURT_KP_NAMES,
     COURT_SKELETON,
     NUM_COURT_KP,
@@ -16,7 +16,7 @@ from src.utils.schema.keypoint_schema import (
 # Use CourtKP20 definitions as the single source of truth
 NUM_KEYPOINTS = NUM_COURT_KP
 KEYPOINT_NAMES = list(COURT_KP_NAMES)  # Convert tuple to list for backwards compatibility
-COURT_LINE_CONNECTIONS = COURT_SKELETON  # Use full skeleton for 2D visualization
+
 
 
 def visualize_keypoints(
@@ -52,9 +52,10 @@ def visualize_keypoints(
 
     annotated = image.copy()
 
+
     # Draw court lines
     if show_court_lines:
-        for i, j in COURT_LINE_CONNECTIONS:
+        for i, j in COURT_SKELETON:
             if visibility[i] > visibility_threshold and visibility[j] > visibility_threshold:
                 pt1 = (int(keypoints[i, 0]), int(keypoints[i, 1]))
                 pt2 = (int(keypoints[j, 0]), int(keypoints[j, 1]))

@@ -5,23 +5,12 @@ This module provides:
 - Human keypoint definitions (COCO-17, SMPL-H)
 """
 
-from src.utils.schema.keypoint_schema import (
+from src.utils.schema.player import (
     # Human keypoints (COCO-17)
     COCO_KP_IDX,
     COCO_KP_NAMES,
-    # Court coordinate normalization scales
-    COURT_COORD_SCALE_X,
-    COURT_COORD_SCALE_XYZ,
-    COURT_COORD_SCALE_Y,
-    COURT_COORD_SCALE_Z,
-    # Court keypoints
-    COURT_KP_IDX,
-    COURT_KP_NAMES,
-    COURT_LINE_CONNECTIONS,
-    COURT_SKELETON,
     # SMPL-H
     FACE_KEYPOINT_OFFSETS,
-    NUM_COURT_KP,
     NUM_HUMAN_KP,
     NUM_SMPLH_BODY_JOINTS,
     NUM_SMPLH_HAND_JOINTS,
@@ -30,7 +19,7 @@ from src.utils.schema.keypoint_schema import (
     SMPLH_JOINT_IDX,
     SMPLH_TO_COCO17_MAPPING,
 )
-from src.utils.geometry.court import (
+from src.utils.schema.court import (
     # Court dimensions
     BASELINE_CLEAR,
     CENTER_MARK_LENGTH,
@@ -50,6 +39,18 @@ from src.utils.geometry.court import (
     X_MIN,
     Y_MAX,
     Y_MIN,
+    # Court keypoints
+    NUM_COURT_KP,
+    COURT_KP_NAMES,
+    COURT_KP_IDX,
+    COURT_SKELETON,
+
+    # Court scales
+    COURT_COORD_SCALE_X,
+    COURT_COORD_SCALE_XYZ,
+    COURT_COORD_SCALE_Y,
+    COURT_COORD_SCALE_Z,
+    # Function
     court_keypoints_3d,
 )
 
@@ -79,7 +80,7 @@ __all__ = [
     "COURT_KP_NAMES",
     "COURT_KP_IDX",
     "COURT_SKELETON",
-    "COURT_LINE_CONNECTIONS",
+
     "court_keypoints_3d",
     # Human keypoints (COCO-17)
     "NUM_HUMAN_KP",

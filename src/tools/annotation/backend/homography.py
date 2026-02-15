@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 
 from src.tools.annotation.backend.models import CourtFrameAnnotation, CourtKeypoint
-from src.utils.geometry.court import court_keypoints_3d
+from src.utils.schema.court import court_keypoints_3d
 
 _TOP_BASE_IDX: dict[int, int] = {
     16: 15,  # left_post_top -> left_post_base

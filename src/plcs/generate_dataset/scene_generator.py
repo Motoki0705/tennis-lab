@@ -24,7 +24,7 @@ from src.utils.geometry import (
     HALF_SINGLES_WIDTH,
     SMPLH_TO_COCO17_MAPPING,
 )
-from src.utils.schema.keypoint_schema import (
+from src.utils.schema.court import (
     COURT_COORD_SCALE_X,
     COURT_COORD_SCALE_Y,
     COURT_COORD_SCALE_Z,
