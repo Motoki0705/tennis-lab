@@ -49,9 +49,11 @@
 ### Event Detection（ショット/バウンス時刻推定）
 
 <p align="center">
-  <img src="assets/event_detection/gt_vs_pred.gif" width="840" />
+  <img src="assets/event_detection/uv/gt_vs_pred.gif" width="840" />
 </p>
-
+<p align="center">
+  <img src="assets/event_detection/traj3d/gt_vs_pred.gif" width="840" />
+</p>
 - 実装: [src/event_detection/README.md](src/event_detection/README.md)
 
 ## クイックスタート
