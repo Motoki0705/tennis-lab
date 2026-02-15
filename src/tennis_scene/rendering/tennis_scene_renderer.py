@@ -296,7 +296,7 @@ class TennisSceneRenderer:
                 style_override = SkeletonStyle(
                     joint_color=color,
                     bone_color=color,
-                    joint_size=(self.style.skeleton_style.joint_size if self.style.skeleton_style else 20.0),
+                    joint_size=(self.style.skeleton_style.joint_size if self.style.skeleton_style else 5.0),
                     bone_width=(self.style.skeleton_style.bone_width if self.style.skeleton_style else 2.0),
                     joint_alpha=(self.style.skeleton_style.joint_alpha if self.style.skeleton_style else 1.0),
                     bone_alpha=(self.style.skeleton_style.bone_alpha if self.style.skeleton_style else 0.8),
@@ -338,4 +338,16 @@ class TennisSceneRenderer:
                         show_start_end=False,
                     )
 
+        center_x = float(np.mean(players_position[:, frame_idx, 0]))
+        center_y = float(np.mean(players_position[:, frame_idx, 1]))
+        self._set_zoomed_view(ax, center_x=center_x, center_y=center_y)
         ax.set_title(f"Frame: {frame_idx}/{scene.num_frames}")
+
+    def _set_zoomed_view(self, ax: Axes3D, center_x: float, center_y: float) -> None:
+        x_half_span = 8.0
+        y_half_span = 10.0
+
+        ax.set_xlim(center_x - x_half_span, center_x + x_half_span)
+        ax.set_ylim(center_y - y_half_span, center_y + y_half_span)
+        ax.set_zlim(0.0, 4.0)
+        ax.set_box_aspect([x_half_span * 2.0, y_half_span * 2.0, 4.0])

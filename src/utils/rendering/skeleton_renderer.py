@@ -65,7 +65,7 @@ class SkeletonStyle:
 
     joint_color: str = "#FF4444"
     bone_color: str = "#4444FF"
-    joint_size: float = 20.0
+    joint_size: float = 5.0
     bone_width: float = 2.0
     joint_alpha: float = 1.0
     bone_alpha: float = 0.8
