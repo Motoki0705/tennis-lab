@@ -1,4 +1,4 @@
-"""Entry point for court detection visualization orchestration."""
+"""Entry point for ball multitask visualization orchestration."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any, TypeVar, cast
 import hydra
 from omegaconf import DictConfig
 
-from src.court_detection.visualization.orchestrator import (
+from src.ball_multitask.visualization.orchestrator import (
     build_runtime_config,
     run_visualization,
 )

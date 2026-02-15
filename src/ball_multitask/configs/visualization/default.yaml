@@ -1,0 +1,41 @@
+# Ball Multitask Visualization Runtime Options
+#
+# Usage:
+# - Override any field from CLI:
+#   python -m src.ball_multitask.scripts.visualize visualization.scene_path=...
+# - `run.device` has higher priority than this file's device setting.
+
+# Execution mode
+# - visualize: run prediction and render a summary figure
+# - predict: run prediction and print/save outputs without figure rendering
+# - info: print scene metadata only (no model inference)
+mode: visualize
+
+# Visualization layout
+# - currently supported: summary
+view: summary
+
+# Scene selection
+scene_path: data/blcs/scenes/rally_000000.npz
+camera: 0
+
+# Model checkpoint
+checkpoint: outputs/ball_multitask/logs/version_0/checkpoints/last.ckpt
+
+# Artifact paths
+# - save: image path for rendered figure (png/jpg etc.)
+# - output: npz path for numeric prediction outputs (+ .events.json sidecar)
+save: null
+output: null
+
+# Info-only switch
+info: false
+
+# Event post-processing controls
+threshold: 0.5
+min_distance: 1
+top_k: null
+
+# 3D position scaling
+# - true: convert normalized xyz into court-scale coordinates
+denormalize: true
