@@ -1,3 +1,35 @@
+# Court Detection Visualization Runtime Options
+#
+# Usage:
+# - Override any field from CLI:
+#   python -m src.court_detection.scripts.visualize visualization.input_path=...
+# - `run.device` has higher priority than `visualization.device` in runtime resolution.
+#
+# Execution mode
+# - visualize: run prediction and save rendered overlays (if enabled)
+# - predict: run prediction only (useful with save_json=true and save_overlay=false)
+mode: visualize
+
+# Input selection
+# - file path: process one image
+# - directory path: process images in lexicographical order
+input_path: null
+num_samples: 10
+
+# Output locations
+output_dir: ${run.output_dir}
+
+# Model settings
+checkpoint: null
+device: auto
+
+# Persistence toggles
+# - save_overlay: writes *_pred.png with keypoint rendering
+# - save_json: writes *_pred.json with numeric predictions
+save_overlay: true
+save_json: false
+
+# Rendering style options
 point_radius: 5
 point_color: [0, 255, 0]
 line_color: [255, 255, 0]
@@ -5,4 +37,7 @@ text_color: [255, 255, 255]
 line_thickness: 2
 show_keypoint_ids: true
 show_court_lines: true
-save_format: png
+
+# Visibility filtering
+# - keypoints with visibility <= threshold are hidden
+visibility_threshold: 0.5
