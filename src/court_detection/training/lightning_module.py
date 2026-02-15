@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from src.base.training.lightning_module import BaseLightningModule
-from src.court_detection.models.court_keypoint_model import CourtKeypointModel
+from src.court_detection.models import build_court_detection_model
 from src.court_detection.training.losses import CourtKeypointLoss
 from src.court_detection.training.metrics import CourtKeypointMetrics
 
@@ -38,7 +38,7 @@ class CourtKeypointLightningModule(BaseLightningModule):
         loss_config = self.config.get("loss", {})
 
         # Build model
-        self.model = CourtKeypointModel(model_config)
+        self.model = build_court_detection_model(self.config)
 
         # Build loss
         self.loss_fn = CourtKeypointLoss(

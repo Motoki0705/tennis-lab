@@ -1,4 +1,6 @@
 # ViT encoder + decoder heatmap model config
+name: vit_heatmap
+
 num_keypoints: 20
 
 encoder:

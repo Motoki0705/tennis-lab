@@ -7,8 +7,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 from src.base.training.lightning_module import BaseLightningModule
-from src.event_detection.models.traj3d_event_model import Traj3DEventModel
-from src.event_detection.models.uv_event_model import UVEventModel
+from src.event_detection.models import build_event_detection_model
 from src.event_detection.utils.peaks import extract_event_peaks
 
 if TYPE_CHECKING:
@@ -30,12 +29,16 @@ class EventDetectionLightningModule(BaseLightningModule):
 
         model_cfg = self.config.get("model", {}) or {}
         model_name = str(model_cfg.get("name", "uv_transformer"))
-        self.input_type: Literal["uv", "3d"] = "3d" if "traj3d" in model_name else "uv"
-
-        if self.input_type == "3d":
-            self.model = Traj3DEventModel.from_config(self.config)
+        if model_name == "traj3d_transformer":
+            self.input_type: Literal["uv", "3d"] = "3d"
+        elif model_name == "uv_transformer":
+            self.input_type = "uv"
         else:
-            self.model = UVEventModel.from_config(self.config)
+            raise ValueError(
+                "Unknown event_detection model.name="
+                f"'{model_name}'. Supported: ['uv_transformer', 'traj3d_transformer']"
+            )
+        self.model = build_event_detection_model(self.config)
 
         train_cfg = self.config.get("training", {}) or {}
         metrics_cfg = self.config.get("metrics", {}) or {}

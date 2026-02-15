@@ -9,7 +9,7 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from src.base.training.lightning_module import BaseLightningModule
-from src.ball_multitask.models.multitask_model import BallMultitaskModel
+from src.ball_multitask.models import build_ball_multitask_model
 from src.blcs.training.losses import BLCSLoss
 from src.event_detection.utils.peaks import extract_event_peaks
 
@@ -45,7 +45,7 @@ class BallMultitaskLightningModule(BaseLightningModule):
 
     def __init__(self, config: DictConfig) -> None:
         super().__init__(config)
-        self.model = BallMultitaskModel.from_config(config)
+        self.model = build_ball_multitask_model(self.config)
 
         train_cfg = config.get("training", {}) or {}
         loss_cfg = train_cfg.get("loss", {}) or {}
