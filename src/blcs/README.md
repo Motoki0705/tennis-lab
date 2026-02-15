@@ -58,8 +58,8 @@ uv run python -m src.blcs.scripts.train \
 uv run python -m src.blcs.scripts.train \
     model=multiview \
     data=multiview \
-    data.num_views=4 \
-    data.min_cameras=2 \
+    data.num_views_range=[2,4] \
+    data.seq_len_range=[30,120] \
     training.max_epochs=100
 ```
 

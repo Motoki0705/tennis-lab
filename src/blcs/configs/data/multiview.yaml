@@ -1,6 +1,5 @@
 # Multi-view BLCS data configuration
 scene_dir: "data/blcs"
-output_mode: multiview
 
 # DataLoader settings
 batch_size: 16
@@ -16,23 +15,12 @@ chunk_max_scenes: 64
 val_split: 0.1
 test_split: 0.1
 
-# Sequence settings
-min_seq_len: 15
-max_seq_len: 120
-fps: 30
+# Sequence/view sampling ranges (inclusive)
+seq_len_range: [15, 120]
+num_views_range: [2, 8]
 
-# Multi-view specific settings
-mode: multiview
-num_views: 2
-min_cameras: 2
-
-# Camera selection mode: "random" for multi-view
+# Camera selection mode: "random", "first", or camera index
 camera_mode: "random"
-
-# Range sampling for dynamic view/seq (optional)
-# When enabled, each sample will randomly pick a value from the range
-num_views_range: [1, 8]  # min, max inclusive
-seq_len_range: [15, 120]  # min, max inclusive
 
 # Augmentation
 augmentation:

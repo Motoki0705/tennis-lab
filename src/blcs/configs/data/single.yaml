@@ -1,6 +1,5 @@
 # Scene data directory (matches dataset generation default)
 scene_dir: "data/blcs"
-output_mode: single
 
 # DataLoader settings
 batch_size: 32
@@ -16,12 +15,11 @@ chunk_max_scenes: 64
 val_split: 0.1
 test_split: 0.1
 
-# Sequence settings
-min_seq_len: 15   # Minimum 0.5 seconds
-max_seq_len: 1024  # Maximum 4 seconds
-fps: 30
+# Sequence/view sampling ranges (inclusive)
+seq_len_range: [15, 1024]
+num_views_range: [1, 1]
 
-# Camera selection mode: "random", "all", or camera index
+# Camera selection mode: "random", "first", or camera index
 camera_mode: "random"
 
 # Augmentation
