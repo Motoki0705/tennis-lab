@@ -31,7 +31,8 @@ event_peaks = outputs["event_peaks"]  # list[B][E][N]
 
 ## Visualization
 
-GTラベル（soft targets）と推論結果（prob/peaks）を単一シーンで確認できます。
+単一シーンのアニメーション可視化のみを提供します。
+軌道はGT系列を使用し、イベント表現は推論結果（predicted peaks）のみを使用します。
 
 - UV:
     - `uv run python -m src.event_detection.scripts.visualize visualization.scene_path=data/blcs/scenes/rally_000000.npz`
@@ -40,7 +41,7 @@ GTラベル（soft targets）と推論結果（prob/peaks）を単一シーン�
     - `uv run python -m src.event_detection.scripts.visualize visualization=traj3d data=blcs_rally_3d visualization.scene_path=data/blcs/scenes/rally_000000.npz`
     - 推論: `uv run python -m src.event_detection.scripts.visualize visualization=traj3d data=blcs_rally_3d visualization.mode=predict visualization.checkpoint=...`
 
-Animation（`visualization.view=animation`）では、event発生フレームでボール色が変化します（GT/予測どちらも反映）。
+Animationでは、推論イベント周辺フレームでもボール色が連続的に変化します。
 
 ## Data loading optimization
 

@@ -17,8 +17,6 @@ class RuntimeConfig:
     mode: str
     scene_path: Path
     camera: Any
-    frame: int
-    view: str
     fps: float | None
     save: Path | None
     info: bool
@@ -28,10 +26,8 @@ class RuntimeConfig:
     seed: int
     apply_corruption: bool
     use_scene_visibility: bool
-    connector_stride: int
     start: int
     max_frames: int | None
-    error_threshold: float
     show_court_lines: bool
     hydra_cfg: DictConfig
 

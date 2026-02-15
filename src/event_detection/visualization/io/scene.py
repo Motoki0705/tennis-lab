@@ -141,8 +141,6 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         mode=str(vis.mode),
         scene_path=Path(to_absolute_path(str(vis.scene_path))),
         camera=vis.get("camera"),
-        view=str(vis.view),
-        frame=int(vis.frame),
         fps=float(vis.fps),
         save=Path(to_absolute_path(str(vis.save))) if vis.save else None,
         info=bool(vis.info),
@@ -153,6 +151,8 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         threshold=float(vis.threshold),
         min_distance=max(1, int(vis.min_distance)),
         top_k=top_k_value,
+        event_radius_frames=max(0, int(vis.get("event_radius_frames", 6))),
+        event_sigma_frames=max(1e-6, float(vis.get("event_sigma_frames", 2.5))),
         show_court_lines=bool(vis.get("show_court_lines", True)),
         hydra_cfg=cfg,
     )

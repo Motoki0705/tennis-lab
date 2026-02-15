@@ -4,8 +4,6 @@ task: traj3d  # uv | traj3d
 mode: predict  # visualize | predict
 scene_path: data/blcs/scenes/rally_000000.npz
 
-view: animation  # trajectory | timeline | multi | animation
-frame: 0
 fps: 30.0
 save: assets/event_detection/traj3d/gt_vs_pred.gif
 
@@ -17,3 +15,5 @@ output: null
 threshold: 0.5
 min_distance: 2
 top_k: null
+event_radius_frames: 6
+event_sigma_frames: 2.5
