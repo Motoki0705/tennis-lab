@@ -126,9 +126,9 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
         seq_len_t = torch.tensor(seq_len, dtype=torch.long)
         valid_t = _build_valid_mask(ball_uv_gt.shape[0], seq_len_t).to(torch.float32)
         if self.supervise_visible_only:
-            ball_vis = (ball_visible > 0).to(torch.float32) * valid_t
+            ball_gt_vis = (ball_visible > 0).to(torch.float32) * valid_t
         else:
-            ball_vis = valid_t
+            ball_gt_vis = valid_t
 
         if self.augment:
             event_frames = extract_event_frames(scene.meta, full_len)
@@ -140,21 +140,21 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
                 name: frames[(frames >= 0) & (frames < ball_uv_gt.shape[0])]
                 for name, frames in event_frames.items()
             }
-            ball_uv_in, ball_obs_mask = self.argumenter(
+            ball_uv, ball_vis = self.argumenter(
                 ball_uv_gt,
-                ball_vis,
+                ball_gt_vis,
                 event_frames=event_frames,
                 ratio=self.event_ratio,
             )
         else:
-            ball_uv_in = ball_uv_gt.clone()
-            ball_obs_mask = ball_vis.clone()
+            ball_uv = ball_uv_gt.clone()
+            ball_vis = ball_gt_vis.clone()
 
         return {
-            "ball_uv_in": ball_uv_in,
-            "ball_obs_mask": ball_obs_mask,
-            "ball_uv_gt": ball_uv_gt,
+            "ball_uv": ball_uv,
             "ball_vis": ball_vis,
+            "ball_uv_gt": ball_uv_gt,
+            "ball_gt_vis": ball_gt_vis,
             "court_kp": court_kp,
             "court_vis": court_vis,
             "seq_len": seq_len_t,

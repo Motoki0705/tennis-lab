@@ -59,59 +59,73 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
     @torch.no_grad()
     def predict(
         self,
-        ball_uv_in: Tensor,
-        ball_obs_mask: Tensor,
+        ball_uv: Tensor,
         court_kp: Tensor,
+        ball_vis: Tensor | None = None,
+        ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
-        seq_len: Tensor | None = None,
         *,
         merge_observed: bool = True,
     ) -> dict[str, Tensor]:
         """Complete missing ball UV trajectory frames.
 
         Args:
-            ball_uv_in: Corrupted inputs. Shape (B, T, 2) or (T, 2).
-            ball_obs_mask: Observed mask (1=observed). Shape (B, T) or (T,).
+            ball_uv: Corrupted inputs. Shape (B, T, 2) or (T, 2).
             court_kp: Court keypoints. Shape (B, 20, 2) or (20, 2).
+            ball_vis: Observed mask (1=observed). Shape (B, T) or (T,).
+            ball_mask: Optional padding mask. Shape (B, T) or (T,).
             court_vis: Court visibility mask. Shape (B, 20) or (20,).
-            seq_len: Optional sequence lengths. Shape (B,) or scalar.
-            merge_observed: If True, keep observed frames from input.
+            merge_observed: If True and ball_vis is provided, keep observed frames from input.
 
         Returns:
             Dictionary with:
                 - ball_uv_pred: Raw model predictions (B, T, 2)
                 - ball_uv_completed: Completed trajectory (B, T, 2) if merge_observed
         """
-        if ball_uv_in.dim() == 2:
-            ball_uv_in = ball_uv_in.unsqueeze(0)
-        if ball_obs_mask.dim() == 1:
-            ball_obs_mask = ball_obs_mask.unsqueeze(0)
+        if ball_uv.dim() == 2:
+            ball_uv = ball_uv.unsqueeze(0)
         if court_kp.dim() == 2:
             court_kp = court_kp.unsqueeze(0)
+        if ball_vis is not None and ball_vis.dim() == 1:
+            ball_vis = ball_vis.unsqueeze(0)
+        if ball_mask is not None and ball_mask.dim() == 1:
+            ball_mask = ball_mask.unsqueeze(0)
         if court_vis is not None and court_vis.dim() == 1:
             court_vis = court_vis.unsqueeze(0)
-        if seq_len is not None and seq_len.dim() == 0:
-            seq_len = seq_len.unsqueeze(0)
 
-        ball_uv_in, ball_obs_mask, court_kp, court_vis = self._to_device(
-            self.device, ball_uv_in, ball_obs_mask, court_kp, court_vis
-        )
-        if seq_len is not None:
-            seq_len = seq_len.to(self.device)
+        to_device_tensors: list[Tensor] = [ball_uv, court_kp]
+        if ball_vis is not None:
+            to_device_tensors.append(ball_vis)
+        if ball_mask is not None:
+            to_device_tensors.append(ball_mask)
+        if court_vis is not None:
+            to_device_tensors.append(court_vis)
+        moved = self._to_device(self.device, *to_device_tensors)
+        ball_uv = moved[0]
+        court_kp = moved[1]
+        idx = 2
+        if ball_vis is not None:
+            ball_vis = moved[idx]
+            idx += 1
+        if ball_mask is not None:
+            ball_mask = moved[idx]
+            idx += 1
+        if court_vis is not None:
+            court_vis = moved[idx]
 
         pred = self.model(
-            ball_uv_in=ball_uv_in,
-            ball_obs_mask=ball_obs_mask,
-            court_kp=court_kp,
-            court_vis=court_vis,
-            seq_len=seq_len,
+            ball_uv,
+            court_kp,
+            ball_vis,
+            ball_mask,
+            court_vis,
         )
 
         result = {"ball_uv_pred": pred.cpu()}
-        if merge_observed:
+        if merge_observed and ball_vis is not None:
             completed = pred.clone()
-            mask = ball_obs_mask > 0
-            completed[mask] = ball_uv_in[mask]
+            mask = ball_vis > 0
+            completed[mask] = ball_uv[mask]
             result["ball_uv_completed"] = completed.cpu()
 
         return result
@@ -119,19 +133,25 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
 
 if __name__ == "__main__":
     torch.manual_seed(0)
-    model = UVTrajectoryCompletionModel(hidden_dim=32, num_layers=2, num_heads=4, max_seq_len=16)
+    model = UVTrajectoryCompletionModel(
+        hidden_dim=32,
+        num_ball_layers=2,
+        num_query_layers=2,
+        num_heads=4,
+        max_seq_len=16,
+    )
     predictor = UVTrajectoryCompletionPredictor(model=model, device=torch.device("cpu"))
-    ball_uv_in = torch.rand(1, 16, 2)
-    ball_obs_mask = torch.randint(0, 2, (1, 16)).float()
+    ball_uv = torch.rand(1, 16, 2)
+    ball_vis = torch.randint(0, 2, (1, 16)).float()
+    ball_mask = torch.ones(1, 16)
     court_kp = torch.rand(1, 20, 2)
     court_vis = torch.ones(1, 20)
-    seq_len = torch.tensor([16])
     out = predictor.predict(
-        ball_uv_in,
-        ball_obs_mask,
+        ball_uv,
         court_kp,
+        ball_vis=ball_vis,
+        ball_mask=ball_mask,
         court_vis=court_vis,
-        seq_len=seq_len,
         merge_observed=True,
     )
     assert out["ball_uv_pred"].shape == (1, 16, 2)

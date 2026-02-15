@@ -91,12 +91,11 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
 
     def forward(self, batch: dict[str, Tensor]) -> Tensor:
         return self.model(
-            ball_uv_in=batch["ball_uv_in"],
-            ball_obs_mask=batch["ball_obs_mask"],
-            court_kp=batch["court_kp"],
-            court_vis=batch.get("court_vis"),
-            seq_len=batch.get("seq_len"),
-            ball_mask=batch.get("ball_mask"),
+            batch["ball_uv"],
+            batch["court_kp"],
+            batch.get("ball_vis"),
+            batch.get("ball_mask"),
+            batch.get("court_vis"),
         )
 
     def _build_auxiliary_layer_weights(self, num_layers: int) -> Tensor:
@@ -134,12 +133,11 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
     def _forward_with_auxiliary(self, batch: dict[str, Tensor]) -> tuple[Tensor, list[Tensor] | None]:
         if self.auxiliary_observed_enabled and self.auxiliary_observed_heads is not None:
             pred, intermediate = self.model(
-                ball_uv_in=batch["ball_uv_in"],
-                ball_obs_mask=batch["ball_obs_mask"],
-                court_kp=batch["court_kp"],
-                court_vis=batch.get("court_vis"),
-                seq_len=batch.get("seq_len"),
-                ball_mask=batch.get("ball_mask"),
+                batch["ball_uv"],
+                batch["court_kp"],
+                batch.get("ball_vis"),
+                batch.get("ball_mask"),
+                batch.get("court_vis"),
                 return_intermediate_ball_hidden=True,
             )
             return pred, intermediate
@@ -199,27 +197,19 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
     ) -> tuple[Tensor, dict[str, Tensor]]:
         ball_uv_gt = batch["ball_uv_gt"]
         ball_mask = batch["ball_mask"]
+        ball_gt_vis = batch["ball_gt_vis"]
         ball_vis = batch["ball_vis"]
-        ball_obs_mask = batch["ball_obs_mask"]
-        seq_len = batch.get("seq_len")
 
-        B, T, _ = pred.shape
+        _, T, _ = pred.shape
         if ball_uv_gt.shape[1] != T:
             ball_uv_gt = ball_uv_gt[:, :T]
             ball_mask = ball_mask[:, :T]
+            ball_gt_vis = ball_gt_vis[:, :T]
             ball_vis = ball_vis[:, :T]
-            ball_obs_mask = ball_obs_mask[:, :T]
-            if seq_len is not None:
-                seq_len = torch.clamp(seq_len, max=T)
+        valid = (ball_mask > 0) & (ball_gt_vis > 0)
 
-        if seq_len is None:
-            valid = (ball_mask > 0) & (ball_vis > 0)
-        else:
-            t = torch.arange(T, device=pred.device)[None, :]
-            valid = (t < seq_len.to(torch.long).view(B, 1)) & (ball_mask > 0) & (ball_vis > 0)
-
-        masked = valid & (ball_obs_mask <= 0)
-        observed = valid & (ball_obs_mask > 0)
+        masked = valid & (ball_vis <= 0)
+        observed = valid & (ball_vis > 0)
 
         loss_masked = _masked_huber(pred, ball_uv_gt, masked, delta=self.huber_delta)
         loss_observed = _masked_huber(pred, ball_uv_gt, observed, delta=self.huber_delta)
@@ -279,20 +269,26 @@ if __name__ == "__main__":
     cfg = OmegaConf.create(
         {
             "data": {"max_seq_len": 32},
-            "model": {"name": "uv_transformer", "hidden_dim": 64, "num_layers": 2, "num_heads": 4, "max_seq_len": 32},
+            "model": {
+                "name": "uv_transformer",
+                "hidden_dim": 64,
+                "num_ball_layers": 2,
+                "num_query_layers": 2,
+                "num_heads": 4,
+                "max_seq_len": 32,
+            },
             "training": {"learning_rate": 1e-3, "weight_decay": 0.0, "loss": {"masked_weight": 1.0, "observed_weight": 0.1}},
         }
     )
     module = TrajectoryCompletionLightningModule(cfg)
     batch = {
-        "ball_uv_in": torch.rand(2, 32, 2),
-        "ball_obs_mask": torch.randint(0, 2, (2, 32)).float(),
-        "ball_uv_gt": torch.rand(2, 32, 2),
+        "ball_uv": torch.rand(2, 32, 2),
         "ball_vis": torch.randint(0, 2, (2, 32)).float(),
+        "ball_uv_gt": torch.rand(2, 32, 2),
+        "ball_gt_vis": torch.randint(0, 2, (2, 32)).float(),
         "ball_mask": torch.ones(2, 32),
         "court_kp": torch.rand(2, 20, 2),
         "court_vis": torch.ones(2, 20),
-        "seq_len": torch.tensor([32, 20]),
     }
     out = module.forward(batch)
     assert out.shape == (2, 32, 2)

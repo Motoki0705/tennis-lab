@@ -14,9 +14,10 @@ from src.trajectory_completion.inference import UVTrajectoryCompletionPredictor
 
 predictor = UVTrajectoryCompletionPredictor.load_from_checkpoint("path/to/checkpoint.ckpt")
 outputs = predictor.predict(
-    ball_uv_in,
-    ball_obs_mask,  # visibility (observed=1, missing=0)
+    ball_uv,
     court_kp,
+    ball_vis=ball_vis,    # observed mask (1=observed, 0=missing)
+    ball_mask=ball_mask,  # optional padding/valid mask (1=valid)
     court_vis=court_vis,
 )
 completed = outputs["ball_uv_completed"]
@@ -26,11 +27,15 @@ completed = outputs["ball_uv_completed"]
 
 `BLCSUVTrajectoryCompletionDataset` now returns visibility signals with clear semantics:
 
-- `ball_vis`: ground-truth visibility (1=visible, 0=invisible/invalid).
-- `ball_obs_mask`: observed mask after augmentation (1=observed, 0=missing).
+- `ball_uv`: corrupted UV input for the model.
+- `ball_vis`: observed mask after augmentation (1=observed, 0=missing) for model input.
+- `ball_uv_gt`: ground-truth UV.
+- `ball_gt_vis`: ground-truth visibility (1=visible, 0=invisible/invalid) for supervision.
+- `seq_len`: sequence length used by collate to build `ball_mask`.
 
-If you previously used `ball_vis` as the observed mask, update your training
-and inference pipelines to consume `ball_obs_mask` instead.
+If you previously used `ball_uv_in` / `ball_obs_mask` / old predictor signature,
+update call sites to the BLCS-like order:
+`predict(ball_uv, court_kp, ball_vis=None, ball_mask=None, court_vis=None)`.
 
 The dataset also accepts `split` (train/val/test) or `split_file` for scene
 resolution. Provide only one of them per dataset instance.
