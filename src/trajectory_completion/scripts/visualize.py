@@ -40,7 +40,7 @@ from src.trajectory_completion.data.event_masking import extract_event_frames
 from src.trajectory_completion.inference.uv_predictor import (
     UVTrajectoryCompletionPredictor,
 )
-from src.utils.schema.keypoint_schema import COURT_LINE_CONNECTIONS
+from src.utils.schema.court import COURT_SKELETON
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -343,7 +343,7 @@ def _draw_court_uv(
     ax.set_facecolor("#1a1a1a")
 
     if show_lines:
-        for i, j in COURT_LINE_CONNECTIONS:
+        for i, j in COURT_SKELETON:
             if bool(court_vis[i]) and bool(court_vis[j]):
                 ax.plot(
                     [court_kp[i, 0], court_kp[j, 0]],

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 
-from src.utils.geometry.court import (
+from src.utils.schema.court import (
     BASELINE_CLEAR,
     FENCE_HEIGHT,
     HALF_DOUBLES_WIDTH,

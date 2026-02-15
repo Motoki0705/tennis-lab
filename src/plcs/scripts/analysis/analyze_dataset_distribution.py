@@ -29,7 +29,7 @@ import numpy as np
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
-from src.utils.schema.keypoint_schema import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 F = TypeVar("F", bound=Callable[..., Any])
 

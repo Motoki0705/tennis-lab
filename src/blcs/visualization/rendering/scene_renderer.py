@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-from src.utils.geometry.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 from src.utils.rendering.ball_renderer import (
     BallEvent,
     BallEventType,
@@ -438,12 +438,12 @@ class BLCSSceneRenderer:
             fig, ax = plt.subplots(figsize=figsize)
 
             # Draw court lines (static)
-            from src.utils.schema.keypoint_schema import COURT_LINE_CONNECTIONS
+            from src.utils.schema.court import COURT_SKELETON
 
             court_uv = cam["court_kp_uv"]
             court_vis = cam["court_kp_visible"]
 
-            for i, j in COURT_LINE_CONNECTIONS:
+            for i, j in COURT_SKELETON:
                 if court_vis[i] and court_vis[j]:
                     ax.plot(
                         [court_uv[i, 0], court_uv[j, 0]],

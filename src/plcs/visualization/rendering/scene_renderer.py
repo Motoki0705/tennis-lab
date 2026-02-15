@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
 
-from src.utils.geometry.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
 from src.utils.rendering.court_renderer import CourtRenderer
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer
-from src.utils.schema.keypoint_schema import COURT_LINE_CONNECTIONS
+from src.utils.schema.court import COURT_SKELETON
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -182,7 +182,7 @@ class PLCSSceneRenderer:
                 marker="s",
             )
 
-        for i, j in COURT_LINE_CONNECTIONS:
+        for i, j in COURT_SKELETON:
             alpha = 0.5 if (court_vis[i] and court_vis[j]) else 0.2
             ax.plot(
                 [court_uv[i, 0], court_uv[j, 0]],
