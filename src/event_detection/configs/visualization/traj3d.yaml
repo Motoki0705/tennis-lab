@@ -1,4 +1,5 @@
 # Visualization defaults for 3D trajectory event detection.
+task: traj3d  # uv | traj3d
 
 mode: visualize  # visualize | predict
 scene_path: data/blcs/scenes/rally_000000.npz
