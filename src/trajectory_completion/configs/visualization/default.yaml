@@ -1,6 +1,6 @@
 # Visualization settings for trajectory completion.
 
-mode: predict  # visualize | predict
+mode: visualize  # visualize | predict
 
 # Input scene (BLCS rally NPZ)
 scene_path: data/blcs/scenes/rally_000000.npz
