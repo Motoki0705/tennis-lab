@@ -1,6 +1,9 @@
 # Multi-view BLCS model configuration
 # Uses alternating Sequential/Camera attention architecture (like PLCS)
 name: blcs_multiview
+io:
+  input_profile: multiview
+
 
 hidden_dim: 256
 num_layers: 12      # Number of alternating attention layer pairs

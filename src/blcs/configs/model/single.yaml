@@ -2,6 +2,9 @@
 # Decoder-Only Transformer with MHA + RoPE + SDPA
 
 name: blcs
+io:
+  input_profile: single
+
 
 # Architecture
 hidden_dim: 256
