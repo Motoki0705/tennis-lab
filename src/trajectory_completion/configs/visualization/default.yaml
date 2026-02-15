@@ -7,8 +7,6 @@ scene_path: data/blcs/scenes/rally_000000.npz
 camera: random  # random | int
 
 # Rendering
-view: multi  # uv | timeline | multi
-frame: 0
 fps: null
 save: null
 
@@ -20,10 +18,8 @@ output: null
 # Input construction
 use_scene_visibility: true
 apply_corruption: true
-connector_stride: 5
 start: 0
 max_frames: null
 
 # Metrics / plots
-error_threshold: 0.02
 show_court_lines: true

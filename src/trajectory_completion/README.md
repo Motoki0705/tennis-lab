@@ -37,18 +37,14 @@ resolution. Provide only one of them per dataset instance.
 
 ## Visualization
 
-Dataset-side visualization (how much GT is masked / how much observed points jitter):
+Animation-only visualization:
 
 - `uv run python -m src.trajectory_completion.scripts.visualize`
 - `uv run python -m src.trajectory_completion.scripts.visualize visualization.scene_path=data/blcs/scenes/rally_000000.npz`
-- Argument tuning (reproducible with `run.seed`):
-    - `uv run python -m src.trajectory_completion.scripts.visualize run.seed=0 data.argument.noise_std=0.02 data.argument.point_dropout_prob=0.2`
-
-Inference visualization (distinguishes predictions at observed vs masked frames):
-
-- `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/trajectory_completion/.../last.ckpt`
-- Save the figure:
-    - `uv run python -m src.trajectory_completion.scripts.visualize visualization.save=outputs/tmp/vis.png`
+- Inference animation (GT line + predicted point, color-coded by observed/completed frames):
+    - `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/trajectory_completion/.../last.ckpt`
+- Save animation:
+    - `uv run python -m src.trajectory_completion.scripts.visualize visualization.save=outputs/tmp/vis.gif`
 
 ## Training design: observed drift mitigation
 
