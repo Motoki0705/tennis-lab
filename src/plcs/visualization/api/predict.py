@@ -8,52 +8,18 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import torch
 
+from src.plcs.visualization.adapters.predict_inputs import (
+    build_frame_inputs,
+    build_multiview_inputs,
+    build_sequence_inputs,
+)
 from src.plcs.inference.predictor import PLCSPredictor
 from src.plcs.models.plcs_model import PLCSModel
 from src.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.plcs.models.plcs_query_sequence_model import PLCSQuerySequenceModel
 
 logger = logging.getLogger(__name__)
-
-
-def _build_multiview_inputs(scene: Any, cameras: list[int]) -> dict[str, torch.Tensor]:
-    human_kp = np.stack([scene.cameras[c].human_kp_uv for c in cameras], axis=0)
-    court_kp = np.stack([scene.cameras[c].court_kp_uv for c in cameras], axis=0)
-    human_vis = np.stack(
-        [scene.cameras[c].human_kp_visible.astype(np.float32) for c in cameras],
-        axis=0,
-    )
-    court_vis = np.stack(
-        [scene.cameras[c].court_kp_visible.astype(np.float32) for c in cameras],
-        axis=0,
-    )
-    human_mask = np.ones((human_kp.shape[0], human_kp.shape[1]), dtype=np.float32)
-
-    return {
-        "human_kp": torch.from_numpy(human_kp).float().unsqueeze(0),
-        "court_kp": torch.from_numpy(court_kp).float().unsqueeze(0),
-        "human_vis": torch.from_numpy(human_vis).float().unsqueeze(0),
-        "human_mask": torch.from_numpy(human_mask).float().unsqueeze(0),
-        "court_vis": torch.from_numpy(court_vis).float().unsqueeze(0),
-    }
-
-
-def _build_sequence_inputs(scene: Any, camera_idx: int) -> dict[str, torch.Tensor]:
-    cam = scene.cameras[camera_idx]
-    num_frames = int(cam.human_kp_uv.shape[0])
-    return {
-        "human_kp": torch.from_numpy(cam.human_kp_uv).float().unsqueeze(0),
-        "court_kp": torch.from_numpy(cam.court_kp_uv).float().unsqueeze(0),
-        "human_vis": torch.from_numpy(cam.human_kp_visible.astype(np.float32))
-        .float()
-        .unsqueeze(0),
-        "human_mask": torch.ones((1, num_frames), dtype=torch.float32),
-        "court_vis": torch.from_numpy(cam.court_kp_visible.astype(np.float32))
-        .float()
-        .unsqueeze(0),
-    }
 
 
 def _predict_frame_model(
@@ -68,15 +34,7 @@ def _predict_frame_model(
 
     for frame_idx in range(num_frames):
         outputs = predictor.predict(
-            human_kp=torch.from_numpy(cam.human_kp_uv[frame_idx]).float().unsqueeze(0),
-            court_kp=torch.from_numpy(cam.court_kp_uv[frame_idx]).float().unsqueeze(0),
-            human_vis=torch.from_numpy(cam.human_kp_visible[frame_idx].astype(np.float32))
-            .float()
-            .unsqueeze(0),
-            human_mask=torch.ones((1,), dtype=torch.float32),
-            court_vis=torch.from_numpy(cam.court_kp_visible[frame_idx].astype(np.float32))
-            .float()
-            .unsqueeze(0),
+            **build_frame_inputs(scene, camera_idx, frame_idx),
             denormalize=False,
         )
         if (frame_idx + 1) % 10 == 0 or frame_idx == 0 or frame_idx == num_frames - 1:
@@ -95,7 +53,7 @@ def _predict_sequence_model(
     logger.info("  [Inference] Running sequence model inference...")
     outputs = predictor.predict(
         denormalize=False,
-        **_build_sequence_inputs(scene, camera_idx),
+        **build_sequence_inputs(scene, camera_idx),
     )
     return outputs["position"].squeeze(0).numpy(), outputs["rotation"].squeeze(0).numpy()
 
@@ -108,7 +66,7 @@ def _predict_multiview_model(
     logger.info("  [Inference] Running multiview model inference...")
     outputs = predictor.predict(
         denormalize=False,
-        **_build_multiview_inputs(scene, cameras),
+        **build_multiview_inputs(scene, cameras),
     )
     pos = outputs["position"]
     rot = outputs["rotation"]

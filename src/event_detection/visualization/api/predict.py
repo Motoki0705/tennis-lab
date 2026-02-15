@@ -4,19 +4,19 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
-import torch
-
+from src.event_detection.visualization.adapters.predict_inputs import (
+    Traj3DPredictInputs,
+    UVPredictInputs,
+)
 from src.event_detection.inference.traj3d_predictor import Traj3DEventPredictor
 from src.event_detection.inference.uv_predictor import UVEventPredictor
-from src.event_detection.visualization.types import Traj3DEventInputs, UVEventInputs
 
 
 def predict_uv_events(
     *,
     checkpoint_path: str,
     device: str,
-    inputs: UVEventInputs,
+    inputs: UVPredictInputs,
     threshold: float,
     min_distance: int,
     top_k: int | None,
@@ -28,10 +28,10 @@ def predict_uv_events(
     )
 
     outputs = predictor.predict(
-        ball_uv=torch.from_numpy(inputs.ball_uv).float(),
-        court_kp=torch.from_numpy(inputs.court_kp).float(),
-        ball_vis=torch.from_numpy(inputs.ball_vis.astype(np.float32)),
-        court_vis=torch.from_numpy(inputs.court_vis.astype(np.float32)),
+        ball_uv=inputs.ball_uv,
+        court_kp=inputs.court_kp,
+        ball_vis=inputs.ball_vis,
+        court_vis=inputs.court_vis,
         threshold=float(threshold),
         min_distance=int(min_distance),
         top_k=top_k,
@@ -50,7 +50,7 @@ def predict_traj3d_events(
     *,
     checkpoint_path: str,
     device: str,
-    inputs: Traj3DEventInputs,
+    inputs: Traj3DPredictInputs,
     threshold: float,
     min_distance: int,
     top_k: int | None,
@@ -62,7 +62,7 @@ def predict_traj3d_events(
     )
 
     outputs = predictor.predict(
-        ball_pos_world=torch.from_numpy(inputs.ball_pos_world).float(),
+        ball_pos_world=inputs.ball_pos_world,
         threshold=float(threshold),
         min_distance=int(min_distance),
         top_k=top_k,

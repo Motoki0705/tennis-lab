@@ -12,6 +12,7 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
 from src.blcs.visualization.api.predict import predict_positions
+from src.blcs.visualization.adapters.predict_inputs import build_predict_inputs
 from src.blcs.visualization.io.scene import load_scene_bundle
 from src.blcs.visualization.rendering import BLCSSceneRenderer
 
@@ -102,10 +103,14 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             logger.error("Error: visualization.checkpoint must be set for predict mode.")
             return 1
         logger.info(f"Predict mode: loading model with checkpoint: {cfg.checkpoint}")
+        predict_inputs = build_predict_inputs(
+            scene=bundle.scene,
+            cameras=bundle.cameras,
+        )
         pred_positions = predict_positions(
             checkpoint_path=cfg.checkpoint,
             device=cfg.device,
-            inputs=bundle.predict_inputs,
+            inputs=predict_inputs,
         )
         logger.info("Creating comparison animation...")
         anim = renderer.create_comparison_animation(
