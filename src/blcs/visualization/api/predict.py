@@ -3,41 +3,14 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-import torch
-from torch import Tensor
 
+from src.blcs.visualization.adapters.predict_inputs import PredictorInputs
 from src.blcs.inference.predictor import BLCSPredictor
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class PredictorInputs:
-    """Tensor inputs consumed by ``BLCSPredictor.predict``.
-
-    Shapes are either single-view:
-    - ``ball_uv``: ``(T, 2)``
-    - ``court_kp``: ``(20, 2)``
-    - ``ball_vis``: ``(T,)``
-    - ``court_vis``: ``(20,)``
-
-    or multi-view:
-    - ``ball_uv``: ``(N, T, 2)``
-    - ``court_kp``: ``(N, 20, 2)``
-    - ``ball_vis``: ``(N, T)``
-    - ``court_vis``: ``(N, 20)``
-    - ``ball_mask``: ``(N, T)``
-    """
-
-    ball_uv: Tensor
-    court_kp: Tensor
-    ball_vis: Tensor
-    court_vis: Tensor
-    ball_mask: Tensor | None = None
 
 
 def predict_positions(
