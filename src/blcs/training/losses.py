@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.utils.schema.keypoint_schema import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
 def _masked_mean(loss: Tensor, mask: Tensor | None = None) -> Tensor:

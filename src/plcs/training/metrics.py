@@ -7,7 +7,7 @@ import math
 import torch
 from torch import Tensor
 
-from src.utils.schema.keypoint_schema import COURT_COORD_SCALE_XYZ
+from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
 def _flatten_valid(valid: Tensor, values: Tensor) -> Tensor:
