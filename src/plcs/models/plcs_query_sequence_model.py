@@ -23,7 +23,6 @@ from src.common.models.embeddings import (
     PlayerKPUVEmbedding,
 )
 from src.plcs.models.components.heads import PositionHead, RotationHead
-from src.plcs.models.plcs_sequence_model import PLCSSequenceModel
 from src.utils.geometry import NUM_COURT_KP, NUM_HUMAN_KP
 
 if TYPE_CHECKING:
@@ -506,17 +505,3 @@ class PLCSQuerySequenceModel(nn.Module):
     def get_num_params(self) -> int:
         """Get number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
-
-
-def build_plcs_sequence_model(config: DictConfig) -> nn.Module:
-    """Build sequence model by `model.name`."""
-    model_cfg = config.get("model", {})
-    model_name = str(model_cfg.get("name", "plcs_sequence"))
-    if model_name == "plcs_sequence":
-        return PLCSSequenceModel.from_config(config)
-    if model_name == "plcs_query_sequence":
-        return PLCSQuerySequenceModel.from_config(config)
-    raise ValueError(
-        f"Unknown sequence model.name='{model_name}'. "
-        "Supported: ['plcs_sequence', 'plcs_query_sequence']"
-    )

@@ -82,7 +82,7 @@ src/plcs/
 │
 ├── models/                           # 推定モデル
 │   ├── plcs_model.py                 # PLCSModel: フレーム単位 2D→3D 推定
-│   ├── plcs_sequence_model.py        # PLCSSequenceModel: 時系列CLSトークン構成
+│   ├── plcs_query_sequence_model.py  # PLCSQuerySequenceModel: クエリベース時系列推定
 │   └── plcs_multiview_model.py       # PLCSMultiViewModel: camera-time 2D RoPE統合
 │
 ├── data/                             # データセット・DataModule
@@ -131,7 +131,7 @@ src/plcs/
 │   │   └── PLCSMultiViewDataModule  (マルチビュー)                │
 │   ├── models/                                                   │
 │   │   ├── plcs_model.py            (フレームモデル)              │
-│   │   ├── plcs_sequence_model.py   (シーケンスモデル)            │
+│   │   ├── plcs_query_sequence_model.py (シーケンスモデル)        │
 │   │   └── plcs_multiview_model.py  (マルチビューモデル)          │
 │   └── → outputs/plcs/*/logs/version_*/checkpoints/              │
 └─────────────────────────────────────────────────────────────────┘
@@ -217,11 +217,10 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 
 単一フレーム・単一カメラからの推定。Transformer ベースのトークンモデル。
 
-### シーケンスモデル (`PLCSSequenceModel`)
+### シーケンスモデル (`PLCSQuerySequenceModel`)
 
-トークン列を `court(20) + T * (CLS_po, CLS_ro, player_kp[17])` で構成し、
-全トークンに 1D RoPE を適用します。各時刻の `CLS_po_t` / `CLS_ro_t` から
-`PositionHead` / `RotationHead` で出力を抽出します。
+2段構成（player状態エンコード + query readout）で時系列推定を行います。
+Stage1で関節ごとの時系列状態を構築し、Stage2で共有queryが各時刻の出力を読み出します。
 
 ### マルチビューモデル (`PLCSMultiViewModel`)
 
@@ -240,7 +239,7 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 | 用途 | メイン設定 | 補助設定 |
 |------|----------|---------|
 | フレーム学習 | `train.yaml` | `model/frame.yaml`, `data/frame.yaml`, `loss/frame.yaml` |
-| シーケンス学習 | `train_sequence.yaml` | `model/sequence.yaml`, `data/sequence.yaml`, `loss/sequence.yaml` |
+| シーケンス学習 | `train_sequence.yaml` | `model/sequence_query.yaml`, `data/sequence.yaml`, `loss/sequence.yaml` |
 | マルチビュー学習 | `train_multiview.yaml` | `model/multiview.yaml`, `data/multiview.yaml`, `loss/multiview_sequence.yaml` |
 | 単一カメラ可視化 | `visualize.yaml` | `visualization/default.yaml` |
 | マルチビュー可視化 | `visualize_multiview.yaml` | `visualization/multiview.yaml` |
