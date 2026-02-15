@@ -57,9 +57,15 @@ class PLCSDataModule(pl.LightningDataModule):
 
     @staticmethod
     def _infer_input_profile_from_model_name(model_name: str) -> str:
+<<<<<<< chore/remove-plcs-sequence-model
         if model_name in {"plcs", "plcs_kp3d"}:
             return "frame_kp3d" if model_name == "plcs_kp3d" else "frame"
         if model_name == "plcs_query_sequence":
+=======
+        if model_name == "plcs":
+            return "frame"
+        if model_name in {"plcs_sequence", "plcs_query_sequence"}:
+>>>>>>> main
             return "sequence"
         if model_name == "plcs_multiview":
             return "multiview"
