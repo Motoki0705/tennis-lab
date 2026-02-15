@@ -1,4 +1,4 @@
-"""Entry point for trajectory completion visualization orchestration."""
+"""Entry point for event detection visualization orchestration."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any, TypeVar, cast
 import hydra
 from omegaconf import DictConfig
 
-from src.trajectory_completion.visualization.orchestrator import (
+from src.event_detection.visualization.orchestrator import (
     build_runtime_config,
     run_visualization,
 )
