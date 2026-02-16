@@ -239,10 +239,8 @@ class BallMultitaskBackbone(nn.Module):
         seq_len: Tensor | None = None,
     ) -> Tensor:
         """Encode UV input into query token features."""
-        ball_uv, ball_vis, ball_mask, seq_len = self._clip_sequence(
-            ball_uv, ball_vis, ball_mask, seq_len
-        )
         B, T, _ = ball_uv.shape
+        self._validate_sequence_length(T)
 
         court_tokens = self.court_embed(court_kp, court_vis)
         ball_tokens = self.ball_uv_embed(ball_uv, ball_vis)
@@ -264,12 +262,8 @@ class BallMultitaskBackbone(nn.Module):
         seq_len: Tensor | None = None,
     ) -> Tensor:
         """Encode 3D input into query token features."""
-        ball_pos, ball_vis, ball_mask, seq_len = self._clip_sequence(
-            ball_pos, ball_vis, ball_mask, seq_len
-        )
         B, T, _ = ball_pos.shape
-
-        B, T, _ = ball_pos.shape
+        self._validate_sequence_length(T)
 
         court_tokens = torch.zeros(
             B, NUM_COURT_KP, self.hidden_dim, device=ball_pos.device, dtype=ball_pos.dtype
@@ -308,17 +302,6 @@ class BallMultitaskBackbone(nn.Module):
         batch_size: int,
         seq_len_t: int,
     ) -> Tensor:
-        court_type = self.type_embed(
-            torch.zeros(NUM_COURT_KP, device=ball_tokens.device, dtype=torch.long)
-        )[None, :, :]
-        ball_type = self.type_embed(
-            torch.ones(seq_len_t, device=ball_tokens.device, dtype=torch.long)
-        )[None, :, :]
-
-        # Prepare Inputs with Type Embeddings
-        court_tokens = court_tokens + court_type
-        ball_tokens = ball_tokens + ball_type
-        
         # Keep a copy of raw ball tokens for the skip connection
         ball_raw = ball_tokens
 
@@ -365,6 +348,16 @@ class BallMultitaskBackbone(nn.Module):
         ball_processed = x
 
         # MEMORY CONSTRUCTION
+        # Add explicit memory-type embeddings: processed branch vs raw branch.
+        processed_type = self.type_embed(
+            torch.zeros(seq_len_t, device=ball_tokens.device, dtype=torch.long)
+        )[None, :, :]
+        raw_type = self.type_embed(
+            torch.ones(seq_len_t, device=ball_tokens.device, dtype=torch.long)
+        )[None, :, :]
+        ball_processed = ball_processed + processed_type
+        ball_raw = ball_raw + raw_type
+
         # Concatenate [Processed Ball, Raw Ball]
         memory = torch.cat([ball_processed, ball_raw], dim=1)  # (B, 2T, D)
         memory_valid = torch.cat([ball_valid, ball_valid], dim=1) # (B, 2T)
@@ -421,24 +414,11 @@ class BallMultitaskBackbone(nn.Module):
         )
         return attn_mask
 
-    def _clip_sequence(
-        self,
-        ball_seq: Tensor,
-        ball_vis: Tensor | None,
-        ball_mask: Tensor | None,
-        seq_len: Tensor | None,
-    ) -> tuple[Tensor, Tensor | None, Tensor | None, Tensor | None]:
-        if ball_seq.shape[1] <= self.max_seq_len:
-            return ball_seq, ball_vis, ball_mask, seq_len
-
-        ball_seq = ball_seq[:, : self.max_seq_len]
-        if ball_vis is not None:
-            ball_vis = ball_vis[:, : self.max_seq_len]
-        if ball_mask is not None:
-            ball_mask = ball_mask[:, : self.max_seq_len]
-        if seq_len is not None:
-            seq_len = torch.clamp(seq_len, max=self.max_seq_len)
-        return ball_seq, ball_vis, ball_mask, seq_len
+    def _validate_sequence_length(self, seq_len: int) -> None:
+        if seq_len > self.max_seq_len:
+            raise ValueError(
+                f"Sequence length {seq_len} exceeds max_seq_len={self.max_seq_len}."
+            )
 
 
 if __name__ == "__main__":

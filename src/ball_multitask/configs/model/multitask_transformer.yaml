@@ -34,3 +34,5 @@ traj_head_hidden_dim: null
 traj_head_dropout: 0.1
 traj_head_layers: 2
 event_head_dropout: 0.1
+in_frame_head_hidden_dim: null
+in_frame_head_dropout: 0.1

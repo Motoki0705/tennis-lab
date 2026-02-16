@@ -26,6 +26,7 @@ def collate_multitask(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
     ball_uv_in = torch.zeros(B, max_len, 2)
     ball_uv_gt = torch.zeros(B, max_len, 2)
     ball_vis = torch.zeros(B, max_len)
+    ball_in_frame_gt = torch.zeros(B, max_len)
     ball_mask = torch.zeros(B, max_len)
     court_kp = torch.zeros(B, 20, 2)
     court_vis = torch.zeros(B, 20)
@@ -40,6 +41,7 @@ def collate_multitask(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
         ball_uv_in[i, :T] = s["ball_uv_in"]
         ball_uv_gt[i, :T] = s["ball_uv_gt"]
         ball_vis[i, :T] = s["ball_vis"]
+        ball_in_frame_gt[i, :T] = s["ball_in_frame_gt"]
         ball_mask[i, :L] = 1.0
         court_kp[i] = s["court_kp"]
         court_vis[i] = s["court_vis"]
@@ -52,6 +54,7 @@ def collate_multitask(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
         "ball_uv_in": ball_uv_in,
         "ball_uv_gt": ball_uv_gt,
         "ball_vis": ball_vis,
+        "ball_in_frame_gt": ball_in_frame_gt,
         "ball_mask": ball_mask,
         "court_kp": court_kp,
         "court_vis": court_vis,

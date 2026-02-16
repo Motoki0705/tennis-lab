@@ -34,6 +34,13 @@ def _smoothness_loss(pred: Tensor, mask: Tensor) -> Tensor:
     return (a.abs().sum(dim=-1) * m2).sum() / denom
 
 
+def _masked_bce_with_logits(logits: Tensor, target: Tensor, mask: Tensor) -> Tensor:
+    mask_f = mask.to(logits.dtype)
+    denom = mask_f.sum().clamp_min(1.0)
+    loss = F.binary_cross_entropy_with_logits(logits, target.to(logits.dtype), reduction="none")
+    return (loss * mask_f).sum() / denom
+
+
 def _make_time_mask(seq_len: Tensor, T: int) -> Tensor:
     B = seq_len.shape[0]
     t = torch.arange(T, device=seq_len.device)[None, :]
@@ -59,6 +66,7 @@ class BallMultitaskLightningModule(BaseLightningModule):
         self.uv_observed_weight = float(uv_cfg.get("observed_weight", 0.1))
         self.uv_smoothness_weight = float(uv_cfg.get("smoothness_weight", 0.0))
         self.uv_huber_delta = float(uv_cfg.get("huber_delta", 0.02))
+        self.uv_in_frame_weight = float(uv_cfg.get("in_frame_weight", 0.2))
 
         self.traj_loss_weight = float(traj_cfg.get("weight", 1.0))
         self.traj_loss = BLCSLoss(
@@ -81,6 +89,7 @@ class BallMultitaskLightningModule(BaseLightningModule):
         )
         self.peak_threshold = float(metrics_cfg.get("peak_threshold", 0.5))
         self.match_tolerance_frames = int(metrics_cfg.get("match_tolerance_frames", 3))
+        self.in_frame_threshold = float(metrics_cfg.get("in_frame_threshold", 0.5))
 
         curriculum_cfg = train_cfg.get("curriculum", {}) or {}
         self.uv_steps_per_3d = int(curriculum_cfg.get("uv_steps_per_3d", 4))
@@ -153,10 +162,12 @@ class BallMultitaskLightningModule(BaseLightningModule):
         uv_pred = outputs["uv_completed"]
         pos_pred = outputs["position_3d"]
         evt_logits = outputs["event_logits"]
+        in_frame_logits = outputs["in_frame_logits"]
 
         T = uv_pred.shape[1]
         ball_uv_gt = batch["ball_uv_gt"][:, :T]
         ball_vis = batch["ball_vis"][:, :T]
+        ball_in_frame_gt = batch.get("ball_in_frame_gt", batch["ball_vis"])[:, :T]
         ball_mask = batch["ball_mask"][:, :T]
         position_3d = batch["position_3d"][:, :T]
         event_targets = batch["event_targets"][:, :T]
@@ -183,20 +194,43 @@ class BallMultitaskLightningModule(BaseLightningModule):
             loss_smooth = _smoothness_loss(uv_pred, valid)
             loss_uv = loss_uv + self.uv_smoothness_weight * loss_smooth
 
+        in_frame_valid = ball_mask > 0
+        loss_in_frame = _masked_bce_with_logits(in_frame_logits, ball_in_frame_gt, in_frame_valid)
+        loss_uv_total = loss_uv + self.uv_in_frame_weight * loss_in_frame
+
         loss_traj = self.traj_loss(pred_position=pos_pred, target_position=position_3d, mask=valid)["total"]
         loss_event = self._event_loss(evt_logits, event_targets, seq_len)
 
         total = (
-            self.uv_loss_weight * loss_uv
+            self.uv_loss_weight * loss_uv_total
             + self.traj_loss_weight * loss_traj
             + self.event_weight_uv * loss_event
         )
 
+        in_frame_probs = torch.sigmoid(in_frame_logits)
+        in_frame_pred = in_frame_probs >= float(self.in_frame_threshold)
+        in_frame_target = ball_in_frame_gt > 0.5
+        in_frame_valid_f = in_frame_valid.to(torch.float32)
+        in_frame_denom = in_frame_valid_f.sum().clamp_min(1.0)
+        in_frame_acc = (
+            ((in_frame_pred == in_frame_target).to(torch.float32) * in_frame_valid_f).sum() / in_frame_denom
+        )
+        tp = ((in_frame_pred & in_frame_target) & in_frame_valid).to(torch.float32).sum()
+        fp = ((in_frame_pred & (~in_frame_target)) & in_frame_valid).to(torch.float32).sum()
+        fn = (((~in_frame_pred) & in_frame_target) & in_frame_valid).to(torch.float32).sum()
+        in_frame_precision = tp / (tp + fp).clamp_min(1.0)
+        in_frame_recall = tp / (tp + fn).clamp_min(1.0)
+
         logs: dict[str, Tensor] = {
             "uv_loss": loss_uv.detach(),
+            "uv_loss_total": loss_uv_total.detach(),
             "uv_loss_masked": loss_masked.detach(),
             "uv_loss_observed": loss_observed.detach(),
             "uv_loss_smooth": loss_smooth.detach(),
+            "loss_in_frame": loss_in_frame.detach(),
+            "in_frame_acc": in_frame_acc.detach(),
+            "in_frame_precision": in_frame_precision.detach(),
+            "in_frame_recall": in_frame_recall.detach(),
             "traj_loss": loss_traj.detach(),
             "event_loss_uv": loss_event.detach(),
         }
@@ -303,6 +337,7 @@ if __name__ == "__main__":
         "ball_uv_in": torch.rand(2, 16, 2),
         "ball_uv_gt": torch.rand(2, 16, 2),
         "ball_vis": torch.ones(2, 16),
+        "ball_in_frame_gt": torch.ones(2, 16),
         "ball_mask": torch.ones(2, 16),
         "court_kp": torch.rand(2, 20, 2),
         "court_vis": torch.ones(2, 20),
