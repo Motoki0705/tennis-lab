@@ -48,6 +48,10 @@ Animation-only visualization:
 - `uv run python -m src.trajectory_completion.scripts.visualize visualization.scene_path=data/blcs/scenes/rally_000000.npz`
 - Inference animation (GT line + predicted point, color-coded by observed/completed frames):
     - `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/trajectory_completion/.../last.ckpt`
+- Keep observed frames in completed output:
+    - `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.merge_observed=true`
+- Disable observed-frame merge (show raw model output):
+    - `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.merge_observed=false`
 - Save animation:
     - `uv run python -m src.trajectory_completion.scripts.visualize visualization.save=outputs/tmp/vis.gif`
 

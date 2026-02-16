@@ -13,6 +13,7 @@ save: null
 # Output
 info: false
 checkpoint: checkpoints/trajectory_completion/last.ckpt
+merge_observed: true
 output: null
 
 # Input construction
