@@ -39,18 +39,6 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         logger.error("Error: checkpoint is required for predict/visualize mode.")
         return 1
 
-    if cfg.cut_out_of_frame:
-        logger.warning(
-            "visualization.cut_out_of_frame=true was requested, "
-            "but ball_multitask has no in-frame prediction head in this scope. Ignoring."
-        )
-    if abs(float(cfg.in_frame_threshold) - 0.5) > 1e-8:
-        logger.warning(
-            "visualization.in_frame_threshold=%.3f was provided, "
-            "but ball_multitask has no in-frame prediction head in this scope. Ignoring.",
-            cfg.in_frame_threshold,
-        )
-
     predictor = load_predictor(checkpoint_path=cfg.checkpoint, device=cfg.device)
     predict_inputs = build_ball_multitask_predict_inputs(scene_inputs)
     outputs = predict_scene(
@@ -60,6 +48,8 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         min_distance=cfg.min_distance,
         top_k=cfg.top_k,
         denormalize=cfg.denormalize,
+        in_frame_threshold=cfg.in_frame_threshold,
+        cut_out_of_frame=cfg.cut_out_of_frame,
     )
 
     if cfg.output is not None:

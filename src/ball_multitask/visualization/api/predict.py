@@ -24,6 +24,8 @@ def predict_scene(
     min_distance: int,
     top_k: int | None,
     denormalize: bool,
+    in_frame_threshold: float,
+    cut_out_of_frame: bool,
 ) -> dict[str, Any]:
     """Run sequence prediction and return numpy-friendly outputs."""
     outputs = predictor.predict(
@@ -36,6 +38,8 @@ def predict_scene(
         min_distance=min_distance,
         top_k=top_k,
         denormalize=denormalize,
+        in_frame_threshold=in_frame_threshold,
+        cut_out_of_frame=cut_out_of_frame,
     )
 
     peaks = outputs["event_peaks"]
@@ -50,6 +54,9 @@ def predict_scene(
         "position_3d": outputs["position_3d"].squeeze(0).numpy(),
         "event_logits": outputs["event_logits"].squeeze(0).numpy(),
         "event_probs": outputs["event_probs"].squeeze(0).numpy(),
+        "in_frame_logits": outputs["in_frame_logits"].squeeze(0).numpy(),
+        "in_frame_probs": outputs["in_frame_probs"].squeeze(0).numpy(),
+        "in_frame_pred": outputs["in_frame_pred"].squeeze(0).numpy(),
         "event_peaks": peaks,
         "event_peak_scores": peak_scores,
         "event_names": list(outputs["event_names"]),

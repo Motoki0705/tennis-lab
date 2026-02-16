@@ -292,6 +292,7 @@ class BallMultitaskDataset(Dataset):
         ball_visible = sample["ball_visible"]
 
         valid_t = torch.arange(ball_uv_gt.shape[0]) < seq_len
+        ball_in_frame_gt = (ball_visible > 0).to(torch.float32) * valid_t.to(torch.float32)
         if self.supervise_visible_only:
             ball_gt_visible = (ball_visible > 0).to(torch.float32) * valid_t.to(torch.float32)
         else:
@@ -332,6 +333,7 @@ class BallMultitaskDataset(Dataset):
             "ball_uv_in": ball_uv_in,
             "ball_vis": ball_obs_mask,
             "ball_uv_gt": ball_uv_gt,
+            "ball_in_frame_gt": ball_in_frame_gt,
             "court_kp": sample["court_kp"],
             "court_vis": sample["court_vis"],
             "position_3d": sample["position_3d"],

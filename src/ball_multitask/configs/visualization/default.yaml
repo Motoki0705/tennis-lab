@@ -41,9 +41,8 @@ show_court_lines: true
 event_radius_frames: 6
 event_sigma_frames: 2.5
 
-# In-frame handling (temporarily no-op in ball_multitask)
-# - model has no in-frame head in this scope
-# - kept only for CLI compatibility with trajectory_completion
+# In-frame handling
+# - cut_out_of_frame=true replaces out-of-frame UV predictions with NaN
 in_frame_threshold: 0.5
 cut_out_of_frame: false
 
