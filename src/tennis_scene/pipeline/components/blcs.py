@@ -189,14 +189,15 @@ class BLCSModule(BasePipelineModule):
         else:
             effective_vis = np.ones(len(ball_uv), dtype=bool)
 
-        ball_uv_t = torch.from_numpy(ball_uv).float()
-        court_kp_t = torch.from_numpy(court_kp).float()
+        # BLCS models expect batched inputs: (B, T, 2), (B, 20, 2), (B, T), (B, 20).
+        ball_uv_t = torch.from_numpy(ball_uv).float().unsqueeze(0)
+        court_kp_t = torch.from_numpy(court_kp).float().unsqueeze(0)
 
-        ball_vis_t = torch.from_numpy(effective_vis.astype(np.float32))
+        ball_vis_t = torch.from_numpy(effective_vis.astype(np.float32)).unsqueeze(0)
 
         court_vis_t = None
         if court_vis is not None:
-            court_vis_t = torch.from_numpy(court_vis).float()
+            court_vis_t = torch.from_numpy(court_vis).float().unsqueeze(0)
 
         pred = self._predictor.predict(
             ball_uv=ball_uv_t,
