@@ -181,7 +181,7 @@ class BallMultitaskModel(nn.Module):
 
 if __name__ == "__main__":
     torch.manual_seed(0)
-    model = BallMultitaskModel(backbone=BallMultitaskBackbone(hidden_dim=32, num_layers=2, num_heads=4))
+    model = BallMultitaskModel(backbone=BallMultitaskBackbone(hidden_dim=32, num_ball_layers=2, num_query_layers=2, num_heads=4))
     ball_uv = torch.randn(2, 8, 2)
     court_kp = torch.randn(2, 20, 2)
     out = model.forward_uv(ball_uv, court_kp)
