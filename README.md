@@ -96,7 +96,7 @@ GPU環境をまとめて立ち上げたい場合は [docs/docker/README.md](docs
 
 ## ライセンス / 引用
 
-TBD（必要に応じて追記）
+このリポジトリは [MIT License](LICENSE) の下で公開されています。
 
 ## 構造（成果の裏側）
 
