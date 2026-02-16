@@ -23,13 +23,13 @@ scene_path: data/blcs/scenes/rally_000000.npz
 camera: 0
 
 # Model checkpoint
-checkpoint: outputs/ball_multitask/logs/version_0/checkpoints/last.ckpt
+checkpoint: checkpoints/ball_multitask/last.ckpt
 
 # Artifact paths
 # - save_dir: directory for rendered animation files
 # - output: npz path for numeric prediction outputs (+ .events.json sidecar)
-save_dir: null
-save_format: mp4
+save_dir: assets/ball_multitask
+save_format: gif
 output: null
 
 # Info-only switch
@@ -40,6 +40,12 @@ fps: 30.0
 show_court_lines: true
 event_radius_frames: 6
 event_sigma_frames: 2.5
+
+# In-frame handling (temporarily no-op in ball_multitask)
+# - model has no in-frame head in this scope
+# - kept only for CLI compatibility with trajectory_completion
+in_frame_threshold: 0.5
+cut_out_of_frame: false
 
 # Event post-processing controls
 threshold: 0.5

@@ -27,6 +27,8 @@ class RuntimeConfig:
     event_radius_frames: int
     event_sigma_frames: float
     show_court_lines: bool
+    in_frame_threshold: float
+    cut_out_of_frame: bool
     info: bool
     threshold: float
     min_distance: int

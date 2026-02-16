@@ -96,6 +96,8 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         event_radius_frames=max(0, int(_select_value(cfg, "event_radius_frames", 6))),
         event_sigma_frames=max(1e-6, float(_select_value(cfg, "event_sigma_frames", 2.5))),
         show_court_lines=bool(_select_value(cfg, "show_court_lines", True)),
+        in_frame_threshold=float(_select_value(cfg, "in_frame_threshold", 0.5)),
+        cut_out_of_frame=bool(_select_value(cfg, "cut_out_of_frame", False)),
         info=bool(_select_value(cfg, "info", False)),
         threshold=float(_select_value(cfg, "threshold", 0.5)),
         min_distance=max(1, int(_select_value(cfg, "min_distance", 1))),
