@@ -13,6 +13,7 @@ def predict_uv_completion(
     checkpoint_path: str,
     device: str,
     inputs: UVCompletionPredictInputs,
+    merge_observed: bool,
 ) -> dict[str, object]:
     """Run trajectory completion model prediction and normalize outputs."""
     predictor = UVTrajectoryCompletionPredictor.load_from_checkpoint(
@@ -21,11 +22,12 @@ def predict_uv_completion(
     )
 
     outputs = predictor.predict(
-        ball_uv_in=inputs.ball_uv_in,
-        ball_obs_mask=inputs.ball_obs_mask,
+        ball_uv=inputs.ball_uv,
         court_kp=inputs.court_kp,
+        ball_vis=inputs.ball_vis,
+        ball_mask=inputs.ball_mask,
         court_vis=inputs.court_vis,
-        merge_observed=False,
+        merge_observed=bool(merge_observed),
     )
 
     pred_uv = outputs["ball_uv_pred"].squeeze(0).cpu().numpy()
