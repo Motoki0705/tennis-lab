@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
+from scipy.spatial.transform import Rotation
 
 from src.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSampler,
@@ -147,6 +148,40 @@ class SceneGenerator:
 
         return x, y, yaw
 
+    def _compute_yaw_from_pose(self, root_orient: np.ndarray) -> float:
+        """Compute yaw angle from root orientation (axis-angle).
+
+        Args:
+            root_orient: Root orientation as axis-angle vector (3,).
+
+        Returns:
+            Yaw angle in radians.
+
+        """
+        # Convert axis-angle to rotation matrix
+        rot = Rotation.from_rotvec(root_orient)
+        # Convert to Euler angles (intrinsic ZYX convention commonly used)
+        # But for AMASS/SMPL, the global coordinate system is typically Y-up or Z-up depending on dataset.
+        # However, we only care about rotation around the vertical axis.
+        # Assuming Z-up for standard mechanics, but AMASS is often Y-up.
+        # Let's check rotation matrix elements to be sure, or just use euler 'y' component if Y is up.
+        # AMASS dataset (and SMPL) usually has Y-axis as Up (or close to it), Z forward, X right?
+        # Actually usually: X-right, Y-up, Z-forward (Right-handed).
+        # But let's check standard conversion.
+        # We can just extract the "heading" vector.
+        # Forward vector in canonical pose is typically +Z (0,0,1) or +Y.
+        # Let's assume the character faces +Z in canonical T-pose? No, usually +Z.
+        # If we rotate (0,0,1) by the root orientation, we get the facing direction.
+        # Then atan2(x, z) gives yaw.
+        
+        # NOTE: The scene generator applies rotation matrix on XY plane (around Z axis).
+        # This implies the system treats Z as the vertical axis (or at least the rotation axis).
+        # Therefore, we should extract the rotation around Z.
+        euler = rot.as_euler("zyx", degrees=False)
+        # euler[0]: z, euler[1]: y, euler[2]: x
+        return euler[0]  # Yaw around Z-axis
+
+
     def _transform_motion_to_court(
         self,
         motion: MotionSequence,
@@ -183,15 +218,22 @@ class SceneGenerator:
         # Compute initial offset (first frame XY only, keep Z from trans)
         init_offset_xy = original_trans[0, :2].copy()
 
+        # Compute original yaw from first frame
+        # SMPL root orientation is in poses[:, :3]
+        original_yaw = self._compute_yaw_from_pose(motion.poses[0, :3])
+        
+        # Compute delta yaw (rotation needed to align original yaw to init_yaw)
+        delta_yaw = init_yaw - original_yaw
+
         # Center motion at origin (XY only)
         centered_trans = original_trans.copy()
         centered_trans[:, 0] -= init_offset_xy[0]
         centered_trans[:, 1] -= init_offset_xy[1]
         # Keep original Z (pelvis height from ground)
 
-        # Rotation matrix for init_yaw
-        cos_yaw = math.cos(init_yaw)
-        sin_yaw = math.sin(init_yaw)
+        # Rotation matrix for delta_yaw
+        cos_yaw = math.cos(delta_yaw)
+        sin_yaw = math.sin(delta_yaw)
         rot_mat = np.array(
             [
                 [cos_yaw, -sin_yaw, 0],
@@ -213,10 +255,30 @@ class SceneGenerator:
         positions[:, 2] = court_trans[:, 2] / COURT_COORD_SCALE_Z
 
         # Compute rotations (yaw)
-        # Extract yaw from motion (simplified: assume forward is +Y in local frame)
+        # We need to rotate the original orientation by delta_yaw
+        # Original yaws for each frame:
         rotations = np.zeros((T, 2), dtype=np.float32)
-        rotations[:, 0] = sin_yaw  # sin(yaw)
-        rotations[:, 1] = cos_yaw  # cos(yaw)
+        
+        # We can approximately compute per-frame yaw.
+        # Efficient way: compute yaw for all frames using scipy
+        # But that might be slow if T is large.
+        # Alternatively, just rotate the implicit "forward" vector of the root.
+        
+        # For simplicity and correctness with the fix:
+        # The new global orientation is (original_orientation * delta_rotation).
+        # We just need the yaw component of that.
+        # But `rotations` output expects sin/cos of the yaw.
+        
+        # Let's extract all yaws.
+        root_orients = motion.poses[:, :3] # (T, 3)
+        # Optimization: process in batch if possible, but Rotation expects (N, 3)
+        r = Rotation.from_rotvec(root_orients)
+        original_yaws = r.as_euler("zyx", degrees=False)[:, 1] # (T,) Y-axis rotation
+        
+        new_yaws = original_yaws + delta_yaw
+        
+        rotations[:, 0] = np.sin(new_yaws)
+        rotations[:, 1] = np.cos(new_yaws)
 
         # Canonical poses: joints relative to pelvis, in local frame
         pelvis = joints_3d[:, 0:1, :]  # (T, 1, 3)
@@ -333,8 +395,13 @@ class SceneGenerator:
         joints_3d = motion.joints_3d  # (T, J, 3)
 
         # Transform joints to world (court) coordinates
-        cos_yaw = math.cos(init_yaw)
-        sin_yaw = math.sin(init_yaw)
+        # Re-compute delta_yaw because it's not returned by _transform_motion_to_court
+        # (Alternatively, modify return signature, but that might break other things. Recomputing is cheap.)
+        original_yaw = self._compute_yaw_from_pose(motion.poses[0, :3])
+        delta_yaw = init_yaw - original_yaw
+        
+        cos_yaw = math.cos(delta_yaw)
+        sin_yaw = math.sin(delta_yaw)
         rot_mat = np.array(
             [
                 [cos_yaw, -sin_yaw, 0],
