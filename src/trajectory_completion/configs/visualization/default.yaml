@@ -8,7 +8,7 @@ camera: random  # random | int
 
 # Rendering
 fps: null
-save: null
+save: assets/trajectory_completion/gt_vs_pred.gif
 
 # Output
 info: false
