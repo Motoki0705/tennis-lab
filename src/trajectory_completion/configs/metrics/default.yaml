@@ -1,2 +1,3 @@
 masked_accuracy_threshold_px: 2.0
 observed_accuracy_threshold_px: 2.0
+in_frame_threshold: 0.5

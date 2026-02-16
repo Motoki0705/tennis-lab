@@ -66,6 +66,8 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
         court_vis: Tensor | None = None,
         *,
         merge_observed: bool = True,
+        in_frame_threshold: float = 0.5,
+        cut_out_of_frame: bool = False,
     ) -> dict[str, Tensor]:
         """Complete missing ball UV trajectory frames.
 
@@ -76,11 +78,16 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
             ball_mask: Optional padding mask. Shape (B, T) or (T,).
             court_vis: Court visibility mask. Shape (B, 20) or (20,).
             merge_observed: If True and ball_vis is provided, keep observed frames from input.
+            in_frame_threshold: Threshold for classifying in-frame probability.
+            cut_out_of_frame: If True, set out-of-frame predictions to NaN.
 
         Returns:
             Dictionary with:
                 - ball_uv_pred: Raw model predictions (B, T, 2)
                 - ball_uv_completed: Completed trajectory (B, T, 2) if merge_observed
+                - in_frame_logits: In-frame logits (B, T)
+                - in_frame_probs: In-frame probabilities (B, T)
+                - in_frame_pred: In-frame binary mask (B, T)
         """
         if ball_uv.dim() == 2:
             ball_uv = ball_uv.unsqueeze(0)
@@ -113,19 +120,36 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
         if court_vis is not None:
             court_vis = moved[idx]
 
-        pred = self.model(
+        pred, in_frame_logits = self.model(
             ball_uv,
             court_kp,
             ball_vis,
             ball_mask,
             court_vis,
+            return_in_frame_logits=True,
         )
 
-        result = {"ball_uv_pred": pred.cpu()}
+        in_frame_probs = torch.sigmoid(in_frame_logits)
+        in_frame_pred = in_frame_probs >= float(in_frame_threshold)
+
+        pred_out = pred.clone()
+        if cut_out_of_frame:
+            invalid = ~in_frame_pred
+            pred_out[invalid] = torch.nan
+
+        result: dict[str, Tensor] = {
+            "ball_uv_pred": pred_out.cpu(),
+            "in_frame_logits": in_frame_logits.cpu(),
+            "in_frame_probs": in_frame_probs.cpu(),
+            "in_frame_pred": in_frame_pred.to(torch.float32).cpu(),
+        }
         if merge_observed and ball_vis is not None:
             completed = pred.clone()
             mask = ball_vis > 0
             completed[mask] = ball_uv[mask]
+            if cut_out_of_frame:
+                invalid = ~in_frame_pred
+                completed[invalid] = torch.nan
             result["ball_uv_completed"] = completed.cpu()
 
         return result

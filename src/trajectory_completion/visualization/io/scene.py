@@ -47,6 +47,8 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         info=bool(vis.info),
         checkpoint=to_absolute_path(str(vis.checkpoint)) if vis.checkpoint else None,
         merge_observed=bool(vis.get("merge_observed", True)),
+        in_frame_threshold=float(vis.get("in_frame_threshold", 0.5)),
+        cut_out_of_frame=bool(vis.get("cut_out_of_frame", False)),
         device=resolve_device(str(run.device)),
         output=to_absolute_path(str(vis.output)) if vis.output else None,
         seed=int(run.seed),

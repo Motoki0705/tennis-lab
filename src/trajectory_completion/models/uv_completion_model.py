@@ -190,6 +190,12 @@ class UVTrajectoryCompletionModel(nn.Module):
             nn.Dropout(float(dropout)),
             nn.Linear(self.hidden_dim, 2),
         )
+        self.in_frame_head = nn.Sequential(
+            nn.Linear(self.hidden_dim, self.hidden_dim),
+            nn.GELU(),
+            nn.Dropout(float(dropout)),
+            nn.Linear(self.hidden_dim, 1),
+        )
 
         freqs_cis = precompute_freqs_cis(
             dim=rope_dim_value,
@@ -290,7 +296,8 @@ class UVTrajectoryCompletionModel(nn.Module):
         court_vis: Tensor | None = None,
         *,
         return_intermediate_ball_hidden: bool = False,
-    ) -> Tensor | tuple[Tensor, list[Tensor]]:
+        return_in_frame_logits: bool = False,
+    ) -> Tensor | tuple[Tensor, list[Tensor]] | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor], Tensor]:
         """Forward.
 
         Args:
@@ -301,11 +308,14 @@ class UVTrajectoryCompletionModel(nn.Module):
             court_vis: (B, 20) court visibility mask.
             return_intermediate_ball_hidden: If True, also return stage-1 ball token
                 hidden states after each temporal layer.
+            return_in_frame_logits: If True, also return per-frame in-frame logits.
 
         Returns:
-            Completed UV predictions: (B, T, 2). If
-            ``return_intermediate_ball_hidden=True``, returns
+            Completed UV predictions: (B, T, 2).
+            If ``return_intermediate_ball_hidden=True``, returns
             ``(pred, intermediate_ball_hidden_list)``.
+            If ``return_in_frame_logits=True``, returns additional ``in_frame_logits``
+            with shape ``(B, T)``.
         """
         B, T, _ = ball_uv.shape
         if T > self.max_seq_len:
@@ -398,9 +408,14 @@ class UVTrajectoryCompletionModel(nn.Module):
 
         query = self.final_norm(query)
         pred = self.head(query)
+        in_frame_logits = self.in_frame_head(query).squeeze(-1)
 
+        if return_intermediate_ball_hidden and return_in_frame_logits:
+            return pred, intermediate_ball_hidden, in_frame_logits
         if return_intermediate_ball_hidden:
             return pred, intermediate_ball_hidden
+        if return_in_frame_logits:
+            return pred, in_frame_logits
         return pred
 
 

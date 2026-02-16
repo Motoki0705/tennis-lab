@@ -31,6 +31,7 @@ completed = outputs["ball_uv_completed"]
 - `ball_vis`: observed mask after augmentation (1=observed, 0=missing) for model input.
 - `ball_uv_gt`: ground-truth UV.
 - `ball_gt_vis`: ground-truth visibility (1=visible, 0=invisible/invalid) for supervision.
+- `ball_in_frame_gt`: in-frame GT label (1=in frame, 0=out of frame), used by in-frame head.
 - `seq_len`: sequence length used by collate to build `ball_mask`.
 
 If you previously used `ball_uv_in` / `ball_obs_mask` / old predictor signature,
@@ -52,6 +53,8 @@ Animation-only visualization:
     - `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.merge_observed=true`
 - Disable observed-frame merge (show raw model output):
     - `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.merge_observed=false`
+- Cut out-of-frame predictions using in-frame head:
+    - `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.cut_out_of_frame=true visualization.in_frame_threshold=0.5`
 - Save animation:
     - `uv run python -m src.trajectory_completion.scripts.visualize visualization.save=outputs/tmp/vis.gif`
 
@@ -81,6 +84,8 @@ Recommended recipe:
 New logs:
 - `train/val masked_weight_t`: effective masked loss weight after scheduling.
 - `train/val loss_aux`: summed auxiliary observed loss (before global aux scaling).
+- `train/val loss_in_frame`: in-frame classification loss.
+- `train/val in_frame_acc`, `in_frame_precision`, `in_frame_recall`: in-frame head quality.
 - `train/val boundary_jump_pred`, `boundary_jump_gt`, `boundary_jump_error`: boundary jump diagnostics at observed/masked transitions.
 
 ## Data loading optimization
