@@ -130,6 +130,11 @@ class TennisSceneOrchestrator:
                     checkpoint_path=to_absolute_path(cfg.trajectory.checkpoint),
                     device=device,
                     merge_observed=cfg.trajectory.get("merge_observed", True),
+                    in_frame_threshold=float(cfg.trajectory.get("in_frame_threshold", 0.5)),
+                    cut_out_of_frame=bool(cfg.trajectory.get("cut_out_of_frame", False)),
+                    use_in_frame_pred_for_visibility=bool(
+                        cfg.trajectory.get("use_in_frame_pred_for_visibility", True)
+                    ),
                     save_result=cfg.trajectory.get("save_result", True),
                     output_path=get_output_path("trajectory", "trajectory_result.json"),
                     load_path=get_load_path("trajectory"),
@@ -376,7 +381,18 @@ class TennisSceneOrchestrator:
                 )
                 ball_uv_pred = trajectory_result.ball_uv_pred
                 ball_uv_completed = trajectory_result.ball_uv_completed
-                ball_uv_for_downstream = ball_uv_completed
+                if (
+                    self.trajectory_module.config.merge_observed
+                    and ball_uv_completed is not None
+                ):
+                    ball_uv_for_downstream = ball_uv_completed
+                else:
+                    ball_uv_for_downstream = ball_uv_pred
+                if (
+                    self.trajectory_module.config.use_in_frame_pred_for_visibility
+                    and trajectory_result.in_frame_pred is not None
+                ):
+                    ball_visibility = trajectory_result.in_frame_pred
 
             if Stage.EVENT_UV in self.enabled_stages and self.event_uv_module is not None:
                 event_uv_result = self.event_uv_module.process(
