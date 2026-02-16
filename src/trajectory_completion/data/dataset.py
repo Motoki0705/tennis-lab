@@ -125,6 +125,7 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
 
         seq_len_t = torch.tensor(seq_len, dtype=torch.long)
         valid_t = _build_valid_mask(ball_uv_gt.shape[0], seq_len_t).to(torch.float32)
+        ball_in_frame_gt = (ball_visible > 0).to(torch.float32) * valid_t
         if self.supervise_visible_only:
             ball_gt_vis = (ball_visible > 0).to(torch.float32) * valid_t
         else:
@@ -155,6 +156,7 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
             "ball_vis": ball_vis,
             "ball_uv_gt": ball_uv_gt,
             "ball_gt_vis": ball_gt_vis,
+            "ball_in_frame_gt": ball_in_frame_gt,
             "court_kp": court_kp,
             "court_vis": court_vis,
             "seq_len": seq_len_t,

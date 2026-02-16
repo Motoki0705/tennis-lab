@@ -19,6 +19,7 @@ loss:
   masked_weight: 1.0
   observed_weight: 0.16
   smoothness_weight: 0.01
+  in_frame_weight: 0.2
   huber_delta: 0.02
   masked_schedule:
     enabled: true
@@ -27,7 +28,7 @@ loss:
     weight_min: 0.0
     weight_max: 1.0
   auxiliary_observed:
-    enabled: true
+    enabled: false
     weight: 0.2
     depth_weighting: linear  # linear | exp
     exp_gamma: 1.5

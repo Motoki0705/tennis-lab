@@ -22,6 +22,8 @@ class RuntimeConfig:
     info: bool
     checkpoint: str | None
     merge_observed: bool
+    in_frame_threshold: float
+    cut_out_of_frame: bool
     device: str
     output: str | None
     seed: int

@@ -33,6 +33,13 @@ def _smoothness_loss(pred: Tensor, mask: Tensor) -> Tensor:
     return (a.abs().sum(dim=-1) * m2).sum() / denom
 
 
+def _masked_bce_with_logits(logits: Tensor, target: Tensor, mask: Tensor) -> Tensor:
+    mask_f = mask.to(logits.dtype)
+    denom = mask_f.sum().clamp_min(1.0)
+    loss = F.binary_cross_entropy_with_logits(logits, target.to(logits.dtype), reduction="none")
+    return (loss * mask_f).sum() / denom
+
+
 def _boundary_jump(pred: Tensor, valid: Tensor, observed: Tensor) -> Tensor:
     if pred.shape[1] < 2:
         return pred.new_tensor(0.0)
@@ -56,6 +63,7 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         self.masked_weight = float(loss_cfg.get("masked_weight", 1.0))
         self.observed_weight = float(loss_cfg.get("observed_weight", 0.1))
         self.smoothness_weight = float(loss_cfg.get("smoothness_weight", 0.0))
+        self.in_frame_weight = float(loss_cfg.get("in_frame_weight", 0.2))
         self.huber_delta = float(loss_cfg.get("huber_delta", 0.02))
 
         masked_schedule_cfg = loss_cfg.get("masked_schedule", {}) or {}
@@ -88,15 +96,20 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
 
         self.masked_accuracy_threshold = float(metrics_cfg.get("masked_accuracy_threshold_px", 2.0))
         self.observed_accuracy_threshold = float(metrics_cfg.get("observed_accuracy_threshold_px", 2.0))
+        self.in_frame_threshold = float(metrics_cfg.get("in_frame_threshold", 0.5))
 
     def forward(self, batch: dict[str, Tensor]) -> Tensor:
-        return self.model(
+        out = self.model(
             batch["ball_uv"],
             batch["court_kp"],
             batch.get("ball_vis"),
             batch.get("ball_mask"),
             batch.get("court_vis"),
+            return_in_frame_logits=False,
         )
+        if isinstance(out, tuple):
+            return out[0]
+        return out
 
     def _build_auxiliary_layer_weights(self, num_layers: int) -> Tensor:
         if num_layers <= 0:
@@ -130,18 +143,27 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         )
         return self.masked_weight_min + ratio * (self.masked_weight_max - self.masked_weight_min)
 
-    def _forward_with_auxiliary(self, batch: dict[str, Tensor]) -> tuple[Tensor, list[Tensor] | None]:
+    def _forward_with_auxiliary(self, batch: dict[str, Tensor]) -> tuple[Tensor, list[Tensor] | None, Tensor]:
         if self.auxiliary_observed_enabled and self.auxiliary_observed_heads is not None:
-            pred, intermediate = self.model(
+            pred, intermediate, in_frame_logits = self.model(
                 batch["ball_uv"],
                 batch["court_kp"],
                 batch.get("ball_vis"),
                 batch.get("ball_mask"),
                 batch.get("court_vis"),
                 return_intermediate_ball_hidden=True,
+                return_in_frame_logits=True,
             )
-            return pred, intermediate
-        return self.forward(batch), None
+            return pred, intermediate, in_frame_logits
+        pred, in_frame_logits = self.model(
+            batch["ball_uv"],
+            batch["court_kp"],
+            batch.get("ball_vis"),
+            batch.get("ball_mask"),
+            batch.get("court_vis"),
+            return_in_frame_logits=True,
+        )
+        return pred, None, in_frame_logits
 
     def _compute_auxiliary_observed_loss(
         self,
@@ -176,14 +198,24 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         return loss_aux_total, logs
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:  # noqa: ARG002
-        pred, intermediate = self._forward_with_auxiliary(batch)
-        loss, logs = self._compute_losses(pred, batch, intermediate_ball_hidden=intermediate)
+        pred, intermediate, in_frame_logits = self._forward_with_auxiliary(batch)
+        loss, logs = self._compute_losses(
+            pred,
+            batch,
+            intermediate_ball_hidden=intermediate,
+            in_frame_logits=in_frame_logits,
+        )
         self.log_dict({f"train/{k}": v for k, v in logs.items()}, on_step=True, on_epoch=True)
         return loss
 
     def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:  # noqa: ARG002
-        pred, intermediate = self._forward_with_auxiliary(batch)
-        loss, logs = self._compute_losses(pred, batch, intermediate_ball_hidden=intermediate)
+        pred, intermediate, in_frame_logits = self._forward_with_auxiliary(batch)
+        loss, logs = self._compute_losses(
+            pred,
+            batch,
+            intermediate_ball_hidden=intermediate,
+            in_frame_logits=in_frame_logits,
+        )
         self.log("val/loss", loss, prog_bar=True, on_epoch=True)
         for k, v in logs.items():
             self.log(f"val/{k}", v, on_epoch=True)
@@ -194,11 +226,13 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         batch: dict[str, Tensor],
         *,
         intermediate_ball_hidden: list[Tensor] | None = None,
+        in_frame_logits: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
         ball_uv_gt = batch["ball_uv_gt"]
         ball_mask = batch["ball_mask"]
         ball_gt_vis = batch["ball_gt_vis"]
         ball_vis = batch["ball_vis"]
+        ball_in_frame_gt = batch.get("ball_in_frame_gt", ball_gt_vis)
 
         _, T, _ = pred.shape
         if ball_uv_gt.shape[1] != T:
@@ -206,7 +240,9 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
             ball_mask = ball_mask[:, :T]
             ball_gt_vis = ball_gt_vis[:, :T]
             ball_vis = ball_vis[:, :T]
+            ball_in_frame_gt = ball_in_frame_gt[:, :T]
         valid = (ball_mask > 0) & (ball_gt_vis > 0)
+        in_frame_valid = ball_mask > 0
 
         masked = valid & (ball_vis <= 0)
         observed = valid & (ball_vis > 0)
@@ -221,6 +257,10 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         if self.smoothness_weight > 0:
             loss_smooth = _smoothness_loss(pred, valid)
             loss = loss + self.smoothness_weight * loss_smooth
+
+        loss_in_frame = _masked_bce_with_logits(in_frame_logits, ball_in_frame_gt, in_frame_valid)
+        if self.in_frame_weight > 0:
+            loss = loss + self.in_frame_weight * loss_in_frame
 
         loss_aux, aux_logs = self._compute_auxiliary_observed_loss(intermediate_ball_hidden, ball_uv_gt, observed)
         if self.auxiliary_observed_enabled and self.auxiliary_observed_weight > 0:
@@ -244,15 +284,32 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         boundary_jump_pred = _boundary_jump(pred, valid, observed)
         boundary_jump_gt = _boundary_jump(ball_uv_gt, valid, observed)
         boundary_jump_error = (boundary_jump_pred - boundary_jump_gt).abs()
+        in_frame_probs = torch.sigmoid(in_frame_logits)
+        in_frame_pred = in_frame_probs >= float(self.in_frame_threshold)
+        in_frame_target = ball_in_frame_gt > 0.5
+        in_frame_valid_f = in_frame_valid.to(torch.float32)
+        in_frame_denom = in_frame_valid_f.sum().clamp_min(1.0)
+        in_frame_acc = (
+            ((in_frame_pred == in_frame_target).to(torch.float32) * in_frame_valid_f).sum() / in_frame_denom
+        )
+        tp = ((in_frame_pred & in_frame_target) & in_frame_valid).to(torch.float32).sum()
+        fp = ((in_frame_pred & (~in_frame_target)) & in_frame_valid).to(torch.float32).sum()
+        fn = (((~in_frame_pred) & in_frame_target) & in_frame_valid).to(torch.float32).sum()
+        in_frame_precision = tp / (tp + fp).clamp_min(1.0)
+        in_frame_recall = tp / (tp + fn).clamp_min(1.0)
         logs = {
             "loss_masked": loss_masked.detach(),
             "loss_observed": loss_observed.detach(),
             "loss_smooth": loss_smooth.detach(),
+            "loss_in_frame": loss_in_frame.detach(),
             "loss_aux": loss_aux.detach(),
             "masked_weight_t": pred.new_tensor(float(masked_weight_t)).detach(),
             "masked_ratio": masked_ratio.detach(),
             "accuracy_masked": acc_masked.detach(),
             "accuracy_observed": acc_observed.detach(),
+            "in_frame_acc": in_frame_acc.detach(),
+            "in_frame_precision": in_frame_precision.detach(),
+            "in_frame_recall": in_frame_recall.detach(),
             "boundary_jump_pred": boundary_jump_pred.detach(),
             "boundary_jump_gt": boundary_jump_gt.detach(),
             "boundary_jump_error": boundary_jump_error.detach(),
@@ -286,12 +343,14 @@ if __name__ == "__main__":
         "ball_vis": torch.randint(0, 2, (2, 32)).float(),
         "ball_uv_gt": torch.rand(2, 32, 2),
         "ball_gt_vis": torch.randint(0, 2, (2, 32)).float(),
+        "ball_in_frame_gt": torch.randint(0, 2, (2, 32)).float(),
         "ball_mask": torch.ones(2, 32),
         "court_kp": torch.rand(2, 20, 2),
         "court_vis": torch.ones(2, 20),
     }
     out = module.forward(batch)
     assert out.shape == (2, 32, 2)
-    loss, _ = module._compute_losses(out, batch)
+    _, _, in_frame_logits = module._forward_with_auxiliary(batch)
+    loss, _ = module._compute_losses(out, batch, in_frame_logits=in_frame_logits)
     assert torch.isfinite(loss)
     print("trajectory_completion.lightning smoke ok")
