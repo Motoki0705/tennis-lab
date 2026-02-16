@@ -14,7 +14,7 @@ court_kp:
   mode: manual_ui  # model/manual_ui
   save_result: true
   output_path: ${output_dir}/court_kp_result.json
-  load_path: null  # Path to load pre-computed result (skips inference)
+  load_path: noutputs/tennis_scene/court_kp_result.jsonl  # Path to load pre-computed result (skips inference)
 
 gvhmr:
   checkpoint: third_party/GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
@@ -37,7 +37,7 @@ wasb:
 
 trajectory:
   checkpoint: checkpoints/trajectory_completion/uv/last.ckpt
-  skip: true
+  skip: false
   merge_observed: false
   in_frame_threshold: 0.5
   cut_out_of_frame: true
@@ -48,7 +48,7 @@ trajectory:
 
 event_uv:
   checkpoint: checkpoints/event_detection/uv/last.ckpt
-  skip: true
+  skip: false
   threshold: 0.5
   min_distance: 1
   top_k: null
@@ -71,7 +71,7 @@ blcs:
 
 event_3d:
   checkpoint: checkpoints/event_detection/traj3d/last.ckpt
-  skip: true
+  skip: false
   threshold: 0.5
   min_distance: 1
   top_k: null
