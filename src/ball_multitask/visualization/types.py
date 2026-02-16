@@ -15,13 +15,20 @@ class RuntimeConfig:
     """Resolved runtime configuration for prediction/visualization."""
 
     mode: str
-    view: str
     scene_path: Path
     camera: Any
     checkpoint: Path | None
     device: str
     output: Path | None
-    save: Path | None
+    save_dir: Path | None
+    save_format: str
+    renderers: tuple[str, ...]
+    fps: float
+    event_radius_frames: int
+    event_sigma_frames: float
+    show_court_lines: bool
+    in_frame_threshold: float
+    cut_out_of_frame: bool
     info: bool
     threshold: float
     min_distance: int
@@ -38,6 +45,7 @@ class SceneInputs:
     ball_vis: np.ndarray
     court_kp: np.ndarray
     court_vis: np.ndarray
+    ball_pos_world: np.ndarray | None
     seq_len: int
     meta: dict[str, Any]
     camera_idx: int
