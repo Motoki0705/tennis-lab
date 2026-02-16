@@ -21,6 +21,7 @@ class RuntimeConfig:
     save: Path | None
     info: bool
     checkpoint: str | None
+    merge_observed: bool
     device: str
     output: str | None
     seed: int
