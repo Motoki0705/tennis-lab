@@ -6,14 +6,17 @@
 # - `run.device` has higher priority than this file's device setting.
 
 # Execution mode
-# - visualize: run prediction and render a summary figure
+# - visualize: run prediction and render task-specific animations
 # - predict: run prediction and print/save outputs without figure rendering
 # - info: print scene metadata only (no model inference)
 mode: visualize
 
-# Visualization layout
-# - currently supported: summary
-view: summary
+# Enabled renderers (separate windows / separate saved files)
+renderers:
+  - uv_completion
+  - uv_event
+  - traj3d_event
+  - blcs_traj3d
 
 # Scene selection
 scene_path: data/blcs/scenes/rally_000000.npz
@@ -23,13 +26,20 @@ camera: 0
 checkpoint: outputs/ball_multitask/logs/version_0/checkpoints/last.ckpt
 
 # Artifact paths
-# - save: image path for rendered figure (png/jpg etc.)
+# - save_dir: directory for rendered animation files
 # - output: npz path for numeric prediction outputs (+ .events.json sidecar)
-save: null
+save_dir: null
+save_format: mp4
 output: null
 
 # Info-only switch
 info: false
+
+# Animation options
+fps: 30.0
+show_court_lines: true
+event_radius_frames: 6
+event_sigma_frames: 2.5
 
 # Event post-processing controls
 threshold: 0.5
