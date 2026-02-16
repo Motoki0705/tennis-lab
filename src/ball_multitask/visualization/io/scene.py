@@ -59,22 +59,43 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     checkpoint_raw = _select_value(cfg, "checkpoint", None)
 
     output_raw = _select_value(cfg, "output", None)
+    save_dir_raw = _select_value(cfg, "save_dir", None)
     save_raw = _select_value(cfg, "save", None)
 
     mode = str(_select_value(cfg, "mode", "predict"))
-    view = str(_select_value(cfg, "view", "summary"))
+    renderers_raw = _select_value(
+        cfg,
+        "renderers",
+        ["uv_completion", "uv_event", "traj3d_event", "blcs_traj3d"],
+    )
+    if isinstance(renderers_raw, str):
+        renderers: tuple[str, ...] = tuple(part.strip() for part in renderers_raw.split(",") if part.strip())
+    else:
+        renderers = tuple(str(v).strip() for v in renderers_raw if str(v).strip())
+
+    resolved_save_dir_raw = save_dir_raw if save_dir_raw is not None else save_raw
 
     run_device = str(run.get("device", _select_value(cfg, "device", "cpu")))
 
+    save_dir = None
+    if resolved_save_dir_raw:
+        candidate = Path(to_absolute_path(str(resolved_save_dir_raw)))
+        save_dir = candidate if candidate.suffix == "" else (candidate.parent / candidate.stem)
+
     return RuntimeConfig(
         mode=mode,
-        view=view,
         scene_path=Path(to_absolute_path(str(scene_path))),
         camera=_select_value(cfg, "camera", 0),
         checkpoint=Path(to_absolute_path(str(checkpoint_raw))) if checkpoint_raw else None,
         device=_resolve_device(run_device),
         output=Path(to_absolute_path(str(output_raw))) if output_raw else None,
-        save=Path(to_absolute_path(str(save_raw))) if save_raw else None,
+        save_dir=save_dir,
+        save_format=str(_select_value(cfg, "save_format", "mp4")),
+        renderers=renderers,
+        fps=float(_select_value(cfg, "fps", 30.0)),
+        event_radius_frames=max(0, int(_select_value(cfg, "event_radius_frames", 6))),
+        event_sigma_frames=max(1e-6, float(_select_value(cfg, "event_sigma_frames", 2.5))),
+        show_court_lines=bool(_select_value(cfg, "show_court_lines", True)),
         info=bool(_select_value(cfg, "info", False)),
         threshold=float(_select_value(cfg, "threshold", 0.5)),
         min_distance=max(1, int(_select_value(cfg, "min_distance", 1))),
@@ -110,15 +131,20 @@ def load_scene_inputs(cfg: RuntimeConfig) -> SceneInputs:
     ball_vis = np.asarray(scene[ball_vis_key], dtype=np.float32)
     court_kp = np.asarray(scene[court_kp_key], dtype=np.float32)
     court_vis = np.asarray(scene[court_vis_key], dtype=np.float32)
-
     seq_len = int(meta.get("num_frames", ball_uv.shape[0]))
     seq_len = min(seq_len, int(ball_uv.shape[0]))
+    ball_pos_world = (
+        np.asarray(scene["ball_pos_world"], dtype=np.float32)[:seq_len]
+        if "ball_pos_world" in scene
+        else None
+    )
 
     return SceneInputs(
         ball_uv=ball_uv[:seq_len],
         ball_vis=ball_vis[:seq_len],
         court_kp=court_kp,
         court_vis=court_vis,
+        ball_pos_world=ball_pos_world,
         seq_len=seq_len,
         meta=meta,
         camera_idx=cam_idx,

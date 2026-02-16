@@ -8,6 +8,7 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.animation import FuncAnimation
 
 from src.ball_multitask.visualization.types import SceneInputs
 
@@ -32,9 +33,15 @@ def save_outputs(output_path: Path, outputs: dict[str, Any]) -> None:
 
 
 def save_figure(path: Path, fig: plt.Figure) -> None:
-    """Save summary figure to disk."""
+    """Save figure to disk."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(str(path), dpi=150, bbox_inches="tight")
+
+
+def save_animation(path: Path, anim: FuncAnimation, *, fps: float) -> None:
+    """Save one animation to disk."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    anim.save(str(path), fps=float(fps))
 
 
 def print_info(scene: SceneInputs) -> None:
