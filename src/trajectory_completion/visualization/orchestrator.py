@@ -116,6 +116,7 @@ def run_visualization(runtime: RuntimeConfig) -> int:
         checkpoint_path=runtime.checkpoint,
         device=runtime.device,
         inputs=predict_inputs,
+        merge_observed=runtime.merge_observed,
     )
 
     pred_uv = pred["pred_uv"]
