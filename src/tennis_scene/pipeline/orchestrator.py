@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -238,15 +239,18 @@ class TennisSceneOrchestrator:
         if max_frames is not None:
             cmd.append(f"--max-frames={max_frames}")
 
+        # Keep stdio attached so GVHMR tracker selection UI can read user input.
         result = subprocess.run(
             cmd,
-            capture_output=True,
-            text=True,
             cwd=str(Path(__file__).parents[3]),
+            stdin=sys.stdin,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
         )
         if result.returncode != 0:
-            LOGGER.error(f"GVHMR subprocess failed:\n{result.stderr}")
-            raise RuntimeError(f"GVHMR subprocess failed: {result.stderr}")
+            raise RuntimeError(
+                f"GVHMR subprocess failed with return code {result.returncode}"
+            )
 
         return GVHMRResult.load(output_path)
 
