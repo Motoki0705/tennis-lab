@@ -38,7 +38,10 @@ wasb:
 trajectory:
   checkpoint: checkpoints/trajectory_completion/uv/last.ckpt
   skip: true
-  merge_observed: true
+  merge_observed: false
+  in_frame_threshold: 0.5
+  cut_out_of_frame: true
+  use_in_frame_pred_for_visibility: true
   save_result: true
   output_path: ${output_dir}/trajectory_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
