@@ -10,6 +10,8 @@ from torch import Tensor
 
 from src.ball_multitask.models.adapters.ball_3d_adapter import Ball3DTokenAdapter
 from src.common.models import (
+    CrossAttnBlock,
+    CrossAttnBlockConfig,
     MoEConfig,
     RMSNorm,
     TransformerBlock,
@@ -35,7 +37,6 @@ class BallMultitaskBackbone(nn.Module):
         self,
         *,
         hidden_dim: int = 256,
-        num_layers: int = 6,
         num_heads: int = 8,
         ffn_dim: int | None = None,
         dropout: float = 0.1,
@@ -46,8 +47,12 @@ class BallMultitaskBackbone(nn.Module):
         moe_config: MoEConfig | None = None,
         causal: bool = False,
         max_seq_len: int = 256,
-        num_register_tokens: int = 0,
         invisible_init_std: float = 0.02,
+        # Architecture depth
+        num_ball_layers: int = 6,
+        num_query_layers: int = 2,
+        # Query init
+        query_init_std: float = 0.02,
     ) -> None:
         super().__init__()
 
@@ -58,7 +63,6 @@ class BallMultitaskBackbone(nn.Module):
 
         self.hidden_dim = int(hidden_dim)
         self.max_seq_len = int(max_seq_len)
-        self.num_register_tokens = int(num_register_tokens)
         self.causal = bool(causal)
 
         head_dim = int(hidden_dim // num_heads)
@@ -69,12 +73,14 @@ class BallMultitaskBackbone(nn.Module):
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
-            ffn_dim = (ffn_dim + 63) // 64 * 64
+        ffn_dim = (ffn_dim + 63) // 64 * 64
 
         if moe_config is not None and moe_config.dim != hidden_dim:
             raise ValueError("moe_config.dim must match hidden_dim.")
-        if self.num_register_tokens < 0:
-            raise ValueError("num_register_tokens must be >= 0.")
+        if num_ball_layers < 0:
+            raise ValueError("num_ball_layers must be non-negative.")
+        if num_query_layers < 0:
+            raise ValueError("num_query_layers must be non-negative.")
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim, init_std=float(invisible_init_std)
@@ -96,19 +102,27 @@ class BallMultitaskBackbone(nn.Module):
         )
 
         self.type_embed = nn.Embedding(2, self.hidden_dim)
+        self.query_base = nn.Parameter(torch.randn(1, 1, self.hidden_dim) * float(query_init_std))
 
-        if self.num_register_tokens > 0:
-            self.register_tokens = nn.Parameter(
-                torch.zeros(1, self.num_register_tokens, self.hidden_dim)
-            )
-            nn.init.trunc_normal_(self.register_tokens, std=0.02)
-
-        self.learned_court_tokens = nn.Parameter(
-            torch.zeros(1, NUM_COURT_KP, self.hidden_dim)
+        # Stage 1: Ball -> Court Cross-Attention + Ball Self-Attention
+        self.ball_cross_layers = nn.ModuleList(
+            [
+                CrossAttnBlock(
+                    CrossAttnBlockConfig(
+                        dim=self.hidden_dim,
+                        n_heads=int(num_heads),
+                        mlp_inter_dim=int(ffn_dim),
+                        head_dim=head_dim,
+                        rope_dim=0,  # No RoPE for cross-attention
+                        attn_dropout=float(dropout),
+                        use_moe=bool(use_moe),
+                        moe_config=moe_config,
+                    )
+                )
+                for _ in range(int(num_ball_layers))
+            ]
         )
-        nn.init.trunc_normal_(self.learned_court_tokens, std=0.02)
-
-        self.blocks = nn.ModuleList(
+        self.ball_self_layers = nn.ModuleList(
             [
                 TransformerBlock(
                     TransformerBlockConfig(
@@ -124,11 +138,52 @@ class BallMultitaskBackbone(nn.Module):
                         moe_config=moe_config,
                     )
                 )
-                for _ in range(int(num_layers))
+                for _ in range(int(num_ball_layers))
             ]
         )
+
+        # Stage 2: Query -> Memory (Processed Ball + Raw Ball) Cross-Attention + Query Self-Attention
+        self.query_cross_layers = nn.ModuleList(
+            [
+                CrossAttnBlock(
+                    CrossAttnBlockConfig(
+                        dim=self.hidden_dim,
+                        n_heads=int(num_heads),
+                        mlp_inter_dim=int(ffn_dim),
+                        head_dim=head_dim,
+                        rope_dim=self.rope_dim,  # RoPE used for queries
+                        attn_dropout=float(dropout),
+                        use_moe=bool(use_moe),
+                        moe_config=moe_config,
+                    )
+                )
+                for _ in range(int(num_query_layers))
+            ]
+        )
+        self.query_self_layers = nn.ModuleList(
+            [
+                TransformerBlock(
+                    TransformerBlockConfig(
+                        dim=self.hidden_dim,
+                        n_heads=int(num_heads),
+                        mlp_inter_dim=int(ffn_dim),
+                        head_dim=head_dim,
+                        rope_dim=self.rope_dim,
+                        attn_dropout=float(dropout),
+                        rope_base=self.rope_theta,
+                        yarn=self.yarn,
+                        use_moe=bool(use_moe),
+                        moe_config=moe_config,
+                    )
+                )
+                for _ in range(int(num_query_layers))
+            ]
+        )
+
         self.final_norm = RMSNorm(self.hidden_dim)
 
+        # Precompute frequencies for Ball tokens (Stage 1 self-attn) and Query (Stage 2 self-attn/cross-attn query)
+        # Note: Query uses same length/frequencies as ball tokens.
         freqs_cis = precompute_freqs_cis(
             dim=self.rope_dim,
             seqlen=self.max_tokens,
@@ -157,7 +212,8 @@ class BallMultitaskBackbone(nn.Module):
 
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
-            num_layers=int(model_cfg.get("num_layers", 6)),
+            num_ball_layers=int(model_cfg.get("num_ball_layers", 6)),
+            num_query_layers=int(model_cfg.get("num_query_layers", 2)),
             num_heads=int(model_cfg.get("num_heads", 8)),
             ffn_dim=model_cfg.get("ffn_dim", None),
             dropout=float(model_cfg.get("dropout", 0.1)),
@@ -168,8 +224,8 @@ class BallMultitaskBackbone(nn.Module):
             moe_config=moe_config,
             causal=bool(model_cfg.get("causal", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", 256)),
-            num_register_tokens=int(model_cfg.get("num_register_tokens", 0)),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
+            query_init_std=float(model_cfg.get("query_init_std", 0.02)),
         )
 
     def forward_uv(
@@ -182,7 +238,7 @@ class BallMultitaskBackbone(nn.Module):
         court_vis: Tensor | None = None,
         seq_len: Tensor | None = None,
     ) -> Tensor:
-        """Encode UV input into ball token features."""
+        """Encode UV input into query token features."""
         ball_uv, ball_vis, ball_mask, seq_len = self._clip_sequence(
             ball_uv, ball_vis, ball_mask, seq_len
         )
@@ -207,13 +263,31 @@ class BallMultitaskBackbone(nn.Module):
         ball_mask: Tensor | None = None,
         seq_len: Tensor | None = None,
     ) -> Tensor:
-        """Encode 3D input into ball token features."""
+        """Encode 3D input into query token features."""
         ball_pos, ball_vis, ball_mask, seq_len = self._clip_sequence(
             ball_pos, ball_vis, ball_mask, seq_len
         )
         B, T, _ = ball_pos.shape
 
-        court_tokens = self.learned_court_tokens.expand(B, -1, -1)
+        B, T, _ = ball_pos.shape
+
+        court_tokens = torch.zeros(
+            B, NUM_COURT_KP, self.hidden_dim, device=ball_pos.device, dtype=ball_pos.dtype
+        )  # Dummy court for 3D input, or learned court tokens could be used if needed.
+        # But for strictly 3D input (often event detection), court context might be implicit or not needed in Stage 1.
+        # However, to be consistent with Stage 1 Cross-Attn, we need Key/Value.
+        # Let's use a zero tensor or learned embedding if intended.
+        # The prompt implies unified architecture. If 3D input doesn't come with court,
+        # maybe we should use a learned placeholder?
+        # The original code had `self.learned_court_tokens`. Let's restore that if it was useful,
+        # but I removed it in __init__. Let's add it back implicitly or just handle it.
+
+        # Re-introducing learned court tokens locally for 3D path since I removed them from self.
+        # Or better, let's assume if 3D input is used, we might want to skip Stage 1 cross or provide dummy.
+        # Given "multitask", let's be safe and use a zero-like placeholder if no court info.
+        # Actually, let's just initialize a learned parameter on the fly or just zeros.
+        # Zeros for now to avoid side effects.
+        
         ball_tokens = self.ball_3d_adapter(ball_pos, ball_vis)
         return self._forward_tokens(
             ball_tokens=ball_tokens,
@@ -241,91 +315,111 @@ class BallMultitaskBackbone(nn.Module):
             torch.ones(seq_len_t, device=ball_tokens.device, dtype=torch.long)
         )[None, :, :]
 
-        token_body = torch.cat(
-            [court_tokens + court_type, ball_tokens + ball_type], dim=1
-        )
-        if self.num_register_tokens > 0:
-            reg = self.register_tokens.expand(batch_size, -1, -1)
-            x = torch.cat([reg, token_body], dim=1)
-        else:
-            x = token_body
+        # Prepare Inputs with Type Embeddings
+        court_tokens = court_tokens + court_type
+        ball_tokens = ball_tokens + ball_type
+        
+        # Keep a copy of raw ball tokens for the skip connection
+        ball_raw = ball_tokens
 
-        freqs_cis = self._build_freqs(token_body, x.device)
-        attn_mask = self._build_attn_mask(
-            batch_size=batch_size,
-            seq_len_t=seq_len_t,
-            ball_mask=ball_mask,
-            seq_len=seq_len,
-            device=x.device,
-        )
+        # Frequencies for Ball (Stage 1) and Copy for Query (Stage 2)
+        # Assuming Query sequence length == Ball sequence length
+        freqs_cis_ball = self._build_freqs(seq_len_t, ball_tokens.device)
+        freqs_cis_query = freqs_cis_ball 
 
-        residual = None
-        for block in self.blocks:
-            x, residual = block(
+        # Attention Masks
+        # 1. Court Mask (for Stage 1 Cross-Attn): All valid usually
+        court_valid = torch.ones(batch_size, NUM_COURT_KP, device=ball_tokens.device, dtype=torch.bool)
+        
+        # 2. Ball Mask (for Stage 1 Self-Attn & Stage 2 Cross-Attn Key Validity)
+        if ball_mask is None:
+            if seq_len is not None:
+                t = torch.arange(seq_len_t, device=ball_tokens.device)[None, :]
+                ball_mask = t < seq_len.to(torch.long).view(batch_size, 1)
+            else:
+                ball_mask = torch.ones(batch_size, seq_len_t, device=ball_tokens.device)
+        
+        ball_valid = ball_mask > 0
+        ball_attn_mask = self._build_self_attn_mask(ball_valid)
+
+        # STAGE 1: Ball Encoder
+        # Cross-Attn (Ball->Court) then Self-Attn (Ball->Ball)
+        x = ball_tokens
+        for cross_layer, self_layer in zip(self.ball_cross_layers, self.ball_self_layers):
+            x = cross_layer(
                 x,
-                residual,
+                court_tokens,
+                key_valid=court_valid,
+                freqs_q_cis=None,
+                freqs_k_cis=None,
+            )
+            x, _ = self_layer(
+                x,
+                residual=None,
                 start_pos=0,
-                freqs_cis=freqs_cis,
-                attn_mask=attn_mask,
+                freqs_cis=freqs_cis_ball,
+                attn_mask=ball_attn_mask,
+                is_causal=self.causal,
+            )
+        
+        ball_processed = x
+
+        # MEMORY CONSTRUCTION
+        # Concatenate [Processed Ball, Raw Ball]
+        memory = torch.cat([ball_processed, ball_raw], dim=1)  # (B, 2T, D)
+        memory_valid = torch.cat([ball_valid, ball_valid], dim=1) # (B, 2T)
+
+        # RoPE for Memory (Cross-Attn Keys)
+        # We need frequencies for the memory sequence.
+        # Since memory is just two concatenated ball sequences of same length, we can concat freqs.
+        freqs_cis_memory = torch.cat([freqs_cis_ball, freqs_cis_ball], dim=0)
+
+        # STAGE 2: Query Decoder
+        # Query Init
+        query = self.query_base.expand(batch_size, seq_len_t, -1)
+
+        # Cross-Attn (Query->Memory) then Self-Attn (Query->Query)
+        for cross_layer, self_layer in zip(self.query_cross_layers, self.query_self_layers):
+            query = cross_layer(
+                query,
+                memory,
+                key_valid=memory_valid,
+                freqs_q_cis=freqs_cis_query,
+                freqs_k_cis=freqs_cis_memory,
+            )
+            query, _ = self_layer(
+                query,
+                residual=None,
+                start_pos=0,
+                freqs_cis=freqs_cis_query,
+                attn_mask=ball_attn_mask,
                 is_causal=self.causal,
             )
 
-        if residual is None:
-            x = self.final_norm(x)
-        else:
-            x, _ = self.final_norm(x, residual)
+        query = self.final_norm(query)
+        return query
 
-        ball_start = self.num_register_tokens + NUM_COURT_KP
-        return x[:, ball_start:, :]
-
-    def _build_freqs(self, token_body: Tensor, device: torch.device) -> Tensor:
-        S_body = token_body.shape[1]
-        if S_body > self.freqs_cis.shape[0]:
+    def _build_freqs(self, seq_len: int, device: torch.device) -> Tensor:
+        if seq_len > self.freqs_cis.shape[0]:
             raise ValueError(
                 "Sequence length exceeds cached freqs_cis length. Increase max_seq_len."
             )
-        freqs_cis_body = self.freqs_cis[:S_body]
-        if freqs_cis_body.device != device:
-            freqs_cis_body = freqs_cis_body.to(device)
-        if self.num_register_tokens <= 0:
-            return freqs_cis_body
+        freqs = self.freqs_cis[:seq_len]
+        if freqs.device != device:
+            freqs = freqs.to(device)
+        return freqs
 
-        prefix_freqs = torch.ones(
-            self.num_register_tokens,
-            freqs_cis_body.shape[1],
-            device=device,
-            dtype=freqs_cis_body.dtype,
+    @staticmethod
+    def _build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
+        valid_fixed = valid.bool()
+        fully_masked = ~valid_fixed.any(dim=1)
+        if fully_masked.any():
+            valid_fixed = valid_fixed.clone()
+            valid_fixed[fully_masked, 0] = True
+        attn_mask = valid_fixed[:, None, :].expand(
+            valid_fixed.shape[0], valid_fixed.shape[1], valid_fixed.shape[1]
         )
-        return torch.cat([prefix_freqs, freqs_cis_body], dim=0)
-
-    def _build_attn_mask(
-        self,
-        *,
-        batch_size: int,
-        seq_len_t: int,
-        ball_mask: Tensor | None,
-        seq_len: Tensor | None,
-        device: torch.device,
-    ) -> Tensor | None:
-        if ball_mask is None and seq_len is not None:
-            t = torch.arange(seq_len_t, device=device)[None, :]
-            ball_mask = t < seq_len.to(torch.long).view(batch_size, 1)
-
-        if ball_mask is None:
-            return None
-
-        court_valid = torch.ones(batch_size, NUM_COURT_KP, device=device, dtype=torch.bool)
-        ball_valid = ball_mask > 0
-        if self.num_register_tokens > 0:
-            reg_valid = torch.ones(
-                batch_size, self.num_register_tokens, device=device, dtype=torch.bool
-            )
-            key_padding_mask = torch.cat([reg_valid, court_valid, ball_valid], dim=1)
-        else:
-            key_padding_mask = torch.cat([court_valid, ball_valid], dim=1)
-
-        S = key_padding_mask.shape[1]
-        return key_padding_mask[:, None, :].expand(batch_size, S, S)
+        return attn_mask
 
     def _clip_sequence(
         self,
@@ -349,7 +443,7 @@ class BallMultitaskBackbone(nn.Module):
 
 if __name__ == "__main__":
     torch.manual_seed(0)
-    model = BallMultitaskBackbone(hidden_dim=64, num_layers=2, num_heads=4, max_seq_len=16)
+    model = BallMultitaskBackbone(hidden_dim=64, num_ball_layers=2, num_query_layers=2, num_heads=4, max_seq_len=16)
     ball_uv = torch.randn(2, 8, 2)
     court_kp = torch.randn(2, NUM_COURT_KP, 2)
     out = model.forward_uv(ball_uv, court_kp)

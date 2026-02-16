@@ -12,12 +12,12 @@ from src.ball_multitask.visualization.adapters.predict_inputs import (
 from src.ball_multitask.visualization.analysis.report import (
     print_info,
     print_predict_summary,
-    save_figure,
+    save_animation,
     save_outputs,
 )
 from src.ball_multitask.visualization.api.predict import load_predictor, predict_scene
 from src.ball_multitask.visualization.io.scene import build_runtime_config, load_scene_inputs
-from src.ball_multitask.visualization.rendering.summary import create_summary_figure
+from src.ball_multitask.visualization.rendering.animations import build_animations
 from src.ball_multitask.visualization.types import RuntimeConfig
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,18 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         logger.error("Error: checkpoint is required for predict/visualize mode.")
         return 1
 
+    if cfg.cut_out_of_frame:
+        logger.warning(
+            "visualization.cut_out_of_frame=true was requested, "
+            "but ball_multitask has no in-frame prediction head in this scope. Ignoring."
+        )
+    if abs(float(cfg.in_frame_threshold) - 0.5) > 1e-8:
+        logger.warning(
+            "visualization.in_frame_threshold=%.3f was provided, "
+            "but ball_multitask has no in-frame prediction head in this scope. Ignoring.",
+            cfg.in_frame_threshold,
+        )
+
     predictor = load_predictor(checkpoint_path=cfg.checkpoint, device=cfg.device)
     predict_inputs = build_ball_multitask_predict_inputs(scene_inputs)
     outputs = predict_scene(
@@ -58,15 +70,15 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         print_predict_summary(outputs)
         return 0
 
-    if cfg.view != "summary":
-        logger.error("Error: unknown visualization.view '%s' (expected summary)", cfg.view)
-        return 1
-
-    fig = create_summary_figure(inputs=scene_inputs, outputs=outputs)
-    if cfg.save is not None:
-        save_figure(cfg.save, fig)
-        plt.close(fig)
-        print(f"Saved figure to {cfg.save}")
+    animations = build_animations(cfg=cfg, inputs=scene_inputs, outputs=outputs)
+    if cfg.save_dir is not None:
+        cfg.save_dir.mkdir(parents=True, exist_ok=True)
+        suffix = cfg.save_format if cfg.save_format.startswith(".") else f".{cfg.save_format}"
+        for artifact in animations:
+            path = cfg.save_dir / f"{artifact.default_filename}{suffix}"
+            save_animation(path, artifact.animation, fps=cfg.fps)
+            plt.close(artifact.animation._fig)
+            print(f"Saved animation to {path}")
     else:
         plt.show()
 
