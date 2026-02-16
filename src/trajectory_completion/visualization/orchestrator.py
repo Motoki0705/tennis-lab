@@ -117,6 +117,8 @@ def run_visualization(runtime: RuntimeConfig) -> int:
         device=runtime.device,
         inputs=predict_inputs,
         merge_observed=runtime.merge_observed,
+        in_frame_threshold=runtime.in_frame_threshold,
+        cut_out_of_frame=runtime.cut_out_of_frame,
     )
 
     pred_uv = pred["pred_uv"]
