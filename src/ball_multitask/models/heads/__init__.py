@@ -3,5 +3,6 @@
 from src.ball_multitask.models.heads.trajectory_head import Trajectory3DHeadAdapter
 from src.ball_multitask.models.heads.uv_head import UVCompletionHead
 from src.ball_multitask.models.heads.event_head import EventLogitsHeadAdapter
+from src.ball_multitask.models.heads.in_frame_head import InFrameHead
 
-__all__ = ["UVCompletionHead", "Trajectory3DHeadAdapter", "EventLogitsHeadAdapter"]
+__all__ = ["UVCompletionHead", "Trajectory3DHeadAdapter", "EventLogitsHeadAdapter", "InFrameHead"]

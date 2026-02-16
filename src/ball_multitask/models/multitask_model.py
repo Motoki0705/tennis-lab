@@ -10,6 +10,7 @@ from torch import Tensor
 
 from src.ball_multitask.models.backbone import BallMultitaskBackbone
 from src.ball_multitask.models.heads.event_head import EventLogitsHeadAdapter
+from src.ball_multitask.models.heads.in_frame_head import InFrameHead
 from src.ball_multitask.models.heads.trajectory_head import Trajectory3DHeadAdapter
 from src.ball_multitask.models.heads.uv_head import UVCompletionHead
 
@@ -31,6 +32,8 @@ class BallMultitaskModel(nn.Module):
         traj_head_dropout: float = 0.1,
         traj_head_layers: int = 2,
         event_head_dropout: float = 0.1,
+        in_frame_head_hidden_dim: int | None = None,
+        in_frame_head_dropout: float = 0.1,
         event_names: list[str] | None = None,
     ) -> None:
         super().__init__()
@@ -54,6 +57,11 @@ class BallMultitaskModel(nn.Module):
             num_events=self.num_events,
             dropout=event_head_dropout,
         )
+        self.in_frame_head = InFrameHead(
+            input_dim=int(backbone.hidden_dim),
+            hidden_dim=in_frame_head_hidden_dim,
+            dropout=in_frame_head_dropout,
+        )
 
     @classmethod
     def from_config(cls, config: DictConfig) -> "BallMultitaskModel":
@@ -72,6 +80,8 @@ class BallMultitaskModel(nn.Module):
             traj_head_dropout=float(model_cfg.get("traj_head_dropout", model_cfg.get("dropout", 0.1))),
             traj_head_layers=int(model_cfg.get("traj_head_layers", 2)),
             event_head_dropout=float(model_cfg.get("event_head_dropout", model_cfg.get("dropout", 0.1))),
+            in_frame_head_hidden_dim=model_cfg.get("in_frame_head_hidden_dim"),
+            in_frame_head_dropout=float(model_cfg.get("in_frame_head_dropout", model_cfg.get("dropout", 0.1))),
             event_names=event_names,
         )
 
@@ -120,6 +130,7 @@ class BallMultitaskModel(nn.Module):
         - uv_completed
         - position_3d
         - event_logits
+        - in_frame_logits
         """
         ball_h = self.backbone.forward_uv(
             ball_uv,
@@ -133,6 +144,7 @@ class BallMultitaskModel(nn.Module):
             "uv_completed": self.uv_head(ball_h),
             "position_3d": self.traj_head(ball_h),
             "event_logits": self.event_head(ball_h),
+            "in_frame_logits": self.in_frame_head(ball_h),
         }
 
     def forward_3d_event(
@@ -188,4 +200,5 @@ if __name__ == "__main__":
     assert out["uv_completed"].shape == (2, 8, 2)
     assert out["position_3d"].shape == (2, 8, 3)
     assert out["event_logits"].shape == (2, 8, 2)
+    assert out["in_frame_logits"].shape == (2, 8)
     print("multitask_model smoke ok")

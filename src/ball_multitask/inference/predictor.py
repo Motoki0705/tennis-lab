@@ -73,6 +73,8 @@ class BallMultitaskPredictor(BasePredictor):
         min_distance: int = 1,
         top_k: int | None = None,
         denormalize: bool = True,
+        in_frame_threshold: float = 0.5,
+        cut_out_of_frame: bool = False,
     ) -> dict[str, Any]:
         """Run offline inference on UV inputs."""
         if ball_vis is None and ball_mask is not None:
@@ -111,6 +113,9 @@ class BallMultitaskPredictor(BasePredictor):
         uv_completed = outputs["uv_completed"]
         pos3d = outputs["position_3d"]
         logits = outputs["event_logits"]
+        in_frame_logits = outputs["in_frame_logits"]
+        in_frame_probs = torch.sigmoid(in_frame_logits)
+        in_frame_pred = in_frame_probs >= float(in_frame_threshold)
         probs = torch.sigmoid(logits)
 
         peaks, peak_scores = extract_event_peaks(
@@ -123,12 +128,18 @@ class BallMultitaskPredictor(BasePredictor):
 
         if denormalize:
             pos3d = self._denormalize_position(pos3d)
+        if cut_out_of_frame:
+            uv_completed = uv_completed.clone()
+            uv_completed[~in_frame_pred] = torch.nan
 
         return {
             "uv_completed": uv_completed.cpu(),
             "position_3d": pos3d.cpu(),
             "event_logits": logits.cpu(),
             "event_probs": probs.cpu(),
+            "in_frame_logits": in_frame_logits.cpu(),
+            "in_frame_probs": in_frame_probs.cpu(),
+            "in_frame_pred": in_frame_pred.to(torch.float32).cpu(),
             "event_peaks": peaks,
             "event_peak_scores": peak_scores,
             "event_names": list(self.event_names),

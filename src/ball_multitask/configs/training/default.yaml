@@ -19,6 +19,7 @@ loss:
     observed_weight: 0.1
     smoothness_weight: 0.0
     huber_delta: 0.02
+    in_frame_weight: 0.2
   traj3d:
     weight: 1.0
     position_weight: 1.0
