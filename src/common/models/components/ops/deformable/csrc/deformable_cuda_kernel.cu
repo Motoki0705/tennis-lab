@@ -1,6 +1,7 @@
 #include "deformable_cuda_kernel.cuh"
 
 #include <ATen/ATen.h>
+#include <ATen/cuda/Atomic.cuh>
 #include <ATen/cuda/CUDAContext.h>
 #include <c10/cuda/CUDAGuard.h>
 #include <cuda.h>
