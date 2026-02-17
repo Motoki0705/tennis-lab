@@ -74,6 +74,32 @@ class BallPredictor(BasePredictor):
         return cls(model=model, device=device_obj)
 
     @torch.no_grad()
+    def predict_heatmap_logits(self, frames: Tensor, **kwargs: Any) -> Tensor:
+        """Predict heatmap logits from a heatmap-based checkpoint model.
+
+        Args:
+            frames: Input tensor consumed by the underlying model.
+            **kwargs: Reserved for future compatibility.
+
+        Returns:
+            Heatmap logits with shape [B, H, W] or [B, T, H, W].
+        """
+        _ = kwargs
+        if frames.dim() == 3:
+            frames = frames.unsqueeze(0)
+        frames = frames.to(self.device)
+        out = self.model(frames)
+        heatmap_logits = out.get("heatmap_logits")
+        if heatmap_logits is None:
+            raise ValueError("Loaded checkpoint model does not provide heatmap_logits.")
+        if heatmap_logits.dim() not in (3, 4):
+            raise ValueError(
+                "heatmap_logits must have shape [B, H, W] or [B, T, H, W], "
+                f"got {tuple(heatmap_logits.shape)}"
+            )
+        return heatmap_logits.detach().cpu()
+
+    @torch.no_grad()
     def predict(self, frames: Tensor, **kwargs: Any) -> dict[str, Tensor]:
         _ = kwargs
         if frames.dim() == 3:
