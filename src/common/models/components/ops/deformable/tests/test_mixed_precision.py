@@ -33,8 +33,14 @@ def test_msda_mixed_precision_stability(dtype: torch.dtype) -> None:
         n_points=4,
         requires_grad=True,
     )
+    attention_weights = attention_weights.detach().requires_grad_(True)
+    attention_weights.retain_grad()
 
-    optimizer = torch.optim.Adam([value, sampling_locations, attention_weights], lr=1e-3)
+    optimizer = torch.optim.Adam(
+        [value, sampling_locations, attention_weights],
+        lr=1e-3,
+        eps=1e-4 if dtype is torch.float16 else 1e-8,
+    )
 
     for _ in range(50):
         optimizer.zero_grad(set_to_none=True)

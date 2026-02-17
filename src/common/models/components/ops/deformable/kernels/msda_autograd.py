@@ -19,20 +19,33 @@ class _MSDeformAttnCudaFn(torch.autograd.Function):
         attention_weights: Tensor,
         ext,
     ) -> Tensor:
+        promote_compute = value.dtype in (torch.float16, torch.bfloat16)
+
+        value_in = value.float() if promote_compute else value
+        sampling_in = sampling_locations.float() if promote_compute else sampling_locations
+        attention_in = attention_weights.float() if promote_compute else attention_weights
+
         out = ext.ms_deform_attn_forward(
-            value,
+            value_in,
             spatial_shapes,
             level_start_index,
-            sampling_locations,
-            attention_weights,
+            sampling_in,
+            attention_in,
         )
+
+        ctx.promote_compute = promote_compute
+        ctx.value_dtype = value.dtype
+        ctx.sampling_dtype = sampling_locations.dtype
+        ctx.attention_dtype = attention_weights.dtype
         ctx.ext = ext
-        ctx.save_for_backward(value, spatial_shapes, level_start_index, sampling_locations, attention_weights)
-        return out
+        ctx.save_for_backward(value_in, spatial_shapes, level_start_index, sampling_in, attention_in)
+        return out.to(value.dtype) if promote_compute else out
 
     @staticmethod
     def backward(ctx, grad_output: Tensor):
         value, spatial_shapes, level_start_index, sampling_locations, attention_weights = ctx.saved_tensors
+        if ctx.promote_compute:
+            grad_output = grad_output.float()
         grad_output = grad_output.contiguous()
         grad_value, grad_sampling_locations, grad_attention_weights = ctx.ext.ms_deform_attn_backward(
             value,
@@ -42,6 +55,11 @@ class _MSDeformAttnCudaFn(torch.autograd.Function):
             attention_weights,
             grad_output,
         )
+
+        if ctx.promote_compute:
+            grad_value = grad_value.to(ctx.value_dtype)
+            grad_sampling_locations = grad_sampling_locations.to(ctx.sampling_dtype)
+            grad_attention_weights = grad_attention_weights.to(ctx.attention_dtype)
         # None for spatial_shapes, level_start_index and ext handle
         return grad_value, None, None, grad_sampling_locations, grad_attention_weights, None
 
