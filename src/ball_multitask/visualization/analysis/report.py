@@ -22,6 +22,9 @@ def save_outputs(output_path: Path, outputs: dict[str, Any]) -> None:
         position_3d=outputs["position_3d"],
         event_logits=outputs["event_logits"],
         event_probs=outputs["event_probs"],
+        in_frame_logits=outputs["in_frame_logits"],
+        in_frame_probs=outputs["in_frame_probs"],
+        in_frame_pred=outputs["in_frame_pred"],
     )
     peaks_path = output_path.with_suffix(".events.json")
     payload = {
@@ -57,4 +60,5 @@ def print_predict_summary(outputs: dict[str, Any]) -> None:
     print(f"uv_completed: {tuple(outputs['uv_completed'].shape)}")
     print(f"position_3d: {tuple(outputs['position_3d'].shape)}")
     print(f"event_logits: {tuple(outputs['event_logits'].shape)}")
+    print(f"in_frame_logits: {tuple(outputs['in_frame_logits'].shape)}")
     print(f"event peaks: {[len(v) for v in outputs['event_peaks']]}")
