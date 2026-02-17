@@ -1,6 +1,11 @@
 """Inference entry points for ball_detection."""
 
-from src.ball_detection.inference.ensemble_predictor import BallEnsemblePredictor
+from src.ball_detection.inference.ensemble_predictor import (
+    BallEnsemblePredictor,
+    HRNetContextInputAdapter,
+    ModelInputAdapter,
+    TrackNetV3InputAdapter,
+)
 from src.ball_detection.inference.predictor import BallPredictor
 from src.ball_detection.inference.video_api import (
     VideoInferenceConfig,
@@ -13,6 +18,9 @@ from src.ball_detection.inference.video_api import (
 __all__ = [
     "BallPredictor",
     "BallEnsemblePredictor",
+    "ModelInputAdapter",
+    "TrackNetV3InputAdapter",
+    "HRNetContextInputAdapter",
     "VideoInferenceMemberConfig",
     "VideoInferenceConfig",
     "VideoInferenceResult",
