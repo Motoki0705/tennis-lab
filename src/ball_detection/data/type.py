@@ -80,6 +80,15 @@ class ClipLayout:
 
 
 @dataclass(frozen=True)
+class VideoLayout:
+    """Resolved on-disk video layout for pseudo generation."""
+
+    game_name: str
+    video_name: str
+    video_path: Path
+
+
+@dataclass(frozen=True)
 class PathPolicy:
     """Safety policy for filesystem writes."""
 

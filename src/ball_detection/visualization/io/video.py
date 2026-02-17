@@ -60,6 +60,11 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     single_member = InferenceMemberConfig(
         backend=inference_cfg.single_member.backend,
         checkpoint=_resolve_path(inference_cfg.single_member.checkpoint),
+        model_config_path=(
+            _resolve_path(inference_cfg.single_member.model_config_path)
+            if inference_cfg.single_member.model_config_path is not None
+            else None
+        ),
         weight=inference_cfg.single_member.weight,
         score_threshold=inference_cfg.single_member.score_threshold,
     )
@@ -67,6 +72,11 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         InferenceMemberConfig(
             backend=member.backend,
             checkpoint=_resolve_path(member.checkpoint),
+            model_config_path=(
+                _resolve_path(member.model_config_path)
+                if member.model_config_path is not None
+                else None
+            ),
             weight=member.weight,
             score_threshold=member.score_threshold,
         )

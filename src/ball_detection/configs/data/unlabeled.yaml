@@ -1,5 +1,6 @@
-root_dir: data/tennis
-unlabeled_games: ["game10"]
+video_root_dir: data/videos
+video_extensions: [".mp4", ".mov", ".avi", ".mkv"]
+max_frames: null
 batch_size: 32
 num_workers: 4
 image_h: 288

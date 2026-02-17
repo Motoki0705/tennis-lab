@@ -42,6 +42,12 @@ class BallPredictor(BasePredictor):
                 cfg = OmegaConf.to_container(cfg_candidate, resolve=True)  # type: ignore[assignment]
             if isinstance(cfg_candidate, dict):
                 cfg = cfg_candidate
+        fallback_model_cfg_path = kwargs.get("fallback_model_cfg_path")
+        if not cfg and fallback_model_cfg_path is not None:
+            cfg_path = Path(str(fallback_model_cfg_path))
+            if not cfg_path.exists():
+                raise FileNotFoundError(f"fallback_model_cfg_path not found: {cfg_path}")
+            cfg = {"model": OmegaConf.to_container(OmegaConf.load(cfg_path), resolve=True)}
 
         model = build_model(cfg)
         state_dict = state.get("state_dict", state)

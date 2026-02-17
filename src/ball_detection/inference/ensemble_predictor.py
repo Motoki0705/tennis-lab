@@ -64,9 +64,23 @@ class BallEnsemblePredictor:
         *,
         device: str = "cpu",
         weights: list[float] | None = None,
+        model_config_paths: list[str | Path | None] | None = None,
         visibility_threshold: float = 0.5,
     ) -> "BallEnsemblePredictor":
-        predictors = [BallPredictor.load_from_checkpoint(path, device=device) for path in checkpoint_paths]
+        if model_config_paths is not None and len(model_config_paths) != len(checkpoint_paths):
+            raise ValueError("model_config_paths length must match checkpoint_paths length")
+        predictors: list[BallPredictor] = []
+        for idx, path in enumerate(checkpoint_paths):
+            fallback_model_cfg_path = None
+            if model_config_paths is not None:
+                fallback_model_cfg_path = model_config_paths[idx]
+            predictors.append(
+                BallPredictor.load_from_checkpoint(
+                    path,
+                    device=device,
+                    fallback_model_cfg_path=fallback_model_cfg_path,
+                )
+            )
         return cls(
             predictors=predictors,
             weights=weights,

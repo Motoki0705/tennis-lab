@@ -180,6 +180,7 @@ def build_predictor_runtime(*, inference_config: InferenceConfig) -> PredictorRu
         predictor = BallPredictor.load_from_checkpoint(
             inference_config.single_member.checkpoint,
             device=inference_config.device,
+            fallback_model_cfg_path=inference_config.single_member.model_config_path,
         )
         adapter = build_adapter_for_model(predictor.model)
         runner: _PredictRunner = _SingleModelRunner(
@@ -197,10 +198,12 @@ def build_predictor_runtime(*, inference_config: InferenceConfig) -> PredictorRu
 
         checkpoints = [member.checkpoint for member in inference_config.ensemble_members]
         weights = [float(member.weight) for member in inference_config.ensemble_members]
+        model_config_paths = [member.model_config_path for member in inference_config.ensemble_members]
         predictor = BallEnsemblePredictor.from_checkpoints(
             checkpoints,
             device=inference_config.device,
             weights=weights,
+            model_config_paths=model_config_paths,
             visibility_threshold=float(inference_config.visibility_threshold),
         )
         runner = _EnsembleModelRunner(predictor=predictor)
