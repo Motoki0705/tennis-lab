@@ -1,0 +1,3 @@
+checkpoints:
+  - outputs/wasb/hrcnet/logs/version_0/checkpoints/last.ckpt
+weights: null

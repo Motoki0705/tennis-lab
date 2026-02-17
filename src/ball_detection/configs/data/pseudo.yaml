@@ -1,0 +1,13 @@
+pseudo_root_dir: outputs/ball_detection/pseudo
+
+batch_size: 8
+num_workers: 4
+pin_memory: true
+
+image_h: 288
+image_w: 512
+
+max_seq_len: 16
+window_size: 16
+window_stride: 8
+min_window_size: 4
