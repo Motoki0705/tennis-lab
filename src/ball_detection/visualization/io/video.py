@@ -9,11 +9,8 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.ball_detection.inference.video_api import (
-    VideoInferenceConfig,
-    VideoInferenceMemberConfig,
-    build_video_inference_config,
-)
+from src.ball_detection.inference.config import build_inference_config
+from src.ball_detection.inference.types import InferenceConfig, InferenceMemberConfig
 from src.ball_detection.visualization.types import RuntimeConfig, VideoInputs
 from src.wasb.utils.video_extractor import VideoExtractor
 
@@ -58,16 +55,16 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     vis = cfg.get("visualization", {}) or {}
     run = cfg.get("run", {}) or {}
 
-    inference_cfg = build_video_inference_config(cfg)
+    inference_cfg = build_inference_config(cfg)
     run_device = str(run.get("device", inference_cfg.device))
-    single_member = VideoInferenceMemberConfig(
+    single_member = InferenceMemberConfig(
         backend=inference_cfg.single_member.backend,
         checkpoint=_resolve_path(inference_cfg.single_member.checkpoint),
         weight=inference_cfg.single_member.weight,
         score_threshold=inference_cfg.single_member.score_threshold,
     )
     ensemble_members = tuple(
-        VideoInferenceMemberConfig(
+        InferenceMemberConfig(
             backend=member.backend,
             checkpoint=_resolve_path(member.checkpoint),
             weight=member.weight,
@@ -75,7 +72,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         )
         for member in inference_cfg.ensemble_members
     )
-    inference_cfg = VideoInferenceConfig(
+    inference_cfg = InferenceConfig(
         strategy=inference_cfg.strategy,
         device=_resolve_device(run_device),
         image_h=inference_cfg.image_h,
@@ -83,6 +80,8 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         batch_size=inference_cfg.batch_size,
         max_frames=inference_cfg.max_frames,
         window_size=inference_cfg.window_size,
+        clip_frames=inference_cfg.clip_frames,
+        clip_stride=inference_cfg.clip_stride,
         visibility_threshold=inference_cfg.visibility_threshold,
         single_member=single_member,
         ensemble_members=ensemble_members,

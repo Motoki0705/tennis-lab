@@ -12,7 +12,7 @@
 - `pseudo/components`: clip sampling, trajectory refinement, event tagging, quality checks
 - `pseudo/orchestrator.py`: end-to-end pseudo-label generation workflow
 - `training`: Lightning training modules and runner
-- `inference/video_api.py`: 動画向け推論 API（single / ensemble 切替）
+- `inference/`: 推論設定・predictor・heatmapアンサンブル・入力アダプター
 - `visualization/`: 可視化モジュール群（`api` / `adapters` / `io` / `rendering` / `analysis` / `orchestrator`）
 - `scripts`: Hydra entrypoints
 
@@ -54,7 +54,7 @@ Both presets keep heatmap generation inside `src/ball_detection` training logic.
 Hydra 設定で `inference.strategy=single|ensemble` を切り替えられます。
 
 ```bash
-# デフォルト: ensemble（TrackNetV3 ckpt + WASB ckpt）
+# デフォルト: ensemble（ball_detection ckpt群）
 uv run python -m src.ball_detection.scripts.visualize
 
 # 単体推論
