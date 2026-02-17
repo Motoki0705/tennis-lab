@@ -24,7 +24,7 @@ class BallDetectionPseudoDataModule(pl.LightningDataModule):
         self.persistent_workers = bool(data_cfg.get("persistent_workers", self.num_workers > 0))
         self.prefetch_factor = data_cfg.get("prefetch_factor", 2)
         self.image_size_hw = (int(data_cfg.get("image_h", 288)), int(data_cfg.get("image_w", 512)))
-        self.window_size = int(data_cfg.get("window_size", data_cfg.get("max_seq_len", 16)))
+        self.window_size = int(data_cfg.get("window_size", 16))
         self.window_stride = int(data_cfg.get("window_stride", max(1, self.window_size // 2)))
         self.min_window_size = int(data_cfg.get("min_window_size", 4))
 
