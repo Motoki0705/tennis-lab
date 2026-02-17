@@ -14,13 +14,16 @@ court_kp:
   mode: manual_ui  # model/manual_ui
   save_result: true
   output_path: ${output_dir}/court_kp_result.json
-  load_path: noutputs/tennis_scene/court_kp_result.jsonl  # Path to load pre-computed result (skips inference)
+  load_path: null  # Path to load pre-computed result (skips inference)
 
 gvhmr:
   checkpoint: third_party/GVHMR/inputs/checkpoints/gvhmr/gvhmr_siga24_release.ckpt
   yolo_checkpoint: third_party/GVHMR/inputs/checkpoints/yolo/yolov8x.pt
   vitpose_checkpoint: third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth
   hmr2_checkpoint: third_party/GVHMR/inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt
+  smplx_model_type: supermotion
+  smplx2smpl_path: third_party/GVHMR/hmr4d/utils/body_model/smplx2smpl_sparse.pt
+  smplx_body_model_path: null  # Optional override for SMPL/SMPL-X body model directory
   skip: false
   # GVHMR runs as CLI subprocess in separate venv
   python_executable: third_party/GVHMR/.venv/bin/python
@@ -33,10 +36,10 @@ wasb:
   skip: false
   save_result: true
   output_path: ${output_dir}/wasb_result.json
-  load_path: null  # Path to load pre-computed result (skips inference)
+  load_path: outputs/tennis_scene/wasb_result.json  # Path to load pre-computed result (skips inference)
 
 trajectory:
-  checkpoint: checkpoints/trajectory_completion/uv/last.ckpt
+  checkpoint: checkpoints/trajectory_completion/last.ckpt
   skip: false
   merge_observed: false
   in_frame_threshold: 0.5
@@ -44,7 +47,7 @@ trajectory:
   use_in_frame_pred_for_visibility: true
   save_result: true
   output_path: ${output_dir}/trajectory_result.json
-  load_path: null  # Path to load pre-computed result (skips inference)
+  load_path: outputs/tennis_scene/trajectory_result.json  # Path to load pre-computed result (skips inference)
 
 event_uv:
   checkpoint: checkpoints/event_detection/uv/last.ckpt
@@ -54,20 +57,20 @@ event_uv:
   top_k: null
   save_result: true
   output_path: ${output_dir}/event_uv_result.json
-  load_path: null  # Path to load pre-computed result (skips inference)
+  load_path: outputs/tennis_scene/event_uv_result.json  # Path to load pre-computed result (skips inference)
 
 plcs:
   checkpoint: checkpoints/plcs/frame/last.ckpt
   save_result: true
   output_path: ${output_dir}/plcs_result.json
-  load_path: null  # Path to load pre-computed result (skips inference)
+  load_path: outputs/tennis_scene/plcs_result.json  # Path to load pre-computed result (skips inference)
 
 blcs:
   checkpoint: checkpoints/blcs/single/last.ckpt
   skip: false
   save_result: true
   output_path: ${output_dir}/blcs_result.json
-  load_path: null  # Path to load pre-computed result (skips inference)
+  load_path: outputs/tennis_scene/blcs_result.json  # Path to load pre-computed result (skips inference)
 
 event_3d:
   checkpoint: checkpoints/event_detection/traj3d/last.ckpt
@@ -77,7 +80,7 @@ event_3d:
   top_k: null
   save_result: true
   output_path: ${output_dir}/event_3d_result.json
-  load_path: null  # Path to load pre-computed result (skips inference)
+  load_path: outputs/tennis_scene/event_3d_result.json  # Path to load pre-computed result (skips inference)
 
 max_frames: null
 

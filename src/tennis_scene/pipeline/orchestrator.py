@@ -100,12 +100,25 @@ class TennisSceneOrchestrator:
 
         gvhmr_config = None
         if Stage.GVHMR in resolution.enabled_set:
+            smplx_body_model_path = cfg.gvhmr.get("smplx_body_model_path")
             gvhmr_config = {
                 "python_executable": to_absolute_path(cfg.gvhmr.python_executable),
                 "model_checkpoint": to_absolute_path(cfg.gvhmr.checkpoint),
                 "yolo_checkpoint": to_absolute_path(cfg.gvhmr.yolo_checkpoint),
                 "vitpose_checkpoint": to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
                 "hmr2_checkpoint": to_absolute_path(cfg.gvhmr.hmr2_checkpoint),
+                "smplx_model_type": str(cfg.gvhmr.get("smplx_model_type", "supermotion")),
+                "smplx2smpl_path": str(
+                    cfg.gvhmr.get(
+                        "smplx2smpl_path",
+                        "hmr4d/utils/body_model/smplx2smpl_sparse.pt",
+                    )
+                ),
+                "smplx_body_model_path": (
+                    to_absolute_path(str(smplx_body_model_path))
+                    if smplx_body_model_path is not None
+                    else None
+                ),
                 "output_path": get_output_path("gvhmr", "gvhmr_result.json"),
                 "load_path": get_load_path("gvhmr"),
                 "device": device,
@@ -234,8 +247,14 @@ class TennisSceneOrchestrator:
             f"--yolo-checkpoint={self.gvhmr_config['yolo_checkpoint']}",
             f"--vitpose-checkpoint={self.gvhmr_config['vitpose_checkpoint']}",
             f"--hmr2-checkpoint={self.gvhmr_config['hmr2_checkpoint']}",
+            f"--smplx-model-type={self.gvhmr_config['smplx_model_type']}",
+            f"--smplx2smpl-path={self.gvhmr_config['smplx2smpl_path']}",
             f"--device={self.gvhmr_config['device']}",
         ]
+        if self.gvhmr_config.get("smplx_body_model_path") is not None:
+            cmd.append(
+                f"--smplx-body-model-path={self.gvhmr_config['smplx_body_model_path']}"
+            )
         if max_frames is not None:
             cmd.append(f"--max-frames={max_frames}")
 
