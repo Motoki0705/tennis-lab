@@ -15,4 +15,5 @@ image_w: 512
 window_size: 4
 window_stride: 4
 min_window_size: 4
-context_frames: 1
+
+context_frames: 3

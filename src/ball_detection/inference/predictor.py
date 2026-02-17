@@ -9,6 +9,7 @@ import torch
 from torch import Tensor
 
 from src.base.inference.predictor import BasePredictor
+from src.ball_detection.models.heatmap_utils import decode_heatmap_logits
 from src.ball_detection.models import build_model
 
 
@@ -30,14 +31,20 @@ class BallPredictor(BasePredictor):
         _ = kwargs
         ckpt = cls._ensure_checkpoint(checkpoint_path)
         device_obj = cls._resolve_device(device)
-        state = torch.load(ckpt[0], map_location=device_obj)
+        state = torch.load(ckpt[0], map_location=device_obj, weights_only=False)
 
-        model = build_model({})
+        cfg = {}
+        hyper_params = state.get("hyper_parameters", {}) if isinstance(state, dict) else {}
+        if isinstance(hyper_params, dict):
+            cfg_candidate = hyper_params.get("config", {})
+            if isinstance(cfg_candidate, dict):
+                cfg = cfg_candidate
+
+        model = build_model(cfg)
         state_dict = state.get("state_dict", state)
         remapped = {
-            k.replace("model.", "", 1): v
+            (k.replace("model.", "", 1) if k.startswith("model.") else k): v
             for k, v in state_dict.items()
-            if k.startswith("model.") or k.startswith("encoder")
         }
         missing, unexpected = model.load_state_dict(remapped, strict=False)
         if unexpected:
@@ -54,8 +61,13 @@ class BallPredictor(BasePredictor):
             frames = frames.unsqueeze(0)
         frames = frames.to(self.device)
         out = self.model(frames)
-        xy = out["xy"].detach().cpu()
-        vis_logit = out["visibility_logit"].detach().cpu()
+        if "heatmap_logits" in out:
+            xy, vis_logit = decode_heatmap_logits(out["heatmap_logits"])
+        else:
+            xy = out["xy"]
+            vis_logit = out["visibility_logit"]
+        xy = xy.detach().cpu()
+        vis_logit = vis_logit.detach().cpu()
         vis_prob = torch.sigmoid(vis_logit)
         return {
             "ball_uv": xy,

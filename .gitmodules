@@ -25,3 +25,9 @@
 [submodule "third_party/ConvNeXt-V2"]
 	path = third_party/ConvNeXt-V2
 	url = https://github.com/facebookresearch/ConvNeXt-V2.git
+[submodule "third_party/TrackNetV3"]
+	path = third_party/TrackNetV3
+	url = https://github.com/qaz812345/TrackNetV3.git
+[submodule "third_party/TrackNet"]
+	path = third_party/TrackNet
+	url = https://github.com/yastrebksv/TrackNet.git
