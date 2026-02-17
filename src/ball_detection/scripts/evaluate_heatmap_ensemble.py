@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +14,7 @@ import torch
 from omegaconf import OmegaConf
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
+from tqdm.auto import tqdm
 
 from src.ball_detection.data.datamodule import collate_ball_sequences
 from src.ball_detection.data.labeled_dataset import LabeledBallDataset
@@ -153,6 +156,13 @@ def _update_counts(
     return int(correct), int(total)
 
 
+def _format_seconds(seconds: float) -> str:
+    seconds = max(float(seconds), 0.0)
+    m, s = divmod(int(seconds), 60)
+    h, m = divmod(m, 60)
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+
 def _evaluate(
     *,
     dataloader: DataLoader,
@@ -162,6 +172,10 @@ def _evaluate(
     acc_threshold_px: float,
     image_w: int,
     image_h: int,
+    amp_mode: str,
+    amp_dtype: torch.dtype,
+    log_every: int,
+    show_progress: bool,
 ) -> dict[str, float]:
     counters: dict[str, list[int]] = {
         "tracknet": [0, 0],
@@ -184,16 +198,39 @@ def _evaluate(
 
     eps = 1e-6
 
-    with torch.no_grad():
-        for batch in dataloader:
-            frames_ctx = batch["frames"].to(device)
+    total_batches = len(dataloader)
+    start_time = time.perf_counter()
+
+    with torch.inference_mode():
+        iterator = tqdm(
+            dataloader,
+            total=total_batches,
+            desc="Evaluating",
+            unit="batch",
+            dynamic_ncols=True,
+            leave=True,
+            disable=not show_progress,
+        )
+        for batch_idx, batch in enumerate(iterator, start=1):
+            frames_ctx = batch["frames"].to(device, non_blocking=True)
+            if device.type == "cuda" and amp_mode != "none":
+                frames_ctx = frames_ctx.to(dtype=amp_dtype)
             target_xy = batch["target_xy"].to(device)
             target_vis = batch["target_vis"].to(device)
             frame_mask = batch["frame_mask"].to(device)
 
-            track_frames = frames_ctx[:, :, 3:6]
-            track_logits = track_model(track_frames)["heatmap_logits"]
-            hr_logits = _wasb_center_logits(hrnet_model, frames_ctx)
+            amp_ctx = (
+                torch.autocast(device_type="cuda", dtype=amp_dtype)
+                if device.type == "cuda" and amp_mode != "none"
+                else nullcontext()
+            )
+            with amp_ctx:
+                track_frames = frames_ctx[:, :, 3:6]
+                track_logits = track_model(track_frames)["heatmap_logits"]
+                hr_logits = _wasb_center_logits(hrnet_model, frames_ctx)
+
+            track_logits = track_logits.float()
+            hr_logits = hr_logits.float()
 
             track_xy, track_conf = decode_heatmap_logits(track_logits)
             hr_xy, hr_conf = decode_heatmap_logits(hr_logits)
@@ -284,6 +321,34 @@ def _evaluate(
                 counters[f"ens_coord_w{w:.2f}"][0] += c
                 counters[f"ens_coord_w{w:.2f}"][1] += t
 
+            if show_progress:
+                elapsed = time.perf_counter() - start_time
+                per_batch = elapsed / max(batch_idx, 1)
+                remaining = per_batch * max(total_batches - batch_idx, 0)
+
+                track_total = max(counters["tracknet"][1], 1)
+                hr_total = max(counters["wasb_hrnet"][1], 1)
+                track_acc = counters["tracknet"][0] / track_total
+                hr_acc = counters["wasb_hrnet"][0] / hr_total
+
+                iterator.set_postfix(
+                    {
+                        "trk": f"{track_acc:.3f}",
+                        "hr": f"{hr_acc:.3f}",
+                        "eta": _format_seconds(remaining),
+                    }
+                )
+
+                if batch_idx % max(log_every, 1) == 0 or batch_idx == total_batches:
+                    print(
+                        "[eval] "
+                        f"{batch_idx}/{total_batches} "
+                        f"elapsed={_format_seconds(elapsed)} "
+                        f"eta={_format_seconds(remaining)} "
+                        f"track_acc={track_acc:.4f} hrnet_acc={hr_acc:.4f}",
+                        flush=True,
+                    )
+
     results: dict[str, float] = {}
     for name, (correct, total) in counters.items():
         results[name] = float(correct) / float(max(total, 1))
@@ -318,13 +383,19 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--root-dir", type=Path, default=Path("data/tennis"))
     parser.add_argument("--games", nargs="+", default=_default_games())
-    parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--num-workers", type=int, default=4)
+    parser.add_argument("--batch-size", type=int, default=2)
+    parser.add_argument("--num-workers", type=int, default=2)
+    parser.add_argument("--prefetch-factor", type=int, default=1)
+    parser.add_argument("--pin-memory", action="store_true")
+    parser.add_argument("--persistent-workers", action="store_true")
     parser.add_argument("--image-h", type=int, default=288)
     parser.add_argument("--image-w", type=int, default=512)
     parser.add_argument("--seq-len", type=int, default=8)
     parser.add_argument("--acc-threshold-px", type=float, default=4.0)
     parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--amp", type=str, choices=["none", "fp16", "bf16"], default="fp16")
+    parser.add_argument("--log-every", type=int, default=10)
+    parser.add_argument("--no-progress", action="store_true")
     parser.add_argument("--output-json", type=Path, default=None)
     return parser.parse_args()
 
@@ -333,7 +404,22 @@ def main() -> None:
     args = _parse_args()
 
     device = torch.device(args.device if torch.cuda.is_available() and args.device == "cuda" else "cpu")
+    amp_mode = str(args.amp)
+    if device.type != "cuda":
+        amp_mode = "none"
+
+    amp_dtype = torch.float16
+    if amp_mode == "bf16":
+        amp_dtype = torch.bfloat16
+
     print(f"Using device: {device}")
+    print(
+        "Eval settings: "
+        f"batch_size={args.batch_size}, num_workers={args.num_workers}, "
+        f"prefetch_factor={args.prefetch_factor}, pin_memory={bool(args.pin_memory)}, "
+        f"persistent_workers={bool(args.persistent_workers)}, amp={amp_mode}",
+        flush=True,
+    )
 
     dataset = LabeledBallDataset(
         root_dir=args.root_dir,
@@ -344,16 +430,18 @@ def main() -> None:
         min_window_size=int(args.seq_len),
         context_frames=3,
     )
-    dataloader = DataLoader(
-        dataset,
-        batch_size=int(args.batch_size),
-        shuffle=False,
-        num_workers=int(args.num_workers),
-        pin_memory=True,
-        drop_last=False,
-        persistent_workers=bool(args.num_workers > 0),
-        collate_fn=collate_ball_sequences,
-    )
+    dataloader_kwargs: dict[str, Any] = {
+        "batch_size": int(args.batch_size),
+        "shuffle": False,
+        "num_workers": int(args.num_workers),
+        "pin_memory": bool(args.pin_memory),
+        "drop_last": False,
+        "collate_fn": collate_ball_sequences,
+    }
+    if int(args.num_workers) > 0:
+        dataloader_kwargs["persistent_workers"] = bool(args.persistent_workers)
+        dataloader_kwargs["prefetch_factor"] = int(args.prefetch_factor)
+    dataloader = DataLoader(dataset, **dataloader_kwargs)
 
     track_model = _load_ball_detection_model(
         checkpoint_path=args.tracknet_checkpoint,
@@ -374,6 +462,10 @@ def main() -> None:
         acc_threshold_px=float(args.acc_threshold_px),
         image_w=int(args.image_w),
         image_h=int(args.image_h),
+        amp_mode=amp_mode,
+        amp_dtype=amp_dtype,
+        log_every=int(args.log_every),
+        show_progress=not bool(args.no_progress),
     )
 
     single_best = max(results.get("tracknet", 0.0), results.get("wasb_hrnet", 0.0))

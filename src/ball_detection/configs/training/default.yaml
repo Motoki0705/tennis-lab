@@ -4,7 +4,7 @@ trainer:
   deterministic: false
   benchmark: true
   precision: "bf16-mixed"
-  log_every_n_steps: 50
+  log_every_n_steps: 10
   check_val_every_n_epoch: 1
 
 allow_tf32: true
