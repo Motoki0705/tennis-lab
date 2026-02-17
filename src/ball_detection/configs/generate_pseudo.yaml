@@ -1,0 +1,13 @@
+defaults:
+  - data: unlabeled
+  - ensemble: default
+  - pseudo: default
+  - run: generate_pseudo
+  - _self_
+
+hydra:
+  run:
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
