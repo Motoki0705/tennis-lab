@@ -1,0 +1,45 @@
+trainer:
+  max_epochs: 30
+  gradient_clip_val: 1.0
+  deterministic: false
+  benchmark: true
+  precision: "bf16-mixed"
+  log_every_n_steps: 50
+  check_val_every_n_epoch: 1
+
+allow_tf32: true
+matmul_precision: high
+
+learning_rate: 1.0e-4
+weight_decay: 1.0e-5
+warmup_steps: 200
+min_lr: 1.0e-6
+
+xy_weight: 1.0
+vis_weight: 0.5
+event_boost: 0.0
+
+# event-aware training emphasis near detected events
+event_schedule:
+  enabled: true
+  max_boost: 1.0
+  warmup_epochs: 10
+
+checkpoint:
+  enabled: true
+  filename: "ball-detection-{epoch:02d}"
+  monitor: val/loss
+  mode: min
+  save_top_k: 3
+  save_last: true
+
+early_stopping:
+  enabled: false
+  monitor: val/loss
+  mode: min
+  patience: 10
+  min_delta: null
+
+lr_monitor:
+  enabled: true
+  interval: step

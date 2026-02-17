@@ -1,0 +1,28 @@
+name: temporal_memory_ball_detector
+
+in_channels: 3
+hidden_dim: 256
+base_channels: 64
+num_scales: 8
+num_heads: 8
+
+pad_size: 8
+max_spatial_tokens: 128
+num_queries: 1
+
+num_frame_cross_layers: 2
+msda_num_points: 4
+msda_use_cuda_kernel: true
+msda_allow_fallback: true
+msda_offset_scale: 0.5
+num_spatiotemporal_layers: 2
+num_query_cross_layers: 1
+num_query_temporal_layers: 1
+
+max_seq_len: 64
+dropout: 0.1
+rope_theta: 10000.0
+causal: false
+
+# optional
+# mlp_inter_dim: 512

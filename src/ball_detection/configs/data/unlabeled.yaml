@@ -1,0 +1,6 @@
+root_dir: data/tennis
+unlabeled_games: ["game10"]
+batch_size: 32
+num_workers: 4
+image_h: 288
+image_w: 512
