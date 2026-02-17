@@ -1,0 +1,7 @@
+output_dir: outputs/ball_detection/pseudo
+trajectory_checkpoint: checkpoints/trajectory_completion/last.ckpt
+event_checkpoint: checkpoints/event_detection/uv/last.ckpt
+confidence_threshold: 0.3
+min_clip_length: 16
+max_gap: 4
+allow_overwrite: false
