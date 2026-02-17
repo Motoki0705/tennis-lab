@@ -13,6 +13,7 @@ from src.ball_detection.inference.types import InferenceConfig, InferenceMemberC
 _DEFAULT_TRACKNET_CHECKPOINT = Path(
     "outputs/ball_detection/tracknetv3_wbce_full_e30/logs/version_0/checkpoints/last.ckpt"
 )
+_DEFAULT_TRACKNET_MODEL_CONFIG = Path("src/ball_detection/configs/model/tracknetv3.yaml")
 
 
 def _cfg_get(cfg: Any, key: str, default: Any = None) -> Any:
@@ -63,6 +64,11 @@ def _parse_member(
     return InferenceMemberConfig(
         backend=backend,
         checkpoint=Path(str(checkpoint_raw)).expanduser(),
+        model_config_path=(
+            Path(str(_cfg_get(raw, "model_config_path", _cfg_get(raw, "model_config", "")))).expanduser()
+            if str(_cfg_get(raw, "model_config_path", _cfg_get(raw, "model_config", ""))).strip()
+            else None
+        ),
         weight=float(_cfg_get(raw, "weight", default_weight)),
         score_threshold=float(_cfg_get(raw, "score_threshold", default_score_threshold)),
     )
@@ -85,6 +91,14 @@ def build_inference_config(cfg: DictConfig) -> InferenceConfig:
         default_weight=1.0,
         default_score_threshold=default_score_threshold,
     )
+    if single_member.model_config_path is None:
+        single_member = InferenceMemberConfig(
+            backend=single_member.backend,
+            checkpoint=single_member.checkpoint,
+            model_config_path=_DEFAULT_TRACKNET_MODEL_CONFIG,
+            weight=single_member.weight,
+            score_threshold=single_member.score_threshold,
+        )
 
     ensemble_cfg = _cfg_get(inf, "ensemble", {})
     members_raw = list(_cfg_get(ensemble_cfg, "members", []))
@@ -93,6 +107,7 @@ def build_inference_config(cfg: DictConfig) -> InferenceConfig:
             {
                 "backend": "ball_detection",
                 "checkpoint": str(_DEFAULT_TRACKNET_CHECKPOINT),
+                "model_config_path": str(_DEFAULT_TRACKNET_MODEL_CONFIG),
                 "weight": 1.0,
                 "score_threshold": default_score_threshold,
             }

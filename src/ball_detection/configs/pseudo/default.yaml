@@ -4,4 +4,5 @@ event_checkpoint: checkpoints/event_detection/uv/last.ckpt
 confidence_threshold: 0.3
 min_clip_length: 16
 max_gap: 4
+jpeg_quality: 95
 allow_overwrite: false

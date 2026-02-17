@@ -19,6 +19,7 @@ class InferenceMemberConfig:
 
     backend: str
     checkpoint: Path
+    model_config_path: Path | None
     weight: float
     score_threshold: float
 
