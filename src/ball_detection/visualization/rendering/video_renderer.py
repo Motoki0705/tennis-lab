@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
-from src.ball_detection.inference.video_api import VideoInferenceResult
+from src.ball_detection.inference.types import InferenceResult
 
 
 @dataclass(frozen=True)
@@ -45,7 +45,7 @@ def _draw_trail(
 def render_overlay_video(
     *,
     frames_rgb: NDArray[np.uint8],
-    predictions: VideoInferenceResult,
+    predictions: InferenceResult,
     output_path: Path,
     fps: float,
     config: OverlayRenderConfig,

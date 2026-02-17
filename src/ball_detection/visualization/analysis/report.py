@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from src.ball_detection.inference.video_api import VideoInferenceResult
+from src.ball_detection.inference.types import InferenceResult
 from src.ball_detection.visualization.types import VideoInputs
 
 
@@ -21,7 +21,7 @@ def print_video_info(inputs: VideoInputs) -> None:
     print("=" * 60)
 
 
-def print_prediction_summary(result: VideoInferenceResult) -> None:
+def print_prediction_summary(result: InferenceResult) -> None:
     """Print inference summary metrics."""
     num_frames = int(result.frame_indices.shape[0])
     if num_frames == 0:
@@ -43,7 +43,7 @@ def print_prediction_summary(result: VideoInferenceResult) -> None:
     print("=" * 60)
 
 
-def save_predictions(path: Path, result: VideoInferenceResult) -> Path:
+def save_predictions(path: Path, result: InferenceResult) -> Path:
     """Save inference arrays to NPZ artifact."""
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez(

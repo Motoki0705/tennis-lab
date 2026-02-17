@@ -9,6 +9,8 @@ device: auto
 batch_size: 16
 max_frames: null
 window_size: null
+clip_frames: null
+clip_stride: null
 image_h: 288
 image_w: 512
 
@@ -27,7 +29,7 @@ ensemble:
       checkpoint: outputs/ball_detection/tracknetv3_wbce_full_e30/logs/version_0/checkpoints/last.ckpt
       weight: 0.5
       score_threshold: 0.5
-    - backend: wasb
-      checkpoint: checkpoints/wasb/wasb_tennis_best.pth.tar
+    - backend: ball_detection
+      checkpoint: outputs/ball_detection/tracknetv3_wbce_full_e30/logs/version_0/checkpoints/last.ckpt
       weight: 0.5
       score_threshold: 0.5

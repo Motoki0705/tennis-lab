@@ -9,7 +9,7 @@ import numpy as np
 from numpy.typing import NDArray
 from omegaconf import DictConfig
 
-from src.ball_detection.inference.video_api import VideoInferenceConfig
+from src.ball_detection.inference.types import InferenceConfig
 
 
 @dataclass(frozen=True)
@@ -29,7 +29,7 @@ class RuntimeConfig:
     show_score: bool
     show_trail: bool
     trail_length: int
-    inference: VideoInferenceConfig
+    inference: InferenceConfig
     hydra_cfg: DictConfig
 
 
