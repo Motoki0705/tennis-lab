@@ -33,6 +33,7 @@ class LabeledBallDataset(Dataset[dict[str, Tensor]]):
         window_size: int = 16,
         window_stride: int = 8,
         min_window_size: int = 4,
+        context_frames: int = 1,
     ) -> None:
         self.root_dir = Path(root_dir)
         self.games = games
@@ -40,12 +41,17 @@ class LabeledBallDataset(Dataset[dict[str, Tensor]]):
         self.window_size = int(window_size)
         self.window_stride = int(window_stride)
         self.min_window_size = int(min_window_size)
+        self.context_frames = int(context_frames)
         if self.window_size <= 0:
             raise ValueError("window_size must be positive.")
         if self.window_stride <= 0:
             raise ValueError("window_stride must be positive.")
         if self.min_window_size <= 0:
             raise ValueError("min_window_size must be positive.")
+        if self.context_frames <= 0:
+            raise ValueError("context_frames must be positive.")
+        if self.context_frames % 2 == 0:
+            raise ValueError("context_frames must be an odd number.")
 
         self.transform = transforms.Compose([transforms.Resize(image_size_hw), transforms.ToTensor()])
 
@@ -106,31 +112,55 @@ class LabeledBallDataset(Dataset[dict[str, Tensor]]):
     def __len__(self) -> int:
         return len(self.windows)
 
+    def _stack_context_frames(self, frames: list[Tensor]) -> list[Tensor]:
+        if self.context_frames == 1:
+            return frames
+
+        radius = self.context_frames // 2
+        stacked: list[Tensor] = []
+        total = len(frames)
+        for center_idx in range(total):
+            neighbors: list[Tensor] = []
+            for offset in range(-radius, radius + 1):
+                src_idx = min(max(center_idx + offset, 0), total - 1)
+                neighbors.append(frames[src_idx])
+            stacked.append(torch.cat(neighbors, dim=0))
+        return stacked
+
     def __getitem__(self, index: int) -> dict[str, Tensor]:
         clip_idx, start, end = self.windows[index]
         clip = self.clips[clip_idx]
 
-        frames: list[Tensor] = []
+        frames_raw: list[Tensor] = []
         target_xy: list[Tensor] = []
         target_vis: list[Tensor] = []
+        widths: list[int] = []
+        heights: list[int] = []
         for t in range(start, end):
             frame_path = clip.frame_paths[t]
             with Image.open(frame_path) as img:
                 img = img.convert("RGB")
                 w, h = img.size
                 frame = self.transform(img)
-            frames.append(frame)
+            frames_raw.append(frame)
+            widths.append(w)
+            heights.append(h)
 
             x = clip.xs[t]
             y = clip.ys[t]
             vis_bin = 1.0 if clip.vis[t] > 0 else 0.0
             target_xy.append(
                 torch.tensor(
-                    [x / max(w - 1, 1), y / max(h - 1, 1)],
+                    [
+                        x / max(widths[-1] - 1, 1),
+                        y / max(heights[-1] - 1, 1),
+                    ],
                     dtype=torch.float32,
                 )
             )
             target_vis.append(torch.tensor(vis_bin, dtype=torch.float32))
+
+        frames = self._stack_context_frames(frames_raw)
 
         seq_len = end - start
         return {
