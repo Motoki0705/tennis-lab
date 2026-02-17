@@ -53,6 +53,10 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from src.common.models.components.ops.deformable import (  # noqa: F401
+    MSDeformAttnConfig,
+    MultiScaleDeformableAttention,
+)
 from src.common.models.components.rope import apply_rotary_emb, apply_rotary_emb_2d
 
 

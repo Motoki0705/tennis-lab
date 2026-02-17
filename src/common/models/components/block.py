@@ -47,7 +47,9 @@ from torch import nn
 
 from src.common.models.components.attention import (
     KVCache,
+    MSDeformAttnConfig,
     MultiHeadCrossAttention,
+    MultiScaleDeformableAttention,
     MultiHeadSelfAttention,
 )
 from src.common.models.components.moe import MoE, MoEConfig, SwiGLU
@@ -231,6 +233,120 @@ class CrossAttnBlock(nn.Module):
             freqs_q_cis=freqs_q_cis,
             freqs_k_cis=freqs_k_cis,
             attn_mask=attn_mask,
+        )
+        q = q + self.ffn(self.ffn_norm(q))
+        return q
+
+
+@dataclass
+class MSDeformCrossAttnBlockConfig:
+    """Configuration for MSDeformCrossAttnBlock."""
+
+    dim: int
+    n_heads: int
+    n_levels: int
+    n_points: int
+    mlp_inter_dim: int
+    attn_dropout: float = 0.0
+    use_cuda_kernel: bool = True
+    allow_fallback: bool = True
+    offset_scale: float = 0.5
+
+
+class MSDeformCrossAttnBlock(nn.Module):
+    """Pre-norm multi-scale deformable cross-attention block."""
+
+    def __init__(self, cfg: MSDeformCrossAttnBlockConfig) -> None:
+        super().__init__()
+        self.cfg = cfg
+
+        if cfg.dim % cfg.n_heads != 0:
+            raise ValueError("dim must be divisible by n_heads.")
+        if cfg.n_levels <= 0:
+            raise ValueError("n_levels must be positive.")
+        if cfg.n_points <= 0:
+            raise ValueError("n_points must be positive.")
+
+        self.q_norm = RMSNorm(cfg.dim)
+        self.kv_norm = RMSNorm(cfg.dim)
+        self.attn = MultiScaleDeformableAttention(
+            MSDeformAttnConfig(
+                dim=cfg.dim,
+                num_heads=cfg.n_heads,
+                num_levels=cfg.n_levels,
+                num_points=cfg.n_points,
+                use_cuda_kernel=cfg.use_cuda_kernel,
+                allow_fallback=cfg.allow_fallback,
+            )
+        )
+        self.ref_point_proj = nn.Linear(cfg.dim, cfg.n_levels * 2)
+        self.offset_proj = nn.Linear(cfg.dim, cfg.n_heads * cfg.n_levels * cfg.n_points * 2)
+        self.attn_weight_proj = nn.Linear(cfg.dim, cfg.n_heads * cfg.n_levels * cfg.n_points)
+
+        self.offset_scale = float(cfg.offset_scale)
+        self.dropout = nn.Dropout(float(cfg.attn_dropout))
+        self.ffn_norm = RMSNorm(cfg.dim)
+        self.ffn = SwiGLU(cfg.dim, cfg.mlp_inter_dim)
+
+    def _prepare_memory(self, memory_levels: list[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
+        if len(memory_levels) != self.cfg.n_levels:
+            raise ValueError(
+                f"Expected {self.cfg.n_levels} memory levels, got {len(memory_levels)}."
+            )
+
+        value_levels: list[torch.Tensor] = []
+        spatial_shapes: list[tuple[int, int]] = []
+        bsz_ref = int(memory_levels[0].shape[0])
+        for lvl in memory_levels:
+            if lvl.dim() != 4:
+                raise ValueError(f"memory level must be (B,D,H,W), got {tuple(lvl.shape)}")
+            bsz, dim, h, w = lvl.shape
+            if bsz != bsz_ref:
+                raise ValueError("All memory levels must have the same batch size.")
+            if dim != self.cfg.dim:
+                raise ValueError(f"Expected memory dim {self.cfg.dim}, got {dim}.")
+            tok = lvl.flatten(2).transpose(1, 2).contiguous()
+            tok = self.kv_norm(tok)
+            value_levels.append(tok)
+            spatial_shapes.append((int(h), int(w)))
+
+        value = torch.cat(value_levels, dim=1)
+        shape_t = torch.tensor(spatial_shapes, device=value.device, dtype=torch.long)
+        return value, shape_t
+
+    def _build_sampling(self, q_norm: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        bsz, q_len, _ = q_norm.shape
+        n_heads = self.cfg.n_heads
+        n_levels = self.cfg.n_levels
+        n_points = self.cfg.n_points
+
+        ref = torch.sigmoid(self.ref_point_proj(q_norm)).view(bsz, q_len, n_levels, 2)
+        offsets = self.offset_proj(q_norm).view(bsz, q_len, n_heads, n_levels, n_points, 2)
+        offsets = torch.tanh(offsets) * self.offset_scale
+        sampling_locations = torch.clamp(ref[:, :, None, :, None, :] + offsets, min=0.0, max=1.0)
+
+        weights = self.attn_weight_proj(q_norm).view(bsz, q_len, n_heads, n_levels * n_points)
+        weights = torch.softmax(weights, dim=-1).view(bsz, q_len, n_heads, n_levels, n_points)
+        return sampling_locations, weights
+
+    def forward(self, q: torch.Tensor, memory_levels: list[torch.Tensor]) -> torch.Tensor:
+        if q.dim() != 3:
+            raise ValueError(f"q must be (B,Q,D), got {tuple(q.shape)}")
+        if q.shape[-1] != self.cfg.dim:
+            raise ValueError(f"q dim mismatch: expected {self.cfg.dim}, got {q.shape[-1]}")
+
+        q_norm = self.q_norm(q)
+        value, spatial_shapes = self._prepare_memory(memory_levels)
+        sampling_locations, attention_weights = self._build_sampling(q_norm)
+
+        q = q + self.dropout(
+            self.attn(
+                query=q_norm,
+                value=value,
+                spatial_shapes=spatial_shapes,
+                sampling_locations=sampling_locations,
+                attention_weights=attention_weights,
+            )
         )
         q = q + self.ffn(self.ffn_norm(q))
         return q

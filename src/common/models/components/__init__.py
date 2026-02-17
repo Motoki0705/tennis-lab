@@ -16,12 +16,16 @@ Strategy A treats the DeepSeek-style implementation as canonical.
 
 from src.common.models.components.attention import (
     KVCache,
+    MSDeformAttnConfig,
     MultiHeadCrossAttention,
+    MultiScaleDeformableAttention,
     MultiHeadSelfAttention,
 )
 from src.common.models.components.block import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
+    MSDeformCrossAttnBlock,
+    MSDeformCrossAttnBlockConfig,
     TransformerBlock,
     TransformerBlockConfig,
     ViTBlock,
@@ -44,6 +48,8 @@ __all__ = [
     "KVCache",
     "MultiHeadCrossAttention",
     "MultiHeadSelfAttention",
+    "MSDeformAttnConfig",
+    "MultiScaleDeformableAttention",
     # Norm
     "RMSNorm",
     "LayerNorm",
@@ -64,6 +70,8 @@ __all__ = [
     "TransformerBlock",
     "CrossAttnBlockConfig",
     "CrossAttnBlock",
+    "MSDeformCrossAttnBlockConfig",
+    "MSDeformCrossAttnBlock",
     "ViTBlockConfig",
     "ViTBlock",
 ]

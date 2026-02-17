@@ -10,18 +10,19 @@ from torch import Tensor, nn
 from src.common.models import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
+    MSDeformCrossAttnBlock,
+    MSDeformCrossAttnBlockConfig,
     TransformerBlock,
     TransformerBlockConfig,
     precompute_freqs_cis,
 )
-from src.common.models.components.rope import apply_rotary_emb_2d, precompute_freqs_cis_2d
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
 class BallDetectorModel(nn.Module):
-    """Ball detector with frame-memory cross attention and space-time attention."""
+    """Ball detector with deformable frame-memory attention and space-time attention."""
 
     def __init__(
         self,
@@ -43,6 +44,10 @@ class BallDetectorModel(nn.Module):
         rope_theta: float = 10000.0,
         causal: bool = False,
         mlp_inter_dim: int | None = None,
+        msda_num_points: int = 4,
+        msda_use_cuda_kernel: bool = True,
+        msda_allow_fallback: bool = True,
+        msda_offset_scale: float = 0.5,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -55,8 +60,6 @@ class BallDetectorModel(nn.Module):
 
         if self.hidden_dim % self.num_heads != 0:
             raise ValueError("hidden_dim must be divisible by num_heads.")
-        if self.hidden_dim % 4 != 0:
-            raise ValueError("hidden_dim must be divisible by 4 for 2D RoPE.")
         if self.max_spatial_tokens <= 0:
             raise ValueError("max_spatial_tokens must be positive.")
         if self.num_scales <= 0:
@@ -113,14 +116,17 @@ class BallDetectorModel(nn.Module):
 
         self.frame_cross_layers = nn.ModuleList(
             [
-                CrossAttnBlock(
-                    CrossAttnBlockConfig(
+                MSDeformCrossAttnBlock(
+                    MSDeformCrossAttnBlockConfig(
                         dim=self.hidden_dim,
                         n_heads=self.num_heads,
+                        n_levels=self.num_memory_scales,
+                        n_points=int(msda_num_points),
                         mlp_inter_dim=mlp_inter_dim_value,
-                        head_dim=head_dim,
-                        rope_dim=0,
                         attn_dropout=float(dropout),
+                        use_cuda_kernel=bool(msda_use_cuda_kernel),
+                        allow_fallback=bool(msda_allow_fallback),
+                        offset_scale=float(msda_offset_scale),
                     )
                 )
                 for _ in range(int(num_frame_cross_layers))
@@ -214,7 +220,6 @@ class BallDetectorModel(nn.Module):
             device=None,
         )
         self.register_buffer("temporal_freqs_cis", freqs_cis, persistent=False)
-        self._rope2d_cache: dict[tuple[int, int, torch.device], tuple[Tensor, Tensor, Tensor]] = {}
 
     @staticmethod
     def _build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
@@ -228,32 +233,6 @@ class BallDetectorModel(nn.Module):
         )
         return attn_mask, valid_fixed
 
-    def _get_2d_rope_tables(
-        self,
-        *,
-        height: int,
-        width: int,
-        device: torch.device,
-    ) -> tuple[Tensor, Tensor, Tensor]:
-        key = (int(height), int(width), device)
-        cached = self._rope2d_cache.get(key)
-        if cached is not None:
-            return cached
-
-        freqs_y, freqs_x = precompute_freqs_cis_2d(
-            dim=self.hidden_dim,
-            height=int(height),
-            width=int(width),
-            base=100.0,
-            device=device,
-        )
-        y = torch.arange(height, device=device)
-        x = torch.arange(width, device=device)
-        pos = torch.cartesian_prod(y, x).view(1, height * width, 2)
-        cached = (freqs_y, freqs_x, pos)
-        self._rope2d_cache[key] = cached
-        return cached
-
     def _encode_backbone(self, x: Tensor) -> list[Tensor]:
         feats = []
         x = self.input_proj(self.input_pad(x))
@@ -263,25 +242,15 @@ class BallDetectorModel(nn.Module):
             feats.append(x)
         return feats
 
-    def _build_memory_tokens(self, features: list[Tensor]) -> Tensor:
-        memory_tokens: list[Tensor] = []
+    def _build_memory_levels(self, features: list[Tensor]) -> list[Tensor]:
+        levels: list[Tensor] = []
         for scale_id, (feat_idx, proj) in enumerate(
             zip(self.memory_scale_indices, self.memory_projections, strict=True)
         ):
-            feat = features[feat_idx]
-            bt, _, h, w = feat.shape
-            token = proj(feat).flatten(2).transpose(1, 2).contiguous()
-            freqs_y, freqs_x, pos = self._get_2d_rope_tables(height=h, width=w, device=feat.device)
-            token = apply_rotary_emb_2d(
-                token,
-                freqs_cis_y=freqs_y,
-                freqs_cis_x=freqs_x,
-                positions=pos.expand(bt, -1, -1),
-                interleaved=True,
-            )
-            token = token + self.scale_type_embedding.weight[scale_id].view(1, 1, -1)
-            memory_tokens.append(token)
-        return torch.cat(memory_tokens, dim=1)
+            feat = proj(features[feat_idx])
+            feat = feat + self.scale_type_embedding.weight[scale_id].view(1, -1, 1, 1)
+            levels.append(feat)
+        return levels
 
     def _build_frame_tokens(self, deepest_feature: Tensor, *, bsz: int, seq_len: int) -> Tensor:
         token = self.token_compressor(deepest_feature)
@@ -412,19 +381,13 @@ class BallDetectorModel(nn.Module):
         x = frames.reshape(bsz * seq_len, *frames.shape[2:])
         features = self._encode_backbone(x)
 
-        memory = self._build_memory_tokens(features)
+        memory_levels = self._build_memory_levels(features)
         token_bt = self._build_frame_tokens(features[-1], bsz=bsz, seq_len=seq_len)
         spatial_tokens = int(token_bt.shape[2])
 
         token_btf = token_bt.reshape(bsz * seq_len, spatial_tokens, self.hidden_dim)
         for layer in self.frame_cross_layers:
-            token_btf = layer(
-                token_btf,
-                memory,
-                key_valid=None,
-                freqs_q_cis=None,
-                freqs_k_cis=None,
-            )
+            token_btf = layer(token_btf, memory_levels)
         token_bt = token_btf.view(bsz, seq_len, spatial_tokens, self.hidden_dim)
 
         freqs_cis_t = self.temporal_freqs_cis[:seq_len]
@@ -482,4 +445,8 @@ class BallDetectorModel(nn.Module):
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
             causal=bool(model_cfg.get("causal", False)),
             mlp_inter_dim=model_cfg.get("mlp_inter_dim"),
+            msda_num_points=int(model_cfg.get("msda_num_points", 4)),
+            msda_use_cuda_kernel=bool(model_cfg.get("msda_use_cuda_kernel", True)),
+            msda_allow_fallback=bool(model_cfg.get("msda_allow_fallback", True)),
+            msda_offset_scale=float(model_cfg.get("msda_offset_scale", 0.5)),
         )
