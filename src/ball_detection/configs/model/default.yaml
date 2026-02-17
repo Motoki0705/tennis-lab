@@ -11,6 +11,10 @@ max_spatial_tokens: 4096
 num_queries: 1
 
 num_frame_cross_layers: 2
+msda_num_points: 4
+msda_use_cuda_kernel: true
+msda_allow_fallback: true
+msda_offset_scale: 0.5
 num_spatiotemporal_layers: 2
 num_query_cross_layers: 1
 num_query_temporal_layers: 1
