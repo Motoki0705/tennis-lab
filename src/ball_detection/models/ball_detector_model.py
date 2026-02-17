@@ -440,7 +440,7 @@ class BallDetectorModel(nn.Module):
             num_query_cross_layers=int(model_cfg.get("num_query_cross_layers", 1)),
             num_query_temporal_layers=int(model_cfg.get("num_query_temporal_layers", 1)),
             num_queries=int(model_cfg.get("num_queries", 1)),
-            max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 128))),
+            max_seq_len=int(model_cfg.get("max_seq_len", 128)),
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
             causal=bool(model_cfg.get("causal", False)),
