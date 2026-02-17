@@ -33,6 +33,7 @@ class BaseTrainingRunner:
     def run(self, config: Any) -> None:
         """Run training with the provided config."""
         self.seed_everything(config)
+        self.apply_runtime_settings(config)
 
         output_dir = self.prepare_output_dir(config)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -195,13 +196,19 @@ class BaseTrainingRunner:
             "check_val_every_n_epoch": trainer_cfg.check_val_every_n_epoch,
             "fast_dev_run": bool(config.run.fast_dev_run),
         }
+        if hasattr(trainer_cfg, "benchmark"):
+            kwargs["benchmark"] = trainer_cfg.benchmark
 
         # Optional parameters
         if trainer_cfg.gradient_clip_val is not None:
             kwargs["gradient_clip_val"] = trainer_cfg.gradient_clip_val
 
         if trainer_cfg.precision is not None:
-            kwargs["precision"] = trainer_cfg.precision
+            precision = trainer_cfg.precision
+            if str(precision) == "bf16-mixed" and torch.cuda.is_available() and not torch.cuda.is_bf16_supported():
+                precision = "16-mixed"
+                print("bf16-mixed is not supported on this GPU. Falling back to 16-mixed.")
+            kwargs["precision"] = precision
 
         return pl.Trainer(**kwargs)
 
@@ -211,6 +218,26 @@ class BaseTrainingRunner:
         if gpus > 0 and torch.cuda.is_available():
             return "gpu", gpus
         return "cpu", 1
+
+    def apply_runtime_settings(self, config: Any) -> None:
+        """Apply backend/runtime settings from training config."""
+        train_cfg = config.get("training", {})
+        trainer_cfg = train_cfg.get("trainer", {})
+
+        matmul_precision = str(train_cfg.get("matmul_precision", "high"))
+        torch.set_float32_matmul_precision(matmul_precision)
+
+        allow_tf32 = bool(train_cfg.get("allow_tf32", True))
+        if hasattr(torch.backends, "cuda") and torch.cuda.is_available():
+            torch.backends.cuda.matmul.allow_tf32 = allow_tf32
+        if hasattr(torch.backends, "cudnn"):
+            torch.backends.cudnn.allow_tf32 = allow_tf32
+            deterministic = bool(trainer_cfg.get("deterministic", False))
+            benchmark_cfg = trainer_cfg.get("benchmark")
+            if benchmark_cfg is None:
+                torch.backends.cudnn.benchmark = not deterministic
+            else:
+                torch.backends.cudnn.benchmark = bool(benchmark_cfg)
 
     def run_dry_run(self, config: Any, output_dir: Path) -> None:
         """Run dry run mode without full training."""

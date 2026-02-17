@@ -23,8 +23,20 @@ from src.common.models.components.ops.deformable.kernels.msda_state import (
 )
 
 
+if hasattr(torch, "amp") and hasattr(torch.amp, "custom_fwd") and hasattr(torch.amp, "custom_bwd"):
+    _custom_fwd = torch.amp.custom_fwd(device_type="cuda", cast_inputs=None)
+    _custom_bwd = torch.amp.custom_bwd(device_type="cuda")
+else:
+    from torch.cuda.amp import custom_bwd as _legacy_custom_bwd
+    from torch.cuda.amp import custom_fwd as _legacy_custom_fwd
+
+    _custom_fwd = _legacy_custom_fwd(cast_inputs=None)
+    _custom_bwd = _legacy_custom_bwd
+
+
 class _MSDeformAttnCudaFn(torch.autograd.Function):
     @staticmethod
+    @_custom_fwd
     def forward(
         ctx,
         value: Tensor,
@@ -53,6 +65,7 @@ class _MSDeformAttnCudaFn(torch.autograd.Function):
         return restore_forward_output_dtype(out, meta=meta)
 
     @staticmethod
+    @_custom_bwd
     def backward(ctx, grad_output: Tensor):
         value, spatial_shapes, level_start_index, sampling_locations, attention_weights = ctx.saved_tensors
         meta = load_ctx_meta(ctx)
