@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Self
 
 import torch
+from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
 from src.base.inference.predictor import BasePredictor
@@ -33,22 +34,40 @@ class BallPredictor(BasePredictor):
         device_obj = cls._resolve_device(device)
         state = torch.load(ckpt[0], map_location=device_obj, weights_only=False)
 
-        cfg = {}
+        cfg: dict[str, Any] = {}
         hyper_params = state.get("hyper_parameters", {}) if isinstance(state, dict) else {}
         if isinstance(hyper_params, dict):
             cfg_candidate = hyper_params.get("config", {})
+            if isinstance(cfg_candidate, DictConfig):
+                cfg = OmegaConf.to_container(cfg_candidate, resolve=True)  # type: ignore[assignment]
             if isinstance(cfg_candidate, dict):
                 cfg = cfg_candidate
 
         model = build_model(cfg)
         state_dict = state.get("state_dict", state)
-        remapped = {
-            (k.replace("model.", "", 1) if k.startswith("model.") else k): v
-            for k, v in state_dict.items()
-        }
+        target_keys = set(model.state_dict().keys())
+        remapped: dict[str, Tensor] = {}
+        for key, value in state_dict.items():
+            if key in target_keys:
+                remapped[key] = value
+                continue
+
+            candidate = key
+            while candidate.startswith("model."):
+                candidate = candidate.removeprefix("model.")
+                if candidate in target_keys:
+                    remapped[candidate] = value
+                    break
+            else:
+                remapped[candidate] = value
+
+        if len(remapped) == 0:
+            raise ValueError(f"No loadable keys found in checkpoint: {ckpt[0]}")
+
         missing, unexpected = model.load_state_dict(remapped, strict=False)
         if unexpected:
-            raise ValueError(f"Unexpected keys in checkpoint: {unexpected}")
+            # Unexpected keys are tolerated to support checkpoints with extra metadata.
+            pass
         if missing:
             # Missing keys are tolerated to support lightweight checkpoints.
             pass

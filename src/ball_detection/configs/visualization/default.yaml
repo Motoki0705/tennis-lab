@@ -1,0 +1,27 @@
+# Ball Detection Visualization Runtime Options
+# mode:
+# - visualize: run inference and save overlay video
+# - predict: run inference only (no overlay video)
+# - info: print video metadata only
+mode: visualize
+
+video_path: data/samples/test.mp4
+
+# Artifacts
+output_video_path: outputs/ball_detection/visualize/test_ball_overlay.mp4
+output_npz_path: outputs/ball_detection/visualize/test_ball_predictions.npz
+
+# Optional FPS override (null uses source video fps)
+fps: null
+
+# Info-only switch
+info: false
+
+# Overlay styles
+radius: 8
+thickness: 2
+color_detected_bgr: [0, 255, 0]
+color_trail_bgr: [255, 255, 0]
+show_score: true
+show_trail: true
+trail_length: 24
