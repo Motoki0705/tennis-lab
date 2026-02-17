@@ -7,6 +7,11 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor, nn
 
+from src.ball_detection.models.components import (
+    BasicBlock,
+    VisibilityHead,
+    XYHead,
+)
 from src.common.models import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
@@ -30,10 +35,10 @@ class BallDetectorModel(nn.Module):
         in_channels: int = 3,
         hidden_dim: int = 256,
         base_channels: int = 64,
-        num_scales: int = 3,
+        num_scales: int = 8,
         num_heads: int = 8,
         pad_size: int = 8,
-        max_spatial_tokens: int = 4096,
+        max_spatial_tokens: int = 128,
         num_frame_cross_layers: int = 2,
         num_spatiotemporal_layers: int = 2,
         num_query_cross_layers: int = 1,
@@ -82,13 +87,20 @@ class BallDetectorModel(nn.Module):
 
         channels = [int(base_channels)]
         self.downsample_blocks = nn.ModuleList()
-        for _ in range(self.num_scales):
+        for scale_idx in range(self.num_scales):
             in_ch = channels[-1]
-            out_ch = in_ch * 2
+            # Increase channels every two downsample stages.
+            out_ch = in_ch * 2 if (scale_idx + 1) % 2 == 0 else in_ch
+            downsample = nn.Sequential(
+                nn.Conv2d(in_ch, out_ch, kernel_size=1, stride=2, bias=False),
+                nn.BatchNorm2d(out_ch, momentum=0.1),
+            )
             self.downsample_blocks.append(
-                nn.Sequential(
-                    nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=2, padding=1),
-                    nn.GELU(),
+                BasicBlock(
+                    inplanes=in_ch,
+                    planes=out_ch,
+                    stride=2,
+                    downsample=downsample,
                 )
             )
             channels.append(out_ch)
@@ -199,19 +211,8 @@ class BallDetectorModel(nn.Module):
         )
 
         self.final_norm = nn.LayerNorm(self.hidden_dim)
-        self.xy_head = nn.Sequential(
-            nn.Linear(self.hidden_dim, self.hidden_dim),
-            nn.GELU(),
-            nn.Dropout(float(dropout)),
-            nn.Linear(self.hidden_dim, 2),
-            nn.Sigmoid(),
-        )
-        self.vis_head = nn.Sequential(
-            nn.Linear(self.hidden_dim, self.hidden_dim // 2),
-            nn.GELU(),
-            nn.Dropout(float(dropout)),
-            nn.Linear(self.hidden_dim // 2, 1),
-        )
+        self.xy_head = XYHead(self.hidden_dim, dropout=float(dropout))
+        self.vis_head = VisibilityHead(self.hidden_dim, dropout=float(dropout))
 
         freqs_cis = precompute_freqs_cis(
             dim=head_dim,
@@ -425,16 +426,15 @@ class BallDetectorModel(nn.Module):
         """Build model from Hydra/OmegaConf-like config."""
         cfg = config or {}
         model_cfg = cfg.get("model", {}) if hasattr(cfg, "get") else {}
-        data_cfg = cfg.get("data", {}) if hasattr(cfg, "get") else {}
 
         return cls(
             in_channels=int(model_cfg.get("in_channels", 3)),
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             base_channels=int(model_cfg.get("base_channels", 64)),
-            num_scales=int(model_cfg.get("num_scales", 3)),
+            num_scales=int(model_cfg.get("num_scales", 8)),
             num_heads=int(model_cfg.get("num_heads", 8)),
             pad_size=int(model_cfg.get("pad_size", 8)),
-            max_spatial_tokens=int(model_cfg.get("max_spatial_tokens", 4096)),
+            max_spatial_tokens=int(model_cfg.get("max_spatial_tokens", 128)),
             num_frame_cross_layers=int(model_cfg.get("num_frame_cross_layers", 2)),
             num_spatiotemporal_layers=int(model_cfg.get("num_spatiotemporal_layers", 2)),
             num_query_cross_layers=int(model_cfg.get("num_query_cross_layers", 1)),

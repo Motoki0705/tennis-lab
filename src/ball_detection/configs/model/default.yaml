@@ -3,11 +3,11 @@ name: temporal_memory_ball_detector
 in_channels: 3
 hidden_dim: 256
 base_channels: 64
-num_scales: 3
+num_scales: 8
 num_heads: 8
 
 pad_size: 8
-max_spatial_tokens: 4096
+max_spatial_tokens: 128
 num_queries: 1
 
 num_frame_cross_layers: 2

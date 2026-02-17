@@ -9,11 +9,12 @@ from torch import nn
 class XYHead(nn.Module):
     """Regresses normalized ball coordinates from latent feature vector."""
 
-    def __init__(self, in_dim: int) -> None:
+    def __init__(self, in_dim: int, *, dropout: float = 0.1) -> None:
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(in_dim, in_dim),
-            nn.ReLU(inplace=True),
+            nn.GELU(),
+            nn.Dropout(float(dropout)),
             nn.Linear(in_dim, 2),
             nn.Sigmoid(),
         )
@@ -25,11 +26,12 @@ class XYHead(nn.Module):
 class VisibilityHead(nn.Module):
     """Predicts visibility logit for each frame."""
 
-    def __init__(self, in_dim: int) -> None:
+    def __init__(self, in_dim: int, *, dropout: float = 0.1) -> None:
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(in_dim, in_dim // 2),
-            nn.ReLU(inplace=True),
+            nn.GELU(),
+            nn.Dropout(float(dropout)),
             nn.Linear(in_dim // 2, 1),
         )
 
