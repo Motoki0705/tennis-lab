@@ -12,6 +12,8 @@
 - `pseudo/components`: clip sampling, trajectory refinement, event tagging, quality checks
 - `pseudo/orchestrator.py`: end-to-end pseudo-label generation workflow
 - `training`: Lightning training modules and runner
+- `inference/video_api.py`: 動画向け推論 API（single / ensemble 切替）
+- `visualization/`: 可視化モジュール群（`api` / `adapters` / `io` / `rendering` / `analysis` / `orchestrator`）
 - `scripts`: Hydra entrypoints
 
 ## Third-party backbones
@@ -46,3 +48,20 @@ uv run python -m src.ball_detection.scripts.train_pretrain --config-name train_p
 ```
 
 Both presets keep heatmap generation inside `src/ball_detection` training logic.
+
+## 可視化（single / ensemble 切替）
+
+Hydra 設定で `inference.strategy=single|ensemble` を切り替えられます。
+
+```bash
+# デフォルト: ensemble（TrackNetV3 ckpt + WASB ckpt）
+uv run python -m src.ball_detection.scripts.visualize
+
+# 単体推論
+uv run python -m src.ball_detection.scripts.visualize inference.strategy=single
+
+# 動画・出力先の上書き
+uv run python -m src.ball_detection.scripts.visualize \
+    visualization.video_path=data/samples/test.mp4 \
+    visualization.output_video_path=outputs/ball_detection/visualize/test_ball_overlay.mp4
+```
