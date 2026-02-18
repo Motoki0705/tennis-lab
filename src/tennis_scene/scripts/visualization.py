@@ -24,6 +24,26 @@ from omegaconf import DictConfig
 
 LOGGER = logging.getLogger(__name__)
 
+_REQUIRED_SMPL_FIELDS = (
+    "smpl_vertices_local",
+    "smpl_global_orient",
+    "player_position",
+    "player_yaw",
+)
+
+
+def _validate_scene_for_smpl(scene: "SceneResult") -> None:
+    missing: list[str] = []
+    for field in _REQUIRED_SMPL_FIELDS:
+        if getattr(scene, field) is None:
+            missing.append(field)
+    if missing:
+        missing_str = ", ".join(missing)
+        raise RuntimeError(
+            "Visualization requires SMPL reconstruction fields: "
+            f"{missing_str}."
+        )
+
 
 @hydra.main(
     version_base="1.3",
@@ -47,6 +67,7 @@ def main(cfg: DictConfig) -> int:
 
     LOGGER.info(f"Scene: {scene.num_frames} frames, {scene.fps:.1f} FPS")
     LOGGER.info(f"Resolution: {scene.width}x{scene.height}")
+    _validate_scene_for_smpl(scene)
 
     # Create style
     style = TennisSceneStyle(
