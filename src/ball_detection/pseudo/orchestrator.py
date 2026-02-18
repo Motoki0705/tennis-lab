@@ -69,8 +69,25 @@ class PseudoLabelOrchestrator:
         self.clip_sampler = ClipSampler(min_length=config.min_clip_length, max_gap=config.max_gap)
         self.trajectory_refiner = TrajectoryRefiner(config.trajectory_checkpoint, device=config.device)
         self.event_tagger = EventTagger(config.event_checkpoint, device=config.device)
+        if self._uses_court_context(self.trajectory_refiner.predictor):
+            raise ValueError(
+                "trajectory_checkpoint must be a no-court model checkpoint "
+                "(uv_transformer_nocourt) for pseudo generation without court keypoints."
+            )
+        if self._uses_court_context(self.event_tagger.predictor):
+            raise ValueError(
+                "event_checkpoint must be a no-court model checkpoint "
+                "(uv_transformer_nocourt) for pseudo generation without court keypoints."
+            )
         self.confidence_scorer = ConfidenceScorer()
         self.quality_filter = QualityFilter(min_confidence=config.confidence_threshold)
+
+    @staticmethod
+    def _uses_court_context(predictor: Any | None) -> bool:
+        if predictor is None:
+            return False
+        model = getattr(predictor, "model", None)
+        return bool(getattr(model, "uses_court_context", True))
 
     def _video_to_tensor(self, frames_rgb) -> torch.Tensor:
         frames_t = torch.from_numpy(frames_rgb).permute(0, 3, 1, 2).contiguous().float() / 255.0
@@ -157,25 +174,23 @@ class PseudoLabelOrchestrator:
         window_score = score[start : end + 1].view(-1)
         window_visibility = visibility[start : end + 1].view(-1)
 
-        court_kp = torch.zeros((1, 20, 2), dtype=torch.float32)
         ball_uv = window_uv.view(1, t, 2)
         ball_vis = window_visibility.view(1, t)
         ball_mask = torch.ones((1, t), dtype=torch.float32)
-        court_vis = torch.ones((1, 20), dtype=torch.float32)
 
         refined = self.trajectory_refiner.refine(
-            ball_uv,
-            court_kp,
+            ball_uv=ball_uv,
+            court_kp=None,
             ball_vis=ball_vis,
             ball_mask=ball_mask,
-            court_vis=court_vis,
+            court_vis=None,
         )
         events = self.event_tagger.tag(
-            refined,
-            court_kp,
+            ball_uv=refined,
+            court_kp=None,
             ball_vis=ball_vis,
             ball_mask=ball_mask,
-            court_vis=court_vis,
+            court_vis=None,
         )
 
         clip_out_dir = Path(self.config.pseudo_output_dir) / game_name / clip_name

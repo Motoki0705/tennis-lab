@@ -14,7 +14,7 @@ class EventTagger:
         if checkpoint_path:
             self.predictor = UVEventPredictor.load_from_checkpoint(checkpoint_path, device=device)
 
-    def tag(self, ball_uv, court_kp, *, ball_vis, ball_mask, court_vis=None) -> dict[int, EventRecord]:
+    def tag(self, ball_uv, court_kp=None, *, ball_vis, ball_mask, court_vis=None) -> dict[int, EventRecord]:
         """Return frame-indexed event probabilities."""
         if self.predictor is None:
             return {}

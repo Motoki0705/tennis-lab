@@ -1,6 +1,6 @@
 # ---- Trainer (Lightning Trainer settings) ----
 trainer:
-  max_epochs: 20
+  max_epochs: 30
   gradient_clip_val: 1.0
   deterministic: true
   precision: "16-mixed"
