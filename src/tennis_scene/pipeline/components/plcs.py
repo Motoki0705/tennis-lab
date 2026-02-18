@@ -199,20 +199,25 @@ class PLCSModule(BasePipelineModule):
 
         LOGGER.info(f"Running PLCS player localization for {num_players} players...")
 
+        batch_size = num_players * num_frames
+
         court_kp_t = torch.from_numpy(court_kp).float()
-        court_kp_batch = court_kp_t.unsqueeze(0).repeat(num_players, 1, 1)
+        court_kp_batch = court_kp_t.unsqueeze(0).repeat(batch_size, 1, 1)
 
         court_vis_batch = None
         if court_vis is not None:
             court_vis_t = torch.from_numpy(court_vis).float()
-            court_vis_batch = court_vis_t.unsqueeze(0).repeat(num_players, 1)
+            court_vis_batch = court_vis_t.unsqueeze(0).repeat(batch_size, 1)
 
-        human_kp_t = torch.from_numpy(human_kp_2d).float()  # (P, T, 17, 2)
+        human_kp_t = torch.from_numpy(human_kp_2d).float().reshape(
+            batch_size, 17, 2
+        )  # (P*T, 17, 2)
         human_vis_t = None
         if human_kp_vis is not None:
-            human_vis_t = torch.from_numpy(human_kp_vis).float()  # (P, T, 17)
-        # In pipeline inference, player axis (P) is a batch axis, not padding.
-        human_mask_t = torch.ones((num_players, num_frames), dtype=torch.float32)
+            human_vis_t = torch.from_numpy(human_kp_vis).float().reshape(
+                batch_size, 17
+            )  # (P*T, 17)
+        human_mask_t = torch.ones((batch_size,), dtype=torch.float32)
 
         pred = self._predictor.predict(
             human_kp=human_kp_t,
@@ -223,8 +228,12 @@ class PLCSModule(BasePipelineModule):
             denormalize=True,
         )
 
-        positions = pred["position_meters"].numpy().astype(np.float32)  # (P, T, 3)
-        yaws = pred["yaw_radians"].numpy().astype(np.float32)  # (P, T)
+        positions = pred["position_meters"].numpy().astype(np.float32).reshape(
+            num_players, num_frames, 3
+        )  # (P, T, 3)
+        yaws = pred["yaw_radians"].numpy().astype(np.float32).reshape(
+            num_players, num_frames
+        )  # (P, T)
 
         result = PLCSResult(
             position=positions,  # (P, T, 3)

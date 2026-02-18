@@ -34,6 +34,9 @@ class GVHMRConfig:
     device: str = "cuda"
     subprocess_mode: bool = False
     python_executable: str | Path | None = None
+    smplx_model_type: str = "supermotion"
+    smplx2smpl_path: str | Path = "hmr4d/utils/body_model/smplx2smpl_sparse.pt"
+    smplx_body_model_path: str | Path | None = None
     save_result: bool = False
     output_path: str | Path | None = None
     load_path: str | Path | None = None
@@ -129,6 +132,8 @@ class GVHMRModule(BasePipelineModule):
         self._tracker = None
         self._vitpose = None
         self._extractor = None
+        self._smplx_model = None
+        self._smplx2smpl = None
         self._gvhmr_root: Path | None = None
 
     def load(self) -> None:
@@ -142,6 +147,7 @@ class GVHMRModule(BasePipelineModule):
         self._load_vitpose()
         self._load_extractor()
         self._load_gvhmr_model()
+        self._load_smpl_vertex_converter()
 
     def _load_tracker(self) -> None:
         LOGGER.info(f"Loading YOLO tracker from {self.config.yolo_checkpoint}")
@@ -202,6 +208,41 @@ class GVHMRModule(BasePipelineModule):
         self._model.eval()
         if self.config.device == "cuda":
             self._model = self._model.cuda()
+
+    def _load_smpl_vertex_converter(self) -> None:
+        """Load SMPL-X body model and SMPL-X->SMPL vertex converter."""
+        from hmr4d.utils.smplx_utils import make_smplx
+
+        if self._gvhmr_root is None:
+            raise RuntimeError("GVHMR root is not initialized")
+
+        LOGGER.info(
+            "Loading SMPL-X model for vertex reconstruction "
+            f"(type={self.config.smplx_model_type})"
+        )
+        smplx_kwargs: dict[str, str] = {}
+        if self.config.smplx_body_model_path is not None:
+            smplx_kwargs["model_path"] = str(
+                self._resolve_path(self.config.smplx_body_model_path)
+            )
+        smplx_model = make_smplx(self.config.smplx_model_type, **smplx_kwargs)
+
+        converter_path = self._resolve_path(self.config.smplx2smpl_path)
+        if not converter_path.exists():
+            raise FileNotFoundError(f"SMPL-X to SMPL converter not found: {converter_path}")
+
+        device = torch.device(
+            "cuda" if self.config.device == "cuda" and torch.cuda.is_available() else "cpu"
+        )
+        smplx_model = smplx_model.to(device)
+        smplx_model.eval()
+        smplx2smpl = torch.load(converter_path, map_location=device, weights_only=False)
+        if not isinstance(smplx2smpl, torch.Tensor):
+            smplx2smpl = torch.as_tensor(smplx2smpl)
+        smplx2smpl = smplx2smpl.to(device=device, dtype=torch.float32)
+
+        self._smplx_model = smplx_model
+        self._smplx2smpl = smplx2smpl
 
     def _resolve_path(self, path: str | Path) -> Path:
         path = Path(path)
@@ -432,8 +473,21 @@ class GVHMRModule(BasePipelineModule):
             betas = betas[0]
 
         vertices = None
-        if "verts" in pred:
-            vertices = pred["verts"].cpu().numpy().astype(np.float32)
+        if self._smplx_model is None or self._smplx2smpl is None:
+            raise RuntimeError(
+                "SMPL vertex converter is not loaded. Call load() before running inference."
+            )
+
+        smpl_param_tensors = {
+            key: value.to(self._smplx2smpl.device) if isinstance(value, torch.Tensor) else value
+            for key, value in smpl_params.items()
+        }
+        smplx_out = self._smplx_model(**smpl_param_tensors)
+        vertices_smpl = torch.stack(
+            [torch.matmul(self._smplx2smpl, verts) for verts in smplx_out.vertices],
+            dim=0,
+        )
+        vertices = vertices_smpl.cpu().numpy().astype(np.float32)
 
         return {
             "smpl_body_pose": body_pose,
@@ -481,6 +535,24 @@ if __name__ == "__main__":
         default="inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt",
         help="Path to HMR2 checkpoint",
     )
+    parser.add_argument(
+        "--smplx-model-type",
+        type=str,
+        default="supermotion",
+        help="SMPL-X model preset type used to reconstruct vertices",
+    )
+    parser.add_argument(
+        "--smplx2smpl-path",
+        type=str,
+        default="hmr4d/utils/body_model/smplx2smpl_sparse.pt",
+        help="Path to sparse SMPL-X->SMPL conversion matrix",
+    )
+    parser.add_argument(
+        "--smplx-body-model-path",
+        type=str,
+        default=None,
+        help="Optional path to SMPL/SMPL-X body model directory",
+    )
     parser.add_argument("--device", type=str, default="cuda", help="Inference device")
     parser.add_argument(
         "--max-frames", type=int, default=None, help="Maximum frames to process"
@@ -498,6 +570,9 @@ if __name__ == "__main__":
         yolo_checkpoint=args.yolo_checkpoint,
         vitpose_checkpoint=args.vitpose_checkpoint,
         hmr2_checkpoint=args.hmr2_checkpoint,
+        smplx_model_type=args.smplx_model_type,
+        smplx2smpl_path=args.smplx2smpl_path,
+        smplx_body_model_path=args.smplx_body_model_path,
         device=args.device,
         subprocess_mode=False,
         save_result=True,

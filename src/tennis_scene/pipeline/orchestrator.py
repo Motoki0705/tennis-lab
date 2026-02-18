@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -99,12 +100,25 @@ class TennisSceneOrchestrator:
 
         gvhmr_config = None
         if Stage.GVHMR in resolution.enabled_set:
+            smplx_body_model_path = cfg.gvhmr.get("smplx_body_model_path")
             gvhmr_config = {
                 "python_executable": to_absolute_path(cfg.gvhmr.python_executable),
                 "model_checkpoint": to_absolute_path(cfg.gvhmr.checkpoint),
                 "yolo_checkpoint": to_absolute_path(cfg.gvhmr.yolo_checkpoint),
                 "vitpose_checkpoint": to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
                 "hmr2_checkpoint": to_absolute_path(cfg.gvhmr.hmr2_checkpoint),
+                "smplx_model_type": str(cfg.gvhmr.get("smplx_model_type", "supermotion")),
+                "smplx2smpl_path": str(
+                    cfg.gvhmr.get(
+                        "smplx2smpl_path",
+                        "hmr4d/utils/body_model/smplx2smpl_sparse.pt",
+                    )
+                ),
+                "smplx_body_model_path": (
+                    to_absolute_path(str(smplx_body_model_path))
+                    if smplx_body_model_path is not None
+                    else None
+                ),
                 "output_path": get_output_path("gvhmr", "gvhmr_result.json"),
                 "load_path": get_load_path("gvhmr"),
                 "device": device,
@@ -130,6 +144,11 @@ class TennisSceneOrchestrator:
                     checkpoint_path=to_absolute_path(cfg.trajectory.checkpoint),
                     device=device,
                     merge_observed=cfg.trajectory.get("merge_observed", True),
+                    in_frame_threshold=float(cfg.trajectory.get("in_frame_threshold", 0.5)),
+                    cut_out_of_frame=bool(cfg.trajectory.get("cut_out_of_frame", False)),
+                    use_in_frame_pred_for_visibility=bool(
+                        cfg.trajectory.get("use_in_frame_pred_for_visibility", True)
+                    ),
                     save_result=cfg.trajectory.get("save_result", True),
                     output_path=get_output_path("trajectory", "trajectory_result.json"),
                     load_path=get_load_path("trajectory"),
@@ -228,20 +247,29 @@ class TennisSceneOrchestrator:
             f"--yolo-checkpoint={self.gvhmr_config['yolo_checkpoint']}",
             f"--vitpose-checkpoint={self.gvhmr_config['vitpose_checkpoint']}",
             f"--hmr2-checkpoint={self.gvhmr_config['hmr2_checkpoint']}",
+            f"--smplx-model-type={self.gvhmr_config['smplx_model_type']}",
+            f"--smplx2smpl-path={self.gvhmr_config['smplx2smpl_path']}",
             f"--device={self.gvhmr_config['device']}",
         ]
+        if self.gvhmr_config.get("smplx_body_model_path") is not None:
+            cmd.append(
+                f"--smplx-body-model-path={self.gvhmr_config['smplx_body_model_path']}"
+            )
         if max_frames is not None:
             cmd.append(f"--max-frames={max_frames}")
 
+        # Keep stdio attached so GVHMR tracker selection UI can read user input.
         result = subprocess.run(
             cmd,
-            capture_output=True,
-            text=True,
             cwd=str(Path(__file__).parents[3]),
+            stdin=sys.stdin,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
         )
         if result.returncode != 0:
-            LOGGER.error(f"GVHMR subprocess failed:\n{result.stderr}")
-            raise RuntimeError(f"GVHMR subprocess failed: {result.stderr}")
+            raise RuntimeError(
+                f"GVHMR subprocess failed with return code {result.returncode}"
+            )
 
         return GVHMRResult.load(output_path)
 
@@ -376,7 +404,18 @@ class TennisSceneOrchestrator:
                 )
                 ball_uv_pred = trajectory_result.ball_uv_pred
                 ball_uv_completed = trajectory_result.ball_uv_completed
-                ball_uv_for_downstream = ball_uv_completed
+                if (
+                    self.trajectory_module.config.merge_observed
+                    and ball_uv_completed is not None
+                ):
+                    ball_uv_for_downstream = ball_uv_completed
+                else:
+                    ball_uv_for_downstream = ball_uv_pred
+                if (
+                    self.trajectory_module.config.use_in_frame_pred_for_visibility
+                    and trajectory_result.in_frame_pred is not None
+                ):
+                    ball_visibility = trajectory_result.in_frame_pred
 
             if Stage.EVENT_UV in self.enabled_stages and self.event_uv_module is not None:
                 event_uv_result = self.event_uv_module.process(
