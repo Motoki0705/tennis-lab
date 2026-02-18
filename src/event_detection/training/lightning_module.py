@@ -30,13 +30,15 @@ class EventDetectionLightningModule(BaseLightningModule):
         model_cfg = self.config.get("model", {}) or {}
         model_name = str(model_cfg.get("name", "uv_transformer"))
         if model_name == "traj3d_transformer":
-            self.input_type: Literal["uv", "3d"] = "3d"
+            self.input_type: Literal["uv", "uv_nocourt", "3d"] = "3d"
         elif model_name == "uv_transformer":
             self.input_type = "uv"
+        elif model_name == "uv_transformer_nocourt":
+            self.input_type = "uv_nocourt"
         else:
             raise ValueError(
                 "Unknown event_detection model.name="
-                f"'{model_name}'. Supported: ['uv_transformer', 'traj3d_transformer']"
+                f"'{model_name}'. Supported: ['uv_transformer', 'uv_transformer_nocourt', 'traj3d_transformer']"
             )
         self.model = build_event_detection_model(self.config)
 
@@ -60,6 +62,13 @@ class EventDetectionLightningModule(BaseLightningModule):
         """
         if self.input_type == "3d":
             return self.model(batch["ball_pos_world"], seq_len=batch.get("seq_len"))
+        if self.input_type == "uv_nocourt":
+            return self.model(
+                batch["ball_uv"],
+                ball_vis=batch.get("ball_vis"),
+                ball_mask=batch.get("ball_mask"),
+                seq_len=batch.get("seq_len"),
+            )
         return self.model(
             batch["ball_uv"],
             batch["court_kp"],

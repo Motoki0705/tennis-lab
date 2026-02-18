@@ -77,7 +77,7 @@ class UVEventPredictor(BasePredictor):
     def predict(
         self,
         ball_uv: Tensor,
-        court_kp: Tensor,
+        court_kp: Tensor | None = None,
         ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
@@ -91,7 +91,7 @@ class UVEventPredictor(BasePredictor):
 
         Args:
             ball_uv: Ball UV trajectory. Shape (B, T, 2) or (T, 2).
-            court_kp: Court keypoints. Shape (B, 20, 2) or (20, 2).
+            court_kp: Court keypoints. Shape (B, 20, 2) or (20, 2). Optional for nocourt model.
             ball_vis: Ball visibility flags. Shape (B, T) or (T,).
             ball_mask: Ball padding mask. Shape (B, T) or (T,).
             court_vis: Court visibility mask. Shape (B, 20) or (20,).
@@ -111,9 +111,13 @@ class UVEventPredictor(BasePredictor):
         if ball_vis is None and ball_mask is not None:
             ball_vis, ball_mask = ball_mask, None
 
+        use_court_context = bool(getattr(self.model, "uses_court_context", True))
+
         if ball_uv.dim() == 2:
             ball_uv = ball_uv.unsqueeze(0)
-        if court_kp.dim() == 2:
+        if use_court_context and court_kp is None:
+            raise ValueError("court_kp is required for court-aware models.")
+        if court_kp is not None and court_kp.dim() == 2:
             court_kp = court_kp.unsqueeze(0)
         if ball_vis is not None and ball_vis.dim() == 1:
             ball_vis = ball_vis.unsqueeze(0)
@@ -124,22 +128,33 @@ class UVEventPredictor(BasePredictor):
         if seq_len is not None and seq_len.dim() == 0:
             seq_len = seq_len.unsqueeze(0)
 
-        ball_uv, court_kp, ball_vis, court_vis = self._to_device(
-            self.device, ball_uv, court_kp, ball_vis, court_vis
-        )
+        if use_court_context:
+            ball_uv, court_kp, ball_vis, court_vis = self._to_device(
+                self.device, ball_uv, court_kp, ball_vis, court_vis
+            )
+        else:
+            ball_uv, ball_vis = self._to_device(self.device, ball_uv, ball_vis)
         if ball_mask is not None:
             ball_mask = ball_mask.to(self.device)
         if seq_len is not None:
             seq_len = seq_len.to(self.device)
 
-        logits = self.model(
-            ball_uv,
-            court_kp,
-            ball_vis=ball_vis,
-            ball_mask=ball_mask,
-            court_vis=court_vis,
-            seq_len=seq_len,
-        )
+        if use_court_context:
+            logits = self.model(
+                ball_uv,
+                court_kp,
+                ball_vis=ball_vis,
+                ball_mask=ball_mask,
+                court_vis=court_vis,
+                seq_len=seq_len,
+            )
+        else:
+            logits = self.model(
+                ball_uv,
+                ball_vis=ball_vis,
+                ball_mask=ball_mask,
+                seq_len=seq_len,
+            )
         probs = torch.sigmoid(logits)
 
         peaks, peak_scores = extract_event_peaks(
