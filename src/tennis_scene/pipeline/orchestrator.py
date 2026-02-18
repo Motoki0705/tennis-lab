@@ -23,7 +23,6 @@ from src.tennis_scene.pipeline.dependency_graph import (
     Stage,
     build_default_dependency_graph,
 )
-from src.tennis_scene.utils.transforms import apply_plcs_transform_batch
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -330,21 +329,6 @@ class TennisSceneOrchestrator:
             track_ids=track_ids,
         )
 
-        if smpl_vertices_local is not None:
-            smpl_vertices_global = np.stack(
-                [
-                    apply_plcs_transform_batch(
-                        smpl_vertices_local[p],
-                        plcs_result.position[p],
-                        plcs_result.yaw[p],
-                    )
-                    for p in range(smpl_vertices_local.shape[0])
-                ],
-                axis=0,
-            ).astype(np.float32)
-        else:
-            smpl_vertices_global = None
-
         ball_uv = None
         ball_uv_pred = None
         ball_uv_completed = None
@@ -418,7 +402,6 @@ class TennisSceneOrchestrator:
             smpl_global_orient=smpl_global_orient,
             smpl_betas=smpl_betas,
             smpl_vertices_local=smpl_vertices_local,
-            smpl_vertices_global=smpl_vertices_global,
             ball_uv=ball_uv,
             ball_uv_pred=ball_uv_pred,
             ball_uv_completed=ball_uv_completed,
