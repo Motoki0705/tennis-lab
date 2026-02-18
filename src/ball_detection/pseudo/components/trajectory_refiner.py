@@ -38,8 +38,8 @@ class TrajectoryRefiner:
             ball_vis=ball_vis,
             ball_mask=ball_mask,
             court_vis=court_vis,
-            merge_observed=True,
+            merge_observed=False,
+            in_frame_threshold=0.5,
+            cut_out_of_frame=True,
         )
-        if "ball_uv_completed" in outputs:
-            return outputs["ball_uv_completed"]
         return outputs["ball_uv_pred"]

@@ -9,6 +9,9 @@ from torch import nn
 from src.trajectory_completion.models.uv_completion_model import (
     UVTrajectoryCompletionModel,
 )
+from src.trajectory_completion.models.uv_completion_nocourt_model import (
+    UVTrajectoryCompletionNoCourtModel,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -20,10 +23,16 @@ def build_trajectory_completion_model(config: DictConfig) -> nn.Module:
     model_name = str(model_cfg.get("name", "uv_transformer"))
     if model_name == "uv_transformer":
         return UVTrajectoryCompletionModel.from_config(config)
+    if model_name == "uv_transformer_nocourt":
+        return UVTrajectoryCompletionNoCourtModel.from_config(config)
     raise ValueError(
         "Unknown trajectory_completion model.name="
-        f"'{model_name}'. Supported: ['uv_transformer']"
+        f"'{model_name}'. Supported: ['uv_transformer', 'uv_transformer_nocourt']"
     )
 
 
-__all__ = ["UVTrajectoryCompletionModel", "build_trajectory_completion_model"]
+__all__ = [
+    "UVTrajectoryCompletionModel",
+    "UVTrajectoryCompletionNoCourtModel",
+    "build_trajectory_completion_model",
+]

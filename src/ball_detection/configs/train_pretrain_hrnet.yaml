@@ -1,0 +1,19 @@
+defaults:
+  - model: hrnet_temporal
+  - data: labeled_hrnet
+  - training: default
+  - loss: default
+  - run: train
+  - _self_
+
+hydra:
+  run:
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
+
+training:
+  xy_weight: 0.0
+  vis_weight: 0.0
+  heatmap_weight: 1.0

@@ -34,7 +34,6 @@ class SceneResult:
     smpl_global_orient: NDArray[np.float32]  # (P, T, 3)
     smpl_betas: NDArray[np.float32]  # (P, 10)
     smpl_vertices_local: NDArray[np.float32] | None = None  # (P, T, V, 3)
-    smpl_vertices_global: NDArray[np.float32] | None = None  # (P, T, V, 3)
 
     ball_uv: NDArray[np.float32] | None = None
     ball_uv_pred: NDArray[np.float32] | None = None
@@ -113,8 +112,6 @@ class SceneResult:
 
         if self.smpl_vertices_local is not None:
             data["smpl_vertices_local"] = self.smpl_vertices_local
-        if self.smpl_vertices_global is not None:
-            data["smpl_vertices_global"] = self.smpl_vertices_global
         if self.ball_uv is not None:
             data["ball_uv"] = self.ball_uv
         if self.ball_uv_pred is not None:
@@ -202,10 +199,6 @@ class SceneResult:
         if smpl_vertices_local is not None:
             smpl_vertices_local = np.asarray(smpl_vertices_local, dtype=np.float32)
 
-        smpl_vertices_global = data.get("smpl_vertices_global")
-        if smpl_vertices_global is not None:
-            smpl_vertices_global = np.asarray(smpl_vertices_global, dtype=np.float32)
-
         human_kp_2d = data.get("human_kp_2d")
         if human_kp_2d is not None:
             human_kp_2d = np.asarray(human_kp_2d, dtype=np.float32)
@@ -235,7 +228,6 @@ class SceneResult:
             smpl_global_orient=smpl_global_orient,
             smpl_betas=smpl_betas,
             smpl_vertices_local=smpl_vertices_local,
-            smpl_vertices_global=smpl_vertices_global,
             ball_uv=data.get("ball_uv"),
             ball_uv_pred=data.get("ball_uv_pred"),
             ball_uv_completed=data.get("ball_uv_completed"),

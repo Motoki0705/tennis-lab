@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import torch
@@ -54,7 +55,11 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
 
     def __init__(self, config: DictConfig) -> None:
         super().__init__(config)
+        model_cfg = config.get("model", {}) or {}
+        model_name = str(model_cfg.get("name", "uv_transformer"))
+        self.use_court_context = model_name != "uv_transformer_nocourt"
         self.model = build_trajectory_completion_model(self.config)
+        self._maybe_initialize_nocourt_from_court_checkpoint(model_name=model_name)
 
         train_cfg = config.get("training", {}) or {}
         loss_cfg = train_cfg.get("loss", {}) or {}
@@ -98,15 +103,69 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         self.observed_accuracy_threshold = float(metrics_cfg.get("observed_accuracy_threshold_px", 2.0))
         self.in_frame_threshold = float(metrics_cfg.get("in_frame_threshold", 0.5))
 
-    def forward(self, batch: dict[str, Tensor]) -> Tensor:
-        out = self.model(
-            batch["ball_uv"],
-            batch["court_kp"],
-            batch.get("ball_vis"),
-            batch.get("ball_mask"),
-            batch.get("court_vis"),
-            return_in_frame_logits=False,
+    def _maybe_initialize_nocourt_from_court_checkpoint(self, *, model_name: str) -> None:
+        if model_name != "uv_transformer_nocourt":
+            return
+        model_cfg = self.config.get("model", {}) or {}
+        init_ckpt = model_cfg.get("init_from_court_checkpoint")
+        if init_ckpt is None or str(init_ckpt).strip() == "":
+            return
+
+        ckpt_path = Path(str(init_ckpt))
+        if not ckpt_path.exists():
+            raise FileNotFoundError(f"init_from_court_checkpoint not found: {ckpt_path}")
+
+        checkpoint = torch.load(ckpt_path, map_location="cpu")
+        state_dict = checkpoint.get("state_dict", checkpoint)
+        if not isinstance(state_dict, dict):
+            raise TypeError(f"Unsupported checkpoint format for init_from_court_checkpoint: {ckpt_path}")
+
+        source_state: dict[str, Tensor] = {}
+        for key, value in state_dict.items():
+            if isinstance(key, str) and key.startswith("model.") and isinstance(value, Tensor):
+                source_state[key[len("model.") :]] = value
+
+        target_state = self.model.state_dict()
+        mapped_state: dict[str, Tensor] = {}
+        for target_key, target_value in target_state.items():
+            direct = source_state.get(target_key)
+            if isinstance(direct, Tensor) and tuple(direct.shape) == tuple(target_value.shape):
+                mapped_state[target_key] = direct
+                continue
+            if target_key.startswith("blocks."):
+                source_key = "ball_temporal_layers." + target_key[len("blocks.") :]
+                temporal = source_state.get(source_key)
+                if isinstance(temporal, Tensor) and tuple(temporal.shape) == tuple(target_value.shape):
+                    mapped_state[target_key] = temporal
+
+        if not mapped_state:
+            raise RuntimeError(
+                "No compatible parameters found when initializing uv_transformer_nocourt "
+                f"from checkpoint: {ckpt_path}"
+            )
+        self.model.load_state_dict(mapped_state, strict=False)
+        print(
+            "Initialized uv_transformer_nocourt from court checkpoint "
+            f"{ckpt_path} with {len(mapped_state)} tensor(s)."
         )
+
+    def forward(self, batch: dict[str, Tensor]) -> Tensor:
+        if self.use_court_context:
+            out = self.model(
+                batch["ball_uv"],
+                batch["court_kp"],
+                batch.get("ball_vis"),
+                batch.get("ball_mask"),
+                batch.get("court_vis"),
+                return_in_frame_logits=False,
+            )
+        else:
+            out = self.model(
+                batch["ball_uv"],
+                batch.get("ball_vis"),
+                batch.get("ball_mask"),
+                return_in_frame_logits=False,
+            )
         if isinstance(out, tuple):
             return out[0]
         return out
@@ -144,23 +203,41 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         return self.masked_weight_min + ratio * (self.masked_weight_max - self.masked_weight_min)
 
     def _forward_with_auxiliary(self, batch: dict[str, Tensor]) -> tuple[Tensor, list[Tensor] | None, Tensor]:
-        if self.auxiliary_observed_enabled and self.auxiliary_observed_heads is not None:
-            pred, intermediate, in_frame_logits = self.model(
+        if self.use_court_context:
+            if self.auxiliary_observed_enabled and self.auxiliary_observed_heads is not None:
+                pred, intermediate, in_frame_logits = self.model(
+                    batch["ball_uv"],
+                    batch["court_kp"],
+                    batch.get("ball_vis"),
+                    batch.get("ball_mask"),
+                    batch.get("court_vis"),
+                    return_intermediate_ball_hidden=True,
+                    return_in_frame_logits=True,
+                )
+                return pred, intermediate, in_frame_logits
+            pred, in_frame_logits = self.model(
                 batch["ball_uv"],
                 batch["court_kp"],
                 batch.get("ball_vis"),
                 batch.get("ball_mask"),
                 batch.get("court_vis"),
+                return_in_frame_logits=True,
+            )
+            return pred, None, in_frame_logits
+
+        if self.auxiliary_observed_enabled and self.auxiliary_observed_heads is not None:
+            pred, intermediate, in_frame_logits = self.model(
+                batch["ball_uv"],
+                batch.get("ball_vis"),
+                batch.get("ball_mask"),
                 return_intermediate_ball_hidden=True,
                 return_in_frame_logits=True,
             )
             return pred, intermediate, in_frame_logits
         pred, in_frame_logits = self.model(
             batch["ball_uv"],
-            batch["court_kp"],
             batch.get("ball_vis"),
             batch.get("ball_mask"),
-            batch.get("court_vis"),
             return_in_frame_logits=True,
         )
         return pred, None, in_frame_logits
