@@ -115,7 +115,7 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         if not ckpt_path.exists():
             raise FileNotFoundError(f"init_from_court_checkpoint not found: {ckpt_path}")
 
-        checkpoint = torch.load(ckpt_path, map_location="cpu")
+        checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=False)
         state_dict = checkpoint.get("state_dict", checkpoint)
         if not isinstance(state_dict, dict):
             raise TypeError(f"Unsupported checkpoint format for init_from_court_checkpoint: {ckpt_path}")

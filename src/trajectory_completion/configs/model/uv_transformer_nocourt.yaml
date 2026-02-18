@@ -1,4 +1,5 @@
 name: uv_transformer_nocourt
+init_from_court_checkpoint: null
 
 hidden_dim: 256
 num_layers: 6
