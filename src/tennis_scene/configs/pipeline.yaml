@@ -1,9 +1,9 @@
 defaults:
   - _self_
 
-video_path: data/samples/clip.mp4
+video_path: data/samples/test.mp4
 
-output_dir: outputs/tennis_scene
+output_dir: outputs/tennis_scene/test
 output_name: null
 
 device: cuda
