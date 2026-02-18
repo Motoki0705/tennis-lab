@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
 from pathlib import Path
 from typing import Any
 import warnings
@@ -55,6 +56,43 @@ class SceneResult:
 
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    @staticmethod
+    def _metadata_sidecar_path(path: Path) -> Path:
+        """Return sidecar metadata JSON path for a scene archive."""
+        return path.with_suffix(".metadata.json")
+
+    @staticmethod
+    def _decode_str_array(value: Any) -> list[str]:
+        """Decode a numpy string/bytes/object array into a list of Python strings."""
+        arr = np.asarray(value)
+        flat = arr.reshape(-1)
+        decoded: list[str] = []
+        for item in flat.tolist():
+            if isinstance(item, bytes):
+                decoded.append(item.decode("utf-8"))
+            else:
+                decoded.append(str(item))
+        return decoded
+
+    @classmethod
+    def _safe_load_name_list(
+        cls,
+        data: Any,
+        key: str,
+        path: Path,
+    ) -> list[str] | None:
+        """Safely load optional event name list from npz data."""
+        if key not in data.files:
+            return None
+        try:
+            return cls._decode_str_array(data[key])
+        except Exception as exc:
+            warnings.warn(
+                f"Failed to load {key} from {path}: {exc}. Proceeding without {key}.",
+                RuntimeWarning,
+            )
+            return None
+
     def save(self, path: str | Path) -> None:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -92,13 +130,13 @@ class SceneResult:
         if self.event_uv_peak_mask is not None:
             data["event_uv_peak_mask"] = self.event_uv_peak_mask
         if self.event_uv_names is not None:
-            data["event_uv_names"] = np.array(self.event_uv_names, dtype=object)
+            data["event_uv_names"] = np.asarray(self.event_uv_names, dtype=np.str_)
         if self.event_3d_probs is not None:
             data["event_3d_probs"] = self.event_3d_probs
         if self.event_3d_peak_mask is not None:
             data["event_3d_peak_mask"] = self.event_3d_peak_mask
         if self.event_3d_names is not None:
-            data["event_3d_names"] = np.array(self.event_3d_names, dtype=object)
+            data["event_3d_names"] = np.asarray(self.event_3d_names, dtype=np.str_)
         if self.human_kp_2d is not None:
             data["human_kp_2d"] = self.human_kp_2d
         if self.human_kp_vis is not None:
@@ -108,17 +146,43 @@ class SceneResult:
         if self.player_kp_3d is not None:
             data["player_kp_3d"] = self.player_kp_3d
 
-        if self.metadata:
-            data["metadata"] = np.array([self.metadata], dtype=object)
-
         np.savez_compressed(path, **data)
+        if self.metadata:
+            sidecar_path = self._metadata_sidecar_path(path)
+            with sidecar_path.open("w", encoding="utf-8") as f:
+                json.dump(self.metadata, f, ensure_ascii=False, indent=2)
 
     @classmethod
     def load(cls, path: str | Path) -> "SceneResult":
-        data = np.load(path, allow_pickle=True)
+        path = Path(path)
+        try:
+            data = np.load(path, allow_pickle=False)
+        except ValueError:
+            warnings.warn(
+                (
+                    f"{path} contains pickle-based arrays (legacy format). "
+                    "Falling back to allow_pickle=True."
+                ),
+                RuntimeWarning,
+            )
+            data = np.load(path, allow_pickle=True)
 
         metadata = {}
-        if "metadata" in data.files:
+        sidecar_path = cls._metadata_sidecar_path(path)
+        if sidecar_path.exists():
+            try:
+                with sidecar_path.open("r", encoding="utf-8") as f:
+                    metadata = json.load(f)
+            except Exception as exc:
+                warnings.warn(
+                    (
+                        f"Failed to load sidecar metadata from {sidecar_path}: {exc}. "
+                        "Proceeding without metadata."
+                    ),
+                    RuntimeWarning,
+                )
+        elif "metadata" in data.files:
+            # Legacy npz fallback
             try:
                 metadata = data["metadata"].item()
             except Exception as exc:
@@ -179,14 +243,10 @@ class SceneResult:
             ball_3d=data.get("ball_3d"),
             event_uv_probs=data.get("event_uv_probs"),
             event_uv_peak_mask=data.get("event_uv_peak_mask"),
-            event_uv_names=[
-                str(x) for x in data["event_uv_names"].tolist()
-            ] if "event_uv_names" in data.files else None,
+            event_uv_names=cls._safe_load_name_list(data, "event_uv_names", path),
             event_3d_probs=data.get("event_3d_probs"),
             event_3d_peak_mask=data.get("event_3d_peak_mask"),
-            event_3d_names=[
-                str(x) for x in data["event_3d_names"].tolist()
-            ] if "event_3d_names" in data.files else None,
+            event_3d_names=cls._safe_load_name_list(data, "event_3d_names", path),
             human_kp_2d=human_kp_2d,
             human_kp_vis=human_kp_vis,
             player_track_ids=player_track_ids,
