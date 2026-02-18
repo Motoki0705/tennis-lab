@@ -79,3 +79,23 @@ class BallDetectionPseudoDataModule(pl.LightningDataModule):
             self.dataset,
             **kwargs,
         )
+
+    def test_dataloader(self) -> DataLoader:
+        if self.dataset is None:
+            raise RuntimeError("pseudo dataset is not initialized")
+        kwargs = {
+            "batch_size": self.batch_size,
+            "shuffle": False,
+            "num_workers": self.num_workers,
+            "pin_memory": self.pin_memory,
+            "drop_last": False,
+            "collate_fn": collate_ball_sequences,
+        }
+        if self.num_workers > 0:
+            kwargs["persistent_workers"] = self.persistent_workers
+            if self.prefetch_factor is not None:
+                kwargs["prefetch_factor"] = int(self.prefetch_factor)
+        return DataLoader(
+            self.dataset,
+            **kwargs,
+        )

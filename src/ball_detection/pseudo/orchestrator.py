@@ -31,6 +31,8 @@ class PseudoOrchestratorConfig:
     pseudo_output_dir: str = "outputs/ball_detection/pseudo"
     ensemble_checkpoints: tuple[str, ...] = ()
     ensemble_weights: tuple[float, ...] | None = None
+    ensemble_model_config_paths: tuple[str | None, ...] | None = None
+    visibility_threshold: float = 0.5
     trajectory_checkpoint: str | None = None
     event_checkpoint: str | None = None
     confidence_threshold: float = 0.3
@@ -38,10 +40,11 @@ class PseudoOrchestratorConfig:
     max_gap: int = 4
     image_h: int = 288
     image_w: int = 512
+    batch_size: int = 32
     max_frames: int | None = None
     jpeg_quality: int = 95
     allow_overwrite: bool = False
-    device: str = "cpu"
+    device: str = "cuda"
 
 
 class PseudoLabelOrchestrator:
@@ -56,6 +59,12 @@ class PseudoLabelOrchestrator:
             list(config.ensemble_checkpoints),
             device=config.device,
             weights=list(config.ensemble_weights) if config.ensemble_weights is not None else None,
+            model_config_paths=(
+                list(config.ensemble_model_config_paths)
+                if config.ensemble_model_config_paths is not None
+                else None
+            ),
+            visibility_threshold=float(config.visibility_threshold),
         )
         self.clip_sampler = ClipSampler(min_length=config.min_clip_length, max_gap=config.max_gap)
         self.trajectory_refiner = TrajectoryRefiner(config.trajectory_checkpoint, device=config.device)
@@ -73,6 +82,49 @@ class PseudoLabelOrchestrator:
                 align_corners=False,
             )
         return frames_t
+
+    def _predict_video(self, extractor: VideoExtractor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        uv_chunks: list[torch.Tensor] = []
+        score_chunks: list[torch.Tensor] = []
+        vis_chunks: list[torch.Tensor] = []
+
+        total_processed = 0
+        reset_state = True
+
+        for frames_rgb, _start_idx in extractor.iter_batches(batch_size=max(1, int(self.config.batch_size))):
+            if self.config.max_frames is not None and total_processed >= int(self.config.max_frames):
+                break
+
+            if self.config.max_frames is not None:
+                remain = int(self.config.max_frames) - total_processed
+                if remain <= 0:
+                    break
+                if int(frames_rgb.shape[0]) > remain:
+                    frames_rgb = frames_rgb[:remain]
+
+            if int(frames_rgb.shape[0]) == 0:
+                continue
+
+            frames_t = self._video_to_tensor(frames_rgb)
+            pred = self.ensemble.predict(frames_t, reset_state=reset_state)
+            reset_state = False
+
+            uv_chunks.append(pred["ball_uv"].detach().cpu())
+            score_chunks.append(pred["score"].view(-1).detach().cpu())
+            vis_chunks.append(pred["visibility"].view(-1).detach().cpu())
+            total_processed += int(frames_rgb.shape[0])
+
+        if not uv_chunks:
+            empty_uv = torch.zeros((0, 2), dtype=torch.float32)
+            empty_score = torch.zeros((0,), dtype=torch.float32)
+            empty_vis = torch.zeros((0,), dtype=torch.float32)
+            return empty_uv, empty_score, empty_vis
+
+        return (
+            torch.cat(uv_chunks, dim=0),
+            torch.cat(score_chunks, dim=0),
+            torch.cat(vis_chunks, dim=0),
+        )
 
     def _prepare_clip_dir(self, clip_out_dir: Path) -> None:
         if clip_out_dir.exists():
@@ -204,16 +256,11 @@ class PseudoLabelOrchestrator:
         processed_videos = 0
         for layout in layouts:
             extractor = VideoExtractor(layout.video_path)
-            frames_rgb = extractor.load_all_frames(max_frames=self.config.max_frames)
-            if int(frames_rgb.shape[0]) == 0:
+            uv, score, visibility = self._predict_video(extractor)
+            if int(uv.shape[0]) == 0:
                 continue
 
             processed_videos += 1
-            frames_t = self._video_to_tensor(frames_rgb)
-            pred = self.ensemble.predict(frames_t)
-            uv = pred["ball_uv"]
-            score = pred["score"].view(-1)
-            visibility = pred["visibility"].view(-1)
 
             sampled_windows = self.clip_sampler.sample([bool(v.item()) for v in visibility])
             if not sampled_windows:
