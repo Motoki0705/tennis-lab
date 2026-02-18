@@ -1,0 +1,25 @@
+name: uv_transformer_nocourt
+
+hidden_dim: 256
+num_layers: 6
+num_heads: 8
+dropout: 0.1
+mlp_inter_dim: null
+use_moe: true
+invisible_init_std: 0.02
+
+moe:
+  moe_inter_dim: 704
+  n_routed_experts: 8
+  n_shared_experts: 2
+  n_activated_experts: 4
+  n_expert_groups: 1
+  n_limited_groups: 1
+  score_func: softmax
+  route_scale: 1.0
+
+rope_theta: 10000.0
+yarn: null
+
+causal: false
+max_seq_len: 10240

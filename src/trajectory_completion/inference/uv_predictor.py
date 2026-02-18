@@ -60,7 +60,7 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
     def predict(
         self,
         ball_uv: Tensor,
-        court_kp: Tensor,
+        court_kp: Tensor | None = None,
         ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
@@ -73,7 +73,7 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
 
         Args:
             ball_uv: Corrupted inputs. Shape (B, T, 2) or (T, 2).
-            court_kp: Court keypoints. Shape (B, 20, 2) or (20, 2).
+            court_kp: Court keypoints. Shape (B, 20, 2) or (20, 2). Optional for nocourt model.
             ball_vis: Observed mask (1=observed). Shape (B, T) or (T,).
             ball_mask: Optional padding mask. Shape (B, T) or (T,).
             court_vis: Court visibility mask. Shape (B, 20) or (20,).
@@ -91,7 +91,10 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
         """
         if ball_uv.dim() == 2:
             ball_uv = ball_uv.unsqueeze(0)
-        if court_kp.dim() == 2:
+        use_court_context = bool(getattr(self.model, "uses_court_context", True))
+        if use_court_context and court_kp is None:
+            raise ValueError("court_kp is required for court-aware models.")
+        if court_kp is not None and court_kp.dim() == 2:
             court_kp = court_kp.unsqueeze(0)
         if ball_vis is not None and ball_vis.dim() == 1:
             ball_vis = ball_vis.unsqueeze(0)
@@ -100,7 +103,9 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
         if court_vis is not None and court_vis.dim() == 1:
             court_vis = court_vis.unsqueeze(0)
 
-        to_device_tensors: list[Tensor] = [ball_uv, court_kp]
+        to_device_tensors: list[Tensor] = [ball_uv]
+        if court_kp is not None:
+            to_device_tensors.append(court_kp)
         if ball_vis is not None:
             to_device_tensors.append(ball_vis)
         if ball_mask is not None:
@@ -109,8 +114,10 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
             to_device_tensors.append(court_vis)
         moved = self._to_device(self.device, *to_device_tensors)
         ball_uv = moved[0]
-        court_kp = moved[1]
-        idx = 2
+        idx = 1
+        if court_kp is not None:
+            court_kp = moved[idx]
+            idx += 1
         if ball_vis is not None:
             ball_vis = moved[idx]
             idx += 1
@@ -120,14 +127,22 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
         if court_vis is not None:
             court_vis = moved[idx]
 
-        pred, in_frame_logits = self.model(
-            ball_uv,
-            court_kp,
-            ball_vis,
-            ball_mask,
-            court_vis,
-            return_in_frame_logits=True,
-        )
+        if use_court_context:
+            pred, in_frame_logits = self.model(
+                ball_uv,
+                court_kp,
+                ball_vis,
+                ball_mask,
+                court_vis,
+                return_in_frame_logits=True,
+            )
+        else:
+            pred, in_frame_logits = self.model(
+                ball_uv,
+                ball_vis,
+                ball_mask,
+                return_in_frame_logits=True,
+            )
 
         in_frame_probs = torch.sigmoid(in_frame_logits)
         in_frame_pred = in_frame_probs >= float(in_frame_threshold)

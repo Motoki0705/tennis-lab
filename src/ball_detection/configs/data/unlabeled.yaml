@@ -1,6 +1,7 @@
-root_dir: data/tennis
-unlabeled_games: ["game10"]
-batch_size: 32
+video_root_dir: data/tennis/raw/videos/pseudo_seed_01
+video_extensions: [".mp4", ".mov", ".avi", ".mkv"]
+max_frames: null
+batch_size: 16
 num_workers: 4
 image_h: 288
 image_w: 512

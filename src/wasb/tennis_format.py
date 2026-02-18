@@ -22,7 +22,8 @@ class TennisLabelRow:
 def load_label_csv(path: str | Path) -> list[TennisLabelRow]:
     p = Path(path)
     rows: list[TennisLabelRow] = []
-    warned_visibility = False
+    mapped_visibility3_count = 0
+    invalid_visibility_count = 0
     with p.open("r", newline="") as f:
         reader = csv.DictReader(f)
         header = [c.strip() for c in (reader.fieldnames or [])]
@@ -54,14 +55,24 @@ def load_label_csv(path: str | Path) -> list[TennisLabelRow]:
                 score = float(score_raw) if score_raw != "" else 0.0
             else:
                 score = 0.0
-            if visibility not in (0, 1, 2):
-                warned_visibility = True
+            if visibility == 3:
+                mapped_visibility3_count += 1
+                visibility = 2
+            elif visibility not in (0, 1, 2):
+                invalid_visibility_count += 1
                 visibility = 0
             rows.append(TennisLabelRow(file_name, visibility, x, y, status, score))
-    if warned_visibility:
-        LOGGER.warning(
-            "Non-standard visibility value(s) in %s; mapping to 0.",
+    if mapped_visibility3_count > 0:
+        LOGGER.info(
+            "Mapped visibility=3 to visibility=2 in %s (%d rows).",
             p,
+            mapped_visibility3_count,
+        )
+    if invalid_visibility_count > 0:
+        LOGGER.warning(
+            "Unsupported visibility value(s) in %s; mapping %d rows to 0.",
+            p,
+            invalid_visibility_count,
         )
     return rows
 

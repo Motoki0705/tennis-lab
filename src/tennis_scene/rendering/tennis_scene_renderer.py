@@ -81,6 +81,16 @@ class TennisSceneRenderer:
 
         self._smpl_faces: NDArray[np.int64] | None = None
         self._smpl_joint_regressor: NDArray[np.float32] | None = None
+        self._scene_vertices_cache: dict[int, NDArray[np.float32]] = {}
+        self._scene_joints_cache: dict[int, NDArray[np.float32]] = {}
+
+        regressor_path = smpl_joint_regressor_path or DEFAULT_SMPL_JOINT_REGRESSOR_PATH
+        self._smpl_joint_regressor = self._load_smpl_joint_regressor(regressor_path)
+        if self._smpl_joint_regressor is None:
+            raise RuntimeError(
+                f"Failed to load SMPL joint regressor from {regressor_path}. "
+                "SMPL rendering requires this file."
+            )
 
         if self.style.player_representation == "smpl":
             model_path = smpl_model_path or DEFAULT_SMPL_MODEL_PATH
@@ -90,9 +100,6 @@ class TennisSceneRenderer:
                     f"Failed to load SMPL faces from {model_path}. "
                     "SMPL rendering is unavailable in this environment."
                 )
-        elif self.style.player_representation == "skeleton":
-            regressor_path = smpl_joint_regressor_path or DEFAULT_SMPL_JOINT_REGRESSOR_PATH
-            self._smpl_joint_regressor = self._load_smpl_joint_regressor(regressor_path)
 
     def _load_smpl_faces(self, model_path: str | Path) -> NDArray[np.int64] | None:
         model_path = Path(model_path)
@@ -141,26 +148,122 @@ class TennisSceneRenderer:
     def _get_players_yaw(self, scene: SceneResult) -> NDArray[np.float32]:
         return scene.player_yaw
 
-    def _get_players_smpl_vertices_global(self, scene: SceneResult) -> NDArray[np.float32] | None:
-        return scene.smpl_vertices_global
+    def _axis_angle_to_matrix(self, axis_angle: NDArray[np.float32]) -> NDArray[np.float32]:
+        theta = np.linalg.norm(axis_angle, axis=-1)
+        denom = np.where(theta > 1e-8, theta, 1.0)
+        axis = axis_angle / denom[..., None]
+        x = axis[..., 0]
+        y = axis[..., 1]
+        z = axis[..., 2]
+        c = np.cos(theta)
+        s = np.sin(theta)
+        one_minus_c = 1.0 - c
 
-    def _get_players_kp_3d(self, scene: SceneResult) -> NDArray[np.float32] | None:
-        if scene.player_kp_3d is not None:
-            return scene.player_kp_3d
+        rot = np.empty((*axis_angle.shape[:-1], 3, 3), dtype=np.float32)
+        rot[..., 0, 0] = c + x * x * one_minus_c
+        rot[..., 0, 1] = x * y * one_minus_c - z * s
+        rot[..., 0, 2] = x * z * one_minus_c + y * s
+        rot[..., 1, 0] = y * x * one_minus_c + z * s
+        rot[..., 1, 1] = c + y * y * one_minus_c
+        rot[..., 1, 2] = y * z * one_minus_c - x * s
+        rot[..., 2, 0] = z * x * one_minus_c - y * s
+        rot[..., 2, 1] = z * y * one_minus_c + x * s
+        rot[..., 2, 2] = c + z * z * one_minus_c
+        return rot
 
-        smpl_vertices = self._get_players_smpl_vertices_global(scene)
-        if smpl_vertices is None:
-            return None
+    def _rotation_matrix_z(self, yaw: NDArray[np.float32]) -> NDArray[np.float32]:
+        cos_y = np.cos(yaw)
+        sin_y = np.sin(yaw)
+        rot = np.zeros((*yaw.shape, 3, 3), dtype=np.float32)
+        rot[..., 0, 0] = cos_y
+        rot[..., 0, 1] = -sin_y
+        rot[..., 1, 0] = sin_y
+        rot[..., 1, 1] = cos_y
+        rot[..., 2, 2] = 1.0
+        return rot
 
-        if self._smpl_joint_regressor is None:
+    def _validate_required_smpl_fields(self, scene: SceneResult) -> None:
+        missing: list[str] = []
+        if scene.smpl_vertices_local is None:
+            missing.append("smpl_vertices_local")
+        if scene.smpl_global_orient is None:
+            missing.append("smpl_global_orient")
+        if scene.player_position is None:
+            missing.append("player_position")
+        if scene.player_yaw is None:
+            missing.append("player_yaw")
+        if missing:
+            missing_str = ", ".join(missing)
             raise RuntimeError(
-                "player_kp_3d is not available and SMPL joint regressor could not be loaded."
+                "SMPL rendering requires the following SceneResult fields: "
+                f"{missing_str}."
             )
 
-        # (J, V) x (P, T, V, 3) -> (P, T, J, 3)
-        return np.einsum("jv,ptvc->ptjc", self._smpl_joint_regressor, smpl_vertices).astype(
+    def _build_players_smpl_vertices_court(self, scene: SceneResult) -> NDArray[np.float32]:
+        cache_key = id(scene)
+        cached = self._scene_vertices_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        self._validate_required_smpl_fields(scene)
+        if self._smpl_joint_regressor is None:
+            raise RuntimeError("SMPL joint regressor is not loaded.")
+
+        verts_local = np.asarray(scene.smpl_vertices_local, dtype=np.float32)
+        global_orient = np.asarray(scene.smpl_global_orient, dtype=np.float32)
+        players_position = np.asarray(scene.player_position, dtype=np.float32)
+        players_yaw = np.asarray(scene.player_yaw, dtype=np.float32)
+
+        if verts_local.ndim != 4 or verts_local.shape[-1] != 3:
+            raise RuntimeError(
+                "smpl_vertices_local must have shape (P, T, V, 3), "
+                f"got {verts_local.shape}."
+            )
+        if global_orient.shape != verts_local.shape[:2] + (3,):
+            raise RuntimeError(
+                "smpl_global_orient must have shape (P, T, 3), "
+                f"got {global_orient.shape}."
+            )
+        if players_position.shape != verts_local.shape[:2] + (3,):
+            raise RuntimeError(
+                "player_position must have shape (P, T, 3), "
+                f"got {players_position.shape}."
+            )
+        if players_yaw.shape != verts_local.shape[:2]:
+            raise RuntimeError(
+                "player_yaw must have shape (P, T), "
+                f"got {players_yaw.shape}."
+            )
+
+        roots = np.einsum("jv,ptvc->ptjc", self._smpl_joint_regressor, verts_local)[:, :, 0, :]
+        verts_centered = verts_local - roots[:, :, None, :]
+
+        orient_rot = self._axis_angle_to_matrix(global_orient)
+        verts_pose_local = np.einsum("ptji,ptvj->ptvi", orient_rot, verts_centered)
+
+        plcs_rot = self._rotation_matrix_z(players_yaw)
+        verts_court = np.einsum("ptij,ptvj->ptvi", plcs_rot, verts_pose_local)
+        verts_court = verts_court + players_position[:, :, None, :]
+        verts_court = verts_court.astype(np.float32)
+
+        self._scene_vertices_cache[cache_key] = verts_court
+        return verts_court
+
+    def _get_players_kp_3d(self, scene: SceneResult) -> NDArray[np.float32]:
+        cache_key = id(scene)
+        cached = self._scene_joints_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        if self._smpl_joint_regressor is None:
+            raise RuntimeError("SMPL joint regressor is not loaded.")
+
+        players_smpl = self._build_players_smpl_vertices_court(scene)
+        players_kp_3d = np.einsum("jv,ptvc->ptjc", self._smpl_joint_regressor, players_smpl).astype(
             np.float32
         )
+        self._scene_joints_cache[cache_key] = players_kp_3d
+        return players_kp_3d
 
     def _render_smpl_mesh_3d(
         self,
@@ -260,14 +363,9 @@ class TennisSceneRenderer:
         track_ids = self._get_player_tracks(scene)
         players_position = self._get_players_position(scene)
         players_yaw = self._get_players_yaw(scene)
+        players_smpl = self._build_players_smpl_vertices_court(scene)
 
         if self.style.player_representation == "smpl":
-            players_smpl = self._get_players_smpl_vertices_global(scene)
-            if players_smpl is None:
-                raise RuntimeError(
-                    "player_representation='smpl' requires SMPL vertices in scene "
-                    "(smpl_vertices_global)."
-                )
             for player_idx, track_id in enumerate(track_ids):
                 color = self._player_color(player_idx)
                 vertices = players_smpl[player_idx, frame_idx]
@@ -286,11 +384,6 @@ class TennisSceneRenderer:
                 )
         else:
             players_kp_3d = self._get_players_kp_3d(scene)
-            if players_kp_3d is None:
-                raise RuntimeError(
-                    "player_representation='skeleton' requires player_kp_3d or SMPL vertices "
-                    "with a valid joint regressor."
-                )
             for player_idx, track_id in enumerate(track_ids):
                 color = self._player_color(player_idx)
                 style_override = SkeletonStyle(

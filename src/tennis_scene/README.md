@@ -156,7 +156,6 @@ SceneResult:
     smpl_global_orient: (T, 3)   # SMPLグローバル向き
     smpl_betas: (10,)            # SMPL形状パラメータ
     smpl_vertices_local: (T, V, 3)   # ローカルSMPL頂点
-    smpl_vertices_global: (T, V, 3)  # グローバルSMPL頂点（PLCS適用済み）
     ball_uv: (T, 2)              # ボール2D位置（正規化）
     ball_uv_pred: (T, 2)         # 軌道補完モデルの生予測
     ball_uv_completed: (T, 2)    # 観測値マージ後の補完UV
@@ -176,12 +175,10 @@ SceneResult:
 
 SMPLメッシュの座標変換は以下の手順で行われます：
 
-1. **Yaw回転**: PLCSのyawでY軸周りに回転
-2. **平行移動**: PLCSの3D位置を加算
-
-```python
-global_smpl_verts = rotate_y(local_smpl_verts, yaw) + position
-```
+1. `smpl_vertices_local` から root を差し引き、メッシュを root 基準に中心化
+2. `smpl_global_orient` の逆回転で GVHMR 由来の向きを打ち消し
+3. PLCS の yaw を Z 軸回転として適用
+4. PLCS の 3D 位置を加算
 
 ## モジュール構成
 

@@ -4,7 +4,7 @@ trainer:
   deterministic: false
   benchmark: true
   precision: "bf16-mixed"
-  log_every_n_steps: 50
+  log_every_n_steps: 10
   check_val_every_n_epoch: 1
 
 allow_tf32: true
@@ -17,6 +17,10 @@ min_lr: 1.0e-6
 
 xy_weight: 1.0
 vis_weight: 0.5
+heatmap_weight: 1.0
+heatmap_sigma: 2.5
+heatmap_loss_type: bce
+acc_threshold_px: 4.0
 event_boost: 0.0
 
 # event-aware training emphasis near detected events
