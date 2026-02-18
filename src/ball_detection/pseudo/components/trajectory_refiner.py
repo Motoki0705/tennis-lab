@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import torch
 from torch import Tensor
 
 from src.trajectory_completion.inference import UVTrajectoryCompletionPredictor
@@ -22,13 +21,21 @@ class TrajectoryRefiner:
     def refine(
         self,
         ball_uv: Tensor,
-        court_kp: Tensor,
+        court_kp: Tensor | None = None,
         *,
         ball_vis: Tensor,
         ball_mask: Tensor,
         court_vis: Tensor | None = None,
     ) -> Tensor:
-        """Return completed trajectory; fall back to input when predictor is absent."""
+        """Return completed trajectory; fall back to input when predictor is absent.
+
+        Args:
+            ball_uv: Input ball UV sequence.
+            court_kp: Optional court keypoints. Required only for court-aware models.
+            ball_vis: Ball visibility/observation mask.
+            ball_mask: Valid-length mask.
+            court_vis: Optional court visibility mask.
+        """
         if self.predictor is None:
             return ball_uv
 
