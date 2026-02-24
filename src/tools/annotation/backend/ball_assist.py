@@ -53,7 +53,7 @@ def _load_predictor(
     max_disp: int,
 ):
     """Load and cache a WASB-compatible predictor."""
-    from src.wasb.inference import HRCNetWASBPredictor, WASBPredictor
+    from src.tasks.wasb.inference import HRCNetWASBPredictor, WASBPredictor
 
     if model_type == "hrcnet":
         predictor_cls = HRCNetWASBPredictor

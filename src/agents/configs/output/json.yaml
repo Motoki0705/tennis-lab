@@ -1,4 +1,0 @@
-# JSON output configuration
-format: json
-show_commands: false
-show_errors: true

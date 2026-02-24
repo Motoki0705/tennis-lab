@@ -57,11 +57,12 @@ dev = [
     "pytest>=8.4.2",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.8.0",
+    "pydeps>=3.0.2",
 ]
 
 # Optional group for the BLCS WebUI API server (FastAPI + Uvicorn).
 # Usage:
-#   uv run --group webui -m src.blcs.generate_dataset.api_server --reload --port 8001
+#   uv run --group webui -m src.tasks.blcs.generate_dataset.api_server --reload --port 8001
 webui = [
     "fastapi>=0.110.0",
     "uvicorn>=0.30.0",

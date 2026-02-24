@@ -1,8 +1,0 @@
-checkpoints:
-  - outputs/ball_detection/tracknetv3_wbce_full_e30/logs/version_0/checkpoints/last.ckpt
-  - checkpoints/wasb/wasb_tennis_best.pth.tar
-model_config_paths:
-  - src/ball_detection/configs/model/tracknetv3.yaml
-  - src/ball_detection/configs/model/hrnet_temporal.yaml
-weights: [0.5, 0.5]
-visibility_threshold: 0.5

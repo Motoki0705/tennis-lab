@@ -1,0 +1,36 @@
+defaults:
+  - _self_
+  - data: ball_detection
+  - model: dinov3_heatmap
+
+# Configuration for `src.tasks.wasb.scripts.tools.encode_dinov3_patch_tokens`.
+device: cuda
+model_checkpoint: outputs/wasb/ball_detection/dinov3_heatmap/logs/version_2/checkpoints/wasb-epoch=14.ckpt  # Optional Lightning checkpoint (.ckpt) for dinov3_heatmap.
+
+output_dir: data/tennis/patch_embeddings
+num_augments: 3
+heatmap_sigma: ${data.heatmap_sigma}
+heatmap_hw: ${data.heatmap_hw}
+save_embeddings: true
+save_heatmaps: true
+batch_size: 32
+num_workers: 4
+pin_memory: true
+overwrite: true
+save_dtype: float32  # float32 | float16 | bfloat16 (saved as float16)
+
+# Optional override list. When null, uses data.train/val/test matches.
+matches: null
+
+preprocess:
+  resize_hw: ${data.resize_hw}
+  normalize: false
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+
+hydra:
+  run:
+    dir: outputs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
