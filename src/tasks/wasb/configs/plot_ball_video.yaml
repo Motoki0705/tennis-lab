@@ -1,0 +1,26 @@
+defaults:
+  - _self_
+
+# Configuration for `src.tasks.wasb.scripts.visualize.ball_video`.
+video_path: data/samples/clip.mp4
+output_path: outputs/wasb/ball_detection/visualize/ball_video/clip.mp4
+
+checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
+model: wasb            # wasb | hrcnet
+device: cuda            # cpu | cuda
+
+batch_size: 64
+max_frames: null
+score_threshold: 0.5
+
+render:
+  radius: 6
+  thickness: -1
+  color_detected_bgr: [0, 255, 0]
+
+hydra:
+  run:
+    dir: outputs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

@@ -1,4 +1,0 @@
-# Sequential execution configuration (one provider at a time)
-parallel: false
-max_workers: 1
-timeout_s: 120.0

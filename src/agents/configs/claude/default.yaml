@@ -1,7 +1,0 @@
-# Claude provider configuration
-enable: true
-model: sonnet
-# Available models:
-#   - opus (最強・複雑な推論)
-#   - sonnet (バランス・高速)
-#   - huiku (低コスト・高速)

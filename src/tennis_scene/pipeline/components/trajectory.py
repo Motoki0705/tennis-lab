@@ -101,7 +101,7 @@ class TrajectoryModule(BasePipelineModule):
         if self._predictor is not None:
             return
 
-        from src.trajectory_completion.inference import UVTrajectoryCompletionPredictor
+        from src.tasks.trajectory_completion.inference import UVTrajectoryCompletionPredictor
 
         LOGGER.info(f"Loading trajectory model from {self.config.checkpoint_path}")
         self._predictor = UVTrajectoryCompletionPredictor.load_from_checkpoint(

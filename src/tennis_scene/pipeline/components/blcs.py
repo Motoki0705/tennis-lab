@@ -140,7 +140,7 @@ class BLCSModule(BasePipelineModule):
 
         LOGGER.info(f"Loading BLCS model from {self.checkpoint_path}")
 
-        from src.blcs.inference.predictor import BLCSPredictor
+        from src.tasks.blcs.inference.predictor import BLCSPredictor
 
         self._predictor = BLCSPredictor.load_from_checkpoint(
             self.checkpoint_path, device=self.device

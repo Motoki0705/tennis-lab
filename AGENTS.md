@@ -3,9 +3,9 @@
 This file defines implementation-time conventions for this repository.
 
 ## 1) Domain overview (what goes where)
-- `WASB` (`src/wasb`): detect 2D ball position on the image.
-- `PLCS` (`src/plcs`): infer 3D player position on the court from 2D skeletons.
-- `BLCS` (`src/blcs`): infer 3D ball trajectory on the court from 2D ball positions.
+- `WASB` (`src/tasks/wasb`): detect 2D ball position on the image.
+- `PLCS` (`src/tasks/plcs`): infer 3D player position on the court from 2D skeletons.
+- `BLCS` (`src/tasks/blcs`): infer 3D ball trajectory on the court from 2D ball positions.
 - `third_party/`: external modules (e.g., GVHMR for SMPL/pose). Keep vendor code isolated.
 - `data/`: datasets and inputs. Document any local-only data.
 - `outputs/`: model checkpoints, artifacts, and generated results.

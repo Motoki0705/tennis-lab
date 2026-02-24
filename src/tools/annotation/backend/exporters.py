@@ -9,7 +9,7 @@ import cv2
 
 from src.tools.annotation.backend.models import CourtFrameAnnotation
 from src.tools.annotation.backend.video import VideoFrameProvider
-from src.wasb.tennis_format import row_from_visibility, save_label_csv
+from src.tasks.wasb.tennis_format import row_from_visibility, save_label_csv
 
 
 @dataclass(frozen=True)
