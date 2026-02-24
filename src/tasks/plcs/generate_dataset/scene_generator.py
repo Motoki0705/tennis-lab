@@ -189,9 +189,13 @@ class SceneGenerator:
         centered_trans[:, 1] -= init_offset_xy[1]
         # Keep original Z (pelvis height from ground)
 
-        # Rotation matrix for init_yaw
-        cos_yaw = math.cos(init_yaw)
-        sin_yaw = math.sin(init_yaw)
+        # Compute motion yaw first so translation and body rotation share the same offset.
+        motion_yaw = self._extract_global_yaw_from_motion(motion)  # (T,)
+        yaw_offset = self._wrap_angle(init_yaw - motion_yaw[0])
+
+        # Rotation matrix for yaw offset (not raw init_yaw)
+        cos_yaw = math.cos(yaw_offset)
+        sin_yaw = math.sin(yaw_offset)
         rot_mat = np.array(
             [
                 [cos_yaw, -sin_yaw, 0],
@@ -213,7 +217,6 @@ class SceneGenerator:
         positions[:, 2] = court_trans[:, 2] / COURT_COORD_SCALE_Z
 
         # Compute rotations (yaw): motion-relative yaw with randomized initial yaw.
-        motion_yaw = self._extract_global_yaw_from_motion(motion)  # (T,)
         relative_yaw = self._wrap_angle(motion_yaw - motion_yaw[0])  # t=0 -> 0
         world_yaw = self._wrap_angle(relative_yaw + init_yaw)  # add random initial yaw
 
