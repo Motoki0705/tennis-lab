@@ -10,27 +10,27 @@
 
 ```bash
 # 基本的な使用法
-uv run python -m src.wasb.scripts.visualize.ball_video_ensemble video_path=data/samples/clip.mp4
+uv run python -m src.tasks.wasb.scripts.visualize.ball_video_ensemble video_path=data/samples/clip.mp4
 
 # ヒートマップ閾値を変更
-uv run python -m src.wasb.scripts.visualize.ball_video_ensemble \
+uv run python -m src.tasks.wasb.scripts.visualize.ball_video_ensemble \
   video_path=... \
   ensemble.heatmap_threshold=0.5
 
 # カスタムチェックポイントを指定
-uv run python -m src.wasb.scripts.visualize.ball_video_ensemble \
+uv run python -m src.tasks.wasb.scripts.visualize.ball_video_ensemble \
   video_path=... \
   'ensemble.checkpoints=[a.ckpt,b.ckpt,c.ckpt]'
 
 # 出力パスを指定
-uv run python -m src.wasb.scripts.visualize.ball_video_ensemble \
+uv run python -m src.tasks.wasb.scripts.visualize.ball_video_ensemble \
   video_path=input.mp4 \
   output_path=output_ensemble.mp4
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/wasb/configs/plot_ball_video_ensemble.yaml`
+エントリポイント: `src/tasks/wasb/configs/plot_ball_video_ensemble.yaml`
 
 ### 主要パラメータ
 
@@ -140,5 +140,5 @@ outputs/wasb/ball_detection/visualize/ball_video_ensemble/
 
 ## 関連モジュール
 
-- `src.wasb.inference.ball_detection.HeatmapEnsemblePredictor`: アンサンブル推論
-- `src.wasb.pipeline.video_ball_localization_pipeline.VideoBallLocalizationPipeline`: パイプライン
+- `src.tasks.wasb.inference.ball_detection.HeatmapEnsemblePredictor`: アンサンブル推論
+- `src.tasks.wasb.pipeline.video_ball_localization_pipeline.VideoBallLocalizationPipeline`: パイプライン

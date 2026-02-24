@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from torch import Tensor
 
-from src.trajectory_completion.inference import UVTrajectoryCompletionPredictor
+from src.tasks.trajectory_completion.inference import UVTrajectoryCompletionPredictor
 
 
 class TrajectoryRefiner:

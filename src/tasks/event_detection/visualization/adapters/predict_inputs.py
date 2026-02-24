@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.event_detection.visualization.types import Traj3DEventInputs, UVEventInputs
+from src.tasks.event_detection.visualization.types import Traj3DEventInputs, UVEventInputs
 
 
 @dataclass(frozen=True)

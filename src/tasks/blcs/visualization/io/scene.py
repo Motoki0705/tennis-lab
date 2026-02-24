@@ -8,7 +8,7 @@ from typing import Any
 
 import numpy as np
 
-from src.blcs.generate_dataset.io.dataset_io import load_scene
+from src.tasks.blcs.generate_dataset.io.dataset_io import load_scene
 
 
 @dataclass(frozen=True)

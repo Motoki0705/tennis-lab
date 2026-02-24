@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.ball_detection.data.type import ClipLayout
+from src.tasks.ball_detection.data.type import ClipLayout
 
 
 def resolve_game_split(layouts: list[ClipLayout], *, train_games: set[str], val_games: set[str], test_games: set[str]) -> dict[str, list[ClipLayout]]:

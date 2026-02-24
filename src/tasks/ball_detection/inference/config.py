@@ -8,12 +8,12 @@ from typing import Any
 import torch
 from omegaconf import DictConfig
 
-from src.ball_detection.inference.types import InferenceConfig, InferenceMemberConfig
+from src.tasks.ball_detection.inference.types import InferenceConfig, InferenceMemberConfig
 
 _DEFAULT_TRACKNET_CHECKPOINT = Path(
     "outputs/ball_detection/tracknetv3_wbce_full_e30/logs/version_0/checkpoints/last.ckpt"
 )
-_DEFAULT_TRACKNET_MODEL_CONFIG = Path("src/ball_detection/configs/model/tracknetv3.yaml")
+_DEFAULT_TRACKNET_MODEL_CONFIG = Path("src/tasks/ball_detection/configs/model/tracknetv3.yaml")
 
 
 def _cfg_get(cfg: Any, key: str, default: Any = None) -> Any:

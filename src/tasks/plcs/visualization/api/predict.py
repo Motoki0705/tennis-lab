@@ -9,15 +9,15 @@ from typing import Any
 
 import numpy as np
 
-from src.plcs.visualization.adapters.predict_inputs import (
+from src.tasks.plcs.visualization.adapters.predict_inputs import (
     build_frame_inputs,
     build_multiview_inputs,
     build_sequence_inputs,
 )
-from src.plcs.inference.predictor import PLCSPredictor
-from src.plcs.models.plcs_model import PLCSModel
-from src.plcs.models.plcs_multiview_model import PLCSMultiViewModel
-from src.plcs.models.plcs_query_sequence_model import PLCSQuerySequenceModel
+from src.tasks.plcs.inference.predictor import PLCSPredictor
+from src.tasks.plcs.models.plcs_model import PLCSModel
+from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
+from src.tasks.plcs.models.plcs_query_sequence_model import PLCSQuerySequenceModel
 
 logger = logging.getLogger(__name__)
 

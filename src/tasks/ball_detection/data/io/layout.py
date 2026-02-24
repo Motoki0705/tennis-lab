@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.ball_detection.data.type import ClipLayout, FrameRecord, VideoLayout
+from src.tasks.ball_detection.data.type import ClipLayout, FrameRecord, VideoLayout
 
 
 def _iter_clip_dirs(game_dir: Path) -> list[Path]:

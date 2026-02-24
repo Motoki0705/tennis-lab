@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING, Any
 
 from torch import Tensor, nn
 
-from src.base.training.lightning_module import BaseLightningModule
-from src.wasb.models import build_model
-from src.wasb.training.ball_detection.loss import (
+from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.wasb.models import build_model
+from src.tasks.wasb.training.ball_detection.loss import (
     LossWeights,
     TemporalPeakLossConfig,
     WASBLoss,
 )
-from src.wasb.training.ball_detection.metrics import WASBMetrics
+from src.tasks.wasb.training.ball_detection.metrics import WASBMetrics
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

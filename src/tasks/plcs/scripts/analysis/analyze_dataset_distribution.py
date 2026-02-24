@@ -7,10 +7,10 @@ This script inspects pre-generated PLCS scene NPZ files and summarizes:
 - Fractions near the court origin (useful for detecting dataset bias)
 
 Example commands:
-    `uv run python -m src.plcs.scripts.analysis.analyze_dataset_distribution`
-    `uv run python -m src.plcs.scripts.analysis.analyze_dataset_distribution run.output_dir=outputs/plcs/analysis/dataset_distribution analysis.max_scenes=200`
+    `uv run python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution`
+    `uv run python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution run.output_dir=outputs/plcs/analysis/dataset_distribution analysis.max_scenes=200`
 
-Config entry point: `src/plcs/configs/analyze_dataset_distribution.yaml`
+Config entry point: `src/tasks/plcs/configs/analyze_dataset_distribution.yaml`
 """
 
 from __future__ import annotations

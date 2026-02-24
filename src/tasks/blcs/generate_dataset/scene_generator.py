@@ -19,18 +19,18 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.blcs.generate_dataset.sampling.distribution_sampler import (
+from src.tasks.blcs.generate_dataset.sampling.distribution_sampler import (
     DistributionSampler,
     SamplingConfig,
 )
-from src.blcs.simulation.ball_physics import BallPhysics, PhysicsConfig
-from src.blcs.simulation.cell_manager import CellManager, ShotCategory
-from src.blcs.simulation.rally_simulator import (
+from src.tasks.blcs.simulation.ball_physics import BallPhysics, PhysicsConfig
+from src.tasks.blcs.simulation.cell_manager import CellManager, ShotCategory
+from src.tasks.blcs.simulation.rally_simulator import (
     RallyConfig,
     RallySimulator,
 )
-from src.blcs.simulation.shot_simulator import ShotConfig, ShotSimulator
-from src.blcs.simulation.targeted_velocity_sampler import TargetedVelocityConfig
+from src.tasks.blcs.simulation.shot_simulator import ShotConfig, ShotSimulator
+from src.tasks.blcs.simulation.targeted_velocity_sampler import TargetedVelocityConfig
 from src.utils.projection.camera_projector import (
     CameraConfig,
     CameraProjector,

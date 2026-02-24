@@ -45,16 +45,16 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 
-from src.common.models.components.attention import (
+from src.utils.models.components.attention import (
     KVCache,
     MSDeformAttnConfig,
     MultiHeadCrossAttention,
     MultiScaleDeformableAttention,
     MultiHeadSelfAttention,
 )
-from src.common.models.components.moe import MoE, MoEConfig, SwiGLU
-from src.common.models.components.norm import RMSNorm
-from src.common.models.components.rope import (
+from src.utils.models.components.moe import MoE, MoEConfig, SwiGLU
+from src.utils.models.components.norm import RMSNorm
+from src.utils.models.components.rope import (
     PositionGetter,
     YaRNConfig,
     precompute_freqs_cis_2d,

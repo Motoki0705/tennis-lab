@@ -9,8 +9,8 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 from torch import Tensor, nn
 
-from src.ball_detection.models.third_party_loader import load_wasb_hrnet_class
-from src.wasb.models.ball_detection.temporal_conv_gru import StackedConvGRU
+from src.tasks.ball_detection.models.third_party_loader import load_wasb_hrnet_class
+from src.tasks.wasb.models.ball_detection.temporal_conv_gru import StackedConvGRU
 
 
 def _repo_root() -> Path:

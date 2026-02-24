@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader, random_split
 
-from src.common.data.scene_batch_sampler import build_scene_sampler, resolve_scene_sampler_mode
-from src.plcs.data.dataset import SceneDataset, collate_and_adapt_plcs_batch
+from src.utils.data.scene_batch_sampler import build_scene_sampler, resolve_scene_sampler_mode
+from src.tasks.plcs.data.dataset import SceneDataset, collate_and_adapt_plcs_batch
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

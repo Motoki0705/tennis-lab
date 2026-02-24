@@ -171,8 +171,8 @@ class WASBModule(BasePipelineModule):
 
         LOGGER.info(f"Loading WASB model from {self.config.checkpoint}")
 
-        from src.wasb.inference import WASBPredictor
-        from src.wasb.pipeline import VideoBallLocalizationPipeline
+        from src.tasks.wasb.inference import WASBPredictor
+        from src.tasks.wasb.pipeline import VideoBallLocalizationPipeline
 
         predictor = WASBPredictor.load_from_checkpoint(
             self.config.checkpoint, device=self.config.device

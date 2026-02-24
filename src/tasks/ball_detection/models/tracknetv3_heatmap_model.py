@@ -8,7 +8,7 @@ import torch
 from omegaconf import DictConfig
 from torch import Tensor, nn
 
-from src.ball_detection.models.third_party_loader import load_tracknetv3_tracknet_class
+from src.tasks.ball_detection.models.third_party_loader import load_tracknetv3_tracknet_class
 
 
 class TrackNetV3HeatmapModel(nn.Module):

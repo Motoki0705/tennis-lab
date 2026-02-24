@@ -6,7 +6,7 @@ import hydra
 import torch
 from omegaconf import DictConfig
 
-from src.ball_detection.pseudo.orchestrator import PseudoLabelOrchestrator, PseudoOrchestratorConfig
+from src.tasks.ball_detection.pseudo.orchestrator import PseudoLabelOrchestrator, PseudoOrchestratorConfig
 
 
 @hydra.main(config_path="../configs", config_name="generate_pseudo", version_base="1.3")

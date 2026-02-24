@@ -1,6 +1,6 @@
 """Sampling utilities for BLCS dataset generation."""
 
-from src.blcs.generate_dataset.sampling.distribution_sampler import (
+from src.tasks.blcs.generate_dataset.sampling.distribution_sampler import (
     DistributionSampler,
     SamplingConfig,
 )

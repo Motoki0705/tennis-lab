@@ -40,22 +40,22 @@ BLCS は、テニスコート座標系におけるボールの 3D 軌道を、2D
 ### データ生成
 
 ```bash
-uv run python -m src.blcs.scripts.generate_dataset
+uv run python -m src.tasks.blcs.scripts.generate_dataset
 ```
 
 ### 学習
 
 ```bash
 # 単一カメラモデル
-uv run python -m src.blcs.scripts.train
+uv run python -m src.tasks.blcs.scripts.train
 
 # マルチビューモデル（複数カメラ統合）
-uv run python -m src.blcs.scripts.train \
+uv run python -m src.tasks.blcs.scripts.train \
     model=multiview \
     data=multiview
 
 # マルチビュー学習のカスタム設定例
-uv run python -m src.blcs.scripts.train \
+uv run python -m src.tasks.blcs.scripts.train \
     model=multiview \
     data=multiview \
     data.num_views_range=[2,4] \
@@ -66,9 +66,9 @@ uv run python -m src.blcs.scripts.train \
 ### ハイパーパラメータ探索
 
 ```bash
-UV_CACHE_DIR=agents_workspace/tmp_cache/uv_cache \
+UV_CACHE_DIR=outputs/tmp_cache/uv_cache \
 RUN_ROOT=outputs/blcs/sweep_$(date +%Y-%m-%d_%H-%M-%S) \
-bash src/blcs/scripts/run_hparam_sweep.sh
+bash src/tasks/blcs/scripts/run_hparam_sweep.sh
 ```
 
 ## データローディング最適化
@@ -81,14 +81,14 @@ bash src/blcs/scripts/run_hparam_sweep.sh
 
 ```bash
 # 単一カメラ（GT vs Prediction 比較アニメーション）
-uv run python -m src.blcs.scripts.visualize
+uv run python -m src.tasks.blcs.scripts.visualize
 
 # 単一カメラ（view指定）
-uv run python -m src.blcs.scripts.visualize \
+uv run python -m src.tasks.blcs.scripts.visualize \
     visualization.animation_view=3d
 
 # マルチビュー（GT vs Prediction 比較アニメーション）
-uv run python -m src.blcs.scripts.visualize \
+uv run python -m src.tasks.blcs.scripts.visualize \
     visualization=multiview \
     visualization.scene_path=data/blcs/scenes/scene_000003.npz \
     visualization.mode=predict \
@@ -96,7 +96,7 @@ uv run python -m src.blcs.scripts.visualize \
     visualization.cameras=all
 
 # 保存する場合
-uv run python -m src.blcs.scripts.visualize \
+uv run python -m src.tasks.blcs.scripts.visualize \
     visualization=multiview \
     visualization.mode=predict \
     visualization.checkpoint=outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt \
@@ -104,7 +104,7 @@ uv run python -m src.blcs.scripts.visualize \
     visualization.save=outputs/blcs/visualize/compare_multiview.mp4
 ```
 
-可視化スクリプトは `src/blcs/visualization/orchestrator.py` を通して、
+可視化スクリプトは `src/tasks/blcs/visualization/orchestrator.py` を通して、
 `visualization.mode=visualize` では `BLCSSceneRenderer.create_animation()`、
 `visualization.mode=predict` では `BLCSSceneRenderer.create_comparison_animation()` を呼び出します。  
 `visualization.animation_view` は `2d|3d` をサポートします。
@@ -116,17 +116,17 @@ uv run python -m src.blcs.scripts.visualize \
 単一カメラからの2D観測シーケンスを入力として3D軌道を推定。
 Temporal Encoder + MLP ベースの構造。
 
-実装: `src/blcs/models/blcs_model.py`
+実装: `src/tasks/blcs/models/blcs_model.py`
 
 ### マルチビューモデル (`BLCSMultiViewModel`)
 
 複数カメラからの観測を統合して推定。複数視点からの2D観測を融合することで、
 単一視点より高精度な3D軌道復元を狙う構成。
 
-実装: `src/blcs/models/blcs_multiview_model.py`
+実装: `src/tasks/blcs/models/blcs_multiview_model.py`
 
 ### クエリモデル (`BLCSQueryModel`)
 
 クエリベースでボール軌道を推定するモデル。
 
-実装: `src/blcs/models/blcs_query_model.py`
+実装: `src/tasks/blcs/models/blcs_query_model.py`

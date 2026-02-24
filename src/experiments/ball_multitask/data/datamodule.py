@@ -10,8 +10,8 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from src.ball_multitask.data.dataset import BallMultitaskDataset
-from src.common.data.scene_batch_sampler import build_scene_sampler, resolve_scene_sampler_mode
+from src.experiments.ball_multitask.data.dataset import BallMultitaskDataset
+from src.utils.data.scene_batch_sampler import build_scene_sampler, resolve_scene_sampler_mode
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -91,7 +91,7 @@ class BallMultitaskDataModule(pl.LightningDataModule):
     def setup(self, stage: str | None = None) -> None:
         if not self.scene_dir.exists():
             raise RuntimeError(
-                f"scene_dir not found: {self.scene_dir}. Run src.blcs.scripts.generate_dataset."
+                f"scene_dir not found: {self.scene_dir}. Run src.tasks.blcs.scripts.generate_dataset."
             )
 
         if stage in ("fit", None):

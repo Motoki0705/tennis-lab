@@ -18,13 +18,13 @@
 ### 基本実行
 
 ```bash
-uv run python -m src.plcs.scripts.train_multiview
+uv run python -m src.tasks.plcs.scripts.train_multiview
 ```
 
 ### 出力先・データセット指定
 
 ```bash
-uv run python -m src.plcs.scripts.train_multiview \
+uv run python -m src.tasks.plcs.scripts.train_multiview \
     run.output_dir=outputs/plcs/multiview \
     data.scene_dir=data/plcs/scenes
 ```
@@ -33,7 +33,7 @@ uv run python -m src.plcs.scripts.train_multiview \
 
 ```bash
 # 4カメラ同時使用、最低2カメラ必須
-uv run python -m src.plcs.scripts.train_multiview \
+uv run python -m src.tasks.plcs.scripts.train_multiview \
     data.num_views=4 \
     data.min_cameras=2
 ```
@@ -42,7 +42,7 @@ uv run python -m src.plcs.scripts.train_multiview \
 
 ```bash
 # シーケンス長を32フレームに設定
-uv run python -m src.plcs.scripts.train_multiview \
+uv run python -m src.tasks.plcs.scripts.train_multiview \
     data.seq_len=32
 ```
 
@@ -50,7 +50,7 @@ uv run python -m src.plcs.scripts.train_multiview \
 
 ```bash
 # カメラ数とシーケンス長を範囲からランダムにサンプリング
-uv run python -m src.plcs.scripts.train_multiview \
+uv run python -m src.tasks.plcs.scripts.train_multiview \
     'data.num_views_range=[1, 8]' \
     'data.seq_len_range=[4, 32]'
 ```
@@ -58,26 +58,26 @@ uv run python -m src.plcs.scripts.train_multiview \
 ### Dry Run（データローディング確認のみ）
 
 ```bash
-uv run python -m src.plcs.scripts.train_multiview run.dry_run=true
+uv run python -m src.tasks.plcs.scripts.train_multiview run.dry_run=true
 ```
 
 ### GPU学習
 
 ```bash
-uv run python -m src.plcs.scripts.train_multiview run.gpus=1
+uv run python -m src.tasks.plcs.scripts.train_multiview run.gpus=1
 ```
 
 ### 高速開発モード（1バッチのみ）
 
 ```bash
-uv run python -m src.plcs.scripts.train_multiview run.fast_dev_run=true
+uv run python -m src.tasks.plcs.scripts.train_multiview run.fast_dev_run=true
 ```
 
 ## 設定ファイル構成
 
 ### メイン設定
 
-`src/plcs/configs/train_multiview.yaml`:
+`src/tasks/plcs/configs/train_multiview.yaml`:
 
 ```yaml
 defaults:
@@ -100,7 +100,7 @@ hydra:
 
 ### データ設定
 
-`src/plcs/configs/data/multiview.yaml`:
+`src/tasks/plcs/configs/data/multiview.yaml`:
 
 ```yaml
 scene_dir: data/plcs
@@ -117,7 +117,7 @@ seq_len: 16           # シーケンス長
 
 ### ロス設定
 
-`src/plcs/configs/loss/multiview_sequence.yaml`:
+`src/tasks/plcs/configs/loss/multiview_sequence.yaml`:
 
 ```yaml
 position_weight: 1.0
@@ -143,7 +143,7 @@ temporal:
 
 ### モデル設定
 
-`src/plcs/configs/model/multiview.yaml`:
+`src/tasks/plcs/configs/model/multiview.yaml`:
 
 ```yaml
 hidden_dim: 256
@@ -189,7 +189,7 @@ dropout: 0.1
 - **時間一貫性損失**: `temporal.*.weight > 0` の項目を加算（位置/回転 × GT/慣性）
 - **総合損失**: `position_weight * pos_loss + rotation_weight * rot_loss + Σ temporal_term_weight * temporal_term_loss`
 
-ロス設定は `src/plcs/configs/loss/multiview_sequence.yaml` で管理されます。
+ロス設定は `src/tasks/plcs/configs/loss/multiview_sequence.yaml` で管理されます。
 
 ## 評価指標
 
@@ -212,7 +212,7 @@ outputs/plcs/multiview/
 
 ## 関連ファイル
 
-- モデル: `src/plcs/models/plcs_multiview_model.py`
-- データセット: `src/plcs/data/multiview_dataset.py`
-- Lightning Module: `src/plcs/training/multiview_lightning_module.py`
-- DataModule: `src/plcs/data/datamodule.py` (`PLCSMultiViewDataModule`)
+- モデル: `src/tasks/plcs/models/plcs_multiview_model.py`
+- データセット: `src/tasks/plcs/data/multiview_dataset.py`
+- Lightning Module: `src/tasks/plcs/training/multiview_lightning_module.py`
+- DataModule: `src/tasks/plcs/data/datamodule.py` (`PLCSMultiViewDataModule`)

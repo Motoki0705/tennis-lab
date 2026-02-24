@@ -11,11 +11,11 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from src.common.data.scene_cache import extract_scene_meta_parallel, get_scene_cache
-from src.common.dataset.augmentation import augment_keypoints
-from src.plcs.data.targets import build_coco17_world_targets
-from src.plcs.data.types import PLCSBatch
-from src.plcs.generate_dataset.io.scene_loader import load_scene
+from src.utils.data.scene_cache import extract_scene_meta_parallel, get_scene_cache
+from src.utils.dataset.augmentation import augment_keypoints
+from src.tasks.plcs.data.targets import build_coco17_world_targets
+from src.tasks.plcs.data.types import PLCSBatch
+from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

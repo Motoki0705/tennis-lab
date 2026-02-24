@@ -1,6 +1,6 @@
 # ball_detection
 
-`src/ball_detection` implements a staged workflow for tennis ball detection:
+`src/tasks/ball_detection` implements a staged workflow for tennis ball detection:
 
 1. supervised pretraining on labeled data
 2. pseudo-label generation on unlabeled data via ensemble + refinement
@@ -24,7 +24,7 @@
 ## Pretrained checkpoint download
 
 ```bash
-uv run python -m src.ball_detection.scripts.download_pretrained --models all
+uv run python -m src.tasks.ball_detection.scripts.download_pretrained --models all
 ```
 
 This downloads:
@@ -38,16 +38,16 @@ This downloads:
 - HRNet backbone + temporal ConvGRU heatmap training:
 
 ```bash
-uv run python -m src.ball_detection.scripts.train_pretrain --config-name train_pretrain_hrnet
+uv run python -m src.tasks.ball_detection.scripts.train_pretrain --config-name train_pretrain_hrnet
 ```
 
 - TrackNetV3 heatmap fine-tuning:
 
 ```bash
-uv run python -m src.ball_detection.scripts.train_pretrain --config-name train_pretrain_tracknetv3
+uv run python -m src.tasks.ball_detection.scripts.train_pretrain --config-name train_pretrain_tracknetv3
 ```
 
-Both presets keep heatmap generation inside `src/ball_detection` training logic.
+Both presets keep heatmap generation inside `src/tasks/ball_detection` training logic.
 
 ## 可視化（single / ensemble 切替）
 
@@ -55,13 +55,13 @@ Hydra 設定で `inference.strategy=single|ensemble` を切り替えられます
 
 ```bash
 # デフォルト: ensemble（ball_detection ckpt群）
-uv run python -m src.ball_detection.scripts.visualize
+uv run python -m src.tasks.ball_detection.scripts.visualize
 
 # 単体推論
-uv run python -m src.ball_detection.scripts.visualize inference.strategy=single
+uv run python -m src.tasks.ball_detection.scripts.visualize inference.strategy=single
 
 # 動画・出力先の上書き
-uv run python -m src.ball_detection.scripts.visualize \
+uv run python -m src.tasks.ball_detection.scripts.visualize \
     visualization.video_path=data/samples/test.mp4 \
     visualization.output_video_path=outputs/ball_detection/visualize/test_ball_overlay.mp4
 ```

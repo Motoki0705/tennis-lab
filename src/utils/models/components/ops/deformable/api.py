@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from torch import Tensor
 
-from src.common.models.components.ops.deformable.kernels import ms_deform_attn
-from src.common.models.components.ops.deformable.utils import build_level_start_index
+from src.utils.models.components.ops.deformable.kernels import ms_deform_attn
+from src.utils.models.components.ops.deformable.utils import build_level_start_index
 
 
 def multi_scale_deformable_attention(

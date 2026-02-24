@@ -25,8 +25,8 @@ from torch import Tensor
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, NET_HEIGHT_CENTER, NET_HEIGHT_POST
 
 if TYPE_CHECKING:
-    from src.blcs.simulation.cell_manager import CellManager
-    from src.blcs.simulation.ball_physics import BallPhysics
+    from src.tasks.blcs.simulation.cell_manager import CellManager
+    from src.tasks.blcs.simulation.ball_physics import BallPhysics
 
 
 @dataclass
@@ -104,7 +104,7 @@ class TargetedVelocitySampler:
 
         """
         # Import here to avoid circular dependency
-        from src.blcs.simulation.cell_manager import CellManager
+        from src.tasks.blcs.simulation.cell_manager import CellManager
 
         self.cell_manager = cell_manager or CellManager()
         self.config = config or TargetedVelocityConfig()
@@ -520,7 +520,7 @@ class TargetedVelocitySampler:
         spin: Tensor | None,
         physics: "BallPhysics",
     ) -> float | None:
-        from src.blcs.simulation.ball_physics import BallState
+        from src.tasks.blcs.simulation.ball_physics import BallState
 
         spin_vec = spin if spin is not None else torch.zeros_like(velocity)
         state = BallState(
@@ -554,7 +554,7 @@ class TargetedVelocitySampler:
         spin: Tensor,
         physics: "BallPhysics",
     ) -> Tensor | None:
-        from src.blcs.simulation.ball_physics import BallState
+        from src.tasks.blcs.simulation.ball_physics import BallState
 
         state = BallState(
             position=start_pos.clone(),

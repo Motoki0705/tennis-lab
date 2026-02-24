@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from torch import nn
 
-from src.ball_multitask.models.backbone import BallMultitaskBackbone
-from src.ball_multitask.models.multitask_model import BallMultitaskModel
+from src.experiments.ball_multitask.models.backbone import BallMultitaskBackbone
+from src.experiments.ball_multitask.models.multitask_model import BallMultitaskModel
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

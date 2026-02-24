@@ -6,23 +6,23 @@ import logging
 
 import numpy as np
 
-from src.ball_detection.inference.types import InferenceResult
-from src.ball_detection.visualization.adapters.predict_inputs import (
+from src.tasks.ball_detection.inference.types import InferenceResult
+from src.tasks.ball_detection.visualization.adapters.predict_inputs import (
     build_ball_detection_predict_inputs,
     build_prediction_clips,
 )
-from src.ball_detection.visualization.analysis.report import (
+from src.tasks.ball_detection.visualization.analysis.report import (
     print_prediction_summary,
     print_video_info,
     save_predictions,
 )
-from src.ball_detection.visualization.api.predict import build_predictor_runtime
-from src.ball_detection.visualization.io.video import build_runtime_config, load_video_inputs
-from src.ball_detection.visualization.rendering.video_renderer import (
+from src.tasks.ball_detection.visualization.api.predict import build_predictor_runtime
+from src.tasks.ball_detection.visualization.io.video import build_runtime_config, load_video_inputs
+from src.tasks.ball_detection.visualization.rendering.video_renderer import (
     OverlayRenderConfig,
     render_overlay_video,
 )
-from src.ball_detection.visualization.types import RuntimeConfig
+from src.tasks.ball_detection.visualization.types import RuntimeConfig
 
 logger = logging.getLogger(__name__)
 

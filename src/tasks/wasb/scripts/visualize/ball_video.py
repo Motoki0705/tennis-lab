@@ -4,10 +4,10 @@ This script runs batched WASB inference on a single input video and saves a new
 video with the ball position plotted on each frame.
 
 Example commands:
-    `uv run python -m src.wasb.scripts.visualize.ball_video video_path=data/tennis/raw/videos/match.mp4`
-    `uv run python -m src.wasb.scripts.visualize.ball_video video_path=... checkpoint=... model=hrcnet device=cuda`
+    `uv run python -m src.tasks.wasb.scripts.visualize.ball_video video_path=data/tennis/raw/videos/match.mp4`
+    `uv run python -m src.tasks.wasb.scripts.visualize.ball_video video_path=... checkpoint=... model=hrcnet device=cuda`
 
-Config entry point: `src/wasb/configs/plot_ball_video.yaml`
+Config entry point: `src/tasks/wasb/configs/plot_ball_video.yaml`
 """
 
 from __future__ import annotations
@@ -23,8 +23,8 @@ from hydra.utils import to_absolute_path
 from numpy.typing import NDArray
 from omegaconf import DictConfig
 
-from src.wasb.inference.ball_detection import HRCNetWASBPredictor, WASBPredictor
-from src.wasb.pipeline.video_ball_localization_pipeline import (
+from src.tasks.wasb.inference.ball_detection import HRCNetWASBPredictor, WASBPredictor
+from src.tasks.wasb.pipeline.video_ball_localization_pipeline import (
     VideoBallLocalizationPipeline,
 )
 

@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Callable
 
-from src.common.models.components.ops.core.backend import OpBackend
-from src.common.models.components.ops.core.errors import OperatorImplementationError, OperatorNotFoundError
-from src.common.models.components.ops.core.types import OperatorHandle, OperatorKey
+from src.utils.models.components.ops.core.backend import OpBackend
+from src.utils.models.components.ops.core.errors import OperatorImplementationError, OperatorNotFoundError
+from src.utils.models.components.ops.core.types import OperatorHandle, OperatorKey
 
 _REGISTRY: dict[OperatorKey, dict[OpBackend, Callable]] = defaultdict(dict)
 

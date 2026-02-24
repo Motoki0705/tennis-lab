@@ -6,7 +6,7 @@ to keep visualization and simulation in the same coordinate system.
 
 from __future__ import annotations
 
-from src.blcs.generate_dataset.api_server.schemas import CourtGeometryResponse
+from src.tasks.blcs.generate_dataset.api_server.schemas import CourtGeometryResponse
 from src.utils.schema.court import court_keypoints_3d
 
 

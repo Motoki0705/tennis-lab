@@ -13,6 +13,6 @@ Keypoint specification (CourtKP20):
     19:    center strap top
 """
 
-from src.court_detection.models.court_keypoint_model import CourtKeypointModel
+from src.tasks.court_detection.models.court_keypoint_model import CourtKeypointModel
 
 __all__ = ["CourtKeypointModel"]

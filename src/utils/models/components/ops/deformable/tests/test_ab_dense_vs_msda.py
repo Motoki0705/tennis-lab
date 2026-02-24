@@ -8,9 +8,9 @@ import pytest
 import torch
 from torch import nn
 
-from src.common.models.components.ops.deformable.api import multi_scale_deformable_attention
-from src.common.models.components.ops.deformable.kernels.msda_dispatch import get_msda_extension
-from src.common.models.components.ops.deformable.tests._fixtures import env_float, make_msda_case
+from src.utils.models.components.ops.deformable.api import multi_scale_deformable_attention
+from src.utils.models.components.ops.deformable.kernels.msda_dispatch import get_msda_extension
+from src.utils.models.components.ops.deformable.tests._fixtures import env_float, make_msda_case
 
 
 class _DenseCrossAttnBaseline(nn.Module):

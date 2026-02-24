@@ -20,10 +20,10 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from src.base.inference import BasePredictor
+from src.tasks.base.inference import BasePredictor
 
 if TYPE_CHECKING:
-    from src.wasb.training import WASBLightningModule
+    from src.tasks.wasb.training import WASBLightningModule
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 
@@ -570,7 +570,7 @@ class HeatmapEnsemblePredictor(BasePredictor):
 
         runners: list[_Runner] = []
         for ckpt in ckpts:
-            from src.wasb.training import WASBLightningModule
+            from src.tasks.wasb.training import WASBLightningModule
 
             module = WASBLightningModule.load_from_checkpoint(
                 str(ckpt), map_location=torch_device

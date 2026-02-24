@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import torch
 
-from src.common.models.components.ops.deformable import (
+from src.utils.models.components.ops.deformable import (
     MSDeformAttnConfig,
     MultiScaleDeformableAttention,
     multi_scale_deformable_attention,
 )
-from src.common.models.components.ops.deformable.utils import build_level_start_index
+from src.utils.models.components.ops.deformable.utils import build_level_start_index
 
 
 def test_api_import_and_module_forward_smoke() -> None:

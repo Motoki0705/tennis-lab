@@ -11,10 +11,10 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.blcs.visualization.api.predict import predict_positions
-from src.blcs.visualization.adapters.predict_inputs import build_predict_inputs
-from src.blcs.visualization.io.scene import load_scene_bundle
-from src.blcs.visualization.rendering import BLCSSceneRenderer
+from src.tasks.blcs.visualization.api.predict import predict_positions
+from src.tasks.blcs.visualization.adapters.predict_inputs import build_predict_inputs
+from src.tasks.blcs.visualization.io.scene import load_scene_bundle
+from src.tasks.blcs.visualization.rendering import BLCSSceneRenderer
 
 logger = logging.getLogger(__name__)
 

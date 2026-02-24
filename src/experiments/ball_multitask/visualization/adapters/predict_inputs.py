@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import torch
 
-from src.ball_multitask.visualization.types import SceneInputs
+from src.experiments.ball_multitask.visualization.types import SceneInputs
 
 
 @dataclass(frozen=True)

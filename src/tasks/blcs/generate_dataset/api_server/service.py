@@ -13,12 +13,12 @@ import random
 import numpy as np
 import torch
 
-from src.blcs.generate_dataset.api_server.metrics import (
+from src.tasks.blcs.generate_dataset.api_server.metrics import (
     apex_height_m,
     net_clearance_m,
     time_to_bounce1_s,
 )
-from src.blcs.generate_dataset.api_server.schemas import (
+from src.tasks.blcs.generate_dataset.api_server.schemas import (
     ShotEvents,
     ShotLabels,
     ShotMetrics,
@@ -26,9 +26,9 @@ from src.blcs.generate_dataset.api_server.schemas import (
     SimulateShotResponse,
     Vec3,
 )
-from src.blcs.simulation.ball_physics import BallState, PhysicsConfig
-from src.blcs.simulation.shot_simulator import ShotConfig, ShotSimulator
-from src.blcs.simulation.targeted_velocity_sampler import (
+from src.tasks.blcs.simulation.ball_physics import BallState, PhysicsConfig
+from src.tasks.blcs.simulation.shot_simulator import ShotConfig, ShotSimulator
+from src.tasks.blcs.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
     TargetedVelocitySampler,
 )

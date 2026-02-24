@@ -8,7 +8,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from src.court_detection.visualization.types import KeypointPrediction, RunSummary, SceneImage
+from src.tasks.court_detection.visualization.types import KeypointPrediction, RunSummary, SceneImage
 
 
 def save_overlay(output_dir: Path, scene: SceneImage, overlay_bgr: np.ndarray) -> Path:

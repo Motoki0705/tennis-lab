@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 from torch import nn
 
-from src.event_detection.models.traj3d_event_model import Traj3DEventModel
-from src.event_detection.models.uv_event_model import UVEventModel
-from src.event_detection.models.uv_event_nocourt_model import UVEventNoCourtModel
+from src.tasks.event_detection.models.traj3d_event_model import Traj3DEventModel
+from src.tasks.event_detection.models.uv_event_model import UVEventModel
+from src.tasks.event_detection.models.uv_event_nocourt_model import UVEventNoCourtModel
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

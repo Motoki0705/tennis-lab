@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.ball_detection.data.type import ClipWindow
+from src.tasks.ball_detection.data.type import ClipWindow
 
 
 class ClipSampler:

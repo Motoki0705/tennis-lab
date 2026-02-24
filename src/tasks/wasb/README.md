@@ -1,6 +1,6 @@
 # WASB (Where's the Ball)
 
-`src/wasb` は、テニス映像からのボール検出を行うタスク実装です。
+`src/tasks/wasb` は、テニス映像からのボール検出を行うタスク実装です。
 動画からのフレーム抽出、ボール検出、クリップ分割、ラベル出力までを一連のパイプラインとして扱います。
 
 ## 目的 / 想定入出力
@@ -11,7 +11,7 @@
 ## ディレクトリ構成
 
 ```
-src/wasb/
+src/tasks/wasb/
 ├── configs/                          # Hydra 設定ファイル群
 │   │
 │   │ # 学習設定
@@ -162,22 +162,22 @@ uv run python -m src.tools.annotate_wasb_clips mode=annotation \
 
 ## Heatmap アンサンブル推論
 
-`src/wasb/inference/ball_detection/heatmap_ensemble_predictor.py` は、複数モデルの
+`src/tasks/wasb/inference/ball_detection/heatmap_ensemble_predictor.py` は、複数モデルの
 logit ヒートマップを TTA で生成し、逆変換で同一の `output_heatmap_hw` に整列した後、
 温度校正 → TTA 平均 → PoE 融合 → forward-backward 平滑化を行います。最終的な座標は
 平滑化後の分布から期待値/MAP/2次またはガウスフィットで復元します。
 
 ## 実行コマンド
 
-詳細は [docs/scripts/wasb/](../../../docs/scripts/wasb/) を参照。
+詳細は `src/tasks/wasb/scripts/` と `src/tasks/wasb/configs/` を参照。
 
 ```bash
 # データセット生成
-uv run python -m src.wasb.scripts.generate_dataset
+uv run python -m src.tasks.wasb.scripts.generate_dataset
 
 # 学習
-uv run python -m src.wasb.scripts.train.ball_detection
+uv run python -m src.tasks.wasb.scripts.train.ball_detection
 
 # 可視化
-uv run python -m src.wasb.scripts.visualize.ball_video
+uv run python -m src.tasks.wasb.scripts.visualize.ball_video
 ```

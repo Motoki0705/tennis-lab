@@ -10,7 +10,7 @@ import torch
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
 
-from src.wasb.data.patch_embeddings_dataset import PatchEmbeddingsDataset
+from src.tasks.wasb.data.patch_embeddings_dataset import PatchEmbeddingsDataset
 
 
 class PatchEmbeddingsDataModule(pl.LightningDataModule):

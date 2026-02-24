@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from src.trajectory_completion.visualization.adapters.predict_inputs import (
+from src.tasks.trajectory_completion.visualization.adapters.predict_inputs import (
     UVCompletionPredictInputs,
 )
-from src.trajectory_completion.inference.uv_predictor import UVTrajectoryCompletionPredictor
+from src.tasks.trajectory_completion.inference.uv_predictor import UVTrajectoryCompletionPredictor
 
 
 def predict_uv_completion(

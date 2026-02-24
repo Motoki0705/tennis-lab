@@ -11,7 +11,7 @@ from typing import Any
 
 import numpy as np
 
-from src.common.data.npz_meta import decode_meta
+from src.utils.data.npz_meta import decode_meta
 
 @dataclass(frozen=True)
 class SceneMeta:

@@ -1,11 +1,11 @@
 """Train MAE on tennis domain videos using Hydra-managed configuration.
 
 Example commands:
-    `uv run python -m src.mae.scripts.train`
-    `uv run python -m src.mae.scripts.train model.hidden_dim=512 training.max_epochs=200`
-    `uv run python -m src.mae.scripts.train data=cached_batches data.bucket_alpha=2.5`
+    `uv run python -m src.experiments.mae.scripts.train`
+    `uv run python -m src.experiments.mae.scripts.train model.hidden_dim=512 training.max_epochs=200`
+    `uv run python -m src.experiments.mae.scripts.train data=cached_batches data.bucket_alpha=2.5`
 
-Config entry point: `src/mae/configs/train.yaml`
+Config entry point: `src/experiments/mae/configs/train.yaml`
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from typing import Any, TypeVar, cast
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from src.mae.training.runner import MAETrainingRunner
+from src.experiments.mae.training.runner import MAETrainingRunner
 
 log = logging.getLogger(__name__)
 

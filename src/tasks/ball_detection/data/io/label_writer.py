@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.ball_detection.data.io.path_policy import ensure_writable
-from src.ball_detection.data.type import LabelRecord, PathPolicy
-from src.wasb.tennis_format import TennisLabelRow, save_label_csv
+from src.tasks.ball_detection.data.io.path_policy import ensure_writable
+from src.tasks.ball_detection.data.type import LabelRecord, PathPolicy
+from src.tasks.wasb.tennis_format import TennisLabelRow, save_label_csv
 
 
 def write_label_csv(path: str | Path, rows: list[LabelRecord], *, policy: PathPolicy) -> None:

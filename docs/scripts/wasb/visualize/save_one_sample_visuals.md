@@ -10,29 +10,29 @@
 
 ```bash
 # 基本的な使用法
-uv run --no-sync python -m src.wasb.scripts.visualize.save_one_sample_visuals \
+uv run --no-sync python -m src.tasks.wasb.scripts.visualize.save_one_sample_visuals \
   data.root_dir=data/tennis \
   data.train_matches=[game1] \
   sample_index=0
 
 # 複数サンプルを保存
-uv run python -m src.wasb.scripts.visualize.save_one_sample_visuals \
+uv run python -m src.tasks.wasb.scripts.visualize.save_one_sample_visuals \
   num_samples=10 \
   sample_indices=[0,10,20,30]
 
 # 分割とオーバーレイ透明度を指定
-uv run python -m src.wasb.scripts.visualize.save_one_sample_visuals \
+uv run python -m src.tasks.wasb.scripts.visualize.save_one_sample_visuals \
   split=val \
   overlay_alpha=0.7
 
 # ターゲットインデックスを指定
-uv run python -m src.wasb.scripts.visualize.save_one_sample_visuals \
+uv run python -m src.tasks.wasb.scripts.visualize.save_one_sample_visuals \
   target_index=0
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/wasb/configs/save_one_sample_visuals.yaml`
+エントリポイント: `src/tasks/wasb/configs/save_one_sample_visuals.yaml`
 
 ### 主要パラメータ
 
@@ -112,7 +112,7 @@ overlay = clamp(frame + heatmap * alpha, 0, 1)
 
 ```bash
 # データローダーが正しく動作しているか確認
-uv run python -m src.wasb.scripts.visualize.save_one_sample_visuals \
+uv run python -m src.tasks.wasb.scripts.visualize.save_one_sample_visuals \
   data.root_dir=data/tennis \
   data.train_matches=[game1] \
   split=train \
@@ -134,4 +134,4 @@ ls outputs/wasb/ball_detection/visualize/save_one_sample_visuals/
 
 ## 関連モジュール
 
-- `src.wasb.data.datamodule.TennisDataModule`: データモジュール
+- `src.tasks.wasb.data.datamodule.TennisDataModule`: データモジュール

@@ -1,7 +1,7 @@
 """Codec for converting metadata dictionaries to BLCS-specific types.
 
 This module provides lightweight conversion functions from generic metadata
-dictionaries (decoded by src.common.data.npz_meta.decode_meta) into strongly-typed
+dictionaries (decoded by src.utils.data.npz_meta.decode_meta) into strongly-typed
 BLCS metadata classes (BLCSSceneMeta, RallySceneMeta).
 
 Note: This module does not import torch, lightning, or heavy dataset classes,
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.blcs.data.types import BLCSSceneMeta, RallySceneMeta
+from src.tasks.blcs.data.types import BLCSSceneMeta, RallySceneMeta
 
 
 def parse_blcs_scene_meta(meta: dict[str, Any]) -> BLCSSceneMeta | None:

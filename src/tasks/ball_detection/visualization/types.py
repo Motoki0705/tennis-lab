@@ -9,7 +9,7 @@ import numpy as np
 from numpy.typing import NDArray
 from omegaconf import DictConfig
 
-from src.ball_detection.inference.types import InferenceConfig
+from src.tasks.ball_detection.inference.types import InferenceConfig
 
 
 @dataclass(frozen=True)

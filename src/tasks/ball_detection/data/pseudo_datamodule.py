@@ -7,8 +7,8 @@ from typing import Any
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
-from src.ball_detection.data.datamodule import collate_ball_sequences
-from src.ball_detection.data.pseudo_dataset import PseudoBallDataset
+from src.tasks.ball_detection.data.datamodule import collate_ball_sequences
+from src.tasks.ball_detection.data.pseudo_dataset import PseudoBallDataset
 
 
 class BallDetectionPseudoDataModule(pl.LightningDataModule):

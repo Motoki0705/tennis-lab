@@ -8,8 +8,8 @@ import pytorch_lightning as pl
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from src.ball_detection.data.labeled_dataset import LabeledBallDataset
-from src.common.dataset.collate import collate_padded_batch
+from src.tasks.ball_detection.data.labeled_dataset import LabeledBallDataset
+from src.utils.dataset.collate import collate_padded_batch
 
 
 def collate_ball_sequences(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:

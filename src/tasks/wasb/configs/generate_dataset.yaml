@@ -2,7 +2,7 @@ defaults:
   - pipeline: default
   - _self_
 
-# Configuration for `src.wasb.scripts.generate_dataset`.
+# Configuration for `src.tasks.wasb.scripts.generate_dataset`.
 # Modes are mutually exclusive. Required fields depend on the selected mode.
 
 # One of:

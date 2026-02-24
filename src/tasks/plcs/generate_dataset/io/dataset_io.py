@@ -10,16 +10,16 @@ from typing import Any, TypeAlias, cast
 import numpy as np
 import numpy.typing as npt
 
-from src.common.dataset.writer import BaseDatasetWriter
-from src.plcs.data.types import (
+from src.utils.dataset.writer import BaseDatasetWriter
+from src.tasks.plcs.data.types import (
     PYDANTIC_AVAILABLE,
     PLCSSceneMeta,
     PLCSSceneMetaModel,
 )
 
 # Re-export load_scene for backwards compatibility
-from src.plcs.generate_dataset.io.scene_loader import load_scene as load_scene
-from src.plcs.generate_dataset.scene_generator import SceneData
+from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene as load_scene
+from src.tasks.plcs.generate_dataset.scene_generator import SceneData
 
 # Type alias for values accepted by np.savez_compressed
 SavezValue: TypeAlias = npt.ArrayLike | bool | int | float | complex | str | bytes

@@ -6,9 +6,9 @@ from typing import Any
 
 import pytorch_lightning as pl
 
-from src.base.training.runner import BaseTrainingRunner
-from src.ball_multitask.data.datamodule import BallMultitaskDataModule
-from src.ball_multitask.training.lightning_module import BallMultitaskLightningModule
+from src.tasks.base.training.runner import BaseTrainingRunner
+from src.experiments.ball_multitask.data.datamodule import BallMultitaskDataModule
+from src.experiments.ball_multitask.training.lightning_module import BallMultitaskLightningModule
 
 
 class BallMultitaskTrainingRunner(BaseTrainingRunner):

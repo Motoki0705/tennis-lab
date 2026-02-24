@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.event_detection.visualization.adapters.predict_inputs import (
+from src.tasks.event_detection.visualization.adapters.predict_inputs import (
     Traj3DPredictInputs,
     UVPredictInputs,
 )
-from src.event_detection.inference.traj3d_predictor import Traj3DEventPredictor
-from src.event_detection.inference.uv_predictor import UVEventPredictor
+from src.tasks.event_detection.inference.traj3d_predictor import Traj3DEventPredictor
+from src.tasks.event_detection.inference.uv_predictor import UVEventPredictor
 
 
 def predict_uv_events(

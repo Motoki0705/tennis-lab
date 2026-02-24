@@ -18,16 +18,16 @@ import torch
 from torch.nn import functional as F
 from torchvision.utils import save_image
 
-from src.base.training.runner import BaseTrainingRunner
-from src.wasb.data.ball_detection_datamodule import BallDetectionDataModule
-from src.wasb.data.curriculum_sampling import (
+from src.tasks.base.training.runner import BaseTrainingRunner
+from src.tasks.wasb.data.ball_detection_datamodule import BallDetectionDataModule
+from src.tasks.wasb.data.curriculum_sampling import (
     CurriculumStepCallback,
     VisibilityCurriculumSampler,
 )
-from src.wasb.data.patch_embeddings_datamodule import PatchEmbeddingsDataModule
-from src.wasb.models import build_model
-from src.wasb.training import WASBLightningModule
-from src.wasb.utils.checkpoint import resolve_resume_ckpt_path
+from src.tasks.wasb.data.patch_embeddings_datamodule import PatchEmbeddingsDataModule
+from src.tasks.wasb.models import build_model
+from src.tasks.wasb.training import WASBLightningModule
+from src.tasks.wasb.utils.checkpoint import resolve_resume_ckpt_path
 
 if TYPE_CHECKING:
     from pytorch_lightning.loggers import TensorBoardLogger

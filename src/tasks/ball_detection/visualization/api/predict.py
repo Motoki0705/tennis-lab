@@ -10,15 +10,15 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from src.ball_detection.inference import (
+from src.tasks.ball_detection.inference import (
     BallEnsemblePredictor,
     BallPredictor,
     ModelInputAdapter,
     build_adapter_for_model,
 )
-from src.ball_detection.inference.types import InferenceConfig, InferenceResult
-from src.ball_detection.models.heatmap_utils import decode_heatmap_logits
-from src.ball_detection.visualization.adapters.predict_inputs import PredictionClip
+from src.tasks.ball_detection.inference.types import InferenceConfig, InferenceResult
+from src.tasks.ball_detection.models.heatmap_utils import decode_heatmap_logits
+from src.tasks.ball_detection.visualization.adapters.predict_inputs import PredictionClip
 
 
 class _PredictRunner(Protocol):

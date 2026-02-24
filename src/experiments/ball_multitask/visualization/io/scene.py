@@ -10,9 +10,9 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.ball_multitask.visualization.types import RuntimeConfig, SceneInputs
-from src.common.data.npz_meta import decode_meta
-from src.common.data.scene_cache import load_npz_scene
+from src.experiments.ball_multitask.visualization.types import RuntimeConfig, SceneInputs
+from src.utils.data.npz_meta import decode_meta
+from src.utils.data.scene_cache import load_npz_scene
 
 
 def _resolve_device(device: str) -> str:

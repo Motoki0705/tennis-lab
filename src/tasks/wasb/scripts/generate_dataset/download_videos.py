@@ -15,19 +15,19 @@ Requirements:
 
 Usage:
     # Download all videos in urls.yaml
-    uv run python -m src.wasb.scripts.generate_dataset.download_videos
+    uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos
 
     # Download with custom urls.yaml location
-    uv run python -m src.wasb.scripts.generate_dataset.download_videos urls_path=path/to/urls.yaml
+    uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos urls_path=path/to/urls.yaml
 
     # Check status
-    uv run python -m src.wasb.scripts.generate_dataset.download_videos mode=status
+    uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos mode=status
 
     # Reset failed downloads
-    uv run python -m src.wasb.scripts.generate_dataset.download_videos mode=reset_failed
+    uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos mode=reset_failed
 
     # Force re-download specific URL
-    uv run python -m src.wasb.scripts.generate_dataset.download_videos mode=reset_url reset_url="https://..."
+    uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos mode=reset_url reset_url="https://..."
 
 """
 

@@ -5,18 +5,18 @@ from __future__ import annotations
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.blcs.generate_dataset.api_server.cells import build_cells_response
-from src.blcs.generate_dataset.api_server.court_geometry import (
+from src.tasks.blcs.generate_dataset.api_server.cells import build_cells_response
+from src.tasks.blcs.generate_dataset.api_server.court_geometry import (
     build_court_geometry_response,
 )
-from src.blcs.generate_dataset.api_server.schemas import (
+from src.tasks.blcs.generate_dataset.api_server.schemas import (
     CellsResponse,
     CourtGeometryResponse,
     SimulateShotRequest,
     SimulateShotResponse,
 )
-from src.blcs.generate_dataset.api_server.service import simulate_shot
-from src.blcs.simulation.cell_manager import CellManager
+from src.tasks.blcs.generate_dataset.api_server.service import simulate_shot
+from src.tasks.blcs.simulation.cell_manager import CellManager
 
 
 def create_app() -> FastAPI:

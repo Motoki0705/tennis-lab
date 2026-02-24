@@ -6,16 +6,16 @@ import logging
 
 import cv2
 
-from src.court_detection.visualization.adapters.predict_inputs import build_court_predict_inputs
-from src.court_detection.visualization.analysis.report import (
+from src.tasks.court_detection.visualization.adapters.predict_inputs import build_court_predict_inputs
+from src.tasks.court_detection.visualization.analysis.report import (
     print_summary,
     save_overlay,
     save_prediction_json,
 )
-from src.court_detection.visualization.api.predict import load_predictor, predict_keypoints
-from src.court_detection.visualization.io.scene import build_runtime_config, load_scene_images
-from src.court_detection.visualization.rendering.keypoints import visualize_keypoints
-from src.court_detection.visualization.types import RunSummary, RuntimeConfig
+from src.tasks.court_detection.visualization.api.predict import load_predictor, predict_keypoints
+from src.tasks.court_detection.visualization.io.scene import build_runtime_config, load_scene_images
+from src.tasks.court_detection.visualization.rendering.keypoints import visualize_keypoints
+from src.tasks.court_detection.visualization.types import RunSummary, RuntimeConfig
 
 logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ Why an API server?
 ## Planned module layout
 
 ```
-src/blcs/generate_dataset/api_server/
+src/tasks/blcs/generate_dataset/api_server/
   README.md        # This document
   app.py           # FastAPI app + routes (GET /cells, POST /simulate_shot)
   schemas.py       # Pydantic models (request/response)
@@ -51,7 +51,7 @@ src/blcs/generate_dataset/api_server/
 From the repo root:
 
 ```bash
-UV_CACHE_DIR=/tmp/uv_cache uv run --group webui -m src.blcs.generate_dataset.api_server --reload --port 8001
+UV_CACHE_DIR=/tmp/uv_cache uv run --group webui -m src.tasks.blcs.generate_dataset.api_server --reload --port 8001
 ```
 
 Quick smoke test:

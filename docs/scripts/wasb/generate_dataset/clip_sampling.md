@@ -10,25 +10,25 @@
 
 ```bash
 # サンプルプレビュー動画を生成
-uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=generate_samples \
+uv run python -m src.tasks.wasb.scripts.generate_dataset.clip_sampling mode=generate_samples \
   output_dir=data/tennis generate_samples=[game11]
 
 # 全ゲームのサンプルを生成
-uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=generate_samples \
+uv run python -m src.tasks.wasb.scripts.generate_dataset.clip_sampling mode=generate_samples \
   output_dir=data/tennis generate_samples=[all]
 
 # 手動選別結果を適用（削除されたプレビューのクリップを除去）
-uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=apply_clip_selection \
+uv run python -m src.tasks.wasb.scripts.generate_dataset.clip_sampling mode=apply_clip_selection \
   output_dir=data/tennis apply_clip_selection=[game11]
 
 # FPS を変更してプレビュー生成
-uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=generate_samples fps=30 \
+uv run python -m src.tasks.wasb.scripts.generate_dataset.clip_sampling mode=generate_samples fps=30 \
   generate_samples=[game11,game12]
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/wasb/configs/clip_sampling.yaml`
+エントリポイント: `src/tasks/wasb/configs/clip_sampling.yaml`
 
 ### モード
 
@@ -133,19 +133,19 @@ if row.visibility != 0:
 
 ```bash
 # 1. 新しいゲームのクリップを生成（batch.py）
-uv run python -m src.wasb.scripts.generate_dataset mode=batch
+uv run python -m src.tasks.wasb.scripts.generate_dataset mode=batch
 
 # 2. プレビュー動画を生成
-uv run python -m src.wasb.scripts.generate_dataset.clip_sampling \
+uv run python -m src.tasks.wasb.scripts.generate_dataset.clip_sampling \
   mode=generate_samples generate_samples=[all]
 
 # 3. samples/ ディレクトリを確認し、不要なプレビューを削除
 
 # 4. 選別結果を適用
-uv run python -m src.wasb.scripts.generate_dataset.clip_sampling \
+uv run python -m src.tasks.wasb.scripts.generate_dataset.clip_sampling \
   mode=apply_clip_selection apply_clip_selection=[all]
 ```
 
 ## 関連モジュール
 
-- `src.wasb.tennis_format`: Label.csv の読み込み
+- `src.tasks.wasb.tennis_format`: Label.csv の読み込み

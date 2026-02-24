@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from torch import Tensor
 
-from src.common.models.components.ops.deformable.kernels.msda_ext_loader import try_load_msda_extension
-from src.common.models.components.ops.deformable.kernels.msda_runtime import run_msda_forward_or_fallback
+from src.utils.models.components.ops.deformable.kernels.msda_ext_loader import try_load_msda_extension
+from src.utils.models.components.ops.deformable.kernels.msda_runtime import run_msda_forward_or_fallback
 
 _MSDA_EXT = None
 _MSDA_EXT_LOAD_ATTEMPTED = False

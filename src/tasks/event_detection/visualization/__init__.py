@@ -1,6 +1,6 @@
 """Visualization utilities for event detection."""
 
-from src.event_detection.visualization.orchestrator import (
+from src.tasks.event_detection.visualization.orchestrator import (
     RuntimeConfig,
     build_runtime_config,
     run_visualization,

@@ -1,6 +1,6 @@
 """UV-based event detection model.
 
-Architecture is aligned with src/blcs/models/blcs_model.py:
+Architecture is aligned with src/tasks/blcs/models/blcs_model.py:
 - Tokenize court keypoints + ball UV as tokens
 - Decoder-only Transformer blocks with RoPE
 - Predict per-frame event logits from ball tokens
@@ -14,7 +14,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.common.models import (
+from src.utils.models import (
     MoEConfig,
     RMSNorm,
     TransformerBlock,
@@ -22,8 +22,8 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
-from src.common.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
-from src.event_detection.models.components.heads import EventLogitsHead
+from src.utils.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
+from src.tasks.event_detection.models.components.heads import EventLogitsHead
 from src.utils.schema.court import NUM_COURT_KP
 
 if TYPE_CHECKING:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.ball_detection.data.type import PathPolicy
+from src.tasks.ball_detection.data.type import PathPolicy
 
 
 def resolve_under_root(path: Path, *, policy: PathPolicy) -> Path:

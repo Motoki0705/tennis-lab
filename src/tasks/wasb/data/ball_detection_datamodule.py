@@ -9,11 +9,11 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader, Sampler
 from torchvision import transforms
 
-from src.wasb.data.ball_detection_dataset import (
+from src.tasks.wasb.data.ball_detection_dataset import (
     BallDetectionSequenceDataset,
     VisibilityMode,
 )
-from src.wasb.data.curriculum_sampling import VisibilityCurriculumSampler
+from src.tasks.wasb.data.curriculum_sampling import VisibilityCurriculumSampler
 
 
 class BallDetectionDataModule(pl.LightningDataModule):

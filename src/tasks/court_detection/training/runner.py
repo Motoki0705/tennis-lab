@@ -6,9 +6,9 @@ from typing import Any
 
 import pytorch_lightning as pl
 
-from src.base.training.runner import BaseTrainingRunner
-from src.court_detection.data.datamodule import CourtKeypointDataModule
-from src.court_detection.training.lightning_module import CourtKeypointLightningModule
+from src.tasks.base.training.runner import BaseTrainingRunner
+from src.tasks.court_detection.data.datamodule import CourtKeypointDataModule
+from src.tasks.court_detection.training.lightning_module import CourtKeypointLightningModule
 
 
 class CourtDetectionTrainingRunner(BaseTrainingRunner):

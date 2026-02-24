@@ -31,22 +31,22 @@ Token structure: `[CLS, Register_1, ..., Register_R, Patch_1, ..., Patch_N]`
 
 ```bash
 # Basic training
-uv run python -m src.mae.scripts.train
+uv run python -m src.experiments.mae.scripts.train
 
 # With custom settings
-uv run python -m src.mae.scripts.train \
+uv run python -m src.experiments.mae.scripts.train \
     model=small \
     data=cached_batches data.bucket_alpha=2.5 \
     training=fast
 
 # Cached-batch training (no padding; preprocessing in background)
-uv run python -m src.mae.scripts.train \
+uv run python -m src.experiments.mae.scripts.train \
     data=cached_batches
 ```
 
 ### Configuration
 
-Main config: `src/mae/configs/train.yaml`
+Main config: `src/experiments/mae/configs/train.yaml`
 
 Available presets:
 - **Model**: `base` (ViT-B), `small` (ViT-S), `large` (ViT-L + MoE)
@@ -101,7 +101,7 @@ Download tennis videos using the WASB download script:
 ```bash
 # Create urls.yaml with video URLs
 # Then download:
-uv run python -m src.wasb.scripts.generate_dataset.download_videos \
+uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos \
     urls_path=data/tennis/raw/urls.yaml
 ```
 
@@ -112,7 +112,7 @@ Videos should be placed in `data/tennis/raw/videos/`.
 After training, extract the encoder for downstream tasks:
 
 ```python
-from src.mae.training import MAELightningModule
+from src.experiments.mae.training import MAELightningModule
 
 # Load checkpoint
 module = MAELightningModule.load_from_checkpoint("checkpoints/mae-final.ckpt")
@@ -125,7 +125,7 @@ features = encoder(images)  # (B, hidden_dim) if pooling='cls'
 ## Directory Structure
 
 ```
-src/mae/
+src/experiments/mae/
 ├── __init__.py
 ├── configs/              # Hydra configurations
 │   ├── train.yaml        # Main training config

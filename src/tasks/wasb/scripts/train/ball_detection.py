@@ -3,10 +3,10 @@
 Run with Hydra-style overrides, for example:
 
 ```
-uv run python -m src.wasb.scripts.train.ball_detection training.max_epochs=50 data.batch_size=32
+uv run python -m src.tasks.wasb.scripts.train.ball_detection training.max_epochs=50 data.batch_size=32
 ```
 
-Config entry point: `src/wasb/configs/train_ball_detection.yaml`
+Config entry point: `src/tasks/wasb/configs/train_ball_detection.yaml`
 
 This script uses WASBTrainingRunner which extends BaseTrainingRunner with
 WASB-specific behavior for datamodule selection, model construction,
@@ -20,7 +20,7 @@ import logging
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from src.wasb.training.runner import WASBTrainingRunner
+from src.tasks.wasb.training.runner import WASBTrainingRunner
 
 
 def _setup_logging(config: DictConfig) -> None:

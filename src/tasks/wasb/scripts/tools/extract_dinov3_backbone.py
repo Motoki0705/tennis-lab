@@ -1,7 +1,7 @@
 """Extract DINOv3 backbone weights from a WASB Lightning checkpoint.
 
 Example:
-    uv run python -m src.wasb.scripts.tools.extract_dinov3_backbone \
+    uv run python -m src.tasks.wasb.scripts.tools.extract_dinov3_backbone \
       checkpoint_path=outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
       output_path=outputs/wasb/ball_detection/dinov3_heatmap/dinov3_backbone.pth
 

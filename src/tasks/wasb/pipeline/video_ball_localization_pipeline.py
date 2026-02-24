@@ -1,11 +1,11 @@
 """Single-video ball localization pipeline (WASB inference).
 
 This module provides a lightweight pipeline for estimating per-frame ball
-positions from a single video using `src.wasb.inference.WASBPredictor`-compatible
+positions from a single video using `src.tasks.wasb.inference.WASBPredictor`-compatible
 streaming predictor.
 
 The pipeline only returns coordinates/metadata; video rendering lives in
-`src/wasb/scripts`.
+`src/tasks/wasb/scripts`.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
 
-from src.wasb.utils.video_extractor import VideoExtractor
+from src.tasks.wasb.utils.video_extractor import VideoExtractor
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

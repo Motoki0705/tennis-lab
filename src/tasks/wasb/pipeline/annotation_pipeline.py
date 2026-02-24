@@ -20,15 +20,15 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from tqdm import tqdm
 
-from src.wasb.models.others.clip_segmenter import ClipSegment, RuleBasedClipSegmenter
-from src.wasb.tennis_format import TennisLabelRow, row_from_visibility, save_label_csv
-from src.wasb.utils.streaming_loader import StreamingVideoLoader
-from src.wasb.utils.video_extractor import VideoExtractor
+from src.tasks.wasb.models.others.clip_segmenter import ClipSegment, RuleBasedClipSegmenter
+from src.tasks.wasb.tennis_format import TennisLabelRow, row_from_visibility, save_label_csv
+from src.tasks.wasb.utils.streaming_loader import StreamingVideoLoader
+from src.tasks.wasb.utils.video_extractor import VideoExtractor
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from src.wasb.inference import HRCNetWASBPredictor, WASBPredictor
+    from src.tasks.wasb.inference import HRCNetWASBPredictor, WASBPredictor
 
 
 @dataclass
@@ -121,7 +121,7 @@ class AnnotationPipeline:
     4. Exports frames and labels in tennis format
 
     Example:
-        >>> from src.wasb.inference import WASBPredictor
+        >>> from src.tasks.wasb.inference import WASBPredictor
         >>> predictor = WASBPredictor.load_from_checkpoint("checkpoint.pth.tar")
         >>> pipeline = AnnotationPipeline(predictor)
         >>> result = pipeline.run(
@@ -253,7 +253,7 @@ class AnnotationPipeline:
             PipelineResult with generated clips information.
 
         """
-        from src.wasb.inference import HRCNetWASBPredictor, WASBPredictor
+        from src.tasks.wasb.inference import HRCNetWASBPredictor, WASBPredictor
 
         if model_type == "wasb":
             predictor = WASBPredictor.load_from_checkpoint(

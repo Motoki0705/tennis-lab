@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from src.court_detection.visualization.types import SceneImage
+from src.tasks.court_detection.visualization.types import SceneImage
 
 
 @dataclass(frozen=True)

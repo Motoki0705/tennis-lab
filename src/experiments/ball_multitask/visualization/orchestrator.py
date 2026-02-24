@@ -6,19 +6,19 @@ import logging
 
 import matplotlib.pyplot as plt
 
-from src.ball_multitask.visualization.adapters.predict_inputs import (
+from src.experiments.ball_multitask.visualization.adapters.predict_inputs import (
     build_ball_multitask_predict_inputs,
 )
-from src.ball_multitask.visualization.analysis.report import (
+from src.experiments.ball_multitask.visualization.analysis.report import (
     print_info,
     print_predict_summary,
     save_animation,
     save_outputs,
 )
-from src.ball_multitask.visualization.api.predict import load_predictor, predict_scene
-from src.ball_multitask.visualization.io.scene import build_runtime_config, load_scene_inputs
-from src.ball_multitask.visualization.rendering.animations import build_animations
-from src.ball_multitask.visualization.types import RuntimeConfig
+from src.experiments.ball_multitask.visualization.api.predict import load_predictor, predict_scene
+from src.experiments.ball_multitask.visualization.io.scene import build_runtime_config, load_scene_inputs
+from src.experiments.ball_multitask.visualization.rendering.animations import build_animations
+from src.experiments.ball_multitask.visualization.types import RuntimeConfig
 
 logger = logging.getLogger(__name__)
 

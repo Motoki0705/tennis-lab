@@ -6,8 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from src.ball_detection.data.io.path_policy import ensure_writable
-from src.ball_detection.data.type import PathPolicy
+from src.tasks.ball_detection.data.io.path_policy import ensure_writable
+from src.tasks.ball_detection.data.type import PathPolicy
 
 
 def write_metadata_json(path: str | Path, payload: dict[str, Any], *, policy: PathPolicy) -> None:

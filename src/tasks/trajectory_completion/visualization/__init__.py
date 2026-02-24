@@ -1,6 +1,6 @@
 """Visualization utilities for trajectory completion."""
 
-from src.trajectory_completion.visualization.orchestrator import (
+from src.tasks.trajectory_completion.visualization.orchestrator import (
     RuntimeConfig,
     build_runtime_config,
     run_visualization,

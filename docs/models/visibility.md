@@ -13,10 +13,10 @@
 
 ## 共通埋め込み
 
-- 不可視トークン: `src/common/models/embeddings/shared.py`
-- Court: `src/common/models/embeddings/court.py`
-- Player: `src/common/models/embeddings/player.py`
-- Ball (2D/3D): `src/common/models/embeddings/ball.py`
+- 不可視トークン: `src/utils/models/embeddings/shared.py`
+- Court: `src/utils/models/embeddings/court.py`
+- Player: `src/utils/models/embeddings/player.py`
+- Ball (2D/3D): `src/utils/models/embeddings/ball.py`
 
 
 ## データフローの役割分担
@@ -32,27 +32,27 @@
 - BLCSModel
   - visibility は不可視トークンに差し替え
   - Attention Mask は padding/seq_len にのみ使用
-  - 参照: `src/blcs/models/blcs_model.py`
+  - 参照: `src/tasks/blcs/models/blcs_model.py`
 
 - UVEventModel
   - visibility は不可視トークンに差し替え
   - Attention Mask は padding/seq_len にのみ使用
-  - 参照: `src/event_detection/models/uv_event_model.py`
+  - 参照: `src/tasks/event_detection/models/uv_event_model.py`
 
 - Traj3DEventModel
   - visibility 入力なし（不可視トークンは未使用）
   - Attention Mask は seq_len のみ
-  - 参照: `src/event_detection/models/traj3d_event_model.py`
+  - 参照: `src/tasks/event_detection/models/traj3d_event_model.py`
 
 - PLCSModel
   - visibility は不可視トークンに差し替え
   - Attention Mask は padding/seq_len にのみ使用
-  - 参照: `src/plcs/models/plcs_model.py`
+  - 参照: `src/tasks/plcs/models/plcs_model.py`
 
 - UVTrajectoryCompletionModel
   - visibility/観測マスクは不可視トークンに差し替え
   - Attention Mask は padding/seq_len にのみ使用
-  - 参照: `src/trajectory_completion/models/uv_completion_model.py`
+  - 参照: `src/tasks/trajectory_completion/models/uv_completion_model.py`
 
 
 ## Predictor API の目安
@@ -65,6 +65,6 @@
 
 以下は今回のスコープ外のため、visibility のマスク利用が残っています。
 
-- PLCSSequenceModel: `src/plcs/models/plcs_sequence_model.py`
-- BLCSMultiViewModel: `src/blcs/models/blcs_multiview_model.py`
-- PLCSMultiViewModel: `src/plcs/models/plcs_multiview_model.py`
+- PLCSSequenceModel: `src/tasks/plcs/models/plcs_sequence_model.py`
+- BLCSMultiViewModel: `src/tasks/blcs/models/blcs_multiview_model.py`
+- PLCSMultiViewModel: `src/tasks/plcs/models/plcs_multiview_model.py`

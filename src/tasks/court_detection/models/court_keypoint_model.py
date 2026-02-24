@@ -12,8 +12,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.common.models import ViTConfig, ViTEncoder
-from src.common.models.components import MoEConfig, RMSNorm, ViTBlock, ViTBlockConfig
+from src.utils.models import ViTConfig, ViTEncoder
+from src.utils.models.components import MoEConfig, RMSNorm, ViTBlock, ViTBlockConfig
 from src.utils.schema.court import NUM_COURT_KP
 
 if TYPE_CHECKING:

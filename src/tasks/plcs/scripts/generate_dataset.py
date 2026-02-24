@@ -1,10 +1,10 @@
 """Generate PLCS scenes for training using Hydra-managed configuration.
 
 Example commands:
-    `uv run python -m src.plcs.scripts.generate_dataset`
-    `uv run python -m src.plcs.scripts.generate_dataset run.output_dir=data/plcs simulation.num_scenes=10`
+    `uv run python -m src.tasks.plcs.scripts.generate_dataset`
+    `uv run python -m src.tasks.plcs.scripts.generate_dataset run.output_dir=data/plcs simulation.num_scenes=10`
 
-Config entry point: `src/plcs/configs/generate_dataset.yaml`
+Config entry point: `src/tasks/plcs/configs/generate_dataset.yaml`
 """
 
 from __future__ import annotations
@@ -21,9 +21,9 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
 
-from src.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
-from src.plcs.generate_dataset.sampling.motion_sampler import MotionSampler
-from src.plcs.generate_dataset.scene_generator import SceneGenerator
+from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
+from src.tasks.plcs.generate_dataset.sampling.motion_sampler import MotionSampler
+from src.tasks.plcs.generate_dataset.scene_generator import SceneGenerator
 
 
 def _resolve_device(device: str) -> str:

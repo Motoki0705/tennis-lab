@@ -138,7 +138,7 @@ class PLCSModule(BasePipelineModule):
             return
 
         LOGGER.info(f"Loading PLCS model from {self.checkpoint_path}")
-        from src.plcs.inference.predictor import PLCSPredictor
+        from src.tasks.plcs.inference.predictor import PLCSPredictor
 
         self._predictor = PLCSPredictor.load_from_checkpoint(
             self.checkpoint_path, device=self.device

@@ -7,9 +7,9 @@ import time
 import pytest
 import torch
 
-from src.common.models.components.ops.deformable.api import multi_scale_deformable_attention
-from src.common.models.components.ops.deformable.kernels.msda_dispatch import get_msda_extension
-from src.common.models.components.ops.deformable.utils import build_level_start_index
+from src.utils.models.components.ops.deformable.api import multi_scale_deformable_attention
+from src.utils.models.components.ops.deformable.kernels.msda_dispatch import get_msda_extension
+from src.utils.models.components.ops.deformable.utils import build_level_start_index
 
 
 def _make_case(device: torch.device, dtype: torch.dtype):

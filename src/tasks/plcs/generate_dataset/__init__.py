@@ -6,6 +6,6 @@ This package contains the implementation of synthetic PLCS scene generation:
 - camera sampling + projection into 2D keypoints
 - scene serialization (NPZ)
 
-The Hydra CLI entrypoint is `src/plcs/scripts/generate_dataset.py`.
+The Hydra CLI entrypoint is `src/tasks/plcs/scripts/generate_dataset.py`.
 """
 

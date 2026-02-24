@@ -9,9 +9,9 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
-from src.base.inference.predictor import BasePredictor
-from src.ball_detection.models.heatmap_utils import decode_heatmap_logits
-from src.ball_detection.models import build_model
+from src.tasks.base.inference.predictor import BasePredictor
+from src.tasks.ball_detection.models.heatmap_utils import decode_heatmap_logits
+from src.tasks.ball_detection.models import build_model
 
 
 class BallPredictor(BasePredictor):

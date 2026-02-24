@@ -3,9 +3,9 @@
 # Train Masked Autoencoder on tennis domain videos.
 #
 # Usage:
-#   uv run python -m src.mae.scripts.train
-#   uv run python -m src.mae.scripts.train model.hidden_dim=512
-#   uv run python -m src.mae.scripts.train data=cached_batches data.bucket_alpha=2.5
+#   uv run python -m src.experiments.mae.scripts.train
+#   uv run python -m src.experiments.mae.scripts.train model.hidden_dim=512
+#   uv run python -m src.experiments.mae.scripts.train data=cached_batches data.bucket_alpha=2.5
 
 defaults:
   - _self_

@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor, nn
 
-from src.ball_detection.models.components import (
+from src.tasks.ball_detection.models.components import (
     BasicBlock,
     VisibilityHead,
     XYHead,
 )
-from src.common.models import (
+from src.utils.models import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
     MSDeformCrossAttnBlock,

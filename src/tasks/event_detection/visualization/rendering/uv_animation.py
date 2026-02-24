@@ -9,11 +9,11 @@ from matplotlib.axes import Axes
 from matplotlib.collections import PathCollection
 from matplotlib.lines import Line2D
 
-from src.event_detection.visualization.rendering.event_emphasis import (
+from src.tasks.event_detection.visualization.rendering.event_emphasis import (
     build_event_impact,
     mix_color,
 )
-from src.event_detection.visualization.types import RuntimeConfig, UVEventInputs
+from src.tasks.event_detection.visualization.types import RuntimeConfig, UVEventInputs
 from src.utils.schema.court import COURT_SKELETON
 
 BASE_BALL_RGB = np.asarray([0.80, 1.00, 0.00], dtype=np.float32)

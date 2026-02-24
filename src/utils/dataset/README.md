@@ -7,7 +7,7 @@ This module provides shared infrastructure for dataset generation and augmentati
 The shared dataset utilities follow the DRY (Don't Repeat Yourself) principle, extracting common functionality from individual modules into reusable components.
 
 ```
-src/common/dataset/
+src/utils/dataset/
 ├── __init__.py
 ├── writer.py          # BaseDatasetWriter - NPZ dataset generation
 ├── augmentation.py    # Common augmentation functions
@@ -30,7 +30,7 @@ Abstract base class for NPZ-based dataset writers (PLCS/BLCS).
 
 **Usage**:
 ```python
-from src.common.dataset.writer import BaseDatasetWriter
+from src.utils.dataset.writer import BaseDatasetWriter
 from pathlib import Path
 
 class MyDatasetWriter(BaseDatasetWriter):
@@ -78,7 +78,7 @@ Common data augmentation utilities for keypoints and visibility masks.
 Add Gaussian noise to any tensor.
 
 ```python
-from src.common.dataset.augmentation import add_gaussian_noise
+from src.utils.dataset.augmentation import add_gaussian_noise
 
 # Add noise to keypoints
 noisy_kp = add_gaussian_noise(keypoints, noise_std=0.01)
@@ -88,7 +88,7 @@ noisy_kp = add_gaussian_noise(keypoints, noise_std=0.01)
 Randomly drop visibility flags for augmentation.
 
 ```python
-from src.common.dataset.augmentation import random_visibility_dropout
+from src.utils.dataset.augmentation import random_visibility_dropout
 
 # Randomly hide some keypoints
 augmented_vis = random_visibility_dropout(visibility, drop_prob=0.05)
@@ -98,7 +98,7 @@ augmented_vis = random_visibility_dropout(visibility, drop_prob=0.05)
 Combined convenience function for keypoint augmentation.
 
 ```python
-from src.common.dataset.augmentation import augment_keypoints
+from src.utils.dataset.augmentation import augment_keypoints
 
 # Apply both noise and dropout
 aug_kp, aug_vis = augment_keypoints(
@@ -155,7 +155,7 @@ class PLCSDatasetWriter:
 
 **After**:
 ```python
-from src.common.dataset.writer import BaseDatasetWriter
+from src.utils.dataset.writer import BaseDatasetWriter
 
 class PLCSDatasetWriter(BaseDatasetWriter):
     # Only implement save_scene()
@@ -187,7 +187,7 @@ class NewModuleBatch(TypedDict):
 2. **Create dataset writer**:
 ```python
 # src/newmodule/generate_dataset/io/dataset_io.py
-from src.common.dataset.writer import BaseDatasetWriter
+from src.utils.dataset.writer import BaseDatasetWriter
 
 class NewModuleDatasetWriter(BaseDatasetWriter):
     def save_scene(self, scene) -> Path:
@@ -198,7 +198,7 @@ class NewModuleDatasetWriter(BaseDatasetWriter):
 3. **Use augmentation functions** in dataset classes:
 ```python
 # src/newmodule/data/dataset.py
-from src.common.dataset.augmentation import augment_keypoints
+from src.utils.dataset.augmentation import augment_keypoints
 
 class NewModuleDataset(Dataset):
     def __getitem__(self, idx):
@@ -211,7 +211,7 @@ class NewModuleDataset(Dataset):
 To add new augmentation functions:
 
 ```python
-# src/common/dataset/augmentation.py
+# src/utils/dataset/augmentation.py
 
 def new_augmentation(data: Tensor, param: float) -> Tensor:
     """New augmentation with clear docstring.
@@ -262,10 +262,10 @@ Base module components are tested indirectly through:
 For direct testing:
 ```bash
 # Run type checking
-uv run mypy src/common/dataset
+uv run mypy src/utils/dataset
 
 # Run linting
-uv run ruff check src/common/dataset
+uv run ruff check src/utils/dataset
 ```
 
 ## Maintenance
@@ -286,7 +286,7 @@ uv run ruff check src/common/dataset
 
 ## References
 
-- PLCS dataset: `src/plcs/data/`
-- BLCS dataset: `src/blcs/data/`
-- WASB dataset: `src/wasb/data/`
+- PLCS dataset: `src/tasks/plcs/data/`
+- BLCS dataset: `src/tasks/blcs/data/`
+- WASB dataset: `src/tasks/wasb/data/`
 - Type definitions: `src/{module}/data/types.py`

@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 
 from torch import nn
 
-from src.trajectory_completion.models.uv_completion_model import (
+from src.tasks.trajectory_completion.models.uv_completion_model import (
     UVTrajectoryCompletionModel,
 )
-from src.trajectory_completion.models.uv_completion_nocourt_model import (
+from src.tasks.trajectory_completion.models.uv_completion_nocourt_model import (
     UVTrajectoryCompletionNoCourtModel,
 )
 

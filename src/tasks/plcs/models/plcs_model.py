@@ -27,7 +27,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.common.models import (
+from src.utils.models import (
     MoEConfig,
     RMSNorm,
     TransformerBlock,
@@ -35,12 +35,12 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
-from src.common.models.embeddings import (
+from src.utils.models.embeddings import (
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
 )
-from src.plcs.models.components.heads import PositionHead, RotationHead
+from src.tasks.plcs.models.components.heads import PositionHead, RotationHead
 from src.utils.schema.court import NUM_COURT_KP
 from src.utils.schema.player import NUM_HUMAN_KP
 

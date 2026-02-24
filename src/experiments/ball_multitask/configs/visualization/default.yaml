@@ -2,7 +2,7 @@
 #
 # Usage:
 # - Override any field from CLI:
-#   python -m src.ball_multitask.scripts.visualize visualization.scene_path=...
+#   python -m src.experiments.ball_multitask.scripts.visualize visualization.scene_path=...
 # - `run.device` has higher priority than this file's device setting.
 
 # Execution mode

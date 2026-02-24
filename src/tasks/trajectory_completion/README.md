@@ -3,14 +3,14 @@
 Train and run inference for UV trajectory completion using court keypoints.
 
 Entry points:
-- `uv run python -m src.trajectory_completion.scripts.train`
+- `uv run python -m src.tasks.trajectory_completion.scripts.train`
 
 Inference:
-- `src/trajectory_completion/inference/uv_predictor.py`
+- `src/tasks/trajectory_completion/inference/uv_predictor.py`
 
 Example:
 ```python
-from src.trajectory_completion.inference import UVTrajectoryCompletionPredictor
+from src.tasks.trajectory_completion.inference import UVTrajectoryCompletionPredictor
 
 predictor = UVTrajectoryCompletionPredictor.load_from_checkpoint("path/to/checkpoint.ckpt")
 outputs = predictor.predict(
@@ -45,22 +45,22 @@ resolution. Provide only one of them per dataset instance.
 
 Animation-only visualization:
 
-- `uv run python -m src.trajectory_completion.scripts.visualize`
-- `uv run python -m src.trajectory_completion.scripts.visualize visualization.scene_path=data/blcs/scenes/rally_000000.npz`
+- `uv run python -m src.tasks.trajectory_completion.scripts.visualize`
+- `uv run python -m src.tasks.trajectory_completion.scripts.visualize visualization.scene_path=data/blcs/scenes/rally_000000.npz`
 - Inference animation (GT line + predicted point, color-coded by observed/completed frames):
-    - `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/trajectory_completion/.../last.ckpt`
+    - `uv run python -m src.tasks.trajectory_completion.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/trajectory_completion/.../last.ckpt`
 - Keep observed frames in completed output:
-    - `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.merge_observed=true`
+    - `uv run python -m src.tasks.trajectory_completion.scripts.visualize visualization.mode=predict visualization.merge_observed=true`
 - Disable observed-frame merge (show raw model output):
-    - `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.merge_observed=false`
+    - `uv run python -m src.tasks.trajectory_completion.scripts.visualize visualization.mode=predict visualization.merge_observed=false`
 - Cut out-of-frame predictions using in-frame head:
-    - `uv run python -m src.trajectory_completion.scripts.visualize visualization.mode=predict visualization.cut_out_of_frame=true visualization.in_frame_threshold=0.5`
+    - `uv run python -m src.tasks.trajectory_completion.scripts.visualize visualization.mode=predict visualization.cut_out_of_frame=true visualization.in_frame_threshold=0.5`
 - Save animation:
-    - `uv run python -m src.trajectory_completion.scripts.visualize visualization.save=outputs/tmp/vis.gif`
+    - `uv run python -m src.tasks.trajectory_completion.scripts.visualize visualization.save=outputs/tmp/vis.gif`
 
 ## Training design: observed drift mitigation
 
-`src/trajectory_completion/training/lightning_module.py` supports two mechanisms to reduce
+`src/tasks/trajectory_completion/training/lightning_module.py` supports two mechanisms to reduce
 drift propagation from `observed` to `masked`.
 
 - Masked-loss schedule:

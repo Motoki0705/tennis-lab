@@ -10,29 +10,29 @@
 
 ```bash
 # 基本的な使用法
-uv run python -m src.wasb.scripts.tools.encode_dinov3_patch_tokens \
+uv run python -m src.tasks.wasb.scripts.tools.encode_dinov3_patch_tokens \
   model_checkpoint=outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
   output_dir=data/tennis/patch_embeddings
 
 # 拡張パスを増やす
-uv run python -m src.wasb.scripts.tools.encode_dinov3_patch_tokens \
+uv run python -m src.tasks.wasb.scripts.tools.encode_dinov3_patch_tokens \
   model_checkpoint=... \
   num_augments=5
 
 # 特定のマッチのみ処理
-uv run python -m src.wasb.scripts.tools.encode_dinov3_patch_tokens \
+uv run python -m src.tasks.wasb.scripts.tools.encode_dinov3_patch_tokens \
   model_checkpoint=... \
   matches=[game1,game2]
 
 # 既存ファイルを上書き
-uv run python -m src.wasb.scripts.tools.encode_dinov3_patch_tokens \
+uv run python -m src.tasks.wasb.scripts.tools.encode_dinov3_patch_tokens \
   model_checkpoint=... \
   overwrite=true
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/wasb/configs/encode_dinov3_tokens.yaml`
+エントリポイント: `src/tasks/wasb/configs/encode_dinov3_tokens.yaml`
 
 ### 主要パラメータ
 
@@ -149,13 +149,13 @@ heatmaps = np.load("Clip1_heatmaps.npy")  # shape: [T, H', W']
 
 ```bash
 # 1. パッチトークンをエンコード
-uv run python -m src.wasb.scripts.tools.encode_dinov3_patch_tokens \
+uv run python -m src.tasks.wasb.scripts.tools.encode_dinov3_patch_tokens \
   model_checkpoint=outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
   output_dir=data/tennis/patch_embeddings \
   num_augments=3
 
 # 2. 事前計算された埋め込みで学習
-uv run python -m src.wasb.scripts.train.ball_detection \
+uv run python -m src.tasks.wasb.scripts.train.ball_detection \
   data=patch_embeddings \
   data.embeddings_dir=data/tennis/patch_embeddings
 ```
@@ -168,5 +168,5 @@ uv run python -m src.wasb.scripts.train.ball_detection \
 
 ## 関連モジュール
 
-- `src.wasb.models.dinov3_fpn_heatmap.DinoV3FPNHeatmap`: DINOv3モデル
-- `src.wasb.data.patch_embeddings_datamodule`: パッチ埋め込みデータモジュール
+- `src.tasks.wasb.models.dinov3_fpn_heatmap.DinoV3FPNHeatmap`: DINOv3モデル
+- `src.tasks.wasb.data.patch_embeddings_datamodule`: パッチ埋め込みデータモジュール

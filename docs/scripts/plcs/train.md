@@ -10,24 +10,24 @@
 
 ```bash
 # デフォルト設定で学習
-uv run python -m src.plcs.scripts.train
+uv run python -m src.tasks.plcs.scripts.train
 
 # GPU 設定とエポック数を指定
-uv run python -m src.plcs.scripts.train run.gpus=0 training.max_epochs=1
+uv run python -m src.tasks.plcs.scripts.train run.gpus=0 training.max_epochs=1
 
 # 高速デバッグモード
-uv run python -m src.plcs.scripts.train run.fast_dev_run=true
+uv run python -m src.tasks.plcs.scripts.train run.fast_dev_run=true
 
 # 学習を再開
-uv run python -m src.plcs.scripts.train run.resume=outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt
+uv run python -m src.tasks.plcs.scripts.train run.resume=outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt
 
 # バッチサイズを変更
-uv run python -m src.plcs.scripts.train data.batch_size=128
+uv run python -m src.tasks.plcs.scripts.train data.batch_size=128
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/plcs/configs/train.yaml`
+エントリポイント: `src/tasks/plcs/configs/train.yaml`
 
 ### defaults 構成
 
@@ -94,7 +94,7 @@ defaults:
 
 ### loss (ロス設定)
 
-ロス設定は `src/plcs/configs/loss/` ディレクトリに分離されています。
+ロス設定は `src/tasks/plcs/configs/loss/` ディレクトリに分離されています。
 
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
@@ -144,6 +144,6 @@ outputs/plcs/frame/
 
 ## 関連モジュール
 
-- `src.plcs.data.datamodule`: データモジュール
-- `src.plcs.training.lightning_module`: Lightning モジュール
-- `src.plcs.models`: モデル定義
+- `src.tasks.plcs.data.datamodule`: データモジュール
+- `src.tasks.plcs.training.lightning_module`: Lightning モジュール
+- `src.tasks.plcs.models`: モデル定義

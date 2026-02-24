@@ -10,29 +10,29 @@
 
 ```bash
 # 基本的な使用法
-uv run python -m src.wasb.scripts.visualize.ball_video video_path=data/tennis/raw/videos/match.mp4
+uv run python -m src.tasks.wasb.scripts.visualize.ball_video video_path=data/tennis/raw/videos/match.mp4
 
 # モデルとチェックポイントを指定
-uv run python -m src.wasb.scripts.visualize.ball_video \
+uv run python -m src.tasks.wasb.scripts.visualize.ball_video \
   video_path=data/samples/clip.mp4 \
   checkpoint=outputs/wasb/ball_detection/hrcnet/logs/version_0/checkpoints/last.ckpt \
   model=hrcnet \
   device=cuda
 
 # 出力パスを指定
-uv run python -m src.wasb.scripts.visualize.ball_video \
+uv run python -m src.tasks.wasb.scripts.visualize.ball_video \
   video_path=input.mp4 \
   output_path=output_with_ball.mp4
 
 # フレーム数を制限（テスト用）
-uv run python -m src.wasb.scripts.visualize.ball_video \
+uv run python -m src.tasks.wasb.scripts.visualize.ball_video \
   video_path=... \
   max_frames=300
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/wasb/configs/plot_ball_video.yaml`
+エントリポイント: `src/tasks/wasb/configs/plot_ball_video.yaml`
 
 ### 主要パラメータ
 
@@ -101,6 +101,6 @@ outputs/wasb/ball_detection/visualize/ball_video/
 
 ## 関連モジュール
 
-- `src.wasb.inference.ball_detection.WASBPredictor`: WASB 推論
-- `src.wasb.inference.ball_detection.HRCNetWASBPredictor`: HRCNet 推論
-- `src.wasb.pipeline.video_ball_localization_pipeline.VideoBallLocalizationPipeline`: パイプライン
+- `src.tasks.wasb.inference.ball_detection.WASBPredictor`: WASB 推論
+- `src.tasks.wasb.inference.ball_detection.HRCNetWASBPredictor`: HRCNet 推論
+- `src.tasks.wasb.pipeline.video_ball_localization_pipeline.VideoBallLocalizationPipeline`: パイプライン

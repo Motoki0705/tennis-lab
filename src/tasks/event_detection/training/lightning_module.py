@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Literal
 import torch
 from torch import Tensor
 from torch.nn import functional as F
-from src.base.training.lightning_module import BaseLightningModule
-from src.event_detection.models import build_event_detection_model
-from src.event_detection.utils.peaks import extract_event_peaks
+from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.event_detection.models import build_event_detection_model
+from src.tasks.event_detection.utils.peaks import extract_event_peaks
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

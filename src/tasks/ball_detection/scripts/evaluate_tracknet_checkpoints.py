@@ -9,9 +9,9 @@ from dataclasses import asdict, dataclass
 import torch
 from torch.utils.data import DataLoader, Subset
 
-from src.ball_detection.data.datamodule import collate_ball_sequences
-from src.ball_detection.data.labeled_dataset import LabeledBallDataset
-from src.ball_detection.inference.predictor import BallPredictor
+from src.tasks.ball_detection.data.datamodule import collate_ball_sequences
+from src.tasks.ball_detection.data.labeled_dataset import LabeledBallDataset
+from src.tasks.ball_detection.inference.predictor import BallPredictor
 
 
 @dataclass(frozen=True)
@@ -107,7 +107,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ckpt-b", required=True, help="Second checkpoint path.")
     parser.add_argument(
         "--model-config",
-        default="src/ball_detection/configs/model/tracknetv3.yaml",
+        default="src/tasks/ball_detection/configs/model/tracknetv3.yaml",
         help="Fallback model config path for checkpoint loading.",
     )
     parser.add_argument("--root-dir", default="data/tennis")

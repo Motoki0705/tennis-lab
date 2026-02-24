@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.common.models.components.ops.deformable.kernels.msda_dtype import MsdaDtypeMeta
+from src.utils.models.components.ops.deformable.kernels.msda_dtype import MsdaDtypeMeta
 
 _CTX_META_KEY = "_msda_dtype_meta"
 _CTX_EXT_KEY = "_msda_ext"

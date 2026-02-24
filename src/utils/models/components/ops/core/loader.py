@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import torch
 
-from src.common.models.components.ops.core.backend import OpBackend
-from src.common.models.components.ops.core.errors import BackendNotAvailableError, OperatorNotFoundError
-from src.common.models.components.ops.core.registry import list_backends, resolve_operator
-from src.common.models.components.ops.core.types import OperatorRequest
+from src.utils.models.components.ops.core.backend import OpBackend
+from src.utils.models.components.ops.core.errors import BackendNotAvailableError, OperatorNotFoundError
+from src.utils.models.components.ops.core.registry import list_backends, resolve_operator
+from src.utils.models.components.ops.core.types import OperatorRequest
 
 
 def _backend_available(backend: OpBackend) -> bool:

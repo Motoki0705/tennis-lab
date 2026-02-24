@@ -10,21 +10,21 @@
 
 ```bash
 # デフォルト設定で実行
-uv run python -m src.plcs.scripts.generate_dataset
+uv run python -m src.tasks.plcs.scripts.generate_dataset
 
 # 出力先とシーン数を指定
-uv run python -m src.plcs.scripts.generate_dataset run.output_dir=data/plcs simulation.num_scenes=10
+uv run python -m src.tasks.plcs.scripts.generate_dataset run.output_dir=data/plcs simulation.num_scenes=10
 
 # カテゴリを指定して生成
-uv run python -m src.plcs.scripts.generate_dataset run.category=running
+uv run python -m src.tasks.plcs.scripts.generate_dataset run.category=running
 
 # シード値を変更
-uv run python -m src.plcs.scripts.generate_dataset run.seed=123
+uv run python -m src.tasks.plcs.scripts.generate_dataset run.seed=123
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/plcs/configs/generate_dataset.yaml`
+エントリポイント: `src/tasks/plcs/configs/generate_dataset.yaml`
 
 ### defaults 構成
 
@@ -134,6 +134,6 @@ data/plcs/
 
 ## 関連モジュール
 
-- `src.plcs.generate_dataset.sampling.motion_sampler`: モーションデータのサンプリング
-- `src.plcs.generate_dataset.scene_generator`: シーン生成ロジック
-- `src.plcs.generate_dataset.io.dataset_io`: データ入出力
+- `src.tasks.plcs.generate_dataset.sampling.motion_sampler`: モーションデータのサンプリング
+- `src.tasks.plcs.generate_dataset.scene_generator`: シーン生成ロジック
+- `src.tasks.plcs.generate_dataset.io.dataset_io`: データ入出力

@@ -15,13 +15,13 @@
 ### 基本実行（Ground Truth可視化）
 
 ```bash
-uv run python -m src.plcs.scripts.visualize_multiview
+uv run python -m src.tasks.plcs.scripts.visualize_multiview
 ```
 
 ### シーン情報の表示
 
 ```bash
-uv run python -m src.plcs.scripts.visualize_multiview \
+uv run python -m src.tasks.plcs.scripts.visualize_multiview \
     visualization.scene_path=data/plcs/scenes/scene_000001.npz \
     visualization.info=true
 ```
@@ -29,7 +29,7 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 ### マルチビュー予測と可視化
 
 ```bash
-uv run python -m src.plcs.scripts.visualize_multiview \
+uv run python -m src.tasks.plcs.scripts.visualize_multiview \
     visualization.scene_path=data/plcs/scenes/scene_000001.npz \
     visualization.mode=predict \
     visualization.checkpoint=outputs/plcs/multiview/logs/version_0/checkpoints/last.ckpt \
@@ -40,12 +40,12 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 
 ```bash
 # 特定のカメラのみ使用
-uv run python -m src.plcs.scripts.visualize_multiview \
+uv run python -m src.tasks.plcs.scripts.visualize_multiview \
     visualization.mode=predict \
     visualization.cameras="0,1,2"
 
 # すべてのカメラを使用（デフォルト）
-uv run python -m src.plcs.scripts.visualize_multiview \
+uv run python -m src.tasks.plcs.scripts.visualize_multiview \
     visualization.mode=predict \
     visualization.cameras=all
 ```
@@ -53,7 +53,7 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 ### アニメーション出力
 
 ```bash
-uv run python -m src.plcs.scripts.visualize_multiview \
+uv run python -m src.tasks.plcs.scripts.visualize_multiview \
     visualization.mode=predict \
     visualization.view=animation \
     visualization.animation_view=3d \
@@ -78,6 +78,6 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 
 ## 関連ファイル
 
-- Predictor: `src/plcs/inference/multiview_predictor.py`
-- Config: `src/plcs/configs/visualize_multiview.yaml`
-- 設定詳細: `src/plcs/configs/visualization/multiview.yaml`
+- Predictor: `src/tasks/plcs/inference/multiview_predictor.py`
+- Config: `src/tasks/plcs/configs/visualize_multiview.yaml`
+- 設定詳細: `src/tasks/plcs/configs/visualization/multiview.yaml`

@@ -23,14 +23,14 @@ from pathlib import Path
 
 import numpy as np
 
-from src.common.dataset.writer import BaseDatasetWriter
-from src.blcs.data.types import (
+from src.utils.dataset.writer import BaseDatasetWriter
+from src.tasks.blcs.data.types import (
     PYDANTIC_AVAILABLE,
     BLCSSceneMeta,
     BLCSSceneMetaModel,
     RallySceneMeta,
 )
-from src.blcs.generate_dataset.scene_generator import BLCSSceneData, RallySceneData
+from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData, RallySceneData
 
 logger = logging.getLogger(__name__)
 

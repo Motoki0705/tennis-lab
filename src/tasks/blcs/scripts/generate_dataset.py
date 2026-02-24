@@ -1,11 +1,11 @@
 """Generate a BLCS dataset with Hydra-managed configuration.
 
 Example commands:
-    `uv run python -m src.blcs.scripts.generate_dataset`
-    `uv run python -m src.blcs.scripts.generate_dataset generator.num_rally_scenes=100`
-    `uv run python -m src.blcs.scripts.generate_dataset run.output_dir=data/blcs generator.num_rally_scenes=500`
+    `uv run python -m src.tasks.blcs.scripts.generate_dataset`
+    `uv run python -m src.tasks.blcs.scripts.generate_dataset generator.num_rally_scenes=100`
+    `uv run python -m src.tasks.blcs.scripts.generate_dataset run.output_dir=data/blcs generator.num_rally_scenes=500`
 
-Config entry point: `src/blcs/configs/generate_dataset.yaml`
+Config entry point: `src/tasks/blcs/configs/generate_dataset.yaml`
 """
 
 from __future__ import annotations
@@ -24,17 +24,17 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from tqdm.auto import tqdm
 
-from src.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
-from src.blcs.generate_dataset.sampling.distribution_sampler import SamplingConfig
-from src.blcs.generate_dataset.scene_generator import (
+from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
+from src.tasks.blcs.generate_dataset.sampling.distribution_sampler import SamplingConfig
+from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneGenerator,
     GeneratorConfig,
 )
-from src.blcs.simulation.ball_physics import PhysicsConfig
-from src.blcs.simulation.cell_manager import ShotCategory
-from src.blcs.simulation.rally_simulator import RallyConfig
-from src.blcs.simulation.shot_simulator import ShotConfig
-from src.blcs.simulation.targeted_velocity_sampler import TargetedVelocityConfig
+from src.tasks.blcs.simulation.ball_physics import PhysicsConfig
+from src.tasks.blcs.simulation.cell_manager import ShotCategory
+from src.tasks.blcs.simulation.rally_simulator import RallyConfig
+from src.tasks.blcs.simulation.shot_simulator import ShotConfig
+from src.tasks.blcs.simulation.targeted_velocity_sampler import TargetedVelocityConfig
 from src.utils.projection.camera_projector import CameraConfig
 
 logging.basicConfig(

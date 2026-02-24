@@ -9,7 +9,7 @@
 ## メインエントリポイント
 
 ```bash
-uv run python -m src.wasb.scripts.generate_dataset
+uv run python -m src.tasks.wasb.scripts.generate_dataset
 ```
 
 これは `batch.py` の `main()` を呼び出します。
@@ -18,24 +18,24 @@ uv run python -m src.wasb.scripts.generate_dataset
 
 ```bash
 # バッチモード: 指定ディレクトリの全動画を処理
-uv run python -m src.wasb.scripts.generate_dataset mode=batch video_dir=data/tennis/raw
+uv run python -m src.tasks.wasb.scripts.generate_dataset mode=batch video_dir=data/tennis/raw
 
 # ステータス確認
-uv run python -m src.wasb.scripts.generate_dataset mode=status output_dir=data/tennis
+uv run python -m src.tasks.wasb.scripts.generate_dataset mode=status output_dir=data/tennis
 
 # 失敗した動画をリセット
-uv run python -m src.wasb.scripts.generate_dataset mode=reset_failed output_dir=data/tennis
+uv run python -m src.tasks.wasb.scripts.generate_dataset mode=reset_failed output_dir=data/tennis
 
 # 特定の動画をリセット
-uv run python -m src.wasb.scripts.generate_dataset mode=reset_video reset_video=[match1.mp4,match2.mp4]
+uv run python -m src.tasks.wasb.scripts.generate_dataset mode=reset_video reset_video=[match1.mp4,match2.mp4]
 
 # モデルとデバイスを指定
-uv run python -m src.wasb.scripts.generate_dataset model=hrcnet device=cuda
+uv run python -m src.tasks.wasb.scripts.generate_dataset model=hrcnet device=cuda
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/wasb/configs/generate_dataset.yaml`
+エントリポイント: `src/tasks/wasb/configs/generate_dataset.yaml`
 
 ### モード
 
@@ -179,7 +179,7 @@ Frame,Visibility,X,Y,Status
 
 ## 関連モジュール
 
-- `src.wasb.pipeline.AnnotationPipeline`: アノテーションパイプライン
-- `src.wasb.inference.WASBPredictor`: WASB 推論
-- `src.wasb.inference.HRCNetWASBPredictor`: HRCNet 推論
-- `src.wasb.tennis_format`: Tennis 形式のI/O
+- `src.tasks.wasb.pipeline.AnnotationPipeline`: アノテーションパイプライン
+- `src.tasks.wasb.inference.WASBPredictor`: WASB 推論
+- `src.tasks.wasb.inference.HRCNetWASBPredictor`: HRCNet 推論
+- `src.tasks.wasb.tennis_format`: Tennis 形式のI/O

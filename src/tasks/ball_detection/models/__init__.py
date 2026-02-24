@@ -6,9 +6,9 @@ from typing import Any
 
 from torch import nn
 
-from src.ball_detection.models.ball_detector_model import BallDetectorModel
-from src.ball_detection.models.hrnet_temporal_heatmap_model import WASBHRNetTemporalModel
-from src.ball_detection.models.tracknetv3_heatmap_model import TrackNetV3HeatmapModel
+from src.tasks.ball_detection.models.ball_detector_model import BallDetectorModel
+from src.tasks.ball_detection.models.hrnet_temporal_heatmap_model import WASBHRNetTemporalModel
+from src.tasks.ball_detection.models.tracknetv3_heatmap_model import TrackNetV3HeatmapModel
 
 
 def build_model(config: Any | None = None) -> nn.Module:

@@ -8,10 +8,10 @@ from typing import Any, Self
 import torch
 from torch import Tensor
 
-from src.base.inference.predictor import BasePredictor
-from src.ball_multitask.models.multitask_model import BallMultitaskModel
-from src.ball_multitask.training.lightning_module import BallMultitaskLightningModule
-from src.event_detection.utils.peaks import extract_event_peaks
+from src.tasks.base.inference.predictor import BasePredictor
+from src.experiments.ball_multitask.models.multitask_model import BallMultitaskModel
+from src.experiments.ball_multitask.training.lightning_module import BallMultitaskLightningModule
+from src.tasks.event_detection.utils.peaks import extract_event_peaks
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 

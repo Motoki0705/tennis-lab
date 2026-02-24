@@ -4,7 +4,7 @@ This implementation is based on the original MAE paper and official implementati
 - Paper: "Masked Autoencoders Are Scalable Vision Learners" (https://arxiv.org/abs/2111.06377)
 - Official Code: https://github.com/facebookresearch/mae
 
-The encoder uses ViTEncoder from src.common.models.vit which supports:
+The encoder uses ViTEncoder from src.utils.models.vit which supports:
 - 2D RoPE for positional encoding
 - Optional MoE for FFN layers
 - Register tokens for improved representations
@@ -25,8 +25,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.common.models import ViTConfig, ViTEncoder
-from src.common.models.components import MoEConfig, RMSNorm, ViTBlock, ViTBlockConfig
+from src.utils.models import ViTConfig, ViTEncoder
+from src.utils.models.components import MoEConfig, RMSNorm, ViTBlock, ViTBlockConfig
 
 
 @dataclass

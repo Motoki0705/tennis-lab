@@ -1,6 +1,6 @@
 """Shared data utilities across tasks."""
 
-from src.common.data.index_cache import (
+from src.utils.data.index_cache import (
     CachedIndex,
     compute_config_hash,
     compute_scene_files_hash,
@@ -8,14 +8,14 @@ from src.common.data.index_cache import (
     load_cached_index,
     save_cached_index,
 )
-from src.common.data.scene_batch_sampler import (
+from src.utils.data.scene_batch_sampler import (
     build_scene_sampler,
     ChunkedSceneBatchSampler,
     MixedSceneBatchSampler,
     resolve_scene_sampler_mode,
     SceneBatchSampler,
 )
-from src.common.data.scene_cache import (
+from src.utils.data.scene_cache import (
     SceneCache,
     SceneMeta,
     extract_scene_meta,
@@ -24,7 +24,7 @@ from src.common.data.scene_cache import (
     load_npz_scene,
     reset_scene_cache,
 )
-from src.common.data.scene_id import resolve_scene_id
+from src.utils.data.scene_id import resolve_scene_id
 
 __all__ = [
     "CachedIndex",

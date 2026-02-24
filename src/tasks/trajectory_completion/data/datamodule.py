@@ -9,11 +9,11 @@ import pytorch_lightning as pl
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from src.trajectory_completion.data.dataset import (
+from src.tasks.trajectory_completion.data.dataset import (
     BLCSUVTrajectoryCompletionDataset,
 )
-from src.common.dataset.collate import collate_padded_batch
-from src.common.data.scene_batch_sampler import (
+from src.utils.dataset.collate import collate_padded_batch
+from src.utils.data.scene_batch_sampler import (
     build_scene_sampler,
     resolve_scene_sampler_mode,
 )

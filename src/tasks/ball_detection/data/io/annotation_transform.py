@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.ball_detection.data.type import LabelRecord
+from src.tasks.ball_detection.data.type import LabelRecord
 
 
 def clamp_label_to_image(label: LabelRecord, *, width: int, height: int) -> LabelRecord:

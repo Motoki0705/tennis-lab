@@ -10,27 +10,27 @@ PLCSシーンの可視化および学習済みモデルによる予測結果の�
 
 ```bash
 # デフォルト設定で可視化
-uv run python -m src.plcs.scripts.visualize
+uv run python -m src.tasks.plcs.scripts.visualize
 
 # シーンパスと情報表示を指定
-uv run python -m src.plcs.scripts.visualize visualization.scene_path=data/plcs/scenes/scene_000000.npz visualization.info=true
+uv run python -m src.tasks.plcs.scripts.visualize visualization.scene_path=data/plcs/scenes/scene_000000.npz visualization.info=true
 
 # 特定のフレームとカメラを指定
-uv run python -m src.plcs.scripts.visualize visualization.frame=10 visualization.camera=2
+uv run python -m src.tasks.plcs.scripts.visualize visualization.frame=10 visualization.camera=2
 
 # アニメーションを保存
-uv run python -m src.plcs.scripts.visualize visualization.view=animation visualization.save=output.mp4
+uv run python -m src.tasks.plcs.scripts.visualize visualization.view=animation visualization.save=output.mp4
 
 # 予測モードで実行
-uv run python -m src.plcs.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt
+uv run python -m src.tasks.plcs.scripts.visualize visualization.mode=predict visualization.checkpoint=outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt
 
 # 3Dビューを表示
-uv run python -m src.plcs.scripts.visualize visualization.view=3d
+uv run python -m src.tasks.plcs.scripts.visualize visualization.view=3d
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/plcs/configs/visualize.yaml`
+エントリポイント: `src/tasks/plcs/configs/visualize.yaml`
 
 ### defaults 構成
 
@@ -144,5 +144,5 @@ Camera visibility:
 
 ## 関連モジュール
 
-- `src.plcs.generate_dataset.io.dataset_io`: シーン読み込み
+- `src.tasks.plcs.generate_dataset.io.dataset_io`: シーン読み込み
 - `src.utils.rendering.PLCSSceneRenderer`: シーンレンダリング

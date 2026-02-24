@@ -9,11 +9,11 @@ import pytorch_lightning as pl
 from omegaconf import OmegaConf
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from src.base.training.runner import BaseTrainingRunner
-from src.mae.data import MAEDataModule
-from src.mae.data.producer import CacheProducerConfig, PreprocessConfig
-from src.mae.training import MAELightningModule
-from src.mae.training.epoch_cache_callback import (
+from src.tasks.base.training.runner import BaseTrainingRunner
+from src.experiments.mae.data import MAEDataModule
+from src.experiments.mae.data.producer import CacheProducerConfig, PreprocessConfig
+from src.experiments.mae.training import MAELightningModule
+from src.experiments.mae.training.epoch_cache_callback import (
     EpochCacheCallbackConfig,
     MAEEpochCacheCallback,
 )

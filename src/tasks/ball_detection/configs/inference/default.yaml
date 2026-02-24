@@ -20,7 +20,7 @@ visibility_threshold: 0.5
 single:
   backend: ball_detection
   checkpoint: outputs/ball_detection/tracknetv3_wbce_full_e30/logs/version_0/checkpoints/last.ckpt
-  model_config_path: src/ball_detection/configs/model/tracknetv3.yaml
+  model_config_path: src/tasks/ball_detection/configs/model/tracknetv3.yaml
   weight: 1.0
   score_threshold: 0.5
 
@@ -28,11 +28,11 @@ ensemble:
   members:
     - backend: ball_detection
       checkpoint: outputs/ball_detection/tracknetv3_wbce_full_e30/logs/version_0/checkpoints/last.ckpt
-      model_config_path: src/ball_detection/configs/model/tracknetv3.yaml
+      model_config_path: src/tasks/ball_detection/configs/model/tracknetv3.yaml
       weight: 0.5
       score_threshold: 0.5
     - backend: ball_detection
       checkpoint: checkpoints/wasb/wasb_tennis_best.pth.tar
-      model_config_path: src/ball_detection/configs/model/hrnet_temporal.yaml
+      model_config_path: src/tasks/ball_detection/configs/model/hrnet_temporal.yaml
       weight: 0.5
       score_threshold: 0.5

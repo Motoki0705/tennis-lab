@@ -1,7 +1,7 @@
 """Module entrypoint for local dev.
 
 Run:
-  uv run python -m src.blcs.generate_dataset.api_server --port 8001
+  uv run python -m src.tasks.blcs.generate_dataset.api_server --port 8001
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ def main() -> int:
     args = parser.parse_args()
 
     uvicorn.run(
-        "src.blcs.generate_dataset.api_server.app:app",
+        "src.tasks.blcs.generate_dataset.api_server.app:app",
         host=args.host,
         port=args.port,
         reload=args.reload,

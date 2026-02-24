@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import torch
 
-from src.trajectory_completion.visualization.types import RuntimeConfig, TrajectoryInputs
+from src.tasks.trajectory_completion.visualization.types import RuntimeConfig, TrajectoryInputs
 
 
 def _summarize_inputs(inputs: TrajectoryInputs) -> dict[str, float]:

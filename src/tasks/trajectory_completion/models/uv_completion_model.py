@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.common.models import (
+from src.utils.models import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
     MoEConfig,
@@ -26,7 +26,7 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
-from src.common.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
+from src.utils.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
 from src.utils.schema.court import NUM_COURT_KP
 
 if TYPE_CHECKING:

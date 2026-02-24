@@ -8,7 +8,7 @@ from typing import Mapping
 import torch
 from torch import Tensor
 
-from src.common.dataset.augmentation import add_gaussian_noise
+from src.utils.dataset.augmentation import add_gaussian_noise
 
 
 @dataclass(frozen=True)

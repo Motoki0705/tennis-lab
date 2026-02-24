@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from src.ball_detection.data.type import EventRecord
-from src.event_detection.inference import UVEventPredictor
+from src.tasks.ball_detection.data.type import EventRecord
+from src.tasks.event_detection.inference import UVEventPredictor
 
 
 class EventTagger:

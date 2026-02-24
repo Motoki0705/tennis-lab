@@ -13,7 +13,7 @@ from typing import Iterator, Optional
 import torch
 from torch.utils.data import IterableDataset, get_worker_info
 
-from src.mae.data.cache.manifest import EpochCacheManifest
+from src.experiments.mae.data.cache.manifest import EpochCacheManifest
 
 
 def _distributed_rank_world_size() -> tuple[int, int]:
@@ -89,7 +89,6 @@ class CachedBatchIterableDataset(IterableDataset[dict]):
 
 
 if __name__ == "__main__":  # pragma: no cover
-    tmp = Path("agents_workspace/tmp_cache/mae_dummy")
+    tmp = Path("outputs/tmp_cache/mae_dummy")
     tmp.mkdir(parents=True, exist_ok=True)
     print(f"ready: {tmp}")
-

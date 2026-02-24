@@ -154,7 +154,7 @@ class CourtKPModule(BasePipelineModule):
             return
 
         LOGGER.info(f"Loading Court KP model from {self.checkpoint_path}")
-        from src.court_detection.inference.predictor import CourtKeypointPredictor
+        from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
 
         self._predictor = CourtKeypointPredictor.load_from_checkpoint(
             self.checkpoint_path, device=self.device

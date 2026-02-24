@@ -22,21 +22,21 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.blcs.simulation.ball_physics import (
+from src.tasks.blcs.simulation.ball_physics import (
     BallPhysics,
     BallState,
     PhysicsConfig,
 )
-from src.blcs.simulation.cell_manager import CellManager, ShotCategory
-from src.blcs.simulation.shot_simulator import ShotConfig, ShotSimulator
-from src.blcs.simulation.targeted_velocity_sampler import (
+from src.tasks.blcs.simulation.cell_manager import CellManager, ShotCategory
+from src.tasks.blcs.simulation.shot_simulator import ShotConfig, ShotSimulator
+from src.tasks.blcs.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
     TargetedVelocitySampler,
 )
 from src.utils.schema.court import HALF_LENGTH, HALF_SINGLES_WIDTH
 
 if TYPE_CHECKING:
-    from src.blcs.generate_dataset.sampling.distribution_sampler import (
+    from src.tasks.blcs.generate_dataset.sampling.distribution_sampler import (
         DistributionSampler,
     )
 

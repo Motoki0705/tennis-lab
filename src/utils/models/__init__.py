@@ -1,10 +1,10 @@
 """Common model components (DeepSeek-style).
 
 Strategy A: treat the DeepSeek-style, pure PyTorch implementation in
-`src.common.models.components` as canonical and re-export it here.
+`src.utils.models.components` as canonical and re-export it here.
 """
 
-from src.common.models.components import (
+from src.utils.models.components import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
     KVCache,
@@ -31,18 +31,18 @@ from src.common.models.components import (
     precompute_freqs_cis,
     precompute_freqs_cis_2d,
 )
-from src.common.models.embeddings import (
+from src.utils.models.embeddings import (
     Ball3DEmbedding,
     BallUVEmbedding,
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
 )
-from src.common.models.token_embeddings import (
+from src.utils.models.token_embeddings import (
     CourtKPUVTokenEmbedding,
     UVObsTokenEmbedding,
 )
-from src.common.models.vit import ViTConfig, ViTEncoder
+from src.utils.models.vit import ViTConfig, ViTEncoder
 
 __all__ = [
     # Attention

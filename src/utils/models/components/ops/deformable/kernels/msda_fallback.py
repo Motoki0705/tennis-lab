@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from torch import Tensor
 
-from src.common.models.components.ops.deformable.reference import ms_deform_attn_reference
+from src.utils.models.components.ops.deformable.reference import ms_deform_attn_reference
 
 
 def ms_deform_attn_fallback(

@@ -11,9 +11,9 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.event_detection.data.types import Event3DSample, EventUVSample
-from src.common.data.blcs_npz_adapter import load_3d_arrays, load_camera_view
-from src.common.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
+from src.tasks.event_detection.data.types import Event3DSample, EventUVSample
+from src.utils.data.blcs_npz_adapter import load_3d_arrays, load_camera_view
+from src.utils.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
