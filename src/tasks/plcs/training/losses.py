@@ -137,13 +137,13 @@ def position_loss(pred: Tensor, target: Tensor, reduction: str = "mean") -> Tens
 
 
 def rotation_loss(pred: Tensor, target: Tensor, reduction: str = "mean") -> Tensor:
-    """Compute rotation loss for (sin, cos) representation.
+    """Compute rotation loss for (cos, sin) representation.
 
     Uses cosine similarity loss which is appropriate for unit vectors.
 
     Args:
-        pred: Predicted (sin, cos), shape (B, 2). Should be normalized.
-        target: Target (sin, cos), shape (B, 2).
+        pred: Predicted (cos, sin), shape (B, 2). Should be normalized.
+        target: Target (cos, sin), shape (B, 2).
         reduction: Reduction method.
 
     Returns:
@@ -170,16 +170,16 @@ def angular_error(pred: Tensor, target: Tensor) -> Tensor:
     """Compute angular error in radians.
 
     Args:
-        pred: Predicted (sin, cos), shape (B, 2).
-        target: Target (sin, cos), shape (B, 2).
+        pred: Predicted (cos, sin), shape (B, 2).
+        target: Target (cos, sin), shape (B, 2).
 
     Returns:
         Tensor: Angular error in radians, shape (B,).
 
     """
     # Convert to angles
-    pred_angle = torch.atan2(pred[:, 0], pred[:, 1])
-    target_angle = torch.atan2(target[:, 0], target[:, 1])
+    pred_angle = torch.atan2(pred[:, 1], pred[:, 0])
+    target_angle = torch.atan2(target[:, 1], target[:, 0])
 
     # Angular difference (handle wraparound)
     diff = pred_angle - target_angle
@@ -301,8 +301,8 @@ def rotation_temporal_match_loss(
     if pred_rotation.dim() == 2:
         return pred_rotation.new_zeros(())
 
-    yaw_pred = torch.atan2(pred_rotation[..., 0], pred_rotation[..., 1])  # (B, T)
-    yaw_target = torch.atan2(target_rotation[..., 0], target_rotation[..., 1])
+    yaw_pred = torch.atan2(pred_rotation[..., 1], pred_rotation[..., 0])  # (B, T)
+    yaw_target = torch.atan2(target_rotation[..., 1], target_rotation[..., 0])
 
     dyaw_pred = _wrap_angle(yaw_pred[:, 1:] - yaw_pred[:, :-1])  # (B, T-1)
     dyaw_target = _wrap_angle(yaw_target[:, 1:] - yaw_target[:, :-1])
@@ -336,7 +336,7 @@ def rotation_temporal_inertia_loss(
     if pred_rotation.dim() == 2:
         return pred_rotation.new_zeros(())
 
-    yaw_pred = torch.atan2(pred_rotation[..., 0], pred_rotation[..., 1])  # (B, T)
+    yaw_pred = torch.atan2(pred_rotation[..., 1], pred_rotation[..., 0])  # (B, T)
     dyaw_pred = _wrap_angle(yaw_pred[:, 1:] - yaw_pred[:, :-1])  # (B, T-1)
 
     if cfg.order == 1:
