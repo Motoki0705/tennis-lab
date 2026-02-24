@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, TypedDict, TypeVar
 
 import torch
 
-
 class BLCSSample(TypedDict):
     """Schema for single BLCS dataset sample.
 
@@ -81,39 +80,34 @@ class BLCSMultiViewBatch(TypedDict):
 
 @dataclass(frozen=True)
 class BLCSSceneMeta:
-    """Metadata schema for BLCS NPZ scene files.
-
-    This defines the structure of the 'meta' field stored as JSON in NPZ files.
-    All generated ball trajectory scenes should conform to this schema.
-    """
+    """Metadata schema for BLCS NPZ scene files (rally-only scene format)."""
 
     scene_id: str
-    from_cell: int  # starting court cell (0-11)
-    from_side: str  # "near" or "far"
-    category: str  # shot category (e.g., "serve", "groundstroke")
-    to_cell: int  # ending court cell (-1 if out of bounds)
-    t_net: int  # frame index when ball crosses net
-    t_fence: int  # frame index when ball hits fence (or -1)
-    t_bounce1: int  # first bounce frame index (or -1)
-    t_bounce2: int  # second bounce frame index (or -1)
-    fps_out: int  # output frames per second
-    sim_fps: int  # simulation frames per second
-    num_frames: int  # total number of frames in trajectory
-    num_cameras_sampled: int  # number of cameras generated
-    num_cameras: int  # number of valid cameras (after filtering)
+    initial_from_cell: int  # Starting cell for first shot (0-19)
+    initial_from_side: str  # "near" or "far"
+
+    rally_length: int  # Number of shots in rally
+    end_reason: str  # Rally termination reason
+    winner_side: str | None  # "near", "far", or None
+
+    shots: list[dict]  # List of BLCSShotEventMeta.to_dict() results
+
+    fps_out: int
+    sim_fps: int
+    num_frames: int
+    num_cameras_sampled: int
+    num_cameras: int
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return {
             "scene_id": self.scene_id,
-            "from_cell": self.from_cell,
-            "from_side": self.from_side,
-            "category": self.category,
-            "to_cell": self.to_cell,
-            "t_net": self.t_net,
-            "t_fence": self.t_fence,
-            "t_bounce1": self.t_bounce1,
-            "t_bounce2": self.t_bounce2,
+            "initial_from_cell": self.initial_from_cell,
+            "initial_from_side": self.initial_from_side,
+            "rally_length": self.rally_length,
+            "end_reason": self.end_reason,
+            "winner_side": self.winner_side,
+            "shots": self.shots,
             "fps_out": self.fps_out,
             "sim_fps": self.sim_fps,
             "num_frames": self.num_frames,
@@ -126,14 +120,12 @@ class BLCSSceneMeta:
         """Create instance from dictionary loaded from JSON/NPZ."""
         return cls(
             scene_id=data["scene_id"],
-            from_cell=data["from_cell"],
-            from_side=data["from_side"],
-            category=data["category"],
-            to_cell=data["to_cell"],
-            t_net=data["t_net"],
-            t_fence=data["t_fence"],
-            t_bounce1=data["t_bounce1"],
-            t_bounce2=data["t_bounce2"],
+            initial_from_cell=data["initial_from_cell"],
+            initial_from_side=data["initial_from_side"],
+            rally_length=data["rally_length"],
+            end_reason=data["end_reason"],
+            winner_side=data.get("winner_side"),
+            shots=data["shots"],
             fps_out=data["fps_out"],
             sim_fps=data["sim_fps"],
             num_frames=data["num_frames"],
@@ -142,8 +134,7 @@ class BLCSSceneMeta:
         )
 
 
-@dataclass(frozen=True)
-class RallyShotMeta:
+class BLCSShotEventMeta:
     """Metadata for a single shot within a rally.
 
     Records timing and event information for each shot in the rally sequence.
@@ -180,7 +171,7 @@ class RallyShotMeta:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> RallyShotMeta:
+    def from_dict(cls, data: dict) -> BLCSShotEventMeta:
         """Create instance from dictionary loaded from JSON/NPZ."""
         return cls(
             shot_index=data["shot_index"],
@@ -193,71 +184,6 @@ class RallyShotMeta:
             t_bounce2=data["t_bounce2"],
             t_return=data["t_return"],
             to_cell=data["to_cell"],
-        )
-
-
-@dataclass(frozen=True)
-class RallySceneMeta:
-    """Metadata schema for BLCS rally NPZ scene files.
-
-    Extends BLCSSceneMeta with rally-specific information including
-    per-shot event timing and rally termination reason.
-    """
-
-    scene_id: str
-    initial_from_cell: int  # Starting cell for first shot (0-19)
-    initial_from_side: str  # "near" or "far"
-
-    # Rally-level information
-    rally_length: int  # Number of shots in rally
-    end_reason: str  # Rally termination reason (net_fault/own_side_bounce/out/etc.)
-    winner_side: str | None  # "near", "far", or None
-
-    # Per-shot metadata
-    shots: list[dict]  # List of RallyShotMeta.to_dict() results
-
-    # Timing information
-    fps_out: int  # Output frames per second
-    sim_fps: int  # Simulation frames per second
-    num_frames: int  # Total number of frames in trajectory
-
-    # Camera information
-    num_cameras_sampled: int  # Number of cameras generated
-    num_cameras: int  # Number of valid cameras (after filtering)
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
-        return {
-            "scene_id": self.scene_id,
-            "initial_from_cell": self.initial_from_cell,
-            "initial_from_side": self.initial_from_side,
-            "rally_length": self.rally_length,
-            "end_reason": self.end_reason,
-            "winner_side": self.winner_side,
-            "shots": self.shots,
-            "fps_out": self.fps_out,
-            "sim_fps": self.sim_fps,
-            "num_frames": self.num_frames,
-            "num_cameras_sampled": self.num_cameras_sampled,
-            "num_cameras": self.num_cameras,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> RallySceneMeta:
-        """Create instance from dictionary loaded from JSON/NPZ."""
-        return cls(
-            scene_id=data["scene_id"],
-            initial_from_cell=data["initial_from_cell"],
-            initial_from_side=data["initial_from_side"],
-            rally_length=data["rally_length"],
-            end_reason=data["end_reason"],
-            winner_side=data.get("winner_side"),
-            shots=data["shots"],
-            fps_out=data["fps_out"],
-            sim_fps=data["sim_fps"],
-            num_frames=data["num_frames"],
-            num_cameras_sampled=data["num_cameras_sampled"],
-            num_cameras=data["num_cameras"],
         )
 
 
@@ -344,23 +270,15 @@ else:
 
 
 class BLCSSceneMetaModel(BaseModel):
-    """Pydantic model for BLCS scene metadata with runtime validation.
-
-    Provides stronger validation than dataclass:
-    - Runtime type checking
-    - Value constraints (e.g., fps_out > 0)
-    - Coordinate range validation
-    """
+    """Pydantic model for rally-scene metadata with runtime validation."""
 
     scene_id: str = Field(..., min_length=1)
-    from_cell: int = Field(..., ge=0, le=11, description="Starting court cell (0-11)")
-    from_side: str = Field(..., pattern="^(near|far)$")
-    category: str = Field(..., description="Shot category")
-    to_cell: int = Field(..., ge=-1, le=11, description="-1 for out, 0-11 for cell")
-    t_net: int = Field(..., ge=-1, description="Frame when ball crosses net")
-    t_fence: int = Field(..., ge=-1)
-    t_bounce1: int = Field(..., ge=-1)
-    t_bounce2: int = Field(..., ge=-1)
+    initial_from_cell: int = Field(..., ge=0, le=19)
+    initial_from_side: str = Field(..., pattern="^(near|far)$")
+    rally_length: int = Field(..., gt=0)
+    end_reason: str = Field(..., min_length=1)
+    winner_side: str | None = Field(default=None, pattern="^(near|far)$")
+    shots: list[dict] = Field(default_factory=list)
     fps_out: int = Field(..., gt=0)
     sim_fps: int = Field(..., gt=0)
     num_frames: int = Field(..., gt=0)
