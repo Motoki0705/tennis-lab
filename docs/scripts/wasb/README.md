@@ -44,35 +44,35 @@ Where's the Ball (WASB) タスクのスクリプト群。
 
 ```bash
 # 1. 動画をダウンロード
-uv run python -m src.wasb.scripts.generate_dataset.download_videos
+uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos
 
 # 2. ボール位置をアノテーション
-uv run python -m src.wasb.scripts.generate_dataset mode=batch
+uv run python -m src.tasks.wasb.scripts.generate_dataset mode=batch
 
 # 3. プレビュー生成と手動選別
-uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=generate_samples generate_samples=[all]
+uv run python -m src.tasks.wasb.scripts.generate_dataset.clip_sampling mode=generate_samples generate_samples=[all]
 # （不要なプレビューを手動削除）
-uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=apply_clip_selection apply_clip_selection=[all]
+uv run python -m src.tasks.wasb.scripts.generate_dataset.clip_sampling mode=apply_clip_selection apply_clip_selection=[all]
 ```
 
 ### B. モデル学習
 
 ```bash
 # 1. ボール検出モデル
-uv run python -m src.wasb.scripts.train.ball_detection
+uv run python -m src.tasks.wasb.scripts.train.ball_detection
 
 # 2. 軌道補完モデル
-uv run python -m src.wasb.scripts.train.trajectory
+uv run python -m src.tasks.wasb.scripts.train.trajectory
 
 # 3. イベント検出モデル
-uv run python -m src.wasb.scripts.train.event_detection
+uv run python -m src.tasks.wasb.scripts.train.event_detection
 ```
 
 ### C. 推論・可視化
 
 ```bash
 # ボール検出結果を動画に出力
-uv run python -m src.wasb.scripts.visualize.ball_video \
+uv run python -m src.tasks.wasb.scripts.visualize.ball_video \
   video_path=data/samples/clip.mp4 \
   checkpoint=outputs/wasb/ball_detection/hrcnet/logs/version_0/checkpoints/last.ckpt
 ```
@@ -80,7 +80,7 @@ uv run python -m src.wasb.scripts.visualize.ball_video \
 ## ディレクトリ構成
 
 ```
-src/wasb/
+src/tasks/wasb/
 ├── scripts/
 │   ├── train/
 │   │   ├── ball_detection.py

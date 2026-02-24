@@ -9,19 +9,19 @@ from typing import Any
 import numpy as np
 from matplotlib.animation import FuncAnimation
 
-from src.blcs.visualization.rendering import BLCSSceneRenderer
-from src.ball_multitask.visualization.types import RuntimeConfig, SceneInputs
-from src.event_detection.visualization.rendering.traj3d_animation import (
+from src.tasks.blcs.visualization.rendering import BLCSSceneRenderer
+from src.experiments.ball_multitask.visualization.types import RuntimeConfig, SceneInputs
+from src.tasks.event_detection.visualization.rendering.traj3d_animation import (
     create_traj3d_event_animation,
 )
-from src.event_detection.visualization.rendering.uv_animation import (
+from src.tasks.event_detection.visualization.rendering.uv_animation import (
     create_uv_event_animation,
 )
-from src.event_detection.visualization.types import Traj3DEventInputs, UVEventInputs
-from src.trajectory_completion.visualization.rendering.uv_animation import (
+from src.tasks.event_detection.visualization.types import Traj3DEventInputs, UVEventInputs
+from src.tasks.trajectory_completion.visualization.rendering.uv_animation import (
     create_uv_completion_animation,
 )
-from src.trajectory_completion.visualization.types import TrajectoryInputs
+from src.tasks.trajectory_completion.visualization.types import TrajectoryInputs
 
 
 @dataclass(frozen=True)

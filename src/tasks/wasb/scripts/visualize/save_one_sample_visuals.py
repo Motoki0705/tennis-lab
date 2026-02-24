@@ -1,7 +1,7 @@
 """Save a single WASB dataset sample as images.
 
 This script instantiates ``BallDetectionDataModule`` using the data config at
-``src/wasb/configs/data/default.yaml`` (via Hydra defaults), then saves:
+``src/tasks/wasb/configs/data/default.yaml`` (via Hydra defaults), then saves:
 
 - Original frame (no data augmentation)
 - Augmented frame (data augmentation enabled)
@@ -9,7 +9,7 @@ This script instantiates ``BallDetectionDataModule`` using the data config at
 
 Example:
 
-`uv run --no-sync python -m src.wasb.scripts.save_one_sample_visuals \\
+`uv run --no-sync python -m src.tasks.wasb.scripts.save_one_sample_visuals \\
   data.root_dir=data/tennis data.train_matches=[game1] sample_index=0`
 
 Useful overrides:
@@ -40,7 +40,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch.nn import functional as F
 from torchvision.utils import save_image
 
-from src.wasb.data.ball_detection_datamodule import BallDetectionDataModule
+from src.tasks.wasb.data.ball_detection_datamodule import BallDetectionDataModule
 
 Split = Literal["train", "val", "test"]
 

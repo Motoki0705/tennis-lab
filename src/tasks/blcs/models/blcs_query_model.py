@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor, nn
 
-from src.blcs.models.components.heads import Trajectory3DHead, VelocityHead
-from src.common.models import (
+from src.tasks.blcs.models.components.heads import Trajectory3DHead, VelocityHead
+from src.utils.models import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
     RMSNorm,
@@ -17,7 +17,7 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
-from src.common.models.embeddings import (
+from src.utils.models.embeddings import (
     BallUVEmbedding,
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,

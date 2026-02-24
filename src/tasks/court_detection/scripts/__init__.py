@@ -1,5 +1,5 @@
 """Scripts for court detection."""
 
-from src.court_detection.training.runner import CourtDetectionTrainingRunner
+from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
 
 __all__ = ["CourtDetectionTrainingRunner"]

@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Optional
 import torch
 import torch.nn as nn
 from torch import Tensor
-from src.base.training.lightning_module import BaseLightningModule
-from src.mae.models import MAEModel
+from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.experiments.mae.models import MAEModel
 
 
 if TYPE_CHECKING:

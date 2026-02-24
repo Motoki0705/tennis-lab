@@ -8,10 +8,10 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from src.base.training.lightning_module import BaseLightningModule
-from src.ball_multitask.models import build_ball_multitask_model
-from src.blcs.training.losses import BLCSLoss
-from src.event_detection.utils.peaks import extract_event_peaks
+from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.experiments.ball_multitask.models import build_ball_multitask_model
+from src.tasks.blcs.training.losses import BLCSLoss
+from src.tasks.event_detection.utils.peaks import extract_event_peaks
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

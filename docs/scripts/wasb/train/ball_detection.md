@@ -10,27 +10,27 @@
 
 ```bash
 # デフォルト設定で学習
-uv run python -m src.wasb.scripts.train.ball_detection
+uv run python -m src.tasks.wasb.scripts.train.ball_detection
 
 # エポック数とバッチサイズを変更
-uv run python -m src.wasb.scripts.train.ball_detection training.max_epochs=50 data.batch_size=32
+uv run python -m src.tasks.wasb.scripts.train.ball_detection training.max_epochs=50 data.batch_size=32
 
 # ドライランモード（データ確認用）
-uv run python -m src.wasb.scripts.train.ball_detection run.dry_run=true
+uv run python -m src.tasks.wasb.scripts.train.ball_detection run.dry_run=true
 
 # CPU で実行
-uv run python -m src.wasb.scripts.train.ball_detection run.gpus=0
+uv run python -m src.tasks.wasb.scripts.train.ball_detection run.gpus=0
 
 # モデルを変更
-uv run python -m src.wasb.scripts.train.ball_detection model=hrcnet
+uv run python -m src.tasks.wasb.scripts.train.ball_detection model=hrcnet
 
 # 高速デバッグモード
-uv run python -m src.wasb.scripts.train.ball_detection run.fast_dev_run=true
+uv run python -m src.tasks.wasb.scripts.train.ball_detection run.fast_dev_run=true
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/wasb/configs/train_ball_detection.yaml`
+エントリポイント: `src/tasks/wasb/configs/train_ball_detection.yaml`
 
 ### defaults 構成
 
@@ -203,7 +203,7 @@ outputs/wasb/ball_detection/dinov3_heatmap/
 
 ## 関連モジュール
 
-- `src.wasb.data.ball_detection_datamodule`: データモジュール
-- `src.wasb.training.WASBLightningModule`: Lightning モジュール
-- `src.wasb.models.dinov3_fpn_heatmap`: DINOv3+FPN モデル
-- `src.wasb.models.hrcnet`: HRCNet モデル
+- `src.tasks.wasb.data.ball_detection_datamodule`: データモジュール
+- `src.tasks.wasb.training.WASBLightningModule`: Lightning モジュール
+- `src.tasks.wasb.models.dinov3_fpn_heatmap`: DINOv3+FPN モデル
+- `src.tasks.wasb.models.hrcnet`: HRCNet モデル

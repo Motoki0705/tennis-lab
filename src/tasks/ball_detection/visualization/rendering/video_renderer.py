@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
-from src.ball_detection.inference.types import InferenceResult
+from src.tasks.ball_detection.inference.types import InferenceResult
 
 
 @dataclass(frozen=True)

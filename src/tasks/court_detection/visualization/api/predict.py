@@ -6,9 +6,9 @@ from pathlib import Path
 
 import numpy as np
 
-from src.court_detection.inference.predictor import CourtKeypointPredictor
-from src.court_detection.visualization.adapters.predict_inputs import CourtPredictInputs
-from src.court_detection.visualization.types import KeypointPrediction
+from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
+from src.tasks.court_detection.visualization.adapters.predict_inputs import CourtPredictInputs
+from src.tasks.court_detection.visualization.types import KeypointPrediction
 
 
 def load_predictor(*, checkpoint_path: Path, device: str) -> CourtKeypointPredictor:

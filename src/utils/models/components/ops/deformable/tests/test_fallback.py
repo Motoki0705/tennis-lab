@@ -6,10 +6,10 @@ import os
 
 import torch
 
-from src.common.models.components.ops.deformable.api import multi_scale_deformable_attention
-from src.common.models.components.ops.deformable.kernels import msda_dispatch
-from src.common.models.components.ops.deformable.reference import ms_deform_attn_reference
-from src.common.models.components.ops.deformable.utils import build_level_start_index
+from src.utils.models.components.ops.deformable.api import multi_scale_deformable_attention
+from src.utils.models.components.ops.deformable.kernels import msda_dispatch
+from src.utils.models.components.ops.deformable.reference import ms_deform_attn_reference
+from src.utils.models.components.ops.deformable.utils import build_level_start_index
 
 
 def test_msda_fallback_matches_reference() -> None:

@@ -2,7 +2,7 @@
 #
 # Usage:
 # - Override any field from CLI:
-#   python -m src.court_detection.scripts.visualize visualization.input_path=...
+#   python -m src.tasks.court_detection.scripts.visualize visualization.input_path=...
 # - `run.device` has higher priority than `visualization.device` in runtime resolution.
 #
 # Execution mode

@@ -12,8 +12,8 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from src.common.data.scene_cache import get_scene_cache, load_npz_scene
-from src.common.dataset.augmentation import add_gaussian_noise
+from src.utils.data.scene_cache import get_scene_cache, load_npz_scene
+from src.utils.dataset.augmentation import add_gaussian_noise
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

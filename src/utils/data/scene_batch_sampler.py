@@ -9,7 +9,7 @@ from typing import Iterable
 import torch
 from torch.utils.data import BatchSampler, Dataset, Subset
 
-from src.common.data.scene_id import resolve_scene_id
+from src.utils.data.scene_id import resolve_scene_id
 
 
 def _build_scene_index_map(dataset: Dataset) -> dict[int, list[int]]:

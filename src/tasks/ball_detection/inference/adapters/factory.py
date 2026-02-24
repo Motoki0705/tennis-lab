@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from torch import nn
 
-from src.ball_detection.inference.adapters.base import ModelInputAdapter
-from src.ball_detection.inference.adapters.hrnet import HRNetContextInputAdapter
-from src.ball_detection.inference.adapters.tracknetv3 import TrackNetV3InputAdapter
+from src.tasks.ball_detection.inference.adapters.base import ModelInputAdapter
+from src.tasks.ball_detection.inference.adapters.hrnet import HRNetContextInputAdapter
+from src.tasks.ball_detection.inference.adapters.tracknetv3 import TrackNetV3InputAdapter
 
 
 def build_adapter_for_model(model: nn.Module) -> ModelInputAdapter:

@@ -93,7 +93,7 @@ class EventUVModule(BasePipelineModule):
         if self._predictor is not None:
             return
 
-        from src.event_detection.inference import UVEventPredictor
+        from src.tasks.event_detection.inference import UVEventPredictor
 
         LOGGER.info(f"Loading UV event model from {self.config.checkpoint_path}")
         self._predictor = UVEventPredictor.load_from_checkpoint(

@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.trajectory_completion.visualization.types import TrajectoryInputs
+from src.tasks.trajectory_completion.visualization.types import TrajectoryInputs
 
 
 @dataclass(frozen=True)

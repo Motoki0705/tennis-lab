@@ -10,7 +10,7 @@ Architecture:
     - Multi-Head Self-Attention (MHA) using F.scaled_dot_product_attention (SDPA)
     - SwiGLU MLP and RMSNorm for efficiency
 
-Uses shared components from src.common.models.components.
+Uses shared components from src.utils.models.components.
 """
 
 from __future__ import annotations
@@ -21,8 +21,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.blcs.models.components.heads import Trajectory3DHead, VelocityHead
-from src.common.models import (
+from src.tasks.blcs.models.components.heads import Trajectory3DHead, VelocityHead
+from src.utils.models import (
     MoEConfig,
     RMSNorm,
     TransformerBlock,
@@ -30,7 +30,7 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
-from src.common.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
+from src.utils.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
 from src.utils.schema.court import NUM_COURT_KP
 
 if TYPE_CHECKING:

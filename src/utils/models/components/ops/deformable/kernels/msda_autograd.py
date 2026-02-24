@@ -5,18 +5,18 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from src.common.models.components.ops.deformable.kernels.msda_cuda_bridge import (
+from src.utils.models.components.ops.deformable.kernels.msda_cuda_bridge import (
     run_cuda_backward,
     run_cuda_forward,
 )
-from src.common.models.components.ops.deformable.kernels.msda_dtype import (
+from src.utils.models.components.ops.deformable.kernels.msda_dtype import (
     cast_grad_output_for_compute,
     promote_inputs_for_compute,
     restore_backward_grad_dtypes,
     restore_forward_output_dtype,
 )
-from src.common.models.components.ops.deformable.kernels.msda_dispatch import get_msda_extension, ms_deform_attn_dispatch
-from src.common.models.components.ops.deformable.kernels.msda_state import (
+from src.utils.models.components.ops.deformable.kernels.msda_dispatch import get_msda_extension, ms_deform_attn_dispatch
+from src.utils.models.components.ops.deformable.kernels.msda_state import (
     load_ctx_ext,
     load_ctx_meta,
     save_ctx_state,

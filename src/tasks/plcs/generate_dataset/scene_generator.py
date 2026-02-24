@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from src.plcs.generate_dataset.sampling.motion_sampler import (
+from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSampler,
     MotionSequence,
 )

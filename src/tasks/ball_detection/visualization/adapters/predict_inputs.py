@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from src.ball_detection.visualization.types import VideoInputs
+from src.tasks.ball_detection.visualization.types import VideoInputs
 
 
 @dataclass(frozen=True)

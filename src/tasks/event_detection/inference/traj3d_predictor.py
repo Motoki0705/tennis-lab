@@ -8,11 +8,11 @@ from typing import Any, Self
 import torch
 from torch import Tensor
 
-from src.base.inference.predictor import BasePredictor
-from src.event_detection.models.traj3d_event_model import Traj3DEventModel
-from src.event_detection.training.lightning_module import EventDetectionLightningModule
+from src.tasks.base.inference.predictor import BasePredictor
+from src.tasks.event_detection.models.traj3d_event_model import Traj3DEventModel
+from src.tasks.event_detection.training.lightning_module import EventDetectionLightningModule
 
-from src.event_detection.utils.peaks import extract_event_peaks
+from src.tasks.event_detection.utils.peaks import extract_event_peaks
 
 
 class Traj3DEventPredictor(BasePredictor):

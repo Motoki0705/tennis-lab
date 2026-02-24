@@ -7,8 +7,8 @@ from pathlib import Path
 
 import numpy as np
 
-from src.blcs.visualization.adapters.predict_inputs import PredictorInputs
-from src.blcs.inference.predictor import BLCSPredictor
+from src.tasks.blcs.visualization.adapters.predict_inputs import PredictorInputs
+from src.tasks.blcs.inference.predictor import BLCSPredictor
 
 logger = logging.getLogger(__name__)
 

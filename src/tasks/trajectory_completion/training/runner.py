@@ -6,9 +6,9 @@ from typing import Any
 
 import pytorch_lightning as pl
 
-from src.base.training.runner import BaseTrainingRunner
-from src.trajectory_completion.data.datamodule import TrajectoryCompletionDataModule
-from src.trajectory_completion.training.lightning_module import (
+from src.tasks.base.training.runner import BaseTrainingRunner
+from src.tasks.trajectory_completion.data.datamodule import TrajectoryCompletionDataModule
+from src.tasks.trajectory_completion.training.lightning_module import (
     TrajectoryCompletionLightningModule,
 )
 

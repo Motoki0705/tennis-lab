@@ -1,11 +1,11 @@
 """Generate cached MAE batches for a single epoch using Hydra-managed configuration.
 
 Example commands:
-    `uv run python -m src.mae.scripts.produce_epoch_cache`
-    `uv run python -m src.mae.scripts.produce_epoch_cache task.epoch=5`
-    `uv run python -m src.mae.scripts.produce_epoch_cache task.split=val`
+    `uv run python -m src.experiments.mae.scripts.produce_epoch_cache`
+    `uv run python -m src.experiments.mae.scripts.produce_epoch_cache task.epoch=5`
+    `uv run python -m src.experiments.mae.scripts.produce_epoch_cache task.split=val`
 
-Config entry point: `src/mae/configs/produce_epoch_cache.yaml`
+Config entry point: `src/experiments/mae/configs/produce_epoch_cache.yaml`
 """
 
 from __future__ import annotations
@@ -16,10 +16,10 @@ from pathlib import Path
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from src.mae.data.cache.paths import EpochCachePaths
-from src.mae.data.catalog import VideoCatalog
-from src.mae.data.planning import split_video_paths
-from src.mae.data.producer import (
+from src.experiments.mae.data.cache.paths import EpochCachePaths
+from src.experiments.mae.data.catalog import VideoCatalog
+from src.experiments.mae.data.planning import split_video_paths
+from src.experiments.mae.data.producer import (
     CacheProducerConfig,
     PreprocessConfig,
     build_epoch_plan,

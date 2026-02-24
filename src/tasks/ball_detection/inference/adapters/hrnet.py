@@ -7,7 +7,7 @@ from collections import deque
 import torch
 from torch import Tensor
 
-from src.ball_detection.inference.adapters.base import ModelInputAdapter
+from src.tasks.ball_detection.inference.adapters.base import ModelInputAdapter
 
 
 class HRNetContextInputAdapter(ModelInputAdapter):

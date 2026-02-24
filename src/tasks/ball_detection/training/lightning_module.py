@@ -7,15 +7,15 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from src.ball_detection.models.heatmap_utils import (
+from src.tasks.ball_detection.models.heatmap_utils import (
     build_target_heatmaps,
     decode_heatmap_logits,
     tracknet_weighted_bce_with_logits_loss,
     weighted_heatmap_bce_loss,
 )
-from src.base.training.lightning_module import BaseLightningModule
-from src.ball_detection.models import build_model
-from src.ball_detection.training.losses import event_aware_weight, visibility_bce_loss, weighted_xy_loss
+from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.ball_detection.models import build_model
+from src.tasks.ball_detection.training.losses import event_aware_weight, visibility_bce_loss, weighted_xy_loss
 
 
 class BallDetectionLightningModule(BaseLightningModule):

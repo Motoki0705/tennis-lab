@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch.nn as nn
 from torch import Tensor
 
-from src.blcs.models.components.heads import Trajectory3DHead
+from src.tasks.blcs.models.components.heads import Trajectory3DHead
 
 
 class Trajectory3DHeadAdapter(nn.Module):

@@ -9,9 +9,9 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from src.ball_detection.inference.adapters import ModelInputAdapter, build_adapter_for_model
-from src.ball_detection.inference.predictor import BallPredictor
-from src.ball_detection.models.heatmap_utils import decode_heatmap_logits
+from src.tasks.ball_detection.inference.adapters import ModelInputAdapter, build_adapter_for_model
+from src.tasks.ball_detection.inference.predictor import BallPredictor
+from src.tasks.ball_detection.models.heatmap_utils import decode_heatmap_logits
 
 
 class BallEnsemblePredictor:

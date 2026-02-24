@@ -9,7 +9,7 @@ from matplotlib.axes import Axes
 from matplotlib.collections import PathCollection
 from matplotlib.lines import Line2D
 
-from src.trajectory_completion.visualization.types import RuntimeConfig, TrajectoryInputs
+from src.tasks.trajectory_completion.visualization.types import RuntimeConfig, TrajectoryInputs
 from src.utils.schema.court import COURT_SKELETON
 
 GT_LINE_COLOR = "#F5F5F5"

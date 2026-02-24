@@ -10,23 +10,23 @@ import torch
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-from src.trajectory_completion.data.event_masking import extract_event_frames
-from src.trajectory_completion.visualization.adapters.predict_inputs import (
+from src.tasks.trajectory_completion.data.event_masking import extract_event_frames
+from src.tasks.trajectory_completion.visualization.adapters.predict_inputs import (
     build_uv_completion_predict_inputs,
 )
-from src.trajectory_completion.visualization.analysis.metrics import (
+from src.tasks.trajectory_completion.visualization.analysis.metrics import (
     print_info,
     print_predict_info,
 )
-from src.trajectory_completion.visualization.api.predict import predict_uv_completion
-from src.trajectory_completion.visualization.io.scene import (
+from src.tasks.trajectory_completion.visualization.api.predict import predict_uv_completion
+from src.tasks.trajectory_completion.visualization.io.scene import (
     build_runtime_config,
     load_trajectory_inputs,
 )
-from src.trajectory_completion.visualization.rendering.uv_animation import (
+from src.tasks.trajectory_completion.visualization.rendering.uv_animation import (
     create_uv_completion_animation,
 )
-from src.trajectory_completion.visualization.types import RuntimeConfig
+from src.tasks.trajectory_completion.visualization.types import RuntimeConfig
 
 
 def _save_animation(anim: FuncAnimation, path: Path, fps: float) -> None:

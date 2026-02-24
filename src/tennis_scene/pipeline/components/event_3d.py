@@ -93,7 +93,7 @@ class Event3DModule(BasePipelineModule):
         if self._predictor is not None:
             return
 
-        from src.event_detection.inference import Traj3DEventPredictor
+        from src.tasks.event_detection.inference import Traj3DEventPredictor
 
         LOGGER.info(f"Loading 3D event model from {self.config.checkpoint_path}")
         self._predictor = Traj3DEventPredictor.load_from_checkpoint(

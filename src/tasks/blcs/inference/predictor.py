@@ -9,8 +9,8 @@ from typing import Any, Self
 import torch
 from torch import Tensor, nn
 
-from src.base.inference.predictor import BasePredictor
-from src.blcs.training.lightning_module import BLCSLightningModule
+from src.tasks.base.inference.predictor import BasePredictor
+from src.tasks.blcs.training.lightning_module import BLCSLightningModule
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 

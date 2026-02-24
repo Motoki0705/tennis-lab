@@ -7,7 +7,7 @@ from typing import Any, Mapping
 import torch
 from torch import Tensor
 
-from src.blcs.data.meta_codec import parse_blcs_scene_meta, parse_rally_scene_meta
+from src.tasks.blcs.data.meta_codec import parse_blcs_scene_meta, parse_rally_scene_meta
 
 
 def _filter_frames(frames: list[int], length: int, *, offset: int = 0) -> Tensor:

@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 
 from torch import Tensor, nn
 
-from src.base.training.lightning_module import BaseLightningModule
-from src.plcs.models import build_plcs_model
-from src.plcs.training.losses import PLCSLoss, PLCSLossConfig
-from src.plcs.training.metrics import PLCSMetrics
+from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.plcs.models import build_plcs_model
+from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
+from src.tasks.plcs.training.metrics import PLCSMetrics
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

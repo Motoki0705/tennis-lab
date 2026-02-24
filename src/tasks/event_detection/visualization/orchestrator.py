@@ -8,32 +8,32 @@ import matplotlib.pyplot as plt
 
 from pathlib import Path
 
-from src.event_detection.visualization.analysis.report import (
+from src.tasks.event_detection.visualization.analysis.report import (
     print_traj3d_info,
     print_uv_info,
     save_animation,
     save_outputs,
 )
-from src.event_detection.visualization.adapters.predict_inputs import (
+from src.tasks.event_detection.visualization.adapters.predict_inputs import (
     build_traj3d_predict_inputs,
     build_uv_predict_inputs,
 )
-from src.event_detection.visualization.api.predict import (
+from src.tasks.event_detection.visualization.api.predict import (
     predict_traj3d_events,
     predict_uv_events,
 )
-from src.event_detection.visualization.io.scene import (
+from src.tasks.event_detection.visualization.io.scene import (
     build_runtime_config,
     load_traj3d_inputs,
     load_uv_inputs,
 )
-from src.event_detection.visualization.rendering.traj3d_animation import (
+from src.tasks.event_detection.visualization.rendering.traj3d_animation import (
     create_traj3d_event_animation,
 )
-from src.event_detection.visualization.rendering.uv_animation import (
+from src.tasks.event_detection.visualization.rendering.uv_animation import (
     create_uv_event_animation,
 )
-from src.event_detection.visualization.types import RuntimeConfig
+from src.tasks.event_detection.visualization.types import RuntimeConfig
 
 logger = logging.getLogger(__name__)
 

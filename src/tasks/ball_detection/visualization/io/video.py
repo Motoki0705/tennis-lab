@@ -9,10 +9,10 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.ball_detection.inference.config import build_inference_config
-from src.ball_detection.inference.types import InferenceConfig, InferenceMemberConfig
-from src.ball_detection.visualization.types import RuntimeConfig, VideoInputs
-from src.wasb.utils.video_extractor import VideoExtractor
+from src.tasks.ball_detection.inference.config import build_inference_config
+from src.tasks.ball_detection.inference.types import InferenceConfig, InferenceMemberConfig
+from src.tasks.ball_detection.visualization.types import RuntimeConfig, VideoInputs
+from src.tasks.wasb.utils.video_extractor import VideoExtractor
 
 
 def _parse_color(raw: object, default: tuple[int, int, int]) -> tuple[int, int, int]:

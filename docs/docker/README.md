@@ -77,7 +77,7 @@ docker compose down
 docker compose exec tennis-lab bash
 
 # 学習スクリプトの実行
-uv run python -m src.wasb.scripts.train.ball_detection
+uv run python -m src.tasks.wasb.scripts.train.ball_detection
 ```
 
 ### GVHMR での推論実行

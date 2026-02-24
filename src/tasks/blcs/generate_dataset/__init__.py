@@ -6,5 +6,5 @@ This package contains the modular implementation of BLCS synthetic dataset gener
 - camera sampling + projection
 - scene serialization + split/meta writing
 
-The Hydra CLI entrypoint is `src/blcs/scripts/generate_dataset.py`.
+The Hydra CLI entrypoint is `src/tasks/blcs/scripts/generate_dataset.py`.
 """

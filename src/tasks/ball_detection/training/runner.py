@@ -6,11 +6,11 @@ from typing import Any
 
 import pytorch_lightning as pl
 
-from src.base.training.runner import BaseTrainingRunner
-from src.ball_detection.data.datamodule import BallDetectionDataModule
-from src.ball_detection.data.pseudo_datamodule import BallDetectionPseudoDataModule
-from src.ball_detection.training.callbacks import EventBoostScheduleCallback
-from src.ball_detection.training.lightning_module import BallDetectionLightningModule
+from src.tasks.base.training.runner import BaseTrainingRunner
+from src.tasks.ball_detection.data.datamodule import BallDetectionDataModule
+from src.tasks.ball_detection.data.pseudo_datamodule import BallDetectionPseudoDataModule
+from src.tasks.ball_detection.training.callbacks import EventBoostScheduleCallback
+from src.tasks.ball_detection.training.lightning_module import BallDetectionLightningModule
 
 
 class BallDetectionTrainingRunner(BaseTrainingRunner):

@@ -16,12 +16,12 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.blcs.simulation.ball_physics import (
+from src.tasks.blcs.simulation.ball_physics import (
     BallPhysics,
     BallState,
     PhysicsConfig,
 )
-from src.blcs.simulation.cell_manager import CellManager, ShotCategory
+from src.tasks.blcs.simulation.cell_manager import CellManager, ShotCategory
 
 if TYPE_CHECKING:
     pass

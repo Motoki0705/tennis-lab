@@ -6,9 +6,9 @@ from typing import Any
 
 import pytorch_lightning as pl
 
-from src.base.training.runner import BaseTrainingRunner
-from src.plcs.data.datamodule import PLCSDataModule
-from src.plcs.training.lightning_module import PLCSLightningModule
+from src.tasks.base.training.runner import BaseTrainingRunner
+from src.tasks.plcs.data.datamodule import PLCSDataModule
+from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 
 
 class PLCSTrainingRunner(BaseTrainingRunner):

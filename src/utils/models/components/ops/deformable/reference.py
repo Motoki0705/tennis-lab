@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from src.common.models.components.ops.deformable.utils import validate_msda_inputs
+from src.utils.models.components.ops.deformable.utils import validate_msda_inputs
 
 
 def ms_deform_attn_reference(

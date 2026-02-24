@@ -10,8 +10,8 @@ from torch import Tensor
 from torch import nn
 from torch.nn import functional as F
 
-from src.base.training.lightning_module import BaseLightningModule
-from src.trajectory_completion.models import build_trajectory_completion_model
+from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.trajectory_completion.models import build_trajectory_completion_model
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

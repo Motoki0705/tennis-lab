@@ -1,6 +1,6 @@
 # components.ops
 
-`src.common.models.components.ops` is a backend-agnostic operator layer for custom kernels.
+`src.utils.models.components.ops` is a backend-agnostic operator layer for custom kernels.
 
 Goals:
 - isolate extension-backed ops from high-level model code

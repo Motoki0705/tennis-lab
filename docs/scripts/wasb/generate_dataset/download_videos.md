@@ -10,27 +10,27 @@ YouTubeからテニス映像をダウンロードするスクリプト。
 
 ```bash
 # 全動画をダウンロード
-uv run python -m src.wasb.scripts.generate_dataset.download_videos
+uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos
 
 # カスタム urls.yaml を指定
-uv run python -m src.wasb.scripts.generate_dataset.download_videos urls_path=path/to/urls.yaml
+uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos urls_path=path/to/urls.yaml
 
 # ステータス確認
-uv run python -m src.wasb.scripts.generate_dataset.download_videos mode=status
+uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos mode=status
 
 # 失敗したダウンロードをリセット
-uv run python -m src.wasb.scripts.generate_dataset.download_videos mode=reset_failed
+uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos mode=reset_failed
 
 # 全ダウンロードをリセット
-uv run python -m src.wasb.scripts.generate_dataset.download_videos mode=reset_all
+uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos mode=reset_all
 
 # 特定のURLをリセット（再ダウンロード）
-uv run python -m src.wasb.scripts.generate_dataset.download_videos mode=reset_url reset_url="https://..."
+uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos mode=reset_url reset_url="https://..."
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/wasb/configs/download_videos.yaml`
+エントリポイント: `src/tasks/wasb/configs/download_videos.yaml`
 
 ### モード
 
@@ -160,14 +160,14 @@ videos:
 EOF
 
 # 2. ダウンロード実行
-uv run python -m src.wasb.scripts.generate_dataset.download_videos
+uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos
 
 # 3. 状態確認
-uv run python -m src.wasb.scripts.generate_dataset.download_videos mode=status
+uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos mode=status
 
 # 4. 失敗したものを再試行
-uv run python -m src.wasb.scripts.generate_dataset.download_videos mode=reset_failed
-uv run python -m src.wasb.scripts.generate_dataset.download_videos
+uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos mode=reset_failed
+uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos
 ```
 
 ## 注意事項

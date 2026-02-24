@@ -1,11 +1,11 @@
 """Train a PLCS model with Hydra-managed configuration.
 
 Example commands:
-    `uv run python -m src.plcs.scripts.train`
-    `uv run python -m src.plcs.scripts.train run.gpus=0 training.max_epochs=1`
-    `uv run python -m src.plcs.scripts.train run.dry_run=true`
+    `uv run python -m src.tasks.plcs.scripts.train`
+    `uv run python -m src.tasks.plcs.scripts.train run.gpus=0 training.max_epochs=1`
+    `uv run python -m src.tasks.plcs.scripts.train run.dry_run=true`
 
-Config entry point: `src/plcs/configs/train.yaml`
+Config entry point: `src/tasks/plcs/configs/train.yaml`
 """
 
 # mypy: disable-error-code=misc
@@ -18,7 +18,7 @@ from typing import TypeVar, cast
 import hydra
 from omegaconf import DictConfig
 
-from src.plcs.training.runner import PLCSTrainingRunner
+from src.tasks.plcs.training.runner import PLCSTrainingRunner
 
 F = TypeVar("F", bound=Callable[..., object])
 hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)

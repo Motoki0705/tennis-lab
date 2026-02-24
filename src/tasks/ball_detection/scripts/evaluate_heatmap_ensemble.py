@@ -16,11 +16,11 @@ from torch import Tensor, nn
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from src.ball_detection.data.datamodule import collate_ball_sequences
-from src.ball_detection.data.labeled_dataset import LabeledBallDataset
-from src.ball_detection.models import build_model
-from src.ball_detection.models.heatmap_utils import decode_heatmap_logits
-from src.ball_detection.models.third_party_loader import load_wasb_hrnet_class
+from src.tasks.ball_detection.data.datamodule import collate_ball_sequences
+from src.tasks.ball_detection.data.labeled_dataset import LabeledBallDataset
+from src.tasks.ball_detection.models import build_model
+from src.tasks.ball_detection.models.heatmap_utils import decode_heatmap_logits
+from src.tasks.ball_detection.models.third_party_loader import load_wasb_hrnet_class
 
 
 def _default_games() -> list[str]:
@@ -366,7 +366,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--tracknet-model-config",
         type=Path,
-        default=Path("src/ball_detection/configs/model/tracknetv3.yaml"),
+        default=Path("src/tasks/ball_detection/configs/model/tracknetv3.yaml"),
         help="Fallback TrackNetV3 model config when checkpoint lacks config.",
     )
     parser.add_argument(

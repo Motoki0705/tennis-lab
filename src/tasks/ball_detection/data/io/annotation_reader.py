@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.ball_detection.data.type import LabelRecord
-from src.wasb.tennis_format import load_label_csv
+from src.tasks.ball_detection.data.type import LabelRecord
+from src.tasks.wasb.tennis_format import load_label_csv
 
 
 def read_label_csv(path: str | Path) -> list[LabelRecord]:

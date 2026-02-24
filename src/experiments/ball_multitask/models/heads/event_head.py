@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch.nn as nn
 from torch import Tensor
 
-from src.event_detection.models.components.heads import EventLogitsHead
+from src.tasks.event_detection.models.components.heads import EventLogitsHead
 
 
 class EventLogitsHeadAdapter(nn.Module):

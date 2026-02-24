@@ -8,10 +8,10 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from src.base.training.lightning_module import BaseLightningModule
-from src.court_detection.models import build_court_detection_model
-from src.court_detection.training.losses import CourtKeypointLoss
-from src.court_detection.training.metrics import CourtKeypointMetrics
+from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.court_detection.models import build_court_detection_model
+from src.tasks.court_detection.training.losses import CourtKeypointLoss
+from src.tasks.court_detection.training.metrics import CourtKeypointMetrics
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

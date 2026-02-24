@@ -29,7 +29,7 @@ yarn: null
 
 # MoE (optional; applied to all blocks)
 use_moe: true
-# MoEConfig fields (src/common/models/components/moe.py:MoEConfig)
+# MoEConfig fields (src/utils/models/components/moe.py:MoEConfig)
 # Note: `dim` is always `hidden_dim` and is not configured here.
 # `moe_inter_dim` should be set explicitly when use_moe=true.
 moe_config:

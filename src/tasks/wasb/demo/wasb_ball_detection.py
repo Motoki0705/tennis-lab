@@ -19,7 +19,7 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
-from src.wasb.inference import HRCNetWASBPredictor, WASBPredictor
+from src.tasks.wasb.inference import HRCNetWASBPredictor, WASBPredictor
 
 PREDICTOR_REGISTRY = {
     "wasb": WASBPredictor,

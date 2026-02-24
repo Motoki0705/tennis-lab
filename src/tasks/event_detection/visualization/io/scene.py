@@ -12,9 +12,9 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 from torch import Tensor
 
-from src.common.data.npz_meta import decode_meta
-from src.common.data.scene_cache import load_npz_scene
-from src.event_detection.visualization.types import (
+from src.utils.data.npz_meta import decode_meta
+from src.utils.data.scene_cache import load_npz_scene
+from src.tasks.event_detection.visualization.types import (
     RuntimeConfig,
     Traj3DEventInputs,
     UVEventInputs,

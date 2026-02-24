@@ -9,7 +9,7 @@ import torch
 from matplotlib.animation import FuncAnimation
 from matplotlib.figure import Figure
 
-from src.event_detection.visualization.types import Traj3DEventInputs, UVEventInputs
+from src.tasks.event_detection.visualization.types import Traj3DEventInputs, UVEventInputs
 
 
 def print_uv_info(scene_path: Path, inputs: UVEventInputs) -> None:

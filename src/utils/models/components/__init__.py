@@ -14,14 +14,14 @@ This repository previously had a separate "unified MHA/GQA/MLA" implementation.
 Strategy A treats the DeepSeek-style implementation as canonical.
 """
 
-from src.common.models.components.attention import (
+from src.utils.models.components.attention import (
     KVCache,
     MSDeformAttnConfig,
     MultiHeadCrossAttention,
     MultiScaleDeformableAttention,
     MultiHeadSelfAttention,
 )
-from src.common.models.components.block import (
+from src.utils.models.components.block import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
     MSDeformCrossAttnBlock,
@@ -31,9 +31,9 @@ from src.common.models.components.block import (
     ViTBlock,
     ViTBlockConfig,
 )
-from src.common.models.components.moe import MoE, MoEConfig, SwiGLU
-from src.common.models.components.norm import LayerNorm, RMSNorm
-from src.common.models.components.rope import (
+from src.utils.models.components.moe import MoE, MoEConfig, SwiGLU
+from src.utils.models.components.norm import LayerNorm, RMSNorm
+from src.utils.models.components.rope import (
     PositionGetter,
     RotaryPositionEmbedding2D,
     YaRNConfig,

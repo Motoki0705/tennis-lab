@@ -2,19 +2,19 @@
 """Clip sampling workflow utilities for WASB dataset curation.
 
 This script supports the "clip sampling" workflow that was previously part of
-`src.wasb.scripts.generate_game`:
+`src.tasks.wasb.scripts.generate_game`:
 
 - `generate_samples`: Create preview mp4s per clip under `output_dir/samples/<game>/`
 - `apply_clip_selection`: Apply manual selection by keeping only preview files that
   remain in `samples/<game>/`, then reindex `Clip*` directories.
 
-Configuration is managed via Hydra using `src/wasb/configs/clip_sampling.yaml`.
+Configuration is managed via Hydra using `src/tasks/wasb/configs/clip_sampling.yaml`.
 
 Usage:
-    uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=generate_samples \
+    uv run python -m src.tasks.wasb.scripts.generate_dataset.clip_sampling mode=generate_samples \
       output_dir=data/tennis generate_samples=[game11]
 
-    uv run python -m src.wasb.scripts.generate_dataset.clip_sampling mode=apply_clip_selection \
+    uv run python -m src.tasks.wasb.scripts.generate_dataset.clip_sampling mode=apply_clip_selection \
       output_dir=data/tennis apply_clip_selection=[game11]
 
 """
@@ -30,7 +30,7 @@ import hydra
 from omegaconf import DictConfig
 from tqdm import tqdm
 
-from src.wasb.tennis_format import load_label_csv
+from src.tasks.wasb.tennis_format import load_label_csv
 
 
 def _resolve_path(path_str: str | None) -> Path | None:

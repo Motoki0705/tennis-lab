@@ -1,6 +1,6 @@
 # Court Detection (CourtKP20)
 
-`src/court_detection` は、テニス映像からコートのキーポイント（20点）を検出するタスク実装です。
+`src/tasks/court_detection` は、テニス映像からコートのキーポイント（20点）を検出するタスク実装です。
 
 ## 目的 / 想定入出力
 
@@ -57,7 +57,7 @@
 ## ディレクトリ構成
 
 ```
-src/court_detection/
+src/tasks/court_detection/
 ├── configs/                          # Hydra 設定ファイル群
 │   ├── train.yaml                    # 学習メイン設定
 │   ├── visualize.yaml                # 可視化設定
@@ -120,13 +120,13 @@ src/court_detection/
 ### 学習
 
 ```bash
-uv run python -m src.court_detection.scripts.train
+uv run python -m src.tasks.court_detection.scripts.train
 ```
 
 ### 可視化
 
 ```bash
-uv run python -m src.court_detection.scripts.visualize
+uv run python -m src.tasks.court_detection.scripts.visualize
 ```
 
 ## 手動アノテーション
@@ -141,10 +141,10 @@ uv run python -m src.tools.annotate_court_keypoints \
 
 ## 外部提供 API
 
-学習済みモデルを用いた推論 API は `src/court_detection/inference/predictor.py` を参照：
+学習済みモデルを用いた推論 API は `src/tasks/court_detection/inference/predictor.py` を参照：
 
 ```python
-from src.court_detection.inference.predictor import CourtKeypointPredictor
+from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
 
 predictor = CourtKeypointPredictor.load_from_checkpoint("path/to/checkpoint.ckpt")
 result = predictor.predict(image)

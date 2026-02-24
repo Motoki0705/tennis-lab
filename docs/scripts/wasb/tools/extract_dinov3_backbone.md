@@ -10,19 +10,19 @@
 
 ```bash
 # 基本的な使用法
-uv run python -m src.wasb.scripts.tools.extract_dinov3_backbone \
+uv run python -m src.tasks.wasb.scripts.tools.extract_dinov3_backbone \
   checkpoint_path=outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
   output_path=outputs/wasb/ball_detection/dinov3_heatmap/dinov3_backbone.pth
 
 # 別の出力パスを指定
-uv run python -m src.wasb.scripts.tools.extract_dinov3_backbone \
+uv run python -m src.tasks.wasb.scripts.tools.extract_dinov3_backbone \
   checkpoint_path=path/to/checkpoint.ckpt \
   output_path=path/to/backbone.pth
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/wasb/configs/extract_dinov3_backbone.yaml`
+エントリポイント: `src/tasks/wasb/configs/extract_dinov3_backbone.yaml`
 
 ### 主要パラメータ
 
@@ -80,10 +80,10 @@ backbone_state = {
 
 ```bash
 # 1. DINOv3 ヒートマップモデルを学習
-uv run python -m src.wasb.scripts.train.ball_detection model=dinov3_heatmap
+uv run python -m src.tasks.wasb.scripts.train.ball_detection model=dinov3_heatmap
 
 # 2. バックボーン重みを抽出
-uv run python -m src.wasb.scripts.tools.extract_dinov3_backbone \
+uv run python -m src.tasks.wasb.scripts.tools.extract_dinov3_backbone \
   checkpoint_path=outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
   output_path=outputs/wasb/ball_detection/dinov3_heatmap/finetuned_dinov3_backbone.pth
 
@@ -105,4 +105,4 @@ outputs/wasb/ball_detection/dinov3_heatmap/
 
 ## 関連モジュール
 
-- `src.wasb.models.dinov3_fpn_heatmap`: DINOv3+FPN モデル
+- `src.tasks.wasb.models.dinov3_fpn_heatmap`: DINOv3+FPN モデル

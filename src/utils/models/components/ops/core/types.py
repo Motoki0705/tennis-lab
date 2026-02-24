@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from src.common.models.components.ops.core.backend import OpBackend
+from src.utils.models.components.ops.core.backend import OpBackend
 
 
 @dataclass(frozen=True)

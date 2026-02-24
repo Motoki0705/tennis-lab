@@ -7,13 +7,13 @@ We expose cell bounds/centers so the UI can:
 
 from __future__ import annotations
 
-from src.blcs.generate_dataset.api_server.schemas import (
+from src.tasks.blcs.generate_dataset.api_server.schemas import (
     CellBounds,
     CellInfo,
     CellsResponse,
     Vec2,
 )
-from src.blcs.simulation.cell_manager import CellManager
+from src.tasks.blcs.simulation.cell_manager import CellManager
 
 
 def build_cells_response(cell_manager: CellManager | None = None) -> CellsResponse:

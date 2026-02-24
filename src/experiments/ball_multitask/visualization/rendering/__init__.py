@@ -1,6 +1,6 @@
 """Rendering helpers for ball multitask visualization."""
 
-from src.ball_multitask.visualization.rendering.animations import (
+from src.experiments.ball_multitask.visualization.rendering.animations import (
     AnimationArtifact,
     build_animations,
 )

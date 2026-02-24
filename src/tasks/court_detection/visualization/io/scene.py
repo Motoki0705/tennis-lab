@@ -10,7 +10,7 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 from PIL import Image
 
-from src.court_detection.visualization.types import RuntimeConfig, SceneImage
+from src.tasks.court_detection.visualization.types import RuntimeConfig, SceneImage
 
 
 def _resolve_device(device: str) -> str:

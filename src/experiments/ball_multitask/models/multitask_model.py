@@ -8,11 +8,11 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.ball_multitask.models.backbone import BallMultitaskBackbone
-from src.ball_multitask.models.heads.event_head import EventLogitsHeadAdapter
-from src.ball_multitask.models.heads.in_frame_head import InFrameHead
-from src.ball_multitask.models.heads.trajectory_head import Trajectory3DHeadAdapter
-from src.ball_multitask.models.heads.uv_head import UVCompletionHead
+from src.experiments.ball_multitask.models.backbone import BallMultitaskBackbone
+from src.experiments.ball_multitask.models.heads.event_head import EventLogitsHeadAdapter
+from src.experiments.ball_multitask.models.heads.in_frame_head import InFrameHead
+from src.experiments.ball_multitask.models.heads.trajectory_head import Trajectory3DHeadAdapter
+from src.experiments.ball_multitask.models.heads.uv_head import UVCompletionHead
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

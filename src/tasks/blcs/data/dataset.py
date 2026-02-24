@@ -12,9 +12,9 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from src.blcs.data.types import BLCSBatch, BLCSMultiViewBatch, BLCSMultiViewSample
-from src.common.data.scene_cache import get_scene_cache, load_npz_scene
-from src.common.dataset.augmentation import (
+from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch, BLCSMultiViewSample
+from src.utils.data.scene_cache import get_scene_cache, load_npz_scene
+from src.utils.dataset.augmentation import (
     add_gaussian_noise,
     random_visibility_dropout,
     scale_uv_with_visibility,

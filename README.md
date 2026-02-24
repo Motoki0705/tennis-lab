@@ -12,7 +12,7 @@
   <img src="assets/wasb/gt_vs_pred.gif" width="840" />
 </p>
 
-- 実装: [src/wasb/README.md](src/wasb/README.md) / 実行: [docs/scripts/wasb/README.md](docs/scripts/wasb/README.md)
+- 実装/実行: [src/tasks/wasb/README.md](src/tasks/wasb/README.md)
 
 ### Court Detection（CourtKP20）
 
@@ -20,7 +20,7 @@
   <img src="assets/court_detection/gt_vs_pred.gif" width="840" />
 </p>
 
-- 実装: [src/court_detection/README.md](src/court_detection/README.md)
+- 実装: [src/tasks/court_detection/README.md](src/tasks/court_detection/README.md)
 
 ### PLCS（プレーヤー3D位置・yaw推定）
 
@@ -28,7 +28,7 @@
   <img src="assets/plcs/gt_vs_pred.gif" width="840" />
 </p>
 
-- 実装: [src/plcs/README.md](src/plcs/README.md) / 実行: [docs/scripts/plcs/README.md](docs/scripts/plcs/README.md)
+- 実装/実行: [src/tasks/plcs/README.md](src/tasks/plcs/README.md)
 
 ### BLCS（ボール3D軌道推定）
 
@@ -36,7 +36,7 @@
   <img src="assets/blcs/gt_vs_pred.gif" width="840" />
 </p>
 
-- 実装: [src/blcs/README.md](src/blcs/README.md) / 実行: [docs/scripts/blcs/README.md](docs/scripts/blcs/README.md)
+- 実装/実行: [src/tasks/blcs/README.md](src/tasks/blcs/README.md)
 
 ### Trajectory Completion（UV軌道補完）
 
@@ -44,7 +44,7 @@
   <img src="assets/trajectory_completion/gt_vs_pred.gif" width="840" />
 </p>
 
-- 実装: [src/trajectory_completion/README.md](src/trajectory_completion/README.md)
+- 実装: [src/tasks/trajectory_completion/README.md](src/tasks/trajectory_completion/README.md)
 
 ### Event Detection（ショット/バウンス時刻推定）
 
@@ -54,7 +54,7 @@
 <p align="center">
   <img src="assets/event_detection/traj3d/gt_vs_pred.gif" width="840" />
 </p>
-- 実装: [src/event_detection/README.md](src/event_detection/README.md)
+- 実装: [src/tasks/event_detection/README.md](src/tasks/event_detection/README.md)
 
 ## クイックスタート
 
@@ -76,10 +76,12 @@ uv run python -m src.<task>.scripts.<entrypoint> key=value
 
 コマンド例はタスクごとのドキュメントに集約しています。
 
-- [docs/scripts/README.md](docs/scripts/README.md)（BLCS/PLCS/WASB）
-- [src/court_detection/README.md](src/court_detection/README.md)
-- [src/trajectory_completion/README.md](src/trajectory_completion/README.md)
-- [src/event_detection/README.md](src/event_detection/README.md)
+- [src/tasks/blcs/README.md](src/tasks/blcs/README.md)
+- [src/tasks/plcs/README.md](src/tasks/plcs/README.md)
+- [src/tasks/wasb/README.md](src/tasks/wasb/README.md)
+- [src/tasks/court_detection/README.md](src/tasks/court_detection/README.md)
+- [src/tasks/trajectory_completion/README.md](src/tasks/trajectory_completion/README.md)
+- [src/tasks/event_detection/README.md](src/tasks/event_detection/README.md)
 
 ### 4) テスト（E2E）
 
@@ -92,7 +94,7 @@ uv run pytest tests/e2e -v -m "not cuda"
 
 ### Docker
 
-GPU環境をまとめて立ち上げたい場合は [docs/docker/README.md](docs/docker/README.md) を参照。
+GPU環境をまとめて立ち上げたい場合は `docker/docker-compose.yml` を参照。
 
 ## ライセンス / 引用
 
@@ -102,12 +104,12 @@ GPU環境をまとめて立ち上げたい場合は [docs/docker/README.md](docs
 
 ### どこに何があるか（タスク）
 
-- WASB: 画像上の2Dボール位置（`src/wasb`）
-- Court Detection: 20点コートキーポイント（`src/court_detection`）
-- PLCS: 2Dスケルトン → コート上3Dプレーヤー位置/yaw（`src/plcs`）
-- BLCS: 2Dボール位置 → コート上3Dボール軌道（`src/blcs`）
-- Trajectory Completion: 欠損した2Dボール軌道を補完（`src/trajectory_completion`）
-- Event Detection: ショット/バウンスのタイミング推定（`src/event_detection`）
+- WASB: 画像上の2Dボール位置（`src/tasks/wasb`）
+- Court Detection: 20点コートキーポイント（`src/tasks/court_detection`）
+- PLCS: 2Dスケルトン → コート上3Dプレーヤー位置/yaw（`src/tasks/plcs`）
+- BLCS: 2Dボール位置 → コート上3Dボール軌道（`src/tasks/blcs`）
+- Trajectory Completion: 欠損した2Dボール軌道を補完（`src/tasks/trajectory_completion`）
+- Event Detection: ショット/バウンスのタイミング推定（`src/tasks/event_detection`）
 - 統合: 上記をまとめて1本のパイプラインとして回す（[src/tennis_scene/README.md](src/tennis_scene/README.md)）
 
 ※ 外部モジュール（例: GVHMR）は `third_party/` に隔離しています。

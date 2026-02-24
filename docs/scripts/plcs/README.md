@@ -19,26 +19,26 @@ Player Location from Court Skeleton (PLCS) タスクのスクリプト群。
 
 ```bash
 # 1. データセット生成
-uv run python -m src.plcs.scripts.generate_dataset \
+uv run python -m src.tasks.plcs.scripts.generate_dataset \
   run.output_dir=data/plcs \
   simulation.num_scenes=3000
 
 # 2. モデル学習（フレーム単位）
-uv run python -m src.plcs.scripts.train
+uv run python -m src.tasks.plcs.scripts.train
 
 # 3. または シーケンスモデル学習
-uv run python -m src.plcs.scripts.train_sequence
+uv run python -m src.tasks.plcs.scripts.train_sequence
 
 # 4. または マルチビューシーケンスモデル学習
-uv run python -m src.plcs.scripts.train_multiview
+uv run python -m src.tasks.plcs.scripts.train_multiview
 
 # 5. 結果の可視化
-uv run python -m src.plcs.scripts.visualize \
+uv run python -m src.tasks.plcs.scripts.visualize \
   visualization.mode=predict \
   visualization.checkpoint=outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt
 
 # 6. マルチビュー結果の可視化
-uv run python -m src.plcs.scripts.visualize_multiview \
+uv run python -m src.tasks.plcs.scripts.visualize_multiview \
   visualization.mode=predict \
   visualization.checkpoint=outputs/plcs/multiview/logs/version_0/checkpoints/last.ckpt
 ```
@@ -46,7 +46,7 @@ uv run python -m src.plcs.scripts.visualize_multiview \
 ## ディレクトリ構成
 
 ```
-src/plcs/
+src/tasks/plcs/
 ├── scripts/
 │   ├── generate_dataset.py
 │   ├── train.py

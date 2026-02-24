@@ -4,26 +4,26 @@
 This script runs the WASB annotation pipeline to convert raw tennis match videos
 into the tennis dataset format.
 
-Configuration is managed via Hydra using `src/wasb/configs/generate_dataset.yaml`.
+Configuration is managed via Hydra using `src/tasks/wasb/configs/generate_dataset.yaml`.
 This entrypoint is intentionally limited to:
 
 - `batch`: process all videos under `video_dir` into `output_dir` (with resume)
 - `status`: show current `meta.json` processing state
 - `reset_*`: reset processing state in `meta.json`
 
-Clip sampling has been split into `src.wasb.scripts.generate_dataset.clip_sampling`.
+Clip sampling has been split into `src.tasks.wasb.scripts.generate_dataset.clip_sampling`.
 
 Usage:
-    uv run python -m src.wasb.scripts.generate_dataset
-    uv run python -m src.wasb.scripts.generate_dataset mode=batch video_dir=data/tennis/raw
-    uv run python -m src.wasb.scripts.generate_dataset mode=status output_dir=data/tennis
-    uv run python -m src.wasb.scripts.generate_dataset mode=reset_failed output_dir=data/tennis
+    uv run python -m src.tasks.wasb.scripts.generate_dataset
+    uv run python -m src.tasks.wasb.scripts.generate_dataset mode=batch video_dir=data/tennis/raw
+    uv run python -m src.tasks.wasb.scripts.generate_dataset mode=status output_dir=data/tennis
+    uv run python -m src.tasks.wasb.scripts.generate_dataset mode=reset_failed output_dir=data/tennis
 
 Hydra overrides:
     - `model=wasb|hrcnet`
     - `checkpoint=...`
     - `device=cpu|cuda`
-    - `pipeline.*` (see `src/wasb/configs/pipeline/default.yaml`)
+    - `pipeline.*` (see `src/tasks/wasb/configs/pipeline/default.yaml`)
 
 """
 
@@ -40,15 +40,15 @@ from typing import TYPE_CHECKING, Literal
 import hydra
 from omegaconf import DictConfig
 
-from src.wasb.pipeline import AnnotationPipeline, PipelineConfig
+from src.tasks.wasb.pipeline import AnnotationPipeline, PipelineConfig
 
 if TYPE_CHECKING:
-    from src.wasb.pipeline import PipelineResult
+    from src.tasks.wasb.pipeline import PipelineResult
 
 
 def _get_predictor_cls(model_name: str):
     """Resolve predictor class by name (lazy import to keep module lightweight)."""
-    from src.wasb.inference import HRCNetWASBPredictor, WASBPredictor
+    from src.tasks.wasb.inference import HRCNetWASBPredictor, WASBPredictor
 
     if model_name == "wasb":
         return WASBPredictor

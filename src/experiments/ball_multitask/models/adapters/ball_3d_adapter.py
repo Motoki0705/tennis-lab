@@ -5,7 +5,7 @@ from __future__ import annotations
 from torch import Tensor
 import torch.nn as nn
 
-from src.common.models.embeddings import Ball3DEmbedding, InvisibleTokenEmbedding
+from src.utils.models.embeddings import Ball3DEmbedding, InvisibleTokenEmbedding
 
 
 class Ball3DTokenAdapter(nn.Module):

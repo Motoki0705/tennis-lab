@@ -12,9 +12,9 @@ import torch.nn.functional as F
 from PIL import Image
 from torch import Tensor
 
-from src.base.inference.predictor import BasePredictor
-from src.court_detection.models.court_keypoint_model import CourtKeypointModel
-from src.court_detection.training.lightning_module import CourtKeypointLightningModule
+from src.tasks.base.inference.predictor import BasePredictor
+from src.tasks.court_detection.models.court_keypoint_model import CourtKeypointModel
+from src.tasks.court_detection.training.lightning_module import CourtKeypointLightningModule
 
 
 class CourtKeypointPredictor(BasePredictor):

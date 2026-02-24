@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
-from src.court_detection.data.dataset import CourtKeypointDataset
+from src.tasks.court_detection.data.dataset import CourtKeypointDataset
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

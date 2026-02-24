@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 from torch import nn
 
-from src.blcs.models.blcs_model import BLCSModel
-from src.blcs.models.blcs_multiview_model import BLCSMultiViewModel
-from src.blcs.models.blcs_query_model import BLCSQueryModel
+from src.tasks.blcs.models.blcs_model import BLCSModel
+from src.tasks.blcs.models.blcs_multiview_model import BLCSMultiViewModel
+from src.tasks.blcs.models.blcs_query_model import BLCSQueryModel
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

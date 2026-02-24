@@ -5,10 +5,10 @@ with different `frames_in`, plus a DinoV3 heatmap model), ensembles their per-fr
 heatmaps, then writes an output video with the predicted ball location plotted.
 
 Example commands:
-    `uv run python -m src.wasb.scripts.visualize.ball_video_ensemble video_path=data/samples/clip.mp4`
-    `uv run python -m src.wasb.scripts.visualize.ball_video_ensemble video_path=... ensemble.checkpoints='[a.ckpt,b.ckpt,c.ckpt,d.ckpt,e.ckpt]'`
+    `uv run python -m src.tasks.wasb.scripts.visualize.ball_video_ensemble video_path=data/samples/clip.mp4`
+    `uv run python -m src.tasks.wasb.scripts.visualize.ball_video_ensemble video_path=... ensemble.checkpoints='[a.ckpt,b.ckpt,c.ckpt,d.ckpt,e.ckpt]'`
 
-Config entry point: `src/wasb/configs/plot_ball_video_ensemble.yaml`
+Config entry point: `src/tasks/wasb/configs/plot_ball_video_ensemble.yaml`
 """
 
 from __future__ import annotations
@@ -24,8 +24,8 @@ from hydra.utils import to_absolute_path
 from numpy.typing import NDArray
 from omegaconf import DictConfig
 
-from src.wasb.inference.ball_detection import HeatmapEnsemblePredictor
-from src.wasb.pipeline.video_ball_localization_pipeline import (
+from src.tasks.wasb.inference.ball_detection import HeatmapEnsemblePredictor
+from src.tasks.wasb.pipeline.video_ball_localization_pipeline import (
     VideoBallLocalizationPipeline,
 )
 

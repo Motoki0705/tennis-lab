@@ -10,10 +10,10 @@ import pytorch_lightning as pl
 import torch
 from torch.utils.data import DataLoader
 
-from src.event_detection.data.dataset import BLCSRallyEventDataset
-from src.event_detection.data.types import Event3DBatch, Event3DSample, EventUVBatch, EventUVSample
-from src.common.dataset.collate import collate_padded_batch
-from src.common.data.scene_batch_sampler import (
+from src.tasks.event_detection.data.dataset import BLCSRallyEventDataset
+from src.tasks.event_detection.data.types import Event3DBatch, Event3DSample, EventUVBatch, EventUVSample
+from src.utils.dataset.collate import collate_padded_batch
+from src.utils.data.scene_batch_sampler import (
     build_scene_sampler,
     resolve_scene_sampler_mode,
 )
@@ -89,7 +89,7 @@ class EventDetectionDataModule(pl.LightningDataModule):
         if not scene_dir.exists():
             raise RuntimeError(
                 f"Scene directory not found: {scene_dir}. "
-                "Run src.blcs.scripts.generate_dataset to create the dataset."
+                "Run src.tasks.blcs.scripts.generate_dataset to create the dataset."
             )
 
         if stage in ("fit", None):

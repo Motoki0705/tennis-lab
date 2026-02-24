@@ -1,6 +1,6 @@
 """BLCS inference modules."""
 
-from src.blcs.inference.predictor import BLCSPredictor
+from src.tasks.blcs.inference.predictor import BLCSPredictor
 __all__ = [
     "BLCSPredictor",
 ]

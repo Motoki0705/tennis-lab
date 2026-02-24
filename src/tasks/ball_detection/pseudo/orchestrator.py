@@ -10,18 +10,18 @@ from typing import Any
 import torch
 import torch.nn.functional as F
 
-from src.ball_detection.data.io.annotation_merger import merge_annotation_records
-from src.ball_detection.data.io.layout import discover_video_layouts
-from src.ball_detection.data.io.label_writer import write_label_csv
-from src.ball_detection.data.io.metadata_writer import write_metadata_json
-from src.ball_detection.data.type import DetectionRecord, PathPolicy
-from src.ball_detection.inference.ensemble_predictor import BallEnsemblePredictor
-from src.ball_detection.pseudo.components.clip_sampler import ClipSampler
-from src.ball_detection.pseudo.components.confidence_scorer import ConfidenceScorer
-from src.ball_detection.pseudo.components.event_tagger import EventTagger
-from src.ball_detection.pseudo.components.quality_filter import QualityFilter
-from src.ball_detection.pseudo.components.trajectory_refiner import TrajectoryRefiner
-from src.wasb.utils.video_extractor import VideoExtractor
+from src.tasks.ball_detection.data.io.annotation_merger import merge_annotation_records
+from src.tasks.ball_detection.data.io.layout import discover_video_layouts
+from src.tasks.ball_detection.data.io.label_writer import write_label_csv
+from src.tasks.ball_detection.data.io.metadata_writer import write_metadata_json
+from src.tasks.ball_detection.data.type import DetectionRecord, PathPolicy
+from src.tasks.ball_detection.inference.ensemble_predictor import BallEnsemblePredictor
+from src.tasks.ball_detection.pseudo.components.clip_sampler import ClipSampler
+from src.tasks.ball_detection.pseudo.components.confidence_scorer import ConfidenceScorer
+from src.tasks.ball_detection.pseudo.components.event_tagger import EventTagger
+from src.tasks.ball_detection.pseudo.components.quality_filter import QualityFilter
+from src.tasks.ball_detection.pseudo.components.trajectory_refiner import TrajectoryRefiner
+from src.tasks.wasb.utils.video_extractor import VideoExtractor
 
 
 @dataclass(frozen=True)

@@ -7,9 +7,9 @@ from typing import Any
 
 import pytorch_lightning as pl
 
-from src.base.training.runner import BaseTrainingRunner
-from src.blcs.data.datamodule import BLCSDataModule
-from src.blcs.training.lightning_module import BLCSLightningModule
+from src.tasks.base.training.runner import BaseTrainingRunner
+from src.tasks.blcs.data.datamodule import BLCSDataModule
+from src.tasks.blcs.training.lightning_module import BLCSLightningModule
 
 
 class BLCSTrainingRunner(BaseTrainingRunner):

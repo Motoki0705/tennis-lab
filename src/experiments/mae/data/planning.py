@@ -14,7 +14,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
-from src.mae.data.catalog import VideoCatalog, VideoMeta
+from src.experiments.mae.data.catalog import VideoCatalog, VideoMeta
 
 
 @dataclass(frozen=True)

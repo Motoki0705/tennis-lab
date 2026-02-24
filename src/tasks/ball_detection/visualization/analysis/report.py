@@ -6,8 +6,8 @@ from pathlib import Path
 
 import numpy as np
 
-from src.ball_detection.inference.types import InferenceResult
-from src.ball_detection.visualization.types import VideoInputs
+from src.tasks.ball_detection.inference.types import InferenceResult
+from src.tasks.ball_detection.visualization.types import VideoInputs
 
 
 def print_video_info(inputs: VideoInputs) -> None:

@@ -18,10 +18,10 @@ from typing import Optional, Sequence
 import torch
 from torch import Tensor
 
-from src.mae.data.cache.manifest import BatchEntry, EpochCacheManifest
-from src.mae.data.cache.paths import EpochCachePaths
-from src.mae.data.catalog import VideoCatalog
-from src.mae.data.planning import EpochPlan, plan_epoch
+from src.experiments.mae.data.cache.manifest import BatchEntry, EpochCacheManifest
+from src.experiments.mae.data.cache.paths import EpochCachePaths
+from src.experiments.mae.data.catalog import VideoCatalog
+from src.experiments.mae.data.planning import EpochPlan, plan_epoch
 
 try:
     import cv2
@@ -249,7 +249,7 @@ def build_epoch_plan(
     epoch: int,
     split: str,
 ) -> EpochPlan:
-    from src.mae.data.planning import make_bucket_specs
+    from src.experiments.mae.data.planning import make_bucket_specs
 
     bucket_specs = make_bucket_specs(
         cfg.buckets,

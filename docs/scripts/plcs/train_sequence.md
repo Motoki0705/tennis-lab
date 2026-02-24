@@ -10,21 +10,21 @@
 
 ```bash
 # デフォルト設定で学習
-uv run python -m src.plcs.scripts.train_sequence
+uv run python -m src.tasks.plcs.scripts.train_sequence
 
 # GPU設定とエポック数を指定
-uv run python -m src.plcs.scripts.train_sequence run.gpus=1 training.max_epochs=50
+uv run python -m src.tasks.plcs.scripts.train_sequence run.gpus=1 training.max_epochs=50
 
 # シーケンス長を変更
-uv run python -m src.plcs.scripts.train_sequence data.seq_len=64
+uv run python -m src.tasks.plcs.scripts.train_sequence data.seq_len=64
 
 # 高速デバッグモード
-uv run python -m src.plcs.scripts.train_sequence run.fast_dev_run=true
+uv run python -m src.tasks.plcs.scripts.train_sequence run.fast_dev_run=true
 ```
 
 ## コンフィグ
 
-エントリポイント: `src/plcs/configs/train_sequence.yaml`
+エントリポイント: `src/tasks/plcs/configs/train_sequence.yaml`
 
 ### defaults 構成
 
@@ -139,5 +139,5 @@ outputs/plcs/sequence/
 
 ## 関連モジュール
 
-- `src.plcs.data.datamodule.PLCSSequenceDataModule`: シーケンスデータモジュール
-- `src.plcs.training.sequence_lightning_module`: シーケンス用 Lightning モジュール
+- `src.tasks.plcs.data.datamodule.PLCSSequenceDataModule`: シーケンスデータモジュール
+- `src.tasks.plcs.training.sequence_lightning_module`: シーケンス用 Lightning モジュール

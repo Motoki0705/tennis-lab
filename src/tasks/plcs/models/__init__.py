@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 
 from torch import nn
 
-from src.plcs.models.components import PositionHead, RotationHead
-from src.plcs.models.plcs_model import PLCSModel
-from src.plcs.models.plcs_multiview_model import PLCSMultiViewModel
-from src.plcs.models.plcs_query_sequence_model import PLCSQuerySequenceModel
+from src.tasks.plcs.models.components import PositionHead, RotationHead
+from src.tasks.plcs.models.plcs_model import PLCSModel
+from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
+from src.tasks.plcs.models.plcs_query_sequence_model import PLCSQuerySequenceModel
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

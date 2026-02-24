@@ -7,11 +7,11 @@ import numpy as np
 from matplotlib.animation import FuncAnimation
 from matplotlib.lines import Line2D
 
-from src.event_detection.visualization.rendering.event_emphasis import (
+from src.tasks.event_detection.visualization.rendering.event_emphasis import (
     build_event_impact,
     mix_color,
 )
-from src.event_detection.visualization.types import RuntimeConfig, Traj3DEventInputs
+from src.tasks.event_detection.visualization.types import RuntimeConfig, Traj3DEventInputs
 from src.utils.rendering.court_renderer import CourtRenderer
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from src.plcs.generate_dataset.io.dataset_io import load_scene
+from src.tasks.plcs.generate_dataset.io.dataset_io import load_scene
 
 
 @dataclass(frozen=True)

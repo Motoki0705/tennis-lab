@@ -13,8 +13,8 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from src.wasb.data.types import BallDetectionSample
-from src.wasb.tennis_format import TennisLabelRow, load_label_csv, make_empty_row
+from src.tasks.wasb.data.types import BallDetectionSample
+from src.tasks.wasb.tennis_format import TennisLabelRow, load_label_csv, make_empty_row
 
 LOGGER = logging.getLogger(__name__)
 

@@ -1,11 +1,11 @@
 """Data utilities for WASB tennis dataset generation."""
 
-from src.wasb.utils.streaming_loader import (
+from src.tasks.wasb.utils.streaming_loader import (
     FrameBatch,
     StreamingVideoLoader,
     VideoMetadata,
 )
-from src.wasb.utils.video_extractor import VideoExtractor
+from src.tasks.wasb.utils.video_extractor import VideoExtractor
 
 from .ball_detection_datamodule import BallDetectionDataModule
 from .ball_detection_dataset import BallDetectionSequenceDataset, SequenceSample

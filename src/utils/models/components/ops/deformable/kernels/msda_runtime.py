@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from torch import Tensor
 
-from src.common.models.components.ops.deformable.kernels.msda_fallback import ms_deform_attn_fallback
+from src.utils.models.components.ops.deformable.kernels.msda_fallback import ms_deform_attn_fallback
 
 
 def run_msda_forward_or_fallback(

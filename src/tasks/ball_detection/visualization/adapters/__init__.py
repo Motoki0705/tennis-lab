@@ -1,6 +1,6 @@
 """Input adapters for ball_detection visualization."""
 
-from src.ball_detection.visualization.adapters.predict_inputs import (
+from src.tasks.ball_detection.visualization.adapters.predict_inputs import (
     BallDetectionPredictInputs,
     PredictionClip,
     build_ball_detection_predict_inputs,

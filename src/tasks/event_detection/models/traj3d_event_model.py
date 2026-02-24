@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.common.models import (
+from src.utils.models import (
     MoEConfig,
     RMSNorm,
     TransformerBlock,
@@ -16,8 +16,8 @@ from src.common.models import (
     YaRNConfig,
     precompute_freqs_cis,
 )
-from src.common.models.embeddings import Ball3DEmbedding, InvisibleTokenEmbedding
-from src.event_detection.models.components.heads import EventLogitsHead
+from src.utils.models.embeddings import Ball3DEmbedding, InvisibleTokenEmbedding
+from src.tasks.event_detection.models.components.heads import EventLogitsHead
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

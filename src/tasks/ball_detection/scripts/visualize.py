@@ -9,7 +9,7 @@ from typing import Any, TypeVar, cast
 import hydra
 from omegaconf import DictConfig
 
-from src.ball_detection.visualization.orchestrator import (
+from src.tasks.ball_detection.visualization.orchestrator import (
     build_runtime_config,
     run_visualization,
 )

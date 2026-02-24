@@ -12,11 +12,11 @@ from typing import TYPE_CHECKING, Literal
 import torch
 from torch import Tensor
 
-from src.common.data.blcs_npz_adapter import load_camera_view
-from src.common.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
-from src.trajectory_completion.data.argument import TrajectoryArgumenter
-from src.trajectory_completion.data.event_masking import extract_event_frames
-from src.trajectory_completion.data.types import TrajectoryCompletionSample
+from src.utils.data.blcs_npz_adapter import load_camera_view
+from src.utils.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
+from src.tasks.trajectory_completion.data.argument import TrajectoryArgumenter
+from src.tasks.trajectory_completion.data.event_masking import extract_event_frames
+from src.tasks.trajectory_completion.data.types import TrajectoryCompletionSample
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

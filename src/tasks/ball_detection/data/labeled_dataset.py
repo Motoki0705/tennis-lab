@@ -11,7 +11,7 @@ from torch import Tensor
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-from src.ball_detection.data.io.annotation_reader import read_label_csv
+from src.tasks.ball_detection.data.io.annotation_reader import read_label_csv
 
 
 @dataclass(frozen=True)

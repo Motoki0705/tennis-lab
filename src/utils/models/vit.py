@@ -1,9 +1,9 @@
 """Vision Transformer (ViT) encoder built from DeepSeek-style components.
 
 This module intentionally uses the "pure PyTorch / DeepSeek-style" building blocks in
-`src.common.models.components` (MultiHeadSelfAttention + 2D RoPE + SwiGLU/MoE).
+`src.utils.models.components` (MultiHeadSelfAttention + 2D RoPE + SwiGLU/MoE).
 
-It is primarily consumed by `src/mae/models/mae_model.py`.
+It is primarily consumed by `src/experiments/mae/models/mae_model.py`.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.common.models.components import MoEConfig, RMSNorm, ViTBlock, ViTBlockConfig
+from src.utils.models.components import MoEConfig, RMSNorm, ViTBlock, ViTBlockConfig
 
 
 @dataclass

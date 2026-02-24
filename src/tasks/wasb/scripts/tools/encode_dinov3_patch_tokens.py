@@ -7,7 +7,7 @@ and per augmentation pass (e.g., `Clip3.npy`, `Clip3_aug01.npy`, ...).
 Target heatmaps are also cached per clip as `{Clip}_heatmaps.npy`.
 
 Example:
-    uv run python -m src.wasb.scripts.tools.encode_dinov3_patch_tokens \
+    uv run python -m src.tasks.wasb.scripts.tools.encode_dinov3_patch_tokens \
       model_checkpoint=outputs/wasb/ball_detection/dinov3_heatmap/logs/version_0/checkpoints/last.ckpt \
       output_dir=data/tennis/patch_embeddings
 
@@ -43,10 +43,10 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-from src.wasb.data.ball_detection_dataset import BallDetectionSequenceDataset
-from src.wasb.models import DinoV3FPNHeatmap
-from src.wasb.tennis_format import TennisLabelRow, load_label_csv, make_empty_row
-from src.wasb.training.ball_detection.lightning_module import WASBLightningModule
+from src.tasks.wasb.data.ball_detection_dataset import BallDetectionSequenceDataset
+from src.tasks.wasb.models import DinoV3FPNHeatmap
+from src.tasks.wasb.tennis_format import TennisLabelRow, load_label_csv, make_empty_row
+from src.tasks.wasb.training.ball_detection.lightning_module import WASBLightningModule
 
 LOGGER = logging.getLogger(__name__)
 

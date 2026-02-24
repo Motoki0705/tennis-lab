@@ -5,9 +5,9 @@ from __future__ import annotations
 import torch
 from torch import Tensor, nn
 
-from src.common.models.components.ops.deformable.api import multi_scale_deformable_attention
-from src.common.models.components.ops.deformable.config import MSDeformAttnConfig
-from src.common.models.components.ops.deformable.utils import build_level_start_index
+from src.utils.models.components.ops.deformable.api import multi_scale_deformable_attention
+from src.utils.models.components.ops.deformable.config import MSDeformAttnConfig
+from src.utils.models.components.ops.deformable.utils import build_level_start_index
 
 
 class MultiScaleDeformableAttention(nn.Module):

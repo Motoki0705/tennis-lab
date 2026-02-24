@@ -12,7 +12,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from src.blcs.simulation.cell_manager import ShotCategory
+from src.tasks.blcs.simulation.cell_manager import ShotCategory
 
 if TYPE_CHECKING:
     pass

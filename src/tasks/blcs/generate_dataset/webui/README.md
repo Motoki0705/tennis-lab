@@ -1,7 +1,7 @@
 # BLCS generate_dataset WebUI
 
 Next.js (React) + TypeScript WebUI to visualize BLCS ball trajectories generated
-by the Python simulator under `src/blcs/generate_dataset/api_server/`.
+by the Python simulator under `src/tasks/blcs/generate_dataset/api_server/`.
 
 Goal:
 - Make the mapping from initial conditions -> trajectory intuitive.
@@ -11,7 +11,7 @@ Goal:
 ## Layout
 
 ```
-src/blcs/generate_dataset/webui/
+src/tasks/blcs/generate_dataset/webui/
   README.md
   .gitignore
   package.json
@@ -54,13 +54,13 @@ src/blcs/generate_dataset/webui/
 1) Start Python API server (repo root):
 
 ```bash
-UV_CACHE_DIR=/tmp/uv_cache uv run --group webui -m src.blcs.generate_dataset.api_server --reload --port 8001
+UV_CACHE_DIR=/tmp/uv_cache uv run --group webui -m src.tasks.blcs.generate_dataset.api_server --reload --port 8001
 ```
 
 2) Start Next.js dev server (separate terminal):
 
 ```bash
-cd src/blcs/generate_dataset/webui
+cd src/tasks/blcs/generate_dataset/webui
 npm_config_cache=/tmp/npm_cache npm install
 npm run dev
 ```
@@ -78,6 +78,6 @@ Notes:
 
 ## Git ignore notes (repo-wide ignore workarounds)
 This repo's top-level `.gitignore` ignores `*.json` and `lib/` directories globally.
-To keep WebUI configs tracked, `src/blcs/generate_dataset/webui/.gitignore` re-includes:
+To keep WebUI configs tracked, `src/tasks/blcs/generate_dataset/webui/.gitignore` re-includes:
 - `package.json`, `package-lock.json`, `tsconfig.json`
 - `src/lib/**`

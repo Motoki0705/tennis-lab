@@ -11,9 +11,9 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.plcs.visualization.api.predict import predict_scene
-from src.plcs.visualization.io.scene import load_scene_bundle
-from src.plcs.visualization.rendering import PLCSSceneRenderer
+from src.tasks.plcs.visualization.api.predict import predict_scene
+from src.tasks.plcs.visualization.io.scene import load_scene_bundle
+from src.tasks.plcs.visualization.rendering import PLCSSceneRenderer
 
 logger = logging.getLogger(__name__)
 

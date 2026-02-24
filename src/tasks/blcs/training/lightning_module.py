@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.base.training.lightning_module import BaseLightningModule
-from src.blcs.data.types import BLCSBatch, BLCSMultiViewBatch
-from src.blcs.models import build_blcs_model
-from src.blcs.training.losses import BLCSLoss
-from src.blcs.training.metrics import BLCSMetrics
+from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch
+from src.tasks.blcs.models import build_blcs_model
+from src.tasks.blcs.training.losses import BLCSLoss
+from src.tasks.blcs.training.metrics import BLCSMetrics
 
 
 if TYPE_CHECKING:

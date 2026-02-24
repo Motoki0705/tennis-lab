@@ -9,10 +9,10 @@ from typing import Any, Generic, Literal, TypeVar
 import numpy as np
 from torch.utils.data import Dataset
 
-from src.common.data.camera_selection import select_camera
-from src.common.data.npz_meta import decode_meta
-from src.common.data.scene_cache import SceneCache, get_scene_cache, load_npz_scene
-from src.common.data.scene_paths import resolve_scene_files
+from src.utils.data.camera_selection import select_camera
+from src.utils.data.npz_meta import decode_meta
+from src.utils.data.scene_cache import SceneCache, get_scene_cache, load_npz_scene
+from src.utils.data.scene_paths import resolve_scene_files
 
 SampleT = TypeVar("SampleT")
 

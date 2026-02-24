@@ -7,8 +7,8 @@ from typing import Any
 
 import numpy as np
 
-from src.ball_multitask.inference.predictor import BallMultitaskPredictor
-from src.ball_multitask.visualization.adapters.predict_inputs import BallMultitaskPredictInputs
+from src.experiments.ball_multitask.inference.predictor import BallMultitaskPredictor
+from src.experiments.ball_multitask.visualization.adapters.predict_inputs import BallMultitaskPredictInputs
 
 
 def load_predictor(*, checkpoint_path: Path, device: str) -> BallMultitaskPredictor:

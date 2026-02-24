@@ -3,7 +3,7 @@ defaults:
   - data: ball_detection
   - model: dinov3_heatmap
 
-# Configuration for `src.wasb.scripts.tools.encode_dinov3_patch_tokens`.
+# Configuration for `src.tasks.wasb.scripts.tools.encode_dinov3_patch_tokens`.
 device: cuda
 model_checkpoint: outputs/wasb/ball_detection/dinov3_heatmap/logs/version_2/checkpoints/wasb-epoch=14.ckpt  # Optional Lightning checkpoint (.ckpt) for dinov3_heatmap.
 

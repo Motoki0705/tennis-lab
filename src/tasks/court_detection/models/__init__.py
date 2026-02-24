@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from torch import nn
 
-from src.court_detection.models.court_keypoint_model import CourtKeypointModel
+from src.tasks.court_detection.models.court_keypoint_model import CourtKeypointModel
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

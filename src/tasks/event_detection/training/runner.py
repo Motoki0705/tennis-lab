@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Any
 
 import pytorch_lightning as pl
 
-from src.base.training.runner import BaseTrainingRunner
-from src.event_detection.data.datamodule import EventDetectionDataModule
-from src.event_detection.training.lightning_module import EventDetectionLightningModule
+from src.tasks.base.training.runner import BaseTrainingRunner
+from src.tasks.event_detection.data.datamodule import EventDetectionDataModule
+from src.tasks.event_detection.training.lightning_module import EventDetectionLightningModule
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

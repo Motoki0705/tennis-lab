@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
 
-from src.ball_multitask.visualization.types import SceneInputs
+from src.experiments.ball_multitask.visualization.types import SceneInputs
 
 
 def save_outputs(output_path: Path, outputs: dict[str, Any]) -> None:
