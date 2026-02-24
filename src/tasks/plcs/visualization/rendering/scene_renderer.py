@@ -195,8 +195,8 @@ class PLCSSceneRenderer:
         )
         ax.scatter([x], [y], c="red", s=100, zorder=5)
 
-        sin_yaw = scene.rotation[frame_idx, 0]
-        cos_yaw = scene.rotation[frame_idx, 1]
+        cos_yaw = scene.rotation[frame_idx, 0]
+        sin_yaw = scene.rotation[frame_idx, 1]
         ax.arrow(x, y, -sin_yaw, cos_yaw, head_width=0.3, fc="yellow", ec="black")
 
     def _compute_world_pose(self, scene: Any, frame_idx: int) -> np.ndarray:
@@ -206,8 +206,8 @@ class PLCSSceneRenderer:
         z = float(pos[2]) * NET_HEIGHT_POST if len(pos) > 2 else 0.0
 
         canonical_pose = np.asarray(scene.canonical_pose_3d[frame_idx])
-        sin_yaw = float(scene.rotation[frame_idx, 0])
-        cos_yaw = float(scene.rotation[frame_idx, 1])
+        cos_yaw = float(scene.rotation[frame_idx, 0])
+        sin_yaw = float(scene.rotation[frame_idx, 1])
         rot = np.array([[cos_yaw, -sin_yaw, 0], [sin_yaw, cos_yaw, 0], [0, 0, 1]])
 
         world_pose = canonical_pose @ rot.T
@@ -320,10 +320,10 @@ class PLCSSceneRenderer:
         ax.scatter([gt_x], [gt_y], c="green", s=80, zorder=6)
         ax.scatter([pred_x], [pred_y], c="red", s=80, zorder=6)
 
-        gt_sin = gt_scene.rotation[frame_idx, 0]
-        gt_cos = gt_scene.rotation[frame_idx, 1]
-        pred_sin = pred_scene.rotation[frame_idx, 0]
-        pred_cos = pred_scene.rotation[frame_idx, 1]
+        gt_cos = gt_scene.rotation[frame_idx, 0]
+        gt_sin = gt_scene.rotation[frame_idx, 1]
+        pred_cos = pred_scene.rotation[frame_idx, 0]
+        pred_sin = pred_scene.rotation[frame_idx, 1]
         ax.arrow(gt_x, gt_y, -gt_sin, gt_cos, head_width=0.25, fc="green", ec="green")
         ax.arrow(
             pred_x,

@@ -44,7 +44,7 @@ class PositionHead(nn.Module):
 
 
 class RotationHead(nn.Module):
-    """Predict (sin(yaw), cos(yaw)) from latent representation."""
+    """Predict (cos(yaw), sin(yaw)) from latent representation."""
 
     def __init__(
         self,
@@ -74,6 +74,6 @@ class RotationHead(nn.Module):
         self.mlp = nn.Sequential(*layers)
 
     def forward(self, x: Tensor) -> Tensor:
-        """Predict unit-normalized (sin, cos)."""
+        """Predict unit-normalized (cos, sin)."""
         out = self.mlp(x)
         return torch.nn.functional.normalize(out, dim=-1)
