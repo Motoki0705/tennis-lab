@@ -1,7 +1,13 @@
-"""WASB module for ball detection."""
+"""WASB module for ball detection.
+
+The actual inference implementation is provided by
+``third_party/WASB-SBDT/src/inference/`` which wraps the WASB (HRNet-based)
+model from the WASB-SBDT library.
+"""
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import logging
 from dataclasses import dataclass
@@ -165,14 +171,36 @@ class WASBModule(BasePipelineModule):
         self._pipeline = None
 
     def load(self) -> None:
-        """Load the WASB pipeline."""
+        """Load the WASB pipeline.
+
+        Dynamically imports :class:`WASBPredictor` and
+        :class:`VideoBallLocalizationPipeline` from
+        ``third_party/WASB-SBDT/src/inference/`` to avoid a hard coupling to
+        a top-level package path (the directory name contains a hyphen).
+        """
         if self._pipeline is not None:
             return
 
         LOGGER.info(f"Loading WASB model from {self.config.checkpoint}")
 
-        from src.tasks.wasb.inference import WASBPredictor
-        from src.tasks.wasb.pipeline import VideoBallLocalizationPipeline
+        _inference_path = (
+            Path(__file__).parents[4]
+            / "third_party"
+            / "WASB-SBDT"
+            / "src"
+            / "inference"
+            / "__init__.py"
+        )
+        spec = importlib.util.spec_from_file_location(
+            "wasb_sbdt_inference", _inference_path
+        )
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Cannot load WASB inference module from {_inference_path}")
+        _mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_mod)  # type: ignore[union-attr]
+
+        WASBPredictor = _mod.WASBPredictor
+        VideoBallLocalizationPipeline = _mod.VideoBallLocalizationPipeline
 
         predictor = WASBPredictor.load_from_checkpoint(
             self.config.checkpoint, device=self.config.device
