@@ -7,7 +7,7 @@ from typing import Any, Mapping
 import torch
 from torch import Tensor
 
-from src.tasks.blcs.data.meta_codec import parse_blcs_scene_meta, parse_rally_scene_meta
+from src.tasks.blcs.data.meta_codec import parse_blcs_scene_meta
 
 
 def _filter_frames(frames: list[int], length: int, *, offset: int = 0) -> Tensor:
@@ -62,31 +62,9 @@ def extract_event_frames(meta: Mapping, length: int, *, offset: int = 0) -> dict
     """
     meta_dict = dict(meta) if isinstance(meta, Mapping) else {}
 
-    rally = parse_rally_scene_meta(meta_dict)
-    if rally is not None:
-        shot_frames, bounce_frames = _collect_from_shots(rally.shots)
-        return {
-            "bounce": _filter_frames(bounce_frames, length, offset=offset),
-            "shot": _filter_frames(shot_frames, length, offset=offset),
-        }
-
-    if "shots" in meta_dict:
-        shot_frames, bounce_frames = _collect_from_shots(meta_dict.get("shots"))
-        if shot_frames or bounce_frames:
-            return {
-                "bounce": _filter_frames(bounce_frames, length, offset=offset),
-                "shot": _filter_frames(shot_frames, length, offset=offset),
-            }
-
-    single = parse_blcs_scene_meta(meta_dict)
-    if single is not None:
-        bounce_frames: list[int] = []
-        shot_frames: list[int] = []
-        if single.t_bounce1 >= 0:
-            bounce_frames.append(int(single.t_bounce1))
-        if single.t_bounce2 >= 0:
-            bounce_frames.append(int(single.t_bounce2))
-        shot_frames.append(0)
+    scene_meta = parse_blcs_scene_meta(meta_dict)
+    if scene_meta is not None:
+        shot_frames, bounce_frames = _collect_from_shots(scene_meta.shots)
         return {
             "bounce": _filter_frames(bounce_frames, length, offset=offset),
             "shot": _filter_frames(shot_frames, length, offset=offset),
