@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.utils.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
+from src.utils.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase
 from src.tasks.trajectory_completion.data.argument import TrajectoryArgumenter
 from src.tasks.trajectory_completion.data.event_masking import extract_event_frames
 from src.tasks.trajectory_completion.data.types import TrajectoryCompletionSample
@@ -39,15 +39,19 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
         augment: bool = True,
     ) -> None:
         self.hydra_cfg = config or {}
-        data_cfg = self.hydra_cfg.get("data", {}) if hasattr(self.hydra_cfg, "get") else {}
-        data_cfg = data_cfg or {}
-
-        _scene_dir = Path(scene_dir)
-        self.supervise_visible_only = bool(data_cfg.get("supervise_visible_only", True))
         self.augment = bool(augment)
-        crop_mode = "random" if self.augment else "center"
-        seq_len_range_cfg = data_cfg["seq_len_range"]
-        seq_len_range = (int(seq_len_range_cfg[0]), int(seq_len_range_cfg[1]))
+        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+        self._configure_task(data_cfg)
+        super().__init__(
+            config=self._build_scene_dataset_config(
+                scene_dir=scene_dir, split_file=split_file, data_cfg=data_cfg,
+            )
+        )
+
+    # -- Composed-method hooks ------------------------------------------
+
+    def _configure_task(self, data_cfg: dict) -> None:  # type: ignore[override]
+        self.supervise_visible_only = bool(data_cfg.get("supervise_visible_only", True))
 
         argument_cfg = data_cfg.get("argument", {}) or {}
         self.argumenter = TrajectoryArgumenter(argument_cfg)
@@ -57,17 +61,6 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
                 "data.argument.event_ratio must be a list/tuple of length 2."
             )
         self.event_ratio = (int(ratio[0]), int(ratio[1]))
-        super().__init__(
-            config=SceneDatasetConfig(
-                scene_dir=_scene_dir,
-                split_file=Path(split_file),
-                seq_len_range=seq_len_range,
-                num_views_range=(1, 1),
-                cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
-                camera_mode=data_cfg.get("camera_mode", "random"),
-                crop_mode=crop_mode,
-            )
-        )
 
     def build_sample(self, scene: NPZScene) -> TrajectoryCompletionSample:
         cam_idx = self.select_camera(scene)

@@ -236,6 +236,12 @@ class NPZScene:
 class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
     """Base dataset for BLCS-style NPZ scenes."""
 
+    #: Whether augmentation is enabled. Set by subclass ``__init__`` before
+    #: calling ``super().__init__()``.
+    augment: bool
+    #: Raw Hydra config dict. Set by subclass ``__init__``.
+    hydra_cfg: Any
+
     def __init__(
         self,
         *,
@@ -280,6 +286,96 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
             raise ValueError(f"{name} must contain positive integers, got {value}")
         if lo > hi:
             raise ValueError(f"{name} min must be <= max, got {value}")
+
+    # ------------------------------------------------------------------
+    # Composed-method helpers for subclass __init__.
+    #
+    # Subclass __init__ follows a unified 5-step flow:
+    #   1. self.hydra_cfg = config or {}
+    #   2. self.augment = augment
+    #   3. data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+    #   4. self._configure_task(data_cfg)       ← override per task
+    #   5. super().__init__(config=self._build_scene_dataset_config(...))
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _resolve_data_cfg(hydra_cfg: Any) -> dict[str, Any]:
+        """Extract the ``data`` section from a Hydra-style config.
+
+        Handles plain dicts, OmegaConf ``DictConfig`` objects, and ``None``.
+        """
+        if hasattr(hydra_cfg, "get"):
+            data_cfg = hydra_cfg.get("data", {})
+        else:
+            data_cfg = {}
+        return data_cfg or {}
+
+    @staticmethod
+    def _parse_int_range(
+        data_cfg: dict[str, Any],
+        key: str,
+        *,
+        default: tuple[int, int] | None = None,
+    ) -> tuple[int, int]:
+        """Parse a ``(min, max)`` integer range from *data_cfg*.
+
+        Args:
+            data_cfg: Data configuration dictionary.
+            key: Config key whose value is a two-element sequence.
+            default: Fallback when *key* is absent.  If ``None`` and the key is
+                missing, ``KeyError`` is raised.
+        """
+        if key not in data_cfg:
+            if default is not None:
+                return default
+            raise KeyError(
+                f"Required config key '{key}' not found in data config"
+            )
+        cfg = data_cfg[key]
+        return (int(cfg[0]), int(cfg[1]))
+
+    @staticmethod
+    def _parse_camera_mode(
+        data_cfg: dict[str, Any],
+        *,
+        default: str | int = "random",
+    ) -> str | int:
+        """Parse camera selection mode from *data_cfg*."""
+        mode = data_cfg.get("camera_mode", default)
+        if isinstance(mode, str):
+            mode = mode.lower()
+        return mode
+
+    def _configure_task(self, data_cfg: dict[str, Any]) -> None:
+        """Parse task-specific configuration from the data config section.
+
+        Override in subclasses to set up task-specific attributes
+        **before** the base dataset is initialized.  The default
+        implementation is a no-op.
+        """
+
+    def _build_scene_dataset_config(
+        self,
+        *,
+        scene_dir: str | Path,
+        split_file: str | Path,
+        data_cfg: dict[str, Any],
+    ) -> SceneDatasetConfig:
+        """Build a :class:`SceneDatasetConfig` for base-class initialization.
+
+        The default implementation covers single-view tasks.  Override in
+        subclasses that require different ``num_views_range``,
+        ``camera_mode``, or other non-default values.
+        """
+        return SceneDatasetConfig(
+            scene_dir=Path(scene_dir),
+            split_file=Path(split_file),
+            seq_len_range=self._parse_int_range(data_cfg, "seq_len_range"),
+            num_views_range=(1, 1),
+            cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
+            camera_mode=self._parse_camera_mode(data_cfg),
+            crop_mode="random" if self.augment else "center",
+        )
 
     def _resolve_scene_files(self, scene_dir: Path, split_file: Path) -> list[Path]:
         split_path = Path(split_file)
