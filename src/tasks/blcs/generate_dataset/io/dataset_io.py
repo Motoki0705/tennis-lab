@@ -78,9 +78,16 @@ class BLCSDatasetWriter(BaseDatasetWriter):
         return BLCSSceneMeta(**scene_meta_dict)
 
     def _serialize_camera_params(self, camera_params: dict[str, Any]) -> str:
+        # Normalize camera parameter keys: some generators may use "C" instead of "center"
+        normalized_params = dict(camera_params)
+        if "center" not in normalized_params and "C" in normalized_params:
+            normalized_params["center"] = normalized_params["C"]
+            # Remove the alias key to avoid potential validation errors for extra fields
+            del normalized_params["C"]
+
         if self.validate and PYDANTIC_AVAILABLE:
-            BLCSCameraParamsModel(**camera_params)
-        typed_params = BLCSCameraParams.from_dict(camera_params)
+            BLCSCameraParamsModel(**normalized_params)
+        typed_params = BLCSCameraParams.from_dict(normalized_params)
         return json.dumps(typed_params.to_dict())
 
     def _append_camera_arrays(
