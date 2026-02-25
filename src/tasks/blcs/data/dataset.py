@@ -44,8 +44,10 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
         self.augment = augment
 
         data_cfg = self.config.get("data", {})
-        self.seq_len_range = self._parse_required_range(data_cfg, "seq_len_range")
-        self.num_views_range = self._parse_required_range(data_cfg, "num_views_range")
+        seq_len_range_cfg = data_cfg["seq_len_range"]
+        self.seq_len_range = (int(seq_len_range_cfg[0]), int(seq_len_range_cfg[1]))
+        num_views_range_cfg = data_cfg["num_views_range"]
+        self.num_views_range = (int(num_views_range_cfg[0]), int(num_views_range_cfg[1]))
         camera_mode = data_cfg.get("camera_mode", "random")
         if isinstance(camera_mode, str):
             camera_mode = camera_mode.lower()
@@ -84,29 +86,6 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
                 crop_mode=("random" if self.augment else "center"),
             )
         )
-
-    @staticmethod
-    def _parse_required_range(data_cfg: dict, key: str) -> tuple[int, int]:
-        if key not in data_cfg:
-            raise ValueError(
-                f"data.{key} must be provided as [min, max] (inclusive)."
-            )
-        value = data_cfg[key]
-        if not isinstance(value, (list, tuple)) or len(value) != 2:
-            raise ValueError(
-                f"data.{key} must be a list/tuple with two integers, got {value}."
-            )
-        start = int(value[0])
-        end = int(value[1])
-        if start <= 0 or end <= 0:
-            raise ValueError(
-                f"data.{key} must contain positive integers, got [{start}, {end}]."
-            )
-        if start > end:
-            raise ValueError(
-                f"data.{key} min must be <= max, got [{start}, {end}]."
-            )
-        return (start, end)
 
     def build_sample(self, scene: NPZScene) -> BLCSMultiViewSample:
         cams = self.select_cameras(scene, num_views_range=self.num_views_range, camera_mode=self.camera_mode)

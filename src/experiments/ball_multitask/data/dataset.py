@@ -141,11 +141,7 @@ class BallMultitaskDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
         data_cfg = data_cfg or {}
 
         self.scene_dir = Path(scene_dir)
-        seq_len_range_cfg = data_cfg.get("seq_len_range")
-        if not (isinstance(seq_len_range_cfg, (list, tuple)) and len(seq_len_range_cfg) == 2):
-            raise ValueError(
-                "data.seq_len_range must be provided as [min, max] with length 2."
-            )
+        seq_len_range_cfg = data_cfg["seq_len_range"]
         seq_len_range = (int(seq_len_range_cfg[0]), int(seq_len_range_cfg[1]))
         self.supervise_visible_only = bool(data_cfg.get("supervise_visible_only", True))
         self.augment = bool(augment)
