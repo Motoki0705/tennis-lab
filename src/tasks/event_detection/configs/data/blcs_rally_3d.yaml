@@ -1,5 +1,10 @@
 scene_dir: "data/blcs"
 
+split:
+  train_file: train.txt
+  val_file: val.txt
+  test_file: test.txt
+
 batch_size: 32
 num_workers: 4
 cache_max_scenes: 128
@@ -9,7 +14,7 @@ scene_sampler_mode: chunked
 scenes_per_batch: 32
 chunk_max_scenes: 64
 
-max_seq_len: 1024
+seq_len_range: [16, 1024]
 
 label:
   sigma_frames: 2.5
