@@ -25,6 +25,7 @@ from src.utils.data.scene_cache import (
     reset_scene_cache,
 )
 from src.utils.data.scene_id import resolve_scene_id
+from src.utils.data.soft_labels import extract_event_indices, gaussian_soft_labels
 
 __all__ = [
     "CachedIndex",
@@ -46,4 +47,6 @@ __all__ = [
     "reset_scene_cache",
     "resolve_scene_id",
     "save_cached_index",
+    "extract_event_indices",
+    "gaussian_soft_labels",
 ]
