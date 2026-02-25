@@ -72,6 +72,11 @@ class CameraSelection:
 
     @property
     def primary(self) -> int:
+        """Return the first selected camera index.
+
+        This is the canonical camera to use for single-view tasks when camera
+        selection is represented as a multi-view container.
+        """
         if not self.indices:
             raise ValueError("CameraSelection is empty.")
         return int(self.indices[0])
@@ -112,6 +117,11 @@ class NPZScene:
 
     @property
     def shots(self) -> list[dict[str, Any]]:
+        """Return validated shot event metadata entries from ``meta['shots']``.
+
+        Non-dict entries are ignored. If ``meta['shots']`` is missing or not a
+        list, an empty list is returned.
+        """
         shots = self.meta.get("shots", [])
         if not isinstance(shots, list):
             return []
@@ -126,6 +136,12 @@ class NPZScene:
             return None
 
     def effective_num_frames(self, *candidate_lengths: int) -> int:
+        """Resolve an effective frame length from scene metadata and array lengths.
+
+        Returns the minimum positive length across ``self.num_frames`` and any
+        provided candidate lengths. This is useful when metadata length and
+        payload array lengths may differ.
+        """
         lengths = [int(self.num_frames)]
         for n in candidate_lengths:
             if int(n) > 0:
@@ -161,6 +177,13 @@ class NPZScene:
         *,
         window: TemporalWindow | None = None,
     ) -> np.ndarray:
+        """Return per-frame ball UV coordinates for a camera as a copied array.
+
+        Args:
+            cam_idx: Camera index.
+            window: Optional temporal window. If provided, the returned array is
+                sliced by ``window``.
+        """
         prefix = self._camera_prefix(cam_idx)
         return self._copy_temporal_array(f"{prefix}ball_uv", window=window)
 
@@ -187,6 +210,12 @@ class NPZScene:
         *,
         window: TemporalWindow | None = None,
     ) -> CameraViewArrays:
+        """Return a grouped per-camera BLCS payload view as copied arrays.
+
+        Temporal slicing is applied only to per-frame arrays (`ball_uv`,
+        `ball_visible`). Court keypoints are static per scene/camera and are
+        returned without temporal slicing.
+        """
         return CameraViewArrays(
             ball_uv=self.get_ball_uv(cam_idx, window=window),
             ball_visible=self.get_ball_visible(cam_idx, window=window),
@@ -380,6 +409,11 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
         )
 
     def select_camera(self, scene: NPZScene) -> int:
+        """Select a single camera index for ``scene`` using dataset config.
+
+        This is equivalent to calling ``select_cameras(..., num_views_range=(1,1))``
+        and returning the primary camera.
+        """
         return self.select_cameras(scene, num_views_range=(1, 1)).primary
 
     def select_cameras(
@@ -389,6 +423,22 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
         num_views_range: tuple[int, int] | None = None,
         camera_mode: str | int | None = None,
     ) -> CameraSelection:
+        """Select one or more camera indices for ``scene``.
+
+        Args:
+            scene: Loaded scene.
+            num_views_range: Inclusive range ``(min_views, max_views)``. If
+                omitted, ``self.config.num_views_range`` is used.
+            camera_mode: Camera selection policy. If omitted,
+                ``self.config.camera_mode`` is used.
+
+        Returns:
+            A ``CameraSelection`` containing unique camera indices.
+
+        Raises:
+            ValueError: If the requested view range is invalid or the scene does
+                not have enough cameras.
+        """
         view_range = num_views_range or self.config.num_views_range
         self._validate_range(view_range, name="num_views_range")
         min_views, max_views = int(view_range[0]), int(view_range[1])
@@ -432,6 +482,24 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
         seq_len_range: tuple[int, int] | None = None,
         crop_mode: Literal["random", "center"] | None = None,
     ) -> TemporalWindow:
+        """Select a temporal window from ``scene`` using range-based sampling.
+
+        Args:
+            scene: Loaded scene.
+            full_len: Effective sequence length to sample from. If omitted,
+                ``scene.num_frames`` is used.
+            seq_len_range: Inclusive range ``(min_seq_len, max_seq_len)``. If
+                omitted, ``self.config.seq_len_range`` is used.
+            crop_mode: ``"random"`` or ``"center"``. If omitted,
+                ``self.config.crop_mode`` is used.
+
+        Returns:
+            A ``TemporalWindow`` describing the selected crop.
+
+        Raises:
+            ValueError: If the scene is shorter than the minimum sequence length
+                or if arguments are invalid.
+        """
         seq_range = seq_len_range or self.config.seq_len_range
         self._validate_range(seq_range, name="seq_len_range")
         min_seq, max_seq = int(seq_range[0]), int(seq_range[1])
