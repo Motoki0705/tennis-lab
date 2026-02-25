@@ -12,7 +12,7 @@
   <img src="assets/wasb/gt_vs_pred.gif" width="840" />
 </p>
 
-- 実装/実行: [src/tasks/wasb/README.md](src/tasks/wasb/README.md)
+- 実装/実行: [third_party/WASB-SBDT/README.md](third_party/WASB-SBDT/README.md)
 
 ### Court Detection（CourtKP20）
 
@@ -78,19 +78,10 @@ uv run python -m src.<task>.scripts.<entrypoint> key=value
 
 - [src/tasks/blcs/README.md](src/tasks/blcs/README.md)
 - [src/tasks/plcs/README.md](src/tasks/plcs/README.md)
-- [src/tasks/wasb/README.md](src/tasks/wasb/README.md)
+- [third_party/WASB-SBDT/README.md](third_party/WASB-SBDT/README.md)
 - [src/tasks/court_detection/README.md](src/tasks/court_detection/README.md)
 - [src/tasks/trajectory_completion/README.md](src/tasks/trajectory_completion/README.md)
 - [src/tasks/event_detection/README.md](src/tasks/event_detection/README.md)
-
-### 4) テスト（E2E）
-
-```bash
-uv run pytest tests/e2e -v
-
-# CUDAなし環境:
-uv run pytest tests/e2e -v -m "not cuda"
-```
 
 ### Docker
 
@@ -104,15 +95,14 @@ GPU環境をまとめて立ち上げたい場合は `docker/docker-compose.yml` 
 
 ### どこに何があるか（タスク）
 
-- WASB: 画像上の2Dボール位置（`src/tasks/wasb`）
+- WASB: 画像上の2Dボール位置（`third_party/WASB-SBDT`）
 - Court Detection: 20点コートキーポイント（`src/tasks/court_detection`）
 - PLCS: 2Dスケルトン → コート上3Dプレーヤー位置/yaw（`src/tasks/plcs`）
 - BLCS: 2Dボール位置 → コート上3Dボール軌道（`src/tasks/blcs`）
 - Trajectory Completion: 欠損した2Dボール軌道を補完（`src/tasks/trajectory_completion`）
 - Event Detection: ショット/バウンスのタイミング推定（`src/tasks/event_detection`）
-- 統合: 上記をまとめて1本のパイプラインとして回す（[src/tennis_scene/README.md](src/tennis_scene/README.md)）
-
-※ 外部モジュール（例: GVHMR）は `third_party/` に隔離しています。
+- GVHMR: 画像列 -> 2Dスケルトン + SMPL (`third_party/GVHMR`)
+- 統合: 上記をまとめて1本のパイプラインとして回す (`src/tennis_scene/README.md`)
 
 ### 典型データフロー
 
