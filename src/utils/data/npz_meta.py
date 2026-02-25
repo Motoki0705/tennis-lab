@@ -29,24 +29,3 @@ def decode_meta(meta_raw: Any) -> dict[str, Any]:
     if isinstance(meta_raw, np.generic):
         return {}
     return meta_raw if isinstance(meta_raw, dict) else {}
-
-
-def get_num_frames(meta: dict[str, Any], fallback_T: int) -> int:
-    """Resolve the number of frames for a scene.
-
-    Args:
-        meta: Decoded metadata dictionary.
-        fallback_T: Fallback number of frames (e.g., array length).
-
-    Returns:
-        Number of frames as an integer.
-    """
-    if not isinstance(meta, dict):
-        return int(fallback_T)
-    num_frames = meta.get("num_frames")
-    if num_frames is None:
-        return int(fallback_T)
-    try:
-        return int(num_frames)
-    except (TypeError, ValueError):
-        return int(fallback_T)
