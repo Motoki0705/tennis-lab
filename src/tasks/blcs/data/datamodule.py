@@ -57,19 +57,14 @@ class BLCSDataModule(pl.LightningDataModule):
 
         if stage == "fit" or stage is None:
             train_split = self.scene_dir / "train.txt"
-            if train_split.exists():
-                self.train_dataset = BallTrajectoryDataset(
-                    scene_dir=self.scene_dir,
-                    split_file="train.txt",
-                    config=self.config,
-                    augment=True,
-                )
-            else:
-                self.train_dataset = BallTrajectoryDataset(
-                    scene_dir=self.scene_dir,
-                    config=self.config,
-                    augment=True,
-                )
+            if not train_split.exists():
+                raise RuntimeError(f"Missing required split file: {train_split}")
+            self.train_dataset = BallTrajectoryDataset(
+                scene_dir=self.scene_dir,
+                split_file="train.txt",
+                config=self.config,
+                augment=True,
+            )
 
             val_split = self.scene_dir / "val.txt"
             if val_split.exists():
@@ -84,19 +79,14 @@ class BLCSDataModule(pl.LightningDataModule):
 
         if stage == "test" or stage is None:
             test_split = self.scene_dir / "test.txt"
-            if test_split.exists():
-                self.test_dataset = BallTrajectoryDataset(
-                    scene_dir=self.scene_dir,
-                    split_file="test.txt",
-                    config=self.config,
-                    augment=False,
-                )
-            else:
-                self.test_dataset = BallTrajectoryDataset(
-                    scene_dir=self.scene_dir,
-                    config=self.config,
-                    augment=False,
-                )
+            if not test_split.exists():
+                raise RuntimeError(f"Missing required split file: {test_split}")
+            self.test_dataset = BallTrajectoryDataset(
+                scene_dir=self.scene_dir,
+                split_file="test.txt",
+                config=self.config,
+                augment=False,
+            )
 
     def _build_loader(self, dataset: BallTrajectoryDataset, *, train: bool) -> DataLoader:
         batch_sampler = build_scene_sampler(
