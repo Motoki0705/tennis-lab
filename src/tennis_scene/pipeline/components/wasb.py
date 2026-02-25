@@ -7,9 +7,9 @@ model from the WASB-SBDT library.
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import logging
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -171,36 +171,16 @@ class WASBModule(BasePipelineModule):
         self._pipeline = None
 
     def load(self) -> None:
-        """Load the WASB pipeline.
-
-        Dynamically imports :class:`WASBPredictor` and
-        :class:`VideoBallLocalizationPipeline` from
-        ``third_party/WASB-SBDT/src/inference/`` to avoid a hard coupling to
-        a top-level package path (the directory name contains a hyphen).
-        """
+        """Load the WASB pipeline."""
         if self._pipeline is not None:
             return
 
         LOGGER.info(f"Loading WASB model from {self.config.checkpoint}")
 
-        _inference_path = (
-            Path(__file__).parents[4]
-            / "third_party"
-            / "WASB-SBDT"
-            / "src"
-            / "inference"
-            / "__init__.py"
-        )
-        spec = importlib.util.spec_from_file_location(
-            "wasb_sbdt_inference", _inference_path
-        )
-        if spec is None or spec.loader is None:
-            raise ImportError(f"Cannot load WASB inference module from {_inference_path}")
-        _mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(_mod)  # type: ignore[union-attr]
+        self._wasb_root = Path(__file__).parents[4] / "third_party" / "WASB-SBDT" / "src"
+        sys.path.insert(0, str(self._wasb_root))
 
-        WASBPredictor = _mod.WASBPredictor
-        VideoBallLocalizationPipeline = _mod.VideoBallLocalizationPipeline
+        from inference import WASBPredictor, VideoBallLocalizationPipeline
 
         predictor = WASBPredictor.load_from_checkpoint(
             self.config.checkpoint, device=self.config.device
