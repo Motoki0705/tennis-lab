@@ -13,7 +13,7 @@ from torch import Tensor
 
 from src.tasks.event_detection.data.types import Event3DSample, EventUVSample
 from src.utils.data.soft_labels import extract_event_indices, gaussian_soft_labels
-from src.utils.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
+from src.utils.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -59,32 +59,25 @@ class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
         config: DictConfig | None = None,
         augment: bool = False,
     ) -> None:
-        _scene_dir = Path(scene_dir)
         self.input_type = input_type
         self.hydra_cfg = config or {}
         self.augment = augment
+        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+        self._configure_task(data_cfg)
+        super().__init__(
+            config=self._build_scene_dataset_config(
+                scene_dir=scene_dir, split_file=split_file, data_cfg=data_cfg,
+            )
+        )
 
-        data_cfg = self.hydra_cfg.get("data", {}) or {}
-        seq_len_range_cfg = data_cfg["seq_len_range"]
-        seq_len_range = (int(seq_len_range_cfg[0]), int(seq_len_range_cfg[1]))
+    # -- Composed-method hooks ------------------------------------------
 
+    def _configure_task(self, data_cfg: dict) -> None:  # type: ignore[override]
         label_cfg = data_cfg.get("label", {}) or {}
         self.label_cfg = LabelConfig(
             sigma_frames=float(label_cfg.get("sigma_frames", 2.5)),
             shot_time_key=str(label_cfg.get("shot_time_key", "t_start")),
             bounce_time_key=str(label_cfg.get("bounce_time_key", "t_bounce1")),
-        )
-
-        super().__init__(
-            config=SceneDatasetConfig(
-                scene_dir=_scene_dir,
-                split_file=Path(split_file),
-                seq_len_range=seq_len_range,
-                num_views_range=(1, 1),
-                cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
-                camera_mode=data_cfg.get("camera_mode", "random"),
-                crop_mode=("random" if self.augment else "center"),
-            )
         )
 
     def _make_targets(self, meta: dict, T: int, device: torch.device) -> Tensor:

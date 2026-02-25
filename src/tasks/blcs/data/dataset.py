@@ -43,16 +43,21 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
     ) -> None:
         self.hydra_cfg = config or {}
         self.augment = augment
+        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+        self._configure_task(data_cfg)
+        super().__init__(
+            config=self._build_scene_dataset_config(
+                scene_dir=scene_dir, split_file=split_file, data_cfg=data_cfg,
+            )
+        )
 
-        data_cfg = self.hydra_cfg.get("data", {})
-        seq_len_range_cfg = data_cfg["seq_len_range"]
-        self.seq_len_range = (int(seq_len_range_cfg[0]), int(seq_len_range_cfg[1]))
-        num_views_range_cfg = data_cfg["num_views_range"]
-        self.num_views_range = (int(num_views_range_cfg[0]), int(num_views_range_cfg[1]))
-        camera_mode = data_cfg.get("camera_mode", "random")
-        if isinstance(camera_mode, str):
-            camera_mode = camera_mode.lower()
-        self.camera_mode = camera_mode
+    # -- Composed-method hooks ------------------------------------------
+
+    def _configure_task(self, data_cfg: dict) -> None:  # type: ignore[override]
+        # Multiview ranges
+        self.seq_len_range = self._parse_int_range(data_cfg, "seq_len_range")
+        self.num_views_range = self._parse_int_range(data_cfg, "num_views_range")
+        self.camera_mode = self._parse_camera_mode(data_cfg)
 
         # Augmentation parameters
         aug_cfg = data_cfg.get("augmentation", {})
@@ -73,17 +78,21 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
                 f"augmentation.scale_range min must be <= max, got {self.scale_range}."
             )
 
-        _scene_dir = Path(scene_dir)
-        super().__init__(
-            config=SceneDatasetConfig(
-                scene_dir=_scene_dir,
-                split_file=Path(split_file),
-                seq_len_range=self.seq_len_range,
-                num_views_range=self.num_views_range,
-                cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
-                camera_mode=self.camera_mode,
-                crop_mode=("random" if self.augment else "center"),
-            )
+    def _build_scene_dataset_config(  # type: ignore[override]
+        self,
+        *,
+        scene_dir: str | Path,
+        split_file: str | Path,
+        data_cfg: dict,
+    ) -> SceneDatasetConfig:
+        return SceneDatasetConfig(
+            scene_dir=Path(scene_dir),
+            split_file=Path(split_file),
+            seq_len_range=self.seq_len_range,
+            num_views_range=self.num_views_range,
+            cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
+            camera_mode=self.camera_mode,
+            crop_mode=("random" if self.augment else "center"),
         )
 
     def build_sample(self, scene: NPZScene) -> BLCSMultiViewSample:
