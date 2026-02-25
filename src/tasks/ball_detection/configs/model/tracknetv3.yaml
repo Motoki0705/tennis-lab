@@ -1,7 +1,0 @@
-name: tracknetv3_heatmap
-
-seq_len: 8
-
-# optional warm-start from TrackNetV3 release checkpoint
-pretrained_checkpoint: checkpoints/tracknetv3/TrackNet_best.pt
-strict_pretrained_load: false

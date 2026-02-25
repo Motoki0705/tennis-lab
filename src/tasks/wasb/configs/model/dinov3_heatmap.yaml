@@ -1,9 +1,0 @@
-name: dinov3_heatmap
-
-# FPN settings
-fpn_channels: [256, 128, 64, 32]
-
-# Optional backbone checkpoint. For now we point to the local DINOv3 repo
-# directory so that load_backbone_checkpoint is a no-op unless a concrete
-# .pth path is provided.
-backbone_checkpoint: third_party/dinov3/checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth
