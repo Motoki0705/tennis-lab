@@ -2,8 +2,8 @@
 
 Example commands:
     `uv run python -m src.tasks.blcs.scripts.generate_dataset`
-    `uv run python -m src.tasks.blcs.scripts.generate_dataset generator.num_rally_scenes=100`
-    `uv run python -m src.tasks.blcs.scripts.generate_dataset run.output_dir=data/blcs generator.num_rally_scenes=500`
+    `uv run python -m src.tasks.blcs.scripts.generate_dataset generator.num_scenes=100`
+    `uv run python -m src.tasks.blcs.scripts.generate_dataset run.output_dir=data/blcs generator.num_scenes=500`
 
 Config entry point: `src/tasks/blcs/configs/generate_dataset.yaml`
 """
@@ -146,7 +146,7 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         targeted_velocity=targeted_velocity_config,
         num_cameras_sampled=int(cfg.generator.num_cameras_sampled),
         ball_visibility_threshold=float(cfg.generator.ball_visibility_threshold),
-        max_attempts_per_cell=int(cfg.generator.max_attempts_per_cell),
+        max_attempts_multiplier=int(cfg.generator.max_attempts_multiplier),
     )
 
 
@@ -185,7 +185,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     generator_config = _build_generator_config(cfg)
 
     logger.info("Output directory: %s", output_dir)
-    logger.info("Number of rally scenes: %s", cfg.generator.num_rally_scenes)
+    logger.info("Number of scenes: %s", cfg.generator.num_scenes)
     logger.info("Max rallies per scene: %s", cfg.rally.max_rallies)
     logger.info("Cameras sampled per scene: %s", generator_config.num_cameras_sampled)
     logger.info("Ball visibility threshold: %s", generator_config.ball_visibility_threshold)
@@ -194,24 +194,24 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     generator = BLCSSceneGenerator(config=generator_config, device=str(cfg.run.device))
     writer = BLCSDatasetWriter(output_dir)
 
-    logger.info("Starting rally scene generation...")
+    logger.info("Starting scene generation...")
     total_scenes = 0
     total_cameras = 0
 
-    num_rally_scenes = int(cfg.generator.num_rally_scenes)
+    num_scenes = int(cfg.generator.num_scenes)
     for scene_data in tqdm(
-        generator.generate_rally_scenes(num_rally_scenes),
-        desc="Generating rallies",
-        total=num_rally_scenes,
+        generator.generate(num_scenes),
+        desc="Generating scenes",
+        total=num_scenes,
     ):
-        writer.save_rally_scene(scene_data)
+        writer.save_scene(scene_data)
         total_scenes += 1
         total_cameras += len(scene_data.cameras)
 
         if total_scenes % 100 == 0:
             avg_cams = total_cameras / total_scenes
             logger.info(
-                "Progress: %s rally scenes, %s cameras (avg %.1f/scene)",
+                "Progress: %s scenes, %s cameras (avg %.1f/scene)",
                 total_scenes,
                 total_cameras,
                 avg_cams,
@@ -234,7 +234,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     logger.info("=" * 60)
     logger.info("Dataset generation complete!")
     logger.info("Output: %s", output_dir)
-    logger.info("Total rally scenes: %s", total_scenes)
+    logger.info("Total scenes: %s", total_scenes)
     logger.info("Total cameras: %s", total_cameras)
     if total_scenes > 0:
         logger.info("Avg cameras/scene: %.2f", total_cameras / total_scenes)

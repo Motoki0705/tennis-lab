@@ -1,4 +1,4 @@
-"""Evaluate BLCS dataset trajectory distributions.
+"""Evaluate BLCS rally-scene trajectory distributions.
 
 Computes per-shot metrics from NPZ scene files, including:
 - apex height (m) and time to apex (s)
@@ -7,7 +7,6 @@ Computes per-shot metrics from NPZ scene files, including:
 - horizontal range (m) and flight path length (m)
 - average speed (m/s) and speed at bounce (m/s)
 
-Supports both single-shot scenes and rally scenes.
 """
 
 from __future__ import annotations
@@ -123,26 +122,12 @@ def _collect_shot_metrics(
     meta: dict, positions: np.ndarray, velocities: np.ndarray
 ) -> list[dict]:
     fps_out = int(meta["fps_out"])
+    shots = meta.get("shots")
+    if not isinstance(shots, list):
+        raise ValueError("BLCS scene metadata must include a 'shots' list")
     metrics = []
 
-    if "shots" not in meta:
-        # Single-shot scene
-        t_start = 0
-        t_bounce1 = int(meta["t_bounce1"])
-        category = meta.get("category", "unknown")
-        metrics.append(
-            _compute_metrics_for_shot(
-                positions=positions,
-                velocities=velocities,
-                t_start=t_start,
-                t_bounce1=t_bounce1,
-                fps_out=fps_out,
-                category=category,
-            )
-        )
-        return metrics
-
-    for shot in meta["shots"]:
+    for shot in shots:
         t_start = int(shot["t_start"])
         t_bounce1 = int(shot["t_bounce1"])
         category = shot.get("category", "unknown")
