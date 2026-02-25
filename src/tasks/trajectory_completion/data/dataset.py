@@ -42,7 +42,7 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
         data_cfg = self.hydra_cfg.get("data", {}) if hasattr(self.hydra_cfg, "get") else {}
         data_cfg = data_cfg or {}
 
-        self.scene_dir = Path(scene_dir)
+        _scene_dir = Path(scene_dir)
         self.supervise_visible_only = bool(data_cfg.get("supervise_visible_only", True))
         self.augment = bool(augment)
         crop_mode = "random" if self.augment else "center"
@@ -59,7 +59,7 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
         self.event_ratio = (int(ratio[0]), int(ratio[1]))
         super().__init__(
             config=SceneDatasetConfig(
-                scene_dir=self.scene_dir,
+                scene_dir=_scene_dir,
                 split_file=Path(split_file),
                 seq_len_range=seq_len_range,
                 num_views_range=(1, 1),
@@ -89,21 +89,9 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
         else:
             ball_gt_vis = valid_t
 
-        if self.augment:
-            event_frames = extract_event_frames(scene.meta, full_len, offset=window.start)
-            ball_uv, ball_vis = self.argumenter(
-                ball_uv_gt,
-                ball_gt_vis,
-                event_frames=event_frames,
-                ratio=self.event_ratio,
-            )
-        else:
-            ball_uv = ball_uv_gt.clone()
-            ball_vis = ball_gt_vis.clone()
-
-        return {
-            "ball_uv": ball_uv,
-            "ball_vis": ball_vis,
+        sample: TrajectoryCompletionSample = {
+            "ball_uv": ball_uv_gt.clone(),
+            "ball_vis": ball_gt_vis.clone(),
             "ball_uv_gt": ball_uv_gt,
             "ball_gt_vis": ball_gt_vis,
             "ball_in_frame_gt": ball_in_frame_gt,
@@ -111,3 +99,25 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
             "court_vis": court_vis,
             "seq_len": seq_len_t,
         }
+        # Store transient event info for augment_sample (popped after use).
+        event_frames = extract_event_frames(scene.meta, full_len, offset=window.start)
+        sample["_event_frames"] = event_frames  # type: ignore[typeddict-unknown-key]
+        return sample
+
+    def augment_sample(
+        self, sample: TrajectoryCompletionSample
+    ) -> TrajectoryCompletionSample:
+        event_frames: dict[str, Tensor] | None = sample.pop("_event_frames", None)  # type: ignore[misc]
+        if not self.augment:
+            return sample
+        if event_frames is None:
+            event_frames = {"bounce": torch.empty(0, dtype=torch.long), "shot": torch.empty(0, dtype=torch.long)}
+        ball_uv, ball_vis = self.argumenter(
+            sample["ball_uv_gt"],
+            sample["ball_gt_vis"],
+            event_frames=event_frames,
+            ratio=self.event_ratio,
+        )
+        sample["ball_uv"] = ball_uv
+        sample["ball_vis"] = ball_vis
+        return sample

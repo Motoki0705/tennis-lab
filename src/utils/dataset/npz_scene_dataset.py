@@ -531,6 +531,15 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
         """Build a task-specific sample from a loaded NPZScene."""
         raise NotImplementedError
 
+    def augment_sample(self, sample: SampleT) -> SampleT:
+        """Apply task-specific augmentation to a built sample.
+
+        Override in subclasses that need augmentation.  The default
+        implementation returns the sample unchanged.
+        """
+        return sample
+
     def __getitem__(self, idx: int) -> SampleT:
         scene = self._load_scene(self.scenes[idx])
-        return self.build_sample(scene)
+        sample = self.build_sample(scene)
+        return self.augment_sample(sample)
