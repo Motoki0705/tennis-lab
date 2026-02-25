@@ -2,28 +2,25 @@
 
 from __future__ import annotations
 
-import json
 import random as rng
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import numpy as np
 import torch
 from torch import Tensor
-from torch.utils.data import Dataset
 
 from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch, BLCSMultiViewSample
-from src.utils.data.scene_cache import get_scene_cache, load_npz_scene
 from src.utils.dataset.augmentation import (
     add_gaussian_noise,
     random_visibility_dropout,
     scale_uv_with_visibility,
 )
+from src.utils.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class BallTrajectoryDataset(Dataset):
+class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
     """Unified BLCS dataset that always returns canonical multiview samples.
 
     The canonical sample format keeps camera and temporal dimensions:
@@ -38,8 +35,8 @@ class BallTrajectoryDataset(Dataset):
 
     def __init__(
         self,
-        scene_dir: str | Path | None = None,
-        split_file: str | Path | None = None,
+        scene_dir: str | Path,
+        split_file: str | Path,
         config: DictConfig | None = None,
         augment: bool = True,
     ) -> None:
@@ -49,9 +46,10 @@ class BallTrajectoryDataset(Dataset):
         data_cfg = self.config.get("data", {})
         self.seq_len_range = self._parse_required_range(data_cfg, "seq_len_range")
         self.num_views_range = self._parse_required_range(data_cfg, "num_views_range")
-        self.min_required_views = self.num_views_range[0]
-
-        self.camera_mode = str(data_cfg.get("camera_mode", "random")).lower()
+        camera_mode = data_cfg.get("camera_mode", "random")
+        if isinstance(camera_mode, str):
+            camera_mode = camera_mode.lower()
+        self.camera_mode = camera_mode
 
         # Augmentation parameters
         aug_cfg = data_cfg.get("augmentation", {})
@@ -75,23 +73,17 @@ class BallTrajectoryDataset(Dataset):
         self.scene_dir = Path(scene_dir) if scene_dir else None
         if self.scene_dir is None:
             raise ValueError("scene_dir must be set for BallTrajectoryDataset.")
-
-        self.cache_max_scenes = int(data_cfg.get("cache_max_scenes", 128))
-        self._scene_cache = (
-            get_scene_cache(load_fn=load_npz_scene, maxsize=self.cache_max_scenes)
-            if self.cache_max_scenes > 0
-            else None
+        super().__init__(
+            config=SceneDatasetConfig(
+                scene_dir=self.scene_dir,
+                split_file=Path(split_file),
+                seq_len_range=self.seq_len_range,
+                num_views_range=self.num_views_range,
+                cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
+                camera_mode=self.camera_mode,
+                crop_mode=("random" if self.augment else "center"),
+            )
         )
-
-        scenes_subdir = self.scene_dir / "scenes"
-        self.scenes_base = scenes_subdir if scenes_subdir.exists() else self.scene_dir
-
-        if split_file:
-            self.scenes = self._load_split_file(split_file)
-        else:
-            self.scenes = sorted(self.scenes_base.glob("*.npz"))
-
-        self._filter_scenes_by_camera_count()
 
     @staticmethod
     def _parse_required_range(data_cfg: dict, key: str) -> tuple[int, int]:
@@ -116,113 +108,28 @@ class BallTrajectoryDataset(Dataset):
             )
         return (start, end)
 
-    def _load_split_file(self, split_file: str | Path) -> list[Path]:
-        split_path = Path(split_file)
-        if not split_path.exists() and not split_path.is_absolute():
-            if split_path.parent == Path("."):
-                split_path = self.scene_dir / split_file
-
-        scenes: list[Path] = []
-        with open(split_path) as f:
-            for line in f:
-                filename = line.strip()
-                if filename:
-                    scenes.append(self.scenes_base / filename)
-        return scenes
-
-    def _filter_scenes_by_camera_count(self) -> None:
-        valid_scenes: list[Path] = []
-        for scene_path in self.scenes:
-            try:
-                data = np.load(scene_path, allow_pickle=True)
-                num_cameras = int(data["num_cameras"])
-                if num_cameras >= self.min_required_views:
-                    valid_scenes.append(scene_path)
-            except Exception:
-                continue
-
-        print(
-            "BallTrajectoryDataset: "
-            f"{len(valid_scenes)}/{len(self.scenes)} scenes have >= "
-            f"{self.min_required_views} cameras"
-        )
-        self.scenes = valid_scenes
-
-    def _choose_seq_range(self, num_frames: int) -> tuple[int, int, int]:
-        min_seq, max_seq = self.seq_len_range
-        max_possible = min(max_seq, num_frames)
-        min_possible = min(min_seq, max_possible)
-        actual_seq_len = rng.randint(min_possible, max_possible)
-
-        if actual_seq_len < min_seq:
-            raise ValueError(
-                f"Scene too short: seq_len={actual_seq_len} is below "
-                f"data.seq_len_range[0]={min_seq}."
-            )
-
-        if actual_seq_len < num_frames:
-            if self.augment:
-                start_frame = rng.randint(0, num_frames - actual_seq_len)
-            else:
-                start_frame = (num_frames - actual_seq_len) // 2
-        else:
-            start_frame = 0
-        end_frame = start_frame + actual_seq_len
-        return start_frame, end_frame, actual_seq_len
-
-    def _choose_camera_indices(self, num_cameras: int) -> list[int]:
-        min_views, max_views = self.num_views_range
-        max_possible_views = min(max_views, num_cameras)
-        min_possible_views = min(min_views, max_possible_views)
-        actual_num_views = rng.randint(min_possible_views, max_possible_views)
-
-        if self.camera_mode == "random":
-            return rng.sample(range(num_cameras), actual_num_views)
-        if self.camera_mode == "first":
-            return list(range(actual_num_views))
-
-        cam_idx = int(self.camera_mode)
-        if cam_idx < 0 or cam_idx >= num_cameras:
-            raise ValueError(
-                f"camera_mode={self.camera_mode} is out of range for {num_cameras} cameras"
-            )
-        if actual_num_views == 1:
-            return [cam_idx]
-        remaining = [idx for idx in range(num_cameras) if idx != cam_idx]
-        sampled = rng.sample(remaining, actual_num_views - 1)
-        return [cam_idx, *sampled]
-
-    def _load_multiview_sample(self, path: Path) -> BLCSMultiViewSample:
-        data = self._scene_cache.get(path) if self._scene_cache is not None else load_npz_scene(path)
-
-        meta_raw = data.get("meta", {})
-        if isinstance(meta_raw, (bytes, bytearray)):
-            meta_raw = meta_raw.decode("utf-8")
-        if isinstance(meta_raw, str):
-            meta = json.loads(meta_raw)
-        else:
-            meta = meta_raw if isinstance(meta_raw, dict) else {}
-
-        num_cameras = int(data["num_cameras"])
-        num_frames = int(meta["num_frames"])
-
-        start_frame, end_frame, seq_len = self._choose_seq_range(num_frames)
-        selected_cams = self._choose_camera_indices(num_cameras)
-
+    def build_sample(self, scene: NPZScene) -> BLCSMultiViewSample:
+        cams = self.select_cameras(scene, num_views_range=self.num_views_range, camera_mode=self.camera_mode)
+        # Use camera trajectory length to guard against metadata drift.
+        primary_len = int(scene.get_ball_uv(cams.primary).shape[0])
+        pos_len = int(scene.data["ball_pos_norm"].shape[0])
+        vel_len = int(scene.data["ball_vel_world"].shape[0])
+        full_len = scene.effective_num_frames(primary_len, pos_len, vel_len)
+        window = self.select_window(scene, full_len=full_len)
         ball_uv_list: list[Tensor] = []
         ball_vis_list: list[Tensor] = []
         court_kp_list: list[Tensor] = []
         court_vis_list: list[Tensor] = []
 
-        for cam_idx in selected_cams:
-            prefix = f"cam_{cam_idx}_"
-            ball_uv = torch.from_numpy(data[f"{prefix}ball_uv"][start_frame:end_frame].copy()).float()
-            ball_vis = torch.from_numpy(data[f"{prefix}ball_visible"][start_frame:end_frame].copy()).float()
-            court_kp = torch.from_numpy(data[f"{prefix}court_kp_uv"]).float()
-            court_vis = torch.from_numpy(data[f"{prefix}court_kp_visible"]).float()
+        for cam_idx in cams.indices:
+            view = scene.get_camera_view(cam_idx, window=window)
+            ball_uv = torch.from_numpy(view.ball_uv).float()
+            ball_vis = torch.from_numpy(view.ball_visible).float()
+            court_kp = torch.from_numpy(view.court_kp_uv).float()
+            court_vis = torch.from_numpy(view.court_kp_visible).float()
 
-            court_kp_expanded = court_kp.unsqueeze(0).expand(seq_len, -1, -1)
-            court_vis_expanded = court_vis.unsqueeze(0).expand(seq_len, -1)
+            court_kp_expanded = court_kp.unsqueeze(0).expand(window.seq_len, -1, -1)
+            court_vis_expanded = court_vis.unsqueeze(0).expand(window.seq_len, -1)
 
             ball_uv_list.append(ball_uv)
             ball_vis_list.append(ball_vis)
@@ -232,12 +139,12 @@ class BallTrajectoryDataset(Dataset):
         sample: BLCSMultiViewSample = {
             "ball_uv": torch.stack(ball_uv_list, dim=0),
             "ball_vis": torch.stack(ball_vis_list, dim=0),
-            "ball_mask": torch.ones(len(selected_cams), seq_len, dtype=torch.float32),
+            "ball_mask": torch.ones(len(cams.indices), window.seq_len, dtype=torch.float32),
             "court_kp": torch.stack(court_kp_list, dim=0),
             "court_vis": torch.stack(court_vis_list, dim=0),
-            "position_3d": torch.from_numpy(data["ball_pos_norm"][start_frame:end_frame].copy()).float(),
-            "velocity_3d": torch.from_numpy(data["ball_vel_world"][start_frame:end_frame].copy()).float(),
-            "seq_len": torch.tensor(seq_len, dtype=torch.long),
+            "position_3d": torch.from_numpy(scene.get_ball_pos_norm(window=window)).float(),
+            "velocity_3d": torch.from_numpy(scene.get_ball_vel_world(window=window)).float(),
+            "seq_len": torch.tensor(window.seq_len, dtype=torch.long),
         }
         return sample
 
@@ -283,11 +190,8 @@ class BallTrajectoryDataset(Dataset):
 
         return sample
 
-    def __len__(self) -> int:
-        return len(self.scenes)
-
     def __getitem__(self, idx: int) -> BLCSMultiViewSample:
-        sample = self._load_multiview_sample(self.scenes[idx])
+        sample = self.build_sample(self._load_scene(self.scenes[idx]))
 
         if self.augment:
             sample = self._apply_augmentation_multiview(sample)
