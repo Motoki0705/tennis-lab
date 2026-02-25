@@ -49,6 +49,8 @@ class DataConfig:
     """Resolved datamodule configuration."""
 
     scene_dir: Path
+    train_split_file: str
+    val_split_file: str
     batch_size: int
     num_workers: int
     input_type: Literal["uv", "3d"]
@@ -72,6 +74,8 @@ class EventDetectionDataModule(pl.LightningDataModule):
 
         self._resolved = DataConfig(
             scene_dir=Path(str(data_cfg.get("scene_dir", "data/blcs"))),
+            train_split_file=str((data_cfg.get("split", {}) or {}).get("train_file", "train.txt")),
+            val_split_file=str((data_cfg.get("split", {}) or {}).get("val_file", "val.txt")),
             batch_size=int(data_cfg.get("batch_size", 16)),
             num_workers=int(data_cfg.get("num_workers", 4)),
             input_type=input_type,
@@ -95,14 +99,14 @@ class EventDetectionDataModule(pl.LightningDataModule):
         if stage in ("fit", None):
             self.train_dataset = BLCSRallyEventDataset(
                 scene_dir=scene_dir,
-                split="train",
+                split_file=self._resolved.train_split_file,
                 input_type=self._resolved.input_type,
                 config=self.config,
                 augment=False,
             )
             self.val_dataset = BLCSRallyEventDataset(
                 scene_dir=scene_dir,
-                split="val",
+                split_file=self._resolved.val_split_file,
                 input_type=self._resolved.input_type,
                 config=self.config,
                 augment=False,
