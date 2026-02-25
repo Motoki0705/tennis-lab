@@ -45,6 +45,7 @@ class NPZSceneHeader:
     """Lightweight header for scene filtering/indexing."""
 
     path: Path
+    meta: dict[str, Any]
     num_frames: int
     num_cameras: int
 
@@ -224,8 +225,10 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
         if not all_paths:
             raise RuntimeError(f"No scenes found from split_file={config.split_file}")
 
-        self.scene_headers = self._index_scene_headers(all_paths)
-        self.scenes = [h.path for h in self.scene_headers if self._passes_filters(h)]
+        all_headers = self._index_scene_headers(all_paths)
+        self.scene_headers = [h for h in all_headers if self._passes_filters(h)]
+        self.scenes = [h.path for h in self.scene_headers]
+        self._headers_by_path = {h.path: h for h in self.scene_headers}
         if not self.scenes:
             raise RuntimeError(
                 "No scenes remain after filtering: "
@@ -334,7 +337,12 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
                 num_cameras = int(np.asarray(payload["num_cameras"]).item())
             except Exception:
                 num_cameras = 0
-        return NPZSceneHeader(path=path, num_frames=max(0, int(num_frames)), num_cameras=max(0, int(num_cameras)))
+        return NPZSceneHeader(
+            path=path,
+            meta=dict(meta),
+            num_frames=max(0, int(num_frames)),
+            num_cameras=max(0, int(num_cameras)),
+        )
 
     def _index_scene_headers(self, paths: list[Path]) -> list[NPZSceneHeader]:
         return [self._extract_scene_header(path) for path in paths]
@@ -354,20 +362,21 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
     def __len__(self) -> int:
         return len(self.scenes)
 
-    def _load_scene(self, path: Path) -> NPZScene:
-        payload = self._scene_cache.get(path) if self._scene_cache is not None else _load_npz_payload(path)
-        meta = self._decode_meta(payload.get("meta", {}))
-        num_frames = self._resolve_num_frames(path=path, meta=meta, payload=payload)
+    def get_scene_header(self, path: Path) -> NPZSceneHeader:
         try:
-            num_cameras = int(np.asarray(payload["num_cameras"]).item())
-        except Exception as exc:
-            raise KeyError(f"{path}: missing or invalid 'num_cameras'") from exc
+            return self._headers_by_path[path]
+        except KeyError as exc:
+            raise KeyError(f"Scene header not found for path: {path}") from exc
+
+    def _load_scene(self, path: Path) -> NPZScene:
+        header = self.get_scene_header(path)
+        payload = self._scene_cache.get(path) if self._scene_cache is not None else _load_npz_payload(path)
         return NPZScene(
             path=path,
             data=payload,
-            meta=meta,
-            num_frames=max(0, int(num_frames)),
-            num_cameras=max(0, int(num_cameras)),
+            meta=dict(header.meta),
+            num_frames=int(header.num_frames),
+            num_cameras=int(header.num_cameras),
         )
 
     def select_camera(self, scene: NPZScene) -> int:
