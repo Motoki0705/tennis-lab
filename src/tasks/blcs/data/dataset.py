@@ -35,15 +35,16 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
 
     def __init__(
         self,
+        *,
         scene_dir: str | Path,
         split_file: str | Path,
         config: DictConfig | None = None,
         augment: bool = True,
     ) -> None:
-        self.config = config or {}
+        self.hydra_cfg = config or {}
         self.augment = augment
 
-        data_cfg = self.config.get("data", {})
+        data_cfg = self.hydra_cfg.get("data", {})
         seq_len_range_cfg = data_cfg["seq_len_range"]
         self.seq_len_range = (int(seq_len_range_cfg[0]), int(seq_len_range_cfg[1]))
         num_views_range_cfg = data_cfg["num_views_range"]
@@ -72,12 +73,10 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
                 f"augmentation.scale_range min must be <= max, got {self.scale_range}."
             )
 
-        self.scene_dir = Path(scene_dir) if scene_dir else None
-        if self.scene_dir is None:
-            raise ValueError("scene_dir must be set for BallTrajectoryDataset.")
+        _scene_dir = Path(scene_dir)
         super().__init__(
             config=SceneDatasetConfig(
-                scene_dir=self.scene_dir,
+                scene_dir=_scene_dir,
                 split_file=Path(split_file),
                 seq_len_range=self.seq_len_range,
                 num_views_range=self.num_views_range,
@@ -169,12 +168,9 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
 
         return sample
 
-    def __getitem__(self, idx: int) -> BLCSMultiViewSample:
-        sample = self.build_sample(self._load_scene(self.scenes[idx]))
-
+    def augment_sample(self, sample: BLCSMultiViewSample) -> BLCSMultiViewSample:
         if self.augment:
-            sample = self._apply_augmentation_multiview(sample)
-
+            return self._apply_augmentation_multiview(sample)
         return sample
 
 

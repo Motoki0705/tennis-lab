@@ -12,6 +12,7 @@ import torch
 from torch import Tensor
 
 from src.tasks.event_detection.data.types import Event3DSample, EventUVSample
+from src.utils.data.soft_labels import extract_event_indices, gaussian_soft_labels
 from src.utils.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
 
 if TYPE_CHECKING:
@@ -26,27 +27,10 @@ def _gaussian_soft_labels(
 ) -> Tensor:
     """Create soft labels with Gaussian peaks at given indices.
 
-    Args:
-        length: Sequence length T.
-        event_indices: List of event frame indices (0-based).
-        sigma: Standard deviation in frames.
-        device: Output device.
-
-    Returns:
-        Soft label tensor of shape (T,).
+    .. deprecated::
+        Use :func:`src.utils.data.soft_labels.gaussian_soft_labels` instead.
     """
-    if length <= 0:
-        return torch.zeros((0,), device=device)
-    if not event_indices:
-        return torch.zeros((length,), device=device)
-
-    t = torch.arange(length, device=device, dtype=torch.float32)
-    out = torch.zeros((length,), device=device, dtype=torch.float32)
-    denom = 2.0 * float(sigma) * float(sigma)
-    for idx in event_indices:
-        if 0 <= idx < length:
-            out = torch.maximum(out, torch.exp(-((t - float(idx)) ** 2) / denom))
-    return out
+    return gaussian_soft_labels(length, event_indices, sigma, device)
 
 
 @dataclass(frozen=True)
@@ -68,19 +52,19 @@ class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
 
     def __init__(
         self,
+        *,
         scene_dir: str | Path,
         split_file: str | Path,
         input_type: Literal["uv", "3d"] = "uv",
         config: DictConfig | None = None,
         augment: bool = False,
     ) -> None:
-        self.scene_dir = Path(scene_dir)
+        _scene_dir = Path(scene_dir)
         self.input_type = input_type
-        self.config = config or {}
+        self.hydra_cfg = config or {}
         self.augment = augment
 
-        data_cfg = self.config.get("data", {}) or {}
-        crop_mode = str(data_cfg.get("crop_mode", "center"))
+        data_cfg = self.hydra_cfg.get("data", {}) or {}
         seq_len_range_cfg = data_cfg["seq_len_range"]
         seq_len_range = (int(seq_len_range_cfg[0]), int(seq_len_range_cfg[1]))
 
@@ -93,37 +77,27 @@ class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
 
         super().__init__(
             config=SceneDatasetConfig(
-                scene_dir=self.scene_dir,
+                scene_dir=_scene_dir,
                 split_file=Path(split_file),
                 seq_len_range=seq_len_range,
                 num_views_range=(1, 1),
                 cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
                 camera_mode=data_cfg.get("camera_mode", "random"),
-                crop_mode=crop_mode,
+                crop_mode=("random" if self.augment else "center"),
             )
         )
 
     def _make_targets(self, meta: dict, T: int, device: torch.device) -> Tensor:
-        shots = meta.get("shots", []) or []
-        shot_times: list[int] = []
-        bounce_times: list[int] = []
-        for s in shots:
-            if not isinstance(s, dict):
-                continue
-            t_shot = int(s.get(self.label_cfg.shot_time_key, -1))
-            t_bounce = int(s.get(self.label_cfg.bounce_time_key, -1))
-            if t_shot >= 0:
-                shot_times.append(t_shot)
-            if t_bounce >= 0:
-                bounce_times.append(t_bounce)
+        shot_times = extract_event_indices(meta, self.label_cfg.shot_time_key)
+        bounce_times = extract_event_indices(meta, self.label_cfg.bounce_time_key)
 
-        y_shot = _gaussian_soft_labels(
+        y_shot = gaussian_soft_labels(
             length=T,
             event_indices=shot_times,
             sigma=self.label_cfg.sigma_frames,
             device=device,
         )
-        y_bounce = _gaussian_soft_labels(
+        y_bounce = gaussian_soft_labels(
             length=T,
             event_indices=bounce_times,
             sigma=self.label_cfg.sigma_frames,
@@ -198,12 +172,12 @@ if __name__ == "__main__":
         )
         split_path.write_text("scene_000.npz\n")
         cfg = {"data": {"seq_len_range": [T, T], "cache_max_scenes": 0}}
-        blcs_uv = BLCSRallyEventDataset(scene_dir, split_file="train.txt", input_type="uv", config=cfg)
+        blcs_uv = BLCSRallyEventDataset(scene_dir=scene_dir, split_file="train.txt", input_type="uv", config=cfg)
         sample_uv = blcs_uv[0]
         assert sample_uv["ball_uv"].shape == (T, 2)
         assert sample_uv["court_kp"].shape == (20, 2)
 
-        blcs_3d = BLCSRallyEventDataset(scene_dir, split_file="train.txt", input_type="3d", config=cfg)
+        blcs_3d = BLCSRallyEventDataset(scene_dir=scene_dir, split_file="train.txt", input_type="3d", config=cfg)
         sample_3d = blcs_3d[0]
         assert sample_3d["ball_pos_world"].shape == (T, 3)
     print("dataset smoke ok")
