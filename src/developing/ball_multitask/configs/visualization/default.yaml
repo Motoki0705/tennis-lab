@@ -1,0 +1,56 @@
+# Ball Multitask Visualization Runtime Options
+#
+# Usage:
+# - Override any field from CLI:
+#   python -m src.developing.ball_multitask.scripts.visualize visualization.scene_path=...
+# - `run.device` has higher priority than this file's device setting.
+
+# Execution mode
+# - visualize: run prediction and render task-specific animations
+# - predict: run prediction and print/save outputs without figure rendering
+# - info: print scene metadata only (no model inference)
+mode: visualize
+
+# Enabled renderers (separate windows / separate saved files)
+renderers:
+  - uv_completion
+  - uv_event
+  - traj3d_event
+  - blcs_traj3d
+
+# Scene selection
+scene_path: data/blcs/scenes/rally_000000.npz
+camera: 0
+
+# Model checkpoint
+checkpoint: checkpoints/ball_multitask/last.ckpt
+
+# Artifact paths
+# - save_dir: directory for rendered animation files
+# - output: npz path for numeric prediction outputs (+ .events.json sidecar)
+save_dir: assets/ball_multitask
+save_format: gif
+output: null
+
+# Info-only switch
+info: false
+
+# Animation options
+fps: 30.0
+show_court_lines: true
+event_radius_frames: 6
+event_sigma_frames: 2.5
+
+# In-frame handling
+# - cut_out_of_frame=true replaces out-of-frame UV predictions with NaN
+in_frame_threshold: 0.5
+cut_out_of_frame: false
+
+# Event post-processing controls
+threshold: 0.5
+min_distance: 1
+top_k: null
+
+# 3D position scaling
+# - true: convert normalized xyz into court-scale coordinates
+denormalize: true
