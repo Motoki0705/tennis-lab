@@ -288,5 +288,5 @@ uv run ruff check src/utils/dataset
 
 - PLCS dataset: `src/tasks/plcs/data/`
 - BLCS dataset: `src/tasks/blcs/data/`
-- WASB dataset: `src/tasks/wasb/data/`
+- WASB dataset: `third_party/WASB-SBDT/data/`
 - Type definitions: `src/{module}/data/types.py`
