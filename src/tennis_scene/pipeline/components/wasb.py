@@ -1,9 +1,15 @@
-"""WASB module for ball detection."""
+"""WASB module for ball detection.
+
+The actual inference implementation is provided by
+``third_party/WASB-SBDT/src/inference/`` which wraps the WASB (HRNet-based)
+model from the WASB-SBDT library.
+"""
 
 from __future__ import annotations
 
 import json
 import logging
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -171,8 +177,10 @@ class WASBModule(BasePipelineModule):
 
         LOGGER.info(f"Loading WASB model from {self.config.checkpoint}")
 
-        from src.tasks.wasb.inference import WASBPredictor
-        from src.tasks.wasb.pipeline import VideoBallLocalizationPipeline
+        self._wasb_root = Path(__file__).parents[4] / "third_party" / "WASB-SBDT" / "src"
+        sys.path.insert(0, str(self._wasb_root))
+
+        from inference import WASBPredictor, VideoBallLocalizationPipeline
 
         predictor = WASBPredictor.load_from_checkpoint(
             self.config.checkpoint, device=self.config.device
