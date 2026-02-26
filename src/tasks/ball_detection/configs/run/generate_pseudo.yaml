@@ -1,8 +1,0 @@
-output_dir: outputs/ball_detection/pseudo
-seed: 42
-gpus: 0
-resume: null
-fast_dev_run: false
-dry_run: false
-mode: pseudo
-device: cuda

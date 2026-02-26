@@ -2,8 +2,6 @@
 
 This module intentionally uses the "pure PyTorch / DeepSeek-style" building blocks in
 `src.utils.models.components` (MultiHeadSelfAttention + 2D RoPE + SwiGLU/MoE).
-
-It is primarily consumed by `src/developing/mae/models/mae_model.py`.
 """
 
 from __future__ import annotations
