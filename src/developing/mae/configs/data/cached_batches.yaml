@@ -1,0 +1,35 @@
+# Cached-batch data configuration for MAE training
+#
+# Uses background-generated, preprocessed batch caches to minimize runtime data loading.
+
+mode: cached_batches
+
+video_dir: data/tennis/raw/videos
+use_decord: true
+min_frames: 10
+
+cache_root: data/tennis/mae/cache
+cache_map_location: cpu
+
+val_split: 0.1
+
+samples_per_video: 360
+buckets: [256, 320, 384, 448, 512, 640, 768, 1024]
+bucket_alpha: 2.0
+base_batch_size: 32
+min_batch_size: 1
+upsample_limit: 1.0
+frame_sample_ratio: 1.0
+
+preprocess:
+  patch_size: 16
+  scale_min: 0.8
+  scale_max: 1.2
+  hflip_prob: 0.5
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+  output_dtype: float16
+
+num_workers: 4
+pin_memory: true
+
