@@ -12,8 +12,8 @@ import torch
 from torch import Tensor
 
 from src.utils.data.soft_labels import extract_event_indices, gaussian_soft_labels
-from src.utils.dataset.augmentation import add_gaussian_noise
-from src.utils.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase
+from src.utils.data.augmentation import add_gaussian_noise
+from src.tasks.base.data.scene_dataset import NPZScene, NPZSceneDatasetBase
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -146,18 +146,17 @@ class BallMultitaskDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
 
     def build_sample(self, scene: NPZScene) -> dict[str, Tensor]:
         cam_idx = self.select_camera(scene)
-        ball_uv_full = scene.get_ball_uv(cam_idx)
+        ball_uv_full = scene.get_camera_array(cam_idx, "ball_uv")
         full_len = scene.effective_num_frames(int(ball_uv_full.shape[0]))
         window = self.select_window(scene, full_len=full_len)
-        view = scene.get_camera_view(cam_idx, window=window)
 
-        ball_uv_gt = torch.from_numpy(view.ball_uv).float()
-        ball_visible = torch.from_numpy(view.ball_visible).to(torch.float32)
-        court_kp = torch.from_numpy(view.court_kp_uv).float()
-        court_vis = torch.from_numpy(view.court_kp_visible).to(torch.float32)
-        position_3d = torch.from_numpy(scene.get_ball_pos_norm(window=window)).float()
+        ball_uv_gt = torch.from_numpy(scene.get_camera_array(cam_idx, "ball_uv", window=window)).float()
+        ball_visible = torch.from_numpy(scene.get_camera_array(cam_idx, "ball_visible", window=window)).to(torch.float32)
+        court_kp = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_uv")).float()
+        court_vis = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_visible")).to(torch.float32)
+        position_3d = torch.from_numpy(scene.get_array("ball_pos_norm", window=window)).float()
         if scene.has_key("ball_pos_world"):
-            ball_pos_world = torch.from_numpy(scene.get_ball_pos_world(window=window)).float()
+            ball_pos_world = torch.from_numpy(scene.get_array("ball_pos_world", window=window)).float()
         else:
             ball_pos_world = position_3d.clone()
 

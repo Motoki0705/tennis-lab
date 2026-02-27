@@ -13,7 +13,7 @@ from torch import Tensor
 
 from src.tasks.event_detection.data.types import Event3DSample, EventUVSample
 from src.utils.data.soft_labels import extract_event_indices, gaussian_soft_labels
-from src.utils.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase
+from src.tasks.base.data.scene_dataset import NPZScene, NPZSceneDatasetBase
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -103,10 +103,10 @@ class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
         device = torch.device("cpu")
 
         if self.input_type == "3d":
-            ball_pos_world_full = scene.get_ball_pos_world()
+            ball_pos_world_full = scene.get_array("ball_pos_world")
             T_full = scene.effective_num_frames(int(ball_pos_world_full.shape[0]))
             window = self.select_window(scene, full_len=T_full)
-            ball_pos_world = torch.from_numpy(scene.get_ball_pos_world(window=window)).float()
+            ball_pos_world = torch.from_numpy(scene.get_array("ball_pos_world", window=window)).float()
             targets = self._make_targets(meta=meta, T=T_full, device=device)
             targets = targets[window.sl]
             seq_len = torch.tensor(window.seq_len, dtype=torch.long)
@@ -118,14 +118,13 @@ class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
 
         if self.input_type == "uv":
             cam_idx = self.select_camera(scene)
-            ball_uv_full = scene.get_ball_uv(cam_idx)
+            ball_uv_full = scene.get_camera_array(cam_idx, "ball_uv")
             T_full = scene.effective_num_frames(int(ball_uv_full.shape[0]))
             window = self.select_window(scene, full_len=T_full)
-            view = scene.get_camera_view(cam_idx, window=window)
-            ball_uv = torch.from_numpy(view.ball_uv).float()
-            ball_vis = torch.from_numpy(view.ball_visible).float()
-            court_kp = torch.from_numpy(view.court_kp_uv).float()
-            court_vis = torch.from_numpy(view.court_kp_visible).float()
+            ball_uv = torch.from_numpy(scene.get_camera_array(cam_idx, "ball_uv", window=window)).float()
+            ball_vis = torch.from_numpy(scene.get_camera_array(cam_idx, "ball_visible", window=window)).float()
+            court_kp = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_uv")).float()
+            court_vis = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_visible")).float()
             targets = self._make_targets(meta=meta, T=T_full, device=device)
             targets = targets[window.sl]
             seq_len = torch.tensor(window.seq_len, dtype=torch.long)

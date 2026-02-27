@@ -32,7 +32,7 @@ from src.tasks.blcs.data.types import (
     BLCSSceneMetaModel,
 )
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
-from src.utils.dataset.writer import BaseDatasetWriter
+from src.tasks.base.data.dataset_writer import BaseDatasetWriter
 
 logger = logging.getLogger(__name__)
 

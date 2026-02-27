@@ -154,6 +154,12 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
             "court_visibility_threshold": scene_generator.court_visibility_threshold,
         }
     )
+    writer.save_split_info(
+        train_ratio=float(cfg.run.get("train_ratio", 0.8)),
+        val_ratio=float(cfg.run.get("val_ratio", 0.1)),
+        test_ratio=float(cfg.run.get("test_ratio", 0.1)),
+        seed=seed,
+    )
 
     print("\nGeneration complete!")
     print(f"  Successful scenes: {successful}")

@@ -1,13 +1,12 @@
 """Shared data utilities across tasks."""
 
-from src.utils.data.index_cache import (
-    CachedIndex,
-    compute_config_hash,
-    compute_scene_files_hash,
-    get_index_cache_path,
-    load_cached_index,
-    save_cached_index,
+from src.utils.data.augmentation import (
+    add_gaussian_noise,
+    augment_keypoints,
+    random_visibility_dropout,
+    scale_uv_with_visibility,
 )
+from src.utils.data.collate import collate_padded_batch
 from src.utils.data.scene_batch_sampler import (
     build_scene_sampler,
     ChunkedSceneBatchSampler,
@@ -24,29 +23,26 @@ from src.utils.data.scene_cache import (
     load_npz_scene,
     reset_scene_cache,
 )
-from src.utils.data.scene_id import resolve_scene_id
 from src.utils.data.soft_labels import extract_event_indices, gaussian_soft_labels
 
 __all__ = [
-    "CachedIndex",
+    "add_gaussian_noise",
+    "augment_keypoints",
     "build_scene_sampler",
     "ChunkedSceneBatchSampler",
+    "collate_padded_batch",
     "MixedSceneBatchSampler",
+    "random_visibility_dropout",
     "resolve_scene_sampler_mode",
+    "scale_uv_with_visibility",
     "SceneBatchSampler",
     "SceneCache",
     "SceneMeta",
-    "compute_config_hash",
-    "compute_scene_files_hash",
     "extract_scene_meta",
     "extract_scene_meta_parallel",
-    "get_index_cache_path",
     "get_scene_cache",
-    "load_cached_index",
     "load_npz_scene",
     "reset_scene_cache",
-    "resolve_scene_id",
-    "save_cached_index",
     "extract_event_indices",
     "gaussian_soft_labels",
 ]

@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from src.tasks.trajectory_completion.data.dataset import (
     BLCSUVTrajectoryCompletionDataset,
 )
-from src.utils.dataset.collate import collate_padded_batch
+from src.utils.data.collate import collate_padded_batch
 from src.utils.data.scene_batch_sampler import (
     build_scene_sampler,
     resolve_scene_sampler_mode,

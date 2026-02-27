@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytorch_lightning as pl
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 
 from src.utils.data.scene_batch_sampler import build_scene_sampler, resolve_scene_sampler_mode
 from src.tasks.plcs.data.dataset import SceneDataset, collate_and_adapt_plcs_batch
@@ -29,9 +29,6 @@ class PLCSDataModule(pl.LightningDataModule):
         self.pin_memory = bool(data_cfg.get("pin_memory", True))
         self.scene_dir = Path(data_cfg.get("scene_dir", "data/plcs"))
 
-        self.val_split = float(data_cfg.get("val_split", 0.1))
-        self.test_split = float(data_cfg.get("test_split", 0.1))
-
         self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
         self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
         self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
@@ -51,9 +48,9 @@ class PLCSDataModule(pl.LightningDataModule):
             camera_index=self.adapter_camera_index,
         )
 
-        self.train_dataset = None
-        self.val_dataset = None
-        self.test_dataset = None
+        self.train_dataset: SceneDataset | None = None
+        self.val_dataset: SceneDataset | None = None
+        self.test_dataset: SceneDataset | None = None
 
     @staticmethod
     def _infer_input_profile_from_model_name(model_name: str) -> str:
@@ -72,34 +69,40 @@ class PLCSDataModule(pl.LightningDataModule):
                 "Run plcs.scripts.generate_dataset to create the dataset."
             )
 
-        full_dataset = SceneDataset(
-            scene_dir=self.scene_dir,
-            config=self.config,
-            augment=True,
-        )
-
-        total_len = len(full_dataset)
-        val_len = int(total_len * self.val_split)
-        test_len = int(total_len * self.test_split)
-        train_len = total_len - val_len - test_len
-        if train_len <= 0:
-            raise ValueError(
-                f"Invalid split sizes: train={train_len}, val={val_len}, test={test_len}."
+        if stage == "fit" or stage is None:
+            train_split = self.scene_dir / "train.txt"
+            if not train_split.exists():
+                raise RuntimeError(f"Missing required split file: {train_split}")
+            self.train_dataset = SceneDataset(
+                scene_dir=self.scene_dir,
+                split_file="train.txt",
+                config=self.config,
+                augment=True,
             )
 
-        train_ds, val_ds, test_ds = random_split(
-            full_dataset,
-            [train_len, val_len, test_len],
-        )
-
-        if stage == "fit" or stage is None:
-            self.train_dataset = train_ds
-            self.val_dataset = val_ds
+            val_split = self.scene_dir / "val.txt"
+            if val_split.exists():
+                self.val_dataset = SceneDataset(
+                    scene_dir=self.scene_dir,
+                    split_file="val.txt",
+                    config=self.config,
+                    augment=False,
+                )
+            else:
+                self.val_dataset = self.train_dataset
 
         if stage == "test" or stage is None:
-            self.test_dataset = test_ds
+            test_split = self.scene_dir / "test.txt"
+            if not test_split.exists():
+                raise RuntimeError(f"Missing required split file: {test_split}")
+            self.test_dataset = SceneDataset(
+                scene_dir=self.scene_dir,
+                split_file="test.txt",
+                config=self.config,
+                augment=False,
+            )
 
-    def _build_loader(self, dataset, *, train: bool) -> DataLoader:
+    def _build_loader(self, dataset: SceneDataset, *, train: bool) -> DataLoader:
         batch_sampler = build_scene_sampler(
             dataset,
             batch_size=self.batch_size,

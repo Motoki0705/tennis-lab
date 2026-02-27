@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.utils.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase
+from src.tasks.base.data.scene_dataset import NPZScene, NPZSceneDatasetBase
 from src.tasks.trajectory_completion.data.argument import TrajectoryArgumenter
 from src.tasks.trajectory_completion.data.event_masking import extract_event_frames
 from src.tasks.trajectory_completion.data.types import TrajectoryCompletionSample
@@ -64,15 +64,14 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
 
     def build_sample(self, scene: NPZScene) -> TrajectoryCompletionSample:
         cam_idx = self.select_camera(scene)
-        ball_uv_full = scene.get_ball_uv(cam_idx)
+        ball_uv_full = scene.get_camera_array(cam_idx, "ball_uv")
         full_len = scene.effective_num_frames(int(ball_uv_full.shape[0]))
         window = self.select_window(scene, full_len=full_len)
-        view = scene.get_camera_view(cam_idx, window=window)
 
-        ball_uv_gt = torch.from_numpy(view.ball_uv).float()
-        ball_visible = torch.from_numpy(view.ball_visible).to(torch.float32)
-        court_kp = torch.from_numpy(view.court_kp_uv).float()
-        court_vis = torch.from_numpy(view.court_kp_visible).to(torch.float32)
+        ball_uv_gt = torch.from_numpy(scene.get_camera_array(cam_idx, "ball_uv", window=window)).float()
+        ball_visible = torch.from_numpy(scene.get_camera_array(cam_idx, "ball_visible", window=window)).to(torch.float32)
+        court_kp = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_uv")).float()
+        court_vis = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_visible")).to(torch.float32)
 
         seq_len_t = torch.tensor(window.seq_len, dtype=torch.long)
         valid_t = _build_valid_mask(ball_uv_gt.shape[0], seq_len_t).to(torch.float32)

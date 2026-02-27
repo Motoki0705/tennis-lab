@@ -2,8 +2,6 @@ scene_dir: data/plcs
 batch_size: 4
 num_workers: 4
 pin_memory: true
-val_split: 0.1
-test_split: 0.1
 
 mode: multiview_sequence
 

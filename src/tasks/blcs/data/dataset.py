@@ -10,12 +10,12 @@ import torch
 from torch import Tensor
 
 from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch, BLCSMultiViewSample
-from src.utils.dataset.augmentation import (
+from src.utils.data.augmentation import (
     add_gaussian_noise,
     random_visibility_dropout,
     scale_uv_with_visibility,
 )
-from src.utils.dataset.npz_scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
+from src.tasks.base.data.scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
@@ -98,7 +98,7 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
     def build_sample(self, scene: NPZScene) -> BLCSMultiViewSample:
         cams = self.select_cameras(scene, num_views_range=self.num_views_range, camera_mode=self.camera_mode)
         # Use camera trajectory length to guard against metadata drift.
-        primary_len = int(scene.get_ball_uv(cams.primary).shape[0])
+        primary_len = int(scene.get_camera_array(cams.primary, "ball_uv").shape[0])
         pos_len = int(scene.data["ball_pos_norm"].shape[0])
         vel_len = int(scene.data["ball_vel_world"].shape[0])
         full_len = scene.effective_num_frames(primary_len, pos_len, vel_len)
@@ -109,11 +109,10 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
         court_vis_list: list[Tensor] = []
 
         for cam_idx in cams.indices:
-            view = scene.get_camera_view(cam_idx, window=window)
-            ball_uv = torch.from_numpy(view.ball_uv).float()
-            ball_vis = torch.from_numpy(view.ball_visible).float()
-            court_kp = torch.from_numpy(view.court_kp_uv).float()
-            court_vis = torch.from_numpy(view.court_kp_visible).float()
+            ball_uv = torch.from_numpy(scene.get_camera_array(cam_idx, "ball_uv", window=window)).float()
+            ball_vis = torch.from_numpy(scene.get_camera_array(cam_idx, "ball_visible", window=window)).float()
+            court_kp = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_uv")).float()
+            court_vis = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_visible")).float()
 
             court_kp_expanded = court_kp.unsqueeze(0).expand(window.seq_len, -1, -1)
             court_vis_expanded = court_vis.unsqueeze(0).expand(window.seq_len, -1)
@@ -129,8 +128,8 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
             "ball_mask": torch.ones(len(cams.indices), window.seq_len, dtype=torch.float32),
             "court_kp": torch.stack(court_kp_list, dim=0),
             "court_vis": torch.stack(court_vis_list, dim=0),
-            "position_3d": torch.from_numpy(scene.get_ball_pos_norm(window=window)).float(),
-            "velocity_3d": torch.from_numpy(scene.get_ball_vel_world(window=window)).float(),
+            "position_3d": torch.from_numpy(scene.get_array("ball_pos_norm", window=window)).float(),
+            "velocity_3d": torch.from_numpy(scene.get_array("ball_vel_world", window=window)).float(),
             "seq_len": torch.tensor(window.seq_len, dtype=torch.long),
         }
         return sample
