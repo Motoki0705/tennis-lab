@@ -2,27 +2,23 @@
 
 from __future__ import annotations
 
-import random as rng
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from omegaconf import DictConfig, ListConfig
 import torch
 from torch import Tensor
-from torch.utils.data import Dataset
 
-from src.utils.data.scene_cache import extract_scene_meta_parallel, get_scene_cache
-from src.utils.dataset.augmentation import augment_keypoints
+from src.utils.data.augmentation import augment_keypoints
+from src.tasks.base.data.scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
 from src.tasks.plcs.data.targets import build_coco17_world_targets
 from src.tasks.plcs.data.types import PLCSBatch
-from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class SceneDataset(Dataset[dict[str, Tensor]]):
-    """Unified PLCS dataset.
+class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
+    """Unified PLCS dataset – scene-level indexing.
 
     Returns per-sample tensors with camera-time ordering:
     - human_kp: (N, T, 17, 2)
@@ -36,38 +32,43 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
 
     def __init__(
         self,
+        *,
         scene_dir: str | Path,
+        split_file: str | Path,
         config: DictConfig | None = None,
         augment: bool = True,
-        cache_maxsize: int = 128,
-        parallel_workers: int = 8,
     ) -> None:
-        self.scene_dir = Path(scene_dir)
-        self.config = config or {}
+        self.hydra_cfg = config or {}
         self.augment = augment
-        self.parallel_workers = parallel_workers
+        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+        self._configure_task(data_cfg)
+        super().__init__(
+            config=self._build_scene_dataset_config(
+                scene_dir=scene_dir, split_file=split_file, data_cfg=data_cfg,
+            )
+        )
 
-        data_cfg = self.config.get("data", {})
-        self.mode = str(data_cfg.get("mode", "frame"))
-        self.camera_mode = str(data_cfg.get("camera_mode", "random"))
+    # -- Composed-method hooks ------------------------------------------
 
-        self.is_multiview = self.mode in {"multiview", "multiview_sequence"}
-        self.is_sequence = self.mode in {"sequence", "multiview_sequence"}
+    def _configure_task(self, data_cfg: dict) -> None:  # type: ignore[override]
+        from omegaconf import DictConfig
 
-        self.seq_stride = int(data_cfg.get("seq_stride", 1))
-        self.min_cameras = int(data_cfg.get("min_cameras", 2 if self.is_multiview else 1))
+        self.camera_mode_plcs = str(data_cfg.get("camera_mode", "random"))
+        self.is_multiview = str(data_cfg.get("mode", "frame")) in {
+            "multiview", "multiview_sequence",
+        }
 
         if "num_views_range" in data_cfg:
             r = data_cfg["num_views_range"]
-            self.num_views_range: tuple[int, int] = (int(r[0]), int(r[1]))
+            self._plcs_num_views_range: tuple[int, int] = (int(r[0]), int(r[1]))
         else:
-            self.num_views_range = (1, 2)
+            self._plcs_num_views_range = (1, 2)
 
         if "seq_len_range" in data_cfg:
             r = data_cfg["seq_len_range"]
-            self.seq_len_range: tuple[int, int] = (int(r[0]), int(r[1]))
+            self._plcs_seq_len_range: tuple[int, int] = (int(r[0]), int(r[1]))
         else:
-            self.seq_len_range = (64, 512)
+            self._plcs_seq_len_range = (64, 512)
 
         augmentation_cfg = data_cfg.get("augmentation")
         if not isinstance(augmentation_cfg, (dict, DictConfig)):
@@ -78,128 +79,56 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
         self.kp_noise_std = float(augmentation_cfg["keypoint_noise_std"])
         self.visibility_drop_prob = float(augmentation_cfg["visibility_drop_prob"])
 
-        self._scene_cache = get_scene_cache(load_fn=load_scene, maxsize=cache_maxsize)
-
-        scenes_subdir = self.scene_dir / "scenes"
-        self.scene_files = sorted(scenes_subdir.glob("scene_*.npz"))
-        if not self.scene_files:
-            raise ValueError(f"No scene files found in {scenes_subdir}")
-
-        self.scene_paths: list[Path] = []
-        self.index: list[tuple[int, int]] = []  # (scene_idx, start_frame)
-        self._build_index()
-
-    def _build_index(self) -> None:
-        min_seq_for_index = max(1, int(self.seq_len_range[0]))
-
-        scene_metas = extract_scene_meta_parallel(
-            self.scene_files,
-            max_workers=self.parallel_workers,
+    def _build_scene_dataset_config(  # type: ignore[override]
+        self,
+        *,
+        scene_dir: str | Path,
+        split_file: str | Path,
+        data_cfg: dict,
+    ) -> SceneDatasetConfig:
+        return SceneDatasetConfig(
+            scene_dir=Path(scene_dir),
+            split_file=Path(split_file),
+            seq_len_range=self._plcs_seq_len_range,
+            num_views_range=self._plcs_num_views_range,
+            cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
+            camera_mode=self.camera_mode_plcs,
+            crop_mode=("random" if self.augment else "center"),
         )
 
-        for meta in scene_metas:
-            if meta.num_cameras < self.min_cameras:
-                continue
-            if self.is_sequence and meta.num_frames < min_seq_for_index:
-                continue
-
-            self.scene_paths.append(meta.scene_path)
-            scene_idx = len(self.scene_paths) - 1
-
-            if self.is_sequence:
-                max_start = max(0, meta.num_frames - min_seq_for_index)
-                for start in range(0, max_start + 1, max(1, self.seq_stride)):
-                    self.index.append((scene_idx, start))
-            else:
-                for frame_idx in range(meta.num_frames):
-                    self.index.append((scene_idx, frame_idx))
-
-        if not self.index:
-            raise ValueError(
-                "No valid samples were indexed. "
-                "Check data.mode, min_cameras, and sequence length settings."
-            )
-
-    def __len__(self) -> int:
-        return len(self.index)
-
-    def _select_num_views(self, num_cameras: int) -> int:
-        if not self.is_multiview:
-            if self.camera_mode == "all":
-                return num_cameras
-            return 1
-
-        min_views, max_views = self.num_views_range
-        max_possible = min(max_views, num_cameras)
-        min_possible = min(min_views, max_possible)
-        return rng.randint(min_possible, max_possible)
-
-    def _select_cameras(self, num_cameras: int) -> list[int]:
-        if self.is_multiview:
-            num_views = self._select_num_views(num_cameras)
-            return rng.sample(range(num_cameras), num_views)
-
-        if self.camera_mode == "random":
-            return [rng.randrange(num_cameras)]
-        if self.camera_mode in {"all", "first"}:
-            return [0]
-        cam_idx = int(self.camera_mode)
-        if cam_idx < 0 or cam_idx >= num_cameras:
-            raise ValueError(
-                f"camera_mode={self.camera_mode} is out of range for {num_cameras} cameras"
-            )
-        return [cam_idx]
-
-    def _select_seq_len(self, num_frames: int, start_frame: int) -> int:
-        if not self.is_sequence:
-            return 1
-
-        remaining = num_frames - start_frame
-        if remaining <= 0:
-            return 1
-
-        min_len, max_len = self.seq_len_range
-        max_len = min(max_len, remaining)
-        min_len = min(min_len, max_len)
-        return rng.randint(min_len, max_len)
-
-    def __getitem__(self, idx: int) -> dict[str, Tensor]:
-        scene_idx, start_frame = self.index[idx]
-        scene = self._scene_cache.get(self.scene_paths[scene_idx])
-
-        num_cameras = len(scene["cameras"])
-        selected_cameras = self._select_cameras(num_cameras)
-
-        num_frames = int(scene.meta["num_frames"])
-        seq_len = self._select_seq_len(num_frames, start_frame)
-        end_frame = start_frame + seq_len
+    def build_sample(self, scene: NPZScene) -> dict[str, Tensor]:
+        cams = self.select_cameras(
+            scene,
+            num_views_range=self._plcs_num_views_range,
+            camera_mode=self.camera_mode_plcs,
+        )
+        # Resolve effective frame count from arrays
+        pos_len = int(scene.data["position"].shape[0])
+        rot_len = int(scene.data["rotation"].shape[0])
+        primary_len = int(
+            scene.get_camera_array(cams.primary, "human_kp_uv").shape[0]
+        )
+        full_len = scene.effective_num_frames(primary_len, pos_len, rot_len)
+        window = self.select_window(scene, full_len=full_len)
 
         human_kp_list: list[Tensor] = []
         court_kp_list: list[Tensor] = []
         human_vis_list: list[Tensor] = []
         court_vis_list: list[Tensor] = []
 
-        for cam_idx in selected_cameras:
-            cam = scene.cameras[cam_idx]
-
-            human_kp = torch.from_numpy(cam.human_kp_uv[start_frame:end_frame].copy()).float()
-            court_kp = torch.from_numpy(cam.court_kp_uv[start_frame:end_frame].copy()).float()
-            human_vis = torch.from_numpy(cam.human_kp_visible[start_frame:end_frame].copy()).float()
-            court_vis = torch.from_numpy(cam.court_kp_visible[start_frame:end_frame].copy()).float()
-
-            if self.augment:
-                human_kp, human_vis = augment_keypoints(
-                    human_kp,
-                    human_vis,
-                    self.kp_noise_std,
-                    self.visibility_drop_prob,
-                )
-                court_kp, court_vis = augment_keypoints(
-                    court_kp,
-                    court_vis,
-                    self.kp_noise_std,
-                    self.visibility_drop_prob,
-                )
+        for cam_idx in cams.indices:
+            human_kp = torch.from_numpy(
+                scene.get_camera_array(cam_idx, "human_kp_uv", window=window)
+            ).float()
+            court_kp = torch.from_numpy(
+                scene.get_camera_array(cam_idx, "court_kp_uv", window=window)
+            ).float()
+            human_vis = torch.from_numpy(
+                scene.get_camera_array(cam_idx, "human_kp_visible", window=window)
+            ).float()
+            court_vis = torch.from_numpy(
+                scene.get_camera_array(cam_idx, "court_kp_visible", window=window)
+            ).float()
 
             human_kp = human_kp * human_vis.unsqueeze(-1)
             court_kp = court_kp * court_vis.unsqueeze(-1)
@@ -209,25 +138,57 @@ class SceneDataset(Dataset[dict[str, Tensor]]):
             human_vis_list.append(human_vis)
             court_vis_list.append(court_vis)
 
-        position = torch.from_numpy(scene.position[start_frame:end_frame].copy()).float()
-        rotation = torch.from_numpy(scene.rotation[start_frame:end_frame].copy()).float()
+        position = torch.from_numpy(
+            scene.get_array("position", window=window)
+        ).float()
+        rotation = torch.from_numpy(
+            scene.get_array("rotation", window=window)
+        ).float()
 
         sample: dict[str, Tensor] = {
             "human_kp": torch.stack(human_kp_list, dim=0),
             "court_kp": torch.stack(court_kp_list, dim=0),
             "human_vis": torch.stack(human_vis_list, dim=0),
             "court_vis": torch.stack(court_vis_list, dim=0),
-            "human_mask": torch.ones(len(selected_cameras), seq_len, dtype=torch.float32),
+            "human_mask": torch.ones(
+                len(cams.indices), window.seq_len, dtype=torch.float32,
+            ),
             "position": position,
             "rotation": rotation,
         }
 
-        if "human_kp_3d" not in scene:
-            scene["human_kp_3d"] = build_coco17_world_targets(scene)
+        # Build COCO17 world targets from raw NPZ data
+        # scene.data["meta"] is a raw numpy scalar (JSON string); use scene.meta
+        # (already parsed dict) so build_coco17_world_targets gets a plain dict.
+        payload_for_targets = {**scene.data, "meta": scene.meta}
+        human_kp_3d = build_coco17_world_targets(payload_for_targets)
         sample["human_kp_3d"] = torch.from_numpy(
-            scene["human_kp_3d"][start_frame:end_frame].copy()
+            human_kp_3d[window.sl].copy()
         ).float()
 
+        return sample
+
+    def augment_sample(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
+        if not self.augment:
+            return sample
+        sample = {k: v.clone() if isinstance(v, Tensor) else v for k, v in sample.items()}
+
+        human_kp = sample["human_kp"]
+        human_vis = sample["human_vis"]
+        court_kp = sample["court_kp"]
+        court_vis = sample["court_vis"]
+
+        human_kp, human_vis = augment_keypoints(
+            human_kp, human_vis, self.kp_noise_std, self.visibility_drop_prob,
+        )
+        court_kp, court_vis = augment_keypoints(
+            court_kp, court_vis, self.kp_noise_std, self.visibility_drop_prob,
+        )
+
+        sample["human_kp"] = human_kp
+        sample["human_vis"] = human_vis
+        sample["court_kp"] = court_kp
+        sample["court_vis"] = court_vis
         return sample
 
 

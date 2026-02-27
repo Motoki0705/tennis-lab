@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 
 from src.tasks.event_detection.data.dataset import BLCSRallyEventDataset
 from src.tasks.event_detection.data.types import Event3DBatch, Event3DSample, EventUVBatch, EventUVSample
-from src.utils.dataset.collate import collate_padded_batch
+from src.utils.data.collate import collate_padded_batch
 from src.utils.data.scene_batch_sampler import (
     build_scene_sampler,
     resolve_scene_sampler_mode,

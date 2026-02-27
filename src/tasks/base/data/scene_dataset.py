@@ -1,4 +1,9 @@
-"""Base dataset utilities for BLCS-style NPZ scene loading."""
+"""Base dataset utilities for NPZ scene loading.
+
+Provides :class:`NPZSceneDatasetBase`, the abstract dataset that both PLCS and
+BLCS concrete datasets inherit from, along with supporting dataclasses
+(:class:`NPZScene`, :class:`TemporalWindow`, :class:`CameraSelection`, etc.).
+"""
 
 from __future__ import annotations
 
@@ -83,18 +88,12 @@ class CameraSelection:
 
 
 @dataclass(frozen=True)
-class CameraViewArrays:
-    """Per-camera BLCS NPZ arrays."""
-
-    ball_uv: np.ndarray
-    ball_visible: np.ndarray
-    court_kp_uv: np.ndarray
-    court_kp_visible: np.ndarray
-
-
-@dataclass(frozen=True)
 class NPZScene:
-    """Loaded NPZ scene payload with BLCS schema accessors."""
+    """Loaded NPZ scene payload with generic accessors.
+
+    Task-specific code should use :meth:`get_camera_array` and
+    :meth:`get_array` instead of reaching into :attr:`data` directly.
+    """
 
     path: Path
     data: dict[str, Any]
@@ -103,15 +102,18 @@ class NPZScene:
     num_cameras: int
 
     def has_key(self, key: str) -> bool:
+        """Check whether *key* exists in the NPZ payload."""
         return key in self.data
 
     def require_key(self, key: str) -> None:
+        """Raise :class:`KeyError` if *key* is not in the payload."""
         if key not in self.data:
             available = ", ".join(sorted(self.data.keys()))
             raise KeyError(f"Missing NPZ key '{key}' in {self.path}. Available: {available}")
 
     @property
     def scene_id(self) -> str | None:
+        """Return the scene ID from metadata, or ``None``."""
         value = self.meta.get("scene_id")
         return str(value) if value is not None else None
 
@@ -129,6 +131,7 @@ class NPZScene:
 
     @property
     def rally_length(self) -> int | None:
+        """Return rally length from metadata, or ``None``."""
         value = self.meta.get("rally_length")
         try:
             return int(value) if value is not None else None
@@ -171,70 +174,59 @@ class NPZScene:
             raise ValueError(f"NPZ key '{key}' is scalar and cannot be temporally sliced.")
         return arr[window.sl].copy()
 
-    def get_ball_uv(
+    # ------------------------------------------------------------------
+    # Generic accessors
+    # ------------------------------------------------------------------
+
+    def get_camera_array(
         self,
         cam_idx: int,
+        suffix: str,
         *,
         window: TemporalWindow | None = None,
     ) -> np.ndarray:
-        """Return per-frame ball UV coordinates for a camera as a copied array.
+        """Return ``cam_{cam_idx}_{suffix}`` as a copied array.
 
         Args:
             cam_idx: Camera index.
-            window: Optional temporal window. If provided, the returned array is
-                sliced by ``window``.
-        """
-        prefix = self._camera_prefix(cam_idx)
-        return self._copy_temporal_array(f"{prefix}ball_uv", window=window)
+            suffix: Key suffix (e.g. ``"ball_uv"``, ``"human_kp_uv"``).
+            window: Optional temporal window for slicing.
 
-    def get_ball_visible(
+        Returns:
+            Copied numpy array.
+        """
+        key = f"{self._camera_prefix(cam_idx)}{suffix}"
+        return self._copy_temporal_array(key, window=window)
+
+    def get_array(
         self,
-        cam_idx: int,
+        key: str,
         *,
         window: TemporalWindow | None = None,
     ) -> np.ndarray:
-        prefix = self._camera_prefix(cam_idx)
-        return self._copy_temporal_array(f"{prefix}ball_visible", window=window)
+        """Return a scene-level array, optionally sliced by *window*.
 
-    def get_court_kp_uv(self, cam_idx: int) -> np.ndarray:
-        prefix = self._camera_prefix(cam_idx)
-        return self._copy_array(f"{prefix}court_kp_uv")
+        Args:
+            key: NPZ payload key (e.g. ``"ball_pos_norm"``, ``"position"``).
+            window: Optional temporal window for slicing.
 
-    def get_court_kp_visible(self, cam_idx: int) -> np.ndarray:
-        prefix = self._camera_prefix(cam_idx)
-        return self._copy_array(f"{prefix}court_kp_visible")
-
-    def get_camera_view(
-        self,
-        cam_idx: int,
-        *,
-        window: TemporalWindow | None = None,
-    ) -> CameraViewArrays:
-        """Return a grouped per-camera BLCS payload view as copied arrays.
-
-        Temporal slicing is applied only to per-frame arrays (`ball_uv`,
-        `ball_visible`). Court keypoints are static per scene/camera and are
-        returned without temporal slicing.
+        Returns:
+            Copied numpy array.
         """
-        return CameraViewArrays(
-            ball_uv=self.get_ball_uv(cam_idx, window=window),
-            ball_visible=self.get_ball_visible(cam_idx, window=window),
-            court_kp_uv=self.get_court_kp_uv(cam_idx),
-            court_kp_visible=self.get_court_kp_visible(cam_idx),
-        )
-
-    def get_ball_pos_norm(self, *, window: TemporalWindow | None = None) -> np.ndarray:
-        return self._copy_temporal_array("ball_pos_norm", window=window)
-
-    def get_ball_pos_world(self, *, window: TemporalWindow | None = None) -> np.ndarray:
-        return self._copy_temporal_array("ball_pos_world", window=window)
-
-    def get_ball_vel_world(self, *, window: TemporalWindow | None = None) -> np.ndarray:
-        return self._copy_temporal_array("ball_vel_world", window=window)
+        return self._copy_temporal_array(key, window=window)
 
 
 class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
-    """Base dataset for BLCS-style NPZ scenes."""
+    """Base dataset for NPZ scene files.
+
+    Subclass __init__ follows a unified 5-step flow:
+
+    1. ``self.hydra_cfg = config or {}``
+    2. ``self.augment = augment``
+    3. ``data_cfg = self._resolve_data_cfg(self.hydra_cfg)``
+    4. ``self._configure_task(data_cfg)``  — override per task
+    5. ``super().__init__(config=self._build_scene_dataset_config(...))``
+    """
 
     #: Whether augmentation is enabled. Set by subclass ``__init__`` before
     #: calling ``super().__init__()``.
@@ -286,17 +278,6 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
             raise ValueError(f"{name} must contain positive integers, got {value}")
         if lo > hi:
             raise ValueError(f"{name} min must be <= max, got {value}")
-
-    # ------------------------------------------------------------------
-    # Composed-method helpers for subclass __init__.
-    #
-    # Subclass __init__ follows a unified 5-step flow:
-    #   1. self.hydra_cfg = config or {}
-    #   2. self.augment = augment
-    #   3. data_cfg = self._resolve_data_cfg(self.hydra_cfg)
-    #   4. self._configure_task(data_cfg)       ← override per task
-    #   5. super().__init__(config=self._build_scene_dataset_config(...))
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _resolve_data_cfg(hydra_cfg: Any) -> dict[str, Any]:
@@ -411,7 +392,8 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
         return dict(meta_raw) if isinstance(meta_raw, dict) else {}
 
     def _fallback_num_frames_from_payload(self, payload: dict[str, Any]) -> int:
-        for key in ("ball_pos_norm", "ball_pos_world", "cam_0_ball_uv"):
+        for key in ("ball_pos_norm", "ball_pos_world", "cam_0_ball_uv",
+                     "cam_0_human_kp_uv", "position"):
             value = payload.get(key)
             if value is None:
                 continue
@@ -488,6 +470,7 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
         return len(self.scenes)
 
     def get_scene_header(self, path: Path) -> NPZSceneHeader:
+        """Return the pre-computed header for the given scene path."""
         try:
             return self._headers_by_path[path]
         except KeyError as exc:

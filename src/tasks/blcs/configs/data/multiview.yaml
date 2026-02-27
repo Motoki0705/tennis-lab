@@ -11,10 +11,6 @@ scene_sampler_mode: none
 scenes_per_batch: 1
 chunk_max_scenes: 64
 
-# Train/Val/Test split
-val_split: 0.1
-test_split: 0.1
-
 # Sequence/view sampling ranges (inclusive)
 seq_len_range: [15, 120]
 num_views_range: [2, 8]

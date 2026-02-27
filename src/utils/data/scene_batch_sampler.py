@@ -9,11 +9,15 @@ from typing import Iterable
 import torch
 from torch.utils.data import BatchSampler, Dataset, Subset
 
-from src.utils.data.scene_id import resolve_scene_id
-
 
 def _build_scene_index_map(dataset: Dataset) -> dict[int, list[int]]:
     """Build a map from scene ID to sample indices.
+
+    For :class:`Subset`, maps from base-dataset indices.  For datasets
+    exposing ``scene_id_for_sample(idx)``, that protocol is used.
+    Otherwise each sample index is treated as its own scene (identity
+    mapping), which is correct for :class:`NPZSceneDatasetBase` where
+    ``__len__ == len(scenes)``.
 
     Args:
         dataset: Dataset or Subset.
@@ -27,15 +31,24 @@ def _build_scene_index_map(dataset: Dataset) -> dict[int, list[int]]:
     if isinstance(dataset, Subset):
         base_dataset = dataset.dataset
         subset_indices = list(dataset.indices)
-        for subset_pos, base_idx in enumerate(subset_indices):
-            scene_idx = resolve_scene_id(base_dataset, int(base_idx))
-            scene_to_indices[int(scene_idx)].append(subset_pos)
-    else:
-        for idx in range(len(dataset)):
-            scene_idx = resolve_scene_id(dataset, idx)
-            scene_to_indices[int(scene_idx)].append(idx)
+        if hasattr(base_dataset, "scene_id_for_sample"):
+            for subset_pos, base_idx in enumerate(subset_indices):
+                scene_idx = int(base_dataset.scene_id_for_sample(int(base_idx)))
+                scene_to_indices[scene_idx].append(subset_pos)
+        else:
+            # NPZSceneDatasetBase: scene_id == sample index (identity)
+            for subset_pos, base_idx in enumerate(subset_indices):
+                scene_to_indices[int(base_idx)].append(subset_pos)
+        return scene_to_indices
 
-    return scene_to_indices
+    if hasattr(dataset, "scene_id_for_sample"):
+        for idx in range(len(dataset)):
+            scene_idx = int(dataset.scene_id_for_sample(idx))
+            scene_to_indices[scene_idx].append(idx)
+        return scene_to_indices
+
+    # Default: identity mapping (each sample is its own "scene")
+    return {i: [i] for i in range(len(dataset))}
 
 
 def _shuffle_list(values: list[int], generator: torch.Generator | None) -> list[int]:
