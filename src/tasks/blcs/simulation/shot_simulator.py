@@ -1,7 +1,8 @@
-"""Shot simulator for BLCS (blcs.md §4 compliant).
+"""Shot simulator for BLCS.
 
 Generates single shots with:
 - Initial condition sampling (position, velocity, spin)
+- Serve mode (from baseline, targeting service box)
 - Physics simulation until termination
 - Event detection (bounce, net, fence)
 - Shot classification
@@ -11,6 +12,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING
 
 import torch
@@ -25,6 +27,14 @@ from src.tasks.blcs.simulation.cell_manager import CellManager, ShotCategory
 
 if TYPE_CHECKING:
     pass
+
+
+class ShotType(Enum):
+    """Type of shot."""
+
+    SERVE = "serve"
+    GROUNDSTROKE = "groundstroke"
+    VOLLEY = "volley"
 
 
 @dataclass
@@ -44,7 +54,6 @@ class ShotConfig:
     elevation_range_deg: tuple[float, float] = (5.0, 25.0)
 
     # Spin ranges (rad/s)
-    # Topspin: ω_y < 0 (in our coordinate system)
     spin_x_range: tuple[float, float] = (-20.0, 20.0)
     spin_y_range: tuple[float, float] = (-80.0, -40.0)  # Topspin default
     spin_z_range: tuple[float, float] = (-20.0, 20.0)
@@ -54,6 +63,12 @@ class ShotConfig:
     output_fps: int = 30  # Output frame rate
     sim_fps: int = 240  # Simulation frame rate
 
+    # Serve parameters
+    serve_speed_range: tuple[float, float] = (30.0, 55.0)
+    serve_elevation_range_deg: tuple[float, float] = (2.0, 10.0)
+    serve_z_range: tuple[float, float] = (2.0, 2.8)  # Toss height
+    serve_azimuth_range_deg: tuple[float, float] = (-15.0, 15.0)
+
 
 @dataclass
 class ShotResult:
@@ -62,7 +77,7 @@ class ShotResult:
     # Trajectory data (at output_fps)
     trajectory: Tensor  # [T, 3] positions in meters
     velocities: Tensor  # [T, 3] velocities in m/s
-    trajectory_sim: Tensor  # [T_sim, 3] full sim resolution (for debugging)
+    trajectory_sim: Tensor  # [T_sim, 3] full sim resolution
 
     # Initial state
     initial_state: BallState
@@ -86,6 +101,7 @@ class ShotResult:
     from_cell: int
     from_side: str
     target_side: str
+    shot_type: ShotType
 
 
 class ShotSimulator:
@@ -112,7 +128,6 @@ class ShotSimulator:
             shot_config: Shot generation parameters.
             cell_manager: Cell manager for position sampling.
             device: Torch device.
-
         """
         self.physics = BallPhysics(physics_config)
         self.shot_config = shot_config or ShotConfig()
@@ -123,71 +138,110 @@ class ShotSimulator:
         self,
         from_cell: int,
         from_side: str,
+        shot_type: ShotType = ShotType.GROUNDSTROKE,
     ) -> BallState:
-        """Sample initial conditions for a shot (blcs.md §4).
+        """Sample initial conditions for a shot.
 
         Args:
-            from_cell: Starting cell ID (0-19).
-            from_side: "near" or "far" - which side the shot starts from.
+            from_cell: Starting cell ID (0-8).
+            from_side: ``"near"`` or ``"far"``.
+            shot_type: Type of shot to sample.
 
         Returns:
-            BallState: Initial ball state.
-
+            Initial ball state.
         """
         cfg = self.shot_config
 
-        # Sample position in cell
+        if shot_type == ShotType.SERVE:
+            return self._sample_serve_condition(from_side)
+
+        # Groundstroke / Volley
         position = self.cell_manager.sample_position_in_cell(
             cell_id=from_cell,
             side=from_side,
             z_range=cfg.z_range,
             device=self.device,
         )
-
-        # Sample velocity (speed + direction)
         velocity = self._sample_velocity(from_side)
-
-        # Sample spin
         spin = self._sample_spin()
 
         return BallState(position=position, velocity=velocity, spin=spin)
 
-    def _sample_velocity(self, from_side: str) -> Tensor:
+    def _sample_serve_condition(self, from_side: str) -> BallState:
+        """Sample initial conditions for a serve.
+
+        Serve starts from behind the baseline, near the centre mark.
+        Height is higher (toss height).
+
+        Args:
+            from_side: ``"near"`` or ``"far"``.
+
+        Returns:
+            Initial ball state for serve.
+        """
+        cfg = self.shot_config
+        from src.utils.schema.court import HALF_LENGTH
+
+        # Position: behind baseline, near centre mark
+        baseline_y = HALF_LENGTH if from_side == "far" else -HALF_LENGTH
+        # Slight lateral variation (-1m to +1m from centre)
+        x = (torch.rand(1).item() - 0.5) * 2.0
+        # Behind baseline by 0.5-1.5m
+        behind = 0.5 + torch.rand(1).item() * 1.0
+        if from_side == "far":
+            y = baseline_y + behind  # further from net
+        else:
+            y = baseline_y - behind
+        z = cfg.serve_z_range[0] + torch.rand(1).item() * (
+            cfg.serve_z_range[1] - cfg.serve_z_range[0]
+        )
+        position = torch.tensor([x, y, z], device=self.device)
+
+        # Velocity: higher speed, lower elevation (downward trajectory)
+        velocity = self._sample_velocity(
+            from_side,
+            speed_range=cfg.serve_speed_range,
+            elevation_range_deg=cfg.serve_elevation_range_deg,
+            azimuth_range_deg=cfg.serve_azimuth_range_deg,
+        )
+
+        spin = self._sample_spin()
+
+        return BallState(position=position, velocity=velocity, spin=spin)
+
+    def _sample_velocity(
+        self,
+        from_side: str,
+        speed_range: tuple[float, float] | None = None,
+        elevation_range_deg: tuple[float, float] | None = None,
+        azimuth_range_deg: tuple[float, float] | None = None,
+    ) -> Tensor:
         """Sample initial velocity vector.
 
         Args:
-            from_side: "near" or "far".
+            from_side: ``"near"`` or ``"far"``.
+            speed_range: Override speed range.
+            elevation_range_deg: Override elevation range.
+            azimuth_range_deg: Override azimuth range.
 
         Returns:
-            Tensor: Velocity [3] in m/s.
-
+            Velocity [3] in m/s.
         """
         cfg = self.shot_config
+        sr = speed_range or cfg.speed_range
+        er = elevation_range_deg or cfg.elevation_range_deg
+        ar = azimuth_range_deg or cfg.azimuth_range_deg
 
-        # Sample speed
-        speed = cfg.speed_range[0] + torch.rand(1).item() * (
-            cfg.speed_range[1] - cfg.speed_range[0]
-        )
+        speed = sr[0] + torch.rand(1).item() * (sr[1] - sr[0])
 
-        # Sample azimuth (horizontal direction)
-        azimuth_deg = cfg.azimuth_range_deg[0] + torch.rand(1).item() * (
-            cfg.azimuth_range_deg[1] - cfg.azimuth_range_deg[0]
-        )
+        azimuth_deg = ar[0] + torch.rand(1).item() * (ar[1] - ar[0])
         azimuth_rad = math.radians(azimuth_deg)
 
-        # Sample elevation (vertical angle)
-        elevation_deg = cfg.elevation_range_deg[0] + torch.rand(1).item() * (
-            cfg.elevation_range_deg[1] - cfg.elevation_range_deg[0]
-        )
+        elevation_deg = er[0] + torch.rand(1).item() * (er[1] - er[0])
         elevation_rad = math.radians(elevation_deg)
 
-        # Convert to velocity components
-        # Base direction: toward opposite side
-        # near side (y < 0) shoots toward +y
-        # far side (y > 0) shoots toward -y
         base_dir = 1.0 if from_side == "near" else -1.0
 
-        # Horizontal components
         vx = speed * math.cos(elevation_rad) * math.sin(azimuth_rad)
         vy = speed * math.cos(elevation_rad) * math.cos(azimuth_rad) * base_dir
         vz = speed * math.sin(elevation_rad)
@@ -198,8 +252,7 @@ class ShotSimulator:
         """Sample spin angular velocity.
 
         Returns:
-            Tensor: Spin [3] in rad/s.
-
+            Spin [3] in rad/s.
         """
         cfg = self.shot_config
 
@@ -220,32 +273,31 @@ class ShotSimulator:
         initial_state: BallState,
         from_cell: int,
         from_side: str,
+        shot_type: ShotType = ShotType.GROUNDSTROKE,
     ) -> ShotResult:
         """Simulate a shot until termination.
 
         Termination conditions:
         - Second bounce occurs
-        - Fence is reached (after first bounce, if no second bounce yet)
+        - Fence is reached
         - Max simulation frames reached
 
         Args:
             initial_state: Initial ball state.
             from_cell: Starting cell ID.
-            from_side: "near" or "far".
+            from_side: ``"near"`` or ``"far"``.
+            shot_type: Type of shot.
 
         Returns:
-            ShotResult: Complete shot result.
-
+            Complete shot result.
         """
         cfg = self.shot_config
         target_side = "far" if from_side == "near" else "near"
 
-        # Simulation state
         state = initial_state.clone()
         trajectory_sim: list[Tensor] = [state.position.clone()]
         velocities_sim: list[Tensor] = [state.velocity.clone()]
 
-        # Event tracking
         bounce_count = 0
         t_net_sim = -1
         t_fence_sim = -1
@@ -257,12 +309,9 @@ class ShotSimulator:
         hit_net_before_bounce = False
         hit_fence_before_bounce = False
 
-        dt = 1.0 / cfg.sim_fps
-
         for frame in range(cfg.max_sim_frames - 1):
             prev_pos = state.position.clone()
 
-            # Physics step
             state = self.physics.step(state)
 
             # Check net collision (before bounce check)
@@ -274,7 +323,6 @@ class ShotSimulator:
                     t_net_sim = frame + 1
                     net_pos = pos_at_net
                     hit_net_before_bounce = True
-                    # Apply net collision (reflect and reduce velocity)
                     state = self.physics.apply_net_collision(state, net_pos=pos_at_net)
 
             # Check fence collision
@@ -282,7 +330,6 @@ class ShotSimulator:
                 if bounce_count == 0:
                     hit_fence_before_bounce = True
                 t_fence_sim = frame + 1
-                # Record position and stop
                 trajectory_sim.append(state.position.clone())
                 velocities_sim.append(state.velocity.clone())
                 break
@@ -297,7 +344,6 @@ class ShotSimulator:
                 elif bounce_count == 2:
                     t_bounce2_sim = frame + 1
                     bounce2_pos = state.position.clone()
-                    # Termination: second bounce
                     trajectory_sim.append(state.position.clone())
                     velocities_sim.append(state.velocity.clone())
                     break
@@ -314,7 +360,6 @@ class ShotSimulator:
         trajectory = trajectory_sim_tensor[::downsample_factor]
         velocities = velocities_sim_tensor[::downsample_factor]
 
-        # Convert event times to output fps
         def convert_time(t_sim: int) -> int:
             if t_sim < 0:
                 return -1
@@ -325,7 +370,6 @@ class ShotSimulator:
         t_bounce1 = convert_time(t_bounce1_sim)
         t_bounce2 = convert_time(t_bounce2_sim)
 
-        # Classify shot
         category, to_cell = self.cell_manager.classify_shot(
             hit_net_before_bounce=hit_net_before_bounce,
             hit_fence_before_bounce=hit_fence_before_bounce,
@@ -350,18 +394,24 @@ class ShotSimulator:
             from_cell=from_cell,
             from_side=from_side,
             target_side=target_side,
+            shot_type=shot_type,
         )
 
-    def generate_shot(self, from_cell: int, from_side: str) -> ShotResult:
+    def generate_shot(
+        self,
+        from_cell: int,
+        from_side: str,
+        shot_type: ShotType = ShotType.GROUNDSTROKE,
+    ) -> ShotResult:
         """Generate a complete shot from sampling to simulation.
 
         Args:
-            from_cell: Starting cell ID (0-19).
-            from_side: "near" or "far".
+            from_cell: Starting cell ID (0-8).
+            from_side: ``"near"`` or ``"far"``.
+            shot_type: Type of shot.
 
         Returns:
-            ShotResult: Complete shot result.
-
+            Complete shot result.
         """
-        initial_state = self.sample_initial_condition(from_cell, from_side)
-        return self.simulate_shot(initial_state, from_cell, from_side)
+        initial_state = self.sample_initial_condition(from_cell, from_side, shot_type)
+        return self.simulate_shot(initial_state, from_cell, from_side, shot_type)

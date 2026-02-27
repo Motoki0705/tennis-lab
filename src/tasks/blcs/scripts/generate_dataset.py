@@ -25,17 +25,16 @@ from omegaconf import DictConfig, OmegaConf
 from tqdm.auto import tqdm
 
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
-from src.tasks.blcs.generate_dataset.sampling.distribution_sampler import SamplingConfig
 from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneGenerator,
     GeneratorConfig,
 )
 from src.tasks.blcs.simulation.ball_physics import PhysicsConfig
-from src.tasks.blcs.simulation.cell_manager import ShotCategory
 from src.tasks.blcs.simulation.rally_simulator import RallyConfig
 from src.tasks.blcs.simulation.shot_simulator import ShotConfig
 from src.tasks.blcs.simulation.targeted_velocity_sampler import TargetedVelocityConfig
 from src.utils.projection.camera_projector import CameraConfig
+from src.utils.schema.court import CourtConfig
 
 logging.basicConfig(
     level=logging.INFO,
@@ -63,6 +62,21 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         dt=float(cfg.physics.dt),
         use_drag=bool(cfg.physics.use_drag),
         use_magnus=bool(cfg.physics.use_magnus),
+        wind=tuple(cfg.physics.wind) if cfg.physics.get("wind") else (0.0, 0.0, 0.0),
+        gravity_range=tuple(cfg.physics.gravity_range)
+        if cfg.physics.get("gravity_range") else None,
+        k_drag_range=tuple(cfg.physics.k_drag_range)
+        if cfg.physics.get("k_drag_range") else None,
+        k_magnus_range=tuple(cfg.physics.k_magnus_range)
+        if cfg.physics.get("k_magnus_range") else None,
+        e_z_range=tuple(cfg.physics.e_z_range)
+        if cfg.physics.get("e_z_range") else None,
+        mu_range=tuple(cfg.physics.mu_range)
+        if cfg.physics.get("mu_range") else None,
+        wind_speed_range=tuple(cfg.physics.wind_speed_range)
+        if cfg.physics.get("wind_speed_range") else None,
+        wind_direction_range_deg=tuple(cfg.physics.wind_direction_range_deg)
+        if cfg.physics.get("wind_direction_range_deg") else None,
     )
 
     shot_config = ShotConfig(
@@ -76,6 +90,14 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         max_sim_frames=int(cfg.shot.max_sim_frames),
         output_fps=int(cfg.shot.output_fps),
         sim_fps=int(cfg.shot.sim_fps),
+        serve_speed_range=tuple(cfg.shot.serve_speed_range)
+        if cfg.shot.get("serve_speed_range") else (30.0, 55.0),
+        serve_elevation_range_deg=tuple(cfg.shot.serve_elevation_range_deg)
+        if cfg.shot.get("serve_elevation_range_deg") else (2.0, 10.0),
+        serve_z_range=tuple(cfg.shot.serve_z_range)
+        if cfg.shot.get("serve_z_range") else (2.0, 2.8),
+        serve_azimuth_range_deg=tuple(cfg.shot.serve_azimuth_range_deg)
+        if cfg.shot.get("serve_azimuth_range_deg") else (-15.0, 15.0),
     )
 
     rally_config = RallyConfig(
@@ -84,9 +106,16 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         court_margin=float(cfg.rally.court_margin),
         hit_timing_range=tuple(cfg.rally.hit_timing_range),
         return_z_range=tuple(cfg.rally.return_z_range),
-        max_return_retries=int(cfg.rally.max_return_retries),
         min_rally_length=int(cfg.rally.min_rally_length),
         net_fault_accept_prob=float(cfg.rally.net_fault_accept_prob),
+        serve_probability=float(cfg.rally.get("serve_probability", 0.3)),
+        serve_speed_range=tuple(cfg.rally.serve_speed_range)
+        if cfg.rally.get("serve_speed_range") else (30.0, 55.0),
+        serve_elevation_range_deg=tuple(cfg.rally.serve_elevation_range_deg)
+        if cfg.rally.get("serve_elevation_range_deg") else (2.0, 10.0),
+        volley_probability=float(cfg.rally.get("volley_probability", 0.05)),
+        normal_return_probability=float(cfg.rally.get("normal_return_probability", 0.85)),
+        late_return_probability=float(cfg.rally.get("late_return_probability", 0.10)),
     )
 
     camera_config = CameraConfig(
@@ -94,19 +123,16 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         z_max=float(cfg.camera.z_max),
         hfov_deg=float(cfg.camera.hfov_deg),
         image_size=tuple(cfg.camera.image_size),
+        hfov_noise_deg=float(cfg.camera.get("hfov_noise_deg", 0.0)),
+        look_at_noise_std=float(cfg.camera.get("look_at_noise_std", 0.0)),
     )
 
-    category_ratios = cfg.sampling.category_ratios
-    sampling_config = SamplingConfig(
-        category_ratios={
-            ShotCategory.DIRECT_NET: float(category_ratios.direct_net),
-            ShotCategory.DIRECT_FENCE: float(category_ratios.direct_fence),
-            ShotCategory.IN_COURT: float(category_ratios.in_court),
-            ShotCategory.OUT_COURT: float(category_ratios.out_court),
-        },
-        in_court_cell_weights=cfg.sampling.in_court_cell_weights,
-        out_court_cell_weights=cfg.sampling.out_court_cell_weights,
-        per_from_cell_samples=int(cfg.sampling.per_from_cell_samples),
+    # Court config
+    court_cfg = cfg.generator.get("court", {})
+    court_config = CourtConfig(
+        net_post_offset_x=float(court_cfg.get("net_post_offset_x", 0.914)),
+        net_post_offset_x_range=tuple(court_cfg.net_post_offset_x_range)
+        if court_cfg.get("net_post_offset_x_range") else None,
     )
 
     targeted_velocity_config = TargetedVelocityConfig(
@@ -142,8 +168,8 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         shot=shot_config,
         rally=rally_config,
         camera=camera_config,
-        sampling=sampling_config,
         targeted_velocity=targeted_velocity_config,
+        court=court_config,
         num_cameras_sampled=int(cfg.generator.num_cameras_sampled),
         ball_visibility_threshold=float(cfg.generator.ball_visibility_threshold),
         max_attempts_multiplier=int(cfg.generator.max_attempts_multiplier),

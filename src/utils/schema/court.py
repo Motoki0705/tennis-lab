@@ -6,9 +6,12 @@ This module consolidates all court-related definitions, including:
 - Keypoint names and indices
 - Skeleton connectivity (for rendering and visualization)
 - Coordinate normalization scales
+- Configurable court geometry (CourtConfig)
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor
@@ -35,6 +38,40 @@ NET_HEIGHT_POST: float = 1.07  # Net height at posts (3.5 feet)
 
 # Net post offset from doubles sideline
 NET_POST_OFFSET_X: float = 0.914
+
+
+# -----------------------------
+# Configurable Court Geometry
+# -----------------------------
+
+@dataclass
+class CourtConfig:
+    """Court geometry variation parameters.
+
+    Allows per-scene variation of net post positions and other
+    court geometry that differs across real-world venues.
+
+    Attributes:
+        net_post_offset_x: Offset of net posts from doubles sideline (m).
+            ITF default is 0.914m outside. Negative values place posts
+            inside the doubles sideline (common on some courts).
+        net_post_offset_x_range: If set, ``net_post_offset_x`` is sampled
+            uniformly from this range for each scene.
+    """
+
+    net_post_offset_x: float = NET_POST_OFFSET_X
+    net_post_offset_x_range: tuple[float, float] | None = None
+
+    def sample(self) -> CourtConfig:
+        """Return a new config with stochastic parameters sampled."""
+        offset = self.net_post_offset_x
+        if self.net_post_offset_x_range is not None:
+            lo, hi = self.net_post_offset_x_range
+            offset = lo + torch.rand(1).item() * (hi - lo)
+        return CourtConfig(
+            net_post_offset_x=offset,
+            net_post_offset_x_range=None,  # sampled config is deterministic
+        )
 
 # -----------------------------
 # Fence (Run-off) Dimensions
@@ -81,7 +118,7 @@ COURT_KP_NAMES: tuple[str, ...] = (
 COURT_KP_IDX: dict[str, int] = {name: i for i, name in enumerate(COURT_KP_NAMES)}
 
 
-def court_keypoints_3d() -> Tensor:
+def court_keypoints_3d(config: CourtConfig | None = None) -> Tensor:
     """Return 20 court keypoints (idx 0..19) as a (20, 3) tensor.
 
     Keypoint indices follow the CourtKP20 specification:
@@ -93,14 +130,20 @@ def court_keypoints_3d() -> Tensor:
     14:    net center (ground)
     15..18: net posts (base/top, left/right)
     19:    center strap top
+
+    Args:
+        config: Optional court geometry configuration. When provided, net post
+            positions use ``config.net_post_offset_x`` instead of the default.
     """
+    cfg = config or CourtConfig()
+
     xs = HALF_SINGLES_WIDTH
     xd = HALF_DOUBLES_WIDTH
     yB = HALF_LENGTH
     yS = SERVICE_LINE_DISTANCE
 
-    x_post_L = -(xd + NET_POST_OFFSET_X)
-    x_post_R = +(xd + NET_POST_OFFSET_X)
+    x_post_L = -(xd + cfg.net_post_offset_x)
+    x_post_R = +(xd + cfg.net_post_offset_x)
 
     pts = [
         (-xd, +yB, 0.0),  # 0 far doubles corner left

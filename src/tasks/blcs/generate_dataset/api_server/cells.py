@@ -13,7 +13,7 @@ from src.tasks.blcs.generate_dataset.api_server.schemas import (
     CellsResponse,
     Vec2,
 )
-from src.tasks.blcs.simulation.cell_manager import CellManager
+from src.tasks.blcs.simulation.cell_manager import CellManager, NUM_CELLS_PER_SIDE
 
 
 def build_cells_response(cell_manager: CellManager | None = None) -> CellsResponse:
@@ -21,7 +21,7 @@ def build_cells_response(cell_manager: CellManager | None = None) -> CellsRespon
     cells: list[CellInfo] = []
 
     for side in ("near", "far"):
-        for cell_id in range(20):
+        for cell_id in range(NUM_CELLS_PER_SIDE):
             b = cm.cell_id_to_bounds(cell_id, side)
             center = cm.get_cell_center(cell_id, side)
             cells.append(
