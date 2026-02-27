@@ -1,17 +1,22 @@
-"""Ball physics simulation for BLCS (blcs.md §2-3 compliant).
+"""Ball physics simulation for BLCS.
 
 Provides realistic tennis ball trajectory generation including:
-- Projectile motion with gravity
-- Air drag (velocity-squared drag)
+- Projectile motion with gravity (configurable)
+- Air drag (velocity-squared drag, relative to wind)
 - Magnus effect (spin-induced lift)
+- Wind force
 - Bounce physics with friction
 - Net collision with velocity reduction
 - Fence collision detection
+
+All environment constants (gravity, drag, restitution, etc.) can be
+perturbed per-scene via ``PhysicsConfig.sample()``.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -34,19 +39,23 @@ if TYPE_CHECKING:
     pass
 
 
-# Default physics constants (blcs.md §2)
-DEFAULT_GRAVITY = 9.81  # m/s^2
-DEFAULT_K_DRAG = 0.01  # drag coefficient (simplified)
-DEFAULT_K_MAGNUS = 0.001  # magnus coefficient (simplified)
-DEFAULT_E_Z = 0.75  # coefficient of restitution (bounce)
-DEFAULT_MU = 0.1  # friction coefficient (tangential)
-DEFAULT_ALPHA_NET = 0.3  # net velocity reduction factor
-DEFAULT_DT = 1 / 240  # simulation time step (240 Hz)
+# Default physics constants
+DEFAULT_GRAVITY = 9.81
+DEFAULT_K_DRAG = 0.01
+DEFAULT_K_MAGNUS = 0.001
+DEFAULT_E_Z = 0.75
+DEFAULT_MU = 0.1
+DEFAULT_ALPHA_NET = 0.3
+DEFAULT_DT = 1 / 240
 
 
 @dataclass
 class PhysicsConfig:
-    """Configuration for ball physics simulation."""
+    """Configuration for ball physics simulation.
+
+    Includes per-scene perturbation ranges. When ``*_range`` fields are set,
+    ``sample()`` draws from them uniformly to create a stochastic config.
+    """
 
     gravity: float = DEFAULT_GRAVITY
     k_drag: float = DEFAULT_K_DRAG
@@ -58,6 +67,87 @@ class PhysicsConfig:
     use_drag: bool = True
     use_magnus: bool = True
 
+    # Wind velocity (m/s) in world frame (x, y, z)
+    wind: tuple[float, float, float] = (0.0, 0.0, 0.0)
+
+    # --- Per-scene perturbation ranges (None = use base value) ---
+    gravity_range: tuple[float, float] | None = None
+    k_drag_range: tuple[float, float] | None = None
+    k_magnus_range: tuple[float, float] | None = None
+    e_z_range: tuple[float, float] | None = None
+    mu_range: tuple[float, float] | None = None
+    wind_speed_range: tuple[float, float] | None = None
+    wind_direction_range_deg: tuple[float, float] | None = None
+
+    def sample(self) -> PhysicsConfig:
+        """Return a new config with stochastic parameters sampled.
+
+        Scalar fields are sampled uniformly from their ``*_range`` if set.
+        Wind is sampled from speed and direction ranges if set.
+        """
+
+        def _u(base: float, rng: tuple[float, float] | None) -> float:
+            if rng is None:
+                return base
+            lo, hi = rng
+            return lo + torch.rand(1).item() * (hi - lo)
+
+        gravity = _u(self.gravity, self.gravity_range)
+        k_drag = _u(self.k_drag, self.k_drag_range)
+        k_magnus = _u(self.k_magnus, self.k_magnus_range)
+        e_z = _u(self.e_z, self.e_z_range)
+        mu = _u(self.mu, self.mu_range)
+
+        wind = self.wind
+        if self.wind_speed_range is not None:
+            speed = _u(0.0, self.wind_speed_range)
+            if self.wind_direction_range_deg is not None:
+                dir_deg = _u(0.0, self.wind_direction_range_deg)
+            else:
+                dir_deg = torch.rand(1).item() * 360.0
+            dir_rad = math.radians(dir_deg)
+            wind = (
+                speed * math.cos(dir_rad),
+                speed * math.sin(dir_rad),
+                0.0,
+            )
+
+        return PhysicsConfig(
+            gravity=gravity,
+            k_drag=k_drag,
+            k_magnus=k_magnus,
+            e_z=e_z,
+            mu=mu,
+            alpha_net=self.alpha_net,
+            dt=self.dt,
+            use_drag=self.use_drag,
+            use_magnus=self.use_magnus,
+            wind=wind,
+            # Ranges are NOT propagated to sampled config (it is deterministic)
+            gravity_range=None,
+            k_drag_range=None,
+            k_magnus_range=None,
+            e_z_range=None,
+            mu_range=None,
+            wind_speed_range=None,
+            wind_direction_range_deg=None,
+        )
+
+    def to_dict(self) -> dict:
+        """Serialize to dict (for NPZ metadata)."""
+        return {
+            "gravity": self.gravity,
+            "k_drag": self.k_drag,
+            "k_magnus": self.k_magnus,
+            "e_z": self.e_z,
+            "mu": self.mu,
+            "alpha_net": self.alpha_net,
+            "dt": self.dt,
+            "use_drag": self.use_drag,
+            "use_magnus": self.use_magnus,
+            "wind": list(self.wind),
+        }
+
 
 @dataclass
 class BallState:
@@ -65,7 +155,7 @@ class BallState:
 
     position: Tensor  # [3] (X, Y, Z) in meters
     velocity: Tensor  # [3] (Vx, Vy, Vz) in m/s
-    spin: Tensor  # [3] (ωx, ωy, ωz) angular velocity
+    spin: Tensor  # [3] (omega_x, omega_y, omega_z) angular velocity
 
     def clone(self) -> BallState:
         """Create a deep copy of this state."""
@@ -95,14 +185,14 @@ class SimulationEvent:
 
 
 class BallPhysics:
-    """Tennis ball physics simulation (blcs.md §2-3 compliant).
+    """Tennis ball physics simulation.
 
     Implements:
-    - Semi-implicit Euler integration (§2.3)
-    - Gravity + drag + Magnus force model (§2.2)
-    - Bounce with restitution and friction (§3.1)
-    - Net collision with velocity reduction (§3.2)
-    - Fence boundary detection (§3.3)
+    - Semi-implicit Euler integration
+    - Gravity + drag + Magnus force model (drag relative to wind)
+    - Bounce with restitution and friction
+    - Net collision with velocity reduction
+    - Fence boundary detection
     """
 
     def __init__(self, config: PhysicsConfig | None = None) -> None:
@@ -110,22 +200,28 @@ class BallPhysics:
 
         Args:
             config: Physics configuration. Uses defaults if None.
-
         """
         self.config = config or PhysicsConfig()
+        self._wind_vec: Tensor | None = None
+
+    @property
+    def wind_vec(self) -> Tensor:
+        """Lazily materialized wind vector."""
+        if self._wind_vec is None:
+            self._wind_vec = torch.tensor(self.config.wind, dtype=torch.float32)
+        return self._wind_vec
 
     def compute_acceleration(self, state: BallState) -> Tensor:
-        """Compute acceleration given current state (blcs.md §2.2).
+        """Compute acceleration given current state.
 
         a = a_g + a_d + a_m
-          = (0, 0, -g) - k_d ||v|| v + k_m (ω × v)
+        Drag and Magnus use velocity relative to wind.
 
         Args:
             state: Current ball state.
 
         Returns:
-            Tensor: Acceleration [3].
-
+            Acceleration [3].
         """
         device = state.position.device
         cfg = self.config
@@ -133,24 +229,28 @@ class BallPhysics:
         # Gravity
         accel = torch.tensor([0.0, 0.0, -cfg.gravity], device=device)
 
-        # Air drag (opposes velocity)
+        # Wind-relative velocity
+        wind = self.wind_vec.to(device)
+        v_rel = state.velocity - wind
+
+        # Air drag (opposes relative velocity)
         if cfg.use_drag:
-            speed = state.velocity.norm()
-            if speed > 1e-6:
-                drag_accel = -cfg.k_drag * speed * state.velocity
+            speed_rel = v_rel.norm()
+            if speed_rel > 1e-6:
+                drag_accel = -cfg.k_drag * speed_rel * v_rel
                 accel = accel + drag_accel
 
-        # Magnus effect (spin-induced lift)
+        # Magnus effect (spin-induced lift, relative velocity)
         if cfg.use_magnus and state.spin is not None:
-            magnus_accel = cfg.k_magnus * torch.cross(state.spin, state.velocity)
+            magnus_accel = cfg.k_magnus * torch.linalg.cross(state.spin, v_rel)
             accel = accel + magnus_accel
 
         return accel
 
     def step(self, state: BallState) -> BallState:
-        """Advance ball state by one time step using semi-implicit Euler (blcs.md §2.3).
+        """Advance ball state by one time step using semi-implicit Euler.
 
-        1. a_t = f(p_t, v_t, ω_0)
+        1. a_t = f(p_t, v_t, omega_0)
         2. v_{t+1} = v_t + a_t * dt
         3. p_{t+1} = p_t + v_{t+1} * dt
 
@@ -158,15 +258,12 @@ class BallPhysics:
             state: Current ball state.
 
         Returns:
-            BallState: New ball state after dt.
-
+            New ball state after dt.
         """
         dt = self.config.dt
 
-        # Compute acceleration
         accel = self.compute_acceleration(state)
 
-        # Semi-implicit Euler: update velocity first, then position
         new_vel = state.velocity + accel * dt
         new_pos = state.position + new_vel * dt
 
@@ -177,33 +274,29 @@ class BallPhysics:
         )
 
     def handle_bounce(self, state: BallState) -> tuple[BallState, bool]:
-        """Handle ground bounce if ball is below ground (blcs.md §3.1).
-
-        Bounce detection: Z_t > 0 and Z_{t+1} <= 0 and V_z < 0
+        """Handle ground bounce if ball is below ground.
 
         Reflection:
         - V_z' = -e_z * V_z
-        - V_x' = (1 - μ) * V_x
-        - V_y' = (1 - μ) * V_y
+        - V_x' = (1 - mu) * V_x
+        - V_y' = (1 - mu) * V_y
         - Z' = 0
 
         Args:
             state: Current ball state.
 
         Returns:
-            tuple: (new_state, did_bounce)
-
+            (new_state, did_bounce)
         """
         cfg = self.config
 
         if state.position[2] <= 0 and state.velocity[2] < 0:
-            # Bounce occurred
             new_pos = state.position.clone()
-            new_pos[2] = 0.0  # Clip to ground
+            new_pos[2] = 0.0
 
             new_vel = state.velocity.clone()
-            new_vel[2] = -cfg.e_z * state.velocity[2]  # Reflect and reduce
-            new_vel[0] = (1 - cfg.mu) * state.velocity[0]  # Friction
+            new_vel[2] = -cfg.e_z * state.velocity[2]
+            new_vel[0] = (1 - cfg.mu) * state.velocity[0]
             new_vel[1] = (1 - cfg.mu) * state.velocity[1]
 
             return BallState(
@@ -219,9 +312,9 @@ class BallPhysics:
         prev_pos: Tensor,
         curr_pos: Tensor,
     ) -> tuple[bool, Tensor | None]:
-        """Check if ball trajectory crosses the net (blcs.md §3.2).
+        """Check if ball trajectory crosses the net.
 
-        Net is at y=0, height varies from NET_HEIGHT_CENTER (center)
+        Net is at y=0, height varies from NET_HEIGHT_CENTER (centre)
         to NET_HEIGHT_POST (edges).
 
         Args:
@@ -229,22 +322,18 @@ class BallPhysics:
             curr_pos: Current position [3].
 
         Returns:
-            tuple: (hit_net, position_at_net)
-
+            (hit_net, position_at_net)
         """
-        # Check if y crosses 0
         if not (
             (prev_pos[1] > 0 and curr_pos[1] <= 0)
             or (prev_pos[1] < 0 and curr_pos[1] >= 0)
         ):
             return False, None
 
-        # Interpolate position at y=0
         t = prev_pos[1] / (prev_pos[1] - curr_pos[1] + 1e-8)
         x_at_net = (prev_pos[0] + t * (curr_pos[0] - prev_pos[0])).item()
         z_at_net = (prev_pos[2] + t * (curr_pos[2] - prev_pos[2])).item()
 
-        # Check if within net width
         if abs(x_at_net) <= HALF_DOUBLES_WIDTH:
             net_height = self._net_height_at_x(x_at_net)
 
@@ -269,9 +358,7 @@ class BallPhysics:
             curr_pos: Current position [3].
 
         Returns:
-            float: Clearance in meters (positive = above net).
-            None: If net plane was not crossed in this segment.
-
+            Clearance in metres (positive = above net), or None if not crossed.
         """
         if not (
             (prev_pos[1] > 0 and curr_pos[1] <= 0)
@@ -294,18 +381,16 @@ class BallPhysics:
         state: BallState,
         net_pos: Tensor | None = None,
     ) -> BallState:
-        """Apply net collision response (blcs.md §3.2).
+        """Apply net collision response.
 
-        The collision reflects the Y velocity (bounce-back) and reduces
-        overall speed by alpha_net.
+        Reflects Y velocity and reduces overall speed by alpha_net.
 
         Args:
             state: Current ball state.
             net_pos: Optional collision position at the net plane.
 
         Returns:
-            BallState: State with reflected and reduced velocity.
-
+            State with reflected and reduced velocity.
         """
         cfg = self.config
         new_pos = state.position.clone()
@@ -324,25 +409,21 @@ class BallPhysics:
         )
 
     def _net_height_at_x(self, x_at_net: float) -> float:
-        """Get net height at a given x position (meters)."""
+        """Get net height at a given x position (metres)."""
         x_ratio = min(abs(x_at_net) / HALF_DOUBLES_WIDTH, 1.0)
         return NET_HEIGHT_CENTER + x_ratio * (NET_HEIGHT_POST - NET_HEIGHT_CENTER)
 
     def check_fence_collision(self, pos: Tensor) -> bool:
-        """Check if ball has reached fence boundary (blcs.md §3.3).
-
-        Fence bounds: [X_MIN, X_MAX] × [Y_MIN, Y_MAX]
+        """Check if ball has reached fence boundary.
 
         Args:
             pos: Current position [3].
 
         Returns:
-            bool: True if outside fence.
-
+            True if outside fence.
         """
         x, y, z = pos[0].item(), pos[1].item(), pos[2].item()
 
-        # Check if outside fence rectangle
         if x <= X_MIN or x >= X_MAX:
             return True
         if y <= Y_MIN or y >= Y_MAX:
@@ -355,37 +436,33 @@ class BallPhysics:
 
         Args:
             pos: Position [3] (x, y, z).
-            target_side: "near" (y < 0) or "far" (y > 0).
+            target_side: ``"near"`` (y < 0) or ``"far"`` (y > 0).
 
         Returns:
-            bool: True if in singles court on target side.
-
+            True if in singles court on target side.
         """
         x, y = pos[0].item(), pos[1].item()
 
-        # Check x bounds (singles width)
         if abs(x) > HALF_SINGLES_WIDTH:
             return False
 
-        # Check y bounds based on target side
         if target_side == "far":
             return 0 < y <= HALF_LENGTH
-        else:  # near
+        else:
             return -HALF_LENGTH <= y < 0
 
     def normalize_position(self, pos: Tensor) -> Tensor:
-        """Normalize position to BLCS coordinates (blcs.md §0).
+        """Normalize position to BLCS coordinates.
 
         x_norm = X / HALF_DOUBLES_WIDTH
         y_norm = Y / HALF_LENGTH
         z_norm = Z / NET_HEIGHT_POST
 
         Args:
-            pos: Position [3] or [T, 3] in meters.
+            pos: Position [3] or [T, 3] in metres.
 
         Returns:
-            Tensor: Normalized position.
-
+            Normalized position.
         """
         norm = pos.clone()
         if pos.dim() == 1:
@@ -399,14 +476,13 @@ class BallPhysics:
         return norm
 
     def denormalize_position(self, norm: Tensor) -> Tensor:
-        """Denormalize position from BLCS coordinates to meters.
+        """Denormalize position from BLCS coordinates to metres.
 
         Args:
             norm: Normalized position [3] or [T, 3].
 
         Returns:
-            Tensor: Position in meters.
-
+            Position in metres.
         """
         pos = norm.clone()
         if norm.dim() == 1:

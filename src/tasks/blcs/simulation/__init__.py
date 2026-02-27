@@ -4,7 +4,14 @@ Provides physics simulation and shot generation for ball trajectory data.
 """
 
 from src.tasks.blcs.simulation.ball_physics import BallPhysics, BallState, PhysicsConfig
-from src.tasks.blcs.simulation.cell_manager import CellManager, ShotCategory
+from src.tasks.blcs.simulation.cell_manager import (
+    CellManager,
+    NUM_CELLS_PER_SIDE,
+    NUM_IN_COURT_CELLS,
+    NUM_OUT_COURT_CELLS,
+    NUM_TOTAL_CELLS,
+    ShotCategory,
+)
 from src.tasks.blcs.simulation.rally_simulator import (
     RallyConfig,
     RallyEndReason,
@@ -12,17 +19,27 @@ from src.tasks.blcs.simulation.rally_simulator import (
     RallySimulator,
     ShotEventInfo,
 )
-from src.tasks.blcs.simulation.shot_simulator import ShotConfig, ShotResult, ShotSimulator
+from src.tasks.blcs.simulation.shot_simulator import (
+    ShotConfig,
+    ShotResult,
+    ShotSimulator,
+    ShotType,
+)
 
 __all__ = [
     "BallPhysics",
     "BallState",
     "PhysicsConfig",
     "CellManager",
+    "NUM_CELLS_PER_SIDE",
+    "NUM_IN_COURT_CELLS",
+    "NUM_OUT_COURT_CELLS",
+    "NUM_TOTAL_CELLS",
     "ShotCategory",
     "ShotSimulator",
     "ShotConfig",
     "ShotResult",
+    "ShotType",
     "RallySimulator",
     "RallyConfig",
     "RallyResult",

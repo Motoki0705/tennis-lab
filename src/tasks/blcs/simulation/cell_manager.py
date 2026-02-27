@@ -1,14 +1,25 @@
-"""Cell management for BLCS shot distribution control (blcs.md §6 extended).
+"""Cell management for BLCS shot distribution control.
 
-Manages 20-cell grid for both from_cell and to_cell:
-- Cells 0-8: Singles court interior (3×3 grid)
-- Cells 9-19: Exterior regions (fence area)
+Manages 9-cell grid per side (18 total) for both from_cell and to_cell:
 
-Also handles shot category classification:
-- DIRECT_NET: Ball hits net before first bounce
-- DIRECT_FENCE: Ball reaches fence before first bounce
-- IN_COURT: First bounce in singles court (cells 0-8)
-- OUT_COURT: First bounce outside court (cells 9-19)
+In-court cells (0-5):
+  - 0: Left Service Box
+  - 1: Right Service Box
+  - 2: Left Back Court (singles baseline - service line)
+  - 3: Right Back Court (singles baseline - service line)
+  - 4: Left Doubles Alley
+  - 5: Right Doubles Alley
+
+Out-court cells (6-8):
+  - 6: Left Side Out (outside doubles, net-to-baseline)
+  - 7: Right Side Out (outside doubles, net-to-baseline)
+  - 8: Behind Baseline Out (baseline-to-fence, full width)
+
+Shot category classification:
+  - DIRECT_NET: Ball hits net before first bounce
+  - DIRECT_FENCE: Ball reaches fence before first bounce
+  - IN_COURT: First bounce in doubles court (cells 0-5)
+  - OUT_COURT: First bounce outside doubles court (cells 6-8)
 """
 
 from __future__ import annotations
@@ -21,8 +32,10 @@ import torch
 from torch import Tensor
 
 from src.utils.schema.court import (
+    HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
     HALF_SINGLES_WIDTH,
+    SERVICE_LINE_DISTANCE,
     X_MAX,
     X_MIN,
     Y_MAX,
@@ -31,19 +44,28 @@ from src.utils.schema.court import (
 if TYPE_CHECKING:
     pass
 
+# ------------------------------------------------------------------
+# Cell grid constants
+# ------------------------------------------------------------------
+
+NUM_IN_COURT_CELLS: int = 6
+NUM_OUT_COURT_CELLS: int = 3
+NUM_CELLS_PER_SIDE: int = NUM_IN_COURT_CELLS + NUM_OUT_COURT_CELLS  # 9
+NUM_TOTAL_CELLS: int = NUM_CELLS_PER_SIDE * 2  # 18
+
 
 class ShotCategory(Enum):
     """Shot outcome category."""
 
     DIRECT_NET = "direct_net"  # Hit net before first bounce
     DIRECT_FENCE = "direct_fence"  # Reached fence before first bounce
-    IN_COURT = "in_court"  # First bounce in singles court
-    OUT_COURT = "out_court"  # First bounce outside singles court
+    IN_COURT = "in_court"  # First bounce in doubles court
+    OUT_COURT = "out_court"  # First bounce outside doubles court
 
 
 @dataclass
 class CellBounds:
-    """Bounds of a cell."""
+    """Axis-aligned bounding rectangle (world coordinates)."""
 
     x_min: float
     x_max: float
@@ -52,192 +74,134 @@ class CellBounds:
 
 
 class CellManager:
-    """Manages 20-cell grid for shot distribution control.
+    """Manages 9-cell grid per side for shot distribution control.
 
-    Cell layout (viewed from above, for one side):
+    Cell layout (viewed from above, far side y > 0):
 
     Fence boundary
-    ┌────┬────┬────┬────┬────┐
-    │ 17 │ 18 │ 19 │ 20 │ 21 │  ← Baseline exterior (mapped to 15-19)
-    ├────┼────┼────┼────┼────┤
-    │  9 │  6 │  7 │  8 │ 12 │  ← Row 2 (baseline side)
-    ├────┼────┼────┼────┼────┤
-    │ 10 │  3 │  4 │  5 │ 13 │  ← Row 1 (middle)
-    ├────┼────┼────┼────┼────┤
-    │ 11 │  0 │  1 │  2 │ 14 │  ← Row 0 (net side)
-    └────┴────┴────┴────┴────┘
-              Net (y=0)
-
-    Final ID mapping:
-    - 0-8: Court interior (3×3)
-    - 9-11: Left exterior (3 rows)
-    - 12-14: Right exterior (3 rows)
-    - 15-19: Baseline exterior (5 columns)
+    +-------------+-----------------------------+-------------+
+    |             |           Cell 8             |             |
+    |             |     Behind Baseline Out      |             |
+    +-----+-------+--------------+--------------+-------+-----+
+    |     |       |   Cell 2     |   Cell 3     |       |     |
+    |  6  |  4    |  Left Back   |  Right Back  |   5   |  7  |
+    | L.  | L.    |   Court      |   Court      |  R.   | R.  |
+    |Side |Alley  +--------------+--------------+ Alley |Side |
+    | Out |       |   Cell 0     |   Cell 1     |       | Out |
+    |     |       |  Left Svc    |  Right Svc   |       |     |
+    |     |       |   Box        |   Box        |       |     |
+    +-----+-------+--------------+--------------+-------+-----+
+                          Net (y = 0)
     """
 
-    # Court interior grid boundaries (singles court)
-    # X: [-HALF_SINGLES_WIDTH, +HALF_SINGLES_WIDTH] divided into 3
-    # Y: [0, HALF_LENGTH] (far side) or [-HALF_LENGTH, 0] (near side) divided into 3
+    # Court geometry (precomputed for fast lookup)
+    _xs: float = HALF_SINGLES_WIDTH   # 4.115
+    _xd: float = HALF_DOUBLES_WIDTH   # 5.485
+    _ys: float = SERVICE_LINE_DISTANCE  # 6.40
+    _yB: float = HALF_LENGTH           # 11.885
+    _x_min: float = X_MIN             # -9.145
+    _x_max: float = X_MAX             # +9.145
+    _y_max: float = abs(Y_MAX)        # 18.285
 
     def __init__(self) -> None:
-        """Initialize cell manager with grid boundaries."""
-        # Singles court X boundaries (3 divisions)
-        self.court_x_bounds = [
-            -HALF_SINGLES_WIDTH,
-            -HALF_SINGLES_WIDTH / 3,
-            HALF_SINGLES_WIDTH / 3,
-            HALF_SINGLES_WIDTH,
+        """Initialize cell manager with geometry boundaries."""
+        # Build cell bounds table (far side orientation, y >= 0)
+        self._cell_bounds_raw: list[tuple[float, float, float, float]] = [
+            # In-court cells
+            (-self._xs, 0.0,       0.0,       self._ys),  # 0: Left Svc Box
+            (0.0,       self._xs,  0.0,       self._ys),  # 1: Right Svc Box
+            (-self._xs, 0.0,       self._ys,  self._yB),  # 2: Left Back Court
+            (0.0,       self._xs,  self._ys,  self._yB),  # 3: Right Back Court
+            (-self._xd, -self._xs, 0.0,       self._yB),  # 4: Left Doubles Alley
+            (self._xs,  self._xd,  0.0,       self._yB),  # 5: Right Doubles Alley
+            # Out-court cells
+            (self._x_min, -self._xd, 0.0,       self._yB),  # 6: Left Side Out
+            (self._xd,    self._x_max, 0.0,     self._yB),  # 7: Right Side Out
+            (self._x_min, self._x_max, self._yB, self._y_max),  # 8: Behind Baseline
         ]
 
-        # Court Y boundaries (3 divisions, for one half)
-        half_y = HALF_LENGTH
-        self.court_y_bounds = [
-            0.0,
-            half_y / 3,
-            2 * half_y / 3,
-            half_y,
-        ]
-
-        # Extended boundaries for exterior cells
-        self.fence_x_bounds = [
-            X_MIN,
-            -HALF_SINGLES_WIDTH,
-            -HALF_SINGLES_WIDTH / 3,
-            HALF_SINGLES_WIDTH / 3,
-            HALF_SINGLES_WIDTH,
-            X_MAX,
-        ]
-
-        # Y bounds extended to fence (5 rows: 3 court + 1 baseline exterior)
-        self.fence_y_bounds = [
-            0.0,
-            HALF_LENGTH / 3,
-            2 * HALF_LENGTH / 3,
-            HALF_LENGTH,
-            abs(Y_MAX),  # Fence Y
-        ]
+    # ------------------------------------------------------------------
+    # Position -> Cell mapping
+    # ------------------------------------------------------------------
 
     def position_to_cell_id(self, pos: Tensor, side: str) -> int:
-        """Convert position to cell ID (0-19).
+        """Convert world position to cell ID (0-8).
 
         Args:
             pos: Position [3] (x, y, z).
-            side: "near" or "far" - which side the ball is targeting.
+            side: ``"near"`` or ``"far"`` -- which side the ball is targeting.
 
         Returns:
-            int: Cell ID (0-19).
-
+            Cell ID (0-8).
         """
         x = pos[0].item()
         y = pos[1].item()
 
-        # Flip y for near side (make positive for easier calculation)
+        # Normalise to far-side orientation (y >= 0)
         if side == "near":
             y = -y
 
-        # Determine x region (0=left-ext, 1-3=court, 4=right-ext)
-        x_region = self._get_x_region(x)
+        return self._xy_to_cell(x, y)
 
-        # Determine y region (0-2=court rows, 3=baseline exterior)
-        y_region = self._get_y_region(y)
+    def _xy_to_cell(self, x: float, y: float) -> int:
+        """Map (x, y) in far-side orientation to cell ID."""
+        # Check in-court regions first (most common)
+        if 0.0 <= y < self._ys:
+            # Service box row
+            if -self._xs <= x < 0.0:
+                return 0  # Left Svc Box
+            if 0.0 <= x <= self._xs:
+                return 1  # Right Svc Box
+            if -self._xd <= x < -self._xs:
+                return 4  # Left Doubles Alley
+            if self._xs < x <= self._xd:
+                return 5  # Right Doubles Alley
+        elif self._ys <= y <= self._yB:
+            # Back court row
+            if -self._xs <= x < 0.0:
+                return 2  # Left Back Court
+            if 0.0 <= x <= self._xs:
+                return 3  # Right Back Court
+            if -self._xd <= x < -self._xs:
+                return 4  # Left Doubles Alley
+            if self._xs < x <= self._xd:
+                return 5  # Right Doubles Alley
 
-        # Map to cell ID
-        return self._region_to_cell_id(x_region, y_region)
+        # Out-court
+        if y > self._yB:
+            return 8  # Behind Baseline
+        if x < -self._xd:
+            return 6  # Left Side Out
+        if x > self._xd:
+            return 7  # Right Side Out
 
-    def _get_x_region(self, x: float) -> int:
-        """Get x region index (0-4)."""
-        bounds = self.fence_x_bounds
-        for i in range(len(bounds) - 1):
-            if bounds[i] <= x < bounds[i + 1]:
-                return i
-        return len(bounds) - 2  # Clamp to last region
+        # Fallback (should not happen with well-formed positions)
+        return 8
 
-    def _get_y_region(self, y: float) -> int:
-        """Get y region index (0-3), y should be positive."""
-        bounds = self.fence_y_bounds
-        for i in range(len(bounds) - 1):
-            if bounds[i] <= y < bounds[i + 1]:
-                return i
-        return len(bounds) - 2  # Clamp to last region
-
-    def _region_to_cell_id(self, x_region: int, y_region: int) -> int:
-        """Map (x_region, y_region) to cell ID.
-
-        x_region: 0=left-ext, 1-3=court columns, 4=right-ext
-        y_region: 0-2=court rows (net to baseline), 3=baseline exterior
-        """
-        # Court interior (cells 0-8)
-        if 1 <= x_region <= 3 and 0 <= y_region <= 2:
-            col = x_region - 1  # 0, 1, 2
-            row = y_region  # 0, 1, 2
-            return row * 3 + col
-
-        # Left exterior (cells 9-11)
-        if x_region == 0 and 0 <= y_region <= 2:
-            return 9 + y_region
-
-        # Right exterior (cells 12-14)
-        if x_region == 4 and 0 <= y_region <= 2:
-            return 12 + y_region
-
-        # Baseline exterior (cells 15-19)
-        if y_region == 3:
-            return 15 + x_region
-
-        # Fallback (should not happen)
-        return 0
+    # ------------------------------------------------------------------
+    # Cell -> Bounds mapping
+    # ------------------------------------------------------------------
 
     def cell_id_to_bounds(self, cell_id: int, side: str) -> CellBounds:
-        """Get bounds for a cell ID.
+        """Get world-coordinate bounds for a cell ID.
 
         Args:
-            cell_id: Cell ID (0-19).
-            side: "near" or "far".
+            cell_id: Cell ID (0-8).
+            side: ``"near"`` or ``"far"``.
 
         Returns:
-            CellBounds: (x_min, x_max, y_min, y_max) in world coordinates.
-
+            CellBounds in world coordinates.
         """
-        x_min, x_max, y_min, y_max = self._cell_id_to_raw_bounds(cell_id)
+        x_min, x_max, y_min, y_max = self._cell_bounds_raw[cell_id]
 
-        # Flip y for near side
         if side == "near":
             y_min, y_max = -y_max, -y_min
 
         return CellBounds(x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max)
 
-    def _cell_id_to_raw_bounds(self, cell_id: int) -> tuple[float, float, float, float]:
-        """Get raw bounds (far side orientation)."""
-        fence_x = self.fence_x_bounds
-        fence_y = self.fence_y_bounds
-
-        # Court interior (0-8)
-        if 0 <= cell_id <= 8:
-            row = cell_id // 3  # 0, 1, 2
-            col = cell_id % 3  # 0, 1, 2
-            x_min = fence_x[col + 1]  # Skip left exterior
-            x_max = fence_x[col + 2]
-            y_min = fence_y[row]
-            y_max = fence_y[row + 1]
-            return x_min, x_max, y_min, y_max
-
-        # Left exterior (9-11)
-        if 9 <= cell_id <= 11:
-            row = cell_id - 9
-            return fence_x[0], fence_x[1], fence_y[row], fence_y[row + 1]
-
-        # Right exterior (12-14)
-        if 12 <= cell_id <= 14:
-            row = cell_id - 12
-            return fence_x[4], fence_x[5], fence_y[row], fence_y[row + 1]
-
-        # Baseline exterior (15-19)
-        if 15 <= cell_id <= 19:
-            col = cell_id - 15
-            return fence_x[col], fence_x[col + 1], fence_y[3], fence_y[4]
-
-        # Fallback
-        return 0.0, 0.0, 0.0, 0.0
+    # ------------------------------------------------------------------
+    # Sampling helpers
+    # ------------------------------------------------------------------
 
     def sample_position_in_cell(
         self,
@@ -246,17 +210,16 @@ class CellManager:
         z_range: tuple[float, float] = (0.8, 1.4),
         device: str | torch.device = "cpu",
     ) -> Tensor:
-        """Sample a random position within a cell.
+        """Sample a random position within a cell (with height).
 
         Args:
-            cell_id: Cell ID (0-19).
-            side: "near" or "far".
-            z_range: (z_min, z_max) height range.
+            cell_id: Cell ID (0-8).
+            side: ``"near"`` or ``"far"``.
+            z_range: (z_min, z_max) height range in metres.
             device: Torch device.
 
         Returns:
-            Tensor: Position [3] (x, y, z).
-
+            Position [3] (x, y, z).
         """
         bounds = self.cell_id_to_bounds(cell_id, side)
 
@@ -266,17 +229,64 @@ class CellManager:
 
         return torch.tensor([x, y, z], device=device)
 
+    def sample_bounce_position_in_cell(
+        self,
+        cell_id: int,
+        side: str,
+        device: str | torch.device = "cpu",
+    ) -> Tensor:
+        """Sample a random ground-level (z=0) position within a cell.
+
+        Args:
+            cell_id: Cell ID (0-8).
+            side: ``"near"`` or ``"far"``.
+            device: Torch device.
+
+        Returns:
+            Position [3] (x, y, z=0).
+        """
+        bounds = self.cell_id_to_bounds(cell_id, side)
+
+        x = bounds.x_min + torch.rand(1).item() * (bounds.x_max - bounds.x_min)
+        y = bounds.y_min + torch.rand(1).item() * (bounds.y_max - bounds.y_min)
+
+        return torch.tensor([x, y, 0.0], device=device)
+
+    def get_cell_center(
+        self,
+        cell_id: int,
+        side: str,
+        device: str | torch.device = "cpu",
+    ) -> Tensor:
+        """Get the centre position of a cell (z=0).
+
+        Args:
+            cell_id: Cell ID (0-8).
+            side: ``"near"`` or ``"far"``.
+            device: Torch device.
+
+        Returns:
+            Centre [3] (x, y, z=0).
+        """
+        bounds = self.cell_id_to_bounds(cell_id, side)
+        x = (bounds.x_min + bounds.x_max) / 2
+        y = (bounds.y_min + bounds.y_max) / 2
+        return torch.tensor([x, y, 0.0], device=device)
+
+    # ------------------------------------------------------------------
+    # Classification helpers
+    # ------------------------------------------------------------------
+
     def is_in_court(self, cell_id: int) -> bool:
-        """Check if cell ID is in court interior (0-8).
+        """Check if cell ID is in-court (0-5).
 
         Args:
             cell_id: Cell ID.
 
         Returns:
-            bool: True if cell 0-8.
-
+            True if in-court.
         """
-        return 0 <= cell_id <= 8
+        return 0 <= cell_id < NUM_IN_COURT_CELLS
 
     def classify_shot(
         self,
@@ -291,11 +301,10 @@ class CellManager:
             hit_net_before_bounce: Whether ball hit net before first bounce.
             hit_fence_before_bounce: Whether ball reached fence before first bounce.
             bounce_pos: Position of first bounce (None if no bounce).
-            target_side: "near" or "far" - target side for the shot.
+            target_side: ``"near"`` or ``"far"``.
 
         Returns:
-            tuple: (ShotCategory, to_cell or None)
-
+            Tuple of (ShotCategory, to_cell or None).
         """
         if hit_net_before_bounce:
             return ShotCategory.DIRECT_NET, None
@@ -304,7 +313,6 @@ class CellManager:
             return ShotCategory.DIRECT_FENCE, None
 
         if bounce_pos is None:
-            # No bounce occurred (shouldn't happen normally)
             return ShotCategory.DIRECT_FENCE, None
 
         to_cell = self.position_to_cell_id(bounce_pos, target_side)
@@ -314,80 +322,22 @@ class CellManager:
         else:
             return ShotCategory.OUT_COURT, to_cell
 
+    # ------------------------------------------------------------------
+    # Enumerators
+    # ------------------------------------------------------------------
+
     def get_all_cell_ids(self) -> list[int]:
-        """Get all valid cell IDs.
-
-        Returns:
-            list: Cell IDs 0-19.
-
-        """
-        return list(range(20))
+        """Get all valid cell IDs (0-8)."""
+        return list(range(NUM_CELLS_PER_SIDE))
 
     def get_court_cell_ids(self) -> list[int]:
-        """Get court interior cell IDs.
-
-        Returns:
-            list: Cell IDs 0-8.
-
-        """
-        return list(range(9))
+        """Get in-court cell IDs (0-5)."""
+        return list(range(NUM_IN_COURT_CELLS))
 
     def get_exterior_cell_ids(self) -> list[int]:
-        """Get exterior cell IDs.
+        """Get out-court cell IDs (6-8)."""
+        return list(range(NUM_IN_COURT_CELLS, NUM_CELLS_PER_SIDE))
 
-        Returns:
-            list: Cell IDs 9-19.
-
-        """
-        return list(range(9, 20))
-
-    def get_cell_center(
-        self,
-        cell_id: int,
-        side: str,
-        device: str | torch.device = "cpu",
-    ) -> Tensor:
-        """Get the center position of a cell.
-
-        Args:
-            cell_id: Cell ID (0-19).
-            side: "near" or "far".
-            device: Torch device.
-
-        Returns:
-            Tensor: Center position [3] (x, y, z=0).
-
-        """
-        bounds = self.cell_id_to_bounds(cell_id, side)
-
-        x = (bounds.x_min + bounds.x_max) / 2
-        y = (bounds.y_min + bounds.y_max) / 2
-
-        return torch.tensor([x, y, 0.0], device=device)
-
-    def sample_bounce_position_in_cell(
-        self,
-        cell_id: int,
-        side: str,
-        device: str | torch.device = "cpu",
-    ) -> Tensor:
-        """Sample a random ground-level position within a cell for targeting.
-
-        Unlike sample_position_in_cell which includes height, this returns z=0
-        for use as a bounce target position.
-
-        Args:
-            cell_id: Cell ID (0-19).
-            side: "near" or "far".
-            device: Torch device.
-
-        Returns:
-            Tensor: Position [3] (x, y, z=0).
-
-        """
-        bounds = self.cell_id_to_bounds(cell_id, side)
-
-        x = bounds.x_min + torch.rand(1).item() * (bounds.x_max - bounds.x_min)
-        y = bounds.y_min + torch.rand(1).item() * (bounds.y_max - bounds.y_min)
-
-        return torch.tensor([x, y, 0.0], device=device)
+    def get_service_box_cell_ids(self) -> list[int]:
+        """Get service box cell IDs (0-1)."""
+        return [0, 1]

@@ -3,3 +3,8 @@ z_max: 5.0
 hfov_deg: 60.0
 image_size: [1280, 720]
 
+# Look-at perturbation (Gaussian noise on target, metres, sigma)
+look_at_noise_std: 0.5
+
+# HFOV perturbation (Gaussian noise, degrees, sigma)
+hfov_noise_deg: 2.0

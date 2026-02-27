@@ -63,6 +63,7 @@ class TargetedVelocityConfig:
     speed_solve_tol: float = 1e-3
 
     # Optional refinement using drag/magnus simulation
+    # NOTE: Disabled by default in favour of single-shot sampling
     refine_enabled: bool = False
     refine_iters: int = 1
     refine_speed_scale_min: float = 0.7
@@ -71,6 +72,7 @@ class TargetedVelocityConfig:
     refine_max_frames: int = 1200
 
     # Net clearance constraint (optional)
+    # NOTE: Disabled by default in favour of single-shot sampling
     net_clearance_enabled: bool = False
     net_clearance_min: float = 0.1
     net_clearance_max_attempts: int = 12
@@ -301,6 +303,45 @@ class TargetedVelocitySampler:
             target_pos=target_pos,
             from_side=from_side,
             profile=profile,
+            physics=physics,
+            spin=spin,
+        )
+
+    def sample_velocity_for_serve(
+        self,
+        start_pos: Tensor,
+        target_cell: int,
+        target_side: str,
+        from_side: str,
+        physics: "BallPhysics | None" = None,
+        spin: Tensor | None = None,
+    ) -> Tensor:
+        """Sample velocity aimed at a service box cell.
+
+        Uses lower elevation and higher speed typical of serves.
+
+        Args:
+            start_pos: Starting position [3].
+            target_cell: Target service box cell ID (0 or 1).
+            target_side: Side of target cell.
+            from_side: Side the serve is coming from.
+            physics: Optional physics for clearance check.
+            spin: Optional spin vector.
+
+        Returns:
+            Velocity [3] in m/s.
+        """
+        target_pos = self.cell_manager.sample_bounce_position_in_cell(
+            cell_id=target_cell,
+            side=target_side,
+            device=self.device,
+        )
+
+        return self.compute_velocity_to_target(
+            start_pos=start_pos,
+            target_pos=target_pos,
+            from_side=from_side,
+            profile="drive",  # Serves use drive (low elevation)
             physics=physics,
             spin=spin,
         )
