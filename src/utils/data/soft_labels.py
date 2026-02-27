@@ -42,27 +42,3 @@ def gaussian_soft_labels(
         if 0 <= idx < length:
             out = torch.maximum(out, torch.exp(-((t - float(idx)) ** 2) / denom))
     return out
-
-
-def extract_event_indices(meta: dict, key: str) -> list[int]:
-    """Extract non-negative integer event frame indices from scene metadata.
-
-    Reads ``meta["shots"]`` (a list of dicts) and collects ``int(shot[key])``
-    for each entry where the value is >= 0.
-
-    Args:
-        meta: Scene metadata dictionary.
-        key: Key to look up within each shot dict (e.g. ``"t_start"``).
-
-    Returns:
-        Sorted list of event frame indices.
-    """
-    shots = meta.get("shots", []) or []
-    indices: list[int] = []
-    for s in shots:
-        if not isinstance(s, dict):
-            continue
-        t = int(s.get(key, -1))
-        if t >= 0:
-            indices.append(t)
-    return indices

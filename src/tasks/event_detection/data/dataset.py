@@ -12,7 +12,8 @@ import torch
 from torch import Tensor
 
 from src.tasks.event_detection.data.types import Event3DSample, EventUVSample
-from src.utils.data.soft_labels import extract_event_indices, gaussian_soft_labels
+from src.utils.data.event_utils import extract_event_indices
+from src.utils.data.soft_labels import gaussian_soft_labels
 from src.tasks.base.data.scene_dataset import NPZScene, NPZSceneDatasetBase
 
 if TYPE_CHECKING:

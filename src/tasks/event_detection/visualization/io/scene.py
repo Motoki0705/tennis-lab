@@ -12,7 +12,6 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 from torch import Tensor
 
-from src.utils.data.npz_meta import decode_meta
 from src.utils.data.scene_cache import load_npz_scene
 from src.tasks.event_detection.visualization.types import (
     RuntimeConfig,
@@ -208,7 +207,7 @@ def load_uv_inputs(cfg: RuntimeConfig) -> UVEventInputs:
     set_seed(cfg.seed)
 
     payload = load_npz_scene(cfg.scene_path)
-    meta = decode_meta(payload.get("meta", {}))
+    meta = payload.get("meta", {})
 
     num_cameras = int(payload.get("num_cameras", 1))
     cam_idx = select_camera(cfg.camera, num_cameras)
@@ -250,7 +249,7 @@ def load_traj3d_inputs(cfg: RuntimeConfig) -> Traj3DEventInputs:
     set_seed(cfg.seed)
 
     payload = load_npz_scene(cfg.scene_path)
-    meta = decode_meta(payload.get("meta", {}))
+    meta = payload.get("meta", {})
 
     if "ball_pos_world" not in payload:
         raise KeyError("Missing key in scene NPZ: ball_pos_world")

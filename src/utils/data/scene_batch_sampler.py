@@ -71,85 +71,72 @@ def _shuffle_list(values: list[int], generator: torch.Generator | None) -> list[
     return [values[i] for i in perm]
 
 
-def resolve_scene_sampler_mode(data_cfg: dict) -> str:
-    """Resolve sampler mode from config values.
-
-    Args:
-        data_cfg: Data configuration dictionary.
-
-    Returns:
-        Sampler mode string.
-    """
-
-    mode = str(data_cfg.get("scene_sampler_mode", "")).strip().lower()
-    if mode:
-        return mode
-    if bool(data_cfg.get("chunked_scene_sampler", False)):
-        return "chunked"
-    if bool(data_cfg.get("scene_batch_sampler", False)):
-        scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
-        return "mixed" if scenes_per_batch > 1 else "scene"
-    return "none"
-
-
 def build_scene_sampler(
     dataset: Dataset,
     batch_size: int,
-    mode: str,
-    scenes_per_batch: int,
-    chunk_max_scenes: int,
-    drop_last: bool,
-    shuffle: bool,
-) -> BatchSampler | None:
+    *,
+    enabled: bool = True,
+    scenes_per_batch: int = 1,
+    chunk_max_scenes: int = 1,
+    drop_last: bool = True,
+    shuffle: bool = True,
+) -> "SceneBatchSampler | None":
     """Build a scene-aware sampler for the dataloader.
+
+    When *enabled* is ``False``, returns ``None`` and the caller should
+    use the default PyTorch sampler.  Otherwise a :class:`SceneBatchSampler`
+    is returned whose mode is inferred from the parameter values:
+
+    * ``chunk_max_scenes > 1`` → chunked mode
+    * ``scenes_per_batch > 1`` → mixed mode
+    * both == 1 → per-scene mode
 
     Args:
         dataset: Dataset or Subset.
         batch_size: Samples per batch.
-        mode: Sampler mode ("scene", "mixed", "chunked", or "none").
-        scenes_per_batch: Number of scenes per batch for mixed mode.
-        chunk_max_scenes: Maximum scenes per chunk for chunked mode.
+        enabled: Whether to use scene-aware sampling at all.
+        scenes_per_batch: Number of scenes per batch (mixed mode when > 1).
+        chunk_max_scenes: Maximum scenes per chunk (chunked mode when > 1).
         drop_last: Whether to drop incomplete batches.
         shuffle: Whether to shuffle samples.
 
     Returns:
-        BatchSampler instance or None.
+        :class:`SceneBatchSampler` instance or ``None``.
     """
+    if not enabled:
+        return None
 
-    if mode == "chunked":
-        return ChunkedSceneBatchSampler(
-            dataset,
-            batch_size=batch_size,
-            chunk_max_scenes=chunk_max_scenes,
-            drop_last=drop_last,
-            shuffle=shuffle,
-        )
-    if mode == "mixed" and scenes_per_batch > 1:
-        return MixedSceneBatchSampler(
-            dataset,
-            batch_size=batch_size,
-            scenes_per_batch=scenes_per_batch,
-            drop_last=drop_last,
-            shuffle=shuffle,
-        )
-    if mode == "scene":
-        return SceneBatchSampler(
-            dataset,
-            batch_size=batch_size,
-            drop_last=drop_last,
-            shuffle=shuffle,
-        )
-    return None
+    return SceneBatchSampler(
+        dataset,
+        batch_size=batch_size,
+        scenes_per_batch=scenes_per_batch,
+        chunk_max_scenes=chunk_max_scenes,
+        drop_last=drop_last,
+        shuffle=shuffle,
+    )
 
 
 class SceneBatchSampler(BatchSampler):
-    """Batch sampler that groups samples by scene ID.
+    """Unified scene-aware batch sampler.
+
+    Supports three modes controlled by constructor parameters:
+
+    * **Per-scene** (default): ``scenes_per_batch=1, chunk_max_scenes=1``.
+      Batches contain samples from a single scene.
+    * **Mixed**: ``scenes_per_batch=N`` (N > 1).
+      Each batch mixes samples from exactly *N* distinct scenes.
+      Requires ``batch_size % scenes_per_batch == 0``.
+    * **Chunked**: ``chunk_max_scenes=K`` (K > 1).
+      Scenes are grouped into chunks of up to *K* scenes, then samples
+      within each chunk are batched together.
 
     Args:
         dataset: Dataset or Subset.
         batch_size: Number of samples per batch.
+        scenes_per_batch: Number of distinct scenes per batch.
+        chunk_max_scenes: Maximum scenes per chunk.
         drop_last: Whether to drop the last incomplete batch.
-        shuffle: Whether to shuffle scenes and samples within a scene.
+        shuffle: Whether to shuffle scenes and samples.
         generator: Optional torch generator for deterministic shuffling.
     """
 
@@ -157,22 +144,45 @@ class SceneBatchSampler(BatchSampler):
         self,
         dataset: Dataset,
         batch_size: int,
+        scenes_per_batch: int = 1,
+        chunk_max_scenes: int = 1,
         drop_last: bool = True,
         shuffle: bool = True,
         generator: torch.Generator | None = None,
     ) -> None:
         if batch_size <= 0:
             raise ValueError("batch_size must be positive")
+        if scenes_per_batch <= 0:
+            raise ValueError("scenes_per_batch must be positive")
+        if chunk_max_scenes <= 0:
+            raise ValueError("chunk_max_scenes must be positive")
+        if scenes_per_batch > 1 and batch_size % scenes_per_batch != 0:
+            raise ValueError("batch_size must be divisible by scenes_per_batch")
 
         self.dataset = dataset
         self.batch_size = batch_size
+        self.scenes_per_batch = scenes_per_batch
+        self.chunk_max_scenes = chunk_max_scenes
         self.drop_last = drop_last
         self.shuffle = shuffle
         self.generator = generator
 
         self._scene_to_indices = _build_scene_index_map(dataset)
 
+    # ------------------------------------------------------------------
+    # Iteration
+    # ------------------------------------------------------------------
+
     def __iter__(self) -> Iterable[list[int]]:
+        if self.scenes_per_batch > 1:
+            yield from self._iter_mixed()
+        elif self.chunk_max_scenes > 1:
+            yield from self._iter_chunked()
+        else:
+            yield from self._iter_per_scene()
+
+    def _iter_per_scene(self) -> Iterable[list[int]]:
+        """Yield batches from one scene at a time."""
         scene_ids = list(self._scene_to_indices.keys())
         if self.shuffle:
             scene_ids = _shuffle_list(scene_ids, self.generator)
@@ -188,59 +198,13 @@ class SceneBatchSampler(BatchSampler):
                     continue
                 yield batch
 
-    def __len__(self) -> int:
-        total = 0
-        for indices in self._scene_to_indices.values():
-            num = len(indices)
-            if self.drop_last:
-                total += num // self.batch_size
-            else:
-                total += (num + self.batch_size - 1) // self.batch_size
-        return total
-
-
-class MixedSceneBatchSampler(BatchSampler):
-    """Batch sampler that mixes a fixed number of scenes per batch.
-
-    Args:
-        dataset: Dataset or Subset.
-        batch_size: Number of samples per batch.
-        scenes_per_batch: Number of distinct scenes per batch.
-        drop_last: Whether to drop incomplete batches.
-        shuffle: Whether to shuffle scenes and samples within scenes.
-        generator: Optional torch generator for deterministic shuffling.
-    """
-
-    def __init__(
-        self,
-        dataset: Dataset,
-        batch_size: int,
-        scenes_per_batch: int,
-        drop_last: bool = True,
-        shuffle: bool = True,
-        generator: torch.Generator | None = None,
-    ) -> None:
-        if batch_size <= 0:
-            raise ValueError("batch_size must be positive")
-        if scenes_per_batch <= 0:
-            raise ValueError("scenes_per_batch must be positive")
-        if batch_size % scenes_per_batch != 0:
-            raise ValueError("batch_size must be divisible by scenes_per_batch")
-
-        self.dataset = dataset
-        self.batch_size = batch_size
-        self.scenes_per_batch = scenes_per_batch
-        self.drop_last = drop_last
-        self.shuffle = shuffle
-        self.generator = generator
-        self.chunk_size = batch_size // scenes_per_batch
-
-        self._scene_to_indices = _build_scene_index_map(dataset)
-
-    def __iter__(self) -> Iterable[list[int]]:
+    def _iter_mixed(self) -> Iterable[list[int]]:
+        """Yield batches mixing ``scenes_per_batch`` distinct scenes."""
         scene_ids = list(self._scene_to_indices.keys())
         if self.shuffle:
             scene_ids = _shuffle_list(scene_ids, self.generator)
+
+        chunk_size = self.batch_size // self.scenes_per_batch
 
         scene_to_chunks: dict[int, list[list[int]]] = {}
         for scene_id in scene_ids:
@@ -249,14 +213,14 @@ class MixedSceneBatchSampler(BatchSampler):
                 indices = _shuffle_list(indices, self.generator)
 
             chunks = [
-                indices[start : start + self.chunk_size]
-                for start in range(0, len(indices), self.chunk_size)
+                indices[start : start + chunk_size]
+                for start in range(0, len(indices), chunk_size)
             ]
             if self.drop_last:
-                chunks = [chunk for chunk in chunks if len(chunk) == self.chunk_size]
+                chunks = [chunk for chunk in chunks if len(chunk) == chunk_size]
             scene_to_chunks[scene_id] = chunks
 
-        available = [scene_id for scene_id, chunks in scene_to_chunks.items() if chunks]
+        available = [sid for sid, chunks in scene_to_chunks.items() if chunks]
         while len(available) >= self.scenes_per_batch:
             if self.shuffle:
                 selected = _shuffle_list(available, self.generator)[: self.scenes_per_batch]
@@ -274,53 +238,8 @@ class MixedSceneBatchSampler(BatchSampler):
             elif not self.drop_last:
                 continue
 
-    def __len__(self) -> int:
-        total_chunks = 0
-        for indices in self._scene_to_indices.values():
-            num = len(indices)
-            if self.drop_last:
-                total_chunks += num // self.chunk_size
-            else:
-                total_chunks += (num + self.chunk_size - 1) // self.chunk_size
-        return total_chunks // self.scenes_per_batch
-
-
-class ChunkedSceneBatchSampler(BatchSampler):
-    """Batch sampler that limits sampling to scene chunks.
-
-    Args:
-        dataset: Dataset or Subset.
-        batch_size: Number of samples per batch.
-        chunk_max_scenes: Maximum number of scenes in a chunk.
-        drop_last: Whether to drop incomplete batches.
-        shuffle: Whether to shuffle scenes and samples within a chunk.
-        generator: Optional torch generator for deterministic shuffling.
-    """
-
-    def __init__(
-        self,
-        dataset: Dataset,
-        batch_size: int,
-        chunk_max_scenes: int,
-        drop_last: bool = True,
-        shuffle: bool = True,
-        generator: torch.Generator | None = None,
-    ) -> None:
-        if batch_size <= 0:
-            raise ValueError("batch_size must be positive")
-        if chunk_max_scenes <= 0:
-            raise ValueError("chunk_max_scenes must be positive")
-
-        self.dataset = dataset
-        self.batch_size = batch_size
-        self.chunk_max_scenes = int(chunk_max_scenes)
-        self.drop_last = drop_last
-        self.shuffle = shuffle
-        self.generator = generator
-
-        self._scene_to_indices = _build_scene_index_map(dataset)
-
-    def __iter__(self) -> Iterable[list[int]]:
+    def _iter_chunked(self) -> Iterable[list[int]]:
+        """Yield batches from scene chunks of up to ``chunk_max_scenes``."""
         scene_ids = list(self._scene_to_indices.keys())
         if self.shuffle:
             scene_ids = _shuffle_list(scene_ids, self.generator)
@@ -343,7 +262,39 @@ class ChunkedSceneBatchSampler(BatchSampler):
                     continue
                 yield batch
 
+    # ------------------------------------------------------------------
+    # Length
+    # ------------------------------------------------------------------
+
     def __len__(self) -> int:
+        if self.scenes_per_batch > 1:
+            return self._len_mixed()
+        if self.chunk_max_scenes > 1:
+            return self._len_chunked()
+        return self._len_per_scene()
+
+    def _len_per_scene(self) -> int:
+        total = 0
+        for indices in self._scene_to_indices.values():
+            num = len(indices)
+            if self.drop_last:
+                total += num // self.batch_size
+            else:
+                total += (num + self.batch_size - 1) // self.batch_size
+        return total
+
+    def _len_mixed(self) -> int:
+        chunk_size = self.batch_size // self.scenes_per_batch
+        total_chunks = 0
+        for indices in self._scene_to_indices.values():
+            num = len(indices)
+            if self.drop_last:
+                total_chunks += num // chunk_size
+            else:
+                total_chunks += (num + chunk_size - 1) // chunk_size
+        return total_chunks // self.scenes_per_batch
+
+    def _len_chunked(self) -> int:
         scene_ids = list(self._scene_to_indices.keys())
         total = 0
         for start in range(0, len(scene_ids), self.chunk_max_scenes):
@@ -369,11 +320,19 @@ if __name__ == "__main__":
         def __getitem__(self, idx: int) -> int:
             return idx
 
+        def scene_id_for_sample(self, idx: int) -> int:
+            return self.index[idx][0]
+
     dummy = _DummyDataset()
+
+    # Per-scene mode (default)
     sampler = SceneBatchSampler(dummy, batch_size=2, drop_last=False, shuffle=False)
     assert list(sampler) == [[0, 1], [2], [3, 4], [5]]
 
-    chunked = ChunkedSceneBatchSampler(dummy, batch_size=2, chunk_max_scenes=2, drop_last=False, shuffle=False)
+    # Chunked mode
+    chunked = SceneBatchSampler(
+        dummy, batch_size=2, chunk_max_scenes=2, drop_last=False, shuffle=False,
+    )
     batches = list(chunked)
     assert batches
     print("common.data.scene_batch_sampler smoke ok")

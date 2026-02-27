@@ -7,11 +7,12 @@ from src.utils.data.augmentation import (
     scale_uv_with_visibility,
 )
 from src.utils.data.collate import collate_padded_batch
+from src.utils.data.event_utils import (
+    extract_event_frames,
+    extract_event_indices,
+)
 from src.utils.data.scene_batch_sampler import (
     build_scene_sampler,
-    ChunkedSceneBatchSampler,
-    MixedSceneBatchSampler,
-    resolve_scene_sampler_mode,
     SceneBatchSampler,
 )
 from src.utils.data.scene_cache import (
@@ -23,17 +24,17 @@ from src.utils.data.scene_cache import (
     load_npz_scene,
     reset_scene_cache,
 )
-from src.utils.data.soft_labels import extract_event_indices, gaussian_soft_labels
+from src.utils.data.soft_labels import gaussian_soft_labels
 
 __all__ = [
     "add_gaussian_noise",
     "augment_keypoints",
     "build_scene_sampler",
-    "ChunkedSceneBatchSampler",
     "collate_padded_batch",
-    "MixedSceneBatchSampler",
+    "extract_event_frames",
+    "extract_event_indices",
+    "gaussian_soft_labels",
     "random_visibility_dropout",
-    "resolve_scene_sampler_mode",
     "scale_uv_with_visibility",
     "SceneBatchSampler",
     "SceneCache",
@@ -43,6 +44,4 @@ __all__ = [
     "get_scene_cache",
     "load_npz_scene",
     "reset_scene_cache",
-    "extract_event_indices",
-    "gaussian_soft_labels",
 ]

@@ -11,7 +11,8 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.utils.data.soft_labels import extract_event_indices, gaussian_soft_labels
+from src.utils.data.event_utils import extract_event_indices
+from src.utils.data.soft_labels import gaussian_soft_labels
 from src.utils.data.augmentation import add_gaussian_noise
 from src.tasks.base.data.scene_dataset import NPZScene, NPZSceneDatasetBase
 
