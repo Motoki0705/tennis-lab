@@ -6,8 +6,8 @@ batch_size: 16
 num_workers: 4
 cache_max_scenes: 128
 
-# Scene sampler settings: none | scene | mixed | chunked
-scene_sampler_mode: none
+# Scene sampler settings
+scene_sampler: false
 scenes_per_batch: 1
 chunk_max_scenes: 64
 

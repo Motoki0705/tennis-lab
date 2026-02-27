@@ -14,7 +14,7 @@ from torch import Tensor
 
 from src.tasks.base.data.scene_dataset import NPZScene, NPZSceneDatasetBase
 from src.tasks.trajectory_completion.data.argument import TrajectoryArgumenter
-from src.tasks.trajectory_completion.data.event_masking import extract_event_frames
+from src.utils.data.event_utils import extract_event_frames
 from src.tasks.trajectory_completion.data.types import TrajectoryCompletionSample
 
 if TYPE_CHECKING:

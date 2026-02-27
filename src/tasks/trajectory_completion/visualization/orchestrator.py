@@ -10,7 +10,7 @@ import torch
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-from src.tasks.trajectory_completion.data.event_masking import extract_event_frames
+from src.utils.data.event_utils import extract_event_frames
 from src.tasks.trajectory_completion.visualization.adapters.predict_inputs import (
     build_uv_completion_predict_inputs,
 )

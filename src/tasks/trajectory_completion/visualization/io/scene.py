@@ -11,10 +11,9 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.utils.data.npz_meta import decode_meta
 from src.utils.data.scene_cache import load_npz_scene
 from src.tasks.trajectory_completion.data.argument import TrajectoryArgumenter
-from src.tasks.trajectory_completion.data.event_masking import extract_event_frames
+from src.utils.data.event_utils import extract_event_frames
 from src.tasks.trajectory_completion.visualization.types import RuntimeConfig, TrajectoryInputs
 
 TMP_LOG_PATH = Path("data/tmp/trajectory_completion_visualize.log")
@@ -147,7 +146,7 @@ def load_trajectory_inputs(cfg: RuntimeConfig) -> TrajectoryInputs:
     set_seed(cfg.seed)
 
     payload = load_npz_scene(cfg.scene_path)
-    meta = decode_meta(payload.get("meta", {}))
+    meta = payload.get("meta", {})
 
     num_cameras = int(payload.get("num_cameras", 1))
     cam_idx = _select_camera(cfg.camera, num_cameras)

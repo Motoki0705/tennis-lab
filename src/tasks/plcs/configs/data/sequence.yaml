@@ -10,7 +10,7 @@ camera_mode: random
 num_views_range: [1, 1]
 
 # Scene sampler: none | scene | mixed | chunked
-scene_sampler_mode: chunked
+scene_sampler: true
 scenes_per_batch: 8
 chunk_max_scenes: 64
 

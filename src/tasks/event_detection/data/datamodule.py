@@ -13,10 +13,7 @@ from torch.utils.data import DataLoader
 from src.tasks.event_detection.data.dataset import BLCSRallyEventDataset
 from src.tasks.event_detection.data.types import Event3DBatch, Event3DSample, EventUVBatch, EventUVSample
 from src.utils.data.collate import collate_padded_batch
-from src.utils.data.scene_batch_sampler import (
-    build_scene_sampler,
-    resolve_scene_sampler_mode,
-)
+from src.utils.data.scene_batch_sampler import build_scene_sampler
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -55,7 +52,7 @@ class DataConfig:
     num_workers: int
     input_type: Literal["uv", "3d"]
     pin_memory: bool
-    scene_sampler_mode: str
+    scene_sampler: bool
     scenes_per_batch: int
     chunk_max_scenes: int
 
@@ -80,7 +77,7 @@ class EventDetectionDataModule(pl.LightningDataModule):
             num_workers=int(data_cfg.get("num_workers", 4)),
             input_type=input_type,
             pin_memory=bool(data_cfg.get("pin_memory", torch.cuda.is_available())),
-            scene_sampler_mode=resolve_scene_sampler_mode(data_cfg),
+            scene_sampler=bool(data_cfg.get("scene_sampler", True)),
             scenes_per_batch=int(data_cfg.get("scenes_per_batch", 1)),
             chunk_max_scenes=int(data_cfg.get("chunk_max_scenes", 64)),
         )
@@ -118,8 +115,8 @@ class EventDetectionDataModule(pl.LightningDataModule):
         collate = collate_3d if self._resolved.input_type == "3d" else collate_uv
         batch_sampler = build_scene_sampler(
             self.train_dataset,
-            batch_size=self._resolved.batch_size,
-            mode=self._resolved.scene_sampler_mode,
+            self._resolved.batch_size,
+            enabled=self._resolved.scene_sampler,
             scenes_per_batch=self._resolved.scenes_per_batch,
             chunk_max_scenes=self._resolved.chunk_max_scenes,
             drop_last=True,
@@ -149,8 +146,8 @@ class EventDetectionDataModule(pl.LightningDataModule):
         collate = collate_3d if self._resolved.input_type == "3d" else collate_uv
         batch_sampler = build_scene_sampler(
             self.val_dataset,
-            batch_size=self._resolved.batch_size,
-            mode=self._resolved.scene_sampler_mode,
+            self._resolved.batch_size,
+            enabled=self._resolved.scene_sampler,
             scenes_per_batch=self._resolved.scenes_per_batch,
             chunk_max_scenes=self._resolved.chunk_max_scenes,
             drop_last=False,

@@ -11,7 +11,6 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
 from src.developing.ball_multitask.visualization.types import RuntimeConfig, SceneInputs
-from src.utils.data.npz_meta import decode_meta
 from src.utils.data.scene_cache import load_npz_scene
 
 
@@ -110,7 +109,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
 def load_scene_inputs(cfg: RuntimeConfig) -> SceneInputs:
     """Load a single NPZ scene and extract per-camera arrays."""
     scene = load_npz_scene(cfg.scene_path)
-    meta = decode_meta(scene.get("meta", {}))
+    meta = scene.get("meta", {})
 
     num_cameras = int(scene.get("num_cameras", 1))
     cam_idx = _choose_camera(cfg.camera, num_cameras)

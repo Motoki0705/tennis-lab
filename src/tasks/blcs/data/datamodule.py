@@ -10,7 +10,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 from src.tasks.blcs.data.dataset import BallTrajectoryDataset, collate_and_adapt_blcs_batch
-from src.utils.data.scene_batch_sampler import build_scene_sampler, resolve_scene_sampler_mode
+from src.utils.data.scene_batch_sampler import build_scene_sampler
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -29,7 +29,7 @@ class BLCSDataModule(pl.LightningDataModule):
         self.pin_memory = bool(data_cfg.get("pin_memory", True))
         self.scene_dir = Path(data_cfg.get("scene_dir", "data/blcs"))
 
-        self.scene_sampler_mode = resolve_scene_sampler_mode(data_cfg)
+        self.scene_sampler = bool(data_cfg.get("scene_sampler", True))
         self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
         self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
 
@@ -91,8 +91,8 @@ class BLCSDataModule(pl.LightningDataModule):
     def _build_loader(self, dataset: BallTrajectoryDataset, *, train: bool) -> DataLoader:
         batch_sampler = build_scene_sampler(
             dataset,
-            batch_size=self.batch_size,
-            mode=self.scene_sampler_mode,
+            self.batch_size,
+            enabled=self.scene_sampler,
             scenes_per_batch=self.scenes_per_batch,
             chunk_max_scenes=self.chunk_max_scenes,
             drop_last=train,
