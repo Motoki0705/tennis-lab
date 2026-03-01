@@ -3,16 +3,16 @@
 Manages 9-cell grid per side (18 total) for both from_cell and to_cell:
 
 In-court cells (0-5):
-  - 0: Left Service Box
-  - 1: Right Service Box
-  - 2: Left Back Court (singles baseline - service line)
-  - 3: Right Back Court (singles baseline - service line)
-  - 4: Left Doubles Alley
-  - 5: Right Doubles Alley
+  - 0: Deuce Service Box
+  - 1: Ad Service Box
+  - 2: Deuce Back Court (singles baseline - service line)
+  - 3: Ad Back Court (singles baseline - service line)
+  - 4: Deuce Doubles Alley
+  - 5: Ad Doubles Alley
 
 Out-court cells (6-8):
-  - 6: Left Side Out (outside doubles, net-to-baseline)
-  - 7: Right Side Out (outside doubles, net-to-baseline)
+  - 6: Deuce Side Out (outside doubles, net-to-baseline)
+  - 7: Ad Side Out (outside doubles, net-to-baseline)
   - 8: Behind Baseline Out (baseline-to-fence, full width)
 
 Shot category classification:
@@ -76,7 +76,7 @@ class CellBounds:
 class CellManager:
     """Manages 9-cell grid per side for shot distribution control.
 
-    Cell layout (viewed from above, far side y > 0):
+    Cell layout (viewed from above, far-side canonical orientation y > 0):
 
     Fence boundary
     +-------------+-----------------------------+-------------+
@@ -84,14 +84,20 @@ class CellManager:
     |                  Behind Baseline Out                    |
     +-----+-------+--------------+--------------+-------+-----+
     |     |       |   Cell 2     |   Cell 3     |       |     |
-    |  6  |  4    |  Left Back   |  Right Back  |   5   |  7  |
-    | L.  | L.    |   Court      |   Court      |  R.   | R.  |
+    |  6  |  4    | Deuce Back   |   Ad Back    |   5   |  7  |
+    | D.  | D.    |   Court      |   Court      |  A.   | A.  |
     |Side |Alley  +--------------+--------------+ Alley |Side |
     | Out |       |   Cell 0     |   Cell 1     |       | Out |
-    |     |       |  Left Svc    |  Right Svc   |       |     |
+    |     |       | Deuce Svc    |   Ad Svc     |       |     |
     |     |       |   Box        |   Box        |       |     |
     +-----+-------+--------------+--------------+-------+-----+
                           Net (y = 0)
+
+    Notes:
+    - Cell IDs are shared across near/far sides (0-8 each side).
+    - Canonical orientation is the far side.
+    - For near-side mapping, both x and y are mirrored before lookup so
+      deuce/ad semantics remain side-consistent.
     """
 
     # Court geometry (precomputed for fast lookup)
@@ -108,15 +114,15 @@ class CellManager:
         # Build cell bounds table (far side orientation, y >= 0)
         self._cell_bounds_raw: list[tuple[float, float, float, float]] = [
             # In-court cells
-            (-self._xs, 0.0,       0.0,       self._ys),  # 0: Left Svc Box
-            (0.0,       self._xs,  0.0,       self._ys),  # 1: Right Svc Box
-            (-self._xs, 0.0,       self._ys,  self._yB),  # 2: Left Back Court
-            (0.0,       self._xs,  self._ys,  self._yB),  # 3: Right Back Court
-            (-self._xd, -self._xs, 0.0,       self._yB),  # 4: Left Doubles Alley
-            (self._xs,  self._xd,  0.0,       self._yB),  # 5: Right Doubles Alley
+            (-self._xs, 0.0,       0.0,       self._ys),  # 0: Deuce Svc Box
+            (0.0,       self._xs,  0.0,       self._ys),  # 1: Ad Svc Box
+            (-self._xs, 0.0,       self._ys,  self._yB),  # 2: Deuce Back Court
+            (0.0,       self._xs,  self._ys,  self._yB),  # 3: Ad Back Court
+            (-self._xd, -self._xs, 0.0,       self._yB),  # 4: Deuce Doubles Alley
+            (self._xs,  self._xd,  0.0,       self._yB),  # 5: Ad Doubles Alley
             # Out-court cells
-            (self._x_min, -self._xd, 0.0,       self._yB),  # 6: Left Side Out
-            (self._xd,    self._x_max, 0.0,     self._yB),  # 7: Right Side Out
+            (self._x_min, -self._xd, 0.0,       self._yB),  # 6: Deuce Side Out
+            (self._xd,    self._x_max, 0.0,     self._yB),  # 7: Ad Side Out
             (self._x_min, self._x_max, self._yB, self._y_max),  # 8: Behind Baseline
         ]
 
@@ -129,16 +135,21 @@ class CellManager:
 
         Args:
             pos: Position [3] (x, y, z).
-            side: ``"near"`` or ``"far"`` -- which side the ball is targeting.
+            side: ``"near"`` or ``"far"`` -- target side.
 
         Returns:
             Cell ID (0-8).
         """
+        if side not in ("near", "far"):
+            raise ValueError(f"side must be 'near' or 'far', got {side!r}")
+
         x = pos[0].item()
         y = pos[1].item()
 
-        # Normalise to far-side orientation (y >= 0)
+        # Normalise to far-side canonical orientation.
+        # Mirror both x and y for near side to preserve deuce/ad semantics.
         if side == "near":
+            x = -x
             y = -y
 
         return self._xy_to_cell(x, y)
@@ -149,31 +160,31 @@ class CellManager:
         if 0.0 <= y < self._ys:
             # Service box row
             if -self._xs <= x < 0.0:
-                return 0  # Left Svc Box
+                return 0  # Deuce Svc Box
             if 0.0 <= x <= self._xs:
-                return 1  # Right Svc Box
+                return 1  # Ad Svc Box
             if -self._xd <= x < -self._xs:
-                return 4  # Left Doubles Alley
+                return 4  # Deuce Doubles Alley
             if self._xs < x <= self._xd:
-                return 5  # Right Doubles Alley
+                return 5  # Ad Doubles Alley
         elif self._ys <= y <= self._yB:
             # Back court row
             if -self._xs <= x < 0.0:
-                return 2  # Left Back Court
+                return 2  # Deuce Back Court
             if 0.0 <= x <= self._xs:
-                return 3  # Right Back Court
+                return 3  # Ad Back Court
             if -self._xd <= x < -self._xs:
-                return 4  # Left Doubles Alley
+                return 4  # Deuce Doubles Alley
             if self._xs < x <= self._xd:
-                return 5  # Right Doubles Alley
+                return 5  # Ad Doubles Alley
 
         # Out-court
         if y > self._yB:
             return 8  # Behind Baseline
         if x < -self._xd:
-            return 6  # Left Side Out
+            return 6  # Deuce Side Out
         if x > self._xd:
-            return 7  # Right Side Out
+            return 7  # Ad Side Out
 
         # Fallback (should not happen with well-formed positions)
         return 8
@@ -202,6 +213,7 @@ class CellManager:
         x_min, x_max, y_min, y_max = self._cell_bounds_raw[cell_id]
 
         if side == "near":
+            x_min, x_max = -x_max, -x_min
             y_min, y_max = -y_max, -y_min
 
         return CellBounds(x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max)
@@ -346,5 +358,5 @@ class CellManager:
         return list(range(NUM_IN_COURT_CELLS, NUM_CELLS_PER_SIDE))
 
     def get_service_box_cell_ids(self) -> list[int]:
-        """Get service box cell IDs (0-1)."""
+        """Get service box cell IDs (0=deuce, 1=ad)."""
         return [0, 1]
