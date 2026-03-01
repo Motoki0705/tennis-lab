@@ -16,7 +16,7 @@ from src.tasks.blcs.generate_dataset.api_server.schemas import (
     SimulateShotResponse,
 )
 from src.tasks.blcs.generate_dataset.api_server.service import simulate_shot
-from src.tasks.blcs.simulation.cell_manager import CellManager
+from src.tasks.blcs.generate_dataset.cell_manager import CellManager
 
 
 def create_app() -> FastAPI:
