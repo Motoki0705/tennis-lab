@@ -14,7 +14,6 @@ sim_fps: 240
 
 max_rallies: 10
 max_total_frames: 12000
-court_margin: 0.5
 hit_timing_range: [0.2, 0.8]
 return_z_range: [0.8, 1.4]
 min_rally_length: 2

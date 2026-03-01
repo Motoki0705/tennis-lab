@@ -192,6 +192,13 @@ class CellManager:
         Returns:
             CellBounds in world coordinates.
         """
+        if not 0 <= cell_id < NUM_CELLS_PER_SIDE:
+            raise ValueError(
+                f"cell_id must be in [0, {NUM_CELLS_PER_SIDE - 1}], got {cell_id}"
+            )
+        if side not in ("near", "far"):
+            raise ValueError(f"side must be 'near' or 'far', got {side!r}")
+
         x_min, x_max, y_min, y_max = self._cell_bounds_raw[cell_id]
 
         if side == "near":

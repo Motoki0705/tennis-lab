@@ -91,7 +91,6 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         sim_fps=int(cfg.rally.sim_fps),
         max_rallies=int(cfg.rally.max_rallies),
         max_total_frames=int(cfg.rally.max_total_frames),
-        court_margin=float(cfg.rally.court_margin),
         hit_timing_range=tuple(cfg.rally.hit_timing_range),
         return_z_range=tuple(cfg.rally.return_z_range),
         min_rally_length=int(cfg.rally.min_rally_length),

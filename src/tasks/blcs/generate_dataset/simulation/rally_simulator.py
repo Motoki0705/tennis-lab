@@ -32,7 +32,7 @@ from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import
     TargetedVelocityConfig,
     TargetedVelocitySampler,
 )
-from src.utils.schema.court import HALF_LENGTH, HALF_SINGLES_WIDTH
+from src.utils.schema.court import HALF_LENGTH
 
 if TYPE_CHECKING:
     pass
@@ -78,7 +78,6 @@ class RallyConfig:
 
     max_rallies: int = 10
     max_total_frames: int = 12000
-    court_margin: float = 0.5
     hit_timing_range: tuple[float, float] = (0.2, 0.8)
     return_z_range: tuple[float, float] = (0.8, 1.4)
     min_rally_length: int = 2
@@ -181,9 +180,6 @@ class RallySimulator:
     - No retry loop: each shot computed once via targeted velocity
     - Shot type and return type recorded per shot
     """
-
-    COURT_X_LIMIT = HALF_SINGLES_WIDTH
-    COURT_Y_LIMIT = HALF_LENGTH
 
     def __init__(
         self,
@@ -406,23 +402,19 @@ class RallySimulator:
         target_side: str,
     ) -> tuple[bool, RallyEndReason]:
         """Check if rally should end based on current shot result."""
-        margin = self.rally_config.court_margin
-
         if hit_net_before_bounce:
             return True, RallyEndReason.NET_FAULT
 
         if bounce_pos is None:
             return True, RallyEndReason.NET_FAULT
 
-        x, y, _ = bounce_pos.tolist()
+        _, y, _ = bounce_pos.tolist()
         is_target_side = y > 0 if target_side == "far" else y < 0
         if not is_target_side:
             return True, RallyEndReason.OWN_SIDE_BOUNCE
 
-        x_limit = self.COURT_X_LIMIT + margin
-        y_limit = self.COURT_Y_LIMIT + margin
-
-        if abs(x) > x_limit or abs(y) > y_limit:
+        to_cell = self.cell_manager.position_to_cell_id(bounce_pos, target_side)
+        if not self.cell_manager.is_in_court(to_cell):
             return True, RallyEndReason.OUT
 
         return False, RallyEndReason.ONGOING
@@ -906,7 +898,6 @@ if __name__ == "__main__":
     torch.manual_seed(0)
 
     simulator = RallySimulator(device="cpu")
-    assert simulator.COURT_X_LIMIT == HALF_SINGLES_WIDTH
 
     result = simulator.generate_rally(from_cell=0, from_side="near")
     assert result.rally_length == len(result.shot_events)

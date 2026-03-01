@@ -283,7 +283,7 @@ class TargetedVelocitySampler:
 
         Args:
             start_pos: Starting position [3].
-            target_cell: Target cell ID (0-19).
+            target_cell: Target cell ID (0-8).
             target_side: Side of target cell ("near" or "far").
             from_side: Side the shot is coming from.
 
@@ -291,6 +291,8 @@ class TargetedVelocitySampler:
             Tensor: Velocity [3] in m/s.
 
         """
+        self._validate_cell_id(target_cell)
+
         # Sample target position within cell (ground level)
         target_pos = self.cell_manager.sample_bounce_position_in_cell(
             cell_id=target_cell,
@@ -331,6 +333,8 @@ class TargetedVelocitySampler:
         Returns:
             Velocity [3] in m/s.
         """
+        self._validate_cell_id(target_cell)
+
         target_pos = self.cell_manager.sample_bounce_position_in_cell(
             cell_id=target_cell,
             side=target_side,
@@ -345,6 +349,14 @@ class TargetedVelocitySampler:
             physics=physics,
             spin=spin,
         )
+
+    def _validate_cell_id(self, cell_id: int) -> None:
+        from src.tasks.blcs.generate_dataset.simulation.cell_manager import NUM_CELLS_PER_SIDE
+
+        if not 0 <= cell_id < NUM_CELLS_PER_SIDE:
+            raise ValueError(
+                f"target_cell must be in [0, {NUM_CELLS_PER_SIDE - 1}], got {cell_id}"
+            )
 
     def _sample_elevation_rad(
         self,
