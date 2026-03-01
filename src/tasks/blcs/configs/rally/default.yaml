@@ -16,8 +16,6 @@ max_rallies: 10
 max_total_frames: 12000
 hit_timing_range: [0.2, 0.8]
 return_z_range: [0.8, 1.4]
-min_rally_length: 2
-net_fault_accept_prob: 0.05
 
 # Serve
 serve_probability: 0.3
