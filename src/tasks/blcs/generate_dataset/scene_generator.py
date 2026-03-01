@@ -23,7 +23,6 @@ from src.tasks.blcs.generate_dataset.simulation.rally_simulator import (
     RallyConfig,
     RallySimulator,
 )
-from src.tasks.blcs.generate_dataset.simulation.shot_simulator import ShotConfig
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import TargetedVelocityConfig
 from src.utils.projection.camera_projector import (
     CameraConfig,
@@ -89,7 +88,6 @@ class GeneratorConfig:
     """Configuration for scene generator."""
 
     physics: PhysicsConfig = field(default_factory=PhysicsConfig)
-    shot: ShotConfig = field(default_factory=ShotConfig)
     rally: RallyConfig = field(default_factory=RallyConfig)
     camera: CameraConfig = field(default_factory=CameraConfig)
     targeted_velocity: TargetedVelocityConfig = field(
@@ -137,7 +135,6 @@ class BLCSSceneGenerator:
         """Build a rally simulator with sampled physics config."""
         return RallySimulator(
             physics_config=physics_config,
-            shot_config=self.config.shot,
             rally_config=self.config.rally,
             cell_manager=self.cell_manager,
             targeted_velocity_config=self.config.targeted_velocity,
