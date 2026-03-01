@@ -31,7 +31,6 @@ from src.tasks.blcs.generate_dataset.scene_generator import (
 )
 from src.tasks.blcs.generate_dataset.simulation.ball_physics import PhysicsConfig
 from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyConfig
-from src.tasks.blcs.generate_dataset.simulation.shot_simulator import ShotConfig
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import TargetedVelocityConfig
 from src.utils.projection.camera_projector import CameraConfig
 from src.utils.schema.court import CourtConfig
@@ -79,28 +78,17 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         if cfg.physics.get("wind_direction_range_deg") else None,
     )
 
-    shot_config = ShotConfig(
-        z_range=tuple(cfg.shot.z_range),
-        speed_range=tuple(cfg.shot.speed_range),
-        azimuth_range_deg=tuple(cfg.shot.azimuth_range_deg),
-        elevation_range_deg=tuple(cfg.shot.elevation_range_deg),
-        spin_x_range=tuple(cfg.shot.spin_x_range),
-        spin_y_range=tuple(cfg.shot.spin_y_range),
-        spin_z_range=tuple(cfg.shot.spin_z_range),
-        max_sim_frames=int(cfg.shot.max_sim_frames),
-        output_fps=int(cfg.shot.output_fps),
-        sim_fps=int(cfg.shot.sim_fps),
-        serve_speed_range=tuple(cfg.shot.serve_speed_range)
-        if cfg.shot.get("serve_speed_range") else (30.0, 55.0),
-        serve_elevation_range_deg=tuple(cfg.shot.serve_elevation_range_deg)
-        if cfg.shot.get("serve_elevation_range_deg") else (2.0, 10.0),
-        serve_z_range=tuple(cfg.shot.serve_z_range)
-        if cfg.shot.get("serve_z_range") else (2.0, 2.8),
-        serve_azimuth_range_deg=tuple(cfg.shot.serve_azimuth_range_deg)
-        if cfg.shot.get("serve_azimuth_range_deg") else (-15.0, 15.0),
-    )
-
     rally_config = RallyConfig(
+        z_range=tuple(cfg.rally.z_range),
+        speed_range=tuple(cfg.rally.speed_range),
+        azimuth_range_deg=tuple(cfg.rally.azimuth_range_deg),
+        elevation_range_deg=tuple(cfg.rally.elevation_range_deg),
+        spin_x_range=tuple(cfg.rally.spin_x_range),
+        spin_y_range=tuple(cfg.rally.spin_y_range),
+        spin_z_range=tuple(cfg.rally.spin_z_range),
+        max_sim_frames=int(cfg.rally.max_sim_frames),
+        output_fps=int(cfg.rally.output_fps),
+        sim_fps=int(cfg.rally.sim_fps),
         max_rallies=int(cfg.rally.max_rallies),
         max_total_frames=int(cfg.rally.max_total_frames),
         court_margin=float(cfg.rally.court_margin),
@@ -113,6 +101,10 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         if cfg.rally.get("serve_speed_range") else (30.0, 55.0),
         serve_elevation_range_deg=tuple(cfg.rally.serve_elevation_range_deg)
         if cfg.rally.get("serve_elevation_range_deg") else (2.0, 10.0),
+        serve_z_range=tuple(cfg.rally.serve_z_range)
+        if cfg.rally.get("serve_z_range") else (2.0, 2.8),
+        serve_azimuth_range_deg=tuple(cfg.rally.serve_azimuth_range_deg)
+        if cfg.rally.get("serve_azimuth_range_deg") else (-15.0, 15.0),
         volley_probability=float(cfg.rally.get("volley_probability", 0.05)),
         normal_return_probability=float(cfg.rally.get("normal_return_probability", 0.85)),
         late_return_probability=float(cfg.rally.get("late_return_probability", 0.10)),
@@ -165,7 +157,6 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
 
     return GeneratorConfig(
         physics=physics_config,
-        shot=shot_config,
         rally=rally_config,
         camera=camera_config,
         targeted_velocity=targeted_velocity_config,

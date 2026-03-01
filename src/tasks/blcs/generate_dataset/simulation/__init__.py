@@ -18,11 +18,7 @@ from src.tasks.blcs.generate_dataset.simulation.rally_simulator import (
     RallyResult,
     RallySimulator,
     ShotEventInfo,
-)
-from src.tasks.blcs.generate_dataset.simulation.shot_simulator import (
-    ShotConfig,
     ShotResult,
-    ShotSimulator,
     ShotType,
 )
 
@@ -36,8 +32,6 @@ __all__ = [
     "NUM_OUT_COURT_CELLS",
     "NUM_TOTAL_CELLS",
     "ShotCategory",
-    "ShotSimulator",
-    "ShotConfig",
     "ShotResult",
     "ShotType",
     "RallySimulator",

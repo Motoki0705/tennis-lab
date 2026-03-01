@@ -9,6 +9,7 @@ Generates rally sequences by chaining multiple shots:
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -27,7 +28,6 @@ from src.tasks.blcs.generate_dataset.simulation.cell_manager import (
     NUM_IN_COURT_CELLS,
     ShotCategory,
 )
-from src.tasks.blcs.generate_dataset.simulation.shot_simulator import ShotConfig, ShotSimulator, ShotType
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
     TargetedVelocitySampler,
@@ -50,9 +50,31 @@ class RallyEndReason(Enum):
     DOUBLE_BOUNCE = "double_bounce"
 
 
+class ShotType(Enum):
+    """Type of shot."""
+
+    SERVE = "serve"
+    GROUNDSTROKE = "groundstroke"
+    VOLLEY = "volley"
+
+
 @dataclass
 class RallyConfig:
     """Configuration for rally simulation."""
+
+    # Initial condition ranges
+    z_range: tuple[float, float] = (0.8, 1.4)
+    speed_range: tuple[float, float] = (15.0, 35.0)
+    azimuth_range_deg: tuple[float, float] = (-30.0, 30.0)
+    elevation_range_deg: tuple[float, float] = (5.0, 25.0)
+    spin_x_range: tuple[float, float] = (-20.0, 20.0)
+    spin_y_range: tuple[float, float] = (-80.0, -40.0)
+    spin_z_range: tuple[float, float] = (-20.0, 20.0)
+
+    # Simulation parameters
+    max_sim_frames: int = 2000
+    output_fps: int = 30
+    sim_fps: int = 240
 
     max_rallies: int = 10
     max_total_frames: int = 12000
@@ -66,6 +88,8 @@ class RallyConfig:
     serve_probability: float = 0.3
     serve_speed_range: tuple[float, float] = (30.0, 55.0)
     serve_elevation_range_deg: tuple[float, float] = (2.0, 10.0)
+    serve_z_range: tuple[float, float] = (2.0, 2.8)
+    serve_azimuth_range_deg: tuple[float, float] = (-15.0, 15.0)
 
     # --- Volley / multi-bounce ---
     volley_probability: float = 0.05
@@ -120,6 +144,33 @@ class RallyResult:
     sim_fps: int
 
 
+@dataclass
+class ShotResult:
+    """Result of a single-shot simulation."""
+
+    trajectory: Tensor
+    velocities: Tensor
+    trajectory_sim: Tensor
+    initial_state: BallState
+
+    t_net: int
+    t_fence: int
+    t_bounce1: int
+    t_bounce2: int
+
+    net_pos: Tensor | None
+    bounce1_pos: Tensor | None
+    bounce2_pos: Tensor | None
+
+    category: ShotCategory
+    to_cell: int | None
+
+    from_cell: int
+    from_side: str
+    target_side: str
+    shot_type: ShotType
+
+
 class RallySimulator:
     """Simulates tennis rallies as sequences of shots.
 
@@ -137,7 +188,6 @@ class RallySimulator:
     def __init__(
         self,
         physics_config: PhysicsConfig | None = None,
-        shot_config: ShotConfig | None = None,
         rally_config: RallyConfig | None = None,
         cell_manager: CellManager | None = None,
         targeted_velocity_config: TargetedVelocityConfig | None = None,
@@ -147,7 +197,6 @@ class RallySimulator:
 
         Args:
             physics_config: Physics parameters (already sampled for this rally).
-            shot_config: Shot generation parameters.
             rally_config: Rally-specific parameters.
             cell_manager: Cell manager for position sampling.
             targeted_velocity_config: Configuration for targeted velocity sampling.
@@ -155,22 +204,195 @@ class RallySimulator:
         """
         self.physics = BallPhysics(physics_config)
         self.physics_config = physics_config or PhysicsConfig()
-        self.shot_config = shot_config or ShotConfig()
         self.rally_config = rally_config or RallyConfig()
         self.cell_manager = cell_manager or CellManager()
         self.device = torch.device(device)
-
-        self.shot_simulator = ShotSimulator(
-            physics_config=physics_config,
-            shot_config=shot_config,
-            cell_manager=cell_manager,
-            device=device,
-        )
 
         self.targeted_velocity_sampler = TargetedVelocitySampler(
             cell_manager=self.cell_manager,
             config=targeted_velocity_config,
             device=device,
+        )
+
+    def sample_initial_condition(
+        self,
+        from_cell: int,
+        from_side: str,
+        shot_type: ShotType = ShotType.GROUNDSTROKE,
+    ) -> BallState:
+        """Sample initial conditions for a shot."""
+        cfg = self.rally_config
+        if shot_type == ShotType.SERVE:
+            return self._sample_serve_condition(from_side)
+
+        position = self.cell_manager.sample_position_in_cell(
+            cell_id=from_cell,
+            side=from_side,
+            z_range=cfg.z_range,
+            device=self.device,
+        )
+        velocity = self._sample_velocity(from_side)
+        spin = self._sample_spin()
+        return BallState(position=position, velocity=velocity, spin=spin)
+
+    def _sample_serve_condition(self, from_side: str) -> BallState:
+        """Sample initial conditions for a serve."""
+        cfg = self.rally_config
+        baseline_y = HALF_LENGTH if from_side == "far" else -HALF_LENGTH
+        x = (torch.rand(1).item() - 0.5) * 2.0
+        behind = 0.5 + torch.rand(1).item() * 1.0
+        y = baseline_y + behind if from_side == "far" else baseline_y - behind
+        z = cfg.serve_z_range[0] + torch.rand(1).item() * (
+            cfg.serve_z_range[1] - cfg.serve_z_range[0]
+        )
+        position = torch.tensor([x, y, z], device=self.device)
+
+        velocity = self._sample_velocity(
+            from_side,
+            speed_range=cfg.serve_speed_range,
+            elevation_range_deg=cfg.serve_elevation_range_deg,
+            azimuth_range_deg=cfg.serve_azimuth_range_deg,
+        )
+        spin = self._sample_spin()
+        return BallState(position=position, velocity=velocity, spin=spin)
+
+    def _sample_velocity(
+        self,
+        from_side: str,
+        speed_range: tuple[float, float] | None = None,
+        elevation_range_deg: tuple[float, float] | None = None,
+        azimuth_range_deg: tuple[float, float] | None = None,
+    ) -> Tensor:
+        """Sample initial velocity vector in m/s."""
+        cfg = self.rally_config
+        sr = speed_range or cfg.speed_range
+        er = elevation_range_deg or cfg.elevation_range_deg
+        ar = azimuth_range_deg or cfg.azimuth_range_deg
+
+        speed = sr[0] + torch.rand(1).item() * (sr[1] - sr[0])
+        azimuth_deg = ar[0] + torch.rand(1).item() * (ar[1] - ar[0])
+        elevation_deg = er[0] + torch.rand(1).item() * (er[1] - er[0])
+        azimuth_rad = math.radians(azimuth_deg)
+        elevation_rad = math.radians(elevation_deg)
+        base_dir = 1.0 if from_side == "near" else -1.0
+
+        vx = speed * math.cos(elevation_rad) * math.sin(azimuth_rad)
+        vy = speed * math.cos(elevation_rad) * math.cos(azimuth_rad) * base_dir
+        vz = speed * math.sin(elevation_rad)
+        return torch.tensor([vx, vy, vz], device=self.device)
+
+    def _sample_spin(self) -> Tensor:
+        """Sample spin angular velocity in rad/s."""
+        cfg = self.rally_config
+        spin_x = cfg.spin_x_range[0] + torch.rand(1).item() * (
+            cfg.spin_x_range[1] - cfg.spin_x_range[0]
+        )
+        spin_y = cfg.spin_y_range[0] + torch.rand(1).item() * (
+            cfg.spin_y_range[1] - cfg.spin_y_range[0]
+        )
+        spin_z = cfg.spin_z_range[0] + torch.rand(1).item() * (
+            cfg.spin_z_range[1] - cfg.spin_z_range[0]
+        )
+        return torch.tensor([spin_x, spin_y, spin_z], device=self.device)
+
+    def simulate_shot(
+        self,
+        initial_state: BallState,
+        from_cell: int,
+        from_side: str,
+        shot_type: ShotType = ShotType.GROUNDSTROKE,
+    ) -> ShotResult:
+        """Simulate a single shot until second bounce/fence/max frames."""
+        cfg = self.rally_config
+        target_side = "far" if from_side == "near" else "near"
+
+        state = initial_state.clone()
+        trajectory_sim: list[Tensor] = [state.position.clone()]
+        velocities_sim: list[Tensor] = [state.velocity.clone()]
+
+        bounce_count = 0
+        t_net_sim = -1
+        t_fence_sim = -1
+        t_bounce1_sim = -1
+        t_bounce2_sim = -1
+        net_pos: Tensor | None = None
+        bounce1_pos: Tensor | None = None
+        bounce2_pos: Tensor | None = None
+        hit_net_before_bounce = False
+        hit_fence_before_bounce = False
+
+        for frame in range(cfg.max_sim_frames - 1):
+            prev_pos = state.position.clone()
+            state = self.physics.step(state)
+
+            if bounce_count == 0 and t_net_sim < 0:
+                hit_net, pos_at_net = self.physics.check_net_collision(
+                    prev_pos, state.position
+                )
+                if hit_net:
+                    t_net_sim = frame + 1
+                    net_pos = pos_at_net
+                    hit_net_before_bounce = True
+                    state = self.physics.apply_net_collision(state, net_pos=pos_at_net)
+
+            if self.physics.check_fence_collision(state.position):
+                if bounce_count == 0:
+                    hit_fence_before_bounce = True
+                t_fence_sim = frame + 1
+                trajectory_sim.append(state.position.clone())
+                velocities_sim.append(state.velocity.clone())
+                break
+
+            state, bounced = self.physics.handle_bounce(state)
+            if bounced:
+                bounce_count += 1
+                if bounce_count == 1:
+                    t_bounce1_sim = frame + 1
+                    bounce1_pos = state.position.clone()
+                elif bounce_count == 2:
+                    t_bounce2_sim = frame + 1
+                    bounce2_pos = state.position.clone()
+                    trajectory_sim.append(state.position.clone())
+                    velocities_sim.append(state.velocity.clone())
+                    break
+
+            trajectory_sim.append(state.position.clone())
+            velocities_sim.append(state.velocity.clone())
+
+        trajectory_sim_tensor = torch.stack(trajectory_sim, dim=0)
+        velocities_sim_tensor = torch.stack(velocities_sim, dim=0)
+        downsample_factor = cfg.sim_fps // cfg.output_fps
+        trajectory = trajectory_sim_tensor[::downsample_factor]
+        velocities = velocities_sim_tensor[::downsample_factor]
+
+        def convert_time(t_sim: int) -> int:
+            return -1 if t_sim < 0 else t_sim // downsample_factor
+
+        category, to_cell = self.cell_manager.classify_shot(
+            hit_net_before_bounce=hit_net_before_bounce,
+            hit_fence_before_bounce=hit_fence_before_bounce,
+            bounce_pos=bounce1_pos,
+            target_side=target_side,
+        )
+
+        return ShotResult(
+            trajectory=trajectory,
+            velocities=velocities,
+            trajectory_sim=trajectory_sim_tensor,
+            initial_state=initial_state,
+            t_net=convert_time(t_net_sim),
+            t_fence=convert_time(t_fence_sim),
+            t_bounce1=convert_time(t_bounce1_sim),
+            t_bounce2=convert_time(t_bounce2_sim),
+            net_pos=net_pos,
+            bounce1_pos=bounce1_pos,
+            bounce2_pos=bounce2_pos,
+            category=category,
+            to_cell=to_cell,
+            from_cell=from_cell,
+            from_side=from_side,
+            target_side=target_side,
+            shot_type=shot_type,
         )
 
     # ------------------------------------------------------------------
@@ -313,7 +535,7 @@ class RallySimulator:
         target_side = "far" if from_side == "near" else "near"
 
         position = ball_pos_at_return.clone()
-        spin = self.shot_simulator._sample_spin()
+        spin = self._sample_spin()
 
         velocity = self.targeted_velocity_sampler.sample_velocity_for_target_cell(
             start_pos=position,
@@ -359,7 +581,7 @@ class RallySimulator:
 
         Extended to track up to 3 bounces for late-return support.
         """
-        cfg = self.shot_config
+        cfg = self.rally_config
         target_side = "far" if from_side == "near" else "near"
 
         state = initial_state.clone()
@@ -465,8 +687,6 @@ class RallySimulator:
         - Shot always accepted regardless of landing cell
         """
         cfg = self.rally_config
-        shot_cfg = self.shot_config
-
         all_positions_sim: list[Tensor] = []
         all_velocities_sim: list[Tensor] = []
         shot_events: list[ShotEventInfo] = []
@@ -491,13 +711,13 @@ class RallySimulator:
                 shot_type = first_shot_type
                 if shot_type == ShotType.SERVE:
                     # Serve: start from behind baseline, target service box
-                    initial_state = self.shot_simulator.sample_initial_condition(
+                    initial_state = self.sample_initial_condition(
                         from_cell=current_cell,
                         from_side=current_side,
                         shot_type=ShotType.SERVE,
                     )
                 else:
-                    initial_state = self.shot_simulator.sample_initial_condition(
+                    initial_state = self.sample_initial_condition(
                         from_cell=current_cell,
                         from_side=current_side,
                         shot_type=ShotType.GROUNDSTROKE,
@@ -521,7 +741,7 @@ class RallySimulator:
 
             # --- Calculate frame offsets ---
             t_offset = len(all_positions_sim)
-            downsample = shot_cfg.sim_fps // shot_cfg.output_fps
+            downsample = cfg.sim_fps // cfg.output_fps
 
             shot_info = ShotEventInfo(
                 shot_index=rally_count,
@@ -645,14 +865,14 @@ class RallySimulator:
                 winner_side=winner_side,
                 initial_from_cell=from_cell,
                 initial_from_side=from_side,
-                fps_out=shot_cfg.output_fps,
-                sim_fps=shot_cfg.sim_fps,
+                fps_out=cfg.output_fps,
+                sim_fps=cfg.sim_fps,
             )
 
         trajectory_sim = torch.stack(all_positions_sim, dim=0)
         velocities_sim = torch.stack(all_velocities_sim, dim=0)
 
-        downsample = shot_cfg.sim_fps // shot_cfg.output_fps
+        downsample = cfg.sim_fps // cfg.output_fps
         trajectory = trajectory_sim[::downsample]
         velocities = velocities_sim[::downsample]
 
@@ -667,8 +887,8 @@ class RallySimulator:
             winner_side=winner_side,
             initial_from_cell=from_cell,
             initial_from_side=from_side,
-            fps_out=shot_cfg.output_fps,
-            sim_fps=shot_cfg.sim_fps,
+            fps_out=cfg.output_fps,
+            sim_fps=cfg.sim_fps,
         )
 
     def _convert_time(self, t_sim: int, downsample: int, offset: int) -> int:

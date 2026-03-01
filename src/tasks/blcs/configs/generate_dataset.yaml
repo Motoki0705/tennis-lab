@@ -1,6 +1,5 @@
 defaults:
   - physics: default
-  - shot: default
   - rally: default
   - camera: default
   - sampling: default
@@ -15,4 +14,3 @@ hydra:
   output_subdir: null
   job:
     chdir: false
-
