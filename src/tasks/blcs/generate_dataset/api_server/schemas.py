@@ -10,8 +10,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from src.tasks.blcs.generate_dataset.simulation.cell_manager import NUM_CELLS_PER_SIDE
+
 Side = Literal["near", "far"]
 TargetMode = Literal["none", "cell", "point"]
+MAX_CELL_ID = NUM_CELLS_PER_SIDE - 1
 
 
 class Vec3(BaseModel):
@@ -72,10 +75,10 @@ class ShotParams(BaseModel):
 
 class SimulateShotRequest(BaseModel):
     from_side: Side
-    from_cell: int = Field(ge=0, le=19)
+    from_cell: int = Field(ge=0, le=MAX_CELL_ID)
 
     target_mode: TargetMode = "none"
-    to_cell: int | None = Field(default=None, ge=0, le=19)
+    to_cell: int | None = Field(default=None, ge=0, le=MAX_CELL_ID)
     target_point: Vec2 | None = None
 
     shot: ShotParams = Field(default_factory=ShotParams)
@@ -134,7 +137,7 @@ class CellBounds(BaseModel):
 
 
 class CellInfo(BaseModel):
-    cell_id: int = Field(ge=0, le=19)
+    cell_id: int = Field(ge=0, le=MAX_CELL_ID)
     side: Side
     bounds: CellBounds
     center: Vec2
