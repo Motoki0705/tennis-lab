@@ -16,19 +16,19 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.tasks.blcs.simulation.ball_physics import (
+from src.tasks.blcs.generate_dataset.ball_physics import (
     BallPhysics,
     BallState,
     PhysicsConfig,
 )
-from src.tasks.blcs.simulation.cell_manager import (
+from src.tasks.blcs.generate_dataset.cell_manager import (
     CellManager,
     NUM_CELLS_PER_SIDE,
     NUM_IN_COURT_CELLS,
     ShotCategory,
 )
-from src.tasks.blcs.simulation.shot_simulator import ShotConfig, ShotSimulator, ShotType
-from src.tasks.blcs.simulation.targeted_velocity_sampler import (
+from src.tasks.blcs.generate_dataset.shot_simulator import ShotConfig, ShotSimulator, ShotType
+from src.tasks.blcs.generate_dataset.targeted_velocity_sampler import (
     TargetedVelocityConfig,
     TargetedVelocitySampler,
 )

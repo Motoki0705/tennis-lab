@@ -3,8 +3,8 @@
 Provides physics simulation and shot generation for ball trajectory data.
 """
 
-from src.tasks.blcs.simulation.ball_physics import BallPhysics, BallState, PhysicsConfig
-from src.tasks.blcs.simulation.cell_manager import (
+from src.tasks.blcs.generate_dataset.ball_physics import BallPhysics, BallState, PhysicsConfig
+from src.tasks.blcs.generate_dataset.cell_manager import (
     CellManager,
     NUM_CELLS_PER_SIDE,
     NUM_IN_COURT_CELLS,
@@ -12,14 +12,14 @@ from src.tasks.blcs.simulation.cell_manager import (
     NUM_TOTAL_CELLS,
     ShotCategory,
 )
-from src.tasks.blcs.simulation.rally_simulator import (
+from src.tasks.blcs.generate_dataset.rally_simulator import (
     RallyConfig,
     RallyEndReason,
     RallyResult,
     RallySimulator,
     ShotEventInfo,
 )
-from src.tasks.blcs.simulation.shot_simulator import (
+from src.tasks.blcs.generate_dataset.shot_simulator import (
     ShotConfig,
     ShotResult,
     ShotSimulator,

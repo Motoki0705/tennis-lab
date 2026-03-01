@@ -80,8 +80,8 @@ class CellManager:
 
     Fence boundary
     +-------------+-----------------------------+-------------+
-    |             |           Cell 8             |             |
-    |             |     Behind Baseline Out      |             |
+    |                        Cell 8                           |
+    |                  Behind Baseline Out                    |
     +-----+-------+--------------+--------------+-------+-----+
     |     |       |   Cell 2     |   Cell 3     |       |     |
     |  6  |  4    |  Left Back   |  Right Back  |   5   |  7  |
