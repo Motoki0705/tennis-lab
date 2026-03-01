@@ -93,8 +93,6 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         max_total_frames=int(cfg.rally.max_total_frames),
         hit_timing_range=tuple(cfg.rally.hit_timing_range),
         return_z_range=tuple(cfg.rally.return_z_range),
-        min_rally_length=int(cfg.rally.min_rally_length),
-        net_fault_accept_prob=float(cfg.rally.net_fault_accept_prob),
         serve_probability=float(cfg.rally.get("serve_probability", 0.3)),
         serve_speed_range=tuple(cfg.rally.serve_speed_range)
         if cfg.rally.get("serve_speed_range") else (30.0, 55.0),

@@ -80,8 +80,6 @@ class RallyConfig:
     max_total_frames: int = 12000
     hit_timing_range: tuple[float, float] = (0.2, 0.8)
     return_z_range: tuple[float, float] = (0.8, 1.4)
-    min_rally_length: int = 2
-    net_fault_accept_prob: float = 0.05
 
     # --- Serve ---
     serve_probability: float = 0.3
@@ -424,15 +422,26 @@ class RallySimulator:
     # ------------------------------------------------------------------
 
     def _decide_return_type(self) -> str:
-        """Decide how the opponent returns the ball."""
+        """Decide how the opponent returns the ball.
+
+        Uses normalized probabilities so the three config values can be
+        specified independently without requiring their sum to be 1.0.
+        """
         cfg = self.rally_config
-        r = torch.rand(1).item()
-        if r < cfg.volley_probability:
-            return "volley"
-        elif r < cfg.volley_probability + cfg.normal_return_probability:
+        p_volley = max(0.0, float(cfg.volley_probability))
+        p_normal = max(0.0, float(cfg.normal_return_probability))
+        p_late = max(0.0, float(cfg.late_return_probability))
+        total = p_volley + p_normal + p_late
+
+        if total <= 0.0:
             return "normal"
-        else:
-            return "late_return"
+
+        r = torch.rand(1).item() * total
+        if r < p_volley:
+            return "volley"
+        if r < p_volley + p_normal:
+            return "normal"
+        return "late_return"
 
     # ------------------------------------------------------------------
     # Return timing
