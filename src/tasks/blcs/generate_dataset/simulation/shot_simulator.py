@@ -18,12 +18,12 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.tasks.blcs.generate_dataset.ball_physics import (
+from src.tasks.blcs.generate_dataset.simulation.ball_physics import (
     BallPhysics,
     BallState,
     PhysicsConfig,
 )
-from src.tasks.blcs.generate_dataset.cell_manager import CellManager, ShotCategory
+from src.tasks.blcs.generate_dataset.simulation.cell_manager import CellManager, ShotCategory
 
 if TYPE_CHECKING:
     pass
