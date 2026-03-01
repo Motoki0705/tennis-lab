@@ -29,10 +29,10 @@ from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneGenerator,
     GeneratorConfig,
 )
-from src.tasks.blcs.generate_dataset.ball_physics import PhysicsConfig
-from src.tasks.blcs.generate_dataset.rally_simulator import RallyConfig
-from src.tasks.blcs.generate_dataset.shot_simulator import ShotConfig
-from src.tasks.blcs.generate_dataset.targeted_velocity_sampler import TargetedVelocityConfig
+from src.tasks.blcs.generate_dataset.simulation.ball_physics import PhysicsConfig
+from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyConfig
+from src.tasks.blcs.generate_dataset.simulation.shot_simulator import ShotConfig
+from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import TargetedVelocityConfig
 from src.utils.projection.camera_projector import CameraConfig
 from src.utils.schema.court import CourtConfig
 
