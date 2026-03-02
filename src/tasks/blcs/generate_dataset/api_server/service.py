@@ -177,7 +177,7 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
 def _sample_velocity(
     req: SimulateShotRequest, pos: torch.Tensor, simulator: RallySimulator
 ) -> torch.Tensor:
-    # Targeted velocity for `cell` / `point`, otherwise random sampling.
+    # Targeted velocity for `cell` / `point`, otherwise random target-cell sampling.
     if req.target_mode == "cell":
         target_side = "far" if req.from_side == "near" else "near"
         sampler = TargetedVelocitySampler(
@@ -207,7 +207,19 @@ def _sample_velocity(
         )
         return sampler.compute_velocity_to_target(pos, target_pos, from_side=req.from_side)
 
-    return simulator._sample_velocity(req.from_side)
+    target_side = "far" if req.from_side == "near" else "near"
+    target_cell = simulator._sample_target_cell()
+    sampler = TargetedVelocitySampler(
+        cell_manager=simulator.cell_manager,
+        config=TargetedVelocityConfig(gravity=simulator.physics.config.gravity),
+        device="cpu",
+    )
+    return sampler.sample_velocity_for_target_cell(
+        start_pos=pos,
+        target_cell=target_cell,
+        target_side=target_side,
+        from_side=req.from_side,
+    )
 
 
 def _vec3_to_tensor(v: Vec3) -> torch.Tensor:

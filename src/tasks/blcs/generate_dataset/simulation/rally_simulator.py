@@ -9,7 +9,6 @@ Generates rally sequences by chaining multiple shots:
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -65,9 +64,6 @@ class RallyConfig:
 
     # Initial condition ranges
     z_range: tuple[float, float] = (0.8, 1.4)
-    speed_range: tuple[float, float] = (15.0, 35.0)
-    azimuth_range_deg: tuple[float, float] = (-30.0, 30.0)
-    elevation_range_deg: tuple[float, float] = (5.0, 25.0)
     spin_x_range: tuple[float, float] = (-20.0, 20.0)
     spin_y_range: tuple[float, float] = (-80.0, -40.0)
     spin_z_range: tuple[float, float] = (-20.0, 20.0)
@@ -237,10 +233,14 @@ class RallySimulator:
             z_range=cfg.z_range,
             device=self.device,
         )
-        velocity = self._sample_velocity(from_side)
-        spin = self._sample_spin()
+        target_cell = self._sample_target_cell()
+        initial_state = self._sample_return_initial_state(
+            ball_pos_at_return=position,
+            from_side=from_side,
+            target_cell=target_cell,
+        )
         return InitialConditionResult(
-            initial_state=BallState(position=position, velocity=velocity, spin=spin),
+            initial_state=initial_state,
             pre_positions_sim=[],
             pre_velocities_sim=[],
         )
@@ -346,31 +346,6 @@ class RallySimulator:
             pre_velocities_sim=toss_velocities,
             serve_target_cell=target_cell,
         )
-
-    def _sample_velocity(
-        self,
-        from_side: str,
-        speed_range: tuple[float, float] | None = None,
-        elevation_range_deg: tuple[float, float] | None = None,
-        azimuth_range_deg: tuple[float, float] | None = None,
-    ) -> Tensor:
-        """Sample initial velocity vector in m/s."""
-        cfg = self.rally_config
-        sr = speed_range or cfg.speed_range
-        er = elevation_range_deg or cfg.elevation_range_deg
-        ar = azimuth_range_deg or cfg.azimuth_range_deg
-
-        speed = sr[0] + torch.rand(1).item() * (sr[1] - sr[0])
-        azimuth_deg = ar[0] + torch.rand(1).item() * (ar[1] - ar[0])
-        elevation_deg = er[0] + torch.rand(1).item() * (er[1] - er[0])
-        azimuth_rad = math.radians(azimuth_deg)
-        elevation_rad = math.radians(elevation_deg)
-        base_dir = 1.0 if from_side == "near" else -1.0
-
-        vx = speed * math.cos(elevation_rad) * math.sin(azimuth_rad)
-        vy = speed * math.cos(elevation_rad) * math.cos(azimuth_rad) * base_dir
-        vz = speed * math.sin(elevation_rad)
-        return torch.tensor([vx, vy, vz], device=self.device)
 
     def _sample_spin(self) -> Tensor:
         """Sample spin angular velocity in rad/s."""
@@ -792,6 +767,7 @@ class RallySimulator:
 
         Key design decisions:
         - First shot may be a serve (configurable probability)
+        - Non-serve first shot uses targeted-cell sampling
         - Each return is a single targeted-velocity attempt (no retry loop)
         - Return type (volley/normal/late_return) sampled per return
         - Shot always accepted regardless of landing cell
