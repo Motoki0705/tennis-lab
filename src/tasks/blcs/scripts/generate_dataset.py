@@ -58,7 +58,10 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         e_z=float(cfg.physics.e_z),
         mu=float(cfg.physics.mu),
         alpha_net=float(cfg.physics.alpha_net),
+        alpha_net_cord=float(cfg.physics.get("alpha_net_cord", 0.5)),
         alpha_fence=float(cfg.physics.get("alpha_fence", 0.3)),
+        net_half_thickness=float(cfg.physics.get("net_half_thickness", 0.03)),
+        net_cord_radius=float(cfg.physics.get("net_cord_radius", 0.03)),
         dt=float(cfg.physics.dt),
         use_drag=bool(cfg.physics.use_drag),
         use_magnus=bool(cfg.physics.use_magnus),
@@ -95,14 +98,8 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         hit_timing_range=tuple(cfg.rally.hit_timing_range),
         return_z_range=tuple(cfg.rally.return_z_range),
         serve_probability=float(cfg.rally.get("serve_probability", 0.3)),
-        serve_speed_range=tuple(cfg.rally.serve_speed_range)
-        if cfg.rally.get("serve_speed_range") else (30.0, 55.0),
-        serve_elevation_range_deg=tuple(cfg.rally.serve_elevation_range_deg)
-        if cfg.rally.get("serve_elevation_range_deg") else (2.0, 10.0),
         serve_z_range=tuple(cfg.rally.serve_z_range)
         if cfg.rally.get("serve_z_range") else (2.0, 2.8),
-        serve_azimuth_range_deg=tuple(cfg.rally.serve_azimuth_range_deg)
-        if cfg.rally.get("serve_azimuth_range_deg") else (-15.0, 15.0),
         toss_vz_range=tuple(cfg.rally.toss_vz_range)
         if cfg.rally.get("toss_vz_range") else (4.5, 7.0),
         toss_xy_noise_range=tuple(cfg.rally.toss_xy_noise_range)
