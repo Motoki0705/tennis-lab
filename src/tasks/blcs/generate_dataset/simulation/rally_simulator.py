@@ -43,6 +43,7 @@ class RallyEndReason(Enum):
 
     ONGOING = "ongoing"
     NET_FAULT = "net_fault"
+    DIRECT_FENCE = "direct_fence"
     OWN_SIDE_BOUNCE = "own_side_bounce"
     OUT = "out"
     MAX_RALLIES = "max_rallies"
@@ -496,11 +497,15 @@ class RallySimulator:
         self,
         bounce_pos: Tensor | None,
         hit_net_before_bounce: bool,
+        hit_fence_before_bounce: bool,
         target_side: str,
     ) -> tuple[bool, RallyEndReason]:
         """Check if rally should end based on current shot result."""
         if hit_net_before_bounce:
             return True, RallyEndReason.NET_FAULT
+
+        if hit_fence_before_bounce:
+            return True, RallyEndReason.DIRECT_FENCE
 
         if bounce_pos is None:
             return True, RallyEndReason.NET_FAULT
@@ -697,6 +702,7 @@ class RallySimulator:
         bounce2_pos: Tensor | None = None
         bounce3_pos: Tensor | None = None
         hit_net_before_bounce = False
+        hit_fence_before_bounce = False
 
         actual_max_frames = min(cfg.max_sim_frames, max_frames)
 
@@ -723,6 +729,8 @@ class RallySimulator:
 
             # Check fence collision
             if self.physics.check_fence_collision(state.position):
+                if bounce_count == 0:
+                    hit_fence_before_bounce = True
                 trajectory_sim.append(state.position.clone())
                 velocities_sim.append(state.velocity.clone())
                 break
@@ -749,7 +757,7 @@ class RallySimulator:
 
         category, to_cell = self.cell_manager.classify_shot(
             hit_net_before_bounce=hit_net_before_bounce,
-            hit_fence_before_bounce=False,
+            hit_fence_before_bounce=hit_fence_before_bounce,
             bounce_pos=bounce1_pos,
             target_side=target_side,
         )
@@ -765,6 +773,7 @@ class RallySimulator:
             "bounce2_pos": bounce2_pos,
             "bounce3_pos": bounce3_pos,
             "hit_net_before_bounce": hit_net_before_bounce,
+            "hit_fence_before_bounce": hit_fence_before_bounce,
             "category": category,
             "to_cell": to_cell,
         }
@@ -883,6 +892,7 @@ class RallySimulator:
             should_end, reason = self.check_rally_end(
                 bounce_pos=shot_result["bounce1_pos"],
                 hit_net_before_bounce=shot_result["hit_net_before_bounce"],
+                hit_fence_before_bounce=shot_result["hit_fence_before_bounce"],
                 target_side=target_side,
             )
 
