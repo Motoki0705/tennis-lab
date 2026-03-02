@@ -58,6 +58,7 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         e_z=float(cfg.physics.e_z),
         mu=float(cfg.physics.mu),
         alpha_net=float(cfg.physics.alpha_net),
+        alpha_fence=float(cfg.physics.get("alpha_fence", 0.3)),
         dt=float(cfg.physics.dt),
         use_drag=bool(cfg.physics.use_drag),
         use_magnus=bool(cfg.physics.use_magnus),
