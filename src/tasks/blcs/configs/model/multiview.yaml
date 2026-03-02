@@ -12,10 +12,10 @@ token_dim: 256
 id_emb_dim: 64
 cam_emb_dim: 64
 
-num_layers: 12      # Number of (same-time cross-attn + temporal self-attn) iterations
+num_layers: 6      # Number of (same-time cross-attn + temporal self-attn) iterations
 num_heads: 8
 dropout: 0.1
-max_seq_len: 120
+max_seq_len: 2048
 max_views: 8
 predict_velocity: false
 encoder_layers: 2  # Number of MLP layers in BallCourtEncoder

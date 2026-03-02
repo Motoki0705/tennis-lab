@@ -2,17 +2,17 @@
 scene_dir: "data/blcs"
 
 # DataLoader settings
-batch_size: 8
+batch_size: 4
 num_workers: 4
 cache_max_scenes: 128
 
 # Scene sampler settings
 scene_sampler: true
-scenes_per_batch: 8
+scenes_per_batch: 4
 chunk_max_scenes: 64
 
 # Sequence/view sampling ranges (inclusive)
-seq_len_range: [256, 1024]
+seq_len_range: [32, 256]
 num_views_range: [1, 4]
 
 # Camera selection mode: "random", "first", or camera index
@@ -20,6 +20,6 @@ camera_mode: "random"
 
 # Augmentation
 augmentation:
-  uv_noise_std: 0.005
+  uv_noise_std: 0.01
   visibility_drop_prob: 0.1
   scale_range: [0.9, 1.1]
