@@ -85,9 +85,18 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
         alpha_net=float(req.physics.alpha_net)
         if req.physics.alpha_net is not None
         else 0.3,
+        alpha_net_cord=float(req.physics.alpha_net_cord)
+        if req.physics.alpha_net_cord is not None
+        else 0.5,
         alpha_fence=float(req.physics.alpha_fence)
         if req.physics.alpha_fence is not None
         else 0.3,
+        net_half_thickness=float(req.physics.net_half_thickness)
+        if req.physics.net_half_thickness is not None
+        else 0.03,
+        net_cord_radius=float(req.physics.net_cord_radius)
+        if req.physics.net_cord_radius is not None
+        else 0.03,
         dt=dt,
         use_drag=bool(req.physics.use_drag) if req.physics.use_drag is not None else True,
         use_magnus=bool(req.physics.use_magnus)

@@ -46,7 +46,10 @@ DEFAULT_K_MAGNUS = 0.001
 DEFAULT_E_Z = 0.75
 DEFAULT_MU = 0.1
 DEFAULT_ALPHA_NET = 0.3
+DEFAULT_ALPHA_NET_CORD = 0.1
 DEFAULT_ALPHA_FENCE = 0.3
+DEFAULT_NET_HALF_THICKNESS = 0.03
+DEFAULT_NET_CORD_RADIUS = 0.03
 DEFAULT_DT = 1 / 240
 
 
@@ -64,7 +67,10 @@ class PhysicsConfig:
     e_z: float = DEFAULT_E_Z
     mu: float = DEFAULT_MU
     alpha_net: float = DEFAULT_ALPHA_NET
+    alpha_net_cord: float = DEFAULT_ALPHA_NET_CORD
     alpha_fence: float = DEFAULT_ALPHA_FENCE
+    net_half_thickness: float = DEFAULT_NET_HALF_THICKNESS
+    net_cord_radius: float = DEFAULT_NET_CORD_RADIUS
     dt: float = DEFAULT_DT
     use_drag: bool = True
     use_magnus: bool = True
@@ -121,7 +127,10 @@ class PhysicsConfig:
             e_z=e_z,
             mu=mu,
             alpha_net=self.alpha_net,
+            alpha_net_cord=self.alpha_net_cord,
             alpha_fence=self.alpha_fence,
+            net_half_thickness=self.net_half_thickness,
+            net_cord_radius=self.net_cord_radius,
             dt=self.dt,
             use_drag=self.use_drag,
             use_magnus=self.use_magnus,
@@ -145,7 +154,10 @@ class PhysicsConfig:
             "e_z": self.e_z,
             "mu": self.mu,
             "alpha_net": self.alpha_net,
+            "alpha_net_cord": self.alpha_net_cord,
             "alpha_fence": self.alpha_fence,
+            "net_half_thickness": self.net_half_thickness,
+            "net_cord_radius": self.net_cord_radius,
             "dt": self.dt,
             "use_drag": self.use_drag,
             "use_magnus": self.use_magnus,
@@ -316,10 +328,11 @@ class BallPhysics:
         prev_pos: Tensor,
         curr_pos: Tensor,
     ) -> tuple[bool, Tensor | None]:
-        """Check if ball trajectory crosses the net.
+        """Check collision with explicit net geometry.
 
-        Net is at y=0, height varies from NET_HEIGHT_CENTER (centre)
-        to NET_HEIGHT_POST (edges).
+        Net profile (Y-Z cross-section) is modeled as:
+        - Mesh body: |y| <= net_half_thickness and z <= (net_height - net_cord_radius)
+        - Cord cap: upper half-ellipse above mesh body (kamaboko profile)
 
         Args:
             prev_pos: Previous position [3].
@@ -328,25 +341,45 @@ class BallPhysics:
         Returns:
             (hit_net, position_at_net)
         """
-        if not (
-            (prev_pos[1] > 0 and curr_pos[1] <= 0)
-            or (prev_pos[1] < 0 and curr_pos[1] >= 0)
-        ):
+        half_t = max(float(self.config.net_half_thickness), 1e-4)
+        if curr_pos[1].item() > half_t and prev_pos[1].item() > half_t:
+            return False, None
+        if curr_pos[1].item() < -half_t and prev_pos[1].item() < -half_t:
             return False, None
 
-        t = prev_pos[1] / (prev_pos[1] - curr_pos[1] + 1e-8)
-        x_at_net = (prev_pos[0] + t * (curr_pos[0] - prev_pos[0])).item()
-        z_at_net = (prev_pos[2] + t * (curr_pos[2] - prev_pos[2])).item()
+        prev_y = prev_pos[1].item()
+        curr_y = curr_pos[1].item()
+        dy = curr_y - prev_y
 
-        if abs(x_at_net) <= HALF_DOUBLES_WIDTH:
-            net_height = self._net_height_at_x(x_at_net)
+        # Use first contact with near-side face of net slab.
+        if abs(dy) < 1e-8:
+            t = 0.0
+        elif prev_y <= -half_t < curr_y:
+            t = (-half_t - prev_y) / dy
+        elif prev_y >= half_t > curr_y:
+            t = (half_t - prev_y) / dy
+        else:
+            t = prev_y / (prev_y - curr_y + 1e-8)
 
-            if z_at_net < net_height:
-                net_pos = torch.tensor(
-                    [x_at_net, 0.0, z_at_net],
-                    device=prev_pos.device,
-                )
-                return True, net_pos
+        if t < 0.0 or t > 1.0:
+            return False, None
+
+        net_pos = prev_pos + t * (curr_pos - prev_pos)
+        x_at_net = net_pos[0].item()
+        y_at_net = net_pos[1].item()
+        z_at_net = net_pos[2].item()
+
+        if abs(x_at_net) > HALF_DOUBLES_WIDTH:
+            return False, None
+
+        top_z = self._net_profile_top_z_at_y(
+            x_at_net=x_at_net,
+            y_at_net=y_at_net,
+        )
+        if top_z is None:
+            return False, None
+        if z_at_net <= top_z:
+            return True, net_pos
 
         return False, None
 
@@ -387,7 +420,9 @@ class BallPhysics:
     ) -> BallState:
         """Apply net collision response.
 
-        Reflects Y velocity and reduces overall speed by alpha_net.
+        Uses explicit net geometry normal:
+        - Mesh region: normal along +/-Y
+        - Cord region: normal from cap gradient
 
         Args:
             state: Current ball state.
@@ -403,14 +438,85 @@ class BallPhysics:
         else:
             new_pos[1] = 0.0
 
-        new_vel = state.velocity * cfg.alpha_net
-        new_vel[1] = -new_vel[1]
+        normal, is_cord_region = self._net_surface_normal(
+            net_pos=new_pos,
+            incoming_velocity=state.velocity,
+        )
+        alpha = cfg.alpha_net_cord if is_cord_region else cfg.alpha_net
+
+        new_vel = state.velocity * alpha
+        v_normal = torch.dot(new_vel, normal)
+        if v_normal < 0:
+            new_vel = new_vel - 2.0 * v_normal * normal
 
         return BallState(
             position=new_pos,
             velocity=new_vel,
             spin=state.spin.clone(),
         )
+
+    def _net_profile_top_z_at_y(
+        self,
+        x_at_net: float,
+        y_at_net: float,
+    ) -> float | None:
+        """Return top z of the explicit net profile at (x, y)."""
+        half_t = max(float(self.config.net_half_thickness), 1e-4)
+        if abs(y_at_net) > half_t:
+            return None
+
+        cord_r = max(float(self.config.net_cord_radius), 1e-4)
+        net_height = self._net_height_at_x(x_at_net)
+        mesh_top = net_height - cord_r
+        yy = y_at_net / half_t
+        cap_term = max(0.0, 1.0 - yy * yy)
+        cap_top = mesh_top + cord_r * math.sqrt(cap_term)
+        return cap_top
+
+    def _net_surface_normal(
+        self,
+        net_pos: Tensor,
+        incoming_velocity: Tensor,
+    ) -> tuple[Tensor, bool]:
+        """Compute net surface normal at collision point.
+
+        Returns:
+            (normal, is_cord_region)
+        """
+        x_at_net = float(net_pos[0].item())
+        y_at_net = float(net_pos[1].item())
+        z_at_net = float(net_pos[2].item())
+
+        half_t = max(float(self.config.net_half_thickness), 1e-4)
+        cord_r = max(float(self.config.net_cord_radius), 1e-4)
+        net_height = self._net_height_at_x(x_at_net)
+        mesh_top = net_height - cord_r
+
+        vy = float(incoming_velocity[1].item())
+        y_fallback = -1.0 if vy >= 0.0 else 1.0
+
+        device = incoming_velocity.device
+        dtype = incoming_velocity.dtype
+
+        if z_at_net <= mesh_top:
+            normal = torch.tensor([0.0, y_fallback, 0.0], device=device, dtype=dtype)
+            return normal, False
+
+        # Cord cap (upper half-ellipse): F(y,z)= (y/half_t)^2 + ((z-mesh_top)/cord_r)^2 - 1
+        dFy = 2.0 * y_at_net / (half_t * half_t)
+        dFz = 2.0 * (z_at_net - mesh_top) / (cord_r * cord_r)
+
+        ny = dFy
+        nz = dFz
+        if abs(ny) < 1e-8 and abs(nz) < 1e-8:
+            ny = y_fallback
+            nz = 0.0
+        elif abs(ny) < 1e-8:
+            ny = 0.15 * y_fallback
+
+        normal = torch.tensor([0.0, ny, nz], device=device, dtype=dtype)
+        normal = normal / (normal.norm() + 1e-8)
+        return normal, True
 
     def _net_height_at_x(self, x_at_net: float) -> float:
         """Get net height at a given x position (metres)."""

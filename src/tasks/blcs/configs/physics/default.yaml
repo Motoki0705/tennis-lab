@@ -4,7 +4,10 @@ k_magnus: 0.001
 e_z: 0.75
 mu: 0.1
 alpha_net: 0.3
+alpha_net_cord: 0.05
 alpha_fence: 0.3
+net_half_thickness: 0.03
+net_cord_radius: 0.03
 dt: 0.00416667  # 1/240 s
 use_drag: true
 use_magnus: true

@@ -39,7 +39,10 @@ class PhysicsParams(BaseModel):
     e_z: float | None = None
     mu: float | None = None
     alpha_net: float | None = None
+    alpha_net_cord: float | None = None
     alpha_fence: float | None = None
+    net_half_thickness: float | None = None
+    net_cord_radius: float | None = None
     dt: float | None = Field(default=None, gt=0)
     use_drag: bool | None = None
     use_magnus: bool | None = None

@@ -84,10 +84,7 @@ class RallyConfig:
 
     # --- Serve ---
     serve_probability: float = 0.3
-    serve_speed_range: tuple[float, float] = (30.0, 55.0)
-    serve_elevation_range_deg: tuple[float, float] = (2.0, 10.0)
     serve_z_range: tuple[float, float] = (2.0, 2.8)
-    serve_azimuth_range_deg: tuple[float, float] = (-15.0, 15.0)
     toss_vz_range: tuple[float, float] = (4.5, 7.0)
     toss_xy_noise_range: tuple[float, float] = (-0.35, 0.35)
     toss_max_frames: int = 240
@@ -504,9 +501,6 @@ class RallySimulator:
         target_side: str,
     ) -> tuple[bool, RallyEndReason]:
         """Check if rally should end based on current shot result."""
-        if hit_net_before_bounce:
-            return True, RallyEndReason.NET_FAULT
-
         if hit_fence_before_bounce:
             return True, RallyEndReason.DIRECT_FENCE
 
@@ -516,6 +510,8 @@ class RallySimulator:
         _, y, _ = bounce_pos.tolist()
         is_target_side = y > 0 if target_side == "far" else y < 0
         if not is_target_side:
+            if hit_net_before_bounce:
+                return True, RallyEndReason.NET_FAULT
             return True, RallyEndReason.OWN_SIDE_BOUNCE
 
         to_cell = self.cell_manager.position_to_cell_id(bounce_pos, target_side)
