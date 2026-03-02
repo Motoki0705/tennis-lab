@@ -46,6 +46,7 @@ DEFAULT_K_MAGNUS = 0.001
 DEFAULT_E_Z = 0.75
 DEFAULT_MU = 0.1
 DEFAULT_ALPHA_NET = 0.3
+DEFAULT_ALPHA_FENCE = 0.3
 DEFAULT_DT = 1 / 240
 
 
@@ -63,6 +64,7 @@ class PhysicsConfig:
     e_z: float = DEFAULT_E_Z
     mu: float = DEFAULT_MU
     alpha_net: float = DEFAULT_ALPHA_NET
+    alpha_fence: float = DEFAULT_ALPHA_FENCE
     dt: float = DEFAULT_DT
     use_drag: bool = True
     use_magnus: bool = True
@@ -119,6 +121,7 @@ class PhysicsConfig:
             e_z=e_z,
             mu=mu,
             alpha_net=self.alpha_net,
+            alpha_fence=self.alpha_fence,
             dt=self.dt,
             use_drag=self.use_drag,
             use_magnus=self.use_magnus,
@@ -142,6 +145,7 @@ class PhysicsConfig:
             "e_z": self.e_z,
             "mu": self.mu,
             "alpha_net": self.alpha_net,
+            "alpha_fence": self.alpha_fence,
             "dt": self.dt,
             "use_drag": self.use_drag,
             "use_magnus": self.use_magnus,
@@ -413,23 +417,92 @@ class BallPhysics:
         x_ratio = min(abs(x_at_net) / HALF_DOUBLES_WIDTH, 1.0)
         return NET_HEIGHT_CENTER + x_ratio * (NET_HEIGHT_POST - NET_HEIGHT_CENTER)
 
-    def check_fence_collision(self, pos: Tensor) -> bool:
-        """Check if ball has reached fence boundary.
+    def check_fence_collision(
+        self,
+        prev_pos: Tensor,
+        curr_pos: Tensor,
+    ) -> tuple[bool, Tensor | None, Tensor | None]:
+        """Check if segment crosses a fence plane.
 
         Args:
-            pos: Current position [3].
+            prev_pos: Previous position [3].
+            curr_pos: Current position [3].
 
         Returns:
-            True if outside fence.
+            (hit_fence, position_at_fence, inward_normal).
         """
-        x, y, z = pos[0].item(), pos[1].item(), pos[2].item()
+        prev_x = prev_pos[0].item()
+        prev_y = prev_pos[1].item()
+        curr_x = curr_pos[0].item()
+        curr_y = curr_pos[1].item()
 
-        if x <= X_MIN or x >= X_MAX:
-            return True
-        if y <= Y_MIN or y >= Y_MAX:
-            return True
+        prev_inside = X_MIN <= prev_x <= X_MAX and Y_MIN <= prev_y <= Y_MAX
+        curr_inside = X_MIN <= curr_x <= X_MAX and Y_MIN <= curr_y <= Y_MAX
+        if curr_inside or not prev_inside:
+            return False, None, None
 
-        return False
+        plane_candidates: list[tuple[float, float, Tensor]] = []
+        dx = curr_x - prev_x
+        dy = curr_y - prev_y
+        device = prev_pos.device
+        dtype = prev_pos.dtype
+
+        if curr_x < X_MIN and abs(dx) > 1e-8:
+            t = (X_MIN - prev_x) / dx
+            if 0.0 <= t <= 1.0:
+                plane_candidates.append(
+                    (t, X_MIN, torch.tensor([1.0, 0.0, 0.0], device=device, dtype=dtype))
+                )
+        if curr_x > X_MAX and abs(dx) > 1e-8:
+            t = (X_MAX - prev_x) / dx
+            if 0.0 <= t <= 1.0:
+                plane_candidates.append(
+                    (t, X_MAX, torch.tensor([-1.0, 0.0, 0.0], device=device, dtype=dtype))
+                )
+        if curr_y < Y_MIN and abs(dy) > 1e-8:
+            t = (Y_MIN - prev_y) / dy
+            if 0.0 <= t <= 1.0:
+                plane_candidates.append(
+                    (t, Y_MIN, torch.tensor([0.0, 1.0, 0.0], device=device, dtype=dtype))
+                )
+        if curr_y > Y_MAX and abs(dy) > 1e-8:
+            t = (Y_MAX - prev_y) / dy
+            if 0.0 <= t <= 1.0:
+                plane_candidates.append(
+                    (t, Y_MAX, torch.tensor([0.0, -1.0, 0.0], device=device, dtype=dtype))
+                )
+
+        if not plane_candidates:
+            return False, None, None
+
+        t_hit, _, normal = min(plane_candidates, key=lambda x: x[0])
+        fence_pos = prev_pos + t_hit * (curr_pos - prev_pos)
+
+        return True, fence_pos, normal
+
+    def apply_fence_collision(
+        self,
+        state: BallState,
+        fence_pos: Tensor,
+        fence_normal: Tensor,
+    ) -> BallState:
+        """Apply fence collision response.
+
+        Reflects normal velocity component and reduces speed by alpha_fence.
+        """
+        cfg = self.config
+        new_pos = fence_pos.clone() + fence_normal * 1e-4
+
+        new_vel = state.velocity * cfg.alpha_fence
+        v_normal = torch.dot(new_vel, fence_normal)
+        if v_normal < 0:
+            new_vel = new_vel - 2.0 * v_normal * fence_normal
+
+        return BallState(
+            position=new_pos,
+            velocity=new_vel,
+            spin=state.spin.clone(),
+        )
 
     def is_in_singles_court(self, pos: Tensor, target_side: str) -> bool:
         """Check if position is within singles court on target side.

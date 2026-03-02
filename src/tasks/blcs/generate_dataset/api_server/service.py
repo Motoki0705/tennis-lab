@@ -85,6 +85,9 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
         alpha_net=float(req.physics.alpha_net)
         if req.physics.alpha_net is not None
         else 0.3,
+        alpha_fence=float(req.physics.alpha_fence)
+        if req.physics.alpha_fence is not None
+        else 0.3,
         dt=dt,
         use_drag=bool(req.physics.use_drag) if req.physics.use_drag is not None else True,
         use_magnus=bool(req.physics.use_magnus)

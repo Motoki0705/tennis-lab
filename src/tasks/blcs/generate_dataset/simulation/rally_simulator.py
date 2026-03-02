@@ -428,14 +428,17 @@ class RallySimulator:
                     net_pos = pos_at_net
                     hit_net_before_bounce = True
                     state = self.physics.apply_net_collision(state, net_pos=pos_at_net)
-
-            if self.physics.check_fence_collision(state.position):
-                if bounce_count == 0:
+                hit_fence, pos_at_fence, fence_normal = self.physics.check_fence_collision(
+                    prev_pos, state.position
+                )
+                if hit_fence and pos_at_fence is not None and fence_normal is not None:
                     hit_fence_before_bounce = True
-                t_fence_sim = frame + 1
-                trajectory_sim.append(state.position.clone())
-                velocities_sim.append(state.velocity.clone())
-                break
+                    t_fence_sim = frame + 1
+                    state = self.physics.apply_fence_collision(
+                        state,
+                        fence_pos=pos_at_fence,
+                        fence_normal=fence_normal,
+                    )
 
             state, bounced = self.physics.handle_bounce(state)
             if bounced:
@@ -720,20 +723,22 @@ class RallySimulator:
                     t_net_sim = frame + 1
                     hit_net_before_bounce = True
                     state = self.physics.apply_net_collision(state, net_pos=pos_at_net)
+                hit_fence, pos_at_fence, fence_normal = self.physics.check_fence_collision(
+                    prev_pos, state.position
+                )
+                if hit_fence and pos_at_fence is not None and fence_normal is not None:
+                    hit_fence_before_bounce = True
+                    state = self.physics.apply_fence_collision(
+                        state,
+                        fence_pos=pos_at_fence,
+                        fence_normal=fence_normal,
+                    )
 
             # Record net crossing (even when ball clears net)
             if t_net_sim < 0 and bounce_count == 0:
                 cleared = self.physics.compute_net_clearance(prev_pos, state.position)
                 if cleared is not None and cleared >= 0:
                     t_net_sim = frame + 1
-
-            # Check fence collision
-            if self.physics.check_fence_collision(state.position):
-                if bounce_count == 0:
-                    hit_fence_before_bounce = True
-                trajectory_sim.append(state.position.clone())
-                velocities_sim.append(state.velocity.clone())
-                break
 
             # Handle bounce
             state, bounced = self.physics.handle_bounce(state)
