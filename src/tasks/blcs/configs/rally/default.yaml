@@ -1,8 +1,5 @@
 # Initial condition ranges
 z_range: [0.8, 1.4]
-speed_range: [5.0, 25.0]
-azimuth_range_deg: [-30.0, 30.0]
-elevation_range_deg: [5.0, 70.0]
 spin_x_range: [-200.0, 200.0]
 spin_y_range: [-80.0, -40.0]
 spin_z_range: [-200.0, 200.0]

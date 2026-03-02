@@ -84,9 +84,6 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
 
     rally_config = RallyConfig(
         z_range=tuple(cfg.rally.z_range),
-        speed_range=tuple(cfg.rally.speed_range),
-        azimuth_range_deg=tuple(cfg.rally.azimuth_range_deg),
-        elevation_range_deg=tuple(cfg.rally.elevation_range_deg),
         spin_x_range=tuple(cfg.rally.spin_x_range),
         spin_y_range=tuple(cfg.rally.spin_y_range),
         spin_z_range=tuple(cfg.rally.spin_z_range),
