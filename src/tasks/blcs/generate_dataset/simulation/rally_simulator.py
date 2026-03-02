@@ -87,6 +87,10 @@ class RallyConfig:
     serve_elevation_range_deg: tuple[float, float] = (2.0, 10.0)
     serve_z_range: tuple[float, float] = (2.0, 2.8)
     serve_azimuth_range_deg: tuple[float, float] = (-15.0, 15.0)
+    toss_vz_range: tuple[float, float] = (4.5, 7.0)
+    toss_xy_noise_range: tuple[float, float] = (-0.35, 0.35)
+    toss_max_frames: int = 240
+    toss_z0_tolerance: float = 0.03
 
     # --- Volley / multi-bounce ---
     volley_probability: float = 0.05
@@ -168,6 +172,16 @@ class ShotResult:
     shot_type: ShotType
 
 
+@dataclass
+class InitialConditionResult:
+    """Initial state and optional pre-shot trajectory (e.g., serve toss)."""
+
+    initial_state: BallState
+    pre_positions_sim: list[Tensor]
+    pre_velocities_sim: list[Tensor]
+    serve_target_cell: int | None = None
+
+
 class RallySimulator:
     """Simulates tennis rallies as sequences of shots.
 
@@ -213,11 +227,11 @@ class RallySimulator:
         from_cell: int,
         from_side: str,
         shot_type: ShotType = ShotType.GROUNDSTROKE,
-    ) -> BallState:
+    ) -> InitialConditionResult:
         """Sample initial conditions for a shot."""
         cfg = self.rally_config
         if shot_type == ShotType.SERVE:
-            return self._sample_serve_condition(from_side)
+            return self._sample_serve_with_toss(from_side)
 
         position = self.cell_manager.sample_position_in_cell(
             cell_id=from_cell,
@@ -227,10 +241,14 @@ class RallySimulator:
         )
         velocity = self._sample_velocity(from_side)
         spin = self._sample_spin()
-        return BallState(position=position, velocity=velocity, spin=spin)
+        return InitialConditionResult(
+            initial_state=BallState(position=position, velocity=velocity, spin=spin),
+            pre_positions_sim=[],
+            pre_velocities_sim=[],
+        )
 
-    def _sample_serve_condition(self, from_side: str) -> BallState:
-        """Sample initial conditions for a serve."""
+    def _sample_serve_start_position(self, from_side: str) -> Tensor:
+        """Sample toss start position behind the baseline."""
         cfg = self.rally_config
         baseline_y = HALF_LENGTH if from_side == "far" else -HALF_LENGTH
         x = (torch.rand(1).item() - 0.5) * 2.0
@@ -239,16 +257,97 @@ class RallySimulator:
         z = cfg.serve_z_range[0] + torch.rand(1).item() * (
             cfg.serve_z_range[1] - cfg.serve_z_range[0]
         )
-        position = torch.tensor([x, y, z], device=self.device)
+        return torch.tensor([x, y, z], device=self.device)
 
-        velocity = self._sample_velocity(
-            from_side,
-            speed_range=cfg.serve_speed_range,
-            elevation_range_deg=cfg.serve_elevation_range_deg,
-            azimuth_range_deg=cfg.serve_azimuth_range_deg,
+    def _sample_serve_target_cell(self) -> int:
+        """Sample target service box cell ID (0: deuce, 1: ad)."""
+        return 0 if torch.rand(1).item() < 0.5 else 1
+
+    def _simulate_toss_until_contact(
+        self,
+        from_side: str,
+    ) -> tuple[list[Tensor], list[Tensor], Tensor]:
+        """Simulate toss and sample contact point on descending phase.
+
+        The contact is sampled from [apex, first return to initial toss height].
+        """
+        cfg = self.rally_config
+        position = self._sample_serve_start_position(from_side)
+        z0 = float(position[2].item())
+        vx = cfg.toss_xy_noise_range[0] + torch.rand(1).item() * (
+            cfg.toss_xy_noise_range[1] - cfg.toss_xy_noise_range[0]
         )
+        vy = cfg.toss_xy_noise_range[0] + torch.rand(1).item() * (
+            cfg.toss_xy_noise_range[1] - cfg.toss_xy_noise_range[0]
+        )
+        vz = cfg.toss_vz_range[0] + torch.rand(1).item() * (
+            cfg.toss_vz_range[1] - cfg.toss_vz_range[0]
+        )
+        state = BallState(
+            position=position,
+            velocity=torch.tensor([vx, vy, vz], device=self.device),
+            spin=torch.zeros(3, device=self.device),
+        )
+
+        positions: list[Tensor] = [state.position.clone()]
+        velocities: list[Tensor] = [state.velocity.clone()]
+        apex_idx = 0
+        return_idx = len(positions) - 1
+
+        for _ in range(max(1, int(cfg.toss_max_frames)) - 1):
+            prev_vz = float(state.velocity[2].item())
+            state = self.physics.step(state)
+            positions.append(state.position.clone())
+            velocities.append(state.velocity.clone())
+
+            if prev_vz > 0.0 and float(state.velocity[2].item()) <= 0.0 and apex_idx == 0:
+                apex_idx = len(positions) - 1
+
+            if apex_idx > 0 and float(state.position[2].item()) <= z0 + cfg.toss_z0_tolerance:
+                return_idx = len(positions) - 1
+                break
+            return_idx = len(positions) - 1
+
+        if apex_idx <= 0:
+            apex_idx = min(1, len(positions) - 1)
+        if return_idx < apex_idx:
+            return_idx = apex_idx
+
+        span = return_idx - apex_idx + 1
+        contact_idx = apex_idx + int(torch.randint(0, span, (1,)).item())
+        contact_pos = positions[contact_idx].clone()
+
+        return (
+            positions[: contact_idx + 1],
+            velocities[: contact_idx + 1],
+            contact_pos,
+        )
+
+    def _sample_serve_with_toss(self, from_side: str) -> InitialConditionResult:
+        """Sample serve by generating toss first, then serve initial state."""
+        toss_positions, toss_velocities, contact_pos = self._simulate_toss_until_contact(
+            from_side=from_side
+        )
+        target_side = "far" if from_side == "near" else "near"
+        target_cell = self._sample_serve_target_cell()
+
         spin = self._sample_spin()
-        return BallState(position=position, velocity=velocity, spin=spin)
+        velocity = self.targeted_velocity_sampler.sample_velocity_for_serve(
+            start_pos=contact_pos,
+            target_cell=target_cell,
+            target_side=target_side,
+            from_side=from_side,
+            physics=self.physics,
+            spin=spin,
+        )
+        initial_state = BallState(position=contact_pos, velocity=velocity, spin=spin)
+
+        return InitialConditionResult(
+            initial_state=initial_state,
+            pre_positions_sim=toss_positions,
+            pre_velocities_sim=toss_velocities,
+            serve_target_cell=target_cell,
+        )
 
     def _sample_velocity(
         self,
@@ -712,17 +811,26 @@ class RallySimulator:
                 shot_type = first_shot_type
                 if shot_type == ShotType.SERVE:
                     # Serve: start from behind baseline, target service box
-                    initial_state = self.sample_initial_condition(
+                    init_result = self.sample_initial_condition(
                         from_cell=current_cell,
                         from_side=current_side,
                         shot_type=ShotType.SERVE,
                     )
+                    if len(init_result.pre_positions_sim) > 1:
+                        all_positions_sim.extend(init_result.pre_positions_sim[:-1])
+                        all_velocities_sim.extend(init_result.pre_velocities_sim[:-1])
+                        total_sim_frames += len(init_result.pre_positions_sim) - 1
+                        if total_sim_frames >= cfg.max_total_frames:
+                            end_reason = RallyEndReason.MAX_FRAMES
+                            break
+                    initial_state = init_result.initial_state
                 else:
-                    initial_state = self.sample_initial_condition(
+                    init_result = self.sample_initial_condition(
                         from_cell=current_cell,
                         from_side=current_side,
                         shot_type=ShotType.GROUNDSTROKE,
                     )
+                    initial_state = init_result.initial_state
             else:
                 shot_type = ShotType.GROUNDSTROKE
 
