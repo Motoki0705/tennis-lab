@@ -252,7 +252,7 @@ class BLCSMultiViewModel(nn.Module):
             ball_tok: (B, N, T, token_dim)
             court_tok: (B, N, T, K, token_dim)
             ball_valid: (B, N, T) bool
-            court_valid: (B, N, T, K) bool
+            court_valid: (B, N) bool camera-valid mask (time-invariant)
 
         Returns:
             tuple:
@@ -299,7 +299,10 @@ class BLCSMultiViewModel(nn.Module):
         ).unsqueeze(3)
 
         per_cam_tokens = torch.cat([court_tokens, ball_tokens], dim=3)
-        per_cam_valid = torch.cat([court_valid, ball_valid.unsqueeze(3)], dim=3)
+        court_valid_expanded = court_valid[:, :, None, None].expand(
+            batch_size, n_cams, seq_len_in, self.num_court_tokens
+        )
+        per_cam_valid = torch.cat([court_valid_expanded, ball_valid.unsqueeze(3)], dim=3)
 
         frame_tokens = per_cam_tokens.permute(0, 2, 1, 3, 4).reshape(
             batch_size,
@@ -394,17 +397,10 @@ class BLCSMultiViewModel(nn.Module):
         )
 
         ball_valid = ball_mask > 0
-        if court_vis is None:
-            court_valid = torch.ones(
-                batch_size,
-                n_cams,
-                seq_len_in,
-                self.num_court_tokens,
-                dtype=torch.bool,
-                device=ball_uv.device,
-            )
-        else:
-            court_valid = court_vis > 0
+        query_valid = ball_valid.any(dim=1)
+        # Court validity is camera-level padding validity, derived from ball validity.
+        # Shape: (B, N)
+        court_valid = ball_valid.any(dim=2)
 
         freqs_time = self.freqs_time_cis[:seq_len_in]
         if freqs_time.device != ball_uv.device:
@@ -418,8 +414,7 @@ class BLCSMultiViewModel(nn.Module):
         )
 
         query_x = self.query_base.expand(batch_size, seq_len_in, -1)
-        frame_valid = frame_token_valid.any(dim=2)
-        query_mask, query_valid_fixed = self._build_self_attn_mask(frame_valid)
+        query_mask, query_valid_fixed = self._build_self_attn_mask(query_valid)
 
         for cross_layer, temporal_layer in zip(
             self.query_to_frame_cross_layers,
