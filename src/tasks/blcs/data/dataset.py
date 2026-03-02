@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random as rng
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -64,7 +65,11 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
         self.uv_noise_std = float(aug_cfg.get("uv_noise_std", 0.005))
         self.vis_drop_prob = float(aug_cfg.get("visibility_drop_prob", 0.1))
         scale_range_cfg = aug_cfg.get("scale_range", [1.0, 1.0])
-        if not isinstance(scale_range_cfg, (list, tuple)) or len(scale_range_cfg) != 2:
+        if (
+            not isinstance(scale_range_cfg, Sequence)
+            or isinstance(scale_range_cfg, (str, bytes))
+            or len(scale_range_cfg) != 2
+        ):
             raise ValueError(
                 "augmentation.scale_range must be a list/tuple of two numbers: [min_scale, max_scale]."
             )
