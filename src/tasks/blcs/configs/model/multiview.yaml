@@ -1,12 +1,18 @@
 # Multi-view BLCS model configuration
-# Uses alternating Sequential/Camera attention architecture (like PLCS)
+# Uses iterative query updates:
+# same-time cross-attn to per-frame multi-view tokens, then temporal self-attn on query.
 name: blcs_multiview
 io:
   input_profile: multiview
 
 
-hidden_dim: 256
-num_layers: 12      # Number of alternating attention layer pairs
+# Final transformer dim is computed inside model:
+# hidden_dim = token_dim + id_emb_dim + cam_emb_dim
+token_dim: 256
+id_emb_dim: 64
+cam_emb_dim: 64
+
+num_layers: 12      # Number of (same-time cross-attn + temporal self-attn) iterations
 num_heads: 8
 dropout: 0.1
 max_seq_len: 120
