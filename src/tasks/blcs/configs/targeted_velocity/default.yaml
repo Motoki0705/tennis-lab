@@ -13,8 +13,8 @@ speed_solve_max_iters: 32
 speed_solve_tol: 0.001
 
 # Refinement disabled (single-shot sampling, no retry)
-refine_enabled: false
-refine_iters: 1
+refine_enabled: true
+refine_iters: 10
 refine_speed_scale_min: 0.7
 refine_speed_scale_max: 1.4
 refine_max_azimuth_adjust_deg: 15.0

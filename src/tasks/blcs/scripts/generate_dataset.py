@@ -102,6 +102,12 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         if cfg.rally.get("serve_z_range") else (2.0, 2.8),
         serve_azimuth_range_deg=tuple(cfg.rally.serve_azimuth_range_deg)
         if cfg.rally.get("serve_azimuth_range_deg") else (-15.0, 15.0),
+        toss_vz_range=tuple(cfg.rally.toss_vz_range)
+        if cfg.rally.get("toss_vz_range") else (4.5, 7.0),
+        toss_xy_noise_range=tuple(cfg.rally.toss_xy_noise_range)
+        if cfg.rally.get("toss_xy_noise_range") else (-0.35, 0.35),
+        toss_max_frames=int(cfg.rally.get("toss_max_frames", 240)),
+        toss_z0_tolerance=float(cfg.rally.get("toss_z0_tolerance", 0.03)),
         volley_probability=float(cfg.rally.get("volley_probability", 0.05)),
         normal_return_probability=float(cfg.rally.get("normal_return_probability", 0.85)),
         late_return_probability=float(cfg.rally.get("late_return_probability", 0.10)),
