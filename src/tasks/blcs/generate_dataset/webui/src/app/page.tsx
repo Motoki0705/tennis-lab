@@ -14,6 +14,7 @@ import type {
 import { ControlsDrawer } from "../components/ControlsDrawer";
 import { MetricsPanel } from "../components/MetricsPanel";
 import { Trajectory3D } from "../components/Trajectory3D";
+import { CameraSearchPanel } from "../components/CameraSearchPanel";
 
 function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
@@ -79,6 +80,18 @@ export default function Page() {
   // Camera controls.
   const [cameraMode, setCameraMode] = useState<"orbit" | "fps">("orbit");
   const [fpsMoveSpeed, setFpsMoveSpeed] = useState(8);
+  const [cameraZMin, setCameraZMin] = useState(3.0);
+  const [cameraZMax, setCameraZMax] = useState(5.0);
+  const [lockLookAtCenter, setLockLookAtCenter] = useState(true);
+  const [cameraPose, setCameraPose] = useState<{ x: number; y: number; z: number } | null>({
+    x: 0,
+    y: -18,
+    z: 6,
+  });
+  const [cameraPoseVersion, setCameraPoseVersion] = useState(0);
+  const [cameraCurrentPos, setCameraCurrentPos] = useState<{ x: number; y: number; z: number } | null>(null);
+  const [cameraCurrentDir, setCameraCurrentDir] = useState<{ x: number; y: number; z: number } | null>(null);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
   // Simulation state.
   const [running, setRunning] = useState(false);
@@ -86,6 +99,29 @@ export default function Page() {
   const [simResult, setSimResult] = useState<SimulateShotResponse | null>(null);
 
   const targetSide: Side = fromSide === "near" ? "far" : "near";
+
+  const cameraPresets = useMemo(() => {
+    const fx = 9.145;
+    const fy = 18.285;
+    return [
+      { id: "corner_nw", label: "Corner NW", pos: { x: -fx, y: fy, z: cameraZMin } },
+      { id: "corner_ne", label: "Corner NE", pos: { x: fx, y: fy, z: cameraZMin } },
+      { id: "corner_se", label: "Corner SE", pos: { x: fx, y: -fy, z: cameraZMin } },
+      { id: "corner_sw", label: "Corner SW", pos: { x: -fx, y: -fy, z: cameraZMin } },
+      { id: "mid_n", label: "Mid North", pos: { x: 0, y: fy, z: cameraZMax } },
+      { id: "mid_e", label: "Mid East", pos: { x: fx, y: 0, z: cameraZMax } },
+      { id: "mid_s", label: "Mid South", pos: { x: 0, y: -fy, z: cameraZMax } },
+      { id: "mid_w", label: "Mid West", pos: { x: -fx, y: 0, z: cameraZMax } },
+    ];
+  }, [cameraZMin, cameraZMax]);
+
+  function applyCameraPreset(id: string) {
+    const preset = cameraPresets.find((p) => p.id === id);
+    if (!preset) return;
+    setActivePresetId(id);
+    setCameraPose(preset.pos);
+    setCameraPoseVersion((v) => v + 1);
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -169,6 +205,14 @@ export default function Page() {
         bounce1Pos={simResult?.events.bounce1_pos ?? null}
         bounce2Pos={simResult?.events.bounce2_pos ?? null}
         netPos={simResult?.events.net_pos ?? null}
+        cameraPose={cameraPose}
+        cameraPoseVersion={cameraPoseVersion}
+        lockLookAtCenter={lockLookAtCenter}
+        onCameraPoseChange={(pos, dir) => {
+          setCameraCurrentPos(pos);
+          setCameraCurrentDir(dir);
+        }}
+        cameraMarkers={cameraPresets.map((p) => p.pos)}
       />
 
       {/* Minimal HUD */}
@@ -253,6 +297,20 @@ export default function Page() {
           </div>
         ) : null}
       </div>
+
+      <CameraSearchPanel
+        presets={cameraPresets}
+        activePresetId={activePresetId}
+        zMin={cameraZMin}
+        setZMin={setCameraZMin}
+        zMax={cameraZMax}
+        setZMax={setCameraZMax}
+        lockLookAtCenter={lockLookAtCenter}
+        setLockLookAtCenter={setLockLookAtCenter}
+        onApplyPreset={applyCameraPreset}
+        cameraPos={cameraCurrentPos}
+        cameraDir={cameraCurrentDir}
+      />
     </div>
   );
 }
@@ -267,4 +325,3 @@ function hudBox(): React.CSSProperties {
     backdropFilter: "blur(6px)",
   };
 }
-
