@@ -90,10 +90,16 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
     )
 
     camera_config = CameraConfig(
+        placement_mode=str(cfg.camera.get("placement_mode", "random")),
         z_min=float(cfg.camera.z_min),
         z_max=float(cfg.camera.z_max),
         hfov_deg=float(cfg.camera.hfov_deg),
         image_size=tuple(cfg.camera.image_size),
+        fixed_look_at=tuple(cfg.camera.get("fixed_look_at", [0.0, 0.0, 0.0])),
+        fixed_baseline_clear_extra=float(cfg.camera.get("fixed_baseline_clear_extra", 0.0)),
+        target_x_range=tuple(cfg.camera.get("target_x_range", [-2.0, 2.0])),
+        target_y_range=tuple(cfg.camera.get("target_y_range", [-2.0, 2.0])),
+        target_z_range=tuple(cfg.camera.get("target_z_range", [0.5, 1.5])),
     )
 
     category_ratios = cfg.sampling.category_ratios

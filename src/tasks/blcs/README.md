@@ -41,6 +41,15 @@ BLCS は、テニスコート座標系におけるボールの 3D 軌道を、2D
 
 ```bash
 uv run python -m src.tasks.blcs.scripts.generate_dataset
+
+# 固定8カメラ（四隅+中点）で生成
+# - 四隅は z_min
+# - 中点は z_max
+# - すべてコート中央 (0,0,0) を注視
+# - Y軸方向バッファは fixed_baseline_clear_extra で増やす
+uv run python -m src.tasks.blcs.scripts.generate_dataset \
+    camera.placement_mode=fixed_8 \
+    camera.fixed_baseline_clear_extra=2.0
 ```
 
 ### 学習

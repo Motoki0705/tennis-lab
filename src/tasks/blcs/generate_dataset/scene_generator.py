@@ -161,7 +161,16 @@ class BLCSSceneGenerator:
 
         """
         cfg = self.config
-        valid_cameras = []
+        valid_cameras: list[CameraData] = []
+
+        if cfg.camera.placement_mode == "fixed_8":
+            for camera in self.camera_projector.fixed_cameras():
+                self.total_cameras_tried += 1
+                view = self.camera_projector.generate_camera_view(trajectory, camera=camera)
+                cam_data = self._camera_view_to_data(view)
+                valid_cameras.append(cam_data)
+                self.total_cameras_accepted += 1
+            return valid_cameras
 
         for _ in range(cfg.num_cameras_sampled):
             self.total_cameras_tried += 1
@@ -216,6 +225,11 @@ class BLCSSceneGenerator:
 
         # 5. Normalize trajectory
         ball_pos_norm = self.physics.normalize_position(rally_result.trajectory)
+        num_cameras_sampled = (
+            len(valid_cameras)
+            if cfg.camera.placement_mode == "fixed_8"
+            else cfg.num_cameras_sampled
+        )
 
         return BLCSSceneData(
             scene_id=scene_id,
@@ -229,7 +243,7 @@ class BLCSSceneGenerator:
             ball_pos_norm=ball_pos_norm,
             ball_vel_world=rally_result.velocities,
             cameras=valid_cameras,
-            num_cameras_sampled=cfg.num_cameras_sampled,
+            num_cameras_sampled=num_cameras_sampled,
             fps_out=rally_result.fps_out,
             sim_fps=rally_result.sim_fps,
         )
