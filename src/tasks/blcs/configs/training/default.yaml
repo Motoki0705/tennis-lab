@@ -18,6 +18,8 @@ min_lr: 1.0e-6
 position_loss_weight: 1.0
 velocity_loss_weight: 0.0
 smoothness_loss_weight: 0.0
+reprojection_loss_weight: 0.0
+uv_velocity_loss_weight: 0.0
 
 # ---- Callbacks (BaseTrainingRunner references) ----
 checkpoint:
