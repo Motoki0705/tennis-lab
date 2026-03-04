@@ -63,6 +63,14 @@ class BLCSMultiViewSample(TypedDict):
     position_3d: torch.Tensor  # (T, 3) ground truth 3D trajectory (shared)
     velocity_3d: torch.Tensor  # (T, 3) 3D velocity vectors (shared)
     seq_len: torch.Tensor  # scalar, actual sequence length
+    # Camera parameters (per-camera, for reprojection loss)
+    camera_R: torch.Tensor  # (N_cam, 3, 3) rotation matrices (world → camera)
+    camera_C: torch.Tensor  # (N_cam, 3) camera centres in world coordinates
+    camera_f: torch.Tensor  # (N_cam,) focal lengths in pixels
+    camera_cx: torch.Tensor  # (N_cam,) principal-point x
+    camera_cy: torch.Tensor  # (N_cam,) principal-point y
+    camera_w: torch.Tensor  # (N_cam,) image width
+    camera_h: torch.Tensor  # (N_cam,) image height
 
 
 class BLCSMultiViewBatch(TypedDict):
@@ -76,6 +84,14 @@ class BLCSMultiViewBatch(TypedDict):
     position_3d: torch.Tensor  # (B, T_max, 3)
     velocity_3d: torch.Tensor  # (B, T_max, 3)
     seq_len: torch.Tensor  # (B,)
+    # Camera parameters (padded to N_max cameras)
+    camera_R: torch.Tensor  # (B, N_max, 3, 3)
+    camera_C: torch.Tensor  # (B, N_max, 3)
+    camera_f: torch.Tensor  # (B, N_max)
+    camera_cx: torch.Tensor  # (B, N_max)
+    camera_cy: torch.Tensor  # (B, N_max)
+    camera_w: torch.Tensor  # (B, N_max)
+    camera_h: torch.Tensor  # (B, N_max)
 
 
 @dataclass(frozen=True)
