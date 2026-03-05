@@ -1,7 +1,7 @@
 # BLCS generate_dataset API server (planned)
 
 This directory is reserved for a lightweight local HTTP API that exposes the
-existing BLCS simulators (`ShotSimulator`, `TargetedVelocitySampler`, etc.)
+existing BLCS simulators (`RallySimulator`, `TargetedVelocitySampler`, etc.)
 to the WebUI under `../webui/`.
 
 Why an API server?

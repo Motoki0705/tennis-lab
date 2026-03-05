@@ -59,7 +59,7 @@ class BLCSDatasetWriter(BaseDatasetWriter):
             self.validate = False
 
     def _build_scene_meta(self, scene: BLCSSceneData) -> BLCSSceneMeta:
-        scene_meta_dict = {
+        scene_meta_dict: dict[str, Any] = {
             "scene_id": scene.scene_id,
             "initial_from_cell": scene.initial_from_cell,
             "initial_from_side": scene.initial_from_side,
@@ -73,6 +73,12 @@ class BLCSDatasetWriter(BaseDatasetWriter):
             "num_cameras_sampled": scene.num_cameras_sampled,
             "num_cameras": len(scene.cameras),
         }
+        # Per-scene variation metadata
+        if hasattr(scene, "physics_config_dict") and scene.physics_config_dict:
+            scene_meta_dict["physics_config"] = scene.physics_config_dict
+        if hasattr(scene, "court_config_dict") and scene.court_config_dict:
+            scene_meta_dict["court_config"] = scene.court_config_dict
+
         if self.validate and PYDANTIC_AVAILABLE:
             BLCSSceneMetaModel(**scene_meta_dict)
         return BLCSSceneMeta(**scene_meta_dict)

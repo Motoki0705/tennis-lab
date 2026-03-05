@@ -1,9 +1,7 @@
 defaults:
   - physics: default
-  - shot: default
   - rally: default
   - camera: default
-  - sampling: default
   - targeted_velocity: default
   - generator: default
   - run: generate_dataset
@@ -15,4 +13,3 @@ hydra:
   output_subdir: null
   job:
     chdir: false
-
