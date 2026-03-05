@@ -25,8 +25,8 @@ from torch import Tensor
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, NET_HEIGHT_CENTER, NET_HEIGHT_POST
 
 if TYPE_CHECKING:
-    from src.tasks.blcs.simulation.cell_manager import CellManager
-    from src.tasks.blcs.simulation.ball_physics import BallPhysics
+    from src.tasks.blcs.generate_dataset.simulation.cell_manager import CellManager
+    from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallPhysics
 
 
 @dataclass
@@ -63,6 +63,7 @@ class TargetedVelocityConfig:
     speed_solve_tol: float = 1e-3
 
     # Optional refinement using drag/magnus simulation
+    # NOTE: Disabled by default in favour of single-shot sampling
     refine_enabled: bool = False
     refine_iters: int = 1
     refine_speed_scale_min: float = 0.7
@@ -71,6 +72,7 @@ class TargetedVelocityConfig:
     refine_max_frames: int = 1200
 
     # Net clearance constraint (optional)
+    # NOTE: Disabled by default in favour of single-shot sampling
     net_clearance_enabled: bool = False
     net_clearance_min: float = 0.1
     net_clearance_max_attempts: int = 12
@@ -104,7 +106,7 @@ class TargetedVelocitySampler:
 
         """
         # Import here to avoid circular dependency
-        from src.tasks.blcs.simulation.cell_manager import CellManager
+        from src.tasks.blcs.generate_dataset.simulation.cell_manager import CellManager
 
         self.cell_manager = cell_manager or CellManager()
         self.config = config or TargetedVelocityConfig()
@@ -281,7 +283,7 @@ class TargetedVelocitySampler:
 
         Args:
             start_pos: Starting position [3].
-            target_cell: Target cell ID (0-19).
+            target_cell: Target cell ID (0-8).
             target_side: Side of target cell ("near" or "far").
             from_side: Side the shot is coming from.
 
@@ -289,6 +291,8 @@ class TargetedVelocitySampler:
             Tensor: Velocity [3] in m/s.
 
         """
+        self._validate_cell_id(target_cell)
+
         # Sample target position within cell (ground level)
         target_pos = self.cell_manager.sample_bounce_position_in_cell(
             cell_id=target_cell,
@@ -304,6 +308,55 @@ class TargetedVelocitySampler:
             physics=physics,
             spin=spin,
         )
+
+    def sample_velocity_for_serve(
+        self,
+        start_pos: Tensor,
+        target_cell: int,
+        target_side: str,
+        from_side: str,
+        physics: "BallPhysics | None" = None,
+        spin: Tensor | None = None,
+    ) -> Tensor:
+        """Sample velocity aimed at a service box cell.
+
+        Uses lower elevation and higher speed typical of serves.
+
+        Args:
+            start_pos: Starting position [3].
+            target_cell: Target service box cell ID (0 or 1).
+            target_side: Side of target cell.
+            from_side: Side the serve is coming from.
+            physics: Optional physics for clearance check.
+            spin: Optional spin vector.
+
+        Returns:
+            Velocity [3] in m/s.
+        """
+        self._validate_cell_id(target_cell)
+
+        target_pos = self.cell_manager.sample_bounce_position_in_cell(
+            cell_id=target_cell,
+            side=target_side,
+            device=self.device,
+        )
+
+        return self.compute_velocity_to_target(
+            start_pos=start_pos,
+            target_pos=target_pos,
+            from_side=from_side,
+            profile="drive",  # Serves use drive (low elevation)
+            physics=physics,
+            spin=spin,
+        )
+
+    def _validate_cell_id(self, cell_id: int) -> None:
+        from src.tasks.blcs.generate_dataset.simulation.cell_manager import NUM_CELLS_PER_SIDE
+
+        if not 0 <= cell_id < NUM_CELLS_PER_SIDE:
+            raise ValueError(
+                f"target_cell must be in [0, {NUM_CELLS_PER_SIDE - 1}], got {cell_id}"
+            )
 
     def _sample_elevation_rad(
         self,
@@ -520,7 +573,7 @@ class TargetedVelocitySampler:
         spin: Tensor | None,
         physics: "BallPhysics",
     ) -> float | None:
-        from src.tasks.blcs.simulation.ball_physics import BallState
+        from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallState
 
         spin_vec = spin if spin is not None else torch.zeros_like(velocity)
         state = BallState(
@@ -554,7 +607,7 @@ class TargetedVelocitySampler:
         spin: Tensor,
         physics: "BallPhysics",
     ) -> Tensor | None:
-        from src.tasks.blcs.simulation.ball_physics import BallState
+        from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallState
 
         state = BallState(
             position=start_pos.clone(),
