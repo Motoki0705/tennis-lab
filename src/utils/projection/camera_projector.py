@@ -93,10 +93,13 @@ def project_points(cam: Camera, xyz: Tensor) -> tuple[Tensor, Tensor]:
 class CameraConfig:
     """Configuration for camera generation."""
 
+    placement_mode: str = "random"  # "random" | "fixed_8"
     z_min: float = 3.0
     z_max: float = 5.0
     hfov_deg: float = 60.0
     image_size: tuple[int, int] = (1280, 720)
+    fixed_look_at: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    fixed_baseline_clear_extra: float = 0.0
     target_x_range: tuple[float, float] = (-2.0, 2.0)
     target_y_range: tuple[float, float] = (-2.0, 2.0)
     target_z_range: tuple[float, float] = (0.5, 1.5)
@@ -120,13 +123,24 @@ class CameraProjector:
     def __init__(self, config: CameraConfig | None = None) -> None:
         self.config = config or CameraConfig()
         self.court_kp_3d = court_keypoints_3d()
+        if self.config.placement_mode not in {"random", "fixed_8"}:
+            raise ValueError(
+                "camera placement_mode must be one of {'random', 'fixed_8'}, "
+                f"got '{self.config.placement_mode}'"
+            )
+
+    @staticmethod
+    def _fence_extents(baseline_clear_extra: float = 0.0) -> tuple[float, float]:
+        """Return outer fence extents in x/y from court center."""
+        fence_x = HALF_DOUBLES_WIDTH + SIDELINE_CLEAR
+        fence_y = HALF_LENGTH + BASELINE_CLEAR + max(0.0, baseline_clear_extra)
+        return fence_x, fence_y
 
     def sample_camera(self) -> Camera:
         """Sample a camera position around the court."""
         cfg = self.config
 
-        fence_x = HALF_DOUBLES_WIDTH + SIDELINE_CLEAR
-        fence_y = HALF_LENGTH + BASELINE_CLEAR
+        fence_x, fence_y = self._fence_extents()
 
         perimeter = 2 * (2 * fence_x + 2 * fence_y)
         t = random.uniform(0, perimeter)
@@ -157,6 +171,41 @@ class CameraProjector:
             hfov_deg=cfg.hfov_deg,
             image_size=cfg.image_size,
         )
+
+    def fixed_cameras(self) -> list[Camera]:
+        """Build the fixed 8-camera layout (4 corners + 4 edge midpoints).
+
+        Corner cameras use ``z_min``. Midpoint cameras use ``z_max``.
+        All cameras look at ``fixed_look_at``.
+        """
+        cfg = self.config
+        fence_x, fence_y = self._fence_extents(cfg.fixed_baseline_clear_extra)
+        look_at = cfg.fixed_look_at
+
+        corners = [
+            (-fence_x, +fence_y, cfg.z_min),
+            (+fence_x, +fence_y, cfg.z_min),
+            (+fence_x, -fence_y, cfg.z_min),
+            (-fence_x, -fence_y, cfg.z_min),
+        ]
+        midpoints = [
+            (0.0, +fence_y, cfg.z_max),
+            (+fence_x, 0.0, cfg.z_max),
+            (0.0, -fence_y, cfg.z_max),
+            (-fence_x, 0.0, cfg.z_max),
+        ]
+
+        cams: list[Camera] = []
+        for center in corners + midpoints:
+            cams.append(
+                make_look_at_camera(
+                    center=center,
+                    look_at=look_at,
+                    hfov_deg=cfg.hfov_deg,
+                    image_size=cfg.image_size,
+                )
+            )
+        return cams
 
     def project_points_to_uv(
         self,

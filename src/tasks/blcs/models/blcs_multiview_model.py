@@ -1,4 +1,4 @@
-"""Query-based multi-view BLCS model (2-stage)."""
+"""Query-based multi-view BLCS model (single-stage iterative query)."""
 
 from __future__ import annotations
 
@@ -29,28 +29,31 @@ if TYPE_CHECKING:
 
 
 class BLCSMultiViewModel(nn.Module):
-    """Query-based multi-view BLCS model (2-stage).
+    """Query-based multi-view BLCS model.
 
-    Stage 1:
-    - Interleaved Ball->Court cross-attention, camera-wise temporal self-attention,
-      and time-wise camera self-attention.
+    Per iteration:
+    1) Query (per frame) cross-attends to same-timestamp multi-view tokens.
+    2) Query performs temporal self-attention across frames.
 
-    Stage 2:
-    - Shared readout query stream attends to per-frame all-camera ball states,
-      then temporal self-attend.
+    Input memory tokens are built per camera as:
+    [court_kp_0, ..., court_kp_(K-1), ball], then flattened across cameras.
+
+    Each token feature is:
+    concat([uv_token, local_id_embedding, camera_embedding]).
     """
 
     def __init__(
         self,
-        hidden_dim: int = 256,
+        token_dim: int = 256,
+        id_emb_dim: int = 64,
+        cam_emb_dim: int = 64,
         num_heads: int = 8,
         ffn_dim: int | None = None,
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
         yarn: YaRNConfig | None = None,
-        num_stage1_blocks: int = 4,
-        num_stage2_layers: int = 2,
+        num_layers: int = 4,
         predict_velocity: bool = False,
         max_seq_len: int = 120,
         max_num_cameras: int = 8,
@@ -59,9 +62,20 @@ class BLCSMultiViewModel(nn.Module):
         query_init_std: float = 0.02,
     ) -> None:
         super().__init__()
-        if hidden_dim % num_heads != 0:
+        self.token_dim = int(token_dim)
+        self.id_emb_dim = int(id_emb_dim)
+        self.cam_emb_dim = int(cam_emb_dim)
+        self.hidden_dim = self.token_dim + self.id_emb_dim + self.cam_emb_dim
+
+        if self.token_dim <= 0:
+            raise ValueError(f"token_dim must be positive, got {self.token_dim}")
+        if self.id_emb_dim <= 0:
+            raise ValueError(f"id_emb_dim must be positive, got {self.id_emb_dim}")
+        if self.cam_emb_dim <= 0:
+            raise ValueError(f"cam_emb_dim must be positive, got {self.cam_emb_dim}")
+        if self.hidden_dim % num_heads != 0:
             raise ValueError(
-                f"hidden_dim={hidden_dim} must be divisible by num_heads={num_heads}"
+                f"hidden_dim={self.hidden_dim} must be divisible by num_heads={num_heads}"
             )
         if max_seq_len <= 0:
             raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
@@ -69,22 +83,17 @@ class BLCSMultiViewModel(nn.Module):
             raise ValueError(
                 f"max_num_cameras must be positive, got {max_num_cameras}"
             )
-        if num_stage1_blocks < 0:
+        if num_layers < 0:
             raise ValueError(
-                f"num_stage1_blocks must be non-negative, got {num_stage1_blocks}"
-            )
-        if num_stage2_layers < 0:
-            raise ValueError(
-                f"num_stage2_layers must be non-negative, got {num_stage2_layers}"
+                f"num_layers must be non-negative, got {num_layers}"
             )
 
-        self.hidden_dim = int(hidden_dim)
         self.max_seq_len = int(max_seq_len)
         self.max_num_cameras = int(max_num_cameras)
         self.predict_velocity = bool(predict_velocity)
         self.num_court_tokens = int(num_court_tokens)
 
-        head_dim = hidden_dim // num_heads
+        head_dim = self.hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
         if rope_dim % 2 != 0:
             raise ValueError(f"rope_dim must be even, got {rope_dim}")
@@ -92,34 +101,36 @@ class BLCSMultiViewModel(nn.Module):
             raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
 
         if ffn_dim is None:
-            ffn_dim = int((8 * hidden_dim) / 3)
+            ffn_dim = int((8 * self.hidden_dim) / 3)
             ffn_dim = (ffn_dim + 63) // 64 * 64
 
         self.invisible_token = InvisibleTokenEmbedding(
-            dim=hidden_dim,
+            dim=self.token_dim,
             init_std=invisible_init_std,
         )
         self.court_embed = CourtKPUVEmbedding(
-            dim=hidden_dim,
+            dim=self.token_dim,
             dropout=dropout,
             invisible_token=self.invisible_token,
         )
         self.ball_embed = BallUVEmbedding(
-            dim=hidden_dim,
+            dim=self.token_dim,
             dropout=dropout,
             invisible_token=self.invisible_token,
         )
 
-        self.court_id_embed = nn.Embedding(self.num_court_tokens, hidden_dim)
-        self.cam_id_embed = nn.Embedding(self.max_num_cameras, hidden_dim)
+        # Local token identity within one camera:
+        # 0..(num_court_tokens-1) for court keypoints, num_court_tokens for ball.
+        self.local_id_embed = nn.Embedding(self.num_court_tokens + 1, self.id_emb_dim)
+        self.cam_id_embed = nn.Embedding(self.max_num_cameras, self.cam_emb_dim)
 
-        self.query_base = nn.Parameter(torch.randn(1, 1, hidden_dim) * query_init_std)
+        self.query_base = nn.Parameter(torch.randn(1, 1, self.hidden_dim) * query_init_std)
 
-        self.ball_to_court_cross_layers = nn.ModuleList(
+        self.query_to_frame_cross_layers = nn.ModuleList(
             [
                 CrossAttnBlock(
                     CrossAttnBlockConfig(
-                        dim=hidden_dim,
+                        dim=self.hidden_dim,
                         n_heads=num_heads,
                         mlp_inter_dim=ffn_dim,
                         head_dim=head_dim,
@@ -127,64 +138,14 @@ class BLCSMultiViewModel(nn.Module):
                         attn_dropout=dropout,
                     )
                 )
-                for _ in range(num_stage1_blocks)
-            ]
-        )
-        self.cam_wise_ball_temporal_layers = nn.ModuleList(
-            [
-                TransformerBlock(
-                    TransformerBlockConfig(
-                        dim=hidden_dim,
-                        n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
-                        head_dim=head_dim,
-                        rope_dim=rope_dim,
-                        attn_dropout=dropout,
-                        rope_base=rope_theta,
-                        yarn=yarn,
-                    )
-                )
-                for _ in range(num_stage1_blocks)
-            ]
-        )
-        self.time_wise_ball_camera_layers = nn.ModuleList(
-            [
-                TransformerBlock(
-                    TransformerBlockConfig(
-                        dim=hidden_dim,
-                        n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
-                        head_dim=head_dim,
-                        rope_dim=rope_dim,
-                        attn_dropout=dropout,
-                        rope_base=rope_theta,
-                        yarn=yarn,
-                    )
-                )
-                for _ in range(num_stage1_blocks)
-            ]
-        )
-
-        self.query_to_ball_cross_layers = nn.ModuleList(
-            [
-                CrossAttnBlock(
-                    CrossAttnBlockConfig(
-                        dim=hidden_dim,
-                        n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
-                        head_dim=head_dim,
-                        rope_dim=rope_dim,
-                        attn_dropout=dropout,
-                    )
-                )
-                for _ in range(num_stage2_layers)
+                for _ in range(num_layers)
             ]
         )
         self.query_temporal_layers = nn.ModuleList(
             [
                 TransformerBlock(
                     TransformerBlockConfig(
-                        dim=hidden_dim,
+                        dim=self.hidden_dim,
                         n_heads=num_heads,
                         mlp_inter_dim=ffn_dim,
                         head_dim=head_dim,
@@ -194,15 +155,15 @@ class BLCSMultiViewModel(nn.Module):
                         yarn=yarn,
                     )
                 )
-                for _ in range(num_stage2_layers)
+                for _ in range(num_layers)
             ]
         )
 
-        self.final_norm = RMSNorm(hidden_dim)
+        self.final_norm = RMSNorm(self.hidden_dim)
 
         self.position_head = Trajectory3DHead(
-            input_dim=hidden_dim,
-            hidden_dim=hidden_dim // 2,
+            input_dim=self.hidden_dim,
+            hidden_dim=self.hidden_dim // 2,
             output_dim=3,
             num_layers=2,
             dropout=dropout,
@@ -210,8 +171,8 @@ class BLCSMultiViewModel(nn.Module):
         self.velocity_head = None
         if self.predict_velocity:
             self.velocity_head = VelocityHead(
-                input_dim=hidden_dim,
-                hidden_dim=hidden_dim // 2,
+                input_dim=self.hidden_dim,
+                hidden_dim=self.hidden_dim // 2,
                 output_dim=3,
                 num_layers=2,
                 dropout=dropout,
@@ -239,26 +200,17 @@ class BLCSMultiViewModel(nn.Module):
             if yarn_cfg.get("original_seq_len") is not None:
                 yarn = YaRNConfig(**yarn_cfg)
 
-        num_stage1_blocks = model_cfg.get("num_stage1_blocks", None)
-        if num_stage1_blocks is None:
-            num_stage1_blocks = model_cfg.get(
-                "num_ball_layers",
-                model_cfg.get(
-                    "num_ball_temporal_layers",
-                    model_cfg.get("num_ball2court_layers", model_cfg.get("num_layers", 4)),
-                ),
-            )
-
         return cls(
-            hidden_dim=int(model_cfg.get("hidden_dim", 256)),
+            token_dim=int(model_cfg.get("token_dim", 256)),
+            id_emb_dim=int(model_cfg.get("id_emb_dim", 64)),
+            cam_emb_dim=int(model_cfg.get("cam_emb_dim", 64)),
             num_heads=int(model_cfg.get("num_heads", 8)),
             ffn_dim=model_cfg.get("ffn_dim", None),
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
             yarn=yarn,
-            num_stage1_blocks=int(num_stage1_blocks),
-            num_stage2_layers=int(model_cfg.get("num_stage2_layers", model_cfg.get("num_query2ball_layers", 2))),
+            num_layers=int(model_cfg.get("num_layers", model_cfg.get("num_stage2_layers", 4))),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             max_num_cameras=int(model_cfg.get("max_num_cameras", model_cfg.get("max_views", 8))),
@@ -286,6 +238,82 @@ class BLCSMultiViewModel(nn.Module):
             valid_fixed[fully_masked, 0] = True
         attn_mask = valid_fixed[:, None, :].expand(valid_fixed.shape[0], valid_fixed.shape[1], valid_fixed.shape[1])
         return attn_mask, valid_fixed
+
+    def _build_frame_tokens(
+        self,
+        ball_tok: Tensor,
+        court_tok: Tensor,
+        ball_valid: Tensor,
+        court_valid: Tensor,
+    ) -> tuple[Tensor, Tensor]:
+        """Build per-frame memory tokens and validity mask.
+
+        Args:
+            ball_tok: (B, N, T, token_dim)
+            court_tok: (B, N, T, K, token_dim)
+            ball_valid: (B, N, T) bool
+            court_valid: (B, N) bool camera-valid mask (time-invariant)
+
+        Returns:
+            tuple:
+              - frame_tokens: (B, T, N * (K + 1), hidden_dim)
+              - frame_valid: (B, T, N * (K + 1)) bool
+        """
+        batch_size, n_cams, seq_len_in, n_kp, _ = court_tok.shape
+        if n_kp != self.num_court_tokens:
+            raise ValueError(
+                f"Expected court_tok with K={self.num_court_tokens}, got K={n_kp}."
+            )
+
+        device = court_tok.device
+        dtype = court_tok.dtype
+
+        cam_ids = torch.arange(n_cams, device=device, dtype=torch.long)
+        cam_emb = self.cam_id_embed(cam_ids).to(dtype=dtype)
+        cam_emb = cam_emb.view(1, n_cams, 1, 1, self.cam_emb_dim)
+
+        court_ids = torch.arange(self.num_court_tokens, device=device, dtype=torch.long)
+        court_id_emb = self.local_id_embed(court_ids).to(dtype=dtype)
+        court_id_emb = court_id_emb.view(1, 1, 1, self.num_court_tokens, self.id_emb_dim)
+
+        ball_id = torch.full((1,), self.num_court_tokens, device=device, dtype=torch.long)
+        ball_id_emb = self.local_id_embed(ball_id).to(dtype=dtype).view(
+            1, 1, 1, self.id_emb_dim
+        )
+
+        court_tokens = torch.cat(
+            [
+                court_tok,
+                court_id_emb.expand(batch_size, n_cams, seq_len_in, -1, -1),
+                cam_emb.expand(batch_size, n_cams, seq_len_in, self.num_court_tokens, -1),
+            ],
+            dim=-1,
+        )
+        ball_tokens = torch.cat(
+            [
+                ball_tok,
+                ball_id_emb.expand(batch_size, n_cams, seq_len_in, -1),
+                cam_emb.squeeze(3).expand(batch_size, n_cams, seq_len_in, -1),
+            ],
+            dim=-1,
+        ).unsqueeze(3)
+
+        per_cam_tokens = torch.cat([court_tokens, ball_tokens], dim=3)
+        court_valid_expanded = court_valid[:, :, None, None].expand(
+            batch_size, n_cams, seq_len_in, self.num_court_tokens
+        )
+        per_cam_valid = torch.cat([court_valid_expanded, ball_valid.unsqueeze(3)], dim=3)
+
+        frame_tokens = per_cam_tokens.permute(0, 2, 1, 3, 4).reshape(
+            batch_size,
+            seq_len_in,
+            n_cams * (self.num_court_tokens + 1),
+            self.hidden_dim,
+        )
+        frame_valid = per_cam_valid.permute(0, 2, 1, 3).reshape(
+            batch_size, seq_len_in, n_cams * (self.num_court_tokens + 1)
+        )
+        return frame_tokens, frame_valid
 
     def forward(
         self,
@@ -355,7 +383,7 @@ class BLCSMultiViewModel(nn.Module):
         ball_uv_bn = ball_uv.reshape(batch_size * n_cams, seq_len_in, 2)
         ball_vis_bn = ball_vis.reshape(batch_size * n_cams, seq_len_in)
         ball_tok = self.ball_embed(ball_uv_bn, ball_vis_bn).reshape(
-            batch_size, n_cams, seq_len_in, self.hidden_dim
+            batch_size, n_cams, seq_len_in, self.token_dim
         )
 
         court_kp_flat = court_kp.reshape(batch_size * n_cams * seq_len_in, self.num_court_tokens, 2)
@@ -365,91 +393,44 @@ class BLCSMultiViewModel(nn.Module):
             else None
         )
         court_tok = self.court_embed(court_kp_flat, court_vis_flat).reshape(
-            batch_size, n_cams, seq_len_in, self.num_court_tokens, self.hidden_dim
+            batch_size, n_cams, seq_len_in, self.num_court_tokens, self.token_dim
         )
 
-        device = ball_uv.device
-        cam_ids = torch.arange(n_cams, device=device, dtype=torch.long)
-        cam_emb = self.cam_id_embed(cam_ids).view(1, n_cams, 1, self.hidden_dim)
-
-        court_ids = torch.arange(self.num_court_tokens, device=device, dtype=torch.long)
-        court_id_emb = self.court_id_embed(court_ids).view(1, 1, 1, self.num_court_tokens, self.hidden_dim)
-
-        # Apply camera/token identity before Stage 1.
-        ball_tok = ball_tok + cam_emb
-        court_tok = court_tok + court_id_emb + cam_emb.unsqueeze(3)
-
-        valid = ball_mask > 0
+        ball_valid = ball_mask > 0
+        query_valid = ball_valid.any(dim=1)
+        # Court validity is camera-level padding validity, derived from ball validity.
+        # Shape: (B, N)
+        court_valid = ball_valid.any(dim=2)
 
         freqs_time = self.freqs_time_cis[:seq_len_in]
-        if freqs_time.device != device:
-            freqs_time = freqs_time.to(device)
+        if freqs_time.device != ball_uv.device:
+            freqs_time = freqs_time.to(ball_uv.device)
 
-        # Stage 1: cross (per camera/frame) -> temporal self (per camera) -> camera self (per frame)
-        ball_x = ball_tok
-        for cross_layer, temporal_layer, camera_layer in zip(
-            self.ball_to_court_cross_layers,
-            self.cam_wise_ball_temporal_layers,
-            self.time_wise_ball_camera_layers,
-            strict=True,
-        ):
-            q = ball_x.reshape(batch_size * n_cams * seq_len_in, 1, self.hidden_dim)
-            kv = court_tok.reshape(
-                batch_size * n_cams * seq_len_in,
-                self.num_court_tokens,
-                self.hidden_dim,
-            )
-            court_valid = torch.ones(
-                batch_size * n_cams * seq_len_in,
-                self.num_court_tokens,
-                dtype=torch.bool,
-                device=device,
-            )
-            q = cross_layer(q, kv, key_valid=court_valid)
-            ball_x = q.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim)
+        frame_tokens, frame_token_valid = self._build_frame_tokens(
+            ball_tok=ball_tok,
+            court_tok=court_tok,
+            ball_valid=ball_valid,
+            court_valid=court_valid,
+        )
 
-            temporal_x = ball_x.reshape(batch_size * n_cams, seq_len_in, self.hidden_dim)
-            temporal_valid = valid.reshape(batch_size * n_cams, seq_len_in)
-            temporal_mask, temporal_valid_fixed = self._build_self_attn_mask(temporal_valid)
-            temporal_x = temporal_x * temporal_valid_fixed.unsqueeze(-1).to(dtype=temporal_x.dtype)
-            temporal_x, _ = temporal_layer(
-                temporal_x,
-                residual=None,
-                start_pos=0,
-                freqs_cis=freqs_time,
-                attn_mask=temporal_mask,
-                is_causal=False,
-            )
-            ball_x = temporal_x.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim)
-
-            camera_x = ball_x.permute(0, 2, 1, 3).reshape(batch_size * seq_len_in, n_cams, self.hidden_dim)
-            camera_valid = valid.permute(0, 2, 1).reshape(batch_size * seq_len_in, n_cams)
-            camera_mask, camera_valid_fixed = self._build_self_attn_mask(camera_valid)
-            camera_x = camera_x * camera_valid_fixed.unsqueeze(-1).to(dtype=camera_x.dtype)
-            camera_x, _ = camera_layer(
-                camera_x,
-                residual=None,
-                start_pos=0,
-                freqs_cis=None,
-                attn_mask=camera_mask,
-                is_causal=False,
-            )
-            ball_x = camera_x.reshape(batch_size, seq_len_in, n_cams, self.hidden_dim).permute(0, 2, 1, 3)
-
-        # Stage 2: query_t -> ball_all_cam_t cross-attn, then temporal self-attn on query
         query_x = self.query_base.expand(batch_size, seq_len_in, -1)
-        frame_valid = valid.any(dim=1)
-        query_mask, query_valid_fixed = self._build_self_attn_mask(frame_valid)
+        query_mask, query_valid_fixed = self._build_self_attn_mask(query_valid)
 
         for cross_layer, temporal_layer in zip(
-            self.query_to_ball_cross_layers,
+            self.query_to_frame_cross_layers,
             self.query_temporal_layers,
             strict=True,
         ):
             query_bt = query_x.reshape(batch_size * seq_len_in, 1, self.hidden_dim)
-            ball_bt = ball_x.permute(0, 2, 1, 3).reshape(batch_size * seq_len_in, n_cams, self.hidden_dim)
-            key_valid = valid.permute(0, 2, 1).reshape(batch_size * seq_len_in, n_cams)
-            query_bt = cross_layer(query_bt, ball_bt, key_valid=key_valid)
+            frame_bt = frame_tokens.reshape(
+                batch_size * seq_len_in,
+                n_cams * (self.num_court_tokens + 1),
+                self.hidden_dim,
+            )
+            key_valid = frame_token_valid.reshape(
+                batch_size * seq_len_in, n_cams * (self.num_court_tokens + 1)
+            )
+            query_bt = cross_layer(query_bt, frame_bt, key_valid=key_valid)
             query_x = query_bt.reshape(batch_size, seq_len_in, self.hidden_dim)
 
             query_x = query_x * query_valid_fixed.unsqueeze(-1).to(dtype=query_x.dtype)

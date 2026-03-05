@@ -40,6 +40,8 @@ class BLCSLightningModule(BaseLightningModule):
             position_weight=train_cfg.get("position_loss_weight", 1.0),
             velocity_weight=train_cfg.get("velocity_loss_weight", 0.1),
             smoothness_weight=train_cfg.get("smoothness_loss_weight", 0.05),
+            reprojection_weight=train_cfg.get("reprojection_loss_weight", 0.0),
+            uv_velocity_weight=train_cfg.get("uv_velocity_loss_weight", 0.0),
         )
 
         metrics_cfg = self.config.get("metrics", {})
@@ -96,8 +98,17 @@ class BLCSLightningModule(BaseLightningModule):
 
         losses = self.loss_fn(
             pred_position=outputs["position"],
-            target_position=batch["position_3d"],
+            target_position=batch.get("position_3d"),
             mask=mask,
+            target_uv=batch.get("ball_uv"),
+            target_vis=batch.get("ball_vis"),
+            camera_R=batch.get("camera_R"),
+            camera_C=batch.get("camera_C"),
+            camera_f=batch.get("camera_f"),
+            camera_cx=batch.get("camera_cx"),
+            camera_cy=batch.get("camera_cy"),
+            camera_w=batch.get("camera_w"),
+            camera_h=batch.get("camera_h"),
         )
 
         metrics = self._select_metrics(stage).update(

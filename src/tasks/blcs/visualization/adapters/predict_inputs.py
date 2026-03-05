@@ -47,11 +47,11 @@ def _build_multiview_input(scene: dict[str, Any], cameras: list[int]) -> Predict
 
     ball_vis = torch.from_numpy(np.stack(ball_vis_list, axis=0)).float()
     return PredictorInputs(
-        ball_uv=torch.from_numpy(np.stack(ball_uv_list, axis=0)).float(),
-        court_kp=torch.from_numpy(np.stack(court_kp_list, axis=0)).float(),
-        ball_vis=ball_vis,
-        court_vis=torch.from_numpy(np.stack(court_vis_list, axis=0)).float(),
-        ball_mask=torch.ones_like(ball_vis),
+        ball_uv=torch.from_numpy(np.stack(ball_uv_list, axis=0)).float().unsqueeze(0),
+        court_kp=torch.from_numpy(np.stack(court_kp_list, axis=0)).float().unsqueeze(0),
+        ball_vis=ball_vis.unsqueeze(0),
+        court_vis=torch.from_numpy(np.stack(court_vis_list, axis=0)).float().unsqueeze(0),
+        ball_mask=torch.ones_like(ball_vis).unsqueeze(0),
     )
 
 
