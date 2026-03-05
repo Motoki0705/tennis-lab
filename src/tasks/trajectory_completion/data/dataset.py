@@ -6,6 +6,7 @@ corrupted inputs (noise + masking) paired with the original UV trajectory.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -56,7 +57,11 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
         argument_cfg = data_cfg.get("argument", {}) or {}
         self.argumenter = TrajectoryArgumenter(argument_cfg)
         ratio = argument_cfg.get("event_ratio", (2, 1))
-        if not (isinstance(ratio, (list, tuple)) and len(ratio) == 2):
+        if (
+            not isinstance(ratio, Sequence)
+            or isinstance(ratio, (str, bytes))
+            or len(ratio) != 2
+        ):
             raise ValueError(
                 "data.argument.event_ratio must be a list/tuple of length 2."
             )
