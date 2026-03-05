@@ -8,13 +8,13 @@ io:
 
 
 # Architecture
-hidden_dim: 256
-num_layers: 6
+hidden_dim: 512
+num_layers: 8
 num_heads: 8
 ffn_dim: null
 dropout: 0.1
 max_seq_len: 2048
-max_num_cameras: 4
+max_num_cameras: 8
 invisible_init_std: 0.02
 
 # RoPE
@@ -30,4 +30,4 @@ moe_config: null
 causal: false
 
 # Output
-predict_velocity: false
+predict_velocity: true
