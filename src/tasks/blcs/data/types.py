@@ -99,7 +99,7 @@ class BLCSSceneMeta:
     """Metadata schema for BLCS NPZ scene files (rally-only scene format)."""
 
     scene_id: str
-    initial_from_cell: int  # Starting cell for first shot (0-19)
+    initial_from_cell: int  # Starting cell for first shot (0-8)
     initial_from_side: str  # "near" or "far"
 
     rally_length: int  # Number of shots in rally
@@ -114,9 +114,13 @@ class BLCSSceneMeta:
     num_cameras_sampled: int
     num_cameras: int
 
+    # Per-scene variation metadata (may be absent in older files)
+    physics_config: dict | None = None
+    court_config: dict | None = None
+
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
-        return {
+        d = {
             "scene_id": self.scene_id,
             "initial_from_cell": self.initial_from_cell,
             "initial_from_side": self.initial_from_side,
@@ -130,6 +134,11 @@ class BLCSSceneMeta:
             "num_cameras_sampled": self.num_cameras_sampled,
             "num_cameras": self.num_cameras,
         }
+        if self.physics_config is not None:
+            d["physics_config"] = self.physics_config
+        if self.court_config is not None:
+            d["court_config"] = self.court_config
+        return d
 
     @classmethod
     def from_dict(cls, data: dict) -> BLCSSceneMeta:
@@ -147,6 +156,8 @@ class BLCSSceneMeta:
             num_frames=data["num_frames"],
             num_cameras_sampled=data["num_cameras_sampled"],
             num_cameras=data["num_cameras"],
+            physics_config=data.get("physics_config"),
+            court_config=data.get("court_config"),
         )
 
 
@@ -158,7 +169,7 @@ class BLCSShotEventMeta:
 
     shot_index: int  # 0-indexed shot number in rally
     from_side: str  # "near" or "far"
-    from_cell: int  # Starting cell ID (0-19)
+    from_cell: int  # Starting cell ID (0-8)
     category: str  # Shot category
 
     # Frame indices (relative to rally start, at output_fps)
@@ -166,10 +177,15 @@ class BLCSShotEventMeta:
     t_net: int  # Frame when ball crosses net (-1 if not crossed)
     t_bounce1: int  # First bounce frame (-1 if not bounced)
     t_bounce2: int  # Second bounce frame (-1 if not bounced)
+    t_bounce3: int  # Third bounce frame (-1 if not bounced)
     t_return: int  # Frame when return hit occurs (-1 if rally ended)
 
     # Landing info
     to_cell: int  # Target cell (-1 if out/net)
+
+    # Shot variant info
+    shot_type: str  # "serve", "groundstroke", or "volley"
+    return_type: str  # "volley", "normal", "late_return", or "none"
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
@@ -182,8 +198,11 @@ class BLCSShotEventMeta:
             "t_net": self.t_net,
             "t_bounce1": self.t_bounce1,
             "t_bounce2": self.t_bounce2,
+            "t_bounce3": self.t_bounce3,
             "t_return": self.t_return,
             "to_cell": self.to_cell,
+            "shot_type": self.shot_type,
+            "return_type": self.return_type,
         }
 
     @classmethod
@@ -198,8 +217,11 @@ class BLCSShotEventMeta:
             t_net=data["t_net"],
             t_bounce1=data["t_bounce1"],
             t_bounce2=data["t_bounce2"],
+            t_bounce3=data.get("t_bounce3", -1),
             t_return=data["t_return"],
             to_cell=data["to_cell"],
+            shot_type=data.get("shot_type", "groundstroke"),
+            return_type=data.get("return_type", "normal"),
         )
 
 
@@ -289,7 +311,7 @@ class BLCSSceneMetaModel(BaseModel):
     """Pydantic model for rally-scene metadata with runtime validation."""
 
     scene_id: str = Field(..., min_length=1)
-    initial_from_cell: int = Field(..., ge=0, le=19)
+    initial_from_cell: int = Field(..., ge=0, le=8)
     initial_from_side: str = Field(..., pattern="^(near|far)$")
     rally_length: int = Field(..., gt=0)
     end_reason: str = Field(..., min_length=1)

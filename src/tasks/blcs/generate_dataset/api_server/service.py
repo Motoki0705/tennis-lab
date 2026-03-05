@@ -26,9 +26,9 @@ from src.tasks.blcs.generate_dataset.api_server.schemas import (
     SimulateShotResponse,
     Vec3,
 )
-from src.tasks.blcs.simulation.ball_physics import BallState, PhysicsConfig
-from src.tasks.blcs.simulation.shot_simulator import ShotConfig, ShotSimulator
-from src.tasks.blcs.simulation.targeted_velocity_sampler import (
+from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallState, PhysicsConfig
+from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyConfig, RallySimulator
+from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
     TargetedVelocitySampler,
 )
@@ -41,8 +41,8 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
         torch.manual_seed(req.seed)
 
     # ---- Sim params ----
-    # BallPhysics integrates using `physics.dt` while ShotSimulator downsamples based on
-    # `shot_config.sim_fps/output_fps`. Keep them consistent by deriving dt from sim_fps,
+    # BallPhysics integrates using `physics.dt` while RallySimulator downsamples based on
+    # `rally_config.sim_fps/output_fps`. Keep them consistent by deriving dt from sim_fps,
     # or (if dt is provided) validating that dt and sim_fps agree.
     sim_fps_req = int(req.sim.sim_fps) if req.sim.sim_fps is not None else None
     dt_req = float(req.physics.dt) if req.physics.dt is not None else None
@@ -85,6 +85,18 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
         alpha_net=float(req.physics.alpha_net)
         if req.physics.alpha_net is not None
         else 0.3,
+        alpha_net_cord=float(req.physics.alpha_net_cord)
+        if req.physics.alpha_net_cord is not None
+        else 0.5,
+        alpha_fence=float(req.physics.alpha_fence)
+        if req.physics.alpha_fence is not None
+        else 0.3,
+        net_half_thickness=float(req.physics.net_half_thickness)
+        if req.physics.net_half_thickness is not None
+        else 0.03,
+        net_cord_radius=float(req.physics.net_cord_radius)
+        if req.physics.net_cord_radius is not None
+        else 0.03,
         dt=dt,
         use_drag=bool(req.physics.use_drag) if req.physics.use_drag is not None else True,
         use_magnus=bool(req.physics.use_magnus)
@@ -92,14 +104,14 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
         else True,
     )
 
-    shot_cfg = ShotConfig(
+    rally_cfg = RallyConfig(
         # Keep defaults unless we explicitly expose these.
         max_sim_frames=max_sim_frames,
         sim_fps=sim_fps,
         output_fps=output_fps,
     )
 
-    simulator = ShotSimulator(physics_config=physics, shot_config=shot_cfg, device="cpu")
+    simulator = RallySimulator(physics_config=physics, rally_config=rally_cfg, device="cpu")
 
     # ---- Initial state sampling / overrides ----
     # Position:
@@ -109,7 +121,7 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
         pos = simulator.cell_manager.sample_position_in_cell(
             cell_id=req.from_cell,
             side=req.from_side,
-            z_range=shot_cfg.z_range,
+            z_range=rally_cfg.z_range,
             device="cpu",
         )
 
@@ -133,14 +145,14 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
 
     # ---- Metrics ----
     apex = apex_height_m(result.trajectory)
-    t_b1 = time_to_bounce1_s(result.t_bounce1, fps_out=shot_cfg.output_fps)
+    t_b1 = time_to_bounce1_s(result.t_bounce1, fps_out=rally_cfg.output_fps)
     net_clear = net_clearance_m(result.trajectory_sim)
 
     return SimulateShotResponse(
         positions=result.trajectory.detach().cpu().tolist(),
         velocities=result.velocities.detach().cpu().tolist(),
-        fps_out=shot_cfg.output_fps,
-        sim_fps=shot_cfg.sim_fps,
+        fps_out=rally_cfg.output_fps,
+        sim_fps=rally_cfg.sim_fps,
         events=ShotEvents(
             t_net=int(result.t_net),
             t_fence=int(result.t_fence),
@@ -163,9 +175,9 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
 
 
 def _sample_velocity(
-    req: SimulateShotRequest, pos: torch.Tensor, simulator: ShotSimulator
+    req: SimulateShotRequest, pos: torch.Tensor, simulator: RallySimulator
 ) -> torch.Tensor:
-    # Targeted velocity for `cell` / `point`, otherwise random sampling.
+    # Targeted velocity for `cell` / `point`, otherwise random target-cell sampling.
     if req.target_mode == "cell":
         target_side = "far" if req.from_side == "near" else "near"
         sampler = TargetedVelocitySampler(
@@ -195,7 +207,19 @@ def _sample_velocity(
         )
         return sampler.compute_velocity_to_target(pos, target_pos, from_side=req.from_side)
 
-    return simulator._sample_velocity(req.from_side)
+    target_side = "far" if req.from_side == "near" else "near"
+    target_cell = simulator._sample_target_cell()
+    sampler = TargetedVelocitySampler(
+        cell_manager=simulator.cell_manager,
+        config=TargetedVelocityConfig(gravity=simulator.physics.config.gravity),
+        device="cpu",
+    )
+    return sampler.sample_velocity_for_target_cell(
+        start_pos=pos,
+        target_cell=target_cell,
+        target_side=target_side,
+        from_side=req.from_side,
+    )
 
 
 def _vec3_to_tensor(v: Vec3) -> torch.Tensor:

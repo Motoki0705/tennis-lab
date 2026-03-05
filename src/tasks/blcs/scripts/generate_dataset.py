@@ -25,17 +25,15 @@ from omegaconf import DictConfig, OmegaConf
 from tqdm.auto import tqdm
 
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
-from src.tasks.blcs.generate_dataset.sampling.distribution_sampler import SamplingConfig
 from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneGenerator,
     GeneratorConfig,
 )
-from src.tasks.blcs.simulation.ball_physics import PhysicsConfig
-from src.tasks.blcs.simulation.cell_manager import ShotCategory
-from src.tasks.blcs.simulation.rally_simulator import RallyConfig
-from src.tasks.blcs.simulation.shot_simulator import ShotConfig
-from src.tasks.blcs.simulation.targeted_velocity_sampler import TargetedVelocityConfig
+from src.tasks.blcs.generate_dataset.simulation.ball_physics import PhysicsConfig
+from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyConfig
+from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import TargetedVelocityConfig
 from src.utils.projection.camera_projector import CameraConfig
+from src.utils.schema.court import CourtConfig
 
 logging.basicConfig(
     level=logging.INFO,
@@ -60,33 +58,54 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         e_z=float(cfg.physics.e_z),
         mu=float(cfg.physics.mu),
         alpha_net=float(cfg.physics.alpha_net),
+        alpha_net_cord=float(cfg.physics.get("alpha_net_cord", 0.5)),
+        alpha_fence=float(cfg.physics.get("alpha_fence", 0.3)),
+        net_half_thickness=float(cfg.physics.get("net_half_thickness", 0.03)),
+        net_cord_radius=float(cfg.physics.get("net_cord_radius", 0.03)),
         dt=float(cfg.physics.dt),
         use_drag=bool(cfg.physics.use_drag),
         use_magnus=bool(cfg.physics.use_magnus),
-    )
-
-    shot_config = ShotConfig(
-        z_range=tuple(cfg.shot.z_range),
-        speed_range=tuple(cfg.shot.speed_range),
-        azimuth_range_deg=tuple(cfg.shot.azimuth_range_deg),
-        elevation_range_deg=tuple(cfg.shot.elevation_range_deg),
-        spin_x_range=tuple(cfg.shot.spin_x_range),
-        spin_y_range=tuple(cfg.shot.spin_y_range),
-        spin_z_range=tuple(cfg.shot.spin_z_range),
-        max_sim_frames=int(cfg.shot.max_sim_frames),
-        output_fps=int(cfg.shot.output_fps),
-        sim_fps=int(cfg.shot.sim_fps),
+        wind=tuple(cfg.physics.wind) if cfg.physics.get("wind") else (0.0, 0.0, 0.0),
+        gravity_range=tuple(cfg.physics.gravity_range)
+        if cfg.physics.get("gravity_range") else None,
+        k_drag_range=tuple(cfg.physics.k_drag_range)
+        if cfg.physics.get("k_drag_range") else None,
+        k_magnus_range=tuple(cfg.physics.k_magnus_range)
+        if cfg.physics.get("k_magnus_range") else None,
+        e_z_range=tuple(cfg.physics.e_z_range)
+        if cfg.physics.get("e_z_range") else None,
+        mu_range=tuple(cfg.physics.mu_range)
+        if cfg.physics.get("mu_range") else None,
+        wind_speed_range=tuple(cfg.physics.wind_speed_range)
+        if cfg.physics.get("wind_speed_range") else None,
+        wind_direction_range_deg=tuple(cfg.physics.wind_direction_range_deg)
+        if cfg.physics.get("wind_direction_range_deg") else None,
     )
 
     rally_config = RallyConfig(
+        z_range=tuple(cfg.rally.z_range),
+        spin_x_range=tuple(cfg.rally.spin_x_range),
+        spin_y_range=tuple(cfg.rally.spin_y_range),
+        spin_z_range=tuple(cfg.rally.spin_z_range),
+        max_sim_frames=int(cfg.rally.max_sim_frames),
+        output_fps=int(cfg.rally.output_fps),
+        sim_fps=int(cfg.rally.sim_fps),
         max_rallies=int(cfg.rally.max_rallies),
         max_total_frames=int(cfg.rally.max_total_frames),
-        court_margin=float(cfg.rally.court_margin),
         hit_timing_range=tuple(cfg.rally.hit_timing_range),
         return_z_range=tuple(cfg.rally.return_z_range),
-        max_return_retries=int(cfg.rally.max_return_retries),
-        min_rally_length=int(cfg.rally.min_rally_length),
-        net_fault_accept_prob=float(cfg.rally.net_fault_accept_prob),
+        serve_probability=float(cfg.rally.get("serve_probability", 0.3)),
+        serve_z_range=tuple(cfg.rally.serve_z_range)
+        if cfg.rally.get("serve_z_range") else (2.0, 2.8),
+        toss_vz_range=tuple(cfg.rally.toss_vz_range)
+        if cfg.rally.get("toss_vz_range") else (4.5, 7.0),
+        toss_xy_noise_range=tuple(cfg.rally.toss_xy_noise_range)
+        if cfg.rally.get("toss_xy_noise_range") else (-0.35, 0.35),
+        toss_max_frames=int(cfg.rally.get("toss_max_frames", 240)),
+        toss_z0_tolerance=float(cfg.rally.get("toss_z0_tolerance", 0.03)),
+        volley_probability=float(cfg.rally.get("volley_probability", 0.05)),
+        normal_return_probability=float(cfg.rally.get("normal_return_probability", 0.85)),
+        late_return_probability=float(cfg.rally.get("late_return_probability", 0.10)),
     )
 
     camera_config = CameraConfig(
@@ -100,19 +119,16 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         target_x_range=tuple(cfg.camera.get("target_x_range", [-2.0, 2.0])),
         target_y_range=tuple(cfg.camera.get("target_y_range", [-2.0, 2.0])),
         target_z_range=tuple(cfg.camera.get("target_z_range", [0.5, 1.5])),
+        hfov_noise_deg=float(cfg.camera.get("hfov_noise_deg", 0.0)),
+        look_at_noise_std=float(cfg.camera.get("look_at_noise_std", 0.0)),
     )
 
-    category_ratios = cfg.sampling.category_ratios
-    sampling_config = SamplingConfig(
-        category_ratios={
-            ShotCategory.DIRECT_NET: float(category_ratios.direct_net),
-            ShotCategory.DIRECT_FENCE: float(category_ratios.direct_fence),
-            ShotCategory.IN_COURT: float(category_ratios.in_court),
-            ShotCategory.OUT_COURT: float(category_ratios.out_court),
-        },
-        in_court_cell_weights=cfg.sampling.in_court_cell_weights,
-        out_court_cell_weights=cfg.sampling.out_court_cell_weights,
-        per_from_cell_samples=int(cfg.sampling.per_from_cell_samples),
+    # Court config
+    court_cfg = cfg.generator.get("court", {})
+    court_config = CourtConfig(
+        net_post_offset_x=float(court_cfg.get("net_post_offset_x", 0.914)),
+        net_post_offset_x_range=tuple(court_cfg.net_post_offset_x_range)
+        if court_cfg.get("net_post_offset_x_range") else None,
     )
 
     targeted_velocity_config = TargetedVelocityConfig(
@@ -145,11 +161,10 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
 
     return GeneratorConfig(
         physics=physics_config,
-        shot=shot_config,
         rally=rally_config,
         camera=camera_config,
-        sampling=sampling_config,
         targeted_velocity=targeted_velocity_config,
+        court=court_config,
         num_cameras_sampled=int(cfg.generator.num_cameras_sampled),
         ball_visibility_threshold=float(cfg.generator.ball_visibility_threshold),
         max_attempts_multiplier=int(cfg.generator.max_attempts_multiplier),
