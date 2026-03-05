@@ -12,6 +12,7 @@ from torch import Tensor
 
 from src.utils.schema.court import (
     BASELINE_CLEAR,
+    CourtConfig,
     FENCE_HEIGHT,
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
@@ -91,7 +92,11 @@ def project_points(cam: Camera, xyz: Tensor) -> tuple[Tensor, Tensor]:
 
 @dataclass
 class CameraConfig:
-    """Configuration for camera generation."""
+    """Configuration for camera generation.
+
+    Supports per-camera perturbation of intrinsics and look-at direction
+    for dataset variation.
+    """
 
     placement_mode: str = "random"  # "random" | "fixed_8"
     z_min: float = 3.0
@@ -103,6 +108,12 @@ class CameraConfig:
     target_x_range: tuple[float, float] = (-2.0, 2.0)
     target_y_range: tuple[float, float] = (-2.0, 2.0)
     target_z_range: tuple[float, float] = (0.5, 1.5)
+
+    # --- Perturbation parameters ---
+    # Gaussian noise on hfov (degrees, sigma)
+    hfov_noise_deg: float = 0.0
+    # Gaussian noise on look-at target (metres, sigma)
+    look_at_noise_std: float = 0.0
 
 
 @dataclass
@@ -120,14 +131,19 @@ class CameraView:
 class CameraProjector:
     """Generates cameras and projects 3D points to 2D UV coordinates."""
 
-    def __init__(self, config: CameraConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: CameraConfig | None = None,
+        court_config: CourtConfig | None = None,
+    ) -> None:
         self.config = config or CameraConfig()
-        self.court_kp_3d = court_keypoints_3d()
         if self.config.placement_mode not in {"random", "fixed_8"}:
             raise ValueError(
                 "camera placement_mode must be one of {'random', 'fixed_8'}, "
                 f"got '{self.config.placement_mode}'"
             )
+        self.court_config = court_config
+        self.court_kp_3d = court_keypoints_3d(court_config)
 
     @staticmethod
     def _fence_extents(baseline_clear_extra: float = 0.0) -> tuple[float, float]:
@@ -165,10 +181,22 @@ class CameraProjector:
         target_y = random.uniform(*cfg.target_y_range)
         target_z = random.uniform(*cfg.target_z_range)
 
+        # Apply look-at perturbation
+        if cfg.look_at_noise_std > 0:
+            target_x += random.gauss(0, cfg.look_at_noise_std)
+            target_y += random.gauss(0, cfg.look_at_noise_std)
+            target_z += random.gauss(0, cfg.look_at_noise_std * 0.5)
+
+        # Apply hfov perturbation
+        hfov = cfg.hfov_deg
+        if cfg.hfov_noise_deg > 0:
+            hfov += random.gauss(0, cfg.hfov_noise_deg)
+            hfov = max(20.0, min(120.0, hfov))  # clamp to sane range
+
         return make_look_at_camera(
             center=(cam_x, cam_y, cam_z),
             look_at=(target_x, target_y, target_z),
-            hfov_deg=cfg.hfov_deg,
+            hfov_deg=hfov,
             image_size=cfg.image_size,
         )
 

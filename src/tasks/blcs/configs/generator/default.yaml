@@ -1,6 +1,9 @@
-# Number of scenes to generate (1 scene = 1 rally)
 num_scenes: 1000
-
 num_cameras_sampled: 8
 ball_visibility_threshold: 0.8
 max_attempts_multiplier: 10
+
+# Court geometry variation
+court:
+  net_post_offset_x: 0.914
+  net_post_offset_x_range: [-0.3, 0.914]

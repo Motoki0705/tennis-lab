@@ -1,30 +1,28 @@
-# Rally simulation configuration
-# Extends shot configuration with rally-specific parameters
+# Initial condition ranges
+z_range: [0.8, 1.4]
+spin_x_range: [-200.0, 200.0]
+spin_y_range: [-80.0, -40.0]
+spin_z_range: [-200.0, 200.0]
 
-# Maximum number of shots in a rally before forced termination
+# Simulation parameters
+max_sim_frames: 2000
+output_fps: 30
+sim_fps: 240
+
 max_rallies: 10
-
-# Maximum total simulation frames across entire rally
-# At 240Hz, 12000 frames = 50 seconds
 max_total_frames: 12000
-
-# Court margin for out-of-bounds detection (meters)
-# Ball is considered "in" if it bounces within court + margin
-court_margin: 0.5
-
-# Hit timing range: fraction of time between 1st and 2nd bounce
-# (0.0 = at 1st bounce, 1.0 = at 2nd bounce)
 hit_timing_range: [0.2, 0.8]
-
-# Height range for return shot (meters)
 return_z_range: [0.8, 1.4]
 
-# Maximum retries for sampling a valid return shot (2nd shot onwards)
-# A valid return shot is one that doesn't immediately end the rally
-max_return_retries: 10000
+# Serve
+serve_probability: 0.3
+serve_z_range: [2.0, 2.8]
+toss_vz_range: [4.5, 7.0]
+toss_xy_noise_range: [-0.35, 0.35]
+toss_max_frames: 240
+toss_z0_tolerance: 0.03
 
-# Minimum rally length to accept (for filtering short rallies)
-min_rally_length: 2
-
-# Probability to accept net-fault return shots (0.0 - 1.0)
-net_fault_accept_prob: 0.05
+# Volley / multi-bounce
+volley_probability: 0.05
+normal_return_probability: 0.85
+late_return_probability: 0.10
