@@ -19,9 +19,9 @@ Use this skill for PR creation/maintenance in `Motoki0705/tennis-lab`.
 - Ensure current branch has commits vs `main`.
 - Prepare PR body with `--body-file` (avoid inline multiline body).
 - Copy `.github/pull_request_template.md` to a tmp file before editing.
-- Recommended tmp path:
+- Recommended tmp creation:
   ```bash
-  BODY_FILE="/tmp/pr-body-$(git branch --show-current).md"
+  BODY_FILE="$(mktemp /tmp/pr-body-XXXXXX.md)"
   cp .github/pull_request_template.md "$BODY_FILE"
   ${EDITOR:-vi} "$BODY_FILE"
   ```
@@ -29,7 +29,9 @@ Use this skill for PR creation/maintenance in `Motoki0705/tennis-lab`.
 
 ### 2) Create PR
 ```bash
-BODY_FILE="/tmp/pr-body-$(git branch --show-current).md"
+BODY_FILE="$(mktemp /tmp/pr-body-XXXXXX.md)"
+cp .github/pull_request_template.md "$BODY_FILE"
+${EDITOR:-vi} "$BODY_FILE"
 
 gh pr create --repo Motoki0705/tennis-lab \
   --base main \
@@ -48,4 +50,5 @@ gh pr create --repo Motoki0705/tennis-lab \
 
 ## Failure quick fixes
 - `jq: command not found` -> use `gh --jq` (built-in).
+- tmp file path breaks because branch name contains `/` -> use `mktemp` instead of embedding the branch name in the file path.
 - `gh auth status` fails or times out -> re-authenticate before creating the PR.

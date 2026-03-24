@@ -3,10 +3,11 @@ PR body template for `gh pr create --body-file`.
 
 Suggested workflow:
 1. Copy this file to a tmp file.
-   cp .github/pull_request_template.md /tmp/pr-body-$(git branch --show-current).md
+   BODY_FILE="$(mktemp /tmp/pr-body-XXXXXX.md)"
+   cp .github/pull_request_template.md "$BODY_FILE"
 2. Edit the tmp file and remove guidance comments if they are no longer needed.
 3. Create the PR with:
-   gh pr create --body-file /tmp/pr-body-$(git branch --show-current).md
+   gh pr create --body-file "$BODY_FILE"
 -->
 
 ## Summary
