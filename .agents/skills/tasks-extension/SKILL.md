@@ -9,10 +9,26 @@ description: Extend `src/tasks` by first reading existing task implementations s
 Use this skill when adding a new task under `src/tasks`, or when restructuring an existing task to align with the repository's task conventions.
 
 ## Working principle
+- Start with a subagent-led codebase survey before making structural decisions.
 - Do not start from a fixed directory template written in this skill.
 - Derive the extension strategy by reading existing task implementations.
 - Prefer `src/tasks/blcs` as the primary reference.
 - Read other tasks such as `src/tasks/plcs` when BLCS alone does not explain a design choice.
+
+## Subagent-first workflow
+1. Spawn the project-scoped `tasks_codebase_explorer` subagent defined at `.codex/agents/tasks-codebase-explorer.toml`.
+2. Ask that subagent to survey the target task and the closest existing task references before implementation starts.
+3. Wait for a concise summary with concrete file references, structural guidance, and open questions.
+4. Use the subagent's survey to guide local implementation work instead of redoing the same exploration on the main thread.
+5. If the user asked only for analysis, return the survey findings rather than editing code.
+
+Suggested delegation prompt:
+```text
+Survey the codebase for extending or restructuring <target task>.
+Follow the tasks-extension inspection order.
+Return the closest reference task, required shared abstractions, pipeline boundary considerations, and the highest-signal files to inspect next.
+Do not make code changes.
+```
 
 ## Minimum inspection order
 1. Read the target task's current files, if the task already exists.
