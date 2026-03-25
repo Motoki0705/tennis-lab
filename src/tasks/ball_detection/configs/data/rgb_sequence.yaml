@@ -1,0 +1,43 @@
+data_dir: data/tennis
+
+split:
+  train_file: src/tasks/ball_detection/configs/data/splits/train.txt
+  val_file: src/tasks/ball_detection/configs/data/splits/val.txt
+  test_file: src/tasks/ball_detection/configs/data/splits/test.txt
+
+batch_size: 4
+num_workers: 4
+pin_memory: true
+sample_stride: 4
+
+image_size: [288, 512]
+heatmap_size: [144, 256]
+gaussian_size: 3
+gaussian_variance: 1.0
+
+augmentation:
+  camera_rotation:
+    enabled: false
+    prob: 0.35
+    max_center_angle_deg: 1.2
+    max_angular_velocity_deg_per_frame: 0.2
+    border_mode: reflect101
+  horizontal_flip:
+    enabled: false
+    prob: 0.5
+  brightness_gain:
+    enabled: false
+    jitter: 0.1
+  contrast:
+    enabled: false
+    jitter: 0.1
+  gamma:
+    enabled: false
+    jitter: 0.08
+  gaussian_noise:
+    enabled: false
+    std: 0.012
+  gaussian_blur:
+    enabled: false
+    prob: 0.12
+    kernel_size: 3

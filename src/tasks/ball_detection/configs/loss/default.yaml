@@ -1,0 +1,2 @@
+name: focal_bce
+gamma: 2.0
