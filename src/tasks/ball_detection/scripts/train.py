@@ -14,11 +14,13 @@ from __future__ import annotations
 import json
 import math
 import random
+from collections.abc import Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import cv2
 import hydra
 import numpy as np
 import torch
@@ -71,6 +73,24 @@ class CheckpointState:
     scheduler_state_dict: dict[str, Any] | None = None
     scaler_state_dict: dict[str, Any] | None = None
 
+@dataclass(frozen=True, slots=True)
+class VisualizationSequence:
+    """Contiguous sequence to visualize with labels in resized image space."""
+
+    name: str
+    frames_rgb: list[np.ndarray]
+    coords_image: list[tuple[float, float]]
+    visibility: list[float]
+
+
+@dataclass(frozen=True, slots=True)
+class VisualizationPrediction:
+    """One frame prediction for visualization output."""
+
+    confidence: float
+    visible: bool
+    x_image: float
+    y_image: float
 
 def train(config: DictConfig) -> dict[str, float]:
     """Train the detector with supervised or phase-based semi-supervised scheduling."""
@@ -218,6 +238,15 @@ def train(config: DictConfig) -> dict[str, float]:
                     epoch=epoch,
                 )
                 epoch_metrics.update(val_metrics)
+                _save_epoch_visualizations(
+                    model=model,
+                    device=device,
+                    config=config,
+                    output_dir=output_dir,
+                    epoch=epoch,
+                    phase_index=phase_index,
+                    pseudo_manifest_paths=pseudo_manifest_paths,
+                )
 
             state.history.append({"epoch": float(epoch), **epoch_metrics})
             _append_jsonl(history_path, {"epoch": float(epoch), **epoch_metrics})
@@ -601,6 +630,366 @@ def _run_dry_run(
         "dry_run/loss": float(loss.detach().cpu().item()),
         "dry_run/batch_size": float(images.shape[0]),
     }
+
+
+def _save_epoch_visualizations(
+    *,
+    model: nn.Module,
+    device: torch.device,
+    config: DictConfig,
+    output_dir: Path,
+    epoch: int,
+    phase_index: int,
+    pseudo_manifest_paths: Sequence[Path],
+) -> None:
+    """Render qualitative videos for the current validation epoch."""
+    vis_cfg = config.training.get("visualization", {}) or {}
+    if not bool(vis_cfg.get("enabled", True)):
+        return
+
+    epoch_dir = output_dir / "vis" / f"epoch_{epoch:04d}"
+    epoch_dir.mkdir(parents=True, exist_ok=True)
+
+    train_sequence = _load_split_visualization_sequence(
+        config=config,
+        split_file=str(config.data.split.get("train_file", "train.txt")),
+        name="train",
+    )
+    _write_visualization_video(
+        sequence=train_sequence,
+        predictions=_infer_visualization_predictions(
+            model=model,
+            device=device,
+            config=config,
+            frames_rgb=train_sequence.frames_rgb,
+        ),
+        output_path=epoch_dir / "train.mp4",
+        config=config,
+    )
+
+    val_sequence = _load_split_visualization_sequence(
+        config=config,
+        split_file=str(config.data.split.get("val_file", "val.txt")),
+        name="val",
+    )
+    _write_visualization_video(
+        sequence=val_sequence,
+        predictions=_infer_visualization_predictions(
+            model=model,
+            device=device,
+            config=config,
+            frames_rgb=val_sequence.frames_rgb,
+        ),
+        output_path=epoch_dir / "val.mp4",
+        config=config,
+    )
+
+    if phase_index <= 0 or not pseudo_manifest_paths:
+        return
+    pseudo_sequence = _load_pseudo_visualization_sequence(
+        config=config,
+        manifest_path=pseudo_manifest_paths[0],
+    )
+    if pseudo_sequence is None:
+        return
+    _write_visualization_video(
+        sequence=pseudo_sequence,
+        predictions=_infer_visualization_predictions(
+            model=model,
+            device=device,
+            config=config,
+            frames_rgb=pseudo_sequence.frames_rgb,
+        ),
+        output_path=epoch_dir / "pseudo.mp4",
+        config=config,
+    )
+
+
+def _load_split_visualization_sequence(
+    *,
+    config: DictConfig,
+    split_file: str,
+    name: str,
+) -> VisualizationSequence:
+    """Load one contiguous sequence from a supervised split for visualization."""
+    dataset = BallDetectionDataset(
+        data_dir=str(config.data.get("data_dir", "data/tennis")),
+        split_file=split_file,
+        config=config,
+        argumentation=None,
+    )
+    if not dataset.windows:
+        raise RuntimeError(f"No windows available for visualization split={name}.")
+    return _window_to_visualization_sequence(
+        dataset=dataset,
+        window=dataset.windows[0],
+        max_frames=int(config.training.visualization.get("num_frames", 126)),
+        name=name,
+    )
+
+
+def _load_pseudo_visualization_sequence(
+    *,
+    config: DictConfig,
+    manifest_path: Path,
+) -> VisualizationSequence | None:
+    """Load one contiguous sequence from the current phase pseudo manifest."""
+    if not manifest_path.exists():
+        return None
+
+    with manifest_path.open("r", encoding="utf-8") as handle:
+        first_record = next((line.strip() for line in handle if line.strip()), "")
+    if not first_record:
+        return None
+
+    entry = json.loads(first_record)
+    image_dir = Path(str(entry["image_dir"])).expanduser()
+    label_csv = Path(str(entry["label_csv"])).expanduser()
+    frame_count = int(entry["frame_count"])
+    original_width = int(entry["original_width"])
+    original_height = int(entry["original_height"])
+
+    dataset = BallDetectionDataset(
+        data_dir=str(config.data.get("data_dir", "data/tennis")),
+        split_file=str(config.data.split.get("train_file", "train.txt")),
+        config=config,
+        argumentation=None,
+    )
+    labels = dataset._read_label_csv(label_csv)
+    max_frames = min(int(config.training.visualization.get("num_frames", 126)), frame_count)
+    frame_names = tuple(f"{frame_index:06d}.jpg" for frame_index in range(frame_count))
+    return _build_visualization_sequence(
+        dataset=dataset,
+        clip_dir=image_dir,
+        frame_names=frame_names,
+        labels=labels,
+        original_size=(original_width, original_height),
+        start_index=0,
+        max_frames=max_frames,
+        name="pseudo",
+    )
+
+
+def _window_to_visualization_sequence(
+    *,
+    dataset: BallDetectionDataset,
+    window: Any,
+    max_frames: int,
+    name: str,
+) -> VisualizationSequence:
+    """Convert one dataset window into a longer contiguous visualization sequence."""
+    return _build_visualization_sequence(
+        dataset=dataset,
+        clip_dir=window.clip_dir,
+        frame_names=window.frame_names,
+        labels=window.labels,
+        original_size=window.original_size,
+        start_index=window.start_index,
+        max_frames=max_frames,
+        name=name,
+    )
+
+
+def _build_visualization_sequence(
+    *,
+    dataset: BallDetectionDataset,
+    clip_dir: Path,
+    frame_names: Sequence[str],
+    labels: dict[str, Any],
+    original_size: tuple[int, int],
+    start_index: int,
+    max_frames: int,
+    name: str,
+) -> VisualizationSequence:
+    """Build a contiguous labeled visualization sequence from raw frame files."""
+    image_h, image_w = dataset.image_size
+    original_w, original_h = original_size
+    end_index = min(len(frame_names), start_index + max(max_frames, dataset.num_frames))
+    if end_index - start_index < dataset.num_frames:
+        raise RuntimeError(
+            f"Visualization sequence {name} is shorter than model.num_frames={dataset.num_frames}."
+        )
+
+    frames_rgb: list[np.ndarray] = []
+    coords_image: list[tuple[float, float]] = []
+    visibility: list[float] = []
+    for frame_name in frame_names[start_index:end_index]:
+        frame = dataset._load_frame(clip_dir / frame_name)
+        frames_rgb.append(frame)
+        label = labels.get(frame_name)
+        if label is not None and float(label.visibility) > 0:
+            coords_image.append(
+                (
+                    float(label.x) * image_w / max(original_w, 1),
+                    float(label.y) * image_h / max(original_h, 1),
+                )
+            )
+            visibility.append(1.0)
+        else:
+            coords_image.append((0.0, 0.0))
+            visibility.append(0.0)
+    return VisualizationSequence(
+        name=name,
+        frames_rgb=frames_rgb,
+        coords_image=coords_image,
+        visibility=visibility,
+    )
+
+
+@torch.no_grad()
+def _infer_visualization_predictions(
+    *,
+    model: nn.Module,
+    device: torch.device,
+    config: DictConfig,
+    frames_rgb: Sequence[np.ndarray],
+) -> list[VisualizationPrediction]:
+    """Infer frame-level predictions by averaging overlapping window heatmaps."""
+    num_frames = int(config.model.num_frames)
+    if len(frames_rgb) < num_frames:
+        raise RuntimeError(
+            f"Visualization requires at least {num_frames} frames, got {len(frames_rgb)}."
+        )
+
+    heatmap_h = int(config.data.heatmap_size[0])
+    heatmap_w = int(config.data.heatmap_size[1])
+    image_h = int(config.data.image_size[0])
+    image_w = int(config.data.image_size[1])
+    batch_size = int(config.training.visualization.get("inference_batch_size", 8))
+    threshold = float(
+        config.training.visualization.get(
+            "confidence_threshold",
+            config.metrics.get("peak_threshold", 0.5),
+        )
+    )
+
+    starts = list(range(0, len(frames_rgb) - num_frames + 1))
+    heatmap_sums = np.zeros((len(frames_rgb), heatmap_h, heatmap_w), dtype=np.float32)
+    heatmap_counts = np.zeros(len(frames_rgb), dtype=np.int32)
+
+    model.eval()
+    for batch_starts in _batched_values(starts, batch_size):
+        batch_inputs = []
+        for start in batch_starts:
+            window = np.stack(
+                [
+                    frame.transpose(2, 0, 1)
+                    for frame in frames_rgb[start : start + num_frames]
+                ]
+            )
+            batch_inputs.append(window)
+        inputs = torch.from_numpy(np.stack(batch_inputs)).to(device=device, dtype=torch.float32)
+        with _autocast_context(config, device=device):
+            logits = model(_to_model_input(inputs)).squeeze(1)
+            probs = torch.sigmoid(logits).detach().float().cpu().numpy()
+        probs = np.nan_to_num(probs, nan=0.0, posinf=1.0, neginf=0.0)
+        for batch_index, start in enumerate(batch_starts):
+            for offset in range(num_frames):
+                frame_index = start + offset
+                heatmap_sums[frame_index] += probs[batch_index, offset]
+                heatmap_counts[frame_index] += 1
+
+    predictions: list[VisualizationPrediction] = []
+    for frame_index in range(len(frames_rgb)):
+        support_count = int(heatmap_counts[frame_index])
+        if support_count <= 0:
+            predictions.append(
+                VisualizationPrediction(
+                    confidence=0.0,
+                    visible=False,
+                    x_image=0.0,
+                    y_image=0.0,
+                )
+            )
+            continue
+        avg = heatmap_sums[frame_index] / float(support_count)
+        peak = float(avg.max())
+        peak_y, peak_x = np.unravel_index(int(avg.argmax()), avg.shape)
+        visible = peak >= threshold
+        predictions.append(
+            VisualizationPrediction(
+                confidence=peak,
+                visible=visible,
+                x_image=float(peak_x * image_w / max(heatmap_w, 1)) if visible else 0.0,
+                y_image=float(peak_y * image_h / max(heatmap_h, 1)) if visible else 0.0,
+            )
+        )
+    return predictions
+
+
+def _write_visualization_video(
+    *,
+    sequence: VisualizationSequence,
+    predictions: Sequence[VisualizationPrediction],
+    output_path: Path,
+    config: DictConfig,
+) -> None:
+    """Write a qualitative MP4 with GT and predicted ball positions."""
+    if len(sequence.frames_rgb) != len(predictions):
+        raise ValueError("Visualization frames and predictions must have the same length.")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    image_h = int(config.data.image_size[0])
+    image_w = int(config.data.image_size[1])
+    fps = float(config.training.visualization.get("fps", 12))
+    codec = str(config.training.visualization.get("codec", "mp4v"))
+    writer = cv2.VideoWriter(
+        str(output_path),
+        cv2.VideoWriter_fourcc(*codec),
+        fps,
+        (image_w, image_h),
+    )
+    if not writer.isOpened():
+        raise RuntimeError(f"Failed to open visualization writer: {output_path}")
+
+    try:
+        for frame_index, (frame_rgb, prediction) in enumerate(zip(sequence.frames_rgb, predictions, strict=True)):
+            frame_bgr = cv2.cvtColor(
+                np.clip(frame_rgb * 255.0, 0.0, 255.0).astype(np.uint8),
+                cv2.COLOR_RGB2BGR,
+            )
+            gt_visible = sequence.visibility[frame_index] > 0
+            gt_x, gt_y = sequence.coords_image[frame_index]
+            if gt_visible:
+                cv2.circle(frame_bgr, (int(round(gt_x)), int(round(gt_y))), 5, (0, 255, 0), 2)
+            if prediction.visible:
+                cv2.circle(
+                    frame_bgr,
+                    (int(round(prediction.x_image)), int(round(prediction.y_image))),
+                    5,
+                    (0, 0, 255),
+                    2,
+                )
+            cv2.putText(
+                frame_bgr,
+                f"{sequence.name} frame={frame_index:03d} conf={prediction.confidence:.2f}",
+                (12, 24),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 255, 255),
+                2,
+                cv2.LINE_AA,
+            )
+            cv2.putText(
+                frame_bgr,
+                "GT=green Pred=red",
+                (12, 48),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 255, 255),
+                2,
+                cv2.LINE_AA,
+            )
+            writer.write(frame_bgr)
+    finally:
+        writer.release()
+
+
+def _batched_values(values: Sequence[int], batch_size: int) -> list[list[int]]:
+    """Split integer values into fixed-size batches."""
+    if batch_size <= 0:
+        raise ValueError(f"batch_size must be positive, got {batch_size}.")
+    return [list(values[index : index + batch_size]) for index in range(0, len(values), batch_size)]
 
 
 def _build_optimizer(
