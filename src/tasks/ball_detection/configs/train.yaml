@@ -1,0 +1,15 @@
+defaults:
+  - model: stunet
+  - data: rgb_sequence
+  - loss: default
+  - metrics: default
+  - training: default
+  - run: train
+  - _self_
+
+hydra:
+  run:
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

@@ -1,0 +1,62 @@
+# ---- Training loop settings ----
+trainer:
+  max_epochs: 20
+  gradient_clip_val: 1.0
+  deterministic: warn
+  precision: bf16
+  log_every_n_steps: 50
+  check_val_every_n_epoch: 1
+
+# ---- Optimizer / scheduler ----
+learning_rate: 1.0e-3
+weight_decay: 1.0e-4
+warmup_steps: 200
+min_lr: 1.0e-6
+
+optimizer:
+  name: adamw
+  betas: [0.9, 0.999]
+
+# ---- Runtime settings ----
+matmul_precision: high
+allow_tf32: true
+
+# ---- Checkpoint / stopping ----
+checkpoint:
+  enabled: true
+  filename: "ball-detection-{epoch:02d}"
+  monitor: val/loss
+  mode: min
+  save_top_k: 2
+  save_last: true
+
+early_stopping:
+  enabled: true
+  monitor: val/loss
+  mode: min
+  patience: 5
+  min_delta: 1.0e-3
+
+lr_monitor:
+  enabled: true
+  interval: step
+
+semi_supervised:
+  num_semi_phases: 4
+  phase0_epochs: 10
+  phase_epochs: 10
+  phase_lr_decay: 0.5
+  raw_video_dir: data/tennis/raw/videos
+  raw_video_glob: "video_*.mp4"
+  pseudo_label_root: data/tennis/pseudo_label
+  pseudo_chunk_frames: 256
+  pseudo_windows_per_video: 64
+  pseudo_confidence_threshold: 0.55
+  pseudo_inference_batch_size: 8
+  pseudo_min_visible_frames: 5
+  pseudo_max_frame_gap: 2
+  pseudo_mad_scale: 4.0
+  pseudo_min_mad_px: 1.0
+  pseudo_max_speed_px_per_frame: 20.0
+  pseudo_max_accel_px_per_frame2: 14.0
+  dry_run_pseudo_max_videos: 2
