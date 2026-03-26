@@ -9,6 +9,17 @@ description: Use this skill when committing changes in Motoki0705/tennis-lab. Th
 
 Use this skill for committing changes in `Motoki0705/tennis-lab` via git CLI.
 
+## Preflight
+
+- Run preflight checks in one command before commit:
+
+```bash
+./.agents/skills/git-commit/scripts/preflight.sh "docs: Add example change"
+```
+
+- The script prints staged files, staged diff stat, and a summary (`ok/warn/fail`).
+- If no staged changes are found, it exits non-zero.
+
 ## Commit Message Convention
 
 Follow the `prefix: Subject` format for all commit messages.

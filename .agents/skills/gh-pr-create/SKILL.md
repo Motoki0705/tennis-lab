@@ -19,10 +19,15 @@ Use this skill for PR creation in `Motoki0705/tennis-lab`.
 
 ### 1) Preflight
 
-- Run `gh auth status` and confirm no timeout.
 - Confirm the target base branch before creating the PR.
 - If the user did not specify a base branch, use `main`.
-- Ensure the current branch has commits relative to the chosen base branch.
+- Run preflight checks in one command and review the summary:
+
+  ```bash
+  ./.agents/skills/gh-pr-create/scripts/preflight.sh main
+  ```
+
+- The script validates `gh` auth, current branch, base branch, PR template, upstream, and commits relative to base.
 - Prepare PR body with `--body-file` (avoid inline multiline body).
 - Copy `.github/pull_request_template.md` to a tmp file before editing.
 - Recommended tmp creation:
