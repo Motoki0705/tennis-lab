@@ -77,6 +77,3 @@ uv run python -m src.tasks.ball_detection.scripts.download_videos
 Downloaded videos are stored under `data/tennis/raw/videos` as `video_<n>.mp4`,
 and `data/tennis/raw/videos/summary.json` records the mapping from source URL to
 the renamed local file.
-
-`extract_clips.py` remains an optional manual utility, but semi-supervised
-training no longer depends on extracted clips.
