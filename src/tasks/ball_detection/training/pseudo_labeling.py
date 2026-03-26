@@ -70,16 +70,16 @@ def generate_phase_pseudo_labels(
     model: nn.Module,
     device: torch.device,
     config: DictConfig,
+    label_root: Path,
     phase_index: int,
     dry_run: bool = False,
 ) -> dict[str, Any]:
     """Generate pseudo labels from raw videos for one semi-supervised phase."""
     semi_cfg = config.training.semi_supervised
-    pseudo_root = Path(str(semi_cfg.pseudo_label_root)).expanduser()
     phase_name = f"phase_{phase_index:02d}"
-    phase_dir = pseudo_root / phase_name
+    phase_dir = label_root / phase_name
     phase_dir.mkdir(parents=True, exist_ok=True)
-    cache_root = pseudo_root / "cache"
+    cache_root = Path(str(semi_cfg.pseudo_cache_root)).expanduser()
     cache_root.mkdir(parents=True, exist_ok=True)
     manifest_path = phase_dir / "manifest.jsonl"
 
@@ -154,6 +154,7 @@ def generate_phase_pseudo_labels(
 
     summary = {
         "phase": phase_name,
+        "label_root": str(label_root),
         "cache_root": str(cache_root),
         "manifest_path": str(manifest_path),
         "videos": len(raw_videos),
