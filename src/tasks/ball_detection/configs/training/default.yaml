@@ -48,7 +48,7 @@ semi_supervised:
   phase_lr_decay: 0.5
   raw_video_dir: data/tennis/raw/videos
   raw_video_glob: "video_*.mp4"
-  pseudo_label_root: data/tennis/pseudo_label
+  pseudo_cache_root: data/tennis/pseudo_label_cache
   pseudo_chunk_frames: 256
   pseudo_windows_per_video: 64
   pseudo_confidence_threshold: 0.55
