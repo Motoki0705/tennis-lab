@@ -14,6 +14,7 @@ Use this skill when adding a new task under `src/tasks`, or when restructuring a
 - Derive the extension strategy by reading existing task implementations.
 - Prefer `src/tasks/blcs` as the primary reference.
 - Read other tasks such as `src/tasks/plcs` when BLCS alone does not explain a design choice.
+- Keep task boundaries aligned with the repository domain described in `AGENTS.md`.
 
 ## Subagent-first workflow
 1. Spawn the project-scoped `tasks_codebase_explorer` subagent defined at `.codex/agents/tasks-codebase-explorer.toml`.
