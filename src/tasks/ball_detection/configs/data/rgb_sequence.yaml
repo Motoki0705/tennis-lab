@@ -17,27 +17,27 @@ gaussian_variance: 1.0
 
 augmentation:
   camera_rotation:
-    enabled: false
+    enabled: true
     prob: 0.35
     max_center_angle_deg: 1.2
     max_angular_velocity_deg_per_frame: 0.2
     border_mode: reflect101
   horizontal_flip:
-    enabled: false
+    enabled: true
     prob: 0.5
   brightness_gain:
-    enabled: false
+    enabled: true
     jitter: 0.1
   contrast:
-    enabled: false
+    enabled: true
     jitter: 0.1
   gamma:
-    enabled: false
+    enabled: true
     jitter: 0.08
   gaussian_noise:
-    enabled: false
+    enabled: true
     std: 0.012
   gaussian_blur:
-    enabled: false
+    enabled: true
     prob: 0.12
     kernel_size: 3

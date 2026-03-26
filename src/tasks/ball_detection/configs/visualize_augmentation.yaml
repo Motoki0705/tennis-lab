@@ -1,0 +1,28 @@
+defaults:
+  - model: stunet
+  - data: rgb_sequence
+  - _self_
+
+hydra:
+  run:
+    dir: ${preview.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
+
+preview:
+  split: train
+  sample_indices: [0]
+  max_samples: 4
+  seed: 42
+  output_dir: outputs/ball_detection/augmentation_preview
+  draw:
+    radius: 5
+    thickness: 2
+  layout:
+    tile_gap: 12
+    row_gap: 18
+    header_height: 30
+    text_scale: 0.6
+    text_thickness: 1
+    background_rgb: [24, 24, 24]
