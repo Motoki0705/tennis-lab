@@ -41,6 +41,14 @@ lr_monitor:
   enabled: true
   interval: step
 
+visualization:
+  enabled: true
+  num_frames: 126
+  fps: 12
+  codec: mp4v
+  inference_batch_size: 8
+  confidence_threshold: 0.5
+
 semi_supervised:
   num_semi_phases: 4
   phase0_epochs: 10
