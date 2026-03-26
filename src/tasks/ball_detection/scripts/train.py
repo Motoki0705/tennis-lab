@@ -161,15 +161,27 @@ def train(config: DictConfig) -> dict[str, float]:
     check_val_every = max(int(config.training.trainer.get("check_val_every_n_epoch", 1)), 1)
     early_stopping_cfg = config.training.get("early_stopping", {})
     patience = int(early_stopping_cfg.get("patience", 0))
-    epochs_without_improvement = 0
     last_metrics: dict[str, float] = {}
     for phase_index, phase_length in phase_plan:
         phase_checkpoint_dir = _phase_checkpoint_dir(checkpoint_dir, phase_index)
         phase_checkpoint_dir.mkdir(parents=True, exist_ok=True)
         phase_start_epoch = _phase_start_epoch(phase_plan, phase_index)
         phase_end_epoch = phase_start_epoch + phase_length - 1
-        if state.epoch >= phase_end_epoch:
+        phase_completed = state.phase > phase_index or (
+            state.phase == phase_index and state.phase_epoch >= phase_length
+        )
+        if phase_completed:
             continue
+
+        if state.phase == phase_index and state.phase_epoch > 0:
+            phase_best_monitor = float(state.best_monitor)
+            phase_best_metrics = dict(state.best_metrics)
+        else:
+            phase_best_monitor = _initial_best_monitor(config)
+            phase_best_metrics = {}
+            state.best_monitor = phase_best_monitor
+            state.best_metrics = dict(phase_best_metrics)
+        epochs_without_improvement = 0
 
         pseudo_manifest_paths: list[Path] = []
         if phase_index > 0:
@@ -183,7 +195,6 @@ def train(config: DictConfig) -> dict[str, float]:
             )
             state.pseudo_summary = dict(pseudo_summary)
             pseudo_manifest_paths.append(Path(str(pseudo_summary["manifest_path"])))
-            epochs_without_improvement = 0
 
         train_loader = _build_train_dataloader(
             config,
@@ -253,14 +264,42 @@ def train(config: DictConfig) -> dict[str, float]:
             _print_epoch_summary(epoch_metrics, epoch=epoch, total_epochs=max_epochs)
             last_metrics = epoch_metrics
 
+            monitor_name = str(config.training.checkpoint.get("monitor", "val/loss"))
+            improved = should_validate and monitor_name in epoch_metrics and _is_improved(
+                epoch_metrics[monitor_name],
+                phase_best_monitor,
+                mode=str(config.training.checkpoint.get("mode", "min")),
+                min_delta=float(early_stopping_cfg.get("min_delta", 0.0)),
+            )
+            if improved:
+                phase_best_monitor = float(epoch_metrics[monitor_name])
+                phase_best_metrics = {key: float(value) for key, value in epoch_metrics.items()}
+                epochs_without_improvement = 0
+            elif should_validate:
+                epochs_without_improvement += 1
+
+            state.phase = phase_index
+            phase_should_stop = (
+                bool(early_stopping_cfg.get("enabled", False))
+                and patience > 0
+                and epochs_without_improvement >= patience
+            )
+            state.phase_epoch = phase_length if phase_should_stop else phase_epoch
+            state.epoch = epoch
+            state.best_monitor = phase_best_monitor
+            state.best_metrics = dict(phase_best_metrics)
+            state.optimizer_state_dict = optimizer.state_dict()
+            state.scheduler_state_dict = scheduler.state_dict()
+            state.scaler_state_dict = scaler.state_dict() if scaler is not None else None
+
             checkpoint_state = {
-                "epoch": epoch,
-                "phase": phase_index,
-                "phase_epoch": phase_epoch,
+                "epoch": state.epoch,
+                "phase": state.phase,
+                "phase_epoch": state.phase_epoch,
                 "model_state_dict": raw_model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "scheduler_state_dict": scheduler.state_dict(),
-                "scaler_state_dict": scaler.state_dict() if scaler is not None else None,
+                "optimizer_state_dict": state.optimizer_state_dict,
+                "scheduler_state_dict": state.scheduler_state_dict,
+                "scaler_state_dict": state.scaler_state_dict,
                 "best_monitor": state.best_monitor,
                 "best_metrics": state.best_metrics,
                 "history": state.history,
@@ -269,8 +308,6 @@ def train(config: DictConfig) -> dict[str, float]:
             }
             if checkpoint_enabled and save_last:
                 _save_last_checkpoint(phase_checkpoint_dir, checkpoint_state)
-
-            monitor_name = str(config.training.checkpoint.get("monitor", "val/loss"))
             if checkpoint_enabled and should_validate and monitor_name in epoch_metrics:
                 checkpoint_state["monitor_value"] = float(epoch_metrics[monitor_name])
                 _save_ranked_checkpoint(
@@ -279,32 +316,9 @@ def train(config: DictConfig) -> dict[str, float]:
                     epoch=epoch,
                     config=config,
                 )
-            improved = should_validate and monitor_name in epoch_metrics and _is_improved(
-                epoch_metrics[monitor_name],
-                state.best_monitor,
-                mode=str(config.training.checkpoint.get("mode", "min")),
-                min_delta=float(early_stopping_cfg.get("min_delta", 0.0)),
-            )
-            if improved:
-                state.best_monitor = float(epoch_metrics[monitor_name])
-                state.best_metrics = {key: float(value) for key, value in epoch_metrics.items()}
-                checkpoint_state["best_monitor"] = state.best_monitor
-                checkpoint_state["best_metrics"] = state.best_metrics
-                epochs_without_improvement = 0
-            elif should_validate:
-                epochs_without_improvement += 1
 
-            state.phase = phase_index
-            state.phase_epoch = phase_epoch
-            state.epoch = epoch
-            state.optimizer_state_dict = optimizer.state_dict()
-            state.scheduler_state_dict = scheduler.state_dict()
-            state.scaler_state_dict = scaler.state_dict() if scaler is not None else None
-
-            if bool(early_stopping_cfg.get("enabled", False)) and patience > 0 and epochs_without_improvement >= patience:
+            if phase_should_stop:
                 break
-        if bool(early_stopping_cfg.get("enabled", False)) and patience > 0 and epochs_without_improvement >= patience:
-            break
 
     best_path = _select_best_checkpoint(_phase_checkpoint_dir(checkpoint_dir, state.phase))
     if best_path is not None:
