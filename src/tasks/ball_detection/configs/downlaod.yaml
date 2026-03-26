@@ -1,0 +1,35 @@
+defaults:
+  - _self_
+
+urls: [
+  "https://www.youtube.com/watch?v=C4Gl-T2dtss&list=PLdobRYZiwdsr5Nc86a7v1DUnFbvJqVUCk",
+  "https://www.youtube.com/watch?v=UOf0sV68-O4&list=PLdobRYZiwdsr5Nc86a7v1DUnFbvJqVUCk&index=5",
+  "https://www.youtube.com/watch?v=X3W2_FqANlk&list=PLdobRYZiwdsr5Nc86a7v1DUnFbvJqVUCk&index=6",
+  "https://www.youtube.com/watch?v=YB95IAHiE9w&list=PLdobRYZiwdsr5Nc86a7v1DUnFbvJqVUCk&index=9",
+  "https://www.youtube.com/watch?v=rUy9uvrKN_s",
+  "https://www.youtube.com/watch?v=-11o_mffxp4",
+  "https://www.youtube.com/watch?v=eKdk3ia8Ua8",
+  "https://www.youtube.com/watch?v=xxn8tixL5TY"
+]
+
+output_dir: data/tennis/raw/videos
+summary_path: ${output_dir}/summary.json
+
+download:
+  format: bv*+ba/b
+  merge_output_format: mp4
+  remux_video: mp4
+  skip_existing_urls: true
+  timeout_seconds: 1800
+  video_codec: libx264
+  pixel_format: yuv420p
+  preset: medium
+  crf: 18
+  drop_audio: true
+
+hydra:
+  run:
+    dir: outputs/ball_detection/download/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

@@ -1,0 +1,5 @@
+name: stunet
+in_channels: 3
+num_classes: 1
+num_frames: 8
+input_layout: bcthw
