@@ -1,0 +1,12 @@
+defaults:
+  - _self_
+
+checkpoint_path: checkpoints/ball_detection/best.pt
+output_path: null
+
+hydra:
+  run:
+    dir: outputs/ball_detection/inspect_checkpoint/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

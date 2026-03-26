@@ -1,0 +1,26 @@
+defaults:
+  - model: stunet
+  - data: rgb_sequence
+  - _self_
+
+checkpoint_path: checkpoints/ball_detection/best.pt
+video_path: data/samples/clip.mp4
+output_video_path: outputs/ball_detection/inference/sample_clip_overlay.mp4
+output_json_path: outputs/ball_detection/inference/sample_clip_predictions.json
+
+inference:
+  device: auto
+  batch_size: 8
+  confidence_threshold: 0.5
+  video_codec: mp4v
+  draw:
+    radius: 8
+    thickness: 2
+    font_scale: 0.8
+
+hydra:
+  run:
+    dir: outputs/ball_detection/infer_video/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
