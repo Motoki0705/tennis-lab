@@ -20,6 +20,17 @@ This repository defines issue templates under `.github/ISSUE_TEMPLATE/`, so issu
   - Feature / enhancement: `.github/ISSUE_TEMPLATE/02_feature.md`
   - Research / investigation: `.github/ISSUE_TEMPLATE/03_research.md`
 
+## Preflight
+
+- Run preflight checks in one command before creating or editing issues:
+
+```bash
+./.agents/skills/gh-issue-create/scripts/preflight.sh Motoki0705/tennis-lab
+```
+
+- The script validates `gh` auth, repo reachability, required issue templates, and expected labels.
+- Review the summary (`ok/warn/fail`) before continuing.
+
 ## Template selection rules
 
 - Use `01_bug.md` for defects, regressions, crashes, incorrect outputs, and broken workflows.
