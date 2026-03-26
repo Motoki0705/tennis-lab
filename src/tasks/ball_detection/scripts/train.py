@@ -103,7 +103,13 @@ def train(config: DictConfig) -> dict[str, float]:
     resume_path = _resolve_resume_path(config)
     if resume_path is not None:
         bootstrap_optimizer = _build_optimizer(config, model)
-        bootstrap_scheduler = _build_scheduler(config, bootstrap_optimizer, steps_per_epoch=1, max_epochs=1)
+        bootstrap_scheduler = _build_scheduler(
+            config,
+            bootstrap_optimizer,
+            steps_per_epoch=1,
+            max_epochs=1,
+            base_lr=float(bootstrap_optimizer.param_groups[0]["lr"]),
+        )
         bootstrap_scaler = _build_grad_scaler(config, device=device)
         state = _load_checkpoint(
             path=resume_path,
@@ -151,6 +157,7 @@ def train(config: DictConfig) -> dict[str, float]:
                 model=model,
                 device=device,
                 config=config,
+                output_dir=output_dir,
                 phase_index=phase_index,
                 dry_run=bool(config.run.get("dry_run", False)),
             )
@@ -169,6 +176,7 @@ def train(config: DictConfig) -> dict[str, float]:
             optimizer,
             steps_per_epoch=len(train_loader),
             max_epochs=phase_length,
+            base_lr=phase_lr,
         )
         scaler = _build_grad_scaler(config, device=device)
         if state.phase == phase_index and state.epoch >= phase_start_epoch and state.optimizer_state_dict is not None:
@@ -400,11 +408,12 @@ def _ensure_phase_pseudo_labels(
     model: nn.Module,
     device: torch.device,
     config: DictConfig,
+    output_dir: Path,
     phase_index: int,
     dry_run: bool,
 ) -> dict[str, Any]:
     """Generate or reuse pseudo labels for the requested phase."""
-    pseudo_root = Path(str(config.training.semi_supervised.pseudo_label_root)).expanduser()
+    pseudo_root = output_dir / "pseudo_label"
     manifest_path = pseudo_root / f"phase_{phase_index:02d}" / "manifest.jsonl"
     if manifest_path.exists():
         summary_path = manifest_path.parent / "summary.json"
@@ -418,6 +427,7 @@ def _ensure_phase_pseudo_labels(
         model=model,
         device=device,
         config=config,
+        label_root=pseudo_root,
         phase_index=phase_index,
         dry_run=dry_run,
     )
@@ -620,15 +630,18 @@ def _build_scheduler(
     *,
     steps_per_epoch: int,
     max_epochs: int | None = None,
+    base_lr: float | None = None,
 ) -> LambdaLR:
     """Build a per-step warmup + cosine scheduler."""
     training_cfg = config.get("training", {}) or {}
     resolved_max_epochs = int(max_epochs if max_epochs is not None else training_cfg.get("trainer", {}).get("max_epochs", 1))
     total_steps = max(steps_per_epoch * resolved_max_epochs, 1)
     warmup_steps = min(max(int(training_cfg.get("warmup_steps", 0)), 0), total_steps - 1)
-    base_lr = float(training_cfg.get("learning_rate", 1.0e-3))
+    resolved_base_lr = float(
+        base_lr if base_lr is not None else training_cfg.get("learning_rate", 1.0e-3)
+    )
     min_lr = float(training_cfg.get("min_lr", 1.0e-6))
-    min_lr_scale = min_lr / max(base_lr, 1.0e-12)
+    min_lr_scale = min_lr / max(resolved_base_lr, 1.0e-12)
 
     def lr_lambda(step: int) -> float:
         if warmup_steps > 0 and step < warmup_steps:
