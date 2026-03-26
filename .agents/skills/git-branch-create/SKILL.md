@@ -25,6 +25,12 @@ Prefer the repository's existing prefixes:
 
 - Confirm which branch to branch from.
 - If the user did not specify a base, use `main`.
+- Run preflight checks in one command and review the summary:
+
+  ```bash
+  ./.agents/skills/git-branch-create/scripts/preflight.sh main <new-branch-name>
+  ```
+
 - Sync the base branch before branching:
 
   ```bash
