@@ -8,7 +8,7 @@ trainer:
   check_val_every_n_epoch: 1
 
 # ---- Optimizer / scheduler ----
-learning_rate: 1.0e-3
+learning_rate: 1.0e-4
 weight_decay: 1.0e-4
 warmup_steps: 200
 min_lr: 1.0e-6
@@ -35,7 +35,7 @@ early_stopping:
   monitor: val/loss
   mode: min
   patience: 5
-  min_delta: 1.0e-3
+  min_delta: 2.0e-6
 
 lr_monitor:
   enabled: true
