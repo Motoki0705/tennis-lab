@@ -17,4 +17,5 @@
 
 ## Done definition
 - For changes that can affect repository checks, call the `pre_commit_validator` subagent to run `uv run pre-commit run --all-files`, analyze failures, and apply fixes.
+- When the task includes publication work, call the `pr_publisher` subagent with the branch name, commit scope, commit message, PR base branch, PR title, and validation summary.
 - Do not consider the task done until the relevant validation has passed or remaining blockers are explicitly documented.
