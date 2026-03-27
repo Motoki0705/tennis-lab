@@ -13,3 +13,9 @@ repos:
         language: system
         types: [python]
         files: ^(src|tests)/
+      - id: task-script-reviewer
+        name: task script reviewer
+        entry: uv run --no-sync python ./.agents/skills/script-conventions/scripts/review_task_scripts.py
+        language: system
+        files: ^(src|experiments)/.+/scripts/.+\.py$
+        exclude: ^(src|experiments)/.+/scripts/__init__\.py$
