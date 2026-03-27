@@ -15,6 +15,7 @@ max_depth = 1
 # .codex/agents/pr-explorer.toml
 name = "pr_explorer"
 description = "Read-only codebase explorer for gathering evidence before changes are proposed."
+model = "gpt-5.4-mini"
 model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
 developer_instructions = """
@@ -28,6 +29,7 @@ Prefer fast search and targeted file reads over broad scans.
 # .codex/agents/reviewer.toml
 name = "reviewer"
 description = "PR reviewer focused on correctness, security, and missing tests."
+model = "gpt-5.4"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """
@@ -41,6 +43,7 @@ Lead with concrete findings, include reproduction steps when possible, and avoid
 # .codex/agents/docs-researcher.toml
 name = "docs_researcher"
 description = "Documentation specialist that uses the docs MCP server to verify APIs and framework behavior."
+model = "gpt-5.4-mini"
 model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
 developer_instructions = """
