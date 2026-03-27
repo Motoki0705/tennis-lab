@@ -17,7 +17,7 @@ gaussian_variance: 1.0
 
 augmentation:
   camera_rotation:
-    enabled: true
+    enabled: false
     prob: 0.35
     max_center_angle_deg: 1.2
     max_angular_velocity_deg_per_frame: 0.2
@@ -38,6 +38,6 @@ augmentation:
     enabled: true
     std: 0.012
   gaussian_blur:
-    enabled: true
+    enabled: false
     prob: 0.12
     kernel_size: 3
