@@ -27,7 +27,20 @@ Use this skill for PR creation in `Motoki0705/tennis-lab`.
   ./.agents/skills/gh-pr-create/scripts/preflight.sh main
   ```
 
-- The script validates `gh` auth, current branch, base branch, PR template, upstream, and commits relative to base.
+- `preflight.sh` validates:
+  - `gh` authentication
+  - current branch can be resolved
+  - current branch is not accidentally the base branch
+  - local base branch exists
+  - PR template exists
+  - upstream is configured
+  - commits exist relative to the base branch
+- `preflight.sh` output includes:
+  - per-check `[OK]` / `[WARN]` / `[FAIL]` lines
+  - the commit list relative to the base branch
+  - a `PR summary:` block with branch, base, upstream, commit count, and working tree counts
+  - a final `Summary: ok=... warn=... fail=...` line
+- Because `preflight.sh` already runs the `gh` authentication check, do not separately run `gh auth status` unless you need the full token/account details for debugging.
 - Prepare PR body with `--body-file` (avoid inline multiline body).
 - Copy `.github/pull_request_template.md` to a tmp file before editing.
 - Recommended tmp creation:
@@ -63,6 +76,7 @@ gh pr create --repo Motoki0705/tennis-lab \
 - Add `Closes #...` / `References #...` in PR body when linking issues.
 - If this is a stacked PR, replace `main` with the actual integration base branch.
 - Use `--reviewer`, `--draft`, `--milestone` only when needed.
+- When reporting the preflight result, summarize what it verified and whether commits/upstream/template state look correct.
 
 ## Failure quick fixes
 

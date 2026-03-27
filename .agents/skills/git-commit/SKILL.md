@@ -17,8 +17,20 @@ Use this skill for committing changes in `Motoki0705/tennis-lab` via git CLI.
 ./.agents/skills/git-commit/scripts/preflight.sh "docs: Add example change"
 ```
 
-- The script prints staged files, staged diff stat, and a summary (`ok/warn/fail`).
+- `preflight.sh` validates:
+  - the command is running inside a git repository
+  - staged changes exist
+  - the staged file list can be shown
+  - the staged diff stat can be shown
+  - the proposed commit message matches `prefix: Subject`
+- `preflight.sh` output includes:
+  - per-check `[OK]` / `[WARN]` / `[FAIL]` lines
+  - a `Commit summary:` block with current branch, staged file count, and working tree counts
+  - the staged file list
+  - the staged diff stat
+  - a final `Summary: ok=... warn=... fail=...` line
 - If no staged changes are found, it exits non-zero.
+- When the script already prints the staged state, do not separately run `git status --short` unless you need more detail than the summary provides.
 
 ## Commit Message Convention
 
@@ -61,3 +73,4 @@ Use these prefixes to categorize your changes:
 
 - Keep the subject aligned with the actual repo domain: tasks, datasets, visualization, pipeline, training, or third-party integration.
 - Prefer one focused commit per logical change.
+- When reporting the commit preparation step, summarize the preflight output instead of quoting raw git output without context.

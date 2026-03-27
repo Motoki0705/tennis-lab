@@ -31,6 +31,17 @@ Prefer the repository's existing prefixes:
   ./.agents/skills/git-branch-create/scripts/preflight.sh main <new-branch-name>
   ```
 
+- `preflight.sh` validates:
+  - current branch can be resolved
+  - local base branch exists
+  - remote-tracking base branch exists
+  - working tree is clean or intentionally dirty
+  - target branch name does not already exist locally or on `origin`
+- `preflight.sh` output includes:
+  - per-check `[OK]` / `[WARN]` / `[FAIL]` lines
+  - a short `Branch summary:` block with current branch, base branch, target branch, and working tree counts
+  - a final `Summary: ok=... warn=... fail=...` line
+- When the script already checks branch state, do not re-run `git branch --show-current` or `git status --short` unless you specifically need extra detail beyond the preflight summary.
 - Sync the base branch before branching:
 
   ```bash
@@ -62,3 +73,4 @@ git branch --show-current
 
 - `main` is the default starting point, but stacked or task-local workflows may branch from another active branch when intentional.
 - Match existing repo conventions instead of forcing a single format when the branch already belongs to an established series.
+- When reporting the result to the user, summarize the preflight output instead of just saying that the command succeeded.

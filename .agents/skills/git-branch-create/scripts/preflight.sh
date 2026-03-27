@@ -23,6 +23,16 @@ fail() {
   fail_count=$((fail_count + 1))
 }
 
+summarize_worktree() {
+  local status_output unstaged staged untracked
+  status_output="$(git status --short 2>/dev/null || true)"
+  unstaged="$(printf '%s\n' "${status_output}" | awk 'substr($0,1,1)!=" " && substr($0,1,1)!="?" && NF>0 {count++} END {print count+0}')"
+  staged="$(printf '%s\n' "${status_output}" | awk 'substr($0,2,1)!=" " && substr($0,1,1)!="?" && NF>0 {count++} END {print count+0}')"
+  untracked="$(printf '%s\n' "${status_output}" | awk 'substr($0,1,2)=="??" {count++} END {print count+0}')"
+  echo "Working tree summary:"
+  echo "  unstaged=${unstaged} staged=${staged} untracked=${untracked}"
+}
+
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "[FAIL] Not inside a git repository."
   exit 1
@@ -69,8 +79,12 @@ else
   warn "Target branch name not provided. Skip branch name collision checks."
 fi
 
+echo "Branch summary:"
+echo "  current=${current_branch:-<unknown>}"
+echo "  base=${BASE_BRANCH}"
+echo "  target=${TARGET_BRANCH:-<not-provided>}"
+summarize_worktree
 echo "Summary: ok=${ok_count} warn=${warn_count} fail=${fail_count}"
 if [[ "${fail_count}" -gt 0 ]]; then
   exit 1
 fi
-

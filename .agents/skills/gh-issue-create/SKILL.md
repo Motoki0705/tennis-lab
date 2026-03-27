@@ -24,11 +24,20 @@ This repository defines issue templates under `.github/ISSUE_TEMPLATE/`, so issu
 
 - Run preflight checks in one command before creating or editing issues:
 
-```bash
-./.agents/skills/gh-issue-create/scripts/preflight.sh Motoki0705/tennis-lab
-```
+  ```bash
+  ./.agents/skills/gh-issue-create/scripts/preflight.sh Motoki0705/tennis-lab
+  ```
 
-- The script validates `gh` auth, repo reachability, required issue templates, and expected labels.
+- `preflight.sh` validates:
+  - `gh` authentication
+  - repository reachability
+  - required issue templates exist
+  - expected labels exist
+- `preflight.sh` output includes:
+  - per-check `[OK]` / `[WARN]` / `[FAIL]` lines
+  - a label summary showing how many required labels are present or missing
+  - a final `Summary: ok=... warn=... fail=...` line
+- Because `preflight.sh` already checks `gh` authentication and repository access, do not separately run `gh auth status` or `gh repo view` unless you need full diagnostic detail.
 - Review the summary (`ok/warn/fail`) before continuing.
 
 ## Template selection rules
@@ -119,3 +128,4 @@ gh api -X POST repos/Motoki0705/tennis-lab/issues/<BLOCKED_NUMBER>/dependencies/
 - Use repeated `--label` flags rather than comma-separated label lists.
 - `gh issue edit` uses `--add-assignee` and `--remove-assignee`.
 - Dependencies require an authenticated token with Issues write permission.
+- When reporting the preflight result, summarize whether auth, templates, repo reachability, and label coverage are all healthy.

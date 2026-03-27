@@ -22,6 +22,16 @@ fail() {
   fail_count=$((fail_count + 1))
 }
 
+summarize_worktree() {
+  local status_output unstaged staged untracked
+  status_output="$(git status --short 2>/dev/null || true)"
+  unstaged="$(printf '%s\n' "${status_output}" | awk 'substr($0,1,1)!=" " && substr($0,1,1)!="?" && NF>0 {count++} END {print count+0}')"
+  staged="$(printf '%s\n' "${status_output}" | awk 'substr($0,2,1)!=" " && substr($0,1,1)!="?" && NF>0 {count++} END {print count+0}')"
+  untracked="$(printf '%s\n' "${status_output}" | awk 'substr($0,1,2)=="??" {count++} END {print count+0}')"
+  echo "Working tree summary:"
+  echo "  unstaged=${unstaged} staged=${staged} untracked=${untracked}"
+}
+
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "[FAIL] Not inside a git repository."
   exit 1
@@ -58,11 +68,14 @@ fi
 
 if git rev-parse --verify "@{upstream}" >/dev/null 2>&1; then
   ok "Upstream branch is configured."
+  upstream_ref="$(git rev-parse --abbrev-ref '@{upstream}')"
 else
   warn "Upstream branch is not configured for current branch."
+  upstream_ref="<none>"
 fi
 
 commit_list="$(git log --oneline "${BASE_BRANCH}..HEAD" 2>/dev/null || true)"
+commit_count="$(printf '%s\n' "${commit_list}" | awk 'NF>0 {count++} END {print count+0}')"
 if [[ -n "${commit_list}" ]]; then
   echo "Commits relative to ${BASE_BRANCH}:"
   echo "${commit_list}"
@@ -71,8 +84,13 @@ else
   fail "No commits found relative to ${BASE_BRANCH}."
 fi
 
+echo "PR summary:"
+echo "  branch=${current_branch:-<unknown>}"
+echo "  base=${BASE_BRANCH}"
+echo "  upstream=${upstream_ref}"
+echo "  commits_relative_to_base=${commit_count}"
+summarize_worktree
 echo "Summary: ok=${ok_count} warn=${warn_count} fail=${fail_count}"
 if [[ "${fail_count}" -gt 0 ]]; then
   exit 1
 fi
-
