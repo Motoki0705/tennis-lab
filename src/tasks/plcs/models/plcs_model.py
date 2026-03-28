@@ -232,6 +232,11 @@ class PLCSModel(nn.Module):
         yarn: YaRNConfig | None = None
         if yarn_cfg is not None:
             yarn_cfg = dict(yarn_cfg)
+            if "original_seq_len" not in yarn_cfg:
+                raise ValueError(
+                    "model.yarn mapping is provided but missing required key 'original_seq_len'. "
+                    "Use `model.yarn: null` to disable YaRN, or include `original_seq_len` in YAML."
+                )
             if yarn_cfg["original_seq_len"] is not None:
                 yarn = YaRNConfig(**yarn_cfg)
 

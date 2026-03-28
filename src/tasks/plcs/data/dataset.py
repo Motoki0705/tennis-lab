@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import torch
 from torch import Tensor
@@ -50,35 +50,35 @@ class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
 
     # -- Composed-method hooks ------------------------------------------
 
-    def _configure_task(self, data_cfg: DictConfig) -> None:  # type: ignore[override]
-        self.camera_mode_plcs = str(data_cfg.camera_mode)
-        self.is_multiview = str(data_cfg.mode) in {
+    def _configure_task(self, data_cfg: dict[str, Any]) -> None:
+        self.camera_mode_plcs = str(data_cfg["camera_mode"])
+        self.is_multiview = str(data_cfg["mode"]) in {
             "multiview", "multiview_sequence",
         }
 
-        r = data_cfg.num_views_range
+        r = data_cfg["num_views_range"]
         self._plcs_num_views_range = (int(r[0]), int(r[1]))
 
-        r = data_cfg.seq_len_range
+        r = data_cfg["seq_len_range"]
         self._plcs_seq_len_range = (int(r[0]), int(r[1]))
 
-        augmentation_cfg = data_cfg.augmentation
+        augmentation_cfg = data_cfg["augmentation"]
         self.kp_noise_std = float(augmentation_cfg["keypoint_noise_std"])
         self.visibility_drop_prob = float(augmentation_cfg["visibility_drop_prob"])
 
-    def _build_scene_dataset_config(  # type: ignore[override]
+    def _build_scene_dataset_config(
         self,
         *,
         scene_dir: str | Path,
         split_file: str | Path,
-        data_cfg: DictConfig,
+        data_cfg: dict[str, Any],
     ) -> SceneDatasetConfig:
         return SceneDatasetConfig(
             scene_dir=Path(scene_dir),
             split_file=Path(split_file),
             seq_len_range=self._plcs_seq_len_range,
             num_views_range=self._plcs_num_views_range,
-            cache_max_scenes=int(data_cfg.cache_max_scenes),
+            cache_max_scenes=int(data_cfg["cache_max_scenes"]),
             camera_mode=self.camera_mode_plcs,
             crop_mode=("random" if self.augment else "center"),
         )

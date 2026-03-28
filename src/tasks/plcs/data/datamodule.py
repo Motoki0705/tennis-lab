@@ -45,16 +45,6 @@ class PLCSDataModule(pl.LightningDataModule):
         self.val_dataset: SceneDataset | None = None
         self.test_dataset: SceneDataset | None = None
 
-    @staticmethod
-    def _infer_input_profile_from_model_name(model_name: str) -> str:
-        if model_name == "plcs":
-            return "frame"
-        if model_name == "plcs_query_sequence":
-            return "sequence"
-        if model_name == "plcs_multiview":
-            return "multiview"
-        raise ValueError(f"Unknown model.name='{model_name}' for input profile inference.")
-
     def setup(self, stage: str | None = None) -> None:
         if not self.scene_dir.exists():
             raise RuntimeError(

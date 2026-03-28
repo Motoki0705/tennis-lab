@@ -17,6 +17,9 @@ from torch import Tensor
 class TemporalTermConfig:
     """Configuration for a single temporal consistency term.
 
+    Notes:
+        All fields are required and must be provided by YAML configuration.
+
     Attributes:
         weight: Weight applied to this term in the total loss.
         order: 1 => velocity (1st difference), 2 => acceleration (2nd difference).
@@ -50,6 +53,9 @@ class TemporalTermsConfig:
 class PLCSLossConfig:
     """Configuration for PLCS loss weights.
 
+    Notes:
+        All fields are required and must be provided by YAML configuration.
+
     Attributes:
         position_weight: Weight for position loss.
         rotation_weight: Weight for rotation loss.
@@ -78,6 +84,11 @@ class PLCSLossConfig:
                 "Use `temporal.position_gt.weight` etc. instead."
             )
 
+        if "temporal" not in cfg:
+            raise ValueError(
+                "Missing required loss.temporal configuration. "
+                "Define temporal.position_gt/position_inertia/rotation_gt/rotation_inertia in YAML."
+            )
         temporal_dict = cfg["temporal"]
 
         if any(k in temporal_dict for k in ["order", "robust"]):
@@ -87,11 +98,16 @@ class PLCSLossConfig:
             )
 
         def _parse_term(d: dict) -> TemporalTermConfig:
-            return TemporalTermConfig(
-                weight=float(d["weight"]),
-                order=int(d["order"]),
-                robust=bool(d["robust"]),
-            )
+            try:
+                return TemporalTermConfig(
+                    weight=float(d["weight"]),
+                    order=int(d["order"]),
+                    robust=bool(d["robust"]),
+                )
+            except KeyError as exc:
+                raise ValueError(
+                    f"Missing required key '{exc.args[0]}' in temporal term configuration."
+                ) from exc
 
         temporal_terms_cfg = TemporalTermsConfig(
             position_gt=_parse_term(temporal_dict["position_gt"]),
