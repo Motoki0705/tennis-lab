@@ -13,6 +13,8 @@ num_views_range: [1, 1]
 scene_sampler: true
 scenes_per_batch: 8
 chunk_max_scenes: 64
+cache_max_scenes: 128
+adapter_camera_index: 0
 
 # Sequence sampling
 seq_stride: 128

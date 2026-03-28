@@ -38,3 +38,9 @@ moe_config:
 
 # Model type
 architecture: multiview
+num_register_tokens: null
+use_kp_id_embedding: null
+use_rope: null
+num_player_layers: null
+num_query_layers: null
+query_init_std: null

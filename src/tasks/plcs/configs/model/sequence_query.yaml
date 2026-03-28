@@ -9,6 +9,7 @@ io:
 
 # Architecture
 hidden_dim: 256
+num_layers: null
 num_heads: 8
 ffn_dim: null
 dropout: 0.1
@@ -29,3 +30,9 @@ yarn: null
 
 # Model type
 architecture: sequence
+num_register_tokens: null
+use_kp_id_embedding: null
+use_rope: null
+use_moe: false
+moe_config: null
+max_views: null

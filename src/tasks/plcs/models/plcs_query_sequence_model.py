@@ -195,28 +195,27 @@ class PLCSQuerySequenceModel(nn.Module):
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSQuerySequenceModel:
         """Create query-based sequence model from hydra config."""
-        model_cfg = config.get("model", {})
+        model_cfg = config.model
 
-        yarn_cfg = model_cfg.get("yarn", None)
+        yarn_cfg = model_cfg.yarn
         yarn: YaRNConfig | None = None
         if yarn_cfg is not None:
             yarn_cfg = dict(yarn_cfg)
-            if yarn_cfg.get("original_seq_len", None) is not None:
-                yarn = YaRNConfig(**yarn_cfg)
+            yarn = YaRNConfig(**yarn_cfg)
 
         return cls(
-            hidden_dim=int(model_cfg.get("hidden_dim", 256)),
-            num_heads=int(model_cfg.get("num_heads", 8)),
-            ffn_dim=model_cfg.get("ffn_dim", None),
-            dropout=float(model_cfg.get("dropout", 0.1)),
-            rope_dim=model_cfg.get("rope_dim", None),
-            rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
+            hidden_dim=int(model_cfg.hidden_dim),
+            num_heads=int(model_cfg.num_heads),
+            ffn_dim=model_cfg.ffn_dim,
+            dropout=float(model_cfg.dropout),
+            rope_dim=model_cfg.rope_dim,
+            rope_theta=float(model_cfg.rope_theta),
             yarn=yarn,
-            num_player_layers=int(model_cfg.get("num_player_layers", 4)),
-            num_query_layers=int(model_cfg.get("num_query_layers", 2)),
-            max_seq_len=int(model_cfg.get("max_seq_len", 120)),
-            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
-            query_init_std=float(model_cfg.get("query_init_std", 0.02)),
+            num_player_layers=int(model_cfg.num_player_layers),
+            num_query_layers=int(model_cfg.num_query_layers),
+            max_seq_len=int(model_cfg.max_seq_len),
+            invisible_init_std=float(model_cfg.invisible_init_std),
+            query_init_std=float(model_cfg.query_init_std),
         )
 
     def _normalize_court_inputs(

@@ -41,3 +41,9 @@ moe_config:
   n_limited_groups: 1
   score_func: softmax
   route_scale: 1.0
+max_views: null
+max_seq_len: 120
+num_player_layers: null
+num_query_layers: null
+query_init_std: null
+architecture: frame

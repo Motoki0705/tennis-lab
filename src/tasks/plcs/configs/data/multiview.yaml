@@ -4,11 +4,14 @@ num_workers: 4
 pin_memory: true
 
 mode: multiview_sequence
+camera_mode: random
 
 # Scene sampler: none | scene | mixed | chunked
 scene_sampler: true
 scenes_per_batch: 8
 chunk_max_scenes: 64
+cache_max_scenes: 128
+adapter_camera_index: 0
 
 # Multi-view sampling
 min_cameras: 2

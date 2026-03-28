@@ -35,10 +35,10 @@ class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
         *,
         scene_dir: str | Path,
         split_file: str | Path,
-        config: DictConfig | None = None,
+        config: DictConfig,
         augment: bool = True,
     ) -> None:
-        self.hydra_cfg = config or {}
+        self.hydra_cfg = config
         self.augment = augment
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         self._configure_task(data_cfg)
@@ -53,24 +53,18 @@ class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
     def _configure_task(self, data_cfg: dict) -> None:  # type: ignore[override]
         from omegaconf import DictConfig
 
-        self.camera_mode_plcs = str(data_cfg.get("camera_mode", "random"))
-        self.is_multiview = str(data_cfg.get("mode", "frame")) in {
+        self.camera_mode_plcs = str(data_cfg["camera_mode"])
+        self.is_multiview = str(data_cfg["mode"]) in {
             "multiview", "multiview_sequence",
         }
 
-        if "num_views_range" in data_cfg:
-            r = data_cfg["num_views_range"]
-            self._plcs_num_views_range: tuple[int, int] = (int(r[0]), int(r[1]))
-        else:
-            self._plcs_num_views_range = (1, 2)
+        views_range = data_cfg["num_views_range"]
+        self._plcs_num_views_range = (int(views_range[0]), int(views_range[1]))
 
-        if "seq_len_range" in data_cfg:
-            r = data_cfg["seq_len_range"]
-            self._plcs_seq_len_range: tuple[int, int] = (int(r[0]), int(r[1]))
-        else:
-            self._plcs_seq_len_range = (64, 512)
+        seq_len_range = data_cfg["seq_len_range"]
+        self._plcs_seq_len_range = (int(seq_len_range[0]), int(seq_len_range[1]))
 
-        augmentation_cfg = data_cfg.get("augmentation")
+        augmentation_cfg = data_cfg["augmentation"]
         if not isinstance(augmentation_cfg, (dict, DictConfig)):
             raise ValueError(
                 "data.augmentation must be provided with keys "
@@ -91,7 +85,7 @@ class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
             split_file=Path(split_file),
             seq_len_range=self._plcs_seq_len_range,
             num_views_range=self._plcs_num_views_range,
-            cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
+            cache_max_scenes=int(data_cfg["cache_max_scenes"]),
             camera_mode=self.camera_mode_plcs,
             crop_mode=("random" if self.augment else "center"),
         )

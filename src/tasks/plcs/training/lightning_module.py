@@ -18,34 +18,35 @@ if TYPE_CHECKING:
 class PLCSLightningModule(BaseLightningModule):
     """Lightning module for unified PLCS I/O training."""
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: DictConfig) -> None:
         super().__init__(config)
+        training_cfg = self.config.training
+        self.learning_rate = float(training_cfg.learning_rate)
+        self.weight_decay = float(training_cfg.weight_decay)
+        self.warmup_steps = training_cfg.warmup_steps
+        self.warmup_epochs = training_cfg.warmup_epochs
+        self.max_epochs = int(training_cfg.trainer.max_epochs)
+        self.min_lr = float(training_cfg.min_lr)
+        betas = training_cfg.optimizer.betas
+        self.optimizer_betas = tuple(betas) if betas is not None else None
 
         self.model: nn.Module = build_plcs_model(self.config)
 
-        loss_cfg_dict = self.config.get("loss", {})
-        if loss_cfg_dict:
-            loss_cfg = PLCSLossConfig.from_dict(dict(loss_cfg_dict))
-        else:
-            train_cfg = self.config.get("training", {})
-            loss_cfg = PLCSLossConfig(
-                position_weight=float(train_cfg.get("position_loss_weight", 1.0)),
-                rotation_weight=float(train_cfg.get("rotation_loss_weight", 1.0)),
-            )
+        loss_cfg = PLCSLossConfig.from_dict(dict(self.config.loss))
         self.loss_fn = PLCSLoss(config=loss_cfg)
 
-        metrics_cfg = self.config.get("metrics", {})
+        metrics_cfg = self.config.metrics
         self.train_metrics = PLCSMetrics(
-            position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
-            angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
+            position_threshold_m=float(metrics_cfg.position_threshold_m),
+            angle_threshold_deg=float(metrics_cfg.angle_threshold_deg),
         )
         self.val_metrics = PLCSMetrics(
-            position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
-            angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
+            position_threshold_m=float(metrics_cfg.position_threshold_m),
+            angle_threshold_deg=float(metrics_cfg.angle_threshold_deg),
         )
         self.test_metrics = PLCSMetrics(
-            position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
-            angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
+            position_threshold_m=float(metrics_cfg.position_threshold_m),
+            angle_threshold_deg=float(metrics_cfg.angle_threshold_deg),
         )
 
     def _forward_from_batch(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:

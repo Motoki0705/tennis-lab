@@ -197,27 +197,27 @@ class PLCSMultiViewModel(nn.Module):
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSMultiViewModel:
         """Create model from hydra config."""
-        model_cfg = config.get("model", {})
+        model_cfg = config.model
 
-        use_moe = bool(model_cfg.get("use_moe", False))
-        moe_cfg = model_cfg.get("moe_config", None)
+        use_moe = bool(model_cfg.use_moe)
+        moe_cfg = model_cfg.moe_config
         moe_config: MoEConfig | None = None
         if use_moe and moe_cfg is not None:
-            moe_config = MoEConfig(dim=int(model_cfg.get("hidden_dim", 256)), **dict(moe_cfg))
+            moe_config = MoEConfig(dim=int(model_cfg.hidden_dim), **dict(moe_cfg))
 
         return cls(
-            hidden_dim=model_cfg.get("hidden_dim", 256),
-            num_layers=model_cfg.get("num_layers", 6),
-            num_heads=model_cfg.get("num_heads", 8),
-            ffn_dim=model_cfg.get("ffn_dim", None),
-            dropout=model_cfg.get("dropout", 0.1),
-            rope_dim=model_cfg.get("rope_dim", None),
-            rope_theta=model_cfg.get("rope_theta", 10000.0),
+            hidden_dim=model_cfg.hidden_dim,
+            num_layers=model_cfg.num_layers,
+            num_heads=model_cfg.num_heads,
+            ffn_dim=model_cfg.ffn_dim,
+            dropout=model_cfg.dropout,
+            rope_dim=model_cfg.rope_dim,
+            rope_theta=model_cfg.rope_theta,
             use_moe=use_moe,
             moe_config=moe_config,
-            max_views=model_cfg.get("max_views", 8),
-            max_seq_len=model_cfg.get("max_seq_len", 120),
-            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
+            max_views=model_cfg.max_views,
+            max_seq_len=model_cfg.max_seq_len,
+            invisible_init_std=float(model_cfg.invisible_init_std),
         )
 
     def _build_positions_2d(
