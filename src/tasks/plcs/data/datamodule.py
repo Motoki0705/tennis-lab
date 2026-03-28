@@ -19,29 +19,22 @@ if TYPE_CHECKING:
 class PLCSDataModule(pl.LightningDataModule):
     """Lightning DataModule for unified PLCS frame/sequence/multiview training."""
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: DictConfig) -> None:
         super().__init__()
-        self.config = config or {}
+        self.config = config
 
-        data_cfg = self.config.get("data", {})
-        self.batch_size = int(data_cfg.get("batch_size", 64))
-        self.num_workers = int(data_cfg.get("num_workers", 4))
-        self.pin_memory = bool(data_cfg.get("pin_memory", True))
-        self.scene_dir = Path(data_cfg.get("scene_dir", "data/plcs"))
+        data_cfg = self.config.data
+        self.batch_size = int(data_cfg.batch_size)
+        self.num_workers = int(data_cfg.num_workers)
+        self.pin_memory = bool(data_cfg.pin_memory)
+        self.scene_dir = Path(data_cfg.scene_dir)
 
-        self.scene_sampler = bool(data_cfg.get("scene_sampler", True))
-        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
-        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
-        self.adapter_camera_index = int(data_cfg.get("adapter_camera_index", 0))
+        self.scene_sampler = bool(data_cfg.scene_sampler)
+        self.scenes_per_batch = int(data_cfg.scenes_per_batch)
+        self.chunk_max_scenes = int(data_cfg.chunk_max_scenes)
+        self.adapter_camera_index = int(data_cfg.adapter_camera_index)
 
-        model_cfg = self.config.get("model", {})
-        io_cfg = model_cfg.get("io", {})
-        self.input_profile = str(
-            io_cfg.get(
-                "input_profile",
-                self._infer_input_profile_from_model_name(str(model_cfg.get("name", "plcs"))),
-            )
-        )
+        self.input_profile = str(self.config.model.io.input_profile)
         self.collate_fn = partial(
             collate_and_adapt_plcs_batch,
             input_profile=self.input_profile,
@@ -56,7 +49,7 @@ class PLCSDataModule(pl.LightningDataModule):
     def _infer_input_profile_from_model_name(model_name: str) -> str:
         if model_name == "plcs":
             return "frame"
-        if model_name in "plcs_query_sequence":
+        if model_name == "plcs_query_sequence":
             return "sequence"
         if model_name == "plcs_multiview":
             return "multiview"

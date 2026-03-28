@@ -14,6 +14,8 @@ num_views_range: [1, 1]
 scene_sampler: true
 scenes_per_batch: 32
 chunk_max_scenes: 64
+adapter_camera_index: 0
+cache_max_scenes: 128
 
 augmentation:
   keypoint_noise_std: 0.0001

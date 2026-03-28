@@ -35,12 +35,12 @@ class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
         *,
         scene_dir: str | Path,
         split_file: str | Path,
-        config: DictConfig | None = None,
+        config: DictConfig,
         augment: bool = True,
     ) -> None:
-        self.hydra_cfg = config or {}
+        self.hydra_cfg = config
         self.augment = augment
-        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+        data_cfg = config.data
         self._configure_task(data_cfg)
         super().__init__(
             config=self._build_scene_dataset_config(
@@ -50,32 +50,19 @@ class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
 
     # -- Composed-method hooks ------------------------------------------
 
-    def _configure_task(self, data_cfg: dict) -> None:  # type: ignore[override]
-        from omegaconf import DictConfig
-
-        self.camera_mode_plcs = str(data_cfg.get("camera_mode", "random"))
-        self.is_multiview = str(data_cfg.get("mode", "frame")) in {
+    def _configure_task(self, data_cfg: DictConfig) -> None:  # type: ignore[override]
+        self.camera_mode_plcs = str(data_cfg.camera_mode)
+        self.is_multiview = str(data_cfg.mode) in {
             "multiview", "multiview_sequence",
         }
 
-        if "num_views_range" in data_cfg:
-            r = data_cfg["num_views_range"]
-            self._plcs_num_views_range: tuple[int, int] = (int(r[0]), int(r[1]))
-        else:
-            self._plcs_num_views_range = (1, 2)
+        r = data_cfg.num_views_range
+        self._plcs_num_views_range = (int(r[0]), int(r[1]))
 
-        if "seq_len_range" in data_cfg:
-            r = data_cfg["seq_len_range"]
-            self._plcs_seq_len_range: tuple[int, int] = (int(r[0]), int(r[1]))
-        else:
-            self._plcs_seq_len_range = (64, 512)
+        r = data_cfg.seq_len_range
+        self._plcs_seq_len_range = (int(r[0]), int(r[1]))
 
-        augmentation_cfg = data_cfg.get("augmentation")
-        if not isinstance(augmentation_cfg, (dict, DictConfig)):
-            raise ValueError(
-                "data.augmentation must be provided with keys "
-                "['keypoint_noise_std', 'visibility_drop_prob']."
-            )
+        augmentation_cfg = data_cfg.augmentation
         self.kp_noise_std = float(augmentation_cfg["keypoint_noise_std"])
         self.visibility_drop_prob = float(augmentation_cfg["visibility_drop_prob"])
 
@@ -84,14 +71,14 @@ class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
         *,
         scene_dir: str | Path,
         split_file: str | Path,
-        data_cfg: dict,
+        data_cfg: DictConfig,
     ) -> SceneDatasetConfig:
         return SceneDatasetConfig(
             scene_dir=Path(scene_dir),
             split_file=Path(split_file),
             seq_len_range=self._plcs_seq_len_range,
             num_views_range=self._plcs_num_views_range,
-            cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
+            cache_max_scenes=int(data_cfg.cache_max_scenes),
             camera_mode=self.camera_mode_plcs,
             crop_mode=("random" if self.augment else "center"),
         )

@@ -24,9 +24,9 @@ class TemporalTermConfig:
 
     """
 
-    weight: float = 0.0
-    order: int = 2
-    robust: bool = True
+    weight: float
+    order: int
+    robust: bool
 
 
 @dataclass(frozen=True)
@@ -40,10 +40,10 @@ class TemporalTermsConfig:
         - rotation_inertia: encourage constant angular velocity
     """
 
-    position_gt: TemporalTermConfig = TemporalTermConfig()
-    position_inertia: TemporalTermConfig = TemporalTermConfig()
-    rotation_gt: TemporalTermConfig = TemporalTermConfig()
-    rotation_inertia: TemporalTermConfig = TemporalTermConfig()
+    position_gt: TemporalTermConfig
+    position_inertia: TemporalTermConfig
+    rotation_gt: TemporalTermConfig
+    rotation_inertia: TemporalTermConfig
 
 
 @dataclass(frozen=True)
@@ -57,9 +57,9 @@ class PLCSLossConfig:
 
     """
 
-    position_weight: float = 1.0
-    rotation_weight: float = 1.0
-    temporal: TemporalTermsConfig = TemporalTermsConfig()
+    position_weight: float
+    rotation_weight: float
+    temporal: TemporalTermsConfig
 
     @classmethod
     def from_dict(cls, cfg: dict) -> PLCSLossConfig:
@@ -78,8 +78,7 @@ class PLCSLossConfig:
                 "Use `temporal.position_gt.weight` etc. instead."
             )
 
-        temporal_dict = cfg.get("temporal")
-        temporal_dict = temporal_dict if isinstance(temporal_dict, dict) else {}
+        temporal_dict = cfg["temporal"]
 
         if any(k in temporal_dict for k in ["order", "robust"]):
             raise ValueError(
@@ -87,19 +86,18 @@ class PLCSLossConfig:
                 "Use `temporal.position_gt` / `temporal.rotation_gt` etc. instead."
             )
 
-        def _parse_term(d: dict | None) -> TemporalTermConfig:
-            d = d or {}
+        def _parse_term(d: dict) -> TemporalTermConfig:
             return TemporalTermConfig(
-                weight=float(d.get("weight", 0.0)),
-                order=int(d.get("order", 2)),
-                robust=bool(d.get("robust", True)),
+                weight=float(d["weight"]),
+                order=int(d["order"]),
+                robust=bool(d["robust"]),
             )
 
         temporal_terms_cfg = TemporalTermsConfig(
-            position_gt=_parse_term(temporal_dict.get("position_gt")),
-            position_inertia=_parse_term(temporal_dict.get("position_inertia")),
-            rotation_gt=_parse_term(temporal_dict.get("rotation_gt")),
-            rotation_inertia=_parse_term(temporal_dict.get("rotation_inertia")),
+            position_gt=_parse_term(temporal_dict["position_gt"]),
+            position_inertia=_parse_term(temporal_dict["position_inertia"]),
+            rotation_gt=_parse_term(temporal_dict["rotation_gt"]),
+            rotation_inertia=_parse_term(temporal_dict["rotation_inertia"]),
         )
 
         # Validate supported orders early
@@ -115,8 +113,8 @@ class PLCSLossConfig:
                 )
 
         return cls(
-            position_weight=cfg.get("position_weight", 1.0),
-            rotation_weight=cfg.get("rotation_weight", 1.0),
+            position_weight=float(cfg["position_weight"]),
+            rotation_weight=float(cfg["rotation_weight"]),
             temporal=temporal_terms_cfg,
         )
 
@@ -366,28 +364,16 @@ class PLCSLoss(nn.Module):
 
     def __init__(
         self,
-        config: PLCSLossConfig | None = None,
-        *,
-        position_weight: float = 1.0,
-        rotation_weight: float = 1.0,
+        config: PLCSLossConfig,
     ) -> None:
         """Initialize the loss module.
 
         Args:
-            config: Loss configuration (preferred). If provided, overrides
-                position_weight and rotation_weight.
-            position_weight: Weight for position loss (legacy parameter).
-            rotation_weight: Weight for rotation loss (legacy parameter).
+            config: Loss configuration.
 
         """
         super().__init__()
-        if config is not None:
-            self.config = config
-        else:
-            self.config = PLCSLossConfig(
-                position_weight=position_weight,
-                rotation_weight=rotation_weight,
-            )
+        self.config = config
 
     def forward(
         self,

@@ -18,34 +18,26 @@ if TYPE_CHECKING:
 class PLCSLightningModule(BaseLightningModule):
     """Lightning module for unified PLCS I/O training."""
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: DictConfig) -> None:
         super().__init__(config)
 
         self.model: nn.Module = build_plcs_model(self.config)
 
-        loss_cfg_dict = self.config.get("loss", {})
-        if loss_cfg_dict:
-            loss_cfg = PLCSLossConfig.from_dict(dict(loss_cfg_dict))
-        else:
-            train_cfg = self.config.get("training", {})
-            loss_cfg = PLCSLossConfig(
-                position_weight=float(train_cfg.get("position_loss_weight", 1.0)),
-                rotation_weight=float(train_cfg.get("rotation_loss_weight", 1.0)),
-            )
+        loss_cfg = PLCSLossConfig.from_dict(dict(self.config.loss))
         self.loss_fn = PLCSLoss(config=loss_cfg)
 
-        metrics_cfg = self.config.get("metrics", {})
+        metrics_cfg = self.config.metrics
         self.train_metrics = PLCSMetrics(
-            position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
-            angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
+            position_threshold_m=float(metrics_cfg.position_threshold_m),
+            angle_threshold_deg=float(metrics_cfg.angle_threshold_deg),
         )
         self.val_metrics = PLCSMetrics(
-            position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
-            angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
+            position_threshold_m=float(metrics_cfg.position_threshold_m),
+            angle_threshold_deg=float(metrics_cfg.angle_threshold_deg),
         )
         self.test_metrics = PLCSMetrics(
-            position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
-            angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
+            position_threshold_m=float(metrics_cfg.position_threshold_m),
+            angle_threshold_deg=float(metrics_cfg.angle_threshold_deg),
         )
 
     def _forward_from_batch(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:
@@ -94,8 +86,8 @@ class PLCSLightningModule(BaseLightningModule):
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
         loss, metrics = self._shared_step(batch, "train")
         self.log("train/loss", loss, prog_bar=True)
-        self.log("train/pos_error_m", metrics.get("position_error_m", 0.0), prog_bar=True)
-        self.log("train/ang_error_deg", metrics.get("angular_error_deg", 0.0), prog_bar=True)
+        self.log("train/pos_error_m", metrics["position_error_m"], prog_bar=True)
+        self.log("train/ang_error_deg", metrics["angular_error_deg"], prog_bar=True)
         return loss
 
     def on_train_epoch_end(self) -> None:
@@ -107,8 +99,8 @@ class PLCSLightningModule(BaseLightningModule):
     def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
         loss, metrics = self._shared_step(batch, "val")
         self.log("val/loss", loss, prog_bar=True)
-        self.log("val/pos_error_m", metrics.get("position_error_m", 0.0), prog_bar=True)
-        self.log("val/ang_error_deg", metrics.get("angular_error_deg", 0.0), prog_bar=True)
+        self.log("val/pos_error_m", metrics["position_error_m"], prog_bar=True)
+        self.log("val/ang_error_deg", metrics["angular_error_deg"], prog_bar=True)
 
     def on_validation_epoch_end(self) -> None:
         metrics = self.val_metrics.compute()
@@ -119,8 +111,8 @@ class PLCSLightningModule(BaseLightningModule):
     def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
         loss, metrics = self._shared_step(batch, "test")
         self.log("test/loss", loss)
-        self.log("test/pos_error_m", metrics.get("position_error_m", 0.0))
-        self.log("test/ang_error_deg", metrics.get("angular_error_deg", 0.0))
+        self.log("test/pos_error_m", metrics["position_error_m"])
+        self.log("test/ang_error_deg", metrics["angular_error_deg"])
 
     def on_test_epoch_end(self) -> None:
         metrics = self.test_metrics.compute()

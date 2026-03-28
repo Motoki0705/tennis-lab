@@ -9,6 +9,8 @@ mode: multiview_sequence
 scene_sampler: true
 scenes_per_batch: 8
 chunk_max_scenes: 64
+adapter_camera_index: 0
+cache_max_scenes: 128
 
 # Multi-view sampling
 min_cameras: 2

@@ -17,8 +17,7 @@ if TYPE_CHECKING:
 
 def build_plcs_model(config: DictConfig) -> nn.Module:
     """Build a PLCS model from ``config.model.name``."""
-    model_cfg = config.get("model", {})
-    model_name = str(model_cfg.get("name", "plcs"))
+    model_name = str(config.model.name)
     if model_name == "plcs":
         return PLCSModel.from_config(config)
     if model_name == "plcs_query_sequence":
