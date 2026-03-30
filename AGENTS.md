@@ -14,7 +14,3 @@
 - Lint/checks: `uv run pre-commit run --all-files`
 - Type check: `uv run mypy src`
 - Prefer tool configuration in `pyproject.toml`.
-
-## Done definition
-- For changes that can affect repository checks, call the `pre_commit_validator` subagent to run `uv run pre-commit run --all-files`, analyze failures, and apply fixes.
-- Do not consider the task done until the relevant validation has passed or remaining blockers are explicitly documented.
