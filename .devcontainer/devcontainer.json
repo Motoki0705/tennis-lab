@@ -7,9 +7,6 @@
   "initializeCommand": "mkdir -p data outputs",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
   "workspaceFolder": "/workspace",
-  "remoteEnv": {
-    "SSH_AUTH_SOCK": "/ssh-agent"
-  },
   "runArgs": [
     "--gpus=all"
   ],
@@ -17,9 +14,10 @@
     "source=${localWorkspaceFolder}/data,target=/workspace/data,type=bind",
     "source=${localWorkspaceFolder}/outputs,target=/workspace/outputs,type=bind",
     "source=tennis-lab-pip-cache,target=/root/.cache/pip,type=volume",
-    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.codex/config.toml,target=/root/.codex/config.toml,type=bind,consistency=cached",
-    "source=${localEnv:SSH_AUTH_SOCK},target=/ssh-agent,type=bind",
-    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh/known_hosts,target=/root/.ssh/known_hosts,type=bind,consistency=cached"
+    "source=${localEnv:HOME}/.codex,target=/root/.codex,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,type=bind,readonly",
+    "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,readonly",
+    "source=${localEnv:HOME}/.config/gh,target=/root/.config/gh,type=bind,readonly"
   ],
   "customizations": {
     "vscode": {
