@@ -58,21 +58,47 @@
 
 ## クイックスタート
 
-### 1) セットアップ
+このリポジトリは Docker / devcontainer ベースでの開発を前提にしています。
+
+### 1) イメージをビルド
 
 ```bash
-uv sync
+docker build -t tennis-lab-dev .
 ```
 
-### 2) スクリプト実行（共通形）
+### 2) コンテナを作成して起動
+
+```bash
+mkdir -p data outputs
+
+docker run --gpus=all -it --name tennis-lab-dev \
+  -v "$(pwd):/workspace" \
+  -v "$(pwd)/data:/workspace/data" \
+  -v "$(pwd)/outputs:/workspace/outputs" \
+  tennis-lab-dev
+```
+
+既存コンテナを再利用する場合:
+
+```bash
+docker start -ai tennis-lab-dev
+```
+
+### 3) コンテナ内でスクリプト実行（共通形）
+
+ホスト側からコンテナに入る場合:
+
+```bash
+docker exec -it tennis-lab-dev bash
+```
 
 すべてのタスクは Hydra を使って設定を管理しています。
 
 ```bash
-uv run python -m src.<task>.scripts.<entrypoint> key=value
+python -m src.<task>.scripts.<entrypoint> key=value
 ```
 
-### 3) まずは可視化
+### 4) まずは可視化
 
 コマンド例はタスクごとのドキュメントに集約しています。
 
@@ -85,7 +111,7 @@ uv run python -m src.<task>.scripts.<entrypoint> key=value
 
 ### Docker
 
-GPU環境をまとめて立ち上げたい場合は `docker/docker-compose.yml` を参照。
+VS Code を使う場合は `.devcontainer/devcontainer.json` を利用して devcontainer として開けます。
 
 ## ライセンス / 引用
 

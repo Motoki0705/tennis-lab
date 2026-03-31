@@ -10,7 +10,8 @@ code:
   archive_name: tennis-lab-ball-detection-code-${archive_date}.7z
   paths:
     - pyproject.toml
-    - uv.lock
+    - requirements.txt
+    - requirements-dev.txt
     - src/__init__.py
     - src/tasks/__init__.py
     - src/tasks/ball_detection
