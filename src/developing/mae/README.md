@@ -31,16 +31,16 @@ Token structure: `[CLS, Register_1, ..., Register_R, Patch_1, ..., Patch_N]`
 
 ```bash
 # Basic training
-uv run python -m src.developing.mae.scripts.train
+python -m src.developing.mae.scripts.train
 
 # With custom settings
-uv run python -m src.developing.mae.scripts.train \
+python -m src.developing.mae.scripts.train \
     model=small \
     data=cached_batches data.bucket_alpha=2.5 \
     training=fast
 
 # Cached-batch training (no padding; preprocessing in background)
-uv run python -m src.developing.mae.scripts.train \
+python -m src.developing.mae.scripts.train \
     data=cached_batches
 ```
 
@@ -101,7 +101,7 @@ Download tennis videos using the WASB download script:
 ```bash
 # Create urls.yaml with video URLs
 # Then download:
-uv run python -m src.tasks.wasb.scripts.generate_dataset.download_videos \
+python -m src.tasks.wasb.scripts.generate_dataset.download_videos \
     urls_path=data/tennis/raw/urls.yaml
 ```
 

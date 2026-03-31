@@ -7,8 +7,8 @@ Models:
 - **3D model**: predicts shot/bounce timings from `ball_pos_world` only (for within-scene event timing).
 
 Entry points:
-- `uv run python -m src.tasks.event_detection.scripts.train_uv`
-- `uv run python -m src.tasks.event_detection.scripts.train_3d`
+- `python -m src.tasks.event_detection.scripts.train_uv`
+- `python -m src.tasks.event_detection.scripts.train_3d`
 
 Inference:
 - `src/tasks/event_detection/inference/uv_predictor.py` for UV-based event detection
@@ -35,11 +35,11 @@ event_peaks = outputs["event_peaks"]  # list[B][E][N]
 軌道はGT系列を使用し、イベント表現は推論結果（predicted peaks）のみを使用します。
 
 - UV:
-    - `uv run python -m src.tasks.event_detection.scripts.visualize visualization.scene_path=data/blcs/scenes/rally_000000.npz`
-    - 推論: `uv run python -m src.tasks.event_detection.scripts.visualize visualization.mode=predict visualization.checkpoint=...`
+    - `python -m src.tasks.event_detection.scripts.visualize visualization.scene_path=data/blcs/scenes/rally_000000.npz`
+    - 推論: `python -m src.tasks.event_detection.scripts.visualize visualization.mode=predict visualization.checkpoint=...`
 - 3D:
-    - `uv run python -m src.tasks.event_detection.scripts.visualize visualization=traj3d data=blcs_rally_3d visualization.scene_path=data/blcs/scenes/rally_000000.npz`
-    - 推論: `uv run python -m src.tasks.event_detection.scripts.visualize visualization=traj3d data=blcs_rally_3d visualization.mode=predict visualization.checkpoint=...`
+    - `python -m src.tasks.event_detection.scripts.visualize visualization=traj3d data=blcs_rally_3d visualization.scene_path=data/blcs/scenes/rally_000000.npz`
+    - 推論: `python -m src.tasks.event_detection.scripts.visualize visualization=traj3d data=blcs_rally_3d visualization.mode=predict visualization.checkpoint=...`
 
 Animationでは、推論イベント周辺フレームでもボール色が連続的に変化します。
 

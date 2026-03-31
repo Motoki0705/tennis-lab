@@ -120,13 +120,13 @@ src/tasks/court_detection/
 ### 学習
 
 ```bash
-uv run python -m src.tasks.court_detection.scripts.train
+python -m src.tasks.court_detection.scripts.train
 ```
 
 ### 可視化
 
 ```bash
-uv run python -m src.tasks.court_detection.scripts.visualize
+python -m src.tasks.court_detection.scripts.visualize
 ```
 
 ## 手動アノテーション
@@ -134,7 +134,7 @@ uv run python -m src.tasks.court_detection.scripts.visualize
 実映像からアノテーションを作成する場合は `src.tools.annotate_court_keypoints` を使用：
 
 ```bash
-uv run python -m src.tools.annotate_court_keypoints \
+python -m src.tools.annotate_court_keypoints \
     input_path=data/raw/court_image.jpg \
     output.output_dir=data/court_keypoints
 ```

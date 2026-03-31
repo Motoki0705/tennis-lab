@@ -1,4 +1,13 @@
-"""Entry point for ball multitask visualization orchestration."""
+"""Run ball multi-task visualization orchestration with Hydra configuration.
+
+Usage:
+    python -m src.developing.ball_multitask.scripts.visualize
+    python -m src.developing.ball_multitask.scripts.visualize run.dry_run=true
+
+Notes:
+    - Configuration is loaded from `src/developing/ball_multitask/configs/visualize.yaml`.
+    - Hydra handles runtime overrides.
+"""
 
 from __future__ import annotations
 

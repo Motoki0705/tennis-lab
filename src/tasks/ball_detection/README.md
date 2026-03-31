@@ -40,14 +40,14 @@ Ball Detection は、テニス動画からボール位置ヒートマップを�
 
 ```bash
 # 既定設定で学習
-uv run python -m src.tasks.ball_detection.scripts.train
+python -m src.tasks.ball_detection.scripts.train
 
 # 出力先を指定
-uv run python -m src.tasks.ball_detection.scripts.train \
+python -m src.tasks.ball_detection.scripts.train \
     run.output_dir=outputs/ball_detection/stunet_custom
 
 # バッチサイズを変更
-uv run python -m src.tasks.ball_detection.scripts.train \
+python -m src.tasks.ball_detection.scripts.train \
     data.batch_size=8
 ```
 
@@ -55,13 +55,13 @@ uv run python -m src.tasks.ball_detection.scripts.train \
 
 ```bash
 # phase-based semi-supervised training
-uv run python -m src.tasks.ball_detection.scripts.train \
+python -m src.tasks.ball_detection.scripts.train \
     training.semi_supervised.num_semi_phases=4 \
     training.semi_supervised.phase0_epochs=15 \
     training.semi_supervised.phase_epochs=15
 
 # pseudo-label generation settings を上書き
-uv run python -m src.tasks.ball_detection.scripts.train \
+python -m src.tasks.ball_detection.scripts.train \
     training.semi_supervised.num_semi_phases=4 \
     training.semi_supervised.pseudo_windows_per_video=128 \
     training.semi_supervised.pseudo_inference_batch_size=16
@@ -70,7 +70,7 @@ uv run python -m src.tasks.ball_detection.scripts.train \
 ### 生動画ダウンロード
 
 ```bash
-uv run python -m src.tasks.ball_detection.scripts.download_videos
+python -m src.tasks.ball_detection.scripts.download_videos
 ```
 
 設定は `src/tasks/ball_detection/configs/downlaod.yaml` を使います。  
@@ -81,11 +81,11 @@ uv run python -m src.tasks.ball_detection.scripts.download_videos
 
 ```bash
 # train split の sample 0 を可視化
-uv run python -m src.tasks.ball_detection.scripts.visualize_augmentation \
+python -m src.tasks.ball_detection.scripts.visualize_augmentation \
     preview.sample_indices=[0]
 
 # val split を複数サンプル出力
-uv run python -m src.tasks.ball_detection.scripts.visualize_augmentation \
+python -m src.tasks.ball_detection.scripts.visualize_augmentation \
     preview.split=val \
     preview.sample_indices=[0,1,2]
 ```
@@ -97,13 +97,13 @@ uv run python -m src.tasks.ball_detection.scripts.visualize_augmentation \
 
 ```bash
 # code + data
-uv run python -m src.tasks.ball_detection.scripts.package
+python -m src.tasks.ball_detection.scripts.package
 
 # code のみ
-uv run python -m src.tasks.ball_detection.scripts.package package_target=code
+python -m src.tasks.ball_detection.scripts.package package_target=code
 
 # data のみ
-uv run python -m src.tasks.ball_detection.scripts.package package_target=data
+python -m src.tasks.ball_detection.scripts.package package_target=data
 ```
 
 ## 半教師あり pseudo-label フロー

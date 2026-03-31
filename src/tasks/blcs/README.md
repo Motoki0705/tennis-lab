@@ -40,14 +40,14 @@ BLCS は、テニスコート座標系におけるボールの 3D 軌道を、2D
 ### データ生成
 
 ```bash
-uv run python -m src.tasks.blcs.scripts.generate_dataset
+python -m src.tasks.blcs.scripts.generate_dataset
 
 # 固定8カメラ（四隅+中点）で生成
 # - 四隅は z_min
 # - 中点は z_max
 # - すべてコート中央 (0,0,0) を注視
 # - Y軸方向バッファは fixed_baseline_clear_extra で増やす
-uv run python -m src.tasks.blcs.scripts.generate_dataset \
+python -m src.tasks.blcs.scripts.generate_dataset \
     camera.placement_mode=fixed_8 \
     camera.fixed_baseline_clear_extra=2.0
 ```
@@ -56,15 +56,15 @@ uv run python -m src.tasks.blcs.scripts.generate_dataset \
 
 ```bash
 # 単一カメラモデル
-uv run python -m src.tasks.blcs.scripts.train
+python -m src.tasks.blcs.scripts.train
 
 # マルチビューモデル（複数カメラ統合）
-uv run python -m src.tasks.blcs.scripts.train \
+python -m src.tasks.blcs.scripts.train \
     model=multiview \
     data=multiview
 
 # マルチビュー学習のカスタム設定例
-uv run python -m src.tasks.blcs.scripts.train \
+python -m src.tasks.blcs.scripts.train \
     model=multiview \
     data=multiview \
     data.num_views_range=[2,4] \
@@ -75,7 +75,6 @@ uv run python -m src.tasks.blcs.scripts.train \
 ### ハイパーパラメータ探索
 
 ```bash
-UV_CACHE_DIR=outputs/tmp_cache/uv_cache \
 RUN_ROOT=outputs/blcs/sweep_$(date +%Y-%m-%d_%H-%M-%S) \
 bash src/tasks/blcs/scripts/run_hparam_sweep.sh
 ```
@@ -90,14 +89,14 @@ bash src/tasks/blcs/scripts/run_hparam_sweep.sh
 
 ```bash
 # 単一カメラ（GT vs Prediction 比較アニメーション）
-uv run python -m src.tasks.blcs.scripts.visualize
+python -m src.tasks.blcs.scripts.visualize
 
 # 単一カメラ（view指定）
-uv run python -m src.tasks.blcs.scripts.visualize \
+python -m src.tasks.blcs.scripts.visualize \
     visualization.animation_view=3d
 
 # マルチビュー（GT vs Prediction 比較アニメーション）
-uv run python -m src.tasks.blcs.scripts.visualize \
+python -m src.tasks.blcs.scripts.visualize \
     visualization=multiview \
     visualization.scene_path=data/blcs/scenes/scene_000003.npz \
     visualization.mode=predict \
@@ -105,7 +104,7 @@ uv run python -m src.tasks.blcs.scripts.visualize \
     visualization.cameras=all
 
 # 保存する場合
-uv run python -m src.tasks.blcs.scripts.visualize \
+python -m src.tasks.blcs.scripts.visualize \
     visualization=multiview \
     visualization.mode=predict \
     visualization.checkpoint=outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt \
