@@ -1,16 +1,13 @@
-"""Analyze PLCS dataset distributions (position, yaw, cameras) using Hydra.
+"""Analyze PLCS dataset distributions with Hydra-managed configuration.
 
-This script inspects pre-generated PLCS scene NPZ files and summarizes:
-- Player position distribution (per-frame and initial conditions)
-- Player yaw distribution
-- Camera count distribution (after filtering)
-- Fractions near the court origin (useful for detecting dataset bias)
+Usage:
+    python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution
+    python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution run.output_dir=outputs/plcs/analysis/dataset_distribution analysis.max_scenes=200
 
-Example commands:
-    `uv run python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution`
-    `uv run python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution run.output_dir=outputs/plcs/analysis/dataset_distribution analysis.max_scenes=200`
-
-Config entry point: `src/tasks/plcs/configs/analyze_dataset_distribution.yaml`
+Notes:
+    - Configuration is loaded from `src/tasks/plcs/configs/analyze_dataset_distribution.yaml`.
+    - The script summarizes position, yaw, and camera statistics from PLCS scene NPZ files.
+    - The script uses Hydra for configuration loading.
 """
 
 from __future__ import annotations

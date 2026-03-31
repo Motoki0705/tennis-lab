@@ -3,19 +3,19 @@ repos:
     hooks:
       - id: ruff
         name: ruff (fix)
-        entry: uv run --no-sync ruff check --fix --exit-non-zero-on-fix
+        entry: ruff check --fix --exit-non-zero-on-fix
         language: system
         types: [python]
         files: ^(src|tests)/
       - id: mypy
         name: mypy
-        entry: uv run --no-sync mypy --follow-imports=skip
+        entry: mypy --follow-imports=skip
         language: system
         types: [python]
         files: ^(src|tests)/
       - id: task-script-reviewer
         name: task script reviewer
-        entry: uv run --no-sync python ./.agents/skills/script-conventions/scripts/review_task_scripts.py
+        entry: python ./.agents/skills/script-conventions/scripts/review_task_scripts.py
         language: system
         files: ^(src|experiments)/.+/scripts/.+\.py$
         exclude: ^(src|experiments)/.+/scripts/__init__\.py$

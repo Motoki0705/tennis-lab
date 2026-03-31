@@ -1,11 +1,13 @@
-"""Train a 3D-trajectory event detection model using Hydra-managed configuration.
+"""Train the 3D event detection model with Hydra-managed configuration.
 
-Example commands:
-    `uv run python -m src.tasks.event_detection.scripts.train_3d`
-    `uv run python -m src.tasks.event_detection.scripts.train_3d run.dry_run=true`
-    `uv run python -m src.tasks.event_detection.scripts.train_3d data.scene_dir=data/blcs run.dry_run=false`
+Usage:
+    python -m src.tasks.event_detection.scripts.train_3d
+    python -m src.tasks.event_detection.scripts.train_3d run.dry_run=true
+    python -m src.tasks.event_detection.scripts.train_3d data.scene_dir=data/blcs run.dry_run=false
 
-Config entry point: `src/tasks/event_detection/configs/train_3d.yaml`
+Notes:
+    - Configuration is loaded from `src/tasks/event_detection/configs/train_3d.yaml`.
+    - The script uses Hydra for configuration loading.
 """
 
 from __future__ import annotations

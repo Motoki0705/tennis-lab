@@ -1,9 +1,13 @@
 """Generate contact sheets for ball-detection sequence augmentations.
 
-Example commands:
-    `uv run python -m src.tasks.ball_detection.scripts.visualize_augmentation`
-    `uv run python -m src.tasks.ball_detection.scripts.visualize_augmentation preview.sample_indices=[0,1,2]`
-    `uv run python -m src.tasks.ball_detection.scripts.visualize_augmentation preview.split=val`
+Usage:
+    python -m src.tasks.ball_detection.scripts.visualize_augmentation
+    python -m src.tasks.ball_detection.scripts.visualize_augmentation preview.sample_indices=[0,1,2]
+    python -m src.tasks.ball_detection.scripts.visualize_augmentation preview.split=val
+
+Notes:
+    - Hydra loads configuration from `src/tasks/ball_detection/configs/visualize_augmentation.yaml`.
+    - The script renders paired original and fully augmented contact sheets for selected clips.
 """
 
 from __future__ import annotations

@@ -1,11 +1,13 @@
 """Generate cached MAE batches for a single epoch using Hydra-managed configuration.
 
-Example commands:
-    `uv run python -m src.developing.mae.scripts.produce_epoch_cache`
-    `uv run python -m src.developing.mae.scripts.produce_epoch_cache task.epoch=5`
-    `uv run python -m src.developing.mae.scripts.produce_epoch_cache task.split=val`
+Usage:
+    python -m src.developing.mae.scripts.produce_epoch_cache
+    python -m src.developing.mae.scripts.produce_epoch_cache task.epoch=5
+    python -m src.developing.mae.scripts.produce_epoch_cache task.split=val
 
-Config entry point: `src/developing/mae/configs/produce_epoch_cache.yaml`
+Notes:
+    - Configuration is loaded from `src/developing/mae/configs/produce_epoch_cache.yaml`.
+    - Hydra handles runtime overrides.
 """
 
 from __future__ import annotations

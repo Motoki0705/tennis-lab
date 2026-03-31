@@ -54,7 +54,7 @@ src/tasks/blcs/generate_dataset/webui/
 1) Start Python API server (repo root):
 
 ```bash
-UV_CACHE_DIR=/tmp/uv_cache uv run --group webui -m src.tasks.blcs.generate_dataset.api_server --reload --port 8001
+python -m src.tasks.blcs.generate_dataset.api_server --reload --port 8001
 ```
 
 2) Start Next.js dev server (separate terminal):

@@ -1,11 +1,13 @@
 """Package ball detection code and dataset into 7z archives.
 
-Example commands:
-    `uv run python -m src.tasks.ball_detection.scripts.package`
-    `uv run python -m src.tasks.ball_detection.scripts.package package_target=code`
-    `uv run python -m src.tasks.ball_detection.scripts.package package_target=data overwrite=true`
+Usage:
+    python -m src.tasks.ball_detection.scripts.package
+    python -m src.tasks.ball_detection.scripts.package package_target=code
+    python -m src.tasks.ball_detection.scripts.package package_target=data overwrite=true
 
-Config entry point: `src/tasks/ball_detection/configs/package.yaml`
+Notes:
+    - Hydra loads configuration from `src/tasks/ball_detection/configs/package.yaml`.
+    - The script shells out to `7z` and writes a JSON summary beside the archive output.
 """
 
 from __future__ import annotations

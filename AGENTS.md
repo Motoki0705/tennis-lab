@@ -9,8 +9,8 @@
 - Generated outputs belong in `outputs/`.
 
 ## Build / test / lint
-- Use `uv run` for project commands.
-- Test: `uv run pytest`
-- Lint/checks: `uv run pre-commit run --all-files`
-- Type check: `uv run mypy src`
+- Use container-internal commands for project work.
+- Test: `python -m pytest`
+- Lint/checks: `pre-commit run --all-files`
+- Type check: `python -m mypy src`
 - Prefer tool configuration in `pyproject.toml`.

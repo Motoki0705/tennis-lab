@@ -151,7 +151,7 @@ src/tasks/plcs/
 ### データ生成
 
 ```bash
-uv run python -m src.tasks.plcs.scripts.generate_dataset
+python -m src.tasks.plcs.scripts.generate_dataset
 ```
 
 ### データ分布の調査（位置・向き・カメラ数）
@@ -160,10 +160,10 @@ uv run python -m src.tasks.plcs.scripts.generate_dataset
 原点近傍への偏り（半径しきい値内の割合）などを集計します。
 
 ```bash
-uv run python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution
+python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution
 
 # 出力先やサンプル数の変更例
-uv run python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution \
+python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution \
     run.output_dir=outputs/plcs/analysis/dataset_distribution \
     analysis.max_scenes=200 \
     analysis.max_frames_per_scene=256
@@ -173,16 +173,16 @@ uv run python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution \
 
 ```bash
 # フレーム単位モデル（単一カメラ）
-uv run python -m src.tasks.plcs.scripts.train
+python -m src.tasks.plcs.scripts.train
 
 # シーケンスモデル（単一カメラ・時系列）
-uv run python -m src.tasks.plcs.scripts.train_sequence
+python -m src.tasks.plcs.scripts.train_sequence
 
 # マルチビューモデル（複数カメラ統合）
-uv run python -m src.tasks.plcs.scripts.train_multiview
+python -m src.tasks.plcs.scripts.train_multiview
 
 # マルチビュー学習のカスタム設定例
-uv run python -m src.tasks.plcs.scripts.train_multiview \
+python -m src.tasks.plcs.scripts.train_multiview \
     data.num_views=4 \
     data.min_cameras=2 \
     training.max_epochs=100
@@ -192,20 +192,20 @@ uv run python -m src.tasks.plcs.scripts.train_multiview \
 
 ```bash
 # 単一カメラ
-uv run python -m src.tasks.plcs.scripts.visualize
+python -m src.tasks.plcs.scripts.visualize
 
 # マルチビュー（Ground Truth）
-uv run python -m src.tasks.plcs.scripts.visualize_multiview \
+python -m src.tasks.plcs.scripts.visualize_multiview \
     visualization.scene_path=data/plcs/scenes/scene_000003.npz
 
 # マルチビュー（チェックポイントからの予測）
-uv run python -m src.tasks.plcs.scripts.visualize_multiview \
+python -m src.tasks.plcs.scripts.visualize_multiview \
     visualization.mode=predict \
     visualization.checkpoint=outputs/plcs/multiview/logs/version_0/checkpoints/last.ckpt \
     visualization.cameras=all
 
 # 比較アニメーション出力
-uv run python -m src.tasks.plcs.scripts.visualize_multiview \
+python -m src.tasks.plcs.scripts.visualize_multiview \
     visualization.mode=predict \
     visualization.view=animation \
     visualization.save=comparison.mp4

@@ -1,8 +1,12 @@
 """Train the ball multi-task model with Hydra configuration.
 
-Example commands:
-    `uv run python -m src.developing.ball_multitask.scripts.train`
-    `uv run python -m src.developing.ball_multitask.scripts.train run.dry_run=true`
+Usage:
+    python -m src.developing.ball_multitask.scripts.train
+    python -m src.developing.ball_multitask.scripts.train run.dry_run=true
+
+Notes:
+    - Configuration is loaded from `src/developing/ball_multitask/configs/train.yaml`.
+    - Hydra handles runtime overrides.
 """
 
 from __future__ import annotations
