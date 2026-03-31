@@ -1,0 +1,33 @@
+{
+  "name": "tennis-lab",
+  "build": {
+    "context": "..",
+    "dockerfile": "../Dockerfile"
+  },
+  "initializeCommand": "mkdir -p data outputs",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "runArgs": [
+    "--gpus=all"
+  ],
+  "mounts": [
+    "source=${localWorkspaceFolder}/data,target=/workspace/data,type=bind",
+    "source=${localWorkspaceFolder}/outputs,target=/workspace/outputs,type=bind",
+    "source=tennis-lab-pip-cache,target=/root/.cache/pip,type=volume",
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.codex/config.toml,target=/root/.codex/config.toml,type=bind,consistency=cached"
+  ],
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/bin/python3.11",
+        "python.terminal.activateEnvironment": false
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-toolsai.jupyter"
+      ]
+    }
+  }
+}
