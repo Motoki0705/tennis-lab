@@ -1,4 +1,13 @@
-"""Entry point for court detection visualization orchestration."""
+"""Visualize court detection reconstruction or inference outputs.
+
+Usage:
+    python -m src.tasks.court_detection.scripts.visualize
+    python -m src.tasks.court_detection.scripts.visualize output_dir=outputs/court_detection/preview
+
+Notes:
+    - Hydra loads configuration from `src/tasks/court_detection/configs/visualize.yaml`.
+    - The script builds a runtime visualization config and forwards it to the orchestrator.
+"""
 
 from __future__ import annotations
 

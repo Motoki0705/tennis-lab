@@ -53,14 +53,14 @@ TennisSceneOrchestrator (オーケストレーター)
 ### 基本実行
 
 ```bash
-uv run python -m src.tennis_scene.scripts.run_pipeline \
+python -m src.tennis_scene.scripts.run_pipeline \
     video_path=inputs/demo/match.mp4
 ```
 
 ### オプション指定
 
 ```bash
-uv run python -m src.tennis_scene.scripts.run_pipeline \
+python -m src.tennis_scene.scripts.run_pipeline \
     video_path=inputs/demo/match.mp4 \
     max_frames=100 \
     court_kp.frame_index=0 \
@@ -72,7 +72,7 @@ uv run python -m src.tennis_scene.scripts.run_pipeline \
 手動入力UIを使う場合は `manual_ui` を指定します。結果JSONは `court_kp.output_path` に保存されます。
 
 ```bash
-uv run python -m src.tennis_scene.scripts.run_pipeline \
+python -m src.tennis_scene.scripts.run_pipeline \
     video_path=inputs/demo/match.mp4 \
     court_kp.mode=manual_ui \
     court_kp.output_path=outputs/tennis_scene/court_kp_result.json
@@ -81,7 +81,7 @@ uv run python -m src.tennis_scene.scripts.run_pipeline \
 ### GVHMRスキップ（デバッグ用）
 
 ```bash
-uv run python -m src.tennis_scene.scripts.run_pipeline \
+python -m src.tennis_scene.scripts.run_pipeline \
     video_path=inputs/demo/match.mp4 \
     gvhmr.skip=true
 ```
@@ -89,7 +89,7 @@ uv run python -m src.tennis_scene.scripts.run_pipeline \
 ### カスタムモデルパス指定
 
 ```bash
-uv run python -m src.tennis_scene.scripts.run_pipeline \
+python -m src.tennis_scene.scripts.run_pipeline \
     video_path=inputs/demo/match.mp4 \
     gvhmr.yolo_checkpoint=/path/to/yolov8.pt \
     gvhmr.vitpose_checkpoint=/path/to/vitpose.pth

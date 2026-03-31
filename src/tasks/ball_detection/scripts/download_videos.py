@@ -1,10 +1,12 @@
-"""Download raw tennis videos from configured URLs using yt-dlp.
+"""Download raw tennis videos from configured URLs using ``yt-dlp``.
 
-Example commands:
-    `uv run python -m src.tasks.ball_detection.scripts.download_videos`
-    `uv run python -m src.tasks.ball_detection.scripts.download_videos urls=[https://example.com/video]`
+Usage:
+    python -m src.tasks.ball_detection.scripts.download_videos
+    python -m src.tasks.ball_detection.scripts.download_videos urls=[https://example.com/video]
 
-Config entry point: `src/tasks/ball_detection/configs/downlaod.yaml`
+Notes:
+    - Hydra loads configuration from `src/tasks/ball_detection/configs/downlaod.yaml`.
+    - Downloads are renamed into `video_<n>.mp4` files and summarized in JSON.
 """
 
 from __future__ import annotations

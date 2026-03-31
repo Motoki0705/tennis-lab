@@ -1,15 +1,14 @@
 """Visualize tennis scene reconstruction results.
 
-This script renders the output of the tennis scene pipeline as:
-- Interactive matplotlib 3D animation (view in UI)
-- MP4 video file (saved to disk)
+Usage:
+    python -m src.tennis_scene.scripts.visualization input=outputs/tennis_scene/clip.npz
+    python -m src.tennis_scene.scripts.visualization input=... output=animation.mp4 style.player_representation=skeleton
+    python -m src.tennis_scene.scripts.visualization input=... display=true
 
-Example commands:
-    `third_party/GVHMR/.venv/bin/python -m src.tennis_scene.scripts.visualization input=outputs/tennis_scene/clip.npz`
-    `third_party/GVHMR/.venv/bin/python -m src.tennis_scene.scripts.visualization input=... output=animation.mp4 style.player_representation=skeleton`
-    `third_party/GVHMR/.venv/bin/python -m src.tennis_scene.scripts.visualization input=... display=true`
-
-Config entry point: `src/tennis_scene/configs/visualization.yaml`
+Notes:
+    - The visualizer can render an interactive matplotlib 3D animation or save an MP4 file.
+    - Configuration is loaded from `src/tennis_scene/configs/visualization.yaml`.
+    - Hydra handles runtime overrides.
 """
 
 from __future__ import annotations

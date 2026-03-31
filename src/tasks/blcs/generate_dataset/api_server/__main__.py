@@ -1,7 +1,7 @@
 """Module entrypoint for local dev.
 
 Run:
-  uv run python -m src.tasks.blcs.generate_dataset.api_server --port 8001
+  python -m src.tasks.blcs.generate_dataset.api_server --port 8001
 """
 
 from __future__ import annotations
@@ -30,4 +30,3 @@ def main() -> int:
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())
-

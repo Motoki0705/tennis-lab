@@ -1,11 +1,13 @@
-"""Train a PLCS model with Hydra-managed configuration.
+"""Train the PLCS model with Hydra-managed configuration.
 
-Example commands:
-    `uv run python -m src.tasks.plcs.scripts.train`
-    `uv run python -m src.tasks.plcs.scripts.train run.gpus=0 training.max_epochs=1`
-    `uv run python -m src.tasks.plcs.scripts.train run.dry_run=true`
+Usage:
+    python -m src.tasks.plcs.scripts.train
+    python -m src.tasks.plcs.scripts.train run.gpus=0 training.max_epochs=1
+    python -m src.tasks.plcs.scripts.train run.dry_run=true
 
-Config entry point: `src/tasks/plcs/configs/train.yaml`
+Notes:
+    - Configuration is loaded from `src/tasks/plcs/configs/train.yaml`.
+    - The script uses Hydra for configuration loading.
 """
 
 # mypy: disable-error-code=misc

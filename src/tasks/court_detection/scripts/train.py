@@ -1,12 +1,12 @@
 """Train court keypoint detection model.
 
-Example:
-    uv run python -m src.tasks.court_detection.scripts.train
+Usage:
+    python -m src.tasks.court_detection.scripts.train
+    python -m src.tasks.court_detection.scripts.train model=hrnet_heatmap training.max_epochs=200
 
-    # With custom config
-    uv run python -m src.tasks.court_detection.scripts.train model=hrnet_heatmap training.max_epochs=200
-
-Config entry point: `src/tasks/court_detection/configs/train.yaml`
+Notes:
+    - Hydra loads configuration from `src/tasks/court_detection/configs/train.yaml`.
+    - The script forwards the resolved config to the training runner.
 """
 
 from __future__ import annotations

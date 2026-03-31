@@ -1,4 +1,13 @@
-"""Entry point for trajectory completion visualization orchestration."""
+"""Visualize trajectory completion outputs with Hydra-managed configuration.
+
+Usage:
+    python -m src.tasks.trajectory_completion.scripts.visualize
+    python -m src.tasks.trajectory_completion.scripts.visualize run.output_dir=outputs/trajectory_completion/visualization
+
+Notes:
+    - Configuration is loaded from `src/tasks/trajectory_completion/configs/visualize.yaml`.
+    - The script uses Hydra for configuration loading.
+"""
 
 from __future__ import annotations
 

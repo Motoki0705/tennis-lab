@@ -1,4 +1,13 @@
-"""Entry point for PLCS visualization orchestration."""
+"""Visualize PLCS outputs with Hydra-managed configuration.
+
+Usage:
+    python -m src.tasks.plcs.scripts.visualize
+    python -m src.tasks.plcs.scripts.visualize run.output_dir=outputs/plcs/visualization
+
+Notes:
+    - Configuration is loaded from `src/tasks/plcs/configs/visualize.yaml`.
+    - The script uses Hydra for configuration loading.
+"""
 
 from __future__ import annotations
 

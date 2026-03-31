@@ -1,12 +1,14 @@
 """Train a BLCS model with Hydra-managed configuration.
 
-Example commands:
-    `uv run python -m src.tasks.blcs.scripts.train`
-    `uv run python -m src.tasks.blcs.scripts.train training.max_epochs=5 run.gpus=0`
-    `uv run python -m src.tasks.blcs.scripts.train model=multiview data=multiview`
-    `uv run python -m src.tasks.blcs.scripts.train run.dry_run=true`
+Usage:
+    python -m src.tasks.blcs.scripts.train
+    python -m src.tasks.blcs.scripts.train training.max_epochs=5 run.gpus=0
+    python -m src.tasks.blcs.scripts.train model=multiview data=multiview
+    python -m src.tasks.blcs.scripts.train run.dry_run=true
 
-Config entry point: `src/tasks/blcs/configs/train.yaml`
+Notes:
+    - Hydra loads configuration from `src/tasks/blcs/configs/train.yaml`.
+    - The runner handles the full BLCS training loop from the resolved config.
 """
 
 from __future__ import annotations

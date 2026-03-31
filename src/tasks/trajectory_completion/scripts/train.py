@@ -1,10 +1,12 @@
-"""Train a UV trajectory completion model using Hydra-managed configuration.
+"""Train the trajectory completion model with Hydra-managed configuration.
 
-Example commands:
-    `uv run python -m src.tasks.trajectory_completion.scripts.train`
-    `uv run python -m src.tasks.trajectory_completion.scripts.train run.dry_run=true run.gpus=0 data.batch_size=2`
+Usage:
+    python -m src.tasks.trajectory_completion.scripts.train
+    python -m src.tasks.trajectory_completion.scripts.train run.dry_run=true run.gpus=0 data.batch_size=2
 
-Config entry point: `src/tasks/trajectory_completion/configs/train.yaml`
+Notes:
+    - Configuration is loaded from `src/tasks/trajectory_completion/configs/train.yaml`.
+    - The script uses Hydra for configuration loading.
 """
 
 from __future__ import annotations

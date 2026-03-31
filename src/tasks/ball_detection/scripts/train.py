@@ -1,12 +1,14 @@
 """Train a supervised ball detection model with a manual PyTorch loop.
 
-Example commands:
-    `uv run python -m src.tasks.ball_detection.scripts.train`
-    `uv run python -m src.tasks.ball_detection.scripts.train run.dry_run=true`
-    `uv run python -m src.tasks.ball_detection.scripts.train training.trainer.max_epochs=1`
-    `uv run python -m src.tasks.ball_detection.scripts.train training.semi_supervised.num_semi_phases=1`
+Usage:
+    python -m src.tasks.ball_detection.scripts.train
+    python -m src.tasks.ball_detection.scripts.train run.dry_run=true
+    python -m src.tasks.ball_detection.scripts.train training.trainer.max_epochs=1
+    python -m src.tasks.ball_detection.scripts.train training.semi_supervised.num_semi_phases=1
 
-Config entry point: `src/tasks/ball_detection/configs/train.yaml`
+Notes:
+    - Hydra loads configuration from `src/tasks/ball_detection/configs/train.yaml`.
+    - The script supports both supervised training and phase-based semi-supervised scheduling.
 """
 
 from __future__ import annotations
