@@ -1,4 +1,13 @@
-"""Entry point for event detection visualization orchestration."""
+"""Visualize event detection outputs with Hydra-managed configuration.
+
+Usage:
+    python -m src.tasks.event_detection.scripts.visualize
+    python -m src.tasks.event_detection.scripts.visualize run.output_dir=outputs/event_detection
+
+Notes:
+    - Configuration is loaded from `src/tasks/event_detection/configs/visualize.yaml`.
+    - The script uses Hydra for configuration loading.
+"""
 
 from __future__ import annotations
 

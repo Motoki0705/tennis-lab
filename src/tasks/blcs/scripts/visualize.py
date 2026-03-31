@@ -1,4 +1,13 @@
-"""Entry point for BLCS visualization orchestration."""
+"""Visualize BLCS reconstruction or inference outputs.
+
+Usage:
+    python -m src.tasks.blcs.scripts.visualize
+    python -m src.tasks.blcs.scripts.visualize output_dir=outputs/blcs/preview
+
+Notes:
+    - Hydra loads configuration from `src/tasks/blcs/configs/visualize.yaml`.
+    - The script builds a runtime visualization config and forwards it to the orchestrator.
+"""
 
 from __future__ import annotations
 

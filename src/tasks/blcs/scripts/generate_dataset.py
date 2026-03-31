@@ -1,11 +1,13 @@
 """Generate a BLCS dataset with Hydra-managed configuration.
 
-Example commands:
-    `uv run python -m src.tasks.blcs.scripts.generate_dataset`
-    `uv run python -m src.tasks.blcs.scripts.generate_dataset generator.num_scenes=100`
-    `uv run python -m src.tasks.blcs.scripts.generate_dataset run.output_dir=data/blcs generator.num_scenes=500`
+Usage:
+    python -m src.tasks.blcs.scripts.generate_dataset
+    python -m src.tasks.blcs.scripts.generate_dataset generator.num_scenes=100
+    python -m src.tasks.blcs.scripts.generate_dataset run.output_dir=data/blcs generator.num_scenes=500
 
-Config entry point: `src/tasks/blcs/configs/generate_dataset.yaml`
+Notes:
+    - Hydra loads configuration from `src/tasks/blcs/configs/generate_dataset.yaml`.
+    - The script generates scenes, writes splits, and persists dataset metadata.
 """
 
 from __future__ import annotations

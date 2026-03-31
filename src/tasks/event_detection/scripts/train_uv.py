@@ -1,11 +1,13 @@
-"""Train a UV-based event detection model using Hydra-managed configuration.
+"""Train the UV-based event detection model with Hydra-managed configuration.
 
-Example commands:
-    `uv run python -m src.tasks.event_detection.scripts.train_uv`
-    `uv run python -m src.tasks.event_detection.scripts.train_uv run.dry_run=true`
-    `uv run python -m src.tasks.event_detection.scripts.train_uv data.scene_dir=data/blcs run.dry_run=false`
+Usage:
+    python -m src.tasks.event_detection.scripts.train_uv
+    python -m src.tasks.event_detection.scripts.train_uv run.dry_run=true
+    python -m src.tasks.event_detection.scripts.train_uv data.scene_dir=data/blcs run.dry_run=false
 
-Config entry point: `src/tasks/event_detection/configs/train_uv.yaml`
+Notes:
+    - Configuration is loaded from `src/tasks/event_detection/configs/train_uv.yaml`.
+    - The script uses Hydra for configuration loading.
 """
 
 from __future__ import annotations

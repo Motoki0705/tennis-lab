@@ -1,20 +1,14 @@
-"""Run tennis scene 3D reconstruction pipeline.
+"""Run the tennis scene 3D reconstruction pipeline.
 
-This script runs the integrated pipeline combining:
-- Court KP Detection (single frame, fixed camera)
-- GVHMR (local SMPL, static_cam=True)
-- WASB (ball detection)
-- Trajectory Completion (optional)
-- UV Event Detection
-- PLCS (3D player position + yaw)
-- BLCS (3D ball trajectory)
-- 3D Event Detection
+Usage:
+    python -m src.tennis_scene.scripts.run_pipeline video_path=inputs/demo/match.mp4
+    python -m src.tennis_scene.scripts.run_pipeline video_path=... max_frames=100
 
-Example commands:
-    `uv run python -m src.tennis_scene.scripts.run_pipeline video_path=inputs/demo/match.mp4`
-    `uv run python -m src.tennis_scene.scripts.run_pipeline video_path=... max_frames=100`
-
-Config entry point: `src/tennis_scene/configs/pipeline.yaml`
+Notes:
+    - The pipeline combines court keypoint detection, GVHMR, ball detection, trajectory completion,
+      UV event detection, PLCS, BLCS, and 3D event detection.
+    - Configuration is loaded from `src/tennis_scene/configs/pipeline.yaml`.
+    - Hydra handles runtime overrides.
 """
 
 from __future__ import annotations

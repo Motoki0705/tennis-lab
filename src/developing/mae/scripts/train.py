@@ -1,11 +1,13 @@
 """Train MAE on tennis domain videos using Hydra-managed configuration.
 
-Example commands:
-    `uv run python -m src.developing.mae.scripts.train`
-    `uv run python -m src.developing.mae.scripts.train model.hidden_dim=512 training.max_epochs=200`
-    `uv run python -m src.developing.mae.scripts.train data=cached_batches data.bucket_alpha=2.5`
+Usage:
+    python -m src.developing.mae.scripts.train
+    python -m src.developing.mae.scripts.train model.hidden_dim=512 training.max_epochs=200
+    python -m src.developing.mae.scripts.train data=cached_batches data.bucket_alpha=2.5
 
-Config entry point: `src/developing/mae/configs/train.yaml`
+Notes:
+    - Configuration is loaded from `src/developing/mae/configs/train.yaml`.
+    - Hydra handles runtime overrides.
 """
 
 from __future__ import annotations

@@ -1,10 +1,12 @@
-"""Generate PLCS scenes for training using Hydra-managed configuration.
+"""Generate PLCS scenes for training with Hydra-managed configuration.
 
-Example commands:
-    `uv run python -m src.tasks.plcs.scripts.generate_dataset`
-    `uv run python -m src.tasks.plcs.scripts.generate_dataset run.output_dir=data/plcs simulation.num_scenes=10`
+Usage:
+    python -m src.tasks.plcs.scripts.generate_dataset
+    python -m src.tasks.plcs.scripts.generate_dataset run.output_dir=data/plcs simulation.num_scenes=10
 
-Config entry point: `src/tasks/plcs/configs/generate_dataset.yaml`
+Notes:
+    - Configuration is loaded from `src/tasks/plcs/configs/generate_dataset.yaml`.
+    - The script uses Hydra for configuration loading.
 """
 
 from __future__ import annotations
