@@ -54,6 +54,7 @@ annotations/
 *.csv
 *.json
 *.xml
+!.devcontainer/devcontainer.json
 
 # Model files and checkpoints
 checkpoints/

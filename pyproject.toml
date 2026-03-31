@@ -39,7 +39,6 @@ dependencies = [
     "PyYAML>=6.0.0",
     "sam3>=0.1.2",
     "pydantic>=2.10.0",
-    "pytorch3d",
     "imageio>=2.37.2",
     "av>=16.1.0",
 ]
@@ -258,10 +257,3 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
-
-[tool.uv.extra-build-dependencies]
-chumpy = ["pip", "setuptools", "wheel"]
-pytorch3d = ["pip", "setuptools", "wheel", "ninja", "cmake", "torch", "numpy"]
-
-[tool.uv.sources]
-pytorch3d = { git = "https://github.com/facebookresearch/pytorch3d.git", rev = "main" }
