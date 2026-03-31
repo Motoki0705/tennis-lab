@@ -18,6 +18,7 @@ RUN apt-get update \
         ca-certificates \
         curl \
         ffmpeg \
+        gh \
         git \
         libavcodec-dev \
         libavformat-dev \
@@ -27,6 +28,7 @@ RUN apt-get update \
         libswscale-dev \
         libxext6 \
         libxrender-dev \
+        openssh-client \
         software-properties-common \
         wget \
     && add-apt-repository ppa:deadsnakes/ppa \
