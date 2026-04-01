@@ -63,6 +63,9 @@ checkpoints/DINO/*
 !checkpoints/DINO/README.md
 !checkpoints/DINO/scripts/
 !checkpoints/DINO/scripts/*.py
+!checkpoints/DINO/analyze/
+checkpoints/DINO/analyze/*
+!checkpoints/DINO/analyze/ball_feature_consistency.py
 *.pt
 *.pth
 *.ckpt
