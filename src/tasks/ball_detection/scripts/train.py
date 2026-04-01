@@ -110,7 +110,7 @@ def train(config: DictConfig) -> dict[str, float]:
     val_loader, test_loader = _build_eval_dataloaders(config)
 
     raw_model = build_ball_detection_model(config).to(device)
-    model = _maybe_compile(raw_model, device=device)
+    model = _maybe_compile(raw_model, device=device, config=config)
     loss_fn = BallDetectionFocalLoss(dict(config.get("loss", {}) or {})).to(device)
     checkpoint_dir = output_dir / "checkpoints"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
@@ -144,7 +144,7 @@ def train(config: DictConfig) -> dict[str, float]:
             scaler=bootstrap_scaler,
             device=device,
         )
-        model = _maybe_compile(raw_model, device=device)
+        model = _maybe_compile(raw_model, device=device, config=config)
         _write_jsonl_history(history_path, state.history)
     elif history_path.exists():
         history_path.unlink()
@@ -1091,8 +1091,15 @@ def _resolve_device(config: DictConfig) -> torch.device:
     return torch.device("cpu")
 
 
-def _maybe_compile(model: nn.Module, *, device: torch.device) -> nn.Module:
+def _maybe_compile(
+    model: nn.Module,
+    *,
+    device: torch.device,
+    config: DictConfig,
+) -> nn.Module:
     """Compile the model on CUDA when supported."""
+    if not bool(config.run.get("compile", True)):
+        return model
     if device.type != "cuda" or not hasattr(torch, "compile"):
         return model
     try:
