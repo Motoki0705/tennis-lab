@@ -57,7 +57,12 @@ annotations/
 !.devcontainer/devcontainer.json
 
 # Model files and checkpoints
-checkpoints/
+checkpoints/*
+!checkpoints/DINO/
+checkpoints/DINO/*
+!checkpoints/DINO/README.md
+!checkpoints/DINO/scripts/
+!checkpoints/DINO/scripts/*.py
 *.pt
 *.pth
 *.ckpt
