@@ -139,35 +139,29 @@ detector's fifth feature level is produced later by the full DINO model through
 
 ## Swin Analysis
 
-The investigation artifacts for `checkpoint0027_5scale_swin.pth` are generated
-under:
-
-```text
-/workspace/checkpoints/DINO/analyze/output/checkpoint0027_5scale_swin
-```
-
-Run:
+Ball-point feature consistency for the Swin checkpoint can be generated with the
+shared analyzer:
 
 ```bash
-python /workspace/checkpoints/DINO/analyze/analyze_checkpoint0027_5scale_swin.py \
+python /workspace/checkpoints/DINO/analyze/ball_feature_consistency.py \
+  --backbone swin_L_384_22k \
+  --checkpoint /workspace/checkpoints/DINO/checkpoint0027_5scale_swin.pth \
+  --clip-dir /workspace/data/tennis/game1/Clip1 \
   --device cuda \
   --strict
 ```
 
 Generated artifacts:
 
-- `summary.json`: checkpoint metadata, key-prefix breakdown, resolved backbone
-  config, and dummy forward output structure.
-- `dummy_forward_outputs.pt`: CPU copies of the dummy forward feature tensors.
+- `ball_features.pt`: sampled per-frame features and load metadata.
+- `ball_feature_consistency_per_frame.csv`: per-frame norms and cosine values.
+- `ball_feature_consistency_summary.csv`: aggregated consistency metrics by scale.
 
-Key findings recorded in `summary.json`:
+The default output directory for this run is:
 
-- `checkpoint_args_subset.modelname = "catdet5.1_dn_2_st_exc"`
-- `checkpoint_args_subset.backbone = "swin_L_384_22k"`
-- `checkpoint_args_subset.epochs = 36`
-- `model_prefix_counts_depth2` shows `backbone.0` has `357` parameters and
-  `input_proj.0` through `input_proj.4` are present in the full detector,
-  confirming the fifth feature level is downstream of the backbone.
+```text
+/workspace/checkpoints/DINO/analyze/output/Clip1_swin_L_384_22k
+```
 
 ## Notes
 
