@@ -15,6 +15,8 @@ import torch
 from torch import nn
 from tqdm.auto import tqdm
 
+from src.tasks.ball_detection.input_adapter import to_model_input
+
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
@@ -464,7 +466,9 @@ def _infer_chunk_predictions(
             batch.append(np.stack(frames))
         inputs = torch.from_numpy(np.stack(batch)).to(device=device, dtype=torch.float32)
         with torch.inference_mode():
-            probs = torch.sigmoid(model(_to_model_input(inputs))).squeeze(1).cpu().numpy()
+            probs = torch.sigmoid(
+                model(_to_model_input(inputs, config))
+            ).squeeze(1).cpu().numpy()
         probs = np.nan_to_num(probs, nan=0.0, posinf=1.0, neginf=0.0)
 
         for batch_index, start in enumerate(batch_starts):
@@ -637,13 +641,9 @@ def _batched(values: Sequence[int], batch_size: int) -> Iterator[list[int]]:
         yield batch
 
 
-def _to_model_input(images: torch.Tensor) -> torch.Tensor:
-    """Convert pseudo inference input from ``(B, T, C, H, W)`` to ``(B, C, T, H, W)``."""
-    if images.ndim != 5:
-        raise ValueError(
-            f"Expected pseudo input with shape (B, T, C, H, W), got {tuple(images.shape)}."
-        )
-    return images.permute(0, 2, 1, 3, 4).contiguous()
+def _to_model_input(images: torch.Tensor, config: DictConfig) -> torch.Tensor:
+    """Convert cached RGB frames into the configured model input layout."""
+    return to_model_input(images, config.get("model", {}) or {})
 
 
 __all__ = [

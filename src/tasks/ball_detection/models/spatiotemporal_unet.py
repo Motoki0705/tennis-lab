@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 import torch
 import torch.nn as nn
 
+from src.tasks.ball_detection.input_adapter import resolve_model_in_channels
+
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
@@ -194,11 +196,11 @@ class SpatioTemporalUNet(nn.Module):
         self.final_conv = nn.Conv3d(64, self.num_classes, kernel_size=1)
 
     @classmethod
-    def from_config(cls, config: "DictConfig") -> "SpatioTemporalUNet":
+    def from_config(cls, config: DictConfig) -> SpatioTemporalUNet:
         """Create the model from a composed Hydra config."""
         model_cfg = config.get("model", {}) or {}
         return cls(
-            in_channels=int(model_cfg.get("in_channels", 3)),
+            in_channels=resolve_model_in_channels(model_cfg),
             num_classes=int(model_cfg.get("num_classes", 1)),
         )
 
