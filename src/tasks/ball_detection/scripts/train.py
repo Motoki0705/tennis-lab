@@ -38,10 +38,13 @@ from tqdm.auto import tqdm
 from src.tasks.ball_detection.data.argumentation import BallDetectionArgumentation
 from src.tasks.ball_detection.data.dataset import BallDetectionDataset
 from src.tasks.ball_detection.data.types import BallDetectionBatch
+from src.tasks.ball_detection.input_adapter import to_model_input
 from src.tasks.ball_detection.models import build_ball_detection_model
 from src.tasks.ball_detection.training.losses import BallDetectionFocalLoss
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
-from src.tasks.ball_detection.training.pseudo_labeling import generate_phase_pseudo_labels
+from src.tasks.ball_detection.training.pseudo_labeling import (
+    generate_phase_pseudo_labels,
+)
 
 if TYPE_CHECKING:
     from torch.amp.grad_scaler import GradScaler
@@ -514,7 +517,7 @@ def _train_epoch(
 
         optimizer.zero_grad(set_to_none=True)
         with _autocast_context(config, device=device):
-            logits = model(_to_model_input(images)).squeeze(1)
+            logits = model(_to_model_input(images, config)).squeeze(1)
             if logits.shape != targets.shape:
                 logits = F.interpolate(
                     logits,
@@ -593,7 +596,7 @@ def _evaluate(
         heatmap_size = batch["heatmap_size"].to(device=device, dtype=torch.float32, non_blocking=True)
 
         with _autocast_context(config, device=device):
-            logits = model(_to_model_input(images)).squeeze(1)
+            logits = model(_to_model_input(images, config)).squeeze(1)
             if logits.shape != targets.shape:
                 logits = F.interpolate(
                     logits,
@@ -632,7 +635,7 @@ def _run_dry_run(
     targets = batch["heatmaps"].to(device=device, dtype=torch.float32, non_blocking=True)
 
     with _autocast_context(config, device=device):
-        logits = model(_to_model_input(images)).squeeze(1)
+        logits = model(_to_model_input(images, config)).squeeze(1)
         if logits.shape != targets.shape:
             logits = F.interpolate(
                 logits,
@@ -896,7 +899,7 @@ def _infer_visualization_predictions(
             batch_inputs.append(window)
         inputs = torch.from_numpy(np.stack(batch_inputs)).to(device=device, dtype=torch.float32)
         with _autocast_context(config, device=device):
-            logits = model(_to_model_input(inputs)).squeeze(1)
+            logits = model(_to_model_input(inputs, config)).squeeze(1)
             probs = torch.sigmoid(logits).detach().float().cpu().numpy()
         probs = np.nan_to_num(probs, nan=0.0, posinf=1.0, neginf=0.0)
         for batch_index, start in enumerate(batch_starts):
@@ -1099,14 +1102,9 @@ def _maybe_compile(model: nn.Module, *, device: torch.device) -> nn.Module:
         return model
 
 
-def _to_model_input(images: Tensor) -> Tensor:
-    """Convert `(B, T, C, H, W)` images to `(B, C, T, H, W)`."""
-    if images.ndim != 5:
-        raise ValueError(
-            "Expected images with shape (B, T, C, H, W), "
-            f"got {tuple(images.shape)}."
-        )
-    return images.permute(0, 2, 1, 3, 4).contiguous()
+def _to_model_input(images: Tensor, config: DictConfig) -> Tensor:
+    """Convert batched RGB frames into the configured model input layout."""
+    return to_model_input(images, config.get("model", {}) or {})
 
 
 def _resolve_progress_total(loader: DataLoader[Any], *, max_batches: int | None) -> int | None:
@@ -1257,9 +1255,13 @@ def _seed_everything(seed: int) -> None:
 def _configure_runtime(config: DictConfig) -> None:
     """Apply matmul and TF32 runtime settings from the config."""
     training_cfg = config.get("training", {}) or {}
+    data_cfg = config.get("data", {}) or {}
     matmul_precision = training_cfg.get("matmul_precision")
     if matmul_precision:
         torch.set_float32_matmul_precision(str(matmul_precision))
+    sharing_strategy = data_cfg.get("sharing_strategy")
+    if sharing_strategy not in (None, ""):
+        torch.multiprocessing.set_sharing_strategy(str(sharing_strategy))
     if torch.cuda.is_available():
         allow_tf32 = bool(training_cfg.get("allow_tf32", True))
         fp32_mode = "tf32" if allow_tf32 else "ieee"
