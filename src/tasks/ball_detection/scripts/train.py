@@ -36,6 +36,7 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 from src.tasks.ball_detection.data.argumentation import BallDetectionArgumentation
+from src.tasks.ball_detection.data.argumentation import normalize_tensor_images_imagenet
 from src.tasks.ball_detection.data.dataset import BallDetectionDataset
 from src.tasks.ball_detection.data.types import BallDetectionBatch
 from src.tasks.ball_detection.input_adapter import to_model_input
@@ -394,18 +395,21 @@ def _build_eval_dataloaders(
     num_workers = int(data_cfg.get("num_workers", 4))
     pin_memory = bool(data_cfg.get("pin_memory", True))
     persistent_workers = num_workers > 0
+    eval_argumentation = BallDetectionArgumentation.from_eval_config(
+        dict(data_cfg.get("augmentation", {}) or {})
+    )
 
     val_dataset = BallDetectionDataset(
         data_dir=data_dir,
         split_file=str(split_cfg.get("val_file", "val.txt")),
         config=config,
-        argumentation=None,
+        argumentation=eval_argumentation,
     )
     test_dataset = BallDetectionDataset(
         data_dir=data_dir,
         split_file=str(split_cfg.get("test_file", "test.txt")),
         config=config,
-        argumentation=None,
+        argumentation=eval_argumentation,
     )
     eval_kwargs = {
         "batch_size": batch_size,
@@ -898,6 +902,8 @@ def _infer_visualization_predictions(
             )
             batch_inputs.append(window)
         inputs = torch.from_numpy(np.stack(batch_inputs)).to(device=device, dtype=torch.float32)
+        if _visualization_uses_imagenet_normalization(config):
+            inputs = normalize_tensor_images_imagenet(inputs)
         with _autocast_context(config, device=device):
             logits = model(_to_model_input(inputs, config)).squeeze(1)
             probs = torch.sigmoid(logits).detach().float().cpu().numpy()
@@ -934,6 +940,13 @@ def _infer_visualization_predictions(
             )
         )
     return predictions
+
+
+def _visualization_uses_imagenet_normalization(config: DictConfig) -> bool:
+    """Return whether visualization inference should mirror dataset normalization."""
+    augmentation_cfg = config.data.get("augmentation", {}) or {}
+    normalize_cfg = augmentation_cfg.get("normalize_imagenet", {}) or {}
+    return bool(normalize_cfg.get("enabled", False))
 
 
 def _write_visualization_video(

@@ -11,13 +11,12 @@ pin_memory: true
 sample_stride: 4
 
 image_size: [288, 512]
-heatmap_size: [144, 256]
-gaussian_size: 3
-gaussian_variance: 1.0
+heatmap_size: [288, 512]
+gaussian_variance: 15.0
 
 augmentation:
   camera_rotation:
-    enabled: false
+    enabled: true
     prob: 0.35
     max_center_angle_deg: 1.2
     max_angular_velocity_deg_per_frame: 0.2
@@ -25,6 +24,27 @@ augmentation:
   horizontal_flip:
     enabled: true
     prob: 0.5
+  affine:
+    enabled: true
+    prob: 0.35
+    rotation_deg_range: [-10.0, 10.0]
+    scale_range: [1.0, 1.0]
+    translate_x_ratio_range: [-0.1, 0.1]
+    translate_y_ratio_range: [-0.1, 0.1]
+    shear_x_deg_range: [-2.0, 2.0]
+    shear_y_deg_range: [-1.0, 1.0]
+    border_mode: reflect101
+  scale_and_crop:
+    enabled: true
+    prob: 0.35
+    scale_range: [1.0, 3.0]
+    border_mode: reflect101
+  ball_area_zero_mask:
+    enabled: true
+    prob: 0.35
+    mask_width_ratio_range: [0.04, 0.12]
+    mask_height_ratio_range: [0.04, 0.12]
+    num_frames_range: [1, 3]
   brightness_gain:
     enabled: true
     jitter: 0.1
@@ -38,6 +58,10 @@ augmentation:
     enabled: true
     std: 0.012
   gaussian_blur:
-    enabled: false
-    prob: 0.12
+    enabled: true
+    prob: 0.35
     kernel_size: 3
+  normalize_imagenet:
+    enabled: true
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]

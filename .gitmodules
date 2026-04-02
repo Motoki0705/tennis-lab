@@ -31,3 +31,6 @@
 [submodule "third_party/TrackNet"]
 	path = third_party/TrackNet
 	url = https://github.com/yastrebksv/TrackNet.git
+[submodule "third_party/DINO"]
+	path = third_party/DINO
+	url = https://github.com/IDEA-Research/DINO.git

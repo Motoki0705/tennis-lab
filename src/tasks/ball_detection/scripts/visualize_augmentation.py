@@ -24,7 +24,10 @@ import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
 
-from src.tasks.ball_detection.data.argumentation import BallDetectionArgumentation
+from src.tasks.ball_detection.data.argumentation import (
+    BallDetectionArgumentation,
+    denormalize_tensor_images_imagenet,
+)
 from src.tasks.ball_detection.data.dataset import BallDetectionDataset, ClipWindow
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -229,12 +232,24 @@ def _render_contact_sheet(
 
 def _tensor_sequence_to_frames(images: torch.Tensor) -> list[np.ndarray]:
     """Convert ``(T, 3, H, W)`` tensor images into RGB ``uint8`` frames."""
+    images_to_render = images
+    if _uses_imagenet_normalization(images):
+        images_to_render = denormalize_tensor_images_imagenet(images)
     frames: list[np.ndarray] = []
-    for image in images.cpu().numpy():
+    for image in images_to_render.cpu().numpy():
         frame = np.transpose(image, (1, 2, 0))
         frame = np.clip(frame * 255.0, 0.0, 255.0).astype(np.uint8)
         frames.append(frame)
     return frames
+
+
+def _uses_imagenet_normalization(images: torch.Tensor) -> bool:
+    """Heuristically detect normalized RGB tensors for preview rendering."""
+    if images.ndim != 4 or images.shape[1] != 3:
+        return False
+    min_value = float(images.min().item())
+    max_value = float(images.max().item())
+    return min_value < 0.0 or max_value > 1.0
 
 
 def _annotate_frames(

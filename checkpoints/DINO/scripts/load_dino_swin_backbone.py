@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Load the Swin backbone from a full DINO checkpoint.
 
-This script mirrors the Swin backbone path defined in `tmp_DINO` and targets
+This script mirrors the Swin backbone path defined in `third_party/DINO` and targets
 full DINO checkpoints whose model weights contain keys like
 `backbone.0.patch_embed.proj.weight`.
 """
@@ -18,24 +18,33 @@ from types import SimpleNamespace
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[3]
-TMP_DINO_ROOT = ROOT / "tmp_DINO"
+THIRD_PARTY_DINO_ROOT = ROOT / "third_party" / "DINO"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-if str(TMP_DINO_ROOT) not in sys.path:
-    sys.path.insert(0, str(TMP_DINO_ROOT))
+if str(THIRD_PARTY_DINO_ROOT) not in sys.path:
+    sys.path.insert(0, str(THIRD_PARTY_DINO_ROOT))
 
 import torch
 from torch import nn
 
 
 def load_swin_builder():
-    """Load tmp_DINO's Swin builder without importing the full DINO package."""
+    """Load third_party/DINO's Swin builder without importing the full DINO package."""
 
-    module_path = TMP_DINO_ROOT / "models" / "dino" / "swin_transformer.py"
-    spec = importlib.util.spec_from_file_location("tmp_dino_swin_transformer", module_path)
+    module_path = THIRD_PARTY_DINO_ROOT / "models" / "dino" / "swin_transformer.py"
+    if not module_path.exists():
+        raise FileNotFoundError(
+            f"Swin transformer builder not found at {module_path}. "
+            "Initialize third_party/DINO before using Swin backbones."
+        )
+    module_name = "third_party_dino_swin_transformer"
+    if module_name in sys.modules:
+        return sys.modules[module_name].build_swin_transformer
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
     if spec is None or spec.loader is None:
         raise ImportError(f"Unable to load module spec from {module_path}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module.build_swin_transformer
 
