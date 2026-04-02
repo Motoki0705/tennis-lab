@@ -15,6 +15,7 @@ import torch
 from torch import nn
 from tqdm.auto import tqdm
 
+from src.tasks.ball_detection.data.argumentation import normalize_tensor_images_imagenet
 from src.tasks.ball_detection.input_adapter import to_model_input
 
 if TYPE_CHECKING:
@@ -465,6 +466,8 @@ def _infer_chunk_predictions(
                 frames.append(frame.transpose(2, 0, 1))
             batch.append(np.stack(frames))
         inputs = torch.from_numpy(np.stack(batch)).to(device=device, dtype=torch.float32)
+        if _uses_imagenet_normalization(config):
+            inputs = normalize_tensor_images_imagenet(inputs)
         with torch.inference_mode():
             probs = torch.sigmoid(
                 model(_to_model_input(inputs, config))
@@ -644,6 +647,13 @@ def _batched(values: Sequence[int], batch_size: int) -> Iterator[list[int]]:
 def _to_model_input(images: torch.Tensor, config: DictConfig) -> torch.Tensor:
     """Convert cached RGB frames into the configured model input layout."""
     return to_model_input(images, config.get("model", {}) or {})
+
+
+def _uses_imagenet_normalization(config: DictConfig) -> bool:
+    """Return whether pseudo-label inference should mirror dataset normalization."""
+    augmentation_cfg = config.data.get("augmentation", {}) or {}
+    normalize_cfg = augmentation_cfg.get("normalize_imagenet", {}) or {}
+    return bool(normalize_cfg.get("enabled", False))
 
 
 __all__ = [

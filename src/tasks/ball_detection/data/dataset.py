@@ -86,15 +86,12 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         self.sample_stride = int(data_cfg.get("sample_stride", 1))
         self.image_size = self._parse_size(data_cfg.get("image_size", [288, 512]), name="data.image_size")
         self.heatmap_size = self._parse_size(data_cfg.get("heatmap_size", [144, 256]), name="data.heatmap_size")
-        self.gaussian_size = int(data_cfg.get("gaussian_size", 3))
         self.gaussian_variance = float(data_cfg.get("gaussian_variance", 1.0))
 
         if self.num_frames <= 0:
             raise ValueError("model.num_frames must be positive.")
         if self.sample_stride <= 0:
             raise ValueError("data.sample_stride must be positive.")
-        if self.gaussian_size < 0:
-            raise ValueError("data.gaussian_size must be non-negative.")
         if self.gaussian_variance <= 0:
             raise ValueError("data.gaussian_variance must be positive.")
 
@@ -336,29 +333,12 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         center_x: float,
         center_y: float,
     ) -> np.ndarray:
-        heatmap = np.zeros((height, width), dtype=np.float32)
-        cx_int = int(round(center_x))
-        cy_int = int(round(center_y))
-        if cx_int < 0 or cy_int < 0 or cx_int >= width or cy_int >= height:
-            return heatmap
+        x = np.arange(0, width, 1, float)
+        y = np.arange(0, height, 1, float)
+        y, x = np.meshgrid(y, x, indexing='ij')
+        sigma_sq2 = 2 * self.gaussian_variance
+        heatmap = np.exp(-((x - center_x)**2 + (y - center_y)**2) / sigma_sq2)
 
-        size = self.gaussian_size
-        yy, xx = np.mgrid[-size : size + 1, -size : size + 1]
-        kernel = np.exp(-(xx**2 + yy**2) / (2.0 * self.gaussian_variance)).astype(np.float32)
-        kernel /= max(float(kernel.max()), 1e-8)
-
-        y_start = max(0, cy_int - size)
-        y_end = min(height, cy_int + size + 1)
-        x_start = max(0, cx_int - size)
-        x_end = min(width, cx_int + size + 1)
-
-        kernel_y_start = size - (cy_int - y_start)
-        kernel_y_end = kernel_y_start + (y_end - y_start)
-        kernel_x_start = size - (cx_int - x_start)
-        kernel_x_end = kernel_x_start + (x_end - x_start)
-        heatmap[y_start:y_end, x_start:x_end] = kernel[
-            kernel_y_start:kernel_y_end, kernel_x_start:kernel_x_end
-        ]
         return heatmap
 
     @staticmethod
