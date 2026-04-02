@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -120,19 +121,32 @@ def _make_decoder_stage(
 
 
 class DINOPseudo3DBallDetector(nn.Module):
-    """Ball detector with a DINO ResNet backbone and pseudo-3D decoder."""
+    """Ball detector with a DINO backbone and pseudo-3D decoder."""
 
-    _FEATURE_CHANNELS = (256, 512, 1024, 2048)
+    _RESNET_BACKBONES = {"resnet50", "resnet101"}
+    _SWIN_BACKBONES = {
+        "swin_T_224_1k": (96, 192, 384, 768),
+        "swin_B_224_22k": (128, 256, 512, 1024),
+        "swin_B_384_22k": (128, 256, 512, 1024),
+        "swin_L_224_22k": (192, 384, 768, 1536),
+        "swin_L_384_22k": (192, 384, 768, 1536),
+    }
+    _DEFAULT_RESNET_CHECKPOINT = Path("/workspace/checkpoints/DINO/backbone_body_state.pth")
+    _DEFAULT_SWIN_CHECKPOINT = Path(
+        "/workspace/checkpoints/DINO/swin_backbone_state_checkpoint0027_5scale.pth"
+    )
 
     def __init__(
         self,
         *,
         in_channels: int = 3,
         num_classes: int = 1,
-        backbone_checkpoint_path: str | Path = "/workspace/checkpoints/DINO/backbone_body_state.pth",
+        backbone_checkpoint_path: str | Path | None = None,
         backbone_name: str = "resnet50",
         backbone_dilation: bool = False,
         return_interm_indices: tuple[int, ...] = (0, 1, 2, 3),
+        backbone_pretrain_img_size: int | None = None,
+        backbone_use_checkpoint: bool = False,
         backbone_strict: bool = True,
         freeze_backbone: bool = True,
         expand_ratio: float = 4.0,
@@ -152,15 +166,22 @@ class DINOPseudo3DBallDetector(nn.Module):
 
         self.in_channels = int(in_channels)
         self.num_classes = int(num_classes)
+        self.backbone_name = str(backbone_name)
         self.return_interm_indices = tuple(return_interm_indices)
         self.freeze_backbone = bool(freeze_backbone)
 
-        self.backbone, load_result = load_backbone_body_state(
-            checkpoint_path=Path(backbone_checkpoint_path),
-            backbone=backbone_name,
-            dilation=backbone_dilation,
+        resolved_checkpoint = self._resolve_checkpoint_path(
+            backbone_name=self.backbone_name,
+            backbone_checkpoint_path=backbone_checkpoint_path,
+        )
+        self.backbone, load_result = self._load_backbone(
+            checkpoint_path=resolved_checkpoint,
+            backbone_name=self.backbone_name,
+            backbone_dilation=backbone_dilation,
             return_interm_indices=list(self.return_interm_indices),
-            strict=backbone_strict,
+            backbone_pretrain_img_size=backbone_pretrain_img_size,
+            backbone_use_checkpoint=backbone_use_checkpoint,
+            backbone_strict=backbone_strict,
         )
         if backbone_strict and (
             load_result.missing_keys or load_result.unexpected_keys
@@ -174,7 +195,7 @@ class DINOPseudo3DBallDetector(nn.Module):
             for parameter in self.backbone.parameters():
                 parameter.requires_grad = False
 
-        c1, c2, c3, c4 = self._FEATURE_CHANNELS
+        c1, c2, c3, c4 = self._feature_channels_for_backbone(self.backbone_name)
         self.decode4 = _make_decoder_stage(
             in_channels=c4,
             mid_channels=c4,
@@ -209,20 +230,24 @@ class DINOPseudo3DBallDetector(nn.Module):
     def from_config(cls, config: DictConfig) -> "DINOPseudo3DBallDetector":
         """Create the model from a composed Hydra config."""
         model_cfg = config.get("model", {}) or {}
+        checkpoint_path = model_cfg.get("backbone_checkpoint_path")
         return cls(
             in_channels=resolve_model_in_channels(model_cfg),
             num_classes=int(model_cfg.get("num_classes", 1)),
-            backbone_checkpoint_path=str(
-                model_cfg.get(
-                    "backbone_checkpoint_path",
-                    "/workspace/checkpoints/DINO/backbone_body_state.pth",
-                )
+            backbone_checkpoint_path=(
+                None if checkpoint_path is None else str(checkpoint_path)
             ),
             backbone_name=str(model_cfg.get("backbone_name", "resnet50")),
             backbone_dilation=bool(model_cfg.get("backbone_dilation", False)),
             return_interm_indices=tuple(
                 int(index) for index in model_cfg.get("return_interm_indices", [0, 1, 2, 3])
             ),
+            backbone_pretrain_img_size=(
+                None
+                if model_cfg.get("backbone_pretrain_img_size") is None
+                else int(model_cfg.get("backbone_pretrain_img_size"))
+            ),
+            backbone_use_checkpoint=bool(model_cfg.get("backbone_use_checkpoint", False)),
             backbone_strict=bool(model_cfg.get("backbone_strict", True)),
             freeze_backbone=bool(model_cfg.get("freeze_backbone", True)),
             expand_ratio=float(model_cfg.get("decoder_expand_ratio", 4.0)),
@@ -282,6 +307,83 @@ class DINOPseudo3DBallDetector(nn.Module):
             mode="trilinear",
             align_corners=False,
         )
+
+    @classmethod
+    def _resolve_checkpoint_path(
+        cls,
+        *,
+        backbone_name: str,
+        backbone_checkpoint_path: str | Path | None,
+    ) -> Path:
+        if backbone_checkpoint_path is not None and str(backbone_checkpoint_path).strip():
+            return Path(backbone_checkpoint_path)
+        if backbone_name in cls._RESNET_BACKBONES:
+            return cls._DEFAULT_RESNET_CHECKPOINT
+        if backbone_name in cls._SWIN_BACKBONES:
+            return cls._DEFAULT_SWIN_CHECKPOINT
+        raise ValueError(f"Unsupported DINO backbone: {backbone_name}")
+
+    @classmethod
+    def _feature_channels_for_backbone(cls, backbone_name: str) -> tuple[int, int, int, int]:
+        if backbone_name in cls._RESNET_BACKBONES:
+            return (256, 512, 1024, 2048)
+        if backbone_name in cls._SWIN_BACKBONES:
+            return cls._SWIN_BACKBONES[backbone_name]
+        raise ValueError(f"Unsupported DINO backbone: {backbone_name}")
+
+    @classmethod
+    def _load_backbone(
+        cls,
+        *,
+        checkpoint_path: Path,
+        backbone_name: str,
+        backbone_dilation: bool,
+        return_interm_indices: list[int],
+        backbone_pretrain_img_size: int | None,
+        backbone_use_checkpoint: bool,
+        backbone_strict: bool,
+    ) -> tuple[nn.Module, nn.modules.module._IncompatibleKeys]:
+        if backbone_name in cls._RESNET_BACKBONES:
+            return load_backbone_body_state(
+                checkpoint_path=checkpoint_path,
+                backbone=backbone_name,
+                dilation=backbone_dilation,
+                return_interm_indices=return_interm_indices,
+                strict=backbone_strict,
+            )
+        if backbone_name not in cls._SWIN_BACKBONES:
+            raise ValueError(f"Unsupported DINO backbone: {backbone_name}")
+
+        load_swin_backbone_state = cls._load_swin_backbone_loader()
+        resolved_pretrain_img_size = (
+            int(backbone_pretrain_img_size)
+            if backbone_pretrain_img_size is not None
+            else cls._infer_swin_pretrain_img_size(backbone_name)
+        )
+        return load_swin_backbone_state(
+            checkpoint_path,
+            backbone=backbone_name,
+            pretrain_img_size=resolved_pretrain_img_size,
+            dilation=backbone_dilation,
+            return_interm_indices=return_interm_indices,
+            use_checkpoint=backbone_use_checkpoint,
+            strict=backbone_strict,
+        )
+
+    @staticmethod
+    def _infer_swin_pretrain_img_size(backbone_name: str) -> int:
+        return int(backbone_name.split("_")[-2])
+
+    @staticmethod
+    def _load_swin_backbone_loader():
+        try:
+            module = importlib.import_module("checkpoints.DINO.scripts.load_dino_swin_backbone")
+        except Exception as exc:
+            raise RuntimeError(
+                "Failed to import Swin DINO backbone loader. "
+                "Check that the DINO Swin builder sources are available in this workspace."
+            ) from exc
+        return module.load_swin_backbone_state
 
 
 __all__ = [
