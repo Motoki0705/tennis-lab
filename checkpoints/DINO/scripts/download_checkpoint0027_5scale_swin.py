@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import sys
 from pathlib import Path
 
@@ -12,7 +13,13 @@ import gdown
 
 
 FILE_ID = "14h4UCi-HsDL01ZQRbpV47dzMST_py_vM"
-DEFAULT_OUTPUT = Path("/workspace/checkpoints/DINO/checkpoint0027_5scale_swin.pth")
+DEFAULT_WEIGHTS_ROOT = Path(
+    os.environ.get(
+        "MODEL_WEIGHTS_ROOT",
+        "/mnt/d/weights" if Path("/mnt/d/weights").exists() else "D:/weights",
+    )
+)
+DEFAULT_OUTPUT = DEFAULT_WEIGHTS_ROOT / "DINO" / "checkpoint0027_5scale_swin.pth"
 EXPECTED_SHA256: str | None = "17ddce1592816a0c63a2edc94d4a0877ffeb086f397a6657e151c703a4c850b5"
 
 

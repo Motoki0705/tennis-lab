@@ -9,6 +9,7 @@ prints the output container type plus each feature map's key and shape.
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 import torch
@@ -16,12 +17,21 @@ import torch
 from load_dino_backbone import load_backbone_body_state
 
 
+DEFAULT_WEIGHTS_ROOT = Path(
+    os.environ.get(
+        "MODEL_WEIGHTS_ROOT",
+        "/mnt/d/weights" if Path("/mnt/d/weights").exists() else "D:/weights",
+    )
+)
+DINO_WEIGHTS_DIR = DEFAULT_WEIGHTS_ROOT / "DINO"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=Path("/workspace/checkpoints/DINO/backbone_body_state.pth"),
+        default=DINO_WEIGHTS_DIR / "backbone_body_state.pth",
         help="Path to a trimmed backbone-body checkpoint.",
     )
     parser.add_argument(
