@@ -20,8 +20,8 @@ refine_speed_scale_max: 1.4
 refine_max_azimuth_adjust_deg: 15.0
 refine_max_frames: 1200
 
-# Net clearance disabled (single-shot sampling)
-net_clearance_enabled: false
+# Net clearance enabled by default
+net_clearance_enabled: true
 net_clearance_min: 0.1
 net_clearance_max_attempts: 12
 net_clearance_max_frames: 600
