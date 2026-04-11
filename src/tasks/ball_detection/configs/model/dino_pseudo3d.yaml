@@ -6,15 +6,15 @@ num_frames: 8
 input_layout: bcthw
 # ResNet example:
 # backbone_name: resnet50
-# backbone_checkpoint_path: /workspace/checkpoints/DINO/backbone_body_state.pth
+# backbone_checkpoint_path: /mnt/d/weights/DINO/backbone_body_state.pth
 #
 # Swin example:
 # backbone_name: swin_L_384_22k
-# backbone_checkpoint_path: /workspace/checkpoints/DINO/swin_backbone_state_checkpoint0027_5scale.pth
+# backbone_checkpoint_path: /mnt/d/weights/DINO/swin_backbone_state_checkpoint0027_5scale.pth
 # Swin-only options:
 # backbone_pretrain_img_size: null  # auto-resolve from backbone_name, e.g. 384
 # backbone_use_checkpoint: false    # enable only when you need lower GPU memory
-backbone_checkpoint_path: /workspace/checkpoints/DINO/backbone_body_state.pth
+backbone_checkpoint_path: /mnt/d/weights/DINO/backbone_body_state.pth
 backbone_name: resnet50
 backbone_dilation: false
 return_interm_indices: [0, 1, 2, 3]

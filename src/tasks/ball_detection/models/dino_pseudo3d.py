@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 
 from checkpoints.DINO.scripts.load_dino_backbone import load_backbone_body_state
-from src.tasks.ball_detection.input_adapter import resolve_model_in_channels
+from src.tasks.ball_detection.data.utils.input_adapter import resolve_model_in_channels
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
