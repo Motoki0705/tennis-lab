@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -19,12 +20,21 @@ from checkpoints.DINO.scripts.load_dino_swin_backbone import (
 )
 
 
+DEFAULT_WEIGHTS_ROOT = Path(
+    os.environ.get(
+        "MODEL_WEIGHTS_ROOT",
+        "/mnt/d/weights" if Path("/mnt/d/weights").exists() else "D:/weights",
+    )
+)
+DINO_WEIGHTS_DIR = DEFAULT_WEIGHTS_ROOT / "DINO"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=Path("/workspace/checkpoints/DINO/swin_backbone_state_checkpoint0027_5scale.pth"),
+        default=DINO_WEIGHTS_DIR / "swin_backbone_state_checkpoint0027_5scale.pth",
         help="Path to a trimmed Swin backbone checkpoint.",
     )
     parser.add_argument(
