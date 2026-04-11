@@ -18,12 +18,22 @@ from __future__ import annotations
 
 import argparse
 from collections import OrderedDict
+import os
 from pathlib import Path
 
 import torch
 import torchvision
 from torch import nn
 from torchvision.models._utils import IntermediateLayerGetter
+
+
+DEFAULT_WEIGHTS_ROOT = Path(
+    os.environ.get(
+        "MODEL_WEIGHTS_ROOT",
+        "/mnt/d/weights" if Path("/mnt/d/weights").exists() else "D:/weights",
+    )
+)
+DINO_WEIGHTS_DIR = DEFAULT_WEIGHTS_ROOT / "DINO"
 
 
 class FrozenBatchNorm2d(nn.Module):
@@ -149,7 +159,7 @@ def load_backbone_body_state(
     """Load a trimmed DINO backbone-body state dict into ``DINOBackbone``.
 
     This function is intended for checkpoints like
-    ``/workspace/checkpoints/DINO/backbone_body_state.pth``, where the saved
+    ``D:/weights/DINO/backbone_body_state.pth``, where the saved
     keys correspond directly to the ResNet body, for example
     ``conv1.weight`` and ``layer4.2.conv3.weight``. The function constructs a
     ``DINOBackbone`` instance with the requested architecture settings, then
@@ -192,7 +202,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=Path("/workspace/checkpoints/DINO/checkpoint0011_5scale.pth"),
+        default=DINO_WEIGHTS_DIR / "checkpoint0011_5scale.pth",
         help="Path to the full DINO checkpoint.",
     )
     parser.add_argument(

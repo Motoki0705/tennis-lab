@@ -20,6 +20,7 @@ Outputs:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -51,6 +52,13 @@ IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 RESNET_BACKBONE_CHOICES = ["resnet50", "resnet101"]
 BACKBONE_CHOICES = RESNET_BACKBONE_CHOICES + SWIN_BACKBONE_CHOICES
+DEFAULT_WEIGHTS_ROOT = Path(
+    os.environ.get(
+        "MODEL_WEIGHTS_ROOT",
+        "/mnt/d/weights" if Path("/mnt/d/weights").exists() else "D:/weights",
+    )
+)
+DINO_WEIGHTS_DIR = DEFAULT_WEIGHTS_ROOT / "DINO"
 
 
 def parse_args() -> argparse.Namespace:
@@ -119,12 +127,12 @@ def parse_args() -> argparse.Namespace:
 
 def default_checkpoint_path(backbone: str) -> Path:
     if backbone in RESNET_BACKBONE_CHOICES:
-        return Path("/workspace/checkpoints/DINO/backbone_body_state.pth")
-    return Path("/workspace/checkpoints/DINO/checkpoint0027_5scale_swin.pth")
+        return DINO_WEIGHTS_DIR / "backbone_body_state.pth"
+    return DINO_WEIGHTS_DIR / "checkpoint0027_5scale_swin.pth"
 
 
 def default_output_dir(clip_dir: Path, backbone: str) -> Path:
-    return Path("/workspace/checkpoints/DINO/analyze/output") / f"{clip_dir.name}_{backbone}"
+    return DINO_WEIGHTS_DIR / "analyze" / "output" / f"{clip_dir.name}_{backbone}"
 
 
 def load_model_for_consistency(
