@@ -1,6 +1,5 @@
-"""Inference interfaces for ball detection.
+"""Inference interfaces for ball detection."""
 
-Predictor and post-processing are added in Phase 6.
-"""
+from src.tasks.ball_detection.inference.predictor import BallDetectionPredictor
 
-__all__: list[str] = []
+__all__ = ["BallDetectionPredictor"]

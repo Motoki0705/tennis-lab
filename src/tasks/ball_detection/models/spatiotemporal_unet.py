@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import torch
 import torch.nn as nn
 
-from src.tasks.ball_detection.input_adapter import resolve_model_in_channels
+from src.tasks.ball_detection.data.utils.input_adapter import resolve_model_in_channels
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
