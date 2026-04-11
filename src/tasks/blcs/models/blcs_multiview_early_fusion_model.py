@@ -54,6 +54,7 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         max_seq_len: int = 120,
         max_num_cameras: int = 8,
         invisible_init_std: float = 0.02,
+        num_court_tokens: int = NUM_COURT_KP,
     ) -> None:
         """Initialize multi-view early-fusion BLCS model."""
         super().__init__()
@@ -62,6 +63,7 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         self.max_num_cameras = int(max_num_cameras)
         self.predict_velocity = bool(predict_velocity)
         self.causal = bool(causal)
+        self.num_court_tokens = int(num_court_tokens)
 
         if hidden_dim % num_heads != 0:
             raise ValueError(
@@ -89,7 +91,7 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
                 f"moe_config.dim={moe_config.dim} must match hidden_dim={hidden_dim}"
             )
 
-        self.fusion_input_dim = int(2 + NUM_COURT_KP * 2 + NUM_COURT_KP)
+        self.fusion_input_dim = int(2 + self.num_court_tokens * 2 + self.num_court_tokens)
         self.invisible_token = InvisibleTokenEmbedding(
             dim=hidden_dim,
             init_std=float(invisible_init_std),
@@ -193,28 +195,23 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             max_num_cameras=int(model_cfg.get("max_num_cameras", model_cfg.get("max_views", 8))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
+            num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )
 
-    @staticmethod
-    def _flatten_court_kp_multiview(court_kp: Tensor, seq_len: int) -> Tensor:
-        """Return court keypoints as (B, N, T, NUM_COURT_KP*2)."""
+    def _flatten_court_kp_multiview(self, court_kp: Tensor, seq_len: int) -> Tensor:
+        """Return court keypoints as (B, N, T, K*2)."""
         if court_kp.dim() == 4:
             court_kp = court_kp.unsqueeze(2).expand(-1, -1, seq_len, -1, -1)
         if court_kp.dim() != 5:
             raise ValueError(
-                "court_kp must have shape (B, N, T, 20, 2) or (B, N, 20, 2), "
+                "court_kp must have shape (B, N, T, K, 2) or (B, N, K, 2), "
                 f"got {tuple(court_kp.shape)}"
             )
-        if court_kp.shape[-2:] != (NUM_COURT_KP, 2):
-            raise ValueError(
-                f"court_kp trailing shape must be ({NUM_COURT_KP}, 2), "
-                f"got {tuple(court_kp.shape[-2:])}"
-            )
-        bsz, n_cam, seq_len_in, _, _ = court_kp.shape
-        return court_kp.reshape(bsz, n_cam, seq_len_in, NUM_COURT_KP * 2)
+        bsz, n_cam, seq_len_in, n_kp, _ = court_kp.shape
+        return court_kp.reshape(bsz, n_cam, seq_len_in, n_kp * 2)
 
-    @staticmethod
     def _prepare_court_vis_multiview(
+        self,
         court_vis: Tensor | None,
         batch_size: int,
         n_cams: int,
@@ -222,23 +219,19 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         device: torch.device,
         dtype: torch.dtype,
     ) -> Tensor:
-        """Return court visibility as (B, N, T, NUM_COURT_KP)."""
+        """Return court visibility as (B, N, T, K)."""
+        n_kp = self.num_court_tokens
         if court_vis is None:
             return torch.ones(
                 batch_size,
                 n_cams,
                 seq_len,
-                NUM_COURT_KP,
+                n_kp,
                 device=device,
                 dtype=dtype,
             )
         if court_vis.dim() == 3:
             court_vis = court_vis.unsqueeze(2).expand(-1, -1, seq_len, -1)
-        if court_vis.shape != (batch_size, n_cams, seq_len, NUM_COURT_KP):
-            raise ValueError(
-                f"court_vis must have shape {(batch_size, n_cams, seq_len, NUM_COURT_KP)}, "
-                f"got {tuple(court_vis.shape)}"
-            )
         return court_vis.to(device=device, dtype=dtype)
 
     @staticmethod

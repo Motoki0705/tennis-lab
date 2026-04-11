@@ -61,6 +61,9 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
         self.num_views_range = self._parse_int_range(data_cfg, "num_views_range")
         self.camera_mode = self._parse_camera_mode(data_cfg)
 
+        # Number of court keypoints to use (first N from the canonical order)
+        self.num_court_kp = int(data_cfg.get("num_court_kp", 20))
+
         # Augmentation parameters
         aug_cfg = data_cfg.get("augmentation", {})
         self.uv_noise_std = float(aug_cfg.get("uv_noise_std", 0.005))
@@ -126,6 +129,8 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
             ball_vis = torch.from_numpy(scene.get_camera_array(cam_idx, "ball_visible", window=window)).float()
             court_kp = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_uv")).float()
             court_vis = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_visible")).float()
+            court_kp = court_kp[: self.num_court_kp]
+            court_vis = court_vis[: self.num_court_kp]
 
             court_kp_expanded = court_kp.unsqueeze(0).expand(window.seq_len, -1, -1)
             court_vis_expanded = court_vis.unsqueeze(0).expand(window.seq_len, -1)
@@ -251,6 +256,7 @@ def collate_multiview_trajectories(
         court_vis = sample["court_vis"]
         position_3d = sample["position_3d"]
         velocity_3d = sample["velocity_3d"]
+        n_kp = court_kp.shape[-2]
 
         cam_R = sample["camera_R"]
         cam_C = sample["camera_C"]
@@ -264,8 +270,8 @@ def collate_multiview_trajectories(
             ball_uv = torch.cat([ball_uv, torch.zeros(n_views, pad_seq, 2)], dim=1)
             ball_vis = torch.cat([ball_vis, torch.zeros(n_views, pad_seq)], dim=1)
             ball_mask = torch.cat([ball_mask, torch.zeros(n_views, pad_seq)], dim=1)
-            court_kp = torch.cat([court_kp, torch.zeros(n_views, pad_seq, 20, 2)], dim=1)
-            court_vis = torch.cat([court_vis, torch.zeros(n_views, pad_seq, 20)], dim=1)
+            court_kp = torch.cat([court_kp, torch.zeros(n_views, pad_seq, n_kp, 2)], dim=1)
+            court_vis = torch.cat([court_vis, torch.zeros(n_views, pad_seq, n_kp)], dim=1)
             position_3d = torch.cat([position_3d, torch.zeros(pad_seq, 3)], dim=0)
             velocity_3d = torch.cat([velocity_3d, torch.zeros(pad_seq, 3)], dim=0)
 
@@ -273,8 +279,8 @@ def collate_multiview_trajectories(
             ball_uv = torch.cat([ball_uv, torch.zeros(pad_views, max_seq_len, 2)], dim=0)
             ball_vis = torch.cat([ball_vis, torch.zeros(pad_views, max_seq_len)], dim=0)
             ball_mask = torch.cat([ball_mask, torch.zeros(pad_views, max_seq_len)], dim=0)
-            court_kp = torch.cat([court_kp, torch.zeros(pad_views, max_seq_len, 20, 2)], dim=0)
-            court_vis = torch.cat([court_vis, torch.zeros(pad_views, max_seq_len, 20)], dim=0)
+            court_kp = torch.cat([court_kp, torch.zeros(pad_views, max_seq_len, n_kp, 2)], dim=0)
+            court_vis = torch.cat([court_vis, torch.zeros(pad_views, max_seq_len, n_kp)], dim=0)
             # Pad camera parameters with zeros for extra views
             cam_R = torch.cat([cam_R, torch.zeros(pad_views, 3, 3)], dim=0)
             cam_C = torch.cat([cam_C, torch.zeros(pad_views, 3)], dim=0)

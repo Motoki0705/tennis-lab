@@ -91,10 +91,10 @@ class UVEventPredictor(BasePredictor):
 
         Args:
             ball_uv: Ball UV trajectory. Shape (B, T, 2) or (T, 2).
-            court_kp: Court keypoints. Shape (B, 20, 2) or (20, 2). Optional for nocourt model.
+            court_kp: Court keypoints. Shape (B, K, 2) or (K, 2). Optional for nocourt model.
             ball_vis: Ball visibility flags. Shape (B, T) or (T,).
             ball_mask: Ball padding mask. Shape (B, T) or (T,).
-            court_vis: Court visibility mask. Shape (B, 20) or (20,).
+            court_vis: Court visibility mask. Shape (B, K) or (K,).
             seq_len: Optional sequence lengths. Shape (B,) or scalar.
             threshold: Minimum probability for peak detection.
             min_distance: Minimum distance between peaks (frames).
@@ -176,13 +176,21 @@ class UVEventPredictor(BasePredictor):
 
 if __name__ == "__main__":
     torch.manual_seed(0)
-    model = UVEventModel(hidden_dim=32, num_layers=2, num_heads=4, max_seq_len=16, num_events=2)
+    num_court_tokens = 12
+    model = UVEventModel(
+        hidden_dim=32,
+        num_layers=2,
+        num_heads=4,
+        max_seq_len=16,
+        num_events=2,
+        num_court_tokens=num_court_tokens,
+    )
     predictor = UVEventPredictor(model=model, device=torch.device("cpu"), event_names=["shot", "bounce"])
     ball_uv = torch.rand(1, 16, 2)
-    court_kp = torch.rand(1, 20, 2)
+    court_kp = torch.rand(1, num_court_tokens, 2)
     ball_vis = torch.ones(1, 16)
     ball_mask = torch.ones(1, 16)
-    court_vis = torch.ones(1, 20)
+    court_vis = torch.ones(1, num_court_tokens)
     seq_len = torch.tensor([16])
     out = predictor.predict(
         ball_uv,

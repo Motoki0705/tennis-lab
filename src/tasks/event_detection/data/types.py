@@ -12,8 +12,8 @@ class EventUVSample(TypedDict):
 
     ball_uv: torch.Tensor  # (T, 2)
     ball_vis: torch.Tensor  # (T,)
-    court_kp: torch.Tensor  # (20, 2)
-    court_vis: torch.Tensor  # (20,)
+    court_kp: torch.Tensor  # (K, 2)
+    court_vis: torch.Tensor  # (K,)
     targets: torch.Tensor  # (T, E)
     seq_len: torch.Tensor  # scalar (int)
 
@@ -32,8 +32,8 @@ class EventUVBatch(TypedDict):
     ball_uv: torch.Tensor  # (B, T, 2)
     ball_vis: torch.Tensor  # (B, T)
     ball_mask: torch.Tensor  # (B, T)
-    court_kp: torch.Tensor  # (B, 20, 2)
-    court_vis: torch.Tensor  # (B, 20)
+    court_kp: torch.Tensor  # (B, K, 2)
+    court_vis: torch.Tensor  # (B, K)
     targets: torch.Tensor  # (B, T, E)
     seq_len: torch.Tensor  # (B,)
 
