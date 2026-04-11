@@ -1,0 +1,23 @@
+paths:
+  smplh_model_path: data/smplx/smplh
+simulation:
+  num_scenes: 100
+  num_cameras: 5
+  human_visibility_threshold: 0.8
+  court_visibility_threshold: 15
+camera:
+  z_min: 3.0
+  z_max: 5.0
+  hfov_deg: 60.0
+  image_size:
+  - 1280
+  - 720
+athlete_pose:
+  data_dir: /home/kamimura/projects/tennis-lab/data/AthletePose3D/pose_3d_v3
+  split: train
+  scale_factor: 5.3
+  fps: 30
+run:
+  output_dir: /home/kamimura/projects/tennis-lab/data/plcs_athlete_pose
+  seed: 42
+  device: cuda
