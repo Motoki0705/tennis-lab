@@ -1,15 +1,13 @@
 """Training utilities for ball detection."""
 
+from src.tasks.ball_detection.training.lightning_module import BallDetectionLightningModule
 from src.tasks.ball_detection.training.losses import BallDetectionFocalLoss
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
-from src.tasks.ball_detection.training.pseudo_labeling import (
-    generate_phase_pseudo_labels,
-    select_pseudo_windows,
-)
+from src.tasks.ball_detection.training.runner import BallDetectionTrainingRunner
 
 __all__ = [
     "BallDetectionFocalLoss",
+    "BallDetectionLightningModule",
     "BallDetectionMetrics",
-    "generate_phase_pseudo_labels",
-    "select_pseudo_windows",
+    "BallDetectionTrainingRunner",
 ]
