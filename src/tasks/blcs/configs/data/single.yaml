@@ -1,8 +1,8 @@
 # Scene data directory (matches dataset generation default)
 scene_dir: "data/blcs"
 
-# Number of court keypoints to use (first N from canonical order; default: 20)
-# num_court_kp: 20
+# Number of court keypoints to use (first N from canonical order)
+num_court_kp: 20
 
 # DataLoader settings
 batch_size: 32
