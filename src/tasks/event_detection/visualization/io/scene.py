@@ -167,6 +167,15 @@ def _label_cfg_from_hydra(cfg: DictConfig) -> EventLabelConfig:
     )
 
 
+def _resolve_num_court_kp(cfg: DictConfig) -> int:
+    """Read and validate the configured court keypoint count."""
+    data_cfg = cfg.get("data", {}) or {}
+    num_court_kp = int(data_cfg.get("num_court_kp", 20))
+    if not 1 <= num_court_kp <= 20:
+        raise ValueError(f"data.num_court_kp must be in [1, 20], got {num_court_kp}.")
+    return num_court_kp
+
+
 def _load_uv_arrays(
     payload: dict[str, Any], camera_idx: int
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -212,6 +221,9 @@ def load_uv_inputs(cfg: RuntimeConfig) -> UVEventInputs:
     num_cameras = int(payload.get("num_cameras", 1))
     cam_idx = select_camera(cfg.camera, num_cameras)
     ball_uv_full, ball_vis_full, court_kp, court_vis = _load_uv_arrays(payload, cam_idx)
+    num_court_kp = _resolve_num_court_kp(cfg.hydra_cfg)
+    court_kp = court_kp[:num_court_kp]
+    court_vis = court_vis[:num_court_kp]
 
     t_full = int(ball_uv_full.shape[0])
     num_frames_meta = int(meta.get("num_frames", t_full))

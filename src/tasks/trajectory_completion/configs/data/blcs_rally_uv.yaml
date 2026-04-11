@@ -1,6 +1,9 @@
 # BLCS rally scene dataset (npz) used for UV trajectory completion training.
 
 scene_dir: data/blcs
+
+# Number of court keypoints to use (first N from canonical order)
+num_court_kp: 20
 split:
   train_file: train.txt
   val_file: val.txt

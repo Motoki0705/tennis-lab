@@ -240,7 +240,7 @@ class BLCSQueryModel(nn.Module):
             num_query2ball_layers=int(model_cfg.get("num_query2ball_layers", 2)),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
-            num_court_tokens=int(model_cfg.get("num_court_tokens", NUM_COURT_KP)),
+            num_court_tokens=int(model_cfg.get("num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
         )

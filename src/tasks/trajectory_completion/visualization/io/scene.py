@@ -19,6 +19,15 @@ from src.tasks.trajectory_completion.visualization.types import RuntimeConfig, T
 TMP_LOG_PATH = Path("data/tmp/trajectory_completion_visualize.log")
 
 
+def _resolve_num_court_kp(cfg: DictConfig) -> int:
+    """Read and validate the configured court keypoint count."""
+    data_cfg = cfg.get("data", {}) or {}
+    num_court_kp = int(data_cfg.get("num_court_kp", 20))
+    if not 1 <= num_court_kp <= 20:
+        raise ValueError(f"data.num_court_kp must be in [1, 20], got {num_court_kp}.")
+    return num_court_kp
+
+
 def resolve_device(device: str) -> str:
     """Resolve auto device setting."""
     if device == "auto":
@@ -152,6 +161,9 @@ def load_trajectory_inputs(cfg: RuntimeConfig) -> TrajectoryInputs:
     cam_idx = _select_camera(cfg.camera, num_cameras)
 
     ball_uv_full, ball_vis_full, court_kp, court_vis = _load_uv_from_scene(payload, cam_idx)
+    num_court_kp = _resolve_num_court_kp(cfg.hydra_cfg)
+    court_kp = court_kp[:num_court_kp]
+    court_vis = court_vis[:num_court_kp]
 
     num_frames_meta = int(meta.get("num_frames", int(ball_uv_full.shape[0])))
     seq_len = min(int(ball_uv_full.shape[0]), max(0, num_frames_meta))

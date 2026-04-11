@@ -81,6 +81,7 @@ class BLCSModel(nn.Module):
         predict_velocity: bool = False,
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
+        num_court_tokens: int = NUM_COURT_KP,
     ) -> None:
         """Initialize the BLCS model.
 
@@ -105,7 +106,8 @@ class BLCSModel(nn.Module):
         self.max_seq_len = max_seq_len
         self.predict_velocity = predict_velocity
         self.causal = causal
-        self.max_tokens = int(NUM_COURT_KP + self.max_seq_len)
+        self.num_court_tokens = int(num_court_tokens)
+        self.max_tokens = int(self.num_court_tokens + self.max_seq_len)
 
         if hidden_dim % num_heads != 0:
             raise ValueError(f"hidden_dim={hidden_dim} must be divisible by num_heads={num_heads}")
@@ -233,6 +235,7 @@ class BLCSModel(nn.Module):
                 "max_seq_len", data_cfg.get("max_seq_len", 120)
             ),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
+            num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )
 
     def forward(
@@ -258,13 +261,14 @@ class BLCSModel(nn.Module):
         B, T, _ = ball_uv.shape
 
         # Tokenize court and ball
-        court_tok = self.court_embed(court_kp, court_vis)  # (B, 20, D)
+        court_tok = self.court_embed(court_kp, court_vis)  # (B, K, D)
         ball_tok = self.ball_embed(ball_uv, ball_vis)  # (B, T, D)
 
         # Add type embeddings
+        K = court_tok.shape[1]
         court_type = self.type_embed(
-            torch.zeros(NUM_COURT_KP, device=ball_uv.device, dtype=torch.long)
-        )[None, :, :]  # (1, 20, D)
+            torch.zeros(K, device=ball_uv.device, dtype=torch.long)
+        )[None, :, :]  # (1, K, D)
         ball_type = self.type_embed(
             torch.ones(T, device=ball_uv.device, dtype=torch.long)
         )[None, :, :]  # (1, T, D)
@@ -284,7 +288,7 @@ class BLCSModel(nn.Module):
             freqs_cis = freqs_cis.to(x.device)
         attn_mask: Tensor | None = None
         if ball_mask is not None:
-            court_valid = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
+            court_valid = torch.ones(B, K, device=x.device, dtype=torch.bool)
             ball_valid = ball_mask > 0
             key_padding_mask = torch.cat([court_valid, ball_valid], dim=1)
             attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
@@ -304,7 +308,7 @@ class BLCSModel(nn.Module):
             x = self.final_norm(x)
         else:
             x, _ = self.final_norm(x, residual)
-        ball_out = x[:, NUM_COURT_KP:, :]  # (B, T, D)
+        ball_out = x[:, K:, :]  # (B, T, D)
 
         out: dict[str, Tensor] = {"position": self.position_head(ball_out)}  # (B, T, 3)
 

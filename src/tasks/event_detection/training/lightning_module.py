@@ -154,8 +154,10 @@ class EventDetectionLightningModule(BaseLightningModule):
 
 if __name__ == "__main__":
     torch.manual_seed(0)
+    num_court_kp = 12
     cfg = {
         "model": {"name": "uv_transformer", "hidden_dim": 32, "num_layers": 2, "num_heads": 4, "max_seq_len": 16, "num_events": 2},
+        "data": {"num_court_kp": num_court_kp},
         "training": {"pos_weight": [1.0, 1.0]},
     }
     module = EventDetectionLightningModule(cfg)  # type: ignore[arg-type]
@@ -163,8 +165,8 @@ if __name__ == "__main__":
         "ball_uv": torch.rand(2, 16, 2),
         "ball_vis": torch.ones(2, 16),
         "ball_mask": torch.ones(2, 16),
-        "court_kp": torch.rand(2, 20, 2),
-        "court_vis": torch.ones(2, 20),
+        "court_kp": torch.rand(2, num_court_kp, 2),
+        "court_vis": torch.ones(2, num_court_kp),
         "targets": torch.zeros(2, 16, 2),
         "seq_len": torch.tensor([16, 8]),
     }
