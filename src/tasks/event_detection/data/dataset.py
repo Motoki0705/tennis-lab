@@ -20,6 +20,15 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
+def _validate_num_court_kp(num_court_kp: int) -> int:
+    """Validate configured court keypoint count."""
+    if not 1 <= int(num_court_kp) <= 20:
+        raise ValueError(
+            f"data.num_court_kp must be in [1, 20], got {int(num_court_kp)}."
+        )
+    return int(num_court_kp)
+
+
 def _gaussian_soft_labels(
     length: int,
     event_indices: list[int],
@@ -80,6 +89,8 @@ class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
             shot_time_key=str(label_cfg.get("shot_time_key", "t_start")),
             bounce_time_key=str(label_cfg.get("bounce_time_key", "t_bounce1")),
         )
+        # Number of court keypoints to use (first N from the canonical order)
+        self.num_court_kp = _validate_num_court_kp(data_cfg.get("num_court_kp", 20))
 
     def _make_targets(self, meta: dict, T: int, device: torch.device) -> Tensor:
         shot_times = extract_event_indices(meta, self.label_cfg.shot_time_key)
@@ -126,6 +137,8 @@ class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
             ball_vis = torch.from_numpy(scene.get_camera_array(cam_idx, "ball_visible", window=window)).float()
             court_kp = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_uv")).float()
             court_vis = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_visible")).float()
+            court_kp = court_kp[: self.num_court_kp]
+            court_vis = court_vis[: self.num_court_kp]
             targets = self._make_targets(meta=meta, T=T_full, device=device)
             targets = targets[window.sl]
             seq_len = torch.tensor(window.seq_len, dtype=torch.long)
@@ -164,11 +177,18 @@ if __name__ == "__main__":
             meta=json.dumps(meta),
         )
         split_path.write_text("scene_000.npz\n")
-        cfg = {"data": {"seq_len_range": [T, T], "cache_max_scenes": 0}}
+        num_court_kp = 12
+        cfg = {
+            "data": {
+                "seq_len_range": [T, T],
+                "cache_max_scenes": 0,
+                "num_court_kp": num_court_kp,
+            }
+        }
         blcs_uv = BLCSRallyEventDataset(scene_dir=scene_dir, split_file="train.txt", input_type="uv", config=cfg)
         sample_uv = blcs_uv[0]
         assert sample_uv["ball_uv"].shape == (T, 2)
-        assert sample_uv["court_kp"].shape == (20, 2)
+        assert sample_uv["court_kp"].shape == (num_court_kp, 2)
 
         blcs_3d = BLCSRallyEventDataset(scene_dir=scene_dir, split_file="train.txt", input_type="3d", config=cfg)
         sample_3d = blcs_3d[0]

@@ -73,10 +73,10 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
 
         Args:
             ball_uv: Corrupted inputs. Shape (B, T, 2) or (T, 2).
-            court_kp: Court keypoints. Shape (B, 20, 2) or (20, 2). Optional for nocourt model.
+            court_kp: Court keypoints. Shape (B, K, 2) or (K, 2). Optional for nocourt model.
             ball_vis: Observed mask (1=observed). Shape (B, T) or (T,).
             ball_mask: Optional padding mask. Shape (B, T) or (T,).
-            court_vis: Court visibility mask. Shape (B, 20) or (20,).
+            court_vis: Court visibility mask. Shape (B, K) or (K,).
             merge_observed: If True and ball_vis is provided, keep observed frames from input.
             in_frame_threshold: Threshold for classifying in-frame probability.
             cut_out_of_frame: If True, set out-of-frame predictions to NaN.
@@ -172,19 +172,21 @@ class UVTrajectoryCompletionPredictor(BasePredictor):
 
 if __name__ == "__main__":
     torch.manual_seed(0)
+    num_court_tokens = 12
     model = UVTrajectoryCompletionModel(
         hidden_dim=32,
         num_ball_layers=2,
         num_query_layers=2,
         num_heads=4,
         max_seq_len=16,
+        num_court_tokens=num_court_tokens,
     )
     predictor = UVTrajectoryCompletionPredictor(model=model, device=torch.device("cpu"))
     ball_uv = torch.rand(1, 16, 2)
     ball_vis = torch.randint(0, 2, (1, 16)).float()
     ball_mask = torch.ones(1, 16)
-    court_kp = torch.rand(1, 20, 2)
-    court_vis = torch.ones(1, 20)
+    court_kp = torch.rand(1, num_court_tokens, 2)
+    court_vis = torch.ones(1, num_court_tokens)
     out = predictor.predict(
         ball_uv,
         court_kp,

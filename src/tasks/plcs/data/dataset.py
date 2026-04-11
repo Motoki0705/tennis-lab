@@ -78,6 +78,8 @@ class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
             )
         self.kp_noise_std = float(augmentation_cfg["keypoint_noise_std"])
         self.visibility_drop_prob = float(augmentation_cfg["visibility_drop_prob"])
+        # Number of court keypoints to use (first N from the canonical order)
+        self.num_court_kp = int(data_cfg.get("num_court_kp", 20))
 
     def _build_scene_dataset_config(  # type: ignore[override]
         self,
@@ -129,6 +131,8 @@ class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
             court_vis = torch.from_numpy(
                 scene.get_camera_array(cam_idx, "court_kp_visible", window=window)
             ).float()
+            court_kp = court_kp[..., : self.num_court_kp, :]
+            court_vis = court_vis[..., : self.num_court_kp]
 
             human_kp = human_kp * human_vis.unsqueeze(-1)
             court_kp = court_kp * court_vis.unsqueeze(-1)
@@ -223,9 +227,9 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
 
         if pad_seq > 0:
             human_kp = torch.cat([human_kp, torch.zeros(n_views, pad_seq, 17, 2)], dim=1)
-            court_kp = torch.cat([court_kp, torch.zeros(n_views, pad_seq, 20, 2)], dim=1)
+            court_kp = torch.cat([court_kp, torch.zeros(n_views, pad_seq, n_kp, 2)], dim=1)
             human_vis = torch.cat([human_vis, torch.zeros(n_views, pad_seq, 17)], dim=1)
-            court_vis = torch.cat([court_vis, torch.zeros(n_views, pad_seq, 20)], dim=1)
+            court_vis = torch.cat([court_vis, torch.zeros(n_views, pad_seq, n_kp)], dim=1)
             human_mask = torch.cat([human_mask, torch.zeros(n_views, pad_seq)], dim=1)
             position = torch.cat([position, torch.zeros(pad_seq, 3)], dim=0)
             rotation = torch.cat([rotation, torch.zeros(pad_seq, 2)], dim=0)
@@ -234,9 +238,9 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
 
         if pad_views > 0:
             human_kp = torch.cat([human_kp, torch.zeros(pad_views, max_seq_len, 17, 2)], dim=0)
-            court_kp = torch.cat([court_kp, torch.zeros(pad_views, max_seq_len, 20, 2)], dim=0)
+            court_kp = torch.cat([court_kp, torch.zeros(pad_views, max_seq_len, n_kp, 2)], dim=0)
             human_vis = torch.cat([human_vis, torch.zeros(pad_views, max_seq_len, 17)], dim=0)
-            court_vis = torch.cat([court_vis, torch.zeros(pad_views, max_seq_len, 20)], dim=0)
+            court_vis = torch.cat([court_vis, torch.zeros(pad_views, max_seq_len, n_kp)], dim=0)
             human_mask = torch.cat([human_mask, torch.zeros(pad_views, max_seq_len)], dim=0)
 
         human_kp_batch.append(human_kp)

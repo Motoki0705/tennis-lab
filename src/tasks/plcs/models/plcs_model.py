@@ -91,6 +91,7 @@ class PLCSModel(nn.Module):
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
         invisible_init_std: float = 0.02,
+        num_court_tokens: int = NUM_COURT_KP,
     ) -> None:
         """Initialize the PLCS model.
 
@@ -118,7 +119,8 @@ class PLCSModel(nn.Module):
         self.num_register_tokens = int(num_register_tokens)
         self.use_kp_id_embedding = bool(use_kp_id_embedding)
         self.use_rope = bool(use_rope)
-        self.max_tokens = int(NUM_COURT_KP + NUM_HUMAN_KP)
+        self.num_court_tokens = int(num_court_tokens)
+        self.max_tokens = int(self.num_court_tokens + NUM_HUMAN_KP)
 
         head_dim = hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else rope_dim
@@ -165,7 +167,7 @@ class PLCSModel(nn.Module):
 
         # Optional KP-ID embeddings
         if self.use_kp_id_embedding:
-            self.court_id_embed = nn.Embedding(NUM_COURT_KP, hidden_dim)
+            self.court_id_embed = nn.Embedding(self.num_court_tokens, hidden_dim)
             self.player_id_embed = nn.Embedding(NUM_HUMAN_KP, hidden_dim)
 
         # Transformer blocks
@@ -227,6 +229,7 @@ class PLCSModel(nn.Module):
 
         """
         model_cfg = config.get("model", {})
+        data_cfg = config.get("data", {})
 
         yarn_cfg = model_cfg.get("yarn", None)
         yarn: YaRNConfig | None = None
@@ -256,6 +259,7 @@ class PLCSModel(nn.Module):
             use_moe=use_moe,
             moe_config=moe_config,
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
+            num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )
 
     def _build_body_tokens(
@@ -293,20 +297,21 @@ class PLCSModel(nn.Module):
         B = human_kp.size(0)
 
         # Tokenize court and player keypoints
-        court_tok = self.court_embed(court_kp, court_vis)  # (B, 20, D)
+        court_tok = self.court_embed(court_kp, court_vis)  # (B, K, D)
         player_tok = self.player_embed(human_kp, human_vis)  # (B, 17, D)
 
+        K = court_tok.shape[1]
         # Add type embeddings
         court_type = self.type_embed(
-            torch.zeros(NUM_COURT_KP, device=human_kp.device, dtype=torch.long)
-        )[None, :, :]  # (1, 20, D)
+            torch.zeros(K, device=human_kp.device, dtype=torch.long)
+        )[None, :, :]  # (1, K, D)
         player_type = self.type_embed(
             torch.ones(NUM_HUMAN_KP, device=human_kp.device, dtype=torch.long)
         )[None, :, :]  # (1, 17, D)
 
         if self.use_kp_id_embedding:
             court_id = self.court_id_embed(
-                torch.arange(NUM_COURT_KP, device=human_kp.device, dtype=torch.long)
+                torch.arange(K, device=human_kp.device, dtype=torch.long)
             )[None, :, :]
             player_id = self.player_id_embed(
                 torch.arange(NUM_HUMAN_KP, device=human_kp.device, dtype=torch.long)
@@ -384,7 +389,7 @@ class PLCSModel(nn.Module):
         S_body = token_body.shape[1]
         x = self._add_prefix_tokens(token_body)
         x = self._forward_transformer(x=x, S_body=S_body)
-        player_start_idx = 1 + self.num_register_tokens + NUM_COURT_KP
+        player_start_idx = 1 + self.num_register_tokens + court_tok.shape[1]
         return x, player_start_idx
 
     def forward(

@@ -1,4 +1,8 @@
 scene_dir: data/plcs
+
+# Number of court keypoints to use (first N from canonical order; default: 20)
+# num_court_kp: 20
+
 batch_size: 4
 num_workers: 4
 pin_memory: true
