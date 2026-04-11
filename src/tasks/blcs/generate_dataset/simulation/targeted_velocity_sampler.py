@@ -72,8 +72,8 @@ class TargetedVelocityConfig:
     refine_max_frames: int = 1200
 
     # Net clearance constraint (optional)
-    # NOTE: Disabled by default in favour of single-shot sampling
-    net_clearance_enabled: bool = False
+    # NOTE: Enabled by default to avoid low-clearance net-fault-heavy samples
+    net_clearance_enabled: bool = True
     net_clearance_min: float = 0.1
     net_clearance_max_attempts: int = 12
     net_clearance_max_frames: int = 600
