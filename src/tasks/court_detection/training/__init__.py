@@ -1,7 +1,9 @@
 """Training components for court detection."""
 
-from src.tasks.court_detection.training.lightning_module import CourtKeypointLightningModule
-from src.tasks.court_detection.training.losses import CourtKeypointLoss
-from src.tasks.court_detection.training.metrics import CourtKeypointMetrics
+from src.tasks.court_detection.training.losses import (
+    BinaryDiceLoss,
+    DiceLoss,
+    FocalBCEWithLogitsLoss,
+)
 
-__all__ = ["CourtKeypointLightningModule", "CourtKeypointLoss", "CourtKeypointMetrics"]
+__all__ = ["BinaryDiceLoss", "DiceLoss", "FocalBCEWithLogitsLoss"]

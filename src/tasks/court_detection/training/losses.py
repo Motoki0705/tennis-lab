@@ -1,119 +1,67 @@
-"""Loss functions for court keypoint detection."""
+"""Loss functions for court detection training."""
 
 from __future__ import annotations
-
-from typing import Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import Tensor
 
 
-class CourtKeypointLoss(nn.Module):
-    """Combined loss for court keypoint detection.
+class FocalBCEWithLogitsLoss(nn.Module):
+    """Focal-modulated BCE operating on raw logits."""
 
-    Includes:
-        - Heatmap loss (MSE or Focal)
-        - Visibility loss (BCE)
-
-    Args:
-        heatmap_config: Heatmap loss configuration.
-        visibility_config: Visibility loss configuration.
-    """
-
-    def __init__(
-        self,
-        heatmap_config: dict[str, Any] | None = None,
-        visibility_config: dict[str, Any] | None = None,
-    ) -> None:
+    def __init__(self, gamma: float = 2.0) -> None:
         super().__init__()
+        self.gamma = gamma
 
-        heatmap_config = heatmap_config or {}
-        visibility_config = visibility_config or {}
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        p = torch.sigmoid(logits)
+        bce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
+        p_t = p * targets + (1.0 - p) * (1.0 - targets)
+        focal_weight = (1.0 - p_t) ** self.gamma
+        return (focal_weight * bce).mean()
 
-        self.heatmap_type = heatmap_config.get("type", "mse")
-        self.heatmap_weight = heatmap_config.get("weight", 1.0)
 
-        self.visibility_type = visibility_config.get("type", "bce")
-        self.visibility_weight = visibility_config.get("weight", 0.1)
+class DiceLoss(nn.Module):
+    """Per-class Dice loss averaged over classes (for segmentation)."""
 
-    def forward(
-        self,
-        pred_heatmaps: Tensor,
-        target_heatmaps: Tensor,
-        pred_visibility: Tensor,
-        target_visibility: Tensor,
-    ) -> dict[str, Tensor]:
-        """Compute combined loss.
+    def __init__(self, num_classes: int, smooth: float = 1.0) -> None:
+        super().__init__()
+        self.num_classes = num_classes
+        self.smooth = smooth
 
-        Args:
-            pred_heatmaps: Predicted heatmaps (B, K, H, W).
-            target_heatmaps: Target heatmaps (B, K, H, W).
-            pred_visibility: Predicted visibility logits (B, K).
-            target_visibility: Target visibility (B, K).
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """Compute Dice loss.
 
-        Returns:
-            Dictionary with 'total', 'heatmap', and 'visibility' losses.
+        Parameters
+        ----------
+        logits:
+            ``[B, C, H, W]`` raw logits.
+        targets:
+            ``[B, H, W]`` int64 labels.
         """
-        # Heatmap loss
-        if self.heatmap_type == "mse":
-            heatmap_loss = F.mse_loss(pred_heatmaps, target_heatmaps)
-        elif self.heatmap_type == "focal":
-            heatmap_loss = self._focal_loss(pred_heatmaps, target_heatmaps)
-        else:
-            heatmap_loss = F.mse_loss(pred_heatmaps, target_heatmaps)
+        probs = F.softmax(logits, dim=1)
+        targets_oh = F.one_hot(targets, self.num_classes)
+        targets_oh = targets_oh.permute(0, 3, 1, 2).float()
 
-        # Visibility loss
-        visibility_loss = F.binary_cross_entropy_with_logits(
-            pred_visibility, target_visibility
-        )
+        dims = (0, 2, 3)
+        intersection = (probs * targets_oh).sum(dim=dims)
+        union = probs.sum(dim=dims) + targets_oh.sum(dim=dims)
+        dice = (2.0 * intersection + self.smooth) / (union + self.smooth)
+        return 1.0 - dice.mean()
 
-        # Total loss
-        total_loss = (
-            self.heatmap_weight * heatmap_loss
-            + self.visibility_weight * visibility_loss
-        )
 
-        return {
-            "total": total_loss,
-            "heatmap": heatmap_loss,
-            "visibility": visibility_loss,
-        }
+class BinaryDiceLoss(nn.Module):
+    """Dice loss for binary segmentation logits."""
 
-    def _focal_loss(
-        self,
-        pred: Tensor,
-        target: Tensor,
-        alpha: float = 2.0,
-        beta: float = 4.0,
-    ) -> Tensor:
-        """Focal loss for heatmap regression.
+    def __init__(self, smooth: float = 1.0) -> None:
+        super().__init__()
+        self.smooth = smooth
 
-        Args:
-            pred: Predicted heatmaps.
-            target: Target heatmaps.
-            alpha: Focusing parameter for positives.
-            beta: Focusing parameter for negatives.
-
-        Returns:
-            Focal loss value.
-        """
-        pred = torch.sigmoid(pred)
-
-        pos_mask = target.ge(0.01).float()
-        neg_mask = target.lt(0.01).float()
-
-        pos_loss = -torch.pow(1 - pred, alpha) * torch.log(pred + 1e-8) * pos_mask
-        neg_loss = (
-            -torch.pow(1 - target, beta)
-            * torch.pow(pred, alpha)
-            * torch.log(1 - pred + 1e-8)
-            * neg_mask
-        )
-
-        num_pos = pos_mask.sum()
-        if num_pos == 0:
-            return neg_loss.sum()
-
-        return (pos_loss.sum() + neg_loss.sum()) / num_pos
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        probs = torch.sigmoid(logits)
+        dims = (0, 2, 3)
+        intersection = (probs * targets).sum(dim=dims)
+        union = probs.sum(dim=dims) + targets.sum(dim=dims)
+        dice = (2.0 * intersection + self.smooth) / (union + self.smooth)
+        return 1.0 - dice.mean()
