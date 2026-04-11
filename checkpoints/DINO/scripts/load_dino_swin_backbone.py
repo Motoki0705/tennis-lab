@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 import sys
 from collections import Counter, OrderedDict
 from pathlib import Path
@@ -26,6 +27,15 @@ if str(THIRD_PARTY_DINO_ROOT) not in sys.path:
 
 import torch
 from torch import nn
+
+
+DEFAULT_WEIGHTS_ROOT = Path(
+    os.environ.get(
+        "MODEL_WEIGHTS_ROOT",
+        "/mnt/d/weights" if Path("/mnt/d/weights").exists() else "D:/weights",
+    )
+)
+DINO_WEIGHTS_DIR = DEFAULT_WEIGHTS_ROOT / "DINO"
 
 
 def load_swin_builder():
@@ -241,7 +251,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=Path("/workspace/checkpoints/DINO/checkpoint0027_5scale_swin.pth"),
+        default=DINO_WEIGHTS_DIR / "checkpoint0027_5scale_swin.pth",
         help="Path to the full DINO checkpoint.",
     )
     parser.add_argument(
