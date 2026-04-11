@@ -27,9 +27,10 @@ class CourtKPUVTokenEmbedding(nn.Module):
     def forward(self, court_kp: Tensor, court_vis: Tensor | None) -> Tensor:
         B = int(court_kp.shape[0])
         if court_kp.dim() == 2:
-            court_kp = court_kp.view(B, NUM_COURT_KP, 2)
+            court_kp = court_kp.view(B, -1, 2)
+        n_kp = court_kp.shape[1]
         vis = (
-            torch.ones(B, NUM_COURT_KP, device=court_kp.device, dtype=court_kp.dtype)
+            torch.ones(B, n_kp, device=court_kp.device, dtype=court_kp.dtype)
             if court_vis is None
             else court_vis.to(court_kp.dtype)
         )

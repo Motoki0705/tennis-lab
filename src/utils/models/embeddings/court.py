@@ -36,15 +36,15 @@ class CourtKPUVEmbedding(nn.Module):
         """Embed court keypoints.
 
         Args:
-            court_kp: Court keypoints, shape (B, 40) or (B, 20, 2).
-            court_vis: Visibility flags, shape (B, 20). Optional.
+            court_kp: Court keypoints, shape (B, N*2) or (B, N, 2).
+            court_vis: Visibility flags, shape (B, N). Optional.
 
         Returns:
-            Tensor: Embedded tokens, shape (B, NUM_COURT_KP, D).
+            Tensor: Embedded tokens, shape (B, N, D).
         """
         batch_size = int(court_kp.shape[0])
         if court_kp.dim() == 2:
-            court_kp = court_kp.view(batch_size, NUM_COURT_KP, 2)
+            court_kp = court_kp.view(batch_size, -1, 2)
 
         feat = self.proj(court_kp)
         if court_vis is None:

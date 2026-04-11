@@ -400,9 +400,10 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
 if __name__ == "__main__":
     from omegaconf import OmegaConf
 
+    num_court_kp = 12
     cfg = OmegaConf.create(
         {
-            "data": {"max_seq_len": 32},
+            "data": {"max_seq_len": 32, "num_court_kp": num_court_kp},
             "model": {
                 "name": "uv_transformer",
                 "hidden_dim": 64,
@@ -422,8 +423,8 @@ if __name__ == "__main__":
         "ball_gt_vis": torch.randint(0, 2, (2, 32)).float(),
         "ball_in_frame_gt": torch.randint(0, 2, (2, 32)).float(),
         "ball_mask": torch.ones(2, 32),
-        "court_kp": torch.rand(2, 20, 2),
-        "court_vis": torch.ones(2, 20),
+        "court_kp": torch.rand(2, num_court_kp, 2),
+        "court_vis": torch.ones(2, num_court_kp),
     }
     out = module.forward(batch)
     assert out.shape == (2, 32, 2)

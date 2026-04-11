@@ -110,12 +110,14 @@ class PLCSMultiViewModel(nn.Module):
         max_views: int = 8,
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
+        num_court_tokens: int = NUM_COURT_KP,
     ) -> None:
         super().__init__()
 
         self.hidden_dim = int(hidden_dim)
         self.max_views = int(max_views)
         self.max_seq_len = int(max_seq_len)
+        self.num_court_tokens = int(num_court_tokens)
 
         self.frame_block_tokens = 2 + NUM_HUMAN_KP
 
@@ -198,6 +200,7 @@ class PLCSMultiViewModel(nn.Module):
     def from_config(cls, config: DictConfig) -> PLCSMultiViewModel:
         """Create model from hydra config."""
         model_cfg = config.get("model", {})
+        data_cfg = config.get("data", {})
 
         use_moe = bool(model_cfg.get("use_moe", False))
         moe_cfg = model_cfg.get("moe_config", None)
@@ -218,6 +221,7 @@ class PLCSMultiViewModel(nn.Module):
             max_views=model_cfg.get("max_views", 8),
             max_seq_len=model_cfg.get("max_seq_len", 120),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
+            num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )
 
     def _build_positions_2d(
@@ -231,8 +235,8 @@ class PLCSMultiViewModel(nn.Module):
         """Build (B, S, 2) coordinates with axes: (time, camera)."""
         per_cam: list[Tensor] = []
         for cam_idx in range(n_cameras):
-            court_time = torch.zeros(NUM_COURT_KP, device=device, dtype=torch.long)
-            court_cam = torch.full((NUM_COURT_KP,), cam_idx, device=device, dtype=torch.long)
+            court_time = torch.zeros(self.num_court_tokens, device=device, dtype=torch.long)
+            court_cam = torch.full((self.num_court_tokens,), cam_idx, device=device, dtype=torch.long)
             court_pos = torch.stack([court_time, court_cam], dim=-1)
 
             frame_time = torch.arange(seq_len, device=device, dtype=torch.long).repeat_interleave(
@@ -334,15 +338,16 @@ class PLCSMultiViewModel(nn.Module):
             seq_valid = torch.ones(B, T, dtype=torch.bool, device=device)
 
         # court is camera-level (use first frame per camera)
-        court_scene = court_kp[:, :, 0, :, :]  # (B,N,20,2)
-        court_scene_flat = court_scene.reshape(B * N, NUM_COURT_KP, 2)
+        court_scene = court_kp[:, :, 0, :, :]  # (B,N,K,2)
+        K = court_scene.shape[2]
+        court_scene_flat = court_scene.reshape(B * N, K, 2)
 
         court_vis_scene: Tensor | None = None
         if court_vis is not None:
-            court_vis_scene = court_vis[:, :, 0, :].reshape(B * N, NUM_COURT_KP)
+            court_vis_scene = court_vis[:, :, 0, :].reshape(B * N, K)
 
         court_tok = self.court_embed(court_scene_flat, court_vis_scene)
-        court_tok = court_tok.view(B, N, NUM_COURT_KP, self.hidden_dim)
+        court_tok = court_tok.view(B, N, K, self.hidden_dim)
 
         # player tokens per (camera,time,kp)
         human_flat = human_kp.reshape(B * N * T, NUM_HUMAN_KP, 2)
@@ -359,7 +364,7 @@ class PLCSMultiViewModel(nn.Module):
         frame_tok = torch.cat([cls_po, cls_ro, player_tok], dim=3)  # (B,N,T,19,D)
         frame_tok = frame_tok.reshape(B, N, T * self.frame_block_tokens, self.hidden_dim)
 
-        camera_block_tokens = NUM_COURT_KP + T * self.frame_block_tokens
+        camera_block_tokens = K + T * self.frame_block_tokens
         tokens_per_camera = torch.cat([court_tok, frame_tok], dim=2)  # (B,N,L_cam,D)
         x = tokens_per_camera.reshape(B, N * camera_block_tokens, self.hidden_dim)
 
@@ -367,7 +372,7 @@ class PLCSMultiViewModel(nn.Module):
         frame_token_valid = view_valid.unsqueeze(-1) & seq_valid.unsqueeze(1)
         court_token_valid = view_valid
 
-        court_rep = court_token_valid.unsqueeze(-1).expand(B, N, NUM_COURT_KP)
+        court_rep = court_token_valid.unsqueeze(-1).expand(B, N, K)
         frame_rep = frame_token_valid.unsqueeze(-1).expand(
             B, N, T, self.frame_block_tokens
         )
@@ -416,7 +421,7 @@ class PLCSMultiViewModel(nn.Module):
             x, _ = self.final_norm(x, residual)
         x = x * token_valid.unsqueeze(-1).to(dtype=x.dtype)
 
-        time_offsets = NUM_COURT_KP + torch.arange(T, device=device, dtype=torch.long) * self.frame_block_tokens
+        time_offsets = K + torch.arange(T, device=device, dtype=torch.long) * self.frame_block_tokens
         cam_offsets = torch.arange(N, device=device, dtype=torch.long).view(N, 1) * camera_block_tokens
         po_idx = (cam_offsets + time_offsets.view(1, T)).reshape(-1)
         ro_idx = po_idx + 1

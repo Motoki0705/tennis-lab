@@ -54,6 +54,7 @@ class PLCSQuerySequenceModel(nn.Module):
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
         query_init_std: float = 0.02,
+        num_court_tokens: int = NUM_COURT_KP,
     ) -> None:
         super().__init__()
         if hidden_dim % num_heads != 0:
@@ -70,7 +71,7 @@ class PLCSQuerySequenceModel(nn.Module):
             raise ValueError(f"num_query_layers must be non-negative, got {num_query_layers}")
         self.hidden_dim = int(hidden_dim)
         self.max_seq_len = int(max_seq_len)
-        self.num_court_tokens = int(NUM_COURT_KP)
+        self.num_court_tokens = int(num_court_tokens)
         self.num_joints = int(NUM_HUMAN_KP)
 
         head_dim = hidden_dim // num_heads
@@ -196,6 +197,7 @@ class PLCSQuerySequenceModel(nn.Module):
     def from_config(cls, config: DictConfig) -> PLCSQuerySequenceModel:
         """Create query-based sequence model from hydra config."""
         model_cfg = config.get("model", {})
+        data_cfg = config.get("data", {})
 
         yarn_cfg = model_cfg.get("yarn", None)
         yarn: YaRNConfig | None = None
@@ -217,6 +219,7 @@ class PLCSQuerySequenceModel(nn.Module):
             max_seq_len=int(model_cfg.get("max_seq_len", 120)),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
+            num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )
 
     def _normalize_court_inputs(
@@ -224,18 +227,19 @@ class PLCSQuerySequenceModel(nn.Module):
         court_kp: Tensor,
         court_vis: Tensor | None,
     ) -> tuple[Tensor, Tensor | None]:
-        """Normalize court tensors to scene-level shapes: (B,20,2)/(B,20)."""
+        """Normalize court tensors to scene-level shapes: (B,K,2)/(B,K)."""
         if court_kp.dim() == 4:
             court_kp = court_kp[:, 0, :, :]
         elif court_kp.dim() == 3:
-            if court_kp.size(1) == NUM_COURT_KP and court_kp.size(2) == 2:
+            if court_kp.size(1) == self.num_court_tokens and court_kp.size(2) == 2:
                 pass
-            elif court_kp.size(2) == NUM_COURT_KP * 2:
+            elif court_kp.size(2) == self.num_court_tokens * 2:
                 court_kp = court_kp[:, 0, :]
             else:
                 raise ValueError(
                     f"Unsupported court_kp shape {tuple(court_kp.shape)}. "
-                    "Expected (B,40), (B,20,2), (B,T,40), or (B,T,20,2)."
+                    f"Expected (B,{self.num_court_tokens * 2}), (B,{self.num_court_tokens},2), "
+                    f"(B,T,{self.num_court_tokens * 2}), or (B,T,{self.num_court_tokens},2)."
                 )
 
         if court_vis is not None and court_vis.dim() == 3:

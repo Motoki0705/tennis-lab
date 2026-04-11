@@ -48,18 +48,20 @@ class UVEventModel(nn.Module):
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
         invisible_init_std: float = 0.02,
+        num_court_tokens: int = NUM_COURT_KP,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
         self.max_seq_len = int(max_seq_len)
         self.num_events = int(num_events)
         self.causal = bool(causal)
+        self.num_court_tokens = int(num_court_tokens)
 
         if self.hidden_dim % num_heads != 0:
             raise ValueError("hidden_dim must be divisible by num_heads.")
         head_dim = self.hidden_dim // int(num_heads)
         rope_dim = head_dim
-        max_tokens = int(NUM_COURT_KP + self.max_seq_len)
+        max_tokens = int(self.num_court_tokens + self.max_seq_len)
         mlp_inter_dim_value = (
             int(mlp_inter_dim) if mlp_inter_dim is not None else int((8 * self.hidden_dim) / 3)
         )
@@ -145,6 +147,7 @@ class UVEventModel(nn.Module):
     @classmethod
     def from_config(cls, config: DictConfig) -> UVEventModel:
         model_cfg = config.get("model", {}) or {}
+        data_cfg = config.get("data", {}) or {}
         hidden_dim = int(model_cfg.get("hidden_dim", 256))
         mlp_inter_dim = model_cfg.get("mlp_inter_dim")
         mlp_inter_dim_value = int(mlp_inter_dim) if mlp_inter_dim is not None else None
@@ -170,6 +173,7 @@ class UVEventModel(nn.Module):
             use_moe=use_moe,
             moe_config=moe_config,
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
+            num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )
 
     def forward(
@@ -185,10 +189,10 @@ class UVEventModel(nn.Module):
 
         Args:
             ball_uv: (B, T, 2)
-            court_kp: (B, 20, 2)
+            court_kp: (B, K, 2)
             ball_vis: (B, T) or None
             ball_mask: (B, T) or None
-            court_vis: (B, 20) or None
+            court_vis: (B, K) or None
 
         Returns:
             Logits (B, T, E)
@@ -204,11 +208,16 @@ class UVEventModel(nn.Module):
                 seq_len = torch.clamp(seq_len, max=self.max_seq_len)
             T = self.max_seq_len
 
-        court_tokens = self.court_embed(court_kp, court_vis)  # (B, 20, D)
+        court_tokens = self.court_embed(court_kp, court_vis)  # (B, K, D)
+        if court_tokens.shape[1] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected {self.num_court_tokens} court tokens, got {court_tokens.shape[1]}"
+            )
         ball_tokens = self.ball_embed(ball_uv, ball_vis)  # (B, T, D)
 
+        K = self.num_court_tokens
         court_type = self.type_embed(
-            torch.zeros(NUM_COURT_KP, device=ball_uv.device, dtype=torch.long)
+            torch.zeros(K, device=ball_uv.device, dtype=torch.long)
         )[None, :, :]
         ball_type = self.type_embed(
             torch.ones(T, device=ball_uv.device, dtype=torch.long)
@@ -222,7 +231,7 @@ class UVEventModel(nn.Module):
             t = torch.arange(T, device=x.device)[None, :]
             ball_mask = t < seq_len.to(torch.long).view(B, 1)
         if ball_mask is not None:
-            court_valid = torch.ones(B, NUM_COURT_KP, device=x.device, dtype=torch.bool)
+            court_valid = torch.ones(B, K, device=x.device, dtype=torch.bool)
             ball_valid = ball_mask > 0
             key_padding_mask = torch.cat([court_valid, ball_valid], dim=1)  # (B, S)
 
@@ -252,17 +261,25 @@ class UVEventModel(nn.Module):
         else:
             x, _ = self.final_norm(x, residual)
 
-        ball_h = x[:, NUM_COURT_KP:, :]
+        ball_h = x[:, K:, :]
         return self.head(ball_h)
 
 
 if __name__ == "__main__":
-    model = UVEventModel(hidden_dim=64, num_layers=2, num_heads=4, max_seq_len=32, num_events=2)
+    num_court_tokens = 12
+    model = UVEventModel(
+        hidden_dim=64,
+        num_layers=2,
+        num_heads=4,
+        max_seq_len=32,
+        num_events=2,
+        num_court_tokens=num_court_tokens,
+    )
     ball_uv = torch.rand(2, 32, 2)
     ball_vis = torch.ones(2, 32)
     ball_mask = torch.ones(2, 32)
-    court_kp = torch.rand(2, 20, 2)
-    court_vis = torch.ones(2, 20)
+    court_kp = torch.rand(2, num_court_tokens, 2)
+    court_vis = torch.ones(2, num_court_tokens)
     seq_len = torch.tensor([32, 16])
     logits = model(ball_uv, court_kp, ball_vis=ball_vis, ball_mask=ball_mask, court_vis=court_vis, seq_len=seq_len)
     assert logits.shape == (2, 32, 2)

@@ -272,7 +272,7 @@ class UVTrajectoryCompletionModel(nn.Module):
             moe_config=moe_config,
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
-            num_court_tokens=int(model_cfg.get("num_court_tokens", NUM_COURT_KP)),
+            num_court_tokens=int(model_cfg.get("num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP))),
         )
 
     @staticmethod
@@ -302,10 +302,10 @@ class UVTrajectoryCompletionModel(nn.Module):
 
         Args:
             ball_uv: (B, T, 2) corrupted inputs (missing frames should be 0).
-            court_kp: (B, 20, 2) court keypoints.
+            court_kp: (B, K, 2) court keypoints.
             ball_vis: (B, T) observed mask (1=observed, 0=missing).
             ball_mask: (B, T) padding mask (1=valid).
-            court_vis: (B, 20) court visibility mask.
+            court_vis: (B, K) court visibility mask.
             return_intermediate_ball_hidden: If True, also return stage-1 ball token
                 hidden states after each temporal layer.
             return_in_frame_logits: If True, also return per-frame in-frame logits.
