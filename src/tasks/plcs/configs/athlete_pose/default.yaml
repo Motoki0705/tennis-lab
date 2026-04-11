@@ -1,0 +1,4 @@
+data_dir: data/AthletePose3D/pose_3d_v3
+split: train
+scale_factor: 5.3
+fps: 30

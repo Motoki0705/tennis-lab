@@ -1,42 +1,44 @@
-"""Inference predictor for court keypoint detection."""
+"""Inference predictor for court keypoint detection using CourtUNet."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Self
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+import torchvision.transforms.functional as TF
 from PIL import Image
 from torch import Tensor
 
-from src.tasks.base.inference.predictor import BasePredictor
-from src.tasks.court_detection.models.court_keypoint_model import CourtKeypointModel
-from src.tasks.court_detection.training.lightning_module import CourtKeypointLightningModule
+from src.tasks.court_detection.data.augmentation import IMAGENET_MEAN, IMAGENET_STD
+from src.tasks.court_detection.models.court_unet import CourtUNet
+
+NUM_KEYPOINTS = 14
 
 
-class CourtKeypointPredictor(BasePredictor):
-    """Predictor for court keypoint detection.
+class CourtKeypointPredictor:
+    """Predictor for court keypoint detection using CourtUNet.
 
-    Provides a simple API for running inference with trained models.
+    Loads a plain PyTorch checkpoint (produced by :mod:`training.train`)
+    and runs keypoint heatmap inference.
 
     Attributes:
-        model: CourtKeypointModel instance.
+        model: CourtUNet instance.
         device: Device to run inference on.
-        input_size: Input image size [H, W].
+        short_side: Short side resize for preprocessing.
     """
 
     def __init__(
         self,
-        model: CourtKeypointModel,
+        model: CourtUNet,
         device: torch.device,
-        input_size: tuple[int, int] = (256, 256),
+        short_side: int = 640,
     ) -> None:
         self.model = model
         self.device = device
-        self.input_size = input_size
+        self.short_side = short_side
 
         self.model.to(self.device)
         self.model.eval()
@@ -44,88 +46,67 @@ class CourtKeypointPredictor(BasePredictor):
     @classmethod
     def load_from_checkpoint(
         cls,
-        checkpoint_path: str | Path | Iterable[str | Path],
+        checkpoint_path: str | Path,
         device: str | torch.device = "cpu",
         **kwargs: Any,
     ) -> Self:
-        """Load predictor from a Lightning checkpoint.
+        """Load predictor from a training checkpoint.
 
-        Args:
-            checkpoint_path: Path to checkpoint file(s).
-            device: Device to run inference on.
-            **kwargs: Additional arguments (unused).
+        Parameters
+        ----------
+        checkpoint_path:
+            Path to ``.pt`` checkpoint file.
+        device:
+            Device to run inference on.
 
-        Returns:
-            CourtKeypointPredictor instance.
-
-        Raises:
-            FileNotFoundError: If checkpoint file does not exist.
+        Returns
+        -------
+        CourtKeypointPredictor
         """
-        checkpoints = cls._ensure_checkpoint(checkpoint_path)
-        resolved_device = cls._resolve_device(device)
+        checkpoint_path = Path(checkpoint_path)
+        if not checkpoint_path.exists():
+            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
-        # Load Lightning module from first checkpoint
-        lightning_module = CourtKeypointLightningModule.load_from_checkpoint(
-            checkpoints[0],
-            map_location=resolved_device,
-        )
+        resolved_device = torch.device(device) if isinstance(device, str) else device
+        ckpt = torch.load(checkpoint_path, map_location=resolved_device, weights_only=False)
 
-        # Extract model and config
-        model = lightning_module.model
-        model_config = lightning_module.config.get("model", {})
-        input_size = tuple(model_config.get("input_size", [256, 256]))
+        cfg = ckpt.get("config", {})
+        num_classes = cfg.get("num_classes", NUM_KEYPOINTS)
+        in_channels = cfg.get("in_channels", 3)
+        short_side = cfg.get("val_short_side", 640)
 
-        return cls(model=model, device=resolved_device, input_size=input_size)
+        model = CourtUNet(in_channels=in_channels, num_classes=num_classes)
+        model.load_state_dict(ckpt["model"])
 
-    @classmethod
-    def from_config(
-        cls,
-        model_config: dict[str, Any],
-        weights_path: str | Path | None = None,
-        device: str | torch.device = "cpu",
-    ) -> Self:
-        """Create predictor from configuration.
+        return cls(model=model, device=resolved_device, short_side=short_side)
 
-        Args:
-            model_config: Model configuration dict.
-            weights_path: Optional path to model weights.
-            device: Device to run inference on.
-
-        Returns:
-            CourtKeypointPredictor instance.
-        """
-        resolved_device = cls._resolve_device(device)
-        model = CourtKeypointModel(model_config)
-
-        if weights_path is not None:
-            state_dict = torch.load(weights_path, map_location=resolved_device)
-            model.load_state_dict(state_dict)
-
-        input_size = tuple(model_config.get("input_size", [256, 256]))
-
-        return cls(model=model, device=resolved_device, input_size=input_size)
-
-    def preprocess(self, image: np.ndarray | Image.Image) -> Tensor:
+    def preprocess(self, image: np.ndarray | Image.Image) -> tuple[Tensor, int, int]:
         """Preprocess image for inference.
 
-        Args:
-            image: Input image (numpy array HWC or PIL Image).
-
-        Returns:
-            Preprocessed tensor of shape (1, 3, H, W).
+        Returns
+        -------
+        tuple
+            (tensor ``[1, 3, H', W']``, original_height, original_width)
         """
         if isinstance(image, np.ndarray):
             image = Image.fromarray(image)
 
-        # Resize
-        image = image.resize((self.input_size[1], self.input_size[0]))
+        orig_w, orig_h = image.size
 
-        # Convert to tensor
-        image_np = np.array(image, dtype=np.float32) / 255.0
-        image_tensor = torch.from_numpy(image_np).permute(2, 0, 1)  # (3, H, W)
-        image_tensor = image_tensor.unsqueeze(0)  # (1, 3, H, W)
+        # Resize so short side == self.short_side, keep aspect ratio
+        if orig_h <= orig_w:
+            new_h = self.short_side
+            new_w = int(round(orig_w * new_h / orig_h))
+        else:
+            new_w = self.short_side
+            new_h = int(round(orig_h * new_w / orig_w))
+        new_h = (new_h // 8) * 8
+        new_w = (new_w // 8) * 8
+        image = image.resize((new_w, new_h), Image.BILINEAR)
 
-        return image_tensor.to(self.device)
+        img_tensor = TF.to_tensor(image)
+        img_tensor = TF.normalize(img_tensor, IMAGENET_MEAN, IMAGENET_STD)
+        return img_tensor.unsqueeze(0).to(self.device), orig_h, orig_w
 
     @torch.no_grad()
     def predict(
@@ -135,108 +116,45 @@ class CourtKeypointPredictor(BasePredictor):
     ) -> dict[str, Tensor]:
         """Run inference on a single image.
 
-        Args:
-            image: Input image.
-            return_heatmaps: Whether to return heatmaps.
-
-        Returns:
-            Dictionary with CPU tensors:
-                - keypoints: Keypoint coordinates in pixel space (K, 2)
-                - visibility: Visibility probabilities (K,)
-                - heatmaps: Optional heatmaps (K, H, W) if return_heatmaps=True
+        Returns
+        -------
+        dict
+            - ``keypoints``: ``(K, 2)`` pixel coordinates on CPU.
+            - ``heatmaps`` (optional): ``(K, H, W)`` raw logits on CPU.
         """
-        # Preprocess if needed
         if isinstance(image, (np.ndarray, Image.Image)):
-            if isinstance(image, np.ndarray):
-                orig_h, orig_w = image.shape[:2]
-            else:
-                orig_w, orig_h = image.size
-            image_tensor = self.preprocess(image)
+            image_tensor, orig_h, orig_w = self.preprocess(image)
         else:
             image_tensor = image.to(self.device)
             if image_tensor.ndim == 3:
                 image_tensor = image_tensor.unsqueeze(0)
-            orig_h, orig_w = self.input_size
+            orig_h, orig_w = image_tensor.shape[-2], image_tensor.shape[-1]
 
-        # Run inference
-        outputs = self.model(image_tensor)
+        logits = self.model(image_tensor)  # [1, K, H, W]
 
-        # Convert heatmaps to keypoint coordinates
-        keypoints = self._heatmaps_to_coords(outputs["heatmaps"])[0].cpu()
-        keypoints[:, 0] *= orig_w
-        keypoints[:, 1] *= orig_h
+        # Soft-argmax to get keypoint coordinates in normalised [0,1]
+        coords = self._heatmaps_to_coords(logits)[0].cpu()  # (K, 2)
+        coords[:, 0] *= orig_w
+        coords[:, 1] *= orig_h
 
-        # Extract visibility (apply sigmoid for probabilities)
-        visibility = torch.sigmoid(outputs["visibility"][0]).cpu()  # (K,)
-
-        # Return CPU tensors (following predictor contract)
-        result: dict[str, Tensor] = {
-            "keypoints": keypoints,
-            "visibility": visibility,
-        }
-
+        result: dict[str, Tensor] = {"keypoints": coords}
         if return_heatmaps:
-            result["heatmaps"] = outputs["heatmaps"][0].cpu()
-
+            result["heatmaps"] = logits[0].cpu()
         return result
-
-    @torch.no_grad()
-    def predict_batch(
-        self,
-        images: list[np.ndarray | Image.Image] | Tensor,
-    ) -> list[dict[str, Tensor]]:
-        """Run inference on a batch of images.
-
-        Args:
-            images: List of images or batched tensor.
-
-        Returns:
-            List of prediction dictionaries with CPU tensors.
-        """
-        if isinstance(images, Tensor):
-            batch_tensor = images.to(self.device)
-            orig_sizes = [(self.input_size[0], self.input_size[1])] * len(images)
-        else:
-            batch_tensors = []
-            orig_sizes = []
-            for img in images:
-                if isinstance(img, np.ndarray):
-                    orig_sizes.append((img.shape[0], img.shape[1]))
-                else:
-                    orig_sizes.append((img.size[1], img.size[0]))
-                batch_tensors.append(self.preprocess(img))
-            batch_tensor = torch.cat(batch_tensors, dim=0)
-
-        # Run inference
-        outputs = self.model(batch_tensor)
-
-        # Extract results
-        results = []
-        for i in range(len(batch_tensor)):
-            orig_h, orig_w = orig_sizes[i]
-
-            keypoints = self._heatmaps_to_coords(outputs["heatmaps"][i : i + 1])[0].cpu()
-            keypoints[:, 0] *= orig_w
-            keypoints[:, 1] *= orig_h
-
-            visibility = torch.sigmoid(outputs["visibility"][i]).cpu()
-
-            results.append({
-                "keypoints": keypoints,
-                "visibility": visibility,
-            })
-
-        return results
 
     @staticmethod
     def _heatmaps_to_coords(heatmaps: Tensor) -> Tensor:
         """Convert heatmaps to keypoint coordinates using soft-argmax.
 
-        Args:
-            heatmaps: Heatmaps of shape (B, K, H, W).
+        Parameters
+        ----------
+        heatmaps:
+            ``[B, K, H, W]`` raw logits.
 
-        Returns:
-            Coordinates of shape (B, K, 2) in normalized [0, 1] range.
+        Returns
+        -------
+        Tensor
+            ``[B, K, 2]`` in normalised ``[0, 1]`` range.
         """
         bsz, num_kp, height, width = heatmaps.shape
         device = heatmaps.device

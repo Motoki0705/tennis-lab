@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 LOGGER = logging.getLogger(__name__)
 
-NUM_COURT_KEYPOINTS = 20
+NUM_COURT_KEYPOINTS = 14
 
 
 @dataclass
@@ -54,23 +54,20 @@ class CourtKPResult:
     """
 
     keypoints: NDArray[np.float32]
-    visibility: NDArray[np.float32]
     frame_index: int
 
     def to_dict(self) -> dict:
         """Convert result to JSON-serializable dict."""
         return {
             "keypoints": self.keypoints.tolist(),
-            "visibility": self.visibility.tolist(),
             "frame_index": self.frame_index,
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "CourtKPResult":
+    def from_dict(cls, data: dict) -> CourtKPResult:
         """Create result from dict."""
         return cls(
             keypoints=np.array(data["keypoints"], dtype=np.float32),
-            visibility=np.array(data["visibility"], dtype=np.float32),
             frame_index=data["frame_index"],
         )
 
@@ -90,24 +87,15 @@ class CourtKPResult:
         """
         errors: list[str] = []
         if self.keypoints.shape != (NUM_COURT_KEYPOINTS, 2):
-            errors.append(f"keypoints shape must be (20, 2), got {self.keypoints.shape}")
-        if self.visibility.shape != (NUM_COURT_KEYPOINTS,):
-            errors.append(f"visibility shape must be (20,), got {self.visibility.shape}")
+            errors.append(f"keypoints shape must be ({NUM_COURT_KEYPOINTS}, 2), got {self.keypoints.shape}")
         if self.frame_index < 0:
             errors.append(f"frame_index must be non-negative, got {self.frame_index}")
         if not np.isfinite(self.keypoints).all():
             errors.append("keypoints contain non-finite values")
-        if not np.isfinite(self.visibility).all():
-            errors.append("visibility contains non-finite values")
-        if not np.isin(self.visibility, [0.0, 1.0]).all():
-            errors.append("visibility must contain only 0 or 1")
-        tol = 1e-6
-        if np.any(self.keypoints < -tol) or np.any(self.keypoints > 1.0 + tol):
-            errors.append("keypoints must be normalized to [0, 1]")
         return len(errors) == 0, errors
 
     @classmethod
-    def load(cls, path: str | Path) -> "CourtKPResult":
+    def load(cls, path: str | Path) -> CourtKPResult:
         """Load result from JSON file."""
         with Path(path).open("r", encoding="utf-8") as f:
             return cls.from_dict(json.load(f))
@@ -116,7 +104,7 @@ class CourtKPResult:
 class CourtKPModule(BasePipelineModule):
     """Court keypoint detection module.
 
-    Detects 20 court keypoints from a single frame (fixed camera assumption).
+    Detects 14 court keypoints from a single frame (fixed camera assumption).
 
     Attributes:
         config: Configuration for the module.
@@ -142,7 +130,6 @@ class CourtKPModule(BasePipelineModule):
         self.device = self.config.device
         self._predictor = None
         self._manual_keypoints: NDArray[np.float32] | None = None
-        self._manual_visibility: NDArray[np.float32] | None = None
         self._manual_needs_normalization = False
 
     def load(self) -> None:
@@ -179,16 +166,16 @@ class CourtKPModule(BasePipelineModule):
             raise ImportError("OpenCV is required for manual_ui mode.") from exc
 
         keypoints = np.zeros((NUM_COURT_KEYPOINTS, 2), dtype=np.float32)
-        visibility = np.zeros(NUM_COURT_KEYPOINTS, dtype=np.float32)
+        placed = np.zeros(NUM_COURT_KEYPOINTS, dtype=bool)
         current_idx = 0
 
         def draw_overlay(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
             overlay = image.copy()
             for idx in range(NUM_COURT_KEYPOINTS):
-                if visibility[idx] <= 0:
+                if not placed[idx]:
                     continue
                 x, y = keypoints[idx]
-                color = (0, 255, 0) if visibility[idx] == 1 else (0, 165, 255)
+                color = (0, 255, 0)
                 cv2.circle(overlay, (int(x), int(y)), 5, color, -1, cv2.LINE_AA)
                 cv2.putText(
                     overlay,
@@ -212,7 +199,7 @@ class CourtKPModule(BasePipelineModule):
             )
             cv2.putText(
                 overlay,
-                "LMB: visible | RMB: occluded | N/P: next/prev | S: save | Q: quit",
+                "LMB: place | N/P: next/prev | S: save | Q: quit",
                 (10, 45),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
@@ -226,11 +213,7 @@ class CourtKPModule(BasePipelineModule):
             nonlocal current_idx
             if event == cv2.EVENT_LBUTTONDOWN:
                 keypoints[current_idx] = [mx, my]
-                visibility[current_idx] = 1.0
-                current_idx = (current_idx + 1) % NUM_COURT_KEYPOINTS
-            elif event == cv2.EVENT_RBUTTONDOWN:
-                keypoints[current_idx] = [mx, my]
-                visibility[current_idx] = 2.0
+                placed[current_idx] = True
                 current_idx = (current_idx + 1) % NUM_COURT_KEYPOINTS
 
         window_name = "Court Keypoints (manual_ui)"
@@ -249,16 +232,13 @@ class CourtKPModule(BasePipelineModule):
                     current_idx = (current_idx - 1) % NUM_COURT_KEYPOINTS
                 elif key == ord("c"):
                     keypoints[current_idx] = [0.0, 0.0]
-                    visibility[current_idx] = 0.0
-                elif key == ord("s"):
-                    break
-                elif key in {ord("q"), 27}:
+                    placed[current_idx] = False
+                elif key == ord("s") or key in {ord("q"), 27}:
                     break
         finally:
             cv2.destroyWindow(window_name)
 
         self._manual_keypoints = keypoints.astype(np.float32)
-        self._manual_visibility = visibility.astype(np.float32)
         self._manual_needs_normalization = True
 
 
@@ -298,7 +278,6 @@ class CourtKPModule(BasePipelineModule):
                 self._collect_manual_keypoints_ui(frame)
 
             keypoints = np.array(self._manual_keypoints, copy=True)
-            visibility = np.array(self._manual_visibility, copy=True)
 
             if self._manual_needs_normalization:
                 if image_width is None or image_height is None:
@@ -311,7 +290,6 @@ class CourtKPModule(BasePipelineModule):
 
             result = CourtKPResult(
                 keypoints=keypoints.astype(np.float32),
-                visibility=visibility.astype(np.float32),
                 frame_index=frame_index,
             )
 
@@ -323,11 +301,10 @@ class CourtKPModule(BasePipelineModule):
         if not self.is_loaded:
             self.load()
 
-        result = self._predictor.predict(frame)
+        pred = self._predictor.predict(frame)
 
         # Convert tensors to numpy arrays
-        keypoints = result["keypoints"].numpy().astype(np.float32)
-        visibility = result["visibility"].numpy().astype(np.float32)
+        keypoints = pred["keypoints"].numpy().astype(np.float32)
 
         if image_width is not None and image_height is not None:
             keypoints[..., 0] /= image_width
@@ -335,7 +312,6 @@ class CourtKPModule(BasePipelineModule):
 
         result = CourtKPResult(
             keypoints=keypoints,
-            visibility=visibility,
             frame_index=frame_index,
         )
 
