@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch
 from torch import nn, Tensor
 
-from src.utils.models.embeddings.shared import InvisibleTokenEmbedding
+from src.utils.models.embeddings.invisible_embedding import InvisibleTokenEmbedding
 from src.utils.schema.player import NUM_HUMAN_KP
 
 
