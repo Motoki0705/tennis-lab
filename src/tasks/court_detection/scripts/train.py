@@ -1,11 +1,15 @@
-"""Train court keypoint detection model.
+"""Train a court detection model with PyTorch Lightning.
 
 Usage:
     python -m src.tasks.court_detection.scripts.train
-    python -m src.tasks.court_detection.scripts.train model=hrnet_heatmap training.max_epochs=200
+    python -m src.tasks.court_detection.scripts.train data=court_kp loss=kp
+    python -m src.tasks.court_detection.scripts.train data=court_line loss=line
+    python -m src.tasks.court_detection.scripts.train run.dry_run=true
 
 Notes:
-    - Hydra loads configuration from `src/tasks/court_detection/configs/train.yaml`.
+    - Hydra loads configuration from ``src/tasks/court_detection/configs/train.yaml``.
+    - ``model`` defaults to the config matching the selected ``data`` group.
+    - When you switch tasks, set ``loss`` to the same task family.
     - The script forwards the resolved config to the training runner.
 """
 
@@ -23,7 +27,7 @@ from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunn
     config_name="train",
 )
 def main(cfg: DictConfig) -> None:
-    """Train court keypoint detection model."""
+    """Train court detection model."""
     runner = CourtDetectionTrainingRunner()
     runner.run(cfg)
 

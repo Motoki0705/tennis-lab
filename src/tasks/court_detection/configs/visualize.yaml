@@ -1,9 +1,0 @@
-defaults:
-  - run: visualize
-  - model: vit_heatmap
-  - visualization: default
-  - _self_
-
-hydra:
-  run:
-    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}

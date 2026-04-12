@@ -1,191 +1,121 @@
-"""PyTorch Lightning module for court keypoint detection."""
+"""PyTorch Lightning module for court detection."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 import torch
-import torch.nn.functional as F
+import torch.nn as nn
 from torch import Tensor
 
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.court_detection.models import build_court_detection_model
-from src.tasks.court_detection.training.losses import CourtKeypointLoss
-from src.tasks.court_detection.training.metrics import CourtKeypointMetrics
+from src.tasks.court_detection.training.losses import (
+    BinaryDiceLoss,
+    DiceLoss,
+    FocalBCEWithLogitsLoss,
+)
+from src.tasks.court_detection.training.metrics import CourtDetectionMetrics
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class CourtKeypointLightningModule(BaseLightningModule):
-    """Lightning module for training court keypoint detection.
+class CourtDetectionLightningModule(BaseLightningModule):
+    """Unified Lightning module for court detection tasks.
 
-    Inherits training and optimization behavior from BaseLightningModule.
+    Supports three tasks via ``config.data.task``:
+
+    * ``seg`` — Court cell segmentation (CE + Dice, 7 classes).
+    * ``kp``  — Court keypoint heatmap regression (Focal BCE, 14 channels).
+    * ``line`` — Court white-line segmentation (BCE + Dice, 1 channel).
+
+    Inherits optimizer/scheduler logic from
+    :class:`~src.tasks.base.training.lightning_module.BaseLightningModule`.
     """
 
     def __init__(self, config: DictConfig | None = None) -> None:
-        """Initialize the Lightning module.
-
-        Args:
-            config: Configuration dictionary with model and training parameters.
-
-        """
         super().__init__(config)
         self.save_hyperparameters()
 
-        # Extract configuration sections
-        model_config = self.config.get("model", {})
-        loss_config = self.config.get("loss", {})
+        data_cfg = self.config.get("data", {})
+        loss_cfg = self.config.get("loss", {})
+        self.task = str(data_cfg.get("task", "seg"))
 
-        # Build model
+        # Model
         self.model = build_court_detection_model(self.config)
 
-        # Build loss
-        self.loss_fn = CourtKeypointLoss(
-            heatmap_config=loss_config.get("heatmap", {}),
-            visibility_config=loss_config.get("visibility", {}),
-        )
+        # Task-specific loss
+        if self.task == "seg":
+            seg_cfg = loss_cfg.get("seg", {})
+            num_classes = int(data_cfg.get("num_classes", 7))
+            self.ce_weight = float(seg_cfg.get("ce_weight", 1.0))
+            self.dice_weight = float(seg_cfg.get("dice_weight", 1.0))
+            self.ce_loss_fn = nn.CrossEntropyLoss()
+            self.dice_loss_fn = DiceLoss(num_classes=num_classes)
+        elif self.task == "kp":
+            kp_cfg = loss_cfg.get("kp", {})
+            self.loss_fn = FocalBCEWithLogitsLoss(
+                gamma=float(kp_cfg.get("focal_gamma", 2.0)),
+            )
+        elif self.task == "line":
+            line_cfg = loss_cfg.get("line", {})
+            self.bce_weight = float(line_cfg.get("bce_weight", 1.0))
+            self.dice_weight = float(line_cfg.get("dice_weight", 1.0))
+            pos_weight = torch.tensor([float(line_cfg.get("pos_weight", 8.0))])
+            self.bce_loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+            self.dice_loss_fn = BinaryDiceLoss()
 
-        # Build metrics
-        input_size = tuple(model_config.get("input_size", [256, 256]))
-        self.train_metrics = CourtKeypointMetrics(image_size=input_size)
-        self.val_metrics = CourtKeypointMetrics(image_size=input_size)
-        self.test_metrics = CourtKeypointMetrics(image_size=input_size)
+        # Metrics
+        self.train_metrics = CourtDetectionMetrics(self.task, data_cfg)
+        self.val_metrics = CourtDetectionMetrics(self.task, data_cfg)
 
-    def forward(self, x: Tensor) -> dict[str, Tensor]:
-        """Forward pass."""
-        return self.model(x)
+    def forward(self, images: Tensor) -> Tensor:
+        return self.model(images)
+
+    def _compute_loss(self, logits: Tensor, batch: dict[str, Tensor]) -> Tensor:
+        """Compute task-specific loss."""
+        if self.task == "seg":
+            masks = batch["mask"]
+            loss_ce = self.ce_loss_fn(logits, masks)
+            loss_dice = self.dice_loss_fn(logits, masks)
+            return self.ce_weight * loss_ce + self.dice_weight * loss_dice
+        elif self.task == "kp":
+            heatmaps = batch["heatmap"]
+            return self.loss_fn(logits, heatmaps)
+        else:  # line
+            masks = batch["mask"]
+            loss_bce = self.bce_loss_fn(logits, masks)
+            loss_dice = self.dice_loss_fn(logits, masks)
+            return self.bce_weight * loss_bce + self.dice_weight * loss_dice
 
     def _shared_step(
-        self,
-        batch: dict[str, Tensor],
-        stage: str,
+        self, batch: dict[str, Tensor], stage: str,
     ) -> dict[str, Tensor]:
-        """Shared step for train/val/test."""
+        """Shared computation for train/val steps."""
         images = batch["image"]
-        target_heatmaps = batch["heatmaps"]
-        target_keypoints = batch["keypoints"]
-        target_visibility = batch["visibility"]
-
-        # Forward pass
-        outputs = self.model(images)
-
-        # Compute loss
-        pred_heatmaps = outputs["heatmaps"]
-        if pred_heatmaps.shape[-2:] != target_heatmaps.shape[-2:]:
-            pred_heatmaps = F.interpolate(
-                pred_heatmaps,
-                size=target_heatmaps.shape[-2:],
-                mode="bilinear",
-                align_corners=False,
-            )
-
-        losses = self.loss_fn(
-            pred_heatmaps=pred_heatmaps,
-            target_heatmaps=target_heatmaps,
-            pred_visibility=outputs["visibility"],
-            target_visibility=target_visibility,
-        )
-
-        # Log losses
-        self.log(f"{stage}/loss", losses["total"], prog_bar=True)
-        self.log(f"{stage}/loss_heatmap", losses["heatmap"])
-        self.log(f"{stage}/loss_visibility", losses["visibility"])
-
-        pred_keypoints = self._heatmaps_to_coords(pred_heatmaps)
-
-        return {
-            "loss": losses["total"],
-            "pred_keypoints": pred_keypoints,
-            "pred_visibility": torch.sigmoid(outputs["visibility"]),
-            "target_keypoints": target_keypoints,
-            "target_visibility": target_visibility,
-        }
-
-    @staticmethod
-    def _heatmaps_to_coords(heatmaps: Tensor) -> Tensor:
-        """Convert heatmaps to keypoint coordinates using soft-argmax.
-
-        Args:
-            heatmaps: Heatmaps of shape (B, K, H, W).
-
-        Returns:
-            Coordinates of shape (B, K, 2) in normalized [0, 1] range.
-        """
-        bsz, num_kp, height, width = heatmaps.shape
-        device = heatmaps.device
-
-        heatmaps_flat = heatmaps.view(bsz, num_kp, -1)
-        probs = F.softmax(heatmaps_flat, dim=-1)
-
-        y_coords = torch.linspace(0, 1, height, device=device)
-        x_coords = torch.linspace(0, 1, width, device=device)
-        yy, xx = torch.meshgrid(y_coords, x_coords, indexing="ij")
-        xx_flat = xx.reshape(-1)
-        yy_flat = yy.reshape(-1)
-
-        x = (probs * xx_flat.view(1, 1, -1)).sum(dim=-1)
-        y = (probs * yy_flat.view(1, 1, -1)).sum(dim=-1)
-
-        return torch.stack([x, y], dim=-1)
+        logits = self.model(images)
+        loss = self._compute_loss(logits, batch)
+        self.log(f"{stage}/loss", loss, prog_bar=True, sync_dist=True)
+        return {"loss": loss, "logits": logits}
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
-        """Training step."""
         outputs = self._shared_step(batch, "train")
-
-        # Update metrics
-        self.train_metrics.update(
-            outputs["pred_keypoints"],
-            outputs["target_keypoints"],
-            outputs["pred_visibility"],
-            outputs["target_visibility"],
-        )
-
+        self.train_metrics.update(outputs["logits"], batch)
         return outputs["loss"]
 
     def on_train_epoch_end(self) -> None:
-        """Log training metrics at epoch end."""
         metrics = self.train_metrics.compute()
         for name, value in metrics.items():
             self.log(f"train/{name}", value)
         self.train_metrics.reset()
 
     def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
-        """Validation step."""
         outputs = self._shared_step(batch, "val")
-
-        # Update metrics
-        self.val_metrics.update(
-            outputs["pred_keypoints"],
-            outputs["target_keypoints"],
-            outputs["pred_visibility"],
-            outputs["target_visibility"],
-        )
+        self.val_metrics.update(outputs["logits"], batch)
 
     def on_validation_epoch_end(self) -> None:
-        """Log validation metrics at epoch end."""
         metrics = self.val_metrics.compute()
         for name, value in metrics.items():
-            self.log(f"val/{name}", value, prog_bar=(name == "pck"))
+            self.log(f"val/{name}", value, prog_bar=(name in ("miou", "mean_dist", "dice")))
         self.val_metrics.reset()
-
-    def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
-        """Test step."""
-        outputs = self._shared_step(batch, "test")
-
-        # Update metrics
-        self.test_metrics.update(
-            outputs["pred_keypoints"],
-            outputs["target_keypoints"],
-            outputs["pred_visibility"],
-            outputs["target_visibility"],
-        )
-
-    def on_test_epoch_end(self) -> None:
-        """Log test metrics at epoch end."""
-        metrics = self.test_metrics.compute()
-        for name, value in metrics.items():
-            self.log(f"test/{name}", value)
-        self.test_metrics.reset()
-
-    # configure_optimizers inherited from BaseLightningModule

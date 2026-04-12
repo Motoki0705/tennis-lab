@@ -17,7 +17,10 @@ from src.tennis_scene.pipeline.components.court_kp import CourtKPConfig, CourtKP
 from src.tennis_scene.pipeline.components.event_3d import Event3DConfig, Event3DModule
 from src.tennis_scene.pipeline.components.event_uv import EventUVConfig, EventUVModule
 from src.tennis_scene.pipeline.components.plcs import PLCSConfig, PLCSModule
-from src.tennis_scene.pipeline.components.trajectory import TrajectoryConfig, TrajectoryModule
+from src.tennis_scene.pipeline.components.trajectory import (
+    TrajectoryConfig,
+    TrajectoryModule,
+)
 from src.tennis_scene.pipeline.components.wasb import WASBConfig, WASBModule
 from src.tennis_scene.pipeline.dependency_graph import (
     ResolutionResult,
@@ -62,7 +65,7 @@ class TennisSceneOrchestrator:
         self.device = device
 
     @classmethod
-    def from_config(cls, cfg: DictConfig) -> "TennisSceneOrchestrator":
+    def from_config(cls, cfg: DictConfig) -> TennisSceneOrchestrator:
         from hydra.utils import to_absolute_path
 
         device = str(cfg.device)
@@ -331,7 +334,7 @@ class TennisSceneOrchestrator:
             image_height=height,
         )
         court_kp = court_result.keypoints
-        court_vis = court_result.visibility
+        court_vis = None
 
         if Stage.GVHMR in self.enabled_stages and self.gvhmr_config is not None:
             gvhmr_result = self._run_gvhmr(video_path, max_frames)

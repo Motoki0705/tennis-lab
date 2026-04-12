@@ -1,1 +1,0 @@
-"""Court detection visualization package."""

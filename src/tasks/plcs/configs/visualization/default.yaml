@@ -1,12 +1,12 @@
-mode: predict  # visualize | predict
-scene_path: data/plcs/scenes/scene_000015.npz
+mode: visualize  # visualize | predict
+scene_path: data/plcs/scenes/scene_000000.npz
 # Single-view camera index used when cameras is unset.
 camera: 0
 # Optional multi-camera selector: "all" or comma-separated "0,1,2"
 cameras: null
 animation_view: 3d  # 3d | 2d_topdown | camera
 fps: 30
-save: assets/plcs/gt_vs_pred.gif           # Optional output file for comparison animation (e.g., .mp4, .gif)
+save: assets/plcs/gt.gif           # Optional output file for comparison animation (e.g., .mp4, .gif)
 info: false
 checkpoint: checkpoints/plcs/frame/last.ckpt
   

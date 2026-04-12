@@ -64,7 +64,7 @@ def load_scene(filepath: str | Path) -> dict[str, Any]:
         )
         cameras.append(cam_data)
 
-    return AttrDict(
+    scene = AttrDict(
         meta=meta,
         position=data["position"],
         rotation=data["rotation"],
@@ -72,3 +72,9 @@ def load_scene(filepath: str | Path) -> dict[str, Any]:
         num_cameras=num_cameras,
         cameras=cameras,
     )
+
+    # Include pre-computed COCO17 world joints when stored (AthletePose3D path).
+    if "human_kp_3d" in data:
+        scene["human_kp_3d"] = data["human_kp_3d"]
+
+    return scene

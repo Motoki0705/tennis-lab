@@ -1,145 +1,150 @@
-"""Evaluation metrics for court keypoint detection."""
+"""Metrics for court detection training.
+
+* **seg** — Mean IoU across 7 classes.
+* **kp**  — Mean keypoint distance error (in pixels).
+* **line** — Binary Dice score.
+"""
 
 from __future__ import annotations
 
+from typing import Any
+
 import torch
+import torch.nn.functional as F
 from torch import Tensor
-from torchmetrics import Metric
 
 
-class CourtKeypointMetrics(Metric):
-    """Metrics for court keypoint detection.
+class CourtDetectionMetrics:
+    """Unified metrics accumulator for court detection tasks.
 
-    Computes:
-        - PCK (Percentage of Correct Keypoints) at various thresholds
-        - Mean keypoint error in pixels
-        - Visibility accuracy
+    Designed to be used per-stage (train/val) with ``update``/``compute``/``reset``.
 
-    Args:
-        pck_thresholds: List of PCK thresholds (fraction of image diagonal).
-        image_size: Image size [H, W] for computing pixel errors.
+    Parameters
+    ----------
+    task:
+        One of ``"seg"``, ``"kp"``, ``"line"``.
+    data_cfg:
+        Data config dict (used to resolve num_classes / num_keypoints).
     """
 
-    def __init__(
-        self,
-        pck_thresholds: list[float] | None = None,
-        image_size: tuple[int, int] = (256, 256),
-    ) -> None:
-        super().__init__()
+    def __init__(self, task: str, data_cfg: dict | Any = None) -> None:
+        self.task = task
+        data_cfg = data_cfg or {}
 
-        self.pck_thresholds = pck_thresholds or [0.05, 0.1, 0.2]
-        self.image_size = image_size
+        if task == "seg":
+            self.num_classes = int(data_cfg.get("num_classes", 7))
+            self._intersection: list[Tensor] = []
+            self._union: list[Tensor] = []
+        elif task == "kp":
+            self.num_keypoints = int(data_cfg.get("num_keypoints", 14))
+            self._distances: list[Tensor] = []
+        elif task == "line":
+            self._dice_sum: float = 0.0
+            self._dice_count: int = 0
 
-        # Compute image diagonal for PCK normalization
-        self.diagonal = (image_size[0] ** 2 + image_size[1] ** 2) ** 0.5
-
-        # State variables
-        self.add_state("total_error", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("total_count", default=torch.tensor(0), dist_reduce_fx="sum")
-        self.add_state(
-            "correct_per_threshold",
-            default=torch.zeros(len(self.pck_thresholds)),
-            dist_reduce_fx="sum",
-        )
-        self.add_state(
-            "visibility_correct",
-            default=torch.tensor(0),
-            dist_reduce_fx="sum",
-        )
-        self.add_state(
-            "visibility_total",
-            default=torch.tensor(0),
-            dist_reduce_fx="sum",
-        )
-
-    def update(
-        self,
-        pred_keypoints: Tensor,
-        target_keypoints: Tensor,
-        pred_visibility: Tensor,
-        target_visibility: Tensor,
-    ) -> None:
-        """Update metric state.
-
-        Args:
-            pred_keypoints: Predicted keypoints (B, K, 2) in normalized coords.
-            target_keypoints: Target keypoints (B, K, 2) in normalized coords.
-            pred_visibility: Predicted visibility probs (B, K).
-            target_visibility: Target visibility (B, K).
-        """
-        # Only evaluate visible keypoints
-        visible_mask = target_visibility > 0.5
-
-        if visible_mask.sum() == 0:
-            return
-
-        # Scale to pixel coordinates
-        pred_px = pred_keypoints.clone()
-        pred_px[..., 0] *= self.image_size[1]
-        pred_px[..., 1] *= self.image_size[0]
-
-        target_px = target_keypoints.clone()
-        target_px[..., 0] *= self.image_size[1]
-        target_px[..., 1] *= self.image_size[0]
-
-        # Compute per-keypoint Euclidean distance
-        distances = torch.norm(pred_px - target_px, dim=-1)  # (B, K)
-
-        # Only consider visible keypoints
-        visible_distances = distances[visible_mask]
-
-        # Update error sum
-        self.total_error += visible_distances.sum()
-        self.total_count += visible_mask.sum()
-
-        # Update PCK counts
-        for i, threshold in enumerate(self.pck_thresholds):
-            threshold_px = threshold * self.diagonal
-            correct = (visible_distances < threshold_px).sum()
-            self.correct_per_threshold[i] += correct
-
-        # Update visibility accuracy
-        pred_vis_binary = pred_visibility > 0.5
-        target_vis_binary = target_visibility > 0.5
-        self.visibility_correct += (pred_vis_binary == target_vis_binary).sum()
-        self.visibility_total += target_visibility.numel()
-
-    def compute(self) -> dict[str, Tensor]:
-        """Compute final metrics.
-
-        Returns:
-            Dictionary with:
-                - 'mean_error': Mean keypoint error in pixels
-                - 'pck@{threshold}': PCK at each threshold
-                - 'visibility_acc': Visibility classification accuracy
-        """
-        results = {}
-
-        # Mean error
-        if self.total_count > 0:
-            results["mean_error"] = self.total_error / self.total_count
+    def update(self, logits: Tensor, batch: dict[str, Tensor]) -> None:
+        """Accumulate a batch of predictions."""
+        if self.task == "seg":
+            self._update_seg(logits, batch)
+        elif self.task == "kp":
+            self._update_kp(logits, batch)
         else:
-            results["mean_error"] = torch.tensor(0.0)
+            self._update_line(logits, batch)
 
-        # PCK at each threshold
-        for i, threshold in enumerate(self.pck_thresholds):
-            if self.total_count > 0:
-                pck = self.correct_per_threshold[i] / self.total_count
-            else:
-                pck = torch.tensor(0.0)
-            results[f"pck@{threshold}"] = pck
+    def _update_seg(self, logits: Tensor, batch: dict[str, Tensor]) -> None:
+        """Compute per-class intersection and union for IoU."""
+        preds = logits.argmax(dim=1)  # (B, H, W)
+        targets = batch["mask"]  # (B, H, W)
+        for c in range(self.num_classes):
+            pred_c = (preds == c)
+            target_c = (targets == c)
+            intersection = (pred_c & target_c).sum().float()
+            union = (pred_c | target_c).sum().float()
+            self._intersection.append(intersection.detach().cpu())
+            self._union.append(union.detach().cpu())
 
-        # Main PCK (use 0.1 threshold)
-        if 0.1 in self.pck_thresholds:
-            idx = self.pck_thresholds.index(0.1)
-            results["pck"] = results[f"pck@{0.1}"]
+    def _update_kp(self, logits: Tensor, batch: dict[str, Tensor]) -> None:
+        """Compute soft-argmax distance to ground truth keypoints."""
+        coords_pred = _heatmaps_to_pixel_coords(logits)  # (B, K, 2)
+        coords_gt = batch["keypoints"]  # (B, K, 2)
+        dist = torch.norm(coords_pred.cpu() - coords_gt.cpu(), dim=-1)  # (B, K)
+        self._distances.append(dist.detach())
+
+    def _update_line(self, logits: Tensor, batch: dict[str, Tensor]) -> None:
+        """Compute per-batch binary Dice score."""
+        preds = (torch.sigmoid(logits) > 0.5).float()
+        targets = batch["mask"]
+        intersection = (preds * targets).sum()
+        union = preds.sum() + targets.sum()
+        dice = (2.0 * intersection + 1.0) / (union + 1.0)
+        self._dice_sum += dice.item()
+        self._dice_count += 1
+
+    def compute(self) -> dict[str, float]:
+        """Compute aggregated metrics."""
+        if self.task == "seg":
+            return self._compute_seg()
+        if self.task == "kp":
+            return self._compute_kp()
+        return self._compute_line()
+
+    def _compute_seg(self) -> dict[str, float]:
+        if not self._intersection:
+            return {"miou": 0.0}
+        intersection = torch.stack(self._intersection).view(-1, self.num_classes).sum(0)
+        union = torch.stack(self._union).view(-1, self.num_classes).sum(0)
+        iou = intersection / (union + 1e-8)
+        return {"miou": iou.mean().item()}
+
+    def _compute_kp(self) -> dict[str, float]:
+        if not self._distances:
+            return {"mean_dist": 0.0}
+        all_dist = torch.cat(self._distances, dim=0)  # (N, K)
+        return {"mean_dist": all_dist.mean().item()}
+
+    def _compute_line(self) -> dict[str, float]:
+        if self._dice_count == 0:
+            return {"dice": 0.0}
+        return {"dice": self._dice_sum / self._dice_count}
+
+    def reset(self) -> None:
+        """Reset accumulated state."""
+        if self.task == "seg":
+            self._intersection = []
+            self._union = []
+        elif self.task == "kp":
+            self._distances = []
         else:
-            results["pck"] = results.get(f"pck@{self.pck_thresholds[0]}", torch.tensor(0.0))
+            self._dice_sum = 0.0
+            self._dice_count = 0
 
-        # Visibility accuracy
-        if self.visibility_total > 0:
-            results["visibility_acc"] = self.visibility_correct / self.visibility_total
-        else:
-            results["visibility_acc"] = torch.tensor(0.0)
 
-        return results
+def _heatmaps_to_pixel_coords(heatmaps: Tensor) -> Tensor:
+    """Convert heatmaps to pixel coordinates via soft-argmax.
+
+    Parameters
+    ----------
+    heatmaps:
+        ``[B, K, H, W]`` raw logits.
+
+    Returns
+    -------
+    Tensor
+        ``[B, K, 2]`` pixel coordinates ``(x, y)``.
+    """
+    bsz, num_kp, height, width = heatmaps.shape
+    device = heatmaps.device
+
+    flat = heatmaps.view(bsz, num_kp, -1)
+    probs = F.softmax(flat, dim=-1)
+
+    y_coords = torch.linspace(0, height - 1, height, device=device)
+    x_coords = torch.linspace(0, width - 1, width, device=device)
+    yy, xx = torch.meshgrid(y_coords, x_coords, indexing="ij")
+    xx_flat = xx.reshape(-1)
+    yy_flat = yy.reshape(-1)
+
+    x = (probs * xx_flat.view(1, 1, -1)).sum(dim=-1)
+    y = (probs * yy_flat.view(1, 1, -1)).sum(dim=-1)
+
+    return torch.stack([x, y], dim=-1)

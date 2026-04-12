@@ -2,4 +2,4 @@
 
 from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
 
-__all__ = ["CourtKeypointPredictor"]
+__all__ = ["CourtKeypointPredictor"]  # noqa: F401
