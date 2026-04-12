@@ -9,4 +9,4 @@ Provides three tasks:
 
 from src.tasks.court_detection.models.court_unet import CourtUNet
 
-__all__ = ["CourtUNet"]
+__all__ = ["CourtUNet"]  # noqa: F401

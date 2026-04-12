@@ -528,8 +528,7 @@ def build_seg_transforms(
 ) -> tuple[list, list]:
     """Build joint spatial + image-only transforms for segmentation."""
     if swap_pairs is None:
-        from src.tasks.court_detection.configs.seg import SEG_HFLIP_SWAP
-        swap_pairs = SEG_HFLIP_SWAP
+        swap_pairs = [(1, 2), (3, 4), (5, 6)]
 
     spatial: list = []
     image_only: list = []
@@ -577,8 +576,7 @@ def build_kp_transforms(
 ) -> tuple[list, list]:
     """Build joint spatial + image-only transforms for keypoint heatmaps."""
     if swap_pairs is None:
-        from src.tasks.court_detection.configs.kp import KP_HFLIP_SWAP
-        swap_pairs = KP_HFLIP_SWAP
+        swap_pairs = [(0, 1), (2, 3), (4, 6), (5, 7), (8, 9), (10, 11)]
 
     spatial: list = []
     image_only: list = []

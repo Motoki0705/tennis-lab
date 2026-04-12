@@ -1,7 +1,8 @@
-"""Inference predictor for court keypoint detection using CourtUNet."""
+"""Inference predictor for court keypoint detection."""
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Self
 
@@ -12,17 +13,17 @@ import torchvision.transforms.functional as TF
 from PIL import Image
 from torch import Tensor
 
+from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.court_detection.data.augmentation import IMAGENET_MEAN, IMAGENET_STD
-from src.tasks.court_detection.models.court_unet import CourtUNet
+from src.tasks.court_detection.training.lightning_module import (
+    CourtDetectionLightningModule,
+)
 
-NUM_KEYPOINTS = 14
 
-
-class CourtKeypointPredictor:
+class CourtKeypointPredictor(BasePredictor):
     """Predictor for court keypoint detection using CourtUNet.
 
-    Loads a plain PyTorch checkpoint (produced by :mod:`training.train`)
-    and runs keypoint heatmap inference.
+    Loads a Lightning checkpoint and runs keypoint heatmap inference.
 
     Attributes:
         model: CourtUNet instance.
@@ -32,7 +33,7 @@ class CourtKeypointPredictor:
 
     def __init__(
         self,
-        model: CourtUNet,
+        model: torch.nn.Module,
         device: torch.device,
         short_side: int = 640,
     ) -> None:
@@ -46,16 +47,16 @@ class CourtKeypointPredictor:
     @classmethod
     def load_from_checkpoint(
         cls,
-        checkpoint_path: str | Path,
+        checkpoint_path: str | Path | Iterable[str | Path],
         device: str | torch.device = "cpu",
         **kwargs: Any,
     ) -> Self:
-        """Load predictor from a training checkpoint.
+        """Load predictor from a Lightning checkpoint.
 
         Parameters
         ----------
         checkpoint_path:
-            Path to ``.pt`` checkpoint file.
+            Path to ``.ckpt`` checkpoint file.
         device:
             Device to run inference on.
 
@@ -63,20 +64,18 @@ class CourtKeypointPredictor:
         -------
         CourtKeypointPredictor
         """
-        checkpoint_path = Path(checkpoint_path)
-        if not checkpoint_path.exists():
-            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+        checkpoints = cls._ensure_checkpoint(checkpoint_path)
+        resolved_device = cls._resolve_device(device)
 
-        resolved_device = torch.device(device) if isinstance(device, str) else device
-        ckpt = torch.load(checkpoint_path, map_location=resolved_device, weights_only=False)
+        lightning_module = CourtDetectionLightningModule.load_from_checkpoint(
+            checkpoints[0],
+            map_location=resolved_device,
+        )
 
-        cfg = ckpt.get("config", {})
-        num_classes = cfg.get("num_classes", NUM_KEYPOINTS)
-        in_channels = cfg.get("in_channels", 3)
-        short_side = cfg.get("val_short_side", 640)
-
-        model = CourtUNet(in_channels=in_channels, num_classes=num_classes)
-        model.load_state_dict(ckpt["model"])
+        model = lightning_module.model
+        data_cfg = dict(lightning_module.config.get("data", {}))
+        aug_cfg = data_cfg.get("augmentation", {})
+        short_side = int(aug_cfg.get("val_short_side", 640))
 
         return cls(model=model, device=resolved_device, short_side=short_side)
 
@@ -93,7 +92,6 @@ class CourtKeypointPredictor:
 
         orig_w, orig_h = image.size
 
-        # Resize so short side == self.short_side, keep aspect ratio
         if orig_h <= orig_w:
             new_h = self.short_side
             new_w = int(round(orig_w * new_h / orig_h))
@@ -132,7 +130,6 @@ class CourtKeypointPredictor:
 
         logits = self.model(image_tensor)  # [1, K, H, W]
 
-        # Soft-argmax to get keypoint coordinates in normalised [0,1]
         coords = self._heatmaps_to_coords(logits)[0].cpu()  # (K, 2)
         coords[:, 0] *= orig_w
         coords[:, 1] *= orig_h
