@@ -21,7 +21,7 @@ class BallUVEmbedding(nn.Module):
         self,
         *,
         dim: int,
-        dropout: float = 0.1,
+        dropout: float = 0.0,
         invisible_token: InvisibleTokenEmbedding,
     ) -> None:
         super().__init__()
