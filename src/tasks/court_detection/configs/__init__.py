@@ -1,1 +1,0 @@
-"""Court detection configuration modules."""

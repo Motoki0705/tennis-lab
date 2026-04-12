@@ -58,7 +58,7 @@ class CourtLineDataset(Dataset):
             crop_scale=cfg.get("crop_scale", (0.3, 1.0)),
             crop_ratio=cfg.get("crop_ratio", (0.75, 1.333)),
             hflip_prob=cfg.get("hflip_prob", 0.5),
-            swap_pairs=[],
+            swap_pairs=cfg.get("hflip_swap_pairs"),
             affine_degrees=cfg.get("affine_degrees", 15.0),
             affine_translate=cfg.get("affine_translate", (0.1, 0.1)),
             affine_scale=cfg.get("affine_scale", (0.8, 1.2)),
