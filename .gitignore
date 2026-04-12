@@ -49,6 +49,9 @@ data/blcs_fixed_8
 data/demo/
 data/tennis/
 data/tracknetv5_processed/
+data/AthletePose3D/
+data/plcs_athlete_pose/scenes/
+data/plcs_athlete_pose/*.txt
 annotation.json
 annotations/
 *.csv

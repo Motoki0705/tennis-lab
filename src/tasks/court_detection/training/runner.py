@@ -1,4 +1,4 @@
-"""Training runner for court keypoint detection."""
+"""Training runner for court detection."""
 
 from __future__ import annotations
 
@@ -7,19 +7,20 @@ from typing import Any
 import pytorch_lightning as pl
 
 from src.tasks.base.training.runner import BaseTrainingRunner
-from src.tasks.court_detection.data.datamodule import CourtKeypointDataModule
-from src.tasks.court_detection.training.lightning_module import CourtKeypointLightningModule
+from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
+from src.tasks.court_detection.training.lightning_module import (
+    CourtDetectionLightningModule,
+)
 
 
 class CourtDetectionTrainingRunner(BaseTrainingRunner):
-    """Training runner for court keypoint detection.
+    """Training runner for court detection.
 
-    Overrides datamodule/model construction.
+    Overrides datamodule/model construction for court detection.
     """
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
-        """Build CourtKeypointDataModule from config."""
-        return CourtKeypointDataModule(config)
+        return CourtDetectionDataModule(config)
 
     def build_lightning_module(
         self,
@@ -28,5 +29,4 @@ class CourtDetectionTrainingRunner(BaseTrainingRunner):
         *,
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
-        """Build CourtKeypointLightningModule from config."""
-        return CourtKeypointLightningModule(config)
+        return CourtDetectionLightningModule(config)
