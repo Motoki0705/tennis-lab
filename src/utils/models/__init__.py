@@ -38,11 +38,6 @@ from src.utils.models.embeddings import (
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
 )
-from src.utils.models.token_embeddings import (
-    CourtKPUVTokenEmbedding,
-    UVObsTokenEmbedding,
-)
-from src.utils.models.vit import ViTConfig, ViTEncoder
 
 __all__ = [
     # Attention
@@ -75,12 +70,7 @@ __all__ = [
     "MSDeformCrossAttnBlock",
     "ViTBlockConfig",
     "ViTBlock",
-    # ViT
-    "ViTConfig",
-    "ViTEncoder",
     # Token embeddings
-    "CourtKPUVTokenEmbedding",
-    "UVObsTokenEmbedding",
     "InvisibleTokenEmbedding",
     "CourtKPUVEmbedding",
     "PlayerKPUVEmbedding",
