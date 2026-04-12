@@ -148,7 +148,7 @@ class MotionSampler:
                     model_path=str(self.smplh_model_path.parent),
                     model_type="smplh",
                     gender=gender_lower,
-                    num_betas=10,
+                    num_betas=16,
                     use_pca=False,
                     ext="pkl",
                 )
@@ -304,7 +304,8 @@ class MotionSampler:
         right_hand_pose = aa[:, 22:37].reshape(T, -1)  # (T, 45)
 
         # Prepare betas (truncate to model's num_betas)
-        num_betas = min(betas.shape[0], 10)
+        model_num_betas = int(getattr(model, "num_betas", betas.shape[0]))
+        num_betas = min(betas.shape[0], model_num_betas)
         betas_truncated = betas[:num_betas]
 
         # Process in batches
