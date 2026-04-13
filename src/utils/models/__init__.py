@@ -7,7 +7,6 @@ Strategy A: treat the DeepSeek-style, pure PyTorch implementation in
 from src.utils.models.components import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
-    KVCache,
     LayerNorm,
     MSDeformAttnConfig,
     MSDeformCrossAttnBlock,
@@ -41,7 +40,6 @@ from src.utils.models.embeddings import (
 
 __all__ = [
     # Attention
-    "KVCache",
     "MultiHeadCrossAttention",
     "MultiHeadSelfAttention",
     "MSDeformAttnConfig",
