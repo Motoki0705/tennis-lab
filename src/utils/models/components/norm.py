@@ -40,17 +40,12 @@ class LayerNorm(nn.Module):
     LayerNorm wrapper that keeps parameters in fp32 and performs normalization in fp32.
     """
 
-    def __init__(self, dim: int, eps: float = 1e-6, elementwise_affine: bool = True) -> None:
+    def __init__(self, dim: int, eps: float = 1e-6) -> None:
         super().__init__()
         self.dim = int(dim)
         self.eps = float(eps)
-        self.elementwise_affine = bool(elementwise_affine)
-        if self.elementwise_affine:
-            self.weight = nn.Parameter(torch.ones(self.dim, dtype=torch.float32))
-            self.bias = nn.Parameter(torch.zeros(self.dim, dtype=torch.float32))
-        else:
-            self.register_parameter("weight", None)
-            self.register_parameter("bias", None)
+        self.weight = nn.Parameter(torch.ones(self.dim, dtype=torch.float32))
+        self.bias = nn.Parameter(torch.zeros(self.dim, dtype=torch.float32))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return F.layer_norm(
