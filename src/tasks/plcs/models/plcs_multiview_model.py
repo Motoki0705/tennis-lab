@@ -81,11 +81,9 @@ class Rope2DTransformerBlock(nn.Module):
 
         x = self.attn(
             x_norm,
-            start_pos=0,
             rope2d=rope2d,
             positions_2d=positions_2d,
             attn_mask=attn_mask,
-            is_causal=False,
         )
 
         x_norm, residual = self.ffn_norm(x, residual)

@@ -43,8 +43,5 @@ moe_config:
   score_func: softmax
   route_scale: 1.0
 
-# Attention
-causal: false        # Use causal attention mask
-
 # Output
 predict_velocity: false

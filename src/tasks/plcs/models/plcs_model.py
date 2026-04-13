@@ -360,10 +360,8 @@ class PLCSModel(nn.Module):
             x, residual = blk(
                 x,
                 residual,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
-                is_causal=False,
             )
 
         if residual is None:

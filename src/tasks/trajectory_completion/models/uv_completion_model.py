@@ -51,8 +51,6 @@ class UVTrajectoryCompletionModel(nn.Module):
         rope_theta: float = 10000.0,
         rope_dim: int | None = None,
         yarn: YaRNConfig | None = None,
-        # Attention behavior
-        causal: bool = False,
         # FFN / MoE
         mlp_inter_dim: int | None = None,
         use_moe: bool = False,
@@ -66,7 +64,6 @@ class UVTrajectoryCompletionModel(nn.Module):
         super().__init__()
         self.hidden_dim = int(hidden_dim)
         self.max_seq_len = int(max_seq_len)
-        self.causal = bool(causal)
         self.num_court_tokens = int(num_court_tokens)
 
         if self.hidden_dim % int(num_heads) != 0:
@@ -266,7 +263,6 @@ class UVTrajectoryCompletionModel(nn.Module):
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
             rope_dim=model_cfg.get("rope_dim", None),
             yarn=cls._parse_yarn_config(model_cfg),
-            causal=bool(model_cfg.get("causal", False)),
             mlp_inter_dim=mlp_inter_dim_value,
             use_moe=use_moe,
             moe_config=moe_config,
@@ -368,10 +364,8 @@ class UVTrajectoryCompletionModel(nn.Module):
             ball_tokens, _ = self_layer(
                 ball_tokens,
                 residual=None,
-                start_pos=0,
                 freqs_cis=freqs_ball_tokens,
                 attn_mask=ball_attn_mask,
-                is_causal=self.causal,
             )
             if return_intermediate_ball_hidden:
                 intermediate_ball_hidden.append(ball_tokens)
@@ -400,10 +394,8 @@ class UVTrajectoryCompletionModel(nn.Module):
             query, _ = self_layer(
                 query,
                 residual=None,
-                start_pos=0,
                 freqs_cis=freqs_query,
                 attn_mask=ball_attn_mask,
-                is_causal=self.causal,
             )
 
         query = self.final_norm(query)

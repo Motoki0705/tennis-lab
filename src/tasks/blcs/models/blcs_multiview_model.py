@@ -437,10 +437,8 @@ class BLCSMultiViewModel(nn.Module):
             query_x, _ = temporal_layer(
                 query_x,
                 residual=None,
-                start_pos=0,
                 freqs_cis=freqs_time,
                 attn_mask=query_mask,
-                is_causal=False,
             )
 
         query_x = self.final_norm(query_x)

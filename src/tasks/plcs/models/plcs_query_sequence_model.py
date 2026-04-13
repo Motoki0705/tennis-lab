@@ -447,10 +447,8 @@ class PLCSQuerySequenceModel(nn.Module):
             player_btjd, _ = self_layer(
                 player_btjd,
                 residual=None,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=joint_attn_mask,
-                is_causal=False,
             )
             player_x = player_btjd.reshape(batch_size, self.num_joints, seq_len, self.hidden_dim)
             player_x = player_x.permute(0, 2, 1, 3).contiguous()
@@ -487,10 +485,8 @@ class PLCSQuerySequenceModel(nn.Module):
             query_b2t, _ = self_layer(
                 query_b2t,
                 residual=None,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=frame_attn_mask_b2,
-                is_causal=False,
             )
             query = query_b2t.reshape(batch_size, 2, seq_len, self.hidden_dim).permute(0, 2, 1, 3)
 
