@@ -251,19 +251,14 @@ class BLCSEarlyFusionModel(nn.Module):
                 valid[fully_masked, 0] = True
             attn_mask = valid[:, None, :].expand(batch_size, seq_len, seq_len)
 
-        residual = None
         for blk in self.blocks:
-            x, residual = blk(
+            x = blk(
                 x,
-                residual,
                 freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
             )
 
-        if residual is None:
-            x = self.final_norm(x)
-        else:
-            x, _ = self.final_norm(x, residual)
+        x = self.final_norm(x)
 
         out: dict[str, Tensor] = {"position": self.position_head(x)}
         if self.predict_velocity and self.velocity_head is not None:

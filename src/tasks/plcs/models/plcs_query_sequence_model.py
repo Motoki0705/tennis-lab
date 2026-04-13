@@ -450,9 +450,8 @@ class PLCSQuerySequenceModel(nn.Module):
                 joint_attn_mask = joint_attn_mask.clone()
                 joint_attn_mask[empty_joint, :, 0] = True
 
-            player_btjd, _ = self_layer(
+            player_btjd = self_layer(
                 player_btjd,
-                residual=None,
                 freqs_cis=freqs_cis,
                 attn_mask=joint_attn_mask,
             )
@@ -488,9 +487,8 @@ class PLCSQuerySequenceModel(nn.Module):
 
             # Temporal self-attn with shared layers over query types.
             query_b2t = query.permute(0, 2, 1, 3).reshape(batch_size * 2, seq_len, self.hidden_dim)
-            query_b2t, _ = self_layer(
+            query_b2t = self_layer(
                 query_b2t,
-                residual=None,
                 freqs_cis=freqs_cis,
                 attn_mask=frame_attn_mask_b2,
             )

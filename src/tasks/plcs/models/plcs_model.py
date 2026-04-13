@@ -339,19 +339,14 @@ class PLCSModel(nn.Module):
 
         attn_mask: Tensor | None = None
 
-        residual = None
         for blk in self.blocks:
-            x, residual = blk(
+            x = blk(
                 x,
-                residual,
                 freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
             )
 
-        if residual is None:
-            x = self.final_norm(x)
-        else:
-            x, _ = self.final_norm(x, residual)
+        x = self.final_norm(x)
         return x
 
     def _encode_tokens(

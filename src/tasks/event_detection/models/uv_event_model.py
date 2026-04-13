@@ -205,19 +205,14 @@ class UVEventModel(nn.Module):
         if key_padding_mask is not None:
             attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
 
-        residual = None
         for block in self.blocks:
-            x, residual = block(
+            x = block(
                 x,
-                residual,
                 freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
             )
 
-        if residual is None:
-            x = self.final_norm(x)
-        else:
-            x, _ = self.final_norm(x, residual)
+        x = self.final_norm(x)
 
         ball_h = x[:, K:, :]
         return self.head(ball_h)

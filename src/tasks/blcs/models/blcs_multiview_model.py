@@ -438,9 +438,8 @@ class BLCSMultiViewModel(nn.Module):
             query_x = query_bt.reshape(batch_size, seq_len_in, self.hidden_dim)
 
             query_x = query_x * query_valid_fixed.unsqueeze(-1).to(dtype=query_x.dtype)
-            query_x, _ = temporal_layer(
+            query_x = temporal_layer(
                 query_x,
-                residual=None,
                 freqs_cis=freqs_time,
                 attn_mask=query_mask,
             )

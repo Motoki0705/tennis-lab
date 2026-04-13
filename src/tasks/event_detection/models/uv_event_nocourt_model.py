@@ -162,17 +162,12 @@ class UVEventNoCourtModel(nn.Module):
             key_padding_mask = ball_mask > 0
             attn_mask = key_padding_mask[:, None, :].expand(B, T, T)
 
-        residual = None
         for block in self.blocks:
-            x, residual = block(
+            x = block(
                 x,
-                residual,
                 freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
             )
 
-        if residual is None:
-            x = self.final_norm(x)
-        else:
-            x, _ = self.final_norm(x, residual)
+        x = self.final_norm(x)
         return self.head(x)

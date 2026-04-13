@@ -335,9 +335,8 @@ class BLCSQueryModel(nn.Module):
                 court_tok,
                 key_valid=court_valid,
             )
-            ball_x, _ = self_layer(
+            ball_x = self_layer(
                 ball_x,
-                residual=None,
                 freqs_cis=freqs_cis,
                 attn_mask=ball_attn_mask,
             )
@@ -354,9 +353,8 @@ class BLCSQueryModel(nn.Module):
                 freqs_q_cis=freqs_cis,
                 freqs_k_cis=freqs_cis,
             )
-            query_c, _ = self_layer(
+            query_c = self_layer(
                 query_c,
-                residual=None,
                 freqs_cis=freqs_cis,
                 attn_mask=ball_attn_mask,
             )
