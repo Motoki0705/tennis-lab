@@ -14,7 +14,6 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    YaRNConfig,
     precompute_freqs_cis,
 )
 from src.utils.models.embeddings import (
@@ -44,9 +43,9 @@ class BLCSQueryModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
-        yarn: YaRNConfig | None = None,
         num_ball_layers: int = 4,
         num_query2ball_layers: int = 2,
+        ffn_type: str = "swiglu",
         predict_velocity: bool = False,
         max_seq_len: int = 120,
         num_court_tokens: int = NUM_COURT_KP,
@@ -62,7 +61,6 @@ class BLCSQueryModel(nn.Module):
             dropout: Dropout probability.
             rope_dim: RoPE dimension. Defaults to head_dim.
             rope_theta: RoPE theta parameter.
-            yarn: Optional YaRN config for long-context extrapolation.
             num_ball_layers: Number of interleaved Ball->Court cross/self attention layers.
             num_query2ball_layers: Number of interleaved Query->Ball cross/self attention layers.
             predict_velocity: If True, also predict per-frame velocity.
@@ -122,10 +120,11 @@ class BLCSQueryModel(nn.Module):
                     CrossAttnBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_ball_layers)
@@ -137,12 +136,12 @@ class BLCSQueryModel(nn.Module):
                     TransformerBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
-                        yarn=yarn,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_ball_layers)
@@ -154,10 +153,11 @@ class BLCSQueryModel(nn.Module):
                     CrossAttnBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_query2ball_layers)
@@ -169,12 +169,12 @@ class BLCSQueryModel(nn.Module):
                     TransformerBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
-                        yarn=yarn,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_query2ball_layers)
@@ -203,7 +203,6 @@ class BLCSQueryModel(nn.Module):
             dim=rope_dim,
             seqlen=self.max_seq_len,
             base=rope_theta,
-            yarn=yarn,
             device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
@@ -213,13 +212,6 @@ class BLCSQueryModel(nn.Module):
         """Create model from Hydra/OmegaConf config."""
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
-
-        yarn_cfg = model_cfg.get("yarn", None)
-        yarn: YaRNConfig | None = None
-        if yarn_cfg is not None:
-            yarn_cfg = dict(yarn_cfg)
-            if yarn_cfg.get("original_seq_len") is not None:
-                yarn = YaRNConfig(**yarn_cfg)
 
         num_ball_layers = model_cfg.get("num_ball_layers", None)
         if num_ball_layers is None:
@@ -235,9 +227,9 @@ class BLCSQueryModel(nn.Module):
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            yarn=yarn,
             num_ball_layers=int(num_ball_layers),
             num_query2ball_layers=int(model_cfg.get("num_query2ball_layers", 2)),
+            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             num_court_tokens=int(model_cfg.get("num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP))),
@@ -329,13 +321,10 @@ class BLCSQueryModel(nn.Module):
                 court_tok,
                 key_valid=court_valid,
             )
-            ball_x, _ = self_layer(
+            ball_x = self_layer(
                 ball_x,
-                residual=None,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=ball_attn_mask,
-                is_causal=False,
             )
 
         ball_b = ball_x
@@ -350,13 +339,10 @@ class BLCSQueryModel(nn.Module):
                 freqs_q_cis=freqs_cis,
                 freqs_k_cis=freqs_cis,
             )
-            query_c, _ = self_layer(
+            query_c = self_layer(
                 query_c,
-                residual=None,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=ball_attn_mask,
-                is_causal=False,
             )
 
         query_c = self.final_norm(query_c)

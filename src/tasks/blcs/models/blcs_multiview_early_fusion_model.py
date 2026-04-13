@@ -20,11 +20,9 @@ from torch import Tensor
 
 from src.tasks.blcs.models.components.heads import Trajectory3DHead, VelocityHead
 from src.utils.models import (
-    MoEConfig,
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    YaRNConfig,
     precompute_freqs_cis,
 )
 from src.utils.models.embeddings import InvisibleTokenEmbedding
@@ -46,10 +44,7 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
-        yarn: YaRNConfig | None = None,
-        use_moe: bool = False,
-        moe_config: MoEConfig | None = None,
-        causal: bool = False,
+        ffn_type: str = "swiglu",
         predict_velocity: bool = False,
         max_seq_len: int = 120,
         max_num_cameras: int = 8,
@@ -62,7 +57,6 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         self.max_seq_len = int(max_seq_len)
         self.max_num_cameras = int(max_num_cameras)
         self.predict_velocity = bool(predict_velocity)
-        self.causal = bool(causal)
         self.num_court_tokens = int(num_court_tokens)
 
         if hidden_dim % num_heads != 0:
@@ -78,18 +72,10 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
-        self.yarn = yarn
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
             ffn_dim = (ffn_dim + 63) // 64 * 64
-
-        if use_moe and moe_config is None:
-            raise ValueError("use_moe=True requires moe_config.")
-        if moe_config is not None and moe_config.dim != hidden_dim:
-            raise ValueError(
-                f"moe_config.dim={moe_config.dim} must match hidden_dim={hidden_dim}"
-            )
 
         self.fusion_input_dim = int(2 + self.num_court_tokens * 2 + self.num_court_tokens)
         self.invisible_token = InvisibleTokenEmbedding(
@@ -119,14 +105,12 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
                     TransformerBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
                         rope_base=self.rope_theta,
-                        yarn=self.yarn,
-                        use_moe=use_moe,
-                        moe_config=moe_config,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_layers)
@@ -155,7 +139,6 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
             dim=self.rope_dim,
             seqlen=self.max_seq_len,
             base=self.rope_theta,
-            yarn=self.yarn,
             device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
@@ -166,19 +149,6 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
 
-        yarn_cfg = model_cfg.get("yarn", None)
-        yarn: YaRNConfig | None = None
-        if yarn_cfg is not None:
-            yarn_cfg = dict(yarn_cfg)
-            if yarn_cfg.get("original_seq_len", None) is not None:
-                yarn = YaRNConfig(**yarn_cfg)
-
-        use_moe = bool(model_cfg.get("use_moe", False))
-        moe_cfg = model_cfg.get("moe_config", None)
-        moe_config: MoEConfig | None = None
-        if use_moe and moe_cfg is not None:
-            moe_config = MoEConfig(dim=int(model_cfg.get("hidden_dim", 256)), **dict(moe_cfg))
-
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_layers=int(model_cfg.get("num_layers", 6)),
@@ -187,10 +157,7 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            yarn=yarn,
-            use_moe=use_moe,
-            moe_config=moe_config,
-            causal=bool(model_cfg.get("causal", False)),
+            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             max_num_cameras=int(model_cfg.get("max_num_cameras", model_cfg.get("max_views", 8))),
@@ -357,21 +324,14 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         attn_mask, time_valid_fixed = self._build_time_attn_mask(time_valid)
         x = x * time_valid_fixed.unsqueeze(-1).to(dtype=x.dtype)
 
-        residual = None
         for blk in self.blocks:
-            x, residual = blk(
+            x = blk(
                 x,
-                residual,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
-                is_causal=self.causal,
             )
 
-        if residual is None:
-            x = self.final_norm(x)
-        else:
-            x, _ = self.final_norm(x, residual)
+        x = self.final_norm(x)
 
         out: dict[str, Tensor] = {"position": self.position_head(x)}
         if self.predict_velocity and self.velocity_head is not None:

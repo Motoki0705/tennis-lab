@@ -41,9 +41,6 @@ The 2D API is offered in two layers:
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass
-
 import torch
 from torch import nn
 
@@ -51,102 +48,11 @@ from torch import nn
 # -------------------------
 # 1D RoPE (complex cis)
 # -------------------------
-@dataclass(frozen=True)
-class YaRNConfig:
-    """YaRN frequency correction config for long-context extrapolation.
-
-    Args:
-        original_seq_len: Pretraining sequence length.
-        rope_factor: Scaling factor applied beyond `original_seq_len`.
-        beta_fast: Fast decay hyperparameter for correction range.
-        beta_slow: Slow decay hyperparameter for correction range.
-    """
-    original_seq_len: int
-    rope_factor: float
-    beta_fast: int = 32
-    beta_slow: int = 1
-
-
-def _yarn_corrected_inv_freq(
-    *,
-    dim: int,
-    base: float,
-    seqlen: int,
-    yarn: YaRNConfig,
-    device: torch.device | None,
-) -> torch.Tensor:
-    if dim % 2 != 0:
-        raise ValueError(f"RoPE dim must be even, got {dim}")
-
-    inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2, dtype=torch.float32, device=device) / dim))
-
-    if seqlen <= yarn.original_seq_len:
-        return inv_freq
-
-    def find_correction_dim(num_rotations: float, dim_: int, base_: float, max_seq_len: int) -> float:
-        return dim_ * math.log(max_seq_len / (num_rotations * 2 * math.pi)) / (2.0 * math.log(base_))
-
-    def find_correction_range(
-        low_rot: float, high_rot: float, dim_: int, base_: float, max_seq_len: int
-    ) -> tuple[int, int]:
-        low = math.floor(find_correction_dim(low_rot, dim_, base_, max_seq_len))
-        high = math.ceil(find_correction_dim(high_rot, dim_, base_, max_seq_len))
-        return max(low, 0), min(high, dim_ - 1)
-
-    def linear_ramp_factor(min_: float, max_: float, dim_: int) -> torch.Tensor:
-        if min_ == max_:
-            max_ += 1e-3
-        t = (torch.arange(dim_, dtype=torch.float32, device=device) - min_) / (max_ - min_)
-        return torch.clamp(t, 0.0, 1.0)
-
-    low, high = find_correction_range(yarn.beta_fast, yarn.beta_slow, dim, base, yarn.original_seq_len)
-    smooth = 1.0 - linear_ramp_factor(low, high, dim // 2)  # (dim/2,)
-    inv_freq = inv_freq / yarn.rope_factor * (1.0 - smooth) + inv_freq * smooth
-    return inv_freq
-
-
-# -------------------------
-# 2D YaRN config
-# -------------------------
-@dataclass(frozen=True)
-class YaRNConfig2D:
-    """YaRN config for 2D axial RoPE.
-
-    Args:
-        original_height: Pretraining grid height.
-        original_width: Pretraining grid width.
-        rope_factor: Scaling factor applied beyond the base grid.
-        beta_fast: Fast decay hyperparameter for correction range.
-        beta_slow: Slow decay hyperparameter for correction range.
-    """
-    original_height: int
-    original_width: int
-    rope_factor: float
-    beta_fast: int = 32
-    beta_slow: int = 1
-
-    def split(self) -> tuple[YaRNConfig, YaRNConfig]:
-        yarn_y = YaRNConfig(
-            original_seq_len=self.original_height,
-            rope_factor=self.rope_factor,
-            beta_fast=self.beta_fast,
-            beta_slow=self.beta_slow,
-        )
-        yarn_x = YaRNConfig(
-            original_seq_len=self.original_width,
-            rope_factor=self.rope_factor,
-            beta_fast=self.beta_fast,
-            beta_slow=self.beta_slow,
-        )
-        return yarn_y, yarn_x
-
-
 def precompute_freqs_cis(
     *,
     dim: int,
     seqlen: int,
     base: float = 10000.0,
-    yarn: YaRNConfig | None = None,
     device: torch.device | None = None,
 ) -> torch.Tensor:
     """
@@ -158,11 +64,7 @@ def precompute_freqs_cis(
     if dim % 2 != 0:
         raise ValueError(f"RoPE dim must be even, got {dim}")
 
-    inv_freq = (
-        _yarn_corrected_inv_freq(dim=dim, base=base, seqlen=seqlen, yarn=yarn, device=device)
-        if yarn is not None
-        else 1.0 / (base ** (torch.arange(0, dim, 2, dtype=torch.float32, device=device) / dim))
-    )
+    inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2, dtype=torch.float32, device=device) / dim))
 
     t = torch.arange(seqlen, device=device, dtype=torch.float32)  # (seqlen,)
     freqs = torch.outer(t, inv_freq)  # (seqlen, dim/2)
@@ -288,7 +190,6 @@ class RotaryPositionEmbedding2D(nn.Module):
     Args:
         frequency: RoPE base (theta). For ViT-style 2D RoPE this is often 100.0.
         scaling_factor: kept for backward-compatible configs (currently unused).
-        yarn_2d: optional YaRN configuration applied per-axis.
         interleaved: whether to treat features as interleaved (even/odd) pairs.
     """
 
@@ -296,13 +197,11 @@ class RotaryPositionEmbedding2D(nn.Module):
         self,
         frequency: float = 100.0,
         scaling_factor: float = 1.0,
-        yarn_2d: YaRNConfig2D | None = None,
         interleaved: bool = False,
     ) -> None:
         super().__init__()
         self.base_frequency = float(frequency)
         self.scaling_factor = float(scaling_factor)
-        self.yarn_2d = yarn_2d
         self.interleaved = bool(interleaved)
         self._cache: dict[tuple[int, int, int, torch.device], tuple[torch.Tensor, torch.Tensor]] = {}
 
@@ -321,7 +220,6 @@ class RotaryPositionEmbedding2D(nn.Module):
                 height=height,
                 width=width,
                 base=self.base_frequency,
-                yarn_2d=self.yarn_2d,
                 device=device,
             )
             self._cache[key] = (freqs_y, freqs_x)
@@ -360,9 +258,6 @@ def precompute_freqs_cis_2d(
     height: int,
     width: int,
     base: float = 10000.0,
-    yarn_2d: YaRNConfig2D | None = None,
-    yarn_y: YaRNConfig | None = None,
-    yarn_x: YaRNConfig | None = None,
     device: torch.device | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
@@ -374,7 +269,6 @@ def precompute_freqs_cis_2d(
         freqs_cis_y: (height, axis_dim//2) complex
         freqs_cis_x: (width,  axis_dim//2) complex
 
-    YaRN can be applied per-axis.
     """
     if dim % 4 != 0:
         raise ValueError(f"2D axial RoPE requires dim % 4 == 0, got {dim}")
@@ -383,13 +277,8 @@ def precompute_freqs_cis_2d(
 
     axis_dim = dim // 2  # y half and x half each has axis_dim
 
-    if yarn_2d is not None:
-        if yarn_y is not None or yarn_x is not None:
-            raise ValueError("Pass either yarn_2d OR (yarn_y/yarn_x), not both.")
-        yarn_y, yarn_x = yarn_2d.split()
-
-    freqs_cis_y = precompute_freqs_cis(dim=axis_dim, seqlen=height, base=base, yarn=yarn_y, device=device)
-    freqs_cis_x = precompute_freqs_cis(dim=axis_dim, seqlen=width, base=base, yarn=yarn_x, device=device)
+    freqs_cis_y = precompute_freqs_cis(dim=axis_dim, seqlen=height, base=base, device=device)
+    freqs_cis_x = precompute_freqs_cis(dim=axis_dim, seqlen=width, base=base, device=device)
     return freqs_cis_y, freqs_cis_x
 
 

@@ -14,7 +14,6 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    YaRNConfig,
     precompute_freqs_cis,
 )
 from src.utils.models.embeddings import (
@@ -48,9 +47,9 @@ class PLCSQuerySequenceModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
-        yarn: YaRNConfig | None = None,
         num_player_layers: int = 4,
         num_query_layers: int = 2,
+        ffn_type: str = "swiglu",
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
         query_init_std: float = 0.02,
@@ -108,10 +107,11 @@ class PLCSQuerySequenceModel(nn.Module):
                     CrossAttnBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_player_layers)
@@ -123,12 +123,12 @@ class PLCSQuerySequenceModel(nn.Module):
                     TransformerBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
-                        yarn=yarn,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_player_layers)
@@ -141,10 +141,11 @@ class PLCSQuerySequenceModel(nn.Module):
                     CrossAttnBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_query_layers)
@@ -156,12 +157,12 @@ class PLCSQuerySequenceModel(nn.Module):
                     TransformerBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
-                        yarn=yarn,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_query_layers)
@@ -188,7 +189,6 @@ class PLCSQuerySequenceModel(nn.Module):
             dim=rope_dim,
             seqlen=self.max_seq_len,
             base=rope_theta,
-            yarn=yarn,
             device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
@@ -199,13 +199,6 @@ class PLCSQuerySequenceModel(nn.Module):
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
 
-        yarn_cfg = model_cfg.get("yarn", None)
-        yarn: YaRNConfig | None = None
-        if yarn_cfg is not None:
-            yarn_cfg = dict(yarn_cfg)
-            if yarn_cfg.get("original_seq_len", None) is not None:
-                yarn = YaRNConfig(**yarn_cfg)
-
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_heads=int(model_cfg.get("num_heads", 8)),
@@ -213,9 +206,9 @@ class PLCSQuerySequenceModel(nn.Module):
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            yarn=yarn,
             num_player_layers=int(model_cfg.get("num_player_layers", 4)),
             num_query_layers=int(model_cfg.get("num_query_layers", 2)),
+            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
             max_seq_len=int(model_cfg.get("max_seq_len", 120)),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
@@ -444,13 +437,10 @@ class PLCSQuerySequenceModel(nn.Module):
                 joint_attn_mask = joint_attn_mask.clone()
                 joint_attn_mask[empty_joint, :, 0] = True
 
-            player_btjd, _ = self_layer(
+            player_btjd = self_layer(
                 player_btjd,
-                residual=None,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=joint_attn_mask,
-                is_causal=False,
             )
             player_x = player_btjd.reshape(batch_size, self.num_joints, seq_len, self.hidden_dim)
             player_x = player_x.permute(0, 2, 1, 3).contiguous()
@@ -484,13 +474,10 @@ class PLCSQuerySequenceModel(nn.Module):
 
             # Temporal self-attn with shared layers over query types.
             query_b2t = query.permute(0, 2, 1, 3).reshape(batch_size * 2, seq_len, self.hidden_dim)
-            query_b2t, _ = self_layer(
+            query_b2t = self_layer(
                 query_b2t,
-                residual=None,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=frame_attn_mask_b2,
-                is_causal=False,
             )
             query = query_b2t.reshape(batch_size, 2, seq_len, self.hidden_dim).permute(0, 2, 1, 3)
 

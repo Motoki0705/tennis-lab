@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch
 from torch import nn, Tensor
 
-from src.utils.models.embeddings.shared import InvisibleTokenEmbedding
+from src.utils.models.embeddings.invisible_embedding import InvisibleTokenEmbedding
 
 
 class BallUVEmbedding(nn.Module):
@@ -21,7 +21,7 @@ class BallUVEmbedding(nn.Module):
         self,
         *,
         dim: int,
-        dropout: float = 0.1,
+        dropout: float = 0.0,
         invisible_token: InvisibleTokenEmbedding,
     ) -> None:
         super().__init__()

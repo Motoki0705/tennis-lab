@@ -14,7 +14,6 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    YaRNConfig,
     precompute_freqs_cis,
 )
 from src.utils.models.embeddings import (
@@ -49,10 +48,10 @@ class BLCSMultiViewModel(nn.Module):
         cam_emb_dim: int = 64,
         num_heads: int = 8,
         ffn_dim: int | None = None,
+        ffn_type: str = "swiglu",
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
-        yarn: YaRNConfig | None = None,
         num_layers: int = 4,
         predict_velocity: bool = False,
         max_seq_len: int = 120,
@@ -132,10 +131,11 @@ class BLCSMultiViewModel(nn.Module):
                     CrossAttnBlockConfig(
                         dim=self.hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_layers)
@@ -147,12 +147,12 @@ class BLCSMultiViewModel(nn.Module):
                     TransformerBlockConfig(
                         dim=self.hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
-                        yarn=yarn,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_layers)
@@ -182,7 +182,6 @@ class BLCSMultiViewModel(nn.Module):
             dim=rope_dim,
             seqlen=self.max_seq_len,
             base=rope_theta,
-            yarn=yarn,
             device=None,
         )
         self.register_buffer("freqs_time_cis", freqs_time_cis, persistent=False)
@@ -193,23 +192,16 @@ class BLCSMultiViewModel(nn.Module):
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
 
-        yarn_cfg = model_cfg.get("yarn", None)
-        yarn: YaRNConfig | None = None
-        if yarn_cfg is not None:
-            yarn_cfg = dict(yarn_cfg)
-            if yarn_cfg.get("original_seq_len") is not None:
-                yarn = YaRNConfig(**yarn_cfg)
-
         return cls(
             token_dim=int(model_cfg.get("token_dim", 256)),
             id_emb_dim=int(model_cfg.get("id_emb_dim", 64)),
             cam_emb_dim=int(model_cfg.get("cam_emb_dim", 64)),
             num_heads=int(model_cfg.get("num_heads", 8)),
             ffn_dim=model_cfg.get("ffn_dim", None),
+            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            yarn=yarn,
             num_layers=int(model_cfg.get("num_layers", model_cfg.get("num_stage2_layers", 4))),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
@@ -434,13 +426,10 @@ class BLCSMultiViewModel(nn.Module):
             query_x = query_bt.reshape(batch_size, seq_len_in, self.hidden_dim)
 
             query_x = query_x * query_valid_fixed.unsqueeze(-1).to(dtype=query_x.dtype)
-            query_x, _ = temporal_layer(
+            query_x = temporal_layer(
                 query_x,
-                residual=None,
-                start_pos=0,
                 freqs_cis=freqs_time,
                 attn_mask=query_mask,
-                is_causal=False,
             )
 
         query_x = self.final_norm(query_x)
