@@ -182,22 +182,17 @@ class UVTrajectoryCompletionNoCourtModel(nn.Module):
         if freqs.device != ball_uv.device:
             freqs = freqs.to(ball_uv.device)
 
-        residual = None
         intermediate_ball_hidden: list[Tensor] = []
         for block in self.blocks:
-            ball_tokens, residual = block(
+            ball_tokens = block(
                 ball_tokens,
-                residual,
                 freqs_cis=freqs,
                 attn_mask=ball_attn_mask,
             )
             if return_intermediate_ball_hidden:
                 intermediate_ball_hidden.append(ball_tokens)
 
-        if residual is None:
-            h = self.final_norm(ball_tokens)
-        else:
-            h, _ = self.final_norm(ball_tokens, residual)
+        h = self.final_norm(ball_tokens)
 
         pred = self.head(h)
         in_frame_logits = self.in_frame_head(h).squeeze(-1)

@@ -271,19 +271,14 @@ class BLCSModel(nn.Module):
             key_padding_mask = torch.cat([court_valid, ball_valid], dim=1)
             attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
 
-        residual = None
         for blk in self.blocks:
-            x, residual = blk(
+            x = blk(
                 x,
-                residual,
                 freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
             )
 
-        if residual is None:
-            x = self.final_norm(x)
-        else:
-            x, _ = self.final_norm(x, residual)
+        x = self.final_norm(x)
         ball_out = x[:, K:, :]  # (B, T, D)
 
         out: dict[str, Tensor] = {"position": self.position_head(ball_out)}  # (B, T, 3)

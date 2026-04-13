@@ -144,18 +144,13 @@ class Traj3DEventModel(nn.Module):
             key_padding_mask = t < seq_len.to(torch.long).view(B, 1)  # (B, S)
             attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
 
-        residual = None
         for block in self.blocks:
-            x, residual = block(
+            x = block(
                 x,
-                residual,
                 freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
             )
-        if residual is None:
-            x = self.final_norm(x)
-        else:
-            x, _ = self.final_norm(x, residual)
+        x = self.final_norm(x)
         return self.head(x)
 
 

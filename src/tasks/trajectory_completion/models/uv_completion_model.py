@@ -320,9 +320,8 @@ class UVTrajectoryCompletionModel(nn.Module):
                 freqs_q_cis=None,
                 freqs_k_cis=None,
             )
-            ball_tokens, _ = self_layer(
+            ball_tokens = self_layer(
                 ball_tokens,
-                residual=None,
                 freqs_cis=freqs_ball_tokens,
                 attn_mask=ball_attn_mask,
             )
@@ -350,9 +349,8 @@ class UVTrajectoryCompletionModel(nn.Module):
                 freqs_q_cis=freqs_query,
                 freqs_k_cis=freqs_ball_memory,
             )
-            query, _ = self_layer(
+            query = self_layer(
                 query,
-                residual=None,
                 freqs_cis=freqs_query,
                 attn_mask=ball_attn_mask,
             )

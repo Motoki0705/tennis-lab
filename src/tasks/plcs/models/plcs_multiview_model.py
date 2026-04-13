@@ -64,28 +64,19 @@ class Rope2DTransformerBlock(nn.Module):
     def forward(
         self,
         x: Tensor,
-        residual: Tensor | None,
         *,
         rope2d: tuple[Tensor, Tensor],
         positions_2d: Tensor,
         attn_mask: Tensor | None,
-    ) -> tuple[Tensor, Tensor]:
-        if residual is None:
-            x_norm = self.attn_norm(x)
-            residual = x
-        else:
-            x_norm, residual = self.attn_norm(x, residual)
-
-        x = self.attn(
-            x_norm,
+    ) -> Tensor:
+        x_attn = x + self.attn(
+            self.attn_norm(x),
             rope2d=rope2d,
             positions_2d=positions_2d,
             attn_mask=attn_mask,
         )
-
-        x_norm, residual = self.ffn_norm(x, residual)
-        x = self.ffn(x_norm)
-        return x, residual
+        x_fnn = x_attn + self.ffn(self.ffn_norm(x_attn))
+        return x_fnn
 
 
 class PLCSMultiViewModel(nn.Module):
@@ -384,21 +375,16 @@ class PLCSMultiViewModel(nn.Module):
             freqs_x = freqs_x.to(device)
         rope2d = (freqs_y, freqs_x)
 
-        residual = None
         for blk in self.blocks:
-            x, residual = blk(
+            x = blk(
                 x,
-                residual,
                 rope2d=rope2d,
                 positions_2d=positions_2d,
                 attn_mask=attn_mask,
             )
             x = x * token_valid.unsqueeze(-1).to(dtype=x.dtype)
 
-        if residual is None:
-            x = self.final_norm(x)
-        else:
-            x, _ = self.final_norm(x, residual)
+        x = self.final_norm(x)
         x = x * token_valid.unsqueeze(-1).to(dtype=x.dtype)
 
         time_offsets = K + torch.arange(T, device=device, dtype=torch.long) * self.frame_block_tokens
