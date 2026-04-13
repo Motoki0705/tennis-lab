@@ -46,7 +46,6 @@ import torch
 from torch import nn
 
 from src.utils.models.components.attention import (
-    KVCache,
     MultiHeadCrossAttention,
     MultiHeadSelfAttention,
 )
@@ -100,7 +99,7 @@ class TransformerBlock(nn.Module):
       - residual is the running residual stream
 
     Typical usage (prefill):
-        x, residual = block(x, residual=None, start_pos=0, freqs_cis=freqs, is_causal=True)
+        x, residual = block(x, residual=None, freqs_cis=freqs)
     """
 
     def __init__(self, cfg: TransformerBlockConfig) -> None:
@@ -129,11 +128,8 @@ class TransformerBlock(nn.Module):
         x: torch.Tensor,
         residual: torch.Tensor | None,
         *,
-        start_pos: int,
         freqs_cis: torch.Tensor | None = None,
-        kv_cache: KVCache | None = None,
         attn_mask: torch.Tensor | None = None,
-        is_causal: bool | None = True,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         if residual is None:
             x_norm = self.attn_norm(x)
@@ -143,11 +139,8 @@ class TransformerBlock(nn.Module):
 
         x = self.attn(
             x_norm,
-            start_pos=start_pos,
             freqs_cis=freqs_cis,
-            kv_cache=kv_cache,
             attn_mask=attn_mask,
-            is_causal=is_causal,
         )
 
         x_norm, residual = self.ffn_norm(x, residual)

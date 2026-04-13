@@ -2,7 +2,7 @@
 
 This package provides reusable building blocks used across tasks:
 
-- Attention: `MultiHeadSelfAttention`, `KVCache`
+- Attention: `MultiHeadSelfAttention`, `MultiHeadCrossAttention`
 - Norm: `RMSNorm`, `LayerNorm`
 - RoPE: 1D (`precompute_freqs_cis`, `YaRNConfig`) and 2D axial (`precompute_freqs_cis_2d`, `apply_rotary_emb_2d`, `YaRNConfig2D`)
         plus compatibility helpers (`RotaryPositionEmbedding2D`, `PositionGetter`)
@@ -15,7 +15,6 @@ Strategy A treats the DeepSeek-style implementation as canonical.
 """
 
 from src.utils.models.components.attention import (
-    KVCache,
     MultiHeadCrossAttention,
     MultiHeadSelfAttention,
 )
@@ -39,7 +38,6 @@ from src.utils.models.components.rope import (
 
 __all__ = [
     # Attention
-    "KVCache",
     "MultiHeadCrossAttention",
     "MultiHeadSelfAttention",
     # Norm
