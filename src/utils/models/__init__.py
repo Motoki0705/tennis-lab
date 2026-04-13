@@ -23,8 +23,6 @@ from src.utils.models.components import (
     TransformerBlockConfig,
     ViTBlock,
     ViTBlockConfig,
-    YaRNConfig,
-    YaRNConfig2D,
     apply_rotary_emb_2d,
     default_ffn_dim,
     precompute_freqs_cis,
@@ -48,8 +46,6 @@ __all__ = [
     "RMSNorm",
     "LayerNorm",
     # RoPE
-    "YaRNConfig",
-    "YaRNConfig2D",
     "precompute_freqs_cis",
     "precompute_freqs_cis_2d",
     "apply_rotary_emb_2d",

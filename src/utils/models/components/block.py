@@ -14,7 +14,6 @@ from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
 from src.utils.models.components.norm import RMSNorm
 from src.utils.models.components.rope import (
     PositionGetter,
-    YaRNConfig,
     precompute_freqs_cis_2d,
 )
 
@@ -31,7 +30,6 @@ class TransformerBlockConfig:
         rope_dim: Rotary dimension per head for 1D RoPE.
         attn_dropout: Dropout probability for attention.
         rope_base: Base theta for 1D RoPE.
-        yarn: Optional YaRN correction config.
         ffn_type: FFN implementation to use.
     """
 
@@ -44,7 +42,6 @@ class TransformerBlockConfig:
     attn_dropout: float = 0.0
     # RoPE
     rope_base: float = 10000.0
-    yarn: YaRNConfig | None = None
     # FFN
     ffn_type: Literal["swiglu", "mlp"] = "swiglu"
 
