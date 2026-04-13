@@ -1,5 +1,8 @@
 """Inference components for court detection."""
 
-from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
+from src.tasks.court_detection.inference.predictor import (
+    CourtDetectionPredictor,
+    CourtKeypointPredictor,
+)
 
-__all__ = ["CourtKeypointPredictor"]  # noqa: F401
+__all__ = ["CourtDetectionPredictor", "CourtKeypointPredictor"]  # noqa: F401

@@ -1,4 +1,4 @@
-"""Inference predictor for court keypoint detection."""
+"""Inference predictors for court detection tasks."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from typing import Any, Self
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torchvision.transforms.functional as TF
 from PIL import Image
 from torch import Tensor
@@ -20,25 +19,19 @@ from src.tasks.court_detection.training.lightning_module import (
 )
 
 
-class CourtKeypointPredictor(BasePredictor):
-    """Predictor for court keypoint detection using CourtUNet.
-
-    Loads a Lightning checkpoint and runs keypoint heatmap inference.
-
-    Attributes:
-        model: CourtUNet instance.
-        device: Device to run inference on.
-        short_side: Short side resize for preprocessing.
-    """
+class CourtDetectionPredictor(BasePredictor):
+    """Unified predictor for court detection tasks."""
 
     def __init__(
         self,
         model: torch.nn.Module,
         device: torch.device,
+        task: str,
         short_side: int = 640,
     ) -> None:
         self.model = model
         self.device = device
+        self.task = task
         self.short_side = short_side
 
         self.model.to(self.device)
@@ -51,42 +44,34 @@ class CourtKeypointPredictor(BasePredictor):
         device: str | torch.device = "cpu",
         **kwargs: Any,
     ) -> Self:
-        """Load predictor from a Lightning checkpoint.
-
-        Parameters
-        ----------
-        checkpoint_path:
-            Path to ``.ckpt`` checkpoint file.
-        device:
-            Device to run inference on.
-
-        Returns
-        -------
-        CourtKeypointPredictor
-        """
+        """Load predictor from a Lightning checkpoint."""
         checkpoints = cls._ensure_checkpoint(checkpoint_path)
         resolved_device = cls._resolve_device(device)
 
         lightning_module = CourtDetectionLightningModule.load_from_checkpoint(
             checkpoints[0],
             map_location=resolved_device,
+            weights_only=False,
         )
 
         model = lightning_module.model
         data_cfg = dict(lightning_module.config.get("data", {}))
         aug_cfg = data_cfg.get("augmentation", {})
+        task = str(data_cfg.get("task", "seg"))
         short_side = int(aug_cfg.get("val_short_side", 640))
 
-        return cls(model=model, device=resolved_device, short_side=short_side)
+        return cls(
+            model=model,
+            device=resolved_device,
+            task=task,
+            short_side=short_side,
+        )
 
-    def preprocess(self, image: np.ndarray | Image.Image) -> tuple[Tensor, int, int]:
-        """Preprocess image for inference.
-
-        Returns
-        -------
-        tuple
-            (tensor ``[1, 3, H', W']``, original_height, original_width)
-        """
+    def preprocess(
+        self,
+        image: np.ndarray | Image.Image,
+    ) -> tuple[Tensor, int, int, int, int]:
+        """Preprocess image for inference."""
         if isinstance(image, np.ndarray):
             image = Image.fromarray(image)
 
@@ -104,68 +89,54 @@ class CourtKeypointPredictor(BasePredictor):
 
         img_tensor = TF.to_tensor(image)
         img_tensor = TF.normalize(img_tensor, IMAGENET_MEAN, IMAGENET_STD)
-        return img_tensor.unsqueeze(0).to(self.device), orig_h, orig_w
+        return img_tensor.unsqueeze(0).to(self.device), orig_h, orig_w, new_h, new_w
 
     @torch.no_grad()
     def predict(
         self,
         image: np.ndarray | Image.Image | Tensor,
-        return_heatmaps: bool = False,
+        return_logits: bool = False,
     ) -> dict[str, Tensor]:
-        """Run inference on a single image.
-
-        Returns
-        -------
-        dict
-            - ``keypoints``: ``(K, 2)`` pixel coordinates on CPU.
-            - ``heatmaps`` (optional): ``(K, H, W)`` raw logits on CPU.
-        """
+        """Run inference on a single image."""
         if isinstance(image, (np.ndarray, Image.Image)):
-            image_tensor, orig_h, orig_w = self.preprocess(image)
+            image_tensor, orig_h, orig_w, resized_h, resized_w = self.preprocess(image)
         else:
             image_tensor = image.to(self.device)
             if image_tensor.ndim == 3:
                 image_tensor = image_tensor.unsqueeze(0)
             orig_h, orig_w = image_tensor.shape[-2], image_tensor.shape[-1]
+            resized_h, resized_w = orig_h, orig_w
 
-        logits = self.model(image_tensor)  # [1, K, H, W]
+        logits = self.model(image_tensor)  # [1, C, H, W]
+        result: dict[str, Tensor]
 
-        coords = self._heatmaps_to_coords(logits)[0].cpu()  # (K, 2)
-        coords[:, 0] *= orig_w
-        coords[:, 1] *= orig_h
+        if self.task == "kp":
+            coords = self._heatmaps_to_coords(logits)[0].cpu()
+            coords[:, 0] *= orig_w / resized_w
+            coords[:, 1] *= orig_h / resized_h
+            result = {"keypoints": coords}
+        elif self.task == "seg":
+            result = {"mask": logits.argmax(dim=1)[0].cpu()}
+        elif self.task == "line":
+            result = {"mask": torch.sigmoid(logits)[0, 0].cpu()}
+        else:
+            raise ValueError(f"Unsupported task: {self.task}")
 
-        result: dict[str, Tensor] = {"keypoints": coords}
-        if return_heatmaps:
-            result["heatmaps"] = logits[0].cpu()
+        if return_logits:
+            result["logits"] = logits[0].cpu()
         return result
 
     @staticmethod
     def _heatmaps_to_coords(heatmaps: Tensor) -> Tensor:
-        """Convert heatmaps to keypoint coordinates using soft-argmax.
-
-        Parameters
-        ----------
-        heatmaps:
-            ``[B, K, H, W]`` raw logits.
-
-        Returns
-        -------
-        Tensor
-            ``[B, K, 2]`` in normalised ``[0, 1]`` range.
-        """
-        bsz, num_kp, height, width = heatmaps.shape
-        device = heatmaps.device
-
+        """Convert heatmaps to keypoint coordinates using per-channel argmax."""
+        bsz, num_kp, _, width = heatmaps.shape
         heatmaps_flat = heatmaps.view(bsz, num_kp, -1)
-        probs = F.softmax(heatmaps_flat, dim=-1)
-
-        y_coords = torch.linspace(0, 1, height, device=device)
-        x_coords = torch.linspace(0, 1, width, device=device)
-        yy, xx = torch.meshgrid(y_coords, x_coords, indexing="ij")
-        xx_flat = xx.reshape(-1)
-        yy_flat = yy.reshape(-1)
-
-        x = (probs * xx_flat.view(1, 1, -1)).sum(dim=-1)
-        y = (probs * yy_flat.view(1, 1, -1)).sum(dim=-1)
-
+        max_idx = heatmaps_flat.argmax(dim=-1)
+        x = (max_idx % width).float()
+        y = torch.div(max_idx, width, rounding_mode="floor").float()
         return torch.stack([x, y], dim=-1)
+
+
+class CourtKeypointPredictor(CourtDetectionPredictor):
+    """Backward-compatible alias for keypoint predictor usage."""
+

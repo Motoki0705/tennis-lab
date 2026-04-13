@@ -1,0 +1,17 @@
+task: kp
+checkpoint: null
+data_dir: data/court
+split: val
+num_samples: 10
+device: cuda
+output_dir: outputs/court_detection/eval
+alpha: 0.45
+mask_dir_name: line_masks
+augmentation: {}
+
+hydra:
+  run:
+    dir: ${output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
