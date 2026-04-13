@@ -14,7 +14,6 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    YaRNConfig,
     precompute_freqs_cis,
 )
 from src.utils.models.embeddings import (
@@ -48,7 +47,6 @@ class PLCSQuerySequenceModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
-        yarn: YaRNConfig | None = None,
         num_player_layers: int = 4,
         num_query_layers: int = 2,
         ffn_type: str = "swiglu",
@@ -130,7 +128,6 @@ class PLCSQuerySequenceModel(nn.Module):
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
-                        yarn=yarn,
                         ffn_type=ffn_type,
                     )
                 )
@@ -165,7 +162,6 @@ class PLCSQuerySequenceModel(nn.Module):
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
-                        yarn=yarn,
                         ffn_type=ffn_type,
                     )
                 )
@@ -193,7 +189,6 @@ class PLCSQuerySequenceModel(nn.Module):
             dim=rope_dim,
             seqlen=self.max_seq_len,
             base=rope_theta,
-            yarn=yarn,
             device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
@@ -204,13 +199,6 @@ class PLCSQuerySequenceModel(nn.Module):
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
 
-        yarn_cfg = model_cfg.get("yarn", None)
-        yarn: YaRNConfig | None = None
-        if yarn_cfg is not None:
-            yarn_cfg = dict(yarn_cfg)
-            if yarn_cfg.get("original_seq_len", None) is not None:
-                yarn = YaRNConfig(**yarn_cfg)
-
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_heads=int(model_cfg.get("num_heads", 8)),
@@ -218,7 +206,6 @@ class PLCSQuerySequenceModel(nn.Module):
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            yarn=yarn,
             num_player_layers=int(model_cfg.get("num_player_layers", 4)),
             num_query_layers=int(model_cfg.get("num_query_layers", 2)),
             ffn_type=str(model_cfg.get("ffn_type", "swiglu")),

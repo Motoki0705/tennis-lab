@@ -10,5 +10,4 @@ ffn_type: swiglu
 invisible_init_std: 0.02
 
 rope_theta: 10000.0
-yarn: null
 max_seq_len: 10240

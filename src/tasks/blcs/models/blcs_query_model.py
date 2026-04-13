@@ -14,7 +14,6 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    YaRNConfig,
     precompute_freqs_cis,
 )
 from src.utils.models.embeddings import (
@@ -44,7 +43,6 @@ class BLCSQueryModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
-        yarn: YaRNConfig | None = None,
         num_ball_layers: int = 4,
         num_query2ball_layers: int = 2,
         ffn_type: str = "swiglu",
@@ -63,7 +61,6 @@ class BLCSQueryModel(nn.Module):
             dropout: Dropout probability.
             rope_dim: RoPE dimension. Defaults to head_dim.
             rope_theta: RoPE theta parameter.
-            yarn: Optional YaRN config for long-context extrapolation.
             num_ball_layers: Number of interleaved Ball->Court cross/self attention layers.
             num_query2ball_layers: Number of interleaved Query->Ball cross/self attention layers.
             predict_velocity: If True, also predict per-frame velocity.
@@ -144,7 +141,6 @@ class BLCSQueryModel(nn.Module):
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
-                        yarn=yarn,
                         ffn_type=ffn_type,
                     )
                 )
@@ -178,7 +174,6 @@ class BLCSQueryModel(nn.Module):
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
-                        yarn=yarn,
                         ffn_type=ffn_type,
                     )
                 )
@@ -208,7 +203,6 @@ class BLCSQueryModel(nn.Module):
             dim=rope_dim,
             seqlen=self.max_seq_len,
             base=rope_theta,
-            yarn=yarn,
             device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
@@ -218,13 +212,6 @@ class BLCSQueryModel(nn.Module):
         """Create model from Hydra/OmegaConf config."""
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
-
-        yarn_cfg = model_cfg.get("yarn", None)
-        yarn: YaRNConfig | None = None
-        if yarn_cfg is not None:
-            yarn_cfg = dict(yarn_cfg)
-            if yarn_cfg.get("original_seq_len") is not None:
-                yarn = YaRNConfig(**yarn_cfg)
 
         num_ball_layers = model_cfg.get("num_ball_layers", None)
         if num_ball_layers is None:
@@ -240,7 +227,6 @@ class BLCSQueryModel(nn.Module):
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            yarn=yarn,
             num_ball_layers=int(num_ball_layers),
             num_query2ball_layers=int(model_cfg.get("num_query2ball_layers", 2)),
             ffn_type=str(model_cfg.get("ffn_type", "swiglu")),

@@ -25,7 +25,6 @@ num_query_layers: 2
 # RoPE (temporal only)
 rope_dim: null
 rope_theta: 10000.0
-yarn: null
 
 # Model type
 architecture: sequence

@@ -18,7 +18,6 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    YaRNConfig,
     precompute_freqs_cis,
 )
 from src.utils.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
@@ -39,7 +38,6 @@ class UVEventModel(nn.Module):
         num_heads: int = 8,
         dropout: float = 0.1,
         rope_theta: float = 10000.0,
-        yarn: YaRNConfig | None = None,
         max_seq_len: int = 256,
         num_events: int = 2,
         ffn_dim: int | None = None,
@@ -85,7 +83,6 @@ class UVEventModel(nn.Module):
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=float(rope_theta),
-                        yarn=yarn,
                         ffn_type=ffn_type,
                     )
                 )
@@ -99,22 +96,9 @@ class UVEventModel(nn.Module):
             dim=rope_dim,
             seqlen=max_tokens,
             base=float(rope_theta),
-            yarn=yarn,
             device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
-
-    @staticmethod
-    def _parse_yarn_config(model_cfg: DictConfig) -> YaRNConfig | None:
-        yarn_cfg = model_cfg.get("yarn")
-        if yarn_cfg is None:
-            return None
-        return YaRNConfig(
-            original_seq_len=int(yarn_cfg.get("original_seq_len")),
-            rope_factor=float(yarn_cfg.get("rope_factor")),
-            beta_fast=int(yarn_cfg.get("beta_fast", 32)),
-            beta_slow=int(yarn_cfg.get("beta_slow", 1)),
-        )
 
     @classmethod
     def from_config(cls, config: DictConfig) -> UVEventModel:
@@ -127,7 +111,6 @@ class UVEventModel(nn.Module):
             num_heads=int(model_cfg.get("num_heads", 8)),
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            yarn=cls._parse_yarn_config(model_cfg),
             max_seq_len=int(model_cfg.get("max_seq_len", 256)),
             num_events=int(model_cfg.get("num_events", 2)),
             ffn_dim=model_cfg.get("ffn_dim"),

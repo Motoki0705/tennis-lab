@@ -22,7 +22,6 @@ num_query2ball_layers: 2
 # RoPE (used in Stage B and Stage C)
 rope_dim: null
 rope_theta: 10000.0
-yarn: null
 
 # Output
 predict_velocity: false

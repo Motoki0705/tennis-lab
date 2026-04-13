@@ -20,14 +20,6 @@ invisible_init_std: 0.02
 rope_dim: null       # Defaults to head_dim (hidden_dim / num_heads)
 rope_theta: 10000.0
 
-# YaRN (optional long-context extrapolation for RoPE)
-# Set to null to disable. Example:
-# yarn:
-#   original_seq_len: 140
-#   rope_factor: 4.0
-#   beta_fast: 32
-#   beta_slow: 1
-yarn: null
 
 # Output
 predict_velocity: false
