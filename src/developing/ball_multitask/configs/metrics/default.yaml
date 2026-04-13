@@ -1,5 +1,0 @@
-masked_accuracy_threshold_px: 2.0
-observed_accuracy_threshold_px: 2.0
-peak_threshold: 0.5
-match_tolerance_frames: 3
-in_frame_threshold: 0.5
