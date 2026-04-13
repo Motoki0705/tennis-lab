@@ -13,6 +13,7 @@ hidden_dim: 256
 num_layers: 6
 num_heads: 8
 ffn_dim: null        # Defaults to 8/3 * hidden_dim (rounded to 64)
+ffn_type: swiglu
 dropout: 0.1
 invisible_init_std: 0.02
 
@@ -23,18 +24,6 @@ max_seq_len: 120
 # 2D RoPE
 rope_dim: null       # Defaults to head_dim; must satisfy rope_dim % 4 == 0
 rope_theta: 10000.0
-
-# MoE (optional; applied to all blocks)
-use_moe: false
-moe_config:
-  moe_inter_dim: 704
-  n_routed_experts: 8
-  n_shared_experts: 2
-  n_activated_experts: 2
-  n_expert_groups: 1
-  n_limited_groups: 1
-  score_func: softmax
-  route_scale: 1.0
 
 # Model type
 architecture: multiview

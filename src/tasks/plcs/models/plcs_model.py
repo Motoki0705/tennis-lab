@@ -28,7 +28,6 @@ import torch.nn as nn
 from torch import Tensor
 
 from src.utils.models import (
-    MoEConfig,
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
@@ -88,8 +87,7 @@ class PLCSModel(nn.Module):
         num_register_tokens: int = 4,
         use_kp_id_embedding: bool = True,
         use_rope: bool = False,
-        use_moe: bool = False,
-        moe_config: MoEConfig | None = None,
+        ffn_type: str = "swiglu",
         invisible_init_std: float = 0.02,
         num_court_tokens: int = NUM_COURT_KP,
     ) -> None:
@@ -107,8 +105,6 @@ class PLCSModel(nn.Module):
             num_register_tokens: Number of register tokens inserted after CLS.
             use_kp_id_embedding: Whether to add explicit KP-ID embeddings.
             use_rope: Whether to apply RoPE in attention.
-            use_moe: Use Mixture-of-Experts FFN in each Transformer block.
-            moe_config: MoE configuration (required when use_moe=True).
             invisible_init_std: Initialization std for invisible tokens.
 
         """
@@ -131,10 +127,6 @@ class PLCSModel(nn.Module):
             ffn_dim = int((8 * hidden_dim) / 3)
             ffn_dim = (ffn_dim + 63) // 64 * 64  # Round to multiple of 64
 
-        if use_moe and moe_config is None:
-            raise ValueError("use_moe=True requires moe_config.")
-        if moe_config is not None and moe_config.dim != hidden_dim:
-            raise ValueError(f"moe_config.dim={moe_config.dim} must match hidden_dim={hidden_dim}")
         if self.num_register_tokens < 0:
             raise ValueError(f"num_register_tokens must be >= 0, got {self.num_register_tokens}")
 
@@ -177,14 +169,13 @@ class PLCSModel(nn.Module):
                     TransformerBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
                         rope_base=self.rope_theta,
                         yarn=self.yarn,
-                        use_moe=use_moe,
-                        moe_config=moe_config,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_layers)
@@ -238,12 +229,6 @@ class PLCSModel(nn.Module):
             if yarn_cfg.get("original_seq_len") is not None:
                 yarn = YaRNConfig(**yarn_cfg)
 
-        use_moe = bool(model_cfg.get("use_moe", False))
-        moe_cfg = model_cfg.get("moe_config", None)
-        moe_config: MoEConfig | None = None
-        if use_moe and moe_cfg is not None:
-            moe_config = MoEConfig(dim=int(model_cfg.get("hidden_dim", 256)), **dict(moe_cfg))
-
         return cls(
             hidden_dim=model_cfg.get("hidden_dim", 256),
             num_layers=model_cfg.get("num_layers", 4),
@@ -256,8 +241,7 @@ class PLCSModel(nn.Module):
             num_register_tokens=int(model_cfg.get("num_register_tokens", 4)),
             use_kp_id_embedding=bool(model_cfg.get("use_kp_id_embedding", True)),
             use_rope=bool(model_cfg.get("use_rope", False)),
-            use_moe=use_moe,
-            moe_config=moe_config,
+            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )

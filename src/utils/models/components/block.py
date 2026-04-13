@@ -1,46 +1,7 @@
-# ==============================================================================
-# NOTE ON ORIGIN / LICENSE
-#
-# This file is derived from (and/or inspired by) DeepSeek's inference reference:
-#   https://github.com/deepseek-ai/DeepSeek-V3.2-Exp/blob/main/inference/model.py
-#
-# MIT License
-#
-# Copyright (c) 2025 DeepSeek
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-# ==============================================================================
-
-"""
-block.py (pure PyTorch)
-
-Includes:
-- TransformerBlock: DeepSeek-style block structure (RMSNorm + residual accumulator)
-- ViTBlock: standard Vision Transformer block (LayerNorm + residual inside the block)
-
-This module assumes single-GPU / non-distributed execution and uses the pure PyTorch
-attention / norm / MoE implementations from sibling modules.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 import torch
 from torch import nn
@@ -49,7 +10,7 @@ from src.utils.models.components.attention import (
     MultiHeadCrossAttention,
     MultiHeadSelfAttention,
 )
-from src.utils.models.components.moe import MoE, MoEConfig, SwiGLU
+from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
 from src.utils.models.components.norm import RMSNorm
 from src.utils.models.components.rope import (
     PositionGetter,
@@ -65,19 +26,18 @@ class TransformerBlockConfig:
     Args:
         dim: Token embedding dimension.
         n_heads: Number of attention heads.
-        mlp_inter_dim: Hidden dimension for the MLP/FFN.
+        ffn_dim: Hidden dimension for the FFN. Defaults to the repository-wide transformer FFN heuristic.
         head_dim: Per-head dimension (defaults to dim // n_heads).
         rope_dim: Rotary dimension per head for 1D RoPE.
         attn_dropout: Dropout probability for attention.
         rope_base: Base theta for 1D RoPE.
         yarn: Optional YaRN correction config.
-        use_moe: Whether to use MoE FFN.
-        moe_config: MoE configuration when `use_moe=True`.
+        ffn_type: FFN implementation to use.
     """
 
     dim: int
     n_heads: int
-    mlp_inter_dim: int
+    ffn_dim: int | None = None
     # attention
     head_dim: int | None = None
     rope_dim: int | None = None
@@ -85,9 +45,8 @@ class TransformerBlockConfig:
     # RoPE
     rope_base: float = 10000.0
     yarn: YaRNConfig | None = None
-    # MoE (optional)
-    use_moe: bool = False
-    moe_config: MoEConfig | None = None
+    # FFN
+    ffn_type: Literal["swiglu", "mlp"] = "swiglu"
 
 
 class TransformerBlock(nn.Module):
@@ -116,12 +75,13 @@ class TransformerBlock(nn.Module):
         )
 
         self.ffn_norm = RMSNorm(cfg.dim)
-        if cfg.use_moe:
-            if cfg.moe_config is None:
-                raise ValueError("use_moe=True requires moe_config.")
-            self.ffn: nn.Module = MoE(cfg.moe_config)
+        ffn_dim = default_ffn_dim(cfg.dim) if cfg.ffn_dim is None else int(cfg.ffn_dim)
+        if cfg.ffn_type == "swiglu":
+            self.ffn: nn.Module = SwiGLU(cfg.dim, ffn_dim)
+        elif cfg.ffn_type == "mlp":
+            self.ffn = MLP(cfg.dim, ffn_dim)
         else:
-            self.ffn = SwiGLU(cfg.dim, cfg.mlp_inter_dim)
+            raise ValueError(f"Unsupported ffn_type={cfg.ffn_type}")
 
     def forward(
         self,
@@ -154,14 +114,13 @@ class CrossAttnBlockConfig:
 
     dim: int
     n_heads: int
-    mlp_inter_dim: int
+    ffn_dim: int | None = None
     # attention
     head_dim: int | None = None
     rope_dim: int | None = None
     attn_dropout: float = 0.0
-    # MoE (optional)
-    use_moe: bool = False
-    moe_config: MoEConfig | None = None
+    # FFN
+    ffn_type: Literal["swiglu", "mlp"] = "swiglu"
 
 
 class CrossAttnBlock(nn.Module):
@@ -181,12 +140,13 @@ class CrossAttnBlock(nn.Module):
             attn_dropout=cfg.attn_dropout,
         )
         self.ffn_norm = RMSNorm(cfg.dim)
-        if cfg.use_moe:
-            if cfg.moe_config is None:
-                raise ValueError("use_moe=True requires moe_config.")
-            self.ffn: nn.Module = MoE(cfg.moe_config)
+        ffn_dim = default_ffn_dim(cfg.dim) if cfg.ffn_dim is None else int(cfg.ffn_dim)
+        if cfg.ffn_type == "swiglu":
+            self.ffn: nn.Module = SwiGLU(cfg.dim, ffn_dim)
+        elif cfg.ffn_type == "mlp":
+            self.ffn = MLP(cfg.dim, ffn_dim)
         else:
-            self.ffn = SwiGLU(cfg.dim, cfg.mlp_inter_dim)
+            raise ValueError(f"Unsupported ffn_type={cfg.ffn_type}")
 
     def forward(
         self,

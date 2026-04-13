@@ -51,6 +51,7 @@ class PLCSQuerySequenceModel(nn.Module):
         yarn: YaRNConfig | None = None,
         num_player_layers: int = 4,
         num_query_layers: int = 2,
+        ffn_type: str = "swiglu",
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
         query_init_std: float = 0.02,
@@ -108,10 +109,11 @@ class PLCSQuerySequenceModel(nn.Module):
                     CrossAttnBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_player_layers)
@@ -123,12 +125,13 @@ class PLCSQuerySequenceModel(nn.Module):
                     TransformerBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
                         yarn=yarn,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_player_layers)
@@ -141,10 +144,11 @@ class PLCSQuerySequenceModel(nn.Module):
                     CrossAttnBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_query_layers)
@@ -156,12 +160,13 @@ class PLCSQuerySequenceModel(nn.Module):
                     TransformerBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
                         yarn=yarn,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_query_layers)
@@ -216,6 +221,7 @@ class PLCSQuerySequenceModel(nn.Module):
             yarn=yarn,
             num_player_layers=int(model_cfg.get("num_player_layers", 4)),
             num_query_layers=int(model_cfg.get("num_query_layers", 2)),
+            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
             max_seq_len=int(model_cfg.get("max_seq_len", 120)),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
