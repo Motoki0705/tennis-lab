@@ -19,6 +19,5 @@ moe:
 
 rope_theta: 10000.0
 yarn: null
-causal: false
 max_seq_len: 10240
 num_events: 2  # [shot, bounce]

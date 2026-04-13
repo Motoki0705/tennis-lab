@@ -49,7 +49,6 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         yarn: YaRNConfig | None = None,
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
-        causal: bool = False,
         predict_velocity: bool = False,
         max_seq_len: int = 120,
         max_num_cameras: int = 8,
@@ -62,7 +61,6 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         self.max_seq_len = int(max_seq_len)
         self.max_num_cameras = int(max_num_cameras)
         self.predict_velocity = bool(predict_velocity)
-        self.causal = bool(causal)
         self.num_court_tokens = int(num_court_tokens)
 
         if hidden_dim % num_heads != 0:
@@ -190,7 +188,6 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
             yarn=yarn,
             use_moe=use_moe,
             moe_config=moe_config,
-            causal=bool(model_cfg.get("causal", False)),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             max_num_cameras=int(model_cfg.get("max_num_cameras", model_cfg.get("max_views", 8))),
@@ -362,10 +359,8 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
             x, residual = blk(
                 x,
                 residual,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
-                is_causal=self.causal,
             )
 
         if residual is None:

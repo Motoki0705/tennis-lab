@@ -41,7 +41,6 @@ class UVEventModel(nn.Module):
         dropout: float = 0.1,
         rope_theta: float = 10000.0,
         yarn: YaRNConfig | None = None,
-        causal: bool = False,
         max_seq_len: int = 256,
         num_events: int = 2,
         mlp_inter_dim: int | None = None,
@@ -54,7 +53,6 @@ class UVEventModel(nn.Module):
         self.hidden_dim = int(hidden_dim)
         self.max_seq_len = int(max_seq_len)
         self.num_events = int(num_events)
-        self.causal = bool(causal)
         self.num_court_tokens = int(num_court_tokens)
 
         if self.hidden_dim % num_heads != 0:
@@ -166,7 +164,6 @@ class UVEventModel(nn.Module):
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
             yarn=cls._parse_yarn_config(model_cfg),
-            causal=bool(model_cfg.get("causal", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", 256)),
             num_events=int(model_cfg.get("num_events", 2)),
             mlp_inter_dim=mlp_inter_dim_value,
@@ -250,10 +247,8 @@ class UVEventModel(nn.Module):
             x, residual = block(
                 x,
                 residual,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
-                is_causal=self.causal,
             )
 
         if residual is None:

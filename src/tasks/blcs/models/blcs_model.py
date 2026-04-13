@@ -77,7 +77,6 @@ class BLCSModel(nn.Module):
         yarn: YaRNConfig | None = None,
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
-        causal: bool = False,
         predict_velocity: bool = False,
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
@@ -96,7 +95,6 @@ class BLCSModel(nn.Module):
             yarn: Optional YaRN config for long-context extrapolation.
             use_moe: Use Mixture-of-Experts FFN in each Transformer block.
             moe_config: MoE configuration (required when use_moe=True).
-            causal: Use causal attention mask.
             predict_velocity: Also predict velocities (for auxiliary loss).
             max_seq_len: Maximum sequence length.
             invisible_init_std: Initialization std for invisible tokens.
@@ -105,7 +103,6 @@ class BLCSModel(nn.Module):
         self.hidden_dim = hidden_dim
         self.max_seq_len = max_seq_len
         self.predict_velocity = predict_velocity
-        self.causal = causal
         self.num_court_tokens = int(num_court_tokens)
         self.max_tokens = int(self.num_court_tokens + self.max_seq_len)
 
@@ -229,7 +226,6 @@ class BLCSModel(nn.Module):
             yarn=yarn,
             use_moe=use_moe,
             moe_config=moe_config,
-            causal=model_cfg.get("causal", False),
             predict_velocity=model_cfg.get("predict_velocity", False),
             max_seq_len=model_cfg.get(
                 "max_seq_len", data_cfg.get("max_seq_len", 120)
@@ -298,10 +294,8 @@ class BLCSModel(nn.Module):
             x, residual = blk(
                 x,
                 residual,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
-                is_causal=self.causal,
             )
 
         if residual is None:

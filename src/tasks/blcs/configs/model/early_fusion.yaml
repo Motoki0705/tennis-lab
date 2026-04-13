@@ -24,8 +24,5 @@ yarn: null
 use_moe: false
 moe_config: null
 
-# Attention
-causal: false
-
 # Output
 predict_velocity: false

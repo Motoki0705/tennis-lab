@@ -332,10 +332,8 @@ class BLCSQueryModel(nn.Module):
             ball_x, _ = self_layer(
                 ball_x,
                 residual=None,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=ball_attn_mask,
-                is_causal=False,
             )
 
         ball_b = ball_x
@@ -353,10 +351,8 @@ class BLCSQueryModel(nn.Module):
             query_c, _ = self_layer(
                 query_c,
                 residual=None,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=ball_attn_mask,
-                is_causal=False,
             )
 
         query_c = self.final_norm(query_c)

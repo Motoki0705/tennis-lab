@@ -52,7 +52,6 @@ class BLCSEarlyFusionModel(nn.Module):
         yarn: YaRNConfig | None = None,
         use_moe: bool = False,
         moe_config: MoEConfig | None = None,
-        causal: bool = False,
         predict_velocity: bool = False,
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
@@ -62,7 +61,6 @@ class BLCSEarlyFusionModel(nn.Module):
         self.hidden_dim = int(hidden_dim)
         self.max_seq_len = int(max_seq_len)
         self.predict_velocity = bool(predict_velocity)
-        self.causal = bool(causal)
 
         if hidden_dim % num_heads != 0:
             raise ValueError(f"hidden_dim={hidden_dim} must be divisible by num_heads={num_heads}")
@@ -173,7 +171,6 @@ class BLCSEarlyFusionModel(nn.Module):
             yarn=yarn,
             use_moe=use_moe,
             moe_config=moe_config,
-            causal=bool(model_cfg.get("causal", False)),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
@@ -274,10 +271,8 @@ class BLCSEarlyFusionModel(nn.Module):
             x, residual = blk(
                 x,
                 residual,
-                start_pos=0,
                 freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
-                is_causal=self.causal,
             )
 
         if residual is None:
