@@ -22,7 +22,6 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    YaRNConfig,
     precompute_freqs_cis,
 )
 from src.utils.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
@@ -49,7 +48,6 @@ class UVTrajectoryCompletionModel(nn.Module):
         # Positional encoding
         rope_theta: float = 10000.0,
         rope_dim: int | None = None,
-        yarn: YaRNConfig | None = None,
         # FFN
         ffn_dim: int | None = None,
         ffn_type: str = "swiglu",
@@ -123,7 +121,6 @@ class UVTrajectoryCompletionModel(nn.Module):
                         rope_dim=rope_dim_value,
                         attn_dropout=float(dropout),
                         rope_base=float(rope_theta),
-                        yarn=yarn,
                         ffn_type=ffn_type,
                     )
                 )
@@ -157,7 +154,6 @@ class UVTrajectoryCompletionModel(nn.Module):
                         rope_dim=rope_dim_value,
                         attn_dropout=float(dropout),
                         rope_base=float(rope_theta),
-                        yarn=yarn,
                         ffn_type=ffn_type,
                     )
                 )
@@ -186,22 +182,9 @@ class UVTrajectoryCompletionModel(nn.Module):
             dim=rope_dim_value,
             seqlen=self.max_seq_len,
             base=float(rope_theta),
-            yarn=yarn,
             device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
-
-    @staticmethod
-    def _parse_yarn_config(model_cfg: DictConfig) -> YaRNConfig | None:
-        yarn_cfg = model_cfg.get("yarn")
-        if yarn_cfg is None:
-            return None
-        return YaRNConfig(
-            original_seq_len=int(yarn_cfg.get("original_seq_len")),
-            rope_factor=float(yarn_cfg.get("rope_factor")),
-            beta_fast=int(yarn_cfg.get("beta_fast", 32)),
-            beta_slow=int(yarn_cfg.get("beta_slow", 1)),
-        )
 
     @classmethod
     def from_config(cls, config: DictConfig) -> UVTrajectoryCompletionModel:
@@ -222,7 +205,6 @@ class UVTrajectoryCompletionModel(nn.Module):
             num_query_layers=int(num_query_layers),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
             rope_dim=model_cfg.get("rope_dim", None),
-            yarn=cls._parse_yarn_config(model_cfg),
             ffn_dim=model_cfg.get("ffn_dim"),
             ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),

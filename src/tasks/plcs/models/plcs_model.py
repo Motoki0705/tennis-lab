@@ -31,7 +31,6 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    YaRNConfig,
     precompute_freqs_cis,
 )
 from src.utils.models.embeddings import (
@@ -83,7 +82,6 @@ class PLCSModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
-        yarn: YaRNConfig | None = None,
         num_register_tokens: int = 4,
         use_kp_id_embedding: bool = True,
         use_rope: bool = False,
@@ -101,7 +99,6 @@ class PLCSModel(nn.Module):
             dropout: Dropout probability.
             rope_dim: RoPE dimension. Defaults to head_dim.
             rope_theta: RoPE theta parameter.
-            yarn: Optional YaRN config for long-context extrapolation.
             num_register_tokens: Number of register tokens inserted after CLS.
             use_kp_id_embedding: Whether to add explicit KP-ID embeddings.
             use_rope: Whether to apply RoPE in attention.
@@ -111,7 +108,6 @@ class PLCSModel(nn.Module):
         super().__init__()
 
         self.hidden_dim = hidden_dim
-        self.yarn = yarn
         self.num_register_tokens = int(num_register_tokens)
         self.use_kp_id_embedding = bool(use_kp_id_embedding)
         self.use_rope = bool(use_rope)
@@ -174,7 +170,6 @@ class PLCSModel(nn.Module):
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
                         rope_base=self.rope_theta,
-                        yarn=self.yarn,
                         ffn_type=ffn_type,
                     )
                 )
@@ -203,7 +198,6 @@ class PLCSModel(nn.Module):
                 dim=self.rope_dim,
                 seqlen=self.max_tokens,
                 base=self.rope_theta,
-                yarn=self.yarn,
                 device=None,  # initialized on CPU; moved by `model.to(device)`
             )
             self.register_buffer("freqs_cis", freqs_cis, persistent=False)
@@ -222,13 +216,6 @@ class PLCSModel(nn.Module):
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
 
-        yarn_cfg = model_cfg.get("yarn", None)
-        yarn: YaRNConfig | None = None
-        if yarn_cfg is not None:
-            yarn_cfg = dict(yarn_cfg)
-            if yarn_cfg.get("original_seq_len") is not None:
-                yarn = YaRNConfig(**yarn_cfg)
-
         return cls(
             hidden_dim=model_cfg.get("hidden_dim", 256),
             num_layers=model_cfg.get("num_layers", 4),
@@ -237,7 +224,6 @@ class PLCSModel(nn.Module):
             dropout=model_cfg.get("dropout", 0.1),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=model_cfg.get("rope_theta", 10000.0),
-            yarn=yarn,
             num_register_tokens=int(model_cfg.get("num_register_tokens", 4)),
             use_kp_id_embedding=bool(model_cfg.get("use_kp_id_embedding", True)),
             use_rope=bool(model_cfg.get("use_rope", False)),

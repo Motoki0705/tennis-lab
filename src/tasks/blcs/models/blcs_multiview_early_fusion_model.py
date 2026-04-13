@@ -23,7 +23,6 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    YaRNConfig,
     precompute_freqs_cis,
 )
 from src.utils.models.embeddings import InvisibleTokenEmbedding
@@ -45,7 +44,6 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
-        yarn: YaRNConfig | None = None,
         ffn_type: str = "swiglu",
         predict_velocity: bool = False,
         max_seq_len: int = 120,
@@ -74,7 +72,6 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
-        self.yarn = yarn
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
@@ -113,7 +110,6 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
                         rope_base=self.rope_theta,
-                        yarn=self.yarn,
                         ffn_type=ffn_type,
                     )
                 )
@@ -143,7 +139,6 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
             dim=self.rope_dim,
             seqlen=self.max_seq_len,
             base=self.rope_theta,
-            yarn=self.yarn,
             device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
@@ -154,13 +149,6 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
 
-        yarn_cfg = model_cfg.get("yarn", None)
-        yarn: YaRNConfig | None = None
-        if yarn_cfg is not None:
-            yarn_cfg = dict(yarn_cfg)
-            if yarn_cfg.get("original_seq_len", None) is not None:
-                yarn = YaRNConfig(**yarn_cfg)
-
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_layers=int(model_cfg.get("num_layers", 6)),
@@ -169,7 +157,6 @@ class BLCSMultiViewEarlyFusionModel(nn.Module):
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            yarn=yarn,
             ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
