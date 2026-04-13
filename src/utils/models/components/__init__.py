@@ -6,7 +6,7 @@ This package provides reusable building blocks used across tasks:
 - Norm: `RMSNorm`, `LayerNorm`
 - RoPE: 1D (`precompute_freqs_cis`, `YaRNConfig`) and 2D axial (`precompute_freqs_cis_2d`, `apply_rotary_emb_2d`, `YaRNConfig2D`)
         plus compatibility helpers (`RotaryPositionEmbedding2D`, `PositionGetter`)
-- MLP / MoE: `SwiGLU`, `MoE`, `MoEConfig`
+- FFN: `SwiGLU`, `MLP`, `default_ffn_dim`
 - Blocks: `TransformerBlock`, `TransformerBlockConfig`, `CrossAttnBlockConfig`, `CrossAttnBlock`
 
 Note:
@@ -24,7 +24,7 @@ from src.utils.models.components.block import (
     TransformerBlock,
     TransformerBlockConfig,
 )
-from src.utils.models.components.moe import MoE, MoEConfig, SwiGLU
+from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
 from src.utils.models.components.norm import LayerNorm, RMSNorm
 from src.utils.models.components.rope import (
     PositionGetter,
@@ -51,10 +51,10 @@ __all__ = [
     "apply_rotary_emb_2d",
     "RotaryPositionEmbedding2D",
     "PositionGetter",
-    # MLP / MoE
+    # FFN
+    "MLP",
     "SwiGLU",
-    "MoEConfig",
-    "MoE",
+    "default_ffn_dim",
     # Blocks
     "TransformerBlockConfig",
     "TransformerBlock",

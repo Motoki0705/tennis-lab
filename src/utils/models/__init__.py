@@ -7,12 +7,11 @@ Strategy A: treat the DeepSeek-style, pure PyTorch implementation in
 from src.utils.models.components import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
+    MLP,
     LayerNorm,
     MSDeformAttnConfig,
     MSDeformCrossAttnBlock,
     MSDeformCrossAttnBlockConfig,
-    MoE,
-    MoEConfig,
     MultiHeadCrossAttention,
     MultiScaleDeformableAttention,
     MultiHeadSelfAttention,
@@ -27,6 +26,7 @@ from src.utils.models.components import (
     YaRNConfig,
     YaRNConfig2D,
     apply_rotary_emb_2d,
+    default_ffn_dim,
     precompute_freqs_cis,
     precompute_freqs_cis_2d,
 )
@@ -55,10 +55,10 @@ __all__ = [
     "apply_rotary_emb_2d",
     "RotaryPositionEmbedding2D",
     "PositionGetter",
-    # MLP / MoE
+    # FFN
+    "MLP",
     "SwiGLU",
-    "MoEConfig",
-    "MoE",
+    "default_ffn_dim",
     # Blocks
     "TransformerBlockConfig",
     "TransformerBlock",

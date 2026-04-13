@@ -47,6 +47,7 @@ class BLCSQueryModel(nn.Module):
         yarn: YaRNConfig | None = None,
         num_ball_layers: int = 4,
         num_query2ball_layers: int = 2,
+        ffn_type: str = "swiglu",
         predict_velocity: bool = False,
         max_seq_len: int = 120,
         num_court_tokens: int = NUM_COURT_KP,
@@ -122,10 +123,11 @@ class BLCSQueryModel(nn.Module):
                     CrossAttnBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_ball_layers)
@@ -137,12 +139,13 @@ class BLCSQueryModel(nn.Module):
                     TransformerBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
                         yarn=yarn,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_ball_layers)
@@ -154,10 +157,11 @@ class BLCSQueryModel(nn.Module):
                     CrossAttnBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_query2ball_layers)
@@ -169,12 +173,13 @@ class BLCSQueryModel(nn.Module):
                     TransformerBlockConfig(
                         dim=hidden_dim,
                         n_heads=num_heads,
-                        mlp_inter_dim=ffn_dim,
+                        ffn_dim=ffn_dim,
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
                         rope_base=rope_theta,
                         yarn=yarn,
+                        ffn_type=ffn_type,
                     )
                 )
                 for _ in range(num_query2ball_layers)
@@ -238,6 +243,7 @@ class BLCSQueryModel(nn.Module):
             yarn=yarn,
             num_ball_layers=int(num_ball_layers),
             num_query2ball_layers=int(model_cfg.get("num_query2ball_layers", 2)),
+            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             num_court_tokens=int(model_cfg.get("num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP))),

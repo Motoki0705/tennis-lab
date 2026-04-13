@@ -8,20 +8,18 @@ where each frame block is:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
 from src.utils.models import (
-    MoE,
-    MoEConfig,
     MultiHeadSelfAttention,
     RMSNorm,
-    SwiGLU,
     precompute_freqs_cis_2d,
 )
+from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
 from src.utils.models.embeddings import CourtKPUVEmbedding, InvisibleTokenEmbedding, PlayerKPUVEmbedding
 from src.tasks.plcs.models.components.heads import PositionHead, RotationHead
 from src.utils.schema.court import NUM_COURT_KP
@@ -39,12 +37,11 @@ class Rope2DTransformerBlock(nn.Module):
         *,
         dim: int,
         n_heads: int,
-        mlp_inter_dim: int,
+        ffn_dim: int,
         head_dim: int,
         rope_dim: int,
         attn_dropout: float,
-        use_moe: bool,
-        moe_config: MoEConfig | None,
+        ffn_type: Literal["swiglu", "mlp"],
     ) -> None:
         super().__init__()
         self.attn_norm = RMSNorm(dim)
@@ -57,12 +54,12 @@ class Rope2DTransformerBlock(nn.Module):
         )
 
         self.ffn_norm = RMSNorm(dim)
-        if use_moe:
-            if moe_config is None:
-                raise ValueError("use_moe=True requires moe_config.")
-            self.ffn: nn.Module = MoE(moe_config)
+        if ffn_type == "swiglu":
+            self.ffn: nn.Module = SwiGLU(dim, ffn_dim)
+        elif ffn_type == "mlp":
+            self.ffn = MLP(dim, ffn_dim)
         else:
-            self.ffn = SwiGLU(dim, mlp_inter_dim)
+            raise ValueError(f"Unsupported ffn_type={ffn_type}")
 
     def forward(
         self,
@@ -103,8 +100,7 @@ class PLCSMultiViewModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
-        use_moe: bool = False,
-        moe_config: MoEConfig | None = None,
+        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
         max_views: int = 8,
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
@@ -128,13 +124,7 @@ class PLCSMultiViewModel(nn.Module):
             raise ValueError(f"2D RoPE requires rope_dim % 4 == 0, got {self.rope_dim}")
 
         if ffn_dim is None:
-            ffn_dim = int((8 * hidden_dim) / 3)
-            ffn_dim = (ffn_dim + 63) // 64 * 64
-
-        if use_moe and moe_config is None:
-            raise ValueError("use_moe=True requires moe_config.")
-        if moe_config is not None and moe_config.dim != hidden_dim:
-            raise ValueError(f"moe_config.dim={moe_config.dim} must match hidden_dim={hidden_dim}")
+            ffn_dim = default_ffn_dim(hidden_dim)
 
         self.invisible_token = InvisibleTokenEmbedding(dim=hidden_dim, init_std=invisible_init_std)
         self.court_embed = CourtKPUVEmbedding(
@@ -158,12 +148,11 @@ class PLCSMultiViewModel(nn.Module):
                 Rope2DTransformerBlock(
                     dim=hidden_dim,
                     n_heads=num_heads,
-                    mlp_inter_dim=ffn_dim,
+                    ffn_dim=ffn_dim,
                     head_dim=head_dim,
                     rope_dim=self.rope_dim,
                     attn_dropout=dropout,
-                    use_moe=use_moe,
-                    moe_config=moe_config,
+                    ffn_type=ffn_type,
                 )
                 for _ in range(num_layers)
             ]
@@ -200,12 +189,6 @@ class PLCSMultiViewModel(nn.Module):
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
 
-        use_moe = bool(model_cfg.get("use_moe", False))
-        moe_cfg = model_cfg.get("moe_config", None)
-        moe_config: MoEConfig | None = None
-        if use_moe and moe_cfg is not None:
-            moe_config = MoEConfig(dim=int(model_cfg.get("hidden_dim", 256)), **dict(moe_cfg))
-
         return cls(
             hidden_dim=model_cfg.get("hidden_dim", 256),
             num_layers=model_cfg.get("num_layers", 6),
@@ -214,8 +197,7 @@ class PLCSMultiViewModel(nn.Module):
             dropout=model_cfg.get("dropout", 0.1),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=model_cfg.get("rope_theta", 10000.0),
-            use_moe=use_moe,
-            moe_config=moe_config,
+            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
             max_views=model_cfg.get("max_views", 8),
             max_seq_len=model_cfg.get("max_seq_len", 120),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
