@@ -51,14 +51,7 @@ class TransformerBlockConfig:
 
 class TransformerBlock(nn.Module):
     """
-    DeepSeek-style Transformer block with a residual accumulator.
-
-    forward returns (x, residual):
-      - x is the "current" stream
-      - residual is the running residual stream
-
-    Typical usage (prefill):
-        x, residual = block(x, residual=None, freqs_cis=freqs)
+    Pre-norm Transformer block with explicit residual additions.
     """
 
     def __init__(self, cfg: TransformerBlockConfig) -> None:
@@ -86,26 +79,17 @@ class TransformerBlock(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        residual: torch.Tensor | None,
         *,
         freqs_cis: torch.Tensor | None = None,
         attn_mask: torch.Tensor | None = None,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        if residual is None:
-            x_norm = self.attn_norm(x)
-            residual = x
-        else:
-            x_norm, residual = self.attn_norm(x, residual)
-
-        x = self.attn(
-            x_norm,
+    ) -> torch.Tensor:
+        x_attn = x + self.attn(
+            self.attn_norm(x),
             freqs_cis=freqs_cis,
             attn_mask=attn_mask,
         )
-
-        x_norm, residual = self.ffn_norm(x, residual)
-        x = self.ffn(x_norm)
-        return x, residual
+        x_fnn = x_attn + self.ffn(self.ffn_norm(x_attn))
+        return x_fnn
 
 
 @dataclass
