@@ -7,7 +7,7 @@ This package provides reusable building blocks used across tasks:
 - RoPE: 1D (`precompute_freqs_cis`, `YaRNConfig`) and 2D axial (`precompute_freqs_cis_2d`, `apply_rotary_emb_2d`, `YaRNConfig2D`)
         plus compatibility helpers (`RotaryPositionEmbedding2D`, `PositionGetter`)
 - MLP / MoE: `SwiGLU`, `MoE`, `MoEConfig`
-- Blocks: `TransformerBlock`, `TransformerBlockConfig`, `ViTBlock`, `ViTBlockConfig`
+- Blocks: `TransformerBlock`, `TransformerBlockConfig`, `CrossAttnBlockConfig`, `CrossAttnBlock`
 
 Note:
 This repository previously had a separate "unified MHA/GQA/MLA" implementation.
@@ -16,20 +16,14 @@ Strategy A treats the DeepSeek-style implementation as canonical.
 
 from src.utils.models.components.attention import (
     KVCache,
-    MSDeformAttnConfig,
     MultiHeadCrossAttention,
-    MultiScaleDeformableAttention,
     MultiHeadSelfAttention,
 )
 from src.utils.models.components.block import (
     CrossAttnBlock,
     CrossAttnBlockConfig,
-    MSDeformCrossAttnBlock,
-    MSDeformCrossAttnBlockConfig,
     TransformerBlock,
     TransformerBlockConfig,
-    ViTBlock,
-    ViTBlockConfig,
 )
 from src.utils.models.components.moe import MoE, MoEConfig, SwiGLU
 from src.utils.models.components.norm import LayerNorm, RMSNorm
@@ -48,8 +42,6 @@ __all__ = [
     "KVCache",
     "MultiHeadCrossAttention",
     "MultiHeadSelfAttention",
-    "MSDeformAttnConfig",
-    "MultiScaleDeformableAttention",
     # Norm
     "RMSNorm",
     "LayerNorm",
@@ -70,8 +62,4 @@ __all__ = [
     "TransformerBlock",
     "CrossAttnBlockConfig",
     "CrossAttnBlock",
-    "MSDeformCrossAttnBlockConfig",
-    "MSDeformCrossAttnBlock",
-    "ViTBlockConfig",
-    "ViTBlock",
 ]
