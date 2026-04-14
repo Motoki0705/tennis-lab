@@ -10,8 +10,8 @@ from __future__ import annotations
 from typing import Any
 
 import torch
-import torch.nn.functional as F
 from torch import Tensor
+from src.utils.data.heatmaps import heatmaps_to_argmax
 
 
 class CourtDetectionMetrics:
@@ -64,7 +64,7 @@ class CourtDetectionMetrics:
             self._union.append(union.detach().cpu())
 
     def _update_kp(self, logits: Tensor, batch: dict[str, Tensor]) -> None:
-        """Compute soft-argmax distance to ground truth keypoints."""
+        """Compute argmax distance to ground truth keypoints."""
         coords_pred = _heatmaps_to_pixel_coords(logits)  # (B, K, 2)
         coords_gt = batch["keypoints"]  # (B, K, 2)
         dist = torch.norm(coords_pred.cpu() - coords_gt.cpu(), dim=-1)  # (B, K)
@@ -120,7 +120,7 @@ class CourtDetectionMetrics:
 
 
 def _heatmaps_to_pixel_coords(heatmaps: Tensor) -> Tensor:
-    """Convert heatmaps to pixel coordinates via soft-argmax.
+    """Convert heatmaps to pixel coordinates via shared argmax decode.
 
     Parameters
     ----------
@@ -132,19 +132,15 @@ def _heatmaps_to_pixel_coords(heatmaps: Tensor) -> Tensor:
     Tensor
         ``[B, K, 2]`` pixel coordinates ``(x, y)``.
     """
-    bsz, num_kp, height, width = heatmaps.shape
-    device = heatmaps.device
-
-    flat = heatmaps.view(bsz, num_kp, -1)
-    probs = F.softmax(flat, dim=-1)
-
-    y_coords = torch.linspace(0, height - 1, height, device=device)
-    x_coords = torch.linspace(0, width - 1, width, device=device)
-    yy, xx = torch.meshgrid(y_coords, x_coords, indexing="ij")
-    xx_flat = xx.reshape(-1)
-    yy_flat = yy.reshape(-1)
-
-    x = (probs * xx_flat.view(1, 1, -1)).sum(dim=-1)
-    y = (probs * yy_flat.view(1, 1, -1)).sum(dim=-1)
-
-    return torch.stack([x, y], dim=-1)
+    height, width = heatmaps.shape[-2:]
+    coords_normalized, _ = heatmaps_to_argmax(heatmaps)
+    coords = coords_normalized.clone()
+    if width > 1:
+        coords[..., 0] = coords[..., 0] * float(width - 1)
+    else:
+        coords[..., 0] = 0.0
+    if height > 1:
+        coords[..., 1] = coords[..., 1] * float(height - 1)
+    else:
+        coords[..., 1] = 0.0
+    return coords

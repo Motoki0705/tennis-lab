@@ -100,7 +100,6 @@ class BallDetectionLightningModule(BaseLightningModule):
             "target_coords": batch["coords"],
             "target_visibility": batch["visibility"],
             "original_size": batch["original_size"],
-            "heatmap_size": batch["heatmap_size"],
         }
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
@@ -111,7 +110,6 @@ class BallDetectionLightningModule(BaseLightningModule):
             outputs["target_coords"],
             outputs["target_visibility"],
             outputs["original_size"],
-            outputs["heatmap_size"],
         )
         return outputs["loss"]
 
@@ -130,7 +128,6 @@ class BallDetectionLightningModule(BaseLightningModule):
             outputs["target_coords"],
             outputs["target_visibility"],
             outputs["original_size"],
-            outputs["heatmap_size"],
         )
 
     def on_validation_epoch_end(self) -> None:
@@ -148,7 +145,6 @@ class BallDetectionLightningModule(BaseLightningModule):
             outputs["target_coords"],
             outputs["target_visibility"],
             outputs["original_size"],
-            outputs["heatmap_size"],
         )
 
     def on_test_epoch_end(self) -> None:

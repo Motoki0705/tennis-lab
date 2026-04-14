@@ -1,8 +1,4 @@
-"""Court keypoint heatmap dataset.
-
-Loads court images and 14-keypoint annotations, generates per-keypoint
-Gaussian heatmaps after spatial augmentation.
-"""
+"""Court keypoint heatmap dataset."""
 
 from __future__ import annotations
 
@@ -23,45 +19,7 @@ from src.tasks.court_detection.data.augmentation import (
     _pil_to_tensor_image,
     build_kp_transforms,
 )
-
-
-def generate_gaussian_heatmap(
-    h: int,
-    w: int,
-    cx: float,
-    cy: float,
-    sigma: float = 3.0,
-) -> np.ndarray:
-    """Generate a Gaussian heatmap centred at ``(cx, cy)``.
-
-    Returns
-    -------
-    np.ndarray
-        ``(H, W)`` float32 in ``[0, 1]``.
-    """
-    cx_int, cy_int = int(round(cx)), int(round(cy))
-    if cx_int < 0 or cy_int < 0 or cx_int >= w or cy_int >= h:
-        return np.zeros((h, w), dtype=np.float32)
-
-    size = int(3 * sigma)
-    yy, xx = np.mgrid[-size : size + 1, -size : size + 1]
-    kernel = np.exp(-(xx ** 2 + yy ** 2) / (2.0 * sigma ** 2))
-    kernel = kernel / kernel.max()
-
-    heatmap = np.zeros((h, w), dtype=np.float32)
-
-    y_start = max(0, cy_int - size)
-    y_end = min(h, cy_int + size + 1)
-    x_start = max(0, cx_int - size)
-    x_end = min(w, cx_int + size + 1)
-
-    ky_start = size - (cy_int - y_start)
-    ky_end = ky_start + (y_end - y_start)
-    kx_start = size - (cx_int - x_start)
-    kx_end = kx_start + (x_end - x_start)
-
-    heatmap[y_start:y_end, x_start:x_end] = kernel[ky_start:ky_end, kx_start:kx_end]
-    return heatmap
+from src.utils.data.heatmaps import generate_gaussian_heatmaps
 
 
 class CourtKPDataset(Dataset):
@@ -99,7 +57,7 @@ class CourtKPDataset(Dataset):
             self._entries: list[dict] = json.load(f)
 
         cfg = config or {}
-        self.gaussian_sigma = cfg.get("gaussian_sigma", 3.0)
+        self.sigma_ratio = float(cfg.get("sigma_ratio", 0.01))
 
         self.spatial_transforms, self.image_transforms = build_kp_transforms(
             is_train=is_train,
@@ -141,19 +99,29 @@ class CourtKPDataset(Dataset):
             img = t(img)
 
         w, h = img.size
-        heatmaps = np.zeros((len(kps), h, w), dtype=np.float32)
-        for k_idx, (cx, cy) in enumerate(kps):
-            heatmaps[k_idx] = generate_gaussian_heatmap(
-                h, w, float(cx), float(cy), sigma=self.gaussian_sigma,
-            )
-
         img_tensor = _pil_to_tensor_image(img)
         img_tensor = TF.normalize(img_tensor, IMAGENET_MEAN, IMAGENET_STD)
-        heatmap_tensor = torch.from_numpy(heatmaps)
+        kps_tensor = torch.from_numpy(kps)
+
+        normalized_kps = kps_tensor.clone()
+        if w > 1:
+            normalized_kps[:, 0] = normalized_kps[:, 0] / float(w - 1)
+        else:
+            normalized_kps[:, 0] = 0.0
+        if h > 1:
+            normalized_kps[:, 1] = normalized_kps[:, 1] / float(h - 1)
+        else:
+            normalized_kps[:, 1] = 0.0
+
+        heatmap_tensor = generate_gaussian_heatmaps(
+            size_hw=(h, w),
+            centers_xy=normalized_kps,
+            sigma_ratio=self.sigma_ratio,
+        )
 
         return {
             "image": img_tensor,
             "heatmap": heatmap_tensor,
-            "keypoints": torch.from_numpy(kps),
+            "keypoints": kps_tensor,
             "image_id": image_id,
         }

@@ -139,7 +139,7 @@ class CourtDetectionDataModule(pl.LightningDataModule):
             "gaussian_blur_kernel": list(aug_cfg.get("gaussian_blur_kernel", [3, 5, 7, 9])),
             "gaussian_blur_sigma": tuple(aug_cfg.get("gaussian_blur_sigma", (0.1, 3.0))),
             "gaussian_blur_prob": float(aug_cfg.get("gaussian_blur_prob", 0.5)),
-            "gaussian_sigma": float(self.config.get("data", {}).get("gaussian_sigma", 3.0)),
+            "sigma_ratio": float(self.config.get("data", {}).get("sigma_ratio", 0.01)),
         }
 
     def setup(self, stage: str | None = None) -> None:
