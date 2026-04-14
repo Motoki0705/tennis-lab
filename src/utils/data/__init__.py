@@ -11,6 +11,11 @@ from src.utils.data.event_utils import (
     extract_event_frames,
     extract_event_indices,
 )
+from src.utils.data.heatmaps import (
+    generate_gaussian_heatmap,
+    generate_gaussian_heatmaps,
+    heatmaps_to_argmax,
+)
 from src.utils.data.scene_batch_sampler import (
     build_scene_sampler,
     SceneBatchSampler,
@@ -33,7 +38,10 @@ __all__ = [
     "collate_padded_batch",
     "extract_event_frames",
     "extract_event_indices",
+    "generate_gaussian_heatmap",
+    "generate_gaussian_heatmaps",
     "gaussian_soft_labels",
+    "heatmaps_to_argmax",
     "random_visibility_dropout",
     "scale_uv_with_visibility",
     "SceneBatchSampler",
