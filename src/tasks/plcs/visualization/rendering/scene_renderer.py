@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
 
-from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
 from src.utils.rendering.court_renderer import CourtRenderer
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer, SkeletonStyle
-from src.utils.schema.court import COURT_SKELETON
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
-    from mpl_toolkits.mplot3d import Axes3D
+
+    Axes3D: TypeAlias = Any
 
 
 class PLCSSceneRenderer:
@@ -214,7 +214,7 @@ class PLCSSceneRenderer:
         world_pose[:, 0] += x
         world_pose[:, 1] += y
         world_pose[:, 2] += z
-        return world_pose
+        return cast(np.ndarray, np.asarray(world_pose, dtype=np.float64))
 
     def _set_zoomed_3d_view(self, ax: Axes3D, center_x: float, center_y: float) -> None:
         x_half_span = 6.0
@@ -355,25 +355,19 @@ class PLCSSceneRenderer:
 
         court_uv = cam.court_kp_uv[frame_idx]
         court_vis = cam.court_kp_visible[frame_idx]
-        visible_court = court_uv[court_vis]
-        if len(visible_court) > 0:
-            ax.scatter(
-                visible_court[:, 0],
-                visible_court[:, 1],
-                c="lime",
-                s=30,
-                marker="s",
-            )
-
-        for i, j in COURT_SKELETON:
-            alpha = 0.5 if (court_vis[i] and court_vis[j]) else 0.2
-            ax.plot(
-                [court_uv[i, 0], court_uv[j, 0]],
-                [court_uv[i, 1], court_uv[j, 1]],
-                color="lime",
-                linewidth=1,
-                alpha=alpha,
-            )
+        self.court_renderer.render_projected_2d(
+            ax,
+            court_uv,
+            court_vis,
+            line_color="lime",
+            line_width=1.0,
+            visible_line_alpha=0.5,
+            partial_line_alpha=0.2,
+            keypoint_color="lime",
+            keypoint_size=30.0,
+            keypoint_alpha=0.7,
+            keypoint_marker="s",
+        )
 
         human_uv = cam.human_kp_uv[frame_idx]
         human_vis = cam.human_kp_visible[frame_idx]

@@ -9,8 +9,11 @@ from matplotlib.axes import Axes
 from matplotlib.collections import PathCollection
 from matplotlib.lines import Line2D
 
-from src.tasks.trajectory_completion.visualization.types import RuntimeConfig, TrajectoryInputs
-from src.utils.schema.court import COURT_SKELETON
+from src.tasks.trajectory_completion.visualization.types import (
+    RuntimeConfig,
+    TrajectoryInputs,
+)
+from src.utils.rendering.court_renderer import CourtRenderer
 
 GT_LINE_COLOR = "#F5F5F5"
 OBSERVED_POINT_COLOR = "#00D1FF"
@@ -25,30 +28,19 @@ def _draw_court_uv(
     show_lines: bool,
 ) -> None:
     ax.set_facecolor("#1A1A1A")
-
-    if show_lines:
-        for i, j in COURT_SKELETON:
-            if bool(court_vis[i]) and bool(court_vis[j]):
-                ax.plot(
-                    [court_kp[i, 0], court_kp[j, 0]],
-                    [court_kp[i, 1], court_kp[j, 1]],
-                    c="lime",
-                    linewidth=1.5,
-                    alpha=0.8,
-                    zorder=1,
-                )
-
-    for i in range(int(court_kp.shape[0])):
-        if bool(court_vis[i]):
-            ax.scatter(
-                court_kp[i, 0],
-                court_kp[i, 1],
-                c="lime",
-                s=25,
-                marker="s",
-                alpha=0.7,
-                zorder=2,
-            )
+    CourtRenderer().render_projected_2d(
+        ax,
+        court_kp,
+        court_vis,
+        line_color="lime",
+        line_width=1.5,
+        visible_line_alpha=0.8,
+        keypoint_color="lime",
+        keypoint_size=25.0,
+        keypoint_alpha=0.7,
+        keypoint_marker="s",
+        show_lines=show_lines,
+    )
 
 
 def create_uv_completion_animation(

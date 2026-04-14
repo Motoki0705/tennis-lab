@@ -17,7 +17,7 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 import numpy as np
 
@@ -26,16 +26,15 @@ from src.utils.schema.court import (
     COURT_SKELETON,
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
-    HALF_SINGLES_WIDTH,
     NET_HEIGHT_CENTER,
     NET_HEIGHT_POST,
-    SERVICE_LINE_DISTANCE,
     court_keypoints_3d,
 )
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
-    from mpl_toolkits.mplot3d import Axes3D
+
+    Axes3D: TypeAlias = Any
 
 
 # Color defaults
@@ -242,6 +241,160 @@ class CourtRenderer:
             ax.set_xlabel("X (m)")
             ax.set_ylabel("Y (m)")
 
+    @staticmethod
+    def _clip_segment_to_rectangle(
+        start: np.ndarray,
+        end: np.ndarray,
+        *,
+        bounds: tuple[float, float, float, float],
+    ) -> tuple[tuple[float, float], tuple[float, float]] | None:
+        """Clip a 2D segment to an axis-aligned rectangle.
+
+        Args:
+            start: Segment start point as ``(x, y)``.
+            end: Segment end point as ``(x, y)``.
+            bounds: Rectangle bounds as ``(x_min, x_max, y_min, y_max)``.
+
+        Returns:
+            Clipped segment endpoints, or ``None`` when the segment does not
+            intersect the rectangle.
+
+        """
+        x0 = float(start[0])
+        y0 = float(start[1])
+        x1 = float(end[0])
+        y1 = float(end[1])
+        if not np.all(np.isfinite([x0, y0, x1, y1])):
+            return None
+
+        x_min, x_max, y_min, y_max = bounds
+        dx = x1 - x0
+        dy = y1 - y0
+        p = (-dx, dx, -dy, dy)
+        q = (x0 - x_min, x_max - x0, y0 - y_min, y_max - y0)
+
+        t_enter = 0.0
+        t_leave = 1.0
+        epsilon = 1e-12
+        for p_i, q_i in zip(p, q, strict=True):
+            if abs(p_i) <= epsilon:
+                if q_i < 0.0:
+                    return None
+                continue
+
+            t = q_i / p_i
+            if p_i < 0.0:
+                if t > t_leave:
+                    return None
+                t_enter = max(t_enter, t)
+            else:
+                if t < t_enter:
+                    return None
+                t_leave = min(t_leave, t)
+
+        clipped_start = (x0 + t_enter * dx, y0 + t_enter * dy)
+        clipped_end = (x0 + t_leave * dx, y0 + t_leave * dy)
+        return clipped_start, clipped_end
+
+    def render_projected_2d(
+        self,
+        ax: Axes,
+        keypoints: np.ndarray,
+        visibility: np.ndarray | None = None,
+        *,
+        view_bounds: tuple[float, float, float, float] = (0.0, 1.0, 0.0, 1.0),
+        line_color: str | None = None,
+        line_width: float | None = None,
+        visible_line_alpha: float = 0.8,
+        partial_line_alpha: float | None = None,
+        keypoint_color: str | None = None,
+        keypoint_size: float = 25.0,
+        keypoint_alpha: float = 0.7,
+        keypoint_marker: str = "s",
+        show_lines: bool = True,
+        show_keypoints: bool = True,
+    ) -> None:
+        """Render projected court lines in normalized image coordinates.
+
+        This method clips partially visible court lines to the viewport so that
+        segments remain visible even when one endpoint falls outside the frame.
+
+        Args:
+            ax: Matplotlib axes to draw on.
+            keypoints: Projected court keypoints with shape ``(N, 2)``.
+            visibility: Per-keypoint visibility flags. If omitted, all points are
+                treated as visible.
+            view_bounds: View rectangle as ``(x_min, x_max, y_min, y_max)``.
+            line_color: Override court line color.
+            line_width: Override court line width.
+            visible_line_alpha: Alpha used when both endpoints are visible.
+            partial_line_alpha: Alpha used when only one endpoint is visible.
+            keypoint_color: Override keypoint marker color.
+            keypoint_size: Keypoint marker size.
+            keypoint_alpha: Keypoint marker alpha.
+            keypoint_marker: Keypoint marker style.
+            show_lines: Whether to draw court line segments.
+            show_keypoints: Whether to draw visible keypoint markers.
+
+        """
+        line_color = line_color or self.style.line_color
+        line_width = line_width if line_width is not None else self.style.line_width
+        keypoint_color = keypoint_color or line_color
+
+        keypoints = np.asarray(keypoints, dtype=np.float64)
+        num_keypoints = int(keypoints.shape[0])
+        if visibility is None:
+            visibility = np.ones(num_keypoints, dtype=bool)
+        visibility = np.asarray(visibility, dtype=bool)
+
+        if show_lines:
+            for i, j in COURT_SKELETON:
+                if i >= num_keypoints or j >= num_keypoints:
+                    continue
+
+                if not (visibility[i] or visibility[j]):
+                    continue
+
+                clipped = self._clip_segment_to_rectangle(
+                    keypoints[i],
+                    keypoints[j],
+                    bounds=view_bounds,
+                )
+                if clipped is None:
+                    continue
+
+                alpha = visible_line_alpha
+                if partial_line_alpha is not None and not (visibility[i] and visibility[j]):
+                    alpha = partial_line_alpha
+
+                (x0, y0), (x1, y1) = clipped
+                ax.plot(
+                    [x0, x1],
+                    [y0, y1],
+                    color=line_color,
+                    linewidth=line_width,
+                    alpha=alpha,
+                    zorder=1,
+                    solid_capstyle="round",
+                )
+
+        if not show_keypoints:
+            return
+
+        visible_keypoints = keypoints[visibility]
+        if len(visible_keypoints) == 0:
+            return
+
+        ax.scatter(
+            visible_keypoints[:, 0],
+            visible_keypoints[:, 1],
+            c=keypoint_color,
+            s=keypoint_size,
+            marker=keypoint_marker,
+            alpha=keypoint_alpha,
+            zorder=2,
+        )
+
     def render_3d(
         self,
         ax: Axes3D,
@@ -377,4 +530,4 @@ class CourtRenderer:
             Array of shape (20, 3) containing CourtKP20 keypoint positions in meters.
 
         """
-        return court_keypoints_3d().cpu().numpy()
+        return cast(np.ndarray, np.asarray(court_keypoints_3d().cpu().numpy(), dtype=np.float32))
