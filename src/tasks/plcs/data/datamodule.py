@@ -56,8 +56,6 @@ class PLCSDataModule(pl.LightningDataModule):
     def _infer_input_profile_from_model_name(model_name: str) -> str:
         if model_name == "plcs":
             return "frame"
-        if model_name in "plcs_query_sequence":
-            return "sequence"
         if model_name == "plcs_multiview":
             return "multiview"
         raise ValueError(f"Unknown model.name='{model_name}' for input profile inference.")
