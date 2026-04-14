@@ -19,9 +19,12 @@ query_init_std: 0.02
 num_ball_layers: 4
 num_query2ball_layers: 2
 
-# RoPE (used in Stage B and Stage C)
+# RoPE axes: time, entity, type (court/ball/query)
 rope_dim: null
 rope_theta: 10000.0
+rope_theta_time: 10000.0
+rope_theta_entity: 10000.0
+rope_theta_type: 100.0
 
 # Output
 predict_velocity: false

@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from src.utils.models.components.rope import apply_rotary_emb, apply_rotary_emb_2d
+from src.utils.models.components.rope import apply_rotary_emb
 
 
 def _normalize_attn_mask(
@@ -60,9 +60,7 @@ class MultiHeadSelfAttention(nn.Module):
     """
     Pure PyTorch Multi-Head Self-Attention using SDPA.
 
-    Supports:
-      - Optional 1D RoPE (freqs_cis) applied to first `rope_dim` of head_dim
-      - Optional 2D RoPE (rope2d + positions_2d) applied to first `rope_dim` of head_dim
+    Supports optional RoPE (freqs_cis) applied to first `rope_dim` of head_dim.
 
     Args:
         dim: model dimension
@@ -109,7 +107,7 @@ class MultiHeadSelfAttention(nn.Module):
         q, k, v = qkv.unbind(dim=2)  # each: (B, T, H, D)
         return q, k, v
 
-    def _apply_rope_1d(self, q: torch.Tensor, k: torch.Tensor, freqs_cis: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def _apply_rope(self, q: torch.Tensor, k: torch.Tensor, freqs_cis: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         if self.rope_dim == 0:
             return q, k
         q_pe, q_rest = q[..., : self.rope_dim], q[..., self.rope_dim :]
@@ -120,63 +118,18 @@ class MultiHeadSelfAttention(nn.Module):
         k = torch.cat([k_pe, k_rest], dim=-1)
         return q, k
 
-    def _apply_rope_2d(
-        self,
-        q: torch.Tensor,
-        k: torch.Tensor,
-        *,
-        rope2d: tuple[torch.Tensor, torch.Tensor],
-        positions_2d: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        if self.rope_dim == 0:
-            return q, k
-
-        if positions_2d.ndim != 3 or positions_2d.size(-1) != 2:
-            raise ValueError(f"positions_2d must be (B,T,2), got {tuple(positions_2d.shape)}")
-
-        bsz = q.size(0)
-        if positions_2d.size(0) != bsz:
-            raise ValueError(f"Batch mismatch: q.B={bsz} vs positions_2d.B={positions_2d.size(0)}")
-
-        t_total = q.size(1)
-        t_rope = positions_2d.size(1)
-        prefix = t_total - t_rope
-        if prefix < 0:
-            raise ValueError(f"positions_2d.T={t_rope} exceeds q.T={t_total}")
-
-        freqs_cis_y, freqs_cis_x = rope2d
-
-        q_pe, q_rest = q[..., : self.rope_dim], q[..., self.rope_dim :]
-        k_pe, k_rest = k[..., : self.rope_dim], k[..., self.rope_dim :]
-
-        q_prefix, q_tail = q_pe[:, :prefix], q_pe[:, prefix:]
-        k_prefix, k_tail = k_pe[:, :prefix], k_pe[:, prefix:]
-
-        q_tail = apply_rotary_emb_2d(q_tail, freqs_cis_y, freqs_cis_x, positions_2d, interleaved=True)
-        k_tail = apply_rotary_emb_2d(k_tail, freqs_cis_y, freqs_cis_x, positions_2d, interleaved=True)
-
-        q_pe = torch.cat([q_prefix, q_tail], dim=1)
-        k_pe = torch.cat([k_prefix, k_tail], dim=1)
-
-        q = torch.cat([q_pe, q_rest], dim=-1)
-        k = torch.cat([k_pe, k_rest], dim=-1)
-        return q, k
-
     def forward(
         self,
         x: torch.Tensor,
         *,
         freqs_cis: torch.Tensor | None = None,
-        rope2d: tuple[torch.Tensor, torch.Tensor] | None = None,
-        positions_2d: torch.Tensor | None = None,
         attn_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Args:
             x: (B, T, dim)
-            freqs_cis: (T, rope_dim//2) complex cis for 1D RoPE. If None, 1D RoPE is skipped.
-            rope2d: 2D RoPE freqs tuple `(freqs_cis_y, freqs_cis_x)` (when used)
-            positions_2d: (B, T_rope, 2) y/x integer coordinates for tokens that receive 2D RoPE
+            freqs_cis: complex cis frequencies for RoPE. Supports `(T, rope_dim//2)`
+                or batched `(B, T, rope_dim//2)`.
             attn_mask: optional user mask; see module docstring
 
         Returns:
@@ -186,16 +139,8 @@ class MultiHeadSelfAttention(nn.Module):
         qkv = self.wqkv(x)
         q, k, v = self._shape_qkv(qkv)
 
-        if (freqs_cis is not None) and (rope2d is not None or positions_2d is not None):
-            raise ValueError("Use either 1D RoPE (freqs_cis) OR 2D RoPE (rope2d + positions_2d), not both.")
-
-        # Apply RoPE (optional)
         if freqs_cis is not None:
-            q, k = self._apply_rope_1d(q, k, freqs_cis)
-        if rope2d is not None:
-            if positions_2d is None:
-                raise ValueError("positions_2d must be provided when rope2d is provided.")
-            q, k = self._apply_rope_2d(q, k, rope2d=rope2d, positions_2d=positions_2d)
+            q, k = self._apply_rope(q, k, freqs_cis)
 
         k_len = q_len
 
@@ -263,16 +208,27 @@ class MultiHeadCrossAttention(nn.Module):
         bsz, seqlen, _ = x.shape
         return x.view(bsz, seqlen, self.n_heads, self.head_dim)
 
-    def _apply_rope_1d(
+    def _apply_rope(
         self,
         x: torch.Tensor,
         freqs_cis: torch.Tensor | None,
     ) -> torch.Tensor:
         if freqs_cis is None or self.rope_dim == 0:
             return x
-        if freqs_cis.size(0) != x.size(1):
+        if freqs_cis.ndim == 2:
+            if freqs_cis.size(0) != x.size(1):
+                raise ValueError(
+                    f"freqs_cis length mismatch: freqs_cis.T={freqs_cis.size(0)} vs x.T={x.size(1)}"
+                )
+        elif freqs_cis.ndim == 3:
+            if freqs_cis.shape[:2] != x.shape[:2]:
+                raise ValueError(
+                    "freqs_cis batch/length mismatch: "
+                    f"freqs={tuple(freqs_cis.shape[:2])} vs x={tuple(x.shape[:2])}"
+                )
+        else:
             raise ValueError(
-                f"freqs_cis length mismatch: freqs_cis.T={freqs_cis.size(0)} vs x.T={x.size(1)}"
+                f"freqs_cis must have rank 2 or 3, got shape {tuple(freqs_cis.shape)}"
             )
         x_pe, x_rest = x[..., : self.rope_dim], x[..., self.rope_dim :]
         x_pe = apply_rotary_emb(x_pe, freqs_cis, interleaved=True)
@@ -291,8 +247,10 @@ class MultiHeadCrossAttention(nn.Module):
         Args:
             q_in: query tokens (B, Q, D)
             kv_in: key/value tokens (B, K, D)
-            freqs_q_cis: (Q, rope_dim//2) complex cis for query RoPE
-            freqs_k_cis: (K, rope_dim//2) complex cis for key RoPE
+            freqs_q_cis: complex cis frequencies for query RoPE. Supports
+                `(Q, rope_dim//2)` or batched `(B, Q, rope_dim//2)`.
+            freqs_k_cis: complex cis frequencies for key RoPE. Supports
+                `(K, rope_dim//2)` or batched `(B, K, rope_dim//2)`.
             attn_mask: optional mask broadcastable to (B, H, Q, K)
 
         Returns:
@@ -305,8 +263,8 @@ class MultiHeadCrossAttention(nn.Module):
         k = self._shape(self.wk(kv_in))
         v = self._shape(self.wv(kv_in))
 
-        q = self._apply_rope_1d(q, freqs_q_cis)
-        k = self._apply_rope_1d(k, freqs_k_cis)
+        q = self._apply_rope(q, freqs_q_cis)
+        k = self._apply_rope(k, freqs_k_cis)
 
         q_ = q.transpose(1, 2)  # (B, H, Q, D)
         k_ = k.transpose(1, 2)  # (B, H, K, D)
