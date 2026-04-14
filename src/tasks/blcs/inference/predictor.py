@@ -19,7 +19,6 @@ class BLCSPredictor(BasePredictor):
 
     Supports:
     - `blcs` (single-view)
-    - `blcs_query` (single-view query-based)
     - `blcs_multiview` (multi-view)
 
     Attributes:
