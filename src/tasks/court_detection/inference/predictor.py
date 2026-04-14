@@ -8,7 +8,6 @@ from typing import Any, Self
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torchvision.transforms.functional as TF
 from PIL import Image
 from torch import Tensor
@@ -18,6 +17,7 @@ from src.tasks.court_detection.data.augmentation import IMAGENET_MEAN, IMAGENET_
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
+from src.utils.data.heatmaps import heatmaps_to_argmax
 
 
 class CourtKeypointPredictor(BasePredictor):
@@ -131,8 +131,14 @@ class CourtKeypointPredictor(BasePredictor):
         logits = self.model(image_tensor)  # [1, K, H, W]
 
         coords = self._heatmaps_to_coords(logits)[0].cpu()  # (K, 2)
-        coords[:, 0] *= orig_w
-        coords[:, 1] *= orig_h
+        if orig_w > 1:
+            coords[:, 0] *= float(orig_w - 1)
+        else:
+            coords[:, 0] = 0.0
+        if orig_h > 1:
+            coords[:, 1] *= float(orig_h - 1)
+        else:
+            coords[:, 1] = 0.0
 
         result: dict[str, Tensor] = {"keypoints": coords}
         if return_heatmaps:
@@ -141,7 +147,7 @@ class CourtKeypointPredictor(BasePredictor):
 
     @staticmethod
     def _heatmaps_to_coords(heatmaps: Tensor) -> Tensor:
-        """Convert heatmaps to keypoint coordinates using soft-argmax.
+        """Convert heatmaps to normalized keypoint coordinates via argmax.
 
         Parameters
         ----------
@@ -153,19 +159,5 @@ class CourtKeypointPredictor(BasePredictor):
         Tensor
             ``[B, K, 2]`` in normalised ``[0, 1]`` range.
         """
-        bsz, num_kp, height, width = heatmaps.shape
-        device = heatmaps.device
-
-        heatmaps_flat = heatmaps.view(bsz, num_kp, -1)
-        probs = F.softmax(heatmaps_flat, dim=-1)
-
-        y_coords = torch.linspace(0, 1, height, device=device)
-        x_coords = torch.linspace(0, 1, width, device=device)
-        yy, xx = torch.meshgrid(y_coords, x_coords, indexing="ij")
-        xx_flat = xx.reshape(-1)
-        yy_flat = yy.reshape(-1)
-
-        x = (probs * xx_flat.view(1, 1, -1)).sum(dim=-1)
-        y = (probs * yy_flat.view(1, 1, -1)).sum(dim=-1)
-
-        return torch.stack([x, y], dim=-1)
+        coords, _ = heatmaps_to_argmax(heatmaps)
+        return coords

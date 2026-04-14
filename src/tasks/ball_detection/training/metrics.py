@@ -6,6 +6,8 @@ import torch
 from torch import Tensor
 from torchmetrics import Metric
 
+from src.utils.data.heatmaps import heatmaps_to_argmax
+
 
 class BallDetectionMetrics(Metric):
     """Distance-based frame metrics derived from predicted heatmaps.
@@ -43,7 +45,6 @@ class BallDetectionMetrics(Metric):
         target_coords: Tensor,
         target_visibility: Tensor,
         original_size: Tensor,
-        heatmap_size: Tensor,
     ) -> None:
         """Update frame-level metric state.
 
@@ -53,8 +54,6 @@ class BallDetectionMetrics(Metric):
                 shape (B, T, 2).
             target_visibility: Target visibility flags, shape (B, T).
             original_size: Original frame size in ``(width, height)`` ordering,
-                shape (B, 2).
-            heatmap_size: Heatmap size in ``(width, height)`` ordering,
                 shape (B, 2).
         """
         if pred_heatmaps.ndim != 4:
@@ -77,30 +76,19 @@ class BallDetectionMetrics(Metric):
                 "original_size must have shape (B, 2), "
                 f"got {tuple(original_size.shape)}."
             )
-        if heatmap_size.shape != (pred_heatmaps.shape[0], 2):
-            raise ValueError(
-                "heatmap_size must have shape (B, 2), "
-                f"got {tuple(heatmap_size.shape)}."
-            )
 
-        batch_size, num_frames, _, width = pred_heatmaps.shape
-        flat_heatmaps = pred_heatmaps.reshape(batch_size, num_frames, -1)
-        peak_values, peak_indices = flat_heatmaps.max(dim=-1)
-        pred_x = (peak_indices % width).to(target_coords.dtype)
-        pred_y = torch.div(peak_indices, width, rounding_mode="floor").to(target_coords.dtype)
-        pred_coords = torch.stack([pred_x, pred_y], dim=-1)
+        batch_size = pred_heatmaps.shape[0]
+        pred_coords_normalized, peak_values = heatmaps_to_argmax(pred_heatmaps)
 
-        heatmap_width = heatmap_size[:, 0].view(batch_size, 1)
-        heatmap_height = heatmap_size[:, 1].view(batch_size, 1)
         original_width = original_size[:, 0].view(batch_size, 1)
         original_height = original_size[:, 1].view(batch_size, 1)
 
-        pred_coords_original = torch.empty_like(pred_coords)
-        pred_coords_original[..., 0] = pred_coords[..., 0] * original_width / torch.clamp(
-            heatmap_width, min=1.0
+        pred_coords_original = torch.empty_like(pred_coords_normalized, dtype=target_coords.dtype)
+        pred_coords_original[..., 0] = pred_coords_normalized[..., 0].to(target_coords.dtype) * (
+            torch.clamp(original_width - 1.0, min=0.0)
         )
-        pred_coords_original[..., 1] = pred_coords[..., 1] * original_height / torch.clamp(
-            heatmap_height, min=1.0
+        pred_coords_original[..., 1] = pred_coords_normalized[..., 1].to(target_coords.dtype) * (
+            torch.clamp(original_height - 1.0, min=0.0)
         )
 
         distances_original = torch.norm(pred_coords_original - target_coords, dim=-1)

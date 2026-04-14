@@ -14,7 +14,7 @@ Ball Detection は、テニス動画からボール位置ヒートマップを�
 | モジュール | キー | 形状 | 説明 |
 |-----------|------|------|------|
 | `BallDetectionDataset` | `images` | `(B, T, 3, H, W)` | RGB 時系列入力 |
-| `BallDetectionDataset` | `heatmaps` | `(B, T, Hh, Wh)` | 教師ヒートマップ |
+| `BallDetectionDataset` | `heatmaps` | `(B, T, Hh, Wh)` | 正規化座標から共有 utils で生成した教師ヒートマップ |
 | `BallDetectionDataset` | `coords` | `(B, T, 2)` | 元画像ピクセル座標の GT |
 | `BallDetectionDataset` | `visibility` | `(B, T)` | 各フレームのボール可視フラグ |
 | `BallDetectionDataset` | `original_size` | `(B, 2)` | 元画像サイズ `(width, height)` |
@@ -31,7 +31,7 @@ Ball Detection は、テニス動画からボール位置ヒートマップを�
 **学習・評価での扱い:**
 
 - 学習時は `sigmoid(logits)` をヒートマップ確率として扱います。
-- 評価時はヒートマップ peak を元画像座標へ戻し、`precision / recall / f1 / mean_distance_px`
+- 評価時は `src/utils/data/heatmaps.py` の hard argmax で正規化座標を復元し、元画像座標へ戻して `precision / recall / f1 / mean_distance_px`
   を計算します。
 
 ## 実行コマンド
