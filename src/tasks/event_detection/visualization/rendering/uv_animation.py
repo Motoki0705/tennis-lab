@@ -14,7 +14,7 @@ from src.tasks.event_detection.visualization.rendering.event_emphasis import (
     mix_color,
 )
 from src.tasks.event_detection.visualization.types import RuntimeConfig, UVEventInputs
-from src.utils.schema.court import COURT_SKELETON
+from src.utils.rendering.court_renderer import CourtRenderer
 
 BASE_BALL_RGB = np.asarray([0.80, 1.00, 0.00], dtype=np.float32)
 SHOT_RGB = np.asarray([1.00, 0.00, 1.00], dtype=np.float32)
@@ -24,13 +24,19 @@ TRAIL_COLOR = "#FF6B6B"
 
 def _draw_court_uv(ax: Axes, *, kp: np.ndarray, vis: np.ndarray, show_lines: bool) -> None:
     ax.set_facecolor("#1A1A1A")
-    if show_lines:
-        for i, j in COURT_SKELETON:
-            if bool(vis[i]) and bool(vis[j]):
-                ax.plot([kp[i, 0], kp[j, 0]], [kp[i, 1], kp[j, 1]], c="lime", linewidth=1.5, alpha=0.8)
-    for i in range(int(kp.shape[0])):
-        if bool(vis[i]):
-            ax.scatter(kp[i, 0], kp[i, 1], c="lime", s=25, marker="s", alpha=0.7)
+    CourtRenderer().render_projected_2d(
+        ax,
+        kp,
+        vis,
+        line_color="lime",
+        line_width=1.5,
+        visible_line_alpha=0.8,
+        keypoint_color="lime",
+        keypoint_size=25.0,
+        keypoint_alpha=0.7,
+        keypoint_marker="s",
+        show_lines=show_lines,
+    )
 
 
 def create_uv_event_animation(
