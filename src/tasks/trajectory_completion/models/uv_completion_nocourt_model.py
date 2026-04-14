@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 import torch
 import torch.nn as nn
@@ -34,9 +34,10 @@ class UVTrajectoryCompletionNoCourtModel(nn.Module):
         dropout: float = 0.1,
         max_seq_len: int = 256,
         rope_theta: float = 10000.0,
+        rope_theta_time: float | None = None,
         rope_dim: int | None = None,
         ffn_dim: int | None = None,
-        ffn_type: str = "swiglu",
+        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
         invisible_init_std: float = 0.02,
     ) -> None:
         super().__init__()
@@ -54,6 +55,7 @@ class UVTrajectoryCompletionNoCourtModel(nn.Module):
             raise ValueError("rope_dim must be even.")
         if rope_dim_value > head_dim:
             raise ValueError("rope_dim must be <= head_dim.")
+        rope_base = float(rope_theta if rope_theta_time is None else rope_theta_time)
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
@@ -74,7 +76,7 @@ class UVTrajectoryCompletionNoCourtModel(nn.Module):
                         head_dim=head_dim,
                         rope_dim=rope_dim_value,
                         attn_dropout=float(dropout),
-                        rope_base=float(rope_theta),
+                        rope_base=rope_base,
                         ffn_type=ffn_type,
                     )
                 )
@@ -98,7 +100,7 @@ class UVTrajectoryCompletionNoCourtModel(nn.Module):
         freqs_cis = precompute_freqs_cis(
             dim=rope_dim_value,
             seqlen=self.max_seq_len,
-            base=float(rope_theta),
+            base=rope_base,
             device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
@@ -117,9 +119,10 @@ class UVTrajectoryCompletionNoCourtModel(nn.Module):
             dropout=float(model_cfg.get("dropout", 0.1)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 256))),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
+            rope_theta_time=model_cfg.get("rope_theta_time", None),
             rope_dim=model_cfg.get("rope_dim", None),
             ffn_dim=model_cfg.get("ffn_dim"),
-            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
+            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
         )
 
@@ -146,7 +149,7 @@ class UVTrajectoryCompletionNoCourtModel(nn.Module):
     ) -> Tensor | tuple[Tensor, list[Tensor]] | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor], Tensor]:
         """Forward pass for no-court trajectory completion."""
         _, T, _ = ball_uv.shape
-        if T > self.max_seq_len:
+        if self.max_seq_len < T:
             ball_uv = ball_uv[:, : self.max_seq_len]
             if ball_vis is not None:
                 ball_vis = ball_vis[:, : self.max_seq_len]

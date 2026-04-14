@@ -4,8 +4,7 @@ This package provides reusable building blocks used across tasks:
 
 - Attention: `MultiHeadSelfAttention`, `MultiHeadCrossAttention`
 - Norm: `RMSNorm`, `LayerNorm`
-- RoPE: 1D (`precompute_freqs_cis`) and 2D axial (`precompute_freqs_cis_2d`, `apply_rotary_emb_2d`)
-        plus compatibility helpers (`RotaryPositionEmbedding2D`, `PositionGetter`)
+- RoPE: 1D (`precompute_freqs_cis`) and interleaved N-D (`precompute_freqs_cis_nd`, `apply_rotary_emb`)
 - FFN: `SwiGLU`, `MLP`, `default_ffn_dim`
 - Blocks: `TransformerBlock`, `TransformerBlockConfig`, `CrossAttnBlockConfig`, `CrossAttnBlock`
 
@@ -27,11 +26,9 @@ from src.utils.models.components.block import (
 from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
 from src.utils.models.components.norm import LayerNorm, RMSNorm
 from src.utils.models.components.rope import (
-    PositionGetter,
-    RotaryPositionEmbedding2D,
-    apply_rotary_emb_2d,
+    apply_rotary_emb,
     precompute_freqs_cis,
-    precompute_freqs_cis_2d,
+    precompute_freqs_cis_nd,
 )
 
 __all__ = [
@@ -43,10 +40,8 @@ __all__ = [
     "LayerNorm",
     # RoPE
     "precompute_freqs_cis",
-    "precompute_freqs_cis_2d",
-    "apply_rotary_emb_2d",
-    "RotaryPositionEmbedding2D",
-    "PositionGetter",
+    "precompute_freqs_cis_nd",
+    "apply_rotary_emb",
     # FFN
     "MLP",
     "SwiGLU",
