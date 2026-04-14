@@ -12,12 +12,10 @@ import numpy as np
 from src.tasks.plcs.visualization.adapters.predict_inputs import (
     build_frame_inputs,
     build_multiview_inputs,
-    build_sequence_inputs,
 )
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.models.plcs_model import PLCSModel
 from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
-from src.tasks.plcs.models.plcs_query_sequence_model import PLCSQuerySequenceModel
 
 logger = logging.getLogger(__name__)
 
@@ -43,21 +41,6 @@ def _predict_frame_model(
         pred_rot_list.append(outputs["rotation"].squeeze(0).numpy())
 
     return np.stack(pred_pos_list, axis=0), np.stack(pred_rot_list, axis=0)
-
-
-def _predict_sequence_model(
-    predictor: PLCSPredictor,
-    scene: Any,
-    camera_idx: int,
-) -> tuple[np.ndarray, np.ndarray]:
-    logger.info("  [Inference] Running sequence model inference...")
-    outputs = predictor.predict(
-        denormalize=False,
-        **build_sequence_inputs(scene, camera_idx),
-    )
-    return outputs["position"].squeeze(0).numpy(), outputs["rotation"].squeeze(0).numpy()
-
-
 def _predict_multiview_model(
     predictor: PLCSPredictor,
     scene: Any,
@@ -107,8 +90,6 @@ def predict_scene(
 
     if isinstance(model, PLCSMultiViewModel):
         pred_pos, pred_rot = _predict_multiview_model(predictor, scene, cameras)
-    elif isinstance(model, PLCSQuerySequenceModel):
-        pred_pos, pred_rot = _predict_sequence_model(predictor, scene, primary_camera)
     elif isinstance(model, PLCSModel):
         pred_pos, pred_rot = _predict_frame_model(predictor, scene, primary_camera)
     else:

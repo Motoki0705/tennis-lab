@@ -5,7 +5,6 @@ from 2D ball observations and court keypoints.
 """
 
 from src.tasks.blcs.models.blcs_model import BLCSModel
-from src.tasks.blcs.models.blcs_query_model import BLCSQueryModel
 
-__all__ = ["BLCSModel", "BLCSQueryModel"]
+__all__ = ["BLCSModel"]
 __version__ = "0.1.0"

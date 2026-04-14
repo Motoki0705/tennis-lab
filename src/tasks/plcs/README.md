@@ -44,7 +44,6 @@ PLCSでは**camera-time順序**を採用しています: `(B, N, T, ...)` の順
 src/tasks/plcs/
 ├── configs/                          # Hydra 設定ファイル群
 │   ├── train.yaml                    # フレーム学習設定
-│   ├── train_sequence.yaml           # シーケンス学習設定
 │   ├── train_multiview.yaml          # マルチビュー学習設定
 │   ├── generate_dataset.yaml         # データ生成設定
 │   ├── visualize.yaml                # 単一カメラ可視化設定
@@ -52,17 +51,14 @@ src/tasks/plcs/
 │   ├── run/                          # 実行時設定（seed, gpus, output_dir）
 │   ├── model/
 │   │   ├── frame.yaml                # フレームモデル設定
-│   │   ├── sequence.yaml             # シーケンスモデル設定
 │   │   └── multiview.yaml            # マルチビューモデル設定
 │   ├── data/
 │   │   ├── frame.yaml                # フレーム DataModule 設定
-│   │   ├── sequence.yaml             # シーケンス DataModule 設定
 │   │   └── multiview.yaml            # マルチビュー DataModule 設定
 │   ├── training/
 │   │   └── default.yaml              # 学習ハイパーパラメータ
 │   ├── loss/
 │   │   ├── frame.yaml                # フレームロス設定（temporal=0）
-│   │   ├── sequence.yaml             # シーケンスロス設定（temporal有効）
 │   │   └── multiview_sequence.yaml   # マルチビューシーケンスロス設定
 │   ├── simulation/
 │   │   └── default.yaml              # シミュレーション設定（シーン数等）
@@ -82,7 +78,6 @@ src/tasks/plcs/
 │
 ├── models/                           # 推定モデル
 │   ├── plcs_model.py                 # PLCSModel: フレーム単位 2D→3D 推定
-│   ├── plcs_query_sequence_model.py  # PLCSQuerySequenceModel: クエリベース時系列推定
 │   └── plcs_multiview_model.py       # PLCSMultiViewModel: camera-time 2D RoPE統合
 │
 ├── data/                             # データセット・DataModule
@@ -124,14 +119,12 @@ src/tasks/plcs/
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│ train.py / train_sequence.py / train_multiview.py               │
+│ train.py / train_multiview.py                                   │
 │   ├── data/datamodule.py           (DataModule)                 │
 │   │   ├── PLCSDataModule           (単一カメラ・フレーム)         │
-│   │   ├── PLCSSequenceDataModule   (単一カメラ・シーケンス)       │
 │   │   └── PLCSMultiViewDataModule  (マルチビュー)                │
 │   ├── models/                                                   │
 │   │   ├── plcs_model.py            (フレームモデル)              │
-│   │   ├── plcs_query_sequence_model.py (シーケンスモデル)        │
 │   │   └── plcs_multiview_model.py  (マルチビューモデル)          │
 │   └── → outputs/plcs/*/logs/version_*/checkpoints/              │
 └─────────────────────────────────────────────────────────────────┘
@@ -175,9 +168,6 @@ python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution \
 # フレーム単位モデル（単一カメラ）
 python -m src.tasks.plcs.scripts.train
 
-# シーケンスモデル（単一カメラ・時系列）
-python -m src.tasks.plcs.scripts.train_sequence
-
 # マルチビューモデル（複数カメラ統合）
 python -m src.tasks.plcs.scripts.train_multiview
 
@@ -217,11 +207,6 @@ python -m src.tasks.plcs.scripts.visualize_multiview \
 
 単一フレーム・単一カメラからの推定。Transformer ベースのトークンモデル。
 
-### シーケンスモデル (`PLCSQuerySequenceModel`)
-
-2段構成（player状態エンコード + query readout）で時系列推定を行います。
-Stage1で関節ごとの時系列状態を構築し、Stage2で共有queryが各時刻の出力を読み出します。
-
 ### マルチビューモデル (`PLCSMultiViewModel`)
 
 複数カメラからの観測を統合して推定。カメラごとに
@@ -239,7 +224,6 @@ Stage1で関節ごとの時系列状態を構築し、Stage2で共有queryが各
 | 用途 | メイン設定 | 補助設定 |
 |------|----------|---------|
 | フレーム学習 | `train.yaml` | `model/frame.yaml`, `data/frame.yaml`, `loss/frame.yaml` |
-| シーケンス学習 | `train_sequence.yaml` | `model/sequence_query.yaml`, `data/sequence.yaml`, `loss/sequence.yaml` |
 | マルチビュー学習 | `train_multiview.yaml` | `model/multiview.yaml`, `data/multiview.yaml`, `loss/multiview_sequence.yaml` |
 | 単一カメラ可視化 | `visualize.yaml` | `visualization/default.yaml` |
 | マルチビュー可視化 | `visualize_multiview.yaml` | `visualization/multiview.yaml` |
