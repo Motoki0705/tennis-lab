@@ -21,6 +21,7 @@ from src.tasks.ball_detection.data.argumentation import (
     make_sample_rng,
 )
 from src.tasks.ball_detection.data.types import BallDetectionSample
+from src.utils.data.heatmaps import generate_gaussian_heatmap
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -86,14 +87,14 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         self.sample_stride = int(data_cfg.get("sample_stride", 1))
         self.image_size = self._parse_size(data_cfg.get("image_size", [288, 512]), name="data.image_size")
         self.heatmap_size = self._parse_size(data_cfg.get("heatmap_size", [144, 256]), name="data.heatmap_size")
-        self.gaussian_variance = float(data_cfg.get("gaussian_variance", 1.0))
+        self.sigma_ratio = float(data_cfg.get("sigma_ratio", 0.0066))
 
         if self.num_frames <= 0:
             raise ValueError("model.num_frames must be positive.")
         if self.sample_stride <= 0:
             raise ValueError("data.sample_stride must be positive.")
-        if self.gaussian_variance <= 0:
-            raise ValueError("data.gaussian_variance must be positive.")
+        if self.sigma_ratio <= 0:
+            raise ValueError("data.sigma_ratio must be positive.")
 
         self.windows = self._build_windows()
         if self.pseudo_manifest_paths:
@@ -145,17 +146,16 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         coords_original: list[tuple[float, float]] = []
         for frame, (x_img, y_img), vis in zip(frames_hwc, coords_image, visibility):
             image_tensors.append(np.transpose(frame, (2, 0, 1)))
+            center_xy = self._to_normalized_xy(x_img=x_img, y_img=y_img, width=image_w, height=image_h)
+            heatmaps.append(
+                generate_gaussian_heatmap(
+                    size_hw=self.heatmap_size,
+                    center_xy=center_xy,
+                    sigma_ratio=self.sigma_ratio,
+                    visible=vis > 0,
+                ).cpu().numpy()
+            )
             if vis > 0:
-                x_hm = x_img * heatmap_w / image_w
-                y_hm = y_img * heatmap_h / image_h
-                heatmaps.append(
-                    self._generate_heatmap(
-                        height=heatmap_h,
-                        width=heatmap_w,
-                        center_x=x_hm,
-                        center_y=y_hm,
-                    )
-                )
                 coords_original.append(
                     (
                         x_img * original_w / max(image_w, 1),
@@ -163,7 +163,6 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
                     )
                 )
             else:
-                heatmaps.append(np.zeros((heatmap_h, heatmap_w), dtype=np.float32))
                 coords_original.append((0.0, 0.0))
 
         sample: BallDetectionSample = {
@@ -325,21 +324,23 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         return image.astype(np.float32) / 255.0
 
-    def _generate_heatmap(
-        self,
+    @staticmethod
+    def _to_normalized_xy(
         *,
-        height: int,
+        x_img: float,
+        y_img: float,
         width: int,
-        center_x: float,
-        center_y: float,
-    ) -> np.ndarray:
-        x = np.arange(0, width, 1, float)
-        y = np.arange(0, height, 1, float)
-        y, x = np.meshgrid(y, x, indexing='ij')
-        sigma_sq2 = 2 * self.gaussian_variance
-        heatmap = np.exp(-((x - center_x)**2 + (y - center_y)**2) / sigma_sq2)
-
-        return heatmap
+        height: int,
+    ) -> tuple[float, float]:
+        if width <= 1:
+            x_norm = 0.0
+        else:
+            x_norm = x_img / float(width - 1)
+        if height <= 1:
+            y_norm = 0.0
+        else:
+            y_norm = y_img / float(height - 1)
+        return x_norm, y_norm
 
     @staticmethod
     def _parse_size(value: Any, *, name: str) -> tuple[int, int]:

@@ -12,7 +12,7 @@ sample_stride: 4
 
 image_size: [288, 512]
 heatmap_size: [288, 512]
-gaussian_variance: 15.0
+sigma_ratio: 0.012
 
 augmentation:
   camera_rotation:
