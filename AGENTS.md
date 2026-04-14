@@ -13,3 +13,8 @@
 - When adding dependencies, use `uv add <package>`.
 - When removing dependencies, use `uv remove <package>`.
 - Do not edit dependency definitions manually when `uv` can manage them.
+
+## Workflow
+- If codebase investigation is needed, first delegate the investigation to `gpt-5.4-mini`.
+- If additional investigation is still needed after that, inspect the codebase directly.
+- While the sub-agent is working, do not perform overlapping investigation work in parallel; wait for its results first.
