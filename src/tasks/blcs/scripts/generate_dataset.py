@@ -33,7 +33,9 @@ from src.tasks.blcs.generate_dataset.scene_generator import (
 )
 from src.tasks.blcs.generate_dataset.simulation.ball_physics import PhysicsConfig
 from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyConfig
-from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import TargetedVelocityConfig
+from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
+    TargetedVelocityConfig,
+)
 from src.utils.projection.camera_projector import CameraConfig
 from src.utils.schema.court import CourtConfig
 
@@ -118,6 +120,10 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         image_size=tuple(cfg.camera.image_size),
         fixed_look_at=tuple(cfg.camera.get("fixed_look_at", [0.0, 0.0, 0.0])),
         fixed_baseline_clear_extra=float(cfg.camera.get("fixed_baseline_clear_extra", 0.0)),
+        fixed_position_noise_radius=float(
+            cfg.camera.get("fixed_position_noise_radius", 0.0)
+        ),
+        fixed_look_at_xy_radius=float(cfg.camera.get("fixed_look_at_xy_radius", 0.0)),
         target_x_range=tuple(cfg.camera.get("target_x_range", [-2.0, 2.0])),
         target_y_range=tuple(cfg.camera.get("target_y_range", [-2.0, 2.0])),
         target_z_range=tuple(cfg.camera.get("target_z_range", [0.5, 1.5])),
