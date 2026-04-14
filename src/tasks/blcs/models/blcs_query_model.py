@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 import torch
 from torch import Tensor, nn
@@ -14,7 +14,7 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    precompute_freqs_cis,
+    precompute_freqs_cis_nd,
 )
 from src.utils.models.embeddings import (
     BallUVEmbedding,
@@ -43,9 +43,12 @@ class BLCSQueryModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
+        rope_theta_time: float | None = None,
+        rope_theta_entity: float | None = None,
+        rope_theta_type: float = 100.0,
         num_ball_layers: int = 4,
         num_query2ball_layers: int = 2,
-        ffn_type: str = "swiglu",
+        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
         predict_velocity: bool = False,
         max_seq_len: int = 120,
         num_court_tokens: int = NUM_COURT_KP,
@@ -90,6 +93,13 @@ class BLCSQueryModel(nn.Module):
             raise ValueError(f"rope_dim must be even, got {rope_dim}")
         if rope_dim > head_dim:
             raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
+        self.rope_dim = int(rope_dim)
+        self.rope_theta = float(rope_theta)
+        self.rope_bases = (
+            float(self.rope_theta if rope_theta_time is None else rope_theta_time),
+            float(self.rope_theta if rope_theta_entity is None else rope_theta_entity),
+            float(rope_theta_type),
+        )
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
@@ -122,7 +132,7 @@ class BLCSQueryModel(nn.Module):
                         n_heads=num_heads,
                         ffn_dim=ffn_dim,
                         head_dim=head_dim,
-                        rope_dim=rope_dim,
+                        rope_dim=self.rope_dim,
                         attn_dropout=dropout,
                         ffn_type=ffn_type,
                     )
@@ -138,9 +148,9 @@ class BLCSQueryModel(nn.Module):
                         n_heads=num_heads,
                         ffn_dim=ffn_dim,
                         head_dim=head_dim,
-                        rope_dim=rope_dim,
+                        rope_dim=self.rope_dim,
                         attn_dropout=dropout,
-                        rope_base=rope_theta,
+                        rope_base=self.rope_theta,
                         ffn_type=ffn_type,
                     )
                 )
@@ -155,7 +165,7 @@ class BLCSQueryModel(nn.Module):
                         n_heads=num_heads,
                         ffn_dim=ffn_dim,
                         head_dim=head_dim,
-                        rope_dim=rope_dim,
+                        rope_dim=self.rope_dim,
                         attn_dropout=dropout,
                         ffn_type=ffn_type,
                     )
@@ -171,9 +181,9 @@ class BLCSQueryModel(nn.Module):
                         n_heads=num_heads,
                         ffn_dim=ffn_dim,
                         head_dim=head_dim,
-                        rope_dim=rope_dim,
+                        rope_dim=self.rope_dim,
                         attn_dropout=dropout,
-                        rope_base=rope_theta,
+                        rope_base=self.rope_theta,
                         ffn_type=ffn_type,
                     )
                 )
@@ -199,13 +209,12 @@ class BLCSQueryModel(nn.Module):
                 dropout=dropout,
             )
 
-        freqs_cis = precompute_freqs_cis(
-            dim=rope_dim,
-            seqlen=self.max_seq_len,
-            base=rope_theta,
-            device=None,
+        court_freqs_cis = precompute_freqs_cis_nd(
+            dim=self.rope_dim,
+            pos=self._build_court_positions(),
+            base=self.rope_bases,
         )
-        self.register_buffer("freqs_cis", freqs_cis, persistent=False)
+        self.register_buffer("court_freqs_cis", court_freqs_cis, persistent=False)
 
     @classmethod
     def from_config(cls, config: DictConfig) -> BLCSQueryModel:
@@ -227,15 +236,41 @@ class BLCSQueryModel(nn.Module):
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
+            rope_theta_time=model_cfg.get("rope_theta_time", None),
+            rope_theta_entity=model_cfg.get("rope_theta_entity", None),
+            rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
             num_ball_layers=int(num_ball_layers),
             num_query2ball_layers=int(model_cfg.get("num_query2ball_layers", 2)),
-            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
+            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             num_court_tokens=int(model_cfg.get("num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
         )
+
+    def _build_court_positions(self) -> Tensor:
+        court_idx = torch.arange(self.num_court_tokens, dtype=torch.long)
+        return torch.stack(
+            [
+                torch.zeros_like(court_idx),
+                court_idx,
+                torch.zeros_like(court_idx),
+            ],
+            dim=-1,
+        )
+
+    @staticmethod
+    def _build_stream_positions(
+        seq_len: int,
+        device: torch.device,
+        *,
+        token_type: int,
+    ) -> Tensor:
+        time_idx = torch.arange(seq_len, device=device, dtype=torch.long) + 1
+        entity_idx = torch.zeros(seq_len, device=device, dtype=torch.long)
+        type_idx = torch.full((seq_len,), token_type, device=device, dtype=torch.long)
+        return torch.stack([time_idx, entity_idx, type_idx], dim=-1)
 
     @staticmethod
     def _build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
@@ -307,23 +342,39 @@ class BLCSQueryModel(nn.Module):
         court_tok = court_tok + self.court_id_embed(court_ids).unsqueeze(0)
         query_tok = self.query_base.expand(batch_size, seq_len, -1)
 
-        freqs_cis = self.freqs_cis[:seq_len]
-        if freqs_cis.device != ball_uv.device:
-            freqs_cis = freqs_cis.to(ball_uv.device)
+        ball_freqs_cis = precompute_freqs_cis_nd(
+            dim=self.rope_dim,
+            pos=self._build_stream_positions(seq_len, ball_uv.device, token_type=1),
+            base=self.rope_bases,
+        )
+        query_freqs_cis = precompute_freqs_cis_nd(
+            dim=self.rope_dim,
+            pos=self._build_stream_positions(seq_len, ball_uv.device, token_type=2),
+            base=self.rope_bases,
+        )
+        court_freqs_cis = cast(Tensor, self.court_freqs_cis)
+        if court_freqs_cis.device != ball_uv.device:
+            court_freqs_cis = court_freqs_cis.to(ball_uv.device)
 
         ball_attn_mask, ball_valid = self._build_self_attn_mask(ball_valid)
 
         # Stage 1: interleaved ball->court cross-attn and ball temporal self-attn
         ball_x = ball_tok
-        for cross_layer, self_layer in zip(self.ball_to_court_cross_layers, self.ball_temporal_layers):
+        for cross_layer, self_layer in zip(
+            self.ball_to_court_cross_layers,
+            self.ball_temporal_layers,
+            strict=True,
+        ):
             ball_x = cross_layer(
                 ball_x,
                 court_tok,
                 key_valid=court_valid,
+                freqs_q_cis=ball_freqs_cis,
+                freqs_k_cis=court_freqs_cis,
             )
             ball_x = self_layer(
                 ball_x,
-                freqs_cis=freqs_cis,
+                freqs_cis=ball_freqs_cis,
                 attn_mask=ball_attn_mask,
             )
 
@@ -331,17 +382,21 @@ class BLCSQueryModel(nn.Module):
 
         # Stage 2: interleaved query->ball cross-attn and query temporal self-attn
         query_c = query_tok
-        for cross_layer, self_layer in zip(self.query_to_ball_cross_layers, self.query_temporal_layers):
+        for cross_layer, self_layer in zip(
+            self.query_to_ball_cross_layers,
+            self.query_temporal_layers,
+            strict=True,
+        ):
             query_c = cross_layer(
                 query_c,
                 ball_b,
                 key_valid=ball_valid,
-                freqs_q_cis=freqs_cis,
-                freqs_k_cis=freqs_cis,
+                freqs_q_cis=query_freqs_cis,
+                freqs_k_cis=ball_freqs_cis,
             )
             query_c = self_layer(
                 query_c,
-                freqs_cis=freqs_cis,
+                freqs_cis=query_freqs_cis,
                 attn_mask=ball_attn_mask,
             )
 

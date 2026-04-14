@@ -21,24 +21,24 @@ Notes:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
+from src.tasks.plcs.models.components.heads import PositionHead, RotationHead
 from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    precompute_freqs_cis,
+    precompute_freqs_cis_nd,
 )
 from src.utils.models.embeddings import (
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
 )
-from src.tasks.plcs.models.components.heads import PositionHead, RotationHead
 from src.utils.schema.court import NUM_COURT_KP
 from src.utils.schema.player import NUM_HUMAN_KP
 
@@ -82,10 +82,13 @@ class PLCSModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
+        rope_theta_time: float | None = None,
+        rope_theta_camera: float | None = None,
+        rope_theta_type: float = 100.0,
         num_register_tokens: int = 4,
         use_kp_id_embedding: bool = True,
-        use_rope: bool = False,
-        ffn_type: str = "swiglu",
+        use_rope: bool = True,
+        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
         invisible_init_std: float = 0.02,
         num_court_tokens: int = NUM_COURT_KP,
     ) -> None:
@@ -118,6 +121,11 @@ class PLCSModel(nn.Module):
         rope_dim = head_dim if rope_dim is None else rope_dim
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
+        self.rope_bases = (
+            float(self.rope_theta if rope_theta_time is None else rope_theta_time),
+            float(self.rope_theta if rope_theta_camera is None else rope_theta_camera),
+            float(rope_theta_type),
+        )
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
@@ -140,9 +148,6 @@ class PLCSModel(nn.Module):
             dropout=dropout,
             invisible_token=self.invisible_token,
         )
-
-        # Type embedding: 0 = court, 1 = player
-        self.type_embed = nn.Embedding(2, hidden_dim)
 
         # CLS token (no RoPE applied)
         self.cls_token = nn.Parameter(torch.zeros(1, 1, hidden_dim))
@@ -194,13 +199,12 @@ class PLCSModel(nn.Module):
         )
 
         if self.use_rope:
-            freqs_cis = precompute_freqs_cis(
+            freqs_cis = precompute_freqs_cis_nd(
                 dim=self.rope_dim,
-                seqlen=self.max_tokens,
-                base=self.rope_theta,
-                device=None,  # initialized on CPU; moved by `model.to(device)`
+                pos=self._build_body_rope_positions(),
+                base=self.rope_bases,
             )
-            self.register_buffer("freqs_cis", freqs_cis, persistent=False)
+            self.register_buffer("freqs_cis_body", freqs_cis, persistent=False)
 
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSModel:
@@ -224,13 +228,39 @@ class PLCSModel(nn.Module):
             dropout=model_cfg.get("dropout", 0.1),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=model_cfg.get("rope_theta", 10000.0),
+            rope_theta_time=model_cfg.get("rope_theta_time", None),
+            rope_theta_camera=model_cfg.get("rope_theta_camera", None),
+            rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
             num_register_tokens=int(model_cfg.get("num_register_tokens", 4)),
             use_kp_id_embedding=bool(model_cfg.get("use_kp_id_embedding", True)),
-            use_rope=bool(model_cfg.get("use_rope", False)),
-            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
+            use_rope=bool(model_cfg.get("use_rope", True)),
+            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )
+
+    def _build_body_rope_positions(self) -> Tensor:
+        """Build 3-axis RoPE positions for `[court, player]` body tokens."""
+        court_idx = torch.arange(self.num_court_tokens, dtype=torch.long)
+        player_idx = torch.arange(NUM_HUMAN_KP, dtype=torch.long)
+
+        court_pos = torch.stack(
+            [
+                court_idx,
+                torch.zeros_like(court_idx),
+                torch.zeros_like(court_idx),
+            ],
+            dim=-1,
+        )
+        player_pos = torch.stack(
+            [
+                player_idx,
+                torch.zeros_like(player_idx),
+                torch.ones_like(player_idx),
+            ],
+            dim=-1,
+        )
+        return torch.cat([court_pos, player_pos], dim=0)
 
     def _build_body_tokens(
         self,
@@ -238,7 +268,7 @@ class PLCSModel(nn.Module):
         court_kp: Tensor,
         human_vis: Tensor | None = None,
         court_vis: Tensor | None = None,
-    ) -> dict[str, Tensor]:
+    ) -> Tensor:
         """Forward pass.
 
         Args:
@@ -264,20 +294,11 @@ class PLCSModel(nn.Module):
                 - rotation: (B, 2) as (cos(yaw), sin(yaw))
 
         """
-        B = human_kp.size(0)
-
         # Tokenize court and player keypoints
         court_tok = self.court_embed(court_kp, court_vis)  # (B, K, D)
         player_tok = self.player_embed(human_kp, human_vis)  # (B, 17, D)
 
         K = court_tok.shape[1]
-        # Add type embeddings
-        court_type = self.type_embed(
-            torch.zeros(K, device=human_kp.device, dtype=torch.long)
-        )[None, :, :]  # (1, K, D)
-        player_type = self.type_embed(
-            torch.ones(NUM_HUMAN_KP, device=human_kp.device, dtype=torch.long)
-        )[None, :, :]  # (1, 17, D)
 
         if self.use_kp_id_embedding:
             court_id = self.court_id_embed(
@@ -289,10 +310,7 @@ class PLCSModel(nn.Module):
             court_tok = court_tok + court_id
             player_tok = player_tok + player_id
 
-        token_body = torch.cat(
-            [court_tok + court_type, player_tok + player_type], dim=1
-        )  # (B, 37, D)
-        return token_body
+        return torch.cat([court_tok, player_tok], dim=1)  # (B, 37, D)
 
     def _add_prefix_tokens(self, token_body: Tensor) -> Tensor:
         """Add CLS/register prefix tokens to body tokens."""
@@ -309,12 +327,13 @@ class PLCSModel(nn.Module):
 
         freqs_cis: Tensor | None = None
         if self.use_rope:
-            if S_body > self.freqs_cis.shape[0]:
+            freqs_cis_body = cast(Tensor, self.freqs_cis_body)
+            if S_body > freqs_cis_body.shape[0]:
                 raise ValueError(
-                    f"Sequence length S={S_body} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
+                    f"Sequence length S={S_body} exceeds cached freqs_cis length {freqs_cis_body.shape[0]}. "
                     "Increase max_tokens."
                 )
-            freqs_cis_body = self.freqs_cis[:S_body]
+            freqs_cis_body = freqs_cis_body[:S_body]
             if freqs_cis_body.device != x.device:
                 freqs_cis_body = freqs_cis_body.to(x.device)
 
@@ -352,7 +371,7 @@ class PLCSModel(nn.Module):
         S_body = token_body.shape[1]
         x = self._add_prefix_tokens(token_body)
         x = self._forward_transformer(x=x, S_body=S_body)
-        player_start_idx = 1 + self.num_register_tokens + court_tok.shape[1]
+        player_start_idx = 1 + self.num_register_tokens + self.num_court_tokens
         return x, player_start_idx
 
     def forward(

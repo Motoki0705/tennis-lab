@@ -22,9 +22,12 @@ max_seq_len: 2048
 num_player_layers: 4
 num_query_layers: 2
 
-# RoPE (temporal only)
+# RoPE axes: time, entity (court/joint id), type (court/player/query)
 rope_dim: null
 rope_theta: 10000.0
+rope_theta_time: 10000.0
+rope_theta_entity: 10000.0
+rope_theta_type: 100.0
 
 # Model type
 architecture: sequence

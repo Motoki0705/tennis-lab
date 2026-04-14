@@ -19,6 +19,7 @@ invisible_init_std: 0.02
 # RoPE
 rope_dim: null
 rope_theta: 10000.0
+rope_theta_time: 10000.0
 
 # Output
 predict_velocity: false

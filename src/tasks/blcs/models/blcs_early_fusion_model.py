@@ -8,7 +8,7 @@ decoder-style Transformer and regresses 3D trajectory coordinates.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 import torch
 import torch.nn as nn
@@ -47,7 +47,8 @@ class BLCSEarlyFusionModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
-        ffn_type: str = "swiglu",
+        rope_theta_time: float | None = None,
+        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
         predict_velocity: bool = False,
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
@@ -65,6 +66,7 @@ class BLCSEarlyFusionModel(nn.Module):
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
+        self.rope_time_base = float(self.rope_theta if rope_theta_time is None else rope_theta_time)
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
@@ -94,7 +96,7 @@ class BLCSEarlyFusionModel(nn.Module):
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
-                        rope_base=self.rope_theta,
+                        rope_base=self.rope_time_base,
                         ffn_type=ffn_type,
                     )
                 )
@@ -123,7 +125,7 @@ class BLCSEarlyFusionModel(nn.Module):
         freqs_cis = precompute_freqs_cis(
             dim=self.rope_dim,
             seqlen=self.max_seq_len,
-            base=self.rope_theta,
+            base=self.rope_time_base,
             device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
@@ -142,7 +144,8 @@ class BLCSEarlyFusionModel(nn.Module):
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
+            rope_theta_time=model_cfg.get("rope_theta_time", None),
+            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),

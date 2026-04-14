@@ -12,10 +12,6 @@ from src.utils.models.components.attention import (
 )
 from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
 from src.utils.models.components.norm import RMSNorm
-from src.utils.models.components.rope import (
-    PositionGetter,
-    precompute_freqs_cis_2d,
-)
 
 
 @dataclass
