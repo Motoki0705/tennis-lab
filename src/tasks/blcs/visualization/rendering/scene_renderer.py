@@ -15,12 +15,11 @@ Example:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 from src.utils.rendering.ball_renderer import (
     BallEvent,
     BallEventType,
@@ -28,11 +27,13 @@ from src.utils.rendering.ball_renderer import (
     BallStyle,
 )
 from src.utils.rendering.court_renderer import CourtRenderer
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
-    from mpl_toolkits.mplot3d import Axes3D
+
+    Axes3D: TypeAlias = Any
 
 
 class BLCSSceneRenderer:
@@ -226,18 +227,18 @@ class BLCSSceneRenderer:
 
         # Set up UV coordinate space
         ax.set_facecolor("#1a1a1a")
-
-        # Draw court keypoints
-        for i in range(20):
-            if court_vis[i]:
-                ax.scatter(
-                    court_uv[i, 0],
-                    court_uv[i, 1],
-                    c="lime",
-                    s=50,
-                    marker="s",
-                    alpha=0.7,
-                )
+        self.court_renderer.render_projected_2d(
+            ax,
+            court_uv,
+            court_vis,
+            line_color="lime",
+            line_width=1.5,
+            visible_line_alpha=0.8,
+            keypoint_color="lime",
+            keypoint_size=50.0,
+            keypoint_alpha=0.7,
+            keypoint_marker="s",
+        )
 
         # Build events
         events = self._extract_events(meta)
@@ -295,7 +296,7 @@ class BLCSSceneRenderer:
             Figure with all views.
 
         """
-        fig = plt.figure(figsize=figsize)
+        fig = cast(Figure, plt.figure(figsize=figsize))
 
         # 3D view
         ax1 = fig.add_subplot(2, 2, 1, projection="3d")
@@ -359,12 +360,10 @@ class BLCSSceneRenderer:
         """
         positions = scene["ball_pos_world"]
         num_frames = len(positions)
-        meta = scene["meta"]
-        events = self._extract_events(meta)
         interval = 1000.0 / fps
 
         if view == "3d":
-            fig = plt.figure(figsize=figsize)
+            fig = cast(Figure, plt.figure(figsize=figsize))
             ax = fig.add_subplot(111, projection="3d")
             self.court_renderer.render_3d(ax, show_net=True)
 
@@ -420,34 +419,20 @@ class BLCSSceneRenderer:
             ball_uv = cam["ball_uv"]
 
             fig, ax = plt.subplots(figsize=figsize)
-
-            # Draw court lines (static)
-            from src.utils.schema.court import COURT_SKELETON
-
             court_uv = cam["court_kp_uv"]
             court_vis = cam["court_kp_visible"]
-
-            for i, j in COURT_SKELETON:
-                if court_vis[i] and court_vis[j]:
-                    ax.plot(
-                        [court_uv[i, 0], court_uv[j, 0]],
-                        [court_uv[i, 1], court_uv[j, 1]],
-                        c="lime",
-                        linewidth=1.5,
-                        alpha=0.8,
-                    )
-
-            # Draw court keypoints (static)
-            for i in range(20):
-                if court_vis[i]:
-                    ax.scatter(
-                        court_uv[i, 0],
-                        court_uv[i, 1],
-                        c="lime",
-                        s=30,
-                        marker="s",
-                        alpha=0.7,
-                    )
+            self.court_renderer.render_projected_2d(
+                ax,
+                court_uv,
+                court_vis,
+                line_color="lime",
+                line_width=1.5,
+                visible_line_alpha=0.8,
+                keypoint_color="lime",
+                keypoint_size=30.0,
+                keypoint_alpha=0.7,
+                keypoint_marker="s",
+            )
 
             (line,) = ax.plot([], [], "r-", linewidth=1, alpha=0.5)
             point = ax.scatter([], [], c="red", s=100, zorder=10)
@@ -671,7 +656,7 @@ class BLCSSceneRenderer:
             )
 
         # Common info
-        print(f"\nTrajectory:")
+        print("\nTrajectory:")
         print(f"  Frames: {meta.get('num_frames', 'N/A')}")
         print(
             f"  FPS: {meta.get('fps_out', 'N/A')} (output), "
