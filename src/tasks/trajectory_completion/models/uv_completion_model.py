@@ -10,7 +10,7 @@ Forward I/F is kept unchanged.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 import torch
 import torch.nn as nn
@@ -22,9 +22,13 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    precompute_freqs_cis,
+    precompute_freqs_cis_nd,
 )
-from src.utils.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
+from src.utils.models.embeddings import (
+    BallUVEmbedding,
+    CourtKPUVEmbedding,
+    InvisibleTokenEmbedding,
+)
 from src.utils.schema.court import NUM_COURT_KP
 
 if TYPE_CHECKING:
@@ -47,10 +51,13 @@ class UVTrajectoryCompletionModel(nn.Module):
         num_query_layers: int = 2,
         # Positional encoding
         rope_theta: float = 10000.0,
+        rope_theta_time: float | None = None,
+        rope_theta_entity: float | None = None,
+        rope_theta_type: float = 100.0,
         rope_dim: int | None = None,
         # FFN
         ffn_dim: int | None = None,
-        ffn_type: str = "swiglu",
+        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
         # Embedding init
         invisible_init_std: float = 0.02,
         query_init_std: float = 0.02,
@@ -75,6 +82,13 @@ class UVTrajectoryCompletionModel(nn.Module):
             raise ValueError("rope_dim must be even.")
         if rope_dim_value > head_dim:
             raise ValueError("rope_dim must be <= head_dim.")
+        self.rope_dim = int(rope_dim_value)
+        self.rope_theta = float(rope_theta)
+        self.rope_bases = (
+            float(self.rope_theta if rope_theta_time is None else rope_theta_time),
+            float(self.rope_theta if rope_theta_entity is None else rope_theta_entity),
+            float(rope_theta_type),
+        )
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
@@ -118,9 +132,9 @@ class UVTrajectoryCompletionModel(nn.Module):
                         n_heads=int(num_heads),
                         ffn_dim=ffn_dim,
                         head_dim=head_dim,
-                        rope_dim=rope_dim_value,
+                        rope_dim=self.rope_dim,
                         attn_dropout=float(dropout),
-                        rope_base=float(rope_theta),
+                        rope_base=self.rope_theta,
                         ffn_type=ffn_type,
                     )
                 )
@@ -135,7 +149,7 @@ class UVTrajectoryCompletionModel(nn.Module):
                         n_heads=int(num_heads),
                         ffn_dim=ffn_dim,
                         head_dim=head_dim,
-                        rope_dim=rope_dim_value,
+                        rope_dim=self.rope_dim,
                         attn_dropout=float(dropout),
                         ffn_type=ffn_type,
                     )
@@ -151,9 +165,9 @@ class UVTrajectoryCompletionModel(nn.Module):
                         n_heads=int(num_heads),
                         ffn_dim=ffn_dim,
                         head_dim=head_dim,
-                        rope_dim=rope_dim_value,
+                        rope_dim=self.rope_dim,
                         attn_dropout=float(dropout),
-                        rope_base=float(rope_theta),
+                        rope_base=self.rope_theta,
                         ffn_type=ffn_type,
                     )
                 )
@@ -178,13 +192,12 @@ class UVTrajectoryCompletionModel(nn.Module):
             nn.Linear(self.hidden_dim, 1),
         )
 
-        freqs_cis = precompute_freqs_cis(
-            dim=rope_dim_value,
-            seqlen=self.max_seq_len,
-            base=float(rope_theta),
-            device=None,
+        court_freqs_cis = precompute_freqs_cis_nd(
+            dim=self.rope_dim,
+            pos=self._build_court_positions(),
+            base=self.rope_bases,
         )
-        self.register_buffer("freqs_cis", freqs_cis, persistent=False)
+        self.register_buffer("court_freqs_cis", court_freqs_cis, persistent=False)
 
     @classmethod
     def from_config(cls, config: DictConfig) -> UVTrajectoryCompletionModel:
@@ -204,13 +217,39 @@ class UVTrajectoryCompletionModel(nn.Module):
             num_ball_layers=int(num_ball_layers),
             num_query_layers=int(num_query_layers),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
+            rope_theta_time=model_cfg.get("rope_theta_time", None),
+            rope_theta_entity=model_cfg.get("rope_theta_entity", None),
+            rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
             rope_dim=model_cfg.get("rope_dim", None),
             ffn_dim=model_cfg.get("ffn_dim"),
-            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
+            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
             num_court_tokens=int(model_cfg.get("num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP))),
         )
+
+    def _build_court_positions(self) -> Tensor:
+        court_idx = torch.arange(self.num_court_tokens, dtype=torch.long)
+        return torch.stack(
+            [
+                torch.zeros_like(court_idx),
+                court_idx,
+                torch.zeros_like(court_idx),
+            ],
+            dim=-1,
+        )
+
+    @staticmethod
+    def _build_stream_positions(
+        seq_len: int,
+        device: torch.device,
+        *,
+        token_type: int,
+    ) -> Tensor:
+        time_idx = torch.arange(seq_len, device=device, dtype=torch.long) + 1
+        entity_idx = torch.zeros(seq_len, device=device, dtype=torch.long)
+        type_idx = torch.full((seq_len,), token_type, device=device, dtype=torch.long)
+        return torch.stack([time_idx, entity_idx, type_idx], dim=-1)
 
     @staticmethod
     def _build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
@@ -255,7 +294,7 @@ class UVTrajectoryCompletionModel(nn.Module):
             with shape ``(B, T)``.
         """
         B, T, _ = ball_uv.shape
-        if T > self.max_seq_len:
+        if self.max_seq_len < T:
             ball_uv = ball_uv[:, : self.max_seq_len]
             if ball_vis is not None:
                 ball_vis = ball_vis[:, : self.max_seq_len]
@@ -280,11 +319,24 @@ class UVTrajectoryCompletionModel(nn.Module):
         ball_attn_mask, ball_valid = self._build_self_attn_mask(ball_valid)
         court_valid = torch.ones(B, self.num_court_tokens, device=ball_uv.device, dtype=torch.bool)
 
-        freqs_ball_tokens = self.freqs_cis[:T]
-        if freqs_ball_tokens.device != ball_uv.device:
-            freqs_ball_tokens = freqs_ball_tokens.to(ball_uv.device)
-        freqs_ball_tok = freqs_ball_tokens
-        freqs_query = freqs_ball_tokens
+        freqs_ball_tokens = precompute_freqs_cis_nd(
+            dim=self.rope_dim,
+            pos=self._build_stream_positions(T, ball_uv.device, token_type=1),
+            base=self.rope_bases,
+        )
+        freqs_ball_raw = precompute_freqs_cis_nd(
+            dim=self.rope_dim,
+            pos=self._build_stream_positions(T, ball_uv.device, token_type=2),
+            base=self.rope_bases,
+        )
+        freqs_query = precompute_freqs_cis_nd(
+            dim=self.rope_dim,
+            pos=self._build_stream_positions(T, ball_uv.device, token_type=3),
+            base=self.rope_bases,
+        )
+        court_freqs_cis = cast(Tensor, self.court_freqs_cis)
+        if court_freqs_cis.device != ball_uv.device:
+            court_freqs_cis = court_freqs_cis.to(ball_uv.device)
 
         # Stage 1: ball tokens attend to court, then temporal self-attention.
         ball_raw = ball_tok
@@ -300,7 +352,7 @@ class UVTrajectoryCompletionModel(nn.Module):
                 court_tokens,
                 key_valid=court_valid,
                 freqs_q_cis=None,
-                freqs_k_cis=None,
+                freqs_k_cis=court_freqs_cis,
             )
             ball_tokens = self_layer(
                 ball_tokens,
@@ -315,7 +367,7 @@ class UVTrajectoryCompletionModel(nn.Module):
         ball_memory_valid = torch.cat([ball_valid, ball_valid], dim=1)
 
         # Independent RoPE streams for query and memory branches.
-        freqs_ball_memory = torch.cat([freqs_ball_tokens, freqs_ball_tok], dim=0)
+        freqs_ball_memory = torch.cat([freqs_ball_tokens, freqs_ball_raw], dim=0)
 
         # Stage 2: learned query attends to processed+raw memories, then temporal self-attention.
         query = self.query_base.expand(B, T, -1)

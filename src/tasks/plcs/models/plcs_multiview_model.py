@@ -8,20 +8,24 @@ where each frame block is:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
+from src.tasks.plcs.models.components.heads import PositionHead, RotationHead
 from src.utils.models import (
     MultiHeadSelfAttention,
     RMSNorm,
-    precompute_freqs_cis_2d,
+    precompute_freqs_cis_nd,
 )
 from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
-from src.utils.models.embeddings import CourtKPUVEmbedding, InvisibleTokenEmbedding, PlayerKPUVEmbedding
-from src.tasks.plcs.models.components.heads import PositionHead, RotationHead
+from src.utils.models.embeddings import (
+    CourtKPUVEmbedding,
+    InvisibleTokenEmbedding,
+    PlayerKPUVEmbedding,
+)
 from src.utils.schema.court import NUM_COURT_KP
 from src.utils.schema.player import NUM_HUMAN_KP
 
@@ -29,8 +33,8 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class Rope2DTransformerBlock(nn.Module):
-    """Transformer block with SDPA and 2D RoPE support."""
+class RoPETransformerBlock(nn.Module):
+    """Transformer block with SDPA and generic RoPE support."""
 
     def __init__(
         self,
@@ -65,22 +69,20 @@ class Rope2DTransformerBlock(nn.Module):
         self,
         x: Tensor,
         *,
-        rope2d: tuple[Tensor, Tensor],
-        positions_2d: Tensor,
+        freqs_cis: Tensor,
         attn_mask: Tensor | None,
     ) -> Tensor:
         x_attn = x + self.attn(
             self.attn_norm(x),
-            rope2d=rope2d,
-            positions_2d=positions_2d,
+            freqs_cis=freqs_cis,
             attn_mask=attn_mask,
         )
-        x_fnn = x_attn + self.ffn(self.ffn_norm(x_attn))
+        x_fnn = x_attn + cast(Tensor, self.ffn(self.ffn_norm(x_attn)))
         return x_fnn
 
 
 class PLCSMultiViewModel(nn.Module):
-    """Multi-view PLCS model using camera-time 2D RoPE."""
+    """Multi-view PLCS model using 3-axis interleaved MROPE."""
 
     def __init__(
         self,
@@ -91,6 +93,9 @@ class PLCSMultiViewModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
+        rope_theta_time: float | None = None,
+        rope_theta_camera: float | None = None,
+        rope_theta_type: float = 100.0,
         ffn_type: Literal["swiglu", "mlp"] = "swiglu",
         max_views: int = 8,
         max_seq_len: int = 120,
@@ -110,9 +115,14 @@ class PLCSMultiViewModel(nn.Module):
         rope_dim = head_dim if rope_dim is None else rope_dim
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
+        self.rope_bases = (
+            float(self.rope_theta if rope_theta_time is None else rope_theta_time),
+            float(self.rope_theta if rope_theta_camera is None else rope_theta_camera),
+            float(rope_theta_type),
+        )
 
-        if self.rope_dim % 4 != 0:
-            raise ValueError(f"2D RoPE requires rope_dim % 4 == 0, got {self.rope_dim}")
+        if self.rope_dim % 2 != 0:
+            raise ValueError(f"RoPE requires an even rope_dim, got {self.rope_dim}")
 
         if ffn_dim is None:
             ffn_dim = default_ffn_dim(hidden_dim)
@@ -136,7 +146,7 @@ class PLCSMultiViewModel(nn.Module):
 
         self.blocks = nn.ModuleList(
             [
-                Rope2DTransformerBlock(
+                RoPETransformerBlock(
                     dim=hidden_dim,
                     n_heads=num_heads,
                     ffn_dim=ffn_dim,
@@ -164,16 +174,6 @@ class PLCSMultiViewModel(nn.Module):
             dropout=dropout,
         )
 
-        freqs_y, freqs_x = precompute_freqs_cis_2d(
-            dim=self.rope_dim,
-            height=self.max_seq_len + 1,
-            width=self.max_views,
-            base=self.rope_theta,
-            device=None,
-        )
-        self.register_buffer("freqs_cis_y", freqs_y, persistent=False)
-        self.register_buffer("freqs_cis_x", freqs_x, persistent=False)
-
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSMultiViewModel:
         """Create model from hydra config."""
@@ -188,27 +188,30 @@ class PLCSMultiViewModel(nn.Module):
             dropout=model_cfg.get("dropout", 0.1),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=model_cfg.get("rope_theta", 10000.0),
-            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
+            rope_theta_time=model_cfg.get("rope_theta_time", None),
+            rope_theta_camera=model_cfg.get("rope_theta_camera", None),
+            rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
+            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
             max_views=model_cfg.get("max_views", 8),
             max_seq_len=model_cfg.get("max_seq_len", 120),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )
 
-    def _build_positions_2d(
+    def _build_positions_3d(
         self,
         *,
-        batch_size: int,
         n_cameras: int,
         seq_len: int,
         device: torch.device,
     ) -> Tensor:
-        """Build (B, S, 2) coordinates with axes: (time, camera)."""
+        """Build `(S, 3)` coordinates with axes: (time, camera, type)."""
         per_cam: list[Tensor] = []
         for cam_idx in range(n_cameras):
             court_time = torch.zeros(self.num_court_tokens, device=device, dtype=torch.long)
             court_cam = torch.full((self.num_court_tokens,), cam_idx, device=device, dtype=torch.long)
-            court_pos = torch.stack([court_time, court_cam], dim=-1)
+            court_type = torch.zeros(self.num_court_tokens, device=device, dtype=torch.long)
+            court_pos = torch.stack([court_time, court_cam, court_type], dim=-1)
 
             frame_time = torch.arange(seq_len, device=device, dtype=torch.long).repeat_interleave(
                 self.frame_block_tokens
@@ -219,11 +222,11 @@ class PLCSMultiViewModel(nn.Module):
                 device=device,
                 dtype=torch.long,
             )
-            frame_pos = torch.stack([frame_time, frame_cam], dim=-1)
+            frame_type = torch.ones(seq_len * self.frame_block_tokens, device=device, dtype=torch.long)
+            frame_pos = torch.stack([frame_time, frame_cam, frame_type], dim=-1)
             per_cam.append(torch.cat([court_pos, frame_pos], dim=0))
 
-        positions = torch.cat(per_cam, dim=0)
-        return positions.unsqueeze(0).expand(batch_size, -1, -1)
+        return torch.cat(per_cam, dim=0)
 
     def forward(
         self,
@@ -290,9 +293,9 @@ class PLCSMultiViewModel(nn.Module):
         B, N, T = human_kp.shape[:3]
         device = human_kp.device
 
-        if N > self.max_views:
+        if self.max_views < N:
             raise ValueError(f"Number of views N={N} exceeds max_views={self.max_views}.")
-        if T > self.max_seq_len:
+        if self.max_seq_len < T:
             raise ValueError(f"Sequence length T={T} exceeds max_seq_len={self.max_seq_len}.")
 
         if human_mask is not None:
@@ -311,6 +314,8 @@ class PLCSMultiViewModel(nn.Module):
         # court is camera-level (use first frame per camera)
         court_scene = court_kp[:, :, 0, :, :]  # (B,N,K,2)
         K = court_scene.shape[2]
+        if self.num_court_tokens != K:
+            raise ValueError(f"Expected {self.num_court_tokens} court tokens, got {K}.")
         court_scene_flat = court_scene.reshape(B * N, K, 2)
 
         court_vis_scene: Tensor | None = None
@@ -360,26 +365,21 @@ class PLCSMultiViewModel(nn.Module):
         eye = torch.eye(S, device=device, dtype=torch.bool).unsqueeze(0)
         attn_mask = attn_keep | eye
 
-        positions_2d = self._build_positions_2d(
-            batch_size=B,
+        positions_3d = self._build_positions_3d(
             n_cameras=N,
             seq_len=T,
             device=device,
         )
-
-        freqs_y = self.freqs_cis_y[: T + 1]
-        freqs_x = self.freqs_cis_x[:N]
-        if freqs_y.device != device:
-            freqs_y = freqs_y.to(device)
-        if freqs_x.device != device:
-            freqs_x = freqs_x.to(device)
-        rope2d = (freqs_y, freqs_x)
+        freqs_cis = precompute_freqs_cis_nd(
+            dim=self.rope_dim,
+            pos=positions_3d,
+            base=self.rope_bases,
+        )
 
         for blk in self.blocks:
             x = blk(
                 x,
-                rope2d=rope2d,
-                positions_2d=positions_2d,
+                freqs_cis=freqs_cis,
                 attn_mask=attn_mask,
             )
             x = x * token_valid.unsqueeze(-1).to(dtype=x.dtype)
