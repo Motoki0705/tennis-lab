@@ -12,11 +12,11 @@ from torch import Tensor
 
 from src.utils.schema.court import (
     BASELINE_CLEAR,
-    CourtConfig,
     FENCE_HEIGHT,
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
     SIDELINE_CLEAR,
+    CourtConfig,
     court_keypoints_3d,
 )
 
@@ -105,6 +105,8 @@ class CameraConfig:
     image_size: tuple[int, int] = (1280, 720)
     fixed_look_at: tuple[float, float, float] = (0.0, 0.0, 0.0)
     fixed_baseline_clear_extra: float = 0.0
+    fixed_position_noise_radius: float = 0.0
+    fixed_look_at_xy_radius: float = 0.0
     target_x_range: tuple[float, float] = (-2.0, 2.0)
     target_y_range: tuple[float, float] = (-2.0, 2.0)
     target_z_range: tuple[float, float] = (0.5, 1.5)
@@ -200,11 +202,36 @@ class CameraProjector:
             image_size=cfg.image_size,
         )
 
+    @staticmethod
+    def _sample_uniform_offset_in_ball(radius: float) -> tuple[float, float, float]:
+        """Sample a volume-uniform 3D offset inside a ball."""
+        if radius <= 0.0:
+            return 0.0, 0.0, 0.0
+
+        radius_sq = radius * radius
+        while True:
+            dx = random.uniform(-radius, radius)
+            dy = random.uniform(-radius, radius)
+            dz = random.uniform(-radius, radius)
+            if dx * dx + dy * dy + dz * dz <= radius_sq:
+                return dx, dy, dz
+
+    @staticmethod
+    def _sample_uniform_xy_in_disk(radius: float) -> tuple[float, float]:
+        """Sample an area-uniform XY location inside a disk."""
+        if radius <= 0.0:
+            return 0.0, 0.0
+
+        theta = random.uniform(0.0, 2.0 * math.pi)
+        r = radius * math.sqrt(random.random())
+        return r * math.cos(theta), r * math.sin(theta)
+
     def fixed_cameras(self) -> list[Camera]:
         """Build the fixed 8-camera layout (4 corners + 4 edge midpoints).
 
         Corner cameras use ``z_min``. Midpoint cameras use ``z_max``.
-        All cameras look at ``fixed_look_at``.
+        When both fixed-camera noise radii are zero, the legacy layout is
+        preserved exactly.
         """
         cfg = self.config
         fence_x, fence_y = self._fence_extents(cfg.fixed_baseline_clear_extra)
@@ -224,11 +251,28 @@ class CameraProjector:
         ]
 
         cams: list[Camera] = []
-        for center in corners + midpoints:
+        for base_center in corners + midpoints:
+            dx, dy, dz = self._sample_uniform_offset_in_ball(
+                cfg.fixed_position_noise_radius
+            )
+            center = (
+                base_center[0] + dx,
+                base_center[1] + dy,
+                base_center[2] + dz,
+            )
+
+            if cfg.fixed_look_at_xy_radius > 0.0:
+                target_x, target_y = self._sample_uniform_xy_in_disk(
+                    cfg.fixed_look_at_xy_radius
+                )
+                look_at_target = (target_x, target_y, 0.0)
+            else:
+                look_at_target = look_at
+
             cams.append(
                 make_look_at_camera(
                     center=center,
-                    look_at=look_at,
+                    look_at=look_at_target,
                     hfov_deg=cfg.hfov_deg,
                     image_size=cfg.image_size,
                 )
