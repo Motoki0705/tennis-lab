@@ -15,6 +15,11 @@ cam_emb_dim: 64
 num_layers: 6      # Number of (same-time cross-attn + temporal self-attn) iterations
 num_heads: 8
 dropout: 0.1
+rope_dim: null
+rope_theta: 10000.0
+rope_theta_time: 10000.0
+rope_theta_camera: 10000.0
+rope_theta_type: 100.0
 max_seq_len: 2048
 max_views: 8
 predict_velocity: false
