@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
+from src.tasks.event_detection.models.components.heads import EventLogitsHead
 from src.utils.models import (
     RMSNorm,
     TransformerBlock,
@@ -15,7 +16,6 @@ from src.utils.models import (
     precompute_freqs_cis,
 )
 from src.utils.models.embeddings import Ball3DEmbedding, InvisibleTokenEmbedding
-from src.tasks.event_detection.models.components.heads import EventLogitsHead
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -31,10 +31,11 @@ class Traj3DEventModel(nn.Module):
         num_heads: int = 8,
         dropout: float = 0.1,
         rope_theta: float = 10000.0,
+        rope_theta_time: float | None = None,
         max_seq_len: int = 256,
         num_events: int = 2,
         ffn_dim: int | None = None,
-        ffn_type: str = "swiglu",
+        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
         invisible_init_std: float = 0.02,
     ) -> None:
         super().__init__()
@@ -46,6 +47,7 @@ class Traj3DEventModel(nn.Module):
             raise ValueError("hidden_dim must be divisible by num_heads.")
         head_dim = self.hidden_dim // int(num_heads)
         rope_dim = head_dim
+        rope_base = float(rope_theta if rope_theta_time is None else rope_theta_time)
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim, init_std=invisible_init_std
@@ -65,7 +67,7 @@ class Traj3DEventModel(nn.Module):
                         head_dim=head_dim,
                         rope_dim=rope_dim,
                         attn_dropout=dropout,
-                        rope_base=float(rope_theta),
+                        rope_base=rope_base,
                         ffn_type=ffn_type,
                     )
                 )
@@ -78,7 +80,7 @@ class Traj3DEventModel(nn.Module):
         freqs_cis = precompute_freqs_cis(
             dim=rope_dim,
             seqlen=self.max_seq_len,
-            base=float(rope_theta),
+            base=rope_base,
             device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
@@ -93,10 +95,11 @@ class Traj3DEventModel(nn.Module):
             num_heads=int(model_cfg.get("num_heads", 8)),
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
+            rope_theta_time=model_cfg.get("rope_theta_time", None),
             max_seq_len=int(model_cfg.get("max_seq_len", 256)),
             num_events=int(model_cfg.get("num_events", 2)),
             ffn_dim=model_cfg.get("ffn_dim"),
-            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
+            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
         )
 

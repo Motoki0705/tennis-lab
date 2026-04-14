@@ -5,22 +5,20 @@ Strategy A: treat the DeepSeek-style, pure PyTorch implementation in
 """
 
 from src.utils.models.components import (
+    MLP,
     CrossAttnBlock,
     CrossAttnBlockConfig,
-    MLP,
     LayerNorm,
     MultiHeadCrossAttention,
     MultiHeadSelfAttention,
-    PositionGetter,
     RMSNorm,
-    RotaryPositionEmbedding2D,
     SwiGLU,
     TransformerBlock,
     TransformerBlockConfig,
-    apply_rotary_emb_2d,
+    apply_rotary_emb,
     default_ffn_dim,
     precompute_freqs_cis,
-    precompute_freqs_cis_2d,
+    precompute_freqs_cis_nd,
 )
 from src.utils.models.embeddings import (
     Ball3DEmbedding,
@@ -39,10 +37,8 @@ __all__ = [
     "LayerNorm",
     # RoPE
     "precompute_freqs_cis",
-    "precompute_freqs_cis_2d",
-    "apply_rotary_emb_2d",
-    "RotaryPositionEmbedding2D",
-    "PositionGetter",
+    "precompute_freqs_cis_nd",
+    "apply_rotary_emb",
     # FFN
     "MLP",
     "SwiGLU",

@@ -15,7 +15,7 @@ Uses shared components from src.utils.models.components.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 import torch
 import torch.nn as nn
@@ -26,9 +26,13 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    precompute_freqs_cis,
+    precompute_freqs_cis_nd,
 )
-from src.utils.models.embeddings import BallUVEmbedding, CourtKPUVEmbedding, InvisibleTokenEmbedding
+from src.utils.models.embeddings import (
+    BallUVEmbedding,
+    CourtKPUVEmbedding,
+    InvisibleTokenEmbedding,
+)
 from src.utils.schema.court import NUM_COURT_KP
 
 if TYPE_CHECKING:
@@ -72,7 +76,10 @@ class BLCSModel(nn.Module):
         dropout: float = 0.1,
         rope_dim: int | None = None,
         rope_theta: float = 10000.0,
-        ffn_type: str = "swiglu",
+        rope_theta_time: float | None = None,
+        rope_theta_camera: float | None = None,
+        rope_theta_type: float = 100.0,
+        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
         predict_velocity: bool = False,
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
@@ -106,6 +113,11 @@ class BLCSModel(nn.Module):
         rope_dim = head_dim if rope_dim is None else rope_dim
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
+        self.rope_bases = (
+            float(self.rope_theta if rope_theta_time is None else rope_theta_time),
+            float(self.rope_theta if rope_theta_camera is None else rope_theta_camera),
+            float(rope_theta_type),
+        )
 
         if ffn_dim is None:
             ffn_dim = int((8 * hidden_dim) / 3)
@@ -124,9 +136,6 @@ class BLCSModel(nn.Module):
             dropout=dropout,
             invisible_token=self.invisible_token,
         )
-
-        # Type embedding: 0 = court, 1 = ball
-        self.type_embed = nn.Embedding(2, hidden_dim)
 
         self.blocks = nn.ModuleList(
             [
@@ -164,11 +173,10 @@ class BLCSModel(nn.Module):
                 dropout=dropout,
             )
 
-        freqs_cis = precompute_freqs_cis(
+        freqs_cis = precompute_freqs_cis_nd(
             dim=self.rope_dim,
-            seqlen=self.max_tokens,
-            base=self.rope_theta,
-            device=None,  # initialized on CPU; moved by `model.to(device)`
+            pos=self._build_rope_positions(),
+            base=self.rope_bases,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
 
@@ -193,7 +201,10 @@ class BLCSModel(nn.Module):
             dropout=model_cfg.get("dropout", 0.1),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=model_cfg.get("rope_theta", 10000.0),
-            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
+            rope_theta_time=model_cfg.get("rope_theta_time", None),
+            rope_theta_camera=model_cfg.get("rope_theta_camera", None),
+            rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
+            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
             predict_velocity=model_cfg.get("predict_velocity", False),
             max_seq_len=model_cfg.get(
                 "max_seq_len", data_cfg.get("max_seq_len", 120)
@@ -201,6 +212,29 @@ class BLCSModel(nn.Module):
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )
+
+    def _build_rope_positions(self) -> Tensor:
+        """Build 3-axis RoPE positions for `[court, ball]` tokens."""
+        court_idx = torch.arange(self.num_court_tokens, dtype=torch.long)
+        ball_time = torch.arange(self.max_seq_len, dtype=torch.long) + 1
+
+        court_pos = torch.stack(
+            [
+                torch.zeros_like(court_idx),
+                court_idx,
+                torch.zeros_like(court_idx),
+            ],
+            dim=-1,
+        )
+        ball_pos = torch.stack(
+            [
+                ball_time,
+                torch.zeros_like(ball_time),
+                torch.ones_like(ball_time),
+            ],
+            dim=-1,
+        )
+        return torch.cat([court_pos, ball_pos], dim=0)
 
     def forward(
         self,
@@ -227,27 +261,22 @@ class BLCSModel(nn.Module):
         # Tokenize court and ball
         court_tok = self.court_embed(court_kp, court_vis)  # (B, K, D)
         ball_tok = self.ball_embed(ball_uv, ball_vis)  # (B, T, D)
+        if court_tok.shape[1] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected {self.num_court_tokens} court tokens, got {court_tok.shape[1]}"
+            )
 
-        # Add type embeddings
         K = court_tok.shape[1]
-        court_type = self.type_embed(
-            torch.zeros(K, device=ball_uv.device, dtype=torch.long)
-        )[None, :, :]  # (1, K, D)
-        ball_type = self.type_embed(
-            torch.ones(T, device=ball_uv.device, dtype=torch.long)
-        )[None, :, :]  # (1, T, D)
-
-        x = torch.cat(
-            [court_tok + court_type, ball_tok + ball_type], dim=1
-        )  # (B, S, D)
+        x = torch.cat([court_tok, ball_tok], dim=1)  # (B, S, D)
         S = x.shape[1]
 
-        if S > self.freqs_cis.shape[0]:
+        freqs_cis = cast(Tensor, self.freqs_cis)
+        if freqs_cis.shape[0] < S:
             raise ValueError(
-                f"Sequence length S={S} exceeds cached freqs_cis length {self.freqs_cis.shape[0]}. "
+                f"Sequence length S={S} exceeds cached freqs_cis length {freqs_cis.shape[0]}. "
                 "Increase max_seq_len."
             )
-        freqs_cis = self.freqs_cis[:S]
+        freqs_cis = freqs_cis[:S]
         if freqs_cis.device != x.device:
             freqs_cis = freqs_cis.to(x.device)
         attn_mask: Tensor | None = None

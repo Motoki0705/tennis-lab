@@ -1,6 +1,6 @@
 # Multi-view PLCS model configuration
 # Per-camera tokens: court_m(20) + T * (CLS_po_{m,t}, CLS_ro_{m,t}, player_{m,t}[17])
-# Uses 2D RoPE over (time, camera) axes.
+# Uses 3-axis interleaved MROPE over (time, camera, type).
 
 name: plcs_multiview
 
@@ -21,9 +21,11 @@ invisible_init_std: 0.02
 max_views: 8
 max_seq_len: 120
 
-# 2D RoPE
-rope_dim: null       # Defaults to head_dim; must satisfy rope_dim % 4 == 0
-rope_theta: 10000.0
+# 3-axis interleaved MROPE
+rope_dim: null            # Defaults to head_dim; must be even
+rope_theta_time: 10000.0
+rope_theta_camera: 10000.0
+rope_theta_type: 100.0
 
 # Model type
 architecture: multiview
