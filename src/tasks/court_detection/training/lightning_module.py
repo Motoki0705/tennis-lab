@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
 from src.tasks.court_detection.models import build_court_detection_model
 from src.tasks.court_detection.training.losses import (
     BinaryDiceLoss,
@@ -16,6 +18,11 @@ from src.tasks.court_detection.training.losses import (
     FocalBCEWithLogitsLoss,
 )
 from src.tasks.court_detection.training.metrics import CourtDetectionMetrics
+from src.tasks.court_detection.training.visualization import (
+    save_kp_vis,
+    save_line_vis,
+    save_seg_vis,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -119,3 +126,53 @@ class CourtDetectionLightningModule(BaseLightningModule):
         for name, value in metrics.items():
             self.log(f"val/{name}", value, prog_bar=(name in ("miou", "mean_dist", "dice")))
         self.val_metrics.reset()
+
+    # ------------------------------------------------------------------
+    # Qualitative validation logging
+    # ------------------------------------------------------------------
+
+    def render_qualitative_samples(
+        self,
+        batches: list[dict[str, Any]],
+        outputs: list[dict[str, Any]],
+        artifact_dir: Path,
+        tb_writer: Any | None,
+        global_step: int,
+        epoch: int,
+    ) -> None:
+        """Render court detection panels using existing visualization helpers."""
+        import cv2
+
+        device = next(self.parameters()).device
+
+        for batch_idx, batch in enumerate(batches):
+            images = batch["image"].to(device)
+
+            with torch.no_grad():
+                logits = self.model(images).cpu()  # (B, C, H, W)
+
+            # Render first sample in each batch
+            img_tensor = batch["image"][0]  # (3, H, W)
+            pred_logits_sample = logits[0]  # (C, H, W)
+
+            path = artifact_dir / f"court_batch{batch_idx:02d}.png"
+
+            if self.task == "seg":
+                gt = batch["mask"][0]  # (H, W) long
+                save_seg_vis(img_tensor, gt, pred_logits_sample, path)
+            elif self.task == "kp":
+                gt = batch["heatmap"][0]  # (K, H, W)
+                save_kp_vis(img_tensor, gt, pred_logits_sample, path)
+            elif self.task == "line":
+                gt = batch["mask"][0]  # (1, H, W)
+                save_line_vis(img_tensor, gt, pred_logits_sample, path)
+
+            # Log to TensorBoard
+            panel = cv2.imread(str(path))
+            if panel is not None:
+                save_image_to_tensorboard(
+                    tb_writer,
+                    f"qualitative/court_detection/{self.task}/batch{batch_idx:02d}",
+                    panel,
+                    global_step,
+                )
