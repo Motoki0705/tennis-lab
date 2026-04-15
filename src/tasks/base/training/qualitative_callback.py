@@ -35,11 +35,15 @@ class QualitativeLoggingCallback(pl.Callback):
         every_n_epochs: int = 1,
         num_samples: int = 4,
         enabled: bool = True,
+        selection_mode: str = "random",
+        selected_indices: list[int] | None = None,
     ) -> None:
         super().__init__()
         self.every_n_epochs = max(every_n_epochs, 1)
         self.num_samples = max(num_samples, 1)
         self.enabled = enabled
+        self.selection_mode = selection_mode
+        self.selected_indices = selected_indices
 
         # Populated during validation
         self._collected_batches: list[dict[str, Any]] = []
@@ -68,9 +72,7 @@ class QualitativeLoggingCallback(pl.Callback):
         total = self._estimate_total_batches(trainer)
         self._total_val_batches = total
 
-        # Randomly select batch indices to collect
-        n = min(self.num_samples, total)
-        self._selected_indices = set(random.sample(range(total), n))
+        self._selected_indices = self._select_batch_indices(total)
 
     def on_validation_batch_end(
         self,
@@ -140,6 +142,31 @@ class QualitativeLoggingCallback(pl.Callback):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _select_batch_indices(self, total: int) -> set[int]:
+        if total <= 0:
+            return set()
+        if self.selection_mode == "random":
+            n = min(self.num_samples, total)
+            return set(random.sample(range(total), n))
+        if self.selection_mode == "fixed_indices":
+            if not self.selected_indices:
+                raise ValueError(
+                    "qualitative_logging.selection_mode='fixed_indices' requires "
+                    "a non-empty selected_indices list."
+                )
+            indices = set(self.selected_indices)
+            invalid = sorted(idx for idx in indices if idx < 0 or idx >= total)
+            if invalid:
+                raise ValueError(
+                    "qualitative_logging.selected_indices contains out-of-range "
+                    f"batch indices {invalid} for total validation batches={total}."
+                )
+            return indices
+        raise ValueError(
+            "qualitative_logging.selection_mode must be 'random' or "
+            f"'fixed_indices', got {self.selection_mode!r}."
+        )
 
     def _should_log(self, trainer: pl.Trainer) -> bool:
         """Check if qualitative logging should run this epoch."""
