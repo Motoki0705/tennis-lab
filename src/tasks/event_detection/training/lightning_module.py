@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Literal
+
+import cv2
+import numpy as np
 import torch
 from torch import Tensor
 from torch.nn import functional as F
+
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
 from src.tasks.event_detection.models import build_event_detection_model
 from src.tasks.event_detection.utils.peaks import extract_event_peaks
 
@@ -109,6 +115,92 @@ class EventDetectionLightningModule(BaseLightningModule):
     def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
         _ = batch_idx
         self._shared_step(batch, "val")
+
+    # ------------------------------------------------------------------
+    # Qualitative validation logging
+    # ------------------------------------------------------------------
+
+    def render_qualitative_samples(
+        self,
+        batches: list[dict[str, Any]],
+        outputs: list[dict[str, Any]],
+        artifact_dir: Path,
+        tb_writer: Any | None,
+        global_step: int,
+        epoch: int,
+    ) -> None:
+        """Render event probability timelines with GT/predicted peak markers."""
+        device = next(self.parameters()).device
+
+        for batch_idx, batch in enumerate(batches):
+            batch_dev = {
+                k: v.to(device) if isinstance(v, Tensor) else v
+                for k, v in batch.items()
+            }
+
+            with torch.no_grad():
+                logits = self.forward(batch_dev).cpu()  # (B, T, E)
+
+            targets = batch["targets"]  # (B, T, E)
+            seq_len = batch.get("seq_len")  # (B,)
+            probs = torch.sigmoid(logits)
+
+            # Render first sample
+            b = 0
+            T = int(seq_len[b].item()) if seq_len is not None else probs.shape[1]
+            E = probs.shape[2]
+            event_names = [f"event_{e}" for e in range(E)]
+
+            fig_h = max(200 * E, 200)
+            fig_w = 800
+            panel = np.ones((fig_h, fig_w, 3), dtype=np.uint8) * 255
+
+            row_h = fig_h // E
+            for e in range(E):
+                y_off = e * row_h
+                prob_e = probs[b, :T, e].numpy()
+                gt_e = targets[b, :T, e].numpy()
+
+                # Draw axes
+                cv2.line(panel, (50, y_off + row_h - 30), (fig_w - 20, y_off + row_h - 30), (0, 0, 0), 1)
+                cv2.putText(panel, event_names[e], (5, y_off + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+
+                # Plot probability curve
+                plot_h = row_h - 50
+                for t in range(1, T):
+                    x1 = 50 + int((t - 1) / max(T - 1, 1) * (fig_w - 70))
+                    x2 = 50 + int(t / max(T - 1, 1) * (fig_w - 70))
+                    y1 = y_off + row_h - 30 - int(prob_e[t - 1] * plot_h)
+                    y2 = y_off + row_h - 30 - int(prob_e[t] * plot_h)
+                    cv2.line(panel, (x1, y1), (x2, y2), (255, 0, 0), 2)
+
+                # Draw GT peaks as green markers
+                for t in range(T):
+                    if gt_e[t] > 0.5:
+                        x = 50 + int(t / max(T - 1, 1) * (fig_w - 70))
+                        cv2.drawMarker(panel, (x, y_off + row_h - 30), (0, 180, 0), cv2.MARKER_TRIANGLE_UP, 12, 2)
+
+                # Draw predicted peaks as red markers
+                pred_peaks_list, _ = extract_event_peaks(
+                    probs[b:b + 1, :T],
+                    seq_len[b:b + 1] if seq_len is not None else None,
+                    threshold=self.peak_threshold,
+                    min_distance=max(self.match_tolerance_frames, 1),
+                    top_k=None,
+                )
+                for pk in pred_peaks_list[0][e]:
+                    x = 50 + int(pk / max(T - 1, 1) * (fig_w - 70))
+                    cv2.drawMarker(panel, (x, y_off + row_h - 45), (0, 0, 255), cv2.MARKER_TRIANGLE_DOWN, 12, 2)
+
+            path = artifact_dir / f"event_batch{batch_idx:02d}.png"
+            cv2.imwrite(str(path), panel)
+
+            save_image_to_tensorboard(
+                tb_writer,
+                f"qualitative/event_detection/batch{batch_idx:02d}",
+                panel,
+                global_step,
+            )
 
     # configure_optimizers inherited from BaseLightningModule
 
