@@ -13,11 +13,6 @@ camera_mode: random
 # View sampling (single-camera sequence)
 num_views_range: [1, 1]
 
-# Scene sampler: none | scene | mixed | chunked
-scene_sampler: true
-scenes_per_batch: 8
-chunk_max_scenes: 64
-
 # Sequence sampling
 seq_stride: 128
 seq_len_range: [64, 512]  # [min, max]

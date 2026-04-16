@@ -228,9 +228,8 @@ python -m src.tasks.plcs.scripts.visualize_multiview \
 | 単一カメラ可視化 | `visualize.yaml` | `visualization/default.yaml` |
 | マルチビュー可視化 | `visualize_multiview.yaml` | `visualization/multiview.yaml` |
 
-`data/frame.yaml` には `scene_batch_sampler` と `scene_sampler_mode` があり、
-シーン単位 (`scene`) / ミックス (`mixed`) / チャンク (`chunked`) のサンプリングを選べます。
-`chunked` を使う場合は `chunk_max_scenes` を設定してシーンキャッシュの局所性を高めます。
+各 `data/*.yaml` は標準の `DataLoader` バッチ設定を前提としており、
+`batch_size`, `num_workers`, `pin_memory` を用途ごとに切り替えます。
 
 ### ロス設定ファイル
 

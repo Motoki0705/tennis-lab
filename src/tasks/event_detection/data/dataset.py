@@ -181,7 +181,6 @@ if __name__ == "__main__":
         cfg = {
             "data": {
                 "seq_len_range": [T, T],
-                "cache_max_scenes": 0,
                 "num_court_kp": num_court_kp,
             }
         }

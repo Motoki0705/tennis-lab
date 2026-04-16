@@ -93,7 +93,6 @@ class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
             split_file=Path(split_file),
             seq_len_range=self._plcs_seq_len_range,
             num_views_range=self._plcs_num_views_range,
-            cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
             camera_mode=self.camera_mode_plcs,
             crop_mode=("random" if self.augment else "center"),
         )

@@ -11,9 +11,9 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.utils.data.scene_cache import load_npz_scene
 from src.tasks.trajectory_completion.data.argument import TrajectoryArgumenter
 from src.utils.data.event_utils import extract_event_frames
+from src.utils.data.scene_io import load_npz_scene
 from src.tasks.trajectory_completion.visualization.types import RuntimeConfig, TrajectoryInputs
 
 TMP_LOG_PATH = Path("data/tmp/trajectory_completion_visualize.log")

@@ -8,12 +8,6 @@ split:
 batch_size: 32
 num_workers: 4
 pin_memory: true
-cache_max_scenes: 128
-
-# Scene sampler settings: none | scene | mixed | chunked
-scene_sampler: true
-scenes_per_batch: 32
-chunk_max_scenes: 64
 
 # camera_mode is not used for 3d input_type but kept for config consistency
 camera_mode: "random"

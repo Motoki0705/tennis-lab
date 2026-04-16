@@ -16,8 +16,6 @@ from typing import Any, Generic, Literal, TypeVar
 import numpy as np
 from torch.utils.data import Dataset
 
-from src.utils.data.scene_cache import SceneCache, get_scene_cache
-
 SampleT = TypeVar("SampleT")
 
 
@@ -38,7 +36,6 @@ class SceneDatasetConfig:
     split_file: Path
     seq_len_range: tuple[int, int] = (1, 1024)
     num_views_range: tuple[int, int] = (1, 1)
-    cache_max_scenes: int = 128
     camera_mode: str | int = "random"
     crop_mode: Literal["random", "center"] = "random"
     min_num_frames: int = 1
@@ -263,12 +260,6 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
                 f"min_num_cameras={self._required_min_cameras()}"
             )
 
-        self._scene_cache: SceneCache | None = (
-            get_scene_cache(load_fn=_load_npz_payload, maxsize=config.cache_max_scenes)
-            if config.cache_max_scenes > 0
-            else None
-        )
-
     @staticmethod
     def _validate_range(value: tuple[int, int], *, name: str) -> None:
         if len(value) != 2:
@@ -353,7 +344,6 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
             split_file=Path(split_file),
             seq_len_range=self._parse_int_range(data_cfg, "seq_len_range"),
             num_views_range=(1, 1),
-            cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
             camera_mode=self._parse_camera_mode(data_cfg),
             crop_mode="random" if self.augment else "center",
         )
@@ -478,7 +468,7 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
 
     def _load_scene(self, path: Path) -> NPZScene:
         header = self.get_scene_header(path)
-        payload = self._scene_cache.get(path) if self._scene_cache is not None else _load_npz_payload(path)
+        payload = _load_npz_payload(path)
         return NPZScene(
             path=path,
             data=payload,

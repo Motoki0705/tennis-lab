@@ -7,12 +7,6 @@ num_court_kp: 20
 # DataLoader settings
 batch_size: 32
 num_workers: 4
-cache_max_scenes: 128
-
-# Scene sampler settings: none | scene | mixed | chunked
-scene_sampler: true
-scenes_per_batch: 16
-chunk_max_scenes: 64
 
 # Sequence/view sampling ranges (inclusive)
 seq_len_range: [15, 1024]

@@ -53,7 +53,6 @@ def test_plcs_scene_dataset_getitem_contract() -> None:
                 "num_views_range": [1, 1],
                 "camera_mode": "first",
                 "num_court_kp": 20,
-                "cache_max_scenes": 0,
                 "augmentation": {
                     "keypoint_noise_std": 0.0,
                     "visibility_drop_prob": 0.0,
@@ -106,7 +105,6 @@ def test_blcs_ball_trajectory_dataset_getitem_contract() -> None:
                 "num_views_range": [2, 2],
                 "camera_mode": "first",
                 "num_court_kp": 20,
-                "cache_max_scenes": 0,
                 "augmentation": {
                     "uv_noise_std": 0.0,
                     "visibility_drop_prob": 0.0,
@@ -177,7 +175,6 @@ def test_blcs_rally_event_dataset_uv_getitem_contract() -> None:
                 "num_views_range": [1, 1],
                 "camera_mode": "first",
                 "num_court_kp": 12,
-                "cache_max_scenes": 0,
             }
         },
         augment=False,
@@ -221,7 +218,6 @@ def test_blcs_rally_event_dataset_3d_getitem_contract() -> None:
                 "seq_len_range": [32, 32],
                 "num_views_range": [1, 1],
                 "camera_mode": "first",
-                "cache_max_scenes": 0,
             }
         },
         augment=False,
@@ -254,7 +250,6 @@ def test_blcs_uv_trajectory_completion_dataset_getitem_contract() -> None:
                 "num_views_range": [1, 1],
                 "camera_mode": "first",
                 "num_court_kp": 10,
-                "cache_max_scenes": 0,
                 "supervise_visible_only": True,
                 "argument": {"event_ratio": [2, 1]},
             }
