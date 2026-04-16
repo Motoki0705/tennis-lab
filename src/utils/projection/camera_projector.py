@@ -250,29 +250,14 @@ class CameraProjector:
         """Project CourtKP20 to UV coordinates."""
         return self.project_points_to_uv(self.court_kp_3d, camera)
 
-    def project_subject_points(
+    def generate_camera_view(
         self,
         points_3d: Tensor,
         camera: Camera,
-    ) -> tuple[Tensor, Tensor]:
-        """Project subject points. Override for custom behavior."""
-        return self.project_points_to_uv(points_3d, camera)
-
-    def generate_camera_view(
-        self,
-        points_3d: Tensor | None = None,
-        camera: Camera | None = None,
     ) -> CameraView:
         """Generate a camera view with optional subject projection."""
-        if camera is None:
-            camera = self.sample_camera()
-
         court_kp_uv, court_kp_visible = self.project_court_keypoints(camera)
-
-        points_uv = None
-        points_visible = None
-        if points_3d is not None:
-            points_uv, points_visible = self.project_subject_points(points_3d, camera)
+        points_uv, points_visible = self.project_points_to_uv(points_3d, camera)
 
         camera_params = {
             "C": camera.C.tolist(),
@@ -292,14 +277,3 @@ class CameraProjector:
             points_uv=points_uv,
             points_visible=points_visible,
         )
-
-    def generate_multiple_views(
-        self,
-        points_3d: Tensor | None,
-        num_cameras: int,
-    ) -> list[CameraView]:
-        """Generate multiple camera views for a subject."""
-        views = []
-        for _ in range(num_cameras):
-            views.append(self.generate_camera_view(points_3d))
-        return views
