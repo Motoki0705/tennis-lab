@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
-from src.utils.data.scene_batch_sampler import build_scene_sampler
 from src.tasks.plcs.data.dataset import SceneDataset, collate_and_adapt_plcs_batch
 
 if TYPE_CHECKING:
@@ -29,9 +28,6 @@ class PLCSDataModule(pl.LightningDataModule):
         self.pin_memory = bool(data_cfg.get("pin_memory", True))
         self.scene_dir = Path(data_cfg.get("scene_dir", "data/plcs"))
 
-        self.scene_sampler = bool(data_cfg.get("scene_sampler", True))
-        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
-        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
         self.adapter_camera_index = int(data_cfg.get("adapter_camera_index", 0))
 
         model_cfg = self.config.get("model", {})
@@ -101,24 +97,6 @@ class PLCSDataModule(pl.LightningDataModule):
             )
 
     def _build_loader(self, dataset: SceneDataset, *, train: bool) -> DataLoader:
-        batch_sampler = build_scene_sampler(
-            dataset,
-            self.batch_size,
-            enabled=self.scene_sampler,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=train,
-            shuffle=train,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=self.pin_memory,
-                collate_fn=self.collate_fn,
-            )
-
         return DataLoader(
             dataset,
             batch_size=self.batch_size,

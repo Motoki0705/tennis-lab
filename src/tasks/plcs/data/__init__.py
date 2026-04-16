@@ -7,7 +7,6 @@ from src.tasks.plcs.data.dataset import (
     collate_and_adapt_plcs_batch,
     collate_plcs_batch,
 )
-from src.utils.data.scene_batch_sampler import SceneBatchSampler
 from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSampler,
     MotionSequence,
@@ -23,7 +22,6 @@ __all__ = [
     "MotionSampler",
     "MotionSequence",
     "PLCSDataModule",
-    "SceneBatchSampler",
     "SceneData",
     "SceneDataset",
     "adapt_batch_for_model_profile",
