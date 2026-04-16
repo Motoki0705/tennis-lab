@@ -95,12 +95,6 @@ class GeneratorConfig:
     )
     court: CourtConfig = field(default_factory=CourtConfig)
 
-    # Camera sampling parameters
-    num_cameras_sampled: int = 15
-    ball_visibility_threshold: float = 0.8
-
-    max_attempts_multiplier: int = 10
-
 
 class BLCSSceneGenerator:
     """Generate rally-based BLCS scenes with per-scene variation."""
@@ -178,25 +172,12 @@ class BLCSSceneGenerator:
         # Create projector with court config that has the sampled net post position
         projector = CameraProjector(cfg.camera, court_config=court_config)
         valid_cameras: list[CameraData] = []
-
-        if cfg.camera.placement_mode == "fixed_8":
-            for camera in projector.fixed_cameras():
-                self.total_cameras_tried += 1
-                view = projector.generate_camera_view(trajectory, camera=camera)
-                cam_data = self._camera_view_to_data(view)
-                valid_cameras.append(cam_data)
-                self.total_cameras_accepted += 1
-            return valid_cameras
-
-        for _ in range(cfg.num_cameras_sampled):
+        for camera in projector.fixed_cameras():
             self.total_cameras_tried += 1
-            view = projector.generate_camera_view(trajectory)
+            view = projector.generate_camera_view(trajectory, camera=camera)
             cam_data = self._camera_view_to_data(view)
-
-            if cam_data.ball_visibility_ratio >= cfg.ball_visibility_threshold:
-                valid_cameras.append(cam_data)
-                self.total_cameras_accepted += 1
-
+            valid_cameras.append(cam_data)
+            self.total_cameras_accepted += 1
         return valid_cameras
 
     def generate_scene(
@@ -224,9 +205,6 @@ class BLCSSceneGenerator:
             rally_result.trajectory, court_config
         )
 
-        if not valid_cameras:
-            return None
-
         # 5. Convert shot events to metadata dicts
         shots_meta: list[dict] = []
         for event in rally_result.shot_events:
@@ -250,11 +228,7 @@ class BLCSSceneGenerator:
 
         # 6. Normalize trajectory
         ball_pos_norm = physics.normalize_position(rally_result.trajectory)
-        num_cameras_sampled = (
-            len(valid_cameras)
-            if cfg.camera.placement_mode == "fixed_8"
-            else cfg.num_cameras_sampled
-        )
+        num_cameras_sampled = len(valid_cameras)
 
         return BLCSSceneData(
             scene_id=scene_id,
@@ -285,14 +259,8 @@ class BLCSSceneGenerator:
         if num_scenes < 0:
             raise ValueError(f"num_scenes must be >= 0, got {num_scenes}")
 
-        cfg = self.config
         scene_counter = 0
-        attempts = 0
-        max_attempts = num_scenes * max(1, int(cfg.max_attempts_multiplier))
-
-        while scene_counter < num_scenes and attempts < max_attempts:
-            attempts += 1
-
+        for _ in range(num_scenes):
             from_cell = int(torch.randint(0, NUM_CELLS_PER_SIDE, (1,)).item())
             side = "near" if torch.rand(1).item() < 0.5 else "far"
 
@@ -312,7 +280,6 @@ class BLCSSceneGenerator:
         if scene_counter < num_scenes:
             logger.warning(
                 f"Only generated {scene_counter}/{num_scenes} scenes "
-                f"after {attempts} attempts"
             )
 
         stats = self.get_statistics()

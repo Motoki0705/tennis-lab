@@ -2,4 +2,7 @@ z_min: 3.0
 z_max: 5.0
 hfov_deg: 60.0
 image_size: [1280, 720]
-
+fixed_look_at: [0.0, 0.0, 0.0]
+fixed_baseline_clear_extra: 0.0
+fixed_position_noise_radius: 2.0
+fixed_look_at_xy_radius: 1.0
