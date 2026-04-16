@@ -194,7 +194,7 @@ class PLCSCameraParams:
     Stored as JSON string in NPZ files under 'cam_{i}_params' keys.
     """
 
-    center: list[float]  # [x, y, z] camera center in world coordinates
+    C: list[float]  # [x, y, z] camera center in world coordinates
     R: list[list[float]]  # 3x3 rotation matrix (world to camera)
     f: float  # focal length in pixels
     cx: float  # principal point x-coordinate
@@ -205,7 +205,7 @@ class PLCSCameraParams:
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return {
-            "center": self.center,
+            "C": self.C,
             "R": self.R,
             "f": self.f,
             "cx": self.cx,
@@ -218,7 +218,7 @@ class PLCSCameraParams:
     def from_dict(cls, data: dict) -> PLCSCameraParams:
         """Create instance from dictionary loaded from JSON/NPZ."""
         return cls(
-            center=data["center"],
+            C=data["C"],
             R=data["R"],
             f=data["f"],
             cx=data["cx"],
@@ -303,7 +303,7 @@ class PLCSSceneMetaModel(BaseModel):
 class PLCSCameraParamsModel(BaseModel):
     """Pydantic model for camera parameters with validation."""
 
-    center: list[float] = Field(..., min_length=3, max_length=3)
+    C: list[float] = Field(..., min_length=3, max_length=3)
     R: list[list[float]] = Field(..., description="3x3 rotation matrix")
     f: float = Field(..., gt=0, description="Focal length in pixels")
     cx: float = Field(..., description="Principal point x")
@@ -322,12 +322,12 @@ class PLCSCameraParamsModel(BaseModel):
                 raise ValueError(f"R row {i} must have 3 columns, got {len(row)}")
         return v
 
-    @field_validator("center")
+    @field_validator("C")
     @classmethod
-    def validate_center(cls, v: list[float]) -> list[float]:
-        """Validate center has 3 coordinates."""
+    def validate_camera_center(cls, v: list[float]) -> list[float]:
+        """Validate camera center has 3 coordinates."""
         if len(v) != 3:
-            raise ValueError(f"Center must have 3 coordinates, got {len(v)}")
+            raise ValueError(f"C must have 3 coordinates, got {len(v)}")
         return v
 
     model_config = {"frozen": True}
