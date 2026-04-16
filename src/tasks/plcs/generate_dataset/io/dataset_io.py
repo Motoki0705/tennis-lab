@@ -5,24 +5,17 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, TypeAlias, cast
+from typing import Any, cast
 
 import numpy as np
 import numpy.typing as npt
 
 from src.tasks.base.data.dataset_writer import BaseDatasetWriter
-from src.tasks.plcs.data.types import (
-    PYDANTIC_AVAILABLE,
-    PLCSSceneMeta,
-    PLCSSceneMetaModel,
-)
+from src.tasks.plcs.data.types import PLCSSceneMeta
 
 # Re-export load_scene for backwards compatibility
 from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene as load_scene
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData
-
-# Type alias for values accepted by np.savez_compressed
-SavezValue: TypeAlias = npt.ArrayLike | bool | int | float | complex | str | bytes
 
 logger = logging.getLogger(__name__)
 
@@ -31,22 +24,13 @@ class PLCSDatasetWriter(BaseDatasetWriter):
     """Writes PLCS scene data to disk in npz format (PLCS-unified)."""
     scenes_dir: Path
 
-    def __init__(self, output_dir: str | Path, validate: bool = False) -> None:
+    def __init__(self, output_dir: str | Path) -> None:
         """Initialize dataset writer.
 
         Args:
             output_dir: Output directory for dataset.
-            validate: If True, use Pydantic models for runtime validation.
-
         """
         super().__init__(output_dir)
-        self.validate = validate
-        if validate and not PYDANTIC_AVAILABLE:
-            logger.warning(
-                "Pydantic validation requested but pydantic not installed. "
-                "Install with: pip install pydantic>=2.10"
-            )
-            self.validate = False
 
     def save_scene(self, scene: SceneData) -> Path:
         """Save a single scene to npz file (1 scene = 1 file with N cameras).
@@ -75,14 +59,9 @@ class PLCSDatasetWriter(BaseDatasetWriter):
             "num_cameras": len(scene.cameras),
         }
 
-        # Optionally validate with Pydantic (catches errors early)
-        if self.validate and PYDANTIC_AVAILABLE:
-            # This will raise ValidationError if data is invalid
-            PLCSSceneMetaModel(**meta_dict)
-
         meta = PLCSSceneMeta(**meta_dict)
 
-        save_dict: dict[str, SavezValue] = {
+        save_dict: dict[str, Any] = {
             "meta": json.dumps(meta.to_dict()),
             "position": np.asarray(scene.position),
             "rotation": np.asarray(scene.rotation),
