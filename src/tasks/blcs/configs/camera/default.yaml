@@ -1,19 +1,11 @@
-# Camera placement mode: "random" | "fixed_8"
-placement_mode: fixed_8
 z_min: 3.0
 z_max: 5.0
 hfov_deg: 60.0
 image_size: [1280, 720]
 fixed_look_at: [0.0, 0.0, 0.0]
 # Additional Y-axis buffer on top of BASELINE_CLEAR.
-fixed_baseline_clear_extra: 2.0
+fixed_baseline_clear_extra: 0.0
 # Volume-uniform center perturbation radius for each fixed camera (metres).
-fixed_position_noise_radius: 0.0
+fixed_position_noise_radius: 2.0
 # Area-uniform look-at target radius on the z=0 court plane (metres).
-fixed_look_at_xy_radius: 0.0
-
-# Look-at perturbation (Gaussian noise on target, metres, sigma)
-look_at_noise_std: 0.5
-
-# HFOV perturbation (Gaussian noise, degrees, sigma)
-hfov_noise_deg: 2.0
+fixed_look_at_xy_radius: 1.0

@@ -62,28 +62,21 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         e_z=float(cfg.physics.e_z),
         mu=float(cfg.physics.mu),
         alpha_net=float(cfg.physics.alpha_net),
-        alpha_net_cord=float(cfg.physics.get("alpha_net_cord", 0.5)),
-        alpha_fence=float(cfg.physics.get("alpha_fence", 0.3)),
-        net_half_thickness=float(cfg.physics.get("net_half_thickness", 0.03)),
-        net_cord_radius=float(cfg.physics.get("net_cord_radius", 0.03)),
+        alpha_net_cord=float(cfg.physics.alpha_net_cord),
+        alpha_fence=float(cfg.physics.alpha_fence),
+        net_half_thickness=float(cfg.physics.net_half_thickness),
+        net_cord_radius=float(cfg.physics.net_cord_radius),
         dt=float(cfg.physics.dt),
         use_drag=bool(cfg.physics.use_drag),
         use_magnus=bool(cfg.physics.use_magnus),
-        wind=tuple(cfg.physics.wind) if cfg.physics.get("wind") else (0.0, 0.0, 0.0),
-        gravity_range=tuple(cfg.physics.gravity_range)
-        if cfg.physics.get("gravity_range") else None,
-        k_drag_range=tuple(cfg.physics.k_drag_range)
-        if cfg.physics.get("k_drag_range") else None,
-        k_magnus_range=tuple(cfg.physics.k_magnus_range)
-        if cfg.physics.get("k_magnus_range") else None,
-        e_z_range=tuple(cfg.physics.e_z_range)
-        if cfg.physics.get("e_z_range") else None,
-        mu_range=tuple(cfg.physics.mu_range)
-        if cfg.physics.get("mu_range") else None,
-        wind_speed_range=tuple(cfg.physics.wind_speed_range)
-        if cfg.physics.get("wind_speed_range") else None,
-        wind_direction_range_deg=tuple(cfg.physics.wind_direction_range_deg)
-        if cfg.physics.get("wind_direction_range_deg") else None,
+        wind=tuple(cfg.physics.wind),
+        gravity_range=tuple(cfg.physics.gravity_range),
+        k_drag_range=tuple(cfg.physics.k_drag_range),
+        k_magnus_range=tuple(cfg.physics.k_magnus_range),
+        e_z_range=tuple(cfg.physics.e_z_range),
+        mu_range=tuple(cfg.physics.mu_range),
+        wind_speed_range=tuple(cfg.physics.wind_speed_range),
+        wind_direction_range_deg=tuple(cfg.physics.wind_direction_range_deg),
     )
 
     rally_config = RallyConfig(
@@ -98,45 +91,33 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         max_total_frames=int(cfg.rally.max_total_frames),
         hit_timing_range=tuple(cfg.rally.hit_timing_range),
         return_z_range=tuple(cfg.rally.return_z_range),
-        serve_probability=float(cfg.rally.get("serve_probability", 0.3)),
-        serve_z_range=tuple(cfg.rally.serve_z_range)
-        if cfg.rally.get("serve_z_range") else (2.0, 2.8),
-        toss_vz_range=tuple(cfg.rally.toss_vz_range)
-        if cfg.rally.get("toss_vz_range") else (4.5, 7.0),
-        toss_xy_noise_range=tuple(cfg.rally.toss_xy_noise_range)
-        if cfg.rally.get("toss_xy_noise_range") else (-0.35, 0.35),
-        toss_max_frames=int(cfg.rally.get("toss_max_frames", 240)),
-        toss_z0_tolerance=float(cfg.rally.get("toss_z0_tolerance", 0.03)),
-        volley_probability=float(cfg.rally.get("volley_probability", 0.05)),
-        normal_return_probability=float(cfg.rally.get("normal_return_probability", 0.85)),
-        late_return_probability=float(cfg.rally.get("late_return_probability", 0.10)),
+        serve_probability=float(cfg.rally.serve_probability),
+        serve_z_range=tuple(cfg.rally.serve_z_range),
+        toss_vz_range=tuple(cfg.rally.toss_vz_range),
+        toss_xy_noise_range=tuple(cfg.rally.toss_xy_noise_range),
+        toss_max_frames=int(cfg.rally.toss_max_frames),
+        toss_z0_tolerance=float(cfg.rally.toss_z0_tolerance),
+        volley_probability=float(cfg.rally.volley_probability),
+        normal_return_probability=float(cfg.rally.normal_return_probability),
+        late_return_probability=float(cfg.rally.late_return_probability),
     )
 
     camera_config = CameraConfig(
-        placement_mode=str(cfg.camera.get("placement_mode", "random")),
         z_min=float(cfg.camera.z_min),
         z_max=float(cfg.camera.z_max),
         hfov_deg=float(cfg.camera.hfov_deg),
         image_size=tuple(cfg.camera.image_size),
-        fixed_look_at=tuple(cfg.camera.get("fixed_look_at", [0.0, 0.0, 0.0])),
-        fixed_baseline_clear_extra=float(cfg.camera.get("fixed_baseline_clear_extra", 0.0)),
-        fixed_position_noise_radius=float(
-            cfg.camera.get("fixed_position_noise_radius", 0.0)
-        ),
-        fixed_look_at_xy_radius=float(cfg.camera.get("fixed_look_at_xy_radius", 0.0)),
-        target_x_range=tuple(cfg.camera.get("target_x_range", [-2.0, 2.0])),
-        target_y_range=tuple(cfg.camera.get("target_y_range", [-2.0, 2.0])),
-        target_z_range=tuple(cfg.camera.get("target_z_range", [0.5, 1.5])),
-        hfov_noise_deg=float(cfg.camera.get("hfov_noise_deg", 0.0)),
-        look_at_noise_std=float(cfg.camera.get("look_at_noise_std", 0.0)),
+        fixed_look_at=tuple(cfg.camera.fixed_look_at),
+        fixed_baseline_clear_extra=float(cfg.camera.fixed_baseline_clear_extra),
+        fixed_position_noise_radius=float(cfg.camera.fixed_position_noise_radius),
+        fixed_look_at_xy_radius=float(cfg.camera.fixed_look_at_xy_radius),
     )
 
     # Court config
-    court_cfg = cfg.generator.get("court", {})
+    court_cfg = cfg.generator.court
     court_config = CourtConfig(
-        net_post_offset_x=float(court_cfg.get("net_post_offset_x", 0.914)),
-        net_post_offset_x_range=tuple(court_cfg.net_post_offset_x_range)
-        if court_cfg.get("net_post_offset_x_range") else None,
+        net_post_offset_x=float(court_cfg.net_post_offset_x),
+        net_post_offset_x_range=tuple(court_cfg.net_post_offset_x_range),
     )
 
     targeted_velocity_config = TargetedVelocityConfig(
@@ -157,9 +138,7 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         refine_iters=int(cfg.targeted_velocity.refine_iters),
         refine_speed_scale_min=float(cfg.targeted_velocity.refine_speed_scale_min),
         refine_speed_scale_max=float(cfg.targeted_velocity.refine_speed_scale_max),
-        refine_max_azimuth_adjust_deg=float(
-            cfg.targeted_velocity.refine_max_azimuth_adjust_deg
-        ),
+        refine_max_azimuth_adjust_deg=float(cfg.targeted_velocity.refine_max_azimuth_adjust_deg),
         refine_max_frames=int(cfg.targeted_velocity.refine_max_frames),
         net_clearance_enabled=bool(cfg.targeted_velocity.net_clearance_enabled),
         net_clearance_min=float(cfg.targeted_velocity.net_clearance_min),
@@ -173,9 +152,6 @@ def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         camera=camera_config,
         targeted_velocity=targeted_velocity_config,
         court=court_config,
-        num_cameras_sampled=int(cfg.generator.num_cameras_sampled),
-        ball_visibility_threshold=float(cfg.generator.ball_visibility_threshold),
-        max_attempts_multiplier=int(cfg.generator.max_attempts_multiplier),
     )
 
 
@@ -216,8 +192,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     logger.info("Output directory: %s", output_dir)
     logger.info("Number of scenes: %s", cfg.generator.num_scenes)
     logger.info("Max rallies per scene: %s", cfg.rally.max_rallies)
-    logger.info("Cameras sampled per scene: %s", generator_config.num_cameras_sampled)
-    logger.info("Ball visibility threshold: %s", generator_config.ball_visibility_threshold)
     logger.info("Device: %s", cfg.run.device)
 
     generator = BLCSSceneGenerator(config=generator_config, device=str(cfg.run.device))

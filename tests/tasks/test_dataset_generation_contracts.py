@@ -263,9 +263,6 @@ def test_plcs_generator_output_contract(tmp_path: Path) -> None:
         output_dir,
         [
             "simulation.num_scenes=1",
-            "simulation.num_cameras=3",
-            "simulation.human_visibility_threshold=0.0",
-            "simulation.court_visibility_threshold=0",
             "run.device=cpu",
         ],
     )
