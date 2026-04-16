@@ -5,7 +5,6 @@ virtual camera configurations and projecting to 2D.
 
 Supports two motion sources:
 - AMASS/SMPL-H via ``MotionSampler`` (the original pipeline)
-- AthletePose3D via ``AthletePose3DSampler`` (pre-computed COCO17 joints)
 """
 
 from __future__ import annotations
@@ -53,7 +52,7 @@ class CameraData:
     court_kp_visible: np.ndarray  # (T, 20)
 
     # Filtering metrics
-    human_visibility_ratio: float  # Fraction of frames with sufficient human visibility
+    human_visibility_ratio: float  # Fraction of frames with at least one visible human keypoint
     court_visibility_count: float  # Average visible court keypoints
 
 
@@ -339,7 +338,7 @@ class SceneGenerator:
             Tuple of (human_visibility_ratio, avg_court_visible).
 
         """
-        # Human: fraction of frames where configured keypoint visibility is satisfied
+        # Human: fraction of frames with at least one visible keypoint
         human_per_frame = human_visible.any(axis=1)  # (T,)
         human_ratio = human_per_frame.mean()
 
