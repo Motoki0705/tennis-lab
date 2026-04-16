@@ -25,11 +25,8 @@ from typing import Any
 import numpy as np
 
 from src.tasks.blcs.data.types import (
-    PYDANTIC_AVAILABLE,
     BLCSCameraParams,
-    BLCSCameraParamsModel,
     BLCSSceneMeta,
-    BLCSSceneMetaModel,
 )
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
 from src.tasks.base.data.dataset_writer import BaseDatasetWriter
@@ -41,22 +38,13 @@ class BLCSDatasetWriter(BaseDatasetWriter):
     """Writes BLCS scene data to disk in npz format (PLCS-unified)."""
     scenes_dir: Path
 
-    def __init__(self, output_dir: str | Path, validate: bool = False) -> None:
+    def __init__(self, output_dir: str) -> None:
         """Initialize dataset writer.
 
         Args:
             output_dir: Output directory for dataset.
-            validate: If True, use Pydantic models for runtime validation.
-
         """
         super().__init__(output_dir)
-        self.validate = validate
-        if validate and not PYDANTIC_AVAILABLE:
-            logger.warning(
-                "Pydantic validation requested but pydantic not installed. "
-                "Install with: pip install pydantic>=2.10"
-            )
-            self.validate = False
 
     def _build_scene_meta(self, scene: BLCSSceneData) -> BLCSSceneMeta:
         scene_meta_dict: dict[str, Any] = {
@@ -72,15 +60,10 @@ class BLCSDatasetWriter(BaseDatasetWriter):
             "num_frames": int(scene.ball_pos_world.shape[0]),
             "num_cameras_sampled": scene.num_cameras_sampled,
             "num_cameras": len(scene.cameras),
+            "physics_config": scene.physics_config_dict,
+            "court_config": scene.court_config_dict,
         }
-        # Per-scene variation metadata
-        if hasattr(scene, "physics_config_dict") and scene.physics_config_dict:
-            scene_meta_dict["physics_config"] = scene.physics_config_dict
-        if hasattr(scene, "court_config_dict") and scene.court_config_dict:
-            scene_meta_dict["court_config"] = scene.court_config_dict
 
-        if self.validate and PYDANTIC_AVAILABLE:
-            BLCSSceneMetaModel(**scene_meta_dict)
         return BLCSSceneMeta(**scene_meta_dict)
 
     def _serialize_camera_params(self, camera_params: dict[str, Any]) -> str:
@@ -91,8 +74,6 @@ class BLCSDatasetWriter(BaseDatasetWriter):
             # Remove the alias key to avoid potential validation errors for extra fields
             del normalized_params["C"]
 
-        if self.validate and PYDANTIC_AVAILABLE:
-            BLCSCameraParamsModel(**normalized_params)
         typed_params = BLCSCameraParams.from_dict(normalized_params)
         return json.dumps(typed_params.to_dict())
 

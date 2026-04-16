@@ -120,7 +120,7 @@ class BLCSSceneMeta:
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
-        d = {
+        return {
             "scene_id": self.scene_id,
             "initial_from_cell": self.initial_from_cell,
             "initial_from_side": self.initial_from_side,
@@ -133,12 +133,9 @@ class BLCSSceneMeta:
             "num_frames": self.num_frames,
             "num_cameras_sampled": self.num_cameras_sampled,
             "num_cameras": self.num_cameras,
+            "physics_config": self.physics_config,
+            "court_config": self.court_config,
         }
-        if self.physics_config is not None:
-            d["physics_config"] = self.physics_config
-        if self.court_config is not None:
-            d["court_config"] = self.court_config
-        return d
 
     @classmethod
     def from_dict(cls, data: dict) -> BLCSSceneMeta:
@@ -156,8 +153,8 @@ class BLCSSceneMeta:
             num_frames=data["num_frames"],
             num_cameras_sampled=data["num_cameras_sampled"],
             num_cameras=data["num_cameras"],
-            physics_config=data.get("physics_config"),
-            court_config=data.get("court_config"),
+            physics_config=data["physics_config"],
+            court_config=data["court_config"],
         )
 
 
@@ -265,90 +262,3 @@ class BLCSCameraParams:
             w=data["w"],
             h=data["h"],
         )
-
-# Pydantic schemas for runtime validation
-
-_T = TypeVar("_T")
-PYDANTIC_AVAILABLE: bool = False
-
-if TYPE_CHECKING:
-    class BaseModel:  # pragma: no cover - typing-only stub
-        pass
-
-    def Field(*args: Any, **kwargs: Any) -> Any:  # pragma: no cover - typing-only stub
-        return None
-
-    def field_validator(
-        *args: Any, **kwargs: Any
-    ) -> Callable[[Callable[..., _T]], Callable[..., _T]]:  # pragma: no cover
-        def decorator(func: Callable[..., _T]) -> Callable[..., _T]:
-            return func
-
-        return decorator
-
-    PYDANTIC_AVAILABLE = True
-else:
-    try:
-        from pydantic import BaseModel, Field, field_validator
-    except ImportError:
-        BaseModel = object  # type: ignore[assignment]
-
-        def Field(*args: Any, **kwargs: Any) -> Any:
-            return None
-
-        def field_validator(
-            *args: Any, **kwargs: Any
-        ) -> Callable[[Callable[..., _T]], Callable[..., _T]]:
-            def decorator(func: Callable[..., _T]) -> Callable[..., _T]:
-                return func
-
-            return decorator
-    else:
-        PYDANTIC_AVAILABLE = True
-
-
-class BLCSSceneMetaModel(BaseModel):
-    """Pydantic model for rally-scene metadata with runtime validation."""
-
-    scene_id: str = Field(..., min_length=1)
-    initial_from_cell: int = Field(..., ge=0, le=8)
-    initial_from_side: str = Field(..., pattern="^(near|far)$")
-    rally_length: int = Field(..., gt=0)
-    end_reason: str = Field(..., min_length=1)
-    winner_side: str | None = Field(default=None, pattern="^(near|far)$")
-    shots: list[dict] = Field(default_factory=list)
-    fps_out: int = Field(..., gt=0)
-    sim_fps: int = Field(..., gt=0)
-    num_frames: int = Field(..., gt=0)
-    num_cameras_sampled: int = Field(..., ge=0)
-    num_cameras: int = Field(..., ge=0)
-
-    model_config = {"frozen": True}
-
-
-class BLCSCameraParamsModel(BaseModel):
-    """Pydantic model for camera parameters (same as PLCS)."""
-
-    center: list[float] = Field(..., min_length=3, max_length=3)
-    R: list[list[float]] = Field(..., description="3x3 rotation matrix")
-    f: float = Field(..., gt=0)
-    cx: float
-    cy: float
-    w: int = Field(..., gt=0)
-    h: int = Field(..., gt=0)
-
-    @field_validator("R")
-    @classmethod
-    def validate_rotation_matrix(cls, v: list[list[float]]) -> list[list[float]]:
-        if len(v) != 3 or any(len(row) != 3 for row in v):
-            raise ValueError("R must be 3x3 matrix")
-        return v
-
-    @field_validator("center")
-    @classmethod
-    def validate_center(cls, v: list[float]) -> list[float]:
-        if len(v) != 3:
-            raise ValueError("Center must have 3 coordinates")
-        return v
-
-    model_config = {"frozen": True}
