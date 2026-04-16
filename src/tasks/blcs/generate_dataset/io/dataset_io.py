@@ -25,13 +25,21 @@ from typing import Any
 import numpy as np
 
 from src.tasks.blcs.data.types import (
-    BLCSCameraParams,
     BLCSSceneMeta,
 )
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
 from src.tasks.base.data.dataset_writer import BaseDatasetWriter
 
 logger = logging.getLogger(__name__)
+
+
+def _decode_json_value(value: Any) -> Any:
+    """Decode a scalar value loaded from an NPZ JSON payload."""
+    if isinstance(value, np.ndarray) and value.shape == ():
+        value = value.item()
+    if isinstance(value, (bytes, bytearray)):
+        value = value.decode("utf-8")
+    return json.loads(value) if isinstance(value, str) else value
 
 
 class BLCSDatasetWriter(BaseDatasetWriter):
@@ -66,17 +74,6 @@ class BLCSDatasetWriter(BaseDatasetWriter):
 
         return BLCSSceneMeta(**scene_meta_dict)
 
-    def _serialize_camera_params(self, camera_params: dict[str, Any]) -> str:
-        # Normalize camera parameter keys: some generators may use "C" instead of "center"
-        normalized_params = dict(camera_params)
-        if "center" not in normalized_params and "C" in normalized_params:
-            normalized_params["center"] = normalized_params["C"]
-            # Remove the alias key to avoid potential validation errors for extra fields
-            del normalized_params["C"]
-
-        typed_params = BLCSCameraParams.from_dict(normalized_params)
-        return json.dumps(typed_params.to_dict())
-
     def _append_camera_arrays(
         self,
         save_dict: dict[str, Any],
@@ -85,7 +82,7 @@ class BLCSDatasetWriter(BaseDatasetWriter):
         camera_records: list[dict[str, float]] = []
         for i, cam in enumerate(scene.cameras):
             prefix = f"cam_{i}_"
-            save_dict[f"{prefix}params"] = self._serialize_camera_params(cam.camera_params)
+            save_dict[f"{prefix}params"] = json.dumps(cam.camera_params)
             save_dict[f"{prefix}ball_uv"] = cam.ball_uv.astype(np.float32)
             save_dict[f"{prefix}ball_visible"] = cam.ball_visible.astype(bool)
             save_dict[f"{prefix}ball_visibility_ratio"] = np.array(
@@ -160,15 +157,18 @@ def load_scene(filepath: str | Path) -> dict:
     data = np.load(filepath, allow_pickle=True)
 
     # Parse metadata
-    scene_meta = json.loads(str(data["meta"]))
+    scene_meta = _decode_json_value(data["meta"])
     num_cameras = int(data["num_cameras"])
 
     # Load camera data
     cameras = []
     for i in range(num_cameras):
         prefix = f"cam_{i}_"
+        params = _decode_json_value(data[f"{prefix}params"])
+        if "C" not in params and "center" in params:
+            params["C"] = params.pop("center")
         cam_data = {
-            "params": json.loads(str(data[f"{prefix}params"])),
+            "params": params,
             "ball_uv": data[f"{prefix}ball_uv"],
             "ball_visible": data[f"{prefix}ball_visible"],
             "ball_visibility_ratio": float(data[f"{prefix}ball_visibility_ratio"]),
