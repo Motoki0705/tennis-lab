@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import numpy as np
 import torch
 from torch import Tensor
 
@@ -144,9 +145,8 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
             raw = scene.data[params_key]
             cam_params = json.loads(str(raw))
             # Normalise key: generators may store centre as "C" or "center"
-            center_key = "center" if "center" in cam_params else "C"
             cam_R_list.append(torch.tensor(cam_params["R"], dtype=torch.float32))
-            cam_C_list.append(torch.tensor(cam_params[center_key], dtype=torch.float32))
+            cam_C_list.append(torch.tensor(cam_params["C"], dtype=torch.float32))
             cam_f_list.append(torch.tensor(cam_params["f"], dtype=torch.float32))
             cam_cx_list.append(torch.tensor(cam_params["cx"], dtype=torch.float32))
             cam_cy_list.append(torch.tensor(cam_params["cy"], dtype=torch.float32))

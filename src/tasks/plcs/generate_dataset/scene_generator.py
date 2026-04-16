@@ -447,7 +447,7 @@ class SceneGenerator:
             # Store camera data
             cam_data = CameraData(
                 camera_params={
-                    "center": camera.C.tolist(),
+                    "C": camera.C.tolist(),
                     "R": camera.R.tolist(),
                     "f": camera.f,
                     "cx": camera.cx,
@@ -616,7 +616,7 @@ class SceneGenerator:
             cameras_data.append(
                 CameraData(
                     camera_params={
-                        "center": camera.C.tolist(),
+                        "C": camera.C.tolist(),
                         "R": camera.R.tolist(),
                         "f": camera.f,
                         "cx": camera.cx,

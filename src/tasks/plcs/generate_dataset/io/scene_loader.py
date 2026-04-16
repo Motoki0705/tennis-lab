@@ -53,6 +53,8 @@ def load_scene(filepath: str | Path) -> dict[str, Any]:
         if isinstance(params_raw, (bytes, bytearray)):
             params_raw = params_raw.decode("utf-8")
         params = json.loads(params_raw) if isinstance(params_raw, str) else params_raw
+        if "C" not in params and "center" in params:
+            params["C"] = params.pop("center")
         cam_data = AttrDict(
             params=params,
             human_kp_uv=data[f"{prefix}human_kp_uv"],
