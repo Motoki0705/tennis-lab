@@ -179,11 +179,19 @@ class BaseTrainingRunner:
         # Qualitative validation logging callback (optional)
         qual_cfg = config.training.get("qualitative_logging", {})
         if qual_cfg.get("enabled", False):
+            selected_indices_cfg = qual_cfg.get("selected_indices")
+            selected_indices = (
+                [int(idx) for idx in selected_indices_cfg]
+                if selected_indices_cfg is not None
+                else None
+            )
             callbacks.append(
                 QualitativeLoggingCallback(
                     every_n_epochs=int(qual_cfg.get("every_n_epochs", 1)),
                     num_samples=int(qual_cfg.get("num_samples", 4)),
                     enabled=True,
+                    selection_mode=str(qual_cfg.get("selection_mode", "random")),
+                    selected_indices=selected_indices,
                 )
             )
 
@@ -222,6 +230,21 @@ class BaseTrainingRunner:
                 precision = "16-mixed"
                 print("bf16-mixed is not supported on this GPU. Falling back to 16-mixed.")
             kwargs["precision"] = precision
+
+        optional_trainer_keys = (
+            "max_steps",
+            "limit_train_batches",
+            "limit_val_batches",
+            "limit_test_batches",
+            "num_sanity_val_steps",
+            "enable_progress_bar",
+            "enable_model_summary",
+        )
+        for key in optional_trainer_keys:
+            if hasattr(trainer_cfg, key):
+                value = getattr(trainer_cfg, key)
+                if value is not None:
+                    kwargs[key] = value
 
         return pl.Trainer(**kwargs)
 
