@@ -11,6 +11,7 @@ from lightning_fabric.utilities.exceptions import MisconfigurationException
 from omegaconf import DictConfig
 
 from src.tasks.blcs.training.runner import BLCSTrainingRunner
+from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
 from src.tasks.event_detection.training.runner import EventDetectionTrainingRunner
 from src.tasks.plcs.training.runner import PLCSTrainingRunner
 from src.tasks.trajectory_completion.training.runner import TrajectoryCompletionTrainingRunner
@@ -27,190 +28,244 @@ class SmokeCase:
     expect_qualitative: bool
 
 
+@dataclass(frozen=True)
+class SmokeVariant:
+    name: str
+    overrides: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class SmokeTaskSpec:
+    name: str
+    runner: type[Any]
+    config_dir: Path
+    config_name: str
+    default_overrides: tuple[str, ...]
+    variants: tuple[SmokeVariant, ...]
+    supports_test_phase: bool
+    expect_qualitative: bool
+
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-SMOKE_CASES = (
-    SmokeCase(
+COMMON_OVERRIDES = (
+    "run.gpus=0",
+    "data.batch_size=1",
+    "data.num_workers=0",
+    "data.pin_memory=false",
+    "data.scene_sampler=false",
+    "training.trainer.max_epochs=1",
+    "training.trainer.limit_train_batches=1",
+    "training.trainer.limit_val_batches=1",
+    "training.trainer.num_sanity_val_steps=0",
+    "training.trainer.precision=32-true",
+    "training.trainer.enable_progress_bar=false",
+    "training.trainer.enable_model_summary=false",
+    "training.trainer.log_every_n_steps=1",
+    "training.checkpoint.save_top_k=1",
+    "training.checkpoint.save_last=true",
+    "training.qualitative_logging.enabled=true",
+    "training.qualitative_logging.every_n_epochs=1",
+    "training.qualitative_logging.num_samples=1",
+    "training.qualitative_logging.selection_mode=fixed_indices",
+    "training.qualitative_logging.selected_indices=[0]",
+)
+
+
+SMOKE_TASK_SPECS = (
+    SmokeTaskSpec(
         name="blcs",
         runner=BLCSTrainingRunner,
         config_dir=REPO_ROOT / "src/tasks/blcs/configs",
         config_name="train",
-        overrides=(
-            "run.gpus=0",
-            "data.batch_size=1",
-            "data.num_workers=0",
-            "data.pin_memory=false",
-            "data.scene_sampler=false",
+        default_overrides=(
             "data.seq_len_range=[16,16]",
             "model.hidden_dim=32",
             "model.num_layers=2",
             "model.num_heads=4",
             "model.ffn_dim=64",
             "model.max_seq_len=64",
-            "training.trainer.max_epochs=1",
-            "training.trainer.limit_train_batches=1",
-            "training.trainer.limit_val_batches=1",
-            "training.trainer.num_sanity_val_steps=0",
-            "training.trainer.precision=32-true",
-            "training.trainer.enable_progress_bar=false",
-            "training.trainer.enable_model_summary=false",
-            "training.trainer.log_every_n_steps=1",
-            "training.checkpoint.save_top_k=1",
-            "training.checkpoint.save_last=true",
-            "training.qualitative_logging.enabled=true",
-            "training.qualitative_logging.every_n_epochs=1",
-            "training.qualitative_logging.num_samples=1",
-            "training.qualitative_logging.selection_mode=fixed_indices",
-            "training.qualitative_logging.selected_indices=[0]",
+        ),
+        variants=(
+            SmokeVariant(name="single"),
+            SmokeVariant(
+                name="multiview",
+                overrides=(
+                    "model=multiview",
+                    "data=multiview",
+                ),
+            ),
         ),
         supports_test_phase=True,
         expect_qualitative=False,
     ),
-    SmokeCase(
+    SmokeTaskSpec(
         name="plcs",
         runner=PLCSTrainingRunner,
         config_dir=REPO_ROOT / "src/tasks/plcs/configs",
         config_name="train",
-        overrides=(
-            "run.gpus=0",
-            "data.batch_size=1",
-            "data.num_workers=0",
-            "data.pin_memory=false",
-            "data.scene_sampler=false",
+        default_overrides=(
             "model.hidden_dim=32",
             "model.num_layers=2",
             "model.num_heads=4",
             "model.ffn_dim=64",
-            "training.trainer.max_epochs=1",
-            "training.trainer.limit_train_batches=1",
-            "training.trainer.limit_val_batches=1",
-            "training.trainer.num_sanity_val_steps=0",
-            "training.trainer.precision=32-true",
-            "training.trainer.enable_progress_bar=false",
-            "training.trainer.enable_model_summary=false",
-            "training.trainer.log_every_n_steps=1",
-            "training.checkpoint.save_top_k=1",
-            "training.checkpoint.save_last=true",
-            "training.qualitative_logging.enabled=true",
-            "training.qualitative_logging.every_n_epochs=1",
-            "training.qualitative_logging.num_samples=1",
-            "training.qualitative_logging.selection_mode=fixed_indices",
-            "training.qualitative_logging.selected_indices=[0]",
+        ),
+        variants=(
+            SmokeVariant(name="frame"),
+            SmokeVariant(
+                name="sequence",
+                overrides=(
+                    "data=sequence",
+                    "loss=sequence",
+                ),
+            ),
+            SmokeVariant(
+                name="multiview",
+                overrides=(
+                    "model=multiview",
+                    "data=multiview",
+                    "loss=multiview_sequence",
+                    "model.max_seq_len=64",
+                ),
+            ),
         ),
         supports_test_phase=True,
         expect_qualitative=True,
     ),
-    SmokeCase(
-        name="event_detection_uv_fit_only_no_test_dataloader",
+    SmokeTaskSpec(
+        name="event_detection_uv",
         runner=EventDetectionTrainingRunner,
         config_dir=REPO_ROOT / "src/tasks/event_detection/configs",
         config_name="train_uv",
-        overrides=(
-            "run.gpus=0",
-            "data.batch_size=1",
-            "data.num_workers=0",
-            "data.pin_memory=false",
-            "data.scene_sampler=false",
+        default_overrides=(
             "data.seq_len_range=[16,16]",
             "model.hidden_dim=32",
             "model.num_layers=2",
             "model.num_heads=4",
             "model.ffn_dim=64",
             "model.max_seq_len=64",
-            "training.trainer.max_epochs=1",
-            "training.trainer.limit_train_batches=1",
-            "training.trainer.limit_val_batches=1",
-            "training.trainer.num_sanity_val_steps=0",
-            "training.trainer.precision=32-true",
-            "training.trainer.enable_progress_bar=false",
-            "training.trainer.enable_model_summary=false",
-            "training.trainer.log_every_n_steps=1",
-            "training.checkpoint.save_top_k=1",
-            "training.checkpoint.save_last=true",
-            "training.qualitative_logging.enabled=true",
-            "training.qualitative_logging.every_n_epochs=1",
-            "training.qualitative_logging.num_samples=1",
-            "training.qualitative_logging.selection_mode=fixed_indices",
-            "training.qualitative_logging.selected_indices=[0]",
+        ),
+        variants=(
+            SmokeVariant(name="uv_transformer"),
+            SmokeVariant(
+                name="uv_transformer_nocourt",
+                overrides=("model=uv_transformer_nocourt",),
+            ),
         ),
         supports_test_phase=False,
         expect_qualitative=True,
     ),
-    SmokeCase(
-        name="event_detection_3d_fit_only_no_test_dataloader",
+    SmokeTaskSpec(
+        name="court_detection",
+        runner=CourtDetectionTrainingRunner,
+        config_dir=REPO_ROOT / "src/tasks/court_detection/configs",
+        config_name="train",
+        default_overrides=(),
+        variants=(
+            SmokeVariant(
+                name="seg",
+                overrides=(
+                    "data=court_seg",
+                    "model=court_seg",
+                    "loss=seg",
+                ),
+            ),
+            SmokeVariant(
+                name="kp",
+                overrides=(
+                    "data=court_kp",
+                    "model=court_kp",
+                    "loss=kp",
+                ),
+            ),
+            SmokeVariant(
+                name="line",
+                overrides=(
+                    "data=court_line",
+                    "model=court_line",
+                    "loss=line",
+                ),
+            ),
+        ),
+        supports_test_phase=False,
+        expect_qualitative=True,
+    ),
+    SmokeTaskSpec(
+        name="event_detection_3d",
         runner=EventDetectionTrainingRunner,
         config_dir=REPO_ROOT / "src/tasks/event_detection/configs",
         config_name="train_3d",
-        overrides=(
-            "run.gpus=0",
-            "data.batch_size=1",
-            "data.num_workers=0",
-            "data.pin_memory=false",
-            "data.scene_sampler=false",
+        default_overrides=(
             "data.seq_len_range=[16,16]",
             "model.hidden_dim=32",
             "model.num_layers=2",
             "model.num_heads=4",
             "model.ffn_dim=64",
             "model.max_seq_len=64",
-            "training.trainer.max_epochs=1",
-            "training.trainer.limit_train_batches=1",
-            "training.trainer.limit_val_batches=1",
-            "training.trainer.num_sanity_val_steps=0",
-            "training.trainer.precision=32-true",
-            "training.trainer.enable_progress_bar=false",
-            "training.trainer.enable_model_summary=false",
-            "training.trainer.log_every_n_steps=1",
-            "training.checkpoint.save_top_k=1",
-            "training.checkpoint.save_last=true",
-            "training.qualitative_logging.enabled=true",
-            "training.qualitative_logging.every_n_epochs=1",
-            "training.qualitative_logging.num_samples=1",
-            "training.qualitative_logging.selection_mode=fixed_indices",
-            "training.qualitative_logging.selected_indices=[0]",
         ),
+        variants=(SmokeVariant(name="traj3d_transformer"),),
         supports_test_phase=False,
         expect_qualitative=True,
     ),
-    SmokeCase(
-        name="trajectory_completion_fit_only_no_test_dataloader",
+    SmokeTaskSpec(
+        name="trajectory_completion",
         runner=TrajectoryCompletionTrainingRunner,
         config_dir=REPO_ROOT / "src/tasks/trajectory_completion/configs",
         config_name="train",
-        overrides=(
-            "run.gpus=0",
-            "data.batch_size=1",
-            "data.num_workers=0",
-            "data.pin_memory=false",
-            "data.scene_sampler=false",
+        default_overrides=(
             "data.seq_len_range=[16,16]",
             "model.hidden_dim=32",
-            "model.num_ball_layers=2",
-            "model.num_query_layers=1",
             "model.num_heads=4",
             "model.ffn_dim=64",
             "model.max_seq_len=64",
-            "training.trainer.max_epochs=1",
-            "training.trainer.limit_train_batches=1",
-            "training.trainer.limit_val_batches=1",
-            "training.trainer.num_sanity_val_steps=0",
-            "training.trainer.precision=32-true",
-            "training.trainer.enable_progress_bar=false",
-            "training.trainer.enable_model_summary=false",
-            "training.trainer.log_every_n_steps=1",
-            "training.checkpoint.save_top_k=1",
-            "training.checkpoint.save_last=true",
-            "training.qualitative_logging.enabled=true",
-            "training.qualitative_logging.every_n_epochs=1",
-            "training.qualitative_logging.num_samples=1",
-            "training.qualitative_logging.selection_mode=fixed_indices",
-            "training.qualitative_logging.selected_indices=[0]",
+        ),
+        variants=(
+            SmokeVariant(
+                name="uv_transformer",
+                overrides=(
+                    "model.num_ball_layers=2",
+                    "model.num_query_layers=1",
+                ),
+            ),
+            SmokeVariant(
+                name="uv_transformer_nocourt",
+                overrides=(
+                    "model=uv_transformer_nocourt",
+                    "model.num_layers=2",
+                ),
+            ),
         ),
         supports_test_phase=False,
         expect_qualitative=True,
     ),
 )
+
+
+def _build_smoke_cases(task_specs: tuple[SmokeTaskSpec, ...]) -> tuple[SmokeCase, ...]:
+    cases: list[SmokeCase] = []
+    for task_spec in task_specs:
+        for variant in task_spec.variants:
+            variant_name = f"{task_spec.name}_{variant.name}"
+            cases.append(
+                SmokeCase(
+                    name=variant_name,
+                    runner=task_spec.runner,
+                    config_dir=task_spec.config_dir,
+                    config_name=task_spec.config_name,
+                    overrides=(
+                        *COMMON_OVERRIDES,
+                        *task_spec.default_overrides,
+                        *variant.overrides,
+                    ),
+                    supports_test_phase=task_spec.supports_test_phase,
+                    expect_qualitative=task_spec.expect_qualitative,
+                )
+            )
+    return tuple(cases)
+
+
+SMOKE_CASES = _build_smoke_cases(SMOKE_TASK_SPECS)
 
 
 def _compose_config(case: SmokeCase, output_dir: Path) -> DictConfig:
@@ -226,6 +281,8 @@ def _normalize_override(override: str) -> str:
         return override
     key, separator, value = override.partition("=")
     if not separator:
+        return override
+    if "." not in key:
         return override
     return f"++{key}={value}"
 
