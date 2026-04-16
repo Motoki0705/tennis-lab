@@ -230,7 +230,7 @@ class BLCSCameraParams:
     Identical structure to PLCS for consistency.
     """
 
-    center: list[float]  # [x, y, z] camera center in world coordinates
+    C: list[float]  # [x, y, z] camera center in world coordinates
     R: list[list[float]]  # 3x3 rotation matrix (world to camera)
     f: float  # focal length in pixels
     cx: float  # principal point x-coordinate
@@ -241,7 +241,7 @@ class BLCSCameraParams:
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return {
-            "center": self.center,
+            "C": self.C,
             "R": self.R,
             "f": self.f,
             "cx": self.cx,
@@ -253,8 +253,9 @@ class BLCSCameraParams:
     @classmethod
     def from_dict(cls, data: dict) -> BLCSCameraParams:
         """Create instance from dictionary loaded from JSON/NPZ."""
+        C = data["C"] if "C" in data else data["center"]
         return cls(
-            center=data["center"],
+            C=C,
             R=data["R"],
             f=data["f"],
             cx=data["cx"],
