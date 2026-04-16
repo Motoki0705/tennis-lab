@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import cv2
+import numpy as np
 import torch
 from torch import Tensor
 from torch import nn
 from torch.nn import functional as F
 
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
 from src.tasks.trajectory_completion.models import build_trajectory_completion_model
 
 if TYPE_CHECKING:
@@ -393,6 +396,107 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         }
         logs.update(aux_logs)
         return loss, logs
+
+    # ------------------------------------------------------------------
+    # Qualitative validation logging
+    # ------------------------------------------------------------------
+
+    def render_qualitative_samples(
+        self,
+        batches: list[dict[str, Any]],
+        outputs: list[dict[str, Any]],
+        artifact_dir: Path,
+        tb_writer: Any | None,
+        global_step: int,
+        epoch: int,
+    ) -> None:
+        """Render observed vs GT-hidden vs predicted UV trajectories."""
+        device = next(self.parameters()).device
+
+        for batch_idx, batch in enumerate(batches):
+            batch_dev = {
+                k: v.to(device) if isinstance(v, Tensor) else v
+                for k, v in batch.items()
+            }
+
+            with torch.no_grad():
+                pred, _, in_frame_logits = self._forward_with_auxiliary(batch_dev)
+                pred = pred.cpu()
+                in_frame_probs = torch.sigmoid(in_frame_logits).cpu()
+
+            # First sample
+            b = 0
+            ball_uv_gt = batch["ball_uv_gt"][b].numpy()  # (T, 2)
+            ball_vis = batch["ball_vis"][b].numpy()  # (T,)
+            ball_gt_vis = batch["ball_gt_vis"][b].numpy()  # (T,)
+            ball_mask = batch["ball_mask"][b].numpy()  # (T,)
+            pred_uv = pred[b].numpy()  # (T, 2)
+            in_frame_gt = batch.get("ball_in_frame_gt", batch["ball_gt_vis"])[b].numpy()
+            in_frame_pred = (in_frame_probs[b].numpy() >= self.in_frame_threshold).astype(float)
+
+            T = ball_uv_gt.shape[0]
+
+            # --- Panel 1: UV trajectory plot ---
+            fig_w, fig_h = 600, 400
+            canvas = np.ones((fig_h, fig_w, 3), dtype=np.uint8) * 255
+
+            def _uv_to_px(uv: np.ndarray) -> tuple[int, int]:
+                x = int(uv[0] * (fig_w - 40) + 20)
+                y = int(uv[1] * (fig_h - 40) + 20)
+                return (np.clip(x, 0, fig_w - 1), np.clip(y, 0, fig_h - 1))
+
+            # Draw GT trajectory (green for observed, yellow for hidden)
+            for t in range(T):
+                if ball_mask[t] <= 0 or ball_gt_vis[t] <= 0:
+                    continue
+                pt = _uv_to_px(ball_uv_gt[t])
+                if ball_vis[t] > 0:
+                    cv2.circle(canvas, pt, 3, (0, 180, 0), -1)  # observed: green
+                else:
+                    cv2.circle(canvas, pt, 3, (0, 200, 200), -1)  # hidden: yellow
+
+            # Draw predicted trajectory (red/blue)
+            for t in range(T):
+                if ball_mask[t] <= 0:
+                    continue
+                pt = _uv_to_px(pred_uv[t])
+                if ball_vis[t] > 0:
+                    cv2.circle(canvas, pt, 2, (200, 100, 100), -1)  # observed pred: light blue
+                else:
+                    cv2.circle(canvas, pt, 3, (0, 0, 255), -1)  # masked pred: red
+
+            cv2.putText(canvas, "Green=GT obs, Yellow=GT hidden, Red=Pred masked", (5, fig_h - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+
+            # --- Panel 2: In-frame probability timeline ---
+            timeline_h = 150
+            timeline = np.ones((timeline_h, fig_w, 3), dtype=np.uint8) * 255
+            plot_area_h = timeline_h - 40
+            for t in range(1, T):
+                x1 = 30 + int((t - 1) / max(T - 1, 1) * (fig_w - 50))
+                x2 = 30 + int(t / max(T - 1, 1) * (fig_w - 50))
+                # GT in-frame
+                y1_gt = timeline_h - 25 - int(in_frame_gt[t - 1] * plot_area_h)
+                y2_gt = timeline_h - 25 - int(in_frame_gt[t] * plot_area_h)
+                cv2.line(timeline, (x1, y1_gt), (x2, y2_gt), (0, 180, 0), 2)
+                # Pred in-frame
+                y1_p = timeline_h - 25 - int(in_frame_probs[b, t - 1].item() * plot_area_h)
+                y2_p = timeline_h - 25 - int(in_frame_probs[b, t].item() * plot_area_h)
+                cv2.line(timeline, (x1, y1_p), (x2, y2_p), (0, 0, 255), 1)
+            cv2.putText(timeline, "In-frame: Green=GT, Red=Pred", (5, 15),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+
+            panel = np.concatenate([canvas, timeline], axis=0)
+
+            path = artifact_dir / f"traj_batch{batch_idx:02d}.png"
+            cv2.imwrite(str(path), panel)
+
+            save_image_to_tensorboard(
+                tb_writer,
+                f"qualitative/trajectory_completion/batch{batch_idx:02d}",
+                panel,
+                global_step,
+            )
 
     # configure_optimizers inherited from BaseLightningModule
 
