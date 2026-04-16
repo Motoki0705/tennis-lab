@@ -13,7 +13,6 @@ from torch.utils.data import DataLoader
 from src.tasks.event_detection.data.dataset import BLCSRallyEventDataset
 from src.tasks.event_detection.data.types import Event3DBatch, Event3DSample, EventUVBatch, EventUVSample
 from src.utils.data.collate import collate_padded_batch
-from src.utils.data.scene_batch_sampler import build_scene_sampler
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -52,9 +51,6 @@ class DataConfig:
     num_workers: int
     input_type: Literal["uv", "3d"]
     pin_memory: bool
-    scene_sampler: bool
-    scenes_per_batch: int
-    chunk_max_scenes: int
 
 
 class EventDetectionDataModule(pl.LightningDataModule):
@@ -77,9 +73,6 @@ class EventDetectionDataModule(pl.LightningDataModule):
             num_workers=int(data_cfg.get("num_workers", 4)),
             input_type=input_type,
             pin_memory=bool(data_cfg.get("pin_memory", torch.cuda.is_available())),
-            scene_sampler=bool(data_cfg.get("scene_sampler", True)),
-            scenes_per_batch=int(data_cfg.get("scenes_per_batch", 1)),
-            chunk_max_scenes=int(data_cfg.get("chunk_max_scenes", 64)),
         )
 
         self.train_dataset = None
@@ -113,23 +106,6 @@ class EventDetectionDataModule(pl.LightningDataModule):
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader().")
         collate = collate_3d if self._resolved.input_type == "3d" else collate_uv
-        batch_sampler = build_scene_sampler(
-            self.train_dataset,
-            self._resolved.batch_size,
-            enabled=self._resolved.scene_sampler,
-            scenes_per_batch=self._resolved.scenes_per_batch,
-            chunk_max_scenes=self._resolved.chunk_max_scenes,
-            drop_last=True,
-            shuffle=True,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.train_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self._resolved.num_workers,
-                pin_memory=self._resolved.pin_memory,
-                collate_fn=collate,
-            )
         return DataLoader(
             self.train_dataset,
             batch_size=self._resolved.batch_size,
@@ -144,23 +120,6 @@ class EventDetectionDataModule(pl.LightningDataModule):
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader().")
         collate = collate_3d if self._resolved.input_type == "3d" else collate_uv
-        batch_sampler = build_scene_sampler(
-            self.val_dataset,
-            self._resolved.batch_size,
-            enabled=self._resolved.scene_sampler,
-            scenes_per_batch=self._resolved.scenes_per_batch,
-            chunk_max_scenes=self._resolved.chunk_max_scenes,
-            drop_last=False,
-            shuffle=False,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.val_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self._resolved.num_workers,
-                pin_memory=self._resolved.pin_memory,
-                collate_fn=collate,
-            )
         return DataLoader(
             self.val_dataset,
             batch_size=self._resolved.batch_size,
