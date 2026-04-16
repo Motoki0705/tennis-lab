@@ -81,9 +81,7 @@ bash src/tasks/blcs/scripts/run_hparam_sweep.sh
 
 ## データローディング最適化
 
-- `data.cache_max_scenes`: シーンNPZのLRUキャッシュ容量。
-- `data.scene_sampler_mode`: `none | scene | mixed | chunked` を指定。
-- `data.chunk_max_scenes`: `chunked` モード時のチャンク内シーン数上限。
+- 学習時のバッチ制御は標準の `DataLoader` 設定 (`batch_size`, `num_workers`) を使います。
 
 ### 可視化
 

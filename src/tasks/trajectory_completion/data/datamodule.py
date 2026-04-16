@@ -13,7 +13,6 @@ from src.tasks.trajectory_completion.data.dataset import (
     BLCSUVTrajectoryCompletionDataset,
 )
 from src.utils.data.collate import collate_padded_batch
-from src.utils.data.scene_batch_sampler import build_scene_sampler
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -46,10 +45,6 @@ class TrajectoryCompletionDataModule(pl.LightningDataModule):
         self.batch_size = int(data_cfg.get("batch_size", 16))
         self.num_workers = int(data_cfg.get("num_workers", 4))
         self.pin_memory = bool(data_cfg.get("pin_memory", True))
-        self.scene_sampler = bool(data_cfg.get("scene_sampler", True))
-        self.scenes_per_batch = int(data_cfg.get("scenes_per_batch", 1))
-        self.chunk_max_scenes = int(data_cfg.get("chunk_max_scenes", 64))
-
         self.train_dataset = None
         self.val_dataset = None
 
@@ -74,23 +69,6 @@ class TrajectoryCompletionDataModule(pl.LightningDataModule):
     def train_dataloader(self) -> DataLoader:
         if self.train_dataset is None:
             raise RuntimeError("Call setup() before train_dataloader().")
-        batch_sampler = build_scene_sampler(
-            self.train_dataset,
-            self.batch_size,
-            enabled=self.scene_sampler,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=True,
-            shuffle=True,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.train_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=self.pin_memory,
-                collate_fn=collate_uv_trajectories,
-            )
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -104,23 +82,6 @@ class TrajectoryCompletionDataModule(pl.LightningDataModule):
     def val_dataloader(self) -> DataLoader:
         if self.val_dataset is None:
             raise RuntimeError("Call setup() before val_dataloader().")
-        batch_sampler = build_scene_sampler(
-            self.val_dataset,
-            self.batch_size,
-            enabled=self.scene_sampler,
-            scenes_per_batch=self.scenes_per_batch,
-            chunk_max_scenes=self.chunk_max_scenes,
-            drop_last=False,
-            shuffle=False,
-        )
-        if batch_sampler is not None:
-            return DataLoader(
-                self.val_dataset,
-                batch_sampler=batch_sampler,
-                num_workers=self.num_workers,
-                pin_memory=self.pin_memory,
-                collate_fn=collate_uv_trajectories,
-            )
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,

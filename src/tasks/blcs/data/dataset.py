@@ -99,7 +99,6 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
             split_file=Path(split_file),
             seq_len_range=self.seq_len_range,
             num_views_range=self.num_views_range,
-            cache_max_scenes=int(data_cfg.get("cache_max_scenes", 128)),
             camera_mode=self.camera_mode,
             crop_mode=("random" if self.augment else "center"),
         )

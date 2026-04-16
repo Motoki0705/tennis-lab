@@ -90,6 +90,4 @@ New logs:
 
 ## Data loading optimization
 
-- `data.cache_max_scenes`: LRU cache size for scene NPZ files.
-- `data.scene_sampler_mode`: `none | scene | mixed | chunked`.
-- `data.chunk_max_scenes`: Number of scenes per chunk for chunked sampling.
+- Batch behavior uses the standard `DataLoader` settings (`batch_size`, `num_workers`, `pin_memory`).

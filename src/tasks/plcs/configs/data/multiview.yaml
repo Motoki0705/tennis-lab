@@ -9,11 +9,6 @@ pin_memory: true
 
 mode: multiview_sequence
 
-# Scene sampler: none | scene | mixed | chunked
-scene_sampler: true
-scenes_per_batch: 8
-chunk_max_scenes: 64
-
 # Multi-view sampling
 min_cameras: 2
 num_views_range: [1, 8]  # [min, max]
