@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
+import cv2
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -13,6 +16,7 @@ from src.tasks.ball_detection.models import build_ball_detection_model
 from src.tasks.ball_detection.training.losses import BallDetectionFocalLoss
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -153,3 +157,88 @@ class BallDetectionLightningModule(BaseLightningModule):
         for name, value in metrics.items():
             self.log(f"test/{name}", value)
         self.test_metrics.reset()
+
+    # ------------------------------------------------------------------
+    # Qualitative validation logging
+    # ------------------------------------------------------------------
+
+    def render_qualitative_samples(
+        self,
+        batches: list[dict[str, Any]],
+        outputs: list[dict[str, Any]],
+        artifact_dir: Path,
+        tb_writer: Any | None,
+        global_step: int,
+        epoch: int,
+    ) -> None:
+        """Render ball detection heatmap overlays for qualitative inspection."""
+        device = next(self.parameters()).device
+
+        for batch_idx, batch in enumerate(batches):
+            images = batch["images"].to(device)
+            heatmaps_gt = batch["heatmaps"]  # (B, T, Hh, Wh)
+            coords_gt = batch["coords"]  # (B, T, 2)
+            visibility = batch["visibility"]  # (B, T)
+
+            model_cfg = self.config.get("model", {})
+            model_input = to_model_input(images, model_cfg)
+
+            with torch.no_grad():
+                logits = self.model(model_input).squeeze(1)  # (B, T, Hh, Wh)
+                if logits.shape[-2:] != heatmaps_gt.shape[-2:]:
+                    b, t = logits.shape[:2]
+                    logits_flat = logits.reshape(b * t, 1, *logits.shape[-2:])
+                    logits_flat = F.interpolate(
+                        logits_flat,
+                        size=heatmaps_gt.shape[-2:],
+                        mode="bilinear",
+                        align_corners=False,
+                    )
+                    logits = logits_flat.reshape(b, t, *heatmaps_gt.shape[-2:])
+                pred_heatmaps = torch.sigmoid(logits).cpu()
+
+            # Render first sample in each batch, middle frame
+            b_idx = 0
+            t_idx = images.shape[2] // 2  # middle frame of temporal window
+
+            img = images[b_idx, :, t_idx].cpu()  # (C, H, W)
+            gt_hm = heatmaps_gt[b_idx, t_idx].numpy()  # (Hh, Wh)
+            pred_hm = pred_heatmaps[b_idx, t_idx].numpy()  # (Hh, Wh)
+
+            # Denormalize image
+            mean = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
+            std = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
+            img_np = (img.numpy() * std + mean).clip(0, 1).transpose(1, 2, 0)
+            img_bgr = (img_np * 255).astype(np.uint8)
+            img_bgr = cv2.cvtColor(img_bgr, cv2.COLOR_RGB2BGR)
+            h, w = img_bgr.shape[:2]
+
+            # Colorize heatmaps
+            gt_cm = cv2.applyColorMap(
+                cv2.resize((gt_hm * 255).astype(np.uint8), (w, h)),
+                cv2.COLORMAP_JET,
+            )
+            pred_cm = cv2.applyColorMap(
+                cv2.resize((pred_hm * 255).astype(np.uint8), (w, h)),
+                cv2.COLORMAP_JET,
+            )
+
+            # Draw GT ball position
+            if visibility[b_idx, t_idx] > 0:
+                cx = int(coords_gt[b_idx, t_idx, 0].item())
+                cy = int(coords_gt[b_idx, t_idx, 1].item())
+                cv2.circle(img_bgr, (cx, cy), 5, (0, 255, 0), 2)
+
+            panel = np.concatenate([img_bgr, gt_cm, pred_cm], axis=1)
+
+            # Save artifact
+            path = artifact_dir / f"ball_batch{batch_idx:02d}.png"
+            cv2.imwrite(str(path), panel)
+
+            # Log to TensorBoard
+            save_image_to_tensorboard(
+                tb_writer,
+                f"qualitative/ball_detection/batch{batch_idx:02d}",
+                panel,
+                global_step,
+            )

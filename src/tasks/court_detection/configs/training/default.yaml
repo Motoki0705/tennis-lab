@@ -36,3 +36,9 @@ early_stopping:
 lr_monitor:
   enabled: true
   interval: epoch
+
+# ---- Qualitative validation logging ----
+qualitative_logging:
+  enabled: true
+  every_n_epochs: 1
+  num_samples: 4

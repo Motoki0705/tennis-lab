@@ -19,6 +19,8 @@ from omegaconf import OmegaConf
 from pytorch_lightning.callbacks import EarlyStopping, LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
+from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
+
 
 class BaseTrainingRunner:
     """Base training runner with strict config-driven behavior.
@@ -173,6 +175,17 @@ class BaseTrainingRunner:
         lr_cfg = config.training.lr_monitor
         if lr_cfg.enabled:
             callbacks.append(LearningRateMonitor(logging_interval=lr_cfg.interval))
+
+        # Qualitative validation logging callback (optional)
+        qual_cfg = config.training.get("qualitative_logging", {})
+        if qual_cfg.get("enabled", False):
+            callbacks.append(
+                QualitativeLoggingCallback(
+                    every_n_epochs=int(qual_cfg.get("every_n_epochs", 1)),
+                    num_samples=int(qual_cfg.get("num_samples", 4)),
+                    enabled=True,
+                )
+            )
 
         # Add task-specific callbacks
         callbacks.extend(self.callbacks_extra(config, datamodule, logger))

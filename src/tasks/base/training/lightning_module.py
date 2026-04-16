@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import pytorch_lightning as pl
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
@@ -35,6 +37,33 @@ class BaseLightningModule(pl.LightningModule):
         optimizer_cfg = train_cfg.get("optimizer", {}) or {}
         betas = optimizer_cfg.get("betas")
         self.optimizer_betas = tuple(betas) if betas is not None else None
+
+    # ------------------------------------------------------------------
+    # Qualitative validation logging hook
+    # ------------------------------------------------------------------
+
+    def render_qualitative_samples(
+        self,
+        batches: list[dict[str, Any]],
+        outputs: list[dict[str, Any]],
+        artifact_dir: Path,
+        tb_writer: Any | None,
+        global_step: int,
+        epoch: int,
+    ) -> None:
+        """Render qualitative validation samples.
+
+        Override in task-specific subclasses to produce visualizations.
+        The default implementation is a no-op.
+
+        Args:
+            batches: Collected validation batch dicts (CPU tensors).
+            outputs: Corresponding validation_step outputs (CPU tensors).
+            artifact_dir: Directory to save artifact images/files.
+            tb_writer: TensorBoard SummaryWriter (may be ``None``).
+            global_step: Current global training step.
+            epoch: Current epoch number.
+        """
 
     def _estimate_total_steps(self) -> int:
         steps_per_epoch_attr = getattr(self, "steps_per_epoch", None)
