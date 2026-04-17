@@ -1,0 +1,19 @@
+defaults:
+  - model: multiview
+  - data: chunked_multi
+  - training: default
+  - metrics: default
+  - run: train
+  - physics: default
+  - rally: default
+  - camera: default
+  - targeted_velocity: default
+  - generator: default
+  - _self_
+
+hydra:
+  run:
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

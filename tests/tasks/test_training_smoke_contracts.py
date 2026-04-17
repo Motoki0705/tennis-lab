@@ -17,6 +17,9 @@ from src.tasks.plcs.training.runner import PLCSTrainingRunner
 from src.tasks.trajectory_completion.training.runner import TrajectoryCompletionTrainingRunner
 
 
+RunnerFactory = Any  # Callable[[DictConfig], runner_instance]
+
+
 @dataclass(frozen=True)
 class SmokeCase:
     name: str
@@ -26,6 +29,7 @@ class SmokeCase:
     overrides: tuple[str, ...]
     supports_test_phase: bool
     expect_qualitative: bool
+    runner_factory: RunnerFactory | None = None
 
 
 @dataclass(frozen=True)
@@ -44,9 +48,18 @@ class SmokeTaskSpec:
     variants: tuple[SmokeVariant, ...]
     supports_test_phase: bool
     expect_qualitative: bool
+    runner_factory: RunnerFactory | None = None
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _blcs_chunked_runner_factory(config: DictConfig) -> BLCSTrainingRunner:
+    """Build a BLCSTrainingRunner with generator_config for chunked training."""
+    from src.tasks.blcs.scripts.generate_dataset import _build_generator_config
+
+    generator_config = _build_generator_config(config)
+    return BLCSTrainingRunner(generator_config=generator_config)
 
 
 COMMON_OVERRIDES = (
@@ -209,6 +222,27 @@ SMOKE_TASK_SPECS = (
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
+        name="blcs_chunked",
+        runner=BLCSTrainingRunner,
+        config_dir=REPO_ROOT / "src/tasks/blcs/configs",
+        config_name="train_chunked",
+        default_overrides=(
+            "data.seq_len_range=[16,16]",
+            "data.chunk.scenes_per_chunk=3",
+            "data.chunk.epochs_per_chunk=1",
+            "data.chunk.prefetch_chunks=0",
+            "model.hidden_dim=32",
+            "model.num_layers=2",
+            "model.num_heads=4",
+            "model.ffn_dim=64",
+            "model.max_seq_len=64",
+        ),
+        variants=(SmokeVariant(name="multiview"),),
+        supports_test_phase=True,
+        expect_qualitative=True,
+        runner_factory=_blcs_chunked_runner_factory,
+    ),
+    SmokeTaskSpec(
         name="trajectory_completion",
         runner=TrajectoryCompletionTrainingRunner,
         config_dir=REPO_ROOT / "src/tasks/trajectory_completion/configs",
@@ -260,6 +294,7 @@ def _build_smoke_cases(task_specs: tuple[SmokeTaskSpec, ...]) -> tuple[SmokeCase
                     ),
                     supports_test_phase=task_spec.supports_test_phase,
                     expect_qualitative=task_spec.expect_qualitative,
+                    runner_factory=task_spec.runner_factory,
                 )
             )
     return tuple(cases)
@@ -319,7 +354,10 @@ def test_scene_training_smoke_contracts(case: SmokeCase, tmp_path: Path) -> None
     output_dir = tmp_path / case.name
     config = _compose_config(case, output_dir)
 
-    runner = case.runner()
+    if case.runner_factory is not None:
+        runner = case.runner_factory(config)
+    else:
+        runner = case.runner()
     runner.seed_everything(config)
     runner.apply_runtime_settings(config)
 

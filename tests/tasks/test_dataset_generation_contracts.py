@@ -316,8 +316,9 @@ def test_blcs_generator_output_contract(tmp_path: Path) -> None:
         "src.tasks.blcs.scripts.generate_dataset",
         output_dir,
         [
-            "generator.num_scenes=1",
+            "generator.num_scenes=2",
             "run.device=cpu",
+            "run.num_workers=2",
         ],
     )
 

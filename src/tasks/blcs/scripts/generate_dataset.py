@@ -4,18 +4,23 @@ Usage:
     python -m src.tasks.blcs.scripts.generate_dataset
     python -m src.tasks.blcs.scripts.generate_dataset generator.num_scenes=100
     python -m src.tasks.blcs.scripts.generate_dataset run.output_dir=data/blcs generator.num_scenes=500
+    python -m src.tasks.blcs.scripts.generate_dataset run.num_workers=4
 
 Notes:
     - Hydra loads configuration from `src/tasks/blcs/configs/generate_dataset.yaml`.
     - The script generates scenes, writes splits, and persists dataset metadata.
+    - Parallel scene generation uses ProcessPoolExecutor and currently supports CPU workers.
 """
 
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
+from itertools import repeat
 import logging
 import random
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import TypeVar, cast
 
@@ -29,8 +34,10 @@ from tqdm.auto import tqdm
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
 from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneGenerator,
+    BLCSSceneData,
     GeneratorConfig,
 )
+from src.tasks.blcs.generate_dataset.simulation.cell_manager import NUM_CELLS_PER_SIDE
 from src.tasks.blcs.generate_dataset.simulation.ball_physics import PhysicsConfig
 from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyConfig
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
@@ -48,10 +55,106 @@ logger = logging.getLogger(__name__)
 F = TypeVar("F", bound=Callable[..., int])
 
 
+@dataclass(frozen=True)
+class _SceneGenerationTask:
+    """Inputs required to generate one scene in a worker process."""
+
+    scene_index: int
+    scene_id: str
+    seed: int
+
+
+@dataclass(frozen=True)
+class _SceneGenerationResult:
+    """Generated scene payload and aggregated counters for one task."""
+
+    scene_index: int
+    scene_data: BLCSSceneData | None
+    total_cameras: int
+    total_cameras_tried: int
+
+
 def _seed_everything(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+
+
+def _iter_scene_tasks(num_scenes: int, seed: int) -> Iterator[_SceneGenerationTask]:
+    for scene_index in range(num_scenes):
+        yield _SceneGenerationTask(
+            scene_index=scene_index,
+            scene_id=f"scene_{scene_index:06d}",
+            seed=seed + scene_index,
+        )
+
+
+def _generate_scene_task(
+    task: _SceneGenerationTask,
+    generator_config: GeneratorConfig,
+    device: str,
+) -> _SceneGenerationResult:
+    if torch.device(device).type != "cpu":
+        raise ValueError(
+            "Parallel BLCS dataset generation only supports run.device=cpu"
+        )
+
+    _seed_everything(task.seed)
+    torch.set_num_threads(1)
+
+    generator = BLCSSceneGenerator(config=generator_config, device=device)
+    from_cell = int(torch.randint(0, NUM_CELLS_PER_SIDE, (1,)).item())
+    side = "near" if torch.rand(1).item() < 0.5 else "far"
+    scene_data = generator.generate_scene(from_cell, side, task.scene_id)
+
+    return _SceneGenerationResult(
+        scene_index=task.scene_index,
+        scene_data=scene_data,
+        total_cameras=len(scene_data.cameras) if scene_data is not None else 0,
+        total_cameras_tried=(
+            scene_data.num_cameras_sampled if scene_data is not None else 0
+        ),
+    )
+
+
+def _generate_parallel_scenes(
+    generator_config: GeneratorConfig,
+    device: str,
+    num_scenes: int,
+    seed: int,
+    num_workers: int,
+) -> Iterator[_SceneGenerationResult]:
+    max_workers = min(num_workers, num_scenes)
+    if max_workers <= 0:
+        return
+
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        yield from executor.map(
+            _generate_scene_task,
+            _iter_scene_tasks(num_scenes, seed),
+            repeat(generator_config),
+            repeat(device),
+            chunksize=1,
+        )
+
+
+def _build_parallel_stats(
+    total_scenes: int,
+    total_cameras: int,
+    total_cameras_tried: int,
+) -> dict[str, float | int]:
+    acceptance_rate = (
+        total_cameras / total_cameras_tried if total_cameras_tried > 0 else 0.0
+    )
+    avg_cameras = total_cameras / total_scenes if total_scenes > 0 else 0.0
+    return {
+        "total_scenes": total_scenes,
+        "total_scenes_generated": total_scenes,
+        "total_cameras": total_cameras,
+        "total_cameras_tried": total_cameras_tried,
+        "camera_acceptance_rate": acceptance_rate,
+        "avg_cameras_per_scene": avg_cameras,
+    }
 
 
 def _build_generator_config(cfg: DictConfig) -> GeneratorConfig:
@@ -189,38 +292,98 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
     generator_config = _build_generator_config(cfg)
 
-    logger.info("Output directory: %s", output_dir)
-    logger.info("Number of scenes: %s", cfg.generator.num_scenes)
-    logger.info("Max rallies per scene: %s", cfg.rally.max_rallies)
-    logger.info("Device: %s", cfg.run.device)
+    num_scenes = int(cfg.generator.num_scenes)
+    num_workers = int(cfg.run.get("num_workers", 1))
+    effective_workers = min(num_workers, num_scenes)
+    device = str(cfg.run.device)
 
-    generator = BLCSSceneGenerator(config=generator_config, device=str(cfg.run.device))
+    logger.info("Output directory: %s", output_dir)
+    logger.info("Number of scenes: %s", num_scenes)
+    logger.info("Max rallies per scene: %s", cfg.rally.max_rallies)
+    logger.info("Device: %s", device)
+
+    if effective_workers > 1 and torch.device(device).type != "cpu":
+        raise ValueError(
+            "Parallel BLCS dataset generation requires run.device=cpu when "
+            f"run.num_workers={num_workers}"
+        )
+
+    generator = None
+    if effective_workers <= 1:
+        generator = BLCSSceneGenerator(config=generator_config, device=device)
+
     writer = BLCSDatasetWriter(output_dir)
 
     logger.info("Starting scene generation...")
+    logger.info(
+        "Scene generation mode: %s",
+        "parallel" if effective_workers > 1 else "serial",
+    )
+    logger.info("Scene generation workers: %s", effective_workers)
+
     total_scenes = 0
     total_cameras = 0
+    total_cameras_tried = 0
 
-    num_scenes = int(cfg.generator.num_scenes)
-    for scene_data in tqdm(
-        generator.generate(num_scenes),
-        desc="Generating scenes",
-        total=num_scenes,
-    ):
-        writer.save_scene(scene_data)
-        total_scenes += 1
-        total_cameras += len(scene_data.cameras)
+    if generator is not None:
+        for scene_data in tqdm(
+            generator.generate(num_scenes),
+            desc="Generating scenes",
+            total=num_scenes,
+        ):
+            writer.save_scene(scene_data)
+            total_scenes += 1
+            total_cameras += len(scene_data.cameras)
+            total_cameras_tried += scene_data.num_cameras_sampled
 
-        if total_scenes % 100 == 0:
-            avg_cams = total_cameras / total_scenes
-            logger.info(
-                "Progress: %s scenes, %s cameras (avg %.1f/scene)",
-                total_scenes,
-                total_cameras,
-                avg_cams,
-            )
+            if total_scenes % 100 == 0:
+                avg_cams = total_cameras / total_scenes
+                logger.info(
+                    "Progress: %s scenes, %s cameras (avg %.1f/scene)",
+                    total_scenes,
+                    total_cameras,
+                    avg_cams,
+                )
+        stats = generator.get_statistics()
+    else:
+        for result in tqdm(
+            _generate_parallel_scenes(
+                generator_config=generator_config,
+                device=device,
+                num_scenes=num_scenes,
+                seed=seed,
+                num_workers=effective_workers,
+            ),
+            desc="Generating scenes",
+            total=num_scenes,
+        ):
+            if result.scene_data is None:
+                continue
+
+            writer.save_scene(result.scene_data)
+            total_scenes += 1
+            total_cameras += result.total_cameras
+            total_cameras_tried += result.total_cameras_tried
+
+            if total_scenes % 100 == 0:
+                avg_cams = total_cameras / total_scenes
+                logger.info(
+                    "Progress: %s scenes, %s cameras (avg %.1f/scene)",
+                    total_scenes,
+                    total_cameras,
+                    avg_cams,
+                )
+
+        stats = _build_parallel_stats(
+            total_scenes=total_scenes,
+            total_cameras=total_cameras,
+            total_cameras_tried=total_cameras_tried,
+        )
 
     logger.info("Generation complete: %s scenes, %s cameras", total_scenes, total_cameras)
+
+    if total_scenes < num_scenes:
+        logger.warning("Only generated %s/%s scenes", total_scenes, num_scenes)
 
     logger.info("Creating train/val/test splits...")
     writer.save_split_info(
@@ -230,7 +393,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         seed=seed,
     )
 
-    stats = generator.get_statistics()
     writer.save_meta_json(config=OmegaConf.to_container(cfg, resolve=True))
     writer.save_dataset_info(stats)
 
