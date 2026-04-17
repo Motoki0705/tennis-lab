@@ -69,6 +69,10 @@ class ChunkManager:
         How many chunks to keep ready ahead of training.
     generator_device:
         Device for the scene generator (``"cpu"`` or ``"cuda"``).
+    generation_workers:
+        Number of parallel worker processes for scene generation.
+        ``0`` (default) uses sequential generation in the background thread.
+        This is independent of the DataLoader ``num_workers``.
     """
 
     def __init__(
@@ -80,6 +84,7 @@ class ChunkManager:
         epochs_per_chunk: int = 3,
         prefetch_chunks: int = 1,
         generator_device: str = "cpu",
+        generation_workers: int = 0,
     ) -> None:
         self.chunks_dir = Path(chunks_dir)
         self.chunks_dir.mkdir(parents=True, exist_ok=True)
@@ -88,6 +93,7 @@ class ChunkManager:
         self.epochs_per_chunk = epochs_per_chunk
         self.prefetch_chunks = prefetch_chunks
         self.generator_device = generator_device
+        self.generation_workers = generation_workers
 
         self._chunks: dict[int, ChunkInfo] = {}
         self._next_chunk_id = 0
@@ -222,11 +228,27 @@ class ChunkManager:
         writer = BLCSDatasetWriter(str(info.path))
         scene_count = 0
 
-        for scene_data in generator.generate(self.scenes_per_chunk):
-            if self._stop_event.is_set():
-                break
-            writer.save_scene(scene_data)
-            scene_count += 1
+        if self.generation_workers > 0:
+            from src.tasks.blcs.generate_dataset.utils.parallel_runner import (
+                generate_parallel_scenes,
+            )
+
+            for scene_data in generate_parallel_scenes(
+                generator_config=self.generator_config,
+                device=self.generator_device,
+                num_scenes=self.scenes_per_chunk,
+                num_workers=self.generation_workers,
+            ):
+                if self._stop_event.is_set():
+                    break
+                writer.save_scene(scene_data)
+                scene_count += 1
+        else:
+            for scene_data in generator.generate(self.scenes_per_chunk):
+                if self._stop_event.is_set():
+                    break
+                writer.save_scene(scene_data)
+                scene_count += 1
 
         # Write a train.txt split file listing all scenes (used by the dataset).
         scene_files = sorted(p.name for p in info.path.glob("scenes/*.npz"))

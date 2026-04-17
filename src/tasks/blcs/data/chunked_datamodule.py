@@ -57,6 +57,7 @@ class ChunkedBLCSDataModule(pl.LightningDataModule):
         self.epochs_per_chunk = int(chunk_cfg.get("epochs_per_chunk", 3))
         self.prefetch_chunks = int(chunk_cfg.get("prefetch_chunks", 1))
         self.chunks_dir = Path(chunk_cfg.get("chunks_dir", "data/blcs/chunks"))
+        self.generation_workers = int(chunk_cfg.get("generation_workers", 0))
         self.generator_device = str(data_cfg.get("generator_device", "cpu"))
 
         self.input_profile = str(self.config["model"]["io"]["input_profile"])
@@ -108,6 +109,7 @@ class ChunkedBLCSDataModule(pl.LightningDataModule):
                 epochs_per_chunk=self.epochs_per_chunk,
                 prefetch_chunks=self.prefetch_chunks,
                 generator_device=self.generator_device,
+                generation_workers=self.generation_workers,
             )
             self.chunk_manager.start()
 

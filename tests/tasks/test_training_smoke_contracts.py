@@ -56,9 +56,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 def _blcs_chunked_runner_factory(config: DictConfig) -> BLCSTrainingRunner:
     """Build a BLCSTrainingRunner with generator_config for chunked training."""
-    from src.tasks.blcs.scripts.generate_dataset import _build_generator_config
+    from src.tasks.blcs.scripts.generate_dataset import build_generator_config
 
-    generator_config = _build_generator_config(config)
+    generator_config = build_generator_config(config)
     return BLCSTrainingRunner(generator_config=generator_config)
 
 
