@@ -271,7 +271,6 @@ def test_plcs_generator_output_contract(tmp_path: Path) -> None:
         output_dir,
         {
             "config.yaml",
-            "dataset_info.json",
             "meta.json",
             "scenes",
             "scenes_meta.json",
@@ -284,14 +283,12 @@ def test_plcs_generator_output_contract(tmp_path: Path) -> None:
     )
 
     meta_json = _read_json(output_dir / "meta.json")
-    dataset_info = _read_json(output_dir / "dataset_info.json")
     stats_json = _read_json(output_dir / "stats.json")
     scenes_meta = _read_json(output_dir / "scenes_meta.json")
     scene_paths = sorted((output_dir / "scenes").glob("scene_*.npz"))
     split_union, _ = _assert_split_contract(output_dir, meta_json)
 
     assert meta_json["stats"]["total_scenes"] == len(scene_paths)
-    assert dataset_info["total_scenes"] == meta_json["stats"]["total_scenes"]
     assert stats_json["successful_scenes"] == meta_json["stats"]["total_scenes"]
     assert stats_json["failed_scenes"] == 0
     assert len(scenes_meta) == meta_json["stats"]["total_scenes"]
@@ -326,7 +323,6 @@ def test_blcs_generator_output_contract(tmp_path: Path) -> None:
         output_dir,
         {
             "config.yaml",
-            "dataset_info.json",
             "meta.json",
             "scenes",
             "split_info.json",
@@ -337,12 +333,10 @@ def test_blcs_generator_output_contract(tmp_path: Path) -> None:
     )
 
     meta_json = _read_json(output_dir / "meta.json")
-    dataset_info = _read_json(output_dir / "dataset_info.json")
     scene_paths = sorted((output_dir / "scenes").glob("scene_*.npz"))
     split_union, _ = _assert_split_contract(output_dir, meta_json)
 
     assert meta_json["stats"]["total_scenes"] == len(scene_paths)
-    assert dataset_info["total_scenes"] == meta_json["stats"]["total_scenes"]
     assert {path.name for path in scene_paths} == set(split_union)
 
     for scene_record in meta_json["scenes"]:

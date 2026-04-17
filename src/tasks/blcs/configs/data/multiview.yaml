@@ -1,4 +1,5 @@
 # Multi-view BLCS data configuration
+backend: "default"
 scene_dir: "data/blcs"
 
 # Number of court keypoints to use (first N from canonical order)

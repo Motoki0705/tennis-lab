@@ -39,7 +39,12 @@ class BLCSTrainingRunner(BaseTrainingRunner):
             return ChunkedBLCSDataModule(
                 config, generator_config=self.generator_config,
             )
-        return BLCSDataModule(config, generator_config=self.generator_config)
+        elif backend == "default":
+            return BLCSDataModule(config)
+        else:
+            raise ValueError(
+                f"Unsupported data.backend='{backend}'. Supported: ['default', 'chunked']"
+            )
 
     def build_lightning_module(
         self,
