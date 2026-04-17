@@ -1,0 +1,35 @@
+# Chunked multi-view data configuration
+# Val/test are fixed from scene_dir; train chunks are generated in the background.
+backend: "chunked"
+scene_dir: "data/blcs"
+
+# Number of court keypoints to use (first N from canonical order)
+num_court_kp: 20
+
+# DataLoader settings
+batch_size: 2
+num_workers: 4
+pin_memory: true
+
+# Sequence/view sampling ranges (inclusive)
+seq_len_range: [32, 512]
+num_views_range: [4, 8]
+
+# Camera selection mode: "random", "first", or camera index
+camera_mode: "random"
+
+# Generator device
+generator_device: "cpu"
+
+# Chunk settings
+chunk:
+  scenes_per_chunk: 1000
+  epochs_per_chunk: 3
+  prefetch_chunks: 1
+  chunks_dir: "data/blcs/chunks"
+
+# Augmentation
+augmentation:
+  uv_noise_std: 0.004
+  visibility_drop_prob: 0.1
+  scale_range: [0.9, 1.1]
