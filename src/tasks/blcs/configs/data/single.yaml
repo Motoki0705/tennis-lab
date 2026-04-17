@@ -1,4 +1,5 @@
 # Scene data directory (matches dataset generation default)
+backend: "default"
 scene_dir: "data/blcs"
 
 # Number of court keypoints to use (first N from canonical order)
