@@ -70,7 +70,6 @@ class PLCSDatasetWriter(BaseDatasetWriter):
         }
 
         # Store pre-computed COCO17 world joints when available
-        # (used by AthletePose3D path to bypass SMPL-H joint mapping).
         if scene.human_kp_3d is not None:
             save_dict["human_kp_3d"] = np.asarray(scene.human_kp_3d).astype(
                 np.float32
