@@ -122,6 +122,14 @@ class BLCSSceneGenerator:
         """Sample stochastic court geometry for one scene."""
         return self.config.court.sample()
 
+    def sample_from_cell(self) -> int:
+        """Sample an initial launch cell index."""
+        return int(torch.randint(0, NUM_CELLS_PER_SIDE, (1,)).item())
+
+    def sample_side(self) -> str:
+        """Sample an initial player side."""
+        return "near" if torch.rand(1).item() < 0.5 else "far"
+
     def _build_rally_simulator(
         self,
         physics_config: PhysicsConfig,
@@ -261,8 +269,8 @@ class BLCSSceneGenerator:
 
         scene_counter = 0
         for _ in range(num_scenes):
-            from_cell = int(torch.randint(0, NUM_CELLS_PER_SIDE, (1,)).item())
-            side = "near" if torch.rand(1).item() < 0.5 else "far"
+            from_cell = self.sample_from_cell()
+            side = self.sample_side()
 
             scene_id = f"scene_{scene_counter:06d}"
             scene = self.generate_scene(from_cell, side, scene_id)

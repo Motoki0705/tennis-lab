@@ -148,12 +148,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         json.dump(scenes_meta, f, indent=2, default=str)
 
     writer.save_meta_json(config=OmegaConf.to_container(cfg, resolve=True))
-    writer.save_dataset_info(
-        {
-            "total_cameras": total_cameras,
-            "avg_cameras_per_scene": stats["avg_cameras"],
-        }
-    )
     writer.save_split_info(
         train_ratio=float(cfg.run.get("train_ratio", 0.8)),
         val_ratio=float(cfg.run.get("val_ratio", 0.1)),

@@ -20,14 +20,14 @@ from __future__ import annotations
 import hydra
 from omegaconf import DictConfig
 
-from src.tasks.blcs.scripts.generate_dataset import _build_generator_config
+from src.tasks.blcs.scripts.generate_dataset import build_generator_config
 from src.tasks.blcs.training.runner import BLCSTrainingRunner
 
 
 @hydra.main(config_path="../configs", config_name="train_chunked", version_base="1.3")
 def main(config: DictConfig) -> None:
     """Hydra entry point for chunked BLCS training."""
-    generator_config = _build_generator_config(config)
+    generator_config = build_generator_config(config)
     runner = BLCSTrainingRunner(generator_config=generator_config)
     runner.run(config)
 
