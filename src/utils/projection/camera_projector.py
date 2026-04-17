@@ -98,24 +98,14 @@ class CameraConfig:
     for dataset variation.
     """
 
-    placement_mode: str = "random"  # "random" | "fixed_8"
     z_min: float = 3.0
     z_max: float = 5.0
     hfov_deg: float = 60.0
     image_size: tuple[int, int] = (1280, 720)
     fixed_look_at: tuple[float, float, float] = (0.0, 0.0, 0.0)
     fixed_baseline_clear_extra: float = 0.0
-    fixed_position_noise_radius: float = 0.0
-    fixed_look_at_xy_radius: float = 0.0
-    target_x_range: tuple[float, float] = (-2.0, 2.0)
-    target_y_range: tuple[float, float] = (-2.0, 2.0)
-    target_z_range: tuple[float, float] = (0.5, 1.5)
-
-    # --- Perturbation parameters ---
-    # Gaussian noise on hfov (degrees, sigma)
-    hfov_noise_deg: float = 0.0
-    # Gaussian noise on look-at target (metres, sigma)
-    look_at_noise_std: float = 0.0
+    fixed_position_noise_radius: float = 2.0
+    fixed_look_at_xy_radius: float = 1.0
 
 
 @dataclass
@@ -139,11 +129,6 @@ class CameraProjector:
         court_config: CourtConfig | None = None,
     ) -> None:
         self.config = config or CameraConfig()
-        if self.config.placement_mode not in {"random", "fixed_8"}:
-            raise ValueError(
-                "camera placement_mode must be one of {'random', 'fixed_8'}, "
-                f"got '{self.config.placement_mode}'"
-            )
         self.court_config = court_config
         self.court_kp_3d = court_keypoints_3d(court_config)
 
@@ -153,54 +138,6 @@ class CameraProjector:
         fence_x = HALF_DOUBLES_WIDTH + SIDELINE_CLEAR
         fence_y = HALF_LENGTH + BASELINE_CLEAR + max(0.0, baseline_clear_extra)
         return fence_x, fence_y
-
-    def sample_camera(self) -> Camera:
-        """Sample a camera position around the court."""
-        cfg = self.config
-
-        fence_x, fence_y = self._fence_extents()
-
-        perimeter = 2 * (2 * fence_x + 2 * fence_y)
-        t = random.uniform(0, perimeter)
-
-        if t < 2 * fence_x:
-            cam_x = -fence_x + t
-            cam_y = fence_y
-        elif t < 2 * fence_x + 2 * fence_y:
-            cam_x = fence_x
-            cam_y = fence_y - (t - 2 * fence_x)
-        elif t < 4 * fence_x + 2 * fence_y:
-            cam_x = fence_x - (t - 2 * fence_x - 2 * fence_y)
-            cam_y = -fence_y
-        else:
-            cam_x = -fence_x
-            cam_y = -fence_y + (t - 4 * fence_x - 2 * fence_y)
-
-        cam_z = random.uniform(cfg.z_min, cfg.z_max)
-        cam_z = max(cam_z, FENCE_HEIGHT)
-
-        target_x = random.uniform(*cfg.target_x_range)
-        target_y = random.uniform(*cfg.target_y_range)
-        target_z = random.uniform(*cfg.target_z_range)
-
-        # Apply look-at perturbation
-        if cfg.look_at_noise_std > 0:
-            target_x += random.gauss(0, cfg.look_at_noise_std)
-            target_y += random.gauss(0, cfg.look_at_noise_std)
-            target_z += random.gauss(0, cfg.look_at_noise_std * 0.5)
-
-        # Apply hfov perturbation
-        hfov = cfg.hfov_deg
-        if cfg.hfov_noise_deg > 0:
-            hfov += random.gauss(0, cfg.hfov_noise_deg)
-            hfov = max(20.0, min(120.0, hfov))  # clamp to sane range
-
-        return make_look_at_camera(
-            center=(cam_x, cam_y, cam_z),
-            look_at=(target_x, target_y, target_z),
-            hfov_deg=hfov,
-            image_size=cfg.image_size,
-        )
 
     @staticmethod
     def _sample_uniform_offset_in_ball(radius: float) -> tuple[float, float, float]:
@@ -313,29 +250,14 @@ class CameraProjector:
         """Project CourtKP20 to UV coordinates."""
         return self.project_points_to_uv(self.court_kp_3d, camera)
 
-    def project_subject_points(
+    def generate_camera_view(
         self,
         points_3d: Tensor,
         camera: Camera,
-    ) -> tuple[Tensor, Tensor]:
-        """Project subject points. Override for custom behavior."""
-        return self.project_points_to_uv(points_3d, camera)
-
-    def generate_camera_view(
-        self,
-        points_3d: Tensor | None = None,
-        camera: Camera | None = None,
     ) -> CameraView:
         """Generate a camera view with optional subject projection."""
-        if camera is None:
-            camera = self.sample_camera()
-
         court_kp_uv, court_kp_visible = self.project_court_keypoints(camera)
-
-        points_uv = None
-        points_visible = None
-        if points_3d is not None:
-            points_uv, points_visible = self.project_subject_points(points_3d, camera)
+        points_uv, points_visible = self.project_points_to_uv(points_3d, camera)
 
         camera_params = {
             "C": camera.C.tolist(),
@@ -355,14 +277,3 @@ class CameraProjector:
             points_uv=points_uv,
             points_visible=points_visible,
         )
-
-    def generate_multiple_views(
-        self,
-        points_3d: Tensor | None,
-        num_cameras: int,
-    ) -> list[CameraView]:
-        """Generate multiple camera views for a subject."""
-        views = []
-        for _ in range(num_cameras):
-            views.append(self.generate_camera_view(points_3d))
-        return views

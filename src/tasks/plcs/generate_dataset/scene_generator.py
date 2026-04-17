@@ -5,7 +5,6 @@ virtual camera configurations and projecting to 2D.
 
 Supports two motion sources:
 - AMASS/SMPL-H via ``MotionSampler`` (the original pipeline)
-- AthletePose3D via ``AthletePose3DSampler`` (pre-computed COCO17 joints)
 """
 
 from __future__ import annotations
@@ -18,9 +17,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from src.tasks.plcs.generate_dataset.sampling.athlete_pose_sampler import (
-    AthletePoseMotion,
-)
 from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSampler,
     MotionSequence,
@@ -56,7 +52,7 @@ class CameraData:
     court_kp_visible: np.ndarray  # (T, 20)
 
     # Filtering metrics
-    human_visibility_ratio: float  # Fraction of frames with sufficient human visibility
+    human_visibility_ratio: float  # Fraction of frames with at least one visible human keypoint
     court_visibility_count: float  # Average visible court keypoints
 
 
@@ -120,22 +116,17 @@ class SceneGenerator:
         # Get court keypoints (convert to numpy)
         self.court_kp_3d = None
 
-        # Parse config
-        sim_cfg = self.config.get("simulation", {})
-        self.num_cameras = sim_cfg.get("num_cameras", 15)
-        self.human_visibility_threshold = sim_cfg.get("human_visibility_threshold", 0.8)
-        self.court_visibility_threshold = sim_cfg.get("court_visibility_threshold", 15)
-
         # Camera config
         cam_cfg = self.config.get("camera", {})
         camera_config = CameraConfig(
-            z_min=cam_cfg.get("z_min", 3.0),
-            z_max=cam_cfg.get("z_max", 5.0),
-            hfov_deg=cam_cfg.get("hfov_deg", 60.0),
-            image_size=tuple(cam_cfg.get("image_size", [1280, 720])),
-            target_x_range=tuple(cam_cfg.get("target_x_range", [-2.0, 2.0])),
-            target_y_range=tuple(cam_cfg.get("target_y_range", [-2.0, 2.0])),
-            target_z_range=tuple(cam_cfg.get("target_z_range", [0.5, 1.5])),
+            z_min=float(cam_cfg.z_min),
+            z_max=float(cam_cfg.z_max),
+            hfov_deg=float(cam_cfg.hfov_deg),
+            image_size=tuple(cam_cfg.image_size),
+            fixed_look_at=tuple(cam_cfg.fixed_look_at),
+            fixed_baseline_clear_extra=float(cam_cfg.fixed_baseline_clear_extra),
+            fixed_position_noise_radius=float(cam_cfg.fixed_position_noise_radius),
+            fixed_look_at_xy_radius=float(cam_cfg.fixed_look_at_xy_radius),
         )
         self.camera_projector = CameraProjector(camera_config)
         self.image_size = self.camera_projector.config.image_size
@@ -347,9 +338,9 @@ class SceneGenerator:
             Tuple of (human_visibility_ratio, avg_court_visible).
 
         """
-        # Human: fraction of frames where configured keypoint visibility is satisfied
-        human_per_frame = human_visible.mean(axis=1)  # (T,)
-        human_ratio = (human_per_frame >= self.human_visibility_threshold).mean()
+        # Human: fraction of frames with at least one visible keypoint
+        human_per_frame = human_visible.any(axis=1)  # (T,)
+        human_ratio = human_per_frame.mean()
 
         # Court: average number of visible keypoints
         court_per_frame = court_visible.sum(axis=1)  # (T,)
@@ -417,9 +408,7 @@ class SceneGenerator:
 
         # Generate multiple cameras
         cameras_data = []
-        for _ in range(self.num_cameras):
-            camera = self.camera_projector.sample_camera()
-
+        for camera in self.camera_projector.fixed_cameras():
             # Project human keypoints
             human_uv = np.zeros((T, 17, 2), dtype=np.float32)
             human_vis = np.zeros((T, 17), dtype=bool)
@@ -465,14 +454,6 @@ class SceneGenerator:
             )
             cameras_data.append(cam_data)
 
-        # Filter cameras based on visibility criteria
-        filtered_cameras = [
-            cam
-            for cam in cameras_data
-            if cam.human_visibility_ratio >= self.human_visibility_threshold
-            and cam.court_visibility_count >= self.court_visibility_threshold
-        ]
-
         # Build metadata
         meta = {
             "scene_id": scene_id or f"scene_{random.randint(0, 999999):06d}",
@@ -484,7 +465,6 @@ class SceneGenerator:
             "initial_position": (init_x, init_y),
             "initial_yaw": init_yaw,
             "num_cameras_sampled": len(cameras_data),
-            "num_cameras_filtered": len(filtered_cameras),
         }
 
         return SceneData(
@@ -492,173 +472,5 @@ class SceneGenerator:
             position=positions,
             rotation=rotations,
             canonical_pose_3d=canonical_poses,
-            cameras=filtered_cameras,
-        )
-
-    # ------------------------------------------------------------------
-    # AthletePose3D path
-    # ------------------------------------------------------------------
-
-    def generate_scene_from_athlete_pose(
-        self,
-        motion: AthletePoseMotion,
-        scene_id: str | None = None,
-    ) -> SceneData:
-        """Generate a scene from a pre-computed AthletePose3D sequence.
-
-        The ``motion`` already contains root-relative COCO17 joints (metres)
-        and per-frame yaw.  This method places the pose on the court, projects
-        to cameras, and returns a ``SceneData`` compatible with the rest of the
-        pipeline.
-
-        Args:
-            motion: An ``AthletePoseMotion`` with ``joints_coco17`` and ``yaw``.
-            scene_id: Optional scene identifier.
-
-        Returns:
-            SceneData ready for ``PLCSDatasetWriter.save_scene()``.
-
-        """
-        T = motion.num_frames
-        coco17_local = motion.joints_coco17  # (T, 17, 3) root-relative metres
-        motion_yaw = motion.yaw  # (T,)
-
-        # --- Sample random court placement ---
-        init_x, init_y, init_yaw = self._sample_initial_pose()
-
-        yaw_offset = self._wrap_angle(np.asarray(init_yaw - motion_yaw[0]))
-        cos_off = float(np.cos(yaw_offset))
-        sin_off = float(np.sin(yaw_offset))
-
-        # Per-frame world yaw
-        relative_yaw = self._wrap_angle(motion_yaw - motion_yaw[0])
-        world_yaw = self._wrap_angle(relative_yaw + init_yaw)
-
-        # Pelvis translation: starts at (init_x, init_y); optionally drift
-        # For MoCap data we keep the pelvis stationary at the sampled spot
-        # and only add the height (~pelvis height ≈ 0.9 m).
-        _PELVIS_HEIGHT_M = 0.9
-        pelvis_world: np.ndarray = np.zeros((T, 3), dtype=np.float32)
-        pelvis_world[:, 0] = init_x
-        pelvis_world[:, 1] = init_y
-        pelvis_world[:, 2] = _PELVIS_HEIGHT_M
-
-        # Normalised court-coordinate positions
-        positions: np.ndarray = np.zeros((T, 3), dtype=np.float32)
-        positions[:, 0] = pelvis_world[:, 0] / COURT_COORD_SCALE_X
-        positions[:, 1] = pelvis_world[:, 1] / COURT_COORD_SCALE_Y
-        positions[:, 2] = pelvis_world[:, 2] / COURT_COORD_SCALE_Z
-
-        rotations: np.ndarray = np.zeros((T, 2), dtype=np.float32)
-        rotations[:, 0] = np.cos(world_yaw).astype(np.float32)
-        rotations[:, 1] = np.sin(world_yaw).astype(np.float32)
-
-        # --- Canonical pose (yaw-canonical root-relative) ---
-        # Remove *motion* yaw from local joints so the canonical pose is
-        # orientation-independent (same convention as the AMASS path).
-        cos_m = np.cos(motion_yaw).astype(np.float32)
-        sin_m = np.sin(motion_yaw).astype(np.float32)
-        canonical = np.empty_like(coco17_local)
-        canonical[..., 0] = (
-            coco17_local[..., 0] * cos_m[:, None]
-            + coco17_local[..., 1] * sin_m[:, None]
-        )
-        canonical[..., 1] = (
-            -coco17_local[..., 0] * sin_m[:, None]
-            + coco17_local[..., 1] * cos_m[:, None]
-        )
-        canonical[..., 2] = coco17_local[..., 2]
-
-        # --- Reconstruct world-space COCO17 joints for camera projection ---
-        cos_w = np.cos(world_yaw).astype(np.float32)
-        sin_w = np.sin(world_yaw).astype(np.float32)
-        world_joints = np.empty_like(canonical)
-        world_joints[..., 0] = (
-            canonical[..., 0] * cos_w[:, None]
-            - canonical[..., 1] * sin_w[:, None]
-            + pelvis_world[:, None, 0]
-        )
-        world_joints[..., 1] = (
-            canonical[..., 0] * sin_w[:, None]
-            + canonical[..., 1] * cos_w[:, None]
-            + pelvis_world[:, None, 1]
-        )
-        world_joints[..., 2] = canonical[..., 2] + pelvis_world[:, None, 2]
-
-        # --- Camera generation & projection (same as AMASS path) ---
-        if self.court_kp_3d is None:
-            self.court_kp_3d = self.camera_projector.court_kp_3d.numpy()
-        court_3d = self.court_kp_3d
-
-        cameras_data: list[CameraData] = []
-        for _ in range(self.num_cameras):
-            camera = self.camera_projector.sample_camera()
-
-            human_uv: np.ndarray = np.zeros((T, 17, 2), dtype=np.float32)
-            human_vis: np.ndarray = np.zeros((T, 17), dtype=bool)
-            for t in range(T):
-                points_t = torch.from_numpy(world_joints[t]).float()
-                uv_t, vis_t = self.camera_projector.project_points_to_uv(
-                    points_t, camera,
-                )
-                human_uv[t] = uv_t.numpy()
-                human_vis[t] = vis_t.numpy()
-
-            court_points = torch.from_numpy(court_3d).float()
-            court_uv_s, court_vis_s = self.camera_projector.project_points_to_uv(
-                court_points, camera,
-            )
-            court_uv = np.tile(court_uv_s.numpy()[None, ...], (T, 1, 1))
-            court_vis = np.tile(court_vis_s.numpy()[None, ...], (T, 1))
-
-            human_ratio, avg_court = self._evaluate_camera(human_vis, court_vis)
-
-            cameras_data.append(
-                CameraData(
-                    camera_params={
-                        "C": camera.C.tolist(),
-                        "R": camera.R.tolist(),
-                        "f": camera.f,
-                        "cx": camera.cx,
-                        "cy": camera.cy,
-                        "w": camera.w,
-                        "h": camera.h,
-                        "image_size": self.image_size,
-                    },
-                    human_kp_uv=human_uv,
-                    court_kp_uv=court_uv,
-                    human_kp_visible=human_vis,
-                    court_kp_visible=court_vis,
-                    human_visibility_ratio=human_ratio,
-                    court_visibility_count=avg_court,
-                )
-            )
-
-        filtered_cameras = [
-            cam
-            for cam in cameras_data
-            if cam.human_visibility_ratio >= self.human_visibility_threshold
-            and cam.court_visibility_count >= self.court_visibility_threshold
-        ]
-
-        meta = {
-            "scene_id": scene_id or f"scene_{random.randint(0, 999999):06d}",
-            "motion_source": motion.source_path,
-            "motion_category": "athlete_pose_3d",
-            "gender": "neutral",
-            "fps": motion.fps,
-            "num_frames": T,
-            "initial_position": (init_x, init_y),
-            "initial_yaw": float(init_yaw),
-            "num_cameras_sampled": len(cameras_data),
-            "num_cameras_filtered": len(filtered_cameras),
-        }
-
-        return SceneData(
-            meta=meta,
-            position=positions,
-            rotation=rotations,
-            canonical_pose_3d=canonical,
-            human_kp_3d=world_joints,
-            cameras=filtered_cameras,
+            cameras=cameras_data,
         )

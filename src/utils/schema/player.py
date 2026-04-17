@@ -181,35 +181,6 @@ SMPLH_TO_COCO17_MAPPING: dict[int, int] = {
     16: 8,  # right_ankle
 }
 
-# Human3.6M 17-joint to COCO 17 mapping
-# H3.6M: 0=pelvis, 1=R_hip, 2=R_knee, 3=R_ankle, 4=L_hip, 5=L_knee,
-#         6=L_ankle, 7=spine, 8=neck, 9=head, 10=head_top, 11=L_shoulder,
-#         12=L_elbow, 13=L_wrist, 14=R_shoulder, 15=R_elbow, 16=R_wrist
-# COCO index -> H3.6M index (or -1 for computed from head)
-H36M_TO_COCO17_MAPPING: dict[int, int] = {
-    0: -1,  # nose -> computed from head
-    1: -1,  # left_eye -> computed from head
-    2: -1,  # right_eye -> computed from head
-    3: -1,  # left_ear -> computed from head
-    4: -1,  # right_ear -> computed from head
-    5: 11,  # left_shoulder
-    6: 14,  # right_shoulder
-    7: 12,  # left_elbow
-    8: 15,  # right_elbow
-    9: 13,  # left_wrist
-    10: 16,  # right_wrist
-    11: 4,  # left_hip
-    12: 1,  # right_hip
-    13: 5,  # left_knee
-    14: 2,  # right_knee
-    15: 6,  # left_ankle
-    16: 3,  # right_ankle
-}
-
-# H3.6M joint index for the head (used for face keypoint synthesis)
-H36M_HEAD_JOINT: int = 9
-H36M_HEAD_TOP_JOINT: int = 10
-
 # Face keypoint offsets from head joint (in local head coordinate frame)
 # These are approximate offsets to generate face keypoints from head center
 FACE_KEYPOINT_OFFSETS: dict[int, tuple[float, float, float]] = {

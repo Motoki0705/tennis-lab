@@ -152,8 +152,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         {
             "total_cameras": total_cameras,
             "avg_cameras_per_scene": stats["avg_cameras"],
-            "human_visibility_threshold": scene_generator.human_visibility_threshold,
-            "court_visibility_threshold": scene_generator.court_visibility_threshold,
         }
     )
     writer.save_split_info(
