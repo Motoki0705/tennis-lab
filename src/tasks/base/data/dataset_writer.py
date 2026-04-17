@@ -158,25 +158,3 @@ class BaseDatasetWriter(ABC):
             len(self.scene_records),
             total_cameras,
         )
-
-    def save_dataset_info(self, stats: dict) -> None:
-        """Save dataset statistics and metadata.
-
-        Args:
-            stats: Statistics from generator (module-specific).
-
-        """
-        # Build base info
-        info = {
-            "total_scenes": len(self.scene_records),
-            "total_cameras": stats.get("total_cameras", 0),
-            "avg_cameras_per_scene": stats.get("avg_cameras_per_scene", 0),
-        }
-
-        # Add all additional stats from the generator
-        info.update(stats)
-
-        with open(self.output_dir / "dataset_info.json", "w") as f:
-            json.dump(info, f, indent=2)
-
-        logger.info("Dataset info saved: %s scenes", len(self.scene_records))
