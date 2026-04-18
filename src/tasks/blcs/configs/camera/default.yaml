@@ -6,6 +6,6 @@ fixed_look_at: [0.0, 0.0, 0.0]
 # Additional Y-axis buffer on top of BASELINE_CLEAR.
 fixed_baseline_clear_extra: 0.0
 # Volume-uniform center perturbation radius for each fixed camera (metres).
-fixed_position_noise_radius: 2.0
+fixed_position_noise_radius: 1.5
 # Area-uniform look-at target radius on the z=0 court plane (metres).
 fixed_look_at_xy_radius: 1.0
