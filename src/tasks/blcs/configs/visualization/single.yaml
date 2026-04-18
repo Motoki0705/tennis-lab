@@ -6,4 +6,4 @@ animation_view: 3d   # 3d | 2d (create_comparison_animation)
 fps: 30
 save: null           # Optional output file for comparison animation (e.g., .mp4, .gif)
 info: false
-checkpoint: checkpoints/blcs/single/last.ckpt
+checkpoint: checkpoints/blcs/single/logs/version_0/last.ckpt
