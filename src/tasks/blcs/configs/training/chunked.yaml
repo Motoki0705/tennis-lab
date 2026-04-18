@@ -1,6 +1,6 @@
 # ---- Trainer (Lightning Trainer settings) ----
 trainer:
-  max_epochs: 50
+  max_epochs: 200
   gradient_clip_val: 1.0
   deterministic: true
   precision: "bf16-mixed"
@@ -16,10 +16,10 @@ min_lr: 1.0e-6
 
 # ---- Loss weights ----
 position_loss_weight: 1.0
-velocity_loss_weight: 0.0
-smoothness_loss_weight: 0.0
-reprojection_loss_weight: 0.0
-uv_velocity_loss_weight: 0.0
+velocity_loss_weight: 0.5
+smoothness_loss_weight: 0.1
+reprojection_loss_weight: 0.1
+uv_velocity_loss_weight: 0.1
 
 # ---- Callbacks (BaseTrainingRunner references) ----
 checkpoint:
