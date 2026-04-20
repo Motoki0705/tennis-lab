@@ -52,8 +52,6 @@ def load_scene(filepath: str | Path) -> dict[str, Any]:
         params = scalars[f"{prefix}params"]
         if isinstance(params, str):
             params = json.loads(params)
-        if "C" not in params and "center" in params:
-            params["C"] = params.pop("center")
         cam_data = AttrDict(
             params=params,
             human_kp_uv=np.load(scene_dir / f"{prefix}human_kp_uv.npy"),
