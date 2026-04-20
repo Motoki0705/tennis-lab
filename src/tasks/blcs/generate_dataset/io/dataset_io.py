@@ -161,8 +161,6 @@ def load_scene(filepath: str | Path) -> dict:
         params = scalars[f"{prefix}params"]
         if isinstance(params, str):
             params = json.loads(params)
-        if "C" not in params and "center" in params:
-            params["C"] = params.pop("center")
         cam_data = {
             "params": params,
             "ball_uv": np.load(scene_dir / f"{prefix}ball_uv.npy"),
