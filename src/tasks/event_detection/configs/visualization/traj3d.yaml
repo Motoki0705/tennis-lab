@@ -2,7 +2,7 @@
 task: traj3d  # uv | traj3d
 
 mode: predict  # visualize | predict
-scene_path: data/blcs/scenes/rally_000000.npz
+scene_path: data/blcs/scenes/scene_000000
 
 fps: 30.0
 save: assets/event_detection/traj3d/gt_vs_pred.gif

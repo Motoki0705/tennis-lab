@@ -3,9 +3,9 @@
 from src.tasks.base.data import (
     BaseDatasetWriter,
     CameraSelection,
-    NPZScene,
-    NPZSceneDatasetBase,
-    NPZSceneHeader,
+    Scene,
+    SceneDatasetBase,
+    SceneHeader,
     SceneDatasetConfig,
     TemporalWindow,
 )
@@ -17,9 +17,9 @@ __all__ = [
     "BaseLightningModule",
     "BasePredictor",
     "CameraSelection",
-    "NPZScene",
-    "NPZSceneDatasetBase",
-    "NPZSceneHeader",
+    "Scene",
+    "SceneDatasetBase",
+    "SceneHeader",
     "SceneDatasetConfig",
     "TemporalWindow",
 ]

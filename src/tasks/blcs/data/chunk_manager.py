@@ -251,7 +251,7 @@ class ChunkManager:
                 scene_count += 1
 
         # Write a train.txt split file listing all scenes (used by the dataset).
-        scene_files = sorted(p.name for p in info.path.glob("scenes/*.npz"))
+        scene_files = sorted(p.name for p in info.path.glob("scenes/scene_*") if p.is_dir())
         train_file = info.path / "train.txt"
         train_file.write_text("\n".join(scene_files) + "\n")
 

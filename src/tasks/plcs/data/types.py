@@ -138,9 +138,9 @@ class PLCSMultiViewSequenceBatchCollated(TypedDict):
 
 @dataclass(frozen=True)
 class PLCSSceneMeta:
-    """Metadata schema for PLCS NPZ scene files.
+    """Metadata schema for PLCS scene files.
 
-    This defines the structure of the 'meta' field stored as JSON in NPZ files.
+    This defines the structure of the 'meta' field stored as meta.json in scene directories.
     All generated scenes should conform to this schema.
     """
 
