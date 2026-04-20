@@ -14,8 +14,9 @@ from src.tasks.blcs.training.runner import BLCSTrainingRunner
 from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
 from src.tasks.event_detection.training.runner import EventDetectionTrainingRunner
 from src.tasks.plcs.training.runner import PLCSTrainingRunner
-from src.tasks.trajectory_completion.training.runner import TrajectoryCompletionTrainingRunner
-
+from src.tasks.trajectory_completion.training.runner import (
+    TrajectoryCompletionTrainingRunner,
+)
 
 RunnerFactory = Any  # Callable[[DictConfig], runner_instance]
 
@@ -29,6 +30,7 @@ class SmokeCase:
     overrides: tuple[str, ...]
     supports_test_phase: bool
     expect_qualitative: bool
+    expect_gan_training: bool = False
     runner_factory: RunnerFactory | None = None
 
 
@@ -36,6 +38,7 @@ class SmokeCase:
 class SmokeVariant:
     name: str
     overrides: tuple[str, ...] = ()
+    expect_gan_training: bool = False
 
 
 @dataclass(frozen=True)
@@ -101,6 +104,21 @@ SMOKE_TASK_SPECS = (
         ),
         variants=(
             SmokeVariant(name="single"),
+            SmokeVariant(
+                name="single_gan",
+                overrides=(
+                    "training/gan=lsgan",
+                    "training.trainer.max_epochs=2",
+                    "training.gan.transition.patience=0",
+                    "training.gan.warmup_epochs=1",
+                    "training.gan.discriminator.hidden_dim=32",
+                    "training.gan.discriminator.num_layers=2",
+                    "training.gan.discriminator.num_heads=4",
+                    "training.gan.discriminator.ffn_dim=64",
+                    "training.gan.discriminator.max_seq_len=64",
+                ),
+                expect_gan_training=True,
+            ),
             SmokeVariant(
                 name="multiview",
                 overrides=(
@@ -237,7 +255,24 @@ SMOKE_TASK_SPECS = (
             "model.ffn_dim=64",
             "model.max_seq_len=64",
         ),
-        variants=(SmokeVariant(name="multiview"),),
+        variants=(
+            SmokeVariant(name="multiview"),
+            SmokeVariant(
+                name="multiview_gan",
+                overrides=(
+                    "training/gan=lsgan",
+                    "training.trainer.max_epochs=2",
+                    "training.gan.transition.patience=0",
+                    "training.gan.warmup_epochs=1",
+                    "training.gan.discriminator.hidden_dim=32",
+                    "training.gan.discriminator.num_layers=2",
+                    "training.gan.discriminator.num_heads=4",
+                    "training.gan.discriminator.ffn_dim=64",
+                    "training.gan.discriminator.max_seq_len=64",
+                ),
+                expect_gan_training=True,
+            ),
+        ),
         supports_test_phase=True,
         expect_qualitative=True,
         runner_factory=_blcs_chunked_runner_factory,
@@ -294,6 +329,7 @@ def _build_smoke_cases(task_specs: tuple[SmokeTaskSpec, ...]) -> tuple[SmokeCase
                     ),
                     supports_test_phase=task_spec.supports_test_phase,
                     expect_qualitative=task_spec.expect_qualitative,
+                    expect_gan_training=variant.expect_gan_training,
                     runner_factory=task_spec.runner_factory,
                 )
             )
@@ -346,6 +382,23 @@ def _assert_common_artifacts(output_dir: Path, *, expect_qualitative: bool) -> N
         assert not qualitative_dir.exists()
 
 
+def _assert_gan_training(case: SmokeCase, callbacks: list[Any], lightning_module: Any) -> None:
+    if not case.expect_gan_training:
+        return
+
+    from src.tasks.blcs.training.gan_transition_callback import GANTransitionCallback
+
+    gan_callbacks = [cb for cb in callbacks if isinstance(cb, GANTransitionCallback)]
+    assert gan_callbacks
+
+    gan_callback = gan_callbacks[0]
+    assert gan_callback.has_switched_to_gan
+    assert lightning_module.gan_phase_active
+    assert lightning_module.supervised_only_step_count > 0
+    assert lightning_module.hybrid_gan_step_count > 0
+    assert lightning_module.current_gan_weight > 0
+
+
 @pytest.mark.integration
 @pytest.mark.local_data
 @pytest.mark.slow
@@ -371,6 +424,7 @@ def test_scene_training_smoke_contracts(case: SmokeCase, tmp_path: Path) -> None
     trainer = runner.build_trainer(config, callbacks, logger)
 
     trainer.fit(lightning_module, datamodule=datamodule)
+    _assert_gan_training(case, callbacks, lightning_module)
 
     if case.supports_test_phase:
         trainer.test(lightning_module, datamodule=datamodule)

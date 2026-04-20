@@ -8,6 +8,7 @@ from torch import nn
 
 from src.tasks.blcs.models.blcs_model import BLCSModel
 from src.tasks.blcs.models.blcs_multiview_model import BLCSMultiViewModel
+from src.tasks.blcs.models.discriminators import build_blcs_discriminator
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -30,5 +31,6 @@ def build_blcs_model(config: DictConfig) -> nn.Module:
 __all__ = [
     "BLCSModel",
     "BLCSMultiViewModel",
+    "build_blcs_discriminator",
     "build_blcs_model",
 ]

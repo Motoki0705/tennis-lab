@@ -1,7 +1,7 @@
 defaults:
   - model: multiview
   - data: chunked_multi
-  - training: default
+  - training: chunked
   - metrics: default
   - run: train
   - physics: default
