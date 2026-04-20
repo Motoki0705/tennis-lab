@@ -1,5 +1,5 @@
 mode: visualize  # visualize | predict
-scene_path: data/blcs/scenes/scene_000000.npz
+scene_path: data/blcs/scenes/scene_000000
 # Single-view camera index used to build predictor input.
 camera: 0
 animation_view: 3d   # 3d | 2d (create_comparison_animation)

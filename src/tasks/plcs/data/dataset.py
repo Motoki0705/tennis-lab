@@ -9,7 +9,7 @@ import torch
 from torch import Tensor
 
 from src.utils.data.augmentation import augment_keypoints
-from src.tasks.base.data.scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
+from src.tasks.base.data.scene_dataset import Scene, SceneDatasetBase, SceneDatasetConfig
 from src.tasks.plcs.data.targets import build_coco17_world_targets
 from src.tasks.plcs.data.types import PLCSBatch
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
+class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
     """Unified PLCS dataset – scene-level indexing.
 
     Returns per-sample tensors with camera-time ordering:
@@ -97,7 +97,7 @@ class SceneDataset(NPZSceneDatasetBase[dict[str, Tensor]]):
             crop_mode=("random" if self.augment else "center"),
         )
 
-    def build_sample(self, scene: NPZScene) -> dict[str, Tensor]:
+    def build_sample(self, scene: Scene) -> dict[str, Tensor]:
         cams = self.select_cameras(
             scene,
             num_views_range=self._plcs_num_views_range,

@@ -6,7 +6,7 @@ Usage:
 
 Notes:
     - Configuration is loaded from `src/tasks/plcs/configs/analyze_dataset_distribution.yaml`.
-    - The script summarizes position, yaw, and camera statistics from PLCS scene NPZ files.
+    - The script summarizes position, yaw, and camera statistics from PLCS scene directories.
     - The script uses Hydra for configuration loading.
 """
 
@@ -93,19 +93,11 @@ def _prepare_paths(cfg: DictConfig) -> DictConfig:
     return cfg
 
 
-def _decode_npz_json(item: Any) -> Any:
-    if isinstance(item, (bytes, bytearray)):
-        item = item.decode("utf-8")
-    if isinstance(item, str):
-        return json.loads(item)
-    return item
-
-
 def _iter_scene_files(scene_dir: Path) -> list[Path]:
     scenes_subdir = scene_dir / "scenes"
-    files = sorted(scenes_subdir.glob("scene_*.npz"))
+    files = sorted(p for p in scenes_subdir.iterdir() if p.is_dir() and p.name.startswith("scene_"))
     if not files:
-        raise ValueError(f"No scene files found in {scenes_subdir}")
+        raise ValueError(f"No scene directories found in {scenes_subdir}")
     return files
 
 
@@ -213,79 +205,86 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         total_scenes_used = 0
 
         for scene_path in scene_files:
-            with np.load(scene_path, allow_pickle=True) as data:
-                meta = _decode_npz_json(data["meta"].item())
-                if not isinstance(meta, dict):
-                    raise ValueError(f"Invalid meta in {scene_path}")
+            meta_path = scene_path / "meta.json"
+            if not meta_path.exists():
+                raise ValueError(f"Missing meta.json in {scene_path}")
+            with open(meta_path) as mf:
+                meta = json.load(mf)
+            if not isinstance(meta, dict):
+                raise ValueError(f"Invalid meta in {scene_path}")
 
-                scene_id = str(meta.get("scene_id", scene_path.stem))
-                init_x, init_y, init_z = _safe_initial_xyz(meta)
-                init_yaw = float(meta.get("initial_yaw", float("nan")))
+            scalars_path = scene_path / "scalars.json"
+            scalars: dict[str, Any] = {}
+            if scalars_path.exists():
+                with open(scalars_path) as sf:
+                    scalars = json.load(sf)
 
-                num_frames = int(meta.get("num_frames", int(data["position"].shape[0])))
-                if "num_cameras" in data.files:
-                    num_cameras = int(np.asarray(data["num_cameras"]).item())
-                else:
-                    num_cameras = 0
+            scene_id = str(meta.get("scene_id", scene_path.stem))
+            init_x, init_y, init_z = _safe_initial_xyz(meta)
+            init_yaw = float(meta.get("initial_yaw", float("nan")))
 
-                writer.writerow(
-                    [
-                        scene_id,
-                        init_x,
-                        init_y,
-                        init_z,
-                        init_yaw,
-                        num_cameras,
-                        num_frames,
-                    ]
-                )
+            position_path = scene_path / "position.npy"
+            num_frames = int(meta.get("num_frames", int(np.load(position_path, mmap_mode="r").shape[0])))
+            num_cameras = int(scalars.get("num_cameras", 0))
 
-                num_cameras_stats.update(np.asarray([num_cameras], dtype=np.float64))
+            writer.writerow(
+                [
+                    scene_id,
+                    init_x,
+                    init_y,
+                    init_z,
+                    init_yaw,
+                    num_cameras,
+                    num_frames,
+                ]
+            )
 
-                if mode == "initial_only":
-                    total_scenes_used += 1
-                    continue
+            num_cameras_stats.update(np.asarray([num_cameras], dtype=np.float64))
 
-                pos_norm = np.asarray(data["position"], dtype=np.float64)  # (T, 3)
-                rot = np.asarray(data["rotation"], dtype=np.float64)  # (T, 2) as (cos, sin)
-
-                if max_frames_per_scene is not None and pos_norm.shape[0] > max_frames_per_scene:
-                    idx = np.random.choice(pos_norm.shape[0], size=max_frames_per_scene, replace=False)
-                    pos_norm = pos_norm[idx]
-                    rot = rot[idx]
-
-                pos_m = pos_norm * scale_xyz
-                x = pos_m[:, 0]
-                y = pos_m[:, 1]
-                z = pos_m[:, 2]
-
-                xy_r = np.sqrt(x * x + y * y)
-                xyz_r = np.sqrt(x * x + y * y + z * z)
-
-                x_stats.update(x)
-                y_stats.update(y)
-                z_stats.update(z)
-                xy_radius_stats.update(xy_r)
-                xyz_radius_stats.update(xyz_r)
-
-                for t in thresholds:
-                    xy_within_counts[t] += int((xy_r <= t).sum())
-                    xyz_within_counts[t] += int((xyz_r <= t).sum())
-
-                yaw = np.arctan2(rot[:, 1], rot[:, 0])
-                yaw_stats.update(yaw)
-                yaw_sum_sin += float(np.sin(yaw).sum())
-                yaw_sum_cos += float(np.cos(yaw).sum())
-                yaw_count += int(yaw.size)
-
-                h2d, _, _ = np.histogram2d(x, y, bins=[x_edges, y_edges])
-                xy_hist += h2d.astype(np.int64)
-
-                h1d, _ = np.histogram(yaw, bins=yaw_edges)
-                yaw_hist += h1d.astype(np.int64)
-
-                total_frames_used += int(pos_m.shape[0])
+            if mode == "initial_only":
                 total_scenes_used += 1
+                continue
+
+            pos_norm = np.asarray(np.load(scene_path / "position.npy"), dtype=np.float64)  # (T, 3)
+            rot = np.asarray(np.load(scene_path / "rotation.npy"), dtype=np.float64)  # (T, 2) as (cos, sin)
+
+            if max_frames_per_scene is not None and pos_norm.shape[0] > max_frames_per_scene:
+                idx = np.random.choice(pos_norm.shape[0], size=max_frames_per_scene, replace=False)
+                pos_norm = pos_norm[idx]
+                rot = rot[idx]
+
+            pos_m = pos_norm * scale_xyz
+            x = pos_m[:, 0]
+            y = pos_m[:, 1]
+            z = pos_m[:, 2]
+
+            xy_r = np.sqrt(x * x + y * y)
+            xyz_r = np.sqrt(x * x + y * y + z * z)
+
+            x_stats.update(x)
+            y_stats.update(y)
+            z_stats.update(z)
+            xy_radius_stats.update(xy_r)
+            xyz_radius_stats.update(xyz_r)
+
+            for t in thresholds:
+                xy_within_counts[t] += int((xy_r <= t).sum())
+                xyz_within_counts[t] += int((xyz_r <= t).sum())
+
+            yaw = np.arctan2(rot[:, 1], rot[:, 0])
+            yaw_stats.update(yaw)
+            yaw_sum_sin += float(np.sin(yaw).sum())
+            yaw_sum_cos += float(np.cos(yaw).sum())
+            yaw_count += int(yaw.size)
+
+            h2d, _, _ = np.histogram2d(x, y, bins=[x_edges, y_edges])
+            xy_hist += h2d.astype(np.int64)
+
+            h1d, _ = np.histogram(yaw, bins=yaw_edges)
+            yaw_hist += h1d.astype(np.int64)
+
+            total_frames_used += int(pos_m.shape[0])
+            total_scenes_used += 1
 
     xy_within_frac = (
         {str(t): (xy_within_counts[t] / total_frames_used if total_frames_used else None) for t in thresholds}

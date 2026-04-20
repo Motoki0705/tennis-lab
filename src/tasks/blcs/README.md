@@ -96,7 +96,7 @@ python -m src.tasks.blcs.scripts.visualize \
 # マルチビュー（GT vs Prediction 比較アニメーション）
 python -m src.tasks.blcs.scripts.visualize \
     visualization=multiview \
-    visualization.scene_path=data/blcs/scenes/scene_000003.npz \
+    visualization.scene_path=data/blcs/scenes/scene_000003 \
     visualization.mode=predict \
     visualization.checkpoint=outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt \
     visualization.cameras=all

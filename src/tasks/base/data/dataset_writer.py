@@ -1,4 +1,4 @@
-"""Base dataset writer for NPZ-based datasets.
+"""Base dataset writer for npy + json scene datasets.
 
 This module provides a common base class for dataset writers used in PLCS and BLCS,
 reducing code duplication and ensuring consistency across dataset generation.
@@ -16,9 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 class BaseDatasetWriter(ABC):
-    """Base class for NPZ dataset writers (PLCS/BLCS unified format).
+    """Base class for scene dataset writers (PLCS/BLCS unified format).
 
-    Provides common functionality for:
+    Each scene is saved as a directory containing npy array files and json
+    metadata files.  Provides common functionality for:
     - Directory management
     - Train/val/test split generation
     - Metadata JSON generation
@@ -47,7 +48,7 @@ class BaseDatasetWriter(ABC):
 
     @abstractmethod
     def save_scene(self, scene_data) -> Path:  # type: ignore[no-untyped-def]
-        """Save a single scene to npz file.
+        """Save a single scene as a directory with npy + json files.
 
         This method must be implemented by subclasses to handle module-specific
         data structures (PLCS vs BLCS).
@@ -56,7 +57,7 @@ class BaseDatasetWriter(ABC):
             scene_data: Scene data to save (module-specific type).
 
         Returns:
-            Path to saved NPZ file.
+            Path to saved scene directory.
 
         """
         pass

@@ -1,7 +1,7 @@
 """Datasets for UV trajectory completion.
 
-Primary dataset reads BLCS rally scenes saved as NPZ files and creates
-corrupted inputs (noise + masking) paired with the original UV trajectory.
+Primary dataset reads BLCS rally scenes saved as directories (npy + json)
+and creates corrupted inputs (noise + masking) paired with the original UV trajectory.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.tasks.base.data.scene_dataset import NPZScene, NPZSceneDatasetBase
+from src.tasks.base.data.scene_dataset import Scene, SceneDatasetBase
 from src.tasks.trajectory_completion.data.argument import TrajectoryArgumenter
 from src.utils.data.event_utils import extract_event_frames
 from src.tasks.trajectory_completion.data.types import TrajectoryCompletionSample
@@ -37,8 +37,8 @@ def _build_valid_mask(T: int, seq_len: Tensor) -> Tensor:
     return t < seq_len.to(torch.long)
 
 
-class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletionSample]):
-    """Trajectory completion dataset backed by BLCS rally scenes (npz)."""
+class BLCSUVTrajectoryCompletionDataset(SceneDatasetBase[TrajectoryCompletionSample]):
+    """Trajectory completion dataset backed by BLCS rally scenes."""
 
     def __init__(
         self,
@@ -78,7 +78,7 @@ class BLCSUVTrajectoryCompletionDataset(NPZSceneDatasetBase[TrajectoryCompletion
         # Number of court keypoints to use (first N from the canonical order)
         self.num_court_kp = _validate_num_court_kp(data_cfg.get("num_court_kp", 20))
 
-    def build_sample(self, scene: NPZScene) -> TrajectoryCompletionSample:
+    def build_sample(self, scene: Scene) -> TrajectoryCompletionSample:
         cam_idx = self.select_camera(scene)
         ball_uv_full = scene.get_camera_array(cam_idx, "ball_uv")
         full_len = scene.effective_num_frames(int(ball_uv_full.shape[0]))

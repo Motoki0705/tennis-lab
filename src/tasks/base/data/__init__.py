@@ -3,9 +3,9 @@
 from src.tasks.base.data.dataset_writer import BaseDatasetWriter
 from src.tasks.base.data.scene_dataset import (
     CameraSelection,
-    NPZScene,
-    NPZSceneDatasetBase,
-    NPZSceneHeader,
+    Scene,
+    SceneDatasetBase,
+    SceneHeader,
     SceneDatasetConfig,
     TemporalWindow,
 )
@@ -13,9 +13,9 @@ from src.tasks.base.data.scene_dataset import (
 __all__ = [
     "BaseDatasetWriter",
     "CameraSelection",
-    "NPZScene",
-    "NPZSceneDatasetBase",
-    "NPZSceneHeader",
+    "Scene",
+    "SceneDatasetBase",
+    "SceneHeader",
     "SceneDatasetConfig",
     "TemporalWindow",
 ]

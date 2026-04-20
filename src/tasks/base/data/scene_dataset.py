@@ -1,8 +1,12 @@
-"""Base dataset utilities for NPZ scene loading.
+"""Base dataset utilities for scene loading.
 
-Provides :class:`NPZSceneDatasetBase`, the abstract dataset that both PLCS and
+Provides :class:`SceneDatasetBase`, the abstract dataset that both PLCS and
 BLCS concrete datasets inherit from, along with supporting dataclasses
-(:class:`NPZScene`, :class:`TemporalWindow`, :class:`CameraSelection`, etc.).
+(:class:`Scene`, :class:`TemporalWindow`, :class:`CameraSelection`, etc.).
+
+Scenes are stored as directories containing .npy array files and .json
+metadata/scalar files. Arrays are loaded via ``numpy.load`` with
+``mmap_mode="r"`` for zero-copy access where possible.
 """
 
 from __future__ import annotations
@@ -19,18 +23,40 @@ from torch.utils.data import Dataset
 SampleT = TypeVar("SampleT")
 
 
-def _load_npz_payload(scene_path: Path) -> dict[str, Any]:
-    """Load a full NPZ payload as copied arrays/scalars."""
+def _load_scene_payload(scene_path: Path) -> dict[str, Any]:
+    """Load all arrays and scalars from a scene directory.
+
+    Arrays are loaded as mmap-backed numpy arrays (zero-copy).
+    Scalars and metadata are read from JSON files.
+    """
     payload: dict[str, Any] = {}
-    with np.load(scene_path, allow_pickle=True) as data:
-        for key in data.files:
-            payload[key] = data[key].copy()
+
+    # Load scalars.json
+    scalars_path = scene_path / "scalars.json"
+    if scalars_path.exists():
+        with open(scalars_path) as f:
+            scalars = json.load(f)
+        for key, value in scalars.items():
+            payload[key] = value
+
+    # Load meta.json as a JSON string (to match the old "meta" key convention)
+    meta_path = scene_path / "meta.json"
+    if meta_path.exists():
+        with open(meta_path) as f:
+            meta = json.load(f)
+        payload["meta"] = meta
+
+    # Load all .npy files with mmap
+    for npy_file in scene_path.glob("*.npy"):
+        key = npy_file.stem
+        payload[key] = np.load(npy_file, mmap_mode="r")
+
     return payload
 
 
 @dataclass(frozen=True)
 class SceneDatasetConfig:
-    """Configuration shared by NPZ scene datasets (split-file only)."""
+    """Configuration shared by scene datasets (split-file only)."""
 
     scene_dir: Path
     split_file: Path
@@ -43,7 +69,7 @@ class SceneDatasetConfig:
 
 
 @dataclass(frozen=True)
-class NPZSceneHeader:
+class SceneHeader:
     """Lightweight header for scene filtering/indexing."""
 
     path: Path
@@ -85,8 +111,8 @@ class CameraSelection:
 
 
 @dataclass(frozen=True)
-class NPZScene:
-    """Loaded NPZ scene payload with generic accessors.
+class Scene:
+    """Loaded scene payload with generic accessors.
 
     Task-specific code should use :meth:`get_camera_array` and
     :meth:`get_array` instead of reaching into :attr:`data` directly.
@@ -99,14 +125,14 @@ class NPZScene:
     num_cameras: int
 
     def has_key(self, key: str) -> bool:
-        """Check whether *key* exists in the NPZ payload."""
+        """Check whether *key* exists in the scene payload."""
         return key in self.data
 
     def require_key(self, key: str) -> None:
         """Raise :class:`KeyError` if *key* is not in the payload."""
         if key not in self.data:
             available = ", ".join(sorted(self.data.keys()))
-            raise KeyError(f"Missing NPZ key '{key}' in {self.path}. Available: {available}")
+            raise KeyError(f"Missing key '{key}' in {self.path}. Available: {available}")
 
     @property
     def scene_id(self) -> str | None:
@@ -168,7 +194,7 @@ class NPZScene:
         if window is None:
             return arr
         if arr.ndim == 0:
-            raise ValueError(f"NPZ key '{key}' is scalar and cannot be temporally sliced.")
+            raise ValueError(f"Key '{key}' is scalar and cannot be temporally sliced.")
         return arr[window.sl].copy()
 
     # ------------------------------------------------------------------
@@ -204,7 +230,7 @@ class NPZScene:
         """Return a scene-level array, optionally sliced by *window*.
 
         Args:
-            key: NPZ payload key (e.g. ``"ball_pos_norm"``, ``"position"``).
+            key: Scene payload key (e.g. ``"ball_pos_norm"``, ``"position"``).
             window: Optional temporal window for slicing.
 
         Returns:
@@ -213,8 +239,8 @@ class NPZScene:
         return self._copy_temporal_array(key, window=window)
 
 
-class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
-    """Base dataset for NPZ scene files.
+class SceneDatasetBase(Dataset, Generic[SampleT]):
+    """Base dataset for scene directories (npy + json format).
 
     Subclass __init__ follows a unified 5-step flow:
 
@@ -425,23 +451,46 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
 
         return meta_num
 
-    def _extract_scene_header(self, path: Path) -> NPZSceneHeader:
-        with np.load(path, allow_pickle=True, mmap_mode="r") as npz:
-            payload = {k: npz[k] for k in npz.files}
-            meta = self._decode_meta(payload.get("meta", {}))
-            num_frames = self._resolve_num_frames(path=path, meta=meta, payload=payload)
-            try:
-                num_cameras = int(np.asarray(payload["num_cameras"]).item())
-            except Exception:
-                num_cameras = 0
-        return NPZSceneHeader(
+    def _extract_scene_header(self, path: Path) -> SceneHeader:
+        """Extract a lightweight header from a scene directory.
+
+        Reads only meta.json and scalars.json to determine num_frames
+        and num_cameras without loading full array data.
+        """
+        meta: dict[str, Any] = {}
+        meta_path = path / "meta.json"
+        if meta_path.exists():
+            with open(meta_path) as f:
+                meta = json.load(f)
+
+        scalars: dict[str, Any] = {}
+        scalars_path = path / "scalars.json"
+        if scalars_path.exists():
+            with open(scalars_path) as f:
+                scalars = json.load(f)
+
+        # Build a minimal payload for fallback num_frames resolution.
+        # Load only npy headers (no full data) for shape inspection.
+        payload: dict[str, Any] = dict(scalars)
+        payload["meta"] = meta
+        for npy_file in path.glob("*.npy"):
+            # Load with mmap to avoid reading full data
+            payload[npy_file.stem] = np.load(npy_file, mmap_mode="r")
+
+        num_frames = self._resolve_num_frames(path=path, meta=meta, payload=payload)
+        try:
+            num_cameras = int(scalars.get("num_cameras", 0))
+        except (TypeError, ValueError):
+            num_cameras = 0
+
+        return SceneHeader(
             path=path,
             meta=dict(meta),
             num_frames=max(0, int(num_frames)),
             num_cameras=max(0, int(num_cameras)),
         )
 
-    def _index_scene_headers(self, paths: list[Path]) -> list[NPZSceneHeader]:
+    def _index_scene_headers(self, paths: list[Path]) -> list[SceneHeader]:
         return [self._extract_scene_header(path) for path in paths]
 
     def _required_min_frames(self) -> int:
@@ -450,7 +499,7 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
     def _required_min_cameras(self) -> int:
         return max(int(self.config.min_num_cameras), int(self.config.num_views_range[0]))
 
-    def _passes_filters(self, header: NPZSceneHeader) -> bool:
+    def _passes_filters(self, header: SceneHeader) -> bool:
         return (
             int(header.num_frames) >= self._required_min_frames()
             and int(header.num_cameras) >= self._required_min_cameras()
@@ -459,17 +508,17 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
     def __len__(self) -> int:
         return len(self.scenes)
 
-    def get_scene_header(self, path: Path) -> NPZSceneHeader:
+    def get_scene_header(self, path: Path) -> SceneHeader:
         """Return the pre-computed header for the given scene path."""
         try:
             return self._headers_by_path[path]
         except KeyError as exc:
             raise KeyError(f"Scene header not found for path: {path}") from exc
 
-    def _load_scene(self, path: Path) -> NPZScene:
+    def _load_scene(self, path: Path) -> Scene:
         header = self.get_scene_header(path)
-        payload = _load_npz_payload(path)
-        return NPZScene(
+        payload = _load_scene_payload(path)
+        return Scene(
             path=path,
             data=payload,
             meta=dict(header.meta),
@@ -477,7 +526,7 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
             num_cameras=int(header.num_cameras),
         )
 
-    def select_camera(self, scene: NPZScene) -> int:
+    def select_camera(self, scene: Scene) -> int:
         """Select a single camera index for ``scene`` using dataset config.
 
         This is equivalent to calling ``select_cameras(..., num_views_range=(1,1))``
@@ -487,7 +536,7 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
 
     def select_cameras(
         self,
-        scene: NPZScene,
+        scene: Scene,
         *,
         num_views_range: tuple[int, int] | None = None,
         camera_mode: str | int | None = None,
@@ -545,7 +594,7 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
 
     def select_window(
         self,
-        scene: NPZScene,
+        scene: Scene,
         *,
         full_len: int | None = None,
         seq_len_range: tuple[int, int] | None = None,
@@ -596,8 +645,8 @@ class NPZSceneDatasetBase(Dataset, Generic[SampleT]):
         end = start + seq_len
         return TemporalWindow(start=start, end=end, seq_len=seq_len, full_len=full)
 
-    def build_sample(self, scene: NPZScene) -> SampleT:
-        """Build a task-specific sample from a loaded NPZScene."""
+    def build_sample(self, scene: Scene) -> SampleT:
+        """Build a task-specific sample from a loaded Scene."""
         raise NotImplementedError
 
     def augment_sample(self, sample: SampleT) -> SampleT:
