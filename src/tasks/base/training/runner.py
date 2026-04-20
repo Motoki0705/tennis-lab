@@ -34,6 +34,7 @@ class BaseTrainingRunner:
 
     def run(self, config: Any) -> None:
         """Run training with the provided config."""
+        self.prepare_config(config)
         self.seed_everything(config)
         self.apply_runtime_settings(config)
 
@@ -88,6 +89,10 @@ class BaseTrainingRunner:
         """Prepare output directory path."""
         return Path(self._ensure_absolute(str(config.run.output_dir)))
 
+    def prepare_config(self, config: Any) -> None:
+        """Apply task-specific config mutations before the run starts."""
+        return None
+
     def resolve_resume(self, config: Any, output_dir: Path) -> str | None:
         """Resolve resume checkpoint path."""
         resume = config.run.resume
@@ -132,6 +137,9 @@ class BaseTrainingRunner:
 
     def save_config(self, config: Any, output_dir: Path) -> None:
         """Save resolved config to output directory."""
+        # Some callers invoke runner methods directly without going through run(),
+        # so prepare task-specific runtime config here as well before persisting it.
+        self.prepare_config(config)
         OmegaConf.save(config, output_dir / "config.yaml")
 
     def build_logger(self, config: Any, output_dir: Path) -> TensorBoardLogger:
