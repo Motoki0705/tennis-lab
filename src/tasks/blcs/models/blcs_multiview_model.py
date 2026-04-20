@@ -36,16 +36,11 @@ class BLCSMultiViewModel(nn.Module):
 
     Input memory tokens are built per camera as:
     [court_kp_0, ..., court_kp_(K-1), ball], then flattened across cameras.
-
-    Each token feature is:
-    concat([uv_token, local_id_embedding, camera_embedding]).
     """
 
     def __init__(
         self,
-        token_dim: int = 256,
-        id_emb_dim: int = 64,
-        cam_emb_dim: int = 64,
+        hidden_dim: int = 256,
         num_heads: int = 8,
         ffn_dim: int | None = None,
         ffn_type: Literal["swiglu", "mlp"] = "swiglu",
@@ -64,17 +59,8 @@ class BLCSMultiViewModel(nn.Module):
         query_init_std: float = 0.02,
     ) -> None:
         super().__init__()
-        self.token_dim = int(token_dim)
-        self.id_emb_dim = int(id_emb_dim)
-        self.cam_emb_dim = int(cam_emb_dim)
-        self.hidden_dim = self.token_dim + self.id_emb_dim + self.cam_emb_dim
+        self.hidden_dim = int(hidden_dim)
 
-        if self.token_dim <= 0:
-            raise ValueError(f"token_dim must be positive, got {self.token_dim}")
-        if self.id_emb_dim <= 0:
-            raise ValueError(f"id_emb_dim must be positive, got {self.id_emb_dim}")
-        if self.cam_emb_dim <= 0:
-            raise ValueError(f"cam_emb_dim must be positive, got {self.cam_emb_dim}")
         if self.hidden_dim % num_heads != 0:
             raise ValueError(
                 f"hidden_dim={self.hidden_dim} must be divisible by num_heads={num_heads}"
@@ -114,24 +100,19 @@ class BLCSMultiViewModel(nn.Module):
             ffn_dim = (ffn_dim + 63) // 64 * 64
 
         self.invisible_token = InvisibleTokenEmbedding(
-            dim=self.token_dim,
+            dim=self.hidden_dim,
             init_std=invisible_init_std,
         )
         self.court_embed = CourtKPUVEmbedding(
-            dim=self.token_dim,
+            dim=self.hidden_dim,
             dropout=dropout,
             invisible_token=self.invisible_token,
         )
         self.ball_embed = BallUVEmbedding(
-            dim=self.token_dim,
+            dim=self.hidden_dim,
             dropout=dropout,
             invisible_token=self.invisible_token,
         )
-
-        # Local token identity within one camera:
-        # 0..(num_court_tokens-1) for court keypoints, num_court_tokens for ball.
-        self.local_id_embed = nn.Embedding(self.num_court_tokens + 1, self.id_emb_dim)
-        self.cam_id_embed = nn.Embedding(self.max_num_cameras, self.cam_emb_dim)
 
         self.query_base = nn.Parameter(torch.randn(1, 1, self.hidden_dim) * query_init_std)
 
@@ -188,6 +169,22 @@ class BLCSMultiViewModel(nn.Module):
                 dropout=dropout,
             )
 
+        query_freqs = precompute_freqs_cis_nd(
+            dim=self.rope_dim,
+            pos=self._build_query_positions(seq_len=self.max_seq_len),
+            base=self.rope_bases,
+        )
+        frame_freqs = precompute_freqs_cis_nd(
+            dim=self.rope_dim,
+            pos=self._build_frame_positions(
+                n_cams=self.max_num_cameras,
+                seq_len=self.max_seq_len,
+            ),
+            base=self.rope_bases,
+        )
+        self.register_buffer("query_freqs_cis", query_freqs, persistent=False)
+        self.register_buffer("frame_freqs_cis", frame_freqs, persistent=False)
+
     @classmethod
     def from_config(cls, config: DictConfig) -> BLCSMultiViewModel:
         """Create model from Hydra/OmegaConf config."""
@@ -195,9 +192,7 @@ class BLCSMultiViewModel(nn.Module):
         data_cfg = config.get("data", {})
 
         return cls(
-            token_dim=int(model_cfg.get("token_dim", 256)),
-            id_emb_dim=int(model_cfg.get("id_emb_dim", 64)),
-            cam_emb_dim=int(model_cfg.get("cam_emb_dim", 64)),
+            hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_heads=int(model_cfg.get("num_heads", 8)),
             ffn_dim=model_cfg.get("ffn_dim", None),
             ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
@@ -221,7 +216,6 @@ class BLCSMultiViewModel(nn.Module):
         *,
         n_cams: int,
         seq_len: int,
-        device: torch.device,
     ) -> Tensor:
         per_time: list[Tensor] = []
         for time_idx in range(seq_len):
@@ -230,19 +224,16 @@ class BLCSMultiViewModel(nn.Module):
                 court_time = torch.full(
                     (self.num_court_tokens,),
                     time_idx + 1,
-                    device=device,
                     dtype=torch.long,
                 )
                 court_camera = torch.full(
                     (self.num_court_tokens,),
                     cam_idx,
-                    device=device,
                     dtype=torch.long,
                 )
-                court_type = torch.zeros(self.num_court_tokens, device=device, dtype=torch.long)
+                court_type = torch.zeros(self.num_court_tokens, dtype=torch.long)
                 ball_pos = torch.tensor(
                     [[time_idx + 1, cam_idx, 1]],
-                    device=device,
                     dtype=torch.long,
                 )
                 per_camera.append(
@@ -257,8 +248,8 @@ class BLCSMultiViewModel(nn.Module):
             per_time.append(torch.cat(per_camera, dim=0))
         return torch.stack(per_time, dim=0)
 
-    def _build_query_positions(self, *, seq_len: int, device: torch.device) -> Tensor:
-        time_idx = torch.arange(seq_len, device=device, dtype=torch.long) + 1
+    def _build_query_positions(self, *, seq_len: int) -> Tensor:
+        time_idx = torch.arange(seq_len, dtype=torch.long) + 1
         return torch.stack(
             [
                 time_idx,
@@ -298,8 +289,8 @@ class BLCSMultiViewModel(nn.Module):
         """Build per-frame memory tokens and validity mask.
 
         Args:
-            ball_tok: (B, N, T, token_dim)
-            court_tok: (B, N, T, K, token_dim)
+            ball_tok: (B, N, T, hidden_dim)
+            court_tok: (B, N, T, K, hidden_dim)
             ball_valid: (B, N, T) bool
             court_valid: (B, N) bool camera-valid mask (time-invariant)
 
@@ -314,40 +305,7 @@ class BLCSMultiViewModel(nn.Module):
                 f"Expected court_tok with K={self.num_court_tokens}, got K={n_kp}."
             )
 
-        device = court_tok.device
-        dtype = court_tok.dtype
-
-        cam_ids = torch.arange(n_cams, device=device, dtype=torch.long)
-        cam_emb = self.cam_id_embed(cam_ids).to(dtype=dtype)
-        cam_emb = cam_emb.view(1, n_cams, 1, 1, self.cam_emb_dim)
-
-        court_ids = torch.arange(self.num_court_tokens, device=device, dtype=torch.long)
-        court_id_emb = self.local_id_embed(court_ids).to(dtype=dtype)
-        court_id_emb = court_id_emb.view(1, 1, 1, self.num_court_tokens, self.id_emb_dim)
-
-        ball_id = torch.full((1,), self.num_court_tokens, device=device, dtype=torch.long)
-        ball_id_emb = self.local_id_embed(ball_id).to(dtype=dtype).view(
-            1, 1, 1, self.id_emb_dim
-        )
-
-        court_tokens = torch.cat(
-            [
-                court_tok,
-                court_id_emb.expand(batch_size, n_cams, seq_len_in, -1, -1),
-                cam_emb.expand(batch_size, n_cams, seq_len_in, self.num_court_tokens, -1),
-            ],
-            dim=-1,
-        )
-        ball_tokens = torch.cat(
-            [
-                ball_tok,
-                ball_id_emb.expand(batch_size, n_cams, seq_len_in, -1),
-                cam_emb.squeeze(3).expand(batch_size, n_cams, seq_len_in, -1),
-            ],
-            dim=-1,
-        ).unsqueeze(3)
-
-        per_cam_tokens = torch.cat([court_tokens, ball_tokens], dim=3)
+        per_cam_tokens = torch.cat([court_tok, ball_tok.unsqueeze(3)], dim=3)
         court_valid_expanded = court_valid[:, :, None, None].expand(
             batch_size, n_cams, seq_len_in, self.num_court_tokens
         )
@@ -432,7 +390,7 @@ class BLCSMultiViewModel(nn.Module):
         ball_uv_bn = ball_uv.reshape(batch_size * n_cams, seq_len_in, 2)
         ball_vis_bn = ball_vis.reshape(batch_size * n_cams, seq_len_in)
         ball_tok = self.ball_embed(ball_uv_bn, ball_vis_bn).reshape(
-            batch_size, n_cams, seq_len_in, self.token_dim
+            batch_size, n_cams, seq_len_in, self.hidden_dim
         )
 
         court_kp_flat = court_kp.reshape(batch_size * n_cams * seq_len_in, self.num_court_tokens, 2)
@@ -442,7 +400,7 @@ class BLCSMultiViewModel(nn.Module):
             else None
         )
         court_tok = self.court_embed(court_kp_flat, court_vis_flat).reshape(
-            batch_size, n_cams, seq_len_in, self.num_court_tokens, self.token_dim
+            batch_size, n_cams, seq_len_in, self.num_court_tokens, self.hidden_dim
         )
 
         ball_valid = ball_mask > 0
@@ -451,21 +409,10 @@ class BLCSMultiViewModel(nn.Module):
         # Shape: (B, N)
         court_valid = ball_valid.any(dim=2)
 
-        query_positions = self._build_query_positions(seq_len=seq_len_in, device=ball_uv.device)
-        freqs_time = precompute_freqs_cis_nd(
-            dim=self.rope_dim,
-            pos=query_positions,
-            base=self.rope_bases,
-        )
-        frame_freqs = precompute_freqs_cis_nd(
-            dim=self.rope_dim,
-            pos=self._build_frame_positions(
-                n_cams=n_cams,
-                seq_len=seq_len_in,
-                device=ball_uv.device,
-            ),
-            base=self.rope_bases,
-        )
+        freqs_time = self.query_freqs_cis[:seq_len_in]
+        frame_freqs = self.frame_freqs_cis[
+            :seq_len_in, : n_cams * (self.num_court_tokens + 1)
+        ]
 
         frame_tokens, frame_token_valid = self._build_frame_tokens(
             ball_tok=ball_tok,
