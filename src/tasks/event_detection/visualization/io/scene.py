@@ -17,7 +17,7 @@ from src.tasks.event_detection.visualization.types import (
     Traj3DEventInputs,
     UVEventInputs,
 )
-from src.utils.data.scene_io import load_npz_scene
+from src.tasks.blcs.generate_dataset.io.dataset_io import load_scene
 
 
 @dataclass(frozen=True)
@@ -177,37 +177,14 @@ def _resolve_num_court_kp(cfg: DictConfig) -> int:
 
 
 def _load_uv_arrays(
-    payload: dict[str, Any], camera_idx: int
+    scene: dict[str, Any], camera_idx: int
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    prefix = f"cam_{camera_idx}_"
+    cam = scene["cameras"][camera_idx]
 
-    ball_uv_key = f"{prefix}ball_uv" if f"{prefix}ball_uv" in payload else "ball_uv"
-    ball_vis_key = (
-        f"{prefix}ball_visible"
-        if f"{prefix}ball_visible" in payload
-        else "ball_visible"
-    )
-    court_kp_key = (
-        f"{prefix}court_kp_uv" if f"{prefix}court_kp_uv" in payload else "court_kp_uv"
-    )
-    court_vis_key = (
-        f"{prefix}court_kp_visible"
-        if f"{prefix}court_kp_visible" in payload
-        else "court_kp_visible"
-    )
-
-    missing = [
-        k
-        for k in (ball_uv_key, ball_vis_key, court_kp_key, court_vis_key)
-        if k not in payload
-    ]
-    if missing:
-        raise KeyError(f"Missing keys in scene NPZ: {missing}")
-
-    ball_uv = np.asarray(payload[ball_uv_key], dtype=np.float32)
-    ball_vis = np.asarray(payload[ball_vis_key], dtype=np.float32)
-    court_kp = np.asarray(payload[court_kp_key], dtype=np.float32)
-    court_vis = np.asarray(payload[court_vis_key], dtype=np.float32)
+    ball_uv = np.asarray(cam["ball_uv"], dtype=np.float32)
+    ball_vis = np.asarray(cam["ball_visible"], dtype=np.float32)
+    court_kp = np.asarray(cam["court_kp_uv"], dtype=np.float32)
+    court_vis = np.asarray(cam["court_kp_visible"], dtype=np.float32)
     return ball_uv, ball_vis, court_kp, court_vis
 
 
@@ -215,12 +192,12 @@ def load_uv_inputs(cfg: RuntimeConfig) -> UVEventInputs:
     """Load a BLCS scene and build UV event visualization inputs."""
     set_seed(cfg.seed)
 
-    payload = load_npz_scene(cfg.scene_path)
-    meta = payload.get("meta", {})
+    scene = load_scene(cfg.scene_path)
+    meta = scene.get("meta", {})
 
-    num_cameras = int(payload.get("num_cameras", 1))
+    num_cameras = int(scene.get("num_cameras", 1))
     cam_idx = select_camera(cfg.camera, num_cameras)
-    ball_uv_full, ball_vis_full, court_kp, court_vis = _load_uv_arrays(payload, cam_idx)
+    ball_uv_full, ball_vis_full, court_kp, court_vis = _load_uv_arrays(scene, cam_idx)
     num_court_kp = _resolve_num_court_kp(cfg.hydra_cfg)
     court_kp = court_kp[:num_court_kp]
     court_vis = court_vis[:num_court_kp]
@@ -260,13 +237,13 @@ def load_traj3d_inputs(cfg: RuntimeConfig) -> Traj3DEventInputs:
     """Load a BLCS scene and build 3D event visualization inputs."""
     set_seed(cfg.seed)
 
-    payload = load_npz_scene(cfg.scene_path)
-    meta = payload.get("meta", {})
+    scene = load_scene(cfg.scene_path)
+    meta = scene.get("meta", {})
 
-    if "ball_pos_world" not in payload:
-        raise KeyError("Missing key in scene NPZ: ball_pos_world")
+    if "ball_pos_world" not in scene:
+        raise KeyError("Missing key in scene: ball_pos_world")
 
-    pos_full = np.asarray(payload["ball_pos_world"], dtype=np.float32)
+    pos_full = np.asarray(scene["ball_pos_world"], dtype=np.float32)
 
     t_full = int(pos_full.shape[0])
     num_frames_meta = int(meta.get("num_frames", t_full))
