@@ -1,5 +1,5 @@
 mode: visualize  # visualize | predict
-scene_path: data/blcs/scenes/scene_000000.npz
+scene_path: data/blcs/scenes/scene_000000
 # Multi-view camera selection for predictor input.
 cameras: all
 animation_view: 3d   # 3d | 2d (create_comparison_animation)

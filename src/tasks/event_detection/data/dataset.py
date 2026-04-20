@@ -1,4 +1,4 @@
-"""Dataset classes for event detection using BLCS rally NPZ files."""
+"""Dataset classes for event detection using BLCS rally scene directories."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from torch import Tensor
 from src.tasks.event_detection.data.types import Event3DSample, EventUVSample
 from src.utils.data.event_utils import extract_event_indices
 from src.utils.data.soft_labels import gaussian_soft_labels
-from src.tasks.base.data.scene_dataset import NPZScene, NPZSceneDatasetBase
+from src.tasks.base.data.scene_dataset import Scene, SceneDatasetBase
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -52,8 +52,8 @@ class LabelConfig:
     bounce_time_key: str = "t_bounce1"
 
 
-class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
-    """Event detection dataset from BLCS rally NPZ files.
+class BLCSRallyEventDataset(SceneDatasetBase[EventUVSample | Event3DSample]):
+    """Event detection dataset from BLCS rally scene directories.
 
     Supports two input modes:
     - UV: ball_uv + court_kp
@@ -110,7 +110,7 @@ class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
         )
         return torch.stack([y_shot, y_bounce], dim=-1)  # (T, 2)
 
-    def build_sample(self, scene: NPZScene) -> EventUVSample | Event3DSample:
+    def build_sample(self, scene: Scene) -> EventUVSample | Event3DSample:
         meta = scene.meta
         device = torch.device("cpu")
 
@@ -156,40 +156,3 @@ class BLCSRallyEventDataset(NPZSceneDatasetBase[EventUVSample | Event3DSample]):
             f"Unsupported input_type={self.input_type!r}. Expected 'uv' or '3d'."
         )
 
-
-if __name__ == "__main__":
-    import tempfile
-
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        scene_dir = Path(tmp_dir)
-        scene_path = scene_dir / "scene_000.npz"
-        split_path = scene_dir / "train.txt"
-        T = 8
-        meta = {"num_frames": T, "shots": [{"t_start": 2, "t_bounce1": 5}]}
-        np.savez(
-            scene_path,
-            ball_pos_world=np.zeros((T, 3), dtype=np.float32),
-            num_cameras=np.array(1),
-            cam_0_ball_uv=np.zeros((T, 2), dtype=np.float32),
-            cam_0_ball_visible=np.ones((T,), dtype=np.float32),
-            cam_0_court_kp_uv=np.zeros((20, 2), dtype=np.float32),
-            cam_0_court_kp_visible=np.ones((20,), dtype=np.float32),
-            meta=json.dumps(meta),
-        )
-        split_path.write_text("scene_000.npz\n")
-        num_court_kp = 12
-        cfg = {
-            "data": {
-                "seq_len_range": [T, T],
-                "num_court_kp": num_court_kp,
-            }
-        }
-        blcs_uv = BLCSRallyEventDataset(scene_dir=scene_dir, split_file="train.txt", input_type="uv", config=cfg)
-        sample_uv = blcs_uv[0]
-        assert sample_uv["ball_uv"].shape == (T, 2)
-        assert sample_uv["court_kp"].shape == (num_court_kp, 2)
-
-        blcs_3d = BLCSRallyEventDataset(scene_dir=scene_dir, split_file="train.txt", input_type="3d", config=cfg)
-        sample_3d = blcs_3d[0]
-        assert sample_3d["ball_pos_world"].shape == (T, 3)
-    print("dataset smoke ok")
