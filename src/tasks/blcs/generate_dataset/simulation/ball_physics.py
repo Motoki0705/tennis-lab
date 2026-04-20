@@ -146,7 +146,7 @@ class PhysicsConfig:
         )
 
     def to_dict(self) -> dict:
-        """Serialize to dict (for NPZ metadata)."""
+        """Serialize to dict (for scene metadata)."""
         return {
             "gravity": self.gravity,
             "k_drag": self.k_drag,

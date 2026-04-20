@@ -18,12 +18,12 @@ from src.utils.data.augmentation import (
     random_visibility_dropout,
     scale_uv_with_visibility,
 )
-from src.tasks.base.data.scene_dataset import NPZScene, NPZSceneDatasetBase, SceneDatasetConfig
+from src.tasks.base.data.scene_dataset import Scene, SceneDatasetBase, SceneDatasetConfig
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
+class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
     """Unified BLCS dataset that always returns canonical multiview samples.
 
     The canonical sample format keeps camera and temporal dimensions:
@@ -104,7 +104,7 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
             crop_mode=("random" if self.augment else "center"),
         )
 
-    def build_sample(self, scene: NPZScene) -> BLCSMultiViewSample:
+    def build_sample(self, scene: Scene) -> BLCSMultiViewSample:
         cams = self.select_cameras(scene, num_views_range=self.num_views_range, camera_mode=self.camera_mode)
         # Use camera trajectory length to guard against metadata drift.
         primary_len = int(scene.get_camera_array(cams.primary, "ball_uv").shape[0])
@@ -140,10 +140,10 @@ class BallTrajectoryDataset(NPZSceneDatasetBase[BLCSMultiViewSample]):
             court_kp_list.append(court_kp_expanded)
             court_vis_list.append(court_vis_expanded)
 
-            # Load camera parameters from NPZ payload
+            # Load camera parameters from scene payload
             params_key = f"cam_{cam_idx}_params"
             raw = scene.data[params_key]
-            cam_params = json.loads(str(raw))
+            cam_params = raw if isinstance(raw, dict) else json.loads(str(raw))
             # Normalise key: generators may store centre as "C" or "center"
             cam_R_list.append(torch.tensor(cam_params["R"], dtype=torch.float32))
             cam_C_list.append(torch.tensor(cam_params["C"], dtype=torch.float32))

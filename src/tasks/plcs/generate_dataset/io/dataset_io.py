@@ -1,4 +1,4 @@
-"""Dataset I/O utilities for PLCS dataset generation (PLCS-unified format)."""
+"""Dataset I/O utilities for PLCS dataset generation."""
 
 from __future__ import annotations
 
@@ -21,29 +21,24 @@ logger = logging.getLogger(__name__)
 
 
 class PLCSDatasetWriter(BaseDatasetWriter):
-    """Writes PLCS scene data to disk in npz format (PLCS-unified)."""
+    """Writes PLCS scene data to disk as npy + json directories."""
     scenes_dir: Path
 
     def __init__(self, output_dir: str | Path) -> None:
-        """Initialize dataset writer.
-
-        Args:
-            output_dir: Output directory for dataset.
-        """
         super().__init__(output_dir)
 
     def save_scene(self, scene: SceneData) -> Path:
-        """Save a single scene to npz file (1 scene = 1 file with N cameras).
+        """Save a single scene as a directory with npy + json files.
 
         Args:
             scene: Scene data to save.
 
         Returns:
-            Path: Path to saved file.
-
+            Path: Path to saved scene directory.
         """
-        filename = f"{scene.meta['scene_id']}.npz"
-        filepath = self.scenes_dir / filename
+        dirname = scene.meta["scene_id"]
+        scene_path = self.scenes_dir / dirname
+        scene_path.mkdir(parents=True, exist_ok=True)
 
         # Create metadata using dataclass (with optional Pydantic validation)
         meta_dict = {
@@ -61,32 +56,34 @@ class PLCSDatasetWriter(BaseDatasetWriter):
 
         meta = PLCSSceneMeta(**meta_dict)
 
-        save_dict: dict[str, Any] = {
-            "meta": json.dumps(meta.to_dict()),
+        arrays: dict[str, np.ndarray] = {
             "position": np.asarray(scene.position),
             "rotation": np.asarray(scene.rotation),
             "canonical_pose_3d": np.asarray(scene.canonical_pose_3d),
-            "num_cameras": np.array(len(scene.cameras)),
+        }
+
+        scalars: dict[str, Any] = {
+            "num_cameras": len(scene.cameras),
         }
 
         # Store pre-computed COCO17 world joints when available
         if scene.human_kp_3d is not None:
-            save_dict["human_kp_3d"] = np.asarray(scene.human_kp_3d).astype(
+            arrays["human_kp_3d"] = np.asarray(scene.human_kp_3d).astype(
                 np.float32
             )
 
         camera_metas = []
         for i, cam in enumerate(scene.cameras):
             prefix = f"cam_{i}_"
-            save_dict[f"{prefix}params"] = json.dumps(cam.camera_params)
-            save_dict[f"{prefix}human_kp_uv"] = cam.human_kp_uv.astype(np.float32)
-            save_dict[f"{prefix}human_kp_visible"] = cam.human_kp_visible.astype(bool)
-            save_dict[f"{prefix}human_visibility_ratio"] = np.array(
+            scalars[f"{prefix}params"] = cam.camera_params
+            arrays[f"{prefix}human_kp_uv"] = cam.human_kp_uv.astype(np.float32)
+            arrays[f"{prefix}human_kp_visible"] = cam.human_kp_visible.astype(bool)
+            arrays[f"{prefix}human_visibility_ratio"] = np.array(
                 cam.human_visibility_ratio, dtype=np.float32
             )
-            save_dict[f"{prefix}court_kp_uv"] = cam.court_kp_uv.astype(np.float32)
-            save_dict[f"{prefix}court_kp_visible"] = cam.court_kp_visible.astype(bool)
-            save_dict[f"{prefix}court_visibility_count"] = np.array(
+            arrays[f"{prefix}court_kp_uv"] = cam.court_kp_uv.astype(np.float32)
+            arrays[f"{prefix}court_kp_visible"] = cam.court_kp_visible.astype(bool)
+            arrays[f"{prefix}court_visibility_count"] = np.array(
                 cam.court_visibility_count, dtype=np.float32
             )
 
@@ -97,11 +94,21 @@ class PLCSDatasetWriter(BaseDatasetWriter):
                 }
             )
 
-        np.savez_compressed(filepath, **cast(Any, save_dict))
+        # Write meta.json
+        with open(scene_path / "meta.json", "w") as f:
+            json.dump(meta.to_dict(), f, indent=2)
+
+        # Write scalars.json
+        with open(scene_path / "scalars.json", "w") as f:
+            json.dump(scalars, f, indent=2)
+
+        # Write array files
+        for key, arr in arrays.items():
+            np.save(scene_path / f"{key}.npy", arr)
 
         self.scene_records.append(
             {
-                "file": filename,
+                "file": dirname,
                 "scene_id": scene.meta["scene_id"],
                 "motion_category": scene.meta["motion_category"],
                 "num_frames": int(scene.meta["num_frames"]),
@@ -112,4 +119,4 @@ class PLCSDatasetWriter(BaseDatasetWriter):
         )
         self.scene_counter += 1
 
-        return filepath
+        return scene_path

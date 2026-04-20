@@ -1,5 +1,5 @@
 mode: visualize  # visualize | predict
-scene_path: data/plcs/scenes/scene_000001.npz
+scene_path: data/plcs/scenes/scene_000001
 camera: 0
 cameras: all
 animation_view: 3d  # 3d | 2d_topdown | camera

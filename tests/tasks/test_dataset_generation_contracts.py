@@ -87,165 +87,193 @@ def _assert_json_camera_record_contract(scene_record: dict[str, Any]) -> None:
     assert len(scene_record["cameras"]) == scene_record["num_cameras"]
 
 
-def _load_npz(path: Path) -> np.lib.npyio.NpzFile:
-    return np.load(path, allow_pickle=True)
+def _load_npy(scene_dir: Path, key: str) -> np.ndarray:
+    """Load a single .npy array from a scene directory."""
+    return np.load(scene_dir / f"{key}.npy")
 
 
-def _assert_plcs_scene_contract(path: Path) -> None:
-    with _load_npz(path) as scene_npz:
-        num_cameras = int(scene_npz["num_cameras"])
-        expected_keys = {
-            "meta",
-            "position",
-            "rotation",
-            "canonical_pose_3d",
-            "num_cameras",
-        }
-        for camera_index in range(num_cameras):
-            prefix = f"cam_{camera_index}_"
-            expected_keys.update(
-                {
-                    f"{prefix}params",
-                    f"{prefix}human_kp_uv",
-                    f"{prefix}human_kp_visible",
-                    f"{prefix}human_visibility_ratio",
-                    f"{prefix}court_kp_uv",
-                    f"{prefix}court_kp_visible",
-                    f"{prefix}court_visibility_count",
-                }
-            )
-        assert set(scene_npz.files) == expected_keys
+def _assert_plcs_scene_contract(scene_dir: Path) -> None:
+    """Verify the npy + json directory layout for a PLCS scene."""
+    assert scene_dir.is_dir()
 
-        meta = json.loads(str(scene_npz["meta"]))
-        expected_meta_keys = {
-            "scene_id",
-            "motion_source",
-            "motion_category",
-            "gender",
-            "fps",
-            "num_frames",
-            "initial_position",
-            "initial_yaw",
-            "num_cameras_sampled",
-            "num_cameras",
-        }
-        assert set(meta) == expected_meta_keys
+    # Load scalars and meta
+    scalars = _read_json(scene_dir / "scalars.json")
+    meta = _read_json(scene_dir / "meta.json")
+    num_cameras = int(scalars["num_cameras"])
 
-        position = scene_npz["position"]
-        rotation = scene_npz["rotation"]
-        canonical_pose_3d = scene_npz["canonical_pose_3d"]
+    # Check expected npy files
+    expected_npy_keys = {
+        "position",
+        "rotation",
+        "canonical_pose_3d",
+    }
+    for camera_index in range(num_cameras):
+        prefix = f"cam_{camera_index}_"
+        expected_npy_keys.update(
+            {
+                f"{prefix}human_kp_uv",
+                f"{prefix}human_kp_visible",
+                f"{prefix}human_visibility_ratio",
+                f"{prefix}court_kp_uv",
+                f"{prefix}court_kp_visible",
+                f"{prefix}court_visibility_count",
+            }
+        )
+    actual_npy_files = {p.stem for p in scene_dir.glob("*.npy")}
+    assert actual_npy_files == expected_npy_keys
 
-        num_frames = int(position.shape[0])
-        assert position.shape == (num_frames, 3)
-        assert position.dtype == np.float32
-        assert rotation.shape == (num_frames, 2)
-        assert rotation.dtype == np.float32
-        assert canonical_pose_3d.shape[0] == num_frames
-        assert canonical_pose_3d.dtype == np.float32
-        assert num_cameras >= 1
-        assert meta["num_frames"] == num_frames
-        assert meta["num_cameras"] == num_cameras
+    # Check expected json files
+    assert (scene_dir / "meta.json").exists()
+    assert (scene_dir / "scalars.json").exists()
 
-        for camera_index in range(num_cameras):
-            human_kp_uv = scene_npz[f"cam_{camera_index}_human_kp_uv"]
-            human_kp_visible = scene_npz[f"cam_{camera_index}_human_kp_visible"]
-            court_kp_uv = scene_npz[f"cam_{camera_index}_court_kp_uv"]
-            court_kp_visible = scene_npz[f"cam_{camera_index}_court_kp_visible"]
-            json.loads(str(scene_npz[f"cam_{camera_index}_params"]))
+    # Check scalars contain camera params
+    for camera_index in range(num_cameras):
+        assert f"cam_{camera_index}_params" in scalars
 
-            assert human_kp_uv.shape == (num_frames, 17, 2)
-            assert human_kp_uv.dtype == np.float32
-            assert human_kp_visible.shape == (num_frames, 17)
-            assert human_kp_visible.dtype == np.bool_
-            # The generated PLCS NPZ stores static court keypoints per frame so the
-            # loader can slice a time window without special-casing court features.
-            assert court_kp_uv.shape == (num_frames, 20, 2)
-            assert court_kp_uv.dtype == np.float32
-            assert court_kp_visible.shape == (num_frames, 20)
-            assert court_kp_visible.dtype == np.bool_
+    expected_meta_keys = {
+        "scene_id",
+        "motion_source",
+        "motion_category",
+        "gender",
+        "fps",
+        "num_frames",
+        "initial_position",
+        "initial_yaw",
+        "num_cameras_sampled",
+        "num_cameras",
+    }
+    assert set(meta) == expected_meta_keys
+
+    position = _load_npy(scene_dir, "position")
+    rotation = _load_npy(scene_dir, "rotation")
+    canonical_pose_3d = _load_npy(scene_dir, "canonical_pose_3d")
+
+    num_frames = int(position.shape[0])
+    assert position.shape == (num_frames, 3)
+    assert position.dtype == np.float32
+    assert rotation.shape == (num_frames, 2)
+    assert rotation.dtype == np.float32
+    assert canonical_pose_3d.shape[0] == num_frames
+    assert canonical_pose_3d.dtype == np.float32
+    assert num_cameras >= 1
+    assert meta["num_frames"] == num_frames
+    assert meta["num_cameras"] == num_cameras
+
+    for camera_index in range(num_cameras):
+        human_kp_uv = _load_npy(scene_dir, f"cam_{camera_index}_human_kp_uv")
+        human_kp_visible = _load_npy(scene_dir, f"cam_{camera_index}_human_kp_visible")
+        court_kp_uv = _load_npy(scene_dir, f"cam_{camera_index}_court_kp_uv")
+        court_kp_visible = _load_npy(scene_dir, f"cam_{camera_index}_court_kp_visible")
+        # Validate camera params are valid JSON
+        json.loads(json.dumps(scalars[f"cam_{camera_index}_params"]))
+
+        assert human_kp_uv.shape == (num_frames, 17, 2)
+        assert human_kp_uv.dtype == np.float32
+        assert human_kp_visible.shape == (num_frames, 17)
+        assert human_kp_visible.dtype == np.bool_
+        # The generated PLCS scene stores static court keypoints per frame so the
+        # loader can slice a time window without special-casing court features.
+        assert court_kp_uv.shape == (num_frames, 20, 2)
+        assert court_kp_uv.dtype == np.float32
+        assert court_kp_visible.shape == (num_frames, 20)
+        assert court_kp_visible.dtype == np.bool_
 
 
-def _assert_blcs_scene_contract(path: Path) -> None:
-    with _load_npz(path) as scene_npz:
-        num_cameras = int(scene_npz["num_cameras"])
-        expected_keys = {
-            "meta",
-            "ball_pos_world",
-            "ball_pos_norm",
-            "ball_vel_world",
-            "num_cameras",
-            "rally_length",
-            "end_reason",
-        }
-        for camera_index in range(num_cameras):
-            prefix = f"cam_{camera_index}_"
-            expected_keys.update(
-                {
-                    f"{prefix}params",
-                    f"{prefix}ball_uv",
-                    f"{prefix}ball_visible",
-                    f"{prefix}ball_visibility_ratio",
-                    f"{prefix}court_kp_uv",
-                    f"{prefix}court_kp_visible",
-                    f"{prefix}court_visibility_count",
-                }
-            )
-        assert set(scene_npz.files) == expected_keys
+def _assert_blcs_scene_contract(scene_dir: Path) -> None:
+    """Verify the npy + json directory layout for a BLCS scene."""
+    assert scene_dir.is_dir()
 
-        meta = json.loads(str(scene_npz["meta"]))
-        expected_meta_keys = {
-            "scene_id",
-            "initial_from_cell",
-            "initial_from_side",
-            "rally_length",
-            "end_reason",
-            "winner_side",
-            "shots",
-            "fps_out",
-            "sim_fps",
-            "num_frames",
-            "num_cameras_sampled",
-            "num_cameras",
-            "physics_config",
-            "court_config",
-        }
-        assert set(meta) == expected_meta_keys
+    # Load scalars and meta
+    scalars = _read_json(scene_dir / "scalars.json")
+    meta = _read_json(scene_dir / "meta.json")
+    num_cameras = int(scalars["num_cameras"])
 
-        ball_pos_world = scene_npz["ball_pos_world"]
-        ball_pos_norm = scene_npz["ball_pos_norm"]
-        ball_vel_world = scene_npz["ball_vel_world"]
-        rally_length = int(scene_npz["rally_length"])
-        end_reason = str(scene_npz["end_reason"])
+    # Check expected npy files
+    expected_npy_keys = {
+        "ball_pos_world",
+        "ball_pos_norm",
+        "ball_vel_world",
+    }
+    for camera_index in range(num_cameras):
+        prefix = f"cam_{camera_index}_"
+        expected_npy_keys.update(
+            {
+                f"{prefix}ball_uv",
+                f"{prefix}ball_visible",
+                f"{prefix}ball_visibility_ratio",
+                f"{prefix}court_kp_uv",
+                f"{prefix}court_kp_visible",
+                f"{prefix}court_visibility_count",
+            }
+        )
+    actual_npy_files = {p.stem for p in scene_dir.glob("*.npy")}
+    assert actual_npy_files == expected_npy_keys
 
-        num_frames = int(ball_pos_world.shape[0])
-        assert ball_pos_world.shape == (num_frames, 3)
-        assert ball_pos_world.dtype == np.float32
-        assert ball_pos_norm.shape == (num_frames, 3)
-        assert ball_pos_norm.dtype == np.float32
-        assert ball_vel_world.shape == (num_frames, 3)
-        assert ball_vel_world.dtype == np.float32
-        assert num_cameras >= 1
-        assert meta["num_frames"] == num_frames
-        assert meta["num_cameras"] == num_cameras
-        assert meta["rally_length"] == rally_length
-        assert meta["end_reason"] == end_reason
-        assert meta["shots"]
+    # Check expected json files
+    assert (scene_dir / "meta.json").exists()
+    assert (scene_dir / "scalars.json").exists()
 
-        for camera_index in range(num_cameras):
-            ball_uv = scene_npz[f"cam_{camera_index}_ball_uv"]
-            ball_visible = scene_npz[f"cam_{camera_index}_ball_visible"]
-            court_kp_uv = scene_npz[f"cam_{camera_index}_court_kp_uv"]
-            court_kp_visible = scene_npz[f"cam_{camera_index}_court_kp_visible"]
-            json.loads(str(scene_npz[f"cam_{camera_index}_params"]))
+    # Check scalars contain expected keys
+    assert "num_cameras" in scalars
+    assert "rally_length" in scalars
+    assert "end_reason" in scalars
+    for camera_index in range(num_cameras):
+        assert f"cam_{camera_index}_params" in scalars
 
-            assert ball_uv.shape == (num_frames, 2)
-            assert ball_uv.dtype == np.float32
-            assert ball_visible.shape == (num_frames,)
-            assert ball_visible.dtype == np.bool_
-            assert court_kp_uv.shape == (20, 2)
-            assert court_kp_uv.dtype == np.float32
-            assert court_kp_visible.shape == (20,)
-            assert court_kp_visible.dtype == np.bool_
+    expected_meta_keys = {
+        "scene_id",
+        "initial_from_cell",
+        "initial_from_side",
+        "rally_length",
+        "end_reason",
+        "winner_side",
+        "shots",
+        "fps_out",
+        "sim_fps",
+        "num_frames",
+        "num_cameras_sampled",
+        "num_cameras",
+        "physics_config",
+        "court_config",
+    }
+    assert set(meta) == expected_meta_keys
+
+    ball_pos_world = _load_npy(scene_dir, "ball_pos_world")
+    ball_pos_norm = _load_npy(scene_dir, "ball_pos_norm")
+    ball_vel_world = _load_npy(scene_dir, "ball_vel_world")
+    rally_length = int(scalars["rally_length"])
+    end_reason = str(scalars["end_reason"])
+
+    num_frames = int(ball_pos_world.shape[0])
+    assert ball_pos_world.shape == (num_frames, 3)
+    assert ball_pos_world.dtype == np.float32
+    assert ball_pos_norm.shape == (num_frames, 3)
+    assert ball_pos_norm.dtype == np.float32
+    assert ball_vel_world.shape == (num_frames, 3)
+    assert ball_vel_world.dtype == np.float32
+    assert num_cameras >= 1
+    assert meta["num_frames"] == num_frames
+    assert meta["num_cameras"] == num_cameras
+    assert meta["rally_length"] == rally_length
+    assert meta["end_reason"] == end_reason
+    assert meta["shots"]
+
+    for camera_index in range(num_cameras):
+        ball_uv = _load_npy(scene_dir, f"cam_{camera_index}_ball_uv")
+        ball_visible = _load_npy(scene_dir, f"cam_{camera_index}_ball_visible")
+        court_kp_uv = _load_npy(scene_dir, f"cam_{camera_index}_court_kp_uv")
+        court_kp_visible = _load_npy(scene_dir, f"cam_{camera_index}_court_kp_visible")
+        # Validate camera params are valid JSON
+        json.loads(json.dumps(scalars[f"cam_{camera_index}_params"]))
+
+        assert ball_uv.shape == (num_frames, 2)
+        assert ball_uv.dtype == np.float32
+        assert ball_visible.shape == (num_frames,)
+        assert ball_visible.dtype == np.bool_
+        assert court_kp_uv.shape == (20, 2)
+        assert court_kp_uv.dtype == np.float32
+        assert court_kp_visible.shape == (20,)
+        assert court_kp_visible.dtype == np.bool_
 
 
 @pytest.mark.integration
@@ -285,14 +313,16 @@ def test_plcs_generator_output_contract(tmp_path: Path) -> None:
     meta_json = _read_json(output_dir / "meta.json")
     stats_json = _read_json(output_dir / "stats.json")
     scenes_meta = _read_json(output_dir / "scenes_meta.json")
-    scene_paths = sorted((output_dir / "scenes").glob("scene_*.npz"))
+    scene_dirs = sorted(
+        p for p in (output_dir / "scenes").iterdir() if p.is_dir() and p.name.startswith("scene_")
+    )
     split_union, _ = _assert_split_contract(output_dir, meta_json)
 
-    assert meta_json["stats"]["total_scenes"] == len(scene_paths)
+    assert meta_json["stats"]["total_scenes"] == len(scene_dirs)
     assert stats_json["successful_scenes"] == meta_json["stats"]["total_scenes"]
     assert stats_json["failed_scenes"] == 0
     assert len(scenes_meta) == meta_json["stats"]["total_scenes"]
-    assert {path.name for path in scene_paths} == set(split_union)
+    assert {p.name for p in scene_dirs} == set(split_union)
 
     for scene_record in meta_json["scenes"]:
         _assert_json_camera_record_contract(scene_record)
@@ -301,8 +331,8 @@ def test_plcs_generator_output_contract(tmp_path: Path) -> None:
         scene_record["scene_id"] for scene_record in meta_json["scenes"]
     }
 
-    for scene_path in scene_paths:
-        _assert_plcs_scene_contract(scene_path)
+    for scene_dir in scene_dirs:
+        _assert_plcs_scene_contract(scene_dir)
 
 
 @pytest.mark.integration
@@ -333,14 +363,16 @@ def test_blcs_generator_output_contract(tmp_path: Path) -> None:
     )
 
     meta_json = _read_json(output_dir / "meta.json")
-    scene_paths = sorted((output_dir / "scenes").glob("scene_*.npz"))
+    scene_dirs = sorted(
+        p for p in (output_dir / "scenes").iterdir() if p.is_dir() and p.name.startswith("scene_")
+    )
     split_union, _ = _assert_split_contract(output_dir, meta_json)
 
-    assert meta_json["stats"]["total_scenes"] == len(scene_paths)
-    assert {path.name for path in scene_paths} == set(split_union)
+    assert meta_json["stats"]["total_scenes"] == len(scene_dirs)
+    assert {p.name for p in scene_dirs} == set(split_union)
 
     for scene_record in meta_json["scenes"]:
         _assert_json_camera_record_contract(scene_record)
 
-    for scene_path in scene_paths:
-        _assert_blcs_scene_contract(scene_path)
+    for scene_dir in scene_dirs:
+        _assert_blcs_scene_contract(scene_dir)

@@ -1,6 +1,6 @@
 """Scene loading utilities for PLCS datasets.
 
-This module provides functions to load scene data from npz files.
+This module provides functions to load scene data from npy + json directories.
 It is separated from dataset_io.py to avoid circular imports when
 used by dataset and visualization modules.
 """
@@ -28,55 +28,57 @@ class AttrDict(dict[str, Any]):
 
 
 def load_scene(filepath: str | Path) -> dict[str, Any]:
-    """Load a scene from npz file (PLCS-unified format).
+    """Load a scene from a npy + json scene directory.
 
     Args:
-        filepath: Path to the npz file.
+        filepath: Path to the scene directory.
 
     Returns:
         Dictionary with scene data including meta, position, rotation,
         canonical_pose_3d, num_cameras, and cameras list.
-
     """
-    data = np.load(filepath, allow_pickle=True)
+    scene_dir = Path(filepath)
 
-    meta_raw = data["meta"].item()
-    if isinstance(meta_raw, (bytes, bytearray)):
-        meta_raw = meta_raw.decode("utf-8")
-    meta = json.loads(meta_raw) if isinstance(meta_raw, str) else meta_raw
-    num_cameras = int(data["num_cameras"])
+    with open(scene_dir / "meta.json") as f:
+        meta = json.load(f)
+    with open(scene_dir / "scalars.json") as f:
+        scalars = json.load(f)
+
+    num_cameras = int(scalars["num_cameras"])
 
     cameras = []
     for i in range(num_cameras):
         prefix = f"cam_{i}_"
-        params_raw = data[f"{prefix}params"].item()
-        if isinstance(params_raw, (bytes, bytearray)):
-            params_raw = params_raw.decode("utf-8")
-        params = json.loads(params_raw) if isinstance(params_raw, str) else params_raw
-        if "C" not in params and "center" in params:
-            params["C"] = params.pop("center")
+        params = scalars[f"{prefix}params"]
+        if isinstance(params, str):
+            params = json.loads(params)
         cam_data = AttrDict(
             params=params,
-            human_kp_uv=data[f"{prefix}human_kp_uv"],
-            human_kp_visible=data[f"{prefix}human_kp_visible"],
-            human_visibility_ratio=float(data[f"{prefix}human_visibility_ratio"]),
-            court_kp_uv=data[f"{prefix}court_kp_uv"],
-            court_kp_visible=data[f"{prefix}court_kp_visible"],
-            court_visibility_count=float(data[f"{prefix}court_visibility_count"]),
+            human_kp_uv=np.load(scene_dir / f"{prefix}human_kp_uv.npy"),
+            human_kp_visible=np.load(scene_dir / f"{prefix}human_kp_visible.npy"),
+            human_visibility_ratio=float(
+                np.load(scene_dir / f"{prefix}human_visibility_ratio.npy")
+            ),
+            court_kp_uv=np.load(scene_dir / f"{prefix}court_kp_uv.npy"),
+            court_kp_visible=np.load(scene_dir / f"{prefix}court_kp_visible.npy"),
+            court_visibility_count=float(
+                np.load(scene_dir / f"{prefix}court_visibility_count.npy")
+            ),
         )
         cameras.append(cam_data)
 
     scene = AttrDict(
         meta=meta,
-        position=data["position"],
-        rotation=data["rotation"],
-        canonical_pose_3d=data["canonical_pose_3d"],
+        position=np.load(scene_dir / "position.npy"),
+        rotation=np.load(scene_dir / "rotation.npy"),
+        canonical_pose_3d=np.load(scene_dir / "canonical_pose_3d.npy"),
         num_cameras=num_cameras,
         cameras=cameras,
     )
 
     # Include pre-computed COCO17 world joints when stored (AthletePose3D path).
-    if "human_kp_3d" in data:
-        scene["human_kp_3d"] = data["human_kp_3d"]
+    human_kp_3d_path = scene_dir / "human_kp_3d.npy"
+    if human_kp_3d_path.exists():
+        scene["human_kp_3d"] = np.load(human_kp_3d_path)
 
     return scene

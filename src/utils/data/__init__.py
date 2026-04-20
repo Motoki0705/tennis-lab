@@ -16,12 +16,6 @@ from src.utils.data.heatmaps import (
     generate_gaussian_heatmaps,
     heatmaps_to_argmax,
 )
-from src.utils.data.scene_io import (
-    SceneMeta,
-    extract_scene_meta,
-    extract_scene_meta_parallel,
-    load_npz_scene,
-)
 from src.utils.data.soft_labels import gaussian_soft_labels
 
 __all__ = [
@@ -36,8 +30,4 @@ __all__ = [
     "heatmaps_to_argmax",
     "random_visibility_dropout",
     "scale_uv_with_visibility",
-    "SceneMeta",
-    "extract_scene_meta",
-    "extract_scene_meta_parallel",
-    "load_npz_scene",
 ]

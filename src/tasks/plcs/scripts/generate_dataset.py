@@ -114,7 +114,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                 failed += 1
                 continue
 
-            # Save scene (NPZ only)
+            # Save scene
             writer.save_scene(scene)
 
             # Update statistics

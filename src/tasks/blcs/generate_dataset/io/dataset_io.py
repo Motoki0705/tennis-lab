@@ -1,18 +1,13 @@
-"""Dataset writer for BLCS dataset generation (PLCS-unified format).
+"""Dataset writer for BLCS dataset generation.
 
-Saves scene data in npz format with structure:
-- meta: scene metadata (JSON)
-- ball_pos_world: [T, 3] world coordinates
-- ball_pos_norm: [T, 3] normalized coordinates
-- ball_vel_world: [T, 3] velocities
-- num_cameras: number of valid cameras
-- cam_{i}_params: camera parameters for camera i
-- cam_{i}_ball_uv: [T, 2] ball UV coordinates
-- cam_{i}_ball_visible: [T] ball visibility
-- cam_{i}_ball_visibility_ratio: visibility ratio
-- cam_{i}_court_kp_uv: [20, 2] court keypoints UV
-- cam_{i}_court_kp_visible: [20] court keypoint visibility
-- cam_{i}_court_visibility_count: visible keypoint count
+Saves scene data as a directory per scene with structure:
+- meta.json: scene metadata
+- scalars.json: scalar values (num_cameras, rally_length, end_reason,
+  camera parameters)
+- {key}.npy: array data files (ball_pos_world, ball_pos_norm, etc.)
+
+Each camera produces per-camera npy files (cam_{i}_ball_uv.npy, etc.)
+and its parameters are stored in scalars.json.
 """
 
 from __future__ import annotations
@@ -33,25 +28,11 @@ from src.tasks.base.data.dataset_writer import BaseDatasetWriter
 logger = logging.getLogger(__name__)
 
 
-def _decode_json_value(value: Any) -> Any:
-    """Decode a scalar value loaded from an NPZ JSON payload."""
-    if isinstance(value, np.ndarray) and value.shape == ():
-        value = value.item()
-    if isinstance(value, (bytes, bytearray)):
-        value = value.decode("utf-8")
-    return json.loads(value) if isinstance(value, str) else value
-
-
 class BLCSDatasetWriter(BaseDatasetWriter):
-    """Writes BLCS scene data to disk in npz format (PLCS-unified)."""
+    """Writes BLCS scene data to disk as npy + json directories."""
     scenes_dir: Path
 
     def __init__(self, output_dir: str) -> None:
-        """Initialize dataset writer.
-
-        Args:
-            output_dir: Output directory for dataset.
-        """
         super().__init__(output_dir)
 
     def _build_scene_meta(self, scene: BLCSSceneData) -> BLCSSceneMeta:
@@ -76,22 +57,23 @@ class BLCSDatasetWriter(BaseDatasetWriter):
 
     def _append_camera_arrays(
         self,
-        save_dict: dict[str, Any],
+        arrays: dict[str, np.ndarray],
+        scalars: dict[str, Any],
         scene: BLCSSceneData,
     ) -> list[dict[str, float]]:
         camera_records: list[dict[str, float]] = []
         for i, cam in enumerate(scene.cameras):
             prefix = f"cam_{i}_"
-            save_dict[f"{prefix}params"] = json.dumps(cam.camera_params)
-            save_dict[f"{prefix}ball_uv"] = cam.ball_uv.astype(np.float32)
-            save_dict[f"{prefix}ball_visible"] = cam.ball_visible.astype(bool)
-            save_dict[f"{prefix}ball_visibility_ratio"] = np.array(
+            scalars[f"{prefix}params"] = cam.camera_params
+            arrays[f"{prefix}ball_uv"] = cam.ball_uv.astype(np.float32)
+            arrays[f"{prefix}ball_visible"] = cam.ball_visible.astype(bool)
+            arrays[f"{prefix}ball_visibility_ratio"] = np.array(
                 cam.ball_visibility_ratio,
                 dtype=np.float32,
             )
-            save_dict[f"{prefix}court_kp_uv"] = cam.court_kp_uv.astype(np.float32)
-            save_dict[f"{prefix}court_kp_visible"] = cam.court_kp_visible.astype(bool)
-            save_dict[f"{prefix}court_visibility_count"] = np.array(
+            arrays[f"{prefix}court_kp_uv"] = cam.court_kp_uv.astype(np.float32)
+            arrays[f"{prefix}court_kp_visible"] = cam.court_kp_visible.astype(bool)
+            arrays[f"{prefix}court_visibility_count"] = np.array(
                 cam.court_visibility_count,
                 dtype=np.float32,
             )
@@ -104,28 +86,39 @@ class BLCSDatasetWriter(BaseDatasetWriter):
         return camera_records
 
     def save_scene(self, scene: BLCSSceneData) -> Path:
-        """Save a BLCS scene (rally) to an NPZ file."""
-        filename = f"{scene.scene_id}.npz"
-        filepath = self.scenes_dir / filename
+        """Save a BLCS scene (rally) as a directory with npy + json files."""
+        dirname = scene.scene_id
+        scene_path = self.scenes_dir / dirname
+        scene_path.mkdir(parents=True, exist_ok=True)
         scene_meta = self._build_scene_meta(scene)
 
-        save_dict: dict[str, Any] = {
-            # Keep the NPZ key name "meta" for reader compatibility. This is scene metadata.
-            "meta": json.dumps(scene_meta.to_dict()),
+        arrays: dict[str, np.ndarray] = {
             "ball_pos_world": scene.ball_pos_world.numpy(),
             "ball_pos_norm": scene.ball_pos_norm.numpy(),
             "ball_vel_world": scene.ball_vel_world.numpy(),
-            "num_cameras": np.array(len(scene.cameras)),
-            "rally_length": np.array(scene.rally_length),
+        }
+        scalars: dict[str, Any] = {
+            "num_cameras": len(scene.cameras),
+            "rally_length": scene.rally_length,
             "end_reason": scene.end_reason,
         }
-        camera_records = self._append_camera_arrays(save_dict, scene)
+        camera_records = self._append_camera_arrays(arrays, scalars, scene)
 
-        np.savez_compressed(filepath, **save_dict)
+        # Write meta.json
+        with open(scene_path / "meta.json", "w") as f:
+            json.dump(scene_meta.to_dict(), f, indent=2)
+
+        # Write scalars.json
+        with open(scene_path / "scalars.json", "w") as f:
+            json.dump(scalars, f, indent=2)
+
+        # Write array files
+        for key, arr in arrays.items():
+            np.save(scene_path / f"{key}.npy", arr)
 
         self.scene_records.append(
             {
-                "file": filename,
+                "file": dirname,
                 "scene_id": scene.scene_id,
                 "rally_length": scene.rally_length,
                 "end_reason": scene.end_reason,
@@ -137,14 +130,14 @@ class BLCSDatasetWriter(BaseDatasetWriter):
             }
         )
         self.scene_counter += 1
-        return filepath
+        return scene_path
 
 
 def load_scene(filepath: str | Path) -> dict:
-    """Load a scene from npz file (PLCS-unified format).
+    """Load a scene from a npy + json scene directory.
 
     Args:
-        filepath: Path to npz file.
+        filepath: Path to the scene directory.
 
     Returns:
         dict: Scene data with:
@@ -152,37 +145,42 @@ def load_scene(filepath: str | Path) -> dict:
             - ball_pos_world, ball_pos_norm, ball_vel_world: 3D data
             - num_cameras: number of cameras
             - cameras: list of camera data dicts
-
     """
-    data = np.load(filepath, allow_pickle=True)
+    scene_dir = Path(filepath)
 
-    # Parse metadata
-    scene_meta = _decode_json_value(data["meta"])
-    num_cameras = int(data["num_cameras"])
+    with open(scene_dir / "meta.json") as f:
+        scene_meta = json.load(f)
+    with open(scene_dir / "scalars.json") as f:
+        scalars = json.load(f)
 
-    # Load camera data
+    num_cameras = int(scalars["num_cameras"])
+
     cameras = []
     for i in range(num_cameras):
         prefix = f"cam_{i}_"
-        params = _decode_json_value(data[f"{prefix}params"])
-        if "C" not in params and "center" in params:
-            params["C"] = params.pop("center")
+        params = scalars[f"{prefix}params"]
+        if isinstance(params, str):
+            params = json.loads(params)
         cam_data = {
             "params": params,
-            "ball_uv": data[f"{prefix}ball_uv"],
-            "ball_visible": data[f"{prefix}ball_visible"],
-            "ball_visibility_ratio": float(data[f"{prefix}ball_visibility_ratio"]),
-            "court_kp_uv": data[f"{prefix}court_kp_uv"],
-            "court_kp_visible": data[f"{prefix}court_kp_visible"],
-            "court_visibility_count": float(data[f"{prefix}court_visibility_count"]),
+            "ball_uv": np.load(scene_dir / f"{prefix}ball_uv.npy"),
+            "ball_visible": np.load(scene_dir / f"{prefix}ball_visible.npy"),
+            "ball_visibility_ratio": float(
+                np.load(scene_dir / f"{prefix}ball_visibility_ratio.npy")
+            ),
+            "court_kp_uv": np.load(scene_dir / f"{prefix}court_kp_uv.npy"),
+            "court_kp_visible": np.load(scene_dir / f"{prefix}court_kp_visible.npy"),
+            "court_visibility_count": float(
+                np.load(scene_dir / f"{prefix}court_visibility_count.npy")
+            ),
         }
         cameras.append(cam_data)
 
     return {
         "meta": scene_meta,
-        "ball_pos_world": data["ball_pos_world"],
-        "ball_pos_norm": data["ball_pos_norm"],
-        "ball_vel_world": data["ball_vel_world"],
+        "ball_pos_world": np.load(scene_dir / "ball_pos_world.npy"),
+        "ball_pos_norm": np.load(scene_dir / "ball_pos_norm.npy"),
+        "ball_vel_world": np.load(scene_dir / "ball_vel_world.npy"),
         "num_cameras": num_cameras,
         "cameras": cameras,
     }
