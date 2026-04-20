@@ -5,12 +5,7 @@ name: blcs_multiview
 io:
   input_profile: multiview
 
-
-# Final transformer dim is computed inside model:
-# hidden_dim = token_dim + id_emb_dim + cam_emb_dim
-token_dim: 256
-id_emb_dim: 64
-cam_emb_dim: 64
+hidden_dim: 256
 
 num_layers: 6      # Number of (same-time cross-attn + temporal self-attn) iterations
 num_heads: 8
