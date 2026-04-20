@@ -11,9 +11,9 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
+from src.tasks.blcs.generate_dataset.io.dataset_io import load_scene
 from src.tasks.trajectory_completion.data.argument import TrajectoryArgumenter
 from src.utils.data.event_utils import extract_event_frames
-from src.utils.data.scene_io import load_npz_scene
 from src.tasks.trajectory_completion.visualization.types import RuntimeConfig, TrajectoryInputs
 
 TMP_LOG_PATH = Path("data/tmp/trajectory_completion_visualize.log")
@@ -116,37 +116,14 @@ def _format_tensor_indices(tensor: torch.Tensor, *, limit: int = 20) -> str:
 
 
 def _load_uv_from_scene(
-    payload: dict[str, Any], camera_idx: int
+    scene: dict[str, Any], camera_idx: int
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    prefix = f"cam_{camera_idx}_"
+    cam = scene["cameras"][camera_idx]
 
-    ball_uv_key = f"{prefix}ball_uv" if f"{prefix}ball_uv" in payload else "ball_uv"
-    ball_vis_key = (
-        f"{prefix}ball_visible"
-        if f"{prefix}ball_visible" in payload
-        else "ball_visible"
-    )
-    court_kp_key = (
-        f"{prefix}court_kp_uv" if f"{prefix}court_kp_uv" in payload else "court_kp_uv"
-    )
-    court_vis_key = (
-        f"{prefix}court_kp_visible"
-        if f"{prefix}court_kp_visible" in payload
-        else "court_kp_visible"
-    )
-
-    missing = [
-        key
-        for key in (ball_uv_key, ball_vis_key, court_kp_key, court_vis_key)
-        if key not in payload
-    ]
-    if missing:
-        raise KeyError(f"Missing keys in scene NPZ: {missing}")
-
-    ball_uv = np.asarray(payload[ball_uv_key], dtype=np.float32)
-    ball_vis = np.asarray(payload[ball_vis_key], dtype=np.float32)
-    court_kp = np.asarray(payload[court_kp_key], dtype=np.float32)
-    court_vis = np.asarray(payload[court_vis_key], dtype=np.float32)
+    ball_uv = np.asarray(cam["ball_uv"], dtype=np.float32)
+    ball_vis = np.asarray(cam["ball_visible"], dtype=np.float32)
+    court_kp = np.asarray(cam["court_kp_uv"], dtype=np.float32)
+    court_vis = np.asarray(cam["court_kp_visible"], dtype=np.float32)
     return ball_uv, ball_vis, court_kp, court_vis
 
 
@@ -154,13 +131,13 @@ def load_trajectory_inputs(cfg: RuntimeConfig) -> TrajectoryInputs:
     """Load a BLCS scene and prepare trajectory completion inputs."""
     set_seed(cfg.seed)
 
-    payload = load_npz_scene(cfg.scene_path)
-    meta = payload.get("meta", {})
+    scene = load_scene(cfg.scene_path)
+    meta = scene.get("meta", {})
 
-    num_cameras = int(payload.get("num_cameras", 1))
+    num_cameras = int(scene.get("num_cameras", 1))
     cam_idx = _select_camera(cfg.camera, num_cameras)
 
-    ball_uv_full, ball_vis_full, court_kp, court_vis = _load_uv_from_scene(payload, cam_idx)
+    ball_uv_full, ball_vis_full, court_kp, court_vis = _load_uv_from_scene(scene, cam_idx)
     num_court_kp = _resolve_num_court_kp(cfg.hydra_cfg)
     court_kp = court_kp[:num_court_kp]
     court_vis = court_vis[:num_court_kp]

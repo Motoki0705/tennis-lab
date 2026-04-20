@@ -2,7 +2,7 @@
 task: uv  # uv | traj3d
 
 mode: predict  # visualize | predict
-scene_path: data/blcs/scenes/rally_000000.npz
+scene_path: data/blcs/scenes/scene_000000
 camera: random  # random | int
 
 fps: 30.0

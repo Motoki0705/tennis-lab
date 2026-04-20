@@ -2,8 +2,8 @@
 
 mode: predict  # visualize | predict
 
-# Input scene (BLCS rally NPZ)
-scene_path: data/blcs/scenes/rally_000000.npz
+# Input scene (BLCS scene directory)
+scene_path: data/blcs/scenes/scene_000000
 camera: random  # random | int
 
 # Rendering
