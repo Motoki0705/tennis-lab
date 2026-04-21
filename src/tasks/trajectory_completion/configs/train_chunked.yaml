@@ -1,0 +1,14 @@
+defaults:
+  - model: uv_transformer
+  - data: chunked_blcs_rally_uv
+  - training: default
+  - metrics: default
+  - run: train
+  - _self_
+
+hydra:
+  run:
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
