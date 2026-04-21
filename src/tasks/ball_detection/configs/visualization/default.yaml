@@ -1,0 +1,30 @@
+clip_dir: data/tennis/game1/Clip1
+checkpoint: outputs/ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
+save: assets/ball_detection/game1_clip1_prediction.gif
+fps: 12
+window_stride: 1
+inference_batch_size: 4
+peak_threshold: ${metrics.peak_threshold}
+max_frames: null
+info: false
+
+draw:
+  gt_radius: 6
+  pred_radius: 6
+  thickness: 2
+  gt_color_rgb: [255, 96, 96]
+  pred_color_rgb: [96, 255, 128]
+  text_color_rgb: [245, 245, 245]
+  muted_text_color_rgb: [168, 168, 168]
+
+layout:
+  header_height: 44
+  tile_gap: 12
+  text_scale: 0.52
+  text_thickness: 1
+  background_rgb: [18, 18, 18]
+  heatmap_alpha: 0.45
+  show_heatmap_panel: true
+
+gif:
+  loop: 0
