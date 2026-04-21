@@ -10,7 +10,9 @@ import torch
 from torch import Tensor
 
 from src.tasks.ball_detection.data.utils.input_adapter import to_model_input
-from src.tasks.ball_detection.training.lightning_module import BallDetectionLightningModule
+from src.tasks.ball_detection.training.lightning_module import (
+    BallDetectionLightningModule,
+)
 from src.tasks.base.inference.predictor import BasePredictor
 from src.utils.data.heatmaps import heatmaps_to_argmax
 
@@ -61,11 +63,19 @@ class BallDetectionPredictor(BasePredictor):
             FileNotFoundError: If checkpoint file does not exist.
         """
         checkpoints = cls._ensure_checkpoint(checkpoint_path)
+        if len(checkpoints) != 1:
+            raise ValueError(
+                "BallDetectionPredictor expects a single checkpoint, "
+                f"got {len(checkpoints)} checkpoints."
+            )
         resolved_device = cls._resolve_device(device)
 
         lightning_module = BallDetectionLightningModule.load_from_checkpoint(
             checkpoints[0],
             map_location=resolved_device,
+            strict=bool(kwargs.pop("strict", False)),
+            weights_only=bool(kwargs.pop("weights_only", False)),
+            **kwargs,
         )
 
         model = lightning_module.model
@@ -73,7 +83,6 @@ class BallDetectionPredictor(BasePredictor):
 
         return cls(model=model, device=resolved_device, model_config=model_config)
 
-    @torch.no_grad()
     def predict(
         self,
         images: Tensor,
@@ -94,18 +103,19 @@ class BallDetectionPredictor(BasePredictor):
                 - ``heatmaps``: Probability heatmaps ``(B, T, H, W)`` if
                   *return_heatmaps* is True.
         """
-        model_input = to_model_input(images.to(self.device), self.model_config)
-        logits = self.model(model_input)
+        with torch.no_grad():
+            model_input = to_model_input(images.to(self.device), self.model_config)
+            logits = self.model(model_input)
 
-        # (B, 1, T, H, W) -> (B, T, H, W)
-        logits = logits.squeeze(1)
-        heatmaps = torch.sigmoid(logits)
-        coords, peak_values = heatmaps_to_argmax(heatmaps)
+            # (B, 1, T, H, W) -> (B, T, H, W)
+            logits = logits.squeeze(1)
+            heatmaps = torch.sigmoid(logits)
+            coords, peak_values = heatmaps_to_argmax(heatmaps)
 
-        result: dict[str, Tensor] = {
-            "coords": coords.cpu(),
-            "visibility": peak_values.cpu(),
-        }
-        if return_heatmaps:
-            result["heatmaps"] = heatmaps.cpu()
-        return result
+            result: dict[str, Tensor] = {
+                "coords": coords.cpu(),
+                "visibility": peak_values.cpu(),
+            }
+            if return_heatmaps:
+                result["heatmaps"] = heatmaps.cpu()
+            return result
