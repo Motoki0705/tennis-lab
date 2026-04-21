@@ -6,13 +6,13 @@
 
 > `assets/` 配下にタスク別の比較GIFを置く想定です（GTとPredを同一画面で比較）。
 
-### WASB（2Dボール検出）
+### Ball Detection（2Dボール検出）
 
 <p align="center">
-  <img src="assets/wasb/gt_vs_pred.gif" width="840" />
+  <img src="assets/ball_detection/game1_clip1_prediction.gif" width="840" />
 </p>
 
-- 実装/実行: [third_party/WASB-SBDT/README.md](third_party/WASB-SBDT/README.md)
+- 実装/実行: [src/tasks/ball_detection/README.md](src/tasks/ball_detection/README.md)
 
 ### Court Detection（CourtKP20）
 
@@ -104,7 +104,7 @@ python -m src.<task>.scripts.<entrypoint> key=value
 
 - [src/tasks/blcs/README.md](src/tasks/blcs/README.md)
 - [src/tasks/plcs/README.md](src/tasks/plcs/README.md)
-- [third_party/WASB-SBDT/README.md](third_party/WASB-SBDT/README.md)
+- [src/tasks/ball_detection/README.md](src/tasks/ball_detection/README.md)
 - [src/tasks/court_detection/README.md](src/tasks/court_detection/README.md)
 - [src/tasks/trajectory_completion/README.md](src/tasks/trajectory_completion/README.md)
 - [src/tasks/event_detection/README.md](src/tasks/event_detection/README.md)
@@ -121,7 +121,7 @@ VS Code を使う場合は `.devcontainer/devcontainer.json` を利用して dev
 
 ### どこに何があるか（タスク）
 
-- WASB: 画像上の2Dボール位置（`third_party/WASB-SBDT`）
+- Ball Detection: 画像上の2Dボール位置（`src/tasks/ball_detection`）
 - Court Detection: 20点コートキーポイント（`src/tasks/court_detection`）
 - PLCS: 2Dスケルトン → コート上3Dプレーヤー位置/yaw（`src/tasks/plcs`）
 - BLCS: 2Dボール位置 → コート上3Dボール軌道（`src/tasks/blcs`）
@@ -135,7 +135,7 @@ VS Code を使う場合は `.devcontainer/devcontainer.json` を利用して dev
 ```
 Video
   ├─ Court Detection  → court_kp (2D)
-  ├─ WASB             → ball_uv (2D)
+  ├─ Ball Detection   → ball_uv (2D)
   ├─ (optional) GVHMR → human_kp (2D) + SMPL (local)
   ├─ PLCS             → player_pos/yaw (3D on court)
   ├─ BLCS             → ball_pos_world (3D on court)
