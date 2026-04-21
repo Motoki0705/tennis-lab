@@ -20,7 +20,7 @@ from __future__ import annotations
 import hydra
 from omegaconf import DictConfig
 
-from src.tasks.blcs.scripts.generate_dataset import build_generator_config
+from src.tasks.blcs.generate_dataset.config import build_generator_config
 from src.tasks.blcs.training.runner import BLCSTrainingRunner
 
 
