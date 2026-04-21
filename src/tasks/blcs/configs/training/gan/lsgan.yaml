@@ -21,6 +21,6 @@ discriminator:
   dropout: 0.1
   rope_dim: null
   rope_theta: 10000.0
-  max_seq_len: ${data.max_seq_len}
+  max_seq_len: ${model.max_seq_len}
   invisible_init_std: 0.02
   cls_init_std: 0.02
