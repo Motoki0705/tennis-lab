@@ -1,9 +1,4 @@
-"""PyTorch Lightning DataModule for chunked BLCS training.
-
-The training set is backed by :class:`ChunkManager` which generates scene
-chunks in a background thread.  Validation and test sets are fixed NPZ
-datasets loaded from ``data/blcs/``.
-"""
+"""PyTorch Lightning DataModule for chunked event detection training."""
 
 from __future__ import annotations
 
@@ -12,8 +7,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from src.tasks.blcs.data.chunk_manager import ChunkManager
-from src.tasks.blcs.data.datamodule import BLCSDataModule
-from src.tasks.blcs.data.dataset import BallTrajectoryDataset
+from src.tasks.event_detection.data.datamodule import EventDetectionDataModule
+from src.tasks.event_detection.data.dataset import BLCSRallyEventDataset
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -23,23 +18,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ChunkedBLCSDataModule(BLCSDataModule):
-    """DataModule that swaps train chunks generated in the background.
+class ChunkedEventDetectionDataModule(EventDetectionDataModule):
+    """Event detection datamodule that rotates background-generated BLCS chunks."""
 
-    Val/test splits are loaded once from the fixed ``scene_dir``.
-    """
-
-    def __init__(
-        self,
-        config: DictConfig | None = None,
-        *,
-        generator_config: GeneratorConfig,
-    ) -> None:
+    def __init__(self, config: DictConfig, *, generator_config: GeneratorConfig) -> None:
         super().__init__(config)
-        self.generator_config = generator_config
 
         data_cfg = self.config.get("data", {}) or {}
         chunk_cfg = data_cfg.get("chunk", {}) or {}
+
+        self.generator_config = generator_config
         self.scenes_per_chunk = int(chunk_cfg.get("scenes_per_chunk", 1000))
         self.epochs_per_chunk = int(chunk_cfg.get("epochs_per_chunk", 3))
         self.prefetch_chunks = int(chunk_cfg.get("prefetch_chunks", 1))
@@ -48,12 +36,10 @@ class ChunkedBLCSDataModule(BLCSDataModule):
         self.generator_device = str(data_cfg.get("generator_device", "cpu"))
 
         self.chunk_manager: ChunkManager | None = None
-
-        # Track chunk usage for epoch-based rotation
         self._current_chunk_id: int | None = None
         self._epochs_on_current_chunk = 0
 
-    def setup(self, stage: str | None = None) -> None:  # noqa: D401
+    def setup(self, stage: str | None = None) -> None:
         super().setup(stage)
 
         if (stage == "fit" or stage is None) and self.chunk_manager is None:
@@ -74,34 +60,34 @@ class ChunkedBLCSDataModule(BLCSDataModule):
             self.chunk_manager = None
 
     def on_train_epoch_end(self) -> None:
-        """Called by the training loop callback to rotate chunks."""
         self._epochs_on_current_chunk += 1
         if self._epochs_on_current_chunk >= self.epochs_per_chunk:
             self._rotate_chunk()
 
     def _load_next_chunk(self) -> None:
-        """Wait for a ready chunk and replace the training dataset."""
         assert self.chunk_manager is not None
         chunk = self.chunk_manager.wait_for_ready_chunk()
         if chunk is None:
             raise RuntimeError("ChunkManager returned no ready chunk.")
         logger.info(
-            "Loading training chunk %d from %s", chunk.chunk_id, chunk.path,
+            "Loading event detection training chunk %d from %s",
+            chunk.chunk_id,
+            chunk.path,
         )
-        self.train_dataset = BallTrajectoryDataset(
+        self.train_dataset = BLCSRallyEventDataset(
             scene_dir=chunk.path,
-            split_file="train.txt",
+            split_file=self._resolved.train_split_file,
+            input_type=self._resolved.input_type,
             config=self.config,
-            augment=True,
+            augment=False,
         )
         self._current_chunk_id = chunk.chunk_id
         self._epochs_on_current_chunk = 0
 
     def _rotate_chunk(self) -> None:
-        """Mark current chunk as used and switch to the next ready one."""
         assert self.chunk_manager is not None
         old_id = self._current_chunk_id
         if old_id is not None:
             self.chunk_manager.mark_used(old_id)
-            logger.info("Chunk %d marked as used.", old_id)
+            logger.info("Event detection chunk %d marked as used.", old_id)
         self._load_next_chunk()

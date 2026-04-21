@@ -1,0 +1,23 @@
+defaults:
+  - model: multiview
+  - data: chunked_multiview
+  - training: default
+  - loss: multiview_sequence
+  - metrics: default
+  - run: train
+  - paths: default
+  - simulation: default
+  - camera: default
+  - motion_sources: default
+  - _self_
+
+run:
+  device: auto
+  category: null
+
+hydra:
+  run:
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
