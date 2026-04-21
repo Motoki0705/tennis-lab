@@ -12,10 +12,8 @@ import torch
 from src.tasks.base.data.chunk_manager import (
     ChunkGenerator,
     ChunkInfo,
-    ChunkState,
-)
-from src.tasks.base.data.chunk_manager import (
     ChunkManager as BaseChunkManager,
+    ChunkState,
 )
 from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
 from src.tasks.plcs.generate_dataset.sampling.motion_sampler import MotionSampler
