@@ -8,7 +8,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.training.runner import BaseTrainingRunner
-from src.tasks.blcs.training.default_generator_config import (
+from src.tasks.blcs.generate_dataset.config import (
     build_default_generator_config,
 )
 from src.tasks.event_detection.data.datamodule import EventDetectionDataModule
@@ -62,7 +62,6 @@ class EventDetectionTrainingRunner(BaseTrainingRunner):
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
         """Build the EventDetectionLightningModule."""
-        _ = datamodule, steps_per_epoch
         return EventDetectionLightningModule(config)
 
     def callbacks_extra(
@@ -71,7 +70,6 @@ class EventDetectionTrainingRunner(BaseTrainingRunner):
         datamodule: pl.LightningDataModule,
         logger: TensorBoardLogger,
     ) -> list[Any]:
-        del datamodule, logger
         if str(config.get("data", {}).get("backend", "default")) != "chunked":
             return []
 

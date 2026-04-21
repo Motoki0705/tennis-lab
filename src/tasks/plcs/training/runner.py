@@ -49,7 +49,6 @@ class PLCSTrainingRunner(BaseTrainingRunner):
         datamodule: pl.LightningDataModule,
         logger: TensorBoardLogger,
     ) -> list[Any]:
-        del datamodule, logger
         if str(config.get("data", {}).get("backend", "default")) != "chunked":
             return []
 
