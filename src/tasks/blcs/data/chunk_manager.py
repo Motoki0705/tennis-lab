@@ -4,75 +4,68 @@ from __future__ import annotations
 
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from src.tasks.base.data.chunk_manager import (
     ChunkGenerator,
     ChunkInfo,
+    ChunkManager as BaseChunkManager,
     ChunkState,
 )
-from src.tasks.base.data.chunk_manager import (
-    ChunkManager as BaseChunkManager,
+from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
+from src.tasks.blcs.generate_dataset.scene_generator import (
+    BLCSSceneGenerator,
+    GeneratorConfig,
+)
+from src.tasks.blcs.generate_dataset.utils.parallel_runner import (
+    generate_parallel_scenes,
 )
 
-if TYPE_CHECKING:
-    from src.tasks.blcs.generate_dataset.scene_generator import (
-        BLCSSceneGenerator,
-        GeneratorConfig,
-    )
 
+class _BLCSChunkGenerator:
+    def __init__(
+        self,
+        *,
+        generator_config: GeneratorConfig,
+        generator_device: str,
+        generation_workers: int,
+    ) -> None:
+        self.generator_config = generator_config
+        self.generator_device = generator_device
+        self.generation_workers = generation_workers
+        self._generator: BLCSSceneGenerator | None = None
 
-def _build_chunk_generator(
-    *,
-    generator_config: GeneratorConfig,
-    generator_device: str,
-    generation_workers: int,
-) -> ChunkGenerator:
-    generator: BLCSSceneGenerator | None = None
-
-    def generate_chunk(
+    def __call__(
+        self,
         chunk_dir: Path,
         *,
         num_scenes: int,
         stop_event: threading.Event,
     ) -> None:
-        nonlocal generator
-
-        from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
-
         writer = BLCSDatasetWriter(str(chunk_dir))
-        if generation_workers > 0:
-            from src.tasks.blcs.generate_dataset.utils.parallel_runner import (
-                generate_parallel_scenes,
-            )
-
+        if self.generation_workers > 0:
             for scene_data in generate_parallel_scenes(
-                generator_config=generator_config,
-                device=generator_device,
+                generator_config=self.generator_config,
+                device=self.generator_device,
                 num_scenes=num_scenes,
-                num_workers=generation_workers,
+                num_workers=self.generation_workers,
             ):
                 if stop_event.is_set():
                     break
                 writer.save_scene(scene_data)
             return
 
-        if generator is None:
-            from src.tasks.blcs.generate_dataset.scene_generator import (
-                BLCSSceneGenerator,
-            )
-
-            generator = BLCSSceneGenerator(
-                config=generator_config,
-                device=generator_device,
-            )
-
-        for scene_data in generator.generate(num_scenes):
+        for scene_data in self._get_generator().generate(num_scenes):
             if stop_event.is_set():
                 break
             writer.save_scene(scene_data)
 
-    return generate_chunk
+    def _get_generator(self) -> BLCSSceneGenerator:
+        if self._generator is None:
+            self._generator = BLCSSceneGenerator(
+                config=self.generator_config,
+                device=self.generator_device,
+            )
+        return self._generator
 
 
 class ChunkManager(BaseChunkManager):
@@ -95,7 +88,7 @@ class ChunkManager(BaseChunkManager):
 
         super().__init__(
             chunks_dir=chunks_dir,
-            chunk_generator_factory=lambda: _build_chunk_generator(
+            chunk_generator_factory=lambda: _BLCSChunkGenerator(
                 generator_config=generator_config,
                 generator_device=generator_device,
                 generation_workers=generation_workers,

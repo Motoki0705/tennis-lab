@@ -12,9 +12,14 @@ import torch
 from src.tasks.base.data.chunk_manager import (
     ChunkGenerator,
     ChunkInfo,
-    ChunkManager as BaseChunkManager,
     ChunkState,
 )
+from src.tasks.base.data.chunk_manager import (
+    ChunkManager as BaseChunkManager,
+)
+from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
+from src.tasks.plcs.generate_dataset.sampling.motion_sampler import MotionSampler
+from src.tasks.plcs.generate_dataset.scene_generator import SceneGenerator
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -28,47 +33,35 @@ def _resolve_generator_device(device: str) -> str:
     return device
 
 
-def _build_chunk_generator(
-    *,
-    config: DictConfig,
-    generator_device: str,
-    category: str | None,
-    max_attempt_factor: int,
-) -> ChunkGenerator:
-    motion_sampler = None
-    scene_generator = None
-    next_scene_index = 0
-    resolved_device = _resolve_generator_device(generator_device)
+class _PLCSChunkGenerator:
+    def __init__(
+        self,
+        *,
+        config: DictConfig,
+        generator_device: str,
+        category: str | None,
+        max_attempt_factor: int,
+    ) -> None:
+        self.config = config
+        self.category = category
+        self.max_attempt_factor = max_attempt_factor
+        self.resolved_device = _resolve_generator_device(generator_device)
+        self._motion_sampler: MotionSampler | None = None
+        self._scene_generator: SceneGenerator | None = None
+        self._next_scene_index = 0
 
-    def generate_chunk(
+    def __call__(
+        self,
         chunk_dir: Path,
         *,
         num_scenes: int,
         stop_event: threading.Event,
     ) -> None:
-        nonlocal motion_sampler, scene_generator, next_scene_index
-
-        from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
-        from src.tasks.plcs.generate_dataset.sampling.motion_sampler import MotionSampler
-        from src.tasks.plcs.generate_dataset.scene_generator import SceneGenerator
-
-        if motion_sampler is None:
-            motion_sampler = MotionSampler(
-                config=config,
-                smplh_model_path=str(config.paths.smplh_model_path),
-                device=resolved_device,
-            )
-        if scene_generator is None:
-            scene_generator = SceneGenerator(
-                config=config,
-                motion_sampler=motion_sampler,
-                device=resolved_device,
-            )
-
         writer = PLCSDatasetWriter(str(chunk_dir))
         successful = 0
         attempts = 0
-        max_attempts = max(num_scenes * max_attempt_factor, num_scenes)
+        max_attempts = max(num_scenes * self.max_attempt_factor, num_scenes)
+        scene_generator = self._get_scene_generator()
 
         while successful < num_scenes:
             if stop_event.is_set():
@@ -79,14 +72,13 @@ def _build_chunk_generator(
                     f"Generated {successful}/{num_scenes} after {attempts} attempts."
                 )
 
-            scene_id = f"scene_{next_scene_index:06d}"
-            next_scene_index += 1
+            scene_id = self._allocate_scene_id()
             attempts += 1
 
             try:
                 scene = scene_generator.generate_scene(
                     scene_id=scene_id,
-                    category=category,
+                    category=self.category,
                 )
             except Exception:
                 logger.exception("PLCS chunk generation failed for %s", scene_id)
@@ -102,7 +94,28 @@ def _build_chunk_generator(
             writer.save_scene(scene)
             successful += 1
 
-    return generate_chunk
+    def _get_motion_sampler(self) -> MotionSampler:
+        if self._motion_sampler is None:
+            self._motion_sampler = MotionSampler(
+                config=self.config,
+                smplh_model_path=str(self.config.paths.smplh_model_path),
+                device=self.resolved_device,
+            )
+        return self._motion_sampler
+
+    def _get_scene_generator(self) -> SceneGenerator:
+        if self._scene_generator is None:
+            self._scene_generator = SceneGenerator(
+                config=self.config,
+                motion_sampler=self._get_motion_sampler(),
+                device=self.resolved_device,
+            )
+        return self._scene_generator
+
+    def _allocate_scene_id(self) -> str:
+        scene_id = f"scene_{self._next_scene_index:06d}"
+        self._next_scene_index += 1
+        return scene_id
 
 
 class ChunkManager(BaseChunkManager):
@@ -131,7 +144,7 @@ class ChunkManager(BaseChunkManager):
 
         super().__init__(
             chunks_dir=chunks_dir,
-            chunk_generator_factory=lambda: _build_chunk_generator(
+            chunk_generator_factory=lambda: _PLCSChunkGenerator(
                 config=config,
                 generator_device=generator_device,
                 category=category,
