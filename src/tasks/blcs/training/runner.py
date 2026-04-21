@@ -91,7 +91,7 @@ class BLCSTrainingRunner(BaseTrainingRunner):
             extras.append(GANTransitionCallback(config))
 
         if isinstance(datamodule, ChunkedBLCSDataModule):
-            from src.tasks.blcs.training.chunk_rotation_callback import (
+            from src.tasks.base.training.chunk_rotation_callback import (
                 ChunkRotationCallback,
             )
 
