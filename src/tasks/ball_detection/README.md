@@ -93,6 +93,28 @@ python -m src.tasks.ball_detection.scripts.visualize_augmentation \
 出力は `outputs/ball_detection/augmentation_preview/` に保存されます。  
 上段が元シーケンス、下段が augmentation をすべて有効にしたシーケンスです。
 
+### 推論可視化
+
+```bash
+# 既定の clip / checkpoint で GIF を生成
+python -m src.tasks.ball_detection.scripts.visualize
+
+# clip と出力先を上書き
+python -m src.tasks.ball_detection.scripts.visualize \
+    visualization.clip_dir=data/tennis/game1/Clip1 \
+    visualization.save=assets/ball_detection/game1_clip1_prediction.gif
+```
+
+既定では `outputs/ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt`
+を使い、clip 全体に sliding-window 推論を流して、重なった window の heatmap を
+フレームごとに平均した上で GIF を生成します。
+
+- 左パネル: RGB フレームに GT と予測位置を重ねた表示
+- 右パネル: 予測 heatmap overlay
+- GT は赤、しきい値以上の予測は緑で表示
+
+![Ball detection visualization](../../../assets/ball_detection/game1_clip1_prediction.gif)
+
 ### コード・データのパッケージング
 
 ```bash
@@ -156,8 +178,12 @@ src/tasks/ball_detection/
 ├── configs/
 │   ├── data/rgb_sequence.yaml
 │   ├── model/stunet.yaml
-│   ├── training/default.yaml
+│   ├── preview_heatmaps.yaml
+│   ├── run/visualize.yaml
 │   ├── train.yaml
+│   ├── training/default.yaml
+│   ├── visualize.yaml
+│   ├── visualization/default.yaml
 │   ├── visualize_augmentation.yaml
 │   └── package.yaml
 ├── data/
@@ -169,17 +195,23 @@ src/tasks/ball_detection/
 ├── scripts/
 │   ├── download_videos.py
 │   ├── package.py
+│   ├── preview_heatmaps.py
 │   ├── train.py
+│   ├── visualize.py
 │   └── visualize_augmentation.py
+├── visualization/
+│   ├── orchestrator.py
+│   └── rendering.py
 └── training/
+    ├── lightning_module.py
     ├── losses.py
     ├── metrics.py
-    └── pseudo_labeling.py
+    └── runner.py
 ```
 
 ## 注意点
 
-- `inference/` はまだ実質的な predictor 実装を持っていません。
+- `visualize.py` は clip 全体に対して sliding-window 推論を行い、重なり heatmap を平均して GIF 化します。
 - pseudo-label は `pseudo_label_root/phase_XX/` に phase ごとに保存されます。
 - 生動画ベースの半教師あり学習では `data/tennis/raw/videos/` の準備が前提です。
 - CUDA 上では `MaxPool3d` の backward に deterministic kernel が無い経路があるため、
