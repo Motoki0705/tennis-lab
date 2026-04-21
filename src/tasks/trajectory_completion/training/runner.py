@@ -8,7 +8,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.training.runner import BaseTrainingRunner
-from src.tasks.blcs.training.default_generator_config import (
+from src.tasks.blcs.generate_dataset.config import (
     build_default_generator_config,
 )
 from src.tasks.trajectory_completion.data.datamodule import (
@@ -64,7 +64,6 @@ class TrajectoryCompletionTrainingRunner(BaseTrainingRunner):
         datamodule: pl.LightningDataModule,
         logger: TensorBoardLogger,
     ) -> list[Any]:
-        del datamodule, logger
         if str(config.get("data", {}).get("backend", "default")) != "chunked":
             return []
 
