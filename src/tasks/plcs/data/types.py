@@ -153,7 +153,7 @@ class PLCSSceneMeta:
     initial_position: list[float]  # [x, y] starting position on court
     initial_yaw: float  # initial yaw angle in radians
     num_cameras_sampled: int  # number of cameras generated for this scene
-    num_cameras: int  # number of valid cameras (after filtering)
+    num_cameras: int  # number of cameras stored for this scene
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""

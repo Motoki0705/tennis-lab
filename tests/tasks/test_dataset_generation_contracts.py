@@ -17,6 +17,21 @@ def _run_generator(
     output_dir: Path,
     overrides: list[str],
 ) -> subprocess.CompletedProcess[str]:
+    completed = _run_generator_raw(module, output_dir, overrides)
+    if completed.returncode != 0:
+        pytest.fail(
+            f"{module} failed with exit code {completed.returncode}\n"
+            f"stdout:\n{completed.stdout}\n"
+            f"stderr:\n{completed.stderr}"
+        )
+    return completed
+
+
+def _run_generator_raw(
+    module: str,
+    output_dir: Path,
+    overrides: list[str],
+) -> subprocess.CompletedProcess[str]:
     command = [
         sys.executable,
         "-m",
@@ -31,12 +46,6 @@ def _run_generator(
         text=True,
         check=False,
     )
-    if completed.returncode != 0:
-        pytest.fail(
-            f"{module} failed with exit code {completed.returncode}\n"
-            f"stdout:\n{completed.stdout}\n"
-            f"stderr:\n{completed.stderr}"
-        )
     return completed
 
 
@@ -155,9 +164,10 @@ def _assert_plcs_scene_contract(scene_dir: Path) -> None:
     assert rotation.dtype == np.float32
     assert canonical_pose_3d.shape[0] == num_frames
     assert canonical_pose_3d.dtype == np.float32
-    assert num_cameras >= 1
+    assert num_cameras == 8
     assert meta["num_frames"] == num_frames
     assert meta["num_cameras"] == num_cameras
+    assert meta["num_cameras_sampled"] == 8
 
     for camera_index in range(num_cameras):
         human_kp_uv = _load_npy(scene_dir, f"cam_{camera_index}_human_kp_uv")
@@ -279,7 +289,16 @@ def _assert_blcs_scene_contract(scene_dir: Path) -> None:
 @pytest.mark.integration
 @pytest.mark.slow
 @pytest.mark.local_data
-def test_plcs_generator_output_contract(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("num_scenes", "num_workers"),
+    [(1, 1), (2, 2)],
+    ids=["serial", "parallel"],
+)
+def test_plcs_generator_output_contract(
+    tmp_path: Path,
+    num_scenes: int,
+    num_workers: int,
+) -> None:
     smplh_model_dir = REPO_ROOT / "data/smplx/smplh"
     motion_root = REPO_ROOT / "data/ACCAD"
     if not smplh_model_dir.exists() or not motion_root.exists():
@@ -290,8 +309,9 @@ def test_plcs_generator_output_contract(tmp_path: Path) -> None:
         "src.tasks.plcs.scripts.generate_dataset",
         output_dir,
         [
-            "simulation.num_scenes=1",
+            f"simulation.num_scenes={num_scenes}",
             "run.device=cpu",
+            f"run.num_workers={num_workers}",
         ],
     )
 
@@ -326,6 +346,7 @@ def test_plcs_generator_output_contract(tmp_path: Path) -> None:
 
     for scene_record in meta_json["scenes"]:
         _assert_json_camera_record_contract(scene_record)
+        assert scene_record["num_cameras"] == 8
 
     assert {scene_meta["scene_id"] for scene_meta in scenes_meta} == {
         scene_record["scene_id"] for scene_record in meta_json["scenes"]
@@ -333,6 +354,23 @@ def test_plcs_generator_output_contract(tmp_path: Path) -> None:
 
     for scene_dir in scene_dirs:
         _assert_plcs_scene_contract(scene_dir)
+
+
+def test_plcs_parallel_generator_requires_cpu(tmp_path: Path) -> None:
+    output_dir = tmp_path / "plcs"
+    completed = _run_generator_raw(
+        "src.tasks.plcs.scripts.generate_dataset",
+        output_dir,
+        [
+            "simulation.num_scenes=2",
+            "run.device=cuda",
+            "run.num_workers=2",
+        ],
+    )
+
+    assert completed.returncode != 0
+    combined_output = f"{completed.stdout}\n{completed.stderr}"
+    assert "Parallel PLCS dataset generation requires run.device=cpu" in combined_output
 
 
 @pytest.mark.integration

@@ -3,10 +3,12 @@
 Usage:
     python -m src.tasks.plcs.scripts.generate_dataset
     python -m src.tasks.plcs.scripts.generate_dataset run.output_dir=data/plcs simulation.num_scenes=10
+    python -m src.tasks.plcs.scripts.generate_dataset run.device=cpu run.num_workers=4
 
 Notes:
     - Configuration is loaded from `src/tasks/plcs/configs/generate_dataset.yaml`.
     - The script uses Hydra for configuration loading.
+    - Parallel scene generation uses worker processes for scene synthesis only.
 """
 
 from __future__ import annotations
@@ -23,9 +25,19 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
 
+from src.tasks.plcs.generate_dataset.utils.parallel_runner import (
+    build_scene_generator,
+    generate_parallel_scenes,
+    generate_serial_scenes,
+)
 from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
-from src.tasks.plcs.generate_dataset.sampling.motion_sampler import MotionSampler
-from src.tasks.plcs.generate_dataset.scene_generator import SceneGenerator
+
+
+def _seed_everything(seed: int) -> None:
+    """Seed Python, NumPy, and Torch RNGs."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
 
 def _resolve_device(device: str) -> str:
@@ -51,12 +63,11 @@ def _prepare_paths(cfg: DictConfig) -> DictConfig:
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     """Generate scenes and write them to disk."""
     cfg = _prepare_paths(cfg)
+    device = str(cfg.run.device)
 
     # Set random seeds
     seed = int(cfg.run.seed)
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
+    _seed_everything(seed)
 
     # Create output directory
     output_dir = Path(cfg.run.output_dir)
@@ -66,26 +77,46 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     OmegaConf.save(cfg, output_dir / "config.yaml")
 
     # Initialize components
-    print("\nInitializing motion sampler...")
-    motion_sampler = MotionSampler(
-        config=cfg,
-        smplh_model_path=cfg.paths.smplh_model_path,
-        device=cfg.run.device,
-    )
-
-    print(f"Available categories: {motion_sampler.get_available_categories()}")
-
-    print("\nInitializing scene generator...")
-    scene_generator = SceneGenerator(
-        config=cfg,
-        motion_sampler=motion_sampler,
-        device=cfg.run.device,
-    )
     writer = PLCSDatasetWriter(output_dir)
 
     # Generate scenes
     num_scenes = int(cfg.simulation.num_scenes)
+    num_workers = int(cfg.run.get("num_workers", 1))
+    effective_workers = min(num_workers, num_scenes)
+    if effective_workers > 1 and torch.device(device).type != "cpu":
+        raise ValueError(
+            "Parallel PLCS dataset generation requires run.device=cpu when "
+            f"run.num_workers={num_workers}"
+        )
+
+    if effective_workers > 1:
+        results = generate_parallel_scenes(
+            config=cfg,
+            device=device,
+            start_index=0,
+            num_scenes=num_scenes,
+            num_workers=effective_workers,
+        )
+    else:
+        print("\nInitializing motion sampler...")
+        scene_generator = build_scene_generator(cfg, device)
+        print(
+            "Available categories: "
+            f"{scene_generator.motion_sampler.get_available_categories()}"
+        )
+        print("\nInitializing scene generator...")
+        results = generate_serial_scenes(
+            scene_generator,
+            start_index=0,
+            num_scenes=num_scenes,
+        )
+
     print(f"\nGenerating {num_scenes} scenes...")
+    print(
+        "Scene generation mode: "
+        f"{'parallel' if effective_workers > 1 else 'serial'} "
+        f"(workers={effective_workers})"
+    )
 
     successful = 0
     failed = 0
@@ -98,41 +129,21 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     }
     scenes_meta: list[dict] = []
 
-    for i in tqdm(range(num_scenes), desc="Generating scenes"):
-        try:
-            scene_id = f"scene_{i:06d}"
+    for scene in tqdm(results, desc="Generating scenes", total=num_scenes):
+        # Save scene
+        writer.save_scene(scene)
 
-            # Generate scene
-            scene = scene_generator.generate_scene(
-                scene_id=scene_id,
-                category=cfg.run.category,
-            )
+        # Update statistics
+        successful += 1
+        total_cameras += len(scene.cameras)
+        stats["total_frames"] += scene.meta["num_frames"]
+        stats["cameras_per_scene"].append(len(scene.cameras))
 
-            # Check if we have valid cameras after filtering
-            if len(scene.cameras) == 0:
-                print(f"\nWarning: Scene {scene_id} has no valid cameras, skipping...")
-                failed += 1
-                continue
+        category = scene.meta.get("motion_category", "unknown")
+        stats["categories"].setdefault(category, 0)
+        stats["categories"][category] += 1
 
-            # Save scene
-            writer.save_scene(scene)
-
-            # Update statistics
-            successful += 1
-            total_cameras += len(scene.cameras)
-            stats["total_frames"] += scene.meta["num_frames"]
-            stats["cameras_per_scene"].append(len(scene.cameras))
-
-            category = scene.meta.get("motion_category", "unknown")
-            stats["categories"].setdefault(category, 0)
-            stats["categories"][category] += 1
-
-            scenes_meta.append(scene.meta)
-
-        except Exception as exc:  # pragma: no cover - logging only
-            print(f"\nError generating scene {i}: {exc}")
-            failed += 1
-            continue
+        scenes_meta.append(scene.meta)
 
     # Save statistics
     stats["successful_scenes"] = successful
