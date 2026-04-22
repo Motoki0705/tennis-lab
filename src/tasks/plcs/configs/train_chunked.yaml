@@ -6,14 +6,9 @@ defaults:
   - metrics: default
   - run: train
   - paths: default
-  - simulation: default
   - camera: default
   - motion_sources: default
   - _self_
-
-run:
-  device: auto
-  category: null
 
 hydra:
   run:
