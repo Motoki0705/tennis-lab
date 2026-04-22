@@ -1,3 +1,4 @@
+backend: default
 scene_dir: data/plcs
 
 # Number of court keypoints to use (first N from canonical order)
