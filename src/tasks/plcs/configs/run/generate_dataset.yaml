@@ -1,4 +1,4 @@
 output_dir: data/plcs
 seed: 42
-device: auto
+device: cpu
 num_workers: 8
