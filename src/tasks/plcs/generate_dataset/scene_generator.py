@@ -51,7 +51,7 @@ class CameraData:
     human_kp_visible: np.ndarray  # (T, 17)
     court_kp_visible: np.ndarray  # (T, 20)
 
-    # Filtering metrics
+    # Visibility metrics recorded for analysis/debugging.
     human_visibility_ratio: float  # Fraction of frames with at least one visible human keypoint
     court_visibility_count: float  # Average visible court keypoints
 
@@ -83,7 +83,7 @@ class SceneGenerator:
     - Places players on the court with random initial pose
     - Generates multiple camera views
     - Projects 3D data to 2D UV coordinates
-    - Filters cameras based on visibility criteria
+    - Records per-camera visibility metrics
     """
 
     def __init__(
@@ -351,20 +351,18 @@ class SceneGenerator:
     def generate_scene(
         self,
         scene_id: str | None = None,
-        category: str | None = None,
     ) -> SceneData:
         """Generate a complete scene.
 
         Args:
             scene_id: Optional scene identifier.
-            category: Optional motion category to sample from.
 
         Returns:
             SceneData with all generated data.
 
         """
         # Sample motion
-        motion = self.motion_sampler.sample_motion(category=category)
+        motion = self.motion_sampler.sample_motion()
         self.motion_sampler.compute_joints_3d(motion)
 
         # Sample initial pose

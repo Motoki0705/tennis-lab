@@ -12,6 +12,21 @@ from src.tasks.blcs.generate_dataset.scene_generator import (
     GeneratorConfig,
 )
 
+_WORKER_SCENE_GENERATOR: BLCSSceneGenerator | None = None
+
+
+def _get_worker_scene_generator(
+    generator_config: GeneratorConfig,
+    device: str,
+) -> BLCSSceneGenerator:
+    global _WORKER_SCENE_GENERATOR
+    if _WORKER_SCENE_GENERATOR is None:
+        _WORKER_SCENE_GENERATOR = BLCSSceneGenerator(
+            config=generator_config,
+            device=device,
+        )
+    return _WORKER_SCENE_GENERATOR
+
 
 def _generate_scene_task(
     scene_index: int,
@@ -24,7 +39,7 @@ def _generate_scene_task(
         )
     torch.set_num_threads(1)
 
-    generator = BLCSSceneGenerator(config=generator_config, device=device)
+    generator = _get_worker_scene_generator(generator_config, device)
     from_cell = generator.sample_from_cell()
     side = generator.sample_side()
     scene_data = generator.generate_scene(from_cell, side, f"scene_{scene_index:06d}")

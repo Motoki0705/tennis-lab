@@ -10,6 +10,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from src.tasks.base.training.runner import BaseTrainingRunner
 from src.tasks.plcs.data.datamodule import PLCSDataModule
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
+from src.tasks.plcs.utils import prepare_generation_config
 
 
 class PLCSTrainingRunner(BaseTrainingRunner):
@@ -17,10 +18,10 @@ class PLCSTrainingRunner(BaseTrainingRunner):
 
     def prepare_config(self, config: Any) -> None:
         backend = str(config.get("data", {}).get("backend", "default"))
-        if backend == "chunked":
-            from src.tasks.plcs.scripts.generate_dataset import _prepare_paths
+        if backend != "chunked":
+            return
 
-            _prepare_paths(config)
+        prepare_generation_config(config, resolve=False)
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
         backend = str(config.get("data", {}).get("backend", "default"))
