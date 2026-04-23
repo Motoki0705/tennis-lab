@@ -1,10 +1,4 @@
-import type { Vec3 } from "../lib/types";
-
-type CameraPreset = {
-  id: string;
-  label: string;
-  pos: Vec3;
-};
+import type { CameraPreset, Vec3 } from "../lib/types";
 
 function fmt(v: number) {
   return v.toFixed(3);

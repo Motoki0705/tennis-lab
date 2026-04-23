@@ -5,7 +5,7 @@ import * as THREE from "three";
 
 import { Court3D } from "./Court3D";
 import { FpsControls } from "./FpsControls";
-import type { CellInfo, CourtGeometryResponse, Side, Vec3 } from "../lib/types";
+import type { CameraPreset, CellInfo, CourtGeometryResponse, Side, Vec3 } from "../lib/types";
 
 function EventMarker(props: { pos: Vec3; color: string }) {
   return (
@@ -18,6 +18,7 @@ function EventMarker(props: { pos: Vec3; color: string }) {
 
 function CameraSync(props: {
   cameraPose: Vec3 | null;
+  cameraLookAtTarget: Vec3 | null;
   cameraPoseVersion: number;
   lockLookAtCenter: boolean;
   onCameraPoseChange: (pos: Vec3, dir: Vec3) => void;
@@ -33,9 +34,21 @@ function CameraSync(props: {
     camera.position.set(props.cameraPose.x, props.cameraPose.y, props.cameraPose.z);
     if (props.lockLookAtCenter) {
       camera.lookAt(0, 0, 0);
+    } else if (props.cameraLookAtTarget) {
+      camera.lookAt(
+        props.cameraLookAtTarget.x,
+        props.cameraLookAtTarget.y,
+        props.cameraLookAtTarget.z
+      );
     }
     camera.updateProjectionMatrix();
-  }, [camera, props.cameraPose, props.cameraPoseVersion, props.lockLookAtCenter]);
+  }, [
+    camera,
+    props.cameraPose,
+    props.cameraLookAtTarget,
+    props.cameraPoseVersion,
+    props.lockLookAtCenter,
+  ]);
 
   useFrame((_, dt: number) => {
     reportClock.current += dt;
@@ -61,16 +74,63 @@ function CameraSync(props: {
   return null;
 }
 
-function CameraMarker(props: { pos: Vec3; active: boolean }) {
+function CameraMarker(props: { pos: Vec3; lookAt: Vec3; active: boolean }) {
+  const quaternion = useMemo(() => {
+    const position = new THREE.Vector3(props.pos.x, props.pos.y, props.pos.z);
+    const target = new THREE.Vector3(props.lookAt.x, props.lookAt.y, props.lookAt.z);
+    const forward = target.sub(position);
+    if (forward.lengthSq() < 1e-6) {
+      forward.set(1, 0, 0);
+    } else {
+      forward.normalize();
+    }
+
+    const worldUp = new THREE.Vector3(0, 0, 1);
+    const right = new THREE.Vector3().crossVectors(worldUp, forward);
+    if (right.lengthSq() < 1e-6) {
+      right.set(0, 1, 0).cross(forward);
+    }
+    right.normalize();
+
+    const up = new THREE.Vector3().crossVectors(forward, right).normalize();
+    const basis = new THREE.Matrix4().makeBasis(forward, right, up);
+    return new THREE.Quaternion().setFromRotationMatrix(basis);
+  }, [props.lookAt.x, props.lookAt.y, props.lookAt.z, props.pos.x, props.pos.y, props.pos.z]);
+
+  const bodyColor = props.active ? "#fde047" : "#f97316";
+  const accentColor = props.active ? "#fff7c2" : "#fed7aa";
+
   return (
-    <mesh position={[props.pos.x, props.pos.y, props.pos.z]}>
-      <sphereGeometry args={[props.active ? 0.28 : 0.22, 16, 16]} />
-      <meshStandardMaterial
-        color={props.active ? "#fde047" : "#f97316"}
-        transparent
-        opacity={props.active ? 0.95 : 0.75}
-      />
-    </mesh>
+    <group
+      position={[props.pos.x, props.pos.y, props.pos.z]}
+      quaternion={quaternion}
+      scale={props.active ? 1.16 : 1}
+    >
+      <mesh>
+        <boxGeometry args={[0.5, 0.3, 0.26]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.42} metalness={0.08} />
+      </mesh>
+
+      <mesh position={[0.34, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.085, 0.11, 0.28, 24]} />
+        <meshStandardMaterial color="#111827" roughness={0.35} metalness={0.22} />
+      </mesh>
+
+      <mesh position={[0.47, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.05, 0.07, 0.08, 24]} />
+        <meshStandardMaterial color={accentColor} transparent opacity={0.92} roughness={0.12} />
+      </mesh>
+
+      <mesh position={[-0.04, 0, 0.2]}>
+        <boxGeometry args={[0.18, 0.18, 0.09]} />
+        <meshStandardMaterial color={accentColor} roughness={0.48} metalness={0.06} />
+      </mesh>
+
+      <mesh position={[-0.08, 0, -0.2]}>
+        <boxGeometry args={[0.16, 0.18, 0.1]} />
+        <meshStandardMaterial color="#0f172a" roughness={0.7} metalness={0.04} />
+      </mesh>
+    </group>
   );
 }
 
@@ -88,10 +148,12 @@ export function Trajectory3D(props: {
   bounce2Pos: Vec3 | null;
   netPos: Vec3 | null;
   cameraPose: Vec3 | null;
+  cameraLookAtTarget: Vec3 | null;
   cameraPoseVersion: number;
   lockLookAtCenter: boolean;
+  activePresetId: string | null;
   onCameraPoseChange: (pos: Vec3, dir: Vec3) => void;
-  cameraMarkers: Vec3[];
+  cameraMarkers: CameraPreset[];
 }) {
   const trajectoryPoints = useMemo(() => {
     if (!props.positions || props.positions.length <= 1) return null;
@@ -135,17 +197,31 @@ export function Trajectory3D(props: {
         {props.bounce1Pos ? <EventMarker pos={props.bounce1Pos} color="#111" /> : null}
         {props.bounce2Pos ? <EventMarker pos={props.bounce2Pos} color="#111" /> : null}
 
-        {props.cameraMarkers.map((m, i) => {
-          const isActive =
+        {props.cameraMarkers.map((marker) => {
+          const tooCloseToViewer =
             props.cameraPose !== null &&
-            Math.abs(props.cameraPose.x - m.x) < 1e-6 &&
-            Math.abs(props.cameraPose.y - m.y) < 1e-6 &&
-            Math.abs(props.cameraPose.z - m.z) < 1e-6;
-          return <CameraMarker key={i} pos={m} active={isActive} />;
+            (props.cameraPose.x - marker.pos.x) ** 2 +
+              (props.cameraPose.y - marker.pos.y) ** 2 +
+              (props.cameraPose.z - marker.pos.z) ** 2 <
+              0.9 ** 2;
+          if (tooCloseToViewer) {
+            return null;
+          }
+
+          const isActive = props.activePresetId === marker.id;
+          return (
+            <CameraMarker
+              key={marker.id}
+              pos={marker.pos}
+              lookAt={marker.lookAt}
+              active={isActive}
+            />
+          );
         })}
 
         <CameraSync
           cameraPose={props.cameraPose}
+          cameraLookAtTarget={props.cameraLookAtTarget}
           cameraPoseVersion={props.cameraPoseVersion}
           lockLookAtCenter={props.lockLookAtCenter}
           onCameraPoseChange={props.onCameraPoseChange}
