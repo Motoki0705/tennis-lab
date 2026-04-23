@@ -1,0 +1,22 @@
+defaults:
+  - model: stunet
+  - data: rgb_sequence
+  - loss: default
+  - metrics: default
+  - training: default
+  - run: eval
+  - _self_
+
+evaluation:
+  splits: [val, test]
+  output_json_name: metrics.json
+  max_batches_per_split: null
+  analysis:
+    edge_threshold_ratio: 0.1
+
+hydra:
+  run:
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

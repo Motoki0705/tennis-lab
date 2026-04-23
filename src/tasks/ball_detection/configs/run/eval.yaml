@@ -1,0 +1,6 @@
+output_dir: outputs/ball_detection/eval/${model.name}
+seed: 42
+gpus: 1
+checkpoint_path: outputs/ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
+strict: true
+weights_only: false
