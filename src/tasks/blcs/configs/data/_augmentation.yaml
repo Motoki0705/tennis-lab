@@ -1,0 +1,104 @@
+# Shared BLCS train-time observation augmentation.
+#
+# These settings corrupt detector-facing inputs only.  The dataset keeps clean
+# `ball_uv_target` / `ball_vis_target` tensors for reprojection losses before
+# applying the noisy detector-inspired observations to `ball_uv` / `ball_vis`.
+#
+# Calibration source:
+# outputs/ball_detection/eval/stunet/2026-04-23_11-39-15/metrics.json
+# The values below use visible-frame weighted val/test aggregates:
+# - visible frames: 7034, invisible frames: 174
+# - suppressed miss rate: 0.0721
+# - localization error rate: 0.2238
+# - absent-frame false positive rate: 0.1034
+# - matched mean distance: 2.19 px, visible-distance p90: 7.47 px
+# - edge analysis threshold: 0.10 normalized margin
+# - high-speed q75 threshold: 17.69 px/frame
+# Pixel distances are mapped to normalized UV with the 512x288 image diagonal
+# from the eval config: sqrt(512^2 + 288^2) ~= 587 px.
+augmentation:
+  enabled: true
+  preserve_clean_targets: true
+
+  # The ball detector eval does not measure global camera/zoom scale bias, and
+  # UV scaling is not camera-consistent for reprojection losses. Keep it
+  # available for explicit ablations, but disable it in the eval-calibrated
+  # default profile.
+  uv_scale:
+    enabled: false
+    prob: 1.0
+    scale_range: [1.0, 1.0]
+    apply_to_ball: true
+    apply_to_court: true
+
+  # Matched detector error is 2.19 px on average. 2.19 / 587 ~= 0.0037,
+  # so ball_std is set to 0.0037. Court keypoints are not covered by the ball
+  # detector eval, so keep court noise off by default instead of inventing a
+  # court-detector calibration.
+  gaussian_noise:
+    enabled: true
+    prob: 1.0
+    ball_std: 0.0037
+    court_std: 0.0
+
+  # The eval aggregate suppressed-miss rate is 0.0721.  Allocate most of that
+  # to independent detector misses, while burst_dropout below accounts for a
+  # smaller contiguous-fragmentation component that eval.py does not yet report
+  # as run lengths.
+  visibility_dropout:
+    enabled: true
+    prob: 1.0
+    drop_prob: 0.06
+
+  # Visible-distance p90 is 7.47 px (7.47 / 587 ~= 0.0127), while matched mean
+  # error is much smaller. Use a modest always-on temporal component to create
+  # correlated localization error without letting it dominate gaussian_noise.
+  temporal_jitter:
+    enabled: true
+    prob: 1.0
+    jitter_std: 0.0025
+    drift_std: 0.0015
+    drift_decay: 0.85
+
+  # Track fragmentation: consecutive detector misses. The eval summary gives
+  # total suppressed misses but not miss run lengths, so this remains a small
+  # share of the 7.2% miss budget rather than matching the whole rate.
+  burst_dropout:
+    enabled: true
+    prob: 0.2
+    track_prob: 1.0
+    min_len: 2
+    max_len: 4
+    max_bursts: 1
+
+  # Eval absent-frame false positive rate is 0.1034, so true absent spans use
+  # prob_absent ~= 0.10. Artificial dropouts already receive that base
+  # probability; add only a small after-dropout boost to avoid over-counting.
+  false_positive:
+    enabled: true
+    prob: 1.0
+    prob_absent: 0.1
+    prob_after_dropout: 0.03
+    after_dropout_window: 2
+
+  # Eval edge threshold was 0.10. Edge match rate is 0.624 vs center match rate
+  # 0.706, so edge drop_prob is set near the observed 0.08 gap. Edge-visible
+  # frames are only 2.8% of visible frames, so keep this localized.
+  edge_degradation:
+    enabled: true
+    prob: 1.0
+    edge_margin: 0.1
+    noise_std: 0.006
+    drop_prob: 0.08
+    clip_out_prob: 0.02
+
+  # High-speed q75 is 17.69 px/frame; 17.69 / 587 ~= 0.030. High-speed error
+  # rate is 0.343 vs 0.274 for low speed, so frame_prob ~= 0.07 models the
+  # excess high-speed failure probability instead of reapplying all errors.
+  speed_conditioned:
+    enabled: true
+    prob: 1.0
+    frame_prob: 0.07
+    speed_threshold: 0.03
+    lag_overshoot_range: [-0.25, 0.35]
+    noise_std: 0.0037

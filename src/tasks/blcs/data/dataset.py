@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import random as rng
-from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,13 +10,10 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
 from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch, BLCSMultiViewSample
-from src.utils.data.augmentation import (
-    add_gaussian_noise,
-    random_visibility_dropout,
-    scale_uv_with_visibility,
-)
 from src.tasks.base.data.scene_dataset import Scene, SceneDatasetBase, SceneDatasetConfig
+
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
@@ -65,28 +60,9 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         # Number of court keypoints to use (first N from the canonical order)
         self.num_court_kp = int(data_cfg.get("num_court_kp", 20))
 
-        # Augmentation parameters
+        # Augmentation pipeline
         aug_cfg = data_cfg.get("augmentation", {})
-        self.uv_noise_std = float(aug_cfg.get("uv_noise_std", 0.005))
-        self.vis_drop_prob = float(aug_cfg.get("visibility_drop_prob", 0.1))
-        scale_range_cfg = aug_cfg.get("scale_range", [1.0, 1.0])
-        if (
-            not isinstance(scale_range_cfg, Sequence)
-            or isinstance(scale_range_cfg, (str, bytes))
-            or len(scale_range_cfg) != 2
-        ):
-            raise ValueError(
-                "augmentation.scale_range must be a list/tuple of two numbers: [min_scale, max_scale]."
-            )
-        self.scale_range = (float(scale_range_cfg[0]), float(scale_range_cfg[1]))
-        if self.scale_range[0] <= 0 or self.scale_range[1] <= 0:
-            raise ValueError(
-                f"augmentation.scale_range must be positive, got {self.scale_range}."
-            )
-        if self.scale_range[0] > self.scale_range[1]:
-            raise ValueError(
-                f"augmentation.scale_range min must be <= max, got {self.scale_range}."
-            )
+        self.augmentation_pipeline = BLCSBallObservationAugmentation(aug_cfg)
 
     def _build_scene_dataset_config(  # type: ignore[override]
         self,
@@ -175,44 +151,7 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
     def _apply_augmentation_multiview(
         self, sample: BLCSMultiViewSample
     ) -> BLCSMultiViewSample:
-        sample = {k: (v.clone() if isinstance(v, Tensor) else v) for k, v in sample.items()}
-        scale_min, scale_max = self.scale_range
-        if not (scale_min == 1.0 and scale_max == 1.0):
-            scale = rng.uniform(scale_min, scale_max)
-            if abs(scale - 1.0) >= 1e-8:
-                ball_uv = sample["ball_uv"]
-                court_kp = sample["court_kp"]
-                ball_vis = sample["ball_vis"]
-                court_vis = sample["court_vis"]
-                if not isinstance(ball_uv, Tensor) or not isinstance(court_kp, Tensor):
-                    raise ValueError("ball_uv/court_kp must be tensors")
-                if not isinstance(ball_vis, Tensor) or not isinstance(court_vis, Tensor):
-                    raise ValueError("ball_vis/court_vis must be tensors")
-
-                sample["ball_uv"], sample["ball_vis"] = scale_uv_with_visibility(
-                    uv=ball_uv,
-                    visibility=ball_vis,
-                    scale=scale,
-                )
-                sample["court_kp"], sample["court_vis"] = scale_uv_with_visibility(
-                    uv=court_kp,
-                    visibility=court_vis,
-                    scale=scale,
-                )
-
-        ball_uv = sample["ball_uv"]
-        if isinstance(ball_uv, Tensor):
-            sample["ball_uv"] = add_gaussian_noise(ball_uv, self.uv_noise_std).clamp(0, 1)
-
-        court_kp = sample["court_kp"]
-        if isinstance(court_kp, Tensor):
-            sample["court_kp"] = add_gaussian_noise(court_kp, self.uv_noise_std).clamp(0, 1)
-
-        ball_vis = sample["ball_vis"]
-        if isinstance(ball_vis, Tensor):
-            sample["ball_vis"] = random_visibility_dropout(ball_vis, self.vis_drop_prob)
-
-        return sample
+        return self.augmentation_pipeline.forward(sample)
 
     def augment_sample(self, sample: BLCSMultiViewSample) -> BLCSMultiViewSample:
         if self.augment:
@@ -226,9 +165,15 @@ def collate_multiview_trajectories(
     """Collate canonical BLCS samples into padded canonical batch tensors."""
     max_views = max(int(sample["ball_uv"].shape[0]) for sample in batch)
     max_seq_len = max(sample["seq_len"].item() for sample in batch)
+    has_clean_targets = any(
+        "ball_uv_target" in sample and "ball_vis_target" in sample
+        for sample in batch
+    )
 
     ball_uv_batch = []
     ball_vis_batch = []
+    ball_uv_target_batch = []
+    ball_vis_target_batch = []
     ball_mask_batch = []
     court_kp_batch = []
     court_vis_batch = []
@@ -250,6 +195,10 @@ def collate_multiview_trajectories(
 
         ball_uv = sample["ball_uv"]
         ball_vis = sample["ball_vis"]
+        ball_uv_target = sample.get("ball_uv_target", ball_uv) if has_clean_targets else None
+        ball_vis_target = (
+            sample.get("ball_vis_target", ball_vis) if has_clean_targets else None
+        )
         ball_mask = sample["ball_mask"]
         court_kp = sample["court_kp"]
         court_vis = sample["court_vis"]
@@ -268,6 +217,17 @@ def collate_multiview_trajectories(
         if pad_seq > 0:
             ball_uv = torch.cat([ball_uv, torch.zeros(n_views, pad_seq, 2)], dim=1)
             ball_vis = torch.cat([ball_vis, torch.zeros(n_views, pad_seq)], dim=1)
+            if has_clean_targets:
+                assert ball_uv_target is not None
+                assert ball_vis_target is not None
+                ball_uv_target = torch.cat(
+                    [ball_uv_target, torch.zeros(n_views, pad_seq, 2)],
+                    dim=1,
+                )
+                ball_vis_target = torch.cat(
+                    [ball_vis_target, torch.zeros(n_views, pad_seq)],
+                    dim=1,
+                )
             ball_mask = torch.cat([ball_mask, torch.zeros(n_views, pad_seq)], dim=1)
             court_kp = torch.cat([court_kp, torch.zeros(n_views, pad_seq, n_kp, 2)], dim=1)
             court_vis = torch.cat([court_vis, torch.zeros(n_views, pad_seq, n_kp)], dim=1)
@@ -277,6 +237,17 @@ def collate_multiview_trajectories(
         if pad_views > 0:
             ball_uv = torch.cat([ball_uv, torch.zeros(pad_views, max_seq_len, 2)], dim=0)
             ball_vis = torch.cat([ball_vis, torch.zeros(pad_views, max_seq_len)], dim=0)
+            if has_clean_targets:
+                assert ball_uv_target is not None
+                assert ball_vis_target is not None
+                ball_uv_target = torch.cat(
+                    [ball_uv_target, torch.zeros(pad_views, max_seq_len, 2)],
+                    dim=0,
+                )
+                ball_vis_target = torch.cat(
+                    [ball_vis_target, torch.zeros(pad_views, max_seq_len)],
+                    dim=0,
+                )
             ball_mask = torch.cat([ball_mask, torch.zeros(pad_views, max_seq_len)], dim=0)
             court_kp = torch.cat([court_kp, torch.zeros(pad_views, max_seq_len, n_kp, 2)], dim=0)
             court_vis = torch.cat([court_vis, torch.zeros(pad_views, max_seq_len, n_kp)], dim=0)
@@ -291,6 +262,11 @@ def collate_multiview_trajectories(
 
         ball_uv_batch.append(ball_uv)
         ball_vis_batch.append(ball_vis)
+        if has_clean_targets:
+            assert ball_uv_target is not None
+            assert ball_vis_target is not None
+            ball_uv_target_batch.append(ball_uv_target)
+            ball_vis_target_batch.append(ball_vis_target)
         ball_mask_batch.append(ball_mask)
         court_kp_batch.append(court_kp)
         court_vis_batch.append(court_vis)
@@ -304,7 +280,7 @@ def collate_multiview_trajectories(
         cam_cy_batch.append(cam_cy)
         cam_w_batch.append(cam_w)
         cam_h_batch.append(cam_h)
-    return {
+    collated = {
         "ball_uv": torch.stack(ball_uv_batch, dim=0),
         "ball_vis": torch.stack(ball_vis_batch, dim=0),
         "ball_mask": torch.stack(ball_mask_batch, dim=0),
@@ -321,6 +297,10 @@ def collate_multiview_trajectories(
         "camera_w": torch.stack(cam_w_batch, dim=0),
         "camera_h": torch.stack(cam_h_batch, dim=0),
     }
+    if has_clean_targets:
+        collated["ball_uv_target"] = torch.stack(ball_uv_target_batch, dim=0)
+        collated["ball_vis_target"] = torch.stack(ball_vis_target_batch, dim=0)
+    return collated
 
 
 def adapt_batch_for_model_profile(
@@ -336,7 +316,7 @@ def adapt_batch_for_model_profile(
     if input_profile == "multiview":
         return batch
     if input_profile == "single":
-        return {
+        adapted = {
             "ball_uv": batch["ball_uv"][:, 0],
             "ball_vis": batch["ball_vis"][:, 0],
             "ball_mask": batch["ball_mask"][:, 0],
@@ -353,6 +333,10 @@ def adapt_batch_for_model_profile(
             "camera_w": batch["camera_w"][:, :1],
             "camera_h": batch["camera_h"][:, :1],
         }
+        if "ball_uv_target" in batch and "ball_vis_target" in batch:
+            adapted["ball_uv_target"] = batch["ball_uv_target"][:, :1]
+            adapted["ball_vis_target"] = batch["ball_vis_target"][:, :1]
+        return adapted
     raise ValueError(
         "Unknown model input profile: "
         f"{input_profile}. Supported: ['single', 'multiview']"
