@@ -50,6 +50,7 @@ const COURT_CENTER = { x: 0, y: 0, z: 0 };
 
 export default function Page() {
   const [drawerOpen, setDrawerOpen] = useState(true);
+  const [cameraSearchOpen, setCameraSearchOpen] = useState(true);
 
   const [cells, setCells] = useState<CellInfo[]>([]);
   const [court, setCourt] = useState<CourtGeometryResponse | null>(null);
@@ -251,6 +252,26 @@ export default function Page() {
         Open Controls
       </button>
 
+      <button
+        onClick={() => setCameraSearchOpen(true)}
+        style={{
+          position: "fixed",
+          right: 16,
+          bottom: 16,
+          zIndex: 9,
+          display: cameraSearchOpen ? "none" : "block",
+          border: "1px solid rgba(255,255,255,0.22)",
+          background: "rgba(10,10,10,0.6)",
+          color: "#fff",
+          borderRadius: 12,
+          padding: "10px 12px",
+          cursor: "pointer",
+          backdropFilter: "blur(6px)",
+        }}
+      >
+        Open Camera Search
+      </button>
+
       <ControlsDrawer
         open={drawerOpen}
         setOpen={setDrawerOpen}
@@ -313,19 +334,22 @@ export default function Page() {
         ) : null}
       </div>
 
-      <CameraSearchPanel
-        presets={cameraPresets}
-        activePresetId={activePresetId}
-        zMin={cameraZMin}
-        setZMin={setCameraZMin}
-        zMax={cameraZMax}
-        setZMax={setCameraZMax}
-        lockLookAtCenter={lockLookAtCenter}
-        setLockLookAtCenter={setLockLookAtCenter}
-        onApplyPreset={applyCameraPreset}
-        cameraPos={cameraCurrentPos}
-        cameraDir={cameraCurrentDir}
-      />
+      {cameraSearchOpen ? (
+        <CameraSearchPanel
+          presets={cameraPresets}
+          activePresetId={activePresetId}
+          onClose={() => setCameraSearchOpen(false)}
+          zMin={cameraZMin}
+          setZMin={setCameraZMin}
+          zMax={cameraZMax}
+          setZMax={setCameraZMax}
+          lockLookAtCenter={lockLookAtCenter}
+          setLockLookAtCenter={setLockLookAtCenter}
+          onApplyPreset={applyCameraPreset}
+          cameraPos={cameraCurrentPos}
+          cameraDir={cameraCurrentDir}
+        />
+      ) : null}
     </div>
   );
 }
