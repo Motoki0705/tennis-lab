@@ -30,10 +30,9 @@ from tqdm.auto import tqdm
 
 from src.tasks.blcs.generate_dataset.config import build_generator_config
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
-from src.tasks.blcs.generate_dataset.scene_generator import (
-    GeneratorConfig,
+from src.tasks.blcs.generate_dataset.utils.parallel_runner import (
+    generate_parallel_scenes,
 )
-from src.tasks.blcs.generate_dataset.utils.parallel_runner import generate_parallel_scenes
 
 logging.basicConfig(
     level=logging.INFO,
@@ -82,32 +81,27 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             f"Invalid split ratios: train={train_ratio}, val={val_ratio} (sum > 1.0)"
         )
 
-    generator_config = build_generator_config(cfg)
-
     num_scenes = int(cfg.generator.num_scenes)
     num_workers = int(cfg.run.get("num_workers", 1))
-    effective_workers = min(num_workers, num_scenes)
     device = str(cfg.run.device)
+    generator_config = build_generator_config(cfg)
 
     logger.info("Output directory: %s", output_dir)
     logger.info("Number of scenes: %s", num_scenes)
     logger.info("Max rallies per scene: %s", cfg.rally.max_rallies)
     logger.info("Device: %s", device)
 
-    if effective_workers > 1 and torch.device(device).type != "cpu":
+    if torch.device(device).type != "cpu":
         raise ValueError(
             "Parallel BLCS dataset generation requires run.device=cpu when "
             f"run.num_workers={num_workers}"
         )
-    
+
     writer = BLCSDatasetWriter(output_dir)
 
     logger.info("Starting scene generation...")
-    logger.info(
-        "Scene generation mode: %s",
-        "parallel" if effective_workers > 1 else "serial",
-    )
-    logger.info("Scene generation workers: %s", effective_workers)
+    logger.info("Scene generation mode: parallel")
+    logger.info("Scene generation workers: %s", num_workers)
 
     total_scenes = 0
 
@@ -116,12 +110,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             generator_config=generator_config,
             device=device,
             num_scenes=num_scenes,
-            num_workers=effective_workers,
+            num_workers=num_workers,
         ),
         desc="Generating scenes",
         total=num_scenes,
     ):
-        
         writer.save_scene(scene_data)
         total_scenes += 1
 
