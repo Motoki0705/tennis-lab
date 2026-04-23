@@ -7,6 +7,8 @@ import { Court3D } from "./Court3D";
 import { FpsControls } from "./FpsControls";
 import type { CameraPreset, CellInfo, CourtGeometryResponse, Side, Vec3 } from "../lib/types";
 
+const CAMERA_MARKER_SCALE = 1.5;
+
 function EventMarker(props: { pos: Vec3; color: string }) {
   return (
     <mesh position={[props.pos.x, props.pos.y, props.pos.z + 0.02]}>
@@ -99,12 +101,13 @@ function CameraMarker(props: { pos: Vec3; lookAt: Vec3; active: boolean }) {
 
   const bodyColor = props.active ? "#fde047" : "#f97316";
   const accentColor = props.active ? "#fff7c2" : "#fed7aa";
+  const markerScale = props.active ? CAMERA_MARKER_SCALE * 1.16 : CAMERA_MARKER_SCALE;
 
   return (
     <group
       position={[props.pos.x, props.pos.y, props.pos.z]}
       quaternion={quaternion}
-      scale={props.active ? 1.16 : 1}
+      scale={markerScale}
     >
       <mesh>
         <boxGeometry args={[0.5, 0.3, 0.26]} />
@@ -203,7 +206,7 @@ export function Trajectory3D(props: {
             (props.cameraPose.x - marker.pos.x) ** 2 +
               (props.cameraPose.y - marker.pos.y) ** 2 +
               (props.cameraPose.z - marker.pos.z) ** 2 <
-              0.9 ** 2;
+              (0.9 * CAMERA_MARKER_SCALE) ** 2;
           if (tooCloseToViewer) {
             return null;
           }
