@@ -217,6 +217,7 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
 
         human_kp = sample["human_kp"]
         court_kp = sample["court_kp"]
+        n_kp = int(court_kp.shape[2])
         human_vis = sample["human_vis"]
         court_vis = sample["court_vis"]
         human_mask = sample["human_mask"]
