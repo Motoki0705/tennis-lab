@@ -27,7 +27,7 @@ chunk:
   epochs_per_chunk: 3
   prefetch_chunks: 3
   chunks_dir: "data/blcs/chunks"
-  generation_workers: 8  # parallel scene generation workers (0 = sequential)
+  generation_workers: 8  # parallel scene generation workers (must be >= 1)
 
 # Augmentation
 augmentation:

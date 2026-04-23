@@ -14,6 +14,14 @@ from src.tasks.plcs.generate_dataset.scene_generator import SceneData, SceneGene
 _WORKER_SCENE_GENERATOR: SceneGenerator | None = None
 
 
+def _require_positive_worker_count(num_workers: int) -> None:
+    if num_workers <= 0:
+        raise ValueError(
+            "Parallel PLCS scene generation requires num_workers >= 1 "
+            f"(got {num_workers})"
+        )
+
+
 def build_scene_generator(
     config: DictConfig,
     device: str,
@@ -29,30 +37,6 @@ def build_scene_generator(
         motion_sampler=motion_sampler,
         device=device,
     )
-
-
-def generate_serial_scene(
-    scene_generator: SceneGenerator,
-    scene_index: int,
-) -> SceneData:
-    """Generate one scene in the current process."""
-    return scene_generator.generate_scene(
-        scene_id=f"scene_{scene_index:06d}",
-    )
-
-
-def generate_serial_scenes(
-    scene_generator: SceneGenerator,
-    *,
-    start_index: int,
-    num_scenes: int,
-) -> Iterator[SceneData]:
-    """Generate PLCS scenes sequentially in the current process."""
-    for scene_index in range(start_index, start_index + num_scenes):
-        yield generate_serial_scene(
-            scene_generator,
-            scene_index,
-        )
 
 
 def _get_worker_scene_generator(
@@ -80,7 +64,7 @@ def _generate_scene_task(
 
     torch.set_num_threads(1)
     scene_generator = _get_worker_scene_generator(config_dict, device)
-    return generate_serial_scene(scene_generator, scene_index)
+    return scene_generator.generate_scene(scene_id=f"scene_{scene_index:06d}")
 
 
 def generate_parallel_scenes(
@@ -91,9 +75,13 @@ def generate_parallel_scenes(
     num_workers: int,
 ) -> Iterator[SceneData]:
     """Generate PLCS scenes in parallel worker processes."""
+    _require_positive_worker_count(num_workers)
+    if num_scenes <= 0:
+        raise ValueError(
+            f"Parallel PLCS scene generation requires num_scenes >= 1 (got {num_scenes})"
+        )
+
     max_workers = min(num_workers, num_scenes)
-    if max_workers <= 0:
-        return
 
     config_dict = OmegaConf.to_container(config, resolve=True)
     if not isinstance(config_dict, dict):

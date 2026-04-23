@@ -25,12 +25,10 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm
 
-from src.tasks.plcs.generate_dataset.utils.parallel_runner import (
-    build_scene_generator,
-    generate_parallel_scenes,
-    generate_serial_scenes,
-)
 from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
+from src.tasks.plcs.generate_dataset.utils.parallel_runner import (
+    generate_parallel_scenes,
+)
 
 
 def _seed_everything(seed: int) -> None:
@@ -82,41 +80,22 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     # Generate scenes
     num_scenes = int(cfg.simulation.num_scenes)
     num_workers = int(cfg.run.get("num_workers", 1))
-    effective_workers = min(num_workers, num_scenes)
-    if effective_workers > 1 and torch.device(device).type != "cpu":
+    if torch.device(device).type != "cpu":
         raise ValueError(
             "Parallel PLCS dataset generation requires run.device=cpu when "
             f"run.num_workers={num_workers}"
         )
 
-    if effective_workers > 1:
-        results = generate_parallel_scenes(
-            config=cfg,
-            device=device,
-            start_index=0,
-            num_scenes=num_scenes,
-            num_workers=effective_workers,
-        )
-    else:
-        print("\nInitializing motion sampler...")
-        scene_generator = build_scene_generator(cfg, device)
-        print(
-            "Available categories: "
-            f"{scene_generator.motion_sampler.get_available_categories()}"
-        )
-        print("\nInitializing scene generator...")
-        results = generate_serial_scenes(
-            scene_generator,
-            start_index=0,
-            num_scenes=num_scenes,
-        )
+    results = generate_parallel_scenes(
+        config=cfg,
+        device=device,
+        start_index=0,
+        num_scenes=num_scenes,
+        num_workers=num_workers,
+    )
 
     print(f"\nGenerating {num_scenes} scenes...")
-    print(
-        "Scene generation mode: "
-        f"{'parallel' if effective_workers > 1 else 'serial'} "
-        f"(workers={effective_workers})"
-    )
+    print(f"Scene generation mode: parallel (workers={num_workers})")
 
     successful = 0
     failed = 0
