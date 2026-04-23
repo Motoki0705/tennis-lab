@@ -1,3 +1,7 @@
+defaults:
+  - _augmentation
+  - _self_
+
 # Chunked multi-view data configuration
 # Val/test are fixed from scene_dir; train chunks are generated in the background.
 backend: "chunked"
@@ -28,9 +32,3 @@ chunk:
   prefetch_chunks: 3
   chunks_dir: "data/blcs/chunks"
   generation_workers: 8  # parallel scene generation workers (must be >= 1)
-
-# Augmentation
-augmentation:
-  uv_noise_std: 0.004
-  visibility_drop_prob: 0.1
-  scale_range: [0.9, 1.1]

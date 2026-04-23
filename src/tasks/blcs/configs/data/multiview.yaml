@@ -1,3 +1,7 @@
+defaults:
+  - _augmentation
+  - _self_
+
 # Multi-view BLCS data configuration
 backend: "default"
 scene_dir: "data/blcs"
@@ -15,9 +19,3 @@ num_views_range: [4, 8]
 
 # Camera selection mode: "random", "first", or camera index
 camera_mode: "random"
-
-# Augmentation
-augmentation:
-  uv_noise_std: 0.004
-  visibility_drop_prob: 0.1
-  scale_range: [0.9, 1.1]
