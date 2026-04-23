@@ -292,7 +292,7 @@ def _assert_blcs_scene_contract(scene_dir: Path) -> None:
 @pytest.mark.parametrize(
     ("num_scenes", "num_workers"),
     [(1, 1), (2, 2)],
-    ids=["serial", "parallel"],
+    ids=["single_worker", "multi_worker"],
 )
 def test_plcs_generator_output_contract(
     tmp_path: Path,
@@ -373,17 +373,43 @@ def test_plcs_parallel_generator_requires_cpu(tmp_path: Path) -> None:
     assert "Parallel PLCS dataset generation requires run.device=cpu" in combined_output
 
 
+def test_plcs_generator_requires_positive_num_workers(tmp_path: Path) -> None:
+    output_dir = tmp_path / "plcs"
+    completed = _run_generator_raw(
+        "src.tasks.plcs.scripts.generate_dataset",
+        output_dir,
+        [
+            "simulation.num_scenes=1",
+            "run.device=cpu",
+            "run.num_workers=0",
+        ],
+    )
+
+    assert completed.returncode != 0
+    combined_output = f"{completed.stdout}\n{completed.stderr}"
+    assert "Parallel PLCS scene generation requires num_workers >= 1" in combined_output
+
+
 @pytest.mark.integration
 @pytest.mark.slow
-def test_blcs_generator_output_contract(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("num_scenes", "num_workers"),
+    [(1, 1), (2, 2)],
+    ids=["single_worker", "multi_worker"],
+)
+def test_blcs_generator_output_contract(
+    tmp_path: Path,
+    num_scenes: int,
+    num_workers: int,
+) -> None:
     output_dir = tmp_path / "blcs"
     _run_generator(
         "src.tasks.blcs.scripts.generate_dataset",
         output_dir,
         [
-            "generator.num_scenes=2",
+            f"generator.num_scenes={num_scenes}",
             "run.device=cpu",
-            "run.num_workers=2",
+            f"run.num_workers={num_workers}",
         ],
     )
 
@@ -414,3 +440,20 @@ def test_blcs_generator_output_contract(tmp_path: Path) -> None:
 
     for scene_dir in scene_dirs:
         _assert_blcs_scene_contract(scene_dir)
+
+
+def test_blcs_generator_requires_positive_num_workers(tmp_path: Path) -> None:
+    output_dir = tmp_path / "blcs"
+    completed = _run_generator_raw(
+        "src.tasks.blcs.scripts.generate_dataset",
+        output_dir,
+        [
+            "generator.num_scenes=1",
+            "run.device=cpu",
+            "run.num_workers=0",
+        ],
+    )
+
+    assert completed.returncode != 0
+    combined_output = f"{completed.stdout}\n{completed.stderr}"
+    assert "Parallel BLCS scene generation requires num_workers >= 1" in combined_output

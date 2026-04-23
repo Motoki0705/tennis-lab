@@ -23,7 +23,7 @@ chunk:
   epochs_per_chunk: 3
   prefetch_chunks: 1
   chunks_dir: "data/blcs/chunks"
-  generation_workers: 0
+  generation_workers: 1
 
 label:
   sigma_frames: 2.5
