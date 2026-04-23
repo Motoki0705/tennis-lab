@@ -36,7 +36,7 @@ class ChunkedTrajectoryCompletionDataModule(TrajectoryCompletionDataModule):
         self.epochs_per_chunk = int(chunk_cfg.get("epochs_per_chunk", 3))
         self.prefetch_chunks = int(chunk_cfg.get("prefetch_chunks", 1))
         self.chunks_dir = Path(chunk_cfg.get("chunks_dir", "data/blcs/chunks"))
-        self.generation_workers = int(chunk_cfg.get("generation_workers", 0))
+        self.generation_workers = int(chunk_cfg.get("generation_workers", 1))
         self.generator_device = str(data_cfg.get("generator_device", "cpu"))
 
         self.chunk_manager: ChunkManager | None = None
