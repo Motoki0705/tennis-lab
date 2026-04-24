@@ -4,6 +4,13 @@ export type TargetMode = "none" | "cell" | "point";
 export type Vec2 = { x: number; y: number };
 export type Vec3 = { x: number; y: number; z: number };
 
+export type CameraPreset = {
+  id: string;
+  label: string;
+  pos: Vec3;
+  lookAt: Vec3;
+};
+
 export type CellBounds = {
   x_min: number;
   x_max: number;
