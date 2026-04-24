@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { apiGetCells, apiGetCourtGeometry, apiSimulateShot } from "../lib/api";
 import type {
+  CameraPreset,
   CellInfo,
   CourtGeometryResponse,
   Side,
@@ -45,8 +46,11 @@ function computeVelocityFromAngles(params: {
   return { vx, vy, vz };
 }
 
+const COURT_CENTER = { x: 0, y: 0, z: 0 };
+
 export default function Page() {
   const [drawerOpen, setDrawerOpen] = useState(true);
+  const [cameraSearchOpen, setCameraSearchOpen] = useState(true);
 
   const [cells, setCells] = useState<CellInfo[]>([]);
   const [court, setCourt] = useState<CourtGeometryResponse | null>(null);
@@ -88,10 +92,14 @@ export default function Page() {
     y: -18,
     z: 6,
   });
+  const [cameraLookAtTarget, setCameraLookAtTarget] = useState<{ x: number; y: number; z: number } | null>(
+    COURT_CENTER
+  );
   const [cameraPoseVersion, setCameraPoseVersion] = useState(0);
   const [cameraCurrentPos, setCameraCurrentPos] = useState<{ x: number; y: number; z: number } | null>(null);
   const [cameraCurrentDir, setCameraCurrentDir] = useState<{ x: number; y: number; z: number } | null>(null);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const [presetApplyVersion, setPresetApplyVersion] = useState(0);
 
   // Simulation state.
   const [running, setRunning] = useState(false);
@@ -100,28 +108,34 @@ export default function Page() {
 
   const targetSide: Side = fromSide === "near" ? "far" : "near";
 
-  const cameraPresets = useMemo(() => {
+  const cameraPresets = useMemo<CameraPreset[]>(() => {
     const fx = 9.145;
     const fy = 18.285;
     return [
-      { id: "corner_nw", label: "Corner NW", pos: { x: -fx, y: fy, z: cameraZMin } },
-      { id: "corner_ne", label: "Corner NE", pos: { x: fx, y: fy, z: cameraZMin } },
-      { id: "corner_se", label: "Corner SE", pos: { x: fx, y: -fy, z: cameraZMin } },
-      { id: "corner_sw", label: "Corner SW", pos: { x: -fx, y: -fy, z: cameraZMin } },
-      { id: "mid_n", label: "Mid North", pos: { x: 0, y: fy, z: cameraZMax } },
-      { id: "mid_e", label: "Mid East", pos: { x: fx, y: 0, z: cameraZMax } },
-      { id: "mid_s", label: "Mid South", pos: { x: 0, y: -fy, z: cameraZMax } },
-      { id: "mid_w", label: "Mid West", pos: { x: -fx, y: 0, z: cameraZMax } },
+      { id: "corner_nw", label: "Corner NW", pos: { x: -fx, y: fy, z: cameraZMin }, lookAt: COURT_CENTER },
+      { id: "corner_ne", label: "Corner NE", pos: { x: fx, y: fy, z: cameraZMin }, lookAt: COURT_CENTER },
+      { id: "corner_se", label: "Corner SE", pos: { x: fx, y: -fy, z: cameraZMin }, lookAt: COURT_CENTER },
+      { id: "corner_sw", label: "Corner SW", pos: { x: -fx, y: -fy, z: cameraZMin }, lookAt: COURT_CENTER },
+      { id: "mid_n", label: "Mid North", pos: { x: 0, y: fy, z: cameraZMax }, lookAt: COURT_CENTER },
+      { id: "mid_e", label: "Mid East", pos: { x: fx, y: 0, z: cameraZMax }, lookAt: COURT_CENTER },
+      { id: "mid_s", label: "Mid South", pos: { x: 0, y: -fy, z: cameraZMax }, lookAt: COURT_CENTER },
+      { id: "mid_w", label: "Mid West", pos: { x: -fx, y: 0, z: cameraZMax }, lookAt: COURT_CENTER },
     ];
   }, [cameraZMin, cameraZMax]);
 
   function applyCameraPreset(id: string) {
-    const preset = cameraPresets.find((p) => p.id === id);
-    if (!preset) return;
     setActivePresetId(id);
-    setCameraPose(preset.pos);
-    setCameraPoseVersion((v) => v + 1);
+    setPresetApplyVersion((v) => v + 1);
   }
+
+  useEffect(() => {
+    if (!activePresetId) return;
+    const preset = cameraPresets.find((candidate) => candidate.id === activePresetId);
+    if (!preset) return;
+    setCameraPose(preset.pos);
+    setCameraLookAtTarget(preset.lookAt);
+    setCameraPoseVersion((v) => v + 1);
+  }, [activePresetId, cameraPresets, presetApplyVersion]);
 
   useEffect(() => {
     let mounted = true;
@@ -206,13 +220,15 @@ export default function Page() {
         bounce2Pos={simResult?.events.bounce2_pos ?? null}
         netPos={simResult?.events.net_pos ?? null}
         cameraPose={cameraPose}
+        cameraLookAtTarget={cameraLookAtTarget}
         cameraPoseVersion={cameraPoseVersion}
         lockLookAtCenter={lockLookAtCenter}
+        activePresetId={activePresetId}
         onCameraPoseChange={(pos, dir) => {
           setCameraCurrentPos(pos);
           setCameraCurrentDir(dir);
         }}
-        cameraMarkers={cameraPresets.map((p) => p.pos)}
+        cameraMarkers={cameraPresets}
       />
 
       {/* Minimal HUD */}
@@ -234,6 +250,26 @@ export default function Page() {
         }}
       >
         Open Controls
+      </button>
+
+      <button
+        onClick={() => setCameraSearchOpen(true)}
+        style={{
+          position: "fixed",
+          right: 16,
+          bottom: 16,
+          zIndex: 9,
+          display: cameraSearchOpen ? "none" : "block",
+          border: "1px solid rgba(255,255,255,0.22)",
+          background: "rgba(10,10,10,0.6)",
+          color: "#fff",
+          borderRadius: 12,
+          padding: "10px 12px",
+          cursor: "pointer",
+          backdropFilter: "blur(6px)",
+        }}
+      >
+        Open Camera Search
       </button>
 
       <ControlsDrawer
@@ -298,19 +334,22 @@ export default function Page() {
         ) : null}
       </div>
 
-      <CameraSearchPanel
-        presets={cameraPresets}
-        activePresetId={activePresetId}
-        zMin={cameraZMin}
-        setZMin={setCameraZMin}
-        zMax={cameraZMax}
-        setZMax={setCameraZMax}
-        lockLookAtCenter={lockLookAtCenter}
-        setLockLookAtCenter={setLockLookAtCenter}
-        onApplyPreset={applyCameraPreset}
-        cameraPos={cameraCurrentPos}
-        cameraDir={cameraCurrentDir}
-      />
+      {cameraSearchOpen ? (
+        <CameraSearchPanel
+          presets={cameraPresets}
+          activePresetId={activePresetId}
+          onClose={() => setCameraSearchOpen(false)}
+          zMin={cameraZMin}
+          setZMin={setCameraZMin}
+          zMax={cameraZMax}
+          setZMax={setCameraZMax}
+          lockLookAtCenter={lockLookAtCenter}
+          setLockLookAtCenter={setLockLookAtCenter}
+          onApplyPreset={applyCameraPreset}
+          cameraPos={cameraCurrentPos}
+          cameraDir={cameraCurrentDir}
+        />
+      ) : null}
     </div>
   );
 }

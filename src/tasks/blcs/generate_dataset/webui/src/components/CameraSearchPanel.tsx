@@ -1,10 +1,4 @@
-import type { Vec3 } from "../lib/types";
-
-type CameraPreset = {
-  id: string;
-  label: string;
-  pos: Vec3;
-};
+import type { CameraPreset, Vec3 } from "../lib/types";
 
 function fmt(v: number) {
   return v.toFixed(3);
@@ -13,6 +7,7 @@ function fmt(v: number) {
 export function CameraSearchPanel(props: {
   presets: CameraPreset[];
   activePresetId: string | null;
+  onClose: () => void;
   zMin: number;
   setZMin: (v: number) => void;
   zMax: number;
@@ -40,7 +35,31 @@ export function CameraSearchPanel(props: {
         boxShadow: "0 20px 40px rgba(0,0,0,0.35)",
       }}
     >
-      <div style={{ fontWeight: 700, marginBottom: 10 }}>Camera Search</div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          marginBottom: 10,
+        }}
+      >
+        <div style={{ fontWeight: 700 }}>Camera Search</div>
+        <button
+          onClick={props.onClose}
+          style={{
+            border: "1px solid rgba(255,255,255,0.18)",
+            background: "rgba(255,255,255,0.06)",
+            color: "#fff",
+            borderRadius: 10,
+            padding: "6px 10px",
+            fontSize: 12,
+            cursor: "pointer",
+          }}
+        >
+          Close
+        </button>
+      </div>
 
       <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 8 }}>
         Presets: 4 corners at z_min, 4 edge-midpoints at z_max.
