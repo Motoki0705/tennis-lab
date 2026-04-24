@@ -11,48 +11,28 @@ Use this skill for creating new branches in `Motoki0705/tennis-lab` via git CLI.
 
 ## Branch Naming Conventions
 
-Prefer the repository's existing prefixes:
+Prefer the repository's existing prefixes: `feat`, `feature`, `fix`, `docs`, `chore`, `experiments`, or `exp`.
 
-- `feat/<topic>` or `feature/<topic>`: for feature work
-- `fix/<topic>`: for bug fixes
-- `docs/<topic>`: for documentation changes
-- `chore/<topic>`: for maintenance or refactors
-- `experiments/<topic>` or `exp/<topic>`: for research or experimental work
+Use lowercase letters, digits, and hyphens in the topic portion. If the issue number is known, include it as `<prefix>/issue-<issue-number>-<topic>`.
 
 ## Standard Workflow
 
-### 1) Preflight
-
-- Confirm which branch to branch from.
-- If the user did not specify a base, use `main`.
-- Run preflight checks in one command and review the summary:
-
-  ```bash
-  ./.agents/skills/git-branch-create/scripts/preflight.sh main <new-branch-name>
-  ```
-
-- Sync the base branch before branching:
-
-  ```bash
-  git checkout main
-  git pull origin main
-  ```
-
-### 2) Create Branch
-
-- Choose a branch name that matches the work type and existing repo style.
-- Use lowercase letters, digits, and hyphens in the topic portion.
-- Create the branch and switch to it.
+Confirm the base branch, sync it when appropriate, then create and switch to the new branch.
 
 ```bash
+BASE_BRANCH="main"
 TOPIC="<descriptive-topic>"
-BRANCH_NAME="feat/$TOPIC" # adjust prefix and optionally include issue number
+ISSUE_NUMBER="<issue-number>" # omit when no issue is known
+BRANCH_NAME="feat/issue-$ISSUE_NUMBER-$TOPIC"
+
+git checkout "$BASE_BRANCH"
+git pull origin "$BASE_BRANCH"
 git checkout -b "$BRANCH_NAME"
 ```
 
-### 3) Verification
+## Verification
 
-- Confirm the current branch is correctly set.
+Confirm the current branch is correctly set.
 
 ```bash
 git branch --show-current
@@ -60,5 +40,6 @@ git branch --show-current
 
 ## Notes
 
+- Branch from `main` by default.
 - `main` is the default starting point, but stacked or task-local workflows may branch from another active branch when intentional.
 - Match existing repo conventions instead of forcing a single format when the branch already belongs to an established series.

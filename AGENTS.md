@@ -1,20 +1,36 @@
 # AGENTS.md
 
 ## Project overview
+
 - This repository develops ML components for tennis analysis.
 - Task-specific modules live under `src/tasks/*` (for example `ball_detection`).
 - Task integration and scene-level analysis live under `src/tennis_scene`.
 - Shared reusable modules live under `src/utils`.
-- Exploratory work belongs in `experiments/`, not in `src/`.
+- Datasets and dataset-related files live under `data`.
 - Generated outputs belong in `outputs/`.
 
 ## Python environment
+
 - Use `.venv/bin/python` as the Python runtime for all project commands and scripts.
 - When adding dependencies, use `uv add <package>`.
 - When removing dependencies, use `uv remove <package>`.
 - Do not edit dependency definitions manually when `uv` can manage them.
 
 ## Workflow
-- If codebase investigation is needed, first delegate the investigation to `gpt-5.4-mini`.
-- If additional investigation is still needed after that, inspect the codebase directly.
+
+- Development is issue-based by default.
+- If the user specifies an issue and asks to start work, move that issue to `In progress` when requested.
+- Before implementation, confirm the requirements, scope, acceptance criteria, and working branch.
+- Ground that plan in the codebase, then post it as an issue comment and present the comment link to the user for approval.
+- After approval, perform the work on the approved branch.
+- When the acceptance criteria are met, stop before committing. Summarize the result in an issue comment.
+- The user reviews the changes and decides whether to commit.
+- If changes are needed, return to the approval step with a short issue comment describing the revision direction. The revision comment can be approximate and does not need to restate unchanged requirements, scope, acceptance criteria, or branch.
+- If there are multiple reasonable revision directions, list the options in the issue comment before asking for approval.
+- Create a PR only when the user asks for it.
+- After creating a PR, move the issue to `In review`.
+
+## Sub Agents
+
+- If codebase investigation is needed, first delegate the investigation to `.codex/agents/codebase_summarizer.toml`.
 - While the sub-agent is working, do not perform overlapping investigation work in parallel; wait for its results first.
