@@ -48,7 +48,7 @@ gh pr create --repo "$REPO" \
 
 - PR body template lives at `.github/pull_request_template.md`.
 - Use repeated `--label` flags when multiple labels are needed.
-- Add `Closes #...` / `References #...` in PR body when linking issues.
+- Use `Closes #...` for the issue this PR completes. Add `References #...` only when an additional related issue should be mentioned without closing it.
 - If this is a stacked PR, replace `main` with the actual integration base branch.
 - Use `--reviewer`, `--draft`, `--milestone` only when needed.
 
