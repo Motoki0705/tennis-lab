@@ -175,7 +175,6 @@ class PLCSSceneRenderer:
         self.court_renderer.render_3d(ax, show_net=True)
         world_pose = self._compute_world_pose(scene, frame_idx)
         self.smplh_renderer.render_3d(ax, world_pose)
-        self._set_zoomed_3d_view(ax, world_pose[:, 0].mean(), world_pose[:, 1].mean())
 
     def _render_2d_subplot(self, ax: Axes, scene: Any, frame_idx: int) -> None:
         self.court_renderer.render_2d(ax, show_fence=True)
@@ -216,29 +215,6 @@ class PLCSSceneRenderer:
         world_pose[:, 2] += z
         return cast(np.ndarray, np.asarray(world_pose, dtype=np.float64))
 
-    def _set_zoomed_3d_view(self, ax: Axes3D, center_x: float, center_y: float) -> None:
-        x_half_span = 6.0
-        y_half_span = 8.0
-
-        x_min = max(-HALF_DOUBLES_WIDTH - 2.0, center_x - x_half_span)
-        x_max = min(HALF_DOUBLES_WIDTH + 2.0, center_x + x_half_span)
-        y_min = max(-HALF_LENGTH - 2.0, center_y - y_half_span)
-        y_max = min(HALF_LENGTH + 2.0, center_y + y_half_span)
-
-        if x_max - x_min < 2.0:
-            x_mid = 0.5 * (x_min + x_max)
-            x_min = x_mid - 1.0
-            x_max = x_mid + 1.0
-        if y_max - y_min < 2.0:
-            y_mid = 0.5 * (y_min + y_max)
-            y_min = y_mid - 1.0
-            y_max = y_mid + 1.0
-
-        ax.set_xlim(x_min, x_max)
-        ax.set_ylim(y_min, y_max)
-        ax.set_zlim(0.0, 3.0)
-        ax.set_box_aspect([x_max - x_min, y_max - y_min, 3.0])
-
     def _render_3d_comparison_subplot(
         self,
         ax: Axes3D,
@@ -273,12 +249,6 @@ class PLCSSceneRenderer:
                 bone_width=2.0,
             ),
         )
-
-        gt_xy = gt_pose[:, :2].mean(axis=0)
-        pred_xy = pred_pose[:, :2].mean(axis=0)
-        center_x = float(0.5 * (gt_xy[0] + pred_xy[0]))
-        center_y = float(0.5 * (gt_xy[1] + pred_xy[1]))
-        self._set_zoomed_3d_view(ax, center_x, center_y)
         ax.legend(loc="upper right")
 
     def _render_2d_comparison_subplot(
