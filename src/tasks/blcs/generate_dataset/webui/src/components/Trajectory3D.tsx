@@ -201,17 +201,17 @@ export function Trajectory3D(props: {
         {props.bounce2Pos ? <EventMarker pos={props.bounce2Pos} color="#111" /> : null}
 
         {props.cameraMarkers.map((marker) => {
+          const isActive = props.activePresetId === marker.id;
           const tooCloseToViewer =
             props.cameraPose !== null &&
             (props.cameraPose.x - marker.pos.x) ** 2 +
               (props.cameraPose.y - marker.pos.y) ** 2 +
               (props.cameraPose.z - marker.pos.z) ** 2 <
               (0.9 * CAMERA_MARKER_SCALE) ** 2;
-          if (tooCloseToViewer) {
+          if (tooCloseToViewer && !isActive) {
             return null;
           }
 
-          const isActive = props.activePresetId === marker.id;
           return (
             <CameraMarker
               key={marker.id}
