@@ -15,44 +15,32 @@ Use this skill for PR creation in `Motoki0705/tennis-lab`.
 - Default base branch: `main`
 - PR body template: `.github/pull_request_template.md`
 
-## Minimal flow
+## Template rules
 
-### 1) Preflight
+- Preserve the PR template's section structure.
+- Remove template comments and unused placeholder bullets before creating the PR.
 
-- Confirm the target base branch before creating the PR.
-- If the user did not specify a base branch, use `main`.
-- Run preflight checks in one command and review the summary:
+## Create a PR
 
-  ```bash
-  ./.agents/skills/gh-pr-create/scripts/preflight.sh main
-  ```
-
-- The script validates `gh` auth, current branch, base branch, PR template, upstream, and commits relative to base.
-- Prepare PR body with `--body-file` (avoid inline multiline body).
-- Copy `.github/pull_request_template.md` to a tmp file before editing.
-- Recommended tmp creation:
-
-  ```bash
-  BODY_FILE="$(mktemp /tmp/pr-body-XXXXXX.md)"
-  cp .github/pull_request_template.md "$BODY_FILE"
-  ${EDITOR:-vi} "$BODY_FILE"
-  ```
-
-- Remove placeholder bullets/comments that are no longer needed before PR creation.
-
-### 2) Create PR
+Confirm the base branch, prepare the PR body in a tmp file, and create the PR with explicit flags.
 
 ```bash
-BODY_FILE="$(mktemp /tmp/pr-body-XXXXXX.md)"
-cp .github/pull_request_template.md "$BODY_FILE"
+REPO="Motoki0705/tennis-lab"
+BASE_BRANCH="main"
+HEAD_BRANCH="<branch>"
+TITLE="<Title>"
+LABEL="<label>"
+TEMPLATE=".github/pull_request_template.md"
+BODY_FILE="$(./.agents/skills/gh-pr-create/scripts/prepare_body.sh "$TEMPLATE")"
+
 ${EDITOR:-vi} "$BODY_FILE"
 
-gh pr create --repo Motoki0705/tennis-lab \
-  --base main \
-  --head "<branch>" \
-  --title "<Title>" \
+gh pr create --repo "$REPO" \
+  --base "$BASE_BRANCH" \
+  --head "$HEAD_BRANCH" \
+  --title "$TITLE" \
   --body-file "$BODY_FILE" \
-  --label "<label>" \
+  --label "$LABEL" \
   --assignee "@me"
 ```
 
@@ -64,7 +52,7 @@ gh pr create --repo Motoki0705/tennis-lab \
 - If this is a stacked PR, replace `main` with the actual integration base branch.
 - Use `--reviewer`, `--draft`, `--milestone` only when needed.
 
-## Failure quick fixes
+## Common gotchas
 
 - `jq: command not found` -> use `gh --jq` (built-in).
 - tmp file path breaks because branch name contains `/` -> use `mktemp` instead of embedding the branch name in the file path.
