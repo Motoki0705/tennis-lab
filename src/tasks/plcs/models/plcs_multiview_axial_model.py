@@ -211,15 +211,6 @@ class PLCSMultiViewAxialModel(nn.Module):
             self.rope_dim // 2,
         ).reshape(batch_size * n_cams, seq_len, self.rope_dim // 2)
 
-    @staticmethod
-    def _masked_camera_mean(x: Tensor, valid: Tensor) -> Tensor:
-        weights = valid.unsqueeze(-1).to(dtype=x.dtype)
-        summed = (x * weights).sum(dim=2)
-        counts = weights.sum(dim=2).clamp_min(1.0)
-        pooled = summed / counts
-        time_valid = valid.any(dim=2, keepdim=True)
-        return pooled * time_valid.to(dtype=x.dtype)
-
     def forward(
         self,
         human_kp: Tensor,
@@ -326,7 +317,7 @@ class PLCSMultiViewAxialModel(nn.Module):
             )
             x = x_time.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim).permute(0, 2, 1, 3)
 
-        x = self._masked_camera_mean(x, token_valid_t)
+        x = x[:, :, 0, :]
         x = self.final_norm(x)
 
         return {
