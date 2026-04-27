@@ -8,6 +8,7 @@ from torch import nn
 
 from src.tasks.plcs.models.components import PositionHead, RotationHead
 from src.tasks.plcs.models.plcs_model import PLCSModel
+from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 
 if TYPE_CHECKING:
@@ -22,15 +23,18 @@ def build_plcs_model(config: DictConfig) -> nn.Module:
         return PLCSModel.from_config(config)
     if model_name == "plcs_multiview":
         return PLCSMultiViewModel.from_config(config)
+    if model_name == "plcs_multiview_axial":
+        return PLCSMultiViewAxialModel.from_config(config)
     raise ValueError(
         "Unknown PLCS model.name="
-        f"'{model_name}'. Supported: ['plcs', 'plcs_multiview']"
+        f"'{model_name}'. Supported: ['plcs', 'plcs_multiview', 'plcs_multiview_axial']"
     )
 
 __all__ = [
     "PLCSModel",
     "build_plcs_model",
     "PLCSMultiViewModel",
+    "PLCSMultiViewAxialModel",
     "PositionHead",
     "RotationHead",
 ]

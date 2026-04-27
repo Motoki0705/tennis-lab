@@ -167,6 +167,16 @@ SMOKE_TASK_SPECS = (
                     "model.max_seq_len=64",
                 ),
             ),
+            SmokeVariant(
+                name="multiview_axial",
+                overrides=(
+                    "model=multiview_axial",
+                    "data=multiview",
+                    "loss=multiview_sequence",
+                    "data.seq_len_range=[16,16]",
+                    "model.max_seq_len=64",
+                ),
+            ),
         ),
         supports_test_phase=True,
         expect_qualitative=True,
