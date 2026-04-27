@@ -1,0 +1,27 @@
+# Axial multi-view PLCS model configuration
+# Uses one court-player token per (camera, time) element and alternates
+# camera-wise and time-wise self-attention.
+
+name: plcs_multiview_axial
+
+io:
+  input_profile: multiview
+  strict_input: true
+
+hidden_dim: 256
+num_layers: 6
+num_heads: 8
+ffn_dim: null
+ffn_type: swiglu
+dropout: 0.1
+invisible_init_std: 0.02
+
+max_views: 8
+max_seq_len: 120
+
+rope_dim: null
+rope_theta: 10000.0
+rope_theta_time: 10000.0
+rope_theta_camera: 10000.0
+
+architecture: multiview_axial
