@@ -7,7 +7,7 @@ scene_dir: "data/plcs"
 num_court_kp: 20
 
 # DataLoader settings
-batch_size: 4
+batch_size: 8
 num_workers: 4
 pin_memory: true
 
@@ -15,7 +15,7 @@ mode: multiview_sequence
 
 # Multi-view sampling
 min_cameras: 2
-num_views_range: [1, 8]
+num_views_range: [3, 6]
 
 # Sequence sampling
 seq_len_range: [64, 512]
@@ -26,7 +26,7 @@ generator_device: "cpu"
 # Chunk settings
 chunk:
   scenes_per_chunk: 1000
-  epochs_per_chunk: 3
+  epochs_per_chunk: 10
   prefetch_chunks: 3
   chunks_dir: "data/plcs/chunks"
   generation_workers: 8  # parallel scene generation workers (must be >= 1)
