@@ -32,11 +32,13 @@ class PLCSDataModule(pl.LightningDataModule):
 
         model_cfg = self.config.get("model", {})
         io_cfg = model_cfg.get("io", {})
-        self.input_profile = str(
-            io_cfg.get(
-                "input_profile",
-                self._infer_input_profile_from_model_name(str(model_cfg.get("name", "plcs"))),
+        input_profile = io_cfg.get("input_profile")
+        if input_profile is None:
+            input_profile = self._infer_input_profile_from_model_name(
+                str(model_cfg.get("name", "plcs"))
             )
+        self.input_profile = str(
+            input_profile
         )
         self.collate_fn = partial(
             collate_and_adapt_plcs_batch,
@@ -52,7 +54,7 @@ class PLCSDataModule(pl.LightningDataModule):
     def _infer_input_profile_from_model_name(model_name: str) -> str:
         if model_name == "plcs":
             return "frame"
-        if model_name == "plcs_multiview":
+        if model_name in {"plcs_multiview", "plcs_multiview_axial"}:
             return "multiview"
         raise ValueError(f"Unknown model.name='{model_name}' for input profile inference.")
 
