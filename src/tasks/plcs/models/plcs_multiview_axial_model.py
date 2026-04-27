@@ -290,8 +290,6 @@ class PLCSMultiViewAxialModel(nn.Module):
         ).permute(0, 2, 1, 3)
 
         token_valid_t = token_valid.permute(0, 2, 1)
-        x = x * token_valid_t.unsqueeze(-1).to(dtype=x.dtype)
-
         camera_valid = token_valid_t.reshape(batch_size * seq_len_in, n_cams)
         time_valid = token_valid_t.permute(0, 2, 1).reshape(batch_size * n_cams, seq_len_in)
         camera_mask, _ = self._build_self_attn_mask(camera_valid)
@@ -318,7 +316,6 @@ class PLCSMultiViewAxialModel(nn.Module):
                 freqs_cis=camera_freqs,
                 attn_mask=camera_mask,
             )
-            x_camera = x_camera * camera_valid.unsqueeze(-1).to(dtype=x_camera.dtype)
             x = x_camera.reshape(batch_size, seq_len_in, n_cams, self.hidden_dim)
 
             x_time = x.permute(0, 2, 1, 3).reshape(batch_size * n_cams, seq_len_in, self.hidden_dim)
@@ -327,7 +324,6 @@ class PLCSMultiViewAxialModel(nn.Module):
                 freqs_cis=time_freqs,
                 attn_mask=time_mask,
             )
-            x_time = x_time * time_valid.unsqueeze(-1).to(dtype=x_time.dtype)
             x = x_time.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim).permute(0, 2, 1, 3)
 
         x = self._masked_camera_mean(x, token_valid_t)
