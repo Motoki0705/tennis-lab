@@ -22,9 +22,9 @@ _DINO_SWIN_BACKBONE_CHANNELS = {
     "swin_L_384_22k": (192, 384, 768, 1536),
 }
 
-_DEFAULT_RESNET_CHECKPOINT = Path("/workspace/checkpoints/DINO/backbone_body_state.pth")
+_DEFAULT_RESNET_CHECKPOINT = Path("checkpoints/DINO/backbone_body_state.pth")
 _DEFAULT_SWIN_CHECKPOINT = Path(
-    "/workspace/checkpoints/DINO/swin_backbone_state_checkpoint0027_5scale.pth"
+    "checkpoints/DINO/swin_backbone_state_checkpoint0027_5scale.pth"
 )
 
 
