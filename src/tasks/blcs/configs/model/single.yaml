@@ -19,9 +19,9 @@ invisible_init_std: 0.02
 # 3-axis interleaved MROPE
 rope_dim: null            # Defaults to head_dim (hidden_dim / num_heads)
 rope_theta_time: 10000.0
-rope_theta_camera: 10000.0
-rope_theta_type: 100.0
+rope_theta_camera: 1000.0
+rope_theta_type: 1000.0
 
 
 # Output
-predict_velocity: false
+predict_velocity: true
