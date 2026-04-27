@@ -1,7 +1,7 @@
 defaults:
-  - _court_unet
+  - _court_fpn
   - _self_
 
-name: court_unet_kp
+name: court_fpn_kp
 in_channels: 3
 num_classes: 14

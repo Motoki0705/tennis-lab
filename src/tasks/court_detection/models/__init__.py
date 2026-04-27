@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from src.tasks.court_detection.models.court_unet import CourtUNet
+from src.tasks.court_detection.models.court_fpn import CourtFPN
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
-__all__ = ["CourtUNet", "build_court_detection_model"]
+__all__ = ["CourtFPN", "build_court_detection_model"]
 
 
-def build_court_detection_model(config: DictConfig) -> CourtUNet:
+def build_court_detection_model(config: DictConfig) -> CourtFPN:
     """Build a court detection model from config.
 
     The number of output channels comes from ``config.model.num_classes``.
@@ -21,7 +21,6 @@ def build_court_detection_model(config: DictConfig) -> CourtUNet:
     model_cfg = config.get("model", {})
     data_cfg = config.get("data", {})
 
-    in_channels = int(model_cfg.get("in_channels", 3))
     num_classes = int(model_cfg.get("num_classes", 7))
     task = str(data_cfg.get("task", "seg"))
     expected_num_classes = num_classes
@@ -39,4 +38,4 @@ def build_court_detection_model(config: DictConfig) -> CourtUNet:
             f"but got {num_classes}.",
         )
 
-    return CourtUNet(in_channels=in_channels, num_classes=num_classes)
+    return CourtFPN.from_config(config)
