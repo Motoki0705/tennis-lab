@@ -7,6 +7,6 @@ Provides three tasks:
 * **line** — Court white-line segmentation (binary).
 """
 
-from src.tasks.court_detection.models.court_unet import CourtUNet
+from src.tasks.court_detection.models.court_fpn import CourtFPN
 
-__all__ = ["CourtUNet"]  # noqa: F401
+__all__ = ["CourtFPN"]  # noqa: F401
