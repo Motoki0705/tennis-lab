@@ -5,9 +5,9 @@ name: blcs_multiview_axial
 io:
   input_profile: multiview
 
-hidden_dim: 256
+hidden_dim: 512
 
-num_layers: 6
+num_layers: 12
 num_heads: 8
 ffn_dim: 704
 ffn_type: swiglu
@@ -15,8 +15,8 @@ dropout: 0.1
 rope_dim: null
 rope_theta: 10000.0
 rope_theta_time: 10000.0
-rope_theta_camera: 10000.0
+rope_theta_camera: 1000.0
 max_seq_len: 10240
 max_views: 8
-predict_velocity: false
+predict_velocity: true
 invisible_init_std: 0.02
