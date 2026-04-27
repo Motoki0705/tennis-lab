@@ -9,8 +9,8 @@ io:
   strict_input: true
 
 # Architecture
-hidden_dim: 256
-num_layers: 6
+hidden_dim: 512
+num_layers: 12
 num_heads: 8
 ffn_dim: null        # Defaults to 8/3 * hidden_dim (rounded to 64)
 ffn_type: swiglu
@@ -19,13 +19,13 @@ invisible_init_std: 0.02
 
 # Limits
 max_views: 8
-max_seq_len: 120
+max_seq_len: 10240
 
 # 3-axis interleaved MROPE
 rope_dim: null            # Defaults to head_dim; must be even
 rope_theta_time: 10000.0
-rope_theta_camera: 10000.0
-rope_theta_type: 100.0
+rope_theta_camera: 1000.0
+rope_theta_type: 1000.0
 
 # Model type
 architecture: multiview

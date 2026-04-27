@@ -1,14 +1,14 @@
 # ---- Trainer (Lightning Trainer settings) ----
 trainer:
-  max_epochs: 100
+  max_epochs: 200
   gradient_clip_val: 1.0
   deterministic: true
-  precision: "16-mixed"
+  precision: "bf16-mixed"
   log_every_n_steps: 50
   check_val_every_n_epoch: 1
 
 # ---- Optimizer / schedule (LightningModule references) ----
-learning_rate: 1.0e-5
+learning_rate: 1.0e-4
 weight_decay: 1.0e-5
 warmup_steps: 1000
 scheduler: cosine
@@ -27,7 +27,7 @@ early_stopping:
   enabled: true
   monitor: train/epoch_position_error_m
   mode: min
-  patience: 20
+  patience: 10
   min_delta: 2.0e-5
   check_on_train_epoch_end: false
 
@@ -38,5 +38,5 @@ lr_monitor:
 # ---- Qualitative validation logging ----
 qualitative_logging:
   enabled: true
-  every_n_epochs: 1
+  every_n_epochs: 5
   num_samples: 4
