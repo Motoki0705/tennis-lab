@@ -126,6 +126,13 @@ SMOKE_TASK_SPECS = (
                     "data=multiview",
                 ),
             ),
+            SmokeVariant(
+                name="multiview_axial",
+                overrides=(
+                    "model=multiview_axial",
+                    "data=multiview",
+                ),
+            ),
         ),
         supports_test_phase=True,
         expect_qualitative=True,
