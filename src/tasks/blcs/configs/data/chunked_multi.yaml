@@ -11,13 +11,13 @@ scene_dir: "data/blcs"
 num_court_kp: 20
 
 # DataLoader settings
-batch_size: 2
+batch_size: 8
 num_workers: 4
 pin_memory: true
 
 # Sequence/view sampling ranges (inclusive)
-seq_len_range: [32, 512]
-num_views_range: [4, 8]
+seq_len_range: [64, 512]
+num_views_range: [3, 6]
 
 # Camera selection mode: "random", "first", or camera index
 camera_mode: "random"
@@ -28,7 +28,7 @@ generator_device: "cpu"
 # Chunk settings
 chunk:
   scenes_per_chunk: 1000
-  epochs_per_chunk: 3
+  epochs_per_chunk: 5
   prefetch_chunks: 3
   chunks_dir: "data/blcs/chunks"
-  generation_workers: 8  # parallel scene generation workers (must be >= 1)
+  generation_workers: 16  # parallel scene generation workers (must be >= 1)
