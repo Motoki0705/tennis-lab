@@ -3,18 +3,18 @@ position_weight: 1.0
 rotation_weight: 1.0
 temporal:
   position_gt:
-    weight: 0.0
+    weight: 0.1
     order: 2
     robust: true
   position_inertia:
-    weight: 0.0
+    weight: 0.1
     order: 2
     robust: true
   rotation_gt:
-    weight: 0.0
+    weight: 0.1
     order: 2
     robust: true
   rotation_inertia:
-    weight: 0.0
+    weight: 0.1
     order: 2
     robust: true
