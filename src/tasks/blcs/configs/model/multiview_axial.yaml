@@ -1,0 +1,22 @@
+# Axial multi-view BLCS model configuration
+# Uses one court-ball token per (camera, time) element and alternates
+# camera-wise and time-wise self-attention.
+name: blcs_multiview_axial
+io:
+  input_profile: multiview
+
+hidden_dim: 256
+
+num_layers: 6
+num_heads: 8
+ffn_dim: 704
+ffn_type: swiglu
+dropout: 0.1
+rope_dim: null
+rope_theta: 10000.0
+rope_theta_time: 10000.0
+rope_theta_camera: 10000.0
+max_seq_len: 10240
+max_views: 8
+predict_velocity: false
+invisible_init_std: 0.02

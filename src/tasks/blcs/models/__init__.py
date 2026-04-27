@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from torch import nn
 
 from src.tasks.blcs.models.blcs_model import BLCSModel
+from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
 from src.tasks.blcs.models.blcs_multiview_model import BLCSMultiViewModel
 from src.tasks.blcs.models.discriminators import build_blcs_discriminator
 
@@ -22,15 +23,18 @@ def build_blcs_model(config: DictConfig) -> nn.Module:
         return BLCSModel.from_config(config)
     if model_name == "blcs_multiview":
         return BLCSMultiViewModel.from_config(config)
+    if model_name == "blcs_multiview_axial":
+        return BLCSMultiViewAxialModel.from_config(config)
     raise ValueError(
         "Unknown BLCS model.name="
-        f"'{model_name}'. Supported: ['blcs', 'blcs_multiview']"
+        f"'{model_name}'. Supported: ['blcs', 'blcs_multiview', 'blcs_multiview_axial']"
     )
 
 
 __all__ = [
     "BLCSModel",
     "BLCSMultiViewModel",
+    "BLCSMultiViewAxialModel",
     "build_blcs_discriminator",
     "build_blcs_model",
 ]
