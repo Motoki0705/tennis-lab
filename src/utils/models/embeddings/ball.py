@@ -6,6 +6,7 @@ import torch
 from torch import nn, Tensor
 
 from src.utils.models.embeddings.invisible_embedding import InvisibleTokenEmbedding
+from src.utils.models.embeddings.projection import CoordinateProjection, apply_visibility_mask
 
 
 class BallUVEmbedding(nn.Module):
@@ -13,7 +14,7 @@ class BallUVEmbedding(nn.Module):
 
     Args:
         dim: Embedding dimension.
-        dropout: Dropout probability.
+        dropout: Retained for API compatibility; ignored by the current projection stack.
         invisible_token: Shared invisible token module.
     """
 
@@ -25,10 +26,7 @@ class BallUVEmbedding(nn.Module):
         invisible_token: InvisibleTokenEmbedding,
     ) -> None:
         super().__init__()
-        self.proj = nn.Sequential(
-            nn.Linear(2, int(dim)),
-            nn.Dropout(float(dropout)),
-        )
+        self.proj = CoordinateProjection(input_dim=2, dim=int(dim))
         self.invisible_token = invisible_token
 
     def forward(self, ball_uv: Tensor, ball_vis: Tensor | None = None) -> Tensor:
@@ -42,13 +40,7 @@ class BallUVEmbedding(nn.Module):
             Tensor: Embedded tokens, shape (B, T, D).
         """
         feat = self.proj(ball_uv)
-        if ball_vis is None:
-            return feat
-
-        mask = (ball_vis > 0).unsqueeze(-1)
-        inv = self.invisible_token().to(dtype=feat.dtype, device=feat.device)
-        inv = inv.view(1, 1, -1).expand_as(feat)
-        return torch.where(mask, feat, inv)
+        return apply_visibility_mask(feat, ball_vis, self.invisible_token)
 
 
 class Ball3DEmbedding(nn.Module):
@@ -56,7 +48,7 @@ class Ball3DEmbedding(nn.Module):
 
     Args:
         dim: Embedding dimension.
-        dropout: Dropout probability.
+        dropout: Retained for API compatibility; ignored by the current projection stack.
         invisible_token: Shared invisible token module.
     """
 
@@ -68,10 +60,7 @@ class Ball3DEmbedding(nn.Module):
         invisible_token: InvisibleTokenEmbedding,
     ) -> None:
         super().__init__()
-        self.proj = nn.Sequential(
-            nn.Linear(3, int(dim)),
-            nn.Dropout(float(dropout)),
-        )
+        self.proj = CoordinateProjection(input_dim=3, dim=int(dim))
         self.invisible_token = invisible_token
 
     def forward(self, ball_pos: Tensor, ball_vis: Tensor | None = None) -> Tensor:
@@ -85,26 +74,4 @@ class Ball3DEmbedding(nn.Module):
             Tensor: Embedded tokens, shape (B, T, D).
         """
         feat = self.proj(ball_pos)
-        if ball_vis is None:
-            return feat
-
-        mask = (ball_vis > 0).unsqueeze(-1)
-        inv = self.invisible_token().to(dtype=feat.dtype, device=feat.device)
-        inv = inv.view(1, 1, -1).expand_as(feat)
-        return torch.where(mask, feat, inv)
-
-
-if __name__ == "__main__":
-    torch.manual_seed(0)
-    invisible = InvisibleTokenEmbedding(dim=8)
-    uv_embed = BallUVEmbedding(dim=8, dropout=0.0, invisible_token=invisible)
-    ball_uv = torch.randn(2, 4, 2)
-    ball_vis = torch.tensor([[1, 0, 1, 0], [1, 1, 1, 1]], dtype=torch.float32)
-    out_uv = uv_embed(ball_uv, ball_vis)
-    assert out_uv.shape == (2, 4, 8)
-
-    pos_embed = Ball3DEmbedding(dim=8, dropout=0.0, invisible_token=invisible)
-    ball_pos = torch.randn(2, 4, 3)
-    out_pos = pos_embed(ball_pos, ball_vis)
-    assert out_pos.shape == (2, 4, 8)
-    print("Ball embeddings smoke ok")
+        return apply_visibility_mask(feat, ball_vis, self.invisible_token)
