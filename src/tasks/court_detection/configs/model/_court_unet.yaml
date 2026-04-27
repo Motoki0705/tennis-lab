@@ -1,3 +1,0 @@
-name: court_unet
-in_channels: 3
-num_classes: 7
