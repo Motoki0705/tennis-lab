@@ -14,7 +14,7 @@ batch_size: 32
 num_workers: 4
 
 # Sequence/view sampling ranges (inclusive)
-seq_len_range: [15, 1024]
+seq_len_range: [64, 1024]
 num_views_range: [1, 1]
 
 # Camera selection mode: "random", "first", or camera index
