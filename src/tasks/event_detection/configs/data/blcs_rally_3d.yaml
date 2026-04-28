@@ -1,3 +1,7 @@
+defaults:
+  - _augmentation_disabled
+  - _self_
+
 scene_dir: "data/blcs"
 
 split:

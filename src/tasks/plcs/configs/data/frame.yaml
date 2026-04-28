@@ -1,3 +1,7 @@
+defaults:
+  - _augmentation
+  - _self_
+
 backend: default
 scene_dir: data/plcs
 
@@ -15,6 +19,3 @@ camera_mode: random
 seq_len_range: [1, 1]
 num_views_range: [1, 1]
 
-augmentation:
-  keypoint_noise_std: 0.0001
-  visibility_drop_prob: 0.05

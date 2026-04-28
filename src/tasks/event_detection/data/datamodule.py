@@ -92,7 +92,7 @@ class EventDetectionDataModule(pl.LightningDataModule):
                 split_file=self._resolved.train_split_file,
                 input_type=self._resolved.input_type,
                 config=self.config,
-                augment=False,
+                augment=self._resolved.input_type == "uv",
             )
             self.val_dataset = BLCSRallyEventDataset(
                 scene_dir=scene_dir,

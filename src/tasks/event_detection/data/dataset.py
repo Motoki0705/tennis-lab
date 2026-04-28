@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from src.tasks.event_detection.data.augmentation import EventUVObservationAugmentation
 from src.tasks.event_detection.data.types import Event3DSample, EventUVSample
 from src.utils.data.event_utils import extract_event_indices
 from src.utils.data.soft_labels import gaussian_soft_labels
@@ -83,12 +84,18 @@ class BLCSRallyEventDataset(SceneDatasetBase[EventUVSample | Event3DSample]):
     # -- Composed-method hooks ------------------------------------------
 
     def _configure_task(self, data_cfg: dict) -> None:  # type: ignore[override]
+        from omegaconf import DictConfig
+
         label_cfg = data_cfg.get("label", {}) or {}
         self.label_cfg = LabelConfig(
             sigma_frames=float(label_cfg.get("sigma_frames", 2.5)),
             shot_time_key=str(label_cfg.get("shot_time_key", "t_start")),
             bounce_time_key=str(label_cfg.get("bounce_time_key", "t_bounce1")),
         )
+        augmentation_cfg = data_cfg.get("augmentation", {}) or {}
+        if not isinstance(augmentation_cfg, (dict, DictConfig)):
+            raise ValueError("data.augmentation must be a mapping-like config.")
+        self.augmentation = EventUVObservationAugmentation(augmentation_cfg)
         # Number of court keypoints to use (first N from the canonical order)
         self.num_court_kp = _validate_num_court_kp(data_cfg.get("num_court_kp", 20))
 
@@ -155,4 +162,9 @@ class BLCSRallyEventDataset(SceneDatasetBase[EventUVSample | Event3DSample]):
         raise ValueError(
             f"Unsupported input_type={self.input_type!r}. Expected 'uv' or '3d'."
         )
+
+    def augment_sample(self, sample: EventUVSample | Event3DSample) -> EventUVSample | Event3DSample:
+        if not self.augment or self.input_type != "uv":
+            return sample
+        return self.augmentation.forward(sample)
 
