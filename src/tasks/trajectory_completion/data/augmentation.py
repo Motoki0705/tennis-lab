@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
+import torch
 from torch import Tensor
 
+from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
 from src.tasks.trajectory_completion.data.argument import TrajectoryArgumenter
 from src.tasks.trajectory_completion.data.types import TrajectoryCompletionSample
 
@@ -34,6 +36,48 @@ def _parse_ratio(value: Any, name: str) -> tuple[int, int]:
     ):
         raise ValueError(f"{name} must be a two-element list/tuple.")
     return int(value[0]), int(value[1])
+
+
+def _has_ball_variation_sections(config: Mapping[str, Any]) -> bool:
+    return any(
+        key in config
+        for key in (
+            "uv_scale",
+            "gaussian_noise",
+            "visibility_dropout",
+            "temporal_jitter",
+            "burst_dropout",
+            "false_positive",
+            "edge_degradation",
+            "speed_conditioned",
+        )
+    )
+
+
+def _mask_points(points: Tensor, visibility: Tensor) -> Tensor:
+    return points * (visibility > 0).to(dtype=points.dtype).unsqueeze(-1)
+
+
+def _normalize_ball_augmentation_config(config: Mapping[str, Any]) -> dict[str, Any]:
+    normalized = dict(config)
+    normalized.setdefault("preserve_clean_targets", False)
+
+    if "gaussian_noise" not in normalized and "noise_std" in config:
+        normalized["gaussian_noise"] = {
+            "enabled": float(config.get("noise_std", 0.0)) > 0,
+            "prob": 1.0,
+            "ball_std": float(config.get("noise_std", 0.0)),
+            "court_std": 0.0,
+        }
+
+    if "visibility_dropout" not in normalized and "point_dropout_prob" in config:
+        normalized["visibility_dropout"] = {
+            "enabled": float(config.get("point_dropout_prob", 0.0)) > 0,
+            "prob": 1.0,
+            "drop_prob": float(config.get("point_dropout_prob", 0.0)),
+        }
+
+    return normalized
 
 
 def resolve_trajectory_argument_config(
@@ -116,6 +160,14 @@ class TrajectoryObservationAugmentation:
         self.enabled = bool(self.config.get("enabled", True))
         self.argument_cfg = resolve_trajectory_argument_config(self.config)
         self.argumenter = TrajectoryArgumenter(self.argument_cfg)
+        self.use_ball_augmentation = _has_ball_variation_sections(self.config)
+        self.ball_augmentation = (
+            BLCSBallObservationAugmentation(
+                _normalize_ball_augmentation_config(self.config)
+            )
+            if self.use_ball_augmentation
+            else None
+        )
 
     def forward(
         self,
@@ -131,11 +183,67 @@ class TrajectoryObservationAugmentation:
             key: (value.clone() if isinstance(value, Tensor) else value)
             for key, value in sample.items()
         }
-        ball_uv, ball_vis = self.argumenter(
-            out["ball_uv_gt"],
-            out["ball_gt_vis"],
-            event_frames=event_frames,
+
+        if not self.use_ball_augmentation:
+            ball_uv, ball_vis = self.argumenter(
+                out["ball_uv_gt"],
+                out["ball_gt_vis"],
+                event_frames=event_frames,
+            )
+            out["ball_uv"] = ball_uv
+            out["ball_vis"] = ball_vis
+            return out
+
+        if event_frames is None:
+            event_frames = {
+                "bounce": torch.empty(0, dtype=torch.long),
+                "shot": torch.empty(0, dtype=torch.long),
+            }
+
+        out["ball_uv"] = out["ball_uv_gt"].clone()
+        out["ball_vis"] = out["ball_gt_vis"].clone()
+
+        event_dropout_prob = float(self.argument_cfg.get("event_dropout_prob", 0.0))
+        if event_dropout_prob > 0:
+            out["ball_vis"] = TrajectoryArgumenter.apply_event_dropout(
+                out["ball_vis"],
+                event_frames=event_frames,
+                ratio=cast(tuple[int, int], self.argument_cfg.get("event_ratio", (2, 1))),
+                window=int(self.argument_cfg.get("event_window", 2)),
+                drop_prob=event_dropout_prob,
+                event_center_std=cast(float | None, self.argument_cfg.get("event_center_std")),
+            )
+
+        ball_sample = {
+            "ball_uv": out["ball_uv"],
+            "ball_vis": out["ball_vis"],
+            "court_kp": out["court_kp"],
+            "court_vis": out["court_vis"],
+        }
+        augmented_ball_sample = cast(
+            dict[str, Tensor],
+            self.ball_augmentation.forward(ball_sample),
         )
-        out["ball_uv"] = ball_uv
-        out["ball_vis"] = ball_vis
+
+        outlier_prob = float(self.argument_cfg.get("outlier_prob", 0.0))
+        if outlier_prob > 0:
+            augmented_ball_sample["ball_uv"] = TrajectoryArgumenter.apply_outlier(
+                augmented_ball_sample["ball_uv"],
+                augmented_ball_sample["ball_vis"],
+                outlier_prob,
+            )
+
+        augmented_ball_sample["ball_uv"] = _mask_points(
+            augmented_ball_sample["ball_uv"],
+            augmented_ball_sample["ball_vis"],
+        )
+        augmented_ball_sample["court_kp"] = _mask_points(
+            augmented_ball_sample["court_kp"],
+            augmented_ball_sample["court_vis"],
+        )
+
+        out["ball_uv"] = augmented_ball_sample["ball_uv"]
+        out["ball_vis"] = augmented_ball_sample["ball_vis"]
+        out["court_kp"] = augmented_ball_sample["court_kp"]
+        out["court_vis"] = augmented_ball_sample["court_vis"]
         return out

@@ -1,15 +1,60 @@
 # Shared event-detection UV observation augmentation.
 augmentation:
   enabled: true
+  preserve_clean_targets: false
+
+  uv_scale:
+    enabled: false
+    prob: 1.0
+    scale_range: [1.0, 1.0]
+    apply_to_ball: true
+    apply_to_court: true
 
   gaussian_noise:
     enabled: true
     prob: 1.0
-    ball_std: 0.0001
-    court_std: 0.0001
+    ball_std: 0.0037
+    court_std: 0.0
 
   visibility_dropout:
     enabled: true
     prob: 1.0
-    ball_drop_prob: 0.05
-    court_drop_prob: 0.0
+    drop_prob: 0.06
+
+  temporal_jitter:
+    enabled: true
+    prob: 1.0
+    jitter_std: 0.0025
+    drift_std: 0.0015
+    drift_decay: 0.85
+
+  burst_dropout:
+    enabled: true
+    prob: 0.2
+    track_prob: 1.0
+    min_len: 2
+    max_len: 4
+    max_bursts: 1
+
+  false_positive:
+    enabled: true
+    prob: 1.0
+    prob_absent: 0.1
+    prob_after_dropout: 0.03
+    after_dropout_window: 2
+
+  edge_degradation:
+    enabled: true
+    prob: 1.0
+    edge_margin: 0.1
+    noise_std: 0.006
+    drop_prob: 0.08
+    clip_out_prob: 0.02
+
+  speed_conditioned:
+    enabled: true
+    prob: 1.0
+    frame_prob: 0.07
+    speed_threshold: 0.03
+    lag_overshoot_range: [-0.25, 0.35]
+    noise_std: 0.0037
