@@ -7,9 +7,9 @@ io:
 
 hidden_dim: 512
 
-num_layers: 12
+num_layers: 8
 num_heads: 8
-ffn_dim: 704
+ffn_dim: null
 ffn_type: swiglu
 dropout: 0.1
 rope_dim: null

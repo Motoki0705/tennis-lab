@@ -1,6 +1,6 @@
 defaults:
+  - _gan
   - _self_
-  - gan: _gan
 
 # ---- Trainer (Lightning Trainer settings) ----
 trainer:
