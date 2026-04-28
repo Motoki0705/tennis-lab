@@ -18,10 +18,9 @@ class PLCSTrainingRunner(BaseTrainingRunner):
 
     def prepare_config(self, config: Any) -> None:
         backend = str(config.get("data", {}).get("backend", "default"))
-        if backend != "chunked":
-            return
-
-        prepare_generation_config(config, resolve=False)
+        if backend == "chunked":
+            prepare_generation_config(config, resolve=False)
+        super().prepare_config(config)
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
         backend = str(config.get("data", {}).get("backend", "default"))
@@ -50,11 +49,14 @@ class PLCSTrainingRunner(BaseTrainingRunner):
         datamodule: pl.LightningDataModule,
         logger: TensorBoardLogger,
     ) -> list[Any]:
+        extras = super().callbacks_extra(config, datamodule, logger)
+
         if str(config.get("data", {}).get("backend", "default")) != "chunked":
-            return []
+            return extras
 
         from src.tasks.base.training.chunk_rotation_callback import (
             ChunkRotationCallback,
         )
 
-        return [ChunkRotationCallback()]
+        extras.append(ChunkRotationCallback())
+        return extras

@@ -9,15 +9,12 @@ import cv2
 import numpy as np
 import torch
 from torch import Tensor
-from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 
+from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
 from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch
 from src.tasks.blcs.models import build_blcs_discriminator, build_blcs_model
-from src.tasks.blcs.training.gan_loss import LSGANLoss
-from src.tasks.blcs.training.gan_training_strategy import BLCSGANTrainingStrategy
 from src.tasks.blcs.training.losses import BLCSLoss
 from src.tasks.blcs.training.metrics import BLCSMetrics
 
@@ -25,7 +22,7 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class BLCSLightningModule(BaseLightningModule):
+class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     """Lightning module for BLCS models.
 
     This module supports both single-view and multiview BLCS training.
@@ -52,22 +49,10 @@ class BLCSLightningModule(BaseLightningModule):
             reprojection_weight=train_cfg.get("reprojection_loss_weight", 0.0),
             uv_velocity_weight=train_cfg.get("uv_velocity_loss_weight", 0.0),
         )
-
-        gan_cfg = train_cfg.get("gan", {}) or {}
-        self.gan_enabled = bool(gan_cfg.get("enabled", False))
-        self.automatic_optimization = not self.gan_enabled
-        scheduler_interval = "epoch" if self.warmup_epochs is not None else "step"
-        self.gan_training = (
-            BLCSGANTrainingStrategy(
-                generator_gradient_clip_val=gan_cfg.get("generator_gradient_clip_val"),
-                discriminator_gradient_clip_val=gan_cfg.get("discriminator_gradient_clip_val"),
-                scheduler_interval=scheduler_interval,
-            )
-            if self.gan_enabled
-            else None
+        gan_enabled = bool(((train_cfg.get("gan", {}) or {}).get("enabled", False)))
+        self._initialize_manual_gan(
+            discriminator=build_blcs_discriminator(self.config) if gan_enabled else None,
         )
-        self.discriminator = build_blcs_discriminator(self.config) if self.gan_enabled else None
-        self.gan_loss_fn = LSGANLoss() if self.gan_enabled else None
 
         metrics_cfg = self.config.get("metrics", {})
         self.train_metrics = BLCSMetrics(
@@ -114,178 +99,6 @@ class BLCSLightningModule(BaseLightningModule):
             return self.val_metrics
         return self.test_metrics
 
-    def activate_gan_phase(self, start_epoch: int) -> None:
-        """Enable hybrid GAN training from the given epoch onward."""
-        if self.gan_training is None:
-            return
-        self.reset_gan_phase_schedules(start_epoch)
-        self.gan_training.activate_phase(start_epoch)
-
-    def set_gan_weight(self, weight: float) -> None:
-        """Set the current adversarial loss weight."""
-        if self.gan_training is None:
-            return
-        self.gan_training.set_weight(weight)
-
-    @property
-    def gan_phase_active(self) -> bool:
-        """Expose current GAN phase state for callbacks and tests."""
-        return self.gan_training.phase_active if self.gan_training is not None else False
-
-    @property
-    def current_gan_weight(self) -> float:
-        """Expose current adversarial weight for logging and tests."""
-        return self.gan_training.current_weight if self.gan_training is not None else 0.0
-
-    @property
-    def supervised_only_step_count(self) -> int:
-        """Expose supervised-only update count for tests."""
-        return self.gan_training.supervised_only_step_count if self.gan_training is not None else 0
-
-    @property
-    def hybrid_gan_step_count(self) -> int:
-        """Expose hybrid GAN update count for tests."""
-        return self.gan_training.hybrid_gan_step_count if self.gan_training is not None else 0
-
-    def _unwrap_optimizer(self, optimizer: Any) -> Any:
-        """Return the bare optimizer when Lightning wraps it."""
-        return optimizer.optimizer if hasattr(optimizer, "optimizer") else optimizer
-
-    def _manual_optimizers(self) -> tuple[Any, Any]:
-        optimizers = self.optimizers()
-        if not isinstance(optimizers, (list, tuple)) or len(optimizers) != 2:
-            raise RuntimeError("Expected generator and discriminator optimizers in manual mode.")
-        return optimizers[0], optimizers[1]
-
-    def _manual_schedulers(self) -> list[Any]:
-        schedulers = self.lr_schedulers()
-        if schedulers is None:
-            return []
-        if isinstance(schedulers, (list, tuple)):
-            return list(schedulers)
-        return [schedulers]
-
-    def _build_optimizer_for_parameters(self, parameters: Any) -> AdamW:
-        kwargs: dict[str, Any] = {
-            "lr": self.learning_rate,
-            "weight_decay": self.weight_decay,
-        }
-        if self.optimizer_betas is not None:
-            kwargs["betas"] = self.optimizer_betas
-        return AdamW(parameters, **kwargs)
-
-    def _build_scheduler_for_optimizer(
-        self,
-        optimizer: AdamW,
-        *,
-        total_steps_override: int | None = None,
-        max_epochs_override: int | None = None,
-    ) -> Any:
-        if self.warmup_epochs is not None:
-            warmup_epochs = int(self.warmup_epochs)
-            max_epochs = (
-                int(max_epochs_override) if max_epochs_override is not None else int(self.max_epochs)
-            )
-            if warmup_epochs > 0:
-                warmup_scheduler = LinearLR(
-                    optimizer,
-                    start_factor=0.01,
-                    end_factor=1.0,
-                    total_iters=warmup_epochs,
-                )
-                cosine_scheduler = CosineAnnealingLR(
-                    optimizer,
-                    T_max=max(max_epochs - warmup_epochs, 1),
-                    eta_min=self.min_lr,
-                )
-                return SequentialLR(
-                    optimizer,
-                    schedulers=[warmup_scheduler, cosine_scheduler],
-                    milestones=[warmup_epochs],
-                )
-            return CosineAnnealingLR(
-                optimizer,
-                T_max=max(max_epochs, 1),
-                eta_min=self.min_lr,
-            )
-
-        warmup_steps = int(self.warmup_steps or 0)
-        total_steps = (
-            int(total_steps_override)
-            if total_steps_override is not None
-            else self._estimate_total_steps()
-        )
-        if warmup_steps > 0:
-            warmup_scheduler = LinearLR(
-                optimizer,
-                start_factor=0.01,
-                end_factor=1.0,
-                total_iters=warmup_steps,
-            )
-            cosine_scheduler = CosineAnnealingLR(
-                optimizer,
-                T_max=max(total_steps - warmup_steps, 1),
-                eta_min=self.min_lr,
-            )
-            return SequentialLR(
-                optimizer,
-                schedulers=[warmup_scheduler, cosine_scheduler],
-                milestones=[warmup_steps],
-            )
-        return CosineAnnealingLR(
-            optimizer,
-            T_max=max(total_steps, 1),
-            eta_min=self.min_lr,
-        )
-
-    def reset_gan_phase_schedules(self, start_epoch: int) -> None:
-        """Reset generator/discriminator LR schedules when GAN training starts."""
-        if not self.gan_enabled:
-            return
-
-        schedulers = self._manual_schedulers()
-        if len(schedulers) < 2:
-            return
-
-        generator_optimizer, discriminator_optimizer = self._manual_optimizers()
-        optimizers = [generator_optimizer, discriminator_optimizer]
-        remaining_total_steps = max(self._estimate_total_steps() - int(self.global_step), 1)
-        remaining_epochs = max(int(self.max_epochs) - int(start_epoch), 1)
-
-        for optimizer, scheduler in zip(optimizers, schedulers, strict=True):
-            fresh_optimizer = self._build_optimizer_for_parameters([torch.nn.Parameter(torch.zeros(()))])
-            fresh_scheduler = self._build_scheduler_for_optimizer(
-                fresh_optimizer,
-                total_steps_override=remaining_total_steps,
-                max_epochs_override=remaining_epochs,
-            )
-            scheduler.load_state_dict(fresh_scheduler.state_dict())
-
-            current_groups = self._unwrap_optimizer(optimizer).param_groups
-            fresh_groups = fresh_optimizer.param_groups
-            for current_group, fresh_group in zip(current_groups, fresh_groups, strict=True):
-                current_group["lr"] = fresh_group["lr"]
-                if "initial_lr" in fresh_group:
-                    current_group["initial_lr"] = fresh_group["initial_lr"]
-
-    def configure_optimizers(self) -> Any:
-        """Configure optional generator/discriminator optimizers for GAN mode."""
-        if not self.gan_enabled:
-            return super().configure_optimizers()
-        if self.discriminator is None:
-            raise RuntimeError("Discriminator must be instantiated when GAN is enabled.")
-
-        generator_optimizer = self._build_optimizer_for_parameters(self.model.parameters())
-        discriminator_optimizer = self._build_optimizer_for_parameters(
-            self.discriminator.parameters()
-        )
-        generator_scheduler = self._build_scheduler_for_optimizer(generator_optimizer)
-        discriminator_scheduler = self._build_scheduler_for_optimizer(discriminator_optimizer)
-        return [generator_optimizer, discriminator_optimizer], [
-            generator_scheduler,
-            discriminator_scheduler,
-        ]
-
     def _compute_supervised_result(
         self,
         batch: BLCSBatch | BLCSMultiViewBatch,
@@ -325,71 +138,29 @@ class BLCSLightningModule(BaseLightningModule):
             },
             "outputs": outputs,
             "mask": mask,
+            "gan_fake": outputs["position"],
+            "gan_real": batch["position_3d"],
+            "gan_mask": mask,
         }
 
-    def training_step(self, batch: BLCSBatch | BLCSMultiViewBatch, batch_idx: int) -> Tensor:
-        """Training step."""
-        _ = batch_idx
-        if self.gan_training is not None:
-            loss, metrics = self.gan_training.shared_step(self, batch, "train")
-        else:
-            result = self._compute_supervised_result(batch, "train")
-            loss, metrics = result["loss"], result["metrics"]
-        self.log("train/loss", loss, prog_bar=True)
-        self.log("train/pos_error_m", metrics.get("position_error_m", 0), prog_bar=True)
-        if self.gan_enabled:
+    def _log_stage_metrics(self, stage: str, loss: Tensor, metrics: dict[str, Any]) -> None:
+        prog_bar = stage != "test"
+        self.log(f"{stage}/loss", loss, prog_bar=prog_bar)
+        self.log(f"{stage}/pos_error_m", metrics.get("position_error_m", 0), prog_bar=prog_bar)
+        if stage == "train" and self.gan_enabled:
             self.log("train/gan_weight", float(self.current_gan_weight))
             self.log("train/gan_phase_active", float(self.gan_phase_active))
             if "loss_gan_generator" in metrics:
                 self.log("train/loss_gan_generator", metrics["loss_gan_generator"])
             if "loss_gan_discriminator" in metrics:
                 self.log("train/loss_gan_discriminator", metrics["loss_gan_discriminator"])
-        return loss
 
-    def on_train_epoch_end(self) -> None:
-        """Called at end of training epoch."""
-        metrics = self.train_metrics.compute()
-        for name, value in metrics.items():
-            self.log(f"train/epoch_{name}", value)
-        self.train_metrics.reset()
-        if self.gan_training is not None:
-            self.gan_training.on_train_epoch_end(self)
+    def _metric_tracker_for_stage(self, stage: str) -> BLCSMetrics:
+        return self._select_metrics(stage)
 
-    def validation_step(self, batch: BLCSBatch | BLCSMultiViewBatch, batch_idx: int) -> None:
-        """Validation step."""
-        _ = batch_idx
-        if self.gan_training is not None:
-            loss, metrics = self.gan_training.shared_step(self, batch, "val")
-        else:
-            result = self._compute_supervised_result(batch, "val")
-            loss, metrics = result["loss"], result["metrics"]
-        self.log("val/loss", loss, prog_bar=True)
-        self.log("val/pos_error_m", metrics.get("position_error_m", 0), prog_bar=True)
-
-    def on_validation_epoch_end(self) -> None:
-        """Called at end of validation epoch."""
-        metrics = self.val_metrics.compute()
-        for name, value in metrics.items():
-            self.log(f"val/epoch_{name}", value)
-        self.val_metrics.reset()
-
-    def test_step(self, batch: BLCSBatch | BLCSMultiViewBatch, batch_idx: int) -> None:
-        """Test step."""
-        _ = batch_idx
-        if self.gan_training is not None:
-            loss, metrics = self.gan_training.shared_step(self, batch, "test")
-        else:
-            result = self._compute_supervised_result(batch, "test")
-            loss, metrics = result["loss"], result["metrics"]
-        self.log("test/loss", loss)
-        self.log("test/pos_error_m", metrics.get("position_error_m", 0))
-
-    def on_test_epoch_end(self) -> None:
-        """Called at end of test epoch."""
-        metrics = self.test_metrics.compute()
-        for name, value in metrics.items():
-            self.log(f"test/{name}", value)
-        self.test_metrics.reset()
+    def configure_optimizers(self) -> Any:
+        """Configure generator/discriminator optimizers through the shared GAN helper."""
+        return self.configure_gan_optimizers(self.model.parameters())
 
     # ------------------------------------------------------------------
     # Qualitative validation logging

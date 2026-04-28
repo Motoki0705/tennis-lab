@@ -10,9 +10,10 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
+from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
-from src.tasks.plcs.models import build_plcs_model
+from src.tasks.plcs.models import build_plcs_discriminator, build_plcs_model
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
 
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class PLCSLightningModule(BaseLightningModule):
+class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     """Lightning module for unified PLCS I/O training."""
 
     def __init__(self, config: DictConfig | None = None) -> None:
@@ -38,6 +39,10 @@ class PLCSLightningModule(BaseLightningModule):
                 rotation_weight=float(train_cfg.get("rotation_loss_weight", 1.0)),
             )
         self.loss_fn = PLCSLoss(config=loss_cfg)
+        gan_enabled = bool(((self.config.get("training", {}) or {}).get("gan", {}) or {}).get("enabled", False))
+        self._initialize_manual_gan(
+            discriminator=build_plcs_discriminator(self.config) if gan_enabled else None,
+        )
 
         metrics_cfg = self.config.get("metrics", {})
         self.train_metrics = PLCSMetrics(
@@ -52,6 +57,28 @@ class PLCSLightningModule(BaseLightningModule):
             position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
             angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
         )
+
+    def _normalize_frame_mask(self, human_mask: Tensor | None) -> Tensor | None:
+        if human_mask is None:
+            return None
+        if human_mask.dim() == 1:
+            return human_mask > 0
+        if human_mask.dim() == 2:
+            return human_mask > 0
+        if human_mask.dim() == 3:
+            return (human_mask > 0).any(dim=1)
+        if human_mask.dim() == 4:
+            return (human_mask > 0).any(dim=1).any(dim=-1)
+        raise ValueError(
+            "human_mask must be (B,), (B,T), (B,N,T), or (B,N,T,J), "
+            f"got shape {tuple(human_mask.shape)}"
+        )
+
+    def _pose_sequence(self, position: Tensor, rotation: Tensor) -> Tensor:
+        if position.ndim == 2:
+            position = position.unsqueeze(1)
+            rotation = rotation.unsqueeze(1)
+        return torch.cat([position, rotation], dim=-1)
 
     def _forward_from_batch(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:
         return self.model(
@@ -69,11 +96,14 @@ class PLCSLightningModule(BaseLightningModule):
             return self.val_metrics
         return self.test_metrics
 
-    def _shared_step(
-        self, batch: dict[str, Tensor], stage: str
-    ) -> tuple[Tensor, dict[str, float]]:
+    def _compute_supervised_result(
+        self,
+        batch: dict[str, Tensor],
+        stage: str,
+    ) -> dict[str, Any]:
         outputs = self._forward_from_batch(batch)
         human_mask = batch.get("human_mask")
+        frame_mask = self._normalize_frame_mask(human_mask)
 
         losses = self.loss_fn(
             pred_position=outputs["position"],
@@ -91,47 +121,40 @@ class PLCSLightningModule(BaseLightningModule):
             human_mask=human_mask,
         )
 
-        return losses["total"], {
-            **metrics,
-            **{f"loss_{k}": float(v.item()) for k, v in losses.items()},
+        return {
+            "loss": losses["total"],
+            "metrics": {
+                **metrics,
+                **{f"loss_{k}": float(v.item()) for k, v in losses.items()},
+            },
+            "outputs": outputs,
+            "gan_fake": self._pose_sequence(outputs["position"], outputs["rotation"]),
+            "gan_real": self._pose_sequence(batch["position"], batch["rotation"]),
+            "gan_mask": frame_mask,
         }
 
-    def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
-        loss, metrics = self._shared_step(batch, "train")
-        self.log("train/loss", loss, prog_bar=True)
-        self.log("train/pos_error_m", metrics.get("position_error_m", 0.0), prog_bar=True)
-        self.log("train/ang_error_deg", metrics.get("angular_error_deg", 0.0), prog_bar=True)
-        return loss
+    def _log_stage_metrics(self, stage: str, loss: Tensor, metrics: dict[str, Any]) -> None:
+        prog_bar = stage != "test"
+        self.log(f"{stage}/loss", loss, prog_bar=prog_bar)
+        self.log(f"{stage}/pos_error_m", metrics.get("position_error_m", 0.0), prog_bar=prog_bar)
+        self.log(
+            f"{stage}/ang_error_deg",
+            metrics.get("angular_error_deg", 0.0),
+            prog_bar=prog_bar,
+        )
+        if stage == "train" and self.gan_enabled:
+            self.log("train/gan_weight", float(self.current_gan_weight))
+            self.log("train/gan_phase_active", float(self.gan_phase_active))
+            if "loss_gan_generator" in metrics:
+                self.log("train/loss_gan_generator", metrics["loss_gan_generator"])
+            if "loss_gan_discriminator" in metrics:
+                self.log("train/loss_gan_discriminator", metrics["loss_gan_discriminator"])
 
-    def on_train_epoch_end(self) -> None:
-        metrics = self.train_metrics.compute()
-        for name, value in metrics.items():
-            self.log(f"train/epoch_{name}", value)
-        self.train_metrics.reset()
+    def _metric_tracker_for_stage(self, stage: str) -> PLCSMetrics:
+        return self._select_metrics(stage)
 
-    def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
-        loss, metrics = self._shared_step(batch, "val")
-        self.log("val/loss", loss, prog_bar=True)
-        self.log("val/pos_error_m", metrics.get("position_error_m", 0.0), prog_bar=True)
-        self.log("val/ang_error_deg", metrics.get("angular_error_deg", 0.0), prog_bar=True)
-
-    def on_validation_epoch_end(self) -> None:
-        metrics = self.val_metrics.compute()
-        for name, value in metrics.items():
-            self.log(f"val/epoch_{name}", value)
-        self.val_metrics.reset()
-
-    def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
-        loss, metrics = self._shared_step(batch, "test")
-        self.log("test/loss", loss)
-        self.log("test/pos_error_m", metrics.get("position_error_m", 0.0))
-        self.log("test/ang_error_deg", metrics.get("angular_error_deg", 0.0))
-
-    def on_test_epoch_end(self) -> None:
-        metrics = self.test_metrics.compute()
-        for name, value in metrics.items():
-            self.log(f"test/{name}", value)
-        self.test_metrics.reset()
+    def configure_optimizers(self) -> Any:
+        return self.configure_gan_optimizers(self.model.parameters())
 
     # ------------------------------------------------------------------
     # Qualitative validation logging
