@@ -1,10 +1,10 @@
 defaults:
+  - _gan
   - _self_
-  - optional gan: null
 
 # ---- Trainer (Lightning Trainer settings) ----
 trainer:
-  max_epochs: 50
+  max_epochs: 100
   gradient_clip_val: 1.0
   deterministic: true
   precision: "bf16-mixed"

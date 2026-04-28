@@ -1,5 +1,5 @@
 defaults:
-  - model: multiview
+  - model: multiview_axial
   - data: chunked_multi
   - training: chunked
   - metrics: default
