@@ -1,6 +1,6 @@
 enabled: true
-target_weight: 0.1
-warmup_epochs: 5
+target_weight: 2.0
+warmup_epochs: 10
 generator_gradient_clip_val: 1.0
 discriminator_gradient_clip_val: 1.0
 
