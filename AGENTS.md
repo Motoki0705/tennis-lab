@@ -30,6 +30,14 @@
 - Create a PR only when the user asks for it.
 - After creating a PR, move the issue to `In review`.
 
+## Worktree policy
+
+- Before starting a new issue or unrelated task, inspect the current branch and `git status --short`.
+- Treat the current checkout as active work when it is dirty, when it is on a task branch such as `feat/*`, `feature/*`, `fix/*`, `docs/*`, `chore/*`, `exp/*`, or `experiments/*`, or when the branch is tied to a different issue.
+- When the current checkout appears active, autonomously create or reuse a separate worktree for the new task instead of editing in place.
+- Use `.agents/skills/git-worktree-create/SKILL.md` for the concrete worktree creation workflow and bundled script.
+- Keep the worktree directory name derived from the branch name so issue branches and worktrees are easy to match.
+
 ## Sub Agents
 
 - If codebase investigation is needed, first delegate the investigation to `.codex/agents/codebase_summarizer.toml`.
