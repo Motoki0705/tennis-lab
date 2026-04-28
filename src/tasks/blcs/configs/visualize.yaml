@@ -1,5 +1,5 @@
 defaults:
-  - visualization: single
+  - visualization: multiview
   - run: visualize
   - _self_
 
