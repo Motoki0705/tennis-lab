@@ -1,0 +1,21 @@
+augmentation:
+  enabled: true
+
+  visibility_dropout:
+    enabled: true
+    drop_prob: 0.05
+
+  event_dropout:
+    enabled: true
+    drop_prob: 0.1
+    event_window: 2
+    event_ratio: [1, 1]
+
+  gaussian_noise:
+    enabled: true
+    noise_std: 0.0001
+    clamp_unit: true
+
+  outlier:
+    enabled: false
+    outlier_prob: 0.0

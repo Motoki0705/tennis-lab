@@ -1,0 +1,15 @@
+# Shared PLCS train-time keypoint augmentation.
+augmentation:
+  enabled: true
+
+  gaussian_noise:
+    enabled: true
+    prob: 1.0
+    human_std: 0.0001
+    court_std: 0.0001
+
+  visibility_dropout:
+    enabled: true
+    prob: 1.0
+    human_drop_prob: 0.05
+    court_drop_prob: 0.05

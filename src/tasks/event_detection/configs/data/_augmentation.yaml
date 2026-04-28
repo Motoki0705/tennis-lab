@@ -1,0 +1,15 @@
+# Shared event-detection UV observation augmentation.
+augmentation:
+  enabled: true
+
+  gaussian_noise:
+    enabled: true
+    prob: 1.0
+    ball_std: 0.0001
+    court_std: 0.0001
+
+  visibility_dropout:
+    enabled: true
+    prob: 1.0
+    ball_drop_prob: 0.05
+    court_drop_prob: 0.0

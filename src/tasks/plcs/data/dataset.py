@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.utils.data.augmentation import augment_keypoints
 from src.tasks.base.data.scene_dataset import Scene, SceneDatasetBase, SceneDatasetConfig
+from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
 from src.tasks.plcs.data.targets import build_coco17_world_targets
 from src.tasks.plcs.data.types import PLCSBatch
 
@@ -73,11 +73,9 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         augmentation_cfg = data_cfg.get("augmentation")
         if not isinstance(augmentation_cfg, (dict, DictConfig)):
             raise ValueError(
-                "data.augmentation must be provided with keys "
-                "['keypoint_noise_std', 'visibility_drop_prob']."
+                "data.augmentation must be a mapping-like config."
             )
-        self.kp_noise_std = float(augmentation_cfg["keypoint_noise_std"])
-        self.visibility_drop_prob = float(augmentation_cfg["visibility_drop_prob"])
+        self.augmentation = PLCSObservationAugmentation(augmentation_cfg)
         # Number of court keypoints to use (first N from the canonical order)
         self.num_court_kp = int(data_cfg.get("num_court_kp", 20))
 
@@ -174,25 +172,7 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
     def augment_sample(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
         if not self.augment:
             return sample
-        sample = {k: v.clone() if isinstance(v, Tensor) else v for k, v in sample.items()}
-
-        human_kp = sample["human_kp"]
-        human_vis = sample["human_vis"]
-        court_kp = sample["court_kp"]
-        court_vis = sample["court_vis"]
-
-        human_kp, human_vis = augment_keypoints(
-            human_kp, human_vis, self.kp_noise_std, self.visibility_drop_prob,
-        )
-        court_kp, court_vis = augment_keypoints(
-            court_kp, court_vis, self.kp_noise_std, self.visibility_drop_prob,
-        )
-
-        sample["human_kp"] = human_kp
-        sample["human_vis"] = human_vis
-        sample["court_kp"] = court_kp
-        sample["court_vis"] = court_vis
-        return sample
+        return self.augmentation.forward(sample)
 
 
 def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, Tensor]:

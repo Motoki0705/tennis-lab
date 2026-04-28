@@ -79,7 +79,7 @@ class ChunkedEventDetectionDataModule(EventDetectionDataModule):
             split_file=self._resolved.train_split_file,
             input_type=self._resolved.input_type,
             config=self.config,
-            augment=False,
+            augment=self._resolved.input_type == "uv",
         )
         self._current_chunk_id = chunk.chunk_id
         self._epochs_on_current_chunk = 0
