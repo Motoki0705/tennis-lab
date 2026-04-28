@@ -10,12 +10,12 @@ scene_dir: "data/blcs"
 num_court_kp: 20
 
 # DataLoader settings
-batch_size: 8
+batch_size: 4
 num_workers: 4
 
 # Sequence/view sampling ranges (inclusive)
-seq_len_range: [64, 512]
-num_views_range: [3, 6]
+seq_len_range: [64, 256]
+num_views_range: [4, 8]
 
 # Camera selection mode: "random", "first", or camera index
 camera_mode: "random"
