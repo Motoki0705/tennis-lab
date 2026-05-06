@@ -41,12 +41,14 @@ class TrajectoryCompletionDataModule(pl.LightningDataModule):
         split_cfg = data_cfg.get("split", {}) or {}
         self.train_file = str(split_cfg.get("train_file", "train.txt"))
         self.val_file = str(split_cfg.get("val_file", "val.txt"))
+        self.test_file = str(split_cfg.get("test_file", "test.txt"))
 
         self.batch_size = int(data_cfg.get("batch_size", 16))
         self.num_workers = int(data_cfg.get("num_workers", 4))
         self.pin_memory = bool(data_cfg.get("pin_memory", True))
         self.train_dataset = None
         self.val_dataset = None
+        self.test_dataset = None
 
     def setup(self, stage: str | None = None) -> None:
         if not self.scene_dir.exists():
@@ -62,6 +64,14 @@ class TrajectoryCompletionDataModule(pl.LightningDataModule):
             self.val_dataset = BLCSUVTrajectoryCompletionDataset(
                 scene_dir=self.scene_dir,
                 split_file=self.val_file,
+                config=self.config,
+                augment=False,
+            )
+
+        if stage in ("test", None):
+            self.test_dataset = BLCSUVTrajectoryCompletionDataset(
+                scene_dir=self.scene_dir,
+                split_file=self.test_file,
                 config=self.config,
                 augment=False,
             )
@@ -84,6 +94,19 @@ class TrajectoryCompletionDataModule(pl.LightningDataModule):
             raise RuntimeError("Call setup() before val_dataloader().")
         return DataLoader(
             self.val_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
+            drop_last=False,
+            collate_fn=collate_uv_trajectories,
+        )
+
+    def test_dataloader(self) -> DataLoader:
+        if self.test_dataset is None:
+            raise RuntimeError("Call setup() before test_dataloader().")
+        return DataLoader(
+            self.test_dataset,
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,

@@ -491,7 +491,7 @@ SMOKE_TASK_SPECS = (
                 ),
             ),
         ),
-        supports_test_phase=False,
+        supports_test_phase=True,
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
@@ -535,7 +535,7 @@ SMOKE_TASK_SPECS = (
                 expect_gan_training=True,
             ),
         ),
-        supports_test_phase=False,
+        supports_test_phase=True,
         expect_qualitative=True,
     ),
 )
