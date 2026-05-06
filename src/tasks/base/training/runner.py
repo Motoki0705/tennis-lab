@@ -89,8 +89,20 @@ class BaseTrainingRunner:
         """Prepare output directory path."""
         return Path(self._ensure_absolute(str(config.run.output_dir)))
 
+    def _gan_enabled(self, config: Any) -> bool:
+        train_cfg = config.get("training", {}) or {}
+        return bool((train_cfg.get("gan", {}) or {}).get("enabled", False))
+
+    def _apply_gan_runtime_config(self, config: Any) -> None:
+        if not self._gan_enabled(config):
+            raise RuntimeError("GAN runtime config should only be applied when GAN is enabled.")
+        config.training.early_stopping.enabled = False
+        config.training.trainer.gradient_clip_val = None
+
     def prepare_config(self, config: Any) -> None:
         """Apply task-specific config mutations before the run starts."""
+        if self._gan_enabled(config):
+            self._apply_gan_runtime_config(config)
         return None
 
     def resolve_resume(self, config: Any, output_dir: Path) -> str | None:
@@ -104,7 +116,14 @@ class BaseTrainingRunner:
         self, config: Any, datamodule: pl.LightningDataModule, logger: TensorBoardLogger
     ) -> list[Any]:
         """Return additional callbacks. Override in subclasses for task-specific callbacks."""
-        return []
+        _ = datamodule
+        _ = logger
+        extras: list[Any] = []
+        if self._gan_enabled(config):
+            from src.tasks.base.training.gan_transition_callback import GANTransitionCallback
+
+            extras.append(GANTransitionCallback(config))
+        return extras
 
     def dry_run_postprocess(self, batch: Any, output_dir: Path) -> None:
         """Post-process after dry run batch loading. Override in subclasses if needed."""

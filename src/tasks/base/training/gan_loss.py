@@ -1,4 +1,4 @@
-"""LSGAN loss helpers for BLCS adversarial training."""
+"""Least-squares GAN loss helpers shared across tasks."""
 
 from __future__ import annotations
 

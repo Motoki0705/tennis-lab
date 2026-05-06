@@ -27,6 +27,9 @@ from src.utils.models.embeddings import (
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
 )
+from src.utils.models.architectures import (
+    TransformerSequenceDiscriminator,
+)
 
 __all__ = [
     # Attention
@@ -54,4 +57,5 @@ __all__ = [
     "PlayerKPUVEmbedding",
     "BallUVEmbedding",
     "Ball3DEmbedding",
+    "TransformerSequenceDiscriminator",
 ]
