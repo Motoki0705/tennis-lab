@@ -14,13 +14,14 @@ from src.utils.schema.court import NUM_COURT_KP
 from src.utils.schema.player import NUM_HUMAN_KP
 
 
-def _flatten_court_kp(court_kp: Tensor) -> Tensor:
-    if court_kp.dim() >= 2 and tuple(court_kp.shape[-2:]) == (NUM_COURT_KP, 2):
-        return court_kp.reshape(*court_kp.shape[:-2], NUM_COURT_KP * 2)
-    if court_kp.dim() >= 1 and court_kp.shape[-1] == NUM_COURT_KP * 2:
+def _flatten_court_kp(court_kp: Tensor, *, num_court_tokens: int) -> Tensor:
+    if court_kp.dim() >= 2 and tuple(court_kp.shape[-2:]) == (num_court_tokens, 2):
+        return court_kp.reshape(*court_kp.shape[:-2], num_court_tokens * 2)
+    if court_kp.dim() >= 1 and court_kp.shape[-1] == num_court_tokens * 2:
         return court_kp
     raise ValueError(
-        "court_kp must have shape (..., NUM_COURT_KP, 2) or (..., NUM_COURT_KP * 2).",
+        "court_kp must have shape "
+        f"(..., {num_court_tokens}, 2) or (..., {num_court_tokens * 2}).",
     )
 
 
@@ -64,12 +65,14 @@ class _CourtContextGroupEmbedding(nn.Module):
         self,
         *,
         dim: int,
+        num_court_tokens: int,
         group_input_dim: int,
         invisible_token: InvisibleTokenEmbedding,
     ) -> None:
         super().__init__()
+        self.num_court_tokens = int(num_court_tokens)
         self.proj = CoordinateProjection(
-            input_dim=NUM_COURT_KP * 2 + int(group_input_dim),
+            input_dim=self.num_court_tokens * 2 + int(group_input_dim),
             dim=int(dim),
         )
         self.invisible_token = invisible_token
@@ -99,8 +102,19 @@ class CourtBallGroupEmbedding(_CourtContextGroupEmbedding):
     provide one visibility flag per output token, for example shape ``(B, T)``.
     """
 
-    def __init__(self, *, dim: int, invisible_token: InvisibleTokenEmbedding) -> None:
-        super().__init__(dim=dim, group_input_dim=2, invisible_token=invisible_token)
+    def __init__(
+        self,
+        *,
+        dim: int,
+        invisible_token: InvisibleTokenEmbedding,
+        num_court_tokens: int = NUM_COURT_KP,
+    ) -> None:
+        super().__init__(
+            dim=dim,
+            num_court_tokens=num_court_tokens,
+            group_input_dim=2,
+            invisible_token=invisible_token,
+        )
 
     def forward(
         self,
@@ -109,7 +123,7 @@ class CourtBallGroupEmbedding(_CourtContextGroupEmbedding):
         group_vis: Tensor | None = None,
     ) -> Tensor:
         """Return one embedding token for each leading court/ball element."""
-        court_flat = _flatten_court_kp(court_kp)
+        court_flat = _flatten_court_kp(court_kp, num_court_tokens=self.num_court_tokens)
         ball_flat = _flatten_ball_uv(ball_uv)
         return self._embed_group(
             court_flat=court_flat,
@@ -125,9 +139,16 @@ class CourtPlayerGroupEmbedding(_CourtContextGroupEmbedding):
     provide one visibility flag per output token, for example shape ``(B, T)``.
     """
 
-    def __init__(self, *, dim: int, invisible_token: InvisibleTokenEmbedding) -> None:
+    def __init__(
+        self,
+        *,
+        dim: int,
+        invisible_token: InvisibleTokenEmbedding,
+        num_court_tokens: int = NUM_COURT_KP,
+    ) -> None:
         super().__init__(
             dim=dim,
+            num_court_tokens=num_court_tokens,
             group_input_dim=NUM_HUMAN_KP * 2,
             invisible_token=invisible_token,
         )
@@ -139,7 +160,7 @@ class CourtPlayerGroupEmbedding(_CourtContextGroupEmbedding):
         group_vis: Tensor | None = None,
     ) -> Tensor:
         """Return one embedding token for each leading court/player element."""
-        court_flat = _flatten_court_kp(court_kp)
+        court_flat = _flatten_court_kp(court_kp, num_court_tokens=self.num_court_tokens)
         human_flat = _flatten_human_kp(human_kp)
         return self._embed_group(
             court_flat=court_flat,
