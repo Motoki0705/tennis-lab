@@ -297,7 +297,7 @@ SMOKE_TASK_SPECS = (
                 overrides=("model=uv_transformer_nocourt",),
             ),
         ),
-        supports_test_phase=False,
+        supports_test_phase=True,
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
@@ -334,7 +334,7 @@ SMOKE_TASK_SPECS = (
                 expect_gan_training=True,
             ),
         ),
-        supports_test_phase=False,
+        supports_test_phase=True,
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
@@ -386,7 +386,7 @@ SMOKE_TASK_SPECS = (
             "model.max_seq_len=64",
         ),
         variants=(SmokeVariant(name="traj3d_transformer"),),
-        supports_test_phase=False,
+        supports_test_phase=True,
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
@@ -423,7 +423,7 @@ SMOKE_TASK_SPECS = (
                 expect_gan_training=True,
             ),
         ),
-        supports_test_phase=False,
+        supports_test_phase=True,
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
