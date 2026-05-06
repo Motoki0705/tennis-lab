@@ -202,7 +202,7 @@ SMOKE_TASK_SPECS = (
             SmokeVariant(
                 name="multiview_gan",
                 overrides=(
-                    "training.gan.enabled=true",
+                    "training=gan",
                     "training.trainer.max_epochs=2",
                     "training.gan.transition.patience=0",
                     "training.gan.warmup_epochs=1",
