@@ -11,9 +11,10 @@ Creates or reuses a git worktree for tennis-lab issue work and links shared path
   data, .venv, outputs, third_party
 
 Environment:
-  BASE_REF=main        Default base ref when --base is omitted.
-  WT_PARENT=<dir>      Parent directory for worktrees.
-  WT_FORCE_LINKS=1     Replace non-empty untracked link paths.
+  BASE_REF=main          Default base ref when --base is omitted.
+  WT_PARENT=<dir>        Parent directory for worktrees.
+  WT_FORCE_LINKS=1       Replace non-empty untracked link paths.
+  WT_VSCODE_ADD=0        Skip adding the worktree to the active VS Code window.
 USAGE
 }
 
@@ -24,6 +25,22 @@ die() {
 
 info() {
   echo "$*"
+}
+
+add_to_vscode_workspace() {
+  local target_worktree="$1"
+
+  [[ "${WT_VSCODE_ADD:-1}" != "0" ]] || return 0
+  command -v code >/dev/null 2>&1 || {
+    info "vscode=skipped (code command not found)"
+    return 0
+  }
+
+  if code --add "$target_worktree" >/dev/null 2>&1; then
+    info "vscode=added"
+  else
+    info "vscode=skipped (code --add failed)"
+  fi
 }
 
 slugify() {
@@ -261,6 +278,7 @@ replace_with_symlink "$WT_DIR" "$MAIN_WORKTREE" data
 replace_with_symlink "$WT_DIR" "$MAIN_WORKTREE" .venv
 replace_with_symlink "$WT_DIR" "$MAIN_WORKTREE" outputs
 link_third_party "$WT_DIR" "$MAIN_WORKTREE"
+add_to_vscode_workspace "$WT_DIR"
 
 info "branch=$BRANCH"
 info "worktree=$WT_DIR"
