@@ -126,10 +126,26 @@ SMOKE_TASK_SPECS = (
                 ),
             ),
             SmokeVariant(
+                name="multiview_num_court_kp_12",
+                overrides=(
+                    "model=multiview",
+                    "data=multiview",
+                    "data.num_court_kp=12",
+                ),
+            ),
+            SmokeVariant(
                 name="multiview_axial",
                 overrides=(
                     "model=multiview_axial",
                     "data=multiview",
+                ),
+            ),
+            SmokeVariant(
+                name="multiview_axial_num_court_kp_12",
+                overrides=(
+                    "model=multiview_axial",
+                    "data=multiview",
+                    "data.num_court_kp=12",
                 ),
             ),
         ),
@@ -167,12 +183,34 @@ SMOKE_TASK_SPECS = (
                 ),
             ),
             SmokeVariant(
+                name="multiview_num_court_kp_12",
+                overrides=(
+                    "model=multiview",
+                    "data=multiview",
+                    "loss=multiview_sequence",
+                    "data.seq_len_range=[16,16]",
+                    "data.num_court_kp=12",
+                    "model.max_seq_len=64",
+                ),
+            ),
+            SmokeVariant(
                 name="multiview_axial",
                 overrides=(
                     "model=multiview_axial",
                     "data=multiview",
                     "loss=multiview_sequence",
                     "data.seq_len_range=[16,16]",
+                    "model.max_seq_len=64",
+                ),
+            ),
+            SmokeVariant(
+                name="multiview_axial_num_court_kp_12",
+                overrides=(
+                    "model=multiview_axial",
+                    "data=multiview",
+                    "loss=multiview_sequence",
+                    "data.seq_len_range=[16,16]",
+                    "data.num_court_kp=12",
                     "model.max_seq_len=64",
                 ),
             ),
