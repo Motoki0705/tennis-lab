@@ -47,6 +47,7 @@ class DataConfig:
     scene_dir: Path
     train_split_file: str
     val_split_file: str
+    test_split_file: str
     batch_size: int
     num_workers: int
     input_type: Literal["uv", "3d"]
@@ -69,6 +70,7 @@ class EventDetectionDataModule(pl.LightningDataModule):
             scene_dir=Path(str(data_cfg.get("scene_dir", "data/blcs"))),
             train_split_file=str((data_cfg.get("split", {}) or {}).get("train_file", "train.txt")),
             val_split_file=str((data_cfg.get("split", {}) or {}).get("val_file", "val.txt")),
+            test_split_file=str((data_cfg.get("split", {}) or {}).get("test_file", "test.txt")),
             batch_size=int(data_cfg.get("batch_size", 16)),
             num_workers=int(data_cfg.get("num_workers", 4)),
             input_type=input_type,
@@ -77,6 +79,7 @@ class EventDetectionDataModule(pl.LightningDataModule):
 
         self.train_dataset = None
         self.val_dataset = None
+        self.test_dataset = None
 
     def setup(self, stage: str | None = None) -> None:
         scene_dir = self._resolved.scene_dir
@@ -102,10 +105,21 @@ class EventDetectionDataModule(pl.LightningDataModule):
                 augment=False,
             )
 
+        if stage in ("test", None):
+            self.test_dataset = BLCSRallyEventDataset(
+                scene_dir=scene_dir,
+                split_file=self._resolved.test_split_file,
+                input_type=self._resolved.input_type,
+                config=self.config,
+                augment=False,
+            )
+
+    def _collate_fn(self):
+        return collate_3d if self._resolved.input_type == "3d" else collate_uv
+
     def train_dataloader(self) -> DataLoader:
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader().")
-        collate = collate_3d if self._resolved.input_type == "3d" else collate_uv
         return DataLoader(
             self.train_dataset,
             batch_size=self._resolved.batch_size,
@@ -113,18 +127,29 @@ class EventDetectionDataModule(pl.LightningDataModule):
             num_workers=self._resolved.num_workers,
             pin_memory=self._resolved.pin_memory,
             drop_last=True,
-            collate_fn=collate,
+            collate_fn=self._collate_fn(),
         )
 
     def val_dataloader(self) -> DataLoader:
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader().")
-        collate = collate_3d if self._resolved.input_type == "3d" else collate_uv
         return DataLoader(
             self.val_dataset,
             batch_size=self._resolved.batch_size,
             shuffle=False,
             num_workers=self._resolved.num_workers,
             pin_memory=self._resolved.pin_memory,
-            collate_fn=collate,
+            collate_fn=self._collate_fn(),
+        )
+
+    def test_dataloader(self) -> DataLoader:
+        if self.test_dataset is None:
+            raise RuntimeError("Call setup('test') before test_dataloader().")
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self._resolved.batch_size,
+            shuffle=False,
+            num_workers=self._resolved.num_workers,
+            pin_memory=self._resolved.pin_memory,
+            collate_fn=self._collate_fn(),
         )
