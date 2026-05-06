@@ -1,50 +1,50 @@
 ---
-name: Bug Report
-about: Report a defect, regression, or unexpected behavior
-title: "[Bug] "
+name: バグ報告
+about: 不具合、リグレッション、想定外の挙動を報告する
+title: "[バグ] "
 labels: ["bug"]
 ---
 
-## Summary
+## 概要
 
-<!-- Describe the bug in 1-3 lines. -->
-
--
-
-## Expected Behavior
-
-<!-- Describe the expected behavior. -->
+<!-- 不具合の内容を1〜3行で説明してください。 -->
 
 -
 
-## Actual Behavior
+## 期待される挙動
 
-<!-- Describe what actually happened. -->
+<!-- 本来どのように動くべきかを説明してください。 -->
 
 -
 
-## Steps To Reproduce
+## 実際の挙動
 
-<!-- List the minimum steps needed to reproduce the issue. -->
+<!-- 実際に何が起きたかを説明してください。 -->
+
+-
+
+## 再現手順
+
+<!-- 再現に必要な最小手順を記載してください。 -->
 
 1.
 2.
 3.
 
-## Scope / Impact
+## 影響範囲
 
-<!-- Describe affected modules, users, or workflows. -->
-
--
-
-## Validation / Artifacts
-
-<!-- Add logs, screenshots, metrics, commands, or file paths if available. -->
+<!-- 影響を受けるモジュール、ユーザー、ワークフローを記載してください。 -->
 
 -
 
-## Notes
+## 検証情報・成果物
 
-<!-- Optional: assumptions, temporary workaround, or follow-up context. -->
+<!-- ログ、スクリーンショット、メトリクス、実行コマンド、ファイルパスなどがあれば記載してください。 -->
+
+-
+
+## 補足
+
+<!-- 任意: 前提、暫定回避策、追加の文脈などを記載してください。 -->
 
 -
