@@ -235,7 +235,24 @@ SMOKE_TASK_SPECS = (
             "model.ffn_dim=64",
             "model.max_seq_len=64",
         ),
-        variants=(SmokeVariant(name="multiview"),),
+        variants=(
+            SmokeVariant(name="multiview"),
+            SmokeVariant(
+                name="multiview_gan",
+                overrides=(
+                    "training.gan.enabled=true",
+                    "training.trainer.max_epochs=2",
+                    "training.gan.transition.patience=0",
+                    "training.gan.warmup_epochs=1",
+                    "training.gan.discriminator.hidden_dim=32",
+                    "training.gan.discriminator.num_layers=2",
+                    "training.gan.discriminator.num_heads=4",
+                    "training.gan.discriminator.ffn_dim=64",
+                    "training.gan.discriminator.max_seq_len=64",
+                ),
+                expect_gan_training=True,
+            ),
+        ),
         supports_test_phase=True,
         expect_qualitative=True,
     ),
@@ -299,7 +316,24 @@ SMOKE_TASK_SPECS = (
             "model.ffn_dim=64",
             "model.max_seq_len=64",
         ),
-        variants=(SmokeVariant(name="uv_transformer"),),
+        variants=(
+            SmokeVariant(name="uv_transformer"),
+            SmokeVariant(
+                name="uv_transformer_gan",
+                overrides=(
+                    "training.gan.enabled=true",
+                    "training.trainer.max_epochs=2",
+                    "training.gan.transition.patience=0",
+                    "training.gan.warmup_epochs=1",
+                    "training.gan.discriminator.hidden_dim=32",
+                    "training.gan.discriminator.num_layers=2",
+                    "training.gan.discriminator.num_heads=4",
+                    "training.gan.discriminator.ffn_dim=64",
+                    "training.gan.discriminator.max_seq_len=64",
+                ),
+                expect_gan_training=True,
+            ),
+        ),
         supports_test_phase=False,
         expect_qualitative=True,
     ),
@@ -371,7 +405,24 @@ SMOKE_TASK_SPECS = (
             "model.ffn_dim=64",
             "model.max_seq_len=64",
         ),
-        variants=(SmokeVariant(name="traj3d_transformer"),),
+        variants=(
+            SmokeVariant(name="traj3d_transformer"),
+            SmokeVariant(
+                name="traj3d_transformer_gan",
+                overrides=(
+                    "training.gan.enabled=true",
+                    "training.trainer.max_epochs=2",
+                    "training.gan.transition.patience=0",
+                    "training.gan.warmup_epochs=1",
+                    "training.gan.discriminator.hidden_dim=32",
+                    "training.gan.discriminator.num_layers=2",
+                    "training.gan.discriminator.num_heads=4",
+                    "training.gan.discriminator.ffn_dim=64",
+                    "training.gan.discriminator.max_seq_len=64",
+                ),
+                expect_gan_training=True,
+            ),
+        ),
         supports_test_phase=False,
         expect_qualitative=True,
     ),
@@ -466,6 +517,23 @@ SMOKE_TASK_SPECS = (
                     "model.num_query_layers=1",
                 ),
             ),
+            SmokeVariant(
+                name="uv_transformer_gan",
+                overrides=(
+                    "model.num_ball_layers=2",
+                    "model.num_query_layers=1",
+                    "training.gan.enabled=true",
+                    "training.trainer.max_epochs=2",
+                    "training.gan.transition.patience=0",
+                    "training.gan.warmup_epochs=1",
+                    "training.gan.discriminator.hidden_dim=32",
+                    "training.gan.discriminator.num_layers=2",
+                    "training.gan.discriminator.num_heads=4",
+                    "training.gan.discriminator.ffn_dim=64",
+                    "training.gan.discriminator.max_seq_len=64",
+                ),
+                expect_gan_training=True,
+            ),
         ),
         supports_test_phase=False,
         expect_qualitative=True,
@@ -548,7 +616,7 @@ def _assert_gan_training(case: SmokeCase, callbacks: list[Any], lightning_module
     if not case.expect_gan_training:
         return
 
-    from src.tasks.blcs.training.gan_transition_callback import GANTransitionCallback
+    from src.tasks.base.training.gan_transition_callback import GANTransitionCallback
 
     gan_callbacks = [cb for cb in callbacks if isinstance(cb, GANTransitionCallback)]
     assert gan_callbacks

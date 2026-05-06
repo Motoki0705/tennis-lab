@@ -6,6 +6,9 @@ from typing import TYPE_CHECKING
 
 from torch import nn
 
+from src.tasks.event_detection.models.discriminators import (
+    build_event_detection_discriminator,
+)
 from src.tasks.event_detection.models.traj3d_event_model import Traj3DEventModel
 from src.tasks.event_detection.models.uv_event_model import UVEventModel
 from src.tasks.event_detection.models.uv_event_nocourt_model import UVEventNoCourtModel
@@ -30,4 +33,10 @@ def build_event_detection_model(config: DictConfig) -> nn.Module:
     )
 
 
-__all__ = ["UVEventModel", "UVEventNoCourtModel", "Traj3DEventModel", "build_event_detection_model"]
+__all__ = [
+    "UVEventModel",
+    "UVEventNoCourtModel",
+    "Traj3DEventModel",
+    "build_event_detection_discriminator",
+    "build_event_detection_model",
+]
