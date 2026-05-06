@@ -40,6 +40,7 @@ class BLCSMultiViewAxialModel(nn.Module):
         max_seq_len: int = 120,
         max_num_cameras: int = 8,
         invisible_init_std: float = 0.02,
+        num_court_tokens: int = NUM_COURT_KP,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -60,6 +61,7 @@ class BLCSMultiViewAxialModel(nn.Module):
         self.max_seq_len = int(max_seq_len)
         self.max_num_cameras = int(max_num_cameras)
         self.predict_velocity = bool(predict_velocity)
+        self.num_court_tokens = int(num_court_tokens)
 
         head_dim = self.hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
@@ -85,6 +87,7 @@ class BLCSMultiViewAxialModel(nn.Module):
         self.group_embed = CourtBallGroupEmbedding(
             dim=self.hidden_dim,
             invisible_token=self.invisible_token,
+            num_court_tokens=self.num_court_tokens,
         )
 
         self.camera_layers = nn.ModuleList(
@@ -172,6 +175,7 @@ class BLCSMultiViewAxialModel(nn.Module):
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             max_num_cameras=int(model_cfg.get("max_num_cameras", model_cfg.get("max_views", 8))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
+            num_court_tokens=int(model_cfg.get("num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP))),
         )
 
     @staticmethod
@@ -258,8 +262,14 @@ class BLCSMultiViewAxialModel(nn.Module):
             court_kp = court_kp.unsqueeze(2).expand(-1, -1, seq_len_in, -1, -1)
         if court_kp.dim() != 5:
             raise ValueError(
-                "court_kp must have shape (B, N, T, 20, 2) or (B, N, 20, 2), "
+                "court_kp must have shape "
+                f"(B, N, T, {self.num_court_tokens}, 2) or "
+                f"(B, N, {self.num_court_tokens}, 2), "
                 f"got {tuple(court_kp.shape)}"
+            )
+        if court_kp.shape[-2] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected court_kp with K={self.num_court_tokens}, got K={court_kp.shape[-2]}."
             )
 
         if court_vis is not None:
@@ -267,8 +277,14 @@ class BLCSMultiViewAxialModel(nn.Module):
                 court_vis = court_vis.unsqueeze(2).expand(-1, -1, seq_len_in, -1)
             if court_vis.dim() != 4:
                 raise ValueError(
-                    "court_vis must have shape (B, N, T, 20) or (B, N, 20), "
+                    "court_vis must have shape "
+                    f"(B, N, T, {self.num_court_tokens}) or "
+                    f"(B, N, {self.num_court_tokens}), "
                     f"got {tuple(court_vis.shape)}"
+                )
+            if court_vis.shape[-1] != self.num_court_tokens:
+                raise ValueError(
+                    f"Expected court_vis with K={self.num_court_tokens}, got K={court_vis.shape[-1]}."
                 )
 
         if ball_vis is None:
@@ -286,7 +302,7 @@ class BLCSMultiViewAxialModel(nn.Module):
                 f"got {tuple(ball_mask.shape)}"
             )
 
-        court_flat = court_kp.reshape(batch_size * n_cams * seq_len_in, NUM_COURT_KP, 2)
+        court_flat = court_kp.reshape(batch_size * n_cams * seq_len_in, self.num_court_tokens, 2)
         ball_flat = ball_uv.reshape(batch_size * n_cams * seq_len_in, 2)
         group_vis = ball_vis.reshape(batch_size * n_cams * seq_len_in)
         x = self.group_embed(court_flat, ball_flat, group_vis).reshape(
