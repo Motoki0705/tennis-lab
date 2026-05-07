@@ -1,6 +1,6 @@
 defaults:
-  - model: single
-  - data: single
+  - model: multiview_axial
+  - data: multiview_axial
   - training: default
   - metrics: default
   - run: train

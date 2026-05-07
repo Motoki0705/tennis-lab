@@ -14,7 +14,7 @@ split:
   test_file: test.txt
 
 camera_mode: random  # random | int camera index
-seq_len_range: [16, 1024]
+seq_len_range: [64, 1024]
 
 batch_size: 16
 num_workers: 4
