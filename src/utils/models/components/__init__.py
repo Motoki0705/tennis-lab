@@ -5,7 +5,7 @@ This package provides reusable building blocks used across tasks:
 - Attention: `MultiHeadSelfAttention`, `MultiHeadCrossAttention`
 - Norm: `RMSNorm`, `LayerNorm`
 - RoPE: 1D (`precompute_freqs_cis`) and interleaved N-D (`precompute_freqs_cis_nd`, `apply_rotary_emb`)
-- FFN: `SwiGLU`, `MLP`, `default_ffn_dim`
+- FFN/MoE: `SwiGLU`, `MLP`, `default_ffn_dim`, `TopKRouter`, `MoELayer`
 - Blocks: `TransformerBlock`, `TransformerBlockConfig`, `CrossAttnBlockConfig`, `CrossAttnBlock`
 
 Note:
@@ -24,6 +24,7 @@ from src.utils.models.components.block import (
     TransformerBlockConfig,
 )
 from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
+from src.utils.models.components.moe import MoEConfig, MoELayer, MoERouting, TopKRouter
 from src.utils.models.components.norm import LayerNorm, RMSNorm
 from src.utils.models.components.rope import (
     apply_rotary_emb,
@@ -46,6 +47,10 @@ __all__ = [
     "MLP",
     "SwiGLU",
     "default_ffn_dim",
+    "MoEConfig",
+    "MoELayer",
+    "MoERouting",
+    "TopKRouter",
     # Blocks
     "TransformerBlockConfig",
     "TransformerBlock",
