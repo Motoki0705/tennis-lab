@@ -4,15 +4,22 @@ Strategy A: treat the DeepSeek-style, pure PyTorch implementation in
 `src.utils.models.components` as canonical and re-export it here.
 """
 
+from src.utils.models.architectures import (
+    TransformerSequenceDiscriminator,
+)
 from src.utils.models.components import (
     MLP,
     CrossAttnBlock,
     CrossAttnBlockConfig,
     LayerNorm,
+    MoEConfig,
+    MoELayer,
+    MoERouting,
     MultiHeadCrossAttention,
     MultiHeadSelfAttention,
     RMSNorm,
     SwiGLU,
+    TopKRouter,
     TransformerBlock,
     TransformerBlockConfig,
     apply_rotary_emb,
@@ -26,9 +33,6 @@ from src.utils.models.embeddings import (
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
-)
-from src.utils.models.architectures import (
-    TransformerSequenceDiscriminator,
 )
 
 __all__ = [
@@ -46,6 +50,10 @@ __all__ = [
     "MLP",
     "SwiGLU",
     "default_ffn_dim",
+    "MoEConfig",
+    "MoELayer",
+    "MoERouting",
+    "TopKRouter",
     # Blocks
     "TransformerBlockConfig",
     "TransformerBlock",
