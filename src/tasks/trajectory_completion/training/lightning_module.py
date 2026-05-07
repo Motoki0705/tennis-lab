@@ -12,9 +12,13 @@ from torch import Tensor
 from torch import nn
 from torch.nn import functional as F
 
+from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
-from src.tasks.trajectory_completion.models import build_trajectory_completion_model
+from src.tasks.trajectory_completion.models import (
+    build_trajectory_completion_discriminator,
+    build_trajectory_completion_model,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -53,7 +57,7 @@ def _boundary_jump(pred: Tensor, valid: Tensor, observed: Tensor) -> Tensor:
     return (jump * switch.to(pred.dtype)).sum() / denom
 
 
-class TrajectoryCompletionLightningModule(BaseLightningModule):
+class TrajectoryCompletionLightningModule(ManualGANSupportMixin, BaseLightningModule):
     """Train a UV trajectory completion model."""
 
     def __init__(self, config: DictConfig) -> None:
@@ -63,6 +67,14 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         self.use_court_context = model_name != "uv_transformer_nocourt"
         self.model = build_trajectory_completion_model(self.config)
         self._maybe_initialize_nocourt_from_court_checkpoint(model_name=model_name)
+        gan_enabled = bool(((self.config.get("training", {}) or {}).get("gan", {}) or {}).get("enabled", False))
+        self._initialize_manual_gan(
+            discriminator=(
+                build_trajectory_completion_discriminator(self.config)
+                if gan_enabled
+                else None
+            ),
+        )
 
         train_cfg = config.get("training", {}) or {}
         loss_cfg = train_cfg.get("loss", {}) or {}
@@ -278,29 +290,44 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         return loss_aux_total, logs
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:  # noqa: ARG002
-        pred, intermediate, in_frame_logits = self._forward_with_auxiliary(batch)
-        loss, logs = self._compute_losses(
-            pred,
-            batch,
-            intermediate_ball_hidden=intermediate,
-            in_frame_logits=in_frame_logits,
-        )
+        _ = batch_idx
+        if self.gan_training is not None:
+            loss, logs = self.gan_training.shared_step(self, batch, "train")
+        else:
+            result = self._compute_supervised_result(batch, "train")
+            loss, logs = result["loss"], result["metrics"]
+        self.log("train/loss", loss, on_step=True, on_epoch=True)
         self.log_dict({f"train/{k}": v for k, v in logs.items()}, on_step=True, on_epoch=True)
+        if self.gan_enabled:
+            self.log("train/gan_weight", float(self.current_gan_weight), on_step=True, on_epoch=True)
+            self.log(
+                "train/gan_phase_active",
+                float(self.gan_phase_active),
+                on_step=True,
+                on_epoch=True,
+            )
         return loss
 
+    def on_train_epoch_end(self) -> None:
+        if self.gan_training is not None:
+            self.gan_training.on_train_epoch_end(self)
+
     def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:  # noqa: ARG002
-        pred, intermediate, in_frame_logits = self._forward_with_auxiliary(batch)
-        loss, logs = self._compute_losses(
-            pred,
-            batch,
-            intermediate_ball_hidden=intermediate,
-            in_frame_logits=in_frame_logits,
-        )
+        _ = batch_idx
+        if self.gan_training is not None:
+            loss, logs = self.gan_training.shared_step(self, batch, "val")
+        else:
+            result = self._compute_supervised_result(batch, "val")
+            loss, logs = result["loss"], result["metrics"]
         self.log("val/loss", loss, prog_bar=True, on_epoch=True)
         for k, v in logs.items():
             self.log(f"val/{k}", v, on_epoch=True)
 
-    def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:  # noqa: ARG002
+    def _compute_supervised_result(
+        self,
+        batch: dict[str, Tensor],
+        stage: str,
+    ) -> dict[str, Any]:
         pred, intermediate, in_frame_logits = self._forward_with_auxiliary(batch)
         loss, logs = self._compute_losses(
             pred,
@@ -308,9 +335,28 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
             intermediate_ball_hidden=intermediate,
             in_frame_logits=in_frame_logits,
         )
-        self.log("test/loss", loss, on_epoch=True)
-        for k, v in logs.items():
-            self.log(f"test/{k}", v, on_epoch=True)
+
+        ball_uv_gt = batch["ball_uv_gt"]
+        ball_mask = batch["ball_mask"]
+        ball_gt_vis = batch["ball_gt_vis"]
+        _, seq_len, _ = pred.shape
+        if ball_uv_gt.shape[1] != seq_len:
+            ball_uv_gt = ball_uv_gt[:, :seq_len]
+            ball_mask = ball_mask[:, :seq_len]
+            ball_gt_vis = ball_gt_vis[:, :seq_len]
+        valid = (ball_mask > 0) & (ball_gt_vis > 0)
+
+        return {
+            "loss": loss,
+            "metrics": logs,
+            "gan_fake": pred,
+            "gan_real": ball_uv_gt,
+            "gan_mask": valid,
+            "stage": stage,
+        }
+
+    def configure_optimizers(self) -> Any:
+        return self.configure_gan_optimizers(self.model.parameters())
 
     def _compute_losses(
         self,
@@ -409,6 +455,24 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         logs.update(aux_logs)
         return loss, logs
 
+    def _log_stage_metrics(self, stage: str, loss: Tensor, logs: dict[str, Any]) -> None:
+        if stage == "train":
+            self.log(f"{stage}/loss", loss, on_step=True, on_epoch=True)
+            self.log_dict({f"{stage}/{k}": v for k, v in logs.items()}, on_step=True, on_epoch=True)
+            if self.gan_enabled:
+                self.log("train/gan_weight", float(self.current_gan_weight), on_step=True, on_epoch=True)
+                self.log(
+                    "train/gan_phase_active",
+                    float(self.gan_phase_active),
+                    on_step=True,
+                    on_epoch=True,
+                )
+            return
+
+        self.log(f"{stage}/loss", loss, prog_bar=(stage == "val"), on_epoch=True)
+        for key, value in logs.items():
+            self.log(f"{stage}/{key}", value, on_epoch=True)
+
     # ------------------------------------------------------------------
     # Qualitative validation logging
     # ------------------------------------------------------------------
@@ -423,6 +487,8 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         epoch: int,
     ) -> None:
         """Render observed vs GT-hidden vs predicted UV trajectories."""
+        _ = outputs
+        _ = epoch
         device = next(self.parameters()).device
 
         for batch_idx, batch in enumerate(batches):
