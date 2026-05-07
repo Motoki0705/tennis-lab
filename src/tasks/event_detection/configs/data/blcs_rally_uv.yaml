@@ -21,7 +21,7 @@ pin_memory: true
 camera_mode: "random"
 
 # Sequence/window sampling
-seq_len_range: [16, 1024]
+seq_len_range: [64, 1024]
 
 # Labels (soft targets)
 label:
