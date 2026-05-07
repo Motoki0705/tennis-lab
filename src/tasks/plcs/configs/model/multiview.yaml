@@ -26,6 +26,7 @@ rope_dim: null            # Defaults to head_dim; must be even
 rope_theta_time: 10000.0
 rope_theta_camera: 1000.0
 rope_theta_type: 1000.0
+predict_canonical_pose: false
 
 # Model type
 architecture: multiview

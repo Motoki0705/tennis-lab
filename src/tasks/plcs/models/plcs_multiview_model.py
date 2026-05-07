@@ -14,7 +14,11 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.tasks.plcs.models.components.heads import PositionHead, RotationHead
+from src.tasks.plcs.models.components.heads import (
+    CanonicalPoseHead,
+    PositionHead,
+    RotationHead,
+)
 from src.utils.models import (
     MultiHeadSelfAttention,
     RMSNorm,
@@ -97,6 +101,7 @@ class PLCSMultiViewModel(nn.Module):
         rope_theta_camera: float | None = None,
         rope_theta_type: float = 100.0,
         ffn_type: Literal["swiglu", "mlp"] = "swiglu",
+        predict_canonical_pose: bool = False,
         max_views: int = 8,
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
@@ -105,6 +110,7 @@ class PLCSMultiViewModel(nn.Module):
         super().__init__()
 
         self.hidden_dim = int(hidden_dim)
+        self.predict_canonical_pose = bool(predict_canonical_pose)
         self.max_views = int(max_views)
         self.max_seq_len = int(max_seq_len)
         self.num_court_tokens = int(num_court_tokens)
@@ -173,6 +179,14 @@ class PLCSMultiViewModel(nn.Module):
             num_layers=2,
             dropout=dropout,
         )
+        self.canonical_pose_head = None
+        if self.predict_canonical_pose:
+            self.canonical_pose_head = CanonicalPoseHead(
+                input_dim=hidden_dim,
+                hidden_dim=hidden_dim // 2,
+                num_layers=2,
+                dropout=dropout,
+            )
 
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSMultiViewModel:
@@ -192,6 +206,7 @@ class PLCSMultiViewModel(nn.Module):
             rope_theta_camera=model_cfg.get("rope_theta_camera", None),
             rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
             ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
+            predict_canonical_pose=bool(model_cfg.get("predict_canonical_pose", False)),
             max_views=model_cfg.get("max_views", 8),
             max_seq_len=model_cfg.get("max_seq_len", 120),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
@@ -407,8 +422,12 @@ class PLCSMultiViewModel(nn.Module):
 
         position = self.position_head(po_flat).view(B, T, 3)
         rotation = self.rotation_head(ro_flat).view(B, T, 2)
+        pose_latent = 0.5 * (po_agg + ro_agg)
 
-        return {
+        out = {
             "position": position,
             "rotation": rotation,
         }
+        if self.predict_canonical_pose and self.canonical_pose_head is not None:
+            out["canonical_pose"] = self.canonical_pose_head(pose_latent)
+        return out

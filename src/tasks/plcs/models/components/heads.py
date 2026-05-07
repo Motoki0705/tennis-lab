@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from src.utils.schema.player import NUM_HUMAN_KP
+
 
 class PositionHead(nn.Module):
     """Predict 3D position from latent representation."""
@@ -77,3 +79,42 @@ class RotationHead(nn.Module):
         """Predict unit-normalized (cos, sin)."""
         out = self.mlp(x)
         return torch.nn.functional.normalize(out, dim=-1)
+
+
+class CanonicalPoseHead(nn.Module):
+    """Predict canonical 3D player joints from latent representation."""
+
+    def __init__(
+        self,
+        input_dim: int = 256,
+        hidden_dim: int = 128,
+        num_layers: int = 2,
+        dropout: float = 0.1,
+        num_keypoints: int = NUM_HUMAN_KP,
+    ) -> None:
+        super().__init__()
+
+        self.num_keypoints = int(num_keypoints)
+
+        layers: list[nn.Module] = []
+        in_dim = int(input_dim)
+        hidden_dim = int(hidden_dim)
+
+        for _ in range(int(num_layers)):
+            layers.extend(
+                [
+                    nn.Linear(in_dim, hidden_dim),
+                    nn.LayerNorm(hidden_dim),
+                    nn.GELU(),
+                    nn.Dropout(float(dropout)),
+                ]
+            )
+            in_dim = hidden_dim
+
+        layers.append(nn.Linear(in_dim, self.num_keypoints * 3))
+        self.mlp = nn.Sequential(*layers)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Predict canonical joints with shape ``(..., K, 3)``."""
+        out = self.mlp(x)
+        return out.reshape(*x.shape[:-1], self.num_keypoints, 3)

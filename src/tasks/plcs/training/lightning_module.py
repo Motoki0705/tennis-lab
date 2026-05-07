@@ -13,8 +13,10 @@ from torch import Tensor, nn
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
 from src.tasks.plcs.models import build_plcs_model
+from src.tasks.plcs.utils.pose_geometry import canonical_pose_to_world_pose
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
+from src.utils.schema.player import COCO17_SKELETON
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -27,6 +29,9 @@ class PLCSLightningModule(BaseLightningModule):
         super().__init__(config)
 
         self.model: nn.Module = build_plcs_model(self.config)
+        self.predict_canonical_pose = bool(
+            ((self.config.get("model", {}) or {}).get("predict_canonical_pose", False))
+        )
 
         loss_cfg_dict = self.config.get("loss", {})
         if loss_cfg_dict:
@@ -36,6 +41,7 @@ class PLCSLightningModule(BaseLightningModule):
             loss_cfg = PLCSLossConfig(
                 position_weight=float(train_cfg.get("position_loss_weight", 1.0)),
                 rotation_weight=float(train_cfg.get("rotation_loss_weight", 1.0)),
+                canonical_pose_weight=float(train_cfg.get("canonical_pose_weight", 0.0)),
             )
         self.loss_fn = PLCSLoss(config=loss_cfg)
 
@@ -80,6 +86,8 @@ class PLCSLightningModule(BaseLightningModule):
             pred_rotation=outputs["rotation"],
             target_position=batch["position"],
             target_rotation=batch["rotation"],
+            pred_canonical_pose=outputs.get("canonical_pose"),
+            target_human_kp_3d=batch.get("human_kp_3d"),
             human_mask=human_mask,
         )
 
@@ -101,6 +109,8 @@ class PLCSLightningModule(BaseLightningModule):
         self.log("train/loss", loss, prog_bar=True)
         self.log("train/pos_error_m", metrics.get("position_error_m", 0.0), prog_bar=True)
         self.log("train/ang_error_deg", metrics.get("angular_error_deg", 0.0), prog_bar=True)
+        if "loss_canonical_pose" in metrics:
+            self.log("train/loss_canonical_pose", metrics["loss_canonical_pose"])
         return loss
 
     def on_train_epoch_end(self) -> None:
@@ -114,6 +124,8 @@ class PLCSLightningModule(BaseLightningModule):
         self.log("val/loss", loss, prog_bar=True)
         self.log("val/pos_error_m", metrics.get("position_error_m", 0.0), prog_bar=True)
         self.log("val/ang_error_deg", metrics.get("angular_error_deg", 0.0), prog_bar=True)
+        if "loss_canonical_pose" in metrics:
+            self.log("val/loss_canonical_pose", metrics["loss_canonical_pose"])
 
     def on_validation_epoch_end(self) -> None:
         metrics = self.val_metrics.compute()
@@ -126,6 +138,8 @@ class PLCSLightningModule(BaseLightningModule):
         self.log("test/loss", loss)
         self.log("test/pos_error_m", metrics.get("position_error_m", 0.0))
         self.log("test/ang_error_deg", metrics.get("angular_error_deg", 0.0))
+        if "loss_canonical_pose" in metrics:
+            self.log("test/loss_canonical_pose", metrics["loss_canonical_pose"])
 
     def on_test_epoch_end(self) -> None:
         metrics = self.test_metrics.compute()
@@ -136,6 +150,74 @@ class PLCSLightningModule(BaseLightningModule):
     # ------------------------------------------------------------------
     # Qualitative validation logging
     # ------------------------------------------------------------------
+
+    def _draw_pose_topdown(
+        self,
+        canvas: np.ndarray,
+        pose_xyz: np.ndarray,
+        *,
+        to_px: Any,
+        color: tuple[int, int, int],
+    ) -> None:
+        points = [to_px(joint[:2]) for joint in pose_xyz]
+        for start_idx, end_idx in COCO17_SKELETON:
+            cv2.line(canvas, points[start_idx], points[end_idx], color, 2)
+        for point in points:
+            cv2.circle(canvas, point, 3, color, -1)
+
+    def _render_pose_topdown_canvas(
+        self,
+        gt_pose_world: np.ndarray,
+        pred_pose_world: np.ndarray,
+    ) -> np.ndarray:
+        if gt_pose_world.ndim == 2:
+            gt_pose_world = gt_pose_world[np.newaxis]
+            pred_pose_world = pred_pose_world[np.newaxis]
+
+        fig_w, fig_h = 500, 500
+        canvas = np.ones((fig_h, fig_w, 3), dtype=np.uint8) * 255
+
+        all_xy = np.concatenate(
+            [
+                gt_pose_world[..., :2].reshape(-1, 2),
+                pred_pose_world[..., :2].reshape(-1, 2),
+            ],
+            axis=0,
+        )
+        mn = all_xy.min(axis=0)
+        mx = all_xy.max(axis=0)
+        rng = (mx - mn).clip(1e-3)
+        margin = 40
+
+        def to_px(p: np.ndarray) -> tuple[int, int]:
+            x = int((p[0] - mn[0]) / rng[0] * (fig_w - 2 * margin) + margin)
+            y = int((p[1] - mn[1]) / rng[1] * (fig_h - 2 * margin) + margin)
+            return (np.clip(x, 0, fig_w - 1), np.clip(y, 0, fig_h - 1))
+
+        for frame_idx in range(gt_pose_world.shape[0]):
+            self._draw_pose_topdown(
+                canvas,
+                gt_pose_world[frame_idx],
+                to_px=to_px,
+                color=(0, 180, 0),
+            )
+            self._draw_pose_topdown(
+                canvas,
+                pred_pose_world[frame_idx],
+                to_px=to_px,
+                color=(0, 0, 255),
+            )
+
+        cv2.putText(
+            canvas,
+            "Top-down pose: Green=GT, Red=Pred",
+            (5, fig_h - 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.4,
+            (0, 0, 0),
+            1,
+        )
+        return canvas
 
     def render_qualitative_samples(
         self,
@@ -159,12 +241,36 @@ class PLCSLightningModule(BaseLightningModule):
                 out = self._forward_from_batch(batch_dev)
                 pred_pos = out["position"].cpu().numpy()  # (B, [T], 3)
                 pred_rot = out["rotation"].cpu().numpy()  # (B, [T], 2)
+                pred_world_pose = None
+                if self.predict_canonical_pose and "canonical_pose" in out:
+                    pred_world_pose = canonical_pose_to_world_pose(
+                        out["canonical_pose"],
+                        out["position"],
+                        out["rotation"],
+                    ).cpu().numpy()
 
             gt_pos = batch["position"].numpy()
             gt_rot = batch["rotation"].numpy()
+            gt_world_pose = batch.get("human_kp_3d")
 
             # Render first sample
             b = 0
+            if pred_world_pose is not None and isinstance(gt_world_pose, Tensor):
+                canvas = self._render_pose_topdown_canvas(
+                    gt_world_pose.numpy()[b],
+                    pred_world_pose[b],
+                )
+                path = artifact_dir / f"plcs_batch{batch_idx:02d}.png"
+                cv2.imwrite(str(path), canvas)
+
+                save_image_to_tensorboard(
+                    tb_writer,
+                    f"qualitative/plcs/batch{batch_idx:02d}",
+                    canvas,
+                    global_step,
+                )
+                continue
+
             gp = gt_pos[b]  # ([T], 3) or (3,)
             pp = pred_pos[b]
             gr = gt_rot[b]  # ([T], 2) or (2,)
