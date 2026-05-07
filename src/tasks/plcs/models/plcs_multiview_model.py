@@ -260,8 +260,8 @@ class PLCSMultiViewModel(nn.Module):
                 - Single frame: (B, N, 17, 2)
             court_kp:
                 Court 2D keypoints in normalized image UV.
-                - Temporal: (B, N, T, 20, 2)
-                - Single frame: (B, N, 20, 2)
+                - Temporal: (B, N, T, K, 2)
+                - Single frame: (B, N, K, 2)
             human_vis:
                 Human keypoint visibility flags aligned with `human_kp`.
                 - Temporal: (B, N, T, 17)
@@ -270,8 +270,8 @@ class PLCSMultiViewModel(nn.Module):
                 Optional; if None, all human keypoints are treated as visible.
             court_vis:
                 Court keypoint visibility flags aligned with `court_kp`.
-                - Temporal: (B, N, T, 20)
-                - Single frame: (B, N, 20)
+                - Temporal: (B, N, T, K)
+                - Single frame: (B, N, K)
                 Each element is interpreted as visible if > 0.
                 Optional; if None, all court keypoints are treated as visible.
             human_mask:
@@ -290,8 +290,13 @@ class PLCSMultiViewModel(nn.Module):
             )
         if court_kp.dim() != 5:
             raise ValueError(
-                "PLCSMultiViewModel expects court_kp as (B,N,T,20,2), "
+                "PLCSMultiViewModel expects court_kp as "
+                f"(B,N,T,{self.num_court_tokens},2), "
                 f"got shape {tuple(court_kp.shape)}"
+            )
+        if court_kp.shape[-2] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected court_kp with K={self.num_court_tokens}, got K={court_kp.shape[-2]}."
             )
         if human_vis is not None and human_vis.dim() != 4:
             raise ValueError(
@@ -300,8 +305,13 @@ class PLCSMultiViewModel(nn.Module):
             )
         if court_vis is not None and court_vis.dim() != 4:
             raise ValueError(
-                "PLCSMultiViewModel expects court_vis as (B,N,T,20), "
+                "PLCSMultiViewModel expects court_vis as "
+                f"(B,N,T,{self.num_court_tokens}), "
                 f"got shape {tuple(court_vis.shape)}"
+            )
+        if court_vis is not None and court_vis.shape[-1] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected court_vis with K={self.num_court_tokens}, got K={court_vis.shape[-1]}."
             )
 
         # (B, N, T, K, 2)

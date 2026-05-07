@@ -206,7 +206,7 @@ class BLCSMultiViewModel(nn.Module):
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             max_num_cameras=int(model_cfg.get("max_num_cameras", model_cfg.get("max_views", 8))),
-            num_court_tokens=int(model_cfg.get("num_court_tokens", NUM_COURT_KP)),
+            num_court_tokens=int(model_cfg.get("num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
         )
@@ -334,10 +334,10 @@ class BLCSMultiViewModel(nn.Module):
 
         Args:
             ball_uv: Ball 2D positions, shape (B, N, T, 2).
-            court_kp: Court keypoints, shape (B, N, T, 20, 2) or (B, N, 20, 2).
+            court_kp: Court keypoints, shape (B, N, T, K, 2) or (B, N, K, 2).
             ball_vis: Ball visibility mask, shape (B, N, T). 1=visible.
             ball_mask: Ball validity mask, shape (B, N, T).
-            court_vis: Court visibility mask, shape (B, N, T, 20) or (B, N, 20). Optional.
+            court_vis: Court visibility mask, shape (B, N, T, K) or (B, N, K). Optional.
 
         Returns:
             dict: Dictionary with 'position' (B, T, 3) and optionally 'velocity'.
@@ -360,8 +360,14 @@ class BLCSMultiViewModel(nn.Module):
             court_kp = court_kp.unsqueeze(2).expand(-1, -1, seq_len_in, -1, -1)
         if court_kp.dim() != 5:
             raise ValueError(
-                "court_kp must have shape (B, N, T, 20, 2) or (B, N, 20, 2), "
+                "court_kp must have shape "
+                f"(B, N, T, {self.num_court_tokens}, 2) or "
+                f"(B, N, {self.num_court_tokens}, 2), "
                 f"got {tuple(court_kp.shape)}"
+            )
+        if court_kp.shape[-2] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected court_kp with K={self.num_court_tokens}, got K={court_kp.shape[-2]}."
             )
 
         if court_vis is not None:
@@ -369,8 +375,14 @@ class BLCSMultiViewModel(nn.Module):
                 court_vis = court_vis.unsqueeze(2).expand(-1, -1, seq_len_in, -1)
             if court_vis.dim() != 4:
                 raise ValueError(
-                    "court_vis must have shape (B, N, T, 20) or (B, N, 20), "
+                    "court_vis must have shape "
+                    f"(B, N, T, {self.num_court_tokens}) or "
+                    f"(B, N, {self.num_court_tokens}), "
                     f"got {tuple(court_vis.shape)}"
+                )
+            if court_vis.shape[-1] != self.num_court_tokens:
+                raise ValueError(
+                    f"Expected court_vis with K={self.num_court_tokens}, got K={court_vis.shape[-1]}."
                 )
         if ball_vis is None:
             raise ValueError("ball_vis is required for BLCSMultiViewModel forward.")

@@ -1,8 +1,8 @@
-"""Callback that switches BLCS training from supervised to hybrid GAN mode."""
+"""Callback that switches training from supervised to hybrid GAN mode."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytorch_lightning as pl
 from torch import Tensor
@@ -21,7 +21,7 @@ class GANTransitionCallback(pl.Callback):
         transition_cfg = gan_cfg.get("transition", {}) or {}
 
         self.enabled = bool(gan_cfg.get("enabled", False))
-        self.monitor = str(transition_cfg.get("monitor", "val/pos_error_m"))
+        self.monitor = str(transition_cfg.get("monitor", "val/loss"))
         self.mode = str(transition_cfg.get("mode", "min"))
         self.min_delta = float(transition_cfg.get("min_delta", 1.0e-3))
         self.patience = int(transition_cfg.get("patience", 3))
@@ -52,6 +52,7 @@ class GANTransitionCallback(pl.Callback):
         self.switch_epoch = state_dict.get("switch_epoch")
 
     def on_fit_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+        _ = trainer
         pl_module.set_gan_weight(0.0)
 
     def on_train_epoch_start(

@@ -11,9 +11,13 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
+from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
-from src.tasks.event_detection.models import build_event_detection_model
+from src.tasks.event_detection.models import (
+    build_event_detection_discriminator,
+    build_event_detection_model,
+)
 from src.tasks.event_detection.utils.peaks import extract_event_peaks
 
 if TYPE_CHECKING:
@@ -27,7 +31,7 @@ def _make_time_mask(seq_len: Tensor, T: int) -> Tensor:
     return t < seq_len.to(torch.long).view(B, 1)
 
 
-class EventDetectionLightningModule(BaseLightningModule):
+class EventDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
     """Lightning module for training UV/3D event detection models."""
 
     def __init__(self, config: DictConfig) -> None:
@@ -47,6 +51,10 @@ class EventDetectionLightningModule(BaseLightningModule):
                 f"'{model_name}'. Supported: ['uv_transformer', 'uv_transformer_nocourt', 'traj3d_transformer']"
             )
         self.model = build_event_detection_model(self.config)
+        gan_enabled = bool(((self.config.get("training", {}) or {}).get("gan", {}) or {}).get("enabled", False))
+        self._initialize_manual_gan(
+            discriminator=build_event_detection_discriminator(self.config) if gan_enabled else None,
+        )
 
         train_cfg = self.config.get("training", {}) or {}
         metrics_cfg = self.config.get("metrics", {}) or {}
@@ -84,7 +92,7 @@ class EventDetectionLightningModule(BaseLightningModule):
             seq_len=batch.get("seq_len"),
         )
 
-    def _shared_step(self, batch: dict[str, Tensor], stage: str) -> Tensor:
+    def _compute_supervised_result(self, batch: dict[str, Tensor], stage: str) -> dict[str, Any]:
         logits = self.forward(batch)  # (B, T, E)
         targets = batch["targets"].to(logits.dtype)
         B, T, E = logits.shape
@@ -104,17 +112,33 @@ class EventDetectionLightningModule(BaseLightningModule):
 
         accuracy = self._peak_match_accuracy(logits, targets, batch.get("seq_len"))
 
+        return {
+            "loss": loss,
+            "metrics": {"accuracy": accuracy},
+            "gan_fake": torch.sigmoid(logits),
+            "gan_real": targets,
+            "gan_mask": time_mask,
+        }
+
+    def _log_stage_metrics(self, stage: str, loss: Tensor, metrics: dict[str, Any]) -> None:
         self.log(f"{stage}/loss", loss, prog_bar=(stage != "test"))
-        self.log(f"{stage}/accuracy", accuracy, prog_bar=(stage != "test"), on_step=False, on_epoch=True)
-        return loss
+        self.log(
+            f"{stage}/accuracy",
+            metrics["accuracy"],
+            prog_bar=(stage != "test"),
+            on_step=False,
+            on_epoch=True,
+        )
+        if stage == "train" and self.gan_enabled:
+            self.log("train/gan_weight", float(self.current_gan_weight))
+            self.log("train/gan_phase_active", float(self.gan_phase_active))
+            if "loss_gan_generator" in metrics:
+                self.log("train/loss_gan_generator", metrics["loss_gan_generator"])
+            if "loss_gan_discriminator" in metrics:
+                self.log("train/loss_gan_discriminator", metrics["loss_gan_discriminator"])
 
-    def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
-        _ = batch_idx
-        return self._shared_step(batch, "train")
-
-    def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
-        _ = batch_idx
-        self._shared_step(batch, "val")
+    def configure_optimizers(self) -> Any:
+        return self.configure_gan_optimizers(self.model.parameters())
 
     # ------------------------------------------------------------------
     # Qualitative validation logging

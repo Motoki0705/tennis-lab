@@ -129,10 +129,26 @@ SMOKE_TASK_SPECS = (
                 ),
             ),
             SmokeVariant(
+                name="multiview_num_court_kp_12",
+                overrides=(
+                    "model=multiview",
+                    "data=multiview",
+                    "data.num_court_kp=12",
+                ),
+            ),
+            SmokeVariant(
                 name="multiview_axial",
                 overrides=(
                     "model=multiview_axial",
                     "data=multiview",
+                ),
+            ),
+            SmokeVariant(
+                name="multiview_axial_num_court_kp_12",
+                overrides=(
+                    "model=multiview_axial",
+                    "data=multiview",
+                    "data.num_court_kp=12",
                 ),
             ),
         ),
@@ -191,6 +207,17 @@ SMOKE_TASK_SPECS = (
                 expected_output_keys=("canonical_pose",),
             ),
             SmokeVariant(
+                name="multiview_num_court_kp_12",
+                overrides=(
+                    "model=multiview",
+                    "data=multiview",
+                    "loss=multiview_sequence",
+                    "data.seq_len_range=[16,16]",
+                    "data.num_court_kp=12",
+                    "model.max_seq_len=64",
+                ),
+            ),
+            SmokeVariant(
                 name="multiview_axial",
                 overrides=(
                     "model=multiview_axial",
@@ -213,6 +240,17 @@ SMOKE_TASK_SPECS = (
                 ),
                 expected_output_keys=("canonical_pose",),
             ),
+            SmokeVariant(
+                name="multiview_axial_num_court_kp_12",
+                overrides=(
+                    "model=multiview_axial",
+                    "data=multiview",
+                    "loss=multiview_sequence",
+                    "data.seq_len_range=[16,16]",
+                    "data.num_court_kp=12",
+                    "model.max_seq_len=64",
+                ),
+            ),
         ),
         supports_test_phase=True,
         expect_qualitative=True,
@@ -234,7 +272,24 @@ SMOKE_TASK_SPECS = (
             "model.ffn_dim=64",
             "model.max_seq_len=64",
         ),
-        variants=(SmokeVariant(name="multiview"),),
+        variants=(
+            SmokeVariant(name="multiview"),
+            SmokeVariant(
+                name="multiview_gan",
+                overrides=(
+                    "training=gan",
+                    "training.trainer.max_epochs=2",
+                    "training.gan.transition.patience=0",
+                    "training.gan.warmup_epochs=1",
+                    "training.gan.discriminator.hidden_dim=32",
+                    "training.gan.discriminator.num_layers=2",
+                    "training.gan.discriminator.num_heads=4",
+                    "training.gan.discriminator.ffn_dim=64",
+                    "training.gan.discriminator.max_seq_len=64",
+                ),
+                expect_gan_training=True,
+            ),
+        ),
         supports_test_phase=True,
         expect_qualitative=True,
     ),
@@ -279,7 +334,7 @@ SMOKE_TASK_SPECS = (
                 overrides=("model=uv_transformer_nocourt",),
             ),
         ),
-        supports_test_phase=False,
+        supports_test_phase=True,
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
@@ -298,8 +353,25 @@ SMOKE_TASK_SPECS = (
             "model.ffn_dim=64",
             "model.max_seq_len=64",
         ),
-        variants=(SmokeVariant(name="uv_transformer"),),
-        supports_test_phase=False,
+        variants=(
+            SmokeVariant(name="uv_transformer"),
+            SmokeVariant(
+                name="uv_transformer_gan",
+                overrides=(
+                    "training.gan.enabled=true",
+                    "training.trainer.max_epochs=2",
+                    "training.gan.transition.patience=0",
+                    "training.gan.warmup_epochs=1",
+                    "training.gan.discriminator.hidden_dim=32",
+                    "training.gan.discriminator.num_layers=2",
+                    "training.gan.discriminator.num_heads=4",
+                    "training.gan.discriminator.ffn_dim=64",
+                    "training.gan.discriminator.max_seq_len=64",
+                ),
+                expect_gan_training=True,
+            ),
+        ),
+        supports_test_phase=True,
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
@@ -351,7 +423,7 @@ SMOKE_TASK_SPECS = (
             "model.max_seq_len=64",
         ),
         variants=(SmokeVariant(name="traj3d_transformer"),),
-        supports_test_phase=False,
+        supports_test_phase=True,
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
@@ -370,8 +442,25 @@ SMOKE_TASK_SPECS = (
             "model.ffn_dim=64",
             "model.max_seq_len=64",
         ),
-        variants=(SmokeVariant(name="traj3d_transformer"),),
-        supports_test_phase=False,
+        variants=(
+            SmokeVariant(name="traj3d_transformer"),
+            SmokeVariant(
+                name="traj3d_transformer_gan",
+                overrides=(
+                    "training.gan.enabled=true",
+                    "training.trainer.max_epochs=2",
+                    "training.gan.transition.patience=0",
+                    "training.gan.warmup_epochs=1",
+                    "training.gan.discriminator.hidden_dim=32",
+                    "training.gan.discriminator.num_layers=2",
+                    "training.gan.discriminator.num_heads=4",
+                    "training.gan.discriminator.ffn_dim=64",
+                    "training.gan.discriminator.max_seq_len=64",
+                ),
+                expect_gan_training=True,
+            ),
+        ),
+        supports_test_phase=True,
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
@@ -439,7 +528,7 @@ SMOKE_TASK_SPECS = (
                 ),
             ),
         ),
-        supports_test_phase=False,
+        supports_test_phase=True,
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
@@ -465,8 +554,25 @@ SMOKE_TASK_SPECS = (
                     "model.num_query_layers=1",
                 ),
             ),
+            SmokeVariant(
+                name="uv_transformer_gan",
+                overrides=(
+                    "model.num_ball_layers=2",
+                    "model.num_query_layers=1",
+                    "training.gan.enabled=true",
+                    "training.trainer.max_epochs=2",
+                    "training.gan.transition.patience=0",
+                    "training.gan.warmup_epochs=1",
+                    "training.gan.discriminator.hidden_dim=32",
+                    "training.gan.discriminator.num_layers=2",
+                    "training.gan.discriminator.num_heads=4",
+                    "training.gan.discriminator.ffn_dim=64",
+                    "training.gan.discriminator.max_seq_len=64",
+                ),
+                expect_gan_training=True,
+            ),
         ),
-        supports_test_phase=False,
+        supports_test_phase=True,
         expect_qualitative=True,
     ),
 )
@@ -548,7 +654,7 @@ def _assert_gan_training(case: SmokeCase, callbacks: list[Any], lightning_module
     if not case.expect_gan_training:
         return
 
-    from src.tasks.blcs.training.gan_transition_callback import GANTransitionCallback
+    from src.tasks.base.training.gan_transition_callback import GANTransitionCallback
 
     gan_callbacks = [cb for cb in callbacks if isinstance(cb, GANTransitionCallback)]
     assert gan_callbacks

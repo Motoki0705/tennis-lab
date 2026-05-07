@@ -30,6 +30,9 @@ class TrajectoryCompletionTrainingRunner(BaseTrainingRunner):
             return self.generator_config
         return build_default_generator_config()
 
+    def prepare_config(self, config: Any) -> None:
+        super().prepare_config(config)
+
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
         """Build trajectory completion data module."""
         backend = str(config.get("data", {}).get("backend", "default"))
@@ -64,11 +67,14 @@ class TrajectoryCompletionTrainingRunner(BaseTrainingRunner):
         datamodule: pl.LightningDataModule,
         logger: TensorBoardLogger,
     ) -> list[Any]:
+        extras = super().callbacks_extra(config, datamodule, logger)
+
         if str(config.get("data", {}).get("backend", "default")) != "chunked":
-            return []
+            return extras
 
         from src.tasks.base.training.chunk_rotation_callback import (
             ChunkRotationCallback,
         )
 
-        return [ChunkRotationCallback()]
+        extras.append(ChunkRotationCallback())
+        return extras

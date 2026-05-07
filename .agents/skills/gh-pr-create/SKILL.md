@@ -9,6 +9,8 @@ description: Use this skill when creating a new GitHub pull request for Motoki07
 
 Use this skill for PR creation in `Motoki0705/tennis-lab`.
 
+PR titles and bodies should be written in Japanese by default. Preserve GitHub keywords such as `Closes`, labels, branch names, commands, file paths, and other technical identifiers in their original form when that is clearer.
+
 ## Fixed defaults
 
 - Repo: `Motoki0705/tennis-lab`
@@ -18,6 +20,7 @@ Use this skill for PR creation in `Motoki0705/tennis-lab`.
 ## Template rules
 
 - Preserve the PR template's section structure.
+- Fill PR titles, headings, and body text in Japanese.
 - Remove template comments and unused placeholder bullets before creating the PR.
 
 ## Create a PR

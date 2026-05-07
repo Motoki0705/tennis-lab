@@ -86,12 +86,14 @@ ls -ld data .venv outputs third_party
 - Links `data`, `.venv`, `outputs`, and `third_party` from the primary worktree.
 - Adds local git exclude entries for those top-level links.
 - Marks tracked `third_party` entries as `skip-worktree` in the target worktree so the root symlink does not create noisy status output.
+- Adds the target worktree folder to the active VS Code window with `code --add` when the `code` command is available.
 
 Environment overrides:
 
 - `BASE_REF=<ref>`: default base ref when `--base` is omitted.
 - `WT_PARENT=<path>`: parent directory for new worktrees.
 - `WT_FORCE_LINKS=1`: replace non-empty untracked link paths when needed.
+- `WT_VSCODE_ADD=0`: skip adding the worktree folder to the active VS Code window.
 
 ## Definition of done
 

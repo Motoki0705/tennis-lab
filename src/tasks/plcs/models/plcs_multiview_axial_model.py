@@ -46,6 +46,7 @@ class PLCSMultiViewAxialModel(nn.Module):
         max_views: int = 8,
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
+        num_court_tokens: int = NUM_COURT_KP,
     ) -> None:
         super().__init__()
 
@@ -53,6 +54,7 @@ class PLCSMultiViewAxialModel(nn.Module):
         self.predict_canonical_pose = bool(predict_canonical_pose)
         self.max_views = int(max_views)
         self.max_seq_len = int(max_seq_len)
+        self.num_court_tokens = int(num_court_tokens)
 
         if self.hidden_dim % num_heads != 0:
             raise ValueError(
@@ -89,6 +91,7 @@ class PLCSMultiViewAxialModel(nn.Module):
         self.group_embed = CourtPlayerGroupEmbedding(
             dim=self.hidden_dim,
             invisible_token=self.invisible_token,
+            num_court_tokens=self.num_court_tokens,
         )
 
         self.camera_layers = nn.ModuleList(
@@ -164,6 +167,7 @@ class PLCSMultiViewAxialModel(nn.Module):
     def from_config(cls, config: DictConfig) -> PLCSMultiViewAxialModel:
         """Create model from hydra config."""
         model_cfg = config.get("model", {})
+        data_cfg = config.get("data", {})
 
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
@@ -178,8 +182,9 @@ class PLCSMultiViewAxialModel(nn.Module):
             ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
             predict_canonical_pose=bool(model_cfg.get("predict_canonical_pose", False)),
             max_views=int(model_cfg.get("max_views", 8)),
-            max_seq_len=int(model_cfg.get("max_seq_len", 120)),
+            max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
+            num_court_tokens=int(model_cfg.get("num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP))),
         )
 
     @staticmethod
@@ -242,8 +247,13 @@ class PLCSMultiViewAxialModel(nn.Module):
             )
         if court_kp.dim() != 5:
             raise ValueError(
-                "PLCSMultiViewAxialModel expects court_kp as (B,N,T,20,2), "
+                "PLCSMultiViewAxialModel expects court_kp as "
+                f"(B,N,T,{self.num_court_tokens},2), "
                 f"got shape {tuple(court_kp.shape)}"
+            )
+        if court_kp.shape[-2] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected court_kp with K={self.num_court_tokens}, got K={court_kp.shape[-2]}."
             )
         if human_vis is not None and human_vis.dim() != 4:
             raise ValueError(
@@ -252,8 +262,13 @@ class PLCSMultiViewAxialModel(nn.Module):
             )
         if court_vis is not None and court_vis.dim() != 4:
             raise ValueError(
-                "PLCSMultiViewAxialModel expects court_vis as (B,N,T,20), "
+                "PLCSMultiViewAxialModel expects court_vis as "
+                f"(B,N,T,{self.num_court_tokens}), "
                 f"got shape {tuple(court_vis.shape)}"
+            )
+        if court_vis is not None and court_vis.shape[-1] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected court_vis with K={self.num_court_tokens}, got K={court_vis.shape[-1]}."
             )
 
         batch_size, n_cams, seq_len_in = human_kp.shape[:3]
@@ -285,7 +300,7 @@ class PLCSMultiViewAxialModel(nn.Module):
                 device=human_kp.device,
             )
 
-        court_flat = court_kp.reshape(batch_size * n_cams * seq_len_in, NUM_COURT_KP, 2)
+        court_flat = court_kp.reshape(batch_size * n_cams * seq_len_in, self.num_court_tokens, 2)
         human_flat = human_kp.reshape(batch_size * n_cams * seq_len_in, NUM_HUMAN_KP, 2)
         group_vis = token_valid.reshape(batch_size * n_cams * seq_len_in)
         x = self.group_embed(court_flat, human_flat, group_vis).reshape(

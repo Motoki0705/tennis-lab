@@ -11,6 +11,8 @@ Use this skill for issue creation, maintenance, and Project triage in `Motoki070
 
 This repository defines issue templates under `.github/ISSUE_TEMPLATE/`, so issue creation should start from those templates instead of writing a free-form body from scratch.
 
+Issue titles and bodies should be written in Japanese by default. Preserve GitHub keywords, labels, branch names, commands, file paths, and other technical identifiers in their original form when that is clearer.
+
 ## Defaults and fixed values
 
 - Repo: `Motoki0705/tennis-lab`
@@ -22,6 +24,7 @@ This repository defines issue templates under `.github/ISSUE_TEMPLATE/`, so issu
 ## Template selection rules
 
 - Preserve the selected template's section structure.
+- Fill issue titles, headings, and body text in Japanese.
 - Remove template comments and unused placeholder bullets before creating or updating the issue.
 
 ## Labels in this repo (from `gh label list`)
