@@ -1,44 +1,44 @@
 ---
-name: Research
-about: Track investigation, research, or exploratory work
-title: "[Research] "
+name: 調査
+about: 調査、検証、探索的な作業を管理する
+title: "[調査] "
 labels: ["research"]
 ---
 
-## Summary
+## 概要
 
-<!-- Describe what needs to be investigated. -->
-
--
-
-## Motivation
-
-<!-- Explain why this investigation is needed now. -->
+<!-- 調査したい内容を説明してください。 -->
 
 -
 
-## Questions
+## 背景
 
-<!-- List the main questions this research should answer. -->
+<!-- なぜ今この調査が必要なのかを説明してください。 -->
+
+-
+
+## 確認したいこと
+
+<!-- この調査で答えるべき主な問いを記載してください。 -->
 
 -
 -
 -
 
-## Approach
+## 調査方針
 
-<!-- Describe the planned investigation method, sources, or experiments. -->
-
--
-
-## Deliverables
-
-<!-- Describe the expected output: memo, recommendation, prototype, etc. -->
+<!-- 調査方法、参照する情報源、実験内容などを記載してください。 -->
 
 -
 
-## Notes
+## 成果物
 
-<!-- Optional: constraints, assumptions, related links, or follow-ups. -->
+<!-- 想定するアウトプット: メモ、提案、プロトタイプなどを記載してください。 -->
+
+-
+
+## 補足
+
+<!-- 任意: 制約、前提、関連リンク、後続作業などを記載してください。 -->
 
 -

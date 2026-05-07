@@ -1,44 +1,44 @@
 ---
-name: Feature Request
-about: Propose a feature, enhancement, or implementation task
-title: "[Feature] "
+name: 機能要望
+about: 機能、改善、実装タスクを提案する
+title: "[機能] "
 labels: ["enhancement"]
 ---
 
-## Summary
+## 概要
 
-<!-- Describe the requested feature or change in 1-3 lines. -->
-
--
-
-## Problem
-
-<!-- Explain the problem, limitation, or opportunity this addresses. -->
+<!-- 要望する機能や変更を1〜3行で説明してください。 -->
 
 -
 
-## Proposal
+## 課題
 
-<!-- Describe the proposed approach. -->
-
--
-
-## Scope
-
-<!-- Clarify what is in scope and out of scope if needed. -->
+<!-- この変更で解決したい課題、制約、機会を説明してください。 -->
 
 -
 
-## Acceptance Criteria
+## 提案
 
-<!-- List the conditions for considering this work complete. -->
+<!-- 想定している対応方針を説明してください。 -->
+
+-
+
+## スコープ
+
+<!-- 必要に応じて、対応範囲と対象外を明確にしてください。 -->
+
+-
+
+## 受け入れ条件
+
+<!-- 完了と判断する条件を記載してください。 -->
 
 -
 -
 -
 
-## Notes
+## 補足
 
-<!-- Optional: dependencies, risks, alternatives, or references. -->
+<!-- 任意: 依存関係、リスク、代替案、参照情報などを記載してください。 -->
 
 -
