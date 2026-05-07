@@ -12,6 +12,9 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
 from src.tasks.blcs.generate_dataset.io.dataset_io import load_scene
+from src.tasks.trajectory_completion.data.augmentation import (
+    resolve_trajectory_argument_config,
+)
 from src.tasks.trajectory_completion.data.argument import TrajectoryArgumenter
 from src.utils.data.event_utils import extract_event_frames
 from src.tasks.trajectory_completion.visualization.types import RuntimeConfig, TrajectoryInputs
@@ -91,8 +94,10 @@ def _slice_sequence(arr: np.ndarray, *, start: int, end: int) -> np.ndarray:
 
 def _build_argumenter(cfg: DictConfig) -> TrajectoryArgumenter:
     data_cfg = cfg.get("data", {}) or {}
-    arg_cfg = data_cfg.get("argument", {}) or {}
-    return TrajectoryArgumenter(arg_cfg)
+    augmentation_cfg = data_cfg.get("augmentation")
+    if augmentation_cfg is None:
+        augmentation_cfg = data_cfg.get("argument", {}) or {}
+    return TrajectoryArgumenter(resolve_trajectory_argument_config(augmentation_cfg))
 
 
 def _append_tmp_log(lines: list[str]) -> None:

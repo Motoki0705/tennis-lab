@@ -1,0 +1,73 @@
+# Shared PLCS train-time keypoint augmentation.
+augmentation:
+  enabled: true
+
+  uv_scale:
+    enabled: false
+    prob: 1.0
+    scale_range: [1.0, 1.0]
+    apply_to_human: true
+    apply_to_court: true
+
+  gaussian_noise:
+    enabled: true
+    prob: 1.0
+    human_std: 0.0001
+    court_std: 0.0001
+
+  visibility_dropout:
+    enabled: true
+    prob: 1.0
+    human_drop_prob: 0.05
+    court_drop_prob: 0.05
+
+  temporal_jitter:
+    enabled: true
+    prob: 1.0
+    human_jitter_std: 0.0005
+    human_drift_std: 0.0003
+    court_jitter_std: 0.0
+    court_drift_std: 0.0
+    drift_decay: 0.85
+
+  burst_dropout:
+    enabled: true
+    prob: 0.2
+    human_track_prob: 1.0
+    court_track_prob: 0.1
+    min_len: 2
+    max_len: 4
+    max_bursts: 1
+
+  false_positive:
+    enabled: true
+    prob: 1.0
+    human_prob_absent: 0.02
+    human_prob_after_dropout: 0.01
+    human_after_dropout_window: 2
+    court_prob_absent: 0.0
+    court_prob_after_dropout: 0.0
+    court_after_dropout_window: 0
+
+  edge_degradation:
+    enabled: true
+    prob: 1.0
+    edge_margin: 0.1
+    human_noise_std: 0.002
+    human_drop_prob: 0.03
+    human_clip_out_prob: 0.01
+    court_noise_std: 0.001
+    court_drop_prob: 0.01
+    court_clip_out_prob: 0.0
+
+  speed_conditioned:
+    enabled: true
+    prob: 1.0
+    human_frame_prob: 0.05
+    human_speed_threshold: 0.02
+    human_lag_overshoot_range: [-0.15, 0.2]
+    human_noise_std: 0.001
+    court_frame_prob: 0.0
+    court_speed_threshold: 0.02
+    court_lag_overshoot_range: [0.0, 0.0]
+    court_noise_std: 0.0

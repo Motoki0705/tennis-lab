@@ -14,7 +14,9 @@ import torch
 from torch import Tensor
 
 from src.tasks.base.data.scene_dataset import Scene, SceneDatasetBase
-from src.tasks.trajectory_completion.data.argument import TrajectoryArgumenter
+from src.tasks.trajectory_completion.data.augmentation import (
+    TrajectoryObservationAugmentation,
+)
 from src.utils.data.event_utils import extract_event_frames
 from src.tasks.trajectory_completion.data.types import TrajectoryCompletionSample
 
@@ -61,20 +63,18 @@ class BLCSUVTrajectoryCompletionDataset(SceneDatasetBase[TrajectoryCompletionSam
     # -- Composed-method hooks ------------------------------------------
 
     def _configure_task(self, data_cfg: dict) -> None:  # type: ignore[override]
+        from omegaconf import DictConfig
+
         self.supervise_visible_only = bool(data_cfg.get("supervise_visible_only", True))
 
-        argument_cfg = data_cfg.get("argument", {}) or {}
-        self.argumenter = TrajectoryArgumenter(argument_cfg)
-        ratio = argument_cfg.get("event_ratio", (2, 1))
-        if (
-            not isinstance(ratio, Sequence)
-            or isinstance(ratio, (str, bytes))
-            or len(ratio) != 2
-        ):
+        augmentation_cfg = data_cfg.get("augmentation")
+        if augmentation_cfg is None:
+            augmentation_cfg = data_cfg.get("argument", {}) or {}
+        if not isinstance(augmentation_cfg, (dict, DictConfig)):
             raise ValueError(
-                "data.argument.event_ratio must be a list/tuple of length 2."
+                "data.augmentation or data.argument must be a mapping-like config."
             )
-        self.event_ratio = (int(ratio[0]), int(ratio[1]))
+        self.augmentation = TrajectoryObservationAugmentation(augmentation_cfg)
         # Number of court keypoints to use (first N from the canonical order)
         self.num_court_kp = _validate_num_court_kp(data_cfg.get("num_court_kp", 20))
 
@@ -122,12 +122,4 @@ class BLCSUVTrajectoryCompletionDataset(SceneDatasetBase[TrajectoryCompletionSam
             return sample
         if event_frames is None:
             event_frames = {"bounce": torch.empty(0, dtype=torch.long), "shot": torch.empty(0, dtype=torch.long)}
-        ball_uv, ball_vis = self.argumenter(
-            sample["ball_uv_gt"],
-            sample["ball_gt_vis"],
-            event_frames=event_frames,
-            ratio=self.event_ratio,
-        )
-        sample["ball_uv"] = ball_uv
-        sample["ball_vis"] = ball_vis
-        return sample
+        return self.augmentation.forward(sample, event_frames=event_frames)
