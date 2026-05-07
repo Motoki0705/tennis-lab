@@ -242,7 +242,7 @@ COMMON_GIT_DIR="${repo_context[0]}"
 MAIN_WORKTREE="${repo_context[1]}"
 
 if [[ -z "$WT_PARENT" ]]; then
-  WT_PARENT="$(dirname "$MAIN_WORKTREE")/$(basename "$MAIN_WORKTREE").worktrees"
+  WT_PARENT="$MAIN_WORKTREE/.worktrees"
 fi
 
 mkdir -p "$WT_PARENT"
