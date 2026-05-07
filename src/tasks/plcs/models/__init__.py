@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from torch import nn
 
-from src.tasks.plcs.models.components import PositionHead, RotationHead
+from src.tasks.plcs.models.components import CanonicalPoseHead, PositionHead, RotationHead
 from src.tasks.plcs.models.plcs_model import PLCSModel
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
@@ -35,6 +35,7 @@ __all__ = [
     "build_plcs_model",
     "PLCSMultiViewModel",
     "PLCSMultiViewAxialModel",
+    "CanonicalPoseHead",
     "PositionHead",
     "RotationHead",
 ]

@@ -12,6 +12,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from src.tasks.plcs.utils.pose_geometry import world_pose_to_canonical_pose
+
 
 @dataclass(frozen=True)
 class TemporalTermConfig:
@@ -59,6 +61,7 @@ class PLCSLossConfig:
 
     position_weight: float = 1.0
     rotation_weight: float = 1.0
+    canonical_pose_weight: float = 0.0
     temporal: TemporalTermsConfig = TemporalTermsConfig()
 
     @classmethod
@@ -117,6 +120,7 @@ class PLCSLossConfig:
         return cls(
             position_weight=cfg.get("position_weight", 1.0),
             rotation_weight=cfg.get("rotation_weight", 1.0),
+            canonical_pose_weight=float(cfg.get("canonical_pose_weight", 0.0)),
             temporal=temporal_terms_cfg,
         )
 
@@ -396,6 +400,8 @@ class PLCSLoss(nn.Module):
         target_position: Tensor,
         target_rotation: Tensor,
         *,
+        pred_canonical_pose: Tensor | None = None,
+        target_human_kp_3d: Tensor | None = None,
         human_mask: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Compute combined loss.
@@ -440,6 +446,29 @@ class PLCSLoss(nn.Module):
             self.config.position_weight * pos_loss
             + self.config.rotation_weight * rot_loss
         )
+        canonical_pose_loss = zero
+
+        if pred_canonical_pose is not None and target_human_kp_3d is not None:
+            target_canonical_pose = world_pose_to_canonical_pose(
+                target_human_kp_3d,
+                target_position,
+                target_rotation,
+            )
+            per_frame = nn.functional.smooth_l1_loss(
+                pred_canonical_pose,
+                target_canonical_pose,
+                reduction="none",
+            ).mean(dim=(-1, -2))
+            if frame_mask is not None and per_frame.shape == frame_mask.shape:
+                canonical_pose_loss = _masked_mean(per_frame, frame_mask)
+            else:
+                canonical_pose_loss = per_frame.mean()
+            total = total + self.config.canonical_pose_weight * canonical_pose_loss
+        elif pred_canonical_pose is not None and self.config.canonical_pose_weight > 0.0:
+            raise ValueError(
+                "target_human_kp_3d is required when canonical_pose_weight > 0 and "
+                "pred_canonical_pose is provided."
+            )
 
         temp_loss = zero
         pos_temp_gt = zero
@@ -481,6 +510,7 @@ class PLCSLoss(nn.Module):
             "total": total,
             "position": pos_loss,
             "rotation": rot_loss,
+            "canonical_pose": canonical_pose_loss,
             "temporal": temp_loss,
             "position_temporal_gt": pos_temp_gt,
             "position_temporal_inertia": pos_temp_inertia,

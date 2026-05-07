@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import torch
 from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
 from lightning_fabric.utilities.exceptions import MisconfigurationException
@@ -31,6 +32,7 @@ class SmokeCase:
     supports_test_phase: bool
     expect_qualitative: bool
     expect_gan_training: bool = False
+    expected_output_keys: tuple[str, ...] = ()
     runner_factory: RunnerFactory | None = None
 
 
@@ -39,6 +41,7 @@ class SmokeVariant:
     name: str
     overrides: tuple[str, ...] = ()
     expect_gan_training: bool = False
+    expected_output_keys: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -150,6 +153,14 @@ SMOKE_TASK_SPECS = (
         variants=(
             SmokeVariant(name="frame"),
             SmokeVariant(
+                name="frame_canonical_pose",
+                overrides=(
+                    "model.predict_canonical_pose=true",
+                    "loss.canonical_pose_weight=0.1",
+                ),
+                expected_output_keys=("canonical_pose",),
+            ),
+            SmokeVariant(
                 name="sequence",
                 overrides=(
                     "data=sequence",
@@ -167,6 +178,19 @@ SMOKE_TASK_SPECS = (
                 ),
             ),
             SmokeVariant(
+                name="multiview_canonical_pose",
+                overrides=(
+                    "model=multiview",
+                    "data=multiview",
+                    "loss=multiview_sequence",
+                    "data.seq_len_range=[16,16]",
+                    "model.max_seq_len=64",
+                    "model.predict_canonical_pose=true",
+                    "loss.canonical_pose_weight=0.1",
+                ),
+                expected_output_keys=("canonical_pose",),
+            ),
+            SmokeVariant(
                 name="multiview_axial",
                 overrides=(
                     "model=multiview_axial",
@@ -175,6 +199,19 @@ SMOKE_TASK_SPECS = (
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
                 ),
+            ),
+            SmokeVariant(
+                name="multiview_axial_canonical_pose",
+                overrides=(
+                    "model=multiview_axial",
+                    "data=multiview",
+                    "loss=multiview_sequence",
+                    "data.seq_len_range=[16,16]",
+                    "model.max_seq_len=64",
+                    "model.predict_canonical_pose=true",
+                    "loss.canonical_pose_weight=0.1",
+                ),
+                expected_output_keys=("canonical_pose",),
             ),
         ),
         supports_test_phase=True,
@@ -454,6 +491,7 @@ def _build_smoke_cases(task_specs: tuple[SmokeTaskSpec, ...]) -> tuple[SmokeCase
                     supports_test_phase=task_spec.supports_test_phase,
                     expect_qualitative=task_spec.expect_qualitative,
                     expect_gan_training=variant.expect_gan_training,
+                    expected_output_keys=variant.expected_output_keys,
                     runner_factory=task_spec.runner_factory,
                 )
             )
@@ -523,6 +561,27 @@ def _assert_gan_training(case: SmokeCase, callbacks: list[Any], lightning_module
     assert lightning_module.current_gan_weight > 0
 
 
+def _assert_expected_outputs(
+    case: SmokeCase,
+    datamodule: Any,
+    lightning_module: Any,
+) -> None:
+    if not case.expected_output_keys:
+        return
+
+    datamodule.setup(stage="fit")
+    batch = next(iter(datamodule.train_dataloader()))
+    with torch.no_grad():
+        outputs = lightning_module._forward_from_batch(batch)
+
+    for key in case.expected_output_keys:
+        assert key in outputs
+
+    canonical_pose = outputs.get("canonical_pose")
+    if canonical_pose is not None:
+        assert canonical_pose.shape[-2:] == (17, 3)
+
+
 @pytest.mark.integration
 @pytest.mark.local_data
 @pytest.mark.slow
@@ -543,6 +602,7 @@ def test_scene_training_smoke_contracts(case: SmokeCase, tmp_path: Path) -> None
 
     datamodule = runner.build_datamodule(config)
     lightning_module = runner.build_lightning_module(config, datamodule)
+    _assert_expected_outputs(case, datamodule, lightning_module)
     logger = runner.build_logger(config, output_dir)
     callbacks = runner.build_callbacks(config, datamodule, logger)
     trainer = runner.build_trainer(config, callbacks, logger)

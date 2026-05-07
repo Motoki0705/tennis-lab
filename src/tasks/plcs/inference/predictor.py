@@ -88,6 +88,10 @@ class PLCSPredictor(BasePredictor):
             "rotation": rotation,
         }
 
+        canonical_pose = outputs.get("canonical_pose")
+        if canonical_pose is not None:
+            result["canonical_pose"] = canonical_pose
+
         if denormalize:
             scale = torch.tensor(
                 list(self._norm_scale_xyz),
