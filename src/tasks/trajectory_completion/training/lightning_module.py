@@ -300,6 +300,18 @@ class TrajectoryCompletionLightningModule(BaseLightningModule):
         for k, v in logs.items():
             self.log(f"val/{k}", v, on_epoch=True)
 
+    def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:  # noqa: ARG002
+        pred, intermediate, in_frame_logits = self._forward_with_auxiliary(batch)
+        loss, logs = self._compute_losses(
+            pred,
+            batch,
+            intermediate_ball_hidden=intermediate,
+            in_frame_logits=in_frame_logits,
+        )
+        self.log("test/loss", loss, on_epoch=True)
+        for k, v in logs.items():
+            self.log(f"test/{k}", v, on_epoch=True)
+
     def _compute_losses(
         self,
         pred: Tensor,
