@@ -116,6 +116,10 @@ class EventDetectionLightningModule(BaseLightningModule):
         _ = batch_idx
         self._shared_step(batch, "val")
 
+    def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
+        _ = batch_idx
+        self._shared_step(batch, "test")
+
     # ------------------------------------------------------------------
     # Qualitative validation logging
     # ------------------------------------------------------------------
