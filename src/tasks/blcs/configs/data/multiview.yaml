@@ -15,7 +15,7 @@ num_workers: 4
 
 # Sequence/view sampling ranges (inclusive)
 seq_len_range: [64, 256]
-num_views_range: [4, 8]
+num_views_range: [4, 6]
 
 # Camera selection mode: "random", "first", or camera index
 camera_mode: "random"

@@ -16,7 +16,7 @@ pin_memory: true
 # camera_mode is not used for 3d input_type but kept for config consistency
 camera_mode: "random"
 
-seq_len_range: [16, 1024]
+seq_len_range: [64, 1024]
 
 label:
   sigma_frames: 2.5
