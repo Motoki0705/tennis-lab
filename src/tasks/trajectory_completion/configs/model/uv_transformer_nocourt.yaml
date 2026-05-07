@@ -1,8 +1,8 @@
 name: uv_transformer_nocourt
 init_from_court_checkpoint: null
 
-hidden_dim: 256
-num_layers: 6
+hidden_dim: 512
+num_ball_layers: 12
 num_heads: 8
 dropout: 0.1
 ffn_dim: 704

@@ -15,7 +15,7 @@ min_cameras: 2
 num_views_range: [3, 6]  # [min, max]
 
 # Sequence sampling
-seq_len_range: [64, 512]  # [min, max]
+seq_len_range: [64, 256]  # [min, max]
 
 augmentation:
   keypoint_noise_std: 0.0001
