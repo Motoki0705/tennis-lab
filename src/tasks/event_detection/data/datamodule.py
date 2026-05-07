@@ -95,7 +95,7 @@ class EventDetectionDataModule(pl.LightningDataModule):
                 split_file=self._resolved.train_split_file,
                 input_type=self._resolved.input_type,
                 config=self.config,
-                augment=self._resolved.input_type == "uv",
+                augment=False,
             )
             self.val_dataset = BLCSRallyEventDataset(
                 scene_dir=scene_dir,
@@ -114,10 +114,12 @@ class EventDetectionDataModule(pl.LightningDataModule):
                 augment=False,
             )
 
+    def _collate_fn(self):
+        return collate_3d if self._resolved.input_type == "3d" else collate_uv
+
     def train_dataloader(self) -> DataLoader:
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader().")
-        collate = collate_3d if self._resolved.input_type == "3d" else collate_uv
         return DataLoader(
             self.train_dataset,
             batch_size=self._resolved.batch_size,
@@ -125,31 +127,29 @@ class EventDetectionDataModule(pl.LightningDataModule):
             num_workers=self._resolved.num_workers,
             pin_memory=self._resolved.pin_memory,
             drop_last=True,
-            collate_fn=collate,
+            collate_fn=self._collate_fn(),
         )
 
     def val_dataloader(self) -> DataLoader:
         if self.val_dataset is None:
             raise RuntimeError("Call setup('fit') before val_dataloader().")
-        collate = collate_3d if self._resolved.input_type == "3d" else collate_uv
         return DataLoader(
             self.val_dataset,
             batch_size=self._resolved.batch_size,
             shuffle=False,
             num_workers=self._resolved.num_workers,
             pin_memory=self._resolved.pin_memory,
-            collate_fn=collate,
+            collate_fn=self._collate_fn(),
         )
 
     def test_dataloader(self) -> DataLoader:
         if self.test_dataset is None:
             raise RuntimeError("Call setup('test') before test_dataloader().")
-        collate = collate_3d if self._resolved.input_type == "3d" else collate_uv
         return DataLoader(
             self.test_dataset,
             batch_size=self._resolved.batch_size,
             shuffle=False,
             num_workers=self._resolved.num_workers,
             pin_memory=self._resolved.pin_memory,
-            collate_fn=collate,
+            collate_fn=self._collate_fn(),
         )
