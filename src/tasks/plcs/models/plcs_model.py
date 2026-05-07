@@ -27,7 +27,11 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.tasks.plcs.models.components.heads import PositionHead, RotationHead
+from src.tasks.plcs.models.components.heads import (
+    CanonicalPoseHead,
+    PositionHead,
+    RotationHead,
+)
 from src.utils.models import (
     RMSNorm,
     TransformerBlock,
@@ -89,6 +93,7 @@ class PLCSModel(nn.Module):
         use_kp_id_embedding: bool = True,
         use_rope: bool = True,
         ffn_type: Literal["swiglu", "mlp"] = "swiglu",
+        predict_canonical_pose: bool = False,
         invisible_init_std: float = 0.02,
         num_court_tokens: int = NUM_COURT_KP,
     ) -> None:
@@ -114,6 +119,7 @@ class PLCSModel(nn.Module):
         self.num_register_tokens = int(num_register_tokens)
         self.use_kp_id_embedding = bool(use_kp_id_embedding)
         self.use_rope = bool(use_rope)
+        self.predict_canonical_pose = bool(predict_canonical_pose)
         self.num_court_tokens = int(num_court_tokens)
         self.max_tokens = int(self.num_court_tokens + NUM_HUMAN_KP)
 
@@ -197,6 +203,14 @@ class PLCSModel(nn.Module):
             num_layers=2,
             dropout=dropout,
         )
+        self.canonical_pose_head = None
+        if self.predict_canonical_pose:
+            self.canonical_pose_head = CanonicalPoseHead(
+                input_dim=hidden_dim,
+                hidden_dim=hidden_dim // 2,
+                num_layers=2,
+                dropout=dropout,
+            )
 
         if self.use_rope:
             freqs_cis = precompute_freqs_cis_nd(
@@ -235,6 +249,7 @@ class PLCSModel(nn.Module):
             use_kp_id_embedding=bool(model_cfg.get("use_kp_id_embedding", True)),
             use_rope=bool(model_cfg.get("use_rope", True)),
             ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
+            predict_canonical_pose=bool(model_cfg.get("predict_canonical_pose", False)),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )
@@ -431,10 +446,13 @@ class PLCSModel(nn.Module):
         position = self.position_head(cls_out)  # (B, 3)
         rotation = self.rotation_head(cls_out)  # (B, 2)
 
-        return {
+        out = {
             "position": position,
             "rotation": rotation,
         }
+        if self.predict_canonical_pose and self.canonical_pose_head is not None:
+            out["canonical_pose"] = self.canonical_pose_head(cls_out)
+        return out
 
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""

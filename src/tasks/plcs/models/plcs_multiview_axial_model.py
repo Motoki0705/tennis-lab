@@ -8,7 +8,11 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from src.tasks.plcs.models.components.heads import PositionHead, RotationHead
+from src.tasks.plcs.models.components.heads import (
+    CanonicalPoseHead,
+    PositionHead,
+    RotationHead,
+)
 from src.utils.models import (
     RMSNorm,
     TransformerBlock,
@@ -38,6 +42,7 @@ class PLCSMultiViewAxialModel(nn.Module):
         rope_theta_time: float | None = None,
         rope_theta_camera: float | None = None,
         ffn_type: Literal["swiglu", "mlp"] = "swiglu",
+        predict_canonical_pose: bool = False,
         max_views: int = 8,
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
@@ -46,6 +51,7 @@ class PLCSMultiViewAxialModel(nn.Module):
         super().__init__()
 
         self.hidden_dim = int(hidden_dim)
+        self.predict_canonical_pose = bool(predict_canonical_pose)
         self.max_views = int(max_views)
         self.max_seq_len = int(max_seq_len)
         self.num_court_tokens = int(num_court_tokens)
@@ -138,6 +144,14 @@ class PLCSMultiViewAxialModel(nn.Module):
             num_layers=2,
             dropout=dropout,
         )
+        self.canonical_pose_head = None
+        if self.predict_canonical_pose:
+            self.canonical_pose_head = CanonicalPoseHead(
+                input_dim=self.hidden_dim,
+                hidden_dim=self.hidden_dim // 2,
+                num_layers=2,
+                dropout=dropout,
+            )
 
         token_freqs = precompute_freqs_cis_nd(
             dim=self.rope_dim,
@@ -166,6 +180,7 @@ class PLCSMultiViewAxialModel(nn.Module):
             rope_theta_time=model_cfg.get("rope_theta_time", None),
             rope_theta_camera=model_cfg.get("rope_theta_camera", None),
             ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
+            predict_canonical_pose=bool(model_cfg.get("predict_canonical_pose", False)),
             max_views=int(model_cfg.get("max_views", 8)),
             max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
@@ -335,7 +350,10 @@ class PLCSMultiViewAxialModel(nn.Module):
         x = x[:, :, 0, :]
         x = self.final_norm(x)
 
-        return {
+        out = {
             "position": self.position_head(x),
             "rotation": self.rotation_head(x),
         }
+        if self.predict_canonical_pose and self.canonical_pose_head is not None:
+            out["canonical_pose"] = self.canonical_pose_head(x)
+        return out
