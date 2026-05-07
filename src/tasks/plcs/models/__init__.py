@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from torch import nn
 
 from src.tasks.plcs.models.components import CanonicalPoseHead, PositionHead, RotationHead
+from src.tasks.plcs.models.discriminators import build_plcs_discriminator
 from src.tasks.plcs.models.plcs_model import PLCSModel
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
@@ -32,6 +33,7 @@ def build_plcs_model(config: DictConfig) -> nn.Module:
 
 __all__ = [
     "PLCSModel",
+    "build_plcs_discriminator",
     "build_plcs_model",
     "PLCSMultiViewModel",
     "PLCSMultiViewAxialModel",

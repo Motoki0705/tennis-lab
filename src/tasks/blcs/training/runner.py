@@ -25,23 +25,6 @@ class BLCSTrainingRunner(BaseTrainingRunner):
     def __init__(self, *, generator_config: GeneratorConfig | None = None) -> None:
         self.generator_config = generator_config
 
-    def _gan_enabled(self, config: Any) -> bool:
-        train_cfg = config.get("training", {}) or {}
-        return bool((train_cfg.get("gan", {}) or {}).get("enabled", False))
-
-    def _apply_gan_runtime_config(self, config: Any) -> None:
-        if not self._gan_enabled(config):
-            raise RuntimeError("GAN runtime config should only be applied when GAN is enabled.")
-        early_cfg = config.training.early_stopping
-        early_cfg.enabled = False
-        trainer_cfg = config.training.trainer
-        trainer_cfg.gradient_clip_val = None
-
-    def prepare_config(self, config: Any) -> None:
-        """Apply BLCS-specific runtime config mutations before training setup."""
-        if self._gan_enabled(config):
-            self._apply_gan_runtime_config(config)
-
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
         """Build unified BLCS data module."""
         backend = str(config.get("data", {}).get("backend", "npz"))
@@ -80,15 +63,8 @@ class BLCSTrainingRunner(BaseTrainingRunner):
         logger: TensorBoardLogger,
     ) -> list[Any]:
         """Add chunk rotation callback when using chunked backend."""
-        extras: list[Any] = []
+        extras = super().callbacks_extra(config, datamodule, logger)
         from src.tasks.blcs.data.chunked_datamodule import ChunkedBLCSDataModule
-
-        if self._gan_enabled(config):
-            from src.tasks.blcs.training.gan_transition_callback import (
-                GANTransitionCallback,
-            )
-
-            extras.append(GANTransitionCallback(config))
 
         if isinstance(datamodule, ChunkedBLCSDataModule):
             from src.tasks.base.training.chunk_rotation_callback import (

@@ -6,6 +6,9 @@ from typing import TYPE_CHECKING
 
 from torch import nn
 
+from src.tasks.trajectory_completion.models.discriminators import (
+    build_trajectory_completion_discriminator,
+)
 from src.tasks.trajectory_completion.models.uv_completion_model import (
     UVTrajectoryCompletionModel,
 )
@@ -34,5 +37,6 @@ def build_trajectory_completion_model(config: DictConfig) -> nn.Module:
 __all__ = [
     "UVTrajectoryCompletionModel",
     "UVTrajectoryCompletionNoCourtModel",
+    "build_trajectory_completion_discriminator",
     "build_trajectory_completion_model",
 ]

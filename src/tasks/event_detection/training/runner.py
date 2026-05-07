@@ -36,6 +36,9 @@ class EventDetectionTrainingRunner(BaseTrainingRunner):
             return self.generator_config
         return build_default_generator_config()
 
+    def prepare_config(self, config: DictConfig) -> None:
+        super().prepare_config(config)
+
     def build_datamodule(self, config: DictConfig) -> pl.LightningDataModule:
         """Build the EventDetectionDataModule."""
         backend = str(config.get("data", {}).get("backend", "default"))
@@ -70,11 +73,14 @@ class EventDetectionTrainingRunner(BaseTrainingRunner):
         datamodule: pl.LightningDataModule,
         logger: TensorBoardLogger,
     ) -> list[Any]:
+        extras = super().callbacks_extra(config, datamodule, logger)
+
         if str(config.get("data", {}).get("backend", "default")) != "chunked":
-            return []
+            return extras
 
         from src.tasks.base.training.chunk_rotation_callback import (
             ChunkRotationCallback,
         )
 
-        return [ChunkRotationCallback()]
+        extras.append(ChunkRotationCallback())
+        return extras
