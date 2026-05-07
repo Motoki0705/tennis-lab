@@ -45,7 +45,7 @@ feat__issue-428-worktree-setup-skill
 By default, worktrees are created under:
 
 ```text
-../tennis-lab.worktrees/
+.worktrees/
 ```
 
 ## Standard workflow
@@ -83,6 +83,7 @@ ls -ld data .venv outputs third_party
 - Resolves the repository's common git dir and primary worktree.
 - Fetches `origin/<base>` when possible without switching the current checkout.
 - Creates a branch from `origin/main` by default, or reuses an existing branch worktree.
+- Creates new worktrees under the primary worktree's `.worktrees/` directory by default.
 - Links `data`, `.venv`, `outputs`, and `third_party` from the primary worktree.
 - Adds local git exclude entries for those top-level links.
 - Marks tracked `third_party` entries as `skip-worktree` in the target worktree so the root symlink does not create noisy status output.
