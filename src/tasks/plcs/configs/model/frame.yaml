@@ -25,3 +25,4 @@ rope_dim: null           # Defaults to head_dim (hidden_dim / num_heads)
 rope_theta_time: 10000.0 # Token-order axis
 rope_theta_camera: 10000.0
 rope_theta_type: 100.0
+predict_canonical_pose: false

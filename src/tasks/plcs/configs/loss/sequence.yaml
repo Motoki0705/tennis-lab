@@ -1,6 +1,7 @@
 # Sequence-level PLCS loss configuration (single camera, with temporal consistency).
 position_weight: 1.0
 rotation_weight: 1.0
+canonical_pose_weight: 0.0
 temporal:
   position_gt:
     weight: 0.1
