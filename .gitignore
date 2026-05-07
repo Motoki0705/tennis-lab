@@ -154,6 +154,7 @@ Thumbs.db
 
 # Agent workspace
 agents_workspace/tmp_cache/
+.worktrees/
 
 # Large files that should be tracked separately
 *.zip
