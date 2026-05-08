@@ -7,6 +7,7 @@ import torch
 from torch import nn
 
 from src.utils.models.components.attention import (
+    GroupedQuerySelfAttention,
     MultiHeadCrossAttention,
     MultiHeadSelfAttention,
 )
@@ -25,6 +26,8 @@ class TransformerBlockConfig:
         head_dim: Per-head dimension (defaults to dim // n_heads).
         rope_dim: Rotary dimension per head for 1D RoPE.
         attn_dropout: Dropout probability for attention.
+        attention_type: Self-attention implementation to use.
+        n_kv_heads: Number of key/value heads for GQA.
         rope_base: Base theta for 1D RoPE.
         ffn_type: FFN implementation to use.
     """
@@ -36,6 +39,8 @@ class TransformerBlockConfig:
     head_dim: int | None = None
     rope_dim: int | None = None
     attn_dropout: float = 0.0
+    attention_type: Literal["mha", "gqa"] = "mha"
+    n_kv_heads: int | None = None
     # RoPE
     rope_base: float = 10000.0
     # FFN
@@ -52,13 +57,27 @@ class TransformerBlock(nn.Module):
         self.cfg = cfg
 
         self.attn_norm = RMSNorm(cfg.dim)
-        self.attn = MultiHeadSelfAttention(
-            dim=cfg.dim,
-            n_heads=cfg.n_heads,
-            head_dim=cfg.head_dim,
-            rope_dim=cfg.rope_dim,
-            attn_dropout=cfg.attn_dropout,
-        )
+        if cfg.attention_type == "mha":
+            self.attn = MultiHeadSelfAttention(
+                dim=cfg.dim,
+                n_heads=cfg.n_heads,
+                head_dim=cfg.head_dim,
+                rope_dim=cfg.rope_dim,
+                attn_dropout=cfg.attn_dropout,
+            )
+        elif cfg.attention_type == "gqa":
+            if cfg.n_kv_heads is None:
+                raise ValueError("n_kv_heads must be set when attention_type='gqa'")
+            self.attn = GroupedQuerySelfAttention(
+                dim=cfg.dim,
+                n_heads=cfg.n_heads,
+                n_kv_heads=cfg.n_kv_heads,
+                head_dim=cfg.head_dim,
+                rope_dim=cfg.rope_dim,
+                attn_dropout=cfg.attn_dropout,
+            )
+        else:
+            raise ValueError(f"Unsupported attention_type={cfg.attention_type}")
 
         self.ffn_norm = RMSNorm(cfg.dim)
         ffn_dim = default_ffn_dim(cfg.dim) if cfg.ffn_dim is None else int(cfg.ffn_dim)
