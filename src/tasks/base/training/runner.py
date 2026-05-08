@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import types
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +17,11 @@ import pytorch_lightning as pl
 import torch
 from hydra.utils import to_absolute_path
 from omegaconf import OmegaConf
-from pytorch_lightning.callbacks import EarlyStopping, LearningRateMonitor, ModelCheckpoint
+from pytorch_lightning.callbacks import (
+    EarlyStopping,
+    LearningRateMonitor,
+    ModelCheckpoint,
+)
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
@@ -57,12 +62,14 @@ class BaseTrainingRunner:
         logger = self.build_logger(config, output_dir)
         callbacks = self.build_callbacks(config, datamodule, logger)
         trainer = self.build_trainer(config, callbacks, logger)
+        resume_ckpt = self.resolve_resume(config, output_dir)
 
-        trainer.fit(
-            lightning_module,
-            datamodule=datamodule,
-            ckpt_path=self.resolve_resume(config, output_dir),
-        )
+        with self.resume_checkpoint_load_env(resume_ckpt):
+            trainer.fit(
+                lightning_module,
+                datamodule=datamodule,
+                ckpt_path=resume_ckpt,
+            )
 
         if not self.skip_test(config):
             trainer.test(lightning_module, datamodule=datamodule)
@@ -95,7 +102,9 @@ class BaseTrainingRunner:
 
     def _apply_gan_runtime_config(self, config: Any) -> None:
         if not self._gan_enabled(config):
-            raise RuntimeError("GAN runtime config should only be applied when GAN is enabled.")
+            raise RuntimeError(
+                "GAN runtime config should only be applied when GAN is enabled."
+            )
         config.training.early_stopping.enabled = False
         config.training.trainer.gradient_clip_val = None
 
@@ -112,6 +121,23 @@ class BaseTrainingRunner:
             return None
         return self._ensure_absolute(str(resume))
 
+    @contextmanager
+    def resume_checkpoint_load_env(self, resume_ckpt: str | None):
+        """Temporarily allow full-state loading for trusted local resume checkpoints."""
+        if not resume_ckpt:
+            yield
+            return
+
+        env_key = "TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"
+        previous_value = os.environ.get(env_key)
+        if previous_value is None:
+            os.environ[env_key] = "1"
+        try:
+            yield
+        finally:
+            if previous_value is None:
+                os.environ.pop(env_key, None)
+
     def callbacks_extra(
         self, config: Any, datamodule: pl.LightningDataModule, logger: TensorBoardLogger
     ) -> list[Any]:
@@ -120,7 +146,9 @@ class BaseTrainingRunner:
         _ = logger
         extras: list[Any] = []
         if self._gan_enabled(config):
-            from src.tasks.base.training.gan_transition_callback import GANTransitionCallback
+            from src.tasks.base.training.gan_transition_callback import (
+                GANTransitionCallback,
+            )
 
             extras.append(GANTransitionCallback(config))
         return extras
@@ -253,9 +281,15 @@ class BaseTrainingRunner:
 
         if trainer_cfg.precision is not None:
             precision = trainer_cfg.precision
-            if str(precision) == "bf16-mixed" and torch.cuda.is_available() and not torch.cuda.is_bf16_supported():
+            if (
+                str(precision) == "bf16-mixed"
+                and torch.cuda.is_available()
+                and not torch.cuda.is_bf16_supported()
+            ):
                 precision = "16-mixed"
-                print("bf16-mixed is not supported on this GPU. Falling back to 16-mixed.")
+                print(
+                    "bf16-mixed is not supported on this GPU. Falling back to 16-mixed."
+                )
             kwargs["precision"] = precision
 
         optional_trainer_keys = (

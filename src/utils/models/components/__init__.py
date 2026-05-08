@@ -14,6 +14,7 @@ Strategy A treats the DeepSeek-style implementation as canonical.
 """
 
 from src.utils.models.components.attention import (
+    GroupedQuerySelfAttention,
     MultiHeadCrossAttention,
     MultiHeadSelfAttention,
 )
@@ -33,6 +34,7 @@ from src.utils.models.components.rope import (
 
 __all__ = [
     # Attention
+    "GroupedQuerySelfAttention",
     "MultiHeadCrossAttention",
     "MultiHeadSelfAttention",
     # Norm
