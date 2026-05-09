@@ -28,6 +28,8 @@ class BLCSMultiViewAxialModel(nn.Module):
         self,
         hidden_dim: int = 256,
         num_heads: int = 8,
+        attention_type: Literal["mha", "gqa"] = "mha",
+        num_kv_heads: int | None = None,
         ffn_dim: int | None = None,
         ffn_type: Literal["swiglu", "mlp"] = "swiglu",
         dropout: float = 0.1,
@@ -52,9 +54,7 @@ class BLCSMultiViewAxialModel(nn.Module):
         if max_seq_len <= 0:
             raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
         if max_num_cameras <= 0:
-            raise ValueError(
-                f"max_num_cameras must be positive, got {max_num_cameras}"
-            )
+            raise ValueError(f"max_num_cameras must be positive, got {max_num_cameras}")
         if num_layers < 0:
             raise ValueError(f"num_layers must be non-negative, got {num_layers}")
 
@@ -100,6 +100,8 @@ class BLCSMultiViewAxialModel(nn.Module):
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
+                        attention_type=attention_type,
+                        n_kv_heads=num_kv_heads,
                         rope_base=self.rope_bases[1],
                         ffn_type=ffn_type,
                     )
@@ -117,6 +119,8 @@ class BLCSMultiViewAxialModel(nn.Module):
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
+                        attention_type=attention_type,
+                        n_kv_heads=num_kv_heads,
                         rope_base=self.rope_bases[0],
                         ffn_type=ffn_type,
                     )
@@ -163,8 +167,10 @@ class BLCSMultiViewAxialModel(nn.Module):
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_heads=int(model_cfg.get("num_heads", 8)),
+            attention_type=str(model_cfg.get("attention_type", "mha")),
+            num_kv_heads=model_cfg.get("num_kv_heads", None),
             ffn_dim=model_cfg.get("ffn_dim", None),
-            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
+            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
@@ -172,10 +178,18 @@ class BLCSMultiViewAxialModel(nn.Module):
             rope_theta_camera=model_cfg.get("rope_theta_camera", None),
             num_layers=int(model_cfg.get("num_layers", 4)),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
-            max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
-            max_num_cameras=int(model_cfg.get("max_num_cameras", model_cfg.get("max_views", 8))),
+            max_seq_len=int(
+                model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))
+            ),
+            max_num_cameras=int(
+                model_cfg.get("max_num_cameras", model_cfg.get("max_views", 8))
+            ),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
-            num_court_tokens=int(model_cfg.get("num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP))),
+            num_court_tokens=int(
+                model_cfg.get(
+                    "num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP)
+                )
+            ),
         )
 
     @staticmethod
@@ -210,21 +224,29 @@ class BLCSMultiViewAxialModel(nn.Module):
 
     def _camera_freqs(self, *, batch_size: int, seq_len: int, n_cams: int) -> Tensor:
         freqs = self.token_freqs_cis[:seq_len, :n_cams]
-        return freqs.unsqueeze(0).expand(
-            batch_size,
-            seq_len,
-            n_cams,
-            self.rope_dim // 2,
-        ).reshape(batch_size * seq_len, n_cams, self.rope_dim // 2)
+        return (
+            freqs.unsqueeze(0)
+            .expand(
+                batch_size,
+                seq_len,
+                n_cams,
+                self.rope_dim // 2,
+            )
+            .reshape(batch_size * seq_len, n_cams, self.rope_dim // 2)
+        )
 
     def _time_freqs(self, *, batch_size: int, seq_len: int, n_cams: int) -> Tensor:
         freqs = self.token_freqs_cis[:seq_len, :n_cams].permute(1, 0, 2)
-        return freqs.unsqueeze(0).expand(
-            batch_size,
-            n_cams,
-            seq_len,
-            self.rope_dim // 2,
-        ).reshape(batch_size * n_cams, seq_len, self.rope_dim // 2)
+        return (
+            freqs.unsqueeze(0)
+            .expand(
+                batch_size,
+                n_cams,
+                seq_len,
+                self.rope_dim // 2,
+            )
+            .reshape(batch_size * n_cams, seq_len, self.rope_dim // 2)
+        )
 
     def forward(
         self,
@@ -236,7 +258,9 @@ class BLCSMultiViewAxialModel(nn.Module):
     ) -> dict[str, Tensor]:
         """Forward pass for multi-view BLCS inputs."""
         if ball_uv.dim() != 4:
-            raise ValueError(f"ball_uv must have shape (B, N, T, 2), got {tuple(ball_uv.shape)}")
+            raise ValueError(
+                f"ball_uv must have shape (B, N, T, 2), got {tuple(ball_uv.shape)}"
+            )
 
         batch_size, n_cams, seq_len_in, _ = ball_uv.shape
         if seq_len_in > self.max_seq_len:
@@ -279,9 +303,13 @@ class BLCSMultiViewAxialModel(nn.Module):
                 )
 
         if ball_vis is None:
-            raise ValueError("ball_vis is required for BLCSMultiViewAxialModel forward.")
+            raise ValueError(
+                "ball_vis is required for BLCSMultiViewAxialModel forward."
+            )
         if ball_mask is None:
-            raise ValueError("ball_mask is required for BLCSMultiViewAxialModel forward.")
+            raise ValueError(
+                "ball_mask is required for BLCSMultiViewAxialModel forward."
+            )
         if ball_vis.shape != (batch_size, n_cams, seq_len_in):
             raise ValueError(
                 f"ball_vis must have shape {(batch_size, n_cams, seq_len_in)}, "
@@ -293,20 +321,28 @@ class BLCSMultiViewAxialModel(nn.Module):
                 f"got {tuple(ball_mask.shape)}"
             )
 
-        court_flat = court_kp.reshape(batch_size * n_cams * seq_len_in, self.num_court_tokens, 2)
+        court_flat = court_kp.reshape(
+            batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
+        )
         ball_flat = ball_uv.reshape(batch_size * n_cams * seq_len_in, 2)
         group_vis = ball_vis.reshape(batch_size * n_cams * seq_len_in)
-        x = self.group_embed(court_flat, ball_flat, group_vis).reshape(
-            batch_size,
-            n_cams,
-            seq_len_in,
-            self.hidden_dim,
-        ).permute(0, 2, 1, 3)
+        x = (
+            self.group_embed(court_flat, ball_flat, group_vis)
+            .reshape(
+                batch_size,
+                n_cams,
+                seq_len_in,
+                self.hidden_dim,
+            )
+            .permute(0, 2, 1, 3)
+        )
 
         token_valid = (ball_mask > 0).permute(0, 2, 1)
 
         camera_valid = token_valid.reshape(batch_size * seq_len_in, n_cams)
-        time_valid = token_valid.permute(0, 2, 1).reshape(batch_size * n_cams, seq_len_in)
+        time_valid = token_valid.permute(0, 2, 1).reshape(
+            batch_size * n_cams, seq_len_in
+        )
         camera_mask, _ = self._build_self_attn_mask(camera_valid)
         time_mask, _ = self._build_self_attn_mask(time_valid)
         camera_freqs = self._camera_freqs(
@@ -333,13 +369,17 @@ class BLCSMultiViewAxialModel(nn.Module):
             )
             x = x_camera.reshape(batch_size, seq_len_in, n_cams, self.hidden_dim)
 
-            x_time = x.permute(0, 2, 1, 3).reshape(batch_size * n_cams, seq_len_in, self.hidden_dim)
+            x_time = x.permute(0, 2, 1, 3).reshape(
+                batch_size * n_cams, seq_len_in, self.hidden_dim
+            )
             x_time = time_layer(
                 x_time,
                 freqs_cis=time_freqs,
                 attn_mask=time_mask,
             )
-            x = x_time.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim).permute(0, 2, 1, 3)
+            x = x_time.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim).permute(
+                0, 2, 1, 3
+            )
 
         x = x[:, :, 0, :]
         x = self.final_norm(x)

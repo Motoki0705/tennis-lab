@@ -40,15 +40,21 @@ def _normalize_attn_mask(
 
     if attn_mask.dim() == 2:
         if attn_mask.shape != (q_len, k_len):
-            raise ValueError(f"attn_mask shape must be {(q_len, k_len)}, got {tuple(attn_mask.shape)}")
+            raise ValueError(
+                f"attn_mask shape must be {(q_len, k_len)}, got {tuple(attn_mask.shape)}"
+            )
         attn_mask = attn_mask[None, None, :, :]  # (1,1,q,k)
     elif attn_mask.dim() == 3:
         if attn_mask.shape[1:] != (q_len, k_len):
-            raise ValueError(f"attn_mask shape must be (B,{q_len},{k_len}), got {tuple(attn_mask.shape)}")
+            raise ValueError(
+                f"attn_mask shape must be (B,{q_len},{k_len}), got {tuple(attn_mask.shape)}"
+            )
         attn_mask = attn_mask[:, None, :, :]  # (B,1,q,k)
     elif attn_mask.dim() == 4:
         if attn_mask.shape[-2:] != (q_len, k_len):
-            raise ValueError(f"attn_mask last dims must be ({q_len},{k_len}), got {tuple(attn_mask.shape)}")
+            raise ValueError(
+                f"attn_mask last dims must be ({q_len},{k_len}), got {tuple(attn_mask.shape)}"
+            )
         # keep as-is; should be broadcastable to (B,H,q,k)
     else:
         raise ValueError(f"Unsupported attn_mask rank: {attn_mask.dim()}")
@@ -101,13 +107,17 @@ class MultiHeadSelfAttention(nn.Module):
         self.wqkv = nn.Linear(self.dim, 3 * self.n_heads * self.head_dim, bias=bias)
         self.wo = nn.Linear(self.n_heads * self.head_dim, self.dim, bias=bias)
 
-    def _shape_qkv(self, qkv: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _shape_qkv(
+        self, qkv: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         bsz, seqlen, _ = qkv.shape
         qkv = qkv.view(bsz, seqlen, 3, self.n_heads, self.head_dim)
         q, k, v = qkv.unbind(dim=2)  # each: (B, T, H, D)
         return q, k, v
 
-    def _apply_rope(self, q: torch.Tensor, k: torch.Tensor, freqs_cis: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def _apply_rope(
+        self, q: torch.Tensor, k: torch.Tensor, freqs_cis: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         if self.rope_dim == 0:
             return q, k
         q_pe, q_rest = q[..., : self.rope_dim], q[..., self.rope_dim :]
@@ -152,15 +162,156 @@ class MultiHeadSelfAttention(nn.Module):
         sdpa_mask: torch.Tensor | None = None
 
         if attn_mask is not None:
-            sdpa_mask = _normalize_attn_mask(attn_mask, q_len=q_len, k_len=k_len, device=x.device, dtype=x.dtype)
+            sdpa_mask = _normalize_attn_mask(
+                attn_mask, q_len=q_len, k_len=k_len, device=x.device, dtype=x.dtype
+            )
 
         out = F.scaled_dot_product_attention(
-            q_, k_, v_,
+            q_,
+            k_,
+            v_,
             attn_mask=sdpa_mask,
             dropout_p=self.attn_dropout if self.training else 0.0,
             is_causal=False,
         )
-        out = out.transpose(1, 2).contiguous().view(bsz, q_len, self.n_heads * self.head_dim)
+        out = (
+            out.transpose(1, 2)
+            .contiguous()
+            .view(bsz, q_len, self.n_heads * self.head_dim)
+        )
+        return self.wo(out)
+
+
+class GroupedQuerySelfAttention(nn.Module):
+    """
+    Pure PyTorch Grouped Query Self-Attention using SDPA.
+
+    Query heads use ``n_heads`` while key/value heads use ``n_kv_heads``.
+    The public forward interface matches ``MultiHeadSelfAttention`` so blocks
+    can switch between MHA and GQA without changing call sites.
+    """
+
+    def __init__(
+        self,
+        dim: int,
+        n_heads: int,
+        n_kv_heads: int,
+        *,
+        head_dim: int | None = None,
+        rope_dim: int | None = None,
+        attn_dropout: float = 0.0,
+        bias: bool = False,
+    ) -> None:
+        super().__init__()
+        if n_heads <= 0:
+            raise ValueError(f"n_heads must be positive, got {n_heads}")
+        if n_kv_heads <= 0:
+            raise ValueError(f"n_kv_heads must be positive, got {n_kv_heads}")
+        if n_heads % n_kv_heads != 0:
+            raise ValueError(
+                f"n_heads={n_heads} must be divisible by n_kv_heads={n_kv_heads}"
+            )
+        if head_dim is None:
+            if dim % n_heads != 0:
+                raise ValueError(f"dim={dim} must be divisible by n_heads={n_heads}")
+            head_dim = dim // n_heads
+        if rope_dim is None:
+            rope_dim = head_dim
+        if rope_dim % 2 != 0:
+            raise ValueError(f"rope_dim must be even, got {rope_dim}")
+        if rope_dim > head_dim:
+            raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
+
+        self.dim = int(dim)
+        self.n_heads = int(n_heads)
+        self.n_kv_heads = int(n_kv_heads)
+        self.head_dim = int(head_dim)
+        self.rope_dim = int(rope_dim)
+        self.attn_dropout = float(attn_dropout)
+
+        self.wq = nn.Linear(self.dim, self.n_heads * self.head_dim, bias=bias)
+        self.wk = nn.Linear(self.dim, self.n_kv_heads * self.head_dim, bias=bias)
+        self.wv = nn.Linear(self.dim, self.n_kv_heads * self.head_dim, bias=bias)
+        self.wo = nn.Linear(self.n_heads * self.head_dim, self.dim, bias=bias)
+
+    def _shape_query(self, tensor: torch.Tensor) -> torch.Tensor:
+        bsz, seqlen, _ = tensor.shape
+        return tensor.view(bsz, seqlen, self.n_heads, self.head_dim)
+
+    def _shape_kv(self, tensor: torch.Tensor) -> torch.Tensor:
+        bsz, seqlen, _ = tensor.shape
+        return tensor.view(bsz, seqlen, self.n_kv_heads, self.head_dim)
+
+    def _apply_rope(
+        self,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        freqs_cis: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        if self.rope_dim == 0:
+            return query, key
+        query_pe, query_rest = query[..., : self.rope_dim], query[..., self.rope_dim :]
+        key_pe, key_rest = key[..., : self.rope_dim], key[..., self.rope_dim :]
+        query_pe = apply_rotary_emb(query_pe, freqs_cis, interleaved=True)
+        key_pe = apply_rotary_emb(key_pe, freqs_cis, interleaved=True)
+        query = torch.cat([query_pe, query_rest], dim=-1)
+        key = torch.cat([key_pe, key_rest], dim=-1)
+        return query, key
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        *,
+        freqs_cis: torch.Tensor | None = None,
+        attn_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """
+        Args:
+            x: (B, T, dim)
+            freqs_cis: complex cis frequencies for RoPE. Supports `(T, rope_dim//2)`
+                or batched `(B, T, rope_dim//2)`.
+            attn_mask: optional user mask; see module docstring
+
+        Returns:
+            (B, T, dim)
+        """
+        bsz, q_len, _ = x.shape
+        query = self._shape_query(self.wq(x))
+        key = self._shape_kv(self.wk(x))
+        value = self._shape_kv(self.wv(x))
+
+        if freqs_cis is not None:
+            query, key = self._apply_rope(query, key, freqs_cis)
+
+        k_len = q_len
+        query = query.transpose(1, 2)
+        key = key.transpose(1, 2)
+        value = value.transpose(1, 2)
+
+        sdpa_mask: torch.Tensor | None = None
+        if attn_mask is not None:
+            sdpa_mask = _normalize_attn_mask(
+                attn_mask,
+                q_len=q_len,
+                k_len=k_len,
+                device=x.device,
+                dtype=x.dtype,
+            )
+
+        out = F.scaled_dot_product_attention(
+            query,
+            key,
+            value,
+            attn_mask=sdpa_mask,
+            dropout_p=self.attn_dropout if self.training else 0.0,
+            is_causal=False,
+            enable_gqa=self.n_kv_heads != self.n_heads,
+        )
+        out = (
+            out.transpose(1, 2)
+            .contiguous()
+            .view(bsz, q_len, self.n_heads * self.head_dim)
+        )
         return self.wo(out)
 
 
@@ -288,7 +439,11 @@ class MultiHeadCrossAttention(nn.Module):
             dropout_p=self.attn_dropout if self.training else 0.0,
             is_causal=False,
         )
-        out = out.transpose(1, 2).contiguous().view(bsz, q_len, self.n_heads * self.head_dim)
+        out = (
+            out.transpose(1, 2)
+            .contiguous()
+            .view(bsz, q_len, self.n_heads * self.head_dim)
+        )
         return self.wo(out)
 
 

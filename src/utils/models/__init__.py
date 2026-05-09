@@ -4,10 +4,14 @@ Strategy A: treat the DeepSeek-style, pure PyTorch implementation in
 `src.utils.models.components` as canonical and re-export it here.
 """
 
+from src.utils.models.architectures import (
+    TransformerSequenceDiscriminator,
+)
 from src.utils.models.components import (
     MLP,
     CrossAttnBlock,
     CrossAttnBlockConfig,
+    GroupedQuerySelfAttention,
     LayerNorm,
     MultiHeadCrossAttention,
     MultiHeadSelfAttention,
@@ -27,12 +31,10 @@ from src.utils.models.embeddings import (
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
 )
-from src.utils.models.architectures import (
-    TransformerSequenceDiscriminator,
-)
 
 __all__ = [
     # Attention
+    "GroupedQuerySelfAttention",
     "MultiHeadCrossAttention",
     "MultiHeadSelfAttention",
     # Norm
