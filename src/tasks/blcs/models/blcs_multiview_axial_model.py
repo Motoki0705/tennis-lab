@@ -167,14 +167,10 @@ class BLCSMultiViewAxialModel(nn.Module):
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_heads=int(model_cfg.get("num_heads", 8)),
-            attention_type=cast(
-                Literal["mha", "gqa"], str(model_cfg.get("attention_type", "mha"))
-            ),
+            attention_type=str(model_cfg.get("attention_type", "mha")),
             num_kv_heads=model_cfg.get("num_kv_heads", None),
             ffn_dim=model_cfg.get("ffn_dim", None),
-            ffn_type=cast(
-                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
-            ),
+            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
