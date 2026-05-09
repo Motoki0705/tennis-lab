@@ -9,6 +9,8 @@ hidden_dim: 512
 
 num_layers: 8
 num_heads: 8
+attention_type: mha
+num_kv_heads: null
 ffn_dim: null
 ffn_type: swiglu
 dropout: 0.1

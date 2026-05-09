@@ -144,6 +144,15 @@ SMOKE_TASK_SPECS = (
                 ),
             ),
             SmokeVariant(
+                name="multiview_axial_gqa",
+                overrides=(
+                    "model=multiview_axial",
+                    "data=multiview",
+                    "model.attention_type=gqa",
+                    "model.num_kv_heads=2",
+                ),
+            ),
+            SmokeVariant(
                 name="multiview_axial_num_court_kp_12",
                 overrides=(
                     "model=multiview_axial",
@@ -650,7 +659,9 @@ def _assert_common_artifacts(output_dir: Path, *, expect_qualitative: bool) -> N
         assert not qualitative_dir.exists()
 
 
-def _assert_gan_training(case: SmokeCase, callbacks: list[Any], lightning_module: Any) -> None:
+def _assert_gan_training(
+    case: SmokeCase, callbacks: list[Any], lightning_module: Any
+) -> None:
     if not case.expect_gan_training:
         return
 
@@ -720,7 +731,12 @@ def test_scene_training_smoke_contracts(case: SmokeCase, tmp_path: Path) -> None
         trainer.test(lightning_module, datamodule=datamodule)
     else:
         with pytest.raises(
-            (AttributeError, MisconfigurationException, NotImplementedError, RuntimeError)
+            (
+                AttributeError,
+                MisconfigurationException,
+                NotImplementedError,
+                RuntimeError,
+            )
         ):
             trainer.test(lightning_module, datamodule=datamodule)
 
