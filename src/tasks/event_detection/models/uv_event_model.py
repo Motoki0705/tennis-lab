@@ -58,8 +58,7 @@ class UVEventModel(nn.Module):
         self.num_events = int(num_events)
         self.num_court_tokens = int(num_court_tokens)
 
-        if self.hidden_dim % num_heads != 0:
-            raise ValueError("hidden_dim must be divisible by num_heads.")
+        self._validate_init_args(hidden_dim=self.hidden_dim, num_heads=num_heads)
         head_dim = self.hidden_dim // int(num_heads)
         rope_dim = head_dim
         self.rope_theta = float(rope_theta)
@@ -101,7 +100,9 @@ class UVEventModel(nn.Module):
             ]
         )
         self.final_norm = RMSNorm(self.hidden_dim)
-        self.head = EventLogitsHead(input_dim=self.hidden_dim, num_events=self.num_events, dropout=dropout)
+        self.head = EventLogitsHead(
+            input_dim=self.hidden_dim, num_events=self.num_events, dropout=dropout
+        )
 
         freqs_cis = precompute_freqs_cis_nd(
             dim=rope_dim,
@@ -109,6 +110,11 @@ class UVEventModel(nn.Module):
             base=self.rope_bases,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
+
+    @staticmethod
+    def _validate_init_args(*, hidden_dim: int, num_heads: int) -> None:
+        if hidden_dim % num_heads != 0:
+            raise ValueError("hidden_dim must be divisible by num_heads.")
 
     @classmethod
     def from_config(cls, config: DictConfig) -> UVEventModel:
@@ -127,7 +133,9 @@ class UVEventModel(nn.Module):
             max_seq_len=int(model_cfg.get("max_seq_len", 256)),
             num_events=int(model_cfg.get("num_events", 2)),
             ffn_dim=model_cfg.get("ffn_dim"),
-            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
+            ffn_type=cast(
+                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
+            ),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )
@@ -177,21 +185,16 @@ class UVEventModel(nn.Module):
             Logits (B, T, E)
         """
         B, T, _ = ball_uv.shape
-        if self.max_seq_len < T:
-            ball_uv = ball_uv[:, : self.max_seq_len]
-            if ball_vis is not None:
-                ball_vis = ball_vis[:, : self.max_seq_len]
-            if ball_mask is not None:
-                ball_mask = ball_mask[:, : self.max_seq_len]
-            if seq_len is not None:
-                seq_len = torch.clamp(seq_len, max=self.max_seq_len)
-            T = self.max_seq_len
+        ball_uv, ball_vis, ball_mask, seq_len, T = self._clip_sequence_inputs(
+            ball_uv=ball_uv,
+            ball_vis=ball_vis,
+            ball_mask=ball_mask,
+            seq_len=seq_len,
+            seq_len_in=T,
+        )
 
         court_tokens = self.court_embed(court_kp, court_vis)  # (B, K, D)
-        if court_tokens.shape[1] != self.num_court_tokens:
-            raise ValueError(
-                f"Expected {self.num_court_tokens} court tokens, got {court_tokens.shape[1]}"
-            )
+        self._validate_court_tokens(court_tokens)
         ball_tokens = self.ball_embed(ball_uv, ball_vis)  # (B, T, D)
 
         K = self.num_court_tokens
@@ -207,12 +210,7 @@ class UVEventModel(nn.Module):
             ball_valid = ball_mask > 0
             key_padding_mask = torch.cat([court_valid, ball_valid], dim=1)  # (B, S)
 
-        freqs_cis = cast(Tensor, self.freqs_cis)
-        if freqs_cis.shape[0] < S:
-            raise ValueError("Sequence length exceeds max_seq_len; increase model.max_seq_len.")
-        freqs_cis = freqs_cis[:S]
-        if freqs_cis.device != x.device:
-            freqs_cis = freqs_cis.to(x.device)
+        freqs_cis = self._freqs_for_sequence(x=x, seq_len=S)
 
         attn_mask: Tensor | None = None
         if key_padding_mask is not None:
@@ -229,6 +227,43 @@ class UVEventModel(nn.Module):
 
         ball_h = x[:, K:, :]
         return cast(Tensor, self.head(ball_h))
+
+    def _clip_sequence_inputs(
+        self,
+        *,
+        ball_uv: Tensor,
+        ball_vis: Tensor | None,
+        ball_mask: Tensor | None,
+        seq_len: Tensor | None,
+        seq_len_in: int,
+    ) -> tuple[Tensor, Tensor | None, Tensor | None, Tensor | None, int]:
+        if self.max_seq_len < seq_len_in:
+            ball_uv = ball_uv[:, : self.max_seq_len]
+            if ball_vis is not None:
+                ball_vis = ball_vis[:, : self.max_seq_len]
+            if ball_mask is not None:
+                ball_mask = ball_mask[:, : self.max_seq_len]
+            if seq_len is not None:
+                seq_len = torch.clamp(seq_len, max=self.max_seq_len)
+            seq_len_in = self.max_seq_len
+        return ball_uv, ball_vis, ball_mask, seq_len, seq_len_in
+
+    def _validate_court_tokens(self, court_tokens: Tensor) -> None:
+        if court_tokens.shape[1] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected {self.num_court_tokens} court tokens, got {court_tokens.shape[1]}"
+            )
+
+    def _freqs_for_sequence(self, *, x: Tensor, seq_len: int) -> Tensor:
+        freqs_cis = cast(Tensor, self.freqs_cis)
+        if freqs_cis.shape[0] < seq_len:
+            raise ValueError(
+                "Sequence length exceeds max_seq_len; increase model.max_seq_len."
+            )
+        freqs_cis = freqs_cis[:seq_len]
+        if freqs_cis.device != x.device:
+            freqs_cis = freqs_cis.to(x.device)
+        return freqs_cis
 
 
 if __name__ == "__main__":
@@ -247,6 +282,13 @@ if __name__ == "__main__":
     court_kp = torch.rand(2, num_court_tokens, 2)
     court_vis = torch.ones(2, num_court_tokens)
     seq_len = torch.tensor([32, 16])
-    logits = model(ball_uv, court_kp, ball_vis=ball_vis, ball_mask=ball_mask, court_vis=court_vis, seq_len=seq_len)
+    logits = model(
+        ball_uv,
+        court_kp,
+        ball_vis=ball_vis,
+        ball_mask=ball_mask,
+        court_vis=court_vis,
+        seq_len=seq_len,
+    )
     assert logits.shape == (2, 32, 2)
     print("uv model smoke ok")

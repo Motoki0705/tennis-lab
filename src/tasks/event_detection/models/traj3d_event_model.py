@@ -43,8 +43,7 @@ class Traj3DEventModel(nn.Module):
         self.max_seq_len = int(max_seq_len)
         self.num_events = int(num_events)
 
-        if self.hidden_dim % num_heads != 0:
-            raise ValueError("hidden_dim must be divisible by num_heads.")
+        self._validate_init_args(hidden_dim=self.hidden_dim, num_heads=num_heads)
         head_dim = self.hidden_dim // int(num_heads)
         rope_dim = head_dim
         rope_base = float(rope_theta if rope_theta_time is None else rope_theta_time)
@@ -75,7 +74,9 @@ class Traj3DEventModel(nn.Module):
             ]
         )
         self.final_norm = RMSNorm(self.hidden_dim)
-        self.head = EventLogitsHead(input_dim=self.hidden_dim, num_events=self.num_events, dropout=dropout)
+        self.head = EventLogitsHead(
+            input_dim=self.hidden_dim, num_events=self.num_events, dropout=dropout
+        )
 
         freqs_cis = precompute_freqs_cis(
             dim=rope_dim,
@@ -84,6 +85,11 @@ class Traj3DEventModel(nn.Module):
             device=None,
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
+
+    @staticmethod
+    def _validate_init_args(*, hidden_dim: int, num_heads: int) -> None:
+        if hidden_dim % num_heads != 0:
+            raise ValueError("hidden_dim must be divisible by num_heads.")
 
     @classmethod
     def from_config(cls, config: DictConfig) -> Traj3DEventModel:
@@ -99,7 +105,9 @@ class Traj3DEventModel(nn.Module):
             max_seq_len=int(model_cfg.get("max_seq_len", 256)),
             num_events=int(model_cfg.get("num_events", 2)),
             ffn_dim=model_cfg.get("ffn_dim"),
-            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
+            ffn_type=cast(
+                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
+            ),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
         )
 
@@ -141,7 +149,9 @@ class Traj3DEventModel(nn.Module):
 
 
 if __name__ == "__main__":
-    model = Traj3DEventModel(hidden_dim=64, num_layers=2, num_heads=4, max_seq_len=32, num_events=2)
+    model = Traj3DEventModel(
+        hidden_dim=64, num_layers=2, num_heads=4, max_seq_len=32, num_events=2
+    )
     ball_pos = torch.randn(2, 32, 3)
     seq_len = torch.tensor([32, 16])
     logits = model(ball_pos, seq_len=seq_len)

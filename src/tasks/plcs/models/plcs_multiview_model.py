@@ -62,12 +62,20 @@ class RoPETransformerBlock(nn.Module):
         )
 
         self.ffn_norm = RMSNorm(dim)
+        self.ffn = self._build_ffn(dim=dim, ffn_dim=ffn_dim, ffn_type=ffn_type)
+
+    @staticmethod
+    def _build_ffn(
+        *,
+        dim: int,
+        ffn_dim: int,
+        ffn_type: Literal["swiglu", "mlp"],
+    ) -> nn.Module:
         if ffn_type == "swiglu":
-            self.ffn: nn.Module = SwiGLU(dim, ffn_dim)
-        elif ffn_type == "mlp":
-            self.ffn = MLP(dim, ffn_dim)
-        else:
-            raise ValueError(f"Unsupported ffn_type={ffn_type}")
+            return SwiGLU(dim, ffn_dim)
+        if ffn_type == "mlp":
+            return MLP(dim, ffn_dim)
+        raise ValueError(f"Unsupported ffn_type={ffn_type}")
 
     def forward(
         self,
@@ -127,13 +135,14 @@ class PLCSMultiViewModel(nn.Module):
             float(rope_theta_type),
         )
 
-        if self.rope_dim % 2 != 0:
-            raise ValueError(f"RoPE requires an even rope_dim, got {self.rope_dim}")
+        self._validate_init_args(rope_dim=self.rope_dim)
 
         if ffn_dim is None:
             ffn_dim = default_ffn_dim(hidden_dim)
 
-        self.invisible_token = InvisibleTokenEmbedding(dim=hidden_dim, init_std=invisible_init_std)
+        self.invisible_token = InvisibleTokenEmbedding(
+            dim=hidden_dim, init_std=invisible_init_std
+        )
         self.court_embed = CourtKPUVEmbedding(
             dim=hidden_dim,
             dropout=dropout,
@@ -188,6 +197,11 @@ class PLCSMultiViewModel(nn.Module):
                 dropout=dropout,
             )
 
+    @staticmethod
+    def _validate_init_args(*, rope_dim: int) -> None:
+        if rope_dim % 2 != 0:
+            raise ValueError(f"RoPE requires an even rope_dim, got {rope_dim}")
+
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSMultiViewModel:
         """Create model from hydra config."""
@@ -205,7 +219,9 @@ class PLCSMultiViewModel(nn.Module):
             rope_theta_time=model_cfg.get("rope_theta_time", None),
             rope_theta_camera=model_cfg.get("rope_theta_camera", None),
             rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
-            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
+            ffn_type=cast(
+                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
+            ),
             predict_canonical_pose=bool(model_cfg.get("predict_canonical_pose", False)),
             max_views=model_cfg.get("max_views", 8),
             max_seq_len=model_cfg.get("max_seq_len", 120),
@@ -223,21 +239,32 @@ class PLCSMultiViewModel(nn.Module):
         """Build `(S, 3)` coordinates with axes: (time, camera, type)."""
         per_cam: list[Tensor] = []
         for cam_idx in range(n_cameras):
-            court_time = torch.zeros(self.num_court_tokens, device=device, dtype=torch.long)
-            court_cam = torch.full((self.num_court_tokens,), cam_idx, device=device, dtype=torch.long)
-            court_type = torch.zeros(self.num_court_tokens, device=device, dtype=torch.long)
+            court_time = torch.zeros(
+                self.num_court_tokens, device=device, dtype=torch.long
+            )
+            court_cam = torch.full(
+                (self.num_court_tokens,), cam_idx, device=device, dtype=torch.long
+            )
+            court_type = torch.zeros(
+                self.num_court_tokens, device=device, dtype=torch.long
+            )
             court_pos = torch.stack([court_time, court_cam, court_type], dim=-1)
 
-            frame_time = torch.arange(seq_len, device=device, dtype=torch.long).repeat_interleave(
-                self.frame_block_tokens
-            ) + 1
+            frame_time = (
+                torch.arange(
+                    seq_len, device=device, dtype=torch.long
+                ).repeat_interleave(self.frame_block_tokens)
+                + 1
+            )
             frame_cam = torch.full(
                 (seq_len * self.frame_block_tokens,),
                 cam_idx,
                 device=device,
                 dtype=torch.long,
             )
-            frame_type = torch.ones(seq_len * self.frame_block_tokens, device=device, dtype=torch.long)
+            frame_type = torch.ones(
+                seq_len * self.frame_block_tokens, device=device, dtype=torch.long
+            )
             frame_pos = torch.stack([frame_time, frame_cam, frame_type], dim=-1)
             per_cam.append(torch.cat([court_pos, frame_pos], dim=0))
 
@@ -283,52 +310,16 @@ class PLCSMultiViewModel(nn.Module):
                 - position: (B, T, 3)
                 - rotation: (B, T, 2)
         """
-        if human_kp.dim() != 5:
-            raise ValueError(
-                "PLCSMultiViewModel expects human_kp as (B,N,T,17,2), "
-                f"got shape {tuple(human_kp.shape)}"
-            )
-        if court_kp.dim() != 5:
-            raise ValueError(
-                "PLCSMultiViewModel expects court_kp as "
-                f"(B,N,T,{self.num_court_tokens},2), "
-                f"got shape {tuple(court_kp.shape)}"
-            )
-        if court_kp.shape[-2] != self.num_court_tokens:
-            raise ValueError(
-                f"Expected court_kp with K={self.num_court_tokens}, got K={court_kp.shape[-2]}."
-            )
-        if human_vis is not None and human_vis.dim() != 4:
-            raise ValueError(
-                "PLCSMultiViewModel expects human_vis as (B,N,T,17), "
-                f"got shape {tuple(human_vis.shape)}"
-            )
-        if court_vis is not None and court_vis.dim() != 4:
-            raise ValueError(
-                "PLCSMultiViewModel expects court_vis as "
-                f"(B,N,T,{self.num_court_tokens}), "
-                f"got shape {tuple(court_vis.shape)}"
-            )
-        if court_vis is not None and court_vis.shape[-1] != self.num_court_tokens:
-            raise ValueError(
-                f"Expected court_vis with K={self.num_court_tokens}, got K={court_vis.shape[-1]}."
-            )
-
-        # (B, N, T, K, 2)
-        B, N, T = human_kp.shape[:3]
+        B, N, T = self._validate_forward_inputs(
+            human_kp=human_kp,
+            court_kp=court_kp,
+            human_vis=human_vis,
+            human_mask=human_mask,
+            court_vis=court_vis,
+        )
         device = human_kp.device
 
-        if self.max_views < N:
-            raise ValueError(f"Number of views N={N} exceeds max_views={self.max_views}.")
-        if self.max_seq_len < T:
-            raise ValueError(f"Sequence length T={T} exceeds max_seq_len={self.max_seq_len}.")
-
         if human_mask is not None:
-            if human_mask.dim() != 3 or human_mask.shape != (B, N, T):
-                raise ValueError(
-                    "human_mask for multiview models must be (B,N,T), "
-                    f"got {tuple(human_mask.shape)}"
-                )
             token_mask = human_mask > 0
             view_valid = token_mask.any(dim=2)
             seq_valid = token_mask.any(dim=1)
@@ -339,8 +330,6 @@ class PLCSMultiViewModel(nn.Module):
         # court is camera-level (use first frame per camera)
         court_scene = court_kp[:, :, 0, :, :]  # (B,N,K,2)
         K = court_scene.shape[2]
-        if self.num_court_tokens != K:
-            raise ValueError(f"Expected {self.num_court_tokens} court tokens, got {K}.")
         court_scene_flat = court_scene.reshape(B * N, K, 2)
 
         court_vis_scene: Tensor | None = None
@@ -363,7 +352,9 @@ class PLCSMultiViewModel(nn.Module):
         cls_po = self.cls_po_token.expand(B, N, T, -1, -1)
         cls_ro = self.cls_ro_token.expand(B, N, T, -1, -1)
         frame_tok = torch.cat([cls_po, cls_ro, player_tok], dim=3)  # (B,N,T,19,D)
-        frame_tok = frame_tok.reshape(B, N, T * self.frame_block_tokens, self.hidden_dim)
+        frame_tok = frame_tok.reshape(
+            B, N, T * self.frame_block_tokens, self.hidden_dim
+        )
 
         camera_block_tokens = K + T * self.frame_block_tokens
         tokens_per_camera = torch.cat([court_tok, frame_tok], dim=2)  # (B,N,L_cam,D)
@@ -412,13 +403,23 @@ class PLCSMultiViewModel(nn.Module):
         x = self.final_norm(x)
         x = x * token_valid.unsqueeze(-1).to(dtype=x.dtype)
 
-        time_offsets = K + torch.arange(T, device=device, dtype=torch.long) * self.frame_block_tokens
-        cam_offsets = torch.arange(N, device=device, dtype=torch.long).view(N, 1) * camera_block_tokens
+        time_offsets = (
+            K
+            + torch.arange(T, device=device, dtype=torch.long) * self.frame_block_tokens
+        )
+        cam_offsets = (
+            torch.arange(N, device=device, dtype=torch.long).view(N, 1)
+            * camera_block_tokens
+        )
         po_idx = (cam_offsets + time_offsets.view(1, T)).reshape(-1)
         ro_idx = po_idx + 1
 
-        po_feat = x.gather(1, po_idx.view(1, N * T, 1).expand(B, N * T, self.hidden_dim))
-        ro_feat = x.gather(1, ro_idx.view(1, N * T, 1).expand(B, N * T, self.hidden_dim))
+        po_feat = x.gather(
+            1, po_idx.view(1, N * T, 1).expand(B, N * T, self.hidden_dim)
+        )
+        ro_feat = x.gather(
+            1, ro_idx.view(1, N * T, 1).expand(B, N * T, self.hidden_dim)
+        )
         po_feat = po_feat.view(B, N, T, self.hidden_dim)
         ro_feat = ro_feat.view(B, N, T, self.hidden_dim)
 
@@ -441,3 +442,62 @@ class PLCSMultiViewModel(nn.Module):
         if self.predict_canonical_pose and self.canonical_pose_head is not None:
             out["canonical_pose"] = self.canonical_pose_head(pose_latent)
         return out
+
+    def _validate_forward_inputs(
+        self,
+        *,
+        human_kp: Tensor,
+        court_kp: Tensor,
+        human_vis: Tensor | None,
+        human_mask: Tensor | None,
+        court_vis: Tensor | None,
+    ) -> tuple[int, int, int]:
+        if human_kp.dim() != 5:
+            raise ValueError(
+                "PLCSMultiViewModel expects human_kp as (B,N,T,17,2), "
+                f"got shape {tuple(human_kp.shape)}"
+            )
+        if court_kp.dim() != 5:
+            raise ValueError(
+                "PLCSMultiViewModel expects court_kp as "
+                f"(B,N,T,{self.num_court_tokens},2), "
+                f"got shape {tuple(court_kp.shape)}"
+            )
+        if court_kp.shape[-2] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected court_kp with K={self.num_court_tokens}, got K={court_kp.shape[-2]}."
+            )
+        if human_vis is not None and human_vis.dim() != 4:
+            raise ValueError(
+                "PLCSMultiViewModel expects human_vis as (B,N,T,17), "
+                f"got shape {tuple(human_vis.shape)}"
+            )
+        if court_vis is not None and court_vis.dim() != 4:
+            raise ValueError(
+                "PLCSMultiViewModel expects court_vis as "
+                f"(B,N,T,{self.num_court_tokens}), "
+                f"got shape {tuple(court_vis.shape)}"
+            )
+        if court_vis is not None and court_vis.shape[-1] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected court_vis with K={self.num_court_tokens}, got K={court_vis.shape[-1]}."
+            )
+
+        batch_size, n_cams, seq_len = human_kp.shape[:3]
+        if self.max_views < n_cams:
+            raise ValueError(
+                f"Number of views N={n_cams} exceeds max_views={self.max_views}."
+            )
+        if self.max_seq_len < seq_len:
+            raise ValueError(
+                f"Sequence length T={seq_len} exceeds max_seq_len={self.max_seq_len}."
+            )
+
+        if human_mask is not None and (
+            human_mask.dim() != 3 or human_mask.shape != (batch_size, n_cams, seq_len)
+        ):
+            raise ValueError(
+                "human_mask for multiview models must be (B,N,T), "
+                f"got {tuple(human_mask.shape)}"
+            )
+        return batch_size, n_cams, seq_len

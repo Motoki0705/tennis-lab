@@ -138,17 +138,11 @@ class DINOPseudo3DBallDetector(nn.Module):
         expand_ratio: float = 4.0,
     ) -> None:
         super().__init__()
-        if in_channels != 3:
-            raise ValueError(
-                "DINOPseudo3DBallDetector requires 3-channel RGB input, "
-                f"got in_channels={in_channels}."
-            )
-        if num_classes <= 0:
-            raise ValueError("num_classes must be positive.")
-        if tuple(return_interm_indices) != (0, 1, 2, 3):
-            raise ValueError(
-                "DINOPseudo3DBallDetector expects return_interm_indices=(0, 1, 2, 3)."
-            )
+        self._validate_init_args(
+            in_channels=in_channels,
+            num_classes=num_classes,
+            return_interm_indices=return_interm_indices,
+        )
 
         self.in_channels = int(in_channels)
         self.num_classes = int(num_classes)
@@ -166,14 +160,10 @@ class DINOPseudo3DBallDetector(nn.Module):
             strict=backbone_strict,
         )
         self.backbone = loaded_backbone.module
-        if backbone_strict and (
-            loaded_backbone.load_result.missing_keys or loaded_backbone.load_result.unexpected_keys
-        ):
-            raise RuntimeError(
-                "Unexpected DINO backbone load result: "
-                f"missing={loaded_backbone.load_result.missing_keys}, "
-                f"unexpected={loaded_backbone.load_result.unexpected_keys}"
-            )
+        self._validate_backbone_load_result(
+            loaded_backbone,
+            strict=backbone_strict,
+        )
         if self.freeze_backbone:
             for parameter in self.backbone.parameters():
                 parameter.requires_grad = False
@@ -209,6 +199,37 @@ class DINOPseudo3DBallDetector(nn.Module):
         )
         self.final_conv = nn.Conv3d(64, self.num_classes, kernel_size=1)
 
+    @staticmethod
+    def _validate_init_args(
+        *,
+        in_channels: int,
+        num_classes: int,
+        return_interm_indices: tuple[int, ...],
+    ) -> None:
+        if in_channels != 3:
+            raise ValueError(
+                "DINOPseudo3DBallDetector requires 3-channel RGB input, "
+                f"got in_channels={in_channels}."
+            )
+        if num_classes <= 0:
+            raise ValueError("num_classes must be positive.")
+        if tuple(return_interm_indices) != (0, 1, 2, 3):
+            raise ValueError(
+                "DINOPseudo3DBallDetector expects return_interm_indices=(0, 1, 2, 3)."
+            )
+
+    @staticmethod
+    def _validate_backbone_load_result(loaded_backbone, *, strict: bool) -> None:
+        if strict and (
+            loaded_backbone.load_result.missing_keys
+            or loaded_backbone.load_result.unexpected_keys
+        ):
+            raise RuntimeError(
+                "Unexpected DINO backbone load result: "
+                f"missing={loaded_backbone.load_result.missing_keys}, "
+                f"unexpected={loaded_backbone.load_result.unexpected_keys}"
+            )
+
     @classmethod
     def from_config(cls, config: DictConfig) -> DINOPseudo3DBallDetector:
         """Create the model from a composed Hydra config."""
@@ -223,14 +244,17 @@ class DINOPseudo3DBallDetector(nn.Module):
             backbone_name=str(model_cfg.get("backbone_name", "resnet50")),
             backbone_dilation=bool(model_cfg.get("backbone_dilation", False)),
             return_interm_indices=tuple(
-                int(index) for index in model_cfg.get("return_interm_indices", [0, 1, 2, 3])
+                int(index)
+                for index in model_cfg.get("return_interm_indices", [0, 1, 2, 3])
             ),
             backbone_pretrain_img_size=(
                 None
                 if model_cfg.get("backbone_pretrain_img_size") is None
                 else int(model_cfg.get("backbone_pretrain_img_size"))
             ),
-            backbone_use_checkpoint=bool(model_cfg.get("backbone_use_checkpoint", False)),
+            backbone_use_checkpoint=bool(
+                model_cfg.get("backbone_use_checkpoint", False)
+            ),
             backbone_strict=bool(model_cfg.get("backbone_strict", True)),
             freeze_backbone=bool(model_cfg.get("freeze_backbone", True)),
             expand_ratio=float(model_cfg.get("decoder_expand_ratio", 4.0)),
@@ -238,22 +262,18 @@ class DINOPseudo3DBallDetector(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Run the DINO backbone and pseudo-3D decoder."""
-        if x.ndim != 5:
-            raise ValueError(
-                "DINOPseudo3DBallDetector expects input with shape (B, C, T, H, W), "
-                f"got ndim={x.ndim}."
-            )
-        if x.shape[1] != self.in_channels:
-            raise ValueError(
-                f"Expected {self.in_channels} input channels but received {x.shape[1]}."
-            )
+        self._validate_forward_input(x)
 
         batch_size, channels, timesteps, height, width = x.shape
-        backbone_input = x.permute(0, 2, 1, 3, 4).contiguous().view(
-            batch_size * timesteps,
-            channels,
-            height,
-            width,
+        backbone_input = (
+            x.permute(0, 2, 1, 3, 4)
+            .contiguous()
+            .view(
+                batch_size * timesteps,
+                channels,
+                height,
+                width,
+            )
         )
         features = self.backbone(backbone_input)
         level1 = self._to_5d(features["0"], batch_size, timesteps)
@@ -273,13 +293,26 @@ class DINOPseudo3DBallDetector(nn.Module):
         )
         return self.final_conv(self.final_refine(full_res))
 
+    def _validate_forward_input(self, x: torch.Tensor) -> None:
+        if x.ndim != 5:
+            raise ValueError(
+                "DINOPseudo3DBallDetector expects input with shape (B, C, T, H, W), "
+                f"got ndim={x.ndim}."
+            )
+        if x.shape[1] != self.in_channels:
+            raise ValueError(
+                f"Expected {self.in_channels} input channels but received {x.shape[1]}."
+            )
+
     @staticmethod
     def _to_5d(feature: torch.Tensor, batch_size: int, timesteps: int) -> torch.Tensor:
         """Convert flattened `(B*T, C, H, W)` backbone features into 5D tensors."""
         _, channels, height, width = feature.shape
-        return feature.view(batch_size, timesteps, channels, height, width).permute(
-            0, 2, 1, 3, 4
-        ).contiguous()
+        return (
+            feature.view(batch_size, timesteps, channels, height, width)
+            .permute(0, 2, 1, 3, 4)
+            .contiguous()
+        )
 
     @staticmethod
     def _upsample_to(x: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
