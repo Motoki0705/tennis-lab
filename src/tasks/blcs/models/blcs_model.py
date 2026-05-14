@@ -106,8 +106,7 @@ class BLCSModel(nn.Module):
         self.num_court_tokens = int(num_court_tokens)
         self.max_tokens = int(self.num_court_tokens + self.max_seq_len)
 
-        if hidden_dim % num_heads != 0:
-            raise ValueError(f"hidden_dim={hidden_dim} must be divisible by num_heads={num_heads}")
+        self._validate_init_args(hidden_dim=hidden_dim, num_heads=num_heads)
         head_dim = hidden_dim // num_heads
 
         rope_dim = head_dim if rope_dim is None else rope_dim
@@ -180,6 +179,13 @@ class BLCSModel(nn.Module):
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
 
+    @staticmethod
+    def _validate_init_args(*, hidden_dim: int, num_heads: int) -> None:
+        if hidden_dim % num_heads != 0:
+            raise ValueError(
+                f"hidden_dim={hidden_dim} must be divisible by num_heads={num_heads}"
+            )
+
     @classmethod
     def from_config(cls, config: DictConfig) -> BLCSModel:
         """Create model from configuration.
@@ -204,11 +210,11 @@ class BLCSModel(nn.Module):
             rope_theta_time=model_cfg.get("rope_theta_time", None),
             rope_theta_camera=model_cfg.get("rope_theta_camera", None),
             rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
-            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
-            predict_velocity=model_cfg.get("predict_velocity", False),
-            max_seq_len=model_cfg.get(
-                "max_seq_len", data_cfg.get("max_seq_len", 120)
+            ffn_type=cast(
+                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
             ),
+            predict_velocity=model_cfg.get("predict_velocity", False),
+            max_seq_len=model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120)),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
         )
@@ -261,24 +267,13 @@ class BLCSModel(nn.Module):
         # Tokenize court and ball
         court_tok = self.court_embed(court_kp, court_vis)  # (B, K, D)
         ball_tok = self.ball_embed(ball_uv, ball_vis)  # (B, T, D)
-        if court_tok.shape[1] != self.num_court_tokens:
-            raise ValueError(
-                f"Expected {self.num_court_tokens} court tokens, got {court_tok.shape[1]}"
-            )
+        self._validate_court_tokens(court_tok)
 
         K = court_tok.shape[1]
         x = torch.cat([court_tok, ball_tok], dim=1)  # (B, S, D)
         S = x.shape[1]
 
-        freqs_cis = cast(Tensor, self.freqs_cis)
-        if freqs_cis.shape[0] < S:
-            raise ValueError(
-                f"Sequence length S={S} exceeds cached freqs_cis length {freqs_cis.shape[0]}. "
-                "Increase max_seq_len."
-            )
-        freqs_cis = freqs_cis[:S]
-        if freqs_cis.device != x.device:
-            freqs_cis = freqs_cis.to(x.device)
+        freqs_cis = self._freqs_for_sequence(x=x, seq_len=S)
         attn_mask: Tensor | None = None
         if ball_mask is not None:
             court_valid = torch.ones(B, K, device=x.device, dtype=torch.bool)
@@ -302,6 +297,24 @@ class BLCSModel(nn.Module):
             out["velocity"] = self.velocity_head(ball_out)  # (B, T, 3)
 
         return out
+
+    def _validate_court_tokens(self, court_tokens: Tensor) -> None:
+        if court_tokens.shape[1] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected {self.num_court_tokens} court tokens, got {court_tokens.shape[1]}"
+            )
+
+    def _freqs_for_sequence(self, *, x: Tensor, seq_len: int) -> Tensor:
+        freqs_cis = cast(Tensor, self.freqs_cis)
+        if freqs_cis.shape[0] < seq_len:
+            raise ValueError(
+                f"Sequence length S={seq_len} exceeds cached freqs_cis length {freqs_cis.shape[0]}. "
+                "Increase max_seq_len."
+            )
+        freqs_cis = freqs_cis[:seq_len]
+        if freqs_cis.device != x.device:
+            freqs_cis = freqs_cis.to(x.device)
+        return freqs_cis
 
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""

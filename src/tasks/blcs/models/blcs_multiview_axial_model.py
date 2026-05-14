@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal
 
 import torch
 from torch import Tensor, nn
@@ -47,16 +47,13 @@ class BLCSMultiViewAxialModel(nn.Module):
         super().__init__()
         self.hidden_dim = int(hidden_dim)
 
-        if self.hidden_dim % num_heads != 0:
-            raise ValueError(
-                f"hidden_dim={self.hidden_dim} must be divisible by num_heads={num_heads}"
-            )
-        if max_seq_len <= 0:
-            raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
-        if max_num_cameras <= 0:
-            raise ValueError(f"max_num_cameras must be positive, got {max_num_cameras}")
-        if num_layers < 0:
-            raise ValueError(f"num_layers must be non-negative, got {num_layers}")
+        self._validate_init_args(
+            hidden_dim=self.hidden_dim,
+            num_heads=num_heads,
+            max_seq_len=max_seq_len,
+            max_num_cameras=max_num_cameras,
+            num_layers=num_layers,
+        )
 
         self.max_seq_len = int(max_seq_len)
         self.max_num_cameras = int(max_num_cameras)
@@ -65,10 +62,7 @@ class BLCSMultiViewAxialModel(nn.Module):
 
         head_dim = self.hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
-        if rope_dim % 2 != 0:
-            raise ValueError(f"rope_dim must be even, got {rope_dim}")
-        if rope_dim > head_dim:
-            raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
+        self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
 
         self.rope_dim = int(rope_dim)
         self.rope_bases = (
@@ -157,6 +151,33 @@ class BLCSMultiViewAxialModel(nn.Module):
             base=self.rope_bases,
         )
         self.register_buffer("token_freqs_cis", token_freqs, persistent=False)
+
+    @staticmethod
+    def _validate_init_args(
+        *,
+        hidden_dim: int,
+        num_heads: int,
+        max_seq_len: int,
+        max_num_cameras: int,
+        num_layers: int,
+    ) -> None:
+        if hidden_dim % num_heads != 0:
+            raise ValueError(
+                f"hidden_dim={hidden_dim} must be divisible by num_heads={num_heads}"
+            )
+        if max_seq_len <= 0:
+            raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
+        if max_num_cameras <= 0:
+            raise ValueError(f"max_num_cameras must be positive, got {max_num_cameras}")
+        if num_layers < 0:
+            raise ValueError(f"num_layers must be non-negative, got {num_layers}")
+
+    @staticmethod
+    def _validate_rope_dim(*, rope_dim: int, head_dim: int) -> None:
+        if rope_dim % 2 != 0:
+            raise ValueError(f"rope_dim must be even, got {rope_dim}")
+        if rope_dim > head_dim:
+            raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
 
     @classmethod
     def from_config(cls, config: DictConfig) -> BLCSMultiViewAxialModel:
@@ -257,69 +278,21 @@ class BLCSMultiViewAxialModel(nn.Module):
         court_vis: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Forward pass for multi-view BLCS inputs."""
-        if ball_uv.dim() != 4:
-            raise ValueError(
-                f"ball_uv must have shape (B, N, T, 2), got {tuple(ball_uv.shape)}"
-            )
-
-        batch_size, n_cams, seq_len_in, _ = ball_uv.shape
-        if seq_len_in > self.max_seq_len:
-            raise ValueError(
-                f"seq_len={seq_len_in} exceeds max_seq_len={self.max_seq_len}. "
-                "Increase model.max_seq_len."
-            )
-        if n_cams > self.max_num_cameras:
-            raise ValueError(
-                f"n_cams={n_cams} exceeds max_num_cameras={self.max_num_cameras}."
-            )
-
-        if court_kp.dim() == 4:
-            court_kp = court_kp.unsqueeze(2).expand(-1, -1, seq_len_in, -1, -1)
-        if court_kp.dim() != 5:
-            raise ValueError(
-                "court_kp must have shape "
-                f"(B, N, T, {self.num_court_tokens}, 2) or "
-                f"(B, N, {self.num_court_tokens}, 2), "
-                f"got {tuple(court_kp.shape)}"
-            )
-        if court_kp.shape[-2] != self.num_court_tokens:
-            raise ValueError(
-                f"Expected court_kp with K={self.num_court_tokens}, got K={court_kp.shape[-2]}."
-            )
-
-        if court_vis is not None:
-            if court_vis.dim() == 3:
-                court_vis = court_vis.unsqueeze(2).expand(-1, -1, seq_len_in, -1)
-            if court_vis.dim() != 4:
-                raise ValueError(
-                    "court_vis must have shape "
-                    f"(B, N, T, {self.num_court_tokens}) or "
-                    f"(B, N, {self.num_court_tokens}), "
-                    f"got {tuple(court_vis.shape)}"
-                )
-            if court_vis.shape[-1] != self.num_court_tokens:
-                raise ValueError(
-                    f"Expected court_vis with K={self.num_court_tokens}, got K={court_vis.shape[-1]}."
-                )
-
-        if ball_vis is None:
-            raise ValueError(
-                "ball_vis is required for BLCSMultiViewAxialModel forward."
-            )
-        if ball_mask is None:
-            raise ValueError(
-                "ball_mask is required for BLCSMultiViewAxialModel forward."
-            )
-        if ball_vis.shape != (batch_size, n_cams, seq_len_in):
-            raise ValueError(
-                f"ball_vis must have shape {(batch_size, n_cams, seq_len_in)}, "
-                f"got {tuple(ball_vis.shape)}"
-            )
-        if ball_mask.shape != (batch_size, n_cams, seq_len_in):
-            raise ValueError(
-                f"ball_mask must have shape {(batch_size, n_cams, seq_len_in)}, "
-                f"got {tuple(ball_mask.shape)}"
-            )
+        (
+            court_kp,
+            ball_vis,
+            ball_mask,
+            court_vis,
+            batch_size,
+            n_cams,
+            seq_len_in,
+        ) = self._prepare_forward_inputs(
+            ball_uv=ball_uv,
+            court_kp=court_kp,
+            ball_vis=ball_vis,
+            ball_mask=ball_mask,
+            court_vis=court_vis,
+        )
 
         court_flat = court_kp.reshape(
             batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
@@ -388,3 +361,77 @@ class BLCSMultiViewAxialModel(nn.Module):
         if self.predict_velocity and self.velocity_head is not None:
             out["velocity"] = self.velocity_head(x)
         return out
+
+    def _prepare_forward_inputs(
+        self,
+        *,
+        ball_uv: Tensor,
+        court_kp: Tensor,
+        ball_vis: Tensor | None,
+        ball_mask: Tensor | None,
+        court_vis: Tensor | None,
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor | None, int, int, int]:
+        if ball_uv.dim() != 4:
+            raise ValueError(
+                f"ball_uv must have shape (B, N, T, 2), got {tuple(ball_uv.shape)}"
+            )
+
+        batch_size, n_cams, seq_len_in, _ = ball_uv.shape
+        if seq_len_in > self.max_seq_len:
+            raise ValueError(
+                f"seq_len={seq_len_in} exceeds max_seq_len={self.max_seq_len}. "
+                "Increase model.max_seq_len."
+            )
+        if n_cams > self.max_num_cameras:
+            raise ValueError(
+                f"n_cams={n_cams} exceeds max_num_cameras={self.max_num_cameras}."
+            )
+
+        if court_kp.dim() == 4:
+            court_kp = court_kp.unsqueeze(2).expand(-1, -1, seq_len_in, -1, -1)
+        if court_kp.dim() != 5:
+            raise ValueError(
+                "court_kp must have shape "
+                f"(B, N, T, {self.num_court_tokens}, 2) or "
+                f"(B, N, {self.num_court_tokens}, 2), "
+                f"got {tuple(court_kp.shape)}"
+            )
+        if court_kp.shape[-2] != self.num_court_tokens:
+            raise ValueError(
+                f"Expected court_kp with K={self.num_court_tokens}, got K={court_kp.shape[-2]}."
+            )
+
+        if court_vis is not None:
+            if court_vis.dim() == 3:
+                court_vis = court_vis.unsqueeze(2).expand(-1, -1, seq_len_in, -1)
+            if court_vis.dim() != 4:
+                raise ValueError(
+                    "court_vis must have shape "
+                    f"(B, N, T, {self.num_court_tokens}) or "
+                    f"(B, N, {self.num_court_tokens}), "
+                    f"got {tuple(court_vis.shape)}"
+                )
+            if court_vis.shape[-1] != self.num_court_tokens:
+                raise ValueError(
+                    f"Expected court_vis with K={self.num_court_tokens}, got K={court_vis.shape[-1]}."
+                )
+
+        if ball_vis is None:
+            raise ValueError(
+                "ball_vis is required for BLCSMultiViewAxialModel forward."
+            )
+        if ball_mask is None:
+            raise ValueError(
+                "ball_mask is required for BLCSMultiViewAxialModel forward."
+            )
+        if ball_vis.shape != (batch_size, n_cams, seq_len_in):
+            raise ValueError(
+                f"ball_vis must have shape {(batch_size, n_cams, seq_len_in)}, "
+                f"got {tuple(ball_vis.shape)}"
+            )
+        if ball_mask.shape != (batch_size, n_cams, seq_len_in):
+            raise ValueError(
+                f"ball_mask must have shape {(batch_size, n_cams, seq_len_in)}, "
+                f"got {tuple(ball_mask.shape)}"
+            )
+        return court_kp, ball_vis, ball_mask, court_vis, batch_size, n_cams, seq_len_in

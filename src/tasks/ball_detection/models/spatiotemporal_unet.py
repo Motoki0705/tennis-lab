@@ -91,15 +91,19 @@ class EncoderBlock(nn.Module):
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Encode one resolution level and return 3D and 2D skip tensors."""
         bsz, channels, timesteps, height, width = x.shape
-        x_2d = x.permute(0, 2, 1, 3, 4).contiguous().view(
-            bsz * timesteps, channels, height, width
+        x_2d = (
+            x.permute(0, 2, 1, 3, 4)
+            .contiguous()
+            .view(bsz * timesteps, channels, height, width)
         )
         x_2d = self.block_2d(x_2d)
         skip_2d = x_2d
         _, out_channels, out_h, out_w = skip_2d.shape
-        x_3d = skip_2d.view(bsz, timesteps, out_channels, out_h, out_w).permute(
-            0, 2, 1, 3, 4
-        ).contiguous()
+        x_3d = (
+            skip_2d.view(bsz, timesteps, out_channels, out_h, out_w)
+            .permute(0, 2, 1, 3, 4)
+            .contiguous()
+        )
         skip_3d = self.block_3d(x_3d)
         return skip_3d, skip_2d
 
@@ -115,14 +119,18 @@ class BottleneckBlock(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Apply the bottleneck block to the pooled feature tensor."""
         bsz, channels, timesteps, height, width = x.shape
-        x_2d = x.permute(0, 2, 1, 3, 4).contiguous().view(
-            bsz * timesteps, channels, height, width
+        x_2d = (
+            x.permute(0, 2, 1, 3, 4)
+            .contiguous()
+            .view(bsz * timesteps, channels, height, width)
         )
         x_2d = self.block_2(self.block_1(x_2d))
         _, out_channels, out_h, out_w = x_2d.shape
-        return x_2d.view(bsz, timesteps, out_channels, out_h, out_w).permute(
-            0, 2, 1, 3, 4
-        ).contiguous()
+        return (
+            x_2d.view(bsz, timesteps, out_channels, out_h, out_w)
+            .permute(0, 2, 1, 3, 4)
+            .contiguous()
+        )
 
 
 class DecoderBlock(nn.Module):
@@ -142,14 +150,18 @@ class DecoderBlock(nn.Module):
         """Fuse the decoder state with 3D and 2D skip tensors."""
         x_3d = self.block_3d(torch.cat([x, skip_3d], dim=1))
         bsz, channels, timesteps, height, width = x_3d.shape
-        x_2d = x_3d.permute(0, 2, 1, 3, 4).contiguous().view(
-            bsz * timesteps, channels, height, width
+        x_2d = (
+            x_3d.permute(0, 2, 1, 3, 4)
+            .contiguous()
+            .view(bsz * timesteps, channels, height, width)
         )
         x_2d = self.block_2d(torch.cat([x_2d, skip_2d], dim=1))
         _, out_channels, out_h, out_w = x_2d.shape
-        return x_2d.view(bsz, timesteps, out_channels, out_h, out_w).permute(
-            0, 2, 1, 3, 4
-        ).contiguous()
+        return (
+            x_2d.view(bsz, timesteps, out_channels, out_h, out_w)
+            .permute(0, 2, 1, 3, 4)
+            .contiguous()
+        )
 
 
 class SpatioTemporalUNet(nn.Module):
@@ -164,10 +176,7 @@ class SpatioTemporalUNet(nn.Module):
 
     def __init__(self, in_channels: int = 3, num_classes: int = 1) -> None:
         super().__init__()
-        if in_channels <= 0:
-            raise ValueError("in_channels must be positive.")
-        if num_classes <= 0:
-            raise ValueError("num_classes must be positive.")
+        self._validate_init_args(in_channels=in_channels, num_classes=num_classes)
 
         self.in_channels = int(in_channels)
         self.num_classes = int(num_classes)
@@ -192,8 +201,17 @@ class SpatioTemporalUNet(nn.Module):
         self.dec2 = DecoderBlock(256, 128, 128)
         self.dec1 = DecoderBlock(128, 64, 64)
         self.pool = nn.MaxPool3d(kernel_size=2, stride=2)
-        self.upsample = nn.Upsample(scale_factor=2, mode="trilinear", align_corners=False)
+        self.upsample = nn.Upsample(
+            scale_factor=2, mode="trilinear", align_corners=False
+        )
         self.final_conv = nn.Conv3d(64, self.num_classes, kernel_size=1)
+
+    @staticmethod
+    def _validate_init_args(*, in_channels: int, num_classes: int) -> None:
+        if in_channels <= 0:
+            raise ValueError("in_channels must be positive.")
+        if num_classes <= 0:
+            raise ValueError("num_classes must be positive.")
 
     @classmethod
     def from_config(cls, config: DictConfig) -> SpatioTemporalUNet:
@@ -206,21 +224,7 @@ class SpatioTemporalUNet(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Run the spatio-temporal U-Net."""
-        if x.ndim != 5:
-            raise ValueError(
-                "SpatioTemporalUNet expects input with shape (B, C, T, H, W), "
-                f"got ndim={x.ndim}."
-            )
-        if x.shape[1] != self.in_channels:
-            raise ValueError(
-                f"Expected {self.in_channels} input channels but received {x.shape[1]}."
-            )
-        if x.shape[2] < 8:
-            raise ValueError(
-                "SpatioTemporalUNet expects at least 8 frames because the temporal axis "
-                "is pooled three times. "
-                f"Received T={x.shape[2]}."
-            )
+        self._validate_forward_input(x)
 
         x = self.stem(x)
         s3d_1, s2d_1 = self.enc1(x)
@@ -237,6 +241,23 @@ class SpatioTemporalUNet(nn.Module):
         x = self.upsample(x)
         x = self.dec1(x, s3d_1, s2d_1)
         return self.final_conv(x)
+
+    def _validate_forward_input(self, x: torch.Tensor) -> None:
+        if x.ndim != 5:
+            raise ValueError(
+                "SpatioTemporalUNet expects input with shape (B, C, T, H, W), "
+                f"got ndim={x.ndim}."
+            )
+        if x.shape[1] != self.in_channels:
+            raise ValueError(
+                f"Expected {self.in_channels} input channels but received {x.shape[1]}."
+            )
+        if x.shape[2] < 8:
+            raise ValueError(
+                "SpatioTemporalUNet expects at least 8 frames because the temporal axis "
+                "is pooled three times. "
+                f"Received T={x.shape[2]}."
+            )
 
 
 __all__ = ["SpatioTemporalUNet"]
