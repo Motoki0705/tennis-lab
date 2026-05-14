@@ -163,7 +163,11 @@ class MultiHeadSelfAttention(nn.Module):
 
         if attn_mask is not None:
             sdpa_mask = _normalize_attn_mask(
-                attn_mask, q_len=q_len, k_len=k_len, device=x.device, dtype=x.dtype
+                attn_mask,
+                q_len=q_len,
+                k_len=k_len,
+                device=x.device,
+                dtype=x.dtype,
             )
 
         out = F.scaled_dot_product_attention(
@@ -445,15 +449,3 @@ class MultiHeadCrossAttention(nn.Module):
             .view(bsz, q_len, self.n_heads * self.head_dim)
         )
         return self.wo(out)
-
-
-if __name__ == "__main__":
-    torch.manual_seed(0)
-    demo_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    demo_attn = MultiHeadSelfAttention(dim=32, n_heads=4).eval().to(demo_device)
-    demo_input = torch.randn(2, 8, 32, device=demo_device)
-
-    with torch.no_grad():
-        demo_output = demo_attn(demo_input)
-
-    print(demo_output)
