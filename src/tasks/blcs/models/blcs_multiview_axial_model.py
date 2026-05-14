@@ -14,6 +14,7 @@ from src.utils.models import (
     TransformerBlockConfig,
     precompute_freqs_cis_nd,
 )
+from src.utils.models.components.ops.time_local import build_local_attention_keep_mask
 from src.utils.models.embeddings import CourtBallGroupEmbedding, InvisibleTokenEmbedding
 from src.utils.schema.court import NUM_COURT_KP
 
@@ -43,6 +44,8 @@ class BLCSMultiViewAxialModel(nn.Module):
         max_num_cameras: int = 8,
         invisible_init_std: float = 0.02,
         num_court_tokens: int = NUM_COURT_KP,
+        time_window_radius: int = 16,
+        time_global_every: int = 0,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -59,6 +62,16 @@ class BLCSMultiViewAxialModel(nn.Module):
         self.max_num_cameras = int(max_num_cameras)
         self.predict_velocity = bool(predict_velocity)
         self.num_court_tokens = int(num_court_tokens)
+        self.time_window_radius = int(time_window_radius)
+        self.time_global_every = int(time_global_every)
+        if self.time_window_radius < 0:
+            raise ValueError(
+                f"time_window_radius must be non-negative, got {self.time_window_radius}"
+            )
+        if self.time_global_every < 0:
+            raise ValueError(
+                f"time_global_every must be non-negative, got {self.time_global_every}"
+            )
 
         head_dim = self.hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
@@ -211,6 +224,8 @@ class BLCSMultiViewAxialModel(nn.Module):
                     "num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP)
                 )
             ),
+            time_window_radius=int(model_cfg.get("time_window_radius", 16)),
+            time_global_every=int(model_cfg.get("time_global_every", 0)),
         )
 
     @staticmethod
@@ -230,6 +245,15 @@ class BLCSMultiViewAxialModel(nn.Module):
             valid_fixed.shape[1],
         )
         return attn_mask, valid_fixed
+
+    @staticmethod
+    def _build_sliding_attn_mask(valid: Tensor, radius: int) -> Tensor:
+        return build_local_attention_keep_mask(valid, radius)
+
+    def _is_global_time_layer(self, layer_index: int) -> bool:
+        return self.time_global_every > 0 and (layer_index + 1) % (
+            self.time_global_every + 1
+        ) == 0
 
     @staticmethod
     def _build_token_positions(*, seq_len: int, n_cams: int) -> Tensor:
@@ -267,6 +291,30 @@ class BLCSMultiViewAxialModel(nn.Module):
                 self.rope_dim // 2,
             )
             .reshape(batch_size * n_cams, seq_len, self.rope_dim // 2)
+        )
+
+    def _apply_time_attention_layer(
+        self,
+        x: Tensor,
+        *,
+        time_layer: TransformerBlock,
+        layer_index: int,
+        time_full_mask: Tensor,
+        sliding_mask: Tensor,
+        time_freqs: Tensor,
+    ) -> Tensor:
+        batch_size, seq_len, n_cams, _ = x.shape
+        x_time = x.permute(0, 2, 1, 3).reshape(
+            batch_size * n_cams, seq_len, self.hidden_dim
+        )
+        attn_mask = time_full_mask if self._is_global_time_layer(layer_index) else sliding_mask
+        x_time = time_layer(
+            x_time,
+            freqs_cis=time_freqs,
+            attn_mask=attn_mask,
+        )
+        return x_time.reshape(batch_size, n_cams, seq_len, self.hidden_dim).permute(
+            0, 2, 1, 3
         )
 
     def forward(
@@ -317,7 +365,7 @@ class BLCSMultiViewAxialModel(nn.Module):
             batch_size * n_cams, seq_len_in
         )
         camera_mask, _ = self._build_self_attn_mask(camera_valid)
-        time_mask, _ = self._build_self_attn_mask(time_valid)
+        time_mask, time_valid = self._build_self_attn_mask(time_valid)
         camera_freqs = self._camera_freqs(
             batch_size=batch_size,
             seq_len=seq_len_in,
@@ -328,12 +376,16 @@ class BLCSMultiViewAxialModel(nn.Module):
             seq_len=seq_len_in,
             n_cams=n_cams,
         )
+        sliding_mask = self._build_sliding_attn_mask(
+            time_valid,
+            radius=self.time_window_radius,
+        )
 
-        for camera_layer, time_layer in zip(
+        for layer_index, (camera_layer, time_layer) in enumerate(zip(
             self.camera_layers,
             self.time_layers,
             strict=True,
-        ):
+        )):
             x_camera = x.reshape(batch_size * seq_len_in, n_cams, self.hidden_dim)
             x_camera = camera_layer(
                 x_camera,
@@ -342,16 +394,13 @@ class BLCSMultiViewAxialModel(nn.Module):
             )
             x = x_camera.reshape(batch_size, seq_len_in, n_cams, self.hidden_dim)
 
-            x_time = x.permute(0, 2, 1, 3).reshape(
-                batch_size * n_cams, seq_len_in, self.hidden_dim
-            )
-            x_time = time_layer(
-                x_time,
-                freqs_cis=time_freqs,
-                attn_mask=time_mask,
-            )
-            x = x_time.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim).permute(
-                0, 2, 1, 3
+            x = self._apply_time_attention_layer(
+                x,
+                time_layer=time_layer,
+                layer_index=layer_index,
+                time_full_mask=time_mask,
+                sliding_mask=sliding_mask,
+                time_freqs=time_freqs,
             )
 
         x = x[:, :, 0, :]
