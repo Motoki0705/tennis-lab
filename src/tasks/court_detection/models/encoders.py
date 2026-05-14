@@ -26,7 +26,14 @@ class CourtDefaultEncoder(nn.Module):
         self.in_channels = int(in_channels)
 
         self.stem = nn.Sequential(
-            nn.Conv2d(self.in_channels, self.in_channels, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.Conv2d(
+                self.in_channels,
+                self.in_channels,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                bias=False,
+            ),
             nn.BatchNorm2d(self.in_channels),
             nn.ReLU(inplace=True),
         )
@@ -37,16 +44,10 @@ class CourtDefaultEncoder(nn.Module):
         self.bottleneck_2 = Conv2dWiseWiseBlock(512, 512)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        if x.ndim != 4:
-            raise ValueError(
-                "CourtDefaultEncoder expects input with shape (B, C, H, W), "
-                f"got ndim={x.ndim}."
-            )
-        if x.shape[1] != self.in_channels:
-            raise ValueError(
-                f"Expected {self.in_channels} input channels but received {x.shape[1]}."
-            )
+    def forward(
+        self, x: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        self._validate_forward_input(x)
 
         x = self.stem(x)
 
@@ -61,6 +62,17 @@ class CourtDefaultEncoder(nn.Module):
 
         feat4 = self.bottleneck_2(self.bottleneck_1(x))
         return (feat1, feat2, feat3, feat4)
+
+    def _validate_forward_input(self, x: torch.Tensor) -> None:
+        if x.ndim != 4:
+            raise ValueError(
+                "CourtDefaultEncoder expects input with shape (B, C, H, W), "
+                f"got ndim={x.ndim}."
+            )
+        if x.shape[1] != self.in_channels:
+            raise ValueError(
+                f"Expected {self.in_channels} input channels but received {x.shape[1]}."
+            )
 
 
 class CourtDINOEncoder(nn.Module):
@@ -80,13 +92,10 @@ class CourtDINOEncoder(nn.Module):
         freeze_backbone: bool = True,
     ) -> None:
         super().__init__()
-        if in_channels != 3:
-            raise ValueError(
-                "CourtDINOEncoder requires 3-channel RGB input, "
-                f"got in_channels={in_channels}."
-            )
-        if tuple(return_interm_indices) != (0, 1, 2, 3):
-            raise ValueError("CourtDINOEncoder expects return_interm_indices=(0, 1, 2, 3).")
+        self._validate_init_args(
+            in_channels=in_channels,
+            return_interm_indices=return_interm_indices,
+        )
 
         self.in_channels = int(in_channels)
         self.backbone_name = str(backbone_name)
@@ -104,19 +113,48 @@ class CourtDINOEncoder(nn.Module):
         self.backbone = loaded_backbone.module
         self.feature_channels = loaded_backbone.metadata.feature_channels
 
+        self._validate_backbone_load_result(loaded_backbone, strict=strict)
+        if freeze_backbone:
+            for parameter in self.backbone.parameters():
+                parameter.requires_grad = False
+
+    @staticmethod
+    def _validate_init_args(
+        *,
+        in_channels: int,
+        return_interm_indices: tuple[int, ...],
+    ) -> None:
+        if in_channels != 3:
+            raise ValueError(
+                "CourtDINOEncoder requires 3-channel RGB input, "
+                f"got in_channels={in_channels}."
+            )
+        if tuple(return_interm_indices) != (0, 1, 2, 3):
+            raise ValueError(
+                "CourtDINOEncoder expects return_interm_indices=(0, 1, 2, 3)."
+            )
+
+    @staticmethod
+    def _validate_backbone_load_result(loaded_backbone, *, strict: bool) -> None:
         if strict and (
-            loaded_backbone.load_result.missing_keys or loaded_backbone.load_result.unexpected_keys
+            loaded_backbone.load_result.missing_keys
+            or loaded_backbone.load_result.unexpected_keys
         ):
             raise RuntimeError(
                 "Unexpected DINO backbone load result: "
                 f"missing={loaded_backbone.load_result.missing_keys}, "
                 f"unexpected={loaded_backbone.load_result.unexpected_keys}"
             )
-        if freeze_backbone:
-            for parameter in self.backbone.parameters():
-                parameter.requires_grad = False
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(
+        self, x: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        self._validate_forward_input(x)
+
+        features = self.backbone(x)
+        return tuple(features[str(index)] for index in self.return_interm_indices)
+
+    def _validate_forward_input(self, x: torch.Tensor) -> None:
         if x.ndim != 4:
             raise ValueError(
                 "CourtDINOEncoder expects input with shape (B, C, H, W), "
@@ -126,12 +164,6 @@ class CourtDINOEncoder(nn.Module):
             raise ValueError(
                 f"Expected {self.in_channels} input channels but received {x.shape[1]}."
             )
-
-        features = self.backbone(x)
-        return tuple(
-            features[str(index)]
-            for index in self.return_interm_indices
-        )
 
 
 def build_court_encoder(
@@ -148,7 +180,9 @@ def build_court_encoder(
 ) -> nn.Module:
     """Build the requested court encoder."""
 
-    resolved_encoder_name = _DINO_ENCODER_ALIASES.get(str(encoder_name), str(encoder_name))
+    resolved_encoder_name = _DINO_ENCODER_ALIASES.get(
+        str(encoder_name), str(encoder_name)
+    )
     if resolved_encoder_name == "default":
         return CourtDefaultEncoder(in_channels=in_channels)
     return CourtDINOEncoder(
