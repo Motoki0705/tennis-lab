@@ -153,6 +153,15 @@ SMOKE_TASK_SPECS = (
                 ),
             ),
             SmokeVariant(
+                name="multiview_axial_sliding_global",
+                overrides=(
+                    "model=multiview_axial",
+                    "data=multiview",
+                    "model.time_window_radius=4",
+                    "model.time_global_every=2",
+                ),
+            ),
+            SmokeVariant(
                 name="multiview_axial_num_court_kp_12",
                 overrides=(
                     "model=multiview_axial",
@@ -234,6 +243,18 @@ SMOKE_TASK_SPECS = (
                     "loss=multiview_sequence",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
+                ),
+            ),
+            SmokeVariant(
+                name="multiview_axial_sliding_global",
+                overrides=(
+                    "model=multiview_axial",
+                    "data=multiview",
+                    "loss=multiview_sequence",
+                    "data.seq_len_range=[16,16]",
+                    "model.max_seq_len=64",
+                    "model.time_window_radius=4",
+                    "model.time_global_every=2",
                 ),
             ),
             SmokeVariant(
