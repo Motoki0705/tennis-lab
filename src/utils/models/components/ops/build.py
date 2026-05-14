@@ -25,6 +25,10 @@ def get_extensions() -> list[Any]:
             "PyTorch toolchain before building tennis-lab CUDA ops."
         )
 
+    common_compile_args = {
+        "cxx": ["-O3"],
+        "nvcc": ["-O3", "--use_fast_math"],
+    }
     return [
         CUDAExtension(
             name="src.utils.models.components.ops.moe._C",
@@ -32,11 +36,16 @@ def get_extensions() -> list[Any]:
                 "src/utils/models/components/ops/moe/bindings.cpp",
                 "src/utils/models/components/ops/moe/kernels.cu",
             ],
-            extra_compile_args={
-                "cxx": ["-O3"],
-                "nvcc": ["-O3", "--use_fast_math"],
-            },
-        )
+            extra_compile_args=common_compile_args,
+        ),
+        CUDAExtension(
+            name="src.utils.models.components.ops.time_local._C",
+            sources=[
+                "src/utils/models/components/ops/time_local/bindings.cpp",
+                "src/utils/models/components/ops/time_local/kernels.cu",
+            ],
+            extra_compile_args=common_compile_args,
+        ),
     ]
 
 

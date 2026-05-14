@@ -18,6 +18,8 @@ rope_dim: null
 rope_theta: 10000.0
 rope_theta_time: 10000.0
 rope_theta_camera: 1000.0
+time_window_radius: 16
+time_global_every: 0
 max_seq_len: 10240
 max_views: 8
 predict_velocity: true
