@@ -68,8 +68,18 @@ Or pass an explicit branch:
   --branch feat/issue-428-worktree-setup-skill
 ```
 
-4. Continue all implementation work inside the printed worktree path.
-5. Validate the new worktree before editing:
+4. Read the printed `worktree=<path>` line and immediately open that path in VS Code Source Control with the `git.openRepository` command.
+
+Use the VS Code command runner instead of relying on `code --add` alone.
+
+```text
+command: git.openRepository
+args: ["/absolute/path/to/worktree"]
+```
+
+5. Confirm the repository appears in Source Control before editing. When command output is available, validate with `git.api.getRepositories` and confirm the worktree path is included.
+6. Continue all implementation work inside the printed worktree path.
+7. Validate the new worktree before editing:
 
 ```bash
 git status --short --branch
@@ -87,7 +97,7 @@ ls -ld data .venv outputs third_party
 - Links `data`, `.venv`, `outputs`, and `third_party` from the primary worktree.
 - Adds local git exclude entries for those top-level links.
 - Marks tracked `third_party` entries as `skip-worktree` in the target worktree so the root symlink does not create noisy status output.
-- Adds the target worktree folder to the active VS Code window with `code --add` when the `code` command is available.
+- May add the target worktree folder to the active VS Code window with `code --add` when the `code` command is available, but Source Control registration should be done with `git.openRepository`.
 
 Environment overrides:
 
@@ -101,6 +111,7 @@ Environment overrides:
 - The worktree path exists and is on the intended branch.
 - `data`, `.venv`, `outputs`, and `third_party` are symbolic links to the primary worktree.
 - `git status --short --branch` is readable and does not show avoidable link noise.
+- The new worktree path is visible in VS Code Source Control.
 - Implementation continues only from the new worktree when the original checkout was active.
 
 ## Notes
