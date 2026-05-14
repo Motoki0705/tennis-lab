@@ -61,20 +61,13 @@ class BLCSMultiViewModel(nn.Module):
         super().__init__()
         self.hidden_dim = int(hidden_dim)
 
-        if self.hidden_dim % num_heads != 0:
-            raise ValueError(
-                f"hidden_dim={self.hidden_dim} must be divisible by num_heads={num_heads}"
-            )
-        if max_seq_len <= 0:
-            raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
-        if max_num_cameras <= 0:
-            raise ValueError(
-                f"max_num_cameras must be positive, got {max_num_cameras}"
-            )
-        if num_layers < 0:
-            raise ValueError(
-                f"num_layers must be non-negative, got {num_layers}"
-            )
+        self._validate_init_args(
+            hidden_dim=self.hidden_dim,
+            num_heads=num_heads,
+            max_seq_len=max_seq_len,
+            max_num_cameras=max_num_cameras,
+            num_layers=num_layers,
+        )
 
         self.max_seq_len = int(max_seq_len)
         self.max_num_cameras = int(max_num_cameras)
@@ -83,10 +76,7 @@ class BLCSMultiViewModel(nn.Module):
 
         head_dim = self.hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
-        if rope_dim % 2 != 0:
-            raise ValueError(f"rope_dim must be even, got {rope_dim}")
-        if rope_dim > head_dim:
-            raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
+        self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
         self.rope_bases = (
@@ -114,7 +104,9 @@ class BLCSMultiViewModel(nn.Module):
             invisible_token=self.invisible_token,
         )
 
-        self.query_base = nn.Parameter(torch.randn(1, 1, self.hidden_dim) * query_init_std)
+        self.query_base = nn.Parameter(
+            torch.randn(1, 1, self.hidden_dim) * query_init_std
+        )
 
         self.query_to_frame_cross_layers = nn.ModuleList(
             [
@@ -185,6 +177,33 @@ class BLCSMultiViewModel(nn.Module):
         self.register_buffer("query_freqs_cis", query_freqs, persistent=False)
         self.register_buffer("frame_freqs_cis", frame_freqs, persistent=False)
 
+    @staticmethod
+    def _validate_init_args(
+        *,
+        hidden_dim: int,
+        num_heads: int,
+        max_seq_len: int,
+        max_num_cameras: int,
+        num_layers: int,
+    ) -> None:
+        if hidden_dim % num_heads != 0:
+            raise ValueError(
+                f"hidden_dim={hidden_dim} must be divisible by num_heads={num_heads}"
+            )
+        if max_seq_len <= 0:
+            raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
+        if max_num_cameras <= 0:
+            raise ValueError(f"max_num_cameras must be positive, got {max_num_cameras}")
+        if num_layers < 0:
+            raise ValueError(f"num_layers must be non-negative, got {num_layers}")
+
+    @staticmethod
+    def _validate_rope_dim(*, rope_dim: int, head_dim: int) -> None:
+        if rope_dim % 2 != 0:
+            raise ValueError(f"rope_dim must be even, got {rope_dim}")
+        if rope_dim > head_dim:
+            raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
+
     @classmethod
     def from_config(cls, config: DictConfig) -> BLCSMultiViewModel:
         """Create model from Hydra/OmegaConf config."""
@@ -195,18 +214,30 @@ class BLCSMultiViewModel(nn.Module):
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_heads=int(model_cfg.get("num_heads", 8)),
             ffn_dim=model_cfg.get("ffn_dim", None),
-            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
+            ffn_type=cast(
+                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
+            ),
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
             rope_theta_time=model_cfg.get("rope_theta_time", None),
             rope_theta_camera=model_cfg.get("rope_theta_camera", None),
             rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
-            num_layers=int(model_cfg.get("num_layers", model_cfg.get("num_stage2_layers", 4))),
+            num_layers=int(
+                model_cfg.get("num_layers", model_cfg.get("num_stage2_layers", 4))
+            ),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
-            max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
-            max_num_cameras=int(model_cfg.get("max_num_cameras", model_cfg.get("max_views", 8))),
-            num_court_tokens=int(model_cfg.get("num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP))),
+            max_seq_len=int(
+                model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))
+            ),
+            max_num_cameras=int(
+                model_cfg.get("max_num_cameras", model_cfg.get("max_views", 8))
+            ),
+            num_court_tokens=int(
+                model_cfg.get(
+                    "num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP)
+                )
+            ),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             query_init_std=float(model_cfg.get("query_init_std", 0.02)),
         )
@@ -276,7 +307,9 @@ class BLCSMultiViewModel(nn.Module):
         if fully_masked.any():
             valid_fixed = valid_fixed.clone()
             valid_fixed[fully_masked, 0] = True
-        attn_mask = valid_fixed[:, None, :].expand(valid_fixed.shape[0], valid_fixed.shape[1], valid_fixed.shape[1])
+        attn_mask = valid_fixed[:, None, :].expand(
+            valid_fixed.shape[0], valid_fixed.shape[1], valid_fixed.shape[1]
+        )
         return attn_mask, valid_fixed
 
     def _build_frame_tokens(
@@ -309,7 +342,9 @@ class BLCSMultiViewModel(nn.Module):
         court_valid_expanded = court_valid[:, :, None, None].expand(
             batch_size, n_cams, seq_len_in, self.num_court_tokens
         )
-        per_cam_valid = torch.cat([court_valid_expanded, ball_valid.unsqueeze(3)], dim=3)
+        per_cam_valid = torch.cat(
+            [court_valid_expanded, ball_valid.unsqueeze(3)], dim=3
+        )
 
         frame_tokens = per_cam_tokens.permute(0, 2, 1, 3, 4).reshape(
             batch_size,
@@ -342,8 +377,131 @@ class BLCSMultiViewModel(nn.Module):
         Returns:
             dict: Dictionary with 'position' (B, T, 3) and optionally 'velocity'.
         """
+        (
+            court_kp,
+            ball_vis,
+            ball_mask,
+            court_vis,
+            batch_size,
+            n_cams,
+            seq_len_in,
+        ) = self._prepare_forward_inputs(
+            ball_uv=ball_uv,
+            court_kp=court_kp,
+            ball_vis=ball_vis,
+            ball_mask=ball_mask,
+            court_vis=court_vis,
+        )
+
+        ball_uv_bn = ball_uv.reshape(batch_size * n_cams, seq_len_in, 2)
+        ball_vis_bn = ball_vis.reshape(batch_size * n_cams, seq_len_in)
+        ball_tok = self.ball_embed(ball_uv_bn, ball_vis_bn).reshape(
+            batch_size, n_cams, seq_len_in, self.hidden_dim
+        )
+
+        court_kp_flat = court_kp.reshape(
+            batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
+        )
+        court_vis_flat = (
+            court_vis.reshape(batch_size * n_cams * seq_len_in, self.num_court_tokens)
+            if court_vis is not None
+            else None
+        )
+        court_tok = self.court_embed(court_kp_flat, court_vis_flat).reshape(
+            batch_size, n_cams, seq_len_in, self.num_court_tokens, self.hidden_dim
+        )
+
+        ball_valid = ball_mask > 0
+        query_valid = ball_valid.any(dim=1)
+        # Court validity is camera-level padding validity, derived from ball validity.
+        # Shape: (B, N)
+        court_valid = ball_valid.any(dim=2)
+
+        freqs_time = self.query_freqs_cis[:seq_len_in]
+        frame_freqs = self.frame_freqs_cis[
+            :seq_len_in, : n_cams * (self.num_court_tokens + 1)
+        ]
+
+        frame_tokens, frame_token_valid = self._build_frame_tokens(
+            ball_tok=ball_tok,
+            court_tok=court_tok,
+            ball_valid=ball_valid,
+            court_valid=court_valid,
+        )
+
+        query_x = self.query_base.expand(batch_size, seq_len_in, -1)
+        query_mask, query_valid_fixed = self._build_self_attn_mask(query_valid)
+
+        for cross_layer, temporal_layer in zip(
+            self.query_to_frame_cross_layers,
+            self.query_temporal_layers,
+            strict=True,
+        ):
+            query_bt = query_x.reshape(batch_size * seq_len_in, 1, self.hidden_dim)
+            frame_bt = frame_tokens.reshape(
+                batch_size * seq_len_in,
+                n_cams * (self.num_court_tokens + 1),
+                self.hidden_dim,
+            )
+            key_valid = frame_token_valid.reshape(
+                batch_size * seq_len_in, n_cams * (self.num_court_tokens + 1)
+            )
+            query_freqs_bt = freqs_time.unsqueeze(0).expand(
+                batch_size, seq_len_in, self.rope_dim // 2
+            )
+            query_freqs_bt = query_freqs_bt.reshape(
+                batch_size * seq_len_in, 1, self.rope_dim // 2
+            )
+            frame_freqs_bt = (
+                frame_freqs.unsqueeze(0)
+                .expand(
+                    batch_size,
+                    seq_len_in,
+                    n_cams * (self.num_court_tokens + 1),
+                    self.rope_dim // 2,
+                )
+                .reshape(
+                    batch_size * seq_len_in,
+                    n_cams * (self.num_court_tokens + 1),
+                    self.rope_dim // 2,
+                )
+            )
+            query_bt = cross_layer(
+                query_bt,
+                frame_bt,
+                key_valid=key_valid,
+                freqs_q_cis=query_freqs_bt,
+                freqs_k_cis=frame_freqs_bt,
+            )
+            query_x = query_bt.reshape(batch_size, seq_len_in, self.hidden_dim)
+
+            query_x = query_x * query_valid_fixed.unsqueeze(-1).to(dtype=query_x.dtype)
+            query_x = temporal_layer(
+                query_x,
+                freqs_cis=freqs_time,
+                attn_mask=query_mask,
+            )
+
+        query_x = self.final_norm(query_x)
+
+        out: dict[str, Tensor] = {"position": self.position_head(query_x)}
+        if self.predict_velocity and self.velocity_head is not None:
+            out["velocity"] = self.velocity_head(query_x)
+        return out
+
+    def _prepare_forward_inputs(
+        self,
+        *,
+        ball_uv: Tensor,
+        court_kp: Tensor,
+        ball_vis: Tensor | None,
+        ball_mask: Tensor | None,
+        court_vis: Tensor | None,
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor | None, int, int, int]:
         if ball_uv.dim() != 4:
-            raise ValueError(f"ball_uv must have shape (B, N, T, 2), got {tuple(ball_uv.shape)}")
+            raise ValueError(
+                f"ball_uv must have shape (B, N, T, 2), got {tuple(ball_uv.shape)}"
+            )
 
         batch_size, n_cams, seq_len_in, _ = ball_uv.shape
         if seq_len_in > self.max_seq_len:
@@ -398,89 +556,4 @@ class BLCSMultiViewModel(nn.Module):
                 f"ball_mask must have shape {(batch_size, n_cams, seq_len_in)}, "
                 f"got {tuple(ball_mask.shape)}"
             )
-
-        ball_uv_bn = ball_uv.reshape(batch_size * n_cams, seq_len_in, 2)
-        ball_vis_bn = ball_vis.reshape(batch_size * n_cams, seq_len_in)
-        ball_tok = self.ball_embed(ball_uv_bn, ball_vis_bn).reshape(
-            batch_size, n_cams, seq_len_in, self.hidden_dim
-        )
-
-        court_kp_flat = court_kp.reshape(batch_size * n_cams * seq_len_in, self.num_court_tokens, 2)
-        court_vis_flat = (
-            court_vis.reshape(batch_size * n_cams * seq_len_in, self.num_court_tokens)
-            if court_vis is not None
-            else None
-        )
-        court_tok = self.court_embed(court_kp_flat, court_vis_flat).reshape(
-            batch_size, n_cams, seq_len_in, self.num_court_tokens, self.hidden_dim
-        )
-
-        ball_valid = ball_mask > 0
-        query_valid = ball_valid.any(dim=1)
-        # Court validity is camera-level padding validity, derived from ball validity.
-        # Shape: (B, N)
-        court_valid = ball_valid.any(dim=2)
-
-        freqs_time = self.query_freqs_cis[:seq_len_in]
-        frame_freqs = self.frame_freqs_cis[
-            :seq_len_in, : n_cams * (self.num_court_tokens + 1)
-        ]
-
-        frame_tokens, frame_token_valid = self._build_frame_tokens(
-            ball_tok=ball_tok,
-            court_tok=court_tok,
-            ball_valid=ball_valid,
-            court_valid=court_valid,
-        )
-
-        query_x = self.query_base.expand(batch_size, seq_len_in, -1)
-        query_mask, query_valid_fixed = self._build_self_attn_mask(query_valid)
-
-        for cross_layer, temporal_layer in zip(
-            self.query_to_frame_cross_layers,
-            self.query_temporal_layers,
-            strict=True,
-        ):
-            query_bt = query_x.reshape(batch_size * seq_len_in, 1, self.hidden_dim)
-            frame_bt = frame_tokens.reshape(
-                batch_size * seq_len_in,
-                n_cams * (self.num_court_tokens + 1),
-                self.hidden_dim,
-            )
-            key_valid = frame_token_valid.reshape(
-                batch_size * seq_len_in, n_cams * (self.num_court_tokens + 1)
-            )
-            query_freqs_bt = freqs_time.unsqueeze(0).expand(batch_size, seq_len_in, self.rope_dim // 2)
-            query_freqs_bt = query_freqs_bt.reshape(batch_size * seq_len_in, 1, self.rope_dim // 2)
-            frame_freqs_bt = frame_freqs.unsqueeze(0).expand(
-                batch_size,
-                seq_len_in,
-                n_cams * (self.num_court_tokens + 1),
-                self.rope_dim // 2,
-            ).reshape(
-                batch_size * seq_len_in,
-                n_cams * (self.num_court_tokens + 1),
-                self.rope_dim // 2,
-            )
-            query_bt = cross_layer(
-                query_bt,
-                frame_bt,
-                key_valid=key_valid,
-                freqs_q_cis=query_freqs_bt,
-                freqs_k_cis=frame_freqs_bt,
-            )
-            query_x = query_bt.reshape(batch_size, seq_len_in, self.hidden_dim)
-
-            query_x = query_x * query_valid_fixed.unsqueeze(-1).to(dtype=query_x.dtype)
-            query_x = temporal_layer(
-                query_x,
-                freqs_cis=freqs_time,
-                attn_mask=query_mask,
-            )
-
-        query_x = self.final_norm(query_x)
-
-        out: dict[str, Tensor] = {"position": self.position_head(query_x)}
-        if self.predict_velocity and self.velocity_head is not None:
-            out["velocity"] = self.velocity_head(query_x)
-        return out
+        return court_kp, ball_vis, ball_mask, court_vis, batch_size, n_cams, seq_len_in

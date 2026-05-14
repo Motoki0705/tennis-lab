@@ -137,8 +137,7 @@ class PLCSModel(nn.Module):
             ffn_dim = int((8 * hidden_dim) / 3)
             ffn_dim = (ffn_dim + 63) // 64 * 64  # Round to multiple of 64
 
-        if self.num_register_tokens < 0:
-            raise ValueError(f"num_register_tokens must be >= 0, got {self.num_register_tokens}")
+        self._validate_init_args(num_register_tokens=self.num_register_tokens)
 
         # Token embeddings
         self.invisible_token = InvisibleTokenEmbedding(
@@ -161,7 +160,9 @@ class PLCSModel(nn.Module):
 
         # Register tokens (prefix tokens; no RoPE applied)
         if self.num_register_tokens > 0:
-            self.register_tokens = nn.Parameter(torch.zeros(1, self.num_register_tokens, hidden_dim))
+            self.register_tokens = nn.Parameter(
+                torch.zeros(1, self.num_register_tokens, hidden_dim)
+            )
             nn.init.trunc_normal_(self.register_tokens, std=0.02)
 
         # Optional KP-ID embeddings
@@ -220,6 +221,13 @@ class PLCSModel(nn.Module):
             )
             self.register_buffer("freqs_cis_body", freqs_cis, persistent=False)
 
+    @staticmethod
+    def _validate_init_args(*, num_register_tokens: int) -> None:
+        if num_register_tokens < 0:
+            raise ValueError(
+                f"num_register_tokens must be >= 0, got {num_register_tokens}"
+            )
+
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSModel:
         """Create model from configuration.
@@ -248,7 +256,9 @@ class PLCSModel(nn.Module):
             num_register_tokens=int(model_cfg.get("num_register_tokens", 4)),
             use_kp_id_embedding=bool(model_cfg.get("use_kp_id_embedding", True)),
             use_rope=bool(model_cfg.get("use_rope", True)),
-            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
+            ffn_type=cast(
+                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
+            ),
             predict_canonical_pose=bool(model_cfg.get("predict_canonical_pose", False)),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
             num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
@@ -353,7 +363,10 @@ class PLCSModel(nn.Module):
                 freqs_cis_body = freqs_cis_body.to(x.device)
 
             prefix_freqs = torch.ones(
-                prefix_len, freqs_cis_body.shape[1], device=x.device, dtype=freqs_cis_body.dtype
+                prefix_len,
+                freqs_cis_body.shape[1],
+                device=x.device,
+                dtype=freqs_cis_body.dtype,
             )
             freqs_cis = torch.cat([prefix_freqs, freqs_cis_body], dim=0)
 
@@ -406,6 +419,45 @@ class PLCSModel(nn.Module):
         - ``court_vis``: ``(B,20)``, optional
         - ``human_mask``: ``(B,)`` or ``None`` (unused by frame model)
         """
+        self._validate_forward_inputs(
+            human_kp=human_kp,
+            court_kp=court_kp,
+            human_vis=human_vis,
+            human_mask=human_mask,
+            court_vis=court_vis,
+        )
+
+        x, _ = self._encode_tokens(
+            human_kp=human_kp,
+            court_kp=court_kp,
+            human_vis=human_vis,
+            court_vis=court_vis,
+        )
+
+        # Extract CLS token
+        cls_out = x[:, 0, :]  # (B, D)
+
+        # Apply output heads
+        position = self.position_head(cls_out)  # (B, 3)
+        rotation = self.rotation_head(cls_out)  # (B, 2)
+
+        out = {
+            "position": position,
+            "rotation": rotation,
+        }
+        if self.predict_canonical_pose and self.canonical_pose_head is not None:
+            out["canonical_pose"] = self.canonical_pose_head(cls_out)
+        return out
+
+    @staticmethod
+    def _validate_forward_inputs(
+        *,
+        human_kp: Tensor,
+        court_kp: Tensor,
+        human_vis: Tensor | None,
+        human_mask: Tensor | None,
+        court_vis: Tensor | None,
+    ) -> None:
         if human_kp.dim() not in {2, 3}:
             raise ValueError(
                 "PLCSModel expects human_kp as (B,17,2) or (B,34), "
@@ -432,28 +484,6 @@ class PLCSModel(nn.Module):
                 f"got shape {tuple(human_mask.shape)}"
             )
 
-        x, _ = self._encode_tokens(
-            human_kp=human_kp,
-            court_kp=court_kp,
-            human_vis=human_vis,
-            court_vis=court_vis,
-        )
-
-        # Extract CLS token
-        cls_out = x[:, 0, :]  # (B, D)
-
-        # Apply output heads
-        position = self.position_head(cls_out)  # (B, 3)
-        rotation = self.rotation_head(cls_out)  # (B, 2)
-
-        out = {
-            "position": position,
-            "rotation": rotation,
-        }
-        if self.predict_canonical_pose and self.canonical_pose_head is not None:
-            out["canonical_pose"] = self.canonical_pose_head(cls_out)
-        return out
-
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
@@ -476,7 +506,12 @@ if __name__ == "__main__":
     court_vis = (torch.rand(B, NUM_COURT_KP) > 0.1).to(torch.float32)
 
     with torch.no_grad():
-        out = model(human_kp=human_kp, court_kp=court_kp, human_vis=human_vis, court_vis=court_vis)
+        out = model(
+            human_kp=human_kp,
+            court_kp=court_kp,
+            human_vis=human_vis,
+            court_vis=court_vis,
+        )
 
     print("PLCSModel:")
     for key, value in out.items():

@@ -23,18 +23,10 @@ class CourtFPNDecoder(nn.Module):
         super().__init__()
         self.encoder_channels = tuple(int(channel) for channel in encoder_channels)
         self.decoder_channels = tuple(int(channel) for channel in decoder_channels)
-        if len(self.encoder_channels) != 4:
-            raise ValueError(
-                "CourtFPNDecoder expects four encoder feature levels, "
-                f"got {len(self.encoder_channels)}."
-            )
-        if len(self.decoder_channels) != 4:
-            raise ValueError(
-                "CourtFPNDecoder expects four decoder channels, "
-                f"got {len(self.decoder_channels)}."
-            )
-        if any(channel <= 0 for channel in self.decoder_channels):
-            raise ValueError("decoder_channels must contain positive integers.")
+        self._validate_init_args(
+            encoder_channels=self.encoder_channels,
+            decoder_channels=self.decoder_channels,
+        )
 
         self.output_channels = self.decoder_channels[0]
         self.lateral_blocks = nn.ModuleList(
@@ -61,12 +53,27 @@ class CourtFPNDecoder(nn.Module):
             for level in range(len(self.decoder_channels) - 2, -1, -1)
         )
 
-    def forward(self, feats: Sequence[torch.Tensor]) -> torch.Tensor:
-        if len(feats) != len(self.encoder_channels):
+    @staticmethod
+    def _validate_init_args(
+        *,
+        encoder_channels: Sequence[int],
+        decoder_channels: Sequence[int],
+    ) -> None:
+        if len(encoder_channels) != 4:
             raise ValueError(
-                "CourtFPNDecoder expects four feature levels, "
-                f"got {len(feats)}."
+                "CourtFPNDecoder expects four encoder feature levels, "
+                f"got {len(encoder_channels)}."
             )
+        if len(decoder_channels) != 4:
+            raise ValueError(
+                "CourtFPNDecoder expects four decoder channels, "
+                f"got {len(decoder_channels)}."
+            )
+        if any(channel <= 0 for channel in decoder_channels):
+            raise ValueError("decoder_channels must contain positive integers.")
+
+    def forward(self, feats: Sequence[torch.Tensor]) -> torch.Tensor:
+        self._validate_forward_inputs(feats)
 
         projected_feats = [
             lateral_block(feat)
@@ -77,10 +84,21 @@ class CourtFPNDecoder(nn.Module):
         for block_index, level in enumerate(range(len(projected_feats) - 2, -1, -1)):
             lateral_feat = projected_feats[level]
             if x.shape[-2:] != lateral_feat.shape[-2:]:
-                x = F.interpolate(x, size=lateral_feat.shape[-2:], mode="bilinear", align_corners=False)
+                x = F.interpolate(
+                    x,
+                    size=lateral_feat.shape[-2:],
+                    mode="bilinear",
+                    align_corners=False,
+                )
             x = torch.cat([x, lateral_feat], dim=1)
             x = self.fusion_blocks[block_index](x)
         return x
+
+    def _validate_forward_inputs(self, feats: Sequence[torch.Tensor]) -> None:
+        if len(feats) != len(self.encoder_channels):
+            raise ValueError(
+                f"CourtFPNDecoder expects four feature levels, got {len(feats)}."
+            )
 
 
 __all__ = ["CourtFPNDecoder"]

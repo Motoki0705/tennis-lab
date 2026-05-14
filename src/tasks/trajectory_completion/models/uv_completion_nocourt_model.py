@@ -44,17 +44,12 @@ class UVTrajectoryCompletionNoCourtModel(nn.Module):
         self.hidden_dim = int(hidden_dim)
         self.max_seq_len = int(max_seq_len)
 
-        if self.hidden_dim % int(num_heads) != 0:
-            raise ValueError("hidden_dim must be divisible by num_heads.")
-        if num_layers < 0:
-            raise ValueError("num_layers must be non-negative.")
-
-        head_dim = self.hidden_dim // int(num_heads)
-        rope_dim_value = head_dim if rope_dim is None else int(rope_dim)
-        if rope_dim_value % 2 != 0:
-            raise ValueError("rope_dim must be even.")
-        if rope_dim_value > head_dim:
-            raise ValueError("rope_dim must be <= head_dim.")
+        self._validate_depth(num_layers=num_layers)
+        head_dim, rope_dim_value = self._resolve_attention_dims(
+            hidden_dim=self.hidden_dim,
+            num_heads=num_heads,
+            rope_dim=rope_dim,
+        )
         rope_base = float(rope_theta if rope_theta_time is None else rope_theta_time)
 
         self.invisible_token = InvisibleTokenEmbedding(
@@ -105,6 +100,28 @@ class UVTrajectoryCompletionNoCourtModel(nn.Module):
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
 
+    @staticmethod
+    def _validate_depth(*, num_layers: int) -> None:
+        if num_layers < 0:
+            raise ValueError("num_layers must be non-negative.")
+
+    @staticmethod
+    def _resolve_attention_dims(
+        *,
+        hidden_dim: int,
+        num_heads: int,
+        rope_dim: int | None,
+    ) -> tuple[int, int]:
+        if hidden_dim % int(num_heads) != 0:
+            raise ValueError("hidden_dim must be divisible by num_heads.")
+        head_dim = hidden_dim // int(num_heads)
+        rope_dim_value = head_dim if rope_dim is None else int(rope_dim)
+        if rope_dim_value % 2 != 0:
+            raise ValueError("rope_dim must be even.")
+        if rope_dim_value > head_dim:
+            raise ValueError("rope_dim must be <= head_dim.")
+        return head_dim, rope_dim_value
+
     @classmethod
     def from_config(cls, config: DictConfig) -> UVTrajectoryCompletionNoCourtModel:
         model_cfg = config.get("model", {}) or {}
@@ -117,12 +134,16 @@ class UVTrajectoryCompletionNoCourtModel(nn.Module):
             num_layers=int(model_cfg.get("num_layers", 6)),
             num_heads=int(model_cfg.get("num_heads", 8)),
             dropout=float(model_cfg.get("dropout", 0.1)),
-            max_seq_len=int(model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 256))),
+            max_seq_len=int(
+                model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 256))
+            ),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
             rope_theta_time=model_cfg.get("rope_theta_time", None),
             rope_dim=model_cfg.get("rope_dim", None),
             ffn_dim=model_cfg.get("ffn_dim"),
-            ffn_type=cast(Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))),
+            ffn_type=cast(
+                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
+            ),
             invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
         )
 
@@ -146,7 +167,12 @@ class UVTrajectoryCompletionNoCourtModel(nn.Module):
         *,
         return_intermediate_ball_hidden: bool = False,
         return_in_frame_logits: bool = False,
-    ) -> Tensor | tuple[Tensor, list[Tensor]] | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor], Tensor]:
+    ) -> (
+        Tensor
+        | tuple[Tensor, list[Tensor]]
+        | tuple[Tensor, Tensor]
+        | tuple[Tensor, list[Tensor], Tensor]
+    ):
         """Forward pass for no-court trajectory completion."""
         _, T, _ = ball_uv.shape
         if self.max_seq_len < T:
@@ -159,7 +185,9 @@ class UVTrajectoryCompletionNoCourtModel(nn.Module):
 
         ball_tokens = self.ball_embed(ball_uv, ball_vis)
 
-        ball_valid = torch.ones(ball_uv.shape[0], T, device=ball_uv.device, dtype=torch.bool)
+        ball_valid = torch.ones(
+            ball_uv.shape[0], T, device=ball_uv.device, dtype=torch.bool
+        )
         if ball_mask is not None:
             ball_valid = ball_mask > 0
         ball_attn_mask, _ = self._build_self_attn_mask(ball_valid)

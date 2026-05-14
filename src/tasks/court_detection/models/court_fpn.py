@@ -35,8 +35,7 @@ class CourtFPN(nn.Module):
         decoder_channels: tuple[int, ...] = (64, 128, 256, 512),
     ) -> None:
         super().__init__()
-        if num_classes <= 0:
-            raise ValueError("num_classes must be positive.")
+        self._validate_init_args(num_classes=num_classes)
 
         self.in_channels = int(in_channels)
         self.num_classes = int(num_classes)
@@ -58,7 +57,14 @@ class CourtFPN(nn.Module):
             encoder_channels=self.encoder.feature_channels,
             decoder_channels=self.decoder_channels,
         )
-        self.final_conv = nn.Conv2d(self.decoder.output_channels, self.num_classes, kernel_size=1)
+        self.final_conv = nn.Conv2d(
+            self.decoder.output_channels, self.num_classes, kernel_size=1
+        )
+
+    @staticmethod
+    def _validate_init_args(*, num_classes: int) -> None:
+        if num_classes <= 0:
+            raise ValueError("num_classes must be positive.")
 
     @classmethod
     def from_config(cls, config: DictConfig) -> CourtFPN:
@@ -93,17 +99,22 @@ class CourtFPN(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if x.ndim != 4:
-            raise ValueError(
-                "CourtFPN expects input with shape (B, C, H, W), "
-                f"got ndim={x.ndim}."
-            )
+        self._validate_forward_input(x)
 
         input_hw = x.shape[-2:]
         decoded = self.decoder(self.encoder(x))
         if decoded.shape[-2:] != input_hw:
-            decoded = F.interpolate(decoded, size=input_hw, mode="bilinear", align_corners=False)
+            decoded = F.interpolate(
+                decoded, size=input_hw, mode="bilinear", align_corners=False
+            )
         return self.final_conv(decoded)
+
+    @staticmethod
+    def _validate_forward_input(x: torch.Tensor) -> None:
+        if x.ndim != 4:
+            raise ValueError(
+                f"CourtFPN expects input with shape (B, C, H, W), got ndim={x.ndim}."
+            )
 
 
 __all__ = ["CourtFPN"]
