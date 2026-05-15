@@ -16,11 +16,8 @@ class Stage(str, Enum):
     COURT_KP = "court_kp"
     GVHMR = "gvhmr"
     WASB = "wasb"
-    TRAJECTORY = "trajectory"
-    EVENT_UV = "event_uv"
     PLCS = "plcs"
     BLCS = "blcs"
-    EVENT_3D = "event_3d"
 
 
 class ResolutionPolicy(str, Enum):
@@ -197,18 +194,6 @@ def build_default_dependency_graph(
             config_key="wasb",
             default_enabled=True,
         ),
-        Stage.TRAJECTORY: StageSpec(
-            stage=Stage.TRAJECTORY,
-            config_key="trajectory",
-            depends_on=(Stage.WASB,),
-            default_enabled=False,
-        ),
-        Stage.EVENT_UV: StageSpec(
-            stage=Stage.EVENT_UV,
-            config_key="event_uv",
-            depends_on=(Stage.WASB,),
-            default_enabled=False,
-        ),
         Stage.PLCS: StageSpec(
             stage=Stage.PLCS,
             config_key="plcs",
@@ -220,12 +205,6 @@ def build_default_dependency_graph(
             config_key="blcs",
             depends_on=(Stage.COURT_KP, Stage.WASB),
             default_enabled=True,
-        ),
-        Stage.EVENT_3D: StageSpec(
-            stage=Stage.EVENT_3D,
-            config_key="event_3d",
-            depends_on=(Stage.BLCS,),
-            default_enabled=False,
         ),
     }
     return PipelineDependencyGraph(specs=specs, policy=policy)

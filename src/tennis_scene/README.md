@@ -9,11 +9,8 @@
 - **Court KP Detection**: コートキーポイント検出（固定カメラ前提で1フレームのみ）
 - **GVHMR**: 3D人物メッシュ（ローカルSMPL）+ 2Dスケルトン
 - **WASB**: ボール2D検出
-- **Trajectory Completion**: ボール2D軌道補完（optional）
-- **Event UV**: UV軌道上のイベント検出（shot/bounce）
 - **PLCS**: プレーヤー3D位置 + yaw推定
 - **BLCS**: ボール3D軌道推定
-- **Event 3D**: 3D軌道上のイベント検出（shot/bounce）
 
 ## アーキテクチャ
 
@@ -24,11 +21,8 @@ TennisSceneOrchestrator (オーケストレーター)
 ├── CourtKPModule      # コートKP検出
 ├── GVHMRModule        # 3D人物メッシュ推定
 ├── WASBModule         # ボール検出
-├── TrajectoryModule   # ボール2D軌道補完（optional）
-├── EventUVModule      # UVイベント検出
 ├── PLCSModule         # プレーヤー3D位置推定
-├── BLCSModule         # ボール3D軌道推定
-└── Event3DModule      # 3Dイベント検出
+└── BLCSModule         # ボール3D軌道推定
 ```
 
 各モジュールは独立して設定・ロード可能で、`BasePipelineModule` を継承しています。
@@ -37,9 +31,6 @@ TennisSceneOrchestrator (オーケストレーター)
 
 - `PLCS <- COURT_KP, GVHMR`（PLCSはcourt_kpとGVHMRのhuman_kpを使用）
 - `BLCS <- COURT_KP, WASB`
-- `TRAJECTORY <- WASB`（optional）
-- `EVENT_UV <- WASB`
-- `EVENT_3D <- BLCS`
 
 ## 固定カメラ前提
 
@@ -126,15 +117,9 @@ python -m src.tennis_scene.scripts.run_pipeline \
 |------|------|----------|
 | `wasb.checkpoint` | WASBモデル | `third_party/WASB-SBDT/pretrained/...` |
 | `wasb.skip` | ボール検出スキップ | `false` |
-| `trajectory.checkpoint` | 軌道補完モデル | `checkpoints/trajectory_completion/uv/last.ckpt` |
-| `trajectory.skip` | 軌道補完スキップ（optional） | `true` |
-| `event_uv.checkpoint` | UVイベント検出モデル | `checkpoints/event_detection/uv/last.ckpt` |
-| `event_uv.skip` | UVイベント検出スキップ | `true` |
 | `plcs.checkpoint` | PLCSモデル | `outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt` |
 | `blcs.checkpoint` | BLCSモデル | `outputs/blcs/single/logs/version_0/checkpoints/last.ckpt` |
 | `blcs.skip` | BLCSスキップ | `false` |
-| `event_3d.checkpoint` | 3Dイベント検出モデル | `checkpoints/event_detection/traj3d/last.ckpt` |
-| `event_3d.skip` | 3Dイベント検出スキップ | `true` |
 
 ## 出力
 
@@ -157,16 +142,8 @@ SceneResult:
     smpl_betas: (10,)            # SMPL形状パラメータ
     smpl_vertices_local: (T, V, 3)   # ローカルSMPL頂点
     ball_uv: (T, 2)              # ボール2D位置（正規化）
-    ball_uv_pred: (T, 2)         # 軌道補完モデルの生予測
-    ball_uv_completed: (T, 2)    # 観測値マージ後の補完UV
     ball_visibility: (T,)        # ボール可視性
     ball_3d: (T, 3)              # ボール3D位置（メートル）
-    event_uv_probs: (T, E)       # UVイベント確率
-    event_uv_peak_mask: (T, E)   # UVイベントピーク位置
-    event_uv_names: list[str]    # UVイベント名
-    event_3d_probs: (T, E)       # 3Dイベント確率
-    event_3d_peak_mask: (T, E)   # 3Dイベントピーク位置
-    event_3d_names: list[str]    # 3Dイベント名
     human_kp_2d: (T, 17, 2)      # 人物2DKP（正規化）
     human_kp_vis: (T, 17)        # 人物KP可視性
 ```
@@ -199,11 +176,8 @@ src/tennis_scene/
 │       ├── court_kp.py      # CourtKPModule
 │       ├── gvhmr.py         # GVHMRModule + GVHMRConfig
 │       ├── wasb.py          # WASBModule + WASBConfig
-│       ├── trajectory.py    # TrajectoryModule
-│       ├── event_uv.py      # EventUVModule
 │       ├── plcs.py          # PLCSModule
-│       ├── blcs.py          # BLCSModule
-│       └── event_3d.py      # Event3DModule
+│       └── blcs.py          # BLCSModule
 ├── configs/
 │   └── pipeline.yaml        # Hydra設定
 ├── scripts/
