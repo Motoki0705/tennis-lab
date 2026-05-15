@@ -11,6 +11,7 @@ from hydra.core.global_hydra import GlobalHydra
 from lightning_fabric.utilities.exceptions import MisconfigurationException
 from omegaconf import DictConfig
 
+from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
 from src.tasks.blcs.training.runner import BLCSTrainingRunner
 from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
 from src.tasks.plcs.training.runner import PLCSTrainingRunner
@@ -86,6 +87,18 @@ COMMON_OVERRIDES = (
     "training.qualitative_logging.selected_indices=[0]",
 )
 
+BLCS_AXIAL_STAGE_OVERRIDES = (
+    "model.camera_layers_per_stage=[1,1]",
+    "model.time_layers_per_stage=[1,1]",
+    "model.time_global_stage_mask=[false,false]",
+)
+
+BLCS_AXIAL_STAGE_GLOBAL_OVERRIDES = (
+    "model.camera_layers_per_stage=[1,1]",
+    "model.time_layers_per_stage=[1,1]",
+    "model.time_global_stage_mask=[true,false]",
+)
+
 
 SMOKE_TASK_SPECS = (
     SmokeTaskSpec(
@@ -137,6 +150,7 @@ SMOKE_TASK_SPECS = (
                 overrides=(
                     "model=multiview_axial",
                     "data=multiview",
+                    *BLCS_AXIAL_STAGE_OVERRIDES,
                 ),
             ),
             SmokeVariant(
@@ -144,6 +158,7 @@ SMOKE_TASK_SPECS = (
                 overrides=(
                     "model=multiview_axial",
                     "data=multiview",
+                    *BLCS_AXIAL_STAGE_OVERRIDES,
                     "model.attention_type=gqa",
                     "model.num_kv_heads=2",
                 ),
@@ -153,8 +168,8 @@ SMOKE_TASK_SPECS = (
                 overrides=(
                     "model=multiview_axial",
                     "data=multiview",
+                    *BLCS_AXIAL_STAGE_GLOBAL_OVERRIDES,
                     "model.time_window_radius=4",
-                    "model.time_global_every=2",
                 ),
             ),
             SmokeVariant(
@@ -162,6 +177,7 @@ SMOKE_TASK_SPECS = (
                 overrides=(
                     "model=multiview_axial",
                     "data=multiview",
+                    *BLCS_AXIAL_STAGE_OVERRIDES,
                     "data.num_court_kp=12",
                 ),
             ),
@@ -450,6 +466,49 @@ def _compose_config(case: SmokeCase, output_dir: Path) -> DictConfig:
     overrides.extend(_normalize_override(override) for override in case.overrides)
     with initialize_config_dir(version_base="1.3", config_dir=str(case.config_dir)):
         return compose(config_name=case.config_name, overrides=overrides)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "match"),
+    (
+        (
+            (
+                "model.num_layers=2",
+                "model.camera_layers_per_stage=[2]",
+                "model.time_layers_per_stage=[3,2]",
+                "model.time_global_stage_mask=[true,false]",
+            ),
+            "camera_layers_per_stage length must equal num_layers",
+        ),
+        (
+            (
+                "model.num_layers=2",
+                "model.camera_layers_per_stage=[2,1]",
+                "model.time_layers_per_stage=[3,2]",
+                "model.time_global_stage_mask=[true]",
+            ),
+            "time_global_stage_mask length must equal num_layers",
+        ),
+    ),
+)
+def test_blcs_multiview_axial_stage_schedule_validation(
+    overrides: tuple[str, ...],
+    match: str,
+) -> None:
+    GlobalHydra.instance().clear()
+    config_overrides = [
+        _normalize_override("model=multiview_axial"),
+        _normalize_override("data=multiview"),
+        *(_normalize_override(override) for override in overrides),
+    ]
+    with initialize_config_dir(
+        version_base="1.3",
+        config_dir=str(REPO_ROOT / "src/tasks/blcs/configs"),
+    ):
+        config = compose(config_name="train", overrides=config_overrides)
+
+    with pytest.raises(ValueError, match=match):
+        BLCSMultiViewAxialModel.from_config(config)
 
 
 def _normalize_override(override: str) -> str:
