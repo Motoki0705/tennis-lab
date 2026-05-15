@@ -24,6 +24,6 @@ rope_theta_time: 10000.0
 rope_theta_camera: 1000.0
 time_window_radius: 16
 max_seq_len: 10240
-max_views: 8
+max_views: 6
 predict_velocity: true
 invisible_init_std: 0.02
