@@ -16,7 +16,7 @@ ffn_type: swiglu
 dropout: 0.1
 invisible_init_std: 0.02
 
-max_views: 8
+max_views: 6
 max_seq_len: 10240
 
 rope_dim: null

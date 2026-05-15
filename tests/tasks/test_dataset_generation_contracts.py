@@ -164,10 +164,10 @@ def _assert_plcs_scene_contract(scene_dir: Path) -> None:
     assert rotation.dtype == np.float32
     assert canonical_pose_3d.shape[0] == num_frames
     assert canonical_pose_3d.dtype == np.float32
-    assert num_cameras == 8
+    assert num_cameras == 6
     assert meta["num_frames"] == num_frames
     assert meta["num_cameras"] == num_cameras
-    assert meta["num_cameras_sampled"] == 8
+    assert meta["num_cameras_sampled"] == 6
 
     for camera_index in range(num_cameras):
         human_kp_uv = _load_npy(scene_dir, f"cam_{camera_index}_human_kp_uv")
@@ -264,6 +264,7 @@ def _assert_blcs_scene_contract(scene_dir: Path) -> None:
     assert num_cameras >= 1
     assert meta["num_frames"] == num_frames
     assert meta["num_cameras"] == num_cameras
+    assert meta["num_cameras_sampled"] == 6
     assert meta["rally_length"] == rally_length
     assert meta["end_reason"] == end_reason
     assert meta["shots"]
@@ -346,7 +347,8 @@ def test_plcs_generator_output_contract(
 
     for scene_record in meta_json["scenes"]:
         _assert_json_camera_record_contract(scene_record)
-        assert scene_record["num_cameras"] == 8
+        assert scene_record["num_cameras"] == 6
+        assert scene_record["num_cameras_sampled"] == 6
 
     assert {scene_meta["scene_id"] for scene_meta in scenes_meta} == {
         scene_record["scene_id"] for scene_record in meta_json["scenes"]
@@ -437,6 +439,8 @@ def test_blcs_generator_output_contract(
 
     for scene_record in meta_json["scenes"]:
         _assert_json_camera_record_contract(scene_record)
+        assert scene_record["num_cameras"] == 6
+        assert scene_record["num_cameras_sampled"] == 6
 
     for scene_dir in scene_dirs:
         _assert_blcs_scene_contract(scene_dir)
