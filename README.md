@@ -38,24 +38,6 @@
 
 - 実装/実行: [src/tasks/blcs/README.md](src/tasks/blcs/README.md)
 
-### Trajectory Completion（UV軌道補完）
-
-<p align="center">
-  <img src="assets/trajectory_completion/gt_vs_pred.gif" width="840" />
-</p>
-
-- 実装: [src/tasks/trajectory_completion/README.md](src/tasks/trajectory_completion/README.md)
-
-### Event Detection（ショット/バウンス時刻推定）
-
-<p align="center">
-  <img src="assets/event_detection/uv/gt_vs_pred.gif" width="840" />
-</p>
-<p align="center">
-  <img src="assets/event_detection/traj3d/gt_vs_pred.gif" width="840" />
-</p>
-- 実装: [src/tasks/event_detection/README.md](src/tasks/event_detection/README.md)
-
 ## クイックスタート
 
 このリポジトリは Docker / devcontainer ベースでの開発を前提にしています。
@@ -106,8 +88,6 @@ python -m src.<task>.scripts.<entrypoint> key=value
 - [src/tasks/plcs/README.md](src/tasks/plcs/README.md)
 - [src/tasks/ball_detection/README.md](src/tasks/ball_detection/README.md)
 - [src/tasks/court_detection/README.md](src/tasks/court_detection/README.md)
-- [src/tasks/trajectory_completion/README.md](src/tasks/trajectory_completion/README.md)
-- [src/tasks/event_detection/README.md](src/tasks/event_detection/README.md)
 
 ### Docker
 
@@ -125,8 +105,6 @@ VS Code を使う場合は `.devcontainer/devcontainer.json` を利用して dev
 - Court Detection: 20点コートキーポイント（`src/tasks/court_detection`）
 - PLCS: 2Dスケルトン → コート上3Dプレーヤー位置/yaw（`src/tasks/plcs`）
 - BLCS: 2Dボール位置 → コート上3Dボール軌道（`src/tasks/blcs`）
-- Trajectory Completion: 欠損した2Dボール軌道を補完（`src/tasks/trajectory_completion`）
-- Event Detection: ショット/バウンスのタイミング推定（`src/tasks/event_detection`）
 - GVHMR: 画像列 -> 2Dスケルトン + SMPL (`third_party/GVHMR`)
 - 統合: 上記をまとめて1本のパイプラインとして回す (`src/tennis_scene/README.md`)
 
@@ -138,9 +116,7 @@ Video
   ├─ Ball Detection   → ball_uv (2D)
   ├─ (optional) GVHMR → human_kp (2D) + SMPL (local)
   ├─ PLCS             → player_pos/yaw (3D on court)
-  ├─ BLCS             → ball_pos_world (3D on court)
-  ├─ Traj Completion  → completed ball_uv (2D)
-  └─ Event Detection  → shot/bounce peaks
+  └─ BLCS             → ball_pos_world (3D on court)
 ```
 
 ### ディレクトリの役割

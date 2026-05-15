@@ -13,11 +13,7 @@ from omegaconf import DictConfig
 
 from src.tasks.blcs.training.runner import BLCSTrainingRunner
 from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
-from src.tasks.event_detection.training.runner import EventDetectionTrainingRunner
 from src.tasks.plcs.training.runner import PLCSTrainingRunner
-from src.tasks.trajectory_completion.training.runner import (
-    TrajectoryCompletionTrainingRunner,
-)
 
 RunnerFactory = Any  # Callable[[DictConfig], runner_instance]
 
@@ -345,66 +341,6 @@ SMOKE_TASK_SPECS = (
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
-        name="event_detection_uv",
-        runner=EventDetectionTrainingRunner,
-        config_dir=REPO_ROOT / "src/tasks/event_detection/configs",
-        config_name="train_uv",
-        default_overrides=(
-            "data.seq_len_range=[16,16]",
-            "model.hidden_dim=32",
-            "model.num_layers=2",
-            "model.num_heads=4",
-            "model.ffn_dim=64",
-            "model.max_seq_len=64",
-        ),
-        variants=(
-            SmokeVariant(name="uv_transformer"),
-            SmokeVariant(
-                name="uv_transformer_nocourt",
-                overrides=("model=uv_transformer_nocourt",),
-            ),
-        ),
-        supports_test_phase=True,
-        expect_qualitative=True,
-    ),
-    SmokeTaskSpec(
-        name="event_detection_uv_chunked",
-        runner=EventDetectionTrainingRunner,
-        config_dir=REPO_ROOT / "src/tasks/event_detection/configs",
-        config_name="train_uv_chunked",
-        default_overrides=(
-            "data.seq_len_range=[16,16]",
-            "data.chunk.scenes_per_chunk=3",
-            "data.chunk.epochs_per_chunk=1",
-            "data.chunk.prefetch_chunks=0",
-            "model.hidden_dim=32",
-            "model.num_layers=2",
-            "model.num_heads=4",
-            "model.ffn_dim=64",
-            "model.max_seq_len=64",
-        ),
-        variants=(
-            SmokeVariant(name="uv_transformer"),
-            SmokeVariant(
-                name="uv_transformer_gan",
-                overrides=(
-                    "training.gan.enabled=true",
-                    "training.trainer.max_epochs=2",
-                    "training.gan.transition.patience=0",
-                    "training.gan.warmup_epochs=1",
-                    "training.gan.discriminator.hidden_dim=32",
-                    "training.gan.discriminator.num_layers=2",
-                    "training.gan.discriminator.num_heads=4",
-                    "training.gan.discriminator.ffn_dim=64",
-                    "training.gan.discriminator.max_seq_len=64",
-                ),
-                expect_gan_training=True,
-            ),
-        ),
-        supports_test_phase=True,
-        expect_qualitative=True,
-    ),
-    SmokeTaskSpec(
         name="court_detection",
         runner=CourtDetectionTrainingRunner,
         config_dir=REPO_ROOT / "src/tasks/court_detection/configs",
@@ -437,60 +373,6 @@ SMOKE_TASK_SPECS = (
             ),
         ),
         supports_test_phase=False,
-        expect_qualitative=True,
-    ),
-    SmokeTaskSpec(
-        name="event_detection_3d",
-        runner=EventDetectionTrainingRunner,
-        config_dir=REPO_ROOT / "src/tasks/event_detection/configs",
-        config_name="train_3d",
-        default_overrides=(
-            "data.seq_len_range=[16,16]",
-            "model.hidden_dim=32",
-            "model.num_layers=2",
-            "model.num_heads=4",
-            "model.ffn_dim=64",
-            "model.max_seq_len=64",
-        ),
-        variants=(SmokeVariant(name="traj3d_transformer"),),
-        supports_test_phase=True,
-        expect_qualitative=True,
-    ),
-    SmokeTaskSpec(
-        name="event_detection_3d_chunked",
-        runner=EventDetectionTrainingRunner,
-        config_dir=REPO_ROOT / "src/tasks/event_detection/configs",
-        config_name="train_3d_chunked",
-        default_overrides=(
-            "data.seq_len_range=[16,16]",
-            "data.chunk.scenes_per_chunk=3",
-            "data.chunk.epochs_per_chunk=1",
-            "data.chunk.prefetch_chunks=0",
-            "model.hidden_dim=32",
-            "model.num_layers=2",
-            "model.num_heads=4",
-            "model.ffn_dim=64",
-            "model.max_seq_len=64",
-        ),
-        variants=(
-            SmokeVariant(name="traj3d_transformer"),
-            SmokeVariant(
-                name="traj3d_transformer_gan",
-                overrides=(
-                    "training.gan.enabled=true",
-                    "training.trainer.max_epochs=2",
-                    "training.gan.transition.patience=0",
-                    "training.gan.warmup_epochs=1",
-                    "training.gan.discriminator.hidden_dim=32",
-                    "training.gan.discriminator.num_layers=2",
-                    "training.gan.discriminator.num_heads=4",
-                    "training.gan.discriminator.ffn_dim=64",
-                    "training.gan.discriminator.max_seq_len=64",
-                ),
-                expect_gan_training=True,
-            ),
-        ),
-        supports_test_phase=True,
         expect_qualitative=True,
     ),
     SmokeTaskSpec(
@@ -529,81 +411,6 @@ SMOKE_TASK_SPECS = (
         supports_test_phase=True,
         expect_qualitative=True,
         runner_factory=_blcs_chunked_runner_factory,
-    ),
-    SmokeTaskSpec(
-        name="trajectory_completion",
-        runner=TrajectoryCompletionTrainingRunner,
-        config_dir=REPO_ROOT / "src/tasks/trajectory_completion/configs",
-        config_name="train",
-        default_overrides=(
-            "data.seq_len_range=[16,16]",
-            "model.hidden_dim=32",
-            "model.num_heads=4",
-            "model.ffn_dim=64",
-            "model.max_seq_len=64",
-        ),
-        variants=(
-            SmokeVariant(
-                name="uv_transformer",
-                overrides=(
-                    "model.num_ball_layers=2",
-                    "model.num_query_layers=1",
-                ),
-            ),
-            SmokeVariant(
-                name="uv_transformer_nocourt",
-                overrides=(
-                    "model=uv_transformer_nocourt",
-                    "model.num_layers=2",
-                ),
-            ),
-        ),
-        supports_test_phase=True,
-        expect_qualitative=True,
-    ),
-    SmokeTaskSpec(
-        name="trajectory_completion_chunked",
-        runner=TrajectoryCompletionTrainingRunner,
-        config_dir=REPO_ROOT / "src/tasks/trajectory_completion/configs",
-        config_name="train_chunked",
-        default_overrides=(
-            "data.seq_len_range=[16,16]",
-            "data.chunk.scenes_per_chunk=3",
-            "data.chunk.epochs_per_chunk=1",
-            "data.chunk.prefetch_chunks=0",
-            "model.hidden_dim=32",
-            "model.num_heads=4",
-            "model.ffn_dim=64",
-            "model.max_seq_len=64",
-        ),
-        variants=(
-            SmokeVariant(
-                name="uv_transformer",
-                overrides=(
-                    "model.num_ball_layers=2",
-                    "model.num_query_layers=1",
-                ),
-            ),
-            SmokeVariant(
-                name="uv_transformer_gan",
-                overrides=(
-                    "model.num_ball_layers=2",
-                    "model.num_query_layers=1",
-                    "training.gan.enabled=true",
-                    "training.trainer.max_epochs=2",
-                    "training.gan.transition.patience=0",
-                    "training.gan.warmup_epochs=1",
-                    "training.gan.discriminator.hidden_dim=32",
-                    "training.gan.discriminator.num_layers=2",
-                    "training.gan.discriminator.num_heads=4",
-                    "training.gan.discriminator.ffn_dim=64",
-                    "training.gan.discriminator.max_seq_len=64",
-                ),
-                expect_gan_training=True,
-            ),
-        ),
-        supports_test_phase=True,
-        expect_qualitative=True,
     ),
 )
 
