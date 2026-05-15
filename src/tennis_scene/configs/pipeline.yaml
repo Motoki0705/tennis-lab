@@ -38,27 +38,6 @@ wasb:
   output_path: ${output_dir}/wasb_result.json
   load_path: outputs/tennis_scene/wasb_result.json  # Path to load pre-computed result (skips inference)
 
-trajectory:
-  checkpoint: checkpoints/trajectory_completion/last.ckpt
-  skip: false
-  merge_observed: false
-  in_frame_threshold: 0.5
-  cut_out_of_frame: true
-  use_in_frame_pred_for_visibility: true
-  save_result: true
-  output_path: ${output_dir}/trajectory_result.json
-  load_path: outputs/tennis_scene/trajectory_result.json  # Path to load pre-computed result (skips inference)
-
-event_uv:
-  checkpoint: checkpoints/event_detection/uv/last.ckpt
-  skip: false
-  threshold: 0.5
-  min_distance: 1
-  top_k: null
-  save_result: true
-  output_path: ${output_dir}/event_uv_result.json
-  load_path: outputs/tennis_scene/event_uv_result.json  # Path to load pre-computed result (skips inference)
-
 plcs:
   checkpoint: checkpoints/plcs/frame/last.ckpt
   save_result: true
@@ -71,16 +50,6 @@ blcs:
   save_result: true
   output_path: ${output_dir}/blcs_result.json
   load_path: outputs/tennis_scene/blcs_result.json  # Path to load pre-computed result (skips inference)
-
-event_3d:
-  checkpoint: checkpoints/event_detection/traj3d/last.ckpt
-  skip: false
-  threshold: 0.5
-  min_distance: 1
-  top_k: null
-  save_result: true
-  output_path: ${output_dir}/event_3d_result.json
-  load_path: outputs/tennis_scene/event_3d_result.json  # Path to load pre-computed result (skips inference)
 
 max_frames: null
 

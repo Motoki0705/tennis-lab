@@ -36,16 +36,8 @@ class SceneResult:
     smpl_vertices_local: NDArray[np.float32] | None = None  # (P, T, V, 3)
 
     ball_uv: NDArray[np.float32] | None = None
-    ball_uv_pred: NDArray[np.float32] | None = None
-    ball_uv_completed: NDArray[np.float32] | None = None
     ball_visibility: NDArray[np.bool_] | None = None
     ball_3d: NDArray[np.float32] | None = None
-    event_uv_probs: NDArray[np.float32] | None = None  # (T, E)
-    event_uv_peak_mask: NDArray[np.bool_] | None = None  # (T, E)
-    event_uv_names: list[str] | None = None
-    event_3d_probs: NDArray[np.float32] | None = None  # (T, E)
-    event_3d_peak_mask: NDArray[np.bool_] | None = None  # (T, E)
-    event_3d_names: list[str] | None = None
 
     human_kp_2d: NDArray[np.float32] | None = None  # (P, T, 17, 2)
     human_kp_vis: NDArray[np.float32] | None = None  # (P, T, 17)
@@ -59,38 +51,6 @@ class SceneResult:
     def _metadata_sidecar_path(path: Path) -> Path:
         """Return sidecar metadata JSON path for a scene archive."""
         return path.with_suffix(".metadata.json")
-
-    @staticmethod
-    def _decode_str_array(value: Any) -> list[str]:
-        """Decode a numpy string/bytes/object array into a list of Python strings."""
-        arr = np.asarray(value)
-        flat = arr.reshape(-1)
-        decoded: list[str] = []
-        for item in flat.tolist():
-            if isinstance(item, bytes):
-                decoded.append(item.decode("utf-8"))
-            else:
-                decoded.append(str(item))
-        return decoded
-
-    @classmethod
-    def _safe_load_name_list(
-        cls,
-        data: Any,
-        key: str,
-        path: Path,
-    ) -> list[str] | None:
-        """Safely load optional event name list from npz data."""
-        if key not in data.files:
-            return None
-        try:
-            return cls._decode_str_array(data[key])
-        except Exception as exc:
-            warnings.warn(
-                f"Failed to load {key} from {path}: {exc}. Proceeding without {key}.",
-                RuntimeWarning,
-            )
-            return None
 
     def save(self, path: str | Path) -> None:
         path = Path(path)
@@ -114,26 +74,10 @@ class SceneResult:
             data["smpl_vertices_local"] = self.smpl_vertices_local
         if self.ball_uv is not None:
             data["ball_uv"] = self.ball_uv
-        if self.ball_uv_pred is not None:
-            data["ball_uv_pred"] = self.ball_uv_pred
-        if self.ball_uv_completed is not None:
-            data["ball_uv_completed"] = self.ball_uv_completed
         if self.ball_visibility is not None:
             data["ball_visibility"] = self.ball_visibility
         if self.ball_3d is not None:
             data["ball_3d"] = self.ball_3d
-        if self.event_uv_probs is not None:
-            data["event_uv_probs"] = self.event_uv_probs
-        if self.event_uv_peak_mask is not None:
-            data["event_uv_peak_mask"] = self.event_uv_peak_mask
-        if self.event_uv_names is not None:
-            data["event_uv_names"] = np.asarray(self.event_uv_names, dtype=np.str_)
-        if self.event_3d_probs is not None:
-            data["event_3d_probs"] = self.event_3d_probs
-        if self.event_3d_peak_mask is not None:
-            data["event_3d_peak_mask"] = self.event_3d_peak_mask
-        if self.event_3d_names is not None:
-            data["event_3d_names"] = np.asarray(self.event_3d_names, dtype=np.str_)
         if self.human_kp_2d is not None:
             data["human_kp_2d"] = self.human_kp_2d
         if self.human_kp_vis is not None:
@@ -229,16 +173,8 @@ class SceneResult:
             smpl_betas=smpl_betas,
             smpl_vertices_local=smpl_vertices_local,
             ball_uv=data.get("ball_uv"),
-            ball_uv_pred=data.get("ball_uv_pred"),
-            ball_uv_completed=data.get("ball_uv_completed"),
             ball_visibility=data.get("ball_visibility"),
             ball_3d=data.get("ball_3d"),
-            event_uv_probs=data.get("event_uv_probs"),
-            event_uv_peak_mask=data.get("event_uv_peak_mask"),
-            event_uv_names=cls._safe_load_name_list(data, "event_uv_names", path),
-            event_3d_probs=data.get("event_3d_probs"),
-            event_3d_peak_mask=data.get("event_3d_peak_mask"),
-            event_3d_names=cls._safe_load_name_list(data, "event_3d_names", path),
             human_kp_2d=human_kp_2d,
             human_kp_vis=human_kp_vis,
             player_track_ids=player_track_ids,

@@ -10,11 +10,7 @@ from src.tasks.blcs.data.dataset import BallTrajectoryDataset
 from src.tasks.court_detection.data.court_kp_dataset import CourtKPDataset
 from src.tasks.court_detection.data.court_line_dataset import CourtLineDataset
 from src.tasks.court_detection.data.court_seg_dataset import CourtSegDataset
-from src.tasks.event_detection.data.dataset import BLCSRallyEventDataset
 from src.tasks.plcs.data.dataset import SceneDataset
-from src.tasks.trajectory_completion.data.dataset import (
-    BLCSUVTrajectoryCompletionDataset,
-)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -158,132 +154,6 @@ def test_blcs_ball_trajectory_dataset_getitem_contract() -> None:
     assert sample["ball_uv"].shape[:2] == sample["ball_vis"].shape
     assert sample["ball_uv"].shape[1] == sample["position_3d"].shape[0]
     assert sample["ball_uv"].shape[1] == sample["velocity_3d"].shape[0]
-
-
-def test_blcs_rally_event_dataset_uv_getitem_contract() -> None:
-    scene_dir = REPO_ROOT / "data/blcs/scenes"
-    split_file = REPO_ROOT / "data/blcs/train.txt"
-    _require_paths(scene_dir, split_file)
-
-    dataset = BLCSRallyEventDataset(
-        scene_dir=scene_dir,
-        split_file=split_file,
-        input_type="uv",
-        config={
-            "data": {
-                "seq_len_range": [32, 32],
-                "num_views_range": [1, 1],
-                "camera_mode": "first",
-                "num_court_kp": 12,
-            }
-        },
-        augment=False,
-    )
-
-    assert len(dataset) > 0
-
-    sample = dataset[0]
-
-    assert set(sample) == {
-        "ball_uv",
-        "ball_vis",
-        "court_kp",
-        "court_vis",
-        "targets",
-        "seq_len",
-    }
-    _assert_tensor(sample["ball_uv"], shape=(32, 2), dtype=torch.float32)
-    _assert_tensor(sample["ball_vis"], shape=(32,), dtype=torch.float32)
-    _assert_tensor(sample["court_kp"], shape=(12, 2), dtype=torch.float32)
-    _assert_tensor(sample["court_vis"], shape=(12,), dtype=torch.float32)
-    _assert_tensor(sample["targets"], shape=(32, 2), dtype=torch.float32)
-    _assert_tensor(sample["seq_len"], shape=(), dtype=torch.int64)
-
-    assert sample["seq_len"].item() == sample["ball_uv"].shape[0]
-    assert sample["ball_uv"].shape[0] == sample["ball_vis"].shape[0]
-    assert sample["ball_uv"].shape[0] == sample["targets"].shape[0]
-
-
-def test_blcs_rally_event_dataset_3d_getitem_contract() -> None:
-    scene_dir = REPO_ROOT / "data/blcs/scenes"
-    split_file = REPO_ROOT / "data/blcs/train.txt"
-    _require_paths(scene_dir, split_file)
-
-    dataset = BLCSRallyEventDataset(
-        scene_dir=scene_dir,
-        split_file=split_file,
-        input_type="3d",
-        config={
-            "data": {
-                "seq_len_range": [32, 32],
-                "num_views_range": [1, 1],
-                "camera_mode": "first",
-            }
-        },
-        augment=False,
-    )
-
-    assert len(dataset) > 0
-
-    sample = dataset[0]
-
-    assert set(sample) == {"ball_pos_world", "targets", "seq_len"}
-    _assert_tensor(sample["ball_pos_world"], shape=(32, 3), dtype=torch.float32)
-    _assert_tensor(sample["targets"], shape=(32, 2), dtype=torch.float32)
-    _assert_tensor(sample["seq_len"], shape=(), dtype=torch.int64)
-
-    assert sample["seq_len"].item() == sample["ball_pos_world"].shape[0]
-    assert sample["ball_pos_world"].shape[0] == sample["targets"].shape[0]
-
-
-def test_blcs_uv_trajectory_completion_dataset_getitem_contract() -> None:
-    scene_dir = REPO_ROOT / "data/blcs/scenes"
-    split_file = REPO_ROOT / "data/blcs/train.txt"
-    _require_paths(scene_dir, split_file)
-
-    dataset = BLCSUVTrajectoryCompletionDataset(
-        scene_dir=scene_dir,
-        split_file=split_file,
-        config={
-            "data": {
-                "seq_len_range": [32, 32],
-                "num_views_range": [1, 1],
-                "camera_mode": "first",
-                "num_court_kp": 10,
-                "supervise_visible_only": True,
-                "argument": {"event_ratio": [2, 1]},
-            }
-        },
-        augment=False,
-    )
-
-    assert len(dataset) > 0
-
-    sample = dataset[0]
-
-    assert set(sample) == {
-        "ball_uv",
-        "ball_vis",
-        "ball_uv_gt",
-        "ball_gt_vis",
-        "ball_in_frame_gt",
-        "court_kp",
-        "court_vis",
-        "seq_len",
-    }
-    _assert_tensor(sample["ball_uv"], shape=(32, 2), dtype=torch.float32)
-    _assert_tensor(sample["ball_vis"], shape=(32,), dtype=torch.float32)
-    _assert_tensor(sample["ball_uv_gt"], shape=(32, 2), dtype=torch.float32)
-    _assert_tensor(sample["ball_gt_vis"], shape=(32,), dtype=torch.float32)
-    _assert_tensor(sample["ball_in_frame_gt"], shape=(32,), dtype=torch.float32)
-    _assert_tensor(sample["court_kp"], shape=(10, 2), dtype=torch.float32)
-    _assert_tensor(sample["court_vis"], shape=(10,), dtype=torch.float32)
-    _assert_tensor(sample["seq_len"], shape=(), dtype=torch.int64)
-
-    assert sample["seq_len"].item() == sample["ball_uv"].shape[0]
-    assert sample["ball_uv"].shape == sample["ball_uv_gt"].shape
-    assert sample["ball_vis"].shape == sample["ball_gt_vis"].shape
-    assert sample["ball_vis"].shape == sample["ball_in_frame_gt"].shape
 
 
 def test_ball_detection_dataset_getitem_contract() -> None:
