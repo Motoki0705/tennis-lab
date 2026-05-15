@@ -1,27 +1,9 @@
-azimuth_noise_deg: 5.0
-elevation_noise_deg: 3.0
-speed_variation: 0.15
-min_elevation_deg: 3.0
-max_elevation_deg: 70.0
 drive_elevation_range_deg: [5.0, 25.0]
 lob_elevation_range_deg: [35.0, 70.0]
 lob_probability: 0.25
-min_speed: 12.0
-max_speed: 40.0
 gravity: 9.81
-speed_solve_max_iters: 32
-speed_solve_tol: 0.001
 
-# Refinement disabled (single-shot sampling, no retry)
-refine_enabled: true
-refine_iters: 10
-refine_speed_scale_min: 0.7
-refine_speed_scale_max: 1.4
-refine_max_azimuth_adjust_deg: 15.0
-refine_max_frames: 1200
-
-# Net clearance enabled by default
-net_clearance_enabled: true
-net_clearance_min: 0.1
-net_clearance_max_attempts: 12
-net_clearance_max_frames: 600
+# Net-hit resampling. Each attempt simulates only until net crossing/hit.
+net_retry_max_attempts: 12
+net_check_max_frames: 600
+net_elevation_step_deg: 2.0
