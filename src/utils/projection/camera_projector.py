@@ -12,7 +12,6 @@ from torch import Tensor
 
 from src.utils.schema.court import (
     BASELINE_CLEAR,
-    FENCE_HEIGHT,
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
     SIDELINE_CLEAR,
@@ -164,11 +163,11 @@ class CameraProjector:
         return r * math.cos(theta), r * math.sin(theta)
 
     def fixed_cameras(self) -> list[Camera]:
-        """Build the fixed 8-camera layout (4 corners + 4 edge midpoints).
+        """Build the fixed 6-camera layout (4 corners + 2 baseline midpoints).
 
         Corner cameras use ``z_min``. Midpoint cameras use ``z_max``.
         When both fixed-camera noise radii are zero, the legacy layout is
-        preserved exactly.
+        preserved except that the left/right side midpoints are omitted.
         """
         cfg = self.config
         fence_x, fence_y = self._fence_extents(cfg.fixed_baseline_clear_extra)
@@ -180,15 +179,13 @@ class CameraProjector:
             (+fence_x, -fence_y, cfg.z_min),
             (-fence_x, -fence_y, cfg.z_min),
         ]
-        midpoints = [
+        baseline_midpoints = [
             (0.0, +fence_y, cfg.z_max),
-            (+fence_x, 0.0, cfg.z_max),
             (0.0, -fence_y, cfg.z_max),
-            (-fence_x, 0.0, cfg.z_max),
         ]
 
         cams: list[Camera] = []
-        for base_center in corners + midpoints:
+        for base_center in corners + baseline_midpoints:
             dx, dy, dz = self._sample_uniform_offset_in_ball(
                 cfg.fixed_position_noise_radius
             )
