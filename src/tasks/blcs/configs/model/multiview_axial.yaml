@@ -7,7 +7,11 @@ io:
 
 hidden_dim: 512
 
+# `num_layers` is the number of camera/time stages.
 num_layers: 8
+camera_layers_per_stage: [1, 1, 1, 1, 1, 1, 1, 1]
+time_layers_per_stage: [1, 1, 1, 1, 1, 1, 1, 1]
+time_global_stage_mask: [false, false, false, false, false, false, false, false]
 num_heads: 8
 attention_type: mha
 num_kv_heads: null
@@ -19,7 +23,6 @@ rope_theta: 10000.0
 rope_theta_time: 10000.0
 rope_theta_camera: 1000.0
 time_window_radius: 16
-time_global_every: 0
 max_seq_len: 10240
 max_views: 8
 predict_velocity: true
