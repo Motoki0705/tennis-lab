@@ -1,21 +1,19 @@
-"""WASB module for ball detection.
-
-The actual inference implementation is provided by
-``third_party/WASB-SBDT/src/inference/`` which wraps the WASB (HRNet-based)
-model from the WASB-SBDT library.
-"""
+"""Ball detection module for the tennis scene pipeline."""
 
 from __future__ import annotations
 
 import json
 import logging
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import cv2
 import numpy as np
+import torch
 
+from src.tasks.ball_detection.data.argumentation import normalize_tensor_images_imagenet
+from src.tasks.ball_detection.inference import BallDetectionPredictor
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
 
 if TYPE_CHECKING:
@@ -25,13 +23,16 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
-class WASBConfig:
-    """Configuration for WASB module.
+class BallDetectionConfig:
+    """Configuration for the scene ball-detection module.
 
     Attributes:
-        checkpoint: Path to WASB model checkpoint.
+        checkpoint: Path to a ``src.tasks.ball_detection`` Lightning checkpoint.
         batch_size: Batch size for inference.
         device: Inference device.
+        image_size: Model input size as ``(height, width)``.
+        normalize_imagenet: Whether to apply ImageNet normalization.
+        score_threshold: Minimum peak confidence for visible detections.
         save_result: Whether to save result to file.
         output_path: Path to save result JSON file.
         load_path: Path to load pre-computed result from (skips inference).
@@ -41,14 +42,17 @@ class WASBConfig:
     checkpoint: str | Path
     batch_size: int = 64
     device: str = "cuda"
+    image_size: tuple[int, int] = (288, 512)
+    normalize_imagenet: bool = True
+    score_threshold: float = 0.5
     save_result: bool = False
     output_path: str | Path | None = None
     load_path: str | Path | None = None
 
 
 @dataclass
-class WASBResult:
-    """Result of WASB ball detection.
+class BallDetectionResult:
+    """Result of scene-level ball detection.
 
     Attributes:
         ball_uv: Ball 2D position (T, 2), normalized [0, 1].
@@ -73,7 +77,7 @@ class WASBResult:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "WASBResult":
+    def from_dict(cls, data: dict) -> BallDetectionResult:
         """Create result from dict."""
         return cls(
             ball_uv=np.array(data["ball_uv"], dtype=np.float32),
@@ -88,7 +92,7 @@ class WASBResult:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2)
-        LOGGER.info(f"Saved WASB result to {path}")
+        LOGGER.info(f"Saved ball detection result to {path}")
 
     def validate(self) -> tuple[bool, list[str]]:
         """Validate result content.
@@ -147,47 +151,38 @@ class WASBResult:
         return len(errors) == 0, errors
 
     @classmethod
-    def load(cls, path: str | Path) -> "WASBResult":
+    def load(cls, path: str | Path) -> BallDetectionResult:
         """Load result from JSON file."""
         with Path(path).open("r", encoding="utf-8") as f:
             return cls.from_dict(json.load(f))
 
 
-class WASBModule(BasePipelineModule):
-    """WASB module for ball detection.
+class BallDetectionModule(BasePipelineModule):
+    """Scene pipeline module for ball detection.
 
-    Detects ball positions in video frames using WASB predictor.
+    Detects ball positions in video frames using the task-local ball detection
+    predictor.
 
     """
 
-    def __init__(self, config: WASBConfig) -> None:
+    def __init__(self, config: BallDetectionConfig) -> None:
         """Initialize the module.
 
         Args:
-            config: WASB configuration.
+            config: Ball detection configuration.
 
         """
         self.config = config
         self._pipeline = None
 
     def load(self) -> None:
-        """Load the WASB pipeline."""
+        """Load the ball detection predictor."""
         if self._pipeline is not None:
             return
 
-        LOGGER.info(f"Loading WASB model from {self.config.checkpoint}")
-
-        self._wasb_root = Path(__file__).parents[4] / "third_party" / "WASB-SBDT" / "src"
-        sys.path.insert(0, str(self._wasb_root))
-
-        from inference import WASBPredictor, VideoBallLocalizationPipeline
-
-        predictor = WASBPredictor.load_from_checkpoint(
+        LOGGER.info(f"Loading ball detection model from {self.config.checkpoint}")
+        self._pipeline = BallDetectionPredictor.load_from_checkpoint(
             self.config.checkpoint, device=self.config.device
-        )
-
-        self._pipeline = VideoBallLocalizationPipeline(
-            predictor, batch_size=self.config.batch_size
         )
 
     @property
@@ -201,7 +196,7 @@ class WASBModule(BasePipelineModule):
         max_frames: int | None = None,
         image_width: int | None = None,
         image_height: int | None = None,
-    ) -> WASBResult:
+    ) -> BallDetectionResult:
         """Run ball detection on video.
 
         Args:
@@ -211,44 +206,51 @@ class WASBModule(BasePipelineModule):
             image_height: Image height for normalization.
 
         Returns:
-            WASBResult with ball positions.
+            BallDetectionResult with ball positions.
 
         """
         # Check if we should load from pre-computed result
         if self.config.load_path is not None:
             load_path = Path(self.config.load_path)
             if load_path.exists():
-                LOGGER.info(f"Loading WASB result from {load_path} (skipping inference)")
-                return WASBResult.load(load_path)
-            else:
-                LOGGER.warning(f"load_path specified but not found: {load_path}, running inference")
+                LOGGER.info(
+                    f"Loading ball detection result from {load_path} "
+                    "(skipping inference)"
+                )
+                return BallDetectionResult.load(load_path)
+            LOGGER.warning(
+                f"load_path specified but not found: {load_path}, running inference"
+            )
 
         if not self.is_loaded:
             self.load()
 
-        LOGGER.info("Running WASB ball detection...")
-        result = self._pipeline.run(video_path, max_frames=max_frames)
+        LOGGER.info("Running ball detection...")
+        frames, original_size = self._read_video_frames(video_path, max_frames=max_frames)
+        original_width = image_width if image_width is not None else original_size[0]
+        original_height = image_height if image_height is not None else original_size[1]
+        ball_uv, score = self._predict_frames(frames)
 
-        ball_uv_px = result.ball_xy_px.astype(np.float32)
-        visibility = result.visibility
+        ball_uv_px = ball_uv.copy()
+        ball_uv_px[..., 0] *= max(original_width - 1, 1)
+        ball_uv_px[..., 1] *= max(original_height - 1, 1)
 
-        score = result.score.astype(np.float32)
-        finite_uv = np.isfinite(ball_uv_px).all(axis=-1)
+        finite_uv = np.isfinite(ball_uv).all(axis=-1)
+        finite_px = np.isfinite(ball_uv_px).all(axis=-1)
         finite_score = np.isfinite(score)
-        valid_mask = visibility & finite_uv & finite_score
+        valid_mask = (
+            finite_uv
+            & finite_px
+            & finite_score
+            & (score >= float(self.config.score_threshold))
+        )
 
         # Replace invalid values with zeros to keep JSON strictly numeric
+        ball_uv[~valid_mask] = 0.0
         ball_uv_px[~valid_mask] = 0.0
         score[~valid_mask] = 0.0
 
-        if image_width is not None and image_height is not None:
-            ball_uv = ball_uv_px.copy()
-            ball_uv[..., 0] /= image_width
-            ball_uv[..., 1] /= image_height
-        else:
-            ball_uv = ball_uv_px.copy()
-
-        wasb_result = WASBResult(
+        ball_detection_result = BallDetectionResult(
             ball_uv=ball_uv,
             ball_uv_px=ball_uv_px,
             visibility=valid_mask.astype(np.bool_),
@@ -256,18 +258,103 @@ class WASBModule(BasePipelineModule):
         )
 
         if self.config.save_result and self.config.output_path is not None:
-            wasb_result.save(self.config.output_path)
+            ball_detection_result.save(self.config.output_path)
 
-        return wasb_result
+        return ball_detection_result
+
+    def _read_video_frames(
+        self,
+        video_path: str | Path,
+        *,
+        max_frames: int | None,
+    ) -> tuple[torch.Tensor, tuple[int, int]]:
+        """Read and resize video frames into ``(T, 3, H, W)`` float tensors."""
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            raise RuntimeError(f"Failed to open video: {video_path}")
+
+        image_h, image_w = self.config.image_size
+        frames: list[np.ndarray] = []
+        original_size: tuple[int, int] | None = None
+        try:
+            while max_frames is None or len(frames) < max_frames:
+                ok, frame_bgr = cap.read()
+                if not ok:
+                    break
+                if original_size is None:
+                    original_size = (frame_bgr.shape[1], frame_bgr.shape[0])
+                frame_bgr = cv2.resize(frame_bgr, (image_w, image_h))
+                frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+                frames.append(frame_rgb.astype(np.float32) / 255.0)
+        finally:
+            cap.release()
+
+        if not frames:
+            raise RuntimeError(f"No frames were read from video: {video_path}")
+
+        frame_tensor = (
+            torch.from_numpy(np.stack(frames)).permute(0, 3, 1, 2).contiguous()
+        )
+        if self.config.normalize_imagenet:
+            frame_tensor = normalize_tensor_images_imagenet(frame_tensor)
+        if original_size is None:
+            original_size = (image_w, image_h)
+        return frame_tensor, original_size
+
+    def _predict_frames(
+        self,
+        frames: torch.Tensor,
+    ) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+        """Run fixed-window prediction and return normalized coords and scores."""
+        if self._pipeline is None:
+            raise RuntimeError("Ball detection predictor is not loaded.")
+
+        total_frames = int(frames.shape[0])
+        model_config = getattr(self._pipeline, "model_config", {}) or {}
+        window = int(model_config.get("num_frames", 8))
+        if window <= 0:
+            raise ValueError(f"model.num_frames must be positive, got {window}")
+
+        sequences: list[torch.Tensor] = []
+        valid_lengths: list[int] = []
+        for start in range(0, total_frames, window):
+            sequence = frames[start : start + window]
+            valid_lengths.append(int(sequence.shape[0]))
+            if sequence.shape[0] < window:
+                pad = sequence[-1:].repeat(window - sequence.shape[0], 1, 1, 1)
+                sequence = torch.cat([sequence, pad], dim=0)
+            sequences.append(sequence)
+
+        coords_chunks: list[np.ndarray] = []
+        score_chunks: list[np.ndarray] = []
+        for batch_start in range(0, len(sequences), int(self.config.batch_size)):
+            batch_sequences = sequences[
+                batch_start : batch_start + int(self.config.batch_size)
+            ]
+            batch = torch.stack(batch_sequences, dim=0)
+            prediction = self._pipeline.predict(batch)
+            coords = prediction["coords"].numpy().astype(np.float32)
+            scores = prediction["visibility"].numpy().astype(np.float32)
+            for index, valid_length in enumerate(
+                valid_lengths[batch_start : batch_start + len(batch_sequences)]
+            ):
+                coords_chunks.append(coords[index, :valid_length])
+                score_chunks.append(scores[index, :valid_length])
+
+        ball_uv = np.concatenate(coords_chunks, axis=0)
+        score = np.concatenate(score_chunks, axis=0)
+        ball_uv = np.clip(ball_uv, 0.0, 1.0).astype(np.float32)
+        score = np.clip(score, 0.0, 1.0).astype(np.float32)
+        return ball_uv, score
 
 
 if __name__ == "__main__":
     # Quick smoke test for module instantiation
-    print("WASBModule: ball detection module")
-    print("Use WASBModule(WASBConfig(...)) to create")
+    print("BallDetectionModule: scene ball detection module")
+    print("Use BallDetectionModule(BallDetectionConfig(...))")
 
     # Test config creation
-    config = WASBConfig(
+    config = BallDetectionConfig(
         checkpoint="test.ckpt",
         device="cpu",
         save_result=True,
