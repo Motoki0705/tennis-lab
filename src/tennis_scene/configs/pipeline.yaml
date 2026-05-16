@@ -59,11 +59,13 @@ debug_visualization:
   save_court_kp: true
   save_ball_2d: true
   save_blcs_input: true
+  save_blcs_result: true
   save_human_kp: true
-  save_plcs_court_view: true
+  save_plcs_result: true
   fps: null
   codec: mp4v
   max_frames: null
+  result_trail_length: 30
   court_view_width: 720
   court_view_height: 960
 

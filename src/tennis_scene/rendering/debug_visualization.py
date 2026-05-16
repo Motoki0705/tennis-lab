@@ -60,11 +60,13 @@ class DebugVisualizationConfig:
     save_court_kp: bool = True
     save_ball_2d: bool = True
     save_blcs_input: bool = True
+    save_blcs_result: bool = True
     save_human_kp: bool = True
-    save_plcs_court_view: bool = True
+    save_plcs_result: bool = True
     fps: float | None = None
     codec: str = "mp4v"
     max_frames: int | None = None
+    result_trail_length: int = 30
     court_view_width: int = 720
     court_view_height: int = 960
 
@@ -113,12 +115,8 @@ def save_intermediate_visualizations(
             output.name: _open_writer(
                 output.path,
                 fps=fps,
-                width=config.court_view_width
-                if output.name == "plcs_court_view"
-                else width,
-                height=config.court_view_height
-                if output.name == "plcs_court_view"
-                else height,
+                width=_output_width(output.name, width, config),
+                height=_output_height(output.name, height, config),
                 codec=config.codec,
             )
             for output in outputs
@@ -186,6 +184,18 @@ def _open_writer(
     return writer
 
 
+def _output_width(name: str, video_width: int, config: DebugVisualizationConfig) -> int:
+    if name.endswith("_court_view"):
+        return config.court_view_width
+    return video_width
+
+
+def _output_height(name: str, video_height: int, config: DebugVisualizationConfig) -> int:
+    if name.endswith("_court_view"):
+        return config.court_view_height
+    return video_height
+
+
 def _build_outputs(
     scene: SceneResult,
     config: DebugVisualizationConfig,
@@ -233,6 +243,13 @@ def _build_outputs(
         lambda frame, idx: _draw_blcs_input_overlay(scene, frame, idx, width, height),
     )
     add_or_skip(
+        "blcs_result_court_view",
+        config.save_blcs_result,
+        scene.ball_3d is not None,
+        "scene.ball_3d is missing",
+        lambda _frame, idx: _draw_blcs_result_court_view(scene, idx, config),
+    )
+    add_or_skip(
         "human_kp_overlay",
         config.save_human_kp,
         scene.human_kp_2d is not None,
@@ -240,11 +257,11 @@ def _build_outputs(
         lambda frame, idx: _draw_human_kp_overlay(scene, frame, idx, width, height),
     )
     add_or_skip(
-        "plcs_court_view",
-        config.save_plcs_court_view,
+        "plcs_result_court_view",
+        config.save_plcs_result,
         scene.player_position is not None and scene.player_yaw is not None,
         "scene.player_position or scene.player_yaw is missing",
-        lambda _frame, idx: _draw_plcs_court_view(scene, idx, config),
+        lambda _frame, idx: _draw_plcs_result_court_view(scene, idx, config),
     )
     return outputs, skipped
 
@@ -344,17 +361,23 @@ def _draw_human_kp_overlay(
     return frame
 
 
-def _draw_plcs_court_view(
+def _draw_blcs_result_court_view(
     scene: SceneResult,
     frame_idx: int,
     config: DebugVisualizationConfig,
 ) -> NDArray[np.uint8]:
-    canvas = np.full(
-        (config.court_view_height, config.court_view_width, 3),
-        fill_value=(43, 125, 50),
-        dtype=np.uint8,
-    )
-    _draw_court_topdown(canvas)
+    canvas = _make_court_canvas(config)
+    _draw_ball_3d_trajectory(canvas, scene, frame_idx, config.result_trail_length)
+    _draw_label(canvas, "blcs_result_court_view", frame_idx)
+    return canvas
+
+
+def _draw_plcs_result_court_view(
+    scene: SceneResult,
+    frame_idx: int,
+    config: DebugVisualizationConfig,
+) -> NDArray[np.uint8]:
+    canvas = _make_court_canvas(config)
 
     positions = scene.player_position[:, frame_idx]
     yaws = scene.player_yaw[:, frame_idx]
@@ -363,6 +386,13 @@ def _draw_plcs_court_view(
         if not np.isfinite(position[:2]).all():
             continue
         color = _PLAYER_COLORS_BGR[player_idx % len(_PLAYER_COLORS_BGR)]
+        _draw_player_trail(
+            canvas,
+            scene.player_position[player_idx],
+            frame_idx,
+            color,
+            config.result_trail_length,
+        )
         xy = _court_to_canvas(position[0], position[1], canvas.shape[1], canvas.shape[0])
         yaw = yaws[player_idx]
         direction = np.array([np.sin(yaw), np.cos(yaw)], dtype=np.float32)
@@ -391,8 +421,103 @@ def _draw_plcs_court_view(
             ball_xy = _court_to_canvas(ball[0], ball[1], canvas.shape[1], canvas.shape[0])
             cv2.circle(canvas, ball_xy, 5, (0, 255, 255), -1, cv2.LINE_AA)
 
-    _draw_label(canvas, "plcs_court_view", frame_idx)
+    _draw_label(canvas, "plcs_result_court_view", frame_idx)
     return canvas
+
+
+def _make_court_canvas(config: DebugVisualizationConfig) -> NDArray[np.uint8]:
+    canvas = np.full(
+        (config.court_view_height, config.court_view_width, 3),
+        fill_value=(43, 125, 50),
+        dtype=np.uint8,
+    )
+    _draw_court_topdown(canvas)
+    return canvas
+
+
+def _draw_ball_3d_trajectory(
+    canvas: NDArray[np.uint8],
+    scene: SceneResult,
+    frame_idx: int,
+    trail_length: int,
+) -> None:
+    if scene.ball_3d is None:
+        return
+
+    positions = np.asarray(scene.ball_3d, dtype=np.float32)
+    max_idx = min(frame_idx, positions.shape[0] - 1)
+    start_idx = max(0, max_idx - trail_length)
+    previous: tuple[int, int] | None = None
+    for idx in range(start_idx, max_idx + 1):
+        if not _is_ball_3d_visible(scene, idx):
+            previous = None
+            continue
+        position = positions[idx]
+        if not np.isfinite(position).all():
+            previous = None
+            continue
+        xy = _court_to_canvas(position[0], position[1], canvas.shape[1], canvas.shape[0])
+        color = _height_color(float(position[2]))
+        radius = 5 if idx == max_idx else 3
+        if previous is not None:
+            cv2.line(canvas, previous, xy, color, 2, cv2.LINE_AA)
+        cv2.circle(canvas, xy, radius, color, -1, cv2.LINE_AA)
+        previous = xy
+
+    if _is_ball_3d_visible(scene, max_idx) and np.isfinite(positions[max_idx]).all():
+        xy = _court_to_canvas(
+            positions[max_idx, 0],
+            positions[max_idx, 1],
+            canvas.shape[1],
+            canvas.shape[0],
+        )
+        cv2.circle(canvas, xy, 10, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(
+            canvas,
+            f"z={positions[max_idx, 2]:.2f}m",
+            (xy[0] + 12, xy[1] - 12),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
+        )
+
+
+def _draw_player_trail(
+    canvas: NDArray[np.uint8],
+    positions: NDArray[np.float32],
+    frame_idx: int,
+    color: tuple[int, int, int],
+    trail_length: int,
+) -> None:
+    max_idx = min(frame_idx, positions.shape[0] - 1)
+    start_idx = max(0, max_idx - trail_length)
+    previous: tuple[int, int] | None = None
+    for idx in range(start_idx, max_idx + 1):
+        position = positions[idx]
+        if not np.isfinite(position[:2]).all():
+            previous = None
+            continue
+        xy = _court_to_canvas(position[0], position[1], canvas.shape[1], canvas.shape[0])
+        if previous is not None:
+            cv2.line(canvas, previous, xy, color, 2, cv2.LINE_AA)
+        cv2.circle(canvas, xy, 3, color, -1, cv2.LINE_AA)
+        previous = xy
+
+
+def _is_ball_3d_visible(scene: SceneResult, frame_idx: int) -> bool:
+    if scene.ball_visibility is None:
+        return True
+    return _select_ball_visibility(scene.ball_visibility, frame_idx)
+
+
+def _height_color(height_meters: float) -> tuple[int, int, int]:
+    clipped = float(np.clip(height_meters, 0.0, 3.0)) / 3.0
+    blue = int(255 * (1.0 - clipped))
+    green = int(80 + 175 * clipped)
+    red = int(255 * clipped)
+    return blue, green, red
 
 
 def _draw_court_points(
@@ -480,10 +605,12 @@ def _draw_court_topdown(canvas: NDArray[np.uint8]) -> None:
 
 
 def _draw_label(frame: NDArray[np.uint8], name: str, frame_idx: int) -> None:
-    cv2.rectangle(frame, (8, 8), (260, 40), (0, 0, 0), -1)
+    text = f"{name} | frame {frame_idx}"
+    rect_width = min(frame.shape[1] - 8, max(260, 22 + len(text) * 11))
+    cv2.rectangle(frame, (8, 8), (rect_width, 40), (0, 0, 0), -1)
     cv2.putText(
         frame,
-        f"{name} | frame {frame_idx}",
+        text,
         (16, 30),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.55,

@@ -125,8 +125,9 @@ def test_save_intermediate_visualizations_writes_videos_and_manifest(tmp_path: P
         "court_kp_overlay",
         "ball_2d_overlay",
         "blcs_input_overlay",
+        "blcs_result_court_view",
         "human_kp_overlay",
-        "plcs_court_view",
+        "plcs_result_court_view",
     }
     assert set(manifest.saved) == expected_names
     assert manifest.skipped == {}
@@ -157,7 +158,8 @@ def test_save_intermediate_visualizations_records_skipped_outputs(tmp_path: Path
     )
 
     assert "court_kp_overlay" in manifest.saved
-    assert "plcs_court_view" in manifest.saved
+    assert "blcs_result_court_view" in manifest.saved
+    assert "plcs_result_court_view" in manifest.saved
     assert manifest.skipped["ball_2d_overlay"] == "scene.ball_uv is missing"
     assert manifest.skipped["blcs_input_overlay"] == "scene.ball_uv or scene.court_kp is missing"
     assert manifest.skipped["human_kp_overlay"] == "scene.human_kp_2d is missing"
