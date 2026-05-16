@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import json
+import warnings
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-import warnings
 
 import numpy as np
 from numpy.typing import NDArray
@@ -17,6 +17,7 @@ class SceneResult:
     """Result of tennis scene 3D reconstruction.
 
     Player-related arrays use (P, T, ...) as the canonical shape.
+    Court keypoints use (T, K, 2) when inferred per frame.
     """
 
     num_frames: int
@@ -24,8 +25,8 @@ class SceneResult:
     width: int
     height: int
 
-    court_kp: NDArray[np.float32]
-    court_vis: NDArray[np.float32]
+    court_kp: NDArray[np.float32]  # (T, K, 2) or legacy (K, 2)
+    court_vis: NDArray[np.float32]  # (T, K) or legacy (K,)
 
     player_position: NDArray[np.float32]  # (P, T, 3)
     player_yaw: NDArray[np.float32]  # (P, T)
@@ -94,7 +95,7 @@ class SceneResult:
                 json.dump(self.metadata, f, ensure_ascii=False, indent=2)
 
     @classmethod
-    def load(cls, path: str | Path) -> "SceneResult":
+    def load(cls, path: str | Path) -> SceneResult:
         path = Path(path)
         try:
             data = np.load(path, allow_pickle=False)
@@ -105,6 +106,7 @@ class SceneResult:
                     "Falling back to allow_pickle=True."
                 ),
                 RuntimeWarning,
+                stacklevel=2,
             )
             data = np.load(path, allow_pickle=True)
 
@@ -121,6 +123,7 @@ class SceneResult:
                         "Proceeding without metadata."
                     ),
                     RuntimeWarning,
+                    stacklevel=2,
                 )
         elif "metadata" in data.files:
             # Legacy npz fallback
@@ -130,6 +133,7 @@ class SceneResult:
                 warnings.warn(
                     f"Failed to load metadata from {path}: {exc}. Proceeding without metadata.",
                     RuntimeWarning,
+                    stacklevel=2,
                 )
 
         # Primary fields (new canonical names).
@@ -193,8 +197,8 @@ if __name__ == "__main__":
         fps=30.0,
         width=1920,
         height=1080,
-        court_kp=np.random.rand(20, 2).astype(np.float32),
-        court_vis=np.ones(20, dtype=np.float32),
+        court_kp=np.random.rand(T, 20, 2).astype(np.float32),
+        court_vis=np.ones((T, 20), dtype=np.float32),
         player_position=np.random.rand(P, T, 3).astype(np.float32),
         player_yaw=np.random.rand(P, T).astype(np.float32),
         smpl_body_pose=np.random.rand(P, T, 63).astype(np.float32),
