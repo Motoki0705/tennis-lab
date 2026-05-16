@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from src.utils.models.components.ops.time_local import time_local_attention
 from src.utils.models.components.rope import apply_rotary_emb
 
 
@@ -134,6 +135,9 @@ class MultiHeadSelfAttention(nn.Module):
         *,
         freqs_cis: torch.Tensor | None = None,
         attn_mask: torch.Tensor | None = None,
+        local_valid_mask: torch.Tensor | None = None,
+        local_window_radius: int | None = None,
+        local_use_cuda: bool | None = None,
     ) -> torch.Tensor:
         """
         Args:
@@ -159,8 +163,56 @@ class MultiHeadSelfAttention(nn.Module):
         k_ = k.transpose(1, 2)  # (B, H, k_len, D)
         v_ = v.transpose(1, 2)  # (B, H, k_len, D)
 
-        sdpa_mask: torch.Tensor | None = None
+        if local_valid_mask is not None:
+            if local_window_radius is None:
+                raise ValueError(
+                    "local_window_radius must be set when local_valid_mask is provided"
+                )
+            out = time_local_attention(
+                q_,
+                k_,
+                v_,
+                valid_mask=local_valid_mask,
+                window_radius=local_window_radius,
+                dropout_p=self.attn_dropout,
+                training=self.training,
+                use_cuda=local_use_cuda,
+            )
+        else:
+            sdpa_mask: torch.Tensor | None = None
+            if attn_mask is not None:
+                sdpa_mask = _normalize_attn_mask(
+                    attn_mask,
+                    q_len=q_len,
+                    k_len=k_len,
+                    device=x.device,
+                    dtype=x.dtype,
+                )
+            out = F.scaled_dot_product_attention(
+                q_,
+                k_,
+                v_,
+                attn_mask=sdpa_mask,
+                dropout_p=self.attn_dropout if self.training else 0.0,
+                is_causal=False,
+            )
 
+        out = (
+            out.transpose(1, 2)
+            .contiguous()
+            .view(bsz, q_len, self.n_heads * self.head_dim)
+        )
+        return self.wo(out)
+
+    def _sdpa_mask(
+        self,
+        attn_mask: torch.Tensor | None,
+        *,
+        q_len: int,
+        k_len: int,
+        x: torch.Tensor,
+    ) -> torch.Tensor | None:
+        sdpa_mask: torch.Tensor | None = None
         if attn_mask is not None:
             sdpa_mask = _normalize_attn_mask(
                 attn_mask,
@@ -169,21 +221,7 @@ class MultiHeadSelfAttention(nn.Module):
                 device=x.device,
                 dtype=x.dtype,
             )
-
-        out = F.scaled_dot_product_attention(
-            q_,
-            k_,
-            v_,
-            attn_mask=sdpa_mask,
-            dropout_p=self.attn_dropout if self.training else 0.0,
-            is_causal=False,
-        )
-        out = (
-            out.transpose(1, 2)
-            .contiguous()
-            .view(bsz, q_len, self.n_heads * self.head_dim)
-        )
-        return self.wo(out)
+        return sdpa_mask
 
 
 class GroupedQuerySelfAttention(nn.Module):
@@ -268,6 +306,9 @@ class GroupedQuerySelfAttention(nn.Module):
         *,
         freqs_cis: torch.Tensor | None = None,
         attn_mask: torch.Tensor | None = None,
+        local_valid_mask: torch.Tensor | None = None,
+        local_window_radius: int | None = None,
+        local_use_cuda: bool | None = None,
     ) -> torch.Tensor:
         """
         Args:
@@ -292,6 +333,62 @@ class GroupedQuerySelfAttention(nn.Module):
         key = key.transpose(1, 2)
         value = value.transpose(1, 2)
 
+        if local_valid_mask is not None:
+            if local_window_radius is None:
+                raise ValueError(
+                    "local_window_radius must be set when local_valid_mask is provided"
+                )
+            key_local = key
+            value_local = value
+            if self.n_kv_heads != self.n_heads:
+                repeats = self.n_heads // self.n_kv_heads
+                key_local = key_local.repeat_interleave(repeats, dim=1)
+                value_local = value_local.repeat_interleave(repeats, dim=1)
+            out = time_local_attention(
+                query,
+                key_local,
+                value_local,
+                valid_mask=local_valid_mask,
+                window_radius=local_window_radius,
+                dropout_p=self.attn_dropout,
+                training=self.training,
+                use_cuda=local_use_cuda,
+            )
+        else:
+            sdpa_mask: torch.Tensor | None = None
+            if attn_mask is not None:
+                sdpa_mask = _normalize_attn_mask(
+                    attn_mask,
+                    q_len=q_len,
+                    k_len=k_len,
+                    device=x.device,
+                    dtype=x.dtype,
+                )
+            out = F.scaled_dot_product_attention(
+                query,
+                key,
+                value,
+                attn_mask=sdpa_mask,
+                dropout_p=self.attn_dropout if self.training else 0.0,
+                is_causal=False,
+                enable_gqa=self.n_kv_heads != self.n_heads,
+            )
+
+        out = (
+            out.transpose(1, 2)
+            .contiguous()
+            .view(bsz, q_len, self.n_heads * self.head_dim)
+        )
+        return self.wo(out)
+
+    def _sdpa_mask(
+        self,
+        attn_mask: torch.Tensor | None,
+        *,
+        q_len: int,
+        k_len: int,
+        x: torch.Tensor,
+    ) -> torch.Tensor | None:
         sdpa_mask: torch.Tensor | None = None
         if attn_mask is not None:
             sdpa_mask = _normalize_attn_mask(
@@ -301,22 +398,7 @@ class GroupedQuerySelfAttention(nn.Module):
                 device=x.device,
                 dtype=x.dtype,
             )
-
-        out = F.scaled_dot_product_attention(
-            query,
-            key,
-            value,
-            attn_mask=sdpa_mask,
-            dropout_p=self.attn_dropout if self.training else 0.0,
-            is_causal=False,
-            enable_gqa=self.n_kv_heads != self.n_heads,
-        )
-        out = (
-            out.transpose(1, 2)
-            .contiguous()
-            .view(bsz, q_len, self.n_heads * self.head_dim)
-        )
-        return self.wo(out)
+        return sdpa_mask
 
 
 class MultiHeadCrossAttention(nn.Module):

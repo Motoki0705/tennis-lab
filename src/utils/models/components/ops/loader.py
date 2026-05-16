@@ -37,8 +37,9 @@ def require_moe_cuda_extension() -> ModuleType:
     if extension is None:
         raise RuntimeError(
             "MoE CUDA extension is not available. Build it with "
-            "`TENNIS_LAB_BUILD_CUDA_OPS=1 .venv/bin/python -m pip install -e . "
-            "--no-build-isolation`, or call the API with use_cuda=False."
+            "`TENNIS_LAB_BUILD_CUDA_OPS=1 uv pip install -e . "
+            "--no-build-isolation --python .venv/bin/python`, or call the API "
+            "with use_cuda=False."
         )
     return extension
 
@@ -48,7 +49,8 @@ def require_time_local_cuda_extension() -> ModuleType:
     if extension is None:
         raise RuntimeError(
             "Time-local CUDA extension is not available. Build it with "
-            "`TENNIS_LAB_BUILD_CUDA_OPS=1 .venv/bin/python -m pip install -e . "
-            "--no-build-isolation`, or call the local-attention API with use_cuda=False."
+            "`TENNIS_LAB_BUILD_CUDA_OPS=1 uv pip install -e . "
+            "--no-build-isolation --python .venv/bin/python`, or call the "
+            "local-attention API with use_cuda=False."
         )
     return extension

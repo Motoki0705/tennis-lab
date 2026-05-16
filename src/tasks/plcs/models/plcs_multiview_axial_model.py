@@ -397,18 +397,23 @@ class PLCSMultiViewAxialModel(nn.Module):
         time_layer: TransformerBlock,
         use_global_attention: bool,
         time_full_mask: Tensor,
-        sliding_mask: Tensor,
+        time_valid: Tensor,
         time_freqs: Tensor,
     ) -> Tensor:
         batch_size, seq_len, n_cams, _ = x.shape
         x_time = x.permute(0, 2, 1, 3).reshape(
             batch_size * n_cams, seq_len, self.hidden_dim
         )
-        attn_mask = time_full_mask if use_global_attention else sliding_mask
+        attn_mask = time_full_mask if use_global_attention else None
+        local_valid_mask = None if use_global_attention else time_valid
+        local_window_radius = None if use_global_attention else self.time_window_radius
         x_time = time_layer(
             x_time,
             freqs_cis=time_freqs,
             attn_mask=attn_mask,
+            local_valid_mask=local_valid_mask,
+            local_window_radius=local_window_radius,
+            local_use_cuda=x_time.is_cuda if not use_global_attention else None,
         )
         return x_time.reshape(batch_size, n_cams, seq_len, self.hidden_dim).permute(
             0, 2, 1, 3
@@ -480,11 +485,6 @@ class PLCSMultiViewAxialModel(nn.Module):
             seq_len=seq_len_in,
             n_cams=n_cams,
         )
-        sliding_mask = self._build_sliding_attn_mask(
-            time_valid,
-            radius=self.time_window_radius,
-        )
-
         for stage_index, (camera_stage_layers, time_stage_layers) in enumerate(
             zip(
                 self.camera_layers,
@@ -512,7 +512,7 @@ class PLCSMultiViewAxialModel(nn.Module):
                         time_layers_in_stage=time_layers_in_stage,
                     ),
                     time_full_mask=time_mask,
-                    sliding_mask=sliding_mask,
+                    time_valid=time_valid,
                     time_freqs=time_freqs,
                 )
 

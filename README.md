@@ -93,6 +93,19 @@ python -m src.<task>.scripts.<entrypoint> key=value
 
 VS Code を使う場合は `.devcontainer/devcontainer.json` を利用して devcontainer として開けます。
 
+### Optional CUDA ops
+
+MoE と time-local attention には optional CUDA extension があります。
+PLCS/BLCS の axial multi-view model で local time attention を GPU 上で使う場合は、
+事前に CUDA ops をビルドしてください。
+
+```bash
+TENNIS_LAB_BUILD_CUDA_OPS=1 \
+  uv pip install -e . --no-build-isolation --python .venv/bin/python
+```
+
+詳しい前提条件、確認方法、トラブルシュートは [docs/cuda_ops.md](docs/cuda_ops.md) を参照してください。
+
 ## ライセンス / 引用
 
 このリポジトリは [MIT License](LICENSE) の下で公開されています。

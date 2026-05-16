@@ -131,6 +131,7 @@ SMOKE_TASK_SPECS = (
             "model.num_heads=4",
             "model.ffn_dim=64",
             "model.max_seq_len=64",
+            *BLCS_AXIAL_STAGE_OVERRIDES,
         ),
         variants=(
             SmokeVariant(name="single"),
@@ -464,6 +465,7 @@ SMOKE_TASK_SPECS = (
             "model.num_heads=4",
             "model.ffn_dim=64",
             "model.max_seq_len=64",
+            *BLCS_AXIAL_STAGE_OVERRIDES,
         ),
         variants=(
             SmokeVariant(name="multiview"),

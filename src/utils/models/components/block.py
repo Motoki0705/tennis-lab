@@ -94,11 +94,17 @@ class TransformerBlock(nn.Module):
         *,
         freqs_cis: torch.Tensor | None = None,
         attn_mask: torch.Tensor | None = None,
+        local_valid_mask: torch.Tensor | None = None,
+        local_window_radius: int | None = None,
+        local_use_cuda: bool | None = None,
     ) -> torch.Tensor:
         x_attn = x + self.attn(
             self.attn_norm(x),
             freqs_cis=freqs_cis,
             attn_mask=attn_mask,
+            local_valid_mask=local_valid_mask,
+            local_window_radius=local_window_radius,
+            local_use_cuda=local_use_cuda,
         )
         x_fnn = x_attn + self.ffn(self.ffn_norm(x_attn))
         return x_fnn
