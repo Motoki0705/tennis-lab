@@ -14,6 +14,7 @@ from omegaconf import DictConfig
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
 from src.tasks.blcs.training.runner import BLCSTrainingRunner
 from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
+from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 from src.tasks.plcs.training.runner import PLCSTrainingRunner
 
 RunnerFactory = Any  # Callable[[DictConfig], runner_instance]
@@ -94,6 +95,18 @@ BLCS_AXIAL_STAGE_OVERRIDES = (
 )
 
 BLCS_AXIAL_STAGE_GLOBAL_OVERRIDES = (
+    "model.camera_layers_per_stage=[1,1]",
+    "model.time_layers_per_stage=[1,1]",
+    "model.time_global_stage_mask=[true,false]",
+)
+
+PLCS_AXIAL_STAGE_OVERRIDES = (
+    "model.camera_layers_per_stage=[1,1]",
+    "model.time_layers_per_stage=[1,1]",
+    "model.time_global_stage_mask=[false,false]",
+)
+
+PLCS_AXIAL_STAGE_GLOBAL_OVERRIDES = (
     "model.camera_layers_per_stage=[1,1]",
     "model.time_layers_per_stage=[1,1]",
     "model.time_global_stage_mask=[true,false]",
@@ -255,6 +268,20 @@ SMOKE_TASK_SPECS = (
                     "loss=multiview_sequence",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
+                    *PLCS_AXIAL_STAGE_OVERRIDES,
+                ),
+            ),
+            SmokeVariant(
+                name="multiview_axial_gqa",
+                overrides=(
+                    "model=multiview_axial",
+                    "data=multiview",
+                    "loss=multiview_sequence",
+                    "data.seq_len_range=[16,16]",
+                    "model.max_seq_len=64",
+                    *PLCS_AXIAL_STAGE_OVERRIDES,
+                    "model.attention_type=gqa",
+                    "model.num_kv_heads=2",
                 ),
             ),
             SmokeVariant(
@@ -265,8 +292,8 @@ SMOKE_TASK_SPECS = (
                     "loss=multiview_sequence",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
+                    *PLCS_AXIAL_STAGE_GLOBAL_OVERRIDES,
                     "model.time_window_radius=4",
-                    "model.time_global_every=2",
                 ),
             ),
             SmokeVariant(
@@ -277,6 +304,7 @@ SMOKE_TASK_SPECS = (
                     "loss=multiview_sequence",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
+                    *PLCS_AXIAL_STAGE_OVERRIDES,
                     "model.predict_canonical_pose=true",
                     "loss.canonical_pose_weight=0.1",
                 ),
@@ -291,6 +319,7 @@ SMOKE_TASK_SPECS = (
                     "data.seq_len_range=[16,16]",
                     "data.num_court_kp=12",
                     "model.max_seq_len=64",
+                    *PLCS_AXIAL_STAGE_OVERRIDES,
                 ),
             ),
         ),
@@ -509,6 +538,50 @@ def test_blcs_multiview_axial_stage_schedule_validation(
 
     with pytest.raises(ValueError, match=match):
         BLCSMultiViewAxialModel.from_config(config)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "match"),
+    (
+        (
+            (
+                "model.num_layers=2",
+                "model.camera_layers_per_stage=[2]",
+                "model.time_layers_per_stage=[3,2]",
+                "model.time_global_stage_mask=[true,false]",
+            ),
+            "camera_layers_per_stage length must equal num_layers",
+        ),
+        (
+            (
+                "model.num_layers=2",
+                "model.camera_layers_per_stage=[2,1]",
+                "model.time_layers_per_stage=[3,2]",
+                "model.time_global_stage_mask=[true]",
+            ),
+            "time_global_stage_mask length must equal num_layers",
+        ),
+    ),
+)
+def test_plcs_multiview_axial_stage_schedule_validation(
+    overrides: tuple[str, ...],
+    match: str,
+) -> None:
+    GlobalHydra.instance().clear()
+    config_overrides = [
+        _normalize_override("model=multiview_axial"),
+        _normalize_override("data=multiview"),
+        _normalize_override("loss=multiview_sequence"),
+        *(_normalize_override(override) for override in overrides),
+    ]
+    with initialize_config_dir(
+        version_base="1.3",
+        config_dir=str(REPO_ROOT / "src/tasks/plcs/configs"),
+    ):
+        config = compose(config_name="train", overrides=config_overrides)
+
+    with pytest.raises(ValueError, match=match):
+        PLCSMultiViewAxialModel.from_config(config)
 
 
 def _normalize_override(override: str) -> str:

@@ -9,12 +9,20 @@ io:
   strict_input: true
 
 hidden_dim: 512
+
+# `num_layers` is the number of camera/time stages.
 num_layers: 12
+camera_layers_per_stage: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+time_layers_per_stage: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+time_global_stage_mask: [false, false, false, false, false, false, false, false, false, false, false, false]
 num_heads: 8
+attention_type: mha
+num_kv_heads: null
 ffn_dim: null
 ffn_type: swiglu
 dropout: 0.1
 invisible_init_std: 0.02
+time_window_radius: 16
 
 max_views: 6
 max_seq_len: 10240

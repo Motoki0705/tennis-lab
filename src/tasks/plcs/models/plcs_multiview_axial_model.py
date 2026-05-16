@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal, cast
 
 import torch
@@ -19,6 +20,7 @@ from src.utils.models import (
     TransformerBlockConfig,
     precompute_freqs_cis_nd,
 )
+from src.utils.models.components.ops.time_local import build_local_attention_keep_mask
 from src.utils.models.embeddings import (
     CourtPlayerGroupEmbedding,
     InvisibleTokenEmbedding,
@@ -38,6 +40,8 @@ class PLCSMultiViewAxialModel(nn.Module):
         hidden_dim: int = 256,
         num_layers: int = 6,
         num_heads: int = 8,
+        attention_type: Literal["mha", "gqa"] = "mha",
+        num_kv_heads: int | None = None,
         ffn_dim: int | None = None,
         dropout: float = 0.1,
         rope_dim: int | None = None,
@@ -50,22 +54,53 @@ class PLCSMultiViewAxialModel(nn.Module):
         max_seq_len: int = 120,
         invisible_init_std: float = 0.02,
         num_court_tokens: int = NUM_COURT_KP,
+        time_window_radius: int = 16,
+        camera_layers_per_stage: Sequence[int] | None = None,
+        time_layers_per_stage: Sequence[int] | None = None,
+        time_global_stage_mask: Sequence[bool] | None = None,
     ) -> None:
         super().__init__()
 
         self.hidden_dim = int(hidden_dim)
+        num_layers = int(num_layers)
+        camera_layers_per_stage = self._normalize_stage_ints(
+            camera_layers_per_stage,
+            num_layers=num_layers,
+            default_value=1,
+        )
+        time_layers_per_stage = self._normalize_stage_ints(
+            time_layers_per_stage,
+            num_layers=num_layers,
+            default_value=1,
+        )
+        time_global_stage_mask = self._normalize_stage_mask(
+            time_global_stage_mask,
+            num_layers=num_layers,
+        )
         self.predict_canonical_pose = bool(predict_canonical_pose)
         self.max_views = int(max_views)
         self.max_seq_len = int(max_seq_len)
         self.num_court_tokens = int(num_court_tokens)
+        self.num_layers = num_layers
+        self.time_window_radius = int(time_window_radius)
+        self.camera_layers_per_stage = camera_layers_per_stage
+        self.time_layers_per_stage = time_layers_per_stage
+        self.time_global_stage_mask = time_global_stage_mask
 
         self._validate_init_args(
             hidden_dim=self.hidden_dim,
             num_heads=num_heads,
-            num_layers=num_layers,
+            num_layers=self.num_layers,
             max_views=self.max_views,
             max_seq_len=self.max_seq_len,
+            camera_layers_per_stage=self.camera_layers_per_stage,
+            time_layers_per_stage=self.time_layers_per_stage,
+            time_global_stage_mask=self.time_global_stage_mask,
         )
+        if self.time_window_radius < 0:
+            raise ValueError(
+                f"time_window_radius must be non-negative, got {self.time_window_radius}"
+            )
 
         head_dim = self.hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
@@ -93,36 +128,50 @@ class PLCSMultiViewAxialModel(nn.Module):
 
         self.camera_layers = nn.ModuleList(
             [
-                TransformerBlock(
-                    TransformerBlockConfig(
-                        dim=self.hidden_dim,
-                        n_heads=num_heads,
-                        ffn_dim=ffn_dim,
-                        head_dim=head_dim,
-                        rope_dim=self.rope_dim,
-                        attn_dropout=dropout,
-                        rope_base=self.rope_bases[1],
-                        ffn_type=ffn_type,
-                    )
+                nn.ModuleList(
+                    [
+                        TransformerBlock(
+                            TransformerBlockConfig(
+                                dim=self.hidden_dim,
+                                n_heads=num_heads,
+                                ffn_dim=ffn_dim,
+                                head_dim=head_dim,
+                                rope_dim=self.rope_dim,
+                                attn_dropout=dropout,
+                                attention_type=attention_type,
+                                n_kv_heads=num_kv_heads,
+                                rope_base=self.rope_bases[1],
+                                ffn_type=ffn_type,
+                            )
+                        )
+                        for _ in range(camera_layer_count)
+                    ]
                 )
-                for _ in range(num_layers)
+                for camera_layer_count in self.camera_layers_per_stage
             ]
         )
         self.time_layers = nn.ModuleList(
             [
-                TransformerBlock(
-                    TransformerBlockConfig(
-                        dim=self.hidden_dim,
-                        n_heads=num_heads,
-                        ffn_dim=ffn_dim,
-                        head_dim=head_dim,
-                        rope_dim=self.rope_dim,
-                        attn_dropout=dropout,
-                        rope_base=self.rope_bases[0],
-                        ffn_type=ffn_type,
-                    )
+                nn.ModuleList(
+                    [
+                        TransformerBlock(
+                            TransformerBlockConfig(
+                                dim=self.hidden_dim,
+                                n_heads=num_heads,
+                                ffn_dim=ffn_dim,
+                                head_dim=head_dim,
+                                rope_dim=self.rope_dim,
+                                attn_dropout=dropout,
+                                attention_type=attention_type,
+                                n_kv_heads=num_kv_heads,
+                                rope_base=self.rope_bases[0],
+                                ffn_type=ffn_type,
+                            )
+                        )
+                        for _ in range(time_layer_count)
+                    ]
                 )
-                for _ in range(num_layers)
+                for time_layer_count in self.time_layers_per_stage
             ]
         )
 
@@ -168,6 +217,9 @@ class PLCSMultiViewAxialModel(nn.Module):
         num_layers: int,
         max_views: int,
         max_seq_len: int,
+        camera_layers_per_stage: tuple[int, ...],
+        time_layers_per_stage: tuple[int, ...],
+        time_global_stage_mask: tuple[bool, ...],
     ) -> None:
         if hidden_dim % num_heads != 0:
             raise ValueError(
@@ -179,6 +231,50 @@ class PLCSMultiViewAxialModel(nn.Module):
             raise ValueError(f"max_views must be positive, got {max_views}")
         if max_seq_len <= 0:
             raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
+        if len(camera_layers_per_stage) != num_layers:
+            raise ValueError(
+                "camera_layers_per_stage length must equal num_layers, got "
+                f"{len(camera_layers_per_stage)} and {num_layers}"
+            )
+        if len(time_layers_per_stage) != num_layers:
+            raise ValueError(
+                "time_layers_per_stage length must equal num_layers, got "
+                f"{len(time_layers_per_stage)} and {num_layers}"
+            )
+        if len(time_global_stage_mask) != num_layers:
+            raise ValueError(
+                "time_global_stage_mask length must equal num_layers, got "
+                f"{len(time_global_stage_mask)} and {num_layers}"
+            )
+        if any(layer_count <= 0 for layer_count in camera_layers_per_stage):
+            raise ValueError(
+                "camera_layers_per_stage must contain only positive integers"
+            )
+        if any(layer_count <= 0 for layer_count in time_layers_per_stage):
+            raise ValueError(
+                "time_layers_per_stage must contain only positive integers"
+            )
+
+    @staticmethod
+    def _normalize_stage_ints(
+        values: Sequence[int] | None,
+        *,
+        num_layers: int,
+        default_value: int,
+    ) -> tuple[int, ...]:
+        if values is None:
+            return tuple(default_value for _ in range(num_layers))
+        return tuple(int(value) for value in values)
+
+    @staticmethod
+    def _normalize_stage_mask(
+        values: Sequence[bool] | None,
+        *,
+        num_layers: int,
+    ) -> tuple[bool, ...]:
+        if values is None:
+            return tuple(False for _ in range(num_layers))
+        return tuple(bool(value) for value in values)
 
     @staticmethod
     def _validate_rope_dim(*, rope_dim: int, head_dim: int) -> None:
@@ -197,6 +293,10 @@ class PLCSMultiViewAxialModel(nn.Module):
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_layers=int(model_cfg.get("num_layers", 6)),
             num_heads=int(model_cfg.get("num_heads", 8)),
+            attention_type=cast(
+                Literal["mha", "gqa"], str(model_cfg.get("attention_type", "mha"))
+            ),
+            num_kv_heads=model_cfg.get("num_kv_heads", None),
             ffn_dim=model_cfg.get("ffn_dim", None),
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
@@ -217,6 +317,10 @@ class PLCSMultiViewAxialModel(nn.Module):
                     "num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP)
                 )
             ),
+            time_window_radius=int(model_cfg.get("time_window_radius", 16)),
+            camera_layers_per_stage=model_cfg.get("camera_layers_per_stage", None),
+            time_layers_per_stage=model_cfg.get("time_layers_per_stage", None),
+            time_global_stage_mask=model_cfg.get("time_global_stage_mask", None),
         )
 
     @staticmethod
@@ -232,6 +336,21 @@ class PLCSMultiViewAxialModel(nn.Module):
             valid_fixed.shape[1],
         )
         return attn_mask, valid_fixed
+
+    @staticmethod
+    def _build_sliding_attn_mask(valid: Tensor, radius: int) -> Tensor:
+        return build_local_attention_keep_mask(valid, radius)
+
+    def _use_global_time_attention(
+        self,
+        *,
+        stage_index: int,
+        time_layer_index: int,
+        time_layers_in_stage: int,
+    ) -> bool:
+        return self.time_global_stage_mask[stage_index] and (
+            time_layer_index == time_layers_in_stage - 1
+        )
 
     @staticmethod
     def _build_token_positions(*, seq_len: int, n_cams: int) -> Tensor:
@@ -269,6 +388,30 @@ class PLCSMultiViewAxialModel(nn.Module):
                 self.rope_dim // 2,
             )
             .reshape(batch_size * n_cams, seq_len, self.rope_dim // 2)
+        )
+
+    def _apply_time_attention_layer(
+        self,
+        x: Tensor,
+        *,
+        time_layer: TransformerBlock,
+        use_global_attention: bool,
+        time_full_mask: Tensor,
+        sliding_mask: Tensor,
+        time_freqs: Tensor,
+    ) -> Tensor:
+        batch_size, seq_len, n_cams, _ = x.shape
+        x_time = x.permute(0, 2, 1, 3).reshape(
+            batch_size * n_cams, seq_len, self.hidden_dim
+        )
+        attn_mask = time_full_mask if use_global_attention else sliding_mask
+        x_time = time_layer(
+            x_time,
+            freqs_cis=time_freqs,
+            attn_mask=attn_mask,
+        )
+        return x_time.reshape(batch_size, n_cams, seq_len, self.hidden_dim).permute(
+            0, 2, 1, 3
         )
 
     def forward(
@@ -326,7 +469,7 @@ class PLCSMultiViewAxialModel(nn.Module):
             batch_size * n_cams, seq_len_in
         )
         camera_mask, _ = self._build_self_attn_mask(camera_valid)
-        time_mask, _ = self._build_self_attn_mask(time_valid)
+        time_mask, time_valid = self._build_self_attn_mask(time_valid)
         camera_freqs = self._camera_freqs(
             batch_size=batch_size,
             seq_len=seq_len_in,
@@ -337,31 +480,41 @@ class PLCSMultiViewAxialModel(nn.Module):
             seq_len=seq_len_in,
             n_cams=n_cams,
         )
+        sliding_mask = self._build_sliding_attn_mask(
+            time_valid,
+            radius=self.time_window_radius,
+        )
 
-        for camera_layer, time_layer in zip(
-            self.camera_layers,
-            self.time_layers,
-            strict=True,
+        for stage_index, (camera_stage_layers, time_stage_layers) in enumerate(
+            zip(
+                self.camera_layers,
+                self.time_layers,
+                strict=True,
+            )
         ):
-            x_camera = x.reshape(batch_size * seq_len_in, n_cams, self.hidden_dim)
-            x_camera = camera_layer(
-                x_camera,
-                freqs_cis=camera_freqs,
-                attn_mask=camera_mask,
-            )
-            x = x_camera.reshape(batch_size, seq_len_in, n_cams, self.hidden_dim)
+            for camera_layer in camera_stage_layers:
+                x_camera = x.reshape(batch_size * seq_len_in, n_cams, self.hidden_dim)
+                x_camera = camera_layer(
+                    x_camera,
+                    freqs_cis=camera_freqs,
+                    attn_mask=camera_mask,
+                )
+                x = x_camera.reshape(batch_size, seq_len_in, n_cams, self.hidden_dim)
 
-            x_time = x.permute(0, 2, 1, 3).reshape(
-                batch_size * n_cams, seq_len_in, self.hidden_dim
-            )
-            x_time = time_layer(
-                x_time,
-                freqs_cis=time_freqs,
-                attn_mask=time_mask,
-            )
-            x = x_time.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim).permute(
-                0, 2, 1, 3
-            )
+            time_layers_in_stage = len(time_stage_layers)
+            for time_layer_index, time_layer in enumerate(time_stage_layers):
+                x = self._apply_time_attention_layer(
+                    x,
+                    time_layer=time_layer,
+                    use_global_attention=self._use_global_time_attention(
+                        stage_index=stage_index,
+                        time_layer_index=time_layer_index,
+                        time_layers_in_stage=time_layers_in_stage,
+                    ),
+                    time_full_mask=time_mask,
+                    sliding_mask=sliding_mask,
+                    time_freqs=time_freqs,
+                )
 
         x = x[:, :, 0, :]
         x = self.final_norm(x)
