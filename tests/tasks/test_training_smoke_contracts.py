@@ -11,6 +11,7 @@ from hydra.core.global_hydra import GlobalHydra
 from lightning_fabric.utilities.exceptions import MisconfigurationException
 from omegaconf import DictConfig
 
+from src.tasks.blcs.models.blcs_axial_model import BLCSAxialModel
 from src.tasks.blcs.models.blcs_multiview_axial_model import BLCSMultiViewAxialModel
 from src.tasks.blcs.training.runner import BLCSTrainingRunner
 from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
@@ -100,6 +101,10 @@ BLCS_AXIAL_STAGE_GLOBAL_OVERRIDES = (
     "model.time_global_stage_mask=[true,false]",
 )
 
+BLCS_SINGLE_AXIAL_LAYER_OVERRIDES = (
+    "model.time_global_layer_mask=[false,false]",
+)
+
 PLCS_AXIAL_STAGE_OVERRIDES = (
     "model.camera_layers_per_stage=[1,1]",
     "model.time_layers_per_stage=[1,1]",
@@ -129,6 +134,30 @@ SMOKE_TASK_SPECS = (
         ),
         variants=(
             SmokeVariant(name="single"),
+            SmokeVariant(
+                name="axial",
+                overrides=(
+                    "model=axial",
+                    *BLCS_SINGLE_AXIAL_LAYER_OVERRIDES,
+                ),
+            ),
+            SmokeVariant(
+                name="axial_gqa",
+                overrides=(
+                    "model=axial",
+                    *BLCS_SINGLE_AXIAL_LAYER_OVERRIDES,
+                    "model.attention_type=gqa",
+                    "model.num_kv_heads=2",
+                ),
+            ),
+            SmokeVariant(
+                name="axial_sliding_global",
+                overrides=(
+                    "model=axial",
+                    "model.time_global_layer_mask=[true,false]",
+                    "model.time_window_radius=4",
+                ),
+            ),
             SmokeVariant(
                 name="single_gan",
                 overrides=(
@@ -538,6 +567,26 @@ def test_blcs_multiview_axial_stage_schedule_validation(
 
     with pytest.raises(ValueError, match=match):
         BLCSMultiViewAxialModel.from_config(config)
+
+
+def test_blcs_axial_layer_mask_validation() -> None:
+    GlobalHydra.instance().clear()
+    config_overrides = [
+        _normalize_override("model=axial"),
+        _normalize_override("model.num_layers=2"),
+        _normalize_override("model.time_global_layer_mask=[true]"),
+    ]
+    with initialize_config_dir(
+        version_base="1.3",
+        config_dir=str(REPO_ROOT / "src/tasks/blcs/configs"),
+    ):
+        config = compose(config_name="train", overrides=config_overrides)
+
+    with pytest.raises(
+        ValueError,
+        match="time_global_layer_mask length must equal num_layers",
+    ):
+        BLCSAxialModel.from_config(config)
 
 
 @pytest.mark.parametrize(
