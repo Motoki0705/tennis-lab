@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,6 +12,11 @@ import numpy as np
 import torch
 
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.tennis_scene.pipeline.components.input_shapes import (
+    get_model_num_court_keypoints,
+    normalize_ball_uv_sequence,
+    normalize_court_keypoint_sequence,
+)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -60,7 +65,7 @@ class BLCSResult:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict) -> "BLCSResult":
+    def from_dict(cls, data: dict) -> BLCSResult:
         """Create result from dict."""
         return cls(
             ball_3d=np.array(data["ball_3d"], dtype=np.float32),
@@ -104,7 +109,7 @@ class BLCSResult:
         return len(errors) == 0, errors
 
     @classmethod
-    def load(cls, path: str | Path) -> "BLCSResult":
+    def load(cls, path: str | Path) -> BLCSResult:
         """Load result from JSON file."""
         with Path(path).open("r", encoding="utf-8") as f:
             return cls.from_dict(json.load(f))
@@ -161,10 +166,13 @@ class BLCSModule(BasePipelineModule):
         """Run BLCS inference.
 
         Args:
-            ball_uv: Ball 2D positions (T, 2), normalized [0, 1].
-            court_kp: Court keypoints (20, 2), normalized [0, 1].
-            ball_vis: Ball visibility mask (T,).
-            court_vis: Court keypoint visibility (20,).
+            ball_uv: Ball 2D positions, shape (T, 2), (N, T, 2), or
+                (B, N, T, 2), normalized [0, 1].
+            court_kp: Court keypoints, shape (K, 2), (T, K, 2),
+                (N, K, 2), (N, T, K, 2), or (B, N, T, K, 2),
+                normalized [0, 1].
+            ball_vis: Ball visibility mask aligned with ``ball_uv``.
+            court_vis: Court keypoint visibility aligned with ``court_kp``.
 
         Returns:
             BLCSResult with 3D ball trajectory.
@@ -176,40 +184,58 @@ class BLCSModule(BasePipelineModule):
             if load_path.exists():
                 LOGGER.info(f"Loading BLCS result from {load_path} (skipping inference)")
                 return BLCSResult.load(load_path)
-            else:
-                LOGGER.warning(f"load_path specified but not found: {load_path}, running inference")
+            LOGGER.warning(
+                f"load_path specified but not found: {load_path}, running inference"
+            )
 
         if not self.is_loaded:
             self.load()
 
         LOGGER.info("Running BLCS ball localization...")
 
-        if ball_vis is not None:
-            effective_vis = ball_vis.astype(np.bool_)
-        else:
-            effective_vis = np.ones(len(ball_uv), dtype=bool)
+        ball_uv_seq, ball_vis_seq, shape = normalize_ball_uv_sequence(
+            ball_uv=ball_uv,
+            ball_vis=ball_vis,
+        )
+        batch_size, num_cameras, num_frames = shape
+        if batch_size != 1:
+            raise ValueError(
+                "BLCSModule expects one trajectory batch for pipeline output, "
+                f"got B={batch_size}"
+            )
+        target_num_keypoints = get_model_num_court_keypoints(self._predictor.model)
+        court_kp_seq, court_vis_seq = normalize_court_keypoint_sequence(
+            court_kp=court_kp,
+            court_vis=court_vis,
+            target_batch_size=batch_size,
+            target_num_cameras=num_cameras,
+            target_num_frames=num_frames,
+            target_num_keypoints=target_num_keypoints,
+        )
 
-        # BLCS models expect batched inputs: (B, T, 2), (B, 20, 2), (B, T), (B, 20).
-        ball_uv_t = torch.from_numpy(ball_uv).float().unsqueeze(0)
-        court_kp_t = torch.from_numpy(court_kp).float().unsqueeze(0)
-
-        ball_vis_t = torch.from_numpy(effective_vis.astype(np.float32)).unsqueeze(0)
-
-        court_vis_t = None
-        if court_vis is not None:
-            court_vis_t = torch.from_numpy(court_vis).float().unsqueeze(0)
+        ball_uv_t = torch.from_numpy(ball_uv_seq).float()
+        court_kp_t = torch.from_numpy(court_kp_seq).float()
+        ball_vis_t = torch.from_numpy(ball_vis_seq).float()
+        ball_mask_t = torch.ones((batch_size, num_cameras, num_frames), dtype=torch.float32)
+        court_vis_t = torch.from_numpy(court_vis_seq).float()
 
         pred = self._predictor.predict(
             ball_uv=ball_uv_t,
             court_kp=court_kp_t,
             ball_vis=ball_vis_t,
+            ball_mask=ball_mask_t,
             court_vis=court_vis_t,
             denormalize=True,
         )
 
         ball_3d = pred["position"].squeeze(0).cpu().numpy().astype(np.float32)
+        if ball_3d.shape != (num_frames, 3):
+            raise ValueError(
+                f"BLCS position output must be ({num_frames}, 3), got {ball_3d.shape}"
+            )
 
         # Mask out invalid frames with zeros to keep JSON strictly numeric
+        effective_vis = ball_vis_seq[0].any(axis=0).astype(bool)
         ball_3d[~effective_vis] = 0.0
 
         result = BLCSResult(ball_3d=ball_3d, visibility=effective_vis)
