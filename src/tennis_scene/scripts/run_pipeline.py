@@ -50,7 +50,7 @@ def main(cfg: DictConfig) -> int:
     LOGGER.info("Configuration:")
     LOGGER.info(f"  Device: {cfg.device}")
     LOGGER.info(f"  Max frames: {max_frames}")
-    LOGGER.info(f"  Court KP frame: {court_kp_frame}")
+    LOGGER.info(f"  Court KP start frame: {court_kp_frame}")
     LOGGER.info(f"  Skip GVHMR: {cfg.gvhmr.get('skip', False)}")
     LOGGER.info(f"  Skip ball: {cfg.ball_detection.get('skip', False)}")
     LOGGER.info(f"  Skip BLCS: {cfg.blcs.get('skip', False)}")
