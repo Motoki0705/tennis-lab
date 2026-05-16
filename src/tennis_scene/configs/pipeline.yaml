@@ -53,6 +53,20 @@ blcs:
 
 max_frames: null
 
+debug_visualization:
+  enabled: false
+  output_dir: ${output_dir}/debug_visualizations
+  save_court_kp: true
+  save_ball_2d: true
+  save_blcs_input: true
+  save_human_kp: true
+  save_plcs_court_view: true
+  fps: null
+  codec: mp4v
+  max_frames: null
+  court_view_width: 720
+  court_view_height: 960
+
 hydra:
   run:
     dir: ${output_dir}/${now:%Y-%m-%d_%H-%M-%S}
