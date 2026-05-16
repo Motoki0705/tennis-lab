@@ -10,9 +10,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import cv2
+import mpl_toolkits.mplot3d  # noqa: F401
 import numpy as np
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
 
-from src.utils.rendering.court_renderer import CourtLines
+from src.utils.rendering.ball_renderer import BallRenderer, BallStyle
+from src.utils.rendering.court_renderer import CourtLines, CourtRenderer
+from src.utils.rendering.skeleton_renderer import SkeletonRenderer, SkeletonStyle
 from src.utils.schema.court import COURT_SKELETON, HALF_DOUBLES_WIDTH, HALF_LENGTH
 
 if TYPE_CHECKING:
@@ -51,6 +56,15 @@ _PLAYER_COLORS_BGR = (
     (172, 129, 94),
 )
 
+_PLAYER_COLORS_MPL = (
+    "#E76F51",
+    "#2A9D8F",
+    "#E9C46A",
+    "#264653",
+    "#F4A261",
+    "#5E81AC",
+)
+
 
 @dataclass
 class DebugVisualizationConfig:
@@ -67,6 +81,8 @@ class DebugVisualizationConfig:
     codec: str = "mp4v"
     max_frames: int | None = None
     result_trail_length: int = 30
+    result_view_width: int = 960
+    result_view_height: int = 720
     court_view_width: int = 720
     court_view_height: int = 960
 
@@ -185,12 +201,16 @@ def _open_writer(
 
 
 def _output_width(name: str, video_width: int, config: DebugVisualizationConfig) -> int:
+    if name.endswith("_3d_view"):
+        return config.result_view_width
     if name.endswith("_court_view"):
         return config.court_view_width
     return video_width
 
 
 def _output_height(name: str, video_height: int, config: DebugVisualizationConfig) -> int:
+    if name.endswith("_3d_view"):
+        return config.result_view_height
     if name.endswith("_court_view"):
         return config.court_view_height
     return video_height
@@ -242,12 +262,13 @@ def _build_outputs(
         "scene.ball_uv or scene.court_kp is missing",
         lambda frame, idx: _draw_blcs_input_overlay(scene, frame, idx, width, height),
     )
+    blcs_result_3d_draw = _make_blcs_result_3d_drawer(scene, config)
     add_or_skip(
-        "blcs_result_court_view",
+        "blcs_result_3d_view",
         config.save_blcs_result,
         scene.ball_3d is not None,
         "scene.ball_3d is missing",
-        lambda _frame, idx: _draw_blcs_result_court_view(scene, idx, config),
+        lambda _frame, idx: blcs_result_3d_draw(idx),
     )
     add_or_skip(
         "human_kp_overlay",
@@ -256,12 +277,13 @@ def _build_outputs(
         "scene.human_kp_2d is missing",
         lambda frame, idx: _draw_human_kp_overlay(scene, frame, idx, width, height),
     )
+    plcs_result_3d_draw = _make_plcs_result_3d_drawer(scene, config)
     add_or_skip(
-        "plcs_result_court_view",
+        "plcs_result_3d_view",
         config.save_plcs_result,
         scene.player_position is not None and scene.player_yaw is not None,
         "scene.player_position or scene.player_yaw is missing",
-        lambda _frame, idx: _draw_plcs_result_court_view(scene, idx, config),
+        lambda _frame, idx: plcs_result_3d_draw(idx),
     )
     return outputs, skipped
 
@@ -361,68 +383,226 @@ def _draw_human_kp_overlay(
     return frame
 
 
-def _draw_blcs_result_court_view(
+class _Matplotlib3DFrameRenderer:
+    def __init__(self, *, width: int, height: int, dpi: int = 100) -> None:
+        self.figure = Figure(figsize=(width / dpi, height / dpi), dpi=dpi)
+        self.canvas = FigureCanvasAgg(self.figure)
+        self.ax = self.figure.add_subplot(111, projection="3d")
+        self.figure.subplots_adjust(left=0.02, right=0.98, bottom=0.04, top=0.92)
+
+    def clear(self):
+        self.ax.clear()
+        return self.ax
+
+    def to_bgr(self) -> NDArray[np.uint8]:
+        self.canvas.draw()
+        rgba = np.asarray(self.canvas.buffer_rgba())
+        return cv2.cvtColor(rgba[:, :, :3], cv2.COLOR_RGB2BGR)
+
+
+def _make_blcs_result_3d_drawer(
+    scene: SceneResult,
+    config: DebugVisualizationConfig,
+) -> Callable[[int], NDArray[np.uint8]]:
+    renderer = _Matplotlib3DFrameRenderer(
+        width=config.result_view_width,
+        height=config.result_view_height,
+    )
+    court_renderer = CourtRenderer()
+    ball_renderer = BallRenderer(BallStyle(ball_size=80.0, trajectory_width=2.0))
+    positions = np.asarray(scene.ball_3d, dtype=np.float32) if scene.ball_3d is not None else None
+
+    def draw(frame_idx: int) -> NDArray[np.uint8]:
+        ax = renderer.clear()
+        court_renderer.render_3d(ax, show_net=True)
+        _set_result_3d_view(ax)
+
+        if positions is not None and positions.size:
+            max_idx = min(frame_idx, positions.shape[0] - 1)
+            valid_indices = _valid_ball_3d_indices(scene, positions, 0, max_idx)
+            if valid_indices.size:
+                ball_renderer.render_trajectory_3d(
+                    ax,
+                    positions[valid_indices],
+                    show_start_end=False,
+                )
+            if _is_ball_3d_visible(scene, max_idx) and np.isfinite(positions[max_idx]).all():
+                ball_renderer.render_ball_3d(ax, positions[max_idx], label="Ball")
+
+        ax.set_title(f"BLCS result 3D | Frame {frame_idx}/{scene.num_frames - 1}")
+        return renderer.to_bgr()
+
+    return draw
+
+
+def _make_plcs_result_3d_drawer(
+    scene: SceneResult,
+    config: DebugVisualizationConfig,
+) -> Callable[[int], NDArray[np.uint8]]:
+    renderer = _Matplotlib3DFrameRenderer(
+        width=config.result_view_width,
+        height=config.result_view_height,
+    )
+    court_renderer = CourtRenderer()
+    skeleton_renderer = _make_player_skeleton_renderer(scene)
+    ball_renderer = BallRenderer(BallStyle(ball_size=60.0, trajectory_width=1.5))
+
+    def draw(frame_idx: int) -> NDArray[np.uint8]:
+        ax = renderer.clear()
+        court_renderer.render_3d(ax, show_net=True)
+        _draw_plcs_players_3d(ax, scene, frame_idx, skeleton_renderer, config.result_trail_length)
+        _draw_context_ball_3d(ax, scene, frame_idx, ball_renderer, config.result_trail_length)
+        _set_result_3d_view(ax)
+        ax.set_title(f"PLCS result 3D | Frame {frame_idx}/{scene.num_frames - 1}")
+        return renderer.to_bgr()
+
+    return draw
+
+
+def _make_player_skeleton_renderer(scene: SceneResult) -> SkeletonRenderer | None:
+    if scene.player_kp_3d is None:
+        return None
+    num_joints = int(scene.player_kp_3d.shape[-2])
+    skeleton_type = "coco17" if num_joints == 17 else "smpl"
+    return SkeletonRenderer(skeleton_type=skeleton_type)
+
+
+def _draw_plcs_players_3d(
+    ax,
     scene: SceneResult,
     frame_idx: int,
-    config: DebugVisualizationConfig,
-) -> NDArray[np.uint8]:
-    canvas = _make_court_canvas(config)
-    _draw_ball_3d_trajectory(canvas, scene, frame_idx, config.result_trail_length)
-    _draw_label(canvas, "blcs_result_court_view", frame_idx)
-    return canvas
+    skeleton_renderer: SkeletonRenderer | None,
+    trail_length: int,
+) -> None:
+    positions = np.asarray(scene.player_position, dtype=np.float32)
+    yaws = np.asarray(scene.player_yaw, dtype=np.float32)
+    if positions.size == 0:
+        return
 
-
-def _draw_plcs_result_court_view(
-    scene: SceneResult,
-    frame_idx: int,
-    config: DebugVisualizationConfig,
-) -> NDArray[np.uint8]:
-    canvas = _make_court_canvas(config)
-
-    positions = scene.player_position[:, frame_idx]
-    yaws = scene.player_yaw[:, frame_idx]
+    max_idx = min(frame_idx, positions.shape[1] - 1)
     track_ids = _track_ids(scene, positions.shape[0])
-    for player_idx, position in enumerate(positions):
-        if not np.isfinite(position[:2]).all():
+    player_kp_3d = (
+        np.asarray(scene.player_kp_3d, dtype=np.float32)
+        if scene.player_kp_3d is not None
+        else None
+    )
+
+    for player_idx, track_id in enumerate(track_ids):
+        position = positions[player_idx, max_idx]
+        if not np.isfinite(position).all():
             continue
-        color = _PLAYER_COLORS_BGR[player_idx % len(_PLAYER_COLORS_BGR)]
-        _draw_player_trail(
-            canvas,
-            scene.player_position[player_idx],
-            frame_idx,
-            color,
-            config.result_trail_length,
+        color = _PLAYER_COLORS_MPL[player_idx % len(_PLAYER_COLORS_MPL)]
+        _draw_player_trail_3d(ax, positions[player_idx], max_idx, color, trail_length)
+
+        if player_kp_3d is not None and skeleton_renderer is not None:
+            keypoints = player_kp_3d[player_idx, max_idx]
+            if np.isfinite(keypoints).all():
+                skeleton_renderer.render_3d(
+                    ax,
+                    keypoints,
+                    style_override=SkeletonStyle(
+                        joint_color=color,
+                        bone_color=color,
+                        joint_size=6.0,
+                        bone_width=2.0,
+                    ),
+                )
+        else:
+            ax.scatter(
+                [position[0]],
+                [position[1]],
+                [position[2]],
+                c=color,
+                s=90,
+                edgecolors="white",
+                linewidths=1.0,
+            )
+
+        yaw = yaws[player_idx, max_idx]
+        ax.quiver(
+            position[0],
+            position[1],
+            position[2] + 0.35,
+            np.sin(yaw),
+            np.cos(yaw),
+            0.0,
+            length=1.2,
+            color=color,
+            arrow_length_ratio=0.25,
         )
-        xy = _court_to_canvas(position[0], position[1], canvas.shape[1], canvas.shape[0])
-        yaw = yaws[player_idx]
-        direction = np.array([np.sin(yaw), np.cos(yaw)], dtype=np.float32)
-        arrow_end = _court_to_canvas(
-            position[0] + direction[0] * 1.2,
-            position[1] + direction[1] * 1.2,
-            canvas.shape[1],
-            canvas.shape[0],
-        )
-        cv2.circle(canvas, xy, 8, color, -1, cv2.LINE_AA)
-        cv2.arrowedLine(canvas, xy, arrow_end, color, 2, cv2.LINE_AA, tipLength=0.3)
-        cv2.putText(
-            canvas,
-            f"P{track_ids[player_idx]}",
-            (xy[0] + 10, xy[1] - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            color,
-            2,
-            cv2.LINE_AA,
+        ax.text(
+            position[0],
+            position[1],
+            position[2] + 0.7,
+            f"P{track_id}",
+            color=color,
         )
 
-    if scene.ball_3d is not None and frame_idx < scene.ball_3d.shape[0]:
-        ball = np.asarray(scene.ball_3d[frame_idx], dtype=np.float32)
-        if np.isfinite(ball[:2]).all():
-            ball_xy = _court_to_canvas(ball[0], ball[1], canvas.shape[1], canvas.shape[0])
-            cv2.circle(canvas, ball_xy, 5, (0, 255, 255), -1, cv2.LINE_AA)
 
-    _draw_label(canvas, "plcs_result_court_view", frame_idx)
-    return canvas
+def _draw_player_trail_3d(
+    ax,
+    positions: NDArray[np.float32],
+    frame_idx: int,
+    color: str,
+    trail_length: int,
+) -> None:
+    start_idx = max(0, frame_idx - trail_length)
+    trail = positions[start_idx : frame_idx + 1]
+    valid = np.isfinite(trail).all(axis=-1)
+    if valid.sum() < 2:
+        return
+    visible_trail = trail[valid]
+    ax.plot(
+        visible_trail[:, 0],
+        visible_trail[:, 1],
+        visible_trail[:, 2],
+        color=color,
+        linewidth=2.0,
+        alpha=0.45,
+    )
+
+
+def _draw_context_ball_3d(
+    ax,
+    scene: SceneResult,
+    frame_idx: int,
+    ball_renderer: BallRenderer,
+    trail_length: int,
+) -> None:
+    if scene.ball_3d is None:
+        return
+    positions = np.asarray(scene.ball_3d, dtype=np.float32)
+    if positions.size == 0:
+        return
+    max_idx = min(frame_idx, positions.shape[0] - 1)
+    start_idx = max(0, max_idx - trail_length)
+    valid_indices = _valid_ball_3d_indices(scene, positions, start_idx, max_idx)
+    if valid_indices.size:
+        ball_renderer.render_trajectory_3d(
+            ax,
+            positions[valid_indices],
+            show_start_end=False,
+        )
+    if _is_ball_3d_visible(scene, max_idx) and np.isfinite(positions[max_idx]).all():
+        ball_renderer.render_ball_3d(ax, positions[max_idx], label="Ball")
+
+
+def _valid_ball_3d_indices(
+    scene: SceneResult,
+    positions: NDArray[np.float32],
+    start_idx: int,
+    end_idx: int,
+) -> NDArray[np.int64]:
+    indices = []
+    for idx in range(start_idx, end_idx + 1):
+        if _is_ball_3d_visible(scene, idx) and np.isfinite(positions[idx]).all():
+            indices.append(idx)
+    return np.asarray(indices, dtype=np.int64)
+
+
+def _set_result_3d_view(ax) -> None:
+    ax.view_init(elev=24, azim=-62)
+    ax.grid(True, alpha=0.25)
 
 
 def _make_court_canvas(config: DebugVisualizationConfig) -> NDArray[np.uint8]:

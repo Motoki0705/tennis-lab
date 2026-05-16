@@ -66,8 +66,8 @@ debug_visualization:
   codec: mp4v
   max_frames: null
   result_trail_length: 30
-  court_view_width: 720
-  court_view_height: 960
+  result_view_width: 960
+  result_view_height: 720
 
 hydra:
   run:

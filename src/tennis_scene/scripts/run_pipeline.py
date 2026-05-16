@@ -96,8 +96,12 @@ def main(cfg: DictConfig) -> int:
                 codec=str(debug_cfg.get("codec", "mp4v")),
                 max_frames=int(debug_max_frames) if debug_max_frames is not None else None,
                 result_trail_length=int(debug_cfg.get("result_trail_length", 30)),
-                court_view_width=int(debug_cfg.get("court_view_width", 720)),
-                court_view_height=int(debug_cfg.get("court_view_height", 960)),
+                result_view_width=int(
+                    debug_cfg.get("result_view_width", debug_cfg.get("court_view_width", 960))
+                ),
+                result_view_height=int(
+                    debug_cfg.get("result_view_height", debug_cfg.get("court_view_height", 720))
+                ),
             ),
         )
         LOGGER.info(f"Saved debug visualizations: {manifest.manifest_path}")
