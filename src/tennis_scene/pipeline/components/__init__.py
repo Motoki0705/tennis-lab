@@ -1,5 +1,10 @@
 """Pipeline components for tennis scene reconstruction."""
 
+from src.tennis_scene.pipeline.components.ball_detection import (
+    BallDetectionConfig,
+    BallDetectionModule,
+    BallDetectionResult,
+)
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
 from src.tennis_scene.pipeline.components.blcs import BLCSConfig, BLCSModule, BLCSResult
 from src.tennis_scene.pipeline.components.court_kp import (
@@ -17,7 +22,6 @@ from src.tennis_scene.pipeline.components.plcs import (
     PLCSModule,
     PLCSResult,
 )
-from src.tennis_scene.pipeline.components.wasb import WASBConfig, WASBModule, WASBResult
 
 __all__ = [
     "BasePipelineModule",
@@ -27,9 +31,9 @@ __all__ = [
     "GVHMRConfig",
     "GVHMRModule",
     "GVHMRResult",
-    "WASBConfig",
-    "WASBModule",
-    "WASBResult",
+    "BallDetectionConfig",
+    "BallDetectionModule",
+    "BallDetectionResult",
     "PLCSConfig",
     "PLCSModule",
     "PLCSResult",

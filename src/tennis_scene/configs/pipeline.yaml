@@ -30,13 +30,21 @@ gvhmr:
   output_path: ${output_dir}/gvhmr_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
 
-wasb:
-  checkpoint: third_party/WASB-SBDT/pretrained/wasb_tennis_best.pth.tar
-  batch_size: 64
+ball_detection:
+  checkpoint: outputs/ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
+  batch_size: 4
+  image_size: [288, 512]
+  normalize_imagenet: true
+  score_threshold: 0.5
+  prefetch_batches: 2
+  window_stride: null  # null means model.num_frames
+  tail_policy: backfill  # backfill/drop
+  overlap_aggregation: last_window_wins  # last_window_wins/max_score
+  pin_memory: true
   skip: false
   save_result: true
-  output_path: ${output_dir}/wasb_result.json
-  load_path: outputs/tennis_scene/wasb_result.json  # Path to load pre-computed result (skips inference)
+  output_path: ${output_dir}/ball_detection_result.json
+  load_path: outputs/tennis_scene/ball_detection_result.json  # Path to load pre-computed result (skips inference)
 
 plcs:
   checkpoint: checkpoints/plcs/frame/last.ckpt

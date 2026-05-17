@@ -3,7 +3,7 @@
 This module provides an integrated pipeline for reconstructing 3D tennis scenes
 from monocular video, combining:
 - GVHMR: 3D human mesh (SMPL) estimation
-- WASB: 2D ball detection
+- Ball detection: 2D ball detection from `src.tasks.ball_detection`
 - Court KP Detection: 2D court keypoint detection
 - PLCS: 3D player localization in court system
 - BLCS: 3D ball localization in court system

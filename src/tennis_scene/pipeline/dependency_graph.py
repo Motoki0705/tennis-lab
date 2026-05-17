@@ -3,24 +3,24 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class Stage(str, Enum):
+class Stage(StrEnum):
     """Pipeline stages."""
 
     COURT_KP = "court_kp"
     GVHMR = "gvhmr"
-    WASB = "wasb"
+    BALL_DETECTION = "ball_detection"
     PLCS = "plcs"
     BLCS = "blcs"
 
 
-class ResolutionPolicy(str, Enum):
+class ResolutionPolicy(StrEnum):
     """Policy for handling unmet dependencies."""
 
     STRICT = "strict"
@@ -189,9 +189,9 @@ def build_default_dependency_graph(
             config_key="gvhmr",
             default_enabled=True,
         ),
-        Stage.WASB: StageSpec(
-            stage=Stage.WASB,
-            config_key="wasb",
+        Stage.BALL_DETECTION: StageSpec(
+            stage=Stage.BALL_DETECTION,
+            config_key="ball_detection",
             default_enabled=True,
         ),
         Stage.PLCS: StageSpec(
@@ -203,7 +203,7 @@ def build_default_dependency_graph(
         Stage.BLCS: StageSpec(
             stage=Stage.BLCS,
             config_key="blcs",
-            depends_on=(Stage.COURT_KP, Stage.WASB),
+            depends_on=(Stage.COURT_KP, Stage.BALL_DETECTION),
             default_enabled=True,
         ),
     }

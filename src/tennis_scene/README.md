@@ -8,7 +8,7 @@
 
 - **Court KP Detection**: コートキーポイント検出（固定カメラ前提で1フレームのみ）
 - **GVHMR**: 3D人物メッシュ（ローカルSMPL）+ 2Dスケルトン
-- **WASB**: ボール2D検出
+- **Ball Detection**: `src.tasks.ball_detection` によるボール2D検出
 - **PLCS**: プレーヤー3D位置 + yaw推定
 - **BLCS**: ボール3D軌道推定
 
@@ -20,7 +20,7 @@
 TennisSceneOrchestrator (オーケストレーター)
 ├── CourtKPModule      # コートKP検出
 ├── GVHMRModule        # 3D人物メッシュ推定
-├── WASBModule         # ボール検出
+├── BallDetectionModule # ボール検出
 ├── PLCSModule         # プレーヤー3D位置推定
 └── BLCSModule         # ボール3D軌道推定
 ```
@@ -30,7 +30,7 @@ TennisSceneOrchestrator (オーケストレーター)
 ### ステージ依存関係
 
 - `PLCS <- COURT_KP, GVHMR`（PLCSはcourt_kpとGVHMRのhuman_kpを使用）
-- `BLCS <- COURT_KP, WASB`
+- `BLCS <- COURT_KP, BALL_DETECTION`
 
 ## 固定カメラ前提
 
@@ -111,12 +111,21 @@ python -m src.tennis_scene.scripts.run_pipeline \
 | `gvhmr.hmr2_checkpoint` | HMR2特徴抽出 | `third_party/GVHMR/inputs/checkpoints/hmr2/...` |
 | `gvhmr.skip` | GVHMRスキップ | `false` |
 
-### WASB/PLCS/BLCS設定
+### Ball Detection/PLCS/BLCS設定
 
 | キー | 説明 | デフォルト |
 |------|------|----------|
-| `wasb.checkpoint` | WASBモデル | `third_party/WASB-SBDT/pretrained/...` |
-| `wasb.skip` | ボール検出スキップ | `false` |
+| `ball_detection.checkpoint` | `src.tasks.ball_detection` のLightning checkpoint | `outputs/ball_detection/...` |
+| `ball_detection.batch_size` | ボール検出の推論バッチサイズ | `4` |
+| `ball_detection.image_size` | ボール検出モデル入力サイズ `[height, width]` | `[288, 512]` |
+| `ball_detection.normalize_imagenet` | ImageNet正規化を適用 | `true` |
+| `ball_detection.score_threshold` | 可視判定に使うピークスコア閾値 | `0.5` |
+| `ball_detection.prefetch_batches` | 推論前にCPU側で準備しておくバッチ数 | `2` |
+| `ball_detection.window_stride` | 時系列windowのstride。`null`ならモデルの`num_frames` | `null` |
+| `ball_detection.tail_policy` | 末尾windowの扱い。`backfill`は最後のフレームで終わるwindowを作る | `backfill` |
+| `ball_detection.overlap_aggregation` | 重複推論されたフレームの集約方法 | `last_window_wins` |
+| `ball_detection.pin_memory` | 推論前バッチをpin memory化 | `true` |
+| `ball_detection.skip` | ボール検出スキップ | `false` |
 | `plcs.checkpoint` | PLCSモデル | `outputs/plcs/frame/logs/version_0/checkpoints/last.ckpt` |
 | `blcs.checkpoint` | BLCSモデル | `outputs/blcs/single/logs/version_0/checkpoints/last.ckpt` |
 | `blcs.skip` | BLCSスキップ | `false` |
@@ -175,7 +184,7 @@ src/tennis_scene/
 │       ├── base.py          # BasePipelineModule基底クラス
 │       ├── court_kp.py      # CourtKPModule
 │       ├── gvhmr.py         # GVHMRModule + GVHMRConfig
-│       ├── wasb.py          # WASBModule + WASBConfig
+│       ├── ball_detection.py # BallDetectionModule + BallDetectionConfig
 │       ├── plcs.py          # PLCSModule
 │       └── blcs.py          # BLCSModule
 ├── configs/
