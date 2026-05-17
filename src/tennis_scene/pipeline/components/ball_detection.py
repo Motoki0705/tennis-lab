@@ -8,13 +8,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import cv2
 import numpy as np
-import torch
 
-from src.tasks.ball_detection.data.argumentation import normalize_tensor_images_imagenet
 from src.tasks.ball_detection.inference import BallDetectionPredictor
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.utils.video import (
+    BgrToTensorTransform,
+    FramePacket,
+    OpenCVVideoFrameReader,
+    PrefetchIterator,
+    iter_temporal_batches,
+    iter_temporal_windows,
+    probe_video_info,
+)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -33,6 +39,11 @@ class BallDetectionConfig:
         image_size: Model input size as ``(height, width)``.
         normalize_imagenet: Whether to apply ImageNet normalization.
         score_threshold: Minimum peak confidence for visible detections.
+        prefetch_batches: Number of preprocessed inference batches to queue.
+        window_stride: Temporal window stride. Defaults to model sequence length.
+        tail_policy: Final-window policy for partial tails.
+        overlap_aggregation: How duplicate frame predictions are resolved.
+        pin_memory: Whether to pin preprocessed batch tensors before inference.
         save_result: Whether to save result to file.
         output_path: Path to save result JSON file.
         load_path: Path to load pre-computed result from (skips inference).
@@ -40,11 +51,16 @@ class BallDetectionConfig:
     """
 
     checkpoint: str | Path
-    batch_size: int = 64
+    batch_size: int = 4
     device: str = "cuda"
     image_size: tuple[int, int] = (288, 512)
     normalize_imagenet: bool = True
     score_threshold: float = 0.5
+    prefetch_batches: int = 2
+    window_stride: int | None = None
+    tail_policy: str = "backfill"
+    overlap_aggregation: str = "last_window_wins"
+    pin_memory: bool = True
     save_result: bool = False
     output_path: str | Path | None = None
     load_path: str | Path | None = None
@@ -226,10 +242,12 @@ class BallDetectionModule(BasePipelineModule):
             self.load()
 
         LOGGER.info("Running ball detection...")
-        frames, original_size = self._read_video_frames(video_path, max_frames=max_frames)
-        original_width = image_width if image_width is not None else original_size[0]
-        original_height = image_height if image_height is not None else original_size[1]
-        ball_uv, score = self._predict_frames(frames)
+        video_info = probe_video_info(video_path)
+        original_width = image_width if image_width is not None else video_info.width
+        original_height = (
+            image_height if image_height is not None else video_info.height
+        )
+        ball_uv, score = self._predict_video(video_path, max_frames=max_frames)
 
         ball_uv_px = ball_uv.copy()
         ball_uv_px[..., 0] *= max(original_width - 1, 1)
@@ -262,90 +280,116 @@ class BallDetectionModule(BasePipelineModule):
 
         return ball_detection_result
 
-    def _read_video_frames(
+    def _predict_video(
         self,
         video_path: str | Path,
         *,
         max_frames: int | None,
-    ) -> tuple[torch.Tensor, tuple[int, int]]:
-        """Read and resize video frames into ``(T, 3, H, W)`` float tensors."""
-        cap = cv2.VideoCapture(str(video_path))
-        if not cap.isOpened():
-            raise RuntimeError(f"Failed to open video: {video_path}")
-
-        image_h, image_w = self.config.image_size
-        frames: list[np.ndarray] = []
-        original_size: tuple[int, int] | None = None
-        try:
-            while max_frames is None or len(frames) < max_frames:
-                ok, frame_bgr = cap.read()
-                if not ok:
-                    break
-                if original_size is None:
-                    original_size = (frame_bgr.shape[1], frame_bgr.shape[0])
-                frame_bgr = cv2.resize(frame_bgr, (image_w, image_h))
-                frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-                frames.append(frame_rgb.astype(np.float32) / 255.0)
-        finally:
-            cap.release()
-
-        if not frames:
-            raise RuntimeError(f"No frames were read from video: {video_path}")
-
-        frame_tensor = (
-            torch.from_numpy(np.stack(frames)).permute(0, 3, 1, 2).contiguous()
-        )
-        if self.config.normalize_imagenet:
-            frame_tensor = normalize_tensor_images_imagenet(frame_tensor)
-        if original_size is None:
-            original_size = (image_w, image_h)
-        return frame_tensor, original_size
-
-    def _predict_frames(
-        self,
-        frames: torch.Tensor,
     ) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
-        """Run fixed-window prediction and return normalized coords and scores."""
+        """Stream video windows through the predictor."""
         if self._pipeline is None:
             raise RuntimeError("Ball detection predictor is not loaded.")
 
-        total_frames = int(frames.shape[0])
         model_config = getattr(self._pipeline, "model_config", {}) or {}
-        window = int(model_config.get("num_frames", 8))
-        if window <= 0:
-            raise ValueError(f"model.num_frames must be positive, got {window}")
+        sequence_length = int(model_config.get("num_frames", 8))
+        if sequence_length <= 0:
+            raise ValueError(
+                f"model.num_frames must be positive, got {sequence_length}"
+            )
+        stride = (
+            sequence_length
+            if self.config.window_stride is None
+            else int(self.config.window_stride)
+        )
+        if stride <= 0:
+            raise ValueError(f"window_stride must be positive, got {stride}")
 
-        sequences: list[torch.Tensor] = []
-        valid_lengths: list[int] = []
-        for start in range(0, total_frames, window):
-            sequence = frames[start : start + window]
-            valid_lengths.append(int(sequence.shape[0]))
-            if sequence.shape[0] < window:
-                pad = sequence[-1:].repeat(window - sequence.shape[0], 1, 1, 1)
-                sequence = torch.cat([sequence, pad], dim=0)
-            sequences.append(sequence)
+        transform = BgrToTensorTransform(
+            image_size=self.config.image_size,
+            normalize_imagenet=self.config.normalize_imagenet,
+        )
+        frame_stream = (
+            FramePacket(
+                index=packet.index,
+                frame=transform(packet.frame),
+                original_size=packet.original_size,
+            )
+            for packet in OpenCVVideoFrameReader(video_path, max_frames=max_frames)
+        )
+        windows = iter_temporal_windows(
+            frame_stream,
+            sequence_length=sequence_length,
+            stride=stride,
+            tail_policy=self.config.tail_policy,
+        )
+        batches = iter_temporal_batches(
+            windows,
+            batch_size=int(self.config.batch_size),
+            pin_memory=bool(self.config.pin_memory),
+        )
+        prefetched_batches = PrefetchIterator(
+            batches,
+            max_prefetch=int(self.config.prefetch_batches),
+        )
 
-        coords_chunks: list[np.ndarray] = []
-        score_chunks: list[np.ndarray] = []
-        for batch_start in range(0, len(sequences), int(self.config.batch_size)):
-            batch_sequences = sequences[
-                batch_start : batch_start + int(self.config.batch_size)
-            ]
-            batch = torch.stack(batch_sequences, dim=0)
-            prediction = self._pipeline.predict(batch)
+        coords_by_frame: dict[int, np.ndarray] = {}
+        score_by_frame: dict[int, float] = {}
+        max_frame_index = -1
+
+        for batch in prefetched_batches:
+            prediction = self._pipeline.predict(batch.tensor)
             coords = prediction["coords"].numpy().astype(np.float32)
             scores = prediction["visibility"].numpy().astype(np.float32)
-            for index, valid_length in enumerate(
-                valid_lengths[batch_start : batch_start + len(batch_sequences)]
-            ):
-                coords_chunks.append(coords[index, :valid_length])
-                score_chunks.append(scores[index, :valid_length])
+            for window_index, window in enumerate(batch.windows):
+                for time_index, frame_index in enumerate(window.frame_indices):
+                    max_frame_index = max(max_frame_index, int(frame_index))
+                    self._accumulate_frame_prediction(
+                        coords_by_frame=coords_by_frame,
+                        score_by_frame=score_by_frame,
+                        frame_index=int(frame_index),
+                        coord=coords[window_index, time_index],
+                        score=float(scores[window_index, time_index]),
+                    )
 
-        ball_uv = np.concatenate(coords_chunks, axis=0)
-        score = np.concatenate(score_chunks, axis=0)
+        if max_frame_index < 0:
+            raise RuntimeError(f"No frames were read from video: {video_path}")
+
+        total_frames = max_frame_index + 1
+        ball_uv = np.zeros((total_frames, 2), dtype=np.float32)
+        score = np.zeros((total_frames,), dtype=np.float32)
+        for frame_index in range(total_frames):
+            if frame_index in coords_by_frame:
+                ball_uv[frame_index] = coords_by_frame[frame_index]
+                score[frame_index] = score_by_frame[frame_index]
+
         ball_uv = np.clip(ball_uv, 0.0, 1.0).astype(np.float32)
         score = np.clip(score, 0.0, 1.0).astype(np.float32)
         return ball_uv, score
+
+    def _accumulate_frame_prediction(
+        self,
+        *,
+        coords_by_frame: dict[int, np.ndarray],
+        score_by_frame: dict[int, float],
+        frame_index: int,
+        coord: NDArray[np.float32],
+        score: float,
+    ) -> None:
+        """Resolve duplicate frame predictions from overlapping tail windows."""
+        if self.config.overlap_aggregation == "last_window_wins":
+            coords_by_frame[frame_index] = coord
+            score_by_frame[frame_index] = score
+            return
+        if self.config.overlap_aggregation == "max_score":
+            old_score = score_by_frame.get(frame_index)
+            if old_score is None or score >= old_score:
+                coords_by_frame[frame_index] = coord
+                score_by_frame[frame_index] = score
+            return
+        raise ValueError(
+            "overlap_aggregation must be one of ['last_window_wins', 'max_score'], "
+            f"got '{self.config.overlap_aggregation}'."
+        )
 
 
 if __name__ == "__main__":

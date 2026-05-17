@@ -100,7 +100,9 @@ class TennisSceneOrchestrator:
                 "yolo_checkpoint": to_absolute_path(cfg.gvhmr.yolo_checkpoint),
                 "vitpose_checkpoint": to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
                 "hmr2_checkpoint": to_absolute_path(cfg.gvhmr.hmr2_checkpoint),
-                "smplx_model_type": str(cfg.gvhmr.get("smplx_model_type", "supermotion")),
+                "smplx_model_type": str(
+                    cfg.gvhmr.get("smplx_model_type", "supermotion")
+                ),
                 "smplx2smpl_path": str(
                     cfg.gvhmr.get(
                         "smplx2smpl_path",
@@ -135,6 +137,19 @@ class TennisSceneOrchestrator:
                     score_threshold=float(
                         ball_detection_cfg.get("score_threshold", 0.5)
                     ),
+                    prefetch_batches=int(ball_detection_cfg.get("prefetch_batches", 2)),
+                    window_stride=(
+                        None
+                        if ball_detection_cfg.get("window_stride", None) is None
+                        else int(ball_detection_cfg.window_stride)
+                    ),
+                    tail_policy=str(ball_detection_cfg.get("tail_policy", "backfill")),
+                    overlap_aggregation=str(
+                        ball_detection_cfg.get(
+                            "overlap_aggregation", "last_window_wins"
+                        )
+                    ),
+                    pin_memory=bool(ball_detection_cfg.get("pin_memory", True)),
                     save_result=ball_detection_cfg.get("save_result", True),
                     output_path=get_output_path(
                         "ball_detection",
