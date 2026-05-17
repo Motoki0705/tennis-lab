@@ -21,6 +21,8 @@ from pytorch_lightning.callbacks import (
     EarlyStopping,
     LearningRateMonitor,
     ModelCheckpoint,
+    ProgressBar,
+    TQDMProgressBar,
 )
 from pytorch_lightning.loggers import TensorBoardLogger
 
@@ -252,6 +254,14 @@ class BaseTrainingRunner:
 
         # Add task-specific callbacks
         callbacks.extend(self.callbacks_extra(config, datamodule, logger))
+
+        # Lightning 2.6 defaults to RichProgressBar when no explicit progress
+        # callback is provided, which is noisy in notebook environments.
+        if config.training.trainer.get("enable_progress_bar", True) and not any(
+            isinstance(callback, ProgressBar) for callback in callbacks
+        ):
+            callbacks.append(TQDMProgressBar())
+
         return callbacks
 
     def build_trainer(
