@@ -12,10 +12,13 @@ import cv2
 import numpy as np
 
 from src.tennis_scene.io import SceneResult
+from src.tennis_scene.pipeline.components.ball_detection import (
+    BallDetectionConfig,
+    BallDetectionModule,
+)
 from src.tennis_scene.pipeline.components.blcs import BLCSConfig, BLCSModule
 from src.tennis_scene.pipeline.components.court_kp import CourtKPConfig, CourtKPModule
 from src.tennis_scene.pipeline.components.plcs import PLCSConfig, PLCSModule
-from src.tennis_scene.pipeline.components.wasb import WASBConfig, WASBModule
 from src.tennis_scene.pipeline.dependency_graph import (
     ResolutionResult,
     Stage,
@@ -36,7 +39,7 @@ class TennisSceneOrchestrator:
         self,
         court_kp_module: CourtKPModule,
         gvhmr_config: dict[str, Any] | None,
-        wasb_module: WASBModule | None,
+        ball_detection_module: BallDetectionModule | None,
         plcs_module: PLCSModule,
         blcs_module: BLCSModule | None,
         resolution: ResolutionResult,
@@ -44,7 +47,7 @@ class TennisSceneOrchestrator:
     ) -> None:
         self.court_kp_module = court_kp_module
         self.gvhmr_config = gvhmr_config
-        self.wasb_module = wasb_module
+        self.ball_detection_module = ball_detection_module
         self.plcs_module = plcs_module
         self.blcs_module = blcs_module
         self.resolution = resolution
@@ -97,7 +100,9 @@ class TennisSceneOrchestrator:
                 "yolo_checkpoint": to_absolute_path(cfg.gvhmr.yolo_checkpoint),
                 "vitpose_checkpoint": to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
                 "hmr2_checkpoint": to_absolute_path(cfg.gvhmr.hmr2_checkpoint),
-                "smplx_model_type": str(cfg.gvhmr.get("smplx_model_type", "supermotion")),
+                "smplx_model_type": str(
+                    cfg.gvhmr.get("smplx_model_type", "supermotion")
+                ),
                 "smplx2smpl_path": str(
                     cfg.gvhmr.get(
                         "smplx2smpl_path",
@@ -114,16 +119,43 @@ class TennisSceneOrchestrator:
                 "device": device,
             }
 
-        wasb_module = None
-        if Stage.WASB in resolution.enabled_set:
-            wasb_module = WASBModule(
-                WASBConfig(
-                    checkpoint=to_absolute_path(cfg.wasb.checkpoint),
-                    batch_size=int(cfg.wasb.batch_size),
+        ball_detection_module = None
+        if Stage.BALL_DETECTION in resolution.enabled_set:
+            ball_detection_cfg = cfg.ball_detection
+            ball_detection_module = BallDetectionModule(
+                BallDetectionConfig(
+                    checkpoint=to_absolute_path(ball_detection_cfg.checkpoint),
+                    batch_size=int(ball_detection_cfg.batch_size),
                     device=device,
-                    save_result=cfg.wasb.get("save_result", True),
-                    output_path=get_output_path("wasb", "wasb_result.json"),
-                    load_path=get_load_path("wasb"),
+                    image_size=tuple(
+                        int(value)
+                        for value in ball_detection_cfg.get("image_size", [288, 512])
+                    ),
+                    normalize_imagenet=bool(
+                        ball_detection_cfg.get("normalize_imagenet", True)
+                    ),
+                    score_threshold=float(
+                        ball_detection_cfg.get("score_threshold", 0.5)
+                    ),
+                    prefetch_batches=int(ball_detection_cfg.get("prefetch_batches", 2)),
+                    window_stride=(
+                        None
+                        if ball_detection_cfg.get("window_stride", None) is None
+                        else int(ball_detection_cfg.window_stride)
+                    ),
+                    tail_policy=str(ball_detection_cfg.get("tail_policy", "backfill")),
+                    overlap_aggregation=str(
+                        ball_detection_cfg.get(
+                            "overlap_aggregation", "last_window_wins"
+                        )
+                    ),
+                    pin_memory=bool(ball_detection_cfg.get("pin_memory", True)),
+                    save_result=ball_detection_cfg.get("save_result", True),
+                    output_path=get_output_path(
+                        "ball_detection",
+                        "ball_detection_result.json",
+                    ),
+                    load_path=get_load_path("ball_detection"),
                 )
             )
 
@@ -154,7 +186,7 @@ class TennisSceneOrchestrator:
         return cls(
             court_kp_module=court_kp_module,
             gvhmr_config=gvhmr_config,
-            wasb_module=wasb_module,
+            ball_detection_module=ball_detection_module,
             plcs_module=plcs_module,
             blcs_module=blcs_module,
             resolution=resolution,
@@ -215,8 +247,11 @@ class TennisSceneOrchestrator:
     def load_all(self) -> None:
         LOGGER.info("Pre-loading all modules...")
         self.court_kp_module.load()
-        if Stage.WASB in self.enabled_stages and self.wasb_module is not None:
-            self.wasb_module.load()
+        if (
+            Stage.BALL_DETECTION in self.enabled_stages
+            and self.ball_detection_module is not None
+        ):
+            self.ball_detection_module.load()
         self.plcs_module.load()
         if Stage.BLCS in self.enabled_stages and self.blcs_module is not None:
             self.blcs_module.load()
@@ -294,15 +329,18 @@ class TennisSceneOrchestrator:
         ball_uv = None
         ball_visibility = None
         ball_3d = None
-        if Stage.WASB in self.enabled_stages and self.wasb_module is not None:
-            wasb_result = self.wasb_module.process(
+        if (
+            Stage.BALL_DETECTION in self.enabled_stages
+            and self.ball_detection_module is not None
+        ):
+            ball_detection_result = self.ball_detection_module.process(
                 video_path,
                 max_frames=max_frames,
                 image_width=width,
                 image_height=height,
             )
-            ball_uv = wasb_result.ball_uv
-            ball_visibility = wasb_result.visibility
+            ball_uv = ball_detection_result.ball_uv
+            ball_visibility = ball_detection_result.visibility
             ball_uv_for_downstream = ball_uv
 
             if Stage.BLCS in self.enabled_stages and self.blcs_module is not None:
