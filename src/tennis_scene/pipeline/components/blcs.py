@@ -162,9 +162,9 @@ class BLCSModule(BasePipelineModule):
 
         Args:
             ball_uv: Ball 2D positions (T, 2), normalized [0, 1].
-            court_kp: Court keypoints (20, 2), normalized [0, 1].
+            court_kp: Court keypoints, shape (T, K, 2), normalized [0, 1].
             ball_vis: Ball visibility mask (T,).
-            court_vis: Court keypoint visibility (20,).
+            court_vis: Court keypoint visibility, shape (T, K).
 
         Returns:
             BLCSResult with 3D ball trajectory.
@@ -189,7 +189,28 @@ class BLCSModule(BasePipelineModule):
         else:
             effective_vis = np.ones(len(ball_uv), dtype=bool)
 
-        # BLCS models expect batched inputs: (B, T, 2), (B, 20, 2), (B, T), (B, 20).
+        if court_kp.ndim != 3:
+            raise ValueError(
+                f"court_kp must have shape (T, K, 2), got {court_kp.shape}"
+            )
+        if court_kp.shape[0] != len(ball_uv):
+            raise ValueError(
+                "court_kp temporal length must match ball_uv T, "
+                f"got {court_kp.shape[0]} and {len(ball_uv)}"
+            )
+        if court_vis is not None:
+            if court_vis.ndim != 2:
+                raise ValueError(
+                    f"court_vis must have shape (T, K), got {court_vis.shape}"
+                )
+            if court_vis.shape[0] != len(ball_uv):
+                raise ValueError(
+                    "court_vis temporal length must match ball_uv T, "
+                    f"got {court_vis.shape[0]} and {len(ball_uv)}"
+                )
+
+        # BLCS models expect batched inputs:
+        # (B, T, 2), (B, T, K, 2), (B, T), and optional court_vis.
         ball_uv_t = torch.from_numpy(ball_uv).float().unsqueeze(0)
         court_kp_t = torch.from_numpy(court_kp).float().unsqueeze(0)
 

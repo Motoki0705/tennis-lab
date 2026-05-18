@@ -28,6 +28,32 @@ def probe_video_info(video_path: str | Path) -> VideoInfo:
         cap.release()
 
 
+def read_video_frame(
+    video_path: str | Path, frame_index: int
+) -> FramePacket[NDArray[np.uint8]]:
+    """Read one decoded BGR frame by source frame index."""
+    if frame_index < 0:
+        raise ValueError(f"frame_index must be non-negative, got {frame_index}")
+
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        raise RuntimeError(f"Failed to open video: {video_path}")
+
+    try:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+        ok, frame_bgr = cap.read()
+        if not ok:
+            raise RuntimeError(f"Failed to read frame {frame_index} from {video_path}")
+        original_size = (int(frame_bgr.shape[1]), int(frame_bgr.shape[0]))
+        return FramePacket(
+            index=frame_index,
+            frame=frame_bgr,
+            original_size=original_size,
+        )
+    finally:
+        cap.release()
+
+
 class OpenCVVideoFrameReader:
     """Stream decoded BGR frames from a video file."""
 

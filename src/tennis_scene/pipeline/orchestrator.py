@@ -8,9 +8,6 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import cv2
-import numpy as np
-
 from src.tennis_scene.io import SceneResult
 from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionConfig,
@@ -24,9 +21,9 @@ from src.tennis_scene.pipeline.dependency_graph import (
     Stage,
     build_default_dependency_graph,
 )
+from src.utils.video import probe_video_info
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
     from omegaconf import DictConfig
 
 LOGGER = logging.getLogger(__name__)
@@ -85,6 +82,7 @@ class TennisSceneOrchestrator:
                 checkpoint_path=to_absolute_path(cfg.court_kp.checkpoint),
                 mode=str(cfg.court_kp.get("mode", "model")),
                 device=device,
+                num_keypoints=int(cfg.court_kp.get("num_keypoints", 14)),
                 save_result=cfg.court_kp.get("save_result", True),
                 output_path=get_output_path("court_kp", "court_kp_result.json"),
                 load_path=get_load_path("court_kp"),
@@ -256,51 +254,23 @@ class TennisSceneOrchestrator:
         if Stage.BLCS in self.enabled_stages and self.blcs_module is not None:
             self.blcs_module.load()
 
-    def _read_video_info(self, video_path: Path) -> dict[str, Any]:
-        cap = cv2.VideoCapture(str(video_path))
-        if not cap.isOpened():
-            raise RuntimeError(f"Failed to open video: {video_path}")
-        try:
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        finally:
-            cap.release()
-        return {"fps": fps, "width": width, "height": height, "num_frames": num_frames}
-
-    def _read_frame(self, video_path: Path, frame_idx: int) -> NDArray[np.uint8]:
-        cap = cv2.VideoCapture(str(video_path))
-        if not cap.isOpened():
-            raise RuntimeError(f"Failed to open video: {video_path}")
-        try:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-            ret, frame = cap.read()
-            if not ret:
-                raise RuntimeError(f"Failed to read frame {frame_idx}")
-            return cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        finally:
-            cap.release()
-
     def run(
         self,
         video_path: str | Path,
         max_frames: int | None = None,
-        court_kp_frame: int = 0,
+        court_kp_annotation_frame: int = 0,
     ) -> SceneResult:
         video_path = Path(video_path)
-        video_info = self._read_video_info(video_path)
-        width, height = video_info["width"], video_info["height"]
+        video_info = probe_video_info(video_path)
+        width, height = video_info.width, video_info.height
 
-        frame = self._read_frame(video_path, court_kp_frame)
         court_result = self.court_kp_module.process(
-            frame,
-            frame_index=court_kp_frame,
-            image_width=width,
-            image_height=height,
+            video_path,
+            max_frames=max_frames,
+            annotation_frame_index=court_kp_annotation_frame,
         )
         court_kp = court_result.keypoints
-        court_vis = None
+        court_vis = court_result.visibility
 
         if Stage.GVHMR in self.enabled_stages and self.gvhmr_config is not None:
             gvhmr_result = self._run_gvhmr(video_path, max_frames)
@@ -356,7 +326,7 @@ class TennisSceneOrchestrator:
 
         return SceneResult(
             num_frames=T,
-            fps=video_info["fps"],
+            fps=video_info.fps,
             width=width,
             height=height,
             court_kp=court_kp,
@@ -375,7 +345,8 @@ class TennisSceneOrchestrator:
             player_track_ids=track_ids,
             metadata={
                 "video_path": str(video_path),
-                "court_kp_frame": court_kp_frame,
+                "court_kp_annotation_frame": court_kp_annotation_frame,
+                "court_kp_frame_indices": court_result.frame_indices.tolist(),
                 "track_ids": track_ids.tolist(),
                 "enabled_stages": [stage.value for stage in self.execution_order],
             },

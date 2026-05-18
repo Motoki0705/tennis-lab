@@ -10,8 +10,9 @@ device: cuda
 
 court_kp:
   checkpoint: outputs/court_detection/checkpoints/last.ckpt
-  frame_index: 0
+  annotation_frame_index: 0  # Frame shown in manual_ui mode, then repeated across T
   mode: manual_ui  # model/manual_ui
+  num_keypoints: 14
   save_result: true
   output_path: ${output_dir}/court_kp_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
