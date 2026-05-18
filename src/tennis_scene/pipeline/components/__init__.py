@@ -11,7 +11,6 @@ from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPConfig,
     CourtKPModule,
     CourtKPResult,
-    CourtKPSequenceResult,
 )
 from src.tennis_scene.pipeline.components.gvhmr import (
     GVHMRConfig,
@@ -29,7 +28,6 @@ __all__ = [
     "CourtKPConfig",
     "CourtKPModule",
     "CourtKPResult",
-    "CourtKPSequenceResult",
     "GVHMRConfig",
     "GVHMRModule",
     "GVHMRResult",

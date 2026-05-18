@@ -17,7 +17,7 @@ class SceneResult:
     """Result of tennis scene 3D reconstruction.
 
     Player-related arrays use (P, T, ...) as the canonical shape.
-    Court keypoints use (T, K, 2) when inferred per frame.
+    Court keypoints use (T, K, 2).
     """
 
     num_frames: int
@@ -25,8 +25,8 @@ class SceneResult:
     width: int
     height: int
 
-    court_kp: NDArray[np.float32]  # (T, K, 2) or legacy (K, 2)
-    court_vis: NDArray[np.float32]  # (T, K) or legacy (K,)
+    court_kp: NDArray[np.float32]  # (T, K, 2)
+    court_vis: NDArray[np.float32]  # (T, K)
 
     player_position: NDArray[np.float32]  # (P, T, 3)
     player_yaw: NDArray[np.float32]  # (P, T)
