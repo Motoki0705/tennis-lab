@@ -8,9 +8,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
+import cv2
 import numpy as np
 
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.utils.video import OpenCVVideoFrameReader, probe_video_info, read_video_frame
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -28,6 +30,7 @@ class CourtKPConfig:
         checkpoint_path: Path to model checkpoint.
         mode: Detection mode ("model", "manual_ui").
         device: Inference device.
+        num_keypoints: Number of court keypoints expected from the predictor/UI.
         save_result: Whether to save result to file.
         output_path: Path to save result JSON file.
         load_path: Path to load pre-computed result from (skips inference).
@@ -37,6 +40,7 @@ class CourtKPConfig:
     checkpoint_path: str | Path
     mode: Literal["model", "manual_ui"] = "model"
     device: str = "cuda"
+    num_keypoints: int = NUM_COURT_KEYPOINTS
     save_result: bool = False
     output_path: str | Path | None = None
     load_path: str | Path | None = None
@@ -44,70 +48,6 @@ class CourtKPConfig:
 
 @dataclass
 class CourtKPResult:
-    """Result of court keypoint detection.
-
-    Attributes:
-        keypoints: Court keypoints (14, 2), normalized [0, 1].
-        frame_index: Frame index used for detection.
-
-    """
-
-    keypoints: NDArray[np.float32]
-    frame_index: int
-
-    def to_dict(self) -> dict:
-        """Convert result to JSON-serializable dict."""
-        return {
-            "keypoints": self.keypoints.tolist(),
-            "frame_index": self.frame_index,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> CourtKPResult:
-        """Create result from dict."""
-        return cls(
-            keypoints=np.array(data["keypoints"], dtype=np.float32),
-            frame_index=data["frame_index"],
-        )
-
-    def save(self, path: str | Path) -> None:
-        """Save result to JSON file."""
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", encoding="utf-8") as f:
-            json.dump(self.to_dict(), f, indent=2)
-        LOGGER.info(f"Saved CourtKP result to {path}")
-
-    def validate(self) -> tuple[bool, list[str]]:
-        """Validate result content.
-
-        Returns:
-            Tuple of (is_valid, errors).
-        """
-        errors: list[str] = []
-        if self.keypoints.shape != (NUM_COURT_KEYPOINTS, 2):
-            errors.append(
-                f"keypoints shape must be ({NUM_COURT_KEYPOINTS}, 2), "
-                f"got {self.keypoints.shape}"
-            )
-        if self.frame_index < 0:
-            errors.append(f"frame_index must be non-negative, got {self.frame_index}")
-        if not np.isfinite(self.keypoints).all():
-            errors.append("keypoints contain non-finite values")
-        tol = 1e-6
-        if np.any(self.keypoints < -tol) or np.any(self.keypoints > 1.0 + tol):
-            errors.append("keypoints must be normalized to [0, 1]")
-        return len(errors) == 0, errors
-
-    @classmethod
-    def load(cls, path: str | Path) -> CourtKPResult:
-        """Load result from JSON file."""
-        with Path(path).open("r", encoding="utf-8") as f:
-            return cls.from_dict(json.load(f))
-
-
-@dataclass
-class CourtKPSequenceResult:
     """Result of court keypoint detection over a video sequence.
 
     Attributes:
@@ -130,13 +70,17 @@ class CourtKPSequenceResult:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> CourtKPSequenceResult:
+    def from_dict(cls, data: dict) -> CourtKPResult:
         """Create result from dict."""
         keypoints = np.array(data["keypoints"], dtype=np.float32)
+        if keypoints.ndim == 2:
+            keypoints = keypoints[None, ...]
         if "visibility" in data:
             visibility = np.array(data["visibility"], dtype=np.float32)
         else:
             visibility = np.ones(keypoints.shape[:2], dtype=np.float32)
+        if visibility.ndim == 1:
+            visibility = visibility[None, ...]
         if "frame_indices" in data:
             frame_indices = np.array(data["frame_indices"], dtype=np.int32)
         elif "frame_index" in data:
@@ -149,37 +93,40 @@ class CourtKPSequenceResult:
             frame_indices=frame_indices,
         )
 
-    @classmethod
-    def from_single(cls, result: CourtKPResult) -> CourtKPSequenceResult:
-        """Create a one-frame sequence result from a single-frame result."""
-        return cls(
-            keypoints=result.keypoints[None, ...].astype(np.float32),
-            visibility=np.ones((1, result.keypoints.shape[0]), dtype=np.float32),
-            frame_indices=np.array([result.frame_index], dtype=np.int32),
-        )
-
     def save(self, path: str | Path) -> None:
         """Save result to JSON file."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2)
-        LOGGER.info(f"Saved CourtKP sequence result to {path}")
+        LOGGER.info(f"Saved CourtKP result to {path}")
 
-    def validate(self) -> tuple[bool, list[str]]:
+    def validate(
+        self,
+        *,
+        num_keypoints: int | None = NUM_COURT_KEYPOINTS,
+    ) -> tuple[bool, list[str]]:
         """Validate result content.
 
         Returns:
             Tuple of (is_valid, errors).
         """
         errors: list[str] = []
-        if self.keypoints.ndim != 3 or self.keypoints.shape[1:] != (
-            NUM_COURT_KEYPOINTS,
-            2,
+        if num_keypoints is not None and num_keypoints <= 0:
+            errors.append(f"num_keypoints must be positive, got {num_keypoints}")
+        expected_shape = None
+        if num_keypoints is not None and num_keypoints > 0:
+            expected_shape = (num_keypoints, 2)
+        if self.keypoints.ndim != 3 or (
+            expected_shape is not None and self.keypoints.shape[1:] != expected_shape
         ):
+            expected_text = (
+                f"(T, {num_keypoints}, 2)"
+                if num_keypoints is not None
+                else "(T, K, 2)"
+            )
             errors.append(
-                "keypoints shape must be "
-                f"(T, {NUM_COURT_KEYPOINTS}, 2), got {self.keypoints.shape}"
+                f"keypoints shape must be {expected_text}, got {self.keypoints.shape}"
             )
         if self.visibility.shape != self.keypoints.shape[:2]:
             errors.append(
@@ -203,20 +150,16 @@ class CourtKPSequenceResult:
         return len(errors) == 0, errors
 
     @classmethod
-    def load(cls, path: str | Path) -> CourtKPSequenceResult:
+    def load(cls, path: str | Path) -> CourtKPResult:
         """Load result from JSON file."""
         with Path(path).open("r", encoding="utf-8") as f:
-            data = json.load(f)
-        keypoints = np.array(data["keypoints"], dtype=np.float32)
-        if keypoints.ndim == 2:
-            return cls.from_single(CourtKPResult.from_dict(data))
-        return cls.from_dict(data)
+            return cls.from_dict(json.load(f))
 
 
 class CourtKPModule(BasePipelineModule):
     """Court keypoint detection module.
 
-    Detects 14 court keypoints from a single frame.
+    Detects 14 court keypoints for each frame in a video.
 
     Attributes:
         config: Configuration for the module.
@@ -240,6 +183,9 @@ class CourtKPModule(BasePipelineModule):
         self.checkpoint_path = Path(self.config.checkpoint_path)
         self.mode = self.config.mode
         self.device = self.config.device
+        self.num_keypoints = int(self.config.num_keypoints)
+        if self.num_keypoints <= 0:
+            raise ValueError(f"num_keypoints must be positive, got {self.num_keypoints}")
         self._predictor = None
         self._manual_keypoints: NDArray[np.float32] | None = None
         self._manual_needs_normalization = False
@@ -277,13 +223,13 @@ class CourtKPModule(BasePipelineModule):
         except ImportError as exc:
             raise ImportError("OpenCV is required for manual_ui mode.") from exc
 
-        keypoints = np.zeros((NUM_COURT_KEYPOINTS, 2), dtype=np.float32)
-        placed = np.zeros(NUM_COURT_KEYPOINTS, dtype=bool)
+        keypoints = np.zeros((self.num_keypoints, 2), dtype=np.float32)
+        placed = np.zeros(self.num_keypoints, dtype=bool)
         current_idx = 0
 
         def draw_overlay(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
             overlay = image.copy()
-            for idx in range(NUM_COURT_KEYPOINTS):
+            for idx in range(self.num_keypoints):
                 if not placed[idx]:
                     continue
                 x, y = keypoints[idx]
@@ -301,7 +247,7 @@ class CourtKPModule(BasePipelineModule):
                 )
             cv2.putText(
                 overlay,
-                f"Keypoint {current_idx}/{NUM_COURT_KEYPOINTS - 1}",
+                f"Keypoint {current_idx}/{self.num_keypoints - 1}",
                 (10, 20),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.6,
@@ -326,7 +272,7 @@ class CourtKPModule(BasePipelineModule):
             if event == cv2.EVENT_LBUTTONDOWN:
                 keypoints[current_idx] = [mx, my]
                 placed[current_idx] = True
-                current_idx = (current_idx + 1) % NUM_COURT_KEYPOINTS
+                current_idx = (current_idx + 1) % self.num_keypoints
 
         window_name = "Court Keypoints (manual_ui)"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
@@ -339,9 +285,9 @@ class CourtKPModule(BasePipelineModule):
                 key = cv2.waitKey(30) & 0xFF
 
                 if key in {ord("n"), ord(" "), 82}:
-                    current_idx = (current_idx + 1) % NUM_COURT_KEYPOINTS
+                    current_idx = (current_idx + 1) % self.num_keypoints
                 elif key in {ord("p"), 84}:
-                    current_idx = (current_idx - 1) % NUM_COURT_KEYPOINTS
+                    current_idx = (current_idx - 1) % self.num_keypoints
                 elif key == ord("c"):
                     keypoints[current_idx] = [0.0, 0.0]
                     placed[current_idx] = False
@@ -355,84 +301,162 @@ class CourtKPModule(BasePipelineModule):
 
     def process(
         self,
-        frame: NDArray[np.uint8],
-        frame_index: int = 0,
-        image_width: int | None = None,
-        image_height: int | None = None,
+        video_path: str | Path,
+        max_frames: int | None = None,
+        annotation_frame_index: int = 0,
     ) -> CourtKPResult:
-        """Detect court keypoints from a frame.
+        """Detect court keypoints over a video sequence.
 
         Args:
-            frame: RGB frame array (H, W, 3).
-            frame_index: Frame index (for metadata).
-            image_width: Image width for normalization.
-            image_height: Image height for normalization.
+            video_path: Path to input video.
+            max_frames: Maximum frames to return from the beginning of the video.
+            annotation_frame_index: Frame to annotate in manual UI mode.
 
         Returns:
-            CourtKPResult with normalized keypoints.
+            CourtKPResult with normalized keypoints shaped (T, K, 2).
 
         """
-        # Check if we should load from pre-computed result
         if self.config.load_path is not None:
             load_path = Path(self.config.load_path)
             if load_path.exists():
                 LOGGER.info(
                     f"Loading CourtKP result from {load_path} (skipping detection)"
                 )
-                return CourtKPResult.load(load_path)
+                result = CourtKPResult.load(load_path)
+                is_valid, errors = result.validate(num_keypoints=self.num_keypoints)
+                if not is_valid:
+                    raise ValueError(f"Invalid CourtKP result: {errors}")
+                return result
             LOGGER.warning(
                 f"load_path specified but not found: {load_path}, running detection"
             )
 
         if self.mode == "manual_ui":
-            if not self.is_loaded:
-                self.load()
-
-            if self._manual_keypoints is None:
-                self._collect_manual_keypoints_ui(frame)
-
-            keypoints = np.array(self._manual_keypoints, copy=True)
-
-            if self._manual_needs_normalization:
-                if image_width is None or image_height is None:
-                    raise ValueError(
-                        "image_width and image_height are required to normalize "
-                        "manual keypoints."
-                    )
-                keypoints[..., 0] /= max(image_width - 1, 1)
-                keypoints[..., 1] /= max(image_height - 1, 1)
-
-            result = CourtKPResult(
-                keypoints=keypoints.astype(np.float32),
-                frame_index=frame_index,
+            result = self._process_manual_video(
+                video_path,
+                max_frames=max_frames,
+                annotation_frame_index=annotation_frame_index,
             )
+        else:
+            result = self._process_model_video(video_path, max_frames=max_frames)
 
-            if self.config.save_result and self.config.output_path is not None:
-                result.save(self.config.output_path)
-
-            return result
-
-        if not self.is_loaded:
-            self.load()
-
-        pred = self._predictor.predict(frame)
-
-        # Convert tensors to numpy arrays
-        keypoints = pred["keypoints"].numpy().astype(np.float32)
-
-        if image_width is not None and image_height is not None:
-            keypoints[..., 0] /= max(image_width - 1, 1)
-            keypoints[..., 1] /= max(image_height - 1, 1)
-
-        result = CourtKPResult(
-            keypoints=keypoints,
-            frame_index=frame_index,
-        )
+        is_valid, errors = result.validate(num_keypoints=self.num_keypoints)
+        if not is_valid:
+            raise ValueError(f"Invalid CourtKP result: {errors}")
 
         if self.config.save_result and self.config.output_path is not None:
             result.save(self.config.output_path)
 
         return result
+
+    def _process_manual_video(
+        self,
+        video_path: str | Path,
+        *,
+        max_frames: int | None,
+        annotation_frame_index: int,
+    ) -> CourtKPResult:
+        """Annotate one frame and repeat it across the selected sequence."""
+        if annotation_frame_index < 0:
+            raise ValueError(
+                "annotation_frame_index must be non-negative, "
+                f"got {annotation_frame_index}"
+            )
+
+        video_info = probe_video_info(video_path)
+        if annotation_frame_index >= video_info.frame_count:
+            raise ValueError(
+                f"annotation_frame_index={annotation_frame_index} is outside video "
+                f"with {video_info.frame_count} frames"
+            )
+
+        num_frames = video_info.frame_count
+        if max_frames is not None:
+            num_frames = min(num_frames, int(max_frames))
+        if num_frames <= 0:
+            raise ValueError(f"No frames selected for CourtKP result: {video_path}")
+
+        packet = read_video_frame(video_path, annotation_frame_index)
+        frame_rgb = cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB)
+
+        if not self.is_loaded:
+            self.load()
+
+        if self._manual_keypoints is None:
+            self._collect_manual_keypoints_ui(frame_rgb)
+
+        keypoints = np.array(self._manual_keypoints, copy=True)
+
+        if self._manual_needs_normalization:
+            image_width, image_height = packet.original_size
+            keypoints[..., 0] /= max(image_width - 1, 1)
+            keypoints[..., 1] /= max(image_height - 1, 1)
+
+        keypoints = np.repeat(
+            keypoints[None, ...].astype(np.float32),
+            repeats=num_frames,
+            axis=0,
+        )
+        return CourtKPResult(
+            keypoints=keypoints,
+            visibility=np.ones(keypoints.shape[:2], dtype=np.float32),
+            frame_indices=np.arange(num_frames, dtype=np.int32),
+        )
+
+    def _process_model_video(
+        self,
+        video_path: str | Path,
+        *,
+        max_frames: int | None,
+    ) -> CourtKPResult:
+        """Run model inference for every selected video frame."""
+        if not self.is_loaded:
+            self.load()
+
+        keypoints: list[NDArray[np.float32]] = []
+        frame_indices: list[int] = []
+        for packet in OpenCVVideoFrameReader(video_path, max_frames=max_frames):
+            frame_rgb = cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB)
+            frame_keypoints = self._predict_frame(
+                frame_rgb,
+                image_width=packet.original_size[0],
+                image_height=packet.original_size[1],
+            )
+            keypoints.append(frame_keypoints)
+            frame_indices.append(packet.index)
+
+        if not keypoints:
+            raise RuntimeError(f"No frames were read from video: {video_path}")
+
+        stacked = np.stack(keypoints, axis=0).astype(np.float32)
+        return CourtKPResult(
+            keypoints=stacked,
+            visibility=np.ones(stacked.shape[:2], dtype=np.float32),
+            frame_indices=np.array(frame_indices, dtype=np.int32),
+        )
+
+    def _predict_frame(
+        self,
+        frame_rgb: NDArray[np.uint8],
+        *,
+        image_width: int,
+        image_height: int,
+    ) -> NDArray[np.float32]:
+        """Run the loaded model on one RGB frame and return normalized keypoints."""
+        if self._predictor is None:
+            raise RuntimeError("Court KP predictor is not loaded.")
+        pred = self._predictor.predict(frame_rgb)
+
+        raw_keypoints = pred["keypoints"]
+        if hasattr(raw_keypoints, "detach"):
+            raw_keypoints = raw_keypoints.detach().cpu().numpy()
+        elif hasattr(raw_keypoints, "numpy"):
+            raw_keypoints = raw_keypoints.numpy()
+        keypoints = np.asarray(raw_keypoints, dtype=np.float32)
+
+        keypoints[..., 0] /= max(image_width - 1, 1)
+        keypoints[..., 1] /= max(image_height - 1, 1)
+        return keypoints.astype(np.float32)
 
 
 if __name__ == "__main__":

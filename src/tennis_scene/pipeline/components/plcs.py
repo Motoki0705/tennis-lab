@@ -160,9 +160,9 @@ class PLCSModule(BasePipelineModule):
 
         Args:
             human_kp_2d: Human 2D keypoints, shape (P, T, 17, 2), normalized [0, 1].
-            court_kp: Court keypoints (20, 2), normalized [0, 1].
+            court_kp: Court keypoints, shape (T, K, 2), normalized [0, 1].
             human_kp_vis: Human keypoint visibility, shape (P, T, 17).
-            court_vis: Court keypoint visibility (20,).
+            court_vis: Court keypoint visibility, shape (T, K).
             track_ids: Optional track IDs aligned with P.
 
         Returns:
@@ -202,12 +202,38 @@ class PLCSModule(BasePipelineModule):
         batch_size = num_players * num_frames
 
         court_kp_t = torch.from_numpy(court_kp).float()
-        court_kp_batch = court_kp_t.unsqueeze(0).repeat(batch_size, 1, 1)
+        if court_kp_t.dim() != 3:
+            raise ValueError(
+                f"court_kp must have shape (T, K, 2), got {tuple(court_kp_t.shape)}"
+            )
+        if court_kp_t.shape[0] != num_frames:
+            raise ValueError(
+                "court_kp temporal length must match human_kp_2d T, "
+                f"got {court_kp_t.shape[0]} and {num_frames}"
+            )
+        court_kp_batch = (
+            court_kp_t.unsqueeze(0)
+            .expand(num_players, num_frames, *court_kp_t.shape[1:])
+            .reshape(batch_size, *court_kp_t.shape[1:])
+        )
 
         court_vis_batch = None
         if court_vis is not None:
             court_vis_t = torch.from_numpy(court_vis).float()
-            court_vis_batch = court_vis_t.unsqueeze(0).repeat(batch_size, 1)
+            if court_vis_t.dim() != 2:
+                raise ValueError(
+                    f"court_vis must have shape (T, K), got {tuple(court_vis_t.shape)}"
+                )
+            if court_vis_t.shape[0] != num_frames:
+                raise ValueError(
+                    "court_vis temporal length must match human_kp_2d T, "
+                    f"got {court_vis_t.shape[0]} and {num_frames}"
+                )
+            court_vis_batch = (
+                court_vis_t.unsqueeze(0)
+                .expand(num_players, num_frames, court_vis_t.shape[1])
+                .reshape(batch_size, court_vis_t.shape[1])
+            )
 
         human_kp_t = torch.from_numpy(human_kp_2d).float().reshape(
             batch_size, 17, 2

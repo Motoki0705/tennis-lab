@@ -8,29 +8,22 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import cv2
-import numpy as np
-
 from src.tennis_scene.io import SceneResult
 from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionConfig,
     BallDetectionModule,
 )
 from src.tennis_scene.pipeline.components.blcs import BLCSConfig, BLCSModule
-from src.tennis_scene.pipeline.components.court_kp import (
-    CourtKPConfig,
-    CourtKPModule,
-    CourtKPSequenceResult,
-)
+from src.tennis_scene.pipeline.components.court_kp import CourtKPConfig, CourtKPModule
 from src.tennis_scene.pipeline.components.plcs import PLCSConfig, PLCSModule
 from src.tennis_scene.pipeline.dependency_graph import (
     ResolutionResult,
     Stage,
     build_default_dependency_graph,
 )
+from src.utils.video import probe_video_info
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
     from omegaconf import DictConfig
 
 LOGGER = logging.getLogger(__name__)
@@ -89,8 +82,9 @@ class TennisSceneOrchestrator:
                 checkpoint_path=to_absolute_path(cfg.court_kp.checkpoint),
                 mode=str(cfg.court_kp.get("mode", "model")),
                 device=device,
+                num_keypoints=int(cfg.court_kp.get("num_keypoints", 14)),
                 save_result=cfg.court_kp.get("save_result", True),
-                output_path=get_output_path("court_kp", "court_kp_sequence_result.json"),
+                output_path=get_output_path("court_kp", "court_kp_result.json"),
                 load_path=get_load_path("court_kp"),
             )
         )
@@ -260,134 +254,20 @@ class TennisSceneOrchestrator:
         if Stage.BLCS in self.enabled_stages and self.blcs_module is not None:
             self.blcs_module.load()
 
-    def _read_video_info(self, video_path: Path) -> dict[str, Any]:
-        cap = cv2.VideoCapture(str(video_path))
-        if not cap.isOpened():
-            raise RuntimeError(f"Failed to open video: {video_path}")
-        try:
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        finally:
-            cap.release()
-        return {"fps": fps, "width": width, "height": height, "num_frames": num_frames}
-
-    def _read_frame(self, video_path: Path, frame_idx: int) -> NDArray[np.uint8]:
-        cap = cv2.VideoCapture(str(video_path))
-        if not cap.isOpened():
-            raise RuntimeError(f"Failed to open video: {video_path}")
-        try:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-            ret, frame = cap.read()
-            if not ret:
-                raise RuntimeError(f"Failed to read frame {frame_idx}")
-            return cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        finally:
-            cap.release()
-
-    def _run_court_kp_sequence(
-        self,
-        video_path: Path,
-        *,
-        start_frame: int,
-        max_frames: int | None,
-        image_width: int,
-        image_height: int,
-        total_frames: int,
-    ) -> CourtKPSequenceResult:
-        load_path = self.court_kp_module.config.load_path
-        if load_path is not None and Path(load_path).exists():
-            LOGGER.info(f"Loading CourtKP sequence result from: {load_path}")
-            return CourtKPSequenceResult.load(load_path)
-
-        if start_frame < 0:
-            raise ValueError(f"court_kp start_frame must be non-negative, got {start_frame}")
-        if start_frame >= total_frames:
-            raise ValueError(
-                f"court_kp start_frame={start_frame} is outside video with "
-                f"{total_frames} frames"
-            )
-
-        end_frame = total_frames
-        if max_frames is not None:
-            end_frame = min(end_frame, start_frame + max_frames)
-        if end_frame <= start_frame:
-            raise ValueError(
-                f"No frames selected for court KP inference: start={start_frame}, "
-                f"end={end_frame}"
-            )
-
-        LOGGER.info(
-            "Running Court KP detection for frames "
-            f"[{start_frame}, {end_frame}) ({end_frame - start_frame} frames)..."
-        )
-        previous_save_result = self.court_kp_module.config.save_result
-        previous_load_path = self.court_kp_module.config.load_path
-        self.court_kp_module.config.save_result = False
-        self.court_kp_module.config.load_path = None
-        try:
-            keypoints: list[NDArray[np.float32]] = []
-            frame_indices: list[int] = []
-
-            cap = cv2.VideoCapture(str(video_path))
-            if not cap.isOpened():
-                raise RuntimeError(f"Failed to open video: {video_path}")
-            try:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-                for frame_idx in range(start_frame, end_frame):
-                    ret, frame = cap.read()
-                    if not ret:
-                        raise RuntimeError(f"Failed to read frame {frame_idx}")
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    result = self.court_kp_module.process(
-                        frame_rgb,
-                        frame_index=frame_idx,
-                        image_width=image_width,
-                        image_height=image_height,
-                    )
-                    keypoints.append(result.keypoints)
-                    frame_indices.append(frame_idx)
-            finally:
-                cap.release()
-        finally:
-            self.court_kp_module.config.save_result = previous_save_result
-            self.court_kp_module.config.load_path = previous_load_path
-
-        sequence_result = CourtKPSequenceResult(
-            keypoints=np.stack(keypoints, axis=0).astype(np.float32),
-            visibility=np.ones(
-                (len(keypoints), keypoints[0].shape[0]),
-                dtype=np.float32,
-            ),
-            frame_indices=np.array(frame_indices, dtype=np.int32),
-        )
-        is_valid, errors = sequence_result.validate()
-        if not is_valid:
-            raise ValueError(f"Invalid CourtKP sequence result: {errors}")
-
-        output_path = self.court_kp_module.config.output_path
-        if previous_save_result and output_path is not None:
-            sequence_result.save(output_path)
-        return sequence_result
-
     def run(
         self,
         video_path: str | Path,
         max_frames: int | None = None,
-        court_kp_frame: int = 0,
+        court_kp_annotation_frame: int = 0,
     ) -> SceneResult:
         video_path = Path(video_path)
-        video_info = self._read_video_info(video_path)
-        width, height = video_info["width"], video_info["height"]
+        video_info = probe_video_info(video_path)
+        width, height = video_info.width, video_info.height
 
-        court_result = self._run_court_kp_sequence(
+        court_result = self.court_kp_module.process(
             video_path,
-            start_frame=court_kp_frame,
             max_frames=max_frames,
-            image_width=width,
-            image_height=height,
-            total_frames=video_info["num_frames"],
+            annotation_frame_index=court_kp_annotation_frame,
         )
         court_kp = court_result.keypoints
         court_vis = court_result.visibility
@@ -446,7 +326,7 @@ class TennisSceneOrchestrator:
 
         return SceneResult(
             num_frames=T,
-            fps=video_info["fps"],
+            fps=video_info.fps,
             width=width,
             height=height,
             court_kp=court_kp,
@@ -465,7 +345,7 @@ class TennisSceneOrchestrator:
             player_track_ids=track_ids,
             metadata={
                 "video_path": str(video_path),
-                "court_kp_start_frame": court_kp_frame,
+                "court_kp_annotation_frame": court_kp_annotation_frame,
                 "court_kp_frame_indices": court_result.frame_indices.tolist(),
                 "track_ids": track_ids.tolist(),
                 "enabled_stages": [stage.value for stage in self.execution_order],
