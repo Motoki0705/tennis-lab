@@ -61,12 +61,13 @@ python -m src.tennis_scene.scripts.run_pipeline \
 ### Court KPをUIで入力
 
 手動入力UIを使う場合は `manual_ui` を指定します。結果JSONは `court_kp.output_path` に保存されます。
+手動入力された1フレーム分のCourt KPは、対象フレーム列へ展開されます。
 
 ```bash
 python -m src.tennis_scene.scripts.run_pipeline \
     video_path=inputs/demo/match.mp4 \
     court_kp.mode=manual_ui \
-    court_kp.output_path=outputs/tennis_scene/court_kp_result.json
+    court_kp.output_path=outputs/tennis_scene/court_kp_sequence_result.json
 ```
 
 ### GVHMRスキップ（デバッグ用）
@@ -98,7 +99,7 @@ python -m src.tennis_scene.scripts.run_pipeline \
 | `device` | 推論デバイス | `cuda` |
 | `max_frames` | 最大フレーム数 | `null`（全フレーム） |
 | `court_kp.checkpoint` | Court KPモデル | `outputs/court_detection/checkpoints/last.ckpt` |
-| `court_kp.frame_index` | Court KP検出フレーム | `0` |
+| `court_kp.frame_index` | Court KP推論開始フレーム | `0` |
 | `court_kp.mode` | Court KPの入力モード（`model`/`manual_ui`） | `model` |
 
 ### GVHMR設定

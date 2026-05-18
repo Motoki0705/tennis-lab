@@ -70,6 +70,8 @@ class CourtKeypointPredictor(BasePredictor):
         lightning_module = CourtDetectionLightningModule.load_from_checkpoint(
             checkpoints[0],
             map_location=resolved_device,
+            weights_only=bool(kwargs.pop("weights_only", False)),
+            **kwargs,
         )
 
         model = lightning_module.model
