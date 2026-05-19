@@ -407,11 +407,47 @@ SMOKE_TASK_SPECS = (
                 ),
             ),
             SmokeVariant(
+                name="kp_dino_swin_fpn_config",
+                overrides=(
+                    "data=court_kp",
+                    "model=court_kp_dino_swin_fpn",
+                    "loss=kp",
+                    "model.encoder.name=default",
+                ),
+            ),
+            SmokeVariant(
+                name="kp_dino_swin_unet_config",
+                overrides=(
+                    "data=court_kp",
+                    "model=court_kp_dino_swin_unet",
+                    "loss=kp",
+                    "model.encoder.name=default",
+                ),
+            ),
+            SmokeVariant(
                 name="line",
                 overrides=(
                     "data=court_line",
                     "model=court_line",
                     "loss=line",
+                ),
+            ),
+            SmokeVariant(
+                name="line_dino_swin_fpn_config",
+                overrides=(
+                    "data=court_line",
+                    "model=court_line_dino_swin_fpn",
+                    "loss=line",
+                    "model.encoder.name=default",
+                ),
+            ),
+            SmokeVariant(
+                name="line_dino_swin_unet_config",
+                overrides=(
+                    "data=court_line",
+                    "model=court_line_dino_swin_unet",
+                    "loss=line",
+                    "model.encoder.name=default",
                 ),
             ),
         ),
