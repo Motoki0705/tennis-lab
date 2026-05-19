@@ -1,7 +1,9 @@
 defaults:
   - _self_
 
-video_path: data/samples/test.mp4
+video_paths:
+  - data/samples/test.mp4
+camera_ids: null
 
 output_dir: outputs/tennis_scene/test
 output_name: null
@@ -31,6 +33,14 @@ gvhmr:
   output_path: ${output_dir}/gvhmr_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
 
+player_association:
+  mode: manual_ui
+  initial_frame_index: 0
+  reference_camera: cam0
+  save_result: true
+  output_path: ${output_dir}/player_association_result.json
+  load_path: null  # Path to load pre-computed result (skips manual UI)
+
 ball_detection:
   checkpoint: outputs/ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
   batch_size: 4
@@ -45,7 +55,7 @@ ball_detection:
   skip: false
   save_result: true
   output_path: ${output_dir}/ball_detection_result.json
-  load_path: outputs/tennis_scene/ball_detection_result.json  # Path to load pre-computed result (skips inference)
+  load_path: null  # Path to load pre-computed result (skips inference)
 
 plcs:
   checkpoint: checkpoints/plcs/frame/last.ckpt

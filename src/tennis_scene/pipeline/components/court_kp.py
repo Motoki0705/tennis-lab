@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -51,8 +52,8 @@ class CourtKPResult:
     """Result of court keypoint detection over a video sequence.
 
     Attributes:
-        keypoints: Court keypoints (T, 14, 2), normalized [0, 1].
-        visibility: Court keypoint visibility flags (T, 14).
+        keypoints: Court keypoints (N, T, K, 2), normalized [0, 1].
+        visibility: Court keypoint visibility flags (N, T, K).
         frame_indices: Source frame indices aligned with T.
 
     """
@@ -73,20 +74,14 @@ class CourtKPResult:
     def from_dict(cls, data: dict) -> CourtKPResult:
         """Create result from dict."""
         keypoints = np.array(data["keypoints"], dtype=np.float32)
-        if keypoints.ndim == 2:
-            keypoints = keypoints[None, ...]
         if "visibility" in data:
             visibility = np.array(data["visibility"], dtype=np.float32)
         else:
-            visibility = np.ones(keypoints.shape[:2], dtype=np.float32)
-        if visibility.ndim == 1:
-            visibility = visibility[None, ...]
+            visibility = np.ones(keypoints.shape[:3], dtype=np.float32)
         if "frame_indices" in data:
             frame_indices = np.array(data["frame_indices"], dtype=np.int32)
-        elif "frame_index" in data:
-            frame_indices = np.array([data["frame_index"]], dtype=np.int32)
         else:
-            frame_indices = np.arange(keypoints.shape[0], dtype=np.int32)
+            frame_indices = np.arange(keypoints.shape[1], dtype=np.int32)
         return cls(
             keypoints=keypoints,
             visibility=visibility,
@@ -117,26 +112,28 @@ class CourtKPResult:
         expected_shape = None
         if num_keypoints is not None and num_keypoints > 0:
             expected_shape = (num_keypoints, 2)
-        if self.keypoints.ndim != 3 or (
-            expected_shape is not None and self.keypoints.shape[1:] != expected_shape
+        if self.keypoints.ndim != 4 or (
+            expected_shape is not None and self.keypoints.shape[2:] != expected_shape
         ):
             expected_text = (
-                f"(T, {num_keypoints}, 2)"
+                f"(N, T, {num_keypoints}, 2)"
                 if num_keypoints is not None
-                else "(T, K, 2)"
+                else "(N, T, K, 2)"
             )
             errors.append(
                 f"keypoints shape must be {expected_text}, got {self.keypoints.shape}"
             )
-        if self.visibility.shape != self.keypoints.shape[:2]:
+        if self.visibility.shape != self.keypoints.shape[:3]:
             errors.append(
-                "visibility shape must match keypoints[:2], "
+                "visibility shape must match keypoints[:3], "
                 f"got {self.visibility.shape} for {self.keypoints.shape}"
             )
-        if self.frame_indices.shape != (self.keypoints.shape[0],):
+        if self.keypoints.ndim >= 2 and self.frame_indices.shape != (
+            self.keypoints.shape[1],
+        ):
             errors.append(
                 "frame_indices shape must match (T,), "
-                f"got {self.frame_indices.shape} for T={self.keypoints.shape[0]}"
+                f"got {self.frame_indices.shape} for T={self.keypoints.shape[1]}"
             )
         if not np.isfinite(self.keypoints).all():
             errors.append("keypoints contain non-finite values")
@@ -159,7 +156,7 @@ class CourtKPResult:
 class CourtKPModule(BasePipelineModule):
     """Court keypoint detection module.
 
-    Detects 14 court keypoints for each frame in a video.
+    Detects court keypoints for each synchronized camera video.
 
     Attributes:
         config: Configuration for the module.
@@ -301,21 +298,25 @@ class CourtKPModule(BasePipelineModule):
 
     def process(
         self,
-        video_path: str | Path,
+        video_paths: Sequence[str | Path],
         max_frames: int | None = None,
         annotation_frame_index: int = 0,
     ) -> CourtKPResult:
-        """Detect court keypoints over a video sequence.
+        """Detect court keypoints over synchronized video sequences.
 
         Args:
-            video_path: Path to input video.
+            video_paths: Paths to synchronized input videos.
             max_frames: Maximum frames to return from the beginning of the video.
             annotation_frame_index: Frame to annotate in manual UI mode.
 
         Returns:
-            CourtKPResult with normalized keypoints shaped (T, K, 2).
+            CourtKPResult with normalized keypoints shaped (N, T, K, 2).
 
         """
+        video_paths = [Path(video_path) for video_path in video_paths]
+        if not video_paths:
+            raise ValueError("video_paths must contain at least one video")
+
         if self.config.load_path is not None:
             load_path = Path(self.config.load_path)
             if load_path.exists():
@@ -326,6 +327,11 @@ class CourtKPModule(BasePipelineModule):
                 is_valid, errors = result.validate(num_keypoints=self.num_keypoints)
                 if not is_valid:
                     raise ValueError(f"Invalid CourtKP result: {errors}")
+                if result.keypoints.shape[0] != len(video_paths):
+                    raise ValueError(
+                        "Loaded CourtKP result camera count must match video_paths, "
+                        f"got {result.keypoints.shape[0]} and {len(video_paths)}"
+                    )
                 return result
             LOGGER.warning(
                 f"load_path specified but not found: {load_path}, running detection"
@@ -333,12 +339,12 @@ class CourtKPModule(BasePipelineModule):
 
         if self.mode == "manual_ui":
             result = self._process_manual_video(
-                video_path,
+                video_paths,
                 max_frames=max_frames,
                 annotation_frame_index=annotation_frame_index,
             )
         else:
-            result = self._process_model_video(video_path, max_frames=max_frames)
+            result = self._process_model_video(video_paths, max_frames=max_frames)
 
         is_valid, errors = result.validate(num_keypoints=self.num_keypoints)
         if not is_valid:
@@ -351,7 +357,7 @@ class CourtKPModule(BasePipelineModule):
 
     def _process_manual_video(
         self,
-        video_path: str | Path,
+        video_paths: Sequence[str | Path],
         *,
         max_frames: int | None,
         annotation_frame_index: int,
@@ -363,76 +369,110 @@ class CourtKPModule(BasePipelineModule):
                 f"got {annotation_frame_index}"
             )
 
-        video_info = probe_video_info(video_path)
-        if annotation_frame_index >= video_info.frame_count:
+        first_info = probe_video_info(video_paths[0])
+        if annotation_frame_index >= first_info.frame_count:
             raise ValueError(
                 f"annotation_frame_index={annotation_frame_index} is outside video "
-                f"with {video_info.frame_count} frames"
+                f"with {first_info.frame_count} frames"
             )
 
-        num_frames = video_info.frame_count
+        num_frames = first_info.frame_count
         if max_frames is not None:
             num_frames = min(num_frames, int(max_frames))
         if num_frames <= 0:
-            raise ValueError(f"No frames selected for CourtKP result: {video_path}")
-
-        packet = read_video_frame(video_path, annotation_frame_index)
-        frame_rgb = cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB)
+            raise ValueError("No frames selected for CourtKP result")
 
         if not self.is_loaded:
             self.load()
 
-        if self._manual_keypoints is None:
+        per_camera_keypoints: list[NDArray[np.float32]] = []
+        for camera_index, video_path in enumerate(video_paths):
+            video_info = probe_video_info(video_path)
+            if video_info.frame_count < num_frames:
+                raise ValueError(
+                    f"video_paths[{camera_index}] has {video_info.frame_count} frames, "
+                    f"expected at least {num_frames}"
+                )
+            if annotation_frame_index >= video_info.frame_count:
+                raise ValueError(
+                    f"annotation_frame_index={annotation_frame_index} is outside "
+                    f"video_paths[{camera_index}] with {video_info.frame_count} frames"
+                )
+
+            packet = read_video_frame(video_path, annotation_frame_index)
+            frame_rgb = cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB)
+            self._manual_keypoints = None
             self._collect_manual_keypoints_ui(frame_rgb)
 
-        keypoints = np.array(self._manual_keypoints, copy=True)
+            if self._manual_keypoints is None:
+                raise RuntimeError("Manual court keypoint UI did not produce keypoints")
+            keypoints = np.array(self._manual_keypoints, copy=True)
 
-        if self._manual_needs_normalization:
-            image_width, image_height = packet.original_size
-            keypoints[..., 0] /= max(image_width - 1, 1)
-            keypoints[..., 1] /= max(image_height - 1, 1)
+            if self._manual_needs_normalization:
+                image_width, image_height = packet.original_size
+                keypoints[..., 0] /= max(image_width - 1, 1)
+                keypoints[..., 1] /= max(image_height - 1, 1)
+            per_camera_keypoints.append(keypoints.astype(np.float32))
 
-        keypoints = np.repeat(
-            keypoints[None, ...].astype(np.float32),
-            repeats=num_frames,
+        keypoints = np.stack(
+            [
+                np.repeat(kp[None, ...], repeats=num_frames, axis=0)
+                for kp in per_camera_keypoints
+            ],
             axis=0,
-        )
+        ).astype(np.float32)
         return CourtKPResult(
             keypoints=keypoints,
-            visibility=np.ones(keypoints.shape[:2], dtype=np.float32),
+            visibility=np.ones(keypoints.shape[:3], dtype=np.float32),
             frame_indices=np.arange(num_frames, dtype=np.int32),
         )
 
     def _process_model_video(
         self,
-        video_path: str | Path,
+        video_paths: Sequence[str | Path],
         *,
         max_frames: int | None,
     ) -> CourtKPResult:
-        """Run model inference for every selected video frame."""
+        """Run model inference for every selected frame in each camera video."""
         if not self.is_loaded:
             self.load()
 
-        keypoints: list[NDArray[np.float32]] = []
-        frame_indices: list[int] = []
-        for packet in OpenCVVideoFrameReader(video_path, max_frames=max_frames):
-            frame_rgb = cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB)
-            frame_keypoints = self._predict_frame(
-                frame_rgb,
-                image_width=packet.original_size[0],
-                image_height=packet.original_size[1],
-            )
-            keypoints.append(frame_keypoints)
-            frame_indices.append(packet.index)
+        per_camera_keypoints: list[NDArray[np.float32]] = []
+        expected_frame_indices: NDArray[np.int32] | None = None
+        for camera_index, video_path in enumerate(video_paths):
+            keypoints: list[NDArray[np.float32]] = []
+            frame_indices: list[int] = []
+            for packet in OpenCVVideoFrameReader(video_path, max_frames=max_frames):
+                frame_rgb = cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB)
+                frame_keypoints = self._predict_frame(
+                    frame_rgb,
+                    image_width=packet.original_size[0],
+                    image_height=packet.original_size[1],
+                )
+                keypoints.append(frame_keypoints)
+                frame_indices.append(packet.index)
 
-        if not keypoints:
-            raise RuntimeError(f"No frames were read from video: {video_path}")
+            if not keypoints:
+                raise RuntimeError(f"No frames were read from video: {video_path}")
 
-        stacked = np.stack(keypoints, axis=0).astype(np.float32)
+            camera_frame_indices = np.array(frame_indices, dtype=np.int32)
+            if expected_frame_indices is None:
+                expected_frame_indices = camera_frame_indices
+            elif not np.array_equal(expected_frame_indices, camera_frame_indices):
+                raise ValueError(
+                    f"video_paths[{camera_index}] frame indices do not match "
+                    "the first camera"
+                )
+            per_camera_keypoints.append(np.stack(keypoints, axis=0).astype(np.float32))
+
+        if expected_frame_indices is None:
+            raise RuntimeError("No frames were read from video_paths")
+
+        stacked = np.stack(per_camera_keypoints, axis=0).astype(np.float32)
         return CourtKPResult(
             keypoints=stacked,
-            visibility=np.ones(stacked.shape[:2], dtype=np.float32),
-            frame_indices=np.array(frame_indices, dtype=np.int32),
+            visibility=np.ones(stacked.shape[:3], dtype=np.float32),
+            frame_indices=expected_frame_indices,
         )
 
     def _predict_frame(

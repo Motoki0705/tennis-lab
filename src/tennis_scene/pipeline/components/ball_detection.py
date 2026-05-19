@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -71,10 +72,10 @@ class BallDetectionResult:
     """Result of scene-level ball detection.
 
     Attributes:
-        ball_uv: Ball 2D position (T, 2), normalized [0, 1].
-        ball_uv_px: Ball 2D position (T, 2), in pixels.
-        visibility: Ball visibility mask (T,).
-        score: Detection confidence score (T,).
+        ball_uv: Ball 2D position (N, T, 2), normalized [0, 1].
+        ball_uv_px: Ball 2D position (N, T, 2), in pixels.
+        visibility: Ball visibility mask (N, T).
+        score: Detection confidence score (N, T).
 
     """
 
@@ -117,24 +118,26 @@ class BallDetectionResult:
             Tuple of (is_valid, errors).
         """
         errors: list[str] = []
-        if self.ball_uv.ndim != 2 or self.ball_uv.shape[1] != 2:
-            errors.append(f"ball_uv shape must be (T, 2), got {self.ball_uv.shape}")
-        if self.ball_uv_px.ndim != 2 or self.ball_uv_px.shape[1] != 2:
+        if self.ball_uv.ndim != 3 or self.ball_uv.shape[2] != 2:
+            errors.append(f"ball_uv shape must be (N, T, 2), got {self.ball_uv.shape}")
+        if self.ball_uv_px.ndim != 3 or self.ball_uv_px.shape[2] != 2:
             errors.append(
-                f"ball_uv_px shape must be (T, 2), got {self.ball_uv_px.shape}"
+                f"ball_uv_px shape must be (N, T, 2), got {self.ball_uv_px.shape}"
             )
-        if self.visibility.ndim != 1:
-            errors.append(f"visibility shape must be (T,), got {self.visibility.shape}")
-        if self.score.ndim != 1:
-            errors.append(f"score shape must be (T,), got {self.score.shape}")
+        if self.visibility.ndim != 2:
+            errors.append(
+                f"visibility shape must be (N, T), got {self.visibility.shape}"
+            )
+        if self.score.ndim != 2:
+            errors.append(f"score shape must be (N, T), got {self.score.shape}")
 
-        t_uv = self.ball_uv.shape[0]
-        if self.ball_uv_px.shape[0] != t_uv:
-            errors.append("ball_uv_px length does not match ball_uv length")
-        if self.visibility.shape[0] != t_uv:
-            errors.append("visibility length does not match ball_uv length")
-        if self.score.shape[0] != t_uv:
-            errors.append("score length does not match ball_uv length")
+        nt_uv = self.ball_uv.shape[:2]
+        if self.ball_uv_px.shape[:2] != nt_uv:
+            errors.append("ball_uv_px shape does not match ball_uv on (N, T)")
+        if self.visibility.shape != nt_uv:
+            errors.append("visibility shape does not match ball_uv on (N, T)")
+        if self.score.shape != nt_uv:
+            errors.append("score shape does not match ball_uv on (N, T)")
 
         if not np.isfinite(self.ball_uv).all():
             errors.append("ball_uv contains non-finite values")
@@ -208,23 +211,27 @@ class BallDetectionModule(BasePipelineModule):
 
     def process(
         self,
-        video_path: str | Path,
+        video_paths: Sequence[str | Path],
         max_frames: int | None = None,
         image_width: int | None = None,
         image_height: int | None = None,
     ) -> BallDetectionResult:
-        """Run ball detection on video.
+        """Run ball detection on synchronized videos.
 
         Args:
-            video_path: Path to input video.
+            video_paths: Paths to synchronized input videos.
             max_frames: Maximum frames to process.
             image_width: Image width for normalization.
             image_height: Image height for normalization.
 
         Returns:
-            BallDetectionResult with ball positions.
+            BallDetectionResult with ball positions shaped (N, T, ...).
 
         """
+        video_paths = [Path(video_path) for video_path in video_paths]
+        if not video_paths:
+            raise ValueError("video_paths must contain at least one video")
+
         # Check if we should load from pre-computed result
         if self.config.load_path is not None:
             load_path = Path(self.config.load_path)
@@ -233,7 +240,17 @@ class BallDetectionModule(BasePipelineModule):
                     f"Loading ball detection result from {load_path} "
                     "(skipping inference)"
                 )
-                return BallDetectionResult.load(load_path)
+                result = BallDetectionResult.load(load_path)
+                is_valid, errors = result.validate()
+                if not is_valid:
+                    raise ValueError(f"Invalid ball detection result: {errors}")
+                if result.ball_uv.shape[0] != len(video_paths):
+                    raise ValueError(
+                        "Loaded ball detection result camera count must match "
+                        f"video_paths, got {result.ball_uv.shape[0]} and "
+                        f"{len(video_paths)}"
+                    )
+                return result
             LOGGER.warning(
                 f"load_path specified but not found: {load_path}, running inference"
             )
@@ -242,38 +259,61 @@ class BallDetectionModule(BasePipelineModule):
             self.load()
 
         LOGGER.info("Running ball detection...")
-        video_info = probe_video_info(video_path)
-        original_width = image_width if image_width is not None else video_info.width
-        original_height = (
-            image_height if image_height is not None else video_info.height
-        )
-        ball_uv, score = self._predict_video(video_path, max_frames=max_frames)
+        per_camera_uv: list[NDArray[np.float32]] = []
+        per_camera_uv_px: list[NDArray[np.float32]] = []
+        per_camera_visibility: list[NDArray[np.bool_]] = []
+        per_camera_score: list[NDArray[np.float32]] = []
+        expected_frames: int | None = None
 
-        ball_uv_px = ball_uv.copy()
-        ball_uv_px[..., 0] *= max(original_width - 1, 1)
-        ball_uv_px[..., 1] *= max(original_height - 1, 1)
+        for camera_index, video_path in enumerate(video_paths):
+            video_info = probe_video_info(video_path)
+            original_width = image_width if image_width is not None else video_info.width
+            original_height = (
+                image_height if image_height is not None else video_info.height
+            )
+            ball_uv, score = self._predict_video(video_path, max_frames=max_frames)
 
-        finite_uv = np.isfinite(ball_uv).all(axis=-1)
-        finite_px = np.isfinite(ball_uv_px).all(axis=-1)
-        finite_score = np.isfinite(score)
-        valid_mask = (
-            finite_uv
-            & finite_px
-            & finite_score
-            & (score >= float(self.config.score_threshold))
-        )
+            if expected_frames is None:
+                expected_frames = ball_uv.shape[0]
+            elif ball_uv.shape[0] != expected_frames:
+                raise ValueError(
+                    f"video_paths[{camera_index}] produced T={ball_uv.shape[0]}, "
+                    f"expected T={expected_frames}"
+                )
 
-        # Replace invalid values with zeros to keep JSON strictly numeric
-        ball_uv[~valid_mask] = 0.0
-        ball_uv_px[~valid_mask] = 0.0
-        score[~valid_mask] = 0.0
+            ball_uv_px = ball_uv.copy()
+            ball_uv_px[..., 0] *= max(original_width - 1, 1)
+            ball_uv_px[..., 1] *= max(original_height - 1, 1)
+
+            finite_uv = np.isfinite(ball_uv).all(axis=-1)
+            finite_px = np.isfinite(ball_uv_px).all(axis=-1)
+            finite_score = np.isfinite(score)
+            valid_mask = (
+                finite_uv
+                & finite_px
+                & finite_score
+                & (score >= float(self.config.score_threshold))
+            )
+
+            # Replace invalid values with zeros to keep JSON strictly numeric
+            ball_uv[~valid_mask] = 0.0
+            ball_uv_px[~valid_mask] = 0.0
+            score[~valid_mask] = 0.0
+
+            per_camera_uv.append(ball_uv.astype(np.float32))
+            per_camera_uv_px.append(ball_uv_px.astype(np.float32))
+            per_camera_visibility.append(valid_mask.astype(np.bool_))
+            per_camera_score.append(score.astype(np.float32))
 
         ball_detection_result = BallDetectionResult(
-            ball_uv=ball_uv,
-            ball_uv_px=ball_uv_px,
-            visibility=valid_mask.astype(np.bool_),
-            score=score,
+            ball_uv=np.stack(per_camera_uv, axis=0).astype(np.float32),
+            ball_uv_px=np.stack(per_camera_uv_px, axis=0).astype(np.float32),
+            visibility=np.stack(per_camera_visibility, axis=0).astype(np.bool_),
+            score=np.stack(per_camera_score, axis=0).astype(np.float32),
         )
+        is_valid, errors = ball_detection_result.validate()
+        if not is_valid:
+            raise ValueError(f"Invalid ball detection result: {errors}")
 
         if self.config.save_result and self.config.output_path is not None:
             ball_detection_result.save(self.config.output_path)
