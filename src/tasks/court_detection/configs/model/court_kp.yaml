@@ -1,7 +1,7 @@
 defaults:
-  - _court_fpn
+  - _hierarchical
   - _self_
 
-name: court_fpn_kp
+name: court_hierarchical_kp
 in_channels: 3
 num_classes: 14

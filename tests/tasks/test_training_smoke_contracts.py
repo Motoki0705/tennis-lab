@@ -372,6 +372,33 @@ SMOKE_TASK_SPECS = (
                 ),
             ),
             SmokeVariant(
+                name="seg_unet_decoder",
+                overrides=(
+                    "data=court_seg",
+                    "model=court_seg",
+                    "loss=seg",
+                    "model.decoder.name=unet",
+                ),
+            ),
+            SmokeVariant(
+                name="seg_dino_swin_fpn_config",
+                overrides=(
+                    "data=court_seg",
+                    "model=court_seg_dino_swin_fpn",
+                    "loss=seg",
+                    "model.encoder.name=default",
+                ),
+            ),
+            SmokeVariant(
+                name="seg_dino_swin_unet_config",
+                overrides=(
+                    "data=court_seg",
+                    "model=court_seg_dino_swin_unet",
+                    "loss=seg",
+                    "model.encoder.name=default",
+                ),
+            ),
+            SmokeVariant(
                 name="kp",
                 overrides=(
                     "data=court_kp",
