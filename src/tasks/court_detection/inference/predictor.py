@@ -21,12 +21,12 @@ from src.utils.data.heatmaps import heatmaps_to_argmax
 
 
 class CourtKeypointPredictor(BasePredictor):
-    """Predictor for court keypoint detection using CourtFPN.
+    """Predictor for court keypoint detection using a court detection model.
 
     Loads a Lightning checkpoint and runs keypoint heatmap inference.
 
     Attributes:
-        model: CourtFPN instance.
+        model: Court detection model instance.
         device: Device to run inference on.
         short_side: Short side resize for preprocessing.
     """
