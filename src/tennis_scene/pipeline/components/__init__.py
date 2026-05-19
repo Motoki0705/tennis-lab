@@ -17,6 +17,12 @@ from src.tennis_scene.pipeline.components.gvhmr import (
     GVHMRModule,
     GVHMRResult,
 )
+from src.tennis_scene.pipeline.components.player_association import (
+    PlayerAssociationConfig,
+    PlayerAssociationModule,
+    PlayerAssociationResult,
+    PlayerAssociationSegment,
+)
 from src.tennis_scene.pipeline.components.plcs import (
     PLCSConfig,
     PLCSModule,
@@ -31,6 +37,10 @@ __all__ = [
     "GVHMRConfig",
     "GVHMRModule",
     "GVHMRResult",
+    "PlayerAssociationConfig",
+    "PlayerAssociationModule",
+    "PlayerAssociationResult",
+    "PlayerAssociationSegment",
     "BallDetectionConfig",
     "BallDetectionModule",
     "BallDetectionResult",

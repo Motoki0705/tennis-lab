@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -60,7 +60,7 @@ class BLCSResult:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict) -> "BLCSResult":
+    def from_dict(cls, data: dict) -> BLCSResult:
         """Create result from dict."""
         return cls(
             ball_3d=np.array(data["ball_3d"], dtype=np.float32),
@@ -104,7 +104,7 @@ class BLCSResult:
         return len(errors) == 0, errors
 
     @classmethod
-    def load(cls, path: str | Path) -> "BLCSResult":
+    def load(cls, path: str | Path) -> BLCSResult:
         """Load result from JSON file."""
         with Path(path).open("r", encoding="utf-8") as f:
             return cls.from_dict(json.load(f))
@@ -161,10 +161,10 @@ class BLCSModule(BasePipelineModule):
         """Run BLCS inference.
 
         Args:
-            ball_uv: Ball 2D positions (T, 2), normalized [0, 1].
-            court_kp: Court keypoints, shape (T, K, 2), normalized [0, 1].
-            ball_vis: Ball visibility mask (T,).
-            court_vis: Court keypoint visibility, shape (T, K).
+            ball_uv: Ball 2D positions (N, T, 2), normalized [0, 1].
+            court_kp: Court keypoints, shape (N, T, K, 2), normalized [0, 1].
+            ball_vis: Ball visibility mask (N, T).
+            court_vis: Court keypoint visibility, shape (N, T, K).
 
         Returns:
             BLCSResult with 3D ball trajectory.
@@ -184,37 +184,47 @@ class BLCSModule(BasePipelineModule):
 
         LOGGER.info("Running BLCS ball localization...")
 
+        if ball_uv.ndim != 3 or ball_uv.shape[-1] != 2:
+            raise ValueError(f"ball_uv must have shape (N, T, 2), got {ball_uv.shape}")
+        num_cameras, num_frames = ball_uv.shape[:2]
+
         if ball_vis is not None:
+            if ball_vis.shape != (num_cameras, num_frames):
+                raise ValueError(
+                    "ball_vis must have shape (N, T), "
+                    f"got {ball_vis.shape} for {(num_cameras, num_frames)}"
+                )
             effective_vis = ball_vis.astype(np.bool_)
         else:
-            effective_vis = np.ones(len(ball_uv), dtype=bool)
+            effective_vis = np.ones((num_cameras, num_frames), dtype=bool)
 
-        if court_kp.ndim != 3:
+        if court_kp.ndim != 4 or court_kp.shape[-1] != 2:
             raise ValueError(
-                f"court_kp must have shape (T, K, 2), got {court_kp.shape}"
+                f"court_kp must have shape (N, T, K, 2), got {court_kp.shape}"
             )
-        if court_kp.shape[0] != len(ball_uv):
+        if court_kp.shape[:2] != (num_cameras, num_frames):
             raise ValueError(
-                "court_kp temporal length must match ball_uv T, "
-                f"got {court_kp.shape[0]} and {len(ball_uv)}"
+                "court_kp leading shape must match ball_uv (N, T), "
+                f"got {court_kp.shape[:2]} and {(num_cameras, num_frames)}"
             )
         if court_vis is not None:
-            if court_vis.ndim != 2:
+            if court_vis.ndim != 3:
                 raise ValueError(
-                    f"court_vis must have shape (T, K), got {court_vis.shape}"
+                    f"court_vis must have shape (N, T, K), got {court_vis.shape}"
                 )
-            if court_vis.shape[0] != len(ball_uv):
+            if court_vis.shape[:2] != (num_cameras, num_frames):
                 raise ValueError(
-                    "court_vis temporal length must match ball_uv T, "
-                    f"got {court_vis.shape[0]} and {len(ball_uv)}"
+                    "court_vis leading shape must match ball_uv (N, T), "
+                    f"got {court_vis.shape[:2]} and {(num_cameras, num_frames)}"
                 )
 
         # BLCS models expect batched inputs:
-        # (B, T, 2), (B, T, K, 2), (B, T), and optional court_vis.
+        # (B, N, T, 2), (B, N, T, K, 2), (B, N, T), and optional court_vis.
         ball_uv_t = torch.from_numpy(ball_uv).float().unsqueeze(0)
         court_kp_t = torch.from_numpy(court_kp).float().unsqueeze(0)
 
         ball_vis_t = torch.from_numpy(effective_vis.astype(np.float32)).unsqueeze(0)
+        ball_mask_t = torch.ones_like(ball_vis_t)
 
         court_vis_t = None
         if court_vis is not None:
@@ -224,16 +234,22 @@ class BLCSModule(BasePipelineModule):
             ball_uv=ball_uv_t,
             court_kp=court_kp_t,
             ball_vis=ball_vis_t,
+            ball_mask=ball_mask_t,
             court_vis=court_vis_t,
             denormalize=True,
         )
 
         ball_3d = pred["position"].squeeze(0).cpu().numpy().astype(np.float32)
+        if ball_3d.shape != (num_frames, 3):
+            raise ValueError(
+                f"BLCS predictor position must have shape (T, 3), got {ball_3d.shape}"
+            )
+        output_visibility = effective_vis.any(axis=0)
 
         # Mask out invalid frames with zeros to keep JSON strictly numeric
-        ball_3d[~effective_vis] = 0.0
+        ball_3d[~output_visibility] = 0.0
 
-        result = BLCSResult(ball_3d=ball_3d, visibility=effective_vis)
+        result = BLCSResult(ball_3d=ball_3d, visibility=output_visibility)
 
         if self.config.save_result and self.config.output_path is not None:
             result.save(self.config.output_path)
