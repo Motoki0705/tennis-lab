@@ -1,0 +1,11 @@
+defaults:
+  - _hierarchical
+  - _dino_swin
+  - _self_
+
+name: court_hierarchical_dino_swin_unet_line
+in_channels: 3
+num_classes: 1
+
+decoder:
+  name: unet
