@@ -1,0 +1,33 @@
+defaults:
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+  - _self_
+
+source_format: tennis_center_csv  # tennis_center_csv, court_kp_json, court_kp20_points_jsonl
+input_paths: []
+images_dir: null
+output_dir: data/dino_workflow/converted_points
+output_annotations_file: annotations.jsonl
+
+copy_images: true
+dry_run: false
+
+box_size_px: 12
+box_size_overrides:
+  per_task: {}
+  per_label: {}
+min_box_size_px: 1
+
+label_source: converted_points
+weight: 1.0
+split: null
+val_ratio: 0.1
+seed: 42
+
+max_records: 0
+max_preview_rows: 20
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

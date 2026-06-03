@@ -1,0 +1,18 @@
+defaults:
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+  - _self_
+
+local_archive: data/dino_workflow/archives/archive.tar.zst
+drive_archive: /content/drive/MyDrive/tennis_lab/data/dino_workflow/archive.tar.zst
+
+overwrite: false
+verify_after_copy: true
+write_transfer_manifest: true
+dry_run: false
+rclone_binary: auto
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

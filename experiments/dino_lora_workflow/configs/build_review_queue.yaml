@@ -1,0 +1,25 @@
+defaults:
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+  - _self_
+
+raw_predictions_file: data/dino_workflow/pseudo/round_001/raw_predictions.jsonl
+output_dir: data/dino_workflow/pseudo/round_001/review
+review_unit: image  # image or annotation
+
+image_search_roots: []
+fail_fast: false
+dry_run: false
+
+min_score: 0.0
+allowed_tasks: []
+allowed_labels: []
+max_items: 0
+
+max_preview_items: 10
+max_missing_image_examples: 20
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

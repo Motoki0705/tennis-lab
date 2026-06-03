@@ -1,0 +1,39 @@
+defaults:
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+  - _self_
+
+input_jsons:
+  - data/court/data_train.json
+  - data/court/data_val.json
+images_dir: data/court/images
+output_dir: data/dino_workflow/court/manual100
+
+num_images: 100
+seed: 42
+dry_run: false
+
+queue_file: annotation_queue.jsonl
+annotations_file: annotations_points.jsonl
+skipped_file: skipped.jsonl
+manifest_file: manifest.json
+preview_file: dry_run_preview.jsonl
+
+source_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+computed_indices: [14]
+manual_indices: [15, 16, 17, 18, 19]
+
+display:
+  window_name: court_kp20_missing_annotation
+  max_width: 1600
+  max_height: 900
+  existing_radius: 3
+  computed_radius: 5
+  manual_radius: 5
+  font_scale: 0.45
+  line_thickness: 1
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

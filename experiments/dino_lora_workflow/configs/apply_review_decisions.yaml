@@ -1,0 +1,31 @@
+defaults:
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+  - _self_
+
+raw_predictions_file: data/dino_workflow/pseudo/round_001/raw_predictions.jsonl
+review_queue_file: data/dino_workflow/pseudo/round_001/review/review_queue.jsonl
+review_decisions_file: data/dino_workflow/pseudo/round_001/review/review_decisions.jsonl
+output_dir: data/dino_workflow/pseudo/round_001
+
+selected_output_file: selected_annotations.jsonl
+rejected_output_file: rejected_annotations.jsonl
+manifest_file: selection_manifest.json
+overwrite: true
+
+pseudo_round: null
+selected_weight: 0.6
+rejected_weight: 0.0
+
+include_unsure_as_selected: false
+include_unsure_as_rejected: false
+ignore_unsure: true
+
+clip_boxes: true
+include_review_metadata: true
+dry_run: false
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
