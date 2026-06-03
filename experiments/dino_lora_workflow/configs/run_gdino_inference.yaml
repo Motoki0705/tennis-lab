@@ -1,0 +1,31 @@
+defaults:
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+  - _self_
+
+image_dir: data/dino_workflow/sources/youtube/frames
+image_manifest: null
+teacher_manifest: experiments/dino_lora_workflow/configs/teacher_manifest.example.json
+output_dir: data/dino_workflow/pseudo/round_001
+
+round: 1
+device: auto
+mixed_precision: auto  # auto, none, fp16, bf16
+
+threshold: 0.25
+text_threshold: 0.20
+nms_threshold: 0.50
+nms_mode: per_label  # per_label or all
+max_detections_per_image: 100
+
+max_images: 0
+max_preview_images: 10
+log_every_images: 25
+
+write_overlays: false
+dry_run: false
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
