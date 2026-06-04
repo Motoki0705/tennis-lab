@@ -1,8 +1,3 @@
-[submodule "third_party/ByteTrack"]
-	path = third_party/ByteTrack
-	url = git@github.com:Motoki0705/ByteTrack.git
-	branch = main
-
 [submodule "third_party/dinov3"]
 	path = third_party/dinov3
 	url = git@github.com:Motoki0705/dinov3.git
@@ -13,24 +8,6 @@
 	url = git@github.com:Motoki0705/GVHMR.git
 	branch = main
 
-[submodule "third_party/sam3"]
-	path = third_party/sam3
-	url = git@github.com:Motoki0705/sam3.git
-	branch = main
-
-[submodule "third_party/WASB-SBDT"]
-	path = third_party/WASB-SBDT
-	url = git@github.com:Motoki0705/WASB-SBDT.git
-	branch = main
-[submodule "third_party/ConvNeXt-V2"]
-	path = third_party/ConvNeXt-V2
-	url = https://github.com/facebookresearch/ConvNeXt-V2.git
-[submodule "third_party/TrackNetV3"]
-	path = third_party/TrackNetV3
-	url = https://github.com/qaz812345/TrackNetV3.git
-[submodule "third_party/TrackNet"]
-	path = third_party/TrackNet
-	url = https://github.com/yastrebksv/TrackNet.git
 [submodule "third_party/DINO"]
 	path = third_party/DINO
 	url = https://github.com/IDEA-Research/DINO.git
