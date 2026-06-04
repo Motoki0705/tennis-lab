@@ -1,6 +1,0 @@
-# Tennis role and ball queries for the roles/ball teacher.
-tennis ball
-tennis player
-ball boy
-chair umpire
-line judge
