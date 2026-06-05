@@ -1,0 +1,30 @@
+hydra:
+  run:
+    dir: outputs/court_detection/annotate_youtube_keypoints/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
+
+annotate:
+  root: data/court/youtube
+  split: train
+  source_file_pattern: annotations/{split}.json
+  target_file_pattern: annotations/{split}.json
+  target_file_name: null
+  manual_adjusted_field: manual_adjusted
+  annotation_format: named_keypoints
+  image_path_key: image_path
+  homography_auto_fill: true
+  keypoint_format: kp15
+  source_dataset: yastrebksv_kp15
+  image_id: null
+  start_index: 0
+  skip_completed: true
+  start_after_last_completed: true
+  window_name: court-youtube-keypoints
+  max_display_width: 1600
+  max_display_height: 950
+  editable_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+  required_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+  drag_radius_px: 18
+  drag_start_threshold_px: 4
