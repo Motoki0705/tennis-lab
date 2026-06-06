@@ -70,7 +70,7 @@ class AnnotationSessionConfig:
     homography_auto_fill: bool = False
     start_after_last_completed: bool = False
     keypoint_format: str = "kp20"
-    source_dataset: str | None = None
+    include_source_types: tuple[str, ...] = ()
 
 
 @dataclass
@@ -114,11 +114,15 @@ def run_annotation_session(config: AnnotationSessionConfig) -> int:
 
     source_doc = read_annotation_document(source_path)
     target_doc = read_annotation_document(target_path)
-    source_entries = source_doc.items
+    all_source_entries = source_doc.items
+    source_entries = filter_source_entries(all_source_entries, config.include_source_types)
     target_entries = target_doc.items
     target_by_id = {str(entry["id"]): entry for entry in target_entries}
     if not source_entries:
-        raise ValueError(f"No entries found in {source_path}.")
+        raise ValueError(
+            f"No matching entries found in {source_path}; "
+            f"include_source_types={list(config.include_source_types)}."
+        )
 
     current_index = find_start_index(source_entries, target_by_id, config)
     ui = UiState(
@@ -193,7 +197,7 @@ def run_annotation_session(config: AnnotationSessionConfig) -> int:
                         source_entry,
                         kps,
                         visibility,
-                        source_entries,
+                        all_source_entries,
                         target_by_id,
                         target_path,
                         config,
@@ -235,7 +239,7 @@ def run_annotation_session(config: AnnotationSessionConfig) -> int:
                         source_entry,
                         kps,
                         visibility,
-                        source_entries,
+                        all_source_entries,
                         target_by_id,
                         target_path,
                         config,
@@ -286,7 +290,7 @@ def run_annotation_session(config: AnnotationSessionConfig) -> int:
                         source_entry,
                         kps,
                         visibility,
-                        source_entries,
+                        all_source_entries,
                         target_by_id,
                         target_path,
                         config,
@@ -746,11 +750,12 @@ def named_annotation_entry(
     output[config.manual_adjusted_field] = True
     output["keypoint_format"] = config.keypoint_format
     output["labeled_keypoint_indices"] = list(labeled_keypoint_indices(config.keypoint_format))
+    output["is_yastrebksv_kp15"] = bool(source_entry.get("is_yastrebksv_kp15", False))
     source = dict(output.get("source", {}))
-    if config.source_dataset is not None:
-        source["dataset"] = config.source_dataset
-    source["keypoint_format"] = config.keypoint_format
-    source["labeled_keypoint_indices"] = list(labeled_keypoint_indices(config.keypoint_format))
+    for key in ("dataset", "keypoint_format", "labeled_keypoint_indices"):
+        source.pop(key, None)
+    if "type" not in source and source.get("source_url"):
+        source["type"] = "youtube"
     output["source"] = source
     output["keypoints"] = [
         {
@@ -777,6 +782,21 @@ def labeled_keypoint_indices(keypoint_format: str) -> tuple[int, ...]:
     if keypoint_format == "kp20":
         return tuple(range(COURT_KP20_COUNT))
     raise ValueError(f"Unsupported keypoint_format={keypoint_format!r}.")
+
+
+def filter_source_entries(
+    entries: list[dict[str, Any]],
+    include_source_types: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    """Filter entries by provenance type when a filter is configured."""
+    if not include_source_types:
+        return entries
+    allowed = set(include_source_types)
+    return [
+        entry
+        for entry in entries
+        if str(entry.get("source", {}).get("type", "")) in allowed
+    ]
 
 
 def optional_point_value(value: float | None) -> float | None:
