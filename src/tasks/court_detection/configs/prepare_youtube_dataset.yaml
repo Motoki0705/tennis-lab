@@ -1,0 +1,106 @@
+hydra:
+  run:
+    dir: outputs/court_detection/prepare_youtube_dataset/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
+
+workflow:
+  root: data/court/youtube
+
+  sources:
+    - source_id: video_000001
+      url: "https://www.youtube.com/watch?v=SutZGvt53Z8"
+      split: train
+    - source_id: video_000002
+      url: "https://www.youtube.com/watch?v=mKLxLfy4dPU"
+      split: train
+    - source_id: video_000003
+      url: "https://www.youtube.com/watch?v=9aZK0daNm9E"
+      split: train
+    - source_id: video_000004
+      url: "https://www.youtube.com/watch?v=UDdZOx-IjW8"
+      split: train
+    - source_id: video_000005
+      url: "https://www.youtube.com/watch?v=Vwa5ZKgFlUY"
+      split: train
+    - source_id: video_000006
+      url: "https://www.youtube.com/watch?v=m7vDnkGhToo"
+      split: train
+    - source_id: video_000007
+      url: "https://www.youtube.com/watch?v=WjG_LbyESoc"
+      split: train
+    - source_id: video_000008
+      url: "https://www.youtube.com/watch?v=MVUT12QM8nc"
+      split: train
+    - source_id: video_000009
+      url: "https://www.youtube.com/watch?v=Pa-c4rlHuUo&t=8s"
+      split: train
+    - source_id: video_000010
+      url: "https://www.youtube.com/watch?v=0PJx1QL-0KM"
+      split: train
+    - source_id: video_000011
+      url: "https://www.youtube.com/watch?v=kIAGmhvSZaI"
+      split: train
+
+  paths:
+    videos_dir: videos
+    av1_dir: av1
+    h264_dir: h.264
+    frames_dir: frames
+    annotations_dir: annotations
+    manifests_dir: manifests
+
+  split:
+    default: train
+
+  download:
+    enabled: true
+    require_av1: false
+    strict_format: "bestvideo[vcodec^=av01][height<=1080]+bestaudio/bestvideo[vcodec^=av01][height<=1080]"
+    # Prefer AV1, then fall back to VP9/H.264 when YouTube does not expose AV1 for a source.
+    format: "bestvideo[vcodec^=av01][height<=1080]+bestaudio/bestvideo[vcodec^=av01][height<=1080]/bestvideo[vcodec^=vp09][height<=1080]+bestaudio/bestvideo[vcodec^=vp09][height<=1080]/bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+    merge_output_format: mkv
+    js_runtimes: node
+    remote_components: null
+    download_archive: data/court/youtube/manifests/download_archive.txt
+    overwrite: false
+    extra_args: []
+
+  transcode:
+    enabled: true
+    ffmpeg_binary: ffmpeg
+    encoder: h264_nvenc
+    # Optional decode acceleration. Leave null unless your FFmpeg/GPU supports AV1 CUDA decode.
+    hwaccel: null
+    hwaccel_output_format: null
+    preset: p5
+    tune: hq
+    rate_control: vbr
+    cq: 20
+    bitrate: null
+    maxrate: null
+    bufsize: null
+    profile: high
+    pix_fmt: yuv420p
+    # Used only when encoder=libx264.
+    crf: 20
+    overwrite: false
+
+  frames:
+    enabled: true
+    sample_mode: interval_seconds
+    interval_seconds: 10.0
+    fps: 1.0
+    every_n_frames: 60
+    output_ext: jpg
+    jpeg_quality: 95
+    max_frames_per_video: null
+    overwrite: false
+
+  annotation:
+    schema_name: court_youtube_keypoints_v1
+    keypoint_format: kp15
+    source_dataset: yastrebksv_kp15
+    merge_existing: true
+    overwrite: false
