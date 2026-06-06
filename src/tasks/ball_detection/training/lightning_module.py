@@ -11,6 +11,9 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
+from src.tasks.ball_detection.data.argumentation import (
+    denormalize_tensor_images_imagenet,
+)
 from src.tasks.ball_detection.data.utils.input_adapter import to_model_input
 from src.tasks.ball_detection.models import build_ball_detection_model
 from src.tasks.ball_detection.training.losses import BallDetectionFocalLoss
@@ -197,39 +200,60 @@ class BallDetectionLightningModule(BaseLightningModule):
                     logits = logits_flat.reshape(b, t, *heatmaps_gt.shape[-2:])
                 pred_heatmaps = torch.sigmoid(logits).cpu()
 
-            # Render first sample in each batch, middle frame
+            # Render the first sample as a 3-row temporal contact sheet.
             b_idx = 0
-            t_idx = images.shape[2] // 2  # middle frame of temporal window
-
-            img = images[b_idx, :, t_idx].cpu()  # (C, H, W)
-            gt_hm = heatmaps_gt[b_idx, t_idx].numpy()  # (Hh, Wh)
-            pred_hm = pred_heatmaps[b_idx, t_idx].numpy()  # (Hh, Wh)
-
-            # Denormalize image
-            mean = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
-            std = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
-            img_np = (img.numpy() * std + mean).clip(0, 1).transpose(1, 2, 0)
-            img_bgr = (img_np * 255).astype(np.uint8)
-            img_bgr = cv2.cvtColor(img_bgr, cv2.COLOR_RGB2BGR)
-            h, w = img_bgr.shape[:2]
-
-            # Colorize heatmaps
-            gt_cm = cv2.applyColorMap(
-                cv2.resize((gt_hm * 255).astype(np.uint8), (w, h)),
-                cv2.COLORMAP_JET,
+            normalize_cfg = dict(
+                self.config.get("data", {})
+                .get("augmentation", {})
+                .get("normalize_imagenet", {})
+                or {}
             )
-            pred_cm = cv2.applyColorMap(
-                cv2.resize((pred_hm * 255).astype(np.uint8), (w, h)),
-                cv2.COLORMAP_JET,
+            frames = images[b_idx].detach().cpu()  # (T, C, H, W)
+            if bool(normalize_cfg.get("enabled", False)):
+                frames = denormalize_tensor_images_imagenet(
+                    frames,
+                    mean=normalize_cfg.get("mean", (0.485, 0.456, 0.406)),
+                    std=normalize_cfg.get("std", (0.229, 0.224, 0.225)),
+                )
+            frames = frames.clamp(0, 1)
+
+            rgb_row: list[np.ndarray] = []
+            gt_row: list[np.ndarray] = []
+            pred_row: list[np.ndarray] = []
+            for t_idx in range(images.shape[1]):
+                frame_rgb = frames[t_idx].permute(1, 2, 0).numpy()
+                frame_uint8 = (frame_rgb * 255).astype(np.uint8)
+                frame_bgr = cv2.cvtColor(frame_uint8, cv2.COLOR_RGB2BGR)
+                h, w = frame_bgr.shape[:2]
+
+                gt_hm = heatmaps_gt[b_idx, t_idx].numpy()
+                pred_hm = pred_heatmaps[b_idx, t_idx].numpy()
+                gt_cm = cv2.applyColorMap(
+                    cv2.resize((gt_hm * 255).astype(np.uint8), (w, h)),
+                    cv2.COLORMAP_JET,
+                )
+                pred_cm = cv2.applyColorMap(
+                    cv2.resize((pred_hm * 255).astype(np.uint8), (w, h)),
+                    cv2.COLORMAP_JET,
+                )
+
+                if visibility[b_idx, t_idx] > 0:
+                    cx = int(coords_gt[b_idx, t_idx, 0].item())
+                    cy = int(coords_gt[b_idx, t_idx, 1].item())
+                    cv2.circle(frame_bgr, (cx, cy), 5, (0, 255, 0), 2)
+
+                rgb_row.append(frame_bgr)
+                gt_row.append(gt_cm)
+                pred_row.append(pred_cm)
+
+            panel = np.concatenate(
+                [
+                    np.concatenate(rgb_row, axis=1),
+                    np.concatenate(gt_row, axis=1),
+                    np.concatenate(pred_row, axis=1),
+                ],
+                axis=0,
             )
-
-            # Draw GT ball position
-            if visibility[b_idx, t_idx] > 0:
-                cx = int(coords_gt[b_idx, t_idx, 0].item())
-                cy = int(coords_gt[b_idx, t_idx, 1].item())
-                cv2.circle(img_bgr, (cx, cy), 5, (0, 255, 0), 2)
-
-            panel = np.concatenate([img_bgr, gt_cm, pred_cm], axis=1)
 
             # Save artifact
             path = artifact_dir / f"ball_batch{batch_idx:02d}.png"
