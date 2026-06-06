@@ -14,6 +14,7 @@ Notes:
 from __future__ import annotations
 
 import json
+import math
 import subprocess
 import sys
 from collections.abc import Callable, Iterable
@@ -357,9 +358,21 @@ def _write_annotations(
         path = annotations_dir / f"{split}.json"
         existing_by_id = _existing_annotation_items(path) if bool(cfg.merge_existing) else {}
         items: list[JSONDict] = []
+        generated_ids: set[str] = set()
         for frame in frame_records_by_split.get(split, []):
             image_id = str(frame["id"])
-            items.append(existing_by_id.get(image_id) or _initial_annotation_item(frame, split, cfg))
+            generated_ids.add(image_id)
+            existing = existing_by_id.get(image_id)
+            if existing is None:
+                items.append(_initial_annotation_item(frame, split, cfg))
+            else:
+                items.append(_normalize_youtube_annotation_item(existing, frame, split, cfg))
+        if bool(cfg.merge_existing):
+            items.extend(
+                item
+                for image_id, item in existing_by_id.items()
+                if image_id not in generated_ids
+            )
         payload = {
             "schema_name": str(cfg.schema_name),
             "keypoint_schema": "COURT_KP_NAMES",
@@ -385,18 +398,14 @@ def _write_annotations(
 def _initial_annotation_item(frame: JSONDict, split: str, cfg: DictConfig) -> JSONDict:
     keypoint_format = str(cfg.keypoint_format)
     labeled_indices = _labeled_keypoint_indices(keypoint_format)
-    source_dataset = cfg.get("source_dataset")
     source: JSONDict = {
-        "keypoint_format": keypoint_format,
-        "labeled_keypoint_indices": labeled_indices,
+        "type": "youtube",
         "video_id": frame["video_id"],
         "source_url": frame["source_url"],
         "source_title": frame.get("source_title"),
         "source_frame_index": frame["source_frame_index"],
         "timestamp_sec": frame["timestamp_sec"],
     }
-    if source_dataset is not None:
-        source["dataset"] = str(source_dataset)
     return {
         "id": frame["id"],
         "image_path": frame["image_path"],
@@ -406,6 +415,7 @@ def _initial_annotation_item(frame: JSONDict, split: str, cfg: DictConfig) -> JS
         "annotation_status": "pending",
         "keypoint_format": keypoint_format,
         "labeled_keypoint_indices": labeled_indices,
+        "is_yastrebksv_kp15": False,
         "keypoints": [
             {
                 "index": idx,
@@ -424,6 +434,70 @@ def _initial_annotation_item(frame: JSONDict, split: str, cfg: DictConfig) -> JS
             "notes": "",
         },
     }
+
+
+def _normalize_youtube_annotation_item(
+    existing: JSONDict,
+    frame: JSONDict,
+    split: str,
+    cfg: DictConfig,
+) -> JSONDict:
+    """Normalize an existing YouTube item without discarding annotations."""
+    output = dict(existing)
+    keypoint_format = str(cfg.keypoint_format)
+    output.update({
+        "id": frame["id"],
+        "image_path": frame["image_path"],
+        "width": frame["width"],
+        "height": frame["height"],
+        "split": split,
+        "keypoint_format": keypoint_format,
+        "labeled_keypoint_indices": _labeled_keypoint_indices(keypoint_format),
+        "is_yastrebksv_kp15": False,
+    })
+    source = dict(output.get("source", {}))
+    for key in ("dataset", "keypoint_format", "labeled_keypoint_indices"):
+        source.pop(key, None)
+    source.update({
+        "type": "youtube",
+        "video_id": frame["video_id"],
+        "source_url": frame["source_url"],
+        "source_title": frame.get("source_title"),
+        "source_frame_index": frame["source_frame_index"],
+        "timestamp_sec": frame["timestamp_sec"],
+    })
+    output["source"] = source
+    if output.get("annotation_status") == "completed" and not _named_keypoints_complete(
+        output.get("keypoints"),
+        _labeled_keypoint_indices(keypoint_format),
+    ):
+        output["annotation_status"] = "pending"
+    return output
+
+
+def _named_keypoints_complete(keypoints: Any, required_indices: list[int]) -> bool:
+    """Return whether all required named keypoints have valid visibility data."""
+    if not isinstance(keypoints, list) or len(keypoints) < len(COURT_KP_NAMES):
+        return False
+    points_by_index = {
+        int(point["index"]): point
+        for point in keypoints
+        if isinstance(point, dict) and "index" in point
+    }
+    for index in required_indices:
+        point = points_by_index.get(index)
+        if point is None:
+            return False
+        visibility = int(point.get("visibility", 0))
+        if visibility == 3:
+            continue
+        if visibility not in (1, 2):
+            return False
+        x = point.get("x")
+        y = point.get("y")
+        if x is None or y is None or not math.isfinite(float(x)) or not math.isfinite(float(y)):
+            return False
+    return True
 
 
 def _labeled_keypoint_indices(keypoint_format: str) -> list[int]:
