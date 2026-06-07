@@ -13,6 +13,7 @@ sample_stride: 4
 image_size: [288, 512]
 heatmap_size: [288, 512]
 sigma_ratio: 0.012
+max_instances: 16
 
 augmentation:
   camera_rotation:
