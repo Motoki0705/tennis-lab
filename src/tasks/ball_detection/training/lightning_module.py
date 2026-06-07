@@ -46,14 +46,26 @@ class BallDetectionLightningModule(BaseLightningModule):
         self.train_metrics = BallDetectionMetrics(
             peak_threshold=float(metrics_cfg.get("peak_threshold", 0.5)),
             ball_distance_threshold=float(metrics_cfg.get("ball_distance_threshold", 4.0)),
+            nms_kernel=int(metrics_cfg.get("nms_kernel", 9)),
+            max_predictions_per_frame=int(
+                metrics_cfg.get("max_predictions_per_frame", 8)
+            ),
         )
         self.val_metrics = BallDetectionMetrics(
             peak_threshold=float(metrics_cfg.get("peak_threshold", 0.5)),
             ball_distance_threshold=float(metrics_cfg.get("ball_distance_threshold", 4.0)),
+            nms_kernel=int(metrics_cfg.get("nms_kernel", 9)),
+            max_predictions_per_frame=int(
+                metrics_cfg.get("max_predictions_per_frame", 8)
+            ),
         )
         self.test_metrics = BallDetectionMetrics(
             peak_threshold=float(metrics_cfg.get("peak_threshold", 0.5)),
             ball_distance_threshold=float(metrics_cfg.get("ball_distance_threshold", 4.0)),
+            nms_kernel=int(metrics_cfg.get("nms_kernel", 9)),
+            max_predictions_per_frame=int(
+                metrics_cfg.get("max_predictions_per_frame", 8)
+            ),
         )
 
     def forward(self, images: Tensor) -> Tensor:
@@ -106,6 +118,8 @@ class BallDetectionLightningModule(BaseLightningModule):
             "pred_heatmaps": pred_heatmaps,
             "target_coords": batch["coords"],
             "target_visibility": batch["visibility"],
+            "target_instance_coords": batch["instance_coords"],
+            "target_instance_visibility": batch["instance_visibility"],
             "original_size": batch["original_size"],
         }
 
@@ -117,6 +131,8 @@ class BallDetectionLightningModule(BaseLightningModule):
             outputs["target_coords"],
             outputs["target_visibility"],
             outputs["original_size"],
+            outputs["target_instance_coords"],
+            outputs["target_instance_visibility"],
         )
         return outputs["loss"]
 
@@ -135,6 +151,8 @@ class BallDetectionLightningModule(BaseLightningModule):
             outputs["target_coords"],
             outputs["target_visibility"],
             outputs["original_size"],
+            outputs["target_instance_coords"],
+            outputs["target_instance_visibility"],
         )
 
     def on_validation_epoch_end(self) -> None:
@@ -152,6 +170,8 @@ class BallDetectionLightningModule(BaseLightningModule):
             outputs["target_coords"],
             outputs["target_visibility"],
             outputs["original_size"],
+            outputs["target_instance_coords"],
+            outputs["target_instance_visibility"],
         )
 
     def on_test_epoch_end(self) -> None:

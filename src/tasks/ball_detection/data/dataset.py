@@ -13,7 +13,6 @@ import cv2
 import numpy as np
 import torch
 from PIL import Image
-from torch import Tensor
 from torch.utils.data import Dataset
 
 from src.tasks.ball_detection.data.argumentation import (
@@ -21,7 +20,7 @@ from src.tasks.ball_detection.data.argumentation import (
     make_sample_rng,
 )
 from src.tasks.ball_detection.data.types import BallDetectionSample
-from src.utils.data.heatmaps import generate_gaussian_heatmap
+from src.utils.data.heatmaps import generate_gaussian_heatmaps
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -40,6 +39,9 @@ class FrameLabel:
     visibility: float
     x: float
     y: float
+    instance_id: str = ""
+    role: str = "target"
+    state: str = "visible"
 
 
 @dataclass(frozen=True)
@@ -49,14 +51,14 @@ class ClipWindow:
     Attributes:
         clip_dir: Directory containing frame images and ``Label.csv``.
         frame_names: Ordered frame names available in the clip.
-        labels: Per-frame labels keyed by frame name.
+        labels: Per-frame instance labels keyed by frame name.
         original_size: Original frame size in ``(width, height)`` ordering.
         start_index: Inclusive start index of the temporal window.
     """
 
     clip_dir: Path
     frame_names: tuple[str, ...]
-    labels: dict[str, FrameLabel]
+    labels: dict[str, tuple[FrameLabel, ...]]
     original_size: tuple[int, int]
     start_index: int
 
@@ -88,6 +90,7 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         self.image_size = self._parse_size(data_cfg.get("image_size", [288, 512]), name="data.image_size")
         self.heatmap_size = self._parse_size(data_cfg.get("heatmap_size", [144, 256]), name="data.heatmap_size")
         self.sigma_ratio = float(data_cfg.get("sigma_ratio", 0.0066))
+        self.max_instances = int(data_cfg.get("max_instances", 8))
 
         if self.num_frames <= 0:
             raise ValueError("model.num_frames must be positive.")
@@ -95,6 +98,8 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
             raise ValueError("data.sample_stride must be positive.")
         if self.sigma_ratio <= 0:
             raise ValueError("data.sigma_ratio must be positive.")
+        if self.max_instances <= 0:
+            raise ValueError("data.max_instances must be positive.")
 
         self.windows = self._build_windows()
         if self.pseudo_manifest_paths:
@@ -115,23 +120,39 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         original_w, original_h = window.original_size
 
         frames_hwc: list[np.ndarray] = []
-        coords_image: list[tuple[float, float]] = []
-        visibility: list[float] = []
+        coords_image: list[list[tuple[float, float]]] = []
+        visibility: list[list[float]] = []
 
         for offset in range(self.num_frames):
             frame_name = window.frame_names[window.start_index + offset]
             frame_path = window.clip_dir / frame_name
             frames_hwc.append(self._load_frame(frame_path))
 
-            label = window.labels.get(frame_name, FrameLabel(visibility=0.0, x=0.0, y=0.0))
-            if label.visibility > 0:
-                x_img = label.x * image_w / max(original_w, 1)
-                y_img = label.y * image_h / max(original_h, 1)
-                coords_image.append((x_img, y_img))
-                visibility.append(1.0)
-            else:
-                coords_image.append((0.0, 0.0))
-                visibility.append(0.0)
+            labels = [
+                label
+                for label in window.labels.get(frame_name, ())
+                if label.role != "distractor"
+            ]
+            if len(labels) > self.max_instances:
+                raise ValueError(
+                    f"{window.clip_dir / 'Label.csv'} frame={frame_name} has "
+                    f"{len(labels)} trainable instances, exceeding "
+                    f"data.max_instances={self.max_instances}."
+                )
+            frame_coords: list[tuple[float, float]] = []
+            frame_visibility: list[float] = []
+            for label in labels:
+                if label.visibility > 0:
+                    frame_coords.append((
+                        label.x * image_w / max(original_w, 1),
+                        label.y * image_h / max(original_h, 1),
+                    ))
+                    frame_visibility.append(1.0)
+                else:
+                    frame_coords.append((0.0, 0.0))
+                    frame_visibility.append(0.0)
+            coords_image.append(frame_coords)
+            visibility.append(frame_visibility)
 
         if self.argumentation is not None:
             frames_hwc, coords_image, visibility = self.argumentation.forward(
@@ -144,32 +165,81 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         image_tensors: list[np.ndarray] = []
         heatmaps: list[np.ndarray] = []
         coords_original: list[tuple[float, float]] = []
-        for frame, (x_img, y_img), vis in zip(frames_hwc, coords_image, visibility):
+        primary_visibility: list[float] = []
+        instance_coords_original: list[list[tuple[float, float]]] = []
+        instance_visibility: list[list[float]] = []
+        for frame, frame_coords, frame_visibility in zip(
+            frames_hwc,
+            coords_image,
+            visibility,
+            strict=True,
+        ):
             image_tensors.append(np.transpose(frame, (2, 0, 1)))
-            center_xy = self._to_normalized_xy(x_img=x_img, y_img=y_img, width=image_w, height=image_h)
-            heatmaps.append(
-                generate_gaussian_heatmap(
-                    size_hw=self.heatmap_size,
-                    center_xy=center_xy,
-                    sigma_ratio=self.sigma_ratio,
-                    visible=vis > 0,
-                ).cpu().numpy()
-            )
-            if vis > 0:
-                coords_original.append(
-                    (
-                        x_img * original_w / max(image_w, 1),
-                        y_img * original_h / max(image_h, 1),
-                    )
+            normalized_centers = [
+                self._to_normalized_xy(
+                    x_img=x_img,
+                    y_img=y_img,
+                    width=image_w,
+                    height=image_h,
                 )
+                for x_img, y_img in frame_coords
+            ]
+            if normalized_centers:
+                instance_heatmaps = generate_gaussian_heatmaps(
+                    size_hw=self.heatmap_size,
+                    centers_xy=normalized_centers,
+                    sigma_ratio=self.sigma_ratio,
+                    visibility=frame_visibility,
+                )
+                heatmaps.append(instance_heatmaps.amax(dim=0).cpu().numpy())
             else:
+                heatmaps.append(np.zeros(self.heatmap_size, dtype=np.float32))
+
+            original_points = [
+                (
+                    x_img * original_w / max(image_w, 1),
+                    y_img * original_h / max(image_h, 1),
+                )
+                if vis > 0
+                else (0.0, 0.0)
+                for (x_img, y_img), vis in zip(
+                    frame_coords,
+                    frame_visibility,
+                    strict=True,
+                )
+            ]
+            padded_points = original_points + [(0.0, 0.0)] * (
+                self.max_instances - len(original_points)
+            )
+            padded_visibility = frame_visibility + [0.0] * (
+                self.max_instances - len(frame_visibility)
+            )
+            instance_coords_original.append(padded_points)
+            instance_visibility.append(padded_visibility)
+            primary_index = next(
+                (idx for idx, vis in enumerate(frame_visibility) if vis > 0),
+                None,
+            )
+            if primary_index is None:
                 coords_original.append((0.0, 0.0))
+                primary_visibility.append(0.0)
+            else:
+                coords_original.append(original_points[primary_index])
+                primary_visibility.append(1.0)
 
         sample: BallDetectionSample = {
             "images": torch.from_numpy(np.stack(image_tensors)).to(torch.float32),
             "heatmaps": torch.from_numpy(np.stack(heatmaps)).to(torch.float32),
             "coords": torch.tensor(coords_original, dtype=torch.float32),
-            "visibility": torch.tensor(visibility, dtype=torch.float32),
+            "visibility": torch.tensor(primary_visibility, dtype=torch.float32),
+            "instance_coords": torch.tensor(
+                instance_coords_original,
+                dtype=torch.float32,
+            ),
+            "instance_visibility": torch.tensor(
+                instance_visibility,
+                dtype=torch.float32,
+            ),
             "original_size": torch.tensor([original_w, original_h], dtype=torch.float32),
             "heatmap_size": torch.tensor([heatmap_w, heatmap_h], dtype=torch.float32),
         }
@@ -280,11 +350,11 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
             raise FileNotFoundError(
                 f"Split entry '{entry}' does not exist under data_dir={self.data_dir}."
             )
-        if entry_path.is_dir() and entry_path.name.startswith("Clip"):
+        if entry_path.is_dir() and self._is_clip_dir(entry_path):
             return [entry_path]
         if entry_path.is_dir():
             clip_dirs = sorted(
-                path for path in entry_path.iterdir() if path.is_dir() and path.name.startswith("Clip")
+                path for path in entry_path.iterdir() if path.is_dir() and self._is_clip_dir(path)
             )
             if clip_dirs:
                 return clip_dirs
@@ -293,14 +363,19 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
             f"or a specific clip directory. Invalid entry: {entry}"
         )
 
+    @staticmethod
+    def _is_clip_dir(path: Path) -> bool:
+        """Return whether a directory follows a supported clip naming convention."""
+        return path.name.startswith("Clip") or path.name.startswith("clip_")
+
     def _resolve_original_size(self, clip_dir: Path, first_frame_name: str) -> tuple[int, int]:
         frame_path = clip_dir / first_frame_name
         with Image.open(frame_path) as image:
             width, height = image.size
         return width, height
 
-    def _read_label_csv(self, path: Path) -> dict[str, FrameLabel]:
-        labels: dict[str, FrameLabel] = {}
+    def _read_label_csv(self, path: Path) -> dict[str, tuple[FrameLabel, ...]]:
+        labels: dict[str, list[FrameLabel]] = {}
         with path.open("r", encoding="utf-8") as handle:
             reader = csv.DictReader(handle)
             required_fields = {"file name", "visibility", "x-coordinate", "y-coordinate"}
@@ -312,8 +387,26 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
                 visibility = float(row["visibility"] or 0)
                 x_value = float(row["x-coordinate"] or 0)
                 y_value = float(row["y-coordinate"] or 0)
-                labels[frame_name] = FrameLabel(visibility=visibility, x=x_value, y=y_value)
-        return labels
+                instance_id = str(row.get("instance id") or "").strip()
+                state = str(row.get("ball state") or ("visible" if visibility > 0 else "absent"))
+                role = str(row.get("role") or "target").strip() or "target"
+                if not instance_id and visibility <= 0:
+                    labels.setdefault(frame_name, [])
+                    continue
+                labels.setdefault(frame_name, []).append(
+                    FrameLabel(
+                        visibility=visibility,
+                        x=x_value,
+                        y=y_value,
+                        instance_id=instance_id or "b001",
+                        role=role,
+                        state=state,
+                    )
+                )
+        return {
+            frame_name: tuple(frame_labels)
+            for frame_name, frame_labels in labels.items()
+        }
 
     def _load_frame(self, path: Path) -> np.ndarray:
         image_h, image_w = self.image_size
@@ -332,14 +425,8 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         width: int,
         height: int,
     ) -> tuple[float, float]:
-        if width <= 1:
-            x_norm = 0.0
-        else:
-            x_norm = x_img / float(width - 1)
-        if height <= 1:
-            y_norm = 0.0
-        else:
-            y_norm = y_img / float(height - 1)
+        x_norm = 0.0 if width <= 1 else x_img / float(width - 1)
+        y_norm = 0.0 if height <= 1 else y_img / float(height - 1)
         return x_norm, y_norm
 
     @staticmethod

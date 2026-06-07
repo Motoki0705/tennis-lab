@@ -16,6 +16,8 @@ class BallDetectionSample(TypedDict):
         coords: Ball coordinates in original image pixel space with shape
             ``(T, 2)`` and ``(x, y)`` ordering.
         visibility: Frame visibility flags with shape ``(T,)``.
+        instance_coords: Padded instance coordinates with shape ``(T, K, 2)``.
+        instance_visibility: Padded instance visibility mask with shape ``(T, K)``.
         original_size: Original frame size with shape ``(2,)`` in
             ``(width, height)`` ordering.
         heatmap_size: Heatmap size with shape ``(2,)`` in
@@ -26,6 +28,8 @@ class BallDetectionSample(TypedDict):
     heatmaps: Tensor
     coords: Tensor
     visibility: Tensor
+    instance_coords: Tensor
+    instance_visibility: Tensor
     original_size: Tensor
     heatmap_size: Tensor
 
@@ -39,6 +43,8 @@ class BallDetectionBatch(TypedDict):
         coords: Ball coordinates in original image pixel space with shape
             ``(B, T, 2)`` and ``(x, y)`` ordering.
         visibility: Frame visibility flags with shape ``(B, T)``.
+        instance_coords: Padded instance coordinates with shape ``(B, T, K, 2)``.
+        instance_visibility: Padded instance visibility mask with shape ``(B, T, K)``.
         original_size: Original frame sizes with shape ``(B, 2)`` in
             ``(width, height)`` ordering.
         heatmap_size: Heatmap sizes with shape ``(B, 2)`` in
@@ -49,6 +55,8 @@ class BallDetectionBatch(TypedDict):
     heatmaps: Tensor
     coords: Tensor
     visibility: Tensor
+    instance_coords: Tensor
+    instance_visibility: Tensor
     original_size: Tensor
     heatmap_size: Tensor
 

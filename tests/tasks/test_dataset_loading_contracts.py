@@ -12,7 +12,6 @@ from src.tasks.court_detection.data.court_line_dataset import CourtLineDataset
 from src.tasks.court_detection.data.court_seg_dataset import CourtSegDataset
 from src.tasks.plcs.data.dataset import SceneDataset
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 pytestmark = pytest.mark.local_data
 
@@ -185,6 +184,8 @@ def test_ball_detection_dataset_getitem_contract() -> None:
         "heatmaps",
         "coords",
         "visibility",
+        "instance_coords",
+        "instance_visibility",
         "original_size",
         "heatmap_size",
     }
@@ -192,6 +193,8 @@ def test_ball_detection_dataset_getitem_contract() -> None:
     _assert_tensor(sample["heatmaps"], shape=(8, 144, 256), dtype=torch.float32)
     _assert_tensor(sample["coords"], shape=(8, 2), dtype=torch.float32)
     _assert_tensor(sample["visibility"], shape=(8,), dtype=torch.float32)
+    _assert_tensor(sample["instance_coords"], shape=(8, 8, 2), dtype=torch.float32)
+    _assert_tensor(sample["instance_visibility"], shape=(8, 8), dtype=torch.float32)
     _assert_tensor(sample["original_size"], shape=(2,), dtype=torch.float32)
     _assert_tensor(sample["heatmap_size"], shape=(2,), dtype=torch.float32)
 

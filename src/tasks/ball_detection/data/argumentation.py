@@ -11,10 +11,9 @@ import numpy as np
 import torch
 from torch.utils.data import get_worker_info
 
-
 Frames = list[np.ndarray]
-Coords = list[tuple[float, float]]
-Visibility = list[float]
+Coords = list[list[tuple[float, float]]]
+Visibility = list[list[float]]
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
@@ -93,7 +92,12 @@ def _apply_affine_to_sequence(
     out_coords: Coords = []
     out_visibility: Visibility = []
 
-    for frame, (x, y), vis in zip(frames, coords, visibility):
+    for frame, frame_coords, frame_visibility in zip(
+        frames,
+        coords,
+        visibility,
+        strict=True,
+    ):
         warped = cv2.warpAffine(
             frame,
             matrix,
@@ -101,18 +105,23 @@ def _apply_affine_to_sequence(
             flags=cv2.INTER_LINEAR,
             borderMode=border_mode,
         )
-        if vis > 0:
-            new_x = float(matrix[0, 0] * x + matrix[0, 1] * y + matrix[0, 2])
-            new_y = float(matrix[1, 0] * x + matrix[1, 1] * y + matrix[1, 2])
-            if new_x < 0 or new_x >= width or new_y < 0 or new_y >= height:
-                out_coords.append((0.0, 0.0))
-                out_visibility.append(0.0)
+        transformed_coords: list[tuple[float, float]] = []
+        transformed_visibility: list[float] = []
+        for (x, y), vis in zip(frame_coords, frame_visibility, strict=True):
+            if vis > 0:
+                new_x = float(matrix[0, 0] * x + matrix[0, 1] * y + matrix[0, 2])
+                new_y = float(matrix[1, 0] * x + matrix[1, 1] * y + matrix[1, 2])
+                if new_x < 0 or new_x >= width or new_y < 0 or new_y >= height:
+                    transformed_coords.append((0.0, 0.0))
+                    transformed_visibility.append(0.0)
+                else:
+                    transformed_coords.append((new_x, new_y))
+                    transformed_visibility.append(float(vis))
             else:
-                out_coords.append((new_x, new_y))
-                out_visibility.append(float(vis))
-        else:
-            out_coords.append((0.0, 0.0))
-            out_visibility.append(0.0)
+                transformed_coords.append((0.0, 0.0))
+                transformed_visibility.append(0.0)
+        out_coords.append(transformed_coords)
+        out_visibility.append(transformed_visibility)
         out_frames.append(warped.astype(np.float32, copy=False))
     return out_frames, out_coords, out_visibility
 
@@ -174,7 +183,13 @@ class CameraRotationArgumentation(BaseArgumentation):
         out_frames: Frames = []
         out_coords: Coords = []
         out_visibility: Visibility = []
-        for frame, (x, y), vis, angle in zip(frames, coords, visibility, angles_deg):
+        for frame, frame_coords, frame_visibility, angle in zip(
+            frames,
+            coords,
+            visibility,
+            angles_deg,
+            strict=True,
+        ):
             matrix = cv2.getRotationMatrix2D((width / 2.0, height / 2.0), angle, 1.0)
             rotated = cv2.warpAffine(
                 frame,
@@ -183,18 +198,23 @@ class CameraRotationArgumentation(BaseArgumentation):
                 flags=cv2.INTER_LINEAR,
                 borderMode=border_mode,
             )
-            if vis > 0:
-                new_x = float(matrix[0, 0] * x + matrix[0, 1] * y + matrix[0, 2])
-                new_y = float(matrix[1, 0] * x + matrix[1, 1] * y + matrix[1, 2])
-                if new_x < 0 or new_x >= width or new_y < 0 or new_y >= height:
-                    out_coords.append((0.0, 0.0))
-                    out_visibility.append(0.0)
+            transformed_coords: list[tuple[float, float]] = []
+            transformed_visibility: list[float] = []
+            for (x, y), vis in zip(frame_coords, frame_visibility, strict=True):
+                if vis > 0:
+                    new_x = float(matrix[0, 0] * x + matrix[0, 1] * y + matrix[0, 2])
+                    new_y = float(matrix[1, 0] * x + matrix[1, 1] * y + matrix[1, 2])
+                    if new_x < 0 or new_x >= width or new_y < 0 or new_y >= height:
+                        transformed_coords.append((0.0, 0.0))
+                        transformed_visibility.append(0.0)
+                    else:
+                        transformed_coords.append((new_x, new_y))
+                        transformed_visibility.append(float(vis))
                 else:
-                    out_coords.append((new_x, new_y))
-                    out_visibility.append(float(vis))
-            else:
-                out_coords.append((0.0, 0.0))
-                out_visibility.append(0.0)
+                    transformed_coords.append((0.0, 0.0))
+                    transformed_visibility.append(0.0)
+            out_coords.append(transformed_coords)
+            out_visibility.append(transformed_visibility)
             out_frames.append(rotated.astype(np.float32, copy=False))
         return out_frames, out_coords, out_visibility
 
@@ -223,13 +243,18 @@ class HorizontalFlipArgumentation(BaseArgumentation):
         out_frames = [cv2.flip(frame, 1).astype(np.float32, copy=False) for frame in frames]
         out_coords: Coords = []
         out_visibility: Visibility = []
-        for (x, y), vis in zip(coords, visibility):
-            if vis > 0:
-                out_coords.append(((width - 1) - x, y))
-                out_visibility.append(float(vis))
-            else:
-                out_coords.append((0.0, 0.0))
-                out_visibility.append(0.0)
+        for frame_coords, frame_visibility in zip(coords, visibility, strict=True):
+            flipped_coords: list[tuple[float, float]] = []
+            flipped_visibility: list[float] = []
+            for (x, y), vis in zip(frame_coords, frame_visibility, strict=True):
+                if vis > 0:
+                    flipped_coords.append(((width - 1) - x, y))
+                    flipped_visibility.append(float(vis))
+                else:
+                    flipped_coords.append((0.0, 0.0))
+                    flipped_visibility.append(0.0)
+            out_coords.append(flipped_coords)
+            out_visibility.append(flipped_visibility)
         return out_frames, out_coords, out_visibility
 
 
@@ -514,7 +539,12 @@ class ScaleAndCropArgumentation(BaseArgumentation):
             return frames, coords, visibility
 
         height, width = frames[0].shape[:2]
-        visible_coords = [(x, y) for (x, y), vis in zip(coords, visibility) if vis > 0]
+        visible_coords = [
+            point
+            for frame_coords, frame_visibility in zip(coords, visibility, strict=True)
+            for point, vis in zip(frame_coords, frame_visibility, strict=True)
+            if vis > 0
+        ]
         if visible_coords:
             center_x = float(sum(x for x, _ in visible_coords) / len(visible_coords))
             center_y = float(sum(y for _, y in visible_coords) / len(visible_coords))
@@ -594,7 +624,11 @@ class BallAreaZeroMaskArgumentation(BaseArgumentation):
         if not self.enabled or rng.random() >= self.prob:
             return frames, coords, visibility
 
-        visible_indices = [idx for idx, vis in enumerate(visibility) if vis > 0]
+        visible_indices = [
+            idx
+            for idx, frame_visibility in enumerate(visibility)
+            if any(vis > 0 for vis in frame_visibility)
+        ]
         if not visible_indices:
             return frames, coords, visibility
 
@@ -613,7 +647,16 @@ class BallAreaZeroMaskArgumentation(BaseArgumentation):
         for frame_idx in selected_indices:
             frame = out_frames[frame_idx]
             height, width = frame.shape[:2]
-            x, y = coords[frame_idx]
+            visible_points = [
+                point
+                for point, vis in zip(
+                    coords[frame_idx],
+                    visibility[frame_idx],
+                    strict=True,
+                )
+                if vis > 0
+            ]
+            x, y = rng.choice(visible_points)
             mask_width = int(round(width * rng.uniform(*self.mask_width_ratio_range)))
             mask_height = int(round(height * rng.uniform(*self.mask_height_ratio_range)))
             mask_width = max(1, min(mask_width, width))
@@ -688,7 +731,7 @@ class BallDetectionArgumentation:
     def from_eval_config(
         cls,
         config: dict[str, Any] | None = None,
-    ) -> "BallDetectionArgumentation | None":
+    ) -> BallDetectionArgumentation | None:
         """Build an eval-only pipeline that keeps deterministic preprocessing."""
         config = config or {}
         normalize_cfg = dict(config.get("normalize_imagenet", {}) or {})
@@ -710,8 +753,8 @@ class BallDetectionArgumentation:
     ) -> tuple[Frames, Coords, Visibility]:
         """Apply all configured augmentations in sequence."""
         out_frames = [frame.astype(np.float32, copy=True) for frame in frames]
-        out_coords = list(coords)
-        out_visibility = list(visibility)
+        out_coords = [list(frame_coords) for frame_coords in coords]
+        out_visibility = [list(frame_visibility) for frame_visibility in visibility]
         for transform in self.transforms:
             out_frames, out_coords, out_visibility = transform.forward(
                 out_frames,

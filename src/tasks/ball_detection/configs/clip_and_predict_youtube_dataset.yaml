@@ -1,0 +1,45 @@
+hydra:
+  run:
+    dir: outputs/ball_detection/clip_and_predict_youtube_dataset/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
+
+workflow:
+  root: data/tennis/youtube
+  video_id: null
+  mode: select
+
+  paths:
+    frames_dir: frames
+    raw_dir: raw
+    staging_dir: staging
+
+  select:
+    resume: true
+    start_index: null
+    window_name: ball-youtube-clip-selection
+    max_display_width: 1600
+    max_display_height: 950
+    min_frames: 8
+    copy_mode: hardlink
+    overwrite: false
+    skip_small: 1
+    skip_medium: 10
+    skip_large: 50
+
+  prediction:
+    checkpoint: outputs/ball_detection/stunet/logs/version_2/checkpoints/last.ckpt
+    device: cuda
+    sequence_length: 8
+    window_stride: 1
+    batch_size: 4
+    image_size: [288, 512]
+    normalize_imagenet: true
+    imagenet_mean: [0.485, 0.456, 0.406]
+    imagenet_std: [0.229, 0.224, 0.225]
+    peak_threshold: 0.35
+    nms_kernel: 9
+    max_candidates_per_frame: 8
+    aggregation: mean_heatmap
+    overwrite: false
