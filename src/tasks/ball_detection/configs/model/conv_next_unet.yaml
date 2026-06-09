@@ -1,0 +1,11 @@
+name: conv_next_unet
+input_mode: mdd
+in_channels: 2
+num_classes: 1
+num_frames: 8
+input_layout: bcthw
+dims: [64, 128, 256, 512]
+depth: 2
+drop_path_prob: 0.0
+mdd_a: 0.2
+mdd_b: 0.15

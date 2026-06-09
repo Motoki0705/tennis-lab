@@ -5,13 +5,12 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.tasks.ball_detection.data.dataset import BallDetectionDataset
+from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
 from src.tasks.blcs.data.dataset import BallTrajectoryDataset
 from src.tasks.court_detection.data.court_kp_dataset import CourtKPDataset
 from src.tasks.court_detection.data.court_line_dataset import CourtLineDataset
 from src.tasks.court_detection.data.court_seg_dataset import CourtSegDataset
 from src.tasks.plcs.data.dataset import SceneDataset
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 pytestmark = pytest.mark.local_data
@@ -161,18 +160,20 @@ def test_ball_detection_dataset_getitem_contract() -> None:
     split_file = REPO_ROOT / "src/tasks/ball_detection/configs/data/splits/train.txt"
     _require_paths(data_dir, split_file)
 
-    dataset = BallDetectionDataset(
-        data_dir=data_dir,
-        split_file=split_file,
-        config={
-            "data": {
-                "sample_stride": 1,
-                "image_size": [288, 512],
-                "heatmap_size": [144, 256],
-                "sigma_ratio": 0.0066,
-            },
-            "model": {"num_frames": 8},
+    config = {
+        "data": {
+            "data_dir": str(data_dir),
+            "sample_stride": 1,
+            "image_size": [288, 512],
+            "heatmap_size": [144, 256],
+            "sigma_ratio": 0.0066,
         },
+        "model": {"num_frames": 8},
+    }
+    datamodule = TrackNetDataModule(config)
+    dataset = datamodule.create_dataset(
+        split_name="train",
+        split_file=split_file,
         argumentation=None,
     )
 
@@ -190,8 +191,8 @@ def test_ball_detection_dataset_getitem_contract() -> None:
     }
     _assert_tensor(sample["images"], shape=(8, 3, 288, 512), dtype=torch.float32)
     _assert_tensor(sample["heatmaps"], shape=(8, 144, 256), dtype=torch.float32)
-    _assert_tensor(sample["coords"], shape=(8, 2), dtype=torch.float32)
-    _assert_tensor(sample["visibility"], shape=(8,), dtype=torch.float32)
+    _assert_tensor(sample["coords"], shape=(8, 8, 2), dtype=torch.float32)
+    _assert_tensor(sample["visibility"], shape=(8, 8), dtype=torch.float32)
     _assert_tensor(sample["original_size"], shape=(2,), dtype=torch.float32)
     _assert_tensor(sample["heatmap_size"], shape=(2,), dtype=torch.float32)
 

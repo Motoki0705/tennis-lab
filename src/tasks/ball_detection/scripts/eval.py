@@ -28,7 +28,7 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
-from src.tasks.ball_detection.data.datamodule import BallDetectionDataModule
+from src.tasks.ball_detection.data import build_ball_detection_datamodule
 from src.tasks.ball_detection.data.utils.input_adapter import to_model_input
 from src.tasks.ball_detection.training.lightning_module import BallDetectionLightningModule
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
@@ -230,6 +230,28 @@ def _to_original_coords(pred_coords_normalized: Tensor, original_size: Tensor) -
     return pred_coords_original
 
 
+def _select_primary_targets(
+    target_coords: Tensor,
+    target_visibility: Tensor,
+) -> tuple[Tensor, Tensor]:
+    """Select one visible target per frame for legacy diagnostic summaries."""
+    visible = target_visibility > 0.5
+    frame_visible = visible.any(dim=-1)
+    primary_indices = visible.to(torch.int64).argmax(dim=-1)
+    gather_indices = primary_indices[..., None, None].expand(
+        *primary_indices.shape,
+        1,
+        2,
+    )
+    primary_coords = target_coords.gather(dim=2, index=gather_indices).squeeze(2)
+    primary_coords = torch.where(
+        frame_visible[..., None],
+        primary_coords,
+        torch.zeros_like(primary_coords),
+    )
+    return primary_coords, frame_visible
+
+
 def _compute_edge_mask(
     target_coords: Tensor,
     original_size: Tensor,
@@ -272,6 +294,8 @@ def _collect_split_result(
     metrics = BallDetectionMetrics(
         peak_threshold=float(cfg.metrics.peak_threshold),
         ball_distance_threshold=float(cfg.metrics.ball_distance_threshold),
+        nms_kernel=int(cfg.metrics.nms_kernel),
+        max_predictions_per_frame=int(cfg.metrics.max_predictions_per_frame),
     ).to(device)
 
     edge_threshold_ratio = float(cfg.evaluation.analysis.edge_threshold_ratio)
@@ -292,15 +316,18 @@ def _collect_split_result(
                 batch_on_device["visibility"],
                 batch_on_device["original_size"],
             )
+            primary_coords, target_visible = _select_primary_targets(
+                batch_on_device["coords"],
+                batch_on_device["visibility"],
+            )
 
             pred_coords_normalized, peak_values = heatmaps_to_argmax(pred_heatmaps)
             pred_coords_original = _to_original_coords(
                 pred_coords_normalized,
                 batch_on_device["original_size"],
             )
-            distances_px = torch.norm(pred_coords_original - batch_on_device["coords"], dim=-1)
+            distances_px = torch.norm(pred_coords_original - primary_coords, dim=-1)
 
-            target_visible = batch_on_device["visibility"] > 0.5
             pred_visible = peak_values > float(cfg.metrics.peak_threshold)
             matched = pred_visible & target_visible & (
                 distances_px < float(cfg.metrics.ball_distance_threshold)
@@ -309,13 +336,13 @@ def _collect_split_result(
             localization = pred_visible & target_visible & ~matched
             absent_false_positive = pred_visible & ~target_visible
             edge_mask = _compute_edge_mask(
-                batch_on_device["coords"],
+                primary_coords,
                 batch_on_device["original_size"],
                 target_visible,
                 edge_threshold_ratio=edge_threshold_ratio,
             )
             center_mask = target_visible & ~edge_mask
-            speed_px, speed_valid_mask = _compute_speed_px(batch_on_device["coords"], target_visible)
+            speed_px, speed_valid_mask = _compute_speed_px(primary_coords, target_visible)
             speed_mask = speed_valid_mask & target_visible
 
             analysis.total_frames += int(peak_values.numel())
@@ -356,7 +383,10 @@ def _collect_split_result(
     }
 
 
-def _build_dataloader(datamodule: BallDetectionDataModule, split_name: str) -> torch.utils.data.DataLoader:
+def _build_dataloader(
+    datamodule: pl.LightningDataModule,
+    split_name: str,
+) -> torch.utils.data.DataLoader:
     if split_name == "val":
         datamodule.setup(stage="fit")
         return datamodule.val_dataloader()
@@ -423,7 +453,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     )
     torch.set_float32_matmul_precision(str(cfg.training.get("matmul_precision", "high")))
 
-    datamodule = BallDetectionDataModule(cfg)
+    datamodule = build_ball_detection_datamodule(cfg)
     module = BallDetectionLightningModule.load_from_checkpoint(
         str(checkpoint_path),
         map_location=device,
