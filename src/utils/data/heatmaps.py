@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 
 
@@ -132,6 +133,74 @@ def heatmaps_to_argmax(heatmaps: Tensor) -> tuple[Tensor, Tensor]:
 
     coords = torch.stack([x, y], dim=-1)
     return coords, values
+
+
+def heatmaps_to_peaks(
+    heatmaps: Tensor,
+    *,
+    threshold: float,
+    nms_kernel: int,
+    max_peaks: int,
+) -> tuple[Tensor, Tensor, Tensor]:
+    """Extract thresholded local peaks from dense heatmaps.
+
+    Args:
+        heatmaps: Tensor with shape ``(..., H, W)``.
+        threshold: Minimum accepted heatmap value.
+        nms_kernel: Odd max-pooling kernel used for local-maximum suppression.
+        max_peaks: Maximum number of peaks retained per heatmap.
+
+    Returns:
+        Tuple of:
+            - coords: Normalized coordinates with shape ``(..., K, 2)``.
+            - values: Peak values with shape ``(..., K)``.
+            - valid: Boolean mask with shape ``(..., K)``.
+    """
+    if heatmaps.ndim < 2:
+        raise ValueError(f"heatmaps must have shape (..., H, W), got {tuple(heatmaps.shape)}.")
+    if threshold < 0:
+        raise ValueError("threshold must be non-negative.")
+    if nms_kernel <= 0 or nms_kernel % 2 == 0:
+        raise ValueError("nms_kernel must be a positive odd integer.")
+    if max_peaks <= 0:
+        raise ValueError("max_peaks must be positive.")
+
+    *leading_shape, height, width = heatmaps.shape
+    flattened_leading = math.prod(leading_shape) if leading_shape else 1
+    maps = heatmaps.reshape(flattened_leading, 1, height, width)
+    pooled = F.max_pool2d(
+        maps,
+        kernel_size=nms_kernel,
+        stride=1,
+        padding=nms_kernel // 2,
+    )
+    local_maxima = (maps >= pooled) & (maps >= float(threshold))
+    candidate_values = maps.masked_fill(~local_maxima, float("-inf")).flatten(1)
+    k = min(max_peaks, height * width)
+    values, indices = candidate_values.topk(k, dim=1)
+    valid = torch.isfinite(values)
+    values = torch.where(valid, values, torch.zeros_like(values))
+
+    x = indices % width
+    y = torch.div(indices, width, rounding_mode="floor")
+    x_normalized = (
+        x.to(heatmaps.dtype) / float(width - 1)
+        if width > 1
+        else torch.zeros_like(x, dtype=heatmaps.dtype)
+    )
+    y_normalized = (
+        y.to(heatmaps.dtype) / float(height - 1)
+        if height > 1
+        else torch.zeros_like(y, dtype=heatmaps.dtype)
+    )
+    coords = torch.stack([x_normalized, y_normalized], dim=-1)
+
+    output_shape = tuple(leading_shape) + (k,)
+    return (
+        coords.reshape(*output_shape, 2),
+        values.reshape(output_shape),
+        valid.reshape(output_shape),
+    )
 
 
 def _validate_size(size_hw: tuple[int, int]) -> tuple[int, int]:

@@ -20,6 +20,7 @@ from src.utils.data.heatmaps import (
     generate_gaussian_heatmap,
     generate_gaussian_heatmaps,
     heatmaps_to_argmax,
+    heatmaps_to_peaks,
 )
 from src.utils.data.soft_labels import gaussian_soft_labels
 
@@ -37,6 +38,7 @@ __all__ = [
     "generate_gaussian_heatmaps",
     "gaussian_soft_labels",
     "heatmaps_to_argmax",
+    "heatmaps_to_peaks",
     "inject_false_positive_observations",
     "random_visibility_dropout",
     "scale_uv_with_visibility",

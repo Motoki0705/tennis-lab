@@ -1,0 +1,26 @@
+hydra:
+  run:
+    dir: outputs/ball_detection/annotate_youtube_ball/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
+
+annotate:
+  root: data/tennis/youtube
+  video_id: video_000001
+  candidate_id: null
+  start_index: null
+  window_name: ball-youtube-annotation
+  max_display_width: 1600
+  max_display_height: 950
+  point_radius: 7
+  point_thickness: 2
+  max_balls_per_frame: 16
+
+  zoom:
+    key: z
+    factor: 4.0
+
+  finalize:
+    key: f
+    overwrite: false
