@@ -1,14 +1,15 @@
 """Download YouTube videos and extract continuous raw frames.
 
 Usage:
-    python -m src.tasks.ball_detection.scripts.prepare_youtube_dataset
-    python -m src.tasks.ball_detection.scripts.prepare_youtube_dataset workflow.sources.0.url=https://www.youtube.com/watch?v=...
-    python -m src.tasks.ball_detection.scripts.prepare_youtube_dataset workflow.download.enabled=false
+    python -m src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset
+    python -m src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset workflow.sources.0.url=https://www.youtube.com/watch?v=...
+    python -m src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset workflow.download.enabled=false
 
 Notes:
     - Hydra loads configuration from `src/tasks/ball_detection/configs/prepare_youtube_dataset.yaml`.
     - Videos are downloaded, transcoded to H.264, and extracted under `frames/video_*/raw`.
-    - Candidate selection and prediction are handled by `clip_and_predict_youtube_dataset`.
+    - Candidate selection and prediction are handled by
+      `scripts.youtube.clip_and_predict_youtube_dataset`.
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
 
 
 @hydra_main(
-    config_path="../configs",
+    config_path="../../configs",
     config_name="prepare_youtube_dataset",
     version_base="1.3",
 )

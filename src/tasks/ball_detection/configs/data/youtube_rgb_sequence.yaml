@@ -1,0 +1,11 @@
+defaults:
+  - rgb_sequence
+  - _self_
+
+source: youtube
+data_dir: data/tennis/youtube
+
+split:
+  train_file: annotations/train.txt
+  val_file: annotations/val.txt
+  test_file: annotations/test.txt

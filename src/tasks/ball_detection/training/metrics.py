@@ -54,16 +54,14 @@ class BallDetectionMetrics(Metric):
         target_coords: Tensor,
         target_visibility: Tensor,
         original_size: Tensor,
-        target_instance_coords: Tensor | None = None,
-        target_instance_visibility: Tensor | None = None,
     ) -> None:
         """Update frame-level metric state.
 
         Args:
             pred_heatmaps: Predicted probabilities with shape (B, T, H, W).
             target_coords: Target coordinates in original image pixel space,
-                shape (B, T, 2).
-            target_visibility: Target visibility flags, shape (B, T).
+                shape (B, T, K, 2).
+            target_visibility: Target visibility flags, shape (B, T, K).
             original_size: Original frame size in ``(width, height)`` ordering,
                 shape (B, 2).
         """
@@ -72,30 +70,29 @@ class BallDetectionMetrics(Metric):
                 "pred_heatmaps must have shape (B, T, H, W), "
                 f"got {tuple(pred_heatmaps.shape)}."
             )
-        if target_coords.shape[:2] != pred_heatmaps.shape[:2]:
+        if (
+            target_coords.ndim != 4
+            or target_coords.shape[:2] != pred_heatmaps.shape[:2]
+        ):
             raise ValueError(
-                "target_coords must match pred_heatmaps batch/time shape, "
+                "target_coords must have shape (B, T, K, 2) and match "
+                "pred_heatmaps batch/time dimensions, "
                 f"got {tuple(target_coords.shape)} vs {tuple(pred_heatmaps.shape)}."
             )
-        if target_visibility.shape != pred_heatmaps.shape[:2]:
+        if target_coords.shape[-1] != 2:
             raise ValueError(
-                "target_visibility must have shape (B, T), "
+                "target_coords must end with an xy dimension of size 2, "
+                f"got {tuple(target_coords.shape)}."
+            )
+        if target_visibility.shape != target_coords.shape[:-1]:
+            raise ValueError(
+                "target_visibility must match target_coords without xy, "
                 f"got {tuple(target_visibility.shape)}."
             )
         if original_size.shape != (pred_heatmaps.shape[0], 2):
             raise ValueError(
                 "original_size must have shape (B, 2), "
                 f"got {tuple(original_size.shape)}."
-            )
-
-        if target_instance_coords is None or target_instance_visibility is None:
-            target_instance_coords = target_coords.unsqueeze(2)
-            target_instance_visibility = target_visibility.unsqueeze(2)
-        if target_instance_coords.shape[:2] != pred_heatmaps.shape[:2]:
-            raise ValueError("target_instance_coords must match batch/time dimensions.")
-        if target_instance_visibility.shape != target_instance_coords.shape[:-1]:
-            raise ValueError(
-                "target_instance_visibility must match target_instance_coords without xy."
             )
 
         pred_coords_normalized, _, pred_valid = heatmaps_to_peaks(
@@ -117,10 +114,8 @@ class BallDetectionMetrics(Metric):
                     frame_predictions = frame_predictions.clone()
                     frame_predictions[:, 0] *= width
                     frame_predictions[:, 1] *= height
-                gt_mask = (
-                    target_instance_visibility[batch_index, frame_index] > 0.5
-                )
-                frame_targets = target_instance_coords[
+                gt_mask = target_visibility[batch_index, frame_index] > 0.5
+                frame_targets = target_coords[
                     batch_index,
                     frame_index,
                     gt_mask,

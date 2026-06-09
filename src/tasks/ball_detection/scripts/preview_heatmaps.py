@@ -24,8 +24,8 @@ import numpy as np
 import torch
 from omegaconf import DictConfig
 
-from src.tasks.ball_detection.data.dataset import BallDetectionDataset
-from src.utils.data.heatmaps import generate_gaussian_heatmap, heatmaps_to_argmax
+from src.tasks.ball_detection.data import build_ball_detection_datamodule
+from src.utils.data.heatmaps import generate_gaussian_heatmaps, heatmaps_to_argmax
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -46,10 +46,10 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     output_dir.mkdir(parents=True, exist_ok=True)
 
     split_name = str(cfg.preview.split)
-    dataset = BallDetectionDataset(
-        data_dir=cfg.data.data_dir,
+    datamodule = build_ball_detection_datamodule(cfg)
+    dataset = datamodule.create_dataset(
+        split_name=split_name,
         split_file=_resolve_split_file(cfg, split_name),
-        config=cfg,
         argumentation=None,
     )
     sample_indices = _resolve_sample_indices(cfg, len(dataset))
@@ -64,28 +64,36 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         original_size = sample["original_size"].cpu().numpy()
         original_w = float(original_size[0])
         original_h = float(original_size[1])
-        center_xy = (
-            float(sample["coords"][frame_index, 0].item() / max(original_w - 1.0, 1.0)),
-            float(sample["coords"][frame_index, 1].item() / max(original_h - 1.0, 1.0)),
+        centers_xy = _frame_centers_xy(
+            sample["coords"][frame_index],
+            original_w=original_w,
+            original_h=original_h,
         )
-        visible = bool(sample["visibility"][frame_index].item() > 0.5)
+        visibility = sample["visibility"][frame_index].detach().cpu().tolist()
+        visible = any(float(value) > 0.5 for value in visibility)
 
-        panels = [_annotate_original(image, center_xy, visible, cfg)]
+        panels = [_annotate_original(image, centers_xy, visibility, cfg)]
         ratios = [float(value) for value in cfg.preview.ratios]
         ratio_records: list[dict[str, Any]] = []
         for sigma_ratio in ratios:
-            heatmap = generate_gaussian_heatmap(
+            instance_heatmaps = generate_gaussian_heatmaps(
                 size_hw=(height, width),
-                center_xy=center_xy,
+                centers_xy=centers_xy,
                 sigma_ratio=sigma_ratio,
-                visible=visible,
+                visibility=visibility,
+            )
+            heatmap = (
+                instance_heatmaps.amax(dim=0)
+                if instance_heatmaps.numel() > 0
+                else torch.zeros((height, width), dtype=torch.float32)
             )
             argmax_xy, peak_value = heatmaps_to_argmax(heatmap)
             panel = _render_ratio_panel(
                 image=image,
                 heatmap=heatmap,
                 sigma_ratio=sigma_ratio,
-                gt_center_xy=center_xy,
+                gt_centers_xy=centers_xy,
+                gt_visibility=visibility,
                 argmax_xy=tuple(float(v) for v in argmax_xy.tolist()),
                 peak_value=float(peak_value.item()),
                 cfg=cfg,
@@ -113,7 +121,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
                 "frame_name": window.frame_names[window.start_index + frame_index],
                 "output_image": str(image_path),
                 "visible": visible,
-                "center_xy": center_xy,
+                "centers_xy": centers_xy,
                 "ratios": ratio_records,
             }
         )
@@ -140,15 +148,38 @@ def _resolve_sample_indices(cfg: DictConfig, dataset_size: int) -> list[int]:
         sample_indices = list(range(min(int(cfg.preview.max_samples), dataset_size)))
     for sample_index in sample_indices:
         if sample_index < 0 or sample_index >= dataset_size:
-            raise IndexError(f"preview sample_index={sample_index} is out of range for dataset size {dataset_size}.")
+            raise IndexError(
+                f"preview sample_index={sample_index} is out of range for "
+                f"dataset size {dataset_size}."
+            )
     return sample_indices
 
 
 def _select_frame_index(visibility: torch.Tensor) -> int:
-    visible_indices = torch.nonzero(visibility > 0.5, as_tuple=False).flatten()
+    frame_visibility = (
+        (visibility > 0.5).any(dim=-1)
+        if visibility.ndim == 2
+        else visibility > 0.5
+    )
+    visible_indices = torch.nonzero(frame_visibility, as_tuple=False).flatten()
     if len(visible_indices) > 0:
         return int(visible_indices[0].item())
     return 0
+
+
+def _frame_centers_xy(
+    coords: torch.Tensor,
+    *,
+    original_w: float,
+    original_h: float,
+) -> list[tuple[float, float]]:
+    return [
+        (
+            float(coord[0].item() / max(original_w - 1.0, 1.0)),
+            float(coord[1].item() / max(original_h - 1.0, 1.0)),
+        )
+        for coord in coords
+    ]
 
 
 def _tensor_to_image(image: torch.Tensor) -> np.ndarray:
@@ -159,12 +190,14 @@ def _tensor_to_image(image: torch.Tensor) -> np.ndarray:
 
 def _annotate_original(
     image: np.ndarray,
-    center_xy: tuple[float, float],
-    visible: bool,
+    centers_xy: list[tuple[float, float]],
+    visibility: list[float],
     cfg: DictConfig,
 ) -> np.ndarray:
     canvas = image.copy()
-    if visible:
+    for center_xy, visible in zip(centers_xy, visibility, strict=True):
+        if float(visible) <= 0.5:
+            continue
         _draw_point(
             canvas,
             center_xy,
@@ -180,7 +213,8 @@ def _render_ratio_panel(
     image: np.ndarray,
     heatmap: torch.Tensor,
     sigma_ratio: float,
-    gt_center_xy: tuple[float, float],
+    gt_centers_xy: list[tuple[float, float]],
+    gt_visibility: list[float],
     argmax_xy: tuple[float, float],
     peak_value: float,
     cfg: DictConfig,
@@ -199,9 +233,12 @@ def _render_ratio_panel(
             color=(80, 255, 120),
             thickness=int(cfg.preview.draw.thickness),
         )
+    for center_xy, visible in zip(gt_centers_xy, gt_visibility, strict=True):
+        if float(visible) <= 0.5:
+            continue
         _draw_point(
             overlay,
-            gt_center_xy,
+            center_xy,
             radius=int(cfg.preview.draw.gt_radius),
             color=(255, 80, 80),
             thickness=1,

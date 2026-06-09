@@ -1,8 +1,8 @@
 """Review ball pseudo-labels and export human-approved clips.
 
 Usage:
-    python -m src.tasks.ball_detection.scripts.annotate_youtube_ball
-    python -m src.tasks.ball_detection.scripts.annotate_youtube_ball annotate.video_id=video_000002
+    python -m src.tasks.ball_detection.scripts.youtube.annotate_youtube_ball
+    python -m src.tasks.ball_detection.scripts.youtube.annotate_youtube_ball annotate.video_id=video_000002
 
 Notes:
     - Hydra loads configuration from `src/tasks/ball_detection/configs/annotate_youtube_ball.yaml`.
@@ -37,7 +37,7 @@ def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
 
 
 @hydra_main(
-    config_path="../configs",
+    config_path="../../configs",
     config_name="annotate_youtube_ball",
     version_base="1.3",
 )

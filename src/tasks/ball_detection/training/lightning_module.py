@@ -118,8 +118,6 @@ class BallDetectionLightningModule(BaseLightningModule):
             "pred_heatmaps": pred_heatmaps,
             "target_coords": batch["coords"],
             "target_visibility": batch["visibility"],
-            "target_instance_coords": batch["instance_coords"],
-            "target_instance_visibility": batch["instance_visibility"],
             "original_size": batch["original_size"],
         }
 
@@ -131,8 +129,6 @@ class BallDetectionLightningModule(BaseLightningModule):
             outputs["target_coords"],
             outputs["target_visibility"],
             outputs["original_size"],
-            outputs["target_instance_coords"],
-            outputs["target_instance_visibility"],
         )
         return outputs["loss"]
 
@@ -151,8 +147,6 @@ class BallDetectionLightningModule(BaseLightningModule):
             outputs["target_coords"],
             outputs["target_visibility"],
             outputs["original_size"],
-            outputs["target_instance_coords"],
-            outputs["target_instance_visibility"],
         )
 
     def on_validation_epoch_end(self) -> None:
@@ -170,8 +164,6 @@ class BallDetectionLightningModule(BaseLightningModule):
             outputs["target_coords"],
             outputs["target_visibility"],
             outputs["original_size"],
-            outputs["target_instance_coords"],
-            outputs["target_instance_visibility"],
         )
 
     def on_test_epoch_end(self) -> None:
@@ -200,8 +192,8 @@ class BallDetectionLightningModule(BaseLightningModule):
         for batch_idx, batch in enumerate(batches):
             images = batch["images"].to(device)
             heatmaps_gt = batch["heatmaps"]  # (B, T, Hh, Wh)
-            coords_gt = batch["coords"]  # (B, T, 2)
-            visibility = batch["visibility"]  # (B, T)
+            coords_gt = batch["coords"]  # (B, T, K, 2)
+            visibility = batch["visibility"]  # (B, T, K)
 
             model_cfg = self.config.get("model", {})
             model_input = to_model_input(images, model_cfg)
@@ -257,9 +249,14 @@ class BallDetectionLightningModule(BaseLightningModule):
                     cv2.COLORMAP_JET,
                 )
 
-                if visibility[b_idx, t_idx] > 0:
-                    cx = int(coords_gt[b_idx, t_idx, 0].item())
-                    cy = int(coords_gt[b_idx, t_idx, 1].item())
+                visible_coords = coords_gt[
+                    b_idx,
+                    t_idx,
+                    visibility[b_idx, t_idx] > 0.5,
+                ]
+                for coord in visible_coords:
+                    cx = int(coord[0].item())
+                    cy = int(coord[1].item())
                     cv2.circle(frame_bgr, (cx, cy), 5, (0, 255, 0), 2)
 
                 rgb_row.append(frame_bgr)
