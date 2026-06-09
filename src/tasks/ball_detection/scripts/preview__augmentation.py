@@ -1,13 +1,14 @@
 """Generate contact sheets for ball-detection sequence augmentations.
 
 Usage:
-    python -m src.tasks.ball_detection.scripts.visualize_augmentation
-    python -m src.tasks.ball_detection.scripts.visualize_augmentation preview.sample_indices=[0,1,2]
-    python -m src.tasks.ball_detection.scripts.visualize_augmentation preview.split=val
+    python -m src.tasks.ball_detection.scripts.preview__augmentation
+    python -m src.tasks.ball_detection.scripts.preview__augmentation preview.sample_indices=[0,1,2]
+    python -m src.tasks.ball_detection.scripts.preview__augmentation preview.split=val
 
 Notes:
-    - Hydra loads configuration from `src/tasks/ball_detection/configs/visualize_augmentation.yaml`.
+    - Hydra loads configuration from `src/tasks/ball_detection/configs/preview__augmentation.yaml`.
     - The script renders paired original and fully augmented contact sheets for selected clips.
+    - Outputs are written under `outputs/ball_detection/augmentation_preview`.
 """
 
 from __future__ import annotations
@@ -24,11 +25,12 @@ import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
 
+from src.tasks.ball_detection.data import build_ball_detection_datamodule
 from src.tasks.ball_detection.data.argumentation import (
     BallDetectionArgumentation,
     denormalize_tensor_images_imagenet,
 )
-from src.tasks.ball_detection.data.dataset import BallDetectionDataset, ClipWindow
+from src.tasks.ball_detection.data.types import ClipWindow
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -40,7 +42,7 @@ def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
 
 @hydra_main(
     config_path="../configs",
-    config_name="visualize_augmentation",
+    config_name="preview__augmentation",
     version_base="1.3",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
@@ -50,17 +52,17 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
     split_name = str(cfg.preview.split)
     split_file = _resolve_split_file(cfg, split_name)
-    base_dataset = BallDetectionDataset(
-        data_dir=cfg.data.data_dir,
+    datamodule = build_ball_detection_datamodule(cfg)
+    base_dataset = datamodule.create_dataset(
+        split_name=split_name,
         split_file=split_file,
-        config=cfg,
         argumentation=None,
     )
     augmented_cfg = _build_augmented_config(cfg)
-    augmented_dataset = BallDetectionDataset(
-        data_dir=cfg.data.data_dir,
+    augmented_datamodule = build_ball_detection_datamodule(augmented_cfg)
+    augmented_dataset = augmented_datamodule.create_dataset(
+        split_name=split_name,
         split_file=split_file,
-        config=augmented_cfg,
         argumentation=BallDetectionArgumentation(
             OmegaConf.to_container(augmented_cfg.data.augmentation, resolve=True)
         ),
@@ -264,12 +266,23 @@ def _annotate_frames(
     """Overlay ball positions on frames using the sample metadata."""
     original_width, original_height = original_size
     annotated: list[np.ndarray] = []
-    for frame, coord, vis in zip(frames, coords, visibility, strict=True):
+    for frame, frame_coords, frame_visibility in zip(
+        frames,
+        coords,
+        visibility,
+        strict=True,
+    ):
         overlay = frame.copy()
-        if float(vis) > 0.0:
-            frame_height, frame_width = overlay.shape[:2]
-            x_pos = int(round(float(coord[0]) * frame_width / max(original_width, 1)))
-            y_pos = int(round(float(coord[1]) * frame_height / max(original_height, 1)))
+        frame_height, frame_width = overlay.shape[:2]
+        for coord, visible in zip(frame_coords, frame_visibility, strict=True):
+            if float(visible) <= 0.0:
+                continue
+            x_pos = int(
+                round(float(coord[0]) * frame_width / max(original_width, 1))
+            )
+            y_pos = int(
+                round(float(coord[1]) * frame_height / max(original_height, 1))
+            )
             cv2.circle(
                 overlay,
                 center=(x_pos, y_pos),

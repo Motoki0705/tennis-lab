@@ -6,7 +6,7 @@ from typing import Any
 
 import pytorch_lightning as pl
 
-from src.tasks.ball_detection.data.datamodule import BallDetectionDataModule
+from src.tasks.ball_detection.data import build_ball_detection_datamodule
 from src.tasks.ball_detection.training.lightning_module import BallDetectionLightningModule
 from src.tasks.base.training.runner import BaseTrainingRunner
 
@@ -18,8 +18,8 @@ class BallDetectionTrainingRunner(BaseTrainingRunner):
     """
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
-        """Build BallDetectionDataModule from config."""
-        return BallDetectionDataModule(config)
+        """Build the configured ball detection DataModule."""
+        return build_ball_detection_datamodule(config)
 
     def build_lightning_module(
         self,

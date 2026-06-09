@@ -25,8 +25,10 @@ from src.tasks.ball_detection.annotation.youtube_session import (
     finalize_candidate,
     frame_completion_error,
 )
+from src.tasks.ball_detection.data import build_ball_detection_datamodule
 from src.tasks.ball_detection.data.argumentation import HorizontalFlipArgumentation
-from src.tasks.ball_detection.data.dataset import BallDetectionDataset
+from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
+from src.tasks.ball_detection.data.youtube_datamodule import YouTubeDataModule
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
 from src.tasks.ball_detection.youtube.candidate_workflow import (
     LEFT_KEYS as SELECTION_LEFT_KEYS,
@@ -179,16 +181,42 @@ def test_multi_ball_metrics_match_instances_one_to_one() -> None:
     heatmaps[0, 0, 7, 8] = 0.8
     metrics.update(
         heatmaps,
-        target_coords=torch.tensor([[[3.0, 2.0]]]),
-        target_visibility=torch.tensor([[1.0]]),
+        target_coords=torch.tensor([[[[3.0, 2.0], [8.0, 7.0]]]]),
+        target_visibility=torch.tensor([[[1.0, 1.0]]]),
         original_size=torch.tensor([[10.0, 10.0]]),
-        target_instance_coords=torch.tensor([[[[3.0, 2.0], [8.0, 7.0]]]]),
-        target_instance_visibility=torch.tensor([[[1.0, 1.0]]]),
     )
     result = metrics.compute()
     assert result["precision"].item() == pytest.approx(1.0)
     assert result["recall"].item() == pytest.approx(1.0)
     assert result["f1"].item() == pytest.approx(1.0)
+
+
+def test_youtube_datamodule_overrides_only_entry_resolution(
+    tmp_path: Path,
+) -> None:
+    youtube_root = tmp_path / "tennis" / "youtube"
+    config = OmegaConf.create({
+        "data": {
+            "source": "youtube",
+            "data_dir": str(youtube_root),
+            "split": {
+                "train_file": "annotations/train.txt",
+                "val_file": "annotations/val.txt",
+                "test_file": "annotations/test.txt",
+            },
+        },
+    })
+
+    datamodule = build_ball_detection_datamodule(config)
+    assert isinstance(datamodule, YouTubeDataModule)
+    assert isinstance(datamodule, TrackNetDataModule)
+
+    assert datamodule._resolve_entry_path(
+        "youtube/frames/video_000001/clip_000001"
+    ) == (
+        youtube_root.parent
+        / "youtube/frames/video_000001/clip_000001"
+    )
 
 
 def test_selection_skip_is_capped_at_fifty() -> None:
@@ -403,26 +431,29 @@ def test_finalize_moves_only_completed_candidate_to_training_dataset(
     assert annotation["items"][0]["dataset_entry"] == (
         "youtube/frames/video_000001/clip_000001"
     )
-    dataset = BallDetectionDataset(
-        data_dir=root.parent,
+    config = OmegaConf.create({
+        "model": {"num_frames": 8},
+        "data": {
+            "source": "youtube",
+            "data_dir": str(root),
+            "sample_stride": 1,
+            "image_size": [24, 32],
+            "heatmap_size": [12, 16],
+            "sigma_ratio": 0.012,
+        },
+    })
+    datamodule = YouTubeDataModule(config)
+    dataset = datamodule.create_dataset(
+        split_name="train",
         split_file=root / "annotations" / "train.txt",
-        config=OmegaConf.create({
-            "model": {"num_frames": 8},
-            "data": {
-                "sample_stride": 1,
-                "image_size": [24, 32],
-                "heatmap_size": [12, 16],
-                "sigma_ratio": 0.012,
-            },
-        }),
+        argumentation=None,
     )
     sample = dataset[0]
     assert tuple(sample["images"].shape) == (8, 3, 24, 32)
-    assert sample["visibility"].tolist() == [1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0]
-    assert tuple(sample["instance_coords"].shape) == (8, 8, 2)
-    assert tuple(sample["instance_visibility"].shape) == (8, 8)
-    assert sample["instance_visibility"][0, :2].tolist() == [1.0, 1.0]
-    assert sample["instance_visibility"][1].sum().item() == 0.0
+    assert tuple(sample["coords"].shape) == (8, 8, 2)
+    assert tuple(sample["visibility"].shape) == (8, 8)
+    assert sample["visibility"][0, :2].tolist() == [1.0, 1.0]
+    assert sample["visibility"][1].sum().item() == 0.0
 
 
 def test_finalize_rejects_pending_candidate(tmp_path: Path) -> None:
@@ -437,7 +468,7 @@ def test_finalize_rejects_pending_candidate(tmp_path: Path) -> None:
         finalize_candidate(path, _annotation_config(tmp_path / "youtube"))
 
 
-def test_dataset_accepts_lowercase_clip_directory(tmp_path: Path) -> None:
+def test_datamodule_accepts_lowercase_clip_directory(tmp_path: Path) -> None:
     clip_dir = tmp_path / "youtube" / "frames" / "video_000001" / "clip_000001"
     clip_dir.mkdir(parents=True)
-    assert BallDetectionDataset._is_clip_dir(clip_dir)
+    assert TrackNetDataModule._is_clip_dir(clip_dir)

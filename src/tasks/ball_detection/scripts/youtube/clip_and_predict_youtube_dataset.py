@@ -1,8 +1,8 @@
 """Select candidate clips or run pseudo-label prediction for one YouTube video.
 
 Usage:
-    python -m src.tasks.ball_detection.scripts.clip_and_predict_youtube_dataset workflow.video_id=video_000001 workflow.mode=select
-    python -m src.tasks.ball_detection.scripts.clip_and_predict_youtube_dataset workflow.video_id=video_000001 workflow.mode=predict
+    python -m src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset workflow.video_id=video_000001 workflow.mode=select
+    python -m src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset workflow.video_id=video_000001 workflow.mode=predict
 
 Notes:
     - Hydra loads configuration from `src/tasks/ball_detection/configs/clip_and_predict_youtube_dataset.yaml`.
@@ -37,7 +37,7 @@ def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
 
 
 @hydra_main(
-    config_path="../configs",
+    config_path="../../configs",
     config_name="clip_and_predict_youtube_dataset",
     version_base="1.3",
 )
