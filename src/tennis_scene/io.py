@@ -17,7 +17,7 @@ class SceneResult:
     """Result of tennis scene 3D reconstruction.
 
     Player-related arrays use (P, T, ...) as the canonical shape.
-    Court keypoints use (T, K, 2).
+    Camera observations use a leading camera axis N.
     """
 
     num_frames: int
@@ -25,8 +25,8 @@ class SceneResult:
     width: int
     height: int
 
-    court_kp: NDArray[np.float32]  # (T, K, 2)
-    court_vis: NDArray[np.float32]  # (T, K)
+    court_kp: NDArray[np.float32]  # (N, T, K, 2)
+    court_vis: NDArray[np.float32]  # (N, T, K)
 
     player_position: NDArray[np.float32]  # (P, T, 3)
     player_yaw: NDArray[np.float32]  # (P, T)
@@ -36,12 +36,12 @@ class SceneResult:
     smpl_betas: NDArray[np.float32]  # (P, 10)
     smpl_vertices_local: NDArray[np.float32] | None = None  # (P, T, V, 3)
 
-    ball_uv: NDArray[np.float32] | None = None
-    ball_visibility: NDArray[np.bool_] | None = None
-    ball_3d: NDArray[np.float32] | None = None
+    ball_uv: NDArray[np.float32] | None = None  # (N, T, 2)
+    ball_visibility: NDArray[np.bool_] | None = None  # (N, T)
+    ball_3d: NDArray[np.float32] | None = None  # (T, 3)
 
-    human_kp_2d: NDArray[np.float32] | None = None  # (P, T, 17, 2)
-    human_kp_vis: NDArray[np.float32] | None = None  # (P, T, 17)
+    human_kp_2d: NDArray[np.float32] | None = None  # (P, N, T, 17, 2)
+    human_kp_vis: NDArray[np.float32] | None = None  # (P, N, T, 17)
 
     player_track_ids: NDArray[np.int32] | None = None
     player_kp_3d: NDArray[np.float32] | None = None  # (P, T, J, 3)
@@ -192,20 +192,21 @@ if __name__ == "__main__":
 
     T = 10
     P = 2
+    N = 2
     result = SceneResult(
         num_frames=T,
         fps=30.0,
         width=1920,
         height=1080,
-        court_kp=np.random.rand(T, 20, 2).astype(np.float32),
-        court_vis=np.ones((T, 20), dtype=np.float32),
+        court_kp=np.random.rand(N, T, 20, 2).astype(np.float32),
+        court_vis=np.ones((N, T, 20), dtype=np.float32),
         player_position=np.random.rand(P, T, 3).astype(np.float32),
         player_yaw=np.random.rand(P, T).astype(np.float32),
         smpl_body_pose=np.random.rand(P, T, 63).astype(np.float32),
         smpl_global_orient=np.random.rand(P, T, 3).astype(np.float32),
         smpl_betas=np.random.rand(P, 10).astype(np.float32),
-        ball_uv=np.random.rand(T, 2).astype(np.float32),
-        ball_visibility=np.ones(T, dtype=bool),
+        ball_uv=np.random.rand(N, T, 2).astype(np.float32),
+        ball_visibility=np.ones((N, T), dtype=bool),
         ball_3d=np.random.rand(T, 3).astype(np.float32),
         player_track_ids=np.array([0, 1], dtype=np.int32),
     )

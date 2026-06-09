@@ -54,7 +54,7 @@ class PLCSResult:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict) -> "PLCSResult":
+    def from_dict(cls, data: dict) -> PLCSResult:
         position = np.array(data["position"], dtype=np.float32)
         yaw = np.array(data["yaw"], dtype=np.float32)
 
@@ -81,9 +81,12 @@ class PLCSResult:
         if self.yaw.ndim != 2:
             errors.append(f"yaw shape must be (P, T), got {self.yaw.shape}")
 
-        if self.position.ndim == 3 and self.yaw.ndim == 2:
-            if self.position.shape[:2] != self.yaw.shape:
-                errors.append("position and yaw shapes are inconsistent on (P, T)")
+        if (
+            self.position.ndim == 3
+            and self.yaw.ndim == 2
+            and self.position.shape[:2] != self.yaw.shape
+        ):
+            errors.append("position and yaw shapes are inconsistent on (P, T)")
 
         if self.track_ids is not None:
             if self.track_ids.ndim != 1:
@@ -101,7 +104,7 @@ class PLCSResult:
         return len(errors) == 0, errors
 
     @classmethod
-    def load(cls, path: str | Path) -> "PLCSResult":
+    def load(cls, path: str | Path) -> PLCSResult:
         with Path(path).open("r", encoding="utf-8") as f:
             return cls.from_dict(json.load(f))
 
@@ -159,10 +162,10 @@ class PLCSModule(BasePipelineModule):
         """Run PLCS inference.
 
         Args:
-            human_kp_2d: Human 2D keypoints, shape (P, T, 17, 2), normalized [0, 1].
-            court_kp: Court keypoints, shape (T, K, 2), normalized [0, 1].
-            human_kp_vis: Human keypoint visibility, shape (P, T, 17).
-            court_vis: Court keypoint visibility, shape (T, K).
+            human_kp_2d: Human 2D keypoints, shape (P, N, T, 17, 2), normalized [0, 1].
+            court_kp: Court keypoints, shape (N, T, K, 2), normalized [0, 1].
+            human_kp_vis: Human keypoint visibility, shape (P, N, T, 17).
+            court_vis: Court keypoint visibility, shape (N, T, K).
             track_ids: Optional track IDs aligned with P.
 
         Returns:
@@ -180,86 +183,96 @@ class PLCSModule(BasePipelineModule):
         if not self.is_loaded:
             self.load()
 
-        if human_kp_2d.ndim != 4 or human_kp_2d.shape[2:] != (17, 2):
+        if human_kp_2d.ndim != 5 or human_kp_2d.shape[3:] != (17, 2):
             raise ValueError(
-                "human_kp_2d shape must be (P, T, 17, 2), "
+                "human_kp_2d shape must be (P, N, T, 17, 2), "
                 f"got {human_kp_2d.shape}"
             )
 
-        num_players, num_frames = human_kp_2d.shape[:2]
-        if human_kp_vis is not None:
-            if human_kp_vis.shape != (num_players, num_frames, 17):
-                raise ValueError(
-                    "human_kp_vis shape must match (P, T, 17), "
-                    f"got {human_kp_vis.shape}"
-                )
+        num_players, num_cameras, num_frames = human_kp_2d.shape[:3]
+        if human_kp_vis is not None and human_kp_vis.shape != (
+            num_players,
+            num_cameras,
+            num_frames,
+            17,
+        ):
+            raise ValueError(
+                "human_kp_vis shape must match (P, N, T, 17), "
+                f"got {human_kp_vis.shape}"
+            )
 
         if track_ids is None:
             track_ids = np.arange(num_players, dtype=np.int32)
 
-        LOGGER.info(f"Running PLCS player localization for {num_players} players...")
+        LOGGER.info(
+            "Running PLCS player localization for "
+            f"{num_players} players and {num_cameras} cameras..."
+        )
 
-        batch_size = num_players * num_frames
-
-        court_kp_t = torch.from_numpy(court_kp).float()
-        if court_kp_t.dim() != 3:
+        if court_kp.ndim != 4 or court_kp.shape[-1] != 2:
             raise ValueError(
-                f"court_kp must have shape (T, K, 2), got {tuple(court_kp_t.shape)}"
+                f"court_kp must have shape (N, T, K, 2), got {court_kp.shape}"
             )
-        if court_kp_t.shape[0] != num_frames:
+        if court_kp.shape[:2] != (num_cameras, num_frames):
             raise ValueError(
-                "court_kp temporal length must match human_kp_2d T, "
-                f"got {court_kp_t.shape[0]} and {num_frames}"
+                "court_kp leading shape must match human_kp_2d (N, T), "
+                f"got {court_kp.shape[:2]} and {(num_cameras, num_frames)}"
             )
-        court_kp_batch = (
-            court_kp_t.unsqueeze(0)
-            .expand(num_players, num_frames, *court_kp_t.shape[1:])
-            .reshape(batch_size, *court_kp_t.shape[1:])
+        court_kp_t = (
+            torch.from_numpy(court_kp)
+            .float()
+            .unsqueeze(0)
+            .expand(num_players, *court_kp.shape)
         )
 
         court_vis_batch = None
         if court_vis is not None:
-            court_vis_t = torch.from_numpy(court_vis).float()
-            if court_vis_t.dim() != 2:
+            if court_vis.ndim != 3:
                 raise ValueError(
-                    f"court_vis must have shape (T, K), got {tuple(court_vis_t.shape)}"
+                    f"court_vis must have shape (N, T, K), got {court_vis.shape}"
                 )
-            if court_vis_t.shape[0] != num_frames:
+            if court_vis.shape[:2] != (num_cameras, num_frames):
                 raise ValueError(
-                    "court_vis temporal length must match human_kp_2d T, "
-                    f"got {court_vis_t.shape[0]} and {num_frames}"
+                    "court_vis leading shape must match human_kp_2d (N, T), "
+                    f"got {court_vis.shape[:2]} and {(num_cameras, num_frames)}"
                 )
             court_vis_batch = (
-                court_vis_t.unsqueeze(0)
-                .expand(num_players, num_frames, court_vis_t.shape[1])
-                .reshape(batch_size, court_vis_t.shape[1])
+                torch.from_numpy(court_vis)
+                .float()
+                .unsqueeze(0)
+                .expand(num_players, *court_vis.shape)
             )
 
-        human_kp_t = torch.from_numpy(human_kp_2d).float().reshape(
-            batch_size, 17, 2
-        )  # (P*T, 17, 2)
+        human_kp_t = torch.from_numpy(human_kp_2d).float()
         human_vis_t = None
         if human_kp_vis is not None:
-            human_vis_t = torch.from_numpy(human_kp_vis).float().reshape(
-                batch_size, 17
-            )  # (P*T, 17)
-        human_mask_t = torch.ones((batch_size,), dtype=torch.float32)
+            human_vis_t = torch.from_numpy(human_kp_vis).float()
+        human_mask_t = torch.ones(
+            (num_players, num_cameras, num_frames),
+            dtype=torch.float32,
+        )
 
         pred = self._predictor.predict(
             human_kp=human_kp_t,
-            court_kp=court_kp_batch,
+            court_kp=court_kp_t,
             human_vis=human_vis_t,
             human_mask=human_mask_t,
             court_vis=court_vis_batch,
             denormalize=True,
         )
 
-        positions = pred["position_meters"].numpy().astype(np.float32).reshape(
-            num_players, num_frames, 3
-        )  # (P, T, 3)
-        yaws = pred["yaw_radians"].numpy().astype(np.float32).reshape(
-            num_players, num_frames
-        )  # (P, T)
+        positions = pred["position_meters"].numpy().astype(np.float32)
+        yaws = pred["yaw_radians"].numpy().astype(np.float32)
+        if positions.shape != (num_players, num_frames, 3):
+            raise ValueError(
+                "PLCS predictor position_meters must have shape (P, T, 3), "
+                f"got {positions.shape}"
+            )
+        if yaws.shape != (num_players, num_frames):
+            raise ValueError(
+                "PLCS predictor yaw_radians must have shape (P, T), "
+                f"got {yaws.shape}"
+            )
 
         result = PLCSResult(
             position=positions,  # (P, T, 3)
