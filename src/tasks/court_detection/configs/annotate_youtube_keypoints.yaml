@@ -15,8 +15,8 @@ annotate:
   annotation_format: named_keypoints
   image_path_key: image_path
   homography_auto_fill: true
-  keypoint_format: kp15
-  source_dataset: yastrebksv_kp15
+  keypoint_format: kp20
+  include_source_types: [youtube]
   image_id: null
   start_index: 0
   skip_completed: true
@@ -24,7 +24,7 @@ annotate:
   window_name: court-youtube-keypoints
   max_display_width: 1600
   max_display_height: 950
-  editable_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-  required_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+  editable_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+  required_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
   drag_radius_px: 18
   drag_start_threshold_px: 4

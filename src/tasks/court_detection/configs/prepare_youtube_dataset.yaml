@@ -99,8 +99,7 @@ workflow:
     overwrite: false
 
   annotation:
-    schema_name: court_youtube_keypoints_v1
-    keypoint_format: kp15
-    source_dataset: yastrebksv_kp15
+    schema_name: court_youtube_keypoints_v2
+    keypoint_format: kp20
     merge_existing: true
     overwrite: false

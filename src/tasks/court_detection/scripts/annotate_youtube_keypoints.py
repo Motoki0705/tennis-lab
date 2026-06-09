@@ -65,7 +65,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - interactive CLI
             homography_auto_fill=bool(ann_cfg.homography_auto_fill),
             start_after_last_completed=bool(ann_cfg.start_after_last_completed),
             keypoint_format=str(ann_cfg.keypoint_format),
-            source_dataset=None if ann_cfg.source_dataset is None else str(ann_cfg.source_dataset),
+            include_source_types=tuple(str(value) for value in ann_cfg.include_source_types),
         )
     )
 
