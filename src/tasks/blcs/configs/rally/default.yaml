@@ -26,3 +26,7 @@ toss_z0_tolerance: 0.03
 volley_probability: 0.05
 normal_return_probability: 0.85
 late_return_probability: 0.10
+
+# Target cell sampling: probability of intentionally aiming out-court
+# (rally-ending fault). Per-shot continuation probability ~= 1 - this value.
+out_court_target_probability: 0.10

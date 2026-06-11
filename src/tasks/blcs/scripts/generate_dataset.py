@@ -111,6 +111,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             device=device,
             num_scenes=num_scenes,
             num_workers=num_workers,
+            seed=seed,
         ),
         desc="Generating scenes",
         total=num_scenes,

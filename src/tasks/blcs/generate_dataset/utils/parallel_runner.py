@@ -40,12 +40,18 @@ def _generate_scene_task(
     scene_index: int,
     generator_config: GeneratorConfig,
     device: str,
+    base_seed: int,
 ) -> BLCSSceneData:
     if torch.device(device).type != "cpu":
         raise ValueError(
             "Parallel BLCS dataset generation only supports run.device=cpu"
         )
     torch.set_num_threads(1)
+
+    # Per-scene seeding: forked workers otherwise share the parent's RNG
+    # state, producing correlated scenes within each batch of workers. This
+    # also makes scenes reproducible regardless of worker scheduling.
+    torch.manual_seed(base_seed + scene_index)
 
     generator = _get_worker_scene_generator(generator_config, device)
     from_cell = generator.sample_from_cell()
@@ -60,6 +66,7 @@ def generate_parallel_scenes(
     device: str,
     num_scenes: int,
     num_workers: int,
+    seed: int = 0,
 ) -> Iterator[BLCSSceneData]:
     _require_positive_worker_count(num_workers)
     if num_scenes <= 0:
@@ -75,5 +82,6 @@ def generate_parallel_scenes(
             range(num_scenes),
             repeat(generator_config),
             repeat(device),
+            repeat(seed),
             chunksize=1,
         )

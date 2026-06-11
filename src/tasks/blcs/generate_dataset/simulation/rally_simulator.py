@@ -91,6 +91,12 @@ class RallyConfig:
     normal_return_probability: float = 0.85
     late_return_probability: float = 0.10
 
+    # --- Target cell sampling ---
+    # Probability of intentionally aiming at an out-court cell (rally-ending
+    # fault). Directly controls the rally-length distribution: per-shot
+    # continuation probability is roughly (1 - this value).
+    out_court_target_probability: float = 0.15
+
 
 @dataclass
 class ShotEventInfo:
@@ -633,8 +639,9 @@ class RallySimulator:
         Returns a random in-court cell with bias toward service boxes and
         back court, with small probability of out-court targeting.
         """
+        p_out = max(0.0, min(1.0, float(self.rally_config.out_court_target_probability)))
         r = torch.rand(1).item()
-        if r < 0.85:
+        if r >= p_out:
             # In-court (0-5)
             return int(torch.randint(0, NUM_IN_COURT_CELLS, (1,)).item())
         else:

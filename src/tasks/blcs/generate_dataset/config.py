@@ -64,6 +64,7 @@ def build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         volley_probability=float(cfg.rally.volley_probability),
         normal_return_probability=float(cfg.rally.normal_return_probability),
         late_return_probability=float(cfg.rally.late_return_probability),
+        out_court_target_probability=float(cfg.rally.out_court_target_probability),
     )
 
     camera_config = CameraConfig(
@@ -93,6 +94,13 @@ def build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         net_retry_max_attempts=int(cfg.targeted_velocity.net_retry_max_attempts),
         net_check_max_frames=int(cfg.targeted_velocity.net_check_max_frames),
         net_elevation_step_deg=float(cfg.targeted_velocity.net_elevation_step_deg),
+        landing_refine_enabled=bool(cfg.targeted_velocity.landing_refine_enabled),
+        landing_refine_max_iters=int(cfg.targeted_velocity.landing_refine_max_iters),
+        landing_refine_tolerance_m=float(
+            cfg.targeted_velocity.landing_refine_tolerance_m
+        ),
+        landing_sim_max_frames=int(cfg.targeted_velocity.landing_sim_max_frames),
+        target_margin_m=float(cfg.targeted_velocity.target_margin_m),
     )
 
     return GeneratorConfig(
