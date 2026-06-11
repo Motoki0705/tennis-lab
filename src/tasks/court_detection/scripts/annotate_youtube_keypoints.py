@@ -21,7 +21,7 @@ import hydra
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.tasks.court_detection.annotation import (
+from src.tasks.court_detection.generate_dataset import (
     AnnotationSessionConfig,
     run_annotation_session,
 )

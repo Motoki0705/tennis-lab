@@ -21,7 +21,7 @@ import hydra
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.tasks.ball_detection.youtube import (
+from src.tasks.ball_detection.generate_dataset import (
     CandidatePredictionConfig,
     CandidateSelectionConfig,
     predict_candidates,
