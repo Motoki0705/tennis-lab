@@ -7,3 +7,13 @@ gravity: 9.81
 net_retry_max_attempts: 12
 net_check_max_frames: 600
 net_elevation_step_deg: 2.0
+
+# Physics-based landing refinement (shooting method). Compensates
+# drag/Magnus/wind so the first bounce lands near the sampled target.
+landing_refine_enabled: true
+landing_refine_max_iters: 14
+landing_refine_tolerance_m: 0.25
+landing_sim_max_frames: 1200
+
+# Inset from cell edges when sampling target bounce positions (metres).
+target_margin_m: 0.35
