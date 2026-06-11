@@ -253,6 +253,7 @@ class CellManager:
         cell_id: int,
         side: str,
         device: str | torch.device = "cpu",
+        margin: float = 0.0,
     ) -> Tensor:
         """Sample a random ground-level (z=0) position within a cell.
 
@@ -260,16 +261,27 @@ class CellManager:
             cell_id: Cell ID (0-8).
             side: ``"near"`` or ``"far"``.
             device: Torch device.
+            margin: Inset (metres) from each cell edge. Falls back to the cell
+                centre on an axis whose extent is smaller than ``2 * margin``.
 
         Returns:
             Position [3] (x, y, z=0).
         """
         bounds = self.cell_id_to_bounds(cell_id, side)
 
-        x = bounds.x_min + torch.rand(1).item() * (bounds.x_max - bounds.x_min)
-        y = bounds.y_min + torch.rand(1).item() * (bounds.y_max - bounds.y_min)
+        x = self._sample_in_range(bounds.x_min, bounds.x_max, margin)
+        y = self._sample_in_range(bounds.y_min, bounds.y_max, margin)
 
         return torch.tensor([x, y, 0.0], device=device)
+
+    @staticmethod
+    def _sample_in_range(lo: float, hi: float, margin: float) -> float:
+        """Sample uniformly in [lo + margin, hi - margin] with centre fallback."""
+        lo_m = lo + margin
+        hi_m = hi - margin
+        if lo_m >= hi_m:
+            return (lo + hi) / 2.0
+        return lo_m + torch.rand(1).item() * (hi_m - lo_m)
 
     def get_cell_center(
         self,
