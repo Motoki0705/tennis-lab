@@ -216,8 +216,10 @@ YouTube学習データセットへ書き出されます。
 
 ```text
 src/tasks/ball_detection/
-├── annotation/
-│   └── youtube_session.py
+├── generate_dataset/
+│   ├── annotation_session.py
+│   ├── candidate_workflow.py
+│   └── __init__.py
 ├── configs/
 │   ├── data/
 │   │   ├── rgb_sequence.yaml
@@ -245,8 +247,6 @@ src/tasks/ball_detection/
 │       └── prepare_youtube_dataset.py
 ├── training/
 ├── visualization/
-└── youtube/
-    └── candidate_workflow.py
 ```
 
 ## 注意点
