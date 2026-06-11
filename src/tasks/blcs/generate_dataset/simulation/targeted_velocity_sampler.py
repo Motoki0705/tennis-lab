@@ -1,9 +1,11 @@
 """Targeted velocity sampler for cell-to-cell shots.
 
-Computes an initial velocity that roughly aims at a target cell. The speed is
-derived analytically from gravity-only projectile motion, then a short physics
-check verifies that the ball reaches the net without hitting it. If it clips the
-net, the sampler raises the elevation and recomputes the speed.
+Computes an initial velocity that aims at a target cell. The speed is first
+derived analytically from gravity-only projectile motion. When a physics
+simulator is provided, the landing point is then refined iteratively against
+the full physics model (drag/Magnus/wind): the shot is simulated to its first
+bounce, the landing error is measured, and a virtual aim point is shifted by
+that error (shooting method). Net hits raise the elevation and retry.
 """
 
 from __future__ import annotations
@@ -43,6 +45,19 @@ class TargetedVelocityConfig:
     net_check_max_frames: int = 600
     net_elevation_step_deg: float = 2.0
 
+    # Physics-based landing refinement (shooting method). Enabled whenever a
+    # physics simulator is passed to the sampler. Each iteration simulates the
+    # shot to its first bounce and shifts a virtual aim point by the landing
+    # error so drag/Magnus/wind are compensated.
+    landing_refine_enabled: bool = True
+    landing_refine_max_iters: int = 14
+    landing_refine_tolerance_m: float = 0.25
+    landing_sim_max_frames: int = 1200
+
+    # Margin (metres) from cell edges when sampling target bounce positions.
+    # Keeps refined landings clear of court boundaries despite residual error.
+    target_margin_m: float = 0.35
+
 
 @dataclass(frozen=True)
 class _NetCheckResult:
@@ -50,6 +65,20 @@ class _NetCheckResult:
 
     passed: bool
     hit_pos: Tensor | None = None
+
+
+@dataclass(frozen=True)
+class _LandingResult:
+    """Result of simulating a shot until its first bounce.
+
+    ``bounce_pos`` is the first bounce position, or a fence-contact proxy when
+    the ball reaches the fence before bouncing. ``None`` if the ball hit the
+    net or never landed within the frame budget.
+    """
+
+    bounce_pos: Tensor | None
+    hit_net: bool
+    net_pos: Tensor | None
 
 
 class TargetedVelocitySampler:
@@ -111,10 +140,40 @@ class TargetedVelocitySampler:
             Tensor: Velocity [3] in m/s.
 
         """
+        elevation_rad = self._sample_elevation_rad(elevation_deg, profile)
+
+        if physics is not None and self.config.landing_refine_enabled:
+            return self._compute_velocity_with_landing_refinement(
+                start_pos=start_pos,
+                target_pos=target_pos,
+                from_side=from_side,
+                elevation_rad=elevation_rad,
+                physics=physics,
+                spin=spin,
+            )
+
+        return self._compute_velocity_with_net_retry(
+            start_pos=start_pos,
+            target_pos=target_pos,
+            from_side=from_side,
+            elevation_rad=elevation_rad,
+            physics=physics,
+            spin=spin,
+        )
+
+    def _compute_velocity_with_net_retry(
+        self,
+        start_pos: Tensor,
+        target_pos: Tensor,
+        from_side: str,
+        elevation_rad: float,
+        physics: BallPhysics | None,
+        spin: Tensor | None,
+    ) -> Tensor:
+        """Gravity-only aiming with net-hit elevation retry (legacy path)."""
         horizontal_dist = float(
             torch.linalg.norm(target_pos[:2] - start_pos[:2]).item()
         )
-        elevation_rad = self._sample_elevation_rad(elevation_deg, profile)
         elevation_step_rad = math.radians(self.config.net_elevation_step_deg)
         max_attempts = max(1, self.config.net_retry_max_attempts)
         last_velocity: Tensor | None = None
@@ -148,6 +207,175 @@ class TargetedVelocitySampler:
 
         assert last_velocity is not None
         return last_velocity
+
+    def _compute_velocity_with_landing_refinement(
+        self,
+        start_pos: Tensor,
+        target_pos: Tensor,
+        from_side: str,
+        elevation_rad: float,
+        physics: BallPhysics,
+        spin: Tensor | None,
+    ) -> Tensor:
+        """Refine aim against full physics so the first bounce hits the target.
+
+        Shooting method: simulate the candidate shot to its first bounce,
+        measure the landing error in the ground plane, and shift a virtual aim
+        point by that error before recomputing the gravity-only solution. Net
+        hits raise the elevation instead (reusing the deficit-based step).
+        """
+        cfg = self.config
+        elevation_step_rad = math.radians(cfg.net_elevation_step_deg)
+        target_side = "far" if from_side == "near" else "near"
+
+        virtual_target = target_pos.clone()
+        best_velocity: Tensor | None = None
+        best_error = float("inf")
+        best_virtual: Tensor | None = None
+        best_error_vec: Tensor | None = None
+        prev_error: float | None = None
+        # Step gain; halved whenever an update makes the landing error worse
+        # (strong Magnus can make the full step overshoot and oscillate).
+        gain = 1.0
+
+        for _ in range(max(1, cfg.landing_refine_max_iters)):
+            velocity = self._compute_velocity_to_target_once(
+                start_pos=start_pos,
+                target_pos=virtual_target,
+                from_side=from_side,
+                elevation_rad=elevation_rad,
+            )
+            landing = self._simulate_landing(
+                start_pos=start_pos,
+                velocity=velocity,
+                spin=spin,
+                physics=physics,
+            )
+
+            if landing.hit_net:
+                horizontal_dist = float(
+                    torch.linalg.norm(virtual_target[:2] - start_pos[:2]).item()
+                )
+                elevation_rad = self._raise_elevation_after_net_hit(
+                    elevation_rad=elevation_rad,
+                    hit_pos=landing.net_pos,
+                    start_pos=start_pos,
+                    horizontal_dist=horizontal_dist,
+                    default_step_rad=elevation_step_rad,
+                )
+                continue
+
+            if landing.bounce_pos is None:
+                # Never landed within budget; nothing to correct against.
+                elevation_rad += elevation_step_rad
+                continue
+
+            error_vec = landing.bounce_pos[:2] - target_pos[:2]
+            error = float(torch.linalg.norm(error_vec).item())
+
+            if error < best_error:
+                best_error = error
+                best_velocity = velocity
+                best_virtual = virtual_target.clone()
+                best_error_vec = error_vec.clone()
+            if error <= cfg.landing_refine_tolerance_m:
+                return velocity
+
+            if prev_error is not None and error > prev_error:
+                gain = max(0.25, gain * 0.5)
+            prev_error = error
+
+            # Step from the best-known aim point with the (possibly damped)
+            # gain rather than chaining steps from a diverging iterate.
+            assert best_virtual is not None and best_error_vec is not None
+            virtual_target = best_virtual.clone()
+            virtual_target[:2] = virtual_target[:2] - gain * best_error_vec
+            virtual_target = self._clamp_virtual_target(virtual_target, target_side)
+
+        if best_velocity is not None:
+            return best_velocity
+
+        # All attempts hit the net or never landed: fall back to legacy path.
+        return self._compute_velocity_with_net_retry(
+            start_pos=start_pos,
+            target_pos=target_pos,
+            from_side=from_side,
+            elevation_rad=elevation_rad,
+            physics=physics,
+            spin=spin,
+        )
+
+    def _clamp_virtual_target(self, virtual_target: Tensor, target_side: str) -> Tensor:
+        """Keep the virtual aim point on the target side and bounded.
+
+        The virtual aim point is allowed well outside the physical court:
+        with strong drag a deep shot may require aiming far beyond the fence
+        for the gravity-only solution to carry far enough.
+        """
+        from src.utils.schema.court import X_MAX, Y_MAX
+
+        x_limit = float(X_MAX) * 2.0
+        y_limit = float(abs(Y_MAX)) * 2.0
+        min_depth = 0.5  # metres beyond the net
+
+        x = float(virtual_target[0].item())
+        y = float(virtual_target[1].item())
+
+        x = max(-x_limit, min(x_limit, x))
+        if target_side == "far":
+            y = max(min_depth, min(y_limit, y))
+        else:
+            y = min(-min_depth, max(-y_limit, y))
+
+        clamped = virtual_target.clone()
+        clamped[0] = x
+        clamped[1] = y
+        return clamped
+
+    def _simulate_landing(
+        self,
+        start_pos: Tensor,
+        velocity: Tensor,
+        spin: Tensor | None,
+        physics: BallPhysics,
+    ) -> _LandingResult:
+        """Simulate a shot with full physics until its first bounce.
+
+        Fence contact before the bounce is treated as a proxy landing so the
+        refinement can still pull a long overshoot back toward the target.
+        """
+        from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallState
+
+        spin_vec = spin if spin is not None else torch.zeros_like(velocity)
+        state = BallState(
+            position=start_pos.clone(),
+            velocity=velocity.clone(),
+            spin=spin_vec.clone(),
+        )
+
+        for _ in range(self.config.landing_sim_max_frames):
+            prev_pos = state.position.clone()
+            state = physics.step(state)
+
+            hit_net, net_pos = physics.check_net_collision(prev_pos, state.position)
+            if hit_net:
+                return _LandingResult(bounce_pos=None, hit_net=True, net_pos=net_pos)
+
+            hit_fence, fence_pos, _ = physics.check_fence_collision(
+                prev_pos, state.position
+            )
+            if hit_fence and fence_pos is not None:
+                return _LandingResult(
+                    bounce_pos=fence_pos.clone(), hit_net=False, net_pos=None
+                )
+
+            state, bounced = physics.handle_bounce(state)
+            if bounced:
+                return _LandingResult(
+                    bounce_pos=state.position.clone(), hit_net=False, net_pos=None
+                )
+
+        return _LandingResult(bounce_pos=None, hit_net=False, net_pos=None)
 
     def _compute_velocity_to_target_once(
         self,
@@ -217,6 +445,7 @@ class TargetedVelocitySampler:
             cell_id=target_cell,
             side=target_side,
             device=self.device,
+            margin=self.config.target_margin_m,
         )
 
         return self.compute_velocity_to_target(
@@ -258,6 +487,7 @@ class TargetedVelocitySampler:
             cell_id=target_cell,
             side=target_side,
             device=self.device,
+            margin=self.config.target_margin_m,
         )
 
         return self.compute_velocity_to_target(
