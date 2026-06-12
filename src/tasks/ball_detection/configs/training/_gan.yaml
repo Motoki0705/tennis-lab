@@ -1,5 +1,5 @@
 gan:
-  enabled: false
+  enabled: true
   # Heatmap focal-BCE loss is orders of magnitude smaller than the LSGAN
   # generator loss, so keep the adversarial weight small.
   target_weight: 0.02
