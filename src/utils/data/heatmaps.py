@@ -135,6 +135,50 @@ def heatmaps_to_argmax(heatmaps: Tensor) -> tuple[Tensor, Tensor]:
     return coords, values
 
 
+def heatmaps_to_soft_argmax(
+    heatmaps: Tensor,
+    *,
+    temperature: float = 1.0,
+) -> Tensor:
+    """Convert heatmaps to dense normalized coordinates via soft-argmax.
+
+    Unlike :func:`heatmaps_to_argmax`, this conversion is differentiable and
+    can propagate gradients from coordinate-space losses back to the heatmaps.
+
+    Args:
+        heatmaps: Tensor with shape ``(..., H, W)``. Values are treated as
+            unnormalized scores (e.g. logits) for the spatial softmax.
+        temperature: Softmax temperature. Lower values sharpen the spatial
+            distribution towards the hard argmax.
+
+    Returns:
+        Normalized ``(..., 2)`` coordinates in ``(x, y)`` ordering.
+    """
+    if heatmaps.ndim < 2:
+        raise ValueError(f"heatmaps must have shape (..., H, W), got {tuple(heatmaps.shape)}.")
+    if temperature <= 0:
+        raise ValueError("temperature must be positive.")
+
+    *leading_shape, height, width = heatmaps.shape
+    flat = heatmaps.reshape(*leading_shape, height * width)
+    probs = torch.softmax(flat / float(temperature), dim=-1)
+    probs = probs.reshape(*leading_shape, height, width)
+
+    xs = (
+        torch.linspace(0.0, 1.0, width, dtype=heatmaps.dtype, device=heatmaps.device)
+        if width > 1
+        else torch.zeros(1, dtype=heatmaps.dtype, device=heatmaps.device)
+    )
+    ys = (
+        torch.linspace(0.0, 1.0, height, dtype=heatmaps.dtype, device=heatmaps.device)
+        if height > 1
+        else torch.zeros(1, dtype=heatmaps.dtype, device=heatmaps.device)
+    )
+    x = (probs.sum(dim=-2) * xs).sum(dim=-1)
+    y = (probs.sum(dim=-1) * ys).sum(dim=-1)
+    return torch.stack([x, y], dim=-1)
+
+
 def heatmaps_to_peaks(
     heatmaps: Tensor,
     *,

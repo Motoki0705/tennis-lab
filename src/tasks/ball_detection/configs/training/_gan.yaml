@@ -1,0 +1,32 @@
+gan:
+  enabled: true
+  # Heatmap focal-BCE loss is orders of magnitude smaller than the LSGAN
+  # generator loss, so keep the adversarial weight small.
+  target_weight: 0.02
+  warmup_epochs: 5
+  generator_gradient_clip_val: 1.0
+  discriminator_gradient_clip_val: 1.0
+  # Spatial softmax temperature for differentiable coordinate extraction
+  # from predicted heatmap logits.
+  soft_argmax_temperature: 1.0
+
+  transition:
+    monitor: val/loss
+    mode: min
+    patience: 3
+    min_delta: 2.0e-6
+    min_supervised_epochs: 1
+
+  discriminator:
+    name: trajectory_transformer
+    hidden_dim: 128
+    num_layers: 4
+    num_heads: 4
+    ffn_dim: 256
+    ffn_type: swiglu
+    dropout: 0.1
+    rope_dim: null
+    rope_theta: 10000.0
+    max_seq_len: ${model.num_frames}
+    invisible_init_std: 0.02
+    cls_init_std: 0.02
