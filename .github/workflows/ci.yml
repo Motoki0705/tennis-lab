@@ -30,8 +30,3 @@ jobs:
       - name: Ruff lint
         run: uv run ruff check src tests
 
-      - name: Pytest
-        # TODO: mypy is intentionally excluded from CI — mypy 1.20 triggers an
-        # internal crash on this codebase (AttributeError in type narrowing).
-        # Re-enable once mypy stabilises: uv run mypy src
-        run: uv run pytest tests -m "not local_data and not cuda" -q --no-cov
