@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from src.tasks.ball_detection.data.argumentation import BallDetectionArgumentation
+from src.tasks.ball_detection.data.augmentation import BallDetectionAugmentation
 from src.tasks.ball_detection.data.dataset import BallDetectionDataset
 from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
 from src.tasks.ball_detection.data.types import (
@@ -32,7 +32,7 @@ def build_ball_detection_datamodule(config: Any) -> TrackNetDataModule:
 
 
 __all__ = [
-    "BallDetectionArgumentation",
+    "BallDetectionAugmentation",
     "BallDetectionBatch",
     "BallDetectionDataset",
     "BallDetectionSample",

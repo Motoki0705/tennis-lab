@@ -1,16 +1,23 @@
 # syntax=docker/dockerfile:1.7
+# NOTE: Docker image build is not verified in CI. If you change this file,
+# test locally with: docker build -t tennis-lab-dev .
 
 FROM node:22-bookworm-slim AS node
+
+# Official uv image used as a build-stage source for the uv binary
+FROM ghcr.io/astral-sh/uv:latest AS uv-bin
 
 FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
 COPY --from=node /usr/local /usr/local
+COPY --from=uv-bin /uv /uvx /usr/local/bin/
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Tokyo
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+# Tell uv to use the system Python 3.11 venv at /workspace/.venv
+ENV UV_PROJECT_ENVIRONMENT=/workspace/.venv
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -40,27 +47,32 @@ RUN apt-get update \
     && add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-        python3-pip \
         python3.11 \
         python3.11-dev \
         python3.11-distutils \
         python3.11-venv \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
     && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
-    && python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel \
     && npm install -g @openai/codex \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
 
-COPY requirements.txt requirements-dev.txt pyproject.toml README.md LICENSE ./
+# Copy project metadata first so uv can resolve dependencies
+COPY pyproject.toml uv.lock README.md LICENSE ./
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    python3.11 -m pip install -r requirements-dev.txt
+# Install all dependencies (including dev group) using the frozen lock file.
+# uv creates .venv at UV_PROJECT_ENVIRONMENT and installs everything there.
+# The project itself (editable) is installed in the second COPY + uv sync pass.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --group dev --no-install-project
 
 COPY . .
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    python3.11 -m pip install --no-deps -e .
+# Re-run uv sync to install the editable project package itself.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --group dev
+
+ENV PATH="/workspace/.venv/bin:$PATH"
 
 CMD ["bash"]

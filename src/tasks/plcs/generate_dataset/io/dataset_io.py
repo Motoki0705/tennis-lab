@@ -5,10 +5,9 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
-import numpy.typing as npt
 
 from src.tasks.base.data.dataset_writer import BaseDatasetWriter
 from src.tasks.plcs.data.types import PLCSSceneMeta

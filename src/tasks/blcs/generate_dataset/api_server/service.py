@@ -26,8 +26,14 @@ from src.tasks.blcs.generate_dataset.api_server.schemas import (
     SimulateShotResponse,
     Vec3,
 )
-from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallState, PhysicsConfig
-from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyConfig, RallySimulator
+from src.tasks.blcs.generate_dataset.simulation.ball_physics import (
+    BallState,
+    PhysicsConfig,
+)
+from src.tasks.blcs.generate_dataset.simulation.rally_simulator import (
+    RallyConfig,
+    RallySimulator,
+)
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
     TargetedVelocitySampler,

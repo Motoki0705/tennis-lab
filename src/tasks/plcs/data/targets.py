@@ -7,12 +7,12 @@ from typing import Any
 
 import numpy as np
 
-from src.utils.schema.player import FACE_KEYPOINT_OFFSETS, SMPLH_TO_COCO17_MAPPING
 from src.utils.schema.court import (
     COURT_COORD_SCALE_X,
     COURT_COORD_SCALE_Y,
     COURT_COORD_SCALE_Z,
 )
+from src.utils.schema.player import FACE_KEYPOINT_OFFSETS, SMPLH_TO_COCO17_MAPPING
 
 
 def _smplh_to_coco17(joints_3d: np.ndarray, yaw: float | np.ndarray) -> np.ndarray:

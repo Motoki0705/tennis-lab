@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import cast
-
 import torch
 import torch.nn.functional as F
 from torch import nn

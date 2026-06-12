@@ -174,7 +174,7 @@ def test_ball_detection_dataset_getitem_contract() -> None:
     dataset = datamodule.create_dataset(
         split_name="train",
         split_file=split_file,
-        argumentation=None,
+        augmentation=None,
     )
 
     assert len(dataset) > 0

@@ -15,11 +15,15 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import hydra
 import matplotlib.pyplot as plt
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
+
+if TYPE_CHECKING:
+    from src.tennis_scene.io import SceneResult
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,7 +35,7 @@ _REQUIRED_SMPL_FIELDS = (
 )
 
 
-def _validate_scene_for_smpl(scene: "SceneResult") -> None:
+def _validate_scene_for_smpl(scene: SceneResult) -> None:
     missing: list[str] = []
     for field in _REQUIRED_SMPL_FIELDS:
         if getattr(scene, field) is None:
@@ -83,16 +87,10 @@ def main(cfg: DictConfig) -> int:
     # Determine frame range
     start_frame = int(cfg.get("start_frame", 0))
     end_frame = cfg.get("end_frame")
-    if end_frame is not None:
-        end_frame = int(end_frame)
-    else:
-        end_frame = scene.num_frames
+    end_frame = int(end_frame) if end_frame is not None else scene.num_frames
 
     fps = cfg.get("fps")
-    if fps is not None:
-        fps = float(fps)
-    else:
-        fps = scene.fps
+    fps = float(fps) if fps is not None else scene.fps
 
     display = bool(cfg.get("display", False))
 
@@ -121,7 +119,7 @@ def main(cfg: DictConfig) -> int:
     # Display in UI
     if display:
         LOGGER.info("Displaying animation in UI (close window to exit)")
-        anim = renderer.create_animation(
+        renderer.create_animation(
             scene,
             fps=fps,
             start_frame=start_frame,

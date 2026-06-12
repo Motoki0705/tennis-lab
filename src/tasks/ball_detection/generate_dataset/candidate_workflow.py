@@ -16,7 +16,7 @@ import cv2
 import numpy as np
 import torch
 
-from src.tasks.ball_detection.data.argumentation import normalize_tensor_images_imagenet
+from src.tasks.ball_detection.data.augmentation import normalize_tensor_images_imagenet
 from src.tasks.ball_detection.inference import BallDetectionPredictor
 from src.utils.data.heatmaps import heatmaps_to_peaks
 

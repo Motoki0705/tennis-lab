@@ -11,13 +11,13 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from src.tasks.ball_detection.data.argumentation import (
+from src.tasks.ball_detection.data.augmentation import (
     denormalize_tensor_images_imagenet,
 )
-from src.tasks.ball_detection.data.utils.input_adapter import to_model_input
 from src.tasks.ball_detection.models import (
     build_ball_detection_discriminator,
     build_ball_detection_model,
+    to_model_input,
 )
 from src.tasks.ball_detection.training.losses import BallDetectionFocalLoss
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
@@ -28,6 +28,16 @@ from src.utils.data.heatmaps import heatmaps_to_soft_argmax
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
+
+
+def _build_metrics(metrics_cfg: Any) -> BallDetectionMetrics:
+    """Construct a :class:`BallDetectionMetrics` from a metrics config dict."""
+    return BallDetectionMetrics(
+        peak_threshold=float(metrics_cfg.get("peak_threshold", 0.5)),
+        ball_distance_threshold=float(metrics_cfg.get("ball_distance_threshold", 4.0)),
+        nms_kernel=int(metrics_cfg.get("nms_kernel", 9)),
+        max_predictions_per_frame=int(metrics_cfg.get("max_predictions_per_frame", 8)),
+    )
 
 
 class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
@@ -62,29 +72,8 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
             ),
         )
 
-        self.train_metrics = BallDetectionMetrics(
-            peak_threshold=float(metrics_cfg.get("peak_threshold", 0.5)),
-            ball_distance_threshold=float(metrics_cfg.get("ball_distance_threshold", 4.0)),
-            nms_kernel=int(metrics_cfg.get("nms_kernel", 9)),
-            max_predictions_per_frame=int(
-                metrics_cfg.get("max_predictions_per_frame", 8)
-            ),
-        )
-        self.val_metrics = BallDetectionMetrics(
-            peak_threshold=float(metrics_cfg.get("peak_threshold", 0.5)),
-            ball_distance_threshold=float(metrics_cfg.get("ball_distance_threshold", 4.0)),
-            nms_kernel=int(metrics_cfg.get("nms_kernel", 9)),
-            max_predictions_per_frame=int(
-                metrics_cfg.get("max_predictions_per_frame", 8)
-            ),
-        )
-        self.test_metrics = BallDetectionMetrics(
-            peak_threshold=float(metrics_cfg.get("peak_threshold", 0.5)),
-            ball_distance_threshold=float(metrics_cfg.get("ball_distance_threshold", 4.0)),
-            nms_kernel=int(metrics_cfg.get("nms_kernel", 9)),
-            max_predictions_per_frame=int(
-                metrics_cfg.get("max_predictions_per_frame", 8)
-            ),
+        self.train_metrics, self.val_metrics, self.test_metrics = (
+            _build_metrics(metrics_cfg) for _ in range(3)
         )
 
     def forward(self, images: Tensor) -> Tensor:
@@ -159,7 +148,7 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         loss = self.loss_fn(logits, target_heatmaps)
         pred_heatmaps = torch.sigmoid(logits)
 
-        self._select_metrics(stage).update(
+        self._metric_tracker_for_stage(stage).update(
             pred_heatmaps,
             batch["coords"],
             batch["visibility"],
@@ -181,16 +170,13 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
             "gan_mask": gan_mask,
         }
 
-    def _select_metrics(self, stage: str) -> BallDetectionMetrics:
+    def _metric_tracker_for_stage(self, stage: str) -> BallDetectionMetrics:
         """Return the metrics object for the current stage."""
         if stage == "train":
             return self.train_metrics
         if stage == "val":
             return self.val_metrics
         return self.test_metrics
-
-    def _metric_tracker_for_stage(self, stage: str) -> BallDetectionMetrics:
-        return self._select_metrics(stage)
 
     def _flush_stage_metrics(self, stage: str) -> None:
         tracker = self._metric_tracker_for_stage(stage)

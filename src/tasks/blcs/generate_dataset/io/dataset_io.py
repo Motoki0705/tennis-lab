@@ -19,11 +19,11 @@ from typing import Any
 
 import numpy as np
 
+from src.tasks.base.data.dataset_writer import BaseDatasetWriter
 from src.tasks.blcs.data.types import (
     BLCSSceneMeta,
 )
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData
-from src.tasks.base.data.dataset_writer import BaseDatasetWriter
 
 logger = logging.getLogger(__name__)
 

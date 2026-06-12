@@ -1,16 +1,15 @@
 """Type definitions for BLCS data structures.
-
 This module provides TypedDict schemas for dataset batches and dataclasses
 for metadata, ensuring type safety throughout the BLCS pipeline.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, NotRequired, TypedDict, TypeVar
+from typing import NotRequired, TypedDict
 
 import torch
+
 
 class BLCSSample(TypedDict):
     """Schema for single BLCS dataset sample.
@@ -161,68 +160,4 @@ class BLCSSceneMeta:
             num_cameras=data["num_cameras"],
             physics_config=data["physics_config"],
             court_config=data["court_config"],
-        )
-
-
-class BLCSShotEventMeta:
-    """Metadata for a single shot within a rally.
-
-    Records timing and event information for each shot in the rally sequence.
-    """
-
-    shot_index: int  # 0-indexed shot number in rally
-    from_side: str  # "near" or "far"
-    from_cell: int  # Starting cell ID (0-8)
-    category: str  # Shot category
-
-    # Frame indices (relative to rally start, at output_fps)
-    t_start: int  # Frame when this shot starts
-    t_net: int  # Frame when ball crosses net (-1 if not crossed)
-    t_bounce1: int  # First bounce frame (-1 if not bounced)
-    t_bounce2: int  # Second bounce frame (-1 if not bounced)
-    t_bounce3: int  # Third bounce frame (-1 if not bounced)
-    t_return: int  # Frame when return hit occurs (-1 if rally ended)
-
-    # Landing info
-    to_cell: int  # Target cell (-1 if out/net)
-
-    # Shot variant info
-    shot_type: str  # "serve", "groundstroke", or "volley"
-    return_type: str  # "volley", "normal", "late_return", or "none"
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
-        return {
-            "shot_index": self.shot_index,
-            "from_side": self.from_side,
-            "from_cell": self.from_cell,
-            "category": self.category,
-            "t_start": self.t_start,
-            "t_net": self.t_net,
-            "t_bounce1": self.t_bounce1,
-            "t_bounce2": self.t_bounce2,
-            "t_bounce3": self.t_bounce3,
-            "t_return": self.t_return,
-            "to_cell": self.to_cell,
-            "shot_type": self.shot_type,
-            "return_type": self.return_type,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> BLCSShotEventMeta:
-        """Create instance from dictionary loaded from JSON/NPZ."""
-        return cls(
-            shot_index=data["shot_index"],
-            from_side=data["from_side"],
-            from_cell=data["from_cell"],
-            category=data["category"],
-            t_start=data["t_start"],
-            t_net=data["t_net"],
-            t_bounce1=data["t_bounce1"],
-            t_bounce2=data["t_bounce2"],
-            t_bounce3=data.get("t_bounce3", -1),
-            t_return=data["t_return"],
-            to_cell=data["to_cell"],
-            shot_type=data.get("shot_type", "groundstroke"),
-            return_type=data.get("return_type", "normal"),
         )

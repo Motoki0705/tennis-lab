@@ -5,7 +5,6 @@ name: plcs
 
 io:
   input_profile: frame
-  strict_input: true
 
 hidden_dim: 256
 num_layers: 4

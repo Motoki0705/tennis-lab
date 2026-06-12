@@ -13,7 +13,8 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.tasks.ball_detection.data.argumentation import normalize_tensor_images_imagenet
+from src.tasks.ball_detection.data.augmentation import normalize_tensor_images_imagenet
+from src.tasks.ball_detection.data.types import FrameLabel
 from src.tasks.ball_detection.inference import BallDetectionPredictor
 from src.tasks.ball_detection.visualization.rendering import (
     DrawStyle,
@@ -49,15 +50,6 @@ class RuntimeConfig:
     clip_label: str
     draw: DrawStyle
     layout: LayoutStyle
-
-
-@dataclass(frozen=True)
-class FrameLabel:
-    """Ground-truth label for one frame."""
-
-    visibility: float
-    x: float
-    y: float
 
 
 @dataclass(frozen=True)

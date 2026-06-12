@@ -11,6 +11,7 @@ from typing import Any
 
 import torch
 from torch import Tensor
+
 from src.utils.data.heatmaps import heatmaps_to_argmax
 
 

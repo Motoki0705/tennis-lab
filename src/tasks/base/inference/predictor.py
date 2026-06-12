@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable, Self
+from typing import Any, Self
 
 import torch
 from torch import Tensor

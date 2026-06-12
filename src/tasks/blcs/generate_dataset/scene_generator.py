@@ -17,13 +17,21 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallPhysics, PhysicsConfig
-from src.tasks.blcs.generate_dataset.simulation.cell_manager import CellManager, NUM_CELLS_PER_SIDE
+from src.tasks.blcs.generate_dataset.simulation.ball_physics import (
+    BallPhysics,
+    PhysicsConfig,
+)
+from src.tasks.blcs.generate_dataset.simulation.cell_manager import (
+    NUM_CELLS_PER_SIDE,
+    CellManager,
+)
 from src.tasks.blcs.generate_dataset.simulation.rally_simulator import (
     RallyConfig,
     RallySimulator,
 )
-from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import TargetedVelocityConfig
+from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
+    TargetedVelocityConfig,
+)
 from src.utils.projection.camera_projector import (
     CameraConfig,
     CameraProjector,
@@ -195,8 +203,6 @@ class BLCSSceneGenerator:
         scene_id: str,
     ) -> BLCSSceneData | None:
         """Generate a single BLCS scene (one rally) with per-scene variation."""
-        cfg = self.config
-
         # 1. Sample per-scene variation
         physics_config = self._sample_physics_config()
         court_config = self._sample_court_config()

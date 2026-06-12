@@ -6,8 +6,8 @@ from src.utils.models.embeddings.group_tokens import (
     CourtBallGroupEmbedding,
     CourtPlayerGroupEmbedding,
 )
-from src.utils.models.embeddings.player import PlayerKPUVEmbedding
 from src.utils.models.embeddings.invisible_embedding import InvisibleTokenEmbedding
+from src.utils.models.embeddings.player import PlayerKPUVEmbedding
 
 __all__ = [
     "InvisibleTokenEmbedding",
