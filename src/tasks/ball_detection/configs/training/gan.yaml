@@ -1,0 +1,7 @@
+defaults:
+  - default
+  - _gan
+  - _self_
+
+gan:
+  enabled: true

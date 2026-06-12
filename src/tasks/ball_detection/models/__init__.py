@@ -8,6 +8,9 @@ from torch import nn
 
 from src.tasks.ball_detection.models.conv_next_unet import ConvNeXtUNet
 from src.tasks.ball_detection.models.dino_pseudo3d import DINOPseudo3DBallDetector
+from src.tasks.ball_detection.models.discriminators import (
+    build_ball_detection_discriminator,
+)
 from src.tasks.ball_detection.models.spatiotemporal_unet import SpatioTemporalUNet
 
 if TYPE_CHECKING:
@@ -35,5 +38,6 @@ __all__ = [
     "ConvNeXtUNet",
     "DINOPseudo3DBallDetector",
     "SpatioTemporalUNet",
+    "build_ball_detection_discriminator",
     "build_ball_detection_model",
 ]
