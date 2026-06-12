@@ -135,11 +135,11 @@ YouTubeデータセット作成時のモデル予測は、人手アノテーシ�
 ### Augmentation
 
 ```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.preview__augmentation
+.venv/bin/python -m src.tasks.ball_detection.scripts.preview_augmentation
 ```
 
 ```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.preview__augmentation \
+.venv/bin/python -m src.tasks.ball_detection.scripts.preview_augmentation \
     preview.split=val \
     preview.sample_indices=[0,1,2]
 ```
@@ -225,11 +225,11 @@ src/tasks/ball_detection/
 │   │   ├── rgb_sequence.yaml
 │   │   └── youtube_rgb_sequence.yaml
 │   ├── model/
-│   ├── preview__augmentation.yaml
+│   ├── preview_augmentation.yaml
 │   ├── preview_heatmaps.yaml
 │   └── train.yaml
 ├── data/
-│   ├── argumentation.py
+│   ├── augmentation.py
 │   ├── dataset.py
 │   ├── tracknet_datamodule.py
 │   ├── types.py
@@ -237,7 +237,7 @@ src/tasks/ball_detection/
 ├── models/
 ├── scripts/
 │   ├── eval.py
-│   ├── preview__augmentation.py
+│   ├── preview_augmentation.py
 │   ├── preview_heatmaps.py
 │   ├── train.py
 │   ├── visualize.py

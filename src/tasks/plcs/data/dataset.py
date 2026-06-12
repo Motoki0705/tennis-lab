@@ -8,7 +8,11 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.tasks.base.data.scene_dataset import Scene, SceneDatasetBase, SceneDatasetConfig
+from src.tasks.base.data.scene_dataset import (
+    Scene,
+    SceneDatasetBase,
+    SceneDatasetConfig,
+)
 from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
 from src.tasks.plcs.data.targets import build_coco17_world_targets
 from src.tasks.plcs.data.types import PLCSBatch

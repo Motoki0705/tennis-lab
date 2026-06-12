@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from torch import Tensor
 
@@ -46,7 +46,7 @@ class BLCSTrajectoryDiscriminator(TransformerSequenceDiscriminator):
         )
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> "BLCSTrajectoryDiscriminator":
+    def from_config(cls, config: DictConfig) -> BLCSTrajectoryDiscriminator:
         """Build discriminator from training.gan.discriminator config."""
         train_cfg = config.get("training", {}) or {}
         gan_cfg = train_cfg.get("gan", {}) or {}

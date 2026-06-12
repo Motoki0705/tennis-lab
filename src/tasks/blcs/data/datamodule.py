@@ -9,7 +9,10 @@ from typing import TYPE_CHECKING
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
-from src.tasks.blcs.data.dataset import BallTrajectoryDataset, collate_and_adapt_blcs_batch
+from src.tasks.blcs.data.dataset import (
+    BallTrajectoryDataset,
+    collate_and_adapt_blcs_batch,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

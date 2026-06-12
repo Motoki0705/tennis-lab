@@ -9,14 +9,14 @@ from typing import Any
 
 import numpy as np
 
-from src.tasks.plcs.visualization.adapters.predict_inputs import (
-    build_frame_inputs,
-    build_multiview_inputs,
-)
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.models.plcs_model import PLCSModel
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
+from src.tasks.plcs.visualization.adapters.predict_inputs import (
+    build_frame_inputs,
+    build_multiview_inputs,
+)
 
 logger = logging.getLogger(__name__)
 

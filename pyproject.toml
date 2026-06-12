@@ -3,11 +3,12 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "src"
+name = "tennis-lab"
 version = "0.1.0"
-description = "Add your description here"
+description = "ML components for tennis video analysis: ball/court/player detection and 3D scene reconstruction"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     "accelerate>=1.11.0",
@@ -47,13 +48,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "black>=25.9.0",
     "mypy>=1.18.2",
     "pre-commit>=4.5.0",
     "ruff>=0.14.3",
     "types-pyyaml>=6.0.12.20250915",
     "types-requests>=2.32.4.20250913",
-    "pydoclint>=0.4.0",
     "coverage>=7.6.0",
     "pytest>=8.4.2",
     "pytest-cov>=6.0.0",
@@ -61,16 +60,20 @@ dev = [
     "pydeps>=3.0.2",
 ]
 
-# Optional group for the BLCS WebUI API server (FastAPI + Uvicorn).
-# Usage:
-#   python -m src.tasks.blcs.generate_dataset.api_server --reload --port 8001
-webui = [
-    "fastapi>=0.110.0",
-    "uvicorn>=0.30.0",
-]
-
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["src*"]
+exclude = ["src.tasks.blcs.generate_dataset.webui*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+"*" = [
+    "README.md",
+    "configs/*.yaml",
+    "configs/*/*.yaml",
+    "configs/*/*/*.yaml",
+    "configs/*/*/*.txt",
+]
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.

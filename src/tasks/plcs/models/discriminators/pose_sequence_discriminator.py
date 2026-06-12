@@ -14,7 +14,7 @@ class PLCSPoseSequenceDiscriminator(TransformerSequenceDiscriminator):
     """Discriminator over concatenated PLCS position and rotation outputs."""
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> "PLCSPoseSequenceDiscriminator":
+    def from_config(cls, config: DictConfig) -> PLCSPoseSequenceDiscriminator:
         train_cfg = config.get("training", {}) or {}
         gan_cfg = train_cfg.get("gan", {}) or {}
         disc_cfg = gan_cfg.get("discriminator", {}) or {}

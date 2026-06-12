@@ -11,6 +11,11 @@ from src.tasks.ball_detection.models.dino_pseudo3d import DINOPseudo3DBallDetect
 from src.tasks.ball_detection.models.discriminators import (
     build_ball_detection_discriminator,
 )
+from src.tasks.ball_detection.models.input_adapter import (
+    resolve_input_mode,
+    resolve_model_in_channels,
+    to_model_input,
+)
 from src.tasks.ball_detection.models.spatiotemporal_unet import SpatioTemporalUNet
 
 if TYPE_CHECKING:
@@ -40,4 +45,7 @@ __all__ = [
     "SpatioTemporalUNet",
     "build_ball_detection_discriminator",
     "build_ball_detection_model",
+    "resolve_input_mode",
+    "resolve_model_in_channels",
+    "to_model_input",
 ]

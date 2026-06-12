@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import torch
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 from src.utils.models.embeddings.invisible_embedding import InvisibleTokenEmbedding
-from src.utils.models.embeddings.projection import CoordinateProjection, apply_visibility_mask
+from src.utils.models.embeddings.projection import (
+    CoordinateProjection,
+    apply_visibility_mask,
+)
 
 
 class BallUVEmbedding(nn.Module):

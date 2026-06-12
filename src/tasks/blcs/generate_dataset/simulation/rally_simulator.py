@@ -22,9 +22,9 @@ from src.tasks.blcs.generate_dataset.simulation.ball_physics import (
     PhysicsConfig,
 )
 from src.tasks.blcs.generate_dataset.simulation.cell_manager import (
-    CellManager,
     NUM_CELLS_PER_SIDE,
     NUM_IN_COURT_CELLS,
+    CellManager,
     ShotCategory,
 )
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
@@ -580,10 +580,11 @@ class RallySimulator:
                 end = min(estimated_b2, max_idx)
         else:  # normal
             start = max(0, t_bounce1_sim)
-            if t_bounce2_sim >= 0:
-                end = t_bounce2_sim
-            else:
-                end = min(start + 240, max_idx)
+            end = (
+                t_bounce2_sim
+                if t_bounce2_sim >= 0
+                else min(start + 240, max_idx)
+            )
 
         end = min(end, max_idx)
         if start > end:
@@ -900,18 +901,18 @@ class RallySimulator:
             )
 
             # Check double/triple bounce before return
-            if return_type == "normal":
-                if (
-                    shot_result["t_bounce2_sim"] >= 0
-                    and shot_result["t_bounce2_sim"] <= t_return_sim
-                ):
-                    all_positions_sim.extend(shot_result["trajectory_sim"])
-                    all_velocities_sim.extend(shot_result["velocities_sim"])
-                    total_sim_frames += len(shot_result["trajectory_sim"])
-                    end_reason = RallyEndReason.DOUBLE_BOUNCE
-                    winner_side = current_side
-                    shot_events.append(shot_info)
-                    break
+            if (
+                return_type == "normal"
+                and shot_result["t_bounce2_sim"] >= 0
+                and shot_result["t_bounce2_sim"] <= t_return_sim
+            ):
+                all_positions_sim.extend(shot_result["trajectory_sim"])
+                all_velocities_sim.extend(shot_result["velocities_sim"])
+                total_sim_frames += len(shot_result["trajectory_sim"])
+                end_reason = RallyEndReason.DOUBLE_BOUNCE
+                winner_side = current_side
+                shot_events.append(shot_info)
+                break
 
             t_return_sim = min(t_return_sim, len(shot_result["trajectory_sim"]) - 1)
 

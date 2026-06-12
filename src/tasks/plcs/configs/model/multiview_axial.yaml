@@ -6,7 +6,6 @@ name: plcs_multiview_axial
 
 io:
   input_profile: multiview
-  strict_input: true
 
 hidden_dim: 512
 num_layers: 12
@@ -24,5 +23,3 @@ rope_theta: 10000.0
 rope_theta_time: 1000.0
 rope_theta_camera: 1000.0
 predict_canonical_pose: false
-
-architecture: multiview_axial

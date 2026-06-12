@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import warnings
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Generic, Literal, TypeVar
@@ -302,10 +303,7 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
 
         Handles plain dicts, OmegaConf ``DictConfig`` objects, and ``None``.
         """
-        if hasattr(hydra_cfg, "get"):
-            data_cfg = hydra_cfg.get("data", {})
-        else:
-            data_cfg = {}
+        data_cfg = hydra_cfg.get("data", {}) if hasattr(hydra_cfg, "get") else {}
         return data_cfg or {}
 
     @staticmethod
@@ -394,10 +392,8 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
 
     def _decode_meta(self, meta_raw: Any) -> dict[str, Any]:
         if hasattr(meta_raw, "item"):
-            try:
+            with suppress(ValueError):
                 meta_raw = meta_raw.item()
-            except ValueError:
-                pass
         if isinstance(meta_raw, (bytes, bytearray)):
             meta_raw = meta_raw.decode("utf-8")
         if isinstance(meta_raw, str):
@@ -578,9 +574,7 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
             return CameraSelection(indices=tuple(range(n)))
 
         primary = 0
-        if isinstance(mode, int):
-            primary = int(mode)
-        elif isinstance(mode, str) and mode.isdigit():
+        if isinstance(mode, int) or isinstance(mode, str) and mode.isdigit():
             primary = int(mode)
         primary = min(max(primary, 0), scene.num_cameras - 1)
 

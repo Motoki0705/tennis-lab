@@ -1,5 +1,4 @@
 """Main BLCS model implementation.
-
 Ball Localization in Court System: Decoder-Only Transformer with MHA + RoPE + SDPA.
 Estimates ball 3D trajectory in tennis court coordinates from 2D ball observations
 and court keypoints.
@@ -26,6 +25,7 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
+    default_ffn_dim,
     precompute_freqs_cis_nd,
 )
 from src.utils.models.embeddings import (
@@ -119,8 +119,7 @@ class BLCSModel(nn.Module):
         )
 
         if ffn_dim is None:
-            ffn_dim = int((8 * hidden_dim) / 3)
-            ffn_dim = (ffn_dim + 63) // 64 * 64  # Round to multiple of 64
+            ffn_dim = default_ffn_dim(hidden_dim)
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=hidden_dim, init_std=invisible_init_std
@@ -319,37 +318,3 @@ class BLCSModel(nn.Module):
     def get_num_params(self) -> int:
         """Get total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
-
-
-if __name__ == "__main__":
-    torch.manual_seed(0)
-
-    model = BLCSModel(
-        hidden_dim=64,
-        num_layers=2,
-        num_heads=4,
-        dropout=0.0,
-        max_seq_len=16,
-        predict_velocity=True,
-    )
-
-    B = 2
-    T = 8
-    ball_uv = torch.randn(B, T, 2)
-    court_kp = torch.randn(B, NUM_COURT_KP, 2)
-    ball_vis = (torch.rand(B, T) > 0.2).to(torch.float32)
-    ball_mask = torch.ones(B, T)
-    court_vis = (torch.rand(B, NUM_COURT_KP) > 0.1).to(torch.float32)
-
-    with torch.no_grad():
-        out = model(
-            ball_uv=ball_uv,
-            court_kp=court_kp,
-            ball_vis=ball_vis,
-            ball_mask=ball_mask,
-            court_vis=court_vis,
-        )
-
-    print("BLCSModel:")
-    for key, value in out.items():
-        print(f"  {key}: {tuple(value.shape)}")

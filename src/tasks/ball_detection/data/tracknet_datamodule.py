@@ -12,7 +12,7 @@ import pytorch_lightning as pl
 from PIL import Image
 from torch.utils.data import DataLoader
 
-from src.tasks.ball_detection.data.argumentation import BallDetectionArgumentation
+from src.tasks.ball_detection.data.augmentation import BallDetectionAugmentation
 from src.tasks.ball_detection.data.dataset import BallDetectionDataset
 from src.tasks.ball_detection.data.types import ClipWindow, FrameLabel
 
@@ -61,23 +61,23 @@ class TrackNetDataModule(pl.LightningDataModule):
         aug_cfg = self.config.get("data", {}).get("augmentation", {})
 
         if stage == "fit" or stage is None:
-            train_aug = BallDetectionArgumentation(aug_cfg)
+            train_aug = BallDetectionAugmentation(aug_cfg)
             self.train_dataset = self.create_dataset(
                 split_name="train",
                 split_file=self.train_split_file,
-                argumentation=train_aug,
+                augmentation=train_aug,
             )
             self.val_dataset = self.create_dataset(
                 split_name="val",
                 split_file=self.val_split_file,
-                argumentation=BallDetectionArgumentation.from_eval_config(aug_cfg),
+                augmentation=BallDetectionAugmentation.from_eval_config(aug_cfg),
             )
 
         if stage == "test" or stage is None:
             self.test_dataset = self.create_dataset(
                 split_name="test",
                 split_file=self.test_split_file,
-                argumentation=BallDetectionArgumentation.from_eval_config(aug_cfg),
+                augmentation=BallDetectionAugmentation.from_eval_config(aug_cfg),
             )
 
     def create_dataset(
@@ -85,7 +85,7 @@ class TrackNetDataModule(pl.LightningDataModule):
         *,
         split_name: str,
         split_file: str | Path,
-        argumentation: BallDetectionArgumentation | None,
+        augmentation: BallDetectionAugmentation | None,
     ) -> BallDetectionDataset:
         """Build windows and connect them to the shared dataset."""
         windows = self.create_windows(
@@ -95,7 +95,7 @@ class TrackNetDataModule(pl.LightningDataModule):
         return BallDetectionDataset(
             windows=windows,
             config=self.config,
-            argumentation=argumentation,
+            augmentation=augmentation,
         )
 
     def create_windows(
