@@ -115,10 +115,14 @@ SMOKE_TASK_SPECS = (
             "model.max_seq_len=64",
         ),
         variants=(
-            SmokeVariant(name="single"),
+            SmokeVariant(
+                name="single",
+                overrides=BLCS_AXIAL_STAGE_OVERRIDES,
+            ),
             SmokeVariant(
                 name="single_gan",
                 overrides=(
+                    *BLCS_AXIAL_STAGE_OVERRIDES,
                     "training.trainer.max_epochs=2",
                     "training.gan.transition.patience=0",
                     "training.gan.warmup_epochs=1",
@@ -469,6 +473,7 @@ SMOKE_TASK_SPECS = (
             "model.num_heads=4",
             "model.ffn_dim=64",
             "model.max_seq_len=64",
+            *BLCS_AXIAL_STAGE_OVERRIDES,
         ),
         variants=(
             SmokeVariant(name="multiview"),

@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.ops import StochasticDepth
 
-from src.tasks.ball_detection.data.utils.input_adapter import resolve_model_in_channels
+from src.tasks.ball_detection.models.input_adapter import resolve_model_in_channels
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

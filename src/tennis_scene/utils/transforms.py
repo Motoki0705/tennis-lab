@@ -78,13 +78,19 @@ def apply_plcs_transform_batch(
         Transformed vertices (T, V, 3) in court coordinates.
 
     """
-    T = len(vertices)
-    result = np.empty_like(vertices)
-
-    for t in range(T):
-        result[t] = apply_plcs_transform(vertices[t], positions[t], yaws[t])
-
-    return result
+    T = len(yaws)
+    cos_y = np.cos(yaws).astype(np.float32)
+    sin_y = np.sin(yaws).astype(np.float32)
+    # Build (T, 3, 3) Y-axis rotation matrices without a Python loop.
+    rot = np.zeros((T, 3, 3), dtype=np.float32)
+    rot[:, 0, 0] = cos_y
+    rot[:, 0, 2] = sin_y
+    rot[:, 1, 1] = 1.0
+    rot[:, 2, 0] = -sin_y
+    rot[:, 2, 2] = cos_y
+    # (T, V, 3) @ (T, 3, 3)^T -> (T, V, 3) via batched matmul
+    rotated = vertices @ rot.transpose(0, 2, 1)
+    return rotated + positions[:, None, :]
 
 
 def normalize_keypoints(

@@ -31,7 +31,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
         self.model: nn.Module = build_plcs_model(self.config)
         self.predict_canonical_pose = bool(
-            ((self.config.get("model", {}) or {}).get("predict_canonical_pose", False))
+            (self.config.get("model", {}) or {}).get("predict_canonical_pose", False)
         )
 
         loss_cfg_dict = self.config.get("loss", {})
@@ -313,23 +313,43 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             rng = (mx - mn).clip(1e-3)
             margin = 40
 
-            def to_px(p: np.ndarray) -> tuple[int, int]:
-                x = int((p[0] - mn[0]) / rng[0] * (fig_w - 2 * margin) + margin)
-                y = int((p[1] - mn[1]) / rng[1] * (fig_h - 2 * margin) + margin)
-                return (np.clip(x, 0, fig_w - 1), np.clip(y, 0, fig_h - 1))
+            def to_px(
+                p: np.ndarray,
+                min_xy: np.ndarray,
+                span_xy: np.ndarray,
+                width: int,
+                height: int,
+                padding: int,
+            ) -> tuple[int, int]:
+                x = int(
+                    (p[0] - min_xy[0])
+                    / span_xy[0]
+                    * (width - 2 * padding)
+                    + padding
+                )
+                y = int(
+                    (p[1] - min_xy[1])
+                    / span_xy[1]
+                    * (height - 2 * padding)
+                    + padding
+                )
+                return (
+                    np.clip(x, 0, width - 1),
+                    np.clip(y, 0, height - 1),
+                )
 
             arrow_len = 20
 
             for t in range(T):
                 # GT: green
-                pt_gt = to_px(gp[t, :2])
+                pt_gt = to_px(gp[t, :2], mn, rng, fig_w, fig_h, margin)
                 cv2.circle(canvas, pt_gt, 4, (0, 180, 0), -1)
                 dx_gt = int(arrow_len * float(gr[t, 0]))
                 dy_gt = int(arrow_len * float(gr[t, 1]))
                 cv2.arrowedLine(canvas, pt_gt, (pt_gt[0] + dx_gt, pt_gt[1] + dy_gt), (0, 180, 0), 2)
 
                 # Pred: red
-                pt_pred = to_px(pp[t, :2])
+                pt_pred = to_px(pp[t, :2], mn, rng, fig_w, fig_h, margin)
                 cv2.circle(canvas, pt_pred, 4, (0, 0, 255), -1)
                 dx_pr = int(arrow_len * float(pr[t, 0]))
                 dy_pr = int(arrow_len * float(pr[t, 1]))

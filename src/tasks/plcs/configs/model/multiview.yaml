@@ -6,7 +6,6 @@ name: plcs_multiview
 
 io:
   input_profile: multiview
-  strict_input: true
 
 # Architecture
 hidden_dim: 512
@@ -27,6 +26,3 @@ rope_theta_time: 10000.0
 rope_theta_camera: 1000.0
 rope_theta_type: 1000.0
 predict_canonical_pose: false
-
-# Model type
-architecture: multiview

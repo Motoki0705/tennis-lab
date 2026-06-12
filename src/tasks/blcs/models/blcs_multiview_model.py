@@ -14,7 +14,10 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
+    build_self_attn_mask,
+    default_ffn_dim,
     precompute_freqs_cis_nd,
+    validate_rope_dim,
 )
 from src.utils.models.embeddings import (
     BallUVEmbedding,
@@ -86,8 +89,7 @@ class BLCSMultiViewModel(nn.Module):
         )
 
         if ffn_dim is None:
-            ffn_dim = int((8 * self.hidden_dim) / 3)
-            ffn_dim = (ffn_dim + 63) // 64 * 64
+            ffn_dim = default_ffn_dim(self.hidden_dim)
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
@@ -199,10 +201,7 @@ class BLCSMultiViewModel(nn.Module):
 
     @staticmethod
     def _validate_rope_dim(*, rope_dim: int, head_dim: int) -> None:
-        if rope_dim % 2 != 0:
-            raise ValueError(f"rope_dim must be even, got {rope_dim}")
-        if rope_dim > head_dim:
-            raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
+        validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
 
     @classmethod
     def from_config(cls, config: DictConfig) -> BLCSMultiViewModel:
@@ -223,16 +222,12 @@ class BLCSMultiViewModel(nn.Module):
             rope_theta_time=model_cfg.get("rope_theta_time", None),
             rope_theta_camera=model_cfg.get("rope_theta_camera", None),
             rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
-            num_layers=int(
-                model_cfg.get("num_layers", model_cfg.get("num_stage2_layers", 4))
-            ),
+            num_layers=int(model_cfg.get("num_layers", 4)),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(
                 model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))
             ),
-            max_num_cameras=int(
-                model_cfg.get("max_num_cameras", model_cfg.get("max_views", 8))
-            ),
+            max_num_cameras=int(model_cfg.get("max_num_cameras", 8)),
             num_court_tokens=int(
                 model_cfg.get(
                     "num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP)
@@ -294,23 +289,10 @@ class BLCSMultiViewModel(nn.Module):
     def _build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
         """Build self-attention mask from valid mask.
 
-        Args:
-            valid: Boolean valid mask, shape (B*, S).
-
-        Returns:
-            tuple:
-              - attn_mask: Attention keep mask, shape (B*, S, S).
-              - valid_fixed: Potentially fixed valid mask with at least one valid token.
+        Delegates to :func:`src.utils.models.build_self_attn_mask`.
+        See that function for full documentation.
         """
-        valid_fixed = valid.bool()
-        fully_masked = ~valid_fixed.any(dim=1)
-        if fully_masked.any():
-            valid_fixed = valid_fixed.clone()
-            valid_fixed[fully_masked, 0] = True
-        attn_mask = valid_fixed[:, None, :].expand(
-            valid_fixed.shape[0], valid_fixed.shape[1], valid_fixed.shape[1]
-        )
-        return attn_mask, valid_fixed
+        return build_self_attn_mask(valid)
 
     def _build_frame_tokens(
         self,

@@ -1,4 +1,4 @@
-"""Sequence argumentation utilities for supervised ball detection."""
+"""Sequence augmentation utilities for supervised ball detection."""
 
 from __future__ import annotations
 
@@ -78,6 +78,17 @@ def _resolve_border_mode(name: str) -> int:
     }.get(name, cv2.BORDER_REFLECT_101)
 
 
+def _parse_float_range(value: Any, name: str) -> tuple[float, float]:
+    """Parse a length-2 sequence into a validated (min, max) float tuple."""
+    if not isinstance(value, Sequence) or len(value) != 2:
+        raise ValueError(f"{name} must be a sequence with two elements.")
+    low = float(value[0])
+    high = float(value[1])
+    if low > high:
+        raise ValueError(f"{name} must satisfy min <= max.")
+    return low, high
+
+
 def _apply_affine_to_sequence(
     frames: Frames,
     coords: Coords,
@@ -126,7 +137,7 @@ def _apply_affine_to_sequence(
     return out_frames, out_coords, out_visibility
 
 
-class BaseArgumentation:
+class BaseAugmentation:
     """Base interface for one sequence augmentation."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -144,7 +155,7 @@ class BaseArgumentation:
         raise NotImplementedError
 
 
-class CameraRotationArgumentation(BaseArgumentation):
+class CameraRotationAugmentation(BaseAugmentation):
     """Apply sequence-consistent camera rotation."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -219,7 +230,7 @@ class CameraRotationArgumentation(BaseArgumentation):
         return out_frames, out_coords, out_visibility
 
 
-class HorizontalFlipArgumentation(BaseArgumentation):
+class HorizontalFlipAugmentation(BaseAugmentation):
     """Apply sequence-consistent horizontal flipping."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -258,7 +269,7 @@ class HorizontalFlipArgumentation(BaseArgumentation):
         return out_frames, out_coords, out_visibility
 
 
-class BrightnessGainArgumentation(BaseArgumentation):
+class BrightnessGainAugmentation(BaseAugmentation):
     """Apply sequence-consistent brightness gain jitter."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -282,7 +293,7 @@ class BrightnessGainArgumentation(BaseArgumentation):
         return out_frames, coords, visibility
 
 
-class ContrastArgumentation(BaseArgumentation):
+class ContrastAugmentation(BaseAugmentation):
     """Apply sequence-consistent contrast jitter."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -309,7 +320,7 @@ class ContrastArgumentation(BaseArgumentation):
         return out_frames, coords, visibility
 
 
-class GammaArgumentation(BaseArgumentation):
+class GammaAugmentation(BaseAugmentation):
     """Apply sequence-consistent gamma jitter."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -333,7 +344,7 @@ class GammaArgumentation(BaseArgumentation):
         return out_frames, coords, visibility
 
 
-class GaussianNoiseArgumentation(BaseArgumentation):
+class GaussianNoiseAugmentation(BaseAugmentation):
     """Apply sequence-consistent Gaussian noise scale."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -366,48 +377,38 @@ class GaussianNoiseArgumentation(BaseArgumentation):
         return out_frames, coords, visibility
 
 
-class AffineArgumentation(BaseArgumentation):
+class AffineAugmentation(BaseAugmentation):
     """Apply one sequence-consistent affine transform."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
         self.enabled = bool(self.config.get("enabled", False))
         self.prob = float(self.config.get("prob", 0.0))
-        self.rotation_deg_range = self._parse_float_range(
+        self.rotation_deg_range = _parse_float_range(
             self.config.get("rotation_deg_range", (0.0, 0.0)),
             "rotation_deg_range",
         )
-        self.scale_range = self._parse_float_range(
+        self.scale_range = _parse_float_range(
             self.config.get("scale_range", (1.0, 1.0)),
             "scale_range",
         )
-        self.translate_x_ratio_range = self._parse_float_range(
+        self.translate_x_ratio_range = _parse_float_range(
             self.config.get("translate_x_ratio_range", (0.0, 0.0)),
             "translate_x_ratio_range",
         )
-        self.translate_y_ratio_range = self._parse_float_range(
+        self.translate_y_ratio_range = _parse_float_range(
             self.config.get("translate_y_ratio_range", (0.0, 0.0)),
             "translate_y_ratio_range",
         )
-        self.shear_x_deg_range = self._parse_float_range(
+        self.shear_x_deg_range = _parse_float_range(
             self.config.get("shear_x_deg_range", (0.0, 0.0)),
             "shear_x_deg_range",
         )
-        self.shear_y_deg_range = self._parse_float_range(
+        self.shear_y_deg_range = _parse_float_range(
             self.config.get("shear_y_deg_range", (0.0, 0.0)),
             "shear_y_deg_range",
         )
         self.border_mode = str(self.config.get("border_mode", "reflect101"))
-
-    @staticmethod
-    def _parse_float_range(value: Any, name: str) -> tuple[float, float]:
-        if not isinstance(value, Sequence) or len(value) != 2:
-            raise ValueError(f"{name} must be a sequence with two elements.")
-        low = float(value[0])
-        high = float(value[1])
-        if low > high:
-            raise ValueError(f"{name} must satisfy min <= max.")
-        return low, high
 
     def forward(
         self,
@@ -476,7 +477,7 @@ class AffineArgumentation(BaseArgumentation):
         )
 
 
-class GaussianBlurArgumentation(BaseArgumentation):
+class GaussianBlurAugmentation(BaseAugmentation):
     """Apply sequence-consistent Gaussian blur."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -509,14 +510,14 @@ class GaussianBlurArgumentation(BaseArgumentation):
         return out_frames, coords, visibility
 
 
-class ScaleAndCropArgumentation(BaseArgumentation):
+class ScaleAndCropAugmentation(BaseAugmentation):
     """Scale around the image center, then center-crop back to the original size."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
         self.enabled = bool(self.config.get("enabled", False))
         self.prob = float(self.config.get("prob", 0.0))
-        self.scale_range = AffineArgumentation._parse_float_range(
+        self.scale_range = _parse_float_range(
             self.config.get("scale_range", (1.0, 1.0)),
             "scale_range",
         )
@@ -568,7 +569,7 @@ class ScaleAndCropArgumentation(BaseArgumentation):
         )
 
 
-class BallAreaZeroMaskArgumentation(BaseArgumentation):
+class BallAreaZeroMaskAugmentation(BaseAugmentation):
     """Zero-mask a rectangle around the visible ball for sampled frames."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -675,7 +676,7 @@ class BallAreaZeroMaskArgumentation(BaseArgumentation):
         return out_frames, coords, visibility
 
 
-class ImageNetNormalizeArgumentation(BaseArgumentation):
+class ImageNetNormalizeAugmentation(BaseAugmentation):
     """Apply ImageNet channel normalization with DINO-compatible constants."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
@@ -708,30 +709,30 @@ class ImageNetNormalizeArgumentation(BaseArgumentation):
         return out_frames, coords, visibility
 
 
-class BallDetectionArgumentation:
+class BallDetectionAugmentation:
     """Compose and apply all configured sequence augmentations."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         config = config or {}
-        self.transforms: list[BaseArgumentation] = [
-            CameraRotationArgumentation(dict(config.get("camera_rotation", {}) or {})),
-            HorizontalFlipArgumentation(dict(config.get("horizontal_flip", {}) or {})),
-            AffineArgumentation(dict(config.get("affine", {}) or {})),
-            ScaleAndCropArgumentation(dict(config.get("scale_and_crop", {}) or {})),
-            BrightnessGainArgumentation(dict(config.get("brightness_gain", {}) or {})),
-            ContrastArgumentation(dict(config.get("contrast", {}) or {})),
-            GammaArgumentation(dict(config.get("gamma", {}) or {})),
-            GaussianNoiseArgumentation(dict(config.get("gaussian_noise", {}) or {})),
-            GaussianBlurArgumentation(dict(config.get("gaussian_blur", {}) or {})),
-            BallAreaZeroMaskArgumentation(dict(config.get("ball_area_zero_mask", {}) or {})),
-            ImageNetNormalizeArgumentation(dict(config.get("normalize_imagenet", {}) or {})),
+        self.transforms: list[BaseAugmentation] = [
+            CameraRotationAugmentation(dict(config.get("camera_rotation", {}) or {})),
+            HorizontalFlipAugmentation(dict(config.get("horizontal_flip", {}) or {})),
+            AffineAugmentation(dict(config.get("affine", {}) or {})),
+            ScaleAndCropAugmentation(dict(config.get("scale_and_crop", {}) or {})),
+            BrightnessGainAugmentation(dict(config.get("brightness_gain", {}) or {})),
+            ContrastAugmentation(dict(config.get("contrast", {}) or {})),
+            GammaAugmentation(dict(config.get("gamma", {}) or {})),
+            GaussianNoiseAugmentation(dict(config.get("gaussian_noise", {}) or {})),
+            GaussianBlurAugmentation(dict(config.get("gaussian_blur", {}) or {})),
+            BallAreaZeroMaskAugmentation(dict(config.get("ball_area_zero_mask", {}) or {})),
+            ImageNetNormalizeAugmentation(dict(config.get("normalize_imagenet", {}) or {})),
         ]
 
     @classmethod
     def from_eval_config(
         cls,
         config: dict[str, Any] | None = None,
-    ) -> BallDetectionArgumentation | None:
+    ) -> BallDetectionAugmentation | None:
         """Build an eval-only pipeline that keeps deterministic preprocessing."""
         config = config or {}
         normalize_cfg = dict(config.get("normalize_imagenet", {}) or {})
@@ -775,21 +776,21 @@ def make_sample_rng(sample_idx: int) -> random.Random:
 
 
 __all__ = [
-    "BallDetectionArgumentation",
-    "BaseArgumentation",
-    "AffineArgumentation",
-    "BrightnessGainArgumentation",
-    "CameraRotationArgumentation",
-    "ContrastArgumentation",
-    "GammaArgumentation",
-    "BallAreaZeroMaskArgumentation",
-    "GaussianBlurArgumentation",
-    "GaussianNoiseArgumentation",
-    "HorizontalFlipArgumentation",
-    "ImageNetNormalizeArgumentation",
+    "BallDetectionAugmentation",
+    "BaseAugmentation",
+    "AffineAugmentation",
+    "BrightnessGainAugmentation",
+    "CameraRotationAugmentation",
+    "ContrastAugmentation",
+    "GammaAugmentation",
+    "BallAreaZeroMaskAugmentation",
+    "GaussianBlurAugmentation",
+    "GaussianNoiseAugmentation",
+    "HorizontalFlipAugmentation",
+    "ImageNetNormalizeAugmentation",
     "IMAGENET_MEAN",
     "IMAGENET_STD",
-    "ScaleAndCropArgumentation",
+    "ScaleAndCropAugmentation",
     "denormalize_tensor_images_imagenet",
     "make_sample_rng",
     "normalize_frames_imagenet",

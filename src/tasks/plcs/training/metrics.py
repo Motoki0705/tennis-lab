@@ -17,9 +17,7 @@ def _flatten_valid(valid: Tensor, values: Tensor) -> Tensor:
 def _valid_from_human_mask(human_mask: Tensor | None) -> Tensor | None:
     if human_mask is None:
         return None
-    if human_mask.dim() == 1:
-        frame_valid = human_mask > 0
-    elif human_mask.dim() == 2:
+    if human_mask.dim() == 1 or human_mask.dim() == 2:
         frame_valid = human_mask > 0
     elif human_mask.dim() == 3:
         frame_valid = (human_mask > 0).any(dim=1)
@@ -214,96 +212,4 @@ class PLCSMetrics:
             "angle_accuracy_10deg": angle_acc_10deg,
             "angle_accuracy_15deg": angle_acc_15deg,
             "angle_accuracy_30deg": angle_acc_30deg,
-        }
-
-
-class PLCSTemporalMetrics:
-    """Temporal consistency metrics for PLCS sequences.
-
-    This class measures how consistent the predicted trajectory is over time,
-    by comparing frame-to-frame displacements (velocities) between prediction
-    and ground truth in meters.
-    """
-
-    def __init__(self, velocity_threshold_m: float = 1.0) -> None:
-        """Initialize temporal metrics tracker.
-
-        Args:
-            velocity_threshold_m: Threshold for velocity accuracy in meters
-                per frame. Used for temporal_velocity_accuracy.
-
-        """
-        self._norm_scale_xyz = COURT_COORD_SCALE_XYZ
-        self.velocity_threshold_m = velocity_threshold_m
-        self.reset()
-
-    def reset(self) -> None:
-        """Reset accumulated temporal metrics."""
-        self._velocity_errors: list[Tensor] = []
-
-    def update(
-        self,
-        pred_position_seq: Tensor,
-        target_position_seq: Tensor,
-    ) -> dict[str, float]:
-        """Update temporal metrics with new sequences.
-
-        Args:
-            pred_position_seq: Predicted normalized positions, shape (B, T, 3).
-            target_position_seq: Target normalized positions, shape (B, T, 3).
-
-        Returns:
-            dict: Current batch temporal metrics.
-
-        """
-        if pred_position_seq.ndim != 3 or target_position_seq.ndim != 3:
-            raise ValueError(
-                "Temporal metrics expect position sequences of shape (B, T, 3)"
-            )
-
-        if pred_position_seq.size(1) < 2:
-            # Not enough frames to compute temporal differences
-            return {"temporal_velocity_error_m": 0.0}
-
-        # Denormalize positions to meters
-        scale = torch.tensor(
-            list(self._norm_scale_xyz),
-            device=pred_position_seq.device,
-            dtype=pred_position_seq.dtype,
-        )
-        pred_meters = pred_position_seq * scale  # (B, T, 3)
-        target_meters = target_position_seq * scale  # (B, T, 3)
-
-        # Frame-to-frame displacements (velocities)
-        pred_vel = pred_meters[:, 1:, :] - pred_meters[:, :-1, :]  # (B, T-1, 3)
-        target_vel = target_meters[:, 1:, :] - target_meters[:, :-1, :]  # (B, T-1, 3)
-
-        # Velocity error per step (Euclidean distance)
-        vel_error = (pred_vel - target_vel).norm(dim=-1)  # (B, T-1)
-        self._velocity_errors.append(vel_error.detach().cpu())
-
-        return {
-            "temporal_velocity_error_m": vel_error.mean().item(),
-        }
-
-    def compute(self) -> dict[str, float]:
-        """Compute aggregated temporal metrics over all updates."""
-        if not self._velocity_errors:
-            return {
-                "temporal_velocity_error_m": 0.0,
-                "temporal_velocity_error_std_m": 0.0,
-                "temporal_velocity_error_median_m": 0.0,
-                "temporal_velocity_accuracy": 0.0,
-            }
-
-        vel_errors = torch.cat(self._velocity_errors)
-
-        # Threshold-based accuracy: |v_pred - v_gt| < velocity_threshold_m
-        vel_accuracy = (vel_errors <= self.velocity_threshold_m).float().mean().item()
-
-        return {
-            "temporal_velocity_error_m": vel_errors.mean().item(),
-            "temporal_velocity_error_std_m": vel_errors.std().item(),
-            "temporal_velocity_error_median_m": vel_errors.median().item(),
-            "temporal_velocity_accuracy": vel_accuracy,
         }

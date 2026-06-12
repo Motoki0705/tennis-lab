@@ -49,7 +49,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             reprojection_weight=train_cfg.get("reprojection_loss_weight", 0.0),
             uv_velocity_weight=train_cfg.get("uv_velocity_loss_weight", 0.0),
         )
-        gan_enabled = bool(((train_cfg.get("gan", {}) or {}).get("enabled", False)))
+        gan_enabled = bool((train_cfg.get("gan", {}) or {}).get("enabled", False))
         self._initialize_manual_gan(
             discriminator=build_blcs_discriminator(self.config) if gan_enabled else None,
         )

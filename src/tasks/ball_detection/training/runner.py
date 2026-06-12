@@ -7,7 +7,9 @@ from typing import Any
 import pytorch_lightning as pl
 
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
-from src.tasks.ball_detection.training.lightning_module import BallDetectionLightningModule
+from src.tasks.ball_detection.training.lightning_module import (
+    BallDetectionLightningModule,
+)
 from src.tasks.base.training.runner import BaseTrainingRunner
 
 

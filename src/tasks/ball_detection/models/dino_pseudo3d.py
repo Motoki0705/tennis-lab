@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import torch
 import torch.nn as nn
 
-from src.tasks.ball_detection.data.utils.input_adapter import resolve_model_in_channels
+from src.tasks.ball_detection.models.input_adapter import resolve_model_in_channels
 from src.utils.models.loading import load_dino_backbone
 
 if TYPE_CHECKING:

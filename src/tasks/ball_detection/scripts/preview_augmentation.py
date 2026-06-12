@@ -1,12 +1,12 @@
 """Generate contact sheets for ball-detection sequence augmentations.
 
 Usage:
-    python -m src.tasks.ball_detection.scripts.preview__augmentation
-    python -m src.tasks.ball_detection.scripts.preview__augmentation preview.sample_indices=[0,1,2]
-    python -m src.tasks.ball_detection.scripts.preview__augmentation preview.split=val
+    python -m src.tasks.ball_detection.scripts.preview_augmentation
+    python -m src.tasks.ball_detection.scripts.preview_augmentation preview.sample_indices=[0,1,2]
+    python -m src.tasks.ball_detection.scripts.preview_augmentation preview.split=val
 
 Notes:
-    - Hydra loads configuration from `src/tasks/ball_detection/configs/preview__augmentation.yaml`.
+    - Hydra loads configuration from `src/tasks/ball_detection/configs/preview_augmentation.yaml`.
     - The script renders paired original and fully augmented contact sheets for selected clips.
     - Outputs are written under `outputs/ball_detection/augmentation_preview`.
 """
@@ -26,8 +26,8 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
-from src.tasks.ball_detection.data.argumentation import (
-    BallDetectionArgumentation,
+from src.tasks.ball_detection.data.augmentation import (
+    BallDetectionAugmentation,
     denormalize_tensor_images_imagenet,
 )
 from src.tasks.ball_detection.data.types import ClipWindow
@@ -42,7 +42,7 @@ def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
 
 @hydra_main(
     config_path="../configs",
-    config_name="preview__augmentation",
+    config_name="preview_augmentation",
     version_base="1.3",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
@@ -56,14 +56,14 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     base_dataset = datamodule.create_dataset(
         split_name=split_name,
         split_file=split_file,
-        argumentation=None,
+        augmentation=None,
     )
     augmented_cfg = _build_augmented_config(cfg)
     augmented_datamodule = build_ball_detection_datamodule(augmented_cfg)
     augmented_dataset = augmented_datamodule.create_dataset(
         split_name=split_name,
         split_file=split_file,
-        argumentation=BallDetectionArgumentation(
+        augmentation=BallDetectionAugmentation(
             OmegaConf.to_container(augmented_cfg.data.augmentation, resolve=True)
         ),
     )
