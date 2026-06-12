@@ -6,13 +6,16 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import numpy as np
 import torch
 from torch import Tensor
 
+from src.tasks.base.data.scene_dataset import (
+    Scene,
+    SceneDatasetBase,
+    SceneDatasetConfig,
+)
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
 from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch, BLCSMultiViewSample
-from src.tasks.base.data.scene_dataset import Scene, SceneDatasetBase, SceneDatasetConfig
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

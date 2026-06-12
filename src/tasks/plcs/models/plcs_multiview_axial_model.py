@@ -17,7 +17,10 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
+    build_self_attn_mask,
+    default_ffn_dim,
     precompute_freqs_cis_nd,
+    validate_rope_dim,
 )
 from src.utils.models.embeddings import (
     CourtPlayerGroupEmbedding,
@@ -78,8 +81,7 @@ class PLCSMultiViewAxialModel(nn.Module):
         )
 
         if ffn_dim is None:
-            ffn_dim = int((8 * self.hidden_dim) / 3)
-            ffn_dim = (ffn_dim + 63) // 64 * 64
+            ffn_dim = default_ffn_dim(self.hidden_dim)
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
@@ -182,10 +184,7 @@ class PLCSMultiViewAxialModel(nn.Module):
 
     @staticmethod
     def _validate_rope_dim(*, rope_dim: int, head_dim: int) -> None:
-        if rope_dim % 2 != 0:
-            raise ValueError(f"rope_dim must be even, got {rope_dim}")
-        if rope_dim > head_dim:
-            raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
+        validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
 
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSMultiViewAxialModel:
@@ -221,17 +220,12 @@ class PLCSMultiViewAxialModel(nn.Module):
 
     @staticmethod
     def _build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
-        valid_fixed = valid.bool()
-        fully_masked = ~valid_fixed.any(dim=1)
-        if fully_masked.any():
-            valid_fixed = valid_fixed.clone()
-            valid_fixed[fully_masked, 0] = True
-        attn_mask = valid_fixed[:, None, :].expand(
-            valid_fixed.shape[0],
-            valid_fixed.shape[1],
-            valid_fixed.shape[1],
-        )
-        return attn_mask, valid_fixed
+        """Build self-attention mask from valid mask.
+
+        Delegates to :func:`src.utils.models.build_self_attn_mask`.
+        See that function for full documentation.
+        """
+        return build_self_attn_mask(valid)
 
     @staticmethod
     def _build_token_positions(*, seq_len: int, n_cams: int) -> Tensor:

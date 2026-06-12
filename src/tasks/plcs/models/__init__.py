@@ -6,7 +6,11 @@ from typing import TYPE_CHECKING
 
 from torch import nn
 
-from src.tasks.plcs.models.components import CanonicalPoseHead, PositionHead, RotationHead
+from src.tasks.plcs.models.components import (
+    CanonicalPoseHead,
+    PositionHead,
+    RotationHead,
+)
 from src.tasks.plcs.models.discriminators import build_plcs_discriminator
 from src.tasks.plcs.models.plcs_model import PLCSModel
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel

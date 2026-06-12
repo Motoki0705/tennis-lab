@@ -50,7 +50,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     dataset = datamodule.create_dataset(
         split_name=split_name,
         split_file=_resolve_split_file(cfg, split_name),
-        argumentation=None,
+        augmentation=None,
     )
     sample_indices = _resolve_sample_indices(cfg, len(dataset))
 

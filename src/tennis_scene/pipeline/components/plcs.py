@@ -112,26 +112,8 @@ class PLCSResult:
 class PLCSModule(BasePipelineModule):
     """PLCS module for 3D player localization."""
 
-    def __init__(
-        self,
-        config: PLCSConfig | None = None,
-        *,
-        checkpoint_path: str | Path | None = None,
-        device: str = "cuda",
-        save_result: bool = False,
-        output_path: str | Path | None = None,
-    ) -> None:
-        if config is not None:
-            self.config = config
-        else:
-            if checkpoint_path is None:
-                raise ValueError("Either config or checkpoint_path must be provided")
-            self.config = PLCSConfig(
-                checkpoint_path=checkpoint_path,
-                device=device,
-                save_result=save_result,
-                output_path=output_path,
-            )
+    def __init__(self, config: PLCSConfig) -> None:
+        self.config = config
         self.checkpoint_path = Path(self.config.checkpoint_path)
         self.device = self.config.device
         self._predictor = None

@@ -82,7 +82,7 @@ class GVHMRResult:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict) -> "GVHMRResult":
+    def from_dict(cls, data: dict) -> GVHMRResult:
         smpl_body_pose = np.array(data["smpl_body_pose"], dtype=np.float32)
         smpl_global_orient = np.array(data["smpl_global_orient"], dtype=np.float32)
         smpl_betas = np.array(data["smpl_betas"], dtype=np.float32)
@@ -118,7 +118,7 @@ class GVHMRResult:
         LOGGER.info(f"Saved GVHMR result to {path}")
 
     @classmethod
-    def load(cls, path: str | Path) -> "GVHMRResult":
+    def load(cls, path: str | Path) -> GVHMRResult:
         with Path(path).open("r", encoding="utf-8") as f:
             return cls.from_dict(json.load(f))
 
@@ -186,11 +186,10 @@ class GVHMRModule(BasePipelineModule):
         LOGGER.info(f"Loading GVHMR model from {self.config.model_checkpoint}")
         model_path = self._resolve_path(self.config.model_checkpoint)
 
-        import hydra
-        from hydra import compose, initialize_config_module
-        from hmr4d.configs import register_store_gvhmr
-
         import hmr4d.model.gvhmr.gvhmr_pl_demo  # noqa: F401
+        import hydra
+        from hmr4d.configs import register_store_gvhmr
+        from hydra import compose, initialize_config_module
 
         register_store_gvhmr()
         with initialize_config_module(version_base="1.3", config_module="hmr4d.configs"):
@@ -351,7 +350,7 @@ class GVHMRModule(BasePipelineModule):
 
         video_path = str(video_path)
         track_boxes = self._tracker.get_multi_track(video_path)
-        track_ids = sorted(int(track_id) for track_id in track_boxes.keys())
+        track_ids = sorted(int(track_id) for track_id in track_boxes)
         if not track_ids:
             raise RuntimeError("No tracks selected in tracker UI")
 

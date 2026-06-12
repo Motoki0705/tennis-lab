@@ -13,7 +13,10 @@ from src.tasks.blcs.generate_dataset.api_server.schemas import (
     CellsResponse,
     Vec2,
 )
-from src.tasks.blcs.generate_dataset.simulation.cell_manager import CellManager, NUM_CELLS_PER_SIDE
+from src.tasks.blcs.generate_dataset.simulation.cell_manager import (
+    NUM_CELLS_PER_SIDE,
+    CellManager,
+)
 
 
 def build_cells_response(cell_manager: CellManager | None = None) -> CellsResponse:

@@ -9,7 +9,6 @@ from torch import Tensor
 from src.tasks.blcs.models.components.differentiable_projection import (
     DifferentiableProjection,
 )
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
 def _masked_mean(loss: Tensor, mask: Tensor | None = None) -> Tensor:

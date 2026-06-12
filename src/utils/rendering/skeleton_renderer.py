@@ -22,6 +22,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from src.utils.schema.player import (
+    COCO17_SKELETON,
+    SMPL_SKELETON,
+    SMPLH_SKELETON,
+)
+
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from mpl_toolkits.mplot3d import Axes3D
@@ -33,14 +39,6 @@ class SkeletonType(Enum):
     COCO17 = "coco17"
     SMPLH = "smplh"
     SMPL = "smpl"
-
-
-from src.utils.schema.player import (
-    COCO17_SKELETON,
-    SMPL_SKELETON,
-    SMPLH_SKELETON,
-)
-
 
 SKELETON_DEFINITIONS: dict[str, list[tuple[int, int]]] = {
     "coco17": COCO17_SKELETON,
@@ -142,17 +140,16 @@ class SkeletonRenderer:
 
         # Draw bones first (behind joints)
         for i, j in self.skeleton:
-            if i < num_joints and j < num_joints:
-                if visibility[i] and visibility[j]:
-                    ax.plot(
-                        [keypoints[i, 0], keypoints[j, 0]],
-                        [keypoints[i, 1], keypoints[j, 1]],
-                        color=style.bone_color,
-                        linewidth=style.bone_width,
-                        alpha=style.bone_alpha,
-                        zorder=2,
-                        solid_capstyle="round",
-                    )
+            if i < num_joints and j < num_joints and visibility[i] and visibility[j]:
+                ax.plot(
+                    [keypoints[i, 0], keypoints[j, 0]],
+                    [keypoints[i, 1], keypoints[j, 1]],
+                    color=style.bone_color,
+                    linewidth=style.bone_width,
+                    alpha=style.bone_alpha,
+                    zorder=2,
+                    solid_capstyle="round",
+                )
 
         # Draw joints
         visible_kp = keypoints[visibility]
@@ -197,17 +194,16 @@ class SkeletonRenderer:
 
         # Draw bones
         for i, j in self.skeleton:
-            if i < num_joints and j < num_joints:
-                if visibility[i] and visibility[j]:
-                    ax.plot(
-                        [keypoints[i, 0], keypoints[j, 0]],
-                        [keypoints[i, 1], keypoints[j, 1]],
-                        [keypoints[i, 2], keypoints[j, 2]],
-                        color=style.bone_color,
-                        linewidth=style.bone_width,
-                        alpha=style.bone_alpha,
-                        zorder=2,
-                    )
+            if i < num_joints and j < num_joints and visibility[i] and visibility[j]:
+                ax.plot(
+                    [keypoints[i, 0], keypoints[j, 0]],
+                    [keypoints[i, 1], keypoints[j, 1]],
+                    [keypoints[i, 2], keypoints[j, 2]],
+                    color=style.bone_color,
+                    linewidth=style.bone_width,
+                    alpha=style.bone_alpha,
+                    zorder=2,
+                )
 
         # Draw joints
         visible_kp = keypoints[visibility]

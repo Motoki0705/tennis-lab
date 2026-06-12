@@ -11,8 +11,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from src.tasks.ball_detection.data.argumentation import (
-    BallDetectionArgumentation,
+from src.tasks.ball_detection.data.augmentation import (
+    BallDetectionAugmentation,
     make_sample_rng,
 )
 from src.tasks.ball_detection.data.types import BallDetectionSample, ClipWindow
@@ -33,11 +33,11 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         *,
         windows: Sequence[ClipWindow],
         config: DictConfig | None = None,
-        argumentation: BallDetectionArgumentation | None = None,
+        augmentation: BallDetectionAugmentation | None = None,
     ) -> None:
         super().__init__()
         self.config = config or {}
-        self.argumentation = argumentation
+        self.augmentation = augmentation
 
         data_cfg = self.config.get("data", {}) or {}
         model_cfg = self.config.get("model", {}) or {}
@@ -119,8 +119,8 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
             coords_image.append(frame_coords)
             visibility.append(frame_visibility)
 
-        if self.argumentation is not None:
-            frames_hwc, coords_image, visibility = self.argumentation.forward(
+        if self.augmentation is not None:
+            frames_hwc, coords_image, visibility = self.augmentation.forward(
                 frames_hwc,
                 coords_image,
                 visibility,

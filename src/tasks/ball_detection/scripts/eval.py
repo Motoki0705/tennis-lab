@@ -29,8 +29,10 @@ from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
-from src.tasks.ball_detection.data.utils.input_adapter import to_model_input
-from src.tasks.ball_detection.training.lightning_module import BallDetectionLightningModule
+from src.tasks.ball_detection.models.input_adapter import to_model_input
+from src.tasks.ball_detection.training.lightning_module import (
+    BallDetectionLightningModule,
+)
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
 from src.utils.data.heatmaps import heatmaps_to_argmax
 

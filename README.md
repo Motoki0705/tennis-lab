@@ -40,7 +40,21 @@
 
 ## クイックスタート
 
-このリポジトリは Docker / devcontainer ベースでの開発を前提にしています。
+このリポジトリは [uv](https://docs.astral.sh/uv/) で依存関係を管理しています。Docker / devcontainer ベースでの開発も利用できます。
+
+### ローカル環境（uv）
+
+```bash
+# 依存関係をインストール（仮想環境 .venv を自動作成）
+uv sync --group dev
+
+# スクリプト実行例
+uv run python -m src.tasks.<task>.scripts.<entrypoint> key=value
+```
+
+> 旧 `requirements.txt` / `requirements-dev.txt` は削除済みです。依存関係の追加は `uv add <package>` で行ってください。
+
+### Docker 環境
 
 ### 1) イメージをビルド
 
@@ -77,7 +91,7 @@ docker exec -it tennis-lab-dev bash
 すべてのタスクは Hydra を使って設定を管理しています。
 
 ```bash
-python -m src.<task>.scripts.<entrypoint> key=value
+python -m src.tasks.<task>.scripts.<entrypoint> key=value
 ```
 
 ### 4) まずは可視化

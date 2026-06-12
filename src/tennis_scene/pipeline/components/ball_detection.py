@@ -331,7 +331,12 @@ class BallDetectionModule(BasePipelineModule):
             raise RuntimeError("Ball detection predictor is not loaded.")
 
         model_config = getattr(self._pipeline, "model_config", {}) or {}
-        sequence_length = int(model_config.get("num_frames", 8))
+        _num_frames_raw = model_config.get("num_frames")
+        if _num_frames_raw is None:
+            LOGGER.warning(
+                "model_config.num_frames not found; falling back to sequence_length=8"
+            )
+        sequence_length = int(_num_frames_raw if _num_frames_raw is not None else 8)
         if sequence_length <= 0:
             raise ValueError(
                 f"model.num_frames must be positive, got {sequence_length}"

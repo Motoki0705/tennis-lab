@@ -9,7 +9,7 @@ from typing import Any, Self
 import torch
 from torch import Tensor
 
-from src.tasks.ball_detection.data.utils.input_adapter import to_model_input
+from src.tasks.ball_detection.models.input_adapter import to_model_input
 from src.tasks.ball_detection.training.lightning_module import (
     BallDetectionLightningModule,
 )

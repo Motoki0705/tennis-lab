@@ -18,7 +18,10 @@ from typing import Any, TypeVar, cast
 import hydra
 from omegaconf import DictConfig
 
-from src.tasks.blcs.visualization.orchestrator import build_runtime_config, run_visualization
+from src.tasks.blcs.visualization.orchestrator import (
+    build_runtime_config,
+    run_visualization,
+)
 
 F = TypeVar("F", bound=Callable[..., Any])
 
