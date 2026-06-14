@@ -1,0 +1,57 @@
+# ---- Training loop settings ----
+trainer:
+  max_epochs: 100
+  gradient_clip_val: 3.0
+  deterministic: false
+  precision: 32-true
+  log_every_n_steps: 10
+  check_val_every_n_epoch: 1
+  num_sanity_val_steps: 0
+
+# ---- Optimizer / scheduler (LoRA adapters + projection heads only) ----
+optimizer:
+  lr: 5.0e-4
+  weight_decay: 0.04
+  betas: [0.9, 0.999]
+  warmup_steps: 100
+  min_lr_ratio: 0.01
+
+# ---- Self-distillation loss weights / temperatures ----
+loss:
+  student_temp: 0.1
+  center_momentum: 0.9
+  dino_weight: 1.0
+  ibot_weight: 1.0
+  koleo_weight: 0.1
+
+# ---- Teacher temperature / EMA momentum schedules ----
+schedule:
+  teacher_temp: 0.07
+  teacher_temp_warmup: 0.04
+  teacher_temp_warmup_epochs: 30
+  momentum_base: 0.996
+  momentum_final: 1.0
+
+# ---- Runtime settings ----
+matmul_precision: high
+allow_tf32: true
+
+# ---- Checkpoint / stopping ----
+checkpoint:
+  enabled: true
+  filename: "dino-ssl-{epoch:02d}"
+  monitor: val/loss
+  mode: min
+  save_top_k: 2
+  save_last: true
+
+early_stopping:
+  enabled: false
+  monitor: val/loss
+  mode: min
+  patience: 10
+  min_delta: 0.0
+
+lr_monitor:
+  enabled: true
+  interval: step
