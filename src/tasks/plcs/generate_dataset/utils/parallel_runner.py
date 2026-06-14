@@ -68,6 +68,11 @@ def generate_parallel_scenes(
     num_workers: int,
 ) -> Iterator[SceneData]:
     """Generate PLCS scenes in parallel worker processes."""
+    if num_workers < 1:
+        raise ValueError(
+            "Parallel PLCS scene generation requires num_workers >= 1 "
+            f"(got {num_workers})"
+        )
     if num_scenes <= 0:
         raise ValueError(
             f"Parallel PLCS scene generation requires num_scenes >= 1 (got {num_scenes})"
