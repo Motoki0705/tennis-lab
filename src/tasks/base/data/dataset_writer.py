@@ -11,6 +11,10 @@ import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +65,65 @@ class BaseDatasetWriter(ABC):
 
         """
         pass
+
+    def _write_scene_files(
+        self,
+        scene_path: Path,
+        scene_meta: Any,
+        scalars: dict[str, Any],
+        arrays: dict[str, np.ndarray],
+    ) -> None:
+        """Write meta.json, scalars.json, and each array as ``{key}.npy``.
+
+        Args:
+            scene_path: Scene output directory (already created).
+            scene_meta: Scene metadata object exposing ``to_dict()``.
+            scalars: Scalar values written to scalars.json.
+            arrays: Mapping of array key to numpy array, written as npy files.
+        """
+        import numpy as np
+
+        # Write meta.json
+        with open(scene_path / "meta.json", "w") as f:
+            json.dump(scene_meta.to_dict(), f, indent=2)
+
+        # Write scalars.json
+        with open(scene_path / "scalars.json", "w") as f:
+            json.dump(scalars, f, indent=2)
+
+        # Write array files
+        for key, arr in arrays.items():
+            np.save(scene_path / f"{key}.npy", arr)
+
+    def _append_court_camera_arrays(
+        self,
+        arrays: dict[str, np.ndarray],
+        scalars: dict[str, Any],
+        cam: Any,
+        prefix: str,
+    ) -> None:
+        """Append shared court camera params/arrays for a single camera.
+
+        Writes the ``{prefix}params`` scalar plus the ``{prefix}court_kp_uv``,
+        ``{prefix}court_kp_visible`` and ``{prefix}court_visibility_count``
+        arrays using the dtypes shared by PLCS and BLCS.
+
+        Args:
+            arrays: Array accumulator mutated in place.
+            scalars: Scalar accumulator mutated in place.
+            cam: Camera record exposing ``camera_params``, ``court_kp_uv``,
+                ``court_kp_visible`` and ``court_visibility_count``.
+            prefix: Per-camera key prefix (e.g. ``"cam_0_"``).
+        """
+        import numpy as np
+
+        scalars[f"{prefix}params"] = cam.camera_params
+        arrays[f"{prefix}court_kp_uv"] = cam.court_kp_uv.astype(np.float32)
+        arrays[f"{prefix}court_kp_visible"] = cam.court_kp_visible.astype(bool)
+        arrays[f"{prefix}court_visibility_count"] = np.array(
+            cam.court_visibility_count,
+            dtype=np.float32,
+        )
 
     def save_split_info(
         self,

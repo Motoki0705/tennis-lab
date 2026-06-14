@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Self
 
 import torch
-from torch import Tensor
+from torch import Tensor, nn
 
 
 class BasePredictor(ABC):
@@ -140,6 +140,58 @@ class BasePredictor(ABC):
             if not path.exists():
                 raise FileNotFoundError(f"Checkpoint not found: {path}")
         return checkpoints
+
+    @classmethod
+    def _load_single_lightning_checkpoint(
+        cls,
+        checkpoint_path: str | Path | Iterable[str | Path],
+        lightning_module_cls: Any,
+        device: str | torch.device = "cpu",
+        **kwargs: Any,
+    ) -> tuple[nn.Module, torch.device]:
+        """Load a single Lightning checkpoint and return its inner model.
+
+        Enforces exactly one checkpoint, resolves the device, and loads the
+        Lightning module with the strict/weights_only defaults shared across
+        task predictors.
+
+        Args:
+            checkpoint_path: Path or iterable of paths to checkpoint files.
+            lightning_module_cls: LightningModule class with
+                ``load_from_checkpoint``.
+            device: Inference device.
+            **kwargs: Forwarded to ``load_from_checkpoint``. ``strict`` and
+                ``weights_only`` are popped (defaulting to False).
+
+        Returns:
+            Tuple of (inner ``nn.Module``, resolved ``torch.device``).
+
+        Raises:
+            ValueError: If not exactly one checkpoint is provided.
+        """
+        checkpoints = cls._ensure_checkpoint(checkpoint_path)
+        if len(checkpoints) != 1:
+            raise ValueError(
+                f"{cls.__name__} expects a single checkpoint, "
+                f"got {len(checkpoints)} checkpoints."
+            )
+        resolved_device = cls._resolve_device(device)
+        lightning_module = lightning_module_cls.load_from_checkpoint(
+            checkpoints[0],
+            map_location=resolved_device,
+            strict=bool(kwargs.pop("strict", False)),
+            weights_only=bool(kwargs.pop("weights_only", False)),
+            **kwargs,
+        )
+        return lightning_module.model, resolved_device
+
+    def _denormalize_coords(self, coords: Tensor, scale_xyz: Iterable[float]) -> Tensor:
+        """Scale normalized coordinates to physical units."""
+        return coords * torch.tensor(
+            list(scale_xyz),
+            device=coords.device,
+            dtype=coords.dtype,
+        )
 
     @staticmethod
     def _to_device(device: torch.device, *tensors: Tensor | None) -> tuple[Tensor | None, ...]:
