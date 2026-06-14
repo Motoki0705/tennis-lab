@@ -10,11 +10,11 @@ from omegaconf import DictConfig
 from src.tasks.base.data.chunk_manager import (
     ChunkManager as BaseChunkManager,
 )
+from src.tasks.plcs.generate_dataset.config import prepare_generation_config
 from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
 from src.tasks.plcs.generate_dataset.utils.parallel_runner import (
     generate_parallel_scenes,
 )
-from src.tasks.plcs.utils import prepare_generation_config
 
 
 class _PLCSChunkGenerator:
