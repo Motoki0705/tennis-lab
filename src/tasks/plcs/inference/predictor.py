@@ -34,22 +34,13 @@ class PLCSPredictor(BasePredictor):
         device: str | torch.device = "cpu",
         **kwargs: Any,
     ) -> Self:
-        checkpoints = cls._ensure_checkpoint(checkpoint_path)
-        if len(checkpoints) != 1:
-            raise ValueError(
-                "PLCSPredictor expects a single checkpoint, "
-                f"got {len(checkpoints)} checkpoints."
-            )
-        checkpoint = checkpoints[0]
-        device = cls._resolve_device(device)
-        lightning_module = PLCSLightningModule.load_from_checkpoint(
-            checkpoint_path=checkpoint,
-            map_location=device,
-            strict=bool(kwargs.pop("strict", False)),
-            weights_only=bool(kwargs.pop("weights_only", False)),
+        model, resolved_device = cls._load_single_lightning_checkpoint(
+            checkpoint_path,
+            PLCSLightningModule,
+            device,
             **kwargs,
         )
-        return cls(model=lightning_module.model, device=device)
+        return cls(model=model, device=resolved_device)
 
     @torch.no_grad()
     def predict(
@@ -63,14 +54,14 @@ class PLCSPredictor(BasePredictor):
     ) -> dict[str, Tensor]:
         """Predict player 3D position and orientation from caller-provided tensors."""
 
-        human_kp = human_kp.to(self.device)
-        court_kp = court_kp.to(self.device)
-        if human_vis is not None:
-            human_vis = human_vis.to(self.device)
-        if human_mask is not None:
-            human_mask = human_mask.to(self.device)
-        if court_vis is not None:
-            court_vis = court_vis.to(self.device)
+        human_kp, court_kp, human_vis, human_mask, court_vis = self._to_device(
+            self.device,
+            human_kp,
+            court_kp,
+            human_vis,
+            human_mask,
+            court_vis,
+        )
 
         outputs = self.model(
             human_kp=human_kp,
@@ -93,12 +84,9 @@ class PLCSPredictor(BasePredictor):
             result["canonical_pose"] = canonical_pose
 
         if denormalize:
-            scale = torch.tensor(
-                list(self._norm_scale_xyz),
-                device=position.device,
-                dtype=position.dtype,
+            result["position_meters"] = self._denormalize_coords(
+                position, self._norm_scale_xyz
             )
-            result["position_meters"] = position * scale
             result["yaw_radians"] = torch.atan2(rotation[..., 0], rotation[..., 1])
 
         return {k: v.detach().cpu() for k, v in result.items()}
