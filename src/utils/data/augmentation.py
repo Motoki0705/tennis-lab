@@ -6,10 +6,73 @@ and other modules to avoid code duplication.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 import torch
 from torch import Tensor
+
+IMAGENET_MEAN: tuple[float, float, float] = (0.485, 0.456, 0.406)
+IMAGENET_STD: tuple[float, float, float] = (0.229, 0.224, 0.225)
+
+
+def _as_dict(value: Any) -> dict[str, Any]:
+    """Convert plain dicts or DictConfig-like objects into a shallow dict."""
+    if value is None:
+        return {}
+    if isinstance(value, Mapping):
+        return dict(value)
+    if hasattr(value, "items"):
+        return dict(value.items())
+    return {}
+
+
+def _enabled(config: Mapping[str, Any], *, default: bool = False) -> bool:
+    return bool(config.get("enabled", default))
+
+
+def _prob(config: Mapping[str, Any], *, default: float = 1.0) -> float:
+    return float(config.get("prob", default))
+
+
+def _should_apply(prob: float, reference: Tensor) -> bool:
+    if prob <= 0:
+        return False
+    if prob >= 1:
+        return True
+    return bool(torch.rand((), device=reference.device).item() < prob)
+
+
+def parse_float_range(value: Any, name: str) -> tuple[float, float]:
+    if (
+        not isinstance(value, Sequence)
+        or isinstance(value, (str, bytes))
+        or len(value) != 2
+    ):
+        raise ValueError(f"{name} must be a two-element list/tuple.")
+    out = (float(value[0]), float(value[1]))
+    if out[0] > out[1]:
+        raise ValueError(f"{name} min must be <= max, got {out}.")
+    return out
+
+
+def normalize_tensor_images_imagenet(
+    images: Tensor,
+    *,
+    mean: Sequence[float] = IMAGENET_MEAN,
+    std: Sequence[float] = IMAGENET_STD,
+) -> Tensor:
+    """Apply ImageNet normalization to ``(..., 3, H, W)`` image tensors."""
+    if images.ndim < 3 or images.shape[-3] != 3:
+        raise ValueError(
+            "Expected images with shape (..., 3, H, W) for ImageNet normalization, "
+            f"got {tuple(images.shape)}."
+        )
+    view_shape = [1] * images.ndim
+    view_shape[-3] = 3
+    mean_tensor = images.new_tensor(mean).view(*view_shape)
+    std_tensor = images.new_tensor(std).view(*view_shape)
+    return (images - mean_tensor) / std_tensor
 
 
 def _rand_like_shape(
