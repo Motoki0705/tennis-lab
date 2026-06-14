@@ -9,8 +9,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.training.runner import BaseTrainingRunner
 from src.tasks.plcs.data.datamodule import PLCSDataModule
+from src.tasks.plcs.generate_dataset.config import prepare_generation_config
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
-from src.tasks.plcs.utils import prepare_generation_config
 
 
 class PLCSTrainingRunner(BaseTrainingRunner):
