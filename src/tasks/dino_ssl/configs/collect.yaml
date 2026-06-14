@@ -1,0 +1,11 @@
+defaults:
+  - collector: tennis_sample
+  - run: collect
+  - _self_
+
+hydra:
+  run:
+    dir: outputs/dino_ssl/collect/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

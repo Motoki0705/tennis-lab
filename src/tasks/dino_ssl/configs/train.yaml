@@ -1,0 +1,13 @@
+defaults:
+  - model: dinov3_vitb16_lora
+  - data: tennis_ssl
+  - training: default
+  - run: train
+  - _self_
+
+hydra:
+  run:
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

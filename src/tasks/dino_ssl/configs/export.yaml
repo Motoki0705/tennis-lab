@@ -1,0 +1,12 @@
+# Merge LoRA adapters into the DINOv3 backbone and export a downstream-ready
+# checkpoint. `checkpoint` and `train_config` are mandatory (set on the CLI).
+checkpoint: ???
+train_config: ???
+output: outputs/dino_ssl/exported/dinov3_vitb16_tennis.pth
+
+hydra:
+  run:
+    dir: outputs/dino_ssl/export/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
