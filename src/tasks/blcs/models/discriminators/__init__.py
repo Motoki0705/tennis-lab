@@ -7,9 +7,10 @@ from omegaconf import DictConfig
 from src.tasks.blcs.models.discriminators.trajectory_discriminator import (
     BLCSTrajectoryDiscriminator,
 )
+from src.utils.models.architectures import TransformerSequenceDiscriminator
 
 
-def build_blcs_discriminator(config: DictConfig) -> BLCSTrajectoryDiscriminator:
+def build_blcs_discriminator(config: DictConfig) -> TransformerSequenceDiscriminator:
     """Build the configured BLCS discriminator."""
     train_cfg = config.get("training", {}) or {}
     gan_cfg = train_cfg.get("gan", {}) or {}

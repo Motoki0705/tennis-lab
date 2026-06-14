@@ -13,6 +13,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from src.tasks.plcs.utils.pose_geometry import world_pose_to_canonical_pose
+from src.utils.tensor_utils import masked_mean, normalize_padding_mask
 
 
 @dataclass(frozen=True)
@@ -192,14 +193,6 @@ def angular_error(pred: Tensor, target: Tensor) -> Tensor:
     return diff.abs()
 
 
-def _masked_mean(values: Tensor, mask: Tensor | None) -> Tensor:
-    if mask is None:
-        return values.mean()
-    mask_f = (mask > 0).to(dtype=values.dtype)
-    denom = mask_f.sum().clamp_min(1.0)
-    return (values * mask_f).sum() / denom
-
-
 def _wrap_angle(angle: Tensor) -> Tensor:
     return torch.atan2(torch.sin(angle), torch.cos(angle))
 
@@ -210,24 +203,6 @@ def _sequence_frame_mask(seq_mask: Tensor | None, *, order: int) -> Tensor | Non
     if order == 1:
         return seq_mask[:, 1:] & seq_mask[:, :-1]
     return seq_mask[:, 2:] & seq_mask[:, 1:-1] & seq_mask[:, :-2]
-
-
-def _to_frame_mask(human_mask: Tensor | None) -> Tensor | None:
-    """Normalize human padding mask to frame-level validity mask ``(B, T)``."""
-    if human_mask is None:
-        return None
-    if human_mask.dim() == 1:
-        return human_mask > 0
-    if human_mask.dim() == 2:
-        return human_mask > 0
-    if human_mask.dim() == 3:
-        return (human_mask > 0).any(dim=1)
-    if human_mask.dim() == 4:
-        return (human_mask > 0).any(dim=1).any(dim=-1)
-    raise ValueError(
-        "human_mask must be (B,), (B,T), (B,N,T), or (B,N,T,J), "
-        f"got shape {tuple(human_mask.shape)}"
-    )
 
 
 def position_temporal_match_loss(
@@ -261,7 +236,7 @@ def position_temporal_match_loss(
         per_elem = diff.pow(2)
 
     per_step = per_elem.mean(dim=-1)  # (B, T-1) or (B, T-2)
-    return _masked_mean(per_step, mask)
+    return masked_mean(per_step, mask, binarize=True, denom_min=1.0)
 
 
 def position_temporal_inertia_loss(
@@ -292,7 +267,7 @@ def position_temporal_inertia_loss(
         per_elem = diff.pow(2)
 
     per_step = per_elem.mean(dim=-1)
-    return _masked_mean(per_step, mask)
+    return masked_mean(per_step, mask, binarize=True, denom_min=1.0)
 
 
 def rotation_temporal_match_loss(
@@ -328,7 +303,7 @@ def rotation_temporal_match_loss(
     else:
         per_step = diff.pow(2)
 
-    return _masked_mean(per_step, mask)
+    return masked_mean(per_step, mask, binarize=True, denom_min=1.0)
 
 
 def rotation_temporal_inertia_loss(
@@ -358,7 +333,7 @@ def rotation_temporal_inertia_loss(
     else:
         per_step = diff.pow(2)
 
-    return _masked_mean(per_step, mask)
+    return masked_mean(per_step, mask, binarize=True, denom_min=1.0)
 
 
 class PLCSLoss(nn.Module):
@@ -422,14 +397,14 @@ class PLCSLoss(nn.Module):
 
         """
         zero = pred_position.new_zeros(())
-        frame_mask = _to_frame_mask(human_mask)
+        frame_mask = normalize_padding_mask(human_mask, flatten=False)
 
         # Position loss (optionally mask padded frames)
         if pred_position.dim() == 3 and frame_mask is not None:
             per_elem = nn.functional.smooth_l1_loss(
                 pred_position, target_position, reduction="none"
             ).mean(dim=-1)  # (B, T)
-            pos_loss = _masked_mean(per_elem, frame_mask)
+            pos_loss = masked_mean(per_elem, frame_mask, binarize=True, denom_min=1.0)
         else:
             pos_loss = position_loss(pred_position, target_position)
 
@@ -438,7 +413,7 @@ class PLCSLoss(nn.Module):
             pred_norm = nn.functional.normalize(pred_rotation, dim=-1)
             cos_sim = (pred_norm * target_rotation).sum(dim=-1)  # (B, T)
             per_frame = 1.0 - cos_sim
-            rot_loss = _masked_mean(per_frame, frame_mask)
+            rot_loss = masked_mean(per_frame, frame_mask, binarize=True, denom_min=1.0)
         else:
             rot_loss = rotation_loss(pred_rotation, target_rotation)
 
@@ -460,7 +435,7 @@ class PLCSLoss(nn.Module):
                 reduction="none",
             ).mean(dim=(-1, -2))
             if frame_mask is not None and per_frame.shape == frame_mask.shape:
-                canonical_pose_loss = _masked_mean(per_frame, frame_mask)
+                canonical_pose_loss = masked_mean(per_frame, frame_mask, binarize=True, denom_min=1.0)
             else:
                 canonical_pose_loss = per_frame.mean()
             total = total + self.config.canonical_pose_weight * canonical_pose_loss
