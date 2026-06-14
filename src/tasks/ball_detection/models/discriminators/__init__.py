@@ -7,9 +7,12 @@ from omegaconf import DictConfig
 from src.tasks.ball_detection.models.discriminators.trajectory_discriminator import (
     BallTrajectoryDiscriminator,
 )
+from src.utils.models.architectures import TransformerSequenceDiscriminator
 
 
-def build_ball_detection_discriminator(config: DictConfig) -> BallTrajectoryDiscriminator:
+def build_ball_detection_discriminator(
+    config: DictConfig,
+) -> TransformerSequenceDiscriminator:
     """Build the configured ball detection discriminator."""
     train_cfg = config.get("training", {}) or {}
     gan_cfg = train_cfg.get("gan", {}) or {}
