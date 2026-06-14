@@ -73,22 +73,13 @@ class BLCSPredictor(BasePredictor):
             FileNotFoundError: If checkpoint file does not exist.
 
         """
-        checkpoints = cls._ensure_checkpoint(checkpoint_path)
-        if len(checkpoints) != 1:
-            raise ValueError(
-                "BLCSPredictor expects a single checkpoint, "
-                f"got {len(checkpoints)} checkpoints."
-            )
-        checkpoint = checkpoints[0]
-        device = cls._resolve_device(device)
-        lightning_module = BLCSLightningModule.load_from_checkpoint(
-            checkpoint_path=checkpoint,
-            map_location=device,
-            strict=bool(kwargs.pop("strict", False)),
-            weights_only=bool(kwargs.pop("weights_only", False)),
+        model, resolved_device = cls._load_single_lightning_checkpoint(
+            checkpoint_path,
+            BLCSLightningModule,
+            device,
             **kwargs,
         )
-        return cls(model=lightning_module.model, device=device)
+        return cls(model=model, device=resolved_device)
 
     def predict(
         self,
@@ -117,11 +108,14 @@ class BLCSPredictor(BasePredictor):
                            model outputs it, else in normalized units
 
         """
-        ball_uv = ball_uv.to(self.device)
-        court_kp = court_kp.to(self.device)
-        ball_vis = ball_vis.to(self.device) if ball_vis is not None else None
-        ball_mask = ball_mask.to(self.device) if ball_mask is not None else None
-        court_vis = court_vis.to(self.device) if court_vis is not None else None
+        ball_uv, court_kp, ball_vis, ball_mask, court_vis = self._to_device(
+            self.device,
+            ball_uv,
+            court_kp,
+            ball_vis,
+            ball_mask,
+            court_vis,
+        )
 
         with torch.no_grad():
             outputs = self.model(
@@ -133,27 +127,13 @@ class BLCSPredictor(BasePredictor):
             )
 
         if denormalize:
-            outputs["position"] = self._denormalize_position(outputs["position"])
+            outputs["position"] = self._denormalize_coords(
+                outputs["position"], self.norm_scale_xyz
+            )
             if "velocity" in outputs:
-                outputs["velocity"] = self._denormalize_velocity(outputs["velocity"])
+                outputs["velocity"] = self._denormalize_coords(
+                    outputs["velocity"], self.norm_scale_xyz
+                )
 
         outputs = {k: v.cpu() if isinstance(v, Tensor) else v for k, v in outputs.items()}
         return outputs
-
-    def _denormalize_position(self, position: Tensor) -> Tensor:
-        """Convert normalized position to meters."""
-        scale = torch.tensor(
-            list(self.norm_scale_xyz),
-            device=position.device,
-            dtype=position.dtype,
-        )
-        return position * scale
-
-    def _denormalize_velocity(self, velocity: Tensor) -> Tensor:
-        """Convert normalized velocity to m/s."""
-        scale = torch.tensor(
-            list(self.norm_scale_xyz),
-            device=velocity.device,
-            dtype=velocity.dtype,
-        )
-        return velocity * scale
