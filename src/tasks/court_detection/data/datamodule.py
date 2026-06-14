@@ -17,23 +17,41 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
+# ── Padding helpers (shared by collate functions) ─────────────────
+
+
+def _align8(n: int) -> int:
+    """Round ``n`` up to the nearest multiple of 8."""
+    return ((n + 7) // 8) * 8
+
+
+def _pad_max_hw(batch: list[dict], key: str = "image") -> tuple[int, int]:
+    """Compute the 8-aligned max height/width across a batch."""
+    max_h = max(b[key].shape[1] for b in batch)
+    max_w = max(b[key].shape[2] for b in batch)
+    return _align8(max_h), _align8(max_w)
+
+
+def _pad_image(img: torch.Tensor, max_h: int, max_w: int) -> torch.Tensor:
+    """Zero-pad a ``[C, H, W]`` tensor to ``[C, max_h, max_w]``."""
+    c, h, w = img.shape
+    padded = torch.zeros(c, max_h, max_w, dtype=img.dtype)
+    padded[:, :h, :w] = img
+    return padded
+
+
 # ── Custom collate functions (variable-size images) ───────────────
 
 
 def _pad_collate_seg(batch: list[dict]) -> dict:
     """Pad variable-size images/masks to the max size in the batch."""
-    max_h = max(b["image"].shape[1] for b in batch)
-    max_w = max(b["image"].shape[2] for b in batch)
-    max_h = ((max_h + 7) // 8) * 8
-    max_w = ((max_w + 7) // 8) * 8
+    max_h, max_w = _pad_max_hw(batch)
 
     images, masks, ids = [], [], []
     for b in batch:
-        c, h, w = b["image"].shape
-        padded_img = torch.zeros(c, max_h, max_w, dtype=b["image"].dtype)
-        padded_img[:, :h, :w] = b["image"]
-        images.append(padded_img)
+        images.append(_pad_image(b["image"], max_h, max_w))
 
+        _, h, w = b["image"].shape
         padded_mask = torch.zeros(max_h, max_w, dtype=b["mask"].dtype)
         padded_mask[:h, :w] = b["mask"]
         masks.append(padded_mask)
@@ -44,17 +62,11 @@ def _pad_collate_seg(batch: list[dict]) -> dict:
 
 def _pad_collate_line(batch: list[dict]) -> dict:
     """Pad variable-size images/binary masks to the max size in the batch."""
-    max_h = max(b["image"].shape[1] for b in batch)
-    max_w = max(b["image"].shape[2] for b in batch)
-    max_h = ((max_h + 7) // 8) * 8
-    max_w = ((max_w + 7) // 8) * 8
+    max_h, max_w = _pad_max_hw(batch)
 
     images, masks, ids = [], [], []
     for b in batch:
-        c, h, w = b["image"].shape
-        padded_img = torch.zeros(c, max_h, max_w, dtype=b["image"].dtype)
-        padded_img[:, :h, :w] = b["image"]
-        images.append(padded_img)
+        images.append(_pad_image(b["image"], max_h, max_w))
 
         _, mh, mw = b["mask"].shape
         padded_mask = torch.zeros(1, max_h, max_w, dtype=b["mask"].dtype)
@@ -67,17 +79,11 @@ def _pad_collate_line(batch: list[dict]) -> dict:
 
 def _pad_collate_kp(batch: list[dict]) -> dict:
     """Pad variable-size images/heatmaps to the max size in the batch."""
-    max_h = max(b["image"].shape[1] for b in batch)
-    max_w = max(b["image"].shape[2] for b in batch)
-    max_h = ((max_h + 7) // 8) * 8
-    max_w = ((max_w + 7) // 8) * 8
+    max_h, max_w = _pad_max_hw(batch)
 
     images, heatmaps, keypoints, ids = [], [], [], []
     for b in batch:
-        c, h, w = b["image"].shape
-        padded_img = torch.zeros(c, max_h, max_w, dtype=b["image"].dtype)
-        padded_img[:, :h, :w] = b["image"]
-        images.append(padded_img)
+        images.append(_pad_image(b["image"], max_h, max_w))
 
         n, hh, hw = b["heatmap"].shape
         padded_hm = torch.zeros(n, max_h, max_w, dtype=b["heatmap"].dtype)
