@@ -13,11 +13,11 @@ from torch import Tensor
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
-from src.utils.tensor_utils import normalize_padding_mask
 from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch
 from src.tasks.blcs.models import build_blcs_discriminator, build_blcs_model
 from src.tasks.blcs.training.losses import BLCSLoss
 from src.tasks.blcs.training.metrics import BLCSMetrics
+from src.utils.tensor_utils import normalize_padding_mask
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
