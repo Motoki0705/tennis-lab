@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from pathlib import Path
-
-from hydra.utils import to_absolute_path
-from omegaconf import DictConfig
 
 from src.tasks.base.visualization.orchestrator import (
-    parse_cameras,
-    resolve_device,
+    BaseVisualizationRuntimeConfig as RuntimeConfig,
+)
+from src.tasks.base.visualization.orchestrator import (
+    build_scene_runtime_config as build_runtime_config,
+)
+from src.tasks.base.visualization.orchestrator import (
     save_or_show_animation,
 )
 from src.tasks.blcs.visualization.adapters.predict_inputs import build_predict_inputs
@@ -21,42 +20,7 @@ from src.tasks.blcs.visualization.rendering import BLCSSceneRenderer
 
 logger = logging.getLogger(__name__)
 
-
-@dataclass(frozen=True)
-class RuntimeConfig:
-    """Resolved runtime settings for visualization orchestration."""
-
-    mode: str
-    scene_path: Path
-    checkpoint: Path | None
-    device: str
-    animation_view: str
-    fps: float | None
-    save: Path | None
-    camera: int
-    cameras: list[int] | str | None
-    info: bool
-
-
-def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
-    """Build runtime config from composed Hydra config."""
-    vis = cfg.visualization
-    run = cfg.run
-
-    return RuntimeConfig(
-        mode=str(vis.mode),
-        scene_path=Path(to_absolute_path(str(vis.scene_path))),
-        checkpoint=(
-            Path(to_absolute_path(str(vis.checkpoint))) if vis.checkpoint else None
-        ),
-        device=resolve_device(str(run.device)),
-        animation_view=str(vis.animation_view),
-        fps=float(vis.fps) if vis.fps is not None else None,
-        save=Path(to_absolute_path(str(vis.save))) if vis.save else None,
-        camera=int(vis.get("camera", 0)),
-        cameras=parse_cameras(vis.get("cameras")),
-        info=bool(vis.info),
-    )
+__all__ = ["RuntimeConfig", "build_runtime_config", "run_visualization"]
 
 
 def run_visualization(cfg: RuntimeConfig) -> int:

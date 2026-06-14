@@ -15,6 +15,8 @@ from typing import Any, cast
 
 import matplotlib.pyplot as plt
 import torch
+from hydra.utils import to_absolute_path
+from omegaconf import DictConfig
 
 logger = logging.getLogger(__name__)
 
@@ -69,3 +71,30 @@ def save_or_show_animation(
         logger.info(f"Saved animation to {save}")
     else:
         plt.show()
+
+
+def build_scene_runtime_config(cfg: DictConfig) -> BaseVisualizationRuntimeConfig:
+    """Build the shared scene-visualization runtime config from a Hydra config.
+
+    Common to the PLCS and BLCS orchestrators: resolves scene/checkpoint/save
+    paths to absolute, resolves the device (preferring ``run.device`` then
+    ``visualization.device``), and parses the Hydra camera selection.
+    """
+    vis = cfg.visualization
+    run = cfg.get("run", {})
+    run_device = run.get("device", vis.get("device", "auto"))
+
+    return BaseVisualizationRuntimeConfig(
+        mode=str(vis.mode),
+        scene_path=Path(to_absolute_path(str(vis.scene_path))),
+        checkpoint=(
+            Path(to_absolute_path(str(vis.checkpoint))) if vis.checkpoint else None
+        ),
+        device=resolve_device(str(run_device)),
+        animation_view=str(vis.animation_view),
+        fps=float(vis.fps) if vis.fps is not None else None,
+        save=Path(to_absolute_path(str(vis.save))) if vis.save else None,
+        camera=int(vis.get("camera", 0)),
+        cameras=parse_cameras(vis.get("cameras")),
+        info=bool(vis.info),
+    )
