@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import cv2
+import numpy as np
 import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
@@ -16,6 +17,7 @@ from omegaconf import DictConfig
 from src.tasks.ball_detection.data.augmentation import normalize_tensor_images_imagenet
 from src.tasks.ball_detection.data.types import FrameLabel
 from src.tasks.ball_detection.inference import BallDetectionPredictor
+from src.tasks.ball_detection.models.input_adapter import to_model_input
 from src.tasks.ball_detection.visualization.rendering import (
     DrawStyle,
     LayoutStyle,
@@ -159,8 +161,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
             text_scale=float(layout_cfg.get("text_scale", 0.52)),
             text_thickness=int(layout_cfg.get("text_thickness", 1)),
             background_rgb=_parse_rgb(layout_cfg.get("background_rgb", [18, 18, 18]), name="visualization.layout.background_rgb"),
-            heatmap_alpha=float(layout_cfg.get("heatmap_alpha", 0.45)),
-            show_heatmap_panel=bool(layout_cfg.get("show_heatmap_panel", True)),
+            panel_label_height=int(layout_cfg.get("panel_label_height", 24)),
         ),
     )
 
@@ -182,12 +183,12 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         device=cfg.device,
     )
     predictions = _predict_clip(cfg=cfg, clip=clip, predictor=predictor)
+    mdd_frames_rgb = _build_mdd_frames(cfg=cfg, clip=clip, predictor=predictor)
 
     rendered_frames = render_animation_frames(
         frames_rgb=[frame.cpu().numpy() for frame in clip.render_frames_rgb],
         frame_names=clip.frame_names,
-        gt_coords_px=[_coord_tensor_to_tuple(coord) for coord in clip.gt_coords_px],
-        gt_visibility=[bool(value.item() > 0.5) for value in clip.gt_visibility],
+        mdd_frames_rgb=mdd_frames_rgb,
         pred_coords_px=[_coord_tensor_to_tuple(coord) for coord in predictions.coords_px],
         pred_visibility=[bool(value.item()) for value in predictions.visibility],
         pred_confidences=[float(value.item()) for value in predictions.confidences],
@@ -333,6 +334,35 @@ def _predict_clip(
         confidences=confidences,
         visibility=visibility,
     )
+
+
+def _build_mdd_frames(
+    *,
+    cfg: RuntimeConfig,
+    clip: ClipSequence,
+    predictor: BallDetectionPredictor,
+) -> list[np.ndarray]:
+    """Build per-frame MDD RGB visualizations for the whole clip.
+
+    The MDD features are computed over the full consecutive frame sequence so
+    the panel reflects what the model derives as motion (green=brighten,
+    red=darken). Computed from the same preprocessed images the predictor
+    consumes to stay faithful to the model input.
+    """
+    mdd_config = {**predictor.model_config, "input_mode": "mdd", "in_channels": 2}
+    with torch.no_grad():
+        # (1, T, 3, H, W) -> (1, 2, T, H, W)
+        features = to_model_input(clip.model_images.unsqueeze(0), mdd_config)
+    brighten = features[0, 0].clamp(0.0, 1.0).cpu().numpy()
+    darken = features[0, 1].clamp(0.0, 1.0).cpu().numpy()
+
+    mdd_frames: list[np.ndarray] = []
+    for frame_index in range(brighten.shape[0]):
+        rgb = np.zeros((*brighten.shape[1:], 3), dtype=np.uint8)
+        rgb[..., 0] = (darken[frame_index] * 255.0).astype(np.uint8)
+        rgb[..., 1] = (brighten[frame_index] * 255.0).astype(np.uint8)
+        mdd_frames.append(rgb)
+    return mdd_frames
 
 
 def _build_window_starts(*, frame_count: int, sequence_length: int, stride: int) -> list[int]:
