@@ -258,6 +258,22 @@ class ManualGANSupportMixin:
             return f"test/{name}"
         return f"{stage}/epoch_{name}"
 
+    def _log_gan_metrics(self, stage: str, metrics: dict[str, Any]) -> None:
+        """Log GAN-specific training metrics.
+
+        Logs ``train/gan_weight`` and ``train/gan_phase_active`` and,
+        conditionally, ``train/loss_gan_generator`` /
+        ``train/loss_gan_discriminator`` when present in ``metrics``.  Only
+        active during the ``train`` stage while GAN training is enabled.
+        """
+        if stage == "train" and self.gan_enabled:
+            self.log("train/gan_weight", float(self.current_gan_weight))
+            self.log("train/gan_phase_active", float(self.gan_phase_active))
+            if "loss_gan_generator" in metrics:
+                self.log("train/loss_gan_generator", metrics["loss_gan_generator"])
+            if "loss_gan_discriminator" in metrics:
+                self.log("train/loss_gan_discriminator", metrics["loss_gan_discriminator"])
+
     def _flush_stage_metrics(self, stage: str) -> None:
         tracker = self._metric_tracker_for_stage(stage)
         if tracker is None:

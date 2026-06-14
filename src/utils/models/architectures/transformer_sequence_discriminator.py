@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 import torch
 from torch import Tensor, nn
@@ -13,6 +13,10 @@ from src.utils.models.components import (
     TransformerBlockConfig,
     precompute_freqs_cis,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from typing import Any
 
 
 class TransformerSequenceDiscriminator(nn.Module):
@@ -152,3 +156,42 @@ class TransformerSequenceDiscriminator(nn.Module):
         x = cast(Tensor, self.final_norm(x))
         logits = cast(Tensor, self.head(x[:, 0, :]))
         return logits.squeeze(-1)
+
+
+def build_trajectory_discriminator(
+    *,
+    input_dim: int,
+    disc_cfg: Mapping[str, Any],
+    default_max_seq_len: int,
+) -> TransformerSequenceDiscriminator:
+    """Build a :class:`TransformerSequenceDiscriminator` from a GAN config.
+
+    Replicates the kwarg parsing performed by the task-specific discriminator
+    wrappers (ball detection / BLCS), including the ``invisible_init_std`` to
+    ``invalid_init_std`` rename.
+
+    Args:
+        input_dim: Feature dimension of the scored sequences (e.g. 2 for
+            image-space ball trajectories, 3 for 3D trajectories).
+        disc_cfg: The ``training.gan.discriminator`` config mapping.
+        default_max_seq_len: Fallback for ``max_seq_len`` when the config does
+            not provide one (e.g. ``model.num_frames`` for ball detection or
+            ``data.max_seq_len`` for BLCS).
+
+    Returns:
+        TransformerSequenceDiscriminator: The configured discriminator.
+    """
+    return TransformerSequenceDiscriminator(
+        input_dim=int(input_dim),
+        hidden_dim=int(disc_cfg.get("hidden_dim", 128)),
+        num_layers=int(disc_cfg.get("num_layers", 4)),
+        num_heads=int(disc_cfg.get("num_heads", 4)),
+        ffn_dim=disc_cfg.get("ffn_dim", None),
+        dropout=float(disc_cfg.get("dropout", 0.1)),
+        rope_dim=disc_cfg.get("rope_dim", None),
+        rope_theta=float(disc_cfg.get("rope_theta", 10000.0)),
+        ffn_type=str(disc_cfg.get("ffn_type", "swiglu")),
+        max_seq_len=int(disc_cfg.get("max_seq_len", default_max_seq_len)),
+        invalid_init_std=float(disc_cfg.get("invisible_init_std", 0.02)),
+        cls_init_std=float(disc_cfg.get("cls_init_std", 0.02)),
+    )
