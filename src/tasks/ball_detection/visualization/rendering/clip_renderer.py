@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from pathlib import Path
 from typing import cast
 
 import cv2
 import numpy as np
-from PIL import Image
+
+from src.tasks.base.visualization.layout import (
+    compose_grid,
+    label_panel,
+    put_text,
+)
 
 
 @dataclass(frozen=True)
@@ -81,16 +85,14 @@ def render_animation_frames(
             strict=True,
         )
     ):
-        top_left = _label_panel(
-            frame_rgb.copy(), text="RGB", draw=draw, layout=layout
-        )
-        top_right = _label_panel(
+        top_left = _label(frame_rgb.copy(), text="RGB", draw=draw, layout=layout)
+        top_right = _label(
             mdd_frame_rgb.copy(),
             text="MDD (G=brighten, R=darken)",
             draw=draw,
             layout=layout,
         )
-        bottom_left = _label_panel(
+        bottom_left = _label(
             _render_prediction_panel(
                 frame_rgb=frame_rgb,
                 pred_coord_px=pred_coord_px,
@@ -101,14 +103,14 @@ def render_animation_frames(
             draw=draw,
             layout=layout,
         )
-        bottom_right = _label_panel(
+        bottom_right = _label(
             _render_heatmap_panel(target_hw=frame_rgb.shape[:2], heatmap=pred_heatmap),
             text="raw heatmap",
             draw=draw,
             layout=layout,
         )
 
-        body = _compose_grid(
+        body = compose_grid(
             panels=[[top_left, top_right], [bottom_left, bottom_right]],
             tile_gap=layout.tile_gap,
             background_rgb=layout.background_rgb,
@@ -123,25 +125,21 @@ def render_animation_frames(
         threshold_suffix = "drawn" if pred_is_visible else f"below {peak_threshold:.2f}"
         header_line_2 = f"Pred confidence: {pred_confidence:.3f} ({threshold_suffix})"
 
-        cv2.putText(
+        put_text(
             header,
             header_line_1,
             (8, 18),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            layout.text_scale,
-            draw.text_color_rgb,
-            layout.text_thickness,
-            lineType=cv2.LINE_AA,
+            color_rgb=draw.text_color_rgb,
+            scale=layout.text_scale,
+            thickness=layout.text_thickness,
         )
-        cv2.putText(
+        put_text(
             header,
             header_line_2,
             (8, max(layout.header_height - 10, 30)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            layout.text_scale,
-            draw.text_color_rgb if pred_is_visible else draw.muted_text_color_rgb,
-            layout.text_thickness,
-            lineType=cv2.LINE_AA,
+            color_rgb=draw.text_color_rgb if pred_is_visible else draw.muted_text_color_rgb,
+            scale=layout.text_scale,
+            thickness=layout.text_thickness,
         )
 
         rendered_frames.append(np.concatenate([header, body], axis=0))
@@ -149,39 +147,24 @@ def render_animation_frames(
     return rendered_frames
 
 
-def save_gif(
+def _label(
+    panel: np.ndarray,
     *,
-    frames_rgb: Sequence[np.ndarray],
-    path: Path,
-    fps: float,
-    loop: int = 0,
-) -> None:
-    """Save rendered RGB frames as an animated GIF."""
-    if not frames_rgb:
-        raise ValueError("At least one frame is required to save a GIF.")
-    if fps <= 0:
-        raise ValueError("fps must be positive.")
-    if path.suffix.lower() != ".gif":
-        raise ValueError(f"Only .gif outputs are supported, got: {path}")
-
-    duration_ms = max(int(round(1000.0 / fps)), 1)
-    pil_frames = [
-        Image.fromarray(frame).convert(
-            "P",
-            palette=Image.Palette.ADAPTIVE,
-            colors=256,
-        )
-        for frame in frames_rgb
-    ]
-    path.parent.mkdir(parents=True, exist_ok=True)
-    pil_frames[0].save(
-        path,
-        save_all=True,
-        append_images=pil_frames[1:],
-        duration=duration_ms,
-        loop=loop,
-        disposal=2,
-        optimize=True,
+    text: str,
+    draw: DrawStyle,
+    layout: LayoutStyle,
+) -> np.ndarray:
+    return cast(
+        "np.ndarray",
+        label_panel(
+            panel,
+            text=text,
+            label_height=layout.panel_label_height,
+            background_rgb=layout.background_rgb,
+            text_color_rgb=draw.text_color_rgb,
+            text_scale=layout.text_scale,
+            text_thickness=layout.text_thickness,
+        ),
     )
 
 
@@ -218,7 +201,7 @@ def _render_heatmap_panel(
         (target_hw[1], target_hw[0]),
         interpolation=cv2.INTER_LINEAR,
     )
-    return cast(np.ndarray, heatmap_color)
+    return cast("np.ndarray", heatmap_color)
 
 
 def _draw_point(
@@ -239,74 +222,3 @@ def _draw_point(
         thickness=thickness,
         lineType=cv2.LINE_AA,
     )
-
-
-def _label_panel(
-    panel: np.ndarray,
-    *,
-    text: str,
-    draw: DrawStyle,
-    layout: LayoutStyle,
-) -> np.ndarray:
-    """Prepend a thin label strip above a panel."""
-    if layout.panel_label_height <= 0:
-        return panel
-    label = np.full(
-        (layout.panel_label_height, panel.shape[1], 3),
-        layout.background_rgb,
-        dtype=np.uint8,
-    )
-    cv2.putText(
-        label,
-        text,
-        (8, max(layout.panel_label_height - 7, 12)),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        layout.text_scale,
-        draw.text_color_rgb,
-        layout.text_thickness,
-        lineType=cv2.LINE_AA,
-    )
-    return cast(np.ndarray, np.concatenate([label, panel], axis=0))
-
-
-def _compose_grid(
-    *,
-    panels: Sequence[Sequence[np.ndarray]],
-    tile_gap: int,
-    background_rgb: tuple[int, int, int],
-) -> np.ndarray:
-    if not panels or not panels[0]:
-        raise ValueError("At least one panel is required.")
-
-    row_images = [
-        _compose_row(panels=row, tile_gap=tile_gap, background_rgb=background_rgb)
-        for row in panels
-    ]
-
-    row_width = row_images[0].shape[1]
-    canvas_height = sum(row.shape[0] for row in row_images) + (len(row_images) - 1) * tile_gap
-    canvas = np.full((canvas_height, row_width, 3), background_rgb, dtype=np.uint8)
-
-    cursor_y = 0
-    for row in row_images:
-        canvas[cursor_y : cursor_y + row.shape[0], :] = row
-        cursor_y += row.shape[0] + tile_gap
-    return cast(np.ndarray, canvas)
-
-
-def _compose_row(
-    *,
-    panels: Sequence[np.ndarray],
-    tile_gap: int,
-    background_rgb: tuple[int, int, int],
-) -> np.ndarray:
-    panel_height = panels[0].shape[0]
-    panel_width = panels[0].shape[1]
-    canvas_width = len(panels) * panel_width + (len(panels) - 1) * tile_gap
-    canvas = np.full((panel_height, canvas_width, 3), background_rgb, dtype=np.uint8)
-
-    cursor_x = 0
-    for panel in panels:
-        canvas[:, cursor_x : cursor_x + panel_width] = panel
-        cursor_x += panel_width + tile_gap
-    return cast(np.ndarray, canvas)

@@ -2,29 +2,28 @@
 
 from __future__ import annotations
 
-import csv
 import logging
-from collections.abc import Iterator, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-import cv2
-import numpy as np
 import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.tasks.ball_detection.data.augmentation import normalize_tensor_images_imagenet
-from src.tasks.ball_detection.data.types import FrameLabel
 from src.tasks.ball_detection.inference import BallDetectionPredictor
-from src.tasks.ball_detection.models.input_adapter import to_model_input
+from src.tasks.ball_detection.visualization.api.predict import (
+    build_mdd_frames,
+    predict_clip,
+)
+from src.tasks.ball_detection.visualization.io.clip import load_clip_sequence
 from src.tasks.ball_detection.visualization.rendering import (
     DrawStyle,
     LayoutStyle,
     render_animation_frames,
-    save_gif,
 )
-from src.utils.data.heatmaps import heatmaps_to_argmax
+from src.tasks.base.visualization.gif import save_gif
+from src.tasks.base.visualization.orchestrator import resolve_device
 
 logger = logging.getLogger(__name__)
 
@@ -52,27 +51,6 @@ class RuntimeConfig:
     clip_label: str
     draw: DrawStyle
     layout: LayoutStyle
-
-
-@dataclass(frozen=True)
-class ClipSequence:
-    """Loaded and preprocessed clip data for inference and rendering."""
-
-    frame_names: tuple[str, ...]
-    render_frames_rgb: tuple[torch.Tensor, ...]
-    model_images: torch.Tensor
-    gt_coords_px: torch.Tensor
-    gt_visibility: torch.Tensor
-
-
-@dataclass(frozen=True)
-class PredictionSequence:
-    """Aggregated per-frame predictions for one clip."""
-
-    heatmaps: torch.Tensor
-    coords_px: torch.Tensor
-    confidences: torch.Tensor
-    visibility: torch.Tensor
 
 
 def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
@@ -132,7 +110,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         clip_dir=clip_dir,
         checkpoint=checkpoint,
         save=save_path,
-        device=_resolve_device(str(run.get("device", "auto"))),
+        device=resolve_device(str(run.get("device", "auto"))),
         fps=fps,
         window_stride=window_stride,
         inference_batch_size=inference_batch_size,
@@ -168,7 +146,15 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
 
 def run_visualization(cfg: RuntimeConfig) -> int:
     """Run clip-level visualization and save a GIF."""
-    clip = _load_clip_sequence(cfg)
+    clip = load_clip_sequence(
+        clip_dir=cfg.clip_dir,
+        sequence_length=cfg.sequence_length,
+        image_size_hw=cfg.image_size_hw,
+        max_frames=cfg.max_frames,
+        normalize_imagenet=cfg.normalize_imagenet,
+        imagenet_mean=cfg.imagenet_mean,
+        imagenet_std=cfg.imagenet_std,
+    )
 
     logger.info("Loaded clip %s with %d frames.", cfg.clip_label, len(clip.frame_names))
     if cfg.info:
@@ -182,8 +168,16 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         cfg.checkpoint,
         device=cfg.device,
     )
-    predictions = _predict_clip(cfg=cfg, clip=clip, predictor=predictor)
-    mdd_frames_rgb = _build_mdd_frames(cfg=cfg, clip=clip, predictor=predictor)
+    predictions = predict_clip(
+        predictor=predictor,
+        clip=clip,
+        sequence_length=cfg.sequence_length,
+        window_stride=cfg.window_stride,
+        inference_batch_size=cfg.inference_batch_size,
+        image_size_hw=cfg.image_size_hw,
+        peak_threshold=cfg.peak_threshold,
+    )
+    mdd_frames_rgb = build_mdd_frames(predictor=predictor, clip=clip)
 
     rendered_frames = render_animation_frames(
         frames_rgb=[frame.cpu().numpy() for frame in clip.render_frames_rgb],
@@ -206,205 +200,6 @@ def run_visualization(cfg: RuntimeConfig) -> int:
     )
     logger.info("Saved clip visualization to %s", cfg.save)
     return 0
-
-
-def _load_clip_sequence(cfg: RuntimeConfig) -> ClipSequence:
-    label_path = cfg.clip_dir / "Label.csv"
-    if not cfg.clip_dir.exists():
-        raise FileNotFoundError(f"Clip directory not found: {cfg.clip_dir}")
-    if not label_path.exists():
-        raise FileNotFoundError(f"Label.csv not found for clip: {cfg.clip_dir}")
-
-    frame_paths = sorted(cfg.clip_dir.glob("*.jpg"))
-    if cfg.max_frames is not None:
-        frame_paths = frame_paths[: cfg.max_frames]
-    if len(frame_paths) < cfg.sequence_length:
-        raise ValueError(
-            f"Clip {cfg.clip_dir} has only {len(frame_paths)} frames, but model.num_frames={cfg.sequence_length}."
-        )
-
-    labels = _read_label_csv(label_path)
-    image_height, image_width = cfg.image_size_hw
-    render_frames_rgb: list[torch.Tensor] = []
-    model_frames: list[torch.Tensor] = []
-    gt_coords_px: list[tuple[float, float]] = []
-    gt_visibility: list[float] = []
-    frame_names: list[str] = []
-
-    for frame_path in frame_paths:
-        frame_bgr = cv2.imread(str(frame_path))
-        if frame_bgr is None:
-            raise RuntimeError(f"Failed to read frame: {frame_path}")
-
-        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-        original_height, original_width = frame_rgb.shape[:2]
-        resized_rgb = cv2.resize(
-            frame_rgb,
-            (image_width, image_height),
-            interpolation=cv2.INTER_LINEAR,
-        )
-
-        render_frames_rgb.append(torch.from_numpy(resized_rgb.copy()).to(torch.uint8))
-
-        model_frame = torch.from_numpy(resized_rgb.transpose(2, 0, 1)).to(torch.float32) / 255.0
-        model_frames.append(model_frame)
-
-        label = labels.get(frame_path.name, FrameLabel(visibility=0.0, x=0.0, y=0.0))
-        if label.visibility > 0:
-            gt_coords_px.append(
-                (
-                    label.x * image_width / max(original_width, 1),
-                    label.y * image_height / max(original_height, 1),
-                )
-            )
-            gt_visibility.append(1.0)
-        else:
-            gt_coords_px.append((0.0, 0.0))
-            gt_visibility.append(0.0)
-
-        frame_names.append(frame_path.name)
-
-    model_images = torch.stack(model_frames, dim=0)
-    if cfg.normalize_imagenet:
-        model_images = normalize_tensor_images_imagenet(
-            model_images,
-            mean=cfg.imagenet_mean,
-            std=cfg.imagenet_std,
-        )
-
-    return ClipSequence(
-        frame_names=tuple(frame_names),
-        render_frames_rgb=tuple(render_frames_rgb),
-        model_images=model_images,
-        gt_coords_px=torch.tensor(gt_coords_px, dtype=torch.float32),
-        gt_visibility=torch.tensor(gt_visibility, dtype=torch.float32),
-    )
-
-
-def _predict_clip(
-    *,
-    cfg: RuntimeConfig,
-    clip: ClipSequence,
-    predictor: BallDetectionPredictor,
-) -> PredictionSequence:
-    window_starts = _build_window_starts(
-        frame_count=len(clip.frame_names),
-        sequence_length=cfg.sequence_length,
-        stride=cfg.window_stride,
-    )
-    logger.info("Running predictor over %d overlapping window(s).", len(window_starts))
-
-    heatmap_sum: torch.Tensor | None = None
-    heatmap_count = torch.zeros(len(clip.frame_names), dtype=torch.float32)
-
-    for start_chunk in _chunked(window_starts, cfg.inference_batch_size):
-        batch = torch.stack(
-            [clip.model_images[start : start + cfg.sequence_length] for start in start_chunk],
-            dim=0,
-        )
-        outputs = predictor.predict(batch, return_heatmaps=True)
-        batch_heatmaps = outputs["heatmaps"].to(torch.float32)
-
-        if heatmap_sum is None:
-            heatmap_sum = torch.zeros(
-                (len(clip.frame_names), *batch_heatmaps.shape[-2:]),
-                dtype=torch.float32,
-            )
-
-        for window_index, start in enumerate(start_chunk):
-            end = start + cfg.sequence_length
-            heatmap_sum[start:end] += batch_heatmaps[window_index]
-            heatmap_count[start:end] += 1.0
-
-    if heatmap_sum is None:
-        raise RuntimeError("Failed to aggregate prediction heatmaps for the clip.")
-
-    averaged_heatmaps = heatmap_sum / torch.clamp(heatmap_count, min=1.0).view(-1, 1, 1)
-    coords_normalized, confidences = heatmaps_to_argmax(averaged_heatmaps)
-
-    image_height, image_width = cfg.image_size_hw
-    coords_px = torch.empty_like(coords_normalized)
-    coords_px[:, 0] = coords_normalized[:, 0] * max(image_width - 1, 0)
-    coords_px[:, 1] = coords_normalized[:, 1] * max(image_height - 1, 0)
-    visibility = confidences >= cfg.peak_threshold
-
-    return PredictionSequence(
-        heatmaps=averaged_heatmaps,
-        coords_px=coords_px,
-        confidences=confidences,
-        visibility=visibility,
-    )
-
-
-def _build_mdd_frames(
-    *,
-    cfg: RuntimeConfig,
-    clip: ClipSequence,
-    predictor: BallDetectionPredictor,
-) -> list[np.ndarray]:
-    """Build per-frame MDD RGB visualizations for the whole clip.
-
-    The MDD features are computed over the full consecutive frame sequence so
-    the panel reflects what the model derives as motion (green=brighten,
-    red=darken). Computed from the same preprocessed images the predictor
-    consumes to stay faithful to the model input.
-    """
-    mdd_config = {**predictor.model_config, "input_mode": "mdd", "in_channels": 2}
-    with torch.no_grad():
-        # (1, T, 3, H, W) -> (1, 2, T, H, W)
-        features = to_model_input(clip.model_images.unsqueeze(0), mdd_config)
-    brighten = features[0, 0].clamp(0.0, 1.0).cpu().numpy()
-    darken = features[0, 1].clamp(0.0, 1.0).cpu().numpy()
-
-    mdd_frames: list[np.ndarray] = []
-    for frame_index in range(brighten.shape[0]):
-        rgb = np.zeros((*brighten.shape[1:], 3), dtype=np.uint8)
-        rgb[..., 0] = (darken[frame_index] * 255.0).astype(np.uint8)
-        rgb[..., 1] = (brighten[frame_index] * 255.0).astype(np.uint8)
-        mdd_frames.append(rgb)
-    return mdd_frames
-
-
-def _build_window_starts(*, frame_count: int, sequence_length: int, stride: int) -> list[int]:
-    if frame_count < sequence_length:
-        raise ValueError(
-            f"frame_count must be >= sequence_length, got {frame_count} < {sequence_length}."
-        )
-
-    starts = list(range(0, frame_count - sequence_length + 1, stride))
-    last_start = frame_count - sequence_length
-    if starts[-1] != last_start:
-        starts.append(last_start)
-    return starts
-
-
-def _chunked(values: Sequence[int], chunk_size: int) -> Iterator[list[int]]:
-    for start_index in range(0, len(values), chunk_size):
-        yield list(values[start_index : start_index + chunk_size])
-
-
-def _read_label_csv(path: Path) -> dict[str, FrameLabel]:
-    labels: dict[str, FrameLabel] = {}
-    with path.open("r", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        required_fields = {"file name", "visibility", "x-coordinate", "y-coordinate"}
-        missing = required_fields.difference(reader.fieldnames or [])
-        if missing:
-            raise ValueError(f"Missing required CSV columns in {path}: {sorted(missing)}")
-        for row in reader:
-            frame_name = str(row["file name"]).strip()
-            labels[frame_name] = FrameLabel(
-                visibility=float(row["visibility"] or 0.0),
-                x=float(row["x-coordinate"] or 0.0),
-                y=float(row["y-coordinate"] or 0.0),
-            )
-    return labels
-
-
-def _resolve_device(device: str) -> str:
-    if device == "auto":
-        return "cuda" if torch.cuda.is_available() else "cpu"
-    return device
 
 
 def _parse_hw(value: object, *, name: str) -> tuple[int, int]:

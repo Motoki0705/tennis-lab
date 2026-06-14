@@ -4,16 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, cast
 
 import numpy as np
 import torch
-import torchvision.transforms.functional as TF
 from PIL import Image
 from torch import Tensor
 
 from src.tasks.base.inference.predictor import BasePredictor
-from src.tasks.court_detection.data.augmentation import IMAGENET_MEAN, IMAGENET_STD
+from src.tasks.court_detection.inference.preprocess import preprocess_court_image
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
@@ -89,26 +88,15 @@ class CourtKeypointPredictor(BasePredictor):
         tuple
             (tensor ``[1, 3, H', W']``, original_height, original_width)
         """
-        if isinstance(image, np.ndarray):
-            image = Image.fromarray(image)
+        return cast(
+            "tuple[Tensor, int, int]",
+            preprocess_court_image(
+                image,
+                short_side=self.short_side,
+                device=self.device,
+            ),
+        )
 
-        orig_w, orig_h = image.size
-
-        if orig_h <= orig_w:
-            new_h = self.short_side
-            new_w = int(round(orig_w * new_h / orig_h))
-        else:
-            new_w = self.short_side
-            new_h = int(round(orig_h * new_w / orig_w))
-        new_h = (new_h // 8) * 8
-        new_w = (new_w // 8) * 8
-        image = image.resize((new_w, new_h), Image.BILINEAR)
-
-        img_tensor = TF.to_tensor(image)
-        img_tensor = TF.normalize(img_tensor, IMAGENET_MEAN, IMAGENET_STD)
-        return img_tensor.unsqueeze(0).to(self.device), orig_h, orig_w
-
-    @torch.no_grad()
     def predict(
         self,
         image: np.ndarray | Image.Image | Tensor,
@@ -130,7 +118,8 @@ class CourtKeypointPredictor(BasePredictor):
                 image_tensor = image_tensor.unsqueeze(0)
             orig_h, orig_w = image_tensor.shape[-2], image_tensor.shape[-1]
 
-        logits = self.model(image_tensor)  # [1, K, H, W]
+        with torch.no_grad():
+            logits = self.model(image_tensor)  # [1, K, H, W]
 
         coords = self._heatmaps_to_coords(logits)[0].cpu()  # (K, 2)
         if orig_w > 1:
