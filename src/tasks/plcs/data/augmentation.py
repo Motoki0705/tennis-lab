@@ -2,63 +2,29 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import Any
 
 import torch
 from torch import Tensor
 
+from src.tasks.base.data.augmentation import BaseObservationAugmentation
 from src.utils.data.augmentation import (
+    _as_dict,
+    _enabled,
+    _prob,
+    _should_apply,
     add_temporally_correlated_jitter,
     apply_burst_visibility_dropout,
     apply_edge_aware_degradation,
     apply_speed_conditioned_localization_error,
     inject_false_positive_observations,
+    parse_float_range,
     random_visibility_dropout,
     scale_uv_with_visibility,
 )
 
 PLCSSample = dict[str, Tensor]
-
-
-def _as_dict(value: Any) -> dict[str, Any]:
-    """Convert plain dicts or DictConfig-like objects into a shallow dict."""
-    if value is None:
-        return {}
-    if isinstance(value, Mapping):
-        return dict(value)
-    if hasattr(value, "items"):
-        return dict(value.items())
-    return {}
-
-
-def _enabled(config: Mapping[str, Any], *, default: bool = False) -> bool:
-    return bool(config.get("enabled", default))
-
-
-def _prob(config: Mapping[str, Any], *, default: float = 1.0) -> float:
-    return float(config.get("prob", default))
-
-
-def _should_apply(prob: float, reference: Tensor) -> bool:
-    if prob <= 0:
-        return False
-    if prob >= 1:
-        return True
-    return bool(torch.rand((), device=reference.device).item() < prob)
-
-
-def _parse_float_range(value: Any, name: str) -> tuple[float, float]:
-    if (
-        not isinstance(value, Sequence)
-        or isinstance(value, (str, bytes))
-        or len(value) != 2
-    ):
-        raise ValueError(f"{name} must be a two-element list/tuple.")
-    out = (float(value[0]), float(value[1]))
-    if out[0] > out[1]:
-        raise ValueError(f"{name} min must be <= max, got {out}.")
-    return out
 
 
 def _clone_sample(sample: PLCSSample) -> PLCSSample:
@@ -129,26 +95,14 @@ def _add_visible_gaussian_noise(
     return (keypoints + noise * visible).clamp(0.0, 1.0)
 
 
-class PLCSObservationAugmentation:
+class PLCSObservationAugmentation(BaseObservationAugmentation):
     """Apply configured observation corruption to PLCS keypoint inputs."""
-
-    def __init__(self, config: Mapping[str, Any] | None = None) -> None:
-        self.config = _as_dict(config)
-        self.enabled = bool(self.config.get("enabled", True))
-        self.uv_scale_cfg = self._uv_scale_config()
-        self.gaussian_cfg = self._gaussian_config()
-        self.visibility_dropout_cfg = self._visibility_dropout_config()
-        self.temporal_jitter_cfg = _as_dict(self.config.get("temporal_jitter"))
-        self.burst_dropout_cfg = _as_dict(self.config.get("burst_dropout"))
-        self.false_positive_cfg = _as_dict(self.config.get("false_positive"))
-        self.edge_degradation_cfg = _as_dict(self.config.get("edge_degradation"))
-        self.speed_conditioned_cfg = _as_dict(self.config.get("speed_conditioned"))
 
     def _uv_scale_config(self) -> dict[str, Any]:
         if "uv_scale" in self.config:
             return _as_dict(self.config.get("uv_scale"))
         scale_range = self.config.get("scale_range", [1.0, 1.0])
-        scale_min, scale_max = _parse_float_range(scale_range, "augmentation.scale_range")
+        scale_min, scale_max = parse_float_range(scale_range, "augmentation.scale_range")
         return {
             "enabled": not (scale_min == 1.0 and scale_max == 1.0),
             "prob": 1.0,
@@ -283,7 +237,7 @@ class PLCSObservationAugmentation:
         cfg = self.uv_scale_cfg
         if not _enabled(cfg) or not _should_apply(_prob(cfg), sample["human_kp"]):
             return
-        scale_min, scale_max = _parse_float_range(
+        scale_min, scale_max = parse_float_range(
             cfg.get("scale_range", [1.0, 1.0]),
             "augmentation.uv_scale.scale_range",
         )
