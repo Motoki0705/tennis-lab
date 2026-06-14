@@ -35,7 +35,11 @@ from src.utils.models.embeddings import (
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
 )
-from src.utils.models.transformer_utils import build_self_attn_mask, validate_rope_dim
+from src.utils.models.transformer_utils import (
+    build_self_attn_mask,
+    resolve_rope_bases,
+    validate_rope_dim,
+)
 
 __all__ = [
     # Attention
@@ -71,5 +75,6 @@ __all__ = [
     "TransformerSequenceDiscriminator",
     # Shared transformer utilities
     "build_self_attn_mask",
+    "resolve_rope_bases",
     "validate_rope_dim",
 ]
