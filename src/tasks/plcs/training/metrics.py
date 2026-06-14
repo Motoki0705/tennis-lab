@@ -8,27 +8,11 @@ import torch
 from torch import Tensor
 
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+from src.utils.tensor_utils import normalize_padding_mask
 
 
 def _flatten_valid(valid: Tensor, values: Tensor) -> Tensor:
     return values.reshape(-1, values.shape[-1])[valid]
-
-
-def _valid_from_human_mask(human_mask: Tensor | None) -> Tensor | None:
-    if human_mask is None:
-        return None
-    if human_mask.dim() == 1 or human_mask.dim() == 2:
-        frame_valid = human_mask > 0
-    elif human_mask.dim() == 3:
-        frame_valid = (human_mask > 0).any(dim=1)
-    elif human_mask.dim() == 4:
-        frame_valid = (human_mask > 0).any(dim=1).any(dim=-1)
-    else:
-        raise ValueError(
-            "human_mask must be (B,), (B,T), (B,N,T), or (B,N,T,J), "
-            f"got shape {tuple(human_mask.shape)}"
-        )
-    return frame_valid.reshape(-1)
 
 
 class PLCSMetrics:
@@ -89,7 +73,7 @@ class PLCSMetrics:
             dict: Current batch metrics.
 
         """
-        valid = _valid_from_human_mask(human_mask)
+        valid = normalize_padding_mask(human_mask, flatten=True)
 
         # Flatten temporal dimension if present: (B, T, D) -> (B*T, D)
         if pred_position.dim() == 3:

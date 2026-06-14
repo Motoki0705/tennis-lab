@@ -20,11 +20,13 @@ from src.tasks.plcs.models.components.heads import (
     RotationHead,
 )
 from src.utils.models import (
-    MultiHeadSelfAttention,
     RMSNorm,
+    TransformerBlock,
+    TransformerBlockConfig,
     precompute_freqs_cis_nd,
+    resolve_rope_bases,
 )
-from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
+from src.utils.models.components.ffn_layers import default_ffn_dim
 from src.utils.models.embeddings import (
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
@@ -35,62 +37,6 @@ from src.utils.schema.player import NUM_HUMAN_KP
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
-
-
-class RoPETransformerBlock(nn.Module):
-    """Transformer block with SDPA and generic RoPE support."""
-
-    def __init__(
-        self,
-        *,
-        dim: int,
-        n_heads: int,
-        ffn_dim: int,
-        head_dim: int,
-        rope_dim: int,
-        attn_dropout: float,
-        ffn_type: Literal["swiglu", "mlp"],
-    ) -> None:
-        super().__init__()
-        self.attn_norm = RMSNorm(dim)
-        self.attn = MultiHeadSelfAttention(
-            dim=dim,
-            n_heads=n_heads,
-            head_dim=head_dim,
-            rope_dim=rope_dim,
-            attn_dropout=attn_dropout,
-        )
-
-        self.ffn_norm = RMSNorm(dim)
-        self.ffn = self._build_ffn(dim=dim, ffn_dim=ffn_dim, ffn_type=ffn_type)
-
-    @staticmethod
-    def _build_ffn(
-        *,
-        dim: int,
-        ffn_dim: int,
-        ffn_type: Literal["swiglu", "mlp"],
-    ) -> nn.Module:
-        if ffn_type == "swiglu":
-            return SwiGLU(dim, ffn_dim)
-        if ffn_type == "mlp":
-            return MLP(dim, ffn_dim)
-        raise ValueError(f"Unsupported ffn_type={ffn_type}")
-
-    def forward(
-        self,
-        x: Tensor,
-        *,
-        freqs_cis: Tensor,
-        attn_mask: Tensor | None,
-    ) -> Tensor:
-        x_attn = x + self.attn(
-            self.attn_norm(x),
-            freqs_cis=freqs_cis,
-            attn_mask=attn_mask,
-        )
-        x_fnn = x_attn + cast(Tensor, self.ffn(self.ffn_norm(x_attn)))
-        return x_fnn
 
 
 class PLCSMultiViewModel(nn.Module):
@@ -129,10 +75,11 @@ class PLCSMultiViewModel(nn.Module):
         rope_dim = head_dim if rope_dim is None else rope_dim
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
-        self.rope_bases = (
-            float(self.rope_theta if rope_theta_time is None else rope_theta_time),
-            float(self.rope_theta if rope_theta_camera is None else rope_theta_camera),
-            float(rope_theta_type),
+        self.rope_bases = resolve_rope_bases(
+            self.rope_theta,
+            rope_theta_time,
+            rope_theta_camera,
+            rope_theta_type,
         )
 
         self._validate_init_args(rope_dim=self.rope_dim)
@@ -161,14 +108,16 @@ class PLCSMultiViewModel(nn.Module):
 
         self.blocks = nn.ModuleList(
             [
-                RoPETransformerBlock(
-                    dim=hidden_dim,
-                    n_heads=num_heads,
-                    ffn_dim=ffn_dim,
-                    head_dim=head_dim,
-                    rope_dim=self.rope_dim,
-                    attn_dropout=dropout,
-                    ffn_type=ffn_type,
+                TransformerBlock(
+                    TransformerBlockConfig(
+                        dim=hidden_dim,
+                        n_heads=num_heads,
+                        ffn_dim=ffn_dim,
+                        head_dim=head_dim,
+                        rope_dim=self.rope_dim,
+                        attn_dropout=dropout,
+                        ffn_type=ffn_type,
+                    )
                 )
                 for _ in range(num_layers)
             ]

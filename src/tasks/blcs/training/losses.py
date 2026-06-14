@@ -9,18 +9,7 @@ from torch import Tensor
 from src.tasks.blcs.models.components.differentiable_projection import (
     DifferentiableProjection,
 )
-
-
-def _masked_mean(loss: Tensor, mask: Tensor | None = None) -> Tensor:
-    """Compute mean loss with an optional mask."""
-    if mask is None:
-        return loss.mean()
-
-    mask_expanded = mask.to(dtype=loss.dtype)
-    while mask_expanded.ndim < loss.ndim:
-        mask_expanded = mask_expanded.unsqueeze(-1)
-    mask_expanded = mask_expanded.expand_as(loss)
-    return (loss * mask_expanded).sum() / (mask_expanded.sum() + 1e-8)
+from src.utils.tensor_utils import masked_mean
 
 
 def trajectory_position_loss(
@@ -42,7 +31,7 @@ def trajectory_position_loss(
 
     """
     loss = nn.functional.smooth_l1_loss(pred, target, reduction="none")
-    return _masked_mean(loss, mask)
+    return masked_mean(loss, mask, eps=1e-8)
 
 
 def velocity_loss(
@@ -71,7 +60,7 @@ def velocity_loss(
     loss = nn.functional.smooth_l1_loss(pred_vel, target_vel, reduction="none")
     # Velocity is valid only when both adjacent frames are valid.
     vel_mask = mask[:, 1:] * mask[:, :-1] if mask is not None else None
-    return _masked_mean(loss, vel_mask)
+    return masked_mean(loss, vel_mask, eps=1e-8)
 
 
 def smoothness_loss(
@@ -98,7 +87,7 @@ def smoothness_loss(
     loss = (accel**2).sum(dim=-1)  # (B, T-2)
     # Acceleration is valid only when three consecutive frames are valid.
     accel_mask = mask[:, 2:] * mask[:, 1:-1] * mask[:, :-2] if mask is not None else None
-    return _masked_mean(loss, accel_mask)
+    return masked_mean(loss, accel_mask, eps=1e-8)
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +142,7 @@ def reprojection_loss(
         effective_mask = effective_mask * mask.unsqueeze(1)  # broadcast (B,1,T)
 
     loss = nn.functional.smooth_l1_loss(pred_uv, target_uv, reduction="none")  # (B, N, T, 2)
-    return _masked_mean(loss, effective_mask.unsqueeze(-1).expand_as(loss))
+    return masked_mean(loss, effective_mask.unsqueeze(-1).expand_as(loss), eps=1e-8)
 
 
 def uv_velocity_loss(
@@ -208,7 +197,7 @@ def uv_velocity_loss(
         vel_vis = vel_vis * vel_mask
 
     loss = nn.functional.smooth_l1_loss(pred_vel, target_vel, reduction="none")
-    return _masked_mean(loss, vel_vis.unsqueeze(-1).expand_as(loss))
+    return masked_mean(loss, vel_vis.unsqueeze(-1).expand_as(loss), eps=1e-8)
 
 
 class BLCSLoss(nn.Module):
