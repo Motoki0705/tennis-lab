@@ -34,16 +34,14 @@ class LayoutStyle:
     text_scale: float
     text_thickness: int
     background_rgb: tuple[int, int, int]
-    heatmap_alpha: float
-    show_heatmap_panel: bool
+    panel_label_height: int
 
 
 def render_animation_frames(
     *,
     frames_rgb: Sequence[np.ndarray],
     frame_names: Sequence[str],
-    gt_coords_px: Sequence[tuple[float, float]],
-    gt_visibility: Sequence[bool],
+    mdd_frames_rgb: Sequence[np.ndarray],
     pred_coords_px: Sequence[tuple[float, float]],
     pred_visibility: Sequence[bool],
     pred_confidences: Sequence[float],
@@ -53,15 +51,20 @@ def render_animation_frames(
     draw: DrawStyle,
     layout: LayoutStyle,
 ) -> list[np.ndarray]:
-    """Render animation frames for one clip."""
+    """Render 2x2 animation frames for one clip.
+
+    The four panels are arranged as::
+
+        [ RGB              | MDD                ]
+        [ RGB + pred coord | raw heatmap        ]
+    """
     rendered_frames: list[np.ndarray] = []
     total_frames = len(frames_rgb)
 
     for frame_index, (
         frame_rgb,
         frame_name,
-        gt_coord_px,
-        gt_is_visible,
+        mdd_frame_rgb,
         pred_coord_px,
         pred_is_visible,
         pred_confidence,
@@ -70,8 +73,7 @@ def render_animation_frames(
         zip(
             frames_rgb,
             frame_names,
-            gt_coords_px,
-            gt_visibility,
+            mdd_frames_rgb,
             pred_coords_px,
             pred_visibility,
             pred_confidences,
@@ -79,33 +81,35 @@ def render_animation_frames(
             strict=True,
         )
     ):
-        panels = [
+        top_left = _label_panel(
+            frame_rgb.copy(), text="RGB", draw=draw, layout=layout
+        )
+        top_right = _label_panel(
+            mdd_frame_rgb.copy(),
+            text="MDD (G=brighten, R=darken)",
+            draw=draw,
+            layout=layout,
+        )
+        bottom_left = _label_panel(
             _render_prediction_panel(
                 frame_rgb=frame_rgb,
-                gt_coord_px=gt_coord_px,
-                gt_is_visible=gt_is_visible,
                 pred_coord_px=pred_coord_px,
                 pred_is_visible=pred_is_visible,
                 draw=draw,
-            )
-        ]
+            ),
+            text="RGB + pred coord",
+            draw=draw,
+            layout=layout,
+        )
+        bottom_right = _label_panel(
+            _render_heatmap_panel(target_hw=frame_rgb.shape[:2], heatmap=pred_heatmap),
+            text="raw heatmap",
+            draw=draw,
+            layout=layout,
+        )
 
-        if layout.show_heatmap_panel:
-            panels.append(
-                _render_heatmap_panel(
-                    frame_rgb=frame_rgb,
-                    heatmap=pred_heatmap,
-                    gt_coord_px=gt_coord_px,
-                    gt_is_visible=gt_is_visible,
-                    pred_coord_px=pred_coord_px,
-                    pred_is_visible=pred_is_visible,
-                    draw=draw,
-                    layout=layout,
-                )
-            )
-
-        body = _compose_panels(
-            panels=panels,
+        body = _compose_grid(
+            panels=[[top_left, top_right], [bottom_left, bottom_right]],
             tile_gap=layout.tile_gap,
             background_rgb=layout.background_rgb,
         )
@@ -116,11 +120,8 @@ def render_animation_frames(
         )
 
         header_line_1 = f"{clip_label} | frame {frame_index + 1}/{total_frames} | {frame_name}"
-        visibility_text = "visible" if gt_is_visible else "hidden"
         threshold_suffix = "drawn" if pred_is_visible else f"below {peak_threshold:.2f}"
-        header_line_2 = (
-            f"GT: {visibility_text} | Pred confidence: {pred_confidence:.3f} ({threshold_suffix})"
-        )
+        header_line_2 = f"Pred confidence: {pred_confidence:.3f} ({threshold_suffix})"
 
         cv2.putText(
             header,
@@ -187,21 +188,11 @@ def save_gif(
 def _render_prediction_panel(
     *,
     frame_rgb: np.ndarray,
-    gt_coord_px: tuple[float, float],
-    gt_is_visible: bool,
     pred_coord_px: tuple[float, float],
     pred_is_visible: bool,
     draw: DrawStyle,
 ) -> np.ndarray:
     panel = frame_rgb.copy()
-    if gt_is_visible:
-        _draw_point(
-            panel,
-            coord_px=gt_coord_px,
-            radius=draw.gt_radius,
-            color_rgb=draw.gt_color_rgb,
-            thickness=draw.thickness,
-        )
     if pred_is_visible:
         _draw_point(
             panel,
@@ -215,45 +206,19 @@ def _render_prediction_panel(
 
 def _render_heatmap_panel(
     *,
-    frame_rgb: np.ndarray,
+    target_hw: tuple[int, int],
     heatmap: np.ndarray,
-    gt_coord_px: tuple[float, float],
-    gt_is_visible: bool,
-    pred_coord_px: tuple[float, float],
-    pred_is_visible: bool,
-    draw: DrawStyle,
-    layout: LayoutStyle,
 ) -> np.ndarray:
-    panel = frame_rgb.copy()
-    heatmap_uint8 = np.clip(heatmap, 0.0, 1.0)
-    heatmap_uint8 = (heatmap_uint8 * 255.0).astype(np.uint8)
+    """Render the raw (aggregated) heatmap as a standalone colormap panel."""
+    heatmap_uint8 = (np.clip(heatmap, 0.0, 1.0) * 255.0).astype(np.uint8)
     heatmap_color = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
     heatmap_color = cv2.cvtColor(heatmap_color, cv2.COLOR_BGR2RGB)
     heatmap_color = cv2.resize(
         heatmap_color,
-        (panel.shape[1], panel.shape[0]),
+        (target_hw[1], target_hw[0]),
         interpolation=cv2.INTER_LINEAR,
     )
-    panel = cv2.addWeighted(panel, 1.0 - layout.heatmap_alpha, heatmap_color, layout.heatmap_alpha, 0.0)
-
-    if gt_is_visible:
-        _draw_point(
-            panel,
-            coord_px=gt_coord_px,
-            radius=draw.gt_radius,
-            color_rgb=draw.gt_color_rgb,
-            thickness=draw.thickness,
-        )
-    if pred_is_visible:
-        _draw_point(
-            panel,
-            coord_px=pred_coord_px,
-            radius=draw.pred_radius,
-            color_rgb=draw.pred_color_rgb,
-            thickness=draw.thickness,
-        )
-
-    return cast(np.ndarray, panel)
+    return cast(np.ndarray, heatmap_color)
 
 
 def _draw_point(
@@ -276,23 +241,69 @@ def _draw_point(
     )
 
 
-def _compose_panels(
+def _label_panel(
+    panel: np.ndarray,
+    *,
+    text: str,
+    draw: DrawStyle,
+    layout: LayoutStyle,
+) -> np.ndarray:
+    """Prepend a thin label strip above a panel."""
+    if layout.panel_label_height <= 0:
+        return panel
+    label = np.full(
+        (layout.panel_label_height, panel.shape[1], 3),
+        layout.background_rgb,
+        dtype=np.uint8,
+    )
+    cv2.putText(
+        label,
+        text,
+        (8, max(layout.panel_label_height - 7, 12)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        layout.text_scale,
+        draw.text_color_rgb,
+        layout.text_thickness,
+        lineType=cv2.LINE_AA,
+    )
+    return cast(np.ndarray, np.concatenate([label, panel], axis=0))
+
+
+def _compose_grid(
+    *,
+    panels: Sequence[Sequence[np.ndarray]],
+    tile_gap: int,
+    background_rgb: tuple[int, int, int],
+) -> np.ndarray:
+    if not panels or not panels[0]:
+        raise ValueError("At least one panel is required.")
+
+    row_images = [
+        _compose_row(panels=row, tile_gap=tile_gap, background_rgb=background_rgb)
+        for row in panels
+    ]
+
+    row_width = row_images[0].shape[1]
+    canvas_height = sum(row.shape[0] for row in row_images) + (len(row_images) - 1) * tile_gap
+    canvas = np.full((canvas_height, row_width, 3), background_rgb, dtype=np.uint8)
+
+    cursor_y = 0
+    for row in row_images:
+        canvas[cursor_y : cursor_y + row.shape[0], :] = row
+        cursor_y += row.shape[0] + tile_gap
+    return cast(np.ndarray, canvas)
+
+
+def _compose_row(
     *,
     panels: Sequence[np.ndarray],
     tile_gap: int,
     background_rgb: tuple[int, int, int],
 ) -> np.ndarray:
-    if not panels:
-        raise ValueError("At least one panel is required.")
-
     panel_height = panels[0].shape[0]
     panel_width = panels[0].shape[1]
     canvas_width = len(panels) * panel_width + (len(panels) - 1) * tile_gap
-    canvas = np.full(
-        (panel_height, canvas_width, 3),
-        background_rgb,
-        dtype=np.uint8,
-    )
+    canvas = np.full((panel_height, canvas_width, 3), background_rgb, dtype=np.uint8)
 
     cursor_x = 0
     for panel in panels:
