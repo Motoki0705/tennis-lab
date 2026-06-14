@@ -1,25 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from concurrent.futures import ProcessPoolExecutor
-from itertools import repeat
 from typing import Any
 
 import torch
 from omegaconf import DictConfig, OmegaConf
 
+from src.tasks.base.generate_dataset.parallel_runner import (
+    run_parallel_scene_generation,
+)
 from src.tasks.plcs.generate_dataset.sampling.motion_sampler import MotionSampler
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData, SceneGenerator
 
 _WORKER_SCENE_GENERATOR: SceneGenerator | None = None
-
-
-def _require_positive_worker_count(num_workers: int) -> None:
-    if num_workers <= 0:
-        raise ValueError(
-            "Parallel PLCS scene generation requires num_workers >= 1 "
-            f"(got {num_workers})"
-        )
 
 
 def build_scene_generator(
@@ -75,23 +68,24 @@ def generate_parallel_scenes(
     num_workers: int,
 ) -> Iterator[SceneData]:
     """Generate PLCS scenes in parallel worker processes."""
-    _require_positive_worker_count(num_workers)
+    if num_workers < 1:
+        raise ValueError(
+            "Parallel PLCS scene generation requires num_workers >= 1 "
+            f"(got {num_workers})"
+        )
     if num_scenes <= 0:
         raise ValueError(
             f"Parallel PLCS scene generation requires num_scenes >= 1 (got {num_scenes})"
         )
 
-    max_workers = min(num_workers, num_scenes)
-
     config_dict = OmegaConf.to_container(config, resolve=True)
     if not isinstance(config_dict, dict):
         raise TypeError("PLCS parallel config must resolve to a dictionary.")
 
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        yield from executor.map(
-            _generate_scene_task,
-            range(start_index, start_index + num_scenes),
-            repeat(config_dict),
-            repeat(device),
-            chunksize=1,
-        )
+    yield from run_parallel_scene_generation(
+        _generate_scene_task,
+        list(range(start_index, start_index + num_scenes)),
+        config_dict,
+        device,
+        num_workers=num_workers,
+    )

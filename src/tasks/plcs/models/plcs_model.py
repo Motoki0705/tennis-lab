@@ -37,6 +37,7 @@ from src.utils.models import (
     TransformerBlockConfig,
     default_ffn_dim,
     precompute_freqs_cis_nd,
+    resolve_rope_bases,
 )
 from src.utils.models.embeddings import (
     CourtKPUVEmbedding,
@@ -127,10 +128,11 @@ class PLCSModel(nn.Module):
         rope_dim = head_dim if rope_dim is None else rope_dim
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
-        self.rope_bases = (
-            float(self.rope_theta if rope_theta_time is None else rope_theta_time),
-            float(self.rope_theta if rope_theta_camera is None else rope_theta_camera),
-            float(rope_theta_type),
+        self.rope_bases = resolve_rope_bases(
+            self.rope_theta,
+            rope_theta_time,
+            rope_theta_camera,
+            rope_theta_type,
         )
 
         if ffn_dim is None:

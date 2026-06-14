@@ -17,6 +17,7 @@ from src.utils.models import (
     build_self_attn_mask,
     default_ffn_dim,
     precompute_freqs_cis_nd,
+    resolve_rope_bases,
     validate_rope_dim,
 )
 from src.utils.models.embeddings import (
@@ -82,10 +83,11 @@ class BLCSMultiViewModel(nn.Module):
         self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
-        self.rope_bases = (
-            float(self.rope_theta if rope_theta_time is None else rope_theta_time),
-            float(self.rope_theta if rope_theta_camera is None else rope_theta_camera),
-            float(rope_theta_type),
+        self.rope_bases = resolve_rope_bases(
+            self.rope_theta,
+            rope_theta_time,
+            rope_theta_camera,
+            rope_theta_type,
         )
 
         if ffn_dim is None:

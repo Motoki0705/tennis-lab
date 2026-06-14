@@ -104,7 +104,8 @@ class BallDetectionPredictor(BasePredictor):
                   *return_heatmaps* is True.
         """
         with torch.no_grad():
-            model_input = to_model_input(images.to(self.device), self.model_config)
+            (images,) = self._to_device(self.device, images)
+            model_input = to_model_input(images, self.model_config)
             logits = self.model(model_input)
 
             # (B, 1, T, H, W) -> (B, T, H, W)

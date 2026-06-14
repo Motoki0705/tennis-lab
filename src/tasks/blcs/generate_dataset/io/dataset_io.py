@@ -64,17 +64,12 @@ class BLCSDatasetWriter(BaseDatasetWriter):
         camera_records: list[dict[str, float]] = []
         for i, cam in enumerate(scene.cameras):
             prefix = f"cam_{i}_"
-            scalars[f"{prefix}params"] = cam.camera_params
+            self._append_court_camera_arrays(arrays, scalars, cam, prefix)
+            # Ball-specific per-camera arrays (not shared with PLCS).
             arrays[f"{prefix}ball_uv"] = cam.ball_uv.astype(np.float32)
             arrays[f"{prefix}ball_visible"] = cam.ball_visible.astype(bool)
             arrays[f"{prefix}ball_visibility_ratio"] = np.array(
                 cam.ball_visibility_ratio,
-                dtype=np.float32,
-            )
-            arrays[f"{prefix}court_kp_uv"] = cam.court_kp_uv.astype(np.float32)
-            arrays[f"{prefix}court_kp_visible"] = cam.court_kp_visible.astype(bool)
-            arrays[f"{prefix}court_visibility_count"] = np.array(
-                cam.court_visibility_count,
                 dtype=np.float32,
             )
             camera_records.append(
@@ -104,17 +99,7 @@ class BLCSDatasetWriter(BaseDatasetWriter):
         }
         camera_records = self._append_camera_arrays(arrays, scalars, scene)
 
-        # Write meta.json
-        with open(scene_path / "meta.json", "w") as f:
-            json.dump(scene_meta.to_dict(), f, indent=2)
-
-        # Write scalars.json
-        with open(scene_path / "scalars.json", "w") as f:
-            json.dump(scalars, f, indent=2)
-
-        # Write array files
-        for key, arr in arrays.items():
-            np.save(scene_path / f"{key}.npy", arr)
+        self._write_scene_files(scene_path, scene_meta, scalars, arrays)
 
         self.scene_records.append(
             {

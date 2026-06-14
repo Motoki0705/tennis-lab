@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import torch
-import torch.nn as nn
 from torch import Tensor
 
+from src.utils.models.heads import MLPHead
 from src.utils.schema.player import NUM_HUMAN_KP
 
 
-class PositionHead(nn.Module):
+class PositionHead(MLPHead):
     """Predict 3D position from latent representation."""
 
     def __init__(
@@ -20,32 +20,20 @@ class PositionHead(nn.Module):
         num_layers: int = 2,
         dropout: float = 0.1,
     ) -> None:
-        super().__init__()
-
-        layers: list[nn.Module] = []
-        in_dim = int(input_dim)
-        hidden_dim = int(hidden_dim)
-
-        for _ in range(int(num_layers)):
-            layers.extend(
-                [
-                    nn.Linear(in_dim, hidden_dim),
-                    nn.LayerNorm(hidden_dim),
-                    nn.GELU(),
-                    nn.Dropout(float(dropout)),
-                ]
-            )
-            in_dim = hidden_dim
-
-        layers.append(nn.Linear(in_dim, int(output_dim)))
-        self.mlp = nn.Sequential(*layers)
+        super().__init__(
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+            output_dim=output_dim,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
 
     def forward(self, x: Tensor) -> Tensor:
         """Predict position from features."""
         return self.mlp(x)
 
 
-class RotationHead(nn.Module):
+class RotationHead(MLPHead):
     """Predict (cos(yaw), sin(yaw)) from latent representation."""
 
     def __init__(
@@ -55,25 +43,13 @@ class RotationHead(nn.Module):
         num_layers: int = 2,
         dropout: float = 0.1,
     ) -> None:
-        super().__init__()
-
-        layers: list[nn.Module] = []
-        in_dim = int(input_dim)
-        hidden_dim = int(hidden_dim)
-
-        for _ in range(int(num_layers)):
-            layers.extend(
-                [
-                    nn.Linear(in_dim, hidden_dim),
-                    nn.LayerNorm(hidden_dim),
-                    nn.GELU(),
-                    nn.Dropout(float(dropout)),
-                ]
-            )
-            in_dim = hidden_dim
-
-        layers.append(nn.Linear(in_dim, 2))
-        self.mlp = nn.Sequential(*layers)
+        super().__init__(
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+            output_dim=2,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
 
     def forward(self, x: Tensor) -> Tensor:
         """Predict unit-normalized (cos, sin)."""
@@ -81,7 +57,7 @@ class RotationHead(nn.Module):
         return torch.nn.functional.normalize(out, dim=-1)
 
 
-class CanonicalPoseHead(nn.Module):
+class CanonicalPoseHead(MLPHead):
     """Predict canonical 3D player joints from latent representation."""
 
     def __init__(
@@ -92,27 +68,15 @@ class CanonicalPoseHead(nn.Module):
         dropout: float = 0.1,
         num_keypoints: int = NUM_HUMAN_KP,
     ) -> None:
-        super().__init__()
-
-        self.num_keypoints = int(num_keypoints)
-
-        layers: list[nn.Module] = []
-        in_dim = int(input_dim)
-        hidden_dim = int(hidden_dim)
-
-        for _ in range(int(num_layers)):
-            layers.extend(
-                [
-                    nn.Linear(in_dim, hidden_dim),
-                    nn.LayerNorm(hidden_dim),
-                    nn.GELU(),
-                    nn.Dropout(float(dropout)),
-                ]
-            )
-            in_dim = hidden_dim
-
-        layers.append(nn.Linear(in_dim, self.num_keypoints * 3))
-        self.mlp = nn.Sequential(*layers)
+        n_kp = int(num_keypoints)
+        super().__init__(
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+            output_dim=n_kp * 3,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+        self.num_keypoints = n_kp
 
     def forward(self, x: Tensor) -> Tensor:
         """Predict canonical joints with shape ``(..., K, 3)``."""

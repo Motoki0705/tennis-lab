@@ -10,6 +10,41 @@ from __future__ import annotations
 from torch import Tensor
 
 
+def resolve_rope_bases(
+    rope_theta: float,
+    rope_theta_time: float | None,
+    rope_theta_camera: float | None,
+    rope_theta_type: float | None = None,
+) -> tuple[float, ...]:
+    """Resolve per-axis RoPE theta bases with fallback to ``rope_theta``.
+
+    Reproduces the ``rope_bases`` tuple construction shared by the PLCS/BLCS
+    frame models (3-tuple including a type axis) and the axial multi-view
+    models (2-tuple, no type axis).
+
+    Each axis-specific theta falls back to ``rope_theta`` when ``None``; the
+    resulting bases are ``(time, camera[, type])``.  The third (``type``)
+    element is only included when ``rope_theta_type is not None``.
+
+    Args:
+        rope_theta: Default RoPE theta used when an axis value is ``None``.
+        rope_theta_time: Theta for the time axis, or ``None`` to fall back.
+        rope_theta_camera: Theta for the camera axis, or ``None`` to fall back.
+        rope_theta_type: Theta for the type axis.  When ``None``, the type
+            axis is omitted (yielding a 2-tuple); otherwise it is included.
+
+    Returns:
+        tuple[float, ...]: ``(time, camera)`` or ``(time, camera, type)``.
+    """
+    bases = [
+        float(rope_theta if rope_theta_time is None else rope_theta_time),
+        float(rope_theta if rope_theta_camera is None else rope_theta_camera),
+    ]
+    if rope_theta_type is not None:
+        bases.append(float(rope_theta_type))
+    return tuple(bases)
+
+
 def build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
     """Build a self-attention keep-mask from a boolean valid mask.
 

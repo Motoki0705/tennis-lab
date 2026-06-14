@@ -8,11 +8,6 @@ from pathlib import Path
 from omegaconf import DictConfig
 
 from src.tasks.base.data.chunk_manager import (
-    ChunkGenerator,
-    ChunkInfo,
-    ChunkState,
-)
-from src.tasks.base.data.chunk_manager import (
     ChunkManager as BaseChunkManager,
 )
 from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
@@ -99,4 +94,4 @@ class ChunkManager(BaseChunkManager):
         )
 
 
-__all__ = ["ChunkGenerator", "ChunkInfo", "ChunkManager", "ChunkState"]
+__all__ = ["ChunkManager"]

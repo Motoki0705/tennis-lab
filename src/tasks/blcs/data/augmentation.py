@@ -2,63 +2,26 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import Any
 
 import torch
 from torch import Tensor
 
+from src.tasks.base.data.augmentation import BaseObservationAugmentation
 from src.tasks.blcs.data.types import BLCSMultiViewSample
 from src.utils.data.augmentation import (
+    _as_dict,
     add_gaussian_noise,
     add_temporally_correlated_jitter,
     apply_burst_visibility_dropout,
     apply_edge_aware_degradation,
     apply_speed_conditioned_localization_error,
     inject_false_positive_observations,
+    parse_float_range,
     random_visibility_dropout,
     scale_uv_with_visibility,
 )
-
-
-def _as_dict(value: Any) -> dict[str, Any]:
-    """Convert plain dicts or DictConfig-like objects into a shallow dict."""
-    if value is None:
-        return {}
-    if isinstance(value, Mapping):
-        return dict(value)
-    if hasattr(value, "items"):
-        return dict(value.items())
-    return {}
-
-
-def _enabled(config: Mapping[str, Any], *, default: bool = False) -> bool:
-    return bool(config.get("enabled", default))
-
-
-def _prob(config: Mapping[str, Any], *, default: float = 1.0) -> float:
-    return float(config.get("prob", default))
-
-
-def _should_apply(prob: float, reference: Tensor) -> bool:
-    if prob <= 0:
-        return False
-    if prob >= 1:
-        return True
-    return bool(torch.rand((), device=reference.device).item() < prob)
-
-
-def _parse_float_range(value: Any, name: str) -> tuple[float, float]:
-    if (
-        not isinstance(value, Sequence)
-        or isinstance(value, (str, bytes))
-        or len(value) != 2
-    ):
-        raise ValueError(f"{name} must be a two-element list/tuple.")
-    out = (float(value[0]), float(value[1]))
-    if out[0] > out[1]:
-        raise ValueError(f"{name} min must be <= max, got {out}.")
-    return out
 
 
 def _clone_sample(sample: BLCSMultiViewSample) -> BLCSMultiViewSample:
@@ -68,7 +31,7 @@ def _clone_sample(sample: BLCSMultiViewSample) -> BLCSMultiViewSample:
     }
 
 
-class BLCSBallObservationAugmentation:
+class BLCSBallObservationAugmentation(BaseObservationAugmentation):
     """Apply configured detector-like corruption to BLCS ball observations.
 
     The class intentionally modifies only observation tensors.  Clean 3D labels
@@ -77,26 +40,16 @@ class BLCSBallObservationAugmentation:
     """
 
     def __init__(self, config: Mapping[str, Any] | None = None) -> None:
-        self.config = _as_dict(config)
-        self.enabled = bool(self.config.get("enabled", True))
+        super().__init__(config)
         self.preserve_clean_targets = bool(
             self.config.get("preserve_clean_targets", True)
         )
-
-        self.uv_scale_cfg = self._uv_scale_config()
-        self.gaussian_cfg = self._gaussian_config()
-        self.visibility_dropout_cfg = self._visibility_dropout_config()
-        self.temporal_jitter_cfg = _as_dict(self.config.get("temporal_jitter"))
-        self.burst_dropout_cfg = _as_dict(self.config.get("burst_dropout"))
-        self.false_positive_cfg = _as_dict(self.config.get("false_positive"))
-        self.edge_degradation_cfg = _as_dict(self.config.get("edge_degradation"))
-        self.speed_conditioned_cfg = _as_dict(self.config.get("speed_conditioned"))
 
     def _uv_scale_config(self) -> dict[str, Any]:
         if "uv_scale" in self.config:
             return _as_dict(self.config.get("uv_scale"))
         scale_range = self.config.get("scale_range", [1.0, 1.0])
-        scale_min, scale_max = _parse_float_range(scale_range, "augmentation.scale_range")
+        scale_min, scale_max = parse_float_range(scale_range, "augmentation.scale_range")
         return {
             "enabled": not (scale_min == 1.0 and scale_max == 1.0),
             "prob": 1.0,
@@ -178,14 +131,9 @@ class BLCSBallObservationAugmentation:
 
     def _apply_uv_scale(self, sample: BLCSMultiViewSample) -> None:
         cfg = self.uv_scale_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), sample["ball_uv"]):
+        if not self._active(cfg, sample["ball_uv"]):
             return
-        scale_min, scale_max = _parse_float_range(
-            cfg.get("scale_range", [1.0, 1.0]),
-            "augmentation.uv_scale.scale_range",
-        )
-        if scale_min <= 0 or scale_max <= 0:
-            raise ValueError("augmentation.uv_scale.scale_range values must be positive.")
+        scale_min, scale_max = self._parse_scale_range(cfg)
         scale = (
             torch.rand((), device=sample["ball_uv"].device).item()
             * (scale_max - scale_min)
@@ -208,7 +156,7 @@ class BLCSBallObservationAugmentation:
 
     def _apply_gaussian_noise(self, sample: BLCSMultiViewSample) -> None:
         cfg = self.gaussian_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), sample["ball_uv"]):
+        if not self._active(cfg, sample["ball_uv"]):
             return
         ball_std = float(cfg.get("ball_std", cfg.get("uv_noise_std", 0.0)))
         court_std = float(cfg.get("court_std", ball_std))
@@ -225,7 +173,7 @@ class BLCSBallObservationAugmentation:
 
     def _apply_temporal_jitter(self, ball_uv: Tensor, ball_vis: Tensor) -> Tensor:
         cfg = self.temporal_jitter_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), ball_uv):
+        if not self._active(cfg, ball_uv):
             return ball_uv
         return add_temporally_correlated_jitter(
             ball_uv,
@@ -241,7 +189,7 @@ class BLCSBallObservationAugmentation:
         ball_vis: Tensor,
     ) -> tuple[Tensor, Tensor]:
         cfg = self.speed_conditioned_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), ball_uv):
+        if not self._active(cfg, ball_uv):
             return ball_uv, ball_vis
         return apply_speed_conditioned_localization_error(
             ball_uv,
@@ -258,7 +206,7 @@ class BLCSBallObservationAugmentation:
         ball_vis: Tensor,
     ) -> tuple[Tensor, Tensor]:
         cfg = self.edge_degradation_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), ball_uv):
+        if not self._active(cfg, ball_uv):
             return ball_uv, ball_vis
         return apply_edge_aware_degradation(
             ball_uv,
@@ -271,7 +219,7 @@ class BLCSBallObservationAugmentation:
 
     def _apply_visibility_dropout(self, ball_vis: Tensor) -> Tensor:
         cfg = self.visibility_dropout_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), ball_vis):
+        if not self._active(cfg, ball_vis):
             return ball_vis
         return random_visibility_dropout(
             ball_vis,
@@ -280,7 +228,7 @@ class BLCSBallObservationAugmentation:
 
     def _apply_burst_dropout(self, ball_vis: Tensor) -> Tensor:
         cfg = self.burst_dropout_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), ball_vis):
+        if not self._active(cfg, ball_vis):
             return ball_vis
         return apply_burst_visibility_dropout(
             ball_vis,
@@ -298,7 +246,7 @@ class BLCSBallObservationAugmentation:
         dropped_mask: Tensor,
     ) -> tuple[Tensor, Tensor]:
         cfg = self.false_positive_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), ball_uv):
+        if not self._active(cfg, ball_uv):
             return ball_uv, ball_vis
         return inject_false_positive_observations(
             ball_uv,

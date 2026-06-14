@@ -1,4 +1,10 @@
-"""Loss functions for court detection training."""
+"""Loss functions for court detection training.
+
+The focal heatmap loss is provided by the shared foundation as
+:class:`src.tasks.base.training.losses.FocalBCEWithLogitsLoss`; it is
+re-exported here so existing ``court_detection.training`` references keep
+working unchanged.
+"""
 
 from __future__ import annotations
 
@@ -6,20 +12,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
-class FocalBCEWithLogitsLoss(nn.Module):
-    """Focal-modulated BCE operating on raw logits."""
-
-    def __init__(self, gamma: float = 2.0) -> None:
-        super().__init__()
-        self.gamma = gamma
-
-    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        p = torch.sigmoid(logits)
-        bce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
-        p_t = p * targets + (1.0 - p) * (1.0 - targets)
-        focal_weight = (1.0 - p_t) ** self.gamma
-        return (focal_weight * bce).mean()
+from src.tasks.base.training.losses import (
+    FocalBCEWithLogitsLoss as FocalBCEWithLogitsLoss,
+)
 
 
 class DiceLoss(nn.Module):
