@@ -23,8 +23,7 @@ layout:
   text_scale: 0.52
   text_thickness: 1
   background_rgb: [18, 18, 18]
-  heatmap_alpha: 0.45
-  show_heatmap_panel: true
+  panel_label_height: 24
 
 gif:
   loop: 0
