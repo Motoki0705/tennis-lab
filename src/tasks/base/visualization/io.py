@@ -38,7 +38,7 @@ def resolve_cameras(
     """
     if cameras == "all":
         selected = all_camera_fn()
-    elif cameras:
+    elif isinstance(cameras, list) and cameras:
         selected = list(cameras)
     else:
         selected = [camera]

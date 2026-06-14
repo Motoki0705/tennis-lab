@@ -37,7 +37,7 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
 
     def __init__(self, config: DictConfig | None = None) -> None:
         super().__init__()
-        self.config = config or {}
+        self.config: DictConfig | dict[str, Any] = config or {}
 
         data_cfg = self.config.get("data", {})
         self.batch_size = int(data_cfg.get("batch_size", self.default_batch_size))

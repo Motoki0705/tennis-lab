@@ -8,6 +8,8 @@ duplicated across the PLCS heads (``PositionHead``/``RotationHead``/
 
 from __future__ import annotations
 
+from typing import cast
+
 import torch.nn as nn
 from torch import Tensor
 
@@ -61,4 +63,4 @@ class MLPHead(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         """Apply the MLP to the input features."""
-        return self.mlp(x)
+        return cast(Tensor, self.mlp(x))

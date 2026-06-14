@@ -8,8 +8,10 @@ device resolution, Hydra camera-selection parsing, and animation save/show.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, cast
 
 import matplotlib.pyplot as plt
 import torch
@@ -51,11 +53,11 @@ def parse_cameras(raw_value: object) -> list[int] | str | None:
         if stripped == "all":
             return "all"
         return [int(part.strip()) for part in stripped.split(",")]
-    return [int(v) for v in raw_value]
+    return [int(v) for v in cast("Iterable[Any]", raw_value)]
 
 
 def save_or_show_animation(
-    anim,  # type: ignore[no-untyped-def]
+    anim: Any,
     save: Path | None,
     fps: float,
 ) -> None:
