@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -74,17 +73,12 @@ class PLCSDatasetWriter(BaseDatasetWriter):
         camera_metas = []
         for i, cam in enumerate(scene.cameras):
             prefix = f"cam_{i}_"
-            scalars[f"{prefix}params"] = cam.camera_params
             arrays[f"{prefix}human_kp_uv"] = cam.human_kp_uv.astype(np.float32)
             arrays[f"{prefix}human_kp_visible"] = cam.human_kp_visible.astype(bool)
             arrays[f"{prefix}human_visibility_ratio"] = np.array(
                 cam.human_visibility_ratio, dtype=np.float32
             )
-            arrays[f"{prefix}court_kp_uv"] = cam.court_kp_uv.astype(np.float32)
-            arrays[f"{prefix}court_kp_visible"] = cam.court_kp_visible.astype(bool)
-            arrays[f"{prefix}court_visibility_count"] = np.array(
-                cam.court_visibility_count, dtype=np.float32
-            )
+            self._append_court_camera_arrays(arrays, scalars, cam, prefix)
 
             camera_metas.append(
                 {
@@ -93,17 +87,7 @@ class PLCSDatasetWriter(BaseDatasetWriter):
                 }
             )
 
-        # Write meta.json
-        with open(scene_path / "meta.json", "w") as f:
-            json.dump(meta.to_dict(), f, indent=2)
-
-        # Write scalars.json
-        with open(scene_path / "scalars.json", "w") as f:
-            json.dump(scalars, f, indent=2)
-
-        # Write array files
-        for key, arr in arrays.items():
-            np.save(scene_path / f"{key}.npy", arr)
+        self._write_scene_files(scene_path, meta, scalars, arrays)
 
         self.scene_records.append(
             {
