@@ -6,11 +6,14 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
+from src.tasks.base.visualization.orchestrator import (
+    parse_cameras,
+    resolve_device,
+    save_or_show_animation,
+)
 from src.tasks.plcs.visualization.api.predict import predict_scene
 from src.tasks.plcs.visualization.io.scene import load_scene_bundle
 from src.tasks.plcs.visualization.rendering import PLCSSceneRenderer
@@ -34,27 +37,6 @@ class RuntimeConfig:
     info: bool
 
 
-def _resolve_device(device: str) -> str:
-    """Resolve ``auto`` device selection."""
-    if device == "auto":
-        return "cuda" if torch.cuda.is_available() else "cpu"
-    return device
-
-
-def _parse_cameras(raw_value: object) -> list[int] | str | None:
-    """Parse Hydra camera selection value into optional list[int]."""
-    if raw_value is None or raw_value == "":
-        return None
-    if isinstance(raw_value, str):
-        stripped = raw_value.strip()
-        if stripped == "":
-            return None
-        if stripped == "all":
-            return "all"
-        return [int(part.strip()) for part in stripped.split(",")]
-    return [int(v) for v in raw_value]
-
-
 def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     """Build runtime config from composed Hydra config."""
     vis = cfg.visualization
@@ -65,12 +47,12 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         mode=str(vis.mode),
         scene_path=Path(to_absolute_path(str(vis.scene_path))),
         checkpoint=Path(to_absolute_path(str(vis.checkpoint))) if vis.checkpoint else None,
-        device=_resolve_device(str(run_device)),
+        device=resolve_device(str(run_device)),
         animation_view=str(vis.animation_view),
         fps=float(vis.fps) if vis.fps is not None else None,
         save=Path(to_absolute_path(str(vis.save))) if vis.save else None,
         camera=int(vis.get("camera", 0)),
-        cameras=_parse_cameras(vis.get("cameras")),
+        cameras=parse_cameras(vis.get("cameras")),
         info=bool(vis.info),
     )
 
@@ -147,12 +129,6 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             fps=fps,
         )
 
-    if cfg.save is not None:
-        cfg.save.parent.mkdir(parents=True, exist_ok=True)
-        anim.save(str(cfg.save), fps=fps)
-        plt.close()
-        logger.info(f"Saved animation to {cfg.save}")
-    else:
-        plt.show()
+    save_or_show_animation(anim, cfg.save, fps)
 
     return 0

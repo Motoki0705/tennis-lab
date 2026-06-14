@@ -2,48 +2,22 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
+from src.tasks.base.visualization.io import BaseSceneBundle, resolve_cameras
 from src.tasks.blcs.generate_dataset.io.dataset_io import load_scene
 
 
 @dataclass(frozen=True)
-class SceneBundle:
+class SceneBundle(BaseSceneBundle):
     """Loaded scene plus extracted artifacts for visualization."""
 
-    scene: dict[str, Any]
-    gt_positions: np.ndarray
-    cameras: list[int]
-    fps: float
-
-
-def _resolve_cameras(
-    scene: dict[str, Any],
-    camera: int,
-    cameras: list[int] | str | None,
-) -> list[int]:
-    """Resolve and validate camera indices."""
-    num_cameras = int(scene["num_cameras"])
-    if cameras == "all":
-        selected = get_available_camera_indices(scene)
-    elif cameras:
-        selected = cameras
-    else:
-        selected = [camera]
-
-    if not selected:
-        raise ValueError("No cameras selected.")
-
-    for cam_idx in selected:
-        if cam_idx < 0 or cam_idx >= num_cameras:
-            raise ValueError(
-                f"Camera {cam_idx} out of range (0-{num_cameras - 1})."
-            )
-    return selected
+    scene: dict[str, Any] = field(default_factory=dict)
+    gt_positions: np.ndarray = field(default_factory=lambda: np.empty(0))
 
 
 def get_available_camera_indices(scene: dict[str, Any]) -> list[int]:
@@ -70,7 +44,12 @@ def load_scene_bundle(
     gt_positions = scene["ball_pos_world"]
     fps = float(scene["meta"].get("fps_out", 30.0))
 
-    selected_cameras = _resolve_cameras(scene, camera=camera, cameras=cameras)
+    selected_cameras = resolve_cameras(
+        int(scene["num_cameras"]),
+        camera,
+        cameras,
+        lambda: get_available_camera_indices(scene),
+    )
 
     return SceneBundle(
         scene=scene,

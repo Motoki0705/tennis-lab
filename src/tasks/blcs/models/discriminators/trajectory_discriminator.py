@@ -6,14 +6,20 @@ from typing import TYPE_CHECKING
 
 from torch import Tensor
 
-from src.utils.models.architectures import TransformerSequenceDiscriminator
+from src.utils.models.architectures import (
+    TransformerSequenceDiscriminator,
+    build_trajectory_discriminator,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
 class BLCSTrajectoryDiscriminator(TransformerSequenceDiscriminator):
-    """BLCS-compatible wrapper over the shared sequence discriminator."""
+    """BLCS-compatible wrapper over the shared sequence discriminator.
+
+    Scores 3D ball trajectories (``input_dim=3``).
+    """
 
     def __init__(
         self,
@@ -46,25 +52,21 @@ class BLCSTrajectoryDiscriminator(TransformerSequenceDiscriminator):
         )
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> BLCSTrajectoryDiscriminator:
-        """Build discriminator from training.gan.discriminator config."""
+    def from_config(cls, config: DictConfig) -> TransformerSequenceDiscriminator:
+        """Build discriminator from ``training.gan.discriminator`` config.
+
+        Delegates kwarg parsing to the shared
+        :func:`build_trajectory_discriminator` factory (``input_dim=3``).
+        """
         train_cfg = config.get("training", {}) or {}
         gan_cfg = train_cfg.get("gan", {}) or {}
         disc_cfg = gan_cfg.get("discriminator", {}) or {}
         data_cfg = config.get("data", {}) or {}
 
-        return cls(
-            hidden_dim=int(disc_cfg.get("hidden_dim", 128)),
-            num_layers=int(disc_cfg.get("num_layers", 4)),
-            num_heads=int(disc_cfg.get("num_heads", 4)),
-            ffn_dim=disc_cfg.get("ffn_dim", None),
-            dropout=float(disc_cfg.get("dropout", 0.1)),
-            rope_dim=disc_cfg.get("rope_dim", None),
-            rope_theta=float(disc_cfg.get("rope_theta", 10000.0)),
-            ffn_type=str(disc_cfg.get("ffn_type", "swiglu")),
-            max_seq_len=int(disc_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))),
-            invisible_init_std=float(disc_cfg.get("invisible_init_std", 0.02)),
-            cls_init_std=float(disc_cfg.get("cls_init_std", 0.02)),
+        return build_trajectory_discriminator(
+            input_dim=3,
+            disc_cfg=disc_cfg,
+            default_max_seq_len=int(data_cfg.get("max_seq_len", 120)),
         )
 
     def forward(self, position_3d: Tensor, *, mask: Tensor | None = None) -> Tensor:

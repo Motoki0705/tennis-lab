@@ -17,6 +17,7 @@ from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch
 from src.tasks.blcs.models import build_blcs_discriminator, build_blcs_model
 from src.tasks.blcs.training.losses import BLCSLoss
 from src.tasks.blcs.training.metrics import BLCSMetrics
+from src.utils.tensor_utils import normalize_padding_mask
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -80,24 +81,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def _normalize_loss_mask(self, batch: BLCSBatch | BLCSMultiViewBatch) -> Tensor | None:
         """Normalize loss/metric mask to shape (B, T)."""
-        ball_mask = batch.get("ball_mask")
-        if ball_mask is None:
-            return None
-        if ball_mask.ndim == 2:
-            return ball_mask
-        if ball_mask.ndim == 3:
-            return (ball_mask > 0).any(dim=1)
-        raise ValueError(
-            f"ball_mask must have 2 or 3 dims, got shape {tuple(ball_mask.shape)}"
-        )
-
-    def _select_metrics(self, stage: str) -> BLCSMetrics:
-        """Return metrics object for the current stage."""
-        if stage == "train":
-            return self.train_metrics
-        if stage == "val":
-            return self.val_metrics
-        return self.test_metrics
+        return normalize_padding_mask(batch.get("ball_mask"))
 
     def _compute_supervised_result(
         self,
@@ -123,7 +107,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             camera_h=batch.get("camera_h"),
         )
 
-        metrics = self._select_metrics(stage).update(
+        metrics = self._metric_tracker_for_stage(stage).update(
             outputs["position"],
             batch["position_3d"],
             mask,
@@ -147,16 +131,14 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         prog_bar = stage != "test"
         self.log(f"{stage}/loss", loss, prog_bar=prog_bar)
         self.log(f"{stage}/pos_error_m", metrics.get("position_error_m", 0), prog_bar=prog_bar)
-        if stage == "train" and self.gan_enabled:
-            self.log("train/gan_weight", float(self.current_gan_weight))
-            self.log("train/gan_phase_active", float(self.gan_phase_active))
-            if "loss_gan_generator" in metrics:
-                self.log("train/loss_gan_generator", metrics["loss_gan_generator"])
-            if "loss_gan_discriminator" in metrics:
-                self.log("train/loss_gan_discriminator", metrics["loss_gan_discriminator"])
+        self._log_gan_metrics(stage, metrics)
 
     def _metric_tracker_for_stage(self, stage: str) -> BLCSMetrics:
-        return self._select_metrics(stage)
+        if stage == "train":
+            return self.train_metrics
+        if stage == "val":
+            return self.val_metrics
+        return self.test_metrics
 
     def configure_optimizers(self) -> Any:
         """Configure generator/discriminator optimizers through the shared GAN helper."""

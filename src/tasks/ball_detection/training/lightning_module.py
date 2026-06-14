@@ -19,10 +19,10 @@ from src.tasks.ball_detection.models import (
     build_ball_detection_model,
     to_model_input,
 )
-from src.tasks.ball_detection.training.losses import BallDetectionFocalLoss
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.base.training.losses import FocalBCEWithLogitsLoss
 from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
 from src.utils.data.heatmaps import heatmaps_to_soft_argmax
 
@@ -58,7 +58,8 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
         self.model = build_ball_detection_model(self.config)
 
-        self.loss_fn = BallDetectionFocalLoss(loss_cfg)
+        loss_gamma = float(loss_cfg.get("gamma", 2.0))
+        self.loss_fn = FocalBCEWithLogitsLoss(gamma=loss_gamma, validate_shape=True)
 
         train_cfg = self.config.get("training", {})
         gan_cfg = train_cfg.get("gan", {}) or {}
@@ -191,13 +192,7 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def _log_stage_metrics(self, stage: str, loss: Tensor, metrics: dict[str, Any]) -> None:
         self.log(f"{stage}/loss", loss, prog_bar=True, sync_dist=True)
-        if stage == "train" and self.gan_enabled:
-            self.log("train/gan_weight", float(self.current_gan_weight))
-            self.log("train/gan_phase_active", float(self.gan_phase_active))
-            if "loss_gan_generator" in metrics:
-                self.log("train/loss_gan_generator", metrics["loss_gan_generator"])
-            if "loss_gan_discriminator" in metrics:
-                self.log("train/loss_gan_discriminator", metrics["loss_gan_discriminator"])
+        self._log_gan_metrics(stage, metrics)
 
     def configure_optimizers(self) -> Any:
         """Configure generator/discriminator optimizers through the shared GAN helper."""

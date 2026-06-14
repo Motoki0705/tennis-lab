@@ -18,6 +18,7 @@ from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
 from src.tasks.plcs.utils.pose_geometry import canonical_pose_to_world_pose
 from src.utils.schema.player import COCO17_SKELETON
+from src.utils.tensor_utils import normalize_padding_mask
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -51,34 +52,16 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         )
 
         metrics_cfg = self.config.get("metrics", {})
-        self.train_metrics = PLCSMetrics(
-            position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
-            angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
-        )
-        self.val_metrics = PLCSMetrics(
-            position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
-            angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
-        )
-        self.test_metrics = PLCSMetrics(
-            position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
-            angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
-        )
 
-    def _normalize_frame_mask(self, human_mask: Tensor | None) -> Tensor | None:
-        if human_mask is None:
-            return None
-        if human_mask.dim() == 1:
-            return human_mask > 0
-        if human_mask.dim() == 2:
-            return human_mask > 0
-        if human_mask.dim() == 3:
-            return (human_mask > 0).any(dim=1)
-        if human_mask.dim() == 4:
-            return (human_mask > 0).any(dim=1).any(dim=-1)
-        raise ValueError(
-            "human_mask must be (B,), (B,T), (B,N,T), or (B,N,T,J), "
-            f"got shape {tuple(human_mask.shape)}"
-        )
+        def _build_metrics() -> PLCSMetrics:
+            return PLCSMetrics(
+                position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
+                angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
+            )
+
+        self.train_metrics = _build_metrics()
+        self.val_metrics = _build_metrics()
+        self.test_metrics = _build_metrics()
 
     def _pose_sequence(self, position: Tensor, rotation: Tensor) -> Tensor:
         if position.ndim == 2:
@@ -95,7 +78,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             court_vis=batch.get("court_vis"),
         )
 
-    def _select_metrics(self, stage: str) -> PLCSMetrics:
+    def _metric_tracker_for_stage(self, stage: str) -> PLCSMetrics:
         if stage == "train":
             return self.train_metrics
         if stage == "val":
@@ -109,7 +92,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     ) -> dict[str, Any]:
         outputs = self._forward_from_batch(batch)
         human_mask = batch.get("human_mask")
-        frame_mask = self._normalize_frame_mask(human_mask)
+        frame_mask = normalize_padding_mask(human_mask, flatten=False)
 
         losses = self.loss_fn(
             pred_position=outputs["position"],
@@ -121,7 +104,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             human_mask=human_mask,
         )
 
-        metrics = self._select_metrics(stage).update(
+        metrics = self._metric_tracker_for_stage(stage).update(
             outputs["position"],
             outputs["rotation"],
             batch["position"],
@@ -152,16 +135,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         )
         if "loss_canonical_pose" in metrics:
             self.log(f"{stage}/loss_canonical_pose", metrics["loss_canonical_pose"])
-        if stage == "train" and self.gan_enabled:
-            self.log("train/gan_weight", float(self.current_gan_weight))
-            self.log("train/gan_phase_active", float(self.gan_phase_active))
-            if "loss_gan_generator" in metrics:
-                self.log("train/loss_gan_generator", metrics["loss_gan_generator"])
-            if "loss_gan_discriminator" in metrics:
-                self.log("train/loss_gan_discriminator", metrics["loss_gan_discriminator"])
-
-    def _metric_tracker_for_stage(self, stage: str) -> PLCSMetrics:
-        return self._select_metrics(stage)
+        self._log_gan_metrics(stage, metrics)
 
     def configure_optimizers(self) -> Any:
         return self.configure_gan_optimizers(self.model.parameters())

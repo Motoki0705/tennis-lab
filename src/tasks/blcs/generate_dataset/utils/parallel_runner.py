@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from concurrent.futures import ProcessPoolExecutor
-from itertools import repeat
 
 import torch
 
+from src.tasks.base.generate_dataset.parallel_runner import (
+    run_parallel_scene_generation,
+)
 from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneData,
     BLCSSceneGenerator,
@@ -68,20 +69,19 @@ def generate_parallel_scenes(
     num_workers: int,
     seed: int = 0,
 ) -> Iterator[BLCSSceneData]:
+    # Keep a BLCS-specific guard so the task-specific error message is raised
+    # before delegating (the shared runner raises a generic message).
     _require_positive_worker_count(num_workers)
     if num_scenes <= 0:
         raise ValueError(
             f"Parallel BLCS scene generation requires num_scenes >= 1 (got {num_scenes})"
         )
 
-    max_workers = min(num_workers, num_scenes)
-
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        yield from executor.map(
-            _generate_scene_task,
-            range(num_scenes),
-            repeat(generator_config),
-            repeat(device),
-            repeat(seed),
-            chunksize=1,
-        )
+    yield from run_parallel_scene_generation(
+        _generate_scene_task,
+        list(range(num_scenes)),
+        generator_config,
+        device,
+        seed,
+        num_workers=num_workers,
+    )

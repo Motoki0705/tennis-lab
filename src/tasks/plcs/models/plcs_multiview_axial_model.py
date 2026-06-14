@@ -17,11 +17,10 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    build_self_attn_mask,
     default_ffn_dim,
     precompute_freqs_cis_nd,
-    validate_rope_dim,
 )
+from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
 from src.utils.models.embeddings import (
     CourtPlayerGroupEmbedding,
     InvisibleTokenEmbedding,
@@ -33,7 +32,7 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class PLCSMultiViewAxialModel(nn.Module):
+class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
     """PLCS multiview model with alternating camera/time self-attention."""
 
     def __init__(
@@ -74,10 +73,11 @@ class PLCSMultiViewAxialModel(nn.Module):
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
         self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
 
+        self.head_dim = int(head_dim)
         self.rope_dim = int(rope_dim)
         self.rope_bases = (
-            float(rope_theta if rope_theta_time is None else rope_theta_time),
-            float(rope_theta if rope_theta_camera is None else rope_theta_camera),
+            self._coalesce_theta(rope_theta_time, rope_theta),
+            self._coalesce_theta(rope_theta_camera, rope_theta),
         )
 
         if ffn_dim is None:
@@ -182,10 +182,6 @@ class PLCSMultiViewAxialModel(nn.Module):
         if max_seq_len <= 0:
             raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
 
-    @staticmethod
-    def _validate_rope_dim(*, rope_dim: int, head_dim: int) -> None:
-        validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
-
     @classmethod
     def from_config(cls, config: DictConfig) -> PLCSMultiViewAxialModel:
         """Create model from hydra config."""
@@ -216,53 +212,6 @@ class PLCSMultiViewAxialModel(nn.Module):
                     "num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP)
                 )
             ),
-        )
-
-    @staticmethod
-    def _build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
-        """Build self-attention mask from valid mask.
-
-        Delegates to :func:`src.utils.models.build_self_attn_mask`.
-        See that function for full documentation.
-        """
-        return build_self_attn_mask(valid)
-
-    @staticmethod
-    def _build_token_positions(*, seq_len: int, n_cams: int) -> Tensor:
-        time_idx = torch.arange(seq_len, dtype=torch.long) + 1
-        camera_idx = torch.arange(n_cams, dtype=torch.long)
-        return torch.stack(
-            [
-                time_idx[:, None].expand(seq_len, n_cams),
-                camera_idx[None, :].expand(seq_len, n_cams),
-            ],
-            dim=-1,
-        )
-
-    def _camera_freqs(self, *, batch_size: int, seq_len: int, n_cams: int) -> Tensor:
-        freqs = self.token_freqs_cis[:seq_len, :n_cams]
-        return (
-            freqs.unsqueeze(0)
-            .expand(
-                batch_size,
-                seq_len,
-                n_cams,
-                self.rope_dim // 2,
-            )
-            .reshape(batch_size * seq_len, n_cams, self.rope_dim // 2)
-        )
-
-    def _time_freqs(self, *, batch_size: int, seq_len: int, n_cams: int) -> Tensor:
-        freqs = self.token_freqs_cis[:seq_len, :n_cams].permute(1, 0, 2)
-        return (
-            freqs.unsqueeze(0)
-            .expand(
-                batch_size,
-                n_cams,
-                seq_len,
-                self.rope_dim // 2,
-            )
-            .reshape(batch_size * n_cams, seq_len, self.rope_dim // 2)
         )
 
     def forward(

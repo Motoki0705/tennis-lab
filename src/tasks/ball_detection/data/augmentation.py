@@ -11,42 +11,34 @@ import numpy as np
 import torch
 from torch.utils.data import get_worker_info
 
+from src.utils.data.augmentation import (
+    IMAGENET_MEAN,
+    IMAGENET_STD,
+    normalize_tensor_images_imagenet,
+    parse_float_range,
+)
+
 Frames = list[np.ndarray]
 Coords = list[list[tuple[float, float]]]
 Visibility = list[list[float]]
-IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+
+# ``IMAGENET_MEAN`` / ``IMAGENET_STD`` are tuples in the shared utils module.
+# Several numpy-based code paths below expect float32 arrays, so keep array
+# views with identical values to preserve the exact normalization math.
+_IMAGENET_MEAN_ARR = np.asarray(IMAGENET_MEAN, dtype=np.float32)
+_IMAGENET_STD_ARR = np.asarray(IMAGENET_STD, dtype=np.float32)
 
 
 def normalize_frames_imagenet(
     frames: Frames,
     *,
-    mean: np.ndarray = IMAGENET_MEAN,
-    std: np.ndarray = IMAGENET_STD,
+    mean: np.ndarray = _IMAGENET_MEAN_ARR,
+    std: np.ndarray = _IMAGENET_STD_ARR,
 ) -> Frames:
     """Apply ImageNet normalization to HWC float frames."""
     mean_arr = np.asarray(mean, dtype=np.float32).reshape(1, 1, 3)
     std_arr = np.asarray(std, dtype=np.float32).reshape(1, 1, 3)
     return [((frame - mean_arr) / std_arr).astype(np.float32) for frame in frames]
-
-
-def normalize_tensor_images_imagenet(
-    images: torch.Tensor,
-    *,
-    mean: Sequence[float] = (0.485, 0.456, 0.406),
-    std: Sequence[float] = (0.229, 0.224, 0.225),
-) -> torch.Tensor:
-    """Apply ImageNet normalization to ``(..., 3, H, W)`` image tensors."""
-    if images.ndim < 3 or images.shape[-3] != 3:
-        raise ValueError(
-            "Expected images with shape (..., 3, H, W) for ImageNet normalization, "
-            f"got {tuple(images.shape)}."
-        )
-    view_shape = [1] * images.ndim
-    view_shape[-3] = 3
-    mean_tensor = images.new_tensor(mean).view(*view_shape)
-    std_tensor = images.new_tensor(std).view(*view_shape)
-    return (images - mean_tensor) / std_tensor
 
 
 def denormalize_tensor_images_imagenet(
@@ -76,17 +68,6 @@ def _resolve_border_mode(name: str) -> int:
         "reflect101": cv2.BORDER_REFLECT_101,
         "replicate": cv2.BORDER_REPLICATE,
     }.get(name, cv2.BORDER_REFLECT_101)
-
-
-def _parse_float_range(value: Any, name: str) -> tuple[float, float]:
-    """Parse a length-2 sequence into a validated (min, max) float tuple."""
-    if not isinstance(value, Sequence) or len(value) != 2:
-        raise ValueError(f"{name} must be a sequence with two elements.")
-    low = float(value[0])
-    high = float(value[1])
-    if low > high:
-        raise ValueError(f"{name} must satisfy min <= max.")
-    return low, high
 
 
 def _apply_affine_to_sequence(
@@ -384,27 +365,27 @@ class AffineAugmentation(BaseAugmentation):
         super().__init__(config)
         self.enabled = bool(self.config.get("enabled", False))
         self.prob = float(self.config.get("prob", 0.0))
-        self.rotation_deg_range = _parse_float_range(
+        self.rotation_deg_range = parse_float_range(
             self.config.get("rotation_deg_range", (0.0, 0.0)),
             "rotation_deg_range",
         )
-        self.scale_range = _parse_float_range(
+        self.scale_range = parse_float_range(
             self.config.get("scale_range", (1.0, 1.0)),
             "scale_range",
         )
-        self.translate_x_ratio_range = _parse_float_range(
+        self.translate_x_ratio_range = parse_float_range(
             self.config.get("translate_x_ratio_range", (0.0, 0.0)),
             "translate_x_ratio_range",
         )
-        self.translate_y_ratio_range = _parse_float_range(
+        self.translate_y_ratio_range = parse_float_range(
             self.config.get("translate_y_ratio_range", (0.0, 0.0)),
             "translate_y_ratio_range",
         )
-        self.shear_x_deg_range = _parse_float_range(
+        self.shear_x_deg_range = parse_float_range(
             self.config.get("shear_x_deg_range", (0.0, 0.0)),
             "shear_x_deg_range",
         )
-        self.shear_y_deg_range = _parse_float_range(
+        self.shear_y_deg_range = parse_float_range(
             self.config.get("shear_y_deg_range", (0.0, 0.0)),
             "shear_y_deg_range",
         )
@@ -517,7 +498,7 @@ class ScaleAndCropAugmentation(BaseAugmentation):
         super().__init__(config)
         self.enabled = bool(self.config.get("enabled", False))
         self.prob = float(self.config.get("prob", 0.0))
-        self.scale_range = _parse_float_range(
+        self.scale_range = parse_float_range(
             self.config.get("scale_range", (1.0, 1.0)),
             "scale_range",
         )
@@ -682,8 +663,8 @@ class ImageNetNormalizeAugmentation(BaseAugmentation):
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
         self.enabled = bool(self.config.get("enabled", True))
-        mean = self.config.get("mean", IMAGENET_MEAN.tolist())
-        std = self.config.get("std", IMAGENET_STD.tolist())
+        mean = self.config.get("mean", IMAGENET_MEAN)
+        std = self.config.get("std", IMAGENET_STD)
         if not isinstance(mean, Sequence) or len(mean) != 3:
             raise ValueError("normalize_imagenet.mean must contain 3 values.")
         if not isinstance(std, Sequence) or len(std) != 3:

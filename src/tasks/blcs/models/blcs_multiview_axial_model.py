@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal
 
-import torch
 from torch import Tensor, nn
 
 from src.tasks.blcs.models.components.heads import Trajectory3DHead, VelocityHead
@@ -13,11 +12,11 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    build_self_attn_mask,
     default_ffn_dim,
     precompute_freqs_cis_nd,
-    validate_rope_dim,
+    resolve_rope_bases,
 )
+from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
 from src.utils.models.components.ops.time_local import build_local_attention_keep_mask
 from src.utils.models.embeddings import CourtBallGroupEmbedding, InvisibleTokenEmbedding
 from src.utils.schema.court import NUM_COURT_KP
@@ -26,7 +25,7 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class BLCSMultiViewAxialModel(nn.Module):
+class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
     """BLCS multi-view model with alternating camera/time self-attention."""
 
     def __init__(
@@ -101,9 +100,10 @@ class BLCSMultiViewAxialModel(nn.Module):
         self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
 
         self.rope_dim = int(rope_dim)
-        self.rope_bases = (
-            float(self._coalesce_theta(rope_theta_time, rope_theta)),
-            float(self._coalesce_theta(rope_theta_camera, rope_theta)),
+        self.rope_bases = resolve_rope_bases(
+            rope_theta,
+            rope_theta_time,
+            rope_theta_camera,
         )
 
         if ffn_dim is None:
@@ -260,10 +260,6 @@ class BLCSMultiViewAxialModel(nn.Module):
             return tuple(False for _ in range(num_layers))
         return tuple(bool(value) for value in values)
 
-    @staticmethod
-    def _validate_rope_dim(*, rope_dim: int, head_dim: int) -> None:
-        validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
-
     @classmethod
     def from_config(cls, config: DictConfig) -> BLCSMultiViewAxialModel:
         """Create model from Hydra/OmegaConf config."""
@@ -301,19 +297,6 @@ class BLCSMultiViewAxialModel(nn.Module):
         )
 
     @staticmethod
-    def _coalesce_theta(theta: float | None, fallback: float) -> float:
-        return fallback if theta is None else float(theta)
-
-    @staticmethod
-    def _build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:
-        """Build self-attention mask from valid mask.
-
-        Delegates to :func:`src.utils.models.build_self_attn_mask`.
-        See that function for full documentation.
-        """
-        return build_self_attn_mask(valid)
-
-    @staticmethod
     def _build_sliding_attn_mask(valid: Tensor, radius: int) -> Tensor:
         return build_local_attention_keep_mask(valid, radius)
 
@@ -326,44 +309,6 @@ class BLCSMultiViewAxialModel(nn.Module):
     ) -> bool:
         return self.time_global_stage_mask[stage_index] and (
             time_layer_index == time_layers_in_stage - 1
-        )
-
-    @staticmethod
-    def _build_token_positions(*, seq_len: int, n_cams: int) -> Tensor:
-        time_idx = torch.arange(seq_len, dtype=torch.long) + 1
-        camera_idx = torch.arange(n_cams, dtype=torch.long)
-        return torch.stack(
-            [
-                time_idx[:, None].expand(seq_len, n_cams),
-                camera_idx[None, :].expand(seq_len, n_cams),
-            ],
-            dim=-1,
-        )
-
-    def _camera_freqs(self, *, batch_size: int, seq_len: int, n_cams: int) -> Tensor:
-        freqs = self.token_freqs_cis[:seq_len, :n_cams]
-        return (
-            freqs.unsqueeze(0)
-            .expand(
-                batch_size,
-                seq_len,
-                n_cams,
-                self.rope_dim // 2,
-            )
-            .reshape(batch_size * seq_len, n_cams, self.rope_dim // 2)
-        )
-
-    def _time_freqs(self, *, batch_size: int, seq_len: int, n_cams: int) -> Tensor:
-        freqs = self.token_freqs_cis[:seq_len, :n_cams].permute(1, 0, 2)
-        return (
-            freqs.unsqueeze(0)
-            .expand(
-                batch_size,
-                n_cams,
-                seq_len,
-                self.rope_dim // 2,
-            )
-            .reshape(batch_size * n_cams, seq_len, self.rope_dim // 2)
         )
 
     def _apply_time_attention_layer(
