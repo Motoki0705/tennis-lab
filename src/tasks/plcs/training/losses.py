@@ -1,7 +1,7 @@
 """Loss functions for PLCS training.
 
-Supports frame-level and sequence-level losses, including temporal consistency
-terms for sequential models.
+Supports frame-level and sequence-level losses.
+Temporal consistency is enforced by the GAN discriminator.
 """
 
 from __future__ import annotations
@@ -17,53 +17,19 @@ from src.utils.tensor_utils import masked_mean, normalize_padding_mask
 
 
 @dataclass(frozen=True)
-class TemporalTermConfig:
-    """Configuration for a single temporal consistency term.
-
-    Attributes:
-        weight: Weight applied to this term in the total loss.
-        order: 1 => velocity (1st difference), 2 => acceleration (2nd difference).
-        robust: If True, use SmoothL1 (Huber) loss; else use MSE.
-
-    """
-
-    weight: float = 0.0
-    order: int = 2
-    robust: bool = True
-
-
-@dataclass(frozen=True)
-class TemporalTermsConfig:
-    """Configuration for temporal consistency terms.
-
-    Terms:
-        - position_gt: match GT velocity/acceleration
-        - position_inertia: encourage constant velocity/acceleration-free motion
-        - rotation_gt: match GT angular velocity/acceleration
-        - rotation_inertia: encourage constant angular velocity
-    """
-
-    position_gt: TemporalTermConfig = TemporalTermConfig()
-    position_inertia: TemporalTermConfig = TemporalTermConfig()
-    rotation_gt: TemporalTermConfig = TemporalTermConfig()
-    rotation_inertia: TemporalTermConfig = TemporalTermConfig()
-
-
-@dataclass(frozen=True)
 class PLCSLossConfig:
     """Configuration for PLCS loss weights.
 
     Attributes:
         position_weight: Weight for position loss.
         rotation_weight: Weight for rotation loss.
-        temporal: Temporal term configuration.
+        canonical_pose_weight: Weight for canonical pose loss.
 
     """
 
     position_weight: float = 1.0
     rotation_weight: float = 1.0
     canonical_pose_weight: float = 0.0
-    temporal: TemporalTermsConfig = TemporalTermsConfig()
 
     @classmethod
     def from_dict(cls, cfg: dict) -> PLCSLossConfig:
@@ -76,53 +42,10 @@ class PLCSLossConfig:
             PLCSLossConfig instance.
 
         """
-        if "temporal_weight" in cfg:
-            raise ValueError(
-                "Legacy `temporal_weight` is no longer supported. "
-                "Use `temporal.position_gt.weight` etc. instead."
-            )
-
-        temporal_dict = cfg.get("temporal")
-        temporal_dict = temporal_dict if isinstance(temporal_dict, dict) else {}
-
-        if any(k in temporal_dict for k in ["order", "robust"]):
-            raise ValueError(
-                "Legacy `temporal: {order, robust}` is no longer supported. "
-                "Use `temporal.position_gt` / `temporal.rotation_gt` etc. instead."
-            )
-
-        def _parse_term(d: dict | None) -> TemporalTermConfig:
-            d = d or {}
-            return TemporalTermConfig(
-                weight=float(d.get("weight", 0.0)),
-                order=int(d.get("order", 2)),
-                robust=bool(d.get("robust", True)),
-            )
-
-        temporal_terms_cfg = TemporalTermsConfig(
-            position_gt=_parse_term(temporal_dict.get("position_gt")),
-            position_inertia=_parse_term(temporal_dict.get("position_inertia")),
-            rotation_gt=_parse_term(temporal_dict.get("rotation_gt")),
-            rotation_inertia=_parse_term(temporal_dict.get("rotation_inertia")),
-        )
-
-        # Validate supported orders early
-        for name, term in [
-            ("position_gt", temporal_terms_cfg.position_gt),
-            ("position_inertia", temporal_terms_cfg.position_inertia),
-            ("rotation_gt", temporal_terms_cfg.rotation_gt),
-            ("rotation_inertia", temporal_terms_cfg.rotation_inertia),
-        ]:
-            if term.order not in (1, 2):
-                raise ValueError(
-                    f"temporal.{name}.order must be 1 or 2 (got {term.order})"
-                )
-
         return cls(
             position_weight=cfg.get("position_weight", 1.0),
             rotation_weight=cfg.get("rotation_weight", 1.0),
             canonical_pose_weight=float(cfg.get("canonical_pose_weight", 0.0)),
-            temporal=temporal_terms_cfg,
         )
 
 
@@ -193,154 +116,12 @@ def angular_error(pred: Tensor, target: Tensor) -> Tensor:
     return diff.abs()
 
 
-def _wrap_angle(angle: Tensor) -> Tensor:
-    return torch.atan2(torch.sin(angle), torch.cos(angle))
-
-
-def _sequence_frame_mask(seq_mask: Tensor | None, *, order: int) -> Tensor | None:
-    if seq_mask is None:
-        return None
-    if order == 1:
-        return seq_mask[:, 1:] & seq_mask[:, :-1]
-    return seq_mask[:, 2:] & seq_mask[:, 1:-1] & seq_mask[:, :-2]
-
-
-def position_temporal_match_loss(
-    pred_position: Tensor,
-    target_position: Tensor,
-    cfg: TemporalTermConfig,
-    *,
-    seq_mask: Tensor | None = None,
-) -> Tensor:
-    if pred_position.dim() == 2:
-        return pred_position.new_zeros(())
-
-    pred_vel = pred_position[:, 1:, :] - pred_position[:, :-1, :]  # (B, T-1, 3)
-    target_vel = target_position[:, 1:, :] - target_position[:, :-1, :]
-
-    if cfg.order == 1:
-        diff = pred_vel - target_vel  # (B, T-1, 3)
-        mask = _sequence_frame_mask(seq_mask, order=1)
-    else:
-        pred_acc = pred_vel[:, 1:, :] - pred_vel[:, :-1, :]  # (B, T-2, 3)
-        target_acc = target_vel[:, 1:, :] - target_vel[:, :-1, :]
-        diff = pred_acc - target_acc
-        mask = _sequence_frame_mask(seq_mask, order=2)
-
-    if mask is not None and mask.sum().item() == 0:
-        return pred_position.new_zeros(())
-
-    if cfg.robust:
-        per_elem = nn.functional.smooth_l1_loss(diff, torch.zeros_like(diff), reduction="none")
-    else:
-        per_elem = diff.pow(2)
-
-    per_step = per_elem.mean(dim=-1)  # (B, T-1) or (B, T-2)
-    return masked_mean(per_step, mask, binarize=True, denom_min=1.0)
-
-
-def position_temporal_inertia_loss(
-    pred_position: Tensor,
-    cfg: TemporalTermConfig,
-    *,
-    seq_mask: Tensor | None = None,
-) -> Tensor:
-    if pred_position.dim() == 2:
-        return pred_position.new_zeros(())
-
-    pred_vel = pred_position[:, 1:, :] - pred_position[:, :-1, :]  # (B, T-1, 3)
-
-    if cfg.order == 1:
-        diff = pred_vel
-        mask = _sequence_frame_mask(seq_mask, order=1)
-    else:
-        pred_acc = pred_vel[:, 1:, :] - pred_vel[:, :-1, :]  # (B, T-2, 3)
-        diff = pred_acc
-        mask = _sequence_frame_mask(seq_mask, order=2)
-
-    if mask is not None and mask.sum().item() == 0:
-        return pred_position.new_zeros(())
-
-    if cfg.robust:
-        per_elem = nn.functional.smooth_l1_loss(diff, torch.zeros_like(diff), reduction="none")
-    else:
-        per_elem = diff.pow(2)
-
-    per_step = per_elem.mean(dim=-1)
-    return masked_mean(per_step, mask, binarize=True, denom_min=1.0)
-
-
-def rotation_temporal_match_loss(
-    pred_rotation: Tensor,
-    target_rotation: Tensor,
-    cfg: TemporalTermConfig,
-    *,
-    seq_mask: Tensor | None = None,
-) -> Tensor:
-    if pred_rotation.dim() == 2:
-        return pred_rotation.new_zeros(())
-
-    yaw_pred = torch.atan2(pred_rotation[..., 1], pred_rotation[..., 0])  # (B, T)
-    yaw_target = torch.atan2(target_rotation[..., 1], target_rotation[..., 0])
-
-    dyaw_pred = _wrap_angle(yaw_pred[:, 1:] - yaw_pred[:, :-1])  # (B, T-1)
-    dyaw_target = _wrap_angle(yaw_target[:, 1:] - yaw_target[:, :-1])
-
-    if cfg.order == 1:
-        diff = _wrap_angle(dyaw_pred - dyaw_target)  # (B, T-1)
-        mask = _sequence_frame_mask(seq_mask, order=1)
-    else:
-        ddyaw_pred = _wrap_angle(dyaw_pred[:, 1:] - dyaw_pred[:, :-1])  # (B, T-2)
-        ddyaw_target = _wrap_angle(dyaw_target[:, 1:] - dyaw_target[:, :-1])
-        diff = _wrap_angle(ddyaw_pred - ddyaw_target)
-        mask = _sequence_frame_mask(seq_mask, order=2)
-
-    if mask is not None and mask.sum().item() == 0:
-        return pred_rotation.new_zeros(())
-
-    if cfg.robust:
-        per_step = nn.functional.smooth_l1_loss(diff, torch.zeros_like(diff), reduction="none")
-    else:
-        per_step = diff.pow(2)
-
-    return masked_mean(per_step, mask, binarize=True, denom_min=1.0)
-
-
-def rotation_temporal_inertia_loss(
-    pred_rotation: Tensor,
-    cfg: TemporalTermConfig,
-    *,
-    seq_mask: Tensor | None = None,
-) -> Tensor:
-    if pred_rotation.dim() == 2:
-        return pred_rotation.new_zeros(())
-
-    yaw_pred = torch.atan2(pred_rotation[..., 1], pred_rotation[..., 0])  # (B, T)
-    dyaw_pred = _wrap_angle(yaw_pred[:, 1:] - yaw_pred[:, :-1])  # (B, T-1)
-
-    if cfg.order == 1:
-        diff = dyaw_pred
-        mask = _sequence_frame_mask(seq_mask, order=1)
-    else:
-        diff = _wrap_angle(dyaw_pred[:, 1:] - dyaw_pred[:, :-1])  # (B, T-2)
-        mask = _sequence_frame_mask(seq_mask, order=2)
-
-    if mask is not None and mask.sum().item() == 0:
-        return pred_rotation.new_zeros(())
-
-    if cfg.robust:
-        per_step = nn.functional.smooth_l1_loss(diff, torch.zeros_like(diff), reduction="none")
-    else:
-        per_step = diff.pow(2)
-
-    return masked_mean(per_step, mask, binarize=True, denom_min=1.0)
-
-
 class PLCSLoss(nn.Module):
     """Combined loss for PLCS training.
 
-    Combines position, rotation, and optional temporal consistency losses.
+    Combines position and rotation losses.
     Supports both frame-level (B, 3) and sequence-level (B, T, 3) inputs.
+    Temporal consistency is enforced by the GAN discriminator.
     """
 
     def __init__(
@@ -392,8 +173,7 @@ class PLCSLoss(nn.Module):
             target_rotation: Target rotation.
 
         Returns:
-            dict: Dictionary with 'total', 'position', 'rotation', and
-                'temporal' (if enabled) losses.
+            dict: Dictionary with 'total', 'position', 'rotation', 'canonical_pose'.
 
         """
         zero = pred_position.new_zeros(())
@@ -445,50 +225,9 @@ class PLCSLoss(nn.Module):
                 "pred_canonical_pose is provided."
             )
 
-        temp_loss = zero
-        pos_temp_gt = zero
-        pos_temp_inertia = zero
-        rot_temp_gt = zero
-        rot_temp_inertia = zero
-
-        # Temporal consistency losses (for sequences)
-        cfg = self.config.temporal
-        if cfg.position_gt.weight > 0.0:
-            pos_temp_gt = position_temporal_match_loss(
-                pred_position, target_position, cfg.position_gt, seq_mask=frame_mask
-            )
-            total = total + cfg.position_gt.weight * pos_temp_gt
-            temp_loss = temp_loss + pos_temp_gt
-
-        if cfg.position_inertia.weight > 0.0:
-            pos_temp_inertia = position_temporal_inertia_loss(
-                pred_position, cfg.position_inertia, seq_mask=frame_mask
-            )
-            total = total + cfg.position_inertia.weight * pos_temp_inertia
-            temp_loss = temp_loss + pos_temp_inertia
-
-        if cfg.rotation_gt.weight > 0.0:
-            rot_temp_gt = rotation_temporal_match_loss(
-                pred_rotation, target_rotation, cfg.rotation_gt, seq_mask=frame_mask
-            )
-            total = total + cfg.rotation_gt.weight * rot_temp_gt
-            temp_loss = temp_loss + rot_temp_gt
-
-        if cfg.rotation_inertia.weight > 0.0:
-            rot_temp_inertia = rotation_temporal_inertia_loss(
-                pred_rotation, cfg.rotation_inertia, seq_mask=frame_mask
-            )
-            total = total + cfg.rotation_inertia.weight * rot_temp_inertia
-            temp_loss = temp_loss + rot_temp_inertia
-
         return {
             "total": total,
             "position": pos_loss,
             "rotation": rot_loss,
             "canonical_pose": canonical_pose_loss,
-            "temporal": temp_loss,
-            "position_temporal_gt": pos_temp_gt,
-            "position_temporal_inertia": pos_temp_inertia,
-            "rotation_temporal_gt": rot_temp_gt,
-            "rotation_temporal_inertia": rot_temp_inertia,
         }
