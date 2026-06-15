@@ -14,10 +14,21 @@
 
 - 実装/実行: [src/tasks/ball_detection/README.md](src/tasks/ball_detection/README.md)
 
-### Court Detection（CourtKP20）
+### Court Detection（KP / SEG / LINE）
 
 <p align="center">
-  <img src="assets/court_detection/gt_vs_pred.gif" width="840" />
+  <img src="assets/court_detection/kp.gif" width="840" /><br/>
+  <em>Keypoint：RGB + 予測キーポイント ｜ 平均ヒートマップ</em>
+</p>
+
+<p align="center">
+  <img src="assets/court_detection/seg.gif" width="840" /><br/>
+  <em>Segmentation：RGB ｜ セグメンテーションマップ</em>
+</p>
+
+<p align="center">
+  <img src="assets/court_detection/line.gif" width="840" /><br/>
+  <em>Line：RGB ｜ ラインマップ</em>
 </p>
 
 - 実装: [src/tasks/court_detection/README.md](src/tasks/court_detection/README.md)

@@ -15,7 +15,7 @@ Example:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -296,7 +296,7 @@ class BLCSSceneRenderer:
             Figure with all views.
 
         """
-        fig = cast(Figure, plt.figure(figsize=figsize))
+        fig: Figure = plt.figure(figsize=figsize)
 
         # 3D view
         ax1 = fig.add_subplot(2, 2, 1, projection="3d")
@@ -363,7 +363,7 @@ class BLCSSceneRenderer:
         interval = 1000.0 / fps
 
         if view == "3d":
-            fig = cast(Figure, plt.figure(figsize=figsize))
+            fig = plt.figure(figsize=figsize)
             ax = fig.add_subplot(111, projection="3d")
             self.court_renderer.render_3d(ax, show_net=True)
 
