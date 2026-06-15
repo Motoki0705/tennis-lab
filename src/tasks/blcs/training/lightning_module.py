@@ -42,13 +42,10 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
         train_cfg = self.config.get("training", {})
         trainer_cfg = train_cfg.get("trainer", {}) or {}
-        self.max_epochs = int(trainer_cfg.get("max_epochs", self.max_epochs))
+        self.max_epochs = int(trainer_cfg.get("max_epochs") or self.max_epochs)  # type: ignore[has-type]
         self.loss_fn = BLCSLoss(
             position_weight=train_cfg.get("position_loss_weight", 1.0),
-            velocity_weight=train_cfg.get("velocity_loss_weight", 0.1),
-            smoothness_weight=train_cfg.get("smoothness_loss_weight", 0.05),
             reprojection_weight=train_cfg.get("reprojection_loss_weight", 0.0),
-            uv_velocity_weight=train_cfg.get("uv_velocity_loss_weight", 0.0),
         )
         gan_enabled = bool((train_cfg.get("gan", {}) or {}).get("enabled", False))
         self._initialize_manual_gan(
@@ -71,13 +68,14 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def _forward_from_batch(self, batch: BLCSBatch | BLCSMultiViewBatch) -> dict[str, Tensor]:
         """Forward model from a batch."""
-        return self.model(
+        result: dict[str, Tensor] = self.model(
             ball_uv=batch["ball_uv"],
             court_kp=batch["court_kp"],
             ball_vis=batch.get("ball_vis"),
             ball_mask=batch.get("ball_mask"),
             court_vis=batch.get("court_vis"),
         )
+        return result
 
     def _normalize_loss_mask(self, batch: BLCSBatch | BLCSMultiViewBatch) -> Tensor | None:
         """Normalize loss/metric mask to shape (B, T)."""
@@ -185,9 +183,9 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
             fig_w, fig_h = 400, 400
             # Top-down: X vs Y
-            canvas_top = np.ones((fig_h, fig_w, 3), dtype=np.uint8) * 255
+            canvas_top: np.ndarray = np.ones((fig_h, fig_w, 3), dtype=np.uint8) * 255
             # Side: X vs Z
-            canvas_side = np.ones((fig_h, fig_w, 3), dtype=np.uint8) * 255
+            canvas_side: np.ndarray = np.ones((fig_h, fig_w, 3), dtype=np.uint8) * 255
 
             def _normalize_and_draw(
                 canvas: np.ndarray, gt_2d: np.ndarray, pred_2d: np.ndarray, valid: np.ndarray
