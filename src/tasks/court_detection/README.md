@@ -125,9 +125,35 @@ python -m src.tasks.court_detection.scripts.train
 
 ### 可視化
 
+タスク（`kp` / `seg` / `line`）ごとに2パネルのGIFを生成します。`visualization=<task>`
+で切り替え、既定では `assets/court_detection/<task>.gif` に保存します。
+
 ```bash
-python -m src.tasks.court_detection.scripts.visualize
+# Keypoint：RGB + 予測キーポイント ｜ 平均ヒートマップ
+python -m src.tasks.court_detection.scripts.visualize visualization=kp
+
+# Segmentation：RGB ｜ セグメンテーションマップ
+python -m src.tasks.court_detection.scripts.visualize visualization=seg
+
+# Line：RGB ｜ ラインマップ
+python -m src.tasks.court_detection.scripts.visualize visualization=line
+
+# 入力ソースと出力先の上書き（単一画像・ディレクトリ・glob を指定可能）
+python -m src.tasks.court_detection.scripts.visualize visualization=kp \
+    visualization.image_source=data/court/images \
+    visualization.checkpoint=path/to/court-kp.ckpt \
+    visualization.save=assets/court_detection/kp.gif
 ```
+
+可視化パイプラインは `io`（フレーム読み込み）→ `adapters`（predictor 入力への変換）→
+`api`（推論）→ `rendering`（描画）→ `orchestrator`（統括）という、blcs / plcs と統一した
+責任分担で構成されています。
+
+<p align="center">
+  <img src="../../../assets/court_detection/kp.gif" width="720" /><br/>
+  <img src="../../../assets/court_detection/seg.gif" width="720" /><br/>
+  <img src="../../../assets/court_detection/line.gif" width="720" />
+</p>
 
 ## 手動アノテーション
 
