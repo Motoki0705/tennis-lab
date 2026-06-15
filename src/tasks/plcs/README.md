@@ -1,250 +1,130 @@
 # PLCS (Player Localization in Court System)
 
-PLCS は、テニスコート座標系におけるプレイヤーの位置・向き（姿勢）を、
-2D の姿勢観測（2D pose キーポイント）から推定するためのタスク実装です。
+> 2D pose（COCO 17点）とコートキーポイントから、コート座標系におけるプレイヤーの3D位置とヨー回転を推定するタスク。
 
-## 目的 / 想定入出力
+## 概要
 
-- **入力**: 2D pose（関節座標）+ コートキーポイント
-- **出力**: コート座標系でのプレイヤー 3D 位置・回転（6DoF）
+複数カメラ・時系列の2D観測をTransformerで統合し、コート座標系の位置と向きを復元します。frame / sequence / multiview の3モードを共通の `PLCSPredictor` で扱います。
 
-### 入力形式
+| 項目 | 内容 |
+|---|---|
+| 入力 | 2D人物キーポイント `human_kp`（COCO17）+ コートキーポイント `court_kp` |
+| 出力 | 3D位置 `position`（正規化 + メートル）+ 回転 `rotation`（cos/sin yaw） |
+| モデル | `frame` / `multiview` / `multiview_axial` |
+| データ | AMASS（ACCAD）モーション + SMPL-H による合成生成 |
+| 役割 | 認識パイプラインの下流。2D pose検出と [court_detection](../court_detection/) の観測を3D化 |
 
-PLCSでは**camera-time順序**を採用しています: `(B, N, T, ...)` の順で、N=カメラ数、T=時系列長です。
+## Inference
 
-| モード | 入力テンソル | 形状 | 説明 |
-|--------|-------------|------|------|
-| 単一カメラ (Frame) | `human_kp` | `(B, 17, 2)` | 2D人物キーポイント |
-| 単一カメラ (Sequence) | `human_kp` | `(B, T, 17, 2)` | 時系列2D人物キーポイント |
-| マルチビュー (Frame) | `human_kp` | `(B, N, 17, 2)` | 複数カメラからの2D人物キーポイント |
-| マルチビュー (Sequence) | `human_kp` | `(B, N, T, 17, 2)` | 複数カメラ×時系列2D人物キーポイント (camera-time順) |
+camera-time順 `(B, N, T, ...)` を正準とし、モデルに応じて内部でスライスされます。
 
-※ コートキーポイント `court_kp` も同様に各モードに対応
+```python
+import torch
+from src.tasks.plcs.inference.predictor import PLCSPredictor
 
-### 出力形式
+predictor = PLCSPredictor.load_from_checkpoint(
+    "outputs/plcs/plcs/logs/version_0/checkpoints/last.ckpt",
+    device="cpu",
+)
 
-**Predictor 返り値（`PLCSPredictor.predict()`）:**
+# Frame モード（単一フレーム・単一カメラ）
+human_kp = torch.zeros(2, 17, 2)   # (B, 17, 2)
+court_kp = torch.zeros(2, 20, 2)   # (B, 20, 2)
+out = predictor.predict(human_kp, court_kp)
+# out["position"] (2, 3) / out["rotation"] (2, 2) / out["position_meters"] (2, 3) / out["yaw_radians"] (2,)
 
-推論結果は `dict[str, torch.Tensor]` 形式で返されます。全てのテンソルは CPU 上にあります。
-
-| キー | 形状（Frame / Sequence） | 型 | 説明 |
-|------|------|-----|------|
-| `position` | `(B, 3)` / `(B, T, 3)` | `torch.Tensor` | 正規化座標での3D位置（常に含まれる） |
-| `rotation` | `(B, 2)` / `(B, T, 2)` | `torch.Tensor` | 回転の (cos, sin) 表現（常に含まれる） |
-| `position_meters` | `(B, 3)` / `(B, T, 3)` | `torch.Tensor` | メートル単位の3D位置（デフォルトで含まれる、`denormalize=False` の場合は含まれない） |
-| `yaw_radians` | `(B,)` / `(B, T)` | `torch.Tensor` | ヨー角（ラジアン）（デフォルトで含まれる、`denormalize=False` の場合は含まれない） |
-
-**注意**: 
-- すべてのテンソルは CPU に配置されます（統合側での device 変換は不要）
-- バッチ次元は常に保持されます
-
-## ディレクトリ構成
-
-```
-src/tasks/plcs/
-├── configs/                          # Hydra 設定ファイル群
-│   ├── train.yaml                    # フレーム学習設定
-│   ├── train_multiview.yaml          # マルチビュー学習設定
-│   ├── generate_dataset.yaml         # データ生成設定
-│   ├── visualize.yaml                # 単一カメラ可視化設定
-│   ├── visualize_multiview.yaml      # マルチビュー可視化設定
-│   ├── run/                          # 実行時設定（seed, gpus, output_dir）
-│   ├── model/
-│   │   ├── frame.yaml                # フレームモデル設定
-│   │   └── multiview.yaml            # マルチビューモデル設定
-│   ├── data/
-│   │   ├── frame.yaml                # フレーム DataModule 設定
-│   │   └── multiview.yaml            # マルチビュー DataModule 設定
-│   ├── training/
-│   │   └── default.yaml              # 学習ハイパーパラメータ
-│   ├── loss/
-│   │   ├── frame.yaml                # フレームロス設定（temporal=0）
-│   │   └── multiview_sequence.yaml   # マルチビューシーケンスロス設定
-│   ├── simulation/
-│   │   └── default.yaml              # シミュレーション設定（シーン数等）
-│   ├── camera/
-│   │   └── default.yaml              # カメラ投影パラメータ
-│   └── visualization/
-│       ├── default.yaml              # 単一カメラ可視化オプション
-│       └── multiview.yaml            # マルチビュー可視化オプション
-│
-├── scripts/                          # 実行スクリプト（Hydra エントリポイント）
-│   ├── generate_dataset.py           # SMPL-H モーションからの合成データ生成
-│   ├── train.py                      # フレーム単位モデル学習
-│   ├── train_sequence.py             # シーケンスモデル学習
-│   ├── train_multiview.py            # マルチビューモデル学習
-│   ├── visualize.py                  # 単一カメラ可視化
-│   └── visualize_multiview.py        # マルチビュー可視化
-│
-├── models/                           # 推定モデル
-│   ├── plcs_model.py                 # PLCSModel: フレーム単位 2D→3D 推定
-│   └── plcs_multiview_model.py       # PLCSMultiViewModel: camera-time 2D RoPE統合
-│
-├── data/                             # データセット・DataModule
-│   ├── dataset.py                    # フレーム Dataset
-│   ├── sequence_dataset.py           # シーケンス Dataset
-│   ├── multiview_dataset.py          # マルチビュー Dataset
-│   └── datamodule.py                 # LightningDataModule（全モード共用）
-│
-├── training/                         # 学習関連
-│   ├── lightning_module.py           # フレーム用 LightningModule
-│   ├── sequence_lightning_module.py  # シーケンス用 LightningModule
-│   ├── multiview_lightning_module.py # マルチビュー用 LightningModule
-│   ├── losses.py                     # 損失関数（位置 MSE、回転損失）
-│   └── metrics.py                    # 評価指標（位置誤差、角度誤差）
-│
-├── inference/                        # 推論
-│   ├── predictor.py                  # フレーム推論
-│   ├── sequence_predictor.py         # シーケンス推論
-│   ├── multiview_predictor.py        # マルチビュー推論
-│   └── visualization.py              # 3D プレーヤー描画
-│
-└── generate_dataset/                 # データセット生成ロジック
-    ├── scene_generator.py            # シーン生成オーケストレータ
-    ├── sampling/
-    │   └── motion_sampler.py         # SMPL-H モーションのサンプリング
-    └── io/
-        └── dataset_io.py             # シーン保存・読込
+# Multiview モード（複数カメラ×時系列）
+human_kp   = torch.zeros(1, 3, 64, 17, 2)  # (B, N, T, 17, 2)
+court_kp   = torch.zeros(1, 3, 64, 20, 2)  # (B, N, T, 20, 2)
+human_mask = torch.ones(1, 3, 64)          # (B, N, T), True=valid
+out = predictor.predict(human_kp, court_kp, human_mask=human_mask)
+# out["position"] (1, 64, 3) / out["rotation"] (1, 64, 2)
 ```
 
-## 主要コンポーネントの関係
+`predict(human_kp, court_kp, human_vis=None, human_mask=None, court_vis=None, denormalize=True)`。返り値は全テンソルが CPU 上の `dict[str, Tensor]`。
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ generate_dataset.py                                             │
-│   ├── generate_dataset/scene_generator.py                       │
-│   │   ├── sampling/motion_sampler.py  (SMPL-H モーション取得)    │
-│   │   └── 複数カメラ投影 → 2D キーポイント生成                    │
-│   └── → data/plcs/scenes/*.npz（各シーンに複数カメラ情報含む）    │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ train.py / train_multiview.py                                   │
-│   ├── data/datamodule.py           (DataModule)                 │
-│   │   ├── PLCSDataModule           (単一カメラ・フレーム)         │
-│   │   └── PLCSMultiViewDataModule  (マルチビュー)                │
-│   ├── models/                                                   │
-│   │   ├── plcs_model.py            (フレームモデル)              │
-│   │   └── plcs_multiview_model.py  (マルチビューモデル)          │
-│   └── → outputs/plcs/*/logs/version_*/checkpoints/              │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ visualize.py / visualize_multiview.py                           │
-│   ├── inference/predictor.py            (単一カメラ推論)         │
-│   ├── inference/multiview_predictor.py  (マルチビュー推論)       │
-│   └── inference/visualization.py        (描画)                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+| キー | 形状（Frame / Multiview） | 条件 | 説明 |
+|---|---|---|---|
+| `position` | `(B, 3)` / `(B, T, 3)` | 常時 | 正規化コート座標 |
+| `rotation` | `(B, 2)` / `(B, T, 2)` | 常時 | `(cos yaw, sin yaw)`（L2正規化済み） |
+| `position_meters` | `(B, 3)` / `(B, T, 3)` | `denormalize=True` | メートル単位の位置 |
+| `yaw_radians` | `(B,)` / `(B, T)` | `denormalize=True` | ヨー角（ラジアン） |
+| `canonical_pose` | `(B, 17, 3)` / `(B, T, 17, 3)` | `predict_canonical_pose=True` | ヨー正規化ローカル関節 |
 
-## 実行コマンド
+スケールは `COURT_COORD_SCALE_(X,Y,Z) = (5.485, 11.885, 1.07)` [m]（`src/utils/schema/court.py`）。
 
-詳細は本README内の実行コマンド節を参照。
+### 入力テンソル仕様
 
-### データ生成
+| モード（`input_profile`） | `human_kp` | `court_kp` | `human_mask` |
+|---|---|---|---|
+| `frame` | `(B, 17, 2)` | `(B, 20, 2)` | `(B,)` または None |
+| `sequence` | `(B, T, 17, 2)` | `(B, T, 20, 2)` | `(B, T)` |
+| `multiview` | `(B, N, T, 17, 2)` | `(B, N, T, 20, 2)` | `(B, N, T)` |
+
+## データセット生成
+
+PLCSはAMASSモーションを用いて合成生成します（既存データセットなし）。
 
 ```bash
-python -m src.tasks.plcs.scripts.generate_dataset
+.venv/bin/python -m src.tasks.plcs.scripts.generate_dataset
+.venv/bin/python -m src.tasks.plcs.scripts.generate_dataset simulation.num_scenes=10 run.num_workers=4
+
+# 生成データの位置・ヨー・カメラ数分布を集計
+.venv/bin/python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution
 ```
 
-### データ分布の調査（位置・向き・カメラ数）
+- **仕様**: AMASS（ACCAD: running/walking/general）モーションをSMPL-Hで再生し、複数カメラ（1280×720、高さ3〜5m、FOV60°）へ投影。デフォルト1000シーン。
+- **生成構造**（`data/plcs/scenes/scene_XXXXXX/`）:
 
-生成済み PLCS データセット（`data/plcs/scenes/*.npz`）について、プレイヤー位置や yaw の分布、
-原点近傍への偏り（半径しきい値内の割合）などを集計します。
-
-```bash
-python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution
-
-# 出力先やサンプル数の変更例
-python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution \
-    run.output_dir=outputs/plcs/analysis/dataset_distribution \
-    analysis.max_scenes=200 \
-    analysis.max_frames_per_scene=256
+```text
+scene_000000/
+├── meta.json / scalars.json   # num_cameras, fps, num_frames, カメラパラメータ
+├── position.npy               # (T, 3) 正規化座標
+├── rotation.npy               # (T, 2) (cos yaw, sin yaw)
+├── canonical_pose_3d.npy      # (T, 17, 3) ヨー正規化ローカル関節
+└── cam_{i}_*.npy              # human_kp_uv (T,17,2), court_kp_uv (T,20,2), *_visible ...
 ```
 
-### 学習
+## 学習
 
 ```bash
-# フレーム単位モデル（単一カメラ）
-python -m src.tasks.plcs.scripts.train
-
-# マルチビューモデル（複数カメラ統合）
-python -m src.tasks.plcs.scripts.train_multiview
-
-# マルチビュー学習のカスタム設定例
-python -m src.tasks.plcs.scripts.train_multiview \
-    data.num_views=4 \
-    data.min_cameras=2 \
-    training.max_epochs=100
+.venv/bin/python -m src.tasks.plcs.scripts.train                  # frame（デフォルト）
+.venv/bin/python -m src.tasks.plcs.scripts.train_chunked          # multiview のチャンク学習（オンライン生成）
+.venv/bin/python -m src.tasks.plcs.scripts.train_chunked data.chunk.scenes_per_chunk=500
 ```
 
-### 可視化
+`model` config は `frame` / `multiview` / `multiview_axial`、`data` config は `frame` / `sequence` / `multiview` / `chunked_multiview`。出力先は `outputs/plcs/${model.name}/`。マルチビュー学習は専用スクリプトではなく `train_chunked.py`（`model=multiview, data=chunked_multiview`）で行います。
+
+## 可視化
 
 ```bash
-# 単一カメラ
-python -m src.tasks.plcs.scripts.visualize
+.venv/bin/python -m src.tasks.plcs.scripts.visualize             # GT表示（デフォルト）
 
-# マルチビュー（Ground Truth）
-python -m src.tasks.plcs.scripts.visualize_multiview \
-    visualization.scene_path=data/plcs/scenes/scene_000003.npz
-
-# マルチビュー（チェックポイントからの予測）
-python -m src.tasks.plcs.scripts.visualize_multiview \
+# ckptによる GT vs 予測の比較
+.venv/bin/python -m src.tasks.plcs.scripts.visualize \
     visualization.mode=predict \
-    visualization.checkpoint=outputs/plcs/multiview/logs/version_0/checkpoints/last.ckpt \
-    visualization.cameras=all
+    visualization.checkpoint=outputs/plcs/plcs/logs/version_0/checkpoints/last.ckpt \
+    visualization.scene_path=data/plcs/scenes/scene_000000 \
+    visualization.animation_view=3d \
+    visualization.save=assets/plcs/pred.gif
 
-# 比較アニメーション出力
-python -m src.tasks.plcs.scripts.visualize_multiview \
-    visualization.mode=predict \
-    visualization.view=animation \
-    visualization.save=comparison.mp4
+# マルチビュー（全カメラ）
+.venv/bin/python -m src.tasks.plcs.scripts.visualize visualization.cameras=all
 ```
 
-## モデルアーキテクチャ
+可視化は単一の `visualize.py` に統合されており、`visualization.cameras=all`（または `0,1,2`）でマルチビューに対応します。`animation_view` は `3d` / `2d_topdown` / `camera`（`predict` モードでは `camera` 不可）。
 
-### フレームモデル (`PLCSModel`)
+## モデル
 
-単一フレーム・単一カメラからの推定。Transformer ベースのトークンモデル。
+| 名前 | アーキテクチャ | 実装 |
+|---|---|---|
+| `frame` (`plcs`) | Llama系 decoder-only Transformer（MHA + SwiGLU + RMSNorm）。`[CLS, Register×4, court(20), player(17)]` トークン列に3軸MROPE | `models/plcs_model.py` |
+| `multiview` (`plcs_multiview`) | 全カメラ×全時間を一括処理するTransformer。3軸MROPE、(camera,time)のCLSをカメラ次元で平均プール | `models/plcs_multiview_model.py` |
+| `multiview_axial` (`plcs_multiview_axial`) | カメラ軸／時間軸の交互self-attention（Axial attention） | `models/plcs_multiview_axial_model.py` |
 
-### マルチビューモデル (`PLCSMultiViewModel`)
+`build_plcs_model(config)` が `config.model.name` でモデルを切り替えます。
 
-複数カメラからの観測を統合して推定。カメラごとに
-`court_m + T * (CLS_po_{m,t}, CLS_ro_{m,t}, player_{m,t}[17])`
-のトークン列を持ち、camera-time 軸の 2D RoPE を適用します。
-推論時は camera-time 入力 `(B, N, T, ...)` を受け取り、時系列全体の位置・回転を推定します。
+## 補足
 
-- **入力**: 複数カメラ×時系列のキーポイント `(B, N, T, 17, 2)`
-- **出力**: 時系列の位置・回転 `(B, T, 3)`, `(B, T, 2)`
-- **動的サンプリング**: `num_views_range`, `seq_len_range` で学習時に範囲からランダムにサンプリング可能
-- **時間一貫性ロス**: 速度・加速度の平滑化による安定した軌道推定
-
-## 設定ファイル
-
-| 用途 | メイン設定 | 補助設定 |
-|------|----------|---------|
-| フレーム学習 | `train.yaml` | `model/frame.yaml`, `data/frame.yaml`, `loss/frame.yaml` |
-| マルチビュー学習 | `train_multiview.yaml` | `model/multiview.yaml`, `data/multiview.yaml`, `loss/multiview_sequence.yaml` |
-| 単一カメラ可視化 | `visualize.yaml` | `visualization/default.yaml` |
-| マルチビュー可視化 | `visualize_multiview.yaml` | `visualization/multiview.yaml` |
-
-各 `data/*.yaml` は標準の `DataLoader` バッチ設定を前提としており、
-`batch_size`, `num_workers`, `pin_memory` を用途ごとに切り替えます。
-
-### ロス設定ファイル
-
-ロス関数のウェイトは `configs/loss/` ディレクトリで管理されています：
-
-時系列一貫性ロスは以下の4項目を個別に重み付けできます（`loss.*.yaml` の `temporal.*.weight`）：
-- `temporal.position_gt`: 位置の速度/加速度を GT に合わせる
-- `temporal.position_inertia`: 位置の慣性（加速度が小さい）を促す
-- `temporal.rotation_gt`: 角度の角速度/角加速度を GT に合わせる
-- `temporal.rotation_inertia`: 回転の慣性（角加速度が小さい）を促す
-
-| ファイル | 用途 | `temporal.position_gt.weight` |
-|---------|------|------------------------------|
-| `frame.yaml` | フレーム単位学習 | 0.0 |
-| `sequence.yaml` | シーケンス学習 | 0.1 |
-| `multiview_sequence.yaml` | マルチビューシーケンス学習 | 0.1 |
-
-詳細なドキュメントは `src/tasks/plcs/scripts/` と `src/tasks/plcs/configs/` を参照。
+- 実行は `.venv/bin/python -m ...`。学習をCPUで試す場合は `run.gpus=0`。
+- データ生成にはAMASSモーション（`data/ACCAD/`）とSMPL-Hモデル（`data/smplx/smplh/`、`smplx` パッケージ）が必要です。
