@@ -1,257 +1,143 @@
 # Ball Detection
 
-テニス動画のRGBフレーム列から、各フレームのボール位置ヒートマップを推定するタスクです。
-複数ボールの教師データ、TrackNet形式データ、YouTubeから作成したデータセットに対応しています。
+> テニス映像のRGBフレーム列から、各フレームのボール位置を推定する時系列ボール検出タスク。
 
-## 設計
+## 概要
 
-データ読み込みは次の責任に分かれています。
+複数フレームの時空間情報を統合し、高速・小物体であるテニスボールのヒートマップと座標・信頼度を出力します。
 
-- `TrackNetDataModule`
-  - splitファイル、ディレクトリ構造、`Label.csv`を解釈する
-  - 固定長の`ClipWindow`を作成する
-- `YouTubeDataModule`
-  - `TrackNetDataModule`を継承する
-  - YouTubeデータセットのsplitエントリ基準だけを変更する
-- `BallDetectionDataset`
-  - データ形式に依存しない`ClipWindow`を受け取る
-  - 画像読み込み、augmentation、heatmap生成、Tensor化を行う
+| 項目 | 内容 |
+|---|---|
+| 入力 | RGBフレーム列 `(B, T, 3, H, W)`（T=8、H=288、W=512 がデフォルト） |
+| 出力 | 正規化ボール座標 `(B, T, 2)` + 信頼度 `(B, T)` + ヒートマップ（任意） |
+| モデル | `stunet` / `conv_next_unet` / `dino_pseudo3d` |
+| データ | TrackNet形式 + YouTube自作（手動アノテーション） |
+| 役割 | 認識パイプラインの上流。2D観測を [BLCS](../blcs/) へ供給 |
 
-新しいデータ形式を追加する場合は、DataModuleで`ClipWindow`へ変換します。
-Dataset側のsample生成処理は共通で再利用できます。
+## Inference
 
-## Sample契約
+```python
+import torch
+from src.tasks.ball_detection.inference.predictor import BallDetectionPredictor
 
-`T`はフレーム数、`K`は`data.max_instances`です。
+predictor = BallDetectionPredictor.load_from_checkpoint(
+    "outputs/ball_detection/stunet/logs/version_0/checkpoints/last.ckpt",
+    device="cuda",
+)
 
-| キー | Sample形状 | Batch形状 | 説明 |
-|---|---:|---:|---|
-| `images` | `(T, 3, H, W)` | `(B, T, 3, H, W)` | RGBフレーム列 |
-| `heatmaps` | `(T, Hh, Wh)` | `(B, T, Hh, Wh)` | 全可視ボールを統合した教師heatmap |
-| `coords` | `(T, K, 2)` | `(B, T, K, 2)` | 元画像ピクセル座標の複数ボールGT |
-| `visibility` | `(T, K)` | `(B, T, K)` | 可視インスタンスmask |
-| `original_size` | `(2,)` | `(B, 2)` | `(width, height)` |
-| `heatmap_size` | `(2,)` | `(B, 2)` | `(width, height)` |
+# (B, T, 3, H, W), float32, 値域 [0, 1]
+images = torch.rand(1, 8, 3, 288, 512)
+result = predictor.predict(images, return_heatmaps=True)
+coords = result["coords"]          # (1, 8, 2) 正規化座標
+visibility = result["visibility"]  # (1, 8)
+```
 
-`coords`の未使用領域は`(0, 0)`、対応する`visibility`は`0`でpaddingされます。
+返り値は全テンソルが CPU 上の `dict[str, Tensor]`。
 
-## データ形式
+| キー | 形状 | dtype | 条件 | 説明 |
+|---|---|---|---|---|
+| `coords` | `(B, T, 2)` | float32 | 常時 | ピーク位置の正規化座標 `(x, y) ∈ [0, 1]` |
+| `visibility` | `(B, T)` | float32 | 常時 | フレームごとのピーク信頼度 |
+| `heatmaps` | `(B, T, H, W)` | float32 | `return_heatmaps=True` | sigmoid後の確率ヒートマップ（解像度はモデル依存、[モデル](#モデル)参照） |
 
-### TrackNet
+`load_from_checkpoint` は単一チェックポイントのみ受け付けます（複数指定は `ValueError`）。
+
+## データ
+
+### TrackNet形式
 
 ```text
 data/tennis/
-├── game1/
-│   ├── Clip1/
-│   │   ├── 000000.jpg
-│   │   ├── 000001.jpg
-│   │   └── Label.csv
-│   └── Clip2/
-└── game2/
+└── game1/
+    ├── Clip1/              # "Clip" / "clip_" で始まるディレクトリ
+    │   ├── 000000.jpg      # 元解像度のフレーム
+    │   └── Label.csv
+    └── Clip2/
 ```
 
-splitファイルには`data.data_dir`からの相対パスを書きます。
+`Label.csv` の必須列は `file name, visibility, x-coordinate, y-coordinate`。任意列 `instance id` / `role` / `ball state` も解釈され、`role=distractor` は学習対象外です。複数ボールは同一 `file name` の複数行で表します。splitファイルには `data.data_dir` からの相対パスを記述します。
 
-```text
-game1
-game2/Clip1
-```
+### YouTube形式
 
-`Label.csv`の必須列は次の4つです。
+`YouTubeDataModule` は `TrackNetDataModule` を継承し、エントリ解決のみ変更します。splitは `data/tennis/youtube/annotations/{train,val,test}.txt`、パスは `data/tennis` からの相対（例 `youtube/frames/video_000001/clip_000001`）です。学習時は `data=youtube_rgb_sequence` を指定します。
 
-```csv
-file name,visibility,x-coordinate,y-coordinate
-000000.jpg,1,320.5,180.0
-000001.jpg,0,0,0
-```
+### Sample契約（学習データ）
 
-複数ボールを保持する場合は、同じ`file name`で複数行を記録します。
-`instance id`、`ball state`、`role`も利用できます。`role=distractor`は学習対象外です。
+`T = model.num_frames`（=8）、`K = data.max_instances`（=16）。
 
-### YouTube
+| キー | 形状 | 説明 |
+|---|---|---|
+| `images` | `(T, 3, 288, 512)` | 正規化済みRGB |
+| `heatmaps` | `(T, 288, 512)` | 全可視ボールを統合したガウス教師heatmap |
+| `coords` | `(T, K, 2)` | 元解像度ピクセル座標の複数ボールGT |
+| `visibility` | `(T, K)` | 可視インスタンスmask（未使用領域は座標 `(0,0)`・vis `0`） |
+| `original_size` / `heatmap_size` | `(2,)` | `(width, height)` |
 
-```text
-data/tennis/youtube/
-├── videos/
-├── frames/
-│   └── video_000001/
-│       ├── raw/
-│       └── clip_000001/
-│           ├── 000000.jpg
-│           └── Label.csv
-├── staging/
-├── annotations/
-│   ├── train.txt
-│   └── val.txt
-└── manifests/
-```
+## データセット生成（YouTube）
 
-学習時はHydraのdata configを切り替えます。
+YouTube動画から学習データを作る3ステップ。CLIは `scripts/youtube/` 配下です。
 
 ```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.train \
-    data=youtube_rgb_sequence
+# 1. 動画download → H.264変換 → フレーム抽出（configs/prepare_youtube_dataset.yaml）
+.venv/bin/python -m src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset
+
+# 2a. 候補clipをGUIで選択
+.venv/bin/python -m src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset \
+    workflow.video_id=video_000001 workflow.mode=select
+# 2b. 学習済みモデルでアノテーション初期値を予測
+.venv/bin/python -m src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset \
+    workflow.video_id=video_000001 workflow.mode=predict
+
+# 3. OpenCV UIで人手確認・確定 → clip/Label.csv/splitを書き出し
+.venv/bin/python -m src.tasks.ball_detection.scripts.youtube.annotate_youtube_ball \
+    annotate.video_id=video_000001
 ```
 
-## 学習と評価
+`predict` の出力は人手確認を効率化する初期値であり、半教師あり学習へ直接投入する疑似ラベルではありません。確定後のデータは通常の教師データとして扱います。
 
-### 学習方式
-
-現在の学習フローは教師あり学習のみです。
-
-YouTubeデータセット作成時のモデル予測は、人手アノテーションの初期値を作るための
-補助機能です。人手で確認してfinalizeしたデータは、通常の教師データとして学習します。
-
-### 学習
+## 学習
 
 ```bash
 .venv/bin/python -m src.tasks.ball_detection.scripts.train
+.venv/bin/python -m src.tasks.ball_detection.scripts.train model=conv_next_unet data.batch_size=4
 ```
 
-```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.train \
-    model=conv_next_unet \
-    data.batch_size=4
-```
-
-利用可能なモデルは次のとおりです。
-
-- `stunet`
-- `conv_next_unet`
-- `dino_pseudo3d`
+デフォルトは `model=stunet`、`data=rgb_sequence`。`configs/training/default.yaml` は `max_epochs=20`、`lr=1e-4`、`precision=bf16-mixed`、`val/loss` 監視のEarlyStopping（patience=5）。
 
 ### 評価
 
 ```bash
 .venv/bin/python -m src.tasks.ball_detection.scripts.eval \
-    run.checkpoint_path=path/to/checkpoint.ckpt
+    run.checkpoint_path=path/to/checkpoint.ckpt evaluation.splits=[val,test]
 ```
 
-複数の予測peakと複数のGTを抽出し、ハンガリアン法で対応付けて
-`precision`、`recall`、`f1`、`mean_distance_px`を計算します。
+複数の予測ピークと複数GTをハンガリアン法で対応付け（距離閾値4.0px）、`precision` / `recall` / `f1` / `mean_distance_px` を `outputs/ball_detection/eval/` に出力します。
 
-## Preview
-
-### Augmentation
+## 可視化
 
 ```bash
+# ckptでクリップを推論し、予測GIFを生成
+.venv/bin/python -m src.tasks.ball_detection.scripts.visualize \
+    visualization.clip_dir=data/tennis/game1/Clip1 \
+    visualization.checkpoint=path/to/checkpoint.ckpt \
+    visualization.save=assets/ball_detection/prediction.gif
+
+# データ確認用プレビュー（ckpt不要）
+.venv/bin/python -m src.tasks.ball_detection.scripts.preview_heatmaps
 .venv/bin/python -m src.tasks.ball_detection.scripts.preview_augmentation
 ```
 
-```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.preview_augmentation \
-    preview.split=val \
-    preview.sample_indices=[0,1,2]
-```
+## モデル
 
-PNG、sample metadata、`manifest.json`は次へ保存されます。
+| 名前 | 入力モード / ch | 出力解像度 | 実装 |
+|---|---|---|---|
+| `stunet` | mdd / 2ch | H/2 × W/2 | `models/spatiotemporal_unet.py`（2D+3D Conv U-Net、T≥8 必須） |
+| `conv_next_unet` | mdd / 2ch | H/4 × W/4 | `models/conv_next_unet.py`（ConvNeXt + 因子化Conv3d） |
+| `dino_pseudo3d` | rgb / 3ch | フル解像度 | `models/dino_pseudo3d.py`（DINO backbone + Pseudo-3Dデコーダ） |
 
-```text
-outputs/ball_detection/augmentation_preview/
-```
+`mdd`（Motion Direction Decomposition）はRGBの輝度差分を明暗2chに分解する入力（`models/input_adapter.py`）。`rgb` はRGBをそのまま渡します。
 
-上段が元シーケンス、下段がaugmentationをすべて有効にしたシーケンスです。
+## 補足
 
-### Heatmap
-
-```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.preview_heatmaps
-```
-
-### Prediction GIF
-
-```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.visualize \
-    visualization.clip_dir=data/tennis/game1/Clip1 \
-    visualization.save=outputs/ball_detection/prediction.gif
-```
-
-## YouTubeデータセット作成
-
-YouTube関連のCLIは`scripts/youtube/`にまとめています。
-
-### 1. 動画準備とフレーム抽出
-
-```bash
-.venv/bin/python -m \
-    src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset
-```
-
-`configs/prepare_youtube_dataset.yaml`の`workflow.sources`を読み、
-動画のdownload、H.264への変換、連続フレーム抽出を行います。
-
-### 2. 候補clip選択
-
-```bash
-.venv/bin/python -m \
-    src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset \
-    workflow.video_id=video_000001 \
-    workflow.mode=select
-```
-
-### 3. アノテーション初期値のモデル予測
-
-```bash
-.venv/bin/python -m \
-    src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset \
-    workflow.video_id=video_000001 \
-    workflow.mode=predict
-```
-
-この予測は人手確認を効率化するための初期値であり、半教師あり学習へ直接投入される
-疑似ラベルではありません。
-
-### 4. 人手確認と確定
-
-```bash
-.venv/bin/python -m \
-    src.tasks.ball_detection.scripts.youtube.annotate_youtube_ball \
-    annotate.video_id=video_000001
-```
-
-全フレームを確認してfinalizeすると、clip、`Label.csv`、splitファイルが
-YouTube学習データセットへ書き出されます。
-
-## 主要ファイル
-
-```text
-src/tasks/ball_detection/
-├── generate_dataset/
-│   ├── annotation_session.py
-│   ├── candidate_workflow.py
-│   └── __init__.py
-├── configs/
-│   ├── data/
-│   │   ├── rgb_sequence.yaml
-│   │   └── youtube_rgb_sequence.yaml
-│   ├── model/
-│   ├── preview_augmentation.yaml
-│   ├── preview_heatmaps.yaml
-│   └── train.yaml
-├── data/
-│   ├── augmentation.py
-│   ├── dataset.py
-│   ├── tracknet_datamodule.py
-│   ├── types.py
-│   └── youtube_datamodule.py
-├── models/
-├── scripts/
-│   ├── eval.py
-│   ├── preview_augmentation.py
-│   ├── preview_heatmaps.py
-│   ├── train.py
-│   ├── visualize.py
-│   └── youtube/
-│       ├── annotate_youtube_ball.py
-│       ├── clip_and_predict_youtube_dataset.py
-│       └── prepare_youtube_dataset.py
-├── training/
-├── visualization/
-```
-
-## 注意点
-
-- プロジェクトコマンドには`.venv/bin/python`を使用します。
-- YouTubeのdownloadには`yt-dlp`、変換には`ffmpeg`が必要です。
-- annotation UIとclip選択UIはOpenCVのGUIを使用します。
-- GPUがない場合は、学習・推論設定のdeviceや`run.gpus`をCPU向けに変更してください。
+- 実行は `.venv/bin/python -m ...`。GPUが無い場合は `run.gpus` や device設定をCPU向けに変更します。
+- YouTube生成は `yt-dlp`（download）・`ffmpeg`（H.264変換）に依存し、clip選択／アノテーションUIはOpenCVのGUIを使用します。
