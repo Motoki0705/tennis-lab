@@ -1,15 +1,14 @@
-# Axial multi-view PLCS model configuration
-# Uses one court-player token per (camera, time) element and alternates
-# camera-wise and time-wise self-attention.
+# Shared base for all multiview-axial PLCS model variants.
+# Size-specific configs (small/base/large/xlarge) compose from this via defaults.
 
 name: plcs_multiview_axial
 
 io:
   input_profile: multiview
 
-hidden_dim: 512
-num_layers: 12
-num_heads: 8
+hidden_dim: ???
+num_layers: ???
+num_heads: ???
 ffn_dim: null
 ffn_type: swiglu
 dropout: 0.1
@@ -22,4 +21,4 @@ rope_dim: null
 rope_theta: 10000.0
 rope_theta_time: 1000.0
 rope_theta_camera: 1000.0
-predict_canonical_pose: false
+predict_canonical_pose: true

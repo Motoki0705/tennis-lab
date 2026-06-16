@@ -1,0 +1,15 @@
+defaults:
+  - _augmentation
+  - _chunked
+  - _singleview
+  - _self_
+
+scene_dir: data/plcs
+num_court_kp: 20
+
+num_workers: 4
+pin_memory: true
+
+mode: sequence
+seq_stride: 128
+seq_len_range: [64, 512]
