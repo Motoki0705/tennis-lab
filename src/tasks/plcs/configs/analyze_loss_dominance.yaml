@@ -1,0 +1,20 @@
+defaults:
+  - run: analyze_loss_dominance
+  - _self_
+
+analysis:
+  # Split file (under data.scene_dir) to evaluate, e.g. test / val / train.
+  split: test
+  # Inference device; null selects cuda when available, else cpu.
+  device: null
+  # Limit the number of evaluated scenes (null = all).
+  max_batches: null
+  # Report filename written under run.output_dir.
+  output_filename: loss_dominance_test.json
+
+hydra:
+  run:
+    dir: outputs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
