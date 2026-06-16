@@ -18,6 +18,14 @@ class CourtFrame:
     rgb: np.ndarray  # (H, W, 3) uint8
 
 
+@dataclass(frozen=True)
+class KpFramePrediction:
+    """Per-frame keypoint prediction (data-only, no inference dependency)."""
+
+    keypoints_px: np.ndarray  # (K, 2) in original image pixels
+    mean_heatmap: np.ndarray  # (h', w') float in [0, 1]
+
+
 def load_court_frames(
     source: str | Path,
     *,
