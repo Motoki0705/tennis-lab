@@ -63,6 +63,62 @@ COCO17_SKELETON: list[tuple[int, int]] = [
 ]
 
 # -----------------------------
+# COCO-17 pose-naturalness groupings
+# -----------------------------
+# These index groupings describe geometric relationships between COCO-17 joints
+# used to evaluate how anatomically natural a pose is (e.g. PLCS naturalness
+# losses/metrics). They are kept here so they can be reused across tasks.
+
+# Articulated joints expressed as ``(a, vertex, c)`` triplets. The joint angle
+# is the interior angle at ``vertex`` between bones ``vertex -> a`` and
+# ``vertex -> c``. Includes 8 limb angles + 4 torso quadrilateral angles.
+COCO17_JOINT_ANGLE_TRIPLETS: tuple[tuple[int, int, int], ...] = (
+    (5, 7, 9),  # left elbow: shoulder - elbow - wrist
+    (6, 8, 10),  # right elbow: shoulder - elbow - wrist
+    (11, 13, 15),  # left knee: hip - knee - ankle
+    (12, 14, 16),  # right knee: hip - knee - ankle
+    (7, 5, 11),  # left shoulder: elbow - shoulder - hip
+    (8, 6, 12),  # right shoulder: elbow - shoulder - hip
+    (5, 11, 13),  # left hip: shoulder - hip - knee
+    (6, 12, 14),  # right hip: shoulder - hip - knee
+    (6, 5, 11),  # left shoulder torso angle: right_shoulder - left_shoulder - left_hip
+    (5, 6, 12),  # right shoulder torso angle: left_shoulder - right_shoulder - right_hip
+    (6, 12, 11),  # right hip torso angle: right_shoulder - right_hip - left_hip
+    (5, 11, 12),  # left hip torso angle: left_shoulder - left_hip - right_hip
+)
+
+# 4-point torsion / dihedral angles. For ``(a, b, c, d)`` the torsion is the
+# signed angle between plane ``(a, b, c)`` and plane ``(b, c, d)``, capturing
+# how a limb bends in 3D, not just how much.
+COCO17_TORSION_QUADRUPLETS: tuple[tuple[int, int, int, int], ...] = (
+    (6, 5, 7, 9),  # left arm: opposite shoulder - shoulder - elbow - wrist
+    (5, 6, 8, 10),  # right arm: opposite shoulder - shoulder - elbow - wrist
+    (12, 11, 13, 15),  # left leg: opposite hip - hip - knee - ankle
+    (11, 12, 14, 16),  # right leg: opposite hip - hip - knee - ankle
+)
+
+# Torso twist joints: ``(left_shoulder, right_shoulder, left_hip, right_hip)``.
+# Used to compare the shoulder axis and hip axis twist around the torso axis.
+COCO17_TORSO_TWIST_JOINTS: tuple[int, int, int, int] = (5, 6, 11, 12)
+
+# Body bones used for bone-length consistency. Face edges are intentionally
+# excluded because they are noisy in sports videos.
+COCO17_BONE_LENGTH_EDGES: tuple[tuple[int, int], ...] = (
+    (5, 6),  # shoulder width
+    (11, 12),  # hip width
+    (5, 11),  # left torso side
+    (6, 12),  # right torso side
+    (5, 7),  # left upper arm
+    (7, 9),  # left lower arm
+    (6, 8),  # right upper arm
+    (8, 10),  # right lower arm
+    (11, 13),  # left upper leg
+    (13, 15),  # left lower leg
+    (12, 14),  # right upper leg
+    (14, 16),  # right lower leg
+)
+
+# -----------------------------
 # SMPL-H Joint Definitions
 # -----------------------------
 
