@@ -1,0 +1,14 @@
+defaults:
+  - _augmentation
+  - _multiview
+  - _self_
+
+backend: default
+scene_dir: data/plcs
+num_court_kp: 20
+
+num_workers: 4
+pin_memory: true
+
+mode: multiview_sequence
+seq_len_range: [64, 256]

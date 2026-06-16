@@ -1,0 +1,11 @@
+defaults:
+  - default
+  - _gan
+  - _self_
+
+gan:
+  enabled: true
+  discriminator:
+    hidden_dim: 256
+    num_layers: 4
+    rope_dim: 16  # 25% of head_dim (256/4=64)

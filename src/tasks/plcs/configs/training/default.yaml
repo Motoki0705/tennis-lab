@@ -5,7 +5,7 @@ trainer:
   deterministic: true
   precision: "bf16-mixed"
   log_every_n_steps: 50
-  check_val_every_n_epoch: 1
+  check_val_every_n_epoch: 3
 
 # ---- Optimizer / schedule (LightningModule references) ----
 learning_rate: 1.0e-4
@@ -38,5 +38,5 @@ lr_monitor:
 # ---- Qualitative validation logging ----
 qualitative_logging:
   enabled: true
-  every_n_epochs: 5
+  every_n_epochs: 10
   num_samples: 4

@@ -1,0 +1,8 @@
+defaults:
+  - _multiview_axial
+  - _self_
+
+hidden_dim: 256
+num_layers: 8
+num_heads: 4
+rope_dim: 16 # 25% of head_dim

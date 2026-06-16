@@ -1,3 +1,7 @@
+defaults:
+  - /model@_model: multiview_axial_base
+  - _self_
+
 gan:
   enabled: false
   target_weight: 0.1
@@ -14,14 +18,14 @@ gan:
 
   discriminator:
     name: pose_sequence_transformer
-    hidden_dim: 128
-    num_layers: 4
+    hidden_dim: ???
+    num_layers: ???
     num_heads: 4
     ffn_dim: 256
     ffn_type: swiglu
     dropout: 0.1
     rope_dim: null
     rope_theta: 10000.0
-    max_seq_len: ${model.max_seq_len}
+    max_seq_len: ${_model.max_seq_len}
     invalid_init_std: 0.02
     cls_init_std: 0.02
