@@ -50,6 +50,7 @@ data/demo/
 data/tennis/
 data/tracknetv5_processed/
 data/AthletePose3D/
+data/dino_ssl/
 data/plcs_athlete_pose/scenes/
 data/plcs_athlete_pose/*.txt
 annotation.json
