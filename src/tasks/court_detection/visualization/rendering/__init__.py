@@ -3,6 +3,7 @@
 from src.tasks.court_detection.visualization.rendering.common import (
     COURT_SEG_PALETTE_RGB,
     CourtRenderStyle,
+    denormalize_tensor_to_rgb,
 )
 from src.tasks.court_detection.visualization.rendering.kp_renderer import (
     render_kp_frames,
@@ -17,6 +18,7 @@ from src.tasks.court_detection.visualization.rendering.seg_renderer import (
 __all__ = [
     "COURT_SEG_PALETTE_RGB",
     "CourtRenderStyle",
+    "denormalize_tensor_to_rgb",
     "render_kp_frames",
     "render_line_frames",
     "render_seg_frames",

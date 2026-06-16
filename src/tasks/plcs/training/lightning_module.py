@@ -2,26 +2,30 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import cv2
-import numpy as np
 import torch
 from torch import Tensor, nn
 
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
-from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
+from src.tasks.base.training.qualitative_saving import save_qualitative_animation
 from src.tasks.plcs.models import build_plcs_discriminator, build_plcs_model
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
-from src.tasks.plcs.utils.pose_geometry import canonical_pose_to_world_pose
-from src.utils.schema.player import COCO17_SKELETON
 from src.utils.tensor_utils import normalize_padding_mask
+
+# Visualization imports are deferred to render_qualitative_samples to avoid
+# a circular import cycle (visualization.api.predict → inference.predictor →
+# training.lightning_module → visualization).
+# At function call time the full package graph is already initialised.
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
+
+logger = logging.getLogger(__name__)
 
 
 class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
@@ -70,13 +74,14 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         return torch.cat([position, rotation], dim=-1)
 
     def _forward_from_batch(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:
-        return self.model(
+        result: dict[str, Tensor] = self.model(
             human_kp=batch["human_kp"],
             court_kp=batch["court_kp"],
             human_vis=batch.get("human_vis"),
             human_mask=batch.get("human_mask"),
             court_vis=batch.get("court_vis"),
         )
+        return result
 
     def _metric_tracker_for_stage(self, stage: str) -> PLCSMetrics:
         if stage == "train":
@@ -144,74 +149,6 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     # Qualitative validation logging
     # ------------------------------------------------------------------
 
-    def _draw_pose_topdown(
-        self,
-        canvas: np.ndarray,
-        pose_xyz: np.ndarray,
-        *,
-        to_px: Any,
-        color: tuple[int, int, int],
-    ) -> None:
-        points = [to_px(joint[:2]) for joint in pose_xyz]
-        for start_idx, end_idx in COCO17_SKELETON:
-            cv2.line(canvas, points[start_idx], points[end_idx], color, 2)
-        for point in points:
-            cv2.circle(canvas, point, 3, color, -1)
-
-    def _render_pose_topdown_canvas(
-        self,
-        gt_pose_world: np.ndarray,
-        pred_pose_world: np.ndarray,
-    ) -> np.ndarray:
-        if gt_pose_world.ndim == 2:
-            gt_pose_world = gt_pose_world[np.newaxis]
-            pred_pose_world = pred_pose_world[np.newaxis]
-
-        fig_w, fig_h = 500, 500
-        canvas = np.ones((fig_h, fig_w, 3), dtype=np.uint8) * 255
-
-        all_xy = np.concatenate(
-            [
-                gt_pose_world[..., :2].reshape(-1, 2),
-                pred_pose_world[..., :2].reshape(-1, 2),
-            ],
-            axis=0,
-        )
-        mn = all_xy.min(axis=0)
-        mx = all_xy.max(axis=0)
-        rng = (mx - mn).clip(1e-3)
-        margin = 40
-
-        def to_px(p: np.ndarray) -> tuple[int, int]:
-            x = int((p[0] - mn[0]) / rng[0] * (fig_w - 2 * margin) + margin)
-            y = int((p[1] - mn[1]) / rng[1] * (fig_h - 2 * margin) + margin)
-            return (np.clip(x, 0, fig_w - 1), np.clip(y, 0, fig_h - 1))
-
-        for frame_idx in range(gt_pose_world.shape[0]):
-            self._draw_pose_topdown(
-                canvas,
-                gt_pose_world[frame_idx],
-                to_px=to_px,
-                color=(0, 180, 0),
-            )
-            self._draw_pose_topdown(
-                canvas,
-                pred_pose_world[frame_idx],
-                to_px=to_px,
-                color=(0, 0, 255),
-            )
-
-        cv2.putText(
-            canvas,
-            "Top-down pose: Green=GT, Red=Pred",
-            (5, fig_h - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.4,
-            (0, 0, 0),
-            1,
-        )
-        return canvas
-
     def render_qualitative_samples(
         self,
         batches: list[dict[str, Any]],
@@ -221,8 +158,28 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         global_step: int,
         epoch: int,
     ) -> None:
-        """Render GT vs predicted player positions in top-down view with orientation arrows."""
+        """Render GT vs predicted player positions using PLCSSceneRenderer.
+
+        For each batch, builds GT and Pred :class:`PoseRenderScene` objects via
+        the adapter, creates a comparison animation with
+        :meth:`PLCSSceneRenderer.create_comparison_animation`, and persists the
+        result with :func:`save_qualitative_animation`.
+
+        The view is selected automatically:
+        - ``"3d"`` when both scenes have ``canonical_pose_3d`` (requires the
+          model to output ``canonical_pose`` and ``human_kp_3d`` in the batch).
+        - ``"2d_topdown"`` otherwise (position/rotation only).
+        """
+        # Deferred imports to break circular dependency at module load time.
+        from src.tasks.plcs.visualization.adapters.render_inputs import (  # noqa: PLC0415
+            batch_to_pose_render_scenes,
+        )
+        from src.tasks.plcs.visualization.rendering.scene_renderer import (  # noqa: PLC0415
+            PLCSSceneRenderer,
+        )
+
         device = next(self.parameters()).device
+        renderer = PLCSSceneRenderer()
 
         for batch_idx, batch in enumerate(batches):
             batch_dev = {
@@ -230,114 +187,46 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 for k, v in batch.items()
             }
 
-            with torch.no_grad():
-                out = self._forward_from_batch(batch_dev)
-                pred_pos = out["position"].cpu().numpy()  # (B, [T], 3)
-                pred_rot = out["rotation"].cpu().numpy()  # (B, [T], 2)
-                pred_world_pose = None
-                if self.predict_canonical_pose and "canonical_pose" in out:
-                    pred_world_pose = canonical_pose_to_world_pose(
-                        out["canonical_pose"],
-                        out["position"],
-                        out["rotation"],
-                    ).cpu().numpy()
+            try:
+                with torch.no_grad():
+                    out = self._forward_from_batch(batch_dev)
 
-            gt_pos = batch["position"].numpy()
-            gt_rot = batch["rotation"].numpy()
-            gt_world_pose = batch.get("human_kp_3d")
-
-            # Render first sample
-            b = 0
-            if pred_world_pose is not None and isinstance(gt_world_pose, Tensor):
-                canvas = self._render_pose_topdown_canvas(
-                    gt_world_pose.numpy()[b],
-                    pred_world_pose[b],
-                )
-                path = artifact_dir / f"plcs_batch{batch_idx:02d}.png"
-                cv2.imwrite(str(path), canvas)
-
-                save_image_to_tensorboard(
-                    tb_writer,
-                    f"qualitative/plcs/batch{batch_idx:02d}",
-                    canvas,
-                    global_step,
-                )
-                continue
-
-            gp = gt_pos[b]  # ([T], 3) or (3,)
-            pp = pred_pos[b]
-            gr = gt_rot[b]  # ([T], 2) or (2,)
-            pr = pred_rot[b]
-
-            # Handle single-frame (no T dim) vs sequence
-            if gp.ndim == 1:
-                gp = gp[np.newaxis]
-                pp = pp[np.newaxis]
-                gr = gr[np.newaxis]
-                pr = pr[np.newaxis]
-
-            T = gp.shape[0]
-            fig_w, fig_h = 500, 500
-            canvas = np.ones((fig_h, fig_w, 3), dtype=np.uint8) * 255
-
-            # Use X-Y as top-down
-            all_xy = np.concatenate([gp[:, :2], pp[:, :2]], axis=0)
-            mn = all_xy.min(axis=0)
-            mx = all_xy.max(axis=0)
-            rng = (mx - mn).clip(1e-3)
-            margin = 40
-
-            def to_px(
-                p: np.ndarray,
-                min_xy: np.ndarray,
-                span_xy: np.ndarray,
-                width: int,
-                height: int,
-                padding: int,
-            ) -> tuple[int, int]:
-                x = int(
-                    (p[0] - min_xy[0])
-                    / span_xy[0]
-                    * (width - 2 * padding)
-                    + padding
-                )
-                y = int(
-                    (p[1] - min_xy[1])
-                    / span_xy[1]
-                    * (height - 2 * padding)
-                    + padding
-                )
-                return (
-                    np.clip(x, 0, width - 1),
-                    np.clip(y, 0, height - 1),
+                # Build CPU-side scenes (adapter handles .cpu() internally)
+                batch_cpu = {
+                    k: v.cpu() if isinstance(v, Tensor) else v
+                    for k, v in batch.items()
+                }
+                out_cpu = {
+                    k: v.cpu() if isinstance(v, Tensor) else v
+                    for k, v in out.items()
+                }
+                gt_scene, pred_scene = batch_to_pose_render_scenes(
+                    batch_cpu, out_cpu, sample_idx=0
                 )
 
-            arrow_len = 20
+                # Choose view: 3d only when both scenes have canonical pose data
+                if (
+                    gt_scene.canonical_pose_3d is not None
+                    and pred_scene.canonical_pose_3d is not None
+                ):
+                    view = "3d"
+                else:
+                    view = "2d_topdown"
 
-            for t in range(T):
-                # GT: green
-                pt_gt = to_px(gp[t, :2], mn, rng, fig_w, fig_h, margin)
-                cv2.circle(canvas, pt_gt, 4, (0, 180, 0), -1)
-                dx_gt = int(arrow_len * float(gr[t, 0]))
-                dy_gt = int(arrow_len * float(gr[t, 1]))
-                cv2.arrowedLine(canvas, pt_gt, (pt_gt[0] + dx_gt, pt_gt[1] + dy_gt), (0, 180, 0), 2)
-
-                # Pred: red
-                pt_pred = to_px(pp[t, :2], mn, rng, fig_w, fig_h, margin)
-                cv2.circle(canvas, pt_pred, 4, (0, 0, 255), -1)
-                dx_pr = int(arrow_len * float(pr[t, 0]))
-                dy_pr = int(arrow_len * float(pr[t, 1]))
-                cv2.arrowedLine(canvas, pt_pred, (pt_pred[0] + dx_pr, pt_pred[1] + dy_pr), (0, 0, 255), 2)
-
-            cv2.putText(canvas, "Top-down: Green=GT, Red=Pred (arrows=orientation)", (5, fig_h - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
-
-            path = artifact_dir / f"plcs_batch{batch_idx:02d}.png"
-            cv2.imwrite(str(path), canvas)
-
-            save_image_to_tensorboard(
-                tb_writer,
-                f"qualitative/plcs/batch{batch_idx:02d}",
-                canvas,
-                global_step,
-            )
+                anim = renderer.create_comparison_animation(
+                    gt_scene,
+                    pred_scene,
+                    view=view,
+                )
+                save_qualitative_animation(
+                    animation=anim,
+                    artifact_dir=artifact_dir,
+                    name=f"plcs_batch{batch_idx:02d}",
+                    tb_writer=tb_writer,
+                    tag=f"qualitative/plcs/batch{batch_idx:02d}",
+                    global_step=global_step,
+                )
+            except Exception:
+                logger.exception(
+                    "render_qualitative_samples: failed for batch_idx=%d", batch_idx
+                )
