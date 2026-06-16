@@ -2,7 +2,7 @@ defaults:
   - model: multiview
   - data: chunked_multiview
   - training: default
-  - loss: multiview_sequence
+  - loss: no_canonical
   - metrics: default
   - run: train
   - paths: default

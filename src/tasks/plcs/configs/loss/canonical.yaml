@@ -1,0 +1,40 @@
+# PLCS loss configuration WITH canonical-pose supervision + naturalness terms.
+# Use with models where model.predict_canonical_pose: true.
+#
+# Why these weights (derived from the loss-dominance analysis on data/plcs
+# test.txt with the issue_430 checkpoint, see scripts/analysis/
+# analyze_loss_dominance.py). Mean raw (unweighted) losses measured were:
+#   rotation       ~0.464   (1 - cos, range 0..2)
+#   canonical_pose ~0.0070  (smooth-L1 on canonical joints, meters)
+#   position       ~0.0038  (smooth-L1 on court-normalized coords)
+#   torsion_angle  ~0.083   (rad, smooth-L1 of signed dihedral diff)
+#   joint_angle    ~0.069   (rad, smooth-L1 of interior-angle diff)
+#   torso_twist    ~0.031   (rad)
+#   bone_length    ~0.011   (relative length error)
+#
+# Design principle: rescale each term so the small-but-well-behaved supervision
+# (position, canonical_pose) and the naturalness regularizers are no longer
+# negligible, while rotation -- the hardest, worst output (~48 deg error) --
+# keeps the leading signal. We do NOT down-weight rotation (the model already
+# underperforms there) and we do NOT fully gradient-equalize (that would inflate
+# regularizers to primary-task scale and require brittle ~100x weights).
+#
+#   position       10.0  -> weighted ~0.038  (~0.8% -> ~7% of the objective)
+#   rotation        1.0  -> weighted ~0.464  (reference; remains dominant)
+#   canonical_pose  5.0  -> weighted ~0.035  (~1.5% -> ~6%; direct pose target)
+#
+# Naturalness terms are kept as a group roughly comparable to (not exceeding)
+# the direct canonical_pose supervision, each individually a small regularizer:
+#   joint_angle    0.1  -> weighted ~0.0069
+#   torsion_angle  0.1  -> weighted ~0.0083
+#   torso_twist    0.3  -> weighted ~0.0094
+#   bone_length    0.5  -> weighted ~0.0053
+# Sum of naturalness ~0.030, i.e. on par with canonical_pose (~0.035), so they
+# refine pose plausibility without overriding the supervised pose target.
+position_weight: 10.0
+rotation_weight: 1.0
+canonical_pose_weight: 5.0
+joint_angle_weight: 0.1
+torsion_angle_weight: 0.1
+torso_twist_weight: 0.3
+bone_length_weight: 0.5
