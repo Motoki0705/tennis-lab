@@ -10,7 +10,7 @@
 |---|---|
 | 入力 | 2Dボール観測 `ball_uv` + コートキーポイント `court_kp` |
 | 出力 | 3D位置 `position (B, T, 3)` [m] + 速度 `velocity (B, T, 3)` [m/s]（任意） |
-| モデル | `single` / `multiview` / `multiview_axial`（デフォルト） |
+| モデル | `multiview_axial_{small,base,large,xlarge}` |
 | データ | 物理シミュレーションによる合成生成 |
 | 役割 | 認識パイプラインの下流。[ball_detection](../ball_detection/) と [court_detection](../court_detection/) の2D観測を3D化 |
 
@@ -107,7 +107,7 @@ scene_000000/
 # ckptによる GT vs 予測の比較アニメーション
 .venv/bin/python -m src.tasks.blcs.scripts.visualize \
     visualization=multiview visualization.mode=predict \
-    visualization.checkpoint=outputs/blcs/multiview/logs/version_0/checkpoints/last.ckpt \
+    visualization.checkpoint=outputs/blcs/blcs_multiview_axial/logs/version_0/checkpoints/last.ckpt \
     visualization.cameras=all \
     visualization.save=outputs/blcs/visualize/compare_multiview.mp4
 ```
