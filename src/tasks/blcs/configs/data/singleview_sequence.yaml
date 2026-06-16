@@ -1,0 +1,13 @@
+defaults:
+  - _augmentation
+  - _singleview
+  - _self_
+
+backend: default
+scene_dir: data/blcs
+num_court_kp: 20
+
+num_workers: 4
+pin_memory: true
+
+seq_len_range: [64, 1024]

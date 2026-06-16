@@ -1,0 +1,4 @@
+# Multi-camera observation partial.
+camera_mode: random
+num_views_range: [4, 6]
+batch_size: 4

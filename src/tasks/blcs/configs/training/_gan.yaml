@@ -1,5 +1,7 @@
+# Adversarial-training mixin. Composed by gan_{small,base,large}, which supply
+# the mandatory (???) discriminator size fields and flip `enabled` to true.
 gan:
-  enabled: true
+  enabled: false
   target_weight: 2.0
   warmup_epochs: 10
   generator_gradient_clip_val: 1.0
@@ -14,8 +16,8 @@ gan:
 
   discriminator:
     name: trajectory_transformer
-    hidden_dim: 128
-    num_layers: 4
+    hidden_dim: ???
+    num_layers: ???
     num_heads: 4
     ffn_dim: 256
     ffn_type: swiglu

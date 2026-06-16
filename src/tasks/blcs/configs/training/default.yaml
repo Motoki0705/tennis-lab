@@ -1,6 +1,5 @@
-defaults:
-  - _gan
-  - _self_
+# GAN adversarial training is opt-in: select a `training=gan_{small,base,large}`
+# variant instead of `default` to enable the discriminator.
 
 # ---- Trainer (Lightning Trainer settings) ----
 trainer:
@@ -19,11 +18,10 @@ scheduler: cosine
 min_lr: 1.0e-6
 
 # ---- Loss weights ----
+# Only position + reprojection are consumed by TrajectoryLoss; temporal
+# consistency (velocity/smoothness) is enforced by the GAN discriminator.
 position_loss_weight: 1.0
-velocity_loss_weight: 0.0
-smoothness_loss_weight: 0.0
 reprojection_loss_weight: 0.0
-uv_velocity_loss_weight: 0.0
 
 # ---- Callbacks (BaseTrainingRunner references) ----
 checkpoint:
