@@ -1,0 +1,36 @@
+# PLCS loss configuration WITH canonical-pose supervision + naturalness terms.
+# Use with models where model.predict_canonical_pose: true.
+#
+# Why these weights (derived from the loss-dominance analysis on data/plcs
+# test.txt with the issue_430 checkpoint, see scripts/analysis/
+# analyze_loss_dominance.py). Mean raw (unweighted) losses measured were:
+#   rotation       ~0.464   (1 - cos, range 0..2)
+#   canonical_pose ~0.0070  (smooth-L1 on canonical joints, meters)
+#   position       ~0.0038  (smooth-L1 on court-normalized coords)
+#   torsion_angle  ~0.083   (rad, smooth-L1 of signed dihedral diff)
+#   joint_angle    ~0.069   (rad, smooth-L1 of interior-angle diff)
+#   torso_twist    ~0.031   (rad)
+#   bone_length    ~0.011   (relative length error)
+#
+# Design principle:
+#   rotation is strongly DOWN-weighted (0.02). Its raw loss is by far the
+#   largest, but most of that magnitude comes from the front/back (~180 deg)
+#   yaw ambiguity -- catastrophic flips that pin 1-cos near its max of 2 and
+#   that the model cannot reliably resolve from keypoints. Letting that
+#   ambiguous signal dominate the gradient is counter-productive, so we shrink
+#   it instead of chasing it.
+#   position is up-weighted (2.0) as the primary localization output;
+#   canonical_pose stays the reference (1.0). The naturalness terms refine pose
+#   plausibility; torso_twist is trimmed (0.1) so no single naturalness term
+#   over-contributes. With these weights the objective is fairly evenly spread.
+#
+# Resulting (weighted) shares = measured raw x these weights:
+#   rotation ~19.5%, torsion_angle ~17.5%, position ~16.0%, canonical_pose ~14.7%,
+#   joint_angle ~14.4%, bone_length ~11.2%, torso_twist ~6.6%.
+position_weight: 2.0
+rotation_weight: 0.02
+canonical_pose_weight: 1.0
+joint_angle_weight: 0.1
+torsion_angle_weight: 0.1
+torso_twist_weight: 0.1
+bone_length_weight: 0.5

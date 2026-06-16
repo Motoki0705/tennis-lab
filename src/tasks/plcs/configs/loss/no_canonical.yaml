@@ -1,0 +1,24 @@
+# PLCS loss configuration WITHOUT canonical-pose supervision.
+# Use with models where model.predict_canonical_pose: false (the default).
+# Only position + rotation are supervised; the pose-naturalness terms require a
+# canonical pose and are therefore omitted here (left at their 0.0 default).
+#
+# Why these weights (derived from the loss-dominance analysis on data/plcs
+# test.txt with the issue_430 checkpoint, see scripts/analysis/
+# analyze_loss_dominance.py):
+#   Mean raw losses were rotation ~0.46 (1 - cos, range 0..2) vs position
+#   ~0.0038 (smooth-L1 on court-normalized coords). rotation is strongly
+#   DOWN-weighted (0.02): most of its magnitude comes from the front/back
+#   (~180 deg) yaw ambiguity that the model cannot reliably resolve, so it
+#   should not dominate the gradient. position is the primary localization
+#   output and is up-weighted (2.0). Resulting weighted split: ~55% rotation /
+#   ~45% position.
+position_weight: 2.0
+rotation_weight: 0.02
+
+# Disabled: no canonical pose is predicted in this configuration.
+canonical_pose_weight: 0.0
+joint_angle_weight: 0.0
+torsion_angle_weight: 0.0
+torso_twist_weight: 0.0
+bone_length_weight: 0.0
