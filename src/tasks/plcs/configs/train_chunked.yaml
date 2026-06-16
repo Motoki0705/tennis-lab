@@ -1,6 +1,6 @@
 defaults:
-  - model: multiview
-  - data: chunked_multiview
+  - model: multiview_axial_base
+  - data: chunked_multiview_sequence_bs8
   - training: default
   - loss: no_canonical
   - metrics: default
