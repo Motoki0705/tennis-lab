@@ -1,7 +1,7 @@
 defaults:
   - model: multiview_axial_base
   - data: chunked_multiview_sequence_bs4
-  - training: chunked
+  - training: gan_base
   - metrics: default
   - run: train
   - physics: default

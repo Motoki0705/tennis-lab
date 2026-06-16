@@ -123,6 +123,7 @@ SMOKE_TASK_SPECS = (
                 name="single_gan",
                 overrides=(
                     *BLCS_AXIAL_STAGE_OVERRIDES,
+                    "training=gan_base",
                     "training.trainer.max_epochs=2",
                     "training.gan.transition.patience=0",
                     "training.gan.warmup_epochs=1",
@@ -138,30 +139,30 @@ SMOKE_TASK_SPECS = (
                 name="multiview",
                 overrides=(
                     "model=multiview",
-                    "data=multiview",
+                    "data=multiview_sequence",
                 ),
             ),
             SmokeVariant(
                 name="multiview_num_court_kp_12",
                 overrides=(
                     "model=multiview",
-                    "data=multiview",
+                    "data=multiview_sequence",
                     "data.num_court_kp=12",
                 ),
             ),
             SmokeVariant(
                 name="multiview_axial",
                 overrides=(
-                    "model=multiview_axial",
-                    "data=multiview",
+                    "model=multiview_axial_base",
+                    "data=multiview_sequence",
                     *BLCS_AXIAL_STAGE_OVERRIDES,
                 ),
             ),
             SmokeVariant(
                 name="multiview_axial_gqa",
                 overrides=(
-                    "model=multiview_axial",
-                    "data=multiview",
+                    "model=multiview_axial_base",
+                    "data=multiview_sequence",
                     *BLCS_AXIAL_STAGE_OVERRIDES,
                     "model.attention_type=gqa",
                     "model.num_kv_heads=2",
@@ -170,8 +171,8 @@ SMOKE_TASK_SPECS = (
             SmokeVariant(
                 name="multiview_axial_sliding_global",
                 overrides=(
-                    "model=multiview_axial",
-                    "data=multiview",
+                    "model=multiview_axial_base",
+                    "data=multiview_sequence",
                     *BLCS_AXIAL_STAGE_GLOBAL_OVERRIDES,
                     "model.time_window_radius=4",
                 ),
@@ -179,8 +180,8 @@ SMOKE_TASK_SPECS = (
             SmokeVariant(
                 name="multiview_axial_num_court_kp_12",
                 overrides=(
-                    "model=multiview_axial",
-                    "data=multiview",
+                    "model=multiview_axial_base",
+                    "data=multiview_sequence",
                     *BLCS_AXIAL_STAGE_OVERRIDES,
                     "data.num_court_kp=12",
                 ),
@@ -480,6 +481,7 @@ SMOKE_TASK_SPECS = (
             SmokeVariant(
                 name="multiview_gan",
                 overrides=(
+                    "training=gan_base",
                     "training.trainer.max_epochs=2",
                     "training.gan.transition.patience=0",
                     "training.gan.warmup_epochs=1",
@@ -565,8 +567,8 @@ def test_blcs_multiview_axial_stage_schedule_validation(
 ) -> None:
     GlobalHydra.instance().clear()
     config_overrides = [
-        _normalize_override("model=multiview_axial"),
-        _normalize_override("data=multiview"),
+        _normalize_override("model=multiview_axial_base"),
+        _normalize_override("data=multiview_sequence"),
         *(_normalize_override(override) for override in overrides),
     ]
     with initialize_config_dir(

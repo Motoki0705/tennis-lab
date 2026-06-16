@@ -1,0 +1,14 @@
+defaults:
+  - _augmentation
+  - _chunked
+  - _multiview
+  - _self_
+
+scene_dir: data/blcs
+num_court_kp: 20
+
+batch_size: 16
+num_workers: 4
+pin_memory: true
+
+seq_len_range: [64, 256]
