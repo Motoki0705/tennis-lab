@@ -1,0 +1,14 @@
+defaults:
+  - _augmentation
+  - _singleview
+  - _self_
+
+backend: default
+scene_dir: data/plcs
+num_court_kp: 20
+
+num_workers: 4
+pin_memory: true
+
+mode: frame
+seq_len_range: [1, 1]

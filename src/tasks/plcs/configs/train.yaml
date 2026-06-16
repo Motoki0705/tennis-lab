@@ -1,6 +1,6 @@
 defaults:
-  - model: frame
-  - data: frame
+  - model: multiview_axial_base
+  - data: multiview_sequence
   - training: default
   - loss: no_canonical
   - metrics: default
