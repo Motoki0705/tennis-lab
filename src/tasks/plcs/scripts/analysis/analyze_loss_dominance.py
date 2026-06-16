@@ -6,6 +6,7 @@ directory, evaluates it on a split, and reports for every registered
 contribution to the total. This shows which term dominates the objective and
 how large the pose-naturalness terms (``joint_angle``, ``torsion_angle``,
 ``torso_twist``, ``bone_length``) are relative to the supervised ones.
+It also saves per-batch raw/weighted loss distributions as a plot.
 
 Usage:
     python -m src.tasks.plcs.scripts.analysis.analyze_loss_dominance
@@ -19,7 +20,9 @@ Notes:
     - Model weights come from `run.checkpoint`; all loss/metric/data settings
       come from the run's `run.hparams` (`hparams.yaml`), so the report matches
       the trained configuration. Temporal losses are intentionally excluded.
-    - The JSON report is written to `run.output_dir/analysis.output_filename`.
+    - The JSON report is written to `run.output_dir/analysis.report_filename`.
+      The distribution plot is written to
+      `run.output_dir/analysis.plot_filename`.
 """
 
 from __future__ import annotations
@@ -60,6 +63,44 @@ def _load_hparams_config(hparams_path: Path) -> DictConfig:
 def _running_mean(state: dict[str, float], key: str, value: float, count: int) -> None:
     prev = state.get(key, 0.0)
     state[key] = prev + (value - prev) / count
+
+
+def _summarize_samples(values: list[float]) -> dict[str, float | int]:
+    sorted_values = sorted(values)
+    count = len(sorted_values)
+    if count == 0:
+        return {
+            "count": 0,
+            "mean": 0.0,
+            "std": 0.0,
+            "min": 0.0,
+            "p25": 0.0,
+            "median": 0.0,
+            "p75": 0.0,
+            "max": 0.0,
+        }
+
+    def percentile(q: float) -> float:
+        if count == 1:
+            return sorted_values[0]
+        pos = (count - 1) * q
+        lower = int(pos)
+        upper = min(lower + 1, count - 1)
+        frac = pos - lower
+        return sorted_values[lower] * (1.0 - frac) + sorted_values[upper] * frac
+
+    mean = sum(sorted_values) / count
+    variance = sum((v - mean) ** 2 for v in sorted_values) / count
+    return {
+        "count": count,
+        "mean": mean,
+        "std": variance**0.5,
+        "min": sorted_values[0],
+        "p25": percentile(0.25),
+        "median": percentile(0.5),
+        "p75": percentile(0.75),
+        "max": sorted_values[-1],
+    }
 
 
 def analyze(
@@ -112,6 +153,7 @@ def analyze(
     loader = datamodule.test_dataloader()
 
     raw_loss: dict[str, float] = {}
+    raw_loss_samples: dict[str, list[float]] = {name: [] for name in term_names}
     count = 0
     with torch.no_grad():
         for batch_idx, batch in enumerate(loader):
@@ -147,10 +189,16 @@ def analyze(
 
             count += 1
             for name in term_names:
-                _running_mean(raw_loss, name, float(losses[name].item()), count)
+                value = float(losses[name].item())
+                raw_loss_samples[name].append(value)
+                _running_mean(raw_loss, name, value, count)
 
     weights = {name: loss_fn.weight_for(name) for name in term_names}
     weighted = {name: raw_loss[name] * weights[name] for name in term_names}
+    weighted_loss_samples = {
+        name: [value * weights[name] for value in values]
+        for name, values in raw_loss_samples.items()
+    }
     total_weighted = sum(weighted.values())
     share = {
         name: (weighted[name] / total_weighted if total_weighted > 0 else 0.0)
@@ -167,6 +215,16 @@ def analyze(
         "raw_loss": dict(raw_loss),
         "weighted_loss": weighted,
         "weighted_share": share,
+        "raw_loss_distribution": {
+            name: _summarize_samples(values)
+            for name, values in raw_loss_samples.items()
+        },
+        "weighted_loss_distribution": {
+            name: _summarize_samples(values)
+            for name, values in weighted_loss_samples.items()
+        },
+        "raw_loss_samples": raw_loss_samples,
+        "weighted_loss_samples": weighted_loss_samples,
         "total_weighted_loss": total_weighted,
         "metrics": metrics.compute(),
     }
@@ -212,6 +270,73 @@ def _print_report(result: dict[str, Any]) -> None:
     print("=" * 72)
 
 
+def _plot_distribution(result: dict[str, Any], out_path: Path, dpi: int) -> None:
+    try:
+        import matplotlib.pyplot as plt
+    except Exception as exc:  # pragma: no cover - optional plotting
+        print(f"Skipping loss distribution plot: failed to import matplotlib: {exc}")
+        return
+
+    terms = list(result["terms"])
+    raw_samples = [result["raw_loss_samples"][term] for term in terms]
+    weighted_samples = [result["weighted_loss_samples"][term] for term in terms]
+
+    fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10, 8), sharey=True)
+    for ax, samples, title, xlabel in (
+        (axes[0], raw_samples, "Raw loss distribution", "raw loss"),
+        (axes[1], weighted_samples, "Weighted loss distribution", "weighted loss"),
+    ):
+        box = ax.boxplot(
+            samples,
+            orientation="horizontal",
+            tick_labels=terms,
+            showmeans=True,
+            patch_artist=True,
+        )
+        for patch in box["boxes"]:
+            patch.set_facecolor("#dbeafe")
+            patch.set_edgecolor("#2563eb")
+        for median in box["medians"]:
+            median.set_color("#dc2626")
+            median.set_linewidth(1.5)
+        for mean in box["means"]:
+            mean.set_markerfacecolor("#111827")
+            mean.set_markeredgecolor("#111827")
+
+        for idx, values in enumerate(samples, start=1):
+            if not values:
+                continue
+            if len(values) == 1:
+                offsets = [0.0]
+            else:
+                step = min(0.24, 0.48 / (len(values) - 1))
+                offsets = [
+                    (-step * (len(values) - 1) / 2) + step * i
+                    for i in range(len(values))
+                ]
+            ax.scatter(
+                values,
+                [idx + offset for offset in offsets],
+                s=14,
+                color="#1f2937",
+                alpha=0.65,
+                linewidths=0,
+            )
+
+        if any(value > 0.0 for values in samples for value in values):
+            ax.set_xscale("symlog", linthresh=1e-5)
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.grid(True, axis="x", linestyle="--", alpha=0.35)
+
+    fig.suptitle(
+        f"PLCS loss distributions ({result['split']}, {result['num_batches']} batches)"
+    )
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=dpi)
+    plt.close(fig)
+
+
 def _resolve_device(device_cfg: Any) -> torch.device:
     if device_cfg is not None:
         return torch.device(str(device_cfg))
@@ -228,7 +353,9 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     loss_overrides: dict[str, Any] | None = None
     if cfg.analysis.loss_config is not None:
         loaded = OmegaConf.load(to_absolute_path(str(cfg.analysis.loss_config)))
-        loss_overrides = cast(dict[str, Any], OmegaConf.to_container(loaded, resolve=True))
+        loss_overrides = cast(
+            dict[str, Any], OmegaConf.to_container(loaded, resolve=True)
+        )
     result = analyze(
         checkpoint=Path(to_absolute_path(str(cfg.run.checkpoint))),
         hparams=Path(to_absolute_path(str(cfg.run.hparams))),
@@ -241,9 +368,21 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
 
     out_dir = Path(to_absolute_path(str(cfg.run.output_dir)))
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / str(cfg.analysis.output_filename)
+    report_filename = str(
+        cfg.analysis.get("report_filename", cfg.analysis.get("output_filename"))
+    )
+    out_path = out_dir / report_filename
     out_path.write_text(json.dumps(result, indent=2))
     print(f"Saved JSON report to {out_path}")
+
+    plot_filename = cfg.analysis.get("plot_filename")
+    if plot_filename is not None:
+        plot_path = out_dir / str(plot_filename)
+        _plot_distribution(
+            result, plot_path, dpi=int(cfg.analysis.get("plot_dpi", 160))
+        )
+        if plot_path.exists():
+            print(f"Saved loss distribution plot to {plot_path}")
     return 0
 
 
