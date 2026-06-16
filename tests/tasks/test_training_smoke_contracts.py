@@ -214,7 +214,7 @@ SMOKE_TASK_SPECS = (
                 name="sequence",
                 overrides=(
                     "data=sequence",
-                    "loss=sequence",
+                    "loss=no_canonical",
                 ),
             ),
             SmokeVariant(
@@ -222,7 +222,7 @@ SMOKE_TASK_SPECS = (
                 overrides=(
                     "model=multiview",
                     "data=multiview",
-                    "loss=multiview_sequence",
+                    "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
                 ),
@@ -232,7 +232,7 @@ SMOKE_TASK_SPECS = (
                 overrides=(
                     "model=multiview",
                     "data=multiview",
-                    "loss=multiview_sequence",
+                    "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
                     "model.predict_canonical_pose=true",
@@ -245,7 +245,7 @@ SMOKE_TASK_SPECS = (
                 overrides=(
                     "model=multiview",
                     "data=multiview",
-                    "loss=multiview_sequence",
+                    "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "data.num_court_kp=12",
                     "model.max_seq_len=64",
@@ -256,7 +256,7 @@ SMOKE_TASK_SPECS = (
                 overrides=(
                     "model=multiview_axial",
                     "data=multiview",
-                    "loss=multiview_sequence",
+                    "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
                 ),
@@ -266,7 +266,7 @@ SMOKE_TASK_SPECS = (
                 overrides=(
                     "model=multiview_axial",
                     "data=multiview",
-                    "loss=multiview_sequence",
+                    "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
                     "model.time_window_radius=4",
@@ -278,7 +278,7 @@ SMOKE_TASK_SPECS = (
                 overrides=(
                     "model=multiview_axial",
                     "data=multiview",
-                    "loss=multiview_sequence",
+                    "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
                     "model.predict_canonical_pose=true",
@@ -291,7 +291,7 @@ SMOKE_TASK_SPECS = (
                 overrides=(
                     "model=multiview_axial",
                     "data=multiview",
-                    "loss=multiview_sequence",
+                    "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "data.num_court_kp=12",
                     "model.max_seq_len=64",
@@ -536,7 +536,7 @@ def _compose_config(case: SmokeCase, output_dir: Path) -> DictConfig:
         return compose(config_name=case.config_name, overrides=overrides)
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[untyped-decorator]
     ("overrides", "match"),
     (
         (
@@ -654,10 +654,10 @@ def _assert_expected_outputs(
         assert canonical_pose.shape[-2:] == (17, 3)
 
 
-@pytest.mark.integration
-@pytest.mark.local_data
-@pytest.mark.slow
-@pytest.mark.parametrize("case", SMOKE_CASES, ids=[case.name for case in SMOKE_CASES])
+@pytest.mark.integration  # type: ignore[untyped-decorator]
+@pytest.mark.local_data  # type: ignore[untyped-decorator]
+@pytest.mark.slow  # type: ignore[untyped-decorator]
+@pytest.mark.parametrize("case", SMOKE_CASES, ids=[case.name for case in SMOKE_CASES])  # type: ignore[untyped-decorator]
 def test_scene_training_smoke_contracts(case: SmokeCase, tmp_path: Path) -> None:
     output_dir = tmp_path / case.name
     config = _compose_config(case, output_dir)
