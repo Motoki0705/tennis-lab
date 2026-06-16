@@ -82,19 +82,21 @@ scene_000000/
 ## 学習
 
 ```bash
-.venv/bin/python -m src.tasks.blcs.scripts.train                              # multiview_axial（デフォルト）
-.venv/bin/python -m src.tasks.blcs.scripts.train model=single   data=single
-.venv/bin/python -m src.tasks.blcs.scripts.train model=multiview data=multiview
-.venv/bin/python -m src.tasks.blcs.scripts.train_chunked                      # オンライン生成のチャンク学習
+.venv/bin/python -m src.tasks.blcs.scripts.train                                          # multiview_axial_base（デフォルト）
+.venv/bin/python -m src.tasks.blcs.scripts.train model=single   data=singleview_sequence
+.venv/bin/python -m src.tasks.blcs.scripts.train model=multiview data=multiview_sequence
+.venv/bin/python -m src.tasks.blcs.scripts.train model=multiview_axial_large              # サイズバリアント差し替え
+.venv/bin/python -m src.tasks.blcs.scripts.train_chunked                                  # オンライン生成のチャンク学習
+.venv/bin/python -m src.tasks.blcs.scripts.train_chunked_gan                              # チャンク学習 + GAN（敵対的学習）
 ```
 
-`configs/training/default.yaml` は `max_epochs=100`、`lr=1e-4`、warmup=200、cosineスケジューラ、`bf16-mixed`。
+`configs/training/default.yaml` は `max_epochs=100`、`lr=1e-4`、warmup=200、cosineスケジューラ、`bf16-mixed`。GAN はオプトインで、`training=gan_{small,base,large}` を選ぶと有効化されます（`train_chunked_gan` が既定エントリ）。
 
 | モデル config | data config | 概要 |
 |---|---|---|
-| `single` | `single` | 単一カメラ（batch=32、seq 64〜1024） |
-| `multiview` | `multiview` | クロスアテンション統合（batch=4、view 4〜6） |
-| `multiview_axial` | `multiview` | 軸別注意（デフォルト） |
+| `single` | `singleview_sequence` | 単一カメラ（batch=32、seq 64〜1024） |
+| `multiview` | `multiview_sequence` | クロスアテンション統合（batch=4、view 4〜6） |
+| `multiview_axial_{small,base,large,xlarge}` | `multiview_sequence` | 軸別注意（`_base` がデフォルト）。チャンク学習は `chunked_multiview_sequence_bs{4,8,16}` |
 
 ## 可視化
 

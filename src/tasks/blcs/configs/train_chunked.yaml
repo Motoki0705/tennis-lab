@@ -1,6 +1,6 @@
 defaults:
-  - model: multiview_axial
-  - data: chunked_multi
+  - model: multiview_axial_base
+  - data: chunked_multiview_sequence_bs4
   - training: chunked
   - metrics: default
   - run: train

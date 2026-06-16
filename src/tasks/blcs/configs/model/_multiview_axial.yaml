@@ -1,0 +1,36 @@
+# Shared base for all axial multi-view BLCS model variants.
+# Uses one court-ball token per (camera, time) element and alternates
+# camera-wise and time-wise self-attention.
+# Size-specific configs (small/base/large/xlarge) compose from this via defaults
+# and must supply the mandatory (???) fields below. The per-stage lists are
+# mandatory because their length must equal `num_layers`, which varies by size.
+
+name: blcs_multiview_axial
+
+io:
+  input_profile: multiview
+
+hidden_dim: ???
+num_layers: ???  # number of camera/time stages
+num_heads: ???
+
+camera_layers_per_stage: ???
+time_layers_per_stage: ???
+time_global_stage_mask: ???
+
+attention_type: mha
+num_kv_heads: null
+ffn_dim: null
+ffn_type: swiglu
+dropout: 0.1
+
+rope_dim: null
+rope_theta: 10000.0
+rope_theta_time: 10000.0
+rope_theta_camera: 1000.0
+time_window_radius: 16
+
+max_seq_len: 10240
+max_num_cameras: 6
+predict_velocity: true
+invisible_init_std: 0.02
