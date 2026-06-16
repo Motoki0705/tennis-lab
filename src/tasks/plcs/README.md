@@ -89,12 +89,12 @@ scene_000000/
 
 ```bash
 .venv/bin/python -m src.tasks.plcs.scripts.train                  # multiview_axial_base（デフォルト）
-.venv/bin/python -m src.tasks.plcs.scripts.train_chunked          # multiview のチャンク学習（オンライン生成）
-.venv/bin/python -m src.tasks.plcs.scripts.train_chunked data.chunk.scenes_per_chunk=500
-.venv/bin/python -m src.tasks.plcs.scripts.train_chunked_gan      # チャンク学習 + GAN
+.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_chunked
+.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_chunked data.chunk.scenes_per_chunk=500
+.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_chunked_gan
 ```
 
-`model` config は `multiview_axial_{small,base,large,xlarge}`、`data` config は `singleview_frame` / `singleview_sequence` / `multiview_sequence` / `chunked_multiview_sequence_bs{8,16,32}`。GAN はオプトインで、`training=gan_{small,base,large}` を選ぶと有効化（`train_chunked_gan` が既定エントリ）。出力先は `outputs/plcs/${model.name}/`。
+`model` config は `multiview_axial_{small,base,large,xlarge}`、`data` config は `singleview_frame` / `singleview_sequence` / `multiview_sequence` / `chunked_multiview_sequence_bs{8,16,32}`。`train.py --config-name train_chunked` / `train_chunked_gan` で実験構成を差し替えられます。GAN はオプトインで、`training=gan_{small,base,large}` を選ぶと有効化。出力先は `outputs/plcs/${model.name}/`。
 
 | モデル config | data config | 概要 |
 |---|---|---|
