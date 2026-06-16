@@ -9,7 +9,6 @@ mask at model resolution) for the renderers to draw.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -23,17 +22,12 @@ from src.tasks.court_detection.inference import (
 from src.tasks.court_detection.visualization.adapters.predict_inputs import (
     to_predictor_input,
 )
-from src.tasks.court_detection.visualization.io.frames import CourtFrame
+from src.tasks.court_detection.visualization.io.frames import (
+    CourtFrame,
+    KpFramePrediction,
+)
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class KpFramePrediction:
-    """Per-frame keypoint prediction."""
-
-    keypoints_px: np.ndarray  # (K, 2) in original image pixels
-    mean_heatmap: np.ndarray  # (h', w') float in [0, 1]
 
 
 def predict_kp(

@@ -31,6 +31,13 @@ class PLCSSceneRenderer:
             skeleton_type="coco17"
         )
         self.smplh_renderer = SkeletonRenderer(skeleton_type="smplh")
+        self.coco17_renderer = SkeletonRenderer(skeleton_type="coco17")
+
+    def _pick_skeleton_renderer(self, num_joints: int) -> SkeletonRenderer:
+        """Return the skeleton renderer that matches the joint count."""
+        if num_joints == 17:
+            return self.coco17_renderer
+        return self.smplh_renderer
 
     def create_animation(
         self,
@@ -174,7 +181,8 @@ class PLCSSceneRenderer:
     def _render_3d_subplot(self, ax: Axes3D, scene: Any, frame_idx: int) -> None:
         self.court_renderer.render_3d(ax, show_net=True)
         world_pose = self._compute_world_pose(scene, frame_idx)
-        self.smplh_renderer.render_3d(ax, world_pose)
+        skel = self._pick_skeleton_renderer(world_pose.shape[0])
+        skel.render_3d(ax, world_pose)
 
     def _render_2d_subplot(self, ax: Axes, scene: Any, frame_idx: int) -> None:
         self.court_renderer.render_2d(ax, show_fence=True)
@@ -227,7 +235,10 @@ class PLCSSceneRenderer:
         gt_pose = self._compute_world_pose(gt_scene, frame_idx)
         pred_pose = self._compute_world_pose(pred_scene, frame_idx)
 
-        self.smplh_renderer.render_3d(
+        gt_skel = self._pick_skeleton_renderer(gt_pose.shape[0])
+        pred_skel = self._pick_skeleton_renderer(pred_pose.shape[0])
+
+        gt_skel.render_3d(
             ax,
             gt_pose,
             label="GT",
@@ -238,7 +249,7 @@ class PLCSSceneRenderer:
                 bone_width=2.0,
             ),
         )
-        self.smplh_renderer.render_3d(
+        pred_skel.render_3d(
             ax,
             pred_pose,
             label="Prediction",

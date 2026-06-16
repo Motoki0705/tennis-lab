@@ -7,8 +7,10 @@ from typing import cast
 import cv2
 import numpy as np
 
-from src.tasks.court_detection.visualization.api.predict import KpFramePrediction
-from src.tasks.court_detection.visualization.io.frames import CourtFrame
+from src.tasks.court_detection.visualization.io.frames import (
+    CourtFrame,
+    KpFramePrediction,
+)
 from src.tasks.court_detection.visualization.rendering.common import (
     CourtRenderStyle,
     colorize_heatmap,

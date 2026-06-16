@@ -7,6 +7,7 @@ from typing import cast
 
 import cv2
 import numpy as np
+import torch
 
 from src.tasks.base.visualization.layout import (
     PanelStyle,
@@ -38,6 +39,32 @@ class CourtRenderStyle:
     kp_color_rgb: tuple[int, int, int] = (96, 255, 128)
     kp_thickness: int = -1
     line_threshold: float = 0.5
+
+
+_IMAGENET_MEAN = (0.485, 0.456, 0.406)
+_IMAGENET_STD = (0.229, 0.224, 0.225)
+
+
+def denormalize_tensor_to_rgb(
+    tensor: torch.Tensor,
+    mean: tuple[float, float, float] = _IMAGENET_MEAN,
+    std: tuple[float, float, float] = _IMAGENET_STD,
+) -> np.ndarray:
+    """Convert an ImageNet-normalized ``(3, H, W)`` tensor to ``(H, W, 3)`` uint8 RGB.
+
+    Args:
+        tensor: Float tensor with shape ``(3, H, W)`` in ImageNet normalization.
+        mean: Per-channel mean used during normalization (default: ImageNet).
+        std: Per-channel std used during normalization (default: ImageNet).
+
+    Returns:
+        ``(H, W, 3)`` uint8 NumPy array in RGB order.
+    """
+    mean_t = torch.tensor(mean, dtype=torch.float32).view(3, 1, 1)
+    std_t = torch.tensor(std, dtype=torch.float32).view(3, 1, 1)
+    img = tensor.cpu().float() * std_t + mean_t
+    img = img.clamp(0.0, 1.0).permute(1, 2, 0).numpy()
+    return cast("np.ndarray", (img * 255.0).astype(np.uint8))
 
 
 def resize_for_display(rgb: np.ndarray, max_width: int) -> np.ndarray:

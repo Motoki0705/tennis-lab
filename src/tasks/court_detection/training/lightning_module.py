@@ -10,7 +10,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from src.tasks.base.training.lightning_module import BaseLightningModule
-from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
+from src.tasks.base.training.qualitative_saving import save_qualitative_clip
 from src.tasks.court_detection.models import build_court_detection_model
 from src.tasks.court_detection.training.losses import (
     BinaryDiceLoss,
@@ -18,11 +18,6 @@ from src.tasks.court_detection.training.losses import (
     FocalBCEWithLogitsLoss,
 )
 from src.tasks.court_detection.training.metrics import CourtDetectionMetrics
-from src.tasks.court_detection.training.visualization import (
-    save_kp_vis,
-    save_line_vis,
-    save_seg_vis,
-)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -140,10 +135,29 @@ class CourtDetectionLightningModule(BaseLightningModule):
         global_step: int,
         epoch: int,
     ) -> None:
-        """Render court detection panels using existing visualization helpers."""
-        import cv2
+        """Render court detection panels via shared rendering/ layer (pred-only).
+
+        Imports are deferred to avoid a circular import through the visualization
+        package (visualization → api → inference → training → visualization).
+        """
+        # Deferred imports to break circular dependency:
+        # training.lightning_module → visualization.__init__ → orchestrator
+        # → api.predict → inference → training.lightning_module
+        from src.tasks.court_detection.visualization.adapters.render_inputs import (  # noqa: PLC0415
+            batch_to_court_frame,
+            logits_to_kp_prediction,
+            logits_to_line_prob,
+            logits_to_seg_mask,
+        )
+        from src.tasks.court_detection.visualization.rendering import (  # noqa: PLC0415
+            CourtRenderStyle,
+            render_kp_frames,
+            render_line_frames,
+            render_seg_frames,
+        )
 
         device = next(self.parameters()).device
+        style = CourtRenderStyle()
 
         for batch_idx, batch in enumerate(batches):
             images = batch["image"].to(device)
@@ -151,28 +165,40 @@ class CourtDetectionLightningModule(BaseLightningModule):
             with torch.no_grad():
                 logits = self.model(images).cpu()  # (B, C, H, W)
 
-            # Render first sample in each batch
-            img_tensor = batch["image"][0]  # (3, H, W)
+            court_frame = batch_to_court_frame(batch, sample_idx=0)
             pred_logits_sample = logits[0]  # (C, H, W)
-
-            path = artifact_dir / f"court_batch{batch_idx:02d}.png"
+            clip_label = f"court_{self.task}"
 
             if self.task == "seg":
-                gt = batch["mask"][0]  # (H, W) long
-                save_seg_vis(img_tensor, gt, pred_logits_sample, path)
-            elif self.task == "kp":
-                gt = batch["heatmap"][0]  # (K, H, W)
-                save_kp_vis(img_tensor, gt, pred_logits_sample, path)
-            elif self.task == "line":
-                gt = batch["mask"][0]  # (1, H, W)
-                save_line_vis(img_tensor, gt, pred_logits_sample, path)
-
-            # Log to TensorBoard
-            panel = cv2.imread(str(path))
-            if panel is not None:
-                save_image_to_tensorboard(
-                    tb_writer,
-                    f"qualitative/court_detection/{self.task}/batch{batch_idx:02d}",
-                    panel,
-                    global_step,
+                mask = logits_to_seg_mask(pred_logits_sample)
+                frames_rgb = render_seg_frames(
+                    frames=[court_frame],
+                    masks=[mask],
+                    style=style,
+                    clip_label=clip_label,
                 )
+            elif self.task == "kp":
+                kp_pred = logits_to_kp_prediction(pred_logits_sample)
+                frames_rgb = render_kp_frames(
+                    frames=[court_frame],
+                    predictions=[kp_pred],
+                    style=style,
+                    clip_label=clip_label,
+                )
+            else:  # line
+                line_prob = logits_to_line_prob(pred_logits_sample)
+                frames_rgb = render_line_frames(
+                    frames=[court_frame],
+                    probs=[line_prob],
+                    style=style,
+                    clip_label=clip_label,
+                )
+
+            save_qualitative_clip(
+                frames_rgb=frames_rgb,
+                artifact_dir=artifact_dir,
+                name=f"court_batch{batch_idx:02d}",
+                tb_writer=tb_writer,
+                tag=f"qualitative/court_detection/batch{batch_idx:02d}",
+                global_step=global_step,
+            )

@@ -5,15 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import cv2
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from src.tasks.ball_detection.data.augmentation import (
-    denormalize_tensor_images_imagenet,
-)
 from src.tasks.ball_detection.models import (
     build_ball_detection_discriminator,
     build_ball_detection_model,
@@ -23,7 +18,7 @@ from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.losses import FocalBCEWithLogitsLoss
-from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
+from src.tasks.base.training.qualitative_saving import save_qualitative_clip
 from src.utils.data.heatmaps import heatmaps_to_soft_argmax
 
 if TYPE_CHECKING:
@@ -202,6 +197,14 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
     # Qualitative validation logging
     # ------------------------------------------------------------------
 
+    # Style parameters are stored as plain kwargs so the module never imports
+    # the visualization package at load time (which would create an import
+    # cycle: visualization -> api -> inference -> training.lightning_module).
+    # ``DrawStyle`` / ``LayoutStyle`` are constructed lazily in
+    # ``render_qualitative_samples`` after the deferred import.
+    _PEAK_THRESHOLD_DEFAULT: float = 0.5
+    _QUALITATIVE_FPS: float = 5.0
+
     def render_qualitative_samples(
         self,
         batches: list[dict[str, Any]],
@@ -211,87 +214,88 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         global_step: int,
         epoch: int,
     ) -> None:
-        """Render ball detection heatmap overlays for qualitative inspection."""
+        """Render ball detection visualisations using the shared clip renderer.
+
+        For each collected batch one sample (index 0) is rendered as a 2×2 grid
+        animation (RGB / MDD / RGB+pred / heatmap) and persisted via
+        ``save_qualitative_clip`` (→ GIF when T>1, PNG when T=1).
+        """
+        # Deferred imports break the import cycle through the visualization
+        # package (visualization -> api.predict -> inference -> training).
+        from src.tasks.ball_detection.visualization.adapters.render_inputs import (  # noqa: PLC0415
+            build_render_animation_inputs,
+        )
+        from src.tasks.ball_detection.visualization.rendering.clip_renderer import (  # noqa: PLC0415
+            DrawStyle,
+            LayoutStyle,
+            render_animation_frames,
+        )
+
+        # Styles are built here (not as class attributes) so the module never
+        # imports the visualization package at load time, which would create an
+        # import cycle (visualization -> api -> inference -> training).
+        draw_style = DrawStyle(
+            gt_radius=6,
+            pred_radius=6,
+            thickness=2,
+            gt_color_rgb=(0, 255, 0),
+            pred_color_rgb=(255, 80, 80),
+            text_color_rgb=(255, 255, 255),
+            muted_text_color_rgb=(160, 160, 160),
+        )
+        layout_style = LayoutStyle(
+            header_height=48,
+            tile_gap=4,
+            text_scale=0.55,
+            text_thickness=1,
+            background_rgb=(30, 30, 30),
+            panel_label_height=22,
+        )
+
         device = next(self.parameters()).device
 
+        normalize_cfg = dict(
+            self.config.get("data", {})
+            .get("augmentation", {})
+            .get("normalize_imagenet", {})
+            or {}
+        )
+        model_cfg = dict(self.config.get("model", {}) or {})
+        metrics_cfg = self.config.get("metrics", {})
+        peak_threshold = float(
+            metrics_cfg.get("peak_threshold", self._PEAK_THRESHOLD_DEFAULT)
+        )
+
         for batch_idx, batch in enumerate(batches):
-            images = batch["images"].to(device)
-            heatmaps_gt = batch["heatmaps"]  # (B, T, Hh, Wh)
-            coords_gt = batch["coords"]  # (B, T, K, 2)
-            visibility = batch["visibility"]  # (B, T, K)
+            images = batch["images"].to(device)  # (B, T, C, H, W)
+            heatmaps_gt = batch["heatmaps"]       # (B, T, Hh, Wh) – for sizing only
 
             with torch.no_grad():
                 logits = self._predict_heatmap_logits(images, heatmaps_gt.shape[-2:])
-                pred_heatmaps = torch.sigmoid(logits).cpu()
+                pred_heatmaps = torch.sigmoid(logits).cpu()  # (B, T, Hh, Wh) in [0,1]
 
-            # Render the first sample as a 3-row temporal contact sheet.
-            b_idx = 0
-            normalize_cfg = dict(
-                self.config.get("data", {})
-                .get("augmentation", {})
-                .get("normalize_imagenet", {})
-                or {}
-            )
-            frames = images[b_idx].detach().cpu()  # (T, C, H, W)
-            if bool(normalize_cfg.get("enabled", False)):
-                frames = denormalize_tensor_images_imagenet(
-                    frames,
-                    mean=normalize_cfg.get("mean", (0.485, 0.456, 0.406)),
-                    std=normalize_cfg.get("std", (0.229, 0.224, 0.225)),
-                )
-            frames = frames.clamp(0, 1)
-
-            rgb_row: list[np.ndarray] = []
-            gt_row: list[np.ndarray] = []
-            pred_row: list[np.ndarray] = []
-            for t_idx in range(images.shape[1]):
-                frame_rgb = frames[t_idx].permute(1, 2, 0).numpy()
-                frame_uint8 = (frame_rgb * 255).astype(np.uint8)
-                frame_bgr = cv2.cvtColor(frame_uint8, cv2.COLOR_RGB2BGR)
-                h, w = frame_bgr.shape[:2]
-
-                gt_hm = heatmaps_gt[b_idx, t_idx].numpy()
-                pred_hm = pred_heatmaps[b_idx, t_idx].numpy()
-                gt_cm = cv2.applyColorMap(
-                    cv2.resize((gt_hm * 255).astype(np.uint8), (w, h)),
-                    cv2.COLORMAP_JET,
-                )
-                pred_cm = cv2.applyColorMap(
-                    cv2.resize((pred_hm * 255).astype(np.uint8), (w, h)),
-                    cv2.COLORMAP_JET,
-                )
-
-                visible_coords = coords_gt[
-                    b_idx,
-                    t_idx,
-                    visibility[b_idx, t_idx] > 0.5,
-                ]
-                for coord in visible_coords:
-                    cx = int(coord[0].item())
-                    cy = int(coord[1].item())
-                    cv2.circle(frame_bgr, (cx, cy), 5, (0, 255, 0), 2)
-
-                rgb_row.append(frame_bgr)
-                gt_row.append(gt_cm)
-                pred_row.append(pred_cm)
-
-            panel = np.concatenate(
-                [
-                    np.concatenate(rgb_row, axis=1),
-                    np.concatenate(gt_row, axis=1),
-                    np.concatenate(pred_row, axis=1),
-                ],
-                axis=0,
+            render_kwargs = build_render_animation_inputs(
+                images_btchw=images.cpu(),
+                pred_heatmaps_bthw=pred_heatmaps,
+                peak_threshold=peak_threshold,
+                normalize_cfg=normalize_cfg,
+                model_cfg=model_cfg,
+                sample_idx=0,
+                clip_label=f"val epoch={epoch} batch={batch_idx}",
             )
 
-            # Save artifact
-            path = artifact_dir / f"ball_batch{batch_idx:02d}.png"
-            cv2.imwrite(str(path), panel)
+            frames = render_animation_frames(
+                **render_kwargs,
+                draw=draw_style,
+                layout=layout_style,
+            )
 
-            # Log to TensorBoard
-            save_image_to_tensorboard(
-                tb_writer,
-                f"qualitative/ball_detection/batch{batch_idx:02d}",
-                panel,
-                global_step,
+            save_qualitative_clip(
+                frames_rgb=frames,
+                artifact_dir=artifact_dir,
+                name=f"ball_batch{batch_idx:02d}",
+                tb_writer=tb_writer,
+                tag=f"qualitative/ball_detection/batch{batch_idx:02d}",
+                global_step=global_step,
+                fps=self._QUALITATIVE_FPS,
             )
