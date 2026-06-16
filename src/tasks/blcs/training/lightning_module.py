@@ -5,14 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import cv2
-import numpy as np
 import torch
 from torch import Tensor
 
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
-from src.tasks.base.training.qualitative_callback import save_image_to_tensorboard
+from src.tasks.base.training.qualitative_saving import save_qualitative_animation
 from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch
 from src.tasks.blcs.models import build_blcs_discriminator, build_blcs_model
 from src.tasks.blcs.training.losses import BLCSLoss
@@ -155,10 +153,20 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         global_step: int,
         epoch: int,
     ) -> None:
-        """Render GT vs predicted 3D ball trajectories in top-down (X-Y) and side (X-Z) views."""
-        device = next(self.parameters()).device
+        """Render GT vs predicted 3D ball trajectories using BLCSSceneRenderer."""
+        # Deferred imports to avoid circular dependency:
+        #   lightning_module <- inference.predictor <- visualization <- lightning_module
+        from src.tasks.blcs.visualization.adapters.render_inputs import (
+            batch_to_trajectory_arrays,  # noqa: PLC0415
+        )
+        from src.tasks.blcs.visualization.rendering.scene_renderer import (
+            BLCSSceneRenderer,  # noqa: PLC0415
+        )
 
-        for batch_idx, batch in enumerate(batches):
+        device = next(self.parameters()).device
+        renderer = BLCSSceneRenderer()
+
+        for i, batch in enumerate(batches):
             batch_dev = {
                 k: v.to(device) if isinstance(v, Tensor) else v
                 for k, v in batch.items()
@@ -166,66 +174,19 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
             with torch.no_grad():
                 out = self._forward_from_batch(batch_dev)
-                pred_pos = out["position"].cpu().numpy()  # (B, T, 3)
 
-            gt_pos = batch["position_3d"].numpy()  # (B, T, 3)
-            mask = self._normalize_loss_mask(batch)
-            if mask is not None:
-                mask_np = mask.numpy()
-            else:
-                mask_np = np.ones(gt_pos.shape[:2], dtype=np.float32)
+            gt, pred = batch_to_trajectory_arrays(batch, out, sample_idx=0)
 
-            # Render first sample
-            b = 0
-            gt = gt_pos[b]  # (T, 3)
-            pred = pred_pos[b]  # (T, 3)
-            m = mask_np[b] > 0  # (T,)
+            anim = renderer.create_comparison_animation(gt, pred, view="3d")
+            if anim is None:
+                continue
 
-            fig_w, fig_h = 400, 400
-            # Top-down: X vs Y
-            canvas_top: np.ndarray = np.ones((fig_h, fig_w, 3), dtype=np.uint8) * 255
-            # Side: X vs Z
-            canvas_side: np.ndarray = np.ones((fig_h, fig_w, 3), dtype=np.uint8) * 255
-
-            def _normalize_and_draw(
-                canvas: np.ndarray, gt_2d: np.ndarray, pred_2d: np.ndarray, valid: np.ndarray
-            ) -> None:
-                all_pts = np.concatenate([gt_2d[valid], pred_2d[valid]], axis=0)
-                if len(all_pts) == 0:
-                    return
-                mn = all_pts.min(axis=0)
-                mx = all_pts.max(axis=0)
-                rng = (mx - mn).clip(1e-3)
-                margin = 30
-                canvas_h, canvas_w = canvas.shape[:2]
-
-                def to_px(p: np.ndarray) -> tuple[int, int]:
-                    x = int((p[0] - mn[0]) / rng[0] * (canvas_w - 2 * margin) + margin)
-                    y = int((p[1] - mn[1]) / rng[1] * (canvas_h - 2 * margin) + margin)
-                    return (np.clip(x, 0, canvas_w - 1), np.clip(y, 0, canvas_h - 1))
-
-                for t in range(len(gt_2d)):
-                    if not valid[t]:
-                        continue
-                    cv2.circle(canvas, to_px(gt_2d[t]), 3, (0, 180, 0), -1)
-                    cv2.circle(canvas, to_px(pred_2d[t]), 3, (0, 0, 255), -1)
-
-            _normalize_and_draw(canvas_top, gt[:, :2], pred[:, :2], m)
-            cv2.putText(canvas_top, "Top-down (X-Y) Green=GT Red=Pred", (5, 15),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
-
-            _normalize_and_draw(canvas_side, gt[:, [0, 2]], pred[:, [0, 2]], m)
-            cv2.putText(canvas_side, "Side (X-Z) Green=GT Red=Pred", (5, 15),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
-
-            panel = np.concatenate([canvas_top, canvas_side], axis=1)
-
-            path = artifact_dir / f"blcs_batch{batch_idx:02d}.png"
-            cv2.imwrite(str(path), panel)
-
-            save_image_to_tensorboard(
-                tb_writer,
-                f"qualitative/blcs/batch{batch_idx:02d}",
-                panel,
-                global_step,
+            save_qualitative_animation(
+                animation=anim,
+                artifact_dir=artifact_dir,
+                name=f"blcs_batch{i:02d}",
+                tb_writer=tb_writer,
+                tag=f"qualitative/blcs/batch{i:02d}",
+                global_step=global_step,
+                fps=10.0,
             )
