@@ -10,7 +10,7 @@
 |---|---|
 | 入力 | 2D人物キーポイント `human_kp`（COCO17）+ コートキーポイント `court_kp` |
 | 出力 | 3D位置 `position`（正規化 + メートル）+ 回転 `rotation`（cos/sin yaw） |
-| モデル | `frame` / `multiview` / `multiview_axial` |
+| モデル | `multiview_axial_{small,base,large,xlarge}` |
 | データ | AMASS（ACCAD）モーション + SMPL-H による合成生成 |
 | 役割 | 認識パイプラインの下流。2D pose検出と [court_detection](../court_detection/) の観測を3D化 |
 
@@ -23,7 +23,7 @@ import torch
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 
 predictor = PLCSPredictor.load_from_checkpoint(
-    "outputs/plcs/plcs/logs/version_0/checkpoints/last.ckpt",
+    "outputs/plcs/plcs_multiview_axial/logs/version_0/checkpoints/last.ckpt",
     device="cpu",
 )
 
@@ -88,12 +88,18 @@ scene_000000/
 ## 学習
 
 ```bash
-.venv/bin/python -m src.tasks.plcs.scripts.train                  # frame（デフォルト）
+.venv/bin/python -m src.tasks.plcs.scripts.train                  # multiview_axial_base（デフォルト）
 .venv/bin/python -m src.tasks.plcs.scripts.train_chunked          # multiview のチャンク学習（オンライン生成）
 .venv/bin/python -m src.tasks.plcs.scripts.train_chunked data.chunk.scenes_per_chunk=500
+.venv/bin/python -m src.tasks.plcs.scripts.train_chunked_gan      # チャンク学習 + GAN
 ```
 
-`model` config は `frame` / `multiview` / `multiview_axial`、`data` config は `frame` / `sequence` / `multiview` / `chunked_multiview`。出力先は `outputs/plcs/${model.name}/`。マルチビュー学習は専用スクリプトではなく `train_chunked.py`（`model=multiview, data=chunked_multiview`）で行います。
+`model` config は `multiview_axial_{small,base,large,xlarge}`、`data` config は `singleview_frame` / `singleview_sequence` / `multiview_sequence` / `chunked_multiview_sequence_bs{8,16,32}`。GAN はオプトインで、`training=gan_{small,base,large}` を選ぶと有効化（`train_chunked_gan` が既定エントリ）。出力先は `outputs/plcs/${model.name}/`。
+
+| モデル config | data config | 概要 |
+|---|---|---|
+| `multiview_axial_{small,base,large,xlarge}` | `multiview_sequence` | 軸別注意（`_base` がデフォルト） |
+| `multiview_axial_{small,base,large,xlarge}` | `chunked_multiview_sequence_bs{8,16,32}` | チャンク学習（GPUサイズに合わせてbs選択） |
 
 ## 可視化
 
@@ -103,7 +109,7 @@ scene_000000/
 # ckptによる GT vs 予測の比較
 .venv/bin/python -m src.tasks.plcs.scripts.visualize \
     visualization.mode=predict \
-    visualization.checkpoint=outputs/plcs/plcs/logs/version_0/checkpoints/last.ckpt \
+    visualization.checkpoint=outputs/plcs/plcs_multiview_axial/logs/version_0/checkpoints/last.ckpt \
     visualization.scene_path=data/plcs/scenes/scene_000000 \
     visualization.animation_view=3d \
     visualization.save=assets/plcs/pred.gif
@@ -120,7 +126,7 @@ scene_000000/
 |---|---|---|
 | `frame` (`plcs`) | Llama系 decoder-only Transformer（MHA + SwiGLU + RMSNorm）。`[CLS, Register×4, court(20), player(17)]` トークン列に3軸MROPE | `models/plcs_model.py` |
 | `multiview` (`plcs_multiview`) | 全カメラ×全時間を一括処理するTransformer。3軸MROPE、(camera,time)のCLSをカメラ次元で平均プール | `models/plcs_multiview_model.py` |
-| `multiview_axial` (`plcs_multiview_axial`) | カメラ軸／時間軸の交互self-attention（Axial attention） | `models/plcs_multiview_axial_model.py` |
+| `multiview_axial` (`plcs_multiview_axial`) | カメラ軸／時間軸の交互self-attention（Axial attention）。**現在のデフォルト**（`small/base/large/xlarge` の4バリアント） | `models/plcs_multiview_axial_model.py` |
 
 `build_plcs_model(config)` が `config.model.name` でモデルを切り替えます。
 
