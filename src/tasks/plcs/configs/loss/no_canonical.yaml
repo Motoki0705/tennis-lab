@@ -6,16 +6,14 @@
 # Why these weights (derived from the loss-dominance analysis on data/plcs
 # test.txt with the issue_430 checkpoint, see scripts/analysis/
 # analyze_loss_dominance.py):
-#   At weight 1.0/1.0 the total was ~99% rotation and <1% position, purely
-#   because of differing numeric scales -- NOT because rotation is ~100x more
-#   important. Mean raw losses were rotation ~0.46 (1 - cos, range 0..2) vs
-#   position ~0.0038 (smooth-L1 on court-normalized coords). position is
-#   up-weighted 10x so it contributes a non-negligible share (~8%) of the
-#   objective instead of being drowned out. rotation stays at 1.0: it is the
-#   hardest, worst-performing output (angular error ~48 deg), so it should keep
-#   the dominant learning signal rather than be suppressed.
-position_weight: 10.0
-rotation_weight: 1.0
+#   Mean raw losses were rotation ~0.46 (1 - cos, range 0..2) vs position
+#   ~0.0038 (smooth-L1 on court-normalized coords). rotation is strongly
+#   DOWN-weighted (0.02): most of its magnitude comes from the front/back
+#   (~180 deg) yaw ambiguity that the model cannot reliably resolve, so it
+#   should not dominate the gradient. position stays the reference (1.0).
+#   With these weights the rotation/position weighted split is ~71% / ~29%.
+position_weight: 1.0
+rotation_weight: 0.02
 
 # Disabled: no canonical pose is predicted in this configuration.
 canonical_pose_weight: 0.0

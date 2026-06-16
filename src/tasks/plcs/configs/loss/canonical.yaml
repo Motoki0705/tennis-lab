@@ -12,28 +12,25 @@
 #   torso_twist    ~0.031   (rad)
 #   bone_length    ~0.011   (relative length error)
 #
-# Design principle: rescale each term so the small-but-well-behaved supervision
-# (position, canonical_pose) and the naturalness regularizers are no longer
-# negligible, while rotation -- the hardest, worst output (~48 deg error) --
-# keeps the leading signal. We do NOT down-weight rotation (the model already
-# underperforms there) and we do NOT fully gradient-equalize (that would inflate
-# regularizers to primary-task scale and require brittle ~100x weights).
+# Design principle:
+#   rotation is strongly DOWN-weighted (0.02). Its raw loss is by far the
+#   largest, but most of that magnitude comes from the front/back (~180 deg)
+#   yaw ambiguity -- catastrophic flips that pin 1-cos near its max of 2 and
+#   that the model cannot reliably resolve from keypoints. Letting that
+#   ambiguous signal dominate the gradient is counter-productive, so we shrink
+#   it instead of chasing it.
+#   canonical_pose is the primary structured target, so it is UP-weighted (2.0).
+#   position stays the reference (1.0).
+#   The naturalness terms (kept at their prior regularizer scale) refine pose
+#   plausibility; with rotation suppressed they now carry a sizeable combined
+#   share (~52%), acting as the main shape signal alongside canonical_pose.
 #
-#   position       10.0  -> weighted ~0.038  (~0.8% -> ~7% of the objective)
-#   rotation        1.0  -> weighted ~0.464  (reference; remains dominant)
-#   canonical_pose  5.0  -> weighted ~0.035  (~1.5% -> ~6%; direct pose target)
-#
-# Naturalness terms are kept as a group roughly comparable to (not exceeding)
-# the direct canonical_pose supervision, each individually a small regularizer:
-#   joint_angle    0.1  -> weighted ~0.0069
-#   torsion_angle  0.1  -> weighted ~0.0083
-#   torso_twist    0.3  -> weighted ~0.0094
-#   bone_length    0.5  -> weighted ~0.0053
-# Sum of naturalness ~0.030, i.e. on par with canonical_pose (~0.035), so they
-# refine pose plausibility without overriding the supervised pose target.
-position_weight: 10.0
-rotation_weight: 1.0
-canonical_pose_weight: 5.0
+# Resulting (weighted) shares = measured raw x these weights:
+#   canonical_pose ~24.6%, torso_twist ~16.5%, rotation ~16.3%,
+#   torsion_angle ~14.6%, joint_angle ~12.0%, bone_length ~9.4%, position ~6.7%.
+position_weight: 1.0
+rotation_weight: 0.02
+canonical_pose_weight: 2.0
 joint_angle_weight: 0.1
 torsion_angle_weight: 0.1
 torso_twist_weight: 0.3
