@@ -3,7 +3,7 @@
 Usage:
     python -m src.tasks.blcs.scripts.train
     python -m src.tasks.blcs.scripts.train training.max_epochs=5 run.gpus=0
-    python -m src.tasks.blcs.scripts.train model=multiview data=multiview
+    python -m src.tasks.blcs.scripts.train model=multiview data=multiview_sequence
     python -m src.tasks.blcs.scripts.train run.dry_run=true
 
 Notes:
@@ -19,7 +19,7 @@ from omegaconf import DictConfig
 from src.tasks.blcs.training.runner import BLCSTrainingRunner
 
 
-@hydra.main(config_path="../configs", config_name="train", version_base="1.3")
+@hydra.main(config_path="../configs", config_name="train", version_base="1.3")  # type: ignore[untyped-decorator]
 def main(config: DictConfig) -> None:
     """Hydra entry point."""
     runner = BLCSTrainingRunner()
