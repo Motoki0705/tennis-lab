@@ -10,9 +10,10 @@
 #   ~0.0038 (smooth-L1 on court-normalized coords). rotation is strongly
 #   DOWN-weighted (0.02): most of its magnitude comes from the front/back
 #   (~180 deg) yaw ambiguity that the model cannot reliably resolve, so it
-#   should not dominate the gradient. position stays the reference (1.0).
-#   With these weights the rotation/position weighted split is ~71% / ~29%.
-position_weight: 1.0
+#   should not dominate the gradient. position is the primary localization
+#   output and is up-weighted (2.0). Resulting weighted split: ~55% rotation /
+#   ~45% position.
+position_weight: 2.0
 rotation_weight: 0.02
 
 # Disabled: no canonical pose is predicted in this configuration.
