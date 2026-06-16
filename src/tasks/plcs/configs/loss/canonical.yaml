@@ -19,19 +19,18 @@
 #   that the model cannot reliably resolve from keypoints. Letting that
 #   ambiguous signal dominate the gradient is counter-productive, so we shrink
 #   it instead of chasing it.
-#   canonical_pose is the primary structured target, so it is UP-weighted (2.0).
-#   position stays the reference (1.0).
-#   The naturalness terms (kept at their prior regularizer scale) refine pose
-#   plausibility; with rotation suppressed they now carry a sizeable combined
-#   share (~52%), acting as the main shape signal alongside canonical_pose.
+#   position is up-weighted (2.0) as the primary localization output;
+#   canonical_pose stays the reference (1.0). The naturalness terms refine pose
+#   plausibility; torso_twist is trimmed (0.1) so no single naturalness term
+#   over-contributes. With these weights the objective is fairly evenly spread.
 #
 # Resulting (weighted) shares = measured raw x these weights:
-#   canonical_pose ~24.6%, torso_twist ~16.5%, rotation ~16.3%,
-#   torsion_angle ~14.6%, joint_angle ~12.0%, bone_length ~9.4%, position ~6.7%.
-position_weight: 1.0
+#   rotation ~19.5%, torsion_angle ~17.5%, position ~16.0%, canonical_pose ~14.7%,
+#   joint_angle ~14.4%, bone_length ~11.2%, torso_twist ~6.6%.
+position_weight: 2.0
 rotation_weight: 0.02
-canonical_pose_weight: 2.0
+canonical_pose_weight: 1.0
 joint_angle_weight: 0.1
 torsion_angle_weight: 0.1
-torso_twist_weight: 0.3
+torso_twist_weight: 0.1
 bone_length_weight: 0.5
