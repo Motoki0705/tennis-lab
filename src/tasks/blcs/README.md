@@ -86,11 +86,11 @@ scene_000000/
 .venv/bin/python -m src.tasks.blcs.scripts.train model=single   data=singleview_sequence
 .venv/bin/python -m src.tasks.blcs.scripts.train model=multiview data=multiview_sequence
 .venv/bin/python -m src.tasks.blcs.scripts.train model=multiview_axial_large              # サイズバリアント差し替え
-.venv/bin/python -m src.tasks.blcs.scripts.train_chunked                                  # オンライン生成のチャンク学習
-.venv/bin/python -m src.tasks.blcs.scripts.train_chunked_gan                              # チャンク学習 + GAN（敵対的学習）
+.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_chunked              # チャンク学習
+.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_chunked_gan          # チャンク学習 + GAN
 ```
 
-`configs/training/default.yaml` は `max_epochs=100`、`lr=1e-4`、warmup=200、cosineスケジューラ、`bf16-mixed`。GAN はオプトインで、`training=gan_{small,base,large}` を選ぶと有効化されます（`train_chunked_gan` が既定エントリ）。
+`configs/training/default.yaml` は `max_epochs=100`、`lr=1e-4`、warmup=200、cosineスケジューラ、`bf16-mixed`。`train.py --config-name train_chunked` / `train_chunked_gan` で実験構成を差し替えられます。個別に切り替える場合、チャンク学習は `data=chunked_multiview_sequence_bs{4,8,16}` と `training=chunked`、GAN は `training=gan_{small,base,large}` を選ぶと有効化されます。
 
 | モデル config | data config | 概要 |
 |---|---|---|
@@ -125,4 +125,4 @@ scene_000000/
 ## 補足
 
 - 実行は `.venv/bin/python -m ...`。学習をCPUで試す場合は `run.gpus=0`。
-- 生成・学習・可視化はすべて `data/blcs/scenes/` のシーンを起点にします（`train_chunked` はオンライン生成）。
+- 生成・学習・可視化はすべて `data/blcs/scenes/` のシーンを起点にします（chunked data config はオンライン生成）。

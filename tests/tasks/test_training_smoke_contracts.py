@@ -59,7 +59,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 def _blcs_chunked_runner_factory(config: DictConfig) -> BLCSTrainingRunner:
     """Build a BLCSTrainingRunner with generator_config for chunked training."""
-    from src.tasks.blcs.scripts.generate_dataset import build_generator_config
+    from src.tasks.blcs.generate_dataset.config import build_generator_config
 
     generator_config = build_generator_config(config)
     return BLCSTrainingRunner(generator_config=generator_config)
@@ -125,12 +125,14 @@ SMOKE_TASK_SPECS = (
                     *BLCS_AXIAL_STAGE_OVERRIDES,
                     "training=gan_base",
                     "training.trainer.max_epochs=2",
+                    "training.gan.transition.monitor=val/loss",
                     "training.gan.transition.patience=0",
                     "training.gan.warmup_epochs=1",
                     "training.gan.discriminator.hidden_dim=32",
                     "training.gan.discriminator.num_layers=2",
                     "training.gan.discriminator.num_heads=4",
                     "training.gan.discriminator.ffn_dim=64",
+                    "training.gan.discriminator.rope_dim=8",
                     "training.gan.discriminator.max_seq_len=64",
                 ),
                 expect_gan_training=True,
@@ -200,12 +202,22 @@ SMOKE_TASK_SPECS = (
             "model.num_layers=2",
             "model.num_heads=4",
             "model.ffn_dim=64",
+            "model.rope_dim=8",
         ),
         variants=(
-            SmokeVariant(name="frame"),
+            SmokeVariant(
+                name="frame",
+                overrides=(
+                    "model=frame",
+                    "data=singleview_frame",
+                    "loss=no_canonical",
+                ),
+            ),
             SmokeVariant(
                 name="frame_canonical_pose",
                 overrides=(
+                    "model=frame",
+                    "data=singleview_frame",
                     "model.predict_canonical_pose=true",
                     "loss.canonical_pose_weight=0.1",
                 ),
@@ -214,7 +226,8 @@ SMOKE_TASK_SPECS = (
             SmokeVariant(
                 name="sequence",
                 overrides=(
-                    "data=sequence",
+                    "model=frame",
+                    "data=singleview_sequence",
                     "loss=no_canonical",
                 ),
             ),
@@ -222,7 +235,7 @@ SMOKE_TASK_SPECS = (
                 name="multiview",
                 overrides=(
                     "model=multiview",
-                    "data=multiview",
+                    "data=multiview_sequence",
                     "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
@@ -232,7 +245,7 @@ SMOKE_TASK_SPECS = (
                 name="multiview_canonical_pose",
                 overrides=(
                     "model=multiview",
-                    "data=multiview",
+                    "data=multiview_sequence",
                     "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
@@ -245,7 +258,7 @@ SMOKE_TASK_SPECS = (
                 name="multiview_num_court_kp_12",
                 overrides=(
                     "model=multiview",
-                    "data=multiview",
+                    "data=multiview_sequence",
                     "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "data.num_court_kp=12",
@@ -255,8 +268,8 @@ SMOKE_TASK_SPECS = (
             SmokeVariant(
                 name="multiview_axial",
                 overrides=(
-                    "model=multiview_axial",
-                    "data=multiview",
+                    "model=multiview_axial_base",
+                    "data=multiview_sequence",
                     "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
@@ -265,8 +278,8 @@ SMOKE_TASK_SPECS = (
             SmokeVariant(
                 name="multiview_axial_sliding_global",
                 overrides=(
-                    "model=multiview_axial",
-                    "data=multiview",
+                    "model=multiview_axial_base",
+                    "data=multiview_sequence",
                     "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
@@ -277,8 +290,8 @@ SMOKE_TASK_SPECS = (
             SmokeVariant(
                 name="multiview_axial_canonical_pose",
                 overrides=(
-                    "model=multiview_axial",
-                    "data=multiview",
+                    "model=multiview_axial_base",
+                    "data=multiview_sequence",
                     "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "model.max_seq_len=64",
@@ -290,8 +303,8 @@ SMOKE_TASK_SPECS = (
             SmokeVariant(
                 name="multiview_axial_num_court_kp_12",
                 overrides=(
-                    "model=multiview_axial",
-                    "data=multiview",
+                    "model=multiview_axial_base",
+                    "data=multiview_sequence",
                     "loss=no_canonical",
                     "data.seq_len_range=[16,16]",
                     "data.num_court_kp=12",
@@ -300,7 +313,7 @@ SMOKE_TASK_SPECS = (
             ),
         ),
         supports_test_phase=True,
-        expect_qualitative=True,
+        expect_qualitative=False,
     ),
     SmokeTaskSpec(
         name="plcs_chunked",
@@ -317,6 +330,7 @@ SMOKE_TASK_SPECS = (
             "model.num_layers=2",
             "model.num_heads=4",
             "model.ffn_dim=64",
+            "model.rope_dim=8",
             "model.max_seq_len=64",
         ),
         variants=(
@@ -324,21 +338,23 @@ SMOKE_TASK_SPECS = (
             SmokeVariant(
                 name="multiview_gan",
                 overrides=(
-                    "training=gan",
-                    "training.trainer.max_epochs=2",
+                    "training=gan_base",
+                    "training.trainer.max_epochs=4",
+                    "training.gan.transition.monitor=val/loss",
                     "training.gan.transition.patience=0",
                     "training.gan.warmup_epochs=1",
                     "training.gan.discriminator.hidden_dim=32",
                     "training.gan.discriminator.num_layers=2",
                     "training.gan.discriminator.num_heads=4",
                     "training.gan.discriminator.ffn_dim=64",
+                    "training.gan.discriminator.rope_dim=8",
                     "training.gan.discriminator.max_seq_len=64",
                 ),
                 expect_gan_training=True,
             ),
         ),
         supports_test_phase=True,
-        expect_qualitative=True,
+        expect_qualitative=False,
     ),
     SmokeTaskSpec(
         name="plcs_chunked",
@@ -355,11 +371,12 @@ SMOKE_TASK_SPECS = (
             "model.num_layers=2",
             "model.num_heads=4",
             "model.ffn_dim=64",
+            "model.rope_dim=8",
             "model.max_seq_len=64",
         ),
         variants=(SmokeVariant(name="multiview"),),
         supports_test_phase=True,
-        expect_qualitative=True,
+        expect_qualitative=False,
     ),
     SmokeTaskSpec(
         name="court_detection",
@@ -539,6 +556,30 @@ def _compose_config(case: SmokeCase, output_dir: Path) -> DictConfig:
 
 
 @pytest.mark.parametrize(  # type: ignore[untyped-decorator]
+    ("task", "config_name"),
+    (
+        ("blcs", "train_chunked"),
+        ("blcs", "train_chunked_gan"),
+        ("plcs", "train_chunked"),
+        ("plcs", "train_chunked_gan"),
+    ),
+)
+def test_chunked_training_experiment_configs_compose(
+    task: str,
+    config_name: str,
+) -> None:
+    GlobalHydra.instance().clear()
+    config_dir = REPO_ROOT / f"src/tasks/{task}/configs"
+    with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
+        config = compose(config_name=config_name)
+
+    assert config.data.backend == "chunked"
+    assert config_name.endswith("_gan") == bool(
+        (config.training.get("gan", {}) or {}).get("enabled", False)
+    )
+
+
+@pytest.mark.parametrize(  # type: ignore[untyped-decorator]
     ("overrides", "match"),
     (
         (
@@ -608,11 +649,15 @@ def _assert_common_artifacts(output_dir: Path, *, expect_qualitative: bool) -> N
     saved_checkpoints = list(checkpoint_dir.glob("*.ckpt"))
     assert saved_checkpoints
 
-    qualitative_dir = log_dir / "qualitative" / "epoch_0000"
     if expect_qualitative:
-        qualitative_images = list(qualitative_dir.glob("*.png"))
-        assert qualitative_images
+        qualitative_dir = log_dir / "qualitative"
+        qualitative_artifacts = [
+            *qualitative_dir.glob("epoch_*/*.png"),
+            *qualitative_dir.glob("epoch_*/*.gif"),
+        ]
+        assert qualitative_artifacts
     else:
+        qualitative_dir = log_dir / "qualitative" / "epoch_0000"
         assert not qualitative_dir.exists()
 
 

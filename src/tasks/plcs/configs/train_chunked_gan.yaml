@@ -2,7 +2,7 @@ defaults:
   - model: multiview_axial_base
   - data: chunked_multiview_sequence_bs8
   - training: gan_base
-  - loss: multiview_sequence
+  - loss: canonical
   - metrics: default
   - run: train
   - paths: default

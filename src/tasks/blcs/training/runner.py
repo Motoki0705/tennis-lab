@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -34,7 +34,7 @@ class BLCSTrainingRunner(BaseTrainingRunner):
             if self.generator_config is None:
                 raise RuntimeError(
                     "generator_config is required for data.backend=chunked. "
-                    "Use the train_chunked entrypoint."
+                    "Use src.tasks.blcs.scripts.train with a chunked data config."
                 )
             return ChunkedBLCSDataModule(
                 config, generator_config=self.generator_config,
@@ -72,7 +72,7 @@ class BLCSTrainingRunner(BaseTrainingRunner):
             )
 
             extras.append(ChunkRotationCallback())
-        return extras
+        return cast(list[Any], extras)
 
     def dry_run_postprocess(self, batch: Any, output_dir: Path) -> None:
         """Log model parameters after dry run batch loading."""

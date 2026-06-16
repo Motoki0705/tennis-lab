@@ -2,9 +2,12 @@ defaults:
   - model: multiview_axial_base
   - data: multiview_sequence
   - training: default
-  - loss: no_canonical
+  - loss: canonical
   - metrics: default
   - run: train
+  - paths: default
+  - camera: default
+  - motion_sources: default
   - _self_
 
 hydra:
@@ -13,4 +16,3 @@ hydra:
   output_subdir: null
   job:
     chdir: false
-
