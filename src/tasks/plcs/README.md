@@ -27,6 +27,12 @@ predictor = PLCSPredictor.load_from_checkpoint(
     device="cpu",
 )
 
+# Frame モード（単一フレーム・単一カメラ）
+human_kp = torch.zeros(2, 17, 2)   # (B, 17, 2)
+court_kp = torch.zeros(2, 20, 2)   # (B, 20, 2)
+out = predictor.predict(human_kp, court_kp)
+# out["position"] (2, 3) / out["rotation"] (2, 2) / out["position_meters"] (2, 3) / out["yaw_radians"] (2,)
+
 # Multiview モード（複数カメラ×時系列）
 human_kp   = torch.zeros(1, 3, 64, 17, 2)  # (B, N, T, 17, 2)
 court_kp   = torch.zeros(1, 3, 64, 20, 2)  # (B, N, T, 20, 2)
@@ -82,44 +88,18 @@ scene_000000/
 ## 学習
 
 ```bash
-# multiview_axial_base + multiview_sequence（デフォルト）
-.venv/bin/python -m src.tasks.plcs.scripts.train
-
-# chunked オンライン生成（大規模学習）
-.venv/bin/python -m src.tasks.plcs.scripts.train_chunked
+.venv/bin/python -m src.tasks.plcs.scripts.train                  # multiview_axial_base（デフォルト）
+.venv/bin/python -m src.tasks.plcs.scripts.train_chunked          # multiview のチャンク学習（オンライン生成）
 .venv/bin/python -m src.tasks.plcs.scripts.train_chunked data.chunk.scenes_per_chunk=500
-
-# chunked + GAN（discriminator: base）
-.venv/bin/python -m src.tasks.plcs.scripts.train_chunked_gan
+.venv/bin/python -m src.tasks.plcs.scripts.train_chunked_gan      # チャンク学習 + GAN
 ```
 
-### config の選択
+`model` config は `multiview_axial_{small,base,large,xlarge}`、`data` config は `singleview_frame` / `singleview_sequence` / `multiview_sequence` / `chunked_multiview_sequence_bs{8,16,32}`。GAN はオプトインで、`training=gan_{small,base,large}` を選ぶと有効化（`train_chunked_gan` が既定エントリ）。出力先は `outputs/plcs/${model.name}/`。
 
-**model**（`configs/model/`）:
-
-| config | hidden_dim | num_layers | num_heads |
-|---|---|---|---|
-| `multiview_axial_small` | 256 | 8 | 4 |
-| `multiview_axial_base` | 512 | 8 | 8 |
-| `multiview_axial_large` | 512 | 12 | 8 |
-| `multiview_axial_xlarge` | 1024 | 12 | 8 |
-
-**data**（`configs/data/`）: `singleview_frame` / `singleview_sequence` / `multiview_sequence` / `chunked_multiview_sequence_bs8` / `chunked_multiview_sequence_bs16` / `chunked_multiview_sequence_bs32`
-
-**training**（`configs/training/`）: `default` / `gan_small` / `gan_base` / `gan_large`
-
-モデルサイズやbatch_sizeの差し替えはコマンドライン引数で指定します：
-
-```bash
-# XLargeモデル + bs16
-.venv/bin/python -m src.tasks.plcs.scripts.train_chunked \
-    model=multiview_axial_xlarge data=chunked_multiview_sequence_bs16
-
-# GAN large discriminator
-.venv/bin/python -m src.tasks.plcs.scripts.train_chunked_gan training=gan_large
-```
-
-出力先は `outputs/plcs/${model.name}/`。
+| モデル config | data config | 概要 |
+|---|---|---|
+| `multiview_axial_{small,base,large,xlarge}` | `multiview_sequence` | 軸別注意（`_base` がデフォルト） |
+| `multiview_axial_{small,base,large,xlarge}` | `chunked_multiview_sequence_bs{8,16,32}` | チャンク学習（GPUサイズに合わせてbs選択） |
 
 ## 可視化
 
@@ -146,9 +126,9 @@ scene_000000/
 |---|---|---|
 | `frame` (`plcs`) | Llama系 decoder-only Transformer（MHA + SwiGLU + RMSNorm）。`[CLS, Register×4, court(20), player(17)]` トークン列に3軸MROPE | `models/plcs_model.py` |
 | `multiview` (`plcs_multiview`) | 全カメラ×全時間を一括処理するTransformer。3軸MROPE、(camera,time)のCLSをカメラ次元で平均プール | `models/plcs_multiview_model.py` |
-| `multiview_axial` (`plcs_multiview_axial`) | カメラ軸／時間軸の交互self-attention（Axial attention）。**現在のデフォルト** | `models/plcs_multiview_axial_model.py` |
+| `multiview_axial` (`plcs_multiview_axial`) | カメラ軸／時間軸の交互self-attention（Axial attention）。**現在のデフォルト**（`small/base/large/xlarge` の4バリアント） | `models/plcs_multiview_axial_model.py` |
 
-`build_plcs_model(config)` が `config.model.name` でモデルを切り替えます。全バリアント共通で `predict_canonical_pose: true`。
+`build_plcs_model(config)` が `config.model.name` でモデルを切り替えます。
 
 ## 補足
 
