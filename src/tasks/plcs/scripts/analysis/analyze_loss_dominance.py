@@ -68,6 +68,7 @@ def analyze(
     split: str,
     device: torch.device,
     max_batches: int | None,
+    loss_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run the dominance analysis and return a result dict."""
     config = _load_hparams_config(hparams)
@@ -84,8 +85,13 @@ def analyze(
 
     # PLCSLoss is the single source of truth for which terms exist and their
     # weights, so the analysis automatically tracks every registered term
-    # (including the pose-naturalness losses) without hard-coded names.
-    loss_fn = PLCSLoss(config=PLCSLossConfig.from_dict(dict(config.get("loss", {}))))
+    # (including the pose-naturalness losses) without hard-coded names. Loss
+    # weights default to the checkpoint's hparams, optionally overridden to
+    # preview a candidate weighting.
+    loss_weights = dict(config.get("loss", {}))
+    if loss_overrides:
+        loss_weights.update(loss_overrides)
+    loss_fn = PLCSLoss(config=PLCSLossConfig.from_dict(loss_weights))
     term_names = tuple(loss_fn.loss_terms)
 
     metrics_cfg = config.get("metrics", {})
@@ -219,12 +225,17 @@ def _resolve_device(device_cfg: Any) -> torch.device:
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     max_batches = cfg.analysis.max_batches
+    loss_overrides: dict[str, Any] | None = None
+    if cfg.analysis.loss_config is not None:
+        loaded = OmegaConf.load(to_absolute_path(str(cfg.analysis.loss_config)))
+        loss_overrides = cast(dict[str, Any], OmegaConf.to_container(loaded, resolve=True))
     result = analyze(
         checkpoint=Path(to_absolute_path(str(cfg.run.checkpoint))),
         hparams=Path(to_absolute_path(str(cfg.run.hparams))),
         split=str(cfg.analysis.split),
         device=_resolve_device(cfg.analysis.device),
         max_batches=int(max_batches) if max_batches is not None else None,
+        loss_overrides=loss_overrides,
     )
     _print_report(result)
 

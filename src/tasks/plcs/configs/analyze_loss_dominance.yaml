@@ -11,6 +11,10 @@ analysis:
   max_batches: null
   # Report filename written under run.output_dir.
   output_filename: loss_dominance_test.json
+  # Optional path to a loss YAML (e.g. configs/loss/canonical.yaml) whose weights
+  # override those from the checkpoint's hparams. Use to preview how a candidate
+  # weighting would rebalance the objective. null = use hparams weights as-is.
+  loss_config: null
 
 hydra:
   run:
