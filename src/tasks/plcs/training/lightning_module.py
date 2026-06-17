@@ -14,6 +14,7 @@ from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
 from src.tasks.plcs.models import build_plcs_discriminator, build_plcs_model
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
+from src.tasks.plcs.training.mcmc import LangevinNoiseInjector, MCMCConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
 from src.utils.tensor_utils import normalize_padding_mask
 
@@ -50,6 +51,16 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 canonical_pose_weight=float(train_cfg.get("canonical_pose_weight", 0.0)),
             )
         self.loss_fn = PLCSLoss(config=loss_cfg)
+
+        # MCMC (SGLD) training strategy (issue #519): optional Langevin noise
+        # injection to escape the 180deg rotation flat-saddle local optimum.
+        mcmc_cfg = MCMCConfig.from_dict(
+            dict((self.config.get("training", {}) or {}).get("mcmc", {}) or {})
+        )
+        self.mcmc_injector = (
+            LangevinNoiseInjector(mcmc_cfg) if mcmc_cfg.enabled else None
+        )
+
         gan_enabled = bool(((self.config.get("training", {}) or {}).get("gan", {}) or {}).get("enabled", False))
         self._initialize_manual_gan(
             discriminator=build_plcs_discriminator(self.config) if gan_enabled else None,
@@ -167,6 +178,31 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def configure_optimizers(self) -> Any:
         return self.configure_gan_optimizers(self.model.parameters())
+
+    def on_train_batch_end(
+        self, outputs: Any, batch: Any, batch_idx: int
+    ) -> None:
+        """Inject SGLD/Langevin noise after the optimizer step (issue #519).
+
+        Runs in both automatic (baseline) and manual (GAN) optimization modes
+        because Lightning calls this hook after the full training step. The
+        generator optimizer's current LR sets the Langevin noise scale.
+        """
+        if self.mcmc_injector is None:
+            return
+        optimizer = self.optimizers()
+        if isinstance(optimizer, (list, tuple)):
+            optimizer = optimizer[0]
+        lr = float(optimizer.param_groups[0]["lr"])
+        total_steps = max(self._estimate_total_steps(), 1)
+        progress = float(self.global_step) / float(total_steps)
+        std = self.mcmc_injector.inject(
+            self.model,
+            lr=lr,
+            epoch=int(self.current_epoch),
+            progress=progress,
+        )
+        self.log("train/mcmc_noise_std", std)
 
     # ------------------------------------------------------------------
     # Qualitative validation logging
