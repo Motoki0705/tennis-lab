@@ -101,6 +101,33 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             return self.val_metrics
         return self.test_metrics
 
+    def _aux_loss(
+        self,
+        pred: Tensor,
+        target: Tensor,
+        kind: str,
+        frame_mask: Tensor | None,
+    ) -> Tensor:
+        """Masked auxiliary loss for a representation-learning head.
+
+        ``kind="position"`` uses smooth-L1; ``kind="rotation"`` uses the same
+        ``1 - cosine`` loss as the main rotation term on the ``(cos, sin)``
+        representation.
+        """
+        if kind == "rotation":
+            pred_norm = nn.functional.normalize(pred, dim=-1)
+            target_norm = nn.functional.normalize(target, dim=-1)
+            per_frame = 1.0 - (pred_norm * target_norm).sum(dim=-1)
+        else:
+            per_frame = nn.functional.smooth_l1_loss(
+                pred, target, reduction="none"
+            ).mean(dim=-1)
+        if frame_mask is not None and per_frame.shape == frame_mask.shape:
+            from src.utils.tensor_utils import masked_mean  # noqa: PLC0415
+
+            return masked_mean(per_frame, frame_mask, binarize=True, denom_min=1.0)
+        return per_frame.mean()
+
     def _compute_supervised_result(
         self,
         batch: dict[str, Tensor],
@@ -120,28 +147,26 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             human_mask=human_mask,
         )
 
-        # Auxiliary position supervision on the rotation branch (representation
-        # learning so the rotation trunk learns multiview triangulation). Uses
-        # the same masked smooth-L1 as the main position term, scaled by the
-        # configured position weight, and is added to the total loss.
-        if "aux_position" in outputs:
-            per_frame = nn.functional.smooth_l1_loss(
-                outputs["aux_position"],
-                batch["position"],
-                reduction="none",
-            ).mean(dim=-1)
-            if frame_mask is not None and per_frame.shape == frame_mask.shape:
-                from src.utils.tensor_utils import masked_mean  # noqa: PLC0415
-
-                aux_pos = masked_mean(
-                    per_frame, frame_mask, binarize=True, denom_min=1.0
-                )
-            else:
-                aux_pos = per_frame.mean()
-            losses["aux_position"] = aux_pos
-            losses["total"] = losses["total"] + self.loss_fn.weight_for(
-                "position"
-            ) * aux_pos
+        # Auxiliary supervision heads for representation learning on task trunks.
+        # Each entry maps an output key -> (target batch key, loss kind, weight
+        # name). "position" teaches multiview triangulation; "rotation" teaches
+        # heading. aux_position is the ex10 ingredient on the rotation trunk;
+        # aux_*_canonical are the issue #520 canonical-trunk variants.
+        aux_specs = (
+            ("aux_position", "position", "position", "position"),
+            ("aux_position_canonical", "position", "position", "position"),
+            ("aux_rotation_canonical", "rotation", "rotation", "rotation"),
+        )
+        for out_key, target_key, kind, weight_name in aux_specs:
+            if out_key not in outputs:
+                continue
+            aux_value = self._aux_loss(
+                outputs[out_key], batch[target_key], kind, frame_mask
+            )
+            losses[out_key] = aux_value
+            losses["total"] = (
+                losses["total"] + self.loss_fn.weight_for(weight_name) * aux_value
+            )
 
         metrics = self._metric_tracker_for_stage(stage).update(
             outputs["position"],

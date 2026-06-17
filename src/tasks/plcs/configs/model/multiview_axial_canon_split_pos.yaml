@@ -1,0 +1,18 @@
+defaults:
+  - _multiview_axial
+  - _self_
+
+# Issue #520: canonical pose gets its OWN independent trunk (separate from the
+# rotation and pose trunks). The rotation trunk keeps the ex10 position-aux
+# ingredient; this variant toggles the auxiliary head(s) on the canonical trunk.
+hidden_dim: 512
+num_layers: 0
+num_task_layers: 6
+num_heads: 8
+rope_dim: 16
+aux_position_on_rotation_branch: true
+canonical_on_rotation_branch: false
+separate_canonical_trunk: true
+aux_rotation_on_canonical_trunk: false
+aux_position_on_canonical_trunk: true
+# Pattern: canonical trunk + POSITION aux.
