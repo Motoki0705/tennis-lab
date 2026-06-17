@@ -1,0 +1,13 @@
+# exp8: exp3's strong rotation objective (angle 1.0, rotation 0.5) with a modest
+# position up-weight (2 -> 6) to recover some position on the SHARED-trunk
+# branched model, where rotation must stay co-trained with position+canonical
+# (exp5/6/7 showed separating tasks collapses rotation). Keeps the trunk
+# rotation-prioritized while giving the position readout more gradient.
+position_weight: 6.0
+rotation_weight: 0.5
+angle_weight: 1.0
+canonical_pose_weight: 1.0
+joint_angle_weight: 0.1
+torsion_angle_weight: 0.1
+torso_twist_weight: 0.1
+bone_length_weight: 0.5

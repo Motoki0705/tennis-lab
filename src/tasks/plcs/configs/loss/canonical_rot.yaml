@@ -1,0 +1,30 @@
+# PLCS loss config: canonical-pose supervision + rotation-focused objective.
+# Use with models where model.predict_canonical_pose: true.
+#
+# Motivation (experiment: feat/plcs-rotation-improvement, exp1):
+#   The canonical baseline (loss=canonical) down-weights rotation to 0.02 on the
+#   theory that the front/back (~180 deg) yaw ambiguity makes rotation a lost
+#   cause. But that also starves the rotation head of gradient: the baseline
+#   reaches mean angular error ~61.6 deg (median ~45 deg, only 33.6% within
+#   30 deg). Rotation is not merely flipping at the tail -- it is broadly
+#   undertrained, because:
+#     1. rotation_weight=0.02 makes the (cos,sin) term contribute almost no
+#        gradient, and
+#     2. the canonical_pose term canonicalizes the target with the *target*
+#        yaw, so it back-props nothing to the rotation head.
+#
+# This config promotes rotation to a first-class objective:
+#   - rotation_weight (1 - cos) raised 0.02 -> 0.5. Smooth, convex near 0 deg.
+#   - angle_weight (NEW): smooth-L1 on the wrapped yaw error in radians. Its
+#     gradient magnitude stays ~constant out to 180 deg, whereas 1-cos has a
+#     flat saddle at the antipode that makes flips a sticky equilibrium. The
+#     two terms are complementary: cosine near 0, angle near 180.
+# Position / canonical-pose / naturalness terms are unchanged from `canonical`.
+position_weight: 2.0
+rotation_weight: 0.5
+angle_weight: 1.0
+canonical_pose_weight: 1.0
+joint_angle_weight: 0.1
+torsion_angle_weight: 0.1
+torso_twist_weight: 0.1
+bone_length_weight: 0.5

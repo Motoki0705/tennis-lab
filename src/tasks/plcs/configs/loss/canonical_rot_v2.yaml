@@ -1,0 +1,26 @@
+# PLCS loss config: rotation-focused (exp2) with position protected.
+# Use with models where model.predict_canonical_pose: true.
+#
+# Motivation (experiment: feat/plcs-rotation-improvement, exp2):
+#   exp1 (loss=canonical_rot) cut rotation error from 61.6 -> 20.4 deg (mean) but
+#   regressed position from 0.26 -> 1.10 m. Loss-dominance on the exp1 checkpoint
+#   showed angle + rotation took 82% of the weighted objective (angle 56%,
+#   rotation 26%) while position got only 5.7% -- gradient starvation of the
+#   (easy) position task on the shared trunk. Position raw loss rose 10x
+#   (0.00068 -> 0.0066).
+#
+#   exp2 rebalances so position and rotation contributions are comparable at
+#   convergence (using exp1 raw losses position~0.0007 target, angle~0.13):
+#     - position_weight 2 -> 30 (restore the easy localization task)
+#     - angle_weight 1.0 -> 0.3 (keep the anti-flip gradient, but don't let it
+#       swamp the trunk)
+#     - rotation_weight 0.5 -> 0.1 (smooth (cos,sin) term near 0 deg)
+#   Naturalness + canonical_pose terms unchanged from `canonical`.
+position_weight: 30.0
+rotation_weight: 0.1
+angle_weight: 0.3
+canonical_pose_weight: 1.0
+joint_angle_weight: 0.1
+torsion_angle_weight: 0.1
+torso_twist_weight: 0.1
+bone_length_weight: 0.5

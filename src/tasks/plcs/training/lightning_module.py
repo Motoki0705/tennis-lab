@@ -109,6 +109,29 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             human_mask=human_mask,
         )
 
+        # Auxiliary position supervision on the rotation branch (representation
+        # learning so the rotation trunk learns multiview triangulation). Uses
+        # the same masked smooth-L1 as the main position term, scaled by the
+        # configured position weight, and is added to the total loss.
+        if "aux_position" in outputs:
+            per_frame = nn.functional.smooth_l1_loss(
+                outputs["aux_position"],
+                batch["position"],
+                reduction="none",
+            ).mean(dim=-1)
+            if frame_mask is not None and per_frame.shape == frame_mask.shape:
+                from src.utils.tensor_utils import masked_mean  # noqa: PLC0415
+
+                aux_pos = masked_mean(
+                    per_frame, frame_mask, binarize=True, denom_min=1.0
+                )
+            else:
+                aux_pos = per_frame.mean()
+            losses["aux_position"] = aux_pos
+            losses["total"] = losses["total"] + self.loss_fn.weight_for(
+                "position"
+            ) * aux_pos
+
         metrics = self._metric_tracker_for_stage(stage).update(
             outputs["position"],
             outputs["rotation"],

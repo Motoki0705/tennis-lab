@@ -1,0 +1,21 @@
+defaults:
+  - _multiview_axial
+  - _self_
+
+# Fully-separated task trunks (num_layers=0, 6+6 axial pairs) like
+# multiview_axial_base_split, but the canonical-pose auxiliary head is routed
+# onto the ROTATION trunk (canonical_on_rotation_branch: true).
+#
+# Motivation (experiments/README.md exp7): exp5 (separate trunks, canonical on
+# the pose trunk) collapsed rotation to 71 deg because the rotation trunk lacked
+# the 3D-geometry regularization that the canonical-pose task provides; exp6
+# (detach) confirmed the trunk NEEDS that auxiliary gradient. Here the rotation
+# trunk gets rotation + canonical (rich geometry) while the position trunk stays
+# independent (exp5 showed an independent trunk reaches ~0.27 m). Goal: recover
+# exp3-level rotation (~13 deg) AND baseline position (~0.26 m) simultaneously.
+hidden_dim: 512
+num_layers: 0
+num_task_layers: 6
+canonical_on_rotation_branch: true
+num_heads: 8
+rope_dim: 16
