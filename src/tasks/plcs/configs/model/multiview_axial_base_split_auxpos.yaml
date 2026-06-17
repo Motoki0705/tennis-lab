@@ -1,0 +1,21 @@
+defaults:
+  - _multiview_axial
+  - _self_
+
+# Separate trunks (num_layers=0, 6+6) where the ROTATION trunk carries the
+# canonical-pose AND an auxiliary position head, while the dedicated POSE trunk
+# produces the precise final position. See experiments/README.md (exp10).
+#
+# Rationale: exp5/exp7 showed a separate rotation trunk collapses (67-71deg)
+# even with the canonical aux -- the missing ingredient is the POSITION task,
+# which teaches multiview triangulation / cross-view correspondence that
+# rotation depends on. The aux position head supplies that gradient to the
+# rotation trunk, while the independent pose trunk (exp5 reached 0.27m) gives
+# precise position. Goal win-win: rotation ~13deg AND position ~0.27m.
+hidden_dim: 512
+num_layers: 0
+num_task_layers: 6
+canonical_on_rotation_branch: true
+aux_position_on_rotation_branch: true
+num_heads: 8
+rope_dim: 16

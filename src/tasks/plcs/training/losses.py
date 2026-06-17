@@ -44,7 +44,8 @@ class PLCSLossConfig:
 
     Attributes:
         position_weight: Weight for position loss.
-        rotation_weight: Weight for rotation loss.
+        rotation_weight: Weight for rotation loss (1 - cosine on (cos, sin)).
+        angle_weight: Weight for wrapped-angle smooth-L1 yaw loss.
         canonical_pose_weight: Weight for canonical pose loss.
         joint_angle_weight: Weight for joint-angle loss.
         torsion_angle_weight: Weight for limb torsion / dihedral angle loss.
@@ -55,6 +56,7 @@ class PLCSLossConfig:
 
     position_weight: float = 1.0
     rotation_weight: float = 1.0
+    angle_weight: float = 0.0
     canonical_pose_weight: float = 0.0
     joint_angle_weight: float = 0.0
     torsion_angle_weight: float = 0.0
@@ -67,6 +69,7 @@ class PLCSLossConfig:
         return cls(
             position_weight=float(cfg.get("position_weight", 1.0)),
             rotation_weight=float(cfg.get("rotation_weight", 1.0)),
+            angle_weight=float(cfg.get("angle_weight", 0.0)),
             canonical_pose_weight=float(cfg.get("canonical_pose_weight", 0.0)),
             joint_angle_weight=float(cfg.get("joint_angle_weight", 0.0)),
             torsion_angle_weight=float(cfg.get("torsion_angle_weight", 0.0)),
@@ -576,6 +579,30 @@ def rotation_loss_term(inputs: PLCSLossInputs) -> Tensor:
     return _masked_frame_mean(per_frame, inputs.frame_mask)
 
 
+def angle_loss_term(inputs: PLCSLossInputs) -> Tensor:
+    """Angle term: masked smooth-L1 on the wrapped yaw error (radians).
+
+    Unlike the ``1 - cos`` rotation term, the gradient magnitude of this
+    wrapped-angle loss stays ~constant all the way out to a 180-degree error
+    instead of vanishing as the error approaches 180 degrees. The cosine loss
+    has a flat saddle at the antipode, which makes front/back flips a sticky
+    equilibrium the optimizer cannot escape; the angle term supplies a strong
+    restoring gradient there, so the two terms are complementary (cosine is
+    smooth near 0, angle keeps pushing near 180).
+    """
+    pred_angle = torch.atan2(inputs.pred_rotation[..., 1], inputs.pred_rotation[..., 0])
+    target_angle = torch.atan2(
+        inputs.target_rotation[..., 1], inputs.target_rotation[..., 0]
+    )
+    diff = _wrapped_angle_diff(pred_angle, target_angle)
+    per_frame = nn.functional.smooth_l1_loss(
+        diff,
+        torch.zeros_like(diff),
+        reduction="none",
+    )
+    return _masked_frame_mean(per_frame, inputs.frame_mask)
+
+
 def canonical_pose_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """Canonical-pose term: masked smooth-L1 between canonical joint positions."""
     if not inputs.has_canonical:
@@ -662,6 +689,7 @@ PLCSLossTerm = Callable[[PLCSLossInputs], Tensor]
 DEFAULT_LOSS_TERMS: dict[str, PLCSLossTerm] = {
     "position": position_loss_term,
     "rotation": rotation_loss_term,
+    "angle": angle_loss_term,
     "canonical_pose": canonical_pose_loss_term,
     "joint_angle": joint_angle_loss_term,
     "torsion_angle": torsion_angle_loss_term,

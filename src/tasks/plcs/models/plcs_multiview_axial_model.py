@@ -39,6 +39,10 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         self,
         hidden_dim: int = 256,
         num_layers: int = 6,
+        num_task_layers: int = 0,
+        detach_pose_branch: bool = False,
+        canonical_on_rotation_branch: bool = False,
+        aux_position_on_rotation_branch: bool = False,
         num_heads: int = 8,
         ffn_dim: int | None = None,
         dropout: float = 0.1,
@@ -56,6 +60,10 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         super().__init__()
 
         self.hidden_dim = int(hidden_dim)
+        self.num_task_layers = int(num_task_layers)
+        self.detach_pose_branch = bool(detach_pose_branch)
+        self.canonical_on_rotation_branch = bool(canonical_on_rotation_branch)
+        self.aux_position_on_rotation_branch = bool(aux_position_on_rotation_branch)
         self.predict_canonical_pose = bool(predict_canonical_pose)
         self.max_views = int(max_views)
         self.max_seq_len = int(max_seq_len)
@@ -128,6 +136,46 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             ]
         )
 
+        # Task-specific axial branches. When num_task_layers > 0 the rotation
+        # task gets its own stack of camera/time layers, decoupled from the
+        # pose (position + canonical) task, so the strong rotation gradient does
+        # not corrupt the position-clean readout feature on a single shared
+        # trunk (position and rotation otherwise compete for trunk capacity).
+        def _axial_stack(n: int, rope_base: float) -> nn.ModuleList:
+            return nn.ModuleList(
+                [
+                    TransformerBlock(
+                        TransformerBlockConfig(
+                            dim=self.hidden_dim,
+                            n_heads=num_heads,
+                            ffn_dim=ffn_dim,
+                            head_dim=head_dim,
+                            rope_dim=self.rope_dim,
+                            attn_dropout=dropout,
+                            rope_base=rope_base,
+                            ffn_type=ffn_type,
+                        )
+                    )
+                    for _ in range(n)
+                ]
+            )
+
+        if self.num_task_layers > 0:
+            self.rot_camera_layers = _axial_stack(
+                self.num_task_layers, self.rope_bases[1]
+            )
+            self.rot_time_layers = _axial_stack(
+                self.num_task_layers, self.rope_bases[0]
+            )
+            self.pose_camera_layers = _axial_stack(
+                self.num_task_layers, self.rope_bases[1]
+            )
+            self.pose_time_layers = _axial_stack(
+                self.num_task_layers, self.rope_bases[0]
+            )
+            self.rot_final_norm = RMSNorm(self.hidden_dim)
+            self.pose_final_norm = RMSNorm(self.hidden_dim)
+
         self.final_norm = RMSNorm(self.hidden_dim)
 
         self.position_head = PositionHead(
@@ -143,6 +191,21 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             num_layers=2,
             dropout=dropout,
         )
+        # Auxiliary position head on the rotation branch. The position task
+        # teaches multiview triangulation / cross-view correspondence, which the
+        # rotation task depends on; a separate rotation trunk (exp5/exp7) lacks
+        # this signal and learns poor features. This aux head supervises the
+        # rotation trunk with position so it learns triangulation, while the
+        # precise final position still comes from the dedicated pose branch.
+        self.aux_position_head = None
+        if self.aux_position_on_rotation_branch:
+            self.aux_position_head = PositionHead(
+                input_dim=self.hidden_dim,
+                hidden_dim=self.hidden_dim // 2,
+                output_dim=3,
+                num_layers=2,
+                dropout=dropout,
+            )
         self.canonical_pose_head = None
         if self.predict_canonical_pose:
             self.canonical_pose_head = CanonicalPoseHead(
@@ -191,6 +254,14 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_layers=int(model_cfg.get("num_layers", 6)),
+            num_task_layers=int(model_cfg.get("num_task_layers", 0)),
+            detach_pose_branch=bool(model_cfg.get("detach_pose_branch", False)),
+            canonical_on_rotation_branch=bool(
+                model_cfg.get("canonical_on_rotation_branch", False)
+            ),
+            aux_position_on_rotation_branch=bool(
+                model_cfg.get("aux_position_on_rotation_branch", False)
+            ),
             num_heads=int(model_cfg.get("num_heads", 8)),
             ffn_dim=model_cfg.get("ffn_dim", None),
             dropout=float(model_cfg.get("dropout", 0.1)),
@@ -281,41 +352,117 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             n_cams=n_cams,
         )
 
-        for camera_layer, time_layer in zip(
+        x = self._run_axial_stack(
+            x,
             self.camera_layers,
             self.time_layers,
-            strict=True,
-        ):
-            x_camera = x.reshape(batch_size * seq_len_in, n_cams, self.hidden_dim)
+            batch_size=batch_size,
+            seq_len=seq_len_in,
+            n_cams=n_cams,
+            camera_freqs=camera_freqs,
+            time_freqs=time_freqs,
+            camera_mask=camera_mask,
+            time_mask=time_mask,
+        )
+
+        if self.num_task_layers > 0:
+            x_rot = self._run_axial_stack(
+                x,
+                self.rot_camera_layers,
+                self.rot_time_layers,
+                batch_size=batch_size,
+                seq_len=seq_len_in,
+                n_cams=n_cams,
+                camera_freqs=camera_freqs,
+                time_freqs=time_freqs,
+                camera_mask=camera_mask,
+                time_mask=time_mask,
+            )
+            # Optionally stop gradient from the pose (position + canonical)
+            # branch into the shared trunk. The trunk is then shaped only by the
+            # rotation task (the hard task that needs a deep, clean trunk),
+            # while the easy position task reads detached features and can be
+            # up-weighted freely without corrupting the trunk's rotation cues.
+            pose_input = x.detach() if self.detach_pose_branch else x
+            x_pose = self._run_axial_stack(
+                pose_input,
+                self.pose_camera_layers,
+                self.pose_time_layers,
+                batch_size=batch_size,
+                seq_len=seq_len_in,
+                n_cams=n_cams,
+                camera_freqs=camera_freqs,
+                time_freqs=time_freqs,
+                camera_mask=camera_mask,
+                time_mask=time_mask,
+            )
+            rot_feat = self.rot_final_norm(x_rot[:, :, 0, :])
+            pose_feat = self.pose_final_norm(x_pose[:, :, 0, :])
+        else:
+            shared_feat = self.final_norm(x[:, :, 0, :])
+            rot_feat = pose_feat = shared_feat
+
+        out = {
+            "position": self.position_head(pose_feat),
+            "rotation": self.rotation_head(rot_feat),
+        }
+        if self.predict_canonical_pose and self.canonical_pose_head is not None:
+            # The canonical-pose auxiliary task regularizes its trunk toward rich
+            # 3D body geometry. With fully separate trunks the rotation trunk
+            # otherwise lacks this signal and learns poor features; routing the
+            # canonical head onto the rotation branch gives that trunk the
+            # geometry regularization it needs while position keeps its own trunk.
+            canonical_feat = rot_feat if self.canonical_on_rotation_branch else pose_feat
+            out["canonical_pose"] = self.canonical_pose_head(canonical_feat)
+        if self.aux_position_head is not None:
+            out["aux_position"] = self.aux_position_head(rot_feat)
+        return out
+
+    def _run_axial_stack(
+        self,
+        x: Tensor,
+        camera_layers: nn.ModuleList,
+        time_layers: nn.ModuleList,
+        *,
+        batch_size: int,
+        seq_len: int,
+        n_cams: int,
+        camera_freqs: Tensor,
+        time_freqs: Tensor,
+        camera_mask: Tensor,
+        time_mask: Tensor,
+    ) -> Tensor:
+        """Run alternating camera/time self-attention layers over ``x``.
+
+        Args:
+            x: Tokens shaped ``(B, T, N, hidden)``.
+            camera_layers: Per-block camera-axis attention layers.
+            time_layers: Per-block time-axis attention layers.
+
+        Returns:
+            Tensor: Updated tokens shaped ``(B, T, N, hidden)``.
+        """
+        for camera_layer, time_layer in zip(camera_layers, time_layers, strict=True):
+            x_camera = x.reshape(batch_size * seq_len, n_cams, self.hidden_dim)
             x_camera = camera_layer(
                 x_camera,
                 freqs_cis=camera_freqs,
                 attn_mask=camera_mask,
             )
-            x = x_camera.reshape(batch_size, seq_len_in, n_cams, self.hidden_dim)
+            x = x_camera.reshape(batch_size, seq_len, n_cams, self.hidden_dim)
 
             x_time = x.permute(0, 2, 1, 3).reshape(
-                batch_size * n_cams, seq_len_in, self.hidden_dim
+                batch_size * n_cams, seq_len, self.hidden_dim
             )
             x_time = time_layer(
                 x_time,
                 freqs_cis=time_freqs,
                 attn_mask=time_mask,
             )
-            x = x_time.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim).permute(
+            x = x_time.reshape(batch_size, n_cams, seq_len, self.hidden_dim).permute(
                 0, 2, 1, 3
             )
-
-        x = x[:, :, 0, :]
-        x = self.final_norm(x)
-
-        out = {
-            "position": self.position_head(x),
-            "rotation": self.rotation_head(x),
-        }
-        if self.predict_canonical_pose and self.canonical_pose_head is not None:
-            out["canonical_pose"] = self.canonical_pose_head(x)
-        return out
+        return x
 
     def _validate_forward_inputs(
         self,
