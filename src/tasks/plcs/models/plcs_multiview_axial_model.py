@@ -43,6 +43,9 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         detach_pose_branch: bool = False,
         canonical_on_rotation_branch: bool = False,
         aux_position_on_rotation_branch: bool = False,
+        separate_canonical_trunk: bool = False,
+        aux_rotation_on_canonical_trunk: bool = False,
+        aux_position_on_canonical_trunk: bool = False,
         num_heads: int = 8,
         ffn_dim: int | None = None,
         dropout: float = 0.1,
@@ -64,6 +67,9 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         self.detach_pose_branch = bool(detach_pose_branch)
         self.canonical_on_rotation_branch = bool(canonical_on_rotation_branch)
         self.aux_position_on_rotation_branch = bool(aux_position_on_rotation_branch)
+        self.separate_canonical_trunk = bool(separate_canonical_trunk)
+        self.aux_rotation_on_canonical_trunk = bool(aux_rotation_on_canonical_trunk)
+        self.aux_position_on_canonical_trunk = bool(aux_position_on_canonical_trunk)
         self.predict_canonical_pose = bool(predict_canonical_pose)
         self.max_views = int(max_views)
         self.max_seq_len = int(max_seq_len)
@@ -176,6 +182,24 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             self.rot_final_norm = RMSNorm(self.hidden_dim)
             self.pose_final_norm = RMSNorm(self.hidden_dim)
 
+        # Optional third trunk dedicated to the canonical-pose task (issue #520).
+        # ex10 routed canonical onto the rotation trunk; here canonical gets its
+        # own independent path, and the 4-pattern experiment toggles whether that
+        # trunk also receives a rotation and/or position auxiliary head.
+        self._has_canonical_trunk = (
+            self.separate_canonical_trunk
+            and self.num_task_layers > 0
+            and self.predict_canonical_pose
+        )
+        if self._has_canonical_trunk:
+            self.canon_camera_layers = _axial_stack(
+                self.num_task_layers, self.rope_bases[1]
+            )
+            self.canon_time_layers = _axial_stack(
+                self.num_task_layers, self.rope_bases[0]
+            )
+            self.canon_final_norm = RMSNorm(self.hidden_dim)
+
         self.final_norm = RMSNorm(self.hidden_dim)
 
         self.position_head = PositionHead(
@@ -200,6 +224,27 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         self.aux_position_head = None
         if self.aux_position_on_rotation_branch:
             self.aux_position_head = PositionHead(
+                input_dim=self.hidden_dim,
+                hidden_dim=self.hidden_dim // 2,
+                output_dim=3,
+                num_layers=2,
+                dropout=dropout,
+            )
+        # Auxiliary heads on the dedicated canonical trunk (issue #520, 4-pattern
+        # experiment). They supervise the canonical trunk with rotation and/or
+        # position so we can measure which auxiliary signal best shapes its
+        # features (or whether none is best).
+        self.canon_aux_rotation_head = None
+        self.canon_aux_position_head = None
+        if self._has_canonical_trunk and self.aux_rotation_on_canonical_trunk:
+            self.canon_aux_rotation_head = RotationHead(
+                input_dim=self.hidden_dim,
+                hidden_dim=self.hidden_dim // 2,
+                num_layers=2,
+                dropout=dropout,
+            )
+        if self._has_canonical_trunk and self.aux_position_on_canonical_trunk:
+            self.canon_aux_position_head = PositionHead(
                 input_dim=self.hidden_dim,
                 hidden_dim=self.hidden_dim // 2,
                 output_dim=3,
@@ -261,6 +306,15 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             ),
             aux_position_on_rotation_branch=bool(
                 model_cfg.get("aux_position_on_rotation_branch", False)
+            ),
+            separate_canonical_trunk=bool(
+                model_cfg.get("separate_canonical_trunk", False)
+            ),
+            aux_rotation_on_canonical_trunk=bool(
+                model_cfg.get("aux_rotation_on_canonical_trunk", False)
+            ),
+            aux_position_on_canonical_trunk=bool(
+                model_cfg.get("aux_position_on_canonical_trunk", False)
             ),
             num_heads=int(model_cfg.get("num_heads", 8)),
             ffn_dim=model_cfg.get("ffn_dim", None),
@@ -398,9 +452,25 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             )
             rot_feat = self.rot_final_norm(x_rot[:, :, 0, :])
             pose_feat = self.pose_final_norm(x_pose[:, :, 0, :])
+            canon_feat = None
+            if self._has_canonical_trunk:
+                x_canon = self._run_axial_stack(
+                    x,
+                    self.canon_camera_layers,
+                    self.canon_time_layers,
+                    batch_size=batch_size,
+                    seq_len=seq_len_in,
+                    n_cams=n_cams,
+                    camera_freqs=camera_freqs,
+                    time_freqs=time_freqs,
+                    camera_mask=camera_mask,
+                    time_mask=time_mask,
+                )
+                canon_feat = self.canon_final_norm(x_canon[:, :, 0, :])
         else:
             shared_feat = self.final_norm(x[:, :, 0, :])
             rot_feat = pose_feat = shared_feat
+            canon_feat = None
 
         out = {
             "position": self.position_head(pose_feat),
@@ -412,10 +482,21 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             # otherwise lacks this signal and learns poor features; routing the
             # canonical head onto the rotation branch gives that trunk the
             # geometry regularization it needs while position keeps its own trunk.
-            canonical_feat = rot_feat if self.canonical_on_rotation_branch else pose_feat
+            # With a dedicated canonical trunk (issue #520) the canonical head
+            # reads its own trunk instead.
+            if canon_feat is not None:
+                canonical_feat = canon_feat
+            elif self.canonical_on_rotation_branch:
+                canonical_feat = rot_feat
+            else:
+                canonical_feat = pose_feat
             out["canonical_pose"] = self.canonical_pose_head(canonical_feat)
         if self.aux_position_head is not None:
             out["aux_position"] = self.aux_position_head(rot_feat)
+        if canon_feat is not None and self.canon_aux_rotation_head is not None:
+            out["aux_rotation_canonical"] = self.canon_aux_rotation_head(canon_feat)
+        if canon_feat is not None and self.canon_aux_position_head is not None:
+            out["aux_position_canonical"] = self.canon_aux_position_head(canon_feat)
         return out
 
     def _run_axial_stack(
