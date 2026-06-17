@@ -1,0 +1,54 @@
+# PLCS loss config: canonical_rot + temporal angular-velocity smoothness (#521).
+#
+# Extends `canonical_rot` (the ex10 / #518 rotation winner) with frame-to-frame
+# angular-velocity loss terms on the canonical-pose angle families. The static
+# `*_angle_weight` terms supervise each frame's pose in isolation; the velocity
+# terms additionally penalise the *change* between adjacent frames, encouraging
+# temporally coherent motion and damping per-frame jitter in the predicted
+# canonical pose.
+#
+# Per-angle dominance weights (`*_velocity_angle_weights`) are derived from the
+# GT training split via
+#   python -m src.tasks.plcs.scripts.analysis.analyze_angle_velocity
+# (126,760 frame transitions, normalized to mean 1.0). They upweight the most
+# dynamic angles so the velocity loss spends its budget where GT motion actually
+# happens rather than on near-static channels:
+#   - joint angles: knees dominate (~2.1x); torso-attachment angles are nearly
+#     static (~0.26-0.38x).
+#   - torsion angles: L_leg dominates (1.30x).
+# The scalar `*_velocity_weight` controls overall strength; the per-angle vector
+# is renormalised to mean 1.0 internally so it only redistributes that budget.
+
+defaults:
+  - canonical_rot
+  - _self_
+
+# Overall strength of each velocity family (smooth-L1 on wrapped per-angle
+# frame-to-frame differences). Matched to the static angle-loss scale.
+joint_angle_velocity_weight: 0.1
+torsion_angle_velocity_weight: 0.1
+torso_twist_velocity_weight: 0.1
+
+# GT-derived per-angle dominance weights (mean=1.0).
+# Order matches COCO17_JOINT_ANGLE_TRIPLETS:
+#   L_elbow, R_elbow, L_knee, R_knee, L_shoulder, R_shoulder,
+#   L_hip, R_hip, L_shoulder_torso, R_shoulder_torso, R_hip_torso, L_hip_torso
+joint_angle_velocity_angle_weights:
+  - 1.0640
+  - 1.0720
+  - 2.1367
+  - 2.0632
+  - 1.1860
+  - 1.0382
+  - 1.1426
+  - 1.0516
+  - 0.2627
+  - 0.2735
+  - 0.3346
+  - 0.3750
+# Order matches COCO17_TORSION_QUADRUPLETS: L_arm, R_arm, L_leg, R_leg
+torsion_angle_velocity_angle_weights:
+  - 0.8909
+  - 0.8186
+  - 1.2987
+  - 0.9918
