@@ -1,0 +1,13 @@
+# Shared loss weights for all court tasks. Task presets (kp / line / seg)
+# compose from this and only set `name` to select the active loss head.
+seg:
+  ce_weight: 1.0
+  dice_weight: 1.0
+
+kp:
+  focal_gamma: 2.0
+
+line:
+  bce_weight: 1.0
+  dice_weight: 1.0
+  pos_weight: 8.0

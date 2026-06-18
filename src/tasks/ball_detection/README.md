@@ -100,9 +100,11 @@ YouTube動画から学習データを作る3ステップ。CLIは `scripts/youtu
 ```bash
 .venv/bin/python -m src.tasks.ball_detection.scripts.train
 .venv/bin/python -m src.tasks.ball_detection.scripts.train model=conv_next_unet data.batch_size=4
+# augmentation 強度を切り替える（default / light / none）
+.venv/bin/python -m src.tasks.ball_detection.scripts.train data/augmentation=light
 ```
 
-デフォルトは `model=stunet`、`data=rgb_sequence`。`configs/training/default.yaml` は `max_epochs=20`、`lr=1e-4`、`precision=bf16-mixed`、`val/loss` 監視のEarlyStopping（patience=5）。
+デフォルトは `model=stunet`、`data=rgb_sequence`。`configs/training/default.yaml` は `max_epochs=20`、`lr=1e-4`、`precision=bf16-mixed`、`val/loss` 監視のEarlyStopping（patience=5）。data configの augmentation は `configs/data/augmentation/{default,light,none}.yaml` のグループに分離され、`data/augmentation=...` で切り替えられます（`rgb_sequence` / `youtube_rgb_sequence` 共通）。
 
 ### 評価
 

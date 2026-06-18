@@ -1,0 +1,52 @@
+# No geometric/photometric augmentation; only ImageNet normalization.
+# Useful for debugging / overfitting. Select with `data/augmentation=none`.
+camera_rotation:
+  enabled: false
+  prob: 0.0
+  max_center_angle_deg: 1.2
+  max_angular_velocity_deg_per_frame: 0.2
+  border_mode: reflect101
+horizontal_flip:
+  enabled: false
+  prob: 0.0
+affine:
+  enabled: false
+  prob: 0.0
+  rotation_deg_range: [-10.0, 10.0]
+  scale_range: [1.0, 1.0]
+  translate_x_ratio_range: [-0.1, 0.1]
+  translate_y_ratio_range: [-0.1, 0.1]
+  shear_x_deg_range: [-2.0, 2.0]
+  shear_y_deg_range: [-1.0, 1.0]
+  border_mode: reflect101
+scale_and_crop:
+  enabled: false
+  prob: 0.0
+  scale_range: [1.0, 3.0]
+  border_mode: reflect101
+ball_area_zero_mask:
+  enabled: false
+  prob: 0.0
+  mask_width_ratio_range: [0.04, 0.12]
+  mask_height_ratio_range: [0.04, 0.12]
+  num_frames_range: [1, 3]
+brightness_gain:
+  enabled: false
+  jitter: 0.1
+contrast:
+  enabled: false
+  jitter: 0.1
+gamma:
+  enabled: false
+  jitter: 0.08
+gaussian_noise:
+  enabled: false
+  std: 0.012
+gaussian_blur:
+  enabled: false
+  prob: 0.35
+  kernel_size: 3
+normalize_imagenet:
+  enabled: true
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
