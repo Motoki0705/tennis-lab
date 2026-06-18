@@ -68,7 +68,7 @@ index 14〜19（`net_center`, `left/right_post_base/top`, `center_strap_top`）�
 - **Legacy配列形式**: `[{"id": ..., "kps": [[x0, y0], ...]}]`（`kps` を `(14, 2)` として読込）
 - **Named keypoints形式**（アノテーションツール出力）: `{"items": [{"image_path": ..., "keypoints": [{"index", "name", "x", "y", "visibility"}, ...]}]}`
 
-Sampleの主キーは `image (3, H, W)`（ImageNet正規化）・`heatmap (K, H, W)`・`keypoints (K, 2)`・`image_id`。data configは `configs/data/court_{kp,seg,line}.yaml`。
+Sampleの主キーは `image (3, H, W)`（ImageNet正規化）・`heatmap (K, H, W)`・`keypoints (K, 2)`・`image_id`。data configは `configs/data/court_{kp,seg,line}.yaml`（共有値は `_base.yaml`）。augmentationは `configs/data/augmentation/{default,light,none}.yaml` のグループで、`data/augmentation=light` のように切り替えます。
 
 ## データセット生成（アノテーション）
 
@@ -90,18 +90,20 @@ Sampleの主キーは `image (3, H, W)`（ImageNet正規化）・`heatmap (K, H,
 .venv/bin/python -m src.tasks.court_detection.scripts.train                          # seg（デフォルト）
 .venv/bin/python -m src.tasks.court_detection.scripts.train data=court_kp   loss=kp
 .venv/bin/python -m src.tasks.court_detection.scripts.train data=court_line loss=line
-.venv/bin/python -m src.tasks.court_detection.scripts.train data=court_kp loss=kp model=court_kp_dino_swin_fpn
+# encoder/decoder は直交した config group で切り替える（組合せファイルは不要）
+.venv/bin/python -m src.tasks.court_detection.scripts.train data=court_kp loss=kp model/encoder=dino_swin
+.venv/bin/python -m src.tasks.court_detection.scripts.train data=court_kp loss=kp model/encoder=dino_swin model/decoder=unet
 ```
 
 `configs/training/default.yaml` は `max_epochs=100`、`lr=1e-3`、`bf16-mixed`、AdamW、EarlyStopping（patience=10）。
 
-利用可能なモデルconfig（`configs/model/`）:
+モデルconfig（`configs/model/`）は `_hierarchical.yaml`（共有ベース）を継承するタスクpreset（`court_kp` / `court_line` / `court_seg`、`num_classes` のみ差分）と、直交する encoder / decoder の config group で構成されます。`court_seg_dinov3_detr` のみ別アーキテクチャの独立preset。
 
-| タスク | デフォルト | Swin-L (DINO) | その他 |
-|---|---|---|---|
-| `kp`（14クラス） | `court_kp` | `court_kp_dino_swin_fpn` / `court_kp_dino_swin_unet` | — |
-| `seg`（7クラス） | `court_seg` | `court_seg_dino_swin_fpn` / `court_seg_dino_swin_unet` | `court_seg_dinov3_detr` |
-| `line`（1クラス） | `court_line` | `court_line_dino_swin_fpn` / `court_line_dino_swin_unet` | — |
+| 軸 | group | 選択肢 |
+|---|---|---|
+| タスク（出力ch） | `model=` | `court_kp`(14) / `court_seg`(7) / `court_line`(1) / `court_seg_dinov3_detr`(7) |
+| encoder | `model/encoder=` | `default`（学習）/ `dino_swin`（Swin-L, frozen） |
+| decoder | `model/decoder=` | `fpn`（既定）/ `unet` |
 
 ## 可視化
 

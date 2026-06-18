@@ -1,17 +1,12 @@
+# Shared base for hierarchical court models (encoder + decoder + 1x1 head).
+# Task presets (court_kp / court_line / court_seg) compose from this and only
+# override num_classes / name. Encoder and decoder are orthogonal config groups
+# selected via `model/encoder=...` and `model/decoder=...`.
+defaults:
+  - encoder: default
+  - decoder: fpn
+  - _self_
+
 name: court_hierarchical
 in_channels: 3
 num_classes: 7
-
-encoder:
-  name: default
-  checkpoint_path: null
-  dilation: false
-  return_interm_indices: [0, 1, 2, 3]
-  pretrain_img_size: null
-  use_checkpoint: false
-  strict: true
-  freeze: false
-
-decoder:
-  name: fpn
-  channels: [64, 128, 256, 512]

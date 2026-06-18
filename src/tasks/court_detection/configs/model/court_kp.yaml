@@ -1,7 +1,8 @@
+# Keypoint heatmap model (14 channels).
+# Switch encoder/decoder with `model/encoder=dino_swin model/decoder=unet`.
 defaults:
   - _hierarchical
   - _self_
 
 name: court_hierarchical_kp
-in_channels: 3
 num_classes: 14

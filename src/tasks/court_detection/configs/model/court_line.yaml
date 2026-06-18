@@ -1,7 +1,8 @@
+# Line mask model (1 channel).
+# Switch encoder/decoder with `model/encoder=dino_swin model/decoder=unet`.
 defaults:
   - _hierarchical
   - _self_
 
 name: court_hierarchical_line
-in_channels: 3
 num_classes: 1
