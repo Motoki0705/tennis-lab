@@ -1,14 +1,14 @@
 {
-  "run_id": "1781862734397001991_577747_i525_asym",
-  "name": "i525_asym",
-  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python -m src.tasks.plcs.scripts.train model=multiview_axial_split_asym loss=canonical_rot data=multiview_sequence training.trainer.max_epochs=8 run.gpus=1",
+  "run_id": "1781875485504708764_626801_i525_asym_200ep",
+  "name": "i525_asym_200ep",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python -m src.tasks.plcs.scripts.train model=multiview_axial_split_asym loss=canonical_rot data=multiview_sequence training.trainer.max_epochs=200 run.gpus=1",
   "provider": "claude",
   "session": "d22b7d68-7d91-4a6f-862d-434085e5d2d9",
-  "issue": "525",
+  "issue": "535",
   "commit": "6d24b4dccad36a73bd56a526602757e16bac0275",
   "branch": "exp/i525-asym",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/wt/i525-asym",
   "repo_root": "/home/kamimura/projects/wt/i525-asym",
-  "captured_at": "2026-06-19T18:54:19+09:00"
+  "captured_at": "2026-06-19T22:49:08+09:00"
 }
