@@ -1,0 +1,2 @@
+ D outputs/plcs/plcs_multiview_axial/logs/version_2/loss_dominance_distribution_test.png
+ D outputs/plcs/plcs_multiview_axial/logs/version_2/loss_dominance_summary_test.json
