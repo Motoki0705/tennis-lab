@@ -2,7 +2,7 @@
 id: run-i525-asym
 type: run
 title: i525_asym
-issue: 525
+issue: 535
 provider: claude
 session: d22b7d68-7d91-4a6f-862d-434085e5d2d9
 date: '2026-06-19'
