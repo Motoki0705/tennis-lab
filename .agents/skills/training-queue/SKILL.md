@@ -29,7 +29,11 @@ Always run it from the repository root so queued commands inherit the right CWD
 Q=.agents/skills/training-queue/scripts/training_queue.sh
 
 # 1. Enqueue jobs (FIFO; safe to call concurrently from multiple agents).
-bash "$Q" add "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python -m src.tasks.plcs.scripts.train data=... model=... loss=..." --name exp_a
+#    AI callers MUST declare --provider and --session (so the run is
+#    attributable in the knowledge graph). --issue is recommended. Humans
+#    launching by hand may omit them.
+bash "$Q" add "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python -m src.tasks.plcs.scripts.train data=... model=... loss=..." \
+    --name exp_a --provider claude --session "$CLAUDE_CODE_SESSION_ID" --issue 525
 bash "$Q" add "python -m src.tasks.plcs.scripts.train ..." --name exp_b
 
 # 2. Start the worker. --after-pid makes it wait for a native first run to
@@ -62,6 +66,35 @@ A sub-agent can be told to read this SKILL.md and append jobs:
 
 Because enqueue is atomic (unique nanosecond+PID job ids) and lock-free,
 multiple agents can add concurrently; a single worker consumes them in order.
+
+## Reproducibility bundle (auto-saved, issue #533)
+
+When a queued job starts, the worker captures the git/repro state **in the job's
+own CWD** (worktree-aware) into `$TRAINING_QUEUE_DIR/repro/<jobid>/`:
+
+- `run.json` — name, command, provider, session, issue, commit, branch, remote, cwd.
+- `uncommitted.patch` — `git diff HEAD` (apply-able), plus `git_status.txt`.
+- `repro.sh` — one-shot reproduction: cd repo → checkout commit → apply patch → run command.
+
+The job also gets `TENNIS_RUN_ID` and `TENNIS_REPRO_DIR` in its environment. The
+training **lightning module** writes test-split inference results to
+`$TENNIS_REPRO_DIR/predictions/{pred_test.npz, metrics.json}` (so checkpoints can
+be deleted and metrics still recomputed). This replaces keeping `*.ckpt` around.
+
+After a run finishes, register it into the git-tracked knowledge graph with the
+**knowledge-control** skill, which promotes the repro bundle + predictions into
+`knowledge/runs/<run-id>/`:
+
+```bash
+.venv/bin/python .agents/skills/knowledge-control/scripts/kg_register.py <job-name> \
+    --issue 525 --provider claude
+```
+
+### Declaring your provider + session id
+
+`--provider`/`--session` make the run attributable. To find your own session id,
+read the per-provider workflow under [`reference/`](./reference/):
+`reference/claude.md`, `reference/codex.md`, `reference/gemini.md`.
 
 ## Notes
 
