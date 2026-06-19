@@ -70,6 +70,29 @@ def test_predictions_saved_with_scene_ids_and_padding(
     assert metrics["position_error_m"] == 0.5
 
 
+def test_bfloat16_predictions_are_saved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Under bf16-mixed precision the model emits bfloat16 tensors, which numpy
+    # cannot convert directly; _to_numpy must upcast to float32 (issue #533).
+    module = _PayloadModule()
+    _attach_fake_trainer(module, [Path("d/scene_000")], str(tmp_path))
+    module._reset_test_prediction_buffer()
+    module.collect_test_predictions(
+        None,
+        {
+            "pred": torch.zeros(1, 4, 3, dtype=torch.bfloat16),
+            "target": torch.ones(1, 4, 3, dtype=torch.bfloat16),
+        },
+    )
+    monkeypatch.setenv("TENNIS_REPRO_DIR", str(tmp_path))
+    npz_path = module.save_test_predictions()
+    assert npz_path is not None and npz_path.exists()
+    data = np.load(npz_path, allow_pickle=False)
+    assert data["pred_position"].dtype == np.float32
+    assert data["pred_position"].shape == (1, 4, 3)
+
+
 def test_empty_payload_saves_nothing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
