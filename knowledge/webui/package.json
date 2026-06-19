@@ -1,0 +1,30 @@
+{
+  "name": "knowledge-control-webui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "dagre": "^0.8.5",
+    "gray-matter": "^4.0.3",
+    "marked": "^12.0.2",
+    "next": "^14.2.25",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "reactflow": "^11.11.4"
+  },
+  "devDependencies": {
+    "@types/dagre": "^0.7.52",
+    "@types/node": "^20.11.30",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.25",
+    "typescript": "^5.5.4"
+  }
+}
