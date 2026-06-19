@@ -107,6 +107,10 @@ def backfill_one(ckpt: Path, task: str, device: str) -> tuple[bool, str]:
     import pytorch_lightning as pl
     import torch
 
+    # Local training checkpoints are trusted and embed an omegaconf config, which
+    # PyTorch 2.6's default weights_only=True refuses to unpickle. Match the
+    # runner's resume path (BaseTrainingRunner.resume_checkpoint_load_env).
+    os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
     try:
         blob = torch.load(ckpt, map_location="cpu", weights_only=False)
     except Exception as exc:  # noqa: BLE001
