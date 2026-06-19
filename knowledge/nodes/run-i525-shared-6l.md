@@ -35,7 +35,8 @@ artifacts:
   log: .training_queue/logs/1781794459012091481_270284_i525_shared_6l.log
   job: .training_queue/done/1781794459012091481_270284_i525_shared_6l.job
   output_dir: ''
-parents: []
+parents:
+- run-i521-ex10-vel
 relations:
   - {to: run-i525-shared-match-dim, rel: compares}
   - {to: run-i525-shared-match-layers, rel: compares}

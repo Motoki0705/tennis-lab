@@ -7,20 +7,15 @@ import ReactFlow, {
   MarkerType,
   MiniMap,
   type Edge,
-  type Node,
 } from "reactflow";
 import "reactflow/dist/style.css";
 
-import { layout } from "@/lib/layout";
+import { layoutGraph } from "@/lib/layout";
 import type { KnowledgeGraph, KnowledgeNode } from "@/lib/types";
 import { DetailPanel } from "./DetailPanel";
 import { nodeTypes, PROVIDER_COLOR } from "./nodeTypes";
 
-const EDGE_STYLE: Record<string, { stroke: string; dash?: string }> = {
-  parent: { stroke: "#8a8f98" },
-  member: { stroke: "#f5d76e", dash: "2 4" },
-  relation: { stroke: "#5dade2", dash: "6 4" },
-};
+const EDGE_COLOR = "#8a8f98";
 
 function issueList(issue?: number | number[]): number[] {
   if (issue == null) return [];
@@ -61,29 +56,23 @@ export function GraphView({ graph }: { graph: KnowledgeGraph }) {
 
   const { rfNodes, rfEdges } = useMemo(() => {
     const visIds = new Set(visible.map((n) => n.id));
-    const nodes: Node<KnowledgeNode>[] = visible.map((n) => ({
-      id: n.id,
-      type: n.type === "group" ? "groupNode" : "runNode",
-      data: n,
-      position: { x: 0, y: 0 },
+    // Only parent→child dependency edges are drawn; group membership is shown
+    // by enclosure (see layoutGraph), so member/relation edges are omitted.
+    const parentEdges = graph.edges.filter(
+      (e) => e.kind === "parent" && visIds.has(e.source) && visIds.has(e.target),
+    );
+    const rfNodes = layoutGraph(
+      visible,
+      parentEdges.map((e) => ({ source: e.source, target: e.target })),
+    );
+    const rfEdges: Edge[] = parentEdges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      style: { stroke: EDGE_COLOR, strokeWidth: 1.5 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLOR, width: 16, height: 16 },
     }));
-    const edges: Edge[] = graph.edges
-      .filter((e) => visIds.has(e.source) && visIds.has(e.target))
-      .map((e) => {
-        const s = EDGE_STYLE[e.kind];
-        return {
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          label: e.label,
-          animated: e.kind === "relation",
-          style: { stroke: s.stroke, strokeDasharray: s.dash, strokeWidth: 1.5 },
-          labelStyle: { fill: "#cbd2d9", fontSize: 10 },
-          labelBgStyle: { fill: "#1b1f24" },
-          markerEnd: { type: MarkerType.ArrowClosed, color: s.stroke, width: 16, height: 16 },
-        };
-      });
-    return { rfNodes: layout(nodes, edges), rfEdges: edges };
+    return { rfNodes, rfEdges };
   }, [graph, visible]);
 
   const selected = useMemo(

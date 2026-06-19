@@ -35,7 +35,8 @@ artifacts:
   log: .training_queue/logs/1781750120049888219_67088_i525_shared_match_dim.log
   job: .training_queue/done/1781750120049888219_67088_i525_shared_match_dim.job
   output_dir: ''
-parents: []
+parents:
+- run-i521-ex10-vel
 relations:
   - {to: run-i521-ex10-vel, rel: compares}
 tags: [plcs, canonical, shared-trunk]
