@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 
 import torch
 import torch.nn as nn
@@ -35,6 +36,9 @@ CANONICAL_DEPENDENT_TERM_NAMES: tuple[str, ...] = (
     "torsion_angle",
     "torso_twist",
     "bone_length",
+    "joint_angle_velocity",
+    "torsion_angle_velocity",
+    "torso_twist_velocity",
 )
 
 
@@ -44,7 +48,8 @@ class PLCSLossConfig:
 
     Attributes:
         position_weight: Weight for position loss.
-        rotation_weight: Weight for rotation loss.
+        rotation_weight: Weight for rotation loss (1 - cosine on (cos, sin)).
+        angle_weight: Weight for wrapped-angle smooth-L1 yaw loss.
         canonical_pose_weight: Weight for canonical pose loss.
         joint_angle_weight: Weight for joint-angle loss.
         torsion_angle_weight: Weight for limb torsion / dihedral angle loss.
@@ -55,23 +60,53 @@ class PLCSLossConfig:
 
     position_weight: float = 1.0
     rotation_weight: float = 1.0
+    angle_weight: float = 0.0
     canonical_pose_weight: float = 0.0
     joint_angle_weight: float = 0.0
     torsion_angle_weight: float = 0.0
     torso_twist_weight: float = 0.0
     bone_length_weight: float = 0.0
+    # Angular-velocity (temporal) loss weights on canonical-pose angles (#521).
+    joint_angle_velocity_weight: float = 0.0
+    torsion_angle_velocity_weight: float = 0.0
+    torso_twist_velocity_weight: float = 0.0
+    # Optional per-angle dominance weights (GT-derived) for the velocity terms.
+    # None -> uniform. Lengths: 12 joint angles, 4 torsion angles, 1 twist.
+    joint_angle_velocity_angle_weights: tuple[float, ...] | None = None
+    torsion_angle_velocity_angle_weights: tuple[float, ...] | None = None
 
     @classmethod
     def from_dict(cls, cfg: dict) -> PLCSLossConfig:
         """Create config from dictionary, e.g. loaded from YAML."""
+
+        def _opt_weights(key: str) -> tuple[float, ...] | None:
+            value = cfg.get(key)
+            return None if value is None else tuple(float(v) for v in value)
+
         return cls(
             position_weight=float(cfg.get("position_weight", 1.0)),
             rotation_weight=float(cfg.get("rotation_weight", 1.0)),
+            angle_weight=float(cfg.get("angle_weight", 0.0)),
             canonical_pose_weight=float(cfg.get("canonical_pose_weight", 0.0)),
             joint_angle_weight=float(cfg.get("joint_angle_weight", 0.0)),
             torsion_angle_weight=float(cfg.get("torsion_angle_weight", 0.0)),
             torso_twist_weight=float(cfg.get("torso_twist_weight", 0.0)),
             bone_length_weight=float(cfg.get("bone_length_weight", 0.0)),
+            joint_angle_velocity_weight=float(
+                cfg.get("joint_angle_velocity_weight", 0.0)
+            ),
+            torsion_angle_velocity_weight=float(
+                cfg.get("torsion_angle_velocity_weight", 0.0)
+            ),
+            torso_twist_velocity_weight=float(
+                cfg.get("torso_twist_velocity_weight", 0.0)
+            ),
+            joint_angle_velocity_angle_weights=_opt_weights(
+                "joint_angle_velocity_angle_weights"
+            ),
+            torsion_angle_velocity_angle_weights=_opt_weights(
+                "torsion_angle_velocity_angle_weights"
+            ),
         )
 
 
@@ -576,6 +611,30 @@ def rotation_loss_term(inputs: PLCSLossInputs) -> Tensor:
     return _masked_frame_mean(per_frame, inputs.frame_mask)
 
 
+def angle_loss_term(inputs: PLCSLossInputs) -> Tensor:
+    """Angle term: masked smooth-L1 on the wrapped yaw error (radians).
+
+    Unlike the ``1 - cos`` rotation term, the gradient magnitude of this
+    wrapped-angle loss stays ~constant all the way out to a 180-degree error
+    instead of vanishing as the error approaches 180 degrees. The cosine loss
+    has a flat saddle at the antipode, which makes front/back flips a sticky
+    equilibrium the optimizer cannot escape; the angle term supplies a strong
+    restoring gradient there, so the two terms are complementary (cosine is
+    smooth near 0, angle keeps pushing near 180).
+    """
+    pred_angle = torch.atan2(inputs.pred_rotation[..., 1], inputs.pred_rotation[..., 0])
+    target_angle = torch.atan2(
+        inputs.target_rotation[..., 1], inputs.target_rotation[..., 0]
+    )
+    diff = _wrapped_angle_diff(pred_angle, target_angle)
+    per_frame = nn.functional.smooth_l1_loss(
+        diff,
+        torch.zeros_like(diff),
+        reduction="none",
+    )
+    return _masked_frame_mean(per_frame, inputs.frame_mask)
+
+
 def canonical_pose_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """Canonical-pose term: masked smooth-L1 between canonical joint positions."""
     if not inputs.has_canonical:
@@ -650,6 +709,94 @@ def bone_length_loss_term(inputs: PLCSLossInputs) -> Tensor:
     return _masked_frame_mean(per_frame, inputs.frame_mask)
 
 
+# ---------------------------------------------------------------------------
+# Angular-velocity (temporal smoothness) losses (#521)
+# ---------------------------------------------------------------------------
+
+# Type of a canonical-pose angle extractor, e.g. compute_joint_angles.
+AngleFn = Callable[[Tensor], Tensor]
+
+
+def _angle_velocity_loss_term(
+    inputs: PLCSLossInputs,
+    compute_fn: AngleFn,
+    *,
+    wrap: bool,
+    angle_weights: Tensor | None = None,
+) -> Tensor:
+    """Temporal angular-velocity loss on canonical-pose angles.
+
+    Compares the per-angle frame-to-frame angular velocity (first temporal
+    difference) of the predicted vs. target canonical pose. This directly
+    supervises *motion* rather than static pose, addressing predictions that
+    collapse to a frozen average pose (#521). ``angle_weights`` upweights angles
+    whose GT velocity is dominant; ``wrap`` wraps the velocity difference into
+    ``[-pi, pi]`` for signed/periodic angles (torsion, twist).
+    """
+    if not inputs.has_canonical:
+        return inputs.zero
+    pred = inputs.pred_canonical_pose
+    target = inputs.target_canonical_pose
+    assert pred is not None and target is not None
+    # Need a temporal axis of >= 2 frames: canonical pose is (B, T, J, 3).
+    if pred.ndim < 4 or pred.shape[-3] < 2:
+        return inputs.zero
+
+    pred_a = compute_fn(pred)
+    target_a = compute_fn(target)
+    # twist returns (B, T) with no angle axis -> add a singleton angle axis.
+    if pred_a.ndim == pred.ndim - 2:
+        pred_a = pred_a.unsqueeze(-1)
+        target_a = target_a.unsqueeze(-1)
+
+    # Velocity along the time axis (second to last): shape (B, T-1, A).
+    pred_vel = pred_a[..., 1:, :] - pred_a[..., :-1, :]
+    target_vel = target_a[..., 1:, :] - target_a[..., :-1, :]
+    diff = pred_vel - target_vel
+    if wrap:
+        diff = torch.atan2(torch.sin(diff), torch.cos(diff))
+
+    per_angle = nn.functional.smooth_l1_loss(
+        diff, torch.zeros_like(diff), reduction="none"
+    )
+    if angle_weights is not None:
+        per_angle = per_angle * angle_weights.to(per_angle)
+    per_frame = per_angle.mean(dim=-1)  # (B, T-1)
+
+    frame_mask = inputs.frame_mask
+    if frame_mask is not None and frame_mask.shape == pred_a.shape[:-1]:
+        velocity_mask = (frame_mask[..., 1:] > 0) & (frame_mask[..., :-1] > 0)
+        return masked_mean(
+            per_frame, velocity_mask, binarize=True, denom_min=1.0
+        )
+    return per_frame.mean()
+
+
+def joint_angle_velocity_loss_term(
+    inputs: PLCSLossInputs, *, angle_weights: Tensor | None = None
+) -> Tensor:
+    """Joint-angle angular-velocity term (limb + torso interior angles)."""
+    return _angle_velocity_loss_term(
+        inputs, compute_joint_angles, wrap=False, angle_weights=angle_weights
+    )
+
+
+def torsion_angle_velocity_loss_term(
+    inputs: PLCSLossInputs, *, angle_weights: Tensor | None = None
+) -> Tensor:
+    """Limb torsion/dihedral angular-velocity term (signed, wrapped)."""
+    return _angle_velocity_loss_term(
+        inputs, compute_torsion_angles, wrap=True, angle_weights=angle_weights
+    )
+
+
+def torso_twist_velocity_loss_term(inputs: PLCSLossInputs) -> Tensor:
+    """Torso shoulder-hip twist angular-velocity term (signed, wrapped)."""
+    return _angle_velocity_loss_term(
+        inputs, compute_torso_twist, wrap=True, angle_weights=None
+    )
+
+
 # Type of a single loss term: maps shared inputs to a scalar loss tensor.
 PLCSLossTerm = Callable[[PLCSLossInputs], Tensor]
 
@@ -662,11 +809,15 @@ PLCSLossTerm = Callable[[PLCSLossInputs], Tensor]
 DEFAULT_LOSS_TERMS: dict[str, PLCSLossTerm] = {
     "position": position_loss_term,
     "rotation": rotation_loss_term,
+    "angle": angle_loss_term,
     "canonical_pose": canonical_pose_loss_term,
     "joint_angle": joint_angle_loss_term,
     "torsion_angle": torsion_angle_loss_term,
     "torso_twist": torso_twist_loss_term,
     "bone_length": bone_length_loss_term,
+    "joint_angle_velocity": joint_angle_velocity_loss_term,
+    "torsion_angle_velocity": torsion_angle_velocity_loss_term,
+    "torso_twist_velocity": torso_twist_velocity_loss_term,
 }
 
 
@@ -714,6 +865,33 @@ class PLCSLoss(nn.Module):
         self.loss_terms: dict[str, PLCSLossTerm] = (
             dict(DEFAULT_LOSS_TERMS) if loss_terms is None else dict(loss_terms)
         )
+        self._bind_velocity_angle_weights()
+
+    def _bind_velocity_angle_weights(self) -> None:
+        """Rebind velocity terms with GT-derived per-angle dominance weights.
+
+        Weights are normalized to mean 1.0 so the configured ``*_velocity_weight``
+        still controls the overall term scale; relative magnitudes upweight the
+        angles whose GT angular velocity is dominant (#521).
+        """
+
+        def _norm(values: tuple[float, ...] | None) -> Tensor | None:
+            if not values:
+                return None
+            tensor = torch.tensor(values, dtype=torch.float32)
+            mean = tensor.mean().clamp_min(1e-8)
+            return tensor / mean
+
+        joint_w = _norm(self.config.joint_angle_velocity_angle_weights)
+        if joint_w is not None:
+            self.loss_terms["joint_angle_velocity"] = partial(
+                joint_angle_velocity_loss_term, angle_weights=joint_w
+            )
+        torsion_w = _norm(self.config.torsion_angle_velocity_angle_weights)
+        if torsion_w is not None:
+            self.loss_terms["torsion_angle_velocity"] = partial(
+                torsion_angle_velocity_loss_term, angle_weights=torsion_w
+            )
 
     def weight_for(self, name: str) -> float:
         """Return the configured weight for a loss term, or 0.0 if unset."""

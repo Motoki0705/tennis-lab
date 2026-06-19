@@ -311,6 +311,22 @@ SMOKE_TASK_SPECS = (
                     "model.max_seq_len=64",
                 ),
             ),
+            SmokeVariant(
+                name="multiview_axial_split",
+                overrides=(
+                    "model=multiview_axial_split",
+                    "data=multiview_sequence",
+                    "loss=no_canonical",
+                    "data.seq_len_range=[16,16]",
+                    "model.max_seq_len=64",
+                    "model.num_task_layers=2",
+                    "model.predict_canonical_pose=true",
+                    "loss.canonical_pose_weight=0.1",
+                ),
+                # Separate rotation/pose trunks: canonical rides the rotation
+                # trunk and the aux position head supervises it (#518 exp10).
+                expected_output_keys=("canonical_pose", "aux_position"),
+            ),
         ),
         supports_test_phase=True,
         expect_qualitative=False,
