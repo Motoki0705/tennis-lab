@@ -1,3 +1,7 @@
+defaults:
+  - _mcmc
+  - _self_
+
 # ---- Trainer (Lightning Trainer settings) ----
 trainer:
   max_epochs: 200

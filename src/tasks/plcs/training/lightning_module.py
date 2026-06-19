@@ -14,6 +14,7 @@ from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
 from src.tasks.plcs.models import build_plcs_discriminator, build_plcs_model
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
+from src.tasks.plcs.training.mcmc import LangevinNoiseInjector, MCMCConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
 from src.utils.tensor_utils import normalize_padding_mask
 
@@ -50,6 +51,16 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 canonical_pose_weight=float(train_cfg.get("canonical_pose_weight", 0.0)),
             )
         self.loss_fn = PLCSLoss(config=loss_cfg)
+
+        # MCMC (SGLD) training strategy (issue #519): optional Langevin noise
+        # injection to escape the 180deg rotation flat-saddle local optimum.
+        mcmc_cfg = MCMCConfig.from_dict(
+            dict((self.config.get("training", {}) or {}).get("mcmc", {}) or {})
+        )
+        self.mcmc_injector = (
+            LangevinNoiseInjector(mcmc_cfg) if mcmc_cfg.enabled else None
+        )
+
         gan_enabled = bool(((self.config.get("training", {}) or {}).get("gan", {}) or {}).get("enabled", False))
         self._initialize_manual_gan(
             discriminator=build_plcs_discriminator(self.config) if gan_enabled else None,
@@ -90,6 +101,33 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             return self.val_metrics
         return self.test_metrics
 
+    def _aux_loss(
+        self,
+        pred: Tensor,
+        target: Tensor,
+        kind: str,
+        frame_mask: Tensor | None,
+    ) -> Tensor:
+        """Masked auxiliary loss for a representation-learning head.
+
+        ``kind="position"`` uses smooth-L1; ``kind="rotation"`` uses the same
+        ``1 - cosine`` loss as the main rotation term on the ``(cos, sin)``
+        representation.
+        """
+        if kind == "rotation":
+            pred_norm = nn.functional.normalize(pred, dim=-1)
+            target_norm = nn.functional.normalize(target, dim=-1)
+            per_frame = 1.0 - (pred_norm * target_norm).sum(dim=-1)
+        else:
+            per_frame = nn.functional.smooth_l1_loss(
+                pred, target, reduction="none"
+            ).mean(dim=-1)
+        if frame_mask is not None and per_frame.shape == frame_mask.shape:
+            from src.utils.tensor_utils import masked_mean  # noqa: PLC0415
+
+            return masked_mean(per_frame, frame_mask, binarize=True, denom_min=1.0)
+        return per_frame.mean()
+
     def _compute_supervised_result(
         self,
         batch: dict[str, Tensor],
@@ -108,6 +146,25 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             target_human_kp_3d=batch.get("human_kp_3d"),
             human_mask=human_mask,
         )
+
+        # Auxiliary supervision head for representation learning on the rotation
+        # trunk. The aux_position head (the ex10 / split-model ingredient) teaches
+        # the rotation trunk the multiview triangulation that rotation depends on,
+        # while the dedicated pose trunk still produces the precise position.
+        # Each entry maps an output key -> (target batch key, loss kind, weight).
+        aux_specs = (
+            ("aux_position", "position", "position", "position"),
+        )
+        for out_key, target_key, kind, weight_name in aux_specs:
+            if out_key not in outputs:
+                continue
+            aux_value = self._aux_loss(
+                outputs[out_key], batch[target_key], kind, frame_mask
+            )
+            losses[out_key] = aux_value
+            losses["total"] = (
+                losses["total"] + self.loss_fn.weight_for(weight_name) * aux_value
+            )
 
         metrics = self._metric_tracker_for_stage(stage).update(
             outputs["position"],
@@ -144,6 +201,31 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def configure_optimizers(self) -> Any:
         return self.configure_gan_optimizers(self.model.parameters())
+
+    def on_train_batch_end(
+        self, outputs: Any, batch: Any, batch_idx: int
+    ) -> None:
+        """Inject SGLD/Langevin noise after the optimizer step (issue #519).
+
+        Runs in both automatic (baseline) and manual (GAN) optimization modes
+        because Lightning calls this hook after the full training step. The
+        generator optimizer's current LR sets the Langevin noise scale.
+        """
+        if self.mcmc_injector is None:
+            return
+        optimizer = self.optimizers()
+        if isinstance(optimizer, (list, tuple)):
+            optimizer = optimizer[0]
+        lr = float(optimizer.param_groups[0]["lr"])
+        total_steps = max(self._estimate_total_steps(), 1)
+        progress = float(self.global_step) / float(total_steps)
+        std = self.mcmc_injector.inject(
+            self.model,
+            lr=lr,
+            epoch=int(self.current_epoch),
+            progress=progress,
+        )
+        self.log("train/mcmc_noise_std", std)
 
     # ------------------------------------------------------------------
     # Qualitative validation logging

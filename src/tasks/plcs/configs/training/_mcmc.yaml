@@ -1,0 +1,15 @@
+# MCMC (Stochastic Gradient Langevin Dynamics) training strategy — issue #519.
+#
+# When enabled, Gaussian noise is injected into the model parameters after each
+# optimizer step (theta <- theta - lr*grad + N(0, 2*lr*temperature)). This turns
+# AdamW into an approximate SGLD sampler so training can tunnel out of the flat
+# saddle at the 180deg rotation flip, where the 1-cos rotation loss gradient
+# vanishes. Disabled by default; preset configs include this file so that
+# `training.mcmc.enabled=true` is all that is needed to turn it on.
+mcmc:
+  enabled: false
+  noise_scale: 1.0      # multiplier on the base std sqrt(2*lr*temperature)
+  temperature: 1.0      # SGLD temperature; >1 explores more
+  warmup_epochs: 0      # skip noise for the first N epochs
+  decay: cosine         # anneal noise over training: none | cosine | linear
+  target: all           # parameters to perturb: all | rotation

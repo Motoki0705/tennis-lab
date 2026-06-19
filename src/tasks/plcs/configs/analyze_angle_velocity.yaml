@@ -1,0 +1,23 @@
+defaults:
+  - data: multiview_sequence
+  - _self_
+
+analysis:
+  # Split to iterate; "train" measures GT training-data velocity distributions.
+  split: train
+  # Cap number of batches for speed (null = all). null reproduces the
+  # per-angle dominance weights baked into loss/canonical_rot_vel.yaml.
+  max_batches: null
+  # Output filename for the JSON results.
+  output_filename: angle_velocity_dominance.json
+
+run:
+  output_dir: outputs/plcs/analysis/angle_velocity
+  seed: 42
+
+hydra:
+  run:
+    dir: outputs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

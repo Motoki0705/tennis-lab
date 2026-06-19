@@ -183,3 +183,7 @@ preprocessed/
 !docs/**/*.png
 !docs/**/*.jpg
 !docs/**/*.jpeg
+
+# Training queue + scratch experiment logs (issue #523 / MCMC)
+.training_queue/
+experiments_mcmc/

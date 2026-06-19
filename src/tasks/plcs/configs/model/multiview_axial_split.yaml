@@ -1,0 +1,16 @@
+# Separate-trunk axial PLCS model — issue #518 exp10 winner.
+#
+# Separate rotation and pose trunks (0 shared + 6/6 @ dim 512). The rotation
+# trunk carries the rotation head, the canonical-pose head, and an auxiliary
+# position head; a dedicated pose trunk gives precise position. Pair with
+# loss=canonical_rot (or canonical_rot_vel for temporal smoothness, #521).
+#
+# Test metrics: rotation ~9.98 deg, position ~0.238 m — beats the shared trunk
+# and (issue #525) parameter-matched shared trunks, so the gain is architectural.
+defaults:
+  - _multiview_axial_split
+  - _self_
+
+hidden_dim: 512
+num_heads: 8
+rope_dim: 16
