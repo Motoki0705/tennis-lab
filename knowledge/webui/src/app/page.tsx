@@ -19,9 +19,8 @@ export default async function Page() {
           <span>{runs} runs</span>
           <span>{groups} groups</span>
           <span className="legend">
-            <i className="ln ln--parent" /> parent→child
-            <i className="ln ln--member" /> group
-            <i className="ln ln--relation" /> relation
+            <i className="ln ln--parent" /> 依存 parent→child
+            <i className="box box--group" /> group
           </span>
         </div>
       </header>

@@ -69,13 +69,17 @@ body {
 .ln--parent {
   border-color: #8a8f98;
 }
-.ln--member {
-  border-color: #f5d76e;
-  border-top-style: dashed;
+.box {
+  display: inline-block;
+  width: 16px;
+  height: 12px;
+  margin: 0 4px 0 10px;
+  vertical-align: middle;
 }
-.ln--relation {
-  border-color: #5dade2;
-  border-top-style: dotted;
+.box--group {
+  border: 1.5px dashed rgba(245, 215, 110, 0.7);
+  border-radius: 4px;
+  background: rgba(245, 215, 110, 0.08);
 }
 
 .layout {
@@ -191,12 +195,24 @@ body {
   font-weight: 600;
 }
 
+/* Group nodes are containers that enclose their member runs. */
 .group-node {
-  width: 260px;
-  background: rgba(245, 215, 110, 0.08);
-  border: 2px dashed #f5d76e;
-  border-radius: 12px;
-  padding: 10px 12px;
+  width: 100%;
+  height: 100%;
+  background: rgba(245, 215, 110, 0.05);
+  border: 1.5px dashed rgba(245, 215, 110, 0.5);
+  border-radius: 14px;
+  padding: 0;
+}
+.group-node--selected {
+  border-color: #f5d76e;
+  box-shadow: 0 0 0 2px rgba(245, 215, 110, 0.4);
+}
+.group-node__header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
 }
 .group-node__label {
   font-size: 10px;
@@ -206,7 +222,7 @@ body {
 .group-node__title {
   font-size: 13px;
   font-weight: 600;
-  margin-top: 4px;
+  color: var(--text);
 }
 
 /* ---- detail panel ---- */

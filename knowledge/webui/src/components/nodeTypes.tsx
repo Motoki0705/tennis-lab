@@ -84,12 +84,14 @@ export function RunNode({ data, selected }: NodeProps<KnowledgeNode>) {
 
 export function GroupNode({ data, selected }: NodeProps<KnowledgeNode>) {
   const issue = issueLabel(data.issue);
+  // A group is a container that encloses its member runs (positioned inside by
+  // the layout); it has no edges of its own, hence no handles.
   return (
-    <div className="group-node" style={{ boxShadow: selected ? "0 0 0 2px #f5d76e" : undefined }}>
-      <Handle type="target" position={Position.Top} />
-      <div className="group-node__label">GROUP {issue ?? ""}</div>
-      <div className="group-node__title">{data.title}</div>
-      <Handle type="source" position={Position.Bottom} />
+    <div className={`group-node ${selected ? "group-node--selected" : ""}`}>
+      <div className="group-node__header">
+        <span className="group-node__label">GROUP {issue ?? ""}</span>
+        <span className="group-node__title">{data.title}</span>
+      </div>
     </div>
   );
 }
