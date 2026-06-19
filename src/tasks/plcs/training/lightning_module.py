@@ -147,15 +147,13 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             human_mask=human_mask,
         )
 
-        # Auxiliary supervision heads for representation learning on task trunks.
-        # Each entry maps an output key -> (target batch key, loss kind, weight
-        # name). "position" teaches multiview triangulation; "rotation" teaches
-        # heading. aux_position is the ex10 ingredient on the rotation trunk;
-        # aux_*_canonical are the issue #520 canonical-trunk variants.
+        # Auxiliary supervision head for representation learning on the rotation
+        # trunk. The aux_position head (the ex10 / split-model ingredient) teaches
+        # the rotation trunk the multiview triangulation that rotation depends on,
+        # while the dedicated pose trunk still produces the precise position.
+        # Each entry maps an output key -> (target batch key, loss kind, weight).
         aux_specs = (
             ("aux_position", "position", "position", "position"),
-            ("aux_position_canonical", "position", "position", "position"),
-            ("aux_rotation_canonical", "rotation", "rotation", "rotation"),
         )
         for out_key, target_key, kind, weight_name in aux_specs:
             if out_key not in outputs:
