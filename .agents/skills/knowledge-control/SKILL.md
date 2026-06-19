@@ -34,22 +34,29 @@ SKILL=.agents/skills/knowledge-control/scripts
 
 | Script | Purpose |
 |--------|---------|
-| `kg_from_run.py <job-name>` | Build a run node from a `.training_queue` job + log (auto-extracts config + metrics). |
+| `kg_register.py <job-name>` | **Canonical entry (issue #533).** Promote a finished queue run: copy its repro bundle + test-split predictions into git-tracked `knowledge/runs/<id>/`, then scaffold the node with provider/session/issue/repro/config/metrics/artifacts. |
+| `kg_from_run.py <job-name>` | Legacy/log-only fallback: build a node from a `.training_queue` job + log (no repro bundle). |
 | `kg_new.py --type run\|group ...` | Scaffold a node by hand (use for group nodes or runs without a queue log). |
-| `kg_validate.py` | Validate frontmatter schema + that every edge target exists. Run before committing. |
+| `kg_validate.py` | Validate frontmatter schema + that every edge target & `artifacts.run_dir` exists. Run before committing. |
 
 Run everything from the repo root.
 
 ## Register a finished run (typical flow)
 
-1. **Generate the node** from the queue job (name is the queue job's `# name:`):
+1. **Register the run** from the queue job (name is the queue job's `# name:`).
+   This promotes the reproducibility bundle + test-split predictions from the
+   gitignored `.training_queue/repro/<jobid>/` staging area into git-tracked
+   `knowledge/runs/<run-id>/`, and scaffolds the node:
 
    ```bash
-   $PY $SKILL/kg_from_run.py i521_base_vel --issue 521 --provider claude --write
+   $PY $SKILL/kg_register.py i521_base_vel --issue 521 --provider claude
    ```
 
-   This writes `knowledge/nodes/run-i521-base-vel.md` with config + metrics filled.
-   If there is no queue log, scaffold manually with `kg_new.py`.
+   This writes `knowledge/nodes/run-i521-base-vel.md` (config/metrics/repro/
+   session/artifacts filled) plus `knowledge/runs/run-i521-base-vel/`
+   (`run.json`, `repro.sh`, `uncommitted.patch`, `pred_test.npz`, `metrics.json`).
+   For an older run with no repro bundle, fall back to
+   `kg_from_run.py ... --write`; with no queue log, scaffold via `kg_new.py`.
 
 2. **Write the 考察 body** — what the run showed, why, and what it implies for
    the next step. Keep `metrics` in frontmatter consistent with the body.
