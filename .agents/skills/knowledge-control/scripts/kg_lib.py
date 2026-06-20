@@ -154,6 +154,12 @@ def _validate_run(n: Node, res: ValidationResult) -> None:
     provider = n.meta.get("provider")
     if provider is not None and str(provider) not in PROVIDERS:
         res.warnings.append(f"{loc}: provider '{provider}' not in {sorted(PROVIDERS)}")
+    # issue #533: when a run records its git-tracked reproducibility bundle, that
+    # directory must actually exist (it holds repro.sh / run.json / pred_test.npz).
+    artifacts = n.meta.get("artifacts") or {}
+    run_dir = artifacts.get("run_dir") if isinstance(artifacts, dict) else None
+    if run_dir and not (repo_root() / str(run_dir)).exists():
+        res.errors.append(f"{loc}: artifacts.run_dir '{run_dir}' does not exist")
     if not n.body:
         res.warnings.append(f"{loc}: empty body (no 考察/findings written yet)")
 
@@ -161,8 +167,9 @@ def _validate_run(n: Node, res: ValidationResult) -> None:
 def dump_frontmatter(meta: dict[str, Any]) -> str:
     """Serialize frontmatter with stable key ordering for nice git diffs."""
     order = [
-        "id", "type", "title", "issue", "provider", "date", "status",
-        "config", "metrics", "artifacts", "members", "parents", "relations", "tags",
+        "id", "type", "title", "issue", "provider", "session", "date", "status",
+        "config", "metrics", "repro", "artifacts", "members", "parents",
+        "relations", "tags",
     ]
     ordered = {k: meta[k] for k in order if k in meta}
     for k, v in meta.items():

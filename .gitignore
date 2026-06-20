@@ -187,3 +187,9 @@ preprocessed/
 # Training queue + scratch experiment logs (issue #523 / MCMC)
 .training_queue/
 experiments_mcmc/
+
+# Knowledge-graph run bundles are git-tracked (issue #533): repro bundle +
+# test-split predictions replace checkpoints as the unit of record. Re-include
+# them despite the generic runs/ and *.json/*.npz ignores above.
+!knowledge/runs/
+!knowledge/runs/**

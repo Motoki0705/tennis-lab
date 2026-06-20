@@ -123,6 +123,20 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             "gan_mask": mask,
         }
 
+    def test_prediction_payload(
+        self, batch: BLCSBatch | BLCSMultiViewBatch, result: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Ball 3D position predictions + targets to persist for the test split."""
+        outputs = result["outputs"]
+        payload: dict[str, Any] = {
+            "pred_position": outputs["position"],
+            "target_position": batch["position_3d"],
+        }
+        mask = result.get("mask")
+        if mask is not None:
+            payload["mask"] = mask
+        return payload
+
     def _log_stage_metrics(self, stage: str, loss: Tensor, metrics: dict[str, Any]) -> None:
         prog_bar = stage != "test"
         self.log(f"{stage}/loss", loss, prog_bar=prog_bar)

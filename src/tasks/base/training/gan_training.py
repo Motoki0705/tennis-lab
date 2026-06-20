@@ -295,10 +295,17 @@ class ManualGANSupportMixin:
         loss, metrics = self._shared_stage_step(batch, "val")
         self._log_stage_metrics("val", loss, metrics)
 
+    def on_test_epoch_start(self) -> None:
+        self._reset_test_prediction_buffer()
+
     def test_step(self, batch: Any, batch_idx: int) -> None:
         _ = batch_idx
-        loss, metrics = self._shared_stage_step(batch, "test")
-        self._log_stage_metrics("test", loss, metrics)
+        # Use _compute_supervised_result directly (identical to the supervised
+        # test path used by _shared_stage_step) so we also get the model outputs
+        # needed to persist test-split predictions (issue #533).
+        result = self._compute_supervised_result(batch, "test")
+        self._log_stage_metrics("test", result["loss"], result["metrics"])
+        self.collect_test_predictions(batch, result)
 
     def on_train_epoch_end(self) -> None:
         self._flush_stage_metrics("train")
@@ -309,6 +316,15 @@ class ManualGANSupportMixin:
         self._flush_stage_metrics("val")
 
     def on_test_epoch_end(self) -> None:
+        # Persist test-split predictions before flushing/resetting the metric
+        # tracker, so metrics.json reflects this epoch's values (issue #533).
+        metrics: dict[str, Any] | None = None
+        tracker = self._metric_tracker_for_stage("test")
+        if tracker is not None:
+            metrics = {k: float(v) for k, v in tracker.compute().items()}
+        saved = self.save_test_predictions(metrics=metrics)
+        if saved is not None:
+            print(f"[test] saved test-split predictions -> {saved}")
         self._flush_stage_metrics("test")
 
     def _unwrap_optimizer(self, optimizer: Any) -> Any:
