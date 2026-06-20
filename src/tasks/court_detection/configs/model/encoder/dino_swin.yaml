@@ -1,0 +1,10 @@
+# Swin-L (DINO) pretrained encoder, frozen by default.
+# Select with `model/encoder=dino_swin`.
+name: swin_L_384_22k
+checkpoint_path: null
+dilation: false
+return_interm_indices: [0, 1, 2, 3]
+pretrain_img_size: null
+use_checkpoint: false
+strict: true
+freeze: true
