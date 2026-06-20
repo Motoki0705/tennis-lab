@@ -7,6 +7,8 @@ members:
   - run-i525-shared-6l
   - run-i525-shared-match-dim
   - run-i525-shared-match-layers
+  - run-i525-asym
+  - run-i525-parameff
 tags: [plcs, canonical, shared-trunk]
 ---
 

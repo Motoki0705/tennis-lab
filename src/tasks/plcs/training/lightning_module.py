@@ -199,6 +199,22 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             self.log(f"{stage}/loss_canonical_pose", metrics["loss_canonical_pose"])
         self._log_gan_metrics(stage, metrics)
 
+    def test_prediction_payload(
+        self, batch: dict[str, Tensor], result: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Position/rotation predictions + targets to persist for the test split."""
+        outputs = result["outputs"]
+        payload: dict[str, Any] = {
+            "pred_position": outputs["position"],
+            "pred_rotation": outputs["rotation"],
+            "target_position": batch["position"],
+            "target_rotation": batch["rotation"],
+        }
+        mask = result.get("gan_mask")
+        if mask is not None:
+            payload["mask"] = mask
+        return payload
+
     def configure_optimizers(self) -> Any:
         return self.configure_gan_optimizers(self.model.parameters())
 
