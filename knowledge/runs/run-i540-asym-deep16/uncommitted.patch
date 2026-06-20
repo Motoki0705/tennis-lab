@@ -1,0 +1,9 @@
+diff --git a/src/tasks/plcs/configs/data/_multiview.yaml b/src/tasks/plcs/configs/data/_multiview.yaml
+index d127451..241f4b2 100644
+--- a/src/tasks/plcs/configs/data/_multiview.yaml
++++ b/src/tasks/plcs/configs/data/_multiview.yaml
+@@ -1,3 +1,3 @@
+ min_cameras: 2
+ num_views_range: [3, 6]
+-batch_size: 8
++batch_size: 4
