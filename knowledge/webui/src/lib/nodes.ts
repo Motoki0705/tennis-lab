@@ -16,6 +16,18 @@ import type {
 // knowledge/nodes lives one directory above this Next.js app (knowledge/webui).
 const NODES_DIR =
   process.env.KNOWLEDGE_NODES_DIR ?? path.resolve(process.cwd(), "..", "nodes");
+// knowledge/runs/<id>/curves.png holds the auto-generated convergence curves.
+const RUNS_DIR =
+  process.env.KNOWLEDGE_RUNS_DIR ?? path.resolve(process.cwd(), "..", "runs");
+
+async function hasCurves(id: string): Promise<boolean> {
+  try {
+    await fs.access(path.join(RUNS_DIR, id, "curves.png"));
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -51,6 +63,7 @@ async function parseFile(file: string): Promise<KnowledgeNode> {
     relations: asRelations(data.relations),
     tags: asStringArray(data.tags),
     bodyHtml: marked.parse(content.trim(), { async: false }) as string,
+    curvesUrl: (await hasCurves(id)) ? `/api/curves/${id}` : undefined,
   };
 }
 

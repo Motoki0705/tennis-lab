@@ -311,6 +311,14 @@ body {
 .kv td {
   word-break: break-all;
 }
+.curves {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid var(--line);
+  display: block;
+}
 .prose {
   font-size: 13px;
   line-height: 1.6;

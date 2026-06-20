@@ -20,6 +20,7 @@ knowledge/
   nodes/         # 1 ノード = 1 .md（frontmatter + 考察本文）
   runs/          # 1 run = 1 dir。再現性バンドル + test split 推論（issue #533, git 管理）
                  #   <run-id>/{run.json, repro.sh, uncommitted.patch, pred_test.npz, metrics.json}
+                 #   <run-id>/curves.png  # train/val 収束カーブ（kg_curves.py が生成）
   webui/         # Next.js 14 + React Flow 閲覧 UI
 ```
 
@@ -63,6 +64,8 @@ artifacts:
   run_dir: knowledge/runs/run-i520-canon-both   # git 管理の再現性バンドル
   predictions: knowledge/runs/run-i520-canon-both/pred_test.npz  # test split 推論
   log: .training_queue/logs/..._canon_both.log
+  curves: knowledge/runs/run-i520-canon-both/curves.png  # train/val 収束カーブ（kg_curves.py）
+  tb_logdir: outputs/plcs/.../logs/version_25  # 上記の生成元 TensorBoard event dir
 parents: [run-i520-canon-none]   # 有向エッジ parent→this（親=baseline/前提）
 relations:                       # 任意: 非階層の有向リンク
   - {to: run-i521-base-vel, rel: compares}
@@ -71,10 +74,15 @@ tags: [plcs, canonical, split-trunk]
 
 ## 考察 / Findings
 
-run の結果・解釈・次への示唆を Markdown で記述。
+run ノードは固定の節構成で書く（セッション間で比較可能にするため）:
+要約 → アーキテクチャ詳細 → メトリクスの解釈 → アーキ⇄メトリクスの因果考察 →
+既存実験との比較 → 次に有効な実験。詳細・テンプレートは
+[`knowledge-control` SKILL の「考察 format」](../.agents/skills/knowledge-control/SKILL.md#考察-format-run-nodes)。
 ```
 
 ### group ノード
+
+group の `## まとめ` は群全体の結論を自由記述（run ノードの固定節構成は強制しない）。
 
 ```yaml
 ---
@@ -105,11 +113,14 @@ SKILL=.agents/skills/knowledge-control/scripts
 $PY $SKILL/kg_register.py <queue-job-name> --issue <N> --provider <p>
 #    （repro バンドルが無い旧 run は $PY $SKILL/kg_from_run.py ... --write）
 
-# 2. 考察本文を書き、parents / relations / tags を埋める
+# 2. 考察本文を固定節構成で書き、parents / relations / tags を埋める
 
-# 3. 検証（スキーマ + エッジ参照解決 + artifacts.run_dir 実在）
+# 3. 収束カーブを生成（TensorBoard → knowledge/runs/<id>/curves.png, artifacts.curves）
+$PY $SKILL/kg_curves.py <run-id>      # 一括は --all
+
+# 4. 検証（スキーマ + エッジ参照解決 + artifacts.run_dir 実在）
 $PY $SKILL/kg_validate.py
 
-# 4. 閲覧
+# 5. 閲覧（ノードをクリックすると metrics・収束カーブ・考察が表示される）
 cd knowledge/webui && npm install && npm run dev
 ```

@@ -19,18 +19,33 @@ metrics:
 artifacts:
   log: experiments/logs/
   output_dir: ''
-parents: [run-i518-exp3]
+  curves: knowledge/runs/run-i518-exp5/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial/logs/version_8
+parents:
+- run-i518-exp3
 relations: []
-tags: [plcs, rotation, split-trunk]
+tags:
+- plcs
+- rotation
+- split-trunk
 ---
 
 ## 考察 / Findings
 
-trunk を完全分離（共有0層 + 回転6層 + ポーズ6層、loss は `canonical_rot`）。容量競合を断てば
-両立すると期待した。
+### 要約
+trunk を完全分離すれば両立すると期待したが、位置は良いのに回転が `71.0°` と baseline 以下に崩壊。回転は位置タスクと co-train が必要という重要発見。
 
-- ところが**位置は `0.32m` と良いが回転が `71.0°` に崩壊**＝baseline より悪い。
-- 重要な発見: 回転は HARD タスクで、**位置タスク（多視点三角測量/対応付け）と同じ trunk で
-  co-train される必要**がある。位置勾配を切ると回転を学習できない。
+### アーキテクチャ詳細
+完全分離 `multiview_axial_base_split`（共有 0 層 + 回転 6 層 + ポーズ 6 層）。損失は `canonical_rot`。
 
-→ 「完全分離は回転を殺す」。回転 trunk に位置の信号を**補助的に**戻す道（exp7→exp10）が見えてきた。
+### メトリクスの解釈
+位置 `0.32m` と良好だが、回転は `71.0°` と baseline (61.6°) より悪化。
+
+### アーキテクチャ⇄メトリクスの因果考察
+回転は HARD タスクで、位置タスク（多視点三角測量 / 対応付け）と同じ trunk で co-train される必要がある。位置勾配を切ると回転 trunk が三角測量特徴を学べず崩壊する。
+
+### 既存実験との比較
+親 [[run-i518-exp3]] の分岐路線から完全分離へ踏み込んだ結果、回転が悪化。後に [[run-i518-exp10]] がこの「分離は回転を殺す」を条件付きで覆す（`contradicts`）。
+
+### 次に有効な実験
+回転 trunk に位置の信号を補助的に戻す道（exp7→exp10）が見えてきた。
