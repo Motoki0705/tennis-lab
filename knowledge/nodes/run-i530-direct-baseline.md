@@ -48,6 +48,8 @@ artifacts:
   log: .claude/worktrees/issue-530-canonical-pose-head/outputs/plcs/issue_530/direct_baseline_eval.log
   checkpoint: outputs/plcs/plcs_multiview_axial/logs/version_15/checkpoints/last.ckpt
   output_dir: outputs/plcs/plcs_multiview_axial/logs/version_15
+  curves: knowledge/runs/run-i530-direct-baseline/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial/logs/version_15
 parents:
 - run-i518-exp10
 relations: []
@@ -61,9 +63,20 @@ tags:
 
 ## 考察 / Findings
 
-EX10 の direct canonical pose head を追加指標で再評価した比較基準。構造化 head
-3案より canonical MPJPE と骨長誤差はわずかに劣る一方、下流の yaw 誤差
-`9.64°`、位置誤差 `0.247 m` は最良だった。
+### 要約
+EX10 の direct canonical pose head を追加指標で再評価した #530 の比較基準。下流の yaw・位置は構造化 3 案より最良。
 
-canonical pose を直接回帰する自由度が、最終的な向き・位置推定には依然として
-有効である。Issue #530 の3実行はこのノードを親として比較する。
+### アーキテクチャ詳細
+`multiview_axial_base_split_auxpos` + `canonical_rot`、`canonical_pose_head=direct`（canonical pose を直接回帰）。`seed=42`, `epochs=100`, `batch_size=6`。
+
+### メトリクスの解釈
+yaw 誤差 `9.64°`、位置誤差 `0.247m` と最良。canonical MPJPE と骨長誤差は構造化 head 3 案よりわずかに劣る。
+
+### アーキテクチャ⇄メトリクスの因果考察
+canonical pose を直接回帰する自由度が、最終的な向き・位置推定には依然有効。構造制約を課す 3 案より下流表現が強い。
+
+### 既存実験との比較
+親 [[run-i518-exp10]] の head を評価軸を変えて再測定。#530 の 3 実行（[[run-i530-bone-direction]] / [[run-i530-mean-residual]] / [[run-i530-parent-delta]]）はこのノードを親として比較する。
+
+### 次に有効な実験
+構造化 head は direct の置換ではなく、補助 head や bounded residual として使う方向を検討（[[run-i530-bone-direction]] が候補）。

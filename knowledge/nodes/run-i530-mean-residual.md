@@ -48,6 +48,8 @@ artifacts:
   log: .training_queue/logs/1781796308855797848_295569_i530_mean_residual.log
   job: .training_queue/done/1781796308855797848_295569_i530_mean_residual.job
   output_dir: outputs/plcs/issue_530/mean_residual
+  curves: knowledge/runs/run-i530-mean-residual/curves.png
+  tb_logdir: .claude/worktrees/issue-530-canonical-pose-head/outputs/plcs/issue_530/mean_residual/logs/version_0
 parents:
 - run-i530-direct-baseline
 relations: []
@@ -61,9 +63,20 @@ tags:
 
 ## 考察 / Findings
 
-平均ポーズに残差を加える再パラメータ化。direct baseline に対して canonical
-MPJPE は `0.1384 m` から `0.1362 m` へ約 `1.6%` 改善したが、yaw 誤差は
-`9.64°` から `13.43°`、位置誤差は `0.247 m` から `0.298 m` へ悪化した。
+### 要約
+平均ポーズに残差を加える再パラメータ化。canonical MPJPE は微改善するが、下流の yaw・位置は悪化。単独 head 採用の根拠なし。
 
+### アーキテクチャ詳細
+`multiview_axial_issue530_mean_residual` + `canonical_rot`、`canonical_pose_head=mean_residual`。`seed=42`, `epochs=100`, `batch_size=6`。
+
+### メトリクスの解釈
+canonical MPJPE は `0.1384m → 0.1362m` と約 `1.6%` 改善するが、yaw 誤差 `9.64°→13.43°`、位置誤差 `0.247m→0.298m` と悪化。
+
+### アーキテクチャ⇄メトリクスの因果考察
 平均姿勢による初期バイアスだけでは有効な構造制約にならず、下流表現を弱めた。
-単独 head として採用する根拠はない。
+
+### 既存実験との比較
+親 [[run-i530-direct-baseline]] に対し canonical 微改善・下流悪化。[[run-i530-bone-direction]] に劣る。
+
+### 次に有効な実験
+単独 head として採用する根拠はない。構造制約を入れるなら bone_direction 系を優先。

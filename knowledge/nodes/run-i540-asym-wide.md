@@ -40,6 +40,8 @@ artifacts:
   run_dir: knowledge/runs/run-i540-asym-wide
   predictions: knowledge/runs/run-i540-asym-wide/pred_test.npz
   log: .training_queue/logs/1781927908633902411_828149_i540_asym_wide_resume.log
+  curves: knowledge/runs/run-i540-asym-wide/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial_split/logs/version_4
 parents:
 - run-i525-asym
 - run-i518-exp10
@@ -59,10 +61,20 @@ tags:
 
 ## 考察 / Findings
 
-両 trunk の**幅**を 768 まで広げた非対称構成(`multiview_axial_split_wide`: hidden_dim 768 / num_heads 12、非対称深さ rot=10・pose=6、約 172M params)の 200epoch 結果。**位置 0.368m / 回転 12.27°**。172M は単発では 200ep に到達できず、`version_3/last.ckpt` から resume して 200ep を収束させた(`run.resume` 付き; repro.sh 参照)。
+### 要約
+両 trunk の幅を 768 まで広げた非対称構成（200ep, resume 要）。幅は効くが高くつき、EX10 にも deep16 にも届かない。回転改善は幅 < 深さ。
 
-- **幅は効くが高くつく**: `run-i525-asym`(rot=10, 103M, 19.94°/0.700m)に対し幅を広げただけで 12.27°/0.368m まで改善。#535 の「深化が負なら幅を試す」という示唆は部分的に支持された。
-- **ただし EX10 にも deep16 にも届かない**: 回転 12.27° は EX10(9.98°)・deep16(8.40°)に劣り、位置 0.368m も EX10(0.238m)・deep16(0.207m)に及ばない。172M という最大級の容量を投じ、resume まで要して、78M の deep16 に負けている。
-- **結論(幅 vs 深さ)**: 回転改善の効率は**幅 < 深さ**。同 issue の `run-i540-asym-deep16`(深さ振り)が幅振りの本構成を明確に上回る。幅の拡大はパラメータ/学習コスト(resume 必須)の割にリターンが小さい。
+### アーキテクチャ詳細
+`multiview_axial_split_wide` + `canonical_rot`：`hidden_dim 768` / `num_heads 12`、非対称深さ rot=10・pose=6、約 172M params。単発では 200ep に到達できず `version_3/last.ckpt` から resume して収束（`run.resume` 付き; repro.sh 参照）。
 
-次の示唆: 非対称容量配分は「幅ではなく深さ」に集約する(deep16 路線)。172M 級の幅広モデルはコスト効率が悪く、本タスク規模では非推奨。
+### メトリクスの解釈
+位置 `0.368m` / 回転 `12.27°`。
+
+### アーキテクチャ⇄メトリクスの因果考察
+[[run-i525-asym]]（rot=10, 103M, `19.94°/0.700m`）に対し幅を広げただけで改善—「深化が負なら幅を試す」という #535 示唆を部分支持。だが回転 `12.27°` は EX10 (`9.98°`)・deep16 (`8.40°`) に劣り、位置 `0.368m` も及ばない。172M + resume を要して 78M の deep16 に負ける＝幅は容量 / 学習コストの割にリターンが小さい。
+
+### 既存実験との比較
+深さ振りの [[run-i540-asym-deep16]] に明確に劣る（`compares`）。[[run-i518-exp10]] とも比較（`compares`）。
+
+### 次に有効な実験
+非対称容量配分は「幅ではなく深さ」に集約する（deep16 路線）。172M 級の幅広モデルはコスト効率が悪く、本タスク規模では非推奨。

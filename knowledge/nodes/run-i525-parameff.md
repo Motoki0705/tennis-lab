@@ -40,6 +40,7 @@ artifacts:
   run_dir: knowledge/runs/run-i525-parameff
   predictions: knowledge/runs/run-i525-parameff/pred_test.npz
   log: .training_queue/logs/1781875485488211550_626786_i525_parameff_200ep.log
+  curves: knowledge/runs/run-i525-parameff/curves.png
 parents:
 - run-i518-exp10
 relations:
@@ -56,10 +57,20 @@ tags:
 
 ## 考察 / Findings
 
-200epoch まで収束させた縮小 split trunk(`multiview_axial_split_eff`: hidden_dim 256 / num_heads 4 / num_task_layers 3、約 9.9M params ≒ EX10(78M)の 12.7%)の確定結果。位置 0.569m / 回転 15.55°。
+### 要約
+EX10 の 12.7% (9.9M) に縮小した split trunk（200ep 収束）。位置はアーキ由来で極めて効率が高く 78M クラスの共有群を上回るが、回転は容量を要する。
 
-- **位置はアーキ由来で極めてパラメータ効率が高い**: 9.9M の縮小 split が、78M クラスの共有 trunk 群すべて(shared-6l 0.836m / shared-match-dim 0.848m / shared-match-layers 1.617m — いずれも位置 ~0.84m で頭打ち)を 0.569m で明確に上回る。位置精度の優位は容量ではなく split-trunk というアーキテクチャに起因し、8 分の 1 以下のパラメータでも維持される。
-- **回転は容量を要する**: 一方で回転 15.55° は shared-6l(15.27°)とほぼ同等にとどまり、EX10 split(9.98°)や shared-match-dim(12.22°)には届かない。これは #525 の「幅(hidden_dim)が回転に効く」という所見と整合し、縮小により num_heads/hidden_dim を削った代償が回転側に集中して現れている。
-- **効率フロンティアの結論**: 「位置は安価(アーキ由来)・回転は容量依存」。split-trunk の構造的利得で位置は小容量でも頭打ちを突破できるが、回転を EX10 水準へ詰めるには幅/ヘッド数の確保が必要。
+### アーキテクチャ詳細
+`multiview_axial_split_eff` + `canonical_rot`：`hidden_dim 256` / `num_heads 4` / `num_task_layers 3`、約 9.9M params（EX10 78M の 12.7%）。`max_epochs=200`。
 
-次の示唆: 位置を犠牲にせず回転だけを底上げする中間点として、split 構造を保ったまま hidden_dim のみ EX10 寄りに戻す(num_layers は縮小維持)スイープが、効率フロンティアの最良トレードオフ候補になる。
+### メトリクスの解釈
+位置 `0.569m` / 回転 `15.55°`。9.9M の縮小 split が、78M クラスの共有 trunk 群（shared-6l `0.836m` / shared-match-dim `0.848m` / shared-match-layers `1.617m`、いずれも位置 ~0.84m で頭打ち）を位置で明確に上回る。一方で回転 `15.55°` は shared-6l (`15.27°`) と同等にとどまり、EX10 (`9.98°`) / shared-match-dim (`12.22°`) には届かない。
+
+### アーキテクチャ⇄メトリクスの因果考察
+位置精度の優位は容量ではなく split-trunk というアーキに起因し、8 分の 1 以下でも維持される。回転は幅（hidden_dim）に効くという #525 所見と整合し、縮小で num_heads/hidden_dim を削った代償が回転側に集中。結論は「位置は安価（アーキ由来）・回転は容量依存」。
+
+### 既存実験との比較
+親 [[run-i518-exp10]] に対し位置で迫り回転で劣る。共有 trunk 群 [[run-i525-shared-6l]] / [[run-i521-ex10-vel]] と対照（`compares`）。
+
+### 次に有効な実験
+位置を犠牲にせず回転だけを底上げする中間点として、split 構造を保ったまま hidden_dim のみ EX10 寄りに戻す（num_layers は縮小維持）スイープが効率フロンティアの最良トレードオフ候補。

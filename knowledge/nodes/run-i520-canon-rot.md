@@ -35,13 +35,33 @@ artifacts:
   log: .training_queue/logs/1781739570264889499_6416_canon_rot.log
   job: .training_queue/done/1781739570264889499_6416_canon_rot.job
   output_dir: ''
-parents: [run-i520-canon-none]
+  curves: knowledge/runs/run-i520-canon-rot/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial/logs/version_23
+parents:
+- run-i520-canon-none
 relations: []
-tags: [plcs, canonical, split-trunk]
+tags:
+- plcs
+- canonical
+- split-trunk
 ---
 
 ## 考察 / Findings
 
-canonical の**回転パスのみ**を分離した構成。`ang_error 17.60°`, `position_error 0.275m` で
-baseline (`canon_none`: 17.79° / 0.273m) とほぼ同等。**回転パス単独の分離では改善が出ない。**
+### 要約
+canonical の**回転パスのみ**を分離。baseline とほぼ同等で、回転パス単独の分離では改善が出ない。
 
+### アーキテクチャ詳細
+`multiview_axial_canon_split_rot` + `canonical_rot`。canonical の回転側だけ専用パスに分離。
+
+### メトリクスの解釈
+`ang_error 17.60°`, `position_error 0.275m`。baseline（[[run-i520-canon-none]]: `17.79° / 0.273m`）とほぼ同等。
+
+### アーキテクチャ⇄メトリクスの因果考察
+回転パス単独の分離では容量配分がほぼ変わらず、角度も位置も動かない。
+
+### 既存実験との比較
+親 [[run-i520-canon-none]] と実質差なし。両分離 [[run-i520-canon-both]] が角度を伸ばすのと対照的。
+
+### 次に有効な実験
+回転単独では不足。両パス分離（[[run-i520-canon-both]]）が角度に効くかを比較。

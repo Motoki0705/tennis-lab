@@ -48,6 +48,8 @@ artifacts:
   log: .training_queue/logs/1781796309429899347_295640_i530_bone_direction.log
   job: .training_queue/done/1781796309429899347_295640_i530_bone_direction.job
   output_dir: outputs/plcs/issue_530/bone_direction
+  curves: knowledge/runs/run-i530-bone-direction/curves.png
+  tb_logdir: .claude/worktrees/issue-530-canonical-pose-head/outputs/plcs/issue_530/bone_direction/logs/version_0
 parents:
 - run-i530-direct-baseline
 relations: []
@@ -61,10 +63,20 @@ tags:
 
 ## 考察 / Findings
 
-単位骨方向と sequence 共有 scale から姿勢を復号する構成。構造化3案では最良で、
-baseline 比で canonical MPJPE を約 `3.0%`、骨長相対誤差を約 `3.9%` 改善した。
-一方、yaw 誤差は `+1.38°`、位置誤差は約 `+5 mm` で baseline に届かなかった。
+### 要約
+単位骨方向 + sequence 共有 scale から姿勢を復号。構造化 3 案では最良だが、下流の yaw・位置は direct baseline に届かず。
 
-学習された head 側の骨長には最大 `-19.4%` の縮みがあり、単一 scale と固定骨長比が
-強すぎる可能性がある。direct head の置換ではなく、補助 head または bounded residual
-付き復号として使う価値がある。
+### アーキテクチャ詳細
+`multiview_axial_issue530_bone_direction` + `canonical_rot`、`canonical_pose_head=bone_direction`。`seed=42`, `epochs=100`, `batch_size=6`。
+
+### メトリクスの解釈
+baseline 比で canonical MPJPE 約 `-3.0%`、骨長相対誤差 約 `-3.9%` 改善。一方 yaw 誤差 `+1.38°`、位置誤差 約 `+5mm` で baseline に届かず。head 側の骨長に最大 `-19.4%` の縮みがある。
+
+### アーキテクチャ⇄メトリクスの因果考察
+単位方向 + 共有 scale は骨格の内部整合（MPJPE / 骨長）を高めるが、単一 scale と固定骨長比の制約が強すぎて骨長が縮み、下流の yaw / 位置をわずかに毀損した可能性。
+
+### 既存実験との比較
+親 [[run-i530-direct-baseline]] に対し canonical 指標で改善・下流で微減。同 #530 の [[run-i530-mean-residual]] / [[run-i530-parent-delta]] より良好。
+
+### 次に有効な実験
+direct head の置換ではなく、補助 head または bounded residual 付き復号として使う価値がある。

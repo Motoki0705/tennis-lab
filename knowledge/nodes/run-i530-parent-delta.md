@@ -48,6 +48,8 @@ artifacts:
   log: .training_queue/logs/1781796308914256071_295586_i530_parent_delta.log
   job: .training_queue/done/1781796308914256071_295586_i530_parent_delta.job
   output_dir: outputs/plcs/issue_530/parent_delta
+  curves: knowledge/runs/run-i530-parent-delta/curves.png
+  tb_logdir: .claude/worktrees/issue-530-canonical-pose-head/outputs/plcs/issue_530/parent_delta/logs/version_0
 parents:
 - run-i530-direct-baseline
 relations: []
@@ -61,9 +63,20 @@ tags:
 
 ## 考察 / Findings
 
-各関節を親関節からの相対デルタとして復号する構成。canonical MPJPE は baseline
-より約 `1.2%` 改善したが、骨長相対誤差は `4.29%` から `4.61%` へ悪化し、
-yaw 誤差 `13.32°`、位置誤差 `0.285 m` と下流性能も落ちた。
+### 要約
+各関節を親関節からの相対デルタとして復号。canonical MPJPE は微改善だが骨長誤差・下流とも悪化。単独 head 化の優先度は低い。
 
-局所オフセット回帰だけでは骨格制約にならず、親からの累積復号も利点を示さなかった。
+### アーキテクチャ詳細
+`multiview_axial_issue530_parent_delta` + `canonical_rot`、`canonical_pose_head=parent_delta`。`seed=42`, `epochs=100`, `batch_size=6`。
+
+### メトリクスの解釈
+canonical MPJPE は baseline より約 `1.2%` 改善するが、骨長相対誤差 `4.29%→4.61%` と悪化、yaw 誤差 `13.32°`、位置誤差 `0.285m` と下流性能も低下。
+
+### アーキテクチャ⇄メトリクスの因果考察
+局所オフセット回帰だけでは骨格制約にならず、親からの累積復号も利点を示さなかった（累積誤差が骨長に乗る）。
+
+### 既存実験との比較
+親 [[run-i530-direct-baseline]] に対し下流悪化。#530 構造化 3 案では [[run-i530-bone-direction]] が最良で、本案は最下位。
+
+### 次に有効な実験
 この形式を単独 head として進める優先度は低い。

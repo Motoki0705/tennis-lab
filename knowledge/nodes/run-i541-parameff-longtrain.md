@@ -40,6 +40,8 @@ artifacts:
   run_dir: knowledge/runs/run-i541-parameff-longtrain
   predictions: knowledge/runs/run-i541-parameff-longtrain/pred_test.npz
   log: .training_queue/logs/1781927074922005793_760015_i541_parameff_longtrain.log
+  curves: knowledge/runs/run-i541-parameff-longtrain/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial_split/logs/version_1
 parents:
 - run-i525-parameff
 relations:
@@ -55,8 +57,20 @@ tags:
 
 ## 考察 / Findings
 
-eff(`multiview_axial_split_eff`, 256幅 / 4heads / 3層, 9.9M)を **epoch だけ 200→400 に倍増**した構成の結果。**位置 0.655m / 回転 24.15°**。
+### 要約
+eff（9.9M）を epoch だけ 200→400 に倍増した構成。長期学習は逆効果で、回転・位置とも 200ep 版より明確に悪化。
 
-- **長期学習は逆効果**: 同一構成の `run-i525-parameff`(200ep)は 15.55°/0.569m。epoch を倍にした本ランは回転 15.55°→**24.15°**、位置 0.569→**0.655m** と**明確に悪化**した。「容量不足のモデルは長く回せば追いつく」という仮説は**反証**(→ contradicts)。
-- **解釈**: 9.9M の under-capacity split を 400ep 回すと、汎化が崩れる(過学習)か最適化が不安定化する。位置・回転とも 200ep 時点が良く、追加 epoch は test 精度を毀損する。容量側のボトルネックは epoch では埋まらない。
-- **示唆**: #536 の効率改善は「学習を延ばす」ではなく「**容量配分(深さ)**」で得るべき。回転を伸ばしたいなら longtrain ではなく deeppose(深さ振り)が正解。小容量 split のデフォルト学習量は 200ep を上限の目安とする。
+### アーキテクチャ詳細
+`multiview_axial_split_eff` + `canonical_rot`：256 幅 / 4 heads / 3 層、9.9M params。構成は据え置きで `max_epochs` のみ 400 に倍増。
+
+### メトリクスの解釈
+位置 `0.655m` / 回転 `24.15°`。同一構成の [[run-i525-parameff]]（200ep）は `15.55°/0.569m` で、epoch を倍にした本ランは回転 `15.55→24.15°`・位置 `0.569→0.655m` と明確に悪化。
+
+### アーキテクチャ⇄メトリクスの因果考察
+9.9M の under-capacity split を 400ep 回すと、汎化が崩れる（過学習）か最適化が不安定化する。位置・回転とも 200ep 時点が良く、追加 epoch は test 精度を毀損。容量側のボトルネックは epoch では埋まらない。
+
+### 既存実験との比較
+親 [[run-i525-parameff]] の「容量不足でも長く回せば追いつく」仮説を反証（`contradicts`）。回転を伸ばすなら longtrain ではなく深さ振りの [[run-i541-parameff-deeppose]] が正解。
+
+### 次に有効な実験
+#536 の効率改善は「学習を延ばす」ではなく「容量配分（深さ）」で得るべき。小容量 split のデフォルト学習量は 200ep を上限の目安とする。

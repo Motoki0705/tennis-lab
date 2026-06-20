@@ -19,18 +19,33 @@ metrics:
 artifacts:
   log: experiments/logs/
   output_dir: ''
-parents: [run-i518-exp1]
+  curves: knowledge/runs/run-i518-exp3/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial/logs/version_6
+parents:
+- run-i518-exp1
 relations: []
-tags: [plcs, rotation, branched]
+tags:
+- plcs
+- rotation
+- branched
 ---
 
 ## 考察 / Findings
 
-回転に**専用の分岐 readout**を与えた分岐モデル（共有8層 + タスク別2層、loss は exp1 と同じ
-`canonical_rot`）。
+### 要約
+回転に専用の分岐 readout を与えると、回転 `13.6°` と位置 `0.82m` の両方向に前進する有望構成。
 
-- 回転 `13.6°` と exp1(20.4°) からさらに改善し、位置も `1.10 → 0.82m` と緩和。**両方向に前進**。
-- ただし共有 trunk が依然回転支配で、位置は `0.82m` と高止まり。
+### アーキテクチャ詳細
+分岐モデル `multiview_axial_base_branched`（共有 8 層 + タスク別 2 層）。損失は exp1 と同じ `canonical_rot`。
 
-→ 「分岐で回転に容量を与えると効く」が分かった有望ノード。ここから幅/深さ/分離/重みを枝分かれ探索
-（exp4=重み, exp5=完全分離, exp8=深さ3）。
+### メトリクスの解釈
+回転 `13.6°`（exp1 の 20.4° からさらに改善）、位置 `1.10→0.82m` と緩和。両方向に前進したが、位置は `0.82m` と高止まり。
+
+### アーキテクチャ⇄メトリクスの因果考察
+分岐で回転に専用容量を与えると、共有 trunk 上の競合が緩和され回転が改善。ただし共有 trunk が依然回転支配で、位置は高止まり。
+
+### 既存実験との比較
+親 [[run-i518-exp1]] に対し両指標改善（`compares`）。「分岐で回転に容量を与えると効く」を示した枝分かれの基点。
+
+### 次に有効な実験
+ここから幅 / 深さ / 分離 / 重みを枝分かれ探索（exp4=重み, exp5=完全分離, exp8=深さ3）。
