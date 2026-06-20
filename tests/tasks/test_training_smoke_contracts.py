@@ -415,25 +415,16 @@ SMOKE_TASK_SPECS = (
                     "data=court_seg",
                     "model=court_seg",
                     "loss=seg",
-                    "model.decoder.name=unet",
+                    "model/decoder=unet",
                 ),
             ),
             SmokeVariant(
-                name="seg_dino_swin_fpn_config",
+                name="seg_light_augmentation",
                 overrides=(
                     "data=court_seg",
-                    "model=court_seg_dino_swin_fpn",
+                    "model=court_seg",
                     "loss=seg",
-                    "model.encoder.name=default",
-                ),
-            ),
-            SmokeVariant(
-                name="seg_dino_swin_unet_config",
-                overrides=(
-                    "data=court_seg",
-                    "model=court_seg_dino_swin_unet",
-                    "loss=seg",
-                    "model.encoder.name=default",
+                    "data/augmentation=light",
                 ),
             ),
             SmokeVariant(
@@ -445,21 +436,12 @@ SMOKE_TASK_SPECS = (
                 ),
             ),
             SmokeVariant(
-                name="kp_dino_swin_fpn_config",
+                name="kp_unet_decoder",
                 overrides=(
                     "data=court_kp",
-                    "model=court_kp_dino_swin_fpn",
+                    "model=court_kp",
                     "loss=kp",
-                    "model.encoder.name=default",
-                ),
-            ),
-            SmokeVariant(
-                name="kp_dino_swin_unet_config",
-                overrides=(
-                    "data=court_kp",
-                    "model=court_kp_dino_swin_unet",
-                    "loss=kp",
-                    "model.encoder.name=default",
+                    "model/decoder=unet",
                 ),
             ),
             SmokeVariant(
@@ -471,21 +453,12 @@ SMOKE_TASK_SPECS = (
                 ),
             ),
             SmokeVariant(
-                name="line_dino_swin_fpn_config",
+                name="line_unet_decoder",
                 overrides=(
                     "data=court_line",
-                    "model=court_line_dino_swin_fpn",
+                    "model=court_line",
                     "loss=line",
-                    "model.encoder.name=default",
-                ),
-            ),
-            SmokeVariant(
-                name="line_dino_swin_unet_config",
-                overrides=(
-                    "data=court_line",
-                    "model=court_line_dino_swin_unet",
-                    "loss=line",
-                    "model.encoder.name=default",
+                    "model/decoder=unet",
                 ),
             ),
         ),

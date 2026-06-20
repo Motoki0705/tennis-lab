@@ -1,0 +1,3 @@
+# FPN decoder (default). Select with `model/decoder=fpn`.
+name: fpn
+channels: [64, 128, 256, 512]

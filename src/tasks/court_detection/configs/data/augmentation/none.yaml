@@ -1,0 +1,17 @@
+# No train-time augmentation (resize only). Useful for debugging / overfitting.
+# Select with `data/augmentation=none`.
+train_scales: [288]
+val_short_side: 288
+crop_scale: [1.0, 1.0]
+crop_ratio: [1.0, 1.0]
+hflip_prob: 0.0
+affine_degrees: 0.0
+affine_translate: [0.0, 0.0]
+affine_scale: [1.0, 1.0]
+affine_shear: 0.0
+perspective_distortion: 0.0
+perspective_prob: 0.0
+color_jitter: [0.0, 0.0, 0.0, 0.0]
+gaussian_blur_kernel: [3]
+gaussian_blur_sigma: [0.1, 0.1]
+gaussian_blur_prob: 0.0
