@@ -1,0 +1,14 @@
+{
+  "run_id": "1781927073241453654_759989_i541_parameff_medcap",
+  "name": "i541_parameff_medcap",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train model=multiview_axial_split_medcap loss=canonical_rot data=multiview_sequence training.trainer.max_epochs=200 run.gpus=1",
+  "provider": "claude",
+  "session": "d22b7d68-7d91-4a6f-862d-434085e5d2d9",
+  "issue": "541",
+  "commit": "6399aa6f6848994957412eebabf4a4330c95cd15",
+  "branch": "feat/issue-533-experiment-log-format",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-06-20T13:06:46+09:00"
+}
