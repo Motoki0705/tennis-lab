@@ -10,6 +10,9 @@ trainer:
   precision: "bf16-mixed"
   log_every_n_steps: 50
   check_val_every_n_epoch: 3
+  # Effective batch = batch_size * accumulate_grad_batches. Lets VRAM-bound large
+  # models keep a target effective batch on small GPUs (e.g. 16GB WSL2). 1 = off.
+  accumulate_grad_batches: 1
 
 # ---- Optimizer / schedule (LightningModule references) ----
 learning_rate: 1.0e-4
