@@ -1,0 +1,2 @@
+?? src/tasks/plcs/configs/model/multiview_axial_split_asym_deep16.yaml
+?? src/tasks/plcs/configs/model/multiview_axial_split_wide.yaml
