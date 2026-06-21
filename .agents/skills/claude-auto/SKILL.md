@@ -10,8 +10,8 @@ description: Use this skill when running Claude Code itself non-interactively (h
 Use this skill when you want Claude Code to **run a task end-to-end without
 stopping for permission prompts** — CI jobs, cron jobs, batch refactors, or an
 unattended "fix it until it's done" run. It documents the headless `claude -p`
-workflow and ships two wrapper scripts that add budget caps, logging, and a
-machine-checkable result.
+workflow and ships two wrapper scripts that add logging and a machine-checkable
+result.
 
 This is for invoking the `claude` CLI from a shell. It is **not** about the
 interactive `/`-skills inside a session.
@@ -27,14 +27,11 @@ To make it run without any approval prompts:
 ```bash
 claude -p "Run the test suite and fix any failures" \
   --permission-mode bypassPermissions \
-  --max-budget-usd 2.00 \
   --output-format json
 ```
 
 `--permission-mode bypassPermissions` and `--dangerously-skip-permissions` are
-equivalent — both skip every approval. There is **no `--max-turns` flag** in
-2.1.185 (it appears in older docs / the SDK only); bound the run with
-`--max-budget-usd` instead.
+equivalent — both skip every approval.
 
 ## Key flags
 
@@ -45,9 +42,8 @@ equivalent — both skip every approval. There is **no `--max-turns` flag** in
 | `--dangerously-skip-permissions` | Same effect; the explicit "I know" form. |
 | `--permission-mode dontAsk` | Denies anything **not** in `--allowedTools` / `permissions.allow` (locked-down CI). |
 | `--permission-mode acceptEdits` | Auto-approves file writes + common fs commands; other shell/network still need an allow rule. |
-| `--max-budget-usd N` | Hard spend cap. The real stop-condition for unattended runs. |
 | `--allowedTools "Bash(git *),Read,Edit"` | Scope tools (space before `*` matters: `Bash(git diff *)` ≠ `Bash(git diff*)`). |
-| `--output-format json` | One JSON object with `result`, `is_error`, `total_cost_usd`, `num_turns`, `session_id`. |
+| `--output-format json` | One JSON object with `result`, `is_error`, `num_turns`, `session_id`. |
 | `--output-format stream-json` `--verbose` | Live newline-delimited events; last `type:result` line is the outcome. |
 | `--model opus\|sonnet\|haiku` | Pick the model. |
 | `--resume <session_id>` | Continue a prior headless session (drives the loop wrapper). |
@@ -72,12 +68,12 @@ and write a timestamped run log under `logs/claude-auto/` (gitignored).
 ### `claude-auto.sh` — one autonomous run
 
 ```bash
-# simplest: hand it a task, it runs to completion with a $2 cap and bypass mode
+# simplest: hand it a task, it runs to completion with bypass mode
 .agents/skills/claude-auto/scripts/claude-auto.sh "Run the test suite and fix any failures"
 
-# scoped + cheaper: locked-down tools, smaller budget, a named run, live output
+# scoped + locked-down: restricted tools, a named run, live output
 .agents/skills/claude-auto/scripts/claude-auto.sh \
-  -m dontAsk -a "Read,Bash(pytest *)" -b 0.50 --model sonnet --stream \
+  -m dontAsk -a "Read,Bash(pytest *)" --model sonnet --stream \
   --name fix-flaky "Investigate and fix the flaky test in tests/test_foo.py"
 
 # from a prompt file, against another directory; dry-run prints the command only
@@ -91,16 +87,16 @@ Each run dir holds `prompt.txt`, `command.txt`, `output.json` (or `stream.jsonl`
 
 A single `-p` call can stop early on a very large task. This wrapper resumes the
 same session and re-prompts it to continue until it prints a completion
-**sentinel**, bounded by `--max-iters` and a **cumulative** budget.
+**sentinel**, bounded by `--max-iters`.
 
 ```bash
 .agents/skills/claude-auto/scripts/claude-auto-loop.sh \
-  -i 8 -b 5.00 -m bypassPermissions \
+  -i 8 -m bypassPermissions \
   "Migrate every call site off the deprecated api(); run the tests after each batch."
 ```
 
 Exit 0 only when the sentinel (`TASK_COMPLETE` by default) is observed; exit 1 on
-the iteration/budget cap or a turn error.
+the iteration cap or a turn error.
 
 ## Safety rails (read before unattended use)
 
@@ -109,7 +105,6 @@ Bypassing permissions removes every guardrail, so constrain the blast radius:
 - **Prefer the least-privileged mode that works.** `dontAsk` + an explicit
   `--allowedTools` allowlist is far safer than full `bypassPermissions`; reserve
   bypass for sandboxes / disposable environments.
-- **Always set `--max-budget-usd`.** It is the only hard stop on a runaway loop.
 - **Run in a sandbox or throwaway worktree** with no production credentials and,
   ideally, no outbound internet — Anthropic's own guidance recommends bypass mode
   "only for sandboxes with no internet access."
