@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import types
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -124,7 +125,7 @@ class BaseTrainingRunner:
         return self._ensure_absolute(str(resume))
 
     @contextmanager
-    def resume_checkpoint_load_env(self, resume_ckpt: str | None):
+    def resume_checkpoint_load_env(self, resume_ckpt: str | None) -> Iterator[None]:
         """Temporarily allow full-state loading for trusted local resume checkpoints."""
         if not resume_ckpt:
             yield
@@ -304,6 +305,7 @@ class BaseTrainingRunner:
 
         optional_trainer_keys = (
             "max_steps",
+            "accumulate_grad_batches",
             "limit_train_batches",
             "limit_val_batches",
             "limit_test_batches",
