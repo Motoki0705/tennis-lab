@@ -19,18 +19,33 @@ metrics:
 artifacts:
   log: experiments/logs/
   output_dir: ''
-parents: [run-i518-exp5]
+  curves: knowledge/runs/run-i518-exp7/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial/logs/version_11
+parents:
+- run-i518-exp5
 relations: []
-tags: [plcs, rotation, split-trunk]
+tags:
+- plcs
+- rotation
+- split-trunk
 ---
 
 ## 考察 / Findings
 
-分離 trunk の回転側に **canonical ヘッド**を載せ、3D幾何の補助信号で回転を救えるか検証。
+### 要約
+分離 trunk の回転側に canonical ヘッドを足しても回転は救えず `67.2°`。この失敗分析が exp10 着想の直接の引き金になった。
 
-- 回転 `67.2°`・位置 `0.32m`。canonical を足しても**回転は依然崩壊**＝exp5 と大差なし。
-- 決定的な失敗分析: 回転 trunk に**位置タスクの勾配が無い**こと自体が問題で、canonical（静的ポーズ）
-  だけでは多視点三角測量/対応付けの特徴を学べない。
+### アーキテクチャ詳細
+完全分離 `multiview_axial_base_split` の回転側に canonical（静的ポーズ）ヘッドを追加。損失 `canonical_rot`。
 
-→ この失敗分析が exp10 着想の直接の引き金。「canonical では足りない、**位置**タスクの勾配を補助で
-  回転 trunk に流せ」が [[run-i518-exp10]] の原理。
+### メトリクスの解釈
+回転 `67.2°`・位置 `0.32m`。canonical を足しても回転は依然崩壊で exp5 と大差なし。
+
+### アーキテクチャ⇄メトリクスの因果考察
+回転 trunk に位置タスクの勾配が無いこと自体が問題で、canonical（静的ポーズ）だけでは多視点三角測量 / 対応付けの特徴を学べない。
+
+### 既存実験との比較
+親 [[run-i518-exp5]] とほぼ同等の崩壊。canonical 補助では不足という決定的な反証になった。
+
+### 次に有効な実験
+この失敗分析が直接の引き金。「canonical では足りない、位置タスクの勾配を補助で回転 trunk に流せ」が [[run-i518-exp10]] の原理。

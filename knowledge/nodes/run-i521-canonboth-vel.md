@@ -35,23 +35,36 @@ artifacts:
   log: .training_queue/logs/1781786377957743176_240877_i521_canonboth_vel.log
   job: .training_queue/done/1781786377957743176_240877_i521_canonboth_vel.job
   output_dir: ''
-parents: [run-i520-canon-both]
+  curves: knowledge/runs/run-i521-canonboth-vel/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial/logs/version_31
+parents:
+- run-i520-canon-both
 relations:
-  - {to: run-i521-ex10-vel, rel: compares}
-tags: [plcs, canonical, velocity, canonical-trunk]
+- to: run-i521-ex10-vel
+  rel: compares
+tags:
+- plcs
+- canonical
+- velocity
+- canonical-trunk
 ---
 
 ## 考察 / Findings
 
-#520 最良の canonical-trunk 構成 (`canon_both`) に velocity 損失 (`canonical_rot_vel`) を導入した
-#521 の3本目。
+### 要約
+#520 最良の canonical-trunk 構成に velocity 損失を導入。角度はわずかに悪化、位置は改善するが、EX10 系には届かない。
 
-- 親 `run-i520-canon-both`（velocity なし, `15.91° / 0.364m`）と比較して、
-  **角度はわずかに悪化 (15.91→17.02°) する一方、位置は改善 (0.364→0.298m)。**
-  velocity 損失は canonical-trunk 構成では位置側に効いた。
-- ただし #521 内では `run-i521-ex10-vel`（分離 auxpos + velocity, `13.22° / 0.270m`）に
-  角度・位置とも劣る。**canonical-trunk 構成自体が EX10（分離 auxpos）に劣る**（#520 の結論）ため、
-  velocity を足しても EX10 系には届かない。
+### アーキテクチャ詳細
+`model=multiview_axial_canon_split_both`（#520 の canon_both）+ `canonical_rot_vel`。#521 の 3 本目。
 
-→ velocity 損失は静的精度を一変させはしないが、canonical-trunk では位置を改善する方向。
-本命は引き続き **EX10（分離 auxpos）+ velocity**。
+### メトリクスの解釈
+`17.02° / 0.298m`。親 [[run-i520-canon-both]]（velocity なし, `15.91° / 0.364m`）比で角度はわずかに悪化、位置は改善。
+
+### アーキテクチャ⇄メトリクスの因果考察
+velocity 損失は canonical-trunk 構成では位置側に効いた。ただし canonical-trunk 自体が EX10（分離 auxpos）に劣るため、velocity を足しても EX10 系には届かない。
+
+### 既存実験との比較
+親 [[run-i520-canon-both]] に velocity を追加した対。#521 内では [[run-i521-ex10-vel]]（`13.22° / 0.270m`）に角度・位置とも劣る（`compares`）。
+
+### 次に有効な実験
+velocity 損失は静的精度を一変させはしないが canonical-trunk では位置を改善する方向。本命は引き続き EX10（分離 auxpos）+ velocity（[[run-i521-ex10-vel]]）。

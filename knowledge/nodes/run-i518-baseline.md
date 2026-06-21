@@ -15,23 +15,35 @@ metrics:
   angular_error_median_deg: 45.4
   angle_accuracy_15deg: 0.162
   angle_accuracy_30deg: 0.336
-  position_error_m: 0.260
+  position_error_m: 0.26
   position_error_median_m: 0.213
 artifacts:
   log: experiments/logs/
   output_dir: logs/version_2
 parents: []
 relations: []
-tags: [plcs, rotation, baseline]
+tags:
+- plcs
+- rotation
+- baseline
 ---
 
 ## 考察 / Findings
 
-#518「回転誤差を下げる」の出発点。共有 trunk + `canonical` 損失（`rotation_weight=0.02`）。
+### 要約
+#518「回転誤差を下げる」の出発点。位置は良好だが回転が壊滅 (`61.6°`) で、上位誤差はほぼ 180° 前後反転に集中。
 
-- 位置は既に良好 (`0.260m`) だが回転が `61.6°` と壊滅的。上位誤差は**ちょうど ~180° の前後反転**
-  (`pred_rotation = -gt_rotation`) に集中。
-- 原因2点: (1) `rotation_weight` が小さすぎて回転ヘッドが学習不足、(2) `1-cos` 損失が **180° に
-  平坦なサドル**（grad = sinθ → 反対点で 0）を持ち、反転が安定な局所最適になっていた。
+### アーキテクチャ詳細
+共有 trunk (`multiview_axial_base`) + `canonical` 損失（`rotation_weight=0.02`）, `data=multiview_sequence`。回転とポーズが同一 trunk を共有する素の構成。
 
-→ ここから exp1〜exp10 のフロンティア探索が始まる。最終的に [[run-i518-exp10]] が両指標同時改善で解決。
+### メトリクスの解釈
+位置 `0.260m` と既に良好な一方、回転 `ang_error 61.6°` / 中央値 `45.4°`, `acc@15 16.2%` と壊滅的。上位誤差は `pred_rotation = -gt_rotation` のほぼ 180° 前後反転に集中。
+
+### アーキテクチャ⇄メトリクスの因果考察
+原因は 2 点。(1) `rotation_weight=0.02` が小さすぎ回転ヘッドが学習不足。(2) `1-cos` 損失が 180° で平坦なサドル（grad = sinθ → 反対点で 0）を持ち、反転が安定な局所最適になっていた。
+
+### 既存実験との比較
+フロンティア探索の基準点（`parents` なし）。最終的に [[run-i518-exp10]] が両指標同時改善でこの壊滅を解決する。
+
+### 次に有効な実験
+exp1〜exp10 で「反転サドル対策（angle 損失）」と「容量競合の解消（trunk 設計）」を枝分かれ探索する。

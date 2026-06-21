@@ -40,6 +40,8 @@ artifacts:
   run_dir: knowledge/runs/run-i541-parameff-medcap
   predictions: knowledge/runs/run-i541-parameff-medcap/pred_test.npz
   log: .training_queue/logs/1781927073241453654_759989_i541_parameff_medcap.log
+  curves: knowledge/runs/run-i541-parameff-medcap/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial_split/logs/version_0
 parents:
 - run-i525-parameff
 - run-i518-exp10
@@ -59,10 +61,20 @@ tags:
 
 ## 考察 / Findings
 
-eff(9.9M)と EX10(78M)の中間容量を、主に**幅**で埋めた構成(`multiview_axial_split_medcap`: hidden_dim 384 / num_heads 6 / num_task_layers 4、約 28.9M params)の 200epoch 結果。**位置 0.571m / 回転 17.75°**。
+### 要約
+eff と EX10 の中間容量を主に幅で埋めた構成（200ep, 28.9M）。幅増しは回転を改善せず、より少容量の深さ振り deeppose に完敗。
 
-- **幅増しは回転を改善しない**: 幅 256→384・約 3 倍のパラメータ(9.9M→28.9M)を投じても、回転 17.75°/位置 0.571m は eff ベースライン(`run-i525-parameff`: 15.55°/0.569m)と**ほぼ同じか、むしろ悪化**。当初の「~30M で回転ギャップを半分埋める」狙いは外れた。
-- **深さ(deeppose)に完敗**: より少ない 19.5M で深さを振った `run-i541-parameff-deeppose`(9.55°/0.202m)が、より多い 28.9M で幅を振った本構成(17.75°/0.571m)を回転で約 2 倍・位置で約 2.8 倍引き離す。**同程度の予算では深さ ≫ 幅**が明確。
-- deeppose(depth)と medcap(width)の対比は、#536 内で「回転の主因は幅ではなく深さ」を最もクリーンに示すペア(→ compares)。
+### アーキテクチャ詳細
+`multiview_axial_split_medcap` + `canonical_rot`：`hidden_dim 384` / `num_heads 6` / `num_task_layers 4`、約 28.9M params。`max_epochs=200`。
 
-次の示唆: 縮小 split の容量は幅ではなく深さに割り当てる。中間容量を狙うなら medcap(幅広・浅)ではなく deeppose 路線(幅維持・深層)を採る。
+### メトリクスの解釈
+位置 `0.571m` / 回転 `17.75°`。幅 256→384・約 3 倍のパラメータ（9.9M→28.9M）を投じても eff ベースライン（[[run-i525-parameff]]: `15.55°/0.569m`）とほぼ同じか、むしろ悪化。「~30M で回転ギャップを半分埋める」狙いは外れた。
+
+### アーキテクチャ⇄メトリクスの因果考察
+幅を足しても回転は伸びない＝回転の主因は幅ではない。より少ない 19.5M で深さを振った [[run-i541-parameff-deeppose]]（`9.55°/0.202m`）が、より多い 28.9M で幅を振った本構成を回転で約 2 倍・位置で約 2.8 倍引き離す。同予算では深さ ≫ 幅が明確。
+
+### 既存実験との比較
+深さ振りの [[run-i541-parameff-deeppose]] と対（`compares`）—#536 内で「回転の主因は幅でなく深さ」を最もクリーンに示すペア。親 [[run-i525-parameff]] とも比較（`compares`）。
+
+### 次に有効な実験
+縮小 split の容量は幅ではなく深さに割り当てる。中間容量を狙うなら medcap（幅広・浅）ではなく deeppose 路線（幅維持・深層）を採る。

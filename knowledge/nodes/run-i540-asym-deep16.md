@@ -40,6 +40,8 @@ artifacts:
   run_dir: knowledge/runs/run-i540-asym-deep16
   predictions: knowledge/runs/run-i540-asym-deep16/pred_test.npz
   log: .training_queue/logs/1781927908633902412_762455_i540_asym_deep16.log
+  curves: knowledge/runs/run-i540-asym-deep16/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial_split/logs/version_5
 parents:
 - run-i525-asym
 - run-i518-exp10
@@ -61,10 +63,20 @@ tags:
 
 ## 考察 / Findings
 
-rotation trunk の深さを**極限まで**振った非対称構成(`multiview_axial_split_asym_deep16`: pose trunk 6 層・**rotation trunk 16 層**、hidden_dim 512 / num_heads 8、約 78.1M params ≒ EX10 と同等予算)の 200epoch 収束結果。**位置 0.207m / 回転 8.40°** で、本実験群の絶対最良。
+### 要約
+rotation trunk を 16 層まで深めた非対称構成（200ep）。位置 0.207m / 回転 8.40° で本実験群の絶対最良、同等予算で EX10 を初めて両指標とも上回る。
 
-- **EX10(split, 78M)を両指標で上回る**: 回転 8.40°(< EX10 9.98°)・位置 0.207m(< EX10 0.238m)。同等パラメータ予算で EX10 を超えたのは初。中央値も回転 6.27°・位置 0.154m と良好で、外れ値依存ではない(angular_std 7.64°)。
-- **#535 の負の結論(深化は無効)を覆す**: `run-i525-asym`(rot=10, 103M)は 19.94° と大きく劣化したが、より小さい 78.1M で rot=16 まで深めた本構成は 8.40° に達した。つまり「分離 rotation trunk の深化は回転に効く」が成立する。`run-i525-asym` が負だった主因は深さそのものではなく、**103M という過大容量が 200ep で未収束/最適化困難**だった可能性が高い(同ノードの考察 (2) と整合)。深さは「学習可能なサイズ envelope に収まっている限り」回転の主レバーになる。
-- **幅より深さ**: 同じ #535 で幅を広げた `run-i540-asym-wide`(768幅, 172M)は 12.27° に留まり、しかも resume を要した。深さ(78M で 8.40°)は幅(172M で 12.27°)より安価かつ高精度で、回転改善の効率が高い。
+### アーキテクチャ詳細
+`multiview_axial_split_asym_deep16` + `canonical_rot`：pose trunk 6 層・**rotation trunk 16 層**、`hidden_dim 512` / `num_heads 8`、約 78.1M params（EX10 と同等予算）。`max_epochs=200`。
 
-次の示唆: deep16 が新ベースライン候補。pose trunk は 6 層のまま rotation trunk 深化のみで EX10 を超えられたので、(1) rotation 深さの最適点(12/16/20 層)を sweep、(2) hidden_dim を 512→384 に絞っても深さで回転を維持できるか(deeppose 系の知見と接続)を確認したい。
+### メトリクスの解釈
+位置 `0.207m` / 回転 `8.40°`。回転は EX10 (`9.98°`)、位置も EX10 (`0.238m`) を上回る。中央値も回転 `6.27°`・位置 `0.154m`、`angular_std 7.64°` で外れ値依存ではない。
+
+### アーキテクチャ⇄メトリクスの因果考察
+「分離 rotation trunk の深化は回転に効く」が成立。[[run-i525-asym]]（rot=10, 103M）が `19.94°` と劣化した主因は深さそのものではなく、103M という過大容量が 200ep で未収束 / 最適化困難だった可能性が高い。深さは「学習可能なサイズ envelope に収まる限り」回転の主レバー。さらに幅広の [[run-i540-asym-wide]]（768 幅, 172M, `12.27°`）より安価かつ高精度で、幅 < 深さ。
+
+### 既存実験との比較
+[[run-i525-asym]] の負の結論を覆す（`contradicts`）。[[run-i518-exp10]] を同予算で超える（`compares`）。深さ振りの [[run-i541-parameff-deeppose]] と同結論（`confirms`）。
+
+### 次に有効な実験
+deep16 が新ベースライン候補。(1) rotation 深さの最適点（12/16/20 層）を sweep、(2) hidden_dim を 512→384 に絞っても深さで回転を維持できるか（deeppose 系と接続）を確認したい。

@@ -35,14 +35,33 @@ artifacts:
   log: .training_queue/logs/1781739570277990308_6428_canon_pos.log
   job: .training_queue/failed/1781739570277990308_6428_canon_pos.job
   output_dir: ''
-parents: [run-i520-canon-none]
+  curves: knowledge/runs/run-i520-canon-pos/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial/logs/version_24
+parents:
+- run-i520-canon-none
 relations: []
-tags: [plcs, canonical, split-trunk]
+tags:
+- plcs
+- canonical
+- split-trunk
 ---
 
 ## 考察 / Findings
 
-canonical の**位置パスのみ**を分離した構成。キューでは `failed` 終了（test 評価値はログに残存。
-最終的な成否は要再検証）。記録された値は `ang_error 20.90°`, `position_error 0.288m` で baseline
-より**悪化**しており、位置パス単独分離は逆効果の可能性。
+### 要約
+canonical の**位置パスのみ**を分離。記録値は baseline より悪化で、位置パス単独分離は逆効果の可能性。
 
+### アーキテクチャ詳細
+`multiview_axial_canon_split_pos` + `canonical_rot`。canonical の位置側だけ専用パスに分離。キューでは `failed` 終了（test 評価値はログに残存。最終的な成否は要再検証）。
+
+### メトリクスの解釈
+`ang_error 20.90°`, `position_error 0.288m` で baseline（[[run-i520-canon-none]]）より悪化。
+
+### アーキテクチャ⇄メトリクスの因果考察
+位置パスのみを切り出すと、回転と位置の協調が崩れて角度がむしろ悪化したと見られる（要再検証）。
+
+### 既存実験との比較
+親 [[run-i520-canon-none]] より悪化。両分離 [[run-i520-canon-both]]（角度最良）と逆方向の結果。
+
+### 次に有効な実験
+`failed` 終了のため再走で確認しつつ、有望なのは両パス分離（[[run-i520-canon-both]]）方向。

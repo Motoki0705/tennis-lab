@@ -18,6 +18,8 @@ export interface KnowledgeNode {
   relations: Relation[];
   tags: string[];
   bodyHtml: string;
+  /** Set when knowledge/runs/<id>/curves.png exists; served via /api/curves/<id>. */
+  curvesUrl?: string;
 }
 
 export type EdgeKind = "parent" | "member" | "relation";
