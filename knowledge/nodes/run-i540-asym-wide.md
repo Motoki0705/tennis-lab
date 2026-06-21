@@ -46,10 +46,8 @@ parents:
 - run-i525-asym
 - run-i518-exp10
 relations:
-- to: run-i540-asym-deep16
-  rel: compares
-- to: run-i518-exp10
-  rel: compares
+- to: run-i535-asym-wide-rerun
+  rel: supersededby
 tags:
 - plcs
 - canonical
@@ -57,12 +55,20 @@ tags:
 - asymmetric
 - width
 - capacity-frontier
+- retracted-noop
 ---
 
 ## 考察 / Findings
 
+> ⚠️ **【無効・撤回 2026-06-21】このランは作業ディレクトリ取り違えによる no-op 計測です。**
+> main ツリーで実行されたため `rot_num_task_layers` が無視され、意図した rot10/768（228.7M）ではなく
+> **対称 6 層/768（172M）**になっていました。12.27° は非対称深さの効果ではなく単なる幅 768 化の結果です。
+> 正しい worktree（`exp/i525-asym`）での有効な再計測は **[[run-i535-asym-wide-rerun]]**（228.7M / 回転 60.56°
+> ＝ batch2・小データで未収束・学習破綻）で、本ノードを supersede します。
+> **以下の各節は撤回済みの当初考察**で、記録のために残しています。
+
 ### 要約
-両 trunk の幅を 768 まで広げた非対称構成（200ep, resume 要）。幅は効くが高くつき、EX10 にも deep16 にも届かない。回転改善は幅 < 深さ。
+両 trunk の幅を 768 まで広げた非対称構成（200ep, resume 要）。幅は効くが高くつき、EX10 にも deep16 にも届かない。回転改善は幅 < 深さ。（※上記のとおり no-op で実際は対称 768 を学習しており本結論は無効）
 
 ### アーキテクチャ詳細
 `multiview_axial_split_wide` + `canonical_rot`：`hidden_dim 768` / `num_heads 12`、非対称深さ rot=10・pose=6、約 172M params。単発では 200ep に到達できず `version_3/last.ckpt` から resume して収束（`run.resume` 付き; repro.sh 参照）。
