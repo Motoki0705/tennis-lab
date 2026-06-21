@@ -6,8 +6,7 @@
 # A single `claude -p` already runs the agent loop to completion, but a very
 # large task can stop early (context limits, an interim "what next?" finish, a
 # transient error). This wrapper resumes the same session and re-prompts it to
-# keep going until it emits a completion SENTINEL, bounded by --max-iters and a
-# cumulative --budget.
+# keep going until it emits a completion SENTINEL, bounded by --max-iters.
 #
 set -euo pipefail
 
@@ -22,7 +21,6 @@ Run Claude Code autonomously, resuming until it signals completion.
 Options:
   -f, --file FILE        Read the prompt from FILE.
   -d, --dir DIR          Working directory (default: current dir).
-  -b, --budget USD       Cumulative spend cap across all turns (default: 5.00).
   -i, --max-iters N      Max turns before giving up (default: 10).
   -s, --sentinel STR     Completion marker Claude must print (default: TASK_COMPLETE).
   -m, --mode MODE        Permission mode (default: bypassPermissions).
@@ -34,7 +32,7 @@ Options:
 
 Exit codes:
   0  sentinel observed — task reported complete
-  1  iteration or budget cap hit without sentinel, or a turn errored
+  1  iteration cap hit without sentinel, or a turn errored
   2  usage / setup error
 USAGE
 }
@@ -58,12 +56,8 @@ print(val if not isinstance(val, bool) else str(val).lower())
 PY
 }
 
-# add A B  — print A+B as a 6-dp decimal without needing bc
-addf() { "$PYTHON" -c "import sys;print(f'{float(sys.argv[1])+float(sys.argv[2]):.6f}')" "$1" "$2"; }
-gtf()  { "$PYTHON" -c "import sys;sys.exit(0 if float(sys.argv[1])>float(sys.argv[2]) else 1)" "$1" "$2"; }
-
 # --- defaults ---
-PROMPT=""; PROMPT_FILE=""; WORKDIR="."; BUDGET="5.00"; MAX_ITERS=10
+PROMPT=""; PROMPT_FILE=""; WORKDIR="."; MAX_ITERS=10
 SENTINEL="TASK_COMPLETE"; MODE="bypassPermissions"; ALLOW=""; MODEL=""
 LOG_BASE="logs/claude-auto"; RUN_NAME=""
 
@@ -72,7 +66,6 @@ while [[ $# -gt 0 ]]; do
     -h|--help) usage; exit 0 ;;
     -f|--file) PROMPT_FILE="${2:?}"; shift 2 ;;
     -d|--dir) WORKDIR="${2:?}"; shift 2 ;;
-    -b|--budget) BUDGET="${2:?}"; shift 2 ;;
     -i|--max-iters) MAX_ITERS="${2:?}"; shift 2 ;;
     -s|--sentinel) SENTINEL="${2:?}"; shift 2 ;;
     -m|--mode) MODE="${2:?}"; shift 2 ;;
@@ -111,7 +104,6 @@ If it is not yet complete, keep working — do not print that line until everyth
 build_cmd() {  # build_cmd <resume_sid|"">  -> populates global CMD array
   CMD=(claude -p "$TURN_PROMPT"
     --permission-mode "$MODE"
-    --max-budget-usd "$BUDGET"
     --output-format json)
   [[ -n "$1" ]]     && CMD+=(--resume "$1")
   [[ -n "$ALLOW" ]] && CMD+=(--allowedTools "$ALLOW")
@@ -119,10 +111,10 @@ build_cmd() {  # build_cmd <resume_sid|"">  -> populates global CMD array
   return 0  # never let a false &&-test become the function's exit status (set -e)
 }
 
-echo "[loop] sentinel='$SENTINEL' max_iters=$MAX_ITERS budget=\$$BUDGET mode=$MODE"
+echo "[loop] sentinel='$SENTINEL' max_iters=$MAX_ITERS mode=$MODE"
 echo "[loop] log: $RUN_DIR"
 
-SID=""; SPENT="0"; STATUS="incomplete"
+SID=""; STATUS="incomplete"
 for (( i=1; i<=MAX_ITERS; i++ )); do
   if [[ $i -eq 1 ]]; then
     TURN_PROMPT="${PROMPT}
@@ -134,7 +126,7 @@ ${PROTO}"
   build_cmd "$SID"
 
   OUT="$RUN_DIR/turn-$(printf '%02d' "$i").json"
-  echo "[loop] turn $i/$MAX_ITERS (spent so far: \$$SPENT)"
+  echo "[loop] turn $i/$MAX_ITERS"
   set +e
   ( cd "$WORKDIR" && "${CMD[@]}" ) > "$OUT" 2>>"$RUN_DIR/stderr.log"
   set -e
@@ -144,9 +136,8 @@ ${PROTO}"
     break
   fi
   [[ -z "$SID" ]] && SID="$(json_field "$OUT" session_id)"
-  COST="$(json_field "$OUT" total_cost_usd)"; SPENT="$(addf "$SPENT" "$COST")"
   RESULT="$(json_field "$OUT" result)"
-  echo "    is_error=$IS_ERROR turn_cost=\$$COST cumulative=\$$SPENT"
+  echo "    is_error=$IS_ERROR"
 
   if [[ "$IS_ERROR" != "false" ]]; then
     echo "[loop] turn $i errored: $RESULT" >&2
@@ -156,18 +147,13 @@ ${PROTO}"
     echo "[loop] sentinel observed on turn $i — task complete"
     STATUS="complete"; break
   fi
-  if gtf "$SPENT" "$BUDGET"; then
-    echo "[loop] cumulative budget exceeded (\$$SPENT > \$$BUDGET) — stopping" >&2
-    STATUS="budget"; break
-  fi
 done
 
 {
   echo "status=$STATUS"
   echo "session_id=$SID"
-  echo "total_spent_usd=$SPENT"
   echo "iterations=$i"
 } > "$RUN_DIR/summary.txt"
 
-echo "[loop] status=$STATUS spent=\$$SPENT session=$SID"
+echo "[loop] status=$STATUS session=$SID"
 [[ "$STATUS" == "complete" ]] && exit 0 || exit 1

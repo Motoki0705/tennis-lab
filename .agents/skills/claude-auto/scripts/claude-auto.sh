@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 #
 # claude-auto.sh — run a single Claude Code task fully autonomously (no approval
-# prompts) to completion, with a budget cap, structured logging, and a
-# machine-checkable result.
+# prompts) to completion, with structured logging and a machine-checkable result.
 #
 # A single `claude -p` invocation already runs the full agent loop until the
 # task is done; this wrapper adds the safety rails and the success/failure
@@ -23,7 +22,6 @@ Run one Claude Code task autonomously (no approval prompts) to completion.
 Options:
   -f, --file FILE        Read the prompt from FILE (instead of an argument).
   -d, --dir DIR          Working directory for the run (default: current dir).
-  -b, --budget USD       Hard spend cap via --max-budget-usd (default: 2.00).
   -m, --mode MODE        Permission mode (default: bypassPermissions).
                          One of: bypassPermissions, acceptEdits, dontAsk,
                          auto, default. Use a scoped mode + --allow for
@@ -45,7 +43,7 @@ Exit codes:
 
 Examples:
   claude-auto.sh "Run the test suite and fix any failures"
-  claude-auto.sh -b 5 -m dontAsk -a "Read,Bash(pytest *)" "Investigate the flaky test"
+  claude-auto.sh -m dontAsk -a "Read,Bash(pytest *)" "Investigate the flaky test"
   claude-auto.sh -f task.md --stream --model sonnet
 USAGE
 }
@@ -90,7 +88,6 @@ PY
 PROMPT=""
 PROMPT_FILE=""
 WORKDIR="."
-BUDGET="2.00"
 MODE="bypassPermissions"
 ALLOW=""
 DISALLOW=""
@@ -107,7 +104,6 @@ while [[ $# -gt 0 ]]; do
     -h|--help) usage; exit 0 ;;
     -f|--file) PROMPT_FILE="${2:?}"; shift 2 ;;
     -d|--dir) WORKDIR="${2:?}"; shift 2 ;;
-    -b|--budget) BUDGET="${2:?}"; shift 2 ;;
     -m|--mode) MODE="${2:?}"; shift 2 ;;
     -a|--allow) ALLOW="${2:?}"; shift 2 ;;
     --disallow) DISALLOW="${2:?}"; shift 2 ;;
@@ -151,7 +147,6 @@ if [[ "$STREAM" -eq 1 ]]; then OUT_FORMAT="stream-json"; OUT_FILE="$RUN_DIR/stre
 
 CMD=(claude -p "$PROMPT"
   --permission-mode "$MODE"
-  --max-budget-usd "$BUDGET"
   --output-format "$OUT_FORMAT")
 [[ "$STREAM" -eq 1 ]] && CMD+=(--verbose --include-partial-messages)
 [[ -n "$ALLOW" ]]    && CMD+=(--allowedTools "$ALLOW")
@@ -172,7 +167,7 @@ mkdir -p "$RUN_DIR"
 printf '%s\n' "$PROMPT" > "$RUN_DIR/prompt.txt"
 printf '%s\n' "$CMD_LINE" > "$RUN_DIR/command.txt"
 
-echo "[claude-auto] mode=$MODE budget=\$$BUDGET stream=$STREAM dir=$WORKDIR"
+echo "[claude-auto] mode=$MODE stream=$STREAM dir=$WORKDIR"
 echo "[claude-auto] log: $RUN_DIR"
 
 # --- run ---
@@ -192,20 +187,18 @@ if ! IS_ERROR="$(json_field "$OUT_FILE" is_error)"; then
   [[ -s "$RUN_DIR/stderr.log" ]] && tail -n 20 "$RUN_DIR/stderr.log" >&2
   exit 1
 fi
-COST="$(json_field "$OUT_FILE" total_cost_usd || echo '?')"
 TURNS="$(json_field "$OUT_FILE" num_turns || echo '?')"
 SID="$(json_field "$OUT_FILE" session_id || echo '?')"
 json_field "$OUT_FILE" result > "$RUN_DIR/result.txt" || true
 
 {
   echo "is_error=$IS_ERROR"
-  echo "total_cost_usd=$COST"
   echo "num_turns=$TURNS"
   echo "session_id=$SID"
   echo "claude_rc=$RC"
 } > "$RUN_DIR/summary.txt"
 
-echo "[claude-auto] is_error=$IS_ERROR cost=\$$COST turns=$TURNS session=$SID"
+echo "[claude-auto] is_error=$IS_ERROR turns=$TURNS session=$SID"
 echo "----- result -----"
 cat "$RUN_DIR/result.txt"
 echo
