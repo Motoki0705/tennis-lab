@@ -22,18 +22,33 @@ metrics:
 artifacts:
   log: experiments_mcmc/logs/
   output_dir: ''
-parents: [run-i519-mcmc-ns01]
+  curves: knowledge/runs/run-i519-mcmc-ns03/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial/logs/version_21
+parents:
+- run-i519-mcmc-ns01
 relations: []
-tags: [plcs, rotation, mcmc]
+tags:
+- plcs
+- rotation
+- mcmc
 ---
 
 ## 考察 / Findings
 
-#519 の MCMC/SGLD をより強いノイズ (`noise_scale=0.3`) で適用した版。
+### 要約
+#519 の MCMC/SGLD をより強いノイズで適用すると、`ns=0.1` よりさらに悪化。ノイズを強めるほど劣化する単調傾向。
 
-- 結果 `76.11° / 0.754m`。`ns=0.1`（`73.58° / 0.512m`）より**さらに悪化**。ノイズを強めるほど劣化が
-  進行する単調な傾向。
-- これは「探索ノイズが AdamW の勾配信号を上書きする」という ns=0.1 の解釈を裏づける。
+### アーキテクチャ詳細
+[[run-i519-mcmc-ns01]] と同構成で `noise_scale=0.3` に増強（`mcmc: target=all decay=cosine temperature=1.0`）。
 
-→ noise_scale を振っても MCMC は 180° 反転脱出に寄与せず、両指標を悪化させるのみ。#519 の結論は
-**ネガティブ（MCMC は不採用、損失ベースの #518 が正解）**。
+### メトリクスの解釈
+`76.11° / 0.754m`。`ns=0.1`（`73.58° / 0.512m`）よりさらに悪化。
+
+### アーキテクチャ⇄メトリクスの因果考察
+ノイズを強めるほど劣化が進行する単調傾向は、「探索ノイズが AdamW の勾配信号を上書きする」という ns=0.1 の解釈を裏づける。
+
+### 既存実験との比較
+親 [[run-i519-mcmc-ns01]] にノイズ強度だけを変えた対照。noise_scale を振っても MCMC は寄与せず両指標を悪化させるのみ。
+
+### 次に有効な実験
+#519 の結論はネガティブ（MCMC は不採用、損失ベースの #518 が正解）。これ以上 noise_scale を振る価値はない。

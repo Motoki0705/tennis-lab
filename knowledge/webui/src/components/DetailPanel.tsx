@@ -80,6 +80,15 @@ export function DetailPanel({
           <KeyVals obj={node.metrics} />
         </section>
       )}
+      {node.curvesUrl && (
+        <section>
+          <h3>学習曲線 / curves</h3>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <a href={node.curvesUrl} target="_blank" rel="noreferrer">
+            <img className="curves" src={node.curvesUrl} alt={`${node.id} train/val curves`} />
+          </a>
+        </section>
+      )}
       {node.artifacts && (
         <section>
           <h3>artifacts</h3>

@@ -40,6 +40,7 @@ artifacts:
   run_dir: knowledge/runs/run-i525-asym
   predictions: knowledge/runs/run-i525-asym/pred_test.npz
   log: .training_queue/logs/1781875485504708764_626801_i525_asym_200ep.log
+  curves: knowledge/runs/run-i525-asym/curves.png
 parents:
 - run-i518-exp10
 - run-i521-ex10-vel
@@ -57,10 +58,20 @@ tags:
 
 ## 考察 / Findings
 
-200epoch まで収束させた非対称容量アーキテクチャ(`multiview_axial_split_asym`: pose trunk 6 層、rotation trunk を `rot_num_task_layers=10` で 10 層に深層化、hidden_dim 512、約 103M params)の確定結果。位置 0.700m / 回転 19.94°。
+### 要約
+分離 rotation trunk を深層化した非対称容量アーキ（200ep 収束）。「深くすれば回転が改善」の仮説は支持されず、回転・位置とも EX10 や 8 倍小さい parameff に劣る。
 
-仮説(分離した rotation trunk を深くすれば回転が改善する)は**支持されなかった**。rotation 19.94° は EX10(9.98°)より悪化し、8 倍小さい parameff(15.55°, 9.9M)にも劣る。位置 0.700m も EX10(0.238m)・parameff(0.569m)に劣る。
+### アーキテクチャ詳細
+`multiview_axial_split_asym` + `canonical_rot`：pose trunk 6 層、rotation trunk を `rot_num_task_layers=10` で深層化、`hidden_dim 512`、約 103M params。`max_epochs=200`。
 
-考えられる要因: (1) #525 で効いたのは trunk の**幅**であって**深さ**ではない—深層化は容量軸として不適、もしくは最適化が困難である可能性、(2) 103M は 200ep では相対的に未収束(大型ほど要 epoch)、(3) rotation trunk の深層化が aux/canonical 系の共有学習を不安定化させた可能性。
+### メトリクスの解釈
+位置 `0.700m` / 回転 `19.94°`。回転は EX10 (`9.98°`) より悪化し、8 倍小さい parameff (`15.55°`, 9.9M) にも劣る。位置 `0.700m` も EX10 (`0.238m`) / parameff (`0.569m`) に劣る。
 
-次の示唆: 非対称化するなら**深さでなく幅**(rotation trunk を広く)を試す、または大型モデルは epoch を増やす。
+### アーキテクチャ⇄メトリクスの因果考察
+要因の候補:(1) #525 で効いたのは trunk の**幅**で**深さ**ではない—深層化は容量軸として不適か最適化困難、(2) 103M は 200ep でも相対的に未収束（大型ほど要 epoch）、(3) rotation trunk 深層化が aux/canonical の共有学習を不安定化。
+
+### 既存実験との比較
+親 [[run-i518-exp10]] / [[run-i521-ex10-vel]] に対し回転・位置とも悪化。param-matched 共有 trunk [[run-i525-shared-match-dim]] / [[run-i525-shared-match-layers]] と対照（`compares`）。
+
+### 次に有効な実験
+非対称化するなら深さでなく**幅**（rotation trunk を広く）を試す、または大型モデルは epoch を増やす。

@@ -35,19 +35,35 @@ artifacts:
   log: .training_queue/logs/1781750120049888219_67088_i525_shared_match_dim.log
   job: .training_queue/done/1781750120049888219_67088_i525_shared_match_dim.job
   output_dir: ''
+  curves: knowledge/runs/run-i525-shared-match-dim/curves.png
+  tb_logdir: outputs/plcs/plcs_multiview_axial/logs/version_28
 parents:
 - run-i521-ex10-vel
 relations:
-  - {to: run-i521-ex10-vel, rel: compares}
-tags: [plcs, canonical, shared-trunk]
+- to: run-i521-ex10-vel
+  rel: compares
+tags:
+- plcs
+- canonical
+- shared-trunk
 ---
 
 ## 考察 / Findings
 
-#525 の問い「分離 trunk の優位は単にパラメータ数が多いだけでは？」への対照。共有 trunk を
-**次元拡張でパラメータ数を分離型 EX10 に合わせた**構成。`ang_error 12.22°` と角度は分離型に匹敵する
-一方、`position_error 0.842m` と位置は大きく崩れる。
+### 要約
+共有 trunk を次元拡張でパラメータ数を EX10 に合わせた対照。角度は分離型に匹敵するが位置は崩れる。
 
-→ **角度面ではパラメータ数を合わせた共有 trunk でも分離型に並ぶ**（「パラメータ数」説を一部支持）。
-ただし位置は崩れ、分離型と等価ではない。
+### アーキテクチャ詳細
+`multiview_axial_shared_match_dim` + `canonical_rot`：共有 trunk を幅（次元）拡張し EX10 相当（~79M）にパラメータ整合。
 
+### メトリクスの解釈
+`ang_error 12.22°` と角度は分離型に匹敵する一方、`position_error 0.842m` と位置は大きく崩れる。
+
+### アーキテクチャ⇄メトリクスの因果考察
+幅拡張は回転に効くため角度はパラメータ数を合わせれば共有でも届く。しかし位置はタスク分離が無いと頭打ちを突破できず、共有 trunk のままでは崩れる。
+
+### 既存実験との比較
+基準 [[run-i525-shared-6l]] / [[run-i521-ex10-vel]] と対照（`compares`）。深さ整合の [[run-i525-shared-match-layers]]（崩壊）と好対照。
+
+### 次に有効な実験
+角度はパラメータ数説を一部支持するが位置は分離型と等価でない。位置を担うのは分離構造、という線で split 容量スイープを継続。
