@@ -57,6 +57,8 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         hidden_dim: int = 256,
         num_layers: int = 0,
         num_task_layers: int = 6,
+        rot_num_task_layers: int | None = None,
+        pose_num_task_layers: int | None = None,
         canonical_on_rotation_branch: bool = True,
         aux_position_on_rotation_branch: bool = True,
         detach_pose_branch: bool = False,
@@ -79,6 +81,18 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
                 "PLCSMultiViewAxialSplitModel requires num_task_layers > 0; "
                 "use PLCSMultiViewAxialModel for a shared trunk."
             )
+        # Asymmetric-capacity option (issue #525/#535 follow-up): the rotation and
+        # pose trunks may each be deeper than the shared ``num_task_layers``
+        # default. Because the two trunks are isolated, spending extra depth on one
+        # cannot contaminate the other (the shared-trunk depth-collapse seen in
+        # #525 does not apply). ``None`` keeps the symmetric default
+        # (== num_task_layers), so existing configs are unchanged.
+        if rot_num_task_layers is None:
+            rot_num_task_layers = num_task_layers
+        if pose_num_task_layers is None:
+            pose_num_task_layers = num_task_layers
+        if rot_num_task_layers <= 0 or pose_num_task_layers <= 0:
+            raise ValueError("rot/pose_num_task_layers must be > 0 when set.")
         super().__init__(
             hidden_dim=hidden_dim,
             num_layers=num_layers,
@@ -98,6 +112,8 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         )
 
         self.num_task_layers = int(num_task_layers)
+        self.rot_num_task_layers = int(rot_num_task_layers)
+        self.pose_num_task_layers = int(pose_num_task_layers)
         self.canonical_on_rotation_branch = bool(canonical_on_rotation_branch)
         self.aux_position_on_rotation_branch = bool(aux_position_on_rotation_branch)
         self.detach_pose_branch = bool(detach_pose_branch)
@@ -105,7 +121,7 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         if ffn_dim is None:
             ffn_dim = default_ffn_dim(self.hidden_dim)
 
-        def _axial_stack(rope_base: float) -> nn.ModuleList:
+        def _axial_stack(rope_base: float, depth: int) -> nn.ModuleList:
             return nn.ModuleList(
                 [
                     TransformerBlock(
@@ -120,15 +136,16 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
                             ffn_type=ffn_type,
                         )
                     )
-                    for _ in range(self.num_task_layers)
+                    for _ in range(depth)
                 ]
             )
 
-        # rope_bases = (time_base, camera_base)
-        self.rot_camera_layers = _axial_stack(self.rope_bases[1])
-        self.rot_time_layers = _axial_stack(self.rope_bases[0])
-        self.pose_camera_layers = _axial_stack(self.rope_bases[1])
-        self.pose_time_layers = _axial_stack(self.rope_bases[0])
+        # rope_bases = (time_base, camera_base). Rotation and pose trunks can each
+        # carry an independent depth (asymmetric capacity, issue #525/#535).
+        self.rot_camera_layers = _axial_stack(self.rope_bases[1], self.rot_num_task_layers)
+        self.rot_time_layers = _axial_stack(self.rope_bases[0], self.rot_num_task_layers)
+        self.pose_camera_layers = _axial_stack(self.rope_bases[1], self.pose_num_task_layers)
+        self.pose_time_layers = _axial_stack(self.rope_bases[0], self.pose_num_task_layers)
         self.rot_final_norm = RMSNorm(self.hidden_dim)
         self.pose_final_norm = RMSNorm(self.hidden_dim)
 
@@ -155,6 +172,16 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_layers=int(model_cfg.get("num_layers", 0)),
             num_task_layers=int(model_cfg.get("num_task_layers", 6)),
+            rot_num_task_layers=(
+                int(model_cfg["rot_num_task_layers"])
+                if model_cfg.get("rot_num_task_layers", None) is not None
+                else None
+            ),
+            pose_num_task_layers=(
+                int(model_cfg["pose_num_task_layers"])
+                if model_cfg.get("pose_num_task_layers", None) is not None
+                else None
+            ),
             canonical_on_rotation_branch=bool(
                 model_cfg.get("canonical_on_rotation_branch", True)
             ),

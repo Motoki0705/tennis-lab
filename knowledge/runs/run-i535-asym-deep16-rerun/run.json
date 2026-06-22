@@ -1,0 +1,14 @@
+{
+  "run_id": "1781994475574624725_1061676_i535_asym_deep16_rerun",
+  "name": "i535_asym_deep16_rerun",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.plcs.scripts.train model=multiview_axial_split_asym_deep16 loss=canonical_rot data=multiview_sequence data.batch_size=4 training.trainer.max_epochs=200 run.gpus=1",
+  "provider": "claude",
+  "session": "8722d9dc-5894-4536-8e54-d03e3e34949a",
+  "issue": "535",
+  "commit": "6d24b4dccad36a73bd56a526602757e16bac0275",
+  "branch": "exp/i525-asym",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/wt/i525-asym",
+  "repo_root": "/home/kamimura/projects/wt/i525-asym",
+  "captured_at": "2026-06-21T07:58:58+09:00"
+}
