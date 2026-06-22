@@ -1,0 +1,14 @@
+{
+  "run_id": "1782037138483198726_185287_i539_deep16_chunked",
+  "name": "i539_deep16_chunked",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.plcs.scripts.train model=multiview_axial_split_asym_deep16 data.batch_size=4 training.trainer.accumulate_grad_batches=2 data=chunked_multiview_sequence_bs8 data.seq_len_range=[64,256] loss=canonical_rot training.trainer.max_epochs=200 run.gpus=1",
+  "provider": "claude",
+  "session": "8722d9dc-5894-4536-8e54-d03e3e34949a",
+  "issue": "539",
+  "commit": "d407e54cdb903d7082aa4011b2a6f8cb0426c7cc",
+  "branch": "exp/i525-asym",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/wt/i525-asym",
+  "repo_root": "/home/kamimura/projects/wt/i525-asym",
+  "captured_at": "2026-06-21T20:48:49+09:00"
+}

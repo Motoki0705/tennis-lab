@@ -1,0 +1,18 @@
+# Depth-asymmetric separate-trunk axial PLCS model (issue #535).
+#
+# Rotation trunk 16 layers vs pose trunk 6, both at hidden_dim=512 (~142.3M).
+# Uses `rot_num_task_layers`, which PLCSMultiViewAxialSplitModel honors (rotation
+# trunk deeper than the shared `num_task_layers`). On the fixed small dataset this
+# does NOT beat EX10 (run-i535-asym-deep16-rerun: 10.41 deg / 0.252 m); see the
+# data-rich chunked re-test in #539 (run-i539-deep16-chunked).
+#
+# Symmetric baseline: multiview_axial_split (EX10, ~9.98 deg / 0.238 m).
+defaults:
+  - _multiview_axial_split
+  - _self_
+
+hidden_dim: 512
+num_heads: 8
+rope_dim: 16
+num_task_layers: 6
+rot_num_task_layers: 16

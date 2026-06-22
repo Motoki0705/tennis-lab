@@ -46,12 +46,8 @@ parents:
 - run-i525-asym
 - run-i518-exp10
 relations:
-- to: run-i525-asym
-  rel: contradicts
-- to: run-i518-exp10
-  rel: compares
-- to: run-i541-parameff-deeppose
-  rel: confirms
+- to: run-i535-asym-deep16-rerun
+  rel: supersededby
 tags:
 - plcs
 - canonical
@@ -59,12 +55,20 @@ tags:
 - asymmetric
 - depth
 - capacity-frontier
+- retracted-noop
 ---
 
 ## 考察 / Findings
 
+> ⚠️ **【無効・撤回 2026-06-21】このランは作業ディレクトリ取り違えによる no-op 計測です。**
+> `cd /home/kamimura/projects/tennis-lab`（main ツリー）で実行されたため `rot_num_task_layers` が黙って無視され、
+> 意図した rot16/512（142.3M）ではなく**対称 6 層/512 = EX10 の再学習（78.1M）**になっていました（params が EX10 と一致したのはこのため）。
+> 8.40° は EX10 のばらつき範囲内の値で「深さが効いた」証拠ではありません。正しい worktree（`exp/i525-asym`）での有効な再計測は
+> **[[run-i535-asym-deep16-rerun]]**（142.3M / 10.41° / 0.252m ＝ EX10 に届かず）で、本ノードを supersede します。
+> **以下の各節は撤回済みの当初考察**で、記録のために残しています。
+
 ### 要約
-rotation trunk を 16 層まで深めた非対称構成（200ep）。位置 0.207m / 回転 8.40° で本実験群の絶対最良、同等予算で EX10 を初めて両指標とも上回る。
+rotation trunk を 16 層まで深めた非対称構成（200ep）。位置 0.207m / 回転 8.40° で本実験群の絶対最良、同等予算で EX10 を初めて両指標とも上回る。（※上記のとおり no-op で実際は対称 EX10 を再学習しており本結論は無効）
 
 ### アーキテクチャ詳細
 `multiview_axial_split_asym_deep16` + `canonical_rot`：pose trunk 6 層・**rotation trunk 16 層**、`hidden_dim 512` / `num_heads 8`、約 78.1M params（EX10 と同等予算）。`max_epochs=200`。
