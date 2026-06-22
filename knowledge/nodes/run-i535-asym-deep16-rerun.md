@@ -40,6 +40,7 @@ artifacts:
   run_dir: knowledge/runs/run-i535-asym-deep16-rerun
   predictions: knowledge/runs/run-i535-asym-deep16-rerun/pred_test.npz
   log: .training_queue/logs/1781994475574624725_1061676_i535_asym_deep16_rerun.log
+  curves: knowledge/runs/run-i535-asym-deep16-rerun/curves.png
 parents:
 - run-i518-exp10
 - run-i525-asym
@@ -62,10 +63,20 @@ tags:
 
 ## 考察 / Findings
 
-正しい worktree(`exp/i525-asym`, commit `6d24b4d`, cwd=`/home/kamimura/projects/wt/i525-asym`)で再実行した、**有効**な非対称深さ計測。rotation trunk 16 層 / pose trunk 6 層、hidden 512 / heads 8 ＝ **142.3M params**(起動ログで確認)。no-op だった旧 `run-i540-asym-deep16` の 78.1M(＝EX10 再学習)とは**別物**で、本ノードがそれを supersede する。200ep フル学習(early stop なし)。
+### 要約
+正しい worktree で再実行した**有効**な非対称深さ計測（rot16/pose6, 142.3M）。回転 10.41°/位置 0.252m で、EX10 の ~1.8倍の容量を投じても EX10（9.98°/0.238m）に届かない。#535 当初の「深さが回転の主レバー」は no-op バグ由来で撤回。
 
-- **test: 回転 10.41°(median 8.14°)/ 位置 0.252m(median 0.173m)**。
-- **EX10(78.1M, 9.98°/0.238m)に届かない。** train ang は 8.16°(train loss 0.06)まで収束したのに val/test は 10.41° ＝ 固定小データ(≈800 窓/ep)では rotation trunk を 6→16 に深めた余剰容量(+64M)を活かせず、わずかに過学習。
-- rot 深さ系列(幅512): EX10 6層 9.98° < **deep16 16層 10.41°** < asym 10層 19.94°。**非単調**で、深さで EX10 を超えるという #535 当初仮説は**不成立**。
-- **当初結論の撤回**: 旧 `run-i540-asym-deep16`(8.40°)は作業ディレクトリ取り違えで `rot_num_task_layers` が no-op になり対称 EX10 を再学習しただけ。「深さが回転の主レバー」は撤回。
-- batch=4(VRAM 16GB 制約。基準 EX10 は batch 8 ＝ 軽微な交絡)。容量が効くかの公平判定は **#539**(chunked・データリッチ・適正バッチ)へ。
+### アーキテクチャ詳細
+`multiview_axial_split_asym_deep16` + `canonical_rot` + `data=multiview_sequence`、200ep。rotation trunk **16 層** / pose trunk **6 層**、`hidden_dim 512`/`num_heads 8` ＝ **142.3M params**（起動ログで確認）。`rot_num_task_layers` を honor する `exp/i525-asym` worktree（commit `6d24b4d`, cwd=`wt/i525-asym`）で実行。VRAM 制約で `data.batch_size=4`（基準 EX10 は 8）。no-op だった旧 [[run-i540-asym-deep16]]（78.1M=対称 EX10 相当）とは別物。
+
+### メトリクスの解釈
+test 回転 `10.41°`（median `8.14°`）/ 位置 `0.252m`（median `0.173m`）。curves.png は train/val とも 200ep を完走し右肩下がり・崩壊なし（full 収束）。ただし train ang `8.16°`（train loss `0.06`）に対し val/test `10.41°` と乖離 ＝ 軽い過学習。
+
+### アーキテクチャ⇄メトリクスの因果考察
+固定小データ（≈800 窓/ep を 200ep 反復＝記憶可能）では、rotation trunk を 6→16 に深めた +64M の余剰容量を汎化に活かせず過学習方向に出たと解釈（仮説）。rot 深さ系列（幅512）は EX10 6層 `9.98°` < deep16 16層 `10.41°` < asym 10層 `19.94°` と**非単調**で、「深さで EX10 を超える」当初仮説は不成立。
+
+### 既存実験との比較
+[[run-i518-exp10]]（EX10, 78.1M, 9.98°/0.238m）に両指標で僅かに劣る（`compares`）。幅振りの [[run-i535-asym-wide-rerun]]（228.7M, 60.56°）よりは大幅に良いが、wide が batch2 で未収束のため公平な対比ではない。no-op だった [[run-i540-asym-deep16]] を `supersedes`。
+
+### 次に有効な実験
+固定小データでは容量増の効果が見えないため、データ拡充（chunked）+ 適正バッチで再評価 → #539 [[run-i539-deep16-chunked]]。そこでも deep16 は本群最下位で、深さ偏重は data-rich でも非推奨と判明した。
