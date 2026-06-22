@@ -1,0 +1,20 @@
+# Wide depth-asymmetric separate-trunk axial PLCS model (issue #535).
+#
+# Both trunks widened to hidden_dim=768, rotation trunk 10 layers / pose 6
+# (~228.7M). Uses `rot_num_task_layers` (honored by the model). On the fixed
+# small dataset it under-converges at the small batch a 16GB GPU forces
+# (run-i535-asym-wide-rerun); with chunked data + grad-accum it becomes the best
+# of the capacity sweep (#539, run-i539-wide-chunked: 10.33 deg / 0.206 m).
+#
+# VRAM: 228.7M needs a small physical batch on 16GB — pair with
+# `data.batch_size` + `training.trainer.accumulate_grad_batches` to hold the
+# target effective batch (e.g. batch_size=2 accumulate_grad_batches=4 -> 8).
+defaults:
+  - _multiview_axial_split
+  - _self_
+
+hidden_dim: 768
+num_heads: 12
+rope_dim: 16
+num_task_layers: 6
+rot_num_task_layers: 10
