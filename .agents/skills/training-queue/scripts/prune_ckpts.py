@@ -22,6 +22,13 @@ Usage:
     .venv/bin/python .../prune_ckpts.py --backfill --delete --device cuda            # + prune
     .venv/bin/python .../prune_ckpts.py --delete                                     # prune already-backfilled
     .venv/bin/python .../prune_ckpts.py --glob 'outputs/plcs/**/*.ckpt'              # scope
+    .venv/bin/python .../prune_ckpts.py --repro-dir .training_queue/repro/<id> --delete  # one run (queue hook)
+
+Single-run mode (``--repro-dir``) gates on the run's own repro bundle instead of
+the global glob: it deletes only the checkpoints pointed at by
+``<repro>/output_dir.txt`` and only when ``<repro>/predictions/pred_test.npz``
+verifies. The training queue's optional ``--prune-ckpt`` flag calls this after a
+successful run.
 """
 
 from __future__ import annotations
@@ -30,6 +37,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def repo_root() -> Path:
@@ -79,7 +87,72 @@ def verify_npz(path: Path) -> bool:
         return False
 
 
-def build_runner(task: str):
+def prune_from_repro_dir(repro_dir: Path, do_delete: bool) -> int:
+    """Delete one run's checkpoints, gated on its repro bundle (issue #533).
+
+    This powers the training queue's optional post-run auto-prune. A queued run's
+    gitignored ``.training_queue/repro/<jobid>/`` holds both the reproducibility
+    bundle and the test-split predictions (``predictions/pred_test.npz``); the
+    runner writes ``output_dir.txt`` there pointing at the run's checkpoint dir.
+    A checkpoint is removed **only if** a verified ``pred_test.npz`` exists in
+    this repro dir, so every metric stays recomputable; the npz itself is never
+    touched. Conservative and self-contained: any missing precondition keeps the
+    checkpoints and returns 0, so a queue worker never treats a successful run as
+    failed.
+    """
+    npz = repro_dir / "predictions" / "pred_test.npz"
+    if not verify_npz(npz):
+        print(f"KEEP  {repro_dir}  (no verified pred_test.npz; not pruning)")
+        return 0
+    pointer = repro_dir / "output_dir.txt"
+    if not pointer.exists():
+        print(f"KEEP  {repro_dir}  (no output_dir.txt pointer; cannot locate ckpts)")
+        return 0
+    try:
+        pointer_value = pointer.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        print(f"KEEP  {repro_dir}  (cannot read output_dir.txt: {exc})")
+        return 0
+    if not pointer_value:
+        print(f"KEEP  {repro_dir}  (empty output_dir.txt pointer)")
+        return 0
+    ckpt_dir = Path(pointer_value)
+    if not ckpt_dir.is_absolute():
+        ckpt_dir = repo_root() / ckpt_dir
+    ckpts = sorted(ckpt_dir.glob("*.ckpt")) if ckpt_dir.exists() else []
+    if not ckpts:
+        print(f"KEEP  {repro_dir}  (no *.ckpt under {ckpt_dir}; already pruned?)")
+        return 0
+    total = sum(c.stat().st_size for c in ckpts)
+    if not do_delete:
+        print(
+            f"(dry-run) would delete {len(ckpts)} ckpt(s), {human(total)} under {ckpt_dir}"
+        )
+        for c in ckpts:
+            print(f"  {human(c.stat().st_size):>9}  {c}")
+        print("  re-run with --delete to remove (pred_test.npz is verified).")
+        return 0
+    freed = 0
+    deleted = 0
+    for c in ckpts:
+        size = c.stat().st_size
+        try:
+            c.unlink()
+        except OSError as exc:  # noqa: PERF203
+            print(f"KEEP  {c}  (unlink failed: {exc})")
+            continue
+        freed += size
+        deleted += 1
+        print(f"DEL   {c}  (freed {human(size)})")
+    print(
+        f"pruned {deleted}/{len(ckpts)} ckpt(s) for {repro_dir.name}; "
+        f"freed {human(freed)} "
+        f"(pred_test.npz retained at {npz})"
+    )
+    return 0
+
+
+def build_runner(task: str) -> Any:
     if task == "plcs":
         from src.tasks.plcs.training.runner import PLCSTrainingRunner
 
@@ -89,7 +162,7 @@ def build_runner(task: str):
     return BLCSTrainingRunner()
 
 
-def build_module_cls(task: str):
+def build_module_cls(task: str) -> Any:
     if task == "plcs":
         from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 
@@ -130,7 +203,9 @@ def backfill_one(ckpt: Path, task: str, device: str) -> tuple[bool, str]:
 
     # Predictions land next to the checkpoint's version dir.
     os.environ["TENNIS_REPRO_DIR"] = str(version_dir(ckpt))
-    accelerator = "gpu" if device.startswith("cuda") and torch.cuda.is_available() else "cpu"
+    accelerator = (
+        "gpu" if device.startswith("cuda") and torch.cuda.is_available() else "cpu"
+    )
     trainer = pl.Trainer(
         accelerator=accelerator,
         devices=1,
@@ -153,12 +228,37 @@ def backfill_one(ckpt: Path, task: str, device: str) -> tuple[bool, str]:
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--glob", default="outputs/**/*.ckpt", help="ckpt glob (repo-root relative)")
-    p.add_argument("--backfill", action="store_true", help="save test predictions from each ckpt")
-    p.add_argument("--delete", action="store_true", help="delete ckpt when verified npz exists")
+    p.add_argument(
+        "--glob", default="outputs/**/*.ckpt", help="ckpt glob (repo-root relative)"
+    )
+    p.add_argument(
+        "--backfill", action="store_true", help="save test predictions from each ckpt"
+    )
+    p.add_argument(
+        "--delete", action="store_true", help="delete ckpt when verified npz exists"
+    )
     p.add_argument("--device", default="cuda", help="cuda|cpu for backfill")
-    p.add_argument("--limit", type=int, default=0, help="process at most N ckpts (0 = all)")
+    p.add_argument(
+        "--limit", type=int, default=0, help="process at most N ckpts (0 = all)"
+    )
+    p.add_argument(
+        "--repro-dir",
+        type=Path,
+        default=None,
+        help="prune ONE run's ckpts via its .training_queue/repro/<jobid> bundle "
+        "(verified pred_test.npz + output_dir.txt pointer); ignores --glob",
+    )
     args = p.parse_args()
+
+    # Single-run mode (training-queue post-run auto-prune): scoped + self-gating.
+    if args.repro_dir is not None:
+        repro = (
+            args.repro_dir
+            if args.repro_dir.is_absolute()
+            else (Path.cwd() / args.repro_dir)
+        ).resolve()
+        os.chdir(repo_root())
+        return prune_from_repro_dir(repro, args.delete)
 
     root = repo_root()
     os.chdir(root)

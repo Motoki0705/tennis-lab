@@ -7,7 +7,11 @@
 # starts, so the very first run does NOT have to go through this queue.
 #
 # Subcommands:
-#   add "<command>" [--name NAME]   Enqueue a command (runs in the current CWD).
+#   add "<command>" [--name NAME] [--prune-ckpt]
+#                                   Enqueue a command (runs in the current CWD).
+#                                   --prune-ckpt: after the run succeeds, delete
+#                                   its checkpoints iff the test-split
+#                                   predictions were saved (issue #533).
 #   start [--after-pid PID] [--idle-timeout S]
 #                                   Launch the background worker (nohup-style).
 #   status                          Show worker state + queued/running/done jobs.
@@ -16,6 +20,7 @@
 #   clear                           Remove all pending (not-yet-started) jobs.
 #
 # State dir: $TRAINING_QUEUE_DIR (default: .training_queue under the CWD).
+# Prune python: $TRAINING_QUEUE_PYTHON (default: $VIRTUAL_ENV or repo .venv).
 #
 # Examples:
 #   training_queue.sh add "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
@@ -55,14 +60,57 @@ _worker_running() {
   [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
 }
 
+# Resolve a python that can import numpy (for the post-run ckpt pruner). Prefer
+# an explicit override, then the active venv, then the repo's .venv (resolved via
+# the *main* git dir so it works from a linked worktree too), then python3.
+_queue_python() {
+  if [ -n "${TRAINING_QUEUE_PYTHON:-}" ] && [ -x "${TRAINING_QUEUE_PYTHON}" ]; then
+    printf '%s' "$TRAINING_QUEUE_PYTHON"; return
+  fi
+  if [ -n "${VIRTUAL_ENV:-}" ] && [ -x "${VIRTUAL_ENV}/bin/python" ]; then
+    printf '%s' "${VIRTUAL_ENV}/bin/python"; return
+  fi
+  local common main_root
+  common="$(git -C "$(dirname "$SCRIPT_PATH")" rev-parse --git-common-dir 2>/dev/null || echo '')"
+  if [ -n "$common" ]; then
+    main_root="$(cd "$(dirname "$common")" && pwd)"
+    if [ -x "$main_root/.venv/bin/python" ]; then
+      printf '%s' "$main_root/.venv/bin/python"; return
+    fi
+  fi
+  printf 'python3'
+}
+
+# Opt-in post-run hook: when a job was added with --prune-ckpt and succeeded,
+# delete its checkpoints iff its repro bundle has a verified pred_test.npz.
+# Non-fatal: a prune failure never changes the job's done/failed status.
+_maybe_prune_ckpt() {
+  local job="$1" jobfile="$DONE_DIR/$1"
+  grep -q '^# prune_ckpt: 1$' "$jobfile" 2>/dev/null || return 0
+  local prune repro_root_abs repro py
+  prune="$(dirname "$SCRIPT_PATH")/prune_ckpts.py"
+  if [ ! -f "$prune" ]; then
+    echo "[worker] prune-ckpt skipped: $prune not found"; return 0
+  fi
+  repro_root_abs="$(cd "$REPRO_DIR" 2>/dev/null && pwd)" || {
+    echo "[worker] prune-ckpt skipped: repro dir $REPRO_DIR missing"; return 0
+  }
+  repro="$repro_root_abs/${job%.job}"
+  py="$(_queue_python)"
+  echo "[worker] $(date -Iseconds) prune-ckpt: $job (py=$py repro=$repro)"
+  "$py" "$prune" --repro-dir "$repro" --delete \
+    || echo "[worker] prune-ckpt non-fatal error for $job (rc=$?)"
+}
+
 cmd_add() {
-  local name="" command="" provider="" session="" issue=""
+  local name="" command="" provider="" session="" issue="" prune_ckpt=0
   while [ $# -gt 0 ]; do
     case "$1" in
       --name) name="$2"; shift 2 ;;
       --provider) provider="$2"; shift 2 ;;
       --session) session="$2"; shift 2 ;;
       --issue) issue="$2"; shift 2 ;;
+      --prune-ckpt) prune_ckpt=1; shift ;;
       *) command="$1"; shift ;;
     esac
   done
@@ -91,6 +139,7 @@ cmd_add() {
     echo "# provider: ${provider}"
     echo "# session: ${session}"
     echo "# issue: ${issue}"
+    echo "# prune_ckpt: ${prune_ckpt}"
     echo "cd $(printf '%q' "$PWD")"
     echo "export TENNIS_RUN_ID=$(printf '%q' "$jobid")"
     echo "export TENNIS_REPRO_DIR=$(printf '%q' "$repro_job_abs")"
@@ -228,6 +277,7 @@ cmd_worker() {
     if [ "$rc" -eq 0 ]; then
       mv "$RUNNING_DIR/$job" "$DONE_DIR/$job"
       echo "[worker] $(date -Iseconds) done: $job"
+      _maybe_prune_ckpt "$job"
     else
       echo "exit_code=$rc" >> "$log"
       mv "$RUNNING_DIR/$job" "$FAILED_DIR/$job"
@@ -244,8 +294,13 @@ cmd_start() {
     echo "worker already running (PID $(cat "$WORKER_PID_FILE"))." >&2
     exit 1
   fi
-  # Detached background worker; survives the launching shell.
-  nohup bash "$SCRIPT_PATH" __worker "$@" >> "$WORKER_LOG" 2>&1 &
+  # Detached background worker. Prefer a new session so agent/CI launchers that
+  # tear down their own process group do not kill long-running training jobs.
+  local -a worker_cmd=(bash "$SCRIPT_PATH" __worker "$@")
+  if command -v setsid >/dev/null 2>&1; then
+    worker_cmd=(setsid "${worker_cmd[@]}")
+  fi
+  nohup "${worker_cmd[@]}" >> "$WORKER_LOG" 2>&1 < /dev/null &
   local pid=$!
   echo "$pid" > "$WORKER_PID_FILE"
   echo "worker started (PID $pid). log: $WORKER_LOG"
