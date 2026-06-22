@@ -42,6 +42,7 @@ artifacts:
   run_dir: knowledge/runs/run-i539-deep16-chunked
   predictions: knowledge/runs/run-i539-deep16-chunked/pred_test.npz
   log: .training_queue/logs/1782037138483198726_185287_i539_deep16_chunked.log
+  curves: knowledge/runs/run-i539-deep16-chunked/curves.png
 parents:
 - run-i535-asym-deep16-rerun
 - run-i518-exp10
@@ -65,9 +66,20 @@ tags:
 
 ## 考察 / Findings
 
-非対称深さ deep16(rot16/512, 142.3M)を **chunked**(data-rich)で学習。effective batch=8(bs4×accum2), seq[64,256], test は固定 scene_dir。
+### 要約
+非対称深さ deep16（rot16/512, 142.3M）を chunked（data-rich）で学習。回転 19.11°/位置 0.632m で**本群最下位**。深さ偏重は data-rich でも不利。
 
-- **test: 回転 19.11°(median 15.12)/ 位置 0.632m**。固定データ deep16 再実行(10.41°/0.252m)より**悪化**、かつ同一 chunked 条件で **ex10_chunked(15.84°)よりも悪く、本群最下位**。
-- **ep86 で early-stop**(3 群中最速)。train ang 13.50° vs val 18.90° ＝ 未収束気味で plateau。
-- **結論(幅 vs 深さ, data-rich)**: 容量を「深さ(rot 偏重)」に振る deep16 は、同予算帯の「幅」振り(wide, 228.7M, 10.33°)に**大きく劣る**。固定・chunked いずれでも深さ偏重は非推奨で、[[run-i539-wide-chunked]] の幅広モデルが優位。深さで回転を伸ばす当初仮説(#535)は data-rich でも不成立。
-- early-stop×chunk ローテーション交絡の注意は [[run-i539-ex10-chunked]] と同様。
+### アーキテクチャ詳細
+`multiview_axial_split_asym_deep16` + `canonical_rot` + `data=chunked_multiview_sequence_bs8`。effective batch=8（bs4×accum2）、`data.seq_len_range=[64,256]`、val/test は固定 `scene_dir`。`exp/i525-asym` worktree（commit `6d24b4d`）。
+
+### メトリクスの解釈
+test 回転 `19.11°`（median `15.12°`）/ 位置 `0.632m`。curves.png: **ep86 で early-stop**（3群中最速）、train ang `13.50°` vs val `18.90°` ＝ 未収束気味で plateau。
+
+### アーキテクチャ⇄メトリクスの因果考察
+rot 偏重の 142.3M は、chunked の高分散ストリームを 86ep で取りきれず ex10（78.1M）より早く plateau して停止したと解釈（仮説）。容量を「深さ」に振っても data-rich で回転は伸びない。early-stop × chunk ローテーション交絡の注意は [[run-i539-ex10-chunked]] と同様。
+
+### 既存実験との比較
+固定データ [[run-i535-asym-deep16-rerun]]（10.41°/0.252m）より悪化。同一 chunked 条件で [[run-i539-ex10-chunked]]（15.84°）より悪く本群最下位、[[run-i539-wide-chunked]]（10.33°）に大きく劣る（`compares`）。「深さが回転の主レバー」(#535 当初・撤回済) は data-rich でも不成立。
+
+### 次に有効な実験
+深さ偏重ラインは打ち切り、容量は「幅」に振る（wide 路線）。early-stop 緩和での再確認は #539 Phase2。

@@ -18,7 +18,7 @@ tags:
 - capacity-frontier
 ---
 
-## 考察 / Findings
+## まとめ
 
 #525 → #535 の系: split-trunk の容量を**非対称に配分**(rotation trunk を深く/広く)して回転を伸ばせるかの探索。EX10(対称 split 78.1M, 9.98°/0.238m)と比較する。
 

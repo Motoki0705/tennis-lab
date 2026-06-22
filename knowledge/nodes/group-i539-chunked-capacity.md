@@ -17,7 +17,7 @@ tags:
 - capacity-frontier
 ---
 
-## 考察 / Findings
+## まとめ
 
 #539 Phase1: #535/#536 の固定小データ結論を **chunked backend(生成データ連続供給=data-rich)**で引き直す。固定データでは「大容量(wide 228.7M)が崩壊・EX10 が最良」だったが、これがデータ枯渇＋小バッチの交絡なのかを、`exp/i525-asym` worktree から effective batch=8(勾配累積)・`seq_len_range=[64,256]`・test=固定 scene_dir(直接比較可)で検証した。
 
