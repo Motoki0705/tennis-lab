@@ -61,6 +61,22 @@ data/tennis/
 
 `YouTubeDataModule` は `TrackNetDataModule` を継承し、エントリ解決のみ変更します。splitは `data/tennis/youtube/annotations/{train,val,test}.txt`、パスは `data/tennis` からの相対（例 `youtube/frames/video_000001/clip_000001`）です。学習時は `data=youtube_rgb_sequence` を指定します。
 
+### Web統一形式
+
+`data/tennis/web` 配下の異種データ（Roboflow COCO 3種・racketvision・kaggle backview・ball-YOLO）を、**ボールのアノテーションを持つフレームのみ**抽出した単一ストアに変換します。
+
+```bash
+# data/tennis/web/unified/ を生成（COCO静止画は参照のみ、動画フレームはシャードへパック）
+.venv/bin/python -m src.tasks.ball_detection.scripts.convert_web_dataset
+# 一部ソースのみ・上限付きで素早く検証
+.venv/bin/python -m src.tasks.ball_detection.scripts.convert_web_dataset \
+    convert.sources.racketvision=false convert.limit_per_source=50 convert.overwrite=true
+```
+
+ストレージ/IO効率のため、動画から抽出したフレームは多数の小JPEGを撒かず `shards/shard-*.bin` にパックし（memmapでランダムアクセス）、既にディスク上にあるCOCO静止画は複製せず参照します。索引は `index.npz` / `index_strings.json`、スキーマ定義は `data/web_store.py`（`web_ball_frames_v1`）です。
+
+各サンプルは `temporal` フラグ（動画由来=1 / シャッフル静止画=0）と `frame_index`・`source` の来歴を保持します。学習は `data=web_frames`（`WebBallDataModule`）で、各アノテフレームを `model.num_frames` 枚へ静的複製して供給します（フェーズ1の検出事前学習）。複数フレーム化のフェーズ2では `data.temporal_only=true` で動画由来サンプルのみに絞れます。`data.sources=[racketvision,ball_yolo]` のようにソース選択も可能です。
+
 ### Sample契約（学習データ）
 
 `T = model.num_frames`（=8）、`K = data.max_instances`（=16）。

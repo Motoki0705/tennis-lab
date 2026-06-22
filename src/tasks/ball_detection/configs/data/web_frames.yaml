@@ -1,0 +1,21 @@
+defaults:
+  - augmentation: default
+  - _self_
+
+source: web
+data_dir: data/tennis/web/unified
+
+batch_size: 16
+num_workers: 8
+pin_memory: true
+
+# Phase 1 detection pre-training keeps every annotated frame (single-frame).
+# Set true once a multi-frame phase needs only video-sourced (temporal) frames.
+temporal_only: false
+# null/"all" uses every source; or a list, e.g. [racketvision, ball_yolo].
+sources: all
+
+image_size: [288, 512]
+heatmap_size: [288, 512]
+sigma_ratio: 0.012
+max_instances: 16
