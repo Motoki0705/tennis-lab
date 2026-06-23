@@ -10,6 +10,8 @@ from typing import Any, Self
 import torch
 from torch import Tensor, nn
 
+from src.utils.device import resolve_device
+
 
 class BasePredictor(ABC):
     """Abstract base class for inference predictors.
@@ -107,12 +109,7 @@ class BasePredictor(ABC):
         Raises:
             RuntimeError: If CUDA is requested but unavailable and fallback is disabled.
         """
-        resolved = torch.device(device)
-        if resolved.type == "cuda" and not torch.cuda.is_available():
-            if allow_fallback:
-                return torch.device("cpu")
-            raise RuntimeError("CUDA is not available")
-        return resolved
+        return resolve_device(device, allow_fallback=allow_fallback)
 
     @staticmethod
     def _ensure_checkpoint(

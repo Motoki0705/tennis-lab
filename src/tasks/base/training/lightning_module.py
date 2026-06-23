@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pytorch_lightning as pl
-import torch
-from torch import Tensor
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
+
+from src.utils.tensor_utils import to_numpy
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -148,15 +148,7 @@ class BaseLightningModule(pl.LightningModule):
 
     @staticmethod
     def _to_numpy(value: Any) -> np.ndarray:
-        if isinstance(value, Tensor):
-            tensor = value.detach().cpu()
-            # numpy has no bfloat16 (and to keep things uniform, half too):
-            # upcast to float32 before converting, otherwise .numpy() raises
-            # "Got unsupported ScalarType BFloat16" under bf16-mixed precision.
-            if tensor.dtype in (torch.bfloat16, torch.float16):
-                tensor = tensor.float()
-            return tensor.numpy()  # type: ignore[no-any-return]
-        return np.asarray(value)  # type: ignore[no-any-return]
+        return to_numpy(value)
 
     def collect_test_predictions(self, batch: Any, result: dict[str, Any]) -> None:
         """Accumulate one test batch's prediction arrays into the buffer."""

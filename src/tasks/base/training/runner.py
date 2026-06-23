@@ -28,6 +28,7 @@ from pytorch_lightning.callbacks import (
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
+from src.utils.device import select_accelerator
 
 
 class BaseTrainingRunner:
@@ -348,10 +349,7 @@ class BaseTrainingRunner:
 
     def select_devices(self, config: Any) -> tuple[str, int]:
         """Select accelerator and device count."""
-        gpus = int(config.run.gpus)
-        if gpus > 0 and torch.cuda.is_available():
-            return "gpu", gpus
-        return "cpu", 1
+        return select_accelerator(int(config.run.gpus))
 
     def apply_runtime_settings(self, config: Any) -> None:
         """Apply backend/runtime settings from training config."""

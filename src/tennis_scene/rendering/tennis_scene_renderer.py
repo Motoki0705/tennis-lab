@@ -20,6 +20,10 @@ import numpy as np
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+from src.utils.geometry.matrices import (
+    axis_angle_to_rotation_matrix,
+    rotation_matrix_z,
+)
 from src.utils.rendering.ball_renderer import BallRenderer, BallStyle
 from src.utils.rendering.court_renderer import CourtRenderer, CourtStyle
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer, SkeletonStyle
@@ -149,38 +153,10 @@ class TennisSceneRenderer:
         return scene.player_yaw
 
     def _axis_angle_to_matrix(self, axis_angle: NDArray[np.float32]) -> NDArray[np.float32]:
-        theta = np.linalg.norm(axis_angle, axis=-1)
-        denom = np.where(theta > 1e-8, theta, 1.0)
-        axis = axis_angle / denom[..., None]
-        x = axis[..., 0]
-        y = axis[..., 1]
-        z = axis[..., 2]
-        c = np.cos(theta)
-        s = np.sin(theta)
-        one_minus_c = 1.0 - c
-
-        rot = np.empty((*axis_angle.shape[:-1], 3, 3), dtype=np.float32)
-        rot[..., 0, 0] = c + x * x * one_minus_c
-        rot[..., 0, 1] = x * y * one_minus_c - z * s
-        rot[..., 0, 2] = x * z * one_minus_c + y * s
-        rot[..., 1, 0] = y * x * one_minus_c + z * s
-        rot[..., 1, 1] = c + y * y * one_minus_c
-        rot[..., 1, 2] = y * z * one_minus_c - x * s
-        rot[..., 2, 0] = z * x * one_minus_c - y * s
-        rot[..., 2, 1] = z * y * one_minus_c + x * s
-        rot[..., 2, 2] = c + z * z * one_minus_c
-        return rot
+        return axis_angle_to_rotation_matrix(axis_angle)
 
     def _rotation_matrix_z(self, yaw: NDArray[np.float32]) -> NDArray[np.float32]:
-        cos_y = np.cos(yaw)
-        sin_y = np.sin(yaw)
-        rot = np.zeros((*yaw.shape, 3, 3), dtype=np.float32)
-        rot[..., 0, 0] = cos_y
-        rot[..., 0, 1] = -sin_y
-        rot[..., 1, 0] = sin_y
-        rot[..., 1, 1] = cos_y
-        rot[..., 2, 2] = 1.0
-        return rot
+        return rotation_matrix_z(yaw)
 
     def _validate_required_smpl_fields(self, scene: SceneResult) -> None:
         missing: list[str] = []

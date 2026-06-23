@@ -9,11 +9,15 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+import numpy as np
 import torch
 from torch import Tensor
 
 IMAGENET_MEAN: tuple[float, float, float] = (0.485, 0.456, 0.406)
 IMAGENET_STD: tuple[float, float, float] = (0.229, 0.224, 0.225)
+# float32 array views with identical values, for numpy-based normalization paths.
+_IMAGENET_MEAN_ARR = np.asarray(IMAGENET_MEAN, dtype=np.float32)
+_IMAGENET_STD_ARR = np.asarray(IMAGENET_STD, dtype=np.float32)
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
@@ -56,6 +60,19 @@ def parse_float_range(value: Any, name: str) -> tuple[float, float]:
     return out
 
 
+def parse_int_range(value: Any, name: str) -> tuple[int, int]:
+    """Parse a non-negative two-element integer range ``(min, max)`` from config."""
+    if not isinstance(value, Sequence) or len(value) != 2:
+        raise ValueError(f"{name} must be a sequence with two elements.")
+    low = int(value[0])
+    high = int(value[1])
+    if low < 0 or high < 0:
+        raise ValueError(f"{name} must be non-negative.")
+    if low > high:
+        raise ValueError(f"{name} must satisfy min <= max.")
+    return low, high
+
+
 def normalize_tensor_images_imagenet(
     images: Tensor,
     *,
@@ -73,6 +90,37 @@ def normalize_tensor_images_imagenet(
     mean_tensor = images.new_tensor(mean).view(*view_shape)
     std_tensor = images.new_tensor(std).view(*view_shape)
     return (images - mean_tensor) / std_tensor
+
+
+def denormalize_tensor_images_imagenet(
+    images: Tensor,
+    *,
+    mean: Sequence[float] = IMAGENET_MEAN,
+    std: Sequence[float] = IMAGENET_STD,
+) -> Tensor:
+    """Invert ImageNet normalization for ``(..., 3, H, W)`` image tensors."""
+    if images.ndim < 3 or images.shape[-3] != 3:
+        raise ValueError(
+            "Expected images with shape (..., 3, H, W) for ImageNet denormalization, "
+            f"got {tuple(images.shape)}."
+        )
+    view_shape = [1] * images.ndim
+    view_shape[-3] = 3
+    mean_tensor = images.new_tensor(mean).view(*view_shape)
+    std_tensor = images.new_tensor(std).view(*view_shape)
+    return images * std_tensor + mean_tensor
+
+
+def normalize_frames_imagenet(
+    frames: list[np.ndarray],
+    *,
+    mean: np.ndarray = _IMAGENET_MEAN_ARR,
+    std: np.ndarray = _IMAGENET_STD_ARR,
+) -> list[np.ndarray]:
+    """Apply ImageNet normalization to a list of HWC float32 numpy frames."""
+    mean_arr = np.asarray(mean, dtype=np.float32).reshape(1, 1, 3)
+    std_arr = np.asarray(std, dtype=np.float32).reshape(1, 1, 3)
+    return [((frame - mean_arr) / std_arr).astype(np.float32) for frame in frames]
 
 
 def _rand_like_shape(

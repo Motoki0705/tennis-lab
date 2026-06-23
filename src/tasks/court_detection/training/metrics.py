@@ -12,7 +12,7 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from src.utils.data.heatmaps import heatmaps_to_argmax
+from src.utils.data.heatmaps import heatmaps_to_pixel_coords
 
 
 class CourtDetectionMetrics:
@@ -66,7 +66,7 @@ class CourtDetectionMetrics:
 
     def _update_kp(self, logits: Tensor, batch: dict[str, Tensor]) -> None:
         """Compute argmax distance to ground truth keypoints."""
-        coords_pred = _heatmaps_to_pixel_coords(logits)  # (B, K, 2)
+        coords_pred = heatmaps_to_pixel_coords(logits)  # (B, K, 2)
         coords_gt = batch["keypoints"]  # (B, K, 2)
         dist = torch.norm(coords_pred.cpu() - coords_gt.cpu(), dim=-1)  # (B, K)
         self._distances.append(dist.detach())
@@ -118,30 +118,3 @@ class CourtDetectionMetrics:
         else:
             self._dice_sum = 0.0
             self._dice_count = 0
-
-
-def _heatmaps_to_pixel_coords(heatmaps: Tensor) -> Tensor:
-    """Convert heatmaps to pixel coordinates via shared argmax decode.
-
-    Parameters
-    ----------
-    heatmaps:
-        ``[B, K, H, W]`` raw logits.
-
-    Returns
-    -------
-    Tensor
-        ``[B, K, 2]`` pixel coordinates ``(x, y)``.
-    """
-    height, width = heatmaps.shape[-2:]
-    coords_normalized, _ = heatmaps_to_argmax(heatmaps)
-    coords = coords_normalized.clone()
-    if width > 1:
-        coords[..., 0] = coords[..., 0] * float(width - 1)
-    else:
-        coords[..., 0] = 0.0
-    if height > 1:
-        coords[..., 1] = coords[..., 1] * float(height - 1)
-    else:
-        coords[..., 1] = 0.0
-    return coords

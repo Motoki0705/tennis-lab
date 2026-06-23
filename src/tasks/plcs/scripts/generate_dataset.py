@@ -14,12 +14,10 @@ Notes:
 from __future__ import annotations
 
 import json
-import random
 import sys
 from pathlib import Path
 
 import hydra
-import numpy as np
 import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
@@ -29,23 +27,12 @@ from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
 from src.tasks.plcs.generate_dataset.utils.parallel_runner import (
     generate_parallel_scenes,
 )
-
-
-def _seed_everything(seed: int) -> None:
-    """Seed Python, NumPy, and Torch RNGs."""
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-
-
-def _resolve_device(device: str) -> str:
-    if device == "auto":
-        return "cuda" if torch.cuda.is_available() else "cpu"
-    return device
+from src.utils.device import resolve_device
+from src.utils.seeding import seed_everything
 
 
 def _prepare_paths(cfg: DictConfig) -> DictConfig:
-    cfg.run.device = _resolve_device(str(cfg.run.device))
+    cfg.run.device = str(resolve_device(cfg.run.device))
     cfg.paths.smplh_model_path = to_absolute_path(str(cfg.paths.smplh_model_path))
     cfg.run.output_dir = to_absolute_path(str(cfg.run.output_dir))
 
@@ -65,7 +52,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
 
     # Set random seeds
     seed = int(cfg.run.seed)
-    _seed_everything(seed)
+    seed_everything(seed)
 
     # Create output directory
     output_dir = Path(cfg.run.output_dir)

@@ -7,6 +7,7 @@ import math
 import torch
 from torch import Tensor
 
+from src.utils.geometry.angles import angular_error
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 from src.utils.tensor_utils import normalize_padding_mask
 
@@ -121,11 +122,7 @@ class PLCSMetrics:
         self._z_errors.append(z_error.detach().cpu())
 
         # Angular error
-        pred_angle = torch.atan2(pred_rotation[:, 1], pred_rotation[:, 0])
-        target_angle = torch.atan2(target_rotation[:, 1], target_rotation[:, 0])
-        angle_diff = pred_angle - target_angle
-        angle_diff = torch.atan2(torch.sin(angle_diff), torch.cos(angle_diff))
-        angular_error_rad = angle_diff.abs()
+        angular_error_rad = angular_error(pred_rotation, target_rotation)
         angular_error_deg = angular_error_rad * 180.0 / math.pi
         self._angular_errors.append(angular_error_deg.detach().cpu())
 
