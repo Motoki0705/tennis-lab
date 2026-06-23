@@ -1,0 +1,57 @@
+schema: ball_detection_evaluation_manifest_v1
+output_dir: outputs/ball_detection/evaluation
+device: auto
+resume: true
+fail_fast: false
+
+metrics:
+  peak_threshold: 0.5
+  ball_distance_threshold: 4.0
+  nms_kernel: 9
+  max_predictions_per_frame: 8
+
+performance:
+  warmup_batches: 1
+  max_batches_per_split: null
+
+datasets:
+  tracknet:
+    config: rgb_sequence
+    splits: [val, test]
+    overrides:
+      batch_size: 4
+      num_workers: 4
+  web:
+    config: web_frames
+    splits: [test]
+    overrides:
+      batch_size: 8
+      num_workers: 4
+      sampling:
+        mode: static
+
+models:
+  - id: convnext-tracknet
+    category: architecture-controlled
+    checkpoint: outputs/ball_detection/convnext/logs/version_0/checkpoints/last.ckpt
+    expected_model_name: conv_next_unet
+    datasets: [tracknet]
+    strict: true
+
+  # Enable after a TrackNet-only DINOv3 run is available.
+  - id: dinov3-tracknet
+    enabled: false
+    category: architecture-controlled
+    checkpoint: outputs/ball_detection/dinov3_rope_tracknet/checkpoints/last.ckpt
+    expected_model_name: dinov3_rope
+    datasets: [tracknet]
+    strict: true
+
+  # Enable after Web-static + temporal training is available.
+  - id: dinov3-full
+    enabled: false
+    category: full-strategy
+    checkpoint: outputs/ball_detection/dinov3_rope_full/checkpoints/last.ckpt
+    expected_model_name: dinov3_rope
+    datasets: [tracknet, web]
+    strict: true

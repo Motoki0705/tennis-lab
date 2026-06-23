@@ -161,6 +161,16 @@ YouTube動画から学習データを作る3ステップ。CLIは `scripts/youtu
 
 複数の予測ピークと複数GTをハンガリアン法で対応付け（距離閾値4.0px）、`precision` / `recall` / `f1` / `mean_distance_px` を `outputs/ball_detection/eval/` に出力します。
 
+複数checkpointを同一条件で比較する場合はmanifest評価を使用します。
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.evaluate_manifest
+.venv/bin/python -m src.tasks.ball_detection.scripts.evaluate_manifest \
+    manifest_path=src/tasks/ball_detection/configs/evaluation/ball_detector_comparison.yaml
+```
+
+manifestはcheckpoint、`expected_model_name`、TrackNet/Webの固定`val`/`test` split、`architecture-controlled` / `full-strategy`カテゴリを列挙します。未作成checkpointは`enabled: false`のまま定義できます。実行結果はjob単位のJSON、`summary.json`、`comparison.csv`、カテゴリ別`comparison.md`として保存されます。全体/source別の検出指標、明示的負例frame FPR、latency、throughput、peak VRAM、checkpoint/config/git/split/schema provenanceを記録します。成功済みjobはfingerprintが一致すれば再利用され、失敗または変更されたjobだけが再実行されます。
+
 ## 可視化
 
 ```bash
