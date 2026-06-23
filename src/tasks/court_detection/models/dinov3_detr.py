@@ -22,22 +22,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.utils.paths import resolve_project_path
+
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[4]
 _DEFAULT_DINOV3_REPOSITORY = Path("third_party/dinov3")
 _DEFAULT_DINOV3_CHECKPOINT = Path(
     "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
 )
-
-
-def _resolve_project_path(path: str | Path) -> Path:
-    resolved = Path(path).expanduser()
-    if not resolved.is_absolute():
-        resolved = _PROJECT_ROOT / resolved
-    return resolved.resolve()
 
 
 class DINOv3BackboneAdapter(nn.Module):
@@ -81,8 +75,8 @@ def load_dinov3_backbone(
     strict: bool = True,
 ) -> DINOv3BackboneAdapter:
     """Load a DINOv3 backbone from the vendored repository and local weights."""
-    repository = _resolve_project_path(repository_path)
-    checkpoint = _resolve_project_path(checkpoint_path)
+    repository = resolve_project_path(repository_path)
+    checkpoint = resolve_project_path(checkpoint_path)
     if not repository.is_dir():
         raise FileNotFoundError(f"DINOv3 repository not found: {repository}")
     if not checkpoint.is_file():

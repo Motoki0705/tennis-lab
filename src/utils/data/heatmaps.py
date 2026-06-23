@@ -135,6 +135,39 @@ def heatmaps_to_argmax(heatmaps: Tensor) -> tuple[Tensor, Tensor]:
     return coords, values
 
 
+def heatmaps_to_pixel_coords(
+    heatmaps: Tensor,
+    *,
+    height: int | None = None,
+    width: int | None = None,
+) -> Tensor:
+    """Convert heatmaps to pixel coordinates via hard argmax.
+
+    Decodes ``(..., H, W)`` heatmaps to ``(..., 2)`` ``(x, y)`` pixel coordinates
+    by taking the argmax (see :func:`heatmaps_to_argmax`) and scaling the
+    normalized result by ``(width - 1, height - 1)``.
+
+    Args:
+        heatmaps: Tensor with shape ``(..., H, W)``.
+        height: Target pixel height. Defaults to the heatmap height.
+        width: Target pixel width. Defaults to the heatmap width.
+
+    Returns:
+        Pixel coordinates with shape ``(..., 2)`` in ``(x, y)`` ordering.
+    """
+    *_, heatmap_h, heatmap_w = heatmaps.shape
+    out_height = heatmap_h if height is None else int(height)
+    out_width = heatmap_w if width is None else int(width)
+    coords_normalized, _ = heatmaps_to_argmax(heatmaps)
+    scale = coords_normalized.new_tensor(
+        [
+            float(out_width - 1) if out_width > 1 else 0.0,
+            float(out_height - 1) if out_height > 1 else 0.0,
+        ]
+    )
+    return coords_normalized * scale
+
+
 def heatmaps_to_soft_argmax(
     heatmaps: Tensor,
     *,

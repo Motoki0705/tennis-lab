@@ -15,14 +15,12 @@ Notes:
 from __future__ import annotations
 
 import logging
-import random
 import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import TypeVar, cast
 
 import hydra
-import numpy as np
 import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
@@ -33,6 +31,7 @@ from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
 from src.tasks.blcs.generate_dataset.utils.parallel_runner import (
     generate_parallel_scenes,
 )
+from src.utils.seeding import seed_everything
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,12 +40,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., int])
-
-
-def _seed_everything(seed: int) -> None:
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
 
 
 def _hydra_main(func: F) -> F:
@@ -71,7 +64,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     OmegaConf.save(cfg, output_dir / "config.yaml")
 
     seed = int(cfg.run.seed)
-    _seed_everything(seed)
+    seed_everything(seed)
 
     train_ratio = float(cfg.run.train_ratio)
     val_ratio = float(cfg.run.val_ratio)

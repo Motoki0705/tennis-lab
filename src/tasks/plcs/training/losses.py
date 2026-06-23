@@ -15,6 +15,13 @@ import torch.nn as nn
 from torch import Tensor
 
 from src.tasks.plcs.utils.pose_geometry import world_pose_to_canonical_pose
+from src.utils.geometry.angles import wrapped_angle_diff as _wrapped_angle_diff
+from src.utils.geometry.skeleton import (
+    compute_bone_lengths,
+    compute_joint_angles,
+    compute_torsion_angles,
+    compute_torso_twist,
+)
 from src.utils.schema.player import (
     COCO17_BONE_LENGTH_EDGES as BONE_LENGTH_EDGES,
 )
@@ -23,9 +30,6 @@ from src.utils.schema.player import (
 )
 from src.utils.schema.player import (
     COCO17_TORSION_QUADRUPLETS as TORSION_QUADRUPLETS,
-)
-from src.utils.schema.player import (
-    COCO17_TORSO_TWIST_JOINTS as TORSO_TWIST_JOINTS,
 )
 from src.utils.tensor_utils import masked_mean, normalize_padding_mask
 
@@ -154,217 +158,6 @@ def rotation_loss(pred: Tensor, target: Tensor, reduction: str = "mean") -> Tens
     if reduction == "sum":
         return loss.sum()
     return loss
-
-
-def angular_error(pred: Tensor, target: Tensor) -> Tensor:
-    """Compute wrapped angular error in radians.
-
-    Args:
-        pred: Predicted ``(cos, sin)``, shape ``(..., 2)``.
-        target: Target ``(cos, sin)``, shape ``(..., 2)``.
-
-    Returns:
-        Tensor: Absolute angular error in radians, shape ``(...)``.
-
-    """
-    pred_angle = torch.atan2(pred[..., 1], pred[..., 0])
-    target_angle = torch.atan2(target[..., 1], target[..., 0])
-    diff = pred_angle - target_angle
-    diff = torch.atan2(torch.sin(diff), torch.cos(diff))
-    return diff.abs()
-
-
-# ---------------------------------------------------------------------------
-# Geometry helpers
-# ---------------------------------------------------------------------------
-
-
-def _normalize_vector(v: Tensor, *, eps: float = 1e-8) -> Tensor:
-    """Normalize vectors along the last dimension."""
-    return v / v.norm(dim=-1, keepdim=True).clamp_min(eps)
-
-
-def _wrapped_angle_diff(pred_angle: Tensor, target_angle: Tensor) -> Tensor:
-    """Return signed wrapped angle difference in ``[-pi, pi]``."""
-    diff = pred_angle - target_angle
-    return torch.atan2(torch.sin(diff), torch.cos(diff))
-
-
-def compute_joint_angles(
-    pose: Tensor,
-    triplets: tuple[tuple[int, int, int], ...] = JOINT_ANGLE_TRIPLETS,
-) -> Tensor:
-    """Compute interior joint angles in radians.
-
-    For each triplet ``(a, vertex, c)``, computes the angle at ``vertex``
-    between bones ``vertex -> a`` and ``vertex -> c``.
-
-    The angle is computed with ``atan2(||v1 x v2||, v1 . v2)``, which is
-    stable near 0 and pi.
-
-    Args:
-        pose: Joint positions, shape ``(..., J, 3)``.
-        triplets: Joint index triplets.
-
-    Returns:
-        Tensor: Angles in radians, shape ``(..., len(triplets))``.
-
-    """
-    a_idx = [t[0] for t in triplets]
-    b_idx = [t[1] for t in triplets]
-    c_idx = [t[2] for t in triplets]
-
-    vertex = pose[..., b_idx, :]
-    v1 = pose[..., a_idx, :] - vertex
-    v2 = pose[..., c_idx, :] - vertex
-
-    cross_norm = torch.cross(v1, v2, dim=-1).norm(dim=-1)
-    dot = (v1 * v2).sum(dim=-1)
-    return torch.atan2(cross_norm, dot)
-
-
-def compute_torsion_angles(
-    pose: Tensor,
-    quadruplets: tuple[tuple[int, int, int, int], ...] = TORSION_QUADRUPLETS,
-    *,
-    eps: float = 1e-8,
-) -> Tensor:
-    """Compute signed torsion / dihedral angles in radians.
-
-    For each quadruplet ``(a, b, c, d)``, computes the signed angle between
-    the two planes:
-
-    - plane 1: ``(a, b, c)``
-    - plane 2: ``(b, c, d)``
-
-    This captures 3D bending direction of limbs.
-
-    Args:
-        pose: Joint positions, shape ``(..., J, 3)``.
-        quadruplets: Joint index quadruplets.
-        eps: Numerical stability epsilon.
-
-    Returns:
-        Tensor: Signed torsion angles in radians, shape
-        ``(..., len(quadruplets))``.
-
-    """
-    a_idx = [q[0] for q in quadruplets]
-    b_idx = [q[1] for q in quadruplets]
-    c_idx = [q[2] for q in quadruplets]
-    d_idx = [q[3] for q in quadruplets]
-
-    p0 = pose[..., a_idx, :]
-    p1 = pose[..., b_idx, :]
-    p2 = pose[..., c_idx, :]
-    p3 = pose[..., d_idx, :]
-
-    b0 = p1 - p0
-    b1 = p2 - p1
-    b2 = p3 - p2
-
-    n1 = _normalize_vector(torch.cross(b0, b1, dim=-1), eps=eps)
-    n2 = _normalize_vector(torch.cross(b1, b2, dim=-1), eps=eps)
-    b1n = _normalize_vector(b1, eps=eps)
-
-    # Signed dihedral angle.
-    m1 = torch.cross(n1, b1n, dim=-1)
-    x = (n1 * n2).sum(dim=-1)
-    y = (m1 * n2).sum(dim=-1)
-    return torch.atan2(y, x)
-
-
-def signed_angle_around_axis(
-    v1: Tensor,
-    v2: Tensor,
-    axis: Tensor,
-    *,
-    eps: float = 1e-8,
-) -> Tensor:
-    """Compute signed angle from ``v1`` to ``v2`` around ``axis``.
-
-    The vectors are first projected onto the plane perpendicular to ``axis``.
-    This is useful for measuring body twist around the torso axis.
-
-    Args:
-        v1: First vector, shape ``(..., 3)``.
-        v2: Second vector, shape ``(..., 3)``.
-        axis: Rotation axis, shape ``(..., 3)``.
-        eps: Numerical stability epsilon.
-
-    Returns:
-        Tensor: Signed angle in radians, shape ``(...)``.
-
-    """
-    axis = _normalize_vector(axis, eps=eps)
-
-    v1_proj = v1 - (v1 * axis).sum(dim=-1, keepdim=True) * axis
-    v2_proj = v2 - (v2 * axis).sum(dim=-1, keepdim=True) * axis
-
-    v1_proj = _normalize_vector(v1_proj, eps=eps)
-    v2_proj = _normalize_vector(v2_proj, eps=eps)
-
-    x = (v1_proj * v2_proj).sum(dim=-1)
-    y = (torch.cross(v1_proj, v2_proj, dim=-1) * axis).sum(dim=-1)
-    return torch.atan2(y, x)
-
-
-def compute_torso_twist(
-    pose: Tensor,
-    joints: tuple[int, int, int, int] = TORSO_TWIST_JOINTS,
-) -> Tensor:
-    """Compute shoulder-hip twist angle from COCO-17 pose.
-
-    The twist is the signed angle from the hip axis to the shoulder axis
-    around the torso axis.
-
-    Args:
-        pose: Joint positions, shape ``(..., 17, 3)``.
-        joints: ``(left_shoulder, right_shoulder, left_hip, right_hip)``.
-
-    Returns:
-        Tensor: Signed torso twist angle in radians, shape ``(...)``.
-
-    """
-    left_shoulder_idx, right_shoulder_idx, left_hip_idx, right_hip_idx = joints
-
-    left_shoulder = pose[..., left_shoulder_idx, :]
-    right_shoulder = pose[..., right_shoulder_idx, :]
-    left_hip = pose[..., left_hip_idx, :]
-    right_hip = pose[..., right_hip_idx, :]
-
-    mid_shoulder = 0.5 * (left_shoulder + right_shoulder)
-    mid_hip = 0.5 * (left_hip + right_hip)
-
-    shoulder_axis = right_shoulder - left_shoulder
-    hip_axis = right_hip - left_hip
-    torso_axis = mid_shoulder - mid_hip
-
-    return signed_angle_around_axis(hip_axis, shoulder_axis, torso_axis)
-
-
-def compute_bone_lengths(
-    pose: Tensor,
-    edges: tuple[tuple[int, int], ...] = BONE_LENGTH_EDGES,
-    *,
-    eps: float = 1e-8,
-) -> Tensor:
-    """Compute bone lengths for selected COCO body edges.
-
-    Args:
-        pose: Joint positions, shape ``(..., J, 3)``.
-        edges: Bone edges as ``(joint_a, joint_b)``.
-        eps: Numerical stability epsilon.
-
-    Returns:
-        Tensor: Bone lengths, shape ``(..., len(edges))``.
-
-    """
-    a_idx = [e[0] for e in edges]
-    b_idx = [e[1] for e in edges]
-
-    bone_vec = pose[..., a_idx, :] - pose[..., b_idx, :]
-    return bone_vec.norm(dim=-1).clamp_min(eps)
 
 
 # ---------------------------------------------------------------------------

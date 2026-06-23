@@ -8,6 +8,8 @@ import cv2
 import torch
 from numpy.typing import NDArray
 
+from src.utils.data.augmentation import normalize_tensor_images_imagenet
+
 
 class BgrToTensorTransform:
     """Convert OpenCV BGR frames into CHW float RGB tensors."""
@@ -38,14 +40,9 @@ def normalize_tensor_imagenet(
     mean: Sequence[float] = (0.485, 0.456, 0.406),
     std: Sequence[float] = (0.229, 0.224, 0.225),
 ) -> torch.Tensor:
-    """Apply ImageNet normalization to ``(..., 3, H, W)`` tensors."""
-    if images.ndim < 3 or images.shape[-3] != 3:
-        raise ValueError(
-            "Expected images with shape (..., 3, H, W) for ImageNet normalization, "
-            f"got {tuple(images.shape)}."
-        )
-    view_shape = [1] * images.ndim
-    view_shape[-3] = 3
-    mean_tensor = images.new_tensor(mean).view(*view_shape)
-    std_tensor = images.new_tensor(std).view(*view_shape)
-    return (images - mean_tensor) / std_tensor
+    """Apply ImageNet normalization to ``(..., 3, H, W)`` tensors.
+
+    Thin alias kept for the video pipeline's public API; delegates to the
+    canonical :func:`src.utils.data.augmentation.normalize_tensor_images_imagenet`.
+    """
+    return normalize_tensor_images_imagenet(images, mean=mean, std=std)

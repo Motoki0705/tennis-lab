@@ -42,6 +42,7 @@ from src.tasks.plcs.data.datamodule import PLCSDataModule
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
+from src.utils.device import resolve_device
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -338,9 +339,9 @@ def _plot_distribution(result: dict[str, Any], out_path: Path, dpi: int) -> None
 
 
 def _resolve_device(device_cfg: Any) -> torch.device:
-    if device_cfg is not None:
-        return torch.device(str(device_cfg))
-    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device_cfg is None:
+        return resolve_device("auto")
+    return resolve_device(str(device_cfg))
 
 
 @hydra_main(

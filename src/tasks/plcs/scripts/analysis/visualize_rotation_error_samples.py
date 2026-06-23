@@ -24,7 +24,6 @@ from typing import Any, TypeVar, cast
 
 import hydra
 import numpy as np
-import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 from tqdm import tqdm
@@ -33,6 +32,7 @@ from src.tasks.plcs.generate_dataset.io.dataset_io import load_scene
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.visualization.adapters.predict_inputs import build_multiview_inputs
 from src.tasks.plcs.visualization.orchestrator import RuntimeConfig, run_visualization
+from src.utils.device import resolve_device
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -44,10 +44,7 @@ def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
 
 
 def _resolve_device(device_cfg: Any) -> str:
-    device = str(device_cfg)
-    if device == "auto":
-        return "cuda" if torch.cuda.is_available() else "cpu"
-    return device
+    return str(resolve_device(str(device_cfg)))
 
 
 def _resolve_cameras(raw: Any, num_cameras: int) -> list[int]:
