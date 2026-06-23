@@ -20,10 +20,11 @@ Design rationale:
   avoids per-file open() overhead and inode/block padding waste.
 * COCO still images already exist on disk, so they are *referenced in place*
   (``store == STORE_FILE``) rather than duplicated into shards.
-* Every sample carries a ``temporal`` flag (1 if it came from a video with a
-  recoverable frame order, 0 for shuffled still images) plus ``frame_index``
-  and ``source`` provenance, so a later multi-frame phase can rebuild temporal
-  windows without re-deriving the source mapping.
+* Every sample carries a sequence id, split, frame index, and explicit label
+  state. Positive and explicitly annotated negative frames are retained;
+  frames whose annotation state is unknown are not written to the store.
+* Sequence ids are the split unit. Augmented variants and frames from the same
+  video therefore cannot leak across train/validation/test.
 """
 
 from __future__ import annotations
@@ -42,10 +43,19 @@ from src.tasks.ball_detection.data.types import FrameLabel
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-SCHEMA_VERSION = "web_ball_frames_v1"
+SCHEMA_VERSION = "web_ball_frames_v2"
 
 STORE_SHARD = 0
 STORE_FILE = 1
+
+LABEL_NEGATIVE = 0
+LABEL_POSITIVE = 1
+LABEL_UNKNOWN = 2
+LABEL_NAMES = {
+    LABEL_NEGATIVE: "negative",
+    LABEL_POSITIVE: "positive",
+    LABEL_UNKNOWN: "unknown",
+}
 
 SPLIT_CODES = {"train": 0, "val": 1, "test": 2}
 SPLIT_NAMES = {code: name for name, code in SPLIT_CODES.items()}
@@ -67,7 +77,9 @@ SAMPLE_FIELDS: dict[str, type[np.generic]] = {
     "temporal": np.uint8,
     "split": np.uint8,
     "source_id": np.int32,
+    "sequence_id": np.int32,
     "frame_index": np.int32,
+    "label_state": np.uint8,
     "inst_start": np.int64,
     "inst_count": np.int32,
 }
@@ -107,6 +119,7 @@ class WebFrameStore:
             self._columns = {key: data[key] for key in data.files}
         strings = json.loads(strings_path.read_text(encoding="utf-8"))
         self.sources: list[str] = list(strings.get("sources", []))
+        self.sequences: list[str] = list(strings.get("sequences", []))
         self.paths: list[str] = list(strings.get("paths", []))
         self.schema_version: str = str(strings.get("schema", SCHEMA_VERSION))
 
@@ -128,6 +141,67 @@ class WebFrameStore:
         missing += [name for name in INSTANCE_FIELDS if name not in self._columns]
         if missing:
             raise ValueError(f"Web store index is missing columns: {missing}")
+        sample_count = int(self._columns["store"].shape[0])
+        bad_sample_lengths = {
+            name: int(self._columns[name].shape[0])
+            for name in SAMPLE_FIELDS
+            if int(self._columns[name].shape[0]) != sample_count
+        }
+        if bad_sample_lengths:
+            raise ValueError(
+                "Web store sample columns have inconsistent lengths: "
+                f"expected={sample_count}, actual={bad_sample_lengths}."
+            )
+        instance_count = int(self._columns["inst_x"].shape[0])
+        bad_instance_lengths = {
+            name: int(self._columns[name].shape[0])
+            for name in INSTANCE_FIELDS
+            if int(self._columns[name].shape[0]) != instance_count
+        }
+        if bad_instance_lengths:
+            raise ValueError(
+                "Web store instance columns have inconsistent lengths: "
+                f"expected={instance_count}, actual={bad_instance_lengths}."
+            )
+        if sample_count == 0:
+            raise ValueError("Web store contains no samples.")
+        if np.any(self._columns["source_id"] < 0) or np.any(
+            self._columns["source_id"] >= len(self.sources)
+        ):
+            raise ValueError("Web store contains an invalid source_id.")
+        if np.any(self._columns["sequence_id"] < 0) or np.any(
+            self._columns["sequence_id"] >= len(self.sequences)
+        ):
+            raise ValueError("Web store contains an invalid sequence_id.")
+        if not np.isin(self._columns["split"], list(SPLIT_NAMES)).all():
+            raise ValueError("Web store contains an invalid split code.")
+        starts = self._columns["inst_start"]
+        counts = self._columns["inst_count"]
+        if np.any(starts < 0) or np.any(counts < 0):
+            raise ValueError("Web store contains negative instance bounds.")
+        if np.any(starts + counts > instance_count):
+            raise ValueError("Web store instance bounds exceed the instance table.")
+        label_states = self._columns["label_state"]
+        if not np.isin(label_states, list(LABEL_NAMES)).all():
+            raise ValueError("Web store contains an invalid label_state.")
+        positive = label_states == LABEL_POSITIVE
+        negative = label_states == LABEL_NEGATIVE
+        if np.any(positive & (self._columns["inst_count"] <= 0)):
+            raise ValueError("Positive web samples must contain an instance.")
+        if np.any(negative & (self._columns["inst_count"] != 0)):
+            raise ValueError("Negative web samples must not contain instances.")
+
+        sequence_splits: dict[int, int] = {}
+        for sequence_id, split in zip(
+            self._columns["sequence_id"].tolist(),
+            self._columns["split"].tolist(),
+            strict=True,
+        ):
+            existing = sequence_splits.setdefault(int(sequence_id), int(split))
+            if existing != int(split):
+                raise ValueError(
+                    f"Web sequence_id={sequence_id} spans multiple splits."
+                )
 
     def __len__(self) -> int:
         return int(self._columns["store"].shape[0])
@@ -150,7 +224,9 @@ class WebFrameStore:
         if temporal_only:
             mask &= self._columns["temporal"] == 1
         if sources is not None:
-            wanted = {self.sources.index(name) for name in sources if name in self.sources}
+            wanted = {
+                self.sources.index(name) for name in sources if name in self.sources
+            }
             if not wanted:
                 raise ValueError(
                     f"None of sources={list(sources)} exist in store "
@@ -159,6 +235,70 @@ class WebFrameStore:
             mask &= np.isin(self._columns["source_id"], list(wanted))
         indices: np.ndarray = np.nonzero(mask)[0].astype(np.int64)
         return indices
+
+    def temporal_windows(
+        self,
+        split: str,
+        *,
+        num_frames: int,
+        frame_step: int = 1,
+        sample_stride: int = 1,
+        max_frame_gap: int | None = None,
+        sources: Sequence[str] | None = None,
+    ) -> list[tuple[int, ...]]:
+        """Build ordered windows from explicitly labeled temporal samples.
+
+        ``frame_step`` is measured in stored labeled observations rather than
+        source-video FPS. RoPE consumers can therefore use the local order
+        ``0..T-1`` independently of the original frame indices.
+        """
+        if num_frames <= 0:
+            raise ValueError("num_frames must be positive.")
+        if frame_step <= 0:
+            raise ValueError("frame_step must be positive.")
+        if sample_stride <= 0:
+            raise ValueError("sample_stride must be positive.")
+        if max_frame_gap is not None and max_frame_gap <= 0:
+            raise ValueError("max_frame_gap must be positive when set.")
+
+        indices = self.split_indices(
+            split,
+            temporal_only=True,
+            sources=sources,
+        )
+        by_sequence: dict[int, list[int]] = {}
+        for index in indices.tolist():
+            sequence_id = int(self._columns["sequence_id"][index])
+            by_sequence.setdefault(sequence_id, []).append(index)
+
+        windows: list[tuple[int, ...]] = []
+        span = (num_frames - 1) * frame_step + 1
+        for sequence_indices in by_sequence.values():
+            ordered = sorted(
+                sequence_indices,
+                key=lambda index: int(self._columns["frame_index"][index]),
+            )
+            if len(ordered) < span:
+                continue
+            for start in range(0, len(ordered) - span + 1, sample_stride):
+                window = tuple(
+                    ordered[start + offset * frame_step] for offset in range(num_frames)
+                )
+                if max_frame_gap is not None:
+                    frame_indices = [
+                        int(self._columns["frame_index"][index]) for index in window
+                    ]
+                    if any(
+                        later - earlier > max_frame_gap
+                        for earlier, later in zip(
+                            frame_indices,
+                            frame_indices[1:],
+                            strict=False,
+                        )
+                    ):
+                        continue
+                windows.append(window)
+        return windows
 
     # -- per-sample metadata --------------------------------------------
 
@@ -176,6 +316,22 @@ class WebFrameStore:
     def source_name(self, index: int) -> str:
         """Return the originating dataset name."""
         return self.sources[int(self._columns["source_id"][index])]
+
+    def sequence_name(self, index: int) -> str:
+        """Return the split-safe source group or video sequence id."""
+        return self.sequences[int(self._columns["sequence_id"][index])]
+
+    def frame_index(self, index: int) -> int:
+        """Return the original frame index, or ``-1`` for unordered stills."""
+        return int(self._columns["frame_index"][index])
+
+    def label_state(self, index: int) -> int:
+        """Return one of ``LABEL_NEGATIVE/POSITIVE/UNKNOWN``."""
+        return int(self._columns["label_state"][index])
+
+    def is_positive(self, index: int) -> bool:
+        """Return whether this sample has at least one visible ball."""
+        return self.label_state(index) == LABEL_POSITIVE
 
     def labels(self, index: int) -> tuple[FrameLabel, ...]:
         """Return the ball annotations for a sample."""
@@ -255,6 +411,10 @@ class WebFrameStore:
 
 __all__ = [
     "INSTANCE_FIELDS",
+    "LABEL_NAMES",
+    "LABEL_NEGATIVE",
+    "LABEL_POSITIVE",
+    "LABEL_UNKNOWN",
     "MANIFEST_FILE",
     "SAMPLE_FIELDS",
     "SCHEMA_VERSION",

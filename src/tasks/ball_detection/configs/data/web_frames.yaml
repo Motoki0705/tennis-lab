@@ -9,11 +9,26 @@ batch_size: 16
 num_workers: 8
 pin_memory: true
 
-# Phase 1 detection pre-training keeps every annotated frame (single-frame).
-# Set true once a multi-frame phase needs only video-sourced (temporal) frames.
-temporal_only: false
 # null/"all" uses every source; or a list, e.g. [racketvision, ball_yolo].
 sources: all
+
+sampling:
+  # static: repeat one labeled frame to model.num_frames.
+  # temporal: build ordered windows inside one video sequence.
+  mode: static
+  seed: 1234
+
+  # null keeps every explicit negative. A float in [0, 1) caps the negative
+  # fraction of the static training set. Validation/test always keep all.
+  train_negative_fraction: null
+
+  temporal:
+    # Steps are measured over stored labeled observations, not source FPS.
+    frame_step: 1
+    sample_stride: 1
+    # null accepts every gap; an integer rejects windows with larger raw-frame
+    # gaps between adjacent selected observations.
+    max_frame_gap: null
 
 image_size: [288, 512]
 heatmap_size: [288, 512]

@@ -63,19 +63,47 @@ data/tennis/
 
 ### Web統一形式
 
-`data/tennis/web` 配下の異種データ（Roboflow COCO 3種・racketvision・kaggle backview・ball-YOLO）を、**ボールのアノテーションを持つフレームのみ**抽出した単一ストアに変換します。
+`data/tennis/web` 配下の異種データ（Roboflow COCO 3種・RacketVision・Kaggle backview・Ball-YOLO）を単一ストアに変換します。ボールが可視な正例に加え、`Visibility=0`、Kaggle sentinel、COCOのboxなし画像など、**明示的にボール不在と判断できるフレーム**を負例として保持します。アノテーション状態が不明な動画フレームは誤った負例にしません。
 
 ```bash
 # data/tennis/web/unified/ を生成（COCO静止画は参照のみ、動画フレームはシャードへパック）
 .venv/bin/python -m src.tasks.ball_detection.scripts.convert_web_dataset
+# web_ball_frames_v1から更新する場合
+.venv/bin/python -m src.tasks.ball_detection.scripts.convert_web_dataset \
+    convert.overwrite=true
 # 一部ソースのみ・上限付きで素早く検証
 .venv/bin/python -m src.tasks.ball_detection.scripts.convert_web_dataset \
     convert.sources.racketvision=false convert.limit_per_source=50 convert.overwrite=true
 ```
 
-ストレージ/IO効率のため、動画から抽出したフレームは多数の小JPEGを撒かず `shards/shard-*.bin` にパックし（memmapでランダムアクセス）、既にディスク上にあるCOCO静止画は複製せず参照します。索引は `index.npz` / `index_strings.json`、スキーマ定義は `data/web_store.py`（`web_ball_frames_v1`）です。
+ストレージ/IO効率のため、動画から抽出したフレームは多数の小JPEGを撒かず `shards/shard-*.bin` にパックし（memmapでランダムアクセス）、既にディスク上にあるCOCO静止画は複製せず参照します。索引は `index.npz` / `index_strings.json`、スキーマ定義は `data/web_store.py`（`web_ball_frames_v2`）です。
 
-各サンプルは `temporal` フラグ（動画由来=1 / シャッフル静止画=0）と `frame_index`・`source` の来歴を保持します。学習は `data=web_frames`（`WebBallDataModule`）で、各アノテフレームを `model.num_frames` 枚へ静的複製して供給します（フェーズ1の検出事前学習）。複数フレーム化のフェーズ2では `data.temporal_only=true` で動画由来サンプルのみに絞れます。`data.sources=[racketvision,ball_yolo]` のようにソース選択も可能です。
+各サンプルは `source`、split単位の `sequence_id`、`frame_index`、`temporal`、`label_state` を保持します。Roboflowのaugmentation variantと同一動画のフレームは必ず同じsplitへ入り、RacketVisionは公式splitを使用します。
+
+現在の原データを既定configで変換した統計は以下です。
+
+| split | 全体 | 正例 | 明示的負例 |
+|---|---:|---:|---:|
+| train | 61,486 | 56,597 | 4,889 |
+| val | 7,553 | 6,966 | 587 |
+| test | 7,744 | 7,080 | 664 |
+| 合計 | 76,783 | 70,643 | 6,140 |
+
+負例率は全体で約8.0%のため、既定では全負例を使用します。RacketVisionのCSV外フレーム、Ball-YOLOのlabel file欠番、KaggleのCSV欠番はannotation状態が不明なため除外します。また、元のRoboflow splitでは305 source group（3,999画像）がsplitをまたいでいたため、変換時にsource group単位で再分割します。
+
+学習は `data=web_frames`（`WebBallDataModule`）を使用します。
+
+```bash
+# 単一フレーム学習（model.num_frames=1を推奨）
+.venv/bin/python -m src.tasks.ball_detection.scripts.train \
+    data=web_frames model.num_frames=1
+
+# 同一sequence内のラベル付き観測からTフレームwindowを構築
+.venv/bin/python -m src.tasks.ball_detection.scripts.train \
+    data=web_frames data.sampling.mode=temporal model.num_frames=8
+```
+
+`data.sampling.temporal.frame_step` / `sample_stride` / `max_frame_gap` でwindowを設定できます。位置埋め込みへ渡す時間座標はwindow内の順序であり、元動画のFPSには依存しません。静的学習の負例が将来増えた場合は `data.sampling.train_negative_fraction` で上限を設定できます。
 
 ### Sample契約（学習データ）
 

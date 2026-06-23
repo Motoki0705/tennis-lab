@@ -1,23 +1,21 @@
 """Lightning DataModule for the unified web ball-detection frame store.
 
-This serves the converted ``data/tennis/web`` datasets (see
-:mod:`web_store` and ``scripts/convert_web_dataset``). Only frames that carry
-a ball annotation are stored, so every sample is a positive detection example.
+This serves the converted ``data/tennis/web`` datasets (see :mod:`web_store`
+and ``scripts/convert_web_dataset``). The store includes positive frames and
+explicitly annotated negatives while excluding unknown annotation states.
 
-Each annotated frame is served as a *static clip*: the single frame is
-replicated to ``model.num_frames`` so existing temporal models (which require
-``T >= 8``) can be pre-trained for spatial detection on this data. A later
-phase can switch to real multi-frame sequences; the per-sample ``temporal``
-flag and ``frame_index`` provenance are preserved in the store to make that
-switch cheap. Set ``data.temporal_only=true`` to keep only video-sourced
-samples once multi-frame windows are introduced.
+``data.sampling.mode=static`` repeats one labeled frame to ``model.num_frames``.
+``data.sampling.mode=temporal`` builds bidirectional-ready ordered windows from
+one split-safe video sequence. The model receives only local order; original
+FPS and frame intervals are retained as provenance but are not positional
+inputs.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import cv2
 import numpy as np
@@ -27,7 +25,12 @@ from torch.utils.data import DataLoader
 from src.tasks.ball_detection.data.augmentation import BallDetectionAugmentation
 from src.tasks.ball_detection.data.dataset import BallDetectionDataset
 from src.tasks.ball_detection.data.types import ClipWindow
-from src.tasks.ball_detection.data.web_store import WebFrameStore
+from src.tasks.ball_detection.data.web_store import (
+    LABEL_NEGATIVE,
+    LABEL_POSITIVE,
+    SPLIT_CODES,
+    WebFrameStore,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -36,7 +39,7 @@ _WEB_CLIP_DIR = Path("__web__")
 
 
 class WebBallDetectionDataset(BallDetectionDataset):
-    """Static-clip dataset backed by a :class:`WebFrameStore`.
+    """Static or temporal windows backed by a :class:`WebFrameStore`.
 
     Reuses the heatmap / coordinate / augmentation pipeline of
     :class:`BallDetectionDataset` and only changes where pixels come from.
@@ -46,23 +49,39 @@ class WebBallDetectionDataset(BallDetectionDataset):
         self,
         *,
         store: WebFrameStore,
-        sample_indices: Iterable[int],
+        sample_windows: Iterable[Sequence[int]],
         config: DictConfig | None = None,
         augmentation: BallDetectionAugmentation | None = None,
     ) -> None:
         self.store = store
-        cfg: Any = config or {}
-        num_frames = int((cfg.get("model", {}) or {}).get("num_frames", 8))
-        windows = [
-            ClipWindow(
-                clip_dir=_WEB_CLIP_DIR,
-                frame_names=(str(index),) * num_frames,
-                labels={str(index): store.labels(index)},
-                original_size=store.original_size(index),
-                start_index=0,
+        windows: list[ClipWindow] = []
+        for raw_window in sample_windows:
+            indices = tuple(int(value) for value in raw_window)
+            if not indices:
+                raise ValueError("Web sample windows must not be empty.")
+            original_sizes = {store.original_size(index) for index in indices}
+            if len(original_sizes) != 1:
+                raise ValueError(
+                    "All frames in a web temporal window must share one size: "
+                    f"indices={indices}, sizes={sorted(original_sizes)}."
+                )
+            frame_names = tuple(str(index) for index in indices)
+            windows.append(
+                ClipWindow(
+                    clip_dir=_WEB_CLIP_DIR,
+                    frame_names=frame_names,
+                    labels={
+                        frame_name: store.labels(index)
+                        for frame_name, index in zip(
+                            frame_names,
+                            indices,
+                            strict=True,
+                        )
+                    },
+                    original_size=next(iter(original_sizes)),
+                    start_index=0,
+                )
             )
-            for index in (int(value) for value in sample_indices)
-        ]
         super().__init__(windows=windows, config=config, augmentation=augmentation)
 
     def _load_frame(self, path: Path) -> np.ndarray:
@@ -90,13 +109,33 @@ class WebBallDataModule(pl.LightningDataModule):
         self.batch_size = int(data_cfg.get("batch_size", 4))
         self.num_workers = int(data_cfg.get("num_workers", 4))
         self.pin_memory = bool(data_cfg.get("pin_memory", True))
-        self.temporal_only = bool(data_cfg.get("temporal_only", False))
         sources = data_cfg.get("sources", None)
         self.sources = (
-            None
-            if sources in (None, "all")
-            else [str(name) for name in sources]
+            None if sources in (None, "all") else [str(name) for name in sources]
         )
+        sampling_cfg = data_cfg.get("sampling", {}) or {}
+        self.sample_mode = str(sampling_cfg.get("mode", "static")).lower()
+        if bool(data_cfg.get("temporal_only", False)):
+            self.sample_mode = "temporal"
+        if self.sample_mode not in {"static", "temporal"}:
+            raise ValueError(
+                "data.sampling.mode must be one of ['static', 'temporal'], "
+                f"got {self.sample_mode!r}."
+            )
+        self.sampling_seed = int(sampling_cfg.get("seed", 1234))
+        self.train_negative_fraction = self._parse_negative_fraction(
+            sampling_cfg.get("train_negative_fraction")
+        )
+        temporal_cfg = sampling_cfg.get("temporal", {}) or {}
+        self.temporal_frame_step = int(temporal_cfg.get("frame_step", 1))
+        self.temporal_sample_stride = int(temporal_cfg.get("sample_stride", 1))
+        max_frame_gap = temporal_cfg.get("max_frame_gap")
+        self.temporal_max_frame_gap = (
+            None if max_frame_gap is None else int(max_frame_gap)
+        )
+        self.num_frames = int((self.config.get("model", {}) or {}).get("num_frames", 8))
+        if self.num_frames <= 0:
+            raise ValueError("model.num_frames must be positive.")
 
         self.store: WebFrameStore | None = None
         self.train_dataset: WebBallDetectionDataset | None = None
@@ -131,23 +170,92 @@ class WebBallDataModule(pl.LightningDataModule):
         augmentation: BallDetectionAugmentation | None,
     ) -> WebBallDetectionDataset:
         assert self.store is not None
-        indices = self.store.split_indices(
-            split,
-            temporal_only=self.temporal_only,
-            sources=self.sources,
-        )
-        if indices.size == 0:
+        sample_windows = self._sample_windows(split)
+        if not sample_windows:
             raise RuntimeError(
                 f"No web ball detection samples for split={split!r} "
-                f"(data_dir={self.data_dir}, temporal_only={self.temporal_only}, "
-                f"sources={self.sources})."
+                f"(data_dir={self.data_dir}, sample_mode={self.sample_mode!r}, "
+                f"sources={self.sources}, num_frames={self.num_frames})."
             )
         return WebBallDetectionDataset(
             store=self.store,
-            sample_indices=indices,
+            sample_windows=sample_windows,
             config=self.config,
             augmentation=augmentation,
         )
+
+    def _sample_windows(self, split: str) -> list[tuple[int, ...]]:
+        assert self.store is not None
+        if self.sample_mode == "temporal":
+            return self.store.temporal_windows(
+                split,
+                num_frames=self.num_frames,
+                frame_step=self.temporal_frame_step,
+                sample_stride=self.temporal_sample_stride,
+                max_frame_gap=self.temporal_max_frame_gap,
+                sources=self.sources,
+            )
+
+        indices = self.store.split_indices(split, sources=self.sources)
+        if split == "train" and self.train_negative_fraction is not None:
+            indices = self._limit_negative_fraction(
+                indices,
+                fraction=self.train_negative_fraction,
+                seed=self.sampling_seed + SPLIT_CODES[split],
+            )
+        return [(int(index),) * self.num_frames for index in indices.tolist()]
+
+    def _limit_negative_fraction(
+        self,
+        indices: np.ndarray,
+        *,
+        fraction: float,
+        seed: int,
+    ) -> np.ndarray:
+        assert self.store is not None
+        positive = np.asarray(
+            [
+                index
+                for index in indices.tolist()
+                if self.store.label_state(index) == LABEL_POSITIVE
+            ],
+            dtype=np.int64,
+        )
+        negative = np.asarray(
+            [
+                index
+                for index in indices.tolist()
+                if self.store.label_state(index) == LABEL_NEGATIVE
+            ],
+            dtype=np.int64,
+        )
+        if fraction == 0.0 or negative.size == 0:
+            return cast(np.ndarray, positive)
+        if positive.size == 0:
+            raise RuntimeError(
+                "Cannot enforce a negative fraction without positive samples."
+            )
+        max_negative = int(np.floor(positive.size * fraction / (1.0 - fraction)))
+        if negative.size > max_negative:
+            rng = np.random.default_rng(seed)
+            negative = rng.choice(
+                negative,
+                size=max_negative,
+                replace=False,
+            )
+        return cast(np.ndarray, np.sort(np.concatenate([positive, negative])))
+
+    @staticmethod
+    def _parse_negative_fraction(value: Any) -> float | None:
+        if value in (None, "all"):
+            return None
+        fraction = float(value)
+        if not 0.0 <= fraction < 1.0:
+            raise ValueError(
+                "data.sampling.train_negative_fraction must be in [0, 1), "
+                f"got {fraction}."
+            )
+        return fraction
 
     def train_dataloader(self) -> DataLoader:
         """Return training dataloader."""
