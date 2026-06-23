@@ -146,7 +146,7 @@ shared analyzer:
 python /workspace/checkpoints/DINO/analyze/ball_feature_consistency.py \
   --backbone swin_L_384_22k \
   --checkpoint /workspace/checkpoints/DINO/checkpoint0027_5scale_swin.pth \
-  --clip-dir /workspace/data/tennis/game1/Clip1 \
+  --clip-dir /workspace/data/tennis/tracknet/game1/Clip1 \
   --device cuda \
   --strict
 ```

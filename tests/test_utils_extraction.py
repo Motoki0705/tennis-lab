@@ -9,15 +9,19 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Iterator
 from pathlib import Path
 
+import cv2
 import numpy as np
 import pytest
 import torch
 
 from src.utils import device, io, paths, seeding, tensor_utils
-from src.utils.data import augmentation, heatmaps, scene_io
+from src.utils.data import augmentation, heatmaps, scene_io, splits
 from src.utils.geometry import angles, court_pose, keypoints, matrices, skeleton
+from src.utils.video import encoding
+from src.utils.video.types import FramePacket
 
 
 # --------------------------------------------------------------------------- #
@@ -157,6 +161,21 @@ def test_parse_int_range() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# dataset splits
+# --------------------------------------------------------------------------- #
+def test_group_split_is_complete_balanced_and_deterministic() -> None:
+    weights = {f"sequence-{index}": index + 1 for index in range(16)}
+    config = splits.GroupSplitConfig(val_ratio=0.1, test_ratio=0.1, seed=1234)
+    first = splits.make_group_split_map(weights, config)
+    second = splits.make_group_split_map(weights, config)
+    assert first == second
+    assert set(first) == set(weights)
+    assert list(first.values()).count("train") == 12
+    assert list(first.values()).count("val") == 2
+    assert list(first.values()).count("test") == 2
+
+
+# --------------------------------------------------------------------------- #
 # geometry
 # --------------------------------------------------------------------------- #
 def test_angular_error_and_wrapped_diff() -> None:
@@ -223,6 +242,56 @@ def test_keypoint_normalize_roundtrip() -> None:
     assert np.allclose(kp, [[10.0, 20.0], [30.0, 40.0]])  # input untouched
 
 
+def test_clamp_pixel_coordinate() -> None:
+    assert keypoints.clamp_pixel_coordinate(-1.0, 10) == 0.0
+    assert keypoints.clamp_pixel_coordinate(4.5, 10) == 4.5
+    assert keypoints.clamp_pixel_coordinate(10.0, 10) == 9.0
+
+
+# --------------------------------------------------------------------------- #
+# video encoding
+# --------------------------------------------------------------------------- #
+def test_iter_selected_video_jpegs(monkeypatch: pytest.MonkeyPatch) -> None:
+    frames: dict[str, list[np.ndarray]] = {
+        "part-a.mp4": [
+            np.full((8, 10, 3), 10, dtype=np.uint8),
+            np.full((8, 10, 3), 20, dtype=np.uint8),
+        ],
+        "part-b.mp4": [
+            np.full((8, 10, 3), 30, dtype=np.uint8),
+            np.full((8, 10, 3), 40, dtype=np.uint8),
+        ],
+    }
+
+    class FakeReader:
+        def __init__(self, video_path: str | Path) -> None:
+            self.video_path = str(video_path)
+
+        def __iter__(self) -> Iterator[FramePacket]:
+            for index, frame in enumerate(frames[self.video_path]):
+                yield FramePacket(
+                    index=index,
+                    frame=frame,
+                    original_size=(10, 8),
+                )
+
+    monkeypatch.setattr(encoding, "OpenCVVideoFrameReader", FakeReader)
+    selected = list(
+        encoding.iter_selected_video_jpegs(
+            ["part-a.mp4", "part-b.mp4"],
+            {1, 2},
+            quality=90,
+        )
+    )
+    assert [index for index, _ in selected] == [1, 2]
+    decoded_values: list[int] = []
+    for _, jpeg in selected:
+        decoded = cv2.imdecode(np.frombuffer(jpeg, dtype=np.uint8), cv2.IMREAD_COLOR)
+        assert decoded is not None
+        decoded_values.append(int(decoded.mean()))
+    assert decoded_values == [20, 30]
+
+
 # --------------------------------------------------------------------------- #
 # scene_io
 # --------------------------------------------------------------------------- #
@@ -235,4 +304,6 @@ def test_load_scene_payload(tmp_path: Path) -> None:
     payload = scene_io.load_scene_payload(scene)
     assert payload["score"] == 1.5
     assert payload["meta"] == {"id": "abc"}
-    np.testing.assert_array_equal(np.asarray(payload["frames"]), np.arange(6).reshape(2, 3))
+    np.testing.assert_array_equal(
+        np.asarray(payload["frames"]), np.arange(6).reshape(2, 3)
+    )

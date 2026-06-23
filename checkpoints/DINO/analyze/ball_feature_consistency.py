@@ -66,7 +66,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--clip-dir",
         type=Path,
-        default=Path("/workspace/data/tennis/game1/Clip1"),
+        default=Path("/workspace/data/tennis/tracknet/game1/Clip1"),
         help="Directory containing frame images and Label.csv.",
     )
     parser.add_argument(

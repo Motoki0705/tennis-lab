@@ -2,7 +2,11 @@
 
 from typing import Any
 
-from src.tasks.ball_detection.data.augmentation import BallDetectionAugmentation
+import pytorch_lightning as pl
+
+from src.tasks.ball_detection.data.components.augmentation import (
+    BallDetectionAugmentation,
+)
 from src.tasks.ball_detection.data.dataset import BallDetectionDataset
 from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
 from src.tasks.ball_detection.data.types import (
@@ -11,15 +15,20 @@ from src.tasks.ball_detection.data.types import (
     ClipWindow,
     FrameLabel,
 )
+from src.tasks.ball_detection.data.web_datamodule import (
+    WebBallDataModule,
+    WebBallDetectionDataset,
+)
 from src.tasks.ball_detection.data.youtube_datamodule import YouTubeDataModule
 
 
-def build_ball_detection_datamodule(config: Any) -> TrackNetDataModule:
+def build_ball_detection_datamodule(config: Any) -> pl.LightningDataModule:
     """Build the configured dataset-specific DataModule."""
     source = str(config.get("data", {}).get("source", "tracknet")).lower()
-    datamodule_types = {
+    datamodule_types: dict[str, type[pl.LightningDataModule]] = {
         "tracknet": TrackNetDataModule,
         "youtube": YouTubeDataModule,
+        "web": WebBallDataModule,
     }
     try:
         datamodule_type = datamodule_types[source]
@@ -39,6 +48,8 @@ __all__ = [
     "ClipWindow",
     "FrameLabel",
     "TrackNetDataModule",
+    "WebBallDataModule",
+    "WebBallDetectionDataset",
     "YouTubeDataModule",
     "build_ball_detection_datamodule",
 ]

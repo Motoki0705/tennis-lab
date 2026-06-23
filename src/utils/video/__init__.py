@@ -1,6 +1,7 @@
 """Shared video streaming utilities."""
 
 from src.utils.video.batching import iter_temporal_batches
+from src.utils.video.encoding import encode_jpeg, iter_selected_video_jpegs
 from src.utils.video.prefetch import PrefetchIterator
 from src.utils.video.reader import (
     OpenCVVideoFrameReader,
@@ -13,6 +14,7 @@ from src.utils.video.windows import iter_temporal_windows
 
 __all__ = [
     "BgrToTensorTransform",
+    "encode_jpeg",
     "FramePacket",
     "OpenCVVideoFrameReader",
     "PrefetchIterator",
@@ -21,6 +23,7 @@ __all__ = [
     "VideoInfo",
     "iter_temporal_batches",
     "iter_temporal_windows",
+    "iter_selected_video_jpegs",
     "normalize_tensor_imagenet",
     "probe_video_info",
     "read_video_frame",
