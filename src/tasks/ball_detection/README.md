@@ -10,7 +10,7 @@
 |---|---|
 | 入力 | RGBフレーム列 `(B, T, 3, H, W)`（T=8、H=288、W=512 がデフォルト） |
 | 出力 | 正規化ボール座標 `(B, T, 2)` + 信頼度 `(B, T)` + ヒートマップ（任意） |
-| モデル | `stunet` / `conv_next_unet` / `dino_pseudo3d` |
+| モデル | `stunet` / `conv_next_unet` / `dino_pseudo3d` / `dinov3_rope` |
 | データ | TrackNet形式 + YouTube自作（手動アノテーション） |
 | 役割 | 認識パイプラインの上流。2D観測を [BLCS](../blcs/) へ供給 |
 
@@ -146,6 +146,7 @@ YouTube動画から学習データを作る3ステップ。CLIは `scripts/youtu
 ```bash
 .venv/bin/python -m src.tasks.ball_detection.scripts.train
 .venv/bin/python -m src.tasks.ball_detection.scripts.train model=conv_next_unet data.batch_size=4
+.venv/bin/python -m src.tasks.ball_detection.scripts.train model=dinov3_rope data=web_frames
 # augmentation 強度を切り替える（default / light / none）
 .venv/bin/python -m src.tasks.ball_detection.scripts.train data/augmentation=light
 ```
@@ -182,8 +183,11 @@ YouTube動画から学習データを作る3ステップ。CLIは `scripts/youtu
 | `stunet` | mdd / 2ch | H/2 × W/2 | `models/spatiotemporal_unet.py`（2D+3D Conv U-Net、T≥8 必須） |
 | `conv_next_unet` | mdd / 2ch | H/4 × W/4 | `models/conv_next_unet.py`（ConvNeXt + 因子化Conv3d） |
 | `dino_pseudo3d` | rgb / 3ch | フル解像度 | `models/dino_pseudo3d.py`（DINO backbone + Pseudo-3Dデコーダ） |
+| `dinov3_rope` | rgb / 3ch | 288 × 512 | `models/dinov3_rope.py`（DINOv3 ViT-B/16 patch token + `(time,y,x)` 3軸RoPE global self-attention） |
 
 `mdd`（Motion Direction Decomposition）はRGBの輝度差分を明暗2chに分解する入力（`models/input_adapter.py`）。`rgb` はRGBをそのまま渡します。
+
+`dinov3_rope`は`(B,T,3,288,512)`を直接受け取り、各frameの`18×32` patch gridを全時刻でflattenして非causal self-attentionします。時間座標はwindow内の整数順序のみで、FPSやtimestampは使用しません。`model.backbone.train_mode`は`frozen` / `last_n_blocks` / `full`、decoder規模・RoPE・dropout・gradient checkpointingは`configs/model/dinov3_rope.yaml`で設定できます。時間長に依存する学習parameterを持たないため、`T=1`で保存したstate dictを`T>1`へstrict loadできます。
 
 ## 補足
 

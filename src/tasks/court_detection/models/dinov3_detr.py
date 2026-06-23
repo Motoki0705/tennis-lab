@@ -16,95 +16,21 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.utils.paths import resolve_project_path
+from src.utils.models.loading import (
+    DEFAULT_DINOV3_CHECKPOINT,
+    DEFAULT_DINOV3_REPOSITORY,
+    DINOv3BackboneAdapter,
+    load_dinov3_backbone,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
-
-
-_DEFAULT_DINOV3_REPOSITORY = Path("third_party/dinov3")
-_DEFAULT_DINOV3_CHECKPOINT = Path(
-    "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
-)
-
-
-class DINOv3BackboneAdapter(nn.Module):
-    """Expose the patch-token subset of the dynamic DINOv3 hub API."""
-
-    def __init__(self, module: nn.Module) -> None:
-        super().__init__()
-        dynamic_module = cast(Any, module)
-        embed_dim = dynamic_module.embed_dim
-        patch_size = dynamic_module.patch_size
-        if not isinstance(embed_dim, int):
-            raise TypeError("DINOv3 backbone embed_dim must be an integer.")
-        if isinstance(patch_size, tuple):
-            if len(patch_size) != 2 or len(set(patch_size)) != 1:
-                raise ValueError("DINOv3DETR requires square backbone patches.")
-            patch_size = patch_size[0]
-        if not isinstance(patch_size, int):
-            raise TypeError("DINOv3 backbone patch_size must be an integer.")
-
-        self.module = module
-        self.embed_dim = embed_dim
-        self.patch_size = patch_size
-
-    def forward_features(self, inputs: torch.Tensor) -> dict[str, torch.Tensor]:
-        outputs = cast(Any, self.module).forward_features(inputs)
-        if not isinstance(outputs, Mapping):
-            raise TypeError("DINOv3 forward_features must return a mapping.")
-        patch_tokens = outputs.get("x_norm_patchtokens")
-        if not isinstance(patch_tokens, torch.Tensor):
-            raise TypeError(
-                "DINOv3 forward_features did not return tensor patch tokens."
-            )
-        return {"x_norm_patchtokens": patch_tokens}
-
-
-def load_dinov3_backbone(
-    *,
-    repository_path: str | Path = _DEFAULT_DINOV3_REPOSITORY,
-    checkpoint_path: str | Path = _DEFAULT_DINOV3_CHECKPOINT,
-    backbone_name: str = "dinov3_vitb16",
-    strict: bool = True,
-) -> DINOv3BackboneAdapter:
-    """Load a DINOv3 backbone from the vendored repository and local weights."""
-    repository = resolve_project_path(repository_path)
-    checkpoint = resolve_project_path(checkpoint_path)
-    if not repository.is_dir():
-        raise FileNotFoundError(f"DINOv3 repository not found: {repository}")
-    if not checkpoint.is_file():
-        raise FileNotFoundError(f"DINOv3 checkpoint not found: {checkpoint}")
-
-    backbone: nn.Module = torch.hub.load(
-        str(repository),
-        backbone_name,
-        source="local",
-        pretrained=False,
-    )
-    state = torch.load(checkpoint, map_location="cpu", weights_only=True)
-    if isinstance(state, Mapping) and "model" in state:
-        state = state["model"]
-    if not isinstance(state, Mapping):
-        raise TypeError(
-            "DINOv3 checkpoint must contain a state-dict mapping, "
-            f"got {type(state).__name__}."
-        )
-
-    load_result = backbone.load_state_dict(state, strict=strict)
-    if strict and (load_result.missing_keys or load_result.unexpected_keys):
-        raise RuntimeError(
-            "Unexpected DINOv3 checkpoint load result: "
-            f"missing={load_result.missing_keys}, "
-            f"unexpected={load_result.unexpected_keys}."
-        )
-    return DINOv3BackboneAdapter(backbone)
 
 
 class MLP(nn.Module):
@@ -267,8 +193,8 @@ class DINOv3DETR(nn.Module):
         *,
         in_channels: int = 3,
         num_classes: int = 7,
-        backbone_repository_path: str | Path = _DEFAULT_DINOV3_REPOSITORY,
-        backbone_checkpoint_path: str | Path = _DEFAULT_DINOV3_CHECKPOINT,
+        backbone_repository_path: str | Path = DEFAULT_DINOV3_REPOSITORY,
+        backbone_checkpoint_path: str | Path = DEFAULT_DINOV3_CHECKPOINT,
         backbone_name: str = "dinov3_vitb16",
         backbone_strict: bool = True,
         freeze_backbone: bool = True,
@@ -398,11 +324,11 @@ class DINOv3DETR(nn.Module):
             num_classes=int(model_cfg.get("num_classes", 7)),
             backbone_repository_path=backbone_cfg.get(
                 "repository_path",
-                _DEFAULT_DINOV3_REPOSITORY,
+                DEFAULT_DINOV3_REPOSITORY,
             ),
             backbone_checkpoint_path=backbone_cfg.get(
                 "checkpoint_path",
-                _DEFAULT_DINOV3_CHECKPOINT,
+                DEFAULT_DINOV3_CHECKPOINT,
             ),
             backbone_name=str(backbone_cfg.get("name", "dinov3_vitb16")),
             backbone_strict=bool(backbone_cfg.get("strict", True)),
