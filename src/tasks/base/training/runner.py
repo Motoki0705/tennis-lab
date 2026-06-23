@@ -196,6 +196,30 @@ class BaseTrainingRunner:
         """Build TensorBoard logger."""
         return TensorBoardLogger(save_dir=str(output_dir), name="logs")
 
+    def _record_ckpt_dir_pointer(self, checkpoint_dir: Path) -> None:
+        """Record this run's checkpoint dir into the repro bundle (issue #533).
+
+        When the run is launched via the training queue, ``TENNIS_REPRO_DIR``
+        points at the job's gitignored ``.training_queue/repro/<jobid>/`` staging
+        dir (where the test-split ``pred_test.npz`` also lands). Writing the
+        checkpoint dir there gives the optional post-run ckpt pruner a
+        deterministic repro -> ckpt link, so it can delete *only this run's*
+        checkpoints once the predictions are saved. Best-effort: never raise, so
+        a bookkeeping hiccup cannot abort training.
+        """
+        repro_dir = os.environ.get("TENNIS_REPRO_DIR")
+        if not repro_dir:
+            return
+        try:
+            target = Path(repro_dir)
+            target.mkdir(parents=True, exist_ok=True)
+            resolved_checkpoint_dir = checkpoint_dir.resolve()
+            (target / "output_dir.txt").write_text(
+                f"{resolved_checkpoint_dir}\n", encoding="utf-8"
+            )
+        except OSError:
+            pass
+
     def build_callbacks(
         self, config: Any, datamodule: pl.LightningDataModule, logger: TensorBoardLogger
     ) -> list[Any]:
@@ -206,6 +230,7 @@ class BaseTrainingRunner:
         checkpoint_cfg = config.training.checkpoint
         if checkpoint_cfg.enabled:
             checkpoint_dir = Path(logger.log_dir) / "checkpoints"
+            self._record_ckpt_dir_pointer(checkpoint_dir)
             callbacks.append(
                 ModelCheckpoint(
                     dirpath=checkpoint_dir,

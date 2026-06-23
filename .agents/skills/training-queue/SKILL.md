@@ -33,7 +33,8 @@ Q=.agents/skills/training-queue/scripts/training_queue.sh
 #    attributable in the knowledge graph). --issue is recommended. Humans
 #    launching by hand may omit them.
 bash "$Q" add "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python -m src.tasks.plcs.scripts.train data=... model=... loss=..." \
-    --name exp_a --provider claude --session "$CLAUDE_CODE_SESSION_ID" --issue 525
+    --name exp_a --provider claude --session "$CLAUDE_CODE_SESSION_ID" --issue 525 \
+    --prune-ckpt
 bash "$Q" add "python -m src.tasks.plcs.scripts.train ..." --name exp_b
 
 # 2. Start the worker. --after-pid makes it wait for a native first run to
@@ -80,6 +81,14 @@ The job also gets `TENNIS_RUN_ID` and `TENNIS_REPRO_DIR` in its environment. The
 training **lightning module** writes test-split inference results to
 `$TENNIS_REPRO_DIR/predictions/{pred_test.npz, metrics.json}` (so checkpoints can
 be deleted and metrics still recomputed). This replaces keeping `*.ckpt` around.
+
+`add --prune-ckpt` opts a job into post-run checkpoint deletion. After a
+successful job, the runner-written `$TENNIS_REPRO_DIR/output_dir.txt` identifies
+that run's checkpoint directory. The worker deletes only its `*.ckpt` files and
+only when the same repro bundle contains a verified
+`predictions/pred_test.npz`. Failed jobs, jobs without the flag, missing/invalid
+prediction bundles, and missing pointers keep their checkpoints. Pruning is
+non-fatal and never removes the prediction bundle.
 
 After a run finishes, register it into the git-tracked knowledge graph with the
 **knowledge-control** skill, which promotes the repro bundle + predictions into
