@@ -11,6 +11,7 @@ remaining arguments broadcast via :func:`itertools.repeat`.
 from __future__ import annotations
 
 import itertools
+import multiprocessing
 from collections.abc import Callable, Iterator
 from concurrent.futures import ProcessPoolExecutor
 from typing import Any
@@ -44,7 +45,16 @@ def run_parallel_scene_generation(
 
     max_workers = min(num_workers, len(scene_indices))
 
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+    # Chunk generation runs from a background thread while the training process
+    # has already initialized CUDA and other native thread pools. Forking that
+    # process can inherit locks without their owner threads and deadlock during
+    # generation or ProcessPoolExecutor shutdown. ``spawn`` starts clean worker
+    # interpreters and is safe from non-main threads.
+    mp_context = multiprocessing.get_context("spawn")
+    with ProcessPoolExecutor(
+        max_workers=max_workers,
+        mp_context=mp_context,
+    ) as executor:
         yield from executor.map(
             task_fn,
             scene_indices,
