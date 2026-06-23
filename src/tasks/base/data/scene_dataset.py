@@ -21,38 +21,9 @@ from typing import Any, Generic, Literal, TypeVar
 import numpy as np
 from torch.utils.data import Dataset
 
+from src.utils.data.scene_io import load_scene_payload
+
 SampleT = TypeVar("SampleT")
-
-
-def _load_scene_payload(scene_path: Path) -> dict[str, Any]:
-    """Load all arrays and scalars from a scene directory.
-
-    Arrays are loaded as mmap-backed numpy arrays (zero-copy).
-    Scalars and metadata are read from JSON files.
-    """
-    payload: dict[str, Any] = {}
-
-    # Load scalars.json
-    scalars_path = scene_path / "scalars.json"
-    if scalars_path.exists():
-        with open(scalars_path) as f:
-            scalars = json.load(f)
-        for key, value in scalars.items():
-            payload[key] = value
-
-    # Load meta.json as a JSON string (to match the old "meta" key convention)
-    meta_path = scene_path / "meta.json"
-    if meta_path.exists():
-        with open(meta_path) as f:
-            meta = json.load(f)
-        payload["meta"] = meta
-
-    # Load all .npy files with mmap
-    for npy_file in scene_path.glob("*.npy"):
-        key = npy_file.stem
-        payload[key] = np.load(npy_file, mmap_mode="r")
-
-    return payload
 
 
 @dataclass(frozen=True)
@@ -513,7 +484,7 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
 
     def _load_scene(self, path: Path) -> Scene:
         header = self.get_scene_header(path)
-        payload = _load_scene_payload(path)
+        payload = load_scene_payload(path)
         return Scene(
             path=path,
             data=payload,

@@ -8,56 +8,21 @@ from typing import Any
 
 import cv2
 import numpy as np
-import torch
-from torch.utils.data import get_worker_info
 
 from src.utils.data.augmentation import (
     IMAGENET_MEAN,
     IMAGENET_STD,
+    denormalize_tensor_images_imagenet,
+    normalize_frames_imagenet,
     normalize_tensor_images_imagenet,
     parse_float_range,
+    parse_int_range,
 )
+from src.utils.seeding import make_sample_rng
 
 Frames = list[np.ndarray]
 Coords = list[list[tuple[float, float]]]
 Visibility = list[list[float]]
-
-# ``IMAGENET_MEAN`` / ``IMAGENET_STD`` are tuples in the shared utils module.
-# Several numpy-based code paths below expect float32 arrays, so keep array
-# views with identical values to preserve the exact normalization math.
-_IMAGENET_MEAN_ARR = np.asarray(IMAGENET_MEAN, dtype=np.float32)
-_IMAGENET_STD_ARR = np.asarray(IMAGENET_STD, dtype=np.float32)
-
-
-def normalize_frames_imagenet(
-    frames: Frames,
-    *,
-    mean: np.ndarray = _IMAGENET_MEAN_ARR,
-    std: np.ndarray = _IMAGENET_STD_ARR,
-) -> Frames:
-    """Apply ImageNet normalization to HWC float frames."""
-    mean_arr = np.asarray(mean, dtype=np.float32).reshape(1, 1, 3)
-    std_arr = np.asarray(std, dtype=np.float32).reshape(1, 1, 3)
-    return [((frame - mean_arr) / std_arr).astype(np.float32) for frame in frames]
-
-
-def denormalize_tensor_images_imagenet(
-    images: torch.Tensor,
-    *,
-    mean: Sequence[float] = (0.485, 0.456, 0.406),
-    std: Sequence[float] = (0.229, 0.224, 0.225),
-) -> torch.Tensor:
-    """Undo ImageNet normalization for ``(..., 3, H, W)`` image tensors."""
-    if images.ndim < 3 or images.shape[-3] != 3:
-        raise ValueError(
-            "Expected images with shape (..., 3, H, W) for ImageNet denormalization, "
-            f"got {tuple(images.shape)}."
-        )
-    view_shape = [1] * images.ndim
-    view_shape[-3] = 3
-    mean_tensor = images.new_tensor(mean).view(*view_shape)
-    std_tensor = images.new_tensor(std).view(*view_shape)
-    return images * std_tensor + mean_tensor
 
 
 def _resolve_border_mode(name: str) -> int:
@@ -584,15 +549,7 @@ class BallAreaZeroMaskAugmentation(BaseAugmentation):
 
     @staticmethod
     def _parse_int_range(value: Any, name: str) -> tuple[int, int]:
-        if not isinstance(value, Sequence) or len(value) != 2:
-            raise ValueError(f"{name} must be a sequence with two elements.")
-        low = int(value[0])
-        high = int(value[1])
-        if low < 0 or high < 0:
-            raise ValueError(f"{name} must be non-negative.")
-        if low > high:
-            raise ValueError(f"{name} must satisfy min <= max.")
-        return low, high
+        return parse_int_range(value, name)
 
     def forward(
         self,
@@ -745,15 +702,6 @@ class BallDetectionAugmentation:
                 rng=rng,
             )
         return out_frames, out_coords, out_visibility
-
-
-def make_sample_rng(sample_idx: int) -> random.Random:
-    """Create a deterministic RNG per sample and dataloader worker."""
-    worker_info = get_worker_info()
-    base_seed = int(torch.initial_seed())
-    if worker_info is not None:
-        base_seed += int(worker_info.id) * 1_000_003
-    return random.Random(base_seed + int(sample_idx))
 
 
 __all__ = [

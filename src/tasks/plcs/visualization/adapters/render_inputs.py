@@ -14,17 +14,15 @@ from typing import Any, cast
 
 import numpy as np
 import torch
-from torch import Tensor
 
 from src.tasks.plcs.utils.pose_geometry import world_pose_to_canonical_pose
 from src.tasks.plcs.visualization.contracts import PoseRenderScene
+from src.utils.tensor_utils import to_numpy
 
 
 def _to_numpy(t: Any) -> np.ndarray:
     """Convert a tensor or array-like to a float32 numpy array."""
-    if isinstance(t, Tensor):
-        return cast("np.ndarray", t.detach().cpu().float().numpy())
-    return cast("np.ndarray", np.asarray(t, dtype=np.float32))
+    return cast("np.ndarray", to_numpy(t, dtype=np.float32))
 
 
 def _ensure_time_dim(arr: np.ndarray, ndim_without_time: int) -> np.ndarray:
