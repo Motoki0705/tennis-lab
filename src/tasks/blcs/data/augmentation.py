@@ -22,13 +22,7 @@ from src.utils.data.augmentation import (
     random_visibility_dropout,
     scale_uv_with_visibility,
 )
-
-
-def _clone_sample(sample: BLCSMultiViewSample) -> BLCSMultiViewSample:
-    return {
-        key: (value.clone() if isinstance(value, Tensor) else value)
-        for key, value in sample.items()
-    }
+from src.utils.tensor_utils import clone_tensor_dict
 
 
 class BLCSBallObservationAugmentation(BaseObservationAugmentation):
@@ -84,7 +78,7 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation):
         if not self.enabled:
             return sample
 
-        out = _clone_sample(sample)
+        out = clone_tensor_dict(sample)
         ball_uv = out["ball_uv"]
         ball_vis = out["ball_vis"]
         if self.preserve_clean_targets:

@@ -8,7 +8,51 @@ reproduce its exact numerical behavior while sharing a single implementation.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any, TypeVar, cast
+
+import numpy as np
+import torch
+from numpy.typing import DTypeLike, NDArray
 from torch import Tensor
+
+SampleT = TypeVar("SampleT", bound=Mapping[str, Any])
+
+
+def clone_tensor_dict(sample: SampleT) -> SampleT:
+    """Shallow-clone a ``str -> value`` mapping, cloning tensor values.
+
+    Tensor values are ``.clone()``-d; non-tensor values are passed through by
+    reference. Returns a plain ``dict`` typed as the input mapping so TypedDict
+    sample types are preserved at the call site.
+    """
+    return cast(
+        SampleT,
+        {
+            key: (value.clone() if isinstance(value, Tensor) else value)
+            for key, value in sample.items()
+        },
+    )
+
+
+def to_numpy(value: Any, *, dtype: DTypeLike | None = None) -> NDArray[Any]:
+    """Convert a tensor or array-like to a NumPy array.
+
+    Tensors are detached and moved to CPU first. ``bfloat16``/``float16`` tensors
+    are upcast to ``float32`` before conversion (NumPy has no ``bfloat16`` and
+    ``.numpy()`` would otherwise raise under mixed precision). Pass ``dtype`` to
+    force a final ``astype`` (e.g. ``np.float32``).
+    """
+    if isinstance(value, Tensor):
+        tensor = value.detach().cpu()
+        if tensor.dtype in (torch.bfloat16, torch.float16):
+            tensor = tensor.float()
+        array: NDArray[Any] = tensor.numpy()
+    else:
+        array = np.asarray(value)
+    if dtype is not None:
+        array = array.astype(dtype, copy=False)
+    return array
 
 
 def masked_mean(
@@ -94,4 +138,9 @@ def normalize_padding_mask(
     return frame_valid.reshape(-1) if flatten else frame_valid
 
 
-__all__ = ["masked_mean", "normalize_padding_mask"]
+__all__ = [
+    "clone_tensor_dict",
+    "masked_mean",
+    "normalize_padding_mask",
+    "to_numpy",
+]

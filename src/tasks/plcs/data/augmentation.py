@@ -23,15 +23,9 @@ from src.utils.data.augmentation import (
     random_visibility_dropout,
     scale_uv_with_visibility,
 )
+from src.utils.tensor_utils import clone_tensor_dict
 
 PLCSSample = dict[str, Tensor]
-
-
-def _clone_sample(sample: PLCSSample) -> PLCSSample:
-    return {
-        key: (value.clone() if isinstance(value, Tensor) else value)
-        for key, value in sample.items()
-    }
 
 
 def _entity_value(
@@ -138,7 +132,7 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         if not self.enabled:
             return sample
 
-        out = _clone_sample(sample)
+        out = clone_tensor_dict(sample)
         human_dropped_mask = torch.zeros_like(out["human_vis"], dtype=torch.bool)
         court_dropped_mask = torch.zeros_like(out["court_vis"], dtype=torch.bool)
 
