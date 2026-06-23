@@ -13,7 +13,9 @@ from pathlib import Path
 import cv2
 import torch
 
-from src.tasks.ball_detection.data.augmentation import normalize_tensor_images_imagenet
+from src.tasks.ball_detection.data.components.augmentation import (
+    normalize_tensor_images_imagenet,
+)
 from src.tasks.ball_detection.data.types import FrameLabel
 from src.tasks.base.visualization.frames import read_rgb, resolve_image_paths
 

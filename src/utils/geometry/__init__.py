@@ -24,7 +24,11 @@ from src.utils.geometry.court_pose import (
     court_position_to_world_translation,
     world_pose_to_canonical_pose,
 )
-from src.utils.geometry.keypoints import denormalize_keypoints, normalize_keypoints
+from src.utils.geometry.keypoints import (
+    clamp_pixel_coordinate,
+    denormalize_keypoints,
+    normalize_keypoints,
+)
 from src.utils.geometry.matrices import (
     apply_plcs_transform,
     apply_plcs_transform_batch,
@@ -45,6 +49,7 @@ __all__ = [
     "apply_plcs_transform_batch",
     "axis_angle_to_rotation_matrix",
     "canonical_pose_to_world_pose",
+    "clamp_pixel_coordinate",
     "compute_bone_lengths",
     "compute_joint_angles",
     "compute_torsion_angles",

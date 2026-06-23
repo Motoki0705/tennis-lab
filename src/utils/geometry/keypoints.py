@@ -6,6 +6,11 @@ import numpy as np
 from numpy.typing import NDArray
 
 
+def clamp_pixel_coordinate(value: float, axis_size: int) -> float:
+    """Clamp one coordinate to a zero-based pixel axis."""
+    return float(min(max(value, 0.0), max(axis_size - 1, 0)))
+
+
 def normalize_keypoints(
     keypoints: NDArray[np.float32],
     width: int,
@@ -36,4 +41,8 @@ def denormalize_keypoints(
     return result
 
 
-__all__ = ["denormalize_keypoints", "normalize_keypoints"]
+__all__ = [
+    "clamp_pixel_coordinate",
+    "denormalize_keypoints",
+    "normalize_keypoints",
+]

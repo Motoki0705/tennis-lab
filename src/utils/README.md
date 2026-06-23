@@ -28,16 +28,19 @@ types**, it belongs here (or should be promoted here), not in the task module.
 | Gaussian heatmaps / decode | `generate_gaussian_heatmaps()`, `heatmaps_to_argmax/soft_argmax/peaks/pixel_coords()` | `from src.utils.data.heatmaps import ...` |
 | ImageNet normalize/denormalize | `normalize_tensor_images_imagenet()` / `denormalize_tensor_images_imagenet()` / `normalize_frames_imagenet()` | `from src.utils.data.augmentation import ...` |
 | Parse a config range | `parse_float_range()` / `parse_int_range()` | `from src.utils.data.augmentation import ...` |
+| Deterministic weighted group split | `make_group_split_map()` | `from src.utils.data.splits import GroupSplitConfig, make_group_split_map` |
 | Load a scene directory | `load_scene_payload()` | `from src.utils.data.scene_io import load_scene_payload` |
 | Wrapped angle / angular error | `angular_error()`, `wrapped_angle_diff()`, `normalize_vector()`, `signed_angle_around_axis()` | `from src.utils.geometry.angles import ...` |
 | COCO-17 joint/torsion/twist/bone | `compute_joint_angles/torsion_angles/torso_twist/bone_lengths()` | `from src.utils.geometry.skeleton import ...` |
 | Court ↔ world pose | `canonical_pose_to_world_pose()`, `world_pose_to_canonical_pose()` | `from src.utils.geometry.court_pose import ...` |
 | Rotation matrices / SMPL transform | `rotation_matrix_y/z()`, `axis_angle_to_rotation_matrix()`, `apply_plcs_transform[_batch]()` | `from src.utils.geometry.matrices import ...` |
 | Pixel ↔ normalized keypoints | `normalize_keypoints()` / `denormalize_keypoints()` | `from src.utils.geometry.keypoints import ...` |
+| Clamp a pixel coordinate | `clamp_pixel_coordinate()` | `from src.utils.geometry.keypoints import clamp_pixel_coordinate` |
 | Camera projection | `CameraProjector`, `project_points()`, `make_look_at_camera()` | `from src.utils.projection import ...` |
 | Render court / skeleton / ball | `CourtRenderer`, `SkeletonRenderer`, `BallRenderer` | `from src.utils.rendering import ...` |
 | Court / player schema constants | court & COCO/SMPL keypoint definitions | `from src.utils.schema.court import ...` / `from src.utils.schema.player import ...` |
 | Read/stream video frames | `probe_video_info()`, `OpenCVVideoFrameReader`, `iter_temporal_windows/batches()` | `from src.utils.video import ...` |
+| Encode/select JPEG video frames | `encode_jpeg()`, `iter_selected_video_jpegs()` | `from src.utils.video import ...` |
 | Transformer / MoE / RoPE blocks | `TransformerBlock`, `MoELayer`, RoPE helpers, `MLPHead` | `from src.utils.models import ...` |
 
 ## Modules
@@ -64,6 +67,7 @@ types**, it belongs here (or should be promoted here), not in the task module.
   (numpy HWC), `parse_float_range()` / `parse_int_range()`.
 - **`scene_io.py`** — `load_scene_payload()` for the `*.npy` + `scalars.json` +
   `meta.json` scene-directory layout.
+- **`splits.py`** — deterministic weighted group-level train/val/test assignment.
 
 ### `geometry/`
 - **`angles.py`** (torch) — `angular_error`, `wrapped_angle_diff`,
@@ -74,7 +78,8 @@ types**, it belongs here (or should be promoted here), not in the task module.
   `canonical_pose_to_world_pose`, `world_pose_to_canonical_pose`.
 - **`matrices.py`** (numpy) — `rotation_matrix_y` (scalar), `rotation_matrix_z`
   (batched), `axis_angle_to_rotation_matrix`, `apply_plcs_transform[_batch]`.
-- **`keypoints.py`** (numpy) — `normalize_keypoints`, `denormalize_keypoints`.
+- **`keypoints.py`** (numpy) — `clamp_pixel_coordinate`,
+  `normalize_keypoints`, `denormalize_keypoints`.
 
 ### Other packages (pre-existing)
 - **`models/`** — DeepSeek-style Transformer blocks, MoE, RoPE, attention,
@@ -86,7 +91,8 @@ types**, it belongs here (or should be promoted here), not in the task module.
   (names, indices, skeletons, angle triplets, coordinate scales).
 - **`video/`** — OpenCV streaming: `probe_video_info`, `read_video_frame`,
   `OpenCVVideoFrameReader`, `iter_temporal_windows/batches`, `PrefetchIterator`,
-  `BgrToTensorTransform`, `normalize_tensor_imagenet`.
+  `BgrToTensorTransform`, `normalize_tensor_imagenet`, JPEG encoding and
+  selected-frame extraction.
 
 ## Adding a new utility
 

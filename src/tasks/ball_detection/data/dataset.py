@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from src.tasks.ball_detection.data.augmentation import (
+from src.tasks.ball_detection.data.components.augmentation import (
     BallDetectionAugmentation,
     make_sample_rng,
 )
@@ -192,12 +192,13 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
 
     def _load_frame(self, path: Path) -> np.ndarray:
         image_h, image_w = self.image_size
-        image = cv2.imread(str(path))
+        image: np.ndarray | None = cv2.imread(str(path))
         if image is None:
             raise RuntimeError(f"Failed to read frame: {path}")
-        image = cv2.resize(image, (image_w, image_h))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        return image.astype(np.float32) / 255.0
+        resized: np.ndarray = cv2.resize(image, (image_w, image_h))
+        rgb: np.ndarray = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        normalized: np.ndarray = rgb.astype(np.float32) / 255.0
+        return normalized
 
     @staticmethod
     def _to_normalized_xy(

@@ -1,0 +1,33 @@
+# Convert data/tennis/web heterogeneous sources into the unified web ball store.
+#
+# Usage:
+#   python -m src.tasks.ball_detection.scripts.convert_web_dataset
+#   python -m src.tasks.ball_detection.scripts.convert_web_dataset convert.sources.racketvision=false
+#   python -m src.tasks.ball_detection.scripts.convert_web_dataset convert.limit_per_source=50 convert.overwrite=true
+convert:
+  web_root: data/tennis/web
+  output_dir: data/tennis/web/unified
+  overwrite: false
+
+  # Packing / encoding.
+  jpeg_quality: 90
+  shard_size_bytes: 1073741824 # 1 GiB per shard
+
+  # Group-level split assignment. Roboflow augmentation groups and complete
+  # video sequences stay in one split. RacketVision uses its official split.
+  val_ratio: 0.1
+  test_ratio: 0.1
+  split_seed: 1234
+
+  # Kaggle "missing ball" sentinel: a point inside the top-right corner of this
+  # fractional size is retained as an explicit negative frame.
+  kaggle_corner_frac: 0.05
+
+  # 0 = all samples; >0 caps each source for fast smoke validation.
+  limit_per_source: 0
+
+  sources:
+    roboflow: true
+    racketvision: true
+    kaggle: true
+    ball_yolo: true
