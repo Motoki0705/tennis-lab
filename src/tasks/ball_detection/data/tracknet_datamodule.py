@@ -69,6 +69,7 @@ class TrackNetDataModule(pl.LightningDataModule):
                 split_file=self.train_split_file,
                 augmentation=train_aug,
             )
+        if stage in {"fit", "validate"} or stage is None:
             self.val_dataset = self.create_dataset(
                 split_name="val",
                 split_file=self.val_split_file,

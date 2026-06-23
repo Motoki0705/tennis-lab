@@ -218,6 +218,16 @@ def test_web_datamodule_sample_contract(tmp_path: Path) -> None:
     assert tuple(batch["images"].shape) == (2, 4, 3, 64, 96)
 
 
+def test_web_datamodule_validate_stage_does_not_build_train(tmp_path: Path) -> None:
+    _build_store(tmp_path)
+    datamodule = build_ball_detection_datamodule(_config(tmp_path))
+    datamodule.setup("validate")
+
+    assert datamodule.train_dataset is None
+    assert datamodule.val_dataset is not None
+    assert len(datamodule.val_dataset) == 2
+
+
 def test_web_datamodule_temporal_windows(tmp_path: Path) -> None:
     _build_store(tmp_path)
     config = _config(
