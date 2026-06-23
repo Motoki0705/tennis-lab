@@ -4,7 +4,9 @@ from typing import Any
 
 import pytorch_lightning as pl
 
-from src.tasks.ball_detection.data.augmentation import BallDetectionAugmentation
+from src.tasks.ball_detection.data.components.augmentation import (
+    BallDetectionAugmentation,
+)
 from src.tasks.ball_detection.data.dataset import BallDetectionDataset
 from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
 from src.tasks.ball_detection.data.types import (

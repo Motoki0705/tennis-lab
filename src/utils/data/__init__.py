@@ -25,6 +25,7 @@ from src.utils.data.heatmaps import (
     heatmaps_to_soft_argmax,
 )
 from src.utils.data.scene_io import load_scene_payload
+from src.utils.data.splits import GroupSplitConfig, make_group_split_map
 
 __all__ = [
     "add_gaussian_noise",
@@ -36,12 +37,14 @@ __all__ = [
     "denormalize_tensor_images_imagenet",
     "generate_gaussian_heatmap",
     "generate_gaussian_heatmaps",
+    "GroupSplitConfig",
     "heatmaps_to_argmax",
     "heatmaps_to_peaks",
     "heatmaps_to_pixel_coords",
     "heatmaps_to_soft_argmax",
     "inject_false_positive_observations",
     "load_scene_payload",
+    "make_group_split_map",
     "normalize_frames_imagenet",
     "normalize_tensor_images_imagenet",
     "parse_float_range",

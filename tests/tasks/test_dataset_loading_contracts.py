@@ -156,7 +156,7 @@ def test_blcs_ball_trajectory_dataset_getitem_contract() -> None:
 
 
 def test_ball_detection_dataset_getitem_contract() -> None:
-    data_dir = REPO_ROOT / "data/tennis"
+    data_dir = REPO_ROOT / "data/tennis/tracknet"
     split_file = REPO_ROOT / "src/tasks/ball_detection/configs/data/splits/train.txt"
     _require_paths(data_dir, split_file)
 

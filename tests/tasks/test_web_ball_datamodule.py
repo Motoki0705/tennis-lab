@@ -7,20 +7,22 @@ import numpy as np
 import torch
 
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
-from src.tasks.ball_detection.data.web_store import (
+from src.tasks.ball_detection.data.components.web.data_access_layer.web_store import (
     LABEL_NEGATIVE,
     LABEL_POSITIVE,
     STORE_FILE,
     STORE_SHARD,
     WebFrameStore,
 )
-from src.tasks.ball_detection.scripts.convert_web_dataset import (
+from src.tasks.ball_detection.data.components.web.data_access_layer.writer import (
     IndexBuilder,
-    SampleRecord,
     ShardWriter,
-    make_group_split_map,
+    WebFrameRecord,
+)
+from src.tasks.ball_detection.data.components.web.parser.roboflow import (
     roboflow_source_group,
 )
+from src.utils.data.splits import GroupSplitConfig, make_group_split_map
 
 
 def _encode(width: int, height: int, value: int) -> bytes:
@@ -40,7 +42,7 @@ def _build_store(output_dir: Path) -> None:
     writer = ShardWriter(output_dir / "shards", shard_size_bytes=1 << 30)
     index = IndexBuilder()
     index.add(
-        SampleRecord(
+        WebFrameRecord(
             instances=[(40.0, 30.0, 1)],
             orig_w=160,
             orig_h=120,
@@ -54,7 +56,7 @@ def _build_store(output_dir: Path) -> None:
         writer,
     )
     index.add(
-        SampleRecord(
+        WebFrameRecord(
             instances=[],
             orig_w=160,
             orig_h=120,
@@ -68,7 +70,7 @@ def _build_store(output_dir: Path) -> None:
         writer,
     )
     index.add(
-        SampleRecord(
+        WebFrameRecord(
             instances=[(20.0, 15.0, 1), (60.0, 45.0, 1)],
             orig_w=80,
             orig_h=60,
@@ -82,7 +84,7 @@ def _build_store(output_dir: Path) -> None:
         writer,
     )
     index.add(
-        SampleRecord(
+        WebFrameRecord(
             instances=[(40.0, 30.0, 1)],
             orig_w=160,
             orig_h=120,
@@ -96,7 +98,7 @@ def _build_store(output_dir: Path) -> None:
         writer,
     )
     index.add(
-        SampleRecord(
+        WebFrameRecord(
             instances=[],
             orig_w=160,
             orig_h=120,
@@ -142,8 +144,9 @@ def _config(data_dir: Path, **data_overrides: object) -> dict:
 
 def test_group_split_is_complete_balanced_and_deterministic() -> None:
     weights = {f"sequence-{index}": index + 1 for index in range(16)}
-    first = make_group_split_map(weights, val_ratio=0.1, test_ratio=0.1, seed=1234)
-    second = make_group_split_map(weights, val_ratio=0.1, test_ratio=0.1, seed=1234)
+    config = GroupSplitConfig(val_ratio=0.1, test_ratio=0.1, seed=1234)
+    first = make_group_split_map(weights, config)
+    second = make_group_split_map(weights, config)
     assert first == second
     assert set(first) == set(weights)
     assert list(first.values()).count("train") == 12

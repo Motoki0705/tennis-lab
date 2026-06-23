@@ -47,7 +47,7 @@ visibility = result["visibility"]  # (1, 8)
 ### TrackNet形式
 
 ```text
-data/tennis/
+data/tennis/tracknet/
 └── game1/
     ├── Clip1/              # "Clip" / "clip_" で始まるディレクトリ
     │   ├── 000000.jpg      # 元解像度のフレーム
@@ -76,7 +76,9 @@ data/tennis/
     convert.sources.racketvision=false convert.limit_per_source=50 convert.overwrite=true
 ```
 
-ストレージ/IO効率のため、動画から抽出したフレームは多数の小JPEGを撒かず `shards/shard-*.bin` にパックし（memmapでランダムアクセス）、既にディスク上にあるCOCO静止画は複製せず参照します。索引は `index.npz` / `index_strings.json`、スキーマ定義は `data/web_store.py`（`web_ball_frames_v2`）です。
+ストレージ/IO効率のため、動画から抽出したフレームは多数の小JPEGを撒かず `shards/shard-*.bin` にパックし（memmapでランダムアクセス）、既にディスク上にあるCOCO静止画は複製せず参照します。索引は `index.npz` / `index_strings.json`、スキーマ定義は `data/components/web/data_access_layer/web_store.py`（`web_ball_frames_v2`）です。
+
+原データ固有のディレクトリ構造・annotation形式は `data/components/web/parser/` のデータセット別parserだけが解釈します。converterはparserの選択と、正規化済みレコードを `data/components/web/data_access_layer/` へ渡すオーケストレーションのみ担当します。
 
 各サンプルは `source`、split単位の `sequence_id`、`frame_index`、`temporal`、`label_state` を保持します。Roboflowのaugmentation variantと同一動画のフレームは必ず同じsplitへ入り、RacketVisionは公式splitを使用します。
 
@@ -164,7 +166,7 @@ YouTube動画から学習データを作る3ステップ。CLIは `scripts/youtu
 ```bash
 # ckptでクリップを推論し、予測GIFを生成
 .venv/bin/python -m src.tasks.ball_detection.scripts.visualize \
-    visualization.clip_dir=data/tennis/game1/Clip1 \
+    visualization.clip_dir=data/tennis/tracknet/game1/Clip1 \
     visualization.checkpoint=path/to/checkpoint.ckpt \
     visualization.save=assets/ball_detection/prediction.gif
 

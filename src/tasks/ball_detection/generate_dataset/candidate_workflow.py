@@ -10,13 +10,15 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import cv2
 import numpy as np
 import torch
 
-from src.tasks.ball_detection.data.augmentation import normalize_tensor_images_imagenet
+from src.tasks.ball_detection.data.components.augmentation import (
+    normalize_tensor_images_imagenet,
+)
 from src.tasks.ball_detection.inference import BallDetectionPredictor
 from src.utils.data.heatmaps import heatmaps_to_peaks
 
@@ -377,7 +379,7 @@ def _predict_candidate(
         sequence_length=config.sequence_length,
         stride=config.window_stride,
     )
-    prediction_counts = np.zeros(frame_count, dtype=np.int32)
+    prediction_counts: np.ndarray = np.zeros(frame_count, dtype=np.int32)
     heatmap_sums: torch.Tensor | None = None
     heatmap_maxima: torch.Tensor | None = None
     for start_chunk in _chunked(starts, config.batch_size):
@@ -395,6 +397,7 @@ def _predict_candidate(
                 dtype=torch.float32,
             )
             heatmap_maxima = torch.zeros_like(heatmap_sums)
+        assert heatmap_sums is not None and heatmap_maxima is not None
         for window_index, start in enumerate(start_chunk):
             for offset in range(config.sequence_length):
                 frame_index = start + offset
@@ -560,7 +563,7 @@ def _render_selection(
     ]
     overlay = canvas.copy()
     cv2.rectangle(overlay, (0, 0), (canvas.shape[1], 72), (0, 0, 0), -1)
-    canvas = cv2.addWeighted(overlay, 0.65, canvas, 0.35, 0.0)
+    canvas = cast(np.ndarray, cv2.addWeighted(overlay, 0.65, canvas, 0.35, 0.0))
     for index, line in enumerate(lines):
         cv2.putText(
             canvas,
@@ -613,10 +616,12 @@ def _move_selection(state: SelectionState, step: int) -> None:
 
 def _display_scale(image: np.ndarray, config: CandidateSelectionConfig) -> float:
     height, width = image.shape[:2]
-    return min(
-        1.0,
-        config.max_display_width / max(width, 1),
-        config.max_display_height / max(height, 1),
+    return float(
+        min(
+            1.0,
+            config.max_display_width / max(width, 1),
+            config.max_display_height / max(height, 1),
+        )
     )
 
 
@@ -641,7 +646,7 @@ def _chunked(values: Sequence[int], chunk_size: int) -> Iterator[list[int]]:
 
 
 def _read_json(path: Path) -> JSONDict:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return cast(JSONDict, json.loads(path.read_text(encoding="utf-8")))
 
 
 def _read_jsonl(path: Path) -> list[JSONDict]:

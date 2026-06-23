@@ -15,7 +15,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.tasks.ball_detection.data.augmentation import (
+from src.tasks.ball_detection.data.components.augmentation import (
     denormalize_tensor_images_imagenet,
 )
 from src.tasks.ball_detection.models.input_adapter import to_model_input

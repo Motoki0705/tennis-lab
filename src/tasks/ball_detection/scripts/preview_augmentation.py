@@ -26,7 +26,7 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
-from src.tasks.ball_detection.data.augmentation import (
+from src.tasks.ball_detection.data.components.augmentation import (
     BallDetectionAugmentation,
     denormalize_tensor_images_imagenet,
 )
@@ -169,7 +169,8 @@ def _render_contact_sheet(
     augmented_coords = augmented_sample["coords"].cpu().numpy()
     base_visibility = base_sample["visibility"].cpu().numpy()
     augmented_visibility = augmented_sample["visibility"].cpu().numpy()
-    original_size = tuple(int(v) for v in base_sample["original_size"].cpu().numpy().tolist())
+    original_size_values = base_sample["original_size"].cpu().numpy().tolist()
+    original_size = (int(original_size_values[0]), int(original_size_values[1]))
 
     draw_cfg = cfg.preview.draw
     annotated_base = _annotate_frames(
@@ -197,7 +198,14 @@ def _render_contact_sheet(
     row_gap = int(cfg.preview.layout.row_gap)
     text_scale = float(cfg.preview.layout.text_scale)
     text_thickness = int(cfg.preview.layout.text_thickness)
-    background_rgb = tuple(int(v) for v in cfg.preview.layout.background_rgb)
+    background_values = [int(v) for v in cfg.preview.layout.background_rgb]
+    if len(background_values) != 3:
+        raise ValueError("preview.layout.background_rgb must contain exactly 3 values.")
+    background_rgb = (
+        background_values[0],
+        background_values[1],
+        background_values[2],
+    )
 
     top_row = _compose_row(
         title="Original",
@@ -222,7 +230,7 @@ def _render_contact_sheet(
 
     canvas_height = top_row.shape[0] + row_gap + bottom_row.shape[0]
     canvas_width = max(top_row.shape[1], bottom_row.shape[1])
-    canvas = np.full(
+    canvas: np.ndarray = np.full(
         (canvas_height, canvas_width, 3),
         background_rgb,
         dtype=np.uint8,
@@ -313,7 +321,11 @@ def _compose_row(
     frame_height, frame_width = frames[0].shape[:2]
     row_height = header_height + frame_height
     row_width = len(frames) * frame_width + max(len(frames) - 1, 0) * tile_gap
-    row = np.full((row_height, row_width, 3), background_rgb, dtype=np.uint8)
+    row: np.ndarray = np.full(
+        (row_height, row_width, 3),
+        background_rgb,
+        dtype=np.uint8,
+    )
 
     _put_label(
         row,
