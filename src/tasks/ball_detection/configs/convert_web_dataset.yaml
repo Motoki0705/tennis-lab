@@ -13,13 +13,14 @@ convert:
   jpeg_quality: 90
   shard_size_bytes: 1073741824 # 1 GiB per shard
 
-  # Group-level split assignment for video sources (COCO keeps its native split).
+  # Group-level split assignment. Roboflow augmentation groups and complete
+  # video sequences stay in one split. RacketVision uses its official split.
   val_ratio: 0.1
   test_ratio: 0.1
   split_seed: 1234
 
   # Kaggle "missing ball" sentinel: a point inside the top-right corner of this
-  # fractional size is treated as absent (matches the inventory visible count).
+  # fractional size is retained as an explicit negative frame.
   kaggle_corner_frac: 0.05
 
   # 0 = all samples; >0 caps each source for fast smoke validation.
