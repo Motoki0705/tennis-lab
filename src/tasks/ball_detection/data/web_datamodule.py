@@ -1,8 +1,8 @@
 """Lightning DataModule for the unified web ball-detection frame store.
 
-This serves the converted ``data/tennis/web`` datasets (see :mod:`web_store`
-and ``scripts/convert_web_dataset``). The store includes positive frames and
-explicitly annotated negatives while excluding unknown annotation states.
+This serves the converted ``data/tennis/web`` datasets through the web
+data-access layer. The store includes positive frames and explicitly annotated
+negatives while excluding unknown annotation states.
 
 ``data.sampling.mode=static`` repeats one labeled frame to ``model.num_frames``.
 ``data.sampling.mode=temporal`` builds bidirectional-ready ordered windows from
@@ -22,15 +22,17 @@ import numpy as np
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
-from src.tasks.ball_detection.data.augmentation import BallDetectionAugmentation
-from src.tasks.ball_detection.data.dataset import BallDetectionDataset
-from src.tasks.ball_detection.data.types import ClipWindow
-from src.tasks.ball_detection.data.web_store import (
+from src.tasks.ball_detection.data.components.augmentation import (
+    BallDetectionAugmentation,
+)
+from src.tasks.ball_detection.data.components.web.data_access_layer.web_store import (
     LABEL_NEGATIVE,
     LABEL_POSITIVE,
     SPLIT_CODES,
     WebFrameStore,
 )
+from src.tasks.ball_detection.data.dataset import BallDetectionDataset
+from src.tasks.ball_detection.data.types import ClipWindow
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig

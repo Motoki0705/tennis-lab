@@ -1,4 +1,4 @@
-"""Sequence augmentation utilities for supervised ball detection."""
+"""Task-specific sequence augmentation for supervised ball detection."""
 
 from __future__ import annotations
 
@@ -133,7 +133,9 @@ class CameraRotationAugmentation(BaseAugmentation):
             self.max_angular_velocity_deg_per_frame,
         )
         t_ref = (len(frames) - 1) / 2.0
-        angles_deg = [theta0 + omega * (frame_idx - t_ref) for frame_idx in range(len(frames))]
+        angles_deg = [
+            theta0 + omega * (frame_idx - t_ref) for frame_idx in range(len(frames))
+        ]
 
         border_mode = _resolve_border_mode(self.border_mode)
 
@@ -197,7 +199,9 @@ class HorizontalFlipAugmentation(BaseAugmentation):
             return frames, coords, visibility
 
         width = frames[0].shape[1]
-        out_frames = [cv2.flip(frame, 1).astype(np.float32, copy=False) for frame in frames]
+        out_frames = [
+            cv2.flip(frame, 1).astype(np.float32, copy=False) for frame in frames
+        ]
         out_coords: Coords = []
         out_visibility: Visibility = []
         for frame_coords, frame_visibility in zip(coords, visibility, strict=True):
@@ -235,7 +239,9 @@ class BrightnessGainAugmentation(BaseAugmentation):
         if not self.enabled or self.jitter <= 0:
             return frames, coords, visibility
         gain = rng.uniform(1.0 - self.jitter, 1.0 + self.jitter)
-        out_frames = [np.clip(frame * gain, 0.0, 1.0).astype(np.float32) for frame in frames]
+        out_frames = [
+            np.clip(frame * gain, 0.0, 1.0).astype(np.float32) for frame in frames
+        ]
         return out_frames, coords, visibility
 
 
@@ -286,7 +292,10 @@ class GammaAugmentation(BaseAugmentation):
         if not self.enabled or self.jitter <= 0:
             return frames, coords, visibility
         gamma = rng.uniform(1.0 - self.jitter, 1.0 + self.jitter)
-        out_frames = [np.power(np.clip(frame, 0.0, 1.0), gamma).astype(np.float32) for frame in frames]
+        out_frames = [
+            np.power(np.clip(frame, 0.0, 1.0), gamma).astype(np.float32)
+            for frame in frames
+        ]
         return out_frames, coords, visibility
 
 
@@ -314,7 +323,8 @@ class GaussianNoiseAugmentation(BaseAugmentation):
         np_rng = np.random.default_rng(rng.randrange(0, 2**32))
         out_frames = [
             np.clip(
-                frame + np_rng.normal(0.0, noise_scale, size=frame.shape).astype(np.float32),
+                frame
+                + np_rng.normal(0.0, noise_scale, size=frame.shape).astype(np.float32),
                 0.0,
                 1.0,
             ).astype(np.float32)
@@ -400,7 +410,11 @@ class AffineAugmentation(BaseAugmentation):
         cos_theta = float(np.cos(rotation_rad))
         sin_theta = float(np.sin(rotation_rad))
         rotation_matrix = np.array(
-            [[cos_theta, -sin_theta, 0.0], [sin_theta, cos_theta, 0.0], [0.0, 0.0, 1.0]],
+            [
+                [cos_theta, -sin_theta, 0.0],
+                [sin_theta, cos_theta, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
             dtype=np.float32,
         )
         recenter = np.array(
@@ -411,7 +425,9 @@ class AffineAugmentation(BaseAugmentation):
             ],
             dtype=np.float32,
         )
-        full_matrix = recenter @ rotation_matrix @ shear_matrix @ scale_matrix @ center_to_origin
+        full_matrix = (
+            recenter @ rotation_matrix @ shear_matrix @ scale_matrix @ center_to_origin
+        )
         affine_matrix = full_matrix[:2, :]
 
         return _apply_affine_to_sequence(
@@ -549,7 +565,8 @@ class BallAreaZeroMaskAugmentation(BaseAugmentation):
 
     @staticmethod
     def _parse_int_range(value: Any, name: str) -> tuple[int, int]:
-        return parse_int_range(value, name)
+        low, high = parse_int_range(value, name)
+        return int(low), int(high)
 
     def forward(
         self,
@@ -581,7 +598,9 @@ class BallAreaZeroMaskAugmentation(BaseAugmentation):
             return frames, coords, visibility
 
         selected_indices = rng.sample(visible_indices, k=num_frames)
-        out_frames = [frame.astype(np.float32, copy=True) for frame in frames]
+        out_frames: Frames = [
+            frame.astype(np.float32, copy=True) for frame in frames
+        ]
 
         for frame_idx in selected_indices:
             frame = out_frames[frame_idx]
@@ -597,7 +616,9 @@ class BallAreaZeroMaskAugmentation(BaseAugmentation):
             ]
             x, y = rng.choice(visible_points)
             mask_width = int(round(width * rng.uniform(*self.mask_width_ratio_range)))
-            mask_height = int(round(height * rng.uniform(*self.mask_height_ratio_range)))
+            mask_height = int(
+                round(height * rng.uniform(*self.mask_height_ratio_range))
+            )
             mask_width = max(1, min(mask_width, width))
             mask_height = max(1, min(mask_height, height))
 
@@ -662,8 +683,12 @@ class BallDetectionAugmentation:
             GammaAugmentation(dict(config.get("gamma", {}) or {})),
             GaussianNoiseAugmentation(dict(config.get("gaussian_noise", {}) or {})),
             GaussianBlurAugmentation(dict(config.get("gaussian_blur", {}) or {})),
-            BallAreaZeroMaskAugmentation(dict(config.get("ball_area_zero_mask", {}) or {})),
-            ImageNetNormalizeAugmentation(dict(config.get("normalize_imagenet", {}) or {})),
+            BallAreaZeroMaskAugmentation(
+                dict(config.get("ball_area_zero_mask", {}) or {})
+            ),
+            ImageNetNormalizeAugmentation(
+                dict(config.get("normalize_imagenet", {}) or {})
+            ),
         ]
 
     @classmethod
@@ -691,9 +716,13 @@ class BallDetectionAugmentation:
         rng: random.Random,
     ) -> tuple[Frames, Coords, Visibility]:
         """Apply all configured augmentations in sequence."""
-        out_frames = [frame.astype(np.float32, copy=True) for frame in frames]
-        out_coords = [list(frame_coords) for frame_coords in coords]
-        out_visibility = [list(frame_visibility) for frame_visibility in visibility]
+        out_frames: Frames = [
+            frame.astype(np.float32, copy=True) for frame in frames
+        ]
+        out_coords: Coords = [list(frame_coords) for frame_coords in coords]
+        out_visibility: Visibility = [
+            list(frame_visibility) for frame_visibility in visibility
+        ]
         for transform in self.transforms:
             out_frames, out_coords, out_visibility = transform.forward(
                 out_frames,

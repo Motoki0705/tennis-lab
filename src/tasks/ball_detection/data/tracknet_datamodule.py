@@ -12,7 +12,9 @@ import pytorch_lightning as pl
 from PIL import Image
 from torch.utils.data import DataLoader
 
-from src.tasks.ball_detection.data.augmentation import BallDetectionAugmentation
+from src.tasks.ball_detection.data.components.augmentation import (
+    BallDetectionAugmentation,
+)
 from src.tasks.ball_detection.data.dataset import BallDetectionDataset
 from src.tasks.ball_detection.data.types import ClipWindow, FrameLabel
 
@@ -35,7 +37,7 @@ class TrackNetDataModule(pl.LightningDataModule):
         self.config = config or {}
 
         data_cfg = self.config.get("data", {})
-        self.data_dir = Path(str(data_cfg.get("data_dir", "data/tennis")))
+        self.data_dir = Path(str(data_cfg.get("data_dir", "data/tennis/tracknet")))
         self.batch_size = int(data_cfg.get("batch_size", 4))
         self.num_workers = int(data_cfg.get("num_workers", 4))
         self.pin_memory = bool(data_cfg.get("pin_memory", True))
@@ -269,7 +271,7 @@ class TrackNetDataModule(pl.LightningDataModule):
         first_frame_name: str,
     ) -> tuple[int, int]:
         with Image.open(clip_dir / first_frame_name) as image:
-            return image.size
+            return int(image.width), int(image.height)
 
     @staticmethod
     def _read_label_csv(path: Path) -> dict[str, tuple[FrameLabel, ...]]:

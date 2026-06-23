@@ -29,7 +29,6 @@ Design rationale:
 
 from __future__ import annotations
 
-import json
 import mmap
 import threading
 from pathlib import Path
@@ -39,6 +38,7 @@ import cv2
 import numpy as np
 
 from src.tasks.ball_detection.data.types import FrameLabel
+from src.utils.io import load_json
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -117,7 +117,7 @@ class WebFrameStore:
             )
         with np.load(index_path) as data:
             self._columns = {key: data[key] for key in data.files}
-        strings = json.loads(strings_path.read_text(encoding="utf-8"))
+        strings = load_json(strings_path)
         self.sources: list[str] = list(strings.get("sources", []))
         self.sequences: list[str] = list(strings.get("sequences", []))
         self.paths: list[str] = list(strings.get("paths", []))

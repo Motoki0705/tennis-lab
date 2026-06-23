@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 source: tracknet
-data_dir: data/tennis
+data_dir: data/tennis/tracknet
 
 split:
   train_file: src/tasks/ball_detection/configs/data/splits/train.txt

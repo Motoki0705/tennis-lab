@@ -13,6 +13,7 @@ repos:
         language: system
         types: [python]
         files: ^(src|tests)/
+        require_serial: true
       - id: task-script-reviewer
         name: task script reviewer
         entry: python ./.agents/skills/script-conventions/scripts/review_task_scripts.py

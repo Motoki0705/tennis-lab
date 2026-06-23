@@ -2,7 +2,7 @@
 
 Usage:
     python -m src.tasks.ball_detection.scripts.visualize
-    python -m src.tasks.ball_detection.scripts.visualize visualization.clip_dir=data/tennis/game1/Clip1
+    python -m src.tasks.ball_detection.scripts.visualize visualization.clip_dir=data/tennis/tracknet/game1/Clip1
     python -m src.tasks.ball_detection.scripts.visualize visualization.save=assets/ball_detection/custom_clip.gif
 
 Notes:
@@ -36,7 +36,7 @@ def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
     runtime = build_runtime_config(cfg)
-    return run_visualization(runtime)
+    return int(run_visualization(runtime))
 
 
 if __name__ == "__main__":
