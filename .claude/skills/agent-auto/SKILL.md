@@ -1,6 +1,6 @@
 ---
 name: agent-auto
-description: Run Claude Code, Codex CLI, or Gemini CLI non-interactively to carry a task through one autonomous headless invocation. Use for unattended coding-agent runs, CI jobs, cron jobs, or batch work that needs provider-specific permissions, structured logging, and machine-checkable success detection.
+description: Run Claude Code, Codex CLI, or Antigravity CLI non-interactively to carry a task through one autonomous headless invocation. Use for unattended coding-agent runs, CI jobs, cron jobs, or batch work that needs provider-specific permissions, structured logging, and machine-checkable success detection.
 ---
 
 # Autonomous coding agents
@@ -14,7 +14,7 @@ work until it exits. Do not add an outer resume loop.
 2. Read only the matching provider reference:
    - [Claude Code](references/claude.md)
    - [Codex CLI](references/codex.md)
-   - [Gemini CLI](references/gemini.md)
+   - [Antigravity CLI](references/agy.md)
 3. Confirm that the provider CLI is installed and authenticated.
 4. Run the matching wrapper under `scripts/`.
 5. Treat the wrapper exit status as the machine-readable outcome and inspect
