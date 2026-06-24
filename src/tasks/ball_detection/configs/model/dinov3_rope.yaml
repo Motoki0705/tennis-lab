@@ -1,0 +1,30 @@
+name: dinov3_rope
+input_mode: rgb
+input_layout: btchw
+in_channels: 3
+num_classes: 1
+num_frames: 1
+image_size: [288, 512]
+
+backbone:
+  name: dinov3_vitb16
+  repository_path: third_party/dinov3
+  checkpoint_path: third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
+  strict: true
+  # frozen | last_n_blocks | full
+  train_mode: frozen
+  last_n_blocks: 0
+
+decoder:
+  dim: 256
+  num_layers: 4
+  num_heads: 8
+  ffn_dim: 1024
+  rope_dim: 32
+  # Local integer order only: [time, y, x]. No FPS or timestamps.
+  rope_base: [10000.0, 10000.0, 10000.0]
+  dropout: 0.0
+  gradient_checkpointing: false
+
+heatmap_head:
+  min_channels: 32

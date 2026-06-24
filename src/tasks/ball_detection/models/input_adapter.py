@@ -39,6 +39,17 @@ def resolve_model_in_channels(model_cfg: Mapping[str, Any] | Any) -> int:
     return in_channels
 
 
+def resolve_input_layout(model_cfg: Mapping[str, Any] | Any) -> str:
+    """Resolve the 5D tensor layout expected by the selected model."""
+    input_layout = str(model_cfg.get("input_layout", "bcthw")).strip().lower()
+    if input_layout not in {"bcthw", "btchw"}:
+        raise ValueError(
+            "model.input_layout must be one of ['bcthw', 'btchw'], "
+            f"got '{input_layout}'."
+        )
+    return input_layout
+
+
 def to_model_input(images: Tensor, model_cfg: Mapping[str, Any] | Any) -> Tensor:
     """Convert ``(B, T, C, H, W)`` RGB frames into the configured model input."""
     if images.ndim != 5:
@@ -48,9 +59,15 @@ def to_model_input(images: Tensor, model_cfg: Mapping[str, Any] | Any) -> Tensor
         )
 
     input_mode = resolve_input_mode(model_cfg)
+    input_layout = resolve_input_layout(model_cfg)
     if input_mode == "rgb":
+        if input_layout == "btchw":
+            return images
         return images.permute(0, 2, 1, 3, 4).contiguous()
-    return _rgb_frames_to_mdd(images, model_cfg)
+    mdd = _rgb_frames_to_mdd(images, model_cfg)
+    if input_layout == "btchw":
+        return mdd.permute(0, 2, 1, 3, 4).contiguous()
+    return mdd
 
 
 def _rgb_frames_to_mdd(images: Tensor, model_cfg: Mapping[str, Any] | Any) -> Tensor:
@@ -94,6 +111,7 @@ def _power_normalize(values: Tensor, gain: float, offset: float) -> Tensor:
 
 __all__ = [
     "resolve_input_mode",
+    "resolve_input_layout",
     "resolve_model_in_channels",
     "to_model_input",
 ]
