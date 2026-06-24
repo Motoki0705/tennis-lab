@@ -1,0 +1,13 @@
+manifest_path: src/tasks/ball_detection/configs/evaluation/ball_detector_comparison.yaml
+
+# null uses values from the manifest.
+output_dir: null
+resume: null
+fail_fast: null
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false
