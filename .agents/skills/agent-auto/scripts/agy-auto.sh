@@ -20,6 +20,9 @@ Options:
   -m, --mode MODE        Approval mode (default: yolo). Maps yolo to --dangerously-skip-permissions.
       --model MODEL      Model alias/name.
       --sandbox          Explicitly enable agy's sandbox.
+  -t, --print-timeout T  Max wall time agy --print waits before aborting
+                         (default: 30m). agy's own default is only 5m, which
+                         truncates long autonomous runs.
   -l, --log-dir DIR      Base dir for run logs (default: logs/agent-auto/agy).
       --stream           Not natively supported by agy --print. Ignored.
       --name NAME        Run slug (default: run).
@@ -28,7 +31,7 @@ Options:
 
 Exit codes:
   0  agy emitted a successful result and exited zero
-  1  agy failed or emitted no successful result
+  1  agy failed, timed out, or emitted no successful result
   2  usage / setup error
 USAGE
 }
@@ -39,6 +42,7 @@ WORKDIR="."
 MODE="yolo"
 MODEL=""
 SANDBOX=0
+PRINT_TIMEOUT="30m"
 LOG_BASE="logs/agent-auto/agy"
 STREAM=0
 RUN_NAME=""
@@ -52,6 +56,7 @@ while [[ $# -gt 0 ]]; do
     -m|--mode) MODE="${2:?}"; shift 2 ;;
     --model) MODEL="${2:?}"; shift 2 ;;
     --sandbox) SANDBOX=1; shift ;;
+    -t|--print-timeout) PRINT_TIMEOUT="${2:?}"; shift 2 ;;
     -l|--log-dir) LOG_BASE="${2:?}"; shift 2 ;;
     --stream) STREAM=1; shift ;;
     --name) RUN_NAME="${2:?}"; shift 2 ;;
@@ -68,7 +73,6 @@ agent_auto_validate_workdir
 PYTHON="$(agent_auto_pick_python)"
 agent_auto_prepare_run_dir "$LOG_BASE" "$RUN_NAME"
 
-OUT_FORMAT="text"
 OUT_FILE="$RUN_DIR/output.txt"
 
 CMD=(agy --print "$PROMPT")
@@ -77,6 +81,7 @@ if [[ "$MODE" == "yolo" || "$MODE" == "auto_edit" ]]; then
 fi
 [[ -n "$MODEL" ]] && CMD+=(--model "$MODEL")
 [[ "$SANDBOX" -eq 1 ]] && CMD+=(--sandbox)
+[[ -n "$PRINT_TIMEOUT" ]] && CMD+=(--print-timeout "$PRINT_TIMEOUT")
 
 CMD_LINE="$(agent_auto_render_command)"
 if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -118,14 +123,28 @@ if os.path.exists(stderr_path):
     with open(stderr_path, encoding="utf-8") as stream:
         stderr_text = stream.read().strip()
 
-# AgY does not produce structured JSON yet. If rc==0, it's a success.
-if cli_rc == 0:
+# agy does not produce structured JSON, AND it returns exit 0 even when a
+# print-mode run fails: on timeout it prints "Error: timed out waiting for
+# response" and on a bad invocation "Error: empty prompt ...", both with rc 0.
+# So rc==0 alone is NOT sufficient — also reject these stdout error sentinels.
+# https://github.com/Motoki0705/tennis-lab/pull/561 documents the observed
+# behavior (agy v1.0.11).
+timed_out = response.startswith("Error: timed out")
+cli_error = response.startswith("Error: ")
+
+if cli_rc == 0 and not cli_error:
     success = True
     result_status = "success"
 else:
     success = False
-    error_code = cli_rc
-    error = {"code": cli_rc, "message": stderr_text or "Process exited with non-zero status"}
+    if timed_out:
+        result_status = "timed_out"
+        message = response or "agy --print exceeded its --print-timeout"
+    elif cli_error:
+        message = response
+    else:
+        message = stderr_text or "Process exited with non-zero status"
+    error = {"code": cli_rc, "message": message}
 
 with open(result_path, "w", encoding="utf-8") as output:
     output.write(response)
