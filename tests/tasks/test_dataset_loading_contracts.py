@@ -155,6 +155,42 @@ def test_blcs_ball_trajectory_dataset_getitem_contract() -> None:
     assert sample["ball_uv"].shape[1] == sample["velocity_3d"].shape[0]
 
 
+def test_tracknet_datamodule_validate_stage_only_builds_val(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = {
+        "data": {
+            "split": {
+                "train_file": "train.txt",
+                "val_file": "val.txt",
+                "test_file": "test.txt",
+            },
+        },
+        "model": {"num_frames": 1},
+    }
+    datamodule = TrackNetDataModule(config)
+    calls: list[tuple[str, str]] = []
+    val_dataset = object()
+
+    def create_dataset(
+        *,
+        split_name: str,
+        split_file: str | Path,
+        augmentation: object,
+    ) -> object:
+        del augmentation
+        calls.append((split_name, str(split_file)))
+        return val_dataset
+
+    monkeypatch.setattr(datamodule, "create_dataset", create_dataset)
+    datamodule.setup("validate")
+
+    assert calls == [("val", "val.txt")]
+    assert datamodule.train_dataset is None
+    assert datamodule.val_dataset is val_dataset
+    assert datamodule.test_dataset is None
+
+
 def test_ball_detection_dataset_getitem_contract() -> None:
     data_dir = REPO_ROOT / "data/tennis/tracknet"
     split_file = REPO_ROOT / "src/tasks/ball_detection/configs/data/splits/train.txt"

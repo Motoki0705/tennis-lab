@@ -155,6 +155,7 @@ class WebBallDataModule(pl.LightningDataModule):
                 "train",
                 BallDetectionAugmentation(aug_cfg),
             )
+        if stage in {"fit", "validate"} or stage is None:
             self.val_dataset = self._create_dataset(
                 "val",
                 BallDetectionAugmentation.from_eval_config(aug_cfg),
@@ -189,7 +190,7 @@ class WebBallDataModule(pl.LightningDataModule):
     def _sample_windows(self, split: str) -> list[tuple[int, ...]]:
         assert self.store is not None
         if self.sample_mode == "temporal":
-            return self.store.temporal_windows(
+            windows: list[tuple[int, ...]] = self.store.temporal_windows(
                 split,
                 num_frames=self.num_frames,
                 frame_step=self.temporal_frame_step,
@@ -197,6 +198,7 @@ class WebBallDataModule(pl.LightningDataModule):
                 max_frame_gap=self.temporal_max_frame_gap,
                 sources=self.sources,
             )
+            return windows
 
         indices = self.store.split_indices(split, sources=self.sources)
         if split == "train" and self.train_negative_fraction is not None:
