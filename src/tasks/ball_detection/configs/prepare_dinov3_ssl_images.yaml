@@ -80,35 +80,13 @@ workflow:
       columns: 4
       thumb_width: 224
       thumb_height: 126
-    command_backend:
-      # Example for a local wrapper around Qwen3.5-0.8B LiteRT/ONNX INT8.
-      command:
-        - python
-        - -m
-        - tools.qwen35_vlm_gate
-        - --image
-        - "{image_path}"
-        - --prompt
-        - "{prompt}"
-      accept_labels:
-        - tennis
-      prompt: "Classify this contact sheet. Return exactly one label: tennis, non_tennis, or unknown."
-    openai_compatible:
-      base_url: http://127.0.0.1:8000/v1
-      model: Qwen/Qwen3.5-0.8B
-      timeout_sec: 60
-      max_tokens: 128
-      accept_labels:
-        - tennis
-      extra_body: {}
-      prompt: "Classify this contact sheet. Return JSON only: {\"label\":\"tennis|non_tennis|unknown\",\"confidence\":0.0,\"reason\":\"short visual reason\"}."
     vllm:
       # Start vLLM separately, for example:
-      # VLLM_CPU_KVCACHE_SPACE=2 python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3.5-0.8B --host 127.0.0.1 --port 8000 --max-model-len 2048 --max-num-seqs 1 --max-num-batched-tokens 2048 --enforce-eager --skip-mm-profiling --reasoning-parser qwen3 --limit-mm-per-prompt '{"image":1}' --trust-remote-code
+      # VLLM_CPU_KVCACHE_SPACE=4 python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3.5-0.8B --host 127.0.0.1 --port 8000 --max-model-len 4096 --max-num-seqs 1 --max-num-batched-tokens 4096 --enforce-eager --skip-mm-profiling --reasoning-parser qwen3 --limit-mm-per-prompt '{"image":1}' --trust-remote-code
       base_url: http://127.0.0.1:8000/v1
       model: Qwen/Qwen3.5-0.8B
       timeout_sec: 120
-      max_tokens: 512
+      max_tokens: 4096
       accept_labels:
         - tennis
       extra_body:
