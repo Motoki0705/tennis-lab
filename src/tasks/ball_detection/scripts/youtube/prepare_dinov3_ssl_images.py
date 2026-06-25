@@ -222,6 +222,7 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
     gate_records: list[JSONDict] = []
     processed_new = 0
     accepted_videos = 0
+    failed_video_count = 0
     cleanup_video_file_count = 0
 
     for source in sources:
@@ -238,7 +239,15 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
         processed_new += 1
         source_records.append(dict(source))
         local_video_supplied = bool(source.get("local_video"))
-        source_video = _resolve_source_video(source, source_dir, workflow.download)
+        try:
+            source_video = _resolve_source_video(source, source_dir, workflow.download)
+        except Exception as exc:
+            failed_video_count += 1
+            print(
+                "  failed to resolve/download source video: "
+                f"{type(exc).__name__}: {exc}"
+            )
+            continue
         sample_video = _transcode_source_video(
             source_video, video_id, h264_dir, workflow.transcode
         )
@@ -318,6 +327,7 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
         "source_count": len(source_records),
         "sampled_frame_count": len(sample_records),
         "accepted_video_count": accepted_videos,
+        "failed_video_count": failed_video_count,
         "image_count": len(image_records),
         "cleanup_video_file_count": cleanup_video_file_count,
         "images_dir": relative_path(images_dir, root),
@@ -328,6 +338,7 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
         "source_count": len(source_records),
         "sampled_frame_count": len(sample_records),
         "accepted_video_count": accepted_videos,
+        "failed_video_count": failed_video_count,
         "image_count": len(image_records),
         "cleanup_video_file_count": cleanup_video_file_count,
     }
