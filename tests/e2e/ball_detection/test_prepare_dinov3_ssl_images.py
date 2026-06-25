@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 from omegaconf import OmegaConf
 
 from src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images import (
+    _parse_gate_output,
     run_pipeline,
 )
 
@@ -109,6 +110,19 @@ def test_prepare_dinov3_ssl_images_promotes_mock_accepted_frames(
     assert result["image_count"] == 4
     assert len(images) == 4
     assert (tmp_path / "dino_ssl" / "manifests" / "images.jsonl").exists()
+
+
+def test_prepare_dinov3_ssl_images_parses_vllm_json_gate_output() -> None:
+    parsed = _parse_gate_output(
+        '```json\n{"label": "non_tennis", "confidence": 0.91, '
+        '"reason": "basketball court"}\n```'
+    )
+
+    assert parsed == {
+        "label": "non_tennis",
+        "confidence": 0.91,
+        "reason": "basketball court",
+    }
 
 
 def _write_tiny_video(path: Path, *, frame_count: int) -> None:
