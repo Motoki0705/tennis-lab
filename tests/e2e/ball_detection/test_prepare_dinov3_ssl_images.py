@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import cv2
+import av  # type: ignore[import-untyped]
 import numpy as np
 from numpy.typing import NDArray
 from omegaconf import OmegaConf
 
 from src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images import (
+    _cleanup_video_files,
     _parse_gate_output,
     run_pipeline,
 )
@@ -43,7 +44,12 @@ def test_prepare_dinov3_ssl_images_promotes_mock_accepted_frames(
                     "images_dir": "images",
                     "manifests_dir": "manifests",
                 },
-                "processing": {"max_new_videos": 1, "reprocess_existing": False},
+                "processing": {
+                    "max_new_videos": 1,
+                    "reprocess_existing": False,
+                    "cleanup_videos_after_processing": False,
+                    "cleanup_keep_info_json": True,
+                },
                 "download": {
                     "enabled": False,
                     "format": "best",
@@ -122,17 +128,52 @@ def test_prepare_dinov3_ssl_images_parses_vllm_json_gate_output() -> None:
     }
 
 
+def test_prepare_dinov3_ssl_images_cleanup_deletes_video_but_keeps_info(
+    tmp_path: Path,
+) -> None:
+    videos_dir = tmp_path / "videos"
+    source_dir = videos_dir / "source"
+    h264_dir = videos_dir / "h264"
+    source_dir.mkdir(parents=True)
+    h264_dir.mkdir(parents=True)
+    source_video = source_dir / "abc123.mkv"
+    h264_video = h264_dir / "abc123.mp4"
+    info_json = source_dir / "abc123.info.json"
+    source_video.write_bytes(b"video")
+    h264_video.write_bytes(b"video")
+    info_json.write_text("{}", encoding="utf-8")
+
+    deleted = _cleanup_video_files(
+        video_id="abc123",
+        videos_dir=videos_dir,
+        source_video=source_video,
+        sample_video=h264_video,
+        enabled=True,
+        keep_info_json=True,
+        skip=False,
+    )
+
+    assert deleted == 2
+    assert not source_video.exists()
+    assert not h264_video.exists()
+    assert info_json.exists()
+
+
 def _write_tiny_video(path: Path, *, frame_count: int) -> None:
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
-    writer = cv2.VideoWriter(str(path), fourcc, 4.0, (64, 36))
-    assert writer.isOpened()
-    try:
-        for index in range(frame_count):
-            frame: NDArray[np.uint8] = np.full(
-                (36, 64, 3),
-                index * 20,
-                dtype=np.uint8,
-            )
-            writer.write(frame)
-    finally:
-        writer.release()
+    container = av.open(str(path), mode="w")
+    stream = container.add_stream("mpeg4", rate=4)
+    stream.width = 64
+    stream.height = 36
+    stream.pix_fmt = "yuv420p"
+    for index in range(frame_count):
+        frame: NDArray[np.uint8] = np.full(
+            (36, 64, 3),
+            index * 20,
+            dtype=np.uint8,
+        )
+        video_frame = av.VideoFrame.from_ndarray(frame, format="bgr24")
+        for packet in stream.encode(video_frame):
+            container.mux(packet)
+    for packet in stream.encode():
+        container.mux(packet)
+    container.close()

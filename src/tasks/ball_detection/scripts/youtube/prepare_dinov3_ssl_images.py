@@ -16,16 +16,17 @@ from __future__ import annotations
 import base64
 import json
 import shutil
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, TypeVar, cast
 
-import cv2
+import av
 import hydra
 import requests
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
+from PIL import Image
 
 from src.utils.io import (
     JSONDict,
@@ -38,14 +39,24 @@ from src.utils.io import (
     write_jsonl,
 )
 from src.utils.video import (
-    probe_video_info,
-    read_video_frame,
+    FramePacket,
+    VideoInfo,
     sample_uniform_frame_indices,
 )
 from src.utils.video.youtube import download_youtube_video, transcode_h264_video
 
 F = TypeVar("F", bound=Callable[..., Any])
 TENNIS_TERMS = ("tennis", "atp", "wta", "grand slam", "rally", "court")
+VIDEO_FILE_SUFFIXES = {
+    ".avi",
+    ".m4v",
+    ".mkv",
+    ".mov",
+    ".mp4",
+    ".mpeg",
+    ".mpg",
+    ".webm",
+}
 
 
 def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
@@ -211,6 +222,7 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
     gate_records: list[JSONDict] = []
     processed_new = 0
     accepted_videos = 0
+    cleanup_video_file_count = 0
 
     for source in sources:
         video_id = str(source["video_id"])
@@ -225,6 +237,7 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
         print(f"[prepare_dinov3_ssl_images] source={video_id}")
         processed_new += 1
         source_records.append(dict(source))
+        local_video_supplied = bool(source.get("local_video"))
         source_video = _resolve_source_video(source, source_dir, workflow.download)
         sample_video = _transcode_source_video(
             source_video, video_id, h264_dir, workflow.transcode
@@ -275,18 +288,25 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
         print(
             f"  gate: {decision.label} accepted={decision.accepted} reason={decision.reason}"
         )
-        if not decision.accepted:
-            continue
-
-        accepted_videos += 1
-        image_records.extend(
-            _promote_sampled_frames(
-                sampled_frames=sampled_frames,
-                images_dir=images_dir,
-                root=root,
-                decision=decision,
-                overwrite=bool(workflow.frames.overwrite),
+        if decision.accepted:
+            accepted_videos += 1
+            image_records.extend(
+                _promote_sampled_frames(
+                    sampled_frames=sampled_frames,
+                    images_dir=images_dir,
+                    root=root,
+                    decision=decision,
+                    overwrite=bool(workflow.frames.overwrite),
+                )
             )
+        cleanup_video_file_count += _cleanup_video_files(
+            video_id=video_id,
+            videos_dir=videos_dir,
+            source_video=source_video,
+            sample_video=sample_video,
+            enabled=bool(workflow.processing.cleanup_videos_after_processing),
+            keep_info_json=bool(workflow.processing.cleanup_keep_info_json),
+            skip=local_video_supplied,
         )
 
     write_jsonl(manifests_dir / "sources.jsonl", source_records)
@@ -299,6 +319,7 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
         "sampled_frame_count": len(sample_records),
         "accepted_video_count": accepted_videos,
         "image_count": len(image_records),
+        "cleanup_video_file_count": cleanup_video_file_count,
         "images_dir": relative_path(images_dir, root),
         "written_at": utc_now_iso(),
     }
@@ -308,6 +329,7 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
         "sampled_frame_count": len(sample_records),
         "accepted_video_count": accepted_videos,
         "image_count": len(image_records),
+        "cleanup_video_file_count": cleanup_video_file_count,
     }
 
 
@@ -511,6 +533,63 @@ def _force_transcode_source_video(
     )
 
 
+def _probe_video_info(video_path: Path) -> VideoInfo:
+    container = av.open(str(video_path))
+    try:
+        stream = _video_stream(container)
+        fps = float(stream.average_rate or stream.base_rate or 0.0)
+        frame_count = int(stream.frames or 0)
+        if frame_count <= 0 and stream.duration is not None and stream.time_base:
+            frame_count = int(float(stream.duration * stream.time_base) * fps)
+        if frame_count <= 0 and container.duration is not None:
+            frame_count = int((float(container.duration) / 1_000_000.0) * fps)
+        return VideoInfo(
+            fps=fps,
+            width=int(stream.width),
+            height=int(stream.height),
+            frame_count=frame_count,
+        )
+    finally:
+        container.close()
+
+
+def _iter_selected_video_frames(
+    video_path: Path, frame_indices: Sequence[int]
+) -> Iterator[FramePacket[Any]]:
+    targets = sorted(set(frame_indices))
+    if not targets:
+        return
+    container = av.open(str(video_path))
+    try:
+        stream = _video_stream(container)
+        target_offset = 0
+        for frame_index, frame in enumerate(container.decode(stream)):
+            while target_offset < len(targets) and targets[target_offset] < frame_index:
+                target_offset += 1
+            if target_offset >= len(targets):
+                break
+            if frame_index != targets[target_offset]:
+                continue
+            frame_rgb = frame.to_ndarray(format="rgb24")
+            yield FramePacket(
+                index=frame_index,
+                frame=frame_rgb,
+                original_size=(int(frame.width), int(frame.height)),
+            )
+            target_offset += 1
+            if target_offset >= len(targets):
+                break
+    finally:
+        container.close()
+
+
+def _video_stream(container: Any) -> Any:
+    for stream in container.streams:
+        if stream.type == "video":
+            return stream
+    raise RuntimeError("No video stream found.")
+
+
 def _sample_video_frames(
     *,
     source: Mapping[str, Any],
@@ -527,21 +606,22 @@ def _sample_video_frames(
             return cast(list[JSONDict], existing_records)
 
     ensure_dirs([output_dir])
-    info = probe_video_info(video_path)
+    info = _probe_video_info(video_path)
     if info.frame_count <= 0:
-        raise RuntimeError(f"OpenCV reported no frames for {video_path}")
+        raise RuntimeError(f"PyAV reported no frames for {video_path}")
     frame_indices = sample_uniform_frame_indices(
         info.frame_count, int(cfg.frames_per_video)
     )
     records: list[JSONDict] = []
-    for frame_index in frame_indices:
-        packet = read_video_frame(video_path, frame_index)
+    for packet in _iter_selected_video_frames(video_path, frame_indices):
+        frame_index = packet.index
         image_id = f"{source['video_id']}_f{frame_index:08d}"
         output_path = output_dir / f"{image_id}.{cfg.output_ext}"
         if not output_path.exists() or bool(cfg.overwrite):
-            params = [cv2.IMWRITE_JPEG_QUALITY, int(cfg.jpeg_quality)]
-            if not cv2.imwrite(str(output_path), packet.frame, params):
-                raise RuntimeError(f"Failed to write sampled frame: {output_path}")
+            Image.fromarray(packet.frame).save(
+                output_path,
+                quality=int(cfg.jpeg_quality),
+            )
         records.append(
             {
                 "image_id": image_id,
@@ -556,6 +636,10 @@ def _sample_video_frames(
                 "height": info.height,
                 "sampled_at": utc_now_iso(),
             }
+        )
+    if len(records) != len(frame_indices):
+        raise RuntimeError(
+            f"Decoded {len(records)}/{len(frame_indices)} sampled frames from {video_path}"
         )
     write_jsonl(manifest_path, records)
     print(f"  sampled frames: {len(records)} -> {output_dir}")
@@ -575,23 +659,29 @@ def _write_contact_sheet(
     selected = selected[: int(cfg.max_images)]
     thumbs = []
     for record in selected:
-        image = cv2.imread(str(root / str(record["image_path"])))
-        if image is None:
+        image_path = root / str(record["image_path"])
+        if not image_path.exists():
             continue
-        thumbs.append(cv2.resize(image, (int(cfg.thumb_width), int(cfg.thumb_height))))
+        with Image.open(image_path) as image:
+            thumbs.append(
+                image.convert("RGB").resize(
+                    (int(cfg.thumb_width), int(cfg.thumb_height))
+                )
+            )
     if not thumbs:
         raise RuntimeError("No sampled frames available for contact sheet.")
     cols = int(cfg.columns)
-    rows = []
-    for start in range(0, len(thumbs), cols):
-        row = thumbs[start : start + cols]
-        if len(row) < cols:
-            row.extend([row[-1].copy() for _ in range(cols - len(row))])
-        rows.append(cv2.hconcat(row))
-    sheet = cv2.vconcat(rows)
+    rows = (len(thumbs) + cols - 1) // cols
+    sheet = Image.new(
+        "RGB",
+        (cols * int(cfg.thumb_width), rows * int(cfg.thumb_height)),
+    )
+    for index, thumb in enumerate(thumbs):
+        col = index % cols
+        row = index // cols
+        sheet.paste(thumb, (col * int(cfg.thumb_width), row * int(cfg.thumb_height)))
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    if not cv2.imwrite(str(output_path), sheet, [cv2.IMWRITE_JPEG_QUALITY, 90]):
-        raise RuntimeError(f"Failed to write contact sheet: {output_path}")
+    sheet.save(output_path, quality=90)
     return output_path
 
 
@@ -619,6 +709,40 @@ def _promote_sampled_frames(
             }
         )
     return records
+
+
+def _cleanup_video_files(
+    *,
+    video_id: str,
+    videos_dir: Path,
+    source_video: Path,
+    sample_video: Path,
+    enabled: bool,
+    keep_info_json: bool,
+    skip: bool,
+) -> int:
+    """Delete processed downloaded video files while preserving manifests."""
+    if not enabled or skip:
+        return 0
+
+    videos_root = videos_dir.resolve()
+    candidates = {source_video, sample_video}
+    candidates.update(videos_dir.glob(f"**/{video_id}*"))
+
+    deleted = 0
+    for path in sorted(candidates, key=str):
+        if not path.is_file():
+            continue
+        if keep_info_json and path.name == f"{video_id}.info.json":
+            continue
+        if path.suffix.lower() not in VIDEO_FILE_SUFFIXES:
+            continue
+        if not _is_relative_to(path.resolve(), videos_root):
+            continue
+        path.unlink()
+        deleted += 1
+        print(f"  cleanup video: {path}")
+    return deleted
 
 
 def _build_gate(cfg: DictConfig) -> FrameGate:
@@ -656,6 +780,14 @@ def _gate_record(
 
 def _read_info_json(path: Path) -> JSONDict:
     return cast(JSONDict, load_json_if_exists(path, {}))
+
+
+def _is_relative_to(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
 
 
 def _parse_gate_label(text: str) -> str:

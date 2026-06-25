@@ -31,8 +31,10 @@ workflow:
     manifests_dir: manifests
 
   processing:
-    max_new_videos: 20
+    max_new_videos: 100
     reprocess_existing: false
+    cleanup_videos_after_processing: true
+    cleanup_keep_info_json: true
 
   download:
     enabled: true
