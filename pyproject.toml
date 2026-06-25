@@ -204,6 +204,21 @@ ignore_missing_imports = true
 module = ["third_party.*"]
 ignore_errors = true
 
+# Tests are still type-checked (bodies are validated), but pytest's own
+# fixture / parametrize decorators are seen as untyped under the
+# `--follow-imports=skip` pre-commit invocation, so the strict
+# "annotate every def / no untyped decorators" rules cannot be satisfied for
+# test functions. Relax those ceremony-only rules for the tests package while
+# keeping real type errors active. `warn_unreachable` is also disabled because
+# asserting on state mutated by a helper call trips mypy's narrowing.
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_decorators = false
+warn_unused_ignores = false
+warn_unreachable = false
+
 [tool.coverage.run]
 source = ["src"]
 omit = [
@@ -240,10 +255,13 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = [
     "--verbose",
-    "--cov=src",
-    "--cov-report=term-missing",
-    "--cov-report=html:htmlcov",
-    "--cov-report=xml",
+    # importlib import mode lets the tests/ tree mirror src/ without __init__.py
+    # files and tolerates duplicate test basenames across mirrored packages
+    # (e.g. utils/data/test_augmentation.py vs tasks/base/data/test_augmentation.py).
+    "--import-mode=importlib",
+    # Run the suite in parallel across CPU cores (pytest-xdist).
+    "-n",
+    "auto",
     "--strict-markers",
     "--disable-warnings",
     # Enable doctest for docstring Examples (turn on when examples are stable)
