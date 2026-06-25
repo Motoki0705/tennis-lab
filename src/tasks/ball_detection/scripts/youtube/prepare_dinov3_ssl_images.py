@@ -216,14 +216,15 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
     existing_video_ids = _existing_video_ids(manifests_dir, images_dir)
     gate = _build_gate(workflow.gate)
 
-    source_records: list[JSONDict] = []
-    sample_records: list[JSONDict] = []
-    image_records: list[JSONDict] = []
-    gate_records: list[JSONDict] = []
+    source_records = read_jsonl(manifests_dir / "sources.jsonl")
+    sample_records = read_jsonl(manifests_dir / "sampled_frames.jsonl")
+    image_records = read_jsonl(manifests_dir / "images.jsonl")
+    gate_records = read_jsonl(manifests_dir / "gate_decisions.jsonl")
+    summary_record = _read_info_json(manifests_dir / "summary.json")
     processed_new = 0
-    accepted_videos = 0
-    failed_video_count = 0
-    cleanup_video_file_count = 0
+    accepted_videos = sum(1 for record in gate_records if record.get("accepted"))
+    failed_video_count = int(summary_record.get("failed_video_count", 0))
+    cleanup_video_file_count = int(summary_record.get("cleanup_video_file_count", 0))
 
     for source in sources:
         video_id = str(source["video_id"])
