@@ -43,6 +43,12 @@ def run_parallel_scene_generation(
             f"Parallel scene generation requires num_workers >= 1 (got {num_workers})"
         )
 
+    # An empty workload short-circuits to an empty iterator: otherwise
+    # ``max_workers`` would be ``min(num_workers, 0) == 0`` and
+    # ``ProcessPoolExecutor`` rejects ``max_workers <= 0``.
+    if not scene_indices:
+        return
+
     max_workers = min(num_workers, len(scene_indices))
 
     # Chunk generation runs from a background thread while the training process

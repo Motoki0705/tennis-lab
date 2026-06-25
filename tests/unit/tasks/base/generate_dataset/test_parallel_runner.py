@@ -37,9 +37,7 @@ def test_repeated_args_broadcast_to_each_call() -> None:
     assert out == [8, 125]
 
 
-def test_empty_indices_raises_value_error() -> None:
-    # NOTE (likely bug): for an empty index list, max_workers = min(num_workers, 0)
-    # == 0, and ProcessPoolExecutor rejects max_workers <= 0. So an empty workload
-    # raises instead of yielding nothing. This test documents the current behavior.
-    with pytest.raises(ValueError, match="max_workers must be greater than 0"):
-        list(run_parallel_scene_generation(pow, [], 2, num_workers=4))
+def test_empty_indices_yields_nothing() -> None:
+    # An empty index list short-circuits to an empty iterator rather than
+    # constructing a ProcessPoolExecutor with max_workers=0 (which would raise).
+    assert list(run_parallel_scene_generation(pow, [], 2, num_workers=4)) == []
