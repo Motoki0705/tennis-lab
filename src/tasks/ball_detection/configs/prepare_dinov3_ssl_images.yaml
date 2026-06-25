@@ -84,7 +84,7 @@ workflow:
       thumb_height: 126
     vllm:
       # Start vLLM separately, for example:
-      # VLLM_CPU_KVCACHE_SPACE=4 python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3.5-0.8B --host 127.0.0.1 --port 8000 --max-model-len 4096 --max-num-seqs 1 --max-num-batched-tokens 4096 --enforce-eager --skip-mm-profiling --reasoning-parser qwen3 --limit-mm-per-prompt '{"image":1}' --trust-remote-code
+      # VLLM_CPU_KVCACHE_SPACE=8 python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3.5-0.8B --host 127.0.0.1 --port 8000 --max-model-len 8192 --max-num-seqs 1 --max-num-batched-tokens 8192 --enforce-eager --skip-mm-profiling --reasoning-parser qwen3 --limit-mm-per-prompt '{"image":1}' --trust-remote-code
       base_url: http://127.0.0.1:8000/v1
       model: Qwen/Qwen3.5-0.8B
       timeout_sec: 120
