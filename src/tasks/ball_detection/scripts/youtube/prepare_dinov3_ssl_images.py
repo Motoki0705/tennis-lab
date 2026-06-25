@@ -323,23 +323,31 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
             keep_info_json=bool(workflow.processing.cleanup_keep_info_json),
             skip=local_video_supplied,
         )
+        _write_pipeline_manifests(
+            manifests_dir=manifests_dir,
+            images_dir=images_dir,
+            root=root,
+            source_records=source_records,
+            sample_records=sample_records,
+            gate_records=gate_records,
+            image_records=image_records,
+            accepted_videos=accepted_videos,
+            failed_video_count=failed_video_count,
+            cleanup_video_file_count=cleanup_video_file_count,
+        )
 
-    write_jsonl(manifests_dir / "sources.jsonl", source_records)
-    write_jsonl(manifests_dir / "sampled_frames.jsonl", sample_records)
-    write_jsonl(manifests_dir / "gate_decisions.jsonl", gate_records)
-    write_jsonl(manifests_dir / "images.jsonl", image_records)
-    summary = {
-        "schema_name": "dinov3_ssl_youtube_images_summary_v1",
-        "source_count": len(source_records),
-        "sampled_frame_count": len(sample_records),
-        "accepted_video_count": accepted_videos,
-        "failed_video_count": failed_video_count,
-        "image_count": len(image_records),
-        "cleanup_video_file_count": cleanup_video_file_count,
-        "images_dir": relative_path(images_dir, root),
-        "written_at": utc_now_iso(),
-    }
-    save_json_atomic(summary, manifests_dir / "summary.json")
+    _write_pipeline_manifests(
+        manifests_dir=manifests_dir,
+        images_dir=images_dir,
+        root=root,
+        source_records=source_records,
+        sample_records=sample_records,
+        gate_records=gate_records,
+        image_records=image_records,
+        accepted_videos=accepted_videos,
+        failed_video_count=failed_video_count,
+        cleanup_video_file_count=cleanup_video_file_count,
+    )
     return {
         "source_count": len(source_records),
         "sampled_frame_count": len(sample_records),
@@ -348,6 +356,39 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
         "image_count": len(image_records),
         "cleanup_video_file_count": cleanup_video_file_count,
     }
+
+
+def _write_pipeline_manifests(
+    *,
+    manifests_dir: Path,
+    images_dir: Path,
+    root: Path,
+    source_records: Sequence[JSONDict],
+    sample_records: Sequence[JSONDict],
+    gate_records: Sequence[JSONDict],
+    image_records: Sequence[JSONDict],
+    accepted_videos: int,
+    failed_video_count: int,
+    cleanup_video_file_count: int,
+) -> None:
+    write_jsonl(manifests_dir / "sources.jsonl", source_records)
+    write_jsonl(manifests_dir / "sampled_frames.jsonl", sample_records)
+    write_jsonl(manifests_dir / "gate_decisions.jsonl", gate_records)
+    write_jsonl(manifests_dir / "images.jsonl", image_records)
+    save_json_atomic(
+        {
+            "schema_name": "dinov3_ssl_youtube_images_summary_v1",
+            "source_count": len(source_records),
+            "sampled_frame_count": len(sample_records),
+            "accepted_video_count": accepted_videos,
+            "failed_video_count": failed_video_count,
+            "image_count": len(image_records),
+            "cleanup_video_file_count": cleanup_video_file_count,
+            "images_dir": relative_path(images_dir, root),
+            "written_at": utc_now_iso(),
+        },
+        manifests_dir / "summary.json",
+    )
 
 
 def _collect_sources(workflow: DictConfig) -> list[JSONDict]:
