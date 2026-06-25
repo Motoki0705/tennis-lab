@@ -1,0 +1,95 @@
+hydra:
+  run:
+    dir: outputs/ball_detection/prepare_dinov3_ssl_images/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
+
+workflow:
+  root: data/tennis/dino_ssl
+
+  sources: []
+
+  discovery:
+    enabled: true
+    queries:
+      - tennis rally highlights short
+      - tennis practice rally short
+      - tennis match point short
+      - tennis court rally 5 minutes
+    max_results_per_query: 25
+    min_duration_sec: 20
+    max_duration_sec: 600
+    allow_unknown_duration: false
+
+  paths:
+    videos_dir: videos
+    source_dir: source
+    h264_dir: h264
+    sampled_dir: sampled
+    images_dir: images
+    manifests_dir: manifests
+
+  processing:
+    max_new_videos: 20
+    reprocess_existing: false
+
+  download:
+    enabled: true
+    format: "bestvideo[vcodec^=avc1][height<=360]+bestaudio/bestvideo[height<=360]+bestaudio/best[height<=360]"
+    merge_output_format: mkv
+    js_runtimes: node
+    remote_components: null
+    download_archive: data/tennis/dino_ssl/manifests/download_archive.txt
+    overwrite: false
+    extra_args:
+      - --match-filter
+      - "duration >= 20 & duration <= 600"
+
+  transcode:
+    enabled: false
+    fallback_on_decode_error: true
+    ffmpeg_binary: ffmpeg
+    encoder: libx264
+    hwaccel: null
+    hwaccel_output_format: null
+    preset: veryfast
+    tune: null
+    rate_control: null
+    cq: null
+    bitrate: null
+    maxrate: null
+    bufsize: null
+    profile: high
+    pix_fmt: yuv420p
+    crf: 24
+    overwrite: false
+
+  frames:
+    frames_per_video: 50
+    output_ext: jpg
+    jpeg_quality: 92
+    overwrite: false
+
+  gate:
+    backend: vllm
+    mock:
+      accept_all: false
+    contact_sheet:
+      max_images: 12
+      columns: 4
+      thumb_width: 224
+      thumb_height: 126
+    vllm:
+      # Start vLLM separately, for example:
+      # VLLM_CPU_KVCACHE_SPACE=4 python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3.5-0.8B --host 127.0.0.1 --port 8000 --max-model-len 4096 --max-num-seqs 1 --max-num-batched-tokens 4096 --enforce-eager --skip-mm-profiling --reasoning-parser qwen3 --limit-mm-per-prompt '{"image":1}' --trust-remote-code
+      base_url: http://127.0.0.1:8000/v1
+      model: Qwen/Qwen3.5-0.8B
+      timeout_sec: 120
+      max_tokens: 4096
+      accept_labels:
+        - tennis
+      extra_body:
+        chat_template_kwargs:
+          enable_thinking: true
+      prompt: "Classify the image grid for a DINOv3 tennis SSL corpus. Reason briefly if enabled. Final answer must be JSON with label and confidence. label must be tennis or non_tennis or unknown. Use tennis only when a tennis court or players or rackets or net are visible."

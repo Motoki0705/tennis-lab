@@ -22,6 +22,8 @@ types**, it belongs here (or should be promoted here), not in the task module.
 | Per-sample dataloader RNG | `make_sample_rng()` | `from src.utils.seeding import make_sample_rng` |
 | `mkdir(parents=True, exist_ok=True)` | `ensure_dir()` | `from src.utils.io import ensure_dir` |
 | Write/read JSON (creates dirs) | `save_json()` / `load_json()` | `from src.utils.io import save_json, load_json` |
+| Write/read JSONL manifests | `write_jsonl()` / `read_jsonl()` | `from src.utils.io import write_jsonl, read_jsonl` |
+| Atomic JSON write | `save_json_atomic()` | `from src.utils.io import save_json_atomic` |
 | Clone a `dict[str, Tensor]` sample | `clone_tensor_dict()` | `from src.utils.tensor_utils import clone_tensor_dict` |
 | Tensor → numpy (bf16-safe) | `to_numpy()` | `from src.utils.tensor_utils import to_numpy` |
 | Masked mean / padding mask | `masked_mean()`, `normalize_padding_mask()` | `from src.utils.tensor_utils import masked_mean, normalize_padding_mask` |
@@ -41,6 +43,8 @@ types**, it belongs here (or should be promoted here), not in the task module.
 | Court / player schema constants | court & COCO/SMPL keypoint definitions | `from src.utils.schema.court import ...` / `from src.utils.schema.player import ...` |
 | Read/stream video frames | `probe_video_info()`, `OpenCVVideoFrameReader`, `iter_temporal_windows/batches()` | `from src.utils.video import ...` |
 | Encode/select JPEG video frames | `encode_jpeg()`, `iter_selected_video_jpegs()` | `from src.utils.video import ...` |
+| Sample video frame indices | `sample_uniform_frame_indices()`, `sample_frame_indices_by_time_ranges()` | `from src.utils.video import ...` |
+| Download/transcode YouTube videos | `download_youtube_video()`, `transcode_h264_video()` | `from src.utils.video import ...` |
 | Transformer / MoE / RoPE blocks | `TransformerBlock`, `MoELayer`, RoPE helpers, `MLPHead` | `from src.utils.models import ...` |
 
 ## Modules
@@ -56,6 +60,7 @@ types**, it belongs here (or should be promoted here), not in the task module.
   `make_sample_rng()`. Training entry points needing full Lightning determinism
   should still use `lightning.pytorch.seed_everything`.
 - **`io.py`** — `ensure_dir()`, `save_json()`, `load_json()`.
+- **`commands.py`** — `run_command()` for logged `subprocess.run(..., check=True)`.
 - **`tensor_utils.py`** — `clone_tensor_dict()`, `to_numpy()` (detaches, moves to
   CPU, upcasts bf16/fp16), `masked_mean()`, `normalize_padding_mask()`.
 
@@ -92,7 +97,8 @@ types**, it belongs here (or should be promoted here), not in the task module.
 - **`video/`** — OpenCV streaming: `probe_video_info`, `read_video_frame`,
   `OpenCVVideoFrameReader`, `iter_temporal_windows/batches`, `PrefetchIterator`,
   `BgrToTensorTransform`, `normalize_tensor_imagenet`, JPEG encoding and
-  selected-frame extraction.
+  selected-frame extraction, frame index sampling, YouTube download, and H.264
+  transcode helpers.
 
 ## Adding a new utility
 
