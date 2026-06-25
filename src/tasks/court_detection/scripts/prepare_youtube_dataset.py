@@ -13,12 +13,8 @@ Notes:
 
 from __future__ import annotations
 
-import json
 import math
-import subprocess
-import sys
 from collections.abc import Callable, Iterable
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, TypeVar, cast
 
@@ -27,7 +23,27 @@ import hydra
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
+from src.utils.io import (
+    ensure_dirs,
+    load_json,
+    load_json_if_exists,
+    read_jsonl,
+    relative_path,
+    save_json_atomic,
+    utc_now_iso,
+    write_jsonl,
+)
 from src.utils.schema.court import COURT_KP_NAMES
+from src.utils.video.sampling import (
+    parse_time_seconds,
+    sample_frame_indices_by_time_ranges,
+    sample_step_seconds,
+)
+from src.utils.video.youtube import (
+    download_youtube_video,
+    h264_encoder_args,
+    transcode_h264_video,
+)
 
 F = TypeVar("F", bound=Callable[..., Any])
 JSONDict = dict[str, Any]
@@ -53,7 +69,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     frames_root = root / str(paths_cfg.frames_dir)
     annotations_dir = root / str(paths_cfg.annotations_dir)
     manifests_dir = root / str(paths_cfg.manifests_dir)
-    _ensure_dirs([av1_dir, h264_dir, frames_root, annotations_dir, manifests_dir])
+    ensure_dirs([av1_dir, h264_dir, frames_root, annotations_dir, manifests_dir])
 
     sources = _source_dicts(workflow_cfg.sources)
     frame_records_by_split: dict[str, list[JSONDict]] = {"train": [], "val": []}
@@ -68,16 +84,20 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
         print(f"[prepare_youtube_dataset] source={video_id} split={split}")
         av1_video = _download_av1(source, video_id, av1_dir, workflow_cfg.download)
-        h264_video = _transcode_h264(av1_video, video_id, h264_dir, workflow_cfg.transcode)
+        h264_video = _transcode_h264(
+            av1_video, video_id, h264_dir, workflow_cfg.transcode
+        )
         info = _read_info_json(av1_dir / f"{video_id}.info.json")
-        download_records.append({
-            "video_id": video_id,
-            "source_url": source["url"],
-            "source_title": info.get("title"),
-            "av1_video": _relative_path(av1_video, root),
-            "h264_video": _relative_path(h264_video, root),
-            "processed_at": _utc_now(),
-        })
+        download_records.append(
+            {
+                "video_id": video_id,
+                "source_url": source["url"],
+                "source_title": info.get("title"),
+                "av1_video": relative_path(av1_video, root),
+                "h264_video": relative_path(h264_video, root),
+                "processed_at": utc_now_iso(),
+            }
+        )
 
         frame_records = _extract_frames(
             source,
@@ -90,16 +110,18 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         )
         frame_records_by_split.setdefault(split, []).extend(frame_records)
 
-    _write_jsonl(manifests_dir / "sources.jsonl", source_records)
-    _write_jsonl(manifests_dir / "download_manifest.jsonl", download_records)
+    write_jsonl(manifests_dir / "sources.jsonl", source_records)
+    write_jsonl(manifests_dir / "download_manifest.jsonl", download_records)
     _write_annotations(annotations_dir, frame_records_by_split, workflow_cfg.annotation)
-    _write_json_atomic(
-        manifests_dir / "split_manifest.json",
+    save_json_atomic(
         {
             "schema_name": "court_youtube_split_manifest_v1",
-            "counts": {split: len(records) for split, records in frame_records_by_split.items()},
-            "written_at": _utc_now(),
+            "counts": {
+                split: len(records) for split, records in frame_records_by_split.items()
+            },
+            "written_at": utc_now_iso(),
         },
+        manifests_dir / "split_manifest.json",
     )
     return 0
 
@@ -114,126 +136,73 @@ def _source_dicts(raw_sources: Iterable[Any]) -> list[JSONDict]:
     return sources
 
 
-def _download_av1(source: JSONDict, video_id: str, av1_dir: Path, cfg: DictConfig) -> Path:
-    existing = _find_video(av1_dir, video_id)
-    if existing is not None and (not bool(cfg.enabled) or not bool(cfg.overwrite)):
-        print(f"  AV1 exists: {existing}")
-        return existing
-    if not bool(cfg.enabled):
-        raise FileNotFoundError(f"AV1 download disabled and no existing video found for {video_id}.")
-
-    output_template = av1_dir / f"{video_id}.%(ext)s"
-    cmd = [
-        sys.executable,
-        "-m",
-        "yt_dlp",
-        str(source["url"]),
-        "-f",
-        str(cfg.strict_format if bool(cfg.require_av1) else cfg.format),
-        "-o",
-        str(output_template),
-        "--merge-output-format",
-        str(cfg.merge_output_format),
-        "--write-info-json",
-        "--no-playlist",
-    ]
-    js_runtimes = cfg.get("js_runtimes")
-    if js_runtimes is not None:
-        cmd.extend(["--js-runtimes", str(js_runtimes)])
-    remote_components = cfg.get("remote_components")
-    if remote_components is not None:
-        cmd.extend(["--remote-components", str(remote_components)])
-    archive_path = cfg.get("download_archive")
-    if archive_path is not None:
-        cmd.extend(["--download-archive", str(Path(to_absolute_path(str(archive_path))).resolve())])
-    cmd.append("--force-overwrites" if bool(cfg.overwrite) else "--no-overwrites")
-    cmd.extend(str(value) for value in cfg.get("extra_args", []))
-    _run(cmd)
-
-    downloaded = _find_video(av1_dir, video_id)
-    if downloaded is None:
-        raise FileNotFoundError(f"yt-dlp finished but no AV1 video was found for {video_id}.")
-    return downloaded
+def _download_av1(
+    source: JSONDict, video_id: str, av1_dir: Path, cfg: DictConfig
+) -> Path:
+    archive = None
+    if cfg.get("download_archive") is not None:
+        archive = Path(to_absolute_path(str(cfg.download_archive))).resolve()
+    return download_youtube_video(
+        url=str(source["url"]),
+        video_id=video_id,
+        output_dir=av1_dir,
+        format_selector=str(cfg.strict_format if bool(cfg.require_av1) else cfg.format),
+        merge_output_format=str(cfg.merge_output_format),
+        enabled=bool(cfg.enabled),
+        overwrite=bool(cfg.overwrite),
+        js_runtimes=None if cfg.get("js_runtimes") is None else str(cfg.js_runtimes),
+        remote_components=(
+            None if cfg.get("remote_components") is None else str(cfg.remote_components)
+        ),
+        download_archive=archive,
+        extra_args=[str(value) for value in cfg.get("extra_args", [])],
+    )
 
 
-def _transcode_h264(av1_video: Path, video_id: str, h264_dir: Path, cfg: DictConfig) -> Path:
-    output_path = h264_dir / f"{video_id}.mp4"
-    if output_path.exists() and not bool(cfg.overwrite):
-        print(f"  H.264 exists: {output_path}")
-        return output_path
-    if not bool(cfg.enabled):
-        raise FileNotFoundError(f"H.264 transcode disabled and output missing: {output_path}")
-
-    cmd = [
-        str(cfg.ffmpeg_binary),
-        "-y" if bool(cfg.overwrite) else "-n",
-    ]
-    hwaccel = cfg.get("hwaccel")
-    if hwaccel is not None:
-        cmd.extend(["-hwaccel", str(hwaccel)])
-    hwaccel_output_format = cfg.get("hwaccel_output_format")
-    if hwaccel_output_format is not None:
-        cmd.extend(["-hwaccel_output_format", str(hwaccel_output_format)])
-
-    cmd.extend([
-        "-i",
-        str(av1_video),
-        "-map",
-        "0:v:0",
-    ])
-    cmd.extend(_h264_encoder_args(cfg))
-    cmd.extend(["-movflags", "+faststart", "-an", str(output_path)])
-    _run(cmd)
-    return output_path
+def _transcode_h264(
+    av1_video: Path, video_id: str, h264_dir: Path, cfg: DictConfig
+) -> Path:
+    return transcode_h264_video(
+        source_video=av1_video,
+        output_path=h264_dir / f"{video_id}.mp4",
+        enabled=bool(cfg.enabled),
+        overwrite=bool(cfg.overwrite),
+        ffmpeg_binary=str(cfg.ffmpeg_binary),
+        encoder=str(cfg.encoder),
+        hwaccel=None if cfg.get("hwaccel") is None else str(cfg.hwaccel),
+        hwaccel_output_format=(
+            None
+            if cfg.get("hwaccel_output_format") is None
+            else str(cfg.hwaccel_output_format)
+        ),
+        preset=str(cfg.preset),
+        tune=None if cfg.get("tune") is None else str(cfg.tune),
+        rate_control=None if cfg.get("rate_control") is None else str(cfg.rate_control),
+        cq=None if cfg.get("cq") is None else cfg.cq,
+        bitrate=None if cfg.get("bitrate") is None else str(cfg.bitrate),
+        maxrate=None if cfg.get("maxrate") is None else str(cfg.maxrate),
+        bufsize=None if cfg.get("bufsize") is None else str(cfg.bufsize),
+        profile=None if cfg.get("profile") is None else str(cfg.profile),
+        pix_fmt=str(cfg.pix_fmt),
+        crf=cfg.crf,
+    )
 
 
 def _h264_encoder_args(cfg: DictConfig) -> list[str]:
     """Return FFmpeg arguments for H.264 encoding."""
-    encoder = str(cfg.encoder)
-    if encoder == "libx264":
-        return [
-            "-c:v",
-            encoder,
-            "-preset",
-            str(cfg.preset),
-            "-crf",
-            str(cfg.crf),
-            "-pix_fmt",
-            str(cfg.pix_fmt),
-        ]
-
-    if encoder in {"h264_nvenc", "avc_nvenc"}:
-        args = [
-            "-c:v",
-            encoder,
-            "-preset",
-            str(cfg.preset),
-            "-tune",
-            str(cfg.tune),
-            "-rc",
-            str(cfg.rate_control),
-            "-cq",
-            str(cfg.cq),
-            "-pix_fmt",
-            str(cfg.pix_fmt),
-        ]
-        bitrate = cfg.get("bitrate")
-        if bitrate is None:
-            args.extend(["-b:v", "0"])
-        else:
-            args.extend(["-b:v", str(bitrate)])
-        maxrate = cfg.get("maxrate")
-        if maxrate is not None:
-            args.extend(["-maxrate", str(maxrate)])
-        bufsize = cfg.get("bufsize")
-        if bufsize is not None:
-            args.extend(["-bufsize", str(bufsize)])
-        profile = cfg.get("profile")
-        if profile is not None:
-            args.extend(["-profile:v", str(profile)])
-        return args
-
-    raise ValueError(f"Unsupported H.264 encoder: {encoder!r}")
+    return h264_encoder_args(
+        encoder=str(cfg.encoder),
+        preset=str(cfg.preset),
+        tune=None if cfg.get("tune") is None else str(cfg.tune),
+        rate_control=None if cfg.get("rate_control") is None else str(cfg.rate_control),
+        cq=None if cfg.get("cq") is None else cfg.cq,
+        bitrate=None if cfg.get("bitrate") is None else str(cfg.bitrate),
+        maxrate=None if cfg.get("maxrate") is None else str(cfg.maxrate),
+        bufsize=None if cfg.get("bufsize") is None else str(cfg.bufsize),
+        profile=None if cfg.get("profile") is None else str(cfg.profile),
+        pix_fmt=str(cfg.pix_fmt),
+        crf=cfg.crf,
+    )
 
 
 def _extract_frames(
@@ -246,12 +215,14 @@ def _extract_frames(
     info: JSONDict,
 ) -> list[JSONDict]:
     if not bool(cfg.enabled):
-        return _read_jsonl(output_dir / "frames.jsonl")
+        return read_jsonl(output_dir / "frames.jsonl")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     capture = cv2.VideoCapture(str(video_path))
     if not capture.isOpened():
-        raise RuntimeError(f"Failed to open H.264 video for frame extraction: {video_path}")
+        raise RuntimeError(
+            f"Failed to open H.264 video for frame extraction: {video_path}"
+        )
 
     fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0)
     width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
@@ -260,10 +231,16 @@ def _extract_frames(
     if fps <= 0:
         raise RuntimeError(f"Invalid FPS reported by OpenCV for {video_path}: {fps}")
 
-    duration = frame_count / fps if frame_count > 0 else float(info.get("duration") or 0.0)
-    frame_indices = _sample_frame_indices(source.get("time_ranges", []), duration, fps, cfg)
+    duration = (
+        frame_count / fps if frame_count > 0 else float(info.get("duration") or 0.0)
+    )
+    frame_indices = _sample_frame_indices(
+        source.get("time_ranges", []), duration, fps, cfg
+    )
     if frame_count > 0:
-        frame_indices = [frame_index for frame_index in frame_indices if frame_index < frame_count]
+        frame_indices = [
+            frame_index for frame_index in frame_indices if frame_index < frame_count
+        ]
     max_frames = cfg.get("max_frames_per_video")
     if max_frames is not None:
         frame_indices = frame_indices[: int(max_frames)]
@@ -282,71 +259,56 @@ def _extract_frames(
             if not cv2.imwrite(str(output_path), frame, write_params):
                 raise RuntimeError(f"Failed to write frame: {output_path}")
 
-        records.append({
-            "id": image_id,
-            "image_path": _relative_path(output_path, root),
-            "video_id": source["source_id"],
-            "source_url": source["url"],
-            "source_title": info.get("title"),
-            "source_frame_index": frame_index,
-            "timestamp_sec": frame_index / fps,
-            "fps": fps,
-            "width": width,
-            "height": height,
-            "split": split,
-            "status": "pending_annotation",
-            "processed_at": _utc_now(),
-        })
+        records.append(
+            {
+                "id": image_id,
+                "image_path": relative_path(output_path, root),
+                "video_id": source["source_id"],
+                "source_url": source["url"],
+                "source_title": info.get("title"),
+                "source_frame_index": frame_index,
+                "timestamp_sec": frame_index / fps,
+                "fps": fps,
+                "width": width,
+                "height": height,
+                "split": split,
+                "status": "pending_annotation",
+                "processed_at": utc_now_iso(),
+            }
+        )
 
     capture.release()
-    _write_jsonl(output_dir / "frames.jsonl", records)
+    write_jsonl(output_dir / "frames.jsonl", records)
     print(f"  frames: {len(records)} -> {output_dir}")
     return records
 
 
-def _sample_frame_indices(raw_ranges: Any, duration: float, fps: float, cfg: DictConfig) -> list[int]:
-    ranges = list(raw_ranges or [])
-    if not ranges:
-        ranges = [{"start": 0.0, "end": duration}]
-    step_sec = _sample_step_seconds(cfg, fps)
-    frame_indices: list[int] = []
-    seen: set[int] = set()
-    for time_range in ranges:
-        start_sec = _parse_time_seconds(time_range.get("start", 0.0))
-        end_value = time_range.get("end")
-        end_sec = duration if end_value is None else _parse_time_seconds(end_value)
-        timestamp = max(start_sec, 0.0)
-        while timestamp <= max(end_sec, start_sec):
-            frame_index = int(round(timestamp * fps))
-            if frame_index not in seen:
-                seen.add(frame_index)
-                frame_indices.append(frame_index)
-            timestamp += step_sec
-    return frame_indices
+def _sample_frame_indices(
+    raw_ranges: Any, duration: float, fps: float, cfg: DictConfig
+) -> list[int]:
+    return sample_frame_indices_by_time_ranges(
+        raw_ranges,
+        duration=duration,
+        fps=fps,
+        sample_mode=str(cfg.sample_mode),
+        interval_seconds=float(cfg.interval_seconds),
+        target_fps=float(cfg.fps),
+        every_n_frames=int(cfg.every_n_frames),
+    )
 
 
 def _sample_step_seconds(cfg: DictConfig, fps: float) -> float:
-    mode = str(cfg.sample_mode)
-    if mode == "interval_seconds":
-        return float(cfg.interval_seconds)
-    if mode == "fps":
-        return 1.0 / float(cfg.fps)
-    if mode == "every_n_frames":
-        return float(cfg.every_n_frames) / fps
-    raise ValueError(f"Unsupported frames.sample_mode={mode!r}.")
+    return sample_step_seconds(
+        sample_mode=str(cfg.sample_mode),
+        fps=fps,
+        interval_seconds=float(cfg.interval_seconds),
+        target_fps=float(cfg.fps),
+        every_n_frames=int(cfg.every_n_frames),
+    )
 
 
 def _parse_time_seconds(value: Any) -> float:
-    if isinstance(value, int | float):
-        return float(value)
-    text = str(value)
-    parts = text.split(":")
-    if len(parts) == 1:
-        return float(parts[0])
-    seconds = 0.0
-    for part in parts:
-        seconds = seconds * 60.0 + float(part)
-    return seconds
+    return parse_time_seconds(value)
 
 
 def _write_annotations(
@@ -356,7 +318,9 @@ def _write_annotations(
 ) -> None:
     for split in ("train", "val"):
         path = annotations_dir / f"{split}.json"
-        existing_by_id = _existing_annotation_items(path) if bool(cfg.merge_existing) else {}
+        existing_by_id = (
+            _existing_annotation_items(path) if bool(cfg.merge_existing) else {}
+        )
         items: list[JSONDict] = []
         generated_ids: set[str] = set()
         for frame in frame_records_by_split.get(split, []):
@@ -366,7 +330,9 @@ def _write_annotations(
             if existing is None:
                 items.append(_initial_annotation_item(frame, split, cfg))
             else:
-                items.append(_normalize_youtube_annotation_item(existing, frame, split, cfg))
+                items.append(
+                    _normalize_youtube_annotation_item(existing, frame, split, cfg)
+                )
         if bool(cfg.merge_existing):
             items.extend(
                 item
@@ -390,8 +356,10 @@ def _write_annotations(
             "items": items,
         }
         if path.exists() and not bool(cfg.overwrite) and not bool(cfg.merge_existing):
-            raise FileExistsError(f"Annotation file exists. Set overwrite=true or merge_existing=true: {path}")
-        _write_json_atomic(path, payload)
+            raise FileExistsError(
+                f"Annotation file exists. Set overwrite=true or merge_existing=true: {path}"
+            )
+        save_json_atomic(payload, path)
         print(f"[prepare_youtube_dataset] annotations {split}: {len(items)} -> {path}")
 
 
@@ -445,27 +413,31 @@ def _normalize_youtube_annotation_item(
     """Normalize an existing YouTube item without discarding annotations."""
     output = dict(existing)
     keypoint_format = str(cfg.keypoint_format)
-    output.update({
-        "id": frame["id"],
-        "image_path": frame["image_path"],
-        "width": frame["width"],
-        "height": frame["height"],
-        "split": split,
-        "keypoint_format": keypoint_format,
-        "labeled_keypoint_indices": _labeled_keypoint_indices(keypoint_format),
-        "is_yastrebksv_kp15": False,
-    })
+    output.update(
+        {
+            "id": frame["id"],
+            "image_path": frame["image_path"],
+            "width": frame["width"],
+            "height": frame["height"],
+            "split": split,
+            "keypoint_format": keypoint_format,
+            "labeled_keypoint_indices": _labeled_keypoint_indices(keypoint_format),
+            "is_yastrebksv_kp15": False,
+        }
+    )
     source = dict(output.get("source", {}))
     for key in ("dataset", "keypoint_format", "labeled_keypoint_indices"):
         source.pop(key, None)
-    source.update({
-        "type": "youtube",
-        "video_id": frame["video_id"],
-        "source_url": frame["source_url"],
-        "source_title": frame.get("source_title"),
-        "source_frame_index": frame["source_frame_index"],
-        "timestamp_sec": frame["timestamp_sec"],
-    })
+    source.update(
+        {
+            "type": "youtube",
+            "video_id": frame["video_id"],
+            "source_url": frame["source_url"],
+            "source_title": frame.get("source_title"),
+            "source_frame_index": frame["source_frame_index"],
+            "timestamp_sec": frame["timestamp_sec"],
+        }
+    )
     output["source"] = source
     if output.get("annotation_status") == "completed" and not _named_keypoints_complete(
         output.get("keypoints"),
@@ -495,7 +467,12 @@ def _named_keypoints_complete(keypoints: Any, required_indices: list[int]) -> bo
             return False
         x = point.get("x")
         y = point.get("y")
-        if x is None or y is None or not math.isfinite(float(x)) or not math.isfinite(float(y)):
+        if (
+            x is None
+            or y is None
+            or not math.isfinite(float(x))
+            or not math.isfinite(float(y))
+        ):
             return False
     return True
 
@@ -511,62 +488,14 @@ def _labeled_keypoint_indices(keypoint_format: str) -> list[int]:
 def _existing_annotation_items(path: Path) -> dict[str, JSONDict]:
     if not path.exists():
         return {}
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = load_json(path)
     items = payload.get("items", []) if isinstance(payload, dict) else payload
     return {str(item["id"]): item for item in items}
 
 
-def _find_video(directory: Path, video_id: str) -> Path | None:
-    candidates = [
-        path
-        for path in sorted(directory.glob(f"{video_id}.*"))
-        if path.suffix not in {".json", ".part", ".ytdl"} and not path.name.endswith(".info.json")
-    ]
-    return candidates[0] if candidates else None
-
-
 def _read_info_json(path: Path) -> JSONDict:
-    if not path.exists():
-        return {}
-    return cast(JSONDict, json.loads(path.read_text(encoding="utf-8")))
-
-
-def _read_jsonl(path: Path) -> list[JSONDict]:
-    if not path.exists():
-        return []
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-
-
-def _write_jsonl(path: Path, records: list[JSONDict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    text = "".join(json.dumps(record, ensure_ascii=False) + "\n" for record in records)
-    path.write_text(text, encoding="utf-8")
-
-
-def _write_json_atomic(path: Path, payload: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    tmp_path.replace(path)
-
-
-def _ensure_dirs(paths: Iterable[Path]) -> None:
-    for path in paths:
-        path.mkdir(parents=True, exist_ok=True)
-
-
-def _relative_path(path: Path, root: Path) -> str:
-    return str(path.resolve().relative_to(root.resolve()))
-
-
-def _utc_now() -> str:
-    return datetime.now(UTC).isoformat()
-
-
-def _run(cmd: list[str]) -> None:
-    print("  $ " + " ".join(cmd))
-    subprocess.run(cmd, check=True)
+    return cast(JSONDict, load_json_if_exists(path, {}))
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main())  # type: ignore[call-arg]
