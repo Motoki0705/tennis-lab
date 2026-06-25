@@ -87,16 +87,13 @@ def test_prepare_dinov3_ssl_images_promotes_mock_accepted_frames(
                         "thumb_width": 64,
                         "thumb_height": 36,
                     },
-                    "command_backend": {
-                        "command": ["echo", "tennis"],
-                        "prompt": "",
-                        "accept_labels": ["tennis"],
-                    },
-                    "openai_compatible": {
+                    "vllm": {
                         "base_url": "http://127.0.0.1:8000/v1",
                         "model": "unused",
                         "timeout_sec": 1,
+                        "max_tokens": 4096,
                         "accept_labels": ["tennis"],
+                        "extra_body": {},
                         "prompt": "",
                     },
                 },

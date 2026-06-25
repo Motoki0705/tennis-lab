@@ -7,7 +7,7 @@ Usage:
 
 Notes:
     - Hydra loads configuration from `src/tasks/ball_detection/configs/prepare_dinov3_ssl_images.yaml`.
-    - The intended production gate is Qwen3.5-0.8B INT8 via a local VLM command or OpenAI-compatible endpoint.
+    - The intended production gate is Qwen/Qwen3.5-0.8B served by local vLLM.
     - `mock` gate is kept for pipeline dry-runs and tests when the local VLM runtime is unavailable.
 """
 
@@ -109,53 +109,10 @@ class MockTennisGate:
         )
 
 
-class CommandVlmGate:
-    """Run a local command that receives a contact-sheet path and emits a label."""
+class VllmGate:
+    """Call a local vLLM OpenAI-compatible VLM endpoint."""
 
     def __init__(self, cfg: DictConfig) -> None:
-        self.command = [str(value) for value in cfg.command]
-        self.prompt = str(cfg.prompt)
-        self.accept_labels = {str(value).lower() for value in cfg.accept_labels}
-
-    def classify(
-        self,
-        *,
-        source: Mapping[str, Any],
-        sampled_frames: Sequence[Mapping[str, Any]],
-        contact_sheet: Path,
-    ) -> GateDecision:
-        replacements = {
-            "{image_path}": str(contact_sheet),
-            "{prompt}": self.prompt,
-            "{title}": str(source.get("title") or ""),
-            "{url}": str(source.get("url") or source.get("source_url") or ""),
-        }
-        cmd = [_replace_tokens(part, replacements) for part in self.command]
-        import subprocess
-
-        completed = subprocess.run(
-            cmd,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        raw = (completed.stdout or completed.stderr).strip()
-        label = _parse_gate_label(raw)
-        accepted = label in self.accept_labels
-        return GateDecision(
-            accepted=accepted,
-            label=label,
-            confidence=None,
-            reason=f"command gate returned label={label!r}",
-            backend="command",
-            raw_response=raw,
-        )
-
-
-class OpenAICompatibleVlmGate:
-    """Call a local OpenAI-compatible VLM endpoint, such as vLLM."""
-
-    def __init__(self, cfg: DictConfig, *, backend_name: str) -> None:
         self.base_url = str(cfg.base_url).rstrip("/")
         self.model = str(cfg.model)
         self.prompt = str(cfg.prompt)
@@ -166,7 +123,6 @@ class OpenAICompatibleVlmGate:
             JSONDict,
             OmegaConf.to_container(cfg.get("extra_body", {}), resolve=True),
         )
-        self.backend_name = backend_name
 
     def classify(
         self,
@@ -214,7 +170,7 @@ class OpenAICompatibleVlmGate:
             label=label,
             confidence=cast(float | None, parsed["confidence"]),
             reason=str(parsed["reason"]),
-            backend=self.backend_name,
+            backend="vllm",
             raw_response=raw,
             reasoning=None if reasoning is None else str(reasoning),
             raw_payload=cast(JSONDict, payload),
@@ -669,14 +625,8 @@ def _build_gate(cfg: DictConfig) -> FrameGate:
     backend = str(cfg.backend)
     if backend == "mock":
         return MockTennisGate(accept_all=bool(cfg.mock.accept_all))
-    if backend == "command":
-        return CommandVlmGate(cfg.command_backend)
-    if backend == "openai_compatible":
-        return OpenAICompatibleVlmGate(
-            cfg.openai_compatible, backend_name="openai_compatible"
-        )
     if backend == "vllm":
-        return OpenAICompatibleVlmGate(cfg.vllm, backend_name="vllm")
+        return VllmGate(cfg.vllm)
     raise ValueError(f"Unsupported gate.backend={backend!r}.")
 
 
@@ -706,13 +656,6 @@ def _gate_record(
 
 def _read_info_json(path: Path) -> JSONDict:
     return cast(JSONDict, load_json_if_exists(path, {}))
-
-
-def _replace_tokens(text: str, replacements: Mapping[str, str]) -> str:
-    output = text
-    for key, value in replacements.items():
-        output = output.replace(key, value)
-    return output
 
 
 def _parse_gate_label(text: str) -> str:
