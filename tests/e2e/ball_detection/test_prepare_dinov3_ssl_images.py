@@ -9,6 +9,7 @@ from omegaconf import OmegaConf
 
 from src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images import (
     _cleanup_video_files,
+    _failed_gate_decision,
     _parse_gate_output,
     run_pipeline,
 )
@@ -157,6 +158,15 @@ def test_prepare_dinov3_ssl_images_cleanup_deletes_video_but_keeps_info(
     assert not source_video.exists()
     assert not h264_video.exists()
     assert info_json.exists()
+
+
+def test_prepare_dinov3_ssl_images_records_gate_failure() -> None:
+    decision = _failed_gate_decision("vllm", RuntimeError("bad request"))
+
+    assert decision.accepted is False
+    assert decision.label == "gate_error"
+    assert decision.reason == "RuntimeError: bad request"
+    assert decision.backend == "vllm"
 
 
 def _write_tiny_video(path: Path, *, frame_count: int) -> None:

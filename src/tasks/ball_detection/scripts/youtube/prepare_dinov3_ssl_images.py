@@ -285,11 +285,15 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
             root=root,
             cfg=workflow.gate.contact_sheet,
         )
-        decision = gate.classify(
-            source=source_with_info,
-            sampled_frames=sampled_frames,
-            contact_sheet=contact_sheet,
-        )
+        try:
+            decision = gate.classify(
+                source=source_with_info,
+                sampled_frames=sampled_frames,
+                contact_sheet=contact_sheet,
+            )
+        except Exception as exc:
+            failed_video_count += 1
+            decision = _failed_gate_decision(str(workflow.gate.backend), exc)
         gate_record = _gate_record(
             video_id, source_with_info, decision, root, contact_sheet
         )
@@ -308,6 +312,8 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
                     overwrite=bool(workflow.frames.overwrite),
                 )
             )
+        elif decision.label == "gate_error":
+            print("  skip promotion because gate failed")
         cleanup_video_file_count += _cleanup_video_files(
             video_id=video_id,
             videos_dir=videos_dir,
@@ -763,6 +769,16 @@ def _build_gate(cfg: DictConfig) -> FrameGate:
     if backend == "vllm":
         return VllmGate(cfg.vllm)
     raise ValueError(f"Unsupported gate.backend={backend!r}.")
+
+
+def _failed_gate_decision(backend: str, exc: Exception) -> GateDecision:
+    return GateDecision(
+        accepted=False,
+        label="gate_error",
+        confidence=None,
+        reason=f"{type(exc).__name__}: {exc}",
+        backend=backend,
+    )
 
 
 def _gate_record(
