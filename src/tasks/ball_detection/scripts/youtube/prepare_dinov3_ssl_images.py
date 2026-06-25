@@ -14,6 +14,7 @@ Notes:
 from __future__ import annotations
 
 import base64
+import json
 import shutil
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -62,6 +63,8 @@ class GateDecision:
     reason: str
     backend: str
     raw_response: str | None = None
+    reasoning: str | None = None
+    raw_payload: JSONDict | None = None
 
 
 class FrameGate(Protocol):
@@ -152,12 +155,18 @@ class CommandVlmGate:
 class OpenAICompatibleVlmGate:
     """Call a local OpenAI-compatible VLM endpoint, such as vLLM."""
 
-    def __init__(self, cfg: DictConfig) -> None:
+    def __init__(self, cfg: DictConfig, *, backend_name: str) -> None:
         self.base_url = str(cfg.base_url).rstrip("/")
         self.model = str(cfg.model)
         self.prompt = str(cfg.prompt)
         self.timeout_sec = float(cfg.timeout_sec)
+        self.max_tokens = int(cfg.get("max_tokens", 128))
         self.accept_labels = {str(value).lower() for value in cfg.accept_labels}
+        self.extra_body = cast(
+            JSONDict,
+            OmegaConf.to_container(cfg.get("extra_body", {}), resolve=True),
+        )
+        self.backend_name = backend_name
 
     def classify(
         self,
@@ -167,41 +176,48 @@ class OpenAICompatibleVlmGate:
         contact_sheet: Path,
     ) -> GateDecision:
         image_data = base64.b64encode(contact_sheet.read_bytes()).decode("ascii")
+        request_body: JSONDict = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": self.prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_data}",
+                            },
+                        },
+                    ],
+                }
+            ],
+            "temperature": 0,
+            "max_tokens": self.max_tokens,
+        }
+        request_body.update(self.extra_body)
         response = requests.post(
             f"{self.base_url}/chat/completions",
-            json={
-                "model": self.model,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": self.prompt},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{image_data}",
-                                },
-                            },
-                        ],
-                    }
-                ],
-                "temperature": 0,
-                "max_tokens": 32,
-            },
+            json=request_body,
             timeout=self.timeout_sec,
         )
         response.raise_for_status()
         payload = response.json()
-        raw = str(payload["choices"][0]["message"]["content"]).strip()
-        label = _parse_gate_label(raw)
+        message = payload["choices"][0]["message"]
+        raw = str(message.get("content") or "").strip()
+        reasoning = message.get("reasoning_content") or message.get("reasoning")
+        parsed = _parse_gate_output(raw)
+        label = parsed["label"]
         accepted = label in self.accept_labels
         return GateDecision(
             accepted=accepted,
             label=label,
-            confidence=None,
-            reason=f"openai-compatible gate returned label={label!r}",
-            backend="openai_compatible",
+            confidence=cast(float | None, parsed["confidence"]),
+            reason=str(parsed["reason"]),
+            backend=self.backend_name,
             raw_response=raw,
+            reasoning=None if reasoning is None else str(reasoning),
+            raw_payload=cast(JSONDict, payload),
         )
 
 
@@ -438,20 +454,27 @@ def _resolve_source_video(
     archive = None
     if cfg.get("download_archive") is not None:
         archive = Path(to_absolute_path(str(cfg.download_archive))).resolve()
-    return download_youtube_video(
-        url=str(source["url"]),
-        video_id=str(source["video_id"]),
-        output_dir=source_dir,
-        format_selector=str(cfg.format),
-        merge_output_format=str(cfg.merge_output_format),
-        enabled=bool(cfg.enabled),
-        overwrite=bool(cfg.overwrite),
-        js_runtimes=None if cfg.get("js_runtimes") is None else str(cfg.js_runtimes),
-        remote_components=(
-            None if cfg.get("remote_components") is None else str(cfg.remote_components)
+    return cast(
+        Path,
+        download_youtube_video(
+            url=str(source["url"]),
+            video_id=str(source["video_id"]),
+            output_dir=source_dir,
+            format_selector=str(cfg.format),
+            merge_output_format=str(cfg.merge_output_format),
+            enabled=bool(cfg.enabled),
+            overwrite=bool(cfg.overwrite),
+            js_runtimes=None
+            if cfg.get("js_runtimes") is None
+            else str(cfg.js_runtimes),
+            remote_components=(
+                None
+                if cfg.get("remote_components") is None
+                else str(cfg.remote_components)
+            ),
+            download_archive=archive,
+            extra_args=[str(value) for value in cfg.get("extra_args", [])],
         ),
-        download_archive=archive,
-        extra_args=[str(value) for value in cfg.get("extra_args", [])],
     )
 
 
@@ -464,29 +487,34 @@ def _transcode_source_video(
     if not bool(cfg.enabled):
         print(f"  transcode disabled; sampling source video directly: {source_video}")
         return source_video
-    return transcode_h264_video(
-        source_video=source_video,
-        output_path=h264_dir / f"{video_id}.mp4",
-        enabled=bool(cfg.enabled),
-        overwrite=bool(cfg.overwrite),
-        ffmpeg_binary=str(cfg.ffmpeg_binary),
-        encoder=str(cfg.encoder),
-        hwaccel=None if cfg.get("hwaccel") is None else str(cfg.hwaccel),
-        hwaccel_output_format=(
-            None
-            if cfg.get("hwaccel_output_format") is None
-            else str(cfg.hwaccel_output_format)
+    return cast(
+        Path,
+        transcode_h264_video(
+            source_video=source_video,
+            output_path=h264_dir / f"{video_id}.mp4",
+            enabled=bool(cfg.enabled),
+            overwrite=bool(cfg.overwrite),
+            ffmpeg_binary=str(cfg.ffmpeg_binary),
+            encoder=str(cfg.encoder),
+            hwaccel=None if cfg.get("hwaccel") is None else str(cfg.hwaccel),
+            hwaccel_output_format=(
+                None
+                if cfg.get("hwaccel_output_format") is None
+                else str(cfg.hwaccel_output_format)
+            ),
+            preset=str(cfg.preset),
+            tune=None if cfg.get("tune") is None else str(cfg.tune),
+            rate_control=None
+            if cfg.get("rate_control") is None
+            else str(cfg.rate_control),
+            cq=None if cfg.get("cq") is None else cfg.cq,
+            bitrate=None if cfg.get("bitrate") is None else str(cfg.bitrate),
+            maxrate=None if cfg.get("maxrate") is None else str(cfg.maxrate),
+            bufsize=None if cfg.get("bufsize") is None else str(cfg.bufsize),
+            profile=None if cfg.get("profile") is None else str(cfg.profile),
+            pix_fmt=str(cfg.pix_fmt),
+            crf=cfg.crf,
         ),
-        preset=str(cfg.preset),
-        tune=None if cfg.get("tune") is None else str(cfg.tune),
-        rate_control=None if cfg.get("rate_control") is None else str(cfg.rate_control),
-        cq=None if cfg.get("cq") is None else cfg.cq,
-        bitrate=None if cfg.get("bitrate") is None else str(cfg.bitrate),
-        maxrate=None if cfg.get("maxrate") is None else str(cfg.maxrate),
-        bufsize=None if cfg.get("bufsize") is None else str(cfg.bufsize),
-        profile=None if cfg.get("profile") is None else str(cfg.profile),
-        pix_fmt=str(cfg.pix_fmt),
-        crf=cfg.crf,
     )
 
 
@@ -496,29 +524,34 @@ def _force_transcode_source_video(
     h264_dir: Path,
     cfg: DictConfig,
 ) -> Path:
-    return transcode_h264_video(
-        source_video=source_video,
-        output_path=h264_dir / f"{video_id}.mp4",
-        enabled=True,
-        overwrite=bool(cfg.overwrite),
-        ffmpeg_binary=str(cfg.ffmpeg_binary),
-        encoder=str(cfg.encoder),
-        hwaccel=None if cfg.get("hwaccel") is None else str(cfg.hwaccel),
-        hwaccel_output_format=(
-            None
-            if cfg.get("hwaccel_output_format") is None
-            else str(cfg.hwaccel_output_format)
+    return cast(
+        Path,
+        transcode_h264_video(
+            source_video=source_video,
+            output_path=h264_dir / f"{video_id}.mp4",
+            enabled=True,
+            overwrite=bool(cfg.overwrite),
+            ffmpeg_binary=str(cfg.ffmpeg_binary),
+            encoder=str(cfg.encoder),
+            hwaccel=None if cfg.get("hwaccel") is None else str(cfg.hwaccel),
+            hwaccel_output_format=(
+                None
+                if cfg.get("hwaccel_output_format") is None
+                else str(cfg.hwaccel_output_format)
+            ),
+            preset=str(cfg.preset),
+            tune=None if cfg.get("tune") is None else str(cfg.tune),
+            rate_control=None
+            if cfg.get("rate_control") is None
+            else str(cfg.rate_control),
+            cq=None if cfg.get("cq") is None else cfg.cq,
+            bitrate=None if cfg.get("bitrate") is None else str(cfg.bitrate),
+            maxrate=None if cfg.get("maxrate") is None else str(cfg.maxrate),
+            bufsize=None if cfg.get("bufsize") is None else str(cfg.bufsize),
+            profile=None if cfg.get("profile") is None else str(cfg.profile),
+            pix_fmt=str(cfg.pix_fmt),
+            crf=cfg.crf,
         ),
-        preset=str(cfg.preset),
-        tune=None if cfg.get("tune") is None else str(cfg.tune),
-        rate_control=None if cfg.get("rate_control") is None else str(cfg.rate_control),
-        cq=None if cfg.get("cq") is None else cfg.cq,
-        bitrate=None if cfg.get("bitrate") is None else str(cfg.bitrate),
-        maxrate=None if cfg.get("maxrate") is None else str(cfg.maxrate),
-        bufsize=None if cfg.get("bufsize") is None else str(cfg.bufsize),
-        profile=None if cfg.get("profile") is None else str(cfg.profile),
-        pix_fmt=str(cfg.pix_fmt),
-        crf=cfg.crf,
     )
 
 
@@ -535,7 +568,7 @@ def _sample_video_frames(
         existing_records = read_jsonl(manifest_path)
         if existing_records:
             print(f"  sampled frames exist: {len(existing_records)} -> {output_dir}")
-            return existing_records
+            return cast(list[JSONDict], existing_records)
 
     ensure_dirs([output_dir])
     info = probe_video_info(video_path)
@@ -639,7 +672,11 @@ def _build_gate(cfg: DictConfig) -> FrameGate:
     if backend == "command":
         return CommandVlmGate(cfg.command_backend)
     if backend == "openai_compatible":
-        return OpenAICompatibleVlmGate(cfg.openai_compatible)
+        return OpenAICompatibleVlmGate(
+            cfg.openai_compatible, backend_name="openai_compatible"
+        )
+    if backend == "vllm":
+        return OpenAICompatibleVlmGate(cfg.vllm, backend_name="vllm")
     raise ValueError(f"Unsupported gate.backend={backend!r}.")
 
 
@@ -660,6 +697,8 @@ def _gate_record(
         "reason": decision.reason,
         "backend": decision.backend,
         "raw_response": decision.raw_response,
+        "reasoning": decision.reasoning,
+        "raw_payload": decision.raw_payload,
         "contact_sheet": relative_path(contact_sheet, root),
         "processed_at": utc_now_iso(),
     }
@@ -685,6 +724,51 @@ def _parse_gate_label(text: str) -> str:
     if "unknown" in normalized or "uncertain" in normalized:
         return "unknown"
     return normalized.split()[0] if normalized.split() else "unknown"
+
+
+def _parse_gate_output(text: str) -> JSONDict:
+    payload = _parse_json_object(text)
+    if payload is not None:
+        label = _parse_gate_label(str(payload.get("label", "")))
+        confidence = payload.get("confidence")
+        reason = payload.get("reason")
+        return {
+            "label": label,
+            "confidence": float(confidence)
+            if isinstance(confidence, int | float)
+            else None,
+            "reason": str(reason)
+            if reason is not None
+            else f"vLLM gate returned label={label!r}",
+        }
+    label = _parse_gate_label(text)
+    return {
+        "label": label,
+        "confidence": None,
+        "reason": f"vLLM gate returned label={label!r}",
+    }
+
+
+def _parse_json_object(text: str) -> JSONDict | None:
+    stripped = text.strip()
+    if not stripped:
+        return None
+    candidates = [stripped]
+    if "```" in stripped:
+        fenced = stripped.split("```")
+        candidates.extend(part.strip() for part in fenced if part.strip())
+    if "{" in stripped and "}" in stripped:
+        candidates.append(stripped[stripped.find("{") : stripped.rfind("}") + 1])
+    for candidate in candidates:
+        if candidate.startswith("json"):
+            candidate = candidate[4:].strip()
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            return cast(JSONDict, parsed)
+    return None
 
 
 def _duration_seconds(value: Any) -> float | None:

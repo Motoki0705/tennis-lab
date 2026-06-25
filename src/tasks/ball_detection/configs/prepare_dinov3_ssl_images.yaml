@@ -72,7 +72,7 @@ workflow:
     overwrite: false
 
   gate:
-    backend: openai_compatible
+    backend: vllm
     mock:
       accept_all: false
     contact_sheet:
@@ -95,8 +95,23 @@ workflow:
       prompt: "Classify this contact sheet. Return exactly one label: tennis, non_tennis, or unknown."
     openai_compatible:
       base_url: http://127.0.0.1:8000/v1
-      model: GabrieleConte/Qwen3.5-0.8B-LiteRT
+      model: Qwen/Qwen3.5-0.8B
       timeout_sec: 60
+      max_tokens: 128
       accept_labels:
         - tennis
-      prompt: "Classify this contact sheet. Return exactly one label: tennis, non_tennis, or unknown."
+      extra_body: {}
+      prompt: "Classify this contact sheet. Return JSON only: {\"label\":\"tennis|non_tennis|unknown\",\"confidence\":0.0,\"reason\":\"short visual reason\"}."
+    vllm:
+      # Start vLLM separately, for example:
+      # VLLM_CPU_KVCACHE_SPACE=2 python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3.5-0.8B --host 127.0.0.1 --port 8000 --max-model-len 2048 --max-num-seqs 1 --max-num-batched-tokens 2048 --enforce-eager --skip-mm-profiling --reasoning-parser qwen3 --limit-mm-per-prompt '{"image":1}' --trust-remote-code
+      base_url: http://127.0.0.1:8000/v1
+      model: Qwen/Qwen3.5-0.8B
+      timeout_sec: 120
+      max_tokens: 512
+      accept_labels:
+        - tennis
+      extra_body:
+        chat_template_kwargs:
+          enable_thinking: true
+      prompt: "Classify the image grid for a DINOv3 tennis SSL corpus. Reason briefly if enabled. Final answer must be JSON with label and confidence. label must be tennis or non_tennis or unknown. Use tennis only when a tennis court or players or rackets or net are visible."
