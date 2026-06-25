@@ -213,7 +213,7 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
     ensure_dirs([source_dir, h264_dir, sampled_dir, images_dir, manifests_dir])
 
     sources = _collect_sources(workflow)
-    existing_video_ids = _existing_video_ids(manifests_dir)
+    existing_video_ids = _existing_video_ids(manifests_dir, images_dir)
     gate = _build_gate(workflow.gate)
 
     source_records: list[JSONDict] = []
@@ -468,9 +468,10 @@ def _discover_sources(cfg: DictConfig) -> list[JSONDict]:
     return sources
 
 
-def _existing_video_ids(manifests_dir: Path) -> set[str]:
+def _existing_video_ids(manifests_dir: Path, images_dir: Path) -> set[str]:
     video_ids: set[str] = set()
     for manifest_name in (
+        "sources.jsonl",
         "images.jsonl",
         "gate_decisions.jsonl",
         "sampled_frames.jsonl",
@@ -478,6 +479,8 @@ def _existing_video_ids(manifests_dir: Path) -> set[str]:
         for record in read_jsonl(manifests_dir / manifest_name):
             if record.get("video_id") is not None:
                 video_ids.add(str(record["video_id"]))
+    for image_path in images_dir.glob("*_f*.jpg"):
+        video_ids.add(image_path.stem.rsplit("_f", 1)[0])
     return video_ids
 
 
