@@ -40,8 +40,27 @@ QUEUE_DIR = repo_root() / ".training_queue"
 OVERRIDE_RE = re.compile(r"(?:^|\s)([\w.]+)=([^\s]+)")
 CONFIG_KEYS = ("model", "loss", "data")
 METRIC_ROW_RE = re.compile(r"^[│|]\s*(test/\S+)\s*[│|]\s*([0-9.eE+-]+)\s*[│|]\s*$")
-BUNDLE_FILES = ("run.json", "repro.sh", "uncommitted.patch", "git_status.txt")
+BUNDLE_FILES = ("run.json", "repro.sh", "uncommitted.patch", "git_status.txt", "output_dir.txt")
 PREDICTION_FILES = ("pred_test.npz", "metrics.json")
+
+
+def portable_output_dir(raw: str, run: dict) -> str:
+    """Make the runner's output dir portable for ``artifacts.output_dir``.
+
+    The runner records the Lightning ``version_N/checkpoints`` dir; the
+    TensorBoard event files live in its parent ``version_N``. Drop a trailing
+    ``checkpoints`` and store the path relative to the checkout that produced it,
+    so kg_curves can resolve the event dir directly (no fingerprint scan)."""
+    odir = Path(raw)
+    if odir.name == "checkpoints":
+        odir = odir.parent
+    for base in (run.get("cwd"), str(repo_root())):
+        if base:
+            try:
+                return str(odir.relative_to(base))
+            except ValueError:
+                continue
+    return str(odir)
 
 
 def find_repro_dir(name: str) -> Path | None:
@@ -152,6 +171,11 @@ def main() -> int:
     log = find_log(name)
     if log and log.exists():
         artifacts["log"] = str(log.relative_to(repo_root()))
+    out_txt = repro / "output_dir.txt"
+    if out_txt.exists():
+        odir = out_txt.read_text(encoding="utf-8").strip()
+        if odir:
+            artifacts["output_dir"] = portable_output_dir(odir, run)
 
     repro_meta = {k: run[k] for k in ("commit", "branch", "remote") if run.get(k)}
     if cmd:
