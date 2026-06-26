@@ -13,6 +13,9 @@ from src.tasks.plcs.models.components import (
 )
 from src.tasks.plcs.models.discriminators import build_plcs_discriminator
 from src.tasks.plcs.models.plcs_model import PLCSModel
+from src.tasks.plcs.models.plcs_multiview_axial_conditional_pos_model import (
+    PLCSMultiViewAxialConditionalPosModel,
+)
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 from src.tasks.plcs.models.plcs_multiview_axial_split_model import (
     PLCSMultiViewAxialSplitModel,
@@ -33,13 +36,17 @@ def build_plcs_model(config: DictConfig) -> nn.Module:
         return PLCSMultiViewModel.from_config(config)
     if model_name == "plcs_multiview_axial":
         return PLCSMultiViewAxialModel.from_config(config)
+    if model_name == "plcs_multiview_axial_conditional_pos":
+        return PLCSMultiViewAxialConditionalPosModel.from_config(config)
     if model_name == "plcs_multiview_axial_split":
         return PLCSMultiViewAxialSplitModel.from_config(config)
     raise ValueError(
         "Unknown PLCS model.name="
         f"'{model_name}'. Supported: ['plcs', 'plcs_multiview', "
-        "'plcs_multiview_axial', 'plcs_multiview_axial_split']"
+        "'plcs_multiview_axial', 'plcs_multiview_axial_conditional_pos', "
+        "'plcs_multiview_axial_split']"
     )
+
 
 __all__ = [
     "PLCSModel",
@@ -47,6 +54,7 @@ __all__ = [
     "build_plcs_model",
     "PLCSMultiViewModel",
     "PLCSMultiViewAxialModel",
+    "PLCSMultiViewAxialConditionalPosModel",
     "PLCSMultiViewAxialSplitModel",
     "CanonicalPoseHead",
     "PositionHead",

@@ -1,0 +1,17 @@
+# Conditional-position split axial PLCS base (issue #559).
+#
+# Keeps the split-trunk ingredients from `_multiview_axial_split`, then changes
+# only the final position readout so pose features can query shared/rotation
+# context with a Conditional-DETR-style adapter.
+defaults:
+  - _multiview_axial_split
+  - _self_
+
+name: plcs_multiview_axial_conditional_pos
+
+pos_context:
+  architecture: ???
+  source: rotation
+  decoder_layers: 1
+  gate_init_bias: -4.0
+  query_init_std: 0.02

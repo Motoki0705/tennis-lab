@@ -1,0 +1,20 @@
+# Issue #559 architecture 1: Reference-Gated Cross Attention.
+#
+# Base is S=6/H=0 fully separate. The position branch stays private and reads
+# rotation/context tokens through a near-zero gated cross-attention residual.
+defaults:
+  - _multiview_axial_conditional_pos
+  - _self_
+
+hidden_dim: 512
+num_heads: 8
+rope_dim: 16
+num_layers: 0
+num_task_layers: 6
+
+pos_context:
+  architecture: reference_gated_cross_attn
+  source: rotation
+  decoder_layers: 1
+  gate_init_bias: -4.0
+  query_init_std: 0.02

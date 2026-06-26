@@ -1,0 +1,20 @@
+# Issue #559 architecture 3: Head-Specific Conditional Bands.
+#
+# Base is S=6/H=0 fully separate. Each cross-attention head predicts its own
+# time/camera reference band for reading rotation-context tokens.
+defaults:
+  - _multiview_axial_conditional_pos
+  - _self_
+
+hidden_dim: 512
+num_heads: 8
+rope_dim: 16
+num_layers: 0
+num_task_layers: 6
+
+pos_context:
+  architecture: head_specific_conditional_bands
+  source: rotation
+  decoder_layers: 1
+  gate_init_bias: -4.0
+  query_init_std: 0.02
