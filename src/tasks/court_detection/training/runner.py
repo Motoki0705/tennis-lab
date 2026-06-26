@@ -30,7 +30,3 @@ class CourtDetectionTrainingRunner(BaseTrainingRunner):
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
         return CourtDetectionLightningModule(config)
-
-    def skip_test(self, config: Any) -> bool:
-        """Court detection currently has fit/validation support only."""
-        return True

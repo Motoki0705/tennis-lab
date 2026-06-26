@@ -94,6 +94,7 @@ class CourtLineDataset(Dataset):
 
         img_tensor = _pil_to_tensor_image(img)
         img_tensor = TF.normalize(img_tensor, IMAGENET_MEAN, IMAGENET_STD)
+        _, h, w = img_tensor.shape
 
         mask_np = (np.array(mask, dtype=np.uint8) > 0).astype(np.float32)
         mask_tensor = torch.from_numpy(mask_np).unsqueeze(0)
@@ -101,5 +102,6 @@ class CourtLineDataset(Dataset):
         return {
             "image": img_tensor,
             "mask": mask_tensor,
+            "image_size": torch.tensor([h, w], dtype=torch.int64),
             "image_id": image_id,
         }

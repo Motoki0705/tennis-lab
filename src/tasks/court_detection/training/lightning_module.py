@@ -18,6 +18,7 @@ from src.tasks.court_detection.training.losses import (
     FocalBCEWithLogitsLoss,
 )
 from src.tasks.court_detection.training.metrics import CourtDetectionMetrics
+from src.utils.data.heatmaps import heatmaps_to_pixel_coords
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -71,6 +72,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
         # Metrics
         self.train_metrics = CourtDetectionMetrics(self.task, data_cfg)
         self.val_metrics = CourtDetectionMetrics(self.task, data_cfg)
+        self.test_metrics = CourtDetectionMetrics(self.task, data_cfg)
 
     def forward(self, images: Tensor) -> Tensor:
         return self.model(images)
@@ -94,12 +96,29 @@ class CourtDetectionLightningModule(BaseLightningModule):
     def _shared_step(
         self, batch: dict[str, Tensor], stage: str,
     ) -> dict[str, Tensor]:
-        """Shared computation for train/val steps."""
+        """Shared computation for train/val/test steps."""
         images = batch["image"]
         logits = self.model(images)
         loss = self._compute_loss(logits, batch)
         self.log(f"{stage}/loss", loss, prog_bar=True, sync_dist=True)
         return {"loss": loss, "logits": logits}
+
+    def _metric_tracker_for_stage(self, stage: str) -> CourtDetectionMetrics:
+        if stage == "train":
+            return self.train_metrics
+        if stage == "val":
+            return self.val_metrics
+        return self.test_metrics
+
+    def _flush_stage_metrics(self, stage: str) -> None:
+        metrics = self._metric_tracker_for_stage(stage).compute()
+        for name, value in metrics.items():
+            self.log(
+                f"{stage}/{name}",
+                value,
+                prog_bar=(stage == "val" and name in ("miou", "mean_dist", "dice")),
+            )
+        self._metric_tracker_for_stage(stage).reset()
 
     def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
         outputs = self._shared_step(batch, "train")
@@ -107,20 +126,75 @@ class CourtDetectionLightningModule(BaseLightningModule):
         return outputs["loss"]
 
     def on_train_epoch_end(self) -> None:
-        metrics = self.train_metrics.compute()
-        for name, value in metrics.items():
-            self.log(f"train/{name}", value)
-        self.train_metrics.reset()
+        self._flush_stage_metrics("train")
 
     def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
         outputs = self._shared_step(batch, "val")
         self.val_metrics.update(outputs["logits"], batch)
 
     def on_validation_epoch_end(self) -> None:
-        metrics = self.val_metrics.compute()
-        for name, value in metrics.items():
-            self.log(f"val/{name}", value, prog_bar=(name in ("miou", "mean_dist", "dice")))
-        self.val_metrics.reset()
+        self._flush_stage_metrics("val")
+
+    def on_test_epoch_start(self) -> None:
+        self._reset_test_prediction_buffer()
+
+    def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> None:
+        _ = batch_idx
+        outputs = self._shared_step(batch, "test")
+        self.test_metrics.update(outputs["logits"], batch)
+        self.collect_test_predictions(batch, outputs)
+
+    def on_test_epoch_end(self) -> None:
+        metrics = self.test_metrics.compute()
+        saved = self.save_test_predictions(metrics=metrics)
+        if saved is not None:
+            print(f"[test] saved test-split predictions -> {saved}")
+        self._flush_stage_metrics("test")
+
+    def test_prediction_payload(
+        self, batch: dict[str, Any], result: dict[str, Tensor]
+    ) -> dict[str, Any]:
+        """Persist court predictions from ``data/court/data_val.json``."""
+        logits = result["logits"]
+        payload: dict[str, Any] = {
+            "image_id": batch["image_id"],
+            "image_size": batch["image_size"],
+        }
+        if self.task == "kp":
+            payload.update(
+                {
+                    "pred_keypoints": heatmaps_to_pixel_coords(logits),
+                    "target_keypoints": batch["keypoints"],
+                }
+            )
+            return payload
+
+        if self.task == "seg":
+            payload.update(
+                {
+                    "pred_mask_flat": logits.argmax(dim=1).reshape(logits.shape[0], -1),
+                    "target_mask_flat": batch["mask"].reshape(batch["mask"].shape[0], -1),
+                    "padded_size": logits.new_tensor(
+                        [logits.shape[-2], logits.shape[-1]],
+                        dtype=torch.int64,
+                    ).repeat(logits.shape[0], 1),
+                }
+            )
+            return payload
+
+        pred_line = torch.sigmoid(logits).reshape(logits.shape[0], -1)
+        target_line = batch["mask"].reshape(batch["mask"].shape[0], -1)
+        payload.update(
+            {
+                "pred_line_prob_flat": pred_line,
+                "target_line_mask_flat": target_line,
+                "padded_size": logits.new_tensor(
+                    [logits.shape[-2], logits.shape[-1]],
+                    dtype=torch.int64,
+                ).repeat(logits.shape[0], 1),
+            }
+        )
+        return payload
 
     # ------------------------------------------------------------------
     # Qualitative validation logging

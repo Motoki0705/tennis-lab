@@ -123,5 +123,6 @@ class CourtKPDataset(Dataset):
             "image": img_tensor,
             "heatmap": heatmap_tensor,
             "keypoints": kps_tensor,
+            "image_size": torch.tensor([h, w], dtype=torch.int64),
             "image_id": image_id,
         }
