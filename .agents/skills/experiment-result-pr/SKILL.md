@@ -30,23 +30,29 @@ Identify the latest requested "next step" and the expected queue job names or co
 
 2. Work in a worktree.
 
-- Prefer an existing clean worktree for the same issue/PR.
+- Prefer an existing clean worktree for the same issue/PR; if its branch is already merged, branch fresh off `origin/main` inside it (don't commit onto the merged branch).
 - Otherwise create one using the `worktree-create` naming convention, then rename the branch to the repo convention if useful.
-- Do not edit from the main checkout.
+- Do not edit from the main checkout. A linked worktree's `.training_queue` / `.venv` are symlinks to the main checkout and are **not** gitignored there — never `git add -A`; stage `knowledge/` and other intended files explicitly.
 
 3. Locate finished queue artifacts.
 
-Check `.training_queue/repro/` and `.training_queue/logs/` for matching job names. If the active worktree does not have `.training_queue` or `.venv`, add local ignored symlinks to the main checkout equivalents so project commands still use `.venv/bin/python`.
+If the worktree lacks `.training_queue` / `.venv`, symlink them to the main checkout first. Then list the issue's finished runs **by run.json issue field** (not job name — one queue batch can mix issues):
+
+```bash
+.venv/bin/python .agents/skills/experiment-result-pr/scripts/discover_runs.py --issue <issue>
+```
+
+It marks status / predictions / already-registered, prints a ready-to-paste `kg_register.py` line per run, and flags jobs named `i<issue>…` that actually belong to another issue. Register only the runs it lists for this issue.
 
 4. Register every finished run.
 
-For each job:
+Run the lines `discover_runs.py` printed (`--provider` is taken from run.json; add `--id <run-id>` only to override the default `run-<name>`):
 
 ```bash
-.venv/bin/python .agents/skills/knowledge-control/scripts/kg_register.py <job-name> --issue <issue> --provider codex --id <run-id>
+.venv/bin/python .agents/skills/knowledge-control/scripts/kg_register.py <job-name> --issue <issue> --provider <from run.json>
 ```
 
-If the queue artifact is outside the worktree, pass `--repro-dir <path>`.
+If the queue artifact is outside the worktree, pass `--repro-dir <path>`. Registration records `artifacts.output_dir`, so `kg_curves` resolves the run's TensorBoard directly instead of scanning every event file.
 
 5. Write knowledge findings.
 
@@ -83,7 +89,7 @@ Use `gh issue comment <issue> --repo Motoki0705/tennis-lab --body-file <tmpfile>
 
 ## Validation Checklist
 
-- `git status --short --branch` is clean except intended changes before committing.
+- `git status --short --branch` is clean except intended changes before committing (the `.training_queue` symlink must stay unstaged).
 - `kg_validate.py` exits 0.
 - Every new run has `knowledge/runs/<run-id>/{run.json,repro.sh,metrics.json,pred_test.npz}`.
 - Every new run has a findings body and meaningful graph links.
