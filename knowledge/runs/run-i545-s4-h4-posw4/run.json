@@ -1,0 +1,14 @@
+{
+  "run_id": "1782305635167127164_634479_i545_s4_h4_posw4",
+  "name": "i545_s4_h4_posw4",
+  "command": "MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train model=multiview_axial_split model.num_layers=4 model.num_task_layers=4 data=chunked_multiview_sequence_bs8 data.batch_size=8 training.trainer.accumulate_grad_batches=1 data.seq_len_range=[64,256] loss=canonical_rot loss.position_weight=4.0 training.trainer.max_epochs=200 training.early_stopping.enabled=false run.gpus=1",
+  "provider": "codex",
+  "session": "019ef7e7-03a8-7e53-9c92-21cdcb326a79",
+  "issue": "545",
+  "commit": "8ce84fc04df94fba6a0489133a67914859ed5dbf",
+  "branch": "main",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-06-24T22:28:38+09:00"
+}
