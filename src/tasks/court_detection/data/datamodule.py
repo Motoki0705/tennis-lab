@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytorch_lightning as pl
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from src.tasks.court_detection.data.court_kp_dataset import CourtKPDataset
 from src.tasks.court_detection.data.court_line_dataset import CourtLineDataset
@@ -47,7 +48,7 @@ def _pad_collate_seg(batch: list[dict]) -> dict:
     """Pad variable-size images/masks to the max size in the batch."""
     max_h, max_w = _pad_max_hw(batch)
 
-    images, masks, ids = [], [], []
+    images, masks, sizes, ids = [], [], [], []
     for b in batch:
         images.append(_pad_image(b["image"], max_h, max_w))
 
@@ -55,16 +56,22 @@ def _pad_collate_seg(batch: list[dict]) -> dict:
         padded_mask = torch.zeros(max_h, max_w, dtype=b["mask"].dtype)
         padded_mask[:h, :w] = b["mask"]
         masks.append(padded_mask)
+        sizes.append(b.get("image_size", torch.tensor([h, w], dtype=torch.int64)))
         ids.append(b["image_id"])
 
-    return {"image": torch.stack(images), "mask": torch.stack(masks), "image_id": ids}
+    return {
+        "image": torch.stack(images),
+        "mask": torch.stack(masks),
+        "image_size": torch.stack(sizes),
+        "image_id": ids,
+    }
 
 
 def _pad_collate_line(batch: list[dict]) -> dict:
     """Pad variable-size images/binary masks to the max size in the batch."""
     max_h, max_w = _pad_max_hw(batch)
 
-    images, masks, ids = [], [], []
+    images, masks, sizes, ids = [], [], [], []
     for b in batch:
         images.append(_pad_image(b["image"], max_h, max_w))
 
@@ -72,16 +79,23 @@ def _pad_collate_line(batch: list[dict]) -> dict:
         padded_mask = torch.zeros(1, max_h, max_w, dtype=b["mask"].dtype)
         padded_mask[:, :mh, :mw] = b["mask"]
         masks.append(padded_mask)
+        _, h, w = b["image"].shape
+        sizes.append(b.get("image_size", torch.tensor([h, w], dtype=torch.int64)))
         ids.append(b["image_id"])
 
-    return {"image": torch.stack(images), "mask": torch.stack(masks), "image_id": ids}
+    return {
+        "image": torch.stack(images),
+        "mask": torch.stack(masks),
+        "image_size": torch.stack(sizes),
+        "image_id": ids,
+    }
 
 
 def _pad_collate_kp(batch: list[dict]) -> dict:
     """Pad variable-size images/heatmaps to the max size in the batch."""
     max_h, max_w = _pad_max_hw(batch)
 
-    images, heatmaps, keypoints, ids = [], [], [], []
+    images, heatmaps, keypoints, sizes, ids = [], [], [], [], []
     for b in batch:
         images.append(_pad_image(b["image"], max_h, max_w))
 
@@ -90,12 +104,15 @@ def _pad_collate_kp(batch: list[dict]) -> dict:
         padded_hm[:, :hh, :hw] = b["heatmap"]
         heatmaps.append(padded_hm)
         keypoints.append(b["keypoints"])
+        _, h, w = b["image"].shape
+        sizes.append(b.get("image_size", torch.tensor([h, w], dtype=torch.int64)))
         ids.append(b["image_id"])
 
     return {
         "image": torch.stack(images),
         "heatmap": torch.stack(heatmaps),
         "keypoints": torch.stack(keypoints),
+        "image_size": torch.stack(sizes),
         "image_id": ids,
     }
 
@@ -121,8 +138,9 @@ class CourtDetectionDataModule(pl.LightningDataModule):
         self.num_workers = int(data_cfg.get("num_workers", 4))
         self.pin_memory = bool(data_cfg.get("pin_memory", True))
 
-        self.train_dataset = None
-        self.val_dataset = None
+        self.train_dataset: Dataset[Any] | None = None
+        self.val_dataset: Dataset[Any] | None = None
+        self.test_dataset: Dataset[Any] | None = None
 
     def _build_config_dict(self) -> dict:
         """Build a flat config dict for dataset constructors."""
@@ -150,49 +168,77 @@ class CourtDetectionDataModule(pl.LightningDataModule):
 
     def setup(self, stage: str | None = None) -> None:
         """Set up datasets for each stage."""
-        if stage not in ("fit", None):
+        if stage not in ("fit", "validate", "test", None):
             return
 
         cfg_dict = self._build_config_dict()
         data_cfg = self.config.get("data", {})
+        build_train = stage in ("fit", None)
+        build_val = stage in ("fit", "validate", None)
+        build_test = stage in ("test", None)
 
         if self.task == "seg":
-            self.train_dataset = CourtSegDataset(
-                self.data_dir, split="train", is_train=True, config=cfg_dict,
-            )
-            self.val_dataset = CourtSegDataset(
-                self.data_dir, split="val", is_train=False, config=cfg_dict,
-            )
+            if build_train:
+                self.train_dataset = CourtSegDataset(
+                    self.data_dir, split="train", is_train=True, config=cfg_dict,
+                )
+            if build_val:
+                self.val_dataset = CourtSegDataset(
+                    self.data_dir, split="val", is_train=False, config=cfg_dict,
+                )
+            if build_test:
+                self.test_dataset = CourtSegDataset(
+                    self.data_dir, split="val", is_train=False, config=cfg_dict,
+                )
         elif self.task == "kp":
-            self.train_dataset = CourtKPDataset(
-                self.data_dir, split="train", is_train=True, config=cfg_dict,
-            )
-            self.val_dataset = CourtKPDataset(
-                self.data_dir, split="val", is_train=False, config=cfg_dict,
-            )
+            if build_train:
+                self.train_dataset = CourtKPDataset(
+                    self.data_dir, split="train", is_train=True, config=cfg_dict,
+                )
+            if build_val:
+                self.val_dataset = CourtKPDataset(
+                    self.data_dir, split="val", is_train=False, config=cfg_dict,
+                )
+            if build_test:
+                self.test_dataset = CourtKPDataset(
+                    self.data_dir, split="val", is_train=False, config=cfg_dict,
+                )
         elif self.task == "line":
             mask_dir = str(data_cfg.get("mask_dir_name", "line_masks"))
-            self.train_dataset = CourtLineDataset(
-                self.data_dir, split="train", is_train=True,
-                config=cfg_dict, mask_dir_name=mask_dir,
-            )
-            self.val_dataset = CourtLineDataset(
-                self.data_dir, split="val", is_train=False,
-                config=cfg_dict, mask_dir_name=mask_dir,
-            )
+            if build_train:
+                self.train_dataset = CourtLineDataset(
+                    self.data_dir, split="train", is_train=True,
+                    config=cfg_dict, mask_dir_name=mask_dir,
+                )
+            if build_val:
+                self.val_dataset = CourtLineDataset(
+                    self.data_dir, split="val", is_train=False,
+                    config=cfg_dict, mask_dir_name=mask_dir,
+                )
+            if build_test:
+                self.test_dataset = CourtLineDataset(
+                    self.data_dir, split="val", is_train=False,
+                    config=cfg_dict, mask_dir_name=mask_dir,
+                )
         else:
             raise ValueError(f"Unknown task: {self.task!r}")
 
-    def _collate_fn(self):
+    def _collate_fn(self) -> Callable[[list[dict[str, Any]]], dict[str, Any]]:
         if self.task == "seg":
             return _pad_collate_seg
         if self.task == "kp":
             return _pad_collate_kp
         return _pad_collate_line
 
+    @staticmethod
+    def _require_dataset(dataset: Dataset[Any] | None, *, stage: str) -> Dataset[Any]:
+        if dataset is None:
+            raise RuntimeError(f"CourtDetectionDataModule.setup({stage!r}) was not called.")
+        return dataset
+
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
-            self.train_dataset,
+            self._require_dataset(self.train_dataset, stage="fit"),
             batch_size=self.batch_size,
             shuffle=True,
             num_workers=self.num_workers,
@@ -203,7 +249,17 @@ class CourtDetectionDataModule(pl.LightningDataModule):
 
     def val_dataloader(self) -> DataLoader:
         return DataLoader(
-            self.val_dataset,
+            self._require_dataset(self.val_dataset, stage="validate"),
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
+            collate_fn=self._collate_fn(),
+        )
+
+    def test_dataloader(self) -> DataLoader:
+        return DataLoader(
+            self._require_dataset(self.test_dataset, stage="test"),
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,
