@@ -1,0 +1,19 @@
+{
+  "position_error_m": 0.18463876843452454,
+  "position_error_std_m": 0.162645623087883,
+  "position_error_median_m": 0.13775332272052765,
+  "angular_error_deg": 51.91172790527344,
+  "angular_error_std_deg": 58.429847717285156,
+  "angular_error_median_deg": 21.644306182861328,
+  "x_error_m": 0.07968412339687347,
+  "y_error_m": 0.14228571951389313,
+  "z_error_m": 0.03072766587138176,
+  "position_accuracy": 0.9439218640327454,
+  "angle_accuracy": 0.3884466886520386,
+  "position_accuracy_0.5m": 0.9439218640327454,
+  "position_accuracy_1m": 0.9954172968864441,
+  "position_accuracy_2m": 1.0,
+  "angle_accuracy_10deg": 0.2760491967201233,
+  "angle_accuracy_15deg": 0.3884466886520386,
+  "angle_accuracy_30deg": 0.5725398063659668
+}
