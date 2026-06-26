@@ -9,6 +9,11 @@ directory, then plots the train/val curves (loss + headline errors) into
 ``knowledge/runs/<id>/curves.png`` and records ``artifacts.curves`` /
 ``artifacts.tb_logdir`` in the node so the webui can show it.
 
+As a fast path, a node that already records ``artifacts.tb_logdir`` or
+``artifacts.output_dir`` (kg_register fills the latter from the run's
+``output_dir.txt``) resolves its event dir directly — the repo-wide fingerprint
+scan only runs for older nodes that have neither. ``--refresh`` forces the scan.
+
 The goal is qualitative: *see how a run converged* when clicking a node.
 
 If no event directory matches a node's metrics within tolerance, the node is
@@ -244,7 +249,11 @@ def match_event_dir(
         if matched / len(shared) < MIN_MATCH_FRAC:
             continue
         mean_err = sum(rel) / len(rel)
-        # prefer more matched keys, then lower error
+        # a near-exact match on every shared key is the run itself; stop scanning
+        # (avoids reading the remaining event dirs).
+        if matched == len(shared) and mean_err < REL_TOL / 10:
+            return (d, mean_err, matched)
+        # otherwise prefer more matched keys, then lower error
         if (matched, -mean_err) > (best[2], -best[1]):
             best = (d, mean_err, matched)
     return best
@@ -377,13 +386,21 @@ def main() -> int:
     p.add_argument("--dry-run", action="store_true", help="report matches; write no files")
     args = p.parse_args()
 
-    roots = default_scan_roots() + [r.resolve() for r in args.scan_roots if r.exists()]
-    if not roots:
-        print("no scan roots exist; nothing to do", file=sys.stderr)
-        return 1
-    print(f"scan roots: {', '.join(rel(r) for r in roots)}")
-    event_dirs = find_event_dirs(roots)
-    print(f"found {len(event_dirs)} event dirs")
+    extra_roots = [r.resolve() for r in args.scan_roots if r.exists()]
+
+    # Scanning every event file under the repo + worktrees is the slow part, so
+    # build the fingerprint index lazily — only once a node has no fast path hint
+    # (artifacts.tb_logdir / artifacts.output_dir) to resolve directly. Nodes
+    # registered with an output_dir never trigger it.
+    _index: dict[str, list[Path]] = {}
+
+    def event_dirs_index() -> list[Path]:
+        if "dirs" not in _index:
+            roots = default_scan_roots() + extra_roots
+            print(f"scan roots: {', '.join(rel(r) for r in roots)}")
+            _index["dirs"] = find_event_dirs(roots)
+            print(f"found {len(_index['dirs'])} event dirs")
+        return _index["dirs"]
 
     all_nodes = {n.id: n for n in load_nodes()}
     if args.all:
@@ -409,20 +426,24 @@ def main() -> int:
         }
         artifacts = node.meta.get("artifacts") or {}
         event_dir: Path | None = None
-        if not args.refresh and artifacts.get("tb_logdir"):
-            cand = repo_root() / str(artifacts["tb_logdir"])
-            if cand.exists():
-                event_dir = cand
+        # Fast paths first (no global scan): the cached tb_logdir, then the
+        # output_dir/checkpoint path recorded at registration. --refresh forces
+        # the fingerprint scan to re-derive from scratch.
+        if not args.refresh:
+            if artifacts.get("tb_logdir"):
+                cand = repo_root() / str(artifacts["tb_logdir"])
+                if cand.exists():
+                    event_dir = cand
+            if event_dir is None:
+                event_dir = path_hint_event_dir(artifacts, bases)
+                if event_dir is not None:
+                    print(f"  hint  {node.id}: {rel(event_dir)} (from artifacts path)")
+        # Fallback: fingerprint the run by its test/* metrics (builds the event
+        # index lazily). Needed for older nodes with no output_dir recorded.
         if event_dir is None and metrics:
-            event_dir, err, matched = match_event_dir(metrics, event_dirs)
+            event_dir, err, matched = match_event_dir(metrics, event_dirs_index())
             if event_dir is not None:
                 print(f"  match {node.id}: {rel(event_dir)} ({matched} keys, {err*100:.2f}% mean err)")
-        if event_dir is None:
-            # fallback: runs without test/* scalars (e.g. court seg) record their
-            # output_dir directly, so resolve the event dir from that path hint.
-            event_dir = path_hint_event_dir(artifacts, bases)
-            if event_dir is not None:
-                print(f"  hint  {node.id}: {rel(event_dir)} (from artifacts path)")
         if event_dir is None:
             print(f"  skip {node.id}: no event dir matched its metrics or path hints")
             skipped += 1
