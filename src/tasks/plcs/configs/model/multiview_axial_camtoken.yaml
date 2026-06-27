@@ -1,0 +1,20 @@
+# Per-camera readout-token shared-trunk axial PLCS model — issue #576.
+#
+# Same shared trunk as `multiview_axial` (PLCSMultiViewAxialModel), but the pose
+# head reads the camera-0 token and the rotation head reads the camera-1 token,
+# instead of both heads reading camera-0. Cheap (single trunk) decoupling of the
+# position/rotation competition seen on shared trunks in #545/#560.
+#
+# Defaults match the fully-shared baseline run-i560-nocanon-s0-h12
+# (multiview_axial_base @ num_layers=12) so the two are directly comparable; the
+# only difference is the per-camera readout.
+defaults:
+  - _multiview_axial
+  - _self_
+
+name: plcs_multiview_axial_camtoken
+
+hidden_dim: 512
+num_layers: 12
+num_heads: 8
+rope_dim: 16 # 25% of head_dim
