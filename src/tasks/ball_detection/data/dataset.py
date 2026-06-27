@@ -76,8 +76,32 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
     def __len__(self) -> int:
         return len(self.windows)
 
-    def __getitem__(self, index: int) -> BallDetectionSample:
-        window = self.windows[index]
+    def __getitem__(
+        self, index: int | tuple[int, int]
+    ) -> BallDetectionSample:
+        """Build one sample.
+
+        ``index`` is either an ``int`` (use ``self.num_frames`` frames) or a
+        ``(window_index, num_frames)`` tuple. The tuple form is emitted by the
+        variable-T batch sampler so one window source can yield clips of
+        different lengths ``T <= self.num_frames`` across batches.
+        """
+        if isinstance(index, tuple):
+            window_index, num_frames = int(index[0]), int(index[1])
+        else:
+            window_index, num_frames = int(index), self.num_frames
+        if not 1 <= num_frames <= self.num_frames:
+            raise ValueError(
+                f"requested num_frames={num_frames} must be in "
+                f"[1, {self.num_frames}] (the built window length)."
+            )
+        return self._make_sample(window_index, num_frames)
+
+    def _make_sample(
+        self, window_index: int, num_frames: int
+    ) -> BallDetectionSample:
+        window = self.windows[window_index]
+        index = window_index
         image_h, image_w = self.image_size
         heatmap_h, heatmap_w = self.heatmap_size
         original_w, original_h = window.original_size
@@ -86,7 +110,7 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         coords_image: list[list[tuple[float, float]]] = []
         visibility: list[list[float]] = []
 
-        for offset in range(self.num_frames):
+        for offset in range(num_frames):
             frame_name = window.frame_names[window.start_index + offset]
             frame_path = window.clip_dir / frame_name
             frames_hwc.append(self._load_frame(frame_path))

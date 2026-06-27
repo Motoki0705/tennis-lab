@@ -2,5 +2,9 @@ output_dir: outputs/ball_detection/${model.name}
 seed: 42
 gpus: 1
 resume: null
+# Weights-only transfer for staged phase chaining (issue #579). Unlike `resume`
+# (full-state), this loads only model weights and starts a fresh optimizer at
+# epoch 0. null for non-staged runs.
+init_weights: null
 fast_dev_run: false
 dry_run: false
