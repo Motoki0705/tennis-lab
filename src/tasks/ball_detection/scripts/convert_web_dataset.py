@@ -102,7 +102,12 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
         writer.close()
         index.save(build_dir)
-        write_manifest(build_dir, index, writer)
+        write_manifest(
+            build_dir,
+            index,
+            writer,
+            max_bbox_side_ratio=_optional_float(convert.get("max_bbox_side_ratio")),
+        )
         write_store_readme(build_dir)
         publish_store(build_dir, output_dir)
     except BaseException:
@@ -137,9 +142,10 @@ def _build_parsers(convert: Any, web_root: Path) -> list[WebDatasetParser]:
         seed=int(convert.split_seed),
     )
     quality = int(convert.jpeg_quality)
+    max_ratio = _optional_float(convert.get("max_bbox_side_ratio"))
     parsers: list[WebDatasetParser] = []
     if bool(convert.sources.roboflow):
-        parsers.append(RoboflowParser(web_root, split_config))
+        parsers.append(RoboflowParser(web_root, split_config, max_ratio))
     if bool(convert.sources.racketvision):
         parsers.append(RacketVisionParser(web_root, quality))
     if bool(convert.sources.kaggle):
@@ -152,8 +158,13 @@ def _build_parsers(convert: Any, web_root: Path) -> list[WebDatasetParser]:
             )
         )
     if bool(convert.sources.ball_yolo):
-        parsers.append(BallYoloParser(web_root, quality, split_config))
+        parsers.append(BallYoloParser(web_root, quality, split_config, max_ratio))
     return parsers
+
+
+def _optional_float(value: Any) -> float | None:
+    """Coerce a possibly-null Hydra scalar to ``float | None``."""
+    return None if value is None else float(value)
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ from src.tasks.ball_detection.data.components.web.parser.base import (
     WebDatasetParser,
 )
 from src.utils.data.splits import GroupSplitConfig, make_group_split_map
+from src.utils.geometry.bbox import bbox_max_side_ratio
 from src.utils.geometry.keypoints import clamp_pixel_coordinate
 from src.utils.io import load_json
 
@@ -36,9 +37,15 @@ def roboflow_source_group(file_name: str) -> str:
 class RoboflowParser(WebDatasetParser):
     """Normalize all configured Roboflow COCO exports."""
 
-    def __init__(self, web_root: Path, split_config: GroupSplitConfig) -> None:
+    def __init__(
+        self,
+        web_root: Path,
+        split_config: GroupSplitConfig,
+        max_bbox_side_ratio: float | None = None,
+    ) -> None:
         self.web_root = web_root
         self.split_config = split_config
+        self.max_bbox_side_ratio = max_bbox_side_ratio
 
     def sources(self) -> Iterator[ParsedSource]:
         """Yield one logical source per Roboflow export."""
@@ -66,6 +73,21 @@ class RoboflowParser(WebDatasetParser):
             )
         return dict(counts)
 
+    def _is_dominant(
+        self,
+        boxes: list[tuple[float, float, float, float, int]],
+        img_w: int,
+        img_h: int,
+    ) -> bool:
+        """Whether any ball box is too dominant relative to the frame."""
+        if self.max_bbox_side_ratio is None:
+            return False
+        return any(
+            bbox_max_side_ratio(box_w, box_h, img_w, img_h)
+            >= self.max_bbox_side_ratio
+            for _cx, _cy, box_w, box_h, _vis in boxes
+        )
+
     def _records(
         self,
         name: str,
@@ -83,27 +105,27 @@ class RoboflowParser(WebDatasetParser):
                 for category in coco["categories"]
                 if str(category.get("supercategory", "none")).lower() != "none"
             }
-            boxes_by_image: dict[int, list[tuple[float, float, int]]] = {}
+            boxes_by_image: dict[int, list[tuple[float, float, float, float, int]]] = {}
             for annotation in coco["annotations"]:
                 if annotation["category_id"] not in ball_categories:
                     continue
                 x, y, width, height = annotation["bbox"]
                 boxes_by_image.setdefault(annotation["image_id"], []).append(
-                    (x + width / 2.0, y + height / 2.0, 1)
+                    (x + width / 2.0, y + height / 2.0, width, height, 1)
                 )
             for image in coco["images"]:
                 width = int(image["width"])
                 height = int(image["height"])
+                boxes = boxes_by_image.get(image["id"], [])
+                if self._is_dominant(boxes, width, height):
+                    continue
                 instances = [
                     (
                         clamp_pixel_coordinate(center_x, width),
                         clamp_pixel_coordinate(center_y, height),
                         visibility,
                     )
-                    for center_x, center_y, visibility in boxes_by_image.get(
-                        image["id"],
-                        [],
-                    )
+                    for center_x, center_y, _box_w, _box_h, visibility in boxes
                 ]
                 group = roboflow_source_group(str(image["file_name"]))
                 sequence = f"{name}:{group}"
