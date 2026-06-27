@@ -103,7 +103,16 @@ def build_mdd_frames(
     red=darken). Computed from the same preprocessed images the predictor
     consumes to stay faithful to the model input.
     """
-    mdd_config = {**predictor.model_config, "input_mode": "mdd", "in_channels": 2}
+    # Force channels-first (bcthw) so ``features[0, c]`` selects the two MDD
+    # channels over all T frames regardless of the model's own input layout.
+    # ``btchw`` models would otherwise yield (1, T, 2, H, W) and collapse the
+    # panel to 2 "frames".
+    mdd_config = {
+        **predictor.model_config,
+        "input_mode": "mdd",
+        "in_channels": 2,
+        "input_layout": "bcthw",
+    }
     with torch.no_grad():
         # (1, T, 3, H, W) -> (1, 2, T, H, W)
         features = to_model_input(clip.model_images.unsqueeze(0), mdd_config)
