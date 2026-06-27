@@ -1,0 +1,49 @@
+# Staged mixed TrackNet+Web datamodule with a variable-T training schedule.
+# Phases override t_max, sources.web.enabled, and the epoch count.
+defaults:
+  - augmentation: default
+  - _self_
+
+source: staged
+
+# Multi-frame schedule. t_max=1 => phases degenerate to single-frame batches.
+t_max: 1
+t1_prob: 0.5
+val_num_frames: 1
+
+# Default physical batch plan. The OOM-probe calibration overrides this at the
+# start of a real (GPU) run; it is also the table used for dry runs. EBS=B(1).
+effective_batch_size: 8
+batch_size_by_t: { 1: 8, 2: 6, 3: 4, 4: 3, 5: 3, 6: 2, 7: 2, 8: 2 }
+
+val_batch_size: 8
+num_workers: 8
+pin_memory: true
+seed: 1234
+
+image_size: [288, 512]
+heatmap_size: [288, 512]
+sigma_ratio: 0.012
+max_instances: 16
+
+sources:
+  tracknet:
+    enabled: true
+    data_dir: data/tennis/tracknet
+    sample_stride: 4
+    split:
+      train_file: src/tasks/ball_detection/configs/data/splits/train.txt
+      val_file: src/tasks/ball_detection/configs/data/splits/val.txt
+      test_file: src/tasks/ball_detection/configs/data/splits/test.txt
+  web:
+    enabled: false
+    data_dir: data/tennis/web/unified
+    sources: all
+    sampling:
+      mode: temporal
+      seed: 1234
+      train_negative_fraction: null
+      temporal:
+        frame_step: 1
+        sample_stride: 1
+        max_frame_gap: null

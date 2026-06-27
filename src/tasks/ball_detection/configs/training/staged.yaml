@@ -1,0 +1,58 @@
+# Training settings for the staged manual-optimization schedule (issue #579).
+trainer:
+  max_epochs: 5
+  # MUST be null: Lightning forbids Trainer-level gradient clipping under manual
+  # optimization. Clipping is done in the module via training.staged.gradient_clip_val.
+  gradient_clip_val: null
+  deterministic: warn
+  precision: bf16-mixed
+  log_every_n_steps: 25
+  check_val_every_n_epoch: 1
+
+# ---- Manual-optimization / variable-T settings ----
+staged:
+  # Effective batch (samples per optimizer step). Synced from B(1) by the OOM
+  # calibration at real-run start; this is the fallback / dry-run value.
+  effective_batch_size: 8
+  gradient_clip_val: 1.0
+  calibration_token_budget: 24
+  calibration_safety: 0.9
+
+# ---- Optimizer / scheduler (epoch-interval cosine; stepped manually) ----
+learning_rate: 1.0e-4
+weight_decay: 1.0e-4
+warmup_epochs: 1
+min_lr: 1.0e-6
+
+optimizer:
+  name: adamw
+  betas: [0.9, 0.999]
+
+# ---- Runtime ----
+matmul_precision: high
+allow_tf32: true
+
+# ---- Checkpoint / stopping ----
+checkpoint:
+  enabled: true
+  filename: "staged-{epoch:02d}"
+  monitor: val/loss
+  mode: min
+  save_top_k: 1
+  save_last: true
+
+early_stopping:
+  enabled: false
+  monitor: val/loss
+  mode: min
+  patience: 5
+  min_delta: 2.0e-6
+
+lr_monitor:
+  enabled: true
+  interval: epoch
+
+qualitative_logging:
+  enabled: true
+  every_n_epochs: 1
+  num_samples: 4

@@ -1,0 +1,21 @@
+# Phase 2: TrackNet + Web mix, T=1, 5 epochs (from phase 1 weights). Issue #579.
+# @package _global_
+defaults:
+  - train_staged
+  - _self_
+
+data:
+  t_max: 1
+  sources:
+    tracknet:
+      enabled: true
+    web:
+      enabled: true
+
+training:
+  trainer:
+    max_epochs: 5
+
+run:
+  output_dir: outputs/ball_detection/staged/phase2
+  init_weights: outputs/ball_detection/staged/phase1/logs/run/checkpoints/last.ckpt

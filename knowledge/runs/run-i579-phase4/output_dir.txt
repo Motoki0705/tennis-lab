@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-579-staged-training/outputs/ball_detection/staged/phase4/logs/run/checkpoints
