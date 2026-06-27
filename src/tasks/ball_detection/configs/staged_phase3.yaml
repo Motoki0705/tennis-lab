@@ -1,0 +1,23 @@
+# Phase 3: TrackNet only, multi-frame T in [1,8], 10 epochs
+# (from phase 2 weights). Issue #579.
+# @package _global_
+defaults:
+  - train_staged
+  - _self_
+
+data:
+  t_max: 8
+  t1_prob: 0.5
+  sources:
+    tracknet:
+      enabled: true
+    web:
+      enabled: false
+
+training:
+  trainer:
+    max_epochs: 10
+
+run:
+  output_dir: outputs/ball_detection/staged/phase3
+  init_weights: outputs/ball_detection/staged/phase2/logs/run/checkpoints/last.ckpt

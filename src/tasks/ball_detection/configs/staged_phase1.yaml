@@ -1,0 +1,21 @@
+# Phase 1: TrackNet only, T=1, 5 epochs (fresh start). Issue #579.
+# @package _global_
+defaults:
+  - train_staged
+  - _self_
+
+data:
+  t_max: 1
+  sources:
+    tracknet:
+      enabled: true
+    web:
+      enabled: false
+
+training:
+  trainer:
+    max_epochs: 5
+
+run:
+  output_dir: outputs/ball_detection/staged/phase1
+  init_weights: null
