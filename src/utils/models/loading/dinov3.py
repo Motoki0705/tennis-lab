@@ -9,6 +9,7 @@ from typing import Any, Literal, cast
 import torch
 from torch import nn
 
+from src.utils.models.lora import LoRAConfig, apply_lora
 from src.utils.paths import resolve_project_path
 
 DEFAULT_DINOV3_REPOSITORY = Path("third_party/dinov3")
@@ -16,6 +17,8 @@ DEFAULT_DINOV3_CHECKPOINT = Path(
     "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
 )
 DINOv3TrainMode = Literal["frozen", "last_n_blocks", "full"]
+# Attention (qkv/proj) and MLP (fc1/fc2) projections inside each DINOv3 block.
+DEFAULT_DINOV3_LORA_TARGET_MODULES: tuple[str, ...] = ("qkv", "proj", "fc1", "fc2")
 
 
 class DINOv3BackboneAdapter(nn.Module):
@@ -114,13 +117,43 @@ def load_dinov3_backbone(
     return DINOv3BackboneAdapter(backbone)
 
 
+def apply_dinov3_lora(
+    backbone: DINOv3BackboneAdapter,
+    lora: LoRAConfig,
+) -> list[str]:
+    """Freeze the backbone and attach trainable LoRA adapters to its blocks.
+
+    The base backbone weights are frozen; only the injected LoRA factors remain
+    trainable. Returns the qualified names of the wrapped linear layers.
+    """
+    if not lora.enabled:
+        raise ValueError("apply_dinov3_lora requires an enabled LoRAConfig.")
+    backbone.requires_grad_(False)
+    return apply_lora(
+        backbone.module,
+        rank=lora.rank,
+        alpha=lora.alpha,
+        dropout=lora.dropout,
+        target_modules=lora.target_modules,
+    )
+
+
 def configure_dinov3_trainability(
     backbone: DINOv3BackboneAdapter,
     *,
     train_mode: DINOv3TrainMode,
     last_n_blocks: int = 0,
+    lora: LoRAConfig | None = None,
 ) -> None:
-    """Configure ``frozen``, ``last_n_blocks``, or ``full`` backbone training."""
+    """Configure ``frozen``, ``last_n_blocks``, ``full``, or LoRA training.
+
+    When ``lora`` is provided and enabled, the base backbone is frozen and LoRA
+    adapters are injected regardless of ``train_mode`` (only the adapters train).
+    """
+    if lora is not None and lora.enabled:
+        apply_dinov3_lora(backbone, lora)
+        return
+
     if train_mode not in {"frozen", "last_n_blocks", "full"}:
         raise ValueError(
             "DINOv3 train_mode must be one of "
@@ -155,9 +188,11 @@ def configure_dinov3_trainability(
 
 __all__ = [
     "DEFAULT_DINOV3_CHECKPOINT",
+    "DEFAULT_DINOV3_LORA_TARGET_MODULES",
     "DEFAULT_DINOV3_REPOSITORY",
     "DINOv3BackboneAdapter",
     "DINOv3TrainMode",
+    "apply_dinov3_lora",
     "configure_dinov3_trainability",
     "load_dinov3_backbone",
 ]

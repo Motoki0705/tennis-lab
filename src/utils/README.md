@@ -46,6 +46,7 @@ types**, it belongs here (or should be promoted here), not in the task module.
 | Sample video frame indices | `sample_uniform_frame_indices()`, `sample_frame_indices_by_time_ranges()` | `from src.utils.video import ...` |
 | Download/transcode YouTube videos | `download_youtube_video()`, `transcode_h264_video()` | `from src.utils.video import ...` |
 | Transformer / MoE / RoPE blocks | `TransformerBlock`, `MoELayer`, RoPE helpers, `MLPHead` | `from src.utils.models import ...` |
+| LoRA-adapt a frozen backbone | `LoRAConfig`, `apply_lora()`, `apply_dinov3_lora()`, `configure_dinov3_trainability(..., lora=...)` | `from src.utils.models import ...` / `from src.utils.models.loading import ...` |
 
 ## Modules
 
@@ -88,7 +89,8 @@ types**, it belongs here (or should be promoted here), not in the task module.
 
 ### Other packages (pre-existing)
 - **`models/`** — DeepSeek-style Transformer blocks, MoE, RoPE, attention,
-  `MLPHead`, domain token embeddings, DINOv3 backbone loading.
+  `MLPHead`, domain token embeddings, DINOv3 backbone loading, LoRA adaptation
+  (`lora.py`).
 - **`projection/`** — pinhole `Camera`, `CameraProjector`, `make_look_at_camera`,
   `project_points`.
 - **`rendering/`** — `CourtRenderer`, `SkeletonRenderer`, `BallRenderer`.

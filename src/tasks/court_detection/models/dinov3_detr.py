@@ -24,10 +24,13 @@ import torch.nn.functional as F
 
 from src.utils.models.loading import (
     DEFAULT_DINOV3_CHECKPOINT,
+    DEFAULT_DINOV3_LORA_TARGET_MODULES,
     DEFAULT_DINOV3_REPOSITORY,
     DINOv3BackboneAdapter,
+    apply_dinov3_lora,
     load_dinov3_backbone,
 )
+from src.utils.models.lora import LoRAConfig
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -198,6 +201,7 @@ class DINOv3DETR(nn.Module):
         backbone_name: str = "dinov3_vitb16",
         backbone_strict: bool = True,
         freeze_backbone: bool = True,
+        backbone_lora: LoRAConfig | None = None,
         hidden_dim: int = 256,
         num_queries: int = 100,
         num_decoder_layers: int = 6,
@@ -223,6 +227,10 @@ class DINOv3DETR(nn.Module):
         self.in_channels = int(in_channels)
         self.num_classes = int(num_classes)
         self.freeze_backbone = bool(freeze_backbone)
+        self.backbone_lora = backbone_lora
+        self.backbone_lora_enabled = bool(
+            backbone_lora is not None and backbone_lora.enabled
+        )
         self.backbone = load_dinov3_backbone(
             repository_path=backbone_repository_path,
             checkpoint_path=backbone_checkpoint_path,
@@ -232,7 +240,11 @@ class DINOv3DETR(nn.Module):
         backbone_dim = self.backbone.embed_dim
         self.patch_size = self.backbone.patch_size
 
-        if self.freeze_backbone:
+        if backbone_lora is not None and backbone_lora.enabled:
+            # LoRA freezes the base backbone and trains only the injected
+            # adapters; gradients must flow through the backbone forward pass.
+            apply_dinov3_lora(self.backbone, backbone_lora)
+        elif self.freeze_backbone:
             self.backbone.requires_grad_(False)
 
         self.memory_projection = nn.Conv2d(backbone_dim, hidden_dim, kernel_size=1)
@@ -333,6 +345,10 @@ class DINOv3DETR(nn.Module):
             backbone_name=str(backbone_cfg.get("name", "dinov3_vitb16")),
             backbone_strict=bool(backbone_cfg.get("strict", True)),
             freeze_backbone=bool(backbone_cfg.get("freeze", True)),
+            backbone_lora=LoRAConfig.from_mapping(
+                backbone_cfg.get("lora"),
+                default_target_modules=DEFAULT_DINOV3_LORA_TARGET_MODULES,
+            ),
             hidden_dim=int(decoder_cfg.get("hidden_dim", 256)),
             num_queries=int(decoder_cfg.get("num_queries", 100)),
             num_decoder_layers=int(decoder_cfg.get("num_layers", 6)),
@@ -377,7 +393,7 @@ class DINOv3DETR(nn.Module):
         return self.segmentation_head.semantic_logits(self.forward_query_outputs(x))
 
     def _extract_patch_features(self, x: torch.Tensor) -> torch.Tensor:
-        if self.freeze_backbone:
+        if self.freeze_backbone and not self.backbone_lora_enabled:
             with torch.no_grad():
                 backbone_outputs = self.backbone.forward_features(x)
         else:

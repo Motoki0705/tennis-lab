@@ -14,6 +14,15 @@ backbone:
   # frozen | last_n_blocks | full
   train_mode: frozen
   last_n_blocks: 0
+  # Low-rank adaptation of the frozen backbone. When `enabled: true` the base
+  # weights stay frozen and only the injected adapters train (overrides
+  # `train_mode`). Enable conveniently with `training=lora`.
+  lora:
+    enabled: false
+    rank: 8
+    alpha: 16.0
+    dropout: 0.0
+    target_modules: [qkv, proj, fc1, fc2]
 
 decoder:
   dim: 256
