@@ -15,7 +15,11 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import shutil
+import signal
+import subprocess
+import time
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -120,11 +124,139 @@ class MockTennisGate:
         )
 
 
-class VllmGate:
-    """Call a local vLLM OpenAI-compatible VLM endpoint."""
+class ManagedOpenAICompatibleServer:
+    """Lifecycle manager for a local OpenAI-compatible VLM server."""
 
-    def __init__(self, cfg: DictConfig) -> None:
+    def __init__(self, cfg: DictConfig | None, *, base_url: str) -> None:
+        self.enabled = bool(cfg is not None and cfg.get("enabled", False))
+        self.base_url = base_url.rstrip("/")
+        self.health_url = (
+            str(cfg.get("health_url")).rstrip("/")
+            if cfg is not None and cfg.get("health_url") is not None
+            else f"{self.base_url}/models"
+        )
+        self.startup_timeout_sec = (
+            float(cfg.get("startup_timeout_sec", 300)) if cfg is not None else 300.0
+        )
+        self.poll_interval_sec = (
+            float(cfg.get("poll_interval_sec", 5)) if cfg is not None else 5.0
+        )
+        self.request_timeout_sec = (
+            float(cfg.get("request_timeout_sec", 5)) if cfg is not None else 5.0
+        )
+        self.shutdown_timeout_sec = (
+            float(cfg.get("shutdown_timeout_sec", 20)) if cfg is not None else 20.0
+        )
+        self.stop_on_exit = bool(cfg is not None and cfg.get("stop_on_exit", True))
+        self.command = _command_list(cfg.get("command", [])) if cfg is not None else []
+        self.env = _env_mapping(cfg.get("env", {})) if cfg is not None else {}
+        self.cwd = _optional_path(cfg.get("cwd")) if cfg is not None else None
+        self.log_path = _optional_path(cfg.get("log_path")) if cfg is not None else None
+        self.preflight = cfg.get("preflight") if cfg is not None else None
+        self.process: subprocess.Popen[str] | None = None
+        self.log_file: Any | None = None
+
+    def start(self) -> None:
+        """Start the server unless it is already healthy."""
+        if not self.enabled:
+            return
+        if self._is_healthy():
+            print(f"  VLM server already healthy: {self.health_url}")
+            return
+        if not self.command:
+            raise RuntimeError("VLM server is enabled but command is empty.")
+        self._run_preflight()
+        stdout_target: Any = subprocess.DEVNULL
+        if self.log_path is not None:
+            self.log_path.parent.mkdir(parents=True, exist_ok=True)
+            self.log_file = self.log_path.open("a", encoding="utf-8")
+            stdout_target = self.log_file
+        print(f"  starting VLM server: {' '.join(self.command)}")
+        self.process = subprocess.Popen(
+            self.command,
+            cwd=None if self.cwd is None else str(self.cwd),
+            env={**os.environ, **self.env},
+            stdout=stdout_target,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=True,
+        )
+        deadline = time.monotonic() + self.startup_timeout_sec
+        while time.monotonic() < deadline:
+            if self._is_healthy():
+                print(f"  VLM server healthy: {self.health_url}")
+                return
+            if self.process.poll() is not None:
+                self.stop()
+                raise RuntimeError(
+                    "VLM server exited before becoming healthy "
+                    f"(code={self.process.returncode}, log={self.log_path})."
+                )
+            time.sleep(self.poll_interval_sec)
+        self.stop()
+        raise RuntimeError(
+            "Timed out waiting for VLM server health check "
+            f"({self.health_url}, log={self.log_path})."
+        )
+
+    def stop(self) -> None:
+        """Stop the server process if this manager started it."""
+        if not self.stop_on_exit:
+            return
+        process = self.process
+        if process is not None and process.poll() is None:
+            process.send_signal(signal.SIGINT)
+            deadline = time.monotonic() + self.shutdown_timeout_sec
+            while time.monotonic() < deadline:
+                if process.poll() is not None:
+                    break
+                time.sleep(0.5)
+            if process.poll() is None:
+                process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+        if self.log_file is not None:
+            self.log_file.close()
+            self.log_file = None
+
+    def _is_healthy(self) -> bool:
+        try:
+            response = requests.get(self.health_url, timeout=self.request_timeout_sec)
+            return response.status_code == 200
+        except requests.RequestException:
+            return False
+
+    def _run_preflight(self) -> None:
+        if self.preflight is None or not bool(self.preflight.get("enabled", False)):
+            return
+        command = _command_list(self.preflight.get("command", []))
+        if not command:
+            raise RuntimeError("VLM server preflight is enabled but command is empty.")
+        completed = subprocess.run(
+            command,
+            cwd=None if self.cwd is None else str(self.cwd),
+            env={**os.environ, **self.env},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            detail = (completed.stderr or completed.stdout).strip()
+            raise RuntimeError(
+                "VLM server preflight failed "
+                f"(code={completed.returncode}): {detail}"
+            )
+
+
+class OpenAICompatibleGate:
+    """Call a local OpenAI-compatible VLM endpoint."""
+
+    def __init__(self, cfg: DictConfig, *, backend: str) -> None:
         self.base_url = str(cfg.base_url).rstrip("/")
+        self.backend = backend
         self.model = str(cfg.model)
         self.prompt = str(cfg.prompt)
         self.timeout_sec = float(cfg.timeout_sec)
@@ -134,6 +266,18 @@ class VllmGate:
             JSONDict,
             OmegaConf.to_container(cfg.get("extra_body", {}), resolve=True),
         )
+        self.server = ManagedOpenAICompatibleServer(
+            cfg.get("server"),
+            base_url=self.base_url,
+        )
+
+    def start(self) -> None:
+        """Start the managed server when configured."""
+        self.server.start()
+
+    def stop(self) -> None:
+        """Stop the managed server when configured."""
+        self.server.stop()
 
     def classify(
         self,
@@ -181,11 +325,18 @@ class VllmGate:
             label=label,
             confidence=cast(float | None, parsed["confidence"]),
             reason=str(parsed["reason"]),
-            backend="vllm",
+            backend=self.backend,
             raw_response=raw,
             reasoning=None if reasoning is None else str(reasoning),
             raw_payload=cast(JSONDict, payload),
         )
+
+
+class VllmGate(OpenAICompatibleGate):
+    """Call a local vLLM OpenAI-compatible VLM endpoint."""
+
+    def __init__(self, cfg: DictConfig) -> None:
+        super().__init__(cfg, backend="vllm")
 
 
 @hydra_main(
@@ -211,6 +362,8 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
     images_dir = root / str(paths.images_dir)
     manifests_dir = root / str(paths.manifests_dir)
     ensure_dirs([source_dir, h264_dir, sampled_dir, images_dir, manifests_dir])
+    storage_cfg = workflow.get("storage")
+    _check_storage_budget(root, storage_cfg, stage="start")
 
     sources = _collect_sources(workflow)
     existing_video_ids = _existing_video_ids(manifests_dir, images_dir)
@@ -226,116 +379,131 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
     failed_video_count = int(summary_record.get("failed_video_count", 0))
     cleanup_video_file_count = int(summary_record.get("cleanup_video_file_count", 0))
 
-    for source in sources:
-        video_id = str(source["video_id"])
-        if video_id in existing_video_ids and not bool(
-            workflow.processing.reprocess_existing
-        ):
-            print(f"[prepare_dinov3_ssl_images] skip existing video_id={video_id}")
-            continue
-        if processed_new >= int(workflow.processing.max_new_videos):
-            break
-
-        print(f"[prepare_dinov3_ssl_images] source={video_id}")
-        processed_new += 1
-        source_records.append(dict(source))
-        local_video_supplied = bool(source.get("local_video"))
-        try:
-            source_video = _resolve_source_video(source, source_dir, workflow.download)
-        except Exception as exc:
-            failed_video_count += 1
-            print(
-                "  failed to resolve/download source video: "
-                f"{type(exc).__name__}: {exc}"
-            )
-            continue
-        sample_video = _transcode_source_video(
-            source_video, video_id, h264_dir, workflow.transcode
-        )
-        info = _read_info_json(source_dir / f"{video_id}.info.json")
-        source_with_info = {**source, "title": info.get("title") or source.get("title")}
-
-        try:
-            sampled_frames = _sample_video_frames(
-                source=source_with_info,
-                video_path=sample_video,
-                output_dir=sampled_dir / video_id,
-                root=root,
-                cfg=workflow.frames,
-            )
-        except RuntimeError:
-            if bool(workflow.transcode.enabled) or not bool(
-                workflow.transcode.fallback_on_decode_error
+    gate_started = False
+    try:
+        for source in sources:
+            if processed_new >= int(workflow.processing.max_new_videos):
+                break
+            _check_storage_budget(root, storage_cfg, stage="before_source")
+            video_id = str(source["video_id"])
+            if video_id in existing_video_ids and not bool(
+                workflow.processing.reprocess_existing
             ):
-                raise
-            print("  source decode failed; falling back to H.264 transcode")
-            sample_video = _force_transcode_source_video(
+                print(f"[prepare_dinov3_ssl_images] skip existing video_id={video_id}")
+                continue
+
+            print(f"[prepare_dinov3_ssl_images] source={video_id}")
+            processed_new += 1
+            source_records.append(dict(source))
+            local_video_supplied = bool(source.get("local_video"))
+            try:
+                source_video = _resolve_source_video(
+                    source, source_dir, workflow.download
+                )
+            except Exception as exc:
+                failed_video_count += 1
+                print(
+                    "  failed to resolve/download source video: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+                continue
+            sample_video = _transcode_source_video(
                 source_video, video_id, h264_dir, workflow.transcode
             )
-            sampled_frames = _sample_video_frames(
-                source=source_with_info,
-                video_path=sample_video,
-                output_dir=sampled_dir / video_id,
-                root=root,
-                cfg=workflow.frames,
-            )
-        sample_records.extend(sampled_frames)
-        contact_sheet = _write_contact_sheet(
-            sampled_frames=sampled_frames,
-            output_path=sampled_dir / video_id / "contact_sheet.jpg",
-            root=root,
-            cfg=workflow.gate.contact_sheet,
-        )
-        try:
-            decision = gate.classify(
-                source=source_with_info,
-                sampled_frames=sampled_frames,
-                contact_sheet=contact_sheet,
-            )
-        except Exception as exc:
-            failed_video_count += 1
-            decision = _failed_gate_decision(str(workflow.gate.backend), exc)
-        gate_record = _gate_record(
-            video_id, source_with_info, decision, root, contact_sheet
-        )
-        gate_records.append(gate_record)
-        print(
-            f"  gate: {decision.label} accepted={decision.accepted} reason={decision.reason}"
-        )
-        if decision.accepted:
-            accepted_videos += 1
-            image_records.extend(
-                _promote_sampled_frames(
-                    sampled_frames=sampled_frames,
-                    images_dir=images_dir,
+            info = _read_info_json(source_dir / f"{video_id}.info.json")
+            source_with_info = {
+                **source,
+                "title": info.get("title") or source.get("title"),
+            }
+
+            try:
+                sampled_frames = _sample_video_frames(
+                    source=source_with_info,
+                    video_path=sample_video,
+                    output_dir=sampled_dir / video_id,
                     root=root,
-                    decision=decision,
-                    overwrite=bool(workflow.frames.overwrite),
+                    cfg=workflow.frames,
                 )
+            except RuntimeError:
+                if bool(workflow.transcode.enabled) or not bool(
+                    workflow.transcode.fallback_on_decode_error
+                ):
+                    raise
+                print("  source decode failed; falling back to H.264 transcode")
+                sample_video = _force_transcode_source_video(
+                    source_video, video_id, h264_dir, workflow.transcode
+                )
+                sampled_frames = _sample_video_frames(
+                    source=source_with_info,
+                    video_path=sample_video,
+                    output_dir=sampled_dir / video_id,
+                    root=root,
+                    cfg=workflow.frames,
+                )
+            sample_records.extend(sampled_frames)
+            contact_sheet = _write_contact_sheet(
+                sampled_frames=sampled_frames,
+                output_path=sampled_dir / video_id / "contact_sheet.jpg",
+                root=root,
+                cfg=workflow.gate.contact_sheet,
             )
-        elif decision.label == "gate_error":
-            print("  skip promotion because gate failed")
-        cleanup_video_file_count += _cleanup_video_files(
-            video_id=video_id,
-            videos_dir=videos_dir,
-            source_video=source_video,
-            sample_video=sample_video,
-            enabled=bool(workflow.processing.cleanup_videos_after_processing),
-            keep_info_json=bool(workflow.processing.cleanup_keep_info_json),
-            skip=local_video_supplied,
-        )
-        _write_pipeline_manifests(
-            manifests_dir=manifests_dir,
-            images_dir=images_dir,
-            root=root,
-            source_records=source_records,
-            sample_records=sample_records,
-            gate_records=gate_records,
-            image_records=image_records,
-            accepted_videos=accepted_videos,
-            failed_video_count=failed_video_count,
-            cleanup_video_file_count=cleanup_video_file_count,
-        )
+            if not gate_started:
+                _start_gate(gate)
+                gate_started = True
+            try:
+                decision = gate.classify(
+                    source=source_with_info,
+                    sampled_frames=sampled_frames,
+                    contact_sheet=contact_sheet,
+                )
+            except Exception as exc:
+                failed_video_count += 1
+                decision = _failed_gate_decision(str(workflow.gate.backend), exc)
+            gate_record = _gate_record(
+                video_id, source_with_info, decision, root, contact_sheet
+            )
+            gate_records.append(gate_record)
+            print(
+                f"  gate: {decision.label} accepted={decision.accepted} reason={decision.reason}"
+            )
+            if decision.accepted:
+                accepted_videos += 1
+                image_records.extend(
+                    _promote_sampled_frames(
+                        sampled_frames=sampled_frames,
+                        images_dir=images_dir,
+                        root=root,
+                        decision=decision,
+                        overwrite=bool(workflow.frames.overwrite),
+                    )
+                )
+            elif decision.label == "gate_error":
+                print("  skip promotion because gate failed")
+            cleanup_video_file_count += _cleanup_video_files(
+                video_id=video_id,
+                videos_dir=videos_dir,
+                source_video=source_video,
+                sample_video=sample_video,
+                enabled=bool(workflow.processing.cleanup_videos_after_processing),
+                keep_info_json=bool(workflow.processing.cleanup_keep_info_json),
+                skip=local_video_supplied,
+            )
+            _check_storage_budget(root, storage_cfg, stage="after_source")
+            _write_pipeline_manifests(
+                manifests_dir=manifests_dir,
+                images_dir=images_dir,
+                root=root,
+                source_records=source_records,
+                sample_records=sample_records,
+                gate_records=gate_records,
+                image_records=image_records,
+                accepted_videos=accepted_videos,
+                failed_video_count=failed_video_count,
+                cleanup_video_file_count=cleanup_video_file_count,
+            )
+    finally:
+        if gate_started:
+            _stop_gate(gate)
 
     _write_pipeline_manifests(
         manifests_dir=manifests_dir,
@@ -385,6 +553,7 @@ def _write_pipeline_manifests(
             "failed_video_count": failed_video_count,
             "image_count": len(image_records),
             "cleanup_video_file_count": cleanup_video_file_count,
+            "root_size_bytes": _directory_size_bytes(root),
             "images_dir": relative_path(images_dir, root),
             "written_at": utc_now_iso(),
         },
@@ -811,9 +980,23 @@ def _build_gate(cfg: DictConfig) -> FrameGate:
     backend = str(cfg.backend)
     if backend == "mock":
         return MockTennisGate(accept_all=bool(cfg.mock.accept_all))
+    if backend == "openai_compatible":
+        return OpenAICompatibleGate(cfg.openai_compatible, backend=backend)
     if backend == "vllm":
         return VllmGate(cfg.vllm)
     raise ValueError(f"Unsupported gate.backend={backend!r}.")
+
+
+def _start_gate(gate: FrameGate) -> None:
+    start = getattr(gate, "start", None)
+    if callable(start):
+        start()
+
+
+def _stop_gate(gate: FrameGate) -> None:
+    stop = getattr(gate, "stop", None)
+    if callable(stop):
+        stop()
 
 
 def _failed_gate_decision(backend: str, exc: Exception) -> GateDecision:
@@ -860,6 +1043,65 @@ def _is_relative_to(path: Path, root: Path) -> bool:
     except ValueError:
         return False
     return True
+
+
+def _check_storage_budget(
+    root: Path,
+    cfg: DictConfig | None,
+    *,
+    stage: str,
+) -> int:
+    size_bytes = _directory_size_bytes(root)
+    if cfg is None or not bool(cfg.get("enabled", True)):
+        return size_bytes
+    max_root_gb = cfg.get("max_root_gb")
+    if max_root_gb is None:
+        return size_bytes
+    max_bytes = int(float(max_root_gb) * 1024**3)
+    print(
+        "  storage: "
+        f"stage={stage} root={root} size_gb={size_bytes / 1024**3:.3f} "
+        f"limit_gb={float(max_root_gb):.3f}"
+    )
+    if size_bytes > max_bytes:
+        raise RuntimeError(
+            f"Storage budget exceeded at {stage}: "
+            f"{size_bytes / 1024**3:.3f} GiB > {float(max_root_gb):.3f} GiB"
+        )
+    return size_bytes
+
+
+def _directory_size_bytes(root: Path) -> int:
+    if not root.exists():
+        return 0
+    total = 0
+    for path in root.rglob("*"):
+        if path.is_file():
+            total += path.stat().st_size
+    return total
+
+
+def _command_list(value: Any) -> list[str]:
+    values = OmegaConf.to_container(value, resolve=True) if value is not None else []
+    if not isinstance(values, list):
+        raise TypeError(f"Expected command list, got {type(values).__name__}.")
+    command = [str(item) for item in values]
+    if command and "/" in command[0]:
+        command[0] = str(Path(to_absolute_path(command[0])).expanduser())
+    return command
+
+
+def _env_mapping(value: Any) -> dict[str, str]:
+    values = OmegaConf.to_container(value, resolve=True) if value is not None else {}
+    if not isinstance(values, dict):
+        raise TypeError(f"Expected env mapping, got {type(values).__name__}.")
+    return {str(key): str(env_value) for key, env_value in values.items()}
+
+
+def _optional_path(value: Any) -> Path | None:
+    if value is None:
+        return None
+    return Path(to_absolute_path(str(value))).expanduser()
 
 
 def _parse_gate_label(text: str) -> str:
@@ -915,6 +1157,10 @@ def _parse_json_object(text: str) -> JSONDict | None:
             continue
         if isinstance(parsed, dict):
             return cast(JSONDict, parsed)
+        if isinstance(parsed, list):
+            first_object = next((item for item in parsed if isinstance(item, dict)), None)
+            if first_object is not None:
+                return cast(JSONDict, first_object)
     return None
 
 
