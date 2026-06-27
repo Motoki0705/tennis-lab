@@ -1,0 +1,14 @@
+{
+  "run_id": "1782482830449695828_1983238_i551_dinov3_rope_tracknet_t3_train",
+  "name": "i551_dinov3_rope_tracknet_t3_train",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.ball_detection.scripts.train model=dinov3_rope data=rgb_sequence model.num_frames=3 run.output_dir=outputs/ball_detection/dinov3_rope_tracknet_t3 && .venv/bin/python -c \"from pathlib import Path; import sys; root=Path(\\\"outputs/ball_detection/dinov3_rope_tracknet_t3\\\"); ckpts=sorted(root.glob(\\\"logs/version_*/checkpoints/last.ckpt\\\"), key=lambda p: p.stat().st_mtime); ckpts or sys.exit(f\\\"No last.ckpt found under {root}\\\"); ckpt=ckpts[-1]; target=root/\\\"latest\\\"/\\\"checkpoints\\\"/\\\"last.ckpt\\\"; target.parent.mkdir(parents=True, exist_ok=True); target.unlink() if target.exists() or target.is_symlink() else None; target.symlink_to(ckpt.resolve()); print(f\\\"latest checkpoint -> {ckpt}\\\")\"",
+  "provider": "codex",
+  "session": "019f0329-2f83-7e22-83f8-10d706257993",
+  "issue": "551",
+  "commit": "ed6eef1b4fbfa5431d1ce40f3a010e90115b09fb",
+  "branch": "main",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-06-26T23:07:14+09:00"
+}
