@@ -8,6 +8,7 @@ from src.tasks.ball_detection.data.components.augmentation import (
     BallDetectionAugmentation,
 )
 from src.tasks.ball_detection.data.dataset import BallDetectionDataset
+from src.tasks.ball_detection.data.staged_datamodule import StagedBallDataModule
 from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
 from src.tasks.ball_detection.data.types import (
     BallDetectionBatch,
@@ -29,6 +30,7 @@ def build_ball_detection_datamodule(config: Any) -> pl.LightningDataModule:
         "tracknet": TrackNetDataModule,
         "youtube": YouTubeDataModule,
         "web": WebBallDataModule,
+        "staged": StagedBallDataModule,
     }
     try:
         datamodule_type = datamodule_types[source]
@@ -47,6 +49,7 @@ __all__ = [
     "BallDetectionSample",
     "ClipWindow",
     "FrameLabel",
+    "StagedBallDataModule",
     "TrackNetDataModule",
     "WebBallDataModule",
     "WebBallDetectionDataset",

@@ -1,0 +1,15 @@
+defaults:
+  - model: dinov3_rope
+  - data: staged
+  - loss: default
+  - metrics: default
+  - training: staged
+  - run: train
+  - _self_
+
+hydra:
+  run:
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

@@ -1,0 +1,105 @@
+"""Unit tests for the staged variable-T sampling utilities (issue #579)."""
+
+from __future__ import annotations
+
+import pytest
+
+from src.tasks.ball_detection.data.staged_sampler import (
+    ConcatVariableTDataset,
+    FixedTDataset,
+    VariableTBatchSampler,
+    accumulation_for,
+    linear_decreasing_t_probs,
+)
+
+
+class TestLinearDecreasingTProbs:
+    def test_t1_gets_half_and_tail_sums_to_half(self) -> None:
+        probs = linear_decreasing_t_probs(8, 0.5)
+        assert probs[1] == pytest.approx(0.5)
+        assert sum(probs.values()) == pytest.approx(1.0)
+        assert sum(v for t, v in probs.items() if t > 1) == pytest.approx(0.5)
+
+    def test_tail_is_strictly_decreasing(self) -> None:
+        probs = linear_decreasing_t_probs(8, 0.5)
+        assert all(probs[t] > probs[t + 1] for t in range(2, 8))
+
+    def test_t_max_one_is_degenerate(self) -> None:
+        assert linear_decreasing_t_probs(1) == {1: 1.0}
+
+
+class TestAccumulationFor:
+    def test_rounds_to_nearest_and_floors_at_one(self) -> None:
+        assert accumulation_for(21, 21) == 1
+        assert accumulation_for(21, 7) == 3
+        assert accumulation_for(20, 3) == 7  # round(6.67) -> 7
+        assert accumulation_for(8, 100) == 1
+
+
+class _RangeDataset:
+    """Minimal dataset that echoes the (index, T) it was asked for."""
+
+    def __init__(self, n: int, tag: str) -> None:
+        self.n = n
+        self.tag = tag
+
+    def __len__(self) -> int:
+        return self.n
+
+    def __getitem__(self, index):  # type: ignore[no-untyped-def]
+        return (self.tag, index)
+
+
+class TestVariableTBatchSampler:
+    def _sampler(self) -> VariableTBatchSampler:
+        return VariableTBatchSampler(
+            num_samples=300,
+            t_probs=linear_decreasing_t_probs(8, 0.5),
+            batch_size_by_t={1: 8, 2: 6, 3: 4, 4: 3, 5: 3, 6: 2, 7: 2, 8: 2},
+            effective_batch=8,
+            seed=0,
+        )
+
+    def test_each_microbatch_is_uniform_T_and_correct_size(self) -> None:
+        sampler = self._sampler()
+        for batch in sampler:
+            ts = {t for _, t in batch}
+            assert len(ts) == 1
+            t = next(iter(ts))
+            assert len(batch) == sampler.batch_size_by_t[t]
+
+    def test_iterations_vary_across_epochs(self) -> None:
+        sampler = self._sampler()
+        first = [tuple(b) for b in sampler]
+        second = [tuple(b) for b in sampler]
+        assert first != second
+
+    def test_missing_batch_size_entry_raises(self) -> None:
+        with pytest.raises(ValueError):
+            VariableTBatchSampler(
+                num_samples=10,
+                t_probs={1: 0.5, 2: 0.5},
+                batch_size_by_t={1: 4},
+                effective_batch=4,
+            )
+
+
+class TestConcatVariableTDataset:
+    def test_routes_tuple_index_to_local_subdataset(self) -> None:
+        concat = ConcatVariableTDataset([_RangeDataset(5, "a"), _RangeDataset(3, "b")])
+        assert len(concat) == 8
+        # global 4 -> last of dataset "a" at local 4
+        assert concat[(4, 3)] == ("a", (4, 3))
+        # global 5 -> first of dataset "b" at local 0
+        assert concat[(5, 7)] == ("b", (0, 7))
+
+    def test_routes_bare_int_index(self) -> None:
+        concat = ConcatVariableTDataset([_RangeDataset(2, "a"), _RangeDataset(2, "b")])
+        assert concat[3] == ("b", 1)
+
+
+class TestFixedTDataset:
+    def test_forwards_fixed_num_frames(self) -> None:
+        view = FixedTDataset(_RangeDataset(4, "a"), num_frames=1)
+        assert len(view) == 4
+        assert view[2] == ("a", (2, 1))
