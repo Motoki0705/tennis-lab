@@ -187,6 +187,7 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
             "visibility": torch.tensor(visibility_padded, dtype=torch.float32),
             "original_size": torch.tensor([original_w, original_h], dtype=torch.float32),
             "heatmap_size": torch.tensor([heatmap_w, heatmap_h], dtype=torch.float32),
+            "window_id": f"{window.clip_dir.parent.name}/{window.clip_dir.name}:{window.start_index}",
         }
         return sample
 
