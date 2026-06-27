@@ -16,7 +16,7 @@ import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader, Dataset
 
-from src.tasks.ball_detection.data.staged_sampler import (
+from src.tasks.ball_detection.data.components.staged_sampler import (
     ConcatVariableTDataset,
     FixedTDataset,
     VariableTBatchSampler,
