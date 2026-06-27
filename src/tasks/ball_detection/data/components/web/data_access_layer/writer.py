@@ -237,6 +237,7 @@ def write_manifest(
     output_dir: Path,
     index: IndexBuilder,
     writer: ShardWriter,
+    max_bbox_side_ratio: float | None = None,
 ) -> None:
     """Write a human-readable store summary."""
     split_sequence_counts = {
@@ -265,6 +266,7 @@ def write_manifest(
         "shard_count": writer.shard_count,
         "packed_bytes": writer.total_bytes,
         "referenced_files": len(index.paths.values),
+        "max_bbox_side_ratio": max_bbox_side_ratio,
     }
     save_json(payload, output_dir / MANIFEST_FILE)
 

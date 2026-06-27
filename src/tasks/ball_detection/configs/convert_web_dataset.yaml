@@ -23,6 +23,14 @@ convert:
   # fractional size is retained as an explicit negative frame.
   kaggle_corner_frac: 0.05
 
+  # Domain cleaning: drop a frame when any ball bbox spans at least this
+  # fraction of the matching image side (max(w/W, h/H)). Targets zoomed-in
+  # close-ups (a different domain than rally-camera detection). Only the
+  # bbox-bearing sources (roboflow, ball_yolo) are affected; the point-only
+  # temporal sources carry no bbox and pass through unchanged. null disables.
+  # Threshold chosen from the outputs/web_bbox_ratio_sweep visual review.
+  max_bbox_side_ratio: 0.10
+
   # 0 = all samples; >0 caps each source for fast smoke validation.
   limit_per_source: 0
 

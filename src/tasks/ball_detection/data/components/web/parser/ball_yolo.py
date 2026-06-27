@@ -15,6 +15,7 @@ from src.tasks.ball_detection.data.components.web.parser.base import (
     WebDatasetParser,
 )
 from src.utils.data.splits import GroupSplitConfig, make_group_split_map
+from src.utils.geometry.bbox import bbox_max_side_ratio
 from src.utils.geometry.keypoints import clamp_pixel_coordinate
 from src.utils.video import iter_selected_video_jpegs, probe_video_info
 
@@ -27,10 +28,12 @@ class BallYoloParser(WebDatasetParser):
         web_root: Path,
         jpeg_quality: int,
         split_config: GroupSplitConfig,
+        max_bbox_side_ratio: float | None = None,
     ) -> None:
         self.web_root = web_root
         self.jpeg_quality = jpeg_quality
         self.split_config = split_config
+        self.max_bbox_side_ratio = max_bbox_side_ratio
 
     def sources(self) -> Iterator[ParsedSource]:
         """Yield the Ball-YOLO source."""
@@ -75,6 +78,7 @@ class BallYoloParser(WebDatasetParser):
             if not parts:
                 continue
             frame_boxes: dict[int, list[tuple[float, float, int]]] = {}
+            dominant_frames: set[int] = set()
             for label_file in folder.glob("*.txt"):
                 frame_index = int(label_file.stem.rsplit("_", 1)[1])
                 for line in label_file.read_text(encoding="utf-8").splitlines():
@@ -82,9 +86,18 @@ class BallYoloParser(WebDatasetParser):
                     if len(fields) < 5:
                         continue
                     center_x, center_y = float(fields[1]), float(fields[2])
+                    box_w, box_h = float(fields[3]), float(fields[4])
                     frame_boxes.setdefault(frame_index, []).append(
                         (center_x, center_y, 1)
                     )
+                    if (
+                        self.max_bbox_side_ratio is not None
+                        and bbox_max_side_ratio(box_w, box_h, 1.0, 1.0)
+                        >= self.max_bbox_side_ratio
+                    ):
+                        dominant_frames.add(frame_index)
+            for frame_index in dominant_frames:
+                frame_boxes.pop(frame_index, None)
             if not frame_boxes:
                 continue
             video_info = probe_video_info(parts[0])
