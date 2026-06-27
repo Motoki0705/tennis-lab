@@ -68,7 +68,7 @@ workflow:
       - تنس مباراة
     max_results_per_query: 40
     min_duration_sec: 20
-    max_duration_sec: 600
+    max_duration_sec: 3000
     allow_unknown_duration: false
 
   paths:
