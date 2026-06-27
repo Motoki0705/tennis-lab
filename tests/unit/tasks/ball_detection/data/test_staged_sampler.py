@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.tasks.ball_detection.data.staged_sampler import (
+from src.tasks.ball_detection.data.components.staged_sampler import (
     ConcatVariableTDataset,
     FixedTDataset,
     VariableTBatchSampler,
