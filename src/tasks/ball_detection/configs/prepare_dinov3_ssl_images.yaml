@@ -12,14 +12,63 @@ workflow:
 
   discovery:
     enabled: true
+    # Duration is filtered before download (min/max_duration_sec + download
+    # match-filter), so queries do not need "short"/length hints. Queries span
+    # many languages to surface a more diverse tennis-domain corpus.
     queries:
-      - tennis rally highlights short
-      - tennis practice rally short
-      - tennis match point short
-      - tennis court rally 5 minutes
-    max_results_per_query: 25
+      # English
+      - tennis match highlights
+      - tennis rally
+      - ATP tennis highlights
+      - WTA tennis highlights
+      - tennis practice session
+      - tennis serve slow motion
+      - grand slam final highlights
+      - tennis doubles match
+      - clay court tennis match
+      - grass court tennis
+      - hard court tennis match
+      - tennis baseline rally
+      - tennis tournament match
+      # Japanese
+      - テニス 試合 ハイライト
+      - テニス ラリー
+      - テニス 練習
+      - 全米オープン テニス
+      - テニス サーブ
+      - テニス ダブルス
+      - プロ テニス 試合
+      # Chinese (Simplified)
+      - 网球 比赛 集锦
+      - 网球 训练
+      - 网球 精彩回合
+      - 网球 双打
+      # Spanish
+      - tenis partido completo
+      - tenis mejores puntos
+      - tenis entrenamiento
+      # French
+      - tennis match complet
+      - Roland Garros tennis
+      - tennis échange
+      # German
+      - tennis spiel highlights
+      - tennis training
+      # Korean
+      - 테니스 경기 하이라이트
+      - 테니스 랠리
+      # Russian
+      - теннис матч
+      - теннис розыгрыш
+      # Italian
+      - tennis partita
+      # Portuguese
+      - tênis melhores momentos
+      # Arabic
+      - تنس مباراة
+    max_results_per_query: 40
     min_duration_sec: 20
-    max_duration_sec: 600
+    max_duration_sec: 3000
     allow_unknown_duration: false
 
   paths:
@@ -31,10 +80,14 @@ workflow:
     manifests_dir: manifests
 
   processing:
-    max_new_videos: 100
+    max_new_videos: 2000
     reprocess_existing: false
     cleanup_videos_after_processing: true
     cleanup_keep_info_json: true
+
+  storage:
+    enabled: true
+    max_root_gb: 20
 
   download:
     enabled: true
@@ -68,7 +121,7 @@ workflow:
     overwrite: false
 
   frames:
-    frames_per_video: 50
+    frames_per_video: 100
     output_ext: jpg
     jpeg_quality: 92
     overwrite: false
@@ -78,20 +131,62 @@ workflow:
     mock:
       accept_all: false
     contact_sheet:
-      max_images: 12
+      max_images: 8
       columns: 4
-      thumb_width: 224
-      thumb_height: 126
+      thumb_width: 160
+      thumb_height: 90
     vllm:
-      # Start vLLM separately, for example:
-      # VLLM_CPU_KVCACHE_SPACE=4 python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3.5-0.8B --host 127.0.0.1 --port 8000 --max-model-len 8192 --max-num-seqs 1 --max-num-batched-tokens 8192 --enforce-eager --skip-mm-profiling --reasoning-parser qwen3 --limit-mm-per-prompt '{"image":1}' --trust-remote-code
       base_url: http://127.0.0.1:8000/v1
       model: Qwen/Qwen3.5-0.8B
-      timeout_sec: 600
-      max_tokens: 4096
+      timeout_sec: 300
+      max_tokens: 256
       accept_labels:
         - tennis
       extra_body:
         chat_template_kwargs:
-          enable_thinking: true
-      prompt: "Classify the image grid for a DINOv3 tennis SSL corpus. Reason briefly if enabled. Final answer must be JSON with label and confidence. label must be tennis or non_tennis or unknown. Use tennis only when a tennis court or players or rackets or net are visible."
+          enable_thinking: false
+      server:
+        enabled: true
+        # CPU vLLM is a separate runtime from the project .venv. Override this
+        # path with VLLM_CPU_PYTHON, or replace command with an OpenAI-compatible
+        # llama.cpp server command if vLLM CPU is not suitable on the host.
+        command:
+          - ${oc.env:VLLM_CPU_PYTHON,/home/kamimura/.cache/tennis-lab/vllm-cpu/bin/python}
+          - -m
+          - vllm.entrypoints.openai.api_server
+          - --model
+          - Qwen/Qwen3.5-0.8B
+          - --host
+          - 127.0.0.1
+          - --port
+          - "8000"
+          - --max-model-len
+          - "2048"
+          - --max-num-seqs
+          - "1"
+          - --max-num-batched-tokens
+          - "2048"
+          - --enforce-eager
+          - --skip-mm-profiling
+          - --reasoning-parser
+          - qwen3
+          - --limit-mm-per-prompt
+          - '{"image":1}'
+          - --trust-remote-code
+        env:
+          VLLM_CPU_KVCACHE_SPACE: "2"
+          VLLM_LOGGING_LEVEL: INFO
+        health_url: http://127.0.0.1:8000/v1/models
+        startup_timeout_sec: 300
+        poll_interval_sec: 5
+        request_timeout_sec: 5
+        shutdown_timeout_sec: 20
+        stop_on_exit: true
+        log_path: outputs/ball_detection/prepare_dinov3_ssl_images/vllm_cpu_server.log
+        preflight:
+          enabled: true
+          command:
+            - ${oc.env:VLLM_CPU_PYTHON,/home/kamimura/.cache/tennis-lab/vllm-cpu/bin/python}
+            - -c
+            - "from vllm.platforms import current_platform; assert current_platform.is_cpu(), f'vLLM runtime must use CPU backend, got {current_platform.device_type}'"
+      prompt: "Classify the image grid for a DINOv3 tennis SSL corpus. Return JSON only, with keys label, confidence, and reason. label must be tennis, non_tennis, or unknown. Use tennis only when a tennis court, player, racket, or net is visible."
