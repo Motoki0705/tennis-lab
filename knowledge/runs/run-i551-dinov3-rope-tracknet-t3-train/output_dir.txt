@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/ball_detection/dinov3_rope_tracknet_t3/logs/version_0/checkpoints
