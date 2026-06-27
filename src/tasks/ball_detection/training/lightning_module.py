@@ -189,6 +189,19 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self.log(f"{stage}/loss", loss, prog_bar=True, sync_dist=True)
         self._log_gan_metrics(stage, metrics)
 
+    def test_prediction_payload(
+        self, batch: dict[str, Any], result: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Persist TrackNet test-split heatmap predictions and targets."""
+        return {
+            "window_id": batch["window_id"],
+            "pred_heatmaps": result["pred_heatmaps"],
+            "target_coords": batch["coords"],
+            "target_visibility": batch["visibility"],
+            "original_size": batch["original_size"],
+            "heatmap_size": batch["heatmap_size"],
+        }
+
     def configure_optimizers(self) -> Any:
         """Configure generator/discriminator optimizers through the shared GAN helper."""
         return self.configure_gan_optimizers(self.model.parameters())

@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import torch
 import torchvision.transforms.functional as TF
 from PIL import Image
 from torch import Tensor
@@ -111,9 +112,11 @@ class CourtSegDataset(Dataset):
         img_tensor = _pil_to_tensor_image(img)
         img_tensor = TF.normalize(img_tensor, IMAGENET_MEAN, IMAGENET_STD)
         mask_tensor = _mask_pil_to_tensor(mask)
+        _, h, w = img_tensor.shape
 
         return {
             "image": img_tensor,
             "mask": mask_tensor,
+            "image_size": torch.tensor([h, w], dtype=torch.int64),
             "image_id": image_id,
         }

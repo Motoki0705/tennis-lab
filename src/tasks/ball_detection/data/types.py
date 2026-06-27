@@ -45,6 +45,7 @@ class BallDetectionSample(TypedDict):
             ``(width, height)`` ordering.
         heatmap_size: Heatmap size with shape ``(2,)`` in
             ``(width, height)`` ordering.
+        window_id: Stable TrackNet window identifier for persisted predictions.
     """
 
     images: Tensor
@@ -53,6 +54,7 @@ class BallDetectionSample(TypedDict):
     visibility: Tensor
     original_size: Tensor
     heatmap_size: Tensor
+    window_id: str
 
 
 class BallDetectionBatch(TypedDict):
@@ -68,6 +70,7 @@ class BallDetectionBatch(TypedDict):
             ``(width, height)`` ordering.
         heatmap_size: Heatmap sizes with shape ``(B, 2)`` in
             ``(width, height)`` ordering.
+        window_id: Stable TrackNet window identifiers for persisted predictions.
     """
 
     images: Tensor
@@ -76,6 +79,7 @@ class BallDetectionBatch(TypedDict):
     visibility: Tensor
     original_size: Tensor
     heatmap_size: Tensor
+    window_id: list[str]
 
 
 __all__ = [
