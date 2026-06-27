@@ -1,0 +1,14 @@
+{
+  "run_id": "1782544799619240312_13706_staged_phase4_resume",
+  "name": "staged_phase4_resume",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.ball_detection.scripts.train_staged --config-name staged_phase4 run.resume=outputs/ball_detection/staged/phase4/logs/run/checkpoints/last.ckpt run.init_weights=null",
+  "provider": "codex",
+  "session": "019f07f0-adfc-7391-820a-97f5f255c67b",
+  "issue": "579",
+  "commit": "916575525cdaa7dcbf395d76246c0e4e800a870a",
+  "branch": "feat/issue-579-staged-training",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-579-staged-training",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-579-staged-training",
+  "captured_at": "2026-06-27T16:20:04+09:00"
+}
