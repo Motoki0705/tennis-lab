@@ -14,25 +14,18 @@ Notes:
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any
 
 import cv2
-import hydra
 import numpy as np
 import torch
 from omegaconf import DictConfig
 
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
+from src.tasks.base.preview import resolve_sample_indices, resolve_split_file
 from src.utils.data.heatmaps import generate_gaussian_heatmaps, heatmaps_to_argmax
-
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
-    """Typed wrapper for ``hydra.main``."""
-    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
+from src.utils.hydra import hydra_main
 
 
 @hydra_main(
@@ -49,10 +42,10 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     datamodule = build_ball_detection_datamodule(cfg)
     dataset = datamodule.create_dataset(
         split_name=split_name,
-        split_file=_resolve_split_file(cfg, split_name),
+        split_file=resolve_split_file(cfg, split_name),
         augmentation=None,
     )
-    sample_indices = _resolve_sample_indices(cfg, len(dataset))
+    sample_indices = resolve_sample_indices(cfg, len(dataset))
 
     manifest: list[dict[str, Any]] = []
     for sample_index in sample_indices:
@@ -129,30 +122,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"Saved {len(manifest)} ball heatmap preview(s) to {output_dir}")
     return 0
-
-
-def _resolve_split_file(cfg: DictConfig, split_name: str) -> str:
-    split_cfg = cfg.data.split
-    key = f"{split_name}_file"
-    if key not in split_cfg:
-        available = ", ".join(sorted(split_cfg.keys()))
-        raise ValueError(f"Unknown preview.split={split_name!r}. Available: {available}")
-    return str(split_cfg[key])
-
-
-def _resolve_sample_indices(cfg: DictConfig, dataset_size: int) -> list[int]:
-    explicit = [int(value) for value in cfg.preview.sample_indices]
-    if explicit:
-        sample_indices = explicit
-    else:
-        sample_indices = list(range(min(int(cfg.preview.max_samples), dataset_size)))
-    for sample_index in sample_indices:
-        if sample_index < 0 or sample_index >= dataset_size:
-            raise IndexError(
-                f"preview sample_index={sample_index} is out of range for "
-                f"dataset size {dataset_size}."
-            )
-    return sample_indices
 
 
 def _select_frame_index(visibility: torch.Tensor) -> int:

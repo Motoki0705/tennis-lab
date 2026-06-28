@@ -17,10 +17,9 @@ import json
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
 import cv2
-import hydra
 import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -31,13 +30,8 @@ from src.tasks.ball_detection.data.components.augmentation import (
     denormalize_tensor_images_imagenet,
 )
 from src.tasks.ball_detection.data.types import ClipWindow
-
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
-    """Typed wrapper for ``hydra.main``."""
-    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
+from src.tasks.base.preview import resolve_sample_indices, resolve_split_file
+from src.utils.hydra import hydra_main
 
 
 @hydra_main(
@@ -51,7 +45,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     output_dir.mkdir(parents=True, exist_ok=True)
 
     split_name = str(cfg.preview.split)
-    split_file = _resolve_split_file(cfg, split_name)
+    split_file = resolve_split_file(cfg, split_name)
     datamodule = build_ball_detection_datamodule(cfg)
     base_dataset = datamodule.create_dataset(
         split_name=split_name,
@@ -68,7 +62,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         ),
     )
 
-    sample_indices = _resolve_sample_indices(cfg, dataset_size=len(base_dataset))
+    sample_indices = resolve_sample_indices(cfg, dataset_size=len(base_dataset), min_samples=1)
     manifest: list[dict[str, Any]] = []
     for sample_index in sample_indices:
         torch.manual_seed(int(cfg.preview.seed) + sample_index)
@@ -126,33 +120,6 @@ def _build_augmented_config(cfg: DictConfig) -> DictConfig:
                 f"Expected data.augmentation.{name}.enabled to exist in the config."
             )
     return augmented_cfg
-
-
-def _resolve_split_file(cfg: DictConfig, split_name: str) -> str:
-    """Return the split file path from ``cfg.data.split``."""
-    split_cfg = cfg.data.split
-    key = f"{split_name}_file"
-    if key not in split_cfg:
-        available = ", ".join(sorted(split_cfg.keys()))
-        raise ValueError(f"Unknown preview.split={split_name!r}. Available: {available}")
-    return str(split_cfg[key])
-
-
-def _resolve_sample_indices(cfg: DictConfig, *, dataset_size: int) -> list[int]:
-    """Return validated sample indices to render."""
-    explicit = [int(value) for value in cfg.preview.sample_indices]
-    if explicit:
-        sample_indices = explicit
-    else:
-        max_samples = max(int(cfg.preview.max_samples), 1)
-        sample_indices = list(range(min(max_samples, dataset_size)))
-
-    for sample_index in sample_indices:
-        if sample_index < 0 or sample_index >= dataset_size:
-            raise IndexError(
-                f"preview sample_index={sample_index} is out of range for dataset size {dataset_size}."
-            )
-    return sample_indices
 
 
 def _render_contact_sheet(

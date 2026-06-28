@@ -31,9 +31,8 @@ import json
 import math
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
-import hydra
 import numpy as np
 import torch
 from hydra.utils import to_absolute_path
@@ -48,16 +47,9 @@ from src.tasks.plcs.training.losses import (
     compute_torso_twist,
 )
 from src.tasks.plcs.utils.pose_geometry import world_pose_to_canonical_pose
+from src.utils.hydra import hydra_main
 from src.utils.schema.player import COCO17_JOINT_ANGLE_TRIPLETS as JOINT_ANGLE_TRIPLETS
 from src.utils.schema.player import COCO17_TORSION_QUADRUPLETS as TORSION_QUADRUPLETS
-
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
-    """Typed wrapper for hydra.main to keep mypy satisfied."""
-    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
-
 
 # ---------------------------------------------------------------------------
 # Welford online statistics (per-channel)

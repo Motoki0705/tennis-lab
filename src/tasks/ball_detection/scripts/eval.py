@@ -16,9 +16,8 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
-import hydra
 import numpy as np
 import pytorch_lightning as pl
 import torch
@@ -35,13 +34,7 @@ from src.tasks.ball_detection.training.lightning_module import (
 )
 from src.tasks.ball_detection.training.metrics import BallDetectionMetrics
 from src.utils.data.heatmaps import heatmaps_to_argmax
-
-FMain = TypeVar("FMain", bound=Callable[..., Any])
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[FMain], FMain]:
-    """Typed wrapper for `hydra.main`."""
-    return cast(Callable[[FMain], FMain], hydra.main(*args, **kwargs))
+from src.utils.hydra import hydra_main
 
 
 @dataclass

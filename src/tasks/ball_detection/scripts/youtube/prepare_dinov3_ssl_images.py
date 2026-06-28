@@ -20,18 +20,18 @@ import shutil
 import signal
 import subprocess
 import time
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol, TypeVar, cast
+from typing import Any, Protocol, cast
 
 import av
-import hydra
 import requests
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from PIL import Image
 
+from src.utils.hydra import hydra_main
 from src.utils.io import (
     JSONDict,
     ensure_dirs,
@@ -49,7 +49,6 @@ from src.utils.video import (
 )
 from src.utils.video.youtube import download_youtube_video, transcode_h264_video
 
-F = TypeVar("F", bound=Callable[..., Any])
 TENNIS_TERMS = ("tennis", "atp", "wta", "grand slam", "rally", "court")
 VIDEO_FILE_SUFFIXES = {
     ".avi",
@@ -61,11 +60,6 @@ VIDEO_FILE_SUFFIXES = {
     ".mpg",
     ".webm",
 }
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
-    """Typed wrapper for ``hydra.main``."""
-    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
 
 
 @dataclass(frozen=True)

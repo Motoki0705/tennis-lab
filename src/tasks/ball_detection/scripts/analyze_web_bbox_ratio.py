@@ -35,19 +35,19 @@ from __future__ import annotations
 import csv
 import random
 from collections import defaultdict
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
 import cv2
-import hydra
 import numpy as np
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 from tqdm import tqdm
 
 from src.utils.geometry.bbox import bbox_max_side_ratio
+from src.utils.hydra import hydra_main
 from src.utils.io import ensure_dir, load_json
 from src.utils.video.encoding import iter_selected_video_jpegs
 
@@ -341,11 +341,7 @@ def _export_samples(cfg: DictConfig, frames: list[FrameRatio], out_root: Path) -
             cv2.imwrite(str(target / f"{stem}_f{index:06d}.jpg"), _draw(image, frame))
 
 
-def _hydra_main(*args: Any, **kwargs: Any) -> Callable[[Any], Any]:
-    return cast(Callable[[Any], Any], hydra.main(*args, **kwargs))
-
-
-@_hydra_main(
+@hydra_main(
     config_path="../configs",
     config_name="analyze_web_bbox_ratio",
     version_base="1.3",
