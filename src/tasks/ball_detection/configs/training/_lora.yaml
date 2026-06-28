@@ -1,0 +1,22 @@
+# @package _global_
+#
+# LoRA fine-tuning override for the DINOv3 backbone.
+#
+# This fragment is packaged at the global root so it can inject the LoRA block
+# into `model.backbone.lora`, which is read by `DINOv3RoPEBallDetector.from_config`.
+# It only takes effect with a DINOv3 backbone model, e.g.:
+#
+#   python -m src.tasks.ball_detection.scripts.train \
+#       model=dinov3_rope training=lora
+#
+# The base backbone weights stay frozen; only the low-rank adapters train.
+model:
+  backbone:
+    lora:
+      enabled: true
+      rank: 8
+      alpha: 16.0
+      dropout: 0.0
+      # Local nn.Linear names wrapped inside each DINOv3 block:
+      # attention (qkv, proj) and MLP (fc1, fc2).
+      target_modules: [qkv, proj, fc1, fc2]

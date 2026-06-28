@@ -20,12 +20,14 @@ from src.utils.models.components import (
 from src.utils.models.components.rope import RopeBaseLike
 from src.utils.models.loading import (
     DEFAULT_DINOV3_CHECKPOINT,
+    DEFAULT_DINOV3_LORA_TARGET_MODULES,
     DEFAULT_DINOV3_REPOSITORY,
     DINOv3BackboneAdapter,
     DINOv3TrainMode,
     configure_dinov3_trainability,
     load_dinov3_backbone,
 )
+from src.utils.models.lora import LoRAConfig
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -95,8 +97,7 @@ class FrameSharedHeatmapHead(nn.Module):
         """Map ``(B*T, C, Hp, Wp)`` patch grids to dense frame logits."""
         if features.ndim != 4:
             raise ValueError(
-                "Heatmap head expects (B*T, C, Hp, Wp), "
-                f"got {tuple(features.shape)}."
+                f"Heatmap head expects (B*T, C, Hp, Wp), got {tuple(features.shape)}."
             )
         return self.network(features)
 
@@ -117,6 +118,7 @@ class DINOv3RoPEBallDetector(nn.Module):
         backbone_strict: bool = True,
         backbone_train_mode: DINOv3TrainMode = "frozen",
         backbone_last_n_blocks: int = 0,
+        backbone_lora: LoRAConfig | None = None,
         decoder_dim: int = 256,
         decoder_layers: int = 4,
         decoder_heads: int = 8,
@@ -145,6 +147,10 @@ class DINOv3RoPEBallDetector(nn.Module):
         self.num_frames = int(num_frames)
         self.image_size = tuple(int(value) for value in image_size)
         self.backbone_train_mode = backbone_train_mode
+        self.backbone_lora = backbone_lora
+        self.backbone_lora_enabled = bool(
+            backbone_lora is not None and backbone_lora.enabled
+        )
         self.decoder_gradient_checkpointing = bool(decoder_gradient_checkpointing)
         self.decoder_rope_base = decoder_rope_base
 
@@ -158,6 +164,7 @@ class DINOv3RoPEBallDetector(nn.Module):
             self.backbone,
             train_mode=self.backbone_train_mode,
             last_n_blocks=backbone_last_n_blocks,
+            lora=backbone_lora,
         )
         self.patch_size = self.backbone.patch_size
         if any(size % self.patch_size != 0 for size in self.image_size):
@@ -256,6 +263,10 @@ class DINOv3RoPEBallDetector(nn.Module):
                 str(backbone_cfg.get("train_mode", "frozen")),
             ),
             backbone_last_n_blocks=int(backbone_cfg.get("last_n_blocks", 0)),
+            backbone_lora=LoRAConfig.from_mapping(
+                backbone_cfg.get("lora"),
+                default_target_modules=DEFAULT_DINOV3_LORA_TARGET_MODULES,
+            ),
             decoder_dim=int(decoder_cfg.get("dim", 256)),
             decoder_layers=int(decoder_cfg.get("num_layers", 4)),
             decoder_heads=int(decoder_cfg.get("num_heads", 8)),
@@ -272,7 +283,7 @@ class DINOv3RoPEBallDetector(nn.Module):
     def train(self, mode: bool = True) -> DINOv3RoPEBallDetector:
         """Keep a frozen backbone deterministic while training the decoder."""
         super().train(mode)
-        if self.backbone_train_mode == "frozen":
+        if self.backbone_train_mode == "frozen" and not self.backbone_lora_enabled:
             self.backbone.eval()
         return self
 
@@ -362,11 +373,9 @@ class DINOv3RoPEBallDetector(nn.Module):
         )
 
     def _extract_patch_tokens(self, flat_frames: torch.Tensor) -> torch.Tensor:
-        if self.backbone_train_mode == "frozen":
+        if self.backbone_train_mode == "frozen" and not self.backbone_lora_enabled:
             with torch.no_grad():
-                return self.backbone.forward_features(flat_frames)[
-                    "x_norm_patchtokens"
-                ]
+                return self.backbone.forward_features(flat_frames)["x_norm_patchtokens"]
         return self.backbone.forward_features(flat_frames)["x_norm_patchtokens"]
 
     def _validate_forward_input(self, frames: torch.Tensor) -> None:

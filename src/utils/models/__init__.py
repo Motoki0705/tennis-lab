@@ -35,6 +35,13 @@ from src.utils.models.embeddings import (
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
 )
+from src.utils.models.lora import (
+    LoRAConfig,
+    LoRALinear,
+    apply_lora,
+    iter_lora_parameters,
+    mark_only_lora_as_trainable,
+)
 from src.utils.models.transformer_utils import (
     build_self_attn_mask,
     resolve_rope_bases,
@@ -73,6 +80,12 @@ __all__ = [
     "BallUVEmbedding",
     "Ball3DEmbedding",
     "TransformerSequenceDiscriminator",
+    # LoRA adaptation
+    "LoRAConfig",
+    "LoRALinear",
+    "apply_lora",
+    "iter_lora_parameters",
+    "mark_only_lora_as_trainable",
     # Shared transformer utilities
     "build_self_attn_mask",
     "resolve_rope_bases",
