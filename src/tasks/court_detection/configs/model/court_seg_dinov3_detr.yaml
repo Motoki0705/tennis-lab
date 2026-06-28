@@ -8,6 +8,15 @@ backbone:
   checkpoint_path: third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
   strict: true
   freeze: true
+  # Low-rank adaptation of the frozen backbone. When `enabled: true` the base
+  # weights stay frozen and only the injected adapters train (overrides
+  # `freeze`). Enable conveniently with `training=lora`.
+  lora:
+    enabled: false
+    rank: 8
+    alpha: 16.0
+    dropout: 0.0
+    target_modules: [qkv, proj, fc1, fc2]
 
 decoder:
   hidden_dim: 256
