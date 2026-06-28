@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/plcs/plcs_multiview_axial_camtoken/logs/version_0/checkpoints
