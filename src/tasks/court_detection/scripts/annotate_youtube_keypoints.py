@@ -13,11 +13,8 @@ Notes:
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar, cast
 
-import hydra
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
@@ -25,13 +22,7 @@ from src.tasks.court_detection.generate_dataset import (
     AnnotationSessionConfig,
     run_annotation_session,
 )
-
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
-    """Typed wrapper for ``hydra.main``."""
-    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
+from src.utils.hydra import hydra_main
 
 
 @hydra_main(

@@ -17,22 +17,15 @@ Notes:
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any, cast
-
-import hydra
 from omegaconf import DictConfig
 
 from src.tasks.ball_detection.training.staged_runner import (
     StagedBallDetectionTrainingRunner,
 )
+from src.utils.hydra import hydra_main
 
 
-def _hydra_main(*args: Any, **kwargs: Any) -> Callable[[Any], Any]:
-    return cast(Callable[[Any], Any], hydra.main(*args, **kwargs))
-
-
-@_hydra_main(
+@hydra_main(
     version_base="1.3",
     config_path="../configs",
     config_name="train_staged",

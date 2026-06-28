@@ -13,22 +13,15 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable
-from typing import Any, TypeVar, cast
+from typing import cast
 
-import hydra
 from omegaconf import DictConfig
 
 from src.tasks.plcs.visualization.orchestrator import (
     build_runtime_config,
     run_visualization,
 )
-
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
-    """Typed wrapper for ``hydra.main``."""
-    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
+from src.utils.hydra import hydra_main
 
 
 @hydra_main(config_path="../configs", config_name="visualize", version_base="1.3")

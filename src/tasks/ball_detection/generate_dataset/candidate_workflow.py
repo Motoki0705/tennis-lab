@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import os
 import shutil
 import time
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -21,6 +19,13 @@ from src.tasks.ball_detection.data.components.augmentation import (
 )
 from src.tasks.ball_detection.inference import BallDetectionPredictor
 from src.utils.data.heatmaps import heatmaps_to_peaks
+from src.utils.io import (
+    load_json,
+    read_jsonl,
+    save_json_atomic,
+    utc_now_iso,
+    write_jsonl,
+)
 
 JSONDict = dict[str, Any]
 LEFT_KEYS = {81, 65361, 2424832}
@@ -86,7 +91,7 @@ def run_candidate_selection(
 ) -> int:
     """Select meaningful raw-frame ranges for one video."""
     _validate_selection_config(config)
-    records = _read_jsonl(raw_dir / "frames.jsonl")
+    records = read_jsonl(raw_dir / "frames.jsonl")
     if not records:
         raise FileNotFoundError(
             f"No raw frames found for {video_id}: {raw_dir / 'frames.jsonl'}"
@@ -260,11 +265,11 @@ def create_candidate(
                 "source_title": first.get("source_title"),
             },
             "selection": {
-                "selected_at": _utc_now(),
+                "selected_at": utc_now_iso(),
             },
             "prediction": None,
         }
-        _write_json_atomic(temporary / "candidate.json", candidate)
+        save_json_atomic(candidate, temporary / "candidate.json")
         if candidate_dir.exists():
             shutil.rmtree(candidate_dir)
         temporary.replace(candidate_dir)
@@ -287,7 +292,7 @@ def predict_candidates(
     candidate_paths = sorted(staging_dir.glob("clip_*/candidate.json"))
     if not candidate_paths:
         raise FileNotFoundError(f"No selected candidates found for {video_id}: {staging_dir}")
-    candidate_docs = [_read_json(path) for path in candidate_paths]
+    candidate_docs = [load_json(path) for path in candidate_paths]
     if any(str(document.get("video_id")) != video_id for document in candidate_docs):
         raise ValueError(f"Staging directory contains a video other than {video_id}.")
 
@@ -330,7 +335,7 @@ def predict_candidates(
             "peak_threshold": config.peak_threshold,
             "nms_kernel": config.nms_kernel,
             "max_candidates_per_frame": config.max_candidates_per_frame,
-            "predicted_at": _utc_now(),
+            "predicted_at": utc_now_iso(),
         }
         for frame, prediction in zip(document["frames"], predictions, strict=True):
             frame["review_status"] = "pending"
@@ -351,8 +356,8 @@ def predict_candidates(
                 for index, candidate in enumerate(candidates, start=1)
             ]
             frame.pop("ball", None)
-        _write_jsonl(candidate_path.parent / "predictions.jsonl", predictions)
-        _write_json_atomic(candidate_path, document)
+        write_jsonl(candidate_path.parent / "predictions.jsonl", predictions)
+        save_json_atomic(document, candidate_path)
         print(f"  predicted {document['clip_id']}: {len(predictions)} frames")
     return 0
 
@@ -485,7 +490,7 @@ def _resume_index(candidates: list[JSONDict], frame_count: int) -> int:
 
 def _candidate_documents(staging_dir: Path) -> list[JSONDict]:
     return [
-        _read_json(path)
+        load_json(path)
         for path in sorted(staging_dir.glob("clip_*/candidate.json"))
     ]
 
@@ -643,36 +648,3 @@ def _resolve_path(root: Path, value: Any) -> Path:
 def _chunked(values: Sequence[int], chunk_size: int) -> Iterator[list[int]]:
     for index in range(0, len(values), chunk_size):
         yield list(values[index : index + chunk_size])
-
-
-def _read_json(path: Path) -> JSONDict:
-    return cast(JSONDict, json.loads(path.read_text(encoding="utf-8")))
-
-
-def _read_jsonl(path: Path) -> list[JSONDict]:
-    if not path.exists():
-        return []
-    return [
-        json.loads(line)
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
-
-
-def _write_jsonl(path: Path, records: list[JSONDict]) -> None:
-    text = "".join(json.dumps(record, ensure_ascii=False) + "\n" for record in records)
-    path.write_text(text, encoding="utf-8")
-
-
-def _write_json_atomic(path: Path, payload: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    temporary.replace(path)
-
-
-def _utc_now() -> str:
-    return datetime.now(UTC).isoformat()

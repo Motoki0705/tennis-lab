@@ -7,6 +7,10 @@ Strategy A: treat the DeepSeek-style, pure PyTorch implementation in
 from src.utils.models.architectures import (
     TransformerSequenceDiscriminator,
 )
+from src.utils.models.blocks import (
+    Conv2dWiseWiseBlock,
+    DepthwiseSeparableConv2d,
+)
 from src.utils.models.components import (
     MLP,
     CrossAttnBlock,
@@ -73,6 +77,9 @@ __all__ = [
     "TransformerBlock",
     "CrossAttnBlockConfig",
     "CrossAttnBlock",
+    # Conv blocks
+    "DepthwiseSeparableConv2d",
+    "Conv2dWiseWiseBlock",
     # Token embeddings
     "InvisibleTokenEmbedding",
     "CourtKPUVEmbedding",
