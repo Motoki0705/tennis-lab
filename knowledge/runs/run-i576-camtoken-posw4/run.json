@@ -1,0 +1,14 @@
+{
+  "run_id": "1782618120707958414_75044_i576_camtoken_posw4",
+  "name": "i576_camtoken_posw4",
+  "command": "MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train model=multiview_axial_camtoken data.batch_size=8 training.trainer.accumulate_grad_batches=1 data=chunked_multiview_sequence_bs8 data.seq_len_range=[64,256] loss=canonical_rot training.trainer.max_epochs=200 training.early_stopping.enabled=false training.trainer.check_val_every_n_epoch=10 run.gpus=1 loss.position_weight=4.0",
+  "provider": "claude",
+  "session": "163b1591-40c5-4551-8b36-29e97a8931bc",
+  "issue": "576",
+  "commit": "27c9c73053baedffd2e2152520cf35443d170c57",
+  "branch": "exp/issue-576-camera-token-split",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-576-camera-token-split",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-576-camera-token-split",
+  "captured_at": "2026-06-28T14:19:42+09:00"
+}
