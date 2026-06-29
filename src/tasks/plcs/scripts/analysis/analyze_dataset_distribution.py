@@ -19,21 +19,15 @@ import random
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
-import hydra
 import numpy as np
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
+from src.utils.hydra import hydra_main
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
-    """Typed wrapper for hydra.main to keep mypy satisfied."""
-    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
 
 @dataclass
 class RunningStats:

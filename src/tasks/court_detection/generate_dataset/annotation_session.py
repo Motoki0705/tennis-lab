@@ -11,6 +11,7 @@ from typing import Any
 import cv2
 import numpy as np
 
+from src.utils.io import save_json_atomic
 from src.utils.schema.court import COURT_KP_NAMES, court_keypoints_3d
 
 COURT_KP20_COUNT = 20
@@ -344,14 +345,6 @@ def read_annotation_document(path: Path) -> AnnotationDocument:
         items = metadata.pop("items")
         return AnnotationDocument(metadata=metadata, items=items)
     raise ValueError(f"Unsupported annotation JSON shape: {path}")
-
-
-def write_json_atomic(path: Path, payload: Any) -> None:
-    """Write JSON atomically."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    tmp_path.replace(path)
 
 
 def normalize_serialized_keypoints(raw_kps: Any) -> list[list[float | None]]:
@@ -814,12 +807,12 @@ def write_annotation_entries_atomic(
 ) -> None:
     """Write entries in either legacy-list or named-document format."""
     if config.annotation_format != "named_keypoints":
-        write_json_atomic(path, entries)
+        save_json_atomic(entries, path)
         return
 
     payload = dict(metadata or {})
     payload["items"] = entries
-    write_json_atomic(path, payload)
+    save_json_atomic(payload, path)
 
 
 def ordered_target_entries(

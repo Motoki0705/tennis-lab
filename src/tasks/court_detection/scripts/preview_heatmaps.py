@@ -14,24 +14,17 @@ Notes:
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any
 
 import cv2
-import hydra
 import numpy as np
 from omegaconf import DictConfig
 from PIL import Image
 
+from src.tasks.base.preview import resolve_sample_indices
 from src.utils.data.heatmaps import generate_gaussian_heatmaps, heatmaps_to_argmax
-
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
-    """Typed wrapper for ``hydra.main``."""
-    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
+from src.utils.hydra import hydra_main
 
 
 @hydra_main(
@@ -46,7 +39,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
     data_dir = Path(str(cfg.data.data_dir)).expanduser()
     entries = json.loads((data_dir / f"data_{cfg.preview.split}.json").read_text(encoding="utf-8"))
-    sample_indices = _resolve_sample_indices(cfg, len(entries))
+    sample_indices = resolve_sample_indices(cfg, len(entries))
 
     manifest: list[dict[str, Any]] = []
     for sample_index in sample_indices:
@@ -104,18 +97,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"Saved {len(manifest)} court heatmap preview(s) to {output_dir}")
     return 0
-
-
-def _resolve_sample_indices(cfg: DictConfig, dataset_size: int) -> list[int]:
-    explicit = [int(value) for value in cfg.preview.sample_indices]
-    if explicit:
-        sample_indices = explicit
-    else:
-        sample_indices = list(range(min(int(cfg.preview.max_samples), dataset_size)))
-    for sample_index in sample_indices:
-        if sample_index < 0 or sample_index >= dataset_size:
-            raise IndexError(f"preview sample_index={sample_index} is out of range for dataset size {dataset_size}.")
-    return sample_indices
 
 
 def _load_image(data_dir: Path, image_id: str) -> np.ndarray:
