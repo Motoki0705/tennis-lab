@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import torch
@@ -39,22 +38,6 @@ class CourtHierarchicalModel(nn.Module):
         self.encoder = build_court_encoder(
             encoder_name=str(self.encoder_config.get("name", "default")),
             in_channels=self.in_channels,
-            checkpoint_path=self._optional_path(
-                self.encoder_config.get("checkpoint_path")
-            ),
-            dilation=bool(self.encoder_config.get("dilation", False)),
-            return_interm_indices=tuple(
-                int(index)
-                for index in self.encoder_config.get(
-                    "return_interm_indices", [0, 1, 2, 3]
-                )
-            ),
-            pretrain_img_size=self._optional_int(
-                self.encoder_config.get("pretrain_img_size")
-            ),
-            use_checkpoint=bool(self.encoder_config.get("use_checkpoint", False)),
-            strict=bool(self.encoder_config.get("strict", True)),
-            freeze_backbone=bool(self.encoder_config.get("freeze", False)),
         )
         self.decoder = build_court_decoder(
             decoder_name=str(self.decoder_config.get("name", "fpn")),
@@ -72,18 +55,6 @@ class CourtHierarchicalModel(nn.Module):
     def _validate_init_args(*, num_classes: int) -> None:
         if num_classes <= 0:
             raise ValueError("num_classes must be positive.")
-
-    @staticmethod
-    def _optional_path(value: Any) -> str | Path | None:
-        if value is None or not str(value).strip():
-            return None
-        return str(value)
-
-    @staticmethod
-    def _optional_int(value: Any) -> int | None:
-        if value is None:
-            return None
-        return int(value)
 
     @classmethod
     def from_config(cls, config: DictConfig) -> CourtHierarchicalModel:

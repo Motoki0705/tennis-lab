@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 from torch import nn
 
 from src.tasks.ball_detection.models.conv_next_unet import ConvNeXtUNet
-from src.tasks.ball_detection.models.dino_pseudo3d import DINOPseudo3DBallDetector
 from src.tasks.ball_detection.models.dinov3_rope import DINOv3RoPEBallDetector
 from src.tasks.ball_detection.models.discriminators import (
     build_ball_detection_discriminator,
@@ -32,20 +31,17 @@ def build_ball_detection_model(config: DictConfig) -> nn.Module:
         return SpatioTemporalUNet.from_config(config)
     if model_name == "conv_next_unet":
         return ConvNeXtUNet.from_config(config)
-    if model_name == "dino_pseudo3d":
-        return DINOPseudo3DBallDetector.from_config(config)
     if model_name == "dinov3_rope":
         return DINOv3RoPEBallDetector.from_config(config)
     raise ValueError(
         "Unknown ball_detection model.name="
         f"'{model_name}'. Supported: "
-        "['stunet', 'conv_next_unet', 'dino_pseudo3d', 'dinov3_rope']"
+        "['stunet', 'conv_next_unet', 'dinov3_rope']"
     )
 
 
 __all__ = [
     "ConvNeXtUNet",
-    "DINOPseudo3DBallDetector",
     "DINOv3RoPEBallDetector",
     "SpatioTemporalUNet",
     "build_ball_detection_discriminator",
