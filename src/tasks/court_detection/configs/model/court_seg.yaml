@@ -1,5 +1,5 @@
 # Segmentation model (7 channels).
-# Switch encoder/decoder with `model/encoder=dino_swin model/decoder=unet`.
+# Switch decoder with `model/decoder=unet`.
 defaults:
   - _hierarchical
   - _self_

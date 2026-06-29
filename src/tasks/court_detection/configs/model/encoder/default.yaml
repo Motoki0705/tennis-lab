@@ -1,10 +1,3 @@
 # Default lightweight court encoder (trainable from scratch).
 # Selected at model.encoder via the _hierarchical defaults list.
 name: default
-checkpoint_path: null
-dilation: false
-return_interm_indices: [0, 1, 2, 3]
-pretrain_img_size: null
-use_checkpoint: false
-strict: true
-freeze: false
