@@ -30,9 +30,8 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
-import hydra
 import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
@@ -43,13 +42,7 @@ from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
 from src.utils.device import resolve_device
-
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
-    """Typed wrapper for hydra.main to keep mypy satisfied."""
-    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
+from src.utils.hydra import hydra_main
 
 
 def _load_hparams_config(hparams_path: Path) -> DictConfig:

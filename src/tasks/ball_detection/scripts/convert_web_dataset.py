@@ -17,11 +17,9 @@ Notes:
 from __future__ import annotations
 
 import shutil
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
-import hydra
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 from tqdm import tqdm
@@ -47,14 +45,11 @@ from src.tasks.ball_detection.data.components.web.parser import (
     WebDatasetParser,
 )
 from src.utils.data.splits import GroupSplitConfig
+from src.utils.hydra import hydra_main
 from src.utils.io import ensure_dir, load_json
 
 
-def _hydra_main(*args: Any, **kwargs: Any) -> Callable[[Any], Any]:
-    return cast(Callable[[Any], Any], hydra.main(*args, **kwargs))
-
-
-@_hydra_main(
+@hydra_main(
     config_path="../configs",
     config_name="convert_web_dataset",
     version_base="1.3",

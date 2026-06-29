@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import csv
-import json
 import shutil
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import cv2
 import numpy as np
+
+from src.utils.io import load_json, save_json_atomic, utc_now_iso
 
 JSONDict = dict[str, Any]
 VISIBLE_STATES = {"visible", "occluded"}
@@ -119,7 +119,7 @@ def _run_candidate(
     *,
     start_index: int | None,
 ) -> str:
-    document = _read_json(document_path)
+    document = load_json(document_path)
     _normalize_document_schema(document)
     if document.get("status") not in {"pseudo_labeled", "annotating"}:
         raise ValueError(
@@ -397,7 +397,7 @@ def finalize_candidate(
     config: BallAnnotationSessionConfig,
 ) -> str:
     """Move a fully reviewed staging candidate into the final clip dataset."""
-    document = _read_json(document_path)
+    document = load_json(document_path)
     incomplete = [
         str(frame["frame_id"])
         for frame in document["frames"]
@@ -436,11 +436,11 @@ def finalize_candidate(
         "source": document["source"],
         "prediction": document.get("prediction"),
         "annotation": {
-            "created_at": _utc_now(),
-            "updated_at": _utc_now(),
+            "created_at": utc_now_iso(),
+            "updated_at": utc_now_iso(),
         },
     }
-    _write_json_atomic(candidate_dir / "clip.json", clip_document)
+    save_json_atomic(clip_document, candidate_dir / "clip.json")
     if target_dir.exists():
         shutil.rmtree(target_dir)
     target_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -499,7 +499,7 @@ def _complete_current_frame(state: UiState) -> None:
         if ball.get("label_source") == "pseudo":
             ball["label_source"] = "human_approved_pseudo"
     frame["review_status"] = "completed"
-    frame["reviewed_at"] = _utc_now()
+    frame["reviewed_at"] = utc_now_iso()
     state.dirty = True
     _save_state(state)
     _move_cursor(state, 1)
@@ -576,7 +576,7 @@ def _register_final_clip(root: Path, clip: JSONDict, target_dir: Path) -> None:
     split = str(clip["split"])
     annotation_path = root / "annotations" / f"{split}.json"
     payload = (
-        _read_json(annotation_path)
+        load_json(annotation_path)
         if annotation_path.exists()
         else {"schema_name": "ball_youtube_dataset_v1", "split": split, "items": []}
     )
@@ -596,7 +596,7 @@ def _register_final_clip(root: Path, clip: JSONDict, target_dir: Path) -> None:
     items_by_id = {str(existing["clip_id"]): existing for existing in payload.get("items", [])}
     items_by_id[str(clip["clip_id"])] = item
     payload["items"] = list(items_by_id.values())
-    _write_json_atomic(annotation_path, payload)
+    save_json_atomic(payload, annotation_path)
     entries = sorted(str(existing["dataset_entry"]) for existing in payload["items"])
     _write_text_atomic(
         root / "annotations" / f"{split}.txt",
@@ -663,7 +663,7 @@ def _next_candidate_path(
     if candidate_id is None:
         return paths[0] if paths else None
     for path in paths:
-        document = _read_json(path)
+        document = load_json(path)
         if candidate_id in {path.parent.name, str(document.get("clip_id"))}:
             return path
     raise FileNotFoundError(
@@ -846,7 +846,7 @@ def _move_cursor(state: UiState, step: int) -> None:
 
 def _save_state(state: UiState) -> None:
     state.document["cursor_index"] = state.current_index
-    _write_json_atomic(state.document_path, state.document)
+    save_json_atomic(state.document, state.document_path)
     state.dirty = False
 
 
@@ -869,26 +869,8 @@ def _validate_config(config: BallAnnotationSessionConfig) -> None:
         raise ValueError("max_balls_per_frame must be positive.")
 
 
-def _read_json(path: Path) -> JSONDict:
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _write_json_atomic(path: Path, payload: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    temporary.replace(path)
-
-
 def _write_text_atomic(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(text, encoding="utf-8")
     temporary.replace(path)
-
-
-def _utc_now() -> str:
-    return datetime.now(UTC).isoformat()

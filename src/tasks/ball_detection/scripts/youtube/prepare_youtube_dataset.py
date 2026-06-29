@@ -14,15 +14,15 @@ Notes:
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
 import cv2
-import hydra
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
+from src.utils.hydra import hydra_main
 from src.utils.io import (
     ensure_dirs,
     load_json_if_exists,
@@ -38,13 +38,7 @@ from src.utils.video.youtube import (
     transcode_h264_video,
 )
 
-F = TypeVar("F", bound=Callable[..., Any])
 JSONDict = dict[str, Any]
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
-    """Typed wrapper for ``hydra.main``."""
-    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
 
 
 @hydra_main(

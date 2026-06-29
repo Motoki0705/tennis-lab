@@ -18,6 +18,7 @@ types**, it belongs here (or should be promoted here), not in the task module.
 | Resolve a repo-relative path | `resolve_project_path()`, `PROJECT_ROOT` | `from src.utils.paths import resolve_project_path, PROJECT_ROOT` |
 | Pick a torch device (`"auto"`/fallback) | `resolve_device()` | `from src.utils.device import resolve_device` |
 | Lightning `(accelerator, devices)` | `select_accelerator()` | `from src.utils.device import select_accelerator` |
+| Typed `hydra.main` decorator | `hydra_main()` | `from src.utils.hydra import hydra_main` |
 | Seed RNGs in a script | `seed_everything()` | `from src.utils.seeding import seed_everything` |
 | Per-sample dataloader RNG | `make_sample_rng()` | `from src.utils.seeding import make_sample_rng` |
 | `mkdir(parents=True, exist_ok=True)` | `ensure_dir()` | `from src.utils.io import ensure_dir` |
@@ -46,6 +47,7 @@ types**, it belongs here (or should be promoted here), not in the task module.
 | Sample video frame indices | `sample_uniform_frame_indices()`, `sample_frame_indices_by_time_ranges()` | `from src.utils.video import ...` |
 | Download/transcode YouTube videos | `download_youtube_video()`, `transcode_h264_video()` | `from src.utils.video import ...` |
 | Transformer / MoE / RoPE blocks | `TransformerBlock`, `MoELayer`, RoPE helpers, `MLPHead` | `from src.utils.models import ...` |
+| Depthwise-separable / wise-wise conv blocks | `DepthwiseSeparableConv2d`, `Conv2dWiseWiseBlock` | `from src.utils.models import ...` |
 | LoRA-adapt a frozen backbone | `LoRAConfig`, `apply_lora()`, `apply_dinov3_lora()`, `configure_dinov3_trainability(..., lora=...)` | `from src.utils.models import ...` / `from src.utils.models.loading import ...` |
 
 ## Modules
@@ -62,6 +64,8 @@ types**, it belongs here (or should be promoted here), not in the task module.
   should still use `lightning.pytorch.seed_everything`.
 - **`io.py`** — `ensure_dir()`, `save_json()`, `load_json()`.
 - **`commands.py`** — `run_command()` for logged `subprocess.run(..., check=True)`.
+- **`hydra.py`** — `hydra_main()`, the typed wrapper around `hydra.main` that every
+  CLI entry point used to redeclare locally just to satisfy mypy/pyright.
 - **`tensor_utils.py`** — `clone_tensor_dict()`, `to_numpy()` (detaches, moves to
   CPU, upcasts bf16/fp16), `masked_mean()`, `normalize_padding_mask()`.
 
@@ -90,7 +94,8 @@ types**, it belongs here (or should be promoted here), not in the task module.
 ### Other packages (pre-existing)
 - **`models/`** — DeepSeek-style Transformer blocks, MoE, RoPE, attention,
   `MLPHead`, domain token embeddings, DINOv3 backbone loading, LoRA adaptation
-  (`lora.py`).
+  (`lora.py`), and CNN conv blocks (`blocks.py`: `DepthwiseSeparableConv2d`,
+  `Conv2dWiseWiseBlock`) shared by the ball- and court-detection models.
 - **`projection/`** — pinhole `Camera`, `CameraProjector`, `make_look_at_camera`,
   `project_points`.
 - **`rendering/`** — `CourtRenderer`, `SkeletonRenderer`, `BallRenderer`.

@@ -13,22 +13,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import cast
 
-import hydra
 from omegaconf import DictConfig
 
 from src.tasks.ball_detection.evaluation import (
     EvaluationPipeline,
     load_evaluation_manifest,
 )
-
-FMain = TypeVar("FMain", bound=Callable[..., Any])
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[FMain], FMain]:
-    """Typed wrapper for ``hydra.main``."""
-    return cast(Callable[[FMain], FMain], hydra.main(*args, **kwargs))
+from src.utils.hydra import hydra_main
 
 
 @hydra_main(

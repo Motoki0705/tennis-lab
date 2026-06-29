@@ -20,9 +20,8 @@ import json
 import shutil
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 
-import hydra
 import numpy as np
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
@@ -33,14 +32,8 @@ from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.visualization.adapters.predict_inputs import build_multiview_inputs
 from src.tasks.plcs.visualization.orchestrator import RuntimeConfig, run_visualization
 from src.utils.device import resolve_device
+from src.utils.hydra import hydra_main
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
-
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def hydra_main(*args: Any, **kwargs: Any) -> Callable[[F], F]:
-    """Typed wrapper for hydra.main to keep mypy satisfied."""
-    return cast(Callable[[F], F], hydra.main(*args, **kwargs))
 
 
 def _resolve_device(device_cfg: Any) -> str:
