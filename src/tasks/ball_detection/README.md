@@ -10,7 +10,7 @@
 |---|---|
 | 入力 | RGBフレーム列 `(B, T, 3, H, W)`（T=8、H=288、W=512 がデフォルト） |
 | 出力 | 正規化ボール座標 `(B, T, 2)` + 信頼度 `(B, T)` + ヒートマップ（任意） |
-| モデル | `stunet` / `conv_next_unet` / `dino_pseudo3d` / `dinov3_rope` |
+| モデル | `stunet` / `conv_next_unet` / `dinov3_rope` |
 | データ | TrackNet形式 + YouTube自作（手動アノテーション） |
 | 役割 | 認識パイプラインの上流。2D観測を [BLCS](../blcs/) へ供給 |
 
@@ -192,7 +192,6 @@ manifestはcheckpoint、`expected_model_name`、TrackNet/Webの固定`val`/`test
 |---|---|---|---|
 | `stunet` | mdd / 2ch | H/2 × W/2 | `models/spatiotemporal_unet.py`（2D+3D Conv U-Net、T≥8 必須） |
 | `conv_next_unet` | mdd / 2ch | H/4 × W/4 | `models/conv_next_unet.py`（ConvNeXt + 因子化Conv3d） |
-| `dino_pseudo3d` | rgb / 3ch | フル解像度 | `models/dino_pseudo3d.py`（DINO backbone + Pseudo-3Dデコーダ） |
 | `dinov3_rope` | rgb / 3ch | 288 × 512 | `models/dinov3_rope.py`（DINOv3 ViT-B/16 patch token + `(time,y,x)` 3軸RoPE global self-attention） |
 
 `mdd`（Motion Direction Decomposition）はRGBの輝度差分を明暗2chに分解する入力（`models/input_adapter.py`）。`rgb` はRGBをそのまま渡します。
