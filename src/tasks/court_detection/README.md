@@ -90,9 +90,8 @@ Sampleの主キーは `image (3, H, W)`（ImageNet正規化）・`heatmap (K, H,
 .venv/bin/python -m src.tasks.court_detection.scripts.train                          # seg（デフォルト）
 .venv/bin/python -m src.tasks.court_detection.scripts.train data=court_kp   loss=kp
 .venv/bin/python -m src.tasks.court_detection.scripts.train data=court_line loss=line
-# encoder/decoder は直交した config group で切り替える（組合せファイルは不要）
-.venv/bin/python -m src.tasks.court_detection.scripts.train data=court_kp loss=kp model/encoder=dino_swin
-.venv/bin/python -m src.tasks.court_detection.scripts.train data=court_kp loss=kp model/encoder=dino_swin model/decoder=unet
+# decoder は直交した config group で切り替える（組合せファイルは不要）
+.venv/bin/python -m src.tasks.court_detection.scripts.train data=court_kp loss=kp model/decoder=unet
 ```
 
 `configs/training/default.yaml` は `max_epochs=100`、`lr=1e-3`、`bf16-mixed`、AdamW、EarlyStopping（patience=10）。
@@ -102,7 +101,7 @@ Sampleの主キーは `image (3, H, W)`（ImageNet正規化）・`heatmap (K, H,
 | 軸 | group | 選択肢 |
 |---|---|---|
 | タスク（出力ch） | `model=` | `court_kp`(14) / `court_seg`(7) / `court_line`(1) / `court_seg_dinov3_detr`(7) |
-| encoder | `model/encoder=` | `default`（学習）/ `dino_swin`（Swin-L, frozen） |
+| encoder | `model/encoder=` | `default`（学習） |
 | decoder | `model/decoder=` | `fpn`（既定）/ `unet` |
 
 ## 可視化
@@ -123,9 +122,9 @@ ckptと画像ソースは `configs/visualization/{kp,seg,line}.yaml` で指定�
 | `CourtHierarchicalModel` | kp / seg / line | `models/hierarchical_model.py`（Encoder×Decoder の組合せ） |
 | `DINOv3DETR` | seg 専用 | `models/dinov3_detr.py`（DINOv3 ViT-B/16 + DETRデコーダ、mask-classification） |
 
-`CourtHierarchicalModel` のEncoderは `CourtDefaultEncoder`（軽量4ステージCNN）と `CourtDINOEncoder`（ResNet50/Swin-L等の事前学習backbone）、Decoderは `CourtFPNDecoder` と `CourtUNetDecoder` を組み合わせます。
+`CourtHierarchicalModel` のEncoderは `CourtDefaultEncoder`（軽量4ステージCNN）、Decoderは `CourtFPNDecoder` と `CourtUNetDecoder` を組み合わせます。
 
 ## 補足
 
 - 実行は `.venv/bin/python -m ...`。Hydra設定は `configs/` から読み込みます。
-- DINO/DINOv3 backbone使用時は `third_party/dinov3/` と対応する事前学習チェックポイントが必要です。
+- DINOv3 backbone使用時は `third_party/dinov3/` と対応する事前学習チェックポイントが必要です。

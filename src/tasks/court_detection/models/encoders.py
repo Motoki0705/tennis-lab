@@ -2,18 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import torch
 import torch.nn as nn
 
 from src.tasks.court_detection.models.blocks import Conv2dWiseWiseBlock
-from src.utils.models.loading import load_dino_backbone
-
-_DINO_ENCODER_ALIASES = {
-    "resnet": "resnet50",
-    "swin": "swin_T_224_1k",
-}
 
 
 class CourtDefaultEncoder(nn.Module):
@@ -75,127 +67,18 @@ class CourtDefaultEncoder(nn.Module):
             )
 
 
-class CourtDINOEncoder(nn.Module):
-    """Court encoder backed by a reusable DINO backbone loader."""
-
-    def __init__(
-        self,
-        *,
-        in_channels: int = 3,
-        backbone_name: str = "resnet50",
-        checkpoint_path: str | Path | None = None,
-        dilation: bool = False,
-        return_interm_indices: tuple[int, ...] = (0, 1, 2, 3),
-        pretrain_img_size: int | None = None,
-        use_checkpoint: bool = False,
-        strict: bool = True,
-        freeze_backbone: bool = True,
-    ) -> None:
-        super().__init__()
-        self._validate_init_args(
-            in_channels=in_channels,
-            return_interm_indices=return_interm_indices,
-        )
-
-        self.in_channels = int(in_channels)
-        self.backbone_name = str(backbone_name)
-        self.return_interm_indices = tuple(return_interm_indices)
-
-        loaded_backbone = load_dino_backbone(
-            backbone_name=self.backbone_name,
-            checkpoint_path=checkpoint_path,
-            dilation=dilation,
-            return_interm_indices=self.return_interm_indices,
-            pretrain_img_size=pretrain_img_size,
-            use_checkpoint=use_checkpoint,
-            strict=strict,
-        )
-        self.backbone = loaded_backbone.module
-        self.feature_channels = loaded_backbone.metadata.feature_channels
-
-        self._validate_backbone_load_result(loaded_backbone, strict=strict)
-        if freeze_backbone:
-            for parameter in self.backbone.parameters():
-                parameter.requires_grad = False
-
-    @staticmethod
-    def _validate_init_args(
-        *,
-        in_channels: int,
-        return_interm_indices: tuple[int, ...],
-    ) -> None:
-        if in_channels != 3:
-            raise ValueError(
-                "CourtDINOEncoder requires 3-channel RGB input, "
-                f"got in_channels={in_channels}."
-            )
-        if tuple(return_interm_indices) != (0, 1, 2, 3):
-            raise ValueError(
-                "CourtDINOEncoder expects return_interm_indices=(0, 1, 2, 3)."
-            )
-
-    @staticmethod
-    def _validate_backbone_load_result(loaded_backbone, *, strict: bool) -> None:
-        if strict and (
-            loaded_backbone.load_result.missing_keys
-            or loaded_backbone.load_result.unexpected_keys
-        ):
-            raise RuntimeError(
-                "Unexpected DINO backbone load result: "
-                f"missing={loaded_backbone.load_result.missing_keys}, "
-                f"unexpected={loaded_backbone.load_result.unexpected_keys}"
-            )
-
-    def forward(
-        self, x: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        self._validate_forward_input(x)
-
-        features = self.backbone(x)
-        return tuple(features[str(index)] for index in self.return_interm_indices)
-
-    def _validate_forward_input(self, x: torch.Tensor) -> None:
-        if x.ndim != 4:
-            raise ValueError(
-                "CourtDINOEncoder expects input with shape (B, C, H, W), "
-                f"got ndim={x.ndim}."
-            )
-        if x.shape[1] != self.in_channels:
-            raise ValueError(
-                f"Expected {self.in_channels} input channels but received {x.shape[1]}."
-            )
-
-
 def build_court_encoder(
     *,
     encoder_name: str = "default",
     in_channels: int = 3,
-    checkpoint_path: str | Path | None = None,
-    dilation: bool = False,
-    return_interm_indices: tuple[int, ...] = (0, 1, 2, 3),
-    pretrain_img_size: int | None = None,
-    use_checkpoint: bool = False,
-    strict: bool = True,
-    freeze_backbone: bool = True,
 ) -> nn.Module:
     """Build the requested court encoder."""
 
-    resolved_encoder_name = _DINO_ENCODER_ALIASES.get(
-        str(encoder_name), str(encoder_name)
-    )
-    if resolved_encoder_name == "default":
-        return CourtDefaultEncoder(in_channels=in_channels)
-    return CourtDINOEncoder(
-        in_channels=in_channels,
-        backbone_name=resolved_encoder_name,
-        checkpoint_path=checkpoint_path,
-        dilation=dilation,
-        return_interm_indices=return_interm_indices,
-        pretrain_img_size=pretrain_img_size,
-        use_checkpoint=use_checkpoint,
-        strict=strict,
-        freeze_backbone=freeze_backbone,
-    )
+    if str(encoder_name) != "default":
+        raise ValueError(
+            f"Unknown court encoder '{encoder_name}'. Supported: ['default']."
+        )
+    return CourtDefaultEncoder(in_channels=in_channels)
 
 
-__all__ = ["CourtDINOEncoder", "CourtDefaultEncoder", "build_court_encoder"]
+__all__ = ["CourtDefaultEncoder", "build_court_encoder"]
