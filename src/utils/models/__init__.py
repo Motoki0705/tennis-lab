@@ -7,6 +7,13 @@ Strategy A: treat the DeepSeek-style, pure PyTorch implementation in
 from src.utils.models.architectures import (
     TransformerSequenceDiscriminator,
 )
+from src.utils.models.attention_extraction import (
+    AttentionExtractor,
+    AttentionPredicate,
+    find_attention_modules,
+    is_sdpa_self_attention,
+    iter_attention_maps,
+)
 from src.utils.models.blocks import (
     Conv2dWiseWiseBlock,
     DepthwiseSeparableConv2d,
@@ -87,6 +94,12 @@ __all__ = [
     "BallUVEmbedding",
     "Ball3DEmbedding",
     "TransformerSequenceDiscriminator",
+    # Attention extraction / analysis
+    "AttentionExtractor",
+    "AttentionPredicate",
+    "find_attention_modules",
+    "is_sdpa_self_attention",
+    "iter_attention_maps",
     # LoRA adaptation
     "LoRAConfig",
     "LoRALinear",
