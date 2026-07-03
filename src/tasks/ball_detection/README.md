@@ -1,204 +1,78 @@
 # Ball Detection
 
-> テニス映像のRGBフレーム列から、各フレームのボール位置を推定する時系列ボール検出タスク。
+`src/tasks/ball_detection` は、RGBフレーム列から各フレーム内のテニスボール位置を推定するタスク実装です。モデル定義・データ取り込み(TrackNet/YouTube/Web統合ストア)・学習・推論・評価・可視化・データセット生成までを一貫して提供します。
 
-## 概要
+## Modules
 
-複数フレームの時空間情報を統合し、高速・小物体であるテニスボールのヒートマップと座標・信頼度を出力します。
+### (ルート)
+- **`__init__.py`**: `build_ball_detection_model` を re-export するパッケージ入口。
 
-| 項目 | 内容 |
-|---|---|
-| 入力 | RGBフレーム列 `(B, T, 3, H, W)`（T=8、H=288、W=512 がデフォルト） |
-| 出力 | 正規化ボール座標 `(B, T, 2)` + 信頼度 `(B, T)` + ヒートマップ（任意） |
-| モデル | `stunet` / `conv_next_unet` / `dinov3_rope` |
-| データ | TrackNet形式 + YouTube自作（手動アノテーション） |
-| 役割 | 認識パイプラインの上流。2D観測を [BLCS](../blcs/) へ供給 |
+### models/
+- **`__init__.py`**: `build_ball_detection_model(config)` が `model.name` (`stunet`/`conv_next_unet`/`dinov3_rope`) からモデルを構築。
+- **`spatiotemporal_unet.py`**: `SpatioTemporalUNet`。`(B,C,T,H,W)→(B,1,T,H/2,W/2)`、`T>=8` 必須の時空間 U-Net。
+- **`conv_next_unet.py`**: `ConvNeXtUNet`。ConvNeXt ブロックベースの spatio-temporal U-Net(`T>=1` で動作)。
+- **`dinov3_rope.py`**: `DINOv3RoPEBallDetector`。DINOv3 backbone + 3軸RoPE decoder による RGB専用ヒートマップ検出器。
+- **`input_adapter.py`**: `images` を `input_mode`(`rgb`/`mdd`)・`input_layout` に応じてモデル入力へ変換。
+- **`discriminators/__init__.py`**: `build_ball_detection_discriminator(config)` の工場関数。
+- **`discriminators/trajectory_discriminator.py`**: `BallTrajectoryDiscriminator`。2D軌道用の GAN discriminator。
 
-## Inference
+### data/
+- **`__init__.py`**: `build_ball_detection_datamodule(config)`。`data.source` からDataModuleを選択。
+- **`types.py`**: `FrameLabel`/`ClipWindow`/`BallDetectionSample`/`BallDetectionBatch` のデータ契約。
+- **`dataset.py`**: `BallDetectionDataset`。`ClipWindow` をモデル入力サンプル(画像・heatmap・座標)へ変換する共通実装。
+- **`tracknet_datamodule.py`**: `TrackNetDataModule`。TrackNet形式(`Label.csv`+連番jpg)を読む。
+- **`youtube_datamodule.py`**: `YouTubeDataModule`。`TrackNetDataModule` を継承しYouTube split解決だけ変更。
+- **`web_datamodule.py`**: `WebBallDataModule`。`data/tennis/web/unified` 統一ストアを読む(`static`/`temporal`モード)。
+- **`staged_datamodule.py`**: `StagedBallDataModule`(issue #579)。TrackNet+Webを混合し可変長 `T` で学習。
+- **`components/augmentation.py`**: `BallDetectionAugmentation`。回転/flip/affine/crop/色/ノイズ/ゼロマスク等の augmentation 合成。
+- **`components/staged_sampler.py`**: 可変 `T` 用バッチサンプラー群(`VariableTBatchSampler` 等)。
+- **`components/web/data_access_layer/web_store.py`**: `WebFrameStore`。統一ストアの read-only アクセサ。
+- **`components/web/data_access_layer/writer.py`**: shard書き込み・index構築・アトミック publish を行う writer 群。
+- **`components/web/parser/*.py`**: Roboflow/RacketVision/Kaggle/Ball-YOLO 各データセットの parser。
 
-```python
-import torch
-from src.tasks.ball_detection.inference.predictor import BallDetectionPredictor
+### training/
+- **`lightning_module.py`**: `BallDetectionLightningModule`。Focal損失によるヒートマップ学習、GAN併用可。
+- **`losses.py`**: 実体は空。旧実装は `src.tasks.base.training.losses` へ移設済み。
+- **`metrics.py`**: `BallDetectionMetrics`。ハンガリアン対応付けによる `precision`/`recall`/`f1`/`mean_distance_px`。
+- **`runner.py`**: `BallDetectionTrainingRunner`。datamodule/lightning_module構築の薄いアダプタ。
+- **`staged_calibration.py`**: `probe_batch_size_by_t()`。`T` ごとのOOM較正でバッチサイズを決定。
+- **`staged_lightning_module.py`**: `StagedBallDetectionLightningModule`。手動最適化による可変T勾配蓄積学習。
+- **`staged_runner.py`**: `StagedBallDetectionTrainingRunner`。フェーズ間のOOM較正とweightのみ引き継ぎを制御。
 
-predictor = BallDetectionPredictor.load_from_checkpoint(
-    "outputs/ball_detection/stunet/logs/version_0/checkpoints/last.ckpt",
-    device="cuda",
-)
+### inference/
+- **`predictor.py`**: `BallDetectionPredictor`。checkpointから `coords`/`visibility`/(任意)`heatmaps` を推論。
 
-# (B, T, 3, H, W), float32, 値域 [0, 1]
-images = torch.rand(1, 8, 3, 288, 512)
-result = predictor.predict(images, return_heatmaps=True)
-coords = result["coords"]          # (1, 8, 2) 正規化座標
-visibility = result["visibility"]  # (1, 8)
-```
+### evaluation/
+- **`contracts.py`**: 評価マニフェスト(`ball_detection_evaluation_manifest_v1`)の型付き契約。
+- **`configuration.py`**: checkpoint設定読み出しとモデル名整合性検証。
+- **`dataset_provenance.py`**: データセットの provenance(ハッシュ・ソース)記録。
+- **`adapters.py`**: 任意モデルをヒートマップ契約へ適合させる `BallPredictionAdapter`。
+- **`metrics.py`**: `StratifiedBallMetrics`。全体/データソース別のメトリクス追跡。
+- **`evaluator.py`**: 1 job(checkpoint×dataset×split) を評価する `DefaultJobEvaluator`。
+- **`reporting.py`**: `summary.json`/`comparison.csv`/`comparison.md` を生成。
+- **`runner.py`**: `EvaluationPipeline`。fingerprintベースの再利用付き複数job評価。
 
-返り値は全テンソルが CPU 上の `dict[str, Tensor]`。
+### visualization/
+- **`orchestrator.py`**: checkpointからのスライディングウィンドウ推論→GIF保存を統括。
+- **`adapters/predict_inputs.py`**: スライディングウィンドウ開始位置とバッチ構築。
+- **`adapters/render_inputs.py`**: MDDフレーム/学習バッチの描画用変換。
+- **`api/predict.py`**: `predict_clip()`。重複ウィンドウ推論の集約と `PredictionSequence` 構築。
+- **`io/clip.py`**: クリップディレクトリから推論/描画用テンソルを構築。
+- **`rendering/clip_renderer.py`**: RGB/MDD/予測/heatmapの2x2グリッド描画。
 
-| キー | 形状 | dtype | 条件 | 説明 |
-|---|---|---|---|---|
-| `coords` | `(B, T, 2)` | float32 | 常時 | ピーク位置の正規化座標 `(x, y) ∈ [0, 1]` |
-| `visibility` | `(B, T)` | float32 | 常時 | フレームごとのピーク信頼度 |
-| `heatmaps` | `(B, T, H, W)` | float32 | `return_heatmaps=True` | sigmoid後の確率ヒートマップ（解像度はモデル依存、[モデル](#モデル)参照） |
+### generate_dataset/
+- **`candidate_workflow.py`**: 候補区間の手動選択(`run_candidate_selection`)と疑似ラベル推論(`predict_candidates`)。
+- **`annotation_session.py`**: 疑似ラベルレビューOpenCV UIと確定処理(`finalize_candidate`)。
 
-`load_from_checkpoint` は単一チェックポイントのみ受け付けます（複数指定は `ValueError`）。
+### scripts/
+- **`train.py` / `train_staged.py`**: 通常 / staged 学習エントリポイント。
+- **`eval.py`**: 単一checkpointの詳細診断評価。
+- **`evaluate_manifest.py`**: manifestベースの複数checkpoint比較評価。
+- **`visualize.py`**: クリップ単位のGIF可視化生成。
+- **`convert_web_dataset.py`**: web生データセット群を統一ストアへアトミック変換。
+- **`analyze_web_bbox_ratio.py`**: bbox最大辺比率の分布解析。
+- **`preview_augmentation.py` / `preview_heatmaps.py`**: augmentation / heatmap生成の確認用プレビュー。
+- **`youtube/*.py`**: YouTube動画取得・候補選択・疑似ラベル推論・アノテーション確定・DINOv3 SSL画像収集の各スクリプト。
 
-## データ
-
-### TrackNet形式
-
-```text
-data/tennis/tracknet/
-└── game1/
-    ├── Clip1/              # "Clip" / "clip_" で始まるディレクトリ
-    │   ├── 000000.jpg      # 元解像度のフレーム
-    │   └── Label.csv
-    └── Clip2/
-```
-
-`Label.csv` の必須列は `file name, visibility, x-coordinate, y-coordinate`。任意列 `instance id` / `role` / `ball state` も解釈され、`role=distractor` は学習対象外です。複数ボールは同一 `file name` の複数行で表します。splitファイルには `data.data_dir` からの相対パスを記述します。
-
-### YouTube形式
-
-`YouTubeDataModule` は `TrackNetDataModule` を継承し、エントリ解決のみ変更します。splitは `data/tennis/youtube/annotations/{train,val,test}.txt`、パスは `data/tennis` からの相対（例 `youtube/frames/video_000001/clip_000001`）です。学習時は `data=youtube_rgb_sequence` を指定します。
-
-### Web統一形式
-
-`data/tennis/web` 配下の異種データ（Roboflow COCO 3種・RacketVision・Kaggle backview・Ball-YOLO）を単一ストアに変換します。ボールが可視な正例に加え、`Visibility=0`、Kaggle sentinel、COCOのboxなし画像など、**明示的にボール不在と判断できるフレーム**を負例として保持します。アノテーション状態が不明な動画フレームは誤った負例にしません。
-
-```bash
-# data/tennis/web/unified/ を生成（COCO静止画は参照のみ、動画フレームはシャードへパック）
-.venv/bin/python -m src.tasks.ball_detection.scripts.convert_web_dataset
-# web_ball_frames_v1から更新する場合
-.venv/bin/python -m src.tasks.ball_detection.scripts.convert_web_dataset \
-    convert.overwrite=true
-# 一部ソースのみ・上限付きで素早く検証
-.venv/bin/python -m src.tasks.ball_detection.scripts.convert_web_dataset \
-    convert.sources.racketvision=false convert.limit_per_source=50 convert.overwrite=true
-```
-
-ストレージ/IO効率のため、動画から抽出したフレームは多数の小JPEGを撒かず `shards/shard-*.bin` にパックし（memmapでランダムアクセス）、既にディスク上にあるCOCO静止画は複製せず参照します。索引は `index.npz` / `index_strings.json`、スキーマ定義は `data/components/web/data_access_layer/web_store.py`（`web_ball_frames_v2`）です。
-
-原データ固有のディレクトリ構造・annotation形式は `data/components/web/parser/` のデータセット別parserだけが解釈します。converterはparserの選択と、正規化済みレコードを `data/components/web/data_access_layer/` へ渡すオーケストレーションのみ担当します。
-
-各サンプルは `source`、split単位の `sequence_id`、`frame_index`、`temporal`、`label_state` を保持します。Roboflowのaugmentation variantと同一動画のフレームは必ず同じsplitへ入り、RacketVisionは公式splitを使用します。
-
-現在の原データを既定configで変換した統計は以下です。
-
-| split | 全体 | 正例 | 明示的負例 |
-|---|---:|---:|---:|
-| train | 61,486 | 56,597 | 4,889 |
-| val | 7,553 | 6,966 | 587 |
-| test | 7,744 | 7,080 | 664 |
-| 合計 | 76,783 | 70,643 | 6,140 |
-
-負例率は全体で約8.0%のため、既定では全負例を使用します。RacketVisionのCSV外フレーム、Ball-YOLOのlabel file欠番、KaggleのCSV欠番はannotation状態が不明なため除外します。また、元のRoboflow splitでは305 source group（3,999画像）がsplitをまたいでいたため、変換時にsource group単位で再分割します。
-
-学習は `data=web_frames`（`WebBallDataModule`）を使用します。
-
-```bash
-# 単一フレーム学習（model.num_frames=1を推奨）
-.venv/bin/python -m src.tasks.ball_detection.scripts.train \
-    data=web_frames model.num_frames=1
-
-# 同一sequence内のラベル付き観測からTフレームwindowを構築
-.venv/bin/python -m src.tasks.ball_detection.scripts.train \
-    data=web_frames data.sampling.mode=temporal model.num_frames=8
-```
-
-`data.sampling.temporal.frame_step` / `sample_stride` / `max_frame_gap` でwindowを設定できます。位置埋め込みへ渡す時間座標はwindow内の順序であり、元動画のFPSには依存しません。静的学習の負例が将来増えた場合は `data.sampling.train_negative_fraction` で上限を設定できます。
-
-### Sample契約（学習データ）
-
-`T = model.num_frames`（=8）、`K = data.max_instances`（=16）。
-
-| キー | 形状 | 説明 |
-|---|---|---|
-| `images` | `(T, 3, 288, 512)` | 正規化済みRGB |
-| `heatmaps` | `(T, 288, 512)` | 全可視ボールを統合したガウス教師heatmap |
-| `coords` | `(T, K, 2)` | 元解像度ピクセル座標の複数ボールGT |
-| `visibility` | `(T, K)` | 可視インスタンスmask（未使用領域は座標 `(0,0)`・vis `0`） |
-| `original_size` / `heatmap_size` | `(2,)` | `(width, height)` |
-
-## データセット生成（YouTube）
-
-YouTube動画から学習データを作る3ステップ。CLIは `scripts/youtube/` 配下です。
-
-```bash
-# 1. 動画download → H.264変換 → フレーム抽出（configs/prepare_youtube_dataset.yaml）
-.venv/bin/python -m src.tasks.ball_detection.scripts.youtube.prepare_youtube_dataset
-
-# 2a. 候補clipをGUIで選択
-.venv/bin/python -m src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset \
-    workflow.video_id=video_000001 workflow.mode=select
-# 2b. 学習済みモデルでアノテーション初期値を予測
-.venv/bin/python -m src.tasks.ball_detection.scripts.youtube.clip_and_predict_youtube_dataset \
-    workflow.video_id=video_000001 workflow.mode=predict
-
-# 3. OpenCV UIで人手確認・確定 → clip/Label.csv/splitを書き出し
-.venv/bin/python -m src.tasks.ball_detection.scripts.youtube.annotate_youtube_ball \
-    annotate.video_id=video_000001
-```
-
-`predict` の出力は人手確認を効率化する初期値であり、半教師あり学習へ直接投入する疑似ラベルではありません。確定後のデータは通常の教師データとして扱います。
-
-## 学習
-
-```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.train
-.venv/bin/python -m src.tasks.ball_detection.scripts.train model=conv_next_unet data.batch_size=4
-.venv/bin/python -m src.tasks.ball_detection.scripts.train model=dinov3_rope data=web_frames
-# augmentation 強度を切り替える（default / light / none）
-.venv/bin/python -m src.tasks.ball_detection.scripts.train data/augmentation=light
-```
-
-デフォルトは `model=stunet`、`data=rgb_sequence`。`configs/training/default.yaml` は `max_epochs=20`、`lr=1e-4`、`precision=bf16-mixed`、`val/loss` 監視のEarlyStopping（patience=5）。data configの augmentation は `configs/data/augmentation/{default,light,none}.yaml` のグループに分離され、`data/augmentation=...` で切り替えられます（`rgb_sequence` / `youtube_rgb_sequence` 共通）。
-
-### 評価
-
-```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.eval \
-    run.checkpoint_path=path/to/checkpoint.ckpt evaluation.splits=[val,test]
-```
-
-複数の予測ピークと複数GTをハンガリアン法で対応付け（距離閾値4.0px）、`precision` / `recall` / `f1` / `mean_distance_px` を `outputs/ball_detection/eval/` に出力します。
-
-複数checkpointを同一条件で比較する場合はmanifest評価を使用します。
-
-```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.evaluate_manifest
-.venv/bin/python -m src.tasks.ball_detection.scripts.evaluate_manifest \
-    manifest_path=src/tasks/ball_detection/configs/evaluation/ball_detector_comparison.yaml
-```
-
-manifestはcheckpoint、`expected_model_name`、TrackNet/Webの固定`val`/`test` split、`architecture-controlled` / `full-strategy`カテゴリを列挙します。未作成checkpointは`enabled: false`のまま定義できます。実行結果はjob単位のJSON、`summary.json`、`comparison.csv`、カテゴリ別`comparison.md`として保存されます。全体/source別の検出指標、明示的負例frame FPR、latency、throughput、peak VRAM、checkpoint/config/git/split/schema provenanceを記録します。成功済みjobはfingerprintが一致すれば再利用され、失敗または変更されたjobだけが再実行されます。
-
-## 可視化
-
-```bash
-# ckptでクリップを推論し、予測GIFを生成
-.venv/bin/python -m src.tasks.ball_detection.scripts.visualize \
-    visualization.clip_dir=data/tennis/tracknet/game1/Clip1 \
-    visualization.checkpoint=path/to/checkpoint.ckpt \
-    visualization.save=assets/ball_detection/prediction.gif
-
-# データ確認用プレビュー（ckpt不要）
-.venv/bin/python -m src.tasks.ball_detection.scripts.preview_heatmaps
-.venv/bin/python -m src.tasks.ball_detection.scripts.preview_augmentation
-```
-
-## モデル
-
-| 名前 | 入力モード / ch | 出力解像度 | 実装 |
-|---|---|---|---|
-| `stunet` | mdd / 2ch | H/2 × W/2 | `models/spatiotemporal_unet.py`（2D+3D Conv U-Net、T≥8 必須） |
-| `conv_next_unet` | mdd / 2ch | H/4 × W/4 | `models/conv_next_unet.py`（ConvNeXt + 因子化Conv3d） |
-| `dinov3_rope` | rgb / 3ch | 288 × 512 | `models/dinov3_rope.py`（DINOv3 ViT-B/16 patch token + `(time,y,x)` 3軸RoPE global self-attention） |
-
-`mdd`（Motion Direction Decomposition）はRGBの輝度差分を明暗2chに分解する入力（`models/input_adapter.py`）。`rgb` はRGBをそのまま渡します。
-
-`dinov3_rope`は`(B,T,3,288,512)`を直接受け取り、各frameの`18×32` patch gridを全時刻でflattenして非causal self-attentionします。時間座標はwindow内の整数順序のみで、FPSやtimestampは使用しません。`model.backbone.train_mode`は`frozen` / `last_n_blocks` / `full`、decoder規模・RoPE・dropout・gradient checkpointingは`configs/model/dinov3_rope.yaml`で設定できます。時間長に依存する学習parameterを持たないため、`T=1`で保存したstate dictを`T>1`へstrict loadできます。
-
-## 補足
-
-- 実行は `.venv/bin/python -m ...`。GPUが無い場合は `run.gpus` や device設定をCPU向けに変更します。
-- YouTube生成は `yt-dlp`（download）・`ffmpeg`（H.264変換）に依存し、clip選択／アノテーションUIはOpenCVのGUIを使用します。
+### configs/
+- モデル/データ/損失・メトリクス/学習/staged学習フェーズ/評価マニフェスト/可視化ごとにHydra設定を分割。
