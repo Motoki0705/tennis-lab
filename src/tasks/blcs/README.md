@@ -1,128 +1,58 @@
 # BLCS (Ball Localization in Court System)
 
-> 2Dボール観測とコートキーポイントから、コート座標系における3Dボール軌道を推定するタスク。単一カメラ／マルチビューに対応します。
+2D のボール観測とコート keypoint から、コート座標系の 3D ボール軌道を推定するタスクです。合成データ生成（物理シミュレーション + マルチカメラ投影）、学習、推論、可視化までを一貫して提供します。
 
-## 概要
+## Modules
 
-複数フレーム（・複数視点）の2D観測を時系列Transformerで統合し、3D位置（と速度）を復元します。
+### generate_dataset/
+- **`config.py`**: Hydra設定を `GeneratorConfig` に変換する `build_generator_config()`。
+- **`scene_generator.py`**: `BLCSSceneGenerator`。1シーン=1ラリーを物理シミュレーションとマルチカメラ投影で生成。
+- **`io/dataset_io.py`**: `BLCSDatasetWriter`/`load_scene()`。シーンのnpy/json入出力。
+- **`simulation/ball_physics.py`**: `PhysicsConfig`/`BallPhysics`。重力・drag・Magnus・バウンド・ネット/フェンス衝突の物理モデル。
+- **`simulation/cell_manager.py`**: `CellManager`。コートを18セルに分割し着地点サンプリング・ショット分類を行う。
+- **`simulation/rally_simulator.py`**: `RallySimulator`。サーブ〜リターンの連鎖でラリー全体を生成する中核モジュール。
+- **`simulation/targeted_velocity_sampler.py`**: `TargetedVelocitySampler`。指定セルへ着地する初速を解析的+shooting methodで算出。
+- **`utils/parallel_runner.py`**: `generate_parallel_scenes()`。CPU専用の並列シーン生成ラッパー。
+- **`api_server/`**: シミュレータ探索用FastAPI(`/cells`/`/court_geometry`/`/simulate_shot`)。
+- **`webui/`**: 上記APIを叩くNext.jsフロントエンド。
 
-| 項目 | 内容 |
-|---|---|
-| 入力 | 2Dボール観測 `ball_uv` + コートキーポイント `court_kp` |
-| 出力 | 3D位置 `position (B, T, 3)` [m] + 速度 `velocity (B, T, 3)` [m/s]（任意） |
-| モデル | `multiview_axial_{small,base,large,xlarge}` |
-| データ | 物理シミュレーションによる合成生成 |
-| 役割 | 認識パイプラインの下流。[ball_detection](../ball_detection/) と [court_detection](../court_detection/) の2D観測を3D化 |
+### data/
+- **`types.py`**: `BLCSSample`/`BLCSBatch`/`BLCSMultiViewSample`/`BLCSMultiViewBatch` のバッチ契約。
+- **`dataset.py`**: `BallTrajectoryDataset`。canonical multiviewサンプルを返し、collate/adapt関数を提供。
+- **`datamodule.py`**: `BLCSDataModule`。`input_profile`(`single`/`multiview`)に応じたcollate構築。
+- **`augmentation.py`**: `BLCSBallObservationAugmentation`。detector誤差を模した8段のUVノイズパイプライン。
+- **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
 
-## Inference
+### models/
+- **`__init__.py`**: `build_blcs_model(config)`。`model.name` で3実装を切替。
+- **`blcs_model.py`**: `BLCSModel`。single-view用decoder-only Transformer(court+ballトークン)。
+- **`blcs_multiview_model.py`**: `BLCSMultiViewModel`。クエリのcross-attention+時間self-attentionによる反復更新モデル。
+- **`blcs_multiview_axial_model.py`**: `BLCSMultiViewAxialModel`(現行デフォルト)。camera軸/time軸交互self-attention。
+- **`components/heads.py`**: `Trajectory3DHead`/`VelocityHead`。
+- **`components/differentiable_projection.py`**: `DifferentiableProjection`。予測3D位置をカメラへ再投影。
+- **`discriminators/`**: `BLCSTrajectoryDiscriminator` と工場関数 `build_blcs_discriminator`。
 
-単一カメラ・マルチビューとも同一の `BLCSPredictor` で扱います。
+### training/
+- **`runner.py`**: `BLCSTrainingRunner`。`data.backend` でdefault/chunked datamoduleを切替。
+- **`lightning_module.py`**: `BLCSLightningModule`。supervised+reprojection+GAN損失を統括。
+- **`losses.py`**: `BLCSLoss`。`trajectory_position_loss` + 任意の `reprojection_loss`。
+- **`metrics.py`**: `BLCSMetrics`。メートル換算L2誤差・閾値内accuracyを集計。
 
-```python
-import torch
-from src.tasks.blcs.inference.predictor import BLCSPredictor
+### inference/
+- **`predictor.py`**: `BLCSPredictor`。`predict(denormalize=True)` でメートル系3D軌道を返す。
 
-predictor = BLCSPredictor.load_from_checkpoint(
-    "outputs/blcs/multiview_axial/logs/version_0/checkpoints/last.ckpt",
-    device="cpu",
-)
+### visualization/
+- **`orchestrator.py`**: `run_visualization()`。visualize/predictモードを統括。
+- **`adapters/predict_inputs.py`**: single/multiview入力構築。
+- **`adapters/render_inputs.py`**: バッチ/出力からGT・予測軌道配列を抽出。
+- **`api/predict.py`**: `predict_positions()`。checkpointからメートル単位軌道を返す。
+- **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
+- **`rendering/scene_renderer.py`**: `BLCSSceneRenderer`。3D/2D/カメラ視点でのGT・予測比較アニメーション。
 
-# 単一カメラ
-ball_uv  = torch.zeros(1, 64, 2)      # (B, T, 2)
-court_kp = torch.zeros(1, 20, 2)      # (B, 20, 2)
-out = predictor.predict(ball_uv, court_kp)          # out["position"]: (1, 64, 3) [m]
+### scripts/
+- **`generate_dataset.py`**: 合成データ生成エントリポイント。
+- **`train.py`**: 学習エントリポイント(chunked/GAN切替可)。
+- **`visualize.py`**: 可視化エントリポイント。
 
-# マルチビュー（ball_vis / ball_mask が必須）
-ball_uv   = torch.zeros(1, 4, 64, 2)      # (B, N, T, 2)
-court_kp  = torch.zeros(1, 4, 64, 20, 2)  # (B, N, T, 20, 2)
-ball_vis  = torch.ones(1, 4, 64)          # (B, N, T)
-ball_mask = torch.ones(1, 4, 64)          # (B, N, T)
-out = predictor.predict(ball_uv, court_kp, ball_vis=ball_vis, ball_mask=ball_mask)
-```
-
-`predict(ball_uv, court_kp, ball_vis=None, ball_mask=None, court_vis=None, denormalize=True)`。返り値は全テンソルが CPU 上の `dict[str, Tensor]`。
-
-| キー | 形状 | dtype | 条件 | 説明 |
-|---|---|---|---|---|
-| `position` | `(B, T, 3)` | float32 | 常時 | `denormalize=True` でメートル、`False` で正規化座標 |
-| `velocity` | `(B, T, 3)` | float32 | モデルが `predict_velocity` で学習された場合 | `denormalize=True` で m/s |
-
-`denormalize=True` のスケールは `COURT_COORD_SCALE_XYZ = (5.485, 11.885, 1.07)`（`src/utils/schema/court.py`）。
-
-### 入力テンソル仕様
-
-| テンソル | 単一カメラ | マルチビュー | 備考 |
-|---|---|---|---|
-| `ball_uv` | `(B, T, 2)` | `(B, N, T, 2)` | 必須 |
-| `court_kp` | `(B, 20, 2)`（`(B, 40)` も可） | `(B, N, T, 20, 2)`（`(B, N, 20, 2)` も可） | 必須 |
-| `ball_vis` | `(B, T)` | `(B, N, T)` | マルチビューでは**必須** |
-| `ball_mask` | `(B, T)` | `(B, N, T)` | マルチビューでは**必須** |
-
-## データセット生成
-
-BLCSはデータを物理シミュレーションで合成生成します（既存データセットなし）。
-
-```bash
-.venv/bin/python -m src.tasks.blcs.scripts.generate_dataset
-.venv/bin/python -m src.tasks.blcs.scripts.generate_dataset generator.num_scenes=500 run.num_workers=4
-```
-
-- **仕様**: 重力・空気抵抗・マグヌス力・バウンド（`configs/physics/default.yaml`）でラリーをシミュレートし、固定6カメラ（コーナー4 + ベースライン中点2）へ投影。1シーン=1ラリー（最大10ショット）。デフォルト1000シーン、`train/val/test = 0.8/0.1/0.1`。
-- **生成構造**（`data/blcs/scenes/scene_XXXXXX/`）:
-
-```text
-scene_000000/
-├── meta.json / scalars.json   # num_cameras, fps, rally_length, カメラパラメータ
-├── ball_pos_world.npy         # (T, 3) ワールド座標 [m]
-├── ball_pos_norm.npy          # (T, 3) 正規化座標
-├── ball_vel_world.npy         # (T, 3) 速度 [m/s]
-└── cam_{0..5}_*.npy           # ball_uv (T,2), ball_visible (T,), court_kp_uv (20,2), ...
-```
-
-## 学習
-
-```bash
-.venv/bin/python -m src.tasks.blcs.scripts.train                                          # multiview_axial_base（デフォルト）
-.venv/bin/python -m src.tasks.blcs.scripts.train model=single   data=singleview_sequence
-.venv/bin/python -m src.tasks.blcs.scripts.train model=multiview data=multiview_sequence
-.venv/bin/python -m src.tasks.blcs.scripts.train model=multiview_axial_large              # サイズバリアント差し替え
-.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_chunked              # チャンク学習
-.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_chunked_gan          # チャンク学習 + GAN
-```
-
-`configs/training/default.yaml` は `max_epochs=100`、`lr=1e-4`、warmup=200、cosineスケジューラ、`bf16-mixed`。`train.py --config-name train_chunked` / `train_chunked_gan` で実験構成を差し替えられます。個別に切り替える場合、チャンク学習は `data=chunked_multiview_sequence_bs{4,8,16}` と `training=chunked`、GAN は `training=gan_{small,base,large}` を選ぶと有効化されます。
-
-| モデル config | data config | 概要 |
-|---|---|---|
-| `single` | `singleview_sequence` | 単一カメラ（batch=32、seq 64〜1024） |
-| `multiview` | `multiview_sequence` | クロスアテンション統合（batch=4、view 4〜6） |
-| `multiview_axial_{small,base,large,xlarge}` | `multiview_sequence` | 軸別注意（`_base` がデフォルト）。チャンク学習は `chunked_multiview_sequence_bs{4,8,16}` |
-
-## 可視化
-
-```bash
-.venv/bin/python -m src.tasks.blcs.scripts.visualize                          # multiview GT（デフォルト）
-.venv/bin/python -m src.tasks.blcs.scripts.visualize visualization=single
-
-# ckptによる GT vs 予測の比較アニメーション
-.venv/bin/python -m src.tasks.blcs.scripts.visualize \
-    visualization=multiview visualization.mode=predict \
-    visualization.checkpoint=outputs/blcs/blcs_multiview_axial/logs/version_0/checkpoints/last.ckpt \
-    visualization.cameras=all \
-    visualization.save=outputs/blcs/visualize/compare_multiview.mp4
-```
-
-`visualization.animation_view` は `2d` / `3d` をサポートします。
-
-## モデル
-
-| 名前 | アーキテクチャ | 実装 |
-|---|---|---|
-| `single` (`blcs`) | Decoder-only Transformer（RoPE + SDPA + SwiGLU + RMSNorm）。`[court(20), ball(T)]` トークン列を自己注意 | `models/blcs_model.py` |
-| `multiview` (`blcs_multiview`) | クエリベースのクロスアテンション（同時刻のマルチビューを統合→時間方向自己注意） | `models/blcs_multiview_model.py` |
-| `multiview_axial` (`blcs_multiview_axial`) | カメラ軸／時間軸の交互self-attention（ローカル時間窓 `time_window_radius`） | `models/blcs_multiview_axial_model.py` |
-
-## 補足
-
-- 実行は `.venv/bin/python -m ...`。学習をCPUで試す場合は `run.gpus=0`。
-- 生成・学習・可視化はすべて `data/blcs/scenes/` のシーンを起点にします（chunked data config はオンライン生成）。
+### configs/
+- model(single/multiview/axialサイズ違い)・data(single/multiview/chunked)・training(default/chunked/GAN)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定。

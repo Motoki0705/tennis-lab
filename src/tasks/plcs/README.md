@@ -1,136 +1,60 @@
-# PLCS (Player Localization in Court System)
+# PLCS
 
-> 2D pose（COCO 17点）とコートキーポイントから、コート座標系におけるプレイヤーの3D位置とヨー回転を推定するタスク。
+2D の人物 pose とコート keypoint から、コート座標系でのプレイヤー `position`/`rotation`（および任意で canonical 3D pose）を推定するタスクです。AMASS/SMPL-H モーションと仮想カメラから学習データを合成する generator、frame/sequence/multiview の各モデル、Lightning 学習、推論、可視化までを一貫して提供します。
 
-## 概要
+## Modules
 
-複数カメラ・時系列の2D観測をTransformerで統合し、コート座標系の位置と向きを復元します。frame / sequence / multiview の3モードを共通の `PLCSPredictor` で扱います。
+### data/
+- **`dataset.py`**: `SceneDataset`。sceneをcamera-time基準のcanonical sample(`human_kp`/`court_kp`/`position`/`rotation`等)に変換。
+- **`datamodule.py`**: `PLCSDataModule`。`model.io.input_profile`(`frame`/`sequence`/`multiview`)に応じてbatch構築。
+- **`augmentation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
+- **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
+- **`targets.py`**: `build_coco17_world_targets()`。canonical poseまたはAthletePose3DからCOCO17ワールド座標targetを構築。
+- **`types.py`**: `PLCSBatch`/`PLCSSceneMeta` のバッチ・meta契約。
 
-| 項目 | 内容 |
-|---|---|
-| 入力 | 2D人物キーポイント `human_kp`（COCO17）+ コートキーポイント `court_kp` |
-| 出力 | 3D位置 `position`（正規化 + メートル）+ 回転 `rotation`（cos/sin yaw） |
-| モデル | `multiview_axial_{small,base,large,xlarge}` |
-| データ | AMASS（ACCAD）モーション + SMPL-H による合成生成 |
-| 役割 | 認識パイプラインの下流。2D pose検出と [court_detection](../court_detection/) の観測を3D化 |
+### models/
+- **`__init__.py`**: `build_plcs_model(config)`。5種のモデル実装をdispatch。
+- **`plcs_model.py`**: `PLCSModel`。単視点frame向けdecoder-only Transformer(court+playerトークン)。
+- **`plcs_multiview_model.py`**: `PLCSMultiViewModel`。camera×time interleaved RoPEによるmultiview Transformer。
+- **`plcs_multiview_axial_model.py`**: `PLCSMultiViewAxialModel`。camera軸/time軸交互self-attention(共有readout)。
+- **`plcs_multiview_axial_split_model.py`**: `PLCSMultiViewAxialSplitModel`(issue #518)。rotation/pose trunkを分離。
+- **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
+- **`components/heads.py`**: `PositionHead`/`RotationHead`/`CanonicalPoseHead`。
+- **`discriminators/`**: `PLCSPoseSequenceDiscriminator` と工場関数 `build_plcs_discriminator`。
 
-## Inference
+### training/
+- **`runner.py`**: `PLCSTrainingRunner`。`data.backend` でdefault/chunked datamoduleを切替。
+- **`lightning_module.py`**: `PLCSLightningModule`。supervised+canonical+MCMCノイズ+GANを統括。
+- **`losses.py`**: `PLCSLoss`/`PLCSLossConfig`。position/rotation/canonical/角速度をプラガブルなレジストリで合算。
+- **`metrics.py`**: `PLCSMetrics`。メートル換算誤差・角度誤差・閾値内accuracyを集計。
+- **`mcmc.py`**: `LangevinNoiseInjector`(issue #519)。rotation headのflat saddle脱出用SGLDノイズ注入。
 
-camera-time順 `(B, N, T, ...)` を正準とし、モデルに応じて内部でスライスされます。
+### inference/
+- **`predictor.py`**: `PLCSPredictor`。`predict(denormalize=True)` で `position_meters`/`yaw_radians` を返す。
 
-```python
-import torch
-from src.tasks.plcs.inference.predictor import PLCSPredictor
+### generate_dataset/
+- **`config.py`**: `prepare_generation_config()`。パス解決とconfig絶対化。
+- **`scene_generator.py`**: `SceneGenerator`。AMASSモーションをコート座標へ変換しマルチカメラ投影してsceneを構築。
+- **`sampling/motion_sampler.py`**: `MotionSampler`。AMASS/SMPL-Hモーションの重み付きサンプリングとjoint計算。
+- **`io/dataset_io.py` / `io/scene_loader.py`**: シーンのnpy/json書き出し・読み込み。
+- **`utils/parallel_runner.py`**: CPU専用の並列シーン生成ラッパー。
 
-predictor = PLCSPredictor.load_from_checkpoint(
-    "outputs/plcs/plcs_multiview_axial/logs/version_0/checkpoints/last.ckpt",
-    device="cpu",
-)
+### visualization/
+- **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
+- **`api/predict.py`**: `predict_scene()`。モデル型に応じてframe/multiview推論を切替。
+- **`contracts.py`**: `PoseRenderScene`。renderer向け最小scene契約。
+- **`rendering/scene_renderer.py`**: `PLCSSceneRenderer`。3D/2D top-downのGT・予測比較アニメーション。
+- **`adapters/`**: predictor入力構築と学習時qualitative描画用変換。
+- **`orchestrator.py`**: `run_visualization()`。visualize/predictモードを統括。
 
-# Frame モード（単一フレーム・単一カメラ）
-human_kp = torch.zeros(2, 17, 2)   # (B, 17, 2)
-court_kp = torch.zeros(2, 20, 2)   # (B, 20, 2)
-out = predictor.predict(human_kp, court_kp)
-# out["position"] (2, 3) / out["rotation"] (2, 2) / out["position_meters"] (2, 3) / out["yaw_radians"] (2,)
+### scripts/
+- **`train.py`**: 学習エントリポイント(chunked/GAN切替可)。
+- **`generate_dataset.py`**: 並列合成データ生成エントリポイント。
+- **`visualize.py`**: 可視化エントリポイント。
+- **`analysis/*.py`**: データセット分布・角速度統計・loss dominance・回転誤差サンプル抽出の分析スクリプト群。
 
-# Multiview モード（複数カメラ×時系列）
-human_kp   = torch.zeros(1, 3, 64, 17, 2)  # (B, N, T, 17, 2)
-court_kp   = torch.zeros(1, 3, 64, 20, 2)  # (B, N, T, 20, 2)
-human_mask = torch.ones(1, 3, 64)          # (B, N, T), True=valid
-out = predictor.predict(human_kp, court_kp, human_mask=human_mask)
-# out["position"] (1, 64, 3) / out["rotation"] (1, 64, 2)
-```
+### utils/
+- **`pose_geometry.py`**: `src.utils.geometry.court_pose` からのre-export(歴史的importパス維持)。
 
-`predict(human_kp, court_kp, human_vis=None, human_mask=None, court_vis=None, denormalize=True)`。返り値は全テンソルが CPU 上の `dict[str, Tensor]`。
-
-| キー | 形状（Frame / Multiview） | 条件 | 説明 |
-|---|---|---|---|
-| `position` | `(B, 3)` / `(B, T, 3)` | 常時 | 正規化コート座標 |
-| `rotation` | `(B, 2)` / `(B, T, 2)` | 常時 | `(cos yaw, sin yaw)`（L2正規化済み） |
-| `position_meters` | `(B, 3)` / `(B, T, 3)` | `denormalize=True` | メートル単位の位置 |
-| `yaw_radians` | `(B,)` / `(B, T)` | `denormalize=True` | ヨー角（ラジアン） |
-| `canonical_pose` | `(B, 17, 3)` / `(B, T, 17, 3)` | `predict_canonical_pose=True` | ヨー正規化ローカル関節 |
-
-スケールは `COURT_COORD_SCALE_(X,Y,Z) = (5.485, 11.885, 1.07)` [m]（`src/utils/schema/court.py`）。
-
-### 入力テンソル仕様
-
-| モード（`input_profile`） | `human_kp` | `court_kp` | `human_mask` |
-|---|---|---|---|
-| `frame` | `(B, 17, 2)` | `(B, 20, 2)` | `(B,)` または None |
-| `sequence` | `(B, T, 17, 2)` | `(B, T, 20, 2)` | `(B, T)` |
-| `multiview` | `(B, N, T, 17, 2)` | `(B, N, T, 20, 2)` | `(B, N, T)` |
-
-## データセット生成
-
-PLCSはAMASSモーションを用いて合成生成します（既存データセットなし）。
-
-```bash
-.venv/bin/python -m src.tasks.plcs.scripts.generate_dataset
-.venv/bin/python -m src.tasks.plcs.scripts.generate_dataset simulation.num_scenes=10 run.num_workers=4
-
-# 生成データの位置・ヨー・カメラ数分布を集計
-.venv/bin/python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution
-```
-
-- **仕様**: AMASS（ACCAD: running/walking/general）モーションをSMPL-Hで再生し、複数カメラ（1280×720、高さ3〜5m、FOV60°）へ投影。デフォルト1000シーン。
-- **生成構造**（`data/plcs/scenes/scene_XXXXXX/`）:
-
-```text
-scene_000000/
-├── meta.json / scalars.json   # num_cameras, fps, num_frames, カメラパラメータ
-├── position.npy               # (T, 3) 正規化座標
-├── rotation.npy               # (T, 2) (cos yaw, sin yaw)
-├── canonical_pose_3d.npy      # (T, 17, 3) ヨー正規化ローカル関節
-└── cam_{i}_*.npy              # human_kp_uv (T,17,2), court_kp_uv (T,20,2), *_visible ...
-```
-
-## 学習
-
-```bash
-.venv/bin/python -m src.tasks.plcs.scripts.train                  # multiview_axial_base（デフォルト）
-.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_chunked
-.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_chunked data.chunk.scenes_per_chunk=500
-.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_chunked_gan
-```
-
-`model` config は `multiview_axial_{small,base,large,xlarge}`、`data` config は `singleview_frame` / `singleview_sequence` / `multiview_sequence` / `chunked_multiview_sequence_bs{8,16,32}`。`train.py --config-name train_chunked` / `train_chunked_gan` で実験構成を差し替えられます。GAN はオプトインで、`training=gan_{small,base,large}` を選ぶと有効化。出力先は `outputs/plcs/${model.name}/`。
-
-| モデル config | data config | 概要 |
-|---|---|---|
-| `multiview_axial_{small,base,large,xlarge}` | `multiview_sequence` | 軸別注意（`_base` がデフォルト） |
-| `multiview_axial_{small,base,large,xlarge}` | `chunked_multiview_sequence_bs{8,16,32}` | チャンク学習（GPUサイズに合わせてbs選択） |
-
-## 可視化
-
-```bash
-.venv/bin/python -m src.tasks.plcs.scripts.visualize             # GT表示（デフォルト）
-
-# ckptによる GT vs 予測の比較
-.venv/bin/python -m src.tasks.plcs.scripts.visualize \
-    visualization.mode=predict \
-    visualization.checkpoint=outputs/plcs/plcs_multiview_axial/logs/version_0/checkpoints/last.ckpt \
-    visualization.scene_path=data/plcs/scenes/scene_000000 \
-    visualization.animation_view=3d \
-    visualization.save=assets/plcs/pred.gif
-
-# マルチビュー（全カメラ）
-.venv/bin/python -m src.tasks.plcs.scripts.visualize visualization.cameras=all
-```
-
-可視化は単一の `visualize.py` に統合されており、`visualization.cameras=all`（または `0,1,2`）でマルチビューに対応します。`animation_view` は `3d` / `2d_topdown` / `camera`（`predict` モードでは `camera` 不可）。
-
-## モデル
-
-| 名前 | アーキテクチャ | 実装 |
-|---|---|---|
-| `frame` (`plcs`) | Llama系 decoder-only Transformer（MHA + SwiGLU + RMSNorm）。`[CLS, Register×4, court(20), player(17)]` トークン列に3軸MROPE | `models/plcs_model.py` |
-| `multiview` (`plcs_multiview`) | 全カメラ×全時間を一括処理するTransformer。3軸MROPE、(camera,time)のCLSをカメラ次元で平均プール | `models/plcs_multiview_model.py` |
-| `multiview_axial` (`plcs_multiview_axial`) | カメラ軸／時間軸の交互self-attention（Axial attention）。**現在のデフォルト**（`small/base/large/xlarge` の4バリアント） | `models/plcs_multiview_axial_model.py` |
-
-`build_plcs_model(config)` が `config.model.name` でモデルを切り替えます。
-
-## 補足
-
-- 実行は `.venv/bin/python -m ...`。学習をCPUで試す場合は `run.gpus=0`。
-- データ生成にはAMASSモーション（`data/ACCAD/`）とSMPL-Hモデル（`data/smplx/smplh/`、`smplx` パッケージ）が必要です。
+### configs/
+- model(frame/multiview/axial系サイズ違い)・data(singleview/multiview/chunked)・loss(canonical段階別)・training(default/GAN/MCMC)・metrics・motion_sources・simulation/camera/paths(生成用)・visualization・run・analysis の各Hydra設定。
