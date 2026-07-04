@@ -10,7 +10,7 @@
 |---|---|
 | `src/tasks/ball_detection` | 2Dボール検出 |
 | `src/tasks/court_detection` | 2Dコート検出 |
-| `third_party/GVHMR` | 2Dプレーヤーpose検出 および 3Dプレーヤーpose推定 |
+| `src/submodules` | 2Dプレーヤーpose検出 および 3Dプレーヤーpose推定（GVHMR 移植版。重みは `ckpt/` → `third_party/GVHMR/inputs/checkpoints` の symlink） |
 | `src/tasks/blcs` | 2D ball + 2D court から3Dボール軌道を推論 |
 | `src/tasks/plcs` | 2D pose + 2D court から3Dプレーヤーの位置・回転を推論 |
 

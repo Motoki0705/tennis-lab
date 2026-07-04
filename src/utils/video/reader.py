@@ -83,3 +83,33 @@ class OpenCVVideoFrameReader:
                 frame_index += 1
         finally:
             cap.release()
+
+
+def read_video_rgb(
+    video_path: str | Path,
+    *,
+    max_frames: int | None = None,
+    scale: float = 1.0,
+) -> NDArray[np.uint8]:
+    """Decode a whole video into an RGB uint8 array of shape (N, H, W, 3).
+
+    Args:
+        video_path: Source video file.
+        max_frames: Optional cap on the number of decoded frames.
+        scale: Uniform spatial scale factor applied to every frame
+            (``INTER_AREA`` for downscaling-friendly resampling).
+    """
+    if scale <= 0:
+        raise ValueError(f"scale must be positive, got {scale}")
+
+    frames: list[NDArray[np.uint8]] = []
+    for packet in OpenCVVideoFrameReader(video_path, max_frames=max_frames):
+        frame_bgr = packet.frame
+        if scale != 1.0:
+            frame_bgr = cv2.resize(
+                frame_bgr, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA
+            )
+        frames.append(frame_bgr[..., ::-1])
+    if not frames:
+        raise RuntimeError(f"No frames decoded from {video_path}")
+    return np.ascontiguousarray(np.stack(frames, axis=0))

@@ -1,0 +1,34 @@
+# GVHMR demo: video -> SMPL mesh rendered from the camera viewpoint.
+defaults:
+  - _self_
+  - override hydra/job_logging: stdout
+
+video_path: data/samples/tennis_clip.mp4
+output_dir: outputs/gvhmr_demo
+output_name: null # defaults to <video stem>_incam.mp4
+
+# Tracking
+num_tracks: 2 # persons to reconstruct (largest first)
+interactive_tracks: false # open the track-selection UI instead
+max_frames: null
+
+# Models
+device: auto
+static_cam: true
+checkpoints:
+  yolo: ckpt/yolo/yolov8x.pt
+  vitpose: ckpt/vitpose/vitpose-h-multi-coco.pth
+  hmr2: ckpt/hmr2/epoch=10-step=25000.ckpt
+  gvhmr: ckpt/gvhmr/gvhmr_siga24_release.ckpt
+
+# SMPL faces source (SMPL and SMPL-H share topology)
+smpl_faces_path: data/smplh/neutral/model.npz
+
+# Rendering
+mesh_alpha: 0.85
+video_crf: 20
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .

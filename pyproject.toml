@@ -140,6 +140,11 @@ ignore = [
 fixable = ["ALL"]
 unfixable = []
 
+[tool.ruff.lint.per-file-ignores]
+# Vendored GVHMR research code is kept close to upstream; style-only rules are
+# relaxed there (pyflakes stays active). See src/submodules/vendor/gvhmr/README.md.
+"src/submodules/vendor/**" = ["B", "SIM", "E731"]
+
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
 quote-style = "double"
@@ -187,6 +192,7 @@ strict_equality = true
 [[tool.mypy.overrides]]
 module = [
     "cv2.*",
+    "mpl_toolkits.*",
     "torch.*",
     "torchvision.*",
     "tqdm.*",
@@ -204,6 +210,13 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["third_party.*"]
+ignore_errors = true
+
+# Vendored GVHMR research code (see src/submodules/vendor/gvhmr/README.md).
+# Ported nearly verbatim from third_party/GVHMR and intentionally left
+# untyped; typed wrappers live in src.submodules.models.
+[[tool.mypy.overrides]]
+module = ["src.submodules.vendor.*"]
 ignore_errors = true
 
 # Tests are still type-checked (bodies are validated), but pytest's own

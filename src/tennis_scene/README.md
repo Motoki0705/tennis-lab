@@ -1,6 +1,6 @@
 # `src/tennis_scene`
 
-`src/tasks/ball_detection`, `src/tasks/court_detection`, `third_party/GVHMR`, `src/tasks/plcs`, `src/tasks/blcs` をつないで、同期済みマルチカメラ動画から 1 つの `SceneResult` を組み立てる統合パイプラインです。カメラは固定（静止カメラ、カメラ回転推定なし）を前提とします。
+`src/tasks/ball_detection`, `src/tasks/court_detection`, `src/submodules`（GVHMR）, `src/tasks/plcs`, `src/tasks/blcs` をつないで、同期済みマルチカメラ動画から 1 つの `SceneResult` を組み立てる統合パイプラインです。カメラは固定（静止カメラ、カメラ回転推定なし）を前提とします。
 
 ## Modules
 
@@ -12,7 +12,7 @@
 - **`orchestrator.py`**: `TennisSceneOrchestrator`。全stageの構築・同期検証・実行・`SceneResult`組み立てを統括。
 - **`dependency_graph.py`**: `PipelineDependencyGraph`。stage依存(`PLCS<-COURT_KP,GVHMR`等)の解決・循環検出。
 - **`components/court_kp.py`**: `CourtKPModule`。手動UIまたはモデル推論でコートkeypointを取得。
-- **`components/gvhmr.py`**: `GVHMRModule`。GVHMRをサブプロセスまたは直接実行しSMPL/2D poseを取得。
+- **`components/gvhmr.py`**: `GVHMRModule`。`src/submodules/models` の GVHMR チェーン（tracking→ViTPose→HMR2→GVHMR）をサブプロセスまたは直接実行しSMPL/2D poseを取得。重みは `ckpt/` symlink 経由。
 - **`components/player_association.py`**: `PlayerAssociationModule`。カメラ間player対応付け(手動UI)を正準player軸へ整列。
 - **`components/plcs.py`**: `PLCSModule`。`court_kp`をplayer数へexpandしPLCS predictorへ渡す。
 - **`components/ball_detection.py`**: `BallDetectionModule`。スライディングウィンドウ推論とオーバーラップ集約。
