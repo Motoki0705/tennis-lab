@@ -16,6 +16,8 @@ from src.utils.io import load_json, save_json
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from src.tasks.plcs.inference.predictor import PLCSPredictor
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -112,7 +114,7 @@ class PLCSModule(BasePipelineModule):
         self.config = config
         self.checkpoint_path = Path(self.config.checkpoint_path)
         self.device = self.config.device
-        self._predictor = None
+        self._predictor: PLCSPredictor | None = None
 
     def load(self) -> None:
         if self._predictor is not None:
@@ -124,10 +126,39 @@ class PLCSModule(BasePipelineModule):
         self._predictor = PLCSPredictor.load_from_checkpoint(
             self.checkpoint_path, device=self.device
         )
+        self._validate_pipeline_checkpoint_profile()
 
     @property
     def is_loaded(self) -> bool:
         return self._predictor is not None
+
+    def _validate_pipeline_checkpoint_profile(self) -> None:
+        """Reject single-view PLCS checkpoints before pipeline tensor assembly."""
+        if self._predictor is None:
+            raise RuntimeError("PLCS predictor is not loaded")
+
+        from src.tasks.plcs.models import (
+            PLCSMultiViewAxialCamTokenModel,
+            PLCSMultiViewAxialModel,
+            PLCSMultiViewAxialSplitModel,
+            PLCSMultiViewModel,
+        )
+
+        supported = (
+            PLCSMultiViewModel,
+            PLCSMultiViewAxialModel,
+            PLCSMultiViewAxialSplitModel,
+            PLCSMultiViewAxialCamTokenModel,
+        )
+        model = self._predictor.model
+        if not isinstance(model, supported):
+            raise ValueError(
+                "tennis_scene PLCS pipeline requires a multiview PLCS checkpoint "
+                "(model.io.input_profile=multiview) because it passes tensors as "
+                "(P, N, T, 17, 2). "
+                f"Loaded model class {model.__class__.__name__!r} is not supported; "
+                "frame/sequence single-view checkpoints must not be used here."
+            )
 
     def process(
         self,
@@ -160,6 +191,9 @@ class PLCSModule(BasePipelineModule):
 
         if not self.is_loaded:
             self.load()
+        predictor = self._predictor
+        if predictor is None:
+            raise RuntimeError("PLCS predictor is not loaded")
 
         if human_kp_2d.ndim != 5 or human_kp_2d.shape[3:] != (17, 2):
             raise ValueError(
@@ -230,7 +264,7 @@ class PLCSModule(BasePipelineModule):
             dtype=torch.float32,
         )
 
-        pred = self._predictor.predict(
+        pred = predictor.predict(
             human_kp=human_kp_t,
             court_kp=court_kp_t,
             human_vis=human_vis_t,

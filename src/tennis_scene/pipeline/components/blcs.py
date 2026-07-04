@@ -16,6 +16,8 @@ from src.utils.io import load_json, save_json
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from src.tasks.blcs.inference.predictor import BLCSPredictor
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -127,7 +129,7 @@ class BLCSModule(BasePipelineModule):
         self.config = config
         self.checkpoint_path = Path(self.config.checkpoint_path)
         self.device = self.config.device
-        self._predictor = None
+        self._predictor: BLCSPredictor | None = None
 
     def load(self) -> None:
         """Load the BLCS predictor."""
@@ -141,11 +143,30 @@ class BLCSModule(BasePipelineModule):
         self._predictor = BLCSPredictor.load_from_checkpoint(
             self.checkpoint_path, device=self.device
         )
+        self._validate_pipeline_checkpoint_profile()
 
     @property
     def is_loaded(self) -> bool:
         """Check if the model is loaded."""
         return self._predictor is not None
+
+    def _validate_pipeline_checkpoint_profile(self) -> None:
+        """Reject single-view BLCS checkpoints before pipeline tensor assembly."""
+        if self._predictor is None:
+            raise RuntimeError("BLCS predictor is not loaded")
+
+        from src.tasks.blcs.models import BLCSMultiViewAxialModel, BLCSMultiViewModel
+
+        supported = (BLCSMultiViewModel, BLCSMultiViewAxialModel)
+        model = self._predictor.model
+        if not isinstance(model, supported):
+            raise ValueError(
+                "tennis_scene BLCS pipeline requires a multiview BLCS checkpoint "
+                "(model.io.input_profile=multiview) because it passes tensors as "
+                "(B, N, T, 2). "
+                f"Loaded model class {model.__class__.__name__!r} is not supported; "
+                "single-view checkpoints must not be used here."
+            )
 
     def process(
         self,
@@ -177,6 +198,9 @@ class BLCSModule(BasePipelineModule):
 
         if not self.is_loaded:
             self.load()
+        predictor = self._predictor
+        if predictor is None:
+            raise RuntimeError("BLCS predictor is not loaded")
 
         LOGGER.info("Running BLCS ball localization...")
 
@@ -226,7 +250,7 @@ class BLCSModule(BasePipelineModule):
         if court_vis is not None:
             court_vis_t = torch.from_numpy(court_vis).float().unsqueeze(0)
 
-        pred = self._predictor.predict(
+        pred = predictor.predict(
             ball_uv=ball_uv_t,
             court_kp=court_kp_t,
             ball_vis=ball_vis_t,
