@@ -255,8 +255,24 @@ class PlayerAssociationModule(BasePipelineModule):
                 )
                 return result
             LOGGER.warning(
-                f"load_path specified but not found: {load_path}, opening manual UI"
+                f"load_path specified but not found: {load_path}, "
+                "creating association from current inputs"
             )
+
+        if len(camera_ids) == 1:
+            result = self._process_single_camera_identity(
+                camera_ids=camera_ids,
+                num_frames=num_frames,
+                local_player_counts=local_player_counts,
+            )
+            self._validate_or_raise(
+                result,
+                num_frames=num_frames,
+                local_player_counts=local_player_counts,
+            )
+            if self.config.save_result and self.config.output_path is not None:
+                result.save(self.config.output_path)
+            return result
 
         result = self._process_manual_ui(
             gvhmr_results=gvhmr_results,
@@ -310,6 +326,39 @@ class PlayerAssociationModule(BasePipelineModule):
         )
         if not is_valid:
             raise ValueError(f"Invalid player association result: {errors}")
+
+    def _process_single_camera_identity(
+        self,
+        *,
+        camera_ids: Sequence[str],
+        num_frames: int,
+        local_player_counts: Sequence[int],
+    ) -> PlayerAssociationResult:
+        """Create explicit identity association for a single-camera pipeline run."""
+        num_players = int(local_player_counts[0])
+        if num_players <= 0:
+            raise ValueError("GVHMR did not produce any players")
+
+        reference_camera = self._resolve_reference_camera(camera_ids)
+        LOGGER.info(
+            "single camera -> identity association: "
+            f"camera={camera_ids[0]}, players={num_players}"
+        )
+        return PlayerAssociationResult(
+            camera_ids=list(camera_ids),
+            canonical_player_ids=np.arange(num_players, dtype=np.int32),
+            segments=[
+                PlayerAssociationSegment(
+                    start_frame=0,
+                    end_frame=num_frames,
+                    assignments=np.arange(num_players, dtype=np.int32).reshape(
+                        num_players,
+                        1,
+                    ),
+                )
+            ],
+            reference_camera=reference_camera,
+        )
 
     def _process_manual_ui(
         self,
@@ -559,15 +608,27 @@ def apply_player_association(
     first_result = gvhmr_results[0]
     num_frames = int(first_result.human_kp_2d.shape[1])
 
-    human_kp_2d = np.zeros((num_players, num_cameras, num_frames, 17, 2), dtype=np.float32)
-    human_kp_vis = np.zeros((num_players, num_cameras, num_frames, 17), dtype=np.float32)
+    human_kp_2d: NDArray[np.float32] = np.zeros(
+        (num_players, num_cameras, num_frames, 17, 2),
+        dtype=np.float32,
+    )
+    human_kp_vis: NDArray[np.float32] = np.zeros(
+        (num_players, num_cameras, num_frames, 17),
+        dtype=np.float32,
+    )
 
     reference_camera_index = association.reference_camera_index()
     reference_result = gvhmr_results[reference_camera_index]
-    smpl_body_pose = np.zeros((num_players, num_frames, 63), dtype=np.float32)
-    smpl_global_orient = np.zeros((num_players, num_frames, 3), dtype=np.float32)
-    smpl_betas = np.zeros((num_players, 10), dtype=np.float32)
-    smpl_vertices_local = None
+    smpl_body_pose: NDArray[np.float32] = np.zeros(
+        (num_players, num_frames, 63),
+        dtype=np.float32,
+    )
+    smpl_global_orient: NDArray[np.float32] = np.zeros(
+        (num_players, num_frames, 3),
+        dtype=np.float32,
+    )
+    smpl_betas: NDArray[np.float32] = np.zeros((num_players, 10), dtype=np.float32)
+    smpl_vertices_local: NDArray[np.float32] | None = None
     if reference_result.smpl_vertices_local is not None:
         vertex_shape = reference_result.smpl_vertices_local.shape[2:]
         smpl_vertices_local = np.zeros(

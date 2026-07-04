@@ -43,8 +43,11 @@ data/ACCAD/
 data/samples/
 data/smplh/
 data/smplx/
+.codex-runs/
 data/plcs/
+data/plcs_broadcast/
 data/blcs/
+data/blcs_broadcast/
 data/blcs_fixed_8
 data/demo/
 data/tennis/

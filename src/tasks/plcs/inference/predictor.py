@@ -42,7 +42,7 @@ class PLCSPredictor(BasePredictor):
         )
         return cls(model=model, device=resolved_device)
 
-    @torch.no_grad()
+    @torch.no_grad()  # type: ignore[untyped-decorator]
     def predict(
         self,
         human_kp: Tensor,
@@ -87,6 +87,6 @@ class PLCSPredictor(BasePredictor):
             result["position_meters"] = self._denormalize_coords(
                 position, self._norm_scale_xyz
             )
-            result["yaw_radians"] = torch.atan2(rotation[..., 0], rotation[..., 1])
+            result["yaw_radians"] = torch.atan2(rotation[..., 1], rotation[..., 0])
 
         return {k: v.detach().cpu() for k, v in result.items()}
