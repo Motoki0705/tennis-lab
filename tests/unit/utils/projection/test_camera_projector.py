@@ -3,18 +3,23 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import pytest
 import torch
 
 from src.utils.projection.camera_projector import (
+    BROADCAST_LAYOUT,
+    FIXED_LAYOUT,
     Camera,
     CameraConfig,
     CameraProjector,
     CameraView,
+    camera_config_from_mapping,
     make_look_at_camera,
     project_points,
 )
+from src.utils.schema.court import HALF_LENGTH
 
 
 class TestMakeLookAtCamera:
@@ -120,3 +125,152 @@ class TestCameraDataclass:
             C=torch.zeros(3), R=torch.eye(3), f=1.0, cx=0.5, cy=0.5, w=2, h=2
         )
         assert cam.f == 1.0
+
+
+def _deterministic_broadcast_config(**overrides: object) -> CameraConfig:
+    """Broadcast config with all per-scene jitter disabled."""
+    params: dict[str, object] = dict(
+        layout=BROADCAST_LAYOUT,
+        broadcast_position_noise_radius=0.0,
+        broadcast_look_at_xy_radius=0.0,
+        broadcast_hfov_jitter_deg=0.0,
+    )
+    params.update(overrides)
+    return CameraConfig(**params)  # type: ignore[arg-type]
+
+
+class TestBroadcastCameras:
+    def test_returns_two_cameras(self) -> None:
+        projector = CameraProjector(config=_deterministic_broadcast_config())
+        cams = projector.broadcast_cameras()
+        assert len(cams) == 2
+
+    def test_cameras_sit_behind_each_baseline(self) -> None:
+        cfg = _deterministic_broadcast_config(broadcast_setback=20.0)
+        projector = CameraProjector(config=cfg)
+        near, far = projector.broadcast_cameras()
+        expected_y = HALF_LENGTH + 20.0
+        # Centred on the court, one behind each baseline (mirror in Y).
+        assert near.C[0].item() == pytest.approx(0.0, abs=1e-5)
+        assert far.C[0].item() == pytest.approx(0.0, abs=1e-5)
+        assert near.C[1].item() == pytest.approx(-expected_y, abs=1e-4)
+        assert far.C[1].item() == pytest.approx(+expected_y, abs=1e-4)
+        # Behind the baselines, not merely on them.
+        assert abs(near.C[1].item()) > HALF_LENGTH
+        assert abs(far.C[1].item()) > HALF_LENGTH
+
+    def test_mirror_pair_shares_height_and_intrinsics(self) -> None:
+        projector = CameraProjector(config=_deterministic_broadcast_config())
+        near, far = projector.broadcast_cameras()
+        assert near.C[2].item() == pytest.approx(far.C[2].item(), abs=1e-6)
+        assert near.f == pytest.approx(far.f, rel=1e-6)
+        assert (near.w, near.h) == (far.w, far.h)
+
+    def test_deterministic_without_noise(self) -> None:
+        projector = CameraProjector(config=_deterministic_broadcast_config())
+        a = projector.broadcast_cameras()
+        b = projector.broadcast_cameras()
+        for ca, cb in zip(a, b, strict=True):
+            assert torch.allclose(ca.C, cb.C)
+            assert torch.allclose(ca.R, cb.R)
+            assert ca.f == pytest.approx(cb.f)
+
+    def test_both_cameras_frame_the_full_court(self) -> None:
+        projector = CameraProjector(config=_deterministic_broadcast_config())
+        for cam in projector.broadcast_cameras():
+            _, visible = projector.project_court_keypoints(cam)
+            assert int(visible.sum()) == 20
+
+    def test_is_telephoto_relative_to_default_wide_fov(self) -> None:
+        # 35 deg broadcast FOV -> longer focal length than the 60 deg default.
+        broadcast = CameraProjector(config=_deterministic_broadcast_config())
+        default_cam = make_look_at_camera(
+            center=(0.0, 0.0, 5.0), image_size=(1280, 720), hfov_deg=60.0
+        )
+        assert broadcast.broadcast_cameras()[0].f > default_cam.f
+
+    def test_noise_produces_variation(self) -> None:
+        cfg = CameraConfig(
+            layout=BROADCAST_LAYOUT,
+            broadcast_position_noise_radius=1.0,
+            broadcast_look_at_xy_radius=1.0,
+            broadcast_hfov_jitter_deg=2.0,
+        )
+        projector = CameraProjector(config=cfg)
+        a = projector.broadcast_cameras()[0]
+        b = projector.broadcast_cameras()[0]
+        assert not torch.allclose(a.C, b.C)
+
+
+class TestCamerasDispatch:
+    def test_fixed_layout_returns_six(self) -> None:
+        cfg = CameraConfig(
+            layout=FIXED_LAYOUT,
+            fixed_position_noise_radius=0.0,
+            fixed_look_at_xy_radius=0.0,
+        )
+        assert len(CameraProjector(config=cfg).cameras()) == 6
+
+    def test_broadcast_layout_returns_two(self) -> None:
+        projector = CameraProjector(config=_deterministic_broadcast_config())
+        assert len(projector.cameras()) == 2
+
+    def test_unknown_layout_raises(self) -> None:
+        projector = CameraProjector(config=CameraConfig(layout="satellite"))
+        with pytest.raises(ValueError, match="Unknown camera layout"):
+            projector.cameras()
+
+    def test_default_layout_is_fixed(self) -> None:
+        assert CameraConfig().layout == FIXED_LAYOUT
+        assert len(CameraProjector().cameras()) == 6
+
+
+class TestCameraConfigFromMapping:
+    def test_maps_all_broadcast_fields(self) -> None:
+        cfg = camera_config_from_mapping(
+            {
+                "layout": "broadcast",
+                "image_size": [640, 360],
+                "broadcast_setback": 18.0,
+                "broadcast_height": 9.0,
+                "broadcast_hfov_deg": 33.0,
+                "broadcast_look_at_y": 1.0,
+                "broadcast_look_at_height": 0.75,
+                "broadcast_position_noise_radius": 0.5,
+                "broadcast_look_at_xy_radius": 0.5,
+                "broadcast_hfov_jitter_deg": 1.5,
+            }
+        )
+        assert cfg.layout == "broadcast"
+        assert cfg.image_size == (640, 360)
+        assert cfg.broadcast_setback == 18.0
+        assert cfg.broadcast_height == 9.0
+        assert cfg.broadcast_hfov_deg == 33.0
+        assert cfg.broadcast_look_at_height == 0.75
+        assert cfg.broadcast_hfov_jitter_deg == 1.5
+
+    def test_missing_keys_fall_back_to_defaults(self) -> None:
+        defaults = CameraConfig()
+        cfg = camera_config_from_mapping({"z_min": 4.0})
+        assert cfg.z_min == 4.0
+        # Everything unspecified keeps the dataclass default (fixed layout).
+        assert cfg.layout == defaults.layout
+        assert cfg.broadcast_setback == defaults.broadcast_setback
+        assert cfg.image_size == defaults.image_size
+
+    def test_empty_mapping_yields_defaults(self) -> None:
+        assert camera_config_from_mapping({}) == CameraConfig()
+
+    def test_accepts_omegaconf_dictconfig(self) -> None:
+        from omegaconf import OmegaConf
+
+        cfg = camera_config_from_mapping(
+            OmegaConf.create({"layout": "broadcast", "broadcast_height": 6.5})
+        )
+        assert cfg.layout == "broadcast"
+        assert cfg.broadcast_height == 6.5
+
+    def test_non_mapping_raises(self) -> None:
+        invalid_cfg: Any = 42
+        with pytest.raises(TypeError, match="mapping-like"):
+            camera_config_from_mapping(invalid_cfg)

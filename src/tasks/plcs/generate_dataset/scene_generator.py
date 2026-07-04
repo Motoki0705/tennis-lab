@@ -22,8 +22,8 @@ from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSequence,
 )
 from src.utils.projection.camera_projector import (
-    CameraConfig,
     CameraProjector,
+    camera_config_from_mapping,
 )
 from src.utils.schema.court import (
     COURT_COORD_SCALE_X,
@@ -118,16 +118,7 @@ class SceneGenerator:
 
         # Camera config
         cam_cfg = self.config.get("camera", {})
-        camera_config = CameraConfig(
-            z_min=float(cam_cfg.z_min),
-            z_max=float(cam_cfg.z_max),
-            hfov_deg=float(cam_cfg.hfov_deg),
-            image_size=tuple(cam_cfg.image_size),
-            fixed_look_at=tuple(cam_cfg.fixed_look_at),
-            fixed_baseline_clear_extra=float(cam_cfg.fixed_baseline_clear_extra),
-            fixed_position_noise_radius=float(cam_cfg.fixed_position_noise_radius),
-            fixed_look_at_xy_radius=float(cam_cfg.fixed_look_at_xy_radius),
-        )
+        camera_config = camera_config_from_mapping(cam_cfg)
         self.camera_projector = CameraProjector(camera_config)
         self.image_size = self.camera_projector.config.image_size
 
@@ -261,11 +252,15 @@ class SceneGenerator:
         r00 = c + x * x * one_minus_c
         r10 = y * x * one_minus_c + z * s
 
-        return np.arctan2(r10, r00).astype(np.float32)
+        yaw: np.ndarray = np.arctan2(r10, r00).astype(np.float32)
+        return yaw
 
     def _wrap_angle(self, angle: np.ndarray) -> np.ndarray:
         """Wrap angles to [-pi, pi]."""
-        return np.arctan2(np.sin(angle), np.cos(angle)).astype(np.float32)
+        wrapped: np.ndarray = np.arctan2(np.sin(angle), np.cos(angle)).astype(
+            np.float32
+        )
+        return wrapped
 
     def _smplh_to_coco17(
         self,
@@ -318,10 +313,8 @@ class SceneGenerator:
             )
             coco17[:, coco_idx, :] = head_pos + rotated_offset
 
-        if squeeze:
-            coco17 = coco17[0]
-
-        return coco17
+        result: np.ndarray = coco17[0] if squeeze else coco17
+        return result
 
     def _evaluate_camera(
         self,
@@ -380,8 +373,8 @@ class SceneGenerator:
         pelvis_world[:, 1] = positions[:, 1] * COURT_COORD_SCALE_Y
         pelvis_world[:, 2] = positions[:, 2] * COURT_COORD_SCALE_Z
 
-        cos_yaw = rotations[:, 0].astype(np.float32)
-        sin_yaw = rotations[:, 1].astype(np.float32)
+        cos_yaw: np.ndarray = rotations[:, 0].astype(np.float32)
+        sin_yaw: np.ndarray = rotations[:, 1].astype(np.float32)
         world_joints = np.empty_like(canonical_poses, dtype=np.float32)
         world_joints[..., 0] = (
             canonical_poses[..., 0] * cos_yaw[:, None]
@@ -406,7 +399,7 @@ class SceneGenerator:
 
         # Generate multiple cameras
         cameras_data = []
-        for camera in self.camera_projector.fixed_cameras():
+        for camera in self.camera_projector.cameras():
             # Project human keypoints
             human_uv = np.zeros((T, 17, 2), dtype=np.float32)
             human_vis = np.zeros((T, 17), dtype=bool)
