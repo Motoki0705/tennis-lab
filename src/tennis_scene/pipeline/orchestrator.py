@@ -31,6 +31,11 @@ from src.utils.video import probe_video_info
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
+    from src.tennis_scene.pipeline.components.gvhmr import GVHMRResult
+    from src.tennis_scene.pipeline.components.player_association import (
+        PlayerAssociationApplied,
+        PlayerAssociationResult,
+    )
     from src.utils.video import VideoInfo
 
 LOGGER = logging.getLogger(__name__)
@@ -76,7 +81,7 @@ class TennisSceneOrchestrator:
         def get_load_path(section: str) -> str | None:
             load_path = cfg[section].get("load_path")
             if load_path is not None:
-                return to_absolute_path(str(load_path))
+                return str(to_absolute_path(str(load_path)))
             return None
 
         def get_load_paths(section: str) -> str | list[str] | None:
@@ -84,13 +89,13 @@ class TennisSceneOrchestrator:
             if load_path is None:
                 return None
             if isinstance(load_path, (list, tuple, ListConfig)):
-                return [to_absolute_path(str(item)) for item in load_path]
-            return to_absolute_path(str(load_path))
+                return [str(to_absolute_path(str(item))) for item in load_path]
+            return str(to_absolute_path(str(load_path)))
 
         def get_output_path(section: str, default_name: str) -> str:
             output_path = cfg[section].get("output_path")
             if output_path is not None:
-                return to_absolute_path(str(output_path))
+                return str(to_absolute_path(str(output_path)))
             return str(output_dir / default_name)
 
         if Stage.COURT_KP not in resolution.enabled_set:
@@ -116,20 +121,15 @@ class TennisSceneOrchestrator:
                 "yolo_checkpoint": to_absolute_path(cfg.gvhmr.yolo_checkpoint),
                 "vitpose_checkpoint": to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
                 "hmr2_checkpoint": to_absolute_path(cfg.gvhmr.hmr2_checkpoint),
-                "smplx_model_type": str(
-                    cfg.gvhmr.get("smplx_model_type", "supermotion")
-                ),
-                "smplx2smpl_path": str(
-                    cfg.gvhmr.get(
-                        "smplx2smpl_path",
-                        "hmr4d/utils/body_model/smplx2smpl_sparse.pt",
-                    )
-                ),
                 "smplx_body_model_path": (
                     to_absolute_path(str(smplx_body_model_path))
                     if smplx_body_model_path is not None
                     else None
                 ),
+                "track_selection": str(
+                    cfg.gvhmr.get("track_selection", "interactive")
+                ),
+                "num_tracks": int(cfg.gvhmr.get("num_tracks", 2)),
                 "output_path": get_output_path("gvhmr", "gvhmr_result.json"),
                 "load_path": get_load_paths("gvhmr"),
                 "device": device,
@@ -254,7 +254,7 @@ class TennisSceneOrchestrator:
         camera_index: int,
         num_cameras: int,
         max_frames: int | None = None,
-    ):
+    ) -> GVHMRResult:
         from src.tennis_scene.pipeline.components.gvhmr import GVHMRResult
 
         if self.gvhmr_config is None:
@@ -292,8 +292,8 @@ class TennisSceneOrchestrator:
             f"--yolo-checkpoint={self.gvhmr_config['yolo_checkpoint']}",
             f"--vitpose-checkpoint={self.gvhmr_config['vitpose_checkpoint']}",
             f"--hmr2-checkpoint={self.gvhmr_config['hmr2_checkpoint']}",
-            f"--smplx-model-type={self.gvhmr_config['smplx_model_type']}",
-            f"--smplx2smpl-path={self.gvhmr_config['smplx2smpl_path']}",
+            f"--track-selection={self.gvhmr_config['track_selection']}",
+            f"--num-tracks={self.gvhmr_config['num_tracks']}",
             f"--device={self.gvhmr_config['device']}",
         ]
         if self.gvhmr_config.get("smplx_body_model_path") is not None:
@@ -337,26 +337,26 @@ class TennisSceneOrchestrator:
         court_kp_annotation_frame: int = 0,
         camera_ids: Sequence[str] | None = None,
     ) -> SceneResult:
-        video_paths = [Path(video_path) for video_path in video_paths]
-        if not video_paths:
+        resolved_video_paths = [Path(video_path) for video_path in video_paths]
+        if not resolved_video_paths:
             raise ValueError("video_paths must contain at least one video")
         if camera_ids is None:
-            camera_ids = [f"cam{idx}" for idx in range(len(video_paths))]
+            camera_ids = [f"cam{idx}" for idx in range(len(resolved_video_paths))]
         else:
             camera_ids = [str(camera_id) for camera_id in camera_ids]
-            if len(camera_ids) != len(video_paths):
+            if len(camera_ids) != len(resolved_video_paths):
                 raise ValueError(
                     f"camera_ids length must match video_paths length, "
-                    f"got {len(camera_ids)} and {len(video_paths)}"
+                    f"got {len(camera_ids)} and {len(resolved_video_paths)}"
                 )
 
-        video_infos = self._probe_synced_video_infos(video_paths, max_frames=max_frames)
+        video_infos = self._probe_synced_video_infos(resolved_video_paths, max_frames=max_frames)
         video_info = video_infos[0]
         width, height = video_info.width, video_info.height
-        num_cameras = len(video_paths)
+        num_cameras = len(resolved_video_paths)
 
         court_result = self.court_kp_module.process(
-            video_paths,
+            resolved_video_paths,
             max_frames=max_frames,
             annotation_frame_index=court_kp_annotation_frame,
         )
@@ -368,7 +368,7 @@ class TennisSceneOrchestrator:
                 association_result,
                 aligned_players,
             ) = self._run_gvhmr_multicamera(
-                video_paths=video_paths,
+                video_paths=resolved_video_paths,
                 video_infos=video_infos,
                 camera_ids=camera_ids,
                 max_frames=max_frames,
@@ -400,7 +400,7 @@ class TennisSceneOrchestrator:
             and self.ball_detection_module is not None
         ):
             ball_detection_result = self.ball_detection_module.process(
-                video_paths,
+                resolved_video_paths,
                 max_frames=max_frames,
                 image_width=width,
                 image_height=height,
@@ -440,7 +440,7 @@ class TennisSceneOrchestrator:
             human_kp_vis=human_kp_vis,
             player_track_ids=track_ids,
             metadata={
-                "video_paths": [str(video_path) for video_path in video_paths],
+                "video_paths": [str(video_path) for video_path in resolved_video_paths],
                 "camera_ids": list(camera_ids),
                 "num_cameras": num_cameras,
                 "sync_assumption": "preprocessed",
@@ -497,7 +497,7 @@ class TennisSceneOrchestrator:
         video_infos: Sequence[VideoInfo],
         camera_ids: Sequence[str],
         max_frames: int | None,
-    ):
+    ) -> tuple[PlayerAssociationResult, PlayerAssociationApplied]:
         """Run per-camera GVHMR and align players as (P, N, T, ...)."""
         gvhmr_results = [
             self._run_gvhmr(

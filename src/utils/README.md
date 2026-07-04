@@ -26,6 +26,7 @@
 - **`skeleton.py`**: COCO-17 に対する joint angle、torsion、torso twist、bone length 計算。
 - **`court_pose.py`**: 正規化コート座標と world pose の相互変換、コート上位置からの平行移動生成。
 - **`matrices.py`**: NumPy ベースの回転行列と `apply_plcs_transform[_batch]()`。
+- **`rotation_conversions.py`**: torch ベースの axis-angle / quaternion / matrix / 6D 相互変換（PyTorch3D 互換 API、pytorch3d 依存の置き換え先）。
 - **`keypoints.py`**: pixel 座標と正規化座標の相互変換、画素座標 clamp。
 - **`bbox.py`**: bbox の最大辺比率 `bbox_max_side_ratio()`。bbox の縦横スケール比較が必要なときに見る。
 
@@ -36,13 +37,15 @@
 - **`court_renderer.py`**: コート線・スタイル定義と `CourtRenderer`。
 - **`skeleton_renderer.py`**: COCO / SMPL 系 skeleton 描画用の `SkeletonRenderer` と関連 enum / style。
 - **`ball_renderer.py`**: ボール軌跡・イベント描画用の `BallRenderer`、`BallEvent`、`BallStyle`。
+- **`mesh_renderer.py`**: 三角メッシュ（SMPL 等）の `MeshRenderer`。カメラ視点オーバーレイ（cv2 painter's algorithm、K 行列投影）と matplotlib 3D 描画。
 
 ### `schema/`
 - **`court.py`**: コート寸法、`CourtConfig`、20 点 court keypoints、court skeleton、正規化スケール定数。
 - **`player.py`**: COCO-17 / SMPL / SMPL-H の keypoint 名、index、skeleton、角度計算用 group、SMPLH-to-COCO 対応。
 
 ### `video/`
-- **`reader.py`**: OpenCV ベースの `probe_video_info()`、単フレーム読み出し、`OpenCVVideoFrameReader`。
+- **`reader.py`**: OpenCV ベースの `probe_video_info()`、単フレーム読み出し、`OpenCVVideoFrameReader`、一括 RGB 読み出し `read_video_rgb()`。
+- **`writer.py`**: PyAV ベースの H.264 `VideoWriter`（fps / CRF 指定）と `save_video_rgb()`。
 - **`windows.py` / `batching.py`**: 時系列 window / batch iterator。
 - **`prefetch.py`**: イテレータの先読み `PrefetchIterator`。
 - **`transforms.py`**: `BgrToTensorTransform` と tensor の ImageNet 正規化。
