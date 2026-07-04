@@ -62,6 +62,7 @@ annotations/
 
 # Model files and checkpoints
 checkpoints/*
+ckpt/
 *.pt
 *.pth
 *.ckpt

@@ -1,4 +1,9 @@
-"""GVHMR module for 3D human mesh estimation."""
+"""GVHMR module for 3D human mesh estimation.
+
+Runs the src/submodules model chain (YOLO tracking -> ViTPose -> HMR2 features
+-> GVHMR) in the main ``.venv``; there is no dependency on ``third_party/GVHMR``
+code anymore (checkpoints are read via the ``ckpt/`` symlinks).
+"""
 
 from __future__ import annotations
 
@@ -18,9 +23,15 @@ from src.tennis_scene.pipeline.components.base import BasePipelineModule
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-LOGGER = logging.getLogger(__name__)
+    from src.submodules.models import (
+        GvhmrMeshRecovery,
+        Hmr2FeatureExtractor,
+        SmplVertexReconstructor,
+        ViTPosePose2D,
+        YoloPersonTracker,
+    )
 
-DEFAULT_GVHMR_VENV = Path("third_party/GVHMR/.venv/bin/python")
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -28,15 +39,15 @@ class GVHMRConfig:
     """Configuration for GVHMR module."""
 
     model_checkpoint: str | Path
-    yolo_checkpoint: str | Path = "inputs/checkpoints/yolo/yolov8x.pt"
-    vitpose_checkpoint: str | Path = "inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth"
-    hmr2_checkpoint: str | Path = "inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt"
+    yolo_checkpoint: str | Path = "ckpt/yolo/yolov8x.pt"
+    vitpose_checkpoint: str | Path = "ckpt/vitpose/vitpose-h-multi-coco.pth"
+    hmr2_checkpoint: str | Path = "ckpt/hmr2/epoch=10-step=25000.ckpt"
     device: str = "cuda"
     subprocess_mode: bool = False
     python_executable: str | Path | None = None
-    smplx_model_type: str = "supermotion"
-    smplx2smpl_path: str | Path = "hmr4d/utils/body_model/smplx2smpl_sparse.pt"
     smplx_body_model_path: str | Path | None = None
+    track_selection: str = "interactive"  # "interactive" or "auto"
+    num_tracks: int = 2  # used when track_selection == "auto"
     save_result: bool = False
     output_path: str | Path | None = None
     load_path: str | Path | None = None
@@ -124,137 +135,50 @@ class GVHMRResult:
 
 
 class GVHMRModule(BasePipelineModule):
-    """GVHMR module for 3D human mesh estimation."""
+    """GVHMR module for 3D human mesh estimation (src/submodules based)."""
 
     def __init__(self, config: GVHMRConfig) -> None:
         self.config = config
-        self._model = None
-        self._tracker = None
-        self._vitpose = None
-        self._extractor = None
-        self._smplx_model = None
-        self._smplx2smpl = None
-        self._gvhmr_root: Path | None = None
+        self._tracker: YoloPersonTracker | None = None
+        self._pose_model: ViTPosePose2D | None = None
+        self._feature_model: Hmr2FeatureExtractor | None = None
+        self._mesh_model: GvhmrMeshRecovery | None = None
+        self._vertex_reconstructor: SmplVertexReconstructor | None = None
 
     def load(self) -> None:
-        if self._model is not None:
+        if self.is_loaded:
             return
 
-        self._gvhmr_root = Path(__file__).parents[3] / "third_party" / "GVHMR"
-        sys.path.insert(0, str(self._gvhmr_root))
-
-        self._load_tracker()
-        self._load_vitpose()
-        self._load_extractor()
-        self._load_gvhmr_model()
-        self._load_smpl_vertex_converter()
-
-    def _load_tracker(self) -> None:
-        LOGGER.info(f"Loading YOLO tracker from {self.config.yolo_checkpoint}")
-        yolo_path = self._resolve_path(self.config.yolo_checkpoint)
-
-        from hmr4d.utils.preproc.tracker import Tracker
-
-        self._tracker = Tracker(yolo_checkpoint=str(yolo_path), device=self.config.device)
-
-    def _load_vitpose(self) -> None:
-        LOGGER.info(f"Loading ViTPose from {self.config.vitpose_checkpoint}")
-        vitpose_path = self._resolve_path(self.config.vitpose_checkpoint)
-
-        from hmr4d.utils.preproc.vitpose import VitPoseExtractor
-
-        self._vitpose = VitPoseExtractor(
-            checkpoint_path=str(vitpose_path),
-            device=self.config.device,
-            flip_test=True,
-            tqdm_leave=True,
+        from src.submodules.models import (
+            GvhmrMeshRecovery,
+            Hmr2FeatureExtractor,
+            SmplVertexReconstructor,
+            ViTPosePose2D,
+            YoloPersonTracker,
         )
 
-    def _load_extractor(self) -> None:
-        LOGGER.info(f"Loading HMR2 extractor from {self.config.hmr2_checkpoint}")
-        hmr2_path = self._resolve_path(self.config.hmr2_checkpoint)
-
-        from hmr4d.utils.preproc.vitfeat_extractor import Extractor
-
-        self._extractor = Extractor(
-            checkpoint_path=str(hmr2_path),
-            device=self.config.device,
-            tqdm_leave=True,
+        device = self.config.device
+        self._tracker = YoloPersonTracker(
+            checkpoint=self.config.yolo_checkpoint, device=device
         )
-
-    def _load_gvhmr_model(self) -> None:
-        LOGGER.info(f"Loading GVHMR model from {self.config.model_checkpoint}")
-        model_path = self._resolve_path(self.config.model_checkpoint)
-
-        import hmr4d.model.gvhmr.gvhmr_pl_demo  # noqa: F401
-        import hydra
-        from hmr4d.configs import register_store_gvhmr
-        from hydra import compose, initialize_config_module
-
-        register_store_gvhmr()
-        with initialize_config_module(version_base="1.3", config_module="hmr4d.configs"):
-            cfg = compose(
-                config_name="demo",
-                overrides=[
-                    f"ckpt_path={model_path}",
-                    "static_cam=True",
-                    "video_name=dummy",
-                ],
-            )
-
-        self._model = hydra.utils.instantiate(cfg.model, _recursive_=False)
-        self._model.load_pretrained_model(str(model_path))
-        self._model.eval()
-        if self.config.device == "cuda":
-            self._model = self._model.cuda()
-
-    def _load_smpl_vertex_converter(self) -> None:
-        """Load SMPL-X body model and SMPL-X->SMPL vertex converter."""
-        from hmr4d.utils.smplx_utils import make_smplx
-
-        if self._gvhmr_root is None:
-            raise RuntimeError("GVHMR root is not initialized")
-
-        LOGGER.info(
-            "Loading SMPL-X model for vertex reconstruction "
-            f"(type={self.config.smplx_model_type})"
+        self._pose_model = ViTPosePose2D(
+            checkpoint=self.config.vitpose_checkpoint, device=device
         )
-        smplx_kwargs: dict[str, str] = {}
-        if self.config.smplx_body_model_path is not None:
-            smplx_kwargs["model_path"] = str(
-                self._resolve_path(self.config.smplx_body_model_path)
-            )
-        smplx_model = make_smplx(self.config.smplx_model_type, **smplx_kwargs)
-
-        converter_path = self._resolve_path(self.config.smplx2smpl_path)
-        if not converter_path.exists():
-            raise FileNotFoundError(f"SMPL-X to SMPL converter not found: {converter_path}")
-
-        device = torch.device(
-            "cuda" if self.config.device == "cuda" and torch.cuda.is_available() else "cpu"
+        self._feature_model = Hmr2FeatureExtractor(
+            checkpoint=self.config.hmr2_checkpoint, device=device
         )
-        smplx_model = smplx_model.to(device)
-        smplx_model.eval()
-        smplx2smpl = torch.load(converter_path, map_location=device, weights_only=False)
-        if not isinstance(smplx2smpl, torch.Tensor):
-            smplx2smpl = torch.as_tensor(smplx2smpl)
-        smplx2smpl = smplx2smpl.to(device=device, dtype=torch.float32)
-
-        self._smplx_model = smplx_model
-        self._smplx2smpl = smplx2smpl
-
-    def _resolve_path(self, path: str | Path) -> Path:
-        path = Path(path)
-        if path.is_absolute():
-            return path
-        resolved = self._gvhmr_root / path
-        if resolved.exists():
-            return resolved
-        return path
+        self._mesh_model = GvhmrMeshRecovery(
+            checkpoint=self.config.model_checkpoint, device=device
+        )
+        self._vertex_reconstructor = SmplVertexReconstructor(
+            device=device,
+            body_models_dir=self.config.smplx_body_model_path,
+        )
+        self._mesh_model.load()
 
     @property
     def is_loaded(self) -> bool:
-        return self._model is not None
+        return self._mesh_model is not None
 
     def process(
         self,
@@ -294,14 +218,7 @@ class GVHMRModule(BasePipelineModule):
 
         python_exec = self.config.python_executable
         if python_exec is None:
-            python_exec = DEFAULT_GVHMR_VENV
-        python_exec = Path(python_exec)
-
-        if not python_exec.exists():
-            raise FileNotFoundError(
-                f"GVHMR Python executable not found: {python_exec}. "
-                "Run third_party/GVHMR/setup_gvhmr.sh to set up the environment."
-            )
+            python_exec = sys.executable
 
         cmd = [
             str(python_exec),
@@ -321,7 +238,15 @@ class GVHMRModule(BasePipelineModule):
             str(self.config.hmr2_checkpoint),
             "--device",
             self.config.device,
+            "--track-selection",
+            self.config.track_selection,
+            "--num-tracks",
+            str(self.config.num_tracks),
         ]
+        if self.config.smplx_body_model_path is not None:
+            cmd.extend(
+                ["--smplx-body-model-path", str(self.config.smplx_body_model_path)]
+            )
         if max_frames is not None:
             cmd.extend(["--max-frames", str(max_frames)])
 
@@ -331,7 +256,7 @@ class GVHMRModule(BasePipelineModule):
             cmd,
             capture_output=True,
             text=True,
-            cwd=Path(__file__).parents[3],
+            cwd=Path(__file__).parents[4],
         )
         if result.returncode != 0:
             LOGGER.error(f"GVHMR subprocess failed:\n{result.stderr}")
@@ -345,37 +270,31 @@ class GVHMRModule(BasePipelineModule):
         video_path: str | Path,
         max_frames: int | None = None,
     ) -> GVHMRResult:
+        from src.submodules.models import TrackRequest
+
         if not self.is_loaded:
             self.load()
+        assert self._tracker is not None
 
-        video_path = str(video_path)
-        track_boxes = self._tracker.get_multi_track(video_path)
-        track_ids = sorted(int(track_id) for track_id in track_boxes)
+        track_result = self._tracker.predict(
+            TrackRequest(
+                video_path=video_path,
+                num_tracks=self.config.num_tracks,
+                interactive=self.config.track_selection == "interactive",
+            )
+        )
+        track_ids = track_result.track_ids
         if not track_ids:
-            raise RuntimeError("No tracks selected in tracker UI")
+            raise RuntimeError("No tracks selected")
 
         players: list[dict[str, Any]] = []
         for track_id in track_ids:
-            bbx_xyxy = track_boxes[track_id]
-            if max_frames is not None and len(bbx_xyxy) > max_frames:
-                bbx_xyxy = bbx_xyxy[:max_frames]
+            bbx_xys = track_result.bbx_xys(track_id)
+            if max_frames is not None and len(bbx_xys) > max_frames:
+                bbx_xys = bbx_xys[:max_frames]
 
             LOGGER.info(f"Running GVHMR for track_id={track_id}")
-            preproc = self._run_preprocessing_for_track(video_path, bbx_xyxy)
-            inference = self._run_inference(preproc)
-
-            players.append(
-                {
-                    "track_id": track_id,
-                    "smpl_body_pose": inference["smpl_body_pose"],
-                    "smpl_global_orient": inference["smpl_global_orient"],
-                    "smpl_betas": inference["smpl_betas"],
-                    "smpl_vertices_local": inference["smpl_vertices_local"],
-                    "human_kp_2d": preproc["kp2d"][..., :2].cpu().numpy().astype(np.float32),
-                    "human_kp_vis": preproc["kp2d"][..., 2].cpu().numpy().astype(np.float32),
-                    "bbx_xys": preproc["bbx_xys"].cpu().numpy().astype(np.float32),
-                }
-            )
+            players.append(self._run_track(video_path, track_id, bbx_xys))
 
         frame_lengths = {p["human_kp_2d"].shape[0] for p in players}
         if len(frame_lengths) != 1:
@@ -389,10 +308,8 @@ class GVHMRModule(BasePipelineModule):
                 [p["smpl_global_orient"] for p in players], axis=0
             ),
             smpl_betas=np.stack([p["smpl_betas"] for p in players], axis=0),
-            smpl_vertices_local=(
-                np.stack([p["smpl_vertices_local"] for p in players], axis=0)
-                if all(p["smpl_vertices_local"] is not None for p in players)
-                else None
+            smpl_vertices_local=np.stack(
+                [p["smpl_vertices_local"] for p in players], axis=0
             ),
             human_kp_2d=np.stack([p["human_kp_2d"] for p in players], axis=0),
             human_kp_vis=np.stack([p["human_kp_vis"] for p in players], axis=0),
@@ -405,107 +322,65 @@ class GVHMRModule(BasePipelineModule):
 
         return result
 
-    def _run_preprocessing_for_track(
+    def _run_track(
         self,
-        video_path: str,
-        bbx_xyxy: torch.Tensor,
+        video_path: str | Path,
+        track_id: int,
+        bbx_xys: torch.Tensor,
     ) -> dict[str, Any]:
-        LOGGER.info("Running GVHMR preprocessing...")
+        """Run pose/feature extraction and GVHMR for one person track."""
+        from src.submodules.models import (
+            GvhmrRequest,
+            ImageFeatureRequest,
+            Pose2DRequest,
+        )
+        from src.utils.video.reader import probe_video_info
 
-        from hmr4d.utils.geo.hmr_cam import estimate_K, get_bbx_xys_from_xyxy
-        from hmr4d.utils.video_io_utils import get_video_lwh
+        assert self._pose_model is not None
+        assert self._feature_model is not None
+        assert self._mesh_model is not None
+        assert self._vertex_reconstructor is not None
 
-        _, width, height = get_video_lwh(video_path)
+        info = probe_video_info(video_path)
 
-        bbx_xys = get_bbx_xys_from_xyxy(bbx_xyxy)
-        kp2d = self._vitpose.extract(video_path, bbx_xys)
-        f_imgseq = self._extractor.extract_video_features(video_path, bbx_xys)
-        K_fullimg = estimate_K(width, height)
+        pose = self._pose_model.predict(
+            Pose2DRequest(video_path=video_path, bbx_xys=bbx_xys)
+        )
+        features = self._feature_model.predict(
+            ImageFeatureRequest(video_path=video_path, bbx_xys=bbx_xys)
+        )
+        gvhmr = self._mesh_model.predict(
+            GvhmrRequest(
+                kp2d=pose.keypoints,
+                bbx_xys=bbx_xys,
+                f_imgseq=features.features,
+                width=info.width,
+                height=info.height,
+                static_cam=True,
+            )
+        )
 
-        return {
-            "bbx_xys": bbx_xys,
-            "kp2d": kp2d,
-            "f_imgseq": f_imgseq,
-            "K_fullimg": K_fullimg,
-            "width": width,
-            "height": height,
-        }
+        smpl_params = gvhmr.smpl_params_incam
+        vertices = self._vertex_reconstructor.reconstruct(smpl_params)
 
-    def _run_inference(self, preproc: dict[str, Any]) -> dict[str, NDArray]:
-        LOGGER.info("Running GVHMR inference...")
-
-        from hmr4d.utils.geo_transform import compute_cam_angvel
-
-        bbx_xys = preproc["bbx_xys"]
-        kp2d = preproc["kp2d"]
-        f_imgseq = preproc["f_imgseq"]
-        K_fullimg = preproc["K_fullimg"]
-
-        T = len(bbx_xys)
-        K_fullimg_batch = K_fullimg.unsqueeze(0).expand(T, -1, -1)
-        R_w2c = torch.eye(3).repeat(T, 1, 1)
-        cam_angvel = compute_cam_angvel(R_w2c)
-
-        data = {
-            "length": torch.tensor(T),
-            "bbx_xys": bbx_xys,
-            "kp2d": kp2d,
-            "K_fullimg": K_fullimg_batch,
-            "cam_angvel": cam_angvel,
-            "f_imgseq": f_imgseq,
-        }
-
-        if self.config.device == "cuda":
-            for k, v in data.items():
-                if isinstance(v, torch.Tensor):
-                    data[k] = v.cuda()
-
-        with torch.no_grad():
-            pred = self._model.predict(data, static_cam=True)
-
-        smpl_params = pred["smpl_params_incam"]
-        body_pose = smpl_params["body_pose"].cpu().numpy().astype(np.float32)
-        global_orient = smpl_params["global_orient"].cpu().numpy().astype(np.float32)
-        betas = smpl_params["betas"].cpu().numpy().astype(np.float32)
-
+        betas = smpl_params["betas"].numpy().astype(np.float32)
         if betas.ndim == 2:
             betas = betas[0]
 
-        vertices = None
-        if self._smplx_model is None or self._smplx2smpl is None:
-            raise RuntimeError(
-                "SMPL vertex converter is not loaded. Call load() before running inference."
-            )
-
-        smpl_param_tensors = {
-            key: value.to(self._smplx2smpl.device) if isinstance(value, torch.Tensor) else value
-            for key, value in smpl_params.items()
-        }
-        smplx_out = self._smplx_model(**smpl_param_tensors)
-        vertices_smpl = torch.stack(
-            [torch.matmul(self._smplx2smpl, verts) for verts in smplx_out.vertices],
-            dim=0,
-        )
-        vertices = vertices_smpl.cpu().numpy().astype(np.float32)
-
         return {
-            "smpl_body_pose": body_pose,
-            "smpl_global_orient": global_orient,
+            "track_id": track_id,
+            "smpl_body_pose": smpl_params["body_pose"].numpy().astype(np.float32),
+            "smpl_global_orient": smpl_params["global_orient"].numpy().astype(np.float32),
             "smpl_betas": betas,
-            "smpl_vertices_local": vertices,
+            "smpl_vertices_local": vertices.numpy().astype(np.float32),
+            "human_kp_2d": pose.keypoints[..., :2].numpy().astype(np.float32),
+            "human_kp_vis": pose.keypoints[..., 2].numpy().astype(np.float32),
+            "bbx_xys": bbx_xys.numpy().astype(np.float32),
         }
 
 
 if __name__ == "__main__":
     import argparse
-
-    from ultralytics.nn import tasks as _utasks
-
-    def _torch_safe_load(file):
-        ckpt = torch.load(file, map_location="cpu", weights_only=False)
-        return ckpt, str(file)
-
-    _utasks.torch_safe_load = _torch_safe_load
 
     parser = argparse.ArgumentParser(description="GVHMR CLI for subprocess execution")
     parser.add_argument("--video", type=str, required=True, help="Path to input video")
@@ -513,44 +388,45 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model-checkpoint",
         type=str,
-        required=True,
+        default="ckpt/gvhmr/gvhmr_siga24_release.ckpt",
         help="Path to GVHMR model checkpoint",
     )
     parser.add_argument(
         "--yolo-checkpoint",
         type=str,
-        default="inputs/checkpoints/yolo/yolov8x.pt",
+        default="ckpt/yolo/yolov8x.pt",
         help="Path to YOLO checkpoint",
     )
     parser.add_argument(
         "--vitpose-checkpoint",
         type=str,
-        default="inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth",
+        default="ckpt/vitpose/vitpose-h-multi-coco.pth",
         help="Path to ViTPose checkpoint",
     )
     parser.add_argument(
         "--hmr2-checkpoint",
         type=str,
-        default="inputs/checkpoints/hmr2/epoch=10-step=25000.ckpt",
+        default="ckpt/hmr2/epoch=10-step=25000.ckpt",
         help="Path to HMR2 checkpoint",
-    )
-    parser.add_argument(
-        "--smplx-model-type",
-        type=str,
-        default="supermotion",
-        help="SMPL-X model preset type used to reconstruct vertices",
-    )
-    parser.add_argument(
-        "--smplx2smpl-path",
-        type=str,
-        default="hmr4d/utils/body_model/smplx2smpl_sparse.pt",
-        help="Path to sparse SMPL-X->SMPL conversion matrix",
     )
     parser.add_argument(
         "--smplx-body-model-path",
         type=str,
         default=None,
         help="Optional path to SMPL/SMPL-X body model directory",
+    )
+    parser.add_argument(
+        "--track-selection",
+        type=str,
+        default="interactive",
+        choices=["interactive", "auto"],
+        help="Track selection mode",
+    )
+    parser.add_argument(
+        "--num-tracks",
+        type=int,
+        default=2,
+        help="Number of tracks in auto selection mode",
     )
     parser.add_argument("--device", type=str, default="cuda", help="Inference device")
     parser.add_argument(
@@ -569,9 +445,9 @@ if __name__ == "__main__":
         yolo_checkpoint=args.yolo_checkpoint,
         vitpose_checkpoint=args.vitpose_checkpoint,
         hmr2_checkpoint=args.hmr2_checkpoint,
-        smplx_model_type=args.smplx_model_type,
-        smplx2smpl_path=args.smplx2smpl_path,
         smplx_body_model_path=args.smplx_body_model_path,
+        track_selection=args.track_selection,
+        num_tracks=args.num_tracks,
         device=args.device,
         subprocess_mode=False,
         save_result=True,

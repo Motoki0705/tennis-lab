@@ -4,6 +4,7 @@ This module provides reusable rendering components for:
 - Tennis court visualization (2D and 3D)
 - Human skeleton rendering
 - Ball trajectory visualization
+- Triangle-mesh rendering (camera-view overlay and matplotlib 3D)
 
 Example:
     >>> from src.utils.rendering import CourtRenderer, BallRenderer
@@ -17,6 +18,7 @@ Example:
 
 from src.utils.rendering.ball_renderer import BallRenderer
 from src.utils.rendering.court_renderer import CourtRenderer
+from src.utils.rendering.mesh_renderer import MeshRenderer, MeshStyle
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer
 
 __all__ = [
@@ -24,4 +26,6 @@ __all__ = [
     "CourtRenderer",
     "SkeletonRenderer",
     "BallRenderer",
+    "MeshRenderer",
+    "MeshStyle",
 ]
