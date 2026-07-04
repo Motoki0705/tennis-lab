@@ -10,7 +10,6 @@ Only 3D rendering is supported.
 
 from __future__ import annotations
 
-import pickle
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -18,14 +17,18 @@ from typing import TYPE_CHECKING, Literal
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+from src.submodules.vendor.gvhmr.body_model import (
+    SMPL_NEUTRAL_J_REGRESSOR_PATH,
+    load_smpl_faces,
+)
 from src.utils.geometry.matrices import (
     axis_angle_to_rotation_matrix,
     rotation_matrix_z,
 )
 from src.utils.rendering.ball_renderer import BallRenderer, BallStyle
 from src.utils.rendering.court_renderer import CourtRenderer, CourtStyle
+from src.utils.rendering.mesh_renderer import MeshRenderer
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer, SkeletonStyle
 
 if TYPE_CHECKING:
@@ -36,9 +39,7 @@ if TYPE_CHECKING:
     from src.tennis_scene.io import SceneResult
 
 DEFAULT_SMPL_MODEL_PATH = Path("data/smplh/neutral/model.npz")
-DEFAULT_SMPL_JOINT_REGRESSOR_PATH = Path(
-    "third_party/GVHMR/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt"
-)
+DEFAULT_SMPL_JOINT_REGRESSOR_PATH = SMPL_NEUTRAL_J_REGRESSOR_PATH
 
 _DEFAULT_PLAYER_COLORS = [
     "#E76F51",
@@ -83,60 +84,33 @@ class TennisSceneRenderer:
             style=self.style.skeleton_style,
         )
 
-        self._smpl_faces: NDArray[np.int64] | None = None
+        self._mesh_renderer: MeshRenderer | None = None
         self._smpl_joint_regressor: NDArray[np.float32] | None = None
         self._scene_vertices_cache: dict[int, NDArray[np.float32]] = {}
         self._scene_joints_cache: dict[int, NDArray[np.float32]] = {}
 
         regressor_path = smpl_joint_regressor_path or DEFAULT_SMPL_JOINT_REGRESSOR_PATH
         self._smpl_joint_regressor = self._load_smpl_joint_regressor(regressor_path)
-        if self._smpl_joint_regressor is None:
-            raise RuntimeError(
-                f"Failed to load SMPL joint regressor from {regressor_path}. "
-                "SMPL rendering requires this file."
-            )
 
         if self.style.player_representation == "smpl":
             model_path = smpl_model_path or DEFAULT_SMPL_MODEL_PATH
-            self._smpl_faces = self._load_smpl_faces(model_path)
-            if self._smpl_faces is None:
-                raise RuntimeError(
-                    f"Failed to load SMPL faces from {model_path}. "
-                    "SMPL rendering is unavailable in this environment."
-                )
-
-    def _load_smpl_faces(self, model_path: str | Path) -> NDArray[np.int64] | None:
-        model_path = Path(model_path)
-        if not model_path.exists():
-            return None
-        try:
-            if model_path.suffix == ".npz":
-                data = np.load(model_path)
-                return data["f"].astype(np.int64)
-            if model_path.suffix == ".pkl":
-                with model_path.open("rb") as f:
-                    data = pickle.load(f, encoding="latin1")
-                return np.asarray(data["f"], dtype=np.int64)
-        except Exception:
-            return None
-        return None
+            self._mesh_renderer = MeshRenderer(load_smpl_faces(model_path))
 
     def _load_smpl_joint_regressor(
         self,
         regressor_path: str | Path,
-    ) -> NDArray[np.float32] | None:
+    ) -> NDArray[np.float32]:
         path = Path(regressor_path)
         if not path.exists():
-            return None
-        try:
-            import torch
+            raise FileNotFoundError(
+                f"SMPL joint regressor not found: {path}. SMPL rendering requires this file."
+            )
+        import torch
 
-            reg = torch.load(path, map_location="cpu", weights_only=False)
-            if isinstance(reg, torch.Tensor):
-                return reg.cpu().numpy().astype(np.float32)
-            return np.asarray(reg, dtype=np.float32)
-        except Exception:
-            return None
+        reg = torch.load(path, map_location="cpu", weights_only=False)
+        if isinstance(reg, torch.Tensor):
+            return reg.cpu().numpy().astype(np.float32)
+        return np.asarray(reg, dtype=np.float32)
 
     def _player_color(self, player_idx: int) -> str:
         return _DEFAULT_PLAYER_COLORS[player_idx % len(_DEFAULT_PLAYER_COLORS)]
@@ -248,17 +222,9 @@ class TennisSceneRenderer:
         color: str,
         alpha: float,
     ) -> None:
-        if self._smpl_faces is None:
-            raise RuntimeError("SMPL faces are not loaded")
-        triangles = vertices[self._smpl_faces]
-        mesh = Poly3DCollection(
-            triangles,
-            alpha=alpha,
-            facecolor=color,
-            edgecolor="none",
-            linewidths=0.0,
-        )
-        ax.add_collection3d(mesh)
+        if self._mesh_renderer is None:
+            raise RuntimeError("SMPL mesh renderer is not initialized")
+        self._mesh_renderer.render_3d(ax, vertices, color=color, alpha=alpha)
 
     def render_frame_3d(
         self,
@@ -331,7 +297,7 @@ class TennisSceneRenderer:
             start_frame=start_frame,
             end_frame=end_frame,
         )
-        anim.save(str(output_path), writer=writer, fps=fps or scene.fps, dpi=dpi)
+        anim.save(str(output_path), writer=writer, fps=int(round(fps or scene.fps)), dpi=dpi)
 
     def _render_3d_internal(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
         self.court_renderer.render_3d(ax, show_net=True)

@@ -7,6 +7,7 @@ from src.utils.video.reader import (
     OpenCVVideoFrameReader,
     probe_video_info,
     read_video_frame,
+    read_video_rgb,
 )
 from src.utils.video.sampling import (
     parse_time_seconds,
@@ -17,6 +18,7 @@ from src.utils.video.sampling import (
 from src.utils.video.transforms import BgrToTensorTransform, normalize_tensor_imagenet
 from src.utils.video.types import FramePacket, TemporalBatch, TemporalWindow, VideoInfo
 from src.utils.video.windows import iter_temporal_windows
+from src.utils.video.writer import VideoWriter, save_video_rgb
 from src.utils.video.youtube import (
     download_youtube_video,
     find_downloaded_video,
@@ -33,6 +35,7 @@ __all__ = [
     "TemporalBatch",
     "TemporalWindow",
     "VideoInfo",
+    "VideoWriter",
     "iter_temporal_batches",
     "iter_temporal_windows",
     "iter_selected_video_jpegs",
@@ -43,7 +46,9 @@ __all__ = [
     "parse_time_seconds",
     "probe_video_info",
     "read_video_frame",
+    "read_video_rgb",
     "sample_frame_indices_by_time_ranges",
+    "save_video_rgb",
     "sample_step_seconds",
     "sample_uniform_frame_indices",
     "transcode_h264_video",
