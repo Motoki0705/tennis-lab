@@ -6,6 +6,7 @@ import math
 import random
 from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import Any, Protocol
 
 import torch
 from torch import Tensor
@@ -89,12 +90,33 @@ def project_points(cam: Camera, xyz: Tensor) -> tuple[Tensor, Tensor]:
     return uv, mask
 
 
+FIXED_LAYOUT = "fixed"
+BROADCAST_LAYOUT = "broadcast"
+SUPPORTED_LAYOUTS = (FIXED_LAYOUT, BROADCAST_LAYOUT)
+
+
+class _CameraConfigMapping(Protocol):
+    """Minimal config interface shared by dict and OmegaConf DictConfig."""
+
+    def get(self, key: str, default: Any = ...) -> Any: ...
+
+
 @dataclass
 class CameraConfig:
     """Configuration for camera generation.
 
     Supports per-camera perturbation of intrinsics and look-at direction
     for dataset variation.
+
+    Two camera layouts are available, selected by ``layout``:
+
+    - ``"fixed"`` (default): the surveillance-style 6-camera rig
+      (4 fence corners + 2 baseline midpoints). See :meth:`CameraProjector.fixed_cameras`.
+    - ``"broadcast"``: two TV "high main" cameras, one behind each baseline,
+      centred on the court and elevated, looking down the court's length.
+      This mirrors public-broadcast tennis framing so that models trained on
+      monocular views transfer to real broadcast footage.
+      See :meth:`CameraProjector.broadcast_cameras`.
     """
 
     z_min: float = 3.0
@@ -105,6 +127,80 @@ class CameraConfig:
     fixed_baseline_clear_extra: float = 0.0
     fixed_position_noise_radius: float = 2.0
     fixed_look_at_xy_radius: float = 1.0
+
+    # Camera layout selector. See class docstring for supported values.
+    layout: str = FIXED_LAYOUT
+
+    # --- Broadcast ("high main") layout parameters ---------------------
+    # Grounded by overlaying the projected court on a real ATP broadcast frame:
+    # a distant, elevated telephoto camera ~20 m behind the baseline, ~7 m high,
+    # ~35 deg HFOV, framing the whole court with realistic perspective
+    # compression.
+    broadcast_setback: float = 20.0  # metres behind the baseline (beyond HALF_LENGTH)
+    broadcast_height: float = 7.0  # camera elevation above the court (m)
+    broadcast_hfov_deg: float = 35.0  # telephoto horizontal FOV (deg)
+    broadcast_look_at_y: float = 0.0  # look-at target Y (0 = court centre)
+    broadcast_look_at_height: float = 0.5  # look-at target Z above the court (m)
+    broadcast_position_noise_radius: float = 1.0  # per-scene center jitter (m)
+    broadcast_look_at_xy_radius: float = 1.0  # per-scene look-at jitter on z=0 plane (m)
+    broadcast_hfov_jitter_deg: float = 2.0  # per-scene zoom (HFOV) jitter (deg)
+
+
+def camera_config_from_mapping(cfg: _CameraConfigMapping) -> CameraConfig:
+    """Build a :class:`CameraConfig` from a Hydra/OmegaConf ``camera`` section.
+
+    Centralises the mapping used by both the BLCS and PLCS scene generators so
+    the two do not drift. Any key absent from ``cfg`` falls back to the
+    :class:`CameraConfig` default, which keeps existing ``camera/default.yaml``
+    files (that predate the broadcast-layout fields) working unchanged.
+
+    Args:
+        cfg: A mapping-like config (``dict`` or OmegaConf ``DictConfig``).
+    """
+    if not hasattr(cfg, "get"):
+        raise TypeError(
+            "camera_config_from_mapping expects a mapping-like config with a "
+            f".get() method, got {type(cfg).__name__}."
+        )
+
+    defaults = CameraConfig()
+
+    def _f(key: str, default: float) -> float:
+        return float(cfg.get(key, default))
+
+    return CameraConfig(
+        z_min=_f("z_min", defaults.z_min),
+        z_max=_f("z_max", defaults.z_max),
+        hfov_deg=_f("hfov_deg", defaults.hfov_deg),
+        image_size=tuple(cfg.get("image_size", defaults.image_size)),
+        fixed_look_at=tuple(cfg.get("fixed_look_at", defaults.fixed_look_at)),
+        fixed_baseline_clear_extra=_f(
+            "fixed_baseline_clear_extra", defaults.fixed_baseline_clear_extra
+        ),
+        fixed_position_noise_radius=_f(
+            "fixed_position_noise_radius", defaults.fixed_position_noise_radius
+        ),
+        fixed_look_at_xy_radius=_f(
+            "fixed_look_at_xy_radius", defaults.fixed_look_at_xy_radius
+        ),
+        layout=str(cfg.get("layout", defaults.layout)),
+        broadcast_setback=_f("broadcast_setback", defaults.broadcast_setback),
+        broadcast_height=_f("broadcast_height", defaults.broadcast_height),
+        broadcast_hfov_deg=_f("broadcast_hfov_deg", defaults.broadcast_hfov_deg),
+        broadcast_look_at_y=_f("broadcast_look_at_y", defaults.broadcast_look_at_y),
+        broadcast_look_at_height=_f(
+            "broadcast_look_at_height", defaults.broadcast_look_at_height
+        ),
+        broadcast_position_noise_radius=_f(
+            "broadcast_position_noise_radius", defaults.broadcast_position_noise_radius
+        ),
+        broadcast_look_at_xy_radius=_f(
+            "broadcast_look_at_xy_radius", defaults.broadcast_look_at_xy_radius
+        ),
+        broadcast_hfov_jitter_deg=_f(
+            "broadcast_hfov_jitter_deg", defaults.broadcast_hfov_jitter_deg
+        ),
+    )
 
 
 @dataclass
@@ -212,6 +308,80 @@ class CameraProjector:
                 )
             )
         return cams
+
+    def broadcast_cameras(self) -> list[Camera]:
+        """Build the 2-camera TV "high main" broadcast layout.
+
+        One elevated camera sits behind each baseline, centred on the court
+        (x=0) and looking down the court's length toward the far side. This
+        reproduces the framing of public-broadcast tennis coverage so that a
+        model trained on these monocular views transfers to real footage.
+
+        Per-scene variation is applied via ``broadcast_position_noise_radius``
+        (center jitter), ``broadcast_look_at_xy_radius`` (look-at jitter) and
+        ``broadcast_hfov_jitter_deg`` (zoom jitter). With all three set to zero
+        the two cameras are deterministic mirror images across the net.
+        """
+        cfg = self.config
+        # Cameras sit ``broadcast_setback`` metres behind each baseline
+        # (baselines are at y = +-HALF_LENGTH).
+        base_y = HALF_LENGTH + cfg.broadcast_setback
+        baseline_centers = [
+            (0.0, -base_y, cfg.broadcast_height),  # behind near baseline
+            (0.0, +base_y, cfg.broadcast_height),  # behind far baseline
+        ]
+
+        cams: list[Camera] = []
+        for base_center in baseline_centers:
+            dx, dy, dz = self._sample_uniform_offset_in_ball(
+                cfg.broadcast_position_noise_radius
+            )
+            center = (
+                base_center[0] + dx,
+                base_center[1] + dy,
+                base_center[2] + dz,
+            )
+
+            target_x, target_y = self._sample_uniform_xy_in_disk(
+                cfg.broadcast_look_at_xy_radius
+            )
+            look_at_target = (
+                target_x,
+                cfg.broadcast_look_at_y + target_y,
+                cfg.broadcast_look_at_height,
+            )
+
+            hfov = cfg.broadcast_hfov_deg
+            if cfg.broadcast_hfov_jitter_deg > 0.0:
+                hfov += random.uniform(
+                    -cfg.broadcast_hfov_jitter_deg, cfg.broadcast_hfov_jitter_deg
+                )
+
+            cams.append(
+                make_look_at_camera(
+                    center=center,
+                    look_at=look_at_target,
+                    hfov_deg=hfov,
+                    image_size=cfg.image_size,
+                )
+            )
+        return cams
+
+    def cameras(self) -> list[Camera]:
+        """Return the camera rig for the configured ``layout``.
+
+        Dispatches to :meth:`fixed_cameras` or :meth:`broadcast_cameras`.
+        Raises on an unknown layout rather than silently falling back.
+        """
+        layout = self.config.layout
+        if layout == FIXED_LAYOUT:
+            return self.fixed_cameras()
+        if layout == BROADCAST_LAYOUT:
+            return self.broadcast_cameras()
+        raise ValueError(
+            f"Unknown camera layout {layout!r}. "
+            f"Supported layouts: {list(SUPPORTED_LAYOUTS)}."
+        )
 
     def project_points_to_uv(
         self,
