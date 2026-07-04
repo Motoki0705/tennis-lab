@@ -153,6 +153,9 @@ class BLCSSceneGenerator:
 
     def _camera_view_to_data(self, view: CameraView) -> CameraData:
         """Convert CameraView to CameraData with visibility metrics."""
+        if view.points_uv is None or view.points_visible is None:
+            raise ValueError("BLCS camera views must include projected ball points.")
+
         ball_vis = view.points_visible.numpy()
         T = len(ball_vis)
         ball_visibility_ratio = float(ball_vis.sum()) / T if T > 0 else 0.0
@@ -188,7 +191,7 @@ class BLCSSceneGenerator:
         # Create projector with court config that has the sampled net post position
         projector = CameraProjector(cfg.camera, court_config=court_config)
         valid_cameras: list[CameraData] = []
-        for camera in projector.fixed_cameras():
+        for camera in projector.cameras():
             self.total_cameras_tried += 1
             view = projector.generate_camera_view(trajectory, camera=camera)
             cam_data = self._camera_view_to_data(view)

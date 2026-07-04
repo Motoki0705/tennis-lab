@@ -1,0 +1,23 @@
+# Public-broadcast ("high main") TV camera layout.
+#
+# Two elevated cameras, one behind each baseline, centred on the court and
+# looking down its length -- the classic tennis broadcast framing. Use this to
+# generate a monocular training set that transfers to real broadcast footage
+# (e.g. data/samples/tennis_clip.mp4):
+#
+#     python -m src.tasks.blcs.scripts.generate_dataset camera=broadcast
+#
+# Geometry was fitted by overlaying the projected court on a real ATP frame.
+layout: broadcast
+image_size: [1280, 720]
+
+broadcast_setback: 20.0         # metres behind the baseline (beyond HALF_LENGTH)
+broadcast_height: 7.0           # camera elevation above the court (m)
+broadcast_hfov_deg: 35.0        # telephoto horizontal FOV (deg)
+broadcast_look_at_y: 0.0        # look-at target Y (0 = court centre)
+broadcast_look_at_height: 0.5   # look-at target Z above the court (m)
+
+# Per-scene variation (set to 0 for a deterministic mirror pair).
+broadcast_position_noise_radius: 1.0
+broadcast_look_at_xy_radius: 1.0
+broadcast_hfov_jitter_deg: 2.0
