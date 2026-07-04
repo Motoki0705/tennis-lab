@@ -13,7 +13,7 @@ from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyConf
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
 )
-from src.utils.projection.camera_projector import CameraConfig
+from src.utils.projection.camera_projector import camera_config_from_mapping
 from src.utils.schema.court import CourtConfig
 
 
@@ -67,16 +67,7 @@ def build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         out_court_target_probability=float(cfg.rally.out_court_target_probability),
     )
 
-    camera_config = CameraConfig(
-        z_min=float(cfg.camera.z_min),
-        z_max=float(cfg.camera.z_max),
-        hfov_deg=float(cfg.camera.hfov_deg),
-        image_size=tuple(cfg.camera.image_size),
-        fixed_look_at=tuple(cfg.camera.fixed_look_at),
-        fixed_baseline_clear_extra=float(cfg.camera.fixed_baseline_clear_extra),
-        fixed_position_noise_radius=float(cfg.camera.fixed_position_noise_radius),
-        fixed_look_at_xy_radius=float(cfg.camera.fixed_look_at_xy_radius),
-    )
+    camera_config = camera_config_from_mapping(cfg.camera)
 
     court_cfg = cfg.generator.court
     court_config = CourtConfig(
