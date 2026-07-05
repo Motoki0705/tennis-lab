@@ -1,0 +1,40 @@
+defaults:
+  - _self_
+
+# Directory produced by run_pipeline.py. Must contain the SceneResult npz and
+# its `<stem>.metadata.json` sidecar. Per-task videos are written back here.
+run_dir: outputs/tennis_scene/tennis_clip_full
+
+# SceneResult npz file name inside run_dir.
+npz_name: tennis_clip.npz
+
+# Which per-task visualizations to render. Any subset of the keys below.
+tasks:
+  - ball_detection
+  - court_kp
+  - gvhmr
+  - plcs
+  - blcs
+
+# Frame range (null end_frame -> all frames).
+start_frame: 0
+end_frame: null
+
+# FPS for output videos (null -> use the scene's original FPS).
+fps: null
+
+# Minimum COCO keypoint confidence to draw a 2D pose joint/bone.
+kp_conf_threshold: 0.3
+
+# Trail length (frames) for ball/player trajectory overlays.
+trail_length: 30
+
+# matplotlib DPI for the court top-view animations (plcs / blcs).
+dpi: 100
+
+hydra:
+  run:
+    dir: outputs/visualization/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
