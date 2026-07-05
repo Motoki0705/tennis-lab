@@ -13,7 +13,7 @@ device: cuda
 court_kp:
   checkpoint: ckpt/court_detection/last.ckpt
   annotation_frame_index: 0  # Frame shown in manual_ui mode, then repeated across T
-  mode: model  # model/manual_ui
+  mode: manual_ui  # model/manual_ui
   num_keypoints: 14
   save_result: true
   output_path: ${output_dir}/court_kp_result.json
