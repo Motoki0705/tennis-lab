@@ -127,6 +127,7 @@ class BLCSLoss(nn.Module):
         gravity_weight: float = 0.0,
         smoothness_order: int = 3,
         smoothness_beta: float = 1e-3,
+        smoothness_axis_weights: Sequence[float] | None = None,
         gravity_beta: float = 5e-3,
         gravity: float = 9.81,
         frame_dt: float = 1.0 / 30.0,
@@ -144,6 +145,12 @@ class BLCSLoss(nn.Module):
             smoothness_order: Finite-difference order for the smoothness prior
                 (3 = jerk).
             smoothness_beta: Smooth-L1 transition for the smoothness prior.
+            smoothness_axis_weights: Optional per-axis ``(x, y, z)`` weights for
+                the jerk smoothness prior. ``None`` = uniform. Down-weighting the
+                height axis (e.g. ``[1, 1, 0]``) lets the gravity term own the
+                vertical curvature instead of the jerk term flattening the
+                ballistic arc; down-weighting an axis with legitimate sharp
+                motion avoids smoothing away real direction changes.
             gravity_beta: Smooth-L1 transition for the gravity prior.
             gravity: Gravitational acceleration (m/s**2).
             frame_dt: Seconds between output frames.
@@ -158,6 +165,21 @@ class BLCSLoss(nn.Module):
         self.smoothness_order = smoothness_order
         self.smoothness_beta = smoothness_beta
         self.gravity_beta = gravity_beta
+        if smoothness_axis_weights is None:
+            self.smoothness_axis_weights: tuple[float, ...] | None = None
+        else:
+            weights = tuple(float(weight) for weight in smoothness_axis_weights)
+            if len(weights) != 3:
+                raise ValueError(
+                    "smoothness_axis_weights must contain exactly 3 values "
+                    f"for (x, y, z), got {smoothness_axis_weights}."
+                )
+            if any(weight < 0 for weight in weights):
+                raise ValueError(
+                    "smoothness_axis_weights must be non-negative, "
+                    f"got {smoothness_axis_weights}."
+                )
+            self.smoothness_axis_weights = weights
         self._gravity_target = ballistic_second_difference(
             gravity=gravity, dt=frame_dt, height_scale=height_scale
         )
@@ -286,6 +308,7 @@ class BLCSLoss(nn.Module):
                 mask,
                 order=self.smoothness_order,
                 beta=self.smoothness_beta,
+                axis_weights=self.smoothness_axis_weights,
             )
         else:
             smooth_loss = zero

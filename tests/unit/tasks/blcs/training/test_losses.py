@@ -108,3 +108,38 @@ def test_physics_priors_contribute_to_total() -> None:
         + 0.5 * losses["gravity"]
     )
     assert losses["total"] == pytest.approx(expected.item(), rel=1e-5)
+
+
+def test_blcs_loss_rejects_invalid_smoothness_axis_weights() -> None:
+    with pytest.raises(ValueError, match="exactly 3 values"):
+        BLCSLoss(smoothness_weight=1.0, smoothness_axis_weights=(1.0, 1.0))
+    with pytest.raises(ValueError, match="non-negative"):
+        BLCSLoss(smoothness_weight=1.0, smoothness_axis_weights=(1.0, 1.0, -1.0))
+
+
+def test_smoothness_axis_weights_exclude_height_axis() -> None:
+    # Trajectory that is smooth in x/y but jittery only on the height (z) axis.
+    torch.manual_seed(0)
+    traj = torch.zeros(1, 30, 3)
+    traj[..., 2] = torch.randn(1, 30)  # z-only jitter
+    uniform = BLCSLoss(position_weight=0.0, smoothness_weight=1.0)
+    # [1, 1, 0] drops the height axis -> the z jitter must not be penalized.
+    zeroed_z = BLCSLoss(
+        position_weight=0.0,
+        smoothness_weight=1.0,
+        smoothness_axis_weights=(1.0, 1.0, 0.0),
+    )
+    assert uniform(pred_position=traj, target_position=traj)["smoothness"] > 1e-3
+    assert (
+        zeroed_z(pred_position=traj, target_position=traj)["smoothness"].item()
+        == pytest.approx(0.0, abs=1e-8)
+    )
+
+
+def test_gravity_target_scales_with_output_fps() -> None:
+    # dt = 1/fps enters the ballistic target quadratically: halving fps (doubling
+    # dt) must quadruple the magnitude of the (negative) target 2nd difference.
+    fast = BLCSLoss(gravity_weight=1.0, frame_dt=1.0 / 60.0)._gravity_target
+    slow = BLCSLoss(gravity_weight=1.0, frame_dt=1.0 / 30.0)._gravity_target
+    assert fast < 0 and slow < 0
+    assert slow == pytest.approx(4.0 * fast, rel=1e-6)
