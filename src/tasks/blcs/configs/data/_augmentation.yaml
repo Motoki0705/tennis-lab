@@ -60,16 +60,18 @@ augmentation:
     drift_std: 0.0015
     drift_decay: 0.85
 
-  # Track fragmentation: consecutive detector misses. The eval summary gives
-  # total suppressed misses but not miss run lengths, so this remains a small
-  # share of the 7.2% miss budget rather than matching the whole rate.
+  # Track fragmentation: consecutive detector misses. Real broadcast footage
+  # (outputs/tennis_scene/tennis_clip_full, convnext detector, 2026-07-05)
+  # shows 20% invisible frames with gap runs of 21/15/10/10/10/8... frames,
+  # far beyond the old max_len=4 profile, so bursts are longer and can occur
+  # several times per track.
   burst_dropout:
     enabled: true
-    prob: 0.2
+    prob: 0.4
     track_prob: 1.0
     min_len: 2
-    max_len: 4
-    max_bursts: 1
+    max_len: 16
+    max_bursts: 3
 
   # Eval absent-frame false positive rate is 0.1034, so true absent spans use
   # prob_absent ~= 0.10. Artificial dropouts already receive that base
