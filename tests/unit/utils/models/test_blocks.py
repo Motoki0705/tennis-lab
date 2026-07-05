@@ -19,18 +19,18 @@ def test_conv2d_wisewise_block_preserves_spatial_shape() -> None:
     assert out.shape == (2, 6, 12, 12)
 
 
-def test_task_import_paths_resolve_to_the_shared_classes() -> None:
-    """court-detection keeps its public import path via a re-export shim, and
-    ball-detection imports the shared class directly."""
+def test_task_modules_use_the_shared_classes_directly() -> None:
+    """Task modules import the canonical utils blocks without local shims."""
     from src.tasks.ball_detection.models.spatiotemporal_unet import (
         Conv2dWiseWiseBlock as BallWiseWise,
     )
-    from src.tasks.court_detection.models.blocks import (
-        Conv2dWiseWiseBlock as CourtWiseWise,
+    from src.tasks.court_detection.models.decoder import (
+        Conv2dWiseWiseBlock as DecoderWiseWise,
     )
-    from src.tasks.court_detection.models.blocks import (
-        DepthwiseSeparableConv2d as CourtDWSep,
+    from src.tasks.court_detection.models.encoders import (
+        Conv2dWiseWiseBlock as EncoderWiseWise,
     )
 
-    assert CourtWiseWise is Conv2dWiseWiseBlock is BlocksWiseWise is BallWiseWise
-    assert CourtDWSep is DepthwiseSeparableConv2d is BlocksDWSep
+    assert DecoderWiseWise is EncoderWiseWise is Conv2dWiseWiseBlock is BlocksWiseWise
+    assert BallWiseWise is Conv2dWiseWiseBlock
+    assert DepthwiseSeparableConv2d is BlocksDWSep

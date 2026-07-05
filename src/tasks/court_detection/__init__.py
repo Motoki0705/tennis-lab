@@ -7,7 +7,6 @@ Provides three tasks:
 * **line** — Court white-line segmentation (binary).
 """
 
-from src.tasks.court_detection.models.dinov3_detr import DINOv3DETR
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
 
-__all__ = ["CourtHierarchicalModel", "DINOv3DETR"]
+__all__ = ["CourtHierarchicalModel"]

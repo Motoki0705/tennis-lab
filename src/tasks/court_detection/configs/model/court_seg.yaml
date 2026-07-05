@@ -1,8 +1,0 @@
-# Segmentation model (7 channels).
-# Switch decoder with `model/decoder=unet`.
-defaults:
-  - _hierarchical
-  - _self_
-
-name: court_hierarchical_seg
-num_classes: 7

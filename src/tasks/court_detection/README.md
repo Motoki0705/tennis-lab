@@ -5,7 +5,7 @@
 ## Modules
 
 ### (root)
-- **`__init__.py`**: 3タスク(`kp`/`seg`/`line`)の定義と `CourtHierarchicalModel`/`DINOv3DETR` の re-export。
+- **`__init__.py`**: 3タスク(`kp`/`seg`/`line`)の定義と `CourtHierarchicalModel` の re-export。
 
 ### data/
 - **`datamodule.py`**: `CourtDetectionDataModule`。`task` に応じてdataset/collateを切替え8の倍数へパディング。
@@ -17,9 +17,8 @@
 ### models/
 - **`__init__.py`**: `build_court_detection_model(config)`。task-model num_classes整合性を検証する工場関数。
 - **`hierarchical_model.py`**: `CourtHierarchicalModel`。encoder→decoder→1x1convの既定アーキテクチャ。
-- **`encoders.py`**: `CourtDefaultEncoder`。4段階特徴抽出encoder(実装は1種類のみ)。
-- **`decoder.py`**: `CourtFPNDecoder`/`CourtUNetDecoder`。
-- **`dinov3_detr.py`**: `DINOv3DETR`。`seg`専用のDETR風mask-classification decoder。
+- **`encoders.py`**: `CourtDefaultEncoder`/`CourtDINOv3Encoder`。CNN特徴またはDINOv3中間トークンを4段階特徴として返す。
+- **`decoder.py`**: `CourtFPNDecoder`/`CourtUNetDecoder`/`CourtDPTDecoder`。
 
 ### training/
 - **`lightning_module.py`**: `CourtDetectionLightningModule`。task別に損失・メトリクス・予測保存形式を切替。
@@ -52,6 +51,6 @@
 - **`annotation_session.py`**: `run_annotation_session()`。CourtKP20の手動/pseudo-labelアノテーションUI本体。
 
 ### configs/
-- data(task別+augmentation)・model(hierarchical/dinov3_detr)・loss・training(default/lora)・run・visualization の各Hydra設定。
+- data(task別+augmentation)・model(hierarchical + encoder/decoder)・loss・training(default/lora)・run・visualization の各Hydra設定。DINOv3+DPTは `model/encoder=dinov3 model/decoder=dpt` で選択。
 
 **注意**: 学習は14点keypointのみ使用する一方YouTubeアノテーションは20点収集しており、変換経路は本ディレクトリ内に見当たらない。`configs/visualization/*.yaml` に `versino_0` というtypoあり。
