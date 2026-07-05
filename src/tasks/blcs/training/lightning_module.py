@@ -45,6 +45,8 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             position_weight=train_cfg.get("position_loss_weight", 1.0),
             reprojection_weight=train_cfg.get("reprojection_loss_weight", 0.0),
             position_axis_weights=train_cfg.get("position_axis_weights"),
+            smoothness_weight=train_cfg.get("smoothness_loss_weight", 0.0),
+            gravity_weight=train_cfg.get("gravity_loss_weight", 0.0),
         )
         gan_enabled = bool((train_cfg.get("gan", {}) or {}).get("enabled", False))
         self._initialize_manual_gan(
