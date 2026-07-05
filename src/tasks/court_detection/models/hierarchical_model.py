@@ -38,14 +38,13 @@ class CourtHierarchicalModel(nn.Module):
         self.encoder = build_court_encoder(
             encoder_name=str(self.encoder_config.get("name", "default")),
             in_channels=self.in_channels,
+            encoder_config=self.encoder_config,
         )
         self.decoder = build_court_decoder(
             decoder_name=str(self.decoder_config.get("name", "fpn")),
             encoder_channels=self.encoder.feature_channels,
-            decoder_channels=tuple(
-                int(channel)
-                for channel in self.decoder_config.get("channels", [64, 128, 256, 512])
-            ),
+            decoder_channels=self.decoder_config.get("channels", [64, 128, 256, 512]),
+            reassemble_factors=self.decoder_config.get("reassemble_factors"),
         )
         self.final_conv = nn.Conv2d(
             self.decoder.output_channels, self.num_classes, kernel_size=1

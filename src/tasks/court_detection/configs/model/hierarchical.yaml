@@ -1,0 +1,10 @@
+# Shared CNN encoder + decoder + 1x1 head court model.
+# Override `num_classes` when pairing this with kp or line data.
+defaults:
+  - encoder: default
+  - decoder: fpn
+  - _self_
+
+name: court_hierarchical
+in_channels: 3
+num_classes: 7

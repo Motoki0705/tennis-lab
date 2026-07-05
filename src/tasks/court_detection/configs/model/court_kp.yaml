@@ -1,8 +1,0 @@
-# Keypoint heatmap model (14 channels).
-# Switch decoder with `model/decoder=unet`.
-defaults:
-  - _hierarchical
-  - _self_
-
-name: court_hierarchical_kp
-num_classes: 14

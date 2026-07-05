@@ -1,8 +1,0 @@
-# Line mask model (1 channel).
-# Switch decoder with `model/decoder=unet`.
-defaults:
-  - _hierarchical
-  - _self_
-
-name: court_hierarchical_line
-num_classes: 1
