@@ -122,6 +122,7 @@ prepare_dinov3_assets() {
         echo "[prepare_archive_dataset] Expected the checkpoint in Google Drive, or set DINOV3_CKPT." >&2
         exit 1
     fi
+    validate_dinov3_checkpoint "${DINOV3_CKPT}"
 
     mkdir -p "${DINOV3_DEST_DIR}"
     if [[ ! -f "${DINOV3_DEST}" || "${DINOV3_CKPT}" -nt "${DINOV3_DEST}" ]]; then
@@ -130,6 +131,37 @@ prepare_dinov3_assets() {
     else
         echo "[prepare_archive_dataset] DINOv3 checkpoint already exists: ${DINOV3_DEST}"
     fi
+    validate_dinov3_checkpoint "${DINOV3_DEST}"
+}
+
+validate_dinov3_checkpoint() {
+    local checkpoint_path="$1"
+    echo "[prepare_archive_dataset] validating DINOv3 checkpoint: ${checkpoint_path}"
+    python - "${checkpoint_path}" <<'PY'
+import sys
+from pathlib import Path
+
+import torch
+
+path = Path(sys.argv[1])
+try:
+    state = torch.load(path, map_location="cpu", weights_only=True)
+except Exception as exc:
+    raise SystemExit(
+        "[prepare_archive_dataset] invalid DINOv3 checkpoint. "
+        f"torch.load failed for {path}: {exc}\n"
+        "[prepare_archive_dataset] The file is likely truncated, corrupted, "
+        "or not a real PyTorch checkpoint. Re-copy/download it in Google Drive "
+        "and rerun this script."
+    ) from exc
+
+if not isinstance(state, dict):
+    raise SystemExit(
+        "[prepare_archive_dataset] invalid DINOv3 checkpoint. "
+        f"Expected a state-dict mapping, got {type(state).__name__}: {path}"
+    )
+print(f"[prepare_archive_dataset] DINOv3 checkpoint OK: {path}")
+PY
 }
 
 for archive in "${ARCHIVES[@]}"; do
