@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -16,6 +18,7 @@ def trajectory_position_loss(
     pred: Tensor,
     target: Tensor,
     mask: Tensor | None = None,
+    axis_weights: Tensor | None = None,
 ) -> Tensor:
     """Compute position loss for trajectory prediction.
 
@@ -25,12 +28,15 @@ def trajectory_position_loss(
         pred: Predicted positions, shape (B, T, 3).
         target: Target positions, shape (B, T, 3).
         mask: Visibility mask, shape (B, T). 1 = valid, 0 = ignore.
+        axis_weights: Optional per-axis weights, shape (3,).
 
     Returns:
         Tensor: Position loss.
 
     """
     loss = nn.functional.smooth_l1_loss(pred, target, reduction="none")
+    if axis_weights is not None:
+        loss = loss * axis_weights.to(device=loss.device, dtype=loss.dtype).view(1, 1, 3)
     return masked_mean(loss, mask, eps=1e-8)
 
 
@@ -101,17 +107,39 @@ class BLCSLoss(nn.Module):
         self,
         position_weight: float = 1.0,
         reprojection_weight: float = 0.0,
+        position_axis_weights: Sequence[float] | None = None,
     ) -> None:
         """Initialize the loss module.
 
         Args:
             position_weight: Weight for 3D position loss.
             reprojection_weight: Weight for multi-view reprojection loss.
+            position_axis_weights: Optional per-axis weights for 3D position loss.
 
         """
         super().__init__()
         self.position_weight = position_weight
         self.reprojection_weight = reprojection_weight
+        self.position_axis_weights: Tensor | None
+        if position_axis_weights is None:
+            self.position_axis_weights = None
+        else:
+            if len(position_axis_weights) != 3:
+                raise ValueError(
+                    "position_axis_weights must contain exactly 3 values "
+                    f"for (x, y, z), got {position_axis_weights}."
+                )
+            axis_weights = tuple(float(weight) for weight in position_axis_weights)
+            if any(weight < 0 for weight in axis_weights):
+                raise ValueError(
+                    "position_axis_weights must be non-negative, "
+                    f"got {position_axis_weights}."
+                )
+            self.register_buffer(
+                "position_axis_weights",
+                torch.tensor(axis_weights, dtype=torch.float32),
+                persistent=False,
+            )
 
         # Lazily created when reprojection loss is needed
         self._projector: DifferentiableProjection | None = None
@@ -161,7 +189,12 @@ class BLCSLoss(nn.Module):
 
         # ---- 3D position loss -----------------------------------------
         if self.position_weight > 0 and target_position is not None:
-            pos_loss = trajectory_position_loss(pred_position, target_position, mask)
+            pos_loss = trajectory_position_loss(
+                pred_position,
+                target_position,
+                mask,
+                axis_weights=self.position_axis_weights,
+            )
         else:
             pos_loss = zero
 
