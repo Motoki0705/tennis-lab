@@ -16,8 +16,10 @@ class FakeDINOv3(nn.Module):
         super().__init__()
         self.blocks = nn.ModuleList(nn.Identity() for _ in range(12))
         self.requested_layers: tuple[int, ...] | None = None
+        self.seen_input_shape: tuple[int, ...] | None = None
 
     def forward_features(self, inputs: torch.Tensor) -> dict[str, torch.Tensor]:
+        self.seen_input_shape = tuple(inputs.shape)
         batch_size = inputs.shape[0]
         num_tokens = (inputs.shape[-2] // self.patch_size) * (
             inputs.shape[-1] // self.patch_size
@@ -61,6 +63,24 @@ def test_dinov3_encoder_reassembles_four_intermediate_token_maps() -> None:
         (2, 8, 4, 5),
         (2, 8, 4, 5),
         (2, 8, 4, 5),
+    ]
+
+
+def test_dinov3_encoder_pads_inputs_to_patch_grid() -> None:
+    fake = FakeDINOv3()
+    encoder = CourtDINOv3Encoder(
+        backbone=DINOv3BackboneAdapter(fake),
+        out_indices=(2, 5, 8, 11),
+    )
+
+    features = encoder(torch.randn(2, 3, 17, 19))
+
+    assert fake.seen_input_shape == (2, 3, 20, 20)
+    assert [tuple(feature.shape) for feature in features] == [
+        (2, 8, 5, 5),
+        (2, 8, 5, 5),
+        (2, 8, 5, 5),
+        (2, 8, 5, 5),
     ]
 
 
