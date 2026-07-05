@@ -201,6 +201,9 @@ class TennisSceneOrchestrator:
                 save_result=cfg.plcs.get("save_result", True),
                 output_path=get_output_path("plcs", "plcs_result.json"),
                 load_path=get_load_path("plcs"),
+                window_size=int(cfg.plcs.get("window_size", 256)),
+                window_overlap=int(cfg.plcs.get("window_overlap", 64)),
+                human_vis_threshold=float(cfg.plcs.get("human_vis_threshold", 0.35)),
             )
         )
 
@@ -213,6 +216,8 @@ class TennisSceneOrchestrator:
                     save_result=cfg.blcs.get("save_result", True),
                     output_path=get_output_path("blcs", "blcs_result.json"),
                     load_path=get_load_path("blcs"),
+                    window_size=int(cfg.blcs.get("window_size", 256)),
+                    window_overlap=int(cfg.blcs.get("window_overlap", 64)),
                 )
             )
 

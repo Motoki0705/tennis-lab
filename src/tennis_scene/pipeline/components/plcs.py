@@ -11,6 +11,7 @@ import numpy as np
 import torch
 
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.utils.inference.windowed import blend_windows, window_slices
 from src.utils.io import load_json, save_json
 
 if TYPE_CHECKING:
@@ -23,13 +24,33 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class PLCSConfig:
-    """Configuration for PLCS module."""
+    """Configuration for PLCS module.
+
+    Attributes:
+        checkpoint_path: Path to PLCS model checkpoint.
+        device: Inference device.
+        save_result: Whether to save result to file.
+        output_path: Path to save result JSON file.
+        load_path: Path to load pre-computed result from (skips inference).
+        window_size: Maximum frames per model call. Long clips are split into
+            overlapping windows so inference stays inside the trained
+            ``seq_len_range`` instead of extrapolating RoPE far beyond it.
+        window_overlap: Frames shared by consecutive windows (blended with
+            center-peaked weights).
+        human_vis_threshold: Detector confidences below this become invisible
+            (0). Real pose detectors emit continuous confidences and keep
+            hallucinated coordinates for occluded joints, while training
+            visibility is binary — thresholding restores that contract.
+    """
 
     checkpoint_path: str | Path
     device: str = "cuda"
     save_result: bool = False
     output_path: str | Path | None = None
     load_path: str | Path | None = None
+    window_size: int = 256
+    window_overlap: int = 64
+    human_vis_threshold: float = 0.35
 
 
 @dataclass
@@ -258,23 +279,61 @@ class PLCSModule(BasePipelineModule):
         human_kp_t = torch.from_numpy(human_kp_2d).float()
         human_vis_t = None
         if human_kp_vis is not None:
-            human_vis_t = torch.from_numpy(human_kp_vis).float()
+            # Real detectors emit continuous confidences; training visibility
+            # is binary, so threshold before the model's (vis > 0) masking.
+            binary_vis = (
+                human_kp_vis >= self.config.human_vis_threshold
+            ).astype(np.float32)
+            dropped = float((human_kp_vis > 0).mean() - binary_vis.mean())
+            LOGGER.info(
+                "Thresholded human keypoint confidence at "
+                f"{self.config.human_vis_threshold} (dropped {dropped:.1%} of joints)"
+            )
+            human_vis_t = torch.from_numpy(binary_vis)
         human_mask_t = torch.ones(
             (num_players, num_cameras, num_frames),
             dtype=torch.float32,
         )
 
-        pred = predictor.predict(
-            human_kp=human_kp_t,
-            court_kp=court_kp_t,
-            human_vis=human_vis_t,
-            human_mask=human_mask_t,
-            court_vis=court_vis_batch,
-            denormalize=True,
+        slices = window_slices(
+            num_frames, self.config.window_size, self.config.window_overlap
         )
+        LOGGER.info(
+            f"Running PLCS in {len(slices)} window(s) of <= "
+            f"{self.config.window_size} frames (overlap {self.config.window_overlap})"
+        )
+        position_chunks: list[tuple[int, NDArray[np.float64]]] = []
+        yaw_vec_chunks: list[tuple[int, NDArray[np.float64]]] = []
+        for start, end in slices:
+            pred = predictor.predict(
+                human_kp=human_kp_t[:, :, start:end],
+                court_kp=court_kp_t[:, :, start:end],
+                human_vis=(
+                    human_vis_t[:, :, start:end] if human_vis_t is not None else None
+                ),
+                human_mask=human_mask_t[:, :, start:end],
+                court_vis=(
+                    court_vis_batch[:, :, start:end]
+                    if court_vis_batch is not None
+                    else None
+                ),
+                denormalize=True,
+            )
+            win_pos = pred["position_meters"].numpy()  # (P, T_w, 3)
+            win_yaw = pred["yaw_radians"].numpy()  # (P, T_w)
+            position_chunks.append((start, win_pos.transpose(1, 0, 2)))
+            yaw_vec = np.stack([np.sin(win_yaw), np.cos(win_yaw)], axis=-1)
+            yaw_vec_chunks.append((start, yaw_vec.transpose(1, 0, 2)))
 
-        positions = pred["position_meters"].numpy().astype(np.float32)
-        yaws = pred["yaw_radians"].numpy().astype(np.float32)
+        positions = (
+            blend_windows(position_chunks, num_frames)
+            .transpose(1, 0, 2)
+            .astype(np.float32)
+        )
+        yaw_vec_blend = blend_windows(yaw_vec_chunks, num_frames).transpose(1, 0, 2)
+        yaws = np.arctan2(yaw_vec_blend[..., 0], yaw_vec_blend[..., 1]).astype(
+            np.float32
+        )
         if positions.shape != (num_players, num_frames, 3):
             raise ValueError(
                 "PLCS predictor position_meters must have shape (P, T, 3), "
