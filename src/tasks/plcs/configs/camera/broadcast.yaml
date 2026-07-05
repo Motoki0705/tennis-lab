@@ -7,17 +7,24 @@
 #
 #     python -m src.tasks.plcs.scripts.generate_dataset camera=broadcast
 #
-# Geometry was fitted by overlaying the projected court on a real ATP frame.
+# Sim-to-real note (2026-07-05): the real tennis_clip camera PnP-fits to
+# setback 32.7 m / height 11.4 m / HFOV 28 deg -- far outside the previous
+# fixed 20 m / 7 m / 35 deg preset. Wide per-camera ranges below cover real
+# broadcast variation; HFOV is solved from the sampled apparent court width
+# (baseline u-span fraction; real clip = 0.64) so the court always frames
+# sensibly regardless of setback/height.
 layout: broadcast
 image_size: [1280, 720]
 
-broadcast_setback: 20.0         # metres behind the baseline (beyond HALF_LENGTH)
-broadcast_height: 7.0           # camera elevation above the court (m)
-broadcast_hfov_deg: 35.0        # telephoto horizontal FOV (deg)
+broadcast_setback_range: [15.0, 40.0]   # metres behind the baseline
+broadcast_height_range: [5.0, 15.0]     # camera elevation (m)
+broadcast_court_width_frac_range: [0.5, 0.9]  # near-baseline u-span / image width
+
 broadcast_look_at_y: 0.0        # look-at target Y (0 = court centre)
 broadcast_look_at_height: 0.5   # look-at target Z above the court (m)
 
-# Per-scene variation (set to 0 for a deterministic mirror pair).
+# Per-camera variation. hfov jitter must stay 0 while the framing-fraction
+# range is active (mutually exclusive).
 broadcast_position_noise_radius: 1.0
-broadcast_look_at_xy_radius: 1.0
-broadcast_hfov_jitter_deg: 2.0
+broadcast_look_at_xy_radius: 2.0
+broadcast_hfov_jitter_deg: 0.0
