@@ -65,7 +65,11 @@ plcs:
   # Example: load_path: outputs/tennis_scene/plcs_result.json
   window_size: 256  # max frames per model call (stay inside trained seq_len_range)
   window_overlap: 64
-  human_vis_threshold: 0.35  # binarize pose-detector confidence
+  # Binarize pose-detector confidence. Swept on tennis_clip (far-player XY
+  # speed p99 / frames>10m/s): 0.35 -> 53.7 / 69, 0.25 -> 30.5 / 38,
+  # 0.15 -> 16.0 / 20. Low-confidence ViTPose joints on the tiny far player
+  # are still roughly correct, so keep all but true garbage.
+  human_vis_threshold: 0.15
 
 blcs:
   checkpoint: ckpt/blcs/last.ckpt
