@@ -1,0 +1,15 @@
+ M scripts/colab/train/train_blcs_broadcast.sh
+ M scripts/colab/train/train_plcs_broadcast.sh
+ M src/tasks/blcs/configs/camera/broadcast.yaml
+ M src/tasks/blcs/configs/data/_augmentation.yaml
+ M src/tasks/blcs/models/components/differentiable_projection.py
+ M src/tasks/plcs/configs/camera/broadcast.yaml
+ M src/tasks/plcs/configs/data/_augmentation.yaml
+ M src/tennis_scene/configs/pipeline.yaml
+ M src/tennis_scene/pipeline/components/blcs.py
+ M src/tennis_scene/pipeline/components/plcs.py
+ M src/tennis_scene/pipeline/orchestrator.py
+ M src/utils/projection/camera_projector.py
+ M tests/unit/utils/projection/test_camera_projector.py
+?? src/utils/inference/
+?? tests/unit/utils/inference/
