@@ -20,6 +20,7 @@ from src.tasks.court_detection.data.augmentation import (
     build_kp_transforms,
 )
 from src.utils.data.heatmaps import generate_gaussian_heatmaps
+from src.utils.io import find_existing_file
 
 
 class CourtKPDataset(Dataset):
@@ -87,9 +88,9 @@ class CourtKPDataset(Dataset):
         image_id: str = entry["id"]
         kps = np.array(entry["kps"], dtype=np.float32)  # (14, 2)
 
-        img_path = self.images_dir / f"{image_id}.png"
-        if not img_path.exists():
-            img_path = self.images_dir / f"{image_id}.jpg"
+        img_path = find_existing_file(
+            self.images_dir, image_id, (".png", ".jpg")
+        ) or (self.images_dir / f"{image_id}.jpg")
         img = Image.open(img_path).convert("RGB")
 
         for t in self.spatial_transforms:

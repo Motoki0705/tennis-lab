@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import torch
-import torch.nn.functional as F
 from torch import Tensor
 
 from src.tasks.ball_detection.models import (
@@ -19,7 +18,10 @@ from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.losses import FocalBCEWithLogitsLoss
 from src.tasks.base.training.qualitative_saving import save_qualitative_clip
-from src.utils.data.heatmaps import heatmaps_to_soft_argmax
+from src.utils.data.heatmaps import (
+    heatmaps_to_soft_argmax,
+    resize_heatmap_sequence,
+)
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -94,17 +96,7 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         logits = logits.squeeze(1)
 
         # Interpolate if model output size != target heatmap size
-        if logits.shape[-2:] != target_size_hw:
-            b, t = logits.shape[:2]
-            logits_flat = logits.reshape(b * t, 1, *logits.shape[-2:])
-            logits_flat = F.interpolate(
-                logits_flat,
-                size=target_size_hw,
-                mode="bilinear",
-                align_corners=False,
-            )
-            logits = logits_flat.reshape(b, t, *target_size_hw)
-        return logits
+        return resize_heatmap_sequence(logits, target_size_hw)
 
     def _extract_gt_trajectory(self, batch: dict[str, Tensor]) -> tuple[Tensor, Tensor]:
         """Extract the primary ball trajectory and its visibility mask.

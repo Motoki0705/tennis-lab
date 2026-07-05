@@ -27,12 +27,12 @@ from src.utils.schema.court import (
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
     HALF_SINGLES_WIDTH,
-    NET_HEIGHT_CENTER,
     NET_HEIGHT_POST,
     X_MAX,
     X_MIN,
     Y_MAX,
     Y_MIN,
+    net_height_at_x,
 )
 
 if TYPE_CHECKING:
@@ -520,8 +520,7 @@ class BallPhysics:
 
     def _net_height_at_x(self, x_at_net: float) -> float:
         """Get net height at a given x position (metres)."""
-        x_ratio = min(abs(x_at_net) / HALF_DOUBLES_WIDTH, 1.0)
-        return NET_HEIGHT_CENTER + x_ratio * (NET_HEIGHT_POST - NET_HEIGHT_CENTER)
+        return net_height_at_x(x_at_net)
 
     def check_fence_collision(
         self,

@@ -27,7 +27,6 @@ Notes:
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
@@ -43,6 +42,7 @@ from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
 from src.utils.device import resolve_device
 from src.utils.hydra import hydra_main
+from src.utils.io import save_json
 
 
 def _load_hparams_config(hparams_path: Path) -> DictConfig:
@@ -366,7 +366,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         cfg.analysis.get("report_filename", cfg.analysis.get("output_filename"))
     )
     out_path = out_dir / report_filename
-    out_path.write_text(json.dumps(result, indent=2))
+    save_json(result, out_path)
     print(f"Saved JSON report to {out_path}")
 
     plot_filename = cfg.analysis.get("plot_filename")

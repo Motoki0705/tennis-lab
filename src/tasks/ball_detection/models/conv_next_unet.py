@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from torchvision.ops import StochasticDepth
 
 from src.tasks.ball_detection.models.input_adapter import resolve_model_in_channels
+from src.utils.tensor_utils import flatten_time_to_batch, restore_time_from_batch
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -150,9 +151,9 @@ class StemLayer(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Patchify every frame while preserving batch and time axes."""
-        x_2d, batch_size, timesteps = _flatten_frames(x)
+        x_2d, batch_size, timesteps = flatten_time_to_batch(x)
         x_2d = self.norm(self.conv(x_2d))
-        return _restore_frames(x_2d, batch_size, timesteps)
+        return restore_time_from_batch(x_2d, batch_size, timesteps)
 
 
 class DownsamplingLayer(nn.Module):
@@ -173,9 +174,9 @@ class DownsamplingLayer(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Halve spatial resolution without changing the time axis."""
-        x_2d, batch_size, timesteps = _flatten_frames(x)
+        x_2d, batch_size, timesteps = flatten_time_to_batch(x)
         x_2d = self.conv(self.norm(x_2d))
-        return _restore_frames(x_2d, batch_size, timesteps)
+        return restore_time_from_batch(x_2d, batch_size, timesteps)
 
 
 class UpsamplingLayer(nn.Module):
@@ -216,9 +217,9 @@ class EncoderBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Return the 3D feature and flattened frame-wise 2D skip feature."""
-        x_2d, batch_size, timesteps = _flatten_frames(x)
+        x_2d, batch_size, timesteps = flatten_time_to_batch(x)
         skip_2d = self.block_2d(x_2d)
-        x_3d = _restore_frames(skip_2d, batch_size, timesteps)
+        x_3d = restore_time_from_batch(skip_2d, batch_size, timesteps)
         return self.block_3d(x_3d), skip_2d
 
 
@@ -238,9 +239,9 @@ class BottleneckBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Apply frame-wise and spatio-temporal bottleneck processing."""
-        x_2d, batch_size, timesteps = _flatten_frames(x)
+        x_2d, batch_size, timesteps = flatten_time_to_batch(x)
         x_2d = self.block_2d(x_2d)
-        x = _restore_frames(x_2d, batch_size, timesteps)
+        x = restore_time_from_batch(x_2d, batch_size, timesteps)
         return self.block_3d(x)
 
 
@@ -279,10 +280,10 @@ class DecoderBlock(nn.Module):
         x = self.fuse_3d(torch.cat([x, skip_3d], dim=1))
         x = self.block_3d(x)
 
-        x_2d, batch_size, timesteps = _flatten_frames(x)
+        x_2d, batch_size, timesteps = flatten_time_to_batch(x)
         x_2d = self.fuse_2d(torch.cat([x_2d, skip_2d], dim=1))
         x_2d = self.block_2d(x_2d)
-        return _restore_frames(x_2d, batch_size, timesteps)
+        return restore_time_from_batch(x_2d, batch_size, timesteps)
 
 
 class ConvNeXtUNet(nn.Module):
@@ -446,29 +447,6 @@ class ConvNeXtUNet(nn.Module):
                 f"{minimum_spatial_size} for dims={self.dims}, "
                 f"got H={x.shape[3]}, W={x.shape[4]}."
             )
-
-
-def _flatten_frames(x: torch.Tensor) -> tuple[torch.Tensor, int, int]:
-    batch_size, channels, timesteps, height, width = x.shape
-    x_2d = (
-        x.permute(0, 2, 1, 3, 4)
-        .contiguous()
-        .view(batch_size * timesteps, channels, height, width)
-    )
-    return x_2d, batch_size, timesteps
-
-
-def _restore_frames(
-    x: torch.Tensor,
-    batch_size: int,
-    timesteps: int,
-) -> torch.Tensor:
-    _, channels, height, width = x.shape
-    return (
-        x.view(batch_size, timesteps, channels, height, width)
-        .permute(0, 2, 1, 3, 4)
-        .contiguous()
-    )
 
 
 def _build_drop_path(drop_path_prob: float) -> nn.Module:

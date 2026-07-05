@@ -25,6 +25,7 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
+    build_self_attn_mask,
     default_ffn_dim,
     precompute_freqs_cis_nd,
     resolve_rope_bases,
@@ -280,7 +281,7 @@ class BLCSModel(nn.Module):
             court_valid = torch.ones(B, K, device=x.device, dtype=torch.bool)
             ball_valid = ball_mask > 0
             key_padding_mask = torch.cat([court_valid, ball_valid], dim=1)
-            attn_mask = key_padding_mask[:, None, :].expand(B, S, S)
+            attn_mask, _ = build_self_attn_mask(key_padding_mask)
 
         for blk in self.blocks:
             x = blk(

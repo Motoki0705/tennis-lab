@@ -13,7 +13,6 @@ Notes:
 
 from __future__ import annotations
 
-import json
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -32,6 +31,7 @@ from src.tasks.ball_detection.data.components.augmentation import (
 from src.tasks.ball_detection.data.types import ClipWindow
 from src.tasks.base.preview import resolve_sample_indices, resolve_split_file
 from src.utils.hydra import hydra_main
+from src.utils.io import save_json
 
 
 @hydra_main(
@@ -94,11 +94,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             "split": split_name,
         }
         metadata_path = output_dir / f"{file_stem}.json"
-        metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+        save_json(metadata, metadata_path)
         manifest.append(metadata)
 
     manifest_path = output_dir / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    save_json(manifest, manifest_path)
     print(f"Saved {len(sample_indices)} augmentation preview(s) to {output_dir}")
     return 0
 

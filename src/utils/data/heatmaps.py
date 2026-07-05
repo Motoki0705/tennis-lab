@@ -280,6 +280,32 @@ def heatmaps_to_peaks(
     )
 
 
+def resize_heatmap_sequence(heatmaps: Tensor, target_size_hw: tuple[int, int]) -> Tensor:
+    """Bilinearly resize ``(B, T, H, W)`` heatmaps/logits to ``target_size_hw``.
+
+    Returns the input unchanged when the spatial size already matches.
+    Reproduces the flatten → ``F.interpolate(mode="bilinear",
+    align_corners=False)`` → restore blocks previously duplicated across
+    ball-detection training and evaluation.
+    """
+    if heatmaps.ndim != 4:
+        raise ValueError(
+            f"Expected heatmaps with shape (B, T, H, W), got {tuple(heatmaps.shape)}."
+        )
+    height, width = _validate_size(target_size_hw)
+    if tuple(heatmaps.shape[-2:]) == (height, width):
+        return heatmaps
+    batch_size, num_frames = heatmaps.shape[:2]
+    flat = heatmaps.reshape(batch_size * num_frames, 1, *heatmaps.shape[-2:])
+    flat = F.interpolate(
+        flat,
+        size=(height, width),
+        mode="bilinear",
+        align_corners=False,
+    )
+    return flat.reshape(batch_size, num_frames, height, width)
+
+
 def _validate_size(size_hw: tuple[int, int]) -> tuple[int, int]:
     if len(size_hw) != 2:
         raise ValueError(f"size_hw must be (height, width), got {size_hw!r}.")

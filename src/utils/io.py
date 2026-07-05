@@ -8,7 +8,7 @@ writers, pipeline ``Result.save()`` methods and scripts.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
@@ -31,13 +31,38 @@ def ensure_dirs(paths: Iterable[str | Path]) -> list[Path]:
     return [ensure_dir(path) for path in paths]
 
 
-def save_json(data: Any, path: str | Path, *, indent: int = 2) -> Path:
+def find_existing_file(
+    directory: str | Path,
+    stem: str,
+    extensions: Iterable[str],
+) -> Path | None:
+    """Return the first existing ``<directory>/<stem><extension>``, else ``None``.
+
+    Wraps the "image id with .png/.jpg fallback" lookup duplicated across
+    dataset loaders and annotation tooling.
+    """
+    base = Path(directory)
+    for extension in extensions:
+        candidate = base / f"{stem}{extension}"
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def save_json(
+    data: Any,
+    path: str | Path,
+    *,
+    indent: int = 2,
+    default: Callable[[Any], Any] | None = None,
+) -> Path:
     """Serialize ``data`` to ``path`` as UTF-8 JSON, creating parent dirs.
 
     Args:
         data: JSON-serializable object.
         path: Destination file path.
         indent: ``json.dump`` indentation (the project default is 2).
+        default: Optional ``json.dump`` fallback serializer (e.g. ``str``).
 
     Returns:
         The written path as a ``Path``.
@@ -45,7 +70,7 @@ def save_json(data: Any, path: str | Path, *, indent: int = 2) -> Path:
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("w", encoding="utf-8") as handle:
-        json.dump(data, handle, indent=indent)
+        json.dump(data, handle, indent=indent, default=default)
     return destination
 
 
@@ -120,6 +145,7 @@ __all__ = [
     "JSONDict",
     "ensure_dir",
     "ensure_dirs",
+    "find_existing_file",
     "load_json",
     "load_json_if_exists",
     "read_jsonl",

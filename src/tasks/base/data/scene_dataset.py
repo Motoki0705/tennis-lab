@@ -421,32 +421,16 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
     def _extract_scene_header(self, path: Path) -> SceneHeader:
         """Extract a lightweight header from a scene directory.
 
-        Reads only meta.json and scalars.json to determine num_frames
-        and num_cameras without loading full array data.
+        Uses :func:`load_scene_payload` (arrays are mmap-loaded, so no full
+        array data is read) to determine num_frames and num_cameras.
         """
-        meta: dict[str, Any] = {}
-        meta_path = path / "meta.json"
-        if meta_path.exists():
-            with open(meta_path) as f:
-                meta = json.load(f)
-
-        scalars: dict[str, Any] = {}
-        scalars_path = path / "scalars.json"
-        if scalars_path.exists():
-            with open(scalars_path) as f:
-                scalars = json.load(f)
-
-        # Build a minimal payload for fallback num_frames resolution.
-        # Load only npy headers (no full data) for shape inspection.
-        payload: dict[str, Any] = dict(scalars)
-        payload["meta"] = meta
-        for npy_file in path.glob("*.npy"):
-            # Load with mmap to avoid reading full data
-            payload[npy_file.stem] = np.load(npy_file, mmap_mode="r")
+        payload = load_scene_payload(path)
+        raw_meta = payload.get("meta", {})
+        meta: dict[str, Any] = dict(raw_meta) if isinstance(raw_meta, dict) else {}
 
         num_frames = self._resolve_num_frames(path=path, meta=meta, payload=payload)
         try:
-            num_cameras = int(scalars.get("num_cameras", 0))
+            num_cameras = int(payload.get("num_cameras", 0))
         except (TypeError, ValueError):
             num_cameras = 0
 

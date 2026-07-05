@@ -6,13 +6,13 @@ from pathlib import Path
 from typing import Protocol
 
 import torch
-import torch.nn.functional as F
 from torch import Tensor
 
 from src.tasks.ball_detection.models.input_adapter import to_model_input
 from src.tasks.ball_detection.training.lightning_module import (
     BallDetectionLightningModule,
 )
+from src.utils.data.heatmaps import resize_heatmap_sequence
 
 
 class BallPredictionAdapter(Protocol):
@@ -83,14 +83,7 @@ class LightningBallPredictionAdapter:
                 f"{expected_prefix}, got {tuple(logits.shape)}."
             )
         logits = logits.squeeze(1)
-        if logits.shape[-2:] != target_size_hw:
-            batch_size, num_frames = logits.shape[:2]
-            logits = F.interpolate(
-                logits.reshape(batch_size * num_frames, 1, *logits.shape[-2:]),
-                size=target_size_hw,
-                mode="bilinear",
-                align_corners=False,
-            ).reshape(batch_size, num_frames, *target_size_hw)
+        logits = resize_heatmap_sequence(logits, target_size_hw)
         return torch.sigmoid(logits)
 
 

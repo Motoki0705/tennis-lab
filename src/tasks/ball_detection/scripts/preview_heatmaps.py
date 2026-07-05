@@ -13,7 +13,6 @@ Notes:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -23,9 +22,19 @@ import torch
 from omegaconf import DictConfig
 
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
-from src.tasks.base.preview import resolve_sample_indices, resolve_split_file
+from src.tasks.base.preview import (
+    compose_titled_row as _compose_row,
+)
+from src.tasks.base.preview import (
+    draw_normalized_point as _draw_point,
+)
+from src.tasks.base.preview import (
+    resolve_sample_indices,
+    resolve_split_file,
+)
 from src.utils.data.heatmaps import generate_gaussian_heatmaps, heatmaps_to_argmax
 from src.utils.hydra import hydra_main
+from src.utils.io import save_json
 
 
 @hydra_main(
@@ -119,7 +128,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             }
         )
 
-    (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    save_json(manifest, output_dir / "manifest.json")
     print(f"Saved {len(manifest)} ball heatmap preview(s) to {output_dir}")
     return 0
 
@@ -213,52 +222,6 @@ def _render_ratio_panel(
             thickness=1,
         )
     return overlay
-
-
-def _draw_point(
-    image: np.ndarray,
-    center_xy: tuple[float, float],
-    *,
-    radius: int,
-    color: tuple[int, int, int],
-    thickness: int,
-) -> None:
-    height, width = image.shape[:2]
-    x_px = int(round(center_xy[0] * max(width - 1, 0)))
-    y_px = int(round(center_xy[1] * max(height - 1, 0)))
-    cv2.circle(image, (x_px, y_px), radius, color, thickness=thickness, lineType=cv2.LINE_AA)
-
-
-def _compose_row(
-    panels: list[np.ndarray],
-    titles: list[str],
-    cfg: DictConfig,
-) -> np.ndarray:
-    tile_gap = int(cfg.preview.layout.tile_gap)
-    header_height = int(cfg.preview.layout.header_height)
-    text_scale = float(cfg.preview.layout.text_scale)
-    text_thickness = int(cfg.preview.layout.text_thickness)
-    background_rgb = tuple(int(v) for v in cfg.preview.layout.background_rgb)
-
-    height, width = panels[0].shape[:2]
-    row_width = len(panels) * width + (len(panels) - 1) * tile_gap
-    canvas = np.full((header_height + height, row_width, 3), background_rgb, dtype=np.uint8)
-
-    cursor_x = 0
-    for panel, title in zip(panels, titles, strict=True):
-        canvas[header_height:, cursor_x : cursor_x + width] = panel
-        cv2.putText(
-            canvas,
-            title,
-            (cursor_x + 6, max(header_height - 8, 12)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            text_scale,
-            (245, 245, 245),
-            text_thickness,
-            lineType=cv2.LINE_AA,
-        )
-        cursor_x += width + tile_gap
-    return canvas
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point
