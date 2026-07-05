@@ -4,36 +4,31 @@ set -euo pipefail
 # Common Colab setup for tennis-lab notebooks.
 #
 # Responsibilities:
-#   - mount Google Drive at /content/drive
+#   - verify Google Drive is already mounted at /content/drive
 #   - install common system dependency: zstd
 #   - install common Python dependencies used across ball/court/blcs/plcs
 #
 # Usage from Colab:
-#   !bash scripts/colab/install_deps.sh
+#   from google.colab import drive
+#   drive.mount("/content/drive")
+#   !bash scripts/colab/setup/install_deps.sh
+#
+# Environment overrides:
+#   REPO_ROOT     default: repository root inferred from this script path
 
-REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 
 echo "[install_deps] repo root: ${REPO_ROOT}"
 cd "${REPO_ROOT}"
 
-echo "[install_deps] mounting Google Drive if needed..."
-python - <<'PY'
-from pathlib import Path
-
-drive_root = Path("/content/drive/MyDrive")
-if drive_root.exists():
-    print("[install_deps] Google Drive is already mounted.")
-else:
-    try:
-        from google.colab import drive
-    except Exception as exc:
-        raise SystemExit(
-            "[install_deps] google.colab is unavailable. "
-            "Run this script on Colab, or mount Drive manually at /content/drive."
-        ) from exc
-
-    drive.mount("/content/drive")
-PY
+echo "[install_deps] checking Google Drive mount..."
+if [[ ! -d /content/drive/MyDrive ]]; then
+    echo "[install_deps] Google Drive is not mounted at /content/drive/MyDrive." >&2
+    echo "[install_deps] Run this in a Colab Python cell before this script:" >&2
+    echo "from google.colab import drive" >&2
+    echo "drive.mount('/content/drive')" >&2
+    exit 1
+fi
 
 echo "[install_deps] installing system dependencies..."
 if command -v apt-get >/dev/null 2>&1; then
