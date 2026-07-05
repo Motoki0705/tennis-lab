@@ -15,6 +15,7 @@ from src.utils.data.augmentation import (
     parse_int_range,
     random_visibility_dropout,
     scale_uv_with_visibility,
+    tensor_images_to_uint8_rgb,
 )
 from src.utils.data.heatmaps import (
     generate_gaussian_heatmap,
@@ -23,6 +24,7 @@ from src.utils.data.heatmaps import (
     heatmaps_to_peaks,
     heatmaps_to_pixel_coords,
     heatmaps_to_soft_argmax,
+    resize_heatmap_sequence,
 )
 from src.utils.data.scene_io import load_scene_payload
 from src.utils.data.splits import GroupSplitConfig, make_group_split_map
@@ -50,5 +52,7 @@ __all__ = [
     "parse_float_range",
     "parse_int_range",
     "random_visibility_dropout",
+    "resize_heatmap_sequence",
     "scale_uv_with_visibility",
+    "tensor_images_to_uint8_rgb",
 ]

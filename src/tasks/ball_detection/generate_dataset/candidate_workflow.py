@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import shutil
 import time
-from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -26,6 +25,7 @@ from src.utils.io import (
     utc_now_iso,
     write_jsonl,
 )
+from src.utils.video.windows import build_window_starts, chunked
 
 JSONDict = dict[str, Any]
 LEFT_KEYS = {81, 65361, 2424832}
@@ -387,7 +387,7 @@ def _predict_candidate(
     prediction_counts: np.ndarray = np.zeros(frame_count, dtype=np.int32)
     heatmap_sums: torch.Tensor | None = None
     heatmap_maxima: torch.Tensor | None = None
-    for start_chunk in _chunked(starts, config.batch_size):
+    for start_chunk in chunked(starts, config.batch_size):
         batch = torch.stack(
             [
                 torch.stack(model_frames[start : start + config.sequence_length])
@@ -448,20 +448,6 @@ def _predict_candidate(
             "prediction_count": int(prediction_counts[index]),
         })
     return predictions
-
-
-def build_window_starts(*, frame_count: int, sequence_length: int, stride: int) -> list[int]:
-    """Build sliding-window starts, always covering the final frame."""
-    if frame_count < sequence_length:
-        raise ValueError(
-            f"frame_count={frame_count} is shorter than "
-            f"sequence_length={sequence_length}."
-        )
-    starts = list(range(0, frame_count - sequence_length + 1, stride))
-    last_start = frame_count - sequence_length
-    if starts[-1] != last_start:
-        starts.append(last_start)
-    return starts
 
 
 def _load_model_frame(path: Path, config: CandidatePredictionConfig) -> torch.Tensor:
@@ -644,7 +630,3 @@ def _resolve_path(root: Path, value: Any) -> Path:
     path = Path(str(value))
     return path if path.is_absolute() else root / path
 
-
-def _chunked(values: Sequence[int], chunk_size: int) -> Iterator[list[int]]:
-    for index in range(0, len(values), chunk_size):
-        yield list(values[index : index + chunk_size])

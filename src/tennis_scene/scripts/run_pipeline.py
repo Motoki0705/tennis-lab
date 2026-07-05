@@ -17,14 +17,15 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-import hydra
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, ListConfig
+
+from src.utils.hydra import hydra_main
 
 LOGGER = logging.getLogger(__name__)
 
 
-@hydra.main(
+@hydra_main(
     version_base="1.3",
     config_path="../configs",
     config_name="pipeline",

@@ -11,9 +11,6 @@ from torch import Tensor
 from src.tasks.base.data.augmentation import BaseObservationAugmentation
 from src.utils.data.augmentation import (
     _as_dict,
-    _enabled,
-    _prob,
-    _should_apply,
     add_temporally_correlated_jitter,
     apply_burst_visibility_dropout,
     apply_edge_aware_degradation,
@@ -229,14 +226,9 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
 
     def _apply_uv_scale(self, sample: PLCSSample) -> None:
         cfg = self.uv_scale_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), sample["human_kp"]):
+        if not self._active(cfg, sample["human_kp"]):
             return
-        scale_min, scale_max = parse_float_range(
-            cfg.get("scale_range", [1.0, 1.0]),
-            "augmentation.uv_scale.scale_range",
-        )
-        if scale_min <= 0 or scale_max <= 0:
-            raise ValueError("augmentation.uv_scale.scale_range values must be positive.")
+        scale_min, scale_max = self._parse_scale_range(cfg)
         scale = (
             torch.rand((), device=sample["human_kp"].device).item()
             * (scale_max - scale_min)
@@ -259,7 +251,7 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
 
     def _apply_gaussian_noise(self, sample: PLCSSample) -> None:
         cfg = self.gaussian_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), sample["human_kp"]):
+        if not self._active(cfg, sample["human_kp"]):
             return
         human_std = float(cfg.get("human_std", cfg.get("keypoint_noise_std", 0.0)))
         court_std = float(cfg.get("court_std", human_std))
@@ -282,7 +274,7 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         entity: str,
     ) -> Tensor:
         cfg = self.temporal_jitter_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), keypoints):
+        if not self._active(cfg, keypoints):
             return keypoints
         jitter_std = float(_entity_value(cfg, entity, "jitter_std", 0.0))
         drift_std = float(_entity_value(cfg, entity, "drift_std", 0.0))
@@ -316,7 +308,7 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         entity: str,
     ) -> tuple[Tensor, Tensor]:
         cfg = self.speed_conditioned_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), keypoints):
+        if not self._active(cfg, keypoints):
             return keypoints, visibility
         frame_prob = float(_entity_value(cfg, entity, "frame_prob", 0.0))
         if frame_prob <= 0:
@@ -354,7 +346,7 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         entity: str,
     ) -> tuple[Tensor, Tensor]:
         cfg = self.edge_degradation_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), keypoints):
+        if not self._active(cfg, keypoints):
             return keypoints, visibility
         noise_std = float(_entity_value(cfg, entity, "noise_std", 0.0))
         drop_prob = float(_entity_value(cfg, entity, "drop_prob", 0.0))
@@ -388,7 +380,7 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         entity: str,
     ) -> Tensor:
         cfg = self.visibility_dropout_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), visibility):
+        if not self._active(cfg, visibility):
             return visibility
         drop_prob = float(_entity_value(cfg, entity, "drop_prob", 0.0))
         return random_visibility_dropout(visibility, drop_prob)
@@ -400,7 +392,7 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         entity: str,
     ) -> Tensor:
         cfg = self.burst_dropout_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), visibility):
+        if not self._active(cfg, visibility):
             return visibility
         track_prob = float(_entity_value(cfg, entity, "track_prob", 0.0))
         if track_prob <= 0:
@@ -424,7 +416,7 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         dropped_mask: Tensor,
     ) -> tuple[Tensor, Tensor]:
         cfg = self.false_positive_cfg
-        if not _enabled(cfg) or not _should_apply(_prob(cfg), keypoints):
+        if not self._active(cfg, keypoints):
             return keypoints, visibility
         absent_prob = float(_entity_value(cfg, entity, "prob_absent", 0.0))
         after_dropout_prob = float(_entity_value(cfg, entity, "prob_after_dropout", 0.0))

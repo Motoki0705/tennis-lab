@@ -19,6 +19,7 @@ from src.tasks.court_detection.data.augmentation import (
     _pil_to_tensor_image,
     build_seg_transforms,
 )
+from src.utils.io import find_existing_file
 
 
 class CourtLineDataset(Dataset):
@@ -78,9 +79,9 @@ class CourtLineDataset(Dataset):
         entry = self._entries[idx]
         image_id: str = entry["id"]
 
-        img_path = self.images_dir / f"{image_id}.png"
-        if not img_path.exists():
-            img_path = self.images_dir / f"{image_id}.jpg"
+        img_path = find_existing_file(
+            self.images_dir, image_id, (".png", ".jpg")
+        ) or (self.images_dir / f"{image_id}.jpg")
         img = Image.open(img_path).convert("RGB")
 
         mask_path = self.masks_dir / f"{image_id}.png"

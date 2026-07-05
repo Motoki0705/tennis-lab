@@ -8,15 +8,16 @@ device resolution, Hydra camera-selection parsing, and animation save/show.
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
 import matplotlib.pyplot as plt
-import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
+
+from src.utils.device import resolve_device as _resolve_torch_device
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,35 @@ class BaseVisualizationRuntimeConfig:
 
 
 def resolve_device(device: str) -> str:
-    """Resolve ``auto`` device selection."""
+    """Resolve ``auto`` device selection.
+
+    Delegates the ``auto`` resolution to :func:`src.utils.device.resolve_device`;
+    explicit device strings are passed through unchanged (no CPU fallback).
+    """
     if device == "auto":
-        return "cuda" if torch.cuda.is_available() else "cpu"
+        return str(_resolve_torch_device("auto"))
     return device
+
+
+def parse_hw(value: object, *, name: str) -> tuple[int, int]:
+    """Parse a length-2 ``(height, width)`` int pair from a Hydra config value."""
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 2:
+        raise ValueError(f"{name} must be a length-2 sequence.")
+    return int(value[0]), int(value[1])
+
+
+def parse_rgb(value: object, *, name: str) -> tuple[int, int, int]:
+    """Parse a length-3 RGB int triple from a Hydra config value."""
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 3:
+        raise ValueError(f"{name} must be a length-3 RGB sequence.")
+    return int(value[0]), int(value[1]), int(value[2])
+
+
+def parse_float_triplet(value: object, *, name: str) -> tuple[float, float, float]:
+    """Parse a length-3 float triple from a Hydra config value."""
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 3:
+        raise ValueError(f"{name} must be a length-3 sequence.")
+    return float(value[0]), float(value[1]), float(value[2])
 
 
 def parse_cameras(raw_value: object) -> list[int] | str | None:

@@ -13,7 +13,6 @@ Notes:
 from __future__ import annotations
 
 import csv
-import json
 import math
 import random
 from collections.abc import Callable
@@ -26,6 +25,7 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
 from src.utils.hydra import hydra_main
+from src.utils.io import load_json, save_json
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
@@ -202,16 +202,14 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
             meta_path = scene_path / "meta.json"
             if not meta_path.exists():
                 raise ValueError(f"Missing meta.json in {scene_path}")
-            with open(meta_path) as mf:
-                meta = json.load(mf)
+            meta = load_json(meta_path)
             if not isinstance(meta, dict):
                 raise ValueError(f"Invalid meta in {scene_path}")
 
             scalars_path = scene_path / "scalars.json"
             scalars: dict[str, Any] = {}
             if scalars_path.exists():
-                with open(scalars_path) as sf:
-                    scalars = json.load(sf)
+                scalars = load_json(scalars_path)
 
             scene_id = str(meta.get("scene_id", scene_path.stem))
             init_x, init_y, init_z = _safe_initial_xyz(meta)
@@ -320,8 +318,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         },
     }
 
-    with open(out_dir / "summary.json", "w") as f:
-        json.dump(summary, f, indent=2)
+    save_json(summary, out_dir / "summary.json")
 
     np.savez_compressed(out_dir / "hist_xy.npz", hist=xy_hist, x_edges=x_edges, y_edges=y_edges)
     np.savez_compressed(out_dir / "hist_yaw.npz", hist=yaw_hist, yaw_edges=yaw_edges)

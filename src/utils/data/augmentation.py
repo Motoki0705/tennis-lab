@@ -7,7 +7,7 @@ and other modules to avoid code duplication.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -109,6 +109,21 @@ def denormalize_tensor_images_imagenet(
     mean_tensor = images.new_tensor(mean).view(*view_shape)
     std_tensor = images.new_tensor(std).view(*view_shape)
     return images * std_tensor + mean_tensor
+
+
+def tensor_images_to_uint8_rgb(images: Tensor) -> np.ndarray:
+    """Convert ``(..., 3, H, W)`` float images in ``[0, 1]`` to uint8 ``(..., H, W, 3)``.
+
+    Clamps to ``[0, 1]``, moves channels last, scales by 255 and casts —
+    the tail shared by visualization renderers after ImageNet denormalization.
+    """
+    if images.ndim < 3 or images.shape[-3] != 3:
+        raise ValueError(
+            "Expected images with shape (..., 3, H, W) for uint8 RGB conversion, "
+            f"got {tuple(images.shape)}."
+        )
+    array = images.detach().cpu().float().clamp(0.0, 1.0).movedim(-3, -1).numpy()
+    return cast("np.ndarray", (array * 255.0).astype(np.uint8))
 
 
 def normalize_frames_imagenet(
