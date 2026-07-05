@@ -61,7 +61,9 @@ class GVHMRResult:
         smpl_body_pose: SMPL body pose parameters, shape (P, T, 63).
         smpl_global_orient: SMPL global orientation, shape (P, T, 3).
         smpl_betas: SMPL shape parameters, shape (P, 10).
-        smpl_vertices_local: Local SMPL vertices, shape (P, T, V, 3) or None.
+        smpl_vertices_local: GVHMR/SMPL vertices, shape (P, T, V, 3) or None.
+            These remain in the SMPL body convention (Y-up) and are not court
+            coordinates; visualization converts them to court Z-up explicitly.
         human_kp_2d: 2D keypoints in pixels, shape (P, T, 17, 2).
         human_kp_vis: Keypoint visibility/confidence, shape (P, T, 17).
         bbx_xys: Bounding boxes, shape (P, T, 3).
