@@ -39,6 +39,7 @@ from src.utils.geometry.matrices import (
     axis_angle_to_rotation_matrix,
     rotation_matrix_y,
     rotation_matrix_z,
+    smpl_y_up_to_court_z_up,
 )
 from src.utils.geometry.rotation_conversions import (
     axis_angle_to_matrix,
@@ -87,6 +88,7 @@ __all__ = [
     "rotation_matrix_y",
     "rotation_matrix_z",
     "signed_angle_around_axis",
+    "smpl_y_up_to_court_z_up",
     "standardize_quaternion",
     "wrapped_angle_diff",
     "world_pose_to_canonical_pose",

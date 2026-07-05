@@ -1,0 +1,14 @@
+diff --git a/.gitignore b/.gitignore
+index 3a7ceb6..62649b5 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -44,7 +44,9 @@ data/samples/
+ data/smplh/
+ data/smplx/
+ data/plcs/
++data/plcs_broadcast/
+ data/blcs/
++data/blcs_broadcast/
+ data/blcs_fixed_8
+ data/demo/
+ data/tennis/

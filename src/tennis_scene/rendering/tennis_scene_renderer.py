@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,6 +25,7 @@ from src.submodules.vendor.gvhmr.body_model import (
 from src.utils.geometry.matrices import (
     axis_angle_to_rotation_matrix,
     rotation_matrix_z,
+    smpl_y_up_to_court_z_up,
 )
 from src.utils.rendering.ball_renderer import BallRenderer, BallStyle
 from src.utils.rendering.court_renderer import CourtRenderer, CourtStyle
@@ -136,12 +137,6 @@ class TennisSceneRenderer:
         missing: list[str] = []
         if scene.smpl_vertices_local is None:
             missing.append("smpl_vertices_local")
-        if scene.smpl_global_orient is None:
-            missing.append("smpl_global_orient")
-        if scene.player_position is None:
-            missing.append("player_position")
-        if scene.player_yaw is None:
-            missing.append("player_yaw")
         if missing:
             missing_str = ", ".join(missing)
             raise RuntimeError(
@@ -191,10 +186,11 @@ class TennisSceneRenderer:
         orient_rot = self._axis_angle_to_matrix(global_orient)
         verts_pose_local = np.einsum("ptji,ptvj->ptvi", orient_rot, verts_centered)
 
+        verts_court_local = smpl_y_up_to_court_z_up(verts_pose_local)
         plcs_rot = self._rotation_matrix_z(players_yaw)
-        verts_court = np.einsum("ptij,ptvj->ptvi", plcs_rot, verts_pose_local)
+        verts_court = np.einsum("ptij,ptvj->ptvi", plcs_rot, verts_court_local)
         verts_court = verts_court + players_position[:, :, None, :]
-        verts_court = verts_court.astype(np.float32)
+        verts_court = cast("NDArray[np.float32]", verts_court.astype(np.float32))
 
         self._scene_vertices_cache[cache_key] = verts_court
         return verts_court
@@ -209,8 +205,11 @@ class TennisSceneRenderer:
             raise RuntimeError("SMPL joint regressor is not loaded.")
 
         players_smpl = self._build_players_smpl_vertices_court(scene)
-        players_kp_3d = np.einsum("jv,ptvc->ptjc", self._smpl_joint_regressor, players_smpl).astype(
-            np.float32
+        players_kp_3d = cast(
+            "NDArray[np.float32]",
+            np.einsum(
+                "jv,ptvc->ptjc", self._smpl_joint_regressor, players_smpl
+            ).astype(np.float32),
         )
         self._scene_joints_cache[cache_key] = players_kp_3d
         return players_kp_3d
