@@ -13,7 +13,6 @@ Notes:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -22,9 +21,18 @@ import numpy as np
 from omegaconf import DictConfig
 from PIL import Image
 
-from src.tasks.base.preview import resolve_sample_indices
+from src.tasks.base.preview import (
+    compose_titled_row as _compose_row,
+)
+from src.tasks.base.preview import (
+    draw_normalized_point as _draw_point,
+)
+from src.tasks.base.preview import (
+    resolve_sample_indices,
+)
 from src.utils.data.heatmaps import generate_gaussian_heatmaps, heatmaps_to_argmax
 from src.utils.hydra import hydra_main
+from src.utils.io import find_existing_file, load_json, save_json
 
 
 @hydra_main(
@@ -38,7 +46,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     output_dir.mkdir(parents=True, exist_ok=True)
 
     data_dir = Path(str(cfg.data.data_dir)).expanduser()
-    entries = json.loads((data_dir / f"data_{cfg.preview.split}.json").read_text(encoding="utf-8"))
+    entries = load_json(data_dir / f"data_{cfg.preview.split}.json")
     sample_indices = resolve_sample_indices(cfg, len(entries))
 
     manifest: list[dict[str, Any]] = []
@@ -94,18 +102,17 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             }
         )
 
-    (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    save_json(manifest, output_dir / "manifest.json")
     print(f"Saved {len(manifest)} court heatmap preview(s) to {output_dir}")
     return 0
 
 
 def _load_image(data_dir: Path, image_id: str) -> np.ndarray:
-    for extension in (".png", ".jpg", ".jpeg"):
-        image_path = data_dir / "images" / f"{image_id}{extension}"
-        if image_path.exists():
-            with Image.open(image_path) as image:
-                return np.asarray(image.convert("RGB"))
-    raise FileNotFoundError(f"Image not found for image_id={image_id!r} under {data_dir / 'images'}")
+    image_path = find_existing_file(data_dir / "images", image_id, (".png", ".jpg", ".jpeg"))
+    if image_path is None:
+        raise FileNotFoundError(f"Image not found for image_id={image_id!r} under {data_dir / 'images'}")
+    with Image.open(image_path) as image:
+        return np.asarray(image.convert("RGB"))
 
 
 def _annotate_original(image: np.ndarray, centers_xy: np.ndarray, cfg: DictConfig) -> np.ndarray:
@@ -156,52 +163,6 @@ def _render_ratio_panel(
             thickness=int(cfg.preview.draw.thickness),
         )
     return overlay
-
-
-def _draw_point(
-    image: np.ndarray,
-    center_xy: tuple[float, float],
-    *,
-    radius: int,
-    color: tuple[int, int, int],
-    thickness: int,
-) -> None:
-    height, width = image.shape[:2]
-    x_px = int(round(center_xy[0] * max(width - 1, 0)))
-    y_px = int(round(center_xy[1] * max(height - 1, 0)))
-    cv2.circle(image, (x_px, y_px), radius, color, thickness=thickness, lineType=cv2.LINE_AA)
-
-
-def _compose_row(
-    panels: list[np.ndarray],
-    titles: list[str],
-    cfg: DictConfig,
-) -> np.ndarray:
-    tile_gap = int(cfg.preview.layout.tile_gap)
-    header_height = int(cfg.preview.layout.header_height)
-    text_scale = float(cfg.preview.layout.text_scale)
-    text_thickness = int(cfg.preview.layout.text_thickness)
-    background_rgb = tuple(int(v) for v in cfg.preview.layout.background_rgb)
-
-    height, width = panels[0].shape[:2]
-    row_width = len(panels) * width + (len(panels) - 1) * tile_gap
-    canvas = np.full((header_height + height, row_width, 3), background_rgb, dtype=np.uint8)
-
-    cursor_x = 0
-    for panel, title in zip(panels, titles, strict=True):
-        canvas[header_height:, cursor_x : cursor_x + width] = panel
-        cv2.putText(
-            canvas,
-            title,
-            (cursor_x + 6, max(header_height - 8, 12)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            text_scale,
-            (245, 245, 245),
-            text_thickness,
-            lineType=cv2.LINE_AA,
-        )
-        cursor_x += width + tile_gap
-    return canvas
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point

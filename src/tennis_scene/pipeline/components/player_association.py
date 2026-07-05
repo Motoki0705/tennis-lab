@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -13,6 +12,7 @@ import cv2
 import numpy as np
 
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.utils.io import load_json, save_json
 from src.utils.video import read_video_frame
 
 if TYPE_CHECKING:
@@ -106,17 +106,13 @@ class PlayerAssociationResult:
 
     def save(self, path: str | Path) -> None:
         """Save result to JSON file."""
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", encoding="utf-8") as f:
-            json.dump(self.to_dict(), f, indent=2)
+        save_json(self.to_dict(), path)
         LOGGER.info(f"Saved player association result to {path}")
 
     @classmethod
     def load(cls, path: str | Path) -> PlayerAssociationResult:
         """Load result from JSON file."""
-        with Path(path).open("r", encoding="utf-8") as f:
-            return cls.from_dict(json.load(f))
+        return cls.from_dict(load_json(path))
 
     def reference_camera_index(self) -> int:
         """Return the reference camera index."""

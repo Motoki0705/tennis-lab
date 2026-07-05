@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,6 +22,15 @@ from src.tasks.ball_detection.visualization.rendering import (
     render_animation_frames,
 )
 from src.tasks.base.visualization.gif import save_gif
+from src.tasks.base.visualization.orchestrator import (
+    parse_float_triplet as _parse_float_triplet,
+)
+from src.tasks.base.visualization.orchestrator import (
+    parse_hw as _parse_hw,
+)
+from src.tasks.base.visualization.orchestrator import (
+    parse_rgb as _parse_rgb,
+)
 from src.tasks.base.visualization.orchestrator import resolve_device
 
 logger = logging.getLogger(__name__)
@@ -200,24 +208,6 @@ def run_visualization(cfg: RuntimeConfig) -> int:
     )
     logger.info("Saved clip visualization to %s", cfg.save)
     return 0
-
-
-def _parse_hw(value: object, *, name: str) -> tuple[int, int]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 2:
-        raise ValueError(f"{name} must be a length-2 sequence.")
-    return int(value[0]), int(value[1])
-
-
-def _parse_rgb(value: object, *, name: str) -> tuple[int, int, int]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 3:
-        raise ValueError(f"{name} must be a length-3 RGB sequence.")
-    return int(value[0]), int(value[1]), int(value[2])
-
-
-def _parse_float_triplet(value: object, *, name: str) -> tuple[float, float, float]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 3:
-        raise ValueError(f"{name} must be a length-3 sequence.")
-    return float(value[0]), float(value[1]), float(value[2])
 
 
 def _default_gif_name(clip_dir: Path) -> str:

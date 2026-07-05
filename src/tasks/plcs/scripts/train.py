@@ -15,20 +15,12 @@ Notes:
     - The script uses Hydra for configuration loading.
 """
 
-# mypy: disable-error-code=misc
-
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import TypeVar, cast
-
-import hydra
 from omegaconf import DictConfig
 
 from src.tasks.plcs.training.runner import PLCSTrainingRunner
-
-F = TypeVar("F", bound=Callable[..., object])
-hydra.main = cast(Callable[..., Callable[[F], F]], hydra.main)
+from src.utils.hydra import hydra_main
 
 
 def run_training(config: DictConfig) -> None:
@@ -37,7 +29,7 @@ def run_training(config: DictConfig) -> None:
     runner.run(config)
 
 
-@hydra.main(config_path="../configs", config_name="train", version_base="1.3")  # type: ignore[untyped-decorator]
+@hydra_main(config_path="../configs", config_name="train", version_base="1.3")
 def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
     """Hydra entry point for PLCS training."""
     run_training(config)

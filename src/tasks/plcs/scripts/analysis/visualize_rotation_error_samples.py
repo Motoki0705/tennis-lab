@@ -16,7 +16,6 @@ Notes:
 
 from __future__ import annotations
 
-import json
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -33,6 +32,7 @@ from src.tasks.plcs.visualization.adapters.predict_inputs import build_multiview
 from src.tasks.plcs.visualization.orchestrator import RuntimeConfig, run_visualization
 from src.utils.device import resolve_device
 from src.utils.hydra import hydra_main
+from src.utils.io import load_json_if_exists, save_json
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
@@ -170,10 +170,7 @@ def _select_samples(
 
 
 def _load_json(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        return {}
-    with open(path) as f:
-        data = json.load(f)
+    data = load_json_if_exists(path, {})
     return data if isinstance(data, dict) else {}
 
 
@@ -210,8 +207,8 @@ def _crop_scene(
     meta["source_start_frame_idx"] = start
     meta["scene_id"] = dst.name
     meta["num_frames"] = end - start
-    (dst / "meta.json").write_text(json.dumps(meta, indent=2))
-    (dst / "scalars.json").write_text(json.dumps(scalars, indent=2))
+    save_json(meta, dst / "meta.json")
+    save_json(scalars, dst / "scalars.json")
 
     for npy_path in src.glob("*.npy"):
         arr = np.load(npy_path)
@@ -327,7 +324,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         "samples": selected,
     }
     report_path = out_dir / str(cfg.analysis.report_filename)
-    report_path.write_text(json.dumps(report, indent=2))
+    save_json(report, report_path)
     print(f"Saved rotation-error sample report to {report_path}")
     return 0
 

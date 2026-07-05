@@ -9,6 +9,7 @@ Submodules:
 - :mod:`rotation_conversions` — axis-angle / quaternion / matrix / 6D
   conversions (torch, PyTorch3D-compatible).
 - :mod:`keypoints` — pixel <-> normalized keypoint conversions (numpy).
+- :mod:`image_size` — image-dimension arithmetic (short-side resize).
 
 Import from the relevant submodule (e.g.
 ``from src.utils.geometry.angles import angular_error``). The most common
@@ -26,6 +27,7 @@ from src.utils.geometry.court_pose import (
     court_position_to_world_translation,
     world_pose_to_canonical_pose,
 )
+from src.utils.geometry.image_size import resize_short_side_aligned
 from src.utils.geometry.keypoints import (
     clamp_pixel_coordinate,
     denormalize_keypoints,
@@ -80,6 +82,7 @@ __all__ = [
     "normalize_vector",
     "quaternion_to_axis_angle",
     "quaternion_to_matrix",
+    "resize_short_side_aligned",
     "rotation_6d_to_matrix",
     "rotation_matrix_y",
     "rotation_matrix_z",

@@ -13,11 +13,9 @@ Notes:
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
-import hydra
 import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
@@ -28,6 +26,8 @@ from src.tasks.plcs.generate_dataset.utils.parallel_runner import (
     generate_parallel_scenes,
 )
 from src.utils.device import resolve_device
+from src.utils.hydra import hydra_main
+from src.utils.io import save_json
 from src.utils.seeding import seed_everything
 
 
@@ -44,7 +44,7 @@ def _prepare_paths(cfg: DictConfig) -> DictConfig:
     return cfg
 
 
-@hydra.main(config_path="../configs", config_name="generate_dataset", version_base="1.3")
+@hydra_main(config_path="../configs", config_name="generate_dataset", version_base="1.3")
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     """Generate scenes and write them to disk."""
     cfg = _prepare_paths(cfg)
@@ -117,12 +117,10 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     stats["avg_cameras"] = total_cameras / successful if successful > 0 else 0
 
     stats_path = output_dir / "stats.json"
-    with open(stats_path, "w") as f:
-        json.dump(stats, f, indent=2)
+    save_json(stats, stats_path)
 
     meta_path = output_dir / "scenes_meta.json"
-    with open(meta_path, "w") as f:
-        json.dump(scenes_meta, f, indent=2, default=str)
+    save_json(scenes_meta, meta_path, default=str)
 
     writer.save_meta_json(config=OmegaConf.to_container(cfg, resolve=True))
     writer.save_split_info(

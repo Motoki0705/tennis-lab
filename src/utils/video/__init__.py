@@ -17,7 +17,11 @@ from src.utils.video.sampling import (
 )
 from src.utils.video.transforms import BgrToTensorTransform, normalize_tensor_imagenet
 from src.utils.video.types import FramePacket, TemporalBatch, TemporalWindow, VideoInfo
-from src.utils.video.windows import iter_temporal_windows
+from src.utils.video.windows import (
+    build_window_starts,
+    chunked,
+    iter_temporal_windows,
+)
 from src.utils.video.writer import VideoWriter, save_video_rgb
 from src.utils.video.youtube import (
     download_youtube_video,
@@ -27,6 +31,8 @@ from src.utils.video.youtube import (
 )
 
 __all__ = [
+    "build_window_starts",
+    "chunked",
     "BgrToTensorTransform",
     "encode_jpeg",
     "FramePacket",

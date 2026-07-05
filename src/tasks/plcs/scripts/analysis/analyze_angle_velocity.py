@@ -27,7 +27,6 @@ Notes:
 
 from __future__ import annotations
 
-import json
 import math
 from collections.abc import Callable
 from pathlib import Path
@@ -48,6 +47,7 @@ from src.tasks.plcs.training.losses import (
 )
 from src.tasks.plcs.utils.pose_geometry import world_pose_to_canonical_pose
 from src.utils.hydra import hydra_main
+from src.utils.io import save_json
 from src.utils.schema.player import COCO17_JOINT_ANGLE_TRIPLETS as JOINT_ANGLE_TRIPLETS
 from src.utils.schema.player import COCO17_TORSION_QUADRUPLETS as TORSION_QUADRUPLETS
 
@@ -438,7 +438,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         return obj
 
     out_path = out_dir / str(cfg.analysis.output_filename)
-    out_path.write_text(json.dumps(_to_python(result), indent=2))
+    save_json(_to_python(result), out_path)
     print(f"Saved results to {out_path}")
 
     return 0

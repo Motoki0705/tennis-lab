@@ -19,6 +19,7 @@ from src.tasks.ball_detection.data.components.augmentation import (
     denormalize_tensor_images_imagenet,
 )
 from src.tasks.ball_detection.models.input_adapter import to_model_input
+from src.utils.data.augmentation import tensor_images_to_uint8_rgb
 from src.utils.data.heatmaps import heatmaps_to_argmax
 
 
@@ -114,12 +115,7 @@ def build_render_animation_inputs(
             mean=cfg.get("mean", (0.485, 0.456, 0.406)),
             std=cfg.get("std", (0.229, 0.224, 0.225)),
         )
-    frames_tensor = frames_tensor.clamp(0.0, 1.0)
-
-    frames_rgb: list[np.ndarray] = []
-    for t_idx in range(t):
-        frame = frames_tensor[t_idx].permute(1, 2, 0).numpy()  # (H, W, 3)
-        frames_rgb.append((frame * 255.0).astype(np.uint8))
+    frames_rgb: list[np.ndarray] = list(tensor_images_to_uint8_rgb(frames_tensor))
 
     # --------------------------------------------------------------- heatmaps
     heatmaps_t = pred_heatmaps_bthw[sample_idx].detach().cpu()  # (T, Hh, Ww)

@@ -62,17 +62,10 @@ class BallDetectionPredictor(BasePredictor):
         Raises:
             FileNotFoundError: If checkpoint file does not exist.
         """
-        checkpoints = cls._ensure_checkpoint(checkpoint_path)
-        if len(checkpoints) != 1:
-            raise ValueError(
-                "BallDetectionPredictor expects a single checkpoint, "
-                f"got {len(checkpoints)} checkpoints."
-            )
-        resolved_device = cls._resolve_device(device)
-
-        lightning_module = BallDetectionLightningModule.load_from_checkpoint(
-            checkpoints[0],
-            map_location=resolved_device,
+        lightning_module, resolved_device = cls._load_single_lightning_module(
+            checkpoint_path,
+            BallDetectionLightningModule,
+            device,
             strict=bool(kwargs.pop("strict", False)),
             weights_only=bool(kwargs.pop("weights_only", False)),
             **kwargs,

@@ -28,6 +28,7 @@ from src.utils.data.augmentation import (
 from src.utils.data.augmentation import (
     IMAGENET_STD as IMAGENET_STD,
 )
+from src.utils.geometry.image_size import resize_short_side_aligned
 
 # ── Helpers ──────────────────────────────────────────────────────
 
@@ -103,14 +104,7 @@ class SegMultiScaleResize:
     ) -> tuple[Image.Image, Image.Image]:
         short_side = random.choice(self.scales)
         w, h = img.size
-        if h <= w:
-            new_h = short_side
-            new_w = int(round(w * new_h / h))
-        else:
-            new_w = short_side
-            new_h = int(round(h * new_w / w))
-        new_h = (new_h // 8) * 8
-        new_w = (new_w // 8) * 8
+        new_w, new_h = resize_short_side_aligned(w, h, short_side)
         img = img.resize((new_w, new_h), Image.BILINEAR)
         mask = mask.resize((new_w, new_h), Image.NEAREST)
         return img, mask
@@ -126,14 +120,7 @@ class SegFixedResize:
         self, img: Image.Image, mask: Image.Image,
     ) -> tuple[Image.Image, Image.Image]:
         w, h = img.size
-        if h <= w:
-            new_h = self.short_side
-            new_w = int(round(w * new_h / h))
-        else:
-            new_w = self.short_side
-            new_h = int(round(h * new_w / w))
-        new_h = (new_h // 8) * 8
-        new_w = (new_w // 8) * 8
+        new_w, new_h = resize_short_side_aligned(w, h, self.short_side)
         img = img.resize((new_w, new_h), Image.BILINEAR)
         mask = mask.resize((new_w, new_h), Image.NEAREST)
         return img, mask
@@ -274,14 +261,7 @@ class KPMultiScaleResize:
     ) -> tuple[Image.Image, np.ndarray]:
         short_side = random.choice(self.scales)
         w, h = img.size
-        if h <= w:
-            new_h = short_side
-            new_w = int(round(w * new_h / h))
-        else:
-            new_w = short_side
-            new_h = int(round(h * new_w / w))
-        new_h = (new_h // 8) * 8
-        new_w = (new_w // 8) * 8
+        new_w, new_h = resize_short_side_aligned(w, h, short_side)
         sx = new_w / w
         sy = new_h / h
         img = img.resize((new_w, new_h), Image.BILINEAR)
@@ -301,14 +281,7 @@ class KPFixedResize:
         self, img: Image.Image, kps: np.ndarray,
     ) -> tuple[Image.Image, np.ndarray]:
         w, h = img.size
-        if h <= w:
-            new_h = self.short_side
-            new_w = int(round(w * new_h / h))
-        else:
-            new_w = self.short_side
-            new_h = int(round(h * new_w / w))
-        new_h = (new_h // 8) * 8
-        new_w = (new_w // 8) * 8
+        new_w, new_h = resize_short_side_aligned(w, h, self.short_side)
         sx = new_w / w
         sy = new_h / h
         img = img.resize((new_w, new_h), Image.BILINEAR)

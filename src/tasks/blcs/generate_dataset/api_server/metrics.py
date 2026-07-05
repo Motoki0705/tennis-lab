@@ -8,11 +8,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from src.utils.schema.court import (
-    HALF_DOUBLES_WIDTH,
-    NET_HEIGHT_CENTER,
-    NET_HEIGHT_POST,
-)
+from src.utils.schema.court import net_height_at_x
 
 
 def apex_height_m(positions: Tensor) -> float:
@@ -46,7 +42,7 @@ def net_clearance_m(trajectory_sim: Tensor) -> float | None:
             # Already at y=0; use this point.
             x_at = float(trajectory_sim[i - 1, 0].item())
             z_at = float(trajectory_sim[i - 1, 2].item())
-            return z_at - _net_height_at_x(x_at)
+            return z_at - net_height_at_x(x_at)
         if sign[i].item() == 0.0 or sign[i - 1].item() != sign[i].item():
             p0 = trajectory_sim[i - 1]
             p1 = trajectory_sim[i]
@@ -56,11 +52,7 @@ def net_clearance_m(trajectory_sim: Tensor) -> float | None:
             t = y0 / (y0 - y1 + 1e-8)
             x_at = float((p0[0] + t * (p1[0] - p0[0])).item())
             z_at = float((p0[2] + t * (p1[2] - p0[2])).item())
-            return z_at - _net_height_at_x(x_at)
+            return z_at - net_height_at_x(x_at)
 
     return None
 
-
-def _net_height_at_x(x: float) -> float:
-    x_ratio = min(1.0, abs(x) / float(HALF_DOUBLES_WIDTH))
-    return float(NET_HEIGHT_CENTER + x_ratio * (NET_HEIGHT_POST - NET_HEIGHT_CENTER))

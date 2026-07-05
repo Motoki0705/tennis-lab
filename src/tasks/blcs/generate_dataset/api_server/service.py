@@ -8,9 +8,6 @@ This is the only layer that knows about:
 
 from __future__ import annotations
 
-import random
-
-import numpy as np
 import torch
 
 from src.tasks.blcs.generate_dataset.api_server.metrics import (
@@ -38,13 +35,12 @@ from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import
     TargetedVelocityConfig,
     TargetedVelocitySampler,
 )
+from src.utils.seeding import seed_everything
 
 
 def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
     if req.seed is not None:
-        random.seed(req.seed)
-        np.random.seed(req.seed)
-        torch.manual_seed(req.seed)
+        seed_everything(req.seed)
 
     # ---- Sim params ----
     # BallPhysics integrates using `physics.dt` while RallySimulator downsamples based on
