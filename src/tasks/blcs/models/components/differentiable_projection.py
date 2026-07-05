@@ -123,8 +123,10 @@ class DifferentiableProjection(nn.Module):
         w = camera_w.detach().unsqueeze(2).clamp(min=1.0)
         h = camera_h.detach().unsqueeze(2).clamp(min=1.0)
 
+        # OpenCV convention (must mirror src.utils.projection.project_points):
+        # camera y-axis points image-down, so no v-flip.
         u_px = f * (X_cam[..., 0] / z_safe) + cx
-        v_px = f * (-X_cam[..., 1] / z_safe) + cy
+        v_px = f * (X_cam[..., 1] / z_safe) + cy
 
         u_norm = u_px / w
         v_norm = v_px / h
