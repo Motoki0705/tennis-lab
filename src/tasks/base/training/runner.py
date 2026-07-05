@@ -62,6 +62,7 @@ class BaseTrainingRunner:
         lightning_module = self.build_lightning_module(
             config, datamodule, steps_per_epoch=steps_per_epoch
         )
+        self.maybe_load_init_weights(config, lightning_module)
 
         logger = self.build_logger(config, output_dir)
         callbacks = self.build_callbacks(config, datamodule, logger)
@@ -124,6 +125,48 @@ class BaseTrainingRunner:
         if not resume:
             return None
         return self._ensure_absolute(str(resume))
+
+    def maybe_load_init_weights(
+        self, config: Any, lightning_module: pl.LightningModule
+    ) -> None:
+        """Load model weights only (no optimizer/epoch state) for fine-tuning.
+
+        Unlike ``run.resume`` (full-state resume that continues the same
+        schedule), ``run.init_weights`` copies the checkpoint's weights into a
+        *fresh* trainer: epoch 0, new optimizer, new LR schedule. This is the
+        fine-tune-from-pretrained path (e.g. refine a converged model with an
+        added loss term without the from-scratch dynamics).
+        """
+        run_cfg = config.run
+        init = run_cfg.get("init_weights") if hasattr(run_cfg, "get") else None
+        if not init:
+            return
+        if config.run.resume:
+            raise ValueError(
+                "run.init_weights (weight-only fine-tune) and run.resume "
+                "(full-state resume) are mutually exclusive; set only one."
+            )
+        init_path = self._ensure_absolute(str(init))
+        # Trusted local checkpoint: Lightning ckpts carry non-tensor payloads,
+        # so weights_only=False is required.
+        checkpoint = torch.load(init_path, map_location="cpu", weights_only=False)
+        state_dict = checkpoint.get("state_dict", checkpoint)
+        result = lightning_module.load_state_dict(state_dict, strict=False)
+        missing = list(getattr(result, "missing_keys", []))
+        unexpected = list(getattr(result, "unexpected_keys", []))
+        loaded = len(state_dict) - len(unexpected)
+        print(
+            f"[init_weights] loaded {loaded}/{len(state_dict)} tensors from "
+            f"{init_path} (missing={len(missing)}, unexpected={len(unexpected)})"
+        )
+        # A near-empty load means the checkpoint does not match this model:
+        # fail loudly rather than silently fine-tuning from random weights.
+        if loaded < 0.5 * len(state_dict):
+            raise RuntimeError(
+                f"init_weights loaded only {loaded}/{len(state_dict)} tensors; "
+                f"checkpoint likely does not match the model. missing[:5]={missing[:5]} "
+                f"unexpected[:5]={unexpected[:5]}"
+            )
 
     @contextmanager
     def resume_checkpoint_load_env(self, resume_ckpt: str | None) -> Iterator[None]:
@@ -349,7 +392,10 @@ class BaseTrainingRunner:
 
     def select_devices(self, config: Any) -> tuple[str, int]:
         """Select accelerator and device count."""
-        return select_accelerator(int(config.run.gpus))
+        accelerator_and_devices: tuple[str, int] = select_accelerator(
+            int(config.run.gpus)
+        )
+        return accelerator_and_devices
 
     def apply_runtime_settings(self, config: Any) -> None:
         """Apply backend/runtime settings from training config."""
