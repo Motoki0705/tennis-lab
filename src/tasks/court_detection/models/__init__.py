@@ -43,11 +43,4 @@ def build_court_detection_model(config: DictConfig) -> nn.Module:
             f"but got {num_classes}.",
         )
 
-    encoder_name = str((model_cfg.get("encoder", {}) or {}).get("name", "default"))
-    decoder_name = str((model_cfg.get("decoder", {}) or {}).get("name", "fpn"))
-    if (encoder_name, decoder_name) == ("dinov3", "dpt") and task != "seg":
-        raise ValueError(
-            "DINOv3+DPT currently supports only semantic segmentation, "
-            f"got task={task!r}."
-        )
     return CourtHierarchicalModel.from_config(config)
