@@ -1,0 +1,14 @@
+{
+  "run_id": "1783270565725317355_465720_mono3d_blcs_ftB_s06g03",
+  "name": "mono3d_blcs_ftB_s06g03",
+  "command": "MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_chunked data.scene_dir=data/blcs_broadcast data.chunk.chunks_dir=data/blcs_broadcast/chunks data.num_views_range=[1,1] data.camera_mode=random data.num_court_kp=14 data.num_workers=2 data.chunk.generation_workers=8 data.chunk.epochs_per_chunk=20 camera=broadcast training.position_axis_weights=[1.0,4.0,1.0] training.learning_rate=3e-5 training.trainer.max_epochs=60 training.trainer.check_val_every_n_epoch=5 training.qualitative_logging.enabled=false training.early_stopping.enabled=false run.gpus=1 training.smoothness_loss_weight=0.6 training.gravity_loss_weight=0.30 run.init_weights=outputs/blcs/blcs_multiview_axial/logs/version_2/checkpoints/last.ckpt",
+  "provider": "claude",
+  "session": "dd9d56e0-5f2d-4d9d-a8c7-c80704a806b3",
+  "issue": "593",
+  "commit": "d36b7dc50522453fa13778e7d31756a733fa0403",
+  "branch": "feat/issue-593-physics-prior",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-07-06T02:21:17+09:00"
+}

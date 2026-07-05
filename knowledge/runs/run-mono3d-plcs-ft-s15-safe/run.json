@@ -1,0 +1,14 @@
+{
+  "run_id": "1783274156982033821_497703_mono3d_plcs_ft_s15_safe",
+  "name": "mono3d_plcs_ft_s15_safe",
+  "command": "MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train model=multiview_axial_split model.num_layers=0 model.num_task_layers=6 data=chunked_singleview_sequence data.scene_dir=data/plcs_broadcast data.chunk.chunks_dir=data/plcs_broadcast/chunks data.batch_size=6 data.seq_len_range=[64,192] data.num_court_kp=14 data.num_workers=2 data.chunk.generation_workers=3 data.chunk.epochs_per_chunk=30 loss=canonical_rot loss.position_weight=8.0 loss.position_smoothness_weight=1.5 loss.canonical_pose_weight=0.0 loss.joint_angle_weight=0.0 loss.torsion_angle_weight=0.0 loss.torso_twist_weight=0.0 loss.bone_length_weight=0.0 training.learning_rate=3e-5 training.trainer.max_epochs=50 training.trainer.check_val_every_n_epoch=5 training.qualitative_logging.enabled=false training.early_stopping.enabled=false camera=broadcast run.gpus=1 run.init_weights=ckpt/plcs/last.ckpt",
+  "provider": "claude",
+  "session": "22fa49a8-b654-4af8-99ce-6f29e7453a00",
+  "issue": "593",
+  "commit": "d36b7dc50522453fa13778e7d31756a733fa0403",
+  "branch": "feat/issue-593-physics-prior",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-07-06T02:56:10+09:00"
+}
