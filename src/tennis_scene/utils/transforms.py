@@ -12,6 +12,7 @@ from src.utils.geometry.matrices import (
     apply_plcs_transform,
     apply_plcs_transform_batch,
     rotation_matrix_y,
+    smpl_y_up_to_court_z_up,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "denormalize_keypoints",
     "normalize_keypoints",
     "rotation_matrix_y",
+    "smpl_y_up_to_court_z_up",
 ]

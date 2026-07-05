@@ -18,6 +18,12 @@ class SceneResult:
 
     Player-related arrays use (P, T, ...) as the canonical shape.
     Camera observations use a leading camera axis N.
+
+    ``player_position`` and ``ball_3d`` are in court coordinates: XY is the
+    court plane and +Z is up. ``smpl_vertices_local`` and SMPL pose parameters
+    are stored in the GVHMR/SMPL body convention; the renderer root-centers
+    vertices and explicitly rotates Y-up SMPL geometry into court Z-up before
+    applying ``player_yaw``.
     """
 
     num_frames: int
