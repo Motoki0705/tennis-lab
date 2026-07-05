@@ -40,7 +40,16 @@ def make_look_at_camera(
     image_size: tuple[int, int] = (1280, 720),
     hfov_deg: float = 60.0,
 ) -> Camera:
-    """Create a pinhole camera pointed at ``look_at``."""
+    """Create a pinhole camera pointed at ``look_at``.
+
+    Uses the OpenCV camera convention: ``x`` = image right, ``y`` = image
+    down, ``z`` = forward, so ``R`` is a proper rotation and the projection
+    ``u = f*Xc/Zc + cx``, ``v = f*Yc/Zc + cy`` matches what a physical camera
+    (and cv2.solvePnP) produces. The previous basis (``x = up × z`` combined
+    with a v-flip in :func:`project_points`) rendered a left-right mirrored
+    image, which is undetectable on the bilaterally symmetric court but
+    breaks sim-to-real transfer of keypoint-indexed models.
+    """
     center_t = torch.tensor(center, dtype=torch.float32)
     look_t = torch.tensor(look_at, dtype=torch.float32)
 
@@ -48,15 +57,15 @@ def make_look_at_camera(
     z_cam = z_cam / (z_cam.norm() + 1e-8)
 
     up_world = torch.tensor([0.0, 0.0, 1.0], dtype=torch.float32)
-    x_cam = torch.cross(up_world, z_cam, dim=0)
+    x_cam = torch.cross(z_cam, up_world, dim=0)  # image right
     x_norm = x_cam.norm()
     if x_norm < 1e-6:
         # Fallback when looking straight up/down
         up_world = torch.tensor([0.0, 1.0, 0.0], dtype=torch.float32)
-        x_cam = torch.cross(up_world, z_cam, dim=0)
+        x_cam = torch.cross(z_cam, up_world, dim=0)
         x_norm = x_cam.norm()
     x_cam = x_cam / (x_norm + 1e-8)
-    y_cam = torch.cross(z_cam, x_cam, dim=0)
+    y_cam = torch.cross(z_cam, x_cam, dim=0)  # image down
 
     R = torch.stack([x_cam, y_cam, z_cam], dim=0)  # world -> camera
 
@@ -82,9 +91,9 @@ def project_points(cam: Camera, xyz: Tensor) -> tuple[Tensor, Tensor]:
     mask = z > 1e-6
     z_safe = torch.where(mask, z, torch.ones_like(z))
 
-    # Flip v direction so that up = top of screen
+    # OpenCV convention: y_cam already points image-down, so no v-flip.
     u = cam.f * (Xc[:, 0] / z_safe) + cam.cx
-    v = cam.f * (-Xc[:, 1] / z_safe) + cam.cy
+    v = cam.f * (Xc[:, 1] / z_safe) + cam.cy
 
     uv = torch.stack([u, v], dim=-1)
     return uv, mask
@@ -145,6 +154,30 @@ class CameraConfig:
     broadcast_look_at_xy_radius: float = 1.0  # per-scene look-at jitter on z=0 plane (m)
     broadcast_hfov_jitter_deg: float = 2.0  # per-scene zoom (HFOV) jitter (deg)
 
+    # --- Optional wide per-camera randomization (sim-to-real) -----------
+    # When a range is set it replaces the corresponding fixed value above and
+    # is sampled uniformly per camera. ``broadcast_court_width_frac_range``
+    # samples the apparent width of the camera-side baseline (doubles-corner
+    # u-span as a fraction of image width) and solves the HFOV that realizes
+    # it, guaranteeing sane framing across the whole setback/height range;
+    # it is mutually exclusive with ``broadcast_hfov_jitter_deg`` > 0.
+    broadcast_setback_range: tuple[float, float] | None = None
+    broadcast_height_range: tuple[float, float] | None = None
+    broadcast_court_width_frac_range: tuple[float, float] | None = None
+
+
+def _optional_range(
+    cfg: _CameraConfigMapping, key: str
+) -> tuple[float, float] | None:
+    """Parse an optional ``[lo, hi]`` range from a camera config mapping."""
+    value = cfg.get(key, None)
+    if value is None:
+        return None
+    lo, hi = (float(v) for v in value)
+    if lo > hi:
+        raise ValueError(f"{key} must satisfy lo <= hi, got [{lo}, {hi}].")
+    return lo, hi
+
 
 def camera_config_from_mapping(cfg: _CameraConfigMapping) -> CameraConfig:
     """Build a :class:`CameraConfig` from a Hydra/OmegaConf ``camera`` section.
@@ -199,6 +232,11 @@ def camera_config_from_mapping(cfg: _CameraConfigMapping) -> CameraConfig:
         ),
         broadcast_hfov_jitter_deg=_f(
             "broadcast_hfov_jitter_deg", defaults.broadcast_hfov_jitter_deg
+        ),
+        broadcast_setback_range=_optional_range(cfg, "broadcast_setback_range"),
+        broadcast_height_range=_optional_range(cfg, "broadcast_height_range"),
+        broadcast_court_width_frac_range=_optional_range(
+            cfg, "broadcast_court_width_frac_range"
         ),
     )
 
@@ -321,18 +359,41 @@ class CameraProjector:
         (center jitter), ``broadcast_look_at_xy_radius`` (look-at jitter) and
         ``broadcast_hfov_jitter_deg`` (zoom jitter). With all three set to zero
         the two cameras are deterministic mirror images across the net.
+
+        When the wide randomization ranges (``broadcast_setback_range``,
+        ``broadcast_height_range``, ``broadcast_court_width_frac_range``) are
+        set, setback/height are sampled uniformly per camera and the HFOV is
+        solved so the camera-side baseline spans the sampled fraction of the
+        image width. Real broadcast footage varies far beyond the narrow
+        jitter defaults (e.g. tennis_clip.mp4 PnP-fits to setback 32.7 m,
+        height 11.4 m, HFOV 28 deg), so sim-to-real training should use the
+        ranges.
         """
         cfg = self.config
-        # Cameras sit ``broadcast_setback`` metres behind each baseline
-        # (baselines are at y = +-HALF_LENGTH).
-        base_y = HALF_LENGTH + cfg.broadcast_setback
-        baseline_centers = [
-            (0.0, -base_y, cfg.broadcast_height),  # behind near baseline
-            (0.0, +base_y, cfg.broadcast_height),  # behind far baseline
-        ]
+        if (
+            cfg.broadcast_court_width_frac_range is not None
+            and cfg.broadcast_hfov_jitter_deg > 0.0
+        ):
+            raise ValueError(
+                "broadcast_court_width_frac_range and broadcast_hfov_jitter_deg "
+                "are mutually exclusive; set broadcast_hfov_jitter_deg to 0 "
+                "when using the framing-fraction range."
+            )
 
         cams: list[Camera] = []
-        for base_center in baseline_centers:
+        for side in (-1.0, +1.0):  # behind near / far baseline
+            setback = (
+                random.uniform(*cfg.broadcast_setback_range)
+                if cfg.broadcast_setback_range is not None
+                else cfg.broadcast_setback
+            )
+            height = (
+                random.uniform(*cfg.broadcast_height_range)
+                if cfg.broadcast_height_range is not None
+                else cfg.broadcast_height
+            )
+            base_center = (0.0, side * (HALF_LENGTH + setback), height)
+
             dx, dy, dz = self._sample_uniform_offset_in_ball(
                 cfg.broadcast_position_noise_radius
             )
@@ -357,15 +418,50 @@ class CameraProjector:
                     -cfg.broadcast_hfov_jitter_deg, cfg.broadcast_hfov_jitter_deg
                 )
 
-            cams.append(
-                make_look_at_camera(
-                    center=center,
-                    look_at=look_at_target,
-                    hfov_deg=hfov,
-                    image_size=cfg.image_size,
-                )
+            cam = make_look_at_camera(
+                center=center,
+                look_at=look_at_target,
+                hfov_deg=hfov,
+                image_size=cfg.image_size,
             )
+            if cfg.broadcast_court_width_frac_range is not None:
+                frac = random.uniform(*cfg.broadcast_court_width_frac_range)
+                cam = self._solve_broadcast_framing(cam, side=side, width_frac=frac)
+            cams.append(cam)
         return cams
+
+    def _solve_broadcast_framing(
+        self, cam: Camera, *, side: float, width_frac: float
+    ) -> Camera:
+        """Rescale focal length so the camera-side baseline spans ``width_frac``.
+
+        For fixed extrinsics the projected u-span of the near-baseline doubles
+        corners is exactly proportional to the focal length, so a single
+        provisional projection determines the required HFOV in closed form.
+        """
+        corners = torch.tensor(
+            [
+                [-HALF_DOUBLES_WIDTH, side * HALF_LENGTH, 0.0],
+                [+HALF_DOUBLES_WIDTH, side * HALF_LENGTH, 0.0],
+            ],
+            dtype=torch.float32,
+        )
+        uv, in_front = project_points(cam, corners)
+        if not bool(in_front.all()):
+            raise ValueError(
+                "Broadcast framing solve failed: baseline corners behind the "
+                f"camera (center={cam.C.tolist()})."
+            )
+        span_norm = float((uv[1, 0] - uv[0, 0]).abs()) / float(cam.w)
+        if span_norm <= 1e-6:
+            raise ValueError(
+                "Broadcast framing solve failed: degenerate baseline span "
+                f"(center={cam.C.tolist()})."
+            )
+        f_new = cam.f * (width_frac / span_norm)
+        return Camera(
+            C=cam.C, R=cam.R, f=f_new, cx=cam.cx, cy=cam.cy, w=cam.w, h=cam.h
+        )
 
     def cameras(self) -> list[Camera]:
         """Return the camera rig for the configured ``layout``.
