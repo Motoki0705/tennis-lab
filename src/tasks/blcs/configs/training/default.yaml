@@ -21,6 +21,7 @@ min_lr: 1.0e-6
 # Only position + reprojection are consumed by TrajectoryLoss; temporal
 # consistency (velocity/smoothness) is enforced by the GAN discriminator.
 position_loss_weight: 1.0
+position_axis_weights: null
 reprojection_loss_weight: 0.0
 
 # ---- Callbacks (BaseTrainingRunner references) ----
