@@ -138,9 +138,37 @@ def normalize_padding_mask(
     return frame_valid.reshape(-1) if flatten else frame_valid
 
 
+
+def flatten_time_to_batch(x: Tensor) -> tuple[Tensor, int, int]:
+    """Reshape ``(B, C, T, H, W)`` to ``(B*T, C, H, W)`` for per-frame 2D ops.
+
+    Returns the flattened tensor together with ``(batch_size, timesteps)`` so
+    :func:`restore_time_from_batch` can invert the operation.
+    """
+    batch_size, channels, timesteps, height, width = x.shape
+    flat = (
+        x.permute(0, 2, 1, 3, 4)
+        .contiguous()
+        .view(batch_size * timesteps, channels, height, width)
+    )
+    return flat, batch_size, timesteps
+
+
+def restore_time_from_batch(x: Tensor, batch_size: int, timesteps: int) -> Tensor:
+    """Inverse of :func:`flatten_time_to_batch` for ``(B*T, C, H, W)`` tensors."""
+    _, channels, height, width = x.shape
+    return (
+        x.view(batch_size, timesteps, channels, height, width)
+        .permute(0, 2, 1, 3, 4)
+        .contiguous()
+    )
+
+
 __all__ = [
     "clone_tensor_dict",
+    "flatten_time_to_batch",
     "masked_mean",
     "normalize_padding_mask",
+    "restore_time_from_batch",
     "to_numpy",
 ]

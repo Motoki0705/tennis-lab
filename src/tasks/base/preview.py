@@ -8,9 +8,18 @@ so the ball- and court-detection scripts share a single implementation.
 
 from __future__ import annotations
 
+from typing import cast
+
+import cv2
+import numpy as np
 from omegaconf import DictConfig
 
-__all__ = ["resolve_sample_indices", "resolve_split_file"]
+__all__ = [
+    "compose_titled_row",
+    "draw_normalized_point",
+    "resolve_sample_indices",
+    "resolve_split_file",
+]
 
 
 def resolve_split_file(cfg: DictConfig, split_name: str) -> str:
@@ -50,3 +59,51 @@ def resolve_sample_indices(
                 f"dataset size {dataset_size}."
             )
     return sample_indices
+
+
+def draw_normalized_point(
+    image: np.ndarray,
+    center_xy: tuple[float, float],
+    *,
+    radius: int,
+    color: tuple[int, int, int],
+    thickness: int,
+) -> None:
+    """Draw a circle at normalized ``(x, y)`` coordinates on ``image`` in place."""
+    height, width = image.shape[:2]
+    x_px = int(round(center_xy[0] * max(width - 1, 0)))
+    y_px = int(round(center_xy[1] * max(height - 1, 0)))
+    cv2.circle(image, (x_px, y_px), radius, color, thickness=thickness, lineType=cv2.LINE_AA)
+
+
+def compose_titled_row(
+    panels: list[np.ndarray],
+    titles: list[str],
+    cfg: DictConfig,
+) -> np.ndarray:
+    """Compose panels side by side with per-panel titles in a header strip."""
+    tile_gap = int(cfg.preview.layout.tile_gap)
+    header_height = int(cfg.preview.layout.header_height)
+    text_scale = float(cfg.preview.layout.text_scale)
+    text_thickness = int(cfg.preview.layout.text_thickness)
+    background_rgb = tuple(int(v) for v in cfg.preview.layout.background_rgb)
+
+    height, width = panels[0].shape[:2]
+    row_width = len(panels) * width + (len(panels) - 1) * tile_gap
+    canvas = np.full((header_height + height, row_width, 3), background_rgb, dtype=np.uint8)
+
+    cursor_x = 0
+    for panel, title in zip(panels, titles, strict=True):
+        canvas[header_height:, cursor_x : cursor_x + width] = panel
+        cv2.putText(
+            canvas,
+            title,
+            (cursor_x + 6, max(header_height - 8, 12)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            text_scale,
+            (245, 245, 245),
+            text_thickness,
+            lineType=cv2.LINE_AA,
+        )
+        cursor_x += width + tile_gap
+    return cast("np.ndarray", canvas)

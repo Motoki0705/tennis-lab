@@ -11,6 +11,7 @@ from PIL import Image
 from torch import Tensor
 
 from src.tasks.court_detection.data.augmentation import IMAGENET_MEAN, IMAGENET_STD
+from src.utils.geometry.image_size import resize_short_side_aligned
 
 
 def preprocess_court_image(
@@ -34,14 +35,7 @@ def preprocess_court_image(
 
     orig_w, orig_h = image.size
 
-    if orig_h <= orig_w:
-        new_h = short_side
-        new_w = int(round(orig_w * new_h / orig_h))
-    else:
-        new_w = short_side
-        new_h = int(round(orig_h * new_w / orig_w))
-    new_h = (new_h // 8) * 8
-    new_w = (new_w // 8) * 8
+    new_w, new_h = resize_short_side_aligned(orig_w, orig_h, short_side)
     image = image.resize((new_w, new_h), Image.Resampling.BILINEAR)
 
     img_tensor = TF.to_tensor(image)

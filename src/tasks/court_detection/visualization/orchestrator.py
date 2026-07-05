@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,6 +11,9 @@ from omegaconf import DictConfig
 
 from src.tasks.base.visualization.gif import save_gif
 from src.tasks.base.visualization.layout import PanelStyle
+from src.tasks.base.visualization.orchestrator import (
+    parse_rgb as _parse_rgb,
+)
 from src.tasks.base.visualization.orchestrator import resolve_device
 from src.tasks.court_detection.visualization.api.predict import (
     predict_kp,
@@ -163,9 +165,3 @@ def run_visualization(cfg: RuntimeConfig) -> int:
     save_gif(frames_rgb=rendered, path=cfg.save, fps=cfg.fps, loop=cfg.gif_loop)
     logger.info("Saved %s visualization to %s", cfg.task, cfg.save)
     return 0
-
-
-def _parse_rgb(value: object, *, name: str) -> tuple[int, int, int]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 3:
-        raise ValueError(f"{name} must be a length-3 RGB sequence.")
-    return int(value[0]), int(value[1]), int(value[2])

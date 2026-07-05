@@ -12,13 +12,13 @@ Notes:
 
 from __future__ import annotations
 
-import hydra
 from omegaconf import DictConfig
 
 from src.tasks.ball_detection.training.runner import BallDetectionTrainingRunner
+from src.utils.hydra import hydra_main
 
 
-@hydra.main(
+@hydra_main(
     version_base="1.3",
     config_path="../configs",
     config_name="train",

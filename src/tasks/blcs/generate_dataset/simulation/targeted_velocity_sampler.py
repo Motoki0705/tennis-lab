@@ -17,11 +17,7 @@ from typing import TYPE_CHECKING
 import torch
 from torch import Tensor
 
-from src.utils.schema.court import (
-    HALF_DOUBLES_WIDTH,
-    NET_HEIGHT_CENTER,
-    NET_HEIGHT_POST,
-)
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, net_height_at_x
 
 if TYPE_CHECKING:
     from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallPhysics
@@ -649,5 +645,4 @@ class TargetedVelocitySampler:
         return elevation_rad + max(default_step_rad, deficit_step)
 
     def _net_height_at_x(self, x_at_net: float) -> float:
-        x_ratio = min(abs(x_at_net) / HALF_DOUBLES_WIDTH, 1.0)
-        return NET_HEIGHT_CENTER + x_ratio * (NET_HEIGHT_POST - NET_HEIGHT_CENTER)
+        return net_height_at_x(x_at_net)

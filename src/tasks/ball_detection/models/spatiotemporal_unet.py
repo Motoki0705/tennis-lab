@@ -9,6 +9,7 @@ import torch.nn as nn
 
 from src.tasks.ball_detection.models.input_adapter import resolve_model_in_channels
 from src.utils.models.blocks import Conv2dWiseWiseBlock
+from src.utils.tensor_utils import flatten_time_to_batch, restore_time_from_batch
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -45,20 +46,10 @@ class EncoderBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Encode one resolution level and return 3D and 2D skip tensors."""
-        bsz, channels, timesteps, height, width = x.shape
-        x_2d = (
-            x.permute(0, 2, 1, 3, 4)
-            .contiguous()
-            .view(bsz * timesteps, channels, height, width)
-        )
+        x_2d, bsz, timesteps = flatten_time_to_batch(x)
         x_2d = self.block_2d(x_2d)
         skip_2d = x_2d
-        _, out_channels, out_h, out_w = skip_2d.shape
-        x_3d = (
-            skip_2d.view(bsz, timesteps, out_channels, out_h, out_w)
-            .permute(0, 2, 1, 3, 4)
-            .contiguous()
-        )
+        x_3d = restore_time_from_batch(skip_2d, bsz, timesteps)
         skip_3d = self.block_3d(x_3d)
         return skip_3d, skip_2d
 
@@ -73,19 +64,9 @@ class BottleneckBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Apply the bottleneck block to the pooled feature tensor."""
-        bsz, channels, timesteps, height, width = x.shape
-        x_2d = (
-            x.permute(0, 2, 1, 3, 4)
-            .contiguous()
-            .view(bsz * timesteps, channels, height, width)
-        )
+        x_2d, bsz, timesteps = flatten_time_to_batch(x)
         x_2d = self.block_2(self.block_1(x_2d))
-        _, out_channels, out_h, out_w = x_2d.shape
-        return (
-            x_2d.view(bsz, timesteps, out_channels, out_h, out_w)
-            .permute(0, 2, 1, 3, 4)
-            .contiguous()
-        )
+        return restore_time_from_batch(x_2d, bsz, timesteps)
 
 
 class DecoderBlock(nn.Module):
@@ -104,19 +85,9 @@ class DecoderBlock(nn.Module):
     ) -> torch.Tensor:
         """Fuse the decoder state with 3D and 2D skip tensors."""
         x_3d = self.block_3d(torch.cat([x, skip_3d], dim=1))
-        bsz, channels, timesteps, height, width = x_3d.shape
-        x_2d = (
-            x_3d.permute(0, 2, 1, 3, 4)
-            .contiguous()
-            .view(bsz * timesteps, channels, height, width)
-        )
+        x_2d, bsz, timesteps = flatten_time_to_batch(x_3d)
         x_2d = self.block_2d(torch.cat([x_2d, skip_2d], dim=1))
-        _, out_channels, out_h, out_w = x_2d.shape
-        return (
-            x_2d.view(bsz, timesteps, out_channels, out_h, out_w)
-            .permute(0, 2, 1, 3, 4)
-            .contiguous()
-        )
+        return restore_time_from_batch(x_2d, bsz, timesteps)
 
 
 class SpatioTemporalUNet(nn.Module):

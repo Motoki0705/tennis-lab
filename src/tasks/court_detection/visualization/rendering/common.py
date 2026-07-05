@@ -15,6 +15,12 @@ from src.tasks.base.visualization.layout import (
     label_panel,
     put_text,
 )
+from src.utils.data.augmentation import (
+    IMAGENET_MEAN,
+    IMAGENET_STD,
+    denormalize_tensor_images_imagenet,
+    tensor_images_to_uint8_rgb,
+)
 
 # RGB palette for the 7 court segmentation classes (class 0 = background).
 COURT_SEG_PALETTE_RGB: tuple[tuple[int, int, int], ...] = (
@@ -41,16 +47,15 @@ class CourtRenderStyle:
     line_threshold: float = 0.5
 
 
-_IMAGENET_MEAN = (0.485, 0.456, 0.406)
-_IMAGENET_STD = (0.229, 0.224, 0.225)
-
-
 def denormalize_tensor_to_rgb(
     tensor: torch.Tensor,
-    mean: tuple[float, float, float] = _IMAGENET_MEAN,
-    std: tuple[float, float, float] = _IMAGENET_STD,
+    mean: tuple[float, float, float] = IMAGENET_MEAN,
+    std: tuple[float, float, float] = IMAGENET_STD,
 ) -> np.ndarray:
     """Convert an ImageNet-normalized ``(3, H, W)`` tensor to ``(H, W, 3)`` uint8 RGB.
+
+    Delegates to the shared denormalize / uint8-conversion helpers in
+    :mod:`src.utils.data.augmentation`.
 
     Args:
         tensor: Float tensor with shape ``(3, H, W)`` in ImageNet normalization.
@@ -60,11 +65,8 @@ def denormalize_tensor_to_rgb(
     Returns:
         ``(H, W, 3)`` uint8 NumPy array in RGB order.
     """
-    mean_t = torch.tensor(mean, dtype=torch.float32).view(3, 1, 1)
-    std_t = torch.tensor(std, dtype=torch.float32).view(3, 1, 1)
-    img = tensor.cpu().float() * std_t + mean_t
-    img = img.clamp(0.0, 1.0).permute(1, 2, 0).numpy()
-    return cast("np.ndarray", (img * 255.0).astype(np.uint8))
+    img = denormalize_tensor_images_imagenet(tensor.cpu().float(), mean=mean, std=std)
+    return cast("np.ndarray", tensor_images_to_uint8_rgb(img))
 
 
 def resize_for_display(rgb: np.ndarray, max_width: int) -> np.ndarray:

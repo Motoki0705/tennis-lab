@@ -139,6 +139,49 @@ class BasePredictor(ABC):
         return checkpoints
 
     @classmethod
+    def _load_single_lightning_module(
+        cls,
+        checkpoint_path: str | Path | Iterable[str | Path],
+        lightning_module_cls: Any,
+        device: str | torch.device = "cpu",
+        **kwargs: Any,
+    ) -> tuple[Any, torch.device]:
+        """Load a single Lightning checkpoint and return the Lightning module.
+
+        Enforces exactly one checkpoint, resolves the device, and loads the
+        Lightning module. Use this variant when the caller needs access to the
+        Lightning module itself (e.g. its ``config``); ``kwargs`` are forwarded
+        to ``load_from_checkpoint`` verbatim, so callers control ``strict`` /
+        ``weights_only`` explicitly.
+
+        Args:
+            checkpoint_path: Path or iterable of paths to checkpoint files.
+            lightning_module_cls: LightningModule class with
+                ``load_from_checkpoint``.
+            device: Inference device.
+            **kwargs: Forwarded to ``load_from_checkpoint`` unchanged.
+
+        Returns:
+            Tuple of (Lightning module, resolved ``torch.device``).
+
+        Raises:
+            ValueError: If not exactly one checkpoint is provided.
+        """
+        checkpoints = cls._ensure_checkpoint(checkpoint_path)
+        if len(checkpoints) != 1:
+            raise ValueError(
+                f"{cls.__name__} expects a single checkpoint, "
+                f"got {len(checkpoints)} checkpoints."
+            )
+        resolved_device = cls._resolve_device(device)
+        lightning_module = lightning_module_cls.load_from_checkpoint(
+            checkpoints[0],
+            map_location=resolved_device,
+            **kwargs,
+        )
+        return lightning_module, resolved_device
+
+    @classmethod
     def _load_single_lightning_checkpoint(
         cls,
         checkpoint_path: str | Path | Iterable[str | Path],
@@ -148,8 +191,8 @@ class BasePredictor(ABC):
     ) -> tuple[nn.Module, torch.device]:
         """Load a single Lightning checkpoint and return its inner model.
 
-        Enforces exactly one checkpoint, resolves the device, and loads the
-        Lightning module with the strict/weights_only defaults shared across
+        Same as :meth:`_load_single_lightning_module` but returns the inner
+        ``.model`` and applies the strict/weights_only defaults shared across
         task predictors.
 
         Args:
@@ -166,16 +209,10 @@ class BasePredictor(ABC):
         Raises:
             ValueError: If not exactly one checkpoint is provided.
         """
-        checkpoints = cls._ensure_checkpoint(checkpoint_path)
-        if len(checkpoints) != 1:
-            raise ValueError(
-                f"{cls.__name__} expects a single checkpoint, "
-                f"got {len(checkpoints)} checkpoints."
-            )
-        resolved_device = cls._resolve_device(device)
-        lightning_module = lightning_module_cls.load_from_checkpoint(
-            checkpoints[0],
-            map_location=resolved_device,
+        lightning_module, resolved_device = cls._load_single_lightning_module(
+            checkpoint_path,
+            lightning_module_cls,
+            device,
             strict=bool(kwargs.pop("strict", False)),
             weights_only=bool(kwargs.pop("weights_only", False)),
             **kwargs,

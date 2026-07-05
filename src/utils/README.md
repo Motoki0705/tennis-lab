@@ -10,14 +10,14 @@
 - **`paths.py`**: `PROJECT_ROOT` と `resolve_project_path()`。repo ルート基準のパス解決が必要なときに見る。
 - **`device.py`**: `resolve_device()` と `select_accelerator()`。`"auto"` を含む `torch.device` 解決や Lightning 用 `(accelerator, devices)` 判定をまとめている。
 - **`seeding.py`**: `seed_everything()` と `make_sample_rng()`。軽量な RNG 初期化や dataloader worker-aware なサンプル単位 RNG を扱う。
-- **`io.py`**: ディレクトリ作成、JSON/JSONL の読み書き、atomic write、相対パス化、UTC timestamp 生成。スクリプトやメタデータ保存まわりで最初に見る。
+- **`io.py`**: ディレクトリ作成、JSON/JSONL の読み書き、atomic write、相対パス化、UTC timestamp 生成、拡張子フォールバック付きファイル探索 `find_existing_file()`。スクリプトやメタデータ保存まわりで最初に見る。
 - **`commands.py`**: `subprocess.run(..., check=True)` の薄い共通ラッパー `run_command()`。
 - **`hydra.py`**: 型付き `hydra_main()`。CLI エントリポイントで `hydra.main` の型回避を再実装しないための共通化先。
-- **`tensor_utils.py`**: `clone_tensor_dict()`、`to_numpy()`、`masked_mean()`、`normalize_padding_mask()`。テンソル辞書の複製、NumPy 変換、mask 付き集約の共通処理。
+- **`tensor_utils.py`**: `clone_tensor_dict()`、`to_numpy()`、`masked_mean()`、`normalize_padding_mask()`、`flatten_time_to_batch()`/`restore_time_from_batch()`。テンソル辞書の複製、NumPy 変換、mask 付き集約、(B,C,T,H,W)↔(B·T,C,H,W) の変形。
 
 ### `data/`
-- **`heatmaps.py`**: Gaussian heatmap 生成と、argmax / soft-argmax / peaks / pixel coordinates への復号。
-- **`augmentation.py`**: keypoint 系 augmentation、visibility dropout、false positive 注入、ImageNet 正規化、設定値レンジの parse を実装。
+- **`heatmaps.py`**: Gaussian heatmap 生成と、argmax / soft-argmax / peaks / pixel coordinates への復号、`resize_heatmap_sequence()` による (B,T,H,W) の bilinear リサイズ。
+- **`augmentation.py`**: keypoint 系 augmentation、visibility dropout、false positive 注入、ImageNet 正規化/逆正規化、`tensor_images_to_uint8_rgb()`、設定値レンジの parse を実装。
 - **`scene_io.py`**: scene ディレクトリの `*.npy`、`scalars.json`、`meta.json` をまとめて読む `load_scene_payload()`。
 - **`splits.py`**: `GroupSplitConfig` と `make_group_split_map()`。group 単位の deterministic な split を作る。
 
@@ -29,6 +29,7 @@
 - **`rotation_conversions.py`**: torch ベースの axis-angle / quaternion / matrix / 6D 相互変換（PyTorch3D 互換 API、pytorch3d 依存の置き換え先）。
 - **`keypoints.py`**: pixel 座標と正規化座標の相互変換、画素座標 clamp。
 - **`bbox.py`**: bbox の最大辺比率 `bbox_max_side_ratio()`。bbox の縦横スケール比較が必要なときに見る。
+- **`image_size.py`**: `resize_short_side_aligned()`。short side 指定 + 8 の倍数 align の画像サイズ計算。
 
 ### `projection/`
 - **`camera_projector.py`**: `Camera`、`CameraConfig`、`CameraView`、`CameraProjector`、`make_look_at_camera()`、`project_points()`。ピンホール投影の共通実装。
@@ -40,13 +41,13 @@
 - **`mesh_renderer.py`**: 三角メッシュ（SMPL 等）の `MeshRenderer`。カメラ視点オーバーレイ（cv2 painter's algorithm、K 行列投影）と matplotlib 3D 描画。
 
 ### `schema/`
-- **`court.py`**: コート寸法、`CourtConfig`、20 点 court keypoints、court skeleton、正規化スケール定数。
+- **`court.py`**: コート寸法、`CourtConfig`、20 点 court keypoints、court skeleton、正規化スケール定数、`net_height_at_x()`。
 - **`player.py`**: COCO-17 / SMPL / SMPL-H の keypoint 名、index、skeleton、角度計算用 group、SMPLH-to-COCO 対応。
 
 ### `video/`
 - **`reader.py`**: OpenCV ベースの `probe_video_info()`、単フレーム読み出し、`OpenCVVideoFrameReader`、一括 RGB 読み出し `read_video_rgb()`。
 - **`writer.py`**: PyAV ベースの H.264 `VideoWriter`（fps / CRF 指定）と `save_video_rgb()`。
-- **`windows.py` / `batching.py`**: 時系列 window / batch iterator。
+- **`windows.py` / `batching.py`**: 時系列 window / batch iterator、`build_window_starts()`（末尾 anchor 付き sliding-window 開始位置）、`chunked()`。
 - **`prefetch.py`**: イテレータの先読み `PrefetchIterator`。
 - **`transforms.py`**: `BgrToTensorTransform` と tensor の ImageNet 正規化。
 - **`encoding.py`**: JPEG エンコードと、選択フレームの JPEG 列挙。

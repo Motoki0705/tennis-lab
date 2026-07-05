@@ -11,7 +11,7 @@ from typing import Any
 import cv2
 import numpy as np
 
-from src.utils.io import save_json_atomic
+from src.utils.io import find_existing_file, save_json_atomic
 from src.utils.schema.court import COURT_KP_NAMES, court_keypoints_3d
 
 COURT_KP20_COUNT = 20
@@ -835,11 +835,7 @@ def ordered_target_entries(
 
 def find_image(images_dir: Path, image_id: str) -> Path | None:
     """Find an image file for a dataset id."""
-    for extension in (".png", ".jpg", ".jpeg"):
-        path = images_dir / f"{image_id}{extension}"
-        if path.exists():
-            return path
-    return None
+    return find_existing_file(images_dir, image_id, (".png", ".jpg", ".jpeg"))
 
 
 def find_image_for_entry(
