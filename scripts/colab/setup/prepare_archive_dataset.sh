@@ -99,6 +99,10 @@ prepare_dinov3_assets() {
     if [[ ! -d "${REPO_ROOT}/third_party/dinov3/dinov3" ]]; then
         if ! git -C "${REPO_ROOT}" submodule update --init third_party/dinov3; then
             echo "[prepare_archive_dataset] SSH submodule update failed; retrying DINOv3 over HTTPS..."
+            git -C "${REPO_ROOT}" submodule deinit -f third_party/dinov3 || true
+            rm -rf "${REPO_ROOT}/.git/modules/third_party/dinov3" "${REPO_ROOT}/third_party/dinov3"
+            git -C "${REPO_ROOT}" config -f .gitmodules submodule.third_party/dinov3.url \
+                https://github.com/Motoki0705/dinov3.git
             git -C "${REPO_ROOT}" config submodule.third_party/dinov3.url \
                 https://github.com/Motoki0705/dinov3.git
             git -C "${REPO_ROOT}" submodule sync third_party/dinov3
