@@ -2,5 +2,6 @@ output_dir: outputs/plcs/${model.name}
 seed: 42
 gpus: 1
 resume: null
+init_weights: null  # weight-only fine-tune (fresh optimizer/epoch); mutually exclusive with resume
 fast_dev_run: false
 dry_run: false
