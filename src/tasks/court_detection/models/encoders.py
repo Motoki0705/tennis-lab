@@ -8,6 +8,7 @@ from typing import Any, Literal, cast
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from src.utils.models.blocks import Conv2dWiseWiseBlock
 from src.utils.models.loading import (
@@ -154,9 +155,10 @@ class CourtDINOv3Encoder(nn.Module):
         x: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         self._validate_forward_input(x)
-        patch_height = x.shape[-2] // self.patch_size
-        patch_width = x.shape[-1] // self.patch_size
-        tokens = self._extract_intermediate_tokens(x)
+        padded_x = self._pad_to_patch_grid(x)
+        patch_height = padded_x.shape[-2] // self.patch_size
+        patch_width = padded_x.shape[-1] // self.patch_size
+        tokens = self._extract_intermediate_tokens(padded_x)
         expected_tokens = patch_height * patch_width
 
         feature_maps = []
@@ -168,7 +170,7 @@ class CourtDINOv3Encoder(nn.Module):
                 )
             feature_maps.append(
                 level_tokens.transpose(1, 2).reshape(
-                    x.shape[0],
+                    padded_x.shape[0],
                     level_tokens.shape[-1],
                     patch_height,
                     patch_width,
@@ -184,6 +186,13 @@ class CourtDINOv3Encoder(nn.Module):
             with torch.no_grad():
                 return self._call_get_intermediate_layers(x)
         return self._call_get_intermediate_layers(x)
+
+    def _pad_to_patch_grid(self, x: torch.Tensor) -> torch.Tensor:
+        pad_h = (-x.shape[-2]) % self.patch_size
+        pad_w = (-x.shape[-1]) % self.patch_size
+        if pad_h == 0 and pad_w == 0:
+            return x
+        return F.pad(x, (0, pad_w, 0, pad_h), mode="replicate")
 
     def _call_get_intermediate_layers(self, x: torch.Tensor) -> tuple[torch.Tensor, ...]:
         get_intermediate_layers = getattr(
@@ -262,15 +271,8 @@ class CourtDINOv3Encoder(nn.Module):
             raise ValueError(
                 f"Expected {self.in_channels} input channels but received {x.shape[1]}."
             )
-        if min(x.shape[-2:]) < self.patch_size:
-            raise ValueError(
-                f"Input height and width must be at least {self.patch_size} pixels."
-            )
-        if any(size % self.patch_size != 0 for size in x.shape[-2:]):
-            raise ValueError(
-                "Input height and width must be divisible by the DINOv3 "
-                f"patch_size={self.patch_size}."
-            )
+        if min(x.shape[-2:]) <= 0:
+            raise ValueError("Input height and width must be positive.")
 
 
 def _build_dinov3_encoder(
