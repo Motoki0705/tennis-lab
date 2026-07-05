@@ -30,6 +30,7 @@ set -euo pipefail
 #   NUM_WORKERS   default: 2  (dataloader workers; raise on A100/L4 instances)
 #   GEN_WORKERS   default: 4  (scene/chunk generation workers)
 #   MAX_EPOCHS    default: 200
+#   EPOCHS_PER_CHUNK  default: 20 (long chunk reuse minimizes generation stalls)
 
 REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 DATASET_DIR="${DATASET_DIR:-${REPO_ROOT}/data/blcs_broadcast}"
@@ -38,6 +39,7 @@ NUM_SCENES="${NUM_SCENES:-1000}"
 NUM_WORKERS="${NUM_WORKERS:-2}"
 GEN_WORKERS="${GEN_WORKERS:-4}"
 MAX_EPOCHS="${MAX_EPOCHS:-200}"
+EPOCHS_PER_CHUNK="${EPOCHS_PER_CHUNK:-20}"
 
 echo "[train_blcs_broadcast] repo root: ${REPO_ROOT}"
 echo "[train_blcs_broadcast] dataset dir: ${DATASET_DIR}"
@@ -74,8 +76,11 @@ python -m src.tasks.blcs.scripts.train \
     data.num_court_kp=14 \
     "data.num_workers=${NUM_WORKERS}" \
     "data.chunk.generation_workers=${GEN_WORKERS}" \
+    "data.chunk.epochs_per_chunk=${EPOCHS_PER_CHUNK}" \
     "training.position_axis_weights=[1.0,4.0,1.0]" \
     "training.trainer.max_epochs=${MAX_EPOCHS}" \
+    training.trainer.check_val_every_n_epoch=5 \
+    training.qualitative_logging.enabled=false \
     "run.output_dir=${OUTPUT_DIR}" \
     run.gpus=1 \
     "$@"
