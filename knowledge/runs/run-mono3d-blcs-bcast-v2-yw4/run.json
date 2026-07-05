@@ -1,0 +1,14 @@
+{
+  "run_id": "1783211749537294235_43817_mono3d_blcs_bcast_v2_yw4",
+  "name": "mono3d_blcs_bcast_v2_yw4",
+  "command": "MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_chunked data.scene_dir=data/blcs_broadcast data.chunk.chunks_dir=data/blcs_broadcast/chunks data.num_views_range=[1,1] data.camera_mode=random data.num_court_kp=14 data.num_workers=2 data.chunk.generation_workers=8 camera=broadcast training.position_axis_weights=[1.0,4.0,1.0] run.gpus=1",
+  "provider": "claude",
+  "session": "dd9d56e0-5f2d-4d9d-a8c7-c80704a806b3",
+  "issue": "",
+  "commit": "6479c948d6329a4ec6258c93585042c80386869c",
+  "branch": "feat/mono3d-broadcast-pipeline",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-07-05T10:42:03+09:00"
+}
