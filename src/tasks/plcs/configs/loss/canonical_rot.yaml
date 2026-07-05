@@ -23,6 +23,10 @@
 position_weight: 2.0
 rotation_weight: 0.5
 angle_weight: 1.0
+# Temporal jerk prior on predicted player position (src/utils/losses/temporal.py).
+# Off by default; enable for broadcast/monocular training where the raw
+# per-frame position is jittery (inference velocity spikes).
+position_smoothness_weight: 0.0
 canonical_pose_weight: 1.0
 joint_angle_weight: 0.1
 torsion_angle_weight: 0.1
