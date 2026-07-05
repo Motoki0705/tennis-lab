@@ -11,7 +11,7 @@ output_name: null
 device: cuda
 
 court_kp:
-  checkpoint: outputs/court_detection/checkpoints/last.ckpt
+  checkpoint: ckpt/court_detection/last.ckpt
   annotation_frame_index: 0  # Frame shown in manual_ui mode, then repeated across T
   mode: manual_ui  # model/manual_ui
   num_keypoints: 14
@@ -25,7 +25,7 @@ gvhmr:
   vitpose_checkpoint: ckpt/vitpose/vitpose-h-multi-coco.pth
   hmr2_checkpoint: ckpt/hmr2/epoch=10-step=25000.ckpt
   smplx_body_model_path: null  # Optional override for the SMPL-X body model directory (default: ckpt/body_models)
-  track_selection: interactive  # interactive (UI) / auto (largest num_tracks)
+  track_selection: auto  # interactive (UI) / auto (largest num_tracks)
   num_tracks: 2
   skip: false
   # GVHMR runs as a CLI subprocess in the same venv (isolates GPU memory per camera)
@@ -42,7 +42,7 @@ player_association:
   load_path: null  # Path to load pre-computed result (skips manual UI)
 
 ball_detection:
-  checkpoint: outputs/ball_detection/stunet/logs/version_2/checkpoints/ball-detection-epoch=18.ckpt
+  checkpoint: ckpt/ball_detection/last.ckpt
   batch_size: 4
   image_size: [288, 512]
   normalize_imagenet: true
@@ -58,14 +58,14 @@ ball_detection:
   load_path: null  # Path to load pre-computed result (skips inference)
 
 plcs:
-  checkpoint: checkpoints/plcs/frame/last.ckpt
+  checkpoint: ckpt/plcs/last.ckpt
   save_result: true
   output_path: ${output_dir}/plcs_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
   # Example: load_path: outputs/tennis_scene/plcs_result.json
 
 blcs:
-  checkpoint: checkpoints/blcs/single/last.ckpt
+  checkpoint: ckpt/blcs/last.ckpt
   skip: false
   save_result: true
   output_path: ${output_dir}/blcs_result.json

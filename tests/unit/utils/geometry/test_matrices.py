@@ -12,6 +12,7 @@ from src.utils.geometry.matrices import (
     axis_angle_to_rotation_matrix,
     rotation_matrix_y,
     rotation_matrix_z,
+    smpl_y_up_to_court_z_up,
 )
 
 
@@ -75,11 +76,56 @@ class TestAxisAngleToRotationMatrix:
             assert _is_rotation(mat)
 
 
+class TestSmplYUpToCourtZUp:
+    def test_maps_smpl_up_axis_to_court_up_axis(self) -> None:
+        points = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 1.7, 0.0],
+                [0.2, 1.0, 0.4],
+            ],
+            dtype=np.float32,
+        )
+
+        converted = smpl_y_up_to_court_z_up(points)
+
+        np.testing.assert_allclose(converted[1] - converted[0], [0.0, 0.0, 1.7])
+        np.testing.assert_allclose(converted[2], [0.2, -0.4, 1.0])
+
+    def test_rejects_non_xyz_points(self) -> None:
+        points: np.ndarray = np.zeros((2, 4), dtype=np.float32)
+
+        try:
+            smpl_y_up_to_court_z_up(points)
+        except ValueError as exc:
+            assert "last dimension" in str(exc)
+        else:
+            raise AssertionError("Expected ValueError for non-XYZ points")
+
+
 class TestApplyPlcsTransform:
-    def test_identity_transform_is_noop(self) -> None:
-        verts = np.random.rand(5, 3).astype(np.float32)
+    def test_zero_yaw_converts_smpl_y_up_to_court_z_up(self) -> None:
+        verts = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 1.7, 0.0],
+                [0.2, 1.0, 0.4],
+            ],
+            dtype=np.float32,
+        )
         out = apply_plcs_transform(verts, np.zeros(3, dtype=np.float32), 0.0)
-        np.testing.assert_allclose(out, verts, atol=1e-6)
+        np.testing.assert_allclose(
+            out,
+            np.array(
+                [
+                    [0.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.7],
+                    [0.2, -0.4, 1.0],
+                ],
+                dtype=np.float32,
+            ),
+            atol=1e-6,
+        )
 
     def test_translation_only(self) -> None:
         verts: np.ndarray = np.zeros((3, 3), dtype=np.float32)
@@ -96,3 +142,8 @@ class TestApplyPlcsTransform:
         for t in range(4):
             per_frame = apply_plcs_transform(verts[t], positions[t], float(yaws[t]))
             np.testing.assert_allclose(batched[t], per_frame, atol=1e-5)
+
+    def test_yaw_rotates_around_court_z_axis(self) -> None:
+        verts = np.array([[1.0, 0.0, 0.0]], dtype=np.float32)
+        out = apply_plcs_transform(verts, np.zeros(3, dtype=np.float32), math.pi / 2)
+        np.testing.assert_allclose(out, [[0.0, 1.0, 0.0]], atol=1e-6)

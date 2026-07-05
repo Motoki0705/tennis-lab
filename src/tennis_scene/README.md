@@ -32,4 +32,8 @@
 - **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`ball_detection`/`plcs`/`blcs`)の実行設定。
 - **`visualization.yaml`**: 可視化スタイル・出力設定。
 
-**注意**: `apply_plcs_transform`(Y軸回転)と `tennis_scene_renderer.py`(Z軸回転)がplayer_yawの適用軸で食い違う独立実装。
+## 座標系メモ
+
+- `player_position` / `ball_3d`: コート座標系。XY平面が地面、+Zが上。
+- `smpl_vertices_local` / `smpl_global_orient` / `smpl_body_pose`: GVHMR/SMPL由来の人体座標系。人体のup軸はY。
+- 可視化時は、SMPL頂点をroot中心化した後に `src.utils.geometry.matrices.smpl_y_up_to_court_z_up` でY-upからコートZ-upへ明示変換し、その後 `player_yaw` をコート+Z軸まわりに適用する。
