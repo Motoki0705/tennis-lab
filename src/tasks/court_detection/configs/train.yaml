@@ -1,6 +1,6 @@
 defaults:
   - data: court_seg
-  - model: ${data}
+  - model: hierarchical
   - loss: seg
   - training: default
   - run: train

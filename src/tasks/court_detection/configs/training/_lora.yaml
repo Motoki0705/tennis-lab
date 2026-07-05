@@ -3,15 +3,15 @@
 # LoRA fine-tuning override for the DINOv3 backbone.
 #
 # This fragment is packaged at the global root so it can inject the LoRA block
-# into `model.backbone.lora`, which is read by `DINOv3DETR.from_config`.
+# into `model.encoder.lora`, which is read by the DINOv3 encoder.
 # It only takes effect with the DINOv3 backbone model, e.g.:
 #
 #   python -m src.tasks.court_detection.scripts.train \
-#       model=court_seg_dinov3_detr training=lora
+#       model/encoder=dinov3 model/decoder=dpt training=lora
 #
 # The base backbone weights stay frozen; only the low-rank adapters train.
 model:
-  backbone:
+  encoder:
     lora:
       enabled: true
       rank: 8
