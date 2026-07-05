@@ -1,4 +1,13 @@
 # Shared PLCS train-time keypoint augmentation.
+#
+# Human-keypoint noise is calibrated against real ViTPose tracks from
+# outputs/tennis_scene/tennis_clip_full (640x360 broadcast clip, 811 frames,
+# 2 players; measured 2026-07-05):
+# - high-frequency jitter RMS 0.0021-0.0028 normalized (p95 0.0036-0.0056)
+# - post-threshold missing-joint rate ~4-14% (confidence<0.35-0.5)
+# - low-confidence joints keep hallucinated coordinates -> false positives
+# Court values stay light: real court input is a constant, clean manual/model
+# homography rather than a per-frame detector.
 augmentation:
   enabled: true
 
@@ -12,38 +21,38 @@ augmentation:
   gaussian_noise:
     enabled: true
     prob: 1.0
-    human_std: 0.0001
+    human_std: 0.003
     court_std: 0.0001
 
   visibility_dropout:
     enabled: true
     prob: 1.0
-    human_drop_prob: 0.05
+    human_drop_prob: 0.08
     court_drop_prob: 0.05
 
   temporal_jitter:
     enabled: true
     prob: 1.0
-    human_jitter_std: 0.0005
-    human_drift_std: 0.0003
+    human_jitter_std: 0.002
+    human_drift_std: 0.001
     court_jitter_std: 0.0
     court_drift_std: 0.0
     drift_decay: 0.85
 
   burst_dropout:
     enabled: true
-    prob: 0.2
+    prob: 0.3
     human_track_prob: 1.0
     court_track_prob: 0.1
     min_len: 2
-    max_len: 4
+    max_len: 12
     max_bursts: 1
 
   false_positive:
     enabled: true
     prob: 1.0
-    human_prob_absent: 0.02
-    human_prob_after_dropout: 0.01
+    human_prob_absent: 0.05
+    human_prob_after_dropout: 0.02
     human_after_dropout_window: 2
     court_prob_absent: 0.0
     court_prob_after_dropout: 0.0

@@ -11,6 +11,7 @@ import numpy as np
 import torch
 
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.utils.inference.windowed import blend_windows, window_slices
 from src.utils.io import load_json, save_json
 
 if TYPE_CHECKING:
@@ -31,6 +32,11 @@ class BLCSConfig:
         save_result: Whether to save result to file.
         output_path: Path to save result JSON file.
         load_path: Path to load pre-computed result from (skips inference).
+        window_size: Maximum frames per model call. Long clips are split into
+            overlapping windows so inference stays inside the trained
+            ``seq_len_range`` instead of extrapolating RoPE far beyond it.
+        window_overlap: Frames shared by consecutive windows (blended with
+            center-peaked weights).
 
     """
 
@@ -39,6 +45,8 @@ class BLCSConfig:
     save_result: bool = False
     output_path: str | Path | None = None
     load_path: str | Path | None = None
+    window_size: int = 256
+    window_overlap: int = 64
 
 
 @dataclass
@@ -250,21 +258,34 @@ class BLCSModule(BasePipelineModule):
         if court_vis is not None:
             court_vis_t = torch.from_numpy(court_vis).float().unsqueeze(0)
 
-        pred = predictor.predict(
-            ball_uv=ball_uv_t,
-            court_kp=court_kp_t,
-            ball_vis=ball_vis_t,
-            ball_mask=ball_mask_t,
-            court_vis=court_vis_t,
-            denormalize=True,
+        slices = window_slices(
+            num_frames, self.config.window_size, self.config.window_overlap
         )
+        LOGGER.info(
+            f"Running BLCS in {len(slices)} window(s) of <= "
+            f"{self.config.window_size} frames (overlap {self.config.window_overlap})"
+        )
+        position_chunks = []
+        for start, end in slices:
+            pred = predictor.predict(
+                ball_uv=ball_uv_t[:, :, start:end],
+                court_kp=court_kp_t[:, :, start:end],
+                ball_vis=ball_vis_t[:, :, start:end],
+                ball_mask=ball_mask_t[:, :, start:end],
+                court_vis=(
+                    court_vis_t[:, :, start:end] if court_vis_t is not None else None
+                ),
+                denormalize=True,
+            )
+            win_pos = pred["position"].squeeze(0).cpu().numpy()  # (T_w, 3)
+            position_chunks.append((start, win_pos))
 
-        ball_3d = pred["position"].squeeze(0).cpu().numpy().astype(np.float32)
+        ball_3d = blend_windows(position_chunks, num_frames).astype(np.float32)
         if ball_3d.shape != (num_frames, 3):
             raise ValueError(
                 f"BLCS predictor position must have shape (T, 3), got {ball_3d.shape}"
             )
-        output_visibility = effective_vis.any(axis=0)
+        output_visibility = np.asarray(effective_vis.any(axis=0), dtype=np.bool_)
 
         # Mask out invalid frames with zeros to keep JSON strictly numeric
         ball_3d[~output_visibility] = 0.0

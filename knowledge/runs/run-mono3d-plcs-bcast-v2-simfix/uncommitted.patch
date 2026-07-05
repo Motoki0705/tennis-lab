@@ -1,0 +1,818 @@
+diff --git a/scripts/colab/train/train_blcs_broadcast.sh b/scripts/colab/train/train_blcs_broadcast.sh
+index ecfaf71..d094b9e 100644
+--- a/scripts/colab/train/train_blcs_broadcast.sh
++++ b/scripts/colab/train/train_blcs_broadcast.sh
+@@ -30,6 +30,7 @@ set -euo pipefail
+ #   NUM_WORKERS   default: 2  (dataloader workers; raise on A100/L4 instances)
+ #   GEN_WORKERS   default: 4  (scene/chunk generation workers)
+ #   MAX_EPOCHS    default: 200
++#   EPOCHS_PER_CHUNK  default: 20 (long chunk reuse minimizes generation stalls)
+ 
+ REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+ DATASET_DIR="${DATASET_DIR:-${REPO_ROOT}/data/blcs_broadcast}"
+@@ -38,6 +39,7 @@ NUM_SCENES="${NUM_SCENES:-1000}"
+ NUM_WORKERS="${NUM_WORKERS:-2}"
+ GEN_WORKERS="${GEN_WORKERS:-4}"
+ MAX_EPOCHS="${MAX_EPOCHS:-200}"
++EPOCHS_PER_CHUNK="${EPOCHS_PER_CHUNK:-20}"
+ 
+ echo "[train_blcs_broadcast] repo root: ${REPO_ROOT}"
+ echo "[train_blcs_broadcast] dataset dir: ${DATASET_DIR}"
+@@ -74,8 +76,11 @@ python -m src.tasks.blcs.scripts.train \
+     data.num_court_kp=14 \
+     "data.num_workers=${NUM_WORKERS}" \
+     "data.chunk.generation_workers=${GEN_WORKERS}" \
++    "data.chunk.epochs_per_chunk=${EPOCHS_PER_CHUNK}" \
+     "training.position_axis_weights=[1.0,4.0,1.0]" \
+     "training.trainer.max_epochs=${MAX_EPOCHS}" \
++    training.trainer.check_val_every_n_epoch=5 \
++    training.qualitative_logging.enabled=false \
+     "run.output_dir=${OUTPUT_DIR}" \
+     run.gpus=1 \
+     "$@"
+diff --git a/scripts/colab/train/train_plcs_broadcast.sh b/scripts/colab/train/train_plcs_broadcast.sh
+index 8c8b47d..ad2a42f 100644
+--- a/scripts/colab/train/train_plcs_broadcast.sh
++++ b/scripts/colab/train/train_plcs_broadcast.sh
+@@ -29,6 +29,7 @@ set -euo pipefail
+ #   NUM_WORKERS   default: 2  (dataloader workers; raise on A100/L4 instances)
+ #   GEN_WORKERS   default: 4  (scene/chunk generation workers)
+ #   MAX_EPOCHS    default: 200
++#   EPOCHS_PER_CHUNK  default: 30 (long chunk reuse minimizes generation stalls)
+ 
+ REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+ DATASET_DIR="${DATASET_DIR:-${REPO_ROOT}/data/plcs_broadcast}"
+@@ -37,6 +38,7 @@ NUM_SCENES="${NUM_SCENES:-1000}"
+ NUM_WORKERS="${NUM_WORKERS:-2}"
+ GEN_WORKERS="${GEN_WORKERS:-4}"
+ MAX_EPOCHS="${MAX_EPOCHS:-200}"
++EPOCHS_PER_CHUNK="${EPOCHS_PER_CHUNK:-30}"
+ 
+ echo "[train_plcs_broadcast] repo root: ${REPO_ROOT}"
+ echo "[train_plcs_broadcast] dataset dir: ${DATASET_DIR}"
+@@ -87,6 +89,7 @@ python -m src.tasks.plcs.scripts.train \
+     data.num_court_kp=14 \
+     "data.num_workers=${NUM_WORKERS}" \
+     "data.chunk.generation_workers=${GEN_WORKERS}" \
++    "data.chunk.epochs_per_chunk=${EPOCHS_PER_CHUNK}" \
+     loss=canonical_rot \
+     loss.position_weight=8.0 \
+     loss.canonical_pose_weight=0.0 \
+@@ -96,6 +99,8 @@ python -m src.tasks.plcs.scripts.train \
+     loss.bone_length_weight=0.0 \
+     training.trainer.accumulate_grad_batches=1 \
+     "training.trainer.max_epochs=${MAX_EPOCHS}" \
++    training.trainer.check_val_every_n_epoch=5 \
++    training.qualitative_logging.enabled=false \
+     training.early_stopping.enabled=false \
+     camera=broadcast \
+     "run.output_dir=${OUTPUT_DIR}" \
+diff --git a/src/tasks/blcs/configs/camera/broadcast.yaml b/src/tasks/blcs/configs/camera/broadcast.yaml
+index fd716e6..2414616 100644
+--- a/src/tasks/blcs/configs/camera/broadcast.yaml
++++ b/src/tasks/blcs/configs/camera/broadcast.yaml
+@@ -7,17 +7,24 @@
+ #
+ #     python -m src.tasks.blcs.scripts.generate_dataset camera=broadcast
+ #
+-# Geometry was fitted by overlaying the projected court on a real ATP frame.
++# Sim-to-real note (2026-07-05): the real tennis_clip camera PnP-fits to
++# setback 32.7 m / height 11.4 m / HFOV 28 deg -- far outside the previous
++# fixed 20 m / 7 m / 35 deg preset. Wide per-camera ranges below cover real
++# broadcast variation; HFOV is solved from the sampled apparent court width
++# (baseline u-span fraction; real clip = 0.64) so the court always frames
++# sensibly regardless of setback/height.
+ layout: broadcast
+ image_size: [1280, 720]
+ 
+-broadcast_setback: 20.0         # metres behind the baseline (beyond HALF_LENGTH)
+-broadcast_height: 7.0           # camera elevation above the court (m)
+-broadcast_hfov_deg: 35.0        # telephoto horizontal FOV (deg)
++broadcast_setback_range: [15.0, 40.0]   # metres behind the baseline
++broadcast_height_range: [5.0, 15.0]     # camera elevation (m)
++broadcast_court_width_frac_range: [0.5, 0.9]  # near-baseline u-span / image width
++
+ broadcast_look_at_y: 0.0        # look-at target Y (0 = court centre)
+ broadcast_look_at_height: 0.5   # look-at target Z above the court (m)
+ 
+-# Per-scene variation (set to 0 for a deterministic mirror pair).
++# Per-camera variation. hfov jitter must stay 0 while the framing-fraction
++# range is active (mutually exclusive).
+ broadcast_position_noise_radius: 1.0
+-broadcast_look_at_xy_radius: 1.0
+-broadcast_hfov_jitter_deg: 2.0
++broadcast_look_at_xy_radius: 2.0
++broadcast_hfov_jitter_deg: 0.0
+diff --git a/src/tasks/blcs/configs/data/_augmentation.yaml b/src/tasks/blcs/configs/data/_augmentation.yaml
+index 36fcabf..76110ee 100644
+--- a/src/tasks/blcs/configs/data/_augmentation.yaml
++++ b/src/tasks/blcs/configs/data/_augmentation.yaml
+@@ -60,16 +60,18 @@ augmentation:
+     drift_std: 0.0015
+     drift_decay: 0.85
+ 
+-  # Track fragmentation: consecutive detector misses. The eval summary gives
+-  # total suppressed misses but not miss run lengths, so this remains a small
+-  # share of the 7.2% miss budget rather than matching the whole rate.
++  # Track fragmentation: consecutive detector misses. Real broadcast footage
++  # (outputs/tennis_scene/tennis_clip_full, convnext detector, 2026-07-05)
++  # shows 20% invisible frames with gap runs of 21/15/10/10/10/8... frames,
++  # far beyond the old max_len=4 profile, so bursts are longer and can occur
++  # several times per track.
+   burst_dropout:
+     enabled: true
+-    prob: 0.2
++    prob: 0.4
+     track_prob: 1.0
+     min_len: 2
+-    max_len: 4
+-    max_bursts: 1
++    max_len: 16
++    max_bursts: 3
+ 
+   # Eval absent-frame false positive rate is 0.1034, so true absent spans use
+   # prob_absent ~= 0.10. Artificial dropouts already receive that base
+diff --git a/src/tasks/blcs/models/components/differentiable_projection.py b/src/tasks/blcs/models/components/differentiable_projection.py
+index 8a9adf4..f1b9972 100644
+--- a/src/tasks/blcs/models/components/differentiable_projection.py
++++ b/src/tasks/blcs/models/components/differentiable_projection.py
+@@ -123,8 +123,10 @@ class DifferentiableProjection(nn.Module):
+         w = camera_w.detach().unsqueeze(2).clamp(min=1.0)
+         h = camera_h.detach().unsqueeze(2).clamp(min=1.0)
+ 
++        # OpenCV convention (must mirror src.utils.projection.project_points):
++        # camera y-axis points image-down, so no v-flip.
+         u_px = f * (X_cam[..., 0] / z_safe) + cx
+-        v_px = f * (-X_cam[..., 1] / z_safe) + cy
++        v_px = f * (X_cam[..., 1] / z_safe) + cy
+ 
+         u_norm = u_px / w
+         v_norm = v_px / h
+diff --git a/src/tasks/plcs/configs/camera/broadcast.yaml b/src/tasks/plcs/configs/camera/broadcast.yaml
+index 7160d97..216931d 100644
+--- a/src/tasks/plcs/configs/camera/broadcast.yaml
++++ b/src/tasks/plcs/configs/camera/broadcast.yaml
+@@ -7,17 +7,24 @@
+ #
+ #     python -m src.tasks.plcs.scripts.generate_dataset camera=broadcast
+ #
+-# Geometry was fitted by overlaying the projected court on a real ATP frame.
++# Sim-to-real note (2026-07-05): the real tennis_clip camera PnP-fits to
++# setback 32.7 m / height 11.4 m / HFOV 28 deg -- far outside the previous
++# fixed 20 m / 7 m / 35 deg preset. Wide per-camera ranges below cover real
++# broadcast variation; HFOV is solved from the sampled apparent court width
++# (baseline u-span fraction; real clip = 0.64) so the court always frames
++# sensibly regardless of setback/height.
+ layout: broadcast
+ image_size: [1280, 720]
+ 
+-broadcast_setback: 20.0         # metres behind the baseline (beyond HALF_LENGTH)
+-broadcast_height: 7.0           # camera elevation above the court (m)
+-broadcast_hfov_deg: 35.0        # telephoto horizontal FOV (deg)
++broadcast_setback_range: [15.0, 40.0]   # metres behind the baseline
++broadcast_height_range: [5.0, 15.0]     # camera elevation (m)
++broadcast_court_width_frac_range: [0.5, 0.9]  # near-baseline u-span / image width
++
+ broadcast_look_at_y: 0.0        # look-at target Y (0 = court centre)
+ broadcast_look_at_height: 0.5   # look-at target Z above the court (m)
+ 
+-# Per-scene variation (set to 0 for a deterministic mirror pair).
++# Per-camera variation. hfov jitter must stay 0 while the framing-fraction
++# range is active (mutually exclusive).
+ broadcast_position_noise_radius: 1.0
+-broadcast_look_at_xy_radius: 1.0
+-broadcast_hfov_jitter_deg: 2.0
++broadcast_look_at_xy_radius: 2.0
++broadcast_hfov_jitter_deg: 0.0
+diff --git a/src/tasks/plcs/configs/data/_augmentation.yaml b/src/tasks/plcs/configs/data/_augmentation.yaml
+index dddf8e1..007742a 100644
+--- a/src/tasks/plcs/configs/data/_augmentation.yaml
++++ b/src/tasks/plcs/configs/data/_augmentation.yaml
+@@ -1,4 +1,13 @@
+ # Shared PLCS train-time keypoint augmentation.
++#
++# Human-keypoint noise is calibrated against real ViTPose tracks from
++# outputs/tennis_scene/tennis_clip_full (640x360 broadcast clip, 811 frames,
++# 2 players; measured 2026-07-05):
++# - high-frequency jitter RMS 0.0021-0.0028 normalized (p95 0.0036-0.0056)
++# - post-threshold missing-joint rate ~4-14% (confidence<0.35-0.5)
++# - low-confidence joints keep hallucinated coordinates -> false positives
++# Court values stay light: real court input is a constant, clean manual/model
++# homography rather than a per-frame detector.
+ augmentation:
+   enabled: true
+ 
+@@ -12,38 +21,38 @@ augmentation:
+   gaussian_noise:
+     enabled: true
+     prob: 1.0
+-    human_std: 0.0001
++    human_std: 0.003
+     court_std: 0.0001
+ 
+   visibility_dropout:
+     enabled: true
+     prob: 1.0
+-    human_drop_prob: 0.05
++    human_drop_prob: 0.08
+     court_drop_prob: 0.05
+ 
+   temporal_jitter:
+     enabled: true
+     prob: 1.0
+-    human_jitter_std: 0.0005
+-    human_drift_std: 0.0003
++    human_jitter_std: 0.002
++    human_drift_std: 0.001
+     court_jitter_std: 0.0
+     court_drift_std: 0.0
+     drift_decay: 0.85
+ 
+   burst_dropout:
+     enabled: true
+-    prob: 0.2
++    prob: 0.3
+     human_track_prob: 1.0
+     court_track_prob: 0.1
+     min_len: 2
+-    max_len: 4
++    max_len: 12
+     max_bursts: 1
+ 
+   false_positive:
+     enabled: true
+     prob: 1.0
+-    human_prob_absent: 0.02
+-    human_prob_after_dropout: 0.01
++    human_prob_absent: 0.05
++    human_prob_after_dropout: 0.02
+     human_after_dropout_window: 2
+     court_prob_absent: 0.0
+     court_prob_after_dropout: 0.0
+diff --git a/src/tennis_scene/configs/pipeline.yaml b/src/tennis_scene/configs/pipeline.yaml
+index 67103a4..184486d 100644
+--- a/src/tennis_scene/configs/pipeline.yaml
++++ b/src/tennis_scene/configs/pipeline.yaml
+@@ -63,6 +63,9 @@ plcs:
+   output_path: ${output_dir}/plcs_result.json
+   load_path: null  # Path to load pre-computed result (skips inference)
+   # Example: load_path: outputs/tennis_scene/plcs_result.json
++  window_size: 256  # max frames per model call (stay inside trained seq_len_range)
++  window_overlap: 64
++  human_vis_threshold: 0.35  # binarize pose-detector confidence
+ 
+ blcs:
+   checkpoint: ckpt/blcs/last.ckpt
+@@ -71,6 +74,8 @@ blcs:
+   output_path: ${output_dir}/blcs_result.json
+   load_path: null  # Path to load pre-computed result (skips inference)
+   # Example: load_path: outputs/tennis_scene/blcs_result.json
++  window_size: 256  # max frames per model call (stay inside trained seq_len_range)
++  window_overlap: 64
+ 
+ max_frames: null
+ 
+diff --git a/src/tennis_scene/pipeline/components/blcs.py b/src/tennis_scene/pipeline/components/blcs.py
+index 1f0147f..8da440d 100644
+--- a/src/tennis_scene/pipeline/components/blcs.py
++++ b/src/tennis_scene/pipeline/components/blcs.py
+@@ -11,6 +11,7 @@ import numpy as np
+ import torch
+ 
+ from src.tennis_scene.pipeline.components.base import BasePipelineModule
++from src.utils.inference.windowed import blend_windows, window_slices
+ from src.utils.io import load_json, save_json
+ 
+ if TYPE_CHECKING:
+@@ -31,6 +32,11 @@ class BLCSConfig:
+         save_result: Whether to save result to file.
+         output_path: Path to save result JSON file.
+         load_path: Path to load pre-computed result from (skips inference).
++        window_size: Maximum frames per model call. Long clips are split into
++            overlapping windows so inference stays inside the trained
++            ``seq_len_range`` instead of extrapolating RoPE far beyond it.
++        window_overlap: Frames shared by consecutive windows (blended with
++            center-peaked weights).
+ 
+     """
+ 
+@@ -39,6 +45,8 @@ class BLCSConfig:
+     save_result: bool = False
+     output_path: str | Path | None = None
+     load_path: str | Path | None = None
++    window_size: int = 256
++    window_overlap: int = 64
+ 
+ 
+ @dataclass
+@@ -250,21 +258,34 @@ class BLCSModule(BasePipelineModule):
+         if court_vis is not None:
+             court_vis_t = torch.from_numpy(court_vis).float().unsqueeze(0)
+ 
+-        pred = predictor.predict(
+-            ball_uv=ball_uv_t,
+-            court_kp=court_kp_t,
+-            ball_vis=ball_vis_t,
+-            ball_mask=ball_mask_t,
+-            court_vis=court_vis_t,
+-            denormalize=True,
++        slices = window_slices(
++            num_frames, self.config.window_size, self.config.window_overlap
+         )
++        LOGGER.info(
++            f"Running BLCS in {len(slices)} window(s) of <= "
++            f"{self.config.window_size} frames (overlap {self.config.window_overlap})"
++        )
++        position_chunks = []
++        for start, end in slices:
++            pred = predictor.predict(
++                ball_uv=ball_uv_t[:, :, start:end],
++                court_kp=court_kp_t[:, :, start:end],
++                ball_vis=ball_vis_t[:, :, start:end],
++                ball_mask=ball_mask_t[:, :, start:end],
++                court_vis=(
++                    court_vis_t[:, :, start:end] if court_vis_t is not None else None
++                ),
++                denormalize=True,
++            )
++            win_pos = pred["position"].squeeze(0).cpu().numpy()  # (T_w, 3)
++            position_chunks.append((start, win_pos))
+ 
+-        ball_3d = pred["position"].squeeze(0).cpu().numpy().astype(np.float32)
++        ball_3d = blend_windows(position_chunks, num_frames).astype(np.float32)
+         if ball_3d.shape != (num_frames, 3):
+             raise ValueError(
+                 f"BLCS predictor position must have shape (T, 3), got {ball_3d.shape}"
+             )
+-        output_visibility = effective_vis.any(axis=0)
++        output_visibility = np.asarray(effective_vis.any(axis=0), dtype=np.bool_)
+ 
+         # Mask out invalid frames with zeros to keep JSON strictly numeric
+         ball_3d[~output_visibility] = 0.0
+diff --git a/src/tennis_scene/pipeline/components/plcs.py b/src/tennis_scene/pipeline/components/plcs.py
+index 2543783..22c88fa 100644
+--- a/src/tennis_scene/pipeline/components/plcs.py
++++ b/src/tennis_scene/pipeline/components/plcs.py
+@@ -11,6 +11,7 @@ import numpy as np
+ import torch
+ 
+ from src.tennis_scene.pipeline.components.base import BasePipelineModule
++from src.utils.inference.windowed import blend_windows, window_slices
+ from src.utils.io import load_json, save_json
+ 
+ if TYPE_CHECKING:
+@@ -23,13 +24,33 @@ LOGGER = logging.getLogger(__name__)
+ 
+ @dataclass
+ class PLCSConfig:
+-    """Configuration for PLCS module."""
++    """Configuration for PLCS module.
++
++    Attributes:
++        checkpoint_path: Path to PLCS model checkpoint.
++        device: Inference device.
++        save_result: Whether to save result to file.
++        output_path: Path to save result JSON file.
++        load_path: Path to load pre-computed result from (skips inference).
++        window_size: Maximum frames per model call. Long clips are split into
++            overlapping windows so inference stays inside the trained
++            ``seq_len_range`` instead of extrapolating RoPE far beyond it.
++        window_overlap: Frames shared by consecutive windows (blended with
++            center-peaked weights).
++        human_vis_threshold: Detector confidences below this become invisible
++            (0). Real pose detectors emit continuous confidences and keep
++            hallucinated coordinates for occluded joints, while training
++            visibility is binary — thresholding restores that contract.
++    """
+ 
+     checkpoint_path: str | Path
+     device: str = "cuda"
+     save_result: bool = False
+     output_path: str | Path | None = None
+     load_path: str | Path | None = None
++    window_size: int = 256
++    window_overlap: int = 64
++    human_vis_threshold: float = 0.35
+ 
+ 
+ @dataclass
+@@ -258,23 +279,61 @@ class PLCSModule(BasePipelineModule):
+         human_kp_t = torch.from_numpy(human_kp_2d).float()
+         human_vis_t = None
+         if human_kp_vis is not None:
+-            human_vis_t = torch.from_numpy(human_kp_vis).float()
++            # Real detectors emit continuous confidences; training visibility
++            # is binary, so threshold before the model's (vis > 0) masking.
++            binary_vis = (
++                human_kp_vis >= self.config.human_vis_threshold
++            ).astype(np.float32)
++            dropped = float((human_kp_vis > 0).mean() - binary_vis.mean())
++            LOGGER.info(
++                "Thresholded human keypoint confidence at "
++                f"{self.config.human_vis_threshold} (dropped {dropped:.1%} of joints)"
++            )
++            human_vis_t = torch.from_numpy(binary_vis)
+         human_mask_t = torch.ones(
+             (num_players, num_cameras, num_frames),
+             dtype=torch.float32,
+         )
+ 
+-        pred = predictor.predict(
+-            human_kp=human_kp_t,
+-            court_kp=court_kp_t,
+-            human_vis=human_vis_t,
+-            human_mask=human_mask_t,
+-            court_vis=court_vis_batch,
+-            denormalize=True,
++        slices = window_slices(
++            num_frames, self.config.window_size, self.config.window_overlap
++        )
++        LOGGER.info(
++            f"Running PLCS in {len(slices)} window(s) of <= "
++            f"{self.config.window_size} frames (overlap {self.config.window_overlap})"
++        )
++        position_chunks: list[tuple[int, NDArray[np.float64]]] = []
++        yaw_vec_chunks: list[tuple[int, NDArray[np.float64]]] = []
++        for start, end in slices:
++            pred = predictor.predict(
++                human_kp=human_kp_t[:, :, start:end],
++                court_kp=court_kp_t[:, :, start:end],
++                human_vis=(
++                    human_vis_t[:, :, start:end] if human_vis_t is not None else None
++                ),
++                human_mask=human_mask_t[:, :, start:end],
++                court_vis=(
++                    court_vis_batch[:, :, start:end]
++                    if court_vis_batch is not None
++                    else None
++                ),
++                denormalize=True,
++            )
++            win_pos = pred["position_meters"].numpy()  # (P, T_w, 3)
++            win_yaw = pred["yaw_radians"].numpy()  # (P, T_w)
++            position_chunks.append((start, win_pos.transpose(1, 0, 2)))
++            yaw_vec = np.stack([np.sin(win_yaw), np.cos(win_yaw)], axis=-1)
++            yaw_vec_chunks.append((start, yaw_vec.transpose(1, 0, 2)))
++
++        positions = (
++            blend_windows(position_chunks, num_frames)
++            .transpose(1, 0, 2)
++            .astype(np.float32)
++        )
++        yaw_vec_blend = blend_windows(yaw_vec_chunks, num_frames).transpose(1, 0, 2)
++        yaws = np.arctan2(yaw_vec_blend[..., 0], yaw_vec_blend[..., 1]).astype(
++            np.float32
+         )
+-
+-        positions = pred["position_meters"].numpy().astype(np.float32)
+-        yaws = pred["yaw_radians"].numpy().astype(np.float32)
+         if positions.shape != (num_players, num_frames, 3):
+             raise ValueError(
+                 "PLCS predictor position_meters must have shape (P, T, 3), "
+diff --git a/src/tennis_scene/pipeline/orchestrator.py b/src/tennis_scene/pipeline/orchestrator.py
+index 9467bdd..73c547d 100644
+--- a/src/tennis_scene/pipeline/orchestrator.py
++++ b/src/tennis_scene/pipeline/orchestrator.py
+@@ -201,6 +201,9 @@ class TennisSceneOrchestrator:
+                 save_result=cfg.plcs.get("save_result", True),
+                 output_path=get_output_path("plcs", "plcs_result.json"),
+                 load_path=get_load_path("plcs"),
++                window_size=int(cfg.plcs.get("window_size", 256)),
++                window_overlap=int(cfg.plcs.get("window_overlap", 64)),
++                human_vis_threshold=float(cfg.plcs.get("human_vis_threshold", 0.35)),
+             )
+         )
+ 
+@@ -213,6 +216,8 @@ class TennisSceneOrchestrator:
+                     save_result=cfg.blcs.get("save_result", True),
+                     output_path=get_output_path("blcs", "blcs_result.json"),
+                     load_path=get_load_path("blcs"),
++                    window_size=int(cfg.blcs.get("window_size", 256)),
++                    window_overlap=int(cfg.blcs.get("window_overlap", 64)),
+                 )
+             )
+ 
+diff --git a/src/utils/projection/camera_projector.py b/src/utils/projection/camera_projector.py
+index 02c34e2..b71fcff 100644
+--- a/src/utils/projection/camera_projector.py
++++ b/src/utils/projection/camera_projector.py
+@@ -40,7 +40,16 @@ def make_look_at_camera(
+     image_size: tuple[int, int] = (1280, 720),
+     hfov_deg: float = 60.0,
+ ) -> Camera:
+-    """Create a pinhole camera pointed at ``look_at``."""
++    """Create a pinhole camera pointed at ``look_at``.
++
++    Uses the OpenCV camera convention: ``x`` = image right, ``y`` = image
++    down, ``z`` = forward, so ``R`` is a proper rotation and the projection
++    ``u = f*Xc/Zc + cx``, ``v = f*Yc/Zc + cy`` matches what a physical camera
++    (and cv2.solvePnP) produces. The previous basis (``x = up × z`` combined
++    with a v-flip in :func:`project_points`) rendered a left-right mirrored
++    image, which is undetectable on the bilaterally symmetric court but
++    breaks sim-to-real transfer of keypoint-indexed models.
++    """
+     center_t = torch.tensor(center, dtype=torch.float32)
+     look_t = torch.tensor(look_at, dtype=torch.float32)
+ 
+@@ -48,15 +57,15 @@ def make_look_at_camera(
+     z_cam = z_cam / (z_cam.norm() + 1e-8)
+ 
+     up_world = torch.tensor([0.0, 0.0, 1.0], dtype=torch.float32)
+-    x_cam = torch.cross(up_world, z_cam, dim=0)
++    x_cam = torch.cross(z_cam, up_world, dim=0)  # image right
+     x_norm = x_cam.norm()
+     if x_norm < 1e-6:
+         # Fallback when looking straight up/down
+         up_world = torch.tensor([0.0, 1.0, 0.0], dtype=torch.float32)
+-        x_cam = torch.cross(up_world, z_cam, dim=0)
++        x_cam = torch.cross(z_cam, up_world, dim=0)
+         x_norm = x_cam.norm()
+     x_cam = x_cam / (x_norm + 1e-8)
+-    y_cam = torch.cross(z_cam, x_cam, dim=0)
++    y_cam = torch.cross(z_cam, x_cam, dim=0)  # image down
+ 
+     R = torch.stack([x_cam, y_cam, z_cam], dim=0)  # world -> camera
+ 
+@@ -82,9 +91,9 @@ def project_points(cam: Camera, xyz: Tensor) -> tuple[Tensor, Tensor]:
+     mask = z > 1e-6
+     z_safe = torch.where(mask, z, torch.ones_like(z))
+ 
+-    # Flip v direction so that up = top of screen
++    # OpenCV convention: y_cam already points image-down, so no v-flip.
+     u = cam.f * (Xc[:, 0] / z_safe) + cam.cx
+-    v = cam.f * (-Xc[:, 1] / z_safe) + cam.cy
++    v = cam.f * (Xc[:, 1] / z_safe) + cam.cy
+ 
+     uv = torch.stack([u, v], dim=-1)
+     return uv, mask
+@@ -145,6 +154,30 @@ class CameraConfig:
+     broadcast_look_at_xy_radius: float = 1.0  # per-scene look-at jitter on z=0 plane (m)
+     broadcast_hfov_jitter_deg: float = 2.0  # per-scene zoom (HFOV) jitter (deg)
+ 
++    # --- Optional wide per-camera randomization (sim-to-real) -----------
++    # When a range is set it replaces the corresponding fixed value above and
++    # is sampled uniformly per camera. ``broadcast_court_width_frac_range``
++    # samples the apparent width of the camera-side baseline (doubles-corner
++    # u-span as a fraction of image width) and solves the HFOV that realizes
++    # it, guaranteeing sane framing across the whole setback/height range;
++    # it is mutually exclusive with ``broadcast_hfov_jitter_deg`` > 0.
++    broadcast_setback_range: tuple[float, float] | None = None
++    broadcast_height_range: tuple[float, float] | None = None
++    broadcast_court_width_frac_range: tuple[float, float] | None = None
++
++
++def _optional_range(
++    cfg: _CameraConfigMapping, key: str
++) -> tuple[float, float] | None:
++    """Parse an optional ``[lo, hi]`` range from a camera config mapping."""
++    value = cfg.get(key, None)
++    if value is None:
++        return None
++    lo, hi = (float(v) for v in value)
++    if lo > hi:
++        raise ValueError(f"{key} must satisfy lo <= hi, got [{lo}, {hi}].")
++    return lo, hi
++
+ 
+ def camera_config_from_mapping(cfg: _CameraConfigMapping) -> CameraConfig:
+     """Build a :class:`CameraConfig` from a Hydra/OmegaConf ``camera`` section.
+@@ -200,6 +233,11 @@ def camera_config_from_mapping(cfg: _CameraConfigMapping) -> CameraConfig:
+         broadcast_hfov_jitter_deg=_f(
+             "broadcast_hfov_jitter_deg", defaults.broadcast_hfov_jitter_deg
+         ),
++        broadcast_setback_range=_optional_range(cfg, "broadcast_setback_range"),
++        broadcast_height_range=_optional_range(cfg, "broadcast_height_range"),
++        broadcast_court_width_frac_range=_optional_range(
++            cfg, "broadcast_court_width_frac_range"
++        ),
+     )
+ 
+ 
+@@ -321,18 +359,41 @@ class CameraProjector:
+         (center jitter), ``broadcast_look_at_xy_radius`` (look-at jitter) and
+         ``broadcast_hfov_jitter_deg`` (zoom jitter). With all three set to zero
+         the two cameras are deterministic mirror images across the net.
++
++        When the wide randomization ranges (``broadcast_setback_range``,
++        ``broadcast_height_range``, ``broadcast_court_width_frac_range``) are
++        set, setback/height are sampled uniformly per camera and the HFOV is
++        solved so the camera-side baseline spans the sampled fraction of the
++        image width. Real broadcast footage varies far beyond the narrow
++        jitter defaults (e.g. tennis_clip.mp4 PnP-fits to setback 32.7 m,
++        height 11.4 m, HFOV 28 deg), so sim-to-real training should use the
++        ranges.
+         """
+         cfg = self.config
+-        # Cameras sit ``broadcast_setback`` metres behind each baseline
+-        # (baselines are at y = +-HALF_LENGTH).
+-        base_y = HALF_LENGTH + cfg.broadcast_setback
+-        baseline_centers = [
+-            (0.0, -base_y, cfg.broadcast_height),  # behind near baseline
+-            (0.0, +base_y, cfg.broadcast_height),  # behind far baseline
+-        ]
++        if (
++            cfg.broadcast_court_width_frac_range is not None
++            and cfg.broadcast_hfov_jitter_deg > 0.0
++        ):
++            raise ValueError(
++                "broadcast_court_width_frac_range and broadcast_hfov_jitter_deg "
++                "are mutually exclusive; set broadcast_hfov_jitter_deg to 0 "
++                "when using the framing-fraction range."
++            )
+ 
+         cams: list[Camera] = []
+-        for base_center in baseline_centers:
++        for side in (-1.0, +1.0):  # behind near / far baseline
++            setback = (
++                random.uniform(*cfg.broadcast_setback_range)
++                if cfg.broadcast_setback_range is not None
++                else cfg.broadcast_setback
++            )
++            height = (
++                random.uniform(*cfg.broadcast_height_range)
++                if cfg.broadcast_height_range is not None
++                else cfg.broadcast_height
++            )
++            base_center = (0.0, side * (HALF_LENGTH + setback), height)
++
+             dx, dy, dz = self._sample_uniform_offset_in_ball(
+                 cfg.broadcast_position_noise_radius
+             )
+@@ -357,16 +418,51 @@ class CameraProjector:
+                     -cfg.broadcast_hfov_jitter_deg, cfg.broadcast_hfov_jitter_deg
+                 )
+ 
+-            cams.append(
+-                make_look_at_camera(
+-                    center=center,
+-                    look_at=look_at_target,
+-                    hfov_deg=hfov,
+-                    image_size=cfg.image_size,
+-                )
++            cam = make_look_at_camera(
++                center=center,
++                look_at=look_at_target,
++                hfov_deg=hfov,
++                image_size=cfg.image_size,
+             )
++            if cfg.broadcast_court_width_frac_range is not None:
++                frac = random.uniform(*cfg.broadcast_court_width_frac_range)
++                cam = self._solve_broadcast_framing(cam, side=side, width_frac=frac)
++            cams.append(cam)
+         return cams
+ 
++    def _solve_broadcast_framing(
++        self, cam: Camera, *, side: float, width_frac: float
++    ) -> Camera:
++        """Rescale focal length so the camera-side baseline spans ``width_frac``.
++
++        For fixed extrinsics the projected u-span of the near-baseline doubles
++        corners is exactly proportional to the focal length, so a single
++        provisional projection determines the required HFOV in closed form.
++        """
++        corners = torch.tensor(
++            [
++                [-HALF_DOUBLES_WIDTH, side * HALF_LENGTH, 0.0],
++                [+HALF_DOUBLES_WIDTH, side * HALF_LENGTH, 0.0],
++            ],
++            dtype=torch.float32,
++        )
++        uv, in_front = project_points(cam, corners)
++        if not bool(in_front.all()):
++            raise ValueError(
++                "Broadcast framing solve failed: baseline corners behind the "
++                f"camera (center={cam.C.tolist()})."
++            )
++        span_norm = float((uv[1, 0] - uv[0, 0]).abs()) / float(cam.w)
++        if span_norm <= 1e-6:
++            raise ValueError(
++                "Broadcast framing solve failed: degenerate baseline span "
++                f"(center={cam.C.tolist()})."
++            )
++        f_new = cam.f * (width_frac / span_norm)
++        return Camera(
++            C=cam.C, R=cam.R, f=f_new, cx=cam.cx, cy=cam.cy, w=cam.w, h=cam.h
++        )
++
+     def cameras(self) -> list[Camera]:
+         """Return the camera rig for the configured ``layout``.
+ 
+diff --git a/tests/unit/utils/projection/test_camera_projector.py b/tests/unit/utils/projection/test_camera_projector.py
+index c61302b..2982b3d 100644
+--- a/tests/unit/utils/projection/test_camera_projector.py
++++ b/tests/unit/utils/projection/test_camera_projector.py
+@@ -202,6 +202,114 @@ class TestBroadcastCameras:
+         assert not torch.allclose(a.C, b.C)
+ 
+ 
++class TestProjectionChirality:
++    """Regression tests for the mirrored-camera bug (sim-to-real collapse).
++
++    A physical camera behind the near baseline (looking toward +y) must show
++    world +x on the image right; the far-baseline camera shows it on the
++    left. The pre-fix basis (x = up × z with a v-flip) produced left-right
++    mirrored images, undetectable on the symmetric court geometry but fatal
++    for keypoint-indexed models fed real footage.
++    """
++
++    def _corner_uv(self, cam: Camera, x: float, y: float) -> tuple[float, float]:
++        uv, in_front = project_points(cam, torch.tensor([[x, y, 0.0]]))
++        assert bool(in_front[0])
++        return float(uv[0, 0]), float(uv[0, 1])
++
++    def test_near_camera_shows_world_plus_x_on_image_right(self) -> None:
++        projector = CameraProjector(config=_deterministic_broadcast_config())
++        near, far = projector.broadcast_cameras()
++        u_plus, _ = self._corner_uv(near, +5.485, -HALF_LENGTH)
++        u_minus, _ = self._corner_uv(near, -5.485, -HALF_LENGTH)
++        assert u_plus > u_minus
++
++    def test_far_camera_shows_world_plus_x_on_image_left(self) -> None:
++        projector = CameraProjector(config=_deterministic_broadcast_config())
++        near, far = projector.broadcast_cameras()
++        u_plus, _ = self._corner_uv(far, +5.485, +HALF_LENGTH)
++        u_minus, _ = self._corner_uv(far, -5.485, +HALF_LENGTH)
++        assert u_plus < u_minus
++
++    def test_far_side_of_court_appears_above_near_side(self) -> None:
++        projector = CameraProjector(config=_deterministic_broadcast_config())
++        near, _ = projector.broadcast_cameras()
++        _, v_far = self._corner_uv(near, 0.0, +HALF_LENGTH)
++        _, v_near = self._corner_uv(near, 0.0, -HALF_LENGTH)
++        assert v_far < v_near  # image v grows downward
++
++    def test_rotation_stays_proper(self) -> None:
++        cam = make_look_at_camera(center=(2.0, -30.0, 8.0), look_at=(0.0, 0.0, 0.5))
++        assert torch.det(cam.R).item() == pytest.approx(1.0, abs=1e-5)
++
++
++class TestBroadcastRanges:
++    def _range_config(self, **overrides: object) -> CameraConfig:
++        params: dict[str, object] = dict(
++            layout=BROADCAST_LAYOUT,
++            broadcast_position_noise_radius=0.0,
++            broadcast_look_at_xy_radius=0.0,
++            broadcast_hfov_jitter_deg=0.0,
++            broadcast_setback_range=(15.0, 40.0),
++            broadcast_height_range=(5.0, 15.0),
++            broadcast_court_width_frac_range=(0.5, 0.9),
++        )
++        params.update(overrides)
++        return CameraConfig(**params)  # type: ignore[arg-type]
++
++    def test_sampled_geometry_within_ranges(self) -> None:
++        projector = CameraProjector(config=self._range_config())
++        for _ in range(20):
++            for cam in projector.broadcast_cameras():
++                setback = abs(cam.C[1].item()) - HALF_LENGTH
++                assert 15.0 <= setback <= 40.0
++                assert 5.0 <= cam.C[2].item() <= 15.0
++
++    def test_framing_fraction_is_realized(self) -> None:
++        projector = CameraProjector(config=self._range_config())
++        for _ in range(10):
++            near, far = projector.broadcast_cameras()
++            for cam, side in ((near, -1.0), (far, +1.0)):
++                uv, in_front = project_points(
++                    cam,
++                    torch.tensor(
++                        [
++                            [-5.485, side * HALF_LENGTH, 0.0],
++                            [+5.485, side * HALF_LENGTH, 0.0],
++                        ]
++                    ),
++                )
++                assert bool(in_front.all())
++                frac = abs(uv[1, 0].item() - uv[0, 0].item()) / cam.w
++                assert 0.5 - 1e-4 <= frac <= 0.9 + 1e-4
++
++    def test_frac_range_conflicts_with_hfov_jitter(self) -> None:
++        projector = CameraProjector(
++            config=self._range_config(broadcast_hfov_jitter_deg=2.0)
++        )
++        with pytest.raises(ValueError, match="mutually exclusive"):
++            projector.broadcast_cameras()
++
++    def test_mapping_parses_ranges(self) -> None:
++        cfg = camera_config_from_mapping(
++            {
++                "layout": "broadcast",
++                "broadcast_setback_range": [15.0, 40.0],
++                "broadcast_height_range": [5.0, 15.0],
++                "broadcast_court_width_frac_range": [0.5, 0.9],
++            }
++        )
++        assert cfg.broadcast_setback_range == (15.0, 40.0)
++        assert cfg.broadcast_height_range == (5.0, 15.0)
++        assert cfg.broadcast_court_width_frac_range == (0.5, 0.9)
++
++    def test_mapping_rejects_inverted_range(self) -> None:
++        with pytest.raises(ValueError, match="lo <= hi"):
++            camera_config_from_mapping(
++                {"layout": "broadcast", "broadcast_setback_range": [40.0, 15.0]}
++            )
++
++
+ class TestCamerasDispatch:
+     def test_fixed_layout_returns_six(self) -> None:
+         cfg = CameraConfig(
