@@ -202,6 +202,114 @@ class TestBroadcastCameras:
         assert not torch.allclose(a.C, b.C)
 
 
+class TestProjectionChirality:
+    """Regression tests for the mirrored-camera bug (sim-to-real collapse).
+
+    A physical camera behind the near baseline (looking toward +y) must show
+    world +x on the image right; the far-baseline camera shows it on the
+    left. The pre-fix basis (x = up × z with a v-flip) produced left-right
+    mirrored images, undetectable on the symmetric court geometry but fatal
+    for keypoint-indexed models fed real footage.
+    """
+
+    def _corner_uv(self, cam: Camera, x: float, y: float) -> tuple[float, float]:
+        uv, in_front = project_points(cam, torch.tensor([[x, y, 0.0]]))
+        assert bool(in_front[0])
+        return float(uv[0, 0]), float(uv[0, 1])
+
+    def test_near_camera_shows_world_plus_x_on_image_right(self) -> None:
+        projector = CameraProjector(config=_deterministic_broadcast_config())
+        near, far = projector.broadcast_cameras()
+        u_plus, _ = self._corner_uv(near, +5.485, -HALF_LENGTH)
+        u_minus, _ = self._corner_uv(near, -5.485, -HALF_LENGTH)
+        assert u_plus > u_minus
+
+    def test_far_camera_shows_world_plus_x_on_image_left(self) -> None:
+        projector = CameraProjector(config=_deterministic_broadcast_config())
+        near, far = projector.broadcast_cameras()
+        u_plus, _ = self._corner_uv(far, +5.485, +HALF_LENGTH)
+        u_minus, _ = self._corner_uv(far, -5.485, +HALF_LENGTH)
+        assert u_plus < u_minus
+
+    def test_far_side_of_court_appears_above_near_side(self) -> None:
+        projector = CameraProjector(config=_deterministic_broadcast_config())
+        near, _ = projector.broadcast_cameras()
+        _, v_far = self._corner_uv(near, 0.0, +HALF_LENGTH)
+        _, v_near = self._corner_uv(near, 0.0, -HALF_LENGTH)
+        assert v_far < v_near  # image v grows downward
+
+    def test_rotation_stays_proper(self) -> None:
+        cam = make_look_at_camera(center=(2.0, -30.0, 8.0), look_at=(0.0, 0.0, 0.5))
+        assert torch.det(cam.R).item() == pytest.approx(1.0, abs=1e-5)
+
+
+class TestBroadcastRanges:
+    def _range_config(self, **overrides: object) -> CameraConfig:
+        params: dict[str, object] = dict(
+            layout=BROADCAST_LAYOUT,
+            broadcast_position_noise_radius=0.0,
+            broadcast_look_at_xy_radius=0.0,
+            broadcast_hfov_jitter_deg=0.0,
+            broadcast_setback_range=(15.0, 40.0),
+            broadcast_height_range=(5.0, 15.0),
+            broadcast_court_width_frac_range=(0.5, 0.9),
+        )
+        params.update(overrides)
+        return CameraConfig(**params)  # type: ignore[arg-type]
+
+    def test_sampled_geometry_within_ranges(self) -> None:
+        projector = CameraProjector(config=self._range_config())
+        for _ in range(20):
+            for cam in projector.broadcast_cameras():
+                setback = abs(cam.C[1].item()) - HALF_LENGTH
+                assert 15.0 <= setback <= 40.0
+                assert 5.0 <= cam.C[2].item() <= 15.0
+
+    def test_framing_fraction_is_realized(self) -> None:
+        projector = CameraProjector(config=self._range_config())
+        for _ in range(10):
+            near, far = projector.broadcast_cameras()
+            for cam, side in ((near, -1.0), (far, +1.0)):
+                uv, in_front = project_points(
+                    cam,
+                    torch.tensor(
+                        [
+                            [-5.485, side * HALF_LENGTH, 0.0],
+                            [+5.485, side * HALF_LENGTH, 0.0],
+                        ]
+                    ),
+                )
+                assert bool(in_front.all())
+                frac = abs(uv[1, 0].item() - uv[0, 0].item()) / cam.w
+                assert 0.5 - 1e-4 <= frac <= 0.9 + 1e-4
+
+    def test_frac_range_conflicts_with_hfov_jitter(self) -> None:
+        projector = CameraProjector(
+            config=self._range_config(broadcast_hfov_jitter_deg=2.0)
+        )
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            projector.broadcast_cameras()
+
+    def test_mapping_parses_ranges(self) -> None:
+        cfg = camera_config_from_mapping(
+            {
+                "layout": "broadcast",
+                "broadcast_setback_range": [15.0, 40.0],
+                "broadcast_height_range": [5.0, 15.0],
+                "broadcast_court_width_frac_range": [0.5, 0.9],
+            }
+        )
+        assert cfg.broadcast_setback_range == (15.0, 40.0)
+        assert cfg.broadcast_height_range == (5.0, 15.0)
+        assert cfg.broadcast_court_width_frac_range == (0.5, 0.9)
+
+    def test_mapping_rejects_inverted_range(self) -> None:
+        with pytest.raises(ValueError, match="lo <= hi"):
+            camera_config_from_mapping(
+                {"layout": "broadcast", "broadcast_setback_range": [40.0, 15.0]}
+            )
+
+
 class TestCamerasDispatch:
     def test_fixed_layout_returns_six(self) -> None:
         cfg = CameraConfig(
