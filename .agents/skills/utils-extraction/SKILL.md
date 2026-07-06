@@ -1,144 +1,98 @@
 ---
 name: utils-extraction
-description: Use this skill to run a periodic or on-demand "extract shared code" campaign in Motoki0705/tennis-lab — survey the repo for duplicated (WET) or util-izable helpers and consolidate them into src/utils (domain-agnostic) or src/tasks/base (cross-task), behaviour-preservingly, to shrink the repo and raise maintainability. Covers the sonnet-subagent survey, the utils-vs-base classification rubric, behaviour-preserving migration, the validation gates (incl. the mypy caveat), and the worktree+PR flow.
+description: Use this skill to decide whether shared or duplicated code in Motoki0705/tennis-lab belongs in src/utils, src/tasks/base, or should remain task-local. This is a placement policy, not a fixed migration workflow.
 ---
 
-# Utils / base extraction campaign
+# Utils / base extraction policy
 
-## When to use
+## Purpose
 
-- A **periodic maintenance pass** to compress the repo and reduce duplication.
-- When you notice a generic helper copy-pasted across task modules.
-- A request to "util化 / base化 / DRY / dedupe / extract shared / consolidate".
+Use this skill when considering whether duplicated or shared code should be
+moved into `src/utils` or `src/tasks/base`.
 
-This skill is the **campaign methodology** — the find-and-consolidate loop. The
-catalogue of what already lives in `src/utils` and the "where do I add a new
-helper" rules are in **`src/utils/README.md`**; read that first. This skill drives
-the survey and migration around it. The reuse policy is also stated in
-`AGENTS.md` / `CLAUDE.md` ("Code reuse and shared utilities").
+This skill defines the placement criteria. It intentionally does **not** prescribe
+a fixed survey, migration, commit, or PR workflow. The calling AI should choose
+the concrete implementation approach that best fits the change.
 
-## Targets: where extracted code goes
+## Required constraints
 
-| Destination | Take it here when | Examples |
-|-------------|-------------------|----------|
-| `src/utils/<module>` | the helper has **no dependency on any task's domain types** (generic path/device/seed/IO/tensor/geometry/heatmap/render/schema/video math) | `resolve_project_path`, `to_numpy`, `angular_error`, `axis_angle_to_rotation_matrix` |
-| `src/tasks/base/...` | it depends on shared **task** concepts (scene layout, Lightning module, runner) **and is reused by ≥2 tasks** | `BaseLightningModule` optimizer/scheduler + test-prediction saving, shared scene dataset/runner logic |
-| leave in the task | used by exactly **one** task and tied to its domain | task-specific losses, model heads |
+- Work in a dedicated worktree. Use the `worktree-create` skill when creating it.
+- Keep the change focused and reviewable.
+- Follow `tests/README.md` for validation. Do not hard-code test paths in this
+  skill; use the repo's current testing convention.
 
-Rule of thumb: no task-domain types → `src/utils`. Depends on shared task
-concepts but reused by 2+ tasks → `src/tasks/base`. One task only → leave it.
-**Do not over-extract** — a single-call-site helper or a one-task abstraction
-adds indirection without removing duplication.
+## Placement criteria
 
-## Workflow
+### Move to `src/utils`
 
-### 1. Worktree
+Move code to `src/utils` when it is domain-agnostic and does not depend on a
+specific task's types, config shape, labels, model, dataset, or training loop.
 
-Work in a dedicated worktree (use the **worktree-create** skill). Base it on
-`origin/main` so the survey reflects the merged state, not a stale branch.
+Good fits include helpers for paths, IO, device selection, seeding, tensor / numpy
+conversion, geometry, rotation math, heatmaps, video, rendering, schemas, and
+small numeric utilities.
 
-### 2. Survey — delegate to sonnet subagents (required)
+A useful test: the helper would still make sense in a non-tennis project or in a
+new task that does not know about the current task's domain objects.
 
-The repo exploration **must** be done by sonnet subagents (read-only `Explore`
-or `general-purpose`), not inline — this keeps the main context focused and lets
-the census fan out. Launch several **in parallel**, each scoped to one slice:
+### Move to `src/tasks/base`
 
-- one per `src/tasks/{ball_detection,blcs,court_detection,plcs}`
-- one for `src/tasks/base` + `src/tennis_scene`
-- one for `src/**/scripts/` and `experiments/`
+Move code to `src/tasks/base` when it is not task-specific, but it does depend on
+shared task-level concepts.
 
-Give each subagent the same brief: find **(a)** helpers duplicated across modules
-(same/near-same body in 2+ places) and **(b)** module-local functions with **no
-task-domain dependency** that belong in `src/utils`. Each finding must report:
-`file:line`, the signature, a one-line "why generic / where duplicated", and the
-nearest existing `src/utils` (or `src/tasks/base`) module it fits.
+Good fits include common training modules, runners, dataset base classes, scene
+layout abstractions, prediction saving, optimizer / scheduler construction, and
+other reusable ML-task infrastructure.
 
-Seed greps for the subagents (starting points — they then read for semantic
-duplicates, not just textual matches):
+A useful test: the helper is too task-aware for `src/utils`, but it is shared by
+multiple tasks or defines a reusable task-level abstraction.
 
-```bash
-# private helpers that look generic
-grep -rnE 'def _?(resolve|ensure|load|save|to_numpy|normalize|denormalize|seed|make_.*rng|clamp|rotation|axis_angle|wrapped|angular)_?' src/tasks src/tennis_scene
-# near-duplicate bodies (ImageNet stats, device autoselect, json dump, mmap load)
-grep -rn '0.485\|0.456\|0.406\|cuda.*is_available\|json.dump\|mmap_mode' src/tasks src/tennis_scene
-```
+### Keep task-local
 
-Consolidate the findings into a short **ranked** list — rank by impact
-(`#copies × LOC`) against risk (numeric/RNG-sensitive code is higher risk). For a
-large campaign, optionally write the survey to `docs/refactoring/`; for a small
-one, keep it in the PR body.
+Keep code inside the task when it is used by only one task or encodes that task's
+specific domain assumptions.
 
-### 3. Classify each candidate
+Good task-local fits include task-specific losses, model heads, label schemas,
+keypoint definitions, dataset-specific preprocessing, config-specific glue, and
+one-off experiment code.
 
-Apply the target table above. Drop anything that turns out to be task-specific or
-single-call-site. Keep the batch small enough to review in one PR.
+## Avoid over-extraction
 
-### 4. Migrate behaviour-preservingly
+Do not extract a helper only because it could theoretically be reused later.
+Extract when it removes real duplication, clarifies ownership, or gives callers a
+more obvious place to import from.
 
-For each accepted candidate:
+Avoid extracting single-call-site helpers, thin wrappers that only rename another
+function, and abstractions whose behavior is only meaningful in one task.
 
-1. **Copy the body verbatim** into the closest existing `src/utils` / `base`
-   module (create a new module only when nothing fits). Behaviour must not
-   change — be especially careful with **RNG seeding** (worker-id offsets, base
-   seed), **numeric dtype/precision** (bf16/fp16 upcasts), and **argmax
-   tie-breaking**. When in doubt, keep the exact arithmetic.
-2. **Replace every WET copy with an import.** Preserve public import paths: turn
-   the old location into a thin **delegate** (`return shared_fn(...)`) or a
-   **re-export shim** (`from src.utils.x import f`). Never leave both copies.
-3. **Export** it from the module's `__all__` and the package `__init__`; add a
-   row to the `src/utils/README.md` "I need to…" table.
-4. **Add a unit test** in `tests/test_utils_extraction.py` asserting the new
-   util's behaviour (and, where cheap, that the old import path still resolves to
-   it).
+## Import and compatibility policy
 
-### 5. Validate (gates)
+When duplicated implementations are consolidated, consumers should import the new
+shared implementation directly from `src.utils...` or `src.tasks.base...`.
 
-Run with `.venv/bin/python`:
+Do **not** preserve old import paths with delegates or re-export shims as part of
+this skill. Update all consumers to the new import path and remove the old copy.
 
-- **Import smoke** — import every touched module (catches broken delegations).
-- `pytest tests/test_utils_extraction.py`
-- **Training-smoke contracts** for each affected task:
-  `pytest tests/tasks/test_training_smoke_contracts.py -k "<task>"`
-- **ruff** clean.
-- **mypy caveat** — pre-commit runs `mypy --follow-imports=skip`. With that flag,
-  a cross-module delegation `return imported_fn(...)` resolves to `Any` →
-  `no-any-return`, **pervasively, and pre-existing throughout the repo**. Do
-  **not** chase these with `# type: ignore[no-any-return]`: mypy batches files and
-  then flags the ignores as *unused*. Keep new `src/utils` modules mypy-clean in
-  isolation (annotate their own locals), and commit the migration with
-  `SKIP=mypy git commit ...`, which matches how these files are necessarily
-  committed in this repo. Keep ruff green regardless.
+## Behavior preservation
 
-### 6. Scope discipline
+Extraction is an ownership change, not a behavior change. Preserve behavior unless
+the user explicitly requested otherwise.
 
-- One focused, reviewable PR per campaign.
-- If a migration drags in heavy **pre-existing** type debt or
-  **uninstalled-dependency** modules (e.g. GVHMR / `hmr4d` in the tennis_scene
-  pipeline), **revert that item and defer it** — note the deferral in the PR
-  body. Don't let one stubborn item bloat the diff.
+Be especially careful with RNG seeding, dtype and precision, device placement,
+argmax tie-breaking, coordinate systems, units, rounding, and serialization
+formats.
 
-### 7. PR
+## Supporting docs
 
-Open the PR with the **gh-pr-create** skill. In the body list each extraction
-(what moved, from → to, how many copies removed), the validation evidence, and
-any deferred items.
+Before adding a new utility, check `src/utils/README.md` when it exists. Keep that
+README aligned when the new helper changes how future callers should choose a
+utility module.
 
-## Environment gotchas
+## Done
 
-- A fresh worktree lacks the gitignored `data/` dirs, so training-smoke fails
-  with `Scene directory not found: data/<task>`. **Symlink** `data/plcs`,
-  `data/blcs`, `data/court` from the main tree to run the smoke tests, then
-  **remove the symlinks before committing**.
-- Use `.venv/bin/python` for every command; manage deps with `uv`.
-- This repo keeps skills in **both** `.agents/skills/` and `.claude/skills/`.
-  When you add or edit a skill, write it to **both** trees, byte-identical.
-
-## Definition of done
-
-- Every accepted candidate is migrated: no remaining WET copy, public import
-  paths preserved, exported, README-listed, unit-tested.
-- Gates green: ruff, `tests/test_utils_extraction.py`, import smoke, and
-  training-smoke for affected tasks. (mypy intentionally skipped per repo
-  reality; new utils are mypy-clean in isolation.)
-- Deferred items explicitly listed in the PR.
-- Work done in a worktree; one focused PR opened.
+- The chosen destination matches the `utils` / `base` / task-local criteria.
+- Duplicated implementations are removed rather than left beside the shared one.
+- Consumers import directly from the new shared location.
+- The change was made in a worktree.
+- Validation follows `tests/README.md` and passes under the repo's current test
+  convention.
