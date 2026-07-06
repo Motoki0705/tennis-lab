@@ -30,11 +30,6 @@ style:
   # "smpl" or "skeleton"
   player_representation: skeleton
   mesh_alpha: 0.6
-  # "fixed" keeps the court-space camera stable across frames.
-  # "player_centered" preserves the old player-following zoomed view.
-  view_mode: fixed
-  fixed_view_margin: 2.0
-  player_centered_half_span: [8.0, 10.0]
 
 hydra:
   run:
