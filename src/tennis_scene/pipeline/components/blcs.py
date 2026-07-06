@@ -64,7 +64,9 @@ class BLCSResult:
 
     def to_dict(self) -> dict:
         """Convert result to JSON-serializable dict."""
-        data = {"ball_3d": self.ball_3d.tolist()}
+        ball_3d_json = self.ball_3d.astype(object)
+        ball_3d_json[~np.isfinite(self.ball_3d)] = None
+        data = {"ball_3d": ball_3d_json.tolist()}
         if self.visibility is not None:
             data["visibility"] = self.visibility.tolist()
         return data
@@ -92,8 +94,6 @@ class BLCSResult:
         errors: list[str] = []
         if self.ball_3d.ndim != 2 or self.ball_3d.shape[1] != 3:
             errors.append(f"ball_3d shape must be (T, 3), got {self.ball_3d.shape}")
-        if not np.isfinite(self.ball_3d).all():
-            errors.append("ball_3d contains non-finite values")
         if self.visibility is not None:
             if self.visibility.ndim != 1:
                 errors.append(
@@ -103,11 +103,11 @@ class BLCSResult:
                 errors.append("visibility length does not match ball_3d length")
             if not np.isin(self.visibility, [0, 1, False, True]).all():
                 errors.append("visibility must contain only 0 or 1")
-            invalid = ~self.visibility.astype(bool)
-            if invalid.any():
-                tol = 1e-6
-                if np.any(np.abs(self.ball_3d[invalid]) > tol):
-                    errors.append("ball_3d must be zero for invalid frames")
+            valid = self.visibility.astype(bool)
+            if valid.any() and not np.isfinite(self.ball_3d[valid]).all():
+                errors.append("ball_3d contains non-finite values in valid frames")
+        elif not np.isfinite(self.ball_3d).all():
+            errors.append("ball_3d contains non-finite values")
         return len(errors) == 0, errors
 
     @classmethod
@@ -246,20 +246,39 @@ class BLCSModule(BasePipelineModule):
                     f"got {court_vis.shape[:2]} and {(num_cameras, num_frames)}"
                 )
 
+        output_visibility = np.asarray(effective_vis.any(axis=0), dtype=np.bool_)
+        if not output_visibility.any():
+            raise ValueError("BLCS input has no valid ball trajectory frames.")
+
+        valid_frame_indices = np.flatnonzero(output_visibility)
+        clip_start = int(valid_frame_indices[0])
+        clip_end = int(valid_frame_indices[-1]) + 1
+        if not output_visibility[clip_start:clip_end].all():
+            raise ValueError(
+                "BLCS ball visibility must describe one contiguous trajectory clip. "
+                "Complete 2D detector gaps before calling BLCS."
+            )
+
+        clip_ball_uv = ball_uv[:, clip_start:clip_end]
+        clip_court_kp = court_kp[:, clip_start:clip_end]
+        clip_ball_vis = effective_vis[:, clip_start:clip_end]
+        clip_court_vis = court_vis[:, clip_start:clip_end] if court_vis is not None else None
+        num_clip_frames = clip_end - clip_start
+
         # BLCS models expect batched inputs:
         # (B, N, T, 2), (B, N, T, K, 2), (B, N, T), and optional court_vis.
-        ball_uv_t = torch.from_numpy(ball_uv).float().unsqueeze(0)
-        court_kp_t = torch.from_numpy(court_kp).float().unsqueeze(0)
+        ball_uv_t = torch.from_numpy(clip_ball_uv).float().unsqueeze(0)
+        court_kp_t = torch.from_numpy(clip_court_kp).float().unsqueeze(0)
 
-        ball_vis_t = torch.from_numpy(effective_vis.astype(np.float32)).unsqueeze(0)
-        ball_mask_t = torch.ones_like(ball_vis_t)
+        ball_vis_t = torch.from_numpy(clip_ball_vis.astype(np.float32)).unsqueeze(0)
+        ball_mask_t = ball_vis_t.clone()
 
         court_vis_t = None
-        if court_vis is not None:
-            court_vis_t = torch.from_numpy(court_vis).float().unsqueeze(0)
+        if clip_court_vis is not None:
+            court_vis_t = torch.from_numpy(clip_court_vis).float().unsqueeze(0)
 
         slices = window_slices(
-            num_frames, self.config.window_size, self.config.window_overlap
+            num_clip_frames, self.config.window_size, self.config.window_overlap
         )
         LOGGER.info(
             f"Running BLCS in {len(slices)} window(s) of <= "
@@ -280,15 +299,14 @@ class BLCSModule(BasePipelineModule):
             win_pos = pred["position"].squeeze(0).cpu().numpy()  # (T_w, 3)
             position_chunks.append((start, win_pos))
 
-        ball_3d = blend_windows(position_chunks, num_frames).astype(np.float32)
-        if ball_3d.shape != (num_frames, 3):
+        clip_ball_3d = blend_windows(position_chunks, num_clip_frames).astype(np.float32)
+        if clip_ball_3d.shape != (num_clip_frames, 3):
             raise ValueError(
-                f"BLCS predictor position must have shape (T, 3), got {ball_3d.shape}"
+                "BLCS predictor position must have shape "
+                f"({num_clip_frames}, 3), got {clip_ball_3d.shape}"
             )
-        output_visibility = np.asarray(effective_vis.any(axis=0), dtype=np.bool_)
-
-        # Mask out invalid frames with zeros to keep JSON strictly numeric
-        ball_3d[~output_visibility] = 0.0
+        ball_3d = np.full((num_frames, 3), np.nan, dtype=np.float32)
+        ball_3d[clip_start:clip_end] = clip_ball_3d
 
         result = BLCSResult(ball_3d=ball_3d, visibility=output_visibility)
 

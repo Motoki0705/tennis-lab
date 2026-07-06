@@ -14,6 +14,9 @@ from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionConfig,
     BallDetectionModule,
 )
+from src.tennis_scene.pipeline.components.ball_trajectory import (
+    complete_ball_trajectory_clip,
+)
 from src.tennis_scene.pipeline.components.blcs import BLCSConfig, BLCSModule
 from src.tennis_scene.pipeline.components.court_kp import CourtKPConfig, CourtKPModule
 from src.tennis_scene.pipeline.components.player_association import (
@@ -400,6 +403,7 @@ class TennisSceneOrchestrator:
         ball_uv = None
         ball_visibility = None
         ball_3d = None
+        ball_trajectory_clip_metadata = None
         if (
             Stage.BALL_DETECTION in self.enabled_stages
             and self.ball_detection_module is not None
@@ -412,13 +416,19 @@ class TennisSceneOrchestrator:
             )
             ball_uv = ball_detection_result.ball_uv
             ball_visibility = ball_detection_result.visibility
-            ball_uv_for_downstream = ball_uv
+            trajectory_clip = complete_ball_trajectory_clip(ball_uv, ball_visibility)
+            ball_uv_for_downstream = trajectory_clip.ball_uv
+            ball_mask_for_downstream = trajectory_clip.ball_mask
+            ball_trajectory_clip_metadata = {
+                "start_frame": trajectory_clip.start_frame,
+                "end_frame": trajectory_clip.end_frame,
+            }
 
             if Stage.BLCS in self.enabled_stages and self.blcs_module is not None:
                 blcs_result = self.blcs_module.process(
                     ball_uv=ball_uv_for_downstream,
                     court_kp=court_kp,
-                    ball_vis=ball_visibility,
+                    ball_vis=ball_mask_for_downstream,
                     court_vis=court_vis,
                 )
                 ball_3d = blcs_result.ball_3d
@@ -458,6 +468,7 @@ class TennisSceneOrchestrator:
                 ],
                 "player_association": association_result.to_dict(),
                 "enabled_stages": [stage.value for stage in self.execution_order],
+                "ball_trajectory_clip": ball_trajectory_clip_metadata,
             },
         )
 
