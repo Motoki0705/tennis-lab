@@ -1,18 +1,29 @@
-"""Callback that switches training from supervised to hybrid GAN mode."""
+"""Callback that switches training from supervised to hybrid GAN mode.
+
+The transition is *deterministic*: the GAN phase activates at a fixed,
+pre-scheduled epoch (``training.gan.transition.start_epoch``) rather than being
+triggered by loss-plateau detection. For a 200-epoch run with
+``start_epoch: 100``, epochs 0..99 are pure supervised and the adversarial
+phase begins at epoch 100 (0-based ``trainer.current_epoch``, i.e. after 100
+supervised epochs), ramping the GAN weight up over ``warmup_epochs``.
+
+Choosing epoch monitoring over loss monitoring keeps the schedule reproducible
+and independent of the noisy per-run convergence curve, which matters when the
+same recipe is re-run across the physics-prior / architecture experiments.
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
 
 import pytorch_lightning as pl
-from torch import Tensor
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
 class GANTransitionCallback(pl.Callback):
-    """Detect supervised convergence and enable hybrid GAN training."""
+    """Activate hybrid GAN training at a fixed, pre-scheduled epoch."""
 
     def __init__(self, config: DictConfig) -> None:
         super().__init__()
@@ -21,97 +32,66 @@ class GANTransitionCallback(pl.Callback):
         transition_cfg = gan_cfg.get("transition", {}) or {}
 
         self.enabled = bool(gan_cfg.get("enabled", False))
-        self.monitor = str(transition_cfg.get("monitor", "val/loss"))
-        self.mode = str(transition_cfg.get("mode", "min"))
-        self.min_delta = float(transition_cfg.get("min_delta", 1.0e-3))
-        self.patience = int(transition_cfg.get("patience", 3))
-        self.min_supervised_epochs = int(transition_cfg.get("min_supervised_epochs", 1))
+
+        start_epoch = transition_cfg.get("start_epoch")
+        if start_epoch is None:
+            if self.enabled:
+                # A GAN run with no transition schedule is a config error, not a
+                # silent "never switch" no-op (AGENTS.md: no quiet fallbacks).
+                raise ValueError(
+                    "training.gan.transition.start_epoch is required when GAN is "
+                    "enabled (deterministic epoch-based transition)."
+                )
+            start_epoch = 0
+        self.start_epoch = int(start_epoch)
+        if self.start_epoch < 0:
+            raise ValueError(f"start_epoch must be >= 0, got {self.start_epoch}.")
+
         self.gan_target_weight = float(gan_cfg.get("target_weight", 0.1))
         self.gan_warmup_epochs = int(gan_cfg.get("warmup_epochs", 5))
 
-        if self.mode not in {"min", "max"}:
-            raise ValueError(f"Unsupported transition mode '{self.mode}'. Use ['min', 'max'].")
-
-        self.best_score: float | None = None
-        self.bad_epochs = 0
+        # Process-local guard so the one-time phase activation (which rebuilds the
+        # optimizer/scheduler state) runs exactly once. Intentionally NOT persisted
+        # in state_dict: on resume the module is reconstructed with the GAN phase
+        # inactive, so a fresh process must re-activate it deterministically from
+        # ``current_epoch >= start_epoch``.
         self.has_switched_to_gan = False
-        self.switch_epoch: int | None = None
-
-    def state_dict(self) -> dict[str, Any]:
-        return {
-            "best_score": self.best_score,
-            "bad_epochs": self.bad_epochs,
-            "has_switched_to_gan": self.has_switched_to_gan,
-            "switch_epoch": self.switch_epoch,
-        }
-
-    def load_state_dict(self, state_dict: dict[str, Any]) -> None:
-        self.best_score = state_dict.get("best_score")
-        self.bad_epochs = int(state_dict.get("bad_epochs", 0))
-        self.has_switched_to_gan = bool(state_dict.get("has_switched_to_gan", False))
-        self.switch_epoch = state_dict.get("switch_epoch")
 
     def on_fit_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
-        _ = trainer
         pl_module.set_gan_weight(0.0)
+        if not self.enabled:
+            return
+
+        max_epochs = getattr(trainer, "max_epochs", None)
+        if max_epochs is not None and self.start_epoch >= int(max_epochs):
+            raise ValueError(
+                f"training.gan.transition.start_epoch ({self.start_epoch}) must be "
+                f"< trainer.max_epochs ({max_epochs}); otherwise the GAN phase "
+                "never activates."
+            )
 
     def on_train_epoch_start(
         self,
         trainer: pl.Trainer,
         pl_module: pl.LightningModule,
     ) -> None:
-        if not self.enabled or not self.has_switched_to_gan or self.switch_epoch is None:
+        if not self.enabled or trainer.current_epoch < self.start_epoch:
             return
 
-        epochs_since_switch = max(trainer.current_epoch - self.switch_epoch + 1, 0)
+        if not self.has_switched_to_gan:
+            self.has_switched_to_gan = True
+            # Pass the *actual* current epoch (== start_epoch on the normal
+            # transition, > start_epoch when resuming into the GAN phase) so the
+            # GAN-phase LR schedule is scaled over the true remaining epochs.
+            pl_module.activate_gan_phase(trainer.current_epoch)
+
+        pl_module.set_gan_weight(self._ramp_weight(trainer.current_epoch))
+
+    def _ramp_weight(self, current_epoch: int) -> float:
+        # Warmup is anchored to ``start_epoch`` (not the activation epoch) so a
+        # resumed run picks the correct point on the ramp for its epoch.
+        epochs_since_switch = max(current_epoch - self.start_epoch + 1, 0)
         if self.gan_warmup_epochs <= 1:
-            gan_weight = self.gan_target_weight
-        else:
-            progress = min(epochs_since_switch / self.gan_warmup_epochs, 1.0)
-            gan_weight = self.gan_target_weight * progress
-        pl_module.set_gan_weight(gan_weight)
-
-    def on_validation_epoch_end(
-        self,
-        trainer: pl.Trainer,
-        pl_module: pl.LightningModule,
-    ) -> None:
-        if not self.enabled or self.has_switched_to_gan:
-            return
-
-        if trainer.current_epoch + 1 < self.min_supervised_epochs:
-            return
-
-        monitor_value = trainer.callback_metrics.get(self.monitor)
-        if monitor_value is None:
-            return
-
-        current = float(cast(Tensor, monitor_value).detach().cpu().item())
-        if self.patience <= 0:
-            self._switch_to_gan(trainer, pl_module)
-            return
-
-        if self.best_score is None or self._is_improvement(current):
-            self.best_score = current
-            self.bad_epochs = 0
-            return
-
-        self.bad_epochs += 1
-        if self.bad_epochs >= self.patience:
-            self._switch_to_gan(trainer, pl_module)
-
-    def _is_improvement(self, current: float) -> bool:
-        assert self.best_score is not None
-        if self.mode == "min":
-            return current < (self.best_score - self.min_delta)
-        return current > (self.best_score + self.min_delta)
-
-    def _switch_to_gan(
-        self,
-        trainer: pl.Trainer,
-        pl_module: pl.LightningModule,
-    ) -> None:
-        self.has_switched_to_gan = True
-        self.switch_epoch = trainer.current_epoch + 1
-        pl_module.activate_gan_phase(self.switch_epoch)
-        pl_module.set_gan_weight(0.0)
+            return self.gan_target_weight
+        progress = min(epochs_since_switch / self.gan_warmup_epochs, 1.0)
+        return self.gan_target_weight * progress

@@ -8,11 +8,10 @@ gan:
   discriminator_gradient_clip_val: 1.0
 
   transition:
-    monitor: val/pos_error_m
-    mode: min
-    patience: 3
-    min_delta: 1.0e-3
-    min_supervised_epochs: 1
+    # Deterministic epoch-based transition: pure supervised for epochs 0..49,
+    # then the adversarial phase begins at epoch 50 (default max_epochs=100),
+    # ramping the GAN weight over `warmup_epochs`.
+    start_epoch: 50
 
   discriminator:
     name: trajectory_transformer
