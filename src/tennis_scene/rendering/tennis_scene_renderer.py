@@ -31,6 +31,7 @@ from src.utils.rendering.ball_renderer import BallRenderer, BallStyle
 from src.utils.rendering.court_renderer import CourtRenderer, CourtStyle
 from src.utils.rendering.mesh_renderer import MeshRenderer
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer, SkeletonStyle
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -41,6 +42,9 @@ if TYPE_CHECKING:
 
 DEFAULT_SMPL_MODEL_PATH = Path("data/smplh/neutral/model.npz")
 DEFAULT_SMPL_JOINT_REGRESSOR_PATH = SMPL_NEUTRAL_J_REGRESSOR_PATH
+
+_FIXED_VIEW_MARGIN = 2.0
+_FIXED_VIEW_Z_LIMIT = 4.0
 
 _DEFAULT_PLAYER_COLORS = [
     "#E76F51",
@@ -372,16 +376,14 @@ class TennisSceneRenderer:
                         show_start_end=False,
                     )
 
-        center_x = float(np.mean(players_position[:, frame_idx, 0]))
-        center_y = float(np.mean(players_position[:, frame_idx, 1]))
-        self._set_zoomed_view(ax, center_x=center_x, center_y=center_y)
+        self._set_fixed_court_view(ax)
         ax.set_title(f"Frame: {frame_idx}/{scene.num_frames}")
 
-    def _set_zoomed_view(self, ax: Axes3D, center_x: float, center_y: float) -> None:
-        x_half_span = 8.0
-        y_half_span = 10.0
+    def _set_fixed_court_view(self, ax: Axes3D) -> None:
+        x_half_span = float(HALF_DOUBLES_WIDTH + _FIXED_VIEW_MARGIN)
+        y_half_span = float(HALF_LENGTH + _FIXED_VIEW_MARGIN)
 
-        ax.set_xlim(center_x - x_half_span, center_x + x_half_span)
-        ax.set_ylim(center_y - y_half_span, center_y + y_half_span)
-        ax.set_zlim(0.0, 4.0)
-        ax.set_box_aspect([x_half_span * 2.0, y_half_span * 2.0, 4.0])
+        ax.set_xlim(-x_half_span, x_half_span)
+        ax.set_ylim(-y_half_span, y_half_span)
+        ax.set_zlim(0.0, _FIXED_VIEW_Z_LIMIT)
+        ax.set_box_aspect([x_half_span * 2.0, y_half_span * 2.0, _FIXED_VIEW_Z_LIMIT])
