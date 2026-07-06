@@ -1,0 +1,14 @@
+{
+  "run_id": "1783274918987051955_506543_mono3d_blcs_ftC_axis_s04g03",
+  "name": "mono3d_blcs_ftC_axis_s04g03",
+  "command": "MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_chunked data.scene_dir=/home/kamimura/projects/tennis-lab/data/blcs_broadcast data.chunk.chunks_dir=/home/kamimura/projects/tennis-lab/data/blcs_broadcast/chunks data.num_views_range=[1,1] data.camera_mode=random data.num_court_kp=14 data.num_workers=2 data.chunk.generation_workers=8 data.chunk.epochs_per_chunk=20 camera=broadcast training.position_axis_weights=[1.0,4.0,1.0] training.learning_rate=3e-5 training.trainer.max_epochs=60 training.trainer.check_val_every_n_epoch=5 training.qualitative_logging.enabled=false training.early_stopping.enabled=false training.smoothness_loss_weight=0.4 training.gravity_loss_weight=0.3 training.smoothness_axis_weights=[1,1,0] run.output_dir=/home/kamimura/projects/tennis-lab/outputs/blcs/blcs_multiview_axial run.init_weights=/home/kamimura/projects/tennis-lab/outputs/blcs/blcs_multiview_axial/logs/version_2/checkpoints/last.ckpt run.gpus=1",
+  "provider": "claude",
+  "session": "22fa49a8-b654-4af8-99ce-6f29e7453a00",
+  "issue": "593",
+  "commit": "93c5baceba9f1aa90e6f8dc303e86a01cafb76a4",
+  "branch": "worktree-i593-axis-smoothness",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/i593-axis-smoothness",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/i593-axis-smoothness",
+  "captured_at": "2026-07-06T03:21:14+09:00"
+}

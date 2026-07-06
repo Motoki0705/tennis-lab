@@ -11,6 +11,12 @@ from torch import Tensor
 from src.tasks.blcs.models.components.differentiable_projection import (
     DifferentiableProjection,
 )
+from src.utils.losses.temporal import (
+    ballistic_gravity_penalty,
+    ballistic_second_difference,
+    smoothness_penalty,
+)
+from src.utils.schema.court import COURT_COORD_SCALE_Z
 from src.utils.tensor_utils import masked_mean
 
 
@@ -99,7 +105,15 @@ class BLCSLoss(nn.Module):
     """Combined loss for BLCS training.
 
     Combines position and reprojection losses with configurable weights.
-    Temporal consistency is enforced by the GAN discriminator.
+    Optional physics priors (:mod:`src.utils.losses.temporal`) add the temporal
+    constraint that the supervised position loss leaves unconstrained (predicted
+    trajectories are otherwise 20-70x noisier in acceleration than ground truth):
+
+    - ``smoothness_weight`` penalizes jerk (piecewise-constant acceleration),
+      killing the high-frequency jitter without biasing gravity/drag.
+    - ``gravity_weight`` pins the vertical curvature to ``-g``, which coupled with
+      the reprojection constraint fixes the ambiguous monocular depth.
+
     Set ``position_weight=0`` to train purely from 2D supervision.
     """
 
@@ -108,6 +122,16 @@ class BLCSLoss(nn.Module):
         position_weight: float = 1.0,
         reprojection_weight: float = 0.0,
         position_axis_weights: Sequence[float] | None = None,
+        *,
+        smoothness_weight: float = 0.0,
+        gravity_weight: float = 0.0,
+        smoothness_order: int = 3,
+        smoothness_beta: float = 1e-3,
+        smoothness_axis_weights: Sequence[float] | None = None,
+        gravity_beta: float = 5e-3,
+        gravity: float = 9.81,
+        frame_dt: float = 1.0 / 30.0,
+        height_scale: float = COURT_COORD_SCALE_Z,
     ) -> None:
         """Initialize the loss module.
 
@@ -115,11 +139,50 @@ class BLCSLoss(nn.Module):
             position_weight: Weight for 3D position loss.
             reprojection_weight: Weight for multi-view reprojection loss.
             position_axis_weights: Optional per-axis weights for 3D position loss.
+            smoothness_weight: Weight for the jerk smoothness prior (0 = off).
+            gravity_weight: Weight for the ballistic vertical-curvature prior
+                (0 = off). Only meaningful for the ball (height obeys ``-g``).
+            smoothness_order: Finite-difference order for the smoothness prior
+                (3 = jerk).
+            smoothness_beta: Smooth-L1 transition for the smoothness prior.
+            smoothness_axis_weights: Optional per-axis ``(x, y, z)`` weights for
+                the jerk smoothness prior. ``None`` = uniform. Down-weighting the
+                height axis (e.g. ``[1, 1, 0]``) lets the gravity term own the
+                vertical curvature instead of the jerk term flattening the
+                ballistic arc; down-weighting an axis with legitimate sharp
+                motion avoids smoothing away real direction changes.
+            gravity_beta: Smooth-L1 transition for the gravity prior.
+            gravity: Gravitational acceleration (m/s**2).
+            frame_dt: Seconds between output frames.
+            height_scale: Normalization scale of the height axis (metres).
 
         """
         super().__init__()
         self.position_weight = position_weight
         self.reprojection_weight = reprojection_weight
+        self.smoothness_weight = smoothness_weight
+        self.gravity_weight = gravity_weight
+        self.smoothness_order = smoothness_order
+        self.smoothness_beta = smoothness_beta
+        self.gravity_beta = gravity_beta
+        if smoothness_axis_weights is None:
+            self.smoothness_axis_weights: tuple[float, ...] | None = None
+        else:
+            weights = tuple(float(weight) for weight in smoothness_axis_weights)
+            if len(weights) != 3:
+                raise ValueError(
+                    "smoothness_axis_weights must contain exactly 3 values "
+                    f"for (x, y, z), got {smoothness_axis_weights}."
+                )
+            if any(weight < 0 for weight in weights):
+                raise ValueError(
+                    "smoothness_axis_weights must be non-negative, "
+                    f"got {smoothness_axis_weights}."
+                )
+            self.smoothness_axis_weights = weights
+        self._gravity_target = ballistic_second_difference(
+            gravity=gravity, dt=frame_dt, height_scale=height_scale
+        )
         self.position_axis_weights: Tensor | None
         if position_axis_weights is None:
             self.position_axis_weights = None
@@ -238,14 +301,40 @@ class BLCSLoss(nn.Module):
                 mask=mask,
             )
 
+        # ---- Physics priors (temporal) --------------------------------
+        if self.smoothness_weight > 0:
+            smooth_loss = smoothness_penalty(
+                pred_position,
+                mask,
+                order=self.smoothness_order,
+                beta=self.smoothness_beta,
+                axis_weights=self.smoothness_axis_weights,
+            )
+        else:
+            smooth_loss = zero
+
+        if self.gravity_weight > 0:
+            gravity_loss = ballistic_gravity_penalty(
+                pred_position[..., 2],
+                mask,
+                target_second_difference=self._gravity_target,
+                beta=self.gravity_beta,
+            )
+        else:
+            gravity_loss = zero
+
         # ---- Total ----------------------------------------------------
         total = (
             self.position_weight * pos_loss
             + self.reprojection_weight * reproj_loss
+            + self.smoothness_weight * smooth_loss
+            + self.gravity_weight * gravity_loss
         )
 
         return {
             "total": total,
             "position": pos_loss,
             "reprojection": reproj_loss,
+            "smoothness": smooth_loss,
+            "gravity": gravity_loss,
         }

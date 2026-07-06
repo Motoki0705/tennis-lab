@@ -22,6 +22,7 @@ from src.utils.geometry.skeleton import (
     compute_torsion_angles,
     compute_torso_twist,
 )
+from src.utils.losses.temporal import smoothness_penalty
 from src.utils.schema.player import (
     COCO17_BONE_LENGTH_EDGES as BONE_LENGTH_EDGES,
 )
@@ -65,6 +66,9 @@ class PLCSLossConfig:
     position_weight: float = 1.0
     rotation_weight: float = 1.0
     angle_weight: float = 0.0
+    # Temporal jerk prior on predicted player position (removes per-frame
+    # jitter / inference velocity spikes). See src/utils/losses/temporal.py.
+    position_smoothness_weight: float = 0.0
     canonical_pose_weight: float = 0.0
     joint_angle_weight: float = 0.0
     torsion_angle_weight: float = 0.0
@@ -91,6 +95,9 @@ class PLCSLossConfig:
             position_weight=float(cfg.get("position_weight", 1.0)),
             rotation_weight=float(cfg.get("rotation_weight", 1.0)),
             angle_weight=float(cfg.get("angle_weight", 0.0)),
+            position_smoothness_weight=float(
+                cfg.get("position_smoothness_weight", 0.0)
+            ),
             canonical_pose_weight=float(cfg.get("canonical_pose_weight", 0.0)),
             joint_angle_weight=float(cfg.get("joint_angle_weight", 0.0)),
             torsion_angle_weight=float(cfg.get("torsion_angle_weight", 0.0)),
@@ -428,6 +435,21 @@ def angle_loss_term(inputs: PLCSLossInputs) -> Tensor:
     return _masked_frame_mean(per_frame, inputs.frame_mask)
 
 
+def position_smoothness_loss_term(inputs: PLCSLossInputs) -> Tensor:
+    """Temporal jerk prior on predicted player position.
+
+    Player pelvis motion is smooth: on the broadcast test split the GT position
+    acceleration is ~20-30x smaller than the model's raw prediction, so the
+    excess is physically implausible per-frame jitter (the source of the
+    inference-time velocity spikes). Penalizing jerk (3rd temporal difference)
+    removes it without biasing the real, slowly-varying locomotion acceleration.
+    No-op for frame-level (non-sequential) inputs.
+    """
+    if inputs.pred_position.ndim < 3:
+        return inputs.zero
+    return smoothness_penalty(inputs.pred_position, inputs.frame_mask, order=3)
+
+
 def canonical_pose_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """Canonical-pose term: masked smooth-L1 between canonical joint positions."""
     if not inputs.has_canonical:
@@ -603,6 +625,7 @@ DEFAULT_LOSS_TERMS: dict[str, PLCSLossTerm] = {
     "position": position_loss_term,
     "rotation": rotation_loss_term,
     "angle": angle_loss_term,
+    "position_smoothness": position_smoothness_loss_term,
     "canonical_pose": canonical_pose_loss_term,
     "joint_angle": joint_angle_loss_term,
     "torsion_angle": torsion_angle_loss_term,
