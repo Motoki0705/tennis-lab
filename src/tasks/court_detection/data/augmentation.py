@@ -65,7 +65,7 @@ def _sample_perspective_h(
     if cv2.contourArea(dst.astype(np.float32)) < 1.0:
         return None
 
-    h_mat = cv2.getPerspectiveTransform(src, dst)
+    h_mat: np.ndarray = cv2.getPerspectiveTransform(src, dst)
     return h_mat.astype(np.float32)
 
 
@@ -384,17 +384,21 @@ class KPRandomAffine:
             interpolation=TF.InterpolationMode.BILINEAR,
         )
 
+        # Forward point mapping matching ``torchvision``'s ``TF.affine`` exactly
+        # (see ``_get_inverse_affine_matrix``): rotate by ``+angle`` about the
+        # image centre with x-shear coupled into the second column. Using
+        # ``-angle`` here would rotate keypoints opposite to the image.
         cx, cy = w / 2.0, h / 2.0
-        angle_rad = math.radians(-angle)
-        shear_rad = math.radians(shear_deg)
+        rot = math.radians(angle)
+        tan_shear = math.tan(math.radians(shear_deg))
 
-        cos_a = math.cos(angle_rad)
-        sin_a = math.sin(angle_rad)
+        cos_r = math.cos(rot)
+        sin_r = math.sin(rot)
 
-        m00 = scale_factor * (cos_a + sin_a * math.tan(shear_rad))
-        m01 = scale_factor * (-sin_a + cos_a * math.tan(shear_rad))
-        m10 = scale_factor * sin_a
-        m11 = scale_factor * cos_a
+        m00 = scale_factor * cos_r
+        m01 = scale_factor * (-cos_r * tan_shear - sin_r)
+        m10 = scale_factor * sin_r
+        m11 = scale_factor * (-sin_r * tan_shear + cos_r)
 
         kps = kps.copy().astype(np.float64)
         kps[:, 0] -= cx
@@ -427,7 +431,7 @@ class KPRandomPerspective:
 
         img = _warp_perspective_pil(img, h_mat, interpolation=cv2.INTER_LINEAR, fill_value=0)
 
-        kps_in = kps.astype(np.float32).reshape(-1, 1, 2)
+        kps_in: np.ndarray = kps.astype(np.float32).reshape(-1, 1, 2)
         kps_out = cv2.perspectiveTransform(kps_in, h_mat).reshape(-1, 2)
         return img, kps_out.astype(np.float32)
 
