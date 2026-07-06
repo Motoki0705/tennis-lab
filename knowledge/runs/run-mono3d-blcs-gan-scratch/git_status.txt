@@ -1,0 +1,5 @@
+ M src/tasks/ball_detection/configs/training/_gan.yaml
+ M src/tasks/base/training/gan_transition_callback.py
+ M src/tasks/blcs/configs/training/_gan.yaml
+ M src/tasks/plcs/configs/training/_gan.yaml
+ M tests/unit/tasks/base/training/test_gan_transition_callback.py
