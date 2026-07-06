@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING
 
 import hydra
 import matplotlib.pyplot as plt
@@ -48,35 +48,6 @@ def _validate_scene_for_smpl(scene: SceneResult) -> None:
         )
 
 
-def _read_player_representation(cfg: DictConfig) -> Literal["smpl", "skeleton"]:
-    player_representation = str(cfg.style.player_representation)
-    if player_representation not in {"smpl", "skeleton"}:
-        raise ValueError(
-            "Unknown style.player_representation: "
-            f"{player_representation}. Supported: smpl, skeleton."
-        )
-    return cast("Literal['smpl', 'skeleton']", player_representation)
-
-
-def _read_view_mode(cfg: DictConfig) -> Literal["fixed", "player_centered"]:
-    view_mode = str(cfg.style.get("view_mode", "fixed"))
-    if view_mode not in {"fixed", "player_centered"}:
-        raise ValueError(
-            f"Unknown style.view_mode: {view_mode}. Supported: fixed, player_centered."
-        )
-    return cast("Literal['fixed', 'player_centered']", view_mode)
-
-
-def _read_player_centered_half_span(cfg: DictConfig) -> tuple[float, float]:
-    half_span = cfg.style.get("player_centered_half_span", [8.0, 10.0])
-    if len(half_span) != 2:
-        raise ValueError(
-            "style.player_centered_half_span must contain exactly two values: "
-            f"{half_span}."
-        )
-    return (float(half_span[0]), float(half_span[1]))
-
-
 @hydra.main(
     version_base="1.3",
     config_path="../configs",
@@ -107,11 +78,8 @@ def main(cfg: DictConfig) -> int:
         show_direction=bool(cfg.style.show_direction),
         show_trail=bool(cfg.style.show_trail),
         figsize=tuple(cfg.style.figsize),
-        player_representation=_read_player_representation(cfg),
+        player_representation=str(cfg.style.player_representation),
         mesh_alpha=float(cfg.style.mesh_alpha),
-        view_mode=_read_view_mode(cfg),
-        fixed_view_margin=float(cfg.style.get("fixed_view_margin", 2.0)),
-        player_centered_half_span=_read_player_centered_half_span(cfg),
     )
 
     renderer = TennisSceneRenderer(style)
