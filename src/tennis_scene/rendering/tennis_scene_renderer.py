@@ -43,6 +43,9 @@ if TYPE_CHECKING:
 DEFAULT_SMPL_MODEL_PATH = Path("data/smplh/neutral/model.npz")
 DEFAULT_SMPL_JOINT_REGRESSOR_PATH = SMPL_NEUTRAL_J_REGRESSOR_PATH
 
+_FIXED_VIEW_MARGIN = 2.0
+_FIXED_VIEW_Z_LIMIT = 4.0
+
 _DEFAULT_PLAYER_COLORS = [
     "#E76F51",
     "#2A9D8F",
@@ -67,9 +70,6 @@ class TennisSceneStyle:
     mesh_color: str = "#7BC8F6"
     mesh_alpha: float = 0.6
     player_representation: Literal["smpl", "skeleton"] = "skeleton"
-    view_mode: Literal["fixed", "player_centered"] = "fixed"
-    fixed_view_margin: float = 2.0
-    player_centered_half_span: tuple[float, float] = (8.0, 10.0)
 
 
 class TennisSceneRenderer:
@@ -376,54 +376,14 @@ class TennisSceneRenderer:
                         show_start_end=False,
                     )
 
-        self._set_scene_view(ax, players_position=players_position, frame_idx=frame_idx)
+        self._set_fixed_court_view(ax)
         ax.set_title(f"Frame: {frame_idx}/{scene.num_frames}")
 
-    def _set_scene_view(
-        self,
-        ax: Axes3D,
-        *,
-        players_position: NDArray[np.float32],
-        frame_idx: int,
-    ) -> None:
-        if self.style.view_mode == "fixed":
-            self._set_fixed_court_view(ax)
-            return
-
-        if self.style.view_mode == "player_centered":
-            center_x = float(np.mean(players_position[:, frame_idx, 0]))
-            center_y = float(np.mean(players_position[:, frame_idx, 1]))
-            self._set_player_centered_view(ax, center_x=center_x, center_y=center_y)
-            return
-
-        raise ValueError(
-            f"Unknown tennis scene view_mode: {self.style.view_mode}. "
-            "Supported: fixed, player_centered."
-        )
-
     def _set_fixed_court_view(self, ax: Axes3D) -> None:
-        margin = float(self.style.fixed_view_margin)
-        if margin < 0.0:
-            raise ValueError(f"fixed_view_margin must be non-negative, got {margin}.")
-
-        x_half_span = float(HALF_DOUBLES_WIDTH + margin)
-        y_half_span = float(HALF_LENGTH + margin)
+        x_half_span = float(HALF_DOUBLES_WIDTH + _FIXED_VIEW_MARGIN)
+        y_half_span = float(HALF_LENGTH + _FIXED_VIEW_MARGIN)
 
         ax.set_xlim(-x_half_span, x_half_span)
         ax.set_ylim(-y_half_span, y_half_span)
-        ax.set_zlim(0.0, 4.0)
-        ax.set_box_aspect([x_half_span * 2.0, y_half_span * 2.0, 4.0])
-
-    def _set_player_centered_view(self, ax: Axes3D, center_x: float, center_y: float) -> None:
-        if len(self.style.player_centered_half_span) != 2:
-            raise ValueError(
-                "player_centered_half_span must contain exactly two values: "
-                f"{self.style.player_centered_half_span}."
-            )
-        x_half_span = float(self.style.player_centered_half_span[0])
-        y_half_span = float(self.style.player_centered_half_span[1])
-
-        ax.set_xlim(center_x - x_half_span, center_x + x_half_span)
-        ax.set_ylim(center_y - y_half_span, center_y + y_half_span)
-        ax.set_zlim(0.0, 4.0)
-        ax.set_box_aspect([x_half_span * 2.0, y_half_span * 2.0, 4.0])
+        ax.set_zlim(0.0, _FIXED_VIEW_Z_LIMIT)
+        ax.set_box_aspect([x_half_span * 2.0, y_half_span * 2.0, _FIXED_VIEW_Z_LIMIT])
