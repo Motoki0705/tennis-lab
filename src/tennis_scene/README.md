@@ -19,7 +19,7 @@
 - **`components/blcs.py`**: `BLCSModule`。複数カメラのball観測から3D軌道を推定。
 
 ### rendering/
-- **`tennis_scene_renderer.py`**: `TennisSceneRenderer`。SMPL/skeleton表示によるコート上3D可視化・動画保存。
+- **`tennis_scene_renderer.py`**: `TennisSceneRenderer`。SMPL/skeleton表示によるコート上3D可視化・動画保存。表示ビューは `TennisSceneStyle.view_mode` で制御し、既定はコート座標系に固定した `fixed`、旧来の追従表示は `player_centered`。
 
 ### utils/
 - **`transforms.py`**: `src.utils.geometry` からのthin re-export(このパイプライン内からは未使用)。
