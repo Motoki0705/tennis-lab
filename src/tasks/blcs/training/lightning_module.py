@@ -41,10 +41,24 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         train_cfg = self.config.get("training", {})
         trainer_cfg = train_cfg.get("trainer", {}) or {}
         self.max_epochs = int(trainer_cfg.get("max_epochs") or self.max_epochs)  # type: ignore[has-type]
+        # The gravity prior needs an absolute physical scale: derive the
+        # output-frame dt and g from the run config (rally / physics) rather than
+        # hard-coding, so a change to output_fps or gravity flows through.
+        rally_cfg = self.config.get("rally", {}) or {}
+        physics_cfg = self.config.get("physics", {}) or {}
+        output_fps = float(rally_cfg.get("output_fps", 30.0))
         self.loss_fn = BLCSLoss(
             position_weight=train_cfg.get("position_loss_weight", 1.0),
             reprojection_weight=train_cfg.get("reprojection_loss_weight", 0.0),
             position_axis_weights=train_cfg.get("position_axis_weights"),
+            smoothness_weight=train_cfg.get("smoothness_loss_weight", 0.0),
+            gravity_weight=train_cfg.get("gravity_loss_weight", 0.0),
+            smoothness_order=int(train_cfg.get("smoothness_order", 3)),
+            smoothness_beta=float(train_cfg.get("smoothness_beta", 1e-3)),
+            smoothness_axis_weights=train_cfg.get("smoothness_axis_weights"),
+            gravity_beta=float(train_cfg.get("gravity_beta", 5e-3)),
+            gravity=float(physics_cfg.get("gravity", 9.81)),
+            frame_dt=1.0 / output_fps,
         )
         gan_enabled = bool((train_cfg.get("gan", {}) or {}).get("enabled", False))
         self._initialize_manual_gan(

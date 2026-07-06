@@ -18,11 +18,25 @@ scheduler: cosine
 min_lr: 1.0e-6
 
 # ---- Loss weights ----
-# Only position + reprojection are consumed by TrajectoryLoss; temporal
-# consistency (velocity/smoothness) is enforced by the GAN discriminator.
 position_loss_weight: 1.0
 position_axis_weights: null
 reprojection_loss_weight: 0.0
+# Physics priors (temporal); see src/utils/losses/temporal.py. These are an
+# explicit, tunable alternative to the GAN discriminator for temporal
+# consistency. Default 0.0 (off); enable for broadcast/monocular training where
+# depth is under-constrained and the raw trajectory is jittery.
+smoothness_loss_weight: 0.0  # jerk (3rd-diff) penalty on predicted 3D position
+gravity_loss_weight: 0.0     # ballistic vertical-curvature -> monocular depth cue
+smoothness_order: 3          # finite-difference order (3 = jerk, 2 = acceleration)
+smoothness_beta: 1.0e-3      # Smooth-L1 knee for the smoothness prior
+gravity_beta: 5.0e-3         # Smooth-L1 knee for the gravity prior
+# Per-axis (x, y, z) weights for the jerk smoothness prior; null = uniform.
+# Uniform jerk-smoothing flattens the ballistic height arc (the jerk term fights
+# the gravity term on z) and over-smooths axes with legitimate sharp motion.
+# e.g. [1, 1, 0] smooths only x/y depth-jitter and lets the gravity term own z.
+smoothness_axis_weights: null
+# gravity target = -g * (1/output_fps)^2 / COURT_COORD_SCALE_Z; g and output_fps
+# are read from the physics / rally config groups (see lightning_module).
 
 # ---- Callbacks (BaseTrainingRunner references) ----
 checkpoint:
