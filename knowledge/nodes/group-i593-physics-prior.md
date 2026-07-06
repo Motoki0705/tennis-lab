@@ -47,8 +47,10 @@ in-dist metricsでは fine-tune 群は誰も baseline を超えない（prior �
 
 可視化mp4でも滑らかな連続弾道・両者正しいベースラインを確認。
 
-### 決定
-**ftC BLCS (axis[1,1,0], s0.4/g0.3) と ft PLCS (position_smoothness 1.5) を採用しデプロイ** (`ckpt/{blcs,plcs}/last.ckpt`)。最終成果物 `outputs/tennis_scene/tennis_clip_full_v4phys/`。in-dist合成L2の微増(+5%)より実映像の物理妥当性(ジッター・重力整合・スパイク)を優先。
+### 決定（PR #605 と統合）
+物理prior + `run.init_weights` は**基盤機能として採用**（default off の任意ノブ）。ただし現時点で **default ckpt は置換しない**（`ckpt/{blcs,plcs}/last.ckpt` は v3/v2 baseline のまま）。理由: (1) in-dist が回帰（BLCS 1.845→1.947m、**PLCS 0.345→0.471m と +37%** は default 差し替えには過大）、(2) gravity curvature がまだ baseline より平坦（median Δ²z -0.0097→-0.0054）、(3) 速度外れ値(>50m/s)は detector 欠損由来 teleport で prior 未対処。実クリップは明確改善だが「厳密な上位互換」ではないため、feature として温存し次段で clean win を狙う。最終評価出力は `outputs/tennis_scene/tennis_clip_physics_final/`（別セッション作成、canonical）。
 
-### 次に有効な実験
-(1) 振幅圧縮を根絶する定式化（scale不変jerk、または振幅保存項）で in-dist も超える。(2) best-ckpt評価（現状test=last-epoch重み、fine-tuneはdriftしうる）。(3) 物理prior weightのwarmupでスクラッチ学習を救済し、fine-tune依存を外す。(4) ボール速度の外れ値(>50m/s)はdetector欠損由来のteleportが主 → BLCS前段の補間/棄却で対処。
+（注: 本 session は一度 ftC/ft を deploy したが、PR #605 の結論に合わせ baseline へ revert 済み。）
+
+### 次に有効な実験（clean winへ）
+(1) **gravity term を free-flight aware に**（bounce/occlusion/補間フレームに弾道拘束をかけない）→ in-dist回帰とcurvature平坦を同時解消（PR #605 の第一推奨）。(2) PLCSは一律training lossより **confidence-aware post-filter / masked temporal regularizer**（極端max-speed外れ値が残るため）。(3) 振幅圧縮を根絶する定式化（scale不変jerk / 振幅保存項）。(4) best-ckpt評価（現状test=last-epoch、fine-tuneはdriftしうる）。(5) 物理prior weightのwarmupでスクラッチ学習を救済しfine-tune依存を外す。(6) ボール>50m/s外れはdetector欠損teleportが主 → BLCS前段の補間/棄却。
