@@ -1,72 +1,82 @@
 ---
 name: worktree-create
-description: Use this skill when creating a git worktree in Motoki0705/tennis-lab with Claude Code's native EnterWorktree tool. It is strictly for worktree creation and naming, and does not cover worktree removal or cleanup.
+description: Use this skill when creating and entering a git worktree in Motoki0705/tennis-lab. It supports Claude Code's EnterWorktree entrypoint and Codex's shell-script entrypoint, and is limited to worktree creation/entry.
 ---
 
 # Worktree Creation Workflow
 
 ## Scope
 
-Use this skill when the user (or project instructions) explicitly asks to start work in a git worktree in `Motoki0705/tennis-lab`. It standardizes how worktrees are **named** when created through Claude Code's native `EnterWorktree` tool.
+Use this skill when the user (or project instructions) explicitly asks to start work in a git worktree in `Motoki0705/tennis-lab`.
 
-Scope is **creation and naming only**. Worktree removal/cleanup is intentionally out of scope and handled separately (for example, after the PR is merged).
+Scope is **worktree creation and entry only**. Worktree removal/cleanup is intentionally out of scope and handled separately after the worktree is no longer needed.
 
-Use `.agents/skills/git-branch-create/SKILL.md` instead when the checkout is clean and the user only needs a branch in place.
+Branch naming is intentionally out of scope for this skill. Use `.agents/skills/git-branch-create/SKILL.md` to determine the branch name, then pass that branch name into the executor-specific worktree entrypoint below.
 
-## Naming convention
+Use `.agents/skills/git-branch-create/SKILL.md` directly when the checkout is clean and the user only needs a branch in the current working tree.
 
-Pass an explicit `name` to `EnterWorktree` that mirrors the existing worktree directories under `.claude/worktrees/` and the repository's branch convention.
+## Common rules
 
-- Preferred: `issue-<issue-number>-<topic>` — e.g. `issue-533-experiment-log-format`.
-- No issue number: use a `<prefix>-<topic>` form with a repo prefix (`feat`, `fix`, `docs`, `chore`, `exp`) — e.g. `feat-rotation-loss-fix`.
-- `<topic>`: lowercase words joined by `-`, derived from the task or issue title.
+- Always choose an explicit worktree `name`; never rely on a generated or random name.
+- The worktree directory must be `.claude/worktrees/<name>` for every executor.
+- Keep the worktree `name` flat so the directory is exactly `.claude/worktrees/<name>`.
+- Allowed worktree `name` characters: letters, digits, `.`, `_`, and `-`.
+- Do not use `/`, `+`, spaces, or shell-special characters in the worktree `name`.
+- Keep the worktree `name` at most 64 characters.
+- Choose the final git branch name using `.agents/skills/git-branch-create/SKILL.md`; do not duplicate branch naming rules in this skill.
+- Use `origin/main` as the default base ref unless the task is intentionally stacked on another branch.
 
-### Constraints enforced by EnterWorktree
+## Fixed workflow
 
-- The name is split on `/`; each `/`-separated segment may contain only letters, digits, `.`, `_`, and `-`.
-- Max 64 characters total. `+` and spaces are rejected.
-- Prefer the **flat** `issue-<n>-<topic>` form (no `/`). See the name-mapping note below for why a slash is usually undesirable here.
+1. Determine the worktree `name` from the task or issue title.
+2. Determine the git branch name using `.agents/skills/git-branch-create/SKILL.md`.
+3. Choose the base ref. Default to `origin/main`; use another base only when the new work must build on an existing unmerged branch.
+4. Create and enter the worktree using the entrypoint for the current executor.
+5. Verify the current directory and current branch before making changes.
 
-## How EnterWorktree maps the name
+## Executor entrypoints
 
-`EnterWorktree(name: ...)` does not use the name verbatim. It derives two things:
+### Claude Code
 
-- **Directory**: `.claude/worktrees/<name>`, with each `/` in the name replaced by `+`.
-- **Branch**: `worktree-<name>`, with each `/` in the name replaced by `+`.
-
-Examples:
-
-```text
-name: "issue-533-experiment-log-format"
-  dir    .claude/worktrees/issue-533-experiment-log-format
-  branch worktree-issue-533-experiment-log-format
-
-name: "feat/rotation-loss-fix"
-  dir    .claude/worktrees/feat+rotation-loss-fix
-  branch worktree-feat+rotation-loss-fix   # note the + and the worktree- prefix
-```
-
-Because a `/` becomes a `+` in both the directory and the branch, slashes produce awkward names. Use the flat `issue-<n>-<topic>` form so the directory matches the existing `.claude/worktrees/` entries.
-
-## Standard workflow
-
-1. Determine the issue number (if any) and a short topic slug from the task.
-2. Create and enter the worktree with the convention-based name:
+Use Claude Code's native `EnterWorktree` tool with the common worktree `name`.
 
 ```text
-EnterWorktree(name: "issue-533-experiment-log-format")
+EnterWorktree(name: "<worktree-name>")
 ```
 
-3. The session switches into `.claude/worktrees/<name>/` on a new branch. Confirm the new working directory to the user.
-4. Optional — match the repository's PR branch convention (`<prefix>/issue-<n>-<topic>`): rename the auto-generated branch before pushing.
+Claude Code creates the worktree under `.claude/worktrees/<worktree-name>/` and starts on its automatically generated branch. Immediately rename that branch to the branch name chosen from `.agents/skills/git-branch-create/SKILL.md`.
 
 ```bash
-git branch -m feat/issue-533-experiment-log-format
+git branch -m "<branch-name-from-git-branch-create>"
+```
+
+Do not pass `/` in the `EnterWorktree` name. A slash prevents the directory from staying in the required `.claude/worktrees/<name>` shape.
+
+### Codex
+
+Codex does not have `EnterWorktree`. Use the helper script and source it so the shell enters the created worktree.
+
+```bash
+source .agents/skills/worktree-create/scripts/enter_codex_worktree.sh \
+  --name "<worktree-name>" \
+  --branch "<branch-name-from-git-branch-create>" \
+  --base "origin/main"
+```
+
+The script creates `.claude/worktrees/<worktree-name>/`, creates the requested branch from the requested base ref, and changes the current shell into that worktree.
+
+## Verification
+
+After either entrypoint, verify the working location and branch.
+
+```bash
+pwd
+git branch --show-current
+git worktree list
 ```
 
 ## Notes
 
-- **Base ref**: governed by the `worktree.baseRef` setting — `fresh` (default) branches from `origin/main`; `head` branches from the current local HEAD. Set it deliberately when the new work must build on an un-merged branch, otherwise local foundation commits will be missing.
-- Always pass an explicit `name`. If neither `name` nor `path` is given, `EnterWorktree` generates a random name that will not follow this convention.
-- To enter an existing worktree instead of creating one, pass `path` (must appear in `git worktree list` for this repo) rather than `name`.
-- **Removal is out of scope.** Do not call `ExitWorktree(remove)` as part of this skill. A worktree entered via `path` cannot be removed by `ExitWorktree` anyway; cleanup of merged worktrees is done separately with `git worktree remove <path>`.
+- This skill does not define branch naming. Link to `.agents/skills/git-branch-create/SKILL.md` instead of repeating its rules here.
+- This skill does not remove worktrees. Do not call `ExitWorktree(remove)` or `git worktree remove` as part of this workflow.
+- To enter an existing worktree, use the existing path from `git worktree list`; do not create a duplicate worktree with the same purpose.
