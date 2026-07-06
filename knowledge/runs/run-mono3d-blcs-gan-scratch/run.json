@@ -1,0 +1,14 @@
+{
+  "run_id": "1783307565131814992_687133_mono3d_blcs_gan_scratch",
+  "name": "mono3d_blcs_gan_scratch",
+  "command": "MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_chunked_gan data.scene_dir=/home/kamimura/projects/tennis-lab/data/blcs_broadcast data.chunk.chunks_dir=/home/kamimura/projects/tennis-lab/data/blcs_broadcast/chunks data.num_views_range=[1,1] data.camera_mode=random data.num_court_kp=14 data.num_workers=2 data.chunk.generation_workers=8 data.chunk.epochs_per_chunk=20 camera=broadcast training.position_axis_weights=[1.0,4.0,1.0] training.trainer.check_val_every_n_epoch=5 training.qualitative_logging.enabled=false training.gan.target_weight=0.05 training.gan.warmup_epochs=10 training.trainer.max_epochs=200 training.gan.transition.start_epoch=100 run.output_dir=/home/kamimura/projects/tennis-lab/outputs/blcs/blcs_multiview_axial run.gpus=1",
+  "provider": "claude",
+  "session": "59c50b41-eb5d-40e1-aecf-09958a0bf02e",
+  "issue": "593",
+  "commit": "692b4f6c94bb4bd7036101112a50de61e90983ab",
+  "branch": "main",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-07-06T12:45:34+09:00"
+}
