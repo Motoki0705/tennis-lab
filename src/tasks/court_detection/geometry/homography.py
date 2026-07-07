@@ -92,6 +92,8 @@ def project_points(
     if matrix.shape != (3, 3) or not np.isfinite(matrix).all():
         raise ValueError(f"homography must be finite with shape (3, 3), got {matrix.shape}.")
     projected = cv2.perspectiveTransform(points.reshape(1, -1, 2), matrix).reshape(-1, 2)
+    if not np.isfinite(projected).all():
+        raise ValueError("Projected points contain non-finite coordinates.")
     return cast(NDArray[np.float32], np.asarray(projected, dtype=np.float32))
 
 
