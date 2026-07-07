@@ -14,6 +14,8 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Generic, TypeVar
 
 import cv2
 import numpy as np
@@ -72,8 +74,8 @@ def _sample_perspective_h(
     if cv2.contourArea(dst.astype(np.float32)) < 1.0:
         return None
 
-    h_mat: np.ndarray = cv2.getPerspectiveTransform(src, dst)
-    return h_mat.astype(np.float32)
+    h_mat: np.ndarray = np.asarray(cv2.getPerspectiveTransform(src, dst), dtype=np.float32)
+    return h_mat
 
 
 def _warp_perspective_pil(
@@ -106,13 +108,7 @@ def _random_affine_matrix(
     scale: tuple[float, float],
     shear: float,
 ) -> AffineMatrix:
-    """Sample one source->destination affine matrix shared by image/mask/kp warps.
-
-    ``shear`` is applied as a coupled x=y shear because ``torchvision.TF.affine``
-    normalizes a single-element ``shear=[value]`` list to ``[value, value]``
-    (see ``torchvision.transforms.functional.affine``); using an asymmetric
-    ``(shear, 0)`` matrix here would silently desync keypoints from the image.
-    """
+    """Sample one source->destination affine matrix shared by image/mask warps."""
     angle = random.uniform(-degrees, degrees)
     max_dx = translate[0] * width
     max_dy = translate[1] * height
@@ -283,50 +279,135 @@ class SegRandomPerspective:
 
 
 # ── Joint Spatial Transforms (Keypoints) ─────────────────────────
+#
+# Keypoint transforms are split into parameter sampling and application so
+# that a whole parameter chain can be evaluated on the keypoints alone
+# (cheap ndarray math) before the image is warped once. This enables
+# :class:`KPVisibilityConstrainedPipeline` to reject parameter draws that
+# push too many keypoints out of bounds without paying for image warps.
+
+P = TypeVar("P")
 
 
-class KPMultiScaleResize:
-    """Resize image and scale keypoints to match new dimensions."""
+def kp_in_bounds_mask(kps: np.ndarray, w: int, h: int) -> np.ndarray:
+    """Boolean mask of keypoints inside ``[0, w-1] x [0, h-1]``."""
+    mask: np.ndarray = (
+        (kps[:, 0] >= 0.0)
+        & (kps[:, 0] <= w - 1.0)
+        & (kps[:, 1] >= 0.0)
+        & (kps[:, 1] <= h - 1.0)
+    )
+    return mask
 
-    def __init__(self, scales: Sequence[int]) -> None:
-        self.scales = list(scales)
+
+class KPParamTransform(Generic[P]):
+    """Keypoint spatial transform split into sampling and application."""
+
+    def sample_params(self, w: int, h: int) -> tuple[P, int, int]:
+        """Draw parameters; return ``(params, out_w, out_h)``."""
+        raise NotImplementedError
+
+    def apply_to_image(self, img: Image.Image, params: P) -> Image.Image:
+        raise NotImplementedError
+
+    def apply_to_kps(self, kps: np.ndarray, params: P) -> np.ndarray:
+        raise NotImplementedError
+
+    def apply_to_mask(self, mask: np.ndarray, params: P) -> np.ndarray:
+        """Propagate a per-keypoint boolean mask through index permutations."""
+        return mask
+
+    def out_size(self, params: P, w: int, h: int) -> tuple[int, int]:
+        """Output image size for the given params and input size ``(w, h)``."""
+        return w, h
 
     def __call__(
         self, img: Image.Image, kps: np.ndarray,
     ) -> tuple[Image.Image, np.ndarray]:
-        short_side = random.choice(self.scales)
         w, h = img.size
+        params, _, _ = self.sample_params(w, h)
+        return self.apply_to_image(img, params), self.apply_to_kps(kps, params)
+
+
+@dataclass(frozen=True)
+class ResizeParams:
+    sx: float
+    sy: float
+    new_w: int
+    new_h: int
+
+
+@dataclass(frozen=True)
+class CropParams:
+    top: int
+    left: int
+    crop_h: int
+    crop_w: int
+
+
+@dataclass(frozen=True)
+class FlipParams:
+    flip: bool
+    w: int
+
+
+@dataclass(frozen=True)
+class AffineParams:
+    angle: float
+    tx: float
+    ty: float
+    scale: float
+    shear: float
+    w: int
+    h: int
+
+
+@dataclass(frozen=True)
+class PerspectiveParams:
+    h_mat: np.ndarray | None
+
+
+class _KPResizeBase(KPParamTransform[ResizeParams]):
+    """Shared application logic for short-side resizes."""
+
+    def _params_for(self, w: int, h: int, short_side: int) -> tuple[ResizeParams, int, int]:
         new_w, new_h = resize_short_side_aligned(w, h, short_side)
-        sx = new_w / w
-        sy = new_h / h
-        img = img.resize((new_w, new_h), Image.BILINEAR)
+        return ResizeParams(sx=new_w / w, sy=new_h / h, new_w=new_w, new_h=new_h), new_w, new_h
+
+    def apply_to_image(self, img: Image.Image, params: ResizeParams) -> Image.Image:
+        return img.resize((params.new_w, params.new_h), Image.BILINEAR)
+
+    def apply_to_kps(self, kps: np.ndarray, params: ResizeParams) -> np.ndarray:
         kps = kps.copy()
-        kps[:, 0] *= sx
-        kps[:, 1] *= sy
-        return img, kps
+        kps[:, 0] *= params.sx
+        kps[:, 1] *= params.sy
+        return kps
+
+    def out_size(self, params: ResizeParams, w: int, h: int) -> tuple[int, int]:
+        return params.new_w, params.new_h
 
 
-class KPFixedResize:
+class KPMultiScaleResize(_KPResizeBase):
+    """Resize image and scale keypoints so the short side matches a random scale."""
+
+    def __init__(self, scales: Sequence[int]) -> None:
+        self.scales = list(scales)
+
+    def sample_params(self, w: int, h: int) -> tuple[ResizeParams, int, int]:
+        return self._params_for(w, h, random.choice(self.scales))
+
+
+class KPFixedResize(_KPResizeBase):
     """Resize image + keypoints to fixed short side."""
 
     def __init__(self, short_side: int) -> None:
         self.short_side = short_side
 
-    def __call__(
-        self, img: Image.Image, kps: np.ndarray,
-    ) -> tuple[Image.Image, np.ndarray]:
-        w, h = img.size
-        new_w, new_h = resize_short_side_aligned(w, h, self.short_side)
-        sx = new_w / w
-        sy = new_h / h
-        img = img.resize((new_w, new_h), Image.BILINEAR)
-        kps = kps.copy()
-        kps[:, 0] *= sx
-        kps[:, 1] *= sy
-        return img, kps
+    def sample_params(self, w: int, h: int) -> tuple[ResizeParams, int, int]:
+        return self._params_for(w, h, self.short_side)
 
 
-class KPRandomResizedCrop:
+class KPRandomResizedCrop(KPParamTransform[CropParams]):
     """Random resized crop applied jointly to image + keypoints."""
 
     def __init__(
@@ -337,10 +418,7 @@ class KPRandomResizedCrop:
         self.scale = scale
         self.ratio = ratio
 
-    def __call__(
-        self, img: Image.Image, kps: np.ndarray,
-    ) -> tuple[Image.Image, np.ndarray]:
-        w, h = img.size
+    def sample_params(self, w: int, h: int) -> tuple[CropParams, int, int]:
         area = h * w
         for _ in range(10):
             target_area = random.uniform(self.scale[0], self.scale[1]) * area
@@ -350,43 +428,58 @@ class KPRandomResizedCrop:
             if 0 < crop_w <= w and 0 < crop_h <= h:
                 top = random.randint(0, h - crop_h)
                 left = random.randint(0, w - crop_w)
-                img = TF.crop(img, top, left, crop_h, crop_w)
-                kps = kps.copy()
-                kps[:, 0] -= left
-                kps[:, 1] -= top
-                return img, kps
+                return CropParams(top=top, left=left, crop_h=crop_h, crop_w=crop_w), crop_w, crop_h
         crop_h = min(h, w)
         crop_w = crop_h
         top = (h - crop_h) // 2
         left = (w - crop_w) // 2
-        img = TF.crop(img, top, left, crop_h, crop_w)
+        return CropParams(top=top, left=left, crop_h=crop_h, crop_w=crop_w), crop_w, crop_h
+
+    def apply_to_image(self, img: Image.Image, params: CropParams) -> Image.Image:
+        return TF.crop(img, params.top, params.left, params.crop_h, params.crop_w)
+
+    def apply_to_kps(self, kps: np.ndarray, params: CropParams) -> np.ndarray:
         kps = kps.copy()
-        kps[:, 0] -= left
-        kps[:, 1] -= top
-        return img, kps
+        kps[:, 0] -= params.left
+        kps[:, 1] -= params.top
+        return kps
+
+    def out_size(self, params: CropParams, w: int, h: int) -> tuple[int, int]:
+        return params.crop_w, params.crop_h
 
 
-class KPRandomHorizontalFlip:
+class KPRandomHorizontalFlip(KPParamTransform[FlipParams]):
     """Random horizontal flip with keypoint index swap."""
 
     def __init__(self, p: float, swap_pairs: list[tuple[int, int]]) -> None:
         self.p = p
         self.swap_pairs = swap_pairs
 
-    def __call__(
-        self, img: Image.Image, kps: np.ndarray,
-    ) -> tuple[Image.Image, np.ndarray]:
-        if random.random() < self.p:
-            w, _ = img.size
-            img = TF.hflip(img)
-            kps = kps.copy()
-            kps[:, 0] = w - 1 - kps[:, 0]
-            for i, j in self.swap_pairs:
-                kps[[i, j]] = kps[[j, i]]
-        return img, kps
+    def sample_params(self, w: int, h: int) -> tuple[FlipParams, int, int]:
+        return FlipParams(flip=random.random() < self.p, w=w), w, h
+
+    def apply_to_image(self, img: Image.Image, params: FlipParams) -> Image.Image:
+        return TF.hflip(img) if params.flip else img
+
+    def apply_to_kps(self, kps: np.ndarray, params: FlipParams) -> np.ndarray:
+        if not params.flip:
+            return kps
+        kps = kps.copy()
+        kps[:, 0] = params.w - 1 - kps[:, 0]
+        for i, j in self.swap_pairs:
+            kps[[i, j]] = kps[[j, i]]
+        return kps
+
+    def apply_to_mask(self, mask: np.ndarray, params: FlipParams) -> np.ndarray:
+        if not params.flip:
+            return mask
+        mask = mask.copy()
+        for i, j in self.swap_pairs:
+            mask[[i, j]] = mask[[j, i]]
+        return mask
 
 
-class KPRandomAffine:
+class KPRandomAffine(KPParamTransform[AffineParams]):
     """Random affine transform applied jointly to image + keypoints."""
 
     def __init__(
@@ -401,42 +494,134 @@ class KPRandomAffine:
         self.scale = scale
         self.shear = shear
 
-    def __call__(
-        self, img: Image.Image, kps: np.ndarray,
-    ) -> tuple[Image.Image, np.ndarray]:
-        w, h = img.size
-        matrix = _random_affine_matrix(
-            width=w, height=h, degrees=self.degrees,
-            translate=self.translate, scale=self.scale, shear=self.shear,
+    def sample_params(self, w: int, h: int) -> tuple[AffineParams, int, int]:
+        params = AffineParams(
+            angle=random.uniform(-self.degrees, self.degrees),
+            tx=random.uniform(-self.translate[0] * w, self.translate[0] * w),
+            ty=random.uniform(-self.translate[1] * h, self.translate[1] * h),
+            scale=random.uniform(self.scale[0], self.scale[1]),
+            shear=random.uniform(-self.shear, self.shear),
+            w=w,
+            h=h,
         )
-        img = _warp_pil_affine(img, matrix, resample=Image.BILINEAR)
-        kps = transform_points(kps, matrix)
-        return img, kps
+        return params, w, h
+
+    @staticmethod
+    def _matrix(params: AffineParams) -> AffineMatrix:
+        return build_centered_affine_matrix(
+            width=params.w,
+            height=params.h,
+            rotation_degrees=params.angle,
+            translate=(params.tx, params.ty),
+            scale=params.scale,
+            shear_degrees=(params.shear, params.shear),
+            shear_mode="torchvision",
+        )
+
+    def apply_to_image(self, img: Image.Image, params: AffineParams) -> Image.Image:
+        return _warp_pil_affine(img, self._matrix(params), resample=Image.BILINEAR)
+
+    def apply_to_kps(self, kps: np.ndarray, params: AffineParams) -> np.ndarray:
+        return transform_points(kps, self._matrix(params))
 
 
-class KPRandomPerspective:
+class KPRandomPerspective(KPParamTransform[PerspectiveParams]):
     """Random perspective transform applied jointly to image + keypoints."""
 
     def __init__(self, distortion_scale: float = 0.15, p: float = 0.3) -> None:
         self.distortion_scale = distortion_scale
         self.p = p
 
+    def sample_params(self, w: int, h: int) -> tuple[PerspectiveParams, int, int]:
+        h_mat: np.ndarray | None = None
+        if random.random() < self.p:
+            h_mat = _sample_perspective_h(w, h, self.distortion_scale)
+        return PerspectiveParams(h_mat=h_mat), w, h
+
+    def apply_to_image(self, img: Image.Image, params: PerspectiveParams) -> Image.Image:
+        if params.h_mat is None:
+            return img
+        return _warp_perspective_pil(
+            img, params.h_mat, interpolation=cv2.INTER_LINEAR, fill_value=0,
+        )
+
+    def apply_to_kps(self, kps: np.ndarray, params: PerspectiveParams) -> np.ndarray:
+        if params.h_mat is None:
+            return kps
+        kps_in: np.ndarray = kps.astype(np.float32).reshape(-1, 1, 2)
+        kps_out: np.ndarray = np.asarray(
+            cv2.perspectiveTransform(kps_in, params.h_mat), dtype=np.float32,
+        ).reshape(-1, 2)
+        return kps_out
+
+
+class KPVisibilityConstrainedPipeline:
+    """Chain of keypoint transforms with a minimum-visibility guarantee."""
+
+    def __init__(
+        self,
+        transforms: Sequence[KPParamTransform],
+        min_visible_kp: int = 0,
+        max_retries: int = 20,
+    ) -> None:
+        if min_visible_kp < 0:
+            raise ValueError(f"min_visible_kp must be >= 0, got {min_visible_kp}")
+        if max_retries < 1:
+            raise ValueError(f"max_retries must be >= 1, got {max_retries}")
+        self.transforms = list(transforms)
+        self.min_visible_kp = min_visible_kp
+        self.max_retries = max_retries
+
+    def _sample_chain(
+        self, w: int, h: int, kps: np.ndarray,
+    ) -> tuple[list[object], np.ndarray, np.ndarray]:
+        """Draw one parameter chain and apply it to the keypoints only."""
+        chain: list[object] = []
+        out = kps
+        mask = kp_in_bounds_mask(kps, w, h)
+        for t in self.transforms:
+            params, w, h = t.sample_params(w, h)
+            out = t.apply_to_kps(out, params)
+            mask = t.apply_to_mask(mask, params) & kp_in_bounds_mask(out, w, h)
+            chain.append(params)
+        return chain, out, mask
+
+    def draw_params(
+        self, w: int, h: int, kps: np.ndarray,
+    ) -> tuple[list[object], np.ndarray, np.ndarray, int]:
+        """Sample parameter chains until the visibility constraint is met."""
+        target = min(self.min_visible_kp, int(kp_in_bounds_mask(kps, w, h).sum()))
+
+        best: tuple[list[object], np.ndarray, np.ndarray] | None = None
+        best_visible = -1
+        attempts = 0
+        while attempts < self.max_retries:
+            attempts += 1
+            chain, out, mask = self._sample_chain(w, h, kps)
+            visible = int(mask.sum())
+            if visible > best_visible:
+                best, best_visible = (chain, out, mask), visible
+            if visible >= target:
+                break
+
+        assert best is not None
+        return best[0], best[1], best[2], attempts
+
+    def transform_with_visibility(
+        self, img: Image.Image, kps: np.ndarray,
+    ) -> tuple[Image.Image, np.ndarray, np.ndarray]:
+        """Transform and additionally return the cumulative visibility mask."""
+        w, h = img.size
+        chain, out_kps, mask, _ = self.draw_params(w, h, kps)
+        for t, params in zip(self.transforms, chain, strict=True):
+            img = t.apply_to_image(img, params)
+        return img, out_kps, mask
+
     def __call__(
         self, img: Image.Image, kps: np.ndarray,
     ) -> tuple[Image.Image, np.ndarray]:
-        if random.random() >= self.p:
-            return img, kps
-
-        w, h = img.size
-        h_mat = _sample_perspective_h(w, h, self.distortion_scale)
-        if h_mat is None:
-            return img, kps
-
-        img = _warp_perspective_pil(img, h_mat, interpolation=cv2.INTER_LINEAR, fill_value=0)
-
-        kps_in: np.ndarray = kps.astype(np.float32).reshape(-1, 1, 2)
-        kps_out = cv2.perspectiveTransform(kps_in, h_mat).reshape(-1, 2)
-        return img, kps_out.astype(np.float32)
+        img, kps, _ = self.transform_with_visibility(img, kps)
+        return img, kps
 
 
 # ── Image-only Transforms ────────────────────────────────────────
@@ -556,30 +741,37 @@ def build_kp_transforms(
     gaussian_blur_kernel: list[int] | None = None,
     gaussian_blur_sigma: tuple[float, float] = (0.1, 2.0),
     gaussian_blur_prob: float = 0.3,
-) -> tuple[list, list]:
-    """Build joint spatial + image-only transforms for keypoint heatmaps."""
+    min_visible_kp: int = 0,
+    visibility_max_retries: int = 20,
+) -> tuple[KPVisibilityConstrainedPipeline, list]:
+    """Build the spatial pipeline + image-only transforms for keypoint heatmaps."""
     if swap_pairs is None:
         swap_pairs = [(0, 1), (2, 3), (4, 6), (5, 7), (8, 9), (10, 11)]
 
-    spatial: list = []
+    transforms: list[KPParamTransform] = []
     image_only: list = []
 
     if is_train:
-        spatial.append(KPMultiScaleResize(train_scales or [480, 512, 544, 576, 608, 640]))
-        spatial.append(KPRandomResizedCrop(scale=crop_scale, ratio=crop_ratio))
-        spatial.append(KPRandomHorizontalFlip(p=hflip_prob, swap_pairs=swap_pairs))
-        spatial.append(KPRandomAffine(
+        transforms.append(KPMultiScaleResize(train_scales or [480, 512, 544, 576, 608, 640]))
+        transforms.append(KPRandomResizedCrop(scale=crop_scale, ratio=crop_ratio))
+        transforms.append(KPRandomHorizontalFlip(p=hflip_prob, swap_pairs=swap_pairs))
+        transforms.append(KPRandomAffine(
             degrees=affine_degrees, translate=affine_translate,
             scale=affine_scale, shear=affine_shear,
         ))
-        spatial.append(KPRandomPerspective(
+        transforms.append(KPRandomPerspective(
             distortion_scale=perspective_distortion, p=perspective_prob,
         ))
         image_only.append(ImageColorJitter(*color_jitter))
         image_only.append(ImageGaussianBlur(
             kernel_size=gaussian_blur_kernel, sigma=gaussian_blur_sigma, p=gaussian_blur_prob,
         ))
+        spatial = KPVisibilityConstrainedPipeline(
+            transforms,
+            min_visible_kp=min_visible_kp,
+            max_retries=visibility_max_retries,
+        )
     else:
-        spatial.append(KPFixedResize(val_short_side))
+        spatial = KPVisibilityConstrainedPipeline([KPFixedResize(val_short_side)])
 
     return spatial, image_only
