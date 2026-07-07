@@ -12,7 +12,7 @@ device: cuda
 
 court_kp:
   checkpoint: ckpt/court_detection/last.ckpt
-  annotation_frame_index: 0  # Frame shown in manual_ui mode, then repeated across T
+  frame_index: 0  # Frame shown in manual_ui mode, then repeated across T
   mode: manual_ui  # model/manual_ui
   num_keypoints: 14
   save_result: true
@@ -20,7 +20,7 @@ court_kp:
   load_path: null  # Path to load pre-computed result (skips inference)
 
 gvhmr:
-  checkpoint: ckpt/gvhmr/gvhmr_siga24_release.ckpt
+  gvhmr_checkpoint: ckpt/gvhmr/gvhmr_siga24_release.ckpt
   yolo_checkpoint: ckpt/yolo/yolov8x.pt
   vitpose_checkpoint: ckpt/vitpose/vitpose-h-multi-coco.pth
   hmr2_checkpoint: ckpt/hmr2/epoch=10-step=25000.ckpt
@@ -35,7 +35,7 @@ gvhmr:
 
 player_association:
   mode: manual_ui
-  initial_frame_index: 0
+  frame_index: 0
   reference_camera: cam0
   save_result: true
   output_path: ${output_dir}/player_association_result.json
