@@ -66,6 +66,26 @@ def test_homography_postprocess_marks_seed_shortage_invisible() -> None:
     assert frame_diag["seed_count"] == 3
 
 
+def test_homography_postprocess_rejects_poor_inlier_template_coverage() -> None:
+    template = court_template_xy()
+    observed = project_points(template, _base_homography())
+    scores = np.full((1, template.shape[0]), 0.1, dtype=np.float32)
+    scores[0, [0, 6, 9, 11, 12, 13]] = 0.95
+
+    result = refine_court_keypoints_with_homography(
+        observed[None, ...],
+        scores,
+        min_score=0.5,
+        ransac_reproj_threshold=3.0,
+    )
+
+    np.testing.assert_allclose(result.visibility, 0.0)
+    frame_diag = result.diagnostics["frames"][0]
+    assert frame_diag["success"] is False
+    assert frame_diag["reason"] == "degenerate_inlier_coverage"
+    assert frame_diag["inlier_count"] < 8
+
+
 def test_temporal_median_filter_reduces_successful_frame_jitter() -> None:
     template = court_template_xy()
     stable = project_points(template, _base_homography())
