@@ -1,0 +1,17 @@
+defaults:
+  - data: court_kp
+  - _self_
+
+hydra:
+  run:
+    dir: ${measure.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
+
+measure:
+  split: train
+  num_samples: 600
+  reps_per_image: 3
+  seed: 0
+  output_dir: outputs/court_detection/kp_visibility
