@@ -11,7 +11,7 @@ import torch
 from torch import Tensor
 
 from src.tasks.blcs.models import BLCSModel, BLCSMultiViewAxialModel
-from src.tennis_scene.pipeline.components.blcs import BLCSConfig, BLCSModule
+from src.tennis_scene.pipeline.components.blcs import BLCSConfig, BLCSModule, BLCSResult
 
 
 class _FakeBLCSPredictor:
@@ -25,15 +25,22 @@ class _FakeBLCSPredictor:
         court_vis: Tensor | None = None,
         denormalize: bool = True,
     ) -> dict[str, Tensor]:
-        del ball_vis, court_vis, denormalize
+        del court_vis, denormalize
         assert ball_uv.shape == (1, 1, 4, 2)
         assert court_kp.shape == (1, 1, 4, 20, 2)
+        assert ball_vis is not None
+        assert ball_vis.shape == (1, 1, 4)
+        torch.testing.assert_close(
+            ball_vis,
+            torch.tensor([[[1.0, 0.0, 1.0, 1.0]]]),
+        )
         assert ball_mask is not None
         assert ball_mask.shape == (1, 1, 4)
+        torch.testing.assert_close(ball_mask, torch.ones_like(ball_mask))
         return {"position": torch.ones(1, 4, 3)}
 
 
-def test_process_passes_single_camera_as_multiview_n_equals_one() -> None:
+def test_process_keeps_detector_visibility_for_invisible_tokens_without_zero_filling() -> None:
     module = BLCSModule(BLCSConfig(checkpoint_path="dummy.ckpt", device="cpu"))
     module._predictor = cast(Any, _FakeBLCSPredictor())
     result = module.process(
@@ -49,7 +56,25 @@ def test_process_passes_single_camera_as_multiview_n_equals_one() -> None:
         result.visibility,
         np.array([True, False, True, True], dtype=np.bool_),
     )
-    np.testing.assert_array_equal(result.ball_3d[1], np.zeros(3, dtype=np.float32))
+    np.testing.assert_array_equal(result.ball_3d, np.ones((4, 3), dtype=np.float32))
+
+
+def test_result_validate_allows_inferred_positions_for_invisible_frames() -> None:
+    result = BLCSResult(
+        ball_3d=np.array(
+            [
+                [1.0, 2.0, 3.0],
+                [4.0, 5.0, 6.0],
+            ],
+            dtype=np.float32,
+        ),
+        visibility=np.array([True, False], dtype=np.bool_),
+    )
+
+    is_valid, errors = result.validate()
+
+    assert is_valid
+    assert errors == []
 
 
 def test_validate_pipeline_checkpoint_rejects_single_model() -> None:
