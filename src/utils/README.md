@@ -22,6 +22,7 @@
 - **`splits.py`**: `GroupSplitConfig` と `make_group_split_map()`。group 単位の deterministic な split を作る。
 
 ### `geometry/`
+- **`affine.py`**: 画像・点の augmentation で共有する source→destination affine 行列生成、OpenCV / PIL 用変換、点座標変換。
 - **`angles.py`**: torch ベースの角度差、角度誤差、軸周り signed angle、ベクトル正規化。
 - **`skeleton.py`**: COCO-17 に対する joint angle、torsion、torso twist、bone length 計算。
 - **`court_pose.py`**: 正規化コート座標と world pose の相互変換、コート上位置からの平行移動生成。
@@ -49,7 +50,7 @@
 - **`writer.py`**: PyAV ベースの H.264 `VideoWriter`（fps / CRF 指定）と `save_video_rgb()`。
 - **`windows.py` / `batching.py`**: 時系列 window / batch iterator、`build_window_starts()`（末尾 anchor 付き sliding-window 開始位置）、`chunked()`。
 - **`prefetch.py`**: イテレータの先読み `PrefetchIterator`。
-- **`transforms.py`**: `BgrToTensorTransform` と tensor の ImageNet 正規化。
+- **`video/transforms.py`**: `BgrToTensorTransform` と tensor の ImageNet 正規化。
 - **`encoding.py`**: JPEG エンコードと、選択フレームの JPEG 列挙。
 - **`sampling.py`**: 秒指定の parse、time range ベース sampling、uniform sampling。
 - **`types.py`**: `VideoInfo`、`FramePacket`、`TemporalWindow`、`TemporalBatch`。
