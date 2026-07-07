@@ -20,9 +20,10 @@ court_kp:
     # Peak score gate for RANSAC seeds. 0.3 keeps moderately confident
     # structure points while filtering obvious heatmap failures.
     min_score: 0.3
-    # Tight pixel residual gate for kp512/full-resolution heatmaps; outliers
-    # around near-side corners are typically tens of pixels off.
-    ransac_reproj_threshold: 3.0
+    # Current kp512 predictions have ~12px val mean error; 3px over-prunes
+    # and can fit only far/service points. 30px keeps normal model noise while
+    # rejecting larger structural failures.
+    ransac_reproj_threshold: 30.0
     # Broadcast camera is nearly static, so a short odd median window reduces
     # frame-to-frame homography jitter without changing manual_ui defaults.
     temporal_median_window: 9

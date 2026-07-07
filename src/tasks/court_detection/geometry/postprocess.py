@@ -148,6 +148,10 @@ def _refine_frame(
     if inlier_count < 4:
         diagnostics["reason"] = "insufficient_inliers"
         return None, diagnostics
+    diagnostics.update(_template_coverage_diagnostics(template, full_inlier_mask))
+    if not _inlier_template_coverage_is_valid(template, full_inlier_mask):
+        diagnostics["reason"] = "degenerate_inlier_coverage"
+        return None, diagnostics
 
     refit_homography = estimate_homography(
         template[full_inlier_mask],
@@ -216,6 +220,46 @@ def _projected_template_is_valid(points: NDArray[np.float32]) -> bool:
     x_span = float(np.max(points[:, 0]) - np.min(points[:, 0]))
     y_span = float(np.max(points[:, 1]) - np.min(points[:, 1]))
     return x_span > 1.0e-3 and y_span > 1.0e-3
+
+
+def _inlier_template_coverage_is_valid(
+    template: NDArray[np.float32],
+    inlier_mask: NDArray[np.bool_],
+) -> bool:
+    inliers = template[inlier_mask]
+    if inliers.shape[0] < 4:
+        return False
+    full_x_span = float(np.max(template[:, 0]) - np.min(template[:, 0]))
+    full_y_span = float(np.max(template[:, 1]) - np.min(template[:, 1]))
+    inlier_x_span = float(np.max(inliers[:, 0]) - np.min(inliers[:, 0]))
+    inlier_y_span = float(np.max(inliers[:, 1]) - np.min(inliers[:, 1]))
+    return (
+        inliers.shape[0] >= 8
+        and inlier_x_span >= full_x_span * 0.5
+        and inlier_y_span >= full_y_span * 0.7
+    )
+
+
+def _template_coverage_diagnostics(
+    template: NDArray[np.float32],
+    inlier_mask: NDArray[np.bool_],
+) -> dict[str, Any]:
+    inliers = template[inlier_mask]
+    if inliers.size == 0:
+        return {
+            "inlier_template_x_span": 0.0,
+            "inlier_template_y_span": 0.0,
+            "inlier_has_far_baseline": False,
+            "inlier_has_near_baseline": False,
+        }
+    full_y_min = float(np.min(template[:, 1]))
+    full_y_max = float(np.max(template[:, 1]))
+    return {
+        "inlier_template_x_span": float(np.max(inliers[:, 0]) - np.min(inliers[:, 0])),
+        "inlier_template_y_span": float(np.max(inliers[:, 1]) - np.min(inliers[:, 1])),
+        "inlier_has_far_baseline": bool(np.any(inliers[:, 1] >= full_y_max - 1.0e-3)),
+        "inlier_has_near_baseline": bool(np.any(inliers[:, 1] <= full_y_min + 1.0e-3)),
+    }
 
 
 def _float_list(values: NDArray[np.float32]) -> list[float]:
