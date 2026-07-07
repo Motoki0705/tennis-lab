@@ -138,7 +138,7 @@ def _render_ball_detection(
 
     h, w = frames[0].shape[:2]
     ball_uv = _denorm(np.asarray(data["ball_uv"])[0], w, h)  # (T, 2)
-    vis = np.asarray(data["ball_visibility"])[0].astype(bool)  # (T,)
+    vis = np.asarray(data["ball_vis"])[0].astype(bool)  # (T,)
 
     writer = _open_writer(out_path, fps, w, h)
     for t in frame_range:
