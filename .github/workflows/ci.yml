@@ -30,3 +30,9 @@ jobs:
       - name: Ruff lint
         run: uv run ruff check src tests
 
+      - name: Pytest
+        # This runner is CPU-only and doesn't have the large local datasets,
+        # so tests marked `cuda` or `local_data` (see pyproject.toml markers)
+        # are excluded.
+        run: uv run pytest tests -m "not local_data and not cuda" -q --no-cov
+
