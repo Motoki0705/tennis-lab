@@ -8,7 +8,7 @@ from src.tasks.ball_detection.data.components.augmentation import AffineAugmenta
 from src.utils.geometry.affine import build_centered_affine_matrix, transform_points
 
 
-def test_ball_affine_uses_shared_matrix_for_visible_coordinates() -> None:
+def test_ball_affine_matches_shared_matrix_for_visible_coordinates() -> None:
     height, width = 80, 120
     frames = [np.zeros((height, width, 3), dtype=np.float32)]
     coords = [[(70.0, 30.0), (0.0, 0.0)]]
