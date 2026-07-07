@@ -55,6 +55,13 @@ ball_detection:
   tail_policy: backfill  # backfill/drop
   overlap_aggregation: max_score  # last_window_wins/max_score
   pin_memory: true
+  # issue #620: keep disabled until real-clip A/B confirms deployment impact.
+  trajectory_gate:
+    enabled: false
+    max_residual_px: 60
+    k_support: 2
+    max_support_gap: 5
+    max_passes: 2
   skip: false
   save_result: true
   output_path: ${output_dir}/ball_detection_result.json
