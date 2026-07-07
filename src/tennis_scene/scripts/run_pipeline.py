@@ -63,9 +63,7 @@ def main(cfg: DictConfig) -> int:
     output_path = output_dir / f"{output_name}.npz"
 
     max_frames = cfg.get("max_frames")
-    court_kp_annotation_frame = int(
-        cfg.court_kp.get("annotation_frame_index", cfg.court_kp.get("frame_index", 0))
-    )
+    frame_index = int(cfg.court_kp.get("frame_index", 0))
 
     LOGGER.info("Configuration:")
     LOGGER.info(f"  Device: {cfg.device}")
@@ -74,7 +72,7 @@ def main(cfg: DictConfig) -> int:
         camera_label = camera_ids[index] if camera_ids is not None else f"cam{index}"
         LOGGER.info(f"    {camera_label}: {video_path}")
     LOGGER.info(f"  Max frames: {max_frames}")
-    LOGGER.info(f"  Court KP annotation frame: {court_kp_annotation_frame}")
+    LOGGER.info(f"  Court KP frame index: {frame_index}")
     LOGGER.info(f"  Skip GVHMR: {cfg.gvhmr.get('skip', False)}")
     LOGGER.info(f"  Skip ball: {cfg.ball_detection.get('skip', False)}")
     LOGGER.info(f"  Skip BLCS: {cfg.blcs.get('skip', False)}")
@@ -85,7 +83,7 @@ def main(cfg: DictConfig) -> int:
     result = orchestrator.run(
         video_paths=video_paths,
         max_frames=max_frames,
-        court_kp_annotation_frame=court_kp_annotation_frame,
+        frame_index=frame_index,
         camera_ids=camera_ids,
     )
 
@@ -101,8 +99,8 @@ def main(cfg: DictConfig) -> int:
     LOGGER.info(f"  Resolution: {result.width}x{result.height}")
     if result.ball_3d is not None:
         visible_ball = 0
-        if result.ball_visibility is not None:
-            visible_ball = int(result.ball_visibility.any(axis=0).sum())
+        if result.ball_vis is not None:
+            visible_ball = int(result.ball_vis.any(axis=0).sum())
         LOGGER.info(f"  Ball visible frames: {visible_ball}/{result.num_frames}")
     LOGGER.info("=" * 60)
 
