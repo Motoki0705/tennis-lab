@@ -54,6 +54,15 @@ models:
     datasets: [tracknet]
     strict: true
 
+  # issue #618: from-scratch retrain with the same val/f1-monitored recipe as
+  # convnext-v2-ft (60-epoch budget, early-stopped at 36; best val/f1 at ep25).
+  - id: convnext-v2-scratch
+    category: architecture-controlled
+    checkpoint: outputs/ball_detection/convnext_v2_scratch/logs/version_0/checkpoints/ball-detection-epoch=25.ckpt
+    expected_model_name: conv_next_unet
+    datasets: [tracknet]
+    strict: true
+
   # Enable after a TrackNet-only DINOv3 run is available.
   - id: dinov3-tracknet
     enabled: false
