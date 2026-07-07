@@ -10,6 +10,7 @@ from src.tennis_scene.pipeline.components.blcs import BLCSConfig, BLCSModule, BL
 from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPConfig,
     CourtKPModule,
+    CourtKPPostprocessConfig,
     CourtKPResult,
 )
 from src.tennis_scene.pipeline.components.gvhmr import (
@@ -33,6 +34,7 @@ __all__ = [
     "BasePipelineModule",
     "CourtKPConfig",
     "CourtKPModule",
+    "CourtKPPostprocessConfig",
     "CourtKPResult",
     "GVHMRConfig",
     "GVHMRModule",
