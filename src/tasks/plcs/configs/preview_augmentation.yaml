@@ -1,0 +1,24 @@
+defaults:
+  - data: multiview_sequence
+  - _self_
+
+hydra:
+  run:
+    dir: ${preview.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
+
+preview:
+  split: train
+  sample_indices: []
+  max_samples: 4
+  num_augmented: 2
+  seed: 42
+  max_cameras: 4
+  pose_frames: 6
+  output_dir: outputs/plcs/augmentation_preview
+  figure:
+    panel_width: 4.0
+    panel_height: 3.0
+    dpi: 130

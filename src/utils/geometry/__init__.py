@@ -2,6 +2,7 @@
 
 Submodules:
 
+- :mod:`affine` — image-space affine matrix builders and point transforms.
 - :mod:`angles` — wrapped-angle / vector primitives (torch).
 - :mod:`skeleton` — COCO-17 joint-angle, torsion, twist, bone-length (torch).
 - :mod:`court_pose` — normalized-court <-> world/court pose conversions (torch).
@@ -16,6 +17,13 @@ Import from the relevant submodule (e.g.
 symbols are also re-exported here for convenience.
 """
 
+from src.utils.geometry.affine import (
+    build_centered_affine_matrix,
+    invert_homogeneous_matrix,
+    to_cv2_affine,
+    to_pil_affine_coefficients,
+    transform_points,
+)
 from src.utils.geometry.angles import (
     angular_error,
     normalize_vector,
@@ -67,6 +75,7 @@ __all__ = [
     "axis_angle_to_matrix",
     "axis_angle_to_quaternion",
     "axis_angle_to_rotation_matrix",
+    "build_centered_affine_matrix",
     "canonical_pose_to_world_pose",
     "clamp_pixel_coordinate",
     "compute_bone_lengths",
@@ -76,6 +85,7 @@ __all__ = [
     "court_position_to_world_translation",
     "denormalize_keypoints",
     "euler_angles_to_matrix",
+    "invert_homogeneous_matrix",
     "matrix_to_axis_angle",
     "matrix_to_quaternion",
     "matrix_to_rotation_6d",
@@ -90,6 +100,9 @@ __all__ = [
     "signed_angle_around_axis",
     "smpl_y_up_to_court_z_up",
     "standardize_quaternion",
+    "to_cv2_affine",
+    "to_pil_affine_coefficients",
+    "transform_points",
     "wrapped_angle_diff",
     "world_pose_to_canonical_pose",
 ]

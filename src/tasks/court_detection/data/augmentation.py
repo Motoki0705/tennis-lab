@@ -28,6 +28,13 @@ from src.utils.data.augmentation import (
 from src.utils.data.augmentation import (
     IMAGENET_STD as IMAGENET_STD,
 )
+from src.utils.geometry.affine import (
+    AffineMatrix,
+    build_centered_affine_matrix,
+    invert_homogeneous_matrix,
+    to_pil_affine_coefficients,
+    transform_points,
+)
 from src.utils.geometry.image_size import resize_short_side_aligned
 
 # ── Helpers ──────────────────────────────────────────────────────
@@ -65,7 +72,7 @@ def _sample_perspective_h(
     if cv2.contourArea(dst.astype(np.float32)) < 1.0:
         return None
 
-    h_mat = cv2.getPerspectiveTransform(src, dst)
+    h_mat: np.ndarray = cv2.getPerspectiveTransform(src, dst)
     return h_mat.astype(np.float32)
 
 
@@ -88,6 +95,46 @@ def _warp_perspective_pil(
         borderValue=fill_value,
     )
     return Image.fromarray(warped)
+
+
+def _random_affine_matrix(
+    *,
+    width: int,
+    height: int,
+    degrees: float,
+    translate: tuple[float, float],
+    scale: tuple[float, float],
+    shear: float,
+) -> AffineMatrix:
+    """Sample one source->destination affine matrix shared by image/mask/kp warps.
+
+    ``shear`` is applied as a coupled x=y shear because ``torchvision.TF.affine``
+    normalizes a single-element ``shear=[value]`` list to ``[value, value]``
+    (see ``torchvision.transforms.functional.affine``); using an asymmetric
+    ``(shear, 0)`` matrix here would silently desync keypoints from the image.
+    """
+    angle = random.uniform(-degrees, degrees)
+    max_dx = translate[0] * width
+    max_dy = translate[1] * height
+    tx = random.uniform(-max_dx, max_dx)
+    ty = random.uniform(-max_dy, max_dy)
+    scale_factor = random.uniform(scale[0], scale[1])
+    shear_deg = random.uniform(-shear, shear)
+    return build_centered_affine_matrix(
+        width=width,
+        height=height,
+        rotation_degrees=angle,
+        translate=(tx, ty),
+        scale=scale_factor,
+        shear_degrees=(shear_deg, shear_deg),
+        shear_mode="torchvision",
+    )
+
+
+def _warp_pil_affine(img: Image.Image, matrix: AffineMatrix, *, resample: int) -> Image.Image:
+    """Warp a PIL image with the inverse of a source->destination affine matrix."""
+    coeffs = to_pil_affine_coefficients(invert_homogeneous_matrix(matrix))
+    return img.transform(img.size, Image.AFFINE, coeffs, resample, fillcolor=0)
 
 
 # ── Joint Spatial Transforms (Segmentation) ──────────────────────
@@ -202,25 +249,13 @@ class SegRandomAffine:
     def __call__(
         self, img: Image.Image, mask: Image.Image,
     ) -> tuple[Image.Image, Image.Image]:
-        angle = random.uniform(-self.degrees, self.degrees)
         w, h = img.size
-        max_dx = self.translate[0] * w
-        max_dy = self.translate[1] * h
-        tx = random.uniform(-max_dx, max_dx)
-        ty = random.uniform(-max_dy, max_dy)
-        scale_factor = random.uniform(self.scale[0], self.scale[1])
-        shear_val = random.uniform(-self.shear, self.shear)
-
-        img = TF.affine(
-            img, angle=angle, translate=[tx, ty],
-            scale=scale_factor, shear=[shear_val],
-            interpolation=TF.InterpolationMode.BILINEAR,
+        matrix = _random_affine_matrix(
+            width=w, height=h, degrees=self.degrees,
+            translate=self.translate, scale=self.scale, shear=self.shear,
         )
-        mask = TF.affine(
-            mask, angle=angle, translate=[tx, ty],
-            scale=scale_factor, shear=[shear_val],
-            interpolation=TF.InterpolationMode.NEAREST,
-        )
+        img = _warp_pil_affine(img, matrix, resample=Image.BILINEAR)
+        mask = _warp_pil_affine(mask, matrix, resample=Image.NEAREST)
         return img, mask
 
 
@@ -369,41 +404,13 @@ class KPRandomAffine:
     def __call__(
         self, img: Image.Image, kps: np.ndarray,
     ) -> tuple[Image.Image, np.ndarray]:
-        angle = random.uniform(-self.degrees, self.degrees)
         w, h = img.size
-        max_dx = self.translate[0] * w
-        max_dy = self.translate[1] * h
-        tx = random.uniform(-max_dx, max_dx)
-        ty = random.uniform(-max_dy, max_dy)
-        scale_factor = random.uniform(self.scale[0], self.scale[1])
-        shear_deg = random.uniform(-self.shear, self.shear)
-
-        img = TF.affine(
-            img, angle=angle, translate=[tx, ty],
-            scale=scale_factor, shear=[shear_deg],
-            interpolation=TF.InterpolationMode.BILINEAR,
+        matrix = _random_affine_matrix(
+            width=w, height=h, degrees=self.degrees,
+            translate=self.translate, scale=self.scale, shear=self.shear,
         )
-
-        cx, cy = w / 2.0, h / 2.0
-        angle_rad = math.radians(-angle)
-        shear_rad = math.radians(shear_deg)
-
-        cos_a = math.cos(angle_rad)
-        sin_a = math.sin(angle_rad)
-
-        m00 = scale_factor * (cos_a + sin_a * math.tan(shear_rad))
-        m01 = scale_factor * (-sin_a + cos_a * math.tan(shear_rad))
-        m10 = scale_factor * sin_a
-        m11 = scale_factor * cos_a
-
-        kps = kps.copy().astype(np.float64)
-        kps[:, 0] -= cx
-        kps[:, 1] -= cy
-        new_x = m00 * kps[:, 0] + m01 * kps[:, 1]
-        new_y = m10 * kps[:, 0] + m11 * kps[:, 1]
-        kps[:, 0] = new_x + cx + tx
-        kps[:, 1] = new_y + cy + ty
-        kps = kps.astype(np.float32)
+        img = _warp_pil_affine(img, matrix, resample=Image.BILINEAR)
+        kps = transform_points(kps, matrix)
         return img, kps
 
 
@@ -427,7 +434,7 @@ class KPRandomPerspective:
 
         img = _warp_perspective_pil(img, h_mat, interpolation=cv2.INTER_LINEAR, fill_value=0)
 
-        kps_in = kps.astype(np.float32).reshape(-1, 1, 2)
+        kps_in: np.ndarray = kps.astype(np.float32).reshape(-1, 1, 2)
         kps_out = cv2.perspectiveTransform(kps_in, h_mat).reshape(-1, 2)
         return img, kps_out.astype(np.float32)
 
