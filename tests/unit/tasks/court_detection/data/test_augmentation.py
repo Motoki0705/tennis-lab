@@ -1,9 +1,10 @@
 """Tests for court-detection joint spatial augmentations.
 
-The keypoint affine transform re-implements ``torchvision``'s ``TF.affine``
-point mapping in closed form. These tests guard against the two failure modes
-that closed form is prone to: rotating keypoints opposite to the image, and
-mis-coupling the x-shear term.
+The keypoint and image/mask affine warps share one ``build_centered_affine_matrix``
+per draw (``src.tasks.court_detection.data.augmentation._random_affine_matrix``).
+These tests guard against the two failure modes a closed-form point mapping is
+prone to: rotating keypoints opposite to the image, and mis-coupling the shear
+term between the x and y axes.
 """
 
 from __future__ import annotations
@@ -17,7 +18,13 @@ from PIL import Image
 from torchvision.transforms.functional import _get_inverse_affine_matrix
 
 from src.tasks.court_detection.data import augmentation as aug
-from src.tasks.court_detection.data.augmentation import KPRandomAffine
+from src.tasks.court_detection.data.augmentation import KPRandomAffine, SegRandomAffine
+from src.utils.geometry.affine import (
+    build_centered_affine_matrix,
+    invert_homogeneous_matrix,
+    to_pil_affine_coefficients,
+    transform_points,
+)
 
 
 def _image_point_after_affine(
@@ -117,10 +124,15 @@ def _torchvision_forward_point(
     ``_get_inverse_affine_matrix`` returns the output→input matrix used by the
     image warp; inverting it gives the input→output map a keypoint must follow.
     This is a noise-free oracle (unlike thresholding a warped image), so it can
-    pin the closed-form coupling of shear and scale precisely.
+    pin the closed-form coupling of shear and scale precisely. ``shear`` is
+    passed as ``[shear, shear]`` (not ``[shear, 0.0]``) because
+    ``_random_affine_matrix`` couples shear_x=shear_y to match what
+    ``TF.affine(..., shear=[shear_val])`` renders: torchvision's public
+    ``affine()`` normalizes a one-element shear list to ``[value, value]``
+    before building the matrix, so a single shear knob is coupled, not x-only.
     """
     inv = _get_inverse_affine_matrix(
-        [width / 2.0, height / 2.0], angle, [tx, ty], scale, [shear, 0.0]
+        [width / 2.0, height / 2.0], angle, [tx, ty], scale, [shear, shear]
     )
     m_inv = np.array([[inv[0], inv[1], inv[2]], [inv[3], inv[4], inv[5]], [0.0, 0.0, 1.0]])
     out = np.linalg.inv(m_inv) @ np.array([px, py, 1.0])
@@ -149,3 +161,81 @@ def test_kp_affine_matches_torchvision_matrix_with_shear_and_scale() -> None:
             f"({angle},{scale},{shear}): kp=({kp_x:.3f},{kp_y:.3f}) "
             f"oracle=({oracle_x:.3f},{oracle_y:.3f})"
         )
+
+
+def test_kp_affine_matches_image_warp_with_shear() -> None:
+    """A sheared affine must move keypoints the same way it moves the image.
+
+    Regression test for a coupling bug: the previous closed-form keypoint
+    mapping assumed an x-only shear (``shear_y=0``), but the image warp it
+    paired with actually applied a coupled ``shear_x=shear_y`` (torchvision
+    normalizes a one-element ``shear=[value]`` list that way). That silently
+    desynced keypoints from the image whenever ``shear != 0``.
+    """
+    w = h = 240
+    px, py = 170.0, 130.0
+    cases = [
+        (15.0, 1.0, 10.0, 0.0, 0.0),
+        (-10.0, 1.05, -14.0, 6.0, -4.0),
+    ]
+    for angle, scale, shear, tx, ty in cases:
+        img_x, img_y = _image_point_after_affine(
+            px, py, width=w, height=h, angle=angle,
+            scale=scale, shear=shear, tx=tx, ty=ty,
+        )
+        kp_x, kp_y = _apply_kp_affine(
+            px, py, width=w, height=h, angle=angle,
+            scale=scale, shear=shear, tx=tx, ty=ty,
+        )
+        assert math.hypot(kp_x - img_x, kp_y - img_y) < 2.0, (
+            f"angle={angle} shear={shear}: "
+            f"kp=({kp_x:.1f},{kp_y:.1f}) image=({img_x:.1f},{img_y:.1f})"
+        )
+
+
+def test_seg_affine_matches_shared_matrix_warp() -> None:
+    """Seg image/mask warp must equal a PIL AFFINE warp using the shared matrix."""
+    w, h = 137, 91
+    rng = np.random.default_rng(0)
+    img = Image.fromarray(
+        rng.integers(0, 255, size=(h, w, 3), dtype=np.uint8), mode="RGB",
+    )
+    mask = Image.fromarray(
+        rng.integers(0, 5, size=(h, w), dtype=np.uint8), mode="L",
+    )
+
+    transform = SegRandomAffine(degrees=25.0, translate=(0.2, 0.2), scale=(0.8, 1.3), shear=15.0)
+    angle, tx, ty, scale, shear = 12.0, 5.0, -3.0, 1.1, 8.0
+    values = iter([angle, tx, ty, scale, shear])
+    with patch.object(aug.random, "uniform", side_effect=lambda *_: next(values)):
+        out_img, out_mask = transform(img, mask)
+
+    matrix = build_centered_affine_matrix(
+        width=w, height=h, rotation_degrees=angle, translate=(tx, ty), scale=scale,
+        shear_degrees=(shear, shear), shear_mode="torchvision",
+    )
+    coeffs = to_pil_affine_coefficients(invert_homogeneous_matrix(matrix))
+    expected_img = img.transform(img.size, Image.AFFINE, coeffs, Image.BILINEAR, fillcolor=0)
+    expected_mask = mask.transform(mask.size, Image.AFFINE, coeffs, Image.NEAREST, fillcolor=0)
+
+    np.testing.assert_array_equal(np.array(out_img), np.array(expected_img))
+    np.testing.assert_array_equal(np.array(out_mask), np.array(expected_mask))
+
+
+def test_kp_affine_matches_transform_points_with_shared_matrix() -> None:
+    """KP output must equal ``transform_points`` on the shared affine matrix."""
+    w = h = 240
+    px, py = 150.0, 110.0
+    angle, tx, ty, scale, shear = 22.0, 9.0, -4.0, 1.05, 11.0
+    kp_x, kp_y = _apply_kp_affine(
+        px, py, width=w, height=h, angle=angle,
+        scale=scale, shear=shear, tx=tx, ty=ty,
+    )
+
+    matrix = build_centered_affine_matrix(
+        width=w, height=h, rotation_degrees=angle, translate=(tx, ty), scale=scale,
+        shear_degrees=(shear, shear), shear_mode="torchvision",
+    )
+    expected = transform_points(np.array([[px, py]], dtype=np.float32), matrix)[0]
+
+    np.testing.assert_allclose([kp_x, kp_y], expected, atol=1e-4)
