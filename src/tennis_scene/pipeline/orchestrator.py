@@ -7,7 +7,7 @@ import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from src.tennis_scene.io import SceneResult
 from src.tennis_scene.pipeline.components.ball_detection import (
@@ -15,7 +15,11 @@ from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionModule,
 )
 from src.tennis_scene.pipeline.components.blcs import BLCSConfig, BLCSModule
-from src.tennis_scene.pipeline.components.court_kp import CourtKPConfig, CourtKPModule
+from src.tennis_scene.pipeline.components.court_kp import (
+    CourtKPConfig,
+    CourtKPModule,
+    CourtKPPostprocessConfig,
+)
 from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationConfig,
     PlayerAssociationModule,
@@ -106,15 +110,30 @@ class TennisSceneOrchestrator:
 
         if Stage.COURT_KP not in resolution.enabled_set:
             raise ValueError("COURT_KP stage must be enabled.")
+        court_postprocess_cfg = cfg.court_kp.get("postprocess", {})
+        court_kp_mode_raw = str(cfg.court_kp.get("mode", "model"))
+        if court_kp_mode_raw not in ("model", "manual_ui"):
+            raise ValueError(f"Unsupported court_kp.mode: {court_kp_mode_raw!r}")
+        court_kp_mode = cast(Literal["model", "manual_ui"], court_kp_mode_raw)
         court_kp_module = CourtKPModule(
             CourtKPConfig(
                 checkpoint_path=to_absolute_path(cfg.court_kp.checkpoint),
-                mode=str(cfg.court_kp.get("mode", "model")),
+                mode=court_kp_mode,
                 device=device,
                 num_keypoints=int(cfg.court_kp.get("num_keypoints", 14)),
                 save_result=cfg.court_kp.get("save_result", True),
                 output_path=output_path("court_kp", "court_kp_result.json"),
                 load_path=load_path("court_kp"),
+                postprocess=CourtKPPostprocessConfig(
+                    enabled=bool(court_postprocess_cfg.get("enabled", False)),
+                    min_score=float(court_postprocess_cfg.get("min_score", 0.3)),
+                    ransac_reproj_threshold=float(
+                        court_postprocess_cfg.get("ransac_reproj_threshold", 3.0)
+                    ),
+                    temporal_median_window=int(
+                        court_postprocess_cfg.get("temporal_median_window", 0)
+                    ),
+                ),
             )
         )
 
