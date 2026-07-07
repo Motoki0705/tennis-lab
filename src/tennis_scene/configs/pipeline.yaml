@@ -2,10 +2,10 @@ defaults:
   - _self_
 
 video_paths:
-  - data/samples/test.mp4
+  - data/samples/tennis_clip.mp4
 camera_ids: null
 
-output_dir: outputs/tennis_scene/test
+output_dir: outputs/tennis_scene/baseline
 output_name: null
 
 device: cuda
@@ -63,7 +63,7 @@ plcs:
   output_path: ${output_dir}/plcs_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
   # Example: load_path: outputs/tennis_scene/plcs_result.json
-  window_size: 256  # max frames per model call (stay inside trained seq_len_range)
+  window_size: 1024  # max frames per model call (stay inside trained seq_len_range)
   window_overlap: 64
   # Binarize pose-detector confidence. Swept on tennis_clip (far-player XY
   # speed p99 / frames>10m/s): 0.35 -> 53.7 / 69, 0.25 -> 30.5 / 38,
@@ -78,7 +78,7 @@ blcs:
   output_path: ${output_dir}/blcs_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
   # Example: load_path: outputs/tennis_scene/blcs_result.json
-  window_size: 256  # max frames per model call (stay inside trained seq_len_range)
+  window_size: 1024  # max frames per model call (stay inside trained seq_len_range)
   window_overlap: 64
 
 max_frames: null

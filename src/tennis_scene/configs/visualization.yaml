@@ -2,13 +2,13 @@ defaults:
   - _self_
 
 # Input scene result file (required)
-input: outputs/tennis_scene/clip.npz
+input: outputs/tennis_scene/baseline/tennis_clip.npz
 
 # Output video path (optional, if null only displays or saves preview)
-output: null
+output: outputs/tennis_scene/baseline/tennis_clip.gif
 
 # Display animation in matplotlib window
-display: true
+display: false
 
 # Frame range
 start_frame: 0
