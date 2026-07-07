@@ -60,7 +60,7 @@ class CourtKPDataset(Dataset):
         cfg = config or {}
         self.sigma_ratio = float(cfg.get("sigma_ratio", 0.01))
 
-        self.spatial_transforms, self.image_transforms = build_kp_transforms(
+        self.spatial_pipeline, self.image_transforms = build_kp_transforms(
             is_train=is_train,
             train_scales=cfg.get("train_scales"),
             val_short_side=cfg.get("val_short_side", 640),
@@ -78,6 +78,8 @@ class CourtKPDataset(Dataset):
             gaussian_blur_kernel=cfg.get("gaussian_blur_kernel"),
             gaussian_blur_sigma=cfg.get("gaussian_blur_sigma", (0.1, 2.0)),
             gaussian_blur_prob=cfg.get("gaussian_blur_prob", 0.3),
+            min_visible_kp=int(cfg.get("min_visible_kp", 0)),
+            visibility_max_retries=int(cfg.get("visibility_max_retries", 20)),
         )
 
     def __len__(self) -> int:
@@ -93,8 +95,7 @@ class CourtKPDataset(Dataset):
         ) or (self.images_dir / f"{image_id}.jpg")
         img = Image.open(img_path).convert("RGB")
 
-        for t in self.spatial_transforms:
-            img, kps = t(img, kps)
+        img, kps, kp_visible = self.spatial_pipeline.transform_with_visibility(img, kps)
 
         for t in self.image_transforms:
             img = t(img)
@@ -114,16 +115,19 @@ class CourtKPDataset(Dataset):
         else:
             normalized_kps[:, 1] = 0.0
 
+        kp_visible_tensor = torch.from_numpy(kp_visible)
         heatmap_tensor = generate_gaussian_heatmaps(
             size_hw=(h, w),
             centers_xy=normalized_kps,
             sigma_ratio=self.sigma_ratio,
+            visibility=kp_visible_tensor,
         )
 
         return {
             "image": img_tensor,
             "heatmap": heatmap_tensor,
             "keypoints": kps_tensor,
+            "kp_visible": kp_visible_tensor,
             "image_size": torch.tensor([h, w], dtype=torch.int64),
             "image_id": image_id,
         }

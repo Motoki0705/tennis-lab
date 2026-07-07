@@ -15,3 +15,6 @@ color_jitter: [0.0, 0.0, 0.0, 0.0]
 gaussian_blur_kernel: [3]
 gaussian_blur_sigma: [0.1, 0.1]
 gaussian_blur_prob: 0.0
+# Resize-only pipeline cannot remove keypoints; keep the constraint off.
+min_visible_kp: 0
+visibility_max_retries: 1
