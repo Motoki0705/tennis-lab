@@ -1,0 +1,12 @@
+{
+  "mean_position_error_m": 1.5477087523633253,
+  "mean_x_error_m": 0.40425397284582926,
+  "mean_y_error_m": 1.3467455357204066,
+  "mean_z_error_m": 0.29305823658923114,
+  "mean_endpoint_error_m": 3.288679403333814,
+  "position_accuracy_0_3m": 0.16355579427946584,
+  "position_accuracy_0_6m": 0.3843158318783508,
+  "position_accuracy_1_2m": 0.6385792936748768,
+  "endpoint_accuracy_0_5m": 0.049999999995,
+  "endpoint_accuracy_1m": 0.169999999983
+}

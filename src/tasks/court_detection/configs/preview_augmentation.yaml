@@ -1,0 +1,28 @@
+defaults:
+  - data: court_kp
+  - _self_
+
+hydra:
+  run:
+    dir: ${preview.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
+
+preview:
+  split: train
+  sample_indices: []
+  max_samples: 4
+  num_augmented: 3
+  seed: 42
+  output_dir: outputs/court_detection/augmentation_preview
+  draw:
+    kp_radius: 4
+    kp_thickness: 2
+    mask_alpha: 0.45
+  layout:
+    tile_gap: 12
+    header_height: 30
+    text_scale: 0.55
+    text_thickness: 1
+    background_rgb: [24, 24, 24]

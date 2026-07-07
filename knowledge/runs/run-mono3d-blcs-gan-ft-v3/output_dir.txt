@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/blcs/blcs_multiview_axial/logs/version_7/checkpoints

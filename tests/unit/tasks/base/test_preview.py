@@ -3,7 +3,11 @@ from __future__ import annotations
 import pytest
 from omegaconf import OmegaConf
 
-from src.tasks.base.preview import resolve_sample_indices, resolve_split_file
+from src.tasks.base.preview import (
+    enable_all_augmentation_blocks,
+    resolve_sample_indices,
+    resolve_split_file,
+)
 
 
 def _preview_cfg(sample_indices: list[int], max_samples: int) -> OmegaConf:
@@ -34,6 +38,35 @@ def test_out_of_range_explicit_index_raises() -> None:
     cfg = _preview_cfg([9], max_samples=10)
     with pytest.raises(IndexError):
         resolve_sample_indices(cfg, 5)
+
+
+def test_enable_all_augmentation_blocks_flips_flags_only() -> None:
+    cfg = OmegaConf.create(
+        {
+            "enabled": False,
+            "preserve_clean_targets": True,
+            "gaussian_noise": {"enabled": False, "prob": 0.5, "ball_std": 0.01},
+            "burst_dropout": {"enabled": True, "prob": 0.3},
+            "scale_range": [1.0, 1.0],
+        }
+    )
+    result = enable_all_augmentation_blocks(cfg)
+    assert result["enabled"] is True
+    assert result["gaussian_noise"]["enabled"] is True
+    assert result["burst_dropout"]["enabled"] is True
+    # Non-flag parameters are untouched.
+    assert result["gaussian_noise"]["prob"] == 0.5
+    assert result["gaussian_noise"]["ball_std"] == 0.01
+    assert result["preserve_clean_targets"] is True
+    assert result["scale_range"] == [1.0, 1.0]
+    # The source config is not mutated.
+    assert cfg.enabled is False
+    assert cfg.gaussian_noise.enabled is False
+
+
+def test_enable_all_augmentation_blocks_rejects_non_mapping() -> None:
+    with pytest.raises(ValueError, match="must be a mapping"):
+        enable_all_augmentation_blocks(OmegaConf.create([1, 2]))
 
 
 def test_resolve_split_file_looks_up_named_key() -> None:

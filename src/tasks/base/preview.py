@@ -8,18 +8,38 @@ so the ball- and court-detection scripts share a single implementation.
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 import cv2
 import numpy as np
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 __all__ = [
     "compose_titled_row",
     "draw_normalized_point",
+    "enable_all_augmentation_blocks",
     "resolve_sample_indices",
     "resolve_split_file",
 ]
+
+
+def enable_all_augmentation_blocks(augmentation_cfg: DictConfig) -> dict[str, Any]:
+    """Return a plain-dict copy of ``augmentation_cfg`` with every block enabled.
+
+    Sets the top-level ``enabled`` flag and each per-block ``enabled`` flag to
+    ``True`` while leaving all other parameters (probabilities, magnitudes)
+    untouched, so preview scripts exercise every configured transform.
+    """
+    container = OmegaConf.to_container(augmentation_cfg, resolve=True)
+    if not isinstance(container, dict):
+        raise ValueError(
+            f"augmentation config must be a mapping, got {type(container).__name__}."
+        )
+    container["enabled"] = True
+    for block in container.values():
+        if isinstance(block, dict) and "enabled" in block:
+            block["enabled"] = True
+    return cast("dict[str, Any]", container)
 
 
 def resolve_split_file(cfg: DictConfig, split_name: str) -> str:
