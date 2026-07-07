@@ -28,7 +28,7 @@ class CourtKPConfig:
     """Configuration for CourtKP module.
 
     Attributes:
-        checkpoint_path: Path to model checkpoint.
+        checkpoint: Path to model checkpoint.
         mode: Detection mode ("model", "manual_ui").
         device: Inference device.
         num_keypoints: Number of court keypoints expected from the predictor/UI.
@@ -38,7 +38,7 @@ class CourtKPConfig:
 
     """
 
-    checkpoint_path: str | Path
+    checkpoint: str | Path
     mode: Literal["model", "manual_ui"] = "model"
     device: str = "cuda"
     num_keypoints: int = NUM_COURT_KEYPOINTS
@@ -49,14 +49,7 @@ class CourtKPConfig:
 
 @dataclass
 class CourtKPResult:
-    """Result of court keypoint detection over a video sequence.
-
-    Attributes:
-        keypoints: Court keypoints (N, T, K, 2), normalized [0, 1].
-        visibility: Court keypoint visibility flags (N, T, K).
-        frame_indices: Source frame indices aligned with T.
-
-    """
+    """Result of court keypoint detection over a video sequence."""
 
     keypoints: NDArray[np.float32]
     visibility: NDArray[np.float32]
@@ -153,27 +146,12 @@ class CourtKPModule(BasePipelineModule):
     """Court keypoint detection module.
 
     Detects court keypoints for each synchronized camera video.
-
-    Attributes:
-        config: Configuration for the module.
-        checkpoint_path: Path to model checkpoint.
-        device: Inference device.
-        mode: "model" for predictor or "manual_ui" for interactive input.
-
     """
 
-    def __init__(
-        self,
-        config: CourtKPConfig,
-    ) -> None:
-        """Initialize the module.
-
-        Args:
-            config: CourtKP configuration.
-
-        """
+    def __init__(self, config: CourtKPConfig) -> None:
+        """Initialize the module."""
         self.config = config
-        self.checkpoint_path = Path(self.config.checkpoint_path)
+        self.checkpoint = Path(self.config.checkpoint)
         self.mode = self.config.mode
         self.device = self.config.device
         self.num_keypoints = int(self.config.num_keypoints)
@@ -191,11 +169,11 @@ class CourtKPModule(BasePipelineModule):
         if self._predictor is not None:
             return
 
-        LOGGER.info(f"Loading Court KP model from {self.checkpoint_path}")
+        LOGGER.info(f"Loading Court KP model from {self.checkpoint}")
         from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
 
         self._predictor = CourtKeypointPredictor.load_from_checkpoint(
-            self.checkpoint_path, device=self.device
+            self.checkpoint, device=self.device
         )
 
     @property
@@ -206,16 +184,7 @@ class CourtKPModule(BasePipelineModule):
         return self._predictor is not None
 
     def _collect_manual_keypoints_ui(self, frame: NDArray[np.uint8]) -> None:
-        """Collect manual keypoints via an interactive UI.
-
-        Args:
-            frame: RGB frame array (H, W, 3).
-        """
-        try:
-            import cv2
-        except ImportError as exc:
-            raise ImportError("OpenCV is required for manual_ui mode.") from exc
-
+        """Collect manual keypoints via an interactive UI."""
         keypoints = np.zeros((self.num_keypoints, 2), dtype=np.float32)
         placed = np.zeros(self.num_keypoints, dtype=bool)
         current_idx = 0
@@ -298,17 +267,7 @@ class CourtKPModule(BasePipelineModule):
         max_frames: int | None = None,
         annotation_frame_index: int = 0,
     ) -> CourtKPResult:
-        """Detect court keypoints over synchronized video sequences.
-
-        Args:
-            video_paths: Paths to synchronized input videos.
-            max_frames: Maximum frames to return from the beginning of the video.
-            annotation_frame_index: Frame to annotate in manual UI mode.
-
-        Returns:
-            CourtKPResult with normalized keypoints shaped (N, T, K, 2).
-
-        """
+        """Detect court keypoints over synchronized video sequences."""
         video_paths = [Path(video_path) for video_path in video_paths]
         if not video_paths:
             raise ValueError("video_paths must contain at least one video")
@@ -502,7 +461,7 @@ if __name__ == "__main__":
 
     # Test config creation
     config = CourtKPConfig(
-        checkpoint_path="test.ckpt",
+        checkpoint="test.ckpt",
         mode="manual_ui",
         device="cpu",
         save_result=True,
