@@ -226,6 +226,15 @@ ignore_errors = true
 # test functions. Relax those ceremony-only rules for the tests package while
 # keeping real type errors active. `warn_unreachable` is also disabled because
 # asserting on state mutated by a helper call trips mypy's narrowing.
+# CLI entry points under scripts/ decorate `main` with the shared typed
+# `src.utils.hydra.hydra_main` wrapper. The pre-commit hook runs mypy with
+# `--follow-imports=skip`, so unless src/utils/hydra.py happens to be in the
+# same commit the wrapper is not analyzed and the decorator is seen as
+# untyped. Relax only that ceremony rule for script entry points.
+[[tool.mypy.overrides]]
+module = ["src.tasks.*.scripts.*", "experiments.*.scripts.*"]
+disallow_untyped_decorators = false
+
 [[tool.mypy.overrides]]
 module = ["tests.*"]
 disallow_untyped_defs = false

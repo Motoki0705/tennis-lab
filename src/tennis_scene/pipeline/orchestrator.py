@@ -78,24 +78,22 @@ class TennisSceneOrchestrator:
         for line in graph.format_resolution_messages(resolution):
             LOGGER.info(line)
 
-        def get_load_path(section: str) -> str | None:
-            load_path = cfg[section].get("load_path")
-            if load_path is not None:
-                return str(to_absolute_path(str(load_path)))
-            return None
+        def load_path(section: str) -> str | None:
+            value = cfg[section].get("load_path")
+            return str(to_absolute_path(str(value))) if value is not None else None
 
-        def get_load_paths(section: str) -> str | list[str] | None:
-            load_path = cfg[section].get("load_path")
-            if load_path is None:
+        def load_paths(section: str) -> str | list[str] | None:
+            value = cfg[section].get("load_path")
+            if value is None:
                 return None
-            if isinstance(load_path, (list, tuple, ListConfig)):
-                return [str(to_absolute_path(str(item))) for item in load_path]
-            return str(to_absolute_path(str(load_path)))
+            if isinstance(value, (list, tuple, ListConfig)):
+                return [str(to_absolute_path(str(item))) for item in value]
+            return str(to_absolute_path(str(value)))
 
-        def get_output_path(section: str, default_name: str) -> str:
-            output_path = cfg[section].get("output_path")
-            if output_path is not None:
-                return str(to_absolute_path(str(output_path)))
+        def output_path(section: str, default_name: str) -> str:
+            value = cfg[section].get("output_path")
+            if value is not None:
+                return str(to_absolute_path(str(value)))
             return str(output_dir / default_name)
 
         if Stage.COURT_KP not in resolution.enabled_set:
@@ -107,8 +105,8 @@ class TennisSceneOrchestrator:
                 device=device,
                 num_keypoints=int(cfg.court_kp.get("num_keypoints", 14)),
                 save_result=cfg.court_kp.get("save_result", True),
-                output_path=get_output_path("court_kp", "court_kp_result.json"),
-                load_path=get_load_path("court_kp"),
+                output_path=output_path("court_kp", "court_kp_result.json"),
+                load_path=load_path("court_kp"),
             )
         )
 
@@ -117,7 +115,7 @@ class TennisSceneOrchestrator:
             smplx_body_model_path = cfg.gvhmr.get("smplx_body_model_path")
             gvhmr_config = {
                 "python_executable": to_absolute_path(cfg.gvhmr.python_executable),
-                "model_checkpoint": to_absolute_path(cfg.gvhmr.checkpoint),
+                "gvhmr_checkpoint": to_absolute_path(cfg.gvhmr.gvhmr_checkpoint),
                 "yolo_checkpoint": to_absolute_path(cfg.gvhmr.yolo_checkpoint),
                 "vitpose_checkpoint": to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
                 "hmr2_checkpoint": to_absolute_path(cfg.gvhmr.hmr2_checkpoint),
@@ -126,12 +124,10 @@ class TennisSceneOrchestrator:
                     if smplx_body_model_path is not None
                     else None
                 ),
-                "track_selection": str(
-                    cfg.gvhmr.get("track_selection", "interactive")
-                ),
+                "track_selection": str(cfg.gvhmr.get("track_selection", "interactive")),
                 "num_tracks": int(cfg.gvhmr.get("num_tracks", 2)),
-                "output_path": get_output_path("gvhmr", "gvhmr_result.json"),
-                "load_path": get_load_paths("gvhmr"),
+                "output_path": output_path("gvhmr", "gvhmr_result.json"),
+                "load_path": load_paths("gvhmr"),
                 "device": device,
             }
 
@@ -139,56 +135,43 @@ class TennisSceneOrchestrator:
         player_association_module = PlayerAssociationModule(
             PlayerAssociationConfig(
                 mode=str(player_association_cfg.get("mode", "manual_ui")),
-                initial_frame_index=int(
-                    player_association_cfg.get("initial_frame_index", 0)
-                ),
+                initial_frame_index=int(player_association_cfg.get("frame_index", 0)),
                 reference_camera=player_association_cfg.get("reference_camera", 0),
                 save_result=bool(player_association_cfg.get("save_result", True)),
-                output_path=get_output_path(
-                    "player_association",
-                    "player_association_result.json",
+                output_path=output_path(
+                    "player_association", "player_association_result.json"
                 ),
-                load_path=get_load_path("player_association"),
+                load_path=load_path("player_association"),
             )
         )
 
         ball_detection_module = None
         if Stage.BALL_DETECTION in resolution.enabled_set:
-            ball_detection_cfg = cfg.ball_detection
+            bcfg = cfg.ball_detection
             ball_detection_module = BallDetectionModule(
                 BallDetectionConfig(
-                    checkpoint=to_absolute_path(ball_detection_cfg.checkpoint),
-                    batch_size=int(ball_detection_cfg.batch_size),
+                    checkpoint=to_absolute_path(bcfg.checkpoint),
+                    batch_size=int(bcfg.batch_size),
                     device=device,
-                    image_size=tuple(
-                        int(value)
-                        for value in ball_detection_cfg.get("image_size", [288, 512])
-                    ),
-                    normalize_imagenet=bool(
-                        ball_detection_cfg.get("normalize_imagenet", True)
-                    ),
-                    score_threshold=float(
-                        ball_detection_cfg.get("score_threshold", 0.5)
-                    ),
-                    prefetch_batches=int(ball_detection_cfg.get("prefetch_batches", 2)),
+                    image_size=tuple(int(v) for v in bcfg.get("image_size", [288, 512])),
+                    normalize_imagenet=bool(bcfg.get("normalize_imagenet", True)),
+                    score_threshold=float(bcfg.get("score_threshold", 0.5)),
+                    prefetch_batches=int(bcfg.get("prefetch_batches", 2)),
                     window_stride=(
                         None
-                        if ball_detection_cfg.get("window_stride", None) is None
-                        else int(ball_detection_cfg.window_stride)
+                        if bcfg.get("window_stride", None) is None
+                        else int(bcfg.window_stride)
                     ),
-                    tail_policy=str(ball_detection_cfg.get("tail_policy", "backfill")),
+                    tail_policy=str(bcfg.get("tail_policy", "backfill")),
                     overlap_aggregation=str(
-                        ball_detection_cfg.get(
-                            "overlap_aggregation", "last_window_wins"
-                        )
+                        bcfg.get("overlap_aggregation", "last_window_wins")
                     ),
-                    pin_memory=bool(ball_detection_cfg.get("pin_memory", True)),
-                    save_result=ball_detection_cfg.get("save_result", True),
-                    output_path=get_output_path(
-                        "ball_detection",
-                        "ball_detection_result.json",
+                    pin_memory=bool(bcfg.get("pin_memory", True)),
+                    save_result=bcfg.get("save_result", True),
+                    output_path=output_path(
+                        "ball_detection", "ball_detection_result.json"
                     ),
-                    load_path=get_load_path("ball_detection"),
+                    load_path=load_path("ball_detection"),
                 )
             )
 
@@ -199,8 +182,8 @@ class TennisSceneOrchestrator:
                 checkpoint_path=to_absolute_path(cfg.plcs.checkpoint),
                 device=device,
                 save_result=cfg.plcs.get("save_result", True),
-                output_path=get_output_path("plcs", "plcs_result.json"),
-                load_path=get_load_path("plcs"),
+                output_path=output_path("plcs", "plcs_result.json"),
+                load_path=load_path("plcs"),
                 window_size=int(cfg.plcs.get("window_size", 256)),
                 window_overlap=int(cfg.plcs.get("window_overlap", 64)),
                 human_vis_threshold=float(cfg.plcs.get("human_vis_threshold", 0.35)),
@@ -214,8 +197,8 @@ class TennisSceneOrchestrator:
                     checkpoint_path=to_absolute_path(cfg.blcs.checkpoint),
                     device=device,
                     save_result=cfg.blcs.get("save_result", True),
-                    output_path=get_output_path("blcs", "blcs_result.json"),
-                    load_path=get_load_path("blcs"),
+                    output_path=output_path("blcs", "blcs_result.json"),
+                    load_path=load_path("blcs"),
                     window_size=int(cfg.blcs.get("window_size", 256)),
                     window_overlap=int(cfg.blcs.get("window_overlap", 64)),
                 )
@@ -286,14 +269,13 @@ class TennisSceneOrchestrator:
             return GVHMRResult.load(load_path)
 
         LOGGER.info(f"Running GVHMR via CLI subprocess for camera {camera_index}...")
-        python_exe = self.gvhmr_config["python_executable"]
         cmd = [
-            python_exe,
+            self.gvhmr_config["python_executable"],
             "-m",
             "src.tennis_scene.pipeline.components.gvhmr",
             f"--video={video_path}",
             f"--output={output_path}",
-            f"--model-checkpoint={self.gvhmr_config['model_checkpoint']}",
+            f"--model-checkpoint={self.gvhmr_config['gvhmr_checkpoint']}",
             f"--yolo-checkpoint={self.gvhmr_config['yolo_checkpoint']}",
             f"--vitpose-checkpoint={self.gvhmr_config['vitpose_checkpoint']}",
             f"--hmr2-checkpoint={self.gvhmr_config['hmr2_checkpoint']}",
@@ -308,7 +290,6 @@ class TennisSceneOrchestrator:
         if max_frames is not None:
             cmd.append(f"--max-frames={max_frames}")
 
-        # Keep stdio attached so GVHMR tracker selection UI can read user input.
         result = subprocess.run(
             cmd,
             cwd=str(Path(__file__).parents[3]),
@@ -320,7 +301,6 @@ class TennisSceneOrchestrator:
             raise RuntimeError(
                 f"GVHMR subprocess failed with return code {result.returncode}"
             )
-
         return GVHMRResult.load(output_path)
 
     def load_all(self) -> None:
@@ -339,7 +319,7 @@ class TennisSceneOrchestrator:
         self,
         video_paths: Sequence[str | Path],
         max_frames: int | None = None,
-        court_kp_annotation_frame: int = 0,
+        frame_index: int = 0,
         camera_ids: Sequence[str] | None = None,
     ) -> SceneResult:
         resolved_video_paths = [Path(video_path) for video_path in video_paths]
@@ -355,7 +335,9 @@ class TennisSceneOrchestrator:
                     f"got {len(camera_ids)} and {len(resolved_video_paths)}"
                 )
 
-        video_infos = self._probe_synced_video_infos(resolved_video_paths, max_frames=max_frames)
+        video_infos = self._probe_synced_video_infos(
+            resolved_video_paths, max_frames=max_frames
+        )
         video_info = video_infos[0]
         width, height = video_info.width, video_info.height
         num_cameras = len(resolved_video_paths)
@@ -363,16 +345,13 @@ class TennisSceneOrchestrator:
         court_result = self.court_kp_module.process(
             resolved_video_paths,
             max_frames=max_frames,
-            annotation_frame_index=court_kp_annotation_frame,
+            annotation_frame_index=frame_index,
         )
         court_kp = court_result.keypoints
         court_vis = court_result.visibility
 
         if Stage.GVHMR in self.enabled_stages and self.gvhmr_config is not None:
-            (
-                association_result,
-                aligned_players,
-            ) = self._run_gvhmr_multicamera(
+            association_result, aligned_players = self._run_gvhmr_multicamera(
                 video_paths=resolved_video_paths,
                 video_infos=video_infos,
                 camera_ids=camera_ids,
@@ -398,7 +377,7 @@ class TennisSceneOrchestrator:
         )
 
         ball_uv = None
-        ball_visibility = None
+        ball_vis = None
         ball_3d = None
         if (
             Stage.BALL_DETECTION in self.enabled_stages
@@ -411,19 +390,17 @@ class TennisSceneOrchestrator:
                 image_height=height,
             )
             ball_uv = ball_detection_result.ball_uv
-            ball_visibility = ball_detection_result.visibility
-
+            ball_vis = ball_detection_result.visibility
             if Stage.BLCS in self.enabled_stages and self.blcs_module is not None:
                 blcs_result = self.blcs_module.process(
                     ball_uv=ball_uv,
                     court_kp=court_kp,
-                    ball_vis=ball_visibility,
+                    ball_vis=ball_vis,
                     court_vis=court_vis,
                 )
                 ball_3d = blcs_result.ball_3d
 
         T = plcs_result.position.shape[1]
-
         return SceneResult(
             num_frames=T,
             fps=video_info.fps,
@@ -438,7 +415,7 @@ class TennisSceneOrchestrator:
             smpl_betas=smpl_betas,
             smpl_vertices_local=smpl_vertices_local,
             ball_uv=ball_uv,
-            ball_visibility=ball_visibility,
+            ball_vis=ball_vis,
             ball_3d=ball_3d,
             human_kp_2d=human_kp_2d_norm,
             human_kp_vis=human_kp_vis,
@@ -448,7 +425,7 @@ class TennisSceneOrchestrator:
                 "camera_ids": list(camera_ids),
                 "num_cameras": num_cameras,
                 "sync_assumption": "preprocessed",
-                "court_kp_annotation_frame": court_kp_annotation_frame,
+                "frame_index": frame_index,
                 "court_kp_frame_indices": court_result.frame_indices.tolist(),
                 "track_ids": track_ids.tolist(),
                 "track_ids_by_camera": [
@@ -519,8 +496,7 @@ class TennisSceneOrchestrator:
             if human_kp_2d.shape[1:] != first_shape:
                 raise ValueError(
                     f"GVHMR camera {camera_index} human_kp_2d trailing shape "
-                    f"{human_kp_2d.shape[1:]} does not match first camera "
-                    f"{first_shape}"
+                    f"{human_kp_2d.shape[1:]} does not match first camera {first_shape}"
                 )
             if gvhmr_result.human_kp_vis.shape != human_kp_2d.shape[:3]:
                 raise ValueError(

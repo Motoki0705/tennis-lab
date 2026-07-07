@@ -18,6 +18,12 @@ from src.utils.data.augmentation import (
     parse_float_range,
     parse_int_range,
 )
+from src.utils.geometry.affine import (
+    AffineMatrix,
+    build_centered_affine_matrix,
+    to_cv2_affine,
+    transform_points,
+)
 from src.utils.seeding import make_sample_rng
 
 Frames = list[np.ndarray]
@@ -40,11 +46,12 @@ def _apply_affine_to_sequence(
     coords: Coords,
     visibility: Visibility,
     *,
-    matrix: np.ndarray,
+    matrix: AffineMatrix,
     border_mode: int,
 ) -> tuple[Frames, Coords, Visibility]:
     """Warp frames and transform visible coordinates with one affine matrix."""
     height, width = frames[0].shape[:2]
+    cv2_matrix = to_cv2_affine(matrix)
     out_frames: Frames = []
     out_coords: Coords = []
     out_visibility: Visibility = []
@@ -57,23 +64,23 @@ def _apply_affine_to_sequence(
     ):
         warped = cv2.warpAffine(
             frame,
-            matrix,
+            cv2_matrix,
             (width, height),
             flags=cv2.INTER_LINEAR,
             borderMode=border_mode,
         )
         transformed_coords: list[tuple[float, float]] = []
         transformed_visibility: list[float] = []
-        for (x, y), vis in zip(frame_coords, frame_visibility, strict=True):
-            if vis > 0:
-                new_x = float(matrix[0, 0] * x + matrix[0, 1] * y + matrix[0, 2])
-                new_y = float(matrix[1, 0] * x + matrix[1, 1] * y + matrix[1, 2])
-                if new_x < 0 or new_x >= width or new_y < 0 or new_y >= height:
-                    transformed_coords.append((0.0, 0.0))
-                    transformed_visibility.append(0.0)
-                else:
-                    transformed_coords.append((new_x, new_y))
-                    transformed_visibility.append(float(vis))
+        if frame_coords:
+            transformed_points = transform_points(
+                np.asarray(frame_coords, dtype=np.float64), matrix,
+            )
+        else:
+            transformed_points = np.empty((0, 2), dtype=np.float32)
+        for (new_x, new_y), vis in zip(transformed_points, frame_visibility, strict=True):
+            if vis > 0 and 0 <= new_x < width and 0 <= new_y < height:
+                transformed_coords.append((float(new_x), float(new_y)))
+                transformed_visibility.append(float(vis))
             else:
                 transformed_coords.append((0.0, 0.0))
                 transformed_visibility.append(0.0)
@@ -379,62 +386,31 @@ class AffineAugmentation(BaseAugmentation):
             return frames, coords, visibility
 
         height, width = frames[0].shape[:2]
-        center_x = (width - 1) / 2.0
-        center_y = (height - 1) / 2.0
 
-        rotation_rad = np.deg2rad(rng.uniform(*self.rotation_deg_range))
+        rotation_degrees = rng.uniform(*self.rotation_deg_range)
         scale = rng.uniform(*self.scale_range)
         if scale <= 0.0:
             return frames, coords, visibility
-        shear_x_rad = np.deg2rad(rng.uniform(*self.shear_x_deg_range))
-        shear_y_rad = np.deg2rad(rng.uniform(*self.shear_y_deg_range))
+        shear_x_degrees = rng.uniform(*self.shear_x_deg_range)
+        shear_y_degrees = rng.uniform(*self.shear_y_deg_range)
         translate_x = width * rng.uniform(*self.translate_x_ratio_range)
         translate_y = height * rng.uniform(*self.translate_y_ratio_range)
 
-        center_to_origin = np.array(
-            [[1.0, 0.0, -center_x], [0.0, 1.0, -center_y], [0.0, 0.0, 1.0]],
-            dtype=np.float32,
+        matrix = build_centered_affine_matrix(
+            width=width,
+            height=height,
+            rotation_degrees=rotation_degrees,
+            translate=(translate_x, translate_y),
+            scale=scale,
+            shear_degrees=(shear_x_degrees, shear_y_degrees),
+            center=((width - 1) / 2.0, (height - 1) / 2.0),
         )
-        scale_matrix = np.array(
-            [[scale, 0.0, 0.0], [0.0, scale, 0.0], [0.0, 0.0, 1.0]],
-            dtype=np.float32,
-        )
-        shear_matrix = np.array(
-            [
-                [1.0, np.tan(shear_x_rad), 0.0],
-                [np.tan(shear_y_rad), 1.0, 0.0],
-                [0.0, 0.0, 1.0],
-            ],
-            dtype=np.float32,
-        )
-        cos_theta = float(np.cos(rotation_rad))
-        sin_theta = float(np.sin(rotation_rad))
-        rotation_matrix = np.array(
-            [
-                [cos_theta, -sin_theta, 0.0],
-                [sin_theta, cos_theta, 0.0],
-                [0.0, 0.0, 1.0],
-            ],
-            dtype=np.float32,
-        )
-        recenter = np.array(
-            [
-                [1.0, 0.0, center_x + translate_x],
-                [0.0, 1.0, center_y + translate_y],
-                [0.0, 0.0, 1.0],
-            ],
-            dtype=np.float32,
-        )
-        full_matrix = (
-            recenter @ rotation_matrix @ shear_matrix @ scale_matrix @ center_to_origin
-        )
-        affine_matrix = full_matrix[:2, :]
 
         return _apply_affine_to_sequence(
             frames,
             coords,
             visibility,
-            matrix=affine_matrix,
+            matrix=matrix,
             border_mode=_resolve_border_mode(self.border_mode),
         )
 
@@ -514,12 +490,11 @@ class ScaleAndCropAugmentation(BaseAugmentation):
         else:
             center_x = (width - 1) / 2.0
             center_y = (height - 1) / 2.0
-        matrix = np.array(
-            [
-                [scale, 0.0, center_x - scale * center_x],
-                [0.0, scale, center_y - scale * center_y],
-            ],
-            dtype=np.float32,
+        matrix = build_centered_affine_matrix(
+            width=width,
+            height=height,
+            scale=scale,
+            center=(center_x, center_y),
         )
 
         return _apply_affine_to_sequence(

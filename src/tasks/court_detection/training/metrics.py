@@ -65,11 +65,17 @@ class CourtDetectionMetrics:
             self._union.append(union.detach().cpu())
 
     def _update_kp(self, logits: Tensor, batch: dict[str, Tensor]) -> None:
-        """Compute argmax distance to ground truth keypoints."""
+        """Compute argmax distance to ground truth keypoints.
+
+        Only keypoints marked visible in ``batch["kp_visible"]`` enter the
+        metric: invisible keypoints have blanked heatmap targets, so the
+        argmax of their predicted map carries no meaningful location.
+        """
         coords_pred = heatmaps_to_pixel_coords(logits)  # (B, K, 2)
         coords_gt = batch["keypoints"]  # (B, K, 2)
         dist = torch.norm(coords_pred.cpu() - coords_gt.cpu(), dim=-1)  # (B, K)
-        self._distances.append(dist.detach())
+        visible = batch["kp_visible"].cpu().bool()  # (B, K)
+        self._distances.append(dist[visible].detach())
 
     def _update_line(self, logits: Tensor, batch: dict[str, Tensor]) -> None:
         """Compute per-batch binary Dice score."""
@@ -100,7 +106,9 @@ class CourtDetectionMetrics:
     def _compute_kp(self) -> dict[str, float]:
         if not self._distances:
             return {"mean_dist": 0.0}
-        all_dist = torch.cat(self._distances, dim=0)  # (N, K)
+        all_dist = torch.cat(self._distances, dim=0)  # flat over visible KPs
+        if all_dist.numel() == 0:
+            return {"mean_dist": 0.0}
         return {"mean_dist": all_dist.mean().item()}
 
     def _compute_line(self) -> dict[str, float]:
