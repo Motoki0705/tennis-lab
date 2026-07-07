@@ -20,6 +20,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install ffmpeg
+        # Required by the ball_detection video pipeline (and its e2e tests),
+        # which shells out to the `ffmpeg` binary for transcoding.
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Install dependencies
         # NOTE: uv.lock pins CUDA-linked torch wheels (torch>=2.9.0). On this
         # CPU runner those wheels are large (~2 GB) but still functional for
