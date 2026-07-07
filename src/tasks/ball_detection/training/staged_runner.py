@@ -75,8 +75,15 @@ class StagedBallDetectionTrainingRunner(BallDetectionTrainingRunner):
             token_budget=token_budget,
             safety=safety,
         )
-        effective_batch = table[min(table)]
-        datamodule.set_batch_plan(table, effective_batch)
+        effective_batch = (
+            datamodule.effective_batch_size
+            if getattr(datamodule, "t_distribution", "variable") == "fixed"
+            else table[min(table)]
+        )
+        datamodule.set_batch_plan(
+            {**datamodule.batch_size_by_t, **table},
+            effective_batch,
+        )
         print(f"[staged] calibrated B(T)={table}; EBS={effective_batch}")
 
     def _maybe_init_weights(self, config: Any, module: pl.LightningModule) -> None:
