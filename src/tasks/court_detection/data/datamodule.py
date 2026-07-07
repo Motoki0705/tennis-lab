@@ -95,7 +95,7 @@ def _pad_collate_kp(batch: list[dict]) -> dict:
     """Pad variable-size images/heatmaps to the max size in the batch."""
     max_h, max_w = _pad_max_hw(batch)
 
-    images, heatmaps, keypoints, sizes, ids = [], [], [], [], []
+    images, heatmaps, keypoints, visibles, sizes, ids = [], [], [], [], [], []
     for b in batch:
         images.append(_pad_image(b["image"], max_h, max_w))
 
@@ -104,6 +104,7 @@ def _pad_collate_kp(batch: list[dict]) -> dict:
         padded_hm[:, :hh, :hw] = b["heatmap"]
         heatmaps.append(padded_hm)
         keypoints.append(b["keypoints"])
+        visibles.append(b["kp_visible"])
         _, h, w = b["image"].shape
         sizes.append(b.get("image_size", torch.tensor([h, w], dtype=torch.int64)))
         ids.append(b["image_id"])
@@ -112,6 +113,7 @@ def _pad_collate_kp(batch: list[dict]) -> dict:
         "image": torch.stack(images),
         "heatmap": torch.stack(heatmaps),
         "keypoints": torch.stack(keypoints),
+        "kp_visible": torch.stack(visibles),
         "image_size": torch.stack(sizes),
         "image_id": ids,
     }
@@ -163,6 +165,8 @@ class CourtDetectionDataModule(pl.LightningDataModule):
             "gaussian_blur_kernel": list(aug_cfg.get("gaussian_blur_kernel", [3, 5, 7, 9])),
             "gaussian_blur_sigma": tuple(aug_cfg.get("gaussian_blur_sigma", (0.1, 3.0))),
             "gaussian_blur_prob": float(aug_cfg.get("gaussian_blur_prob", 0.5)),
+            "min_visible_kp": int(aug_cfg.get("min_visible_kp", 0)),
+            "visibility_max_retries": int(aug_cfg.get("visibility_max_retries", 20)),
             "sigma_ratio": float(self.config.get("data", {}).get("sigma_ratio", 0.01)),
         }
 
