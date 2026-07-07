@@ -4,14 +4,17 @@ set -euo pipefail
 # Prepare archive-based datasets/assets from Google Drive.
 #
 # Supported targets:
-#   ball   -> tennis.tar.zst
-#   court  -> court.tar.zst, DINOv3 submodule, DINOv3 ViT-B/16 checkpoint
-#   plcs   -> smplx.tar.zst, smplh.tar.zst, ACCAD.tar.zst
+#   ball        -> tennis.tar.zst
+#   court       -> court.tar.zst, DINOv3 submodule, DINOv3 ViT-B/16 checkpoint
+#   plcs        -> smplx.tar.zst, smplh.tar.zst, ACCAD.tar.zst
+#   dinov3_ssl  -> dinov3_ssl.tar.zst (data/tennis/dino_ssl/images),
+#                  DINOv3 submodule, DINOv3 ViT-B/16 checkpoint
 #
 # Usage from Colab:
 #   !bash scripts/colab/setup/prepare_archive_dataset.sh ball
 #   !bash scripts/colab/setup/prepare_archive_dataset.sh court
 #   !bash scripts/colab/setup/prepare_archive_dataset.sh plcs
+#   !bash scripts/colab/setup/prepare_archive_dataset.sh dinov3_ssl
 #
 # Environment overrides:
 #   REPO_ROOT     default: repository root inferred from this script path
@@ -23,12 +26,14 @@ set -euo pipefail
 usage() {
     cat <<'EOF'
 Usage:
-  bash scripts/colab/setup/prepare_archive_dataset.sh {ball|court|plcs}
+  bash scripts/colab/setup/prepare_archive_dataset.sh {ball|court|plcs|dinov3_ssl}
 
 Targets:
-  ball   Copy/extract tennis.tar.zst
-  court  Copy/extract court.tar.zst and stage DINOv3 assets
-  plcs   Copy/extract smplx.tar.zst, smplh.tar.zst, ACCAD.tar.zst
+  ball        Copy/extract tennis.tar.zst
+  court       Copy/extract court.tar.zst and stage DINOv3 assets
+  plcs        Copy/extract smplx.tar.zst, smplh.tar.zst, ACCAD.tar.zst
+  dinov3_ssl  Copy/extract dinov3_ssl.tar.zst (data/tennis/dino_ssl/images)
+              and stage DINOv3 assets
 
 Environment overrides:
   DRIVE_DATA=/content/drive/MyDrive/tennis_lab/data
@@ -63,6 +68,9 @@ case "${TARGET}" in
         ;;
     plcs)
         ARCHIVES=("smplx.tar.zst" "smplh.tar.zst" "ACCAD.tar.zst")
+        ;;
+    dinov3_ssl)
+        ARCHIVES=("dinov3_ssl.tar.zst")
         ;;
     -h|--help|help)
         usage
@@ -154,7 +162,7 @@ for archive in "${ARCHIVES[@]}"; do
     tar -I zstd -xf "${CACHE_DIR}/${archive}" -C "${DATA_DIR}"
 done
 
-if [[ "${TARGET}" == "court" ]]; then
+if [[ "${TARGET}" == "court" || "${TARGET}" == "dinov3_ssl" ]]; then
     prepare_dinov3_assets
 fi
 
