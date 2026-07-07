@@ -2,3 +2,5 @@ peak_threshold: 0.5
 ball_distance_threshold: 4.0
 nms_kernel: 9
 max_predictions_per_frame: 8
+# Sub-cell peak refinement (log-parabolic fit) before distance matching.
+subpixel_refine: true
