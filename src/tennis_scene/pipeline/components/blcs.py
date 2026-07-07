@@ -103,11 +103,6 @@ class BLCSResult:
                 errors.append("visibility length does not match ball_3d length")
             if not np.isin(self.visibility, [0, 1, False, True]).all():
                 errors.append("visibility must contain only 0 or 1")
-            invalid = ~self.visibility.astype(bool)
-            if invalid.any():
-                tol = 1e-6
-                if np.any(np.abs(self.ball_3d[invalid]) > tol):
-                    errors.append("ball_3d must be zero for invalid frames")
         return len(errors) == 0, errors
 
     @classmethod
@@ -252,6 +247,9 @@ class BLCSModule(BasePipelineModule):
         court_kp_t = torch.from_numpy(court_kp).float().unsqueeze(0)
 
         ball_vis_t = torch.from_numpy(effective_vis.astype(np.float32)).unsqueeze(0)
+        # ball_vis controls visible-coordinate vs invisible-token substitution.
+        # ball_mask is only the valid/padding mask for the model input; detector
+        # misses must remain valid frames so BLCS can infer the full trajectory.
         ball_mask_t = torch.ones_like(ball_vis_t)
 
         court_vis_t = None
@@ -286,9 +284,6 @@ class BLCSModule(BasePipelineModule):
                 f"BLCS predictor position must have shape (T, 3), got {ball_3d.shape}"
             )
         output_visibility = np.asarray(effective_vis.any(axis=0), dtype=np.bool_)
-
-        # Mask out invalid frames with zeros to keep JSON strictly numeric
-        ball_3d[~output_visibility] = 0.0
 
         result = BLCSResult(ball_3d=ball_3d, visibility=output_visibility)
 
