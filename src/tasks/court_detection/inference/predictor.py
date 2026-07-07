@@ -16,7 +16,7 @@ from src.tasks.court_detection.inference.preprocess import preprocess_court_imag
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
-from src.utils.data.heatmaps import heatmaps_to_argmax
+from src.utils.data.heatmaps import heatmaps_to_argmax, refine_peaks_log_parabolic
 
 
 class CourtKeypointPredictor(BasePredictor):
@@ -35,10 +35,13 @@ class CourtKeypointPredictor(BasePredictor):
         model: torch.nn.Module,
         device: torch.device,
         short_side: int = 640,
+        *,
+        subpixel_refine: bool = True,
     ) -> None:
         self.model = model
         self.device = device
         self.short_side = short_side
+        self.subpixel_refine = bool(subpixel_refine)
 
         self.model.to(self.device)
         self.model.eval()
@@ -63,6 +66,7 @@ class CourtKeypointPredictor(BasePredictor):
         -------
         CourtKeypointPredictor
         """
+        subpixel_refine = bool(kwargs.pop("subpixel_refine", True))
         lightning_module, resolved_device = cls._load_single_lightning_module(
             checkpoint_path,
             CourtDetectionLightningModule,
@@ -76,7 +80,12 @@ class CourtKeypointPredictor(BasePredictor):
         aug_cfg = data_cfg.get("augmentation", {})
         short_side = int(aug_cfg.get("val_short_side", 640))
 
-        return cls(model=model, device=resolved_device, short_side=short_side)
+        return cls(
+            model=model,
+            device=resolved_device,
+            short_side=short_side,
+            subpixel_refine=subpixel_refine,
+        )
 
     def preprocess(self, image: np.ndarray | Image.Image) -> tuple[Tensor, int, int]:
         """Preprocess image for inference.
@@ -99,6 +108,8 @@ class CourtKeypointPredictor(BasePredictor):
         self,
         image: np.ndarray | Image.Image | Tensor,
         return_heatmaps: bool = False,
+        *,
+        subpixel_refine: bool | None = None,
     ) -> dict[str, Tensor]:
         """Run inference on a single image.
 
@@ -106,6 +117,7 @@ class CourtKeypointPredictor(BasePredictor):
         -------
         dict
             - ``keypoints``: ``(K, 2)`` pixel coordinates on CPU.
+            - ``scores``: ``(K,)`` sigmoid peak scores on CPU.
             - ``heatmaps`` (optional): ``(K, H, W)`` raw logits on CPU.
         """
         if isinstance(image, (np.ndarray, Image.Image)):
@@ -119,7 +131,13 @@ class CourtKeypointPredictor(BasePredictor):
         with torch.no_grad():
             logits = self.model(image_tensor)  # [1, K, H, W]
 
-        coords = self._heatmaps_to_coords(logits)[0].cpu()  # (K, 2)
+        heatmaps = torch.sigmoid(logits)
+        use_subpixel = self.subpixel_refine if subpixel_refine is None else subpixel_refine
+        coords_normalized, scores = self._heatmaps_to_coords(
+            heatmaps,
+            subpixel_refine=bool(use_subpixel),
+        )
+        coords = coords_normalized[0].cpu()  # (K, 2)
         if orig_w > 1:
             coords[:, 0] *= float(orig_w - 1)
         else:
@@ -129,24 +147,36 @@ class CourtKeypointPredictor(BasePredictor):
         else:
             coords[:, 1] = 0.0
 
-        result: dict[str, Tensor] = {"keypoints": coords}
+        result: dict[str, Tensor] = {
+            "keypoints": coords,
+            "scores": scores[0].cpu(),
+        }
         if return_heatmaps:
             result["heatmaps"] = logits[0].cpu()
         return result
 
     @staticmethod
-    def _heatmaps_to_coords(heatmaps: Tensor) -> Tensor:
-        """Convert heatmaps to normalized keypoint coordinates via argmax.
+    def _heatmaps_to_coords(
+        heatmaps: Tensor,
+        *,
+        subpixel_refine: bool = True,
+    ) -> tuple[Tensor, Tensor]:
+        """Convert probability heatmaps to normalized coordinates and scores.
 
         Parameters
         ----------
         heatmaps:
-            ``[B, K, H, W]`` raw logits.
+            ``[B, K, H, W]`` sigmoid probability heatmaps.
+        subpixel_refine:
+            Whether to refine argmax peaks with log-parabolic sub-cell fitting.
 
         Returns
         -------
-        Tensor
-            ``[B, K, 2]`` in normalised ``[0, 1]`` range.
+        tuple[Tensor, Tensor]
+            Coordinates ``[B, K, 2]`` in normalised ``[0, 1]`` range and
+            sigmoid peak scores ``[B, K]``.
         """
-        coords, _ = heatmaps_to_argmax(heatmaps)
-        return coords
+        coords, scores = heatmaps_to_argmax(heatmaps)
+        if subpixel_refine:
+            coords = refine_peaks_log_parabolic(heatmaps, coords)
+        return coords, scores
