@@ -1,0 +1,448 @@
+diff --git a/src/tasks/ball_detection/configs/evaluation/ball_detector_comparison.yaml b/src/tasks/ball_detection/configs/evaluation/ball_detector_comparison.yaml
+index 19e7dce..2e9d0d8 100644
+--- a/src/tasks/ball_detection/configs/evaluation/ball_detector_comparison.yaml
++++ b/src/tasks/ball_detection/configs/evaluation/ball_detector_comparison.yaml
+@@ -9,6 +9,7 @@ metrics:
+   ball_distance_threshold: 4.0
+   nms_kernel: 9
+   max_predictions_per_frame: 8
++  subpixel_refine: true
+ 
+ performance:
+   warmup_batches: 1
+diff --git a/src/tasks/ball_detection/configs/metrics/default.yaml b/src/tasks/ball_detection/configs/metrics/default.yaml
+index 96aa41c..e7318b5 100644
+--- a/src/tasks/ball_detection/configs/metrics/default.yaml
++++ b/src/tasks/ball_detection/configs/metrics/default.yaml
+@@ -2,3 +2,5 @@ peak_threshold: 0.5
+ ball_distance_threshold: 4.0
+ nms_kernel: 9
+ max_predictions_per_frame: 8
++# Sub-cell peak refinement (log-parabolic fit) before distance matching.
++subpixel_refine: true
+diff --git a/src/tasks/ball_detection/evaluation/configuration.py b/src/tasks/ball_detection/evaluation/configuration.py
+index adc28eb..61d96bb 100644
+--- a/src/tasks/ball_detection/evaluation/configuration.py
++++ b/src/tasks/ball_detection/evaluation/configuration.py
+@@ -81,6 +81,7 @@ def build_evaluation_config(
+             "ball_distance_threshold": metrics_spec.ball_distance_threshold,
+             "nms_kernel": metrics_spec.nms_kernel,
+             "max_predictions_per_frame": metrics_spec.max_predictions_per_frame,
++            "subpixel_refine": metrics_spec.subpixel_refine,
+         }
+     )
+     return evaluation_config
+diff --git a/src/tasks/ball_detection/evaluation/contracts.py b/src/tasks/ball_detection/evaluation/contracts.py
+index cb50b1a..c50447c 100644
+--- a/src/tasks/ball_detection/evaluation/contracts.py
++++ b/src/tasks/ball_detection/evaluation/contracts.py
+@@ -25,6 +25,7 @@ class MetricsSpec:
+     ball_distance_threshold: float = 4.0
+     nms_kernel: int = 9
+     max_predictions_per_frame: int = 8
++    subpixel_refine: bool = True
+ 
+ 
+ @dataclass(frozen=True)
+@@ -102,6 +103,7 @@ def load_evaluation_manifest(path: str | Path) -> EvaluationManifest:
+         max_predictions_per_frame=int(
+             metrics_raw.get("max_predictions_per_frame", 8)
+         ),
++        subpixel_refine=bool(metrics_raw.get("subpixel_refine", True)),
+     )
+     performance = PerformanceSpec(
+         warmup_batches=int(performance_raw.get("warmup_batches", 1)),
+diff --git a/src/tasks/ball_detection/evaluation/metrics.py b/src/tasks/ball_detection/evaluation/metrics.py
+index 78e48d0..1afb819 100644
+--- a/src/tasks/ball_detection/evaluation/metrics.py
++++ b/src/tasks/ball_detection/evaluation/metrics.py
+@@ -111,6 +111,7 @@ class StratifiedBallMetrics:
+             ball_distance_threshold=self.spec.ball_distance_threshold,
+             nms_kernel=self.spec.nms_kernel,
+             max_predictions_per_frame=self.spec.max_predictions_per_frame,
++            subpixel_refine=self.spec.subpixel_refine,
+         )
+ 
+     def _ensure_device(self, device: torch.device) -> None:
+diff --git a/src/tasks/ball_detection/inference/predictor.py b/src/tasks/ball_detection/inference/predictor.py
+index ff529dd..acd7cbd 100644
+--- a/src/tasks/ball_detection/inference/predictor.py
++++ b/src/tasks/ball_detection/inference/predictor.py
+@@ -14,7 +14,7 @@ from src.tasks.ball_detection.training.lightning_module import (
+     BallDetectionLightningModule,
+ )
+ from src.tasks.base.inference.predictor import BasePredictor
+-from src.utils.data.heatmaps import heatmaps_to_argmax
++from src.utils.data.heatmaps import heatmaps_to_argmax, refine_peaks_log_parabolic
+ 
+ 
+ class BallDetectionPredictor(BasePredictor):
+@@ -27,6 +27,8 @@ class BallDetectionPredictor(BasePredictor):
+         model: Ball detection model instance.
+         device: Device for inference.
+         model_config: Model configuration dict used for input adaptation.
++        subpixel_refine: Whether peak coordinates are refined to sub-cell
++            precision (log-parabolic fit) instead of raw lattice argmax.
+     """
+ 
+     def __init__(
+@@ -34,10 +36,13 @@ class BallDetectionPredictor(BasePredictor):
+         model: torch.nn.Module,
+         device: torch.device,
+         model_config: dict[str, Any] | None = None,
++        *,
++        subpixel_refine: bool = True,
+     ) -> None:
+         self.model = model
+         self.device = device
+         self.model_config = model_config or {}
++        self.subpixel_refine = bool(subpixel_refine)
+ 
+         self.model.to(self.device)
+         self.model.eval()
+@@ -54,7 +59,8 @@ class BallDetectionPredictor(BasePredictor):
+         Args:
+             checkpoint_path: Path to checkpoint file(s).
+             device: Device for inference.
+-            **kwargs: Additional arguments (unused).
++            **kwargs: ``subpixel_refine`` forwards to the constructor;
++                remaining arguments are unused.
+ 
+         Returns:
+             BallDetectionPredictor instance.
+@@ -62,6 +68,7 @@ class BallDetectionPredictor(BasePredictor):
+         Raises:
+             FileNotFoundError: If checkpoint file does not exist.
+         """
++        subpixel_refine = bool(kwargs.pop("subpixel_refine", True))
+         lightning_module, resolved_device = cls._load_single_lightning_module(
+             checkpoint_path,
+             BallDetectionLightningModule,
+@@ -74,7 +81,12 @@ class BallDetectionPredictor(BasePredictor):
+         model = lightning_module.model
+         model_config = dict(lightning_module.config.get("model", {}))
+ 
+-        return cls(model=model, device=resolved_device, model_config=model_config)
++        return cls(
++            model=model,
++            device=resolved_device,
++            model_config=model_config,
++            subpixel_refine=subpixel_refine,
++        )
+ 
+     def predict(
+         self,
+@@ -105,6 +117,8 @@ class BallDetectionPredictor(BasePredictor):
+             logits = logits.squeeze(1)
+             heatmaps = torch.sigmoid(logits)
+             coords, peak_values = heatmaps_to_argmax(heatmaps)
++            if self.subpixel_refine:
++                coords = refine_peaks_log_parabolic(heatmaps, coords)
+ 
+             result: dict[str, Tensor] = {
+                 "coords": coords.cpu(),
+diff --git a/src/tasks/ball_detection/training/lightning_module.py b/src/tasks/ball_detection/training/lightning_module.py
+index 6eba2e6..846ec62 100644
+--- a/src/tasks/ball_detection/training/lightning_module.py
++++ b/src/tasks/ball_detection/training/lightning_module.py
+@@ -34,6 +34,7 @@ def _build_metrics(metrics_cfg: Any) -> BallDetectionMetrics:
+         ball_distance_threshold=float(metrics_cfg.get("ball_distance_threshold", 4.0)),
+         nms_kernel=int(metrics_cfg.get("nms_kernel", 9)),
+         max_predictions_per_frame=int(metrics_cfg.get("max_predictions_per_frame", 8)),
++        subpixel_refine=bool(metrics_cfg.get("subpixel_refine", True)),
+     )
+ 
+ 
+diff --git a/src/tasks/ball_detection/training/metrics.py b/src/tasks/ball_detection/training/metrics.py
+index 33ba1df..fbc8665 100644
+--- a/src/tasks/ball_detection/training/metrics.py
++++ b/src/tasks/ball_detection/training/metrics.py
+@@ -7,7 +7,7 @@ from scipy.optimize import linear_sum_assignment
+ from torch import Tensor
+ from torchmetrics import Metric
+ 
+-from src.utils.data.heatmaps import heatmaps_to_peaks
++from src.utils.data.heatmaps import heatmaps_to_peaks, refine_peaks_log_parabolic
+ 
+ 
+ class BallDetectionMetrics(Metric):
+@@ -27,12 +27,14 @@ class BallDetectionMetrics(Metric):
+         ball_distance_threshold: float = 4.0,
+         nms_kernel: int = 9,
+         max_predictions_per_frame: int = 8,
++        subpixel_refine: bool = True,
+     ) -> None:
+         super().__init__()
+         self.peak_threshold = float(peak_threshold)
+         self.ball_distance_threshold = float(ball_distance_threshold)
+         self.nms_kernel = int(nms_kernel)
+         self.max_predictions_per_frame = int(max_predictions_per_frame)
++        self.subpixel_refine = bool(subpixel_refine)
+         if self.peak_threshold < 0:
+             raise ValueError("metrics.peak_threshold must be non-negative.")
+         if self.ball_distance_threshold < 0:
+@@ -101,6 +103,10 @@ class BallDetectionMetrics(Metric):
+             nms_kernel=self.nms_kernel,
+             max_peaks=self.max_predictions_per_frame,
+         )
++        if self.subpixel_refine:
++            pred_coords_normalized = refine_peaks_log_parabolic(
++                pred_heatmaps, pred_coords_normalized
++            )
+         for batch_index in range(pred_heatmaps.shape[0]):
+             width = max(float(original_size[batch_index, 0].item()) - 1.0, 0.0)
+             height = max(float(original_size[batch_index, 1].item()) - 1.0, 0.0)
+diff --git a/src/tennis_scene/configs/pipeline.yaml b/src/tennis_scene/configs/pipeline.yaml
+index e8454ce..5955e0b 100644
+--- a/src/tennis_scene/configs/pipeline.yaml
++++ b/src/tennis_scene/configs/pipeline.yaml
+@@ -47,6 +47,7 @@ ball_detection:
+   image_size: [288, 512]
+   normalize_imagenet: true
+   score_threshold: 0.5
++  subpixel_refine: true  # Sub-cell peak refinement (removes heatmap-lattice quantization)
+   prefetch_batches: 2
+   window_stride: null  # null means model.num_frames
+   tail_policy: backfill  # backfill/drop
+diff --git a/src/tennis_scene/pipeline/components/ball_detection.py b/src/tennis_scene/pipeline/components/ball_detection.py
+index 785f1fe..d51c9b9 100644
+--- a/src/tennis_scene/pipeline/components/ball_detection.py
++++ b/src/tennis_scene/pipeline/components/ball_detection.py
+@@ -40,6 +40,8 @@ class BallDetectionConfig:
+         image_size: Model input size as ``(height, width)``.
+         normalize_imagenet: Whether to apply ImageNet normalization.
+         score_threshold: Minimum peak confidence for visible detections.
++        subpixel_refine: Whether peak coordinates are refined to sub-cell
++            precision instead of raw heatmap-lattice argmax.
+         prefetch_batches: Number of preprocessed inference batches to queue.
+         window_stride: Temporal window stride. Defaults to model sequence length.
+         tail_policy: Final-window policy for partial tails.
+@@ -57,6 +59,7 @@ class BallDetectionConfig:
+     image_size: tuple[int, int] = (288, 512)
+     normalize_imagenet: bool = True
+     score_threshold: float = 0.5
++    subpixel_refine: bool = True
+     prefetch_batches: int = 2
+     window_stride: int | None = None
+     tail_policy: str = "backfill"
+@@ -197,7 +200,9 @@ class BallDetectionModule(BasePipelineModule):
+ 
+         LOGGER.info(f"Loading ball detection model from {self.config.checkpoint}")
+         self._pipeline = BallDetectionPredictor.load_from_checkpoint(
+-            self.config.checkpoint, device=self.config.device
++            self.config.checkpoint,
++            device=self.config.device,
++            subpixel_refine=self.config.subpixel_refine,
+         )
+ 
+     @property
+diff --git a/src/tennis_scene/pipeline/orchestrator.py b/src/tennis_scene/pipeline/orchestrator.py
+index fd861e9..99ea174 100644
+--- a/src/tennis_scene/pipeline/orchestrator.py
++++ b/src/tennis_scene/pipeline/orchestrator.py
+@@ -156,6 +156,7 @@ class TennisSceneOrchestrator:
+                     image_size=tuple(int(v) for v in bcfg.get("image_size", [288, 512])),
+                     normalize_imagenet=bool(bcfg.get("normalize_imagenet", True)),
+                     score_threshold=float(bcfg.get("score_threshold", 0.5)),
++                    subpixel_refine=bool(bcfg.get("subpixel_refine", True)),
+                     prefetch_batches=int(bcfg.get("prefetch_batches", 2)),
+                     window_stride=(
+                         None
+diff --git a/src/utils/data/__init__.py b/src/utils/data/__init__.py
+index 2a67f3d..0a7615c 100644
+--- a/src/utils/data/__init__.py
++++ b/src/utils/data/__init__.py
+@@ -24,6 +24,7 @@ from src.utils.data.heatmaps import (
+     heatmaps_to_peaks,
+     heatmaps_to_pixel_coords,
+     heatmaps_to_soft_argmax,
++    refine_peaks_log_parabolic,
+     resize_heatmap_sequence,
+ )
+ from src.utils.data.scene_io import load_scene_payload
+@@ -52,6 +53,7 @@ __all__ = [
+     "parse_float_range",
+     "parse_int_range",
+     "random_visibility_dropout",
++    "refine_peaks_log_parabolic",
+     "resize_heatmap_sequence",
+     "scale_uv_with_visibility",
+     "tensor_images_to_uint8_rgb",
+diff --git a/src/utils/data/heatmaps.py b/src/utils/data/heatmaps.py
+index 994a18e..ead2e1a 100644
+--- a/src/utils/data/heatmaps.py
++++ b/src/utils/data/heatmaps.py
+@@ -280,6 +280,100 @@ def heatmaps_to_peaks(
+     )
+ 
+ 
++def refine_peaks_log_parabolic(
++    heatmaps: Tensor,
++    coords: Tensor,
++    *,
++    eps: float = 1.0e-12,
++) -> Tensor:
++    """Refine lattice peak coordinates to sub-cell precision.
++
++    Fits a 1-D parabola per axis to the log of the three heatmap values
++    around each peak cell. For heatmaps that sample a 2-D axis-aligned
++    Gaussian (the supervised ball-detection target) the recovered offset is
++    exact, so this removes the lattice quantization of
++    :func:`heatmaps_to_argmax` / :func:`heatmaps_to_peaks`.
++
++    Peaks on the heatmap border or with a degenerate local curvature keep
++    their input coordinate on that axis. Offsets are clamped to half a cell,
++    matching the argmax guarantee that the true peak lies within the cell.
++
++    Args:
++        heatmaps: Tensor with shape ``(..., H, W)`` of non-negative values.
++        coords: Normalized ``(x, y)`` peak coordinates produced by an argmax
++            over *heatmaps*, with shape ``(..., 2)`` or ``(..., K, 2)`` whose
++            leading dimensions match *heatmaps*.
++        eps: Floor applied to heatmap values before the log, and minimum
++            curvature magnitude accepted by the fit.
++
++    Returns:
++        Refined normalized coordinates with the same shape as *coords*.
++    """
++    if heatmaps.ndim < 2:
++        raise ValueError(f"heatmaps must have shape (..., H, W), got {tuple(heatmaps.shape)}.")
++    if coords.shape[-1] != 2:
++        raise ValueError(f"coords must have shape (..., 2), got {tuple(coords.shape)}.")
++    *leading_shape, height, width = heatmaps.shape
++    coords_shape = tuple(coords.shape)
++    if coords_shape[: len(leading_shape)] != tuple(leading_shape) or len(coords_shape) not in (
++        len(leading_shape) + 1,
++        len(leading_shape) + 2,
++    ):
++        raise ValueError(
++            "coords leading dimensions must match heatmaps leading dimensions "
++            f"with an optional peak axis, got coords {coords_shape} for "
++            f"heatmaps {tuple(heatmaps.shape)}."
++        )
++    if eps <= 0:
++        raise ValueError("eps must be positive.")
++
++    flattened_leading = math.prod(leading_shape) if leading_shape else 1
++    maps = heatmaps.reshape(flattened_leading, height, width)
++    flat_coords = coords.reshape(flattened_leading, -1, 2)
++
++    x_index = (
++        (flat_coords[..., 0] * float(width - 1)).round().long().clamp(0, width - 1)
++    )
++    y_index = (
++        (flat_coords[..., 1] * float(height - 1)).round().long().clamp(0, height - 1)
++    )
++    batch_index = torch.arange(flattened_leading, device=heatmaps.device)[:, None]
++
++    def _log_value(dy: Tensor, dx: Tensor) -> Tensor:
++        y_neighbor = (y_index + dy).clamp(0, height - 1)
++        x_neighbor = (x_index + dx).clamp(0, width - 1)
++        return maps[batch_index, y_neighbor, x_neighbor].clamp_min(eps).log()
++
++    zero = torch.zeros_like(x_index)
++    one = torch.ones_like(x_index)
++
++    def _axis_offset(
++        log_minus: Tensor,
++        log_center: Tensor,
++        log_plus: Tensor,
++        index: Tensor,
++        last_index: int,
++    ) -> Tensor:
++        curvature = 2.0 * log_center - log_minus - log_plus
++        offset = 0.5 * (log_plus - log_minus) / curvature.clamp_min(eps)
++        offset = offset.clamp(-0.5, 0.5)
++        interior = (index > 0) & (index < last_index) & (curvature > eps)
++        return torch.where(interior, offset, torch.zeros_like(offset))
++
++    log_center = _log_value(zero, zero)
++    offset_x = _axis_offset(
++        _log_value(zero, -one), log_center, _log_value(zero, one), x_index, width - 1
++    )
++    offset_y = _axis_offset(
++        _log_value(-one, zero), log_center, _log_value(one, zero), y_index, height - 1
++    )
++
++    refined_x = (x_index.to(coords.dtype) + offset_x) / max(width - 1, 1)
++    refined_y = (y_index.to(coords.dtype) + offset_y) / max(height - 1, 1)
++    refined = torch.stack([refined_x, refined_y], dim=-1).clamp(0.0, 1.0)
++    return refined.reshape(coords_shape)
++
++
+ def resize_heatmap_sequence(heatmaps: Tensor, target_size_hw: tuple[int, int]) -> Tensor:
+     """Bilinearly resize ``(B, T, H, W)`` heatmaps/logits to ``target_size_hw``.
+ 
+diff --git a/tests/unit/utils/data/test_heatmaps.py b/tests/unit/utils/data/test_heatmaps.py
+index 694dc84..66c908a 100644
+--- a/tests/unit/utils/data/test_heatmaps.py
++++ b/tests/unit/utils/data/test_heatmaps.py
+@@ -12,6 +12,7 @@ from src.utils.data.heatmaps import (
+     heatmaps_to_peaks,
+     heatmaps_to_pixel_coords,
+     heatmaps_to_soft_argmax,
++    refine_peaks_log_parabolic,
+ )
+ 
+ 
+@@ -158,3 +159,60 @@ class TestHeatmapsToPeaks:
+     def test_invalid_args_raise(self, kwargs: dict) -> None:
+         with pytest.raises(ValueError):
+             heatmaps_to_peaks(torch.zeros(8, 8), **kwargs)
++
++
++class TestRefinePeaksLogParabolic:
++    def test_recovers_fractional_gaussian_center_exactly(self) -> None:
++        # Off-lattice center: argmax alone quantizes, refinement must recover it.
++        center = torch.tensor([0.4130, 0.5020])
++        hm = generate_gaussian_heatmaps((72, 128), center, sigma_ratio=0.012)
++        coords, _ = heatmaps_to_argmax(hm)
++        assert not torch.allclose(coords, center, atol=1e-3)
++        refined = refine_peaks_log_parabolic(hm, coords)
++        assert torch.allclose(refined, center, atol=1e-4)
++
++    def test_batched_and_peak_axis_shapes(self) -> None:
++        centers = torch.tensor([[0.31, 0.62], [0.77, 0.18]])
++        hm = generate_gaussian_heatmaps((36, 64), centers, sigma_ratio=0.02)
++        coords, _, _ = heatmaps_to_peaks(hm, threshold=0.5, nms_kernel=3, max_peaks=2)
++        refined = refine_peaks_log_parabolic(hm, coords)
++        assert refined.shape == coords.shape
++        for index in range(2):
++            assert torch.allclose(refined[index, 0], centers[index], atol=1e-4)
++
++    def test_lattice_center_is_unchanged(self) -> None:
++        # Center on a lattice point: refinement must not move it.
++        hm = generate_gaussian_heatmaps((17, 17), (0.5, 0.5), sigma_ratio=0.05)
++        coords, _ = heatmaps_to_argmax(hm)
++        refined = refine_peaks_log_parabolic(hm, coords)
++        assert torch.allclose(refined, coords, atol=1e-6)
++
++    def test_border_peak_keeps_argmax_coordinate(self) -> None:
++        hm = torch.zeros(9, 9)
++        hm[0, 8] = 1.0
++        coords, _ = heatmaps_to_argmax(hm)
++        refined = refine_peaks_log_parabolic(hm, coords)
++        assert torch.allclose(refined, coords)
++
++    def test_flat_map_keeps_argmax_coordinate(self) -> None:
++        hm = torch.full((9, 9), 0.5)
++        coords, _ = heatmaps_to_argmax(hm)
++        refined = refine_peaks_log_parabolic(hm, coords)
++        assert torch.allclose(refined, coords)
++
++    def test_offset_clamped_to_half_cell(self) -> None:
++        hm = torch.zeros(9, 9)
++        hm[4, 4] = 0.9
++        hm[4, 5] = 0.89999
++        coords, _ = heatmaps_to_argmax(hm)
++        refined = refine_peaks_log_parabolic(hm, coords)
++        assert (refined - coords).abs().max() <= 0.5 / 8 + 1e-6
++
++    def test_mismatched_leading_shape_raises(self) -> None:
++        hm = torch.rand(2, 8, 8)
++        with pytest.raises(ValueError, match="leading dimensions"):
++            refine_peaks_log_parabolic(hm, torch.rand(3, 2))
++
++    def test_bad_last_dim_raises(self) -> None:
++        with pytest.raises(ValueError, match=r"\(\.\.\., 2\)"):
++            refine_peaks_log_parabolic(torch.rand(8, 8), torch.rand(3))
