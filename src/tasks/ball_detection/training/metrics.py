@@ -7,7 +7,7 @@ from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 from torchmetrics import Metric
 
-from src.utils.data.heatmaps import heatmaps_to_peaks
+from src.utils.data.heatmaps import heatmaps_to_peaks, refine_peaks_log_parabolic
 
 
 class BallDetectionMetrics(Metric):
@@ -27,12 +27,14 @@ class BallDetectionMetrics(Metric):
         ball_distance_threshold: float = 4.0,
         nms_kernel: int = 9,
         max_predictions_per_frame: int = 8,
+        subpixel_refine: bool = True,
     ) -> None:
         super().__init__()
         self.peak_threshold = float(peak_threshold)
         self.ball_distance_threshold = float(ball_distance_threshold)
         self.nms_kernel = int(nms_kernel)
         self.max_predictions_per_frame = int(max_predictions_per_frame)
+        self.subpixel_refine = bool(subpixel_refine)
         if self.peak_threshold < 0:
             raise ValueError("metrics.peak_threshold must be non-negative.")
         if self.ball_distance_threshold < 0:
@@ -101,6 +103,10 @@ class BallDetectionMetrics(Metric):
             nms_kernel=self.nms_kernel,
             max_peaks=self.max_predictions_per_frame,
         )
+        if self.subpixel_refine:
+            pred_coords_normalized = refine_peaks_log_parabolic(
+                pred_heatmaps, pred_coords_normalized
+            )
         for batch_index in range(pred_heatmaps.shape[0]):
             width = max(float(original_size[batch_index, 0].item()) - 1.0, 0.0)
             height = max(float(original_size[batch_index, 1].item()) - 1.0, 0.0)

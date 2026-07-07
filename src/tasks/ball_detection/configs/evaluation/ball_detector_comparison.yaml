@@ -9,6 +9,7 @@ metrics:
   ball_distance_threshold: 4.0
   nms_kernel: 9
   max_predictions_per_frame: 8
+  subpixel_refine: true
 
 performance:
   warmup_batches: 1

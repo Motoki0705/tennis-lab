@@ -25,6 +25,7 @@ class MetricsSpec:
     ball_distance_threshold: float = 4.0
     nms_kernel: int = 9
     max_predictions_per_frame: int = 8
+    subpixel_refine: bool = True
 
 
 @dataclass(frozen=True)
@@ -102,6 +103,7 @@ def load_evaluation_manifest(path: str | Path) -> EvaluationManifest:
         max_predictions_per_frame=int(
             metrics_raw.get("max_predictions_per_frame", 8)
         ),
+        subpixel_refine=bool(metrics_raw.get("subpixel_refine", True)),
     )
     performance = PerformanceSpec(
         warmup_batches=int(performance_raw.get("warmup_batches", 1)),
