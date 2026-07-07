@@ -49,9 +49,11 @@ ball_detection:
   score_threshold: 0.5
   subpixel_refine: true  # Sub-cell peak refinement (removes heatmap-lattice quantization)
   prefetch_batches: 2
-  window_stride: null  # null means model.num_frames
+  # Overlapping windows (stride T/2) + max_score raise tennis_clip coverage
+  # 88.9% -> 92.0% and remove >30px teleports (issue #618 sweep).
+  window_stride: 4
   tail_policy: backfill  # backfill/drop
-  overlap_aggregation: last_window_wins  # last_window_wins/max_score
+  overlap_aggregation: max_score  # last_window_wins/max_score
   pin_memory: true
   skip: false
   save_result: true

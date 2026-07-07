@@ -1,13 +1,18 @@
 schema: ball_detection_evaluation_manifest_v1
-output_dir: outputs/ball_detection/evaluation
+# evaluation/ holds pre-#618 legacy-protocol results; keep them separate.
+output_dir: outputs/ball_detection/evaluation_native
 device: auto
 resume: true
 fail_fast: false
 
+# Native-resolution protocol (issue #618): heatmaps stay on the model's output
+# lattice (72x128 for 288x512 inputs) so log-parabolic sub-pixel refinement
+# operates on the unresized Gaussian. nms_kernel 3 matches the 4x coarser grid.
+# Distances/thresholds remain in original-image pixels.
 metrics:
   peak_threshold: 0.5
   ball_distance_threshold: 4.0
-  nms_kernel: 9
+  nms_kernel: 3
   max_predictions_per_frame: 8
   subpixel_refine: true
 
@@ -22,6 +27,7 @@ datasets:
     overrides:
       batch_size: 4
       num_workers: 4
+      heatmap_size: [72, 128]
   web:
     config: web_frames
     splits: [test]
@@ -35,6 +41,15 @@ models:
   - id: convnext-tracknet
     category: architecture-controlled
     checkpoint: outputs/ball_detection/convnext/logs/version_0/checkpoints/last.ckpt
+    expected_model_name: conv_next_unet
+    datasets: [tracknet]
+    strict: true
+
+  # issue #618: val/f1-monitored fine-tune of convnext-tracknet; deployed as
+  # ckpt/ball_detection/last.ckpt (2026-07-07).
+  - id: convnext-v2-ft
+    category: architecture-controlled
+    checkpoint: outputs/ball_detection/convnext_v2_ft/logs/version_0/checkpoints/ball-detection-epoch=13.ckpt
     expected_model_name: conv_next_unet
     datasets: [tracknet]
     strict: true
