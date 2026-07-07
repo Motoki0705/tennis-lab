@@ -43,7 +43,7 @@ class SceneResult:
     smpl_vertices_local: NDArray[np.float32] | None = None  # (P, T, V, 3)
 
     ball_uv: NDArray[np.float32] | None = None  # (N, T, 2)
-    ball_visibility: NDArray[np.bool_] | None = None  # (N, T)
+    ball_vis: NDArray[np.bool_] | None = None  # (N, T)
     ball_3d: NDArray[np.float32] | None = None  # (T, 3)
 
     human_kp_2d: NDArray[np.float32] | None = None  # (P, N, T, 17, 2)
@@ -81,8 +81,8 @@ class SceneResult:
             data["smpl_vertices_local"] = self.smpl_vertices_local
         if self.ball_uv is not None:
             data["ball_uv"] = self.ball_uv
-        if self.ball_visibility is not None:
-            data["ball_visibility"] = self.ball_visibility
+        if self.ball_vis is not None:
+            data["ball_vis"] = self.ball_vis
         if self.ball_3d is not None:
             data["ball_3d"] = self.ball_3d
         if self.human_kp_2d is not None:
@@ -103,18 +103,7 @@ class SceneResult:
     @classmethod
     def load(cls, path: str | Path) -> SceneResult:
         path = Path(path)
-        try:
-            data = np.load(path, allow_pickle=False)
-        except ValueError:
-            warnings.warn(
-                (
-                    f"{path} contains pickle-based arrays (legacy format). "
-                    "Falling back to allow_pickle=True."
-                ),
-                RuntimeWarning,
-                stacklevel=2,
-            )
-            data = np.load(path, allow_pickle=True)
+        data = np.load(path, allow_pickle=False)
 
         metadata = {}
         sidecar_path = cls._metadata_sidecar_path(path)
@@ -131,18 +120,7 @@ class SceneResult:
                     RuntimeWarning,
                     stacklevel=2,
                 )
-        elif "metadata" in data.files:
-            # Legacy npz fallback
-            try:
-                metadata = data["metadata"].item()
-            except Exception as exc:
-                warnings.warn(
-                    f"Failed to load metadata from {path}: {exc}. Proceeding without metadata.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
 
-        # Primary fields (new canonical names).
         player_position = np.asarray(data["player_position"], dtype=np.float32)
         player_yaw = np.asarray(data["player_yaw"], dtype=np.float32)
         smpl_body_pose = np.asarray(data["smpl_body_pose"], dtype=np.float32)
@@ -152,6 +130,10 @@ class SceneResult:
         smpl_vertices_local = data.get("smpl_vertices_local")
         if smpl_vertices_local is not None:
             smpl_vertices_local = np.asarray(smpl_vertices_local, dtype=np.float32)
+
+        ball_vis = data.get("ball_vis")
+        if ball_vis is not None:
+            ball_vis = np.asarray(ball_vis, dtype=np.bool_)
 
         human_kp_2d = data.get("human_kp_2d")
         if human_kp_2d is not None:
@@ -183,7 +165,7 @@ class SceneResult:
             smpl_betas=smpl_betas,
             smpl_vertices_local=smpl_vertices_local,
             ball_uv=data.get("ball_uv"),
-            ball_visibility=data.get("ball_visibility"),
+            ball_vis=ball_vis,
             ball_3d=data.get("ball_3d"),
             human_kp_2d=human_kp_2d,
             human_kp_vis=human_kp_vis,
@@ -212,7 +194,7 @@ if __name__ == "__main__":
         smpl_global_orient=np.random.rand(P, T, 3).astype(np.float32),
         smpl_betas=np.random.rand(P, 10).astype(np.float32),
         ball_uv=np.random.rand(N, T, 2).astype(np.float32),
-        ball_visibility=np.ones((N, T), dtype=bool),
+        ball_vis=np.ones((N, T), dtype=bool),
         ball_3d=np.random.rand(T, 3).astype(np.float32),
         player_track_ids=np.array([0, 1], dtype=np.int32),
     )
