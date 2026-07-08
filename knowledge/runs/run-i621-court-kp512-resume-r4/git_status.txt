@@ -1,0 +1,2 @@
+?? knowledge/nodes/run-i618-convnext-v2-scratch-ft.md
+?? knowledge/runs/run-i618-convnext-v2-scratch-ft/
