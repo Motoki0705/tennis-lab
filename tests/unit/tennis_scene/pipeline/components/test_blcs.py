@@ -41,7 +41,7 @@ class _FakeBLCSPredictor:
 
 
 def test_process_keeps_detector_visibility_for_invisible_tokens_without_zero_filling() -> None:
-    module = BLCSModule(BLCSConfig(checkpoint_path="dummy.ckpt", device="cpu"))
+    module = BLCSModule(BLCSConfig(checkpoint="dummy.ckpt", device="cpu"))
     module._predictor = cast(Any, _FakeBLCSPredictor())
     result = module.process(
         ball_uv=np.zeros((1, 4, 2), dtype=np.float32),
@@ -78,7 +78,7 @@ def test_result_validate_allows_inferred_positions_for_invisible_frames() -> Non
 
 
 def test_validate_pipeline_checkpoint_rejects_single_model() -> None:
-    module = BLCSModule(BLCSConfig(checkpoint_path="dummy.ckpt", device="cpu"))
+    module = BLCSModule(BLCSConfig(checkpoint="dummy.ckpt", device="cpu"))
     module._predictor = cast(
         Any,
         SimpleNamespace(model=BLCSModel(hidden_dim=16, num_layers=1, num_heads=4)),
@@ -89,7 +89,7 @@ def test_validate_pipeline_checkpoint_rejects_single_model() -> None:
 
 
 def test_validate_pipeline_checkpoint_accepts_multiview_model() -> None:
-    module = BLCSModule(BLCSConfig(checkpoint_path="dummy.ckpt", device="cpu"))
+    module = BLCSModule(BLCSConfig(checkpoint="dummy.ckpt", device="cpu"))
     module._predictor = cast(
         Any,
         SimpleNamespace(
