@@ -53,7 +53,7 @@ class TestGVHMRResultRoundTrip:
 
 class TestGVHMRConfig:
     def test_defaults_point_to_ckpt_symlinks(self):
-        config = GVHMRConfig(model_checkpoint="ckpt/gvhmr/gvhmr_siga24_release.ckpt")
+        config = GVHMRConfig(gvhmr_checkpoint="ckpt/gvhmr/gvhmr_siga24_release.ckpt")
         assert str(config.yolo_checkpoint).startswith("ckpt/")
         assert str(config.vitpose_checkpoint).startswith("ckpt/")
         assert str(config.hmr2_checkpoint).startswith("ckpt/")
