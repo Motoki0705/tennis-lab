@@ -1,0 +1,14 @@
+{
+  "run_id": "1783465025685952314_306728_i620_convnext_webmix_ft_r2",
+  "name": "i620_convnext_webmix_ft_r2",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True ./.venv/bin/python -m src.tasks.ball_detection.scripts.train_staged model=conv_next_unet data.t_max=8 data.t_distribution=fixed data.val_num_frames=8 data.heatmap_size='[72,128]' data.num_workers=2 data.sources.tracknet.enabled=true data.sources.tracknet.sample_stride=4 data.sources.web.enabled=true 'data.sources.web.splits=[train]' 'data.sources.web.sources=[ball_yolo,kaggle_backview]' data.sources.web.sampling.mode=temporal data.sources.web.sampling.temporal.frame_step=1 data.sources.web.sampling.temporal.sample_stride=2 data.sources.web.sampling.temporal.max_frame_gap=1 training.learning_rate=5e-5 training.trainer.max_epochs=16 training.checkpoint.monitor=val/f1 training.checkpoint.mode=max training.early_stopping.enabled=true training.early_stopping.monitor=val/f1 training.early_stopping.mode=max training.early_stopping.patience=6 training.early_stopping.min_delta=0.0005 'run.init_weights=\"/home/kamimura/projects/tennis-lab/outputs/ball_detection/convnext_v2_scratch/logs/version_0/checkpoints/ball-detection-epoch=25.ckpt\"' run.output_dir=/home/kamimura/projects/tennis-lab/outputs/ball_detection/convnext_mdd_webmix_ft",
+  "provider": "",
+  "session": "",
+  "issue": "",
+  "commit": "72230f2db31f9f6a99cfe6d2bdc24824d3f4d57e",
+  "branch": "feat/issue-620-web-mix-datamodule",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab-ball-webmix",
+  "repo_root": "/home/kamimura/projects/tennis-lab-ball-webmix",
+  "captured_at": "2026-07-08T08:03:33+09:00"
+}

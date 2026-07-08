@@ -1,0 +1,14 @@
+{
+  "run_id": "1783455473439495639_216909_i618_convnext_v2_scratch_ft",
+  "name": "i618_convnext_v2_scratch_ft",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.ball_detection.scripts.train model=conv_next_unet data.heatmap_size='[72,128]' data.batch_size=6 data.num_workers=2 metrics.nms_kernel=3 training.learning_rate=2e-5 training.trainer.max_epochs=12 training.checkpoint.monitor=val/f1 training.checkpoint.mode=max training.early_stopping.monitor=val/f1 training.early_stopping.mode=max training.early_stopping.patience=6 training.early_stopping.min_delta=0.0005 'run.init_weights=\"outputs/ball_detection/convnext_v2_scratch/logs/version_0/checkpoints/ball-detection-epoch=25.ckpt\"' run.output_dir=outputs/ball_detection/convnext_v2_scratch_ft",
+  "provider": "",
+  "session": "",
+  "issue": "",
+  "commit": "41b318b39f757e09897964a32f28148a777b87f5",
+  "branch": "feat/issue-618-ball-subpixel-retrain",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-07-08T05:17:59+09:00"
+}
