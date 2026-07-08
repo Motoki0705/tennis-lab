@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/court_detection/kp/logs/version_1/checkpoints

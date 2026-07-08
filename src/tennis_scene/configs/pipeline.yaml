@@ -13,7 +13,10 @@ device: cuda
 court_kp:
   checkpoint: ckpt/court_detection/last.ckpt
   frame_index: 0  # Frame shown in manual_ui mode, then repeated across T
-  mode: manual_ui  # model/manual_ui
+  # issue #621: model mode is the default since the kp512-resume ckpt +
+  # homography postprocess beat manual clicks on every downstream metric
+  # (tennis_clip: KP err 0.76px vs manual GT; BLCS jerk/speed/az all improved).
+  mode: model  # model/manual_ui
   num_keypoints: 14
   postprocess:
     enabled: true
