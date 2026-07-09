@@ -100,7 +100,7 @@ class TennisSceneOrchestrator:
             raise ValueError("COURT_KP stage must be enabled.")
         court_kp_module = CourtKPModule(
             CourtKPConfig(
-                checkpoint_path=to_absolute_path(cfg.court_kp.checkpoint),
+                checkpoint=to_absolute_path(cfg.court_kp.checkpoint),
                 mode=str(cfg.court_kp.get("mode", "model")),
                 device=device,
                 num_keypoints=int(cfg.court_kp.get("num_keypoints", 14)),
@@ -179,7 +179,7 @@ class TennisSceneOrchestrator:
             raise ValueError("PLCS stage must be enabled.")
         plcs_module = PLCSModule(
             PLCSConfig(
-                checkpoint_path=to_absolute_path(cfg.plcs.checkpoint),
+                checkpoint=to_absolute_path(cfg.plcs.checkpoint),
                 device=device,
                 save_result=cfg.plcs.get("save_result", True),
                 output_path=output_path("plcs", "plcs_result.json"),
@@ -194,7 +194,7 @@ class TennisSceneOrchestrator:
         if Stage.BLCS in resolution.enabled_set:
             blcs_module = BLCSModule(
                 BLCSConfig(
-                    checkpoint_path=to_absolute_path(cfg.blcs.checkpoint),
+                    checkpoint=to_absolute_path(cfg.blcs.checkpoint),
                     device=device,
                     save_result=cfg.blcs.get("save_result", True),
                     output_path=output_path("blcs", "blcs_result.json"),
@@ -275,7 +275,7 @@ class TennisSceneOrchestrator:
             "src.tennis_scene.pipeline.components.gvhmr",
             f"--video={video_path}",
             f"--output={output_path}",
-            f"--model-checkpoint={self.gvhmr_config['gvhmr_checkpoint']}",
+            f"--gvhmr-checkpoint={self.gvhmr_config['gvhmr_checkpoint']}",
             f"--yolo-checkpoint={self.gvhmr_config['yolo_checkpoint']}",
             f"--vitpose-checkpoint={self.gvhmr_config['vitpose_checkpoint']}",
             f"--hmr2-checkpoint={self.gvhmr_config['hmr2_checkpoint']}",

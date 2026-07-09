@@ -27,7 +27,7 @@ class PLCSConfig:
     """Configuration for PLCS module.
 
     Attributes:
-        checkpoint_path: Path to PLCS model checkpoint.
+        checkpoint: Path to PLCS model checkpoint.
         device: Inference device.
         save_result: Whether to save result to file.
         output_path: Path to save result JSON file.
@@ -43,7 +43,7 @@ class PLCSConfig:
             visibility is binary — thresholding restores that contract.
     """
 
-    checkpoint_path: str | Path
+    checkpoint: str | Path
     device: str = "cuda"
     save_result: bool = False
     output_path: str | Path | None = None
@@ -133,7 +133,7 @@ class PLCSModule(BasePipelineModule):
 
     def __init__(self, config: PLCSConfig) -> None:
         self.config = config
-        self.checkpoint_path = Path(self.config.checkpoint_path)
+        self.checkpoint = Path(self.config.checkpoint)
         self.device = self.config.device
         self._predictor: PLCSPredictor | None = None
 
@@ -141,11 +141,11 @@ class PLCSModule(BasePipelineModule):
         if self._predictor is not None:
             return
 
-        LOGGER.info(f"Loading PLCS model from {self.checkpoint_path}")
+        LOGGER.info(f"Loading PLCS model from {self.checkpoint}")
         from src.tasks.plcs.inference.predictor import PLCSPredictor
 
         self._predictor = PLCSPredictor.load_from_checkpoint(
-            self.checkpoint_path, device=self.device
+            self.checkpoint, device=self.device
         )
         self._validate_pipeline_checkpoint_profile()
 

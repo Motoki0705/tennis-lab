@@ -37,7 +37,7 @@ class _FakePLCSPredictor:
 
 
 def test_process_passes_single_camera_as_multiview_n_equals_one() -> None:
-    module = PLCSModule(PLCSConfig(checkpoint_path="dummy.ckpt", device="cpu"))
+    module = PLCSModule(PLCSConfig(checkpoint="dummy.ckpt", device="cpu"))
     module._predictor = cast(Any, _FakePLCSPredictor())
     result = module.process(
         human_kp_2d=np.zeros((2, 1, 4, 17, 2), dtype=np.float32),
@@ -52,7 +52,7 @@ def test_process_passes_single_camera_as_multiview_n_equals_one() -> None:
 
 
 def test_validate_pipeline_checkpoint_rejects_frame_model() -> None:
-    module = PLCSModule(PLCSConfig(checkpoint_path="dummy.ckpt", device="cpu"))
+    module = PLCSModule(PLCSConfig(checkpoint="dummy.ckpt", device="cpu"))
     module._predictor = cast(
         Any,
         SimpleNamespace(model=PLCSModel(hidden_dim=16, num_layers=1, num_heads=4)),
@@ -63,7 +63,7 @@ def test_validate_pipeline_checkpoint_rejects_frame_model() -> None:
 
 
 def test_validate_pipeline_checkpoint_accepts_multiview_model() -> None:
-    module = PLCSModule(PLCSConfig(checkpoint_path="dummy.ckpt", device="cpu"))
+    module = PLCSModule(PLCSConfig(checkpoint="dummy.ckpt", device="cpu"))
     module._predictor = cast(
         Any,
         SimpleNamespace(

@@ -38,7 +38,7 @@ LOGGER = logging.getLogger(__name__)
 class GVHMRConfig:
     """Configuration for GVHMR module."""
 
-    model_checkpoint: str | Path
+    gvhmr_checkpoint: str | Path
     yolo_checkpoint: str | Path = "ckpt/yolo/yolov8x.pt"
     vitpose_checkpoint: str | Path = "ckpt/vitpose/vitpose-h-multi-coco.pth"
     hmr2_checkpoint: str | Path = "ckpt/hmr2/epoch=10-step=25000.ckpt"
@@ -166,7 +166,7 @@ class GVHMRModule(BasePipelineModule):
             checkpoint=self.config.hmr2_checkpoint, device=device
         )
         self._mesh_model = GvhmrMeshRecovery(
-            checkpoint=self.config.model_checkpoint, device=device
+            checkpoint=self.config.gvhmr_checkpoint, device=device
         )
         self._vertex_reconstructor = SmplVertexReconstructor(
             device=device,
@@ -226,8 +226,8 @@ class GVHMRModule(BasePipelineModule):
             str(video_path),
             "--output",
             str(output_path),
-            "--model-checkpoint",
-            str(self.config.model_checkpoint),
+            "--gvhmr-checkpoint",
+            str(self.config.gvhmr_checkpoint),
             "--yolo-checkpoint",
             str(self.config.yolo_checkpoint),
             "--vitpose-checkpoint",
@@ -384,7 +384,7 @@ if __name__ == "__main__":
     parser.add_argument("--video", type=str, required=True, help="Path to input video")
     parser.add_argument("--output", type=str, required=True, help="Path to output JSON")
     parser.add_argument(
-        "--model-checkpoint",
+        "--gvhmr-checkpoint",
         type=str,
         default="ckpt/gvhmr/gvhmr_siga24_release.ckpt",
         help="Path to GVHMR model checkpoint",
@@ -439,7 +439,7 @@ if __name__ == "__main__":
     )
 
     config = GVHMRConfig(
-        model_checkpoint=args.model_checkpoint,
+        gvhmr_checkpoint=args.gvhmr_checkpoint,
         yolo_checkpoint=args.yolo_checkpoint,
         vitpose_checkpoint=args.vitpose_checkpoint,
         hmr2_checkpoint=args.hmr2_checkpoint,
