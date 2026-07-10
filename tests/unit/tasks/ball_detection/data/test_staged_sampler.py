@@ -74,6 +74,56 @@ class TestVariableTBatchSampler:
         second = [tuple(b) for b in sampler]
         assert first != second
 
+    @pytest.mark.parametrize(
+        ("num_samples", "physical_batch", "effective_batch"),
+        [
+            (16, 2, 8),
+            (17, 2, 8),
+            (23, 2, 8),  # scaled-down 10407 / B=2 / EBS=8 trailing-remainder case
+            (14, 3, 8),
+            (7, 2, 8),
+        ],
+    )
+    def test_fixed_t_len_matches_yielded_batches(
+        self,
+        num_samples: int,
+        physical_batch: int,
+        effective_batch: int,
+    ) -> None:
+        sampler = VariableTBatchSampler(
+            num_samples=num_samples,
+            t_probs={8: 1.0},
+            batch_size_by_t={8: physical_batch},
+            effective_batch=effective_batch,
+            seed=11,
+        )
+        accumulate = accumulation_for(effective_batch, physical_batch)
+        expected_batches = (
+            num_samples // (physical_batch * accumulate)
+        ) * accumulate
+
+        assert len(sampler) == expected_batches
+        assert sum(1 for _ in sampler) == expected_batches
+
+    @pytest.mark.parametrize("seed", [0, 7, 1234])
+    def test_variable_t_len_matches_yielded_batches_across_epochs(
+        self, seed: int
+    ) -> None:
+        sampler = VariableTBatchSampler(
+            num_samples=137,
+            t_probs=linear_decreasing_t_probs(8, 0.5),
+            batch_size_by_t={1: 8, 2: 6, 3: 4, 4: 3, 5: 3, 6: 2, 7: 2, 8: 2},
+            effective_batch=8,
+            seed=seed,
+        )
+
+        for epoch in range(6):
+            sampler.set_epoch(epoch)
+            expected_batches = len(sampler)
+
+            assert len(sampler) == expected_batches
+            assert sum(1 for _ in sampler) == expected_batches
+
     def test_missing_batch_size_entry_raises(self) -> None:
         with pytest.raises(ValueError):
             VariableTBatchSampler(

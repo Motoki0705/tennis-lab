@@ -10,6 +10,7 @@ exact same machinery degenerates to plain single-frame batches.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 import pytorch_lightning as pl
@@ -28,6 +29,11 @@ from src.tasks.ball_detection.data.web_datamodule import WebBallDataModule
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+LOGGER = logging.getLogger(__name__)
+
+_VALID_T_DISTRIBUTIONS = {"variable", "fixed"}
+_VALID_SPLITS = frozenset({"train", "val", "test"})
 
 # Shared per-frame fields forwarded verbatim to every source sub-config.
 _SHARED_DATA_KEYS = (
@@ -58,10 +64,29 @@ class StagedBallDataModule(pl.LightningDataModule):
         self.num_workers = int(data_cfg.get("num_workers", 4))
         self.pin_memory = bool(data_cfg.get("pin_memory", True))
         self.sampling_seed = int(data_cfg.get("seed", 1234))
-        self.t1_prob = float(data_cfg.get("t1_prob", 0.5))
         self.val_batch_size = int(data_cfg.get("val_batch_size", 8))
 
+        self.t_distribution = str(data_cfg.get("t_distribution", "variable")).lower()
+        if self.t_distribution not in _VALID_T_DISTRIBUTIONS:
+            raise ValueError(
+                "data.t_distribution must be one of "
+                f"{sorted(_VALID_T_DISTRIBUTIONS)}, got {self.t_distribution!r}."
+            )
+        self.t1_prob: float | None
+        if self.t_distribution == "variable":
+            self.t1_prob = float(data_cfg.get("t1_prob", 0.5))
+            self.t_probs = linear_decreasing_t_probs(self.t_max, self.t1_prob)
+        else:
+            self.t1_prob = None
+            self.t_probs = {self.t_max: 1.0}
+            message = (
+                "[staged] data.t_distribution=fixed; train sampler uses only "
+                f"T={self.t_max}. data.t1_prob is ignored."
+            )
+            LOGGER.info(message)
+
         sources_cfg = data_cfg.get("sources", {}) or {}
+        self.source_splits = self._parse_source_splits(sources_cfg)
         self.enabled_sources = [
             name
             for name in ("tracknet", "web")
@@ -79,12 +104,37 @@ class StagedBallDataModule(pl.LightningDataModule):
         self.effective_batch_size = int(
             data_cfg.get("effective_batch_size") or self.batch_size_by_t.get(1, 4)
         )
-        self.t_probs = linear_decreasing_t_probs(self.t_max, self.t1_prob)
 
         self._submodules: dict[str, pl.LightningDataModule] = {}
         self.train_dataset: Dataset[BallDetectionSample] | None = None
         self.val_dataset: Dataset[BallDetectionSample] | None = None
         self.test_dataset: Dataset[BallDetectionSample] | None = None
+
+    def _parse_source_splits(self, sources_cfg: Any) -> dict[str, frozenset[str]]:
+        parsed: dict[str, frozenset[str]] = {}
+        for source_name, source_cfg in (sources_cfg or {}).items():
+            source = str(source_name)
+            if source not in {"tracknet", "web"}:
+                raise ValueError(f"Unknown staged source: {source!r}.")
+            raw_splits = (source_cfg or {}).get("splits", tuple(_VALID_SPLITS))
+            if isinstance(raw_splits, str):
+                raise ValueError(
+                    f"data.sources.{source}.splits must be a list of split names, "
+                    f"got {raw_splits!r}."
+                )
+            splits = frozenset(str(split) for split in raw_splits)
+            unknown = sorted(splits - _VALID_SPLITS)
+            if unknown:
+                raise ValueError(
+                    f"data.sources.{source}.splits contains unknown split(s): "
+                    f"{unknown}. Valid splits are {sorted(_VALID_SPLITS)}."
+                )
+            if not splits:
+                raise ValueError(f"data.sources.{source}.splits must not be empty.")
+            parsed[source] = splits
+        for source in ("tracknet", "web"):
+            parsed.setdefault(source, _VALID_SPLITS)
+        return parsed
 
     # ------------------------------------------------------------------
     def set_batch_plan(
@@ -98,6 +148,7 @@ class StagedBallDataModule(pl.LightningDataModule):
         data_cfg = self.config.get("data", {}) or {}
         source_cfg = dict((data_cfg.get("sources", {}) or {}).get(source_name, {}) or {})
         source_cfg.pop("enabled", None)
+        source_cfg.pop("splits", None)
         merged: dict[str, Any] = {"batch_size": 1}
         for key in _SHARED_DATA_KEYS:
             if key in data_cfg:
@@ -126,21 +177,26 @@ class StagedBallDataModule(pl.LightningDataModule):
             module.setup(stage=stage)
 
         if stage in (None, "fit"):
-            self.train_dataset = self._concat("train_dataset")
-            self.val_dataset = self._fixed_t(self._concat("val_dataset"))
+            self.train_dataset = self._concat("train", "train_dataset")
+            self.val_dataset = self._fixed_t(self._concat("val", "val_dataset"))
         if stage in (None, "validate"):
-            self.val_dataset = self._fixed_t(self._concat("val_dataset"))
+            self.val_dataset = self._fixed_t(self._concat("val", "val_dataset"))
         if stage in (None, "test"):
-            self.test_dataset = self._fixed_t(self._concat("test_dataset"))
+            self.test_dataset = self._fixed_t(self._concat("test", "test_dataset"))
 
-    def _concat(self, attr: str) -> Dataset[BallDetectionSample]:
+    def _concat(self, split: str, attr: str) -> Dataset[BallDetectionSample]:
+        if split not in _VALID_SPLITS:
+            raise ValueError(
+                f"Unknown staged split: {split!r}. Valid splits are {sorted(_VALID_SPLITS)}."
+            )
         datasets = [
             getattr(module, attr)
-            for module in self._submodules.values()
+            for name, module in self._submodules.items()
+            if split in self.source_splits[name]
             if getattr(module, attr, None) is not None
         ]
         if not datasets:
-            raise RuntimeError(f"No source produced a {attr!r}.")
+            raise RuntimeError(f"No source produced a {split!r} {attr!r}.")
         return ConcatVariableTDataset(datasets)
 
     def _fixed_t(
