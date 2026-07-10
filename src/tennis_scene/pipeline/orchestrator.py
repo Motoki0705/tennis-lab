@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
 from src.tennis_scene.io import SceneResult
 from src.tennis_scene.pipeline.components.ball_detection import (
     BallDetectionConfig,
@@ -155,6 +156,7 @@ class TennisSceneOrchestrator:
         ball_detection_module = None
         if Stage.BALL_DETECTION in resolution.enabled_set:
             bcfg = cfg.ball_detection
+            trajectory_gate_cfg = bcfg.get("trajectory_gate", {}) or {}
             ball_detection_module = BallDetectionModule(
                 BallDetectionConfig(
                     checkpoint=to_absolute_path(bcfg.checkpoint),
@@ -175,6 +177,17 @@ class TennisSceneOrchestrator:
                         bcfg.get("overlap_aggregation", "last_window_wins")
                     ),
                     pin_memory=bool(bcfg.get("pin_memory", True)),
+                    trajectory_gate=TrajectoryGateConfig(
+                        enabled=bool(trajectory_gate_cfg.get("enabled", False)),
+                        max_residual_px=float(
+                            trajectory_gate_cfg.get("max_residual_px", 60.0)
+                        ),
+                        k_support=int(trajectory_gate_cfg.get("k_support", 2)),
+                        max_support_gap=int(
+                            trajectory_gate_cfg.get("max_support_gap", 5)
+                        ),
+                        max_passes=int(trajectory_gate_cfg.get("max_passes", 2)),
+                    ),
                     save_result=bcfg.get("save_result", True),
                     output_path=output_path(
                         "ball_detection", "ball_detection_result.json"
