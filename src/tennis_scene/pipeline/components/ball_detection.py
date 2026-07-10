@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from src.tasks.ball_detection.inference import BallDetectionPredictor
+from src.tasks.ball_detection.inference.trajectory_gate import (
+    TrajectoryGateConfig,
+    apply_trajectory_gate,
+)
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
 from src.utils.io import load_json, save_json
 from src.utils.video import (
@@ -47,6 +51,7 @@ class BallDetectionConfig:
         tail_policy: Final-window policy for partial tails.
         overlap_aggregation: How duplicate frame predictions are resolved.
         pin_memory: Whether to pin preprocessed batch tensors before inference.
+        trajectory_gate: Optional local trajectory-consistency postprocess gate.
         save_result: Whether to save result to file.
         output_path: Path to save result JSON file.
         load_path: Path to load pre-computed result from (skips inference).
@@ -65,6 +70,7 @@ class BallDetectionConfig:
     tail_policy: str = "backfill"
     overlap_aggregation: str = "last_window_wins"
     pin_memory: bool = True
+    trajectory_gate: TrajectoryGateConfig = field(default_factory=TrajectoryGateConfig)
     save_result: bool = False
     output_path: str | Path | None = None
     load_path: str | Path | None = None
@@ -251,6 +257,10 @@ class BallDetectionModule(BasePipelineModule):
                         f"video_paths, got {result.ball_uv.shape[0]} and "
                         f"{len(video_paths)}"
                     )
+                result = self._apply_trajectory_gate(result)
+                is_valid, errors = result.validate()
+                if not is_valid:
+                    raise ValueError(f"Invalid gated ball detection result: {errors}")
                 return result
             LOGGER.warning(
                 f"load_path specified but not found: {load_path}, running inference"
@@ -312,6 +322,7 @@ class BallDetectionModule(BasePipelineModule):
             visibility=np.stack(per_camera_visibility, axis=0).astype(np.bool_),
             score=np.stack(per_camera_score, axis=0).astype(np.float32),
         )
+        ball_detection_result = self._apply_trajectory_gate(ball_detection_result)
         is_valid, errors = ball_detection_result.validate()
         if not is_valid:
             raise ValueError(f"Invalid ball detection result: {errors}")
@@ -320,6 +331,61 @@ class BallDetectionModule(BasePipelineModule):
             ball_detection_result.save(self.config.output_path)
 
         return ball_detection_result
+
+    def _apply_trajectory_gate(
+        self,
+        result: BallDetectionResult,
+    ) -> BallDetectionResult:
+        """Apply the optional trajectory gate and zero rejected detections."""
+        gate_config = self.config.trajectory_gate
+        if not gate_config.enabled:
+            return result
+
+        ball_uv = result.ball_uv.copy()
+        ball_uv_px = result.ball_uv_px.copy()
+        visibility = result.visibility.copy()
+        score = result.score.copy()
+        rejected_by_camera: list[list[int]] = []
+
+        for camera_index in range(result.ball_uv.shape[0]):
+            gated_visibility, diagnostics = apply_trajectory_gate(
+                positions_px=result.ball_uv_px[camera_index],
+                visibility=result.visibility[camera_index],
+                score=result.score[camera_index],
+                max_residual_px=gate_config.max_residual_px,
+                k_support=gate_config.k_support,
+                max_support_gap=gate_config.max_support_gap,
+                max_passes=gate_config.max_passes,
+            )
+            rejected_mask = result.visibility[camera_index] & ~gated_visibility
+            ball_uv[camera_index, rejected_mask] = 0.0
+            ball_uv_px[camera_index, rejected_mask] = 0.0
+            score[camera_index, rejected_mask] = 0.0
+            visibility[camera_index] = gated_visibility
+            rejected_by_camera.append(diagnostics.rejected_indices)
+
+        total_rejected = sum(len(indices) for indices in rejected_by_camera)
+        LOGGER.info(
+            "Ball trajectory gate rejected %d frame(s) across %d camera(s)",
+            total_rejected,
+            len(rejected_by_camera),
+        )
+        if total_rejected:
+            LOGGER.info(
+                "Ball trajectory gate rejected frames by camera: %s",
+                {
+                    f"cam{camera_index}": indices
+                    for camera_index, indices in enumerate(rejected_by_camera)
+                    if indices
+                },
+            )
+
+        return BallDetectionResult(
+            ball_uv=ball_uv.astype(np.float32),
+            ball_uv_px=ball_uv_px.astype(np.float32),
+            visibility=visibility.astype(np.bool_),
+            score=score.astype(np.float32),
+        )
 
     def _predict_video(
         self,
