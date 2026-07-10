@@ -1,0 +1,17 @@
+defaults:
+  - data: default
+  - _self_
+
+evaluate:
+  checkpoint: null
+  split: test
+  device: cpu
+  batch_size: 4
+  output_dir: outputs/slcs/evaluate/${now:%Y-%m-%d_%H-%M-%S}
+
+hydra:
+  run:
+    dir: ${evaluate.output_dir}
+  output_subdir: null
+  job:
+    chdir: false

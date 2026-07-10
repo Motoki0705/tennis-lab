@@ -1,0 +1,11 @@
+analysis:
+  arrays: null
+  calibration_bins: 10
+  output_dir: outputs/slcs/analysis/${now:%Y-%m-%d_%H-%M-%S}
+
+hydra:
+  run:
+    dir: ${analysis.output_dir}
+  output_subdir: null
+  job:
+    chdir: false
