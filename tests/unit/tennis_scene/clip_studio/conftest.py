@@ -15,6 +15,7 @@ from src.utils.video import VideoInfo
 def two_camera_project() -> ClipStudioProject:
     """cam0 covers global [0, 10]s, cam1 covers global [1, 9]s (offset -1)."""
     return ClipStudioProject(
+        recording_id="match-001",
         sources=[
             ClipSource(path=Path("cam0.mp4"), camera_id="cam0", offset_sec=0.0),
             ClipSource(path=Path("cam1.mp4"), camera_id="cam1", offset_sec=-1.0),

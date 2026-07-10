@@ -8,7 +8,7 @@ project_path: ???
 clip_names: null
 
 export:
-  output_dir: null           # null -> <project dir>/clips
+  output_dir: null           # structured dataset root; null -> <project dir>/dataset
   fps: null                  # null -> all sources must share fps
   width: null                # null (with height) -> all sources must share size
   height: null

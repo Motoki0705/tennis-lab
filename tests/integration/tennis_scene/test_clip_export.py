@@ -53,6 +53,7 @@ def synced_project(tmp_path: Path) -> ClipStudioProject:
     make_camera_video(cam0, num_frames=120, width=64, height=48)
     make_camera_video(cam1, num_frames=150, width=96, height=64)
     return ClipStudioProject(
+        recording_id="match-001",
         sources=[
             ClipSource(path=cam0, camera_id="cam0", offset_sec=0.0),
             ClipSource(path=cam1, camera_id="cam1", offset_sec=0.5),
@@ -73,8 +74,8 @@ class TestClipExportRoundTrip:
         clip_dir = results[0].clip_dir
 
         infos = [
-            probe_video_info(clip_dir / "cam0.mp4"),
-            probe_video_info(clip_dir / "cam1.mp4"),
+            probe_video_info(clip_dir / "media" / "cam0.mp4"),
+            probe_video_info(clip_dir / "media" / "cam1.mp4"),
         ]
         # The exact contract enforced by TennisSceneOrchestrator.
         assert infos[0].frame_count == infos[1].frame_count == 60
@@ -90,8 +91,8 @@ class TestClipExportRoundTrip:
         )
         clip_dir = export_clips(synced_project, settings)[0].clip_dir
 
-        cam0 = read_video_rgb(clip_dir / "cam0.mp4")
-        cam1 = read_video_rgb(clip_dir / "cam1.mp4")
+        cam0 = read_video_rgb(clip_dir / "media" / "cam0.mp4")
+        cam1 = read_video_rgb(clip_dir / "media" / "cam1.mp4")
         for k in [0, 17, 59]:
             # cam0: local = global -> index 30 + k (center crop avoids padding)
             assert decode_local_index(cam0[k, 24:40, 36:60]) == 30 + k
@@ -108,7 +109,9 @@ class TestClipExportRoundTrip:
         manifest = load_json(result.manifest_path)
 
         assert manifest["camera_ids"] == ["cam0", "cam1"]
-        assert manifest["video_paths"] == ["cam0.mp4", "cam1.mp4"]
+        assert manifest["clip_id"] == "match-001/clip_000"
+        assert manifest["recording_id"] == "match-001"
+        assert manifest["video_paths"] == ["media/cam0.mp4", "media/cam1.mp4"]
         assert manifest["num_frames"] == 60
         assert manifest["fps"] == pytest.approx(FPS)
         assert (manifest["width"], manifest["height"]) == (96, 64)
@@ -119,6 +122,11 @@ class TestClipExportRoundTrip:
         assert manifest["cameras"][1]["letterbox"] is None
         for name in manifest["video_paths"]:
             assert (result.clip_dir / name).exists()
+
+        dataset_manifest = load_json(tmp_path / "clips" / "dataset.json")
+        assert [record["clip_id"] for record in dataset_manifest["clips"]] == [
+            "match-001/clip_000"
+        ]
 
     def test_mixed_resolution_without_target_raises(
         self, synced_project: ClipStudioProject, tmp_path: Path
@@ -161,5 +169,6 @@ class TestClipExportRoundTrip:
         results = export_clips(synced_project, settings, clip_names=["clip_001"])
         assert len(results) == 1
         assert results[0].clip_dir.name == "clip_001"
+        assert results[0].clip_dir.parent.name == "match-001"
         with pytest.raises(KeyError, match="not found"):
             export_clips(synced_project, settings, clip_names=["nope"])

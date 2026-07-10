@@ -1,7 +1,7 @@
 """
-Headlessly export the clips of a clip studio project as synchronized
-per-camera videos plus a clip.json manifest, matching the tennis_scene
-pipeline contract (equal fps / frame count / resolution across cameras).
+Headlessly append the clips of a clip studio project to a structured dataset
+as synchronized per-camera videos plus clip and dataset manifests, matching
+the tennis_scene pipeline contract.
 
 Usage:
     python -m src.tennis_scene.scripts.export_clips project_path=outputs/clip_studio/match1/project.json
@@ -12,8 +12,8 @@ Notes:
     - Configuration is loaded from `src/tennis_scene/configs/export_clips.yaml`.
     - Exported videos are re-probed and validated against the plan; a
       contract violation aborts with an error instead of writing a bad clip.
-    - Each clip directory plugs into the pipeline directly, e.g.
-      `run_pipeline video_paths='[<clip_dir>/cam0.mp4,<clip_dir>/cam1.mp4]'`.
+    - Clips are namespaced as `clips/<recording_id>/<clip_name>` so later
+      recording sessions can be appended without `clip_000` collisions.
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ def main(cfg: DictConfig) -> int:
     output_dir = (
         Path(to_absolute_path(str(raw_output_dir)))
         if raw_output_dir is not None
-        else project_path.parent / "clips"
+        else project_path.parent / "dataset"
     )
     settings = ExportSettings(
         output_dir=output_dir,

@@ -13,13 +13,27 @@ global interval ``[-offset_sec, duration_sec - offset_sec]``.
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from src.utils.io import load_json, save_json_atomic
 
-PROJECT_SCHEMA_VERSION = 1
+PROJECT_SCHEMA_VERSION = 2
+IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def _validate_identifier(value: str, *, field_name: str) -> str | None:
+    """Validate a portable single-path-component identifier."""
+    if not value:
+        return f"{field_name} must be non-empty"
+    if IDENTIFIER_PATTERN.fullmatch(value) is None:
+        return (
+            f"{field_name} must start with an ASCII letter or digit and contain "
+            f"only letters, digits, '.', '_' or '-', got {value!r}"
+        )
+    return None
 
 
 @dataclass
@@ -89,12 +103,18 @@ class Clip:
 class ClipStudioProject:
     """Sources and clips of one editing session."""
 
+    recording_id: str = ""
     sources: list[ClipSource] = field(default_factory=list)
     clips: list[Clip] = field(default_factory=list)
 
     def validate(self) -> list[str]:
         """Return human-readable consistency errors (empty when valid)."""
         errors: list[str] = []
+        recording_error = _validate_identifier(
+            self.recording_id, field_name="recording_id"
+        )
+        if recording_error is not None:
+            errors.append(recording_error)
         if not self.sources:
             errors.append("project must contain at least one source")
         camera_ids = [source.camera_id for source in self.sources]
@@ -112,8 +132,9 @@ class ClipStudioProject:
         if len(set(clip_names)) != len(clip_names):
             errors.append(f"clip names must be unique, got {clip_names}")
         for clip in self.clips:
-            if not clip.name:
-                errors.append("clip name must be non-empty")
+            clip_name_error = _validate_identifier(clip.name, field_name="clip name")
+            if clip_name_error is not None:
+                errors.append(clip_name_error)
             if not (math.isfinite(clip.start_sec) and math.isfinite(clip.end_sec)):
                 errors.append(f"clip '{clip.name}' has non-finite bounds")
             elif clip.end_sec <= clip.start_sec:
@@ -140,6 +161,7 @@ class ClipStudioProject:
     def to_dict(self) -> dict[str, Any]:
         return {
             "version": PROJECT_SCHEMA_VERSION,
+            "recording_id": self.recording_id,
             "sources": [source.to_dict() for source in self.sources],
             "clips": [clip.to_dict() for clip in self.clips],
         }
@@ -153,6 +175,7 @@ class ClipStudioProject:
                 f"expected {PROJECT_SCHEMA_VERSION}"
             )
         return cls(
+            recording_id=str(data["recording_id"]),
             sources=[ClipSource.from_dict(item) for item in data["sources"]],
             clips=[Clip.from_dict(item) for item in data["clips"]],
         )

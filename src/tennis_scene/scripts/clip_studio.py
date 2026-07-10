@@ -4,13 +4,13 @@ match videos on a shared timeline, cut rally clips, and export them in the
 format `run_pipeline.py` expects (equal fps / frame count / resolution).
 
 Usage:
-    python -m src.tennis_scene.scripts.clip_studio project_path=outputs/clip_studio/match1/project.json video_paths='[data/raw/cam0.mp4,data/raw/cam1.mp4]'
+    python -m src.tennis_scene.scripts.clip_studio project_path=outputs/clip_studio/match1/project.json recording_id=match1 video_paths='[data/raw/cam0.mp4,data/raw/cam1.mp4]'
     python -m src.tennis_scene.scripts.clip_studio project_path=outputs/clip_studio/match1/project.json
 
 Notes:
-    - First launch requires video_paths (one per camera); the project JSON is
-      created immediately. Reopening an existing project requires video_paths
-      to stay null to avoid ambiguity.
+    - First launch requires recording_id and video_paths (one per camera); the
+      project JSON is created immediately. recording_id becomes the stable
+      namespace used when clips are appended to a dataset over time.
     - Configuration is loaded from `src/tennis_scene/configs/clip_studio.yaml`.
     - Key bindings are shown in-app with `h`; the project is autosaved on quit.
     - Export (`e`/`E` in the GUI, or the export_clips script) writes one
@@ -42,7 +42,7 @@ def _resolve_export_settings(cfg: DictConfig, project_path: Path) -> ExportSetti
     output_dir = (
         Path(to_absolute_path(str(raw_output_dir)))
         if raw_output_dir is not None
-        else project_path.parent / "clips"
+        else project_path.parent / "dataset"
     )
     return ExportSettings(
         output_dir=output_dir,
@@ -84,7 +84,12 @@ def _bootstrap_project(cfg: DictConfig, project_path: Path) -> ClipStudioProject
         if len(camera_ids) != len(video_paths):
             raise ValueError("camera_ids length must match video_paths length")
 
+    raw_recording_id = cfg.get("recording_id")
+    if raw_recording_id is None:
+        raise ValueError("recording_id is required when creating a new project")
+
     project = ClipStudioProject(
+        recording_id=str(raw_recording_id),
         sources=[
             ClipSource(path=path, camera_id=camera_id)
             for path, camera_id in zip(video_paths, camera_ids, strict=True)
