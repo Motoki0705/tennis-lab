@@ -191,9 +191,17 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         from src.tasks.blcs.visualization.rendering.scene_renderer import (
             BLCSSceneRenderer,  # noqa: PLC0415
         )
+        from src.utils.rendering.camera_view import (  # noqa: PLC0415
+            CameraView3DConfig,
+        )
 
         device = next(self.parameters()).device
-        renderer = BLCSSceneRenderer()
+        qualitative_cfg = (self.config.get("training", {}) or {}).get(
+            "qualitative_logging", {}
+        ) or {}
+        renderer = BLCSSceneRenderer(
+            view_3d=CameraView3DConfig.from_mapping(qualitative_cfg.get("view_3d"))
+        )
 
         for i, batch in enumerate(batches):
             batch_dev = {

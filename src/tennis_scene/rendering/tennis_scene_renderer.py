@@ -28,6 +28,7 @@ from src.utils.geometry.matrices import (
     smpl_y_up_to_court_z_up,
 )
 from src.utils.rendering.ball_renderer import BallRenderer, BallStyle
+from src.utils.rendering.camera_view import CameraView3DConfig, scene_cameras_from_scene
 from src.utils.rendering.court_renderer import CourtRenderer, CourtStyle
 from src.utils.rendering.mesh_renderer import MeshRenderer
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer, SkeletonStyle
@@ -80,8 +81,10 @@ class TennisSceneRenderer:
         style: TennisSceneStyle | None = None,
         smpl_model_path: str | Path | None = None,
         smpl_joint_regressor_path: str | Path | None = None,
+        view_3d: CameraView3DConfig | None = None,
     ) -> None:
         self.style = style or TennisSceneStyle()
+        self.view_3d = view_3d or CameraView3DConfig()
         self.court_renderer = CourtRenderer(self.style.court_style)
         self.ball_renderer = BallRenderer(self.style.ball_style)
         self.skeleton_renderer = SkeletonRenderer(
@@ -377,6 +380,7 @@ class TennisSceneRenderer:
                     )
 
         self._set_fixed_court_view(ax)
+        self.view_3d.apply(ax, scene_cameras_from_scene(scene))
         ax.set_title(f"Frame: {frame_idx}/{scene.num_frames}")
 
     def _set_fixed_court_view(self, ax: Axes3D) -> None:

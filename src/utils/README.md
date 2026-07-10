@@ -36,6 +36,7 @@
 - **`camera_projector.py`**: `Camera`、`CameraConfig`、`CameraView`、`CameraProjector`、`make_look_at_camera()`、`project_points()`。ピンホール投影の共通実装。
 
 ### `rendering/`
+- **`camera_view.py`**: Hydra/OmegaConf から読む明示的な Matplotlib 3D 視点設定。court world 座標の look-at と保存済み pinhole camera extrinsics を `elev` / `azim` / `roll` および近似 FOV へ変換し、`zoom` で axes framing を調整する。正確な画像面投影は `projection/camera_projector.py` を使う。
 - **`court_renderer.py`**: コート線・スタイル定義と `CourtRenderer`。
 - **`skeleton_renderer.py`**: COCO / SMPL 系 skeleton 描画用の `SkeletonRenderer` と関連 enum / style。
 - **`ball_renderer.py`**: ボール軌跡・イベント描画用の `BallRenderer`、`BallEvent`、`BallStyle`。

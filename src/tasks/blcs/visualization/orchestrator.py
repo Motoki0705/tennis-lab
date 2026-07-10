@@ -33,7 +33,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
     )
     logger.info("Scene loaded successfully.")
 
-    renderer = BLCSSceneRenderer()
+    renderer = BLCSSceneRenderer(view_3d=cfg.view_3d)
     if cfg.info:
         renderer.print_scene_info(bundle.scene)
         return 0
@@ -65,6 +65,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             view=cfg.animation_view,
             fps=fps,
             title="GT vs Prediction",
+            scene=bundle.scene,
         )
         if anim is None:
             logger.error("Error: Failed to create comparison animation.")

@@ -36,7 +36,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         logger.error(f"Error: {exc}")
         return 1
 
-    renderer = PLCSSceneRenderer()
+    renderer = PLCSSceneRenderer(view_3d=cfg.view_3d)
     if cfg.info:
         renderer.print_scene_info(bundle.scene)
         return 0

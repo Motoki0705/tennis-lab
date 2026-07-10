@@ -275,9 +275,17 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         from src.tasks.plcs.visualization.rendering.scene_renderer import (  # noqa: PLC0415
             PLCSSceneRenderer,
         )
+        from src.utils.rendering.camera_view import (  # noqa: PLC0415
+            CameraView3DConfig,
+        )
 
         device = next(self.parameters()).device
-        renderer = PLCSSceneRenderer()
+        qualitative_cfg = (self.config.get("training", {}) or {}).get(
+            "qualitative_logging", {}
+        ) or {}
+        renderer = PLCSSceneRenderer(
+            view_3d=CameraView3DConfig.from_mapping(qualitative_cfg.get("view_3d"))
+        )
 
         for batch_idx, batch in enumerate(batches):
             batch_dev = {

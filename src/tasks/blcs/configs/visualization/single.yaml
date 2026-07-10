@@ -3,6 +3,11 @@ scene_path: data/blcs/scenes/scene_000000
 # Single-view camera index used to build predictor input.
 camera: 0
 animation_view: 3d   # 3d | 2d (create_comparison_animation)
+# Separate from `camera`: selects the Matplotlib 3D inspection viewpoint.
+# mode: default | look_at | scene_camera. Other fields use shared typed defaults.
+view_3d:
+  mode: default
+  zoom: 1.3
 fps: 30
 save: null           # Optional output file for comparison animation (e.g., .mp4, .gif)
 info: false

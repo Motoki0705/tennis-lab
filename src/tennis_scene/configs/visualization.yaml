@@ -21,6 +21,12 @@ fps: null
 dpi: 100
 writer: ffmpeg
 
+# Explicit Matplotlib 3D inspection viewpoint. `scene_camera` requires physical
+# camera params under SceneResult.metadata.cameras.
+view_3d:
+  mode: default  # default | look_at | scene_camera
+  zoom: 1.3
+
 # Rendering style
 style:
   trail_length: 30
