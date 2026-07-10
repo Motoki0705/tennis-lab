@@ -204,6 +204,7 @@ module = [
     "torchreid.*",
     "deep_sort_realtime.*",
     "gdown.*",
+    "scipy.*",
     "MultiScaleDeformableAttention",
 ]
 ignore_missing_imports = true

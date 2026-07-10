@@ -1,0 +1,14 @@
+{
+  "run_id": "1783405858437554277_1226752_i618_convnext_v2_ft",
+  "name": "i618_convnext_v2_ft",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.ball_detection.scripts.train model=conv_next_unet data.heatmap_size='[72,128]' data.batch_size=6 data.num_workers=2 metrics.nms_kernel=3 training.learning_rate=5e-5 training.trainer.max_epochs=24 training.checkpoint.monitor=val/f1 training.checkpoint.mode=max training.early_stopping.monitor=val/f1 training.early_stopping.mode=max training.early_stopping.patience=8 training.early_stopping.min_delta=0.0005 run.init_weights=ckpt/ball_detection/last.ckpt run.output_dir=outputs/ball_detection/convnext_v2_ft",
+  "provider": "claude",
+  "session": "147b5124-0694-4620-bb75-11cb13e410c0",
+  "issue": "618",
+  "commit": "a577e137013287a546a4f3ce793afc6f21a73136",
+  "branch": "main",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-07-07T15:31:06+09:00"
+}

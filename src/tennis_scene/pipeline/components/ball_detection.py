@@ -40,6 +40,8 @@ class BallDetectionConfig:
         image_size: Model input size as ``(height, width)``.
         normalize_imagenet: Whether to apply ImageNet normalization.
         score_threshold: Minimum peak confidence for visible detections.
+        subpixel_refine: Whether peak coordinates are refined to sub-cell
+            precision instead of raw heatmap-lattice argmax.
         prefetch_batches: Number of preprocessed inference batches to queue.
         window_stride: Temporal window stride. Defaults to model sequence length.
         tail_policy: Final-window policy for partial tails.
@@ -57,6 +59,7 @@ class BallDetectionConfig:
     image_size: tuple[int, int] = (288, 512)
     normalize_imagenet: bool = True
     score_threshold: float = 0.5
+    subpixel_refine: bool = True
     prefetch_batches: int = 2
     window_stride: int | None = None
     tail_policy: str = "backfill"
@@ -188,7 +191,7 @@ class BallDetectionModule(BasePipelineModule):
 
         """
         self.config = config
-        self._pipeline = None
+        self._pipeline: BallDetectionPredictor | None = None
 
     def load(self) -> None:
         """Load the ball detection predictor."""
@@ -197,7 +200,9 @@ class BallDetectionModule(BasePipelineModule):
 
         LOGGER.info(f"Loading ball detection model from {self.config.checkpoint}")
         self._pipeline = BallDetectionPredictor.load_from_checkpoint(
-            self.config.checkpoint, device=self.config.device
+            self.config.checkpoint,
+            device=self.config.device,
+            subpixel_refine=self.config.subpixel_refine,
         )
 
     @property
@@ -396,8 +401,8 @@ class BallDetectionModule(BasePipelineModule):
             raise RuntimeError(f"No frames were read from video: {video_path}")
 
         total_frames = max_frame_index + 1
-        ball_uv = np.zeros((total_frames, 2), dtype=np.float32)
-        score = np.zeros((total_frames,), dtype=np.float32)
+        ball_uv: NDArray[np.float32] = np.zeros((total_frames, 2), dtype=np.float32)
+        score: NDArray[np.float32] = np.zeros((total_frames,), dtype=np.float32)
         for frame_index in range(total_frames):
             if frame_index in coords_by_frame:
                 ball_uv[frame_index] = coords_by_frame[frame_index]

@@ -34,6 +34,7 @@ def _build_metrics(metrics_cfg: Any) -> BallDetectionMetrics:
         ball_distance_threshold=float(metrics_cfg.get("ball_distance_threshold", 4.0)),
         nms_kernel=int(metrics_cfg.get("nms_kernel", 9)),
         max_predictions_per_frame=int(metrics_cfg.get("max_predictions_per_frame", 8)),
+        subpixel_refine=bool(metrics_cfg.get("subpixel_refine", True)),
     )
 
 

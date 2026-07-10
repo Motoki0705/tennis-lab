@@ -41,6 +41,14 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
+def _size_hw(value: Any) -> tuple[int, int]:
+    """Coerce a config size sequence into a validated (height, width) pair."""
+    items = [int(v) for v in value]
+    if len(items) != 2:
+        raise ValueError(f"image_size must have exactly 2 entries, got {items!r}")
+    return items[0], items[1]
+
+
 class TennisSceneOrchestrator:
     """Orchestrator for tennis scene 3D reconstruction."""
 
@@ -153,9 +161,10 @@ class TennisSceneOrchestrator:
                     checkpoint=to_absolute_path(bcfg.checkpoint),
                     batch_size=int(bcfg.batch_size),
                     device=device,
-                    image_size=tuple(int(v) for v in bcfg.get("image_size", [288, 512])),
+                    image_size=_size_hw(bcfg.get("image_size", [288, 512])),
                     normalize_imagenet=bool(bcfg.get("normalize_imagenet", True)),
                     score_threshold=float(bcfg.get("score_threshold", 0.5)),
+                    subpixel_refine=bool(bcfg.get("subpixel_refine", True)),
                     prefetch_batches=int(bcfg.get("prefetch_batches", 2)),
                     window_stride=(
                         None

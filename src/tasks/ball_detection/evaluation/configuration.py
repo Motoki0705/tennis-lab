@@ -81,6 +81,7 @@ def build_evaluation_config(
             "ball_distance_threshold": metrics_spec.ball_distance_threshold,
             "nms_kernel": metrics_spec.nms_kernel,
             "max_predictions_per_frame": metrics_spec.max_predictions_per_frame,
+            "subpixel_refine": metrics_spec.subpixel_refine,
         }
     )
     return evaluation_config

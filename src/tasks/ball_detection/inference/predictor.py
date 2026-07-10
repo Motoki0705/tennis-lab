@@ -14,7 +14,7 @@ from src.tasks.ball_detection.training.lightning_module import (
     BallDetectionLightningModule,
 )
 from src.tasks.base.inference.predictor import BasePredictor
-from src.utils.data.heatmaps import heatmaps_to_argmax
+from src.utils.data.heatmaps import heatmaps_to_argmax, refine_peaks_log_parabolic
 
 
 class BallDetectionPredictor(BasePredictor):
@@ -27,6 +27,8 @@ class BallDetectionPredictor(BasePredictor):
         model: Ball detection model instance.
         device: Device for inference.
         model_config: Model configuration dict used for input adaptation.
+        subpixel_refine: Whether peak coordinates are refined to sub-cell
+            precision (log-parabolic fit) instead of raw lattice argmax.
     """
 
     def __init__(
@@ -34,10 +36,13 @@ class BallDetectionPredictor(BasePredictor):
         model: torch.nn.Module,
         device: torch.device,
         model_config: dict[str, Any] | None = None,
+        *,
+        subpixel_refine: bool = True,
     ) -> None:
         self.model = model
         self.device = device
         self.model_config = model_config or {}
+        self.subpixel_refine = bool(subpixel_refine)
 
         self.model.to(self.device)
         self.model.eval()
@@ -54,7 +59,8 @@ class BallDetectionPredictor(BasePredictor):
         Args:
             checkpoint_path: Path to checkpoint file(s).
             device: Device for inference.
-            **kwargs: Additional arguments (unused).
+            **kwargs: ``subpixel_refine`` forwards to the constructor;
+                remaining arguments are unused.
 
         Returns:
             BallDetectionPredictor instance.
@@ -62,6 +68,7 @@ class BallDetectionPredictor(BasePredictor):
         Raises:
             FileNotFoundError: If checkpoint file does not exist.
         """
+        subpixel_refine = bool(kwargs.pop("subpixel_refine", True))
         lightning_module, resolved_device = cls._load_single_lightning_module(
             checkpoint_path,
             BallDetectionLightningModule,
@@ -74,7 +81,12 @@ class BallDetectionPredictor(BasePredictor):
         model = lightning_module.model
         model_config = dict(lightning_module.config.get("model", {}))
 
-        return cls(model=model, device=resolved_device, model_config=model_config)
+        return cls(
+            model=model,
+            device=resolved_device,
+            model_config=model_config,
+            subpixel_refine=subpixel_refine,
+        )
 
     def predict(
         self,
@@ -105,6 +117,8 @@ class BallDetectionPredictor(BasePredictor):
             logits = logits.squeeze(1)
             heatmaps = torch.sigmoid(logits)
             coords, peak_values = heatmaps_to_argmax(heatmaps)
+            if self.subpixel_refine:
+                coords = refine_peaks_log_parabolic(heatmaps, coords)
 
             result: dict[str, Tensor] = {
                 "coords": coords.cpu(),
