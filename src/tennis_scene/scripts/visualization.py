@@ -3,24 +3,29 @@
 Usage:
     python -m src.tennis_scene.scripts.visualization input=outputs/tennis_scene/clip.npz
     python -m src.tennis_scene.scripts.visualization input=... output=animation.mp4 style.player_representation=skeleton
+    python -m src.tennis_scene.scripts.visualization input=... camera.preset=corner camera.mode=orbit style.theme=light
     python -m src.tennis_scene.scripts.visualization input=... display=true
 
 Notes:
     - The visualizer can render an interactive matplotlib 3D animation or save an MP4 file.
     - Configuration is loaded from `src/tennis_scene/configs/visualization.yaml`.
     - Hydra handles runtime overrides.
+    - `camera` selects viewpoint and motion (presets: broadcast/side/top/corner/behind_far;
+      modes: static/orbit/keyframes). `style.theme=dark` gives a broadcast-style look with
+      HUD (ball speed, bounce count) and a top-down minimap.
 """
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
-import hydra
 import matplotlib.pyplot as plt
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
+
+from src.utils.hydra import hydra_main
 
 if TYPE_CHECKING:
     from src.tennis_scene.io import SceneResult
@@ -48,15 +53,18 @@ def _validate_scene_for_smpl(scene: SceneResult) -> None:
         )
 
 
-@hydra.main(
+@hydra_main(
     version_base="1.3",
     config_path="../configs",
     config_name="visualization",
 )
 def main(cfg: DictConfig) -> int:
     """Visualize tennis scene results."""
+    from omegaconf import OmegaConf
+
     from src.tennis_scene.io import SceneResult
     from src.tennis_scene.rendering import TennisSceneRenderer
+    from src.tennis_scene.rendering.camera import CameraController
     from src.tennis_scene.rendering.tennis_scene_renderer import TennisSceneStyle
 
     # Load input
@@ -72,17 +80,44 @@ def main(cfg: DictConfig) -> int:
     LOGGER.info(f"Resolution: {scene.width}x{scene.height}")
     _validate_scene_for_smpl(scene)
 
+    player_representation = str(cfg.style.player_representation)
+    if player_representation not in ("smpl", "skeleton"):
+        raise ValueError(
+            "style.player_representation must be 'smpl' or 'skeleton', "
+            f"got '{player_representation}'"
+        )
+    theme = str(cfg.style.theme)
+    if theme not in ("light", "dark"):
+        raise ValueError(f"style.theme must be 'light' or 'dark', got '{theme}'")
+
     # Create style
     style = TennisSceneStyle(
         trail_length=int(cfg.style.trail_length),
         show_direction=bool(cfg.style.show_direction),
         show_trail=bool(cfg.style.show_trail),
         figsize=tuple(cfg.style.figsize),
-        player_representation=str(cfg.style.player_representation),
+        player_representation=cast(Literal["smpl", "skeleton"], player_representation),
         mesh_alpha=float(cfg.style.mesh_alpha),
+        theme=cast(Literal["light", "dark"], theme),
+        show_ball_shadow=bool(cfg.style.show_ball_shadow),
+        show_player_shadow=bool(cfg.style.show_player_shadow),
+        show_player_trail=bool(cfg.style.show_player_trail),
+        player_trail_length=int(cfg.style.player_trail_length),
+        show_bounces=bool(cfg.style.show_bounces),
+        show_hud=bool(cfg.style.show_hud),
+        show_minimap=bool(cfg.style.show_minimap),
     )
 
-    renderer = TennisSceneRenderer(style)
+    camera_cfg = OmegaConf.to_container(cfg.camera, resolve=True)
+    if not isinstance(camera_cfg, dict):
+        raise TypeError(f"cfg.camera must be a mapping, got {type(camera_cfg)}")
+    camera = CameraController.from_config(camera_cfg)
+    LOGGER.info(
+        f"Camera: mode={camera.mode}, base=({camera.base.elev:.0f}, "
+        f"{camera.base.azim:.0f}, zoom={camera.base.zoom:.2f})"
+    )
+
+    renderer = TennisSceneRenderer(style, camera=camera)
 
     # Determine frame range
     start_frame = int(cfg.get("start_frame", 0))

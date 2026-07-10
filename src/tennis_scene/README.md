@@ -19,7 +19,9 @@
 - **`components/blcs.py`**: `BLCSModule`。複数カメラのball観測から3D軌道を推定。
 
 ### rendering/
-- **`tennis_scene_renderer.py`**: `TennisSceneRenderer`。SMPL/skeleton表示によるコート上3D可視化・動画保存。3D表示範囲はコート座標系に固定する。
+- **`tennis_scene_renderer.py`**: `TennisSceneRenderer`。SMPL/skeleton表示によるコート上3D可視化・動画保存。3D表示範囲はコート座標系に固定する。テーマ(`light`/`dark`)、選手・ボールの地面影、フェード付き移動トレイル、バウンスリング、HUD、ミニマップを描画。深度ソートは `computed_zorder=False` + 明示zorderで固定。
+- **`camera.py`**: `CameraController` / `CameraView3D`。視点プリセット(`broadcast`/`side`/`top`/`corner`/`behind_far`)、orbit(定速旋回)、キーフレーム移動(smoothstep補間)。
+- **`hud.py`**: `HudRenderer`(フレーム時刻・球速km/h・バウンス数のオーバーレイ)と `MinimapRenderer`(トップダウン2Dミニマップ)。球速・バウンスは `src.utils.rendering.trajectory_analysis` から算出。
 
 ### utils/
 - **`transforms.py`**: `src.utils.geometry` からのthin re-export(このパイプライン内からは未使用)。
@@ -30,7 +32,7 @@
 
 ### configs/
 - **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`ball_detection`/`plcs`/`blcs`)の実行設定。
-- **`visualization.yaml`**: 可視化スタイル・出力設定。
+- **`visualization.yaml`**: 可視化スタイル・出力設定。`style`(テーマ・影・トレイル・HUD・ミニマップ)と `camera`(プリセット・mode・keyframes)を含む。
 
 ## 座標系メモ
 
