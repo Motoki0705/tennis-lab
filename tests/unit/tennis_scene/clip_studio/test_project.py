@@ -20,6 +20,21 @@ class TestValidate:
         errors = ClipStudioProject().validate()
         assert any("at least one source" in error for error in errors)
 
+    def test_recording_id_is_required(self) -> None:
+        errors = ClipStudioProject(
+            sources=[ClipSource(path=Path("a.mp4"), camera_id="cam0")]
+        ).validate()
+        assert any("recording_id" in error for error in errors)
+
+    @pytest.mark.parametrize(
+        "recording_id", ["../match", "match/one", "match one", "match:one"]
+    )
+    def test_recording_id_must_be_safe_path_component(
+        self, two_camera_project: ClipStudioProject, recording_id: str
+    ) -> None:
+        two_camera_project.recording_id = recording_id
+        assert any("recording_id" in error for error in two_camera_project.validate())
+
     def test_duplicate_camera_ids(self) -> None:
         project = ClipStudioProject(
             sources=[
@@ -44,6 +59,12 @@ class TestValidate:
     def test_duplicate_clip_names(self, two_camera_project: ClipStudioProject) -> None:
         two_camera_project.clips.append(Clip(name="clip_000", start_sec=5.0, end_sec=6.0))
         assert any("unique" in error for error in two_camera_project.validate())
+
+    def test_clip_name_must_be_safe_path_component(
+        self, two_camera_project: ClipStudioProject
+    ) -> None:
+        two_camera_project.clips[0].name = "../escape"
+        assert any("clip name" in error for error in two_camera_project.validate())
 
 
 class TestNaming:
@@ -78,7 +99,8 @@ class TestPersistence:
 
     def test_relative_paths_resolved_against_project_dir(self, tmp_path: Path) -> None:
         data = {
-            "version": 1,
+            "version": 2,
+            "recording_id": "match-001",
             "sources": [
                 {"path": "videos/cam0.mp4", "camera_id": "cam0", "offset_sec": 0.0}
             ],
@@ -105,6 +127,7 @@ class TestPersistence:
         path = tmp_path / "project.json"
         two_camera_project.save(path)
         data = load_json(path)
-        assert data["version"] == 1
+        assert data["version"] == 2
+        assert data["recording_id"] == "match-001"
         assert data["sources"][0]["camera_id"] == "cam0"
         assert data["clips"][0]["name"] == "clip_000"

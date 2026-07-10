@@ -21,9 +21,10 @@
 ## 使い方
 
 ```bash
-# 新規プロジェクト（初回のみ video_paths を渡す）
+# 新規プロジェクト（recording_id は後日の追記でも変わらない収録ID）
 .venv/bin/python -m src.tennis_scene.scripts.clip_studio \
   project_path=outputs/clip_studio/match1/project.json \
+  recording_id=match1 \
   video_paths='[data/raw/cam0.mp4,data/raw/cam1.mp4]'
 
 # 再開
@@ -39,4 +40,6 @@
 
 ## エクスポート形式
 
-`<output_dir>/<clip_name>/` に `cam0.mp4, cam1.mp4, ..., clip.json`。マニフェストの `video_paths` / `camera_ids` はそのまま `run_pipeline.py` に渡せる。fps・解像度がソース間で異なる場合は明示的な `export.fps` / `export.width+height`（letterbox）を要求し、暗黙のフォールバックはしない。書き出した動画は re-probe して fps / フレーム数 / 解像度をプランと照合し、違反があれば例外を投げる。
+`<dataset_root>/dataset.json` に全クリップのインデックスを持ち、各クリップは `clips/<recording_id>/<clip_name>/` に `clip.json` と `media/<camera_id>.mp4` を持つ。これにより別収録で `clip_000` が再利用されても衝突しない。マニフェストの `video_paths` / `camera_ids` はそのまま `run_pipeline.py` に渡せる。
+
+fps・解像度がソース間で異なる場合は明示的な `export.fps` / `export.width+height`（letterbox）を要求し、暗黙のフォールバックはしない。書き出した動画は re-probe して fps / フレーム数 / 解像度をプランと照合し、違反があれば例外を投げる。疑似アノテーションの追加方法は `../generate_dataset/README.md` を参照。

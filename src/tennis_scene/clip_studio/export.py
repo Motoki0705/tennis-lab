@@ -17,6 +17,7 @@ producing an out-of-contract clip.
 from __future__ import annotations
 
 import logging
+import shutil
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,6 +31,7 @@ from src.tennis_scene.clip_studio.timeline import (
     source_coverage_sec,
     source_frame_index,
 )
+from src.tennis_scene.generate_dataset.manifest import register_exported_clip
 from src.utils.io import save_json_atomic, utc_now_iso
 from src.utils.video import (
     RandomAccessVideoReader,
@@ -48,7 +50,9 @@ class ExportSettings:
     """Target format of exported clips.
 
     Attributes:
-        output_dir: Directory receiving one subdirectory per clip.
+        output_dir: Structured dataset root. Clips are written below
+            ``clips/<recording_id>/<clip_name>`` and registered in
+            ``dataset.json``.
         fps: Target frame rate. ``None`` requires all sources to share one
             fps (which is then used).
         width, height: Target resolution. Both ``None`` requires all sources
@@ -81,6 +85,7 @@ class CameraExportPlan:
 class ClipExportPlan:
     """Validated, self-contained description of one clip export."""
 
+    recording_id: str
     clip_name: str
     global_start_sec: float
     global_end_sec: float
@@ -199,6 +204,7 @@ def plan_clip_export(
             )
         )
     return ClipExportPlan(
+        recording_id=project.recording_id,
         clip_name=clip.name,
         global_start_sec=clip.start_sec,
         global_end_sec=clip.end_sec,
@@ -250,7 +256,7 @@ def _build_manifest(plan: ClipExportPlan) -> dict[str, Any]:
         cameras.append(
             {
                 "camera_id": camera.camera_id,
-                "video": f"{camera.camera_id}.mp4",
+                "video": f"media/{camera.camera_id}.mp4",
                 "source_path": str(camera.source_path),
                 "offset_sec": camera.offset_sec,
                 "source_fps": camera.source_info.fps,
@@ -260,6 +266,9 @@ def _build_manifest(plan: ClipExportPlan) -> dict[str, Any]:
             }
         )
     return {
+        "version": 1,
+        "clip_id": f"{plan.recording_id}/{plan.clip_name}",
+        "recording_id": plan.recording_id,
         "clip_name": plan.clip_name,
         "fps": plan.fps,
         "num_frames": plan.num_frames,
@@ -268,7 +277,9 @@ def _build_manifest(plan: ClipExportPlan) -> dict[str, Any]:
         "global_start_sec": plan.global_start_sec,
         "global_end_sec": plan.global_end_sec,
         "camera_ids": [camera.camera_id for camera in plan.cameras],
-        "video_paths": [f"{camera.camera_id}.mp4" for camera in plan.cameras],
+        "video_paths": [
+            f"media/{camera.camera_id}.mp4" for camera in plan.cameras
+        ],
         "cameras": cameras,
         "sync_source": "clip_studio",
         "exported_at": utc_now_iso(),
@@ -301,16 +312,21 @@ def export_clip(plan: ClipExportPlan, settings: ExportSettings) -> ClipExportRes
             ``settings.overwrite`` is false.
         RuntimeError: If a written video fails the post-export contract check.
     """
-    clip_dir = Path(settings.output_dir) / plan.clip_name
+    dataset_dir = Path(settings.output_dir)
+    clip_dir = dataset_dir / "clips" / plan.recording_id / plan.clip_name
     if clip_dir.exists() and any(clip_dir.iterdir()) and not settings.overwrite:
         raise ValueError(
             f"clip directory {clip_dir} is not empty; set overwrite=true to replace"
         )
+    if clip_dir.exists() and settings.overwrite:
+        shutil.rmtree(clip_dir)
     clip_dir.mkdir(parents=True, exist_ok=True)
 
+    media_dir = clip_dir / "media"
+    media_dir.mkdir(parents=True, exist_ok=True)
     video_paths: list[Path] = []
     for camera in plan.cameras:
-        video_path = clip_dir / f"{camera.camera_id}.mp4"
+        video_path = media_dir / f"{camera.camera_id}.mp4"
         LOGGER.info(
             f"Exporting {plan.clip_name}/{camera.camera_id}: "
             f"{plan.num_frames} frames from {camera.source_path}"
@@ -320,6 +336,9 @@ def export_clip(plan: ClipExportPlan, settings: ExportSettings) -> ClipExportRes
         video_paths.append(video_path)
 
     manifest_path = save_json_atomic(_build_manifest(plan), clip_dir / MANIFEST_FILENAME)
+    register_exported_clip(
+        dataset_dir, manifest_path, allow_replace=settings.overwrite
+    )
     LOGGER.info(f"Exported clip '{plan.clip_name}' to {clip_dir}")
     return ClipExportResult(
         clip_dir=clip_dir, video_paths=video_paths, manifest_path=manifest_path

@@ -1,0 +1,31 @@
+defaults:
+  - _self_
+
+# Structured dataset root created by export_clips.
+dataset_dir: ???
+
+# null processes every pending clip. Values are stable IDs such as
+# match-20260710/clip_000.
+clip_ids: null
+overwrite: false
+continue_on_error: true
+
+# Keep the existing pipeline config as the single source of checkpoint and
+# model settings. Overrides below make dataset generation non-interactive and
+# avoid duplicate component sidecars; SceneResult remains the canonical output.
+pipeline_config_path: src/tennis_scene/configs/pipeline.yaml
+pipeline_overrides:
+  - court_kp.mode=model
+  - court_kp.save_result=false
+  - gvhmr.save_result=false
+  - player_association.save_result=false
+  - ball_detection.save_result=false
+  - plcs.save_result=false
+  - blcs.save_result=false
+
+hydra:
+  run:
+    dir: outputs/tennis_scene/generate_dataset/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
