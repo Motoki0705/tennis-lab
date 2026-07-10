@@ -1,10 +1,12 @@
 """Shared video streaming utilities."""
 
+from src.utils.video.audio import audio_envelope, read_audio_mono
 from src.utils.video.batching import iter_temporal_batches
 from src.utils.video.encoding import encode_jpeg, iter_selected_video_jpegs
 from src.utils.video.prefetch import PrefetchIterator
 from src.utils.video.reader import (
     OpenCVVideoFrameReader,
+    RandomAccessVideoReader,
     probe_video_info,
     read_video_frame,
     read_video_rgb,
@@ -31,12 +33,14 @@ from src.utils.video.youtube import (
 )
 
 __all__ = [
+    "audio_envelope",
     "build_window_starts",
     "chunked",
     "BgrToTensorTransform",
     "encode_jpeg",
     "FramePacket",
     "OpenCVVideoFrameReader",
+    "RandomAccessVideoReader",
     "PrefetchIterator",
     "TemporalBatch",
     "TemporalWindow",
@@ -51,6 +55,7 @@ __all__ = [
     "normalize_tensor_imagenet",
     "parse_time_seconds",
     "probe_video_info",
+    "read_audio_mono",
     "read_video_frame",
     "read_video_rgb",
     "sample_frame_indices_by_time_ranges",

@@ -4,6 +4,9 @@
 
 ## Modules
 
+### clip_studio/
+長時間・非同期のマルチカメラ動画を同期してラリークリップを切り出し、このパイプラインの入力契約（fps/フレーム数/解像度一致）に合う動画+`clip.json`をエクスポートするGUI。詳細は `clip_studio/README.md`。
+
 ### io.py
 - **`SceneResult`**: パイプライン共有スキーマ(`court_kp`/`player_position`/`player_yaw`/`smpl_*`/`ball_*`等)。
 - **`save()`/`load()`**: `.npz`+`*.metadata.json`サイドカーで保存、pickle混入legacy形式は警告付きフォールバック。
@@ -27,10 +30,13 @@
 ### scripts/
 - **`run_pipeline.py`**: パイプライン実行エントリポイント。結果を `.npz` に保存。
 - **`visualization.py`**: 保存済み `SceneResult` の可視化エントリポイント。
+- **`clip_studio.py`**: クリップスタジオGUIの起動エントリポイント。
+- **`export_clips.py`**: プロジェクトJSONからのヘッドレスクリップエクスポート。
 
 ### configs/
 - **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`ball_detection`/`plcs`/`blcs`)の実行設定。
 - **`visualization.yaml`**: 可視化スタイル・出力設定。
+- **`clip_studio.yaml` / `export_clips.yaml`**: クリップスタジオGUI・エクスポートの設定。
 
 ## 座標系メモ
 
