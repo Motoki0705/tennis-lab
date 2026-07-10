@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 import torch
 
@@ -12,6 +14,7 @@ from src.utils.data.heatmaps import (
     heatmaps_to_peaks,
     heatmaps_to_pixel_coords,
     heatmaps_to_soft_argmax,
+    refine_peaks_log_parabolic,
 )
 
 
@@ -56,7 +59,9 @@ class TestGenerateGaussianHeatmaps:
     @pytest.mark.parametrize("size", [(0, 8), (8, -1), (8,)])
     def test_invalid_size_raises(self, size: tuple[int, ...]) -> None:
         with pytest.raises(ValueError):
-            generate_gaussian_heatmaps(size, (0.5, 0.5), sigma_ratio=0.1)
+            generate_gaussian_heatmaps(
+                cast("tuple[int, int]", size), (0.5, 0.5), sigma_ratio=0.1
+            )
 
 
 class TestGenerateGaussianHeatmap:
@@ -158,3 +163,60 @@ class TestHeatmapsToPeaks:
     def test_invalid_args_raise(self, kwargs: dict) -> None:
         with pytest.raises(ValueError):
             heatmaps_to_peaks(torch.zeros(8, 8), **kwargs)
+
+
+class TestRefinePeaksLogParabolic:
+    def test_recovers_fractional_gaussian_center_exactly(self) -> None:
+        # Off-lattice center: argmax alone quantizes, refinement must recover it.
+        center = torch.tensor([0.4130, 0.5020])
+        hm = generate_gaussian_heatmaps((72, 128), center, sigma_ratio=0.012)
+        coords, _ = heatmaps_to_argmax(hm)
+        assert not torch.allclose(coords, center, atol=1e-3)
+        refined = refine_peaks_log_parabolic(hm, coords)
+        assert torch.allclose(refined, center, atol=1e-4)
+
+    def test_batched_and_peak_axis_shapes(self) -> None:
+        centers = torch.tensor([[0.31, 0.62], [0.77, 0.18]])
+        hm = generate_gaussian_heatmaps((36, 64), centers, sigma_ratio=0.02)
+        coords, _, _ = heatmaps_to_peaks(hm, threshold=0.5, nms_kernel=3, max_peaks=2)
+        refined = refine_peaks_log_parabolic(hm, coords)
+        assert refined.shape == coords.shape
+        for index in range(2):
+            assert torch.allclose(refined[index, 0], centers[index], atol=1e-4)
+
+    def test_lattice_center_is_unchanged(self) -> None:
+        # Center on a lattice point: refinement must not move it.
+        hm = generate_gaussian_heatmaps((17, 17), (0.5, 0.5), sigma_ratio=0.05)
+        coords, _ = heatmaps_to_argmax(hm)
+        refined = refine_peaks_log_parabolic(hm, coords)
+        assert torch.allclose(refined, coords, atol=1e-6)
+
+    def test_border_peak_keeps_argmax_coordinate(self) -> None:
+        hm = torch.zeros(9, 9)
+        hm[0, 8] = 1.0
+        coords, _ = heatmaps_to_argmax(hm)
+        refined = refine_peaks_log_parabolic(hm, coords)
+        assert torch.allclose(refined, coords)
+
+    def test_flat_map_keeps_argmax_coordinate(self) -> None:
+        hm = torch.full((9, 9), 0.5)
+        coords, _ = heatmaps_to_argmax(hm)
+        refined = refine_peaks_log_parabolic(hm, coords)
+        assert torch.allclose(refined, coords)
+
+    def test_offset_clamped_to_half_cell(self) -> None:
+        hm = torch.zeros(9, 9)
+        hm[4, 4] = 0.9
+        hm[4, 5] = 0.89999
+        coords, _ = heatmaps_to_argmax(hm)
+        refined = refine_peaks_log_parabolic(hm, coords)
+        assert (refined - coords).abs().max() <= 0.5 / 8 + 1e-6
+
+    def test_mismatched_leading_shape_raises(self) -> None:
+        hm = torch.rand(2, 8, 8)
+        with pytest.raises(ValueError, match="leading dimensions"):
+            refine_peaks_log_parabolic(hm, torch.rand(3, 2))
+
+    def test_bad_last_dim_raises(self) -> None:
+        with pytest.raises(ValueError, match=r"\(\.\.\., 2\)"):
+            refine_peaks_log_parabolic(torch.rand(8, 8), torch.rand(3))

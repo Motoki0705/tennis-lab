@@ -280,6 +280,100 @@ def heatmaps_to_peaks(
     )
 
 
+def refine_peaks_log_parabolic(
+    heatmaps: Tensor,
+    coords: Tensor,
+    *,
+    eps: float = 1.0e-12,
+) -> Tensor:
+    """Refine lattice peak coordinates to sub-cell precision.
+
+    Fits a 1-D parabola per axis to the log of the three heatmap values
+    around each peak cell. For heatmaps that sample a 2-D axis-aligned
+    Gaussian (the supervised ball-detection target) the recovered offset is
+    exact, so this removes the lattice quantization of
+    :func:`heatmaps_to_argmax` / :func:`heatmaps_to_peaks`.
+
+    Peaks on the heatmap border or with a degenerate local curvature keep
+    their input coordinate on that axis. Offsets are clamped to half a cell,
+    matching the argmax guarantee that the true peak lies within the cell.
+
+    Args:
+        heatmaps: Tensor with shape ``(..., H, W)`` of non-negative values.
+        coords: Normalized ``(x, y)`` peak coordinates produced by an argmax
+            over *heatmaps*, with shape ``(..., 2)`` or ``(..., K, 2)`` whose
+            leading dimensions match *heatmaps*.
+        eps: Floor applied to heatmap values before the log, and minimum
+            curvature magnitude accepted by the fit.
+
+    Returns:
+        Refined normalized coordinates with the same shape as *coords*.
+    """
+    if heatmaps.ndim < 2:
+        raise ValueError(f"heatmaps must have shape (..., H, W), got {tuple(heatmaps.shape)}.")
+    if coords.shape[-1] != 2:
+        raise ValueError(f"coords must have shape (..., 2), got {tuple(coords.shape)}.")
+    *leading_shape, height, width = heatmaps.shape
+    coords_shape = tuple(coords.shape)
+    if coords_shape[: len(leading_shape)] != tuple(leading_shape) or len(coords_shape) not in (
+        len(leading_shape) + 1,
+        len(leading_shape) + 2,
+    ):
+        raise ValueError(
+            "coords leading dimensions must match heatmaps leading dimensions "
+            f"with an optional peak axis, got coords {coords_shape} for "
+            f"heatmaps {tuple(heatmaps.shape)}."
+        )
+    if eps <= 0:
+        raise ValueError("eps must be positive.")
+
+    flattened_leading = math.prod(leading_shape) if leading_shape else 1
+    maps = heatmaps.reshape(flattened_leading, height, width)
+    flat_coords = coords.reshape(flattened_leading, -1, 2)
+
+    x_index = (
+        (flat_coords[..., 0] * float(width - 1)).round().long().clamp(0, width - 1)
+    )
+    y_index = (
+        (flat_coords[..., 1] * float(height - 1)).round().long().clamp(0, height - 1)
+    )
+    batch_index = torch.arange(flattened_leading, device=heatmaps.device)[:, None]
+
+    def _log_value(dy: Tensor, dx: Tensor) -> Tensor:
+        y_neighbor = (y_index + dy).clamp(0, height - 1)
+        x_neighbor = (x_index + dx).clamp(0, width - 1)
+        return maps[batch_index, y_neighbor, x_neighbor].clamp_min(eps).log()
+
+    zero = torch.zeros_like(x_index)
+    one = torch.ones_like(x_index)
+
+    def _axis_offset(
+        log_minus: Tensor,
+        log_center: Tensor,
+        log_plus: Tensor,
+        index: Tensor,
+        last_index: int,
+    ) -> Tensor:
+        curvature = 2.0 * log_center - log_minus - log_plus
+        offset = 0.5 * (log_plus - log_minus) / curvature.clamp_min(eps)
+        offset = offset.clamp(-0.5, 0.5)
+        interior = (index > 0) & (index < last_index) & (curvature > eps)
+        return torch.where(interior, offset, torch.zeros_like(offset))
+
+    log_center = _log_value(zero, zero)
+    offset_x = _axis_offset(
+        _log_value(zero, -one), log_center, _log_value(zero, one), x_index, width - 1
+    )
+    offset_y = _axis_offset(
+        _log_value(-one, zero), log_center, _log_value(one, zero), y_index, height - 1
+    )
+
+    refined_x = (x_index.to(coords.dtype) + offset_x) / max(width - 1, 1)
+    refined_y = (y_index.to(coords.dtype) + offset_y) / max(height - 1, 1)
+    refined = torch.stack([refined_x, refined_y], dim=-1).clamp(0.0, 1.0)
+    return refined.reshape(coords_shape)
+
+
 def resize_heatmap_sequence(heatmaps: Tensor, target_size_hw: tuple[int, int]) -> Tensor:
     """Bilinearly resize ``(B, T, H, W)`` heatmaps/logits to ``target_size_hw``.
 

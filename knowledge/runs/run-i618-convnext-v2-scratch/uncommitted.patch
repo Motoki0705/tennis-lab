@@ -1,0 +1,12 @@
+diff --git a/assets/plcs/gt_vs_pred.gif b/assets/plcs/gt_vs_pred.gif
+deleted file mode 100644
+index 74d9c62..0000000
+--- a/assets/plcs/gt_vs_pred.gif
++++ /dev/null
+@@ -1 +0,0 @@
+-This is an image file
+\ No newline at end of file
+diff --git a/assets/wasb/gt_vs_pred.gif b/assets/wasb/gt_vs_pred.gif
+deleted file mode 100644
+index 6eacfdd..0000000
+Binary files a/assets/wasb/gt_vs_pred.gif and /dev/null differ

@@ -24,6 +24,7 @@ from src.utils.data.heatmaps import (
     heatmaps_to_peaks,
     heatmaps_to_pixel_coords,
     heatmaps_to_soft_argmax,
+    refine_peaks_log_parabolic,
     resize_heatmap_sequence,
 )
 from src.utils.data.scene_io import load_scene_payload
@@ -52,6 +53,7 @@ __all__ = [
     "parse_float_range",
     "parse_int_range",
     "random_visibility_dropout",
+    "refine_peaks_log_parabolic",
     "resize_heatmap_sequence",
     "scale_uv_with_visibility",
     "tensor_images_to_uint8_rgb",
