@@ -17,6 +17,7 @@ Example:
 """
 
 from src.utils.rendering.ball_renderer import BallRenderer
+from src.utils.rendering.camera_view import CameraView3DConfig, ResolvedCameraView3D
 from src.utils.rendering.court_renderer import CourtRenderer
 from src.utils.rendering.mesh_renderer import MeshRenderer, MeshStyle
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer
@@ -28,4 +29,6 @@ __all__ = [
     "BallRenderer",
     "MeshRenderer",
     "MeshStyle",
+    "CameraView3DConfig",
+    "ResolvedCameraView3D",
 ]

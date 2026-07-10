@@ -63,3 +63,6 @@ qualitative_logging:
   enabled: true
   every_n_epochs: 5
   num_samples: 4
+  view_3d:
+    mode: default  # default | look_at
+    zoom: 1.3

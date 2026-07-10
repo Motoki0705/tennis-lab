@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import pytest
+from omegaconf import OmegaConf
 
-from src.tasks.base.visualization.orchestrator import parse_cameras, resolve_device
+from src.tasks.base.visualization.orchestrator import (
+    build_scene_runtime_config,
+    parse_cameras,
+    resolve_device,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -44,3 +49,34 @@ def test_resolve_device_auto_returns_valid_device() -> None:
 
     expected = "cuda" if torch.cuda.is_available() else "cpu"
     assert resolve_device("auto") == expected
+
+
+def test_runtime_config_keeps_input_camera_selectors_separate_from_view_3d() -> None:
+    cfg = OmegaConf.create(
+        {
+            "run": {"device": "cpu"},
+            "visualization": {
+                "mode": "visualize",
+                "scene_path": "scene",
+                "checkpoint": None,
+                "animation_view": "3d",
+                "fps": 30,
+                "save": None,
+                "camera": 2,
+                "cameras": "0,2",
+                "info": False,
+                "view_3d": {
+                    "mode": "look_at",
+                    "center": [0, -25, 6],
+                    "look_at": [0, 0, 0.5],
+                },
+            },
+        }
+    )
+
+    runtime = build_scene_runtime_config(cfg)
+
+    assert runtime.camera == 2
+    assert runtime.cameras == [0, 2]
+    assert runtime.view_3d.mode == "look_at"
+    assert runtime.view_3d.center == (0.0, -25.0, 6.0)

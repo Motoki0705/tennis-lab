@@ -15,12 +15,13 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
-import hydra
 import matplotlib.pyplot as plt
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
+
+from src.utils.hydra import hydra_main
 
 if TYPE_CHECKING:
     from src.tennis_scene.io import SceneResult
@@ -48,16 +49,15 @@ def _validate_scene_for_smpl(scene: SceneResult) -> None:
         )
 
 
-@hydra.main(
-    version_base="1.3",
-    config_path="../configs",
-    config_name="visualization",
+@hydra_main(  # type: ignore[untyped-decorator]
+    config_path="../configs", config_name="visualization", version_base="1.3"
 )
 def main(cfg: DictConfig) -> int:
     """Visualize tennis scene results."""
     from src.tennis_scene.io import SceneResult
     from src.tennis_scene.rendering import TennisSceneRenderer
     from src.tennis_scene.rendering.tennis_scene_renderer import TennisSceneStyle
+    from src.utils.rendering.camera_view import CameraView3DConfig
 
     # Load input
     input_path = Path(to_absolute_path(str(cfg.input)))
@@ -73,16 +73,27 @@ def main(cfg: DictConfig) -> int:
     _validate_scene_for_smpl(scene)
 
     # Create style
+    player_representation = str(cfg.style.player_representation)
+    if player_representation not in {"smpl", "skeleton"}:
+        raise ValueError(
+            "style.player_representation must be 'smpl' or 'skeleton', "
+            f"got {player_representation!r}."
+        )
     style = TennisSceneStyle(
         trail_length=int(cfg.style.trail_length),
         show_direction=bool(cfg.style.show_direction),
         show_trail=bool(cfg.style.show_trail),
         figsize=tuple(cfg.style.figsize),
-        player_representation=str(cfg.style.player_representation),
+        player_representation=cast(
+            "Literal['smpl', 'skeleton']", player_representation
+        ),
         mesh_alpha=float(cfg.style.mesh_alpha),
     )
 
-    renderer = TennisSceneRenderer(style)
+    renderer = TennisSceneRenderer(
+        style,
+        view_3d=CameraView3DConfig.from_mapping(cfg.get("view_3d")),
+    )
 
     # Determine frame range
     start_frame = int(cfg.get("start_frame", 0))

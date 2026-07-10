@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
 
@@ -18,6 +18,7 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
 from src.utils.device import resolve_device as _resolve_torch_device
+from src.utils.rendering.camera_view import CameraView3DConfig
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ class BaseVisualizationRuntimeConfig:
     camera: int
     cameras: list[int] | str | None
     info: bool
+    view_3d: CameraView3DConfig = field(default_factory=CameraView3DConfig)
 
 
 def resolve_device(device: str) -> str:
@@ -123,4 +125,5 @@ def build_scene_runtime_config(cfg: DictConfig) -> BaseVisualizationRuntimeConfi
         camera=int(vis.get("camera", 0)),
         cameras=parse_cameras(vis.get("cameras")),
         info=bool(vis.info),
+        view_3d=CameraView3DConfig.from_mapping(vis.get("view_3d")),
     )

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
 
+from src.utils.rendering.camera_view import CameraView3DConfig, scene_cameras_from_scene
 from src.utils.rendering.court_renderer import CourtRenderer
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer, SkeletonStyle
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, NET_HEIGHT_POST
@@ -25,13 +26,19 @@ class PLCSSceneRenderer:
         self,
         court_renderer: CourtRenderer | None = None,
         skeleton_renderer: SkeletonRenderer | None = None,
+        view_3d: CameraView3DConfig | None = None,
     ) -> None:
         self.court_renderer = court_renderer or CourtRenderer()
+        self.view_3d = view_3d or CameraView3DConfig()
         self.skeleton_renderer = skeleton_renderer or SkeletonRenderer(
             skeleton_type="coco17"
         )
         self.smplh_renderer = SkeletonRenderer(skeleton_type="smplh")
         self.coco17_renderer = SkeletonRenderer(skeleton_type="coco17")
+
+    def _apply_3d_view(self, ax: Axes3D, scene: Any) -> None:
+        """Apply the configured view after each axes reset/render pass."""
+        self.view_3d.apply(ax, scene_cameras_from_scene(scene))
 
     def _pick_skeleton_renderer(self, num_joints: int) -> SkeletonRenderer:
         """Return the skeleton renderer that matches the joint count."""
@@ -183,6 +190,7 @@ class PLCSSceneRenderer:
         world_pose = self._compute_world_pose(scene, frame_idx)
         skel = self._pick_skeleton_renderer(world_pose.shape[0])
         skel.render_3d(ax, world_pose)
+        self._apply_3d_view(ax, scene)
 
     def _render_2d_subplot(self, ax: Axes, scene: Any, frame_idx: int) -> None:
         self.court_renderer.render_2d(ax, show_fence=True)
@@ -261,6 +269,7 @@ class PLCSSceneRenderer:
             ),
         )
         ax.legend(loc="upper right")
+        self._apply_3d_view(ax, gt_scene)
 
     def _render_2d_comparison_subplot(
         self,

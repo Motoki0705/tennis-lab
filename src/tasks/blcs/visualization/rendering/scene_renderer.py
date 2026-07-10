@@ -26,6 +26,7 @@ from src.utils.rendering.ball_renderer import (
     BallRenderer,
     BallStyle,
 )
+from src.utils.rendering.camera_view import CameraView3DConfig, scene_cameras_from_scene
 from src.utils.rendering.court_renderer import CourtRenderer
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
@@ -54,16 +55,23 @@ class BLCSSceneRenderer:
         self,
         court_renderer: CourtRenderer | None = None,
         ball_renderer: BallRenderer | None = None,
+        view_3d: CameraView3DConfig | None = None,
     ) -> None:
         """Initialize BLCS scene renderer.
 
         Args:
             court_renderer: Court renderer instance. If None, creates default.
             ball_renderer: Ball renderer. If None, creates default.
+            view_3d: Explicit Matplotlib 3D camera configuration.
 
         """
         self.court_renderer = court_renderer or CourtRenderer()
         self.ball_renderer = ball_renderer or BallRenderer()
+        self.view_3d = view_3d or CameraView3DConfig()
+
+    def _apply_3d_view(self, ax: Axes3D, scene: Any = None) -> None:
+        """Apply the configured view, including saved scene cameras when requested."""
+        self.view_3d.apply(ax, scene_cameras_from_scene(scene))
 
     def _get_display_title(self, meta: dict[str, Any]) -> str:
         """Generate title string for scene visualization.
@@ -127,6 +135,7 @@ class BLCSSceneRenderer:
 
         # Title
         ax.set_title(self._get_display_title(meta))
+        self._apply_3d_view(ax, scene)
 
         return fig, ax
 
@@ -373,6 +382,7 @@ class BLCSSceneRenderer:
             ax.set_xlim(-HALF_DOUBLES_WIDTH - 2, HALF_DOUBLES_WIDTH + 2)
             ax.set_ylim(-HALF_LENGTH - 2, HALF_LENGTH + 2)
             ax.set_zlim(0, 5)
+            self._apply_3d_view(ax, scene)
 
             def update_3d(frame: int) -> tuple:
                 line.set_data(positions[: frame + 1, 0], positions[: frame + 1, 1])
@@ -383,6 +393,7 @@ class BLCSSceneRenderer:
                     [positions[frame, 2]],
                 )
                 ax.set_title(f"Frame {frame}/{num_frames - 1}")
+                self._apply_3d_view(ax, scene)
                 return line, point
 
             return FuncAnimation(
@@ -464,6 +475,7 @@ class BLCSSceneRenderer:
         fps: float = 30.0,
         figsize: tuple[float, float] = (10, 8),
         title: str = "GT vs Prediction",
+        scene: Any = None,
     ) -> FuncAnimation | None:
         """Create animation comparing GT and predicted trajectories.
 
@@ -474,6 +486,7 @@ class BLCSSceneRenderer:
             fps: Frames per second.
             figsize: Figure size.
             title: Title prefix for the animation.
+            scene: Optional source scene for ``view_3d.mode=scene_camera``.
 
         Returns:
             FuncAnimation object, or None if view is invalid.
@@ -503,6 +516,7 @@ class BLCSSceneRenderer:
             ax.set_ylim(-HALF_LENGTH - 2, HALF_LENGTH + 2)
             ax.set_zlim(0, 5)
             ax.legend(loc="upper right")
+            self._apply_3d_view(ax, scene)
 
             def update_3d(frame: int) -> tuple:
                 # GT
@@ -522,6 +536,7 @@ class BLCSSceneRenderer:
                     [pred_positions[frame, 2]],
                 )
                 ax.set_title(f"{title} | Frame {frame}/{num_frames - 1}")
+                self._apply_3d_view(ax, scene)
                 return gt_line, gt_point, pred_line, pred_point
 
             return FuncAnimation(

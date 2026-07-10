@@ -3,6 +3,10 @@ scene_path: data/plcs/scenes/scene_000001
 camera: 0
 cameras: all
 animation_view: 3d  # 3d | 2d_topdown | camera
+# mode: default | look_at | scene_camera; independent of predictor `cameras`.
+view_3d:
+  mode: default
+  zoom: 1.3
 fps: null
 save: null
 info: false
