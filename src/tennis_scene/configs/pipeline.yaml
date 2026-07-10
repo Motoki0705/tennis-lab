@@ -28,8 +28,7 @@ gvhmr:
   track_selection: auto  # interactive (UI) / auto (largest num_tracks)
   num_tracks: 2
   skip: false
-  # GVHMR runs as a CLI subprocess in the same venv (isolates GPU memory per camera)
-  python_executable: .venv/bin/python
+  save_result: true
   output_path: ${output_dir}/gvhmr_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
 
