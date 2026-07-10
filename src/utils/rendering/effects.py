@@ -8,6 +8,8 @@ Primitives shared by the tennis scene renderer (and any other 3D plot):
   shadow anchoring objects visually to the court.
 - ``render_ground_ring``: an unfilled circle on the ground plane — used for
   bounce-impact markers.
+- ``render_impact_ring``: a ground ring that expands and fades with the age
+  of an impact — the shared bounce-marker animation.
 """
 
 from __future__ import annotations
@@ -141,6 +143,43 @@ def render_ground_shadow(
     )
     ax.add_collection3d(shadow)
     return shadow
+
+
+def render_impact_ring(
+    ax: Axes3D,
+    center_xy: tuple[float, float],
+    age: float,
+    *,
+    color: str | tuple[float, float, float],
+    base_radius: float = 0.15,
+    growth: float = 0.45,
+    linewidth: float = 2.0,
+    zorder: int = 5,
+) -> None:
+    """Draw an expanding, fading ground ring for an impact of a given age.
+
+    Args:
+        ax: Target 3D axis.
+        center_xy: Impact position on the court plane.
+        age: Normalized impact age in ``[0, 1]``: 0 draws a small opaque
+            ring, 1 the fully expanded, nearly transparent one.
+        color: Ring color.
+        base_radius: Ring radius at ``age == 0`` in metres.
+        growth: Radius growth over the full age range in metres.
+        linewidth: Line width in points.
+        zorder: Z-order of the ring.
+    """
+    if not 0.0 <= age <= 1.0:
+        raise ValueError(f"age must be within [0, 1], got {age}")
+    render_ground_ring(
+        ax,
+        center_xy,
+        radius=base_radius + growth * age,
+        color=color,
+        alpha=0.9 * (1.0 - age) + 0.05,
+        linewidth=linewidth,
+        zorder=zorder,
+    )
 
 
 def render_ground_ring(

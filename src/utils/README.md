@@ -36,12 +36,20 @@
 - **`camera_projector.py`**: `Camera`、`CameraConfig`、`CameraView`、`CameraProjector`、`make_look_at_camera()`、`project_points()`。ピンホール投影の共通実装。
 
 ### `rendering/`
+
+タスクの Scene 型・Hydra 設定・ラベル・モデル出力に依存しない描画プリミティブの置き場。tennis_scene / BLCS / PLCS の 3D 可視化はすべてここを直接 import する（task 固有の変換・イベント解釈・HUD 行の選択は各 task 側に残す）。
+
 - **`court_renderer.py`**: コート線・スタイル定義と `CourtRenderer`。3D はランオフ（apron）二色サーフェス・網目ネット・ポスト・センターストラップ対応。ネットサグは `schema.court.net_height_at_x()` に一本化（`net_top_curve()`）。
 - **`skeleton_renderer.py`**: COCO / SMPL 系 skeleton 描画用の `SkeletonRenderer` と関連 enum / style。
 - **`ball_renderer.py`**: ボール軌跡・イベント描画用の `BallRenderer`、`BallEvent`、`BallStyle`。
 - **`mesh_renderer.py`**: 三角メッシュ（SMPL 等）の `MeshRenderer`。カメラ視点オーバーレイ（cv2 painter's algorithm、K 行列投影）と matplotlib 3D 描画。
-- **`effects.py`**: 3D 描画エフェクト。フェード付きポリライン（軌跡）、地面の擬似影、バウンスリング。
+- **`effects.py`**: 3D 描画エフェクト。フェード付きポリライン（軌跡）、地面の擬似影、バウンスリング（経年で拡大・フェードする `render_impact_ring()` 含む）。
 - **`trajectory_analysis.py`**: 軌道からの物理量抽出（純 NumPy）。`compute_speeds()`（フレーム毎速度）と `detect_bounces()`（接地バウンス検出）。
+- **`camera_view.py`**: 3D 視点の単一共有 API。`CameraView3D`・視点プリセット・`CameraController`（static / orbit / keyframes、Hydra mapping からの `from_config()`）と、`ax.clear()` 後に毎フレーム呼ぶ `apply_scene_camera()`（view_init + コート固定 framing + zoom）。#630 の `look_at` / `scene_camera` モードはこのモジュールを拡張して実装する（並行実装を作らない）。
+- **`theme.py`**: `SceneTheme`（light / dark）。figure / axes 背景、テキスト色、axes chrome 非表示、full-bleed レイアウト、テーマに合わせた `CourtStyle`。`resolve_theme()`、`apply_figure_theme()` / `apply_axes_layout_3d()`（figure レベル、作成時のみ）、`apply_axes_theme_3d()`（`ax.clear()` 後に毎フレーム）。
+- **`layers.py`**: 共有 z-order 規約 `SceneLayer`（surface < ground < net < structure < player < ring < trail < marker < ball < overlay）と、mplot3d の深度ソートを無効化する `enable_explicit_layering()`。
+- **`hud.py`**: 汎用 HUD。呼び出し側が組んだテキスト行を `text2D` で描く `render_hud_text()` と、`format_frame_clock()` / `format_speed_kmh()`。Scene 型や「球速」「バウンス」の意味は知らない。
+- **`minimap.py`**: plain NumPy 配列（現在位置 dots・トレイル・イベント位置）を受け取るトップダウンミニマップ `MinimapRenderer` / `MinimapStyle`。配列の切り出し・色の意味付けは呼び出し側。
 
 ### `schema/`
 - **`court.py`**: コート寸法、`CourtConfig`、20 点 court keypoints、court skeleton、正規化スケール定数、`net_height_at_x()`。
