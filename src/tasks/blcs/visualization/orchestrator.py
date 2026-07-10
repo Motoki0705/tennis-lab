@@ -16,7 +16,10 @@ from src.tasks.base.visualization.orchestrator import (
 from src.tasks.blcs.visualization.adapters.predict_inputs import build_predict_inputs
 from src.tasks.blcs.visualization.api.predict import predict_positions
 from src.tasks.blcs.visualization.io.scene import load_scene_bundle
-from src.tasks.blcs.visualization.rendering import BLCSSceneRenderer
+from src.tasks.blcs.visualization.rendering import (
+    BLCSSceneRenderer,
+    extract_ball_events,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +36,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
     )
     logger.info("Scene loaded successfully.")
 
-    renderer = BLCSSceneRenderer()
+    renderer = BLCSSceneRenderer(style=cfg.style, camera=cfg.view_3d)
     if cfg.info:
         renderer.print_scene_info(bundle.scene)
         return 0
@@ -65,6 +68,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             view=cfg.animation_view,
             fps=fps,
             title="GT vs Prediction",
+            events=extract_ball_events(bundle.scene["meta"]),
         )
         if anim is None:
             logger.error("Error: Failed to create comparison animation.")

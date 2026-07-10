@@ -2,7 +2,10 @@
 
 This module provides complete scene rendering for BLCS (Ball Location from
 Court keypoints and Skeleton) data, combining court and ball trajectory
-visualization.
+visualization. 3D views build on the shared rich-rendering primitives in
+``src.utils.rendering`` (theme, layers, camera, effects, HUD, minimap);
+this renderer owns only the BLCS-specific parts: scene-dict access, event
+extraction from metadata, and HUD line selection.
 
 Example:
     >>> from src.tasks.blcs.visualization.rendering import BLCSSceneRenderer
@@ -15,25 +18,137 @@ Example:
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.animation import FuncAnimation
 
+from src.tasks.base.visualization.style import SceneStyleConfig
 from src.utils.rendering.ball_renderer import (
     BallEvent,
     BallEventType,
     BallRenderer,
     BallStyle,
 )
+from src.utils.rendering.camera_view import CameraController, apply_scene_camera
 from src.utils.rendering.court_renderer import CourtRenderer
+from src.utils.rendering.effects import (
+    render_fading_line_3d,
+    render_ground_shadow,
+    render_impact_ring,
+)
+from src.utils.rendering.hud import (
+    HudStyle,
+    format_frame_clock,
+    format_speed_kmh,
+    render_hud_text,
+)
+from src.utils.rendering.layers import SceneLayer, enable_explicit_layering
+from src.utils.rendering.minimap import MinimapRenderer
+from src.utils.rendering.theme import (
+    apply_axes_layout_3d,
+    apply_axes_theme_3d,
+    apply_figure_theme,
+    resolve_theme,
+)
+from src.utils.rendering.trajectory_analysis import compute_speeds, detect_bounces
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
+    from numpy.typing import NDArray
 
     Axes3D: TypeAlias = Any
+
+logger = logging.getLogger(__name__)
+
+_VIEW_MARGIN = 2.0
+_VIEW_Z_LIMIT = 4.0
+_BALL_SHADOW_RADIUS = 0.08
+_BOUNCE_RING_COLOR = "#FFD700"
+_BOUNCE_MARKER_DURATION_S = 1.5
+_MINIMAP_TRAIL_FRAMES = 30
+_GT_COLOR = "green"
+_PRED_COLOR = "red"
+
+# Minimap inset rectangle in figure coordinates (left, bottom, width, height).
+_MINIMAP_RECT = (0.76, 0.04, 0.21, 0.30)
+
+
+def extract_ball_events(meta: dict[str, Any]) -> list[BallEvent]:
+    """Extract ball events from BLCS scene metadata.
+
+    Args:
+        meta: Scene metadata dictionary with a ``shots`` list.
+
+    Returns:
+        List of BallEvent objects.
+    """
+    events = []
+
+    shots = meta.get("shots", [])
+    for i, shot in enumerate(shots):
+        shot_idx = shot.get("shot_index", i)
+
+        if shot.get("t_start", -1) >= 0 and i > 0:
+            events.append(
+                BallEvent(
+                    BallEventType.SHOT_BOUNDARY,
+                    shot["t_start"],
+                    f"Shot {shot_idx + 1} start",
+                )
+            )
+
+        if shot.get("t_bounce1", -1) >= 0:
+            events.append(
+                BallEvent(
+                    BallEventType.BOUNCE,
+                    shot["t_bounce1"],
+                    f"S{shot_idx + 1} Bounce 1",
+                )
+            )
+        if shot.get("t_bounce2", -1) >= 0:
+            events.append(
+                BallEvent(
+                    BallEventType.BOUNCE,
+                    shot["t_bounce2"],
+                    f"S{shot_idx + 1} Bounce 2",
+                )
+            )
+
+        if shot.get("t_net", -1) >= 0:
+            events.append(
+                BallEvent(
+                    BallEventType.NET_HIT,
+                    shot["t_net"],
+                    f"S{shot_idx + 1} Net hit",
+                )
+            )
+
+    return events
+
+
+def resolve_bounce_frames(
+    positions: NDArray[np.float32],
+    events: list[BallEvent] | None,
+) -> NDArray[np.int64]:
+    """Bounce frame indices for a trajectory, preferring event metadata.
+
+    Bounce events from scene metadata are authoritative; only when the event
+    list carries no bounces does this fall back to detecting them from the
+    trajectory, so the same bounce is never reported twice.
+    """
+    if events:
+        frames = sorted(
+            e.frame_idx for e in events if e.event_type is BallEventType.BOUNCE
+        )
+        if frames:
+            return np.asarray(frames, dtype=np.int64)
+    logger.info("No bounce events in metadata; falling back to detect_bounces().")
+    return detect_bounces(positions)
 
 
 class BLCSSceneRenderer:
@@ -54,16 +169,28 @@ class BLCSSceneRenderer:
         self,
         court_renderer: CourtRenderer | None = None,
         ball_renderer: BallRenderer | None = None,
+        style: SceneStyleConfig | None = None,
+        camera: CameraController | None = None,
     ) -> None:
         """Initialize BLCS scene renderer.
 
         Args:
-            court_renderer: Court renderer instance. If None, creates default.
+            court_renderer: Court renderer instance. If None, creates one
+                matching the theme.
             ball_renderer: Ball renderer. If None, creates default.
+            style: Shared scene-style settings (theme, shadows, trails, HUD,
+                minimap) applied to the 3D views.
+            camera: 3D viewpoint controller. If None, uses the static
+                broadcast preset.
 
         """
-        self.court_renderer = court_renderer or CourtRenderer()
+        self.style = style or SceneStyleConfig()
+        self.theme = resolve_theme(self.style.theme)
+        self.camera = camera or CameraController("broadcast")
+        self.court_renderer = court_renderer or CourtRenderer(self.theme.court_style)
         self.ball_renderer = ball_renderer or BallRenderer()
+        self.hud_style = HudStyle(text_color=self.theme.text_color)
+        self.minimap_renderer = MinimapRenderer()
 
     def _get_display_title(self, meta: dict[str, Any]) -> str:
         """Generate title string for scene visualization.
@@ -89,7 +216,7 @@ class BLCSSceneRenderer:
         figsize: tuple[float, float] = (12, 8),
         ax: Axes3D | None = None,
     ) -> tuple[Figure | None, Axes3D]:
-        """Render 3D view of ball trajectory.
+        """Render 3D view of the full ball trajectory.
 
         Args:
             scene: BLCS scene dictionary with 'ball_pos_world' and 'meta'.
@@ -104,17 +231,17 @@ class BLCSSceneRenderer:
         fig = None
         if ax is None:
             fig = plt.figure(figsize=figsize)
+            apply_figure_theme(fig, self.theme)
             ax = fig.add_subplot(111, projection="3d")
 
-        # Render court
-        self.court_renderer.render_3d(ax, show_net=True)
+        self._setup_3d_axes(ax)
 
         # Get ball trajectory
         positions = scene["ball_pos_world"]
         meta = scene["meta"]
 
         # Build event list
-        events = self._extract_events(meta)
+        events = extract_ball_events(meta)
 
         # Render trajectory
         highlight = frame_idx if frame_idx >= 0 else None
@@ -125,8 +252,11 @@ class BLCSSceneRenderer:
             highlight_frame=highlight,
         )
 
-        # Title
-        ax.set_title(self._get_display_title(meta))
+        apply_scene_camera(
+            ax, self.camera.base, margin=_VIEW_MARGIN, z_limit=_VIEW_Z_LIMIT
+        )
+        if self.theme.name != "dark":
+            ax.set_title(self._get_display_title(meta), color=self.theme.text_color)
 
         return fig, ax
 
@@ -164,7 +294,7 @@ class BLCSSceneRenderer:
         meta = scene["meta"]
 
         # Build event list
-        events = self._extract_events(meta)
+        events = extract_ball_events(meta)
 
         # Create style with height colormap option
         style = BallStyle(use_height_colormap=use_height_colormap)
@@ -241,7 +371,7 @@ class BLCSSceneRenderer:
         )
 
         # Build events
-        events = self._extract_events(meta)
+        events = extract_ball_events(meta)
 
         # Render ball trajectory in UV space
         self.ball_renderer.render_trajectory_uv(
@@ -336,6 +466,107 @@ class BLCSSceneRenderer:
 
         return fig
 
+    def _setup_3d_axes(self, ax: Axes3D) -> None:
+        """Per-frame 3D axes setup: layering, theme, and the rich court."""
+        enable_explicit_layering(ax)
+        apply_axes_theme_3d(ax, self.theme)
+        x_half_span = float(HALF_DOUBLES_WIDTH + _VIEW_MARGIN)
+        y_half_span = float(HALF_LENGTH + _VIEW_MARGIN)
+        self.court_renderer.render_3d(
+            ax,
+            show_net=True,
+            apron_bounds=(-x_half_span, x_half_span, -y_half_span, y_half_span),
+        )
+
+    def _render_ball_3d_frame(
+        self,
+        ax: Axes3D,
+        positions: NDArray[np.float32],
+        frame_idx: int,
+        *,
+        color: str | None = None,
+        label: str | None = None,
+    ) -> None:
+        """Draw one trajectory's fading trail, shadow, and current ball."""
+        trail_color = color or self.ball_renderer.style.trajectory_color
+        if self.style.show_trail:
+            start_idx = max(0, frame_idx - self.style.trail_length)
+            render_fading_line_3d(
+                ax,
+                positions[start_idx : frame_idx + 1],
+                color=trail_color,
+                alpha_range=(0.05, 0.95),
+                linewidth_range=(1.0, 3.0),
+                zorder=SceneLayer.TRAIL,
+            )
+
+        ball_pos = positions[frame_idx]
+        if not np.isfinite(ball_pos).all():
+            return
+        if self.style.show_shadow:
+            # Fade the contact shadow out as the ball rises.
+            height_ratio = float(np.clip(ball_pos[2] / _VIEW_Z_LIMIT, 0.0, 1.0))
+            render_ground_shadow(
+                ax,
+                (float(ball_pos[0]), float(ball_pos[1])),
+                radius=_BALL_SHADOW_RADIUS,
+                alpha=0.35 * (1.0 - 0.7 * height_ratio),
+                zorder=SceneLayer.GROUND,
+            )
+        style_override = BallStyle(ball_color=color) if color is not None else None
+        self.ball_renderer.render_ball_3d(
+            ax,
+            ball_pos,
+            label=label,
+            style_override=style_override,
+            zorder=SceneLayer.BALL,
+        )
+
+    def _render_bounce_rings(
+        self,
+        ax: Axes3D,
+        positions: NDArray[np.float32],
+        bounce_frames: NDArray[np.int64],
+        frame_idx: int,
+        fps: float,
+    ) -> None:
+        duration_frames = max(1, int(round(_BOUNCE_MARKER_DURATION_S * fps)))
+        for b in bounce_frames.tolist():
+            age_frames = frame_idx - b
+            if age_frames < 0 or age_frames > duration_frames:
+                continue
+            pos = positions[b]
+            if not np.isfinite(pos[:2]).all():
+                continue
+            render_impact_ring(
+                ax,
+                (float(pos[0]), float(pos[1])),
+                age_frames / duration_frames,
+                color=_BOUNCE_RING_COLOR,
+                zorder=SceneLayer.RING,
+            )
+
+    def _render_minimap_frame(
+        self,
+        minimap_ax: Axes,
+        trajectories: list[tuple[NDArray[np.float32], str]],
+        bounce_positions_xy: NDArray[np.float32] | None,
+        frame_idx: int,
+    ) -> None:
+        trails = []
+        trail_dots = []
+        for positions, color in trajectories:
+            trail_start = max(0, frame_idx - _MINIMAP_TRAIL_FRAMES)
+            trails.append((positions[trail_start : frame_idx + 1, :2], color))
+            pos = positions[frame_idx]
+            trail_dots.append(((float(pos[0]), float(pos[1])), color))
+        self.minimap_renderer.render(
+            minimap_ax,
+            trails=trails,
+            trail_dots=trail_dots,
+            event_marks_xy=bounce_positions_xy,
+        )
+
     def create_animation(
         self,
         scene: dict[str, Any],
@@ -358,32 +589,55 @@ class BLCSSceneRenderer:
             FuncAnimation object, or None if view is invalid.
 
         """
-        positions = scene["ball_pos_world"]
+        positions = np.asarray(scene["ball_pos_world"])
         num_frames = len(positions)
         interval = 1000.0 / fps
 
         if view == "3d":
+            events = extract_ball_events(scene["meta"])
+            bounce_frames = resolve_bounce_frames(positions, events)
+            speeds = compute_speeds(positions, fps) if self.style.show_hud else None
+
             fig = plt.figure(figsize=figsize)
+            apply_figure_theme(fig, self.theme)
             ax = fig.add_subplot(111, projection="3d")
-            self.court_renderer.render_3d(ax, show_net=True)
+            apply_axes_layout_3d(ax, self.theme)
+            minimap_ax = (
+                fig.add_axes(_MINIMAP_RECT) if self.style.show_minimap else None
+            )
 
-            (line,) = ax.plot([], [], [], "r-", linewidth=2)
-            point = ax.scatter([], [], [], c="red", s=100)
-
-            ax.set_xlim(-HALF_DOUBLES_WIDTH - 2, HALF_DOUBLES_WIDTH + 2)
-            ax.set_ylim(-HALF_LENGTH - 2, HALF_LENGTH + 2)
-            ax.set_zlim(0, 5)
-
-            def update_3d(frame: int) -> tuple:
-                line.set_data(positions[: frame + 1, 0], positions[: frame + 1, 1])
-                line.set_3d_properties(positions[: frame + 1, 2])
-                point._offsets3d = (
-                    [positions[frame, 0]],
-                    [positions[frame, 1]],
-                    [positions[frame, 2]],
+            def update_3d(frame_idx: int) -> list:
+                ax.clear()
+                self._setup_3d_axes(ax)
+                self._render_bounce_rings(ax, positions, bounce_frames, frame_idx, fps)
+                self._render_ball_3d_frame(ax, positions, frame_idx)
+                if self.style.show_hud:
+                    assert speeds is not None
+                    lines = [
+                        format_frame_clock(frame_idx, num_frames - 1, fps),
+                        f"Ball speed {format_speed_kmh(float(speeds[frame_idx]))}",
+                        f"Bounces {int((bounce_frames <= frame_idx).sum())}",
+                    ]
+                    render_hud_text(ax, lines, self.hud_style)
+                view_now = self.camera.view_at(frame_idx, fps)
+                apply_scene_camera(
+                    ax, view_now, margin=_VIEW_MARGIN, z_limit=_VIEW_Z_LIMIT
                 )
-                ax.set_title(f"Frame {frame}/{num_frames - 1}")
-                return line, point
+                if self.theme.name != "dark":
+                    ax.set_title(
+                        f"Frame {frame_idx}/{num_frames - 1}",
+                        color=self.theme.text_color,
+                    )
+                if minimap_ax is not None:
+                    minimap_ax.clear()
+                    past = bounce_frames[bounce_frames <= frame_idx]
+                    self._render_minimap_frame(
+                        minimap_ax,
+                        [(positions, self.ball_renderer.style.ball_color)],
+                        positions[past, :2],
+                        frame_idx,
+                    )
+                return []
 
             return FuncAnimation(
                 fig, update_3d, frames=num_frames, interval=interval, blit=False
@@ -464,6 +718,7 @@ class BLCSSceneRenderer:
         fps: float = 30.0,
         figsize: tuple[float, float] = (10, 8),
         title: str = "GT vs Prediction",
+        events: list[BallEvent] | None = None,
     ) -> FuncAnimation | None:
         """Create animation comparing GT and predicted trajectories.
 
@@ -474,55 +729,69 @@ class BLCSSceneRenderer:
             fps: Frames per second.
             figsize: Figure size.
             title: Title prefix for the animation.
+            events: GT ball events from scene metadata; bounce rings prefer
+                these over trajectory-based detection (3D view only).
 
         Returns:
             FuncAnimation object, or None if view is invalid.
 
         """
-        import numpy as np
-
         gt_positions = np.asarray(gt_positions)
         pred_positions = np.asarray(pred_positions)
         num_frames = len(gt_positions)
         interval = 1000.0 / fps
 
         if view == "3d":
+            # Bounce rings mark GT bounces only; a second ring set from the
+            # prediction would double-mark the same physical bounce.
+            bounce_frames = resolve_bounce_frames(gt_positions, events)
+
             fig = plt.figure(figsize=figsize)
+            apply_figure_theme(fig, self.theme)
             ax = fig.add_subplot(111, projection="3d")
-            self.court_renderer.render_3d(ax, show_net=True)
+            apply_axes_layout_3d(ax, self.theme)
+            minimap_ax = (
+                fig.add_axes(_MINIMAP_RECT) if self.style.show_minimap else None
+            )
 
-            # GT trajectory (green)
-            (gt_line,) = ax.plot([], [], [], "g-", linewidth=2, label="GT")
-            gt_point = ax.scatter([], [], [], c="green", s=100, marker="o")
-
-            # Predicted trajectory (red)
-            (pred_line,) = ax.plot([], [], [], "r-", linewidth=2, label="Prediction")
-            pred_point = ax.scatter([], [], [], c="red", s=100, marker="^")
-
-            ax.set_xlim(-HALF_DOUBLES_WIDTH - 2, HALF_DOUBLES_WIDTH + 2)
-            ax.set_ylim(-HALF_LENGTH - 2, HALF_LENGTH + 2)
-            ax.set_zlim(0, 5)
-            ax.legend(loc="upper right")
-
-            def update_3d(frame: int) -> tuple:
-                # GT
-                gt_line.set_data(gt_positions[: frame + 1, 0], gt_positions[: frame + 1, 1])
-                gt_line.set_3d_properties(gt_positions[: frame + 1, 2])
-                gt_point._offsets3d = (
-                    [gt_positions[frame, 0]],
-                    [gt_positions[frame, 1]],
-                    [gt_positions[frame, 2]],
+            def update_3d(frame_idx: int) -> list:
+                ax.clear()
+                self._setup_3d_axes(ax)
+                self._render_bounce_rings(
+                    ax, gt_positions, bounce_frames, frame_idx, fps
                 )
-                # Prediction
-                pred_line.set_data(pred_positions[: frame + 1, 0], pred_positions[: frame + 1, 1])
-                pred_line.set_3d_properties(pred_positions[: frame + 1, 2])
-                pred_point._offsets3d = (
-                    [pred_positions[frame, 0]],
-                    [pred_positions[frame, 1]],
-                    [pred_positions[frame, 2]],
+                self._render_ball_3d_frame(
+                    ax, gt_positions, frame_idx, color=_GT_COLOR, label="GT"
                 )
-                ax.set_title(f"{title} | Frame {frame}/{num_frames - 1}")
-                return gt_line, gt_point, pred_line, pred_point
+                self._render_ball_3d_frame(
+                    ax, pred_positions, frame_idx, color=_PRED_COLOR, label="Prediction"
+                )
+                ax.legend(loc="upper right")
+                if self.style.show_hud:
+                    render_hud_text(
+                        ax,
+                        [format_frame_clock(frame_idx, num_frames - 1, fps)],
+                        self.hud_style,
+                    )
+                view_now = self.camera.view_at(frame_idx, fps)
+                apply_scene_camera(
+                    ax, view_now, margin=_VIEW_MARGIN, z_limit=_VIEW_Z_LIMIT
+                )
+                if self.theme.name != "dark":
+                    ax.set_title(
+                        f"{title} | Frame {frame_idx}/{num_frames - 1}",
+                        color=self.theme.text_color,
+                    )
+                if minimap_ax is not None:
+                    minimap_ax.clear()
+                    past = bounce_frames[bounce_frames <= frame_idx]
+                    self._render_minimap_frame(
+                        minimap_ax,
+                        [(gt_positions, _GT_COLOR), (pred_positions, _PRED_COLOR)],
+                        gt_positions[past, :2],
+                        frame_idx,
+                    )
+                return []
 
             return FuncAnimation(
                 fig, update_3d, frames=num_frames, interval=interval, blit=False
@@ -562,59 +831,6 @@ class BLCSSceneRenderer:
         else:
             print(f"Unknown view type for comparison: {view}. Use '3d' or '2d'.")
             return None
-
-    def _extract_events(self, meta: dict[str, Any]) -> list[BallEvent]:
-        """Extract ball events from scene metadata.
-
-        Args:
-            meta: Scene metadata dictionary.
-
-        Returns:
-            List of BallEvent objects.
-
-        """
-        events = []
-
-        shots = meta.get("shots", [])
-        for i, shot in enumerate(shots):
-            shot_idx = shot.get("shot_index", i)
-
-            if shot.get("t_start", -1) >= 0 and i > 0:
-                events.append(
-                    BallEvent(
-                        BallEventType.SHOT_BOUNDARY,
-                        shot["t_start"],
-                        f"Shot {shot_idx + 1} start",
-                    )
-                )
-
-            if shot.get("t_bounce1", -1) >= 0:
-                events.append(
-                    BallEvent(
-                        BallEventType.BOUNCE,
-                        shot["t_bounce1"],
-                        f"S{shot_idx + 1} Bounce 1",
-                    )
-                )
-            if shot.get("t_bounce2", -1) >= 0:
-                events.append(
-                    BallEvent(
-                        BallEventType.BOUNCE,
-                        shot["t_bounce2"],
-                        f"S{shot_idx + 1} Bounce 2",
-                    )
-                )
-
-            if shot.get("t_net", -1) >= 0:
-                events.append(
-                    BallEvent(
-                        BallEventType.NET_HIT,
-                        shot["t_net"],
-                        f"S{shot_idx + 1} Net hit",
-                    )
-                )
-
-        return events
 
     def print_scene_info(self, scene: dict[str, Any]) -> None:
         """Print scene metadata and statistics.
