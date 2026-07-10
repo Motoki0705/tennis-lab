@@ -1,0 +1,40 @@
+# ---- Trainer (Lightning Trainer settings) ----
+trainer:
+  max_epochs: 100
+  gradient_clip_val: 1.0
+  deterministic: true
+  precision: "bf16-mixed"
+  log_every_n_steps: 20
+  check_val_every_n_epoch: 1
+  accumulate_grad_batches: 1
+
+# ---- Optimizer / schedule (LightningModule references) ----
+learning_rate: 1.0e-4
+weight_decay: 1.0e-5
+warmup_steps: 500
+scheduler: cosine
+min_lr: 1.0e-6
+
+# ---- Callbacks (BaseTrainingRunner references) ----
+checkpoint:
+  enabled: true
+  filename: "slcs-{epoch:02d}"
+  monitor: val/loss
+  mode: min
+  save_top_k: 3
+  save_last: true
+
+early_stopping:
+  enabled: true
+  monitor: val/loss
+  mode: min
+  patience: 15
+  min_delta: 1.0e-5
+  check_on_train_epoch_end: false
+
+lr_monitor:
+  enabled: true
+  interval: step
+
+qualitative_logging:
+  enabled: false
