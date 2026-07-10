@@ -1,10 +1,15 @@
-"""Virtual camera control for 3D tennis scene animations.
+"""Virtual camera control for matplotlib-3D scene rendering.
 
-Provides named viewpoint presets and per-frame camera motion (static shot,
-slow orbit, or keyframed moves with smoothstep easing) for the matplotlib-3D
-scene renderer. A :class:`CameraController` maps a frame index to a
-:class:`CameraView3D`; the renderer applies it via ``Axes3D.view_init`` and
-the ``zoom`` argument of ``Axes3D.set_box_aspect``.
+Single shared 3D-viewpoint API for every scene renderer (tennis_scene, BLCS,
+PLCS): named viewpoint presets, per-frame camera motion (static shot, slow
+orbit, or keyframed moves with smoothstep easing), and application of a view
+to a 3D axis. A :class:`CameraController` maps a frame index to a
+:class:`CameraView3D`; renderers apply it via :func:`apply_scene_camera`
+after every ``ax.clear()``.
+
+Issue #630 extends this module (not a parallel implementation) with
+``look_at`` / ``scene_camera`` view modes derived from
+``src.utils.projection.camera_projector`` conventions.
 
 Court coordinates: XY is the ground plane, +Z up, far side at +Y. matplotlib
 azimuth -90 therefore looks from the near baseline toward the far side (the
@@ -15,11 +20,21 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
+
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
+
+if TYPE_CHECKING:
+    from mpl_toolkits.mplot3d import Axes3D
 
 CameraMode = Literal["static", "orbit", "keyframes"]
 
 _VALID_MODES: tuple[str, ...] = ("static", "orbit", "keyframes")
+
+# Fixed court framing shared by scene renderers: court plus a small run-off
+# margin, with a 4 m ceiling that keeps ball apexes and players in frame.
+DEFAULT_VIEW_MARGIN: float = 2.0
+DEFAULT_VIEW_Z_LIMIT: float = 4.0
 
 
 @dataclass(frozen=True)
@@ -219,3 +234,31 @@ def _view_from_mapping(raw: Mapping[str, Any], *, context: str) -> CameraView3D:
     if zoom is not None:
         view = CameraView3D(elev=view.elev, azim=view.azim, zoom=float(zoom))
     return view
+
+
+def apply_scene_camera(
+    ax: Axes3D,
+    view: CameraView3D,
+    *,
+    margin: float = DEFAULT_VIEW_MARGIN,
+    z_limit: float = DEFAULT_VIEW_Z_LIMIT,
+) -> None:
+    """Apply ``view`` and the fixed court framing to a 3D axis.
+
+    Sets the viewpoint via ``view_init``, pins the axis limits to the court
+    extended by ``margin`` on the ground plane and ``z_limit`` vertically, and
+    applies real-world box proportions with the view's zoom. Renderers must
+    call this after every ``ax.clear()`` so animations keep an explicit,
+    frame-stable camera instead of whatever state matplotlib restores.
+    """
+    x_half_span = float(HALF_DOUBLES_WIDTH + margin)
+    y_half_span = float(HALF_LENGTH + margin)
+
+    ax.view_init(elev=view.elev, azim=view.azim)
+    ax.set_xlim(-x_half_span, x_half_span)
+    ax.set_ylim(-y_half_span, y_half_span)
+    ax.set_zlim(0.0, z_limit)
+    ax.set_box_aspect(
+        (x_half_span * 2.0, y_half_span * 2.0, z_limit),
+        zoom=view.zoom,
+    )

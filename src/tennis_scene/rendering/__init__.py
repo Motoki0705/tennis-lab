@@ -1,31 +1,16 @@
-"""Tennis scene rendering module."""
+"""Tennis scene rendering module.
 
-from src.tennis_scene.rendering.camera import (
-    CAMERA_PRESETS,
-    CameraController,
-    CameraKeyframe,
-    CameraView3D,
-)
-from src.tennis_scene.rendering.hud import (
-    HudRenderer,
-    HudStyle,
-    MinimapRenderer,
-    MinimapStyle,
-)
+Camera, theme, layer, HUD, and minimap primitives live in
+``src.utils.rendering``; this package holds only the ``SceneResult``-aware
+:class:`TennisSceneRenderer`.
+"""
+
 from src.tennis_scene.rendering.tennis_scene_renderer import (
     TennisSceneRenderer,
     TennisSceneStyle,
 )
 
 __all__ = [
-    "CAMERA_PRESETS",
-    "CameraController",
-    "CameraKeyframe",
-    "CameraView3D",
-    "HudRenderer",
-    "HudStyle",
-    "MinimapRenderer",
-    "MinimapStyle",
     "TennisSceneRenderer",
     "TennisSceneStyle",
 ]

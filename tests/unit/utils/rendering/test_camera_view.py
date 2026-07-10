@@ -1,16 +1,58 @@
-"""Unit tests for the tennis scene virtual camera controller."""
+"""Unit tests for the shared virtual camera controller and view application."""
 
 from __future__ import annotations
 
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
 import pytest
 
-from src.tennis_scene.rendering.camera import (
+from src.utils.rendering.camera_view import (
     CAMERA_PRESETS,
     CameraController,
     CameraKeyframe,
     CameraView3D,
+    apply_scene_camera,
     resolve_camera_view,
 )
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
+
+
+class TestApplySceneCamera:
+    def test_applies_view_and_fixed_court_bounds(self) -> None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection="3d")
+        try:
+            apply_scene_camera(ax, CameraView3D(elev=25.0, azim=-70.0, zoom=1.5))
+
+            assert ax.elev == pytest.approx(25.0)
+            assert ax.azim == pytest.approx(-70.0)
+            x_half_span = float(HALF_DOUBLES_WIDTH + 2.0)
+            y_half_span = float(HALF_LENGTH + 2.0)
+            assert ax.get_xlim() == pytest.approx((-x_half_span, x_half_span))
+            assert ax.get_ylim() == pytest.approx((-y_half_span, y_half_span))
+            assert ax.get_zlim() == pytest.approx((0.0, 4.0))
+        finally:
+            plt.close(fig)
+
+    def test_restores_state_after_clear(self) -> None:
+        """The per-frame reapplication contract: ax.clear() loses the view."""
+        view = CameraView3D(elev=18.0, azim=-90.0, zoom=1.6)
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection="3d")
+        try:
+            apply_scene_camera(ax, view)
+            first = (ax.get_xlim(), ax.get_ylim(), ax.get_zlim(), ax.elev, ax.azim)
+
+            ax.clear()
+            ax.set_xlim(100.0, 200.0)
+            apply_scene_camera(ax, view)
+
+            assert (ax.get_xlim(), ax.get_ylim(), ax.get_zlim(), ax.elev, ax.azim) == first
+        finally:
+            plt.close(fig)
 
 
 class TestPresets:

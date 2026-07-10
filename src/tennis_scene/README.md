@@ -19,9 +19,7 @@
 - **`components/blcs.py`**: `BLCSModule`。複数カメラのball観測から3D軌道を推定。
 
 ### rendering/
-- **`tennis_scene_renderer.py`**: `TennisSceneRenderer`。SMPL/skeleton表示によるコート上3D可視化・動画保存。3D表示範囲はコート座標系に固定する。テーマ(`light`/`dark`)、選手・ボールの地面影、フェード付き移動トレイル、バウンスリング、HUD、ミニマップを描画。深度ソートは `computed_zorder=False` + 明示zorderで固定。
-- **`camera.py`**: `CameraController` / `CameraView3D`。視点プリセット(`broadcast`/`side`/`top`/`corner`/`behind_far`)、orbit(定速旋回)、キーフレーム移動(smoothstep補間)。
-- **`hud.py`**: `HudRenderer`(フレーム時刻・球速km/h・バウンス数のオーバーレイ)と `MinimapRenderer`(トップダウン2Dミニマップ)。球速・バウンスは `src.utils.rendering.trajectory_analysis` から算出。
+- **`tennis_scene_renderer.py`**: `TennisSceneRenderer`。SMPL/skeleton表示によるコート上3D可視化・動画保存。3D表示範囲はコート座標系に固定する。カメラ・テーマ・レイヤ規約・HUD・ミニマップなどの描画プリミティブは `src.utils.rendering`(`camera_view`/`theme`/`layers`/`hud`/`minimap`/`effects`)を直接利用し、ここには `SceneResult` 固有の変換(SMPL→コート座標、HUD行の選択、ミニマップ配列抽出)だけを持つ。
 
 ### utils/
 - **`transforms.py`**: `src.utils.geometry` からのthin re-export(このパイプライン内からは未使用)。
