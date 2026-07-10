@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-import subprocess
-import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -16,6 +14,7 @@ from src.tennis_scene.pipeline.components.ball_detection import (
 )
 from src.tennis_scene.pipeline.components.blcs import BLCSConfig, BLCSModule
 from src.tennis_scene.pipeline.components.court_kp import CourtKPConfig, CourtKPModule
+from src.tennis_scene.pipeline.components.gvhmr import GVHMRConfig, GVHMRModule
 from src.tennis_scene.pipeline.components.player_association import (
     PlayerAssociationConfig,
     PlayerAssociationModule,
@@ -122,7 +121,6 @@ class TennisSceneOrchestrator:
         if Stage.GVHMR in resolution.enabled_set:
             smplx_body_model_path = cfg.gvhmr.get("smplx_body_model_path")
             gvhmr_config = {
-                "python_executable": to_absolute_path(cfg.gvhmr.python_executable),
                 "gvhmr_checkpoint": to_absolute_path(cfg.gvhmr.gvhmr_checkpoint),
                 "yolo_checkpoint": to_absolute_path(cfg.gvhmr.yolo_checkpoint),
                 "vitpose_checkpoint": to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
@@ -134,6 +132,7 @@ class TennisSceneOrchestrator:
                 ),
                 "track_selection": str(cfg.gvhmr.get("track_selection", "interactive")),
                 "num_tracks": int(cfg.gvhmr.get("num_tracks", 2)),
+                "save_result": bool(cfg.gvhmr.get("save_result", True)),
                 "output_path": output_path("gvhmr", "gvhmr_result.json"),
                 "load_path": load_paths("gvhmr"),
                 "device": device,
@@ -252,8 +251,6 @@ class TennisSceneOrchestrator:
         num_cameras: int,
         max_frames: int | None = None,
     ) -> GVHMRResult:
-        from src.tennis_scene.pipeline.components.gvhmr import GVHMRResult
-
         if self.gvhmr_config is None:
             raise RuntimeError("GVHMR config not set")
 
@@ -273,44 +270,23 @@ class TennisSceneOrchestrator:
             num_cameras=num_cameras,
         )
 
-        if load_path is not None and load_path.exists():
-            LOGGER.info(f"Loading GVHMR result from: {load_path}")
-            return GVHMRResult.load(load_path)
-
-        LOGGER.info(f"Running GVHMR via CLI subprocess for camera {camera_index}...")
-        cmd = [
-            self.gvhmr_config["python_executable"],
-            "-m",
-            "src.tennis_scene.pipeline.components.gvhmr",
-            f"--video={video_path}",
-            f"--output={output_path}",
-            f"--gvhmr-checkpoint={self.gvhmr_config['gvhmr_checkpoint']}",
-            f"--yolo-checkpoint={self.gvhmr_config['yolo_checkpoint']}",
-            f"--vitpose-checkpoint={self.gvhmr_config['vitpose_checkpoint']}",
-            f"--hmr2-checkpoint={self.gvhmr_config['hmr2_checkpoint']}",
-            f"--track-selection={self.gvhmr_config['track_selection']}",
-            f"--num-tracks={self.gvhmr_config['num_tracks']}",
-            f"--device={self.gvhmr_config['device']}",
-        ]
-        if self.gvhmr_config.get("smplx_body_model_path") is not None:
-            cmd.append(
-                f"--smplx-body-model-path={self.gvhmr_config['smplx_body_model_path']}"
+        LOGGER.info(f"Running GVHMR in-process for camera {camera_index}...")
+        module = GVHMRModule(
+            GVHMRConfig(
+                gvhmr_checkpoint=self.gvhmr_config["gvhmr_checkpoint"],
+                yolo_checkpoint=self.gvhmr_config["yolo_checkpoint"],
+                vitpose_checkpoint=self.gvhmr_config["vitpose_checkpoint"],
+                hmr2_checkpoint=self.gvhmr_config["hmr2_checkpoint"],
+                smplx_body_model_path=self.gvhmr_config.get("smplx_body_model_path"),
+                track_selection=self.gvhmr_config["track_selection"],
+                num_tracks=self.gvhmr_config["num_tracks"],
+                device=self.gvhmr_config["device"],
+                save_result=bool(self.gvhmr_config.get("save_result", True)),
+                output_path=output_path,
+                load_path=load_path,
             )
-        if max_frames is not None:
-            cmd.append(f"--max-frames={max_frames}")
-
-        result = subprocess.run(
-            cmd,
-            cwd=str(Path(__file__).parents[3]),
-            stdin=sys.stdin,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
         )
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"GVHMR subprocess failed with return code {result.returncode}"
-            )
-        return GVHMRResult.load(output_path)
+        return module.process(video_path, max_frames=max_frames)
 
     def load_all(self) -> None:
         LOGGER.info("Pre-loading all modules...")
