@@ -54,6 +54,15 @@ ball_detection:
   tail_policy: backfill  # backfill/drop
   overlap_aggregation: max_score  # last_window_wins/max_score
   pin_memory: true
+  # issue #620: default-on. tennis_clip A/B: 0 false rejections on the deployed
+  # ckpt (811 frames), removes the 179.9px teleport cluster (t=640-642) on the
+  # scratch ckpt with best-in-class 3D jerk_median (see PR #622).
+  trajectory_gate:
+    enabled: true
+    max_residual_px: 60
+    k_support: 2
+    max_support_gap: 5
+    max_passes: 2
   skip: false
   save_result: true
   output_path: ${output_dir}/ball_detection_result.json
