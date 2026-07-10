@@ -80,14 +80,19 @@ class VariableTBatchSampler(Sampler[list[tuple[int, int]]]):
         self.batch_size_by_t = {int(t): int(b) for t, b in batch_size_by_t.items()}
         self.effective_batch = int(effective_batch)
         self.seed = int(seed)
-        self._iter_count = 0
+        self._epoch = 0
+        self._planned_epoch: int | None = None
+        self._planned_batches: list[list[tuple[int, int]]] | None = None
 
-    def __iter__(self) -> Iterator[list[tuple[int, int]]]:
-        # Each epoch re-iterates the DataLoader, so a per-call counter varies the
-        # permutation and T draws without explicit epoch wiring.
-        rng = np.random.default_rng(self.seed + self._iter_count)
-        self._iter_count += 1
+    def set_epoch(self, epoch: int) -> None:
+        """Select the epoch whose deterministic batch plan is used next."""
+        self._epoch = int(epoch)
+
+    def _build_plan(self, epoch: int) -> list[list[tuple[int, int]]]:
+        rng = np.random.default_rng(self.seed + epoch)
         order = rng.permutation(self.num_samples)
+        batches: list[list[tuple[int, int]]] = []
+
         cursor = 0
         while cursor < self.num_samples:
             t = int(rng.choice(self.t_values, p=self.t_weights))
@@ -99,18 +104,31 @@ class VariableTBatchSampler(Sampler[list[tuple[int, int]]]):
             for micro in range(accumulate):
                 lo = cursor + micro * physical
                 chunk = order[lo : lo + physical]
-                yield [(int(i), t) for i in chunk]
+                batches.append([(int(i), t) for i in chunk])
             cursor += group_size
 
+        return batches
+
+    def _plan_for_epoch(self, epoch: int) -> list[list[tuple[int, int]]]:
+        if self._planned_epoch != epoch or self._planned_batches is None:
+            self._planned_batches = self._build_plan(epoch)
+            self._planned_epoch = epoch
+        return self._planned_batches
+
+    def __iter__(self) -> Iterator[list[tuple[int, int]]]:
+        # Each epoch re-iterates the DataLoader, so a per-epoch plan varies the
+        # permutation and T draws without requiring explicit epoch wiring.
+        epoch = self._epoch
+        plan = self._plan_for_epoch(epoch)
+        try:
+            for batch in plan:
+                yield list(batch)
+        finally:
+            if self._epoch == epoch:
+                self._epoch = epoch + 1
+
     def __len__(self) -> int:
-        # Expected number of micro-batches (approximate; used for progress only).
-        mean_physical = float(
-            np.dot(
-                self.t_weights,
-                [self.batch_size_by_t[int(t)] for t in self.t_values],
-            )
-        )
-        return max(1, int(self.num_samples / max(mean_physical, 1.0)))
+        return len(self._plan_for_epoch(self._epoch))
 
 
 class ConcatVariableTDataset(Dataset[BallDetectionSample]):
