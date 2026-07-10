@@ -1,11 +1,19 @@
-"""Unit tests for tennis scene SMPL rendering transforms."""
+"""Unit tests for tennis scene SMPL rendering transforms and frame rendering."""
 
 from __future__ import annotations
 
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
 import numpy as np
 
 from src.tennis_scene.io import SceneResult
-from src.tennis_scene.rendering.tennis_scene_renderer import TennisSceneRenderer
+from src.tennis_scene.rendering.tennis_scene_renderer import (
+    TennisSceneRenderer,
+    TennisSceneStyle,
+)
 
 
 def _make_renderer_with_fake_regressor() -> TennisSceneRenderer:
@@ -45,3 +53,55 @@ def test_build_players_smpl_vertices_court_maps_smpl_y_up_to_court_z_up() -> Non
     np.testing.assert_allclose(vertices[0, 0, 0], [10.0, 20.0, 0.5], atol=1e-6)
     np.testing.assert_allclose(vertices[0, 0, 1], [10.0, 20.0, 2.2], atol=1e-6)
     np.testing.assert_allclose(vertices[0, 0, 2], [10.2, 19.6, 1.5], atol=1e-6)
+
+
+def test_render_frame_dark_theme_smoke(tiny_scene: SceneResult) -> None:
+    """Full-feature frame render: bounce ring frame, HUD, minimap, dark theme."""
+    renderer = TennisSceneRenderer(TennisSceneStyle(theme="dark"))
+
+    fig, ax = renderer.render_frame_3d(tiny_scene, 3)
+
+    try:
+        assert fig is not None
+        # Dark theme: broadcast look with axes chrome removed.
+        assert not ax._axis3don
+        # Minimap inset was added next to the 3D axes.
+        assert len(fig.axes) == 2
+        # HUD text block is present with the ball speed line.
+        hud_texts = [t.get_text() for t in ax.texts if "km/h" in t.get_text()]
+        assert len(hud_texts) == 1
+        # Speed and bounce caches were populated for the scene.
+        assert renderer._get_ball_speeds(tiny_scene) is not None
+        bounces = renderer._get_bounce_frames(tiny_scene)
+        assert bounces is not None and bounces.tolist() == [2]
+    finally:
+        plt.close(fig)
+
+
+def test_render_frame_light_theme_keeps_axes(tiny_scene: SceneResult) -> None:
+    renderer = TennisSceneRenderer(
+        TennisSceneStyle(theme="light", show_minimap=False)
+    )
+
+    fig, ax = renderer.render_frame_3d(tiny_scene, 0)
+
+    try:
+        assert fig is not None
+        assert ax._axis3don
+        assert len(fig.axes) == 1
+        assert ax.get_title().startswith("Frame: 0/")
+    finally:
+        plt.close(fig)
+
+
+def test_render_into_external_axes_adds_no_minimap(tiny_scene: SceneResult) -> None:
+    renderer = TennisSceneRenderer(TennisSceneStyle(theme="dark"))
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+
+    try:
+        returned_fig, _ = renderer.render_frame_3d(tiny_scene, 0, ax=ax)
+        assert returned_fig is None
+        assert len(fig.axes) == 1
+    finally:
+        plt.close(fig)
