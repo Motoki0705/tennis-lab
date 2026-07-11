@@ -10,3 +10,19 @@ save: assets/plcs/gt.gif           # Optional output file for comparison animati
 info: false
 checkpoint: checkpoints/plcs/frame/last.ckpt
   
+
+# Shared scene style for animation_view=3d (parsed by
+# src/tasks/base/visualization/style.py; 2D/camera views ignore it).
+style:
+  theme: dark          # light | dark
+  show_shadow: true
+  show_trail: true
+  trail_length: 60
+  show_hud: true
+  show_minimap: true
+
+# Shared 3D viewpoint (src/utils/rendering/camera_view.py). Unrelated to the
+# input-camera selector `camera`/`cameras` above.
+view_3d:
+  preset: broadcast    # broadcast | side | top | corner | behind_far
+  mode: static         # static | orbit | keyframes

@@ -47,7 +47,7 @@
 - **`adapters/render_inputs.py`**: バッチ/出力からGT・予測軌道配列を抽出。
 - **`api/predict.py`**: `predict_positions()`。checkpointからメートル単位軌道を返す。
 - **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
-- **`rendering/scene_renderer.py`**: `BLCSSceneRenderer`。3D/2D/カメラ視点でのGT・予測比較アニメーション。
+- **`rendering/scene_renderer.py`**: `BLCSSceneRenderer`。3D/2D/カメラ視点でのGT・予測比較アニメーション。3Dは `src.utils.rendering` の共有プリミティブ(テーマ・レイヤ規約・カメラ・フェード軌道・影・バウンスリング・HUD・ミニマップ)を利用。バウンス表示はmetaのイベント優先、無いときのみ `detect_bounces()` へfallback(`resolve_bounce_frames()`)。style/視点は `visualization.style` / `visualization.view_3d` で設定。
 
 ### scripts/
 - **`generate_dataset.py`**: 合成データ生成エントリポイント。

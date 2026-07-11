@@ -17,14 +17,25 @@ import matplotlib.pyplot as plt
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
+from src.tasks.base.visualization.style import (
+    SceneStyleConfig,
+    parse_scene_style,
+    parse_view_3d,
+)
 from src.utils.device import resolve_device as _resolve_torch_device
+from src.utils.rendering.camera_view import CameraController
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
 class BaseVisualizationRuntimeConfig:
-    """Resolved runtime settings shared by task visualization orchestrators."""
+    """Resolved runtime settings shared by task visualization orchestrators.
+
+    ``style`` and ``view_3d`` drive the shared rich 3D rendering; ``camera``
+    and ``cameras`` keep their existing meaning as *input* scene-camera
+    selectors and are unrelated to the 3D viewpoint.
+    """
 
     mode: str
     scene_path: Path
@@ -36,6 +47,8 @@ class BaseVisualizationRuntimeConfig:
     camera: int
     cameras: list[int] | str | None
     info: bool
+    style: SceneStyleConfig
+    view_3d: CameraController
 
 
 def resolve_device(device: str) -> str:
@@ -123,4 +136,6 @@ def build_scene_runtime_config(cfg: DictConfig) -> BaseVisualizationRuntimeConfi
         camera=int(vis.get("camera", 0)),
         cameras=parse_cameras(vis.get("cameras")),
         info=bool(vis.info),
+        style=parse_scene_style(vis.get("style")),
+        view_3d=parse_view_3d(vis.get("view_3d")),
     )

@@ -64,8 +64,8 @@ def main(cfg: DictConfig) -> int:
 
     from src.tennis_scene.io import SceneResult
     from src.tennis_scene.rendering import TennisSceneRenderer
-    from src.tennis_scene.rendering.camera import CameraController
     from src.tennis_scene.rendering.tennis_scene_renderer import TennisSceneStyle
+    from src.utils.rendering.camera_view import CameraController
 
     # Load input
     input_path = Path(to_absolute_path(str(cfg.input)))
