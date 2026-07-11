@@ -1,0 +1,17 @@
+defaults:
+  - data: default
+  - _self_
+
+precompute:
+  device: cuda
+  batch_size: 8
+  overwrite: false
+  repository_path: third_party/dinov3
+  checkpoint_path: third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
+
+hydra:
+  run:
+    dir: outputs/slcs/precompute_dino_tokens/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

@@ -1,0 +1,35 @@
+# Issue #634 structured dataset location. Paths are repo-relative unless absolute.
+dataset_root: data/tennis_scene_dataset
+split_file: data/tennis_scene_dataset/splits.json
+
+backend: default
+batch_size: 8
+num_workers: 4
+
+# Temporal windows
+window_size: 120
+train_stride: 60
+eval_stride: 120
+
+# Scene contract expectations (mismatch = explicit error)
+num_players: 2
+num_court_kp: 14
+
+# DINOv3 patch-token annotation contract (must match precompute_dino_tokens)
+require_dino: true
+cache_dino_tokens: true
+on_incomplete: error
+dino:
+  backbone: dinov3_vitb16
+  patch_size: 16
+  image_height: 256
+  image_width: 448
+  embed_dim: 768
+  frame_stride: 10
+
+# Pseudo-label quality filter (see src/tasks/slcs/data/quality.py)
+quality:
+  min_player_confidence: 0.3
+  min_ball_cameras: 1
+  label_weight_power: 1.0
+  min_window_label_ratio: 0.1

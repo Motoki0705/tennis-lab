@@ -1,0 +1,21 @@
+defaults:
+  - data: default
+  - _self_
+
+predict:
+  checkpoint: null
+  clip_id: null
+  camera_id: null
+  device: cpu
+  batch_size: 4
+  frame_step: 1
+  render_3d: true
+  render_overlay: true
+  output_dir: outputs/slcs/predict_clip/${now:%Y-%m-%d_%H-%M-%S}
+
+hydra:
+  run:
+    dir: ${predict.output_dir}
+  output_subdir: null
+  job:
+    chdir: false
