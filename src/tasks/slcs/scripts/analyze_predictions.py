@@ -34,7 +34,8 @@ from src.utils.io import save_json
 
 
 def _masked_values(values: NDArray[Any], mask: NDArray[Any]) -> NDArray[np.float64]:
-    return np.asarray(values, dtype=np.float64)[np.asarray(mask, dtype=bool)]
+    selected = np.asarray(values, dtype=np.float64)[np.asarray(mask, dtype=bool)]
+    return np.asarray(selected, dtype=np.float64)
 
 
 def _temporal_profile(
@@ -237,4 +238,4 @@ def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    main()
+    main()  # type: ignore[call-arg, unused-ignore]

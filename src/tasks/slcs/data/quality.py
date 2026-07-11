@@ -76,7 +76,9 @@ def player_label_confidence(human_kp_vis: NDArray[np.float32]) -> NDArray[np.flo
     """
     if human_kp_vis.ndim != 4:
         raise ValueError(f"human_kp_vis must be (P, N, T, J), got shape {human_kp_vis.shape}.")
-    return human_kp_vis.astype(np.float32).mean(axis=(1, 3))
+    return np.asarray(
+        human_kp_vis.astype(np.float32).mean(axis=(1, 3)), dtype=np.float32
+    )
 
 
 def ball_label_confidence(ball_vis: NDArray[np.bool_]) -> NDArray[np.float32]:
@@ -90,7 +92,7 @@ def ball_label_confidence(ball_vis: NDArray[np.bool_]) -> NDArray[np.float32]:
     """
     if ball_vis.ndim != 2:
         raise ValueError(f"ball_vis must be (N, T), got shape {ball_vis.shape}.")
-    return ball_vis.astype(np.float32).mean(axis=0)
+    return np.asarray(ball_vis.astype(np.float32).mean(axis=0), dtype=np.float32)
 
 
 def build_label_masks(

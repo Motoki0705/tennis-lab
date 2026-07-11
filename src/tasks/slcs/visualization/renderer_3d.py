@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, cast
 
 import matplotlib
 
@@ -110,7 +111,8 @@ class SLCSSceneRenderer:
         fig.suptitle(f"SLCS frame {t}")
         fig.tight_layout()
         fig.canvas.draw()
-        buffer = np.asarray(fig.canvas.buffer_rgba())[..., :3]
+        canvas = cast(Any, fig.canvas)
+        buffer = np.asarray(canvas.buffer_rgba())[..., :3]
         plt.close(fig)
         return np.ascontiguousarray(buffer)
 

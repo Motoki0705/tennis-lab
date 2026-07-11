@@ -31,7 +31,7 @@ class SLCSTrainingRunner(BaseTrainingRunner):
     ) -> pl.LightningModule:
         module = SLCSLightningModule(config)
         if steps_per_epoch is not None:
-            module.steps_per_epoch = steps_per_epoch
+            module.steps_per_epoch = steps_per_epoch  # type: ignore[assignment, unused-ignore]
         return module
 
 

@@ -11,6 +11,7 @@ interpolation.
 from __future__ import annotations
 
 import math
+from typing import cast
 
 import torch
 from torch import Tensor, nn
@@ -97,7 +98,7 @@ class DinoTokenEncoder(nn.Module):
                 f"input_dim={self.input_dim}."
             )
         x = self.norm(self.proj(tokens))
-        spatial_pos: Tensor = self.spatial_pos
+        spatial_pos = cast(Tensor, self.spatial_pos)
         return x + spatial_pos.to(dtype=x.dtype)[None, None, :, :]
 
 
