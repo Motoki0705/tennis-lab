@@ -184,6 +184,7 @@ class MeshRenderer:
         *,
         color: str | tuple[float, float, float] | None = None,
         alpha: float | None = None,
+        zorder: int | None = None,
     ) -> None:
         """Add the mesh to a matplotlib 3D axis as a ``Poly3DCollection``.
 
@@ -192,6 +193,8 @@ class MeshRenderer:
             vertices: Vertices (V, 3) in the axis coordinate system.
             color: Face color (matplotlib color); defaults to the style color.
             alpha: Face alpha; defaults to ``style.alpha_3d``.
+            zorder: Optional explicit z-order, needed when the target axis
+                uses ``computed_zorder = False``.
         """
         from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
@@ -207,4 +210,6 @@ class MeshRenderer:
             edgecolor="none",
             linewidths=0.0,
         )
+        if zorder is not None:
+            mesh.set_zorder(zorder)
         ax.add_collection3d(mesh)

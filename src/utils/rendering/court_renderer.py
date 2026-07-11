@@ -29,6 +29,7 @@ from src.utils.schema.court import (
     NET_HEIGHT_CENTER,
     NET_HEIGHT_POST,
     court_keypoints_3d,
+    net_height_at_x,
 )
 
 if TYPE_CHECKING:
@@ -39,11 +40,42 @@ if TYPE_CHECKING:
 
 # Color defaults
 DEFAULT_COURT_COLOR: str = "#2E7D32"  # Tennis court green
+DEFAULT_APRON_COLOR: str = "#1F5723"  # Darker green run-off surround
 DEFAULT_LINE_COLOR: str = "white"
 DEFAULT_NET_COLOR: str = "#404040"
+DEFAULT_POST_COLOR: str = "#30343A"
+DEFAULT_BAND_COLOR: str = "#F5F5F5"
 
 # Default fence margin (meters)
 DEFAULT_FENCE_MARGIN: float = 3.66  # Standard runback area
+
+# 3D rendering constants
+DEFAULT_3D_VIEW_MARGIN: float = 2.0  # Margin around court for limits and apron (m)
+_LINE_Z_OFFSET: float = 0.01  # Lift court lines above the surface plane
+_APRON_Z_OFFSET: float = -0.002  # Sink apron slightly below the court plane
+_NET_BAND_HEIGHT: float = 0.06  # White band depth along the net top (m)
+_NET_STRAND_SPACING_X: float = 0.5  # Vertical net strand spacing (m)
+_NET_STRAND_SPACING_Z: float = 0.15  # Horizontal net strand spacing (m)
+
+
+def net_top_curve(num_points: int = 50) -> tuple[np.ndarray, np.ndarray]:
+    """Sample the net top cable as ``(x, z)`` arrays.
+
+    Heights come from :func:`src.utils.schema.court.net_height_at_x`, keeping
+    the rendered sag consistent with the shared court geometry definition.
+
+    Args:
+        num_points: Number of samples across the net width.
+
+    Returns:
+        Tuple of arrays with shape (num_points,): x positions and net heights.
+    """
+    if num_points < 2:
+        raise ValueError(f"num_points must be >= 2, got {num_points}")
+    x = np.linspace(-HALF_DOUBLES_WIDTH, HALF_DOUBLES_WIDTH, num_points)
+    z = np.array([net_height_at_x(float(xi)) for xi in x])
+    return x, z
+
 
 @dataclass
 class CourtStyle:
@@ -53,7 +85,10 @@ class CourtStyle:
         line_color: Color for court lines.
         line_width: Width of court lines in points.
         court_color: Background color for court surface.
+        apron_color: Color for the run-off surface surrounding the court (3D).
         net_color: Color for net.
+        post_color: Color for net posts (3D).
+        band_color: Color for the white band along the net top (3D).
         fence_color: Color for fence boundary.
         surface_alpha: Alpha transparency for court surface.
 
@@ -62,7 +97,10 @@ class CourtStyle:
     line_color: str = DEFAULT_LINE_COLOR
     line_width: float = 2.0
     court_color: str = DEFAULT_COURT_COLOR
+    apron_color: str = DEFAULT_APRON_COLOR
     net_color: str = DEFAULT_NET_COLOR
+    post_color: str = DEFAULT_POST_COLOR
+    band_color: str = DEFAULT_BAND_COLOR
     fence_color: str = "#8B4513"  # Brown
     surface_alpha: float = 0.8
 
@@ -402,6 +440,8 @@ class CourtRenderer:
         show_surface: bool = True,
         show_net: bool = True,
         set_limits: bool = True,
+        show_apron: bool = True,
+        apron_bounds: tuple[float, float, float, float] | None = None,
     ) -> None:
         """Render court in 3D.
 
@@ -410,12 +450,43 @@ class CourtRenderer:
             show_surface: Whether to show court surface plane.
             show_net: Whether to show net.
             set_limits: Whether to set axis limits and labels.
+            show_apron: Whether to draw the run-off surface around the court.
+            apron_bounds: Apron extent as ``(x_min, x_max, y_min, y_max)``.
+                Defaults to the court extended by ``DEFAULT_3D_VIEW_MARGIN``
+                so the apron exactly fills the default view. mplot3d does not
+                clip geometry to the axes box, so pass the visible bounds when
+                using custom limits.
 
         """
         style = self.style
 
-        # Draw court surface
         if show_surface:
+            # Run-off apron slightly below the court plane so the court
+            # surface wins the depth sort when viewed from above.
+            if show_apron:
+                if apron_bounds is None:
+                    apron_bounds = (
+                        -HALF_DOUBLES_WIDTH - DEFAULT_3D_VIEW_MARGIN,
+                        HALF_DOUBLES_WIDTH + DEFAULT_3D_VIEW_MARGIN,
+                        -HALF_LENGTH - DEFAULT_3D_VIEW_MARGIN,
+                        HALF_LENGTH + DEFAULT_3D_VIEW_MARGIN,
+                    )
+                ap_x_min, ap_x_max, ap_y_min, ap_y_max = apron_bounds
+                apron_x = np.array([[ap_x_min, ap_x_min], [ap_x_max, ap_x_max]])
+                apron_y = np.array([[ap_y_min, ap_y_max], [ap_y_min, ap_y_max]])
+                apron_z = np.full_like(apron_x, _APRON_Z_OFFSET)
+                # 3D surfaces stay translucent (70% of surface_alpha): mplot3d
+                # depth-sorts whole artists, so an opaque ground quad would
+                # hide lines and players depending on the viewing angle.
+                ax.plot_surface(
+                    apron_x,
+                    apron_y,
+                    apron_z,
+                    color=style.apron_color,
+                    alpha=style.surface_alpha * 0.7,
+                    zorder=0,
+                )
+
             court_x = np.array(
                 [
                     [-HALF_DOUBLES_WIDTH, -HALF_DOUBLES_WIDTH],
@@ -438,12 +509,13 @@ class CourtRenderer:
                 zorder=0,
             )
 
-        # Draw court lines
+        # Draw court lines, lifted slightly above the surface so they are not
+        # swallowed by the depth sort against the surface plane.
         for (x1, y1), (x2, y2) in self.court_lines.lines:
             ax.plot(
                 [x1, x2],
                 [y1, y2],
-                [0, 0],
+                [_LINE_Z_OFFSET, _LINE_Z_OFFSET],
                 color=style.line_color,
                 linewidth=style.line_width,
                 zorder=1,
@@ -455,62 +527,116 @@ class CourtRenderer:
 
         # Set axis properties
         if set_limits:
+            margin = DEFAULT_3D_VIEW_MARGIN
             ax.set_xlabel("X (m)")
             ax.set_ylabel("Y (m)")
             ax.set_zlabel("Z (m)")
-            ax.set_xlim(-HALF_DOUBLES_WIDTH - 2, HALF_DOUBLES_WIDTH + 2)
-            ax.set_ylim(-HALF_LENGTH - 2, HALF_LENGTH + 2)
+            ax.set_xlim(-HALF_DOUBLES_WIDTH - margin, HALF_DOUBLES_WIDTH + margin)
+            ax.set_ylim(-HALF_LENGTH - margin, HALF_LENGTH + margin)
             ax.set_zlim(0, 4)
 
             # Set aspect ratio for tennis court proportions
-            x_range = (HALF_DOUBLES_WIDTH + 2) * 2
-            y_range = (HALF_LENGTH + 2) * 2
+            x_range = (HALF_DOUBLES_WIDTH + margin) * 2
+            y_range = (HALF_LENGTH + margin) * 2
             z_range = 4
             ax.set_box_aspect([x_range, y_range, z_range])
 
     def _render_net_3d(self, ax: Axes3D) -> None:
-        """Render net in 3D view.
+        """Render net in 3D view: mesh strands, top band, posts, and strap.
+
+        The net top follows :func:`net_top_curve`, i.e. the sag defined by
+        ``src.utils.schema.court.net_height_at_x``. Post positions come from
+        the CourtKP20 keypoints (indices 15..18).
 
         Args:
             ax: Matplotlib 3D axes to draw on.
 
         """
         style = self.style
+        x_top, z_top = net_top_curve()
 
-        # Net as a vertical plane
-        net_x = np.array(
-            [
-                [-HALF_DOUBLES_WIDTH, -HALF_DOUBLES_WIDTH],
-                [HALF_DOUBLES_WIDTH, HALF_DOUBLES_WIDTH],
-            ]
-        )
-        net_y = np.array([[0, 0], [0, 0]])
-        net_z = np.array(
-            [
-                [0, NET_HEIGHT_POST],
-                [0, NET_HEIGHT_POST],
-            ]
-        )
+        # Faint net plane backing the strands.
+        net_x = np.stack([x_top, x_top])
+        net_y = np.zeros_like(net_x)
+        net_z = np.stack([np.zeros_like(z_top), z_top])
         ax.plot_surface(
             net_x,
             net_y,
             net_z,
             color=style.net_color,
-            alpha=0.4,
+            alpha=0.15,
             zorder=2,
         )
 
-        # Net top line (with center sag)
-        net_points = 50
-        x_net = np.linspace(-HALF_DOUBLES_WIDTH, HALF_DOUBLES_WIDTH, net_points)
-        y_net = np.zeros(net_points)
-        # Net sags in the middle
-        z_net = (
-            NET_HEIGHT_POST
-            - (NET_HEIGHT_POST - NET_HEIGHT_CENTER)
-            * np.cos(np.pi * x_net / (2 * HALF_DOUBLES_WIDTH)) ** 2
+        # Vertical strands from the ground to the sagging top cable.
+        strand_xs = np.arange(
+            -HALF_DOUBLES_WIDTH, HALF_DOUBLES_WIDTH + 1e-9, _NET_STRAND_SPACING_X
         )
-        ax.plot(x_net, y_net, z_net, color=style.net_color, linewidth=2, zorder=3)
+        for x in strand_xs:
+            ax.plot(
+                [x, x],
+                [0.0, 0.0],
+                [0.0, net_height_at_x(float(x))],
+                color=style.net_color,
+                linewidth=0.6,
+                alpha=0.55,
+                zorder=2,
+            )
+
+        # Horizontal strands: full width below the centre-strap height, split
+        # into the two outer sections where the sag drops below the strand.
+        sag_range = NET_HEIGHT_POST - NET_HEIGHT_CENTER
+        for h in np.arange(_NET_STRAND_SPACING_Z, NET_HEIGHT_POST, _NET_STRAND_SPACING_Z):
+            if h <= NET_HEIGHT_CENTER:
+                spans = [(-HALF_DOUBLES_WIDTH, HALF_DOUBLES_WIDTH)]
+            else:
+                x_h = HALF_DOUBLES_WIDTH * (h - NET_HEIGHT_CENTER) / sag_range
+                spans = [(-HALF_DOUBLES_WIDTH, -x_h), (x_h, HALF_DOUBLES_WIDTH)]
+            for x0, x1 in spans:
+                ax.plot(
+                    [x0, x1],
+                    [0.0, 0.0],
+                    [h, h],
+                    color=style.net_color,
+                    linewidth=0.6,
+                    alpha=0.55,
+                    zorder=2,
+                )
+
+        # White band along the top cable.
+        band_z_top = np.stack([z_top - _NET_BAND_HEIGHT, z_top])
+        ax.plot_surface(
+            np.stack([x_top, x_top]),
+            np.zeros_like(band_z_top),
+            band_z_top,
+            color=style.band_color,
+            alpha=0.9,
+            zorder=3,
+        )
+        ax.plot(x_top, np.zeros_like(x_top), z_top, color=style.band_color, linewidth=2, zorder=3)
+
+        # Net posts (CourtKP20 indices 15..18) and centre strap (14 -> 19).
+        kp = court_keypoints_3d().numpy()
+        for base_idx, top_idx in ((15, 16), (17, 18)):
+            base, top = kp[base_idx], kp[top_idx]
+            ax.plot(
+                [base[0], top[0]],
+                [base[1], top[1]],
+                [base[2], top[2]],
+                color=style.post_color,
+                linewidth=4.0,
+                zorder=3,
+                solid_capstyle="round",
+            )
+        strap_base, strap_top = kp[14], kp[19]
+        ax.plot(
+            [strap_base[0], strap_top[0]],
+            [strap_base[1], strap_top[1]],
+            [strap_base[2], strap_top[2]],
+            color=style.band_color,
+            linewidth=3.0,
+            zorder=3,
+        )
 
     def get_court_keypoints_3d(self) -> np.ndarray:
         """Get 3D coordinates of standard court keypoints (CourtKP20).

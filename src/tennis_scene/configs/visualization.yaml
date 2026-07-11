@@ -30,6 +30,31 @@ style:
   # "smpl" or "skeleton"
   player_representation: skeleton
   mesh_alpha: 0.6
+  # "light" (matplotlib axes visible) or "dark" (broadcast-style look)
+  theme: dark
+  show_ball_shadow: true
+  show_player_shadow: true
+  show_player_trail: true
+  player_trail_length: 60
+  show_bounces: true
+  show_hud: true
+  show_minimap: true
+
+# Virtual camera work
+camera:
+  # Named preset (broadcast/side/top/corner/behind_far), or set elev/azim instead
+  preset: broadcast
+  # Zoom override (null keeps the preset zoom; >1 zooms in)
+  zoom: null
+  # "static", "orbit" (slow azimuth revolution), or "keyframes"
+  mode: static
+  # Seconds per full revolution in orbit mode
+  orbit_period_s: 24.0
+  # Keyframed camera moves (mode: keyframes), e.g.
+  #   keyframes:
+  #     - {frame: 0, preset: broadcast}
+  #     - {frame: 120, preset: corner}
+  keyframes: null
 
 hydra:
   run:
