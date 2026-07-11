@@ -37,4 +37,4 @@ def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    main()
+    main()  # type: ignore[call-arg, unused-ignore]

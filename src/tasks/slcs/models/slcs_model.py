@@ -172,7 +172,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
                     head_dim=head_dim,
                     rope_dim=self.rope_dim,
                     attn_dropout=dropout,
-                    rope_base=self.rope_bases,
+                    rope_base=self.rope_bases,  # type: ignore[arg-type, unused-ignore]
                     ffn_type=ffn_type,
                 )
             )

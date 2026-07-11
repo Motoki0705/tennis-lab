@@ -54,7 +54,7 @@ def run(config: DictConfig) -> None:
 
     predictor = SLCSPredictor.load_from_checkpoint(
         str(checkpoint), device=str(predict_cfg.get("device", "cpu"))
-    )
+    )  # type: ignore[arg-type, unused-ignore]
     result = predictor.predict_clip(
         clip_dir,
         camera_id,
@@ -114,4 +114,4 @@ def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    main()
+    main()  # type: ignore[call-arg, unused-ignore]

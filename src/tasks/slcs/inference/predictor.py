@@ -60,7 +60,7 @@ class SLCSPredictor(BasePredictor):
 
     # ------------------------------------------------------------------
 
-    @torch.no_grad()  # type: ignore[untyped-decorator]
+    @torch.no_grad()  # type: ignore[untyped-decorator, unused-ignore]
     def predict(
         self,
         batch: dict[str, Tensor],
@@ -100,7 +100,7 @@ class SLCSPredictor(BasePredictor):
 
     # ------------------------------------------------------------------
 
-    @torch.no_grad()  # type: ignore[untyped-decorator]
+    @torch.no_grad()  # type: ignore[untyped-decorator, unused-ignore]
     def predict_clip(
         self,
         clip_dir: str | Path,

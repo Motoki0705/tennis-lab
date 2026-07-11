@@ -78,7 +78,7 @@ def run(config: DictConfig) -> int:
     precompute_cfg = config.get("precompute", {})
     report = run_precompute(
         str(config.data.dataset_root),
-        encoder,  # type: ignore[arg-type]
+        encoder,  # type: ignore[arg-type, unused-ignore]
         spec,
         batch_size=int(precompute_cfg.get("batch_size", 8)),
         overwrite=bool(precompute_cfg.get("overwrite", False)),
@@ -107,4 +107,4 @@ def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    main()
+    main()  # type: ignore[call-arg, unused-ignore]

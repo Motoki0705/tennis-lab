@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import torch
@@ -94,7 +94,7 @@ class SLCSLightningModule(BaseLightningModule):
             )
         if stage == "test":
             self.collect_test_predictions(batch, {"outputs": outputs})
-        return losses["total"]
+        return cast(Tensor, losses["total"])
 
     def training_step(
         self, batch: dict[str, Tensor], batch_idx: int
