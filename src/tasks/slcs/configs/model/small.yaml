@@ -1,0 +1,16 @@
+# Small SLCS fusion model for smoke tests and quick iteration.
+name: slcs_fusion
+hidden_dim: 64
+num_layers: 2
+num_heads: 4
+ffn_dim: null
+dropout: 0.1
+rope_dim: null
+rope_theta: 10000.0
+rope_theta_time: null
+rope_theta_entity: null
+ffn_type: swiglu
+invisible_init_std: 0.02
+dino_cross_attn_every: 1
+log_b_min: -6.0
+log_b_max: 3.0

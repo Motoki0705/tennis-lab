@@ -1,0 +1,12 @@
+# SLCS loss weights (see src/tasks/slcs/training/losses.py for the rationale).
+player_position_weight: 1.0
+player_rotation_weight: 1.0
+player_angle_weight: 0.5
+ball_position_weight: 1.0
+player_position_nll_weight: 0.5
+player_rotation_nll_weight: 0.25
+ball_position_nll_weight: 0.5
+player_position_smoothness_weight: 1.0
+ball_position_smoothness_weight: 1.0
+ground_penetration_weight: 1.0
+smoothness_order: 3
