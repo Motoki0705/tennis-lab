@@ -233,7 +233,7 @@ ignore_errors = true
 # same commit the wrapper is not analyzed and the decorator is seen as
 # untyped. Relax only that ceremony rule for script entry points.
 [[tool.mypy.overrides]]
-module = ["src.tasks.*.scripts.*", "experiments.*.scripts.*"]
+module = ["src.tasks.*.scripts.*", "src.tennis_scene.scripts.*", "experiments.*.scripts.*"]
 disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]

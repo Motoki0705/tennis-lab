@@ -1,0 +1,43 @@
+defaults:
+  - _self_
+
+# Project JSON holding sources (with sync offsets) and clips. Created on
+# first launch (video_paths required then), reloaded afterwards.
+project_path: ???
+
+# Stable namespace for this source recording group. Required only when a new
+# project is created; clips are exported as clips/<recording_id>/<clip_name>.
+recording_id: null
+
+# Source videos, one per camera. Required when project_path does not exist
+# yet; must be omitted (null) when reopening an existing project.
+video_paths: null
+camera_ids: null  # null -> cam0, cam1, ...
+
+gui:
+  canvas_width: 1600
+  tile_width: 640            # preview decode width per camera tile
+  cache_frames: 96           # LRU preview frames kept per camera
+  seek_grab_threshold: 24    # forward frames bridged by grab() before seeking
+  window_name: "Tennis Clip Studio"
+  zoom_step: 1.5
+
+audio_sync:
+  sample_rate: 8000
+  envelope_rate: 100.0       # Hz; sets offset resolution (100 -> 10 ms)
+  max_seconds: null          # cap decoded audio duration per video
+
+export:
+  output_dir: null           # null -> <project dir>/dataset
+  fps: null                  # null -> all sources must share fps
+  width: null                # null (with height) -> all sources must share size
+  height: null
+  crf: 17
+  overwrite: false
+
+hydra:
+  run:
+    dir: outputs/clip_studio/hydra/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

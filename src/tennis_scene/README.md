@@ -4,6 +4,12 @@
 
 ## Modules
 
+### clip_studio/
+長時間・非同期のマルチカメラ動画を同期してラリークリップを切り出し、追記可能な構造化データセットへエクスポートするGUI。詳細は `clip_studio/README.md`。
+
+### generate_dataset/
+構造化クリップのうち未処理分へパイプラインを適用し、BLCS/PLCS用観測と3D出力を含む `SceneResult` を監査可能な疑似アノテーションとして追加する。詳細は `generate_dataset/README.md`。
+
 ### io.py
 - **`SceneResult`**: パイプライン共有スキーマ(`court_kp`/`player_position`/`player_yaw`/`smpl_*`/`ball_*`等)。
 - **`save()`/`load()`**: `.npz`+`*.metadata.json`サイドカーで保存、pickle混入legacy形式は警告付きフォールバック。
@@ -27,10 +33,14 @@
 ### scripts/
 - **`run_pipeline.py`**: パイプライン実行エントリポイント。結果を `.npz` に保存。
 - **`visualization.py`**: 保存済み `SceneResult` の可視化エントリポイント。
+- **`clip_studio.py`**: クリップスタジオGUIの起動エントリポイント。
+- **`export_clips.py`**: プロジェクトJSONからのヘッドレスクリップエクスポート。
+- **`generate_dataset.py`**: 構造化データセットへの増分疑似アノテーション生成。
 
 ### configs/
 - **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`ball_detection`/`plcs`/`blcs`)の実行設定。
 - **`visualization.yaml`**: 可視化スタイル・出力設定。
+- **`clip_studio.yaml` / `export_clips.yaml` / `generate_dataset.yaml`**: クリップ編集・エクスポート・疑似アノテーション生成の設定。
 
 ## 座標系メモ
 

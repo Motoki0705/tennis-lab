@@ -59,3 +59,27 @@ def make_image() -> Callable[..., torch.Tensor]:
         return torch.rand(*shape)
 
     return _make_image
+
+
+@pytest.fixture
+def wav_writer() -> Callable[..., None]:
+    """Factory writing mono float samples in [-1, 1] as 16-bit PCM WAV.
+
+    Shared by audio-utility and audio-sync tests (test modules cannot import
+    from each other because ``tests`` is not a package).
+    """
+
+    def _write_wav(path: object, samples: np.ndarray, sample_rate: int) -> None:
+        import av
+
+        pcm16 = (np.clip(samples, -1.0, 1.0) * 32767.0).astype(np.int16)[None, :]
+        with av.open(str(path), mode="w") as container:
+            stream = container.add_stream("pcm_s16le", rate=sample_rate, layout="mono")
+            frame = av.AudioFrame.from_ndarray(pcm16, format="s16", layout="mono")
+            frame.sample_rate = sample_rate
+            for packet in stream.encode(frame):
+                container.mux(packet)
+            for packet in stream.encode(None):
+                container.mux(packet)
+
+    return _write_wav

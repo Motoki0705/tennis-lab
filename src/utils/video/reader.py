@@ -85,6 +85,76 @@ class OpenCVVideoFrameReader:
             cap.release()
 
 
+class RandomAccessVideoReader:
+    """Random-access BGR frame reader with a grab-ahead seek shortcut.
+
+    Keeps one ``cv2.VideoCapture`` open across calls. Small forward jumps are
+    served by ``grab()`` (cheap sequential decode); backward jumps and large
+    forward jumps fall back to an absolute seek. This makes both scrubbing and
+    monotonically increasing access patterns efficient on long videos.
+
+    Args:
+        video_path: Source video file.
+        seek_grab_threshold: Maximum forward distance (in frames) bridged by
+            sequential ``grab()`` calls before an absolute seek is used.
+    """
+
+    def __init__(
+        self, video_path: str | Path, *, seek_grab_threshold: int = 24
+    ) -> None:
+        if seek_grab_threshold < 0:
+            raise ValueError(
+                f"seek_grab_threshold must be non-negative, got {seek_grab_threshold}"
+            )
+        self.video_path = Path(video_path)
+        self.seek_grab_threshold = seek_grab_threshold
+        self._cap: cv2.VideoCapture | None = None
+        self._next_index = 0
+
+    def read(self, frame_index: int) -> NDArray[np.uint8]:
+        """Decode and return the BGR frame at ``frame_index``."""
+        if frame_index < 0:
+            raise ValueError(f"frame_index must be non-negative, got {frame_index}")
+        if self._cap is None:
+            cap = cv2.VideoCapture(str(self.video_path))
+            if not cap.isOpened():
+                raise RuntimeError(f"Failed to open video: {self.video_path}")
+            self._cap = cap
+            self._next_index = 0
+        cap = self._cap
+
+        distance = frame_index - self._next_index
+        if 0 < distance <= self.seek_grab_threshold:
+            for skipped in range(distance):
+                if not cap.grab():
+                    raise RuntimeError(
+                        f"Failed to grab frame {self._next_index + skipped} "
+                        f"from {self.video_path}"
+                    )
+        elif distance != 0:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+
+        ok, frame_bgr = cap.read()
+        if not ok:
+            raise RuntimeError(
+                f"Failed to read frame {frame_index} from {self.video_path}"
+            )
+        self._next_index = frame_index + 1
+        return np.asarray(frame_bgr, dtype=np.uint8)
+
+    def close(self) -> None:
+        """Release the underlying capture (idempotent)."""
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None
+
+    def __enter__(self) -> RandomAccessVideoReader:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
+
+
 def read_video_rgb(
     video_path: str | Path,
     *,
