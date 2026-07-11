@@ -18,6 +18,7 @@ from src.utils.rendering.effects import (
     render_fading_line_3d,
     render_ground_ring,
     render_ground_shadow,
+    render_impact_ring,
 )
 
 
@@ -109,3 +110,27 @@ class TestGroundArtists:
     def test_ring_invalid_radius_raises(self, ax3d: Axes3D) -> None:
         with pytest.raises(ValueError, match="radius must be positive"):
             render_ground_ring(ax3d, (0.0, 0.0), radius=-1.0, color="gold")
+
+
+class TestRenderImpactRing:
+    def test_young_ring_is_small_and_opaque(self, ax3d: Axes3D) -> None:
+        render_impact_ring(ax3d, (0.0, 0.0), 0.0, color="gold")
+
+        (line,) = ax3d.lines
+        x_data, _, _ = line.get_data_3d()
+        radius = float(np.max(np.abs(x_data)))
+        assert radius == pytest.approx(0.15)
+        assert line.get_alpha() == pytest.approx(0.95)
+
+    def test_old_ring_is_expanded_and_faded(self, ax3d: Axes3D) -> None:
+        render_impact_ring(ax3d, (0.0, 0.0), 1.0, color="gold")
+
+        (line,) = ax3d.lines
+        x_data, _, _ = line.get_data_3d()
+        radius = float(np.max(np.abs(x_data)))
+        assert radius == pytest.approx(0.60)
+        assert line.get_alpha() == pytest.approx(0.05)
+
+    def test_age_out_of_range_raises(self, ax3d: Axes3D) -> None:
+        with pytest.raises(ValueError, match="age must be within"):
+            render_impact_ring(ax3d, (0.0, 0.0), 1.5, color="gold")
