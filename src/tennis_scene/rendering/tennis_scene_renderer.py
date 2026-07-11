@@ -1,9 +1,12 @@
 """Tennis scene renderer for 3D animation visualization.
 
 This module renders complete tennis scenes in 3D, including:
-- Court geometry
-- Multi-player body representation (SMPL mesh or 3D skeleton)
-- Ball trajectory
+- Court geometry (two-tone surface, meshed net, posts)
+- Multi-player body representation (SMPL mesh or 3D skeleton), with ground
+  shadows and fading movement trails
+- Ball with fading trajectory trail, ground shadow, and bounce-impact rings
+- Virtual camera work (presets / orbit / keyframes via ``CameraController``)
+- HUD overlay (frame clock, ball speed, bounce count) and a top-down minimap
 
 Only 3D rendering is supported.
 """
@@ -22,6 +25,13 @@ from src.submodules.vendor.gvhmr.body_model import (
     SMPL_NEUTRAL_J_REGRESSOR_PATH,
     load_smpl_faces,
 )
+from src.tennis_scene.rendering.camera import CameraController
+from src.tennis_scene.rendering.hud import (
+    HudRenderer,
+    HudStyle,
+    MinimapRenderer,
+    MinimapStyle,
+)
 from src.utils.geometry.matrices import (
     axis_angle_to_rotation_matrix,
     rotation_matrix_z,
@@ -29,11 +39,18 @@ from src.utils.geometry.matrices import (
 )
 from src.utils.rendering.ball_renderer import BallRenderer, BallStyle
 from src.utils.rendering.court_renderer import CourtRenderer, CourtStyle
+from src.utils.rendering.effects import (
+    render_fading_line_3d,
+    render_ground_ring,
+    render_ground_shadow,
+)
 from src.utils.rendering.mesh_renderer import MeshRenderer
 from src.utils.rendering.skeleton_renderer import SkeletonRenderer, SkeletonStyle
+from src.utils.rendering.trajectory_analysis import compute_speeds, detect_bounces
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
     from matplotlib.figure import Figure
     from mpl_toolkits.mplot3d import Axes3D
     from numpy.typing import NDArray
@@ -55,6 +72,26 @@ _DEFAULT_PLAYER_COLORS = [
     "#5E81AC",
 ]
 
+_DARK_FIGURE_COLOR = "#101418"
+_DARK_AXES_COLOR = "#101418"
+_LIGHT_TEXT_COLOR = "#222222"
+_DARK_TEXT_COLOR = "#E8E8E8"
+
+# Brighter two-tone court that keeps contrast on the dark background.
+_DARK_THEME_COURT_STYLE = CourtStyle(
+    court_color="#4C9B57",
+    apron_color="#33763D",
+    net_color="#B9C0C7",
+    surface_alpha=1.0,
+)
+
+_PLAYER_SHADOW_RADIUS = 0.4
+_BALL_SHADOW_RADIUS = 0.08
+_BOUNCE_RING_COLOR = "#FFD700"
+
+# Minimap inset rectangle in figure coordinates (left, bottom, width, height).
+_MINIMAP_RECT = (0.76, 0.04, 0.21, 0.30)
+
 
 @dataclass
 class TennisSceneStyle:
@@ -71,6 +108,21 @@ class TennisSceneStyle:
     mesh_alpha: float = 0.6
     player_representation: Literal["smpl", "skeleton"] = "skeleton"
 
+    # Scene look & feel
+    theme: Literal["light", "dark"] = "light"
+    show_ball_shadow: bool = True
+    show_player_shadow: bool = True
+    show_player_trail: bool = True
+    player_trail_length: int = 60
+    show_bounces: bool = True
+    bounce_marker_duration_s: float = 1.5
+
+    # Overlays
+    show_hud: bool = True
+    hud_style: HudStyle | None = None
+    show_minimap: bool = True
+    minimap_style: MinimapStyle | None = None
+
 
 class TennisSceneRenderer:
     """Render complete 3D tennis scenes with animation support."""
@@ -80,19 +132,30 @@ class TennisSceneRenderer:
         style: TennisSceneStyle | None = None,
         smpl_model_path: str | Path | None = None,
         smpl_joint_regressor_path: str | Path | None = None,
+        camera: CameraController | None = None,
     ) -> None:
         self.style = style or TennisSceneStyle()
-        self.court_renderer = CourtRenderer(self.style.court_style)
+        self.camera = camera or CameraController("broadcast")
+        court_style = self.style.court_style
+        if court_style is None and self.style.theme == "dark":
+            court_style = _DARK_THEME_COURT_STYLE
+        self.court_renderer = CourtRenderer(court_style)
         self.ball_renderer = BallRenderer(self.style.ball_style)
         self.skeleton_renderer = SkeletonRenderer(
             skeleton_type="smpl",
             style=self.style.skeleton_style,
         )
+        self.hud_renderer = HudRenderer(
+            self.style.hud_style or HudStyle(text_color=self._text_color())
+        )
+        self.minimap_renderer = MinimapRenderer(self.style.minimap_style)
 
         self._mesh_renderer: MeshRenderer | None = None
         self._smpl_joint_regressor: NDArray[np.float32] | None = None
         self._scene_vertices_cache: dict[int, NDArray[np.float32]] = {}
         self._scene_joints_cache: dict[int, NDArray[np.float32]] = {}
+        self._scene_ball_speeds_cache: dict[int, NDArray[np.float32]] = {}
+        self._scene_bounce_frames_cache: dict[int, NDArray[np.int64]] = {}
 
         regressor_path = smpl_joint_regressor_path or DEFAULT_SMPL_JOINT_REGRESSOR_PATH
         self._smpl_joint_regressor = self._load_smpl_joint_regressor(regressor_path)
@@ -119,6 +182,9 @@ class TennisSceneRenderer:
 
     def _player_color(self, player_idx: int) -> str:
         return _DEFAULT_PLAYER_COLORS[player_idx % len(_DEFAULT_PLAYER_COLORS)]
+
+    def _text_color(self) -> str:
+        return _DARK_TEXT_COLOR if self.style.theme == "dark" else _LIGHT_TEXT_COLOR
 
     def _get_player_tracks(self, scene: SceneResult) -> list[int]:
         if scene.player_track_ids is None:
@@ -218,16 +284,27 @@ class TennisSceneRenderer:
         self._scene_joints_cache[cache_key] = players_kp_3d
         return players_kp_3d
 
-    def _render_smpl_mesh_3d(
-        self,
-        ax: Axes3D,
-        vertices: NDArray[np.float32],
-        color: str,
-        alpha: float,
-    ) -> None:
-        if self._mesh_renderer is None:
-            raise RuntimeError("SMPL mesh renderer is not initialized")
-        self._mesh_renderer.render_3d(ax, vertices, color=color, alpha=alpha)
+    def _get_ball_speeds(self, scene: SceneResult) -> NDArray[np.float32] | None:
+        """Per-frame ball speed (m/s), cached per scene. None without ball_3d."""
+        if scene.ball_3d is None:
+            return None
+        cache_key = id(scene)
+        cached = self._scene_ball_speeds_cache.get(cache_key)
+        if cached is None:
+            cached = compute_speeds(scene.ball_3d, scene.fps)
+            self._scene_ball_speeds_cache[cache_key] = cached
+        return cached
+
+    def _get_bounce_frames(self, scene: SceneResult) -> NDArray[np.int64] | None:
+        """Ball bounce frame indices, cached per scene. None without ball_3d."""
+        if scene.ball_3d is None:
+            return None
+        cache_key = id(scene)
+        cached = self._scene_bounce_frames_cache.get(cache_key)
+        if cached is None:
+            cached = detect_bounces(scene.ball_3d)
+            self._scene_bounce_frames_cache[cache_key] = cached
+        return cached
 
     def render_frame_3d(
         self,
@@ -238,16 +315,26 @@ class TennisSceneRenderer:
         title: str | None = None,
         ax: Axes3D | None = None,
     ) -> tuple[Figure | None, Axes3D]:
-        """Render a single frame in 3D."""
+        """Render a single frame in 3D.
+
+        When ``ax`` is provided the renderer draws only into it (no minimap
+        inset, no figure-level styling); otherwise a new figure is created
+        with the full overlay set.
+        """
         fig = None
         if ax is None:
             fig = plt.figure(figsize=figsize or self.style.figsize)
+            self._apply_figure_theme(fig)
             ax = fig.add_subplot(111, projection="3d")
+            self._apply_axes_layout(ax)
 
         self._render_3d_internal(ax, scene, frame_idx)
-        if title is None:
-            title = f"Frame: {frame_idx}/{scene.num_frames}"
-        ax.set_title(title)
+        if title is not None:
+            ax.set_title(title, color=self._text_color())
+
+        if fig is not None and self.style.show_minimap:
+            minimap_ax = self._add_minimap_axes(fig)
+            self._render_minimap(minimap_ax, scene, frame_idx)
         return fig, ax
 
     def create_animation(
@@ -266,13 +353,19 @@ class TennisSceneRenderer:
             end_frame = scene.num_frames
 
         fig = plt.figure(figsize=figsize or self.style.figsize)
+        self._apply_figure_theme(fig)
         ax = fig.add_subplot(111, projection="3d")
+        self._apply_axes_layout(ax)
+        minimap_ax = self._add_minimap_axes(fig) if self.style.show_minimap else None
         interval = 1000.0 / fps
         frames_range = range(start_frame, end_frame)
 
         def update(frame_idx: int) -> list:
             ax.clear()
             self._render_3d_internal(ax, scene, frame_idx)
+            if minimap_ax is not None:
+                minimap_ax.clear()
+                self._render_minimap(minimap_ax, scene, frame_idx)
             return []
 
         return FuncAnimation(fig, update, frames=frames_range, interval=interval, blit=False)
@@ -302,35 +395,100 @@ class TennisSceneRenderer:
         )
         anim.save(str(output_path), writer=writer, fps=int(round(fps or scene.fps)), dpi=dpi)
 
-    def _render_3d_internal(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
-        self.court_renderer.render_3d(ax, show_net=True)
+    def _apply_figure_theme(self, fig: Figure) -> None:
+        if self.style.theme == "dark":
+            fig.patch.set_facecolor(_DARK_FIGURE_COLOR)
 
+    def _apply_axes_layout(self, ax: Axes3D) -> None:
+        """Let the scene fill the whole figure in dark (axis-less) mode."""
+        if self.style.theme == "dark":
+            ax.set_position((0.0, 0.0, 1.0, 1.0))
+
+    def _apply_axes_theme(self, ax: Axes3D) -> None:
+        if self.style.theme != "dark":
+            return
+        # Broadcast look: no axes chrome at all, scene floats on the dark bg.
+        ax.set_facecolor(_DARK_AXES_COLOR)
+        ax.set_axis_off()
+
+    def _add_minimap_axes(self, fig: Figure) -> Axes:
+        return fig.add_axes(_MINIMAP_RECT)
+
+    def _render_minimap(self, minimap_ax: Axes, scene: SceneResult, frame_idx: int) -> None:
+        self.minimap_renderer.render(
+            minimap_ax,
+            scene,
+            frame_idx,
+            player_colors=[
+                self._player_color(i) for i in range(scene.player_position.shape[0])
+            ],
+            bounce_frames=self._get_bounce_frames(scene),
+        )
+
+    def _render_bounce_rings(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
+        bounce_frames = self._get_bounce_frames(scene)
+        if bounce_frames is None or scene.ball_3d is None:
+            return
+        duration_frames = max(1, int(round(self.style.bounce_marker_duration_s * scene.fps)))
+        for b in bounce_frames.tolist():
+            age_frames = frame_idx - b
+            if age_frames < 0 or age_frames > duration_frames:
+                continue
+            pos = scene.ball_3d[b]
+            if not np.isfinite(pos[:2]).all():
+                continue
+            age = age_frames / duration_frames
+            render_ground_ring(
+                ax,
+                (float(pos[0]), float(pos[1])),
+                radius=0.15 + 0.45 * age,
+                color=_BOUNCE_RING_COLOR,
+                alpha=0.9 * (1.0 - age) + 0.05,
+                linewidth=2.0,
+            )
+
+    def _render_players(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
         track_ids = self._get_player_tracks(scene)
         players_position = self._get_players_position(scene)
         players_yaw = self._get_players_yaw(scene)
         players_smpl = self._build_players_smpl_vertices_court(scene)
 
-        if self.style.player_representation == "smpl":
-            for player_idx, track_id in enumerate(track_ids):
-                color = self._player_color(player_idx)
-                vertices = players_smpl[player_idx, frame_idx]
-                self._render_smpl_mesh_3d(
+        for player_idx, track_id in enumerate(track_ids):
+            color = self._player_color(player_idx)
+            pos = players_position[player_idx, frame_idx]
+
+            if self.style.show_player_trail:
+                trail_start = max(0, frame_idx - self.style.player_trail_length)
+                trail = players_position[player_idx, trail_start : frame_idx + 1].copy()
+                trail[:, 2] = 0.02
+                render_fading_line_3d(
                     ax,
-                    vertices,
+                    trail,
+                    color=color,
+                    alpha_range=(0.03, 0.5),
+                    linewidth_range=(1.0, 2.5),
+                    zorder=1,
+                )
+
+            if self.style.show_player_shadow and np.isfinite(pos[:2]).all():
+                render_ground_shadow(
+                    ax,
+                    (float(pos[0]), float(pos[1])),
+                    radius=_PLAYER_SHADOW_RADIUS,
+                    alpha=0.28,
+                )
+
+            if self.style.player_representation == "smpl":
+                if self._mesh_renderer is None:
+                    raise RuntimeError("SMPL mesh renderer is not initialized")
+                self._mesh_renderer.render_3d(
+                    ax,
+                    players_smpl[player_idx, frame_idx],
                     color=color,
                     alpha=self.style.mesh_alpha,
+                    zorder=4,
                 )
-                ax.text(
-                    players_position[player_idx, frame_idx, 0],
-                    players_position[player_idx, frame_idx, 1],
-                    players_position[player_idx, frame_idx, 2] + 1.0,
-                    f"P{track_id}",
-                    color=color,
-                )
-        else:
-            players_kp_3d = self._get_players_kp_3d(scene)
-            for player_idx, track_id in enumerate(track_ids):
-                color = self._player_color(player_idx)
+            else:
                 style_override = SkeletonStyle(
                     joint_color=color,
                     bone_color=color,
@@ -341,16 +499,17 @@ class TennisSceneRenderer:
                 )
                 self.skeleton_renderer.render_3d(
                     ax,
-                    players_kp_3d[player_idx, frame_idx],
+                    self._get_players_kp_3d(scene)[player_idx, frame_idx],
                     style_override=style_override,
                 )
-                ax.text(
-                    players_position[player_idx, frame_idx, 0],
-                    players_position[player_idx, frame_idx, 1],
-                    players_position[player_idx, frame_idx, 2] + 1.0,
-                    f"P{track_id}",
-                    color=color,
-                )
+
+            ax.text(
+                pos[0],
+                pos[1],
+                pos[2] + 1.0,
+                f"P{track_id}",
+                color=color,
+            )
 
         if self.style.show_direction:
             for player_idx in range(players_position.shape[0]):
@@ -358,32 +517,106 @@ class TennisSceneRenderer:
                 yaw = players_yaw[player_idx, frame_idx]
                 dx = np.sin(yaw)
                 dy = np.cos(yaw)
-                ax.quiver(pos[0], pos[1], pos[2] + 0.5, dx, dy, 0, color="yellow", arrow_length_ratio=0.3)
+                ax.quiver(
+                    pos[0],
+                    pos[1],
+                    pos[2] + 0.5,
+                    dx,
+                    dy,
+                    0,
+                    color="yellow",
+                    arrow_length_ratio=0.3,
+                    zorder=7,
+                )
 
-        if scene.ball_3d is not None:
-            ball_pos = scene.ball_3d[frame_idx]
-            if np.isfinite(ball_pos).all():
-                self.ball_renderer.render_ball_3d(ax, ball_pos, label="Ball")
+    def _render_ball(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
+        if scene.ball_3d is None:
+            return
 
-            if self.style.show_trail:
-                start_idx = max(0, frame_idx - self.style.trail_length)
-                trail = scene.ball_3d[start_idx : frame_idx + 1]
-                valid = np.isfinite(trail).all(axis=-1)
-                if valid.sum() > 1:
-                    self.ball_renderer.render_trajectory_3d(
-                        ax,
-                        trail[valid],
-                        show_start_end=False,
-                    )
+        ball_pos = scene.ball_3d[frame_idx]
+        ball_valid = bool(np.isfinite(ball_pos).all())
 
-        self._set_fixed_court_view(ax)
-        ax.set_title(f"Frame: {frame_idx}/{scene.num_frames}")
+        if self.style.show_trail:
+            start_idx = max(0, frame_idx - self.style.trail_length)
+            trail = scene.ball_3d[start_idx : frame_idx + 1]
+            render_fading_line_3d(
+                ax,
+                trail,
+                color=self.ball_renderer.style.trajectory_color,
+                alpha_range=(0.05, 0.95),
+                linewidth_range=(1.0, 3.0),
+                zorder=6,
+            )
 
-    def _set_fixed_court_view(self, ax: Axes3D) -> None:
+        if ball_valid:
+            if self.style.show_ball_shadow:
+                # Fade the contact shadow out as the ball rises.
+                height_ratio = float(np.clip(ball_pos[2] / _FIXED_VIEW_Z_LIMIT, 0.0, 1.0))
+                render_ground_shadow(
+                    ax,
+                    (float(ball_pos[0]), float(ball_pos[1])),
+                    radius=_BALL_SHADOW_RADIUS,
+                    alpha=0.35 * (1.0 - 0.7 * height_ratio),
+                )
+            self.ball_renderer.render_ball_3d(ax, ball_pos, label="Ball")
+
+    def _render_hud(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
+        if not self.style.show_hud:
+            return
+        speeds = self._get_ball_speeds(scene)
+        ball_speed_ms = float(speeds[frame_idx]) if speeds is not None else None
+        bounce_frames = self._get_bounce_frames(scene)
+        bounce_count = (
+            int((bounce_frames <= frame_idx).sum()) if bounce_frames is not None else None
+        )
+        self.hud_renderer.render(
+            ax,
+            frame_idx=frame_idx,
+            num_frames=scene.num_frames,
+            fps=scene.fps,
+            ball_speed_ms=ball_speed_ms,
+            bounce_count=bounce_count,
+        )
+
+    def _render_3d_internal(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
+        # mplot3d sorts whole artists by mean view depth by default; the huge
+        # ground quads then hide flat artists (lines, rings, shadows) at many
+        # camera angles. Explicit zorders give a deterministic layer order:
+        # surfaces(0) < lines/shadows/trails(1) < net(2-3) < players(2-4) <
+        # rings(5) < ball(6-10) < HUD(100).
+        ax.computed_zorder = False
+        self._apply_axes_theme(ax)
+
+        x_half_span = float(HALF_DOUBLES_WIDTH + _FIXED_VIEW_MARGIN)
+        y_half_span = float(HALF_LENGTH + _FIXED_VIEW_MARGIN)
+        self.court_renderer.render_3d(
+            ax,
+            show_net=True,
+            apron_bounds=(-x_half_span, x_half_span, -y_half_span, y_half_span),
+        )
+
+        if self.style.show_bounces:
+            self._render_bounce_rings(ax, scene, frame_idx)
+        self._render_players(ax, scene, frame_idx)
+        self._render_ball(ax, scene, frame_idx)
+        self._render_hud(ax, scene, frame_idx)
+
+        view = self.camera.view_at(frame_idx, scene.fps)
+        ax.view_init(elev=view.elev, azim=view.azim)
+        self._set_fixed_court_view(ax, zoom=view.zoom)
+        if self.style.theme != "dark":
+            # In dark mode the HUD already shows the frame clock and a title
+            # above the full-bleed axes would be clipped anyway.
+            ax.set_title(f"Frame: {frame_idx}/{scene.num_frames}", color=self._text_color())
+
+    def _set_fixed_court_view(self, ax: Axes3D, *, zoom: float = 1.0) -> None:
         x_half_span = float(HALF_DOUBLES_WIDTH + _FIXED_VIEW_MARGIN)
         y_half_span = float(HALF_LENGTH + _FIXED_VIEW_MARGIN)
 
         ax.set_xlim(-x_half_span, x_half_span)
         ax.set_ylim(-y_half_span, y_half_span)
         ax.set_zlim(0.0, _FIXED_VIEW_Z_LIMIT)
-        ax.set_box_aspect([x_half_span * 2.0, y_half_span * 2.0, _FIXED_VIEW_Z_LIMIT])
+        ax.set_box_aspect(
+            [x_half_span * 2.0, y_half_span * 2.0, _FIXED_VIEW_Z_LIMIT],
+            zoom=zoom,
+        )

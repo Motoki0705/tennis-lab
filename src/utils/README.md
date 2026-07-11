@@ -36,10 +36,12 @@
 - **`camera_projector.py`**: `Camera`、`CameraConfig`、`CameraView`、`CameraProjector`、`make_look_at_camera()`、`project_points()`。ピンホール投影の共通実装。
 
 ### `rendering/`
-- **`court_renderer.py`**: コート線・スタイル定義と `CourtRenderer`。
+- **`court_renderer.py`**: コート線・スタイル定義と `CourtRenderer`。3D はランオフ（apron）二色サーフェス・網目ネット・ポスト・センターストラップ対応。ネットサグは `schema.court.net_height_at_x()` に一本化（`net_top_curve()`）。
 - **`skeleton_renderer.py`**: COCO / SMPL 系 skeleton 描画用の `SkeletonRenderer` と関連 enum / style。
 - **`ball_renderer.py`**: ボール軌跡・イベント描画用の `BallRenderer`、`BallEvent`、`BallStyle`。
 - **`mesh_renderer.py`**: 三角メッシュ（SMPL 等）の `MeshRenderer`。カメラ視点オーバーレイ（cv2 painter's algorithm、K 行列投影）と matplotlib 3D 描画。
+- **`effects.py`**: 3D 描画エフェクト。フェード付きポリライン（軌跡）、地面の擬似影、バウンスリング。
+- **`trajectory_analysis.py`**: 軌道からの物理量抽出（純 NumPy）。`compute_speeds()`（フレーム毎速度）と `detect_bounces()`（接地バウンス検出）。
 
 ### `schema/`
 - **`court.py`**: コート寸法、`CourtConfig`、20 点 court keypoints、court skeleton、正規化スケール定数、`net_height_at_x()`。

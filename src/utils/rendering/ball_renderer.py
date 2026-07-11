@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
@@ -201,6 +201,7 @@ class BallRenderer:
         *,
         style_override: BallStyle | None = None,
         label: str | None = None,
+        zorder: int = 10,
     ) -> PathCollection:
         """Render a single ball position in 3D.
 
@@ -209,6 +210,8 @@ class BallRenderer:
             position: Ball position (x, y, z).
             style_override: Override default style.
             label: Optional label for legend.
+            zorder: Z-order for layering (used when the target axis has
+                ``computed_zorder = False``).
 
         Returns:
             PathCollection from scatter plot.
@@ -217,15 +220,19 @@ class BallRenderer:
         style = style_override or self.style
         pos = np.atleast_2d(position)
 
-        return ax.scatter(
-            pos[:, 0],
-            pos[:, 1],
-            pos[:, 2],
-            c=style.ball_color,
-            s=style.ball_size,
-            label=label,
-            edgecolors="black",
-            linewidths=1,
+        return cast(
+            "PathCollection",
+            ax.scatter(
+                pos[:, 0],
+                pos[:, 1],
+                pos[:, 2],
+                c=style.ball_color,
+                s=style.ball_size,
+                label=label,
+                edgecolors="black",
+                linewidths=1,
+                zorder=zorder,
+            ),
         )
 
     def render_trajectory_2d(
@@ -257,6 +264,7 @@ class BallRenderer:
         T = len(positions)
 
         # Draw trajectory line
+        lines: Line2D | list
         if style.use_height_colormap and positions.shape[1] >= 3:
             # Color by height (Z coordinate)
             lines = self._render_colored_trajectory_2d(ax, positions, style)
@@ -565,15 +573,18 @@ class BallRenderer:
         event_style = EVENT_STYLES.get(
             event.event_type, EVENT_STYLES[BallEventType.BOUNCE]
         )
-        return ax.scatter(
-            [position[0]],
-            [position[1]],
-            [position[2]],
-            c=event_style["color"],
-            s=event_style["size"],
-            marker=event_style["marker"],
-            edgecolors=event_style["edgecolor"],
-            linewidths=event_style["linewidth"],
-            zorder=10,
-            label=event.label,
+        return cast(
+            "PathCollection",
+            ax.scatter(
+                [position[0]],
+                [position[1]],
+                [position[2]],
+                c=event_style["color"],
+                s=event_style["size"],
+                marker=event_style["marker"],
+                edgecolors=event_style["edgecolor"],
+                linewidths=event_style["linewidth"],
+                zorder=10,
+                label=event.label,
+            ),
         )
