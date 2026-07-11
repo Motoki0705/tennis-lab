@@ -8,8 +8,6 @@ code anymore (checkpoints are read via the ``ckpt/`` symlinks).
 from __future__ import annotations
 
 import logging
-import subprocess
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -43,8 +41,6 @@ class GVHMRConfig:
     vitpose_checkpoint: str | Path = "ckpt/vitpose/vitpose-h-multi-coco.pth"
     hmr2_checkpoint: str | Path = "ckpt/hmr2/epoch=10-step=25000.ckpt"
     device: str = "cuda"
-    subprocess_mode: bool = False
-    python_executable: str | Path | None = None
     smplx_body_model_path: str | Path | None = None
     track_selection: str = "interactive"  # "interactive" or "auto"
     num_tracks: int = 2  # used when track_selection == "auto"
@@ -191,84 +187,15 @@ class GVHMRModule(BasePipelineModule):
         if self.config.load_path is not None:
             load_path = Path(self.config.load_path)
             if load_path.exists():
-                LOGGER.info(f"Loading GVHMR result from {load_path} (skipping inference)")
+                LOGGER.info(
+                    f"Loading GVHMR result from {load_path} (skipping inference)"
+                )
                 return GVHMRResult.load(load_path)
             LOGGER.warning(
                 f"load_path specified but not found: {load_path}, running inference"
             )
 
-        if self.config.subprocess_mode:
-            return self._process_subprocess(video_path, max_frames)
-
-        return self._process_direct(video_path, max_frames)
-
-    def _process_subprocess(
-        self,
-        video_path: str | Path,
-        max_frames: int | None = None,
-    ) -> GVHMRResult:
-        LOGGER.info("Running GVHMR in subprocess mode...")
-
-        output_path = self.config.output_path
-        if output_path is None:
-            raise ValueError("output_path must be set for subprocess mode")
-        output_path = Path(output_path)
-
-        python_exec = self.config.python_executable
-        if python_exec is None:
-            python_exec = sys.executable
-
-        cmd = [
-            str(python_exec),
-            "-m",
-            "src.tennis_scene.pipeline.components.gvhmr",
-            "--video",
-            str(video_path),
-            "--output",
-            str(output_path),
-            "--gvhmr-checkpoint",
-            str(self.config.gvhmr_checkpoint),
-            "--yolo-checkpoint",
-            str(self.config.yolo_checkpoint),
-            "--vitpose-checkpoint",
-            str(self.config.vitpose_checkpoint),
-            "--hmr2-checkpoint",
-            str(self.config.hmr2_checkpoint),
-            "--device",
-            self.config.device,
-            "--track-selection",
-            self.config.track_selection,
-            "--num-tracks",
-            str(self.config.num_tracks),
-        ]
-        if self.config.smplx_body_model_path is not None:
-            cmd.extend(
-                ["--smplx-body-model-path", str(self.config.smplx_body_model_path)]
-            )
-        if max_frames is not None:
-            cmd.extend(["--max-frames", str(max_frames)])
-
-        LOGGER.info(f"Subprocess command: {' '.join(cmd)}")
-
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            cwd=Path(__file__).parents[4],
-        )
-        if result.returncode != 0:
-            LOGGER.error(f"GVHMR subprocess failed:\n{result.stderr}")
-            raise RuntimeError(f"GVHMR subprocess failed: {result.stderr}")
-
-        LOGGER.info(f"GVHMR subprocess completed, loading result from {output_path}")
-        return GVHMRResult.load(output_path)
-
-    def _process_direct(
-        self,
-        video_path: str | Path,
-        max_frames: int | None = None,
-    ) -> GVHMRResult:
-        from src.submodules.models import TrackRequest
+        from src.submodules.models.tracker import TrackRequest
 
         if not self.is_loaded:
             self.load()
@@ -327,11 +254,9 @@ class GVHMRModule(BasePipelineModule):
         bbx_xys: torch.Tensor,
     ) -> dict[str, Any]:
         """Run pose/feature extraction and GVHMR for one person track."""
-        from src.submodules.models import (
-            GvhmrRequest,
-            ImageFeatureRequest,
-            Pose2DRequest,
-        )
+        from src.submodules.models.gvhmr import GvhmrRequest
+        from src.submodules.models.hmr2 import ImageFeatureRequest
+        from src.submodules.models.vitpose import Pose2DRequest
         from src.utils.video.reader import probe_video_info
 
         assert self._pose_model is not None
@@ -368,96 +293,12 @@ class GVHMRModule(BasePipelineModule):
         return {
             "track_id": track_id,
             "smpl_body_pose": smpl_params["body_pose"].numpy().astype(np.float32),
-            "smpl_global_orient": smpl_params["global_orient"].numpy().astype(np.float32),
+            "smpl_global_orient": smpl_params["global_orient"]
+            .numpy()
+            .astype(np.float32),
             "smpl_betas": betas,
             "smpl_vertices_local": vertices.numpy().astype(np.float32),
             "human_kp_2d": pose.keypoints[..., :2].numpy().astype(np.float32),
             "human_kp_vis": pose.keypoints[..., 2].numpy().astype(np.float32),
             "bbx_xys": bbx_xys.numpy().astype(np.float32),
         }
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="GVHMR CLI for subprocess execution")
-    parser.add_argument("--video", type=str, required=True, help="Path to input video")
-    parser.add_argument("--output", type=str, required=True, help="Path to output JSON")
-    parser.add_argument(
-        "--gvhmr-checkpoint",
-        type=str,
-        default="ckpt/gvhmr/gvhmr_siga24_release.ckpt",
-        help="Path to GVHMR model checkpoint",
-    )
-    parser.add_argument(
-        "--yolo-checkpoint",
-        type=str,
-        default="ckpt/yolo/yolov8x.pt",
-        help="Path to YOLO checkpoint",
-    )
-    parser.add_argument(
-        "--vitpose-checkpoint",
-        type=str,
-        default="ckpt/vitpose/vitpose-h-multi-coco.pth",
-        help="Path to ViTPose checkpoint",
-    )
-    parser.add_argument(
-        "--hmr2-checkpoint",
-        type=str,
-        default="ckpt/hmr2/epoch=10-step=25000.ckpt",
-        help="Path to HMR2 checkpoint",
-    )
-    parser.add_argument(
-        "--smplx-body-model-path",
-        type=str,
-        default=None,
-        help="Optional path to SMPL/SMPL-X body model directory",
-    )
-    parser.add_argument(
-        "--track-selection",
-        type=str,
-        default="interactive",
-        choices=["interactive", "auto"],
-        help="Track selection mode",
-    )
-    parser.add_argument(
-        "--num-tracks",
-        type=int,
-        default=2,
-        help="Number of tracks in auto selection mode",
-    )
-    parser.add_argument("--device", type=str, default="cuda", help="Inference device")
-    parser.add_argument(
-        "--max-frames", type=int, default=None, help="Maximum frames to process"
-    )
-
-    args = parser.parse_args()
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-    )
-
-    config = GVHMRConfig(
-        gvhmr_checkpoint=args.gvhmr_checkpoint,
-        yolo_checkpoint=args.yolo_checkpoint,
-        vitpose_checkpoint=args.vitpose_checkpoint,
-        hmr2_checkpoint=args.hmr2_checkpoint,
-        smplx_body_model_path=args.smplx_body_model_path,
-        track_selection=args.track_selection,
-        num_tracks=args.num_tracks,
-        device=args.device,
-        subprocess_mode=False,
-        save_result=True,
-        output_path=args.output,
-    )
-
-    module = GVHMRModule(config)
-    result = module.process(args.video, max_frames=args.max_frames)
-
-    print(f"GVHMR completed. Result saved to {args.output}")
-    print(f"  - players: {result.smpl_body_pose.shape[0]}")
-    print(f"  - smpl_body_pose: {result.smpl_body_pose.shape}")
-    print(f"  - smpl_global_orient: {result.smpl_global_orient.shape}")
-    print(f"  - smpl_betas: {result.smpl_betas.shape}")
-    print(f"  - human_kp_2d: {result.human_kp_2d.shape}")

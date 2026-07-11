@@ -8,6 +8,9 @@ source: staged
 
 # Multi-frame schedule. t_max=1 => phases degenerate to single-frame batches.
 t_max: 1
+# variable: sample T in [1, t_max] using t1_prob.
+# fixed: train only samples T=t_max; t1_prob is ignored and logged at validation.
+t_distribution: variable
 t1_prob: 0.5
 val_num_frames: 1
 
@@ -29,6 +32,7 @@ max_instances: 16
 sources:
   tracknet:
     enabled: true
+    splits: [train, val, test]
     data_dir: data/tennis/tracknet
     sample_stride: 4
     split:
@@ -37,6 +41,7 @@ sources:
       test_file: src/tasks/ball_detection/configs/data/splits/test.txt
   web:
     enabled: false
+    splits: [train, val, test]
     data_dir: data/tennis/web/unified
     sources: all
     sampling:

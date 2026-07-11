@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/ball_detection/convnext_v2_scratch/logs/version_0/checkpoints

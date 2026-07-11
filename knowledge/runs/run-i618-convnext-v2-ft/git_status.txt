@@ -1,0 +1,15 @@
+ M src/tasks/ball_detection/configs/evaluation/ball_detector_comparison.yaml
+ M src/tasks/ball_detection/configs/metrics/default.yaml
+ M src/tasks/ball_detection/evaluation/configuration.py
+ M src/tasks/ball_detection/evaluation/contracts.py
+ M src/tasks/ball_detection/evaluation/metrics.py
+ M src/tasks/ball_detection/inference/predictor.py
+ M src/tasks/ball_detection/training/lightning_module.py
+ M src/tasks/ball_detection/training/metrics.py
+ M src/tennis_scene/configs/pipeline.yaml
+ M src/tennis_scene/pipeline/components/ball_detection.py
+ M src/tennis_scene/pipeline/orchestrator.py
+ M src/utils/data/__init__.py
+ M src/utils/data/heatmaps.py
+ M tests/unit/utils/data/test_heatmaps.py
+?? evaluate_manifest.log
