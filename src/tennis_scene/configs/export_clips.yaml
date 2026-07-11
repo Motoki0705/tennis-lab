@@ -1,0 +1,23 @@
+defaults:
+  - _self_
+
+# Project JSON produced by the clip studio GUI.
+project_path: ???
+
+# Clips to export; null exports every clip in the project.
+clip_names: null
+
+export:
+  output_dir: null           # structured dataset root; null -> <project dir>/dataset
+  fps: null                  # null -> all sources must share fps
+  width: null                # null (with height) -> all sources must share size
+  height: null
+  crf: 17
+  overwrite: false
+
+hydra:
+  run:
+    dir: outputs/clip_studio/hydra/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
