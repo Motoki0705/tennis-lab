@@ -1,0 +1,2 @@
+ D assets/plcs/gt_vs_pred.gif
+ D assets/wasb/gt_vs_pred.gif

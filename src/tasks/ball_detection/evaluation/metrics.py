@@ -111,6 +111,7 @@ class StratifiedBallMetrics:
             ball_distance_threshold=self.spec.ball_distance_threshold,
             nms_kernel=self.spec.nms_kernel,
             max_predictions_per_frame=self.spec.max_predictions_per_frame,
+            subpixel_refine=self.spec.subpixel_refine,
         )
 
     def _ensure_device(self, device: torch.device) -> None:

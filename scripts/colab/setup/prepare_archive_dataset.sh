@@ -4,11 +4,20 @@ set -euo pipefail
 # Prepare archive-based datasets/assets from Google Drive.
 #
 # Supported targets:
-#   ball        -> tennis.tar.zst
-#   court       -> court.tar.zst, DINOv3 submodule, DINOv3 ViT-B/16 checkpoint
+#   ball        -> tennis.tar.zst (TrackNet + unified web store + web images
+#                  referenced in place by the store), DINOv3 submodule,
+#                  DINOv3 ViT-B/16 checkpoints (original + tennis-SSL)
+#   court       -> court.tar.zst, DINOv3 submodule,
+#                  DINOv3 ViT-B/16 checkpoints (original + tennis-SSL)
 #   plcs        -> smplx.tar.zst, smplh.tar.zst, ACCAD.tar.zst
 #   dinov3_ssl  -> dinov3_ssl.tar.zst (data/tennis/dino_ssl/images),
-#                  DINOv3 submodule, DINOv3 ViT-B/16 checkpoint
+#                  DINOv3 submodule, original DINOv3 ViT-B/16 checkpoint
+#
+# The tennis-SSL checkpoint is the LoRA-SSL teacher trained on the tennis
+# corpus (scripts/colab/train/train_dinov3_ssl.sh), merged into a plain
+# backbone state-dict with third_party/dinov3/tools/export_lora_backbone.py.
+# Both ball and court stage it next to the original checkpoint so the train
+# scripts can switch backbones for the SSL-vs-original downstream comparison.
 #
 # Usage from Colab:
 #   !bash scripts/colab/setup/prepare_archive_dataset.sh ball
@@ -17,11 +26,12 @@ set -euo pipefail
 #   !bash scripts/colab/setup/prepare_archive_dataset.sh dinov3_ssl
 #
 # Environment overrides:
-#   REPO_ROOT     default: repository root inferred from this script path
-#   DRIVE_DATA    default: /content/drive/MyDrive/tennis_lab/data
-#   CACHE_DIR     default: /content/drive_upload_archives
-#   DATA_DIR      default: ${REPO_ROOT}/data
-#   DINOV3_CKPT   default: ${DRIVE_DATA}/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
+#   REPO_ROOT        default: repository root inferred from this script path
+#   DRIVE_DATA       default: /content/drive/MyDrive/tennis_lab/data
+#   CACHE_DIR        default: /content/drive_upload_archives
+#   DATA_DIR         default: ${REPO_ROOT}/data
+#   DINOV3_CKPT      default: ${DRIVE_DATA}/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
+#   DINOV3_SSL_CKPT  default: ${DRIVE_DATA}/dinov3_vitb16_tennis_ssl_merged.pth
 
 usage() {
     cat <<'EOF'
@@ -29,17 +39,20 @@ Usage:
   bash scripts/colab/setup/prepare_archive_dataset.sh {ball|court|plcs|dinov3_ssl}
 
 Targets:
-  ball        Copy/extract tennis.tar.zst
+  ball        Copy/extract tennis.tar.zst and stage DINOv3 assets
+              (original + tennis-SSL checkpoints)
   court       Copy/extract court.tar.zst and stage DINOv3 assets
+              (original + tennis-SSL checkpoints)
   plcs        Copy/extract smplx.tar.zst, smplh.tar.zst, ACCAD.tar.zst
   dinov3_ssl  Copy/extract dinov3_ssl.tar.zst (data/tennis/dino_ssl/images)
-              and stage DINOv3 assets
+              and stage DINOv3 assets (original checkpoint only)
 
 Environment overrides:
   DRIVE_DATA=/content/drive/MyDrive/tennis_lab/data
   CACHE_DIR=/content/drive_upload_archives
   DATA_DIR=/content/tennis-lab/data
   DINOV3_CKPT=/content/drive/MyDrive/tennis_lab/data/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
+  DINOV3_SSL_CKPT=/content/drive/MyDrive/tennis_lab/data/dinov3_vitb16_tennis_ssl_merged.pth
 EOF
 }
 
@@ -56,8 +69,9 @@ CACHE_DIR="${CACHE_DIR:-/content/drive_upload_archives}"
 DATA_DIR="${DATA_DIR:-${REPO_ROOT}/data}"
 DINOV3_CKPT_NAME="dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
 DINOV3_CKPT="${DINOV3_CKPT:-${DRIVE_DATA}/${DINOV3_CKPT_NAME}}"
+DINOV3_SSL_CKPT_NAME="dinov3_vitb16_tennis_ssl_merged.pth"
+DINOV3_SSL_CKPT="${DINOV3_SSL_CKPT:-${DRIVE_DATA}/${DINOV3_SSL_CKPT_NAME}}"
 DINOV3_DEST_DIR="${REPO_ROOT}/third_party/dinov3/checkpoints"
-DINOV3_DEST="${DINOV3_DEST_DIR}/${DINOV3_CKPT_NAME}"
 
 case "${TARGET}" in
     ball)
@@ -102,7 +116,7 @@ echo "[prepare_archive_dataset] data dir: ${DATA_DIR}"
 
 mkdir -p "${CACHE_DIR}" "${DATA_DIR}"
 
-prepare_dinov3_assets() {
+prepare_dinov3_submodule() {
     echo "[prepare_archive_dataset] preparing DINOv3 submodule..."
     if [[ ! -d "${REPO_ROOT}/third_party/dinov3/dinov3" ]]; then
         if ! git -C "${REPO_ROOT}" submodule update --init third_party/dinov3; then
@@ -124,19 +138,26 @@ prepare_dinov3_assets() {
         echo "[prepare_archive_dataset] DINOv3 submodule directory is missing." >&2
         exit 1
     fi
+}
 
-    if [[ ! -f "${DINOV3_CKPT}" ]]; then
-        echo "[prepare_archive_dataset] missing DINOv3 checkpoint: ${DINOV3_CKPT}" >&2
-        echo "[prepare_archive_dataset] Expected the checkpoint in Google Drive, or set DINOV3_CKPT." >&2
+# Stage one DINOv3 checkpoint from Drive into third_party/dinov3/checkpoints/.
+stage_dinov3_checkpoint() {
+    local src="$1"
+    local dest
+    dest="${DINOV3_DEST_DIR}/$(basename "${src}")"
+
+    if [[ ! -f "${src}" ]]; then
+        echo "[prepare_archive_dataset] missing DINOv3 checkpoint: ${src}" >&2
+        echo "[prepare_archive_dataset] Expected the checkpoint in Google Drive, or set DINOV3_CKPT / DINOV3_SSL_CKPT." >&2
         exit 1
     fi
 
     mkdir -p "${DINOV3_DEST_DIR}"
-    if [[ ! -f "${DINOV3_DEST}" || "${DINOV3_CKPT}" -nt "${DINOV3_DEST}" ]]; then
-        echo "[prepare_archive_dataset] copying DINOv3 checkpoint..."
-        cp -av "${DINOV3_CKPT}" "${DINOV3_DEST}"
+    if [[ ! -f "${dest}" || "${src}" -nt "${dest}" ]]; then
+        echo "[prepare_archive_dataset] copying DINOv3 checkpoint $(basename "${src}")..."
+        cp -av "${src}" "${dest}"
     else
-        echo "[prepare_archive_dataset] DINOv3 checkpoint already exists: ${DINOV3_DEST}"
+        echo "[prepare_archive_dataset] DINOv3 checkpoint already exists: ${dest}"
     fi
 }
 
@@ -162,8 +183,15 @@ for archive in "${ARCHIVES[@]}"; do
     tar -I zstd -xf "${CACHE_DIR}/${archive}" -C "${DATA_DIR}"
 done
 
-if [[ "${TARGET}" == "court" || "${TARGET}" == "dinov3_ssl" ]]; then
-    prepare_dinov3_assets
+if [[ "${TARGET}" == "ball" || "${TARGET}" == "court" || "${TARGET}" == "dinov3_ssl" ]]; then
+    prepare_dinov3_submodule
+    stage_dinov3_checkpoint "${DINOV3_CKPT}"
+fi
+
+# ball/court run the SSL-vs-original backbone comparison, so both variants
+# must be staged. dinov3_ssl (SSL training itself) needs only the original.
+if [[ "${TARGET}" == "ball" || "${TARGET}" == "court" ]]; then
+    stage_dinov3_checkpoint "${DINOV3_SSL_CKPT}"
 fi
 
 echo "[prepare_archive_dataset] done."
