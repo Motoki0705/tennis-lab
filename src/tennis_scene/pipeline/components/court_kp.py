@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import cv2
 import numpy as np
@@ -21,6 +21,16 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 NUM_COURT_KEYPOINTS = 14
+
+
+@dataclass
+class CourtKPPostprocessConfig:
+    """Configuration for model-mode court keypoint post-processing."""
+
+    enabled: bool = False
+    min_score: float = 0.3
+    ransac_reproj_threshold: float = 3.0
+    temporal_median_window: int = 0
 
 
 @dataclass
@@ -45,6 +55,9 @@ class CourtKPConfig:
     save_result: bool = False
     output_path: str | Path | None = None
     load_path: str | Path | None = None
+    postprocess: CourtKPPostprocessConfig = field(
+        default_factory=CourtKPPostprocessConfig
+    )
 
 
 @dataclass
@@ -54,14 +67,18 @@ class CourtKPResult:
     keypoints: NDArray[np.float32]
     visibility: NDArray[np.float32]
     frame_indices: NDArray[np.int32]
+    diagnostics: dict[str, Any] | None = None
 
     def to_dict(self) -> dict:
         """Convert result to JSON-serializable dict."""
-        return {
+        data: dict[str, Any] = {
             "keypoints": self.keypoints.tolist(),
             "visibility": self.visibility.tolist(),
             "frame_indices": self.frame_indices.tolist(),
         }
+        if self.diagnostics is not None:
+            data["diagnostics"] = self.diagnostics
+        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> CourtKPResult:
@@ -75,10 +92,12 @@ class CourtKPResult:
             frame_indices = np.array(data["frame_indices"], dtype=np.int32)
         else:
             frame_indices = np.arange(keypoints.shape[1], dtype=np.int32)
+        diagnostics = data.get("diagnostics")
         return cls(
             keypoints=keypoints,
             visibility=visibility,
             frame_indices=frame_indices,
+            diagnostics=diagnostics if isinstance(diagnostics, dict) else None,
         )
 
     def save(self, path: str | Path) -> None:
@@ -155,9 +174,10 @@ class CourtKPModule(BasePipelineModule):
         self.mode = self.config.mode
         self.device = self.config.device
         self.num_keypoints = int(self.config.num_keypoints)
+        self.postprocess = self.config.postprocess
         if self.num_keypoints <= 0:
             raise ValueError(f"num_keypoints must be positive, got {self.num_keypoints}")
-        self._predictor = None
+        self._predictor: Any | None = None
         self._manual_keypoints: NDArray[np.float32] | None = None
         self._manual_needs_normalization = False
 
@@ -184,9 +204,16 @@ class CourtKPModule(BasePipelineModule):
         return self._predictor is not None
 
     def _collect_manual_keypoints_ui(self, frame: NDArray[np.uint8]) -> None:
-        """Collect manual keypoints via an interactive UI."""
-        keypoints = np.zeros((self.num_keypoints, 2), dtype=np.float32)
-        placed = np.zeros(self.num_keypoints, dtype=bool)
+        """Collect manual keypoints via an interactive UI.
+
+        Args:
+            frame: RGB frame array (H, W, 3).
+        """
+        keypoints: NDArray[np.float32] = np.zeros(
+            (self.num_keypoints, 2),
+            dtype=np.float32,
+        )
+        placed: NDArray[np.bool_] = np.zeros(self.num_keypoints, dtype=bool)
         current_idx = 0
 
         def draw_overlay(image: NDArray[np.uint8]) -> NDArray[np.uint8]:
@@ -359,9 +386,10 @@ class CourtKPModule(BasePipelineModule):
             self._manual_keypoints = None
             self._collect_manual_keypoints_ui(frame_rgb)
 
-            if self._manual_keypoints is None:
+            manual_keypoints = cast("NDArray[np.float32] | None", self._manual_keypoints)
+            if manual_keypoints is None:
                 raise RuntimeError("Manual court keypoint UI did not produce keypoints")
-            keypoints = np.array(self._manual_keypoints, copy=True)
+            keypoints = np.array(manual_keypoints, copy=True)
 
             if self._manual_needs_normalization:
                 image_width, image_height = packet.original_size
@@ -393,22 +421,36 @@ class CourtKPModule(BasePipelineModule):
             self.load()
 
         per_camera_keypoints: list[NDArray[np.float32]] = []
+        per_camera_visibility: list[NDArray[np.float32]] = []
+        postprocess_diagnostics: list[dict[str, Any]] = []
         expected_frame_indices: NDArray[np.int32] | None = None
         for camera_index, video_path in enumerate(video_paths):
-            keypoints: list[NDArray[np.float32]] = []
+            keypoints_px: list[NDArray[np.float32]] = []
+            scores: list[NDArray[np.float32]] = []
             frame_indices: list[int] = []
+            image_width: int | None = None
+            image_height: int | None = None
             for packet in OpenCVVideoFrameReader(video_path, max_frames=max_frames):
                 frame_rgb = cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB)
-                frame_keypoints = self._predict_frame(
-                    frame_rgb,
-                    image_width=packet.original_size[0],
-                    image_height=packet.original_size[1],
-                )
-                keypoints.append(frame_keypoints)
+                frame_keypoints_px, frame_scores = self._predict_frame_pixels(frame_rgb)
+                keypoints_px.append(frame_keypoints_px)
+                scores.append(frame_scores)
                 frame_indices.append(packet.index)
+                width, height = packet.original_size
+                if image_width is None:
+                    image_width = width
+                    image_height = height
+                elif image_width != width or image_height != height:
+                    raise ValueError(
+                        f"video_paths[{camera_index}] changed resolution within the "
+                        f"stream: got {(width, height)}, expected "
+                        f"{(image_width, image_height)}"
+                    )
 
-            if not keypoints:
+            if not keypoints_px:
                 raise RuntimeError(f"No frames were read from video: {video_path}")
+            if image_width is None or image_height is None:
+                raise RuntimeError(f"Could not determine video size for {video_path}")
 
             camera_frame_indices = np.array(frame_indices, dtype=np.int32)
             if expected_frame_indices is None:
@@ -418,26 +460,74 @@ class CourtKPModule(BasePipelineModule):
                     f"video_paths[{camera_index}] frame indices do not match "
                     "the first camera"
                 )
-            per_camera_keypoints.append(np.stack(keypoints, axis=0).astype(np.float32))
+
+            camera_keypoints_px = np.stack(keypoints_px, axis=0).astype(np.float32)
+            camera_scores = np.stack(scores, axis=0).astype(np.float32)
+            camera_visibility = np.ones(camera_scores.shape, dtype=np.float32)
+            if self.postprocess.enabled:
+                from src.tasks.court_detection.geometry import (
+                    refine_court_keypoints_with_homography,
+                )
+
+                postprocess_result = refine_court_keypoints_with_homography(
+                    camera_keypoints_px,
+                    camera_scores,
+                    min_score=float(self.postprocess.min_score),
+                    ransac_reproj_threshold=float(
+                        self.postprocess.ransac_reproj_threshold
+                    ),
+                    temporal_median_window=int(
+                        self.postprocess.temporal_median_window
+                    ),
+                )
+                camera_keypoints_px = postprocess_result.keypoints
+                camera_visibility = postprocess_result.visibility
+                camera_diagnostics = dict(postprocess_result.diagnostics)
+                camera_diagnostics["camera_index"] = int(camera_index)
+                camera_diagnostics["video_path"] = str(video_path)
+                postprocess_diagnostics.append(camera_diagnostics)
+
+            per_camera_keypoints.append(
+                _normalize_keypoints(
+                    camera_keypoints_px,
+                    image_width=image_width,
+                    image_height=image_height,
+                )
+            )
+            per_camera_visibility.append(camera_visibility)
 
         if expected_frame_indices is None:
             raise RuntimeError("No frames were read from video_paths")
 
         stacked = np.stack(per_camera_keypoints, axis=0).astype(np.float32)
+        visibility = np.stack(per_camera_visibility, axis=0).astype(np.float32)
+        diagnostics = None
+        if self.postprocess.enabled:
+            diagnostics = {
+                "postprocess": {
+                    "enabled": True,
+                    "min_score": float(self.postprocess.min_score),
+                    "ransac_reproj_threshold": float(
+                        self.postprocess.ransac_reproj_threshold
+                    ),
+                    "temporal_median_window": int(
+                        self.postprocess.temporal_median_window
+                    ),
+                    "cameras": postprocess_diagnostics,
+                }
+            }
         return CourtKPResult(
             keypoints=stacked,
-            visibility=np.ones(stacked.shape[:3], dtype=np.float32),
+            visibility=visibility,
             frame_indices=expected_frame_indices,
+            diagnostics=diagnostics,
         )
 
-    def _predict_frame(
+    def _predict_frame_pixels(
         self,
         frame_rgb: NDArray[np.uint8],
-        *,
-        image_width: int,
-        image_height: int,
-    ) -> NDArray[np.float32]:
-        """Run the loaded model on one RGB frame and return normalized keypoints."""
+    ) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+        """Run the loaded model on one RGB frame and return pixel KPs + scores."""
         if self._predictor is None:
             raise RuntimeError("Court KP predictor is not loaded.")
         pred = self._predictor.predict(frame_rgb)
@@ -449,9 +539,36 @@ class CourtKPModule(BasePipelineModule):
             raw_keypoints = raw_keypoints.numpy()
         keypoints = np.asarray(raw_keypoints, dtype=np.float32)
 
-        keypoints[..., 0] /= max(image_width - 1, 1)
-        keypoints[..., 1] /= max(image_height - 1, 1)
-        return keypoints.astype(np.float32)
+        raw_scores = pred["scores"]
+        if hasattr(raw_scores, "detach"):
+            raw_scores = raw_scores.detach().cpu().numpy()
+        elif hasattr(raw_scores, "numpy"):
+            raw_scores = raw_scores.numpy()
+        scores = np.asarray(raw_scores, dtype=np.float32)
+
+        if keypoints.shape != (self.num_keypoints, 2):
+            raise ValueError(
+                f"Predicted court keypoints must have shape "
+                f"({self.num_keypoints}, 2), got {keypoints.shape}."
+            )
+        if scores.shape != (self.num_keypoints,):
+            raise ValueError(
+                f"Predicted court scores must have shape ({self.num_keypoints},), "
+                f"got {scores.shape}."
+            )
+        return keypoints.astype(np.float32), scores.astype(np.float32)
+
+
+def _normalize_keypoints(
+    keypoints_px: NDArray[np.float32],
+    *,
+    image_width: int,
+    image_height: int,
+) -> NDArray[np.float32]:
+    keypoints = np.array(keypoints_px, copy=True, dtype=np.float32)
+    keypoints[..., 0] /= max(image_width - 1, 1)
+    keypoints[..., 1] /= max(image_height - 1, 1)
+    return keypoints.astype(np.float32)
 
 
 if __name__ == "__main__":
