@@ -38,6 +38,7 @@ class SLCSLightningModule(BaseLightningModule):
         super().__init__(config)
         if config is None:
             raise ValueError("SLCSLightningModule requires a config.")
+        self.max_epochs = int(config.training.trainer.max_epochs)
         self.model = build_slcs_model(config)
         loss_cfg = config.get("loss", {}) or {}
         self.loss_fn = SLCSLoss(SLCSLossConfig.from_dict(dict(loss_cfg)))
