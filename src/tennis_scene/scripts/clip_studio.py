@@ -4,13 +4,14 @@ match videos on a shared timeline, cut rally clips, and export them in the
 format `run_pipeline.py` expects (equal fps / frame count / resolution).
 
 Usage:
-    python -m src.tennis_scene.scripts.clip_studio project_path=outputs/clip_studio/match1/project.json recording_id=match1 video_paths='[data/raw/cam0.mp4,data/raw/cam1.mp4]'
-    python -m src.tennis_scene.scripts.clip_studio project_path=outputs/clip_studio/match1/project.json
+    python -m src.tennis_scene.scripts.clip_studio match_id=match1
+    python -m src.tennis_scene.scripts.clip_studio project_path=/custom/project.json recording_id=match1 video_paths='[/data/cam0.mp4,/data/cam1.mp4]'
 
 Notes:
-    - First launch requires recording_id and video_paths (one per camera); the
-      project JSON is created immediately. recording_id becomes the stable
-      namespace used when clips are appended to a dataset over time.
+    - With match_id, source videos default to data/tennis_multivew/raw/<match_id>/
+      cam{0,1,2}.mp4 and processed data goes below processed/<match_id>.
+    - Explicit project_path / recording_id / video_paths override the standard
+      convention when creating a project outside that layout.
     - Configuration is loaded from `src/tennis_scene/configs/clip_studio.yaml`.
     - Key bindings are shown in-app with `h`; the project is autosaved on quit.
     - Export (`e`/`E` in the GUI, or the export_clips script) writes one
@@ -30,9 +31,31 @@ from src.utils.hydra import hydra_main
 
 if TYPE_CHECKING:
     from src.tennis_scene.clip_studio.export import ExportSettings
+    from src.tennis_scene.clip_studio.paths import StandardClipStudioPaths
     from src.tennis_scene.clip_studio.project import ClipStudioProject
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _standard_paths(cfg: DictConfig) -> StandardClipStudioPaths | None:
+    from src.tennis_scene.clip_studio.paths import standard_clip_studio_paths
+
+    raw_match_id = cfg.get("match_id")
+    if raw_match_id is None:
+        return None
+    data_root = Path(to_absolute_path(str(cfg.data_root)))
+    return standard_clip_studio_paths(data_root, str(raw_match_id))
+
+
+def _resolve_project_path(
+    cfg: DictConfig, standard_paths: StandardClipStudioPaths | None
+) -> Path:
+    raw_project_path = cfg.get("project_path")
+    if raw_project_path is not None:
+        return Path(to_absolute_path(str(raw_project_path)))
+    if standard_paths is None:
+        raise ValueError("match_id or project_path is required")
+    return standard_paths.project_path
 
 
 def _resolve_export_settings(cfg: DictConfig, project_path: Path) -> ExportSettings:
@@ -54,7 +77,11 @@ def _resolve_export_settings(cfg: DictConfig, project_path: Path) -> ExportSetti
     )
 
 
-def _bootstrap_project(cfg: DictConfig, project_path: Path) -> ClipStudioProject:
+def _bootstrap_project(
+    cfg: DictConfig,
+    project_path: Path,
+    standard_paths: StandardClipStudioPaths | None,
+) -> ClipStudioProject:
     from src.tennis_scene.clip_studio.project import ClipSource, ClipStudioProject
 
     raw_video_paths = cfg.get("video_paths")
@@ -67,11 +94,15 @@ def _bootstrap_project(cfg: DictConfig, project_path: Path) -> ClipStudioProject
         LOGGER.info(f"Loading project: {project_path}")
         return ClipStudioProject.load(project_path)
 
-    if not isinstance(raw_video_paths, (list, tuple, ListConfig)) or not raw_video_paths:
+    if raw_video_paths is None and standard_paths is not None:
+        video_paths = list(standard_paths.video_paths)
+    elif not isinstance(raw_video_paths, (list, tuple, ListConfig)) or not raw_video_paths:
         raise ValueError(
-            "video_paths must be a non-empty list when creating a new project"
+            "match_id or a non-empty video_paths list is required when creating "
+            "a new project"
         )
-    video_paths = [Path(to_absolute_path(str(path))) for path in raw_video_paths]
+    else:
+        video_paths = [Path(to_absolute_path(str(path))) for path in raw_video_paths]
     missing = [path for path in video_paths if not path.exists()]
     if missing:
         raise ValueError(f"video not found: {missing}")
@@ -86,7 +117,11 @@ def _bootstrap_project(cfg: DictConfig, project_path: Path) -> ClipStudioProject
 
     raw_recording_id = cfg.get("recording_id")
     if raw_recording_id is None:
-        raise ValueError("recording_id is required when creating a new project")
+        raw_recording_id = cfg.get("match_id")
+    if raw_recording_id is None:
+        raise ValueError(
+            "match_id or recording_id is required when creating a new project"
+        )
 
     project = ClipStudioProject(
         recording_id=str(raw_recording_id),
@@ -109,9 +144,10 @@ def main(cfg: DictConfig) -> int:
     """Launch the clip studio GUI."""
     from src.tennis_scene.clip_studio.app import ClipStudioApp, ClipStudioAppConfig
 
-    project_path = Path(to_absolute_path(str(cfg.project_path)))
     try:
-        project = _bootstrap_project(cfg, project_path)
+        standard_paths = _standard_paths(cfg)
+        project_path = _resolve_project_path(cfg, standard_paths)
+        project = _bootstrap_project(cfg, project_path, standard_paths)
         app_config = ClipStudioAppConfig(
             project_path=project_path,
             export=_resolve_export_settings(cfg, project_path),
