@@ -46,7 +46,7 @@ models:
     strict: true
 
   # issue #618: val/f1-monitored fine-tune of convnext-tracknet; deployed as
-  # ckpt/ball_detection/last.ckpt (2026-07-07).
+  # ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt (2026-07-07).
   - id: convnext-v2-ft
     category: architecture-controlled
     checkpoint: outputs/ball_detection/convnext_v2_ft/logs/version_0/checkpoints/ball-detection-epoch=13.ckpt

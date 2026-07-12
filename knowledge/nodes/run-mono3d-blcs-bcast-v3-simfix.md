@@ -38,6 +38,7 @@ artifacts:
   predictions: knowledge/runs/run-mono3d-blcs-bcast-v3-simfix/pred_test.npz
   log: .training_queue/logs/1783252014517687220_346625_mono3d_blcs_bcast_v3_simfix.log
   output_dir: outputs/blcs/blcs_multiview_axial/logs/version_2
+  checkpoint: ckpt/blcs/run-mono3d-blcs-bcast-v3-simfix-epoch189.ckpt
   curves: knowledge/runs/run-mono3d-blcs-bcast-v3-simfix/curves.png
   tb_logdir: outputs/blcs/blcs_multiview_axial/logs/version_2
 parents:

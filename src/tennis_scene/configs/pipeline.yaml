@@ -11,7 +11,7 @@ output_name: null
 device: cuda
 
 court_kp:
-  checkpoint: ckpt/court_detection/court-kp512-epoch21.ckpt
+  checkpoint: ckpt/court_detection/run-i621-court-kp512-resume-r4-epoch21.ckpt
   frame_index: 0  # Frame shown in manual_ui mode, then repeated across T
   # issue #621: model mode is the default since the kp512-resume ckpt +
   # homography postprocess beat manual clicks on every downstream metric
@@ -56,7 +56,7 @@ player_association:
   load_path: null  # Path to load pre-computed result (skips manual UI)
 
 ball_detection:
-  checkpoint: ckpt/ball_detection/last.ckpt
+  checkpoint: ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
   batch_size: 4
   image_size: [288, 512]
   normalize_imagenet: true
@@ -84,7 +84,7 @@ ball_detection:
   load_path: null  # Path to load pre-computed result (skips inference)
 
 plcs:
-  checkpoint: ckpt/plcs/last.ckpt
+  checkpoint: ckpt/plcs/run-mono3d-plcs-bcast-v2-simfix-epoch199.ckpt
   save_result: true
   output_path: ${output_dir}/plcs_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
@@ -98,7 +98,7 @@ plcs:
   human_vis_threshold: 0.15
 
 blcs:
-  checkpoint: ckpt/blcs/last.ckpt
+  checkpoint: ckpt/blcs/run-mono3d-blcs-bcast-v3-simfix-epoch189.ckpt
   skip: false
   save_result: true
   output_path: ${output_dir}/blcs_result.json
