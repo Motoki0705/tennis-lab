@@ -11,7 +11,7 @@ output_name: null
 device: cuda
 
 court_kp:
-  checkpoint: ckpt/court_detection/last.ckpt
+  checkpoint: ckpt/court_detection/court-kp512-epoch21.ckpt
   frame_index: 0  # Frame shown in manual_ui mode, then repeated across T
   # issue #621: model mode is the default since the kp512-resume ckpt +
   # homography postprocess beat manual clicks on every downstream metric
