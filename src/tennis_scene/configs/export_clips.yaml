@@ -1,8 +1,10 @@
 defaults:
   - _self_
 
-# Project JSON produced by the clip studio GUI.
-project_path: ???
+# Standard layout root and match. project_path may override the derived path.
+data_root: data/tennis_multivew
+match_id: null
+project_path: null  # null -> <data_root>/processed/<match_id>/project.json
 
 # Clips to export; null exports every clip in the project.
 clip_names: null

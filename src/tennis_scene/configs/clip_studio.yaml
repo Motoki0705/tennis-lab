@@ -1,16 +1,21 @@
 defaults:
   - _self_
 
-# Project JSON holding sources (with sync offsets) and clips. Created on
-# first launch (video_paths required then), reloaded afterwards.
-project_path: ???
+# Standard layout:
+#   raw/<match_id>/cam{0,1,2}.mp4
+#   processed/<match_id>/project.json
+#   processed/<match_id>/dataset/
+data_root: data/tennis_multivew
+match_id: null
 
-# Stable namespace for this source recording group. Required only when a new
-# project is created; clips are exported as clips/<recording_id>/<clip_name>.
+# null -> <data_root>/processed/<match_id>/project.json
+project_path: null
+
+# null -> match_id. Used as clips/<recording_id>/<clip_name>.
 recording_id: null
 
-# Source videos, one per camera. Required when project_path does not exist
-# yet; must be omitted (null) when reopening an existing project.
+# null on first creation -> <data_root>/raw/<match_id>/cam{0,1,2}.mp4.
+# Existing projects always load their source paths from project.json.
 video_paths: null
 camera_ids: null  # null -> cam0, cam1, ...
 
