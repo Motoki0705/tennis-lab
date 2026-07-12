@@ -1,0 +1,48 @@
+% =====================================================================
+%  Tennis Lab -- 3D reconstruction of tennis scenes from multi-view video
+%  Build: pdflatex -> bibtex -> pdflatex -> pdflatex   (see Makefile)
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+
+\input{preamble}
+
+\title{\LARGE
+  % TODO: final title
+  Multi-View 3D Reconstruction of Tennis Scenes:\\
+  Joint Ball Trajectory and Player Pose Estimation in Court Coordinates
+}
+
+\author{
+  Motoki Kamimura\thanks{Correspondence: \texttt{kamimura098@gmail.com}}
+  % TODO: co-authors, affiliations
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\input{chapters/01_abstract}
+
+\input{chapters/02_introduction}
+\input{chapters/03_related_work}
+\input{chapters/04_method}
+\input{chapters/05_experiments}
+\input{chapters/06_results}
+\input{chapters/07_discussion}
+\input{chapters/08_conclusion}
+
+% ---------------------------------------------------------------------
+%  Back matter
+% ---------------------------------------------------------------------
+\section*{Acknowledgments}
+% TODO
+\Todo{Funding, compute resources, dataset providers.}
+
+\input{chapters/09_references}
+
+\appendix
+\input{chapters/10_appendix}
+
+\end{document}

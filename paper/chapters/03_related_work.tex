@@ -1,0 +1,36 @@
+% ---------------------------------------------------------------------
+%  03 Related Work
+%  Each subsection: what the line of work does, then one sentence on how
+%  we differ. Do not write a literature list -- write an argument.
+% ---------------------------------------------------------------------
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Ball detection and tracking in sports video}
+\label{subsec:related_ball}
+\Todo{TrackNet-style heatmap detectors, small-object detection, motion blur.
+Sub-pixel localisation. How we differ: we do not stop at 2D --- 2D detections
+are an intermediate representation consumed by \BLCS{}.}
+
+\subsection{Court registration and sports field homography}
+\label{subsec:related_court}
+\Todo{Keypoint-based and segmentation-based field registration. Our court model
+uses $\numcourtkp = 14$ ground-plane keypoints; state why this set.}
+
+\subsection{2D and 3D human pose estimation}
+\label{subsec:related_pose}
+\Todo{Top-down 2D pose; 2D-to-3D lifting; world-grounded recovery
+(\GVHMR{} and its predecessors). We adopt \GVHMR{} for articulated body pose
+and solve the complementary problem it leaves open: placing the body in a
+known metric court frame.}
+
+\subsection{Self-supervised visual representations}
+\label{subsec:related_ssl}
+\Todo{\DINO{} and self-supervised pretraining for dense prediction; whether
+domain-specific SSL pretraining helps small-object and thin-structure tasks.}
+
+\subsection{3D reconstruction of sports scenes}
+\label{subsec:related_3d_sports}
+\Todo{Multi-view and monocular sports reconstruction; ball trajectory fitting
+with physics priors. The gap this paper closes: a single reconstruction
+containing both the ball and articulated players in one metric frame.}
