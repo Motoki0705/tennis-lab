@@ -1,6 +1,6 @@
 # SLCS: Sparse-visual Latent Court Scene model
 
-SLCS は Issue #634 の構造化実動画データセットを読み、単眼の player pose、ball UV、court keypoints と、10フレーム間隔の DINOv3 patch tokens を融合して、コート座標系の player/ball 3D 時系列を同時推定するタスクです。BLCS と PLCS を直列接続せず、frame 内の entity attention と entity ごとの temporal attention を交互に適用します。
+SLCS は Issue #634 の構造化実動画データセットを読み、単眼の player pose、ball UV、court keypoints と、10フレーム間隔の DINOv3 patch tokens を融合して、コート座標系の player/ball 3D 時系列を同時推定するタスクです。BLCS と PLCS を直列接続せず、frame 内の entity attention と entity ごとの temporal attention を交互に適用します。データセット契約は `src.tennis_scene.generate_dataset.manifest` と `pseudo_annotation` が唯一の定義元であり、SLCS はその reader を直接利用します。
 
 ## 入出力契約
 
@@ -32,6 +32,18 @@ SLCS は Issue #634 の構造化実動画データセットを読み、単眼の
 ```
 
 split 単位は `recording_id` で、seed と比率を split manifest に保存します。既存 split の上書きには `splits.overwrite=true` が必要です。
+
+1つの小規模データセットを意図的に記憶できるか確認するときだけ、全recordingをtrainへ割り当て、同じwindowをvalidation/testにも使う明示的overfit modeを使用できます。これは汎化性能の評価には使用しません。
+
+```bash
+.venv/bin/python -m src.tasks.slcs.scripts.make_splits \
+  data.dataset_root=/path/to/dataset data.split_file=/path/to/splits.json \
+  splits.overfit=true
+
+.venv/bin/python -m src.tasks.slcs.scripts.train \
+  data.dataset_root=/path/to/dataset data.split_file=/path/to/splits.json \
+  data.overfit=true
+```
 
 損失は confidence-weighted Smooth L1、yaw cosine/wrapped-angle、heteroscedastic Laplace NLL、player/ball jerk、ground penetration を組み合わせます。低品質疑似ラベルは threshold mask と confidence weight で扱います。Issue #634 の契約に calibrated camera がないため、reprojection loss は有効化せず、未校正値も生成しません。
 
