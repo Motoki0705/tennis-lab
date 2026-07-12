@@ -4,11 +4,12 @@ as synchronized per-camera videos plus clip and dataset manifests, matching
 the tennis_scene pipeline contract.
 
 Usage:
-    python -m src.tennis_scene.scripts.export_clips project_path=outputs/clip_studio/match1/project.json
-    python -m src.tennis_scene.scripts.export_clips project_path=outputs/clip_studio/match1/project.json clip_names='[clip_000]' export.overwrite=true
+    python -m src.tennis_scene.scripts.export_clips match_id=match1
+    python -m src.tennis_scene.scripts.export_clips match_id=match1 clip_names='[clip_000]' export.overwrite=true
 
 Notes:
-    - The project JSON is produced by `src.tennis_scene.scripts.clip_studio`.
+    - By default, match_id resolves the project and dataset below
+      data/tennis_multivew/processed/<match_id>.
     - Configuration is loaded from `src/tennis_scene/configs/export_clips.yaml`.
     - Exported videos are re-probed and validated against the plan; a
       contract violation aborts with an error instead of writing a bad clip.
@@ -29,6 +30,21 @@ from src.utils.hydra import hydra_main
 LOGGER = logging.getLogger(__name__)
 
 
+def _resolve_project_path(cfg: DictConfig) -> Path:
+    raw_project_path = cfg.get("project_path")
+    if raw_project_path is not None:
+        return Path(to_absolute_path(str(raw_project_path)))
+
+    raw_match_id = cfg.get("match_id")
+    if raw_match_id is None:
+        raise ValueError("match_id or project_path is required")
+
+    from src.tennis_scene.clip_studio.paths import standard_clip_studio_paths
+
+    data_root = Path(to_absolute_path(str(cfg.data_root)))
+    return standard_clip_studio_paths(data_root, str(raw_match_id)).project_path
+
+
 @hydra_main(
     version_base="1.3",
     config_path="../configs",
@@ -39,7 +55,11 @@ def main(cfg: DictConfig) -> int:
     from src.tennis_scene.clip_studio.export import ExportSettings, export_clips
     from src.tennis_scene.clip_studio.project import ClipStudioProject
 
-    project_path = Path(to_absolute_path(str(cfg.project_path)))
+    try:
+        project_path = _resolve_project_path(cfg)
+    except ValueError as error:
+        LOGGER.error(str(error))
+        return 1
     if not project_path.exists():
         LOGGER.error(f"project not found: {project_path}")
         return 1

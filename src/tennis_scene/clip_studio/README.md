@@ -21,20 +21,19 @@
 ## 使い方
 
 ```bash
-# 新規プロジェクト（recording_id は後日の追記でも変わらない収録ID）
+# 標準構成で新規作成または再開
 .venv/bin/python -m src.tennis_scene.scripts.clip_studio \
-  project_path=outputs/clip_studio/match1/project.json \
-  recording_id=match1 \
-  video_paths='[data/raw/cam0.mp4,data/raw/cam1.mp4]'
-
-# 再開
-.venv/bin/python -m src.tennis_scene.scripts.clip_studio \
-  project_path=outputs/clip_studio/match1/project.json
+  match_id=match1
 
 # ヘッドレスエクスポート
 .venv/bin/python -m src.tennis_scene.scripts.export_clips \
-  project_path=outputs/clip_studio/match1/project.json
+  match_id=match1
 ```
+
+標準の配置は `data/tennis_multivew/raw/<match_id>/cam0.mp4`, `cam1.mp4`,
+`cam2.mp4` を入力とし、`data/tennis_multivew/processed/<match_id>/project.json`
+と同階層の `dataset/` を出力とする。標準外の配置では `project_path`,
+`recording_id`, `video_paths`, `export.output_dir` を明示的に上書きできる。
 
 キー割り当ては GUI 内で `h`。同期は `a`（音声自動同期）+ `[`/`]`（選択カメラのフレーム単位ナッジ）。
 
