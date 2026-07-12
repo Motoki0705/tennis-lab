@@ -26,7 +26,7 @@ TILE_HEADER_HEIGHT = 20
 RULER_HEIGHT = 18
 CLIP_ROW_HEIGHT = 22
 CAMERA_ROW_HEIGHT = 9
-FOOTER_HEIGHT = 40
+FOOTER_HEIGHT = 94
 
 COLOR_BACKGROUND = (24, 24, 24)
 COLOR_TILE_BG = (12, 12, 12)
@@ -50,6 +50,12 @@ HELP_LINES = (
     "i/o set in/out mark   c create clip   Tab cycle clips   x delete selected clip",
     "z/Z zoom in/out   f fit timeline   drag timeline: scrub   click clip row: select",
     "s save project   e export selected clip   E export all clips   h toggle help   q quit",
+)
+
+KEY_GUIDE_LINES = (
+    "Space play/pause | Left/Right step | </> jump 1s | 1-9 camera | [/] offset | a auto-sync",
+    "i/o marks | c create clip | Tab select | x delete | z/Z zoom | f fit | s save",
+    "e export selected | E export all | h detailed help | q/Esc quit",
 )
 
 
@@ -322,8 +328,16 @@ def _draw_footer(
         f"clips {len(state.project.clips)}  [{dirty_flag}]"
     )
     _put_text(canvas, summary, (MARGIN, line1_y))
-    footer = status if status else "h: help"
+    footer = status if status else "Keyboard shortcuts (h: detailed help)"
     _put_text(canvas, footer, (MARGIN, line2_y), color=COLOR_TEXT_DIM)
+    for line_index, line in enumerate(KEY_GUIDE_LINES):
+        _put_text(
+            canvas,
+            line,
+            (MARGIN, line2_y + 18 * (line_index + 1)),
+            scale=0.38,
+            color=COLOR_TEXT_DIM,
+        )
 
 
 def _draw_help_overlay(canvas: NDArray[np.uint8], layout: StudioLayout) -> None:
@@ -340,4 +354,10 @@ def _draw_help_overlay(canvas: NDArray[np.uint8], layout: StudioLayout) -> None:
         _put_text(canvas, line, (x0 + 10, y0 + 24 + 20 * line_index), scale=0.4)
 
 
-__all__ = ["StudioLayout", "compute_layout", "render_studio", "HELP_LINES"]
+__all__ = [
+    "HELP_LINES",
+    "KEY_GUIDE_LINES",
+    "StudioLayout",
+    "compute_layout",
+    "render_studio",
+]
