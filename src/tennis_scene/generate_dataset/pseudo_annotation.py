@@ -12,11 +12,12 @@ from typing import Literal
 import numpy as np
 
 from src.tennis_scene.generate_dataset.manifest import (
+    ClipManifest,
     DatasetClipRecord,
     load_dataset_manifest,
 )
 from src.tennis_scene.io import SceneResult
-from src.utils.io import load_json, save_json_atomic, utc_now_iso
+from src.utils.io import save_json_atomic, utc_now_iso
 
 ANNOTATION_SCHEMA_VERSION = 1
 ANNOTATION_RELATIVE_DIR = Path("annotations") / "tennis_scene"
@@ -126,14 +127,14 @@ def _resolve_clip_inputs(
     clip_manifest_path = clip_dir / "clip.json"
     if not clip_manifest_path.exists():
         raise FileNotFoundError(f"clip manifest not found: {clip_manifest_path}")
-    clip_manifest = load_json(clip_manifest_path)
-    if str(clip_manifest.get("clip_id")) != record.clip_id:
+    clip_manifest = ClipManifest.load(clip_dir)
+    if clip_manifest.clip_id != record.clip_id:
         raise ValueError(
             f"clip_id mismatch: dataset has {record.clip_id!r}, "
-            f"clip manifest has {clip_manifest.get('clip_id')!r}"
+            f"clip manifest has {clip_manifest.clip_id!r}"
         )
-    camera_ids = [str(value) for value in clip_manifest["camera_ids"]]
-    video_paths = [clip_dir / str(value) for value in clip_manifest["video_paths"]]
+    camera_ids = list(clip_manifest.camera_ids)
+    video_paths = [clip_manifest.media_path(camera_id) for camera_id in camera_ids]
     missing = [path for path in video_paths if not path.exists()]
     if missing:
         raise FileNotFoundError(f"clip video not found: {missing[0]}")

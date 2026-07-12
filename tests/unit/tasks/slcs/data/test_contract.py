@@ -75,12 +75,15 @@ def test_scene_annotation_roundtrip(synthetic_dataset: DatasetIndex) -> None:
     assert scene.court_kp.shape[0] == len(manifest.camera_ids)
 
 
-def test_duplicate_index_registration_fails(synthetic_dataset: DatasetIndex) -> None:
+def test_duplicate_index_registration_is_idempotent(
+    synthetic_dataset: DatasetIndex,
+) -> None:
     manifest = ClipManifest.load(
         synthetic_dataset.clip_dir(synthetic_dataset.clips[0])
     )
-    with pytest.raises(DatasetContractError, match="already registered"):
-        append_dataset_index(synthetic_dataset.root, manifest)
+    append_dataset_index(synthetic_dataset.root, manifest)
+    index = DatasetIndex.load(synthetic_dataset.root)
+    assert [ref.clip_id for ref in index.clips].count(manifest.clip_id) == 1
 
 
 def test_appending_new_recording_keeps_existing(tmp_path: Path) -> None:
@@ -96,7 +99,7 @@ def test_unsupported_dataset_version(tmp_path: Path) -> None:
     build_synthetic_dataset(root, SyntheticDatasetConfig(recordings=("only",)))
     index_path = root / "dataset.json"
     payload = json.loads(index_path.read_text())
-    payload["format_version"] = 99
+    payload["version"] = 99
     index_path.write_text(json.dumps(payload))
     with pytest.raises(UnsupportedFormatVersionError):
         DatasetIndex.load(root)
@@ -144,7 +147,9 @@ def test_calibrated_camera_block_rejected(tmp_path: Path) -> None:
     clip_dir = index.clip_dir(index.clips[0])
     manifest_path = clip_dir / "clip.json"
     payload = json.loads(manifest_path.read_text())
-    payload["cameras"] = {"cam0": {"calibrated": True, "focal": 1000.0}}
+    payload["cameras"] = [
+        {"camera_id": "cam0", "calibrated": True, "focal": 1000.0}
+    ]
     manifest_path.write_text(json.dumps(payload))
     with pytest.raises(DatasetContractError, match="calibrated"):
         ClipManifest.load(clip_dir)
@@ -156,7 +161,7 @@ def test_media_path_traversal_rejected(tmp_path: Path) -> None:
     clip_dir = index.clip_dir(index.clips[0])
     manifest_path = clip_dir / "clip.json"
     payload = json.loads(manifest_path.read_text())
-    payload["media"]["cam0"] = "../../../etc/passwd"
+    payload["video_paths"][0] = "../../../etc/passwd"
     manifest_path.write_text(json.dumps(payload))
     with pytest.raises(DatasetContractError, match="escapes"):
         ClipManifest.load(clip_dir)
