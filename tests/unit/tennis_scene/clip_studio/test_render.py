@@ -3,7 +3,11 @@
 import numpy as np
 import pytest
 
-from src.tennis_scene.clip_studio.render import compute_layout, render_studio
+from src.tennis_scene.clip_studio.render import (
+    KEY_GUIDE_LINES,
+    compute_layout,
+    render_studio,
+)
 from src.tennis_scene.clip_studio.state import ClipStudioState
 
 
@@ -58,6 +62,16 @@ class TestRenderStudio:
     ) -> None:
         canvas = render_studio(studio_state, [None, None], canvas_width=800)
         assert canvas.dtype == np.uint8
+
+    def test_renders_persistent_key_guide(
+        self, studio_state: ClipStudioState
+    ) -> None:
+        canvas = render_studio(studio_state, [None, None], canvas_width=800)
+        layout = compute_layout(studio_state, canvas_width=800)
+        guide = canvas[layout.footer_y + 36 :, :]
+
+        assert len(KEY_GUIDE_LINES) == 3
+        assert int(guide.max()) > 24
 
     def test_renders_marks_clips_and_help(self, studio_state: ClipStudioState) -> None:
         studio_state.seek(2.5)
