@@ -29,6 +29,7 @@ artifacts:
   predictions: knowledge/runs/run-i618-convnext-v2-ft/pred_test.npz
   log: .training_queue/logs/1783405858437554277_1226752_i618_convnext_v2_ft.log
   output_dir: outputs/ball_detection/convnext_v2_ft/logs/version_0
+  checkpoint: ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
   curves: knowledge/runs/run-i618-convnext-v2-ft/curves.png
   tb_logdir: outputs/ball_detection/convnext_v2_ft/logs/version_0
 parents: []
@@ -46,7 +47,7 @@ tags:
 
 ### 要約
 
-既存 convnext ckpt（Colab 学習, val/loss 早期停止, ep11）を起点に val/f1(max) 監視 + subpixel 精緻化メトリクスで fine-tune した結果、TrackNet test F1 が **0.5764 → 0.7218**（native プロトコル, best ckpt=ep13）へ改善。`ckpt/ball_detection/last.ckpt` として配備し、tennis_clip パイプラインで baseline を全面的に上回った（カバレッジ 79.9→92.0%、3D teleport 消滅）。
+既存 convnext ckpt（Colab 学習, val/loss 早期停止, ep11）を起点に val/f1(max) 監視 + subpixel 精緻化メトリクスで fine-tune した結果、TrackNet test F1 が **0.5764 → 0.7218**（native プロトコル, best ckpt=ep13）へ改善。`ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt` として配備し、tennis_clip パイプラインで baseline を全面的に上回った（カバレッジ 79.9→92.0%、3D teleport 消滅）。
 
 ### アーキテクチャ詳細
 
