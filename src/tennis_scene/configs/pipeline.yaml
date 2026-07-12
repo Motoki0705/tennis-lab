@@ -11,10 +11,25 @@ output_name: null
 device: cuda
 
 court_kp:
-  checkpoint: ckpt/court_detection/last.ckpt
+  checkpoint: ckpt/court_detection/court-kp512-epoch21.ckpt
   frame_index: 0  # Frame shown in manual_ui mode, then repeated across T
-  mode: manual_ui  # model/manual_ui
+  # issue #621: model mode is the default since the kp512-resume ckpt +
+  # homography postprocess beat manual clicks on every downstream metric
+  # (tennis_clip: KP err 0.76px vs manual GT; BLCS jerk/speed/az all improved).
+  mode: model  # model/manual_ui
   num_keypoints: 14
+  postprocess:
+    enabled: true
+    # Peak score gate for RANSAC seeds. 0.3 keeps moderately confident
+    # structure points while filtering obvious heatmap failures.
+    min_score: 0.3
+    # Current kp512 predictions have ~12px val mean error; 3px over-prunes
+    # and can fit only far/service points. 30px keeps normal model noise while
+    # rejecting larger structural failures.
+    ransac_reproj_threshold: 30.0
+    # Broadcast camera is nearly static, so a short odd median window reduces
+    # frame-to-frame homography jitter without changing manual_ui defaults.
+    temporal_median_window: 9
   save_result: true
   output_path: ${output_dir}/court_kp_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
