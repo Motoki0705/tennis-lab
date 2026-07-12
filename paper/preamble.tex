@@ -1,0 +1,106 @@
+% =====================================================================
+%  Shared preamble: packages, macros, notation.
+%  Only packages verified present in this repo's TeX Live install are used.
+%  (biblatex/biber, IEEEtran, siunitx, algorithm2e are NOT installed.)
+% =====================================================================
+
+% --- Encoding & fonts -------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% --- Layout -----------------------------------------------------------
+\usepackage[margin=1in]{geometry}
+
+% --- Math -------------------------------------------------------------
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+
+% --- Graphics & tables ------------------------------------------------
+\usepackage{graphicx}
+\graphicspath{{assets/}{assets/figures/}}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+
+% --- Bibliography (natbib + bibtex; arXiv-safe) -----------------------
+\usepackage[numbers,sort&compress]{natbib}
+
+% --- Cross-references (hyperref must come late, cleveref after it) -----
+\usepackage[colorlinks=true,
+            linkcolor=black,
+            citecolor=blue!60!black,
+            urlcolor=blue!60!black]{hyperref}
+\usepackage{cleveref}
+
+% =====================================================================
+%  Drafting helpers -- flip \draftmodetrue to \draftmodefalse for
+%  camera-ready to silence all TODO/note boxes.
+% =====================================================================
+\newif\ifdraftmode
+\draftmodetrue
+
+\newcommand{\Todo}[1]{\ifdraftmode\textcolor{red}{\textbf{[TODO: }#1\textbf{]}}\fi}
+\newcommand{\Note}[1]{\ifdraftmode\textcolor{blue!60!black}{\textit{[note: #1]}}\fi}
+
+% =====================================================================
+%  Appendix banner.
+%  \appendix only switches the section counter to A, B, C, ...; it prints
+%  nothing. \AppendixHeader opens the appendix block with an explicit
+%  unnumbered "Appendix" title, so the reader sees where the main text
+%  ends. \phantomsection makes hyperref anchor the \label here rather
+%  than on the preceding section.
+% =====================================================================
+\newcommand{\AppendixHeader}{%
+  \clearpage
+  \phantomsection
+  \label{sec:appendix}%
+  \begin{center}
+    \rule{\linewidth}{0.4pt}\\[0.6ex]
+    {\LARGE\bfseries Appendix}\\[0.4ex]
+    \rule{\linewidth}{0.4pt}
+  \end{center}
+  \vspace{1ex}%
+}
+
+% =====================================================================
+%  Notation macros -- define once, use everywhere. Keeps the notation
+%  table in the appendix and the body from drifting apart.
+% =====================================================================
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\SEthree}{\mathrm{SE}(3)}
+\newcommand{\SOthree}{\mathrm{SO}(3)}
+
+% Cameras and views
+\newcommand{\numcams}{C}                       % number of cameras
+\newcommand{\cam}{c}                           % camera index
+\newcommand{\proj}[1]{\mathbf{P}_{#1}}         % projection matrix of camera #1
+\newcommand{\homog}[1]{\mathbf{H}_{#1}}        % court homography of camera #1
+
+% Time
+\newcommand{\numframes}{T}
+\newcommand{\timestep}{t}
+
+% Ball
+\newcommand{\ballTwoD}[1]{\mathbf{u}^{\mathrm{b}}_{#1}}   % 2D ball detection
+\newcommand{\ballThreeD}[1]{\mathbf{x}^{\mathrm{b}}_{#1}} % 3D ball position
+
+% Court
+\newcommand{\numcourtkp}{K_{\mathrm{c}}}       % number of court keypoints (=14)
+\newcommand{\courtkp}[1]{\mathbf{k}_{#1}}
+
+% Player
+\newcommand{\numjoints}{J}
+\newcommand{\poseTwoD}[1]{\mathbf{p}^{\mathrm{2D}}_{#1}}
+\newcommand{\poseThreeD}[1]{\mathbf{p}^{\mathrm{3D}}_{#1}}
+\newcommand{\rootpos}[1]{\mathbf{r}_{#1}}      % root translation in court frame
+\newcommand{\rootrot}[1]{\mathbf{R}_{#1}}      % root rotation in court frame
+
+% Task shorthands (typeset consistently)
+\newcommand{\BLCS}{\textsc{blcs}}
+\newcommand{\PLCS}{\textsc{plcs}}
+\newcommand{\GVHMR}{\textsc{gvhmr}}
+\newcommand{\DINO}{DINOv3}

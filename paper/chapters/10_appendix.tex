@@ -1,0 +1,46 @@
+% ---------------------------------------------------------------------
+%  10 Appendix
+%  Included after \appendix in main.tex, so sections number as A, B, C, ...
+%  \AppendixHeader (preamble.tex) prints the banner that opens the block.
+% ---------------------------------------------------------------------
+\AppendixHeader
+
+\section{Notation}
+\label{sec:appendix_notation}
+
+\Todo{Notation table. Keep it generated from the macros in
+\texttt{preamble.tex} so the symbols cannot drift.}
+
+\begin{table}[h]
+  \centering
+  \begin{tabular}{ll}
+    \toprule
+    Symbol & Meaning \\
+    \midrule
+    $\numcams$, $\cam$ & number of cameras; camera index \\
+    $\numframes$, $\timestep$ & sequence length; frame index \\
+    $\homog{\cam}$, $\proj{\cam}$ & court homography; projection matrix \\
+    $\ballTwoD{\cam,\timestep}$ & 2D ball detection in view $\cam$ \\
+    $\ballThreeD{\timestep}$ & 3D ball position in court coordinates \\
+    $\numcourtkp$ & number of court keypoints ($=14$) \\
+    $\numjoints$ & number of body joints \\
+    $(\rootrot{\timestep}, \rootpos{\timestep})$ & player root transform in court frame \\
+    \bottomrule
+  \end{tabular}
+  \caption{Symbols used throughout the paper.}
+  \label{tab:notation}
+\end{table}
+
+\section{Full training configuration}
+\label{sec:appendix_config}
+\Todo{Per-module hyperparameters, augmentation, schedules. Tables, not prose.}
+
+\section{Reproduction}
+\label{sec:appendix_repro}
+\Todo{Checkpoint-to-result mapping and how to regenerate every number in
+\cref{sec:results} from the released bundles.}
+
+\section{Additional qualitative results}
+\label{sec:appendix_qualitative}
+\Todo{Extra reconstructions, including failure cases referenced in
+\cref{subsec:failure_modes}.}

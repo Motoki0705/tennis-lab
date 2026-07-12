@@ -1,0 +1,15 @@
+# LaTeX build artifacts
+build/
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+
+# main.pdf is a build product; regenerate with `make`.
+# Track it deliberately (git add -f main.pdf) only when sharing a snapshot.
+main.pdf

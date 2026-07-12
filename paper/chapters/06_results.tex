@@ -1,0 +1,88 @@
+% ---------------------------------------------------------------------
+%  06 Results
+%  Every subsection: state the claim as the heading sentence, then the
+%  table/figure that supports it, then one sentence of what it means.
+% ---------------------------------------------------------------------
+\section{Results}
+\label{sec:results}
+
+\subsection{2D perception}
+\label{subsec:results_2d}
+
+\begin{table}[t]
+  \centering
+  \caption{\Todo{Ball detection accuracy. Columns: method, backbone, temporal
+  context $T$, localisation error (px), detection rate.}}
+  \label{tab:ball_detection}
+  % \input{assets/tables/ball_detection.tex}
+  \begin{tabular}{lccc}
+    \toprule
+    Method & $T$ & Err. (px) $\downarrow$ & Det. rate $\uparrow$ \\
+    \midrule
+    \Todo{fill} & -- & -- & -- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[t]
+  \centering
+  \caption{\Todo{Court keypoint detection and homography quality.}}
+  \label{tab:court_detection}
+  \begin{tabular}{lcc}
+    \toprule
+    Method & PCK $\uparrow$ & Reproj. err. (px) $\downarrow$ \\
+    \midrule
+    \Todo{fill} & -- & -- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{3D ball trajectory (\BLCS{})}
+\label{subsec:results_blcs}
+\Todo{Compare against triangulation baseline. Report error vs. number of
+views in which the ball is detected --- that curve is the interesting result.}
+
+\subsection{Player root position and orientation (\PLCS{})}
+\label{subsec:results_plcs}
+\Todo{Position error (m) and rotation error (deg). Report the rotation error
+distribution, not just the mean: the failure mode of interest is bimodal
+($180^\circ$ flips), and a mean hides it.}
+
+\begin{figure}[t]
+  \centering
+  % \includegraphics[width=\linewidth]{assets/figures/plcs_rotation_hist.pdf}
+  \fbox{\parbox[c][0.22\textheight][c]{\linewidth}{\centering
+    \Todo{plcs\_rotation\_hist.pdf --- histogram of rotation error, before vs.
+    after the angle loss}}}
+  \caption{\Todo{Caption naming the bimodality explicitly.}}
+  \label{fig:plcs_rotation_hist}
+\end{figure}
+
+\subsection{End-to-end court-frame reconstruction}
+\label{subsec:results_e2e}
+\Todo{The headline result: ball and articulated players in one metric frame.
+Include qualitative reconstructions and at least one honest failure case.}
+
+\subsection{Ablations}
+\label{subsec:results_ablation}
+
+\begin{table}[t]
+  \centering
+  \caption{\Todo{Ablation table. One knob per row, everything else held
+  fixed; say what is held fixed in the caption.}}
+  \label{tab:ablation}
+  \begin{tabular}{lcc}
+    \toprule
+    Variant & Pos. err. (m) $\downarrow$ & Rot. err. (deg) $\downarrow$ \\
+    \midrule
+    Full model      & -- & -- \\
+    \Todo{$-$ knob} & -- & -- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Sim-to-real transfer}
+\label{subsec:results_sim2real}
+\Todo{Train on simulation, evaluate on real clips. Quantify the gap and
+attribute it: input-distribution mismatch (court keypoint count/noise) versus
+motion-distribution mismatch.}

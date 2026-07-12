@@ -1,0 +1,54 @@
+% ---------------------------------------------------------------------
+%  02 Introduction
+% ---------------------------------------------------------------------
+\section{Introduction}
+\label{sec:introduction}
+
+\Todo{Opening paragraph: why 3D reconstruction of tennis scenes matters
+(coaching, broadcast augmentation, officiating, biomechanics), and why it is
+hard (small fast ball, motion blur, severe scale variation, occlusion,
+uncalibrated broadcast cameras).}
+
+\Todo{Second paragraph: the gap. Prior work treats ball tracking, court
+registration, and player pose as separate problems, each evaluated in its own
+2D image space. Nothing produces a single metric court-coordinate
+reconstruction of ball and players jointly.}
+
+\Todo{Third paragraph: our approach in one breath. We decompose the problem
+into per-view 2D perception (ball, court keypoints, player pose) followed by
+learned lifting modules that map 2D observations into court coordinates
+(\BLCS{} for the ball, \PLCS{} for player root position and orientation), and
+finally fuse \PLCS{} root transforms with \GVHMR{} body pose to place
+articulated players in the court frame. \Cref{fig:teaser} illustrates the
+output.}
+
+% --- Teaser figure ----------------------------------------------------
+\begin{figure}[t]
+  \centering
+  % \includegraphics[width=\linewidth]{assets/figures/teaser.pdf}
+  \fbox{\parbox[c][0.28\textheight][c]{\linewidth}{\centering
+    \Todo{teaser.pdf --- input multi-view frames (left) $\rightarrow$
+    reconstructed 3D ball trajectory and player meshes in court coordinates
+    (right)}}}
+  \caption{\Todo{Teaser caption. State what the reader is looking at and what
+  is novel about it, not how it was made.}}
+  \label{fig:teaser}
+\end{figure}
+
+\Todo{Fourth paragraph: why this decomposition rather than end-to-end. The
+court plane gives a metric anchor that is observable in every view; committing
+to it early makes the lifting problem well posed and the failure modes
+inspectable.}
+
+\subsection*{Contributions}
+
+\begin{itemize}
+  \item \Todo{Contribution 1 --- the pipeline / system claim.}
+  \item \Todo{Contribution 2 --- \BLCS{}: 2D ball + court $\rightarrow$ 3D ball
+        trajectory, and what makes it work (temporal context, physics prior).}
+  \item \Todo{Contribution 3 --- \PLCS{}: 2D pose + court $\rightarrow$ player
+        root translation and rotation, including the rotation
+        parameterisation that avoids $180^\circ$ ambiguity.}
+  \item \Todo{Contribution 4 --- empirical study: datasets, ablations, and the
+        sim-to-real transfer result.}
+\end{itemize}

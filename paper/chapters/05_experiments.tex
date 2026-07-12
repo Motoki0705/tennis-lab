@@ -1,0 +1,53 @@
+% ---------------------------------------------------------------------
+%  05 Experimental Setup
+%  This chapter describes *how* things are measured. Numbers go in 06.
+% ---------------------------------------------------------------------
+\section{Experimental Setup}
+\label{sec:experiments}
+
+\subsection{Datasets}
+\label{subsec:datasets}
+\Todo{One paragraph per dataset: source, number of clips/frames, annotation
+procedure, train/val/test split policy, and whether the split is by clip or by
+frame (say it explicitly --- frame-level splits leak).}
+
+\begin{table}[t]
+  \centering
+  \caption{\Todo{Dataset summary: clips, frames, cameras, annotations.}}
+  \label{tab:datasets}
+  % \input{assets/tables/datasets.tex}
+  \begin{tabular}{lrrr}
+    \toprule
+    Dataset & Clips & Frames & Views \\
+    \midrule
+    \Todo{fill} & -- & -- & -- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Metrics}
+\label{subsec:metrics}
+\Todo{Define each metric formally, with units. At minimum:
+2D ball localisation error and detection rate;
+court keypoint PCK and homography reprojection error;
+3D ball trajectory error (m);
+\PLCS{} root position error (m) and rotation error (deg);
+end-to-end court-frame joint error.
+State which metrics are computed only on visible/valid frames.}
+
+\subsection{Baselines}
+\label{subsec:baselines}
+\Todo{What we compare against and why each comparison is fair. Include the
+geometric baseline (direct triangulation from the homographies) --- it is the
+honest lower bound the learned lifters must beat.}
+
+\subsection{Ablations}
+\label{subsec:ablation_protocol}
+\Todo{List the ablation axes and the single question each one answers. One
+knob per row.}
+
+\subsection{Evaluation protocol}
+\label{subsec:protocol}
+\Todo{Seeds and number of runs; what is reported (mean $\pm$ std vs. best);
+checkpoint selection criterion. Reproduction bundles are described in
+\cref{sec:appendix_repro}.}

@@ -1,0 +1,114 @@
+% ---------------------------------------------------------------------
+%  04 Method
+%  Mirrors the repo pipeline:
+%    src/tasks/ball_detection, src/tasks/court_detection,
+%    src/submodules (2D pose + GVHMR), src/tasks/blcs, src/tasks/plcs
+% ---------------------------------------------------------------------
+\section{Method}
+\label{sec:method}
+
+\subsection{Overview and problem statement}
+\label{subsec:overview}
+
+Given $\numcams$ synchronised video streams of a tennis rally, each of
+$\numframes$ frames, we seek the 3D ball trajectory
+$\{\ballThreeD{\timestep}\}_{\timestep=1}^{\numframes}$ and, for each player,
+a root transform $(\rootrot{\timestep}, \rootpos{\timestep}) \in \SEthree$
+together with articulated body pose
+$\poseThreeD{\timestep}$, all expressed in a common court coordinate system.
+
+\Todo{State the coordinate convention explicitly (origin, axes, units) and
+point to \cref{fig:pipeline}. Define what is assumed known (court dimensions)
+versus estimated (camera pose via court homography).}
+
+% --- Pipeline figure --------------------------------------------------
+\begin{figure}[t]
+  \centering
+  % \includegraphics[width=\linewidth]{assets/figures/pipeline.pdf}
+  \fbox{\parbox[c][0.22\textheight][c]{\linewidth}{\centering
+    \Todo{pipeline.pdf --- 2D perception (ball / court / pose) $\rightarrow$
+    lifting (\BLCS{}, \PLCS{}) $\rightarrow$ fusion with \GVHMR{}}}}
+  \caption{\Todo{Pipeline caption. Name every box and every arrow's tensor
+  shape; the reader should be able to reimplement the interfaces from this
+  figure alone.}}
+  \label{fig:pipeline}
+\end{figure}
+
+\subsection{Stage 1: per-view 2D perception}
+\label{subsec:perception}
+
+\subsubsection{Ball detection}
+\label{subsubsec:ball_detection}
+\Todo{Backbone, heatmap head, temporal context ($T$ frames in, 1 heatmap out),
+sub-pixel refinement, and the visibility gate. Give the loss.}
+
+\begin{equation}
+  \label{eq:ball_loss}
+  \mathcal{L}_{\mathrm{ball}} = \Todo{heatmap loss + subpixel offset + visibility}
+\end{equation}
+
+\subsubsection{Court keypoint detection}
+\label{subsubsec:court_detection}
+\Todo{$\numcourtkp = 14$ ground-plane keypoints; per-keypoint visibility;
+recovery of the homography $\homog{\cam}$ by robust fitting, and how
+$\homog{\cam}$ yields the camera projection $\proj{\cam}$.}
+
+\subsubsection{Player detection and 2D pose}
+\label{subsubsec:pose_2d}
+\Todo{Detector + top-down 2D pose over $\numjoints$ joints; track association
+across frames and across views.}
+
+\subsection{Stage 2: lifting to court coordinates}
+\label{subsec:lifting}
+
+\subsubsection{\BLCS{}: ball lifting}
+\label{subsubsec:blcs}
+\Todo{Inputs: per-view 2D ball detections $\ballTwoD{\cam,\timestep}$ and court
+geometry. Architecture. Why a learned lifter rather than pure triangulation
+(missed detections, single-view intervals, motion blur). Physics prior /
+smoothness. Loss.}
+
+\begin{equation}
+  \label{eq:blcs}
+  \ballThreeD{1:\numframes} = f_{\BLCS{}}\!\left(
+    \{\ballTwoD{\cam,1:\numframes}\}_{\cam=1}^{\numcams},\;
+    \{\homog{\cam}\}_{\cam=1}^{\numcams}
+  \right)
+\end{equation}
+
+\subsubsection{\PLCS{}: player root position and orientation}
+\label{subsubsec:plcs}
+\Todo{Inputs: 2D pose sequences and court keypoints. Output: root translation
+$\rootpos{\timestep}$ and rotation $\rootrot{\timestep}$. Rotation
+parameterisation and the angle loss that removes the $180^\circ$ flip failure
+mode. Separate trunks / auxiliary heads --- justify each with the ablation it
+is supported by.}
+
+\begin{equation}
+  \label{eq:plcs}
+  (\rootrot{1:\numframes}, \rootpos{1:\numframes}) = f_{\PLCS{}}\!\left(
+    \{\poseTwoD{\cam,1:\numframes}\}_{\cam=1}^{\numcams},\;
+    \{\courtkp{\cam}\}_{\cam=1}^{\numcams}
+  \right)
+\end{equation}
+
+\subsection{Stage 3: fusion into a court-grounded reconstruction}
+\label{subsec:fusion}
+
+\Todo{\GVHMR{} supplies body pose in its own gravity-aligned frame; \PLCS{}
+supplies the court-frame root transform. Give the composition explicitly,
+including how the two frames are reconciled and what happens when they
+disagree. This is where the paper's central claim lives --- do not hand-wave
+it.}
+
+\subsection{Training data}
+\label{subsec:training_data}
+\Todo{Simulated rallies (generation procedure, randomisation) and real
+annotated clips. State the sim-to-real design decision: \PLCS{} is trained with
+$\numcourtkp = 14$ so that its input distribution matches the real court
+detector's output.}
+
+\subsection{Implementation details}
+\label{subsec:implementation}
+\Todo{Backbones, optimiser, schedule, batch size, hardware, wall-clock. Keep
+this short; the full configuration goes in \cref{sec:appendix_config}.}
