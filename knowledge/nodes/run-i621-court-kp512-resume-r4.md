@@ -1,7 +1,7 @@
 ---
 id: run-i621-court-kp512-resume-r4
 type: run
-title: i621_court_kp512_resume_r4
+title: court kp512 学習再開（epoch 21 deploy）
 issue: 621
 provider: claude
 date: '2026-07-08'
@@ -11,6 +11,7 @@ config:
   data: court_kp
 metrics:
   val_mean_dist_px_best: 2.23
+  test_mean_dist_px: 1.708886
 repro:
   commit: 41b318b39f757e09897964a32f28148a777b87f5
   branch: feat/issue-618-ball-subpixel-retrain
@@ -23,8 +24,10 @@ repro:
     run.resume=outputs/court_detection/kp/logs/version_0/checkpoints/last.ckpt
 artifacts:
   run_dir: knowledge/runs/run-i621-court-kp512-resume-r4
+  predictions: knowledge/runs/run-i621-court-kp512-resume-r4/pred_test.npz
   log: .training_queue/logs/1783481398399240801_20792_i621_court_kp512_resume_r4.log
   output_dir: outputs/court_detection/kp/logs/version_1
+  checkpoint: ckpt/court_detection/court-kp512-epoch21.ckpt
   curves: knowledge/runs/run-i621-court-kp512-resume-r4/curves.png
   tb_logdir: outputs/court_detection/kp/logs/version_1
 parents: []
@@ -40,9 +43,9 @@ tags:
 
 ### 要約
 7/5 に途中停止していた court kp512 学習（best ep17, val/mean_dist 13.45px）を
-last.ckpt (ep19) から再開したところ、**2 エポックで 13.45 → 2.23px（ep21）** に急改善。
+`version_0/checkpoints/last.ckpt` (ep19) から再開したところ、**2 エポックで 13.45 → 2.23px（ep21）** に急改善。
 ep22-27 は 2.3-2.6px で頭打ちのため意図的に打ち切り。best ckpt (ep21) を
-`ckpt/court_detection/last.ckpt` にデプロイし、pipeline court_kp の既定を
+`ckpt/court_detection/court-kp512-epoch21.ckpt` にデプロイし、pipeline court_kp の既定を
 `mode: model` に切替（PR #623）。
 
 ### アーキテクチャ詳細
@@ -54,8 +57,10 @@ val/mean_dist 監視）の full-state resume。コード差分が本質: 元 run
 
 ### メトリクスの解釈
 val/mean_dist（512x904 入力空間 px）: ep20 2.38 → ep21 **2.23**（best）→ ep22-27
-2.3-2.6 で plateau。640x360 の tennis_clip 換算で約 1.1px。metrics 欄は best ckpt の
-val 値（run は打ち切りのため test 未実施）。
+2.3-2.6 で plateau。640x360 の tennis_clip 換算で約 1.1px。run 打ち切り時には test が
+未実施だったため、登録時に ep21 checkpoint を固定して 2,211 サンプルを再評価し、
+`test/mean_dist=1.708886px` と予測配列を保存した。このタスクの `test_dataloader` は
+`data_val.json` を使うため、独立した held-out test ではなく再現可能な validation 再評価値である。
 
 ### アーキテクチャ⇄メトリクスの因果考察
 1 エポックで 13.45 → 2.38px という不連続な改善は、通常の継続学習では説明しにくい。
@@ -76,5 +81,3 @@ near 側コーナー(画面端)の学習を阻害していた — I1 で観測�
 - DINOv3+DPT court（Colab, issue 未付番）と kp512 の比較。SSL backbone 検証と合流。
 - 後処理パラメータ（min_score/ransac 閾値）は ep21 の score 分布で再スイープ推奨
   （PR #623 の残課題）。
-
-<!-- run `i621_court_kp512_resume_r4` の結果と考察を書く。parents/tags も埋め、 主要 metrics は frontmatter と一致させること。 -->
