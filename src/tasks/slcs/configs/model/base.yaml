@@ -1,7 +1,11 @@
 # SLCS fusion model (entity x time axial + DINOv3 cross-attention).
 name: slcs_fusion
 hidden_dim: 256
-num_layers: 6
+# Effective depth per task is shared + its task-specific depth. Setting both
+# task-specific depths to zero exactly recovers the original shared trunk.
+num_shared_layers: 6
+num_position_layers: 0
+num_rotation_layers: 0
 num_heads: 8
 ffn_dim: null
 dropout: 0.1
@@ -13,6 +17,7 @@ ffn_type: swiglu
 # num_players / num_court_kp / max_seq_len default to the data section values.
 invisible_init_std: 0.02
 # DINOv3 grid defaults derive from data.dino (image size / patch size).
+dino_patch_downsample_factor: 1
 dino_cross_attn_every: 2
 log_b_min: -6.0
 log_b_max: 3.0

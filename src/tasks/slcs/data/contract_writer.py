@@ -1,11 +1,11 @@
-"""Reference writer for the issue #634 dataset contract.
+"""Test-data writer for the canonical tennis-scene dataset contract.
 
 This is the executable counterpart of :mod:`src.tasks.slcs.data.contract`.
 It exists so that
 
 - tests and smoke runs can materialize a contract-conformant dataset, and
-- small real datasets can be assembled manually until the issue #634
-  ``generate_dataset`` pipeline lands.
+- smoke tests can exercise the same manifests produced by Clip Studio and
+  ``generate_dataset``.
 
 It follows the same failure rules as the reader: id collisions, mismatched
 overwrites and partially written annotations are explicit errors, and the
@@ -21,22 +21,24 @@ import numpy as np
 
 from src.tasks.slcs.data.contract import (
     ANNOTATION_MARKER_NAME,
-    CLIP_FORMAT_VERSION,
     CLIP_MANIFEST_NAME,
     CLIPS_DIR_NAME,
-    DATASET_FORMAT_VERSION,
-    DATASET_INDEX_NAME,
     MEDIA_DIR_NAME,
     SCENE_NPZ_NAME,
-    TENNIS_SCENE_ANNOTATION_KIND,
-    TENNIS_SCENE_ANNOTATION_VERSION,
     ClipManifest,
     DatasetContractError,
     tennis_scene_dir,
     validate_id_component,
 )
+from src.tennis_scene.generate_dataset.manifest import (
+    CLIP_SCHEMA_VERSION,
+    register_exported_clip,
+)
+from src.tennis_scene.generate_dataset.pseudo_annotation import (
+    ANNOTATION_SCHEMA_VERSION,
+)
 from src.tennis_scene.io import SceneResult
-from src.utils.io import ensure_dir, load_json, save_json, save_json_atomic, utc_now_iso
+from src.utils.io import ensure_dir, save_json, save_json_atomic, utc_now_iso
 from src.utils.video.writer import save_video_rgb
 
 
@@ -91,14 +93,24 @@ def write_clip_manifest(
             )
 
     media_dir = ensure_dir(clip_dir / MEDIA_DIR_NAME)
-    media: dict[str, str] = {}
+    video_paths: list[str] = []
+    cameras: list[dict[str, Any]] = []
     for camera_id, frames in media_videos.items():
         out_path = media_dir / f"{camera_id}.mp4"
         save_video_rgb(np.asarray(frames), out_path, fps=float(fps))
-        media[camera_id] = f"{MEDIA_DIR_NAME}/{camera_id}.mp4"
+        relative_path = f"{MEDIA_DIR_NAME}/{camera_id}.mp4"
+        video_paths.append(relative_path)
+        cameras.append(
+            {
+                "camera_id": camera_id,
+                "video": relative_path,
+                "source": source or {},
+                "letterbox": None,
+            }
+        )
 
     payload: dict[str, Any] = {
-        "format_version": CLIP_FORMAT_VERSION,
+        "version": CLIP_SCHEMA_VERSION,
         "clip_id": f"{recording_id}/{clip_name}",
         "recording_id": recording_id,
         "clip_name": clip_name,
@@ -107,9 +119,10 @@ def write_clip_manifest(
         "width": int(width),
         "height": int(height),
         "camera_ids": list(camera_ids),
-        "media": media,
-        "source": source or {},
-        "created_at": utc_now_iso(),
+        "video_paths": video_paths,
+        "cameras": cameras,
+        "sync_source": "synthetic",
+        "exported_at": utc_now_iso(),
     }
     save_json(payload, clip_dir / CLIP_MANIFEST_NAME)
     return ClipManifest.load(clip_dir)
@@ -168,12 +181,14 @@ def write_tennis_scene_annotation(
         (ann_dir / "pipeline_config.yaml").write_text(pipeline_config_text, encoding="utf-8")
 
     marker: dict[str, Any] = {
-        "format_version": TENNIS_SCENE_ANNOTATION_VERSION,
-        "kind": TENNIS_SCENE_ANNOTATION_KIND,
-        "created_at": utc_now_iso(),
+        "version": ANNOTATION_SCHEMA_VERSION,
+        "clip_id": manifest.clip_id,
         "generator": generator or {},
+        "generated_at": utc_now_iso(),
+        "scene_result": SCENE_NPZ_NAME,
+        "pipeline_config": "pipeline_config.yaml" if pipeline_config_text else None,
+        "clip_manifest_sha256": manifest.digest(),
         "arrays": _scene_arrays_spec(scene),
-        "input_manifest_digest": manifest.digest(),
     }
     save_json_atomic(marker, marker_path)
     return marker_path
@@ -185,44 +200,8 @@ def append_dataset_index(dataset_root: str | Path, manifest: ClipManifest) -> Pa
     Re-registering an existing ``clip_id`` is an explicit error; existing
     entries are never rewritten.
     """
-    root = Path(dataset_root)
-    index_path = root / DATASET_INDEX_NAME
-    if index_path.exists():
-        payload = load_json(index_path)
-        if not isinstance(payload, dict):
-            raise DatasetContractError(f"{index_path} must contain a JSON object.")
-        if payload.get("format_version") != DATASET_FORMAT_VERSION:
-            raise DatasetContractError(
-                f"{index_path} has format_version={payload.get('format_version')!r}; "
-                f"writer supports {DATASET_FORMAT_VERSION}."
-            )
-        clips = payload.get("clips")
-        if not isinstance(clips, list):
-            raise DatasetContractError(f"{index_path} must contain a 'clips' list.")
-    else:
-        ensure_dir(root)
-        payload = {
-            "format_version": DATASET_FORMAT_VERSION,
-            "created_at": utc_now_iso(),
-            "clips": [],
-        }
-        clips = payload["clips"]
-
-    if any(entry.get("clip_id") == manifest.clip_id for entry in clips):
-        raise DatasetContractError(
-            f"{index_path}: clip_id {manifest.clip_id!r} is already registered."
-        )
-    clips.append(
-        {
-            "clip_id": manifest.clip_id,
-            "recording_id": manifest.recording_id,
-            "clip_name": manifest.clip_name,
-            "path": f"{CLIPS_DIR_NAME}/{manifest.recording_id}/{manifest.clip_name}",
-        }
-    )
-    payload["updated_at"] = utc_now_iso()
-    save_json_atomic(payload, index_path)
-    return index_path
+    dataset = register_exported_clip(dataset_root, manifest.manifest_path)
+    return dataset.save(dataset_root)
 
 
 __all__ = [

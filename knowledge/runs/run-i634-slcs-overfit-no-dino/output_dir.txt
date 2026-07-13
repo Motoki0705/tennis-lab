@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/slcs/i634_overfit_no_dino/logs/version_0/checkpoints

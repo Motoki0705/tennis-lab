@@ -5,6 +5,8 @@ split_file: data/tennis_scene_dataset/splits.json
 backend: default
 batch_size: 8
 num_workers: 4
+# Explicit memorization mode: reuse train-assigned recordings for val/test.
+overfit: false
 
 # Temporal windows
 window_size: 120

@@ -24,7 +24,11 @@ from pathlib import Path
 from omegaconf import DictConfig
 
 from src.tasks.slcs.data.contract import DatasetContractError, DatasetIndex
-from src.tasks.slcs.data.splits import generate_recording_splits, save_split_file
+from src.tasks.slcs.data.splits import (
+    generate_overfit_splits,
+    generate_recording_splits,
+    save_split_file,
+)
 from src.utils.hydra import hydra_main
 
 
@@ -40,18 +44,25 @@ def run(config: DictConfig) -> None:
         )
 
     index = DatasetIndex.load(dataset_root)
-    assignments = generate_recording_splits(
-        index,
-        val_ratio=float(split_cfg.val_ratio),
-        test_ratio=float(split_cfg.test_ratio),
-        seed=int(split_cfg.seed),
+    overfit = bool(split_cfg.get("overfit", False))
+    assignments = (
+        generate_overfit_splits(index)
+        if overfit
+        else generate_recording_splits(
+            index,
+            val_ratio=float(split_cfg.val_ratio),
+            test_ratio=float(split_cfg.test_ratio),
+            seed=int(split_cfg.seed),
+        )
     )
+    val_ratio = 0.0 if overfit else float(split_cfg.val_ratio)
+    test_ratio = 0.0 if overfit else float(split_cfg.test_ratio)
     save_split_file(
         split_file,
         assignments,
         seed=int(split_cfg.seed),
-        val_ratio=float(split_cfg.val_ratio),
-        test_ratio=float(split_cfg.test_ratio),
+        val_ratio=val_ratio,
+        test_ratio=test_ratio,
     )
     counts = Counter(assignments.values())
     print(f"wrote {split_file}: {dict(counts)} over {len(assignments)} recordings")

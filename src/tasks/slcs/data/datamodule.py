@@ -35,6 +35,7 @@ class SLCSDataModule(pl.LightningDataModule):
         self.split_file = str(split_file)
         self.batch_size = int(data_cfg.get("batch_size", 8))
         self.num_workers = int(data_cfg.get("num_workers", 0))
+        self.overfit = bool(data_cfg.get("overfit", False))
         self.data_config = SLCSDataConfig.from_config(data_cfg)
 
         self.train_dataset: SLCSWindowDataset | None = None
@@ -51,10 +52,11 @@ class SLCSDataModule(pl.LightningDataModule):
             self.test_dataset = self._build_dataset("test")
 
     def _build_dataset(self, split: str) -> SLCSWindowDataset:
+        source_split = "train" if self.overfit else split
         return SLCSWindowDataset(
             dataset_root=self.dataset_root,
             split_file=self.split_file,
-            split=split,
+            split=source_split,
             config=self.data_config,
         )
 

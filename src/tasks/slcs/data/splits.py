@@ -58,6 +58,14 @@ def generate_recording_splits(
     return assignments
 
 
+def generate_overfit_splits(index: DatasetIndex) -> dict[str, str]:
+    """Assign every recording to train for an explicit memorization experiment."""
+    recording_ids = index.recording_ids()
+    if not recording_ids:
+        raise DatasetContractError(f"dataset at {index.root} contains no recordings.")
+    return {recording_id: "train" for recording_id in recording_ids}
+
+
 def save_split_file(
     path: str | Path,
     assignments: dict[str, str],
@@ -123,6 +131,7 @@ __all__ = [
     "SPLIT_FORMAT_VERSION",
     "SPLIT_NAMES",
     "generate_recording_splits",
+    "generate_overfit_splits",
     "load_split_assignments",
     "save_split_file",
 ]
