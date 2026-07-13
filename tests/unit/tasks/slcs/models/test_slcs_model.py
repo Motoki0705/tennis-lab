@@ -28,7 +28,7 @@ def _inputs() -> dict[str, torch.Tensor]:
 def test_forward_shapes_and_finite_rotation_pairs() -> None:
     model = SLCSFusionModel(
         hidden_dim=32,
-        num_layers=2,
+        num_shared_layers=2,
         num_heads=4,
         dropout=0.0,
         max_seq_len=8,
@@ -50,7 +50,7 @@ def test_forward_shapes_and_finite_rotation_pairs() -> None:
 def test_sparse_dino_inputs_are_all_or_none() -> None:
     model = SLCSFusionModel(
         hidden_dim=32,
-        num_layers=1,
+        num_shared_layers=1,
         num_heads=4,
         max_seq_len=8,
         dino_embed_dim=8,
@@ -61,3 +61,52 @@ def test_sparse_dino_inputs_are_all_or_none() -> None:
     inputs.pop("dino_frame_idx")
     with pytest.raises(ValueError, match="provided together"):
         model(**inputs)
+
+
+def test_fully_split_trunks_isolate_position_and_rotation_gradients() -> None:
+    model = SLCSFusionModel(
+        hidden_dim=32,
+        num_shared_layers=0,
+        num_position_layers=1,
+        num_rotation_layers=1,
+        num_heads=4,
+        dropout=0.0,
+        max_seq_len=8,
+        dino_embed_dim=8,
+        dino_grid_h=3,
+        dino_grid_w=4,
+    )
+    inputs = _inputs()
+    inputs.pop("dino_tokens")
+    inputs.pop("dino_frame_idx")
+    inputs.pop("dino_valid")
+
+    model(**inputs)["player_position"].sum().backward()
+
+    assert any(
+        parameter.grad is not None for parameter in model.position_entity_layers.parameters()
+    )
+    assert all(
+        parameter.grad is None for parameter in model.rotation_entity_layers.parameters()
+    )
+
+
+def test_all_shared_configuration_has_no_task_trunk_parameters() -> None:
+    model = SLCSFusionModel(
+        hidden_dim=32,
+        num_shared_layers=2,
+        num_position_layers=0,
+        num_rotation_layers=0,
+        num_heads=4,
+        max_seq_len=8,
+        dino_embed_dim=8,
+        dino_grid_h=3,
+        dino_grid_w=4,
+    )
+
+    assert len(model.entity_layers) == 2
+    assert len(model.position_entity_layers) == 0
+    assert len(model.rotation_entity_layers) == 0
+    assert model.final_norm is not None
+    assert model.position_final_norm is None
+    assert model.rotation_final_norm is None

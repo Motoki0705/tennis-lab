@@ -15,6 +15,7 @@ from typing import cast
 
 import torch
 from torch import Tensor, nn
+from torch.nn import functional as F
 
 from src.utils.models import RMSNorm
 
@@ -52,7 +53,7 @@ def sincos_position_embedding_2d(grid_h: int, grid_w: int, dim: int) -> Tensor:
 
 
 class DinoTokenEncoder(nn.Module):
-    """Project DINOv3 patch tokens into the fusion model width."""
+    """Spatially downsample, then project DINOv3 patch tokens."""
 
     def __init__(
         self,
@@ -61,16 +62,30 @@ class DinoTokenEncoder(nn.Module):
         dim: int,
         grid_h: int,
         grid_w: int,
+        downsample_factor: int = 1,
     ) -> None:
         super().__init__()
         if input_dim <= 0 or dim <= 0:
             raise ValueError(f"input_dim and dim must be positive, got {input_dim}, {dim}.")
         if grid_h <= 0 or grid_w <= 0:
             raise ValueError(f"grid must be positive, got ({grid_h}, {grid_w}).")
+        if downsample_factor <= 0:
+            raise ValueError(
+                f"downsample_factor must be positive, got {downsample_factor}."
+            )
+        if grid_h % downsample_factor != 0 or grid_w % downsample_factor != 0:
+            raise ValueError(
+                "DINO grid dimensions must be divisible by downsample_factor, "
+                f"got grid=({grid_h}, {grid_w}) and factor={downsample_factor}."
+            )
         self.input_dim = int(input_dim)
         self.dim = int(dim)
-        self.grid_h = int(grid_h)
-        self.grid_w = int(grid_w)
+        self.input_grid_h = int(grid_h)
+        self.input_grid_w = int(grid_w)
+        self.downsample_factor = int(downsample_factor)
+        self.grid_h = self.input_grid_h // self.downsample_factor
+        self.grid_w = self.input_grid_w // self.downsample_factor
+        self.num_input_tokens = self.input_grid_h * self.input_grid_w
         self.num_tokens = self.grid_h * self.grid_w
 
         self.proj = nn.Linear(self.input_dim, self.dim)
@@ -82,21 +97,52 @@ class DinoTokenEncoder(nn.Module):
         )
 
     def forward(self, tokens: Tensor) -> Tensor:
-        """Encode tokens ``(B, T_d, S, C_in)`` -> ``(B, T_d, S, dim)``."""
+        """Encode ``(B,T_d,H*W,C_in)`` into the reduced patch grid."""
         if tokens.dim() != 4:
             raise ValueError(
                 f"DinoTokenEncoder expects (B, T_d, S, C), got shape {tuple(tokens.shape)}."
             )
-        if tokens.shape[2] != self.num_tokens:
+        if tokens.shape[2] != self.num_input_tokens:
             raise ValueError(
                 f"token count S={tokens.shape[2]} does not match the configured grid "
-                f"{self.grid_h}x{self.grid_w}={self.num_tokens}."
+                f"{self.input_grid_h}x{self.input_grid_w}={self.num_input_tokens}."
             )
         if tokens.shape[3] != self.input_dim:
             raise ValueError(
                 f"token width C={tokens.shape[3]} does not match configured "
                 f"input_dim={self.input_dim}."
             )
+        batch_size, num_samples = tokens.shape[:2]
+        if self.downsample_factor > 1:
+            # Interpolate in the original DINO feature space. Projection after
+            # reduction keeps the requested spatial compression independent of
+            # the learned channel compression.
+            tokens = tokens.reshape(
+                batch_size,
+                num_samples,
+                self.input_grid_h,
+                self.input_grid_w,
+                self.input_dim,
+            )
+            tokens = tokens.permute(0, 1, 4, 2, 3).reshape(
+                batch_size * num_samples,
+                self.input_dim,
+                self.input_grid_h,
+                self.input_grid_w,
+            )
+            tokens = F.interpolate(
+                tokens,
+                size=(self.grid_h, self.grid_w),
+                mode="bilinear",
+                align_corners=False,
+            )
+            tokens = tokens.reshape(
+                batch_size, num_samples, self.input_dim, self.grid_h, self.grid_w
+            ).permute(0, 1, 3, 4, 2)
+            tokens = tokens.reshape(
+                batch_size, num_samples, self.num_tokens, self.input_dim
+            )
+
         x = self.norm(self.proj(tokens))
         spatial_pos = cast(Tensor, self.spatial_pos)
         return x + spatial_pos.to(dtype=x.dtype)[None, None, :, :]
