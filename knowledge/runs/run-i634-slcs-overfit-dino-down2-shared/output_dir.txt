@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/i634-dino-compress-split-trunks/outputs/slcs/i634_overfit_dino_down2_shared/logs/version_0/checkpoints
