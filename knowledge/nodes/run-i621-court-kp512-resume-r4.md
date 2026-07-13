@@ -27,7 +27,7 @@ artifacts:
   predictions: knowledge/runs/run-i621-court-kp512-resume-r4/pred_test.npz
   log: .training_queue/logs/1783481398399240801_20792_i621_court_kp512_resume_r4.log
   output_dir: outputs/court_detection/kp/logs/version_1
-  checkpoint: ckpt/court_detection/court-kp512-epoch21.ckpt
+  checkpoint: ckpt/court_detection/run-i621-court-kp512-resume-r4-epoch21.ckpt
   curves: knowledge/runs/run-i621-court-kp512-resume-r4/curves.png
   tb_logdir: outputs/court_detection/kp/logs/version_1
 parents: []
@@ -45,7 +45,7 @@ tags:
 7/5 に途中停止していた court kp512 学習（best ep17, val/mean_dist 13.45px）を
 `version_0/checkpoints/last.ckpt` (ep19) から再開したところ、**2 エポックで 13.45 → 2.23px（ep21）** に急改善。
 ep22-27 は 2.3-2.6px で頭打ちのため意図的に打ち切り。best ckpt (ep21) を
-`ckpt/court_detection/court-kp512-epoch21.ckpt` にデプロイし、pipeline court_kp の既定を
+`ckpt/court_detection/run-i621-court-kp512-resume-r4-epoch21.ckpt` にデプロイし、pipeline court_kp の既定を
 `mode: model` に切替（PR #623）。
 
 ### アーキテクチャ詳細
