@@ -18,7 +18,8 @@ interleaved 2-axis RoPE (time, entity) — the same mechanism as the
 BLCS/PLCS ``*MultiViewAxialModel`` family with the camera axis reinterpreted
 as an entity axis.
 
-DINOv3 patch tokens arrive only for sparsely sampled frames. They are fused by
+DINOv3 patch tokens arrive only for sparsely sampled frames. Their spatial grid
+can be bilinearly reduced before channel projection, then they are fused by
 explicit cross-attention every ``dino_cross_attn_every`` axial blocks: queries
 are all entity tokens (RoPE time position = window frame index), keys/values
 are all patch tokens of all sampled frames (RoPE time position = the *actual*
@@ -27,6 +28,12 @@ dedicated visual-stream slot ``E``). Temporal propagation of visual evidence
 is therefore handled by attention with true time offsets — never by implicit
 interpolation. Windows without any valid patch token skip the visual pathway
 explicitly.
+
+The axial depth is configurable as shared, position-specific, and
+rotation-specific layers. Setting both task-specific depths to zero is the
+original shared architecture. Setting the shared depth to zero isolates the
+position branch (player + ball position) from the player-rotation branch after
+the common observation embeddings.
 
 Outputs (normalized court coordinates, ``(cos, sin)`` yaw) with per-frame
 Laplace log-scales as aleatoric uncertainty:
@@ -77,7 +84,9 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
     def __init__(
         self,
         hidden_dim: int = 256,
-        num_layers: int = 6,
+        num_shared_layers: int = 6,
+        num_position_layers: int = 0,
+        num_rotation_layers: int = 0,
         num_heads: int = 8,
         ffn_dim: int | None = None,
         dropout: float = 0.1,
@@ -93,6 +102,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         dino_embed_dim: int = 768,
         dino_grid_h: int = 16,
         dino_grid_w: int = 28,
+        dino_patch_downsample_factor: int = 1,
         dino_cross_attn_every: int = 2,
         log_b_min: float = -6.0,
         log_b_max: float = 3.0,
@@ -104,6 +114,9 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         self.num_court_kp = int(num_court_kp)
         self.max_seq_len = int(max_seq_len)
         self.num_entities = self.num_players + 1
+        self.num_shared_layers = int(num_shared_layers)
+        self.num_position_layers = int(num_position_layers)
+        self.num_rotation_layers = int(num_rotation_layers)
         self.dino_cross_attn_every = int(dino_cross_attn_every)
         self.log_b_min = float(log_b_min)
         self.log_b_max = float(log_b_max)
@@ -121,7 +134,9 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         self._validate_init_args(
             hidden_dim=self.hidden_dim,
             num_heads=num_heads,
-            num_layers=num_layers,
+            num_shared_layers=self.num_shared_layers,
+            num_position_layers=self.num_position_layers,
+            num_rotation_layers=self.num_rotation_layers,
             max_seq_len=self.max_seq_len,
         )
 
@@ -160,6 +175,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             dim=self.hidden_dim,
             grid_h=int(dino_grid_h),
             grid_w=int(dino_grid_w),
+            downsample_factor=int(dino_patch_downsample_factor),
         )
 
         # ---- Axial trunk with interleaved cross-attention --------------
@@ -177,10 +193,8 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
                 )
             )
 
-        self.entity_layers = nn.ModuleList([block() for _ in range(num_layers)])
-        self.time_layers = nn.ModuleList([block() for _ in range(num_layers)])
-        self.dino_cross_layers = nn.ModuleDict(
-            {
+        def cross_layers(depth: int) -> nn.ModuleDict:
+            return nn.ModuleDict({
                 str(layer_idx): CrossAttnBlock(
                     CrossAttnBlockConfig(
                         dim=self.hidden_dim,
@@ -192,12 +206,42 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
                         ffn_type=ffn_type,
                     )
                 )
-                for layer_idx in range(num_layers)
+                for layer_idx in range(depth)
                 if (layer_idx + 1) % self.dino_cross_attn_every == 0
-            }
-        )
+            })
 
-        self.final_norm = RMSNorm(self.hidden_dim)
+        self.entity_layers = nn.ModuleList(
+            [block() for _ in range(self.num_shared_layers)]
+        )
+        self.time_layers = nn.ModuleList(
+            [block() for _ in range(self.num_shared_layers)]
+        )
+        self.dino_cross_layers = cross_layers(self.num_shared_layers)
+        self.position_entity_layers = nn.ModuleList(
+            [block() for _ in range(self.num_position_layers)]
+        )
+        self.position_time_layers = nn.ModuleList(
+            [block() for _ in range(self.num_position_layers)]
+        )
+        self.position_dino_cross_layers = cross_layers(self.num_position_layers)
+        self.rotation_entity_layers = nn.ModuleList(
+            [block() for _ in range(self.num_rotation_layers)]
+        )
+        self.rotation_time_layers = nn.ModuleList(
+            [block() for _ in range(self.num_rotation_layers)]
+        )
+        self.rotation_dino_cross_layers = cross_layers(self.num_rotation_layers)
+
+        all_shared = self.num_position_layers == 0 and self.num_rotation_layers == 0
+        self.final_norm: RMSNorm | None = (
+            RMSNorm(self.hidden_dim) if all_shared else None
+        )
+        self.position_final_norm: RMSNorm | None = (
+            None if all_shared else RMSNorm(self.hidden_dim)
+        )
+        self.rotation_final_norm: RMSNorm | None = (
+            None if all_shared else RMSNorm(self.hidden_dim)
+        )
 
         # ---- Heads ------------------------------------------------------
         head_hidden = self.hidden_dim // 2
@@ -235,14 +279,25 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
 
     @staticmethod
     def _validate_init_args(
-        *, hidden_dim: int, num_heads: int, num_layers: int, max_seq_len: int
+        *,
+        hidden_dim: int,
+        num_heads: int,
+        num_shared_layers: int,
+        num_position_layers: int,
+        num_rotation_layers: int,
+        max_seq_len: int,
     ) -> None:
         if hidden_dim % num_heads != 0:
             raise ValueError(
                 f"hidden_dim={hidden_dim} must be divisible by num_heads={num_heads}"
             )
-        if num_layers <= 0:
-            raise ValueError(f"num_layers must be positive, got {num_layers}")
+        depths = (num_shared_layers, num_position_layers, num_rotation_layers)
+        if any(depth < 0 for depth in depths):
+            raise ValueError(f"trunk layer counts must be non-negative, got {depths}.")
+        if num_shared_layers + num_position_layers <= 0:
+            raise ValueError("position path must contain at least one trunk layer.")
+        if num_shared_layers + num_rotation_layers <= 0:
+            raise ValueError("rotation path must contain at least one trunk layer.")
         if max_seq_len <= 0:
             raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
 
@@ -262,7 +317,9 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         grid_w_default = int(dino_cfg.get("image_width", 448)) // patch
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
-            num_layers=int(model_cfg.get("num_layers", 6)),
+            num_shared_layers=int(model_cfg.get("num_shared_layers", 6)),
+            num_position_layers=int(model_cfg.get("num_position_layers", 0)),
+            num_rotation_layers=int(model_cfg.get("num_rotation_layers", 0)),
             num_heads=int(model_cfg.get("num_heads", 8)),
             ffn_dim=model_cfg.get("ffn_dim", None),
             dropout=float(model_cfg.get("dropout", 0.1)),
@@ -286,6 +343,9 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             dino_embed_dim=dino_dim("embed_dim", 768),
             dino_grid_h=int(model_cfg.get("dino_grid_h", grid_h_default)),
             dino_grid_w=int(model_cfg.get("dino_grid_w", grid_w_default)),
+            dino_patch_downsample_factor=int(
+                model_cfg.get("dino_patch_downsample_factor", 1)
+            ),
             dino_cross_attn_every=int(model_cfg.get("dino_cross_attn_every", 2)),
             log_b_min=float(model_cfg.get("log_b_min", -6.0)),
             log_b_max=float(model_cfg.get("log_b_max", 3.0)),
@@ -392,8 +452,92 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             batch_size=batch_size,
         )
 
+        trunk_kwargs = {
+            "batch_size": batch_size,
+            "seq_len": seq_len,
+            "num_entities": num_entities,
+            "entity_freqs": entity_freqs,
+            "time_freqs": time_freqs,
+            "entity_mask": entity_mask,
+            "time_mask": time_mask,
+            "dino_ctx": dino_ctx,
+        }
+        x = self._run_axial_trunk(
+            x,
+            self.entity_layers,
+            self.time_layers,
+            self.dino_cross_layers,
+            **trunk_kwargs,
+        )
+        position_x = self._run_axial_trunk(
+            x,
+            self.position_entity_layers,
+            self.position_time_layers,
+            self.position_dino_cross_layers,
+            **trunk_kwargs,
+        )
+        rotation_x = self._run_axial_trunk(
+            x,
+            self.rotation_entity_layers,
+            self.rotation_time_layers,
+            self.rotation_dino_cross_layers,
+            **trunk_kwargs,
+        )
+
+        if self.num_position_layers == 0 and self.num_rotation_layers == 0:
+            # Preserve the original all-shared architecture, including its one
+            # shared final normalization module.
+            assert self.final_norm is not None
+            position_x = self.final_norm(position_x)
+            rotation_x = position_x
+        else:
+            assert self.position_final_norm is not None
+            assert self.rotation_final_norm is not None
+            position_x = self.position_final_norm(position_x)
+            rotation_x = self.rotation_final_norm(rotation_x)
+
+        position_player_feat = position_x[:, :, :num_players, :].permute(0, 2, 1, 3)
+        rotation_player_feat = rotation_x[:, :, :num_players, :].permute(0, 2, 1, 3)
+        ball_feat = position_x[:, :, num_players, :]
+
+        return {
+            "player_position": self.player_position_head(position_player_feat),
+            "player_rotation": self.player_rotation_head(rotation_player_feat),
+            "player_position_log_b": self._clamp_log_b(
+                self.player_position_scale_head(position_player_feat).squeeze(-1)
+            ),
+            "player_rotation_log_b": self._clamp_log_b(
+                self.player_rotation_scale_head(rotation_player_feat).squeeze(-1)
+            ),
+            "ball_position": self.ball_position_head(ball_feat),
+            "ball_position_log_b": self._clamp_log_b(
+                self.ball_position_scale_head(ball_feat).squeeze(-1)
+            ),
+        }
+
+    # ------------------------------------------------------------------
+    # Internals
+    # ------------------------------------------------------------------
+
+    def _run_axial_trunk(
+        self,
+        x: Tensor,
+        entity_layers: nn.ModuleList,
+        time_layers: nn.ModuleList,
+        dino_cross_layers: nn.ModuleDict,
+        *,
+        batch_size: int,
+        seq_len: int,
+        num_entities: int,
+        entity_freqs: Tensor,
+        time_freqs: Tensor,
+        entity_mask: Tensor,
+        time_mask: Tensor,
+        dino_ctx: tuple[Tensor, Tensor, Tensor] | None,
+    ) -> Tensor:
+        """Run one shared or task-specific axial trunk."""
         for layer_idx, (entity_layer, time_layer) in enumerate(
-            zip(self.entity_layers, self.time_layers, strict=True)
+            zip(entity_layers, time_layers, strict=True)
         ):
             x_entity = x.reshape(batch_size * seq_len, num_entities, self.hidden_dim)
             x_entity = entity_layer(
@@ -410,8 +554,8 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             )
 
             layer_key = str(layer_idx)
-            if layer_key in self.dino_cross_layers and dino_ctx is not None:
-                cross_layer = self.dino_cross_layers[layer_key]
+            if layer_key in dino_cross_layers and dino_ctx is not None:
+                cross_layer = dino_cross_layers[layer_key]
                 kv, key_valid, k_freqs = dino_ctx
                 q = x.reshape(batch_size, seq_len * num_entities, self.hidden_dim)
                 q_freqs = self._query_freqs(batch_size=batch_size, seq_len=seq_len)
@@ -423,29 +567,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
                     freqs_k_cis=k_freqs,
                 )
                 x = q.reshape(batch_size, seq_len, num_entities, self.hidden_dim)
-
-        x = self.final_norm(x)  # (B, T, E, D)
-        player_feat = x[:, :, :num_players, :].permute(0, 2, 1, 3)  # (B, P, T, D)
-        ball_feat = x[:, :, num_players, :]  # (B, T, D)
-
-        return {
-            "player_position": self.player_position_head(player_feat),
-            "player_rotation": self.player_rotation_head(player_feat),
-            "player_position_log_b": self._clamp_log_b(
-                self.player_position_scale_head(player_feat).squeeze(-1)
-            ),
-            "player_rotation_log_b": self._clamp_log_b(
-                self.player_rotation_scale_head(player_feat).squeeze(-1)
-            ),
-            "ball_position": self.ball_position_head(ball_feat),
-            "ball_position_log_b": self._clamp_log_b(
-                self.ball_position_scale_head(ball_feat).squeeze(-1)
-            ),
-        }
-
-    # ------------------------------------------------------------------
-    # Internals
-    # ------------------------------------------------------------------
+        return x
 
     def _clamp_log_b(self, log_b: Tensor) -> Tensor:
         return log_b.clamp(min=self.log_b_min, max=self.log_b_max)

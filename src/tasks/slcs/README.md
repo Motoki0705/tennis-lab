@@ -16,7 +16,7 @@ SLCS は Issue #634 の構造化実動画データセットを読み、単眼の
 | player rotation | `(P,T,2)` | yaw の `(cos,sin)` |
 | ball position | `(T,3)` | `COURT_COORD_SCALE_XYZ` で正規化 |
 
-すべての観測は visibility/confidence/valid mask を持ちます。DINOv3 tokens は補間せず、実 frame index を RoPE position とする cross-attention で時間方向へ伝播します。player は疑似ラベルの平均 court-Y により near-side、far-side の順へ明示的に並べ替えます。
+すべての観測は visibility/confidence/valid mask を持ちます。DINOv3 tokens は時間方向には補間せず、実 frame index を RoPE position とする cross-attention で伝播します。空間方向は `model.dino_patch_downsample_factor` により、元のDINO特徴空間でbilinear downsampleしてからモデル幅へ次元圧縮できます。factor 2では16×28の448 patchを8×14の112 patchへ圧縮します。player は疑似ラベルの平均 court-Y により near-side、far-side の順へ明示的に並べ替えます。
 
 ## 学習
 
@@ -46,6 +46,15 @@ split 単位は `recording_id` で、seed と比率を split manifest に保存�
 ```
 
 損失は confidence-weighted Smooth L1、yaw cosine/wrapped-angle、heteroscedastic Laplace NLL、player/ball jerk、ground penetration を組み合わせます。低品質疑似ラベルは threshold mask と confidence weight で扱います。Issue #634 の契約に calibrated camera がないため、reprojection loss は有効化せず、未校正値も生成しません。
+
+axial trunkの層数は `model.num_shared_layers`、`model.num_position_layers`、`model.num_rotation_layers` で指定します。position branchはplayer/ball位置、rotation branchはplayer yawを担当します。既定の `shared=2, position=0, rotation=0` は従来と同一の全共有構成です。small modelを完全分離する場合は次を指定します。
+
+```bash
+.venv/bin/python -m src.tasks.slcs.scripts.train model=small \
+  model.num_shared_layers=0 \
+  model.num_position_layers=2 \
+  model.num_rotation_layers=2
+```
 
 ## 推論・評価・解析
 
