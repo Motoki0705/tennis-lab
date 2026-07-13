@@ -1,0 +1,14 @@
+{
+  "run_id": "1783894093467941821_1161920_i634_slcs_overfit_dino",
+  "name": "i634_slcs_overfit_dino",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.slcs.scripts.train model=small data.dataset_root=data/tennis_multivew/processed/tennis_clip/dataset data.split_file=data/tennis_multivew/processed/tennis_clip/dataset/splits.json data.overfit=true data.require_dino=true data.batch_size=1 data.num_workers=2 run.output_dir=outputs/slcs/i634_overfit_dino training.trainer.max_epochs=100 training.trainer.check_val_every_n_epoch=10 training.trainer.log_every_n_steps=13 training.early_stopping.enabled=false training.learning_rate=3e-4 training.warmup_steps=20 training.checkpoint.save_top_k=1",
+  "provider": "codex",
+  "session": "019f55e6-8819-7e63-8481-72f9effc4079",
+  "issue": "634",
+  "commit": "8ed508912eff3e6e9f532d60d8e2e4ee01e328b8",
+  "branch": "feat/issue-634-slcs-overfit",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-07-13T07:10:11+09:00"
+}

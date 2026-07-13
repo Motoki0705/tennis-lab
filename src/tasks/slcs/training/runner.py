@@ -34,5 +34,20 @@ class SLCSTrainingRunner(BaseTrainingRunner):
             module.steps_per_epoch = steps_per_epoch  # type: ignore[assignment, unused-ignore]
         return module
 
+    def resolve_steps_per_epoch(
+        self,
+        config: Any,
+        datamodule: pl.LightningDataModule,
+        *,
+        train_loader: Any | None,
+    ) -> int:
+        """Use the real window loader length for the step-based LR schedule."""
+        if train_loader is None:
+            datamodule.setup(stage="fit")
+            train_loader = datamodule.train_dataloader()
+        batches = len(train_loader)
+        accumulate = int(config.training.trainer.accumulate_grad_batches)
+        return max((batches + accumulate - 1) // accumulate, 1)
+
 
 __all__ = ["SLCSTrainingRunner"]

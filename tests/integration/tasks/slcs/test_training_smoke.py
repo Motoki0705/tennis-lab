@@ -39,7 +39,7 @@ def test_dataset_model_loss_backward_smoke(tmp_path: Path) -> None:
     batch = collate_slcs([dataset[0]])
     model = SLCSFusionModel(
         hidden_dim=32,
-        num_layers=1,
+        num_shared_layers=1,
         num_heads=4,
         dropout=0.0,
         max_seq_len=8,

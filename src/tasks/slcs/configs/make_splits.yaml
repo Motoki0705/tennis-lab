@@ -7,6 +7,8 @@ splits:
   test_ratio: 0.15
   seed: 0
   overwrite: false
+  # Assign every recording to train; pair with data.overfit=true.
+  overfit: false
 
 hydra:
   run:
