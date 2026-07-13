@@ -1,0 +1,14 @@
+{
+  "run_id": "1783905015753095149_1219154_i634_slcs_overfit_dino_down2_shared",
+  "name": "i634_slcs_overfit_dino_down2_shared",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.slcs.scripts.train model=small data.dataset_root=/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/tennis_clip/dataset data.split_file=/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/tennis_clip/dataset/splits.json data.overfit=true data.batch_size=1 data.num_workers=2 training.trainer.max_epochs=100 training.trainer.check_val_every_n_epoch=10 training.trainer.log_every_n_steps=13 training.early_stopping.enabled=false training.learning_rate=3e-4 training.warmup_steps=20 training.checkpoint.save_top_k=1 data.require_dino=true model.dino_patch_downsample_factor=2 run.output_dir=outputs/slcs/i634_overfit_dino_down2_shared",
+  "provider": "codex",
+  "session": "019f55e6-8819-7e63-8481-72f9effc4079",
+  "issue": "634",
+  "commit": "56445ad063a9a87e6453f4d095c084f8efb0b532",
+  "branch": "feat/issue-634-dino-compress-split-trunks",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/i634-dino-compress-split-trunks",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/i634-dino-compress-split-trunks",
+  "captured_at": "2026-07-13T10:10:16+09:00"
+}
