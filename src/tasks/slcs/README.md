@@ -1,4 +1,4 @@
-# SLCS: Sparse-visual Latent Court Scene model
+# SLCS: Scene Localization in Court System
 
 SLCS は Issue #634 の構造化実動画データセットを読み、単眼の player pose、ball UV、court keypoints と、10フレーム間隔の DINOv3 patch tokens を融合して、コート座標系の player/ball 3D 時系列を同時推定するタスクです。BLCS と PLCS を直列接続せず、frame 内の entity attention と entity ごとの temporal attention を交互に適用します。データセット契約は `src.tennis_scene.generate_dataset.manifest` と `pseudo_annotation` が唯一の定義元であり、SLCS はその reader を直接利用します。
 
