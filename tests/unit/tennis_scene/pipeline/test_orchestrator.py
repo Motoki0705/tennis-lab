@@ -25,7 +25,10 @@ def _make_orchestrator(tmp_path: Path) -> TennisSceneOrchestrator:
         court_kp_module=cast(Any, object()),
         gvhmr_config={
             "gvhmr_checkpoint": "gvhmr.ckpt",
+            "detector": "dino",
             "yolo_checkpoint": "yolo.pt",
+            "dino_checkpoint": "dino.pth",
+            "dino_confidence": 0.35,
             "vitpose_checkpoint": "vitpose.pth",
             "hmr2_checkpoint": "hmr2.ckpt",
             "smplx_body_model_path": None,
@@ -85,6 +88,9 @@ def test_run_gvhmr_invokes_module_in_process_with_camera_paths(
     assert video_path == Path("cam1.mp4")
     assert max_frames == 2
     assert config.gvhmr_checkpoint == "gvhmr.ckpt"
+    assert config.detector == "dino"
+    assert config.dino_checkpoint == "dino.pth"
+    assert config.dino_confidence == 0.35
     assert config.track_selection == "auto"
     assert config.save_result is True
     assert config.load_path == tmp_path / "cam1.json"

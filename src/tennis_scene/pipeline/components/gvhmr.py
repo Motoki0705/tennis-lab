@@ -1,6 +1,6 @@
 """GVHMR module for 3D human mesh estimation.
 
-Runs the src/submodules model chain (YOLO tracking -> ViTPose -> HMR2 features
+Runs the src/submodules model chain (person detection/tracking -> ViTPose -> HMR2 features
 -> GVHMR) in the main ``.venv``; there is no dependency on ``third_party/GVHMR``
 code anymore (checkpoints are read via the ``ckpt/`` symlinks).
 """
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from src.submodules.models import (
+        DinoPersonTracker,
         GvhmrMeshRecovery,
         Hmr2FeatureExtractor,
         SmplVertexReconstructor,
@@ -37,7 +38,10 @@ class GVHMRConfig:
     """Configuration for GVHMR module."""
 
     gvhmr_checkpoint: str | Path
+    detector: str = "yolo"
     yolo_checkpoint: str | Path = "ckpt/yolo/yolov8x.pt"
+    dino_checkpoint: str | Path = "ckpt/dino/checkpoint0029_4scale_swin.pth"
+    dino_confidence: float = 0.3
     vitpose_checkpoint: str | Path = "ckpt/vitpose/vitpose-h-multi-coco.pth"
     hmr2_checkpoint: str | Path = "ckpt/hmr2/epoch=10-step=25000.ckpt"
     device: str = "cuda"
@@ -47,6 +51,17 @@ class GVHMRConfig:
     save_result: bool = False
     output_path: str | Path | None = None
     load_path: str | Path | None = None
+
+    def __post_init__(self) -> None:
+        if self.detector not in {"yolo", "dino"}:
+            raise ValueError(
+                f"detector must be 'yolo' or 'dino', got {self.detector!r}"
+            )
+        if self.track_selection not in {"interactive", "auto"}:
+            raise ValueError(
+                "track_selection must be 'interactive' or 'auto', got "
+                f"{self.track_selection!r}"
+            )
 
 
 @dataclass
@@ -133,7 +148,7 @@ class GVHMRModule(BasePipelineModule):
 
     def __init__(self, config: GVHMRConfig) -> None:
         self.config = config
-        self._tracker: YoloPersonTracker | None = None
+        self._tracker: YoloPersonTracker | DinoPersonTracker | None = None
         self._pose_model: ViTPosePose2D | None = None
         self._feature_model: Hmr2FeatureExtractor | None = None
         self._mesh_model: GvhmrMeshRecovery | None = None
@@ -144,6 +159,7 @@ class GVHMRModule(BasePipelineModule):
             return
 
         from src.submodules.models import (
+            DinoPersonTracker,
             GvhmrMeshRecovery,
             Hmr2FeatureExtractor,
             SmplVertexReconstructor,
@@ -152,9 +168,18 @@ class GVHMRModule(BasePipelineModule):
         )
 
         device = self.config.device
-        self._tracker = YoloPersonTracker(
-            checkpoint=self.config.yolo_checkpoint, device=device
-        )
+        if self.config.detector == "yolo":
+            self._tracker = YoloPersonTracker(
+                checkpoint=self.config.yolo_checkpoint, device=device
+            )
+        elif self.config.detector == "dino":
+            self._tracker = DinoPersonTracker(
+                checkpoint=self.config.dino_checkpoint,
+                device=device,
+                confidence=self.config.dino_confidence,
+            )
+        else:
+            raise AssertionError(f"Unvalidated detector: {self.config.detector}")
         self._pose_model = ViTPosePose2D(
             checkpoint=self.config.vitpose_checkpoint, device=device
         )

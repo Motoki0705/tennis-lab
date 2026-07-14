@@ -4,8 +4,10 @@ from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
+import pytest
 import torch
 
+import src.submodules.models as submodule_models
 from src.tennis_scene.pipeline.components.gvhmr import (
     GVHMRConfig,
     GVHMRModule,
@@ -61,13 +63,64 @@ class TestGVHMRResultRoundTrip:
 
 class TestGVHMRConfig:
     def test_defaults_point_to_ckpt_symlinks(self):
-        config = GVHMRConfig(
-            gvhmr_checkpoint="ckpt/gvhmr/gvhmr_siga24_release.ckpt"
-        )
+        config = GVHMRConfig(gvhmr_checkpoint="ckpt/gvhmr/gvhmr_siga24_release.ckpt")
         assert str(config.yolo_checkpoint).startswith("ckpt/")
+        assert str(config.dino_checkpoint).startswith("ckpt/")
+        assert config.detector == "yolo"
         assert str(config.vitpose_checkpoint).startswith("ckpt/")
         assert str(config.hmr2_checkpoint).startswith("ckpt/")
         assert config.track_selection == "interactive"
+
+    def test_rejects_unknown_detector(self):
+        with pytest.raises(ValueError, match="detector must be"):
+            GVHMRConfig(gvhmr_checkpoint="gvhmr.ckpt", detector="unknown")
+
+
+def test_load_selects_dino_detector_and_existing_tracker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    constructed: dict[str, Any] = {}
+
+    class FakeModel:
+        def __init__(self, **kwargs: Any) -> None:
+            self.kwargs = kwargs
+
+        def load(self) -> None:
+            return None
+
+    class FakeDinoTracker(FakeModel):
+        def __init__(self, **kwargs: Any) -> None:
+            super().__init__(**kwargs)
+            constructed["dino_tracker"] = self
+
+    def fail_yolo(**kwargs: Any) -> None:
+        del kwargs
+        raise AssertionError("YOLO tracker must not be constructed in DINO mode")
+
+    monkeypatch.setattr(submodule_models, "DinoPersonTracker", FakeDinoTracker)
+    monkeypatch.setattr(submodule_models, "YoloPersonTracker", fail_yolo)
+    monkeypatch.setattr(submodule_models, "ViTPosePose2D", FakeModel)
+    monkeypatch.setattr(submodule_models, "Hmr2FeatureExtractor", FakeModel)
+    monkeypatch.setattr(submodule_models, "GvhmrMeshRecovery", FakeModel)
+    monkeypatch.setattr(submodule_models, "SmplVertexReconstructor", FakeModel)
+
+    module = GVHMRModule(
+        GVHMRConfig(
+            gvhmr_checkpoint="gvhmr.ckpt",
+            detector="dino",
+            dino_checkpoint="dino.pth",
+            dino_confidence=0.42,
+            device="cpu",
+        )
+    )
+    module.load()
+
+    tracker = constructed["dino_tracker"]
+    assert tracker.kwargs == {
+        "checkpoint": "dino.pth",
+        "device": "cpu",
+        "confidence": 0.42,
+    }
 
 
 class _FakeTrackResult:

@@ -1,0 +1,4 @@
+MultiScaleDeformableAttention.egg-info/
+build/
+__pycache__/
+*.so
