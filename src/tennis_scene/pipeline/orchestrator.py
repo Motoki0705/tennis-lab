@@ -142,7 +142,15 @@ class TennisSceneOrchestrator:
             smplx_body_model_path = cfg.gvhmr.get("smplx_body_model_path")
             gvhmr_config = {
                 "gvhmr_checkpoint": to_absolute_path(cfg.gvhmr.gvhmr_checkpoint),
+                "detector": str(cfg.gvhmr.get("detector", "yolo")),
                 "yolo_checkpoint": to_absolute_path(cfg.gvhmr.yolo_checkpoint),
+                "dino_checkpoint": to_absolute_path(
+                    cfg.gvhmr.get(
+                        "dino_checkpoint",
+                        "ckpt/dino/checkpoint0029_4scale_swin.pth",
+                    )
+                ),
+                "dino_confidence": float(cfg.gvhmr.get("dino_confidence", 0.3)),
                 "vitpose_checkpoint": to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
                 "hmr2_checkpoint": to_absolute_path(cfg.gvhmr.hmr2_checkpoint),
                 "smplx_body_model_path": (
@@ -306,7 +314,12 @@ class TennisSceneOrchestrator:
         module = GVHMRModule(
             GVHMRConfig(
                 gvhmr_checkpoint=self.gvhmr_config["gvhmr_checkpoint"],
+                detector=self.gvhmr_config.get("detector", "yolo"),
                 yolo_checkpoint=self.gvhmr_config["yolo_checkpoint"],
+                dino_checkpoint=self.gvhmr_config.get(
+                    "dino_checkpoint", "ckpt/dino/checkpoint0029_4scale_swin.pth"
+                ),
+                dino_confidence=float(self.gvhmr_config.get("dino_confidence", 0.3)),
                 vitpose_checkpoint=self.gvhmr_config["vitpose_checkpoint"],
                 hmr2_checkpoint=self.gvhmr_config["hmr2_checkpoint"],
                 smplx_body_model_path=self.gvhmr_config.get("smplx_body_model_path"),

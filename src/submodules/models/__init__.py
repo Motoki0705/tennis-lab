@@ -2,7 +2,7 @@
 
 Each model exposes ``load()`` / ``unload()`` / ``predict(request) -> result``:
 
-- :class:`YoloPersonTracker` — video -> per-person bbox tracks
+- :class:`YoloPersonTracker` / :class:`DinoPersonTracker` — video -> bbox tracks
 - :class:`ViTPosePose2D` — video + boxes -> COCO-17 keypoints
 - :class:`Hmr2FeatureExtractor` — video + boxes -> per-frame image features
 - :class:`GvhmrMeshRecovery` — keypoints + boxes + features -> SMPL-X params
@@ -20,11 +20,17 @@ from src.submodules.models.hmr2 import (
     ImageFeatureRequest,
     ImageFeatureResult,
 )
-from src.submodules.models.tracker import TrackRequest, TrackResult, YoloPersonTracker
+from src.submodules.models.tracker import (
+    DinoPersonTracker,
+    TrackRequest,
+    TrackResult,
+    YoloPersonTracker,
+)
 from src.submodules.models.vitpose import Pose2DRequest, Pose2DResult, ViTPosePose2D
 
 __all__ = [
     "BaseInferenceModel",
+    "DinoPersonTracker",
     "GvhmrMeshRecovery",
     "GvhmrRequest",
     "GvhmrResult",
