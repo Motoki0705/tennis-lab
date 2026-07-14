@@ -78,6 +78,40 @@ def test_multiview_axial_line_model_uses_two_tokens_per_camera() -> None:
     assert torch.isfinite(out["position"]).all()
 
 
+def test_multiview_axial_line_model_output_depends_on_court_lines() -> None:
+    torch.manual_seed(4)
+    model = build_plcs_model(
+        OmegaConf.create(
+            {
+                "model": {
+                    "name": "plcs_multiview_axial",
+                    "hidden_dim": 16,
+                    "num_layers": 1,
+                    "num_heads": 4,
+                    "max_views": 1,
+                    "max_seq_len": 4,
+                    "dropout": 0.0,
+                    "court_input_type": "line",
+                    "max_court_lines": 6,
+                }
+            }
+        )
+    ).eval()
+    human_kp = torch.randn(1, 1, 4, 17, 2)
+    common = {
+        "human_kp": human_kp,
+        "human_vis": torch.ones(1, 1, 4, 17),
+        "human_mask": torch.ones(1, 1, 4),
+    }
+
+    with torch.no_grad():
+        no_line = model(court_lines=torch.zeros(1, 1, 4, 6, 4), **common)
+        with_lines = model(court_lines=torch.rand(1, 1, 4, 6, 4), **common)
+
+    assert not torch.allclose(no_line["position"], with_lines["position"])
+    assert not torch.allclose(no_line["rotation"], with_lines["rotation"])
+
+
 def test_kp_default_state_dict_remains_strictly_compatible() -> None:
     config = OmegaConf.create(
         {
