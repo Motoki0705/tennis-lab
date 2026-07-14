@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, cast
 
 import torch
 from torch import Tensor, nn
@@ -84,11 +84,12 @@ class BLCSPredictor(BasePredictor):
     def predict(
         self,
         ball_uv: Tensor,
-        court_kp: Tensor,
+        court_kp: Tensor | None = None,
         ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
         denormalize: bool = True,
+        court_lines: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Predict 3D ball trajectory.
 
@@ -108,23 +109,46 @@ class BLCSPredictor(BasePredictor):
                            model outputs it, else in normalized units
 
         """
-        ball_uv, court_kp, ball_vis, ball_mask, court_vis = self._to_device(
+        moved = self._to_device(
             self.device,
             ball_uv,
             court_kp,
             ball_vis,
             ball_mask,
             court_vis,
+            court_lines,
         )
+        ball_uv = cast(Tensor, moved[0])
+        court_kp, ball_vis, ball_mask, court_vis, court_lines = moved[1:]
 
         with torch.no_grad():
-            outputs = self.model(
-                ball_uv=ball_uv,
-                court_kp=court_kp,
-                ball_vis=ball_vis,
-                ball_mask=ball_mask,
-                court_vis=court_vis,
-            )
+            court_input_type = str(getattr(self.model, "court_input_type", "kp"))
+            if court_input_type == "line":
+                if court_lines is None or court_kp is not None or court_vis is not None:
+                    raise ValueError(
+                        "Line-based BLCS inference requires court_lines and rejects "
+                        "court_kp/court_vis."
+                    )
+                outputs = self.model(
+                    ball_uv=ball_uv,
+                    court_lines=court_lines,
+                    ball_vis=ball_vis,
+                    ball_mask=ball_mask,
+                )
+            elif court_input_type == "kp":
+                if court_kp is None or court_lines is not None:
+                    raise ValueError(
+                        "KP-based BLCS inference requires court_kp and rejects court_lines."
+                    )
+                outputs = self.model(
+                    ball_uv=ball_uv,
+                    court_kp=court_kp,
+                    ball_vis=ball_vis,
+                    ball_mask=ball_mask,
+                    court_vis=court_vis,
+                )
+            else:
+                raise ValueError(f"Unsupported court_input_type={court_input_type!r}.")
 
         if denormalize:
             outputs["position"] = self._denormalize_coords(
@@ -135,5 +159,7 @@ class BLCSPredictor(BasePredictor):
                     outputs["velocity"], self.norm_scale_xyz
                 )
 
-        outputs = {k: v.cpu() if isinstance(v, Tensor) else v for k, v in outputs.items()}
+        outputs = {
+            k: v.cpu() if isinstance(v, Tensor) else v for k, v in outputs.items()
+        }
         return outputs

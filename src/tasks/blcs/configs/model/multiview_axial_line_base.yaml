@@ -1,0 +1,6 @@
+defaults:
+  - multiview_axial_base
+  - _self_
+
+court_input_type: line
+max_court_lines: ${data.court_line.max_lines}

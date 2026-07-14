@@ -21,6 +21,7 @@
 - **`dataset.py`**: `BallTrajectoryDataset`。canonical multiviewサンプルを返し、collate/adapt関数を提供。
 - **`datamodule.py`**: `BLCSDataModule`。`input_profile`(`single`/`multiview`)に応じたcollate構築。
 - **`augmentation.py`**: `BLCSBallObservationAugmentation`。detector誤差を模した8段のUVノイズパイプライン。
+- `data=chunked_multiview_sequence_line_bs4`では、合成court line mapへmap-space augmentationを適用してRANSAC抽出した`court_lines: (V,T,L,4)`だけをcourt入力として返す。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
 
 ### models/
@@ -28,6 +29,7 @@
 - **`blcs_model.py`**: `BLCSModel`。single-view用decoder-only Transformer(court+ballトークン)。
 - **`blcs_multiview_model.py`**: `BLCSMultiViewModel`。クエリのcross-attention+時間self-attentionによる反復更新モデル。
 - **`blcs_multiview_axial_model.py`**: `BLCSMultiViewAxialModel`(現行デフォルト)。camera軸/time軸交互self-attention。
+- 同axial modelの`court_input_type=line`は各cameraを`[court token, ball token]`の2 tokenとして扱い、同じcamera RoPEと異なるtoken-type embeddingを与える。既定の`kp`経路とcheckpoint schemaは変更しない。
 - **`components/heads.py`**: `Trajectory3DHead`/`VelocityHead`。
 - **`components/differentiable_projection.py`**: `DifferentiableProjection`。予測3D位置をカメラへ再投影。
 - **`discriminators/`**: `BLCSTrajectoryDiscriminator` と工場関数 `build_blcs_discriminator`。

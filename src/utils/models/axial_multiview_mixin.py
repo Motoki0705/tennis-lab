@@ -20,6 +20,8 @@ consuming model).
 
 from __future__ import annotations
 
+from typing import cast
+
 import torch
 from torch import Tensor
 
@@ -51,7 +53,7 @@ class AxialMultiViewMixin:
         Delegates to :func:`src.utils.models.build_self_attn_mask`.
         See that function for full documentation.
         """
-        return build_self_attn_mask(valid)
+        return cast(tuple[Tensor, Tensor], build_self_attn_mask(valid))
 
     @staticmethod
     def _build_token_positions(*, seq_len: int, n_cams: int) -> Tensor:
@@ -65,28 +67,52 @@ class AxialMultiViewMixin:
             dim=-1,
         )
 
-    def _camera_freqs(self, *, batch_size: int, seq_len: int, n_cams: int) -> Tensor:
+    def _camera_freqs(
+        self,
+        *,
+        batch_size: int,
+        seq_len: int,
+        n_cams: int,
+        tokens_per_camera: int = 1,
+    ) -> Tensor:
         freqs = self.token_freqs_cis[:seq_len, :n_cams]
+        if tokens_per_camera <= 0:
+            raise ValueError("tokens_per_camera must be positive.")
+        if tokens_per_camera > 1:
+            freqs = freqs.repeat_interleave(tokens_per_camera, dim=1)
+        axis_tokens = n_cams * tokens_per_camera
         return (
             freqs.unsqueeze(0)
             .expand(
                 batch_size,
                 seq_len,
-                n_cams,
+                axis_tokens,
                 self.rope_dim // 2,
             )
-            .reshape(batch_size * seq_len, n_cams, self.rope_dim // 2)
+            .reshape(batch_size * seq_len, axis_tokens, self.rope_dim // 2)
         )
 
-    def _time_freqs(self, *, batch_size: int, seq_len: int, n_cams: int) -> Tensor:
+    def _time_freqs(
+        self,
+        *,
+        batch_size: int,
+        seq_len: int,
+        n_cams: int,
+        tokens_per_camera: int = 1,
+    ) -> Tensor:
         freqs = self.token_freqs_cis[:seq_len, :n_cams].permute(1, 0, 2)
+        if tokens_per_camera <= 0:
+            raise ValueError("tokens_per_camera must be positive.")
+        if tokens_per_camera > 1:
+            freqs = freqs.repeat_interleave(tokens_per_camera, dim=0)
+        axis_tokens = n_cams * tokens_per_camera
         return (
             freqs.unsqueeze(0)
             .expand(
                 batch_size,
-                n_cams,
+                axis_tokens,
                 seq_len,
                 self.rope_dim // 2,
             )
-            .reshape(batch_size * n_cams, seq_len, self.rope_dim // 2)
+            .reshape(batch_size * axis_tokens, seq_len, self.rope_dim // 2)
         )

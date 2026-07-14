@@ -31,6 +31,7 @@
 - **`keypoints.py`**: pixel 座標と正規化座標の相互変換、画素座標 clamp。
 - **`bbox.py`**: bbox の最大辺比率 `bbox_max_side_ratio()`。bbox の縦横スケール比較が必要なときに見る。
 - **`image_size.py`**: `resize_short_side_aligned()`。short side 指定 + 8 の倍数 align の画像サイズ計算。
+- **`line_segments.py`**: line mapのthreshold/connected-component/skeleton前処理、iterative RANSACによる有限線分抽出、canonical endpoint order、決定論sort、zero paddingを行う汎用線分幾何。
 
 ### `projection/`
 - **`camera_projector.py`**: `Camera`、`CameraConfig`、`CameraView`、`CameraProjector`、`make_look_at_camera()`、`project_points()`。ピンホール投影の共通実装。
@@ -70,7 +71,7 @@
 ### `models/`
 - **`components/`**: Transformer の基本部品。attention、RoPE、FFN、MoE、norm、`TransformerBlock`、`CrossAttnBlock` がここにある。
 - **`components/ops/`**: MoE と time-local attention の CUDA / reference 実装、autograd bridge、extension loader/build。カスタム op まわりを見る場所。
-- **`embeddings/`**: court / player / ball の埋め込みと group token 系の構成要素。
+- **`embeddings/`**: court / player / ball の埋め込みと group token 系の構成要素。`CourtLineEmbedding`は`(...,L,4)`をflattenして1 court tokenへ写像し、line mask/count/confidenceは受け取らない。
 - **`loading/`**: DINOv3 backbone 読み込み、LoRA 適用、trainability 切り替え。
 - **`architectures/`**: 現状は `TransformerSequenceDiscriminator` を配置。
 - **`blocks.py`**: `DepthwiseSeparableConv2d` と `Conv2dWiseWiseBlock`。CNN 系の共通ブロック。

@@ -6,6 +6,7 @@
 # mandatory because their length must equal `num_layers`, which varies by size.
 
 name: blcs_multiview_axial
+court_input_type: kp
 
 io:
   input_profile: multiview

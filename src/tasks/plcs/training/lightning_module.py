@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import torch
 from torch import Tensor, nn
@@ -35,7 +35,8 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     def __init__(self, config: DictConfig | None = None) -> None:
         super().__init__(config)
 
-        self.model: nn.Module = build_plcs_model(self.config)
+        resolved_config = cast("DictConfig", self.config)
+        self.model: nn.Module = build_plcs_model(resolved_config)
         self.predict_canonical_pose = bool(
             (self.config.get("model", {}) or {}).get("predict_canonical_pose", False)
         )
@@ -48,7 +49,9 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             loss_cfg = PLCSLossConfig(
                 position_weight=float(train_cfg.get("position_loss_weight", 1.0)),
                 rotation_weight=float(train_cfg.get("rotation_loss_weight", 1.0)),
-                canonical_pose_weight=float(train_cfg.get("canonical_pose_weight", 0.0)),
+                canonical_pose_weight=float(
+                    train_cfg.get("canonical_pose_weight", 0.0)
+                ),
             )
         self.loss_fn = PLCSLoss(config=loss_cfg)
 
@@ -61,16 +64,24 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             LangevinNoiseInjector(mcmc_cfg) if mcmc_cfg.enabled else None
         )
 
-        gan_enabled = bool(((self.config.get("training", {}) or {}).get("gan", {}) or {}).get("enabled", False))
+        gan_enabled = bool(
+            ((self.config.get("training", {}) or {}).get("gan", {}) or {}).get(
+                "enabled", False
+            )
+        )
         self._initialize_manual_gan(
-            discriminator=build_plcs_discriminator(self.config) if gan_enabled else None,
+            discriminator=build_plcs_discriminator(resolved_config)
+            if gan_enabled
+            else None,
         )
 
         metrics_cfg = self.config.get("metrics", {})
 
         def _build_metrics() -> PLCSMetrics:
             return PLCSMetrics(
-                position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
+                position_threshold_m=float(
+                    metrics_cfg.get("position_threshold_m", 0.5)
+                ),
                 angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
             )
 
@@ -85,14 +96,35 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         return torch.cat([position, rotation], dim=-1)
 
     def _forward_from_batch(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:
-        result: dict[str, Tensor] = self.model(
+        court_input_type = str(
+            self.config.get("model", {}).get("court_input_type", "kp")
+        )
+        if court_input_type == "line":
+            court_lines = batch.get("court_lines")
+            if court_lines is None:
+                raise KeyError("court_lines is required for line-based PLCS training.")
+            line_result: dict[str, Tensor] = self.model(
+                human_kp=batch["human_kp"],
+                court_lines=court_lines,
+                human_vis=batch.get("human_vis"),
+                human_mask=batch.get("human_mask"),
+            )
+            return line_result
+        if court_input_type != "kp":
+            raise ValueError(
+                f"Unsupported model.court_input_type={court_input_type!r}."
+            )
+        court_kp = batch.get("court_kp")
+        if court_kp is None:
+            raise KeyError("court_kp is required for KP-based PLCS training.")
+        kp_result: dict[str, Tensor] = self.model(
             human_kp=batch["human_kp"],
-            court_kp=batch["court_kp"],
+            court_kp=court_kp,
             human_vis=batch.get("human_vis"),
             human_mask=batch.get("human_mask"),
             court_vis=batch.get("court_vis"),
         )
-        return result
+        return kp_result
 
     def _metric_tracker_for_stage(self, stage: str) -> PLCSMetrics:
         if stage == "train":
@@ -152,9 +184,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         # the rotation trunk the multiview triangulation that rotation depends on,
         # while the dedicated pose trunk still produces the precise position.
         # Each entry maps an output key -> (target batch key, loss kind, weight).
-        aux_specs = (
-            ("aux_position", "position", "position", "position"),
-        )
+        aux_specs = (("aux_position", "position", "position", "position"),)
         for out_key, target_key, kind, weight_name in aux_specs:
             if out_key not in outputs:
                 continue
@@ -186,10 +216,16 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             "gan_mask": frame_mask,
         }
 
-    def _log_stage_metrics(self, stage: str, loss: Tensor, metrics: dict[str, Any]) -> None:
+    def _log_stage_metrics(
+        self, stage: str, loss: Tensor, metrics: dict[str, Any]
+    ) -> None:
         prog_bar = stage != "test"
         self.log(f"{stage}/loss", loss, prog_bar=prog_bar)
-        self.log(f"{stage}/pos_error_m", metrics.get("position_error_m", 0.0), prog_bar=prog_bar)
+        self.log(
+            f"{stage}/pos_error_m",
+            metrics.get("position_error_m", 0.0),
+            prog_bar=prog_bar,
+        )
         self.log(
             f"{stage}/ang_error_deg",
             metrics.get("angular_error_deg", 0.0),
@@ -218,9 +254,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     def configure_optimizers(self) -> Any:
         return self.configure_gan_optimizers(self.model.parameters())
 
-    def on_train_batch_end(
-        self, outputs: Any, batch: Any, batch_idx: int
-    ) -> None:
+    def on_train_batch_end(self, outputs: Any, batch: Any, batch_idx: int) -> None:
         """Inject SGLD/Langevin noise after the optimizer step (issue #519).
 
         Runs in both automatic (baseline) and manual (GAN) optimization modes
@@ -291,12 +325,10 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
                 # Build CPU-side scenes (adapter handles .cpu() internally)
                 batch_cpu = {
-                    k: v.cpu() if isinstance(v, Tensor) else v
-                    for k, v in batch.items()
+                    k: v.cpu() if isinstance(v, Tensor) else v for k, v in batch.items()
                 }
                 out_cpu = {
-                    k: v.cpu() if isinstance(v, Tensor) else v
-                    for k, v in out.items()
+                    k: v.cpu() if isinstance(v, Tensor) else v for k, v in out.items()
                 }
                 gt_scene, pred_scene = batch_to_pose_render_scenes(
                     batch_cpu, out_cpu, sample_idx=0

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, cast
 
 import torch
 from torch import Tensor, nn
@@ -46,30 +46,54 @@ class PLCSPredictor(BasePredictor):
     def predict(
         self,
         human_kp: Tensor,
-        court_kp: Tensor,
+        court_kp: Tensor | None = None,
         human_vis: Tensor | None = None,
         human_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
         denormalize: bool = True,
+        court_lines: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Predict player 3D position and orientation from caller-provided tensors."""
 
-        human_kp, court_kp, human_vis, human_mask, court_vis = self._to_device(
+        moved = self._to_device(
             self.device,
             human_kp,
             court_kp,
             human_vis,
             human_mask,
             court_vis,
+            court_lines,
         )
+        human_kp = cast(Tensor, moved[0])
+        court_kp, human_vis, human_mask, court_vis, court_lines = moved[1:]
 
-        outputs = self.model(
-            human_kp=human_kp,
-            court_kp=court_kp,
-            human_vis=human_vis,
-            human_mask=human_mask,
-            court_vis=court_vis,
-        )
+        court_input_type = str(getattr(self.model, "court_input_type", "kp"))
+        if court_input_type == "line":
+            if court_lines is None or court_kp is not None or court_vis is not None:
+                raise ValueError(
+                    "Line-based PLCS inference requires court_lines and rejects "
+                    "court_kp/court_vis."
+                )
+            outputs = self.model(
+                human_kp=human_kp,
+                court_lines=court_lines,
+                human_vis=human_vis,
+                human_mask=human_mask,
+            )
+        elif court_input_type == "kp":
+            if court_kp is None or court_lines is not None:
+                raise ValueError(
+                    "KP-based PLCS inference requires court_kp and rejects court_lines."
+                )
+            outputs = self.model(
+                human_kp=human_kp,
+                court_kp=court_kp,
+                human_vis=human_vis,
+                human_mask=human_mask,
+                court_vis=court_vis,
+            )
+        else:
+            raise ValueError(f"Unsupported court_input_type={court_input_type!r}.")
 
         position = outputs["position"]
         rotation = outputs["rotation"]

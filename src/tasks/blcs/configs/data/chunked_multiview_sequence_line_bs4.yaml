@@ -1,0 +1,12 @@
+defaults:
+  - chunked_multiview_sequence_bs4
+  - _self_
+
+court_input_type: line
+# Defaults for map degradation and RANSAC live in CourtLineInputConfig so BLCS
+# and PLCS do not maintain two copies. Keep only experiment-facing overrides.
+court_line:
+  max_lines: 12
+  temporal_variants: 1
+  augmentation:
+    enabled: true
