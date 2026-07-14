@@ -36,7 +36,7 @@ court_kp:
 
 gvhmr:
   gvhmr_checkpoint: ckpt/gvhmr/gvhmr_siga24_release.ckpt
-  yolo_checkpoint: ckpt/yolo/yolov8x.pt
+  yolo_checkpoint: ckpt/yolo/yolo26x.pt
   vitpose_checkpoint: ckpt/vitpose/vitpose-h-multi-coco.pth
   hmr2_checkpoint: ckpt/hmr2/epoch=10-step=25000.ckpt
   smplx_body_model_path: null  # Optional override for the SMPL-X body model directory (default: ckpt/body_models)
@@ -84,7 +84,7 @@ ball_detection:
   load_path: null  # Path to load pre-computed result (skips inference)
 
 plcs:
-  checkpoint: ckpt/plcs/run-mono3d-plcs-bcast-v2-simfix-epoch199.ckpt
+  checkpoint: ckpt/plcs/run-multiview-plcs-i590-courtkp14-epoch197.ckpt
   save_result: true
   output_path: ${output_dir}/plcs_result.json
   load_path: null  # Path to load pre-computed result (skips inference)
@@ -98,7 +98,7 @@ plcs:
   human_vis_threshold: 0.15
 
 blcs:
-  checkpoint: ckpt/blcs/run-mono3d-blcs-bcast-v3-simfix-epoch189.ckpt
+  checkpoint: ckpt/blcs/run-multiview-blcs-v3-simfix-c3-6-epoch129.ckpt
   skip: false
   save_result: true
   output_path: ${output_dir}/blcs_result.json
