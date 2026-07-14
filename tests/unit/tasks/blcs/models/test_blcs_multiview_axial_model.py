@@ -84,6 +84,43 @@ def test_multiview_axial_line_model_uses_two_tokens_per_camera() -> None:
     assert torch.isfinite(out["position"]).all()
 
 
+def test_multiview_axial_line_model_output_depends_on_court_lines() -> None:
+    torch.manual_seed(4)
+    model = build_blcs_model(
+        OmegaConf.create(
+            {
+                "model": {
+                    "name": "blcs_multiview_axial",
+                    "hidden_dim": 16,
+                    "num_layers": 1,
+                    "num_heads": 4,
+                    "camera_layers_per_stage": [1],
+                    "time_layers_per_stage": [1],
+                    "time_global_stage_mask": [False],
+                    "max_num_cameras": 1,
+                    "max_seq_len": 4,
+                    "dropout": 0.0,
+                    "time_window_radius": 2,
+                    "court_input_type": "line",
+                    "max_court_lines": 6,
+                }
+            }
+        )
+    ).eval()
+    ball_uv = torch.randn(1, 1, 4, 2)
+    common = {
+        "ball_uv": ball_uv,
+        "ball_vis": torch.ones(1, 1, 4),
+        "ball_mask": torch.ones(1, 1, 4),
+    }
+
+    with torch.no_grad():
+        no_line = model(court_lines=torch.zeros(1, 1, 4, 6, 4), **common)
+        with_lines = model(court_lines=torch.rand(1, 1, 4, 6, 4), **common)
+
+    assert not torch.allclose(no_line["position"], with_lines["position"])
+
+
 def test_kp_default_state_dict_remains_strictly_compatible() -> None:
     config = OmegaConf.create(
         {
