@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from numpy.typing import NDArray
 
 from src.tasks.base.data.court_lines import (
     CourtLineInputBuilder,
     CourtLineInputConfig,
     CourtLineMapAugmentationConfig,
+    augment_court_line_map,
     render_court_line_map,
 )
 from src.utils.geometry.line_segments import RansacLineConfig
@@ -73,6 +75,128 @@ def test_render_and_build_court_lines() -> None:
 
 def test_builder_is_reproducible_for_fixed_seed() -> None:
     court = _projected_court().view(1, 1, 20, 2).expand(1, 3, -1, -1)
-    first = _builder().build(court, augment=True, rng=np.random.default_rng(42))
-    second = _builder().build(court, augment=True, rng=np.random.default_rng(42))
+    config = CourtLineInputConfig(
+        map_width=160,
+        map_height=96,
+        temporal_variants=2,
+        extractor=_builder().config.extractor,
+        augmentation=CourtLineMapAugmentationConfig(),
+    )
+    first = CourtLineInputBuilder(config).build(
+        court, augment=True, rng=np.random.default_rng(42)
+    )
+    second = CourtLineInputBuilder(config).build(
+        court, augment=True, rng=np.random.default_rng(42)
+    )
     torch.testing.assert_close(first, second)
+
+
+def test_line_width_variation_changes_rendered_map() -> None:
+    court = _projected_court().numpy()
+    thin = render_court_line_map(court, width=160, height=96, line_width=1)
+    thick = render_court_line_map(court, width=160, height=96, line_width=3)
+
+    assert np.count_nonzero(thick) > np.count_nonzero(thin)
+
+
+def test_erasure_and_occlusion_remove_line_evidence() -> None:
+    line_map = render_court_line_map(
+        _projected_court().numpy(), width=160, height=96, line_width=2
+    )
+    config = CourtLineMapAugmentationConfig(
+        partial_erasure_prob=1.0,
+        max_partial_erasures=5,
+        occlusion_prob=1.0,
+        max_occlusions=3,
+        false_positive_prob=0.0,
+        blur_prob=0.0,
+        morphology_prob=0.0,
+        far_dropout_prob=0.0,
+        near_only_prob=0.0,
+    )
+    augmented = augment_court_line_map(
+        line_map, config=config, rng=np.random.default_rng(7)
+    )
+
+    assert np.count_nonzero(augmented) < np.count_nonzero(line_map)
+
+
+def test_false_positive_lines_are_added_to_empty_map() -> None:
+    line_map: NDArray[np.uint8] = np.zeros((96, 160), dtype=np.uint8)
+    config = CourtLineMapAugmentationConfig(
+        partial_erasure_prob=0.0,
+        occlusion_prob=0.0,
+        false_positive_prob=1.0,
+        max_false_positive_lines=3,
+        blur_prob=0.0,
+        morphology_prob=0.0,
+        far_dropout_prob=0.0,
+        near_only_prob=0.0,
+    )
+    augmented = augment_court_line_map(
+        line_map, config=config, rng=np.random.default_rng(9)
+    )
+
+    assert np.count_nonzero(augmented) > 0
+
+
+def test_near_only_removes_far_court_region() -> None:
+    line_map = render_court_line_map(
+        _projected_court().numpy(), width=160, height=96, line_width=1
+    )
+    config = CourtLineMapAugmentationConfig(
+        partial_erasure_prob=0.0,
+        occlusion_prob=0.0,
+        false_positive_prob=0.0,
+        blur_prob=0.0,
+        morphology_prob=0.0,
+        far_dropout_prob=0.0,
+        near_only_prob=1.0,
+    )
+    augmented = augment_court_line_map(
+        line_map, config=config, rng=np.random.default_rng(11)
+    )
+
+    assert not np.array_equal(augmented, line_map)
+    assert np.count_nonzero(augmented[: int(0.45 * line_map.shape[0])]) == 0
+
+
+def test_far_dropout_removes_top_court_region() -> None:
+    line_map = render_court_line_map(
+        _projected_court().numpy(), width=160, height=96, line_width=1
+    )
+    config = CourtLineMapAugmentationConfig(
+        partial_erasure_prob=0.0,
+        occlusion_prob=0.0,
+        false_positive_prob=0.0,
+        blur_prob=0.0,
+        morphology_prob=0.0,
+        far_dropout_prob=1.0,
+        near_only_prob=0.0,
+    )
+    augmented = augment_court_line_map(
+        line_map, config=config, rng=np.random.default_rng(13)
+    )
+
+    assert not np.array_equal(augmented, line_map)
+    assert np.count_nonzero(augmented[: int(0.2 * line_map.shape[0])]) == 0
+
+
+def test_blur_and_morphology_change_map() -> None:
+    line_map = render_court_line_map(
+        _projected_court().numpy(), width=160, height=96, line_width=1
+    )
+    config = CourtLineMapAugmentationConfig(
+        partial_erasure_prob=0.0,
+        occlusion_prob=0.0,
+        false_positive_prob=0.0,
+        blur_prob=1.0,
+        morphology_prob=1.0,
+        far_dropout_prob=0.0,
+        near_only_prob=0.0,
+    )
+    augmented = augment_court_line_map(
+        line_map, config=config, rng=np.random.default_rng(11)
+    )
+
+    assert not np.array_equal(augmented, line_map)
