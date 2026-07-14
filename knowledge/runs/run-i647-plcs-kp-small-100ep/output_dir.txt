@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-647-court-line-token/outputs/plcs/issue647_kp_small_100ep/logs/version_0/checkpoints

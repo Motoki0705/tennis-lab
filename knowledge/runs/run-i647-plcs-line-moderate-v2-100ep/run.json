@@ -1,0 +1,14 @@
+{
+  "run_id": "1784028362684010282_1964946_i647_plcs_line_moderate_v2_100ep",
+  "name": "i647_plcs_line_moderate_v2_100ep",
+  "command": "PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train model=multiview_axial_line_small data=chunked_multiview_sequence_line_bs8 data.scene_dir=data/plcs_broadcast data.chunk.chunks_dir=data/plcs_broadcast/chunks camera=broadcast data.batch_size=8 data.num_workers=4 data.num_views_range=[1,1] data.seq_len_range=[64,256] data.chunk.generation_workers=6 data.chunk.epochs_per_chunk=30 loss=canonical_rot loss.position_weight=8.0 loss.canonical_pose_weight=0.0 loss.joint_angle_weight=0.0 loss.torsion_angle_weight=0.0 loss.torso_twist_weight=0.0 loss.bone_length_weight=0.0 training.trainer.max_epochs=100 training.trainer.check_val_every_n_epoch=5 training.qualitative_logging.enabled=false training.early_stopping.enabled=false run.output_dir=outputs/plcs/issue647_line_moderate_v2_100ep run.gpus=1 +data.court_line.augmentation.partial_erasure_prob=0.5 +data.court_line.augmentation.max_partial_erasures=3 +data.court_line.augmentation.occlusion_prob=0.35 +data.court_line.augmentation.max_occlusions=2 +data.court_line.augmentation.false_positive_prob=0.2 +data.court_line.augmentation.max_false_positive_lines=1 +data.court_line.augmentation.blur_prob=0.2 +data.court_line.augmentation.morphology_prob=0.25 +data.court_line.augmentation.far_dropout_prob=0.15 +data.court_line.augmentation.near_only_prob=0.05",
+  "provider": "codex",
+  "session": "019f6013-0a29-7183-87ae-e4c221387139",
+  "issue": "647",
+  "commit": "f26addb77c3b6c3657f10caa8917328f22ab0274",
+  "branch": "feat/issue-647-court-line-token",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-647-court-line-token",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-647-court-line-token",
+  "captured_at": "2026-07-14T20:57:15+09:00"
+}
