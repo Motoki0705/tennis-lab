@@ -29,6 +29,9 @@ def get_extensions() -> list[Any]:
         "cxx": ["-O3"],
         "nvcc": ["-O3", "--use_fast_math"],
     }
+    import os
+    dino_ops_src = os.path.abspath("src/submodules/vendor/dino/models/dino/ops/src")
+
     return [
         CUDAExtension(
             name="src.utils.models.components.ops.moe._C",
@@ -45,6 +48,25 @@ def get_extensions() -> list[Any]:
                 "src/utils/models/components/ops/time_local/kernels.cu",
             ],
             extra_compile_args=common_compile_args,
+        ),
+        CUDAExtension(
+            name="MultiScaleDeformableAttention",
+            sources=[
+                "src/submodules/vendor/dino/models/dino/ops/src/vision.cpp",
+                "src/submodules/vendor/dino/models/dino/ops/src/cpu/ms_deform_attn_cpu.cpp",
+                "src/submodules/vendor/dino/models/dino/ops/src/cuda/ms_deform_attn_cuda.cu",
+            ],
+            include_dirs=[dino_ops_src],
+            define_macros=[("WITH_CUDA", None)],
+            extra_compile_args={
+                "cxx": [],
+                "nvcc": [
+                    "-DCUDA_HAS_FP16=1",
+                    "-D__CUDA_NO_HALF_OPERATORS__",
+                    "-D__CUDA_NO_HALF_CONVERSIONS__",
+                    "-D__CUDA_NO_HALF2_OPERATORS__",
+                ],
+            },
         ),
     ]
 
