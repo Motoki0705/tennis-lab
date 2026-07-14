@@ -76,11 +76,6 @@ namespaces = false
     "configs/*/*.yaml",
     "configs/*/*/*.yaml",
     "configs/*/*/*.txt",
-    "vendor/dino/LICENSE",
-    "vendor/dino/models/dino/ops/src/**/*.cpp",
-    "vendor/dino/models/dino/ops/src/**/*.h",
-    "vendor/dino/models/dino/ops/src/**/*.cu",
-    "vendor/dino/models/dino/ops/src/**/*.cuh",
 ]
 
 [tool.ruff]
@@ -108,8 +103,6 @@ exclude = [
     "node_modules",
     "venv",
     "third_party",
-    # IDEA-Research DINO is kept close to upstream; typed wrappers are checked.
-    "src/submodules/vendor/dino",
 ]
 
 # Same as Black.

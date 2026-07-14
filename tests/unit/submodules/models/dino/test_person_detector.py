@@ -1,6 +1,7 @@
 """Unit tests for DINO person-only decoding and checkpoint validation."""
 
 from argparse import Namespace
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -10,6 +11,7 @@ from numpy.typing import NDArray
 from src.submodules.models.dino.person_detector import (
     _preprocess_frame,
     _validate_checkpoint_args,
+    _validate_dino_repository,
     decode_person_detections,
 )
 
@@ -60,3 +62,10 @@ def test_checkpoint_architecture_mismatch_is_explicit() -> None:
     args = Namespace(backbone="swin_T_224_1k")
     with pytest.raises(ValueError, match="Unsupported DINO checkpoint architecture"):
         _validate_checkpoint_args(args)
+
+
+def test_uninitialized_dino_submodule_is_explicit(tmp_path: Path) -> None:
+    repository = tmp_path / "DINO"
+
+    with pytest.raises(FileNotFoundError, match="git submodule update --init"):
+        _validate_dino_repository(repository)

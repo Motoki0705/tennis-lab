@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 import os
+import shutil
+from pathlib import Path
 from typing import Any
 
 TRUE_VALUES = {"1", "true", "yes", "on"}
+PROJECT_ROOT = Path(__file__).resolve().parents[5]
+DINO_OPS_SOURCE = PROJECT_ROOT / "third_party/DINO/models/dino/ops/src"
+DINO_OPS_BUILD_SOURCE = PROJECT_ROOT / "build/tennis_lab_dino_ops/src"
+_OLD_DISPATCH = "AT_DISPATCH_FLOATING_TYPES(value.type(),"
+_NEW_DISPATCH = "AT_DISPATCH_FLOATING_TYPES(value.scalar_type(),"
 
 
 def should_build_cuda_ops() -> bool:
@@ -29,8 +36,10 @@ def get_extensions() -> list[Any]:
         "cxx": ["-O3"],
         "nvcc": ["-O3", "--use_fast_math"],
     }
-    import os
-    dino_ops_src = os.path.abspath("src/submodules/vendor/dino/models/dino/ops/src")
+    dino_ops_src = _prepare_dino_ops_sources(
+        DINO_OPS_SOURCE,
+        DINO_OPS_BUILD_SOURCE,
+    )
 
     return [
         CUDAExtension(
@@ -52,11 +61,11 @@ def get_extensions() -> list[Any]:
         CUDAExtension(
             name="MultiScaleDeformableAttention",
             sources=[
-                "src/submodules/vendor/dino/models/dino/ops/src/vision.cpp",
-                "src/submodules/vendor/dino/models/dino/ops/src/cpu/ms_deform_attn_cpu.cpp",
-                "src/submodules/vendor/dino/models/dino/ops/src/cuda/ms_deform_attn_cuda.cu",
+                str(dino_ops_src / "vision.cpp"),
+                str(dino_ops_src / "cpu/ms_deform_attn_cpu.cpp"),
+                str(dino_ops_src / "cuda/ms_deform_attn_cuda.cu"),
             ],
-            include_dirs=[dino_ops_src],
+            include_dirs=[str(dino_ops_src)],
             define_macros=[("WITH_CUDA", None)],
             extra_compile_args={
                 "cxx": [],
@@ -69,6 +78,31 @@ def get_extensions() -> list[Any]:
             },
         ),
     ]
+
+
+def _prepare_dino_ops_sources(source: Path, destination: Path) -> Path:
+    """Copy official DINO ops and apply the required modern-PyTorch dispatch fix."""
+    cuda_source = source / "cuda/ms_deform_attn_cuda.cu"
+    if not cuda_source.is_file():
+        raise FileNotFoundError(
+            "DINO git submodule is not initialized. Run: "
+            "git submodule update --init third_party/DINO "
+            f"(missing: {cuda_source})"
+        )
+
+    if destination.exists():
+        shutil.rmtree(destination)
+    shutil.copytree(source, destination)
+    generated_cuda_source = destination / "cuda/ms_deform_attn_cuda.cu"
+    contents = generated_cuda_source.read_text()
+    replacement_count = contents.count(_OLD_DISPATCH)
+    if replacement_count != 2:
+        raise RuntimeError(
+            "Unexpected DINO CUDA source: expected exactly two legacy dispatch "
+            f"calls, found {replacement_count} in {cuda_source}"
+        )
+    generated_cuda_source.write_text(contents.replace(_OLD_DISPATCH, _NEW_DISPATCH))
+    return destination
 
 
 def get_cmdclass() -> dict[str, Any]:

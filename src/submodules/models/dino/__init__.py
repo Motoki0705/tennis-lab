@@ -2,6 +2,7 @@
 
 from src.submodules.models.dino.person_detector import (
     DEFAULT_DINO_CHECKPOINT,
+    DEFAULT_DINO_REPOSITORY,
     DinoPersonDetector,
     PersonDetectionRequest,
     PersonDetectionResult,
@@ -9,6 +10,7 @@ from src.submodules.models.dino.person_detector import (
 
 __all__ = [
     "DEFAULT_DINO_CHECKPOINT",
+    "DEFAULT_DINO_REPOSITORY",
     "DinoPersonDetector",
     "PersonDetectionRequest",
     "PersonDetectionResult",
