@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import importlib.util
+import sys
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -17,7 +19,9 @@ from src.submodules.models._base import BaseInferenceModel
 from src.utils.paths import PROJECT_ROOT
 
 DEFAULT_DINO_CHECKPOINT = PROJECT_ROOT / "ckpt/dino/checkpoint0029_4scale_swin.pth"
+DEFAULT_DINO_REPOSITORY = PROJECT_ROOT / "third_party/DINO"
 COCO_PERSON_CLASS_ID = 1
+_DINO_MODELS_PACKAGE = "_tennis_lab_third_party_dino_models"
 
 
 @dataclass(frozen=True)
@@ -43,6 +47,7 @@ class DinoPersonDetector(
     def __init__(
         self,
         checkpoint: str | Path = DEFAULT_DINO_CHECKPOINT,
+        repository: str | Path = DEFAULT_DINO_REPOSITORY,
         device: str | torch.device = "auto",
         confidence: float = 0.3,
         short_side: int = 800,
@@ -57,6 +62,7 @@ class DinoPersonDetector(
                 f"{short_side} and {max_long_side}"
             )
         self.checkpoint = Path(checkpoint)
+        self.repository = Path(repository)
         self.confidence = confidence
         self.short_side = short_side
         self.max_long_side = max_long_side
@@ -70,13 +76,13 @@ class DinoPersonDetector(
         if not self.checkpoint.exists():
             raise FileNotFoundError(f"DINO checkpoint not found: {self.checkpoint}")
         try:
-            from src.submodules.vendor.dino.models import build_dino
+            build_dino = _load_dino_build_function(self.repository)
         except ModuleNotFoundError as error:
             if error.name == "MultiScaleDeformableAttention":
                 raise RuntimeError(
                     "DINO CUDA extension is not installed. Run: "
-                    "uv pip install -v --no-build-isolation "
-                    "./src/submodules/vendor/dino/models/dino/ops"
+                    "TENNIS_LAB_BUILD_CUDA_OPS=1 "
+                    ".venv/bin/python setup.py build_ext --inplace"
                 ) from error
             raise
 
@@ -123,6 +129,88 @@ class DinoPersonDetector(
             image_height=height,
             confidence=self.confidence,
         )
+
+
+def _load_dino_build_function(repository: Path) -> Callable[[Any], tuple[Any, ...]]:
+    """Load official DINO without modifying or copying its source tree."""
+    models_init, util_init = _validate_dino_repository(repository)
+    _load_dino_util_package(util_init)
+
+    module = sys.modules.get(_DINO_MODELS_PACKAGE)
+    if module is None:
+        spec = importlib.util.spec_from_file_location(
+            _DINO_MODELS_PACKAGE,
+            models_init,
+            submodule_search_locations=[str(models_init.parent)],
+        )
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"Failed to create an import spec for {models_init}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[_DINO_MODELS_PACKAGE] = module
+        try:
+            spec.loader.exec_module(module)
+        except Exception:
+            for name in tuple(sys.modules):
+                if name == _DINO_MODELS_PACKAGE or name.startswith(
+                    f"{_DINO_MODELS_PACKAGE}."
+                ):
+                    sys.modules.pop(name, None)
+            raise
+    else:
+        loaded_file = getattr(module, "__file__", None)
+        if loaded_file is None or Path(loaded_file).resolve() != models_init.resolve():
+            raise RuntimeError(
+                "DINO models are already imported from a different repository: "
+                f"{loaded_file!r}"
+            )
+
+    build_dino = getattr(module, "build_dino", None)
+    if not callable(build_dino):
+        raise RuntimeError(
+            f"Official DINO module has no build_dino function: {models_init}"
+        )
+    return cast(Callable[[Any], tuple[Any, ...]], build_dino)
+
+
+def _validate_dino_repository(repository: Path) -> tuple[Path, Path]:
+    models_init = repository / "models/__init__.py"
+    util_init = repository / "util/__init__.py"
+    missing = [path for path in (models_init, util_init) if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            "DINO git submodule is not initialized. Run: "
+            "git submodule update --init third_party/DINO "
+            f"(missing: {', '.join(str(path) for path in missing)})"
+        )
+    return models_init, util_init
+
+
+def _load_dino_util_package(util_init: Path) -> None:
+    """Expose DINO's upstream absolute ``util.*`` imports explicitly."""
+    loaded = sys.modules.get("util")
+    if loaded is not None:
+        loaded_file = getattr(loaded, "__file__", None)
+        if loaded_file is None or Path(loaded_file).resolve() != util_init.resolve():
+            raise RuntimeError(
+                "Cannot load DINO because another top-level 'util' package is already "
+                f"imported from {loaded_file!r}"
+            )
+        return
+
+    spec = importlib.util.spec_from_file_location(
+        "util",
+        util_init,
+        submodule_search_locations=[str(util_init.parent)],
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Failed to create an import spec for {util_init}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["util"] = module
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        sys.modules.pop("util", None)
+        raise
 
 
 def _validate_checkpoint_args(args: Any) -> None:

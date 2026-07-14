@@ -7,7 +7,6 @@ repos:
         language: system
         types: [python]
         files: ^(src|tests)/
-        exclude: ^src/submodules/vendor/dino/
       - id: mypy
         name: mypy
         entry: mypy --follow-imports=skip
