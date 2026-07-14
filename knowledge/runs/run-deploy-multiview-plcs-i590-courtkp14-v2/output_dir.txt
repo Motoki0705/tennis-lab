@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/plcs/plcs_multiview_axial_split/logs/version_26/checkpoints
