@@ -29,6 +29,7 @@ dependencies = [
     "smplx>=0.1.28",
     "tensorboard>=2.20.0",
     "termcolor>=3.2.0",
+    "timm>=1.0.26",
     "torch>=2.9.0",
     "torchreid>=0.2.5",
     "torchvision>=0.24.0",
@@ -75,6 +76,11 @@ namespaces = false
     "configs/*/*.yaml",
     "configs/*/*/*.yaml",
     "configs/*/*/*.txt",
+    "vendor/dino/LICENSE",
+    "vendor/dino/models/dino/ops/src/**/*.cpp",
+    "vendor/dino/models/dino/ops/src/**/*.h",
+    "vendor/dino/models/dino/ops/src/**/*.cu",
+    "vendor/dino/models/dino/ops/src/**/*.cuh",
 ]
 
 [tool.ruff]
@@ -102,6 +108,8 @@ exclude = [
     "node_modules",
     "venv",
     "third_party",
+    # IDEA-Research DINO is kept close to upstream; typed wrappers are checked.
+    "src/submodules/vendor/dino",
 ]
 
 # Same as Black.

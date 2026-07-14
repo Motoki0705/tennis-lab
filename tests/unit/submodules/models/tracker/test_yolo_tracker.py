@@ -1,9 +1,12 @@
 """Tests for src/submodules/models/tracker/yolo_tracker.py (pure helpers)."""
 
 import numpy as np
+import pytest
 import torch
 
+from src.submodules.models.tracker.common import select_and_complete_tracks
 from src.submodules.models.tracker.yolo_tracker import (
+    TrackRequest,
     TrackResult,
     _build_track_tensor,
     _sort_tracks,
@@ -40,7 +43,9 @@ class TestSortTracks:
 class TestBuildTrackTensor:
     def test_interpolates_and_covers_all_frames(self):
         id_to_frame_ids, id_to_bbx_xyxys, _ = _sort_tracks(make_history())
-        track = _build_track_tensor(id_to_frame_ids[1], id_to_bbx_xyxys[1], num_frames=4)
+        track = _build_track_tensor(
+            id_to_frame_ids[1], id_to_bbx_xyxys[1], num_frames=4
+        )
 
         assert track.shape == (4, 4)
         assert track.dtype == torch.float32
@@ -63,3 +68,13 @@ class TestTrackResult:
         torch.testing.assert_close(xys[:, 1], torch.full((3,), 150.0))
         # w=100 < h*192/256=150 -> w:=150; size = max(h, w) * 1.2 = 240
         torch.testing.assert_close(xys[:, 2], torch.full((3,), 240.0))
+
+
+def test_requested_track_count_must_be_available() -> None:
+    one_track_history = [[make_history()[0][0]], [make_history()[1][0]]]
+    with pytest.raises(RuntimeError, match="Requested 2 person tracks"):
+        select_and_complete_tracks(
+            one_track_history,
+            TrackRequest("video.mp4", num_tracks=2),
+            num_frames=2,
+        )

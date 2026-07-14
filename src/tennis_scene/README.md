@@ -18,7 +18,7 @@
 - **`orchestrator.py`**: `TennisSceneOrchestrator`。全stageの構築・同期検証・実行・`SceneResult`組み立てを統括。
 - **`dependency_graph.py`**: `PipelineDependencyGraph`。stage依存(`PLCS<-COURT_KP,GVHMR`等)の解決・循環検出。
 - **`components/court_kp.py`**: `CourtKPModule`。手動UIまたはモデル推論でコートkeypointを取得。
-- **`components/gvhmr.py`**: `GVHMRModule`。`src/submodules/models` の GVHMR チェーン（tracking→ViTPose→HMR2→GVHMR）を同一プロセスで実行しSMPL/2D poseを取得。重みは `ckpt/` symlink 経由。
+- **`components/gvhmr.py`**: `GVHMRModule`。`src/submodules/models` の GVHMR チェーン（YOLOまたはDINO person検出→BoT-SORT→ViTPose→HMR2→GVHMR）を同一プロセスで実行しSMPL/2D poseを取得。`gvhmr.detector` で `yolo` / `dino` を明示選択する。
 - **`components/player_association.py`**: `PlayerAssociationModule`。カメラ間player対応付け(手動UI)を正準player軸へ整列。
 - **`components/plcs.py`**: `PLCSModule`。`court_kp`をplayer数へexpandしPLCS predictorへ渡す。
 - **`components/ball_detection.py`**: `BallDetectionModule`。スライディングウィンドウ推論とオーバーラップ集約。
