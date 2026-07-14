@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import numpy as np
 import torch
 from torch import Tensor
 
+from src.tasks.base.data.court_lines import CourtLineInputBuilder, CourtLineInputConfig
 from src.tasks.base.data.scene_dataset import (
     Scene,
     SceneDatasetBase,
@@ -15,7 +18,6 @@ from src.tasks.base.data.scene_dataset import (
 )
 from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
 from src.tasks.plcs.data.targets import build_coco17_world_targets
-from src.tasks.plcs.data.types import PLCSBatch
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -48,18 +50,21 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         self._configure_task(data_cfg)
         super().__init__(
             config=self._build_scene_dataset_config(
-                scene_dir=scene_dir, split_file=split_file, data_cfg=data_cfg,
+                scene_dir=scene_dir,
+                split_file=split_file,
+                data_cfg=data_cfg,
             )
         )
 
     # -- Composed-method hooks ------------------------------------------
 
-    def _configure_task(self, data_cfg: dict) -> None:  # type: ignore[override]
+    def _configure_task(self, data_cfg: dict) -> None:
         from omegaconf import DictConfig
 
         self.camera_mode_plcs = str(data_cfg.get("camera_mode", "random"))
         self.is_multiview = str(data_cfg.get("mode", "frame")) in {
-            "multiview", "multiview_sequence",
+            "multiview",
+            "multiview_sequence",
         }
 
         if "num_views_range" in data_cfg:
@@ -76,14 +81,26 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
 
         augmentation_cfg = data_cfg.get("augmentation")
         if not isinstance(augmentation_cfg, (dict, DictConfig)):
-            raise ValueError(
-                "data.augmentation must be a mapping-like config."
-            )
+            raise ValueError("data.augmentation must be a mapping-like config.")
         self.augmentation = PLCSObservationAugmentation(augmentation_cfg)
         # Number of court keypoints to use (first N from the canonical order)
         self.num_court_kp = int(data_cfg.get("num_court_kp", 20))
+        self.court_input_type = str(data_cfg.get("court_input_type", "kp"))
+        if self.court_input_type not in {"kp", "line"}:
+            raise ValueError(
+                "data.court_input_type must be 'kp' or 'line', got "
+                f"{self.court_input_type!r}."
+            )
+        self.court_line_builder: CourtLineInputBuilder | None = None
+        if self.court_input_type == "line":
+            line_cfg = data_cfg.get("court_line")
+            if not isinstance(line_cfg, Mapping):
+                raise ValueError("data.court_line must be a mapping in line mode.")
+            self.court_line_builder = CourtLineInputBuilder(
+                CourtLineInputConfig.from_mapping(line_cfg)
+            )
 
-    def _build_scene_dataset_config(  # type: ignore[override]
+    def _build_scene_dataset_config(
         self,
         *,
         scene_dir: str | Path,
@@ -108,9 +125,7 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         # Resolve effective frame count from arrays
         pos_len = int(scene.data["position"].shape[0])
         rot_len = int(scene.data["rotation"].shape[0])
-        primary_len = int(
-            scene.get_camera_array(cams.primary, "human_kp_uv").shape[0]
-        )
+        primary_len = int(scene.get_camera_array(cams.primary, "human_kp_uv").shape[0])
         full_len = scene.effective_num_frames(primary_len, pos_len, rot_len)
         window = self.select_window(scene, full_len=full_len)
 
@@ -143,12 +158,8 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             human_vis_list.append(human_vis)
             court_vis_list.append(court_vis)
 
-        position = torch.from_numpy(
-            scene.get_array("position", window=window)
-        ).float()
-        rotation = torch.from_numpy(
-            scene.get_array("rotation", window=window)
-        ).float()
+        position = torch.from_numpy(scene.get_array("position", window=window)).float()
+        rotation = torch.from_numpy(scene.get_array("rotation", window=window)).float()
 
         sample: dict[str, Tensor] = {
             "human_kp": torch.stack(human_kp_list, dim=0),
@@ -156,7 +167,9 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             "human_vis": torch.stack(human_vis_list, dim=0),
             "court_vis": torch.stack(court_vis_list, dim=0),
             "human_mask": torch.ones(
-                len(cams.indices), window.seq_len, dtype=torch.float32,
+                len(cams.indices),
+                window.seq_len,
+                dtype=torch.float32,
             ),
             "position": position,
             "rotation": rotation,
@@ -167,27 +180,47 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         # (already parsed dict) so build_coco17_world_targets gets a plain dict.
         payload_for_targets = {**scene.data, "meta": scene.meta}
         human_kp_3d = build_coco17_world_targets(payload_for_targets)
-        sample["human_kp_3d"] = torch.from_numpy(
-            human_kp_3d[window.sl].copy()
-        ).float()
+        sample["human_kp_3d"] = torch.from_numpy(human_kp_3d[window.sl].copy()).float()
 
         return sample
 
     def augment_sample(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
-        if not self.augment:
-            return sample
-        return self.augmentation.forward(sample)
+        out = self.augmentation.forward(sample) if self.augment else sample
+        if self.court_input_type == "kp":
+            return out
+        if self.augment:
+            out["court_kp"] = sample["court_kp"]
+            out["court_vis"] = sample["court_vis"]
+        if self.court_line_builder is None:
+            raise RuntimeError("court_line_builder is not initialized in line mode.")
+        seed = int(torch.randint(0, 2**31 - 1, ()).item()) if self.augment else 0
+        court_kp = out.get("court_kp")
+        if court_kp is None:
+            raise KeyError("court_kp is required to synthesize court_lines.")
+        result = dict(out)
+        result["court_lines"] = self.court_line_builder.build(
+            court_kp,
+            augment=self.augment,
+            rng=np.random.default_rng(seed),
+        )
+        result.pop("court_kp", None)
+        result.pop("court_vis", None)
+        return result
 
 
-def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, Tensor]:
+def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
     """Collate variable-view/variable-length PLCS samples into a padded batch."""
     max_views = max(int(sample["human_kp"].shape[0]) for sample in batch)
     max_seq_len = max(int(sample["human_kp"].shape[1]) for sample in batch)
+    has_court_lines = "court_lines" in batch[0]
+    if any(("court_lines" in sample) != has_court_lines for sample in batch):
+        raise ValueError("A batch cannot mix KP and line court-input samples.")
 
     human_kp_batch = []
     court_kp_batch = []
     human_vis_batch = []
     court_vis_batch = []
+    court_lines_batch = []
     human_mask_batch = []
     position_batch = []
     rotation_batch = []
@@ -200,37 +233,91 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
         pad_seq = max_seq_len - seq_len
 
         human_kp = sample["human_kp"]
-        court_kp = sample["court_kp"]
-        n_kp = int(court_kp.shape[2])
+        court_kp = sample.get("court_kp")
+        court_lines = sample.get("court_lines")
         human_vis = sample["human_vis"]
-        court_vis = sample["court_vis"]
+        court_vis = sample.get("court_vis")
         human_mask = sample["human_mask"]
         position = sample["position"]
         rotation = sample["rotation"]
         human_kp_3d = sample.get("human_kp_3d")
+        if has_court_lines:
+            if court_lines is None or court_kp is not None or court_vis is not None:
+                raise ValueError(
+                    "Line samples must contain only court_lines court input."
+                )
+            if court_lines.shape[-1] != 4:
+                raise ValueError("court_lines must have trailing shape (L, 4).")
+            max_court_lines = int(court_lines.shape[-2])
+        else:
+            if court_kp is None or court_vis is None:
+                raise ValueError("KP samples require court_kp and court_vis.")
+            n_kp = int(court_kp.shape[2])
 
         if pad_seq > 0:
-            human_kp = torch.cat([human_kp, torch.zeros(n_views, pad_seq, 17, 2)], dim=1)
-            court_kp = torch.cat([court_kp, torch.zeros(n_views, pad_seq, n_kp, 2)], dim=1)
+            human_kp = torch.cat(
+                [human_kp, torch.zeros(n_views, pad_seq, 17, 2)], dim=1
+            )
+            if has_court_lines:
+                assert court_lines is not None
+                court_lines = torch.cat(
+                    [court_lines, torch.zeros(n_views, pad_seq, max_court_lines, 4)],
+                    dim=1,
+                )
+            else:
+                assert court_kp is not None and court_vis is not None
+                court_kp = torch.cat(
+                    [court_kp, torch.zeros(n_views, pad_seq, n_kp, 2)], dim=1
+                )
+                court_vis = torch.cat(
+                    [court_vis, torch.zeros(n_views, pad_seq, n_kp)], dim=1
+                )
             human_vis = torch.cat([human_vis, torch.zeros(n_views, pad_seq, 17)], dim=1)
-            court_vis = torch.cat([court_vis, torch.zeros(n_views, pad_seq, n_kp)], dim=1)
             human_mask = torch.cat([human_mask, torch.zeros(n_views, pad_seq)], dim=1)
             position = torch.cat([position, torch.zeros(pad_seq, 3)], dim=0)
             rotation = torch.cat([rotation, torch.zeros(pad_seq, 2)], dim=0)
             if human_kp_3d is not None:
-                human_kp_3d = torch.cat([human_kp_3d, torch.zeros(pad_seq, 17, 3)], dim=0)
+                human_kp_3d = torch.cat(
+                    [human_kp_3d, torch.zeros(pad_seq, 17, 3)], dim=0
+                )
 
         if pad_views > 0:
-            human_kp = torch.cat([human_kp, torch.zeros(pad_views, max_seq_len, 17, 2)], dim=0)
-            court_kp = torch.cat([court_kp, torch.zeros(pad_views, max_seq_len, n_kp, 2)], dim=0)
-            human_vis = torch.cat([human_vis, torch.zeros(pad_views, max_seq_len, 17)], dim=0)
-            court_vis = torch.cat([court_vis, torch.zeros(pad_views, max_seq_len, n_kp)], dim=0)
-            human_mask = torch.cat([human_mask, torch.zeros(pad_views, max_seq_len)], dim=0)
+            human_kp = torch.cat(
+                [human_kp, torch.zeros(pad_views, max_seq_len, 17, 2)], dim=0
+            )
+            if has_court_lines:
+                assert court_lines is not None
+                court_lines = torch.cat(
+                    [
+                        court_lines,
+                        torch.zeros(pad_views, max_seq_len, max_court_lines, 4),
+                    ],
+                    dim=0,
+                )
+            else:
+                assert court_kp is not None and court_vis is not None
+                court_kp = torch.cat(
+                    [court_kp, torch.zeros(pad_views, max_seq_len, n_kp, 2)], dim=0
+                )
+                court_vis = torch.cat(
+                    [court_vis, torch.zeros(pad_views, max_seq_len, n_kp)], dim=0
+                )
+            human_vis = torch.cat(
+                [human_vis, torch.zeros(pad_views, max_seq_len, 17)], dim=0
+            )
+            human_mask = torch.cat(
+                [human_mask, torch.zeros(pad_views, max_seq_len)], dim=0
+            )
 
         human_kp_batch.append(human_kp)
-        court_kp_batch.append(court_kp)
+        if has_court_lines:
+            assert court_lines is not None
+            court_lines_batch.append(court_lines)
+        else:
+            assert court_kp is not None and court_vis is not None
+            court_kp_batch.append(court_kp)
+            court_vis_batch.append(court_vis)
         human_vis_batch.append(human_vis)
-        court_vis_batch.append(court_vis)
         human_mask_batch.append(human_mask)
         position_batch.append(position)
         rotation_batch.append(rotation)
@@ -239,13 +326,16 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> PLCSBatch | dict[str, 
 
     collated: dict[str, Tensor] = {
         "human_kp": torch.stack(human_kp_batch, dim=0),
-        "court_kp": torch.stack(court_kp_batch, dim=0),
         "human_vis": torch.stack(human_vis_batch, dim=0),
-        "court_vis": torch.stack(court_vis_batch, dim=0),
         "human_mask": torch.stack(human_mask_batch, dim=0),
         "position": torch.stack(position_batch, dim=0),
         "rotation": torch.stack(rotation_batch, dim=0),
     }
+    if has_court_lines:
+        collated["court_lines"] = torch.stack(court_lines_batch, dim=0)
+    else:
+        collated["court_kp"] = torch.stack(court_kp_batch, dim=0)
+        collated["court_vis"] = torch.stack(court_vis_batch, dim=0)
     if human_kp_3d_batch:
         collated["human_kp_3d"] = torch.stack(human_kp_3d_batch, dim=0)
 
@@ -272,13 +362,16 @@ def adapt_batch_for_model_profile(
     if input_profile == "frame":
         adapted: dict[str, Tensor] = {
             "human_kp": batch["human_kp"][:, camera_index, 0],
-            "court_kp": batch["court_kp"][:, camera_index, 0],
             "human_vis": batch["human_vis"][:, camera_index, 0],
-            "court_vis": batch["court_vis"][:, camera_index, 0],
             "human_mask": batch["human_mask"][:, camera_index, 0],
             "position": batch["position"][:, 0],
             "rotation": batch["rotation"][:, 0],
         }
+        if "court_lines" in batch:
+            adapted["court_lines"] = batch["court_lines"][:, camera_index, 0]
+        else:
+            adapted["court_kp"] = batch["court_kp"][:, camera_index, 0]
+            adapted["court_vis"] = batch["court_vis"][:, camera_index, 0]
         if "human_kp_3d" in batch:
             adapted["human_kp_3d"] = batch["human_kp_3d"][:, 0]
         return adapted
@@ -286,13 +379,16 @@ def adapt_batch_for_model_profile(
     if input_profile == "sequence":
         adapted = {
             "human_kp": batch["human_kp"][:, camera_index],
-            "court_kp": batch["court_kp"][:, camera_index],
             "human_vis": batch["human_vis"][:, camera_index],
-            "court_vis": batch["court_vis"][:, camera_index],
             "human_mask": batch["human_mask"][:, camera_index],
             "position": batch["position"],
             "rotation": batch["rotation"],
         }
+        if "court_lines" in batch:
+            adapted["court_lines"] = batch["court_lines"][:, camera_index]
+        else:
+            adapted["court_kp"] = batch["court_kp"][:, camera_index]
+            adapted["court_vis"] = batch["court_vis"][:, camera_index]
         if "human_kp_3d" in batch:
             adapted["human_kp_3d"] = batch["human_kp_3d"]
         return adapted

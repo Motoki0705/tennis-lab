@@ -20,8 +20,9 @@ class BLCSSample(TypedDict):
 
     ball_uv: torch.Tensor  # (T, 2) ball 2D trajectory in normalized UV
     ball_vis: torch.Tensor  # (T,) ball visibility flags
-    court_kp: torch.Tensor  # (20, 2) court 2D keypoints in normalized UV
-    court_vis: torch.Tensor  # (20,) court keypoint visibility flags
+    court_kp: NotRequired[torch.Tensor]  # (20, 2), KP court-input mode
+    court_vis: NotRequired[torch.Tensor]  # (20,), KP court-input mode
+    court_lines: NotRequired[torch.Tensor]  # (T, L_max, 4), line court-input mode
     position_3d: torch.Tensor  # (T, 3) ground truth 3D trajectory (normalized)
     velocity_3d: torch.Tensor  # (T, 3) 3D velocity vectors
     seq_len: torch.Tensor  # scalar, actual sequence length
@@ -38,8 +39,9 @@ class BLCSBatch(TypedDict):
     ball_uv_target: NotRequired[torch.Tensor]  # (B, 1, T_max, 2) clean 2D loss target
     ball_vis_target: NotRequired[torch.Tensor]  # (B, 1, T_max) clean visibility target
     ball_mask: torch.Tensor  # (B, T_max) padding mask (1=valid)
-    court_kp: torch.Tensor  # (B, 20, 2) court keypoints
-    court_vis: torch.Tensor  # (B, 20) court keypoint visibility
+    court_kp: NotRequired[torch.Tensor]  # (B, 20, 2), KP mode
+    court_vis: NotRequired[torch.Tensor]  # (B, 20), KP mode
+    court_lines: NotRequired[torch.Tensor]  # (B, T_max, L_max, 4), line mode
     position_3d: torch.Tensor  # (B, T_max, 3) padded ground truth trajectories
     velocity_3d: torch.Tensor  # (B, T_max, 3) padded velocities
     seq_len: torch.Tensor  # (B,) actual sequence lengths
@@ -61,8 +63,9 @@ class BLCSMultiViewSample(TypedDict):
     ball_uv_target: NotRequired[torch.Tensor]  # (N_cam, T, 2) clean pre-augmentation UV
     ball_vis_target: NotRequired[torch.Tensor]  # (N_cam, T) clean pre-augmentation vis
     ball_mask: torch.Tensor  # (N_cam, T) sequence padding masks (1=valid token)
-    court_kp: torch.Tensor  # (N_cam, T, 20, 2) court keypoints expanded to T
-    court_vis: torch.Tensor  # (N_cam, T, 20) court visibility expanded to T
+    court_kp: NotRequired[torch.Tensor]  # (N_cam, T, 20, 2), KP mode
+    court_vis: NotRequired[torch.Tensor]  # (N_cam, T, 20), KP mode
+    court_lines: NotRequired[torch.Tensor]  # (N_cam, T, L_max, 4), line mode
     position_3d: torch.Tensor  # (T, 3) ground truth 3D trajectory (shared)
     velocity_3d: torch.Tensor  # (T, 3) 3D velocity vectors (shared)
     seq_len: torch.Tensor  # scalar, actual sequence length
@@ -84,8 +87,9 @@ class BLCSMultiViewBatch(TypedDict):
     ball_uv_target: NotRequired[torch.Tensor]  # (B, N_max, T_max, 2)
     ball_vis_target: NotRequired[torch.Tensor]  # (B, N_max, T_max)
     ball_mask: torch.Tensor  # (B, N_max, T_max) padding mask
-    court_kp: torch.Tensor  # (B, N_max, T_max, 20, 2)
-    court_vis: torch.Tensor  # (B, N_max, T_max, 20)
+    court_kp: NotRequired[torch.Tensor]  # (B, N_max, T_max, 20, 2), KP mode
+    court_vis: NotRequired[torch.Tensor]  # (B, N_max, T_max, 20), KP mode
+    court_lines: NotRequired[torch.Tensor]  # (B, N_max, T_max, L_max, 4), line mode
     position_3d: torch.Tensor  # (B, T_max, 3)
     velocity_3d: torch.Tensor  # (B, T_max, 3)
     seq_len: torch.Tensor  # (B,)

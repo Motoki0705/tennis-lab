@@ -2,6 +2,7 @@
 # Size-specific configs (small/base/large/xlarge) compose from this via defaults.
 
 name: plcs_multiview_axial
+court_input_type: kp
 
 io:
   input_profile: multiview

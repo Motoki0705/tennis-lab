@@ -7,7 +7,7 @@ for metadata, ensuring type safety throughout the PLCS pipeline.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 import torch
 
@@ -26,13 +26,13 @@ class PLCSBatch(TypedDict):
     """
 
     human_kp: torch.Tensor
-    court_kp: torch.Tensor
+    court_kp: NotRequired[torch.Tensor]
+    court_lines: NotRequired[torch.Tensor]
     human_vis: torch.Tensor
     human_mask: torch.Tensor
-    court_vis: torch.Tensor
+    court_vis: NotRequired[torch.Tensor]
     position: torch.Tensor
     rotation: torch.Tensor
-
 
 
 @dataclass(frozen=True)

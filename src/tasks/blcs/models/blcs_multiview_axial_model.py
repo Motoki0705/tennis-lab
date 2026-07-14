@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 from torch import Tensor, nn
 
@@ -18,7 +18,11 @@ from src.utils.models import (
 )
 from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
 from src.utils.models.components.ops.time_local import build_local_attention_keep_mask
-from src.utils.models.embeddings import CourtBallGroupEmbedding, InvisibleTokenEmbedding
+from src.utils.models.embeddings import (
+    CourtBallGroupEmbedding,
+    CourtLineBallGroupEmbedding,
+    InvisibleTokenEmbedding,
+)
 from src.utils.schema.court import NUM_COURT_KP
 
 if TYPE_CHECKING:
@@ -47,6 +51,8 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         max_num_cameras: int = 8,
         invisible_init_std: float = 0.02,
         num_court_tokens: int = NUM_COURT_KP,
+        court_input_type: Literal["kp", "line"] = "kp",
+        max_court_lines: int = 12,
         time_window_radius: int = 16,
         camera_layers_per_stage: Sequence[int] | None = None,
         time_layers_per_stage: Sequence[int] | None = None,
@@ -86,6 +92,14 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         self.max_num_cameras = int(max_num_cameras)
         self.predict_velocity = bool(predict_velocity)
         self.num_court_tokens = int(num_court_tokens)
+        if court_input_type not in {"kp", "line"}:
+            raise ValueError(
+                f"court_input_type must be 'kp' or 'line', got {court_input_type!r}."
+            )
+        self.court_input_type = court_input_type
+        self.max_court_lines = int(max_court_lines)
+        if self.max_court_lines <= 0:
+            raise ValueError("max_court_lines must be positive.")
         self.time_window_radius = int(time_window_radius)
         self.camera_layers_per_stage = camera_layers_per_stage
         self.time_layers_per_stage = time_layers_per_stage
@@ -113,11 +127,20 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             dim=self.hidden_dim,
             init_std=invisible_init_std,
         )
-        self.group_embed = CourtBallGroupEmbedding(
-            dim=self.hidden_dim,
-            invisible_token=self.invisible_token,
-            num_court_tokens=self.num_court_tokens,
-        )
+        if self.court_input_type == "kp":
+            self.group_embed: CourtBallGroupEmbedding | None = CourtBallGroupEmbedding(
+                dim=self.hidden_dim,
+                invisible_token=self.invisible_token,
+                num_court_tokens=self.num_court_tokens,
+            )
+            self.line_group_embed: CourtLineBallGroupEmbedding | None = None
+        else:
+            self.group_embed = None
+            self.line_group_embed = CourtLineBallGroupEmbedding(
+                dim=self.hidden_dim,
+                max_court_lines=self.max_court_lines,
+                invisible_token=self.invisible_token,
+            )
 
         self.camera_layers = nn.ModuleList(
             [
@@ -235,9 +258,13 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 f"{len(time_global_stage_mask)} and {num_layers}"
             )
         if any(layer_count <= 0 for layer_count in camera_layers_per_stage):
-            raise ValueError("camera_layers_per_stage must contain only positive integers")
+            raise ValueError(
+                "camera_layers_per_stage must contain only positive integers"
+            )
         if any(layer_count <= 0 for layer_count in time_layers_per_stage):
-            raise ValueError("time_layers_per_stage must contain only positive integers")
+            raise ValueError(
+                "time_layers_per_stage must contain only positive integers"
+            )
 
     @staticmethod
     def _normalize_stage_ints(
@@ -269,10 +296,14 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_heads=int(model_cfg.get("num_heads", 8)),
-            attention_type=str(model_cfg.get("attention_type", "mha")),
+            attention_type=cast(
+                Literal["mha", "gqa"], str(model_cfg.get("attention_type", "mha"))
+            ),
             num_kv_heads=model_cfg.get("num_kv_heads", None),
             ffn_dim=model_cfg.get("ffn_dim", None),
-            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
+            ffn_type=cast(
+                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
+            ),
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
@@ -290,6 +321,10 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                     "num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP)
                 )
             ),
+            court_input_type=cast(
+                Literal["kp", "line"], str(model_cfg.get("court_input_type", "kp"))
+            ),
+            max_court_lines=int(model_cfg.get("max_court_lines", 12)),
             time_window_radius=int(model_cfg.get("time_window_radius", 16)),
             camera_layers_per_stage=model_cfg.get("camera_layers_per_stage", None),
             time_layers_per_stage=model_cfg.get("time_layers_per_stage", None),
@@ -331,56 +366,100 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             freqs_cis=time_freqs,
             attn_mask=attn_mask,
         )
-        return x_time.reshape(batch_size, n_cams, seq_len, self.hidden_dim).permute(
-            0, 2, 1, 3
+        return cast(
+            Tensor,
+            x_time.reshape(batch_size, n_cams, seq_len, self.hidden_dim).permute(
+                0, 2, 1, 3
+            ),
         )
 
     def forward(
         self,
         ball_uv: Tensor,
-        court_kp: Tensor,
+        court_kp: Tensor | None = None,
         ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
+        court_lines: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Forward pass for multi-view BLCS inputs."""
-        (
-            court_kp,
-            ball_vis,
-            ball_mask,
-            court_vis,
-            batch_size,
-            n_cams,
-            seq_len_in,
-        ) = self._prepare_forward_inputs(
-            ball_uv=ball_uv,
-            court_kp=court_kp,
-            ball_vis=ball_vis,
-            ball_mask=ball_mask,
-            court_vis=court_vis,
-        )
-
-        court_flat = court_kp.reshape(
-            batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
-        )
-        ball_flat = ball_uv.reshape(batch_size * n_cams * seq_len_in, 2)
-        group_vis = ball_vis.reshape(batch_size * n_cams * seq_len_in)
-        x = (
-            self.group_embed(court_flat, ball_flat, group_vis)
-            .reshape(
+        if self.court_input_type == "kp":
+            if court_lines is not None:
+                raise ValueError(
+                    "court_lines must not be provided in court_input_type='kp'."
+                )
+            (
+                prepared_court_kp,
+                ball_vis,
+                ball_mask,
+                court_vis,
                 batch_size,
                 n_cams,
                 seq_len_in,
-                self.hidden_dim,
+            ) = self._prepare_forward_inputs(
+                ball_uv=ball_uv,
+                court_kp=court_kp,
+                ball_vis=ball_vis,
+                ball_mask=ball_mask,
+                court_vis=court_vis,
             )
-            .permute(0, 2, 1, 3)
-        )
+            court_flat = prepared_court_kp.reshape(
+                batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
+            )
+            ball_flat = ball_uv.reshape(batch_size * n_cams * seq_len_in, 2)
+            group_vis = ball_vis.reshape(batch_size * n_cams * seq_len_in)
+            if self.group_embed is None:
+                raise RuntimeError("KP group embedding is not initialized.")
+            x = (
+                self.group_embed(court_flat, ball_flat, group_vis)
+                .reshape(
+                    batch_size,
+                    n_cams,
+                    seq_len_in,
+                    self.hidden_dim,
+                )
+                .permute(0, 2, 1, 3)
+            )
+            token_valid = (ball_mask > 0).permute(0, 2, 1)
+            tokens_per_camera = 1
+        else:
+            if court_kp is not None or court_vis is not None:
+                raise ValueError(
+                    "court_kp and court_vis must not be provided in court_input_type='line'."
+                )
+            (
+                prepared_lines,
+                ball_vis,
+                ball_mask,
+                batch_size,
+                n_cams,
+                seq_len_in,
+            ) = self._prepare_line_forward_inputs(
+                ball_uv=ball_uv,
+                court_lines=court_lines,
+                ball_vis=ball_vis,
+                ball_mask=ball_mask,
+            )
+            line_flat = prepared_lines.reshape(
+                batch_size * n_cams * seq_len_in, self.max_court_lines, 4
+            )
+            ball_flat = ball_uv.reshape(batch_size * n_cams * seq_len_in, 2)
+            group_vis = ball_vis.reshape(batch_size * n_cams * seq_len_in)
+            if self.line_group_embed is None:
+                raise RuntimeError("Line group embedding is not initialized.")
+            x = (
+                self.line_group_embed(line_flat, ball_flat, group_vis)
+                .reshape(batch_size, n_cams, seq_len_in, 2, self.hidden_dim)
+                .permute(0, 2, 1, 3, 4)
+                .reshape(batch_size, seq_len_in, n_cams * 2, self.hidden_dim)
+            )
+            token_valid = (ball_mask > 0).permute(0, 2, 1).repeat_interleave(2, dim=2)
+            tokens_per_camera = 2
 
-        token_valid = (ball_mask > 0).permute(0, 2, 1)
-
-        camera_valid = token_valid.reshape(batch_size * seq_len_in, n_cams)
+        axis_tokens = n_cams * tokens_per_camera
+        camera_valid = token_valid.reshape(batch_size * seq_len_in, axis_tokens)
         time_valid = token_valid.permute(0, 2, 1).reshape(
-            batch_size * n_cams, seq_len_in
+            batch_size * axis_tokens, seq_len_in
         )
         camera_mask, _ = self._build_self_attn_mask(camera_valid)
         time_mask, time_valid = self._build_self_attn_mask(time_valid)
@@ -388,33 +467,45 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             batch_size=batch_size,
             seq_len=seq_len_in,
             n_cams=n_cams,
+            tokens_per_camera=tokens_per_camera,
         )
         time_freqs = self._time_freqs(
             batch_size=batch_size,
             seq_len=seq_len_in,
             n_cams=n_cams,
+            tokens_per_camera=tokens_per_camera,
         )
         sliding_mask = self._build_sliding_attn_mask(
             time_valid,
             radius=self.time_window_radius,
         )
 
-        for stage_index, (camera_stage_layers, time_stage_layers) in enumerate(zip(
-            self.camera_layers,
-            self.time_layers,
-            strict=True,
-        )):
-            for camera_layer in camera_stage_layers:
-                x_camera = x.reshape(batch_size * seq_len_in, n_cams, self.hidden_dim)
+        for stage_index, (camera_stage_module, time_stage_module) in enumerate(
+            zip(
+                self.camera_layers,
+                self.time_layers,
+                strict=True,
+            )
+        ):
+            camera_stage_layers = cast(nn.ModuleList, camera_stage_module)
+            time_stage_layers = cast(nn.ModuleList, time_stage_module)
+            for camera_layer_module in camera_stage_layers:
+                camera_layer = cast(TransformerBlock, camera_layer_module)
+                x_camera = x.reshape(
+                    batch_size * seq_len_in, axis_tokens, self.hidden_dim
+                )
                 x_camera = camera_layer(
                     x_camera,
                     freqs_cis=camera_freqs,
                     attn_mask=camera_mask,
                 )
-                x = x_camera.reshape(batch_size, seq_len_in, n_cams, self.hidden_dim)
+                x = x_camera.reshape(
+                    batch_size, seq_len_in, axis_tokens, self.hidden_dim
+                )
 
             time_layers_in_stage = len(time_stage_layers)
-            for time_layer_index, time_layer in enumerate(time_stage_layers):
+            for time_layer_index, time_layer_module in enumerate(time_stage_layers):
+                time_layer = cast(TransformerBlock, time_layer_module)
                 x = self._apply_time_attention_layer(
                     x,
                     time_layer=time_layer,
@@ -428,7 +519,8 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                     time_freqs=time_freqs,
                 )
 
-        x = x[:, :, 0, :]
+        readout_index = 0 if self.court_input_type == "kp" else 1
+        x = x[:, :, readout_index, :]
         x = self.final_norm(x)
 
         out: dict[str, Tensor] = {"position": self.position_head(x)}
@@ -440,7 +532,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         self,
         *,
         ball_uv: Tensor,
-        court_kp: Tensor,
+        court_kp: Tensor | None,
         ball_vis: Tensor | None,
         ball_mask: Tensor | None,
         court_vis: Tensor | None,
@@ -461,6 +553,8 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 f"n_cams={n_cams} exceeds max_num_cameras={self.max_num_cameras}."
             )
 
+        if court_kp is None:
+            raise ValueError("court_kp is required for court_input_type='kp'.")
         if court_kp.dim() == 4:
             court_kp = court_kp.unsqueeze(2).expand(-1, -1, seq_len_in, -1, -1)
         if court_kp.dim() != 5:
@@ -509,3 +603,53 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 f"got {tuple(ball_mask.shape)}"
             )
         return court_kp, ball_vis, ball_mask, court_vis, batch_size, n_cams, seq_len_in
+
+    def _prepare_line_forward_inputs(
+        self,
+        *,
+        ball_uv: Tensor,
+        court_lines: Tensor | None,
+        ball_vis: Tensor | None,
+        ball_mask: Tensor | None,
+    ) -> tuple[Tensor, Tensor, Tensor, int, int, int]:
+        if ball_uv.dim() != 4:
+            raise ValueError(
+                f"ball_uv must have shape (B, N, T, 2), got {tuple(ball_uv.shape)}"
+            )
+        batch_size, n_cams, seq_len_in, _ = ball_uv.shape
+        if seq_len_in > self.max_seq_len:
+            raise ValueError(
+                f"seq_len={seq_len_in} exceeds max_seq_len={self.max_seq_len}."
+            )
+        if n_cams > self.max_num_cameras:
+            raise ValueError(
+                f"n_cams={n_cams} exceeds max_num_cameras={self.max_num_cameras}."
+            )
+        if court_lines is None:
+            raise ValueError("court_lines is required for court_input_type='line'.")
+        if court_lines.dim() == 4:
+            court_lines = court_lines.unsqueeze(2).expand(-1, -1, seq_len_in, -1, -1)
+        expected = (batch_size, n_cams, seq_len_in, self.max_court_lines, 4)
+        if tuple(court_lines.shape) != expected:
+            raise ValueError(
+                f"court_lines must have shape {expected}, got {tuple(court_lines.shape)}."
+            )
+        if ball_vis is None or tuple(ball_vis.shape) != (
+            batch_size,
+            n_cams,
+            seq_len_in,
+        ):
+            raise ValueError(
+                "ball_vis is required with shape "
+                f"{(batch_size, n_cams, seq_len_in)} for line mode."
+            )
+        if ball_mask is None or tuple(ball_mask.shape) != (
+            batch_size,
+            n_cams,
+            seq_len_in,
+        ):
+            raise ValueError(
+                "ball_mask is required with shape "
+                f"{(batch_size, n_cams, seq_len_in)} for line mode."
+            )
+        return court_lines, ball_vis, ball_mask, batch_size, n_cams, seq_len_in
