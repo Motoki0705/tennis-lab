@@ -8,19 +8,136 @@ so the ball- and court-detection scripts share a single implementation.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, cast
 
 import cv2
 import numpy as np
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
+from torch import Tensor
+
+from src.tasks.base.data.court_lines import (
+    CourtLineFrameResult,
+    CourtLineInputBuilder,
+    CourtLineInputConfig,
+)
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
 
 __all__ = [
+    "build_court_line_preview_rows",
     "compose_titled_row",
+    "court_line_frame_metadata",
     "draw_normalized_point",
     "enable_all_augmentation_blocks",
+    "make_court_line_preview_builder",
+    "make_court_kp_preview_config",
+    "render_court_line_frame",
+    "resolve_court_input_type",
     "resolve_sample_indices",
     "resolve_split_file",
 ]
+
+
+def resolve_court_input_type(cfg: DictConfig) -> str:
+    """Return the validated preview court modality (``kp`` or ``line``)."""
+    court_input_type = str(cfg.preview.court_input_type)
+    if court_input_type not in {"kp", "line"}:
+        raise ValueError(
+            "preview.court_input_type must be 'kp' or 'line', got "
+            f"{court_input_type!r}."
+        )
+    return court_input_type
+
+
+def make_court_kp_preview_config(cfg: DictConfig) -> DictConfig:
+    """Clone a preview config while forcing datasets to expose source court KP.
+
+    Line previews need the projected CourtKP20 source in order to render and
+    corrupt the same line map used during training. The returned clone leaves
+    the caller's config untouched and changes only ``data.court_input_type``.
+    """
+    cloned = OmegaConf.create(OmegaConf.to_container(cfg, resolve=False))
+    if not isinstance(cloned, DictConfig) or not isinstance(cloned.data, DictConfig):
+        raise ValueError("Preview config must contain a data mapping.")
+    with open_dict(cloned.data):
+        cloned.data.court_input_type = "kp"
+    return cloned
+
+
+def make_court_line_preview_builder(cfg: DictConfig) -> CourtLineInputBuilder:
+    """Build the line-map pipeline from optional preview overrides."""
+    raw = OmegaConf.to_container(cfg.preview.court_line, resolve=True)
+    if not isinstance(raw, dict):
+        raise ValueError("preview.court_line must be a mapping.")
+    return CourtLineInputBuilder(CourtLineInputConfig.from_mapping(raw))
+
+
+def build_court_line_preview_rows(
+    builder: CourtLineInputBuilder,
+    court_kp: Tensor,
+    *,
+    original_seed: int,
+    variant_seeds: Sequence[int],
+) -> list[list[CourtLineFrameResult]]:
+    """Build clean and augmented line observations for every camera."""
+    if court_kp.ndim != 4 or tuple(court_kp.shape[-2:]) != (20, 2):
+        raise ValueError(
+            f"court_kp must have shape (V,T,20,2), got {tuple(court_kp.shape)}."
+        )
+    if int(court_kp.shape[1]) < 1:
+        raise ValueError("court_kp must contain at least one frame.")
+
+    def build_row(*, augment: bool, seed: int) -> list[CourtLineFrameResult]:
+        rng = np.random.default_rng(seed)
+        return [
+            builder.build_frame(court_kp[camera_index, 0], augment=augment, rng=rng)
+            for camera_index in range(int(court_kp.shape[0]))
+        ]
+
+    rows = [build_row(augment=False, seed=original_seed)]
+    rows.extend(build_row(augment=True, seed=int(seed)) for seed in variant_seeds)
+    return rows
+
+
+def court_line_frame_metadata(frame: CourtLineFrameResult) -> dict[str, int | float]:
+    """Serialize extractor diagnostics without adding them to model inputs."""
+    diagnostics = frame.extraction.diagnostics
+    return {
+        "input_point_count": diagnostics.input_point_count,
+        "retained_point_count": diagnostics.retained_point_count,
+        "extracted_line_count": diagnostics.extracted_line_count,
+        "mean_inlier_ratio": diagnostics.mean_inlier_ratio,
+        "mean_residual_px": diagnostics.mean_residual_px,
+        "line_coverage": diagnostics.line_coverage,
+    }
+
+
+def render_court_line_frame(ax: Axes, frame: CourtLineFrameResult) -> None:
+    """Render a degraded line map and the normalized RANSAC finite segments."""
+    ax.imshow(
+        frame.line_map,
+        cmap="gray",
+        vmin=0,
+        vmax=255,
+        interpolation="nearest",
+        extent=(0.0, 1.0, 1.0, 0.0),
+    )
+    segments = frame.extraction.segments
+    valid = segments[np.any(segments != 0.0, axis=1)]
+    for u1, v1, u2, v2 in valid:
+        ax.plot((u1, u2), (v1, v2), color="#00e5ff", linewidth=1.8)
+        ax.scatter((u1, u2), (v1, v2), color="#ffca28", s=8, zorder=4)
+    ax.text(
+        0.02,
+        0.04,
+        f"RANSAC lines: {len(valid)}",
+        color="white",
+        fontsize=7,
+        transform=ax.transAxes,
+        bbox={"facecolor": "black", "alpha": 0.55, "edgecolor": "none"},
+    )
 
 
 def enable_all_augmentation_blocks(augmentation_cfg: DictConfig) -> dict[str, Any]:

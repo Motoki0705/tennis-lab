@@ -55,6 +55,7 @@
 - **`generate_dataset.py`**: 合成データ生成エントリポイント。
 - **`train.py`**: 学習エントリポイント(chunked/GAN切替可)。
 - **`visualize.py`**: 可視化エントリポイント。
+- **`preview_augmentation.py`**: `preview.court_input_type=kp|line`で、KP augmentationまたはline map劣化 + RANSAC有限線分を比較表示。
 
 ### configs/
 - model(single/multiview/axialサイズ違い)・data(single/multiview/chunked)・training(default/chunked/GAN)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定。

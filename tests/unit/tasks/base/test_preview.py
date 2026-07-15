@@ -1,13 +1,25 @@
 from __future__ import annotations
 
 import pytest
+import torch
 from omegaconf import OmegaConf
 
+from src.tasks.base.data.court_lines import (
+    CourtLineInputBuilder,
+    CourtLineInputConfig,
+    CourtLineMapAugmentationConfig,
+)
 from src.tasks.base.preview import (
+    build_court_line_preview_rows,
+    court_line_frame_metadata,
     enable_all_augmentation_blocks,
+    make_court_kp_preview_config,
+    make_court_line_preview_builder,
+    resolve_court_input_type,
     resolve_sample_indices,
     resolve_split_file,
 )
+from src.utils.geometry.line_segments import RansacLineConfig
 
 
 def _preview_cfg(sample_indices: list[int], max_samples: int) -> OmegaConf:
@@ -76,3 +88,80 @@ def test_resolve_split_file_looks_up_named_key() -> None:
     assert resolve_split_file(cfg, "val") == "b.json"
     with pytest.raises(ValueError, match="Unknown preview.split"):
         resolve_split_file(cfg, "test")
+
+
+def test_preview_court_input_type_is_strict() -> None:
+    assert resolve_court_input_type(
+        OmegaConf.create({"preview": {"court_input_type": "line"}})
+    ) == "line"
+    with pytest.raises(ValueError, match="must be 'kp' or 'line'"):
+        resolve_court_input_type(
+            OmegaConf.create({"preview": {"court_input_type": "both"}})
+        )
+
+
+def test_line_preview_forces_only_the_dataset_copy_to_kp() -> None:
+    cfg = OmegaConf.create(
+        {
+            "data": {"court_input_type": "line", "scene_dir": "data/example"},
+            "preview": {"court_input_type": "line", "court_line": {}},
+        }
+    )
+    cloned = make_court_kp_preview_config(cfg)
+
+    assert cloned.data.court_input_type == "kp"
+    assert cloned.data.scene_dir == "data/example"
+    assert cfg.data.court_input_type == "line"
+    assert isinstance(make_court_line_preview_builder(cfg), CourtLineInputBuilder)
+
+
+def test_build_court_line_preview_rows_is_seeded_and_reports_diagnostics() -> None:
+    court = torch.zeros(2, 3, 20, 2)
+    court[:, :, 0] = torch.tensor([0.1, 0.2])
+    court[:, :, 1] = torch.tensor([0.9, 0.2])
+    court[:, :, 2] = torch.tensor([0.1, 0.8])
+    court[:, :, 3] = torch.tensor([0.9, 0.8])
+    builder = CourtLineInputBuilder(
+        CourtLineInputConfig(
+            map_width=80,
+            map_height=48,
+            extractor=RansacLineConfig(
+                max_iterations=40,
+                distance_threshold_px=1.5,
+                min_inliers=5,
+                min_segment_length_px=3.0,
+                max_lines=4,
+                skeletonize=False,
+                min_component_size=2,
+                max_points=500,
+            ),
+            augmentation=CourtLineMapAugmentationConfig(),
+        )
+    )
+
+    first = build_court_line_preview_rows(
+        builder,
+        court,
+        original_seed=2,
+        variant_seeds=[3, 4],
+    )
+    second = build_court_line_preview_rows(
+        builder,
+        court,
+        original_seed=2,
+        variant_seeds=[3, 4],
+    )
+
+    assert len(first) == 3
+    assert all(len(row) == 2 for row in first)
+    assert court_line_frame_metadata(first[0][0])["extracted_line_count"] > 0
+    for first_row, second_row in zip(first, second, strict=True):
+        for first_frame, second_frame in zip(first_row, second_row, strict=True):
+            assert torch.equal(
+                torch.from_numpy(first_frame.line_map),
+                torch.from_numpy(second_frame.line_map),
+            )
+            assert torch.equal(
+                torch.from_numpy(first_frame.extraction.segments),
+                torch.from_numpy(second_frame.extraction.segments),
+            )

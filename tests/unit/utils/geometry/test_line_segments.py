@@ -71,6 +71,25 @@ def test_seed_makes_ransac_reproducible() -> None:
     np.testing.assert_array_equal(first, second)
 
 
+def test_pixel_endpoints_are_normalized_once_per_axis() -> None:
+    line_map: np.ndarray[tuple[int, int], np.dtype[np.uint8]] = np.zeros(
+        (64, 160), dtype=np.uint8
+    )
+    cv2.line(line_map, (16, 32), (144, 32), 255, 1)
+
+    result = extract_line_segments(
+        line_map,
+        config=_config(max_lines=1),
+        rng=np.random.default_rng(5),
+    )
+
+    np.testing.assert_allclose(
+        result.segments[0],
+        np.asarray([0.1, 0.5, 0.9, 0.5], dtype=np.float32),
+        atol=0.02,
+    )
+
+
 def test_canonicalize_and_sort_are_deterministic() -> None:
     segments = np.asarray(
         [

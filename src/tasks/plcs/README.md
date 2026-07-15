@@ -53,6 +53,7 @@
 - **`train.py`**: 学習エントリポイント(chunked/GAN切替可)。
 - **`generate_dataset.py`**: 並列合成データ生成エントリポイント。
 - **`visualize.py`**: 可視化エントリポイント。
+- **`preview_augmentation.py`**: `preview.court_input_type=kp|line`で、KP augmentationまたはline map劣化 + RANSAC有限線分を比較表示。
 - **`analysis/*.py`**: データセット分布・角速度統計・loss dominance・回転誤差サンプル抽出の分析スクリプト群。
 
 ### utils/
