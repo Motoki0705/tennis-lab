@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.tasks.base.data.court_lines import CourtLineInputBuilder, CourtLineInputConfig
+from src.tasks.base.data.court_lines import CourtLineMapBuilder, CourtLineMapConfig
 from src.tasks.base.data.scene_dataset import (
     Scene,
     SceneDatasetBase,
@@ -73,13 +73,13 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
                 "data.court_input_type must be 'kp' or 'line', got "
                 f"{self.court_input_type!r}."
             )
-        self.court_line_builder: CourtLineInputBuilder | None = None
+        self.court_line_map_builder: CourtLineMapBuilder | None = None
         if self.court_input_type == "line":
             line_cfg = data_cfg.get("court_line")
             if not isinstance(line_cfg, Mapping):
                 raise ValueError("data.court_line must be a mapping in line mode.")
-            self.court_line_builder = CourtLineInputBuilder(
-                CourtLineInputConfig.from_mapping(line_cfg)
+            self.court_line_map_builder = CourtLineMapBuilder(
+                CourtLineMapConfig.from_mapping(line_cfg)
             )
 
         # Augmentation pipeline
@@ -200,14 +200,14 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         if self.augment:
             out["court_kp"] = sample["court_kp"]
             out["court_vis"] = sample["court_vis"]
-        if self.court_line_builder is None:
-            raise RuntimeError("court_line_builder is not initialized in line mode.")
+        if self.court_line_map_builder is None:
+            raise RuntimeError("court_line_map_builder is not initialized in line mode.")
         seed = int(torch.randint(0, 2**31 - 1, ()).item()) if self.augment else 0
         court_kp = out.get("court_kp")
         if court_kp is None:
-            raise KeyError("court_kp is required to synthesize court_lines.")
+            raise KeyError("court_kp is required to synthesize court_line_map.")
         result = dict(out)
-        result["court_lines"] = self.court_line_builder.build(
+        result["court_line_map"] = self.court_line_map_builder.build(
             court_kp,
             augment=self.augment,
             rng=np.random.default_rng(seed),
@@ -226,8 +226,10 @@ def collate_multiview_trajectories(
     has_clean_targets = any(
         "ball_uv_target" in sample and "ball_vis_target" in sample for sample in batch
     )
-    has_court_lines = "court_lines" in batch[0]
-    if any(("court_lines" in sample) != has_court_lines for sample in batch):
+    has_court_line_map = "court_line_map" in batch[0]
+    if any(
+        ("court_line_map" in sample) != has_court_line_map for sample in batch
+    ):
         raise ValueError("A batch cannot mix KP and line court-input samples.")
 
     ball_uv_batch = []
@@ -237,7 +239,7 @@ def collate_multiview_trajectories(
     ball_mask_batch = []
     court_kp_batch = []
     court_vis_batch = []
-    court_lines_batch = []
+    court_line_map_batch = []
     position_3d_batch = []
     velocity_3d_batch = []
     seq_len_batch = []
@@ -265,17 +267,19 @@ def collate_multiview_trajectories(
         ball_mask = sample["ball_mask"]
         court_kp = sample.get("court_kp")
         court_vis = sample.get("court_vis")
-        court_lines = sample.get("court_lines")
+        court_line_map = sample.get("court_line_map")
         position_3d = sample["position_3d"]
         velocity_3d = sample["velocity_3d"]
-        if has_court_lines:
-            if court_lines is None or court_kp is not None or court_vis is not None:
+        if has_court_line_map:
+            if court_line_map is None or court_kp is not None or court_vis is not None:
                 raise ValueError(
-                    "Line samples must contain only court_lines court input."
+                    "Line samples must contain only court_line_map court input."
                 )
-            max_court_lines = int(court_lines.shape[-2])
-            if court_lines.shape[-1] != 4:
-                raise ValueError("court_lines must have trailing shape (L, 4).")
+            if court_line_map.ndim != 5 or court_line_map.shape[2] != 1:
+                raise ValueError(
+                    "court_line_map must have shape (N,T,1,H,W)."
+                )
+            map_height, map_width = court_line_map.shape[-2:]
         else:
             if court_kp is None or court_vis is None:
                 raise ValueError("KP samples require court_kp and court_vis.")
@@ -304,10 +308,13 @@ def collate_multiview_trajectories(
                     dim=1,
                 )
             ball_mask = torch.cat([ball_mask, torch.zeros(n_views, pad_seq)], dim=1)
-            if has_court_lines:
-                assert court_lines is not None
-                court_lines = torch.cat(
-                    [court_lines, torch.zeros(n_views, pad_seq, max_court_lines, 4)],
+            if has_court_line_map:
+                assert court_line_map is not None
+                court_line_map = torch.cat(
+                    [
+                        court_line_map,
+                        torch.zeros(n_views, pad_seq, 1, map_height, map_width),
+                    ],
                     dim=1,
                 )
             else:
@@ -340,12 +347,14 @@ def collate_multiview_trajectories(
             ball_mask = torch.cat(
                 [ball_mask, torch.zeros(pad_views, max_seq_len)], dim=0
             )
-            if has_court_lines:
-                assert court_lines is not None
-                court_lines = torch.cat(
+            if has_court_line_map:
+                assert court_line_map is not None
+                court_line_map = torch.cat(
                     [
-                        court_lines,
-                        torch.zeros(pad_views, max_seq_len, max_court_lines, 4),
+                        court_line_map,
+                        torch.zeros(
+                            pad_views, max_seq_len, 1, map_height, map_width
+                        ),
                     ],
                     dim=0,
                 )
@@ -376,9 +385,9 @@ def collate_multiview_trajectories(
             ball_uv_target_batch.append(ball_uv_target)
             ball_vis_target_batch.append(ball_vis_target)
         ball_mask_batch.append(ball_mask)
-        if has_court_lines:
-            assert court_lines is not None
-            court_lines_batch.append(court_lines)
+        if has_court_line_map:
+            assert court_line_map is not None
+            court_line_map_batch.append(court_line_map)
         else:
             assert court_kp is not None and court_vis is not None
             court_kp_batch.append(court_kp)
@@ -408,8 +417,8 @@ def collate_multiview_trajectories(
         "camera_w": torch.stack(cam_w_batch, dim=0),
         "camera_h": torch.stack(cam_h_batch, dim=0),
     }
-    if has_court_lines:
-        collated["court_lines"] = torch.stack(court_lines_batch, dim=0)
+    if has_court_line_map:
+        collated["court_line_map"] = torch.stack(court_line_map_batch, dim=0)
     else:
         collated["court_kp"] = torch.stack(court_kp_batch, dim=0)
         collated["court_vis"] = torch.stack(court_vis_batch, dim=0)
@@ -447,8 +456,8 @@ def adapt_batch_for_model_profile(
             "camera_w": batch["camera_w"][:, :1],
             "camera_h": batch["camera_h"][:, :1],
         }
-        if "court_lines" in batch:
-            adapted["court_lines"] = batch["court_lines"][:, 0]
+        if "court_line_map" in batch:
+            adapted["court_line_map"] = batch["court_line_map"][:, 0]
         else:
             adapted["court_kp"] = batch["court_kp"][:, 0, 0]
             adapted["court_vis"] = batch["court_vis"][:, 0, 0]

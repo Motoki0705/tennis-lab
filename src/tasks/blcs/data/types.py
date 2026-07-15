@@ -22,7 +22,7 @@ class BLCSSample(TypedDict):
     ball_vis: torch.Tensor  # (T,) ball visibility flags
     court_kp: NotRequired[torch.Tensor]  # (20, 2), KP court-input mode
     court_vis: NotRequired[torch.Tensor]  # (20,), KP court-input mode
-    court_lines: NotRequired[torch.Tensor]  # (T, L_max, 4), line court-input mode
+    court_line_map: NotRequired[torch.Tensor]  # (T, 1, H, W), line mode
     position_3d: torch.Tensor  # (T, 3) ground truth 3D trajectory (normalized)
     velocity_3d: torch.Tensor  # (T, 3) 3D velocity vectors
     seq_len: torch.Tensor  # scalar, actual sequence length
@@ -41,7 +41,7 @@ class BLCSBatch(TypedDict):
     ball_mask: torch.Tensor  # (B, T_max) padding mask (1=valid)
     court_kp: NotRequired[torch.Tensor]  # (B, 20, 2), KP mode
     court_vis: NotRequired[torch.Tensor]  # (B, 20), KP mode
-    court_lines: NotRequired[torch.Tensor]  # (B, T_max, L_max, 4), line mode
+    court_line_map: NotRequired[torch.Tensor]  # (B, T_max, 1, H, W), line mode
     position_3d: torch.Tensor  # (B, T_max, 3) padded ground truth trajectories
     velocity_3d: torch.Tensor  # (B, T_max, 3) padded velocities
     seq_len: torch.Tensor  # (B,) actual sequence lengths
@@ -65,7 +65,7 @@ class BLCSMultiViewSample(TypedDict):
     ball_mask: torch.Tensor  # (N_cam, T) sequence padding masks (1=valid token)
     court_kp: NotRequired[torch.Tensor]  # (N_cam, T, 20, 2), KP mode
     court_vis: NotRequired[torch.Tensor]  # (N_cam, T, 20), KP mode
-    court_lines: NotRequired[torch.Tensor]  # (N_cam, T, L_max, 4), line mode
+    court_line_map: NotRequired[torch.Tensor]  # (N_cam, T, 1, H, W), line mode
     position_3d: torch.Tensor  # (T, 3) ground truth 3D trajectory (shared)
     velocity_3d: torch.Tensor  # (T, 3) 3D velocity vectors (shared)
     seq_len: torch.Tensor  # scalar, actual sequence length
@@ -89,7 +89,7 @@ class BLCSMultiViewBatch(TypedDict):
     ball_mask: torch.Tensor  # (B, N_max, T_max) padding mask
     court_kp: NotRequired[torch.Tensor]  # (B, N_max, T_max, 20, 2), KP mode
     court_vis: NotRequired[torch.Tensor]  # (B, N_max, T_max, 20), KP mode
-    court_lines: NotRequired[torch.Tensor]  # (B, N_max, T_max, L_max, 4), line mode
+    court_line_map: NotRequired[torch.Tensor]  # (B, N_max, T_max, 1, H, W), line mode
     position_3d: torch.Tensor  # (B, T_max, 3)
     velocity_3d: torch.Tensor  # (B, T_max, 3)
     seq_len: torch.Tensor  # (B,)

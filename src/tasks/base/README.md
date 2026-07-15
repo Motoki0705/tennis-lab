@@ -15,7 +15,7 @@
 - **`chunk_manager.py`**: `ChunkManager`。chunk生成スレッドのライフサイクル管理。
 - **`dataset_writer.py`**: `BaseDatasetWriter`。npy+jsonシーン書き出しの共通実装。
 - **`augmentation.py`**: `BaseObservationAugmentation`。augmentation config解析・dispatchガードの共通部分。
-- **`court_lines.py`**: 投影済み CourtKP20 からground line mapを描画し、線幅・部分欠損・人物相当遮蔽・false positive・blur/morphology・far-side欠損を加えた後、共有RANSACで固定長`court_lines`へ変換するBLCS/PLCS共通入力builder。
+- **`court_lines.py`**: 投影済み CourtKP20 から共有`court_line_map`を描画するbuilderと、preview/診断用のRANSAC有限線分抽出を分離して提供する。map-space augmentationはconfigで明示的に切り替える。
 
 ### training/
 - **`lightning_module.py`**: `BaseLightningModule`。optimizer/scheduler構築とqualitative/test予測保存の拡張点。

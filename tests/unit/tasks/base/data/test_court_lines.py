@@ -8,6 +8,8 @@ from src.tasks.base.data.court_lines import (
     CourtLineInputBuilder,
     CourtLineInputConfig,
     CourtLineMapAugmentationConfig,
+    CourtLineMapBuilder,
+    CourtLineMapConfig,
     augment_court_line_map,
     render_court_line_map,
 )
@@ -71,6 +73,42 @@ def test_render_and_build_court_lines() -> None:
     assert torch.isfinite(result).all()
     assert torch.any(result != 0)
     torch.testing.assert_close(result[:, 0], result[:, -1])
+
+
+def test_build_line_maps_returns_normalized_channel_first_tensor() -> None:
+    court = _projected_court().view(1, 1, 20, 2).expand(2, 4, -1, -1)
+    builder = CourtLineMapBuilder(
+        CourtLineMapConfig(
+            map_width=80,
+            map_height=48,
+            augmentation=CourtLineMapAugmentationConfig(enabled=False),
+        )
+    )
+
+    result = builder.build(court, augment=False, rng=np.random.default_rng(5))
+
+    assert result.shape == (2, 4, 1, 48, 80)
+    assert result.dtype == torch.float32
+    assert float(result.min()) >= 0.0
+    assert float(result.max()) <= 1.0
+    assert torch.any(result > 0)
+    torch.testing.assert_close(result[:, 0], result[:, -1])
+
+
+def test_disabled_map_augmentation_is_seed_independent() -> None:
+    court = _projected_court().view(1, 1, 20, 2).expand(1, 3, -1, -1)
+    builder = CourtLineMapBuilder(
+        CourtLineMapConfig(
+            map_width=80,
+            map_height=48,
+            augmentation=CourtLineMapAugmentationConfig(enabled=False),
+        )
+    )
+
+    first = builder.build(court, augment=True, rng=np.random.default_rng(1))
+    second = builder.build(court, augment=True, rng=np.random.default_rng(999))
+
+    torch.testing.assert_close(first, second)
 
 
 def test_build_frame_exposes_the_training_map_and_diagnostics() -> None:

@@ -92,12 +92,14 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             self.config.get("model", {}).get("court_input_type", "kp")
         )
         if court_input_type == "line":
-            court_lines = batch.get("court_lines")
-            if court_lines is None:
-                raise KeyError("court_lines is required for line-based BLCS training.")
+            court_line_map = batch.get("court_line_map")
+            if court_line_map is None:
+                raise KeyError(
+                    "court_line_map is required for line-based BLCS training."
+                )
             line_result: dict[str, Tensor] = self.model(
                 ball_uv=batch["ball_uv"],
-                court_lines=court_lines,
+                court_line_map=court_line_map,
                 ball_vis=batch.get("ball_vis"),
                 ball_mask=batch.get("ball_mask"),
             )

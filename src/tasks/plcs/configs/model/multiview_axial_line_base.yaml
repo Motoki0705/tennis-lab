@@ -3,4 +3,4 @@ defaults:
   - _self_
 
 court_input_type: line
-max_court_lines: ${data.court_line.max_lines}
+line_map_channels: [16, 32, 64]

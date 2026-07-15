@@ -43,11 +43,11 @@ class _LineModel(nn.Module):
         self,
         *,
         human_kp: Tensor,
-        court_lines: Tensor,
+        court_line_map: Tensor,
         human_vis: Tensor | None = None,
         human_mask: Tensor | None = None,
     ) -> dict[str, Tensor]:
-        del court_lines, human_vis, human_mask
+        del court_line_map, human_vis, human_mask
         leading = human_kp.shape[:3]
         return {
             "position": torch.zeros(*leading, 3),
@@ -79,11 +79,11 @@ def test_yaw_radians_round_trips_dataset_cos_sin_encoding() -> None:
     assert torch.allclose(result["yaw_radians"], angles, atol=1e-6)
 
 
-def test_line_predictor_routes_only_court_lines() -> None:
+def test_line_predictor_routes_only_court_line_map() -> None:
     predictor = PLCSPredictor(_LineModel(), torch.device("cpu"))
     result = predictor.predict(
         human_kp=torch.zeros(1, 2, 4, 17, 2),
-        court_lines=torch.zeros(1, 2, 4, 12, 4),
+        court_line_map=torch.zeros(1, 2, 4, 1, 24, 40),
         human_vis=torch.ones(1, 2, 4, 17),
         human_mask=torch.ones(1, 2, 4),
         denormalize=False,

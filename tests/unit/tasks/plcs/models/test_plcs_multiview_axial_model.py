@@ -54,7 +54,7 @@ def test_multiview_axial_line_model_uses_two_tokens_per_camera() -> None:
                     "max_seq_len": 4,
                     "dropout": 0.0,
                     "court_input_type": "line",
-                    "max_court_lines": 6,
+                    "line_map_channels": [4, 8],
                 }
             }
         )
@@ -65,7 +65,7 @@ def test_multiview_axial_line_model_uses_two_tokens_per_camera() -> None:
     )
     out = model(
         human_kp=torch.randn(2, 2, 4, 17, 2),
-        court_lines=torch.zeros(2, 2, 4, 6, 4),
+        court_line_map=torch.zeros(2, 2, 4, 1, 24, 40),
         human_vis=torch.ones(2, 2, 4, 17),
         human_mask=torch.ones(2, 2, 4),
     )
@@ -78,7 +78,7 @@ def test_multiview_axial_line_model_uses_two_tokens_per_camera() -> None:
     assert torch.isfinite(out["position"]).all()
 
 
-def test_multiview_axial_line_model_output_depends_on_court_lines() -> None:
+def test_multiview_axial_line_model_output_depends_on_court_line_map() -> None:
     torch.manual_seed(4)
     model = build_plcs_model(
         OmegaConf.create(
@@ -92,7 +92,7 @@ def test_multiview_axial_line_model_output_depends_on_court_lines() -> None:
                     "max_seq_len": 4,
                     "dropout": 0.0,
                     "court_input_type": "line",
-                    "max_court_lines": 6,
+                    "line_map_channels": [4, 8],
                 }
             }
         )
@@ -105,8 +105,12 @@ def test_multiview_axial_line_model_output_depends_on_court_lines() -> None:
     }
 
     with torch.no_grad():
-        no_line = model(court_lines=torch.zeros(1, 1, 4, 6, 4), **common)
-        with_lines = model(court_lines=torch.rand(1, 1, 4, 6, 4), **common)
+        no_line = model(
+            court_line_map=torch.zeros(1, 1, 4, 1, 24, 40), **common
+        )
+        with_lines = model(
+            court_line_map=torch.rand(1, 1, 4, 1, 24, 40), **common
+        )
 
     assert not torch.allclose(no_line["position"], with_lines["position"])
     assert not torch.allclose(no_line["rotation"], with_lines["rotation"])

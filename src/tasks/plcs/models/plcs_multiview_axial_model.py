@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Literal, cast
 
 import torch
@@ -22,7 +23,7 @@ from src.utils.models import (
 )
 from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
 from src.utils.models.embeddings import (
-    CourtLinePlayerGroupEmbedding,
+    CourtLineMapPlayerGroupEmbedding,
     CourtPlayerGroupEmbedding,
     InvisibleTokenEmbedding,
 )
@@ -54,7 +55,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         invisible_init_std: float = 0.02,
         num_court_tokens: int = NUM_COURT_KP,
         court_input_type: Literal["kp", "line"] = "kp",
-        max_court_lines: int = 12,
+        line_map_channels: Sequence[int] = (16, 32, 64),
     ) -> None:
         super().__init__()
 
@@ -68,9 +69,11 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 f"court_input_type must be 'kp' or 'line', got {court_input_type!r}."
             )
         self.court_input_type = court_input_type
-        self.max_court_lines = int(max_court_lines)
-        if self.max_court_lines <= 0:
-            raise ValueError("max_court_lines must be positive.")
+        self.line_map_channels = tuple(int(value) for value in line_map_channels)
+        if not self.line_map_channels or any(
+            value <= 0 for value in self.line_map_channels
+        ):
+            raise ValueError("line_map_channels must contain positive integers.")
 
         self._validate_init_args(
             hidden_dim=self.hidden_dim,
@@ -106,12 +109,12 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                     num_court_tokens=self.num_court_tokens,
                 )
             )
-            self.line_group_embed: CourtLinePlayerGroupEmbedding | None = None
+            self.line_group_embed: CourtLineMapPlayerGroupEmbedding | None = None
         else:
             self.group_embed = None
-            self.line_group_embed = CourtLinePlayerGroupEmbedding(
+            self.line_group_embed = CourtLineMapPlayerGroupEmbedding(
                 dim=self.hidden_dim,
-                max_court_lines=self.max_court_lines,
+                line_map_channels=self.line_map_channels,
                 invisible_token=self.invisible_token,
             )
 
@@ -237,7 +240,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             court_input_type=cast(
                 Literal["kp", "line"], str(model_cfg.get("court_input_type", "kp"))
             ),
-            max_court_lines=int(model_cfg.get("max_court_lines", 12)),
+            line_map_channels=model_cfg.get("line_map_channels", [16, 32, 64]),
         )
 
     def forward(
@@ -247,13 +250,13 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         human_vis: Tensor | None = None,
         human_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
-        court_lines: Tensor | None = None,
+        court_line_map: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Forward pass for multiview PLCS inputs."""
         batch_size, n_cams, seq_len_in = self._validate_forward_inputs(
             human_kp=human_kp,
             court_kp=court_kp,
-            court_lines=court_lines,
+            court_line_map=court_line_map,
             human_vis=human_vis,
             human_mask=human_mask,
             court_vis=court_vis,
@@ -296,15 +299,18 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             token_valid_t = token_valid.permute(0, 2, 1)
             tokens_per_camera = 1
         else:
-            if court_lines is None or self.line_group_embed is None:
+            if court_line_map is None or self.line_group_embed is None:
                 raise RuntimeError(
                     "Line inputs or group embedding are not initialized."
                 )
-            line_flat = court_lines.reshape(
-                batch_size * n_cams * seq_len_in, self.max_court_lines, 4
+            line_map_flat = court_line_map.reshape(
+                batch_size * n_cams * seq_len_in,
+                1,
+                court_line_map.shape[-2],
+                court_line_map.shape[-1],
             )
             x = (
-                self.line_group_embed(line_flat, human_flat, group_vis)
+                self.line_group_embed(line_map_flat, human_flat, group_vis)
                 .reshape(batch_size, n_cams, seq_len_in, 2, self.hidden_dim)
                 .permute(0, 2, 1, 3, 4)
                 .reshape(batch_size, seq_len_in, n_cams * 2, self.hidden_dim)
@@ -377,7 +383,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         human_vis: Tensor | None,
         human_mask: Tensor | None,
         court_vis: Tensor | None,
-        court_lines: Tensor | None = None,
+        court_line_map: Tensor | None = None,
     ) -> tuple[int, int, int]:
         if human_kp.dim() != 5:
             raise ValueError(
@@ -385,9 +391,9 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 f"got shape {tuple(human_kp.shape)}"
             )
         if self.court_input_type == "kp":
-            if court_lines is not None:
+            if court_line_map is not None:
                 raise ValueError(
-                    "court_lines must not be provided in court_input_type='kp'."
+                    "court_line_map must not be provided in court_input_type='kp'."
                 )
             if court_kp is None or court_kp.dim() != 5:
                 shape = None if court_kp is None else tuple(court_kp.shape)
@@ -404,8 +410,10 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 raise ValueError(
                     "court_kp and court_vis must not be provided in court_input_type='line'."
                 )
-            if court_lines is None:
-                raise ValueError("court_lines is required for court_input_type='line'.")
+            if court_line_map is None:
+                raise ValueError(
+                    "court_line_map is required for court_input_type='line'."
+                )
         if human_vis is not None and human_vis.dim() != 4:
             raise ValueError(
                 "PLCSMultiViewAxialModel expects human_vis as (B,N,T,17), "
@@ -423,19 +431,18 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             )
 
         batch_size, n_cams, seq_len_in = human_kp.shape[:3]
-        if self.court_input_type == "line":
-            expected_lines = (
-                batch_size,
-                n_cams,
-                seq_len_in,
-                self.max_court_lines,
-                4,
+        if self.court_input_type == "line" and (
+                court_line_map is None
+                or court_line_map.dim() != 6
+                or court_line_map.shape[:3]
+                != (batch_size, n_cams, seq_len_in)
+                or court_line_map.shape[3] != 1
+        ):
+            shape = None if court_line_map is None else tuple(court_line_map.shape)
+            raise ValueError(
+                "court_line_map must have shape (B,N,T,1,H,W), "
+                f"got {shape}."
             )
-            if court_lines is None or tuple(court_lines.shape) != expected_lines:
-                shape = None if court_lines is None else tuple(court_lines.shape)
-                raise ValueError(
-                    f"court_lines must have shape {expected_lines}, got {shape}."
-                )
         if n_cams > self.max_views:
             raise ValueError(
                 f"Number of views N={n_cams} exceeds max_views={self.max_views}."

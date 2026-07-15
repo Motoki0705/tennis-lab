@@ -27,7 +27,7 @@ class PLCSBatch(TypedDict):
 
     human_kp: torch.Tensor
     court_kp: NotRequired[torch.Tensor]
-    court_lines: NotRequired[torch.Tensor]
+    court_line_map: NotRequired[torch.Tensor]
     human_vis: torch.Tensor
     human_mask: torch.Tensor
     court_vis: NotRequired[torch.Tensor]
