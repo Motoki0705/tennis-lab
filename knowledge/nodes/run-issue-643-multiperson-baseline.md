@@ -27,7 +27,7 @@ metrics:
   missed_gt_frames: 14.666667
   inactive_query_false_positives: 39.666668
 repro:
-  commit: e0cf7fc5d24cc28fa6ecfaaae94a8da2642f5469
+  commit: 6ef9adbd7c055a31fdb936da5f475345a3f5d098
   branch: feat/issue-643-648-multi-object-tracking
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: .venv/bin/python -m src.tasks.player_tracking.scripts.train run.output_dir=outputs/player_tracking/issue-643-baseline
