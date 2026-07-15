@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-647-cnn-line-train/outputs/blcs/issue647_line_cnn_tok4_noaug_50ep_r2/logs/version_0/checkpoints
