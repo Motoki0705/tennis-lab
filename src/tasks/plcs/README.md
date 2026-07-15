@@ -18,7 +18,7 @@
 - **`plcs_model.py`**: `PLCSModel`。単視点frame向けdecoder-only Transformer(court+playerトークン)。
 - **`plcs_multiview_model.py`**: `PLCSMultiViewModel`。camera×time interleaved RoPEによるmultiview Transformer。
 - **`plcs_multiview_axial_model.py`**: `PLCSMultiViewAxialModel`。camera軸/time軸交互self-attention(共有readout)。
-- 同axial modelの`court_input_type=line`は軽量depthwise-separable CNNでbinary line mapを1 court tokenへ圧縮し、各cameraを`[court token, player token]`の2 tokenとして扱う。同じcamera RoPEと異なるtoken-type embeddingを与え、RANSAC線分順序には依存しない。既定の`kp`経路とcheckpoint schemaは変更しない。
+- 同axial modelの`court_input_type=line`は軽量depthwise-separable CNNとsquare-grid poolingでbinary line mapを`num_line_map_tokens`個へ圧縮し、各cameraを`[player, court...]`として扱う。RoPEはtime / camera / typeの3軸で、type座標はplayer=0、全court token=1（位置IDなし）。既定の`kp`経路とcheckpoint schemaは変更しない。
 - **`plcs_multiview_axial_split_model.py`**: `PLCSMultiViewAxialSplitModel`(issue #518)。rotation/pose trunkを分離。
 - **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
 - **`components/heads.py`**: `PositionHead`/`RotationHead`/`CanonicalPoseHead`。

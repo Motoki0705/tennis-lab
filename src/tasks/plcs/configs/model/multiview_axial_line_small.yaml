@@ -4,3 +4,5 @@ defaults:
 
 court_input_type: line
 line_map_channels: [16, 32, 64]
+num_line_map_tokens: 1
+rope_theta_type: 1000.0

@@ -1,4 +1,4 @@
-"""Axial multi-view BLCS model with one token per camera/time element."""
+"""Axial multi-view BLCS model with configurable line-map court tokens."""
 
 from __future__ import annotations
 
@@ -45,6 +45,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         rope_theta: float = 10000.0,
         rope_theta_time: float | None = None,
         rope_theta_camera: float | None = None,
+        rope_theta_type: float | None = None,
         num_layers: int = 4,
         predict_velocity: bool = False,
         max_seq_len: int = 120,
@@ -53,6 +54,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         num_court_tokens: int = NUM_COURT_KP,
         court_input_type: Literal["kp", "line"] = "kp",
         line_map_channels: Sequence[int] = (16, 32, 64),
+        num_line_map_tokens: int = 1,
         time_window_radius: int = 16,
         camera_layers_per_stage: Sequence[int] | None = None,
         time_layers_per_stage: Sequence[int] | None = None,
@@ -102,6 +104,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             value <= 0 for value in self.line_map_channels
         ):
             raise ValueError("line_map_channels must contain positive integers.")
+        self.num_line_map_tokens = int(num_line_map_tokens)
         self.time_window_radius = int(time_window_radius)
         self.camera_layers_per_stage = camera_layers_per_stage
         self.time_layers_per_stage = time_layers_per_stage
@@ -114,12 +117,17 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         head_dim = self.hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
         self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
+        if self.court_input_type == "line":
+            self._validate_rope_axis_capacity(rope_dim=rope_dim, n_axes=3)
 
         self.rope_dim = int(rope_dim)
         self.rope_bases = resolve_rope_bases(
             rope_theta,
             rope_theta_time,
             rope_theta_camera,
+            self._coalesce_theta(rope_theta_type, rope_theta)
+            if self.court_input_type == "line"
+            else None,
         )
 
         if ffn_dim is None:
@@ -141,6 +149,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             self.line_group_embed = CourtLineMapBallGroupEmbedding(
                 dim=self.hidden_dim,
                 line_map_channels=self.line_map_channels,
+                num_line_map_tokens=self.num_line_map_tokens,
                 invisible_token=self.invisible_token,
             )
 
@@ -212,11 +221,17 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 dropout=dropout,
             )
 
+        token_type_ids = (
+            self._build_line_token_type_ids(self.num_line_map_tokens)
+            if self.court_input_type == "line"
+            else None
+        )
         token_freqs = precompute_freqs_cis_nd(
             dim=self.rope_dim,
             pos=self._build_token_positions(
                 seq_len=self.max_seq_len,
                 n_cams=self.max_num_cameras,
+                token_type_ids=token_type_ids,
             ),
             base=self.rope_bases,
         )
@@ -311,6 +326,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
             rope_theta_time=model_cfg.get("rope_theta_time", None),
             rope_theta_camera=model_cfg.get("rope_theta_camera", None),
+            rope_theta_type=model_cfg.get("rope_theta_type", None),
             num_layers=int(model_cfg.get("num_layers", 4)),
             predict_velocity=bool(model_cfg.get("predict_velocity", False)),
             max_seq_len=int(
@@ -327,6 +343,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 Literal["kp", "line"], str(model_cfg.get("court_input_type", "kp"))
             ),
             line_map_channels=model_cfg.get("line_map_channels", [16, 32, 64]),
+            num_line_map_tokens=int(model_cfg.get("num_line_map_tokens", 1)),
             time_window_radius=int(model_cfg.get("time_window_radius", 16)),
             camera_layers_per_stage=model_cfg.get("camera_layers_per_stage", None),
             time_layers_per_stage=model_cfg.get("time_layers_per_stage", None),
@@ -454,12 +471,26 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 raise RuntimeError("Line group embedding is not initialized.")
             x = (
                 self.line_group_embed(line_map_flat, ball_flat, group_vis)
-                .reshape(batch_size, n_cams, seq_len_in, 2, self.hidden_dim)
+                .reshape(
+                    batch_size,
+                    n_cams,
+                    seq_len_in,
+                    self.num_line_map_tokens + 1,
+                    self.hidden_dim,
+                )
                 .permute(0, 2, 1, 3, 4)
-                .reshape(batch_size, seq_len_in, n_cams * 2, self.hidden_dim)
+                .reshape(
+                    batch_size,
+                    seq_len_in,
+                    n_cams * (self.num_line_map_tokens + 1),
+                    self.hidden_dim,
+                )
             )
-            token_valid = (ball_mask > 0).permute(0, 2, 1).repeat_interleave(2, dim=2)
-            tokens_per_camera = 2
+            tokens_per_camera = self.num_line_map_tokens + 1
+            token_valid = (ball_mask > 0).permute(0, 2, 1).repeat_interleave(
+                tokens_per_camera,
+                dim=2,
+            )
 
         axis_tokens = n_cams * tokens_per_camera
         camera_valid = token_valid.reshape(batch_size * seq_len_in, axis_tokens)
@@ -524,8 +555,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                     time_freqs=time_freqs,
                 )
 
-        readout_index = 0 if self.court_input_type == "kp" else 1
-        x = x[:, :, readout_index, :]
+        x = x[:, :, 0, :]
         x = self.final_norm(x)
 
         out: dict[str, Tensor] = {"position": self.position_head(x)}

@@ -1,4 +1,4 @@
-"""Axial multi-view PLCS model with one token per camera/time element."""
+"""Axial multi-view PLCS model with configurable line-map court tokens."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from src.utils.models import (
     TransformerBlockConfig,
     default_ffn_dim,
     precompute_freqs_cis_nd,
+    resolve_rope_bases,
 )
 from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
 from src.utils.models.embeddings import (
@@ -48,6 +49,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         rope_theta: float = 10000.0,
         rope_theta_time: float | None = None,
         rope_theta_camera: float | None = None,
+        rope_theta_type: float | None = None,
         ffn_type: Literal["swiglu", "mlp"] = "swiglu",
         predict_canonical_pose: bool = False,
         max_views: int = 8,
@@ -56,6 +58,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         num_court_tokens: int = NUM_COURT_KP,
         court_input_type: Literal["kp", "line"] = "kp",
         line_map_channels: Sequence[int] = (16, 32, 64),
+        num_line_map_tokens: int = 1,
     ) -> None:
         super().__init__()
 
@@ -74,6 +77,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             value <= 0 for value in self.line_map_channels
         ):
             raise ValueError("line_map_channels must contain positive integers.")
+        self.num_line_map_tokens = int(num_line_map_tokens)
 
         self._validate_init_args(
             hidden_dim=self.hidden_dim,
@@ -86,12 +90,18 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         head_dim = self.hidden_dim // num_heads
         rope_dim = head_dim if rope_dim is None else int(rope_dim)
         self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
+        if self.court_input_type == "line":
+            self._validate_rope_axis_capacity(rope_dim=rope_dim, n_axes=3)
 
         self.head_dim = int(head_dim)
         self.rope_dim = int(rope_dim)
-        self.rope_bases = (
-            self._coalesce_theta(rope_theta_time, rope_theta),
-            self._coalesce_theta(rope_theta_camera, rope_theta),
+        self.rope_bases = resolve_rope_bases(
+            rope_theta,
+            rope_theta_time,
+            rope_theta_camera,
+            self._coalesce_theta(rope_theta_type, rope_theta)
+            if self.court_input_type == "line"
+            else None,
         )
 
         if ffn_dim is None:
@@ -115,6 +125,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             self.line_group_embed = CourtLineMapPlayerGroupEmbedding(
                 dim=self.hidden_dim,
                 line_map_channels=self.line_map_channels,
+                num_line_map_tokens=self.num_line_map_tokens,
                 invisible_token=self.invisible_token,
             )
 
@@ -177,11 +188,17 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 dropout=dropout,
             )
 
+        token_type_ids = (
+            self._build_line_token_type_ids(self.num_line_map_tokens)
+            if self.court_input_type == "line"
+            else None
+        )
         token_freqs = precompute_freqs_cis_nd(
             dim=self.rope_dim,
             pos=self._build_token_positions(
                 seq_len=self.max_seq_len,
                 n_cams=self.max_views,
+                token_type_ids=token_type_ids,
             ),
             base=self.rope_bases,
         )
@@ -223,6 +240,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
             rope_theta_time=model_cfg.get("rope_theta_time", None),
             rope_theta_camera=model_cfg.get("rope_theta_camera", None),
+            rope_theta_type=model_cfg.get("rope_theta_type", None),
             ffn_type=cast(
                 Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
             ),
@@ -241,6 +259,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 Literal["kp", "line"], str(model_cfg.get("court_input_type", "kp"))
             ),
             line_map_channels=model_cfg.get("line_map_channels", [16, 32, 64]),
+            num_line_map_tokens=int(model_cfg.get("num_line_map_tokens", 1)),
         )
 
     def forward(
@@ -311,12 +330,26 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             )
             x = (
                 self.line_group_embed(line_map_flat, human_flat, group_vis)
-                .reshape(batch_size, n_cams, seq_len_in, 2, self.hidden_dim)
+                .reshape(
+                    batch_size,
+                    n_cams,
+                    seq_len_in,
+                    self.num_line_map_tokens + 1,
+                    self.hidden_dim,
+                )
                 .permute(0, 2, 1, 3, 4)
-                .reshape(batch_size, seq_len_in, n_cams * 2, self.hidden_dim)
+                .reshape(
+                    batch_size,
+                    seq_len_in,
+                    n_cams * (self.num_line_map_tokens + 1),
+                    self.hidden_dim,
+                )
             )
-            token_valid_t = token_valid.permute(0, 2, 1).repeat_interleave(2, dim=2)
-            tokens_per_camera = 2
+            tokens_per_camera = self.num_line_map_tokens + 1
+            token_valid_t = token_valid.permute(0, 2, 1).repeat_interleave(
+                tokens_per_camera,
+                dim=2,
+            )
 
         axis_tokens = n_cams * tokens_per_camera
         camera_valid = token_valid_t.reshape(batch_size * seq_len_in, axis_tokens)
@@ -363,8 +396,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 batch_size, axis_tokens, seq_len_in, self.hidden_dim
             ).permute(0, 2, 1, 3)
 
-        readout_index = 0 if self.court_input_type == "kp" else 1
-        x = x[:, :, readout_index, :]
+        x = x[:, :, 0, :]
         x = self.final_norm(x)
 
         out = {

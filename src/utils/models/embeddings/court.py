@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from math import isqrt
 from typing import cast
 
+import torch
 from torch import Tensor, nn
 
 from src.utils.models.components.norm import RMSNorm
@@ -79,32 +81,54 @@ class _LineMapConvStage(nn.Module):
 
 
 class CourtLineMapEmbedding(nn.Module):
-    """Compress a single-channel court-line map into one learned token."""
+    """Compress a court-line map into a square grid of feature tokens."""
 
     def __init__(
         self,
         *,
         dim: int,
         channels: tuple[int, ...] = (16, 32, 64),
+        num_tokens: int = 1,
     ) -> None:
         super().__init__()
         if not channels or any(channel <= 0 for channel in channels):
             raise ValueError("channels must contain positive integers.")
+        grid_size = isqrt(int(num_tokens))
+        if num_tokens <= 0 or grid_size * grid_size != num_tokens:
+            raise ValueError("num_tokens must be a positive perfect square.")
+        self.num_tokens = int(num_tokens)
+        self.grid_size = grid_size
         stages: list[nn.Module] = []
         in_channels = 1
         for out_channels in channels:
             stages.append(_LineMapConvStage(in_channels, out_channels))
             in_channels = out_channels
         self.encoder = nn.Sequential(*stages)
-        self.pool = nn.AdaptiveAvgPool2d(1)
         self.proj = nn.Sequential(
             nn.Linear(in_channels, int(dim)),
             RMSNorm(int(dim)),
             nn.GELU(),
         )
 
+    def _pool_grid(self, features: Tensor) -> Tensor:
+        """Pool to ``(B, K, C)`` using deterministic slice reductions."""
+        height, width = features.shape[-2:]
+        cells: list[Tensor] = []
+        for row in range(self.grid_size):
+            y_start = row * height // self.grid_size
+            y_end = ((row + 1) * height + self.grid_size - 1) // self.grid_size
+            for column in range(self.grid_size):
+                x_start = column * width // self.grid_size
+                x_end = (
+                    (column + 1) * width + self.grid_size - 1
+                ) // self.grid_size
+                cells.append(
+                    features[..., y_start:y_end, x_start:x_end].mean(dim=(-2, -1))
+                )
+        return torch.stack(cells, dim=1)
+
     def forward(self, court_line_map: Tensor) -> Tensor:
-        """Return one token for input shape ``(..., 1, H, W)``."""
+        """Return ``num_tokens`` row-major grid tokens for ``(..., 1, H, W)``."""
         if court_line_map.ndim < 3 or court_line_map.shape[-3] != 1:
             raise ValueError(
                 "court_line_map must have shape (..., 1, H, W), got "
@@ -115,6 +139,8 @@ class CourtLineMapEmbedding(nn.Module):
             raise ValueError("court_line_map height and width must be at least 8.")
         leading_shape = court_line_map.shape[:-3]
         flattened = court_line_map.reshape(-1, 1, height, width)
-        features = self.pool(self.encoder(flattened)).flatten(1)
-        token = self.proj(features)
-        return cast(Tensor, token.reshape(*leading_shape, -1))
+        tokens = self.proj(self._pool_grid(self.encoder(flattened)))
+        return cast(
+            Tensor,
+            tokens.reshape(*leading_shape, self.num_tokens, tokens.shape[-1]),
+        )

@@ -29,7 +29,7 @@
 - **`blcs_model.py`**: `BLCSModel`。single-view用decoder-only Transformer(court+ballトークン)。
 - **`blcs_multiview_model.py`**: `BLCSMultiViewModel`。クエリのcross-attention+時間self-attentionによる反復更新モデル。
 - **`blcs_multiview_axial_model.py`**: `BLCSMultiViewAxialModel`(現行デフォルト)。camera軸/time軸交互self-attention。
-- 同axial modelの`court_input_type=line`は軽量depthwise-separable CNNでbinary line mapを1 court tokenへ圧縮し、各cameraを`[court token, ball token]`の2 tokenとして扱う。同じcamera RoPEと異なるtoken-type embeddingを与え、RANSAC線分順序には依存しない。既定の`kp`経路とcheckpoint schemaは変更しない。
+- 同axial modelの`court_input_type=line`は軽量depthwise-separable CNNとsquare-grid poolingでbinary line mapを`num_line_map_tokens`個へ圧縮し、各cameraを`[ball, court...]`として扱う。RoPEはtime / camera / typeの3軸で、type座標はball=0、全court token=1（位置IDなし）。既定の`kp`経路とcheckpoint schemaは変更しない。
 - **`components/heads.py`**: `Trajectory3DHead`/`VelocityHead`。
 - **`components/differentiable_projection.py`**: `DifferentiableProjection`。予測3D位置をカメラへ再投影。
 - **`discriminators/`**: `BLCSTrajectoryDiscriminator` と工場関数 `build_blcs_discriminator`。
