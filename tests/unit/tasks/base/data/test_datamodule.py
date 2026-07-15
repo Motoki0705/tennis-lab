@@ -88,6 +88,21 @@ def test_setup_fit_val_falls_back_to_train(tmp_path: Path) -> None:
     assert dm.val_dataset is dm.train_dataset
 
 
+def test_overfit_reuses_unaugmented_train_dataset_for_all_stages(
+    tmp_path: Path,
+) -> None:
+    root = _make_scene_root(tmp_path, splits=("train",))
+    dm = _DM({"data": {"scene_dir": str(root), "overfit": True}})
+
+    dm.setup("fit")
+    assert isinstance(dm.train_dataset, _DummyDataset)
+    assert dm.train_dataset.name == "train.txt:False"
+    assert dm.val_dataset is dm.train_dataset
+
+    dm.setup("test")
+    assert dm.test_dataset is dm.train_dataset
+
+
 def test_setup_test_missing_split_raises(tmp_path: Path) -> None:
     root = _make_scene_root(tmp_path, splits=("train",))  # no test.txt
     dm = _DM({"data": {"scene_dir": str(root)}})

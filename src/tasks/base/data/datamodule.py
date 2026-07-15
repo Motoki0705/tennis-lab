@@ -44,6 +44,7 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
         self.num_workers = int(data_cfg.get("num_workers", 4))
         self.pin_memory = bool(data_cfg.get("pin_memory", True))
         self.scene_dir = Path(data_cfg.get("scene_dir", self.default_scene_dir))
+        self.overfit = bool(data_cfg.get("overfit", False))
 
         self.collate_fn: Callable[..., Any] | None = self._build_collate_fn()
 
@@ -87,28 +88,45 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
             self.train_dataset = self._build_dataset(
                 scene_dir=self.scene_dir,
                 split_file="train.txt",
-                augment=True,
+                augment=not self.overfit,
             )
 
-            val_split = self.scene_dir / "val.txt"
-            if val_split.exists():
-                self.val_dataset = self._build_dataset(
-                    scene_dir=self.scene_dir,
-                    split_file="val.txt",
-                    augment=False,
-                )
-            else:
+            if self.overfit:
                 self.val_dataset = self.train_dataset
+            else:
+                val_split = self.scene_dir / "val.txt"
+                if val_split.exists():
+                    self.val_dataset = self._build_dataset(
+                        scene_dir=self.scene_dir,
+                        split_file="val.txt",
+                        augment=False,
+                    )
+                else:
+                    self.val_dataset = self.train_dataset
 
         if stage == "test" or stage is None:
-            test_split = self.scene_dir / "test.txt"
-            if not test_split.exists():
-                raise RuntimeError(f"Missing required split file: {test_split}")
-            self.test_dataset = self._build_dataset(
-                scene_dir=self.scene_dir,
-                split_file="test.txt",
-                augment=False,
-            )
+            if self.overfit:
+                if self.train_dataset is None:
+                    train_split = self.scene_dir / "train.txt"
+                    if not train_split.exists():
+                        raise RuntimeError(
+                            f"Missing required split file: {train_split}"
+                        )
+                    self.train_dataset = self._build_dataset(
+                        scene_dir=self.scene_dir,
+                        split_file="train.txt",
+                        augment=False,
+                    )
+                self.test_dataset = self.train_dataset
+            else:
+                test_split = self.scene_dir / "test.txt"
+                if not test_split.exists():
+                    raise RuntimeError(f"Missing required split file: {test_split}")
+                self.test_dataset = self._build_dataset(
+                    scene_dir=self.scene_dir,
+                    split_file="test.txt",
+                    augment=False,
+                )
 
     def _build_loader(self, dataset: Dataset, *, train: bool) -> DataLoader:
         return DataLoader(
