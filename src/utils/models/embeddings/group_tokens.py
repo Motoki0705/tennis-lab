@@ -175,13 +175,14 @@ class CourtPlayerGroupEmbedding(_CourtContextGroupEmbedding):
 
 
 class _CourtLineMapObjectGroupEmbedding(nn.Module):
-    """Build separate court/object tokens with a learned token-type embedding."""
+    """Build ``[object, court...]`` tokens for type-aware RoPE downstream."""
 
     def __init__(
         self,
         *,
         dim: int,
         line_map_channels: tuple[int, ...],
+        num_line_map_tokens: int,
         object_input_dim: int,
         invisible_token: InvisibleTokenEmbedding,
     ) -> None:
@@ -189,9 +190,9 @@ class _CourtLineMapObjectGroupEmbedding(nn.Module):
         self.court_embed = CourtLineMapEmbedding(
             dim=dim,
             channels=line_map_channels,
+            num_tokens=num_line_map_tokens,
         )
         self.object_proj = CoordinateProjection(input_dim=object_input_dim, dim=dim)
-        self.token_type = nn.Embedding(2, dim)
         self.invisible_token = invisible_token
 
     def _embed(
@@ -201,8 +202,8 @@ class _CourtLineMapObjectGroupEmbedding(nn.Module):
         object_flat: Tensor,
         object_vis: Tensor | None,
     ) -> Tensor:
-        court_token = self.court_embed(court_line_map)
-        if tuple(court_token.shape[:-1]) != tuple(object_flat.shape[:-1]):
+        court_tokens = self.court_embed(court_line_map)
+        if tuple(court_tokens.shape[:-2]) != tuple(object_flat.shape[:-1]):
             raise ValueError("court and object inputs must share leading dimensions.")
         object_token = self.object_proj(object_flat)
         object_token = apply_visibility_mask(
@@ -210,25 +211,24 @@ class _CourtLineMapObjectGroupEmbedding(nn.Module):
             object_vis,
             self.invisible_token,
         )
-        tokens = torch.stack((court_token, object_token), dim=-2)
-        type_ids = torch.arange(2, device=tokens.device)
-        type_embedding = self.token_type(type_ids).to(dtype=tokens.dtype)
-        return cast(Tensor, tokens + type_embedding)
+        return cast(Tensor, torch.cat((object_token.unsqueeze(-2), court_tokens), dim=-2))
 
 
 class CourtLineMapBallGroupEmbedding(_CourtLineMapObjectGroupEmbedding):
-    """Return ``[court token, ball token]`` for each camera/time element."""
+    """Return ``[ball token, court tokens...]`` per camera/time element."""
 
     def __init__(
         self,
         *,
         dim: int,
         line_map_channels: tuple[int, ...],
+        num_line_map_tokens: int,
         invisible_token: InvisibleTokenEmbedding,
     ) -> None:
         super().__init__(
             dim=dim,
             line_map_channels=line_map_channels,
+            num_line_map_tokens=num_line_map_tokens,
             object_input_dim=2,
             invisible_token=invisible_token,
         )
@@ -247,18 +247,20 @@ class CourtLineMapBallGroupEmbedding(_CourtLineMapObjectGroupEmbedding):
 
 
 class CourtLineMapPlayerGroupEmbedding(_CourtLineMapObjectGroupEmbedding):
-    """Return ``[court token, player token]`` for each camera/time element."""
+    """Return ``[player token, court tokens...]`` per camera/time element."""
 
     def __init__(
         self,
         *,
         dim: int,
         line_map_channels: tuple[int, ...],
+        num_line_map_tokens: int,
         invisible_token: InvisibleTokenEmbedding,
     ) -> None:
         super().__init__(
             dim=dim,
             line_map_channels=line_map_channels,
+            num_line_map_tokens=num_line_map_tokens,
             object_input_dim=NUM_HUMAN_KP * 2,
             invisible_token=invisible_token,
         )

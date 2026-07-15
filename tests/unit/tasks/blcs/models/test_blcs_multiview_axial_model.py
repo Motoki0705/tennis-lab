@@ -44,13 +44,13 @@ def test_multiview_axial_model_forward_accepts_single_view() -> None:
     assert out["position"].shape == (2, 4, 3)
 
 
-def test_multiview_axial_line_model_uses_two_tokens_per_camera() -> None:
+def test_multiview_axial_line_model_uses_configured_tokens_and_pure_type_rope() -> None:
     model = build_blcs_model(
         OmegaConf.create(
             {
                 "model": {
                     "name": "blcs_multiview_axial",
-                    "hidden_dim": 16,
+                    "hidden_dim": 24,
                     "num_layers": 1,
                     "num_heads": 4,
                     "camera_layers_per_stage": [1],
@@ -62,6 +62,7 @@ def test_multiview_axial_line_model_uses_two_tokens_per_camera() -> None:
                     "time_window_radius": 2,
                     "court_input_type": "line",
                     "line_map_channels": [4, 8],
+                    "num_line_map_tokens": 4,
                 }
             }
         )
@@ -79,7 +80,11 @@ def test_multiview_axial_line_model_uses_two_tokens_per_camera() -> None:
     out["position"].sum().backward()
     handle.remove()
 
-    assert captured == [4]
+    assert captured == [10]
+    assert model._build_line_token_type_ids(4).tolist() == [0, 1, 1, 1, 1]
+    assert model.token_freqs_cis.shape[:3] == (4, 2, 5)
+    assert torch.equal(model.token_freqs_cis[0, 0, 1], model.token_freqs_cis[0, 0, 4])
+    assert not torch.equal(model.token_freqs_cis[0, 0, 0], model.token_freqs_cis[0, 0, 1])
     assert out["position"].shape == (2, 4, 3)
     assert torch.isfinite(out["position"]).all()
 
@@ -91,7 +96,7 @@ def test_multiview_axial_line_model_output_depends_on_court_line_map() -> None:
             {
                 "model": {
                     "name": "blcs_multiview_axial",
-                    "hidden_dim": 16,
+                    "hidden_dim": 24,
                     "num_layers": 1,
                     "num_heads": 4,
                     "camera_layers_per_stage": [1],
