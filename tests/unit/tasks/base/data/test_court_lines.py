@@ -73,6 +73,28 @@ def test_render_and_build_court_lines() -> None:
     torch.testing.assert_close(result[:, 0], result[:, -1])
 
 
+def test_build_frame_exposes_the_training_map_and_diagnostics() -> None:
+    builder = _builder()
+    court = _projected_court()
+    frame = builder.build_frame(
+        court,
+        augment=False,
+        rng=np.random.default_rng(17),
+    )
+    sequence = builder.build(
+        court.view(1, 1, 20, 2),
+        augment=False,
+        rng=np.random.default_rng(17),
+    )
+
+    assert frame.line_map.shape == (96, 160)
+    assert frame.extraction.diagnostics.extracted_line_count > 0
+    np.testing.assert_array_equal(
+        frame.extraction.segments,
+        sequence[0, 0].numpy(),
+    )
+
+
 def test_builder_is_reproducible_for_fixed_seed() -> None:
     court = _projected_court().view(1, 1, 20, 2).expand(1, 3, -1, -1)
     config = CourtLineInputConfig(

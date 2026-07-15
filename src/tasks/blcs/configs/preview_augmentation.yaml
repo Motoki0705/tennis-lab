@@ -10,13 +10,17 @@ hydra:
     chdir: false
 
 preview:
+  court_input_type: kp  # kp | line
+  # Empty uses CourtLineInputConfig's shared training defaults. Add explicit
+  # overrides here only for a preview-specific experiment.
+  court_line: {}
   split: train
   sample_indices: []
   max_samples: 4
   num_augmented: 2
   seed: 42
   max_cameras: 4
-  output_dir: outputs/blcs/augmentation_preview
+  output_dir: outputs/blcs/augmentation_preview/${preview.court_input_type}
   figure:
     panel_width: 4.0
     panel_height: 3.0

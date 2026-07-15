@@ -12,7 +12,11 @@ import torch
 from numpy.typing import NDArray
 from torch import Tensor
 
-from src.utils.geometry.line_segments import RansacLineConfig, extract_line_segments
+from src.utils.geometry.line_segments import (
+    LineExtractionResult,
+    RansacLineConfig,
+    extract_line_segments,
+)
 from src.utils.schema.court import COURT_SKELETON
 
 
@@ -132,6 +136,14 @@ class CourtLineInputConfig:
         )
 
 
+@dataclass(frozen=True)
+class CourtLineFrameResult:
+    """Rendered map and extracted segments for one camera-time observation."""
+
+    line_map: NDArray[np.uint8]
+    extraction: LineExtractionResult
+
+
 class CourtLineInputBuilder:
     """Create ``(V,T,L,4)`` court-line inputs from projected CourtKP20."""
 
@@ -166,30 +178,49 @@ class CourtLineInputBuilder:
                 if len(frame_indices) == 0:
                     continue
                 source_frame = int(frame_indices[0])
-                line_map = render_court_line_map(
+                frame = self.build_frame(
                     court_np[view_index, source_frame],
-                    width=self.config.map_width,
-                    height=self.config.map_height,
-                    line_width=_sample_line_width(
-                        self.config.augmentation,
-                        augment=augment,
-                        rng=rng,
-                    ),
-                )
-                if augment and self.config.augmentation.enabled:
-                    line_map = augment_court_line_map(
-                        line_map,
-                        config=self.config.augmentation,
-                        rng=rng,
-                    )
-                result = extract_line_segments(
-                    line_map,
-                    config=self.config.extractor,
+                    augment=augment,
                     rng=rng,
                 )
-                segments = torch.from_numpy(result.segments)
+                segments = torch.from_numpy(frame.extraction.segments)
                 output[view_index, torch.as_tensor(frame_indices)] = segments
         return output
+
+    def build_frame(
+        self,
+        court_kp: Tensor | NDArray[np.floating],
+        *,
+        augment: bool,
+        rng: np.random.Generator,
+    ) -> CourtLineFrameResult:
+        """Render and extract one observation using the training code path."""
+        if isinstance(court_kp, Tensor):
+            court_array = court_kp.detach().cpu().numpy()
+        else:
+            court_array = np.asarray(court_kp)
+        line_map = render_court_line_map(
+            court_array,
+            width=self.config.map_width,
+            height=self.config.map_height,
+            line_width=_sample_line_width(
+                self.config.augmentation,
+                augment=augment,
+                rng=rng,
+            ),
+        )
+        if augment and self.config.augmentation.enabled:
+            line_map = augment_court_line_map(
+                line_map,
+                config=self.config.augmentation,
+                rng=rng,
+            )
+        extraction = extract_line_segments(
+            line_map,
+            config=self.config.extractor,
+            rng=rng,
+        )
+        return CourtLineFrameResult(line_map=line_map, extraction=extraction)
 
 
 def render_court_line_map(
@@ -321,6 +352,7 @@ def _sample_line_width(
 
 
 __all__ = [
+    "CourtLineFrameResult",
     "CourtLineInputBuilder",
     "CourtLineInputConfig",
     "CourtLineMapAugmentationConfig",
