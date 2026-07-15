@@ -3,10 +3,10 @@ defaults:
   - _self_
 
 court_input_type: line
-# Defaults for map degradation and RANSAC live in CourtLineInputConfig so BLCS
-# and PLCS do not maintain two copies. Keep only experiment-facing overrides.
+augmentation:
+  enabled: false
 court_line:
-  max_lines: 12
+  map_size: [160, 90]
   temporal_variants: 1
   augmentation:
-    enabled: true
+    enabled: false

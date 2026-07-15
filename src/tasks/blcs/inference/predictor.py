@@ -89,7 +89,7 @@ class BLCSPredictor(BasePredictor):
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
         denormalize: bool = True,
-        court_lines: Tensor | None = None,
+        court_line_map: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Predict 3D ball trajectory.
 
@@ -116,29 +116,34 @@ class BLCSPredictor(BasePredictor):
             ball_vis,
             ball_mask,
             court_vis,
-            court_lines,
+            court_line_map,
         )
         ball_uv = cast(Tensor, moved[0])
-        court_kp, ball_vis, ball_mask, court_vis, court_lines = moved[1:]
+        court_kp, ball_vis, ball_mask, court_vis, court_line_map = moved[1:]
 
         with torch.no_grad():
             court_input_type = str(getattr(self.model, "court_input_type", "kp"))
             if court_input_type == "line":
-                if court_lines is None or court_kp is not None or court_vis is not None:
+                if (
+                    court_line_map is None
+                    or court_kp is not None
+                    or court_vis is not None
+                ):
                     raise ValueError(
-                        "Line-based BLCS inference requires court_lines and rejects "
+                        "Line-based BLCS inference requires court_line_map and rejects "
                         "court_kp/court_vis."
                     )
                 outputs = self.model(
                     ball_uv=ball_uv,
-                    court_lines=court_lines,
+                    court_line_map=court_line_map,
                     ball_vis=ball_vis,
                     ball_mask=ball_mask,
                 )
             elif court_input_type == "kp":
-                if court_kp is None or court_lines is not None:
+                if court_kp is None or court_line_map is not None:
                     raise ValueError(
-                        "KP-based BLCS inference requires court_kp and rejects court_lines."
+                        "KP-based BLCS inference requires court_kp and rejects "
+                        "court_line_map."
                     )
                 outputs = self.model(
                     ball_uv=ball_uv,

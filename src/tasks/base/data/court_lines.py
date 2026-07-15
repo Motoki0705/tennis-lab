@@ -60,13 +60,12 @@ class CourtLineMapAugmentationConfig:
 
 
 @dataclass(frozen=True)
-class CourtLineInputConfig:
-    """Configuration for converting projected CourtKP20 into line inputs."""
+class CourtLineMapConfig:
+    """Configuration for rasterizing projected CourtKP20 into line maps."""
 
     map_width: int = 160
     map_height: int = 90
     temporal_variants: int = 1
-    extractor: RansacLineConfig = RansacLineConfig()
     augmentation: CourtLineMapAugmentationConfig = CourtLineMapAugmentationConfig()
 
     def __post_init__(self) -> None:
@@ -76,41 +75,23 @@ class CourtLineInputConfig:
             raise ValueError("temporal_variants must be positive.")
 
     @classmethod
-    def from_mapping(cls, config: Mapping[str, Any]) -> CourtLineInputConfig:
-        """Build a strict typed config from a Hydra-compatible mapping."""
-        map_size = config.get("map_size", [160, 90])
-        if not isinstance(map_size, (list, tuple)) or len(map_size) != 2:
-            raise ValueError("court_line.map_size must be [width, height].")
-        extractor_cfg = _mapping(config.get("ransac", {}), "court_line.ransac")
-        preprocess_cfg = _mapping(config.get("preprocess", {}), "court_line.preprocess")
+    def from_mapping(cls, config: Mapping[str, Any]) -> CourtLineMapConfig:
+        """Build a strict map config from a Hydra-compatible mapping."""
+        map_size = _config_pair(
+            config.get("map_size", [160, 90]),
+            "court_line.map_size",
+        )
         augmentation_cfg = _mapping(
             config.get("augmentation", {}), "court_line.augmentation"
         )
-        line_width = augmentation_cfg.get("line_width_range", [1, 3])
-        if not isinstance(line_width, (list, tuple)) or len(line_width) != 2:
-            raise ValueError(
-                "court_line.augmentation.line_width_range must be [min, max]."
-            )
-        max_lines = int(config.get("max_lines", extractor_cfg.get("max_lines", 12)))
+        line_width = _config_pair(
+            augmentation_cfg.get("line_width_range", [1, 3]),
+            "court_line.augmentation.line_width_range",
+        )
         return cls(
             map_width=int(map_size[0]),
             map_height=int(map_size[1]),
             temporal_variants=int(config.get("temporal_variants", 1)),
-            extractor=RansacLineConfig(
-                probability_threshold=float(config.get("probability_threshold", 0.5)),
-                max_iterations=int(extractor_cfg.get("max_iterations", 96)),
-                distance_threshold_px=float(
-                    extractor_cfg.get("distance_threshold_px", 1.5)
-                ),
-                min_inliers=int(extractor_cfg.get("min_inliers", 8)),
-                min_segment_length_px=float(
-                    extractor_cfg.get("min_segment_length_px", 4.0)
-                ),
-                max_lines=max_lines,
-                skeletonize=bool(preprocess_cfg.get("skeletonize", False)),
-                min_component_size=int(preprocess_cfg.get("min_component_size", 5)),
-                max_points=int(preprocess_cfg.get("max_points", 2000)),
-            ),
             augmentation=CourtLineMapAugmentationConfig(
                 enabled=bool(augmentation_cfg.get("enabled", True)),
                 line_width_range=(int(line_width[0]), int(line_width[1])),
@@ -137,6 +118,42 @@ class CourtLineInputConfig:
 
 
 @dataclass(frozen=True)
+class CourtLineInputConfig(CourtLineMapConfig):
+    """Configuration for the legacy RANSAC segment diagnostic path."""
+
+    extractor: RansacLineConfig = RansacLineConfig()
+
+    @classmethod
+    def from_mapping(cls, config: Mapping[str, Any]) -> CourtLineInputConfig:
+        """Build map and RANSAC settings from a Hydra-compatible mapping."""
+        map_config = CourtLineMapConfig.from_mapping(config)
+        extractor_cfg = _mapping(config.get("ransac", {}), "court_line.ransac")
+        preprocess_cfg = _mapping(config.get("preprocess", {}), "court_line.preprocess")
+        max_lines = int(config.get("max_lines", extractor_cfg.get("max_lines", 12)))
+        return cls(
+            map_width=map_config.map_width,
+            map_height=map_config.map_height,
+            temporal_variants=map_config.temporal_variants,
+            augmentation=map_config.augmentation,
+            extractor=RansacLineConfig(
+                probability_threshold=float(config.get("probability_threshold", 0.5)),
+                max_iterations=int(extractor_cfg.get("max_iterations", 96)),
+                distance_threshold_px=float(
+                    extractor_cfg.get("distance_threshold_px", 1.5)
+                ),
+                min_inliers=int(extractor_cfg.get("min_inliers", 8)),
+                min_segment_length_px=float(
+                    extractor_cfg.get("min_segment_length_px", 4.0)
+                ),
+                max_lines=max_lines,
+                skeletonize=bool(preprocess_cfg.get("skeletonize", False)),
+                min_component_size=int(preprocess_cfg.get("min_component_size", 5)),
+                max_points=int(preprocess_cfg.get("max_points", 2000)),
+            ),
+        )
+
+
+@dataclass(frozen=True)
 class CourtLineFrameResult:
     """Rendered map and extracted segments for one camera-time observation."""
 
@@ -144,10 +161,10 @@ class CourtLineFrameResult:
     extraction: LineExtractionResult
 
 
-class CourtLineInputBuilder:
-    """Create ``(V,T,L,4)`` court-line inputs from projected CourtKP20."""
+class CourtLineMapBuilder:
+    """Create normalized ``(V,T,1,H,W)`` line maps from projected CourtKP20."""
 
-    def __init__(self, config: CourtLineInputConfig) -> None:
+    def __init__(self, config: CourtLineMapConfig) -> None:
         self.config = config
 
     def build(
@@ -157,11 +174,81 @@ class CourtLineInputBuilder:
         augment: bool,
         rng: np.random.Generator,
     ) -> Tensor:
-        """Render, corrupt, and extract line segments for each camera/time chunk."""
-        if court_kp.ndim != 4 or court_kp.shape[-2:] != (20, 2):
-            raise ValueError(
-                f"court_kp must have shape (V, T, 20, 2), got {tuple(court_kp.shape)}."
+        """Rasterize each camera/time chunk without RANSAC discretization."""
+        _validate_court_kp_sequence(court_kp)
+        num_views, seq_len = (int(court_kp.shape[0]), int(court_kp.shape[1]))
+        output = torch.zeros(
+            num_views,
+            seq_len,
+            1,
+            self.config.map_height,
+            self.config.map_width,
+            dtype=torch.float32,
+        )
+        variants = min(self.config.temporal_variants if augment else 1, seq_len)
+        frame_chunks = np.array_split(np.arange(seq_len), variants)
+        court_np = court_kp.detach().cpu().numpy()
+        for view_index in range(num_views):
+            for frame_indices in frame_chunks:
+                if len(frame_indices) == 0:
+                    continue
+                source_frame = int(frame_indices[0])
+                line_map = self.build_frame(
+                    court_np[view_index, source_frame],
+                    augment=augment,
+                    rng=rng,
+                )
+                normalized = torch.from_numpy(line_map.astype(np.float32) / 255.0)
+                output[view_index, torch.as_tensor(frame_indices), 0] = normalized
+        return output
+
+    def build_frame(
+        self,
+        court_kp: Tensor | NDArray[np.floating],
+        *,
+        augment: bool,
+        rng: np.random.Generator,
+    ) -> NDArray[np.uint8]:
+        """Rasterize one observation and optionally apply map-space corruption."""
+        if isinstance(court_kp, Tensor):
+            court_array = court_kp.detach().cpu().numpy()
+        else:
+            court_array = np.asarray(court_kp)
+        line_map = render_court_line_map(
+            court_array,
+            width=self.config.map_width,
+            height=self.config.map_height,
+            line_width=_sample_line_width(
+                self.config.augmentation,
+                augment=augment,
+                rng=rng,
+            ),
+        )
+        if augment and self.config.augmentation.enabled:
+            line_map = augment_court_line_map(
+                line_map,
+                config=self.config.augmentation,
+                rng=rng,
             )
+        return line_map
+
+
+class CourtLineInputBuilder:
+    """Create ``(V,T,L,4)`` court-line inputs from projected CourtKP20."""
+
+    def __init__(self, config: CourtLineInputConfig) -> None:
+        self.config = config
+        self.map_builder = CourtLineMapBuilder(config)
+
+    def build(
+        self,
+        court_kp: Tensor,
+        *,
+        augment: bool,
+        rng: np.random.Generator,
+    ) -> Tensor:
+        """Render, corrupt, and extract line segments for each camera/time chunk."""
+        _validate_court_kp_sequence(court_kp)
         num_views, seq_len = (int(court_kp.shape[0]), int(court_kp.shape[1]))
         output = torch.zeros(
             num_views,
@@ -195,26 +282,7 @@ class CourtLineInputBuilder:
         rng: np.random.Generator,
     ) -> CourtLineFrameResult:
         """Render and extract one observation using the training code path."""
-        if isinstance(court_kp, Tensor):
-            court_array = court_kp.detach().cpu().numpy()
-        else:
-            court_array = np.asarray(court_kp)
-        line_map = render_court_line_map(
-            court_array,
-            width=self.config.map_width,
-            height=self.config.map_height,
-            line_width=_sample_line_width(
-                self.config.augmentation,
-                augment=augment,
-                rng=rng,
-            ),
-        )
-        if augment and self.config.augmentation.enabled:
-            line_map = augment_court_line_map(
-                line_map,
-                config=self.config.augmentation,
-                rng=rng,
-            )
+        line_map = self.map_builder.build_frame(court_kp, augment=augment, rng=rng)
         extraction = extract_line_segments(
             line_map,
             config=self.config.extractor,
@@ -327,6 +395,24 @@ def _mapping(value: object, name: str) -> Mapping[str, Any]:
     return value
 
 
+def _config_pair(value: object, name: str) -> tuple[Any, Any]:
+    if isinstance(value, (str, bytes)):
+        raise ValueError(f"{name} must contain exactly two values.")
+    try:
+        if len(value) != 2:  # type: ignore[arg-type]
+            raise ValueError(f"{name} must contain exactly two values.")
+        return value[0], value[1]  # type: ignore[index]
+    except TypeError as error:
+        raise ValueError(f"{name} must contain exactly two values.") from error
+
+
+def _validate_court_kp_sequence(court_kp: Tensor) -> None:
+    if court_kp.ndim != 4 or court_kp.shape[-2:] != (20, 2):
+        raise ValueError(
+            f"court_kp must have shape (V, T, 20, 2), got {tuple(court_kp.shape)}."
+        )
+
+
 def _pixel_point(
     uv: NDArray[np.float32],
     *,
@@ -355,7 +441,9 @@ __all__ = [
     "CourtLineFrameResult",
     "CourtLineInputBuilder",
     "CourtLineInputConfig",
+    "CourtLineMapBuilder",
     "CourtLineMapAugmentationConfig",
+    "CourtLineMapConfig",
     "augment_court_line_map",
     "render_court_line_map",
 ]

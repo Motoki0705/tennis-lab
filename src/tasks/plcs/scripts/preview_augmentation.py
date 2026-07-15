@@ -12,8 +12,9 @@ Notes:
     - PLCS inputs are abstract 2D observations, so each panel renders the
       camera view: projected court lines plus a fading COCO17 skeleton trail
       (`preview.pose_frames` snapshots) in normalized image coordinates.
-    - `preview.court_input_type=line` renders the actual degraded binary map
-      and cyan RANSAC finite segments used to build the line court token.
+    - `preview.court_input_type=line` renders the binary map consumed by the
+      CNN court token encoder. Cyan RANSAC segments are diagnostic overlays
+      retained for comparison with the retired segment-input architecture.
     - The base sample is built once per scene with `augment=False` and a
       per-sample-seeded scene RNG, keeping camera selection and the window
       crop identical across rows; each augmented row then applies

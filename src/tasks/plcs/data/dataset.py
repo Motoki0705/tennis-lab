@@ -10,7 +10,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from src.tasks.base.data.court_lines import CourtLineInputBuilder, CourtLineInputConfig
+from src.tasks.base.data.court_lines import CourtLineMapBuilder, CourtLineMapConfig
 from src.tasks.base.data.scene_dataset import (
     Scene,
     SceneDatasetBase,
@@ -91,13 +91,13 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
                 "data.court_input_type must be 'kp' or 'line', got "
                 f"{self.court_input_type!r}."
             )
-        self.court_line_builder: CourtLineInputBuilder | None = None
+        self.court_line_map_builder: CourtLineMapBuilder | None = None
         if self.court_input_type == "line":
             line_cfg = data_cfg.get("court_line")
             if not isinstance(line_cfg, Mapping):
                 raise ValueError("data.court_line must be a mapping in line mode.")
-            self.court_line_builder = CourtLineInputBuilder(
-                CourtLineInputConfig.from_mapping(line_cfg)
+            self.court_line_map_builder = CourtLineMapBuilder(
+                CourtLineMapConfig.from_mapping(line_cfg)
             )
 
     def _build_scene_dataset_config(
@@ -191,14 +191,14 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         if self.augment:
             out["court_kp"] = sample["court_kp"]
             out["court_vis"] = sample["court_vis"]
-        if self.court_line_builder is None:
-            raise RuntimeError("court_line_builder is not initialized in line mode.")
+        if self.court_line_map_builder is None:
+            raise RuntimeError("court_line_map_builder is not initialized in line mode.")
         seed = int(torch.randint(0, 2**31 - 1, ()).item()) if self.augment else 0
         court_kp = out.get("court_kp")
         if court_kp is None:
-            raise KeyError("court_kp is required to synthesize court_lines.")
+            raise KeyError("court_kp is required to synthesize court_line_map.")
         result = dict(out)
-        result["court_lines"] = self.court_line_builder.build(
+        result["court_line_map"] = self.court_line_map_builder.build(
             court_kp,
             augment=self.augment,
             rng=np.random.default_rng(seed),
@@ -212,15 +212,17 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
     """Collate variable-view/variable-length PLCS samples into a padded batch."""
     max_views = max(int(sample["human_kp"].shape[0]) for sample in batch)
     max_seq_len = max(int(sample["human_kp"].shape[1]) for sample in batch)
-    has_court_lines = "court_lines" in batch[0]
-    if any(("court_lines" in sample) != has_court_lines for sample in batch):
+    has_court_line_map = "court_line_map" in batch[0]
+    if any(
+        ("court_line_map" in sample) != has_court_line_map for sample in batch
+    ):
         raise ValueError("A batch cannot mix KP and line court-input samples.")
 
     human_kp_batch = []
     court_kp_batch = []
     human_vis_batch = []
     court_vis_batch = []
-    court_lines_batch = []
+    court_line_map_batch = []
     human_mask_batch = []
     position_batch = []
     rotation_batch = []
@@ -234,21 +236,21 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
 
         human_kp = sample["human_kp"]
         court_kp = sample.get("court_kp")
-        court_lines = sample.get("court_lines")
+        court_line_map = sample.get("court_line_map")
         human_vis = sample["human_vis"]
         court_vis = sample.get("court_vis")
         human_mask = sample["human_mask"]
         position = sample["position"]
         rotation = sample["rotation"]
         human_kp_3d = sample.get("human_kp_3d")
-        if has_court_lines:
-            if court_lines is None or court_kp is not None or court_vis is not None:
+        if has_court_line_map:
+            if court_line_map is None or court_kp is not None or court_vis is not None:
                 raise ValueError(
-                    "Line samples must contain only court_lines court input."
+                    "Line samples must contain only court_line_map court input."
                 )
-            if court_lines.shape[-1] != 4:
-                raise ValueError("court_lines must have trailing shape (L, 4).")
-            max_court_lines = int(court_lines.shape[-2])
+            if court_line_map.ndim != 5 or court_line_map.shape[2] != 1:
+                raise ValueError("court_line_map must have shape (N,T,1,H,W).")
+            map_height, map_width = court_line_map.shape[-2:]
         else:
             if court_kp is None or court_vis is None:
                 raise ValueError("KP samples require court_kp and court_vis.")
@@ -258,10 +260,13 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
             human_kp = torch.cat(
                 [human_kp, torch.zeros(n_views, pad_seq, 17, 2)], dim=1
             )
-            if has_court_lines:
-                assert court_lines is not None
-                court_lines = torch.cat(
-                    [court_lines, torch.zeros(n_views, pad_seq, max_court_lines, 4)],
+            if has_court_line_map:
+                assert court_line_map is not None
+                court_line_map = torch.cat(
+                    [
+                        court_line_map,
+                        torch.zeros(n_views, pad_seq, 1, map_height, map_width),
+                    ],
                     dim=1,
                 )
             else:
@@ -285,12 +290,14 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
             human_kp = torch.cat(
                 [human_kp, torch.zeros(pad_views, max_seq_len, 17, 2)], dim=0
             )
-            if has_court_lines:
-                assert court_lines is not None
-                court_lines = torch.cat(
+            if has_court_line_map:
+                assert court_line_map is not None
+                court_line_map = torch.cat(
                     [
-                        court_lines,
-                        torch.zeros(pad_views, max_seq_len, max_court_lines, 4),
+                        court_line_map,
+                        torch.zeros(
+                            pad_views, max_seq_len, 1, map_height, map_width
+                        ),
                     ],
                     dim=0,
                 )
@@ -310,9 +317,9 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
             )
 
         human_kp_batch.append(human_kp)
-        if has_court_lines:
-            assert court_lines is not None
-            court_lines_batch.append(court_lines)
+        if has_court_line_map:
+            assert court_line_map is not None
+            court_line_map_batch.append(court_line_map)
         else:
             assert court_kp is not None and court_vis is not None
             court_kp_batch.append(court_kp)
@@ -331,8 +338,8 @@ def collate_plcs_batch(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
         "position": torch.stack(position_batch, dim=0),
         "rotation": torch.stack(rotation_batch, dim=0),
     }
-    if has_court_lines:
-        collated["court_lines"] = torch.stack(court_lines_batch, dim=0)
+    if has_court_line_map:
+        collated["court_line_map"] = torch.stack(court_line_map_batch, dim=0)
     else:
         collated["court_kp"] = torch.stack(court_kp_batch, dim=0)
         collated["court_vis"] = torch.stack(court_vis_batch, dim=0)
@@ -367,8 +374,8 @@ def adapt_batch_for_model_profile(
             "position": batch["position"][:, 0],
             "rotation": batch["rotation"][:, 0],
         }
-        if "court_lines" in batch:
-            adapted["court_lines"] = batch["court_lines"][:, camera_index, 0]
+        if "court_line_map" in batch:
+            adapted["court_line_map"] = batch["court_line_map"][:, camera_index, 0]
         else:
             adapted["court_kp"] = batch["court_kp"][:, camera_index, 0]
             adapted["court_vis"] = batch["court_vis"][:, camera_index, 0]
@@ -384,8 +391,8 @@ def adapt_batch_for_model_profile(
             "position": batch["position"],
             "rotation": batch["rotation"],
         }
-        if "court_lines" in batch:
-            adapted["court_lines"] = batch["court_lines"][:, camera_index]
+        if "court_line_map" in batch:
+            adapted["court_line_map"] = batch["court_line_map"][:, camera_index]
         else:
             adapted["court_kp"] = batch["court_kp"][:, camera_index]
             adapted["court_vis"] = batch["court_vis"][:, camera_index]

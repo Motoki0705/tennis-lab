@@ -8,7 +8,7 @@
 - **`dataset.py`**: `SceneDataset`。sceneをcamera-time基準のcanonical sample(`human_kp`/`court_kp`/`position`/`rotation`等)に変換。
 - **`datamodule.py`**: `PLCSDataModule`。`model.io.input_profile`(`frame`/`sequence`/`multiview`)に応じてbatch構築。
 - **`augmentation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
-- `data=chunked_multiview_sequence_line_bs8`では、human augmentationとは独立にcourt line mapを強く劣化させ、RANSAC抽出した`court_lines: (V,T,L,4)`だけをcourt入力として返す。
+- `data=chunked_multiview_sequence_line_bs8`では、合成`court_line_map: (V,T,1,H,W)`を直接返す。既定のline実験configはhuman / line-map augmentationをともに無効化する。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
 - **`targets.py`**: `build_coco17_world_targets()`。canonical poseまたはAthletePose3DからCOCO17ワールド座標targetを構築。
 - **`types.py`**: `PLCSBatch`/`PLCSSceneMeta` のバッチ・meta契約。
@@ -18,7 +18,7 @@
 - **`plcs_model.py`**: `PLCSModel`。単視点frame向けdecoder-only Transformer(court+playerトークン)。
 - **`plcs_multiview_model.py`**: `PLCSMultiViewModel`。camera×time interleaved RoPEによるmultiview Transformer。
 - **`plcs_multiview_axial_model.py`**: `PLCSMultiViewAxialModel`。camera軸/time軸交互self-attention(共有readout)。
-- 同axial modelの`court_input_type=line`は各cameraを`[court token, player token]`の2 tokenとして扱い、同じcamera RoPEと異なるtoken-type embeddingを与える。既定の`kp`経路とcheckpoint schemaは変更しない。
+- 同axial modelの`court_input_type=line`は軽量depthwise-separable CNNでbinary line mapを1 court tokenへ圧縮し、各cameraを`[court token, player token]`の2 tokenとして扱う。同じcamera RoPEと異なるtoken-type embeddingを与え、RANSAC線分順序には依存しない。既定の`kp`経路とcheckpoint schemaは変更しない。
 - **`plcs_multiview_axial_split_model.py`**: `PLCSMultiViewAxialSplitModel`(issue #518)。rotation/pose trunkを分離。
 - **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
 - **`components/heads.py`**: `PositionHead`/`RotationHead`/`CanonicalPoseHead`。
@@ -53,7 +53,7 @@
 - **`train.py`**: 学習エントリポイント(chunked/GAN切替可)。
 - **`generate_dataset.py`**: 並列合成データ生成エントリポイント。
 - **`visualize.py`**: 可視化エントリポイント。
-- **`preview_augmentation.py`**: `preview.court_input_type=kp|line`で、KP augmentationまたはline map劣化 + RANSAC有限線分を比較表示。
+- **`preview_augmentation.py`**: `preview.court_input_type=kp|line`で、KP augmentationまたはCNN入力line mapを比較表示。RANSAC有限線分は旧方式との診断比較用overlay。
 - **`analysis/*.py`**: データセット分布・角速度統計・loss dominance・回転誤差サンプル抽出の分析スクリプト群。
 
 ### utils/

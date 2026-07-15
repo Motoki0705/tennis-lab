@@ -7,7 +7,7 @@ from typing import cast
 import torch
 from torch import Tensor, nn
 
-from src.utils.models.embeddings.court import CourtLineEmbedding
+from src.utils.models.embeddings.court import CourtLineMapEmbedding
 from src.utils.models.embeddings.invisible_embedding import InvisibleTokenEmbedding
 from src.utils.models.embeddings.projection import (
     CoordinateProjection,
@@ -174,21 +174,21 @@ class CourtPlayerGroupEmbedding(_CourtContextGroupEmbedding):
         )
 
 
-class _CourtLineObjectGroupEmbedding(nn.Module):
+class _CourtLineMapObjectGroupEmbedding(nn.Module):
     """Build separate court/object tokens with a learned token-type embedding."""
 
     def __init__(
         self,
         *,
         dim: int,
-        max_court_lines: int,
+        line_map_channels: tuple[int, ...],
         object_input_dim: int,
         invisible_token: InvisibleTokenEmbedding,
     ) -> None:
         super().__init__()
-        self.court_embed = CourtLineEmbedding(
+        self.court_embed = CourtLineMapEmbedding(
             dim=dim,
-            max_court_lines=max_court_lines,
+            channels=line_map_channels,
         )
         self.object_proj = CoordinateProjection(input_dim=object_input_dim, dim=dim)
         self.token_type = nn.Embedding(2, dim)
@@ -197,11 +197,11 @@ class _CourtLineObjectGroupEmbedding(nn.Module):
     def _embed(
         self,
         *,
-        court_lines: Tensor,
+        court_line_map: Tensor,
         object_flat: Tensor,
         object_vis: Tensor | None,
     ) -> Tensor:
-        court_token = self.court_embed(court_lines)
+        court_token = self.court_embed(court_line_map)
         if tuple(court_token.shape[:-1]) != tuple(object_flat.shape[:-1]):
             raise ValueError("court and object inputs must share leading dimensions.")
         object_token = self.object_proj(object_flat)
@@ -216,61 +216,61 @@ class _CourtLineObjectGroupEmbedding(nn.Module):
         return cast(Tensor, tokens + type_embedding)
 
 
-class CourtLineBallGroupEmbedding(_CourtLineObjectGroupEmbedding):
+class CourtLineMapBallGroupEmbedding(_CourtLineMapObjectGroupEmbedding):
     """Return ``[court token, ball token]`` for each camera/time element."""
 
     def __init__(
         self,
         *,
         dim: int,
-        max_court_lines: int,
+        line_map_channels: tuple[int, ...],
         invisible_token: InvisibleTokenEmbedding,
     ) -> None:
         super().__init__(
             dim=dim,
-            max_court_lines=max_court_lines,
+            line_map_channels=line_map_channels,
             object_input_dim=2,
             invisible_token=invisible_token,
         )
 
     def forward(
         self,
-        court_lines: Tensor,
+        court_line_map: Tensor,
         ball_uv: Tensor,
         ball_vis: Tensor | None = None,
     ) -> Tensor:
         return self._embed(
-            court_lines=court_lines,
+            court_line_map=court_line_map,
             object_flat=_flatten_ball_uv(ball_uv),
             object_vis=ball_vis,
         )
 
 
-class CourtLinePlayerGroupEmbedding(_CourtLineObjectGroupEmbedding):
+class CourtLineMapPlayerGroupEmbedding(_CourtLineMapObjectGroupEmbedding):
     """Return ``[court token, player token]`` for each camera/time element."""
 
     def __init__(
         self,
         *,
         dim: int,
-        max_court_lines: int,
+        line_map_channels: tuple[int, ...],
         invisible_token: InvisibleTokenEmbedding,
     ) -> None:
         super().__init__(
             dim=dim,
-            max_court_lines=max_court_lines,
+            line_map_channels=line_map_channels,
             object_input_dim=NUM_HUMAN_KP * 2,
             invisible_token=invisible_token,
         )
 
     def forward(
         self,
-        court_lines: Tensor,
+        court_line_map: Tensor,
         human_kp: Tensor,
         player_vis: Tensor | None = None,
     ) -> Tensor:
         return self._embed(
-            court_lines=court_lines,
+            court_line_map=court_line_map,
             object_flat=_flatten_human_kp(human_kp),
             object_vis=player_vis,
         )

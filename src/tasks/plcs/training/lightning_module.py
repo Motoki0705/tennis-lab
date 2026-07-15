@@ -100,12 +100,14 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             self.config.get("model", {}).get("court_input_type", "kp")
         )
         if court_input_type == "line":
-            court_lines = batch.get("court_lines")
-            if court_lines is None:
-                raise KeyError("court_lines is required for line-based PLCS training.")
+            court_line_map = batch.get("court_line_map")
+            if court_line_map is None:
+                raise KeyError(
+                    "court_line_map is required for line-based PLCS training."
+                )
             line_result: dict[str, Tensor] = self.model(
                 human_kp=batch["human_kp"],
-                court_lines=court_lines,
+                court_line_map=court_line_map,
                 human_vis=batch.get("human_vis"),
                 human_mask=batch.get("human_mask"),
             )

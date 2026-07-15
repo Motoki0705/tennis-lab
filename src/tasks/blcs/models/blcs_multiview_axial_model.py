@@ -20,7 +20,7 @@ from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
 from src.utils.models.components.ops.time_local import build_local_attention_keep_mask
 from src.utils.models.embeddings import (
     CourtBallGroupEmbedding,
-    CourtLineBallGroupEmbedding,
+    CourtLineMapBallGroupEmbedding,
     InvisibleTokenEmbedding,
 )
 from src.utils.schema.court import NUM_COURT_KP
@@ -52,7 +52,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         invisible_init_std: float = 0.02,
         num_court_tokens: int = NUM_COURT_KP,
         court_input_type: Literal["kp", "line"] = "kp",
-        max_court_lines: int = 12,
+        line_map_channels: Sequence[int] = (16, 32, 64),
         time_window_radius: int = 16,
         camera_layers_per_stage: Sequence[int] | None = None,
         time_layers_per_stage: Sequence[int] | None = None,
@@ -97,9 +97,11 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 f"court_input_type must be 'kp' or 'line', got {court_input_type!r}."
             )
         self.court_input_type = court_input_type
-        self.max_court_lines = int(max_court_lines)
-        if self.max_court_lines <= 0:
-            raise ValueError("max_court_lines must be positive.")
+        self.line_map_channels = tuple(int(value) for value in line_map_channels)
+        if not self.line_map_channels or any(
+            value <= 0 for value in self.line_map_channels
+        ):
+            raise ValueError("line_map_channels must contain positive integers.")
         self.time_window_radius = int(time_window_radius)
         self.camera_layers_per_stage = camera_layers_per_stage
         self.time_layers_per_stage = time_layers_per_stage
@@ -133,12 +135,12 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 invisible_token=self.invisible_token,
                 num_court_tokens=self.num_court_tokens,
             )
-            self.line_group_embed: CourtLineBallGroupEmbedding | None = None
+            self.line_group_embed: CourtLineMapBallGroupEmbedding | None = None
         else:
             self.group_embed = None
-            self.line_group_embed = CourtLineBallGroupEmbedding(
+            self.line_group_embed = CourtLineMapBallGroupEmbedding(
                 dim=self.hidden_dim,
-                max_court_lines=self.max_court_lines,
+                line_map_channels=self.line_map_channels,
                 invisible_token=self.invisible_token,
             )
 
@@ -324,7 +326,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             court_input_type=cast(
                 Literal["kp", "line"], str(model_cfg.get("court_input_type", "kp"))
             ),
-            max_court_lines=int(model_cfg.get("max_court_lines", 12)),
+            line_map_channels=model_cfg.get("line_map_channels", [16, 32, 64]),
             time_window_radius=int(model_cfg.get("time_window_radius", 16)),
             camera_layers_per_stage=model_cfg.get("camera_layers_per_stage", None),
             time_layers_per_stage=model_cfg.get("time_layers_per_stage", None),
@@ -380,13 +382,13 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         ball_vis: Tensor | None = None,
         ball_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
-        court_lines: Tensor | None = None,
+        court_line_map: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Forward pass for multi-view BLCS inputs."""
         if self.court_input_type == "kp":
-            if court_lines is not None:
+            if court_line_map is not None:
                 raise ValueError(
-                    "court_lines must not be provided in court_input_type='kp'."
+                    "court_line_map must not be provided in court_input_type='kp'."
                 )
             (
                 prepared_court_kp,
@@ -428,7 +430,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                     "court_kp and court_vis must not be provided in court_input_type='line'."
                 )
             (
-                prepared_lines,
+                prepared_line_map,
                 ball_vis,
                 ball_mask,
                 batch_size,
@@ -436,19 +438,22 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 seq_len_in,
             ) = self._prepare_line_forward_inputs(
                 ball_uv=ball_uv,
-                court_lines=court_lines,
+                court_line_map=court_line_map,
                 ball_vis=ball_vis,
                 ball_mask=ball_mask,
             )
-            line_flat = prepared_lines.reshape(
-                batch_size * n_cams * seq_len_in, self.max_court_lines, 4
+            line_map_flat = prepared_line_map.reshape(
+                batch_size * n_cams * seq_len_in,
+                1,
+                prepared_line_map.shape[-2],
+                prepared_line_map.shape[-1],
             )
             ball_flat = ball_uv.reshape(batch_size * n_cams * seq_len_in, 2)
             group_vis = ball_vis.reshape(batch_size * n_cams * seq_len_in)
             if self.line_group_embed is None:
                 raise RuntimeError("Line group embedding is not initialized.")
             x = (
-                self.line_group_embed(line_flat, ball_flat, group_vis)
+                self.line_group_embed(line_map_flat, ball_flat, group_vis)
                 .reshape(batch_size, n_cams, seq_len_in, 2, self.hidden_dim)
                 .permute(0, 2, 1, 3, 4)
                 .reshape(batch_size, seq_len_in, n_cams * 2, self.hidden_dim)
@@ -608,7 +613,7 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         self,
         *,
         ball_uv: Tensor,
-        court_lines: Tensor | None,
+        court_line_map: Tensor | None,
         ball_vis: Tensor | None,
         ball_mask: Tensor | None,
     ) -> tuple[Tensor, Tensor, Tensor, int, int, int]:
@@ -625,14 +630,20 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             raise ValueError(
                 f"n_cams={n_cams} exceeds max_num_cameras={self.max_num_cameras}."
             )
-        if court_lines is None:
-            raise ValueError("court_lines is required for court_input_type='line'.")
-        if court_lines.dim() == 4:
-            court_lines = court_lines.unsqueeze(2).expand(-1, -1, seq_len_in, -1, -1)
-        expected = (batch_size, n_cams, seq_len_in, self.max_court_lines, 4)
-        if tuple(court_lines.shape) != expected:
+        if court_line_map is None:
+            raise ValueError("court_line_map is required for court_input_type='line'.")
+        if court_line_map.dim() == 5:
+            court_line_map = court_line_map.unsqueeze(2).expand(
+                -1, -1, seq_len_in, -1, -1, -1
+            )
+        if court_line_map.dim() != 6 or court_line_map.shape[:3] != (
+            batch_size,
+            n_cams,
+            seq_len_in,
+        ) or court_line_map.shape[3] != 1:
             raise ValueError(
-                f"court_lines must have shape {expected}, got {tuple(court_lines.shape)}."
+                "court_line_map must have shape (B,N,T,1,H,W), got "
+                f"{tuple(court_line_map.shape)}."
             )
         if ball_vis is None or tuple(ball_vis.shape) != (
             batch_size,
@@ -652,4 +663,4 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 "ball_mask is required with shape "
                 f"{(batch_size, n_cams, seq_len_in)} for line mode."
             )
-        return court_lines, ball_vis, ball_mask, batch_size, n_cams, seq_len_in
+        return court_line_map, ball_vis, ball_mask, batch_size, n_cams, seq_len_in

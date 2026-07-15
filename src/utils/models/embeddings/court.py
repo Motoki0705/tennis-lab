@@ -6,6 +6,7 @@ from typing import cast
 
 from torch import Tensor, nn
 
+from src.utils.models.components.norm import RMSNorm
 from src.utils.models.embeddings.invisible_embedding import InvisibleTokenEmbedding
 from src.utils.models.embeddings.projection import (
     CoordinateProjection,
@@ -51,35 +52,69 @@ class CourtKPUVEmbedding(nn.Module):
         return apply_visibility_mask(feat, court_vis, self.invisible_token)
 
 
-class CourtLineEmbedding(nn.Module):
-    """Embed a fixed-length set of finite court-line endpoints into one token.
+class _LineMapConvStage(nn.Module):
+    """Stride-2 depthwise-separable stage for the line-map encoder."""
 
-    Zero padding is intentionally left in the flattened feature vector. The
-    projection bias therefore learns a distinct no-line representation without
-    exposing a line mask, count, confidence, or semantic identifier.
-    """
-
-    def __init__(self, *, dim: int, max_court_lines: int = 12) -> None:
+    def __init__(self, in_channels: int, out_channels: int) -> None:
         super().__init__()
-        self.max_court_lines = int(max_court_lines)
-        if self.max_court_lines <= 0:
-            raise ValueError("max_court_lines must be positive.")
-        self.proj = CoordinateProjection(
-            input_dim=self.max_court_lines * 4,
-            dim=int(dim),
+        self.layers = nn.Sequential(
+            nn.Conv2d(
+                in_channels,
+                in_channels,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                groups=in_channels,
+                bias=False,
+            ),
+            nn.GroupNorm(1, in_channels),
+            nn.GELU(),
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
+            nn.GroupNorm(1, out_channels),
+            nn.GELU(),
         )
 
-    def forward(self, court_lines: Tensor) -> Tensor:
-        """Return one token for input shape ``(..., max_court_lines, 4)``."""
-        if court_lines.ndim < 2 or tuple(court_lines.shape[-2:]) != (
-            self.max_court_lines,
-            4,
-        ):
-            raise ValueError(
-                "court_lines must have shape "
-                f"(..., {self.max_court_lines}, 4), got {tuple(court_lines.shape)}."
-            )
-        flattened = court_lines.reshape(
-            *court_lines.shape[:-2], self.max_court_lines * 4
+    def forward(self, inputs: Tensor) -> Tensor:
+        return cast(Tensor, self.layers(inputs))
+
+
+class CourtLineMapEmbedding(nn.Module):
+    """Compress a single-channel court-line map into one learned token."""
+
+    def __init__(
+        self,
+        *,
+        dim: int,
+        channels: tuple[int, ...] = (16, 32, 64),
+    ) -> None:
+        super().__init__()
+        if not channels or any(channel <= 0 for channel in channels):
+            raise ValueError("channels must contain positive integers.")
+        stages: list[nn.Module] = []
+        in_channels = 1
+        for out_channels in channels:
+            stages.append(_LineMapConvStage(in_channels, out_channels))
+            in_channels = out_channels
+        self.encoder = nn.Sequential(*stages)
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.proj = nn.Sequential(
+            nn.Linear(in_channels, int(dim)),
+            RMSNorm(int(dim)),
+            nn.GELU(),
         )
-        return cast(Tensor, self.proj(flattened))
+
+    def forward(self, court_line_map: Tensor) -> Tensor:
+        """Return one token for input shape ``(..., 1, H, W)``."""
+        if court_line_map.ndim < 3 or court_line_map.shape[-3] != 1:
+            raise ValueError(
+                "court_line_map must have shape (..., 1, H, W), got "
+                f"{tuple(court_line_map.shape)}."
+            )
+        height, width = court_line_map.shape[-2:]
+        if height < 8 or width < 8:
+            raise ValueError("court_line_map height and width must be at least 8.")
+        leading_shape = court_line_map.shape[:-3]
+        flattened = court_line_map.reshape(-1, 1, height, width)
+        features = self.pool(self.encoder(flattened)).flatten(1)
+        token = self.proj(features)
+        return cast(Tensor, token.reshape(*leading_shape, -1))

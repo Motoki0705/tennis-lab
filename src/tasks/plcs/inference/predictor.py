@@ -51,7 +51,7 @@ class PLCSPredictor(BasePredictor):
         human_mask: Tensor | None = None,
         court_vis: Tensor | None = None,
         denormalize: bool = True,
-        court_lines: Tensor | None = None,
+        court_line_map: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Predict player 3D position and orientation from caller-provided tensors."""
 
@@ -62,28 +62,33 @@ class PLCSPredictor(BasePredictor):
             human_vis,
             human_mask,
             court_vis,
-            court_lines,
+            court_line_map,
         )
         human_kp = cast(Tensor, moved[0])
-        court_kp, human_vis, human_mask, court_vis, court_lines = moved[1:]
+        court_kp, human_vis, human_mask, court_vis, court_line_map = moved[1:]
 
         court_input_type = str(getattr(self.model, "court_input_type", "kp"))
         if court_input_type == "line":
-            if court_lines is None or court_kp is not None or court_vis is not None:
+            if (
+                court_line_map is None
+                or court_kp is not None
+                or court_vis is not None
+            ):
                 raise ValueError(
-                    "Line-based PLCS inference requires court_lines and rejects "
+                    "Line-based PLCS inference requires court_line_map and rejects "
                     "court_kp/court_vis."
                 )
             outputs = self.model(
                 human_kp=human_kp,
-                court_lines=court_lines,
+                court_line_map=court_line_map,
                 human_vis=human_vis,
                 human_mask=human_mask,
             )
         elif court_input_type == "kp":
-            if court_kp is None or court_lines is not None:
+            if court_kp is None or court_line_map is not None:
                 raise ValueError(
-                    "KP-based PLCS inference requires court_kp and rejects court_lines."
+                    "KP-based PLCS inference requires court_kp and rejects "
+                    "court_line_map."
                 )
             outputs = self.model(
                 human_kp=human_kp,
