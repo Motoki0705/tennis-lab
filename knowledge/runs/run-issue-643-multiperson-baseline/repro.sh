@@ -5,8 +5,8 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-643-648-multi-object-tracking}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: e0cf7fc5d24cc28fa6ecfaaae94a8da2642f5469 (branch feat/issue-643-648-multi-object-tracking)"
-git checkout e0cf7fc5d24cc28fa6ecfaaae94a8da2642f5469 2>/dev/null || echo "[repro] WARN: checkout e0cf7fc5d24cc28fa6ecfaaae94a8da2642f5469 failed; using current HEAD"
+echo "[repro] target commit: 6ef9adbd7c055a31fdb936da5f475345a3f5d098 (branch feat/issue-643-648-multi-object-tracking)"
+git checkout 6ef9adbd7c055a31fdb936da5f475345a3f5d098 2>/dev/null || echo "[repro] WARN: checkout 6ef9adbd7c055a31fdb936da5f475345a3f5d098 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # --- original training command ---

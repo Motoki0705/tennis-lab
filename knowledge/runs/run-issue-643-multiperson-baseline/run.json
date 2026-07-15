@@ -5,7 +5,7 @@
   "provider": "codex",
   "session": "019f6023-b08a-7af3-aa59-182d7cf43958",
   "issue": "643",
-  "commit": "e0cf7fc5d24cc28fa6ecfaaae94a8da2642f5469",
+  "commit": "6ef9adbd7c055a31fdb936da5f475345a3f5d098",
   "branch": "feat/issue-643-648-multi-object-tracking",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-643-648-multi-object-tracking",
