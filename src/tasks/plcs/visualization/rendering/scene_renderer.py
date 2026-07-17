@@ -10,6 +10,7 @@ player position/trail.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 import matplotlib.pyplot as plt
@@ -44,6 +45,7 @@ _PLAYER_SHADOW_RADIUS = 0.4
 _PLAYER_COLOR = "#E76F51"
 _GT_COLOR = "green"
 _PRED_COLOR = "red"
+_PLAYER_COLORS = ("#E76F51", "#2A9D8F", "#E9C46A", "#457B9D")
 
 # Minimap inset rectangle in figure coordinates (left, bottom, width, height).
 _MINIMAP_RECT = (0.76, 0.04, 0.21, 0.30)
@@ -77,6 +79,25 @@ class PLCSSceneRenderer:
             return self.coco17_renderer
         return self.smplh_renderer
 
+    @staticmethod
+    def _player_scenes(scene: Any) -> list[Any]:
+        """Expose each object-axis entry as the existing single-player contract."""
+        position = np.asarray(scene.position)
+        if position.ndim == 2:
+            return [scene]
+        num_persons = int(getattr(scene, "num_persons", position.shape[1]))
+        return [
+            SimpleNamespace(
+                position=position[:, index],
+                rotation=np.asarray(scene.rotation)[:, index],
+                canonical_pose_3d=np.asarray(scene.canonical_pose_3d)[:, index],
+                meta=scene.meta,
+                cameras=scene.cameras,
+                num_cameras=scene.num_cameras,
+            )
+            for index in range(num_persons)
+        ]
+
     def create_animation(
         self,
         scene: Any,
@@ -88,6 +109,7 @@ class PLCSSceneRenderer:
     ) -> FuncAnimation:
         """Create scene animation for a single view."""
         num_frames = int(getattr(scene, "meta", {}).get("num_frames", len(scene.position)))
+        player_scenes = self._player_scenes(scene)
         interval = 1000.0 / fps
 
         if view == "3d":
@@ -103,7 +125,10 @@ class PLCSSceneRenderer:
                 ax.clear()
                 self._render_3d_frame(
                     ax,
-                    [(scene, _PLAYER_COLOR, None)],
+                    [
+                        (player, _PLAYER_COLORS[index % len(_PLAYER_COLORS)], f"Player {index + 1}")
+                        for index, player in enumerate(player_scenes)
+                    ],
                     frame_idx,
                     num_frames,
                     fps,
@@ -112,7 +137,12 @@ class PLCSSceneRenderer:
                 if minimap_ax is not None:
                     minimap_ax.clear()
                     self._render_minimap_frame(
-                        minimap_ax, [(scene, _PLAYER_COLOR)], frame_idx
+                        minimap_ax,
+                        [
+                            (player, _PLAYER_COLORS[index % len(_PLAYER_COLORS)])
+                            for index, player in enumerate(player_scenes)
+                        ],
+                        frame_idx,
                     )
                 return []
 
@@ -125,7 +155,8 @@ class PLCSSceneRenderer:
 
             def update_2d(frame_idx: int) -> list[Any]:
                 ax.clear()
-                self._render_2d_subplot(ax, scene, frame_idx)
+                for player in player_scenes:
+                    self._render_2d_subplot(ax, player, frame_idx)
                 ax.set_title(f"Top-down | Frame {frame_idx}/{num_frames - 1}")
                 return []
 
@@ -240,15 +271,15 @@ class PLCSSceneRenderer:
         print(f"FPS: {meta.get('fps', 'unknown')}")
         print(f"Cameras: {int(getattr(scene, 'num_cameras', len(scene.cameras)))}")
 
-        pos = np.asarray(scene.position)
-        rot = np.asarray(scene.rotation)
+        pos = np.asarray(scene.position).reshape(len(scene.position), -1, 3)
+        rot = np.asarray(scene.rotation).reshape(len(scene.rotation), -1, 2)
         print("\nPosition (normalized):")
-        print(f"  X range: [{pos[:, 0].min():.3f}, {pos[:, 0].max():.3f}]")
-        print(f"  Y range: [{pos[:, 1].min():.3f}, {pos[:, 1].max():.3f}]")
-        print(f"  Z range: [{pos[:, 2].min():.3f}, {pos[:, 2].max():.3f}]")
+        print(f"  X range: [{pos[..., 0].min():.3f}, {pos[..., 0].max():.3f}]")
+        print(f"  Y range: [{pos[..., 1].min():.3f}, {pos[..., 1].max():.3f}]")
+        print(f"  Z range: [{pos[..., 2].min():.3f}, {pos[..., 2].max():.3f}]")
         print("Rotation (sin, cos):")
-        print(f"  sin range: [{rot[:, 0].min():.3f}, {rot[:, 0].max():.3f}]")
-        print(f"  cos range: [{rot[:, 1].min():.3f}, {rot[:, 1].max():.3f}]")
+        print(f"  cos range: [{rot[..., 0].min():.3f}, {rot[..., 0].max():.3f}]")
+        print(f"  sin range: [{rot[..., 1].min():.3f}, {rot[..., 1].max():.3f}]")
         print("=" * 60)
 
     def _world_positions(self, scene: Any) -> NDArray[np.float64]:
@@ -493,4 +524,11 @@ class PLCSSceneRenderer:
 
         human_uv = cam.human_kp_uv[frame_idx]
         human_vis = cam.human_kp_visible[frame_idx]
-        self.skeleton_renderer.render_2d(ax, human_uv, human_vis)
+        if human_uv.ndim == 2:
+            self.skeleton_renderer.render_2d(ax, human_uv, human_vis)
+            return
+        num_persons = int(getattr(scene, "num_persons", human_uv.shape[0]))
+        for person_index in range(num_persons):
+            self.skeleton_renderer.render_2d(
+                ax, human_uv[person_index], human_vis[person_index]
+            )

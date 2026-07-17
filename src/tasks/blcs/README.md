@@ -7,6 +7,7 @@
 ### generate_dataset/
 - **`config.py`**: Hydra設定を `GeneratorConfig` に変換する `build_generator_config()`。
 - **`scene_generator.py`**: `BLCSSceneGenerator`。1シーン=1ラリーを物理シミュレーションとマルチカメラ投影で生成。
+- **`multi_object_scene_generator.py`**: `MultiBallSceneGenerator`。既存の物理ラリーを複数生成し、同一の仮想カメラへ再投影してcanonical multi-ball sceneへ合成する。`generation=multi_object` で選択する。
 - **`io/dataset_io.py`**: `BLCSDatasetWriter`/`load_scene()`。シーンのnpy/json入出力。
 - **`simulation/ball_physics.py`**: `PhysicsConfig`/`BallPhysics`。重力・drag・Magnus・バウンド・ネット/フェンス衝突の物理モデル。
 - **`simulation/cell_manager.py`**: `CellManager`。コートを18セルに分割し着地点サンプリング・ショット分類を行う。
@@ -22,12 +23,14 @@
 - **`datamodule.py`**: `BLCSDataModule`。`input_profile`(`single`/`multiview`)に応じたcollate構築。
 - **`augmentation.py`**: `BLCSBallObservationAugmentation`。detector誤差を模した8段のUVノイズパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
+- **`tracking_dataset.py` / `tracking_datamodule.py`**: single-objectと同じnpy/json scene形式のmulti-ballデータをtracking tensorへ変換する独立Dataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
 
 ### models/
 - **`__init__.py`**: `build_blcs_model(config)`。`model.name` で3実装を切替。
 - **`blcs_model.py`**: `BLCSModel`。single-view用decoder-only Transformer(court+ballトークン)。
 - **`blcs_multiview_model.py`**: `BLCSMultiViewModel`。クエリのcross-attention+時間self-attentionによる反復更新モデル。
 - **`blcs_multiview_axial_model.py`**: `BLCSMultiViewAxialModel`(現行デフォルト)。camera軸/time軸交互self-attention。
+- **`blcs_track_query_model.py`**: `BLCSTrackQueryModel`。unorderedなcamera候補集合からclip-localな固定query slotで複数ボール軌道とpresenceを推定する。
 - **`components/heads.py`**: `Trajectory3DHead`/`VelocityHead`。
 - **`components/differentiable_projection.py`**: `DifferentiableProjection`。予測3D位置をカメラへ再投影。
 - **`discriminators/`**: `BLCSTrajectoryDiscriminator` と工場関数 `build_blcs_discriminator`。
@@ -37,6 +40,7 @@
 - **`lightning_module.py`**: `BLCSLightningModule`。supervised+reprojection+GAN損失を統括。
 - **`losses.py`**: `BLCSLoss`。`trajectory_position_loss` + 任意の `reprojection_loss`。
 - **`metrics.py`**: `BLCSMetrics`。メートル換算L2誤差・閾値内accuracyを集計。
+- **`tracking_{matching,losses,metrics,lightning_module}.py`**: clip-level Hungarian matchingによるmulti-ball tracking学習。
 
 ### inference/
 - **`predictor.py`**: `BLCSPredictor`。`predict(denormalize=True)` でメートル系3D軌道を返す。
@@ -47,7 +51,7 @@
 - **`adapters/render_inputs.py`**: バッチ/出力からGT・予測軌道配列を抽出。
 - **`api/predict.py`**: `predict_positions()`。checkpointからメートル単位軌道を返す。
 - **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
-- **`rendering/scene_renderer.py`**: `BLCSSceneRenderer`。3D/2D/カメラ視点でのGT・予測比較アニメーション。3Dは `src.utils.rendering` の共有プリミティブ(テーマ・レイヤ規約・カメラ・フェード軌道・影・バウンスリング・HUD・ミニマップ)を利用。バウンス表示はmetaのイベント優先、無いときのみ `detect_bounces()` へfallback(`resolve_bounce_frames()`)。style/視点は `visualization.style` / `visualization.view_3d` で設定。
+- **`rendering/scene_renderer.py`**: `BLCSSceneRenderer`。single/multi-ballの3D/2D/カメラ視点アニメーションとGT・予測比較を描画する。3Dは `src.utils.rendering` の共有プリミティブ(テーマ・レイヤ規約・カメラ・フェード軌道・影・バウンスリング・HUD・ミニマップ)を利用。バウンス表示はmetaのイベント優先、無いときのみ `detect_bounces()` へfallback(`resolve_bounce_frames()`)。style/視点は `visualization.style` / `visualization.view_3d` で設定。
 
 ### scripts/
 - **`generate_dataset.py`**: 合成データ生成エントリポイント。
@@ -56,3 +60,19 @@
 
 ### configs/
 - model(single/multiview/axialサイズ違い)・data(single/multiview/chunked)・training(default/chunked/GAN)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定。
+
+## Multi-ball tracking
+
+入力は `ball_uv (B,V,T,D,2)` と候補score/mask、出力は `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。候補indexは座標にもidentityにも使わず、debug用の `candidate_gt_index` はモデルへ渡しません。learned slotと全camera候補を同一self-attentionへ入れ、空間M-RoPE `(time,camera,role)` とslotごとの時間attentionを交互に適用します。
+
+```bash
+# 固定train/val/testデータを事前生成
+.venv/bin/python -m src.tasks.blcs.scripts.generate_dataset \
+  generation=multi_object run.output_dir=data/blcs/multi_object
+
+# 事前生成データで学習
+.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking
+
+# trainだけon-the-fly chunk生成（val/testは上記の固定データ）
+.venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking_chunked
+```

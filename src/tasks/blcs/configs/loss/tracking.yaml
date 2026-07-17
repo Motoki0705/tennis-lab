@@ -1,0 +1,7 @@
+position_weight: 1.0
+presence_weight: 1.0
+smoothness_weight: 0.0
+gravity_weight: 0.0
+gravity_target: -0.01
+match_position_weight: 1.0
+match_presence_weight: 0.5

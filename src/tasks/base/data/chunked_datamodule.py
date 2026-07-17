@@ -68,6 +68,7 @@ class BaseChunkedDataModule(SceneDirectoryDataModule):
         if (stage == "fit" or stage is None) and self.chunk_manager is None:
             self.chunk_manager = self._build_chunk_manager()
             self.chunk_manager.start()
+            self._load_next_chunk()
 
     def teardown(self, stage: str | None = None) -> None:
         if self.chunk_manager is not None:

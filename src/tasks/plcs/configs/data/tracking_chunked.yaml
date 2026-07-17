@@ -1,0 +1,15 @@
+defaults:
+  - _chunked
+  - _self_
+
+scene_dir: data/plcs/multi_object
+batch_size: 8
+num_workers: 0
+pin_memory: true
+
+chunk:
+  scenes_per_chunk: 96
+  epochs_per_chunk: 1
+  prefetch_chunks: 1
+  chunks_dir: data/plcs/multi_object_chunks
+  generation_workers: 1

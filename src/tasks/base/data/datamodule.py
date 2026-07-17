@@ -91,14 +91,13 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
             )
 
             val_split = self.scene_dir / "val.txt"
-            if val_split.exists():
-                self.val_dataset = self._build_dataset(
-                    scene_dir=self.scene_dir,
-                    split_file="val.txt",
-                    augment=False,
-                )
-            else:
-                self.val_dataset = self.train_dataset
+            if not val_split.exists():
+                raise RuntimeError(f"Missing required split file: {val_split}")
+            self.val_dataset = self._build_dataset(
+                scene_dir=self.scene_dir,
+                split_file="val.txt",
+                augment=False,
+            )
 
         if stage == "test" or stage is None:
             test_split = self.scene_dir / "test.txt"

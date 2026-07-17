@@ -11,6 +11,9 @@ from src.tasks.base.training.runner import BaseTrainingRunner
 from src.tasks.plcs.data.datamodule import PLCSDataModule
 from src.tasks.plcs.generate_dataset.config import prepare_generation_config
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
+from src.tasks.plcs.training.tracking_lightning_module import (
+    PLCSTrackingLightningModule,
+)
 
 
 class PLCSTrainingRunner(BaseTrainingRunner):
@@ -18,12 +21,28 @@ class PLCSTrainingRunner(BaseTrainingRunner):
 
     def prepare_config(self, config: Any) -> None:
         backend = str(config.get("data", {}).get("backend", "default"))
-        if backend == "chunked":
+        tracking = str(config.get("model", {}).get("name")) == "plcs_track_query"
+        if backend == "chunked" and not tracking:
             prepare_generation_config(config, resolve=False)
         super().prepare_config(config)
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
         backend = str(config.get("data", {}).get("backend", "default"))
+        tracking = str(config.get("model", {}).get("name")) == "plcs_track_query"
+        if tracking:
+            from src.tasks.plcs.data.tracking_datamodule import (
+                ChunkedPLCSTrackingDataModule,
+                PLCSTrackingDataModule,
+            )
+
+            if backend == "default":
+                return PLCSTrackingDataModule(config)
+            if backend == "chunked":
+                return ChunkedPLCSTrackingDataModule(config)
+            raise ValueError(
+                f"Unsupported tracking data.backend='{backend}'. "
+                "Supported: ['default', 'chunked']"
+            )
         if backend == "chunked":
             from src.tasks.plcs.data.chunked_datamodule import ChunkedPLCSDataModule
 
@@ -41,6 +60,8 @@ class PLCSTrainingRunner(BaseTrainingRunner):
         *,
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
+        if str(config.get("model", {}).get("name")) == "plcs_track_query":
+            return PLCSTrackingLightningModule(config)
         return PLCSLightningModule(config)
 
     def callbacks_extra(

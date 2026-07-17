@@ -10,6 +10,7 @@ Notes:
     - Hydra loads configuration from `src/tasks/blcs/configs/generate_dataset.yaml`.
     - The script generates scenes, writes splits, and persists dataset metadata.
     - Parallel scene generation uses ProcessPoolExecutor and currently supports CPU workers.
+    - `generation` changes only object cardinality; both modes use the same simulator and writer.
 """
 
 from __future__ import annotations
@@ -66,6 +67,13 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     seed = int(cfg.run.seed)
     seed_everything(seed)
 
+    generation_mode = str(cfg.generation.mode)
+    if generation_mode not in {"single_object", "multi_object"}:
+        raise ValueError(
+            f"Unsupported generation.mode='{generation_mode}'. "
+            "Supported: ['single_object', 'multi_object']"
+        )
+
     train_ratio = float(cfg.run.train_ratio)
     val_ratio = float(cfg.run.val_ratio)
     test_ratio = 1.0 - train_ratio - val_ratio
@@ -98,14 +106,19 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
     total_scenes = 0
 
+    scene_iterator = generate_parallel_scenes(
+        generator_config=generator_config,
+        device=device,
+        num_scenes=num_scenes,
+        num_workers=num_workers,
+        seed=seed,
+        multi_object=generation_mode == "multi_object",
+        min_balls=int(cfg.generation.min_balls),
+        max_balls=int(cfg.generation.max_balls),
+    )
+
     for scene_data in tqdm(
-        generate_parallel_scenes(
-            generator_config=generator_config,
-            device=device,
-            num_scenes=num_scenes,
-            num_workers=num_workers,
-            seed=seed,
-        ),
+        scene_iterator,
         desc="Generating scenes",
         total=num_scenes,
     ):
