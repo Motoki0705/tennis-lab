@@ -1,0 +1,5 @@
+backend: default
+scene_dir: data/plcs/multi_object
+batch_size: 8
+num_workers: 0
+pin_memory: true

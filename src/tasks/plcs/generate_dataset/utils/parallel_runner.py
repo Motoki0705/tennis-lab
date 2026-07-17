@@ -9,10 +9,13 @@ from omegaconf import DictConfig, OmegaConf
 from src.tasks.base.generate_dataset.parallel_runner import (
     run_parallel_scene_generation,
 )
+from src.tasks.plcs.generate_dataset.multi_object_scene_generator import (
+    MultiPersonSceneGenerator,
+)
 from src.tasks.plcs.generate_dataset.sampling.motion_sampler import MotionSampler
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData, SceneGenerator
 
-_WORKER_SCENE_GENERATOR: SceneGenerator | None = None
+_WORKER_SCENE_GENERATOR: SceneGenerator | MultiPersonSceneGenerator | None = None
 
 
 def build_scene_generator(
@@ -35,13 +38,23 @@ def build_scene_generator(
 def _get_worker_scene_generator(
     config_dict: dict[str, Any],
     device: str,
-) -> SceneGenerator:
+) -> SceneGenerator | MultiPersonSceneGenerator:
     global _WORKER_SCENE_GENERATOR
     if _WORKER_SCENE_GENERATOR is None:
         cfg = OmegaConf.create(config_dict)
         if not isinstance(cfg, DictConfig):
             raise TypeError("PLCS worker config must resolve to a DictConfig.")
-        _WORKER_SCENE_GENERATOR = build_scene_generator(cfg, device)
+        base = build_scene_generator(cfg, device)
+        generation = cfg.get("generation", {})
+        _WORKER_SCENE_GENERATOR = (
+            MultiPersonSceneGenerator(
+                base,
+                min_persons=int(generation.min_persons),
+                max_persons=int(generation.max_persons),
+            )
+            if str(generation.get("mode", "single_object")) == "multi_object"
+            else base
+        )
     return _WORKER_SCENE_GENERATOR
 
 

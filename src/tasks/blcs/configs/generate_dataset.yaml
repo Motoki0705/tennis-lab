@@ -1,4 +1,5 @@
 defaults:
+  - generation: single_object
   - physics: default
   - rally: default
   - camera: default

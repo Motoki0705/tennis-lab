@@ -375,6 +375,7 @@ class BaseTrainingRunner:
         optional_trainer_keys = (
             "max_steps",
             "accumulate_grad_batches",
+            "reload_dataloaders_every_n_epochs",
             "limit_train_batches",
             "limit_val_batches",
             "limit_test_batches",

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -11,6 +11,9 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from src.tasks.base.training.runner import BaseTrainingRunner
 from src.tasks.blcs.data.datamodule import BLCSDataModule
 from src.tasks.blcs.training.lightning_module import BLCSLightningModule
+from src.tasks.blcs.training.tracking_lightning_module import (
+    BLCSTrackingLightningModule,
+)
 
 if TYPE_CHECKING:
     from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
@@ -27,7 +30,22 @@ class BLCSTrainingRunner(BaseTrainingRunner):
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
         """Build unified BLCS data module."""
+        tracking = str(config.get("model", {}).get("name")) == "blcs_track_query"
         backend = str(config.get("data", {}).get("backend", "npz"))
+        if tracking:
+            from src.tasks.blcs.data.tracking_datamodule import (
+                BLCSTrackingDataModule,
+                ChunkedBLCSTrackingDataModule,
+            )
+
+            if backend == "default":
+                return BLCSTrackingDataModule(config)
+            if backend == "chunked":
+                return ChunkedBLCSTrackingDataModule(config)
+            raise ValueError(
+                f"Unsupported tracking data.backend='{backend}'. "
+                "Supported: ['default', 'chunked']"
+            )
         if backend == "chunked":
             from src.tasks.blcs.data.chunked_datamodule import ChunkedBLCSDataModule
 
@@ -54,6 +72,8 @@ class BLCSTrainingRunner(BaseTrainingRunner):
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
         """Build BLCS lightning module."""
+        if str(config.get("model", {}).get("name")) == "blcs_track_query":
+            return BLCSTrackingLightningModule(config)
         return BLCSLightningModule(config)
 
     def callbacks_extra(
@@ -64,15 +84,15 @@ class BLCSTrainingRunner(BaseTrainingRunner):
     ) -> list[Any]:
         """Add chunk rotation callback when using chunked backend."""
         extras = super().callbacks_extra(config, datamodule, logger)
-        from src.tasks.blcs.data.chunked_datamodule import ChunkedBLCSDataModule
+        from src.tasks.base.data.chunked_datamodule import BaseChunkedDataModule
 
-        if isinstance(datamodule, ChunkedBLCSDataModule):
+        if isinstance(datamodule, BaseChunkedDataModule):
             from src.tasks.base.training.chunk_rotation_callback import (
                 ChunkRotationCallback,
             )
 
             extras.append(ChunkRotationCallback())
-        return cast(list[Any], extras)
+        return extras
 
     def dry_run_postprocess(self, batch: Any, output_dir: Path) -> None:
         """Log model parameters after dry run batch loading."""
