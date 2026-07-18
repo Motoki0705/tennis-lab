@@ -9,8 +9,6 @@ from torch import nn
 
 from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
 from src.utils.models import (
-    CourtCameraEmbedding,
-    InvisibleTokenEmbedding,
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
@@ -18,7 +16,7 @@ from src.utils.models import (
     precompute_freqs_cis,
     precompute_freqs_cis_nd,
 )
-from src.utils.models.embeddings.projection import apply_visibility_mask
+from src.utils.models.embeddings import CourtBallGroupEmbedding, InvisibleTokenEmbedding
 
 
 class BLCSTrackQueryModel(nn.Module):
@@ -35,7 +33,10 @@ class BLCSTrackQueryModel(nn.Module):
             config.get("mask_invisible_observations", True)
         )
         head_dim = self.hidden_dim // self.num_heads
-        self.rope_dim = int(config.get("rope_dim", head_dim))
+        configured_rope_dim = config.get("rope_dim", None)
+        self.rope_dim = (
+            head_dim if configured_rope_dim is None else int(configured_rope_dim)
+        )
         if self.hidden_dim % self.num_heads != 0:
             raise ValueError("hidden_dim must be divisible by num_heads.")
         if self.rope_dim > head_dim or self.rope_dim % 2:
@@ -43,18 +44,15 @@ class BLCSTrackQueryModel(nn.Module):
                 "rope_dim must be even and no larger than the attention head dim."
             )
 
-        self.candidate_encoder = nn.Sequential(
-            nn.Linear(2, self.hidden_dim),
-            nn.GELU(),
-            nn.Linear(self.hidden_dim, self.hidden_dim),
-        )
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
             init_std=float(config.get("invisible_init_std", 0.02)),
         )
-        self.court_encoder = CourtCameraEmbedding(
+        self.num_court_tokens = 14
+        self.group_embed = CourtBallGroupEmbedding(
             dim=self.hidden_dim,
-            num_court_points=14,
+            invisible_token=self.invisible_token,
+            num_court_tokens=self.num_court_tokens,
         )
         self.slot_embeddings = nn.Parameter(
             torch.randn(self.num_queries, self.hidden_dim) * 0.02
@@ -62,7 +60,7 @@ class BLCSTrackQueryModel(nn.Module):
         block_config = TransformerBlockConfig(
             dim=self.hidden_dim,
             n_heads=self.num_heads,
-            ffn_dim=int(config.ffn_dim),
+            ffn_dim=config.get("ffn_dim", None),
             rope_dim=self.rope_dim,
             attn_dropout=float(config.dropout),
         )
@@ -86,7 +84,7 @@ class BLCSTrackQueryModel(nn.Module):
         num_queries: int,
         device: torch.device,
     ) -> torch.Tensor:
-        """Return ``(B*T,Q+V*(D+1),3)`` time/camera/role coordinates."""
+        """Return ``(B*T,Q+V*D,3)`` time/camera/role coordinates."""
         time = torch.arange(num_frames, device=device).view(1, num_frames, 1)
         slot = torch.zeros(
             batch_size, num_frames, num_queries, 3, device=device, dtype=torch.long
@@ -96,7 +94,7 @@ class BLCSTrackQueryModel(nn.Module):
             batch_size,
             num_frames,
             num_views,
-            num_detections + 1,
+            num_detections,
             3,
             device=device,
             dtype=torch.long,
@@ -104,8 +102,7 @@ class BLCSTrackQueryModel(nn.Module):
         camera_tokens[..., 0] = time.view(1, num_frames, 1, 1)
         camera = torch.arange(1, num_views + 1, device=device).view(1, 1, num_views, 1)
         camera_tokens[..., 1] = camera
-        camera_tokens[..., :num_detections, 2] = 1
-        camera_tokens[..., num_detections, 2] = 2
+        camera_tokens[..., 2] = 1
         return torch.cat([slot, camera_tokens.flatten(2, 3)], dim=2).flatten(0, 1)
 
     def forward(
@@ -132,43 +129,41 @@ class BLCSTrackQueryModel(nn.Module):
             view_mask[:, :, None, None] & frame_mask[:, None, :, None]
         ).expand(-1, -1, -1, num_detections)
         ball_visible = ball_visible.bool()
-        encoded_candidates = self.candidate_encoder(
-            ball_uv.masked_fill(~ball_visible.unsqueeze(-1), 0.0)
-        )
-        candidate_tokens = apply_visibility_mask(
-            encoded_candidates,
-            ball_visible,
-            self.invisible_token,
-        )
         if court_kp.shape[:3] != (batch_size, num_views, num_frames):
             raise ValueError("court_kp leading dimensions must match ball_uv (B,V,T).")
-        if court_kp.shape[3:] != (14, 2):
+        if court_kp.shape[3:] != (self.num_court_tokens, 2):
             raise ValueError(
-                "court_kp must contain all 14 annotated UV points; "
+                f"court_kp must contain all {self.num_court_tokens} annotated UV "
+                "points; "
                 f"got shape {tuple(court_kp.shape)}."
             )
-        court_tokens = self.court_encoder(court_kp, court_vis).unsqueeze(3)
-        camera_tokens = torch.cat([candidate_tokens, court_tokens], dim=3).permute(
-            0, 2, 1, 3, 4
+        if court_vis.shape != court_kp.shape[:-1]:
+            raise ValueError(
+                "court_vis must match court_kp without its UV axis, got "
+                f"court_vis={tuple(court_vis.shape)} and "
+                f"court_kp={tuple(court_kp.shape)}."
+            )
+        court_visible = court_vis if court_vis.dtype == torch.bool else court_vis > 0
+        masked_court = court_kp.masked_fill(~court_visible.unsqueeze(-1), 0.0)
+        court_for_candidates = masked_court.unsqueeze(3).expand(
+            -1, -1, -1, num_detections, -1, -1
         )
+        ball_for_candidates = ball_uv.masked_fill(~ball_visible.unsqueeze(-1), 0.0)
+        camera_tokens = self.group_embed(
+            court_for_candidates,
+            ball_for_candidates,
+            ball_visible,
+        ).permute(0, 2, 1, 3, 4)
         camera_tokens = camera_tokens.reshape(
             batch_size,
             num_frames,
-            num_views * (num_detections + 1),
+            num_views * num_detections,
             self.hidden_dim,
         )
-        camera_padding_valid = torch.cat(
-            [
-                observation_padding_valid,
-                (view_mask[:, :, None] & frame_mask[:, None, :]).unsqueeze(-1),
-            ],
-            dim=3,
-        ).permute(0, 2, 1, 3)
+        camera_padding_valid = observation_padding_valid.permute(0, 2, 1, 3)
         camera_attention_valid = camera_padding_valid.clone()
         if self.mask_invisible_observations:
-            camera_attention_valid[..., :num_detections] &= ball_visible.permute(
-                0, 2, 1, 3
-            )
+            camera_attention_valid &= ball_visible.permute(0, 2, 1, 3)
         camera_state_valid = camera_attention_valid
         camera_tokens = camera_tokens * camera_state_valid.reshape(
             batch_size, num_frames, -1

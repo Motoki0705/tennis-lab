@@ -1,11 +1,11 @@
-name: blcs_track_query
+defaults:
+  - _track_query
+  - _self_
+
+# Legacy lightweight setup used by the initial tracking experiments.
 hidden_dim: 64
 num_heads: 4
 ffn_dim: 128
-num_queries: 4
 num_stages: 2
 rope_dim: 16
 dropout: 0.0
-role_rope_enabled: true
-mask_invisible_observations: true
-invisible_init_std: 0.02

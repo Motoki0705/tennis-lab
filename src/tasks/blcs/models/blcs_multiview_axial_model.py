@@ -265,14 +265,28 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         """Create model from Hydra/OmegaConf config."""
         model_cfg = config.get("model", {})
         data_cfg = config.get("data", {})
+        raw_attention_type = str(model_cfg.get("attention_type", "mha"))
+        if raw_attention_type == "mha":
+            attention_type: Literal["mha", "gqa"] = "mha"
+        elif raw_attention_type == "gqa":
+            attention_type = "gqa"
+        else:
+            raise ValueError(f"Unsupported attention_type={raw_attention_type!r}")
+        raw_ffn_type = str(model_cfg.get("ffn_type", "swiglu"))
+        if raw_ffn_type == "swiglu":
+            ffn_type: Literal["swiglu", "mlp"] = "swiglu"
+        elif raw_ffn_type == "mlp":
+            ffn_type = "mlp"
+        else:
+            raise ValueError(f"Unsupported ffn_type={raw_ffn_type!r}")
 
         return cls(
             hidden_dim=int(model_cfg.get("hidden_dim", 256)),
             num_heads=int(model_cfg.get("num_heads", 8)),
-            attention_type=str(model_cfg.get("attention_type", "mha")),
+            attention_type=attention_type,
             num_kv_heads=model_cfg.get("num_kv_heads", None),
             ffn_dim=model_cfg.get("ffn_dim", None),
-            ffn_type=str(model_cfg.get("ffn_type", "swiglu")),
+            ffn_type=ffn_type,
             dropout=float(model_cfg.get("dropout", 0.1)),
             rope_dim=model_cfg.get("rope_dim", None),
             rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
@@ -360,6 +374,9 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             court_vis=court_vis,
         )
 
+        if court_vis is not None:
+            court_visible = court_vis > 0
+            court_kp = court_kp.masked_fill(~court_visible.unsqueeze(-1), 0.0)
         court_flat = court_kp.reshape(
             batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
         )
