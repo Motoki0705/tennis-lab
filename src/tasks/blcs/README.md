@@ -60,13 +60,13 @@
 - **`visualize.py`**: 可視化エントリポイント。
 
 ### configs/
-- model(single/multiview/axialサイズ違い)・data(single/multiview/chunked)・training(default/chunked/GAN)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定。
+- model(single/multiview/axial・track-queryのサイズ違い)・data(single/multiview/chunked)・training(default/chunked/GAN)・physics/rally/camera/targeted_velocity/generator(データ生成)・metrics・visualization・run の各Hydra設定。
 
 ## Multi-ball tracking
 
 観測座標は `ball_uv (B,V,T,P,2)`、観測有無は `ball_visible (B,V,T,P)` に一本化し、`ball_candidate_mask` は持ちません。scoreやvisibility値を数値特徴へ連結せず、不可視candidateはlearned invisible tokenへ置換します。`mask_invisible_observations=true` は不可視tokenをattention keyから除外する対照条件、`false` は`frame_mask` / `view_mask`によるpaddingだけを除外し、不可視tokenを更新可能なmemoryとして使う条件です。出力は `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。教師は `target_position (B,T,Q,3)`、`target_presence (B,T,Q)`、`target_instance_id (B,T,Q)` で、inactive IDは`-1`です。重ならないbirth/death区間を同じtarget columnへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。候補indexは座標にもidentityにも使わず、debug用の `candidate_gt_index` はモデルへ渡しません。
 
-14 court UVは`court_vis`で不可視点を0化し、共有point encoderとmean poolingでcameraごとに1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*(P+1), D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、ball=1、court=2で、候補indexやcourt点indexは埋め込みません。court集約は点順序不変で、train時のview単位shuffleにより`far/near`・`left/right`命名不整合にも依存しません。
+14 court UVは`court_vis`で不可視点を0化し、各ball candidateのUVと連結して、共有`CourtBallGroupEmbedding`によりcandidateごとの1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*P, D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、court-ball group=1で、候補indexやcourt点indexは埋め込みません。court点の並びはannotation schemaに従い、固定されたcamera名に依存しないようtrain時はview単位でshuffleします。
 
 multi-object generatorは1024-frame global timelineに3〜10個のsource rally subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 

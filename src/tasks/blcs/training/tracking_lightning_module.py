@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+from collections.abc import MutableMapping
 from typing import Any, cast
 
 import numpy as np
@@ -12,6 +14,8 @@ from src.tasks.blcs.models import build_blcs_model
 from src.tasks.blcs.training.tracking_losses import BLCSTrackingLoss
 from src.tasks.blcs.training.tracking_metrics import blcs_tracking_metrics
 
+logger = logging.getLogger(__name__)
+
 
 class BLCSTrackingLightningModule(BaseLightningModule):
     """Train and evaluate multi-ball clip-local slots."""
@@ -20,6 +24,43 @@ class BLCSTrackingLightningModule(BaseLightningModule):
         super().__init__(config)
         self.model = build_blcs_model(config)
         self.criterion = BLCSTrackingLoss(config.loss)
+
+    @staticmethod
+    def _migrate_legacy_group_embedding_keys(
+        state_dict: MutableMapping[str, torch.Tensor],
+    ) -> None:
+        """Rename the temporary ``group_encoder`` checkpoint prefix."""
+        legacy_prefix = "model.group_encoder."
+        current_prefix = "model.group_embed."
+        legacy_keys = [key for key in state_dict if key.startswith(legacy_prefix)]
+        if not legacy_keys:
+            return
+
+        collisions = [
+            current_prefix + key.removeprefix(legacy_prefix)
+            for key in legacy_keys
+            if current_prefix + key.removeprefix(legacy_prefix) in state_dict
+        ]
+        if collisions:
+            raise RuntimeError(
+                "Checkpoint contains both legacy group_encoder and current "
+                f"group_embed keys: {collisions}."
+            )
+
+        for legacy_key in legacy_keys:
+            current_key = current_prefix + legacy_key.removeprefix(legacy_prefix)
+            state_dict[current_key] = state_dict.pop(legacy_key)
+        logger.info(
+            "Migrated %d legacy group_encoder checkpoint keys to group_embed.",
+            len(legacy_keys),
+        )
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        """Apply explicit state-dict migrations before Lightning loads weights."""
+        state_dict = checkpoint.get("state_dict")
+        if not isinstance(state_dict, MutableMapping):
+            raise TypeError("Tracking checkpoint must contain a state_dict mapping.")
+        self._migrate_legacy_group_embedding_keys(state_dict)
 
     @staticmethod
     def _model_inputs(batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
