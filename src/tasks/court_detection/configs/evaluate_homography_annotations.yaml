@@ -1,0 +1,24 @@
+evaluate_homography_annotations:
+  datasets:
+    - name: canonical_val
+      annotation_json: data/court/data_val.json
+      image_dir: data/court/images
+      image_extensions: [".png", ".jpg", ".jpeg"]
+  output_dir: outputs/court_detection/homography_annotation_evaluation
+  workers: 4
+  overwrite: false
+  use_refined_keypoints: true
+  criteria:
+    ransac_reproj_threshold_normalized: 0.012
+    min_inliers: 12
+    min_template_x_span_ratio: 0.5
+    min_template_y_span_ratio: 0.7
+    max_inlier_rms_normalized: 0.006
+    min_visible_fraction: 0.98
+    min_court_area_ratio: 0.015
+    max_court_area_ratio: 0.95
+    min_line_edge_support: 0.55
+    line_distance_tolerance_px: 3.0
+    line_evidence_max_side: 900
+    require_ground_view: true
+    max_opposite_edge_ratio: 0.95
