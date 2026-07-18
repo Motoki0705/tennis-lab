@@ -1,5 +1,9 @@
 position_weight: 1.0
 presence_weight: 1.0
+presence_inactive_weight: 0.25
+presence_active_weight: 1.0
+presence_transition_weight: 2.0
+transition_radius: 2
 smoothness_weight: 0.0
 gravity_weight: 0.0
 gravity_target: -0.01

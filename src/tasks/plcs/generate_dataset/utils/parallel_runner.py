@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import random
 from collections.abc import Iterator
 from typing import Any
 
+import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
 
@@ -49,8 +51,8 @@ def _get_worker_scene_generator(
         _WORKER_SCENE_GENERATOR = (
             MultiPersonSceneGenerator(
                 base,
-                min_persons=int(generation.min_persons),
-                max_persons=int(generation.max_persons),
+                timeline=OmegaConf.to_container(generation.timeline, resolve=True),
+                rng=random.Random(random.getrandbits(64)),
             )
             if str(generation.get("mode", "single_object")) == "multi_object"
             else base
@@ -69,7 +71,12 @@ def _generate_scene_task(
         )
 
     torch.set_num_threads(1)
+    random.seed(scene_index)
+    np.random.seed(scene_index)
+    torch.manual_seed(scene_index)
     scene_generator = _get_worker_scene_generator(config_dict, device)
+    if isinstance(scene_generator, MultiPersonSceneGenerator):
+        scene_generator.composer.rng.seed(scene_index)
     return scene_generator.generate_scene(scene_id=f"scene_{scene_index:06d}")
 
 

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import random
 from collections.abc import Iterator
+from typing import Any
 
+import numpy as np
 import torch
 
 from src.tasks.base.generate_dataset.parallel_runner import (
@@ -31,8 +34,7 @@ def _get_worker_scene_generator(
     generator_config: GeneratorConfig,
     device: str,
     multi_object: bool,
-    min_balls: int,
-    max_balls: int,
+    timeline_config: dict[str, Any] | None,
 ) -> BLCSSceneGenerator | MultiBallSceneGenerator:
     global _WORKER_SCENE_GENERATOR
     if _WORKER_SCENE_GENERATOR is None:
@@ -40,13 +42,16 @@ def _get_worker_scene_generator(
             config=generator_config,
             device=device,
         )
-        _WORKER_SCENE_GENERATOR = (
-            MultiBallSceneGenerator(
-                base, min_balls=min_balls, max_balls=max_balls
+        if multi_object:
+            if timeline_config is None:
+                raise ValueError("Multi-object BLCS generation requires timeline config.")
+            _WORKER_SCENE_GENERATOR = MultiBallSceneGenerator(
+                base,
+                timeline=timeline_config,
+                rng=random.Random(random.getrandbits(64)),
             )
-            if multi_object
-            else base
-        )
+        else:
+            _WORKER_SCENE_GENERATOR = base
     return _WORKER_SCENE_GENERATOR
 
 
@@ -56,8 +61,7 @@ def _generate_scene_task(
     device: str,
     base_seed: int,
     multi_object: bool,
-    min_balls: int,
-    max_balls: int,
+    timeline_config: dict[str, Any] | None,
 ) -> BLCSSceneData:
     if torch.device(device).type != "cpu":
         raise ValueError(
@@ -69,11 +73,14 @@ def _generate_scene_task(
     # state, producing correlated scenes within each batch of workers. This
     # also makes scenes reproducible regardless of worker scheduling.
     torch.manual_seed(base_seed + scene_index)
+    random.seed(base_seed + scene_index)
+    np.random.seed(base_seed + scene_index)
 
     generator = _get_worker_scene_generator(
-        generator_config, device, multi_object, min_balls, max_balls
+        generator_config, device, multi_object, timeline_config
     )
     if isinstance(generator, MultiBallSceneGenerator):
+        generator.composer.rng.seed(base_seed + scene_index)
         return generator.generate_scene(f"scene_{scene_index:06d}")
     from_cell = generator.sample_from_cell()
     side = generator.sample_side()
@@ -88,10 +95,10 @@ def generate_parallel_scenes(
     device: str,
     num_scenes: int,
     num_workers: int,
+    start_index: int = 0,
     seed: int = 0,
     multi_object: bool = False,
-    min_balls: int = 1,
-    max_balls: int = 1,
+    timeline_config: dict[str, Any] | None = None,
 ) -> Iterator[BLCSSceneData]:
     # Keep a BLCS-specific guard so the task-specific error message is raised
     # before delegating (the shared runner raises a generic message).
@@ -103,12 +110,11 @@ def generate_parallel_scenes(
 
     yield from run_parallel_scene_generation(
         _generate_scene_task,
-        list(range(num_scenes)),
+        list(range(start_index, start_index + num_scenes)),
         generator_config,
         device,
         seed,
         multi_object,
-        min_balls,
-        max_balls,
+        timeline_config,
         num_workers=num_workers,
     )

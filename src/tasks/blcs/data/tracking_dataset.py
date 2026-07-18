@@ -1,10 +1,9 @@
-"""Canonical-scene dataset adapter for multi-ball BLCS tracking."""
+"""Config-aware canonical-scene adapter for lifecycle BLCS tracking."""
 
 from __future__ import annotations
 
-import json
+from typing import Any
 
-import numpy as np
 import torch
 from torch import Tensor
 
@@ -12,103 +11,185 @@ from src.tasks.base.data.canonical_tracking import (
     CanonicalTrackingDataset,
     pad_and_stack_tracking_batch,
 )
+from src.tasks.base.data.scene_dataset import Scene
+from src.tasks.blcs.data.tracking_augmentation import (
+    BLCSTrackingCandidateAugmentation,
+)
 
 BLCS_TRACKING_KEYS = (
-    "scene_format_version", "ball_uv", "ball_score", "ball_candidate_mask",
-    "ball_visible", "court_kp", "court_vis", "frame_mask", "view_mask",
-    "position_3d", "ball_present", "target_ball_mask", "ball_uv_gt",
-    "ball_visible_gt", "candidate_gt_index",
+    "scene_format_version",
+    "ball_uv",
+    "ball_visible",
+    "court_kp",
+    "court_vis",
+    "frame_mask",
+    "view_mask",
+    "target_position",
+    "target_velocity",
+    "target_presence",
+    "target_instance_id",
+    "target_slot_mask",
+    "clean_ball_uv",
+    "clean_ball_visible",
+    "candidate_gt_index",
 )
 
 
-def _shuffle_objects(value: Tensor, camera: int) -> Tensor:
-    """Apply a deterministic camera-time permutation to the object axis."""
+def _cyclic_object_shuffle(value: Tensor, camera_index: int) -> Tensor:
+    """Apply a deterministic validation/test permutation to each frame."""
     num_objects = int(value.shape[1])
+    if num_objects == 0:
+        return value
     return torch.stack(
         [
-            torch.roll(frame, shifts=(camera + frame_index) % num_objects, dims=0)
+            torch.roll(
+                frame,
+                shifts=(camera_index + frame_index) % num_objects,
+                dims=0,
+            )
             for frame_index, frame in enumerate(value)
         ]
     )
 
 
 class BLCSTrackingDataset(CanonicalTrackingDataset):
-    """Load canonical BLCS scenes and expose the track-query tensor contract."""
+    """Load, clip, select views, pack lifecycle slots, and corrupt candidates."""
 
-    def __getitem__(self, index: int) -> dict[str, Tensor]:
-        scene_path = self.scenes[index]
-        scalars = json.loads((scene_path / "scalars.json").read_text())
-        num_cameras = int(scalars["num_cameras"])
-        position = torch.from_numpy(np.load(scene_path / "ball_pos_norm.npy")).float()
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        data_cfg = self._resolve_data_cfg(self.hydra_cfg)
+        self.tracking_augmentation = BLCSTrackingCandidateAugmentation(
+            data_cfg.get("augmentation", {})
+        )
+
+    def build_sample(self, scene: Scene) -> dict[str, Tensor]:
+        position = torch.from_numpy(scene.get_array("ball_pos_norm")).float()
+        velocity = torch.from_numpy(scene.get_array("ball_vel_world")).float()
         if position.ndim == 2:
             position = position[:, None]
-        num_frames, max_balls = position.shape[:2]
-        present_path = scene_path / "ball_present.npy"
-        present = (
-            torch.from_numpy(np.load(present_path)).bool()
-            if present_path.exists()
-            else torch.ones((num_frames, max_balls), dtype=torch.bool)
-        )
-        uv_rows, visible_rows, present_rows, court_rows, court_vis_rows = [], [], [], [], []
-        for camera in range(num_cameras):
-            prefix = scene_path / f"cam_{camera}_"
-            uv = torch.from_numpy(np.load(f"{prefix}ball_uv.npy")).float()
-            visible = torch.from_numpy(np.load(f"{prefix}ball_visible.npy")).bool()
+            velocity = velocity[:, None]
+        num_frames, num_physical = position.shape[:2]
+        if scene.has_key("ball_present"):
+            physical_presence = torch.from_numpy(scene.get_array("ball_present")).bool()
+        else:
+            physical_presence = torch.ones((num_frames, num_physical), dtype=torch.bool)
+        window = self.select_window(scene, full_len=num_frames)
+        cameras = self.select_cameras(scene)
+        position = position[window.sl]
+        velocity = velocity[window.sl]
+        physical_presence = physical_presence[window.sl]
+        packing = self.pack_lifecycle(physical_presence)
+
+        uv_rows: list[Tensor] = []
+        visible_rows: list[Tensor] = []
+        index_rows: list[Tensor] = []
+        clean_uv_rows: list[Tensor] = []
+        clean_visible_rows: list[Tensor] = []
+        court_rows: list[Tensor] = []
+        court_vis_rows: list[Tensor] = []
+        physical_ids = torch.arange(num_physical).expand(window.seq_len, -1)
+        for selected_index, camera_index in enumerate(cameras.indices):
+            uv = torch.from_numpy(
+                scene.get_camera_array(camera_index, "ball_uv", window=window)
+            ).float()
+            visible = torch.from_numpy(
+                scene.get_camera_array(camera_index, "ball_visible", window=window)
+            ).bool()
             if uv.ndim == 2:
-                uv, visible = uv[:, None], visible[:, None]
-            uv_rows.append(_shuffle_objects(uv, camera))
-            visible_rows.append(_shuffle_objects(visible, camera))
-            present_rows.append(_shuffle_objects(present, camera))
-            court = torch.from_numpy(np.load(f"{prefix}court_kp_uv.npy")).float()[:14]
-            court_visible = torch.from_numpy(
-                np.load(f"{prefix}court_kp_visible.npy")
-            ).bool()[:14]
-            court_rows.append(court[None].expand(num_frames, -1, -1))
-            court_vis_rows.append(court_visible[None].expand(num_frames, -1))
-        uv_tensor = torch.stack(uv_rows)
-        visible_tensor = torch.stack(visible_rows)
-        gt_index = torch.stack(
-            [
-                _shuffle_objects(
-                    torch.arange(max_balls).expand(num_frames, -1), camera
+                uv = uv[:, None]
+                visible = visible[:, None]
+            visible &= physical_presence
+            uv[~physical_presence] = 0.0
+            clean_uv_rows.append(uv.clone())
+            clean_visible_rows.append(visible.clone())
+            candidate_index = torch.where(visible, physical_ids, -1)
+            if not self.augment:
+                uv = _cyclic_object_shuffle(uv, selected_index)
+                visible = _cyclic_object_shuffle(visible, selected_index)
+                candidate_index = _cyclic_object_shuffle(
+                    candidate_index, selected_index
                 )
-                for camera in range(num_cameras)
-            ]
-        )
-        candidate_mask = visible_tensor & torch.stack(present_rows)
-        return {
-            "scene_format_version": torch.tensor(2),
-            "ball_uv": uv_tensor,
-            "ball_score": visible_tensor.float(),
-            "ball_candidate_mask": candidate_mask,
-            "ball_visible": visible_tensor,
+            uv_rows.append(uv)
+            visible_rows.append(visible)
+            index_rows.append(candidate_index)
+
+            court_np = scene.get_camera_array(camera_index, "court_kp_uv")
+            court_visible_np = scene.get_camera_array(camera_index, "court_kp_visible")
+            if court_np.ndim == 2:
+                court = (
+                    torch.from_numpy(court_np[:14])
+                    .float()[None]
+                    .expand(window.seq_len, -1, -1)
+                )
+                court_visible = (
+                    torch.from_numpy(court_visible_np[:14])
+                    .bool()[None]
+                    .expand(window.seq_len, -1)
+                )
+            else:
+                court = torch.from_numpy(court_np[window.sl, :14]).float()
+                court_visible = torch.from_numpy(
+                    court_visible_np[window.sl, :14]
+                ).bool()
+            court_rows.append(court)
+            court_vis_rows.append(court_visible)
+
+        sample = {
+            "scene_format_version": torch.tensor(3),
+            "ball_uv": torch.stack(uv_rows),
+            "ball_visible": torch.stack(visible_rows),
             "court_kp": torch.stack(court_rows),
             "court_vis": torch.stack(court_vis_rows),
-            "frame_mask": torch.ones(num_frames, dtype=torch.bool),
-            "view_mask": torch.ones(num_cameras, dtype=torch.bool),
-            "position_3d": position,
-            "ball_present": present,
-            "target_ball_mask": present.any(0),
-            "ball_uv_gt": torch.stack([
-                torch.from_numpy(np.load(scene_path / f"cam_{camera}_ball_uv.npy")).float().reshape(num_frames, max_balls, 2)
-                for camera in range(num_cameras)
-            ]),
-            "ball_visible_gt": torch.stack([
-                torch.from_numpy(np.load(scene_path / f"cam_{camera}_ball_visible.npy")).bool().reshape(num_frames, max_balls)
-                for camera in range(num_cameras)
-            ]),
-            "candidate_gt_index": gt_index,
+            "frame_mask": torch.ones(window.seq_len, dtype=torch.bool),
+            "view_mask": torch.ones(len(cameras.indices), dtype=torch.bool),
+            "target_position": packing.pack_tensor(position, physical_presence),
+            "target_velocity": packing.pack_tensor(velocity, physical_presence),
+            "target_presence": packing.target_presence,
+            "target_instance_id": packing.target_instance_id,
+            "target_slot_mask": packing.target_presence.any(0),
+            "clean_ball_uv": torch.stack(clean_uv_rows),
+            "clean_ball_visible": torch.stack(clean_visible_rows),
+            "candidate_gt_index": torch.stack(index_rows),
         }
+        return sample
+
+    def augment_sample(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
+        if not self.augment:
+            return sample
+        return self.tracking_augmentation(sample)
 
 
-def collate_blcs_tracking_batch(batch: list[dict[str, Tensor]]) -> dict[str, Tensor]:
-    """Pad variable rally durations and stack canonical BLCS scenes."""
-    return pad_and_stack_tracking_batch(batch, time_dimensions={
-        "ball_uv": 1, "ball_score": 1, "ball_candidate_mask": 1,
-        "ball_visible": 1, "court_kp": 1, "court_vis": 1, "frame_mask": 0,
-        "position_3d": 0, "ball_present": 0, "ball_uv_gt": 1,
-        "ball_visible_gt": 1, "candidate_gt_index": 1,
-    })
+def collate_blcs_tracking_batch(
+    batch: list[dict[str, Tensor]],
+) -> dict[str, Tensor]:
+    """Pad variable camera/time/candidate dimensions and stack BLCS scenes."""
+    return pad_and_stack_tracking_batch(
+        batch,
+        padding_dimensions={
+            "ball_uv": (0, 1, 2),
+            "ball_visible": (0, 1, 2),
+            "court_kp": (0, 1),
+            "court_vis": (0, 1),
+            "frame_mask": (0,),
+            "view_mask": (0,),
+            "target_position": (0, 1),
+            "target_velocity": (0, 1),
+            "target_presence": (0, 1),
+            "target_instance_id": (0, 1),
+            "target_slot_mask": (0,),
+            "clean_ball_uv": (0, 1, 2),
+            "clean_ball_visible": (0, 1, 2),
+            "candidate_gt_index": (0, 1, 2),
+        },
+        pad_values={
+            "target_instance_id": -1,
+            "candidate_gt_index": -1,
+        },
+    )
 
 
-__all__ = ["BLCS_TRACKING_KEYS", "BLCSTrackingDataset", "collate_blcs_tracking_batch"]
+__all__ = [
+    "BLCS_TRACKING_KEYS",
+    "BLCSTrackingDataset",
+    "collate_blcs_tracking_batch",
+]

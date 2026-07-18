@@ -50,6 +50,7 @@ class PLCSDatasetWriter(BaseDatasetWriter):
             "initial_yaw": scene.meta["initial_yaw"],
             "num_cameras_sampled": scene.meta["num_cameras_sampled"],
             "num_cameras": len(scene.cameras),
+            "track_instances": scene.track_instances,
         }
 
         meta = PLCSSceneMeta(**meta_dict)

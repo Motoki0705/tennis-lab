@@ -14,6 +14,8 @@ defaults:
 
 training:
   trainer:
+    max_epochs: 100
+    check_val_every_n_epoch: 5
     # ChunkRotationCallback swaps train_dataset after every epoch. Lightning
     # must rebuild its cached DataLoader before the retired chunk is deleted.
     reload_dataloaders_every_n_epochs: 1
@@ -22,7 +24,8 @@ training:
   early_stopping:
     enabled: false
   qualitative_logging:
-    enabled: false
+    enabled: true
+    every_n_epochs: 10
 
 hydra:
   run:

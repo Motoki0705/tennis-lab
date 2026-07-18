@@ -8,6 +8,9 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from src.tasks.base.training.tracking_lifecycle import (
+    weighted_presence_bce_with_logits,
+)
 from src.tasks.blcs.training.tracking_matching import match_ball_tracks
 
 Assignment = tuple[torch.Tensor, torch.Tensor]
@@ -20,6 +23,10 @@ class BLCSTrackingLoss(nn.Module):
         super().__init__()
         self.position_weight = float(config.position_weight)
         self.presence_weight = float(config.presence_weight)
+        self.presence_inactive_weight = float(config.presence_inactive_weight)
+        self.presence_active_weight = float(config.presence_active_weight)
+        self.presence_transition_weight = float(config.presence_transition_weight)
+        self.transition_radius = int(config.transition_radius)
         self.smoothness_weight = float(config.smoothness_weight)
         self.gravity_weight = float(config.gravity_weight)
         self.gravity_target = float(config.gravity_target)
@@ -37,12 +44,16 @@ class BLCSTrackingLoss(nn.Module):
     ) -> tuple[dict[str, torch.Tensor], list[Assignment]]:
         assignments = match_ball_tracks(
             prediction,
-            batch["position_3d"],
-            batch["ball_present"],
-            batch["target_ball_mask"],
+            batch["target_position"],
+            batch["target_presence"],
+            batch["target_slot_mask"],
             batch["frame_mask"],
             position_cost_weight=self.match_position_weight,
             presence_cost_weight=self.match_presence_weight,
+            presence_inactive_weight=self.presence_inactive_weight,
+            presence_active_weight=self.presence_active_weight,
+            presence_transition_weight=self.presence_transition_weight,
+            transition_radius=self.transition_radius,
         )
         pred_position = prediction["position"]
         pred_presence = prediction["presence_logits"]
@@ -55,17 +66,17 @@ class BLCSTrackingLoss(nn.Module):
                 query_indices.tolist(), target_indices.tolist(), strict=True
             ):
                 active = (
-                    batch["ball_present"][batch_index, :, target_index]
+                    batch["target_presence"][batch_index, :, target_index]
                     & batch["frame_mask"][batch_index]
                 )
-                presence_target[batch_index, :, query_index] = batch["ball_present"][
+                presence_target[batch_index, :, query_index] = batch["target_presence"][
                     batch_index, :, target_index
                 ].float()
                 if active.any():
                     position_terms.append(
                         F.smooth_l1_loss(
                             pred_position[batch_index, active, query_index],
-                            batch["position_3d"][batch_index, active, target_index],
+                            batch["target_position"][batch_index, active, target_index],
                         )
                     )
                 if active.sum() >= 3 and (
@@ -92,10 +103,15 @@ class BLCSTrackingLoss(nn.Module):
                         )
 
         valid_frames = batch["frame_mask"].unsqueeze(-1).expand_as(pred_presence)
-        presence_raw = F.binary_cross_entropy_with_logits(
-            pred_presence, presence_target, reduction="none"
+        presence = weighted_presence_bce_with_logits(
+            pred_presence,
+            presence_target.bool(),
+            valid_frames,
+            inactive_weight=self.presence_inactive_weight,
+            active_weight=self.presence_active_weight,
+            transition_weight=self.presence_transition_weight,
+            transition_radius=self.transition_radius,
         )
-        presence = (presence_raw * valid_frames).sum() / valid_frames.sum().clamp_min(1)
         zero = self._zero(prediction)
         position = torch.stack(position_terms).mean() if position_terms else zero
         smoothness = torch.stack(smoothness_terms).mean() if smoothness_terms else zero

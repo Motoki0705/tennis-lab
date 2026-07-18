@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -77,6 +77,7 @@ class SceneData:
     # Present for multi-object scenes. Object arrays then use shape (T, O, ...).
     person_present: np.ndarray | None = None
     num_persons: int = 1
+    track_instances: list[dict] = field(default_factory=list)
 
 
 class SceneGenerator:

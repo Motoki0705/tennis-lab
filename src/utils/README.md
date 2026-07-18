@@ -70,7 +70,7 @@
 ### `models/`
 - **`components/`**: Transformer の基本部品。attention、RoPE、FFN、MoE、norm、`TransformerBlock`、`CrossAttnBlock` がここにある。
 - **`components/ops/`**: MoE と time-local attention の CUDA / reference 実装、autograd bridge、extension loader/build。カスタム op まわりを見る場所。
-- **`embeddings/`**: court / player / ball の埋め込みと group token 系の構成要素。
+- **`embeddings/`**: court / player / ball の埋め込みと group token 系の構成要素。`CourtCameraEmbedding`はvisibilityで0化したcourt点集合を順序不変にcamera単位1 tokenへ集約する。
 - **`loading/`**: DINOv3 backbone 読み込み、LoRA 適用、trainability 切り替え。
 - **`architectures/`**: 現状は `TransformerSequenceDiscriminator` を配置。
 - **`blocks.py`**: `DepthwiseSeparableConv2d` と `Conv2dWiseWiseBlock`。CNN 系の共通ブロック。

@@ -7,12 +7,16 @@ defaults:
   - _self_
 
 training:
+  trainer:
+    max_epochs: 100
+    check_val_every_n_epoch: 5
   checkpoint:
     monitor: val/loss
   early_stopping:
     enabled: false
   qualitative_logging:
-    enabled: false
+    enabled: true
+    every_n_epochs: 10
 
 hydra:
   run:

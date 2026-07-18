@@ -8,6 +8,9 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from src.tasks.base.training.tracking_lifecycle import (
+    weighted_presence_bce_with_logits,
+)
 from src.tasks.plcs.training.tracking_matching import match_player_tracks
 
 Assignment = tuple[torch.Tensor, torch.Tensor]
@@ -21,6 +24,10 @@ class PLCSTrackingLoss(nn.Module):
         self.position_weight = float(config.position_weight)
         self.rotation_weight = float(config.rotation_weight)
         self.presence_weight = float(config.presence_weight)
+        self.presence_inactive_weight = float(config.presence_inactive_weight)
+        self.presence_active_weight = float(config.presence_active_weight)
+        self.presence_transition_weight = float(config.presence_transition_weight)
+        self.transition_radius = int(config.transition_radius)
         self.track_smoothness_weight = float(config.track_smoothness_weight)
         self.match_position_weight = float(config.match_position_weight)
         self.match_rotation_weight = float(config.match_rotation_weight)
@@ -37,6 +44,10 @@ class PLCSTrackingLoss(nn.Module):
             position_cost_weight=self.match_position_weight,
             rotation_cost_weight=self.match_rotation_weight,
             presence_cost_weight=self.match_presence_weight,
+            presence_inactive_weight=self.presence_inactive_weight,
+            presence_active_weight=self.presence_active_weight,
+            presence_transition_weight=self.presence_transition_weight,
+            transition_radius=self.transition_radius,
         )
         pred_position = prediction["position"]
         pred_rotation = F.normalize(prediction["rotation"], dim=-1)
@@ -50,21 +61,21 @@ class PLCSTrackingLoss(nn.Module):
                 query_indices.tolist(), target_indices.tolist(), strict=True
             ):
                 active = (
-                    batch["person_present"][batch_index, :, target_index]
+                    batch["target_presence"][batch_index, :, target_index]
                     & batch["frame_mask"][batch_index]
                 )
-                presence_target[batch_index, :, query_index] = batch["person_present"][
+                presence_target[batch_index, :, query_index] = batch["target_presence"][
                     batch_index, :, target_index
                 ].float()
                 if active.any():
                     position_terms.append(
                         F.smooth_l1_loss(
                             pred_position[batch_index, active, query_index],
-                            batch["position"][batch_index, active, target_index],
+                            batch["target_position"][batch_index, active, target_index],
                         )
                     )
                     target_rotation = F.normalize(
-                        batch["rotation"][batch_index, active, target_index], dim=-1
+                        batch["target_rotation"][batch_index, active, target_index], dim=-1
                     )
                     rotation_terms.append(
                         (
@@ -87,10 +98,15 @@ class PLCSTrackingLoss(nn.Module):
                             )
                         )
         valid_frames = batch["frame_mask"].unsqueeze(-1).expand_as(pred_presence)
-        presence_raw = F.binary_cross_entropy_with_logits(
-            pred_presence, presence_target, reduction="none"
+        presence = weighted_presence_bce_with_logits(
+            pred_presence,
+            presence_target.bool(),
+            valid_frames,
+            inactive_weight=self.presence_inactive_weight,
+            active_weight=self.presence_active_weight,
+            transition_weight=self.presence_transition_weight,
+            transition_radius=self.transition_radius,
         )
-        presence = (presence_raw * valid_frames).sum() / valid_frames.sum().clamp_min(1)
         zero = pred_position.sum() * 0.0
         position = torch.stack(position_terms).mean() if position_terms else zero
         rotation = torch.stack(rotation_terms).mean() if rotation_terms else zero

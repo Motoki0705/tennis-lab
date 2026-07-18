@@ -1,5 +1,18 @@
+defaults:
+  - _augmentation
+  - _multiview
+  - _self_
+
 backend: default
-scene_dir: data/blcs/multi_object
+scene_dir: data/blcs/multi_object_lifecycle_v2
 batch_size: 8
-num_workers: 0
+num_workers: 4
 pin_memory: true
+
+# Long clips expose multiple birth/death events and query reuse opportunities.
+seq_len_range: [512, 1024]
+
+lifecycle:
+  pack_to_query_slots: true
+  min_reuse_gap_frames: 4
+  randomize_slots_train: true

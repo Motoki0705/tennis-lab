@@ -113,8 +113,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         num_workers=num_workers,
         seed=seed,
         multi_object=generation_mode == "multi_object",
-        min_balls=int(cfg.generation.min_balls),
-        max_balls=int(cfg.generation.max_balls),
+        timeline_config=(
+            cast(dict[str, object], OmegaConf.to_container(cfg.generation.timeline, resolve=True))
+            if generation_mode == "multi_object"
+            else None
+        ),
     )
 
     for scene_data in tqdm(

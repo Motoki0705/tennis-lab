@@ -38,7 +38,7 @@ class GVHMRConfig:
     """Configuration for GVHMR module."""
 
     gvhmr_checkpoint: str | Path
-    detector: str = "yolo"
+    detector: str = "dino"
     yolo_checkpoint: str | Path = "ckpt/yolo/yolov8x.pt"
     dino_checkpoint: str | Path = "ckpt/dino/checkpoint0029_4scale_swin.pth"
     dino_confidence: float = 0.3
@@ -46,7 +46,7 @@ class GVHMRConfig:
     hmr2_checkpoint: str | Path = "ckpt/hmr2/epoch=10-step=25000.ckpt"
     device: str = "cuda"
     smplx_body_model_path: str | Path | None = None
-    track_selection: str = "interactive"  # "interactive" or "auto"
+    track_selection: str = "auto"  # "interactive" or "auto"
     num_tracks: int = 2  # used when track_selection == "auto"
     save_result: bool = False
     output_path: str | Path | None = None
