@@ -25,10 +25,9 @@ class PLCSTrackingLightningModule(BaseLightningModule):
     def _model_inputs(batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         keys = (
             "human_kp",
-            "human_vis",
             "detection_mask",
-            "detection_score",
-            "bbox",
+            "court_kp",
+            "court_vis",
             "frame_mask",
             "view_mask",
         )
@@ -84,9 +83,10 @@ class PLCSTrackingLightningModule(BaseLightningModule):
             "pred_position": self._to_numpy(result["position"]),
             "pred_rotation": self._to_numpy(result["rotation"]),
             "pred_presence_logits": self._to_numpy(result["presence_logits"]),
-            "target_position": self._to_numpy(batch["position"]),
-            "target_rotation": self._to_numpy(batch["rotation"]),
-            "target_presence": self._to_numpy(batch["person_present"]),
+            "target_position": self._to_numpy(batch["target_position"]),
+            "target_rotation": self._to_numpy(batch["target_rotation"]),
+            "target_presence": self._to_numpy(batch["target_presence"]),
+            "target_instance_id": self._to_numpy(batch["target_instance_id"]),
             "frame_mask": self._to_numpy(batch["frame_mask"]),
         }
 

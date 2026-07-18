@@ -1,15 +1,20 @@
-"""Compose multiple physical rallies into one canonical BLCS scene."""
+"""Compose physical rallies as lifecycle instances on one global timeline."""
 
 from __future__ import annotations
 
 import random
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from typing import Any, Protocol
 
 import numpy as np
 import torch
-from torch import Tensor
+from numpy.typing import NDArray
 
+from src.tasks.base.generate_dataset.timeline_composer import (
+    TimelineComposer,
+    TimelineConfig,
+    TrackPlacement,
+)
 from src.tasks.blcs.generate_dataset.scene_generator import (
     BLCSSceneData,
     CameraData,
@@ -34,21 +39,46 @@ class _BLCSSceneSource(Protocol):
     ) -> BLCSSceneData | None: ...
 
 
+def _shift_shots(scene: BLCSSceneData, placement: TrackPlacement) -> list[dict]:
+    shifted: list[dict] = []
+    timestamp_keys = (
+        "t_start",
+        "t_net",
+        "t_bounce1",
+        "t_bounce2",
+        "t_bounce3",
+        "t_return",
+    )
+    for shot in scene.shots:
+        start = shot.get("t_start")
+        if start is None or not placement.source_start <= int(start) < placement.source_end:
+            continue
+        entry = dict(shot)
+        for key in timestamp_keys:
+            value = entry.get(key)
+            if value is not None:
+                entry[key] = int(value) - placement.source_start + placement.birth_frame
+        shifted.append(entry)
+    return shifted
+
+
 class MultiBallSceneGenerator:
-    """Generate independent rallies and observe them with one shared camera rig."""
+    """Generate independent rallies with reusable-query lifecycle intervals."""
 
     def __init__(
         self,
         scene_generator: _BLCSSceneSource,
         *,
-        min_balls: int,
-        max_balls: int,
+        timeline: TimelineConfig | Mapping[str, Any],
+        rng: random.Random | None = None,
     ) -> None:
-        if min_balls < 1 or max_balls < min_balls:
-            raise ValueError("Ball count must satisfy 1 <= min_balls <= max_balls.")
         self.scene_generator = scene_generator
-        self.min_balls = min_balls
-        self.max_balls = max_balls
+        self.timeline = (
+            timeline
+            if isinstance(timeline, TimelineConfig)
+            else TimelineConfig.from_mapping(timeline)
+        )
+        self.composer = TimelineComposer(self.timeline, rng=rng)
 
     def _generate_ball(self, scene_id: str) -> BLCSSceneData:
         scene = self.scene_generator.generate_scene(
@@ -61,55 +91,64 @@ class MultiBallSceneGenerator:
         return scene
 
     def generate_scene(self, scene_id: str) -> BLCSSceneData:
-        """Generate one multi-ball scene in the normal BLCS scene schema."""
-        num_balls = random.randint(self.min_balls, self.max_balls)
+        """Generate one fixed-length multi-ball lifecycle scene."""
+        num_balls = self.composer.sample_num_tracks()
         objects = [
             self._generate_ball(f"{scene_id}_ball_{index:02d}")
             for index in range(num_balls)
         ]
-        base = objects[0]
-        num_frames = min(int(scene.ball_pos_world.shape[0]) for scene in objects)
-
-        def _stack_padded(values: list[Tensor]) -> Tensor:
-            shape = (num_frames, self.max_balls, *values[0].shape[1:])
-            result = values[0].new_zeros(shape)
-            for index, value in enumerate(values):
-                result[:, index] = value[:num_frames]
-            return result
-
-        ball_pos_world = _stack_padded([scene.ball_pos_world for scene in objects])
-        ball_pos_norm = _stack_padded([scene.ball_pos_norm for scene in objects])
-        ball_vel_world = _stack_padded([scene.ball_vel_world for scene in objects])
-        ball_present = torch.zeros(
-            (num_frames, self.max_balls), dtype=torch.bool, device=ball_pos_world.device
+        composition = self.composer.compose(
+            [scene.scene_id for scene in objects],
+            [int(scene.ball_pos_world.shape[0]) for scene in objects],
         )
-        ball_present[:, :num_balls] = True
+        base = objects[0]
+        ball_pos_world = composition.compose_tensor(
+            [scene.ball_pos_world for scene in objects]
+        )
+        ball_pos_norm = composition.compose_tensor(
+            [scene.ball_pos_norm for scene in objects]
+        )
+        ball_vel_world = composition.compose_tensor(
+            [scene.ball_vel_world for scene in objects]
+        )
+        ball_present = torch.from_numpy(composition.present).to(
+            device=ball_pos_world.device
+        )
 
         cameras: list[CameraData] = []
+        projector = CameraProjector(
+            self.scene_generator.config.camera,
+            court_config=self.scene_generator.config.court,
+        )
         for base_camera in base.cameras:
             camera = camera_from_mapping(base_camera.camera_params)
-            projector = CameraProjector(
-                self.scene_generator.config.camera,
-                court_config=self.scene_generator.config.court,
+            uv: NDArray[np.float32] = np.zeros(
+                (self.timeline.num_frames, self.timeline.max_tracks, 2),
+                dtype=np.float32,
             )
-            uv: np.ndarray = np.zeros(
-                (num_frames, self.max_balls, 2), dtype=np.float32
+            visible: NDArray[np.bool_] = np.zeros(
+                (self.timeline.num_frames, self.timeline.max_tracks),
+                dtype=np.bool_,
             )
-            visible: np.ndarray = np.zeros(
-                (num_frames, self.max_balls), dtype=np.bool_
-            )
-            for object_index, scene in enumerate(objects):
+            for track_index in range(num_balls):
                 projected, projected_visible = projector.project_points_to_uv(
-                    scene.ball_pos_world[:num_frames], camera
+                    ball_pos_world[:, track_index], camera
                 )
-                uv[:, object_index] = projected.cpu().numpy()
-                visible[:, object_index] = projected_visible.cpu().numpy()
+                active = composition.present[:, track_index]
+                track_uv = projected.cpu().numpy()
+                track_visible = projected_visible.cpu().numpy() & active
+                track_uv[~active] = 0.0
+                uv[:, track_index] = track_uv
+                visible[:, track_index] = track_visible
+            active_count = max(int(composition.present[:, :num_balls].sum()), 1)
             cameras.append(
                 CameraData(
                     camera_params=base_camera.camera_params,
                     ball_uv=uv,
                     ball_visible=visible,
-                    ball_visibility_ratio=float(visible[:, :num_balls].mean()),
+                    ball_visibility_ratio=float(
+                        visible[:, :num_balls].sum() / active_count
+                    ),
                     court_kp_uv=base_camera.court_kp_uv,
                     court_kp_visible=base_camera.court_kp_visible,
                     court_visibility_count=base_camera.court_visibility_count,
@@ -117,19 +156,27 @@ class MultiBallSceneGenerator:
             )
 
         base.scene_id = scene_id
+        base.rally_length = sum(len(scene.shots) for scene in objects)
         base.ball_pos_world = ball_pos_world
         base.ball_pos_norm = ball_pos_norm
         base.ball_vel_world = ball_vel_world
         base.cameras = cameras
         base.ball_present = ball_present
         base.num_balls = num_balls
+        base.track_instances = [
+            placement.to_metadata() for placement in composition.placements
+        ]
         base.shots = [
-            {"ball_index": index, "shots": scene.shots}
-            for index, scene in enumerate(objects)
+            {
+                "track_id": placement.track_id,
+                "source_scene_id": placement.source_scene_id,
+                "shots": _shift_shots(scene, placement),
+            }
+            for scene, placement in zip(objects, composition.placements, strict=True)
         ]
         return base
 
     def generate(self, num_scenes: int) -> Iterator[BLCSSceneData]:
-        """Yield canonical multi-ball scenes."""
+        """Yield canonical multi-ball lifecycle scenes."""
         for index in range(num_scenes):
             yield self.generate_scene(f"scene_{index:06d}")

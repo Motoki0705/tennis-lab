@@ -169,6 +169,11 @@ class ChunkManager:
                     num_scenes=self.scenes_per_chunk,
                     stop_event=self._stop_event,
                 )
+                if self._stop_event.is_set():
+                    with self._lock:
+                        info.state = ChunkState.USED
+                    self._delete_chunk(chunk_id)
+                    break
                 self._write_train_split(info.path)
             except Exception:
                 logger.exception("ChunkManager: failed to generate chunk %d", chunk_id)

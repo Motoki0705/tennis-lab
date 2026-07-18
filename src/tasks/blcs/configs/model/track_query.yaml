@@ -7,3 +7,5 @@ num_stages: 2
 rope_dim: 16
 dropout: 0.0
 role_rope_enabled: true
+mask_invisible_observations: true
+invisible_init_std: 0.02

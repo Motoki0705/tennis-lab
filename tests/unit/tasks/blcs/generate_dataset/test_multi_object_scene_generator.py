@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 import torch
 
+from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
 from src.tasks.blcs.data.tracking_dataset import BLCSTrackingDataset
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
 from src.tasks.blcs.generate_dataset.multi_object_scene_generator import (
@@ -67,29 +68,57 @@ class _PhysicalSceneStub:
 
 def test_multi_ball_uses_physical_scenes_and_canonical_writer(tmp_path) -> None:
     scene = MultiBallSceneGenerator(
-        _PhysicalSceneStub(), min_balls=2, max_balls=3
+        _PhysicalSceneStub(),
+        timeline=TimelineConfig(
+            num_frames=12,
+            min_tracks=2,
+            max_tracks=2,
+            max_concurrent=2,
+            start_index_range=(-2, 8),
+            min_active_frames=2,
+            overlap_probability=0.5,
+            min_gap_frames=1,
+            max_gap_frames=3,
+        ),
     ).generate_scene("scene_000000")
-    assert scene.num_balls in {2, 3}
+    assert scene.num_balls == 2
     assert scene.ball_present is not None
-    assert scene.ball_pos_world.shape == (3, 3, 3)
-    assert scene.ball_present[:, :scene.num_balls].all()
-    assert not scene.ball_present[:, scene.num_balls:].any()
-    assert scene.cameras[0].ball_uv.shape == (3, 3, 2)
+    assert scene.ball_pos_world.shape == (12, 2, 3)
+    assert scene.ball_present[:, :scene.num_balls].any(0).all()
+    assert scene.cameras[0].ball_uv.shape == (12, 2, 2)
+    assert len(scene.track_instances) == 2
+    assert not scene.cameras[0].ball_visible[~scene.ball_present.numpy()].any()
 
     writer = BLCSDatasetWriter(tmp_path)
     scene_path = writer.save_scene(scene)
     (tmp_path / "train.txt").write_text("scene_000000\n")
     assert (scene_path / "ball_pos_world.npy").exists()
     assert (scene_path / "cam_0_ball_uv.npy").exists()
-    sample = BLCSTrackingDataset(scene_dir=tmp_path, split_file="train.txt")[0]
-    assert sample["ball_uv"].shape[:3] == (6, 3, 3)
-    assert torch.equal(sample["target_ball_mask"], scene.ball_present.any(0))
-    assert not torch.equal(
-        sample["candidate_gt_index"][0, 0],
-        sample["candidate_gt_index"][0, 1],
-    )
+    sample = BLCSTrackingDataset(
+        scene_dir=tmp_path,
+        split_file="train.txt",
+        config={
+            "data": {
+                "seq_len_range": [12, 12],
+                "num_views_range": [6, 6],
+                "camera_mode": "first",
+                "lifecycle": {"min_reuse_gap_frames": 0},
+            },
+            "model": {"num_queries": 2},
+        },
+    )[0]
+    assert sample["ball_uv"].shape[:3] == (6, 12, 2)
+    assert 1 <= int(sample["target_slot_mask"].sum()) <= 2
+    assert set(sample["target_instance_id"].unique().tolist()) == {-1, 0, 1}
+    assert (sample["target_instance_id"][~sample["target_presence"]] == -1).all()
+    candidate_ids = sample["candidate_gt_index"][0]
+    reused_columns = []
+    for track_id in range(2):
+        locations = torch.nonzero(candidate_ids == track_id, as_tuple=False)
+        reused_columns.append(locations[:, 1].unique().numel())
+    assert max(reused_columns) > 1
 
 
 def test_invalid_ball_cardinality_is_rejected() -> None:
     with np.testing.assert_raises(ValueError):
-        MultiBallSceneGenerator(_PhysicalSceneStub(), min_balls=0, max_balls=3)
+        TimelineConfig(min_tracks=0)

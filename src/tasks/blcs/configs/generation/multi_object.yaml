@@ -1,3 +1,13 @@
 mode: multi_object
-min_balls: 1
-max_balls: 3
+
+timeline:
+  num_frames: 1024
+  min_tracks: 3
+  max_tracks: 10
+  max_concurrent: 4
+  min_reuse_gap_frames: 4
+  start_index_range: [-128, 992]
+  min_active_frames: 32
+  overlap_probability: 0.3
+  min_gap_frames: 8
+  max_gap_frames: 256

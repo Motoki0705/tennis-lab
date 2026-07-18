@@ -10,7 +10,8 @@
 - **`augmentation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
 - **`targets.py`**: `build_coco17_world_targets()`。canonical poseまたはAthletePose3DからCOCO17ワールド座標targetを構築。
-- **`tracking_dataset.py` / `tracking_datamodule.py`**: single-objectと同じnpy/json scene形式のmulti-personデータをtracking tensorへ変換する独立Dataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
+- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、物理trackをlifecycle slotへpackingしてからunordered detectionを生成するDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
+- **`tracking_augmentation.py`**: clean GTを保持したままdetectionだけへpose noise/dropout/false-positive/shuffleを適用するshape adapter。
 - **`types.py`**: `PLCSBatch`/`PLCSSceneMeta` のバッチ・meta契約。
 
 ### models/
@@ -65,7 +66,11 @@
 
 ## Multi-person tracking
 
-入力は `human_kp (B,V,T,D,J,2)` とvisibility/detection mask/score/bbox、出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。検出indexはidentityとして扱わず、debug用の `detection_gt_index` はモデルへ渡しません。learned slotと全camera検出を同一self-attentionへ入れ、空間M-RoPE `(time,camera,role)` とslotごとの時間attentionを交互に適用します。
+観測座標は `human_kp (B,V,T,P,J,2)` のみで、bbox・keypoint score/visibilityを数値特徴へ連結しません。`detection_mask (B,V,T,P)` がfalseのpersonはlearned invisible tokenへ置換します。`mask_invisible_observations=true` は不可視tokenをattention keyから除外する対照条件、`false` は`frame_mask` / `view_mask`によるpaddingだけを除外し、不可視tokenを更新可能なmemoryとして使う条件です。欠損joint UVは0にします。出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じtarget columnへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。検出indexはidentityとして扱わず、debug用の `detection_gt_index` はモデルへ渡しません。
+
+14 court UVは`court_vis`で不可視点を0化し、共有point encoderとmean poolingでcameraごとに1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*(P+1), D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、person=1、court=2で、検出indexやcourt点indexは埋め込みません。court集約は点順序不変で、train時のview単位shuffleにより`far/near`・`left/right`命名不整合にも依存しません。
+
+multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H source subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 
 ```bash
 # 固定train/val/testデータを事前生成

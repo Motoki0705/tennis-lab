@@ -20,6 +20,13 @@ augmentation:
   enabled: true
   preserve_clean_targets: true
 
+  # Court keypoints are consumed as an unordered set. Randomizing their input
+  # order removes the camera-relative far/near naming shortcut while keeping
+  # each coordinate paired with its visibility flag.
+  court_keypoint_permutation:
+    enabled: true
+    prob: 1.0
+
   # The ball detector eval does not measure global camera/zoom scale bias, and
   # UV scaling is not camera-consistent for reprojection losses. Keep it
   # available for explicit ablations, but disable it in the eval-calibrated

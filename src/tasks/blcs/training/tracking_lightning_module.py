@@ -25,9 +25,9 @@ class BLCSTrackingLightningModule(BaseLightningModule):
     def _model_inputs(batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         keys = (
             "ball_uv",
-            "ball_score",
-            "ball_candidate_mask",
             "ball_visible",
+            "court_kp",
+            "court_vis",
             "frame_mask",
             "view_mask",
         )
@@ -82,8 +82,9 @@ class BLCSTrackingLightningModule(BaseLightningModule):
         return {
             "pred_position": self._to_numpy(result["position"]),
             "pred_presence_logits": self._to_numpy(result["presence_logits"]),
-            "target_position": self._to_numpy(batch["position_3d"]),
-            "target_presence": self._to_numpy(batch["ball_present"]),
+            "target_position": self._to_numpy(batch["target_position"]),
+            "target_presence": self._to_numpy(batch["target_presence"]),
+            "target_instance_id": self._to_numpy(batch["target_instance_id"]),
             "frame_mask": self._to_numpy(batch["frame_mask"]),
         }
 

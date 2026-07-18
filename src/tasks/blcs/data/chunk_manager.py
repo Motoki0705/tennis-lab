@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import threading
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from src.tasks.base.data.chunk_manager import (
     ChunkManager as BaseChunkManager,
@@ -22,10 +24,17 @@ class _BLCSChunkGenerator:
         generator_config: GeneratorConfig,
         generator_device: str,
         generation_workers: int,
+        multi_object: bool,
+        timeline_config: Mapping[str, Any] | None,
     ) -> None:
         self.generator_config = generator_config
         self.generator_device = generator_device
         self.generation_workers = generation_workers
+        self.multi_object = multi_object
+        self.timeline_config = (
+            dict(timeline_config) if timeline_config is not None else None
+        )
+        self._next_scene_index = 0
 
     def __call__(
         self,
@@ -35,11 +44,16 @@ class _BLCSChunkGenerator:
         stop_event: threading.Event,
     ) -> None:
         writer = BLCSDatasetWriter(str(chunk_dir))
+        start_index = self._next_scene_index
+        self._next_scene_index += num_scenes
         for scene_data in generate_parallel_scenes(
             generator_config=self.generator_config,
             device=self.generator_device,
             num_scenes=num_scenes,
             num_workers=self.generation_workers,
+            start_index=start_index,
+            multi_object=self.multi_object,
+            timeline_config=self.timeline_config,
         ):
             if stop_event.is_set():
                 break
@@ -59,6 +73,8 @@ class ChunkManager(BaseChunkManager):
         prefetch_chunks: int = 1,
         generator_device: str = "cpu",
         generation_workers: int = 1,
+        multi_object: bool = False,
+        timeline_config: Mapping[str, Any] | None = None,
     ) -> None:
         self.generator_config = generator_config
         self.generator_device = generator_device
@@ -70,6 +86,8 @@ class ChunkManager(BaseChunkManager):
                 generator_config=generator_config,
                 generator_device=generator_device,
                 generation_workers=self.generation_workers,
+                multi_object=multi_object,
+                timeline_config=timeline_config,
             ),
             scenes_per_chunk=scenes_per_chunk,
             epochs_per_chunk=epochs_per_chunk,

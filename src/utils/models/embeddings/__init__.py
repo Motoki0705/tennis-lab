@@ -1,7 +1,7 @@
 """Common embeddings for court/player/ball inputs."""
 
 from src.utils.models.embeddings.ball import Ball3DEmbedding, BallUVEmbedding
-from src.utils.models.embeddings.court import CourtKPUVEmbedding
+from src.utils.models.embeddings.court import CourtCameraEmbedding, CourtKPUVEmbedding
 from src.utils.models.embeddings.group_tokens import (
     CourtBallGroupEmbedding,
     CourtPlayerGroupEmbedding,
@@ -11,6 +11,7 @@ from src.utils.models.embeddings.player import PlayerKPUVEmbedding
 
 __all__ = [
     "InvisibleTokenEmbedding",
+    "CourtCameraEmbedding",
     "CourtKPUVEmbedding",
     "CourtBallGroupEmbedding",
     "CourtPlayerGroupEmbedding",

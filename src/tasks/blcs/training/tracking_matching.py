@@ -6,6 +6,10 @@ import torch
 import torch.nn.functional as F
 from scipy.optimize import linear_sum_assignment
 
+from src.tasks.base.training.tracking_lifecycle import (
+    weighted_presence_bce_with_logits,
+)
+
 
 def match_ball_tracks(
     prediction: dict[str, torch.Tensor],
@@ -16,6 +20,10 @@ def match_ball_tracks(
     *,
     position_cost_weight: float = 1.0,
     presence_cost_weight: float = 1.0,
+    presence_inactive_weight: float = 0.25,
+    presence_active_weight: float = 1.0,
+    presence_transition_weight: float = 2.0,
+    transition_radius: int = 2,
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Match `Q` predictions to valid `P` targets using clip-level costs."""
     pred_position = prediction["position"]
@@ -38,15 +46,20 @@ def match_ball_tracks(
         for target_column, target_index in enumerate(target_indices.tolist()):
             target_active = target_presence[batch, :, target_index] & valid_frames
             presence_target = target_presence[batch, :, target_index].float()
-            presence_loss = F.binary_cross_entropy_with_logits(
-                pred_presence[batch],
-                presence_target[:, None].expand(-1, num_queries),
-                reduction="none",
+            presence_cost = torch.stack(
+                [
+                    weighted_presence_bce_with_logits(
+                        pred_presence[batch, :, query_index],
+                        presence_target.bool(),
+                        valid_frames,
+                        inactive_weight=presence_inactive_weight,
+                        active_weight=presence_active_weight,
+                        transition_weight=presence_transition_weight,
+                        transition_radius=transition_radius,
+                    )
+                    for query_index in range(num_queries)
+                ]
             )
-            presence_denominator = valid_frames.sum().clamp_min(1)
-            presence_cost = (presence_loss * valid_frames[:, None]).sum(
-                0
-            ) / presence_denominator
             if target_active.any():
                 position_error = F.smooth_l1_loss(
                     pred_position[batch],

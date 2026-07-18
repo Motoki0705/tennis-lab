@@ -51,6 +51,7 @@ class BLCSDatasetWriter(BaseDatasetWriter):
             "num_cameras": len(scene.cameras),
             "physics_config": scene.physics_config_dict,
             "court_config": scene.court_config_dict,
+            "track_instances": scene.track_instances,
         }
 
         return BLCSSceneMeta(**scene_meta_dict)

@@ -1,15 +1,24 @@
 defaults:
+  - _augmentation
+  - _multiview
   - _chunked
   - _self_
 
-scene_dir: data/plcs/multi_object
+scene_dir: data/plcs/multi_object_lifecycle_v2
 batch_size: 8
-num_workers: 0
+num_workers: 4
 pin_memory: true
 
+seq_len_range: [512, 1024]
+
+lifecycle:
+  pack_to_query_slots: true
+  min_reuse_gap_frames: 4
+  randomize_slots_train: true
+
 chunk:
-  scenes_per_chunk: 96
-  epochs_per_chunk: 1
-  prefetch_chunks: 1
+  scenes_per_chunk: 1000
+  epochs_per_chunk: 20
+  prefetch_chunks: 5
   chunks_dir: data/plcs/multi_object_chunks
-  generation_workers: 1
+  generation_workers: 16

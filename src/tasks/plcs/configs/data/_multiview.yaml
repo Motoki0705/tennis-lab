@@ -1,3 +1,4 @@
 min_cameras: 2
-num_views_range: [3, 6]
+camera_mode: random
+num_views_range: [3, 5]
 batch_size: 4

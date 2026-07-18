@@ -11,6 +11,10 @@
 augmentation:
   enabled: true
 
+  court_keypoint_permutation:
+    enabled: true
+    prob: 1.0
+
   uv_scale:
     enabled: false
     prob: 1.0
