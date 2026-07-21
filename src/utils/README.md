@@ -59,6 +59,7 @@
 - **`reader.py`**: OpenCV ベースの `probe_video_info()`、単フレーム読み出し、`OpenCVVideoFrameReader`、一括 RGB 読み出し `read_video_rgb()`、smart-seek 付きランダムアクセス `RandomAccessVideoReader`。
 - **`audio.py`**: PyAV ベースの音声トラック読み出し `read_audio_mono()` と RMS `audio_envelope()`。音声ベースのカメラ同期が主な用途。
 - **`writer.py`**: PyAV ベースの H.264 `VideoWriter`（fps / CRF 指定）と `save_video_rgb()`。
+- **`animation.py`**: RGBフレーム列を拡張子に応じてGIFまたはMP4へ保存する `save_rgb_animation()`。GIFは共有パレットで量子化し、MP4は `VideoWriter` へストリーミングする。
 - **`windows.py` / `batching.py`**: 時系列 window / batch iterator、`build_window_starts()`（末尾 anchor 付き sliding-window 開始位置）、`chunked()`。
 - **`prefetch.py`**: イテレータの先読み `PrefetchIterator`。
 - **`video/transforms.py`**: `BgrToTensorTransform` と tensor の ImageNet 正規化。
