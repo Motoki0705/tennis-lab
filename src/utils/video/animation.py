@@ -20,6 +20,8 @@ from src.utils.video.writer import VideoWriter
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+__all__ = ["GifEncodingOptions", "save_rgb_animation"]
+
 
 @dataclass(frozen=True)
 class GifEncodingOptions:
@@ -85,7 +87,7 @@ def save_rgb_animation(
 def _validate_frames(
     frames_rgb: Sequence[NDArray[np.uint8]],
 ) -> list[NDArray[np.uint8]]:
-    if not frames_rgb:
+    if len(frames_rgb) == 0:
         raise ValueError("At least one frame is required to save an animation.")
 
     validated: list[NDArray[np.uint8]] = []
