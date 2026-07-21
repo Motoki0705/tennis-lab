@@ -9,7 +9,6 @@ from pathlib import Path
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.tasks.base.visualization.gif import save_gif
 from src.tasks.base.visualization.layout import PanelStyle
 from src.tasks.base.visualization.orchestrator import (
     parse_rgb as _parse_rgb,
@@ -27,6 +26,7 @@ from src.tasks.court_detection.visualization.rendering import (
     render_line_frames,
     render_seg_frames,
 )
+from src.utils.video.animation import save_rgb_animation
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     save_path = (
         Path(to_absolute_path(str(save_raw)))
         if save_raw
-        else output_dir / f"{task}.gif"
+        else output_dir / f"{task}.mp4"
     )
 
     fps = float(vis.get("fps", 6.0))
@@ -115,7 +115,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
 
 
 def run_visualization(cfg: RuntimeConfig) -> int:
-    """Run court-detection visualization for the configured task and save a GIF."""
+    """Run court-detection visualization and save an animation."""
     frames = load_court_frames(cfg.image_source, max_frames=cfg.max_frames)
     logger.info("Loaded %d frame(s) from %s.", len(frames), cfg.image_source)
 
@@ -162,6 +162,6 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             clip_label=cfg.clip_label,
         )
 
-    save_gif(frames_rgb=rendered, path=cfg.save, fps=cfg.fps, loop=cfg.gif_loop)
+    save_rgb_animation(rendered, cfg.save, fps=cfg.fps, loop=cfg.gif_loop)
     logger.info("Saved %s visualization to %s", cfg.task, cfg.save)
     return 0
