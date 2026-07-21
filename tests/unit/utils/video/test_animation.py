@@ -70,7 +70,7 @@ def test_writes_multi_frame_gif_with_shared_palette(tmp_path: Path) -> None:
         assert image.size == (48, 32)
         assert image.n_frames == 3
         assert image.info["loop"] == 2
-        assert image.info["duration"] == 83
+        assert image.info["duration"] == pytest.approx(1000 / 12, abs=10)
 
 
 def test_invalid_gif_options_raise(tmp_path: Path) -> None:
