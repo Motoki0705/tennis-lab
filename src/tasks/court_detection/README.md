@@ -32,7 +32,7 @@
 - **`preprocess.py`**: `preprocess_court_image()`。3predictor共通の前処理。
 
 ### visualization/
-- **`orchestrator.py`**: task別にpredict→render→GIF保存を統括。
+- **`orchestrator.py`**: task別にpredict→render→MP4/GIF保存を統括。通常はMP4を使い、`.gif` 保存時だけ共有パレット量子化を行う。
 - **`adapters/`**: predictor入力変換と学習時qualitative描画用変換。
 - **`api/predict.py`**: `predict_kp/seg/line()`。
 - **`io/frames.py`**: `CourtFrame`/`load_court_frames()`。
@@ -40,7 +40,7 @@
 
 ### scripts/
 - **`train.py`**: 学習エントリポイント。
-- **`visualize.py`**: 2-panel GIF可視化。
+- **`visualize.py`**: 2-panel可視化。保存拡張子は `.mp4` または `.gif`。
 - **`generate_masks.py`**: 14点keypointから6 court cellのsegmentation maskを生成。
 - **`generate_line_masks.py`**: 14点keypointから白線maskを生成。
 - **`preview_heatmaps.py`**: `sigma_ratio` 比較プレビュー。
