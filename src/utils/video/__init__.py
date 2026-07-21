@@ -1,5 +1,6 @@
 """Shared video streaming utilities."""
 
+from src.utils.video.animation import GifEncodingOptions, save_rgb_animation
 from src.utils.video.audio import audio_envelope, read_audio_mono
 from src.utils.video.batching import iter_temporal_batches
 from src.utils.video.encoding import encode_jpeg, iter_selected_video_jpegs
@@ -39,6 +40,7 @@ __all__ = [
     "BgrToTensorTransform",
     "encode_jpeg",
     "FramePacket",
+    "GifEncodingOptions",
     "OpenCVVideoFrameReader",
     "RandomAccessVideoReader",
     "PrefetchIterator",
@@ -59,6 +61,7 @@ __all__ = [
     "read_video_frame",
     "read_video_rgb",
     "sample_frame_indices_by_time_ranges",
+    "save_rgb_animation",
     "save_video_rgb",
     "sample_step_seconds",
     "sample_uniform_frame_indices",
