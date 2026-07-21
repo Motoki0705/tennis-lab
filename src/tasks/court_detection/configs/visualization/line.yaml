@@ -1,7 +1,7 @@
 task: line
 image_source: data/court/images
 checkpoint: outputs/court_detection/line/logs/versino_0/checkpoints/court-detection-epoch=19.ckpt
-save: assets/court_detection/line.gif
+save: assets/court_detection/line.mp4
 fps: 6
 max_frames: 24
 info: false
