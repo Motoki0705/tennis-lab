@@ -1,7 +1,7 @@
 task: seg
 image_source: data/court/images
 checkpoint: outputs/court_detection/seg/logs/versino_0/checkpoints/court-detection-epoch=19.ckpt
-save: assets/court_detection/seg.gif
+save: assets/court_detection/seg.mp4
 fps: 6
 max_frames: 24
 info: false
