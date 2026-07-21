@@ -21,7 +21,7 @@
 - **`runner.py`**: `BaseTrainingRunner`。configをsingle source of truthとする学習実行の共通フロー。
 - **`chunk_rotation_callback.py`**: `ChunkRotationCallback`。epoch終端でchunked datamoduleを回転。
 - **`gan_training.py` / `gan_loss.py` / `gan_transition_callback.py`**: 手動最適化ベースのGAN学習共通実装(`LSGANLoss`含む)。
-- **`qualitative_callback.py` / `qualitative_saving.py`**: validationサンプルの可視化描画・GIF/画像保存。
+- **`qualitative_callback.py` / `qualitative_saving.py`**: validationサンプルの可視化描画・GIF/画像保存。RGBフレーム列のエンコードは `src.utils.video.save_rgb_animation()` を利用。
 - **`losses.py`**: `FocalBCEWithLogitsLoss`。複数taskで重複していた実装を統合。
 
 ### inference/
@@ -32,7 +32,6 @@
 
 ### visualization/
 - **`frames.py`**: 画像ソース読込(`load_rgb_frames`等)。
-- **`gif.py`**: `save_gif()`。共通GIF writer。
 - **`io.py`**: `BaseSceneBundle`/`resolve_cameras()`。カメラ選択解決の共通ロジック。
 - **`layout.py`**: マルチパネル合成ジオメトリ(`compose_row`/`compose_grid`等)。
 - **`orchestrator.py`**: `BaseVisualizationRuntimeConfig`/`build_scene_runtime_config()`。可視化オーケストレータ共通スキャフォールド。
