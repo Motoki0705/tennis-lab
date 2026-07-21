@@ -59,7 +59,7 @@ def test_writes_multi_frame_gif_with_shared_palette(tmp_path: Path) -> None:
         loop=2,
         gif_options=GifEncodingOptions(
             colors=32,
-            palette_sample_frames=2,
+            palette_sample_frames=3,
             palette_max_size=16,
         ),
     )
