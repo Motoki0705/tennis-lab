@@ -11,9 +11,9 @@ here, which:
 
 The TensorBoard video path is implemented without ``moviepy`` (which is not a
 project dependency): frames are encoded to a GIF with the shared
-:func:`~src.tasks.base.visualization.gif.save_gif` writer and the encoded bytes
-are emitted as an animated image summary -- exactly how ``add_video`` stores a
-GIF internally.
+:func:`~src.utils.video.animation.save_rgb_animation` writer and the encoded
+bytes are emitted as an animated image summary -- exactly how ``add_video``
+stores a GIF internally.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from typing import Any, cast
 import numpy as np
 from PIL import Image
 
-from src.tasks.base.visualization.gif import save_gif
+from src.utils.video.animation import save_rgb_animation
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ def save_qualitative_clip(
         return path
 
     path = artifact_dir / f"{name}.gif"
-    save_gif(frames_rgb=frames, path=path, fps=fps)
+    save_rgb_animation(frames, path, fps=fps)
     _add_gif_video(tb_writer, tag, path, global_step, fps)
     return path
 
