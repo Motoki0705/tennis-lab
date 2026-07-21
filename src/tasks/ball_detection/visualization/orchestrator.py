@@ -21,7 +21,6 @@ from src.tasks.ball_detection.visualization.rendering import (
     LayoutStyle,
     render_animation_frames,
 )
-from src.tasks.base.visualization.gif import save_gif
 from src.tasks.base.visualization.orchestrator import (
     parse_float_triplet as _parse_float_triplet,
 )
@@ -32,6 +31,7 @@ from src.tasks.base.visualization.orchestrator import (
     parse_rgb as _parse_rgb,
 )
 from src.tasks.base.visualization.orchestrator import resolve_device
+from src.utils.video.animation import save_rgb_animation
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     save_path = (
         Path(to_absolute_path(str(save_raw)))
         if save_raw
-        else output_dir / _default_gif_name(clip_dir)
+        else output_dir / _default_animation_name(clip_dir)
     )
 
     image_size_hw = _parse_hw(data_cfg.get("image_size", [288, 512]), name="data.image_size")
@@ -153,7 +153,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
 
 
 def run_visualization(cfg: RuntimeConfig) -> int:
-    """Run clip-level visualization and save a GIF."""
+    """Run clip-level visualization and save an animation."""
     clip = load_clip_sequence(
         clip_dir=cfg.clip_dir,
         sequence_length=cfg.sequence_length,
@@ -200,9 +200,9 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         draw=cfg.draw,
         layout=cfg.layout,
     )
-    save_gif(
-        frames_rgb=rendered_frames,
-        path=cfg.save,
+    save_rgb_animation(
+        rendered_frames,
+        cfg.save,
         fps=cfg.fps,
         loop=cfg.gif_loop,
     )
@@ -210,8 +210,8 @@ def run_visualization(cfg: RuntimeConfig) -> int:
     return 0
 
 
-def _default_gif_name(clip_dir: Path) -> str:
-    return f"{clip_dir.parent.name.lower()}_{clip_dir.name.lower()}_prediction.gif"
+def _default_animation_name(clip_dir: Path) -> str:
+    return f"{clip_dir.parent.name.lower()}_{clip_dir.name.lower()}_prediction.mp4"
 
 
 def _coord_tensor_to_tuple(coord: torch.Tensor) -> tuple[float, float]:
