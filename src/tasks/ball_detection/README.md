@@ -53,7 +53,7 @@
 - **`runner.py`**: `EvaluationPipeline`。fingerprintベースの再利用付き複数job評価。
 
 ### visualization/
-- **`orchestrator.py`**: checkpointからのスライディングウィンドウ推論→GIF保存を統括。
+- **`orchestrator.py`**: checkpointからのスライディングウィンドウ推論→MP4/GIF保存を統括。通常はMP4を使い、`.gif` 保存時だけ共有パレット量子化を行う。
 - **`adapters/predict_inputs.py`**: スライディングウィンドウ開始位置とバッチ構築。
 - **`adapters/render_inputs.py`**: MDDフレーム/学習バッチの描画用変換。
 - **`api/predict.py`**: `predict_clip()`。重複ウィンドウ推論の集約と `PredictionSequence` 構築。
@@ -68,7 +68,7 @@
 - **`train.py` / `train_staged.py`**: 通常 / staged 学習エントリポイント。
 - **`eval.py`**: 単一checkpointの詳細診断評価。
 - **`evaluate_manifest.py`**: manifestベースの複数checkpoint比較評価。
-- **`visualize.py`**: クリップ単位のGIF可視化生成。
+- **`visualize.py`**: クリップ単位の可視化生成。保存拡張子は `.mp4` または `.gif`。
 - **`convert_web_dataset.py`**: web生データセット群を統一ストアへアトミック変換。
 - **`analyze_web_bbox_ratio.py`**: bbox最大辺比率の分布解析。
 - **`preview_augmentation.py` / `preview_heatmaps.py`**: augmentation / heatmap生成の確認用プレビュー。
