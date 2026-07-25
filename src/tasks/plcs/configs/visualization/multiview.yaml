@@ -7,6 +7,8 @@ fps: null
 save: null
 info: false
 checkpoint: outputs/plcs/multiview/logs/version_0/checkpoints/last.ckpt
+# Canonical pose used for the Prediction skeleton: gt | prediction
+canonical_pose_source: gt
 
 # Shared scene style for animation_view=3d (parsed by
 # src/tasks/base/visualization/style.py; 2D/camera views ignore it).

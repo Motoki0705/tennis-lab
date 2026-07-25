@@ -2,9 +2,15 @@
 
 単眼テニス動画から、プレーヤー/ボール/コートを推定して「コート座標系の3Dシーン」に統合するための研究用モジュラーパイプライン。
 
-## 成果（GT vs Pred）
+## 成果
 
-> `assets/` 配下にタスク別の比較GIFを置く想定です（GTとPredを同一画面で比較）。
+### Tennis Scene（統合3D再構成）
+
+| 入力映像（`data/samples/tennis_clip.mp4`） | コート座標系の3Dシーン |
+| :---: | :---: |
+| <img src="assets/tennis_scene/tennis_clip.gif" width="400" /> | <img src="assets/tennis_scene/rich_scene_rendering.gif" width="400" /> |
+
+- 実装/実行: [src/tennis_scene/README.md](src/tennis_scene/README.md)
 
 ### Ball Detection（2Dボール検出）
 
@@ -36,7 +42,8 @@
 ### PLCS（プレーヤー3D位置・yaw推定）
 
 <p align="center">
-  <img src="assets/plcs/gt_vs_pred.gif" width="840" />
+  <img src="assets/plcs/gt_vs_pred.gif" width="720" /><br/>
+  <em>GT（緑）｜ Prediction（赤）</em>
 </p>
 
 - 実装/実行: [src/tasks/plcs/README.md](src/tasks/plcs/README.md)
@@ -44,79 +51,29 @@
 ### BLCS（ボール3D軌道推定）
 
 <p align="center">
-  <img src="assets/blcs/gt_vs_pred.gif" width="840" />
+  <img src="assets/blcs/gt_vs_pred.gif" width="600" /><br/>
+  <em>GT（緑）｜ Prediction（赤）</em>
 </p>
 
 - 実装/実行: [src/tasks/blcs/README.md](src/tasks/blcs/README.md)
 
-## クイックスタート
+### BLCSデータ生成（物理シミュレーション）
 
-このリポジトリは [uv](https://docs.astral.sh/uv/) で依存関係を管理しています。Docker / devcontainer ベースでの開発も利用できます。
+<p align="center">
+  <img src="assets/blcs_sim/blcs_sim_demo.png" width="840" /><br/>
+  <em>物理シミュレーションによるボール軌道・イベント・マルチカメラ観測の生成</em>
+</p>
 
-### ローカル環境（uv）
+## 開発中
 
-```bash
-# 依存関係をインストール（仮想環境 .venv を自動作成）
-uv sync --group dev
+### Multi-object PLCS / BLCS
 
-# スクリプト実行例
-uv run python -m src.tasks.<task>.scripts.<entrypoint> key=value
-```
+[PR #650](https://github.com/Motoki0705/tennis-lab/pull/650) で、複数プレーヤー・複数ボールの lifecycle を扱う生成・追跡・可視化パイプラインを開発しています。
 
-> 旧 `requirements.txt` / `requirements-dev.txt` は削除済みです。依存関係の追加は `uv add <package>` で行ってください。
-
-### Docker 環境
-
-### 1) イメージをビルド
-
-```bash
-docker build -t tennis-lab-dev .
-```
-
-### 2) コンテナを作成して起動
-
-```bash
-mkdir -p data outputs
-
-docker run --gpus=all -it --name tennis-lab-dev \
-  -v "$(pwd):/workspace" \
-  -v "$(pwd)/data:/workspace/data" \
-  -v "$(pwd)/outputs:/workspace/outputs" \
-  tennis-lab-dev
-```
-
-既存コンテナを再利用する場合:
-
-```bash
-docker start -ai tennis-lab-dev
-```
-
-### 3) コンテナ内でスクリプト実行（共通形）
-
-ホスト側からコンテナに入る場合:
-
-```bash
-docker exec -it tennis-lab-dev bash
-```
-
-すべてのタスクは Hydra を使って設定を管理しています。
-
-```bash
-python -m src.tasks.<task>.scripts.<entrypoint> key=value
-```
-
-### 4) まずは可視化
-
-コマンド例はタスクごとのドキュメントに集約しています。
-
-- [src/tasks/blcs/README.md](src/tasks/blcs/README.md)
-- [src/tasks/plcs/README.md](src/tasks/plcs/README.md)
-- [src/tasks/ball_detection/README.md](src/tasks/ball_detection/README.md)
-- [src/tasks/court_detection/README.md](src/tasks/court_detection/README.md)
-
-### Docker
-
-VS Code を使う場合は `.devcontainer/devcontainer.json` を利用して devcontainer として開けます。
+| 複数プレーヤー（PLCS） | 複数ボール（BLCS） |
+| :---: | :---: |
+| <img src="assets/plcs/multi_object.gif" width="400" /> | <img src="assets/blcs/multi_object.gif" width="400" /> |
+| `multi_object_lifecycle_v2 / scene_000040` | `multi_object_lifecycle_v4 / scene_000345` |
 
 ## ライセンス / 引用
 

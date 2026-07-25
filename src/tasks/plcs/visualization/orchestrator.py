@@ -3,23 +3,59 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from typing import cast
+
+from omegaconf import DictConfig
 
 from src.tasks.base.visualization.orchestrator import (
-    BaseVisualizationRuntimeConfig as RuntimeConfig,
-)
-from src.tasks.base.visualization.orchestrator import (
-    build_scene_runtime_config as build_runtime_config,
-)
-from src.tasks.base.visualization.orchestrator import (
+    BaseVisualizationRuntimeConfig,
+    build_scene_runtime_config,
     save_or_show_animation,
 )
-from src.tasks.plcs.visualization.api.predict import predict_scene
+from src.tasks.plcs.visualization.api.predict import (
+    CanonicalPoseSource,
+    predict_scene,
+)
 from src.tasks.plcs.visualization.io.scene import load_scene_bundle
 from src.tasks.plcs.visualization.rendering import PLCSSceneRenderer
 
 logger = logging.getLogger(__name__)
 
 __all__ = ["RuntimeConfig", "build_runtime_config", "run_visualization"]
+
+
+@dataclass(frozen=True)
+class RuntimeConfig(BaseVisualizationRuntimeConfig):
+    """PLCS visualization settings resolved from Hydra configuration."""
+
+    canonical_pose_source: CanonicalPoseSource
+
+
+def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
+    """Resolve shared settings plus the PLCS canonical pose source."""
+    base = build_scene_runtime_config(cfg)
+    source = str(cfg.visualization.get("canonical_pose_source", "gt"))
+    if source not in {"gt", "prediction"}:
+        raise ValueError(
+            "visualization.canonical_pose_source must be 'gt' or 'prediction', "
+            f"got '{source}'."
+        )
+    return RuntimeConfig(
+        mode=base.mode,
+        scene_path=base.scene_path,
+        checkpoint=base.checkpoint,
+        device=base.device,
+        animation_view=base.animation_view,
+        fps=base.fps,
+        save=base.save,
+        camera=base.camera,
+        cameras=base.cameras,
+        info=base.info,
+        style=base.style,
+        view_3d=base.view_3d,
+        canonical_pose_source=cast(CanonicalPoseSource, source),
+    )
 
 
 def run_visualization(cfg: RuntimeConfig) -> int:
@@ -57,6 +93,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
                 device=cfg.device,
                 scene=bundle.scene,
                 cameras=bundle.cameras,
+                canonical_pose_source=cfg.canonical_pose_source,
             )
         except ValueError as exc:
             logger.error(f"Error: {exc}")

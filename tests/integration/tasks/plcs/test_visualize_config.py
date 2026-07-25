@@ -26,6 +26,7 @@ def test_default_config_parses_style_and_view() -> None:
 
     assert runtime.mode == "visualize"
     assert runtime.animation_view == "3d"
+    assert runtime.canonical_pose_source == "gt"
     assert runtime.style.theme == "dark"
     assert runtime.style.show_minimap is True
     assert runtime.view_3d.mode == "static"
@@ -38,9 +39,19 @@ def test_style_and_view_hydra_overrides() -> None:
             "visualization.style.theme=light",
             "visualization.style.show_shadow=false",
             "visualization.view_3d.preset=side",
+            "visualization.canonical_pose_source=prediction",
         ]
     )
 
+    assert runtime.canonical_pose_source == "prediction"
     assert runtime.style.theme == "light"
     assert runtime.style.show_shadow is False
     assert runtime.view_3d.base == CAMERA_PRESETS["side"]
+
+
+def test_invalid_canonical_pose_source_is_rejected() -> None:
+    with pytest.raises(
+        ValueError,
+        match="visualization.canonical_pose_source must be 'gt' or 'prediction'",
+    ):
+        _build(["visualization.canonical_pose_source=invalid"])
