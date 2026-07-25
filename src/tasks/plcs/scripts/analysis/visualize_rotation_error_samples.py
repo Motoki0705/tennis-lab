@@ -26,6 +26,7 @@ from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 from tqdm import tqdm
 
+from src.tasks.base.visualization.style import SceneStyleConfig
 from src.tasks.plcs.generate_dataset.io.dataset_io import load_scene
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.visualization.adapters.predict_inputs import build_multiview_inputs
@@ -33,6 +34,7 @@ from src.tasks.plcs.visualization.orchestrator import RuntimeConfig, run_visuali
 from src.utils.device import resolve_device
 from src.utils.hydra import hydra_main
 from src.utils.io import load_json_if_exists, save_json
+from src.utils.rendering.camera_view import CameraController
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
@@ -239,6 +241,9 @@ def _render_sample(
         camera=0,
         cameras=list(sample["cameras"]),
         info=False,
+        style=SceneStyleConfig(),
+        view_3d=CameraController("broadcast"),
+        canonical_pose_source="gt",
     )
     exit_code = run_visualization(runtime)
     if exit_code != 0:

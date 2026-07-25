@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from unittest.mock import Mock
+
 import matplotlib
 
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pytest
+from mpl_toolkits.mplot3d import Axes3D
 
 from src.tennis_scene.io import SceneResult
 from src.tennis_scene.rendering.tennis_scene_renderer import (
@@ -90,6 +94,23 @@ def test_render_frame_light_theme_keeps_axes(tiny_scene: SceneResult) -> None:
         assert ax._axis3don
         assert len(fig.axes) == 1
         assert ax.get_title().startswith("Frame: 0/")
+    finally:
+        plt.close(fig)
+
+
+def test_render_frame_does_not_draw_player_direction_arrows(
+    tiny_scene: SceneResult,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    renderer = TennisSceneRenderer(
+        TennisSceneStyle(theme="light", show_minimap=False)
+    )
+    quiver = Mock()
+    monkeypatch.setattr(Axes3D, "quiver", quiver)
+    fig, _ = renderer.render_frame_3d(tiny_scene, 0)
+
+    try:
+        quiver.assert_not_called()
     finally:
         plt.close(fig)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -19,6 +19,8 @@ from src.tasks.plcs.visualization.adapters.predict_inputs import (
 )
 
 logger = logging.getLogger(__name__)
+
+CanonicalPoseSource = Literal["gt", "prediction"]
 
 
 def _predict_frame_model(
@@ -79,15 +81,41 @@ def _predict_multiview_model(
     )
 
 
-def _assign_predicted_canonical_pose(scene: Any, canonical_pose: np.ndarray | None) -> None:
-    if canonical_pose is None:
+def _apply_canonical_pose_source(
+    scene: Any,
+    predicted_canonical_pose: np.ndarray | None,
+    source: CanonicalPoseSource,
+) -> None:
+    """Keep GT canonical pose or replace it with the model prediction."""
+    if source == "gt":
         return
-    if hasattr(scene, "canonical_pose_3d"):
-        existing = np.asarray(scene.canonical_pose_3d)
-        if existing.shape == canonical_pose.shape:
-            scene.canonical_pose_3d[...] = canonical_pose
-            return
-    scene.canonical_pose_3d = canonical_pose
+    if source != "prediction":
+        raise ValueError(
+            "canonical_pose_source must be 'gt' or 'prediction', "
+            f"got '{source}'."
+        )
+    if predicted_canonical_pose is None:
+        raise ValueError(
+            "canonical_pose_source='prediction' requires a model that outputs "
+            "canonical_pose."
+        )
+
+    predicted_shape = predicted_canonical_pose.shape
+    if len(predicted_shape) != 3 or predicted_shape[-1] != 3:
+        raise ValueError(
+            "Predicted canonical_pose must have shape (T, J, 3), "
+            f"got {predicted_shape}."
+        )
+    existing = getattr(scene, "canonical_pose_3d", None)
+    if existing is not None:
+        existing_shape = np.asarray(existing).shape
+        if not existing_shape or existing_shape[0] != predicted_shape[0]:
+            raise ValueError(
+                "Predicted canonical_pose frame count must match the scene: "
+                f"expected {existing_shape[0] if existing_shape else 0}, "
+                f"got {predicted_shape[0]}."
+            )
+    scene.canonical_pose_3d = predicted_canonical_pose.copy()
 
 
 def predict_scene(
@@ -95,6 +123,7 @@ def predict_scene(
     device: str,
     scene: Any,
     cameras: list[int],
+    canonical_pose_source: CanonicalPoseSource = "gt",
 ) -> Any:
     """Run PLCS prediction and return a scene whose pose is replaced by prediction.
 
@@ -103,6 +132,9 @@ def predict_scene(
         device: Inference device.
         scene: Loaded PLCS scene object.
         cameras: Camera indices selected for prediction.
+        canonical_pose_source: Canonical pose used to render the predicted
+            position/rotation. ``"gt"`` preserves the input scene pose;
+            ``"prediction"`` requires a canonical pose model output.
 
     Returns:
         Deep-copied scene with ``position`` and ``rotation`` replaced by prediction.
@@ -139,5 +171,9 @@ def predict_scene(
     predicted_scene = copy.deepcopy(scene)
     predicted_scene.position[...] = pred_pos
     predicted_scene.rotation[...] = pred_rot
-    _assign_predicted_canonical_pose(predicted_scene, pred_canonical_pose)
+    _apply_canonical_pose_source(
+        predicted_scene,
+        pred_canonical_pose,
+        canonical_pose_source,
+    )
     return predicted_scene
