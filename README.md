@@ -2,9 +2,15 @@
 
 単眼テニス動画から、プレーヤー/ボール/コートを推定して「コート座標系の3Dシーン」に統合するための研究用モジュラーパイプライン。
 
-## 成果（GT vs Pred）
+## 成果
 
-> `assets/` 配下にタスク別の比較GIFを置く想定です（GTとPredを同一画面で比較）。
+### Tennis Scene（統合3D再構成）
+
+| 入力映像（`data/samples/tennis_clip.mp4`） | コート座標系の3Dシーン |
+| :---: | :---: |
+| <img src="assets/tennis_scene/tennis_clip.gif" width="400" /> | <img src="assets/tennis_scene/rich_scene_rendering.gif" width="400" /> |
+
+- 実装/実行: [src/tennis_scene/README.md](src/tennis_scene/README.md)
 
 ### Ball Detection（2Dボール検出）
 
@@ -36,7 +42,8 @@
 ### PLCS（プレーヤー3D位置・yaw推定）
 
 <p align="center">
-  <img src="assets/plcs/gt_vs_pred.gif" width="840" />
+  <img src="assets/plcs/gt_vs_pred.gif" width="720" /><br/>
+  <em>GT（緑）｜ Prediction（赤）</em>
 </p>
 
 - 実装/実行: [src/tasks/plcs/README.md](src/tasks/plcs/README.md)

@@ -105,7 +105,6 @@ class TennisSceneStyle:
     ball_style: BallStyle | None = None
     skeleton_style: SkeletonStyle | None = None
     trail_length: int = 30
-    show_direction: bool = True
     show_trail: bool = True
     figsize: tuple[float, float] = (12, 8)
     mesh_color: str = "#7BC8F6"
@@ -193,9 +192,6 @@ class TennisSceneRenderer:
 
     def _get_players_position(self, scene: SceneResult) -> NDArray[np.float32]:
         return scene.player_position
-
-    def _get_players_yaw(self, scene: SceneResult) -> NDArray[np.float32]:
-        return scene.player_yaw
 
     def _axis_angle_to_matrix(self, axis_angle: NDArray[np.float32]) -> NDArray[np.float32]:
         return axis_angle_to_rotation_matrix(axis_angle)
@@ -453,7 +449,6 @@ class TennisSceneRenderer:
     def _render_players(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
         track_ids = self._get_player_tracks(scene)
         players_position = self._get_players_position(scene)
-        players_yaw = self._get_players_yaw(scene)
         players_smpl = self._build_players_smpl_vertices_court(scene)
 
         for player_idx, track_id in enumerate(track_ids):
@@ -514,24 +509,6 @@ class TennisSceneRenderer:
                 f"P{track_id}",
                 color=color,
             )
-
-        if self.style.show_direction:
-            for player_idx in range(players_position.shape[0]):
-                pos = players_position[player_idx, frame_idx]
-                yaw = players_yaw[player_idx, frame_idx]
-                dx = np.sin(yaw)
-                dy = np.cos(yaw)
-                ax.quiver(
-                    pos[0],
-                    pos[1],
-                    pos[2] + 0.5,
-                    dx,
-                    dy,
-                    0,
-                    color="yellow",
-                    arrow_length_ratio=0.3,
-                    zorder=SceneLayer.MARKER,
-                )
 
     def _render_ball(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
         if scene.ball_3d is None:

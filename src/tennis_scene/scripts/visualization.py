@@ -93,7 +93,6 @@ def main(cfg: DictConfig) -> int:
     # Create style
     style = TennisSceneStyle(
         trail_length=int(cfg.style.trail_length),
-        show_direction=bool(cfg.style.show_direction),
         show_trail=bool(cfg.style.show_trail),
         figsize=tuple(cfg.style.figsize),
         player_representation=cast(Literal["smpl", "skeleton"], player_representation),

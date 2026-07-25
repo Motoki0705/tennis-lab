@@ -24,7 +24,6 @@ writer: ffmpeg
 # Rendering style
 style:
   trail_length: 30
-  show_direction: true
   show_trail: true
   figsize: [12, 8]
   # "smpl" or "skeleton"
