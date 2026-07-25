@@ -51,10 +51,29 @@
 ### BLCS（ボール3D軌道推定）
 
 <p align="center">
-  <img src="assets/blcs/gt_vs_pred.gif" width="840" />
+  <img src="assets/blcs/gt_vs_pred.gif" width="600" /><br/>
+  <em>GT（緑）｜ Prediction（赤）</em>
 </p>
 
 - 実装/実行: [src/tasks/blcs/README.md](src/tasks/blcs/README.md)
+
+### BLCSデータ生成（物理シミュレーション）
+
+<p align="center">
+  <img src="assets/blcs_sim/blcs_sim_demo.png" width="840" /><br/>
+  <em>物理シミュレーションによるボール軌道・イベント・マルチカメラ観測の生成</em>
+</p>
+
+## 開発中
+
+### Multi-object PLCS / BLCS
+
+[PR #650](https://github.com/Motoki0705/tennis-lab/pull/650) で、複数プレーヤー・複数ボールの lifecycle を扱う生成・追跡・可視化パイプラインを開発しています。
+
+| 複数プレーヤー（PLCS） | 複数ボール（BLCS） |
+| :---: | :---: |
+| <img src="assets/plcs/multi_object.gif" width="400" /> | <img src="assets/blcs/multi_object.gif" width="400" /> |
+| `multi_object_lifecycle_v2 / scene_000040` | `multi_object_lifecycle_v4 / scene_000345` |
 
 ## クイックスタート
 
