@@ -31,6 +31,11 @@
 - **`mask_predictor.py`**: `CourtSegPredictor`/`CourtLinePredictor`。dense prediction共通テンプレート。
 - **`preprocess.py`**: `preprocess_court_image()`。3predictor共通の前処理。
 
+### evaluation/
+- **`homography_quality.py`**: 14点アノテーションへRANSACホモグラフィーを当て、inlier被覆・再投影誤差・可視率・占有率・地上視点の射影歪みを評価。
+- **`image_evidence.py`**: 投影した9本のコートラインに対する画像edge支持率と、色・明度・重複確認用descriptorを算出。
+- **`pipeline.py`**: `data_train.json`互換JSONを厳密に読み、複数データセットの採否manifestと補正済み14点JSONを出力。
+
 ### visualization/
 - **`orchestrator.py`**: task別にpredict→render→GIF保存を統括。
 - **`adapters/`**: predictor入力変換と学習時qualitative描画用変換。
@@ -46,6 +51,7 @@
 - **`preview_heatmaps.py`**: `sigma_ratio` 比較プレビュー。
 - **`prepare_youtube_dataset.py`**: YouTube動画取得〜20点アノテーション雛形生成。
 - **`annotate_youtube_keypoints.py`**: 20点アノテーションUIエントリポイント。
+- **`evaluate_homography_annotations.py`**: Hydra設定の複数JSONを一括してホモグラフィー品質評価。
 
 ### generate_dataset/
 - **`annotation_session.py`**: `run_annotation_session()`。CourtKP20の手動/pseudo-labelアノテーションUI本体。
