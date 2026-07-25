@@ -41,7 +41,7 @@
 
 ### visualization/
 - **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
-- **`api/predict.py`**: `predict_scene()`。モデル型に応じてframe/multiview推論を切替。
+- **`api/predict.py`**: `predict_scene()`。モデル型に応じてframe/multiview推論を切替。比較描画のcanonical poseは`visualization.canonical_pose_source=gt|prediction`で選択し、既定ではGTを使う。
 - **`contracts.py`**: `PoseRenderScene`。renderer向け最小scene契約。
 - **`rendering/scene_renderer.py`**: `PLCSSceneRenderer`。3D/2D top-downのGT・予測比較アニメーション。3Dは `src.utils.rendering` の共有プリミティブ(テーマ・レイヤ規約・カメラ・移動トレイル・地面影・HUD・ミニマップ)を利用。ボール軌道は持たないためHUDはフレーム時刻のみ。style/視点は `visualization.style` / `visualization.view_3d` で設定。
 - **`adapters/`**: predictor入力構築と学習時qualitative描画用変換。

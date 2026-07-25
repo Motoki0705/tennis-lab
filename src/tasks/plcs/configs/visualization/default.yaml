@@ -9,7 +9,8 @@ fps: 30
 save: assets/plcs/gt.gif           # Optional output file for comparison animation (e.g., .mp4, .gif)
 info: false
 checkpoint: checkpoints/plcs/frame/last.ckpt
-  
+# Canonical pose used for the Prediction skeleton: gt | prediction
+canonical_pose_source: gt
 
 # Shared scene style for animation_view=3d (parsed by
 # src/tasks/base/visualization/style.py; 2D/camera views ignore it).
