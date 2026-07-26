@@ -23,15 +23,15 @@
 - **`datamodule.py`**: `BLCSDataModule`。`input_profile`(`single`/`multiview`)に応じたcollate構築。
 - **`augmentation.py`**: `BLCSBallObservationAugmentation`。detector誤差を模した8段のUVノイズパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
-- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、物理trackをlifecycle slotへpackingしてからunordered candidateを生成するDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
-- **`tracking_augmentation.py`**: clean GTを保持したままcandidateだけへdetector noise/dropout/false-positive/shuffleを適用するshape adapter。
+- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、object観測をscene object IDの昇順で保持したまま、物理trackをlifecycle slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
+- **`tracking_augmentation.py`**: object列を並べ替えず、clean GTを保持したまま観測だけへdetector noise/dropout/false-positiveを適用するshape adapter。
 
 ### models/
 - **`__init__.py`**: `build_blcs_model(config)`。`model.name` で3実装を切替。
 - **`blcs_model.py`**: `BLCSModel`。single-view用decoder-only Transformer(court+ballトークン)。
 - **`blcs_multiview_model.py`**: `BLCSMultiViewModel`。クエリのcross-attention+時間self-attentionによる反復更新モデル。
 - **`blcs_multiview_axial_model.py`**: `BLCSMultiViewAxialModel`(現行デフォルト)。camera軸/time軸交互self-attention。
-- **`blcs_track_query_model.py`**: `BLCSTrackQueryModel`。unorderedなcamera候補集合からclip-localな固定query slotで複数ボール軌道とpresenceを推定する。
+- **`blcs_track_query_model.py`**: `BLCSTrackQueryModel`。object ID順のcamera観測からclip-localな固定query slotで複数ボール軌道とpresenceを推定する。
 - **`components/heads.py`**: `Trajectory3DHead`/`VelocityHead`。
 - **`components/differentiable_projection.py`**: `DifferentiableProjection`。予測3D位置をカメラへ再投影。
 - **`discriminators/`**: `BLCSTrajectoryDiscriminator` と工場関数 `build_blcs_discriminator`。
@@ -64,9 +64,9 @@
 
 ## Multi-ball tracking
 
-観測座標は `ball_uv (B,V,T,P,2)`、観測有無は `ball_visible (B,V,T,P)` に一本化し、`ball_candidate_mask` は持ちません。scoreやvisibility値を数値特徴へ連結せず、不可視candidateはlearned invisible tokenへ置換します。`mask_invisible_observations=true` は不可視tokenをattention keyから除外する対照条件、`false` は`frame_mask` / `view_mask`によるpaddingだけを除外し、不可視tokenを更新可能なmemoryとして使う条件です。出力は `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。教師は `target_position (B,T,Q,3)`、`target_presence (B,T,Q)`、`target_instance_id (B,T,Q)` で、inactive IDは`-1`です。重ならないbirth/death区間を同じtarget columnへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。候補indexは座標にもidentityにも使わず、debug用の `candidate_gt_index` はモデルへ渡しません。
+観測座標は `ball_uv (B,V,T,P,2)`、観測有無は `ball_visible (B,V,T,P)` に一本化し、`ball_candidate_mask` は持ちません。`P` 軸は全camera/frameでscene object IDの昇順に固定し、欠損・dropout・false positiveがあっても列を並べ替えません。debug用の `candidate_gt_index` は観測が実object由来ならその列と同じobject ID、そうでなければ`-1`であり、モデルへは渡しません。scoreやvisibility値を数値特徴へ連結せず、不可視objectはlearned invisible tokenへ置換します。`mask_invisible_observations=true` は不可視tokenをattention keyから除外する対照条件、`false` は`frame_mask` / `view_mask`によるpaddingだけを除外し、不可視tokenを更新可能なmemoryとして使う条件です。出力は `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。教師は `target_position (B,T,Q,3)`、`target_presence (B,T,Q)`、`target_instance_id (B,T,Q)` で、inactive IDは`-1`です。重ならないbirth/death区間を同じtarget columnへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
 
-14 court UVは`court_vis`で不可視点を0化し、各ball candidateのUVと連結して、共有`CourtBallGroupEmbedding`によりcandidateごとの1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*P, D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、court-ball group=1で、候補indexやcourt点indexは埋め込みません。court点の並びはannotation schemaに従い、固定されたcamera名に依存しないようtrain時はview単位でshuffleします。
+14 court UVはannotation schemaのkeypoint ID順を維持します。`observation_fusion=linear` は`court_vis`で不可視点を0化し、object ID順の各ball UVと連結して共有`CourtBallGroupEmbedding`により1 object = 1 tokenへ写像します。`observation_fusion=point_attention` は各camera/frameについて `[court_0..13, ball_0..P-1]` を32次元tokenへ変換し、court IDとobject ID順のball列を独立軸とする2軸RoPE付きself-attentionで融合します。融合後はball tokenだけをmodel dimへprojectionし、既存の空間・時間attention経路へ渡します。どちらも下流の空間self-attention入力は `(B*T, Q + V*P, D)` です。
 
 multi-object generatorは1024-frame global timelineに3〜10個のsource rally subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
 

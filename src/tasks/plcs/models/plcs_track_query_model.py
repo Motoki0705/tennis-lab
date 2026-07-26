@@ -1,4 +1,4 @@
-"""Persistent track-query model for unordered multi-view player detections."""
+"""Persistent track-query model for ID-ordered multi-view player observations."""
 
 from __future__ import annotations
 
@@ -10,8 +10,6 @@ from torch import nn
 
 from src.tasks.plcs.data.tracking_types import PLCSTrackingPrediction
 from src.utils.models import (
-    CourtCameraEmbedding,
-    InvisibleTokenEmbedding,
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
@@ -19,7 +17,10 @@ from src.utils.models import (
     precompute_freqs_cis,
     precompute_freqs_cis_nd,
 )
-from src.utils.models.embeddings.projection import apply_visibility_mask
+from src.utils.models.embeddings import (
+    CourtPlayerGroupEmbedding,
+    InvisibleTokenEmbedding,
+)
 
 
 class PLCSTrackQueryModel(nn.Module):
@@ -44,19 +45,15 @@ class PLCSTrackQueryModel(nn.Module):
             raise ValueError(
                 "rope_dim must be even and no larger than the attention head dim."
             )
-        input_dim = self.num_joints * 2
-        self.detection_encoder = nn.Sequential(
-            nn.Linear(input_dim, self.hidden_dim),
-            nn.GELU(),
-            nn.Linear(self.hidden_dim, self.hidden_dim),
-        )
+        self.num_court_tokens = 14
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
             init_std=float(config.get("invisible_init_std", 0.02)),
         )
-        self.court_encoder = CourtCameraEmbedding(
+        self.group_embed = CourtPlayerGroupEmbedding(
             dim=self.hidden_dim,
-            num_court_points=14,
+            invisible_token=self.invisible_token,
+            num_court_tokens=self.num_court_tokens,
         )
         self.slot_embeddings = nn.Parameter(
             torch.randn(self.num_queries, self.hidden_dim) * 0.02
@@ -98,7 +95,7 @@ class PLCSTrackQueryModel(nn.Module):
             batch_size,
             num_frames,
             num_views,
-            num_detections + 1,
+            num_detections,
             3,
             device=device,
             dtype=torch.long,
@@ -107,8 +104,7 @@ class PLCSTrackQueryModel(nn.Module):
         camera_tokens[..., 1] = torch.arange(1, num_views + 1, device=device).view(
             1, 1, num_views, 1
         )
-        camera_tokens[..., :num_detections, 2] = 1
-        camera_tokens[..., num_detections, 2] = 2
+        camera_tokens[..., 2] = 1
         return torch.cat([slot, camera_tokens.flatten(2, 3)], dim=2).flatten(0, 1)
 
     def forward(
@@ -135,44 +131,48 @@ class PLCSTrackQueryModel(nn.Module):
             view_mask[:, :, None, None] & frame_mask[:, None, :, None]
         ).expand(-1, -1, -1, num_detections)
         detection_mask = detection_mask.bool()
-        detection_features = human_kp.flatten(-2).masked_fill(
-            ~detection_mask.unsqueeze(-1), 0.0
-        )
-        encoded_detections = self.detection_encoder(detection_features)
-        detection_tokens = apply_visibility_mask(
-            encoded_detections,
-            detection_mask,
-            self.invisible_token,
-        )
         if court_kp.shape[:3] != (batch_size, num_views, num_frames):
             raise ValueError("court_kp leading dimensions must match human_kp (B,V,T).")
-        if court_kp.shape[3:] != (14, 2):
+        if court_kp.shape[3:] != (self.num_court_tokens, 2):
             raise ValueError(
                 "court_kp must contain all 14 annotated UV points; "
                 f"got shape {tuple(court_kp.shape)}."
             )
-        court_tokens = self.court_encoder(court_kp, court_vis).unsqueeze(3)
-        camera_tokens = torch.cat([detection_tokens, court_tokens], dim=3).permute(
-            0, 2, 1, 3, 4
+        if court_vis.shape != court_kp.shape[:-1]:
+            raise ValueError(
+                "court_vis must match court_kp without its UV axis, got "
+                f"court_vis={tuple(court_vis.shape)} and "
+                f"court_kp={tuple(court_kp.shape)}."
+            )
+        court_visible = court_vis if court_vis.dtype == torch.bool else court_vis > 0
+        masked_court = court_kp.masked_fill(~court_visible.unsqueeze(-1), 0.0)
+        court_for_detections = masked_court.unsqueeze(3).expand(
+            -1, -1, -1, num_detections, -1, -1
+        )
+        human_for_detections = human_kp.masked_fill(
+            ~detection_mask[..., None, None], 0.0
+        )
+        camera_tokens = self.group_embed(
+            court_for_detections,
+            human_for_detections,
+            detection_mask,
+        ).permute(
+            0,
+            2,
+            1,
+            3,
+            4,
         )
         camera_tokens = camera_tokens.reshape(
             batch_size,
             num_frames,
-            num_views * (num_detections + 1),
+            num_views * num_detections,
             self.hidden_dim,
         )
-        camera_padding_valid = torch.cat(
-            [
-                observation_padding_valid,
-                (view_mask[:, :, None] & frame_mask[:, None, :]).unsqueeze(-1),
-            ],
-            dim=3,
-        ).permute(0, 2, 1, 3)
+        camera_padding_valid = observation_padding_valid.permute(0, 2, 1, 3)
         camera_attention_valid = camera_padding_valid.clone()
         if self.mask_invisible_observations:
-            camera_attention_valid[..., :num_detections] &= detection_mask.permute(
-                0, 2, 1, 3
-            )
+            camera_attention_valid &= detection_mask.permute(0, 2, 1, 3)
         camera_state_valid = camera_attention_valid
         camera_tokens = camera_tokens * camera_state_valid.reshape(
             batch_size, num_frames, -1

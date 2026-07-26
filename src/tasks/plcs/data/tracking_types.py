@@ -11,9 +11,10 @@ class PLCSTrackingBatch(TypedDict):
     """Padded multi-person input, GT, and debug tensors.
 
     ``human_vis`` and ``detection_gt_index`` are retained for augmentation/data
-    validation only. The model consumes ``detection_mask`` for whole-person
-    invisibility and ``court_vis`` to zero unavailable court coordinates before
-    per-camera pooling. See ``src/tasks/plcs/README.md`` for shapes.
+    validation only. ``detection_gt_index`` validates the object-ID-ordered
+    observation axis and is never passed to the model. The model consumes
+    ``detection_mask`` for whole-person invisibility and ``court_vis`` to zero
+    unavailable court coordinates. See ``src/tasks/plcs/README.md`` for shapes.
     """
 
     scene_format_version: Tensor

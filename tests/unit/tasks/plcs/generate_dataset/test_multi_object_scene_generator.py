@@ -17,9 +17,9 @@ class _MotionSceneStub:
     """Small deterministic stand-in for the separately tested AMASS sampler."""
 
     def __init__(self) -> None:
-        self.camera_projector = CameraProjector(CameraConfig(
-            fixed_position_noise_radius=0.0, fixed_look_at_xy_radius=0.0
-        ))
+        self.camera_projector = CameraProjector(
+            CameraConfig(fixed_position_noise_radius=0.0, fixed_look_at_xy_radius=0.0)
+        )
         self.calls = 0
 
     def generate_scene(self, scene_id: str) -> SceneData:
@@ -40,25 +40,46 @@ class _MotionSceneStub:
             uv, visible = self.camera_projector.project_points_to_uv(
                 torch.from_numpy(world), camera
             )
-            court_uv, court_visible = self.camera_projector.project_court_keypoints(camera)
-            cameras.append(CameraData(
-                camera_params={"C": camera.C.tolist(), "R": camera.R.tolist(), "f": camera.f,
-                               "cx": camera.cx, "cy": camera.cy, "w": camera.w, "h": camera.h,
-                               "image_size": self.camera_projector.config.image_size},
-                human_kp_uv=uv.numpy(),
-                court_kp_uv=np.tile(court_uv.numpy()[None], (frames, 1, 1)),
-                human_kp_visible=visible.numpy(),
-                court_kp_visible=np.tile(court_visible.numpy()[None], (frames, 1)),
-                human_visibility_ratio=float(visible.any(-1).float().mean()),
-                court_visibility_count=float(court_visible.sum()),
-            ))
+            court_uv, court_visible = self.camera_projector.project_court_keypoints(
+                camera
+            )
+            cameras.append(
+                CameraData(
+                    camera_params={
+                        "C": camera.C.tolist(),
+                        "R": camera.R.tolist(),
+                        "f": camera.f,
+                        "cx": camera.cx,
+                        "cy": camera.cy,
+                        "w": camera.w,
+                        "h": camera.h,
+                        "image_size": self.camera_projector.config.image_size,
+                    },
+                    human_kp_uv=uv.numpy(),
+                    court_kp_uv=np.tile(court_uv.numpy()[None], (frames, 1, 1)),
+                    human_kp_visible=visible.numpy(),
+                    court_kp_visible=np.tile(court_visible.numpy()[None], (frames, 1)),
+                    human_visibility_ratio=float(visible.any(-1).float().mean()),
+                    court_visibility_count=float(court_visible.sum()),
+                )
+            )
         return SceneData(
-            meta={"scene_id": scene_id, "motion_source": "stub", "motion_category": "test",
-                  "gender": "neutral", "fps": 30.0, "num_frames": frames,
-                  "initial_position": (0.0, 0.0), "initial_yaw": 0.0,
-                  "num_cameras_sampled": len(cameras)},
-            position=position, rotation=rotation, canonical_pose_3d=skeleton,
-            cameras=cameras, human_kp_3d=world,
+            meta={
+                "scene_id": scene_id,
+                "motion_source": "stub",
+                "motion_category": "test",
+                "gender": "neutral",
+                "fps": 30.0,
+                "num_frames": frames,
+                "initial_position": (0.0, 0.0),
+                "initial_yaw": 0.0,
+                "num_cameras_sampled": len(cameras),
+            },
+            position=position,
+            rotation=rotation,
+            canonical_pose_3d=skeleton,
+            cameras=cameras,
+            human_kp_3d=world,
         )
 
 
@@ -80,12 +101,10 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     assert scene.num_persons == 2
     assert scene.person_present is not None
     assert scene.position.shape == (12, 2, 3)
-    assert scene.person_present[:, :scene.num_persons].any(0).all()
+    assert scene.person_present[:, : scene.num_persons].any(0).all()
     assert scene.cameras[0].human_kp_uv.shape == (12, 2, 17, 2)
     assert len(scene.track_instances) == 2
-    assert not scene.cameras[0].human_kp_visible[
-        ~scene.person_present
-    ].any()
+    assert not scene.cameras[0].human_kp_visible[~scene.person_present].any()
 
     writer = PLCSDatasetWriter(tmp_path)
     scene_path = writer.save_scene(scene)
@@ -111,16 +130,13 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     assert set(sample["target_instance_id"].unique().tolist()) == {-1, 0, 1}
     assert torch.equal(
         sample["target_rotation"][~sample["target_presence"]],
-        torch.tensor([1.0, 0.0]).expand(
-            (~sample["target_presence"]).sum(), 2
-        ),
+        torch.tensor([1.0, 0.0]).expand((~sample["target_presence"]).sum(), 2),
     )
     detection_ids = sample["detection_gt_index"][0]
-    reused_columns = []
-    for track_id in range(2):
-        locations = torch.nonzero(detection_ids == track_id, as_tuple=False)
-        reused_columns.append(locations[:, 1].unique().numel())
-    assert max(reused_columns) > 1
+    for object_id in range(2):
+        column_ids = detection_ids[:, object_id]
+        assert bool(((column_ids == object_id) | (column_ids == -1)).all())
+        assert bool((column_ids == object_id).any())
 
 
 def test_invalid_person_cardinality_is_rejected() -> None:

@@ -7,6 +7,7 @@ import torch
 from omegaconf import OmegaConf
 
 from src.tasks.plcs.models import PLCSTrackQueryModel
+from src.utils.models.embeddings import CourtPlayerGroupEmbedding
 
 
 def _model(*, mask_invisible: bool = True) -> PLCSTrackQueryModel:
@@ -17,7 +18,7 @@ def _model(*, mask_invisible: bool = True) -> PLCSTrackQueryModel:
     return model
 
 
-def test_player_role_coordinates_do_not_encode_detection_index() -> None:
+def test_player_role_coordinates_share_role_within_id_ordered_object_axis() -> None:
     coordinates = PLCSTrackQueryModel.build_spatial_coordinates(
         batch_size=1,
         num_frames=1,
@@ -33,38 +34,17 @@ def test_player_role_coordinates_do_not_encode_detection_index() -> None:
             [
                 [0, 1, 1],
                 [0, 1, 1],
-                [0, 1, 2],
                 [0, 2, 1],
                 [0, 2, 1],
-                [0, 2, 2],
             ]
         ),
     )
 
 
-def test_detection_permutation_keeps_player_slot_outputs_identical() -> None:
-    torch.manual_seed(5)
+def test_model_uses_shared_court_player_group_embedding() -> None:
     model = _model()
-    shape = (1, 2, 4, 3)
-    inputs = {
-        "human_kp": torch.rand(*shape, 17, 2),
-        "detection_mask": torch.ones(*shape, dtype=torch.bool),
-        "court_kp": torch.rand(1, 2, 4, 14, 2),
-        "court_vis": torch.ones(1, 2, 4, 14, dtype=torch.bool),
-        "frame_mask": torch.ones(1, 4, dtype=torch.bool),
-        "view_mask": torch.ones(1, 2, dtype=torch.bool),
-    }
-    permutation = torch.tensor([2, 0, 1])
-    permuted = dict(inputs)
-    for key in ("human_kp", "detection_mask"):
-        permuted[key] = inputs[key][:, :, :, permutation]
-    with torch.no_grad():
-        output = model(**inputs)
-        permuted_output = model(**permuted)
-    for key in output:
-        torch.testing.assert_close(
-            output[key], permuted_output[key], atol=1e-5, rtol=1e-5
-        )
+
+    assert isinstance(model.group_embed, CourtPlayerGroupEmbedding)
 
 
 def test_masked_detection_coordinates_do_not_affect_predictions() -> None:

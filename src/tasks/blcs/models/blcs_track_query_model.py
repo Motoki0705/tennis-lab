@@ -1,4 +1,4 @@
-"""Persistent track-query model for unordered multi-view ball candidates."""
+"""Persistent track-query model for ID-ordered multi-view ball observations."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import torch
 from torch import nn
 
 from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
+from src.tasks.blcs.models.components import CourtBallPointFusion
 from src.utils.models import (
     RMSNorm,
     TransformerBlock,
@@ -32,6 +33,7 @@ class BLCSTrackQueryModel(nn.Module):
         self.mask_invisible_observations = bool(
             config.get("mask_invisible_observations", True)
         )
+        self.observation_fusion = str(config.get("observation_fusion", "linear"))
         head_dim = self.hidden_dim // self.num_heads
         configured_rope_dim = config.get("rope_dim", None)
         self.rope_dim = (
@@ -44,16 +46,39 @@ class BLCSTrackQueryModel(nn.Module):
                 "rope_dim must be even and no larger than the attention head dim."
             )
 
-        self.invisible_token = InvisibleTokenEmbedding(
-            dim=self.hidden_dim,
-            init_std=float(config.get("invisible_init_std", 0.02)),
-        )
         self.num_court_tokens = 14
-        self.group_embed = CourtBallGroupEmbedding(
-            dim=self.hidden_dim,
-            invisible_token=self.invisible_token,
-            num_court_tokens=self.num_court_tokens,
-        )
+        self.invisible_token: InvisibleTokenEmbedding | None = None
+        self.group_embed: CourtBallGroupEmbedding | None = None
+        self.point_fusion: CourtBallPointFusion | None = None
+        invisible_init_std = float(config.get("invisible_init_std", 0.02))
+        if self.observation_fusion == "linear":
+            self.invisible_token = InvisibleTokenEmbedding(
+                dim=self.hidden_dim,
+                init_std=invisible_init_std,
+            )
+            self.group_embed = CourtBallGroupEmbedding(
+                dim=self.hidden_dim,
+                invisible_token=self.invisible_token,
+                num_court_tokens=self.num_court_tokens,
+            )
+        elif self.observation_fusion == "point_attention":
+            point_fusion_config = config.get("point_fusion")
+            if point_fusion_config is None:
+                raise ValueError(
+                    "model.point_fusion is required when observation_fusion="
+                    "'point_attention'."
+                )
+            self.point_fusion = CourtBallPointFusion(
+                output_dim=self.hidden_dim,
+                num_court_points=self.num_court_tokens,
+                config=point_fusion_config,
+                invisible_init_std=invisible_init_std,
+            )
+        else:
+            raise ValueError(
+                "observation_fusion must be 'linear' or 'point_attention', got "
+                f"{self.observation_fusion!r}."
+            )
         self.slot_embeddings = nn.Parameter(
             torch.randn(self.num_queries, self.hidden_dim) * 0.02
         )
@@ -144,16 +169,29 @@ class BLCSTrackQueryModel(nn.Module):
                 f"court_kp={tuple(court_kp.shape)}."
             )
         court_visible = court_vis if court_vis.dtype == torch.bool else court_vis > 0
-        masked_court = court_kp.masked_fill(~court_visible.unsqueeze(-1), 0.0)
-        court_for_candidates = masked_court.unsqueeze(3).expand(
-            -1, -1, -1, num_detections, -1, -1
-        )
-        ball_for_candidates = ball_uv.masked_fill(~ball_visible.unsqueeze(-1), 0.0)
-        camera_tokens = self.group_embed(
-            court_for_candidates,
-            ball_for_candidates,
-            ball_visible,
-        ).permute(0, 2, 1, 3, 4)
+        if self.observation_fusion == "linear":
+            assert self.group_embed is not None
+            masked_court = court_kp.masked_fill(~court_visible.unsqueeze(-1), 0.0)
+            court_for_candidates = masked_court.unsqueeze(3).expand(
+                -1, -1, -1, num_detections, -1, -1
+            )
+            ball_for_candidates = ball_uv.masked_fill(~ball_visible.unsqueeze(-1), 0.0)
+            camera_tokens = self.group_embed(
+                court_for_candidates,
+                ball_for_candidates,
+                ball_visible,
+            ).permute(0, 2, 1, 3, 4)
+        else:
+            assert self.point_fusion is not None
+            context_valid = view_mask[:, :, None] & frame_mask[:, None, :]
+            camera_tokens = self.point_fusion(
+                court_kp=court_kp,
+                court_visible=court_visible,
+                ball_uv=ball_uv,
+                ball_visible=ball_visible,
+                context_valid=context_valid,
+                mask_invisible_ball=self.mask_invisible_observations,
+            ).permute(0, 2, 1, 3, 4)
         camera_tokens = camera_tokens.reshape(
             batch_size,
             num_frames,

@@ -42,7 +42,6 @@ from src.utils.models.components import (
 from src.utils.models.embeddings import (
     Ball3DEmbedding,
     BallUVEmbedding,
-    CourtCameraEmbedding,
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
@@ -90,7 +89,6 @@ __all__ = [
     "Conv2dWiseWiseBlock",
     # Token embeddings
     "InvisibleTokenEmbedding",
-    "CourtCameraEmbedding",
     "CourtKPUVEmbedding",
     "PlayerKPUVEmbedding",
     "BallUVEmbedding",

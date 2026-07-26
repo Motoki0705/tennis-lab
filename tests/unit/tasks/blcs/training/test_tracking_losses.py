@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import torch
 from omegaconf import OmegaConf
 
@@ -65,3 +66,36 @@ def test_matching_accepts_bfloat16_predictions() -> None:
 
     assert torch.isfinite(losses["total"])
     assert assignments[0][0].numel() == 2
+
+
+def test_position_loss_reports_axes_and_uses_configured_balance() -> None:
+    config = OmegaConf.load(Path("src/tasks/blcs/configs/loss/tracking.yaml"))
+    config.presence_weight = 0.0
+    criterion = BLCSTrackingLoss(config)
+    prediction = {
+        "position": torch.tensor(
+            [[[[1.0, 2.0, 3.0]]]], requires_grad=True
+        ),
+        "presence_logits": torch.tensor([[[20.0]]], requires_grad=True),
+    }
+    batch = {
+        "target_position": torch.zeros(1, 1, 1, 3),
+        "target_presence": torch.ones(1, 1, 1, dtype=torch.bool),
+        "target_slot_mask": torch.ones(1, 1, dtype=torch.bool),
+        "frame_mask": torch.ones(1, 1, dtype=torch.bool),
+    }
+
+    losses, _ = criterion(prediction, batch)
+
+    torch.testing.assert_close(losses["position_x"], torch.tensor(0.5))
+    torch.testing.assert_close(losses["position_y"], torch.tensor(1.5))
+    torch.testing.assert_close(losses["position_z"], torch.tensor(2.5))
+    torch.testing.assert_close(losses["position"], torch.tensor(1.3))
+
+
+def test_tracking_loss_rejects_invalid_position_axis_weights() -> None:
+    config = OmegaConf.load(Path("src/tasks/blcs/configs/loss/tracking.yaml"))
+    config.position_axis_weights = [1.0, 0.0, 1.0]
+
+    with pytest.raises(ValueError, match="finite and positive"):
+        BLCSTrackingLoss(config)

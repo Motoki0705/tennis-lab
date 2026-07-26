@@ -33,6 +33,11 @@ class TargetedVelocityConfig:
     lob_elevation_range_deg: tuple[float, float] = (35.0, 70.0)
     lob_probability: float = 0.0
 
+    # Maximum gravity-only apex for any targeted shot. This prevents a long
+    # target combined with a high lob angle from creating implausible 20m+
+    # trajectories while preserving the requested landing point.
+    max_ballistic_apex_height_m: float = 8.0
+
     # Gravity for projectile calculation (m/s²)
     gravity: float = 9.81
 
@@ -106,6 +111,8 @@ class TargetedVelocitySampler:
         self.cell_manager = cell_manager or CellManager()
         self.config = config or TargetedVelocityConfig()
         self.device = torch.device(device)
+        if self.config.max_ballistic_apex_height_m <= 0.0:
+            raise ValueError("max_ballistic_apex_height_m must be positive.")
 
     def compute_velocity_to_target(
         self,
@@ -407,7 +414,38 @@ class TargetedVelocitySampler:
         vy = speed * cos_elev * math.cos(azimuth_rad) * base_dir
         vz = speed * sin_elev
 
+        ballistic_apex = z0 + max(vz, 0.0) ** 2 / (2.0 * self.config.gravity)
+        if ballistic_apex > self.config.max_ballistic_apex_height_m:
+            vx, vy, vz = self._velocity_with_capped_ballistic_apex(
+                dx=dx,
+                dy=dy,
+                horizontal_dist=horizontal_dist,
+                z0=z0,
+            )
+
         return torch.tensor([vx, vy, vz], device=self.device, dtype=torch.float32)
+
+    def _velocity_with_capped_ballistic_apex(
+        self,
+        *,
+        dx: float,
+        dy: float,
+        horizontal_dist: float,
+        z0: float,
+    ) -> tuple[float, float, float]:
+        """Solve a target-reaching launch at the configured apex ceiling."""
+        gravity = self.config.gravity
+        apex = max(z0, self.config.max_ballistic_apex_height_m)
+        vz = math.sqrt(max(0.0, 2.0 * gravity * (apex - z0)))
+        flight_time = (vz + math.sqrt(vz**2 + 2.0 * gravity * max(z0, 0.0))) / gravity
+        if flight_time <= 0.0 or horizontal_dist <= 1e-8:
+            return 0.0, 0.0, vz
+        horizontal_speed = horizontal_dist / flight_time
+        return (
+            horizontal_speed * dx / horizontal_dist,
+            horizontal_speed * dy / horizontal_dist,
+            vz,
+        )
 
     def sample_velocity_for_target_cell(
         self,
@@ -645,4 +683,4 @@ class TargetedVelocitySampler:
         return elevation_rad + max(default_step_rad, deficit_step)
 
     def _net_height_at_x(self, x_at_net: float) -> float:
-        return net_height_at_x(x_at_net)
+        return float(net_height_at_x(x_at_net))

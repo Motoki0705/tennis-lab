@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import torch
 from torch import Tensor
@@ -38,24 +38,8 @@ PLCS_TRACKING_KEYS = (
 )
 
 
-def _cyclic_object_shuffle(value: Tensor, camera_index: int) -> Tensor:
-    num_objects = int(value.shape[1])
-    if num_objects == 0:
-        return value
-    return torch.stack(
-        [
-            torch.roll(
-                frame,
-                shifts=(camera_index + frame_index) % num_objects,
-                dims=0,
-            )
-            for frame_index, frame in enumerate(value)
-        ]
-    )
-
-
 class PLCSTrackingDataset(CanonicalTrackingDataset):
-    """Load, clip, select views, pack lifecycle slots, and corrupt detections."""
+    """Load ID-ordered objects, pack lifecycle slots, and corrupt observations."""
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -97,8 +81,8 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
         clean_visible_rows: list[Tensor] = []
         court_rows: list[Tensor] = []
         court_vis_rows: list[Tensor] = []
-        physical_ids = torch.arange(num_physical).expand(window.seq_len, -1)
-        for selected_index, camera_index in enumerate(cameras.indices):
+        ordered_object_ids = torch.arange(num_physical).expand(window.seq_len, -1)
+        for camera_index in cameras.indices:
             keypoints = torch.from_numpy(
                 scene.get_camera_array(camera_index, "human_kp_uv", window=window)
             ).float()
@@ -113,13 +97,7 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
             clean_kp_rows.append(keypoints.clone())
             clean_visible_rows.append(visible.clone())
             detection_mask = visible.any(-1)
-            detection_index = torch.where(detection_mask, physical_ids, -1)
-            if not self.augment:
-                keypoints = _cyclic_object_shuffle(keypoints, selected_index)
-                visible = _cyclic_object_shuffle(visible, selected_index)
-                detection_index = _cyclic_object_shuffle(
-                    detection_index, selected_index
-                )
+            detection_index = torch.where(detection_mask, ordered_object_ids, -1)
             kp_rows.append(keypoints)
             visible_rows.append(visible)
             index_rows.append(detection_index)
@@ -179,31 +157,34 @@ def collate_plcs_tracking_batch(
     batch: list[dict[str, Tensor]],
 ) -> dict[str, Tensor]:
     """Pad variable camera/time/detection dimensions and stack PLCS scenes."""
-    return pad_and_stack_tracking_batch(
-        batch,
-        padding_dimensions={
-            "human_kp": (0, 1, 2),
-            "human_vis": (0, 1, 2),
-            "detection_mask": (0, 1, 2),
-            "court_kp": (0, 1),
-            "court_vis": (0, 1),
-            "frame_mask": (0,),
-            "view_mask": (0,),
-            "target_position": (0, 1),
-            "target_rotation": (0, 1),
-            "target_canonical_pose_3d": (0, 1),
-            "target_human_kp_3d": (0, 1),
-            "target_presence": (0, 1),
-            "target_instance_id": (0, 1),
-            "target_slot_mask": (0,),
-            "clean_human_kp": (0, 1, 2),
-            "clean_human_visible": (0, 1, 2),
-            "detection_gt_index": (0, 1, 2),
-        },
-        pad_values={
-            "target_instance_id": -1,
-            "detection_gt_index": -1,
-        },
+    return cast(
+        dict[str, Tensor],
+        pad_and_stack_tracking_batch(
+            batch,
+            padding_dimensions={
+                "human_kp": (0, 1, 2),
+                "human_vis": (0, 1, 2),
+                "detection_mask": (0, 1, 2),
+                "court_kp": (0, 1),
+                "court_vis": (0, 1),
+                "frame_mask": (0,),
+                "view_mask": (0,),
+                "target_position": (0, 1),
+                "target_rotation": (0, 1),
+                "target_canonical_pose_3d": (0, 1),
+                "target_human_kp_3d": (0, 1),
+                "target_presence": (0, 1),
+                "target_instance_id": (0, 1),
+                "target_slot_mask": (0,),
+                "clean_human_kp": (0, 1, 2),
+                "clean_human_visible": (0, 1, 2),
+                "detection_gt_index": (0, 1, 2),
+            },
+            pad_values={
+                "target_instance_id": -1,
+                "detection_gt_index": -1,
+            },
+        ),
     )
 
 
