@@ -1,0 +1,68 @@
+ M knowledge/nodes/run-i621-court-kp512-resume-r4.md
+ M src/tasks/ball_detection/configs/run/train.yaml
+ M src/tasks/ball_detection/data/__init__.py
+ M src/tasks/base/training/runner.py
+ M src/tennis_scene/README.md
+ M src/tennis_scene/configs/pipeline.yaml
+ M tests/unit/tennis_scene/rendering/conftest.py
+?? .codex-loop/
+?? knowledge/nodes/run-i618-3dgs-blcs-real-baseline-v1.md
+?? knowledge/nodes/run-i618-b00-alignment-calibration-global-v1.md
+?? knowledge/nodes/run-i618-b00-alignment-calibration-local-v2.md
+?? knowledge/nodes/run-i618-b00-alignment-holdout-v1.md
+?? knowledge/nodes/run-i618-b00-alignment-user-override-v1.md
+?? knowledge/nodes/run-i618-b00-fit-court-detections-v1.md
+?? knowledge/nodes/run-i618-b00-ground-line-court-fit-v1.md
+?? knowledge/nodes/run-i618-b00-gsplat-subprocess-smoke-v1.md
+?? knowledge/nodes/run-i618-blcs-b00-full-scale-v1.md
+?? knowledge/nodes/run-i618-blcs-b00-single-frame-pilot-v1.md
+?? knowledge/nodes/run-i618-renderer-port-cpu-reference-v1.md
+?? src/tasks/ball_detection/configs/data/3dgs_blcs_mixed.yaml
+?? src/tasks/ball_detection/configs/evaluation/3dgs_blcs_real_v1.yaml
+?? src/tasks/ball_detection/configs/train_3dgs_blcs_v1.yaml
+?? src/tasks/ball_detection/data/components/source_mix_sampler.py
+?? src/tasks/ball_detection/data/mixed_tracknet_datamodule.py
+?? src/tennis_scene/alignment/
+?? src/tennis_scene/configs/calibrate_court_alignment.yaml
+?? src/tennis_scene/configs/export_scene_provider.yaml
+?? src/tennis_scene/configs/fit_ground_courts.yaml
+?? src/tennis_scene/configs/infer_fit_view_courts.yaml
+?? src/tennis_scene/configs/infer_ground_line_map.yaml
+?? src/tennis_scene/configs/publish_b00_ball_pilot.yaml
+?? src/tennis_scene/configs/publish_b00_full_scale_dataset.yaml
+?? src/tennis_scene/configs/publish_scene_contract_override.yaml
+?? src/tennis_scene/configs/render_b00_static_smoke.yaml
+?? src/tennis_scene/configs/validate_court_alignment_holdout.yaml
+?? src/tennis_scene/provider_bundle.py
+?? src/tennis_scene/provider_export.py
+?? src/tennis_scene/provider_geometry_bridge.py
+?? src/tennis_scene/rendering/cpu_fake_renderer.py
+?? src/tennis_scene/rendering/gsplat_subprocess_adapter.py
+?? src/tennis_scene/rendering/renderer_port.py
+?? src/tennis_scene/rendering/scene_frame_port.py
+?? src/tennis_scene/rendering/workers/
+?? src/tennis_scene/scene_contract.py
+?? src/tennis_scene/scripts/calibrate_court_alignment.py
+?? src/tennis_scene/scripts/export_scene_provider.py
+?? src/tennis_scene/scripts/fit_ground_courts.py
+?? src/tennis_scene/scripts/infer_fit_view_courts.py
+?? src/tennis_scene/scripts/infer_ground_line_map.py
+?? src/tennis_scene/scripts/publish_b00_ball_pilot.py
+?? src/tennis_scene/scripts/publish_b00_full_scale_dataset.py
+?? src/tennis_scene/scripts/publish_scene_contract_override.py
+?? src/tennis_scene/scripts/render_b00_static_smoke.py
+?? src/tennis_scene/scripts/validate_court_alignment_holdout.py
+?? src/tennis_scene/synthetic_dataset/
+?? tests/unit/tasks/ball_detection/data/components/test_source_mix_sampler.py
+?? tests/unit/tasks/ball_detection/data/test_mixed_tracknet_datamodule.py
+?? tests/unit/tasks/base/training/test_test_after_fit.py
+?? tests/unit/tennis_scene/alignment/
+?? tests/unit/tennis_scene/rendering/test_cpu_fake_renderer.py
+?? tests/unit/tennis_scene/rendering/test_gsplat_subprocess_adapter.py
+?? tests/unit/tennis_scene/rendering/test_renderer_port.py
+?? tests/unit/tennis_scene/rendering/test_scene_frame_port.py
+?? tests/unit/tennis_scene/scripts/
+?? tests/unit/tennis_scene/synthetic_dataset/
+?? tests/unit/tennis_scene/test_provider_bundle.py
+?? tests/unit/tennis_scene/test_provider_export.py
+?? tests/unit/tennis_scene/test_scene_contract.py

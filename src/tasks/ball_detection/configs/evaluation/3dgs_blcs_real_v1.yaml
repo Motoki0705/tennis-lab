@@ -1,0 +1,34 @@
+schema: ball_detection_evaluation_manifest_v1
+output_dir: outputs/ball_detection/3dgs_blcs/evaluation_real_v1
+device: auto
+resume: true
+fail_fast: true
+
+# Frozen native-resolution protocol for the 3DGS × BLCS controlled experiment.
+metrics:
+  peak_threshold: 0.5
+  ball_distance_threshold: 4.0
+  nms_kernel: 3
+  max_predictions_per_frame: 8
+  subpixel_refine: true
+
+performance:
+  warmup_batches: 1
+  max_batches_per_split: null
+
+datasets:
+  tracknet-real-v1:
+    config: rgb_sequence
+    splits: [val, test]
+    overrides:
+      batch_size: 4
+      num_workers: 4
+      heatmap_size: [72, 128]
+
+models:
+  - id: deployed-i618-ft
+    category: architecture-controlled
+    checkpoint: ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
+    expected_model_name: conv_next_unet
+    datasets: [tracknet-real-v1]
+    strict: true
