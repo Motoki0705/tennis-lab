@@ -73,6 +73,7 @@ _BOUNCE_MARKER_DURATION_S = 1.5
 _MINIMAP_TRAIL_FRAMES = 30
 _GT_COLOR = "green"
 _PRED_COLOR = "red"
+_BALL_COLORS = ("#CCFF00", "#00D4FF", "#FF5CA8", "#FFB000")
 
 # Minimap inset rectangle in figure coordinates (left, bottom, width, height).
 _MINIMAP_RECT = (0.76, 0.04, 0.21, 0.30)
@@ -149,6 +150,38 @@ def resolve_bounce_frames(
             return np.asarray(frames, dtype=np.int64)
     logger.info("No bounce events in metadata; falling back to detect_bounces().")
     return detect_bounces(positions)
+
+
+def split_ball_tracks(scene: dict[str, Any]) -> list[NDArray[np.float32]]:
+    """Return active ``(T, 3)`` trajectories from a single/multi-ball scene."""
+    positions = np.asarray(scene["ball_pos_world"], dtype=np.float32)
+    if positions.ndim == 2:
+        if positions.shape[1] != 3:
+            raise ValueError(
+                f"Expected ball positions shaped (T, 3), got {positions.shape}."
+            )
+        return [positions]
+    if positions.ndim != 3 or positions.shape[2] != 3:
+        raise ValueError(
+            f"Expected ball positions shaped (T, Q, 3), got {positions.shape}."
+        )
+    num_balls = int(scene.get("num_balls", positions.shape[1]))
+    if not 1 <= num_balls <= positions.shape[1]:
+        raise ValueError(
+            f"num_balls must be within [1, {positions.shape[1]}], got {num_balls}."
+        )
+    return [positions[:, index] for index in range(num_balls)]
+
+
+def extract_ball_track_events(meta: dict[str, Any], ball_index: int) -> list[BallEvent]:
+    """Extract events for one ball from either single- or multi-ball metadata."""
+    shots = meta.get("shots", [])
+    if shots and isinstance(shots[0], dict) and "shots" in shots[0]:
+        for record in shots:
+            if int(record.get("ball_index", -1)) == ball_index:
+                return extract_ball_events({"shots": record.get("shots", [])})
+        return []
+    return extract_ball_events(meta) if ball_index == 0 else []
 
 
 class BLCSSceneRenderer:
@@ -236,21 +269,23 @@ class BLCSSceneRenderer:
 
         self._setup_3d_axes(ax)
 
-        # Get ball trajectory
-        positions = scene["ball_pos_world"]
+        # Get ball trajectories
+        tracks = split_ball_tracks(scene)
         meta = scene["meta"]
 
-        # Build event list
-        events = extract_ball_events(meta)
-
-        # Render trajectory
         highlight = frame_idx if frame_idx >= 0 else None
-        self.ball_renderer.render_trajectory_3d(
-            ax,
-            positions,
-            events=events,
-            highlight_frame=highlight,
-        )
+        for index, positions in enumerate(tracks):
+            color = _BALL_COLORS[index % len(_BALL_COLORS)]
+            self.ball_renderer.render_trajectory_3d(
+                ax,
+                positions,
+                events=extract_ball_track_events(meta, index),
+                highlight_frame=highlight,
+                style_override=BallStyle(
+                    ball_color=color,
+                    trajectory_color=color,
+                ),
+            )
 
         apply_scene_camera(
             ax, self.camera.base, margin=_VIEW_MARGIN, z_limit=_VIEW_Z_LIMIT
@@ -289,25 +324,22 @@ class BLCSSceneRenderer:
         # Render court
         self.court_renderer.render_2d(ax, show_fence=True)
 
-        # Get ball trajectory
-        positions = scene["ball_pos_world"]
+        tracks = split_ball_tracks(scene)
         meta = scene["meta"]
-
-        # Build event list
-        events = extract_ball_events(meta)
-
-        # Create style with height colormap option
-        style = BallStyle(use_height_colormap=use_height_colormap)
-
-        # Render trajectory
         highlight = frame_idx if frame_idx >= 0 else None
-        self.ball_renderer.render_trajectory_2d(
-            ax,
-            positions,
-            events=events,
-            highlight_frame=highlight,
-            style_override=style,
-        )
+        for index, positions in enumerate(tracks):
+            color = _BALL_COLORS[index % len(_BALL_COLORS)]
+            self.ball_renderer.render_trajectory_2d(
+                ax,
+                positions,
+                events=extract_ball_track_events(meta, index),
+                highlight_frame=highlight,
+                style_override=BallStyle(
+                    ball_color=color,
+                    trajectory_color=color,
+                    use_height_colormap=use_height_colormap,
+                ),
+            )
 
         # Title
         title = self._get_display_title(meta)
@@ -370,30 +402,45 @@ class BLCSSceneRenderer:
             keypoint_marker="s",
         )
 
-        # Build events
-        events = extract_ball_events(meta)
-
-        # Render ball trajectory in UV space
-        self.ball_renderer.render_trajectory_uv(
-            ax,
-            ball_uv,
-            visibility=ball_vis.astype(bool),
-            events=events,
+        uv_tracks = (
+            [ball_uv]
+            if ball_uv.ndim == 2
+            else [
+                ball_uv[:, index]
+                for index in range(int(scene.get("num_balls", ball_uv.shape[1])))
+            ]
         )
-
-        # Highlight specific frame
-        if frame_idx >= 0 and frame_idx < len(ball_uv):
-            ax.scatter(
-                [ball_uv[frame_idx, 0]],
-                [ball_uv[frame_idx, 1]],
-                c="blue",
-                s=200,
-                marker="o",
-                edgecolors="white",
-                linewidths=3,
-                zorder=15,
-                label=f"Frame {frame_idx}",
+        visibility_tracks = (
+            [ball_vis]
+            if ball_vis.ndim == 1
+            else [ball_vis[:, index] for index in range(len(uv_tracks))]
+        )
+        for index, (uv_track, visibility) in enumerate(
+            zip(uv_tracks, visibility_tracks, strict=True)
+        ):
+            color = _BALL_COLORS[index % len(_BALL_COLORS)]
+            self.ball_renderer.render_trajectory_uv(
+                ax,
+                uv_track,
+                visibility=visibility.astype(bool),
+                events=extract_ball_track_events(meta, index),
+                style_override=BallStyle(
+                    ball_color=color,
+                    trajectory_color=color,
+                ),
             )
+            if frame_idx >= 0 and frame_idx < len(uv_track):
+                ax.scatter(
+                    [uv_track[frame_idx, 0]],
+                    [uv_track[frame_idx, 1]],
+                    c=color,
+                    s=200,
+                    marker="o",
+                    edgecolors="white",
+                    linewidths=3,
+                    zorder=15,
+                    label=f"Ball {index + 1}",
+                )
 
         # Title
         ax.set_title(
@@ -589,14 +636,23 @@ class BLCSSceneRenderer:
             FuncAnimation object, or None if view is invalid.
 
         """
-        positions = np.asarray(scene["ball_pos_world"])
-        num_frames = len(positions)
+        tracks = split_ball_tracks(scene)
+        num_frames = len(tracks[0])
         interval = 1000.0 / fps
 
         if view == "3d":
-            events = extract_ball_events(scene["meta"])
-            bounce_frames = resolve_bounce_frames(positions, events)
-            speeds = compute_speeds(positions, fps) if self.style.show_hud else None
+            bounce_frames = [
+                resolve_bounce_frames(
+                    positions,
+                    extract_ball_track_events(scene["meta"], index),
+                )
+                for index, positions in enumerate(tracks)
+            ]
+            speeds = (
+                [compute_speeds(positions, fps) for positions in tracks]
+                if self.style.show_hud
+                else None
+            )
 
             fig = plt.figure(figsize=figsize)
             apply_figure_theme(fig, self.theme)
@@ -609,14 +665,31 @@ class BLCSSceneRenderer:
             def update_3d(frame_idx: int) -> list:
                 ax.clear()
                 self._setup_3d_axes(ax)
-                self._render_bounce_rings(ax, positions, bounce_frames, frame_idx, fps)
-                self._render_ball_3d_frame(ax, positions, frame_idx)
+                for index, positions in enumerate(tracks):
+                    color = _BALL_COLORS[index % len(_BALL_COLORS)]
+                    self._render_bounce_rings(
+                        ax, positions, bounce_frames[index], frame_idx, fps
+                    )
+                    self._render_ball_3d_frame(
+                        ax,
+                        positions,
+                        frame_idx,
+                        color=color,
+                        label=f"Ball {index + 1}",
+                    )
+                if len(tracks) > 1:
+                    ax.legend(loc="upper right")
                 if self.style.show_hud:
                     assert speeds is not None
                     lines = [
                         format_frame_clock(frame_idx, num_frames - 1, fps),
-                        f"Ball speed {format_speed_kmh(float(speeds[frame_idx]))}",
-                        f"Bounces {int((bounce_frames <= frame_idx).sum())}",
+                        *[
+                            f"Ball {index + 1} speed "
+                            f"{format_speed_kmh(float(track_speeds[frame_idx]))}"
+                            for index, track_speeds in enumerate(speeds)
+                        ],
+                        "Bounces "
+                        f"{sum(int((frames <= frame_idx).sum()) for frames in bounce_frames)}",
                     ]
                     render_hud_text(ax, lines, self.hud_style)
                 view_now = self.camera.view_at(frame_idx, fps)
@@ -630,11 +703,20 @@ class BLCSSceneRenderer:
                     )
                 if minimap_ax is not None:
                     minimap_ax.clear()
-                    past = bounce_frames[bounce_frames <= frame_idx]
+                    bounce_positions = [
+                        positions[frames[frames <= frame_idx], :2]
+                        for positions, frames in zip(tracks, bounce_frames, strict=True)
+                    ]
+                    nonempty_bounces = [
+                        value for value in bounce_positions if len(value)
+                    ]
                     self._render_minimap_frame(
                         minimap_ax,
-                        [(positions, self.ball_renderer.style.ball_color)],
-                        positions[past, :2],
+                        [
+                            (positions, _BALL_COLORS[index % len(_BALL_COLORS)])
+                            for index, positions in enumerate(tracks)
+                        ],
+                        np.concatenate(nonempty_bounces) if nonempty_bounces else None,
                         frame_idx,
                     )
                 return []
@@ -647,18 +729,25 @@ class BLCSSceneRenderer:
             fig, ax = plt.subplots(figsize=figsize)
             self.court_renderer.render_2d(ax, show_fence=True, set_limits=False)
 
-            (line,) = ax.plot([], [], "r-", linewidth=2)
-            point = ax.scatter([], [], c="red", s=100, zorder=10)
+            lines = [
+                ax.plot([], [], color=color, linewidth=2)[0]
+                for color in _BALL_COLORS[: len(tracks)]
+            ]
+            points = [
+                ax.scatter([], [], c=color, s=100, zorder=10)
+                for color in _BALL_COLORS[: len(tracks)]
+            ]
 
             ax.set_xlim(-HALF_DOUBLES_WIDTH - 2, HALF_DOUBLES_WIDTH + 2)
             ax.set_ylim(-HALF_LENGTH - 2, HALF_LENGTH + 2)
             ax.set_aspect("equal")
 
             def update_2d(frame: int) -> tuple:
-                line.set_data(positions[: frame + 1, 0], positions[: frame + 1, 1])
-                point.set_offsets([[positions[frame, 0], positions[frame, 1]]])
+                for positions, line, point in zip(tracks, lines, points, strict=True):
+                    line.set_data(positions[: frame + 1, 0], positions[: frame + 1, 1])
+                    point.set_offsets([[positions[frame, 0], positions[frame, 1]]])
                 ax.set_title(f"Top-down | Frame {frame}/{num_frames - 1}")
-                return line, point
+                return (*lines, *points)
 
             return FuncAnimation(
                 fig, update_2d, frames=num_frames, interval=interval, blit=False
@@ -670,7 +759,12 @@ class BLCSSceneRenderer:
                 return None
 
             cam = scene["cameras"][camera_idx]
-            ball_uv = cam["ball_uv"]
+            ball_uv = np.asarray(cam["ball_uv"])
+            uv_tracks = (
+                [ball_uv]
+                if ball_uv.ndim == 2
+                else [ball_uv[:, index] for index in range(len(tracks))]
+            )
 
             fig, ax = plt.subplots(figsize=figsize)
             court_uv = cam["court_kp_uv"]
@@ -688,18 +782,25 @@ class BLCSSceneRenderer:
                 keypoint_marker="s",
             )
 
-            (line,) = ax.plot([], [], "r-", linewidth=1, alpha=0.5)
-            point = ax.scatter([], [], c="red", s=100, zorder=10)
+            lines = [
+                ax.plot([], [], color=color, linewidth=1, alpha=0.5)[0]
+                for color in _BALL_COLORS[: len(uv_tracks)]
+            ]
+            points = [
+                ax.scatter([], [], c=color, s=100, zorder=10)
+                for color in _BALL_COLORS[: len(uv_tracks)]
+            ]
 
             ax.set_xlim(0, 1)
             ax.set_ylim(1, 0)
             ax.grid(True, alpha=0.3)
 
             def update_cam(frame: int) -> tuple:
-                line.set_data(ball_uv[: frame + 1, 0], ball_uv[: frame + 1, 1])
-                point.set_offsets([[ball_uv[frame, 0], ball_uv[frame, 1]]])
+                for uv_track, line, point in zip(uv_tracks, lines, points, strict=True):
+                    line.set_data(uv_track[: frame + 1, 0], uv_track[: frame + 1, 1])
+                    point.set_offsets([[uv_track[frame, 0], uv_track[frame, 1]]])
                 ax.set_title(f"Camera {camera_idx} | Frame {frame}/{num_frames - 1}")
-                return line, point
+                return (*lines, *points)
 
             return FuncAnimation(
                 fig, update_cam, frames=num_frames, interval=interval, blit=False
@@ -816,11 +917,17 @@ class BLCSSceneRenderer:
 
             def update_2d(frame: int) -> tuple:
                 # GT
-                gt_line.set_data(gt_positions[: frame + 1, 0], gt_positions[: frame + 1, 1])
+                gt_line.set_data(
+                    gt_positions[: frame + 1, 0], gt_positions[: frame + 1, 1]
+                )
                 gt_point.set_offsets([[gt_positions[frame, 0], gt_positions[frame, 1]]])
                 # Prediction
-                pred_line.set_data(pred_positions[: frame + 1, 0], pred_positions[: frame + 1, 1])
-                pred_point.set_offsets([[pred_positions[frame, 0], pred_positions[frame, 1]]])
+                pred_line.set_data(
+                    pred_positions[: frame + 1, 0], pred_positions[: frame + 1, 1]
+                )
+                pred_point.set_offsets(
+                    [[pred_positions[frame, 0], pred_positions[frame, 1]]]
+                )
                 ax.set_title(f"{title} | Frame {frame}/{num_frames - 1}")
                 return gt_line, gt_point, pred_line, pred_point
 

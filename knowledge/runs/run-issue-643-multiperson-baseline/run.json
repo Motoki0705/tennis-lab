@@ -1,0 +1,14 @@
+{
+  "run_id": "1784025505000778325_1905602_issue-643-multiperson-baseline",
+  "name": "issue-643-multiperson-baseline",
+  "command": ".venv/bin/python -m src.tasks.player_tracking.scripts.train run.output_dir=outputs/player_tracking/issue-643-baseline",
+  "provider": "codex",
+  "session": "019f6023-b08a-7af3-aa59-182d7cf43958",
+  "issue": "643",
+  "commit": "6ef9adbd7c055a31fdb936da5f475345a3f5d098",
+  "branch": "feat/issue-643-648-multi-object-tracking",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-643-648-multi-object-tracking",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-643-648-multi-object-tracking",
+  "captured_at": "2026-07-14T19:38:40+09:00"
+}

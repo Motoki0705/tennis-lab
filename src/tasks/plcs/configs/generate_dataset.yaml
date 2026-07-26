@@ -1,4 +1,5 @@
 defaults:
+  - generation: single_object
   - paths: default
   - simulation: default
   - camera: default

@@ -1,0 +1,32 @@
+from __future__ import annotations
+
+import torch
+
+from src.tasks.blcs.training.tracking_matching import match_ball_tracks
+
+
+def test_matching_uses_same_axis_balance_as_position_loss() -> None:
+    prediction = {
+        "position": torch.tensor(
+            [[[[0.0, 0.0, 0.0], [10.0, 0.0, 10.0]]]]
+        ),
+        "presence_logits": torch.zeros(1, 1, 2),
+    }
+    target_position = torch.tensor(
+        [[[[0.0, 0.0, 10.0], [10.0, 0.0, 0.0]]]]
+    )
+    present = torch.ones(1, 1, 2, dtype=torch.bool)
+
+    assignments = match_ball_tracks(
+        prediction,
+        target_position,
+        present,
+        torch.ones(1, 2, dtype=torch.bool),
+        torch.ones(1, 1, dtype=torch.bool),
+        presence_cost_weight=0.0,
+        position_axis_weights=(1.0, 1.0, 0.1),
+    )
+
+    query_indices, target_indices = assignments[0]
+    torch.testing.assert_close(query_indices, torch.tensor([0, 1]))
+    torch.testing.assert_close(target_indices, torch.tensor([0, 1]))

@@ -90,6 +90,11 @@ class BLCSSceneData:
     physics_config_dict: dict  # serialized PhysicsConfig (sampled values)
     court_config_dict: dict  # serialized CourtConfig (sampled values)
 
+    # Present for multi-object scenes. Object arrays then use shape [T, O, ...].
+    ball_present: Tensor | None = None
+    num_balls: int = 1
+    track_instances: list[dict] = field(default_factory=list)
+
 
 @dataclass
 class GeneratorConfig:

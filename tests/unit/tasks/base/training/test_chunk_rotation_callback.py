@@ -18,8 +18,16 @@ class _DM:
 
 
 class _Trainer:
-    def __init__(self, datamodule) -> None:
+    def __init__(
+        self,
+        datamodule,
+        *,
+        current_epoch: int = 0,
+        max_epochs: int = 100,
+    ) -> None:
         self.datamodule = datamodule
+        self.current_epoch = current_epoch
+        self.max_epochs = max_epochs
 
 
 def test_forwards_to_datamodule_hook() -> None:
@@ -39,3 +47,10 @@ def test_noop_when_hook_absent() -> None:
 
     # Datamodule without on_train_epoch_end -> no error.
     ChunkRotationCallback().on_train_epoch_end(_Trainer(_Bare()), pl_module=None)
+
+
+def test_noop_on_last_scheduled_epoch() -> None:
+    dm = _DM()
+    trainer = _Trainer(dm, current_epoch=99, max_epochs=100)
+    ChunkRotationCallback().on_train_epoch_end(trainer, pl_module=None)
+    assert dm.calls == 0

@@ -1,0 +1,21 @@
+# Shared base for persistent track-query BLCS model variants.
+# Size-specific configs (small/base/large/xlarge) compose from this file and
+# supply the mandatory model width, attention heads, and spatial/temporal stages.
+
+name: blcs_track_query
+
+hidden_dim: ???
+num_heads: ???
+num_stages: ???
+
+ffn_dim: null
+num_queries: 4
+rope_dim: null
+dropout: 0.1
+role_rope_enabled: true
+mask_invisible_observations: true
+invisible_init_std: 0.02
+
+# ``linear`` preserves the flattened court+ball checkpoint architecture.
+# Point-attention experiments override this in a dedicated model config.
+observation_fusion: linear

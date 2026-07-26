@@ -14,6 +14,13 @@ class ChunkRotationCallback(pl.Callback):
         pl_module: pl.LightningModule,
     ) -> None:
         del pl_module
+        max_epochs = trainer.max_epochs
+        if (
+            max_epochs is not None
+            and max_epochs > 0
+            and trainer.current_epoch + 1 >= max_epochs
+        ):
+            return
         datamodule = trainer.datamodule
         if datamodule is not None and hasattr(datamodule, "on_train_epoch_end"):
             datamodule.on_train_epoch_end()

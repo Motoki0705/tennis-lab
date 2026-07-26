@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-643-648-multi-object-tracking/outputs/blcs/tracking_lifecycle_v4_large_pointattn32_rope2d_t512_b1_100ep/logs/version_0/checkpoints

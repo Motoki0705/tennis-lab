@@ -1,0 +1,1655 @@
+diff --git a/src/tasks/base/README.md b/src/tasks/base/README.md
+index 4aba29f0..aca77d3a 100644
+--- a/src/tasks/base/README.md
++++ b/src/tasks/base/README.md
+@@ -17,7 +17,6 @@
+ - **`augmentation.py`**: `BaseObservationAugmentation`。augmentation config解析・dispatchガードの共通部分。
+ - **`canonical_tracking.py`**: tracking sceneのclip/view選択と可変 `(V,T,D)` paddingを担う共通Dataset基盤。
+ - **`lifecycle_slots.py`**: birth/death区間をinterval coloringで固定query数へ詰め、death後のslot再利用教師を生成。
+-- **`tracking_augmentation.py`**: 14 court点を順序ラベルなしの集合としてviewごとにshuffleする共通augmentation。
+ 
+ ### training/
+ - **`lightning_module.py`**: `BaseLightningModule`。optimizer/scheduler構築とqualitative/test予測保存の拡張点。
+diff --git a/src/tasks/base/data/tracking_augmentation.py b/src/tasks/base/data/tracking_augmentation.py
+deleted file mode 100644
+index 928e292b..00000000
+--- a/src/tasks/base/data/tracking_augmentation.py
++++ /dev/null
+@@ -1,44 +0,0 @@
+-"""Shared augmentation primitives for unordered tracking observations."""
+-
+-from __future__ import annotations
+-
+-from collections.abc import Mapping
+-from typing import Any
+-
+-import torch
+-from torch import Tensor
+-
+-
+-def permute_court_keypoint_sets(
+-    court_kp: Tensor,
+-    court_vis: Tensor,
+-    config: Mapping[str, Any] | None,
+-) -> tuple[Tensor, Tensor]:
+-    """Randomize 14-point court input order independently for each view.
+-
+-    The same permutation is retained for every frame of a view. Coordinates
+-    and visibility are always permuted together, so the court remains an
+-    unordered geometric set rather than a mislabeled tensor.
+-    """
+-    cfg = config or {}
+-    if not bool(cfg.get("enabled", False)):
+-        return court_kp, court_vis
+-    if court_kp.ndim != 4 or court_vis.shape != court_kp.shape[:-1]:
+-        raise ValueError(
+-            "court tracking tensors must have shapes (V,T,K,2)/(V,T,K)."
+-        )
+-    probability = float(cfg.get("prob", 1.0))
+-    if not 0.0 <= probability <= 1.0:
+-        raise ValueError("court_keypoint_permutation.prob must be in [0, 1].")
+-    output_kp = court_kp.clone()
+-    output_vis = court_vis.clone()
+-    for view_index in range(court_kp.shape[0]):
+-        if torch.rand((), device=court_kp.device).item() >= probability:
+-            continue
+-        permutation = torch.randperm(court_kp.shape[2], device=court_kp.device)
+-        output_kp[view_index] = court_kp[view_index, :, permutation]
+-        output_vis[view_index] = court_vis[view_index, :, permutation]
+-    return output_kp, output_vis
+-
+-
+-__all__ = ["permute_court_keypoint_sets"]
+diff --git a/src/tasks/blcs/README.md b/src/tasks/blcs/README.md
+index b129a7a4..b6f306cf 100644
+--- a/src/tasks/blcs/README.md
++++ b/src/tasks/blcs/README.md
+@@ -64,9 +64,9 @@
+ 
+ ## Multi-ball tracking
+ 
+-観測座標は `ball_uv (B,V,T,P,2)`、観測有無は `ball_visible (B,V,T,P)` に一本化し、`ball_candidate_mask` は持ちません。scoreやvisibility値を数値特徴へ連結せず、不可視candidateはlearned invisible tokenへ置換します。`mask_invisible_observations=true` は不可視tokenをattention keyから除外する対照条件、`false` は`frame_mask` / `view_mask`によるpaddingだけを除外し、不可視tokenを更新可能なmemoryとして使う条件です。出力は `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。教師は `target_position (B,T,Q,3)`、`target_presence (B,T,Q)`、`target_instance_id (B,T,Q)` で、inactive IDは`-1`です。重ならないbirth/death区間を同じtarget columnへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。候補indexは座標にもidentityにも使わず、debug用の `candidate_gt_index` はモデルへ渡しません。
++観測座標は `ball_uv (B,V,T,P,2)`、観測有無は `ball_visible (B,V,T,P)` に一本化し、`ball_candidate_mask` は持ちません。scoreやvisibility値を数値特徴へ連結せず、不可視candidateはlearned invisible tokenへ置換します。`mask_invisible_observations=true` は不可視tokenをattention keyから除外する対照条件、`false` は`frame_mask` / `view_mask`によるpaddingだけを除外し、不可視tokenを更新可能なmemoryとして使う条件です。出力は `position (B,T,Q,3)` と `presence_logits (B,T,Q)` です。教師は `target_position (B,T,Q,3)`、`target_presence (B,T,Q)`、`target_instance_id (B,T,Q)` で、inactive IDは`-1`です。重ならないbirth/death区間を同じtarget columnへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。debug用の `candidate_gt_index` はモデルへ渡しません。point-attentionのball軸はそのframe内の列位置だけを表し、候補を毎frame shuffleするためidentityとしては利用できません。
+ 
+-14 court UVは`court_vis`で不可視点を0化し、各ball candidateのUVと連結して、共有`CourtBallGroupEmbedding`によりcandidateごとの1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*P, D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、court-ball group=1で、候補indexやcourt点indexは埋め込みません。court点の並びはannotation schemaに従い、固定されたcamera名に依存しないようtrain時はview単位でshuffleします。
++14 court UVはIDを使わず、画像左上から右下への対角スイープで幾何的に固定順序化します。`observation_fusion=linear` は従来checkpoint互換のため、`court_vis`で不可視点を0化して各ball candidateとflatten projectionします。`observation_fusion=point_attention` は各camera/frameについて `[court_0..13, ball_0..P-1]` を32次元tokenへ変換し、court indexとball indexを独立軸とする2軸RoPE付きself-attentionで融合します。融合後はball tokenだけをmodel dimへprojectionし、既存の空間・時間attention経路へ渡します。どちらも下流の空間self-attention入力は `(B*T, Q + V*P, D)` です。
+ 
+ multi-object generatorは1024-frame global timelineに3〜10個のsource rally subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
+ 
+diff --git a/src/tasks/blcs/configs/data/_augmentation.yaml b/src/tasks/blcs/configs/data/_augmentation.yaml
+index 1a076b5e..619dc2d6 100644
+--- a/src/tasks/blcs/configs/data/_augmentation.yaml
++++ b/src/tasks/blcs/configs/data/_augmentation.yaml
+@@ -20,12 +20,9 @@ augmentation:
+   enabled: true
+   preserve_clean_targets: true
+ 
+-  # Court keypoints are consumed as an unordered set. Randomizing their input
+-  # order removes the camera-relative far/near naming shortcut while keeping
+-  # each coordinate paired with its visibility flag.
+-  court_keypoint_permutation:
+-    enabled: true
+-    prob: 1.0
++  # Tracking adapters deterministically order court points by a geometric
++  # top-left -> bottom-right diagonal sweep. This avoids annotation IDs while
++  # providing the flattened group projection with a learnable spatial order.
+ 
+   # The ball detector eval does not measure global camera/zoom scale bias, and
+   # UV scaling is not camera-consistent for reprojection losses. Keep it
+diff --git a/src/tasks/blcs/configs/loss/tracking.yaml b/src/tasks/blcs/configs/loss/tracking.yaml
+index b6cdbafc..45d04c19 100644
+--- a/src/tasks/blcs/configs/loss/tracking.yaml
++++ b/src/tasks/blcs/configs/loss/tracking.yaml
+@@ -1,4 +1,8 @@
+ position_weight: 1.0
++# The court-plane coordinates jointly carry localization/association identity.
++# Keep z lower so rare high lobs cannot dominate loss or Hungarian assignment.
++# The implementation normalizes by the weight sum.
++position_axis_weights: [1.0, 1.0, 0.5]
+ presence_weight: 1.0
+ presence_inactive_weight: 0.25
+ presence_active_weight: 1.0
+diff --git a/src/tasks/blcs/configs/model/_track_query.yaml b/src/tasks/blcs/configs/model/_track_query.yaml
+index a767d095..feecf4de 100644
+--- a/src/tasks/blcs/configs/model/_track_query.yaml
++++ b/src/tasks/blcs/configs/model/_track_query.yaml
+@@ -15,3 +15,7 @@ dropout: 0.1
+ role_rope_enabled: true
+ mask_invisible_observations: true
+ invisible_init_std: 0.02
++
++# ``linear`` preserves the flattened court+ball checkpoint architecture.
++# Point-attention experiments override this in a dedicated model config.
++observation_fusion: linear
+diff --git a/src/tasks/blcs/configs/model/track_query_large_point_attention.yaml b/src/tasks/blcs/configs/model/track_query_large_point_attention.yaml
+new file mode 100644
+index 00000000..54d65aee
+--- /dev/null
++++ b/src/tasks/blcs/configs/model/track_query_large_point_attention.yaml
+@@ -0,0 +1,12 @@
++defaults:
++  - track_query_large
++  - _self_
++
++observation_fusion: point_attention
++point_fusion:
++  token_dim: 32
++  num_heads: 4
++  num_layers: 1
++  ffn_dim: 64
++  rope_dim: 8
++  dropout: 0.1
+diff --git a/src/tasks/blcs/configs/targeted_velocity/default.yaml b/src/tasks/blcs/configs/targeted_velocity/default.yaml
+index 3495c483..0ef88331 100644
+--- a/src/tasks/blcs/configs/targeted_velocity/default.yaml
++++ b/src/tasks/blcs/configs/targeted_velocity/default.yaml
+@@ -1,6 +1,9 @@
+ drive_elevation_range_deg: [5.0, 25.0]
+ lob_elevation_range_deg: [35.0, 70.0]
+ lob_probability: 0.25
++# Hard ceiling for the gravity-only launch solution. At high lob angles the
++# solver recomputes horizontal/vertical speed to retain the sampled landing.
++max_ballistic_apex_height_m: 8.0
+ gravity: 9.81
+ 
+ # Net-hit resampling. Each attempt simulates only until net crossing/hit.
+diff --git a/src/tasks/blcs/data/tracking_augmentation.py b/src/tasks/blcs/data/tracking_augmentation.py
+index 3344a49e..e2c1a6d4 100644
+--- a/src/tasks/blcs/data/tracking_augmentation.py
++++ b/src/tasks/blcs/data/tracking_augmentation.py
+@@ -8,7 +8,6 @@ from typing import Any, cast
+ import torch
+ from torch import Tensor
+ 
+-from src.tasks.base.data.tracking_augmentation import permute_court_keypoint_sets
+ from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
+ from src.utils.tensor_utils import clone_tensor_dict
+ 
+@@ -19,7 +18,6 @@ class BLCSTrackingCandidateAugmentation:
+     def __init__(self, config: Mapping[str, Any] | None = None) -> None:
+         self.config = config or {}
+         self.observation = BLCSBallObservationAugmentation(self.config)
+-        self.court_permutation_cfg = self.config.get("court_keypoint_permutation", {})
+ 
+     def forward(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
+         """Corrupt only candidate/court inputs and preserve clean GT tensors."""
+@@ -51,7 +49,8 @@ class BLCSTrackingCandidateAugmentation:
+             .bool()
+         )
+         # Court input is geometric projection/manual annotation, not a detector
+-        # confidence stream. Keep it intact; only the permutation below applies.
++        # confidence stream. The model applies the deterministic spatial order
++        # for train, validation, test, and direct inference alike.
+         output["court_kp"] = court_keypoints
+         output["court_vis"] = court_visible
+         output["candidate_gt_index"] = torch.where(
+@@ -59,11 +58,6 @@ class BLCSTrackingCandidateAugmentation:
+             output["candidate_gt_index"],
+             -1,
+         )
+-        output["court_kp"], output["court_vis"] = permute_court_keypoint_sets(
+-            output["court_kp"],
+-            output["court_vis"],
+-            self.court_permutation_cfg,
+-        )
+         self._shuffle_candidates(output)
+         return cast(dict[str, Tensor], output)
+ 
+diff --git a/src/tasks/blcs/generate_dataset/config.py b/src/tasks/blcs/generate_dataset/config.py
+index 7443d211..d8ef0b87 100644
+--- a/src/tasks/blcs/generate_dataset/config.py
++++ b/src/tasks/blcs/generate_dataset/config.py
+@@ -81,6 +81,9 @@ def build_generator_config(cfg: DictConfig) -> GeneratorConfig:
+         ),
+         lob_elevation_range_deg=tuple(cfg.targeted_velocity.lob_elevation_range_deg),
+         lob_probability=float(cfg.targeted_velocity.lob_probability),
++        max_ballistic_apex_height_m=float(
++            cfg.targeted_velocity.max_ballistic_apex_height_m
++        ),
+         gravity=float(cfg.targeted_velocity.gravity),
+         net_retry_max_attempts=int(cfg.targeted_velocity.net_retry_max_attempts),
+         net_check_max_frames=int(cfg.targeted_velocity.net_check_max_frames),
+diff --git a/src/tasks/blcs/generate_dataset/simulation/targeted_velocity_sampler.py b/src/tasks/blcs/generate_dataset/simulation/targeted_velocity_sampler.py
+index a22d8e09..e9aae48c 100644
+--- a/src/tasks/blcs/generate_dataset/simulation/targeted_velocity_sampler.py
++++ b/src/tasks/blcs/generate_dataset/simulation/targeted_velocity_sampler.py
+@@ -33,6 +33,11 @@ class TargetedVelocityConfig:
+     lob_elevation_range_deg: tuple[float, float] = (35.0, 70.0)
+     lob_probability: float = 0.0
+ 
++    # Maximum gravity-only apex for any targeted shot. This prevents a long
++    # target combined with a high lob angle from creating implausible 20m+
++    # trajectories while preserving the requested landing point.
++    max_ballistic_apex_height_m: float = 8.0
++
+     # Gravity for projectile calculation (m/s²)
+     gravity: float = 9.81
+ 
+@@ -106,6 +111,8 @@ class TargetedVelocitySampler:
+         self.cell_manager = cell_manager or CellManager()
+         self.config = config or TargetedVelocityConfig()
+         self.device = torch.device(device)
++        if self.config.max_ballistic_apex_height_m <= 0.0:
++            raise ValueError("max_ballistic_apex_height_m must be positive.")
+ 
+     def compute_velocity_to_target(
+         self,
+@@ -407,8 +414,39 @@ class TargetedVelocitySampler:
+         vy = speed * cos_elev * math.cos(azimuth_rad) * base_dir
+         vz = speed * sin_elev
+ 
++        ballistic_apex = z0 + max(vz, 0.0) ** 2 / (2.0 * self.config.gravity)
++        if ballistic_apex > self.config.max_ballistic_apex_height_m:
++            vx, vy, vz = self._velocity_with_capped_ballistic_apex(
++                dx=dx,
++                dy=dy,
++                horizontal_dist=horizontal_dist,
++                z0=z0,
++            )
++
+         return torch.tensor([vx, vy, vz], device=self.device, dtype=torch.float32)
+ 
++    def _velocity_with_capped_ballistic_apex(
++        self,
++        *,
++        dx: float,
++        dy: float,
++        horizontal_dist: float,
++        z0: float,
++    ) -> tuple[float, float, float]:
++        """Solve a target-reaching launch at the configured apex ceiling."""
++        gravity = self.config.gravity
++        apex = max(z0, self.config.max_ballistic_apex_height_m)
++        vz = math.sqrt(max(0.0, 2.0 * gravity * (apex - z0)))
++        flight_time = (vz + math.sqrt(vz**2 + 2.0 * gravity * max(z0, 0.0))) / gravity
++        if flight_time <= 0.0 or horizontal_dist <= 1e-8:
++            return 0.0, 0.0, vz
++        horizontal_speed = horizontal_dist / flight_time
++        return (
++            horizontal_speed * dx / horizontal_dist,
++            horizontal_speed * dy / horizontal_dist,
++            vz,
++        )
++
+     def sample_velocity_for_target_cell(
+         self,
+         start_pos: Tensor,
+@@ -645,4 +683,4 @@ class TargetedVelocitySampler:
+         return elevation_rad + max(default_step_rad, deficit_step)
+ 
+     def _net_height_at_x(self, x_at_net: float) -> float:
+-        return net_height_at_x(x_at_net)
++        return float(net_height_at_x(x_at_net))
+diff --git a/src/tasks/blcs/models/blcs_track_query_model.py b/src/tasks/blcs/models/blcs_track_query_model.py
+index 9f9a5caa..380d6ec1 100644
+--- a/src/tasks/blcs/models/blcs_track_query_model.py
++++ b/src/tasks/blcs/models/blcs_track_query_model.py
+@@ -8,6 +8,8 @@ import torch
+ from torch import nn
+ 
+ from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
++from src.tasks.blcs.models.components import CourtBallPointFusion
++from src.utils.geometry.keypoints import order_keypoints_diagonal_sweep
+ from src.utils.models import (
+     RMSNorm,
+     TransformerBlock,
+@@ -32,6 +34,7 @@ class BLCSTrackQueryModel(nn.Module):
+         self.mask_invisible_observations = bool(
+             config.get("mask_invisible_observations", True)
+         )
++        self.observation_fusion = str(config.get("observation_fusion", "linear"))
+         head_dim = self.hidden_dim // self.num_heads
+         configured_rope_dim = config.get("rope_dim", None)
+         self.rope_dim = (
+@@ -44,16 +47,39 @@ class BLCSTrackQueryModel(nn.Module):
+                 "rope_dim must be even and no larger than the attention head dim."
+             )
+ 
+-        self.invisible_token = InvisibleTokenEmbedding(
+-            dim=self.hidden_dim,
+-            init_std=float(config.get("invisible_init_std", 0.02)),
+-        )
+         self.num_court_tokens = 14
+-        self.group_embed = CourtBallGroupEmbedding(
+-            dim=self.hidden_dim,
+-            invisible_token=self.invisible_token,
+-            num_court_tokens=self.num_court_tokens,
+-        )
++        self.invisible_token: InvisibleTokenEmbedding | None = None
++        self.group_embed: CourtBallGroupEmbedding | None = None
++        self.point_fusion: CourtBallPointFusion | None = None
++        invisible_init_std = float(config.get("invisible_init_std", 0.02))
++        if self.observation_fusion == "linear":
++            self.invisible_token = InvisibleTokenEmbedding(
++                dim=self.hidden_dim,
++                init_std=invisible_init_std,
++            )
++            self.group_embed = CourtBallGroupEmbedding(
++                dim=self.hidden_dim,
++                invisible_token=self.invisible_token,
++                num_court_tokens=self.num_court_tokens,
++            )
++        elif self.observation_fusion == "point_attention":
++            point_fusion_config = config.get("point_fusion")
++            if point_fusion_config is None:
++                raise ValueError(
++                    "model.point_fusion is required when observation_fusion="
++                    "'point_attention'."
++                )
++            self.point_fusion = CourtBallPointFusion(
++                output_dim=self.hidden_dim,
++                num_court_points=self.num_court_tokens,
++                config=point_fusion_config,
++                invisible_init_std=invisible_init_std,
++            )
++        else:
++            raise ValueError(
++                "observation_fusion must be 'linear' or 'point_attention', got "
++                f"{self.observation_fusion!r}."
++            )
+         self.slot_embeddings = nn.Parameter(
+             torch.randn(self.num_queries, self.hidden_dim) * 0.02
+         )
+@@ -143,17 +169,39 @@ class BLCSTrackQueryModel(nn.Module):
+                 f"court_vis={tuple(court_vis.shape)} and "
+                 f"court_kp={tuple(court_kp.shape)}."
+             )
+-        court_visible = court_vis if court_vis.dtype == torch.bool else court_vis > 0
+-        masked_court = court_kp.masked_fill(~court_visible.unsqueeze(-1), 0.0)
+-        court_for_candidates = masked_court.unsqueeze(3).expand(
+-            -1, -1, -1, num_detections, -1, -1
++        court_kp, ordered_court_vis = order_keypoints_diagonal_sweep(
++            court_kp, court_vis
+         )
+-        ball_for_candidates = ball_uv.masked_fill(~ball_visible.unsqueeze(-1), 0.0)
+-        camera_tokens = self.group_embed(
+-            court_for_candidates,
+-            ball_for_candidates,
+-            ball_visible,
+-        ).permute(0, 2, 1, 3, 4)
++        assert ordered_court_vis is not None
++        court_vis = ordered_court_vis
++        court_visible = court_vis if court_vis.dtype == torch.bool else court_vis > 0
++        if self.observation_fusion == "linear":
++            assert self.group_embed is not None
++            masked_court = court_kp.masked_fill(
++                ~court_visible.unsqueeze(-1), 0.0
++            )
++            court_for_candidates = masked_court.unsqueeze(3).expand(
++                -1, -1, -1, num_detections, -1, -1
++            )
++            ball_for_candidates = ball_uv.masked_fill(
++                ~ball_visible.unsqueeze(-1), 0.0
++            )
++            camera_tokens = self.group_embed(
++                court_for_candidates,
++                ball_for_candidates,
++                ball_visible,
++            ).permute(0, 2, 1, 3, 4)
++        else:
++            assert self.point_fusion is not None
++            context_valid = view_mask[:, :, None] & frame_mask[:, None, :]
++            camera_tokens = self.point_fusion(
++                court_kp=court_kp,
++                court_visible=court_visible,
++                ball_uv=ball_uv,
++                ball_visible=ball_visible,
++                context_valid=context_valid,
++                mask_invisible_ball=self.mask_invisible_observations,
++            ).permute(0, 2, 1, 3, 4)
+         camera_tokens = camera_tokens.reshape(
+             batch_size,
+             num_frames,
+diff --git a/src/tasks/blcs/models/components/__init__.py b/src/tasks/blcs/models/components/__init__.py
+index d4973b39..30761728 100644
+--- a/src/tasks/blcs/models/components/__init__.py
++++ b/src/tasks/blcs/models/components/__init__.py
+@@ -1,11 +1,15 @@
+ """BLCS model components."""
+ 
++from src.tasks.blcs.models.components.court_ball_point_fusion import (
++    CourtBallPointFusion,
++)
+ from src.tasks.blcs.models.components.differentiable_projection import (
+     DifferentiableProjection,
+ )
+ from src.tasks.blcs.models.components.heads import Trajectory3DHead
+ 
+ __all__ = [
++    "CourtBallPointFusion",
+     "DifferentiableProjection",
+     "Trajectory3DHead",
+ ]
+diff --git a/src/tasks/blcs/models/components/court_ball_point_fusion.py b/src/tasks/blcs/models/components/court_ball_point_fusion.py
+new file mode 100644
+index 00000000..d242573f
+--- /dev/null
++++ b/src/tasks/blcs/models/components/court_ball_point_fusion.py
+@@ -0,0 +1,188 @@
++"""Small-token self-attention fusion for court and ball image keypoints."""
++
++from __future__ import annotations
++
++from typing import Any
++
++import torch
++from torch import Tensor, nn
++
++from src.utils.models import (
++    RMSNorm,
++    TransformerBlock,
++    TransformerBlockConfig,
++    build_self_attn_mask,
++    precompute_freqs_cis_nd,
++)
++from src.utils.models.embeddings import InvisibleTokenEmbedding
++from src.utils.models.embeddings.projection import CoordinateProjection
++
++
++class CourtBallPointFusion(nn.Module):
++    """Fuse ``[court_0..K, ball_0..P]`` before projecting ball tokens.
++
++    Court indices occupy the first RoPE axis and ball-candidate indices occupy
++    the second.  Attention runs in the small ``token_dim`` space; only the
++    resulting ball tokens are projected to the downstream model dimension.
++    """
++
++    def __init__(
++        self,
++        *,
++        output_dim: int,
++        num_court_points: int,
++        config: Any,
++        invisible_init_std: float,
++    ) -> None:
++        super().__init__()
++        self.token_dim = int(config.token_dim)
++        self.num_heads = int(config.num_heads)
++        self.num_layers = int(config.num_layers)
++        self.num_court_points = int(num_court_points)
++        if self.token_dim <= 0 or self.num_heads <= 0 or self.num_layers <= 0:
++            raise ValueError(
++                "point_fusion token_dim, num_heads, and num_layers must be positive."
++            )
++        if self.token_dim % self.num_heads != 0:
++            raise ValueError("point_fusion token_dim must be divisible by num_heads.")
++        head_dim = self.token_dim // self.num_heads
++        configured_rope_dim = config.get("rope_dim", None)
++        self.rope_dim = (
++            head_dim if configured_rope_dim is None else int(configured_rope_dim)
++        )
++        if self.rope_dim > head_dim or self.rope_dim % 2:
++            raise ValueError(
++                "point_fusion rope_dim must be even and no larger than its head dim."
++            )
++
++        self.coordinate_projection = CoordinateProjection(
++            input_dim=2,
++            dim=self.token_dim,
++        )
++        self.token_type_embedding = nn.Parameter(torch.empty(2, self.token_dim))
++        nn.init.trunc_normal_(self.token_type_embedding, std=0.02)
++        self.invisible_ball_token = InvisibleTokenEmbedding(
++            dim=self.token_dim,
++            init_std=invisible_init_std,
++        )
++        block_config = TransformerBlockConfig(
++            dim=self.token_dim,
++            n_heads=self.num_heads,
++            ffn_dim=config.get("ffn_dim", None),
++            rope_dim=self.rope_dim,
++            attn_dropout=float(config.get("dropout", 0.0)),
++        )
++        self.blocks = nn.ModuleList(
++            [TransformerBlock(block_config) for _ in range(self.num_layers)]
++        )
++        self.output_norm = RMSNorm(self.token_dim)
++        self.output_projection = nn.Linear(self.token_dim, int(output_dim))
++
++    @staticmethod
++    def build_rope_coordinates(
++        *,
++        num_court_points: int,
++        num_ball_points: int,
++        device: torch.device,
++    ) -> Tensor:
++        """Return two-axis coordinates for serial court-then-ball tokens."""
++        if num_court_points <= 0 or num_ball_points <= 0:
++            raise ValueError("court and ball token counts must be positive.")
++        court = torch.zeros(num_court_points, 2, device=device, dtype=torch.long)
++        court[:, 0] = torch.arange(num_court_points, device=device)
++        ball = torch.zeros(num_ball_points, 2, device=device, dtype=torch.long)
++        ball[:, 1] = torch.arange(num_ball_points, device=device)
++        return torch.cat((court, ball), dim=0)
++
++    def forward(
++        self,
++        *,
++        court_kp: Tensor,
++        court_visible: Tensor,
++        ball_uv: Tensor,
++        ball_visible: Tensor,
++        context_valid: Tensor,
++        mask_invisible_ball: bool,
++    ) -> Tensor:
++        """Return fused ball tokens shaped ``(..., P, output_dim)``."""
++        if court_kp.shape[-2:] != (self.num_court_points, 2):
++            raise ValueError(
++                "court_kp must end in "
++                f"({self.num_court_points}, 2), got {tuple(court_kp.shape)}."
++            )
++        if ball_uv.ndim < 2 or ball_uv.shape[-1] != 2:
++            raise ValueError("ball_uv must have shape (..., P, 2).")
++        if court_kp.shape[:-2] != ball_uv.shape[:-2]:
++            raise ValueError("court_kp and ball_uv must share leading dimensions.")
++        if court_visible.shape != court_kp.shape[:-1]:
++            raise ValueError("court_visible must match court_kp without XY.")
++        if ball_visible.shape != ball_uv.shape[:-1]:
++            raise ValueError("ball_visible must match ball_uv without XY.")
++        if context_valid.shape != ball_uv.shape[:-2]:
++            raise ValueError("context_valid must match court/ball leading dimensions.")
++
++        court_visible = court_visible.bool()
++        ball_visible = ball_visible.bool()
++        context_valid = context_valid.bool()
++        num_ball_points = int(ball_uv.shape[-2])
++        if num_ball_points <= 0:
++            raise ValueError("At least one ball token is required.")
++
++        safe_court = court_kp.masked_fill(~court_visible.unsqueeze(-1), 0.0)
++        safe_ball = ball_uv.masked_fill(~ball_visible.unsqueeze(-1), 0.0)
++        court_tokens = self.coordinate_projection(safe_court)
++        ball_tokens = self.coordinate_projection(safe_ball)
++        invisible = self.invisible_ball_token().to(
++            device=ball_tokens.device,
++            dtype=ball_tokens.dtype,
++        )
++        ball_tokens = torch.where(
++            ball_visible.unsqueeze(-1),
++            ball_tokens,
++            invisible.view(*([1] * (ball_tokens.ndim - 1)), -1),
++        )
++        court_tokens = court_tokens + self.token_type_embedding[0]
++        ball_tokens = ball_tokens + self.token_type_embedding[1]
++        tokens = torch.cat((court_tokens, ball_tokens), dim=-2)
++
++        court_key_valid = court_visible & context_valid.unsqueeze(-1)
++        ball_context_valid = context_valid.unsqueeze(-1).expand_as(ball_visible)
++        ball_key_valid = (
++            ball_context_valid & ball_visible
++            if mask_invisible_ball
++            else ball_context_valid
++        )
++        token_valid = torch.cat((court_key_valid, ball_key_valid), dim=-1)
++
++        sequence_length = self.num_court_points + num_ball_points
++        flat_tokens = tokens.reshape(-1, sequence_length, self.token_dim)
++        flat_valid = token_valid.reshape(-1, sequence_length)
++        attention_mask, _ = build_self_attn_mask(flat_valid)
++        rope_coordinates = self.build_rope_coordinates(
++            num_court_points=self.num_court_points,
++            num_ball_points=num_ball_points,
++            device=ball_uv.device,
++        )
++        frequencies = precompute_freqs_cis_nd(
++            dim=self.rope_dim,
++            pos=rope_coordinates,
++        )
++        for block in self.blocks:
++            flat_tokens = block(
++                flat_tokens,
++                freqs_cis=frequencies,
++                attn_mask=attention_mask,
++            )
++
++        fused_ball = flat_tokens[:, self.num_court_points :]
++        fused_ball = fused_ball.reshape(*ball_uv.shape[:-1], self.token_dim)
++        ball_state_valid = (
++            ball_context_valid & ball_visible
++            if mask_invisible_ball
++            else ball_context_valid
++        )
++        fused_ball = self.output_projection(self.output_norm(fused_ball))
++        return fused_ball * ball_state_valid.unsqueeze(-1)
++
++
++__all__ = ["CourtBallPointFusion"]
+diff --git a/src/tasks/blcs/training/tracking_losses.py b/src/tasks/blcs/training/tracking_losses.py
+index 3e9f6521..464435a9 100644
+--- a/src/tasks/blcs/training/tracking_losses.py
++++ b/src/tasks/blcs/training/tracking_losses.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ 
++import warnings
+ from typing import Any
+ 
+ import torch
+@@ -12,6 +13,10 @@ from src.tasks.base.training.tracking_lifecycle import (
+     weighted_presence_bce_with_logits,
+ )
+ from src.tasks.blcs.training.tracking_matching import match_ball_tracks
++from src.tasks.blcs.training.tracking_position import (
++    position_axis_weight_tensor,
++    weighted_position_axis_mean,
++)
+ 
+ Assignment = tuple[torch.Tensor, torch.Tensor]
+ 
+@@ -19,6 +24,8 @@ Assignment = tuple[torch.Tensor, torch.Tensor]
+ class BLCSTrackingLoss(nn.Module):
+     """Apply supervision after clip-level Hungarian matching."""
+ 
++    position_axis_weights: torch.Tensor
++
+     def __init__(self, config: Any) -> None:
+         super().__init__()
+         self.position_weight = float(config.position_weight)
+@@ -32,6 +39,19 @@ class BLCSTrackingLoss(nn.Module):
+         self.gravity_target = float(config.gravity_target)
+         self.match_position_weight = float(config.match_position_weight)
+         self.match_presence_weight = float(config.match_presence_weight)
++        configured_axis_weights = config.get("position_axis_weights")
++        if configured_axis_weights is None:
++            warnings.warn(
++                "Legacy BLCS tracking config has no position_axis_weights; "
++                "using [1, 1, 1]. New runs must configure this explicitly.",
++                stacklevel=2,
++            )
++            configured_axis_weights = (1.0, 1.0, 1.0)
++        self.register_buffer(
++            "position_axis_weights",
++            position_axis_weight_tensor(configured_axis_weights),
++            persistent=False,
++        )
+ 
+     @staticmethod
+     def _zero(prediction: dict[str, torch.Tensor]) -> torch.Tensor:
+@@ -54,11 +74,13 @@ class BLCSTrackingLoss(nn.Module):
+             presence_active_weight=self.presence_active_weight,
+             presence_transition_weight=self.presence_transition_weight,
+             transition_radius=self.transition_radius,
++            position_axis_weights=self.position_axis_weights,
+         )
+         pred_position = prediction["position"]
+         pred_presence = prediction["presence_logits"]
+         presence_target = torch.zeros_like(pred_presence)
+         position_terms: list[torch.Tensor] = []
++        position_axis_terms: list[torch.Tensor] = []
+         smoothness_terms: list[torch.Tensor] = []
+         gravity_terms: list[torch.Tensor] = []
+         for batch_index, (query_indices, target_indices) in enumerate(assignments):
+@@ -73,10 +95,17 @@ class BLCSTrackingLoss(nn.Module):
+                     batch_index, :, target_index
+                 ].float()
+                 if active.any():
++                    position_error_xyz = F.smooth_l1_loss(
++                        pred_position[batch_index, active, query_index],
++                        batch["target_position"][batch_index, active, target_index],
++                        reduction="none",
++                    )
++                    position_per_axis = position_error_xyz.mean(0)
++                    position_axis_terms.append(position_per_axis)
+                     position_terms.append(
+-                        F.smooth_l1_loss(
+-                            pred_position[batch_index, active, query_index],
+-                            batch["target_position"][batch_index, active, target_index],
++                        weighted_position_axis_mean(
++                            position_per_axis,
++                            self.position_axis_weights,
+                         )
+                     )
+                 if active.sum() >= 3 and (
+@@ -114,6 +143,11 @@ class BLCSTrackingLoss(nn.Module):
+         )
+         zero = self._zero(prediction)
+         position = torch.stack(position_terms).mean() if position_terms else zero
++        position_per_axis = (
++            torch.stack(position_axis_terms).mean(0)
++            if position_axis_terms
++            else torch.stack([zero, zero, zero])
++        )
+         smoothness = torch.stack(smoothness_terms).mean() if smoothness_terms else zero
+         gravity = torch.stack(gravity_terms).mean() if gravity_terms else zero
+         total = (
+@@ -125,6 +159,9 @@ class BLCSTrackingLoss(nn.Module):
+         return {
+             "total": total,
+             "position": position,
++            "position_x": position_per_axis[0],
++            "position_y": position_per_axis[1],
++            "position_z": position_per_axis[2],
+             "presence": presence,
+             "smoothness": smoothness,
+             "gravity": gravity,
+diff --git a/src/tasks/blcs/training/tracking_matching.py b/src/tasks/blcs/training/tracking_matching.py
+index 5c6a41c9..f7a7df40 100644
+--- a/src/tasks/blcs/training/tracking_matching.py
++++ b/src/tasks/blcs/training/tracking_matching.py
+@@ -9,6 +9,10 @@ from scipy.optimize import linear_sum_assignment
+ from src.tasks.base.training.tracking_lifecycle import (
+     weighted_presence_bce_with_logits,
+ )
++from src.tasks.blcs.training.tracking_position import (
++    position_axis_weight_tensor,
++    weighted_position_axis_mean,
++)
+ 
+ 
+ def match_ball_tracks(
+@@ -24,10 +28,18 @@ def match_ball_tracks(
+     presence_active_weight: float = 1.0,
+     presence_transition_weight: float = 2.0,
+     transition_radius: int = 2,
++    position_axis_weights: tuple[float, float, float] | torch.Tensor = (
++        1.0,
++        1.0,
++        1.0,
++    ),
+ ) -> list[tuple[torch.Tensor, torch.Tensor]]:
+     """Match `Q` predictions to valid `P` targets using clip-level costs."""
+     pred_position = prediction["position"]
+     pred_presence = prediction["presence_logits"]
++    axis_weights = position_axis_weight_tensor(position_axis_weights).to(
++        pred_position.device
++    )
+     batch_size, _, num_queries, _ = pred_position.shape
+     assignments: list[tuple[torch.Tensor, torch.Tensor]] = []
+     for batch in range(batch_size):
+@@ -61,13 +73,16 @@ def match_ball_tracks(
+                 ]
+             )
+             if target_active.any():
+-                position_error = F.smooth_l1_loss(
++                position_error_xyz = F.smooth_l1_loss(
+                     pred_position[batch],
+                     target_position[batch, :, target_index, None, :].expand_as(
+                         pred_position[batch]
+                     ),
+                     reduction="none",
+-                ).mean(-1)
++                )
++                position_error = weighted_position_axis_mean(
++                    position_error_xyz, axis_weights
++                )
+                 position_cost = (position_error * target_active[:, None]).sum(
+                     0
+                 ) / target_active.sum()
+diff --git a/src/tasks/blcs/training/tracking_metrics.py b/src/tasks/blcs/training/tracking_metrics.py
+index ed7f42a6..cfb4c35c 100644
+--- a/src/tasks/blcs/training/tracking_metrics.py
++++ b/src/tasks/blcs/training/tracking_metrics.py
+@@ -8,6 +8,39 @@ from src.tasks.base.training.tracking_metrics import (
+     common_lifecycle_tracking_metrics,
+ )
+ from src.tasks.blcs.training.tracking_losses import Assignment
++from src.utils.schema.court import COURT_COORD_SCALE_XYZ
++
++
++def _position_mae_meters(
++    prediction: dict[str, torch.Tensor],
++    batch: dict[str, torch.Tensor],
++    assignments: list[Assignment],
++) -> torch.Tensor:
++    """Return matched per-axis MAE in physical metres."""
++    pred_position = prediction["position"]
++    scale = pred_position.new_tensor(COURT_COORD_SCALE_XYZ)
++    terms: list[torch.Tensor] = []
++    for batch_index, (query_indices, target_indices) in enumerate(assignments):
++        for query_index, target_index in zip(
++            query_indices.tolist(), target_indices.tolist(), strict=True
++        ):
++            active = (
++                batch["target_presence"][batch_index, :, target_index]
++                & batch["frame_mask"][batch_index]
++            )
++            if active.any():
++                terms.append(
++                    (
++                        pred_position[batch_index, active, query_index]
++                        - batch["target_position"][
++                            batch_index, active, target_index
++                        ]
++                    ).abs().mean(0)
++                    * scale
++                )
++    if terms:
++        return torch.stack(terms).mean(0)
++    return pred_position.new_zeros(3)
+ 
+ 
+ def blcs_tracking_metrics(
+@@ -19,10 +52,19 @@ def blcs_tracking_metrics(
+     duplicate_distance: float = 0.05,
+ ) -> dict[str, torch.Tensor]:
+     """Compute shared lifecycle metrics for BLCS predictions."""
+-    return common_lifecycle_tracking_metrics(
++    metrics: dict[str, torch.Tensor] = common_lifecycle_tracking_metrics(
+         prediction,
+         batch,
+         assignments,
+         presence_threshold=presence_threshold,
+         duplicate_distance=duplicate_distance,
+     )
++    position_mae_m = _position_mae_meters(prediction, batch, assignments)
++    metrics.update(
++        {
++            "position_mae_x_m": position_mae_m[0],
++            "position_mae_y_m": position_mae_m[1],
++            "position_mae_z_m": position_mae_m[2],
++        }
++    )
++    return metrics
+diff --git a/src/tasks/blcs/training/tracking_position.py b/src/tasks/blcs/training/tracking_position.py
+new file mode 100644
+index 00000000..5bdcaf08
+--- /dev/null
++++ b/src/tasks/blcs/training/tracking_position.py
+@@ -0,0 +1,29 @@
++"""Axis-balanced position loss primitives for BLCS tracking."""
++
++from __future__ import annotations
++
++from collections.abc import Sequence
++
++import torch
++from torch import Tensor
++
++
++def position_axis_weight_tensor(value: Sequence[float] | Tensor) -> Tensor:
++    """Validate and convert three positive BLCS position-axis weights."""
++    weights = torch.as_tensor(value, dtype=torch.float32)
++    if weights.shape != (3,):
++        raise ValueError("position_axis_weights must contain exactly 3 values.")
++    if not torch.isfinite(weights).all() or (weights <= 0).any():
++        raise ValueError("position_axis_weights must be finite and positive.")
++    return weights
++
++
++def weighted_position_axis_mean(values: Tensor, axis_weights: Tensor) -> Tensor:
++    """Reduce the final XYZ axis using normalized positive weights."""
++    if values.shape[-1] != 3:
++        raise ValueError("Position values must have XYZ as their final axis.")
++    weights = axis_weights.to(device=values.device, dtype=values.dtype)
++    return (values * weights).sum(-1) / weights.sum()
++
++
++__all__ = ["position_axis_weight_tensor", "weighted_position_axis_mean"]
+diff --git a/src/tasks/plcs/README.md b/src/tasks/plcs/README.md
+index 0422c2f5..52257f61 100644
+--- a/src/tasks/plcs/README.md
++++ b/src/tasks/plcs/README.md
+@@ -68,7 +68,7 @@
+ 
+ 観測座標は `human_kp (B,V,T,P,J,2)` のみで、bbox・keypoint score/visibilityを数値特徴へ連結しません。`detection_mask (B,V,T,P)` がfalseのpersonはlearned invisible tokenへ置換します。`mask_invisible_observations=true` は不可視tokenをattention keyから除外する対照条件、`false` は`frame_mask` / `view_mask`によるpaddingだけを除外し、不可視tokenを更新可能なmemoryとして使う条件です。欠損joint UVは0にします。出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じtarget columnへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。検出indexはidentityとして扱わず、debug用の `detection_gt_index` はモデルへ渡しません。
+ 
+-14 court UVは`court_vis`で不可視点を0化し、共有point encoderとmean poolingでcameraごとに1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*(P+1), D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、person=1、court=2で、検出indexやcourt点indexは埋め込みません。court集約は点順序不変で、train時のview単位shuffleにより`far/near`・`left/right`命名不整合にも依存しません。
++14 court UVはIDを使わず、画像左上から右下への共有対角スイープで幾何的に固定順序化した後、`court_vis`で不可視点を0化し、共有point encoderとmean poolingでcameraごとに1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*(P+1), D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、person=1、court=2で、検出indexやcourt点indexは埋め込みません。court集約自体も点順序不変です。
+ 
+ multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H source subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
+ 
+diff --git a/src/tasks/plcs/configs/data/_augmentation.yaml b/src/tasks/plcs/configs/data/_augmentation.yaml
+index 31b0d3dc..12a2c0cb 100644
+--- a/src/tasks/plcs/configs/data/_augmentation.yaml
++++ b/src/tasks/plcs/configs/data/_augmentation.yaml
+@@ -11,9 +11,8 @@
+ augmentation:
+   enabled: true
+ 
+-  court_keypoint_permutation:
+-    enabled: true
+-    prob: 1.0
++  # Tracking adapters use the shared top-left -> bottom-right diagonal sweep
++  # ordering. The ordering is geometric and does not depend on annotation IDs.
+ 
+   uv_scale:
+     enabled: false
+diff --git a/src/tasks/plcs/data/tracking_augmentation.py b/src/tasks/plcs/data/tracking_augmentation.py
+index d43920df..848e373d 100644
+--- a/src/tasks/plcs/data/tracking_augmentation.py
++++ b/src/tasks/plcs/data/tracking_augmentation.py
+@@ -8,7 +8,6 @@ from typing import Any, cast
+ import torch
+ from torch import Tensor
+ 
+-from src.tasks.base.data.tracking_augmentation import permute_court_keypoint_sets
+ from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
+ from src.utils.tensor_utils import clone_tensor_dict
+ 
+@@ -19,7 +18,6 @@ class PLCSTrackingDetectionAugmentation:
+     def __init__(self, config: Mapping[str, Any] | None = None) -> None:
+         self.config = config or {}
+         self.observation = PLCSObservationAugmentation(self.config)
+-        self.court_permutation_cfg = self.config.get("court_keypoint_permutation", {})
+ 
+     def forward(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
+         """Corrupt only detection/court inputs and preserve clean GT tensors."""
+@@ -46,7 +44,8 @@ class PLCSTrackingDetectionAugmentation:
+             augmented["human_vis"].reshape(views, frames, detections, joints).bool()
+         )
+         # Court input is geometric projection/manual annotation, not a detector
+-        # confidence stream. Keep it intact; only the permutation below applies.
++        # confidence stream. The model applies the deterministic spatial order
++        # for train, validation, test, and direct inference alike.
+         output["court_kp"] = court_keypoints
+         output["court_vis"] = court_visible
+         output["detection_mask"] = output["human_vis"].any(-1)
+@@ -55,11 +54,6 @@ class PLCSTrackingDetectionAugmentation:
+             output["detection_gt_index"],
+             -1,
+         )
+-        output["court_kp"], output["court_vis"] = permute_court_keypoint_sets(
+-            output["court_kp"],
+-            output["court_vis"],
+-            self.court_permutation_cfg,
+-        )
+         self._shuffle_detections(output)
+         return cast(dict[str, Tensor], output)
+ 
+diff --git a/src/tasks/plcs/models/plcs_track_query_model.py b/src/tasks/plcs/models/plcs_track_query_model.py
+index a8538e5a..40045629 100644
+--- a/src/tasks/plcs/models/plcs_track_query_model.py
++++ b/src/tasks/plcs/models/plcs_track_query_model.py
+@@ -9,6 +9,7 @@ import torch.nn.functional as F
+ from torch import nn
+ 
+ from src.tasks.plcs.data.tracking_types import PLCSTrackingPrediction
++from src.utils.geometry.keypoints import order_keypoints_diagonal_sweep
+ from src.utils.models import (
+     CourtCameraEmbedding,
+     InvisibleTokenEmbedding,
+@@ -151,6 +152,11 @@ class PLCSTrackQueryModel(nn.Module):
+                 "court_kp must contain all 14 annotated UV points; "
+                 f"got shape {tuple(court_kp.shape)}."
+             )
++        court_kp, ordered_court_vis = order_keypoints_diagonal_sweep(
++            court_kp, court_vis
++        )
++        assert ordered_court_vis is not None
++        court_vis = ordered_court_vis
+         court_tokens = self.court_encoder(court_kp, court_vis).unsqueeze(3)
+         camera_tokens = torch.cat([detection_tokens, court_tokens], dim=3).permute(
+             0, 2, 1, 3, 4
+diff --git a/src/utils/README.md b/src/utils/README.md
+index a88e629d..87617207 100644
+--- a/src/utils/README.md
++++ b/src/utils/README.md
+@@ -28,7 +28,7 @@
+ - **`court_pose.py`**: 正規化コート座標と world pose の相互変換、コート上位置からの平行移動生成。
+ - **`matrices.py`**: NumPy ベースの回転行列と `apply_plcs_transform[_batch]()`。
+ - **`rotation_conversions.py`**: torch ベースの axis-angle / quaternion / matrix / 6D 相互変換（PyTorch3D 互換 API、pytorch3d 依存の置き換え先）。
+-- **`keypoints.py`**: pixel 座標と正規化座標の相互変換、画素座標 clamp。
++- **`keypoints.py`**: pixel 座標と正規化座標の相互変換、画素座標 clamp、IDに依存しない左上→右下の対角スイープ順序化。
+ - **`bbox.py`**: bbox の最大辺比率 `bbox_max_side_ratio()`。bbox の縦横スケール比較が必要なときに見る。
+ - **`image_size.py`**: `resize_short_side_aligned()`。short side 指定 + 8 の倍数 align の画像サイズ計算。
+ 
+diff --git a/src/utils/geometry/keypoints.py b/src/utils/geometry/keypoints.py
+index c996fa1f..10fd67a2 100644
+--- a/src/utils/geometry/keypoints.py
++++ b/src/utils/geometry/keypoints.py
+@@ -1,9 +1,83 @@
+-"""Pixel <-> normalized keypoint conversions (numpy)."""
++"""Keypoint coordinate conversion and geometry-based ordering helpers."""
+ 
+ from __future__ import annotations
+ 
+ import numpy as np
++import torch
+ from numpy.typing import NDArray
++from torch import Tensor
++
++
++def diagonal_sweep_permutation(keypoints: Tensor) -> Tensor:
++    """Return point indices swept from image top-left to bottom-right.
++
++    A line perpendicular to the ``(1, 1)`` image diagonal is moved from the
++    top-left toward the bottom-right. Points are therefore ordered by ``u+v``.
++    Points touched by the same sweep line are ordered left-to-right by ``u``.
++
++    Args:
++        keypoints: Tensor shaped ``(..., K, 2)`` in any consistent image
++            coordinate system.
++
++    Returns:
++        Long tensor shaped ``(..., K)`` containing the permutation indices.
++    """
++    if keypoints.ndim < 2 or keypoints.shape[-1] != 2:
++        raise ValueError(
++            "keypoints must have shape (..., K, 2), got "
++            f"{tuple(keypoints.shape)}."
++        )
++    if not keypoints.dtype.is_floating_point:
++        raise TypeError("keypoints must use a floating-point dtype.")
++
++    u = keypoints[..., 0]
++    diagonal = u + keypoints[..., 1]
++    left_to_right = torch.argsort(u, dim=-1, stable=True)
++    diagonal_in_left_to_right_order = torch.gather(
++        diagonal, -1, left_to_right
++    )
++    sweep_order = torch.argsort(
++        diagonal_in_left_to_right_order,
++        dim=-1,
++        stable=True,
++    )
++    return torch.gather(left_to_right, -1, sweep_order)
++
++
++def order_keypoints_diagonal_sweep(
++    keypoints: Tensor,
++    visibility: Tensor | None = None,
++) -> tuple[Tensor, Tensor | None]:
++    """Order keypoints and an optional aligned visibility tensor geometrically.
++
++    The returned tensors are new tensors; inputs are not modified. Visible
++    points are swept first. Invisible points are placed afterward in their
++    original order, so their masked coordinates cannot move visible features
++    between flattened input slots.
++    """
++    if visibility is not None and visibility.shape != keypoints.shape[:-1]:
++        raise ValueError(
++            "visibility must match keypoints without the coordinate axis, got "
++            f"{tuple(visibility.shape)} for {tuple(keypoints.shape)}."
++        )
++    ordering_keypoints = keypoints
++    if visibility is not None:
++        visible = visibility if visibility.dtype == torch.bool else visibility > 0
++        ordering_keypoints = keypoints.masked_fill(
++            ~visible.unsqueeze(-1), float("inf")
++        )
++    permutation = diagonal_sweep_permutation(ordering_keypoints)
++    ordered_keypoints = torch.gather(
++        keypoints,
++        -2,
++        permutation.unsqueeze(-1).expand(*permutation.shape, 2),
++    )
++    ordered_visibility = (
++        torch.gather(visibility, -1, permutation)
++        if visibility is not None
++        else None
++    )
++    return ordered_keypoints, ordered_visibility
+ 
+ 
+ def clamp_pixel_coordinate(value: float, axis_size: int) -> float:
+@@ -43,6 +117,8 @@ def denormalize_keypoints(
+ 
+ __all__ = [
+     "clamp_pixel_coordinate",
++    "diagonal_sweep_permutation",
+     "denormalize_keypoints",
+     "normalize_keypoints",
++    "order_keypoints_diagonal_sweep",
+ ]
+diff --git a/tests/unit/tasks/base/data/test_tracking_augmentation.py b/tests/unit/tasks/base/data/test_tracking_augmentation.py
+deleted file mode 100644
+index 0b2fa4db..00000000
+--- a/tests/unit/tasks/base/data/test_tracking_augmentation.py
++++ /dev/null
+@@ -1,35 +0,0 @@
+-from __future__ import annotations
+-
+-import torch
+-
+-from src.tasks.base.data.tracking_augmentation import permute_court_keypoint_sets
+-
+-
+-def test_court_permutation_is_shared_across_time_and_preserves_point_visibility_pairs() -> None:
+-    torch.manual_seed(13)
+-    point_ids = torch.arange(14, dtype=torch.float32)
+-    court_kp = torch.stack([point_ids, point_ids + 100], dim=-1)
+-    court_kp = court_kp[None, None].expand(2, 3, -1, -1).clone()
+-    court_vis = (point_ids.long() % 3 != 0)[None, None].expand(2, 3, -1).clone()
+-
+-    permuted_kp, permuted_vis = permute_court_keypoint_sets(
+-        court_kp,
+-        court_vis,
+-        {"enabled": True, "prob": 1.0},
+-    )
+-
+-    assert not torch.equal(permuted_kp, court_kp)
+-    for view_index in range(2):
+-        for frame_index in range(1, 3):
+-            torch.testing.assert_close(
+-                permuted_kp[view_index, frame_index],
+-                permuted_kp[view_index, 0],
+-            )
+-            assert torch.equal(
+-                permuted_vis[view_index, frame_index],
+-                permuted_vis[view_index, 0],
+-            )
+-        ids = permuted_kp[view_index, 0, :, 0].long()
+-        assert sorted(ids.tolist()) == list(range(14))
+-        assert torch.equal(permuted_vis[view_index, 0], ids % 3 != 0)
+-
+diff --git a/tests/unit/tasks/blcs/data/test_tracking_augmentation.py b/tests/unit/tasks/blcs/data/test_tracking_augmentation.py
+index 5894ef7e..dd14963d 100644
+--- a/tests/unit/tasks/blcs/data/test_tracking_augmentation.py
++++ b/tests/unit/tasks/blcs/data/test_tracking_augmentation.py
+@@ -22,7 +22,6 @@ def test_tracking_augmentation_keeps_clean_labels_and_candidate_pairs() -> None:
+     augmentation = BLCSTrackingCandidateAugmentation(
+         {
+             "enabled": False,
+-            "court_keypoint_permutation": {"enabled": True, "prob": 1.0},
+         }
+     )
+ 
+@@ -30,10 +29,8 @@ def test_tracking_augmentation_keeps_clean_labels_and_candidate_pairs() -> None:
+ 
+     torch.testing.assert_close(result["target_position"], sample["target_position"])
+     torch.testing.assert_close(result["clean_ball_uv"], sample["clean_ball_uv"])
+-    torch.testing.assert_close(
+-        result["court_kp"][..., 0].sort(dim=-1).values,
+-        sample["court_kp"][..., 0].sort(dim=-1).values,
+-    )
++    torch.testing.assert_close(result["court_kp"], sample["court_kp"])
++    torch.testing.assert_close(result["court_vis"], sample["court_vis"])
+     for frame_index in range(2):
+         for candidate_index in range(2):
+             source = int(result["candidate_gt_index"][0, frame_index, candidate_index])
+diff --git a/tests/unit/tasks/blcs/generate_dataset/simulation/test_targeted_velocity_sampler.py b/tests/unit/tasks/blcs/generate_dataset/simulation/test_targeted_velocity_sampler.py
+new file mode 100644
+index 00000000..a1f61f5e
+--- /dev/null
++++ b/tests/unit/tasks/blcs/generate_dataset/simulation/test_targeted_velocity_sampler.py
+@@ -0,0 +1,42 @@
++from __future__ import annotations
++
++import math
++
++import pytest
++import torch
++
++from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
++    TargetedVelocityConfig,
++    TargetedVelocitySampler,
++)
++
++
++def test_high_lob_is_resolved_at_apex_limit_without_changing_target() -> None:
++    config = TargetedVelocityConfig(max_ballistic_apex_height_m=8.0)
++    sampler = TargetedVelocitySampler(config=config)
++    start = torch.tensor([0.0, -12.0, 1.0])
++    target = torch.tensor([2.0, 12.0, 0.0])
++
++    velocity = sampler.compute_velocity_to_target(
++        start,
++        target,
++        from_side="near",
++        elevation_deg=70.0,
++    )
++
++    gravity = config.gravity
++    apex = float(start[2]) + float(velocity[2]) ** 2 / (2.0 * gravity)
++    flight_time = (
++        float(velocity[2])
++        + math.sqrt(float(velocity[2]) ** 2 + 2.0 * gravity * float(start[2]))
++    ) / gravity
++    landing_xy = start[:2] + velocity[:2] * flight_time
++    assert apex == pytest.approx(config.max_ballistic_apex_height_m, abs=1e-5)
++    torch.testing.assert_close(landing_xy, target[:2], atol=1e-5, rtol=1e-5)
++
++
++def test_apex_limit_must_be_positive() -> None:
++    with pytest.raises(ValueError, match="must be positive"):
++        TargetedVelocitySampler(
++            config=TargetedVelocityConfig(max_ballistic_apex_height_m=0.0)
++        )
+diff --git a/tests/unit/tasks/blcs/models/components/test_court_ball_point_fusion.py b/tests/unit/tasks/blcs/models/components/test_court_ball_point_fusion.py
+new file mode 100644
+index 00000000..87207a42
+--- /dev/null
++++ b/tests/unit/tasks/blcs/models/components/test_court_ball_point_fusion.py
+@@ -0,0 +1,120 @@
++from __future__ import annotations
++
++import torch
++from omegaconf import OmegaConf
++
++from src.tasks.blcs.models.components import CourtBallPointFusion
++
++
++def _fusion() -> CourtBallPointFusion:
++    return CourtBallPointFusion(
++        output_dim=64,
++        num_court_points=14,
++        config=OmegaConf.create(
++            {
++                "token_dim": 32,
++                "num_heads": 4,
++                "num_layers": 1,
++                "ffn_dim": 64,
++                "rope_dim": 8,
++                "dropout": 0.0,
++            }
++        ),
++        invisible_init_std=0.02,
++    )
++
++
++def test_rope_coordinates_use_independent_court_and_ball_axes() -> None:
++    coordinates = CourtBallPointFusion.build_rope_coordinates(
++        num_court_points=3,
++        num_ball_points=2,
++        device=torch.device("cpu"),
++    )
++
++    assert torch.equal(
++        coordinates,
++        torch.tensor([[0, 0], [1, 0], [2, 0], [0, 0], [0, 1]]),
++    )
++
++
++def test_fusion_uses_32_dim_tokens_and_projects_only_ball_outputs() -> None:
++    fusion = _fusion()
++    output = fusion(
++        court_kp=torch.rand(2, 3, 14, 2),
++        court_visible=torch.ones(2, 3, 14, dtype=torch.bool),
++        ball_uv=torch.rand(2, 3, 5, 2),
++        ball_visible=torch.ones(2, 3, 5, dtype=torch.bool),
++        context_valid=torch.ones(2, 3, dtype=torch.bool),
++        mask_invisible_ball=True,
++    )
++
++    assert fusion.token_dim == 32
++    assert fusion.coordinate_projection.layers[3].out_features == 32
++    assert fusion.output_projection.in_features == 32
++    assert fusion.output_projection.out_features == 64
++    assert output.shape == (2, 3, 5, 64)
++
++
++def test_ball_output_receives_gradient_from_visible_court_tokens() -> None:
++    torch.manual_seed(4)
++    fusion = _fusion()
++    court_kp = torch.rand(1, 14, 2, requires_grad=True)
++    output = fusion(
++        court_kp=court_kp,
++        court_visible=torch.ones(1, 14, dtype=torch.bool),
++        ball_uv=torch.rand(1, 2, 2),
++        ball_visible=torch.ones(1, 2, dtype=torch.bool),
++        context_valid=torch.ones(1, dtype=torch.bool),
++        mask_invisible_ball=True,
++    )
++
++    output.square().sum().backward()
++
++    assert court_kp.grad is not None
++    assert bool(court_kp.grad.abs().sum() > 0)
++
++
++def test_masked_coordinates_cannot_change_outputs_and_invalid_ball_is_zero() -> None:
++    torch.manual_seed(5)
++    fusion = _fusion().eval()
++    inputs = {
++        "court_kp": torch.rand(1, 14, 2),
++        "court_visible": torch.ones(1, 14, dtype=torch.bool),
++        "ball_uv": torch.rand(1, 2, 2),
++        "ball_visible": torch.tensor([[True, False]]),
++        "context_valid": torch.ones(1, dtype=torch.bool),
++        "mask_invisible_ball": True,
++    }
++    inputs["court_visible"][0, 3] = False
++    changed = {
++        key: value.clone() if isinstance(value, torch.Tensor) else value
++        for key, value in inputs.items()
++    }
++    changed["court_kp"][0, 3] = torch.nan
++    changed["ball_uv"][0, 1] = torch.nan
++
++    with torch.no_grad():
++        output = fusion(**inputs)
++        changed_output = fusion(**changed)
++
++    torch.testing.assert_close(output, changed_output)
++    torch.testing.assert_close(output[0, 1], torch.zeros_like(output[0, 1]))
++
++
++def test_unmasked_invisible_ball_remains_learnable_context_memory() -> None:
++    torch.manual_seed(6)
++    fusion = _fusion()
++    output = fusion(
++        court_kp=torch.rand(1, 14, 2),
++        court_visible=torch.ones(1, 14, dtype=torch.bool),
++        ball_uv=torch.rand(1, 2, 2),
++        ball_visible=torch.tensor([[True, False]]),
++        context_valid=torch.ones(1, dtype=torch.bool),
++        mask_invisible_ball=False,
++    )
++
++    output.square().sum().backward()
++
++    gradient = fusion.invisible_ball_token.token.grad
++    assert gradient is not None
++    assert bool(gradient.abs().sum() > 0)
+diff --git a/tests/unit/tasks/blcs/models/test_blcs_track_query_model.py b/tests/unit/tasks/blcs/models/test_blcs_track_query_model.py
+index be3f4cb8..41422b1d 100644
+--- a/tests/unit/tasks/blcs/models/test_blcs_track_query_model.py
++++ b/tests/unit/tasks/blcs/models/test_blcs_track_query_model.py
+@@ -18,6 +18,15 @@ def _model_config() -> DictConfig:
+     return config.model
+ 
+ 
++def _point_attention_model_config() -> DictConfig:
++    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
++        config = compose(
++            config_name="train_tracking",
++            overrides=["model=track_query_large_point_attention"],
++        )
++    return config.model
++
++
+ def _model(*, mask_invisible: bool = True) -> BLCSTrackQueryModel:
+     config = _model_config()
+     config.mask_invisible_observations = mask_invisible
+@@ -62,6 +71,35 @@ def test_model_resolves_default_ffn_and_rope_dimensions() -> None:
+     assert model.spatial_blocks[0].cfg.ffn_dim is None
+ 
+ 
++def test_point_attention_model_uses_small_fusion_before_model_projection() -> None:
++    config = _point_attention_model_config()
++    model = BLCSTrackQueryModel(config)
++
++    assert model.observation_fusion == "point_attention"
++    assert model.group_embed is None
++    assert model.point_fusion is not None
++    assert model.point_fusion.token_dim == 32
++    assert model.point_fusion.output_projection.in_features == 32
++    assert model.point_fusion.output_projection.out_features == model.hidden_dim
++
++
++def test_point_attention_model_forward_preserves_tracking_output_contract() -> None:
++    torch.manual_seed(2)
++    model = BLCSTrackQueryModel(_point_attention_model_config()).eval()
++    with torch.no_grad():
++        output = model(
++            ball_uv=torch.rand(1, 2, 3, 4, 2),
++            ball_visible=torch.ones(1, 2, 3, 4, dtype=torch.bool),
++            court_kp=torch.rand(1, 2, 3, 14, 2),
++            court_vis=torch.ones(1, 2, 3, 14, dtype=torch.bool),
++            frame_mask=torch.ones(1, 3, dtype=torch.bool),
++            view_mask=torch.ones(1, 2, dtype=torch.bool),
++        )
++
++    assert output["position"].shape == (1, 3, 4, 3)
++    assert output["presence_logits"].shape == (1, 3, 4)
++
++
+ def test_candidate_permutation_does_not_change_slot_predictions() -> None:
+     torch.manual_seed(3)
+     model = _model()
+@@ -93,6 +131,30 @@ def test_candidate_permutation_does_not_change_slot_predictions() -> None:
+         )
+ 
+ 
++def test_court_annotation_permutation_does_not_change_slot_predictions() -> None:
++    torch.manual_seed(6)
++    model = _model()
++    inputs = {
++        "ball_uv": torch.rand(1, 2, 3, 2, 2),
++        "ball_visible": torch.ones(1, 2, 3, 2, dtype=torch.bool),
++        "court_kp": torch.rand(1, 2, 3, 14, 2),
++        "court_vis": torch.ones(1, 2, 3, 14, dtype=torch.bool),
++        "frame_mask": torch.ones(1, 3, dtype=torch.bool),
++        "view_mask": torch.ones(1, 2, dtype=torch.bool),
++    }
++    permutation = torch.tensor([8, 2, 13, 0, 6, 10, 1, 7, 4, 12, 3, 9, 5, 11])
++    permuted = {key: value.clone() for key, value in inputs.items()}
++    permuted["court_kp"] = inputs["court_kp"][..., permutation, :]
++    permuted["court_vis"] = inputs["court_vis"][..., permutation]
++
++    with torch.no_grad():
++        output = model(**inputs)
++        permuted_output = model(**permuted)
++
++    for key in output:
++        torch.testing.assert_close(output[key], permuted_output[key])
++
++
+ def test_masked_candidate_and_court_coordinates_do_not_affect_predictions() -> None:
+     torch.manual_seed(7)
+     model = _model()
+diff --git a/tests/unit/tasks/blcs/training/test_tracking_losses.py b/tests/unit/tasks/blcs/training/test_tracking_losses.py
+index f8f8c04d..3c34f03e 100644
+--- a/tests/unit/tasks/blcs/training/test_tracking_losses.py
++++ b/tests/unit/tasks/blcs/training/test_tracking_losses.py
+@@ -2,6 +2,7 @@ from __future__ import annotations
+ 
+ from pathlib import Path
+ 
++import pytest
+ import torch
+ from omegaconf import OmegaConf
+ 
+@@ -65,3 +66,36 @@ def test_matching_accepts_bfloat16_predictions() -> None:
+ 
+     assert torch.isfinite(losses["total"])
+     assert assignments[0][0].numel() == 2
++
++
++def test_position_loss_reports_axes_and_uses_configured_balance() -> None:
++    config = OmegaConf.load(Path("src/tasks/blcs/configs/loss/tracking.yaml"))
++    config.presence_weight = 0.0
++    criterion = BLCSTrackingLoss(config)
++    prediction = {
++        "position": torch.tensor(
++            [[[[1.0, 2.0, 3.0]]]], requires_grad=True
++        ),
++        "presence_logits": torch.tensor([[[20.0]]], requires_grad=True),
++    }
++    batch = {
++        "target_position": torch.zeros(1, 1, 1, 3),
++        "target_presence": torch.ones(1, 1, 1, dtype=torch.bool),
++        "target_slot_mask": torch.ones(1, 1, dtype=torch.bool),
++        "frame_mask": torch.ones(1, 1, dtype=torch.bool),
++    }
++
++    losses, _ = criterion(prediction, batch)
++
++    torch.testing.assert_close(losses["position_x"], torch.tensor(0.5))
++    torch.testing.assert_close(losses["position_y"], torch.tensor(1.5))
++    torch.testing.assert_close(losses["position_z"], torch.tensor(2.5))
++    torch.testing.assert_close(losses["position"], torch.tensor(1.3))
++
++
++def test_tracking_loss_rejects_invalid_position_axis_weights() -> None:
++    config = OmegaConf.load(Path("src/tasks/blcs/configs/loss/tracking.yaml"))
++    config.position_axis_weights = [1.0, 0.0, 1.0]
++
++    with pytest.raises(ValueError, match="finite and positive"):
++        BLCSTrackingLoss(config)
+diff --git a/tests/unit/tasks/blcs/training/test_tracking_matching.py b/tests/unit/tasks/blcs/training/test_tracking_matching.py
+new file mode 100644
+index 00000000..7cc2698b
+--- /dev/null
++++ b/tests/unit/tasks/blcs/training/test_tracking_matching.py
+@@ -0,0 +1,32 @@
++from __future__ import annotations
++
++import torch
++
++from src.tasks.blcs.training.tracking_matching import match_ball_tracks
++
++
++def test_matching_uses_same_axis_balance_as_position_loss() -> None:
++    prediction = {
++        "position": torch.tensor(
++            [[[[0.0, 0.0, 0.0], [10.0, 0.0, 10.0]]]]
++        ),
++        "presence_logits": torch.zeros(1, 1, 2),
++    }
++    target_position = torch.tensor(
++        [[[[0.0, 0.0, 10.0], [10.0, 0.0, 0.0]]]]
++    )
++    present = torch.ones(1, 1, 2, dtype=torch.bool)
++
++    assignments = match_ball_tracks(
++        prediction,
++        target_position,
++        present,
++        torch.ones(1, 2, dtype=torch.bool),
++        torch.ones(1, 1, dtype=torch.bool),
++        presence_cost_weight=0.0,
++        position_axis_weights=(1.0, 1.0, 0.1),
++    )
++
++    query_indices, target_indices = assignments[0]
++    torch.testing.assert_close(query_indices, torch.tensor([0, 1]))
++    torch.testing.assert_close(target_indices, torch.tensor([0, 1]))
+diff --git a/tests/unit/tasks/blcs/training/test_tracking_metrics.py b/tests/unit/tasks/blcs/training/test_tracking_metrics.py
+new file mode 100644
+index 00000000..dc7483f1
+--- /dev/null
++++ b/tests/unit/tasks/blcs/training/test_tracking_metrics.py
+@@ -0,0 +1,30 @@
++from __future__ import annotations
++
++import torch
++
++from src.tasks.blcs.training.tracking_metrics import blcs_tracking_metrics
++from src.utils.schema.court import COURT_COORD_SCALE_XYZ
++
++
++def test_tracking_metrics_report_per_axis_physical_mae() -> None:
++    prediction = {
++        "position": torch.tensor([[[[1.0, 2.0, 3.0]]]]),
++        "presence_logits": torch.tensor([[[20.0]]]),
++    }
++    batch = {
++        "target_position": torch.zeros(1, 1, 1, 3),
++        "target_presence": torch.ones(1, 1, 1, dtype=torch.bool),
++        "target_instance_id": torch.zeros(1, 1, 1, dtype=torch.long),
++        "frame_mask": torch.ones(1, 1, dtype=torch.bool),
++    }
++
++    metrics = blcs_tracking_metrics(
++        prediction,
++        batch,
++        [(torch.tensor([0]), torch.tensor([0]))],
++    )
++
++    scale = torch.tensor(COURT_COORD_SCALE_XYZ)
++    torch.testing.assert_close(metrics["position_mae_x_m"], scale[0])
++    torch.testing.assert_close(metrics["position_mae_y_m"], 2.0 * scale[1])
++    torch.testing.assert_close(metrics["position_mae_z_m"], 3.0 * scale[2])
+diff --git a/tests/unit/tasks/plcs/data/test_tracking_augmentation.py b/tests/unit/tasks/plcs/data/test_tracking_augmentation.py
+index 4e4d9e23..013a7193 100644
+--- a/tests/unit/tasks/plcs/data/test_tracking_augmentation.py
++++ b/tests/unit/tasks/plcs/data/test_tracking_augmentation.py
+@@ -23,7 +23,6 @@ def test_tracking_augmentation_keeps_clean_labels_and_detection_pairs() -> None:
+     augmentation = PLCSTrackingDetectionAugmentation(
+         {
+             "enabled": False,
+-            "court_keypoint_permutation": {"enabled": True, "prob": 1.0},
+         }
+     )
+ 
+@@ -31,10 +30,8 @@ def test_tracking_augmentation_keeps_clean_labels_and_detection_pairs() -> None:
+ 
+     torch.testing.assert_close(result["target_position"], sample["target_position"])
+     torch.testing.assert_close(result["clean_human_kp"], sample["clean_human_kp"])
+-    torch.testing.assert_close(
+-        result["court_kp"][..., 0].sort(dim=-1).values,
+-        sample["court_kp"][..., 0].sort(dim=-1).values,
+-    )
++    torch.testing.assert_close(result["court_kp"], sample["court_kp"])
++    torch.testing.assert_close(result["court_vis"], sample["court_vis"])
+     for frame_index in range(2):
+         for detection_index in range(2):
+             source = int(result["detection_gt_index"][0, frame_index, detection_index])
+diff --git a/tests/unit/tasks/plcs/models/test_plcs_track_query_model.py b/tests/unit/tasks/plcs/models/test_plcs_track_query_model.py
+index 651a27a6..77cb3423 100644
+--- a/tests/unit/tasks/plcs/models/test_plcs_track_query_model.py
++++ b/tests/unit/tasks/plcs/models/test_plcs_track_query_model.py
+@@ -67,6 +67,30 @@ def test_detection_permutation_keeps_player_slot_outputs_identical() -> None:
+         )
+ 
+ 
++def test_court_annotation_permutation_keeps_player_outputs_identical() -> None:
++    torch.manual_seed(6)
++    model = _model()
++    inputs = {
++        "human_kp": torch.rand(1, 2, 3, 2, 17, 2),
++        "detection_mask": torch.ones(1, 2, 3, 2, dtype=torch.bool),
++        "court_kp": torch.rand(1, 2, 3, 14, 2),
++        "court_vis": torch.ones(1, 2, 3, 14, dtype=torch.bool),
++        "frame_mask": torch.ones(1, 3, dtype=torch.bool),
++        "view_mask": torch.ones(1, 2, dtype=torch.bool),
++    }
++    permutation = torch.tensor([8, 2, 13, 0, 6, 10, 1, 7, 4, 12, 3, 9, 5, 11])
++    permuted = {key: value.clone() for key, value in inputs.items()}
++    permuted["court_kp"] = inputs["court_kp"][..., permutation, :]
++    permuted["court_vis"] = inputs["court_vis"][..., permutation]
++
++    with torch.no_grad():
++        output = model(**inputs)
++        permuted_output = model(**permuted)
++
++    for key in output:
++        torch.testing.assert_close(output[key], permuted_output[key])
++
++
+ def test_masked_detection_coordinates_do_not_affect_predictions() -> None:
+     torch.manual_seed(9)
+     model = _model()
+diff --git a/tests/unit/utils/geometry/test_keypoints.py b/tests/unit/utils/geometry/test_keypoints.py
+index 60675b54..fa584ea6 100644
+--- a/tests/unit/utils/geometry/test_keypoints.py
++++ b/tests/unit/utils/geometry/test_keypoints.py
+@@ -3,14 +3,56 @@
+ from __future__ import annotations
+ 
+ import numpy as np
++import pytest
++import torch
+ 
+ from src.utils.geometry.keypoints import (
+     clamp_pixel_coordinate,
+     denormalize_keypoints,
++    diagonal_sweep_permutation,
+     normalize_keypoints,
++    order_keypoints_diagonal_sweep,
+ )
+ 
+ 
++def test_diagonal_sweep_orders_by_u_plus_v_then_left_to_right() -> None:
++    keypoints = torch.tensor(
++        [[0.8, 0.8], [0.6, 0.2], [0.1, 0.7], [0.2, 0.1]],
++        dtype=torch.float32,
++    )
++
++    permutation = diagonal_sweep_permutation(keypoints)
++
++    torch.testing.assert_close(permutation, torch.tensor([3, 2, 1, 0]))
++
++
++def test_diagonal_sweep_reorders_aligned_visibility_without_mutation() -> None:
++    keypoints = torch.tensor(
++        [[[[0.8, 0.8], [0.2, 0.1], [0.1, 0.7]]]], dtype=torch.float32
++    )
++    visibility = torch.tensor([[[False, True, False]]])
++    original = keypoints.clone()
++
++    ordered, ordered_visibility = order_keypoints_diagonal_sweep(
++        keypoints, visibility
++    )
++
++    torch.testing.assert_close(
++        ordered,
++        torch.tensor([[[[0.2, 0.1], [0.8, 0.8], [0.1, 0.7]]]]),
++    )
++    assert ordered_visibility is not None
++    torch.testing.assert_close(
++        ordered_visibility, torch.tensor([[[True, False, False]]])
++    )
++    torch.testing.assert_close(keypoints, original)
++
++
++def test_diagonal_sweep_rejects_non_floating_keypoints() -> None:
++    with pytest.raises(TypeError, match="floating-point"):
++        diagonal_sweep_permutation(torch.tensor([[0, 1], [1, 0]]))
++
++
+ class TestClampPixelCoordinate:
+     def test_value_inside_range_is_unchanged(self) -> None:
+         assert clamp_pixel_coordinate(5.0, 10) == 5.0

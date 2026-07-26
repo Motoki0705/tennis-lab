@@ -6,7 +6,7 @@ pin_memory: true
 
 chunk:
   scenes_per_chunk: 1000
-  epochs_per_chunk: 5
-  prefetch_chunks: 3
+  epochs_per_chunk: 20
+  prefetch_chunks: 5
   chunks_dir: data/blcs/chunks
   generation_workers: 16  # parallel scene generation workers (must be >= 1)

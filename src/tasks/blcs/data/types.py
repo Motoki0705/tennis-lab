@@ -122,6 +122,7 @@ class BLCSSceneMeta:
     # Per-scene variation metadata (may be absent in older files)
     physics_config: dict | None = None
     court_config: dict | None = None
+    track_instances: list[dict] | None = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
@@ -140,6 +141,7 @@ class BLCSSceneMeta:
             "num_cameras": self.num_cameras,
             "physics_config": self.physics_config,
             "court_config": self.court_config,
+            "track_instances": self.track_instances or [],
         }
 
     @classmethod
@@ -160,4 +162,5 @@ class BLCSSceneMeta:
             num_cameras=data["num_cameras"],
             physics_config=data["physics_config"],
             court_config=data["court_config"],
+            track_instances=data.get("track_instances", []),
         )

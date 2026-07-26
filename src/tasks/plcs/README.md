@@ -10,6 +10,8 @@
 - **`augmentation.py`**: `PLCSObservationAugmentation`。UVノイズ・時間jitter・可視性dropout等8段のパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
 - **`targets.py`**: `build_coco17_world_targets()`。canonical poseまたはAthletePose3DからCOCO17ワールド座標targetを構築。
+- **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、object観測をscene object IDの昇順で保持したまま、物理trackをlifecycle slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
+- **`tracking_augmentation.py`**: object列を並べ替えず、clean GTを保持したまま観測だけへpose noise/dropout/false-positiveを適用するshape adapter。
 - **`types.py`**: `PLCSBatch`/`PLCSSceneMeta` のバッチ・meta契約。
 
 ### models/
@@ -19,6 +21,7 @@
 - **`plcs_multiview_axial_model.py`**: `PLCSMultiViewAxialModel`。camera軸/time軸交互self-attention(共有readout)。
 - **`plcs_multiview_axial_split_model.py`**: `PLCSMultiViewAxialSplitModel`(issue #518)。rotation/pose trunkを分離。
 - **`plcs_multiview_axial_camtoken_model.py`**: `PLCSMultiViewAxialCamTokenModel`(issue #576)。head別に別camera tokenを読む。
+- **`plcs_track_query_model.py`**: `PLCSTrackQueryModel`。object ID順のcamera pose観測からclip-localな固定query slotで複数playerの位置・rotation・presenceを推定する。
 - **`components/heads.py`**: `PositionHead`/`RotationHead`/`CanonicalPoseHead`。
 - **`discriminators/`**: `PLCSPoseSequenceDiscriminator` と工場関数 `build_plcs_discriminator`。
 
@@ -28,6 +31,7 @@
 - **`losses.py`**: `PLCSLoss`/`PLCSLossConfig`。position/rotation/canonical/角速度をプラガブルなレジストリで合算。
 - **`metrics.py`**: `PLCSMetrics`。メートル換算誤差・角度誤差・閾値内accuracyを集計。
 - **`mcmc.py`**: `LangevinNoiseInjector`(issue #519)。rotation headのflat saddle脱出用SGLDノイズ注入。
+- **`tracking_{matching,losses,metrics,lightning_module}.py`**: clip-level Hungarian matchingによるmulti-person tracking学習。
 
 ### inference/
 - **`predictor.py`**: `PLCSPredictor`。`predict(denormalize=True)` で `position_meters`/`yaw_radians` を返す。
@@ -35,6 +39,7 @@
 ### generate_dataset/
 - **`config.py`**: `prepare_generation_config()`。パス解決とconfig絶対化。
 - **`scene_generator.py`**: `SceneGenerator`。AMASSモーションをコート座標へ変換しマルチカメラ投影してsceneを構築。
+- **`multi_object_scene_generator.py`**: `MultiPersonSceneGenerator`。既存のAMASS/SMPL-H sceneを複数生成し、同一の仮想カメラへ再投影してcanonical multi-person sceneへ合成する。`generation=multi_object` で選択する。
 - **`sampling/motion_sampler.py`**: `MotionSampler`。AMASS/SMPL-Hモーションの重み付きサンプリングとjoint計算。
 - **`io/dataset_io.py` / `io/scene_loader.py`**: シーンのnpy/json書き出し・読み込み。
 - **`utils/parallel_runner.py`**: CPU専用の並列シーン生成ラッパー。
@@ -43,7 +48,7 @@
 - **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
 - **`api/predict.py`**: `predict_scene()`。モデル型に応じてframe/multiview推論を切替。比較描画のcanonical poseは`visualization.canonical_pose_source=gt|prediction`で選択し、既定ではGTを使う。
 - **`contracts.py`**: `PoseRenderScene`。renderer向け最小scene契約。
-- **`rendering/scene_renderer.py`**: `PLCSSceneRenderer`。3D/2D top-downのGT・予測比較アニメーション。3Dは `src.utils.rendering` の共有プリミティブ(テーマ・レイヤ規約・カメラ・移動トレイル・地面影・HUD・ミニマップ)を利用。ボール軌道は持たないためHUDはフレーム時刻のみ。style/視点は `visualization.style` / `visualization.view_3d` で設定。
+- **`rendering/scene_renderer.py`**: `PLCSSceneRenderer`。single/multi-personの3D/2D top-down/入力cameraアニメーションとGT・予測比較を描画する。3Dは `src.utils.rendering` の共有プリミティブを利用。style/視点は `visualization.style` / `visualization.view_3d` で設定。
 - **`adapters/`**: predictor入力構築と学習時qualitative描画用変換。
 - **`orchestrator.py`**: `run_visualization()`。visualize/predictモードを統括。
 
@@ -58,3 +63,23 @@
 
 ### configs/
 - model(frame/multiview/axial系サイズ違い)・data(singleview/multiview/chunked)・loss(canonical段階別)・training(default/GAN/MCMC)・metrics・motion_sources・simulation/camera/paths(生成用)・visualization・run・analysis の各Hydra設定。
+
+## Multi-person tracking
+
+観測座標は `human_kp (B,V,T,P,J,2)` のみで、`P` 軸は全camera/frameでscene object IDの昇順に固定し、欠損・dropout・false positiveがあっても列を並べ替えません。debug用の `detection_gt_index` は観測が実object由来ならその列と同じobject ID、そうでなければ`-1`であり、モデルへは渡しません。bbox・keypoint score/visibilityを数値特徴へ連結せず、`detection_mask (B,V,T,P)` がfalseのpersonはlearned invisible tokenへ置換します。`mask_invisible_observations=true` は不可視tokenをattention keyから除外する対照条件、`false` は`frame_mask` / `view_mask`によるpaddingだけを除外し、不可視tokenを更新可能なmemoryとして使う条件です。欠損joint UVは0にします。出力は `position (B,T,Q,3)`、`rotation (B,T,Q,2)`、`presence_logits (B,T,Q)` です。教師は `target_position`、`target_rotation`、`target_presence`、`target_instance_id` で、inactive rotationはidentity、instance IDは`-1`です。重ならないbirth/death区間を同じtarget columnへ詰めるため、同一queryはdeath後に別instanceへ再利用できます。
+
+14 court UVはannotation schemaのkeypoint ID順を維持し、`court_vis`で不可視点を0化します。object ID順の各person keypointsとcourtを連結し、BLCSと同じ`src/utils/models/embeddings/group_tokens.py`の共有`CourtPlayerGroupEmbedding`により1 object = 1 tokenへ写像します。したがって空間self-attention入力は `(B*T, Q + V*P, D)` です。M-RoPE `(time,camera,role)` のroleはquery=0、court-player group=1です。
+
+multi-object generatorは1024-frame global timelineに3〜10個のAMASS/SMPL-H source subclipを配置し、query再利用gapを含む同時slot占有数を4以下に保ちます。学習時は512〜1024 frame・3〜5 viewをsampleします。chunked設定は`scenes_per_chunk=1000`、`epochs_per_chunk=20`、`prefetch_chunks=5`、`generation_workers=16`、DataLoaderの`num_workers=4`です。
+
+```bash
+# 固定train/val/testデータを事前生成
+.venv/bin/python -m src.tasks.plcs.scripts.generate_dataset \
+  generation=multi_object run.output_dir=data/plcs/multi_object
+
+# 事前生成データで学習
+.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking
+
+# trainだけon-the-fly chunk生成（val/testは上記の固定データ）
+.venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_tracking_chunked
+```

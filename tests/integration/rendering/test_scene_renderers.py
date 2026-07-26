@@ -82,6 +82,20 @@ def _blcs_scene(num_frames: int = _NUM_FRAMES) -> dict[str, Any]:
     return {"ball_pos_world": positions, "meta": meta, "num_cameras": 0, "cameras": []}
 
 
+def _multi_ball_blcs_scene(num_frames: int = _NUM_FRAMES) -> dict[str, Any]:
+    scene = _blcs_scene(num_frames)
+    first = scene["ball_pos_world"]
+    second = first.copy()
+    second[:, 0] += 1.5
+    scene["ball_pos_world"] = np.stack([first, second], axis=1)
+    scene["num_balls"] = 2
+    scene["meta"]["shots"] = [
+        {"ball_index": 0, "shots": [{"shot_index": 0, "t_bounce1": 2}]},
+        {"ball_index": 1, "shots": [{"shot_index": 0, "t_bounce1": 3}]},
+    ]
+    return scene
+
+
 def _plcs_scene(num_frames: int = _NUM_FRAMES) -> PoseRenderScene:
     position: np.ndarray = np.zeros((num_frames, 3), dtype=np.float32)
     position[:, 0] = np.linspace(-0.5, 0.5, num_frames)
@@ -126,6 +140,21 @@ class TestBLCSSceneRenderer:
         assert len(fig.axes) == 1
         assert ax.get_title().startswith("Frame")
         assert _hud_texts(ax) == []
+
+    def test_multi_ball_3d_animation(self, tmp_path: Path) -> None:
+        renderer = BLCSSceneRenderer(style=SceneStyleConfig(theme="dark"))
+
+        anim = renderer.create_animation(_multi_ball_blcs_scene(), view="3d", fps=_FPS)
+
+        assert anim is not None
+        fig, ax = _save_and_get_axes(anim, tmp_path)
+        _assert_rich_3d_axes(ax)
+        assert len(fig.axes) == 2
+        assert ax.get_legend() is not None
+        assert {text.get_text() for text in ax.get_legend().texts} == {
+            "Ball 1",
+            "Ball 2",
+        }
 
     def test_dark_comparison_animation(self, tmp_path: Path) -> None:
         scene = _blcs_scene()

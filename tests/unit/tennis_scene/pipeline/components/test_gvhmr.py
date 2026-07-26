@@ -66,10 +66,10 @@ class TestGVHMRConfig:
         config = GVHMRConfig(gvhmr_checkpoint="ckpt/gvhmr/gvhmr_siga24_release.ckpt")
         assert str(config.yolo_checkpoint).startswith("ckpt/")
         assert str(config.dino_checkpoint).startswith("ckpt/")
-        assert config.detector == "yolo"
+        assert config.detector == "dino"
         assert str(config.vitpose_checkpoint).startswith("ckpt/")
         assert str(config.hmr2_checkpoint).startswith("ckpt/")
-        assert config.track_selection == "interactive"
+        assert config.track_selection == "auto"
 
     def test_rejects_unknown_detector(self):
         with pytest.raises(ValueError, match="detector must be"):

@@ -32,7 +32,7 @@ class BLCSDatasetWriter(BaseDatasetWriter):
     """Writes BLCS scene data to disk as npy + json directories."""
     scenes_dir: Path
 
-    def __init__(self, output_dir: str) -> None:
+    def __init__(self, output_dir: str | Path) -> None:
         super().__init__(output_dir)
 
     def _build_scene_meta(self, scene: BLCSSceneData) -> BLCSSceneMeta:
@@ -51,6 +51,7 @@ class BLCSDatasetWriter(BaseDatasetWriter):
             "num_cameras": len(scene.cameras),
             "physics_config": scene.physics_config_dict,
             "court_config": scene.court_config_dict,
+            "track_instances": scene.track_instances,
         }
 
         return BLCSSceneMeta(**scene_meta_dict)
@@ -83,7 +84,7 @@ class BLCSDatasetWriter(BaseDatasetWriter):
     def save_scene(self, scene: BLCSSceneData) -> Path:
         """Save a BLCS scene (rally) as a directory with npy + json files."""
         dirname = scene.scene_id
-        scene_path = self.scenes_dir / dirname
+        scene_path: Path = self.scenes_dir / dirname
         scene_path.mkdir(parents=True, exist_ok=True)
         scene_meta = self._build_scene_meta(scene)
 
@@ -92,8 +93,11 @@ class BLCSDatasetWriter(BaseDatasetWriter):
             "ball_pos_norm": scene.ball_pos_norm.numpy(),
             "ball_vel_world": scene.ball_vel_world.numpy(),
         }
+        if scene.ball_present is not None:
+            arrays["ball_present"] = scene.ball_present.cpu().numpy()
         scalars: dict[str, Any] = {
             "num_cameras": len(scene.cameras),
+            "num_balls": scene.num_balls,
             "rally_length": scene.rally_length,
             "end_reason": scene.end_reason,
         }
@@ -161,7 +165,7 @@ def load_scene(filepath: str | Path) -> dict:
         }
         cameras.append(cam_data)
 
-    return {
+    result = {
         "meta": scene_meta,
         "ball_pos_world": np.load(scene_dir / "ball_pos_world.npy"),
         "ball_pos_norm": np.load(scene_dir / "ball_pos_norm.npy"),
@@ -169,3 +173,8 @@ def load_scene(filepath: str | Path) -> dict:
         "num_cameras": num_cameras,
         "cameras": cameras,
     }
+    ball_present_path = scene_dir / "ball_present.npy"
+    if ball_present_path.exists():
+        result["ball_present"] = np.load(ball_present_path)
+    result["num_balls"] = int(scalars.get("num_balls", 1))
+    return result

@@ -81,11 +81,11 @@ def test_setup_fit_builds_train_and_val(tmp_path: Path) -> None:
     assert dm.train_dataset is not dm.val_dataset
 
 
-def test_setup_fit_val_falls_back_to_train(tmp_path: Path) -> None:
+def test_setup_fit_missing_val_split_raises(tmp_path: Path) -> None:
     root = _make_scene_root(tmp_path, splits=("train",))  # no val.txt
     dm = _DM({"data": {"scene_dir": str(root)}})
-    dm.setup("fit")
-    assert dm.val_dataset is dm.train_dataset
+    with pytest.raises(RuntimeError, match="Missing required split file"):
+        dm.setup("fit")
 
 
 def test_setup_test_missing_split_raises(tmp_path: Path) -> None:

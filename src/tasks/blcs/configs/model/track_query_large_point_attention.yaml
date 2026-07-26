@@ -1,0 +1,12 @@
+defaults:
+  - track_query_large
+  - _self_
+
+observation_fusion: point_attention
+point_fusion:
+  token_dim: 32
+  num_heads: 4
+  num_layers: 1
+  ffn_dim: 64
+  rope_dim: 8
+  dropout: 0.1

@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-643-648-multi-object-tracking/outputs/ball_tracking/issue-648-baseline/logs/version_0/checkpoints
