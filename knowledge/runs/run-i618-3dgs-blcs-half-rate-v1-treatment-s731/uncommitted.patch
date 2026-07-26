@@ -1,0 +1,220 @@
+diff --git a/knowledge/nodes/run-i621-court-kp512-resume-r4.md b/knowledge/nodes/run-i621-court-kp512-resume-r4.md
+index 3def6c0f..39c100d5 100644
+--- a/knowledge/nodes/run-i621-court-kp512-resume-r4.md
++++ b/knowledge/nodes/run-i621-court-kp512-resume-r4.md
+@@ -27,7 +27,7 @@ artifacts:
+   predictions: knowledge/runs/run-i621-court-kp512-resume-r4/pred_test.npz
+   log: .training_queue/logs/1783481398399240801_20792_i621_court_kp512_resume_r4.log
+   output_dir: outputs/court_detection/kp/logs/version_1
+-  checkpoint: ckpt/court_detection/run-i621-court-kp512-resume-r4-epoch21.ckpt
++  checkpoint: ckpt/court_detection/kp/run-i621-court-kp512-resume-r4-epoch21.ckpt
+   curves: knowledge/runs/run-i621-court-kp512-resume-r4/curves.png
+   tb_logdir: outputs/court_detection/kp/logs/version_1
+ parents: []
+@@ -45,7 +45,7 @@ tags:
+ 7/5 に途中停止していた court kp512 学習（best ep17, val/mean_dist 13.45px）を
+ `version_0/checkpoints/last.ckpt` (ep19) から再開したところ、**2 エポックで 13.45 → 2.23px（ep21）** に急改善。
+ ep22-27 は 2.3-2.6px で頭打ちのため意図的に打ち切り。best ckpt (ep21) を
+-`ckpt/court_detection/run-i621-court-kp512-resume-r4-epoch21.ckpt` にデプロイし、pipeline court_kp の既定を
++`ckpt/court_detection/kp/run-i621-court-kp512-resume-r4-epoch21.ckpt` にデプロイし、pipeline court_kp の既定を
+ `mode: model` に切替（PR #623）。
+ 
+ ### アーキテクチャ詳細
+diff --git a/src/tasks/ball_detection/configs/run/train.yaml b/src/tasks/ball_detection/configs/run/train.yaml
+index c9286b00..eb822402 100644
+--- a/src/tasks/ball_detection/configs/run/train.yaml
++++ b/src/tasks/ball_detection/configs/run/train.yaml
+@@ -8,3 +8,6 @@ resume: null
+ init_weights: null
+ fast_dev_run: false
+ dry_run: false
++# Final-test evaluation is normally retained for backwards compatibility.
++# Controlled experiments set this false while tuning on validation data.
++test_after_fit: true
+diff --git a/src/tasks/ball_detection/data/__init__.py b/src/tasks/ball_detection/data/__init__.py
+index 89915904..c93d12bf 100644
+--- a/src/tasks/ball_detection/data/__init__.py
++++ b/src/tasks/ball_detection/data/__init__.py
+@@ -8,6 +8,9 @@ from src.tasks.ball_detection.data.components.augmentation import (
+     BallDetectionAugmentation,
+ )
+ from src.tasks.ball_detection.data.dataset import BallDetectionDataset
++from src.tasks.ball_detection.data.mixed_tracknet_datamodule import (
++    MixedTrackNetDataModule,
++)
+ from src.tasks.ball_detection.data.staged_datamodule import StagedBallDataModule
+ from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
+ from src.tasks.ball_detection.data.types import (
+@@ -28,6 +31,7 @@ def build_ball_detection_datamodule(config: Any) -> pl.LightningDataModule:
+     source = str(config.get("data", {}).get("source", "tracknet")).lower()
+     datamodule_types: dict[str, type[pl.LightningDataModule]] = {
+         "tracknet": TrackNetDataModule,
++        "mixed_tracknet": MixedTrackNetDataModule,
+         "youtube": YouTubeDataModule,
+         "web": WebBallDataModule,
+         "staged": StagedBallDataModule,
+@@ -49,6 +53,7 @@ __all__ = [
+     "BallDetectionSample",
+     "ClipWindow",
+     "FrameLabel",
++    "MixedTrackNetDataModule",
+     "StagedBallDataModule",
+     "TrackNetDataModule",
+     "WebBallDataModule",
+diff --git a/src/tasks/base/training/runner.py b/src/tasks/base/training/runner.py
+index c6cb9ad0..871a3b7a 100644
+--- a/src/tasks/base/training/runner.py
++++ b/src/tasks/base/training/runner.py
+@@ -227,7 +227,7 @@ class BaseTrainingRunner:
+ 
+     def skip_test(self, config: Any) -> bool:
+         """Check if test phase should be skipped."""
+-        return bool(config.run.fast_dev_run)
++        return bool(config.run.fast_dev_run) or not bool(config.run.test_after_fit)
+ 
+     def save_config(self, config: Any, output_dir: Path) -> None:
+         """Save resolved config to output directory."""
+diff --git a/src/tennis_scene/README.md b/src/tennis_scene/README.md
+index 981c7903..5f087752 100644
+--- a/src/tennis_scene/README.md
++++ b/src/tennis_scene/README.md
+@@ -14,6 +14,22 @@
+ - **`SceneResult`**: パイプライン共有スキーマ(`court_kp`/`player_position`/`player_yaw`/`smpl_*`/`ball_*`等)。
+ - **`save()`/`load()`**: `.npz`+`*.metadata.json`サイドカーで保存、pickle混入legacy形式は警告付きフォールバック。
+ 
++### scene_contract.py
++- **`SceneContract`**: 外部3D scene providerをrenderer/BLCSから分離するversioned JSON契約。undistort/crop後のOpenCV camera、content-addressed artifact、受理済み`T_scene_from_court`だけを保持し、未知version・反射・identity fallback・不整合inverseを拒否する。
++- **`load_scene_contract()` / `write_scene_contract()`**: strict loadと、既存fileを既定で上書きしないatomic publish。
++
++### provider_bundle.py / provider_export.py
++- **`SceneProviderBundle`**: alignment前のcamera、正規化済みpoint cloud、undistort/crop済みRGB、source artifact hashを運ぶstrictなfile contract。bundle内fileを検証し、既存manifestを上書きしない。
++- **`export_scene_provider_bundle()`**: 明示pathとfrozen hashからprovider bundleをatomic publishするone-way adapter。COLMAP binary inventoryを独立検証し、pycolmap幾何は`provider_geometry_bridge.py`を別Python subprocessで実行するため、main processは外部repositoryのmoduleやdirectory layoutへ依存しない。
++
++### alignment/
++- **`fit_view_detection.py`**: provider cameraをgroup単位でfit/holdoutへ分離してから、fit画像だけに14-keypoint detectorと固定homography/line-evidence gateを適用する。raw peak/keypoint、全rejection理由、preprocess/provider/code hashをstrictなfingerprinted JSONへatomic publishし、holdout inferenceを明示的に禁止する。
++- **`ground_plane.py` / `ground_line_map.py`**: fit cameraのup/heightとprovider point cloudからground planeをdeterministic RANSACで推定し、line-model pixel rayを同一planeへ交差させる。camera rangeによるproximity weight、per-view max reducer、strict fingerprinted NPZ/preview/manifestを提供する。
++- **`court_template_fit.py`**: ground-line rasterへITF metric court templateを当て、隣接courtを混合せず別candidateとしてproper-handed Sim(3)を推定する。
++- **`line_inference.py` / `line_evidence_collection.py`**: verified line checkpoint/backbone、output-gridからoriginal pixel centreへの変換、fit/holdout共通のray-plane evidence収集を提供する。
++- **`court_line_acceptance.py`**: fixed transformのmetric line residual、template coverage、subset stability、camera height、point-cloud supportとstrict calibration/holdout artifactを提供する。
++- **`acceptance_decision.py`**: machine holdout artifactを改変せず、明示的なuser overrideを失敗gate・根拠source・artifact hash付きのimmutable decisionとして公開する。
++
+ ### pipeline/
+ - **`orchestrator.py`**: `TennisSceneOrchestrator`。全stageの構築・同期検証・実行・`SceneResult`組み立てを統括。
+ - **`dependency_graph.py`**: `PipelineDependencyGraph`。stage依存(`PLCS<-COURT_KP,GVHMR`等)の解決・循環検出。
+@@ -26,6 +42,13 @@
+ 
+ ### rendering/
+ - **`tennis_scene_renderer.py`**: `TennisSceneRenderer`。SMPL/skeleton表示によるコート上3D可視化・動画保存。3D表示範囲はコート座標系に固定する。カメラ・テーマ・レイヤ規約・HUD・ミニマップなどの描画プリミティブは `src.utils.rendering`(`camera_view`/`theme`/`layers`/`hud`/`minimap`/`effects`)を直接利用し、ここには `SceneResult` 固有の変換(SMPL→コート座標、HUD行の選択、ミニマップ配列抽出)だけを持つ。
++- **`renderer_port.py`**: captured `SceneCamera`とscene-space sphereを受け、RGB、camera-Z scene/sphere depth、alpha/coverage、投影中心・見かけ径・visible fraction・4状態occlusion evidenceを返すgsplat非依存typed port。
++- **`cpu_fake_renderer.py`**: OpenCV ray/sphere intersectionとsupersamplingを使い、static scene depthとのocclusionを同一sample集合から決めるdeterministic CPU reference adapter。小球を包含する保守的ROIだけを評価し、full-frame referenceとのpixel一致をtestする。
++- **`scene_frame_port.py` / `gsplat_subprocess_adapter.py`**: captured cameraのstatic RGB/OpenCV camera-Z depth/scene alphaを運ぶtyped portと、B00 checkpointをverified JSON/NPZ file boundary越しに読むadapter。main processはgsplat/provider applicationをimportしない。
++
++### synthetic_dataset/
++- **`single_frame_pilot.py`**: `BLCSSceneData`のcourt-metre trajectoryをaccepted `SceneContract`のSim(3)で一度だけsceneへ変換し、`RendererPort`からpositive/empty-negative RGBとcoverage/visibilityを生成する。TrackNet互換`Label.csv`、render evidence、train-only split、provenance/hash manifestをfingerprinted directoryへatomic publishする。numeric `BLCSDatasetWriter`とは独立。
++- **`full_scale_dataset.py`**: 複数の独立BLCS trajectoryと複数captured camera groupから固定cameraの連続clipを生成する。TrackNet label、frame-level geometry/occlusion evidence、trajectory/camera-group split、diversity集計、全payload hashをtraining-only fingerprinted datasetとしてatomic publishする。
+ 
+ ### utils/
+ - **`transforms.py`**: `src.utils.geometry` からのthin re-export(このパイプライン内からは未使用)。
+@@ -36,11 +59,30 @@
+ - **`clip_studio.py`**: クリップスタジオGUIの起動エントリポイント。
+ - **`export_clips.py`**: プロジェクトJSONからのヘッドレスクリップエクスポート。
+ - **`generate_dataset.py`**: 構造化データセットへの増分疑似アノテーション生成。
++- **`export_scene_provider.py`**: read-only 3DGS/COLMAP artifactからpre-alignment provider bundleを生成・検証する。
++- **`infer_fit_view_courts.py`**: providerのfit groupだけにcourt detectorを実行し、alignment入力となるimmutable detection artifactを生成する。
++- **`infer_ground_line_map.py`**: verified DINOv3 line checkpointをfit groupだけへ適用し、ground plane上へproximity-weighted court-line evidenceを集約する。checkpoint内のColab pathは同名・固定hashのlocal backboneだけへ明示overrideする。
++- **`fit_ground_courts.py`**: fit-only ground-line mapから複数court candidateを推定し、proximity-weighted score最大のphysical courtをholdout未評価candidateとして公開する。
++- **`calibrate_court_alignment.py`**: fit-only residual、physical-cluster local subset refit、point supportからholdout gateを先にimmutable化する。
++- **`validate_court_alignment_holdout.py`**: frozen transform/gateで隔離camera groupを一度だけ評価し、全gate pass時だけaccepted `SceneContract`を公開する。
++- **`publish_scene_contract_override.py`**: rejected holdoutをpassへ改変せず、user-authorized decision manifestを介して採用済み`SceneContract`を公開する。
++- **`render_b00_static_smoke.py`**: frozen B00 checkpoint/backendをfile/subprocess adapterでrenderし、captured cameraのRGB/depth/alpha artifactをatomic publishする。
++- **`publish_b00_ball_pilot.py`**: fixed-seed BLCS rallyから受理済みB00 cameraへ0.0335 m green sphereを合成し、positive/negative TrackNet single-frame pilotを公開・strict reloadする。
++- **`publish_b00_full_scale_dataset.py`**: independently seeded BLCS rallyを4つのB00 camera groupへ合成し、full-scale training-only datasetを公開後、既存`TrackNetDataModule`/DataLoaderをnarrow consumer gateとしてsmokeする。
+ 
+ ### configs/
+ - **`pipeline.yaml`**: stage別(`court_kp`/`gvhmr`/`player_association`/`ball_detection`/`plcs`/`blcs`)の実行設定。
+ - **`visualization.yaml`**: 可視化スタイル・出力設定。`style`(テーマ・影・トレイル・HUD・ミニマップ)と `camera`(プリセット・mode・keyframes)を含む。
+ - **`clip_studio.yaml` / `export_clips.yaml` / `generate_dataset.yaml`**: クリップ編集・エクスポート・疑似アノテーション生成の設定。
++- **`export_scene_provider.yaml`**: B00 providerの明示input path、source hash、geometry runtime、491-camera/K/normalization acceptance hash。
++- **`infer_fit_view_courts.yaml`**: B00 fit/holdout group、court checkpoint hash、detector preprocess、homography/line-evidence gateの固定値。
++- **`infer_ground_line_map.yaml`**: B00 ground-plane RANSAC、line/backbone hash、fit/holdout split、ray-plane/range weight、ground rasterの固定値。
++- **`fit_ground_courts.yaml`**: metric court template、multi-instance separation、scale/orientation family、deterministic optimizerの固定値。
++- **`calibrate_court_alignment.yaml`**: fit-only local stability、metric residual/support gate、holdout gateの固定値。
++- **`validate_court_alignment_holdout.yaml`**: immutable calibration identity、one-shot holdout split、accepted contract出力先。
++- **`publish_scene_contract_override.yaml`**: user decision source hash、rejected holdout/calibration identity、失敗gate、decision/contract出力先。
++- **`render_b00_static_smoke.yaml` / `publish_b00_ball_pilot.yaml`**: B00 runtime/static-frame hashとfixed BLCS seed/frame、球半径、supersampling、fingerprinted pilot出力を固定する。
++- **`publish_b00_full_scale_dataset.yaml`**: 4つのverified B00 RGB/depth artifact、16 trajectory seed、64-frame clip、物理球半径、supersampling、train-only full-scale出力を固定する。
+ 
+ ## 座標系メモ
+ 
+diff --git a/src/tennis_scene/configs/pipeline.yaml b/src/tennis_scene/configs/pipeline.yaml
+index 8340f38c..3be5bfcc 100644
+--- a/src/tennis_scene/configs/pipeline.yaml
++++ b/src/tennis_scene/configs/pipeline.yaml
+@@ -11,7 +11,7 @@ output_name: null
+ device: cuda
+ 
+ court_kp:
+-  checkpoint: ckpt/court_detection/run-i621-court-kp512-resume-r4-epoch21.ckpt
++  checkpoint: ckpt/court_detection/kp/run-i621-court-kp512-resume-r4-epoch21.ckpt
+   frame_index: 0  # Frame shown in manual_ui mode, then repeated across T
+   # issue #621: model mode is the default since the kp512-resume ckpt +
+   # homography postprocess beat manual clicks on every downstream metric
+diff --git a/tests/unit/tennis_scene/rendering/conftest.py b/tests/unit/tennis_scene/rendering/conftest.py
+index e81181f9..db2652ef 100644
+--- a/tests/unit/tennis_scene/rendering/conftest.py
++++ b/tests/unit/tennis_scene/rendering/conftest.py
+@@ -6,10 +6,54 @@ import numpy as np
+ import pytest
+ 
+ from src.tennis_scene.io import SceneResult
++from src.tennis_scene.scene_contract import SceneCamera
+ 
+ SMPL_NUM_VERTICES = 6890
+ 
+ 
++@pytest.fixture
++def scene_camera() -> SceneCamera:
++    """Small identity-pose OpenCV camera for renderer-port tests."""
++    return SceneCamera(
++        camera_id="camera-0",
++        source_camera_id="source-0",
++        image_uri="images/camera-0.png",
++        source_frame_index=0,
++        group_id=0,
++        width=64,
++        height=48,
++        intrinsics=(
++            50.0,
++            0.0,
++            31.5,
++            0.0,
++            50.0,
++            23.5,
++            0.0,
++            0.0,
++            1.0,
++        ),
++        camera_to_scene=(
++            1.0,
++            0.0,
++            0.0,
++            0.0,
++            0.0,
++            1.0,
++            0.0,
++            0.0,
++            0.0,
++            0.0,
++            1.0,
++            0.0,
++            0.0,
++            0.0,
++            0.0,
++            1.0,
++        ),
++    )
++
++
+ @pytest.fixture
+ def tiny_scene() -> SceneResult:
+     """Minimal but schema-complete scene: 1 player, 5 frames, one ball bounce.

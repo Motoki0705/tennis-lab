@@ -1,0 +1,38 @@
+defaults:
+  - _self_
+
+artifact_id: b00-fit-court-detections-v1
+provider_bundle: data/tennis/3dgs_scenes/b00-default-v1
+checkpoint: ckpt/court_detection/kp/run-i621-court-kp512-resume-r4-epoch21.ckpt
+checkpoint_sha256: 501e651599389a8a6eda05c4bb6d2e265c23d276a76ced90692bb2f5c8e4d77f
+output_dir: data/tennis/3dgs_alignment/b00-default-v1
+device: cuda
+seed: 20260725
+expected_short_side: 512
+subpixel_refine: true
+verify_provider_files: true
+
+holdout_group_ids: [2, 6, 10, 14]
+min_peak_score: 0.30
+min_confident_keypoints: 12
+homography:
+  ransac_reproj_threshold_normalized: 0.012
+  min_inliers: 12
+  min_template_x_span_ratio: 0.5
+  min_template_y_span_ratio: 0.7
+  max_inlier_rms_normalized: 0.006
+  min_visible_fraction: 0.98
+  min_court_area_ratio: 0.015
+  max_court_area_ratio: 0.95
+  min_line_edge_support: 0.55
+  line_distance_tolerance_px: 3.0
+  line_evidence_max_side: 900
+  require_ground_view: true
+  max_opposite_edge_ratio: 0.95
+
+hydra:
+  run:
+    dir: outputs/tennis_scene/fit_view_court_inference/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

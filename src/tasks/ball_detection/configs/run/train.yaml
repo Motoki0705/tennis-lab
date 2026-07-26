@@ -8,3 +8,6 @@ resume: null
 init_weights: null
 fast_dev_run: false
 dry_run: false
+# Final-test evaluation is normally retained for backwards compatibility.
+# Controlled experiments set this false while tuning on validation data.
+test_after_fit: true
