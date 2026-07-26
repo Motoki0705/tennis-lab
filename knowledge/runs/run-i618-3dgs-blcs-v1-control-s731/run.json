@@ -1,0 +1,14 @@
+{
+  "run_id": "1784996113568780634_2936440_i618_3dgs_blcs_v1_control_s731",
+  "name": "i618_3dgs_blcs_v1_control_s731",
+  "command": ".venv/bin/python -m src.tasks.ball_detection.scripts.train --config-name train_3dgs_blcs_v1 data.synthetic_per_batch=0 run.output_dir=outputs/ball_detection/3dgs_blcs_paired_v1/control/seed_731",
+  "provider": "codex",
+  "session": "019f984c-8bc1-7041-8e1d-362a5b11daa2",
+  "issue": "618",
+  "commit": "ac9e640903a6dfaecb65fc980f5dcf408bbcd589",
+  "branch": "main",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-07-26T01:15:13+09:00"
+}

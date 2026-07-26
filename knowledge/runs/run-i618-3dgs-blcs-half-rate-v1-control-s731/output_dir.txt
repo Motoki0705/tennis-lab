@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/ball_detection/3dgs_blcs_half_rate_v1/control/seed_731/logs/version_0/checkpoints

@@ -227,7 +227,7 @@ class BaseTrainingRunner:
 
     def skip_test(self, config: Any) -> bool:
         """Check if test phase should be skipped."""
-        return bool(config.run.fast_dev_run)
+        return bool(config.run.fast_dev_run) or not bool(config.run.test_after_fit)
 
     def save_config(self, config: Any, output_dir: Path) -> None:
         """Save resolved config to output directory."""

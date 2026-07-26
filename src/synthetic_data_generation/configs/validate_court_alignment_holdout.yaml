@@ -1,0 +1,25 @@
+artifact_id: b00-court-alignment-holdout-v1
+alignment_id: b00-ground-line-alignment-v1
+scene_id: b00-default-v1
+selected_symmetry: positive-y-positive-plane-u
+
+provider_bundle: data/tennis/3dgs_scenes/b00-default-v1
+ground_line_artifact: data/tennis/3dgs_alignment/b00-default-v1/ground_line_maps/b00-ground-line-map-v1-43a11bfbcddf6a2c
+ground_line_fingerprint: 43a11bfbcddf6a2ce6501ae425e270cfb2f136e051693439789d52641493aef4
+calibration_artifact: data/tennis/3dgs_alignment/b00-default-v1/calibration/b00-court-alignment-calibration-v2-c953326ffb0825fb.json
+calibration_file_sha256: 7ccc3c161663b60a483a3be13c8939bd698054303a6d5e8a8aa8c6072530fc84
+calibration_fingerprint: c953326ffb0825fb222a7b2fb9637e3bbd7384ab2cb2bddbce1c90c81f221016
+
+line_checkpoint: ckpt/court_detection/line/court-detection-epoch19.ckpt
+line_checkpoint_sha256: 81914bc58ba08824061b4509f54fcb2637a99b5c505cd5c28780cd4c1e88bfd4
+backbone_repository: third_party/dinov3
+backbone_checkpoint: third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth
+backbone_checkpoint_sha256: 73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c
+expected_short_side: 256
+device: cuda
+seed: 20260725
+verify_provider_files: true
+holdout_group_ids: [2, 6, 10, 14]
+
+output_dir: data/tennis/3dgs_alignment/b00-default-v1/holdout_validation
+scene_contract_path: data/tennis/3dgs_scenes/b00-default-v1/scene-contract-ground-line-v1.json

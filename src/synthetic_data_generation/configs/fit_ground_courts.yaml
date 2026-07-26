@@ -1,0 +1,21 @@
+artifact_id: b00-ground-court-geometry-v1
+ground_line_artifact: data/tennis/3dgs_alignment/b00-default-v1/ground_line_maps/b00-ground-line-map-v1-43a11bfbcddf6a2c
+output_dir: data/tennis/3dgs_alignment/b00-default-v1/court_geometry
+
+fit:
+  seed: 20260725
+  instance_count: 2
+  blur_sigma_cells: 2.0
+  samples_per_metre: 6.0
+  min_scale_scene_per_metre: 0.055
+  max_scale_scene_per_metre: 0.085
+  orientation_min_radians: -1.5707963267948966
+  orientation_max_radians: 1.5707963267948966
+  family_orientation_tolerance_radians: 0.12
+  family_scale_relative_tolerance: 0.15
+  min_center_separation_metres: 12.0
+  separation_penalty: 100.0
+  optimizer_max_iterations: 180
+  optimizer_population_size: 20
+  optimizer_tolerance: 1.0e-8
+  min_template_score: 0.2

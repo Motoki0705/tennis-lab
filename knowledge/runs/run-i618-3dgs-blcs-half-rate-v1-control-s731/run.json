@@ -1,0 +1,14 @@
+{
+  "run_id": "1785010253167130980_2991586_i618_3dgs_blcs_half_rate_v1_control_s731",
+  "name": "i618_3dgs_blcs_half_rate_v1_control_s731",
+  "command": ".venv/bin/python -m src.tasks.ball_detection.scripts.train --config-name train_3dgs_blcs_v1 data.synthetic_batch_period=2 data.synthetic_per_batch=0 run.output_dir=outputs/ball_detection/3dgs_blcs_half_rate_v1/control/seed_731",
+  "provider": "codex",
+  "session": "019f984c-8bc1-7041-8e1d-362a5b11daa2",
+  "issue": "618",
+  "commit": "ac9e640903a6dfaecb65fc980f5dcf408bbcd589",
+  "branch": "main",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-07-26T05:10:53+09:00"
+}
