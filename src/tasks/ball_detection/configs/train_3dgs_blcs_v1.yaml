@@ -1,0 +1,42 @@
+defaults:
+  - model: conv_next_unet
+  - data: 3dgs_blcs_mixed
+  - loss: default
+  - metrics: default
+  - training: default
+  - run: train
+  - _self_
+
+model:
+  nms_kernel: 3
+
+metrics:
+  nms_kernel: 3
+
+training:
+  trainer:
+    max_epochs: 8
+  steps_per_epoch: 655
+  learning_rate: 1.0e-5
+  warmup_steps: 200
+  checkpoint:
+    filename: "3dgs-blcs-{epoch:02d}"
+    monitor: val/f1
+    mode: max
+    save_top_k: 1
+    save_last: true
+  early_stopping:
+    enabled: false
+
+run:
+  output_dir: outputs/ball_detection/3dgs_blcs_paired_v1/treatment/seed_${run.seed}
+  seed: 731
+  init_weights: ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
+  test_after_fit: false
+
+hydra:
+  run:
+    dir: ${run.output_dir}
+  output_subdir: null
+  job:
+    chdir: false

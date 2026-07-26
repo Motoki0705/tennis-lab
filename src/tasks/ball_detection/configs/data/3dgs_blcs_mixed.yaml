@@ -1,0 +1,31 @@
+defaults:
+  - augmentation: default
+  - _self_
+
+source: mixed_tracknet
+data_dir: data/tennis/tracknet
+
+split:
+  train_file: src/tasks/ball_detection/configs/data/splits/train.txt
+  val_file: src/tasks/ball_detection/configs/data/splits/val.txt
+  test_file: src/tasks/ball_detection/configs/data/splits/test.txt
+
+synthetic:
+  data_dir: data/tennis/3dgs_synthetic/b00-default-v1/full-scale-v1/5d108d8c9cc2e27224a4d294095b01c6f1de702e634367eafe0aef2771412c9f
+  split:
+    train_file: data/tennis/3dgs_synthetic/b00-default-v1/full-scale-v1/5d108d8c9cc2e27224a4d294095b01c6f1de702e634367eafe0aef2771412c9f/splits/train.txt
+  sample_stride: 4
+
+batch_size: 6
+synthetic_per_batch: 1
+synthetic_batch_period: 1
+steps_per_epoch: 655
+sampling_seed: ${run.seed}
+num_workers: 2
+pin_memory: true
+sample_stride: 4
+
+image_size: [288, 512]
+heatmap_size: [72, 128]
+sigma_ratio: 0.012
+max_instances: 16

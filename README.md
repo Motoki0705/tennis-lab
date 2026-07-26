@@ -89,6 +89,7 @@
 - BLCS: 2Dボール位置 → コート上3Dボール軌道（`src/tasks/blcs`）
 - GVHMR: 画像列 -> 2Dスケルトン + SMPL (`third_party/GVHMR`)
 - 統合: 上記をまとめて1本のパイプラインとして回す (`src/tennis_scene/README.md`)
+- 合成データ生成: 再構成済み3D sceneへ物理軌道を合成して学習データを公開する (`src/synthetic_data_generation/README.md`)
 
 ### 典型データフロー
 
