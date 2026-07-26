@@ -21,6 +21,7 @@ from src.tasks.plcs.models.plcs_multiview_axial_split_model import (
     PLCSMultiViewAxialSplitModel,
 )
 from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
+from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -40,16 +41,19 @@ def build_plcs_model(config: DictConfig) -> nn.Module:
         return PLCSMultiViewAxialSplitModel.from_config(config)
     if model_name == "plcs_multiview_axial_camtoken":
         return PLCSMultiViewAxialCamTokenModel.from_config(config)
+    if model_name == "plcs_track_query":
+        return PLCSTrackQueryModel(model_cfg)
     raise ValueError(
         "Unknown PLCS model.name="
         f"'{model_name}'. Supported: ['plcs', 'plcs_multiview', "
         "'plcs_multiview_axial', 'plcs_multiview_axial_split', "
-        "'plcs_multiview_axial_camtoken']"
+        "'plcs_multiview_axial_camtoken', 'plcs_track_query']"
     )
 
 
 __all__ = [
     "PLCSModel",
+    "PLCSTrackQueryModel",
     "build_plcs_discriminator",
     "build_plcs_model",
     "PLCSMultiViewModel",

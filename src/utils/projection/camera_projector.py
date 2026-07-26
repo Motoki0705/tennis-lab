@@ -99,6 +99,23 @@ def project_points(cam: Camera, xyz: Tensor) -> tuple[Tensor, Tensor]:
     return uv, mask
 
 
+def camera_from_mapping(params: _CameraConfigMapping) -> Camera:
+    """Reconstruct a :class:`Camera` from serialized scene parameters."""
+    required = ("C", "R", "f", "cx", "cy", "w", "h")
+    missing = [key for key in required if params.get(key, None) is None]
+    if missing:
+        raise KeyError(f"Serialized camera parameters are missing: {missing}")
+    return Camera(
+        C=torch.as_tensor(params.get("C"), dtype=torch.float32),
+        R=torch.as_tensor(params.get("R"), dtype=torch.float32),
+        f=float(params.get("f")),
+        cx=float(params.get("cx")),
+        cy=float(params.get("cy")),
+        w=int(params.get("w")),
+        h=int(params.get("h")),
+    )
+
+
 FIXED_LAYOUT = "fixed"
 BROADCAST_LAYOUT = "broadcast"
 SUPPORTED_LAYOUTS = (FIXED_LAYOUT, BROADCAST_LAYOUT)

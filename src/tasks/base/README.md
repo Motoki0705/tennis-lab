@@ -15,6 +15,8 @@
 - **`chunk_manager.py`**: `ChunkManager`。chunk生成スレッドのライフサイクル管理。
 - **`dataset_writer.py`**: `BaseDatasetWriter`。npy+jsonシーン書き出しの共通実装。
 - **`augmentation.py`**: `BaseObservationAugmentation`。augmentation config解析・dispatchガードの共通部分。
+- **`canonical_tracking.py`**: tracking sceneのclip/view選択と可変 `(V,T,D)` paddingを担う共通Dataset基盤。
+- **`lifecycle_slots.py`**: birth/death区間をinterval coloringで固定query数へ詰め、death後のslot再利用教師を生成。
 
 ### training/
 - **`lightning_module.py`**: `BaseLightningModule`。optimizer/scheduler構築とqualitative/test予測保存の拡張点。
@@ -23,12 +25,15 @@
 - **`gan_training.py` / `gan_loss.py` / `gan_transition_callback.py`**: 手動最適化ベースのGAN学習共通実装(`LSGANLoss`含む)。
 - **`qualitative_callback.py` / `qualitative_saving.py`**: validationサンプルの可視化描画・GIF/画像保存。
 - **`losses.py`**: `FocalBCEWithLogitsLoss`。複数taskで重複していた実装を統合。
+- **`tracking_lifecycle.py`**: active/inactive/birth/death近傍を重み付けするpresence BCE。
+- **`tracking_metrics.py`**: lifecycle segment単位のbirth/death誤差・presence F1・query再利用・ID switch診断。
 
 ### inference/
 - **`predictor.py`**: `BasePredictor`。checkpoint解決・device解決・共通predict契約(CPU tensor/snake_case)を持つ基底。
 
 ### generate_dataset/
 - **`parallel_runner.py`**: `run_parallel_scene_generation()`。`ProcessPoolExecutor`(spawn context)による並列シーン生成fan-out。
+- **`timeline_composer.py`**: BLCS/PLCS共通の固定global timelineへsource subclipを配置し、同時存在数とlifecycle metadataを保証。
 
 ### visualization/
 - **`frames.py`**: 画像ソース読込(`load_rgb_frames`等)。

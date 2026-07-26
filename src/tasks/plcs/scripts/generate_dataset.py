@@ -9,12 +9,14 @@ Notes:
     - Configuration is loaded from `src/tasks/plcs/configs/generate_dataset.yaml`.
     - The script uses Hydra for configuration loading.
     - Parallel scene generation uses worker processes for scene synthesis only.
+    - `generation` changes only object cardinality; both modes use the same simulator and writer.
 """
 
 from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import torch
 from hydra.utils import to_absolute_path
@@ -61,6 +63,13 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     # Save resolved config
     OmegaConf.save(cfg, output_dir / "config.yaml")
 
+    generation_mode = str(cfg.generation.mode)
+    if generation_mode not in {"single_object", "multi_object"}:
+        raise ValueError(
+            f"Unsupported generation.mode='{generation_mode}'. "
+            "Supported: ['single_object', 'multi_object']"
+        )
+
     # Initialize components
     writer = PLCSDatasetWriter(output_dir)
 
@@ -88,7 +97,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     failed = 0
     total_cameras = 0
 
-    stats: dict[str, object] = {
+    stats: dict[str, Any] = {
         "categories": {},
         "total_frames": 0,
         "cameras_per_scene": [],

@@ -132,3 +132,27 @@ def test_stop_cleans_session_dir(tmp_path: Path) -> None:
     assert mgr.session_dir.exists()
     mgr.stop()
     assert not mgr.session_dir.exists()
+
+
+def test_generation_stop_does_not_validate_an_intentionally_partial_chunk(
+    tmp_path: Path,
+) -> None:
+    def _stop_during_generation(
+        chunk_dir: Path,
+        *,
+        num_scenes: int,
+        stop_event: threading.Event,
+    ) -> None:
+        del chunk_dir, num_scenes
+        stop_event.set()
+
+    mgr = ChunkManager(
+        chunks_dir=tmp_path / "chunks",
+        chunk_generator_factory=lambda: _stop_during_generation,
+        scenes_per_chunk=2,
+        prefetch_chunks=0,
+    )
+
+    mgr._generation_loop()
+
+    assert not mgr._chunks

@@ -81,6 +81,9 @@ def build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         ),
         lob_elevation_range_deg=tuple(cfg.targeted_velocity.lob_elevation_range_deg),
         lob_probability=float(cfg.targeted_velocity.lob_probability),
+        max_ballistic_apex_height_m=float(
+            cfg.targeted_velocity.max_ballistic_apex_height_m
+        ),
         gravity=float(cfg.targeted_velocity.gravity),
         net_retry_max_attempts=int(cfg.targeted_velocity.net_retry_max_attempts),
         net_check_max_frames=int(cfg.targeted_velocity.net_check_max_frames),

@@ -36,14 +36,14 @@ court_kp:
 
 gvhmr:
   gvhmr_checkpoint: ckpt/gvhmr/gvhmr_siga24_release.ckpt
-  detector: yolo  # yolo/dino; both use the existing BoT-SORT association
+  detector: dino  # DINO person detections; BoT-SORT is retained only for GVHMR temporal boxes
   yolo_checkpoint: ckpt/yolo/yolov8x.pt
   dino_checkpoint: ckpt/dino/checkpoint0029_4scale_swin.pth
   dino_confidence: 0.3
   vitpose_checkpoint: ckpt/vitpose/vitpose-h-multi-coco.pth
   hmr2_checkpoint: ckpt/hmr2/epoch=10-step=25000.ckpt
   smplx_body_model_path: null  # Optional override for the SMPL-X body model directory (default: ckpt/body_models)
-  track_selection: auto  # interactive (UI) / auto (largest num_tracks)
+  track_selection: auto  # no track-selection UI; select the largest num_tracks
   num_tracks: 2
   skip: false
   save_result: true

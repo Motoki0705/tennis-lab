@@ -14,6 +14,7 @@ Notes:
     - Chunked training is selected with a chunked data config.
     - GAN training is selected with a GAN training config.
     - The runner handles the full BLCS training loop from the resolved config.
+    - Use `--config-name train_tracking` for multi-ball tracking.
 """
 
 from __future__ import annotations
@@ -29,7 +30,11 @@ from src.utils.hydra import hydra_main
 def main(config: DictConfig) -> None:
     """Hydra entry point."""
     generator_config = None
-    if str(config.get("data", {}).get("backend", "default")) == "chunked":
+    is_tracking = str(config.get("model", {}).get("name")) == "blcs_track_query"
+    if (
+        str(config.get("data", {}).get("backend", "default")) == "chunked"
+        and not is_tracking
+    ):
         generator_config = build_generator_config(config)
     runner = BLCSTrainingRunner(generator_config=generator_config)
     runner.run(config)

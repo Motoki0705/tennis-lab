@@ -3,7 +3,7 @@ generator_device: cpu
 
 chunk:
   scenes_per_chunk: 1000
-  epochs_per_chunk: 10
-  prefetch_chunks: 3
+  epochs_per_chunk: 20
+  prefetch_chunks: 5
   chunks_dir: data/plcs/chunks
-  generation_workers: 8
+  generation_workers: 16

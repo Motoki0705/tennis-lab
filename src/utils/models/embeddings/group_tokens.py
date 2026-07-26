@@ -61,6 +61,8 @@ def _normalize_group_visibility(
 
 
 class _CourtContextGroupEmbedding(nn.Module):
+    """Project one court/object pair without changing its leading-axis order."""
+
     def __init__(
         self,
         *,
@@ -85,7 +87,9 @@ class _CourtContextGroupEmbedding(nn.Module):
         group_vis: Tensor | None,
     ) -> Tensor:
         if tuple(court_flat.shape[:-1]) != tuple(group_flat.shape[:-1]):
-            raise ValueError("court and group inputs must share the same leading dimensions.")
+            raise ValueError(
+                "court and group inputs must share the same leading dimensions."
+            )
 
         feat = self.proj(torch.cat((court_flat, group_flat), dim=-1))
         visible = _normalize_group_visibility(
@@ -96,10 +100,13 @@ class _CourtContextGroupEmbedding(nn.Module):
 
 
 class CourtBallGroupEmbedding(_CourtContextGroupEmbedding):
-    """Embed court and ball coordinates into one token per camera/time element.
+    """Embed court and ball coordinates into one token per object element.
 
     The token visibility is controlled only by ``group_vis``. Callers should
-    provide one visibility flag per output token, for example shape ``(B, T)``.
+    provide one visibility flag per output token. Leading dimensions are
+    preserved exactly: for multi-object input, callers must place objects in
+    ascending scene object-ID order and the returned token at each position
+    remains aligned with that object.
     """
 
     def __init__(
@@ -133,10 +140,13 @@ class CourtBallGroupEmbedding(_CourtContextGroupEmbedding):
 
 
 class CourtPlayerGroupEmbedding(_CourtContextGroupEmbedding):
-    """Embed court and player coordinates into one token per camera/time element.
+    """Embed court and player coordinates into one token per object element.
 
     The token visibility is controlled only by ``group_vis``. Callers should
-    provide one visibility flag per output token, for example shape ``(B, T)``.
+    provide one visibility flag per output token. Leading dimensions are
+    preserved exactly: for multi-object input, callers must place objects in
+    ascending scene object-ID order and the returned token at each position
+    remains aligned with that object.
     """
 
     def __init__(

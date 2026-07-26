@@ -111,23 +111,25 @@ def test_epoch_end_rotates_after_epochs_per_chunk(tmp_path: Path) -> None:
     dm = _DM({"data": {"scene_dir": str(root), "chunk": {"epochs_per_chunk": 2}}})
     dm.setup("fit")
     assert dm.chunk_manager.started is True  # type: ignore[union-attr]
-
-    # epoch 1: counter 1 < 2 -> no rotation
-    dm.on_train_epoch_end()
-    assert dm._current_chunk_id is None
-    assert dm._epochs_on_current_chunk == 1
-
-    # epoch 2: counter 2 >= 2 -> rotate (first chunk loaded, none marked used)
-    dm.on_train_epoch_end()
     assert dm._current_chunk_id == 0
     assert dm._epochs_on_current_chunk == 0
-    assert dm.chunk_manager.used == []  # type: ignore[union-attr]
+
+    # epoch 1: counter 1 < 2 -> keep the initial generated chunk
+    dm.on_train_epoch_end()
+    assert dm._current_chunk_id == 0
+    assert dm._epochs_on_current_chunk == 1
+
+    # epoch 2: counter 2 >= 2 -> rotate and retire the initial chunk
+    dm.on_train_epoch_end()
+    assert dm._current_chunk_id == 1
+    assert dm._epochs_on_current_chunk == 0
+    assert dm.chunk_manager.used == [0]  # type: ignore[union-attr]
 
     # next two epochs -> rotate again, marking the old chunk used
     dm.on_train_epoch_end()
     dm.on_train_epoch_end()
-    assert dm._current_chunk_id == 1
-    assert dm.chunk_manager.used == [0]  # type: ignore[union-attr]
+    assert dm._current_chunk_id == 2
+    assert dm.chunk_manager.used == [0, 1]  # type: ignore[union-attr]
 
 
 def test_teardown_stops_manager(tmp_path: Path) -> None:
@@ -157,6 +159,5 @@ def test_load_next_chunk_raises_when_none(tmp_path: Path) -> None:
     for s in ("train", "val", "test"):
         (root / f"{s}.txt").write_text("scene_0000\n", encoding="utf-8")
     dm = _DMNone({"data": {"scene_dir": str(root)}})
-    dm.setup("fit")
     with pytest.raises(RuntimeError, match="no ready chunk"):
-        dm._load_next_chunk()
+        dm.setup("fit")

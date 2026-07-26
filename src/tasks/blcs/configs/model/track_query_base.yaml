@@ -1,0 +1,7 @@
+defaults:
+  - _track_query
+  - _self_
+
+hidden_dim: 512
+num_heads: 8
+num_stages: 8

@@ -13,6 +13,7 @@ Notes:
     - Chunked training is selected with a chunked data config.
     - GAN training is selected with a GAN training config.
     - The script uses Hydra for configuration loading.
+    - Use `--config-name train_tracking` for multi-person tracking.
 """
 
 from __future__ import annotations

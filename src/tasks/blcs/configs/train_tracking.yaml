@@ -1,0 +1,26 @@
+defaults:
+  - model: track_query
+  - data: tracking
+  - training: default
+  - loss: tracking
+  - run: train
+  - _self_
+
+training:
+  trainer:
+    max_epochs: 100
+    check_val_every_n_epoch: 5
+  checkpoint:
+    monitor: val/loss
+  early_stopping:
+    enabled: false
+  qualitative_logging:
+    enabled: true
+    every_n_epochs: 10
+
+hydra:
+  run:
+    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

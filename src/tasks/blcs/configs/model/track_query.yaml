@@ -1,0 +1,11 @@
+defaults:
+  - _track_query
+  - _self_
+
+# Legacy lightweight setup used by the initial tracking experiments.
+hidden_dim: 64
+num_heads: 4
+ffn_dim: 128
+num_stages: 2
+rope_dim: 16
+dropout: 0.0

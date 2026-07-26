@@ -1,0 +1,5 @@
+?? src/tasks/ball_tracking/
+?? src/tasks/player_tracking/
+?? tests/integration/tasks/tracking/
+?? tests/unit/tasks/ball_tracking/
+?? tests/unit/tasks/player_tracking/

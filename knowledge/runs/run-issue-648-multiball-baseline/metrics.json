@@ -1,0 +1,15 @@
+{
+  "loss": 0.23678040504455566,
+  "loss_position": 0.02176155336201191,
+  "loss_presence": 0.21501882374286652,
+  "loss_smoothness": 0.0,
+  "loss_gravity": 0.0,
+  "position_error": 0.3377092182636261,
+  "presence_precision": 0.8091434836387634,
+  "presence_recall": 0.8907652497291565,
+  "presence_f1": 0.8475704193115234,
+  "id_switches": 17.33333396911621,
+  "duplicate_active_tracks": 0.3333333432674408,
+  "missed_gt_frames": 9.666666984558105,
+  "inactive_query_false_positives": 9.666666984558105
+}

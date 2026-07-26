@@ -34,8 +34,8 @@ class PLCSDatasetWriter(BaseDatasetWriter):
         Returns:
             Path: Path to saved scene directory.
         """
-        dirname = scene.meta["scene_id"]
-        scene_path = self.scenes_dir / dirname
+        dirname = str(scene.meta["scene_id"])
+        scene_path: Path = self.scenes_dir / dirname
         scene_path.mkdir(parents=True, exist_ok=True)
 
         # Create metadata using dataclass (with optional Pydantic validation)
@@ -50,6 +50,7 @@ class PLCSDatasetWriter(BaseDatasetWriter):
             "initial_yaw": scene.meta["initial_yaw"],
             "num_cameras_sampled": scene.meta["num_cameras_sampled"],
             "num_cameras": len(scene.cameras),
+            "track_instances": scene.track_instances,
         }
 
         meta = PLCSSceneMeta(**meta_dict)
@@ -62,7 +63,11 @@ class PLCSDatasetWriter(BaseDatasetWriter):
 
         scalars: dict[str, Any] = {
             "num_cameras": len(scene.cameras),
+            "num_persons": scene.num_persons,
         }
+
+        if scene.person_present is not None:
+            arrays["person_present"] = np.asarray(scene.person_present, dtype=bool)
 
         # Store pre-computed COCO17 world joints when available
         if scene.human_kp_3d is not None:

@@ -1,0 +1,16 @@
+{
+  "loss": 0.6180883646011353,
+  "loss_position": 0.01438229437917471,
+  "loss_rotation": 0.32273152470588684,
+  "loss_presence": 0.44234028458595276,
+  "loss_track_smoothness": 0.0,
+  "position_error": 0.2676849067211151,
+  "angular_error_deg": 41.52207946777344,
+  "presence_precision": 0.6703395247459412,
+  "presence_recall": 0.8857128024101257,
+  "presence_f1": 0.7629806399345398,
+  "id_switches": 23.66666603088379,
+  "duplicate_active_tracks": 6.333333492279053,
+  "missed_gt_frames": 14.666666984558105,
+  "inactive_query_false_positives": 39.66666793823242
+}
