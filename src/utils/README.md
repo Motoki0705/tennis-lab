@@ -76,9 +76,72 @@
 - **`blocks.py`**: `DepthwiseSeparableConv2d` と `Conv2dWiseWiseBlock`。CNN 系の共通ブロック。
 - **`heads.py`**: `MLPHead`。
 - **`lora.py`**: 汎用 LoRA 実装と trainable parameter 制御。
+- **`kimi_delta_attention.py`**: Kimi Linear の中核である Kimi Delta Attention (KDA) の pure PyTorch CPU reference。通常の softmax attention とは別の、stateful な linear attention recurrence。
 - **`transformer_utils.py`**: self-attention mask 構築、RoPE base 解決、RoPE 次元検証。
 - **`attention_extraction.py`**: attention module 検索と map 抽出の補助。
 - **`axial_multiview_mixin.py`**: multi-view 系モデル向けの mixin。
+
+#### Kimi Delta Attention の利用例
+
+公開 API は `from src.utils.models import kimi_delta_attention`。shape は
+`query,key,log_decay=[B,T,H,K]`、`value=[B,T,H,V]`、`beta=[B,T,H]`、
+state は `[B,H,K,V]`。`valid_mask=[B,T]` は boolean かつ `True=有効` で、
+無効 token は state を変更せず zero を出力する。recurrence と返却 state は
+float32、sequence output だけが `value.dtype` に戻る。
+
+```python
+import torch
+
+from src.utils.models import kimi_delta_attention
+
+B, T, H, K, V = 2, 8, 4, 16, 32
+query = torch.randn(B, T, H, K)
+key = torch.randn_like(query)
+value = torch.randn(B, T, H, V)
+log_decay = torch.full_like(query, -0.1)
+beta = torch.full((B, T, H), 0.5)
+valid_mask = torch.ones(B, T, dtype=torch.bool)
+
+output, final_state = kimi_delta_attention(
+    query,
+    key,
+    value,
+    log_decay,
+    beta,
+    valid_mask=valid_mask,
+)
+
+# returned state を次 chunk に渡す呼び出しは、上の full sequence 実行と同値
+split = 4
+first_output, first_state = kimi_delta_attention(
+    query[:, :split],
+    key[:, :split],
+    value[:, :split],
+    log_decay[:, :split],
+    beta[:, :split],
+    valid_mask=valid_mask[:, :split],
+)
+second_output, split_final_state = kimi_delta_attention(
+    query[:, split:],
+    key[:, split:],
+    value[:, split:],
+    log_decay[:, split:],
+    beta[:, split:],
+    valid_mask=valid_mask[:, split:],
+    initial_state=first_state,
+)
+torch.testing.assert_close(
+    torch.cat((first_output, second_output), dim=1),
+    output,
+)
+torch.testing.assert_close(split_final_state, final_state)
+```
+
+current token の state update 後にその token の output を読む inclusive causal
+semantics で、future token は参照しない。`log_decay` と `beta` は活性化済みの値を
+直接渡し、この関数内で query scaling、sigmoid、softmax、SDPA、別 algorithm への
+fallback は行わない。式と dtype/device/state の完全な契約は
+`kimi_delta_attention()` の docstring を正本とする。
 
 ## Adding a utility
 
