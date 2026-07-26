@@ -1,0 +1,14 @@
+{
+  "run_id": "1784632739204612693_1513834_i648_blcs_lifecycle_v4_large_pointattn32_rope2d_t512_b1_100ep",
+  "name": "i648_blcs_lifecycle_v4_large_pointattn32_rope2d_t512_b1_100ep",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.blcs.scripts.train --config-name train_tracking_chunked model=track_query_large_point_attention model.mask_invisible_observations=false data.scene_dir=data/blcs/multi_object_lifecycle_v4 data.batch_size=1 data.seq_len_range='[512,512]' data.num_views_range='[3,5]' data.num_workers=4 data.chunk.generation_workers=16 data.chunk.epochs_per_chunk=3 data.chunk.prefetch_chunks=5 training.trainer.max_epochs=100 +training.trainer.accumulate_grad_batches=8 training.trainer.check_val_every_n_epoch=5 training.qualitative_logging.enabled=true training.qualitative_logging.every_n_epochs=10 training.early_stopping.enabled=false run.output_dir=outputs/blcs/tracking_lifecycle_v4_large_pointattn32_rope2d_t512_b1_100ep",
+  "provider": "codex",
+  "session": "019f8335-ad14-7370-8875-6b082d415aea",
+  "issue": "648",
+  "commit": "fc45020ec9bb40f4d49b0bb81a5d2822f33f3afc",
+  "branch": "feat/issue-643-648-multi-object-tracking",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-643-648-multi-object-tracking",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-643-648-multi-object-tracking",
+  "captured_at": "2026-07-21T20:18:59+09:00"
+}

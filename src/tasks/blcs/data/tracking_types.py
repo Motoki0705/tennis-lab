@@ -11,9 +11,9 @@ class BLCSTrackingBatch(TypedDict):
     """Padded multi-ball input, GT, and debug tensors.
 
     The authoritative shapes and mask semantics are documented in
-    ``src/tasks/blcs/README.md``. ``ball_visible``, ``court_vis``, and
-    ``candidate_gt_index`` are augmentation/debug-only and must never be
-    passed to the tracking model.
+    ``src/tasks/blcs/README.md``. ``candidate_gt_index`` validates the
+    object-ID-ordered observation axis and must never be passed to the tracking
+    model. ``ball_visible`` and ``court_vis`` are model inputs.
     """
 
     scene_format_version: Tensor

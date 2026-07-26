@@ -8,6 +8,7 @@ from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig
 
 from src.tasks.blcs.models import BLCSTrackQueryModel
+from src.utils.models.embeddings import CourtBallGroupEmbedding
 
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 
@@ -15,6 +16,15 @@ _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 def _model_config() -> DictConfig:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(config_name="train_tracking")
+    return config.model
+
+
+def _point_attention_model_config() -> DictConfig:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train_tracking",
+            overrides=["model=track_query_large_point_attention"],
+        )
     return config.model
 
 
@@ -26,7 +36,7 @@ def _model(*, mask_invisible: bool = True) -> BLCSTrackQueryModel:
     return model
 
 
-def test_spatial_coordinates_use_camera_and_role_not_candidate_index() -> None:
+def test_spatial_coordinates_share_role_within_id_ordered_object_axis() -> None:
     coordinates = BLCSTrackQueryModel.build_spatial_coordinates(
         batch_size=1,
         num_frames=2,
@@ -62,35 +72,39 @@ def test_model_resolves_default_ffn_and_rope_dimensions() -> None:
     assert model.spatial_blocks[0].cfg.ffn_dim is None
 
 
-def test_candidate_permutation_does_not_change_slot_predictions() -> None:
-    torch.manual_seed(3)
+def test_default_model_uses_shared_court_ball_group_embedding() -> None:
     model = _model()
-    shape = (1, 2, 4, 5)
-    inputs = {
-        "ball_uv": torch.rand(*shape, 2),
-        "ball_visible": torch.ones(*shape, dtype=torch.bool),
-        "court_kp": torch.rand(1, 2, 4, 14, 2),
-        "court_vis": torch.ones(1, 2, 4, 14, dtype=torch.bool),
-        "frame_mask": torch.ones(1, 4, dtype=torch.bool),
-        "view_mask": torch.ones(1, 2, dtype=torch.bool),
-    }
-    permutation = torch.tensor([3, 0, 4, 1, 2])
-    permuted = {
-        key: value[..., permutation, :] if key == "ball_uv" else value[..., permutation]
-        for key, value in inputs.items()
-        if key not in {"frame_mask", "view_mask", "court_kp", "court_vis"}
-    }
-    permuted["frame_mask"] = inputs["frame_mask"]
-    permuted["view_mask"] = inputs["view_mask"]
-    permuted["court_kp"] = inputs["court_kp"]
-    permuted["court_vis"] = inputs["court_vis"]
+
+    assert isinstance(model.group_embed, CourtBallGroupEmbedding)
+
+
+def test_point_attention_model_uses_small_fusion_before_model_projection() -> None:
+    config = _point_attention_model_config()
+    model = BLCSTrackQueryModel(config)
+
+    assert model.observation_fusion == "point_attention"
+    assert model.group_embed is None
+    assert model.point_fusion is not None
+    assert model.point_fusion.token_dim == 32
+    assert model.point_fusion.output_projection.in_features == 32
+    assert model.point_fusion.output_projection.out_features == model.hidden_dim
+
+
+def test_point_attention_model_forward_preserves_tracking_output_contract() -> None:
+    torch.manual_seed(2)
+    model = BLCSTrackQueryModel(_point_attention_model_config()).eval()
     with torch.no_grad():
-        output = model(**inputs)
-        permuted_output = model(**permuted)
-    for key in output:
-        torch.testing.assert_close(
-            output[key], permuted_output[key], atol=1e-5, rtol=1e-5
+        output = model(
+            ball_uv=torch.rand(1, 2, 3, 4, 2),
+            ball_visible=torch.ones(1, 2, 3, 4, dtype=torch.bool),
+            court_kp=torch.rand(1, 2, 3, 14, 2),
+            court_vis=torch.ones(1, 2, 3, 14, dtype=torch.bool),
+            frame_mask=torch.ones(1, 3, dtype=torch.bool),
+            view_mask=torch.ones(1, 2, dtype=torch.bool),
         )
+
+    assert output["position"].shape == (1, 3, 4, 3)
+    assert output["presence_logits"].shape == (1, 3, 4)
 
 
 def test_masked_candidate_and_court_coordinates_do_not_affect_predictions() -> None:

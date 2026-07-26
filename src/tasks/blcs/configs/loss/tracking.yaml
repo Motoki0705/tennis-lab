@@ -1,4 +1,8 @@
 position_weight: 1.0
+# The court-plane coordinates jointly carry localization/association identity.
+# Keep z lower so rare high lobs cannot dominate loss or Hungarian assignment.
+# The implementation normalizes by the weight sum.
+position_axis_weights: [1.0, 1.0, 0.5]
 presence_weight: 1.0
 presence_inactive_weight: 0.25
 presence_active_weight: 1.0

@@ -1,6 +1,9 @@
 drive_elevation_range_deg: [5.0, 25.0]
 lob_elevation_range_deg: [35.0, 70.0]
 lob_probability: 0.25
+# Hard ceiling for the gravity-only launch solution. At high lob angles the
+# solver recomputes horizontal/vertical speed to retain the sampled landing.
+max_ballistic_apex_height_m: 8.0
 gravity: 9.81
 
 # Net-hit resampling. Each attempt simulates only until net crossing/hit.

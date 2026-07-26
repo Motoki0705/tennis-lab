@@ -15,3 +15,7 @@ dropout: 0.1
 role_rope_enabled: true
 mask_invisible_observations: true
 invisible_init_std: 0.02
+
+# ``linear`` preserves the flattened court+ball checkpoint architecture.
+# Point-attention experiments override this in a dedicated model config.
+observation_fusion: linear

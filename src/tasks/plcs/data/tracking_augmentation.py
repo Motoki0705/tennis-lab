@@ -1,4 +1,4 @@
-"""Shape adapter for PLCS unordered-detection tracking augmentation."""
+"""Shape adapter for PLCS ID-ordered detection observation augmentation."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from typing import Any, cast
 import torch
 from torch import Tensor
 
-from src.tasks.base.data.tracking_augmentation import permute_court_keypoint_sets
 from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
 from src.utils.tensor_utils import clone_tensor_dict
 
@@ -19,7 +18,6 @@ class PLCSTrackingDetectionAugmentation:
     def __init__(self, config: Mapping[str, Any] | None = None) -> None:
         self.config = config or {}
         self.observation = PLCSObservationAugmentation(self.config)
-        self.court_permutation_cfg = self.config.get("court_keypoint_permutation", {})
 
     def forward(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
         """Corrupt only detection/court inputs and preserve clean GT tensors."""
@@ -46,7 +44,7 @@ class PLCSTrackingDetectionAugmentation:
             augmented["human_vis"].reshape(views, frames, detections, joints).bool()
         )
         # Court input is geometric projection/manual annotation, not a detector
-        # confidence stream. Keep it intact; only the permutation below applies.
+        # confidence stream.
         output["court_kp"] = court_keypoints
         output["court_vis"] = court_visible
         output["detection_mask"] = output["human_vis"].any(-1)
@@ -55,32 +53,7 @@ class PLCSTrackingDetectionAugmentation:
             output["detection_gt_index"],
             -1,
         )
-        output["court_kp"], output["court_vis"] = permute_court_keypoint_sets(
-            output["court_kp"],
-            output["court_vis"],
-            self.court_permutation_cfg,
-        )
-        self._shuffle_detections(output)
         return cast(dict[str, Tensor], output)
-
-    @staticmethod
-    def _shuffle_detections(sample: dict[str, Tensor]) -> None:
-        detections = int(sample["human_kp"].shape[2])
-        keys = (
-            "human_kp",
-            "human_vis",
-            "detection_mask",
-            "detection_gt_index",
-        )
-        for view_index in range(sample["human_kp"].shape[0]):
-            for frame_index in range(sample["human_kp"].shape[1]):
-                permutation = torch.randperm(
-                    detections, device=sample["human_kp"].device
-                )
-                for key in keys:
-                    sample[key][view_index, frame_index] = sample[key][
-                        view_index, frame_index, permutation
-                    ]
 
     def __call__(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
         """Delegate callable use to :meth:`forward` with a typed contract."""

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 import torch
@@ -12,12 +13,18 @@ from src.tasks.base.training.tracking_lifecycle import (
     weighted_presence_bce_with_logits,
 )
 from src.tasks.blcs.training.tracking_matching import match_ball_tracks
+from src.tasks.blcs.training.tracking_position import (
+    position_axis_weight_tensor,
+    weighted_position_axis_mean,
+)
 
 Assignment = tuple[torch.Tensor, torch.Tensor]
 
 
 class BLCSTrackingLoss(nn.Module):
     """Apply supervision after clip-level Hungarian matching."""
+
+    position_axis_weights: torch.Tensor
 
     def __init__(self, config: Any) -> None:
         super().__init__()
@@ -32,6 +39,19 @@ class BLCSTrackingLoss(nn.Module):
         self.gravity_target = float(config.gravity_target)
         self.match_position_weight = float(config.match_position_weight)
         self.match_presence_weight = float(config.match_presence_weight)
+        configured_axis_weights = config.get("position_axis_weights")
+        if configured_axis_weights is None:
+            warnings.warn(
+                "Legacy BLCS tracking config has no position_axis_weights; "
+                "using [1, 1, 1]. New runs must configure this explicitly.",
+                stacklevel=2,
+            )
+            configured_axis_weights = (1.0, 1.0, 1.0)
+        self.register_buffer(
+            "position_axis_weights",
+            position_axis_weight_tensor(configured_axis_weights),
+            persistent=False,
+        )
 
     @staticmethod
     def _zero(prediction: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -54,11 +74,13 @@ class BLCSTrackingLoss(nn.Module):
             presence_active_weight=self.presence_active_weight,
             presence_transition_weight=self.presence_transition_weight,
             transition_radius=self.transition_radius,
+            position_axis_weights=self.position_axis_weights,
         )
         pred_position = prediction["position"]
         pred_presence = prediction["presence_logits"]
         presence_target = torch.zeros_like(pred_presence)
         position_terms: list[torch.Tensor] = []
+        position_axis_terms: list[torch.Tensor] = []
         smoothness_terms: list[torch.Tensor] = []
         gravity_terms: list[torch.Tensor] = []
         for batch_index, (query_indices, target_indices) in enumerate(assignments):
@@ -73,10 +95,17 @@ class BLCSTrackingLoss(nn.Module):
                     batch_index, :, target_index
                 ].float()
                 if active.any():
+                    position_error_xyz = F.smooth_l1_loss(
+                        pred_position[batch_index, active, query_index],
+                        batch["target_position"][batch_index, active, target_index],
+                        reduction="none",
+                    )
+                    position_per_axis = position_error_xyz.mean(0)
+                    position_axis_terms.append(position_per_axis)
                     position_terms.append(
-                        F.smooth_l1_loss(
-                            pred_position[batch_index, active, query_index],
-                            batch["target_position"][batch_index, active, target_index],
+                        weighted_position_axis_mean(
+                            position_per_axis,
+                            self.position_axis_weights,
                         )
                     )
                 if active.sum() >= 3 and (
@@ -114,6 +143,11 @@ class BLCSTrackingLoss(nn.Module):
         )
         zero = self._zero(prediction)
         position = torch.stack(position_terms).mean() if position_terms else zero
+        position_per_axis = (
+            torch.stack(position_axis_terms).mean(0)
+            if position_axis_terms
+            else torch.stack([zero, zero, zero])
+        )
         smoothness = torch.stack(smoothness_terms).mean() if smoothness_terms else zero
         gravity = torch.stack(gravity_terms).mean() if gravity_terms else zero
         total = (
@@ -125,6 +159,9 @@ class BLCSTrackingLoss(nn.Module):
         return {
             "total": total,
             "position": position,
+            "position_x": position_per_axis[0],
+            "position_y": position_per_axis[1],
+            "position_z": position_per_axis[2],
             "presence": presence,
             "smoothness": smoothness,
             "gravity": gravity,

@@ -9,6 +9,10 @@ from scipy.optimize import linear_sum_assignment
 from src.tasks.base.training.tracking_lifecycle import (
     weighted_presence_bce_with_logits,
 )
+from src.tasks.blcs.training.tracking_position import (
+    position_axis_weight_tensor,
+    weighted_position_axis_mean,
+)
 
 
 def match_ball_tracks(
@@ -24,10 +28,18 @@ def match_ball_tracks(
     presence_active_weight: float = 1.0,
     presence_transition_weight: float = 2.0,
     transition_radius: int = 2,
+    position_axis_weights: tuple[float, float, float] | torch.Tensor = (
+        1.0,
+        1.0,
+        1.0,
+    ),
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Match `Q` predictions to valid `P` targets using clip-level costs."""
     pred_position = prediction["position"]
     pred_presence = prediction["presence_logits"]
+    axis_weights = position_axis_weight_tensor(position_axis_weights).to(
+        pred_position.device
+    )
     batch_size, _, num_queries, _ = pred_position.shape
     assignments: list[tuple[torch.Tensor, torch.Tensor]] = []
     for batch in range(batch_size):
@@ -61,13 +73,16 @@ def match_ball_tracks(
                 ]
             )
             if target_active.any():
-                position_error = F.smooth_l1_loss(
+                position_error_xyz = F.smooth_l1_loss(
                     pred_position[batch],
                     target_position[batch, :, target_index, None, :].expand_as(
                         pred_position[batch]
                     ),
                     reduction="none",
-                ).mean(-1)
+                )
+                position_error = weighted_position_axis_mean(
+                    position_error_xyz, axis_weights
+                )
                 position_cost = (position_error * target_active[:, None]).sum(
                     0
                 ) / target_active.sum()

@@ -17,7 +17,7 @@ from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
 class BLCSTrackingPredictor(BasePredictor):
-    """Predict fixed lifecycle queries from unordered per-camera candidates."""
+    """Predict fixed lifecycle queries from ID-ordered per-camera observations."""
 
     def __init__(self, model: nn.Module, device: torch.device) -> None:
         self.model = model.to(device).eval()
