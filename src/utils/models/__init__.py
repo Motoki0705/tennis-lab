@@ -46,6 +46,7 @@ from src.utils.models.embeddings import (
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
 )
+from src.utils.models.kimi_delta_attention import kimi_delta_attention
 from src.utils.models.lora import (
     LoRAConfig,
     LoRALinear,
@@ -64,6 +65,7 @@ __all__ = [
     "GroupedQuerySelfAttention",
     "MultiHeadCrossAttention",
     "MultiHeadSelfAttention",
+    "kimi_delta_attention",
     # Norm
     "RMSNorm",
     "LayerNorm",
