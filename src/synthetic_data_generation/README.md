@@ -34,3 +34,25 @@ provider export、alignment、static-scene smoke、pilot、full-scale dataset pu
 ```
 
 各entry pointの入力artifactとhashは対応する`configs/`で明示し、暗黙のfallbackは行いません。
+
+## Alignment pipeline
+
+Provider bundleをexportした後、4つのalignment stageを統合CLIから直列実行します。
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.export_scene_provider
+.venv/bin/python -m src.synthetic_data_generation.scripts.run_alignment_pipeline \
+  jobs=b00 \
+  stages=all
+```
+
+各stageは同じ`run(cfg)`実装を使って単独実行できます。
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.alignment.infer_ground_line_map
+.venv/bin/python -m src.synthetic_data_generation.scripts.alignment.fit_ground_courts
+.venv/bin/python -m src.synthetic_data_generation.scripts.alignment.calibrate_court_alignment
+.venv/bin/python -m src.synthetic_data_generation.scripts.alignment.finalize_court_alignment
+```
+
+`resume=true`ではartifactのschema、fingerprint、SHA-256、provider fingerprint、前段artifact identityが一致する場合だけ再利用します。fit calibrationが失敗した場合はfinalizationを実行せず、holdout rejectionからSceneContractを作る場合は設定済みのuser override declarationとの完全一致を要求します。

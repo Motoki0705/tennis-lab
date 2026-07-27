@@ -1,0 +1,1 @@
+"""Validated alignment input boundaries."""
