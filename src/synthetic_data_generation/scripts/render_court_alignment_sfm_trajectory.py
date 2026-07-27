@@ -34,6 +34,7 @@ from src.synthetic_data_generation.alignment.view_inputs import (
 from src.synthetic_data_generation.provider.bundle import (
     load_scene_provider_bundle,
 )
+from src.utils.rendering.camera_view import CameraView3D, apply_scene_camera
 
 
 def _render_single_frame(
@@ -255,17 +256,22 @@ def _render_single_frame(
             ha="center",
         )
 
+    # Transform into Court-0 centric standard coordinate system (upward Z, TV broadcast look)
+    inv_c0 = np.linalg.inv(c0_mat)
+    i_mat = np.eye(4)
+    c1_rel = inv_c0 @ c1_mat
+
     # Court-0: Official DARK_THEME court colors (#4C9B57 court, #33763D apron)
     plot_rich_court_3d(
-        ax2, c0_mat, court_color="#4C9B57", apron_color="#33763D", line_color="#FFFFFF", net_color="#B9C0C7", name="Court-0 (Main)"
+        ax2, i_mat, court_color="#4C9B57", apron_color="#33763D", line_color="#FFFFFF", net_color="#B9C0C7", name="Court-0 (Main)"
     )
     # Court-1: Slightly deeper tennis green tone (#3A8A45 court, #2A6632 apron)
     plot_rich_court_3d(
-        ax2, c1_mat, court_color="#3A8A45", apron_color="#2A6632", line_color="#E8E8E8", net_color="#B9C0C7", name="Court-1 (Adjacent)"
+        ax2, c1_rel, court_color="#3A8A45", apron_color="#2A6632", line_color="#E8E8E8", net_color="#B9C0C7", name="Court-1 (Adjacent)"
     )
 
     all_pos = np.array(
-        [np.array(c.camera_to_scene).reshape(4, 4)[:3, 3] for c in cams]
+        [(inv_c0 @ np.array(c.camera_to_scene).reshape(4, 4))[:3, 3] for c in cams]
     )
     ax2.plot(
         all_pos[:, 0],
@@ -285,7 +291,7 @@ def _render_single_frame(
         alpha=0.4,
     )
 
-    curr_pos = c2s[:3, 3]
+    curr_pos = (inv_c0 @ c2s)[:3, 3]
     ax2.scatter(
         xs=curr_pos[0],
         ys=curr_pos[1],
@@ -306,16 +312,16 @@ def _render_single_frame(
         zorder=10,
     )
 
-    # FOV Frustum pyramid
+    # FOV Frustum pyramid in Court-0 centric coordinates
     w, h = cam.width, cam.height
-    scale = 0.22
+    scale = 0.6
     inv_K = np.linalg.inv(K)
     corners_uv = np.array([[0, 0, 1], [w, 0, 1], [w, h, 1], [0, h, 1]], dtype=float)
     rays = (inv_K @ corners_uv.T).T
     rays /= np.linalg.norm(rays, axis=1, keepdims=True)
     pts_cam = rays * scale
     pts_hom = np.column_stack([pts_cam, np.ones(4)])
-    pts_world = (c2s @ pts_hom.T).T[:, :3]
+    pts_world = (inv_c0 @ c2s @ pts_hom.T).T[:, :3]
 
     for pt in pts_world:
         ax2.plot(
@@ -336,9 +342,8 @@ def _render_single_frame(
         alpha=0.9,
     )
 
-    ax2.set_xlim(-1.1, 1.1)
-    ax2.set_ylim(-1.1, 1.1)
-    ax2.set_zlim(-0.3, 0.15)
+    view = CameraView3D(elev=26.0, azim=-105.0, zoom=0.95)
+    apply_scene_camera(ax2, view, margin=11.0, z_limit=4.0)
     ax2.legend(
         loc="upper right",
         facecolor="#101418",
@@ -346,11 +351,13 @@ def _render_single_frame(
         labelcolor="#E8E8E8",
         fontsize=8,
     )
-    ax2.view_init(elev=32, azim=-52)
+
 
     fig.canvas.draw()
     rgba = np.asarray(fig.canvas.buffer_rgba())
     img_array = rgba[:, :, :3]
+
+
     plt.close(fig)
 
     return Image.fromarray(img_array)
