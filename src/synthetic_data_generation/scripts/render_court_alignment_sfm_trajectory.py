@@ -137,28 +137,25 @@ def _render_single_frame(
         pad=10,
     )
 
-    # Right Panel: Rich 3D Dual-Court Space & SfM Camera Trajectory
-    ax2: Any = fig.add_axes((0.51, 0.05, 0.47, 0.88), projection="3d", facecolor="#0B0F19")
+    # Right Panel: Rich 3D Dual-Court Space (PLCS/BLCS Base Style & Broadcast Look)
+    ax2: Any = fig.add_axes((0.51, 0.05, 0.47, 0.88), projection="3d", facecolor="#101418")
     ax2.set_title(
-        "2-Court Space, 3D Nets & SfM Trajectory Navigation",
-        color="white",
+        "2-Court 3D Alignment & SfM Trajectory (BLCS/PLCS Style)",
+        color="#E8E8E8",
         fontsize=11,
         fontweight="bold",
         pad=10,
     )
 
-    for pane in [ax2.xaxis.pane, ax2.yaxis.pane, ax2.zaxis.pane]:
-        pane.fill = True
-        pane.set_facecolor((0.06, 0.09, 0.16, 0.85))
-        pane.set_edgecolor("#1e293b")
-    ax2.grid(True, color="#1e293b", linestyle="--", linewidth=0.6)
-    ax2.tick_params(colors="#64748b", labelsize=8)
+    # Completely remove matplotlib axes chrome for the broadcast look
+    ax2.set_axis_off()
 
     def plot_rich_court_3d(
         ax: Any,
         c_mat: np.ndarray,
+        court_color: str,
+        apron_color: str,
         line_color: str,
-        surf_color: str,
         net_color: str,
         name: str,
     ) -> None:
@@ -174,7 +171,7 @@ def _render_single_frame(
         hom_a = np.column_stack([apron, np.ones(4)])
         sc_a = (c_mat @ hom_a.T).T[:, :3]
         poly_a = Poly3DCollection(
-            [sc_a], facecolors="#022c22" if "0" in name else "#451a03", edgecolors="none", alpha=0.25
+            [sc_a], facecolors=apron_color, edgecolors="none", alpha=0.9
         )
         ax.add_collection3d(poly_a)
 
@@ -190,20 +187,22 @@ def _render_single_frame(
         hom_c = np.column_stack([corners, np.ones(4)])
         sc_c = (c_mat @ hom_c.T).T[:, :3]
         poly_c = Poly3DCollection(
-            [sc_c], facecolors=surf_color, edgecolors="none", alpha=0.55
+            [sc_c], facecolors=court_color, edgecolors="none", alpha=0.95
         )
         ax.add_collection3d(poly_c)
 
-        # 3. Court lines with neon glow
+        # 3. Court lines (clean white, standard width)
         for p1, p2 in segs:
             pts = np.array([p1, p2])
             hom = np.column_stack([pts, np.zeros(len(pts)), np.ones(len(pts))])
             sc = (c_mat @ hom.T).T
             ax.plot(
-                sc[:, 0], sc[:, 1], sc[:, 2], color=line_color, linewidth=3.0, alpha=0.25
-            )
-            ax.plot(
-                sc[:, 0], sc[:, 1], sc[:, 2], color=line_color, linewidth=1.4, alpha=0.95
+                sc[:, 0],
+                sc[:, 1],
+                sc[:, 2],
+                color=line_color,
+                linewidth=2.0,
+                alpha=0.95,
             )
 
         # 4. Realistic 3D Net, Posts, and Mesh
@@ -215,7 +214,7 @@ def _render_single_frame(
             sc_net_top[:, 0],
             sc_net_top[:, 1],
             sc_net_top[:, 2],
-            color="#f8fafc",
+            color="#FFFFFF",
             linewidth=2.5,
             alpha=0.95,
         )
@@ -228,7 +227,7 @@ def _render_single_frame(
                 sc_post[:, 1],
                 sc_post[:, 2],
                 color="#cbd5e1",
-                linewidth=3.0,
+                linewidth=2.8,
                 alpha=0.9,
             )
 
@@ -241,7 +240,7 @@ def _render_single_frame(
                 sc_net_mid[:, 2],
                 color=net_color,
                 linewidth=0.6,
-                alpha=0.35,
+                alpha=0.45,
             )
 
         center_pt = (c_mat @ [0, 0, 0, 1])[:3]
@@ -250,14 +249,20 @@ def _render_single_frame(
             center_pt[1],
             center_pt[2] + 0.08,
             name,
-            color=line_color,
+            color="#FFFFFF",
             fontweight="bold",
             fontsize=9,
             ha="center",
         )
 
-    plot_rich_court_3d(ax2, c0_mat, "#00F2FE", "#064e3b", "#38bdf8", "Court-0 (Main)")
-    plot_rich_court_3d(ax2, c1_mat, "#FFB300", "#78350f", "#fbbf24", "Court-1 (Adjacent)")
+    # Court-0: Official DARK_THEME court colors (#4C9B57 court, #33763D apron)
+    plot_rich_court_3d(
+        ax2, c0_mat, court_color="#4C9B57", apron_color="#33763D", line_color="#FFFFFF", net_color="#B9C0C7", name="Court-0 (Main)"
+    )
+    # Court-1: Slightly deeper tennis green tone (#3A8A45 court, #2A6632 apron)
+    plot_rich_court_3d(
+        ax2, c1_mat, court_color="#3A8A45", apron_color="#2A6632", line_color="#E8E8E8", net_color="#B9C0C7", name="Court-1 (Adjacent)"
+    )
 
     all_pos = np.array(
         [np.array(c.camera_to_scene).reshape(4, 4)[:3, 3] for c in cams]
@@ -331,17 +336,14 @@ def _render_single_frame(
         alpha=0.9,
     )
 
-    ax2.set_xlabel("X (m)", color="#64748b")
-    ax2.set_ylabel("Y (m)", color="#64748b")
-    ax2.set_zlabel("Z (m)", color="#64748b")
     ax2.set_xlim(-1.1, 1.1)
     ax2.set_ylim(-1.1, 1.1)
     ax2.set_zlim(-0.3, 0.15)
     ax2.legend(
         loc="upper right",
-        facecolor="#0B0F19",
-        edgecolor="#475569",
-        labelcolor="white",
+        facecolor="#101418",
+        edgecolor="#334155",
+        labelcolor="#E8E8E8",
         fontsize=8,
     )
     ax2.view_init(elev=32, azim=-52)
