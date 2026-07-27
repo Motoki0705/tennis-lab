@@ -9,9 +9,6 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from src.synthetic_data_generation.alignment.fit_view_detection import (
-    load_provider_rgb_image,
-)
 from src.synthetic_data_generation.alignment.ground_line_map import (
     GroundLineAccumulator,
     GroundLineMapSettings,
@@ -20,6 +17,9 @@ from src.synthetic_data_generation.alignment.ground_plane import GroundPlaneEsti
 from src.synthetic_data_generation.alignment.line_inference import (
     VerifiedLineDetector,
     infer_line_projection,
+)
+from src.synthetic_data_generation.alignment.view_inputs import (
+    load_provider_rgb_image,
 )
 from src.synthetic_data_generation.provider.bundle import LoadedSceneProviderBundle
 from src.synthetic_data_generation.scene_contract import SceneCamera
