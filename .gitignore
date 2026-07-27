@@ -153,6 +153,14 @@ Thumbs.db
 agents_workspace/tmp_cache/
 .worktrees/
 
+# The NHT integration is tracked, while its upstream checkout, isolated
+# environment, build products, and experiment artifacts remain local.
+!third_party/nht/
+!third_party/nht/**
+third_party/nht/.venv/
+third_party/nht/upstream/
+third_party/nht/artifacts/
+
 # Large files that should be tracked separately
 *.zip
 *.tar.gz

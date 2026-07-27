@@ -66,6 +66,19 @@
 
 ## 開発中
 
+### 3DGS Synthetic Data Generation（3DGSによる合成データ生成）
+
+3D Gaussian Splatting (3DGS) で再構成された実写コート空間に対して、2面隣接コートの幾何モデル（`b00-ground-court-geometry-v1`）とカメラ座標アライメントを自動適合させ、幾何的に一貫した合成データを生成・拡張するパイプラインを開発しています。
+
+<p align="center">
+  <img src="assets/synthetic_data_generation/3dgs_court_alignment.gif" width="840" /><br/>
+  <em>3DGS レンダリング ＆ 2面コート白線投影オーバーレイ（左）｜ 2面コート空間と SfM カメラ軌道の 3D 可視化（右）</em>
+</p>
+
+- **Dual-Court Alignment**: 隣接する2面のテニスコート（Court-0：シアン、Court-1：ゴールド）を同時に推定・保持し、任意のカメラ視点への正確な 2D 投影白線を生成
+- **SfM Trajectory Navigation**: SfM により復元された 400 フレーム超のカメラ軌道と視線方向（FOV 矢印）を 3D コート空間上で追跡可視化
+- **実装/検証**: `src/synthetic_data_generation` / `data/tennis/3dgs_alignment`
+
 ### Multi-object PLCS / BLCS
 
 [PR #650](https://github.com/Motoki0705/tennis-lab/pull/650) で、複数プレーヤー・複数ボールの lifecycle を扱う生成・追跡・可視化パイプラインを開発しています。
@@ -74,6 +87,7 @@
 | :---: | :---: |
 | <img src="assets/plcs/multi_object.gif" width="400" /> | <img src="assets/blcs/multi_object.gif" width="400" /> |
 | `multi_object_lifecycle_v2 / scene_000040` | `multi_object_lifecycle_v4 / scene_000345` |
+
 
 ## ライセンス / 引用
 

@@ -1,0 +1,7 @@
+scene_dir: "data/tennis/3dgs_scenes/b00-default-v1-alignment-pipeline-validation"
+court_geometry_path: "data/tennis/3dgs_alignment/b00-default-v1/court_geometry/b00-ground-court-geometry-v1-dabea42f4e223951.json"
+output_gif_path: "assets/synthetic_data_generation/3dgs_court_alignment.gif"
+step: 1
+fps: 25
+dpi: 80
+figsize: [10, 4.5]
