@@ -1,0 +1,24 @@
+pipeline_id: alignment-batch-v1
+jobs: b00
+stages: all
+resume: true
+fail_fast: false
+max_parallel_jobs: 1
+summary_path: outputs/synthetic_data_generation/alignment/pipeline-summary.json
+
+job_catalog:
+  b00:
+    alignment_id: b00-ground-line-alignment-v1
+    scene_id: b00-default-v1
+    provider_bundle: data/tennis/3dgs_scenes/b00-default-v1
+    output_root: data/tennis/3dgs_alignment/b00-default-v1
+    holdout_group_ids: [2, 6, 10, 14]
+    override:
+      enabled: false
+
+hydra:
+  run:
+    dir: outputs/synthetic_data_generation/alignment/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false
