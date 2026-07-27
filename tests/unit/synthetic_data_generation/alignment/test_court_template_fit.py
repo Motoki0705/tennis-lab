@@ -186,6 +186,45 @@ def test_local_refit_keeps_the_selected_physical_court_cluster() -> None:
     assert candidate.orientation_radians == pytest.approx(-1.50, abs=0.03)
 
 
+def test_local_refit_enforces_circular_centre_radius() -> None:
+    bounds = (-1.3, 1.3, -1.1, 1.3)
+    spacing = 0.005
+    width = int(np.ceil((bounds[1] - bounds[0]) / spacing)) + 1
+    height = int(np.ceil((bounds[3] - bounds[2]) / spacing)) + 1
+    evidence: NDArray[np.float32] = np.zeros((height, width), dtype=np.float32)
+    _draw_court(
+        evidence,
+        bounds=bounds,
+        spacing=spacing,
+        center=(0.08, 0.08),
+        orientation=-1.50,
+        scale=0.070,
+    )
+    radius_m = 0.5
+    reference_scale = 0.070
+
+    candidate = fit_court_instance_near_reference(
+        evidence,
+        bounds=bounds,
+        grid_spacing=spacing,
+        plane=_plane(),
+        reference_center_uv=(0.0, 0.0),
+        reference_orientation_radians=-1.50,
+        reference_scale_scene_per_metre=reference_scale,
+        settings=CourtLocalRefitSettings(
+            seed=7,
+            centre_radius_m=radius_m,
+            optimizer_max_iterations=40,
+            optimizer_population_size=8,
+            optimizer_tolerance=1.0e-6,
+        ),
+    )
+
+    assert np.linalg.norm(
+        np.asarray(candidate.center_uv)
+    ) <= radius_m * reference_scale * (1.0 + 1.0e-8)
+
+
 def test_geometry_artifact_round_trip_and_holdout_status(tmp_path: Path) -> None:
     payload = {
         "schema": COURT_GEOMETRY_SCHEMA,
