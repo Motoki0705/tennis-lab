@@ -256,10 +256,13 @@ def _render_single_frame(
             ha="center",
         )
 
-    # Transform into Court-0 centric standard coordinate system (upward Z, TV broadcast look)
-    inv_c0 = np.linalg.inv(c0_mat)
+    # Transform into Court-0 centric standard coordinate system with 180-degree XY rotation
+    # (prevents 180-degree front/back inversion relative to TV broadcast view)
+    rot180 = np.diag([-1.0, -1.0, 1.0, 1.0])
+    inv_c0 = rot180 @ np.linalg.inv(c0_mat)
     i_mat = np.eye(4)
     c1_rel = inv_c0 @ c1_mat
+
 
     # Court-0: Official DARK_THEME court colors (#4C9B57 court, #33763D apron)
     plot_rich_court_3d(
