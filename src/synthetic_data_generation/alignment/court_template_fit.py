@@ -146,7 +146,7 @@ def fit_court_instances(
     )
 
     def template_score(parameters: NDArray[np.float64]) -> float:
-        uv = _transform_template(template, parameters)
+        uv = transform_court_template(template, parameters)
         columns = (uv[:, 0] - u_min) / grid_spacing
         rows = (uv[:, 1] - v_min) / grid_spacing
         sampled = map_coordinates(
@@ -316,7 +316,7 @@ def fit_court_instance_near_reference(
     )
 
     def score(parameters: NDArray[np.float64]) -> float:
-        uv = _transform_template(template, parameters)
+        uv = transform_court_template(template, parameters)
         columns = (uv[:, 0] - u_min) / grid_spacing
         rows = (uv[:, 1] - v_min) / grid_spacing
         sampled = map_coordinates(
@@ -328,8 +328,16 @@ def fit_court_instance_near_reference(
         )
         return float(np.mean(sampled))
 
+    reference_center = np.asarray(reference_center_uv, dtype=np.float64)
+
+    def local_objective(parameters: NDArray[np.float64]) -> float:
+        candidate = np.asarray(parameters, dtype=np.float64)
+        centre_shift_scene = float(np.linalg.norm(candidate[:2] - reference_center))
+        radius_excess = max(0.0, centre_shift_scene - radius_scene)
+        return -score(candidate) + 1.0e4 * radius_excess
+
     result = differential_evolution(
-        lambda parameters: -score(np.asarray(parameters, dtype=np.float64)),
+        local_objective,
         search_bounds,
         seed=settings.seed,
         maxiter=settings.optimizer_max_iterations,
@@ -339,9 +347,7 @@ def fit_court_instance_near_reference(
         workers=1,
     )
     parameters = np.asarray(result.x, dtype=np.float64)
-    centre_shift_scene = float(
-        np.linalg.norm(parameters[:2] - np.asarray(reference_center_uv))
-    )
+    centre_shift_scene = float(np.linalg.norm(parameters[:2] - reference_center))
     if centre_shift_scene > radius_scene * (1.0 + 1.0e-8):
         raise ValueError("Local refit escaped its physical court cluster.")
     return CourtFitCandidate(
@@ -492,10 +498,11 @@ def sample_court_line_template(
     return np.concatenate(points)
 
 
-def _transform_template(
+def transform_court_template(
     template: NDArray[np.float64],
     parameters: NDArray[np.float64],
 ) -> NDArray[np.float64]:
+    """Transform metric template points into ground-plane coordinates."""
     center_u, center_v, orientation, scale = parameters
     cosine = math.cos(float(orientation))
     sine = math.sin(float(orientation))
@@ -503,8 +510,9 @@ def _transform_template(
         ((cosine, sine), (-sine, cosine)),
         dtype=np.float64,
     )
-    return template @ rotation_transpose * float(scale) + np.asarray(
-        (center_u, center_v)
+    return np.asarray(
+        template @ rotation_transpose * float(scale) + np.asarray((center_u, center_v)),
+        dtype=np.float64,
     )
 
 
