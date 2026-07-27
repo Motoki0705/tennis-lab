@@ -54,6 +54,9 @@ def _render_single_frame(
     # Left Panel: RGB + Overlay
     ax1 = fig.add_axes((0.02, 0.05, 0.47, 0.88))
     ax1.imshow(img_rgb)
+    ax1.set_xlim(0, cam.width)
+    ax1.set_ylim(cam.height, 0)
+    ax1.autoscale(False)
     ax1.axis("off")
 
     c2s = np.array(cam.camera_to_scene).reshape(4, 4)
@@ -61,9 +64,8 @@ def _render_single_frame(
     K = np.array(cam.intrinsics).reshape(3, 3)
 
     def plot_court_overlay_clean(
-        ax: Any, c_mat: np.ndarray, color: str, glow_color: str, label: str
+        ax: Any, c_mat: np.ndarray, color: str, glow_color: str
     ) -> None:
-        first_legend = True
         for p1, p2 in segs:
             pts = np.linspace(p1, p2, 80)
             hom = np.column_stack([pts, np.zeros(len(pts)), np.ones(len(pts))])
@@ -84,9 +86,6 @@ def _render_single_frame(
 
             for i in range(len(pts) - 1):
                 if in_b[i] and in_b[i + 1]:
-                    lbl = label if first_legend else None
-                    if first_legend:
-                        first_legend = False
                     ax.plot(
                         uv[i : i + 2, 0],
                         uv[i : i + 2, 1],
@@ -101,11 +100,10 @@ def _render_single_frame(
                         color=color,
                         linewidth=2.0,
                         alpha=0.95,
-                        label=lbl,
                     )
 
-    plot_court_overlay_clean(ax1, c0_mat, "#00F2FE", "#00F2FE", "Court-0 (Main)")
-    plot_court_overlay_clean(ax1, c1_mat, "#FFB300", "#FFB300", "Court-1 (Adjacent)")
+    plot_court_overlay_clean(ax1, c0_mat, "#00F2FE", "#00F2FE")
+    plot_court_overlay_clean(ax1, c1_mat, "#FFB300", "#FFB300")
 
     hud_text = (
         f"SCENE: b00-default-v1 (3DGS Synthetic)\n"
@@ -129,13 +127,8 @@ def _render_single_frame(
             edgecolor="#00F2FE",
         ),
     )
-    ax1.legend(
-        loc="lower right",
-        facecolor="#0B0F19",
-        edgecolor="#475569",
-        labelcolor="white",
-        fontsize=8,
-    )
+    ax1.set_xlim(0, cam.width)
+    ax1.set_ylim(cam.height, 0)
     ax1.set_title(
         "3DGS Render & Dual-Court Alignment Overlay",
         color="white",
@@ -144,10 +137,10 @@ def _render_single_frame(
         pad=10,
     )
 
-    # Right Panel: 3D Scene / 2-Court Navigation
+    # Right Panel: Rich 3D Dual-Court Space & SfM Camera Trajectory
     ax2: Any = fig.add_axes((0.51, 0.05, 0.47, 0.88), projection="3d", facecolor="#0B0F19")
     ax2.set_title(
-        "2-Court Space & SfM Camera Trajectory (3D)",
+        "2-Court Space, 3D Nets & SfM Trajectory Navigation",
         color="white",
         fontsize=11,
         fontweight="bold",
@@ -155,21 +148,37 @@ def _render_single_frame(
     )
 
     for pane in [ax2.xaxis.pane, ax2.yaxis.pane, ax2.zaxis.pane]:
-        pane.fill = False
+        pane.fill = True
+        pane.set_facecolor((0.06, 0.09, 0.16, 0.85))
         pane.set_edgecolor("#1e293b")
-    ax2.grid(True, color="#1e293b", linestyle="--", linewidth=0.5)
+    ax2.grid(True, color="#1e293b", linestyle="--", linewidth=0.6)
     ax2.tick_params(colors="#64748b", labelsize=8)
 
-    def plot_court_3d(
-        ax: Any, c_mat: np.ndarray, line_color: str, surf_color: str, name: str
+    def plot_rich_court_3d(
+        ax: Any,
+        c_mat: np.ndarray,
+        line_color: str,
+        surf_color: str,
+        net_color: str,
+        name: str,
     ) -> None:
-        for p1, p2 in segs:
-            pts = np.array([p1, p2])
-            hom = np.column_stack([pts, np.zeros(len(pts)), np.ones(len(pts))])
-            sc = (c_mat @ hom.T).T
-            ax.plot(
-                sc[:, 0], sc[:, 1], sc[:, 2], color=line_color, linewidth=1.5, alpha=0.95
-            )
+        # 1. Outer apron surface (run-off area)
+        apron = np.array(
+            [
+                [-7.315, -15.0, -0.005],
+                [7.315, -15.0, -0.005],
+                [7.315, 15.0, -0.005],
+                [-7.315, 15.0, -0.005],
+            ]
+        )
+        hom_a = np.column_stack([apron, np.ones(4)])
+        sc_a = (c_mat @ hom_a.T).T[:, :3]
+        poly_a = Poly3DCollection(
+            [sc_a], facecolors="#022c22" if "0" in name else "#451a03", edgecolors="none", alpha=0.25
+        )
+        ax.add_collection3d(poly_a)
+
+        # 2. Main playing court surface
         corners = np.array(
             [
                 [-5.485, -11.885, 0],
@@ -180,15 +189,66 @@ def _render_single_frame(
         )
         hom_c = np.column_stack([corners, np.ones(4)])
         sc_c = (c_mat @ hom_c.T).T[:, :3]
-        poly = Poly3DCollection(
-            [sc_c], facecolors=surf_color, edgecolors="none", alpha=0.35
+        poly_c = Poly3DCollection(
+            [sc_c], facecolors=surf_color, edgecolors="none", alpha=0.55
         )
-        ax.add_collection3d(poly)
-        center = (c_mat @ [0, 0, 0, 1])[:3]
+        ax.add_collection3d(poly_c)
+
+        # 3. Court lines with neon glow
+        for p1, p2 in segs:
+            pts = np.array([p1, p2])
+            hom = np.column_stack([pts, np.zeros(len(pts)), np.ones(len(pts))])
+            sc = (c_mat @ hom.T).T
+            ax.plot(
+                sc[:, 0], sc[:, 1], sc[:, 2], color=line_color, linewidth=3.0, alpha=0.25
+            )
+            ax.plot(
+                sc[:, 0], sc[:, 1], sc[:, 2], color=line_color, linewidth=1.4, alpha=0.95
+            )
+
+        # 4. Realistic 3D Net, Posts, and Mesh
+        x_net = np.linspace(-5.485, 5.485, 25)
+        z_net = 0.914 + (1.07 - 0.914) * (x_net / 5.485) ** 2
+        net_top = np.column_stack([x_net, np.zeros_like(x_net), z_net, np.ones_like(x_net)])
+        sc_net_top = (c_mat @ net_top.T).T
+        ax.plot(
+            sc_net_top[:, 0],
+            sc_net_top[:, 1],
+            sc_net_top[:, 2],
+            color="#f8fafc",
+            linewidth=2.5,
+            alpha=0.95,
+        )
+
+        for sx in [-5.485, 5.485]:
+            post = np.array([[sx, 0, 0, 1], [sx, 0, 1.07, 1]])
+            sc_post = (c_mat @ post.T).T
+            ax.plot(
+                sc_post[:, 0],
+                sc_post[:, 1],
+                sc_post[:, 2],
+                color="#cbd5e1",
+                linewidth=3.0,
+                alpha=0.9,
+            )
+
+        for hz in [0.3, 0.6]:
+            net_mid = np.column_stack([x_net, np.zeros_like(x_net), np.full_like(x_net, hz), np.ones_like(x_net)])
+            sc_net_mid = (c_mat @ net_mid.T).T
+            ax.plot(
+                sc_net_mid[:, 0],
+                sc_net_mid[:, 1],
+                sc_net_mid[:, 2],
+                color=net_color,
+                linewidth=0.6,
+                alpha=0.35,
+            )
+
+        center_pt = (c_mat @ [0, 0, 0, 1])[:3]
         ax.text(
-            center[0],
-            center[1],
-            center[2] + 0.05,
+            center_pt[0],
+            center_pt[1],
+            center_pt[2] + 0.08,
             name,
             color=line_color,
             fontweight="bold",
@@ -196,8 +256,8 @@ def _render_single_frame(
             ha="center",
         )
 
-    plot_court_3d(ax2, c0_mat, "#00F2FE", "#064e3b", "Court-0")
-    plot_court_3d(ax2, c1_mat, "#FFB300", "#78350f", "Court-1")
+    plot_rich_court_3d(ax2, c0_mat, "#00F2FE", "#064e3b", "#38bdf8", "Court-0 (Main)")
+    plot_rich_court_3d(ax2, c1_mat, "#FFB300", "#78350f", "#fbbf24", "Court-1 (Adjacent)")
 
     all_pos = np.array(
         [np.array(c.camera_to_scene).reshape(4, 4)[:3, 3] for c in cams]
@@ -206,13 +266,30 @@ def _render_single_frame(
         all_pos[:, 0],
         all_pos[:, 1],
         all_pos[:, 2],
-        color="#64748b",
-        linewidth=1.2,
-        alpha=0.5,
+        color="#94a3b8",
+        linewidth=1.3,
+        alpha=0.6,
         label="SfM Trajectory",
+    )
+    ax2.scatter(
+        xs=all_pos[::4, 0],
+        ys=all_pos[::4, 1],
+        zs=all_pos[::4, 2],
+        color="#38bdf8",
+        s=8,
+        alpha=0.4,
     )
 
     curr_pos = c2s[:3, 3]
+    ax2.scatter(
+        xs=curr_pos[0],
+        ys=curr_pos[1],
+        zs=curr_pos[2],
+        color="#FF007F",
+        s=250,
+        marker="o",
+        alpha=0.25,
+    )
     ax2.scatter(
         xs=curr_pos[0],
         ys=curr_pos[1],
@@ -223,17 +300,35 @@ def _render_single_frame(
         label="Current Camera",
         zorder=10,
     )
-    fwd = c2s[:3, 2] * 0.35
-    ax2.quiver(
-        curr_pos[0],
-        curr_pos[1],
-        curr_pos[2],
-        fwd[0],
-        fwd[1],
-        fwd[2],
-        color="#FF007F",
-        linewidth=2.0,
-        arrow_length_ratio=0.3,
+
+    # FOV Frustum pyramid
+    w, h = cam.width, cam.height
+    scale = 0.22
+    inv_K = np.linalg.inv(K)
+    corners_uv = np.array([[0, 0, 1], [w, 0, 1], [w, h, 1], [0, h, 1]], dtype=float)
+    rays = (inv_K @ corners_uv.T).T
+    rays /= np.linalg.norm(rays, axis=1, keepdims=True)
+    pts_cam = rays * scale
+    pts_hom = np.column_stack([pts_cam, np.ones(4)])
+    pts_world = (c2s @ pts_hom.T).T[:, :3]
+
+    for pt in pts_world:
+        ax2.plot(
+            [curr_pos[0], pt[0]],
+            [curr_pos[1], pt[1]],
+            [curr_pos[2], pt[2]],
+            color="#FF007F",
+            linewidth=1.5,
+            alpha=0.85,
+        )
+    w_loop = np.vstack([pts_world, pts_world[0]])
+    ax2.plot(
+        w_loop[:, 0],
+        w_loop[:, 1],
+        w_loop[:, 2],
+        color="#FFB300",
+        linewidth=1.5,
+        alpha=0.9,
     )
 
     ax2.set_xlabel("X (m)", color="#64748b")
@@ -249,7 +344,7 @@ def _render_single_frame(
         labelcolor="white",
         fontsize=8,
     )
-    ax2.view_init(elev=35, azim=-55)
+    ax2.view_init(elev=32, azim=-52)
 
     fig.canvas.draw()
     rgba = np.asarray(fig.canvas.buffer_rgba())
