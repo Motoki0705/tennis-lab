@@ -46,14 +46,6 @@ from src.synthetic_data_generation.alignment.evidence_guided_court_fit import (
     select_reliable_cluster,
     suppress_explained_evidence,
 )
-from src.synthetic_data_generation.alignment.fit_view_detection import (
-    FIT_VIEW_COURT_DETECTIONS_SCHEMA,
-    CourtKeypointPrediction,
-    FitViewDetectionSettings,
-    infer_fit_view_court_detections,
-    load_fit_view_court_detections,
-    publish_fit_view_court_detections,
-)
 from src.synthetic_data_generation.alignment.ground_line_map import (
     GROUND_LINE_MAP_SCHEMA,
     GroundLineAccumulator,
@@ -69,23 +61,24 @@ from src.synthetic_data_generation.alignment.ground_plane import (
     GroundPlaneFitSettings,
     estimate_ground_plane,
 )
+from src.synthetic_data_generation.alignment.view_inputs import (
+    load_provider_rgb_image,
+    partition_fit_and_holdout_cameras,
+)
 
 __all__ = [
     "ALIGNMENT_ACCEPTANCE_DECISION_SCHEMA",
     "ALIGNMENT_CALIBRATION_SCHEMA",
     "ALIGNMENT_VALIDATION_SCHEMA",
     "COURT_GEOMETRY_SCHEMA",
-    "FIT_VIEW_COURT_DETECTIONS_SCHEMA",
     "AlignmentAcceptanceDecision",
     "CourtFitCandidate",
     "CourtFitCluster",
     "CourtFitRun",
-    "CourtKeypointPrediction",
     "CourtLineEvaluationSettings",
     "CourtTemplateFitSettings",
     "CourtMultiStartFitResult",
     "CourtMultiStartFitSettings",
-    "FitViewDetectionSettings",
     "GROUND_LINE_MAP_SCHEMA",
     "GroundLineAccumulator",
     "GroundLineMapSettings",
@@ -103,17 +96,16 @@ __all__ = [
     "expanded_plane_bounds",
     "fit_court_instances",
     "fit_unknown_number_of_courts",
-    "infer_fit_view_court_detections",
     "load_alignment_acceptance_decision",
-    "load_fit_view_court_detections",
     "load_court_geometry_artifact",
     "load_alignment_artifact",
     "load_ground_line_map_artifact",
+    "load_provider_rgb_image",
+    "partition_fit_and_holdout_cameras",
     "project_line_pixels_to_ground",
     "point_cloud_court_support",
     "publish_alignment_acceptance_decision",
     "publish_alignment_artifact",
-    "publish_fit_view_court_detections",
     "publish_court_geometry_artifact",
     "publish_ground_line_map_artifact",
     "refit_and_validate_cluster",

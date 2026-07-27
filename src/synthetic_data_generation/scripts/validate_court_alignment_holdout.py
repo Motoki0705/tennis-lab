@@ -38,9 +38,6 @@ from src.synthetic_data_generation.alignment.court_line_acceptance import (
     load_alignment_artifact,
     publish_alignment_artifact,
 )
-from src.synthetic_data_generation.alignment.fit_view_detection import (
-    partition_fit_and_holdout_cameras,
-)
 from src.synthetic_data_generation.alignment.ground_line_map import (
     GroundLineMapSettings,
     load_ground_line_map_artifact,
@@ -51,6 +48,9 @@ from src.synthetic_data_generation.alignment.line_evidence_collection import (
 )
 from src.synthetic_data_generation.alignment.line_inference import (
     load_verified_line_detector,
+)
+from src.synthetic_data_generation.alignment.view_inputs import (
+    partition_fit_and_holdout_cameras,
 )
 from src.synthetic_data_generation.provider.bundle import (
     load_scene_provider_bundle,

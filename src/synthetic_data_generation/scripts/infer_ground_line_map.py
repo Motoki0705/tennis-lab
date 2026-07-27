@@ -33,10 +33,6 @@ import torch
 from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
-from src.synthetic_data_generation.alignment.fit_view_detection import (
-    load_provider_rgb_image,
-    partition_fit_and_holdout_cameras,
-)
 from src.synthetic_data_generation.alignment.ground_line_map import (
     GROUND_LINE_MAP_SCHEMA,
     GroundLineAccumulator,
@@ -51,6 +47,10 @@ from src.synthetic_data_generation.alignment.ground_plane import (
 from src.synthetic_data_generation.alignment.line_inference import (
     infer_line_projection,
     load_verified_line_detector,
+)
+from src.synthetic_data_generation.alignment.view_inputs import (
+    load_provider_rgb_image,
+    partition_fit_and_holdout_cameras,
 )
 from src.synthetic_data_generation.provider.bundle import (
     load_scene_provider_bundle,
