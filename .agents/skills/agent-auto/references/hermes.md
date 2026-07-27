@@ -58,6 +58,121 @@ This wrapper performs one native Hermes invocation. It never implements an
 outer retry or resume loop; a follow-up must explicitly supply `--resume` or
 `--continue`.
 
+## Model selection
+
+Hermes Agent supports model and provider specification at several levels.
+
+### CLI flags
+
+The wrapper accepts `--model` and `--provider` flags and forwards them to
+`hermes chat` unchanged:
+
+```bash
+.agents/skills/agent-auto/scripts/hermes-auto.sh \
+  --model anthropic/claude-sonnet-4 \
+  "Run the test suite"
+
+.agents/skills/agent-auto/scripts/hermes-auto.sh \
+  --provider openrouter \
+  "Review the code"
+```
+
+**`--model MODEL`** specifies the model in `provider/model-name` format (e.g.
+`anthropic/claude-sonnet-4`, `deepseek/deepseek-v4-flash`). When the provider
+prefix is included, it overrides the provider as well. This flag is also
+settable via the `HERMES_INFERENCE_MODEL` environment variable.
+
+**`--provider PROVIDER`** overrides the inference provider independently (e.g.
+`openrouter`, `anthropic`, `deepseek`). The built-in default is `auto`
+(confirmed by `hermes chat --help`). The persistent default lives in
+`config.yaml` under `model.provider` (confirmed by `hermes --help`). Built-in
+provider names and custom user-defined names from the `providers:` section of
+`config.yaml` are both valid (confirmed by `hermes chat --help`).
+
+*Inference:* `auto` likely means auto-detection from available credentials
+(e.g. the first provider with a valid API key in `~/.hermes/.env`), but the
+exact detection logic is not documented in CLI help.
+
+Unlike `--model`, there is no `HERMES_INFERENCE_PROVIDER` environment variable
+— provider can only be set via `--provider` (or `model.provider` in config).
+
+### Config-based defaults
+
+Persistent model settings live in `~/.hermes/config.yaml`:
+
+- `model.default` — default model name
+- `model.provider` — default provider
+- `model.base_url` — custom API base URL for self-hosted endpoints
+
+These are set interactively with `hermes model` or imperatively with
+`hermes config set model.default <name>`.
+
+### Dynamic model discovery
+
+Available models are not hard-coded in the CLI. Each configured provider
+exposes its models via a `/v1/models` endpoint. Use `hermes model` for an
+interactive picker (requires TTY). Pass `hermes model --refresh` to clear the
+disk cache and re-fetch every provider's live model list.
+
+Known models can therefore only be enumerated by running the interactive
+picker or querying each provider's API directly.
+
+### Resolution order
+
+Based on the CLI help text (`hermes --help`, `hermes chat --help`):
+
+- `--model MODEL` is documented as "a model override for this invocation" — it
+  takes highest precedence over config. The `HERMES_INFERENCE_MODEL` env var is
+  described as "also settable via" — an alternative at the same level, not a
+  higher-priority override. In practice the CLI flag takes precedence in
+  argparse-based resolution.
+- When neither `--model` nor the env var is set, `model.default` from
+  `config.yaml` is used (inferred from the "override" semantics of `--model`
+  and `HERMES_INFERENCE_MODEL`).
+- Provider resolution: if the `--model` value includes a `provider/` prefix
+  (e.g. `anthropic/claude-sonnet-4`), that prefix overrides the provider
+  (inferred from the format convention shown in `hermes --help` examples).
+  Otherwise, `--provider` (if given) takes precedence, then
+  `model.provider` from config, then the built-in `auto` (confirmed by
+  `hermes chat --help`: "(default: auto)").
+
+### Fallback providers
+
+When the primary model fails with rate-limit, overload, or connection errors,
+Hermes tries fallback providers in order. Managed via `hermes fallback`:
+
+```bash
+hermes fallback list       # Show the fallback chain
+hermes fallback add        # Pick a provider + model to append
+hermes fallback remove     # Remove an entry
+hermes fallback clear      # Clear all fallback entries
+```
+
+The fallback chain lives in `config.yaml`. *Inference:* it is likely independent
+of per-invocation `--model` / `--provider` overrides, since fallback is
+configured separately via `hermes fallback add/remove`.
+
+### Effect on `--ignore-user-config`
+
+When `--ignore-user-config` is active (the wrapper default), the configured
+`model.default` and `model.provider` from `~/.hermes/config.yaml` are **not
+loaded**. In this mode:
+
+- If neither `--model` nor `--provider` is passed, Hermes falls back to its
+  built-in defaults.
+- Pass `--use-user-config` (the wrapper's inverse of `--ignore-user-config`)
+  to restore config-based model selection.
+- Credentials from `~/.hermes/.env` remain available regardless, so a
+  self-hosted `base_url` + API key in `.env` works even under
+  `--ignore-user-config`.
+
+### Wrapper script behaviour
+
+`scripts/hermes-auto.sh` simply forwards `--model` and `--provider` to
+`hermes chat` as-is when those options are provided. No transformation or
+validation is applied in the wrapper. Verified against the script source
+(lines 79–80, 137–138).
+
 ## Verified interface
 
 The command shape was verified against Hermes Agent v0.15.1. The initial run
