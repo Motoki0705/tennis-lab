@@ -350,9 +350,12 @@ def _fit_subset_stability(
         group_ids = [int(value) for value in subset_value]
         if not group_ids or not set(group_ids).issubset(evidence_by_group):
             raise ValueError(f"Invalid stability subset groups: {group_ids}.")
-        evidence = np.sum(
-            [evidence_by_group[group_id] for group_id in group_ids],
-            axis=0,
+        evidence = np.asarray(
+            np.sum(
+                [evidence_by_group[group_id] for group_id in group_ids],
+                axis=0,
+                dtype=np.float32,
+            ),
             dtype=np.float32,
         )
         candidate = fit_court_instance_near_reference(
