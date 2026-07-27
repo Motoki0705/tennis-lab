@@ -15,6 +15,7 @@ work until it exits. Do not add an outer resume loop.
    - [Claude Code](references/claude.md)
    - [Codex CLI](references/codex.md)
    - [Antigravity CLI](references/agy.md)
+   - [Hermes Agent](references/hermes.md)
 3. Confirm that the provider CLI is installed and authenticated.
 4. Run the matching wrapper under `scripts/`.
 5. Treat the wrapper exit status as the machine-readable outcome and inspect
