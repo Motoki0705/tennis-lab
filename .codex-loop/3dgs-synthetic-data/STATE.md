@@ -4,7 +4,7 @@
 
 - Cycle: 18
 - Current phase: complete — Architecture A / NHT N1 production refactor
-  validated; PR #666 delivery ready
+  validated and delivered to PR #666
 - P0: complete (cycle 01)
 - P1: complete (cycle 01)
 - P2: complete (cycle 02)
@@ -35,6 +35,8 @@
 - Refactor base HEAD: `c3e5728280bfae237eba8e776905aa0a90868c0a`
 - NHT boundary commit:
   `b3176cfe2f8e16f1f89fe29151db650f3867af4f`
+- Parent refactor commit:
+  `f00228e94d9734a3345ba8a1b475acd787b9595e`
 - Pull request:
   `https://github.com/Motoki0705/tennis-lab/pull/666` (`OPEN`,
   `MERGEABLE`, `enhancement`)
@@ -142,8 +144,8 @@
 - BLCS/PLCS/court render: none
 - export/alignment: none
 - GPU compute process owned by this cycle: none
-- Only next action: push the parent refactor commit to PR #666, then the user
-  reviews the Architecture A/N1 code and the visualization-first report.
+- Only next action: the user reviews PR #666, NHT fork PR #2, and the
+  visualization-first report; merge or request a focused follow-up.
 
 ## Completed in cycle 17
 
