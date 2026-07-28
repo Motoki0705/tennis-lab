@@ -189,3 +189,9 @@ experiments_mcmc/
 # them despite the generic runs/ and *.json/*.npz ignores above.
 !knowledge/runs/
 !knowledge/runs/**
+
+
+# Persist loop decisions in Markdown while keeping heavyweight validation output
+# local and immutable at the paths recorded by STATE.md.
+.codex-loop/**/artifacts/
+.codex-loop/**/logs/

@@ -21,7 +21,7 @@ from src.synthetic_data_generation.alignment.components.ground.projection import
     ProjectedLinePixels,
     project_line_pixels_to_ground,
 )
-from src.synthetic_data_generation.provider.bundle import sha256_file
+from src.synthetic_data_generation.alignment.scene_provider.bundle import sha256_file
 from src.synthetic_data_generation.scene_contract import SceneCamera
 from src.tasks.court_detection.inference import CourtLinePredictor
 

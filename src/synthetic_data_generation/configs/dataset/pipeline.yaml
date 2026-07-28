@@ -1,0 +1,15 @@
+defaults:
+  - domain: blcs
+  - runtime: nht
+  - _self_
+
+execute: false
+plan_path: outputs/synthetic_data_generation/dataset/${domain.name}/pipeline-plan.json
+execution_output: outputs/synthetic_data_generation/dataset/${domain.name}/execution
+
+hydra:
+  run:
+    dir: outputs/synthetic_data_generation/dataset/${domain.name}/${now:%Y-%m-%d_%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

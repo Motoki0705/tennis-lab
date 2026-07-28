@@ -69,7 +69,7 @@ from src.synthetic_data_generation.alignment.components.inference.line_detector 
 from src.synthetic_data_generation.alignment.components.inputs.view_inputs import (
     partition_fit_and_holdout_cameras,
 )
-from src.synthetic_data_generation.provider.bundle import (
+from src.synthetic_data_generation.alignment.scene_provider.bundle import (
     load_scene_provider_bundle,
     sha256_file,
 )

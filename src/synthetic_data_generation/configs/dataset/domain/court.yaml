@@ -1,0 +1,26 @@
+name: court
+
+algorithms:
+  camera_sampling: inward_orbit
+  labels: symmetric_seven_channel
+
+stages:
+  runtime_probe:
+    enabled: true
+    arguments:
+      - --nht-repository
+      - third_party/nht
+      - --output
+      - outputs/synthetic_data_generation/dataset/court/nht-runtime.json
+  sample_cameras:
+    enabled: false
+    arguments: []
+  render:
+    enabled: false
+    arguments: []
+  validate:
+    enabled: false
+    arguments: []
+  report:
+    enabled: false
+    arguments: []

@@ -1,0 +1,43 @@
+{
+  "files": {
+    "blcs-native-labels.gif": {
+      "sha256": "ee40c7a73900d29d3ed88a37b11e8336047fe757d875f8d69918936275b7e027",
+      "size_bytes": 1059306
+    },
+    "court-heatmap-contact-sheet.png": {
+      "sha256": "68da138cc2d549cf91a3e8095c6cf8911f98c1ebfce11dde70a31563435342cc",
+      "size_bytes": 1297342
+    },
+    "court-keypoint-contact-sheet.png": {
+      "sha256": "43d9bb47d29d52cbd1b605e7bb93db3107970274ca7430b4d844e47cd2b9dd7e",
+      "size_bytes": 1298282
+    },
+    "court-native-labels.gif": {
+      "sha256": "ce9e743aee1fc18c3f59cebf89ac8ec23c5315f6933d7b57b6b3bb0bfc7e056b",
+      "size_bytes": 506469
+    },
+    "native-composition-overview.png": {
+      "sha256": "abe258d50e3827b665bb9896993649854eba132152efa54c0265ddcf5fe078c3",
+      "size_bytes": 2479362
+    },
+    "plcs-native-labels.gif": {
+      "sha256": "91a1d0b02764420ccaf4bbbb96a8f4b87183f49615778161c09c7cf4a40dc4af",
+      "size_bytes": 920740
+    },
+    "plcs-pose-contact-sheet.png": {
+      "sha256": "5b19a1d6de89bf397ad56b559ccb3fe2736893b05ab1433596f809db5939035b",
+      "size_bytes": 113443
+    },
+    "release-metrics.png": {
+      "sha256": "397fe4c6c8099da0c85d7832a324ca94b56d6d14afc26cda759b214e25b7d9d9",
+      "size_bytes": 147887
+    },
+    "seed-diversity-trajectories.png": {
+      "sha256": "1fd95e90ee4dea11cdfe1f35dd2d869fdcb3ba4d479cec33586e134f7ea7f7e1",
+      "size_bytes": 284653
+    }
+  },
+  "schema": "tennis_3dgs_native_release_visuals_v1",
+  "scope": "diagnostic-only label overlays; accepted dataset RGB remains unchanged",
+  "status": "passed"
+}

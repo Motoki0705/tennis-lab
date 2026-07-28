@@ -1,1 +1,1 @@
-"""Rendering ports and adapters used by synthetic-data publishers."""
+"""Renderer-independent ports and isolated runtime adapters."""
