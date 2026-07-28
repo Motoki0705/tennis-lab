@@ -7,12 +7,112 @@ BLCS、PLCS、court detection の3系統を、2D RGB overlayではなく、同�
 基盤へ移行した。P0–P8の全acceptance gateは合格しており、統合P8は
 15/15 gateを通過した。
 
-ここで受理したのは、scene composition、制御、label、再現性、dataset
-contractを含む **mechanics release** である。背景は1-step NHT checkpoint
-由来で緑色の点群状に見えるため、production photorealismは受理範囲に
-含めない。この制約はmanifestとacceptance reportにも明記されている。
+最初のP0–P8で受理したのは、scene composition、制御、label、再現性、
+dataset contractを含む **mechanics release** である。この段階の背景は
+1-step NHT checkpoint由来で緑色の点群状に見えるため、production
+photorealismは受理範囲に含めなかった。
+
+その後cycle 17で、B00を30,000 step学習したproduction checkpointへ同じ
+composition contractを移植し、実RGB背景、point alignment、multi-ball、
+multi-person、6種類の周回cameraを追加検証した。したがって、本レポートでは
+緑色のmechanics evidenceと、下記のproduction RGB evidenceを明確に区別する。
 
 ![3系統のnative composition](assets/native-composition-overview.png)
+
+## Production RGB visual verification
+
+production previewは
+`/home/kamimura/projects/gaussian-splating/experiments/B03-NHT/results/ckpts/ckpt_29999_rank0.pt`
+（SHA-256
+`e8d722a172774de8df27e1ae38ac74d6a81d9a8e980fc83aca7c665eb9b68111`）
+を使用する。背景は999,744 Gaussianで、court、net、trees、school buildingsが
+RGBとして復元されている。以下はすべて左がnative raw RGB、右が別fileへ
+書き出した診断overlayである。raw RGBへの2D描画は行っていない。
+
+![production RGB / diagnostic overlay overview](assets/production-previews/production-rgb-overview.jpg)
+
+### Point alignment
+
+captured SfM camera `frame_000080`へ、`court_0`をyellow、
+`court_1`をcyanで投影した。目視ではnet、baseline、sideline上へ点が重なり、
+二面のinstanceを区別した状態でalignmentを確認できる。
+
+- [raw RGB video](assets/production-previews/alignment/rgb.mp4)
+- [point-alignment overlay video](assets/production-previews/alignment/rgb-with-diagnostic-overlay.mp4)
+- [raw / overlay contact sheet](assets/production-previews/alignment/contact-sheet.jpg)
+
+### BLCS: 3-ball samples
+
+各sampleは3個のprototype Gaussian ballを、drag、Magnus、wind、bounceを含む
+物理simulation軌道へ置き、背景と同じnative NHT callで描画する。実径6.7 cmの
+ballは通常の遠景cameraでは数pixel以下になる。そのため「見せるための拡大」は
+行わず、SfM camera群から複数球が同時可視かつ投影径中央値が約55 pxになる
+近接cameraを選んだ。診断overlayのB1/B2/B3 markerは別videoだけに存在する。
+
+| seed | objects | frames | raw RGB | diagnostic overlay | contact sheet |
+|---|---:|---:|---|---|---|
+| 20260728 | 3 | 21 | [MP4](assets/production-previews/blcs-seed-20260728/rgb.mp4) | [MP4](assets/production-previews/blcs-seed-20260728/rgb-with-diagnostic-overlay.mp4) | [JPG](assets/production-previews/blcs-seed-20260728/contact-sheet.jpg) |
+| 20260730 | 3 | 11 | [MP4](assets/production-previews/blcs-seed-20260730/rgb.mp4) | [MP4](assets/production-previews/blcs-seed-20260730/rgb-with-diagnostic-overlay.mp4) | [JPG](assets/production-previews/blcs-seed-20260730/contact-sheet.jpg) |
+| 20260732 | 3 | 16 | [MP4](assets/production-previews/blcs-seed-20260732/rgb.mp4) | [MP4](assets/production-previews/blcs-seed-20260732/rgb-with-diagnostic-overlay.mp4) | [JPG](assets/production-previews/blcs-seed-20260732/contact-sheet.jpg) |
+
+prototype ballはproduction assetの形状・fit経路を検証するための灰緑色の球で、
+実ballの最終appearanceではない。遠景1280 pxで3球を描いた比較では背景との差が
+4 pixel、最大52 uint8 LSBだった。このsub-pixel失敗例も保持し、camera選択を
+可視性で行う理由にした。
+
+### PLCS: 2-person samples
+
+各sampleは2人の4,096-Gaussian SMPL-X prototype avatarを、位置、yaw、
+ready/forehand poseで独立制御する。手前の人物だけでなく、反対court上の
+小さい人物も同じraw RGBへ合成される。灰色appearanceはprototypeの制約であり、
+geometry、identity、pose、occlusionのnative compositionを確認する成果である。
+
+| seed | persons | frames | raw RGB | diagnostic overlay | contact sheet |
+|---|---:|---:|---|---|---|
+| 20260728 | 2 | 12 | [MP4](assets/production-previews/plcs-seed-20260728/rgb.mp4) | [MP4](assets/production-previews/plcs-seed-20260728/rgb-with-diagnostic-overlay.mp4) | [JPG](assets/production-previews/plcs-seed-20260728/contact-sheet.jpg) |
+| 20260729 | 2 | 12 | [MP4](assets/production-previews/plcs-seed-20260729/rgb.mp4) | [MP4](assets/production-previews/plcs-seed-20260729/rgb-with-diagnostic-overlay.mp4) | [JPG](assets/production-previews/plcs-seed-20260729/contact-sheet.jpg) |
+| 20260731 | 2 | 12 | [MP4](assets/production-previews/plcs-seed-20260731/rgb.mp4) | [MP4](assets/production-previews/plcs-seed-20260731/rgb-with-diagnostic-overlay.mp4) | [JPG](assets/production-previews/plcs-seed-20260731/contact-sheet.jpg) |
+
+production appearanceで独立にfitした2回のavatarは、validation PSNR
+56.1131 / 56.1019 dB、raw RGB差は最大1 uint8 LSB、平均
+0.001092 LSBだった。
+
+### Court detection: orbit-family samples
+
+ユーザー質問中の「pose detection」は、ここではcourt detectionのcamera-pose
+samplingとして扱った。circle/ellipse、radius scale、height、complex /
+`court_0` / `court_1`注視点を変えた6本を実RGBでレンダリングした。
+
+![SfM envelope周辺のcircle/ellipse軌道族](assets/production-previews/court-orbit-trajectories.png)
+
+| family | radius / height | visual decision | raw RGB | diagnostic overlay | contact sheet |
+|---|---|---|---|---|---|
+| circle 0.75 / complex | 12.23 m / 1.59 m | stable | [MP4](assets/production-previews/court-circle-075-complex/rgb.mp4) | [MP4](assets/production-previews/court-circle-075-complex/rgb-with-diagnostic-overlay.mp4) | [JPG](assets/production-previews/court-circle-075-complex/contact-sheet.jpg) |
+| circle 1.00 / court 0 | 16.30 m / 2.52 m | local artifactあり | [MP4](assets/production-previews/court-circle-100-court0/rgb.mp4) | [MP4](assets/production-previews/court-circle-100-court0/rgb-with-diagnostic-overlay.mp4) | [JPG](assets/production-previews/court-circle-100-court0/contact-sheet.jpg) |
+| circle 1.30 / complex | 21.19 m / 4.24 m | **reject: SfM support外** | [MP4](assets/production-previews/court-circle-130-complex/rgb.mp4) | [MP4](assets/production-previews/court-circle-130-complex/rgb-with-diagnostic-overlay.mp4) | [JPG](assets/production-previews/court-circle-130-complex/contact-sheet.jpg) |
+| ellipse 0.75 / court 1 | 11.34×12.23 m / 1.59 m | stable | [MP4](assets/production-previews/court-ellipse-075-court1/rgb.mp4) | [MP4](assets/production-previews/court-ellipse-075-court1/rgb-with-diagnostic-overlay.mp4) | [JPG](assets/production-previews/court-ellipse-075-court1/contact-sheet.jpg) |
+| ellipse 1.00 / complex | 15.12×16.30 m / 2.52 m | stable | [MP4](assets/production-previews/court-ellipse-100-complex/rgb.mp4) | [MP4](assets/production-previews/court-ellipse-100-complex/rgb-with-diagnostic-overlay.mp4) | [JPG](assets/production-previews/court-ellipse-100-complex/contact-sheet.jpg) |
+| ellipse 1.30 / court 1 | 19.65×21.19 m / 4.24 m | **reject: SfM support外** | [MP4](assets/production-previews/court-ellipse-130-court1/rgb.mp4) | [MP4](assets/production-previews/court-ellipse-130-court1/rgb-with-diagnostic-overlay.mp4) | [JPG](assets/production-previews/court-ellipse-130-court1/contact-sheet.jpg) |
+
+0.75倍と1.00倍は、既存の0.25 m / 1.5° baselineより大幅に広い移動でも
+court geometryを維持した。一方1.30倍は軌道の一部でdouble image、blur、
+unsupported geometryが明確に出たため、成功扱いにせず失敗videoごと残した。
+これにより、次のsamplerはfamily全体を固定小範囲へ戻すのではなく、native
+visual qualityを用いて局所的なSfM support境界を学習できる。
+
+### Production previewの境界
+
+production RGB previewはすべて1 frameにつき公開`RGB+ED` rasterization 1回で、
+renderer commitは`20bc323d613258e5d169fdbc962c9ef27d55ca69`である。
+13 preview（alignment 1、BLCS 3、PLCS 3、court 6）のsource/output SHAは
+[publication manifest](assets/production-previews/manifest.json)で再検証した。
+
+ただし、production checkpointを既存のexact instance-AOV経路へそのまま通すと、
+NHT RGB alphaとAOV alphaの差が`0.0977283`となり、許容値`0.005`を超えた。
+dataset gateは緩めていない。そのため、ここで受理したのはproductionのraw RGB
+visual evidenceであり、production checkpointでのexact mask/AOV dataset
+acceptanceではない。exact label contract自体はmechanics checkpointで受理済み
+だが、production用にはNHT eval pathと一致するAOV実装が別途必要である。
 
 ## 共通アーキテクチャ
 
@@ -211,8 +311,8 @@ Gitで管理するものは、再現可能な実装、schema、test、research d
 NPY/AOV、repeat tree、失敗artifact、ログはGitへ含めず、immutable local
 artifactとして `STATE.md` にSHA-256と正確なpathを記録する。
 
-残る制約は外観品質である。scene mechanics、camera、label、instance
-consistencyは受理済みだが、背景、prototype ball、prototype avatarの
-photorealismは未達である。次の実運用ステップはコード再設計ではなく、
-同じcontractへ長時間学習したNHT sceneと実capture由来のball/human assetを
-差し替えることである。
+長時間学習したB03により背景RGBは確認できたが、prototype ball/avatarの
+photorealism、production checkpointでのexact AOV、SfM support外となる
+1.30倍軌道は未受理である。次の実運用ステップは、実capture由来の
+ball/human assetへの差し替え、NHT eval pathと一致するAOV実装、0.75–1.00倍
+周辺での局所的なsupport boundary推定である。
