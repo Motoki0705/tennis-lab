@@ -162,3 +162,31 @@ Acceptance gates:
   diversity.
 - Smoke, visual, metric, schema, and artifact-integrity reports pass without
   overwriting prior runs.
+
+## P9 — Production pipeline refactor
+
+Status: complete (cycle 18). The user selected Architecture A and NHT boundary
+N1. BLCS, PLCS, court, and future generators now share one dataset registry,
+vertical domain slices, config-selectable algorithms, immutable command plans,
+and a pinned subprocess renderer boundary.
+
+Acceptance gates:
+
+- All generators are owned under
+  `src/synthetic_data_generation/dataset/<dataset-name>` and are registered in
+  exactly one central registry; scripts are grouped by alignment or dataset
+  workflow.
+- Prototype candidates are stable config-selectable algorithms. Unknown names
+  fail closed, and phase numbers or prototype file names are absent from the
+  production routing API.
+- The NHT submodule owns no tennis dataset logic. The parent project invokes
+  project-owned workers with the exact clean submodule commit and logical NHT
+  venv interpreter through a shell-free subprocess.
+- Export-first reproduces all 491 cameras/images and the accepted scene
+  fingerprint into a new immutable bundle.
+- A real NHT runtime probe and native RGB render execute through the new
+  dataset pipeline. Failed AOV attempts remain artifacts and do not weaken the
+  production default.
+- Unit, integration, end-to-end, Ruff, mypy, script-convention, and diff checks
+  pass, and the visualization-first report documents both successes and
+  remaining AOV limitations.

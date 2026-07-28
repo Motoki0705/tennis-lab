@@ -11,7 +11,7 @@ def test_pipeline_cli_composes_b00_job_without_executing_gpu_stages() -> None:
         [
             sys.executable,
             "-m",
-            "src.synthetic_data_generation.scripts.run_alignment_pipeline",
+            "src.synthetic_data_generation.scripts.alignment.run_pipeline",
             "--cfg",
             "job",
             "jobs=b00",
@@ -32,7 +32,7 @@ def test_pipeline_cli_accepts_design_csv_stage_syntax() -> None:
         [
             sys.executable,
             "-m",
-            "src.synthetic_data_generation.scripts.run_alignment_pipeline",
+            "src.synthetic_data_generation.scripts.alignment.run_pipeline",
             "--cfg",
             "job",
             "jobs=b00",

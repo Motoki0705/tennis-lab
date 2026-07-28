@@ -206,6 +206,7 @@ module = [
     "deep_sort_realtime.*",
     "gdown.*",
     "gsplat.*",
+    "plyfile.*",
     "scipy.*",
     "MultiScaleDeformableAttention",
 ]
@@ -220,15 +221,6 @@ ignore_errors = true
 # untyped; typed wrappers live in src.submodules.models.
 [[tool.mypy.overrides]]
 module = ["src.submodules.vendor.*"]
-ignore_errors = true
-
-# Prototype / acceptance scripts migrated from third_party/camera_sampling
-# and third_party/plcs_avatar.
-[[tool.mypy.overrides]]
-module = [
-    "src.synthetic_data_generation.camera_sampling.*",
-    "src.synthetic_data_generation.plcs_avatar.*",
-]
 ignore_errors = true
 
 # Tests are still type-checked (bodies are validated), but pytest's own

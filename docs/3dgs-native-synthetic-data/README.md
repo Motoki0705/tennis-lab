@@ -114,6 +114,69 @@ visual evidenceであり、production checkpointでのexact mask/AOV dataset
 acceptanceではない。exact label contract自体はmechanics checkpointで受理済み
 だが、production用にはNHT eval pathと一致するAOV実装が別途必要である。
 
+## Production pipeline refactor
+
+プロトタイプ検証後、ユーザー選択の **Architecture A** と **NHT boundary N1**
+へ再編した。現在と将来のdatasetは
+`src/synthetic_data_generation/dataset/<dataset-name>`の一か所で管理し、
+各vertical sliceがartifact、component、render、validation、reportingを所有する。
+CLIは`src/synthetic_data_generation/scripts/{alignment,dataset}`に分離した。
+
+```mermaid
+flowchart TB
+  H["Hydra config<br/>domain + algorithm + stage arguments"] --> G["single dataset registry"]
+  G --> D{"domain pipeline"}
+  D --> B["dataset/blcs"]
+  D --> P["dataset/plcs"]
+  D --> C["dataset/court"]
+  D --> F["dataset/future_dataset"]
+  B & P & C & F --> Q["immutable command plan<br/>fingerprint + runtime owner"]
+  Q --> J["project Python<br/>plan / validate / report"]
+  Q --> N["N1 subprocess<br/>third_party/nht/.venv/bin/python"]
+  N --> W["project-owned render worker"]
+  W --> R["pinned NHT shader + gsplat"]
+```
+
+候補手法はprototype file名やphase番号で分岐せず、config上の安定した名前で
+選択する。未知の名前は利用可能な候補一覧とともに即時失敗し、fallbackしない。
+
+| dataset | config key | selectable algorithms |
+|---|---|---|
+| BLCS | `algorithms.ball_asset` | `procedural_fibonacci`, `registered_gaussian_asset` |
+| BLCS | `algorithms.trajectory` | `rally_physics` |
+| PLCS | `algorithms.avatar_control` | `gaussianavatar_query_lbs`, `hugs_topk_lbs` |
+| PLCS | `algorithms.motion` | `seeded_court_motion` |
+| court | `algorithms.camera_sampling` | `sfm_neighborhood`, `inward_orbit` |
+| court | `algorithms.labels` | `symmetric_seven_channel` |
+
+NHT forkからBLCS/PLCS/court固有worker、acceptance、previewを削除し、runtime、
+training、checkpoint、shader、rasterizerだけを残した。tennis-labはsubmoduleの
+完全なcommitとclean tracked stateを検証してから、shellを介さずproject-owned
+workerをNHT Pythonで起動する。venv interpreter symlinkを実体化してbase Pythonへ
+逸脱する不具合も回帰test付きで修正した。
+
+### Refactor verification
+
+export-first検証では新しい出力へ491 camera、491 image、217,336 scene pointを
+再exportした。scene fingerprintは従来と一致し、exporter codeの移動を含む新しい
+bundle fingerprintを発行した。
+
+| gate | result |
+|---|---|
+| export | 493 files / 275 MiB、491 cameras、491 images |
+| scene fingerprint | `2c16d09503118b08a30b3819d01c23b2bc0e575f00b4f30a931c8447d4d3e160` |
+| refactor export bundle | `9a3546c83926c09b7e17d427680e5c25649bc02cba58d9580e44f070195692c6` |
+| NHT submodule | `b3176cfe2f8e16f1f89fe29151db650f3867af4f` |
+| isolated runtime | Torch `2.9.1+cu130`、CUDA device 1、gsplat editable checkout |
+| real RGB smoke | 640×360、finite、overlayなし、renderer `20bc323d...` |
+
+real RGB smokeではmulti-ball planの2 instanceをbackgroundと同じGaussian sceneへ
+合成し、native RGBとexact AOVを2 renderer callで生成した。遠景frameではballが
+sub-pixelとなりexact visible pixelは0だったため、これはN1実行境界とRGB renderer
+のsmokeであり、ball visibility acceptanceではない。AOV/NHT alpha差は
+`0.0130756`で、smokeでは明示的に`0.02`を指定した。近接1280 px試行は
+`0.118223 > 0.03`で失敗したため、既定値を緩めず失敗artifactを保持した。
+
 ## 共通アーキテクチャ
 
 ```mermaid
@@ -142,10 +205,11 @@ flowchart LR
 | NHT/gsplat renderer commit | `20bc323d613258e5d169fdbc962c9ef27d55ca69` |
 | RGB overlay | 全系統で `false` |
 
-旧 `src/synthetic_data_generation/{dataset,provider,rendering}` は削除した。
-alignmentに必要なprovider exportは
-`src/synthetic_data_generation/alignment/scene_provider`へ移動し、互換shimは
-残していない。
+overlay-eraの旧 `src/synthetic_data_generation/{dataset,provider,rendering}`
+はP1で削除した。今回の`dataset`と`rendering/nht`は、その名前空間へ互換shimを
+戻したものではなく、3D Gaussian native composition専用の新しいproduction API
+である。alignmentに必要なprovider exportは引き続き
+`src/synthetic_data_generation/alignment/scene_provider`が所有する。
 
 ## BLCS
 
@@ -298,7 +362,7 @@ contractとの491 camera完全一致を確認してから下流artifactを検証
   `rgb_overlay_used=false` を横断検証。
 - render/dataset reference 1,438件をhash/sizeで再検証。
 - integrated gate: **15/15 passed**。
-- synthetic-data unit/e2e: **140 passed**（50.69 s、capture無効の直列実行）。
+- synthetic-data unit/integration/e2e: **156 passed**（18.98 s、xdist 6 worker）。
 - novel-view focused regression: **4 passed**。
 - Ruff: 全synthetic-data source/testとthird-party publisherでpassed。
 - mypy: P8 publisher 2 filesおよびcourt 5 modulesでpassed。

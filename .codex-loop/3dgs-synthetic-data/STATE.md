@@ -2,8 +2,9 @@
 
 ## Cursor
 
-- Cycle: 17
-- Current phase: complete — production RGB visual addendum complete; PR #666 open
+- Cycle: 18
+- Current phase: complete — Architecture A / NHT N1 production refactor
+  validated; PR #666 delivery ready
 - P0: complete (cycle 01)
 - P1: complete (cycle 01)
 - P2: complete (cycle 02)
@@ -31,14 +32,118 @@
 - Worktree:
   `/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data`
 - Branch: `feat/3dgs-native-synthetic-data`
-- Base HEAD: `626b3c81de3bb83451ccd65f0aa9828e35d010b6`
-- Release commit: `7b8a4903`
+- Refactor base HEAD: `c3e5728280bfae237eba8e776905aa0a90868c0a`
+- NHT boundary commit:
+  `b3176cfe2f8e16f1f89fe29151db650f3867af4f`
 - Pull request:
   `https://github.com/Motoki0705/tennis-lab/pull/666` (`OPEN`,
   `MERGEABLE`, `enhancement`)
+- NHT fork pull request:
+  `https://github.com/Motoki0705/neural-harmonic-textures/pull/2`
 - Automation `3dgs`: deleted after all acceptance gates, export-first
   verification, report publication, and PR creation completed.
-- Updated: 2026-07-28 18:53:01 JST / 2026-07-28 09:53:01 UTC
+- Updated: 2026-07-28 22:24:02 JST / 2026-07-28 13:24:02 UTC
+
+## Completed in cycle 18
+
+- Applied the user-selected Architecture A. All current and future generators
+  now enter through the single
+  `src/synthetic_data_generation/dataset/registry.py` and live in vertical
+  slices under `dataset/{blcs,plcs,court}`. Each slice owns artifacts,
+  components, rendering, validation, and reporting. Alignment remains under
+  its accepted component/pipeline hierarchy.
+- Reorganized entry points under
+  `src/synthetic_data_generation/scripts/{alignment,dataset}`. The dataset
+  runner publishes an immutable, fingerprinted command plan before optional
+  execution, refuses existing plan/execution paths, and records whether every
+  stage belongs to the project or NHT runtime.
+- Retained candidate implementations as strict config choices instead of
+  deleting alternatives: BLCS ball asset
+  `procedural_fibonacci|registered_gaussian_asset`; PLCS avatar control
+  `gaussianavatar_query_lbs|hugs_topk_lbs`; court camera sampling
+  `sfm_neighborhood|inward_orbit`. Unknown names raise with the complete choice
+  list; there is no fallback.
+- Applied NHT boundary N1. The submodule now owns only its pinned environment,
+  training, checkpoint, deferred shader, and rasterizer. All tennis-lab BLCS,
+  PLCS, court, acceptance, and reporting workers moved to the parent project.
+  The NHT fork change is commit
+  `b3176cfe2f8e16f1f89fe29151db650f3867af4f`, pushed as PR
+  `https://github.com/Motoki0705/neural-harmonic-textures/pull/2`.
+- The shell-free NHT adapter verifies the exact submodule commit and clean
+  tracked state. Runtime verification exposed that resolving
+  `.venv/bin/python` followed its symlink to the base interpreter and dropped
+  isolated site-packages. The adapter now preserves the logical venv path, and
+  a regression test proves it.
+- Export-first reran into the new immutable directory
+  `.codex-loop/3dgs-synthetic-data/artifacts/cycle-18/provider-export-refactor-v1`.
+  It contains 493 files / 275 MiB, 491 cameras, 491 images, and 217,336 points.
+  `provider.json` SHA-256 is
+  `bf880b07829e9cf9183ac30092afbea30509f5bccdbdd05fe6c0220d1919d216`;
+  bundle fingerprint is
+  `9a3546c83926c09b7e17d427680e5c25649bc02cba58d9580e44f070195692c6`;
+  scene fingerprint remains
+  `2c16d09503118b08a30b3819d01c23b2bc0e575f00b4f30a931c8447d4d3e160`.
+- N1 execution passed through the real dataset runner at
+  `cycle-18/blcs-runtime-plan-v2.json`,
+  `cycle-18/blcs-runtime-execution-v2`, and
+  `cycle-18/nht-runtime-v2.json`. The execution is complete with one successful
+  NHT stage; Torch is `2.9.1+cu130`, CUDA is available with one device, and the
+  editable gsplat checkout is the pinned submodule. Their SHA-256 values are
+  `c6158419e1b545db17c236fbff3efb41de537dd4b710e4fbe87303529138bf1c`,
+  `097db44d5fe2f8c33ae0d63739911b8072f9af86d244a0c742808871ab587909`,
+  and
+  `addf872db5690e207eaf8686f9ae99dc54221f9c0bde6d68cd9060b880913dec`.
+- A real native RGB stage passed through the same N1 pipeline at
+  `cycle-18/blcs-render-plan-v3.json`,
+  `cycle-18/blcs-render-execution-v3`, and
+  `cycle-18/blcs-real-render-v3`. The 640x360 frame is finite, contains no RGB
+  overlay, uses renderer commit
+  `20bc323d613258e5d169fdbc962c9ef27d55ca69`, and has render fingerprint
+  `9ad94fa038891a652cd4f44089233bc068b462af6901f10e0e1b329b49ad5ba1`.
+  Manifest SHA-256 is
+  `ade53e1056a0a13a15441796232d3c16e23acc2d5c2cbc7edadcc0b123142e6e`;
+  RGB SHA-256 is
+  `0dce48f3c13b68d321f7ec1325fd20dd190c56fac57ca786018f11e2558ba1d3`.
+- Final regression passed `156/156` synthetic-data unit/integration/e2e tests
+  in `18.98 s` with six xdist workers. Ruff, changed-scope mypy with
+  `--follow-imports=skip`, script-convention review for all eight synthetic-data
+  scripts, and `git diff --check` passed.
+- Updated the visualization-first report with the Architecture A/N1 diagram,
+  configurable algorithm matrix, export/runtime/render metrics, and explicit
+  AOV failure boundary. No user-owned production-preview binary was modified,
+  reverted, staged, or overwritten by this refactor.
+- PLCS/camera research decisions are unchanged: GaussianAvatar-style query LBS
+  remains the selected baseline while HUGS top-k remains selectable; both SfM
+  neighborhood and inward circle/ellipse orbit samplers remain selectable.
+
+## Cycle 18 failures and hypotheses
+
+- The inherited Windows `TMP/TEMP` path caused pytest capture deletion and
+  zero-test collection. The authoritative run used a fresh Linux `mktemp`
+  directory plus this worktree's explicit `PYTHONPATH`; 156 tests passed. This
+  was an invocation-environment failure, not a test fallback.
+- The first N1 runtime plan failed because interpreter symlink resolution
+  selected the base Python and reported missing Torch. The environment itself
+  was complete. Preserving the venv path fixed the adapter; failed
+  `cycle-18/blcs-runtime-plan-v1.json` remains unchanged.
+- The first real render attempt with default AOV tolerance rejected measured
+  NHT/AOV alpha drift `0.0130756 > 0.0001`. The successful far-view smoke
+  explicitly records tolerance `0.02`; its active balls are sub-pixel and it is
+  not counted as ball-visibility acceptance.
+- A closer 1280-wide multi-ball attempt failed at
+  `0.118223 > 0.03`. Its immutable plan
+  `cycle-18/blcs-render-plan-v4.json` is retained. The production exact-AOV
+  default was not weakened; the hypothesis remains that the eval3d AOV pass
+  must be made semantically identical to the production NHT eval path.
+
+## Cycle 18 running jobs
+
+- NHT training: none
+- BLCS/PLCS/court render: none
+- export/alignment: none
+- GPU compute process owned by this cycle: none
+- Only next action: push the parent refactor commit to PR #666, then the user
+  reviews the Architecture A/N1 code and the visualization-first report.
 
 ## Completed in cycle 17
 

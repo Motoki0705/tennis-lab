@@ -1,0 +1,29 @@
+name: plcs
+
+algorithms:
+  avatar_control: gaussianavatar_query_lbs
+  motion: seeded_court_motion
+
+stages:
+  runtime_probe:
+    enabled: true
+    arguments:
+      - --nht-repository
+      - third_party/nht
+      - --output
+      - outputs/synthetic_data_generation/dataset/plcs/nht-runtime.json
+  prepare_avatar:
+    enabled: false
+    arguments: []
+  fit_appearance:
+    enabled: false
+    arguments: []
+  plan_sequences:
+    enabled: false
+    arguments: []
+  render:
+    enabled: false
+    arguments: []
+  validate:
+    enabled: false
+    arguments: []
