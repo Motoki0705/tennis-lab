@@ -1,0 +1,859 @@
+{
+  "schema": "tennis_production_nht_preview_publication_v1",
+  "status": "passed",
+  "preview_count": 13,
+  "category_counts": {
+    "alignment": 1,
+    "blcs": 3,
+    "plcs": 3,
+    "court": 6
+  },
+  "raw_rgb_policy": {
+    "native_rgb_has_no_2d_overlay": true,
+    "diagnostic_overlay_is_separate": true
+  },
+  "previews": [
+    {
+      "public_id": "alignment",
+      "category": "alignment",
+      "assessment": "accepted",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-alignment-frame-000080-v1",
+      "source_content_fingerprint": "b0b38b2de3a496dec3842b3bbf1046d57cb5609976ae9ceb70f4451c777b8f28",
+      "task": "alignment",
+      "frame_count": 1,
+      "fps": 1.0,
+      "duration_seconds": 1.0,
+      "source": {
+        "family_id": "captured-sfm-alignment",
+        "orbit_content_fingerprint": "ca93aad1fd252aa1c5c401675623b1fc97d29f48ebf2c185df5625af652f0c9a",
+        "orbit_plan": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-14/multicourt-orbit-plan-v1",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_family_frame_indices": [
+          0
+        ]
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.9766366481781006,
+        "alpha_mean_min": 0.9766366481781006,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.49743239458869487,
+        "rgb_min": 0.054901960784313725,
+        "rgb_std": 0.25031905828737744
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "alignment/rgb.mp4",
+          "sha256": "b32fb69b8646c772dba7d69fa35ad7bbd2b9e4c7f2fe4d9f2753de763d70e8d4",
+          "size_bytes": 107087
+        },
+        "diagnostic_overlay": {
+          "relative_path": "alignment/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "683f848a4a70da6343f6dc3e137b0e8fc76d7ed28b63e3e9490659aaf5ab4a6d",
+          "size_bytes": 114666
+        },
+        "contact_sheet": {
+          "relative_path": "alignment/contact-sheet.jpg",
+          "sha256": "d4a18f0913463c0e90d2a6f48534267a98143240032b0afcc884a15b5252ac82",
+          "size_bytes": 187444
+        }
+      }
+    },
+    {
+      "public_id": "blcs-seed-20260728",
+      "category": "blcs",
+      "assessment": "accepted-visible-camera",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-blcs-visible-video-seed-20260728-v1",
+      "source_content_fingerprint": "82d5745d9020defed8fb7ffb85706d93f44a330c5fa0e7963977554bd105198e",
+      "task": "blcs",
+      "frame_count": 21,
+      "fps": 10.0,
+      "duration_seconds": 2.1,
+      "source": {
+        "camera_id": "frame_000051",
+        "object_count": 3,
+        "plan": ".codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-blcs-multi-seed-20260728-v1/plan",
+        "plan_fingerprint": "16230d8a938e55c961f2cd2869187f529322a538859d992a21a0cafce8fcfb61",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_frame_indices": [
+          174,
+          177,
+          180,
+          183,
+          186,
+          189,
+          192,
+          195,
+          198,
+          201,
+          204,
+          207,
+          210,
+          213,
+          216,
+          219,
+          222,
+          225,
+          228,
+          231,
+          234
+        ],
+        "seed": 20260728
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.9925822019577026,
+        "alpha_mean_min": 0.9925785660743713,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.5173615698720895,
+        "rgb_min": 0.047058823529411764,
+        "rgb_std": 0.22264580820121016
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "blcs-seed-20260728/rgb.mp4",
+          "sha256": "1d0ad880aee6052106f5927459a47e072ff0883935767283eed57edb7f904f68",
+          "size_bytes": 178307
+        },
+        "diagnostic_overlay": {
+          "relative_path": "blcs-seed-20260728/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "7653fdd7c77a0e1fe0f3aef0e2198b88935bb3b50a21fd89748f249c98bd07c8",
+          "size_bytes": 211671
+        },
+        "contact_sheet": {
+          "relative_path": "blcs-seed-20260728/contact-sheet.jpg",
+          "sha256": "bc713aca2378f69aaeda913154903e87c29295b4ba0f5d2e80d82fa60fc3d971",
+          "size_bytes": 931271
+        }
+      }
+    },
+    {
+      "public_id": "blcs-seed-20260730",
+      "category": "blcs",
+      "assessment": "accepted-visible-camera",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-blcs-visible-video-seed-20260730-v1",
+      "source_content_fingerprint": "ae90776d86313eb0e8b9cf2b4432b7862630537d746df3c7b9b198d96c1888d8",
+      "task": "blcs",
+      "frame_count": 11,
+      "fps": 10.0,
+      "duration_seconds": 1.1,
+      "source": {
+        "camera_id": "frame_000391",
+        "object_count": 3,
+        "plan": ".codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-blcs-multi-seed-20260730-v1/plan",
+        "plan_fingerprint": "7c1ac3e80bb5e6ce8c05f442013caa887ea32a17f6f916e296937b87899e256e",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_frame_indices": [
+          150,
+          153,
+          156,
+          159,
+          162,
+          165,
+          168,
+          171,
+          174,
+          177,
+          180
+        ],
+        "seed": 20260730
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.9960876703262329,
+        "alpha_mean_min": 0.9960876703262329,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.457050308526731,
+        "rgb_min": 0.043137254901960784,
+        "rgb_std": 0.21163406372070312
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "blcs-seed-20260730/rgb.mp4",
+          "sha256": "36f449927419f770b3851f38d40f2db37816659dbb21b6fe8370441ae81a1e0d",
+          "size_bytes": 151521
+        },
+        "diagnostic_overlay": {
+          "relative_path": "blcs-seed-20260730/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "3f06c0a6be659ed10f74cdf91b840a59b8ad59eda45fe3f37bf7d78e3cc1b148",
+          "size_bytes": 164744
+        },
+        "contact_sheet": {
+          "relative_path": "blcs-seed-20260730/contact-sheet.jpg",
+          "sha256": "72ac3167ddaccf24ce336ea8f2cfee3c73347e47bc15d8518fd4f0ece75a1b57",
+          "size_bytes": 890569
+        }
+      }
+    },
+    {
+      "public_id": "blcs-seed-20260732",
+      "category": "blcs",
+      "assessment": "accepted-visible-camera",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-blcs-visible-video-seed-20260732-v1",
+      "source_content_fingerprint": "976e64bfab470459eee302571af8016d26a3507ec9d2481ec633c95df076c9d5",
+      "task": "blcs",
+      "frame_count": 16,
+      "fps": 10.0,
+      "duration_seconds": 1.6,
+      "source": {
+        "camera_id": "frame_000450",
+        "object_count": 3,
+        "plan": ".codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-blcs-multi-seed-20260732-v1/plan",
+        "plan_fingerprint": "93f5aa1e850da933f852f369e705c7ea025be795bb40a117d3f5a89d493b64f7",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_frame_indices": [
+          147,
+          150,
+          153,
+          156,
+          159,
+          162,
+          165,
+          168,
+          171,
+          174,
+          177,
+          180,
+          183,
+          186,
+          189,
+          192
+        ],
+        "seed": 20260732
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.9993191957473755,
+        "alpha_mean_min": 0.9993191361427307,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.43417555865119484,
+        "rgb_min": 0.06666666666666667,
+        "rgb_std": 0.19667237225700826
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "blcs-seed-20260732/rgb.mp4",
+          "sha256": "915e92888782abeac51125d48ab956e49b7ea0e66423865477aa72ebcd7689e7",
+          "size_bytes": 169555
+        },
+        "diagnostic_overlay": {
+          "relative_path": "blcs-seed-20260732/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "345d0219f9a2aea31e843e50819e7e596bd93e4524f774b963e3782f601de092",
+          "size_bytes": 185857
+        },
+        "contact_sheet": {
+          "relative_path": "blcs-seed-20260732/contact-sheet.jpg",
+          "sha256": "a38d2f7e2351b8e7304c3f263800c4b8e78218ff5d5a86c276801f75b9484fd2",
+          "size_bytes": 905293
+        }
+      }
+    },
+    {
+      "public_id": "plcs-seed-20260728",
+      "category": "plcs",
+      "assessment": "accepted",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-plcs-video-seed-20260728-v1",
+      "source_content_fingerprint": "d609c4674033c35d12f211d58105ac62fad01854b925c13c6ce44c6785cbdea6",
+      "task": "plcs",
+      "frame_count": 12,
+      "fps": 6.0,
+      "duration_seconds": 2.0,
+      "source": {
+        "camera_id": "frame_000057",
+        "person_count": 2,
+        "plan": ".codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-plcs-multi-seed-20260728-v1",
+        "plan_fingerprint": "810a7f1b5ea0a59ba358017a4994a72e3c3ce43e5ed6652ca9cfe60bad0d326c",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_frame_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "seed": 20260728
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.9910292625427246,
+        "alpha_mean_min": 0.9910290837287903,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.51094222723269,
+        "rgb_min": 0.043137254901960784,
+        "rgb_std": 0.23505639468922335
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "plcs-seed-20260728/rgb.mp4",
+          "sha256": "a53e0054a97ef93f56aee11fd8d907727e39d8fecc19704765d302fdeede3f86",
+          "size_bytes": 125974
+        },
+        "diagnostic_overlay": {
+          "relative_path": "plcs-seed-20260728/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "6af279ba6133816bad84efefa44c2644fae7b91c8d69852f11b5ccc38290e176",
+          "size_bytes": 141905
+        },
+        "contact_sheet": {
+          "relative_path": "plcs-seed-20260728/contact-sheet.jpg",
+          "sha256": "3db87bf03c0146f54d14de3bd2ed2bb60a516109a8bc900cc6853897b71f56af",
+          "size_bytes": 613976
+        }
+      }
+    },
+    {
+      "public_id": "plcs-seed-20260729",
+      "category": "plcs",
+      "assessment": "accepted",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-plcs-video-seed-20260729-v1",
+      "source_content_fingerprint": "9619348cece80a7bbee97225104cdfdb15362dcbefc1e0348dd1c23cdeff760d",
+      "task": "plcs",
+      "frame_count": 12,
+      "fps": 6.0,
+      "duration_seconds": 2.0,
+      "source": {
+        "camera_id": "frame_000056",
+        "person_count": 2,
+        "plan": ".codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-plcs-multi-seed-20260729-v1",
+        "plan_fingerprint": "84dcd60a7cc3171dcf1c0fd9376da5eafffe76b79276653ef7d5f3c1398bd012",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_frame_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "seed": 20260729
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.9920335412025452,
+        "alpha_mean_min": 0.9920327663421631,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.5083758185891544,
+        "rgb_min": 0.047058823529411764,
+        "rgb_std": 0.2327627144607843
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "plcs-seed-20260729/rgb.mp4",
+          "sha256": "31cc8ecf8a0a0b6ebc054439a861e8d6d987c0ed15b60a4132e14cb9af4d2a00",
+          "size_bytes": 128888
+        },
+        "diagnostic_overlay": {
+          "relative_path": "plcs-seed-20260729/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "09507cd88149c11277185b8972e9f8f1d0b897541f03c31d8f3adeef77fc17ee",
+          "size_bytes": 144939
+        },
+        "contact_sheet": {
+          "relative_path": "plcs-seed-20260729/contact-sheet.jpg",
+          "sha256": "d54b36233687989854d2ed21d3e267fc0e224d62c9b48078433a49cc48b8a2ba",
+          "size_bytes": 617889
+        }
+      }
+    },
+    {
+      "public_id": "plcs-seed-20260731",
+      "category": "plcs",
+      "assessment": "accepted",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-plcs-video-seed-20260731-v1",
+      "source_content_fingerprint": "65ee410eb5bfa94b0f500b798d437c6e4af3a18a821def1e2076fe5dd63736af",
+      "task": "plcs",
+      "frame_count": 12,
+      "fps": 6.0,
+      "duration_seconds": 2.0,
+      "source": {
+        "camera_id": "frame_000056",
+        "person_count": 2,
+        "plan": ".codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-plcs-multi-seed-20260731-v1",
+        "plan_fingerprint": "3c7d9243a24fc4dce7f2737804b9b95a8e716271e91b7d04810c8593ec731b23",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_frame_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "seed": 20260731
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.9920334219932556,
+        "alpha_mean_min": 0.9920328259468079,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.5084130979051777,
+        "rgb_min": 0.047058823529411764,
+        "rgb_std": 0.23275737388461243
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "plcs-seed-20260731/rgb.mp4",
+          "sha256": "e5c39f61591108a47b112d62ae720d230f6d3aa319b692c18525eb8b18b997a6",
+          "size_bytes": 128356
+        },
+        "diagnostic_overlay": {
+          "relative_path": "plcs-seed-20260731/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "5602cbeab7fff37806ecfd201f319337a8ca81e010693402627cd62c57830ea9",
+          "size_bytes": 142752
+        },
+        "contact_sheet": {
+          "relative_path": "plcs-seed-20260731/contact-sheet.jpg",
+          "sha256": "3668ab1292d3b73f2cfa0bf217d33f778b4a463436695bb907c2839d6e37a9bc",
+          "size_bytes": 618190
+        }
+      }
+    },
+    {
+      "public_id": "court-circle-075-complex",
+      "category": "court",
+      "assessment": "accepted-stable",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-court-video-circle-scale-0.75-target-complex-v1",
+      "source_content_fingerprint": "12a476fdbb932d3020efe4a38c3d3a6292c38439e29db05018967625480f70b8",
+      "task": "court",
+      "frame_count": 24,
+      "fps": 12.0,
+      "duration_seconds": 2.0,
+      "source": {
+        "family_id": "circle-scale-0.75-target-complex",
+        "orbit_content_fingerprint": "ca93aad1fd252aa1c5c401675623b1fc97d29f48ebf2c185df5625af652f0c9a",
+        "orbit_plan": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-14/multicourt-orbit-plan-v1",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_family_frame_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ]
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.9998565912246704,
+        "alpha_mean_min": 0.9910223484039307,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.5064545874502144,
+        "rgb_min": 0.03137254901960784,
+        "rgb_std": 0.1967932009229473
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "court-circle-075-complex/rgb.mp4",
+          "sha256": "0bc4e26aad7a0305fbfe8bf5faddbe115f687984a114eaba3bfbff395b564bed",
+          "size_bytes": 1004110
+        },
+        "diagnostic_overlay": {
+          "relative_path": "court-circle-075-complex/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "7badc5e7854d2cae1347661dda1807ac4ee6ce7267054df17c8bbb71a1f05bf7",
+          "size_bytes": 1033303
+        },
+        "contact_sheet": {
+          "relative_path": "court-circle-075-complex/contact-sheet.jpg",
+          "sha256": "8a0776089cd38de5e74941694c958234bb84869de5df2ef9bbc5739a8e3e2c39",
+          "size_bytes": 535813
+        }
+      }
+    },
+    {
+      "public_id": "court-circle-100-court0",
+      "category": "court",
+      "assessment": "accepted-with-local-artifacts",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-court-video-circle-scale-1.00-target-court_0-v1",
+      "source_content_fingerprint": "4055f6a7deedce2a3621bdd39ab3031ea1f12b10107560640217b238f78d3cef",
+      "task": "court",
+      "frame_count": 24,
+      "fps": 12.0,
+      "duration_seconds": 2.0,
+      "source": {
+        "family_id": "circle-scale-1.00-target-court_0",
+        "orbit_content_fingerprint": "ca93aad1fd252aa1c5c401675623b1fc97d29f48ebf2c185df5625af652f0c9a",
+        "orbit_plan": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-14/multicourt-orbit-plan-v1",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_family_frame_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ]
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.9998477101325989,
+        "alpha_mean_min": 0.9882017970085144,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.49227618049172794,
+        "rgb_min": 0.0392156862745098,
+        "rgb_std": 0.19441493913239125
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "court-circle-100-court0/rgb.mp4",
+          "sha256": "2e9e787e144308caa898363ec37a52c3e73bb959cf0d597389bc3a1747690eb8",
+          "size_bytes": 1160088
+        },
+        "diagnostic_overlay": {
+          "relative_path": "court-circle-100-court0/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "dabbeee14ed405b896025efff89b30ca4543fc26c16e4bdc4d8a91887a128d0a",
+          "size_bytes": 1237088
+        },
+        "contact_sheet": {
+          "relative_path": "court-circle-100-court0/contact-sheet.jpg",
+          "sha256": "18b818e47b862819794ce512126fdf19fd9d7837aa1a7703ba28a8368302067e",
+          "size_bytes": 653997
+        }
+      }
+    },
+    {
+      "public_id": "court-circle-130-complex",
+      "category": "court",
+      "assessment": "rejected-outside-sfm-support",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-court-video-circle-scale-1.30-target-complex-v1",
+      "source_content_fingerprint": "4f72229eab2f66032f589a26e755c93315918b1cb9856b1ca9c42f250ad3323e",
+      "task": "court",
+      "frame_count": 23,
+      "fps": 12.0,
+      "duration_seconds": 1.9166666666666667,
+      "source": {
+        "family_id": "circle-scale-1.30-target-complex",
+        "orbit_content_fingerprint": "ca93aad1fd252aa1c5c401675623b1fc97d29f48ebf2c185df5625af652f0c9a",
+        "orbit_plan": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-14/multicourt-orbit-plan-v1",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_family_frame_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ]
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.9998120665550232,
+        "alpha_mean_min": 0.9846549034118652,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.4946628645354626,
+        "rgb_min": 0.054901960784313725,
+        "rgb_std": 0.16896529852175246
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "court-circle-130-complex/rgb.mp4",
+          "sha256": "9d283a9668eec3c44b0a37c8848717898af205d5a554d000e5a2a60cf6efc1c8",
+          "size_bytes": 1133913
+        },
+        "diagnostic_overlay": {
+          "relative_path": "court-circle-130-complex/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "f587434019a03cdc43c8389b2be319999ea19c0f62fcc2e313f69df86f144809",
+          "size_bytes": 1186549
+        },
+        "contact_sheet": {
+          "relative_path": "court-circle-130-complex/contact-sheet.jpg",
+          "sha256": "0a3c7226e73921d0cf24c22ac9820cac4b9d5b69cc21bbe0211113a9dd6b080a",
+          "size_bytes": 565961
+        }
+      }
+    },
+    {
+      "public_id": "court-ellipse-075-court1",
+      "category": "court",
+      "assessment": "accepted-stable",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-court-video-ellipse-scale-0.75-target-court_1-v1",
+      "source_content_fingerprint": "78cd967d9c41f7b90b8136da5c4eba7b4f286b9a8bc548a9b739f2e69c7d7dea",
+      "task": "court",
+      "frame_count": 24,
+      "fps": 12.0,
+      "duration_seconds": 2.0,
+      "source": {
+        "family_id": "ellipse-scale-0.75-target-court_1",
+        "orbit_content_fingerprint": "ca93aad1fd252aa1c5c401675623b1fc97d29f48ebf2c185df5625af652f0c9a",
+        "orbit_plan": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-14/multicourt-orbit-plan-v1",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_family_frame_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ]
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.999620258808136,
+        "alpha_mean_min": 0.9957641363143921,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.5342341404335171,
+        "rgb_min": 0.03137254901960784,
+        "rgb_std": 0.17637896070293352
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "court-ellipse-075-court1/rgb.mp4",
+          "sha256": "31edd77fb1ec4d26ca869ee3fd64b8d77494b969149bbc3979378669562069ec",
+          "size_bytes": 915983
+        },
+        "diagnostic_overlay": {
+          "relative_path": "court-ellipse-075-court1/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "26b6cd1fe394d041a8deb195084cc5cfc08ecf9cbba564c350c09bc2403512fd",
+          "size_bytes": 936611
+        },
+        "contact_sheet": {
+          "relative_path": "court-ellipse-075-court1/contact-sheet.jpg",
+          "sha256": "536bc6c4569f15c5a5361d026a7d7d9a5e1350d57a1fd20d885f6abf4f1796d9",
+          "size_bytes": 507484
+        }
+      }
+    },
+    {
+      "public_id": "court-ellipse-100-complex",
+      "category": "court",
+      "assessment": "accepted-stable",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-court-video-ellipse-scale-1.00-target-complex-v1",
+      "source_content_fingerprint": "2d91224210982d7bbde8d8b07750702b131eb07a49e39b7cb65b1b1ee7e26774",
+      "task": "court",
+      "frame_count": 23,
+      "fps": 12.0,
+      "duration_seconds": 1.9166666666666667,
+      "source": {
+        "family_id": "ellipse-scale-1.00-target-complex",
+        "orbit_content_fingerprint": "ca93aad1fd252aa1c5c401675623b1fc97d29f48ebf2c185df5625af652f0c9a",
+        "orbit_plan": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-14/multicourt-orbit-plan-v1",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_family_frame_indices": [
+          0,
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ]
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.9998360276222229,
+        "alpha_mean_min": 0.9885896444320679,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.513237268784467,
+        "rgb_min": 0.0392156862745098,
+        "rgb_std": 0.1877201155120251
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "court-ellipse-100-complex/rgb.mp4",
+          "sha256": "941afd1c43197cc791ac73b8e1edfc9e59d65df806395ceaa31889e9602704a1",
+          "size_bytes": 1113728
+        },
+        "diagnostic_overlay": {
+          "relative_path": "court-ellipse-100-complex/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "0410fa98bf4d36dd9070be12a890c095ea2aabc9f28ae6e7a29b4eebc3c85684",
+          "size_bytes": 1175683
+        },
+        "contact_sheet": {
+          "relative_path": "court-ellipse-100-complex/contact-sheet.jpg",
+          "sha256": "15f36449e56e5538f041f5ecd239efe86218c8cb962d9792e0c999cbca8f7216",
+          "size_bytes": 536597
+        }
+      }
+    },
+    {
+      "public_id": "court-ellipse-130-court1",
+      "category": "court",
+      "assessment": "rejected-outside-sfm-support",
+      "source_artifact": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-17/production-court-video-ellipse-scale-1.30-target-court_1-v1",
+      "source_content_fingerprint": "74b9a43cf0b5535dd5a4fa03c672e0723257c7811887afeb2492a53487399751",
+      "task": "court",
+      "frame_count": 23,
+      "fps": 12.0,
+      "duration_seconds": 1.9166666666666667,
+      "source": {
+        "family_id": "ellipse-scale-1.30-target-court_1",
+        "orbit_content_fingerprint": "ca93aad1fd252aa1c5c401675623b1fc97d29f48ebf2c185df5625af652f0c9a",
+        "orbit_plan": "/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data/.codex-loop/3dgs-synthetic-data/artifacts/cycle-14/multicourt-orbit-plan-v1",
+        "production_composition_fingerprint": "c51339d39e84b8484f70e256edd156606c55faf8f6d08e6e23761368fc2420ae",
+        "sampled_family_frame_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          20,
+          21,
+          22,
+          23
+        ]
+      },
+      "metrics": {
+        "all_frames_finite": true,
+        "alpha_mean_max": 0.9994412064552307,
+        "alpha_mean_min": 0.9890038967132568,
+        "rgb_max": 1.0,
+        "rgb_mean": 0.511845308191636,
+        "rgb_min": 0.050980392156862744,
+        "rgb_std": 0.15628335990157782
+      },
+      "files": {
+        "raw_rgb": {
+          "relative_path": "court-ellipse-130-court1/rgb.mp4",
+          "sha256": "34479dec57fd2f95d074c595fd7ecd8c967817ce9c50bdd35d7a7722ccfd093f",
+          "size_bytes": 1092225
+        },
+        "diagnostic_overlay": {
+          "relative_path": "court-ellipse-130-court1/rgb-with-diagnostic-overlay.mp4",
+          "sha256": "d370b72ab1c55aa7498cb1ca98f20a4eb718d2ad8c0bfd15ea413be0dce5e7ae",
+          "size_bytes": 1162033
+        },
+        "contact_sheet": {
+          "relative_path": "court-ellipse-130-court1/contact-sheet.jpg",
+          "sha256": "fef55da9f1587898b6a7a8641565b18eda0f80f9f419990d1b4afe16f6470585",
+          "size_bytes": 587818
+        }
+      }
+    }
+  ],
+  "overview": {
+    "relative_path": "production-rgb-overview.jpg",
+    "sha256": "bb14c7d67983ac735140aca31a164eedc7f715acffc089d2595ff3c213b910ad",
+    "size_bytes": 987830,
+    "rows": [
+      "alignment",
+      "blcs-seed-20260728",
+      "plcs-seed-20260728",
+      "court-circle-130-complex",
+      "court-ellipse-100-complex"
+    ],
+    "layout": "left raw RGB; right diagnostic overlay"
+  },
+  "trajectory_plot": {
+    "relative_path": "court-orbit-trajectories.png",
+    "sha256": "773eb35042261902a0311f30a1e2a97c5cf4fa8098bacde29b05d4f846d5a839",
+    "size_bytes": 289967
+  },
+  "content_fingerprint": "2f550b8b966b722f1d98f7a8b530b6305825cbf1875d3a72cc416c238ffff930"
+}
