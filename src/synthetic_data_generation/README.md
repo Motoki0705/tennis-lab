@@ -90,7 +90,7 @@ velocity、yaw、SMPL-X pose index、presence を seed から決定的に生成�
 instance ID は全 timeline で固定され、欠落 frame、court 外 footprint、
 multi-person collision、未知 pose を拒否します。受理済み
 `T_scene_from_court` と人物 asset の軸変換は
-`third_party/plcs_avatar/prototype_plcs_plan.py` が明示的な Sim(3) にし、
+`src/synthetic_data_generation/plcs_avatar/prototype_plcs_plan.py` が明示的な Sim(3) にし、
 export 済み camera での投影とともに immutable plan へ保存します。
 
 隔離 NHT runtime の `plcs_render.py` は pose ごとの 4,096 Gaussian asset を
