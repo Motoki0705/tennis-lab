@@ -1,4 +1,0 @@
-# Locally built runtime state; only the reproducible recipe is tracked.
-/.venv/
-/upstream/
-/artifacts/

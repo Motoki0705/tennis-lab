@@ -11,3 +11,7 @@
 [submodule "third_party/DINO"]
 	path = third_party/DINO
 	url = https://github.com/IDEA-Research/DINO.git
+[submodule "third_party/nht"]
+	path = third_party/nht
+	url = git@github.com:Motoki0705/neural-harmonic-textures.git
+	branch = main

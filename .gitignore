@@ -190,13 +190,6 @@ experiments_mcmc/
 !knowledge/runs/
 !knowledge/runs/**
 
-# Track only the reproducible NHT recipe. Its checkout, venv, and run artifacts
-# remain machine-local and are also guarded by third_party/nht/.gitignore.
-!third_party/nht/
-!third_party/nht/**
-third_party/nht/.venv/
-third_party/nht/upstream/
-third_party/nht/artifacts/
 
 # Persist loop decisions in Markdown while keeping heavyweight validation output
 # local and immutable at the paths recorded by STATE.md.

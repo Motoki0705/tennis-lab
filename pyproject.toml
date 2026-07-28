@@ -222,6 +222,15 @@ ignore_errors = true
 module = ["src.submodules.vendor.*"]
 ignore_errors = true
 
+# Prototype / acceptance scripts migrated from third_party/camera_sampling
+# and third_party/plcs_avatar.
+[[tool.mypy.overrides]]
+module = [
+    "src.synthetic_data_generation.camera_sampling.*",
+    "src.synthetic_data_generation.plcs_avatar.*",
+]
+ignore_errors = true
+
 # Tests are still type-checked (bodies are validated), but pytest's own
 # fixture / parametrize decorators are seen as untyped under the
 # `--follow-imports=skip` pre-commit invocation, so the strict
