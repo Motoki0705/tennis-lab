@@ -3,7 +3,7 @@
 ## Cursor
 
 - Cycle: 16
-- Current phase: P8 — complete; final PR handoff
+- Current phase: complete — PR #666 open; automation retired
 - P0: complete (cycle 01)
 - P1: complete (cycle 01)
 - P2: complete (cycle 02)
@@ -31,8 +31,14 @@
 - Worktree:
   `/home/kamimura/projects/tennis-lab/.claude/worktrees/3dgs-native-synthetic-data`
 - Branch: `feat/3dgs-native-synthetic-data`
-- Base HEAD: `18cfc7fd51310ff10e7bd7b9e802ec92637643ce`
-- Updated: 2026-07-28 16:43:40 JST / 2026-07-28 07:43:40 UTC
+- Base HEAD: `626b3c81de3bb83451ccd65f0aa9828e35d010b6`
+- Release commit: `7b8a4903`
+- Pull request:
+  `https://github.com/Motoki0705/tennis-lab/pull/666` (`OPEN`,
+  `MERGEABLE`, `enhancement`)
+- Automation `3dgs`: deleted after all acceptance gates, export-first
+  verification, report publication, and PR creation completed.
+- Updated: 2026-07-28 16:55:04 JST / 2026-07-28 07:55:04 UTC
 
 ## Completed in cycle 16
 
@@ -98,6 +104,12 @@
   capture file), so the successful suite was rerun explicitly with `-s`; this
   changes no test semantics.
 - No loop-owned process remains. No prior artifact was overwritten.
+- Rebasing the release commit onto `origin/main` preserved the exact tree SHA
+  `4ea0bd56cc5ef06b53d95aa0ac705c558a0b689c`; the intervening PR #664
+  only connected the already-used alignment hierarchy to `main`.
+- `gh-pr-create` preflight reported zero blockers and zero warnings. PR #666
+  was created from `feat/3dgs-native-synthetic-data` into `main`, is
+  mergeable, and contains the visualization-first report.
 
 ## Completed in cycle 15
 
@@ -195,9 +207,9 @@
 
 ## Unique next action
 
-Run the repository-wide pre-commit gate, then commit, push, and create the final
-PR. After recording its URL, delete automation `3dgs`; do not start another
-development phase.
+None. All planned phases and acceptance gates are complete, the final report
+and PR are published, no loop-owned process remains, and automation `3dgs` has
+been deleted. Do not start another development phase from this loop.
 
 ## Completed in cycle 14
 
