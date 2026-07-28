@@ -22,7 +22,7 @@ from typing import Any, cast
 
 from omegaconf import DictConfig
 
-from src.synthetic_data_generation.provider.bundle import sha256_file
+from src.synthetic_data_generation.alignment.scene_provider.bundle import sha256_file
 from src.utils.hydra import hydra_main
 
 

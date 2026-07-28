@@ -42,7 +42,7 @@ from src.synthetic_data_generation.alignment.artifacts.ground_line_map import (
 from src.synthetic_data_generation.alignment.artifacts.holdout_validation import (
     load_holdout_validation_artifact,
 )
-from src.synthetic_data_generation.provider.bundle import (
+from src.synthetic_data_generation.alignment.scene_provider.bundle import (
     load_scene_provider_bundle,
     sha256_file,
 )
