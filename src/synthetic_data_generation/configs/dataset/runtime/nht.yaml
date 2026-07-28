@@ -1,0 +1,4 @@
+repository: third_party/nht
+python: third_party/nht/.venv/bin/python
+expected_commit: b3176cfe2f8e16f1f89fe29151db650f3867af4f
+require_clean: true
