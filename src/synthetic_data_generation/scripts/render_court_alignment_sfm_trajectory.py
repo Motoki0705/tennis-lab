@@ -256,12 +256,21 @@ def _render_single_frame(
             ha="center",
         )
 
-    # Transform into Court-0 centric standard coordinate system with 180-degree XY rotation
-    # (prevents 180-degree front/back inversion relative to TV broadcast view)
-    rot180 = np.diag([-1.0, -1.0, 1.0, 1.0])
-    inv_c0 = rot180 @ np.linalg.inv(c0_mat)
+    # Transform into Court-0 centric standard coordinate system
+    inv_c0 = np.linalg.inv(c0_mat)
+
+    # Verification: Ensure cameras and Court-1 are upright and unrotated in Court-0 frame
+    camera_heights = np.array(
+        [(inv_c0 @ np.asarray(c.camera_to_scene).reshape(4, 4))[2, 3] for c in cams]
+    )
+    assert np.median(camera_heights) > 0.0
+    assert np.min(camera_heights) > 0.0
+
     i_mat = np.eye(4)
     c1_rel = inv_c0 @ c1_mat
+    assert c1_rel[2, 2] > 0.0
+    assert np.linalg.det(c1_rel[:3, :3]) > 0.0
+
 
 
     # Court-0: Official DARK_THEME court colors (#4C9B57 court, #33763D apron)
@@ -345,7 +354,7 @@ def _render_single_frame(
         alpha=0.9,
     )
 
-    view = CameraView3D(elev=26.0, azim=-105.0, zoom=0.95)
+    view = CameraView3D(elev=26.0, azim=75.0, zoom=0.95)
     apply_scene_camera(ax2, view, margin=11.0, z_limit=4.0)
     ax2.legend(
         loc="upper right",
