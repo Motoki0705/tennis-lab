@@ -57,7 +57,7 @@ from src.synthetic_data_generation.alignment.components.inputs.view_inputs impor
     load_provider_rgb_image,
     partition_fit_and_holdout_cameras,
 )
-from src.synthetic_data_generation.provider.bundle import (
+from src.synthetic_data_generation.alignment.scene_provider.bundle import (
     load_scene_provider_bundle,
     sha256_file,
 )
@@ -281,7 +281,7 @@ def run(cfg: DictConfig) -> StageResult:
         / "src/synthetic_data_generation/scripts/alignment/infer_ground_line_map.py",
         repo_root
         / "src/synthetic_data_generation/configs/alignment/infer_ground_line_map.yaml",
-        repo_root / "src/synthetic_data_generation/provider/bundle.py",
+        repo_root / "src/synthetic_data_generation/alignment/scene_provider/bundle.py",
         repo_root / "src/tasks/court_detection/inference/mask_predictor.py",
         repo_root / "src/tasks/court_detection/inference/preprocess.py",
     )

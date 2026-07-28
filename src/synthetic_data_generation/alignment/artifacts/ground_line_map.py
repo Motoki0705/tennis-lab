@@ -18,7 +18,7 @@ from src.synthetic_data_generation.alignment.artifacts.common import (
     validate_artifact_id,
     validate_sha256,
 )
-from src.synthetic_data_generation.provider.bundle import sha256_file
+from src.synthetic_data_generation.alignment.scene_provider.bundle import sha256_file
 
 GROUND_LINE_MAP_SCHEMA = "ground_line_map_v1"
 _ARRAY_DTYPES: dict[str, np.dtype[Any]] = {

@@ -206,6 +206,7 @@ module = [
     "deep_sort_realtime.*",
     "gdown.*",
     "gsplat.*",
+    "plyfile.*",
     "scipy.*",
     "MultiScaleDeformableAttention",
 ]

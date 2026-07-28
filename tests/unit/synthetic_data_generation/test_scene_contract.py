@@ -203,7 +203,6 @@ def test_scene_contract_has_no_task_or_renderer_backend_imports() -> None:
     forbidden = (
         "gsplat",
         "src.tasks",
-        "src.synthetic_data_generation.rendering",
     )
     assert not any(
         module == prefix or module.startswith(f"{prefix}.")

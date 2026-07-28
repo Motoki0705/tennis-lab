@@ -23,7 +23,9 @@ from src.synthetic_data_generation.alignment.components.inference.line_detector 
 from src.synthetic_data_generation.alignment.components.inputs.view_inputs import (
     load_provider_rgb_image,
 )
-from src.synthetic_data_generation.provider.bundle import LoadedSceneProviderBundle
+from src.synthetic_data_generation.alignment.scene_provider.bundle import (
+    LoadedSceneProviderBundle,
+)
 from src.synthetic_data_generation.scene_contract import SceneCamera
 
 
