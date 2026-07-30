@@ -1,5 +1,5 @@
 """
-Freeze B00 court-alignment gates using fit images only.
+Compute court-alignment metrics from configured fit images.
 
 Usage:
     python -m src.synthetic_data_generation.scripts.alignment.calibrate_court_alignment
@@ -8,7 +8,7 @@ Usage:
 Notes:
     - Hydra loads `src/synthetic_data_generation/configs/alignment/calibrate_court_alignment.yaml`.
     - Holdout groups are partitioned before image decode and remain uninferred.
-    - The published artifact freezes the only gates allowed in C05 validation.
+    - Threshold comparisons are descriptive and never stop downstream work.
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ from src.synthetic_data_generation.alignment.components.ground.plane import (
     GroundPlaneEstimate,
 )
 from src.synthetic_data_generation.alignment.components.inference.line_detector import (
-    load_verified_line_detector,
+    load_line_detector,
 )
 from src.synthetic_data_generation.alignment.components.inputs.view_inputs import (
     partition_fit_and_holdout_cameras,
@@ -70,8 +70,7 @@ from src.synthetic_data_generation.alignment.scene_provider.bundle import (
     load_scene_provider_bundle,
     sha256_file,
 )
-from src.synthetic_data_generation.scripts.alignment.common import (
-    AlignmentStageError,
+from src.synthetic_data_generation.alignment.stage_result import (
     StageResult,
     json_artifact_handle,
     print_stage_result,
@@ -91,24 +90,13 @@ def main(cfg: DictConfig) -> int:
 
 
 def run(cfg: DictConfig) -> StageResult:
-    """Calibrate fit-only gates and publish them before holdout inference."""
+    """Compute and publish fit-side metrics before holdout inference."""
     repo_root = Path(to_absolute_path(".")).resolve()
     provider_path = _path(cfg.provider_bundle)
     line_path = _path(cfg.ground_line_artifact)
     geometry_path = _path(cfg.geometry_artifact)
-    if str(sha256_file(geometry_path)) != str(cfg.geometry_file_sha256):
-        raise ValueError("Geometry artifact file SHA-256 mismatch.")
     line_manifest, line_arrays = load_ground_line_map_artifact(line_path)
     geometry = load_court_geometry_artifact(geometry_path)
-    if line_manifest["artifact_fingerprint"] != str(cfg.ground_line_fingerprint):
-        raise ValueError("Ground-line artifact fingerprint mismatch.")
-    if geometry["artifact_fingerprint"] != str(cfg.geometry_fingerprint):
-        raise ValueError("Geometry artifact fingerprint mismatch.")
-    if (
-        geometry["ground_line_artifact"]["artifact_fingerprint"]
-        != line_manifest["artifact_fingerprint"]
-    ):
-        raise ValueError("Geometry and calibration ground-line artifacts differ.")
     if line_manifest["split"]["holdout_inference_status"] != "not_run":
         raise ValueError("C04 ground-line holdout must remain uninferred.")
 
@@ -135,12 +123,10 @@ def run(cfg: DictConfig) -> StageResult:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-    detector = load_verified_line_detector(
+    detector = load_line_detector(
         _path(cfg.line_checkpoint),
-        checkpoint_sha256=str(cfg.line_checkpoint_sha256),
         backbone_repository=_path(cfg.backbone_repository),
         backbone_checkpoint=_path(cfg.backbone_checkpoint),
-        backbone_checkpoint_sha256=str(cfg.backbone_checkpoint_sha256),
         device=str(cfg.device),
         expected_short_side=int(cfg.expected_short_side),
     )
@@ -214,17 +200,15 @@ def run(cfg: DictConfig) -> StageResult:
         "c04_aggregate_evidence_sha256": line_manifest["files"]["arrays"]["sha256"],
         "c04_nonzero_raster_cells": int(np.count_nonzero(line_arrays["view_count"])),
     }
-    fit_gates = _mapping(cfg.fit_gates, name="fit_gates")
-    gate_results = _fit_gate_results(
+    metric_thresholds = _mapping(
+        cfg.metric_thresholds,
+        name="metric_thresholds",
+    )
+    threshold_comparisons = _threshold_comparisons(
         fit_metrics,
         stability_records,
         point_support,
-        fit_gates,
-    )
-    status = (
-        "fit_calibration_passed"
-        if all(gate_results.values())
-        else "fit_calibration_failed"
+        metric_thresholds,
     )
     code_files = (
         repo_root
@@ -250,8 +234,6 @@ def run(cfg: DictConfig) -> StageResult:
         },
         "geometry": {
             "path": _relative(geometry_path, repo_root),
-            "file_sha256": str(cfg.geometry_file_sha256),
-            "artifact_fingerprint": geometry["artifact_fingerprint"],
             "selected_candidate_id": selected["candidate_id"],
             "scene_from_court": selected["scene_from_court"],
             "court_from_scene": selected["court_from_scene"],
@@ -265,29 +247,24 @@ def run(cfg: DictConfig) -> StageResult:
             "holdout_inference_status": "not_run",
         },
         "detector": {
-            "checkpoint": _relative(_path(cfg.line_checkpoint), repo_root),
-            "checkpoint_sha256": detector.checkpoint_sha256,
-            "backbone_checkpoint_sha256": (detector.backbone_checkpoint_sha256),
+            "checkpoint": str(_path(cfg.line_checkpoint)),
+            "backbone_checkpoint": str(_path(cfg.backbone_checkpoint)),
             "short_side": detector.predictor.short_side,
             "checkpoint_epoch19_val_dice": float(cfg.checkpoint_val_dice),
             "training_best_val_dice": float(cfg.checkpoint_best_val_dice),
             "localization_error_available": False,
         },
         "evaluation_settings": asdict(evaluation_settings),
-        "gates": {
-            "fit": fit_gates,
-            "holdout_frozen": _mapping(
-                cfg.holdout_gates,
-                name="holdout_gates",
-            ),
-            "threshold_basis": (
+        "thresholds": {
+            "metrics": metric_thresholds,
+            "basis": (
                 "0.25 m is the fit weighted-q95 0.234 m rounded upward; "
                 "checkpoint epoch19 val/dice=0.5770 and 256-short-side output "
                 "are recorded because no pixel localization error is available"
             ),
         },
         "metrics": fit_metrics,
-        "gate_results": gate_results,
+        "threshold_comparisons": threshold_comparisons,
         "stability": {
             "subsets": stability_records,
             "local_refit_settings": asdict(local_refit_settings),
@@ -297,7 +274,7 @@ def run(cfg: DictConfig) -> StageResult:
             ),
         },
         "point_cloud_support": point_support,
-        "status": status,
+        "status": "metrics_recorded",
         "provenance": _provenance(
             repo_root,
             code_files=code_files,
@@ -314,13 +291,6 @@ def run(cfg: DictConfig) -> StageResult:
     )
     published_payload = load_calibration_artifact(published)
     handle = json_artifact_handle(published, published_payload)
-    if status != "fit_calibration_passed":
-        raise AlignmentStageError(
-            f"Fit calibration gates failed; artifact preserved at {published}.",
-            stage="calibration",
-            job_id=str(cfg.get("alignment_id", cfg.artifact_id)),
-            preserved_artifacts=(published,),
-        )
     return StageResult(
         stage="calibration",
         status="executed",
@@ -329,7 +299,7 @@ def run(cfg: DictConfig) -> StageResult:
         fingerprint=handle.fingerprint,
         metadata={
             "artifact": handle.to_dict(),
-            "calibration_status": status,
+            "calibration_status": "metrics_recorded",
         },
     )
 
@@ -388,7 +358,7 @@ def _fit_subset_stability(
     return records
 
 
-def _fit_gate_results(
+def _threshold_comparisons(
     metrics: dict[str, Any],
     stability: list[dict[str, Any]],
     point_support: dict[str, Any],

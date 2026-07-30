@@ -45,7 +45,7 @@ from src.synthetic_data_generation.alignment.components.ground.plane import (
     GroundPlaneEstimate,
 )
 from src.synthetic_data_generation.alignment.scene_provider.bundle import sha256_file
-from src.synthetic_data_generation.scripts.alignment.common import (
+from src.synthetic_data_generation.alignment.stage_result import (
     StageResult,
     json_artifact_handle,
     print_stage_result,

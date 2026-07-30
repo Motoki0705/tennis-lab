@@ -465,7 +465,3 @@ def main() -> None:
     print(json.dumps(manifest["metrics"], indent=2, sort_keys=True))
     print(f"camera_id={camera.camera_id}")
     print(f"plan_fingerprint={manifest['plan_fingerprint']}")
-
-
-if __name__ == "__main__":
-    main()

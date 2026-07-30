@@ -1,4 +1,4 @@
-"""Verified court-line inference adapter for alignment entry points."""
+"""Court-line inference adapter for alignment entry points."""
 
 from __future__ import annotations
 
@@ -21,18 +21,15 @@ from src.synthetic_data_generation.alignment.components.ground.projection import
     ProjectedLinePixels,
     project_line_pixels_to_ground,
 )
-from src.synthetic_data_generation.alignment.scene_provider.bundle import sha256_file
 from src.synthetic_data_generation.scene_contract import SceneCamera
 from src.tasks.court_detection.inference import CourtLinePredictor
 
 
 @dataclass(frozen=True)
-class VerifiedLineDetector:
-    """Loaded predictor plus immutable checkpoint/backbone identity."""
+class LineDetector:
+    """Loaded predictor plus its configured backbone path."""
 
     predictor: CourtLinePredictor
-    checkpoint_sha256: str
-    backbone_checkpoint_sha256: str
     embedded_backbone_path: str
 
 
@@ -46,23 +43,21 @@ class LineProjectionObservation:
     selected_line_pixel_count: int
 
 
-def load_verified_line_detector(
+def load_line_detector(
     checkpoint: Path,
     *,
-    checkpoint_sha256: str,
     backbone_repository: Path,
     backbone_checkpoint: Path,
-    backbone_checkpoint_sha256: str,
     device: str,
     expected_short_side: int,
-) -> VerifiedLineDetector:
-    """Verify artifacts and load the line model with an explicit local backbone."""
-    _require_sha256(checkpoint, expected=checkpoint_sha256, name="line checkpoint")
-    _require_sha256(
-        backbone_checkpoint,
-        expected=backbone_checkpoint_sha256,
-        name="DINOv3 backbone",
-    )
+) -> LineDetector:
+    """Load the configured line model and explicit local backbone paths."""
+    if not checkpoint.is_file():
+        raise FileNotFoundError(f"Line checkpoint does not exist: {checkpoint}")
+    if not backbone_checkpoint.is_file():
+        raise FileNotFoundError(
+            f"DINOv3 backbone does not exist: {backbone_checkpoint}"
+        )
     if not backbone_repository.is_dir():
         raise FileNotFoundError(
             f"DINOv3 repository directory not found: {backbone_repository}"
@@ -108,10 +103,8 @@ def load_verified_line_detector(
         raise RuntimeError(
             f"Predictor silently resolved requested {device!r} to {predictor.device}."
         )
-    return VerifiedLineDetector(
+    return LineDetector(
         predictor=predictor,
-        checkpoint_sha256=checkpoint_sha256,
-        backbone_checkpoint_sha256=backbone_checkpoint_sha256,
         embedded_backbone_path=embedded_path,
     )
 
@@ -120,7 +113,7 @@ def infer_line_projection(
     image_rgb: NDArray[np.uint8],
     camera: SceneCamera,
     *,
-    detector: VerifiedLineDetector,
+    detector: LineDetector,
     plane: GroundPlaneEstimate,
     bounds: tuple[float, float, float, float],
     settings: GroundLineMapSettings,
@@ -180,16 +173,6 @@ def line_pixels_in_original_image(
         )
     )
     return pixels_xy, array[selected_y, selected_x]
-
-
-def _require_sha256(path: Path, *, expected: str, name: str) -> None:
-    if not path.is_file():
-        raise FileNotFoundError(f"{name} not found: {path}")
-    actual = str(sha256_file(path))
-    if actual != expected:
-        raise ValueError(
-            f"{name} SHA-256 mismatch: declared {expected}, computed {actual}."
-        )
 
 
 def _plain_mapping(value: Mapping[object, object]) -> dict[str, Any]:

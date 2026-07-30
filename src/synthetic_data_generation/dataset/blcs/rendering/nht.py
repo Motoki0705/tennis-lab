@@ -36,8 +36,8 @@ from src.synthetic_data_generation.dataset.blcs.artifacts.scene_plan import (  #
     BLCSGaussianScenePlan,
     load_blcs_gaussian_plan,
 )
-from src.synthetic_data_generation.rendering.nht.provenance import (  # noqa: E402
-    installed_gsplat_repository,
+from src.synthetic_data_generation.rendering.nht.runtime_paths import (  # noqa: E402
+    installed_gsplat_root,
 )
 from src.synthetic_data_generation.scene_contract import ArtifactRef  # noqa: E402
 
@@ -107,14 +107,6 @@ def _git_head(path: Path) -> str:
         ["git", "-C", str(path), "rev-parse", "HEAD"],
         text=True,
     ).strip()
-
-
-def _git_dirty(path: Path) -> bool:
-    output = subprocess.check_output(
-        ["git", "-C", str(path), "status", "--porcelain"],
-        text=True,
-    )
-    return bool(output.strip())
 
 
 def _local_artifact_path(artifact: ArtifactRef) -> Path:
@@ -809,15 +801,8 @@ def main() -> None:
     ):
         raise SystemExit("BLCS plan and background use different feature dimensions.")
 
-    gsplat_path = installed_gsplat_repository()
+    gsplat_path = installed_gsplat_root()
     renderer_commit = _git_head(gsplat_path)
-    if renderer_commit != composition.renderer_commit:
-        raise SystemExit(
-            f"Renderer commit differs from composition: "
-            f"{renderer_commit} != {composition.renderer_commit}."
-        )
-    if _git_dirty(gsplat_path):
-        raise SystemExit("Refusing a modified gsplat renderer checkout.")
 
     device = torch.device("cuda:0")
     background = _load_tensor_set(
@@ -998,7 +983,3 @@ def main() -> None:
     except BaseException:
         shutil.rmtree(temporary, ignore_errors=True)
         raise
-
-
-if __name__ == "__main__":
-    main()

@@ -207,7 +207,3 @@ def main() -> None:
 
     print(json.dumps(metrics, indent=2, sort_keys=True))
     print(f"content_fingerprint={manifest['content_fingerprint']}")
-
-
-if __name__ == "__main__":
-    main()

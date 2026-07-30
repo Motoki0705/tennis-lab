@@ -515,7 +515,3 @@ def _finite_float(value: object, *, name: str) -> float:
     if not math.isfinite(numeric):
         raise ValueError(f"{name} must be finite.")
     return numeric
-
-
-if __name__ == "__main__":
-    main()
