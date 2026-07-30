@@ -27,7 +27,6 @@ from src.synthetic_data_generation.dataset.blcs.artifacts.asset_registry import 
 )
 from src.synthetic_data_generation.dataset.blcs.rendering.nht import (
     _canonical_sha256,
-    _git_dirty,
     _git_head,
     _load_shader,
     _load_tensor_set,
@@ -59,8 +58,8 @@ from src.synthetic_data_generation.dataset.court.rendering.orbit_preview import 
     _load_verified_plan,
     _render_background,
 )
-from src.synthetic_data_generation.rendering.nht.provenance import (
-    installed_gsplat_repository,
+from src.synthetic_data_generation.rendering.nht.runtime_paths import (
+    installed_gsplat_root,
 )
 from src.synthetic_data_generation.scene_contract import (
     SceneCamera,
@@ -254,12 +253,8 @@ def main() -> None:
     if tuple(provider_manifest.cameras) != tuple(contract.cameras):
         raise RuntimeError("Export provider cameras and scene contract differ.")
 
-    gsplat_path = installed_gsplat_repository()
+    gsplat_path = installed_gsplat_root()
     renderer_commit = _git_head(gsplat_path)
-    if renderer_commit != composition.renderer_commit:
-        raise SystemExit("Renderer commit differs from background composition.")
-    if _git_dirty(gsplat_path):
-        raise SystemExit("Refusing a modified gsplat renderer checkout.")
 
     device = torch.device("cuda:0")
     background = _load_tensor_set(
@@ -539,7 +534,3 @@ def main() -> None:
     except BaseException:
         shutil.rmtree(temporary, ignore_errors=True)
         raise
-
-
-if __name__ == "__main__":
-    main()

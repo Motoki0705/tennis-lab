@@ -31,7 +31,3 @@ def main() -> None:
     )
     imported = load_ball_calibration_import(manifest_path)
     print(json.dumps(imported.manifest, sort_keys=True))
-
-
-if __name__ == "__main__":
-    main()

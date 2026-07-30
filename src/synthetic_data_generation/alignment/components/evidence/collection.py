@@ -17,7 +17,7 @@ from src.synthetic_data_generation.alignment.components.ground.plane import (
     GroundPlaneEstimate,
 )
 from src.synthetic_data_generation.alignment.components.inference.line_detector import (
-    VerifiedLineDetector,
+    LineDetector,
     infer_line_projection,
 )
 from src.synthetic_data_generation.alignment.components.inputs.view_inputs import (
@@ -47,7 +47,7 @@ def collect_projected_line_evidence(
     cameras: Sequence[SceneCamera],
     *,
     bundle: LoadedSceneProviderBundle,
-    detector: VerifiedLineDetector,
+    detector: LineDetector,
     plane: GroundPlaneEstimate,
     bounds: tuple[float, float, float, float],
     settings: GroundLineMapSettings,

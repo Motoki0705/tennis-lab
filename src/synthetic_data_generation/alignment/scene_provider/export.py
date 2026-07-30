@@ -414,8 +414,20 @@ def _run_geometry_subprocess(
     geometry_bridge: Path,
     *arguments: str,
 ) -> subprocess.CompletedProcess[str]:
+    bridge_loader = (
+        "import runpy,sys;"
+        "sys.argv=sys.argv[1:];"
+        "namespace=runpy.run_path(sys.argv[0]);"
+        "raise SystemExit(namespace['main']())"
+    )
     result = subprocess.run(
-        [str(geometry_python), str(geometry_bridge), *arguments],
+        [
+            str(geometry_python),
+            "-c",
+            bridge_loader,
+            str(geometry_bridge),
+            *arguments,
+        ],
         check=False,
         capture_output=True,
         text=True,

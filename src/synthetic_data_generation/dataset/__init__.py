@@ -1,13 +1,9 @@
-"""Extensible 3DGS-native synthetic-dataset pipelines."""
+"""Generic path-driven synthetic-dataset pipeline."""
 
-from src.synthetic_data_generation.dataset.registry import (
-    DatasetPipelineDefinition,
-    available_dataset_pipelines,
-    get_dataset_pipeline,
-)
+from src.synthetic_data_generation.dataset.execution import execute_pipeline
+from src.synthetic_data_generation.dataset.pipeline import PathPipelineManifest
 
 __all__ = [
-    "DatasetPipelineDefinition",
-    "available_dataset_pipelines",
-    "get_dataset_pipeline",
+    "PathPipelineManifest",
+    "execute_pipeline",
 ]

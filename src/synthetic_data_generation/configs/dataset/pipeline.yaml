@@ -1,15 +1,29 @@
-defaults:
-  - domain: blcs
-  - runtime: nht
-  - _self_
-
+project_root: .
 execute: false
-plan_path: outputs/synthetic_data_generation/dataset/${domain.name}/pipeline-plan.json
-execution_output: outputs/synthetic_data_generation/dataset/${domain.name}/execution
+
+paths:
+  source_root: third_party/nht/data
+  artifact_root: third_party/nht/artifacts/synthetic-data
+  execution_root: outputs/synthetic_data_generation
+  dataset_root: data/synthetic_data_generation
+  alignment_observations: ${paths.source_root}/alignment-observations.json
+  render_jobs: ${paths.source_root}/render-jobs.json
+  pipeline_manifest: ${paths.execution_root}/path-manifest.json
+  alignment_metrics: ${paths.artifact_root}/alignment-metrics.json
+  dataset_plan: ${paths.artifact_root}/dataset-plan.json
+  render_manifest: ${paths.artifact_root}/render-manifest.json
+  quality_metrics: ${paths.artifact_root}/quality-metrics.json
+  visualization: ${paths.execution_root}/pipeline-summary.html
+
+renderer:
+  # Tokens may use {input}, {output}, {source_root}, {artifact_root},
+  # {dataset_root}, and {reference}. Empty command means passthrough copy.
+  command: []
+  working_directory: third_party/nht
 
 hydra:
   run:
-    dir: outputs/synthetic_data_generation/dataset/${domain.name}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: outputs/synthetic_data_generation/hydra/${now:%Y-%m-%d_%H-%M-%S}
   output_subdir: null
   job:
     chdir: false

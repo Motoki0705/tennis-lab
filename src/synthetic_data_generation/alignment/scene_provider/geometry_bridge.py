@@ -233,7 +233,3 @@ def main() -> int:
         raise ValueError("Usage: provider_geometry_bridge.py REQUEST.json OUTPUT.npz")
     _export_geometry(Path(sys.argv[1]), Path(sys.argv[2]))
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
