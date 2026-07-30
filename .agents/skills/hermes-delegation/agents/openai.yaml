@@ -1,4 +1,0 @@
-interface:
-  display_name: "Delegate to Hermes"
-  short_description: "Delegate folder explanations to Hermes"
-  default_prompt: "Use $hermes-delegation to send this repository explanation request to Hermes and preserve the conversation session."
