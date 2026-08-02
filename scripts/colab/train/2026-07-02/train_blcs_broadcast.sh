@@ -11,16 +11,17 @@ set -euo pipefail
 #   + training.position_axis_weights=[1,4,1] (monocular depth-axis fix).
 #
 # Responsibilities:
+#   - install the common Colab dependencies
 #   - generate data/blcs_broadcast (1000 scenes) if it does not exist yet
 #     (BLCS scenes are pure physics simulation; no external assets needed)
 #   - run training with checkpoints/logs written to Google Drive
 #
-# Usage from Colab (after scripts/colab/setup/install_deps.sh):
-#   !bash scripts/colab/train/train_blcs_broadcast.sh
+# Usage from Colab (after mounting Google Drive):
+#   !bash scripts/colab/train/2026-07-02/train_blcs_broadcast.sh
 #
 # Architecture experiments: append Hydra overrides, e.g.
-#   !bash scripts/colab/train/train_blcs_broadcast.sh data.seq_len_range=[128,384]
-#   !bash scripts/colab/train/train_blcs_broadcast.sh training.reprojection_loss_weight=0.3
+#   !bash scripts/colab/train/2026-07-02/train_blcs_broadcast.sh data.seq_len_range=[128,384]
+#   !bash scripts/colab/train/2026-07-02/train_blcs_broadcast.sh training.reprojection_loss_weight=0.3
 #
 # Environment overrides:
 #   REPO_ROOT     default: repository root inferred from this script path
@@ -32,7 +33,7 @@ set -euo pipefail
 #   MAX_EPOCHS    default: 200
 #   EPOCHS_PER_CHUNK  default: 20 (long chunk reuse minimizes generation stalls)
 
-REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}"
 DATASET_DIR="${DATASET_DIR:-${REPO_ROOT}/data/blcs_broadcast}"
 OUTPUT_DIR="${OUTPUT_DIR:-/content/drive/MyDrive/tennis_lab/outputs/blcs_broadcast}"
 NUM_SCENES="${NUM_SCENES:-1000}"
@@ -40,6 +41,14 @@ NUM_WORKERS="${NUM_WORKERS:-2}"
 GEN_WORKERS="${GEN_WORKERS:-4}"
 MAX_EPOCHS="${MAX_EPOCHS:-200}"
 EPOCHS_PER_CHUNK="${EPOCHS_PER_CHUNK:-20}"
+
+source "${REPO_ROOT}/scripts/colab/setup/install_deps.sh"
+source "${REPO_ROOT}/scripts/colab/setup/prepare_generated_dataset.sh"
+install_colab_dependencies "${REPO_ROOT}"
+prepare_generated_dataset blcs "${REPO_ROOT}" "${DATASET_DIR}" \
+    camera=broadcast \
+    "generator.num_scenes=${NUM_SCENES}" \
+    "run.num_workers=${GEN_WORKERS}"
 
 echo "[train_blcs_broadcast] repo root: ${REPO_ROOT}"
 echo "[train_blcs_broadcast] dataset dir: ${DATASET_DIR}"
@@ -52,17 +61,6 @@ if [[ "${OUTPUT_DIR}" == /content/drive/* && ! -d /content/drive/MyDrive ]]; the
     echo "from google.colab import drive" >&2
     echo "drive.mount('/content/drive')" >&2
     exit 1
-fi
-
-if [[ ! -f "${DATASET_DIR}/meta.json" ]]; then
-    echo "[train_blcs_broadcast] dataset not found. Generating ${NUM_SCENES} broadcast scenes..."
-    python -m src.tasks.blcs.scripts.generate_dataset \
-        camera=broadcast \
-        "run.output_dir=${DATASET_DIR}" \
-        "generator.num_scenes=${NUM_SCENES}" \
-        "run.num_workers=${GEN_WORKERS}"
-else
-    echo "[train_blcs_broadcast] dataset already exists: ${DATASET_DIR}"
 fi
 
 echo "[train_blcs_broadcast] starting training (extra overrides: ${*:-none})"

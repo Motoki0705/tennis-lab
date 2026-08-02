@@ -9,17 +9,16 @@ set -euo pipefail
 #   + num_court_kp=14, 200 epochs.
 #
 # Responsibilities:
-#   - verify SMPL-H / ACCAD assets exist (needed by background chunk generation)
+#   - install dependencies and stage SMPL-H / ACCAD assets
 #   - generate data/plcs_broadcast (1000 scenes) if it does not exist yet
 #   - run training with checkpoints/logs written to Google Drive
 #
-# Usage from Colab (after scripts/colab/setup/install_deps.sh and
-# scripts/colab/setup/prepare_archive_dataset.sh plcs):
-#   !bash scripts/colab/train/train_plcs_broadcast.sh
+# Usage from Colab (after mounting Google Drive):
+#   !bash scripts/colab/train/2026-07-02/train_plcs_broadcast.sh
 #
 # Architecture experiments: append Hydra overrides, e.g.
-#   !bash scripts/colab/train/train_plcs_broadcast.sh model.num_task_layers=8
-#   !bash scripts/colab/train/train_plcs_broadcast.sh data.seq_len_range=[128,512]
+#   !bash scripts/colab/train/2026-07-02/train_plcs_broadcast.sh model.num_task_layers=8
+#   !bash scripts/colab/train/2026-07-02/train_plcs_broadcast.sh data.seq_len_range=[128,512]
 #
 # Environment overrides:
 #   REPO_ROOT     default: repository root inferred from this script path
@@ -31,7 +30,7 @@ set -euo pipefail
 #   MAX_EPOCHS    default: 200
 #   EPOCHS_PER_CHUNK  default: 30 (long chunk reuse minimizes generation stalls)
 
-REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}"
 DATASET_DIR="${DATASET_DIR:-${REPO_ROOT}/data/plcs_broadcast}"
 OUTPUT_DIR="${OUTPUT_DIR:-/content/drive/MyDrive/tennis_lab/outputs/plcs_broadcast}"
 NUM_SCENES="${NUM_SCENES:-1000}"
@@ -39,6 +38,16 @@ NUM_WORKERS="${NUM_WORKERS:-2}"
 GEN_WORKERS="${GEN_WORKERS:-4}"
 MAX_EPOCHS="${MAX_EPOCHS:-200}"
 EPOCHS_PER_CHUNK="${EPOCHS_PER_CHUNK:-30}"
+
+source "${REPO_ROOT}/scripts/colab/setup/install_deps.sh"
+source "${REPO_ROOT}/scripts/colab/setup/prepare_archive_dataset.sh"
+source "${REPO_ROOT}/scripts/colab/setup/prepare_generated_dataset.sh"
+install_colab_dependencies "${REPO_ROOT}"
+prepare_archive_dataset plcs "${REPO_ROOT}"
+prepare_generated_dataset plcs "${REPO_ROOT}" "${DATASET_DIR}" \
+    camera=broadcast \
+    "simulation.num_scenes=${NUM_SCENES}" \
+    "run.num_workers=${GEN_WORKERS}"
 
 echo "[train_plcs_broadcast] repo root: ${REPO_ROOT}"
 echo "[train_plcs_broadcast] dataset dir: ${DATASET_DIR}"
@@ -59,22 +68,10 @@ fi
 for asset in data/smplx/smplh data/ACCAD; do
     if [[ ! -d "${REPO_ROOT}/${asset}" ]]; then
         echo "[train_plcs_broadcast] missing asset: ${REPO_ROOT}/${asset}" >&2
-        echo "[train_plcs_broadcast] Run this first:" >&2
-        echo "  bash scripts/colab/setup/prepare_archive_dataset.sh plcs" >&2
+        echo "[train_plcs_broadcast] setup completed without producing the required asset." >&2
         exit 1
     fi
 done
-
-if [[ ! -f "${DATASET_DIR}/meta.json" ]]; then
-    echo "[train_plcs_broadcast] dataset not found. Generating ${NUM_SCENES} broadcast scenes..."
-    python -m src.tasks.plcs.scripts.generate_dataset \
-        camera=broadcast \
-        "run.output_dir=${DATASET_DIR}" \
-        "simulation.num_scenes=${NUM_SCENES}" \
-        "run.num_workers=${GEN_WORKERS}"
-else
-    echo "[train_plcs_broadcast] dataset already exists: ${DATASET_DIR}"
-fi
 
 echo "[train_plcs_broadcast] starting training (extra overrides: ${*:-none})"
 python -m src.tasks.plcs.scripts.train \

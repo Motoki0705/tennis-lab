@@ -18,19 +18,17 @@ set -euo pipefail
 #   - sub-pixel metric refinement is already the repo default (metrics config)
 #
 # Responsibilities:
-#   - verify DINOv3 assets and the ball datasets are staged
-#     (run scripts/colab/setup/prepare_archive_dataset.sh ball first)
+#   - install Colab dependencies and stage the DINOv3 assets / ball datasets
 #   - run the three phases sequentially, checkpoints/logs on Google Drive
 #   - auto-resume: if a phase's last.ckpt exists on Drive, the phase resumes
 #     full-state after a Colab disconnect (finished phases no-op quickly)
 #
-# Usage from Colab (after scripts/colab/setup/install_deps.sh and
-# scripts/colab/setup/prepare_archive_dataset.sh ball):
-#   !bash scripts/colab/train/train_ball_dinov3_staged.sh orig
-#   !bash scripts/colab/train/train_ball_dinov3_staged.sh ssl
+# Usage from Colab (after mounting Google Drive):
+#   !bash scripts/colab/train/2026-07-02/train_ball_dinov3_staged.sh orig
+#   !bash scripts/colab/train/2026-07-02/train_ball_dinov3_staged.sh ssl
 #
 # Extra Hydra overrides are appended to every phase, e.g.:
-#   !bash scripts/colab/train/train_ball_dinov3_staged.sh ssl data.num_workers=4
+#   !bash scripts/colab/train/2026-07-02/train_ball_dinov3_staged.sh ssl data.num_workers=4
 #
 # Environment overrides:
 #   REPO_ROOT      default: repository root inferred from this script path
@@ -41,7 +39,7 @@ set -euo pipefail
 #   NUM_WORKERS    default: 8
 
 usage() {
-    echo "Usage: bash scripts/colab/train/train_ball_dinov3_staged.sh {orig|ssl} [hydra overrides...]" >&2
+    echo "Usage: bash scripts/colab/train/2026-07-02/train_ball_dinov3_staged.sh {orig|ssl} [hydra overrides...]" >&2
 }
 
 VARIANT="${1:-}"
@@ -51,7 +49,7 @@ if [[ -z "${VARIANT}" ]]; then
 fi
 shift
 
-REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-/content/drive/MyDrive/tennis_lab/outputs/ball_detection/dinov3_staged_${VARIANT}}"
 PHASE1_EPOCHS="${PHASE1_EPOCHS:-10}"
 PHASE2_EPOCHS="${PHASE2_EPOCHS:-15}"
@@ -73,6 +71,11 @@ case "${VARIANT}" in
         ;;
 esac
 
+source "${REPO_ROOT}/scripts/colab/setup/install_deps.sh"
+source "${REPO_ROOT}/scripts/colab/setup/prepare_archive_dataset.sh"
+install_colab_dependencies "${REPO_ROOT}"
+prepare_archive_dataset ball "${REPO_ROOT}"
+
 echo "[train_ball_dinov3_staged] repo root: ${REPO_ROOT}"
 echo "[train_ball_dinov3_staged] variant: ${VARIANT}"
 echo "[train_ball_dinov3_staged] backbone: ${BACKBONE_CKPT}"
@@ -92,8 +95,7 @@ if [[ ! -d "${REPO_ROOT}/third_party/dinov3/dinov3" || ! -f "${BACKBONE_CKPT}" \
     echo "[train_ball_dinov3_staged] missing DINOv3 assets or ball datasets" >&2
     echo "[train_ball_dinov3_staged] (need third_party/dinov3, ${BACKBONE_CKPT}," >&2
     echo "[train_ball_dinov3_staged]  data/tennis/tracknet and data/tennis/web/unified)." >&2
-    echo "[train_ball_dinov3_staged] Run this first:" >&2
-    echo "  bash scripts/colab/setup/prepare_archive_dataset.sh ball" >&2
+    echo "[train_ball_dinov3_staged] setup completed without producing the required assets." >&2
     exit 1
 fi
 
