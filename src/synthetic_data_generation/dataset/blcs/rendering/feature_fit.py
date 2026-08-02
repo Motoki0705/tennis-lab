@@ -770,7 +770,3 @@ def main() -> None:
         shutil.rmtree(temporary, ignore_errors=True)
         raise
     print(json.dumps(report, sort_keys=True))
-
-
-if __name__ == "__main__":
-    main()

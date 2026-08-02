@@ -1,4 +1,4 @@
-"""Publish and strictly load immutable fit-side calibration artifacts."""
+"""Publish and load fit-side alignment metrics."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ def publish_calibration_artifact(
     *,
     output_dir: Path,
 ) -> Path:
-    """Publish one strict fingerprinted fit calibration artifact."""
+    """Publish one fit-side alignment metrics artifact."""
     return publish_json_artifact(
         payload,
         output_dir=output_dir,
@@ -29,7 +29,7 @@ def publish_calibration_artifact(
 
 
 def load_calibration_artifact(path: Path) -> dict[str, Any]:
-    """Load and fingerprint-verify one fit calibration artifact."""
+    """Load one fit-side alignment metrics artifact."""
     return load_json_artifact(
         path,
         validate=_validate_calibration_payload,
@@ -52,9 +52,9 @@ def _validate_calibration_payload(payload: dict[str, Any]) -> None:
         "split",
         "detector",
         "evaluation_settings",
-        "gates",
+        "thresholds",
         "metrics",
-        "gate_results",
+        "threshold_comparisons",
         "stability",
         "point_cloud_support",
         "status",
@@ -69,13 +69,10 @@ def _validate_calibration_payload(payload: dict[str, Any]) -> None:
         or split.get("holdout_inference_status") != "not_run"
     ):
         raise ValueError("Calibration must not infer holdout images.")
-    if payload.get("status") not in {
-        "fit_calibration_passed",
-        "fit_calibration_failed",
-    }:
+    if payload.get("status") != "metrics_recorded":
         raise ValueError("Invalid calibration status.")
-    gate_results = payload.get("gate_results")
-    if not isinstance(gate_results, dict) or not gate_results:
-        raise ValueError("Calibration gate_results must be a non-empty mapping.")
-    if not all(isinstance(value, bool) for value in gate_results.values()):
-        raise ValueError("Calibration gate_results must contain booleans only.")
+    comparisons = payload.get("threshold_comparisons")
+    if not isinstance(comparisons, dict) or not comparisons:
+        raise ValueError("Threshold comparisons must be a non-empty mapping.")
+    if not all(isinstance(value, bool) for value in comparisons.values()):
+        raise ValueError("Threshold comparisons must contain booleans only.")

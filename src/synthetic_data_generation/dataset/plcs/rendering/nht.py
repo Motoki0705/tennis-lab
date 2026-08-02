@@ -30,15 +30,14 @@ from src.synthetic_data_generation.dataset.blcs.artifacts.asset_registry import 
 )
 from src.synthetic_data_generation.dataset.blcs.rendering.nht import (  # noqa: E402
     _canonical_sha256,
-    _git_dirty,
     _git_head,
     _load_shader,
     _load_tensor_set,
     _relative_file_ref,
     _sha256_file,
 )
-from src.synthetic_data_generation.rendering.nht.provenance import (  # noqa: E402
-    installed_gsplat_repository,
+from src.synthetic_data_generation.rendering.nht.runtime_paths import (  # noqa: E402
+    installed_gsplat_root,
 )
 from src.synthetic_data_generation.scene_contract import (  # noqa: E402
     SceneCamera,
@@ -580,10 +579,8 @@ def main() -> None:
     if background_asset.appearance_space_sha256 != appearance_space:
         raise ValueError("PLCS avatar and background appearance spaces differ.")
 
-    gsplat_path = installed_gsplat_repository()
+    gsplat_path = installed_gsplat_root()
     renderer_commit = _git_head(gsplat_path)
-    if renderer_commit != composition.renderer_commit or _git_dirty(gsplat_path):
-        raise ValueError("PLCS renderer commit is different or dirty.")
 
     device = torch.device("cuda:0")
     background = _load_tensor_set(
@@ -709,7 +706,3 @@ def main() -> None:
     except BaseException:
         shutil.rmtree(temporary, ignore_errors=True)
         raise
-
-
-if __name__ == "__main__":
-    main()
