@@ -1,8 +1,7 @@
-"""Command-level tests for the Colab Drive utility scripts."""
+"""Command-level tests for the local rclone Drive utility scripts."""
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import subprocess
@@ -20,13 +19,16 @@ def _run_script(
     script_name: str,
     *arguments: str,
     drive_root: Path,
-    working_directory: Path | None = None,
+    environment_overrides: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     environment = os.environ.copy()
-    environment["TENNIS_LAB_DRIVE_ROOT"] = str(drive_root)
+    environment["RCLONE_CONFIG_MOCK_TYPE"] = "local"
+    environment["TENNIS_LAB_DRIVE_REMOTE"] = f"mock:{drive_root}"
+    if environment_overrides:
+        environment.update(environment_overrides)
     return subprocess.run(
         [str(SCRIPTS_DIR / script_name), *arguments],
-        cwd=working_directory or REPOSITORY_ROOT,
+        cwd=REPOSITORY_ROOT,
         env=environment,
         text=True,
         capture_output=True,
@@ -41,7 +43,7 @@ def _json_output(result: subprocess.CompletedProcess[str]) -> dict[str, object]:
     return parsed
 
 
-def test_list_respects_depth_limit_and_reports_truncation(tmp_path: Path) -> None:
+def test_list_uses_rclone_and_respects_depth_and_limit(tmp_path: Path) -> None:
     drive_root = tmp_path / "drive"
     (drive_root / "data/nested").mkdir(parents=True)
     (drive_root / "data/sample.txt").write_text("sample", encoding="utf-8")
@@ -68,7 +70,7 @@ def test_list_respects_depth_limit_and_reports_truncation(tmp_path: Path) -> Non
     assert limited["truncated"] is True
 
 
-def test_search_filters_by_glob_type_and_start_path(tmp_path: Path) -> None:
+def test_search_filters_rclone_listing_by_name_type_and_path(tmp_path: Path) -> None:
     drive_root = tmp_path / "drive"
     (drive_root / "models/archive.ckpt").mkdir(parents=True)
     (drive_root / "models/first.ckpt").write_bytes(b"one")
@@ -94,32 +96,17 @@ def test_search_filters_by_glob_type_and_start_path(tmp_path: Path) -> None:
     assert [entry["path"] for entry in entries] == ["models/first.ckpt"]
 
 
-def test_drive_path_cannot_escape_root_directly_or_through_symlink(
-    tmp_path: Path,
+@pytest.mark.parametrize("unsafe_path", ["../outside", "/absolute", "other:path"])
+def test_drive_relative_paths_cannot_escape_remote_root(
+    tmp_path: Path, unsafe_path: str
 ) -> None:
     drive_root = tmp_path / "drive"
     drive_root.mkdir()
-    outside = tmp_path / "outside"
-    outside.mkdir()
-    (outside / "secret.txt").write_text("secret", encoding="utf-8")
-    (drive_root / "escape").symlink_to(outside, target_is_directory=True)
 
-    direct = _run_script(
-        "inspect_file.sh", "../outside/secret.txt", drive_root=drive_root
-    )
-    indirect = _run_script(
-        "inspect_file.sh", "escape/secret.txt", drive_root=drive_root
-    )
-    normalized_inside = _run_script(
-        "inspect_file.sh", "directory/../file.txt", drive_root=drive_root
-    )
+    result = _run_script("inspect_file.sh", unsafe_path, drive_root=drive_root)
 
-    assert direct.returncode == 1
-    assert "cannot contain '..'" in direct.stderr
-    assert indirect.returncode == 1
-    assert "symbolic links" in indirect.stderr
-    assert normalized_inside.returncode == 1
-    assert "cannot contain '..'" in normalized_inside.stderr
+    assert result.returncode == 1
+    assert "Unsafe Drive-relative path" in result.stderr
 
 
 def test_upload_refuses_symbolic_link_source(tmp_path: Path) -> None:
@@ -144,6 +131,7 @@ def test_upload_dry_run_copy_verify_and_overwrite_guard(tmp_path: Path) -> None:
     drive_root.mkdir()
     local_file = tmp_path / "local file.txt"
     local_file.write_text("version one", encoding="utf-8")
+    destination = drive_root / "uploads/remote file.txt"
 
     dry_run = _run_script(
         "upload_to_drive.sh",
@@ -155,7 +143,6 @@ def test_upload_dry_run_copy_verify_and_overwrite_guard(tmp_path: Path) -> None:
         drive_root=drive_root,
     )
     assert _json_output(dry_run)["status"] == "planned"
-    destination = drive_root / "uploads/remote file.txt"
     assert not destination.exists()
 
     uploaded = _run_script(
@@ -188,17 +175,17 @@ def test_upload_dry_run_copy_verify_and_overwrite_guard(tmp_path: Path) -> None:
         "--overwrite",
         drive_root=drive_root,
     )
-    assert replaced.returncode == 0
+    assert replaced.returncode == 0, replaced.stderr
     assert destination.read_text(encoding="utf-8") == "version two"
 
 
-def test_directory_upload_replaces_tree_without_leaving_stale_files(
+def test_directory_overwrite_updates_conflicts_without_deleting_extras(
     tmp_path: Path,
 ) -> None:
     drive_root = tmp_path / "drive"
     destination = drive_root / "datasets/sample"
     destination.mkdir(parents=True)
-    (destination / "stale.txt").write_text("stale", encoding="utf-8")
+    (destination / "stale.txt").write_text("preserved", encoding="utf-8")
     local_directory = tmp_path / "dataset"
     (local_directory / "nested").mkdir(parents=True)
     (local_directory / "nested/item.txt").write_text("new", encoding="utf-8")
@@ -213,7 +200,7 @@ def test_directory_upload_replaces_tree_without_leaving_stale_files(
     )
 
     assert result.returncode == 0, result.stderr
-    assert not (destination / "stale.txt").exists()
+    assert (destination / "stale.txt").read_text(encoding="utf-8") == "preserved"
     assert (destination / "nested/item.txt").read_text(encoding="utf-8") == "new"
 
 
@@ -245,8 +232,22 @@ def test_download_copies_directory_and_refuses_implicit_overwrite(
     assert repeated.returncode == 1
     assert "--overwrite" in repeated.stderr
 
+    (source / "item.txt").write_text("updated", encoding="utf-8")
+    (local_destination / "local-only.txt").write_text("keep", encoding="utf-8")
+    updated = _run_script(
+        "download_from_drive.sh",
+        "datasets/sample",
+        str(local_destination),
+        "--overwrite",
+        "--verify",
+        drive_root=drive_root,
+    )
+    assert updated.returncode == 0, updated.stderr
+    assert (local_destination / "item.txt").read_text(encoding="utf-8") == "updated"
+    assert (local_destination / "local-only.txt").read_text(encoding="utf-8") == "keep"
 
-def test_inspect_reports_metadata_and_checksum(tmp_path: Path) -> None:
+
+def test_inspect_reports_rclone_metadata_and_hashes(tmp_path: Path) -> None:
     drive_root = tmp_path / "drive"
     drive_root.mkdir()
     content = b"checkpoint-data"
@@ -264,8 +265,10 @@ def test_inspect_reports_metadata_and_checksum(tmp_path: Path) -> None:
     payload = _json_output(result)
     assert payload["type"] == "file"
     assert payload["size_bytes"] == len(content)
-    assert payload["sha256"] == hashlib.sha256(content).hexdigest()
-    assert payload["file_count"] == 1
+    hashes = payload["hashes"]
+    assert isinstance(hashes, dict)
+    assert hashes["md5"]
+    assert hashes["sha256"]
 
 
 def test_verify_returns_zero_for_match_and_three_for_difference(tmp_path: Path) -> None:
@@ -322,10 +325,15 @@ def test_verify_detects_empty_directory_structure_difference(tmp_path: Path) -> 
     assert payload["missing_on_drive"] == ["empty"]
 
 
-def test_missing_drive_mount_fails_with_actionable_message(tmp_path: Path) -> None:
-    missing_root = tmp_path / "not-mounted"
+def test_missing_rclone_fails_with_actionable_message(tmp_path: Path) -> None:
+    drive_root = tmp_path / "drive"
+    drive_root.mkdir()
 
-    result = _run_script("list_drive.sh", drive_root=missing_root)
+    result = _run_script(
+        "list_drive.sh",
+        drive_root=drive_root,
+        environment_overrides={"RCLONE_BIN": "/missing/rclone"},
+    )
 
     assert result.returncode == 1
-    assert "Mount Google Drive first" in result.stderr
+    assert "Install rclone first" in result.stderr

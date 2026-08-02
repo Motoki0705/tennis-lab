@@ -20,10 +20,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install ffmpeg
-        # Required by the ball_detection video pipeline (and its e2e tests),
-        # which shells out to the `ffmpeg` binary for transcoding.
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install system dependencies
+        # ffmpeg is required by video e2e tests; rclone is required by the
+        # local-to-Google-Drive command e2e tests.
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg rclone
 
       - name: Install dependencies
         # NOTE: uv.lock pins CUDA-linked torch wheels (torch>=2.9.0). On this
@@ -40,4 +40,3 @@ jobs:
         # so tests marked `cuda` or `local_data` (see pyproject.toml markers)
         # are excluded.
         run: uv run pytest tests -m "not local_data and not cuda" -q --no-cov
-

@@ -1,4 +1,4 @@
-"""Safe filesystem operations for the Colab Google Drive shell wrappers."""
+"""Local Google Drive utilities backed by rclone."""
 
 from __future__ import annotations
 
@@ -6,180 +6,190 @@ import argparse
 import fnmatch
 import hashlib
 import json
-import mimetypes
 import os
 import shutil
+import subprocess
 import sys
-import tempfile
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
-DEFAULT_DRIVE_ROOT = Path("/content/drive/MyDrive/tennis_lab")
+DEFAULT_REMOTE_ROOT = "gdrive:tennis_lab"
 OutputFormat = Literal["table", "json"]
-ManifestEntry = tuple[Literal["file", "directory"], int | None, str | None]
+ManifestEntry = tuple[Literal["file", "directory"], int | None, dict[str, str]]
 
 
 class DriveToolError(RuntimeError):
-    """Raised when a requested filesystem operation is unsafe or invalid."""
+    """Raised when an rclone operation is unsafe or fails."""
 
 
 @dataclass(frozen=True)
 class Entry:
-    """One filesystem entry returned by list or search."""
+    """One Drive entry returned by list or search."""
 
     path: str
-    type: str
+    type: Literal["file", "directory"]
     size_bytes: int | None
     modified: str
 
 
 @dataclass(frozen=True)
-class Snapshot:
-    """Content snapshot used to verify a file or directory tree."""
+class Verification:
+    """Comparison result for a local path and Drive path."""
 
-    type: Literal["file", "directory"]
-    size_bytes: int
-    sha256: str
-    entries: dict[str, ManifestEntry]
+    matches: bool
+    local_type: str
+    drive_type: str
+    changed: list[str]
+    missing_on_drive: list[str]
+    extra_on_drive: list[str]
+    unverifiable: list[str]
 
 
-class DriveContext:
-    """Resolve Drive-relative paths without permitting root escapes."""
+class RcloneBackend:
+    """Execute rclone while constraining all remote paths to one root."""
 
-    def __init__(self, root: Path) -> None:
-        try:
-            resolved_root = root.expanduser().resolve(strict=True)
-        except FileNotFoundError as exc:
+    def __init__(self, *, remote_root: str, executable: str) -> None:
+        if shutil.which(executable) is None:
             raise DriveToolError(
-                f"Drive root does not exist: {root}. Mount Google Drive first or set "
-                "TENNIS_LAB_DRIVE_ROOT."
-            ) from exc
-        if not resolved_root.is_dir():
-            raise DriveToolError(f"Drive root is not a directory: {resolved_root}")
-        self.root = resolved_root
-
-    def resolve(self, relative_path: str, *, must_exist: bool = False) -> Path:
-        """Resolve a relative path and verify that it remains below Drive root."""
-        requested = Path(relative_path)
-        if requested.is_absolute():
-            raise DriveToolError(
-                f"Drive paths must be relative to {self.root}: {relative_path}"
+                f"rclone executable not found: {executable}. Install rclone first."
             )
-        if ".." in requested.parts:
-            raise DriveToolError(f"Drive paths cannot contain '..': {relative_path}")
+        self.executable = executable
+        self.remote_root = self._validate_remote_root(remote_root)
 
-        current = self.root
-        for part in requested.parts:
-            if part in ("", "."):
-                continue
-            current /= part
-            if current.is_symlink():
-                raise DriveToolError(
-                    f"Drive paths cannot traverse symbolic links: {relative_path}"
+    @staticmethod
+    def _validate_remote_root(remote_root: str) -> str:
+        if "\n" in remote_root or "\r" in remote_root:
+            raise DriveToolError("The rclone remote root cannot contain newlines.")
+        if ":" not in remote_root:
+            raise DriveToolError(
+                f"Invalid rclone remote root: {remote_root}. Expected remote:path."
+            )
+        remote_name, root_path = remote_root.split(":", maxsplit=1)
+        if not remote_name or not root_path or root_path == "/":
+            raise DriveToolError(
+                "The rclone remote root must include a remote name and a non-root path."
+            )
+        if ".." in PurePosixPath(root_path).parts or "\\" in root_path:
+            raise DriveToolError(f"Unsafe rclone remote root: {remote_root}")
+        return f"{remote_name}:{root_path.rstrip('/')}"
+
+    @staticmethod
+    def normalize_relative(relative_path: str) -> str:
+        """Validate and normalize a Drive-root-relative POSIX path."""
+        if any(character in relative_path for character in ("\n", "\r", "\\", ":")):
+            raise DriveToolError(f"Unsafe Drive-relative path: {relative_path}")
+        path = PurePosixPath(relative_path)
+        if path.is_absolute() or ".." in path.parts:
+            raise DriveToolError(f"Unsafe Drive-relative path: {relative_path}")
+        normalized = path.as_posix().rstrip("/")
+        return "." if normalized in ("", ".") else normalized
+
+    def remote_path(self, relative_path: str) -> str:
+        """Return an rclone path below the configured remote root."""
+        normalized = self.normalize_relative(relative_path)
+        if normalized == ".":
+            return self.remote_root
+        return f"{self.remote_root}/{normalized}"
+
+    def run(
+        self,
+        arguments: Sequence[str],
+        *,
+        capture_output: bool = True,
+        allow_not_found: bool = False,
+    ) -> subprocess.CompletedProcess[str] | None:
+        """Run rclone, mapping its directory-not-found exit code when requested."""
+        try:
+            command = [self.executable, *arguments]
+            if capture_output:
+                result = subprocess.run(
+                    command, text=True, capture_output=True, check=False
                 )
-        resolved = (self.root / requested).resolve(strict=False)
-        if resolved != self.root and self.root not in resolved.parents:
-            raise DriveToolError(
-                f"Drive path escapes the allowed root: {relative_path}"
-            )
-        if must_exist and not resolved.exists():
-            raise DriveToolError(f"Drive path does not exist: {relative_path}")
-        return resolved
-
-    def relative(self, path: Path) -> str:
-        """Return a stable POSIX path relative to Drive root."""
-        relative = path.relative_to(self.root)
-        return "." if relative == Path(".") else relative.as_posix()
-
-
-def _timestamp(epoch_seconds: float) -> str:
-    return datetime.fromtimestamp(epoch_seconds, tz=UTC).isoformat(timespec="seconds")
-
-
-def _entry_from_dir_entry(item: os.DirEntry[str], relative_path: str) -> Entry:
-    stat_result = item.stat(follow_symlinks=False)
-    if item.is_symlink():
-        entry_type = "symlink"
-        size: int | None = stat_result.st_size
-    elif item.is_dir(follow_symlinks=False):
-        entry_type = "directory"
-        size = None
-    elif item.is_file(follow_symlinks=False):
-        entry_type = "file"
-        size = stat_result.st_size
-    else:
-        entry_type = "other"
-        size = stat_result.st_size
-    return Entry(
-        path=relative_path,
-        type=entry_type,
-        size_bytes=size,
-        modified=_timestamp(stat_result.st_mtime),
-    )
-
-
-def _walk_entries(
-    context: DriveContext, start: Path, max_depth: int | None
-) -> Iterable[Entry]:
-    start_relative = context.relative(start)
-
-    def visit(directory: Path, relative_directory: str, depth: int) -> Iterable[Entry]:
-        try:
-            children = sorted(
-                os.scandir(directory), key=lambda item: item.name.casefold()
-            )
+            else:
+                result = subprocess.run(
+                    command,
+                    text=True,
+                    stdout=sys.stderr,
+                    stderr=sys.stderr,
+                    check=False,
+                )
         except OSError as exc:
-            raise DriveToolError(
-                f"Could not read directory {directory}: {exc}"
-            ) from exc
+            raise DriveToolError(f"Could not execute rclone: {exc}") from exc
+        if result.returncode == 0:
+            return result
+        if allow_not_found and result.returncode == 3:
+            return None
+        message = (result.stderr or result.stdout or "unknown rclone error").strip()
+        raise DriveToolError(f"rclone {' '.join(arguments[:2])} failed: {message}")
 
-        for child in children:
-            relative_path = (
-                child.name
-                if relative_directory == "."
-                else f"{relative_directory}/{child.name}"
+    def json(self, arguments: Sequence[str]) -> Any:
+        """Run rclone and decode its JSON response."""
+        result = self.run(arguments)
+        assert result is not None
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError as exc:
+            raise DriveToolError("rclone returned invalid JSON.") from exc
+
+    def stat(self, location: str, *, hashes: bool = False) -> dict[str, Any] | None:
+        """Return one local or remote entry, or None when it does not exist."""
+        arguments = ["lsjson", location, "--stat"]
+        if hashes:
+            arguments.append("--hash")
+        result = self.run(arguments, allow_not_found=True)
+        if result is None:
+            return None
+        try:
+            value = json.loads(result.stdout)
+        except json.JSONDecodeError as exc:
+            raise DriveToolError("rclone returned invalid stat JSON.") from exc
+        if not isinstance(value, dict):
+            raise DriveToolError("rclone returned an unexpected stat response.")
+        return value
+
+
+def _relative_output_path(start_path: str, item_path: str) -> str:
+    normalized_start = RcloneBackend.normalize_relative(start_path)
+    normalized_item = PurePosixPath(item_path).as_posix()
+    if normalized_start == ".":
+        return normalized_item
+    if normalized_item in ("", "."):
+        return normalized_start
+    return f"{normalized_start}/{normalized_item}"
+
+
+def _entries_from_rclone(
+    start_path: str, values: Iterable[dict[str, Any]]
+) -> list[Entry]:
+    entries = []
+    for value in values:
+        is_directory = bool(value.get("IsDir", False))
+        size = value.get("Size")
+        entries.append(
+            Entry(
+                path=_relative_output_path(start_path, str(value.get("Path", ""))),
+                type="directory" if is_directory else "file",
+                size_bytes=None if is_directory else int(size or 0),
+                modified=str(value.get("ModTime", "")),
             )
-            entry = _entry_from_dir_entry(child, relative_path)
-            yield entry
-            if entry.type == "directory" and (max_depth is None or depth < max_depth):
-                yield from visit(Path(child.path), relative_path, depth + 1)
-
-    if start.is_file():
-        stat_result = start.stat()
-        yield Entry(
-            path=start_relative,
-            type="file",
-            size_bytes=stat_result.st_size,
-            modified=_timestamp(stat_result.st_mtime),
         )
-        return
-    if not start.is_dir():
-        raise DriveToolError(f"Unsupported Drive entry type: {start_relative}")
-    yield from visit(start, start_relative, 1)
-
-
-def _limited(entries: Iterable[Entry], limit: int) -> tuple[list[Entry], bool]:
-    collected: list[Entry] = []
-    for entry in entries:
-        if len(collected) == limit:
-            return collected, True
-        collected.append(entry)
-    return collected, False
+    return sorted(entries, key=lambda entry: entry.path.casefold())
 
 
 def _print_entries(
-    entries: list[Entry], *, output_format: OutputFormat, truncated: bool
+    entries: list[Entry], *, output_format: OutputFormat, limit: int
 ) -> None:
+    truncated = len(entries) > limit
+    displayed = entries[:limit]
     if output_format == "json":
         print(
             json.dumps(
                 {
-                    "count": len(entries),
+                    "count": len(displayed),
                     "truncated": truncated,
-                    "entries": [asdict(entry) for entry in entries],
+                    "entries": [asdict(entry) for entry in displayed],
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -188,24 +198,38 @@ def _print_entries(
         return
 
     print("TYPE\tSIZE_BYTES\tMODIFIED\tPATH")
-    for entry in entries:
+    for entry in displayed:
         size = "-" if entry.size_bytes is None else str(entry.size_bytes)
         print(f"{entry.type}\t{size}\t{entry.modified}\t{entry.path}")
     if truncated:
-        print("[colab-drive-tools] Results were truncated by --limit.", file=sys.stderr)
+        print("[drive-tools] Results were truncated by --limit.", file=sys.stderr)
 
 
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def _print_object(payload: dict[str, Any], output_format: OutputFormat) -> None:
+    if output_format == "json":
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+    for key, value in payload.items():
+        if isinstance(value, list):
+            rendered = ", ".join(str(item) for item in value) or "-"
+        elif isinstance(value, dict):
+            rendered = json.dumps(value, ensure_ascii=False, sort_keys=True)
+        else:
+            rendered = str(value).lower() if isinstance(value, bool) else str(value)
+        print(f"{key}: {rendered}")
 
 
-def _assert_regular_tree(path: Path) -> None:
-    if path.is_symlink():
-        raise DriveToolError(f"Symbolic links are not supported for transfer: {path}")
+def _resolve_local(path_text: str, *, must_exist: bool) -> Path:
+    requested = Path(path_text).expanduser()
+    if requested.is_symlink():
+        raise DriveToolError(f"Local paths cannot be symbolic links: {path_text}")
+    resolved = requested.resolve(strict=False)
+    if must_exist and not resolved.exists():
+        raise DriveToolError(f"Local path does not exist: {path_text}")
+    return resolved
+
+
+def _assert_regular_local_tree(path: Path) -> None:
     if path.is_file():
         return
     if not path.is_dir():
@@ -222,283 +246,358 @@ def _assert_regular_tree(path: Path) -> None:
                 )
 
 
-def _snapshot(path: Path) -> Snapshot:
-    _assert_regular_tree(path)
-    if path.is_file():
-        size = path.stat().st_size
-        digest = _sha256_file(path)
-        return Snapshot(
-            type="file",
-            size_bytes=size,
-            sha256=digest,
-            entries={".": ("file", size, digest)},
-        )
-
-    entries: dict[str, ManifestEntry] = {}
-    total_size = 0
-    for candidate in sorted(path.rglob("*"), key=lambda item: item.as_posix()):
-        relative = candidate.relative_to(path).as_posix()
-        if candidate.is_dir():
-            entries[relative] = ("directory", None, None)
-        elif candidate.is_file():
-            size = candidate.stat().st_size
-            digest = _sha256_file(candidate)
-            entries[relative] = ("file", size, digest)
-            total_size += size
-    manifest = json.dumps(entries, sort_keys=True, separators=(",", ":")).encode()
-    return Snapshot(
-        type="directory",
-        size_bytes=total_size,
-        sha256=hashlib.sha256(manifest).hexdigest(),
-        entries=entries,
-    )
-
-
-def _verify_paths(local_path: Path, drive_path: Path) -> dict[str, Any]:
-    local_snapshot = _snapshot(local_path)
-    drive_snapshot = _snapshot(drive_path)
-    local_names = set(local_snapshot.entries)
-    drive_names = set(drive_snapshot.entries)
-    changed = sorted(
-        name
-        for name in local_names & drive_names
-        if local_snapshot.entries[name] != drive_snapshot.entries[name]
-    )
-    missing_on_drive = sorted(local_names - drive_names)
-    extra_on_drive = sorted(drive_names - local_names)
-    matches = (
-        local_snapshot.type == drive_snapshot.type
-        and not changed
-        and not missing_on_drive
-        and not extra_on_drive
-    )
+def _normalized_hashes(value: dict[str, Any]) -> dict[str, str]:
+    hashes = value.get("Hashes", {})
+    if not isinstance(hashes, dict):
+        return {}
     return {
-        "matches": matches,
-        "local_type": local_snapshot.type,
-        "drive_type": drive_snapshot.type,
-        "local_size_bytes": local_snapshot.size_bytes,
-        "drive_size_bytes": drive_snapshot.size_bytes,
-        "local_sha256": local_snapshot.sha256,
-        "drive_sha256": drive_snapshot.sha256,
-        "changed": changed,
-        "missing_on_drive": missing_on_drive,
-        "extra_on_drive": extra_on_drive,
+        str(name).casefold().replace("-", ""): str(digest).casefold()
+        for name, digest in hashes.items()
+        if digest
     }
 
 
-def _print_object(payload: dict[str, Any], output_format: OutputFormat) -> None:
-    if output_format == "json":
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
-        return
-    for key, value in payload.items():
-        if isinstance(value, list):
-            rendered = ", ".join(str(item) for item in value) or "-"
+def _manifest(
+    backend: RcloneBackend, location: str
+) -> tuple[Literal["file", "directory"], dict[str, ManifestEntry]]:
+    stat = backend.stat(location, hashes=True)
+    if stat is None:
+        raise DriveToolError(f"Path does not exist: {location}")
+    if not bool(stat.get("IsDir", False)):
+        return "file", {
+            ".": ("file", int(stat.get("Size", 0)), _normalized_hashes(stat))
+        }
+
+    values = backend.json(["lsjson", location, "--recursive", "--hash"])
+    if not isinstance(values, list):
+        raise DriveToolError("rclone returned an unexpected directory listing.")
+    entries: dict[str, ManifestEntry] = {}
+    for value in values:
+        path = str(value.get("Path", ""))
+        if bool(value.get("IsDir", False)):
+            entries[path] = ("directory", None, {})
         else:
-            rendered = str(value).lower() if isinstance(value, bool) else str(value)
-        print(f"{key}: {rendered}")
+            entries[path] = (
+                "file",
+                int(value.get("Size", 0)),
+                _normalized_hashes(value),
+            )
+    return "directory", entries
 
 
-def _resolve_local(path_text: str, *, must_exist: bool) -> Path:
-    requested = Path(path_text).expanduser()
-    if requested.is_symlink():
-        raise DriveToolError(f"Local paths cannot be symbolic links: {path_text}")
-    resolved = requested.resolve(strict=False)
-    if must_exist and not resolved.exists():
-        raise DriveToolError(f"Local path does not exist: {path_text}")
-    return resolved
+def _sha256_local(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
-def _copy_to_staging(source: Path, destination: Path) -> Path:
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    prefix = f".{destination.name}.transfer-"
-    staging_parent = Path(tempfile.mkdtemp(prefix=prefix, dir=destination.parent))
-    staging_path = staging_parent / "payload"
-    try:
-        if source.is_dir():
-            shutil.copytree(source, staging_path)
-        else:
-            shutil.copy2(source, staging_path)
-    except Exception:
-        shutil.rmtree(staging_parent, ignore_errors=True)
-        raise
-    return staging_path
+def _sha256_remote(backend: RcloneBackend, remote_path: str) -> str:
+    digest = hashlib.sha256()
+    process = subprocess.Popen(
+        [backend.executable, "cat", remote_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert process.stdout is not None
+    stdout = process.stdout
+    for chunk in iter(lambda: stdout.read(1024 * 1024), b""):
+        digest.update(chunk)
+    _, stderr = process.communicate()
+    if process.returncode != 0:
+        raise DriveToolError(
+            f"rclone cat failed: {stderr.decode(errors='replace').strip()}"
+        )
+    return digest.hexdigest()
 
 
-def _remove_path(path: Path) -> None:
-    if path.is_dir() and not path.is_symlink():
-        shutil.rmtree(path)
-    else:
-        path.unlink()
+def _compare_file(
+    *,
+    local_path: Path,
+    drive_path: str,
+    local_entry: ManifestEntry,
+    drive_entry: ManifestEntry,
+    backend: RcloneBackend,
+    download_missing_hashes: bool,
+) -> Literal["match", "changed", "unverifiable"]:
+    if local_entry[0] != drive_entry[0] or local_entry[1] != drive_entry[1]:
+        return "changed"
+    if local_entry[0] == "directory":
+        return "match"
+
+    local_hashes = local_entry[2]
+    drive_hashes = drive_entry[2]
+    for hash_name in ("sha256", "sha1", "md5"):
+        if hash_name in local_hashes and hash_name in drive_hashes:
+            return (
+                "match"
+                if local_hashes[hash_name] == drive_hashes[hash_name]
+                else "changed"
+            )
+    if not download_missing_hashes:
+        return "unverifiable"
+    return (
+        "match"
+        if _sha256_local(local_path) == _sha256_remote(backend, drive_path)
+        else "changed"
+    )
 
 
-def _commit_staged_copy(staging_path: Path, destination: Path) -> None:
-    staging_parent = staging_path.parent
-    backup_path = staging_parent / "previous"
-    moved_existing = False
-    try:
-        if destination.exists() or destination.is_symlink():
-            destination.replace(backup_path)
-            moved_existing = True
-        staging_path.replace(destination)
-    except Exception:
-        if moved_existing and backup_path.exists() and not destination.exists():
-            backup_path.replace(destination)
-        raise
-    finally:
-        if staging_path.exists():
-            _remove_path(staging_path)
+def _verify_paths(
+    *,
+    backend: RcloneBackend,
+    local_path: Path,
+    drive_relative_path: str,
+    download_missing_hashes: bool,
+) -> Verification:
+    drive_path = backend.remote_path(drive_relative_path)
+    local_type, local_manifest = _manifest(backend, str(local_path))
+    drive_type, drive_manifest = _manifest(backend, drive_path)
+    local_names = set(local_manifest)
+    drive_names = set(drive_manifest)
+    changed: list[str] = []
+    unverifiable: list[str] = []
+    for name in sorted(local_names & drive_names):
+        local_item_path = local_path if name == "." else local_path / name
+        remote_item_path = drive_path if name == "." else f"{drive_path}/{name}"
+        comparison = _compare_file(
+            local_path=local_item_path,
+            drive_path=remote_item_path,
+            local_entry=local_manifest[name],
+            drive_entry=drive_manifest[name],
+            backend=backend,
+            download_missing_hashes=download_missing_hashes,
+        )
+        if comparison == "changed":
+            changed.append(name)
+        elif comparison == "unverifiable":
+            unverifiable.append(name)
+    missing_on_drive = sorted(local_names - drive_names)
+    extra_on_drive = sorted(drive_names - local_names)
+    matches = (
+        local_type == drive_type
+        and not changed
+        and not missing_on_drive
+        and not extra_on_drive
+        and not unverifiable
+    )
+    return Verification(
+        matches=matches,
+        local_type=local_type,
+        drive_type=drive_type,
+        changed=changed,
+        missing_on_drive=missing_on_drive,
+        extra_on_drive=extra_on_drive,
+        unverifiable=unverifiable,
+    )
 
-    if backup_path.exists() or backup_path.is_symlink():
-        _remove_path(backup_path)
-    staging_parent.rmdir()
+
+def _run_list(args: argparse.Namespace, backend: RcloneBackend) -> int:
+    target = backend.remote_path(args.path)
+    values = backend.json(
+        ["lsjson", target, "--max-depth", str(args.max_depth), "--no-mimetype"]
+    )
+    if not isinstance(values, list):
+        raise DriveToolError("rclone returned an unexpected directory listing.")
+    entries = _entries_from_rclone(args.path, values)
+    _print_entries(entries, output_format=args.format, limit=args.limit)
+    return 0
+
+
+def _run_search(args: argparse.Namespace, backend: RcloneBackend) -> int:
+    target = backend.remote_path(args.path)
+    arguments = ["lsjson", target, "--recursive", "--no-mimetype"]
+    if args.max_depth is not None:
+        arguments.extend(("--max-depth", str(args.max_depth)))
+    values = backend.json(arguments)
+    if not isinstance(values, list):
+        raise DriveToolError("rclone returned an unexpected directory listing.")
+    entries = _entries_from_rclone(args.path, values)
+    matches = [
+        entry
+        for entry in entries
+        if (args.type == "any" or entry.type == args.type)
+        and fnmatch.fnmatchcase(PurePosixPath(entry.path).name, args.name)
+    ]
+    _print_entries(matches, output_format=args.format, limit=args.limit)
+    return 0
 
 
 def _transfer(
     *,
-    source: Path,
-    destination: Path,
+    backend: RcloneBackend,
+    source: str,
+    destination: str,
+    source_is_directory: bool,
+    destination_exists: bool,
     direction: Literal["upload", "download"],
     overwrite: bool,
     dry_run: bool,
     verify: bool,
+    local_path: Path,
+    drive_relative_path: str,
     output_format: OutputFormat,
 ) -> int:
-    _assert_regular_tree(source)
-    if destination == source:
-        raise DriveToolError("Source and destination resolve to the same path.")
-    if source.is_dir() and (
-        source in destination.parents or destination in source.parents
-    ):
-        raise DriveToolError("Source and destination directory trees overlap.")
-    if (destination.exists() or destination.is_symlink()) and not overwrite:
+    if destination_exists and not overwrite:
         raise DriveToolError(
-            f"Destination already exists: {destination}. Pass --overwrite to replace it."
+            f"Destination already exists: {destination}. Pass --overwrite to update it."
         )
-
-    payload: dict[str, Any] = {
-        "action": direction,
-        "source": str(source),
-        "destination": str(destination),
-        "dry_run": dry_run,
-        "verified": False,
-    }
+    arguments = ["copyto", source, destination, "--progress"]
+    if not overwrite:
+        arguments.append("--immutable")
     if dry_run:
-        payload["status"] = "planned"
-        _print_object(payload, output_format)
-        return 0
+        arguments.extend(("--dry-run", "--verbose"))
+    backend.run(arguments, capture_output=False)
 
-    staging_path = _copy_to_staging(source, destination)
-    try:
-        if verify:
-            if direction == "upload":
-                verification = _verify_paths(source, staging_path)
-            else:
-                verification = _verify_paths(staging_path, source)
-            if not verification["matches"]:
-                raise DriveToolError("Staged transfer failed checksum verification.")
-            payload["verified"] = True
-        _commit_staged_copy(staging_path, destination)
-    except Exception:
-        if staging_path.parent.exists():
-            shutil.rmtree(staging_path.parent, ignore_errors=True)
-        raise
+    verified = False
+    if verify and not dry_run:
+        result = _verify_paths(
+            backend=backend,
+            local_path=local_path,
+            drive_relative_path=drive_relative_path,
+            download_missing_hashes=False,
+        )
+        allowed_extras = (
+            source_is_directory
+            and overwrite
+            and (
+                result.extra_on_drive
+                if direction == "upload"
+                else result.missing_on_drive
+            )
+        )
+        disallowed_missing = (
+            result.missing_on_drive if direction == "upload" else result.extra_on_drive
+        )
+        if (
+            result.local_type != result.drive_type
+            or result.changed
+            or disallowed_missing
+            or result.unverifiable
+            or (
+                not allowed_extras
+                and (result.extra_on_drive or result.missing_on_drive)
+            )
+        ):
+            raise DriveToolError(
+                "Transferred content did not pass rclone hash verification."
+            )
+        verified = True
 
-    payload["status"] = "completed"
+    payload = {
+        "action": direction,
+        "source": source,
+        "destination": destination,
+        "status": "planned" if dry_run else "completed",
+        "dry_run": dry_run,
+        "verified": verified,
+    }
     _print_object(payload, output_format)
     return 0
 
 
-def _run_list(args: argparse.Namespace, context: DriveContext) -> int:
-    target = context.resolve(args.path, must_exist=True)
-    entries, truncated = _limited(
-        _walk_entries(context, target, args.max_depth), args.limit
-    )
-    _print_entries(entries, output_format=args.format, truncated=truncated)
-    return 0
-
-
-def _run_search(args: argparse.Namespace, context: DriveContext) -> int:
-    target = context.resolve(args.path, must_exist=True)
-
-    def matches() -> Iterable[Entry]:
-        for entry in _walk_entries(context, target, args.max_depth):
-            type_matches = args.type == "any" or entry.type == args.type
-            name_matches = fnmatch.fnmatchcase(Path(entry.path).name, args.name)
-            if type_matches and name_matches:
-                yield entry
-
-    entries, truncated = _limited(matches(), args.limit)
-    _print_entries(entries, output_format=args.format, truncated=truncated)
-    return 0
-
-
-def _run_upload(args: argparse.Namespace, context: DriveContext) -> int:
+def _run_upload(args: argparse.Namespace, backend: RcloneBackend) -> int:
     source = _resolve_local(args.source, must_exist=True)
-    destination = context.resolve(args.destination)
-    if destination == context.root:
-        raise DriveToolError("The Drive root itself cannot be a transfer destination.")
+    _assert_regular_local_tree(source)
+    normalized_destination = backend.normalize_relative(args.destination)
+    if normalized_destination == ".":
+        raise DriveToolError("The configured Drive root cannot be overwritten.")
+    destination = backend.remote_path(normalized_destination)
+    destination_stat = backend.stat(destination)
+    if (
+        destination_stat is not None
+        and bool(destination_stat.get("IsDir")) != source.is_dir()
+    ):
+        raise DriveToolError("Source and destination types do not match.")
     return _transfer(
-        source=source,
+        backend=backend,
+        source=str(source),
         destination=destination,
+        source_is_directory=source.is_dir(),
+        destination_exists=destination_stat is not None,
         direction="upload",
         overwrite=args.overwrite,
         dry_run=args.dry_run,
         verify=args.verify,
+        local_path=source,
+        drive_relative_path=normalized_destination,
         output_format=args.format,
     )
 
 
-def _run_download(args: argparse.Namespace, context: DriveContext) -> int:
-    source = context.resolve(args.source, must_exist=True)
+def _run_download(args: argparse.Namespace, backend: RcloneBackend) -> int:
+    normalized_source = backend.normalize_relative(args.source)
+    source = backend.remote_path(normalized_source)
+    source_stat = backend.stat(source)
+    if source_stat is None:
+        raise DriveToolError(f"Drive path does not exist: {args.source}")
     destination = _resolve_local(args.destination, must_exist=False)
+    destination_exists = destination.exists()
+    source_is_directory = bool(source_stat.get("IsDir", False))
+    if destination_exists and destination.is_dir() != source_is_directory:
+        raise DriveToolError("Source and destination types do not match.")
     return _transfer(
+        backend=backend,
         source=source,
-        destination=destination,
+        destination=str(destination),
+        source_is_directory=source_is_directory,
+        destination_exists=destination_exists,
         direction="download",
         overwrite=args.overwrite,
         dry_run=args.dry_run,
         verify=args.verify,
+        local_path=destination,
+        drive_relative_path=normalized_source,
         output_format=args.format,
     )
 
 
-def _run_inspect(args: argparse.Namespace, context: DriveContext) -> int:
-    target = context.resolve(args.path, must_exist=True)
-    snapshot = _snapshot(target) if args.checksum else None
-    stat_result = target.stat()
+def _run_inspect(args: argparse.Namespace, backend: RcloneBackend) -> int:
+    normalized_path = backend.normalize_relative(args.path)
+    target = backend.remote_path(normalized_path)
+    stat = backend.stat(target, hashes=args.checksum)
+    if stat is None:
+        raise DriveToolError(f"Drive path does not exist: {args.path}")
+    is_directory = bool(stat.get("IsDir", False))
+    if args.checksum and is_directory:
+        raise DriveToolError(
+            "--checksum is only supported for files; use verify_transfer.sh for directories."
+        )
     payload: dict[str, Any] = {
-        "path": context.relative(target),
-        "type": "directory" if target.is_dir() else "file",
-        "size_bytes": snapshot.size_bytes if snapshot else stat_result.st_size,
-        "modified": _timestamp(stat_result.st_mtime),
+        "path": normalized_path,
+        "type": "directory" if is_directory else "file",
+        "size_bytes": None if is_directory else int(stat.get("Size", 0)),
+        "modified": str(stat.get("ModTime", "")),
+        "mime_type": str(stat.get("MimeType", "")),
     }
-    if target.is_file():
-        payload["mime_type"] = (
-            mimetypes.guess_type(target.name)[0] or "application/octet-stream"
-        )
-    if snapshot is not None:
-        payload["sha256"] = snapshot.sha256
-        payload["file_count"] = sum(
-            entry[0] == "file" for entry in snapshot.entries.values()
-        )
-        payload["directory_count"] = sum(
-            entry[0] == "directory" for entry in snapshot.entries.values()
-        )
+    if args.checksum:
+        payload["hashes"] = _normalized_hashes(stat)
+    if is_directory:
+        size = backend.json(["size", target, "--json"])
+        payload["file_count"] = int(size.get("count", 0))
+        payload["size_bytes"] = int(size.get("bytes", 0))
     _print_object(payload, args.format)
     return 0
 
 
-def _run_verify(args: argparse.Namespace, context: DriveContext) -> int:
+def _run_verify(args: argparse.Namespace, backend: RcloneBackend) -> int:
     local_path = _resolve_local(args.local_path, must_exist=True)
-    drive_path = context.resolve(args.drive_path, must_exist=True)
-    payload = _verify_paths(local_path, drive_path)
+    _assert_regular_local_tree(local_path)
+    normalized_drive_path = backend.normalize_relative(args.drive_path)
+    result = _verify_paths(
+        backend=backend,
+        local_path=local_path,
+        drive_relative_path=normalized_drive_path,
+        download_missing_hashes=args.download,
+    )
     payload = {
         "local_path": str(local_path),
-        "drive_path": context.relative(drive_path),
-        **payload,
+        "drive_path": normalized_drive_path,
+        **asdict(result),
     }
     _print_object(payload, args.format)
-    return 0 if payload["matches"] else 3
+    return 0 if result.matches else 3
 
 
 def _positive_int(value: str) -> int:
@@ -516,15 +615,17 @@ def _add_format(parser: argparse.ArgumentParser) -> None:
 
 def _add_transfer_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
-        "--overwrite", action="store_true", help="Replace an existing destination."
+        "--overwrite",
+        action="store_true",
+        help="Update existing files without deleting unrelated destination files.",
     )
     parser.add_argument(
-        "--dry-run", action="store_true", help="Show the operation without copying."
+        "--dry-run", action="store_true", help="Ask rclone to plan without writing."
     )
     parser.add_argument(
         "--verify",
         action="store_true",
-        help="Verify SHA-256 checksums before publishing the copied data.",
+        help="Compare common rclone hashes after transfer.",
     )
     _add_format(parser)
 
@@ -533,10 +634,14 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the command-line parser shared by all shell wrappers."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--drive-root",
-        type=Path,
-        default=DEFAULT_DRIVE_ROOT,
-        help="Mounted tennis_lab directory (normally set by the shell wrapper).",
+        "--remote-root",
+        default=DEFAULT_REMOTE_ROOT,
+        help="Constrained rclone root (normally set by the shell wrapper).",
+    )
+    parser.add_argument(
+        "--rclone-bin",
+        default="rclone",
+        help="rclone executable (normally set by the shell wrapper).",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -572,7 +677,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_transfer_arguments(upload_parser)
 
     download_parser = subparsers.add_parser(
-        "download", help="Copy Drive data to the local runtime."
+        "download", help="Copy Drive data to the local machine."
     )
     download_parser.add_argument("source", help="Existing Drive-relative source path.")
     download_parser.add_argument("destination", help="Exact local destination path.")
@@ -581,17 +686,20 @@ def build_parser() -> argparse.ArgumentParser:
     inspect_parser = subparsers.add_parser("inspect", help="Inspect one Drive entry.")
     inspect_parser.add_argument("path", help="Existing Drive-relative path.")
     inspect_parser.add_argument(
-        "--checksum",
-        action="store_true",
-        help="Calculate a SHA-256 file or directory-manifest digest.",
+        "--checksum", action="store_true", help="Return hashes exposed by rclone."
     )
     _add_format(inspect_parser)
 
     verify_parser = subparsers.add_parser(
-        "verify", help="Compare local and Drive content using SHA-256."
+        "verify", help="Compare local and Drive content using rclone hashes."
     )
     verify_parser.add_argument("local_path", help="Existing local file or directory.")
     verify_parser.add_argument("drive_path", help="Existing Drive-relative path.")
+    verify_parser.add_argument(
+        "--download",
+        action="store_true",
+        help="Download files for SHA-256 when no common remote hash exists.",
+    )
     _add_format(verify_parser)
     return parser
 
@@ -601,7 +709,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        context = DriveContext(args.drive_root)
+        backend = RcloneBackend(
+            remote_root=args.remote_root, executable=args.rclone_bin
+        )
         handlers = {
             "list": _run_list,
             "search": _run_search,
@@ -610,9 +720,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             "inspect": _run_inspect,
             "verify": _run_verify,
         }
-        return handlers[args.command](args, context)
-    except (DriveToolError, OSError) as exc:
-        print(f"[colab-drive-tools] error: {exc}", file=sys.stderr)
+        return handlers[args.command](args, backend)
+    except DriveToolError as exc:
+        print(f"[drive-tools] error: {exc}", file=sys.stderr)
         return 1
 
 
