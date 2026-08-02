@@ -1,45 +1,34 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
-# Common Colab setup for tennis-lab notebooks.
-#
-# Responsibilities:
-#   - verify Google Drive is already mounted at /content/drive
-#   - install common system dependency: zstd
-#   - install common Python dependencies used across ball/court/blcs/plcs
-#
-# Usage from Colab:
-#   from google.colab import drive
-#   drive.mount("/content/drive")
-#   !bash scripts/colab/setup/install_deps.sh
-#
-# Environment overrides:
-#   REPO_ROOT     default: repository root inferred from this script path
+# Source-only module for installing the common Colab dependencies.
 
-REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
-
-echo "[install_deps] repo root: ${REPO_ROOT}"
-cd "${REPO_ROOT}"
-
-echo "[install_deps] checking Google Drive mount..."
-if [[ ! -d /content/drive/MyDrive ]]; then
-    echo "[install_deps] Google Drive is not mounted at /content/drive/MyDrive." >&2
-    echo "[install_deps] Run this in a Colab Python cell before this script:" >&2
-    echo "from google.colab import drive" >&2
-    echo "drive.mount('/content/drive')" >&2
-    exit 1
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    echo "[install_deps] This file is a setup module and must be sourced by a train script." >&2
+    exit 2
 fi
 
-echo "[install_deps] installing system dependencies..."
-if command -v apt-get >/dev/null 2>&1; then
+install_colab_dependencies() {
+    local repo_root="$1"
+
+    echo "[install_deps] repo root: ${repo_root}"
+    if [[ ! -d /content/drive/MyDrive ]]; then
+        echo "[install_deps] Google Drive is not mounted at /content/drive/MyDrive." >&2
+        echo "[install_deps] Mount Drive before running the train script." >&2
+        return 1
+    fi
+
+    if ! command -v apt-get >/dev/null 2>&1; then
+        echo "[install_deps] apt-get is required for the Colab runtime setup." >&2
+        return 1
+    fi
+
+    echo "[install_deps] installing system dependencies..."
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y zstd
-else
-    echo "[install_deps] apt-get not found. Skipping apt dependencies."
-fi
 
-echo "[install_deps] installing Python dependencies..."
-python -m pip install --upgrade pip
-python -m pip install hydra-core pytorch-lightning smplx
+    echo "[install_deps] installing Python dependencies..."
+    python -m pip install --upgrade pip
+    python -m pip install hydra-core pytorch-lightning smplx
 
-echo "[install_deps] done."
+    echo "[install_deps] done."
+}
