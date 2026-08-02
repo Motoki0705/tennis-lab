@@ -51,7 +51,7 @@ from src.synthetic_data_generation.alignment.components.ground.projection import
 )
 from src.synthetic_data_generation.alignment.components.inference.line_detector import (
     infer_line_projection,
-    load_verified_line_detector,
+    load_line_detector,
 )
 from src.synthetic_data_generation.alignment.components.inputs.view_inputs import (
     load_provider_rgb_image,
@@ -61,7 +61,7 @@ from src.synthetic_data_generation.alignment.scene_provider.bundle import (
     load_scene_provider_bundle,
     sha256_file,
 )
-from src.synthetic_data_generation.scripts.alignment.common import (
+from src.synthetic_data_generation.alignment.stage_result import (
     StageResult,
     directory_artifact_handle,
     print_stage_result,
@@ -155,13 +155,11 @@ def run(cfg: DictConfig) -> StageResult:
         grid_spacing=projection_settings.grid_spacing,
     )
 
-    LOGGER.info("Loading line detector with verified local DINOv3 backbone.")
-    detector = load_verified_line_detector(
+    LOGGER.info("Loading line detector from configured local paths.")
+    detector = load_line_detector(
         line_checkpoint,
-        checkpoint_sha256=str(cfg.line_checkpoint_sha256),
         backbone_repository=backbone_repository,
         backbone_checkpoint=backbone_checkpoint,
-        backbone_checkpoint_sha256=str(cfg.backbone_checkpoint_sha256),
         device=device,
         expected_short_side=int(cfg.expected_short_side),
     )
@@ -310,7 +308,6 @@ def run(cfg: DictConfig) -> StageResult:
                 "src.tasks.court_detection.inference.mask_predictor.CourtLinePredictor"
             ),
             "checkpoint": _relative_or_absolute(line_checkpoint, root=repo_root),
-            "checkpoint_sha256": str(cfg.line_checkpoint_sha256),
             "embedded_backbone_path": detector.embedded_backbone_path,
             "backbone_repository": _relative_or_absolute(
                 backbone_repository,
@@ -320,8 +317,7 @@ def run(cfg: DictConfig) -> StageResult:
                 backbone_checkpoint,
                 root=repo_root,
             ),
-            "backbone_checkpoint_sha256": detector.backbone_checkpoint_sha256,
-            "backbone_override": "explicit verified local path",
+            "backbone_override": "explicit configured local path",
             "short_side": detector.predictor.short_side,
             "resize_alignment": 8,
             "input_color_space": "srgb8-rgb",

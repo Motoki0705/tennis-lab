@@ -1,43 +1,42 @@
 """
-Plan or execute one registered 3DGS-native synthetic-dataset pipeline.
+Plan or execute the generic path-driven synthetic-data pipeline.
 
 Usage:
-    python -m src.synthetic_data_generation.scripts.dataset.run_pipeline domain=blcs
-    python -m src.synthetic_data_generation.scripts.dataset.run_pipeline domain=court execute=true
+    python -m src.synthetic_data_generation.scripts.dataset.run_pipeline
+    python -m src.synthetic_data_generation.scripts.dataset.run_pipeline execute=true
 
 Notes:
-    - Hydra loads configs from `src/synthetic_data_generation/configs/dataset`.
-    - `execute=false` publishes only the immutable command plan.
-    - NHT stages run in the independently pinned `third_party/nht/.venv`.
+    - Hydra loads configuration from `src/synthetic_data_generation/configs/dataset`.
+    - Empty `renderer.command` uses passthrough copies for prepared render inputs.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
-from src.synthetic_data_generation.dataset.execution import DatasetPipelineExecutor
-from src.synthetic_data_generation.dataset.registry import get_dataset_pipeline
-from src.synthetic_data_generation.rendering.nht.process import (
-    NhtProcessBackend,
-    NhtRuntime,
-)
+from src.synthetic_data_generation.dataset.execution import execute_pipeline
+from src.synthetic_data_generation.dataset.pipeline import PathPipelineManifest
 from src.utils.hydra import hydra_main
+from src.utils.paths import PROJECT_ROOT
 
 
-def _mapping(config: DictConfig) -> Mapping[str, object]:
-    value = OmegaConf.to_container(config, resolve=True)
-    if not isinstance(value, dict):
-        raise TypeError("Resolved dataset configuration must be a mapping.")
-    return cast(Mapping[str, object], value)
+def _mapping(value: DictConfig) -> Mapping[str, object]:
+    resolved = OmegaConf.to_container(value, resolve=True)
+    if not isinstance(resolved, dict):
+        raise TypeError("Resolved paths configuration must be a mapping.")
+    return cast(Mapping[str, object], resolved)
 
 
-def _path(value: object) -> Path:
-    return Path(to_absolute_path(str(value)))
+def _renderer_command(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list) or not all(
+        isinstance(item, str) and item for item in value
+    ):
+        raise TypeError("renderer.command must be a list of non-empty strings.")
+    return tuple(value)
 
 
 @hydra_main(
@@ -46,34 +45,31 @@ def _path(value: object) -> Path:
     config_name="pipeline",
 )
 def main(cfg: DictConfig) -> int:
-    """Build the selected domain plan and optionally execute every stage."""
-    domain_name = str(cfg.domain.name)
-    pipeline = get_dataset_pipeline(domain_name)
-    plan = pipeline.build_plan(_mapping(cfg.domain))
-    plan_path = _path(cfg.plan_path)
-    if plan_path.exists():
-        raise FileExistsError(f"Dataset pipeline plan refuses overwrite: {plan_path}")
-    plan.write(plan_path)
+    """Write the shared path manifest and optionally execute every stage."""
+    project_root = Path(str(cfg.project_root))
+    if not project_root.is_absolute():
+        project_root = PROJECT_ROOT / project_root
+    project_root = project_root.resolve()
+    manifest = PathPipelineManifest.from_config(
+        _mapping(cfg.paths),
+        project_root=project_root,
+    )
+    manifest.write()
     if not bool(cfg.execute):
         return 0
-
-    runtime = NhtRuntime(
-        repository=_path(cfg.runtime.repository),
-        python=_path(cfg.runtime.python),
-        expected_commit=str(cfg.runtime.expected_commit),
-        require_clean=bool(cfg.runtime.require_clean),
+    command = _renderer_command(
+        OmegaConf.to_container(cfg.renderer.command, resolve=True)
     )
-    backend = NhtProcessBackend(
-        project_root=_path("."),
-        runtime=runtime,
+    working_directory = Path(str(cfg.renderer.working_directory))
+    if not working_directory.is_absolute():
+        working_directory = project_root / working_directory
+    execute_pipeline(
+        manifest,
+        renderer_command=command,
+        working_directory=working_directory,
     )
-    executor = DatasetPipelineExecutor(
-        project_root=_path("."),
-        nht_backend=backend,
-    )
-    executor.execute(plan, output_dir=_path(cfg.execution_output))
     return 0
 
 
 if __name__ == "__main__":
-    main()
+    cast(Any, main)()

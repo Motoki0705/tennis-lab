@@ -1,4 +1,4 @@
-"""Tests for verified line-model loading and output-pixel coordinates."""
+"""Tests for path-driven line-model loading and output-pixel coordinates."""
 
 from pathlib import Path
 from typing import Any
@@ -38,11 +38,6 @@ def test_load_detector_accepts_checkpoint_dictconfig(
             "hyper_parameters": {"config": embedded},
         },
     )
-    monkeypatch.setattr(
-        line_detector,
-        "sha256_file",
-        lambda path: "line-hash" if path == checkpoint else "backbone-hash",
-    )
     captured: dict[str, Any] = {}
 
     class FakePredictor:
@@ -70,12 +65,10 @@ def test_load_detector_accepts_checkpoint_dictconfig(
         fake_load_from_checkpoint,
     )
 
-    detector = line_detector.load_verified_line_detector(
+    detector = line_detector.load_line_detector(
         checkpoint,
-        checkpoint_sha256="line-hash",
         backbone_repository=backbone_repository,
         backbone_checkpoint=backbone,
-        backbone_checkpoint_sha256="backbone-hash",
         device="cpu",
         expected_short_side=256,
     )

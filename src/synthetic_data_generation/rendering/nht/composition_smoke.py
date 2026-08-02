@@ -43,8 +43,8 @@ from src.synthetic_data_generation.composition.gaussians import (  # noqa: E402
     compose_gaussians,
     transform_gaussians,
 )
-from src.synthetic_data_generation.rendering.nht.provenance import (  # noqa: E402
-    installed_gsplat_repository,
+from src.synthetic_data_generation.rendering.nht.runtime_paths import (  # noqa: E402
+    installed_gsplat_root,
 )
 from src.synthetic_data_generation.scene_contract import (  # noqa: E402
     ArtifactRef,
@@ -483,7 +483,7 @@ def main() -> None:
                 ),
             ),
             renderer_backend="nht-gsplat",
-            renderer_commit=_git_head(installed_gsplat_repository()),
+            renderer_commit=_git_head(installed_gsplat_root()),
         )
         write_gaussian_scene_manifest(
             temporary_dir / "composition.json",
@@ -626,7 +626,3 @@ def main() -> None:
     except BaseException:
         shutil.rmtree(temporary_dir, ignore_errors=True)
         raise
-
-
-if __name__ == "__main__":
-    main()

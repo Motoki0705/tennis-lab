@@ -25,12 +25,12 @@ def _payload() -> dict[str, Any]:
         "split": {"holdout_inference_status": "not_run"},
         "detector": {},
         "evaluation_settings": {},
-        "gates": {},
+        "thresholds": {},
         "metrics": {},
-        "gate_results": {"fit_gate": True},
+        "threshold_comparisons": {"example": False},
         "stability": {},
         "point_cloud_support": {},
-        "status": "fit_calibration_passed",
+        "status": "metrics_recorded",
         "provenance": {},
     }
 
@@ -39,7 +39,7 @@ def test_calibration_artifact_round_trip_detects_tampering(tmp_path: Path) -> No
     payload = _payload()
     path = publish_calibration_artifact(payload, output_dir=tmp_path)
 
-    assert load_calibration_artifact(path)["status"] == "fit_calibration_passed"
+    assert load_calibration_artifact(path)["status"] == "metrics_recorded"
     with pytest.raises(FileExistsError, match="Refusing to overwrite"):
         publish_calibration_artifact(payload, output_dir=tmp_path)
 
