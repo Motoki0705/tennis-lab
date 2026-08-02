@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from src.synthetic_data_generation.alignment.artifacts.common import (
     load_json_artifact,
@@ -20,26 +20,20 @@ def publish_calibration_artifact(
     output_dir: Path,
 ) -> Path:
     """Publish one fit-side alignment metrics artifact."""
-    return cast(
-        Path,
-        publish_json_artifact(
-            payload,
-            output_dir=output_dir,
-            validate=_validate_calibration_payload,
-            artifact_type="calibration",
-        ),
+    return publish_json_artifact(
+        payload,
+        output_dir=output_dir,
+        validate=_validate_calibration_payload,
+        artifact_type="calibration",
     )
 
 
 def load_calibration_artifact(path: Path) -> dict[str, Any]:
     """Load one fit-side alignment metrics artifact."""
-    return cast(
-        dict[str, Any],
-        load_json_artifact(
-            path,
-            validate=_validate_calibration_payload,
-            artifact_type="calibration",
-        ),
+    return load_json_artifact(
+        path,
+        validate=_validate_calibration_payload,
+        artifact_type="calibration",
     )
 
 
