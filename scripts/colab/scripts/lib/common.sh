@@ -1,23 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Shared launcher for the Colab Drive utility entry points.
+# Shared launcher for the local Google Drive utility entry points.
 
-COLAB_DRIVE_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COLAB_DRIVE_ROOT="${TENNIS_LAB_DRIVE_ROOT:-/content/drive/MyDrive/tennis_lab}"
-COLAB_PYTHON="${COLAB_PYTHON:-python3}"
+DRIVE_SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DRIVE_REMOTE_ROOT="${TENNIS_LAB_DRIVE_REMOTE:-gdrive:tennis_lab}"
+DRIVE_TOOLS_PYTHON="${DRIVE_TOOLS_PYTHON:-python3}"
+RCLONE_BIN="${RCLONE_BIN:-rclone}"
 
 run_drive_tool() {
     local command_name="$1"
     shift
 
-    if ! command -v "${COLAB_PYTHON}" >/dev/null 2>&1; then
-        echo "[colab-drive-tools] Python executable not found: ${COLAB_PYTHON}" >&2
+    if ! command -v "${DRIVE_TOOLS_PYTHON}" >/dev/null 2>&1; then
+        echo "[drive-tools] Python executable not found: ${DRIVE_TOOLS_PYTHON}" >&2
         exit 1
     fi
 
-    exec "${COLAB_PYTHON}" \
-        "${COLAB_DRIVE_SCRIPTS_DIR}/lib/drive_tools.py" \
-        --drive-root "${COLAB_DRIVE_ROOT}" \
+    exec "${DRIVE_TOOLS_PYTHON}" \
+        "${DRIVE_SCRIPTS_DIR}/lib/drive_tools.py" \
+        --remote-root "${DRIVE_REMOTE_ROOT}" \
+        --rclone-bin "${RCLONE_BIN}" \
         "${command_name}" "$@"
 }

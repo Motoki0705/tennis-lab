@@ -1,78 +1,88 @@
-# Colab utilities
+# ローカルGoogle Drive操作ツール
 
-`scripts/colab/scripts/` は、AI が提案したファイル操作を人間が Colab 上で確認・実行するための小さなCLI群です。Google Driveの操作対象は、既定で `/content/drive/MyDrive/tennis_lab` 配下に限定されます。
+`scripts/colab/scripts/` は、ローカルPCからGoogle Drive上の `tennis_lab` を確認・転送するためのCLI群です。Colab内での実行やDriveのファイルシステムマウントは前提にしていません。すべてのDrive操作は `rclone` を通じて行います。
 
-## 前提
+## 初期設定
 
-ColabでGoogle Driveをマウントしてから実行します。
+Python 3と[rclone](https://rclone.org/)が必要です。初回だけGoogle Driveリモートを `gdrive` という名前で設定します。
 
-```python
-from google.colab import drive
-
-drive.mount("/content/drive")
+```bash
+rclone config
+rclone lsd gdrive:tennis_lab
 ```
 
-各コマンドはPython 3の標準ライブラリだけを使用します。Drive側の引数は、すべて `tennis_lab` からの相対パスです。絶対パス、`..`、symlinkを経由するパスは拒否されます。一覧にはsymlink自体も表示されますが、追跡はしません。
+OAuthトークンはrcloneの設定ファイルに保存されます。認証情報をこのリポジトリへ配置する必要はありません。既定の操作ルートは次のとおりです。
+
+```text
+gdrive:tennis_lab
+```
+
+別のリモート名やルートを使う場合だけ、環境変数で変更できます。安全のためDrive全体ではなく、必ず操作専用のサブディレクトリを指定してください。
+
+```bash
+export TENNIS_LAB_DRIVE_REMOTE='my-drive:projects/tennis_lab'
+```
+
+Drive側の引数はすべて、このルートからの相対パスです。絶対パス、`..`、別のrcloneリモートを示す `:` は拒否されます。
 
 ## 一覧と検索
 
 ```bash
 bash scripts/colab/scripts/list_drive.sh
 bash scripts/colab/scripts/list_drive.sh --path data --max-depth 3 --limit 500
-bash scripts/colab/scripts/list_drive.sh --path checkpoints --format json
+bash scripts/colab/scripts/list_drive.sh --path outputs --format json
 
 bash scripts/colab/scripts/search_drive.sh --name '*.ckpt' --type file
-bash scripts/colab/scripts/search_drive.sh --path data --name 'scene_*' --type directory --format json
+bash scripts/colab/scripts/search_drive.sh \
+  --path data --name 'scene_*' --type directory --format json
 ```
 
-`--max-depth` は開始ディレクトリ直下を深さ1として数えます。検索名は大文字・小文字を区別するglobです。結果が `--limit` を超えると打ち切られ、JSONの `truncated` またはstderrの警告で通知されます。
+`--max-depth` は開始ディレクトリ直下を深さ1として数えます。検索はrcloneで取得した一覧に対して、ファイルまたはディレクトリのベース名を大文字・小文字を区別するglobで照合します。結果が `--limit` を超えた場合は打ち切りを明示します。
 
 ## アップロードとダウンロード
 
-転送先はディレクトリとして解釈せず、指定したパスそのものとして扱います。たとえば次のアップロード先は `data/sample.mp4` です。
+転送先は指定したパスそのものとして扱います。
 
 ```bash
 bash scripts/colab/scripts/upload_to_drive.sh \
-  /content/tennis-lab/data/sample.mp4 data/sample.mp4 \
+  data/sample.mp4 data/sample.mp4 \
   --dry-run
 
 bash scripts/colab/scripts/upload_to_drive.sh \
-  /content/tennis-lab/data/sample.mp4 data/sample.mp4 \
+  outputs/checkpoints outputs/checkpoints \
   --verify --format json
 
 bash scripts/colab/scripts/download_from_drive.sh \
-  data/sample.mp4 /content/downloads/sample.mp4 \
+  data/sample.mp4 downloads/sample.mp4 \
   --verify
 ```
 
-既存の転送先はデフォルトで拒否されます。置換する場合だけ `--overwrite` を明示します。ファイルとディレクトリのどちらにも対応していますが、転送ツリー内のsymlinkは曖昧なデータ複製を避けるため拒否します。
+既存の転送先はデフォルトで拒否します。競合するファイルを更新する場合だけ `--overwrite` を明示します。ディレクトリに `--overwrite` を指定しても、転送元に存在しない転送先ファイルは削除しません。このツールは `rclone sync` やDrive上の削除操作を行いません。
 
-`--verify` は一時領域へコピーした内容をSHA-256で検証してから指定先へ反映します。大きなデータでは読み取り時間が増える点に注意してください。`--dry-run` は作成・上書きを行いません。
+`--dry-run` はrclone自身のdry-runを実行し、Driveを書き換えません。`--verify` は転送後にローカルとDriveで共通して取得できるハッシュを照合します。ローカルの転送ツリーにsymlinkが含まれる場合は、曖昧な複製を避けるため拒否します。
 
 ## 検査と転送後検証
 
 ```bash
-bash scripts/colab/scripts/inspect_file.sh checkpoints/model.ckpt
-bash scripts/colab/scripts/inspect_file.sh checkpoints/model.ckpt --checksum --format json
+bash scripts/colab/scripts/inspect_file.sh outputs/model.ckpt
+bash scripts/colab/scripts/inspect_file.sh \
+  outputs/model.ckpt --checksum --format json
 
 bash scripts/colab/scripts/verify_transfer.sh \
-  /content/tennis-lab/checkpoints/model.ckpt checkpoints/model.ckpt
+  outputs/model.ckpt outputs/model.ckpt
 ```
 
-`verify_transfer.sh` は内容が一致すれば終了コード0、不一致なら終了コード3、操作エラーなら終了コード1を返します。ディレクトリは各ファイルの相対パス、サイズ、SHA-256を比較します。
+`inspect_file.sh --checksum` は、Driveバックエンドがrcloneへ公開するMD5、SHA-1、SHA-256などのハッシュを返します。ディレクトリ全体の比較には `verify_transfer.sh` を使用します。
+
+`verify_transfer.sh` は内容が一致すれば終了コード0、不一致なら終了コード3、設定・接続・操作エラーなら終了コード1を返します。共通ハッシュがないファイルを内容まで確認する場合は `--download` を指定します。この場合はDrive上の該当ファイルを読み込み、ローカルでSHA-256を計算します。
 
 ## AIへ結果を返す
 
-`--format json` を付けると、結果をそのままAIへ渡しやすくなります。記録も残す場合はColab側で `tee` を組み合わせます。
+`--format json` を付けると、結果をそのままAIへ渡せます。ログを残す場合は `tee` を組み合わせます。
 
 ```bash
 bash scripts/colab/scripts/search_drive.sh \
-  --name '*.tar.zst' --format json | tee /content/drive-search-result.json
+  --name '*.tar.zst' --format json | tee drive-search-result.json
 ```
 
-テストなどで別のルートを使う場合だけ `TENNIS_LAB_DRIVE_ROOT` を指定できます。
-
-```bash
-TENNIS_LAB_DRIVE_ROOT=/tmp/mock-drive \
-  bash scripts/colab/scripts/list_drive.sh --format json
-```
+テストでは、rcloneのlocalバックエンドを一時ディレクトリへ向けることで、Google Driveを変更せずに実際のrcloneコマンドを検証しています。
