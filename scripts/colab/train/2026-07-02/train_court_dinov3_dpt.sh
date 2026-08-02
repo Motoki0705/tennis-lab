@@ -13,19 +13,17 @@ set -euo pipefail
 # (knowledge/nodes/run-i618-convnext-v2-ft.md).
 #
 # Responsibilities:
-#   - verify DINOv3 assets and the court dataset are staged
-#     (run scripts/colab/setup/prepare_archive_dataset.sh court first)
+#   - install Colab dependencies and stage the DINOv3 assets / court dataset
 #   - run training with checkpoints/logs written to Google Drive
 #   - auto-resume: if a last.ckpt exists on Drive, training resumes
 #     full-state after a Colab disconnect
 #
-# Usage from Colab (after scripts/colab/setup/install_deps.sh and
-# scripts/colab/setup/prepare_archive_dataset.sh court):
-#   !bash scripts/colab/train/train_court_dinov3_dpt.sh orig
-#   !bash scripts/colab/train/train_court_dinov3_dpt.sh ssl
+# Usage from Colab (after mounting Google Drive):
+#   !bash scripts/colab/train/2026-07-02/train_court_dinov3_dpt.sh orig
+#   !bash scripts/colab/train/2026-07-02/train_court_dinov3_dpt.sh ssl
 #
 # Extra Hydra overrides are appended, e.g.:
-#   !bash scripts/colab/train/train_court_dinov3_dpt.sh ssl data.num_workers=2
+#   !bash scripts/colab/train/2026-07-02/train_court_dinov3_dpt.sh ssl data.num_workers=2
 #
 # Environment overrides:
 #   REPO_ROOT    default: repository root inferred from this script path
@@ -34,7 +32,7 @@ set -euo pipefail
 #   BATCH_SIZE   default: 8
 
 usage() {
-    echo "Usage: bash scripts/colab/train/train_court_dinov3_dpt.sh {orig|ssl} [hydra overrides...]" >&2
+    echo "Usage: bash scripts/colab/train/2026-07-02/train_court_dinov3_dpt.sh {orig|ssl} [hydra overrides...]" >&2
 }
 
 VARIANT="${1:-}"
@@ -44,7 +42,7 @@ if [[ -z "${VARIANT}" ]]; then
 fi
 shift
 
-REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}"
 OUTPUT_DIR="${OUTPUT_DIR:-/content/drive/MyDrive/tennis_lab/outputs/court_detection/dinov3_dpt_${VARIANT}}"
 MAX_EPOCHS="${MAX_EPOCHS:-20}"
 BATCH_SIZE="${BATCH_SIZE:-8}"
@@ -64,6 +62,11 @@ case "${VARIANT}" in
         ;;
 esac
 
+source "${REPO_ROOT}/scripts/colab/setup/install_deps.sh"
+source "${REPO_ROOT}/scripts/colab/setup/prepare_archive_dataset.sh"
+install_colab_dependencies "${REPO_ROOT}"
+prepare_archive_dataset court "${REPO_ROOT}"
+
 echo "[train_court_dinov3_dpt] repo root: ${REPO_ROOT}"
 echo "[train_court_dinov3_dpt] variant: ${VARIANT}"
 echo "[train_court_dinov3_dpt] backbone: ${BACKBONE_CKPT}"
@@ -82,8 +85,7 @@ if [[ ! -d "${REPO_ROOT}/third_party/dinov3/dinov3" || ! -f "${BACKBONE_CKPT}" \
       || ! -d "${REPO_ROOT}/data/court" ]]; then
     echo "[train_court_dinov3_dpt] missing DINOv3 assets or court dataset" >&2
     echo "[train_court_dinov3_dpt] (need third_party/dinov3, ${BACKBONE_CKPT} and data/court)." >&2
-    echo "[train_court_dinov3_dpt] Run this first:" >&2
-    echo "  bash scripts/colab/setup/prepare_archive_dataset.sh court" >&2
+    echo "[train_court_dinov3_dpt] setup completed without producing the required assets." >&2
     exit 1
 fi
 
