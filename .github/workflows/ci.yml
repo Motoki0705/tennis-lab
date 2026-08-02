@@ -20,17 +20,15 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install system dependencies
+        # ffmpeg is required by video e2e tests; rclone is required by the
+        # local-to-Google-Drive command e2e tests.
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg rclone
+
       - name: Install ffmpeg
         # Required by the ball_detection video pipeline (and its e2e tests),
         # which shells out to the `ffmpeg` binary for transcoding.
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Install dependencies
-        # NOTE: uv.lock pins CUDA-linked torch wheels (torch>=2.9.0). On this
-        # CPU runner those wheels are large (~2 GB) but still functional for
-        # import-only tests. If build times become prohibitive, consider adding
-        # an index-override for CPU torch or splitting lint / test jobs.
-        run: uv sync --group dev
 
       - name: Ruff lint
         run: uv run ruff check src tests
@@ -40,4 +38,3 @@ jobs:
         # so tests marked `cuda` or `local_data` (see pyproject.toml markers)
         # are excluded.
         run: uv run pytest tests -m "not local_data and not cuda" -q --no-cov
-
