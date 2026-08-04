@@ -1,4 +1,4 @@
 [agents]
-max_concurrent_threads_per_session = 8
+max_concurrent_threads_per_session = 32
 # Legacy V1 nesting guard. MultiAgentV2 ignores max_depth.
 max_depth = 2
