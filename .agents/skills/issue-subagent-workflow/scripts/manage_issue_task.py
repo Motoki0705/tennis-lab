@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -44,8 +45,7 @@ REQUIRED_HEADINGS = {
         "## Evidence table",
     ),
     "02-planning/plan.md": (
-        "## Acceptance criteria",
-        "## Acceptance-to-change mapping",
+        "## Acceptance checklist mapping",
         "## Implementation work units and ownership",
         "## Independent test work unit",
         "## Validation strategy",
@@ -56,12 +56,12 @@ REQUIRED_HEADINGS = {
         "## Commands and results",
     ),
     "03-implementation/tests.md": (
-        "## Acceptance-to-test mapping",
+        "## Acceptance-checklist-to-test mapping",
         "## Tests added or changed",
         "## Commands and exact outcomes",
     ),
     "04-validation/validation.md": (
-        "## Requirement matrix",
+        "## Acceptance checklist verification",
         "## Code evidence",
         "## Runtime and test evidence",
         "## Final verdict",
@@ -70,6 +70,15 @@ REQUIRED_HEADINGS = {
 VERSIONED_ARTIFACT_RE = re.compile(
     r"(?:exploration|plan|implementation|tests|validation)(?:[-_.](?:v?\d+|final|revised|attempt[-_]?\d+))\.md$",
     re.IGNORECASE,
+)
+ACCEPTANCE_SECTION_RE = re.compile(
+    r"## Acceptance checklist\s*\n(.*?)(?=\n## Title\s*$)", re.DOTALL | re.MULTILINE
+)
+ACCEPTANCE_ITEM_RE = re.compile(
+    r"(?m)^- (AC-\d{3}): (.+?) \(source checkbox: (?:checked|unchecked)\)$"
+)
+VALIDATION_ROW_RE = re.compile(
+    r"(?m)^\|\s*(AC-\d{3})\s*\|(?:\\\||[^|])*\|\s*(PASS|FAIL|NOT VERIFIED)\s*\|"
 )
 
 
@@ -103,6 +112,8 @@ def write_state(task_dir: Path, state: dict[str, Any]) -> None:
         "issue_number",
         "issue_url",
         "issue_sha256",
+        "acceptance_checklist_sha256",
+        "acceptance_checklist_count",
         "attempt",
         "phase",
         "status",
@@ -121,6 +132,42 @@ def write_state(task_dir: Path, state: dict[str, Any]) -> None:
             rendered = str(value)
         lines.append(f"{key} = {rendered}")
     (task_dir / "state.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def acceptance_items(task_dir: Path) -> list[tuple[str, str]]:
+    issue_text = (task_dir / "issue.md").read_text(encoding="utf-8")
+    section = ACCEPTANCE_SECTION_RE.search(issue_text)
+    if section is None:
+        raise ValueError("issue.md is missing the normalized Acceptance checklist section")
+    items = ACCEPTANCE_ITEM_RE.findall(section.group(1))
+    if not items:
+        raise ValueError("issue.md acceptance checklist is empty or malformed")
+    ids = [item_id for item_id, _ in items]
+    if len(ids) != len(set(ids)):
+        raise ValueError("issue.md acceptance checklist contains duplicate IDs")
+    expected_ids = [f"AC-{index:03d}" for index in range(1, len(items) + 1)]
+    if ids != expected_ids:
+        raise ValueError("issue.md acceptance checklist IDs must be contiguous and ordered")
+    return items
+
+
+def acceptance_digest(items: list[tuple[str, str]]) -> str:
+    canonical = json.dumps(
+        [{"id": item_id, "text": text} for item_id, text in items],
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def assert_acceptance_ids_present(path: Path, expected_ids: list[str]) -> None:
+    text = path.read_text(encoding="utf-8")
+    missing = [item_id for item_id in expected_ids if item_id not in text]
+    if missing:
+        raise ValueError(
+            f"{path.name} does not map every issue checklist item; missing: {', '.join(missing)}"
+        )
 
 
 def assert_artifacts_ready(
@@ -147,10 +194,57 @@ def validation_has_pass(task_dir: Path) -> bool:
     )
 
 
+def validation_checklist_errors(task_dir: Path) -> list[str]:
+    expected_items = acceptance_items(task_dir)
+    expected_ids = [item_id for item_id, _ in expected_items]
+    validation = (task_dir / "04-validation/validation.md").read_text(encoding="utf-8")
+    rows = VALIDATION_ROW_RE.findall(validation)
+    row_ids = [item_id for item_id, _ in rows]
+    errors: list[str] = []
+    duplicates = sorted({item_id for item_id in row_ids if row_ids.count(item_id) > 1})
+    if duplicates:
+        errors.append(f"validation checklist has duplicate rows: {', '.join(duplicates)}")
+    unknown = sorted(set(row_ids) - set(expected_ids))
+    if unknown:
+        errors.append(f"validation checklist has unknown IDs: {', '.join(unknown)}")
+    missing = [item_id for item_id in expected_ids if item_id not in row_ids]
+    if missing:
+        errors.append(f"validation checklist is missing IDs: {', '.join(missing)}")
+    verdict_by_id = {item_id: verdict for item_id, verdict in rows}
+    not_passed = [
+        item_id for item_id in expected_ids if verdict_by_id.get(item_id) != "PASS"
+    ]
+    if not_passed:
+        errors.append(
+            "every issue checklist item must have verdict PASS; not passed: "
+            + ", ".join(not_passed)
+        )
+    return errors
+
+
+def validate_state_checklist(task_dir: Path, state: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    try:
+        items = acceptance_items(task_dir)
+    except ValueError as exc:
+        return [str(exc)]
+    digest = acceptance_digest(items)
+    if state.get("schema_version") != 2:
+        errors.append("state.toml schema_version must be 2")
+    if state.get("acceptance_checklist_count") != len(items):
+        errors.append("state.toml acceptance_checklist_count does not match issue.md")
+    if state.get("acceptance_checklist_sha256") != digest:
+        errors.append("state.toml acceptance_checklist_sha256 does not match issue.md")
+    return errors
+
+
 def transition(task_dir: Path, requested: str) -> None:
     state = load_state(task_dir)
     if state.get("status") != "in_progress":
         raise ValueError("cannot transition a task that is not in_progress")
+    checklist_errors = validate_state_checklist(task_dir, state)
+    if checklist_errors:
+        raise ValueError("; ".join(checklist_errors))
     current = state.get("phase")
     expected = NEXT_PHASE.get(str(current))
     if requested != expected:
@@ -158,6 +252,11 @@ def transition(task_dir: Path, requested: str) -> None:
     assert_artifacts_ready(
         task_dir, TRANSITION_INPUTS[requested], int(state.get("attempt", 0))
     )
+    ids = [item_id for item_id, _ in acceptance_items(task_dir)]
+    if requested == "implementation":
+        assert_acceptance_ids_present(task_dir / "02-planning/plan.md", ids)
+    elif requested == "validation":
+        assert_acceptance_ids_present(task_dir / "03-implementation/tests.md", ids)
     state["phase"] = requested
     state["verdict"] = ""
     write_state(task_dir, state)
@@ -167,10 +266,16 @@ def apply_verdict(task_dir: Path, verdict: str) -> None:
     state = load_state(task_dir)
     if state.get("phase") != "validation" or state.get("status") != "in_progress":
         raise ValueError("a verdict is valid only during in-progress validation")
+    checklist_errors = validate_state_checklist(task_dir, state)
+    if checklist_errors:
+        raise ValueError("; ".join(checklist_errors))
     if verdict == "PASS":
         assert_artifacts_ready(
             task_dir, tuple(REQUIRED_HEADINGS), int(state.get("attempt", 0))
         )
+        validation_errors = validation_checklist_errors(task_dir)
+        if validation_errors:
+            raise ValueError("; ".join(validation_errors))
         if not validation_has_pass(task_dir):
             raise ValueError("validation.md must contain a standalone PASS verdict")
         state["status"] = "complete"
@@ -200,6 +305,7 @@ def check(task_dir: Path) -> list[str]:
         return errors
 
     state = load_state(task_dir)
+    errors.extend(validate_state_checklist(task_dir, state))
     if state.get("phase") not in PHASES:
         errors.append(f"invalid phase: {state.get('phase')!r}")
     if state.get("status") not in ("in_progress", "complete"):
@@ -210,6 +316,21 @@ def check(task_dir: Path) -> list[str]:
         for heading in headings:
             if heading not in text:
                 errors.append(f"{relative} is missing heading: {heading}")
+
+    try:
+        ids = [item_id for item_id, _ in acceptance_items(task_dir)]
+    except ValueError:
+        ids = []
+    if ids and state.get("phase") in ("implementation", "validation"):
+        try:
+            assert_acceptance_ids_present(task_dir / "02-planning/plan.md", ids)
+        except ValueError as exc:
+            errors.append(str(exc))
+    if ids and state.get("phase") == "validation":
+        try:
+            assert_acceptance_ids_present(task_dir / "03-implementation/tests.md", ids)
+        except ValueError as exc:
+            errors.append(str(exc))
 
     if state.get("status") == "complete":
         for relative in REQUIRED_HEADINGS:
@@ -223,6 +344,7 @@ def check(task_dir: Path) -> list[str]:
                 errors.append(
                     f"complete task artifact does not record attempt {attempt}: {relative}"
                 )
+        errors.extend(validation_checklist_errors(task_dir))
         if not validation_has_pass(task_dir):
             errors.append("complete task requires a standalone PASS under Final verdict")
         if state.get("verdict") != "PASS":
