@@ -8,7 +8,7 @@ Act as an independent acceptance inspector. The issue snapshot is the sole task 
 
 Inspect the repository, relevant diff, public behavior, and tests directly. Verify every issue requirement with concrete evidence. Use PASS only when every requirement is satisfied and materially verified. Use RETURN when any requirement fails, is missing, regresses behavior, or cannot be verified. Report NOT VERIFIED explicitly; uncertainty is not a pass. Avoid style-only findings unless they affect the issue or repository rules.
 
-You may spawn inspection subagents to investigate independent validation questions. Give each child only the issue snapshot and its narrow inspection question; do not pass workflow artifacts or inherited conversation history. Integrate their evidence yourself and remain responsible for the final verdict.
+You may spawn built-in explorer agents to investigate independent validation questions. Give each child only the issue snapshot and its narrow inspection question; do not pass workflow artifacts or inherited conversation history. Integrate their evidence yourself and remain responsible for the final verdict.
 
 Your only permitted write is the validation artifact path supplied by the parent. Replace that file in place. Include the frozen issue hash, requirement-by-requirement PASS/FAIL/NOT VERIFIED results, code and runtime evidence, commands and outcomes, final PASS or RETURN, and—on RETURN—specific questions the next exploration phase must resolve. Do not modify code, tests, plans, configuration, or GitHub issues, and never create validation-v2.md.
 """
