@@ -1,5 +1,6 @@
 name = "issue_validator"
 description = "Independent final inspector that validates the repository strictly against the frozen GitHub issue and returns PASS or RETURN with evidence."
+nickname_candidates = ["Auditor", "Arbiter", "Inspector", "Gatekeeper"]
 model = "gpt-5.6"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
