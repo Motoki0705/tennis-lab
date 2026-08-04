@@ -1,48 +1,47 @@
 # `/goal` integration
 
-`/goal` is an optional outer persistence loop for this workflow. The workflow state machine in `.codex/tasks/issue-<number>/state.toml` remains the authoritative phase and verdict state.
+`/goal` is an optional outer persistence loop. `.codex/tasks/issue-<number>/state.toml` remains authoritative for phases, tester cycles, and validator verdicts.
 
 ## Why it fits
 
-The Codex goal runtime persists a thread objective and, while the goal is active, starts another continuation turn whenever the thread becomes idle. The continuation prompt requires evidence-based progress, preserves the full objective across turns, and permits completion only after a requirement-by-requirement audit. This matches the workflow's repeated exploration, implementation, independent testing, and validator RETURN loop.
+Codex persists the thread objective and automatically starts another continuation turn while an active goal is idle. Its continuation prompt preserves the full objective and requires evidence-based, requirement-by-requirement completion auditing. This fits both the inner Implementer–Tester loop and the broader Validator RETURN-to-exploration loop.
 
 Primary implementation references in `openai/codex`:
 
-- `codex-rs/ext/goal/src/runtime.rs`: active goals continue automatically when the thread is idle.
-- `codex-rs/ext/goal/templates/goals/continuation.md`: the objective remains intact across turns and completion requires authoritative evidence for every requirement.
-- `codex-rs/ext/goal/src/spec.rs`: `update_goal(status="complete")` is allowed only when the objective is achieved and no required work remains.
-- `codex-rs/state/src/model/thread_goal.rs`: persisted statuses include active, paused, blocked, usage-limited, budget-limited, and complete.
-- `codex-rs/tui/src/app/thread_goal_actions.rs`: goals require a persisted session rather than an ephemeral thread.
+- `codex-rs/ext/goal/src/runtime.rs`: active goals continue when the thread is idle.
+- `codex-rs/ext/goal/templates/goals/continuation.md`: the objective remains intact and completion requires authoritative evidence.
+- `codex-rs/ext/goal/src/spec.rs`: `update_goal(status="complete")` is allowed only when no required work remains.
+- `codex-rs/state/src/model/thread_goal.rs`: goal state is persisted.
+- `codex-rs/tui/src/app/thread_goal_actions.rs`: goals require a persisted session.
 
 ## Recommended objective
 
-Start the saved Codex session in the repository, then set one goal for one Issue:
-
 ```text
-/goal Implement GitHub Issue #<n> using the issue-subagent-workflow. Preserve the full Issue scope. Completion requires: (1) a frozen Issue snapshot with a non-empty normalized acceptance checklist; (2) every AC item implemented; (3) independent tests and required repository checks completed; (4) issue_validator independently verifies every AC item as PASS; (5) manage_issue_task.py accepts verdict PASS and state.toml records status="complete" and verdict="PASS"; and (6) the requested pull request is opened. On validator RETURN, keep the goal active and restart formal exploration. Do not mark the goal complete from implementation claims, checkbox state, partial tests, or a plausible summary.
+/goal Implement GitHub Issue #<n> using the issue-subagent-workflow. Preserve the full Issue scope. Completion requires: (1) a frozen Issue snapshot with a non-empty normalized acceptance checklist; (2) every AC item implemented; (3) the independent Test Writer records PASS after all relevant tests and checks succeed; (4) issue_validator independently verifies every AC item as PASS; (5) manage_issue_task.py accepts validator PASS and its final check succeeds; and (6) the requested pull request is opened. On tester RETURN, keep the goal active and return to implementation. On validator RETURN, keep the goal active and restart formal exploration. Do not complete the goal from implementation claims, checkbox state, partial tests, or a plausible summary.
 ```
 
-The objective should identify the exact Issue. Do not combine unrelated Issues into one goal.
+Use one goal for one Issue.
 
 ## Operating rules
 
-- Goal status does not advance workflow phases. Use `manage_issue_task.py` for all phase transitions and verdicts.
-- A validator RETURN is normal progress, not a blocked goal. Restart exploration and keep the goal active.
-- Call goal completion only after the helper accepts PASS and all other deliverables in the objective exist.
-- The source `[x]` or `[ ]` state in the GitHub Issue is not completion evidence. Only validator evidence and the accepted workflow verdict count.
-- Do not use a token budget unless the user explicitly requests one. Budget exhaustion is not success.
-- Goals auto-continue immediately when idle; they are not schedulers. When progress depends on a long external wait, such as a human action or delayed external service, pause the goal with `/goal pause` and resume it later with `/goal resume` rather than creating a polling loop.
-- Goals require a saved session. If the session is ephemeral, start `codex` normally or resume a persisted session before using `/goal`.
+- Goal status never advances workflow state. Use `manage_issue_task.py`.
+- Tester RETURN is ordinary progress and returns to Implementer.
+- Validator RETURN is ordinary progress and returns to Explorer.
+- Neither RETURN is, by itself, a blocked goal.
+- Goals auto-continue when idle; they are not schedulers. Pause for long human or external waits.
+- Do not set a token budget unless explicitly requested.
+- Use a saved Codex session.
 
 ## Completion gate
 
-Before allowing the goal to become complete, the parent must confirm all of the following from current state:
+Before goal completion, confirm:
 
-1. `issue.md` contains the normalized AC checklist and its hash matches `state.toml`.
-2. `validation.md` contains exactly one row for every AC ID, in order, and every verdict is PASS.
-3. `manage_issue_task.py verdict ... PASS` succeeds.
-4. `manage_issue_task.py check ...` succeeds.
-5. Required tests and checks have current successful evidence.
-6. The requested PR exists and describes the checklist-based validation.
+1. The Issue and checklist hashes match `state.toml`.
+2. `test_verdict = "PASS"` and the recorded `tests.md` test cycle matches state.
+3. `validation.md` contains one exact ordered row per AC item and every row is PASS.
+4. `manage_issue_task.py verdict ... PASS` succeeds.
+5. `manage_issue_task.py check ...` succeeds.
+6. Required repository checks have current successful evidence.
+7. The requested PR exists and describes both tester and validator gates.
 
-A narrative statement from any agent is not a substitute for these gates.
+Agent narratives are not substitutes for these gates.
