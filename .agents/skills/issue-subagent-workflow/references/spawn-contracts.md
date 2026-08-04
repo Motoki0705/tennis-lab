@@ -56,13 +56,13 @@ Do not include plan summaries, implementation claims, test summaries, expected v
 
 ### Validator child
 
-A validator may spawn a child with a narrow question:
+A validator may spawn a built-in explorer with a narrow question:
 
 ```json
 {
   "task_name": "issue_<n>_validation_<question>",
   "message": "Use .codex/tasks/issue-<n>/issue.md as the sole task specification. Inspect only this question: <question>. Do not read other workflow artifacts. Return concrete file, symbol, command, and behavior evidence to the validator.",
-  "agent_type": "codebase_explorer",
+  "agent_type": "explorer",
   "fork_turns": "none"
 }
 ```
