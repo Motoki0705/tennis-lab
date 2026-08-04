@@ -9,7 +9,7 @@ Run one Issue through a documented state machine. GitHub is input only: do not w
 
 ## Start
 
-1. Confirm the Issue body contains at least one concrete Markdown task-list acceptance item such as `- [ ] observable requirement`. The initializer rejects Issues without a checklist.
+1. Confirm the Issue body contains a `## Acceptance checklist` section with at least one concrete Markdown task-list item such as `- [ ] observable requirement`. The initializer rejects Issues without this exact section or with an empty checklist.
 2. Initialize or refresh the frozen Issue snapshot:
    `python .agents/skills/issue-subagent-workflow/scripts/init_issue_task.py <issue>`
 3. Use `.codex/tasks/issue-<number>/` as the single artifact directory.
@@ -36,7 +36,7 @@ When the user explicitly starts this work with `/goal`, use the goal as the oute
 6. Spawn `issue_validator` with `fork_turns = "none"`. Its task-specific input may identify only `issue.md`, the repository state or diff to inspect, and the destination `04-validation/validation.md`. Never mention or expose exploration, plan, implementation, or test artifacts.
 7. Require the validator to emit exactly one ordered PASS/FAIL/NOT VERIFIED row for every normalized AC item. Source checkbox state is not evidence.
 8. Apply the verdict:
-   - `PASS`: run the state helper; only after it accepts every checklist row as PASS may the task be marked complete and the PR opened.
+   - `PASS`: run the state helper; only after it accepts the checklist hash, each exact checklist item, and every verdict as PASS may the task be marked complete and the PR opened.
    - `RETURN`: increment the attempt, return to exploration, and overwrite the same artifact files. Never create `*-v2.md` files.
 
 Use the state helper for transitions and validation:
