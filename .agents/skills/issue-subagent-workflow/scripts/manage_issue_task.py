@@ -18,6 +18,14 @@ NEXT_PHASE = {
     "planning": "implementation",
     "implementation": "validation",
 }
+TRANSITION_INPUTS = {
+    "planning": ("01-exploration/exploration.md",),
+    "implementation": ("02-planning/plan.md",),
+    "validation": (
+        "03-implementation/implementation.md",
+        "03-implementation/tests.md",
+    ),
+}
 REQUIRED_FILES = (
     "issue.md",
     "state.toml",
@@ -115,6 +123,30 @@ def write_state(task_dir: Path, state: dict[str, Any]) -> None:
     (task_dir / "state.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def assert_artifacts_ready(
+    task_dir: Path, relative_paths: tuple[str, ...], attempt: int
+) -> None:
+    for relative in relative_paths:
+        path = task_dir / relative
+        if not path.is_file():
+            raise ValueError(f"missing required artifact: {relative}")
+        text = path.read_text(encoding="utf-8")
+        if "PENDING" in text or "Replace this" in text:
+            raise ValueError(f"artifact still contains placeholders: {relative}")
+        if f"- Attempt: {attempt}" not in text:
+            raise ValueError(
+                f"artifact does not record current attempt {attempt}: {relative}"
+            )
+
+
+def validation_has_pass(task_dir: Path) -> bool:
+    validation = (task_dir / "04-validation/validation.md").read_text(encoding="utf-8")
+    verdict_section = validation.split("## Final verdict", maxsplit=1)
+    return len(verdict_section) == 2 and bool(
+        re.search(r"(?m)^PASS\s*$", verdict_section[1])
+    )
+
+
 def transition(task_dir: Path, requested: str) -> None:
     state = load_state(task_dir)
     if state.get("status") != "in_progress":
@@ -123,6 +155,9 @@ def transition(task_dir: Path, requested: str) -> None:
     expected = NEXT_PHASE.get(str(current))
     if requested != expected:
         raise ValueError(f"invalid transition: {current!r} -> {requested!r}; expected {expected!r}")
+    assert_artifacts_ready(
+        task_dir, TRANSITION_INPUTS[requested], int(state.get("attempt", 0))
+    )
     state["phase"] = requested
     state["verdict"] = ""
     write_state(task_dir, state)
@@ -133,6 +168,11 @@ def apply_verdict(task_dir: Path, verdict: str) -> None:
     if state.get("phase") != "validation" or state.get("status") != "in_progress":
         raise ValueError("a verdict is valid only during in-progress validation")
     if verdict == "PASS":
+        assert_artifacts_ready(
+            task_dir, tuple(REQUIRED_HEADINGS), int(state.get("attempt", 0))
+        )
+        if not validation_has_pass(task_dir):
+            raise ValueError("validation.md must contain a standalone PASS verdict")
         state["status"] = "complete"
         state["verdict"] = "PASS"
     else:
@@ -176,11 +216,14 @@ def check(task_dir: Path) -> list[str]:
             text = (task_dir / relative).read_text(encoding="utf-8")
             if "PENDING" in text or "Replace this" in text:
                 errors.append(f"complete task contains placeholders: {relative}")
-        validation = (task_dir / "04-validation/validation.md").read_text(encoding="utf-8")
-        verdict_section = validation.split("## Final verdict", maxsplit=1)
-        if len(verdict_section) != 2 or not re.search(
-            r"(?m)^PASS\s*$", verdict_section[1]
-        ):
+        attempt = int(state.get("attempt", 0))
+        for relative in REQUIRED_HEADINGS:
+            text = (task_dir / relative).read_text(encoding="utf-8")
+            if f"- Attempt: {attempt}" not in text:
+                errors.append(
+                    f"complete task artifact does not record attempt {attempt}: {relative}"
+                )
+        if not validation_has_pass(task_dir):
             errors.append("complete task requires a standalone PASS under Final verdict")
         if state.get("verdict") != "PASS":
             errors.append("complete task state verdict must be PASS")
