@@ -3,12 +3,12 @@
 ## State machine
 
 ```text
-exploration -> planning -> implementation -> validation
-                                      validation PASS -> complete
-                                      validation RETURN -> exploration
+optional scouting -> exploration -> planning -> implementation -> validation
+                                                   validation PASS -> complete
+                                                   validation RETURN -> exploration
 ```
 
-`RETURN` always restarts exploration. It does not jump directly to planning or implementation because the failure may expose a mistaken codebase model.
+Scouting is advisory and does not change task state. `RETURN` always restarts formal exploration. It does not jump directly to planning or implementation because the failure may expose a mistaken codebase model.
 
 ## Artifact tree
 
@@ -23,13 +23,29 @@ exploration -> planning -> implementation -> validation
 └── 04-validation/validation.md
 ```
 
-One logical artifact has one path. Replace files in place. Do not create attempt-, date-, final-, revised-, or v2-suffixed copies. Git history is the audit trail.
+One logical artifact has one path. Replace files in place. Do not create attempt-, date-, final-, revised-, or v2-suffixed copies. Git history is the audit trail. Scout output is returned to the parent and is not a separate authoritative artifact.
+
+## Exploration routing
+
+Use `codebase_scout` only for bounded, high-volume lookup work such as locating named symbols, direct references, nearby tests, configuration keys, or candidate entry points. Multiple scouts may run in parallel when their questions are independent.
+
+Use `codebase_explorer` directly when any of the following applies:
+
+- the issue spans multiple packages or execution stages;
+- control flow depends on registries, plugins, dynamic dispatch, Hydra or other configuration resolution;
+- schemas, tensor shapes, coordinate systems, persistence formats, or public interfaces may change;
+- code is being deleted, moved, or broadly refactored;
+- the validator returned the task;
+- a scout reports ambiguity, competing entry points, or an incomplete call path.
+
+Formal exploration is mandatory before planning. The explorer must independently verify scout leads and write `exploration.md`; the parent must independently verify high-impact explorer claims.
 
 ## Responsibilities
 
 ### Parent orchestrator
 
 - Fetch and freeze the issue.
+- Decide whether bounded scout work is useful and formulate independent questions.
 - Select task boundaries and spawn agents.
 - Verify the explorer's high-impact claims by reading relevant code itself.
 - Own `plan.md`, including acceptance mapping and file ownership.
@@ -39,10 +55,19 @@ One logical artifact has one path. Replace files in place. Do not create attempt
 
 The parent should inspect at least the principal entry point, one complete call path, relevant configuration, and existing tests. It may inspect more whenever the explorer evidence is incomplete or surprising.
 
+### Scout
+
+- Answer one narrow repository lookup question quickly.
+- Locate candidate files, symbols, references, tests, and configuration with direct evidence.
+- Distinguish verified matches from likely candidates and report what was not inspected.
+- Return results to the parent only; do not write workflow artifacts or modify the repository.
+- Recommend promotion to `codebase_explorer` when scope or uncertainty expands.
+
 ### Explorer
 
 - Collect evidence without modifying source code, tests, configuration, or GitHub.
 - Map code paths, contracts, tests, constraints, and unknowns.
+- Treat scout results as unverified leads and independently confirm material claims.
 - Write only `exploration.md`.
 - Never decide the final plan.
 
@@ -79,7 +104,7 @@ On RETURN:
 
 1. Run the state helper with `verdict ... RETURN`.
 2. Preserve the frozen issue unless the upstream issue changed.
-3. Re-run the explorer, explicitly including the validator's unresolved questions in the explorer task message.
+3. Re-run `codebase_explorer`, explicitly including the validator's unresolved questions in the explorer task message. Scouts may assist with independent narrow questions, but they do not replace this formal exploration.
 4. The parent rechecks evidence and rewrites the existing plan.
 5. Re-run implementation, independent tests, and validation.
 
