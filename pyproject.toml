@@ -52,16 +52,16 @@ dependencies = [
 [dependency-groups]
 dev = [
     "mypy>=1.18.2",
-    "pre-commit>=4.5.0",
-    "ruff>=0.14.3",
+    "pre-commit>=4.6.1",
+    "ruff>=0.16.1",
     "spin>=0.18",
     "types-pyyaml>=6.0.12.20250915",
-    "types-requests>=2.33.0.20260712",
-    "coverage>=7.6.0",
-    "pytest>=8.4.2",
+    "types-requests>=2.32.4.20250913",
+    "coverage>=7.15.2",
+    "pytest>=9.1.1",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.8.0",
-    "pydeps>=3.0.2",
+    "pydeps>=3.0.6",
 ]
 
 [tool.setuptools.packages.find]
