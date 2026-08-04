@@ -1,0 +1,69 @@
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/dependabot.yml"
+          - ".gitmodules"
+          - "pyproject.toml"
+          - "uv.lock"
+          - "third_party/**"
+
+third-party:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".gitmodules"
+          - "third_party/**"
+          - "src/submodules/vendor/**"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**"
+          - ".pre-commit-config.yaml"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "docs/**"
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: "tests/**"
+
+research:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "experiments/**"
+          - "knowledge/**"
+
+"module: base":
+  - changed-files:
+      - any-glob-to-any-file: "src/tasks/base/**"
+
+"module: ball-detection":
+  - changed-files:
+      - any-glob-to-any-file: "src/tasks/ball_detection/**"
+
+"module: court-detection":
+  - changed-files:
+      - any-glob-to-any-file: "src/tasks/court_detection/**"
+
+"module: blcs":
+  - changed-files:
+      - any-glob-to-any-file: "src/tasks/blcs/**"
+
+"module: plcs":
+  - changed-files:
+      - any-glob-to-any-file: "src/tasks/plcs/**"
+
+"module: submodules":
+  - changed-files:
+      - any-glob-to-any-file: "src/submodules/**"
+
+"module: synthetic-data":
+  - changed-files:
+      - any-glob-to-any-file: "src/synthetic_data_generation/**"
+
+"module: tennis-scene":
+  - changed-files:
+      - any-glob-to-any-file: "src/tennis_scene/**"

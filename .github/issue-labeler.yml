@@ -1,0 +1,50 @@
+bug:
+  - '/^\[バグ\]/'
+
+enhancement:
+  - '/^\[機能\]/'
+
+research:
+  - '/^\[調査\]/'
+
+question:
+  - '/^\[質問\]/'
+
+documentation:
+  - '/^\[ドキュメント\]/'
+
+dependencies:
+  - '/(?:pyproject\.toml|uv\.lock|依存(?:関係|ライブラリ)?|dependabot)/i'
+
+third-party:
+  - '/(?:third_party\/|GVHMR|DINO|dinov3|neural[- ]harmonic[- ]textures)/i'
+
+ci:
+  - '/(?:\.github\/workflows\/|GitHub Actions|CI(?:\/CD)?)/i'
+
+tests:
+  - '/(?:tests?\/|pytest|テスト)/i'
+
+"module: base":
+  - '/(?:src\/(?:tasks\/)?base|tasks?\/base)/i'
+
+"module: ball-detection":
+  - '/(?:src\/tasks\/ball_detection|ball[_ -]?detection|ボール検出)/i'
+
+"module: court-detection":
+  - '/(?:src\/tasks\/court_detection|court[_ -]?detection|コート検出)/i'
+
+"module: blcs":
+  - '/(?:src\/tasks\/blcs|\bBLCS\b)/i'
+
+"module: plcs":
+  - '/(?:src\/tasks\/plcs|\bPLCS\b)/i'
+
+"module: submodules":
+  - '/(?:src\/submodules|\bsubmodules?\b|GVHMR|DINO)/i'
+
+"module: synthetic-data":
+  - '/(?:src\/synthetic_data_generation|synthetic[_ -]?data|合成データ)/i'
+
+"module: tennis-scene":
+  - '/(?:src\/tennis_scene|tennis[_ -]?scene|テニスシーン)/i'
