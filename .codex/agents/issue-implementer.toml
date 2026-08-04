@@ -1,6 +1,6 @@
 name = "issue_implementer"
 description = "Implementation worker used only after the orchestrator has approved a written plan and assigned explicit file ownership."
-model = "gpt-5.6-sol"
+model = "gpt-5.6"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """
