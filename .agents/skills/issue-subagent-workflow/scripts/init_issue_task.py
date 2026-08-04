@@ -16,6 +16,9 @@ from typing import Any, NamedTuple
 
 DEFAULT_REPO = "Motoki0705/tennis-lab"
 ISSUE_NUMBER_RE = re.compile(r"(?:^|/issues/)(\d+)(?:$|[/?#])")
+SOURCE_ACCEPTANCE_SECTION_RE = re.compile(
+    r"(?ms)^## Acceptance checklist\s*\n(.*?)(?=^##\s+|\Z)"
+)
 TASK_LIST_RE = re.compile(r"(?m)^\s*[-*+]\s+\[([ xX])\]\s+(.+?)\s*$")
 
 
@@ -84,10 +87,16 @@ def canonical_hash(payload: dict[str, Any]) -> str:
 
 
 def extract_acceptance_items(body: str) -> list[AcceptanceItem]:
-    raw_items = TASK_LIST_RE.findall(body)
+    section = SOURCE_ACCEPTANCE_SECTION_RE.search(body)
+    if section is None:
+        raise ValueError(
+            "issue body must contain a `## Acceptance checklist` section with at least "
+            "one Markdown task-list item"
+        )
+    raw_items = TASK_LIST_RE.findall(section.group(1))
     if not raw_items:
         raise ValueError(
-            "issue body must contain at least one Markdown task-list acceptance item, "
+            "the `## Acceptance checklist` section must contain at least one item, "
             "for example `- [ ] observable requirement`"
         )
 
