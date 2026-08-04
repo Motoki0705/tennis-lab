@@ -29,11 +29,141 @@ class AcceptanceItem(NamedTuple):
 
 
 TEMPLATES = {
-    "01-exploration/exploration.md": """# Exploration\n\n- Issue: #{number}\n- Attempt: {attempt}\n- Status: PENDING\n\n## Scope and issue interpretation\n\n## Relevant files and symbols\n\n## Entry points and execution paths\n\n## Data, configuration, and interface contracts\n\n## Existing tests and fixtures\n\n## Invariants and compatibility constraints\n\n## Risks and likely impact radius\n\n## Unresolved questions\n\n## Evidence table\n\n| Kind | Claim | Evidence |\n|---|---|---|\n| PENDING | Replace this row | Replace this row |\n""",
-    "02-planning/plan.md": """# Plan\n\n- Issue: #{number}\n- Attempt: {attempt}\n- Status: PENDING\n- Frozen issue SHA-256: `{issue_hash}`\n- Frozen acceptance checklist SHA-256: `{checklist_hash}`\n\n## Acceptance checklist mapping\n\n| ID | Issue checklist item | Planned implementation | Validation method |\n|---|---|---|---|\n{plan_rows}\n\n## Planned files and symbols\n\n## Implementation work units and ownership\n\n## Independent test work unit\n\n## Ordered execution plan\n\n## Validation strategy\n\n## Non-goals and prohibited changes\n\n## Risks, rollback, and open decisions\n""",
-    "03-implementation/implementation.md": """# Implementation\n\n- Issue: #{number}\n- Attempt: {attempt}\n- Status: PENDING\n\n## Assigned ownership\n\n## Files and symbols changed\n\n## Behavior implemented\n\n## Plan deviations and rationale\n\n## Commands and results\n\n## Known limitations and remaining risks\n\n## Handoff\n""",
-    "03-implementation/tests.md": """# Tests\n\n- Issue: #{number}\n- Attempt: {attempt}\n- Status: PENDING\n\n## Acceptance-checklist-to-test mapping\n\n## Tests added or changed\n\n## Normal, boundary, invalid, and regression cases\n\n## Commands and exact outcomes\n\n## Failures encountered\n\n## Untested risks and reasons\n""",
-    "04-validation/validation.md": """# Validation\n\n- Issue: #{number}\n- Attempt: {attempt}\n- Status: PENDING\n- Frozen issue SHA-256: `{issue_hash}`\n- Frozen acceptance checklist SHA-256: `{checklist_hash}`\n\n## Inspection scope and revision\n\n## Acceptance checklist verification\n\n| ID | Issue checklist item | Verdict | Evidence |\n|---|---|---|---|\n{validation_rows}\n\n## Code evidence\n\n## Runtime and test evidence\n\n## Regression and repository-rule checks\n\n## Final verdict\n\nPENDING\n\n## RETURN exploration questions\n""",
+    "01-exploration/exploration.md": """# Exploration
+
+- Issue: #{number}
+- Attempt: {attempt}
+- Status: PENDING
+
+## Scope and issue interpretation
+
+## Relevant files and symbols
+
+## Entry points and execution paths
+
+## Data, configuration, and interface contracts
+
+## Existing tests and fixtures
+
+## Invariants and compatibility constraints
+
+## Risks and likely impact radius
+
+## Unresolved questions
+
+## Evidence table
+
+| Kind | Claim | Evidence |
+|---|---|---|
+| PENDING | Replace this row | Replace this row |
+""",
+    "02-planning/plan.md": """# Plan
+
+- Issue: #{number}
+- Attempt: {attempt}
+- Status: PENDING
+- Frozen issue SHA-256: `{issue_hash}`
+- Frozen acceptance checklist SHA-256: `{checklist_hash}`
+
+## Acceptance checklist mapping
+
+| ID | Issue checklist item | Planned implementation | Validation method |
+|---|---|---|---|
+{plan_rows}
+
+## Planned files and symbols
+
+## Implementation work units and ownership
+
+## Independent test work unit
+
+## Ordered execution plan
+
+## Validation strategy
+
+## Non-goals and prohibited changes
+
+## Risks, rollback, and open decisions
+""",
+    "03-implementation/implementation.md": """# Implementation
+
+- Issue: #{number}
+- Attempt: {attempt}
+- Test cycle: 1
+- Status: PENDING
+
+## Assigned ownership
+
+## Files and symbols changed
+
+## Behavior implemented
+
+## Plan deviations and rationale
+
+## Commands and results
+
+## Known limitations and remaining risks
+
+## Handoff
+""",
+    "03-implementation/tests.md": """# Tests
+
+- Issue: #{number}
+- Attempt: {attempt}
+- Test cycle: 1
+- Status: PENDING
+- Frozen acceptance checklist SHA-256: `{checklist_hash}`
+
+## Acceptance-checklist-to-test mapping
+
+| ID | Issue checklist item | Test or authoritative evidence | Result |
+|---|---|---|---|
+{test_rows}
+
+## Tests added or changed
+
+## Normal, boundary, invalid, and regression cases
+
+## Commands and exact outcomes
+
+## Failures encountered
+
+## Untested risks and reasons
+
+## Final test verdict
+
+PENDING
+
+## RETURN implementation findings
+""",
+    "04-validation/validation.md": """# Validation
+
+- Issue: #{number}
+- Attempt: {attempt}
+- Status: PENDING
+- Frozen issue SHA-256: `{issue_hash}`
+- Frozen acceptance checklist SHA-256: `{checklist_hash}`
+
+## Inspection scope and revision
+
+## Acceptance checklist verification
+
+| ID | Issue checklist item | Verdict | Evidence |
+|---|---|---|---|
+{validation_rows}
+
+## Code evidence
+
+## Runtime and test evidence
+
+## Regression and repository-rule checks
+
+## Final verdict
+
+PENDING
+
+## RETURN exploration questions
+""",
 }
 
 
@@ -124,7 +254,7 @@ def acceptance_hash(items: list[AcceptanceItem]) -> str:
 
 
 def escape_table_cell(text: str) -> str:
-    return text.replace("|", "\\|")
+    return text.replace("|", r"\|")
 
 
 def render_acceptance_list(items: list[AcceptanceItem]) -> str:
@@ -142,15 +272,26 @@ def render_plan_rows(items: list[AcceptanceItem]) -> str:
     )
 
 
+def render_test_rows(items: list[AcceptanceItem]) -> str:
+    return "\n".join(
+        f"| {item.item_id} | {escape_table_cell(item.text)} | PENDING | PENDING |"
+        for item in items
+    )
+
+
 def render_validation_rows(items: list[AcceptanceItem]) -> str:
     return "\n".join(
-        f"| {item.item_id} | {escape_table_cell(item.text)} | NOT VERIFIED | Replace this evidence |"
+        f"| {item.item_id} | {escape_table_cell(item.text)} | NOT VERIFIED | "
+        "Replace this evidence |"
         for item in items
     )
 
 
 def render_issue(
-    payload: dict[str, Any], digest: str, checklist_digest: str, items: list[AcceptanceItem]
+    payload: dict[str, Any],
+    digest: str,
+    checklist_digest: str,
+    items: list[AcceptanceItem],
 ) -> str:
     labels = payload.get("labels") or []
     label_names = [item.get("name", "") for item in labels if isinstance(item, dict)]
@@ -182,13 +323,15 @@ def render_state(
 ) -> str:
     now = datetime.now(UTC).isoformat()
     return (
-        "schema_version = 2\n"
+        "schema_version = 3\n"
         f"issue_number = {payload['number']}\n"
         f"issue_url = {json.dumps(payload['url'])}\n"
         f"issue_sha256 = {json.dumps(digest)}\n"
         f"acceptance_checklist_sha256 = {json.dumps(checklist_digest)}\n"
         f"acceptance_checklist_count = {checklist_count}\n"
         f"attempt = {attempt}\n"
+        "test_cycle = 0\n"
+        'test_verdict = ""\n'
         'phase = "exploration"\n'
         'status = "in_progress"\n'
         'verdict = ""\n'
@@ -226,7 +369,8 @@ def main() -> int:
 
         task_dir.mkdir(parents=True, exist_ok=True)
         (task_dir / "issue.md").write_text(
-            render_issue(payload, digest, checklist_digest, items), encoding="utf-8"
+            render_issue(payload, digest, checklist_digest, items),
+            encoding="utf-8",
         )
 
         if args.refresh_issue:
@@ -244,6 +388,7 @@ def main() -> int:
             "issue_hash": digest,
             "checklist_hash": checklist_digest,
             "plan_rows": render_plan_rows(items),
+            "test_rows": render_test_rows(items),
             "validation_rows": render_validation_rows(items),
         }
         for relative_path, template in TEMPLATES.items():
