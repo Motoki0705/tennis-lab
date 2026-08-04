@@ -54,6 +54,7 @@ dev = [
     "mypy>=1.18.2",
     "pre-commit>=4.5.0",
     "ruff>=0.14.3",
+    "spin>=0.18",
     "types-pyyaml>=6.0.12.20250915",
     "types-requests>=2.32.4.20250913",
     "coverage>=7.6.0",
@@ -252,6 +253,13 @@ disallow_untyped_decorators = false
 warn_unused_ignores = false
 warn_unreachable = false
 
+# spin loads .spin/cmds.py as the top-level module "cmds". With the pre-commit
+# hook's --follow-imports=skip, Click's decorators are intentionally not
+# analyzed; relax only that decorator rule while keeping command bodies strict.
+[[tool.mypy.overrides]]
+module = ["cmds"]
+disallow_untyped_decorators = false
+
 [tool.coverage.run]
 source = ["src"]
 omit = [
@@ -312,4 +320,19 @@ markers = [
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
+]
+
+[tool.spin]
+package = "src"
+
+[tool.spin.commands]
+"Environment" = [
+    ".spin/cmds.py:setup",
+    ".spin/cmds.py:doctor",
+]
+"Quality" = [
+    ".spin/cmds.py:lint",
+    ".spin/cmds.py:typecheck",
+    ".spin/cmds.py:test",
+    ".spin/cmds.py:ci",
 ]

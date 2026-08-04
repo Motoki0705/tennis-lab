@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 CHECKPOINT = PROJECT_ROOT / "ckpt/dino/checkpoint0029_4scale_swin.pth"
 
 
-@pytest.mark.gpu
+@pytest.mark.cuda
 @pytest.mark.slow
 def test_dino_checkpoint_loads_strictly_and_runs_one_frame() -> None:
     if not torch.cuda.is_available():
