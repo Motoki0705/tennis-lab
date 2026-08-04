@@ -25,16 +25,7 @@ jobs:
         # local-to-Google-Drive command e2e tests.
         run: sudo apt-get update && sudo apt-get install -y ffmpeg rclone
 
-      - name: Install ffmpeg
-        # Required by the ball_detection video pipeline (and its e2e tests),
-        # which shells out to the `ffmpeg` binary for transcoding.
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Ruff lint
-        run: uv run ruff check src tests
-
-      - name: Pytest
-        # This runner is CPU-only and doesn't have the large local datasets,
-        # so tests marked `cuda` or `local_data` (see pyproject.toml markers)
-        # are excluded.
-        run: uv run pytest tests -m "not local_data and not cuda" -q --no-cov
+      - name: Project checks
+        # `spin ci` is the shared local/CI entry point. This runner is CPU-only
+        # and has no large local datasets, so it excludes those pytest markers.
+        run: uv run --locked spin ci
