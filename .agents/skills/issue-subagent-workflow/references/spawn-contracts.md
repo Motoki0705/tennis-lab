@@ -2,18 +2,33 @@
 
 Use `fork_turns = "none"` whenever selecting a custom `agent_type`. Always provide a unique lowercase `task_name`.
 
+## Scout
+
+Use `codebase_scout` only for one bounded lookup question. It returns an advisory report to the parent and does not write a workflow artifact.
+
+```json
+{
+  "task_name": "issue_<n>_scout_<question>",
+  "message": "Read .codex/tasks/issue-<n>/issue.md and answer only this bounded repository question: <question>. Locate candidate files, symbols, references, tests, and configuration with direct evidence. Do not modify files or GitHub. State ambiguities and whether formal exploration must broaden the scope.",
+  "agent_type": "codebase_scout",
+  "fork_turns": "none"
+}
+```
+
+Run multiple scouts in parallel only when the questions are independent. Do not ask a scout to produce `exploration.md`, reconstruct a cross-module architecture, decide the implementation plan, or resolve a validator RETURN by itself.
+
 ## Explorer
 
 ```json
 {
   "task_name": "issue_<n>_exploration",
-  "message": "Read .codex/tasks/issue-<n>/issue.md. Investigate the repository for this issue and replace .codex/tasks/issue-<n>/01-exploration/exploration.md according to your role contract. This is attempt <attempt>. Do not modify code or GitHub.",
+  "message": "Read .codex/tasks/issue-<n>/issue.md. Investigate the repository for this issue and replace .codex/tasks/issue-<n>/01-exploration/exploration.md according to your role contract. This is attempt <attempt>. Independently verify these optional scout leads before using them: <leads-or-none>. Do not modify code or GitHub.",
   "agent_type": "codebase_explorer",
   "fork_turns": "none"
 }
 ```
 
-For a RETURN attempt, append only the validator's concrete exploration questions. Do not pass the old plan as authority.
+For a RETURN attempt, append only the validator's concrete exploration questions. Do not pass the old plan as authority. A formal explorer run remains mandatory even when scouts were used.
 
 ## Implementer
 
