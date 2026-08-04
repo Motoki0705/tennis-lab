@@ -41,10 +41,10 @@ The parent should inspect at least the principal entry point, one complete call 
 
 ### Explorer
 
-- Read-only evidence collection.
+- Collect evidence without modifying source code, tests, configuration, or GitHub.
 - Map code paths, contracts, tests, constraints, and unknowns.
-- Replace `exploration.md`.
-- Never decide the final plan or edit code.
+- Write only `exploration.md`.
+- Never decide the final plan.
 
 ### Implementer
 
@@ -64,8 +64,8 @@ The parent should inspect at least the principal entry point, one complete call 
 - Treat `issue.md` as the sole requirements source.
 - Do not read other workflow artifacts or issue comments.
 - Inspect code, diff, behavior, and tests directly.
-- May delegate narrow read-only inspections to children.
-- Replace `validation.md` with PASS or RETURN.
+- May delegate narrow inspections to built-in explorer children.
+- Write only `validation.md` with PASS or RETURN.
 
 ## Context firewall
 
