@@ -6,13 +6,13 @@ repos:
         entry: ruff check --fix --exit-non-zero-on-fix
         language: system
         types: [python]
-        files: ^(src|tests)/
+        files: ^(src|tests|\.spin)/
       - id: mypy
         name: mypy
         entry: mypy --follow-imports=skip
         language: system
         types: [python]
-        files: ^(src|tests)/
+        files: ^(src|tests|\.spin)/
         require_serial: true
       - id: task-script-reviewer
         name: task script reviewer

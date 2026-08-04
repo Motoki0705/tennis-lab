@@ -110,3 +110,9 @@ Video
 - `outputs/`: 学習ログ・チェックポイント・生成物（大きなartifactはコミットしない）
 - `assets/`: README用の軽量デモ素材（GIF/PNGなど）
 - `docs/`: 使い方/テスト/Dockerなどの補助ドキュメント
+
+## 開発
+
+依存関係は `uv sync --locked` で同期し、共通の開発コマンドは
+`uv run spin` から確認できます。環境診断、lint、type check、test、CI 相当検証の
+詳細は [`.spin/README.md`](.spin/README.md) を参照してください。
