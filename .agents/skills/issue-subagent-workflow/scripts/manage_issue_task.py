@@ -78,7 +78,8 @@ ACCEPTANCE_ITEM_RE = re.compile(
     r"(?m)^- (AC-\d{3}): (.+?) \(source checkbox: (?:checked|unchecked)\)$"
 )
 VALIDATION_ROW_RE = re.compile(
-    r"(?m)^\|\s*(AC-\d{3})\s*\|(?:\\\||[^|])*\|\s*(PASS|FAIL|NOT VERIFIED)\s*\|"
+    r"(?m)^\|\s*(AC-\d{3})\s*\|\s*((?:\\\||[^|])*)\|\s*"
+    r"(PASS|FAIL|NOT VERIFIED)\s*\|"
 )
 
 
@@ -170,6 +171,11 @@ def assert_acceptance_ids_present(path: Path, expected_ids: list[str]) -> None:
         )
 
 
+def assert_checklist_hash_present(path: Path, checklist_hash: str) -> None:
+    if checklist_hash not in path.read_text(encoding="utf-8"):
+        raise ValueError(f"{path.name} does not record the frozen acceptance checklist hash")
+
+
 def assert_artifacts_ready(
     task_dir: Path, relative_paths: tuple[str, ...], attempt: int
 ) -> None:
@@ -194,12 +200,17 @@ def validation_has_pass(task_dir: Path) -> bool:
     )
 
 
+def unescape_table_cell(text: str) -> str:
+    return text.strip().replace("\\|", "|")
+
+
 def validation_checklist_errors(task_dir: Path) -> list[str]:
     expected_items = acceptance_items(task_dir)
     expected_ids = [item_id for item_id, _ in expected_items]
+    expected_text = dict(expected_items)
     validation = (task_dir / "04-validation/validation.md").read_text(encoding="utf-8")
     rows = VALIDATION_ROW_RE.findall(validation)
-    row_ids = [item_id for item_id, _ in rows]
+    row_ids = [item_id for item_id, _, _ in rows]
     errors: list[str] = []
     duplicates = sorted({item_id for item_id in row_ids if row_ids.count(item_id) > 1})
     if duplicates:
@@ -210,7 +221,18 @@ def validation_checklist_errors(task_dir: Path) -> list[str]:
     missing = [item_id for item_id in expected_ids if item_id not in row_ids]
     if missing:
         errors.append(f"validation checklist is missing IDs: {', '.join(missing)}")
-    verdict_by_id = {item_id: verdict for item_id, verdict in rows}
+    text_by_id = {item_id: unescape_table_cell(text) for item_id, text, _ in rows}
+    mismatched_text = [
+        item_id
+        for item_id in expected_ids
+        if item_id in text_by_id and text_by_id[item_id] != expected_text[item_id]
+    ]
+    if mismatched_text:
+        errors.append(
+            "validation checklist item text differs from issue.md: "
+            + ", ".join(mismatched_text)
+        )
+    verdict_by_id = {item_id: verdict for item_id, _, verdict in rows}
     not_passed = [
         item_id for item_id in expected_ids if verdict_by_id.get(item_id) != "PASS"
     ]
@@ -253,8 +275,11 @@ def transition(task_dir: Path, requested: str) -> None:
         task_dir, TRANSITION_INPUTS[requested], int(state.get("attempt", 0))
     )
     ids = [item_id for item_id, _ in acceptance_items(task_dir)]
+    checklist_hash = str(state["acceptance_checklist_sha256"])
     if requested == "implementation":
-        assert_acceptance_ids_present(task_dir / "02-planning/plan.md", ids)
+        plan_path = task_dir / "02-planning/plan.md"
+        assert_acceptance_ids_present(plan_path, ids)
+        assert_checklist_hash_present(plan_path, checklist_hash)
     elif requested == "validation":
         assert_acceptance_ids_present(task_dir / "03-implementation/tests.md", ids)
     state["phase"] = requested
@@ -272,6 +297,10 @@ def apply_verdict(task_dir: Path, verdict: str) -> None:
     if verdict == "PASS":
         assert_artifacts_ready(
             task_dir, tuple(REQUIRED_HEADINGS), int(state.get("attempt", 0))
+        )
+        validation_path = task_dir / "04-validation/validation.md"
+        assert_checklist_hash_present(
+            validation_path, str(state["acceptance_checklist_sha256"])
         )
         validation_errors = validation_checklist_errors(task_dir)
         if validation_errors:
@@ -322,8 +351,12 @@ def check(task_dir: Path) -> list[str]:
     except ValueError:
         ids = []
     if ids and state.get("phase") in ("implementation", "validation"):
+        plan_path = task_dir / "02-planning/plan.md"
         try:
-            assert_acceptance_ids_present(task_dir / "02-planning/plan.md", ids)
+            assert_acceptance_ids_present(plan_path, ids)
+            assert_checklist_hash_present(
+                plan_path, str(state.get("acceptance_checklist_sha256", ""))
+            )
         except ValueError as exc:
             errors.append(str(exc))
     if ids and state.get("phase") == "validation":
@@ -344,6 +377,13 @@ def check(task_dir: Path) -> list[str]:
                 errors.append(
                     f"complete task artifact does not record attempt {attempt}: {relative}"
                 )
+        validation_path = task_dir / "04-validation/validation.md"
+        try:
+            assert_checklist_hash_present(
+                validation_path, str(state.get("acceptance_checklist_sha256", ""))
+            )
+        except ValueError as exc:
+            errors.append(str(exc))
         errors.extend(validation_checklist_errors(task_dir))
         if not validation_has_pass(task_dir):
             errors.append("complete task requires a standalone PASS under Final verdict")
