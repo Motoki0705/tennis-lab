@@ -51,7 +51,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "mypy>=1.18.2",
+    "mypy>=2.3.0",
     "pre-commit>=4.6.1",
     "ruff>=0.16.1",
     "spin>=0.18",
