@@ -17,6 +17,7 @@ import issue_task_state as _state  # noqa: E402
 
 load_state = _state.load_state
 check = _commands.check
+check_artifact = _commands.check_artifact
 transition = _commands.transition
 apply_feasibility_verdict = _commands.apply_feasibility_verdict
 apply_preflight_verdict = _commands.apply_preflight_verdict
@@ -45,6 +46,10 @@ def parse_args() -> argparse.Namespace:
     transition_parser = subparsers.add_parser("transition")
     transition_parser.add_argument("task_dir", type=Path)
     transition_parser.add_argument("phase", choices=_state.PHASES[2:])
+
+    artifact_parser = subparsers.add_parser("artifact-check")
+    artifact_parser.add_argument("task_dir", type=Path)
+    artifact_parser.add_argument("artifact", choices=tuple(_commands.ARTIFACT_PATHS))
 
     preflight_parser = subparsers.add_parser("preflight-verdict")
     preflight_parser.add_argument("task_dir", type=Path)
@@ -77,6 +82,15 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _print_errors(errors: list[str]) -> int:
+    if errors:
+        for error in errors:
+            print(f"error: {error}", file=sys.stderr)
+        return 1
+    print("ok")
+    return 0
+
+
 def main() -> int:
     args = parse_args()
     try:
@@ -89,6 +103,8 @@ def main() -> int:
             )
         elif args.command == "transition":
             transition(args.task_dir, args.phase)
+        elif args.command == "artifact-check":
+            return _print_errors(check_artifact(args.task_dir, args.artifact))
         elif args.command == "preflight-verdict":
             apply_preflight_verdict(args.task_dir, args.verdict)
         elif args.command == "test-verdict":
@@ -100,12 +116,7 @@ def main() -> int:
         elif args.command == "verdict":
             apply_validation_verdict(args.task_dir, args.verdict)
         else:
-            errors = check(args.task_dir)
-            if errors:
-                for error in errors:
-                    print(f"error: {error}", file=sys.stderr)
-                return 1
-            print("ok")
+            return _print_errors(check(args.task_dir))
         return 0
     except (OSError, KeyError, TypeError, ValueError, tomllib.TOMLDecodeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
