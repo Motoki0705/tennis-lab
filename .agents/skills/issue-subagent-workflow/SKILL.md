@@ -24,9 +24,17 @@ Before broad exploration or production changes, the parent replaces `00-feasibil
 - If requirements conflict, record `BLOCKED`; do not invent compatibility code, weaken tests, or loop.
 
 ```bash
-python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py \
-  feasibility-verdict .codex/tasks/issue-<number> <PASS|BLOCKED>
+TASK=.codex/tasks/issue-<number>
+MANAGE=.agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py
+
+python $MANAGE artifact-check $TASK feasibility
+python $MANAGE feasibility-verdict $TASK PASS
+
+python $MANAGE feasibility-verdict $TASK BLOCKED \
+  --kind constraint_conflict --reason "<specific conflict>"
 ```
+
+A blocked task is paused, not complete. Refresh the upstream Issue and reinitialize it after the constraint is resolved.
 
 ## Delegation topology and context economy
 
