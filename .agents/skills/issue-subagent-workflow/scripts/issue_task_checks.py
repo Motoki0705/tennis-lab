@@ -42,7 +42,7 @@ def check(task_dir: Path) -> list[str]:
         required_files.append("00-feasibility/feasibility.md")
     if (
         state.get("feasibility_verdict") != "LEGACY"
-        or state.get("phase") == "implementation"
+        or int(state.get("preflight_cycle", 0)) > 0
     ):
         required_files.append("03-implementation/preflight.md")
     for relative in required_files:
@@ -72,7 +72,7 @@ def check(task_dir: Path) -> list[str]:
         if relative == "03-implementation/preflight.md":
             if (
                 state.get("feasibility_verdict") != "LEGACY"
-                or state.get("phase") == "implementation"
+                or int(state.get("preflight_cycle", 0)) > 0
             ):
                 headings_to_check[relative] = headings
             continue
