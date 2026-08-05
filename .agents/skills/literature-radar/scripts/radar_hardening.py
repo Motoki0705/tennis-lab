@@ -1,11 +1,5 @@
 #!/usr/bin/env python
-"""Harden the legacy literature-radar ingester without changing old records.
-
-New hourly payloads are validated against explicit scoring and topic contracts.
-Canonicalization treats DataCite arXiv DOIs as arXiv aliases, deduplicates by all
-known identifiers, enforces collector/topic/backlog quotas, repairs the legacy
-digest preamble, and publishes a cheap preflight status file for schedules.
-"""
+"""Harden scheduled literature ingestion while preserving existing records."""
 
 from __future__ import annotations
 
@@ -37,9 +31,17 @@ SCORE_KEYS = (
     "adoption_feasibility",
 )
 SAFE_DIGEST_PREAMBLE = (
-    "# Literature Radar â€” {date}\n\n"
-    "ã“ã®æ—¥æ¬¡ãƒ€ã‚¤ã‚¸ã‚§ã‚¹ãƒˆã®è‡ªå‹•åŽé›†åŒºé–“ã¯GitHub ActionsãŒæ›´æ–°ã—ã¾ã™ã€‚\n"
-    "æ—¥æ¬¡curatorã¯è‡ªå‹•åŒºé–“ã®å¤–å´ã ã‘ã‚’ç·¨é›†ã—ã¦ãã ã•ã„ã€‚\n\n"
+    "# Literature Radar \u2014 {date}\n\n"
+    "\u3053\u306e\u65e5\u6b21\u30c0\u30a4\u30b8\u30a7\u30b9\u30c8"
+    "\u306e\u81ea\u52d5\u53ce\u96c6\u533a\u9593\u306f"
+    "GitHub Actions\u304c\u66f4\u65b0\u3057\u307e\u3059\u3002\n"
+    "\u65e5\u6b21curator\u306f\u81ea\u52d5\u533a\u9593"
+    "\u306e\u5916\u5074\u3060\u3051\u3092\u7de8\u96c6"
+    "\u3057\u3066\u304f\u3060\u3055\u3044\u3002\n\n"
+)
+LEGACY_BROKEN_PREAMBLE = (
+    "\u3053\u306e\u65e5\u6b21\u30c0\u30a4\u30b8\u30a7\u30b9\u30c8"
+    "\u306e `"
 )
 
 
@@ -49,37 +51,58 @@ def _normalise_title(value: str) -> str:
 
 def _normalise_url(value: str) -> str:
     parsed = urlsplit(value.strip())
-    path = parsed.path.rstrip("/")
-    return urlunsplit((parsed.scheme.casefold(), parsed.netloc.casefold(), path, "", ""))
+    return urlunsplit(
+        (
+            parsed.scheme.casefold(),
+            parsed.netloc.casefold(),
+            parsed.path.rstrip("/"),
+            "",
+            "",
+        )
+    )
 
 
 def _arxiv_from_datacite_doi(value: object) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return None
     doi = legacy._normalise_doi(value)
-    match = re.fullmatch(r"10\.48550/arxiv\.(.+)", doi, flags=re.IGNORECASE)
-    return legacy._normalise_arxiv(match.group(1)) if match else None
+    match = re.fullmatch(
+        r"10\.48550/arxiv\.(.+)",
+        doi,
+        flags=re.IGNORECASE,
+    )
+    if match is None:
+        return None
+    return legacy._normalise_arxiv(match.group(1))
 
 
 def _publisher_doi(value: object) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return None
-    if _arxiv_from_datacite_doi(value):
+    if _arxiv_from_datacite_doi(value) is not None:
         return None
     return legacy._normalise_doi(value)
 
 
-def _paper_identifiers(paper: dict[str, Any]) -> tuple[str | None, str | None, str | None]:
-    identifiers = paper.get("identifiers") or {}
+def _paper_identifiers(
+    paper: dict[str, Any],
+) -> tuple[str | None, str | None, str | None]:
+    identifiers = paper.get("identifiers")
+    if not isinstance(identifiers, dict):
+        return None, None, None
+
     doi = _publisher_doi(identifiers.get("doi"))
-    arxiv = identifiers.get("arxiv")
-    if isinstance(arxiv, str) and arxiv.strip():
-        arxiv = legacy._normalise_arxiv(arxiv)
+    raw_arxiv = identifiers.get("arxiv")
+    if raw_arxiv is None:
+        raw_arxiv = identifiers.get("arXiv")
+    if isinstance(raw_arxiv, str) and raw_arxiv.strip():
+        arxiv = legacy._normalise_arxiv(raw_arxiv)
     else:
         arxiv = _arxiv_from_datacite_doi(identifiers.get("doi"))
-    openreview = identifiers.get("openreview")
-    if isinstance(openreview, str) and openreview.strip():
-        openreview = legacy._normalise_openreview(openreview)
+
+    raw_openreview = identifiers.get("openreview")
+    if isinstance(raw_openreview, str) and raw_openreview.strip():
+        openreview = legacy._normalise_openreview(raw_openreview)
     else:
         openreview = None
     return doi, arxiv, openreview
@@ -94,9 +117,12 @@ def canonical_paper_id(payload: dict[str, Any]) -> str:
         return f"paper-arxiv-{legacy._slug(arxiv)}"
     if openreview:
         return f"paper-openreview-{legacy._slug(openreview)}"
+
     title = _normalise_title(str(paper["title"]))
     year = int(paper["year"])
-    digest = hashlib.sha256(f"{title}\n{year}".encode()).hexdigest()[:16]
+    digest = hashlib.sha256(
+        f"{title}\n{year}".encode("utf-8")
+    ).hexdigest()[:16]
     return f"paper-title-{year}-{digest}"
 
 
@@ -109,11 +135,14 @@ def paper_aliases(paper: dict[str, Any]) -> set[str]:
         aliases.add(f"arxiv:{arxiv}")
     if openreview:
         aliases.add(f"openreview:{openreview}")
+
     title = _normalise_title(str(paper.get("title", "")))
     year = paper.get("year")
-    if title and isinstance(year, int):
+    if title and isinstance(year, int) and not isinstance(year, bool):
         aliases.add(f"title:{year}:{title}")
-    primary = (paper.get("urls") or {}).get("primary")
+
+    urls = paper.get("urls")
+    primary = urls.get("primary") if isinstance(urls, dict) else None
     if isinstance(primary, str) and primary.strip():
         aliases.add(f"url:{_normalise_url(primary)}")
     return aliases
@@ -122,12 +151,105 @@ def paper_aliases(paper: dict[str, Any]) -> set[str]:
 def _sanitise_payload(payload: dict[str, Any]) -> dict[str, Any]:
     clean = copy.deepcopy(payload)
     identifiers = clean["paper"]["identifiers"]
-    alias_arxiv = _arxiv_from_datacite_doi(identifiers.get("doi"))
-    if alias_arxiv:
+    mixed_case_arxiv = identifiers.pop("arXiv", None)
+    if not identifiers.get("arxiv") and mixed_case_arxiv:
+        identifiers["arxiv"] = mixed_case_arxiv
+
+    arxiv_alias = _arxiv_from_datacite_doi(identifiers.get("doi"))
+    if arxiv_alias is not None:
         identifiers["doi"] = None
         if not identifiers.get("arxiv"):
-            identifiers["arxiv"] = alias_arxiv
+            identifiers["arxiv"] = arxiv_alias
     return clean
+
+
+def _validate_score_breakdown(
+    screening: dict[str, Any],
+    config: dict[str, Any],
+) -> None:
+    breakdown = screening.get("score_breakdown")
+    if not isinstance(breakdown, dict):
+        raise legacy.CandidateError(
+            "screening.score_breakdown must be an object"
+        )
+    if set(breakdown) != set(SCORE_KEYS):
+        raise legacy.CandidateError(
+            "screening.score_breakdown must contain exactly "
+            f"{list(SCORE_KEYS)}"
+        )
+
+    maxima = config["ingestion"]["score_weights"]
+    for key in SCORE_KEYS:
+        value = breakdown.get(key)
+        if (
+            not isinstance(value, int)
+            or isinstance(value, bool)
+            or not 0 <= value <= int(maxima[key])
+        ):
+            raise legacy.CandidateError(
+                f"screening.score_breakdown.{key} must be "
+                f"an integer from 0 to {maxima[key]}"
+            )
+
+    relevance = int(screening["relevance_score"])
+    total = sum(int(breakdown[key]) for key in SCORE_KEYS)
+    if total != relevance:
+        raise legacy.CandidateError(
+            "screening.relevance_score must equal the "
+            "score_breakdown sum"
+        )
+
+
+def _validate_evidence(
+    payload: dict[str, Any],
+    config: dict[str, Any],
+) -> None:
+    screening = payload["screening"]
+    evidence = str(screening["evidence_level"])
+    minimum = str(
+        config["ingestion"].get(
+            "minimum_evidence_level",
+            "fulltext",
+        )
+    )
+    if EVIDENCE_RANK[evidence] < EVIDENCE_RANK[minimum]:
+        raise legacy.CandidateError(
+            f"screening.evidence_level {evidence!r} is below "
+            f"minimum {minimum!r}"
+        )
+
+    cap = int(
+        config["ingestion"]["evidence_score_caps"][evidence]
+    )
+    evidence_score = int(
+        screening["score_breakdown"]["evidence_quality"]
+    )
+    if evidence_score > cap:
+        raise legacy.CandidateError(
+            f"evidence_quality exceeds {evidence!r} cap {cap}"
+        )
+
+    allowed_kinds = set(config.get("allowed_source_kinds") or [])
+    source_kinds = {
+        str(source.get("kind"))
+        for source in payload["sources"]
+        if isinstance(source, dict)
+    }
+    unsupported = source_kinds - allowed_kinds
+    if unsupported:
+        raise legacy.CandidateError(
+            f"sources contain unsupported kinds: {sorted(unsupported)}"
+        )
+    if evidence in {"fulltext-code", "fulltext-code-data"}:
+        if "code" not in source_kinds:
+            raise legacy.CandidateError(
+                f"{evidence} requires an official code source"
+            )
+    if evidence == "fulltext-code-data":
+        if "dataset" not in source_kinds:
+            raise legacy.CandidateError(
+                "fulltext-code-data requires an official dataset source"
+            )
 
 
 def validate_hardened_candidate(
@@ -136,246 +258,683 @@ def validate_hardened_candidate(
     config: dict[str, Any],
     expected_collector: str | None = None,
 ) -> None:
-    legacy.validate_raw_candidate(payload, repo_root, config, expected_collector)
+    legacy.validate_raw_candidate(
+        payload,
+        repo_root,
+        config,
+        expected_collector,
+    )
     collector_id = str(payload["collector_id"])
     collector = config["collectors"][collector_id]
     screening = payload["screening"]
 
     tasks = {str(item) for item in screening.get("tasks", [])}
-    allowed_tasks = {str(item) for item in collector.get("tasks", [])}
+    allowed_tasks = {
+        str(item) for item in collector.get("tasks", [])
+    }
     if not tasks <= allowed_tasks:
         raise legacy.CandidateError(
-            f"screening.tasks exceed collector {collector_id!r} responsibility: "
-            f"{sorted(tasks - allowed_tasks)}"
+            f"screening.tasks exceed collector {collector_id!r} "
+            f"responsibility: {sorted(tasks - allowed_tasks)}"
         )
 
     topic = screening.get("topic")
     if topic not in collector.get("topics", []):
         raise legacy.CandidateError(
-            f"screening.topic {topic!r} is not configured for {collector_id!r}"
+            f"screening.topic {topic!r} is not configured "
+            f"for collector {collector_id!r}"
         )
 
-    breakdown = screening.get("score_breakdown")
-    if not isinstance(breakdown, dict) or set(breakdown) != set(SCORE_KEYS):
-        raise legacy.CandidateError(
-            f"screening.score_breakdown must contain exactly {list(SCORE_KEYS)}"
+    _validate_score_breakdown(screening, config)
+    _validate_evidence(payload, config)
+
+
+def record_date(
+    record: dict[str, Any],
+    timezone: str,
+) -> str:
+    return legacy._date_of_iso(
+        str(record["first_seen"]),
+        timezone,
+    )
+
+
+def record_has_collector(
+    record: dict[str, Any],
+    collector_id: str,
+) -> bool:
+    return any(
+        isinstance(item, dict)
+        and item.get("collector_id") == collector_id
+        for item in record.get("discoveries", [])
+    )
+
+
+def record_topics(record: dict[str, Any]) -> set[str]:
+    topics: set[str] = set()
+    for item in record.get("discoveries", []):
+        if not isinstance(item, dict):
+            continue
+        screening = item.get("screening")
+        if not isinstance(screening, dict):
+            continue
+        topic = screening.get("topic")
+        if isinstance(topic, str) and topic:
+            topics.add(topic)
+    return topics
+
+
+def quota_allows(
+    records: list[dict[str, Any]],
+    payload: dict[str, Any],
+    config: dict[str, Any],
+) -> tuple[bool, str]:
+    settings = config["ingestion"]
+    timezone = str(config.get("timezone", "Asia/Tokyo"))
+    date = legacy.local_date(payload, config)
+    same_day = [
+        record
+        for record in records
+        if record_date(record, timezone) == date
+    ]
+
+    collector_id = str(payload["collector_id"])
+    collector_count = sum(
+        record_has_collector(record, collector_id)
+        for record in same_day
+    )
+    collector_limit = int(
+        settings["max_candidates_per_collector_per_day"]
+    )
+    if collector_count >= collector_limit:
+        return (
+            False,
+            "collector daily quota reached "
+            f"({collector_count}/{collector_limit})",
         )
-    maxima = config["ingestion"]["score_weights"]
-    for key in SCORE_KEYS:
-        value = breakdown.get(key)
-        if not isinstance(value, int) or isinstance(value, bool):
-            raise legacy.CandidateError(f"screening.score_breakdown.{key} must be an integer")
-        if not 0 <= value <= int(maxima[key]):
-            raise legacy.CandidateError(
-                f"screening.score_breakdown.{key} must be 0..{maxima[key]}"
+
+    topic = str(payload["screening"]["topic"])
+    topic_count = sum(
+        topic in record_topics(record)
+        for record in same_day
+    )
+    topic_limit = int(
+        settings["max_candidates_per_topic_per_day"]
+    )
+    if topic_count >= topic_limit:
+        return (
+            False,
+            "topic daily quota reached "
+            f"({topic_count}/{topic_limit}) for {topic}",
+        )
+
+    daily_limit = int(settings["max_candidates_total_per_day"])
+    if len(same_day) >= daily_limit:
+        return (
+            False,
+            "global daily quota reached "
+            f"({len(same_day)}/{daily_limit})",
+        )
+
+    open_count = sum(
+        record.get("state") == "inbox"
+        for record in records
+    )
+    open_limit = int(settings["max_open_candidates"])
+    if open_count >= open_limit:
+        return (
+            False,
+            "open candidate backlog limit reached "
+            f"({open_count}/{open_limit})",
+        )
+    return True, ""
+
+
+def _find_local_match(
+    records: Iterable[dict[str, Any]],
+    payload: dict[str, Any],
+) -> dict[str, Any] | None:
+    incoming = paper_aliases(payload["paper"])
+    matches = [
+        record
+        for record in records
+        if incoming & paper_aliases(record["paper"])
+    ]
+    if len(matches) > 1:
+        ids = [str(item["id"]) for item in matches]
+        raise legacy.CandidateError(
+            f"candidate aliases match multiple records: {ids}"
+        )
+    return matches[0] if matches else None
+
+
+def aliases_in_git_refs(
+    repo_root: Path,
+    ref_prefix: str | None,
+    target_date: str,
+    window_days: int,
+) -> set[str]:
+    if not ref_prefix:
+        return set()
+
+    refs = subprocess.run(
+        [
+            "git",
+            "for-each-ref",
+            "--format=%(refname)",
+            ref_prefix,
+        ],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    target = datetime.strptime(
+        target_date,
+        "%Y-%m-%d",
+    ).date()
+    aliases: set[str] = set()
+
+    for ref in (
+        line.strip()
+        for line in refs.splitlines()
+        if line.strip()
+    ):
+        try:
+            branch_date = datetime.strptime(
+                ref.rsplit("/", 1)[-1],
+                "%Y-%m-%d",
+            ).date()
+        except ValueError:
+            continue
+        if abs((branch_date - target).days) > window_days:
+            continue
+
+        paths = subprocess.run(
+            [
+                "git",
+                "ls-tree",
+                "-r",
+                "--name-only",
+                ref,
+                "--",
+                "knowledge/literature/candidates",
+            ],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+        for path in (
+            line.strip()
+            for line in paths.splitlines()
+            if line.strip().endswith(".json")
+        ):
+            try:
+                content = subprocess.run(
+                    ["git", "show", f"{ref}:{path}"],
+                    cwd=repo_root,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout
+                record = json.loads(content)
+            except (
+                subprocess.CalledProcessError,
+                json.JSONDecodeError,
+            ):
+                continue
+            if (
+                isinstance(record, dict)
+                and isinstance(record.get("paper"), dict)
+            ):
+                aliases.update(
+                    paper_aliases(record["paper"])
+                )
+    return aliases
+
+
+def ingest_one(
+    input_path: Path,
+    repo_root: Path,
+    config: dict[str, Any],
+    external_aliases: set[str] | None = None,
+    expected_collector: str | None = None,
+) -> legacy.IngestResult:
+    payload = legacy.read_json(input_path)
+    validate_hardened_candidate(
+        payload,
+        repo_root,
+        config,
+        expected_collector,
+    )
+    payload = _sanitise_payload(payload)
+    records = legacy.candidate_records(repo_root)
+
+    match = _find_local_match(records, payload)
+    if match is not None:
+        output = (
+            repo_root
+            / "knowledge/literature/candidates"
+            / f"{match['id']}.json"
+        )
+        changed = legacy.merge_record(match, payload)
+        if changed:
+            legacy.validate_record(match, output)
+            legacy.write_json(output, match)
+            return legacy.IngestResult(
+                str(match["id"]),
+                "merged",
+                output,
+                "added alias-matched independent discovery",
             )
-    relevance = int(screening["relevance_score"])
-    if sum(int(breakdown[key]) for key in SCORE_KEYS) != relevance:
-        raise legacy.CandidateError(
-            "screening.relevance_score must equal the score_breakdown sum"
+        return legacy.IngestResult(
+            str(match["id"]),
+            "no-change",
+            output,
+            "schedule run already ingested",
         )
 
-    evidence = str(screening["evidence_level"])
-    minimum = str(config["ingestion"].get("minimum_evidence_level", "fulltext"))
-    if EVIDENCE_RANK[evidence] < EVIDENCE_RANK[minimum:
-        raise legacy.CandidateError(
-            f"screening.evidence_level {evidence'ÜŸH\È™[ÝÈZ[š[][HÛZ[š[][H\ŸH‚ˆ
-BˆØ\H[
-ÛÛ™šYÖÈš[™Ù\Ý[Ûˆ—VÈ™]šY[˜ÙWÜØÛÜ™WØØ\È—VÙ]šY[˜ÙWJBˆYˆ[
-œ™XZÙÝÛ–È™]šY[˜ÙWÜ]X[]H—JHˆØ\‚ˆ˜Z\ÙHYØXÞKØ[™Y]Q\œ›ÜŠˆˆ™]šY[˜ÙWÜ]X[]H^ÙYYÈÙ]šY[˜ÙH\ŸHØ\ØØ\H‚ˆ
-B‚ˆ[ÝÙYÚÚ[™ÈHÙ]
-ÛÛ™šYË™Ù]
-˜[ÝÙYÜÛÝ\˜ÙWÚÚ[™ÈŠHÜˆ×JBˆÛÝ\˜ÙWÚÚ[™ÈHÜÝŠÛÝ\˜ÙK™Ù]
-šÚ[™ŠJH›ÜˆÛÝ\˜ÙH[ˆ^[ØYÈœÛÝ\˜Ù\È—_BˆYˆÛÝ\˜ÙWÚÚ[™ÈH[ÝÙYÚÚ[™Î‚ˆ˜Z\ÙHYØXÞKØ[™Y]Q\œ›ÜŠˆˆœÛÝ\˜Ù\ÈÛÛZ[ˆ[œÝ\ÜYÚ[™ÎˆÜÛÜY
-ÛÝ\˜ÙWÚÚ[™ÈH[ÝÙYÚÚ[™Ê_H‚ˆ
-BˆYˆ]šY[˜ÙH[ˆÈ™[^XÛÙH‹™[^XÛÙKY]HŸH[™˜ÛÙHˆ›Ý[ˆÛÝ\˜ÙWÚÚ[™Î‚ˆ˜Z\ÙHYØXÞKØ[™Y]Q\œ›ÜŠˆžÙ]šY[˜Ù_H™\]Z\™\È[ˆÙ™šXÚX[ÛÙHÛÝ\˜ÙHŠBˆYˆ]šY[˜ÙHOH™[^XÛÙKY]Hˆ[™™]\Ù]ˆ›Ý[ˆÛÝ\˜ÙWÚÚ[™Î‚ˆ˜Z\ÙHYØXÞKØ[™Y]Q\œ›ÜŠ™[^XÛÙKY]H™\]Z\™\È[ˆÙ™šXÚX[]\Ù]ÛÝ\˜ÙHŠB‚‚™YˆÜ™XÛÜ™Ù]J™XÛÜ™ˆXÝÜÝ‹[žWK[Y^›Û™NˆÝŠHOˆÝŽ‚ˆ™]\›ˆYØXÞK—Ù]WÛÙ—Ú\ÛÊÝŠ™XÛÜ™È™š\œÝÜÙY[ˆ—JK[Y^›Û™JB‚‚™YˆÜ™XÛÜ™Ú\×ØÛÛXÝÜŠ™XÛÜ™ˆXÝÜÝ‹[žWKÛÛXÝÜ—ÚYˆÝŠHOˆ›ÛÛ‚ˆ™]\›ˆ[žJˆ\Ú[œÝ[˜ÙJ][KXÝ
-H[™][K™Ù]
-˜ÛÛXÝÜ—ÚYŠHOHÛÛXÝÜ—ÚYˆ›Üˆ][H[ˆ™XÛÜ™™Ù]
-™\ØÛÝ™\šY\È‹×JBˆ
-B‚‚™YˆÜ™XÛÜ™ÝÜXÜÊ™XÛÜ™ˆXÝÜÝ‹[žWJHOˆÙ]ÜÝ—N‚ˆ™]\›ˆÂˆÝŠ][VÈœØÜ™Y[š[™È—VÈÜXÈ—JBˆ›Üˆ][H[ˆ™XÛÜ™™Ù]
-™\ØÛÝ™\šY\È‹×JBˆYˆ\Ú[œÝ[˜ÙJ][KXÝ
-Bˆ[™\Ú[œÝ[˜ÙJ][K™Ù]
-œØÜ™Y[š[™ÈŠKXÝ
-Bˆ[™\Ú[œÝ[˜ÙJ][VÈœØÜ™Y[š[™È—K™Ù]
-ÜXÈŠKÝŠBˆB‚‚™Yˆ][ÝWØ[ÝÜÊˆ™XÛÜ™Îˆ\ÝÙXÝÜÝ‹[žWWKˆ^[ØYˆXÝÜÝ‹[žWKˆÛÛ™šYÎˆXÝÜÝ‹[žWKŠHOˆ\VØ›ÛÛÝ—N‚ˆÙ][™ÜÈHÛÛ™šYÖÈš[™Ù\Ý[Ûˆ—Bˆ[Y^›Û™HHÝŠÛÛ™šYË™Ù]
-[Y^›Û™H‹\ÚXKÕÚÞ[ÈŠJBˆ]HHYØXÞK›ØØ[Ù]J^[ØYÛÛ™šYÊBˆØ[YWÙ^HHÜ™XÛÜ™›Üˆ™XÛÜ™[ˆ™XÛÜ™ÈYˆÜ™XÛÜ™Ù]J™XÛÜ™[Y^›Û™JHOH]WBˆÛÛXÝÜ—ÚYHÝŠ^[ØYÈ˜ÛÛXÝÜ—ÚY—JBˆÛÛXÝÜ—ØÛÝ[HÝ[JÜ™XÛÜ™Ú\×ØÛÛXÝÜŠ™XÛÜ™ÛÛXÝÜ—ÚY
-H›Üˆ™XÛÜ™[ˆØ[YWÙ^JBˆÛÛXÝÜ—Û[Z]H[
-Ù][™ÜÖÈ›X^ØØ[™Y]\×Ü\—ØÛÛXÝÜ—Ü\—Ù^H—JBˆYˆÛÛXÝÜ—ØÛÝ[HÛÛXÝÜ—Û[Z]‚ˆ™]\›ˆ˜[ÙKˆ˜ÛÛXÝÜˆZ[H][ÝH™XXÚY
-ØÛÛXÝÜ—ØÛÝ[KÞØÛÛXÝÜ—Û[Z]JH‚‚ˆÜXÈHÝŠ^[ØYÈœØÜ™Y[š[™È—VÈÜXÈ—JBˆÜX×ØÛÝ[HÝ[JÜXÈ[ˆÜ™XÛÜ™ÝÜXÜÊ™XÛÜ™
-H›Üˆ™XÛÜ™[ˆØ[YWÙ^JBˆÜX×Û[Z]H[
-Ù][™ÜÖÈ›X^ØØ[™Y]\×Ü\—ÝÜX×Ü\—Ù^H—JBˆYˆÜX×ØÛÝ[HÜX×Û[Z]‚ˆ™]\›ˆ˜[ÙKˆÜXÈZ[H][ÝH™XXÚY
-ÝÜX×ØÛÝ[KÞÝÜX×Û[Z]JH›ÜˆÝÜXßH‚‚ˆZ[WÛ[Z]H[
-Ù][™ÜÖÈ›X^ØØ[™Y]\×ÝÝ[Ü\—Ù^H—JBˆYˆ[ŠØ[YWÙ^JHHZ[WÛ[Z]‚ˆ™]\›ˆ˜[ÙKˆ™ÛØ˜[Z[H][ÝH™XXÚY
-Û[ŠØ[YWÙ^J_KÞÙZ[WÛ[Z]JH‚‚ˆÜ[—ØÛÝ[HÝ[J™XÛÜ™™Ù]
-œÝ]HŠHOHš[˜›Þˆ›Üˆ™XÛÜ™[ˆ™XÛÜ™ÊBˆÜ[—Û[Z]H[
-Ù][™ÜÖÈ›X^ÛÜ[—ØØ[™Y]\È—JBˆYˆÜ[—ØÛÝ[HÜ[—Û[Z]‚ˆ™]\›ˆ˜[ÙKˆ›Ü[ˆØ[™Y]H˜XÚÛÙÈ[Z]™XXÚY
-ÛÜ[—ØÛÝ[KÞÛÜ[—Û[Z]JH‚ˆ™]\›ˆYKˆ‚‚‚™YˆÙš[™ÛØØ[ÛX]Ú
-ˆ™XÛÜ™Îˆ]\˜X›VÙXÝÜÝ‹[žWWK^[ØYˆXÝÜÝ‹[žWBŠHOˆXÝÜÝ‹[žWH›Û™N‚ˆ[˜ÛÛZ[™ÈH\\—Ø[X\Ù\Ê^[ØYÈœ\\ˆ—JBˆX]Ú\ÈHÜ™XÛÜ™›Üˆ™XÛÜ™[ˆ™XÛÜ™ÈYˆ[˜ÛÛZ[™È	ˆ\\—Ø[X\Ù\Ê™XÛÜ™Èœ\\ˆ—JWBˆYˆ[ŠX]Ú\ÊHˆN‚ˆ˜Z\ÙHYØXÞKØ[™Y]Q\œ›ÜŠˆˆ˜Ø[™Y]H[X\Ù\ÈX]Ú][\H™XÛÜ™ÎˆÖÚ][VÉÚY	×H›Üˆ][H[ˆX]Ú\×_H‚ˆ
-Bˆ™]\›ˆX]Ú\ÖÌHYˆX]Ú\È[ÙH›Û™B‚‚™Yˆ[X\Ù\×Ú[—ÙÚ]Ü™YœÊˆ™\×Ü›ÛÝˆ]ˆ™Y—Ü™Yš^ˆÝˆ›Û™Kˆ\™Ù]Ù]NˆÝ‹ˆÚ[™Ý×Ù^\Îˆ[ŠHOˆÙ]ÜÝ—N‚ˆYˆ›Ý™Y—Ü™Yš^‚ˆ™]\›ˆÙ]
+    incoming_aliases = paper_aliases(payload["paper"])
+    if (
+        external_aliases
+        and incoming_aliases & external_aliases
+    ):
+        return legacy.IngestResult(
+            canonical_paper_id(payload),
+            "duplicate",
+            None,
+            "candidate alias already exists on another radar branch",
+        )
 
-BˆÝ]]HÝXœ›ØÙ\ÜËœ[ŠˆÈ™Ú]‹™›Ü‹YXXÚ\™Yˆ‹‹KY›Ü›X]IJ™Y›˜[YJH‹™Y—Ü™Yš^KˆÝÙ\™\×Ü›ÛÝˆÚXÚÏUYKˆØ\\™WÛÝ]]UYKˆ^UYKˆ
-KœÝÝ]ˆ\™Ù]H]][YKœÝœ[YJ\™Ù]Ù]K‰VKI[KIYŠK™]J
-Bˆ[X\Ù\ÎˆÙ]ÜÝ—HHÙ]
+    allowed, reason = quota_allows(
+        records,
+        payload,
+        config,
+    )
+    if not allowed:
+        return legacy.IngestResult(
+            canonical_paper_id(payload),
+            "quota-rejected",
+            None,
+            reason,
+        )
 
-Bˆ›Üˆ™Yˆ[ˆ
-[™KœÝš\
+    paper_id = canonical_paper_id(payload)
+    output = (
+        repo_root
+        / "knowledge/literature/candidates"
+        / f"{paper_id}.json"
+    )
+    record = legacy.new_record(payload, paper_id)
+    legacy.validate_record(record, output)
+    legacy.write_json(output, record)
+    return legacy.IngestResult(
+        paper_id,
+        "created",
+        output,
+        "new canonical candidate",
+    )
 
-H›Üˆ[™H[ˆÝ]]œÜ][™\Ê
-HYˆ[™KœÝš\
 
-JN‚ˆžN‚ˆœ˜[˜ÚÙ]HH]][YKœÝœ[YJ™Y‹œœÜ]
-‹È‹JVËLWK‰VKI[KIYŠK™]J
-Bˆ^Ù\˜[YQ\œ›ÜŽ‚ˆÛÛ[YBˆYˆXœÊ
-œ˜[˜ÚÙ]HH\™Ù]
-K™^\ÊHˆÚ[™Ý×Ù^\Î‚ˆÛÛ[YBˆ]ÈHÝXœ›ØÙ\ÜËœ[ŠˆÈ™Ú]‹›Ë]™YH‹‹\ˆ‹‹K[˜[YK[Û›H‹™Y‹‹KH‹šÛ›ÝÛYÙKÛ]\˜]\™KØØ[™Y]\È—KˆÝÙ\™\×Ü›ÛÝˆÚXÚÏUYKˆØ\\™WÛÝ]]UYKˆ^UYKˆ
-KœÝÝ]ˆ›Üˆ][ˆ
-[™KœÝš\
+def update_daily_digest(
+    repo_root: Path,
+    date: str,
+    config: dict[str, Any],
+) -> Path:
+    timezone = str(config.get("timezone", "Asia/Tokyo"))
+    records = [
+        record
+        for record in legacy.candidate_records(repo_root)
+        if record_date(record, timezone) == date
+    ]
+    auto = "\n".join(
+        [
+            legacy.AUTO_START,
+            "## \u81ea\u52d5\u53ce\u96c6\u5019\u88dc",
+            "",
+            f"\u5019\u88dc\u6570: **{len(records)}**",
+            "",
+            *legacy._candidate_rows(records),
+            legacy.AUTO_END,
+        ]
+    )
+    path = (
+        repo_root
+        / "knowledge/literature/digests"
+        / f"{date}.md"
+    )
+    preamble = SAFE_DIGEST_PREAMBLE.format(date=date)
 
-H›Üˆ[™H[ˆ]ËœÜ][™\Ê
-HYˆ[™K™[™ÝÚ]
-‹šœÛÛˆŠJN‚ˆžN‚ˆÛÛ[HÝXœ›ØÙ\ÜËœ[ŠˆÈ™Ú]‹œÚÝÈ‹ˆžÜ™YŸNžÜ]H—KˆÝÙ\™\×Ü›ÛÝˆÚXÚÏUYKˆØ\\™WÛÝ]]UYKˆ^UYKˆ
-KœÝÝ]ˆ™XÛÜ™HœÛÛ‹›ØYÊÛÛ[
-Bˆ^Ù\
-ÝXœ›ØÙ\ÜËØ[Y›ØÙ\ÜÑ\œ›Ü‹œÛÛ‹’”ÓÓ‘XÛÙQ\œ›ÜŠN‚ˆÛÛ[YBˆYˆ\Ú[œÝ[˜ÙJ™XÛÜ™XÝ
-H[™\Ú[œÝ[˜ÙJ™XÛÜ™™Ù]
-œ\\ˆŠKXÝ
-N‚ˆ[X\Ù\Ë\]J\\—Ø[X\Ù\Ê™XÛÜ™Èœ\\ˆ—JJBˆ™]\›ˆ[X\Ù\Â‚‚™Yˆ[™Ù\ÝÛÛ™Jˆ[œ]Ü]ˆ]ˆ™\×Ü›ÛÝˆ]ˆÛÛ™šYÎˆXÝÜÝ‹[žWKˆ^\›˜[Ø[X\Ù\ÎˆÙ]ÜÝ—H›Û™HH›Û™Kˆ^XÝYØÛÛXÝÜŽˆÝˆ›Û™HH›Û™KŠHOˆYØXÞK’[™Ù\Ý™\Ý[‚ˆ^[ØYHYØXÞKœ™XYÚœÛÛŠ[œ]Ü]
-Bˆ˜[Y]WÚ\™[™YØØ[™Y]J^[ØY™\×Ü›ÛÝÛÛ™šYË^XÝYØÛÛXÝÜŠBˆ^[ØYHÜØ[š]\ÙWÜ^[ØY
-^[ØY
-Bˆ™XÛÜ™ÈHYØXÞK˜Ø[™Y]WÜ™XÛÜ™Ê™\×Ü›ÛÝ
-BˆX]ÚHÙš[™ÛØØ[ÛX]Ú
-™XÛÜ™Ë^[ØY
-BˆYˆX]Ú\È›Ý›Û™N‚ˆÝ]]H™\×Ü›ÛÝÈšÛ›ÝÛYÙKÛ]\˜]\™KØØ[™Y]\ÈˆÈˆžÛX]ÚÉÚY	ßKšœÛÛˆ‚ˆÚ[™ÙYHYØXÞK›Y\™ÙWÜ™XÛÜ™
-X]Ú^[ØY
-BˆYˆÚ[™ÙY‚ˆYØXÞK˜[Y]WÜ™XÛÜ™
-X]ÚÝ]]
-BˆYØXÞKÜš]WÚœÛÛŠÝ]]X]Ú
-Bˆ™]\›ˆYØXÞK’[™Ù\Ý™\Ý[
-ÝŠX]ÚÈšY—JK›Y\™ÙY‹Ý]]˜YY[X\Ë[X]ÚY\ØÛÝ™\žHŠBˆ™]\›ˆYØXÞK’[™Ù\Ý™\Ý[
-ÝŠX]ÚÈšY—JK››ËXÚ[™ÙH‹Ý]]œØÚY[H[ˆ[™XYH[™Ù\ÝYŠB‚ˆ[X\Ù\ÈH\\—Ø[X\Ù\Ê^[ØYÈœ\\ˆ—JBˆYˆ^\›˜[Ø[X\Ù\È[™[X\Ù\È	ˆ^\›˜[Ø[X\Ù\Î‚ˆ™]\›ˆYØXÞK’[™Ù\Ý™\Ý[
-ˆØ[›ÛšXØ[Ü\\—ÚY
-^[ØY
-Kˆ™\XØ]H‹ˆ›Û™Kˆ˜Ø[™Y]H[X\È[™XYH^\ÝÈÛˆ[›Ý\ˆ˜Y\ˆœ˜[˜Ú‹ˆ
-B‚ˆ[ÝÙY™X\ÛÛˆH][ÝWØ[ÝÜÊ™XÛÜ™Ë^[ØYÛÛ™šYÊBˆYˆ›Ý[ÝÙY‚ˆ™]\›ˆYØXÞK’[™Ù\Ý™\Ý[
-Ø[›ÛšXØ[Ü\\—ÚY
-^[ØY
-Kœ][ÝK\™Z™XÝY‹›Û™K™X\ÛÛŠB‚ˆ\\—ÚYHØ[›ÛšXØ[Ü\\—ÚY
-^[ØY
-BˆÝ]]H™\×Ü›ÛÝÈšÛ›ÝÛYÙKÛ]\˜]\™KØØ[™Y]\ÈˆÈˆžÜ\\—ÚYKšœÛÛˆ‚ˆ™XÛÜ™HYØXÞK›™]×Ü™XÛÜ™
-^[ØY\\—ÚY
-BˆYØXÞK˜[Y]WÜ™XÛÜ™
-™XÛÜ™Ý]]
-BˆYØXÞKÜš]WÚœÛÛŠÝ]]™XÛÜ™
-Bˆ™]\›ˆYØXÞK’[™Ù\Ý™\Ý[
-\\—ÚY˜Ü™X]Y‹Ý]]›™]ÈØ[›ÛšXØ[Ø[™Y]HŠB‚‚™Yˆ\]WÙZ[WÙYÙ\Ý
-™\×Ü›ÛÝˆ]]NˆÝ‹ÛÛ™šYÎˆXÝÜÝ‹[žWJHOˆ]‚ˆ[Y^›Û™HHÝŠÛÛ™šYË™Ù]
-[Y^›Û™H‹\ÚXKÕÚÞ[ÈŠJBˆ™XÛÜ™ÈHÂˆ™XÛÜ™›Üˆ™XÛÜ™[ˆYØXÞK˜Ø[™Y]WÜ™XÛÜ™Ê™\×Ü›ÛÝ
-BˆYˆÜ™XÛÜ™Ù]J™XÛÜ™[Y^›Û™JHOH]BˆBˆ]]ÈH—ˆ‹š›Ú[ŠˆÂˆYØXÞKUU×ÔÕT•ˆˆÈÈ:!ê¹båycãºfá¹`&z(ç‹ˆˆ‹ˆˆ¹`&z(ç9¥lˆ
-ŠžÛ[Š™XÛÜ™Ê_JŠˆ‹ˆˆ‹ˆ
-›YØXÞK—ØØ[™Y]WÜ›ÝÜÊ™XÛÜ™ÊKˆYØXÞKUU×ÑS‘ˆBˆ
-Bˆ]H™\×Ü›ÛÝÈšÛ›ÝÛYÙKÛ]\˜]\™KÙYÙ\ÝÈˆÈˆžÙ]_K›Y‚ˆ™X[X›HHÐQ‘WÑQÑTÕÔ‘PSP“K™›Ü›X]
-]OY]JBˆYˆ]™^\ÝÊ
-N‚ˆ^H]œ™XYÝ^
-[˜ÛÙ[™ÏH]‹NŠBˆYˆ^˜ÛÝ[
-YØXÞKUU×ÔÕT•
-HOHHÜˆ^˜ÛÝ[
-YØXÞKUU×ÑS‘
-HOHN‚ˆ˜Z\ÙHYØXÞKØ[™Y]Q\œ›ÜŠˆžÜ]NˆYÙ\ÝX\šÙ\œÈ]\ÝØØÝ\ˆ^XÝHÛ˜ÙHŠBˆ™Yš^™[XZ[™\ˆH^œÜ]
-YØXÞKUU×ÔÕT•JBˆËÝY™š^H™[XZ[™\‹œÜ]
-YØXÞKUU×ÑS‘JBˆYˆ™Yš^œœÝš\
+    if path.exists():
+        text = path.read_text(encoding="utf-8")
+        start_count = text.count(legacy.AUTO_START)
+        end_count = text.count(legacy.AUTO_END)
+        if start_count != 1 or end_count != 1:
+            raise legacy.CandidateError(
+                f"{path}: digest markers must occur exactly once"
+            )
+        prefix, remainder = text.split(
+            legacy.AUTO_START,
+            1,
+        )
+        _, suffix = remainder.split(
+            legacy.AUTO_END,
+            1,
+        )
+        if (
+            prefix.rstrip().endswith("`")
+            or LEGACY_BROKEN_PREAMBLE in prefix
+        ):
+            prefix = preamble
+        text = f"{prefix}{auto}{suffix}"
+    else:
+        text = (
+            f"{preamble}{auto}\n\n"
+            "## \u65e5\u6b21\u30ec\u30d3\u30e5\u30fc\n\n"
+            "\u672a\u30ec\u30d3\u30e5\u30fc\u3002\n"
+        )
 
-K™[™ÝÚ]
-˜ŠHÜˆ¸àdøàk¹¥éy«(xàà8à©8à®8à©øà®xàâ8àkˆˆ[ˆ™Yš^‚ˆ™Yš^H™X[X›Bˆ^HˆžÜ™Yš^^Ø]]ß^ÜÝY™š^H‚ˆ[ÙN‚ˆ^HˆžÜ™X[X›_^Ø]]ßW—ˆÈÈ9¥éy«(xàë8àäøàéxàï—¹§+8àë8àäøàéxàï8à ‚—ˆ‚ˆ]œ\™[›ZÙ\Š\™[ÏUYK^\ÝÛÚÏUYJBˆ]Üš]WÝ^
-^[˜ÛÙ[™ÏH]‹NŠBˆ™]\›ˆ]‚‚™YˆÜ][ÝWÙ[žJXØÙ\Yˆ[[Z]ˆ[
-HOˆXÝÜÝ‹[N‚ˆ™]\›ˆÈ˜XØÙ\YŽˆXØÙ\Y›[Z]Žˆ[Z]œ™[XZ[š[™ÈŽˆX^
-[Z]HXØÙ\Y
-_B‚‚™Yˆ\]WÙZ[WÜÝ]\Ê™\×Ü›ÛÝˆ]]NˆÝ‹ÛÛ™šYÎˆXÝÜÝ‹[žWJHOˆ]‚ˆ[Y^›Û™HHÝŠÛÛ™šYË™Ù]
-[Y^›Û™H‹\ÚXKÕÚÞ[ÈŠJBˆ™XÛÜ™ÈHYØXÞK˜Ø[™Y]WÜ™XÛÜ™Ê™\×Ü›ÛÝ
-BˆØ[YWÙ^HHÜ™XÛÜ™›Üˆ™XÛÜ™[ˆ™XÛÜ™ÈYˆÜ™XÛÜ™Ù]J™XÛÜ™[Y^›Û™JHOH]WBˆÙ][™ÜÈHÛÛ™šYÖÈš[™Ù\Ý[Ûˆ—BˆÛÛXÝÜ—Û[Z]H[
-Ù][™ÜÖÈ›X^ØØ[™Y]\×Ü\—ØÛÛXÝÜ—Ü\—Ù^H—JBˆÜX×Û[Z]H[
-Ù][™ÜÖÈ›X^ØØ[™Y]\×Ü\—ÝÜX×Ü\—Ù^H—JBˆÛÛXÝÜœÈHÂˆÛÛXÝÜ—ÚYˆÜ][ÝWÙ[žJˆÝ[JÜ™XÛÜ™Ú\×ØÛÛXÝÜŠ™XÛÜ™ÛÛXÝÜ—ÚY
-H›Üˆ™XÛÜ™[ˆØ[YWÙ^JKˆÛÛXÝÜ—Û[Z]ˆ
-Bˆ›ÜˆÛÛXÝÜ—ÚY[ˆÛÛ™šYÖÈ˜ÛÛXÝÜœÈ—BˆBˆÛÛ™šYÝ\™YÝÜXÜÈHÛÜY
-ˆÝÜXÈ›ÜˆÛÛXÝÜˆ[ˆÛÛ™šYÖÈ˜ÛÛXÝÜœÈ—K˜[Y\Ê
-H›ÜˆÜXÈ[ˆÛÛXÝÜ‹™Ù]
-ÜXÜÈ‹×J_Bˆ
-BˆÜXÜÈHÂˆÜXÎˆÜ][ÝWÙ[žJÝ[JÜXÈ[ˆÜ™XÛÜ™ÝÜXÜÊ™XÛÜ™
-H›Üˆ™XÛÜ™[ˆØ[YWÙ^JKÜX×Û[Z]
-Bˆ›ÜˆÜXÈ[ˆÛÛ™šYÝ\™YÝÜXÜÂˆBˆ]H™\×Ü›ÛÝÈšÛ›ÝÛYÙKÛ]\˜]\™KÜÝ]\ÈˆÈˆžÙ]_KšœÛÛˆ‚ˆ^\Ý[™ÈHYØXÞKœ™XYÚœÛÛŠ]
-HYˆ]™^\ÝÊ
-H[ÙHßBˆÛÜ™HHÂˆ˜XØÙ\YØØ[™Y]\ÈŽˆ[ŠØ[YWÙ^JKˆ™Z[WÛ[Z]Žˆ[
-Ù][™ÜÖÈ›X^ØØ[™Y]\×ÝÝ[Ü\—Ù^H—JKˆ›Ü[—ØØ[™Y]\ÈŽˆÝ[J™XÛÜ™™Ù]
-œÝ]HŠHOHš[˜›Þˆ›Üˆ™XÛÜ™[ˆ™XÛÜ™ÊKˆ›Ü[—Û[Z]Žˆ[
-Ù][™ÜÖÈ›X^ÛÜ[—ØØ[™Y]\È—JKˆ˜ÛÛXÝÜœÈŽˆÛÛXÝÜœËˆÜXÜÈŽˆÜXÜËˆBˆ™]š[Ý\×ØÛÜ™HH^\Ý[™Ë™Ù]
-š[™Ù\Ý[ÛˆŠBˆÙ[™\˜]YØ]H^\Ý[™Ë™Ù]
-™Ù[™\˜]YØ]ŠBˆYˆ™]š[Ý\×ØÛÜ™HOHÛÜ™HÜˆ›Ý\Ú[œÝ[˜ÙJÙ[™\˜]YØ]ÝŠN‚ˆÙ[™\˜]YØ]H]][YK››ÝÊ›Û™R[™›Ê[Y^›Û™JJKš\ÛÙ›Ü›X]
-[Y\ÜXÏHœÙXÛÛ™ÈŠBˆÝ]\ÈHÂˆœØÚ[XWÝ™\œÚ[ÛˆŽˆKˆ™]HŽˆ]Kˆš[š]X[^™YØ]Žˆ^\Ý[™Ë™Ù]
-š[š]X[^™YØ]ŠKˆ›\ÝØÝ\˜]YØ]Žˆ^\Ý[™Ë™Ù]
-›\ÝØÝ\˜]YØ]ŠKˆ™Ù[™\˜]YØ]ŽˆÙ[™\˜]YØ]ˆš[™Ù\Ý[ÛˆŽˆÛÜ™KˆBˆ]œ\™[›ZÙ\Š\™[ÏUYK^\ÝÛÚÏUYJBˆYØXÞKÜš]WÚœÛÛŠ]Ý]\ÊBˆ™]\›ˆ]‚‚™Yˆ˜[Y]WÜ™\ÜÚ]ÜžJ™\×Ü›ÛÝˆ]
-HOˆ\ÝÜÝ—N‚ˆ\œ›ÜœÈHYØXÞK˜[Y]WÜ™\ÜÚ]ÜžJ™\×Ü›ÛÝ
-Bˆ[X\Ù\ÎˆXÝÜÝ‹Ý—HHßBˆ›Üˆ™XÛÜ™[ˆYØXÞK˜Ø[™Y]WÜ™XÛÜ™Ê™\×Ü›ÛÝ
-N‚ˆ›Üˆ[X\È[ˆ\\—Ø[X\Ù\Ê™XÛÜ™Èœ\\ˆ—JN‚ˆ™]š[Ý\ÈH[X\Ù\Ë™Ù]
-[X\ÊBˆYˆ™]š[Ý\È[™™]š[Ý\ÈOH™XÛÜ™ÈšY—N‚ˆ\œ›ÜœË˜\[™
-ˆ™\XØ]H]\˜]\™H[X\ÈØ[X\ßNˆÜ™]š[Ý\ßKÜ™XÛÜ™ÉÚY	×_HŠBˆ[X\Ù\ÖØ[X\×HHÝŠ™XÛÜ™ÈšY—JBˆ›Üˆ][ˆÛÜY
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
 
-™\×Ü›ÛÝÈšÛ›ÝÛYÙKÛ]\˜]\™KÙYÙ\ÝÈŠK™ÛØŠÏÏÏËOÏËOÏË›YŠJN‚ˆ^H]œ™XYÝ^
-[˜ÛÙ[™ÏH]‹NŠBˆYˆ^˜ÛÝ[
-YØXÞKUU×ÔÕT•
-HOHHÜˆ^˜ÛÝ[
-YØXÞKUU×ÑS‘
-HOHN‚ˆ\œ›ÜœË˜\[™
-ˆžÜ]NˆYÙ\ÝX\šÙ\œÈ]\ÝØØÝ\ˆ^XÝHÛ˜ÙHŠBˆ™]\›ˆ\œ›ÜœÂ‚‚™YˆZ[Ü\œÙ\Š
-HOˆ\™Ü\œÙK\™Ý[Y[\œÙ\Ž‚ˆ\œÙ\ˆH\™Ü\œÙK\™Ý[Y[\œÙ\Š\ØÜš\[ÛW×ÙØ××ÊBˆÝXœ\œÙ\œÈH\œÙ\‹˜YÜÝXœ\œÙ\œÊ\ÝH˜ÛÛ[X[™‹™\]Z\™YUYJBˆ]WÜ\œÙ\ˆHÝXœ\œÙ\œË˜YÜ\œÙ\Š™]HŠBˆ]WÜ\œÙ\‹˜YØ\™Ý[Y[
-š[œ]‹\OT]
-Bˆ]WÜ\œÙ\‹˜YØ\™Ý[Y[
-‹K\™\Ë\›ÛÝ‹\OT]Y˜][T]˜ÝÙ
 
-JBˆ]WÜ\œÙ\‹˜YØ\™Ý[Y[
-‹KY^XÝYXÛÛXÝÜˆŠBˆ[™Ù\ÝÜ\œÙ\ˆHÝXœ\œÙ\œË˜YÜ\œÙ\Šš[™Ù\ÝŠBˆ[™Ù\ÝÜ\œÙ\‹˜YØ\™Ý[Y[
-š[œ]‹˜\™ÜÏHŠÈ‹\OT]
-Bˆ[™Ù\ÝÜ\œÙ\‹˜YØ\™Ý[Y[
-‹K\™\Ë\›ÛÝ‹\OT]Y˜][T]˜ÝÙ
+def _quota_entry(
+    accepted: int,
+    limit: int,
+) -> dict[str, int]:
+    return {
+        "accepted": accepted,
+        "limit": limit,
+        "remaining": max(0, limit - accepted),
+    }
 
-JBˆ[™Ù\ÝÜ\œÙ\‹˜YØ\™Ý[Y[
-‹KYY\\™Y‹\™Yš^ŠBˆ[™Ù\ÝÜ\œÙ\‹˜YØ\™Ý[Y[
-‹KY^XÝYXÛÛXÝÜˆŠBˆ[™Ù\ÝÜ\œÙ\‹˜YØ\™Ý[Y[
-‹K]\]KYYÙ\Ý‹XÝ[ÛHœÝÜ™WÝYHŠBˆ[™Ù\ÝÜ\œÙ\‹˜YØ\™Ý[Y[
-‹K]\]K\Ý]\È‹XÝ[ÛHœÝÜ™WÝYHŠBˆ˜[Y]WÜ\œÙ\ˆHÝXœ\œÙ\œË˜YÜ\œÙ\Š˜[Y]HŠBˆ˜[Y]WÜ\œÙ\‹˜YØ\™Ý[Y[
-‹K\™\Ë\›ÛÝ‹\OT]Y˜][T]˜ÝÙ
 
-JBˆ™]\›ˆ\œÙ\‚‚‚™YˆXZ[Š
-HOˆ[‚ˆ\™ÜÈHZ[Ü\œÙ\Š
-Kœ\œÙWØ\™ÜÊ
-Bˆ™\×Ü›ÛÝH\™ÜËœ™\×Ü›ÛÝœ™\ÛÛ™J
-BˆžN‚ˆÛÛ™šYÈHYØXÞK›ØYØÛÛ™šYÊ™\×Ü›ÛÝ
-BˆYˆ\™ÜË˜ÛÛ[X[™OH™]HŽ‚ˆ^[ØYHYØXÞKœ™XYÚœÛÛŠ\™ÜËš[œ]
-Bˆ˜[Y]WÚ\™[™YØØ[™Y]J^[ØY™\×Ü›ÛÝÛÛ™šYË\™ÜË™^XÝYØÛÛXÝÜŠBˆš[
-YØXÞK›ØØ[Ù]J^[ØYÛÛ™šYÊJBˆ™]\›ˆˆYˆ\™ÜË˜ÛÛ[X[™OH˜[Y]HŽ‚ˆ\œ›ÜœÈH˜[Y]WÜ™\ÜÚ]ÜžJ™\×Ü›ÛÝ
-Bˆ›Üˆ\œ›Üˆ[ˆ\œ›ÜœÎ‚ˆš[
-ˆ‘T”“ÔŽˆÙ\œ›ÜŸHŠBˆš[
-ˆžÛ[Š\œ›ÜœÊ_H]\˜]\™H˜Y\ˆ\œ›ÜŠÊKˆŠBˆ™]\›ˆHYˆ\œ›ÜœÈ[ÙH‚ˆX^[][HH[
-ÛÛ™šYÖÈš[™Ù\Ý[Ûˆ—VÈ›X^ØØ[™Y]\×Ü\—ÚÝ\›WÜ[ˆ—JBˆYˆ[Š\™ÜËš[œ]
-HˆX^[][N‚ˆ˜Z\ÙHYØXÞKØ[™Y]Q\œ›ÜŠˆˆšÝ\›H[ˆÝ\YYÛ[Š\™ÜËš[œ]
-_HØ[™Y]\ÎÈX^[][H\ÈÛX^[][_H‚ˆ
-Bˆ^[ØYÎˆ\ÝÝ\VÔ]XÝÜÝ‹[žWWWHH×Bˆ]\ÎˆÙ]ÜÝ—HHÙ]
+def update_daily_status(
+    repo_root: Path,
+    date: str,
+    config: dict[str, Any],
+) -> Path:
+    timezone = str(config.get("timezone", "Asia/Tokyo"))
+    records = legacy.candidate_records(repo_root)
+    same_day = [
+        record
+        for record in records
+        if record_date(record, timezone) == date
+    ]
+    settings = config["ingestion"]
+    collector_limit = int(
+        settings["max_candidates_per_collector_per_day"]
+    )
+    topic_limit = int(
+        settings["max_candidates_per_topic_per_day"]
+    )
 
-Bˆ›Üˆ[œ]Ü][ˆ\™ÜËš[œ]‚ˆ^[ØYHYØXÞKœ™XYÚœÛÛŠ[œ]Ü]
-Bˆ˜[Y]WÚ\™[™YØØ[™Y]J^[ØY™\×Ü›ÛÝÛÛ™šYË\™ÜË™^XÝYØÛÛXÝÜŠBˆ^[ØYË˜\[™
+    collectors = {
+        collector_id: _quota_entry(
+            sum(
+                record_has_collector(
+                    record,
+                    collector_id,
+                )
+                for record in same_day
+            ),
+            collector_limit,
+        )
+        for collector_id in config["collectors"]
+    }
+    configured_topics = sorted(
+        {
+            topic
+            for collector in config["collectors"].values()
+            for topic in collector.get("topics", [])
+        }
+    )
+    topics = {
+        topic: _quota_entry(
+            sum(
+                topic in record_topics(record)
+                for record in same_day
+            ),
+            topic_limit,
+        )
+        for topic in configured_topics
+    }
 
-[œ]Ü]^[ØY
-JBˆ]\Ë˜Y
-YØXÞK›ØØ[Ù]J^[ØYÛÛ™šYÊJBˆYˆ[Š]\ÊHOHN‚ˆ˜Z\ÙHYØXÞKØ[™Y]Q\œ›ÜŽˆ›Û™H[™Ù\Ý[›ØØ][Ûˆ™\]Z\™\ÈÛ™H”Õ]NˆÜÛÜY
-]\Ê_HŠBˆ[™Ù\ÝÙ]HH™^
-]\Š]\ÊJBˆ^\›˜[Ø[X\Ù\ÈH[X\Ù\×Ú[—ÙÚ]Ü™YœÊˆ™\×Ü›ÛÝˆ\™ÜË™Y\Ü™Y—Ü™Yš^ˆ[™Ù\ÝÙ]Kˆ[
-ÛÛ™šYÖÈš[™Ù\Ý[Ûˆ—VÈ™Y\Øœ˜[˜ÚÝÚ[™Ý×Ù^\È—JKˆ
-Bˆ›Üˆ[œ]Ü]È[ˆ^[ØYÎ‚ˆ™\Ý[H[™Ù\ÝÛÛ™Jˆ[œ]Ü]ˆ™\×Ü›ÛÝˆÛÛ™šYËˆ^\›˜[Ø[X\Ù\Ëˆ\™ÜË™^XÝYØÛÛXÝÜ‹ˆ
-Bˆš[
-ˆžÜ™\Ý[˜XÝ[ÛŸNˆÜ™\Ý[œ\\—ÚYH8 %Ü™\Ý[›Y\ÜØYÙ_HŠBˆYˆ\™ÜË\]WÙYÙ\Ý‚ˆš[
-ˆ\]YYÙ\ÝˆÝ\]WÙZ[WÙYÙ\Ý
-™\×Ü›ÛÝ[™Ù\ÝÙ]KÛÛ™šYÊ_HŠBˆYˆ\™ÜË\]WÜÝ]\Î‚ˆš[
-ˆ\]YÝ]\ÎˆÝ\]WÙZ[WÜÝ]\Ê™\×Ü›ÛÝ[™Ù\ÝÙ]KÛÛ™šYÊ_HŠBˆ\œ›ÜœÈH˜[Y]WÜ™\ÜÚ]ÜžJ™\×Ü›ÛÝ
-BˆYˆ\œ›ÜœÎ‚ˆ˜Z\ÙHYØXÞKØ[™Y]Q\œ›ÜŠŽÈ‹š›Ú[Š\œ›ÜœÊJBˆ™]\›ˆˆ^Ù\
-YØXÞKØ[™Y]Q\œ›Ü‹ÝXœ›ØÙ\ÜËØ[Y›ØÙ\ÜÑ\œ›ÜŠH\È^Î‚ˆš[
-ˆ‘T”“ÔŽˆÙ^ßHŠBˆ™]\›ˆB‚‚šYˆ×Û˜[YW×ÈOH—×ÛXZ[—×ÈŽ‚ˆ˜Z\ÙHÞ\Ý[Q^]
-XZ[Š
-JB
+    core = {
+        "accepted_candidates": len(same_day),
+        "daily_limit": int(
+            settings["max_candidates_total_per_day"]
+        ),
+        "open_candidates": sum(
+            record.get("state") == "inbox"
+            for record in records
+        ),
+        "open_limit": int(settings["max_open_candidates"]),
+        "collectors": collectors,
+        "topics": topics,
+    }
+    path = (
+        repo_root
+        / "knowledge/literature/status"
+        / f"{date}.json"
+    )
+    existing = (
+        legacy.read_json(path)
+        if path.exists()
+        else {}
+    )
+    generated_at = existing.get("generated_at")
+    if (
+        existing.get("ingestion") != core
+        or not isinstance(generated_at, str)
+    ):
+        generated_at = datetime.now(
+            ZoneInfo(timezone)
+        ).isoformat(timespec="seconds")
+
+    status = {
+        "schema_version": 1,
+        "date": date,
+        "initialized_at": existing.get("initialized_at"),
+        "last_curated_at": existing.get(
+            "last_curated_at"
+        ),
+        "generated_at": generated_at,
+        "ingestion": core,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_json(path, status)
+    return path
+
+
+def validate_repository(repo_root: Path) -> list[str]:
+    errors = legacy.validate_repository(repo_root)
+    seen_aliases: dict[str, str] = {}
+
+    for record in legacy.candidate_records(repo_root):
+        paper_id = str(record["id"])
+        for alias in paper_aliases(record["paper"]):
+            previous = seen_aliases.get(alias)
+            if previous is not None and previous != paper_id:
+                errors.append(
+                    "duplicate literature alias "
+                    f"{alias}: {previous}, {paper_id}"
+                )
+            seen_aliases[alias] = paper_id
+
+    digest_dir = (
+        repo_root
+        / "knowledge/literature/digests"
+    )
+    if digest_dir.exists():
+        for path in sorted(digest_dir.glob("????-??-??.md")):
+            text = path.read_text(encoding="utf-8")
+            if (
+                text.count(legacy.AUTO_START) != 1
+                or text.count(legacy.AUTO_END) != 1
+            ):
+                errors.append(
+                    f"{path}: digest markers must occur "
+                    "exactly once"
+                )
+    return errors
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+    )
+    commands = parser.add_subparsers(
+        dest="command",
+        required=True,
+    )
+
+    date_parser = commands.add_parser("date")
+    date_parser.add_argument("input", type=Path)
+    date_parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path.cwd(),
+    )
+    date_parser.add_argument("--expected-collector")
+
+    ingest_parser = commands.add_parser("ingest")
+    ingest_parser.add_argument(
+        "input",
+        nargs="+",
+        type=Path,
+    )
+    ingest_parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path.cwd(),
+    )
+    ingest_parser.add_argument("--dedup-ref-prefix")
+    ingest_parser.add_argument("--expected-collector")
+    ingest_parser.add_argument(
+        "--update-digest",
+        action="store_true",
+    )
+    ingest_parser.add_argument(
+        "--update-status",
+        action="store_true",
+    )
+
+    validate_parser = commands.add_parser("validate")
+    validate_parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path.cwd(),
+    )
+    return parser
+
+
+def main() -> int:
+    args = build_parser().parse_args()
+    repo_root = args.repo_root.resolve()
+    try:
+        config = legacy.load_config(repo_root)
+        if args.command == "date":
+            payload = legacy.read_json(args.input)
+            validate_hardened_candidate(
+                payload,
+                repo_root,
+                config,
+                args.expected_collector,
+            )
+            print(legacy.local_date(payload, config))
+            return 0
+
+        if args.command == "validate":
+            errors = validate_repository(repo_root)
+            for error in errors:
+                print(f"ERROR: {error}")
+            print(
+                f"{len(errors)} literature radar error(s)."
+            )
+            return 1 if errors else 0
+
+        maximum = int(
+            config["ingestion"][
+                "max_candidates_per_hourly_run"
+            ]
+        )
+        if len(args.input) > maximum:
+            raise legacy.CandidateError(
+                f"hourly run supplied {len(args.input)} "
+                f"candidates; maximum is {maximum}"
+            )
+
+        payloads: list[tuple[Path, dict[str, Any]]] = []
+        dates: set[str] = set()
+        for input_path in args.input:
+            payload = legacy.read_json(input_path)
+            validate_hardened_candidate(
+                payload,
+                repo_root,
+                config,
+                args.expected_collector,
+            )
+            payloads.append((input_path, payload))
+            dates.add(
+                legacy.local_date(payload, config)
+            )
+        if len(dates) != 1:
+            raise legacy.CandidateError(
+                "one ingest invocation requires one "
+                f"JST date: {sorted(dates)}"
+            )
+
+        ingest_date = next(iter(dates))
+        external_aliases = aliases_in_git_refs(
+            repo_root,
+            args.dedup_ref_prefix,
+            ingest_date,
+            int(
+                config["ingestion"][
+                    "dedup_branch_window_days"
+                ]
+            ),
+        )
+        for input_path, _ in payloads:
+            result = ingest_one(
+                input_path,
+                repo_root,
+                config,
+                external_aliases,
+                args.expected_collector,
+            )
+            print(
+                f"{result.action}: {result.paper_id} - "
+                f"{result.message}"
+            )
+
+        if args.update_digest:
+            print(
+                "updated digest: "
+                f"{update_daily_digest(repo_root, ingest_date, config)}"
+            )
+        if args.update_status:
+            print(
+                "updated status: "
+                f"{update_daily_status(repo_root, ingest_date, config)}"
+            )
+
+        errors = validate_repository(repo_root)
+        if errors:
+            raise legacy.CandidateError(
+                "; ".join(errors)
+            )
+        return 0
+    except (
+        legacy.CandidateError,
+        subprocess.CalledProcessError,
+    ) as exc:
+        print(f"ERROR: {exc}")
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
