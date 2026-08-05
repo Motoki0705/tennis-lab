@@ -1,9 +1,7 @@
 {
   "aggregate": {
     "collector_count": 1,
-    "collectors": [
-      "geometry"
-    ],
+    "collectors": ["geometry"],
     "discovery_count": 1,
     "max_novelty_score": 92,
     "max_relevance_score": 95,
@@ -15,19 +13,15 @@
       "src/tennis_scene/pipeline/dependency_graph.py",
       "src/tennis_scene/pipeline/orchestrator.py"
     ],
-    "tasks": [
-      "plcs",
-      "scene_alignment",
-      "tennis_scene"
-    ]
+    "tasks": ["plcs", "scene_alignment", "tennis_scene"]
   },
   "curation": {
-    "decision": null,
-    "issue": null,
-    "paper_node": null,
+    "decision": "promoted",
+    "issue": 698,
+    "paper_node": "paper-doi-10-48550-arxiv-2604-17567",
     "proposal_nodes": [],
-    "reason_ja": null,
-    "reviewed_at": null
+    "reason_ja": "公式全文、project、MIT code、160 synthetic sequencesを確認した。人体keypointと既知長用具を用いる三段bundle adjustmentは、court線が欠損する条件でcamera metric scaleを補完する候補としてscene alignmentへ直接関連する。主要定量結果がsyntheticで、racquet端点検出とcamera stage contractが未整備のため、実装proposalを急がずreviewed paperとして昇格する。",
+    "reviewed_at": "2026-08-06T00:20:00+09:00"
   },
   "discoveries": [
     {
@@ -49,33 +43,13 @@
         ],
         "risks_ja": "手法はcamera同期、既知intrinsics、複数cameraで重なる人体・用具端点、用具長の正確な事前値を前提とする。tennis racquetは棒より面積があり、head-tipとhandle-endはmotion blur、手による遮蔽、遠景で検出が不安定になりやすく、個体ごとの長さも異なるため実測値が必要である。論文の主要な定量結果は合成50-frame sequence上で、実屋外評価は定性的であり、tennis courtの長距離camera配置やbroadcast映像への一般化は未検証である。公式MIT repositoryは160本の合成data、評価script、helperを公開する一方、README上で論文の3段optimizerを再実行する明確なend-to-end entrypointが示されておらず、数式からの再実装が必要になる可能性がある。現行tennis_sceneはcamera intrinsics/extrinsicsをstage contractとして保持していないため、schema・orchestrator・保存形式の変更範囲が広い。",
         "summary_ja": "本論文は、同期済みRGBカメラと既知intrinsicsのみから、人体2D keypointと既知長の棒状スポーツ用具の両端点を使ってmetric-scaleのcamera extrinsicsを自己校正する。camera pairごとのessential matrixをRANSACで推定し、inlier数を重みにしたmaximum spanning treeで初期camera poseを伝播し、DLTで人体関節と用具端点を三角測量する。続いて、可視性mask付きrobust reprojection lossによるunscaled joint bundle adjustment、平均再構成用具長によるclosed-form scale recovery、既知長制約と二階差分のtemporal smoothnessを加えたscale-aware bundle adjustmentの3段階で最適化する。3〜10 camera、4競技、5段階の2D noiseからなる160本の合成benchmarkでは平均rotation error 0.020度、translation error 0.001 mを報告し、length constraint除去時は0.091度・0.011 mへ悪化した。実屋外golfではfine-tuned YOLOv11で人体とclub端点を検出し、定量ground truthなしだがmetric 3D motionを再構成している。",
-        "tasks": [
-          "scene_alignment",
-          "plcs",
-          "tennis_scene"
-        ]
+        "tasks": ["scene_alignment", "plcs", "tennis_scene"]
       },
       "sources": [
-        {
-          "checked_at": "2026-08-05T18:20:05+09:00",
-          "kind": "paper",
-          "url": "https://arxiv.org/abs/2604.17567"
-        },
-        {
-          "checked_at": "2026-08-05T18:20:05+09:00",
-          "kind": "project",
-          "url": "https://fandulu.github.io/sport_stick_multi_cam_calib/"
-        },
-        {
-          "checked_at": "2026-08-05T18:20:05+09:00",
-          "kind": "code",
-          "url": "https://github.com/fandulu/sport_stick_multi_cam_calib"
-        },
-        {
-          "checked_at": "2026-08-05T18:20:05+09:00",
-          "kind": "dataset",
-          "url": "https://github.com/fandulu/sport_stick_multi_cam_calib/tree/main/data"
-        }
+        {"checked_at": "2026-08-05T18:20:05+09:00", "kind": "paper", "url": "https://arxiv.org/abs/2604.17567"},
+        {"checked_at": "2026-08-05T18:20:05+09:00", "kind": "project", "url": "https://fandulu.github.io/sport_stick_multi_cam_calib/"},
+        {"checked_at": "2026-08-05T18:20:05+09:00", "kind": "code", "url": "https://github.com/fandulu/sport_stick_multi_cam_calib"},
+        {"checked_at": "2026-08-05T18:20:05+09:00", "kind": "dataset", "url": "https://github.com/fandulu/sport_stick_multi_cam_calib/tree/main/data"}
       ]
     }
   ],
@@ -83,28 +57,13 @@
   "id": "paper-doi-10-48550-arxiv-2604-17567",
   "last_seen": "2026-08-05T18:20:05+09:00",
   "paper": {
-    "authors": [
-      "Fan Yang",
-      "Changsoo Jung",
-      "Ryosuke Kawamura",
-      "Hon Yung Wong"
-    ],
-    "identifiers": {
-      "arxiv": "2604.17567",
-      "doi": "10.48550/arxiv.2604.17567",
-      "openreview": null
-    },
+    "authors": ["Fan Yang", "Changsoo Jung", "Ryosuke Kawamura", "Hon Yung Wong"],
+    "identifiers": {"arxiv": "2604.17567", "doi": "10.48550/arxiv.2604.17567", "openreview": null},
     "title": "Multi-Camera Self-Calibration in Sports Motion Capture: Leveraging Human and Stick Poses",
-    "urls": {
-      "code": "https://github.com/fandulu/sport_stick_multi_cam_calib",
-      "dataset": "https://github.com/fandulu/sport_stick_multi_cam_calib/tree/main/data",
-      "paper": "https://arxiv.org/pdf/2604.17567",
-      "primary": "https://arxiv.org/abs/2604.17567",
-      "project": "https://fandulu.github.io/sport_stick_multi_cam_calib/"
-    },
+    "urls": {"code": "https://github.com/fandulu/sport_stick_multi_cam_calib", "dataset": "https://github.com/fandulu/sport_stick_multi_cam_calib/tree/main/data", "paper": "https://arxiv.org/pdf/2604.17567", "primary": "https://arxiv.org/abs/2604.17567", "project": "https://fandulu.github.io/sport_stick_multi_cam_calib/"},
     "venue": "2026 IEEE 20th International Conference on Automatic Face and Gesture Recognition (FG 2026)",
     "year": 2026
   },
   "schema_version": 1,
-  "state": "inbox"
+  "state": "promoted"
 }
