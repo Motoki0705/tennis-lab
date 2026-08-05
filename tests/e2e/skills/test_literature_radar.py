@@ -111,7 +111,6 @@ def test_canonical_id_prefers_normalized_external_identifier(tmp_path: Path) -> 
     assert radar.canonical_paper_id(payload) == "paper-doi-10-1000-example-42"
 
 
-
 def test_queue_branch_collector_identity_is_enforced(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
     config = radar.load_config(repo)
@@ -121,6 +120,7 @@ def test_queue_branch_collector_identity_is_enforced(tmp_path: Path) -> None:
         radar.validate_raw_candidate(
             payload, repo, config, expected_collector="perception"
         )
+
 
 def test_ingest_merges_independent_collectors_without_overwriting_curation(
     tmp_path: Path,
