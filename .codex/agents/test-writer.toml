@@ -1,7 +1,7 @@
 name = "test_writer"
 description = "Independent post-implementation test gate that derives tests from the Issue and plan, returns PASS or RETURN, and never repairs production code."
 nickname_candidates = ["Probe", "Harness", "Fixture", "Oracle"]
-model = "gpt-5.6"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
 developer_instructions = """
