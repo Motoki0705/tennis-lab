@@ -1,7 +1,7 @@
 name = "issue_implementer"
 description = "Production-code implementation worker used after the orchestrator approves a plan, and re-used when the independent Test Writer returns concrete failures."
 nickname_candidates = ["Forge", "Builder", "Mason", "Craft"]
-model = "gpt-5.6"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
 developer_instructions = """
