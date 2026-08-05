@@ -1,9 +1,7 @@
 {
   "aggregate": {
     "collector_count": 1,
-    "collectors": [
-      "geometry"
-    ],
+    "collectors": ["geometry"],
     "discovery_count": 1,
     "max_novelty_score": 90,
     "max_relevance_score": 98,
@@ -14,18 +12,15 @@
       "src/tennis_scene/pipeline/components/player_association.py",
       "src/tennis_scene/pipeline/components/plcs.py"
     ],
-    "tasks": [
-      "plcs",
-      "tennis_scene"
-    ]
+    "tasks": ["plcs", "tennis_scene"]
   },
   "curation": {
-    "decision": null,
-    "issue": null,
-    "paper_node": null,
+    "decision": "promoted",
+    "issue": 698,
+    "paper_node": "paper-arxiv-2605-29953",
     "proposal_nodes": [],
-    "reason_ja": null,
-    "reviewed_at": null
+    "reason_ja": "公式本文とMIT実装を確認した。dense mesh projection、二段幾何gate、Hungarian matching、Union-Findによるtraining-free cross-view associationは、現行manual player associationを出力契約を変えずに比較できる直接的な外部知識である。一方、paperと公開codeでmesh topologyが異なり、frame独立・高計算量という制約があるため、実装採用ではなくreviewed paperとして昇格する。",
+    "reviewed_at": "2026-08-06T00:20:00+09:00"
   },
   "discoveries": [
     {
@@ -46,22 +41,11 @@
         ],
         "risks_ja": "MAEMは既知のintrinsic/extrinsicと全cameraで同一topologyのdense projected vertexを前提とするが、現行GVHMRResultのsmpl_vertices_localはbody-local座標で画像投影に必要なcamera translationを契約化していない。論文はSAM 3D BodyのMHR 18439 verticesを記述する一方、公開READMEは改変frontendから6890 SMPL verticesを出すと記載しており、論文とcodeのfrontend契約に差がある。pairwise matchingはframe独立で時間的平滑化を持たず、誤clusterがsegment全体のID switchへ波及し得る。計算量はcamera pair、人物候補pair、vertex数に比例し、遠景tennisではmesh projection精度がbasketball benchmarkより低い可能性がある。MAEM本体はMITだが、SAM 3D Body、xrMoCap、SMPL系body model、評価datasetの利用条件とcheckpoint配布条件は別途確認が必要である。",
         "summary_ja": "MAEMは、校正済み複数カメラのチームスポーツ映像に対するtraining-freeのmulti-person 3D pose推定手法である。単眼mesh recoveryが出力する人物bbox、3D keypoint、画像上へ投影した密なbody mesh vertexを用い、bbox中心の再投影誤差による粗い候補除外、対応vertexのepipolar距離による密な幾何filter、camera pairごとのHungarian matching、Union-Findによるmulti-view cluster化、keypoint単位のRANSAC triangulationを順に行う。SportCenter EPFLではMPJPE/PA-MPJPE 59.8/40.7 mm、Human-M3 Basketballでは74.0/51.8 mmを報告し、最良のtraining-free association baselineに対するMPJPE低下はそれぞれ9.0%と19.1%である。",
-        "tasks": [
-          "plcs",
-          "tennis_scene"
-        ]
+        "tasks": ["plcs", "tennis_scene"]
       },
       "sources": [
-        {
-          "checked_at": "2026-08-05T16:25:37+09:00",
-          "kind": "paper",
-          "url": "https://arxiv.org/abs/2605.29953"
-        },
-        {
-          "checked_at": "2026-08-05T16:25:37+09:00",
-          "kind": "code",
-          "url": "https://github.com/Yinlipp/MAEM"
-        }
+        {"checked_at": "2026-08-05T16:25:37+09:00", "kind": "paper", "url": "https://arxiv.org/abs/2605.29953"},
+        {"checked_at": "2026-08-05T16:25:37+09:00", "kind": "code", "url": "https://github.com/Yinlipp/MAEM"}
       ]
     }
   ],
@@ -69,30 +53,13 @@
   "id": "paper-arxiv-2605-29953",
   "last_seen": "2026-08-05T16:25:37+09:00",
   "paper": {
-    "authors": [
-      "Li Yin",
-      "Qin Haobin",
-      "Tomohiro Suzuki",
-      "Calvin Yeung",
-      "Mariko Isogawa",
-      "Keisuke Fujii"
-    ],
-    "identifiers": {
-      "arxiv": "2605.29953",
-      "doi": null,
-      "openreview": null
-    },
+    "authors": ["Li Yin", "Qin Haobin", "Tomohiro Suzuki", "Calvin Yeung", "Mariko Isogawa", "Keisuke Fujii"],
+    "identifiers": {"arxiv": "2605.29953", "doi": null, "openreview": null},
     "title": "Mesh-Aware Epipolar Matching for Multi-View Multi-Person 3D Pose Estimation in Basketball",
-    "urls": {
-      "code": "https://github.com/Yinlipp/MAEM",
-      "dataset": null,
-      "paper": "https://arxiv.org/pdf/2605.29953",
-      "primary": "https://arxiv.org/abs/2605.29953",
-      "project": null
-    },
+    "urls": {"code": "https://github.com/Yinlipp/MAEM", "dataset": null, "paper": "https://arxiv.org/pdf/2605.29953", "primary": "https://arxiv.org/abs/2605.29953", "project": null},
     "venue": null,
     "year": 2026
   },
   "schema_version": 1,
-  "state": "inbox"
+  "state": "promoted"
 }
