@@ -7,21 +7,51 @@ The GitHub Issue body must contain a concrete Markdown task-list under `## Accep
 ## State machine
 
 ```text
-parallel scouting -> exploration -> planning -> parallel implementation -> independent testing
-                                                   ^                           |
-                                                   |------ tester RETURN ------|
-                                                                               |
-                                                                tester PASS -> validation
-                                                                               |
-                                                            validator PASS -> complete
-                                                            validator RETURN -> exploration
+feasibility -- BLOCKED --------------------------------------------> blocked
+     |
+     PASS
+     v
+parallel scouting -> exploration -> planning -> parallel implementation
+                                                  ^          |
+                                                  | preflight RETURN
+                                                  |          v
+                                                  +------ preflight
+                                                             |
+                                                             PASS
+                                                             v
+                                                    independent testing
+                                                  ^          |
+                                                  | tester RETURN #1
+                                                  |          |
+                                                  +----------+
+                                                             |
+                                          tester RETURN #2 -> return review
+                                                             | implementation
+                                                             | exploration
+                                                             ` block
+
+independent testing -- PASS -> validation
+validation -- PASS -> complete
+validation -- RETURN -> exploration with the next attempt
 ```
 
-Scouting is optional only when the Issue truly has no useful independent lookup questions. Before exploration and before every implementation or repair cycle, the parent must actively test whether the work can be decomposed. When at least two independent units exist, multiple agents are the default.
+`preflight RETURN` is an integration failure and does not increment `test_cycle`. Tester RETURN increments `test_cycle`. Two Tester RETURNs since the previous explicit review set `return_review_required = true`; another preflight or test verdict is rejected until the parent classifies the loop.
 
-The persisted phase remains `implementation` during the Implementer–Tester loop. `state.toml.test_cycle` counts completed independent test evaluations, and `state.toml.test_verdict` stores the latest tester verdict. Tester RETURN does not increment the Issue attempt because the codebase model and plan remain in force. Validator RETURN increments the attempt and restarts formal exploration because it may expose a flawed model or plan.
+A task can enter `blocked` from any in-progress phase when an Issue constraint, missing authority, external dependency, or environment condition prevents valid progress. A blocked task is neither failed nor complete. The parent must not keep an active `/goal` auto-continuing against an unresolved blocker.
 
-An optional active `/goal` surrounds this state machine. It keeps the parent working across turns but does not replace phase transitions.
+## State semantics
+
+Schema version 4 records:
+
+- frozen Issue and checklist identity;
+- `feasibility_verdict`;
+- current attempt and phase;
+- `preflight_cycle` and `preflight_verdict`;
+- completed independent `test_cycle` and `test_verdict`;
+- `test_return_count` and mandatory return-review state;
+- final status, verdict, and blocker details.
+
+Schema version 3 tasks are normalized in memory to version 4 with `feasibility_verdict = "LEGACY"`. They do not retroactively repeat feasibility, but an in-progress implementation must use the new preflight gate before its next Tester verdict. New tasks always start in `feasibility`.
 
 ## Artifact tree
 
@@ -29,140 +59,165 @@ An optional active `/goal` surrounds this state machine. It keeps the parent wor
 .codex/tasks/issue-<number>/
 ├── issue.md
 ├── state.toml
+├── 00-feasibility/feasibility.md
 ├── 01-exploration/exploration.md
 ├── 02-planning/plan.md
 ├── 03-implementation/implementation.md
+├── 03-implementation/preflight.md
 ├── 03-implementation/tests.md
-└── 04-validation/validation.md
+├── 04-validation/validation.md
+└── logs/                              # optional, non-authoritative raw output
 ```
 
-One logical artifact has one path. Replace files in place. Do not create attempt-, date-, final-, revised-, or v2-suffixed copies.
+One logical artifact has one path. Replace files in place. Do not create attempt-, date-, final-, revised-, or v2-suffixed copies. Raw logs are not verdict evidence by themselves; formal artifacts cite the command, exit status, summary, and log path.
+
+## Feasibility gate
+
+The parent owns `feasibility.md`. Before broad exploration or implementation it must establish:
+
+- exact allowed and prohibited write scopes;
+- whether the Issue requires a breaking or compatibility-preserving change;
+- which existing tests and required checks encode the current contract;
+- baseline failures that predate the work;
+- whether each AC can be satisfied inside the allowed scope;
+- whether the required checks can pass without contradicting another Issue requirement.
+
+A breaking change combined with immutable tests that require the removed behavior is a constraint conflict, not an implementation task. The correct outcome is `BLOCKED` until the Issue grants a coherent exception or changes its completion criteria.
+
+The feasibility matrix contains one exact ordered row per AC item with `FEASIBLE`, `BLOCKED`, or `UNKNOWN`. PASS requires every row to be FEASIBLE. BLOCKED requires at least one BLOCKED or UNKNOWN row plus concrete conflict and resolution sections.
 
 ## Proactive delegation waves
 
-A delegation wave is a set of agents that may run concurrently because their questions or ownership do not overlap.
+Before each wave, the parent records the question or production unit, unique task name, ownership, expected handoff, and dependencies.
 
-Before each wave, the parent records:
+- Prefer narrow independent assignments over a broad duplicate assignment.
+- Use multiple agents only when this reduces the critical path or creates independent evidence.
+- Do not delegate a deterministic complete scan when one repository command or script can produce the result.
+- Join every agent in a wave before consuming combined results.
+- Use one long or event-driven join where available. Repeated short waits with no state change are prohibited.
+- The configured concurrency limit is capacity, not a target.
 
-- the independent question or production unit;
-- its assigned agent and unique task name;
-- explicit file/module ownership when code may change;
-- the expected evidence or handoff;
-- dependencies on earlier or later waves.
+One authoritative Explorer, Test Writer, and Validator owns each formal artifact per cycle. Parallelism around those roles comes from Scout waves, Implementer waves, and bounded Validator child Explorers.
 
-Rules:
+## Planning and ownership
 
-- Prefer several narrow, independent assignments over one broad assignment.
-- Spawn at least two agents by default when two or more independent units exist.
-- Do not use concurrency for overlapping files, duplicate questions, or shared artifact writes.
-- Join all agents in a wave before consuming their combined result or advancing the state.
-- The concurrency limit is available capacity, not a target.
-- When decomposable work is assigned to a single Scout or Implementer, the parent records why parallel delegation would be unsafe, redundant, sequentially blocked, or artifact-conflicting.
+The parent owns `plan.md`, exact AC mapping, the ownership matrix, and the validation strategy. The plan must name:
 
-One authoritative Explorer, Test Writer, and Validator owns each formal artifact per cycle. Parallelism around those roles is achieved through Scout waves, Implementer waves, and bounded Validator child Explorers.
+- deterministic policy checks;
+- focused behavior checks per work unit;
+- the canonical repository required-check command;
+- any baseline failure that must be distinguished from a new regression;
+- the test paths the independent Test Writer may change, including any Issue prohibition.
+
+Production ownership must be non-overlapping within a wave. Only the designated integrator replaces `implementation.md` and `preflight.md`.
+
+## Deterministic preflight
+
+Preflight is an integration gate, not an independent acceptance verdict. Run it after all Implementers join and before the Test Writer.
+
+Run checks in fail-fast order:
+
+1. changed-file and prohibited-scope inspection;
+2. deterministic source-policy checks such as AST inventories, stale keys, aliases, or forbidden defaults;
+3. focused tests and smoke commands for changed units;
+4. compose, schema, non-CWD, persistence, or mutation checks required by the Issue;
+5. lint and type checking for the changed scope;
+6. the canonical required-check command once the focused checks pass.
+
+On failure, stop the remaining expensive work when its result cannot change the verdict, write actionable production findings, record `preflight RETURN`, and return to Implementers. Do not spend a Test Writer cycle finding a failure that a deterministic command already proves.
 
 ## Acceptance and test gates
 
 - `issue.md` and `state.toml` contain the same normalized checklist hash and count.
-- `plan.md` contains one exact, ordered mapping row for every AC item.
-- `tests.md` contains one exact, ordered mapping row for every AC item.
-- An AC ID mentioned only in prose does not satisfy either mapping contract.
-- The Test Writer emits a standalone `PASS` or `RETURN` and records the current test cycle.
-- Tester PASS means the independent test work and relevant commands succeeded; requirements requiring non-test evidence remain explicitly identified for the Validator.
-- Tester RETURN must contain actionable implementation findings and routes to the Implementer without entering validation.
-- The Validator independently emits exactly one ordered PASS/FAIL/NOT VERIFIED row for every AC item.
-- Source GitHub checkbox state is never implementation evidence.
+- `feasibility.md`, `plan.md`, `tests.md`, and `validation.md` preserve the exact ordered AC rows required by their contracts.
+- A Test Writer verdict is accepted only when the same test-cycle number has a recorded preflight PASS.
+- Tester PASS means relevant independent tests and commands succeeded with no known in-scope production failure.
+- Tester RETURN contains exact commands, observed behavior, affected AC IDs, and actionable production findings.
+- Validator PASS requires every AC row to be PASS.
+- Source GitHub checkbox state and agent narratives are never implementation evidence.
 
-## Exploration routing
+## Context and token discipline
 
-Use `codebase_scout` for bounded, high-volume lookup work such as locating named symbols, direct references, nearby tests, configuration keys, candidate entry points, stale aliases, or independent AC evidence. Actively partition cross-cutting Issues by subsystem, execution stage, configuration domain, or evidence question, and run the resulting Scouts concurrently.
+Subagents consume additional model work, so parallelism must buy latency reduction or independent evidence.
 
-Use one authoritative `codebase_explorer` after the Scout wave when the Issue spans packages or execution stages, depends on registries or dynamic configuration, changes schemas or public contracts, deletes or moves code broadly, follows validator RETURN, or when Scout evidence is ambiguous.
-
-Formal exploration is mandatory before planning. The Explorer independently verifies the joined Scout leads, and the parent independently verifies high-impact Explorer claims.
+- Keep requirements, decisions, and verdicts in the parent thread; keep exploration notes, stack traces, and raw command output in child threads or log files.
+- Child handoffs are compact: status, changed files or evidence, commands and outcomes, unresolved risks, and artifact/log paths.
+- Retry messages contain the delta: affected AC IDs, exact new failures, and authorized ownership. Agents read the authoritative artifacts instead of receiving duplicated narrative.
+- Do not send progress messages to running agents unless constraints or evidence changed.
+- Do not repeatedly rerun the full suite after a known focused failure. Fix the failure, rerun its focused reproducer, then advance through preflight.
 
 ## Responsibilities
 
 ### Parent orchestrator
 
-- Freeze the Issue and reject unusable checklists.
-- Preserve the full `/goal` objective through tester and validator RETURN cycles.
-- Before exploration and implementation, create a delegation map and actively identify safe parallel work.
-- Spawn multiple Scouts for independent questions and multiple Implementers for disjoint production ownership by default.
-- Own `plan.md`, decomposition, AC mapping, and the file ownership matrix.
-- Join every agent in the current wave before starting dependent work.
-- Designate one implementation artifact integrator and prevent concurrent writes to `implementation.md`.
-- Join all Implementer work before spawning the Test Writer.
-- Never run Implementer and Test Writer concurrently.
-- On tester RETURN, partition independent failures into disjoint repair units where possible and pass only concrete failing tests, observed behavior, affected AC IDs, and authorized production ownership back to the retry Implementers.
-- Enforce the Validator context firewall.
-- Apply all transitions and verdicts through the state helper.
+- Freeze the Issue and run the feasibility gate.
+- Block unsatisfiable work instead of inventing compatibility or looping.
+- Own delegation maps, `plan.md`, ownership, canonical checks, and return review.
+- Prefer deterministic tools for mechanical inventories.
+- Join waves without polling churn and keep the parent context concise.
+- Enforce preflight before Test Writer, Validator context isolation, and all state-helper transitions.
 
 ### Scout
 
-- Answer one bounded question with direct repository evidence.
-- Do not broaden into a second agent's assigned question.
-- Report ambiguity, likely impact expansion, and the need for formal exploration.
-- Do not modify code, GitHub, or formal workflow artifacts.
+- Answer one bounded semantic repository question with direct evidence.
+- Do not modify code, GitHub, or formal artifacts.
+- Do not paste raw broad-search output when a compact candidate list is sufficient.
 
 ### Explorer
 
-- Own the single formal `exploration.md` for the current attempt.
-- Join and independently verify Scout evidence rather than concatenate summaries.
-- Trace entry points, execution paths, contracts, tests, risks, and unresolved questions across the full Issue scope.
+- Own the single `exploration.md` for the attempt.
+- Independently verify Scout leads and trace real execution paths, contracts, tests, risks, and unresolved questions.
 
 ### Implementer
 
-- Modify only explicitly owned production files.
-- Do not modify independently authored tests.
-- Do not touch another concurrent Implementer's ownership.
-- On an initial cycle, read Issue, exploration, and plan.
-- On tester RETURN, additionally read the current `tests.md` failure evidence or the equivalent focused failure bundle supplied by the parent.
-- Report implementation evidence to the designated artifact integrator; only the integrator replaces `implementation.md`.
+- Modify only assigned production files and allowed test files, if any.
+- Do not weaken or silently rewrite independent tests.
+- Run focused checks and return a compact handoff to the integrator.
+
+### Artifact integrator
+
+- Join all implementation work.
+- Replace `implementation.md` and `preflight.md`.
+- Run deterministic preflight and return failures directly to Implementers.
+- Do not declare acceptance PASS.
 
 ### Test writer
 
-- Run only after integrated implementation is available.
-- Derive tests independently from Issue, plan, public behavior, and current code or diff.
-- Do not read `implementation.md`.
-- Never repair production code or weaken tests to obtain PASS.
-- On production failure, emit RETURN with exact commands, failures, affected AC IDs, and required observable behavior.
-- Replace `tests.md` with the current test-cycle number and final tester verdict.
+- Run only after preflight PASS.
+- Derive expected behavior from Issue, plan, public behavior, current code, and diff; do not read `implementation.md`.
+- Do not repair production code or weaken a valid failing test.
+- Emit one ordered AC mapping and a standalone PASS or RETURN.
 
 ### Validator
 
 - Treat `issue.md` as the sole task specification.
-- Do not read plan, implementation, tests artifact, prior validation, or Issue comments.
-- Inspect repository state and tests directly.
-- Proactively split independent AC evidence questions among bounded child Explorers when useful.
-- Join child evidence, independently verify load-bearing claims, and retain sole ownership of the final verdict.
-- Emit exactly one ordered verdict row per AC item and final PASS or RETURN.
-
-## Context firewall
-
-The Validator still receives system instructions, repository guidance, tool definitions, repository state, and its output path. “Issue only” means `issue.md` is its only task specification and workflow narrative. Spawn it without parent history and never supply expected conclusions.
-
-Validator child Explorers receive only the relevant AC IDs and bounded evidence question. They do not receive the plan, implementation narrative, tester conclusion, or expected verdict.
+- Do not read plan, implementation, preflight, tests, prior validation, or Issue comments.
+- Inspect repository state and tests directly, using bounded child Explorers only for independent evidence collection.
 
 ## RETURN discipline
 
-Tester RETURN:
+### Preflight RETURN
+
+1. Run `preflight-verdict ... RETURN`.
+2. Keep the same attempt and `test_cycle`.
+3. Partition production failures into disjoint repairs.
+4. Join repairs, overwrite implementation and preflight for the same next test-cycle number, and rerun focused checks.
+5. Spawn the Test Writer only after preflight PASS.
+
+### Tester RETURN
 
 1. Run `test-verdict ... RETURN`.
-2. Keep `phase = "implementation"` and the same Issue attempt.
-3. Increment the next document test-cycle number.
-4. Decompose independent failures into disjoint production repair units.
-5. Spawn one or more retry Implementers, using multiple agents by default when two or more safe units exist.
-6. Join repairs through one artifact integrator.
-7. Re-run the single independent Test Writer.
-8. Enter validation only after `test-verdict ... PASS`.
+2. Keep the same attempt and implementation phase.
+3. Repair the exact independent findings and repeat preflight.
+4. After the second Tester RETURN since the previous review, classify with `return-review` before any further preflight:
+   - `implementation`: only for bounded, independent omissions under the valid plan;
+   - `exploration`: when the model, scope, or plan is incomplete;
+   - `block`: when constraints or authority make the task unsatisfiable.
 
-Validator RETURN:
+### Validator RETURN
 
 1. Run `verdict ... RETURN`.
-2. Increment the Issue attempt and reset tester state.
-3. Keep an active `/goal` active.
-4. Create a new exploration delegation map from the Validator’s unresolved questions and affected AC IDs.
-5. Spawn multiple bounded Scouts when those questions are independent.
-6. Re-run the authoritative Explorer with the joined evidence.
-7. Rewrite the existing plan, then repeat parallel implementation, testing, and validation.
+2. Increment the attempt and reset preflight/test state.
+3. Keep an active goal active.
+4. Rebuild the exploration delegation map from the Validator's unresolved AC questions.
+5. Rewrite the same artifacts and repeat the gated workflow.
