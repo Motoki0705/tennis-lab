@@ -178,7 +178,9 @@ def write_tennis_scene_annotation(
 
     scene.save(ann_dir / SCENE_NPZ_NAME)
     if pipeline_config_text is not None:
-        (ann_dir / "pipeline_config.yaml").write_text(pipeline_config_text, encoding="utf-8")
+        (ann_dir / "pipeline_config.yaml").write_text(
+            pipeline_config_text, encoding="utf-8"
+        )
 
     marker: dict[str, Any] = {
         "version": ANNOTATION_SCHEMA_VERSION,
@@ -201,7 +203,7 @@ def append_dataset_index(dataset_root: str | Path, manifest: ClipManifest) -> Pa
     entries are never rewritten.
     """
     dataset = register_exported_clip(dataset_root, manifest.manifest_path)
-    return dataset.save(dataset_root)
+    return Path(dataset.save(dataset_root))
 
 
 __all__ = [

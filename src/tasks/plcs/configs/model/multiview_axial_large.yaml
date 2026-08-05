@@ -5,4 +5,5 @@ defaults:
 hidden_dim: 512
 num_layers: 12
 num_heads: 8
+ffn_dim: 1408
 rope_dim: 16 # 25% of head_dim

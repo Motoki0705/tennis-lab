@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+
+from omegaconf import DictConfig
 
 from src.tasks.base.visualization.orchestrator import (
-    BaseVisualizationRuntimeConfig as RuntimeConfig,
-)
-from src.tasks.base.visualization.orchestrator import (
-    build_scene_runtime_config as build_runtime_config,
-)
-from src.tasks.base.visualization.orchestrator import (
+    BaseVisualizationRuntimeConfig,
+    build_scene_runtime_config,
     save_or_show_animation,
+)
+from src.tasks.blcs.configuration import (
+    build_path_resolver,
+    validate_visualization_boundary,
 )
 from src.tasks.blcs.visualization.adapters.predict_inputs import build_predict_inputs
 from src.tasks.blcs.visualization.api.predict import predict_positions
@@ -20,10 +23,42 @@ from src.tasks.blcs.visualization.rendering import (
     BLCSSceneRenderer,
     extract_ball_events,
 )
+from src.utils.configuration import PathResolver
 
 logger = logging.getLogger(__name__)
 
 __all__ = ["RuntimeConfig", "build_runtime_config", "run_visualization"]
+
+
+@dataclass(frozen=True)
+class RuntimeConfig(BaseVisualizationRuntimeConfig):
+    """BLCS visualization contract including its originating path resolver."""
+
+    fps: float
+    resolver: PathResolver
+
+
+def build_runtime_config(config: DictConfig) -> RuntimeConfig:
+    """Validate and build the BLCS visualization runtime contract."""
+    validate_visualization_boundary(config)
+    base = build_scene_runtime_config(config)
+    if base.fps is None:
+        raise RuntimeError("Validated BLCS visualization fps must be explicit.")
+    return RuntimeConfig(
+        mode=base.mode,
+        scene_path=base.scene_path,
+        checkpoint=base.checkpoint,
+        device=base.device,
+        animation_view=base.animation_view,
+        fps=base.fps,
+        save=base.save,
+        camera=base.camera,
+        cameras=base.cameras,
+        info=base.info,
+        style=base.style,
+        view_3d=base.view_3d,
+        resolver=build_path_resolver(config),
+    )
 
 
 def run_visualization(cfg: RuntimeConfig) -> int:
@@ -41,16 +76,12 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         renderer.print_scene_info(bundle.scene)
         return 0
 
-    fps = cfg.fps or bundle.fps
-    if cfg.animation_view not in {"2d", "3d"}:
-        logger.error("Error: visualization.animation_view must be '2d' or '3d'.")
-        return 1
+    fps = cfg.fps
 
-    mode = cfg.mode.strip().lower()
+    mode = cfg.mode
     if mode == "predict":
         if cfg.checkpoint is None:
-            logger.error("Error: visualization.checkpoint must be set for predict mode.")
-            return 1
+            raise RuntimeError("Validated predict mode requires a checkpoint.")
         logger.info(f"Predict mode: loading model with checkpoint: {cfg.checkpoint}")
         predict_inputs = build_predict_inputs(
             scene=bundle.scene,
@@ -58,6 +89,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         )
         pred_positions = predict_positions(
             checkpoint_path=cfg.checkpoint,
+            resolver=cfg.resolver,
             device=cfg.device,
             inputs=predict_inputs,
         )
@@ -85,8 +117,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             logger.error("Error: Failed to create visualization animation.")
             return 1
     else:
-        logger.error(f"Error: unknown visualization.mode '{cfg.mode}'.")
-        return 1
+        raise RuntimeError(f"Unexpected validated visualization mode {cfg.mode!r}.")
 
     save_or_show_animation(anim, cfg.save, fps)
 

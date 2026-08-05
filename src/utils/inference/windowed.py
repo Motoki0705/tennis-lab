@@ -91,7 +91,7 @@ def blend_windows(
                 f"chunk trailing shape {values.shape[1:]} does not match "
                 f"first chunk {trailing_shape}"
             )
-        idx = np.arange(win_len, dtype=np.float64)
+        idx: NDArray[np.float64] = np.arange(win_len, dtype=np.float64)
         weights = np.minimum(idx + 1.0, win_len - idx)
         weights = weights.reshape((win_len,) + (1,) * len(trailing_shape))
         accum[start : start + win_len] += values.astype(np.float64) * weights

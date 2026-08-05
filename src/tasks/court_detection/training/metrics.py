@@ -7,8 +7,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import torch
 from torch import Tensor
 
@@ -24,20 +22,19 @@ class CourtDetectionMetrics:
     ----------
     task:
         One of ``"seg"``, ``"kp"``, ``"line"``.
-    data_cfg:
-        Data config dict (used to resolve num_classes / num_keypoints).
+    output_channels:
+        Validated number of classes or keypoints for the selected task.
     """
 
-    def __init__(self, task: str, data_cfg: dict | Any = None) -> None:
+    def __init__(self, task: str, output_channels: int) -> None:
         self.task = task
-        data_cfg = data_cfg or {}
 
         if task == "seg":
-            self.num_classes = int(data_cfg.get("num_classes", 7))
+            self.num_classes = output_channels
             self._intersection: list[Tensor] = []
             self._union: list[Tensor] = []
         elif task == "kp":
-            self.num_keypoints = int(data_cfg.get("num_keypoints", 14))
+            self.num_keypoints = output_channels
             self._distances: list[Tensor] = []
         elif task == "line":
             self._dice_sum: float = 0.0
@@ -57,8 +54,8 @@ class CourtDetectionMetrics:
         preds = logits.argmax(dim=1)  # (B, H, W)
         targets = batch["mask"]  # (B, H, W)
         for c in range(self.num_classes):
-            pred_c = (preds == c)
-            target_c = (targets == c)
+            pred_c = preds == c
+            target_c = targets == c
             intersection = (pred_c & target_c).sum().float()
             union = (pred_c | target_c).sum().float()
             self._intersection.append(intersection.detach().cpu())

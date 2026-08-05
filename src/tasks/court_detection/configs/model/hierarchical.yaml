@@ -7,4 +7,4 @@ defaults:
 
 name: court_hierarchical
 in_channels: 3
-num_classes: 7
+num_classes: ${data.output_channels}

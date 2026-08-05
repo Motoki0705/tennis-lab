@@ -9,12 +9,14 @@ import numpy as np
 
 from src.tasks.blcs.inference.predictor import BLCSPredictor
 from src.tasks.blcs.visualization.adapters.predict_inputs import PredictorInputs
+from src.utils.configuration import PathResolver, PathRole
 
 logger = logging.getLogger(__name__)
 
 
 def predict_positions(
     checkpoint_path: str | Path,
+    resolver: PathResolver,
     device: str,
     inputs: PredictorInputs,
 ) -> np.ndarray:
@@ -29,8 +31,12 @@ def predict_positions(
         Predicted positions as ``(T, 3)`` numpy array in meters.
     """
     predictor = BLCSPredictor.load_from_checkpoint(
-        checkpoint_path=checkpoint_path,
+        checkpoint_path=Path(checkpoint_path).relative_to(
+            resolver.roots.root(PathRole.CHECKPOINT)
+        ),
+        resolver=resolver,
         device=device,
+        allow_device_fallback=False,
     )
     logger.info(f"Model loaded successfully on {device}.")
     outputs = predictor.predict(
@@ -42,4 +48,5 @@ def predict_positions(
         denormalize=True,
     )
     logger.info("  [Inference] Running prediction...")
-    return outputs["position"].squeeze(0).cpu().numpy()
+    position: np.ndarray = outputs["position"].squeeze(0).cpu().numpy()
+    return position

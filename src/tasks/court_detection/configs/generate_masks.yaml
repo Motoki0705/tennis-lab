@@ -1,12 +1,16 @@
+defaults:
+  - paths: default
+  - _self_
+
 hydra:
   run:
-    dir: outputs/court_detection/generate_masks/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},court_detection/generate_masks,${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null
   job:
     chdir: false
 
 generate_masks:
-  root: data/court
+  root: court
   image_id: null
   write_color_mask: false
   color_dir_name: masks_color

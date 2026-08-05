@@ -51,7 +51,7 @@ def sample_frame_indices_by_time_ranges(
     max_frames: int | None = None,
 ) -> list[int]:
     """Sample unique frame indices from timestamp ranges."""
-    ranges = list(raw_ranges or [])
+    ranges = [] if raw_ranges is None else list(raw_ranges)
     if not ranges:
         ranges = [{"start": 0.0, "end": duration}]
     step_sec = sample_step_seconds(
@@ -64,9 +64,17 @@ def sample_frame_indices_by_time_ranges(
     frame_indices: list[int] = []
     seen: set[int] = set()
     for time_range in ranges:
-        start_sec = parse_time_seconds(time_range.get("start", 0.0))
-        end_value = time_range.get("end")
-        end_sec = duration if end_value is None else parse_time_seconds(end_value)
+        expected_keys = {"start", "end"}
+        actual_keys = set(time_range)
+        if actual_keys != expected_keys:
+            missing = expected_keys - actual_keys
+            unknown = actual_keys - expected_keys
+            raise ValueError(
+                "time range keys must be exactly ['end', 'start']: "
+                f"missing={sorted(missing)}, unknown={sorted(unknown)}"
+            )
+        start_sec = parse_time_seconds(time_range["start"])
+        end_sec = parse_time_seconds(time_range["end"])
         timestamp = max(start_sec, 0.0)
         while timestamp <= max(end_sec, start_sec):
             frame_index = int(round(timestamp * fps))

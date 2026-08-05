@@ -8,9 +8,11 @@ import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
 
+from src.tasks.base.configuration import as_config_mapping
 from src.tasks.base.generate_dataset.parallel_runner import (
     run_parallel_scene_generation,
 )
+from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
 from src.tasks.plcs.generate_dataset.multi_object_scene_generator import (
     MultiPersonSceneGenerator,
 )
@@ -27,7 +29,7 @@ def build_scene_generator(
     """Create a PLCS scene generator from a resolved Hydra config."""
     motion_sampler = MotionSampler(
         config=config,
-        smplh_model_path=config.paths.smplh_model_path,
+        smplh_model_path=config.external_assets.smplh_model_path,
         device=device,
     )
     return SceneGenerator(
@@ -47,16 +49,20 @@ def _get_worker_scene_generator(
         if not isinstance(cfg, DictConfig):
             raise TypeError("PLCS worker config must resolve to a DictConfig.")
         base = build_scene_generator(cfg, device)
-        generation = cfg.get("generation", {})
-        _WORKER_SCENE_GENERATOR = (
-            MultiPersonSceneGenerator(
+        generation = cfg.generation
+        if str(generation.mode) == "multi_object":
+            timeline_raw = OmegaConf.to_container(generation.timeline, resolve=True)
+            if not isinstance(timeline_raw, dict):
+                raise TypeError("generation.timeline must resolve to a mapping.")
+            _WORKER_SCENE_GENERATOR = MultiPersonSceneGenerator(
                 base,
-                timeline=OmegaConf.to_container(generation.timeline, resolve=True),
+                timeline=TimelineConfig.from_mapping(
+                    as_config_mapping(timeline_raw, path="generation.timeline")
+                ),
                 rng=random.Random(random.getrandbits(64)),
             )
-            if str(generation.get("mode", "single_object")) == "multi_object"
-            else base
-        )
+        else:
+            _WORKER_SCENE_GENERATOR = base
     return _WORKER_SCENE_GENERATOR
 
 
@@ -108,4 +114,5 @@ def generate_parallel_scenes(
         config_dict,
         device,
         num_workers=num_workers,
+        chunksize=1,
     )

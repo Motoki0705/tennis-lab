@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import torch
 from torch import Tensor
@@ -11,6 +11,7 @@ from torch import Tensor
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
+from src.tasks.blcs.configuration import parse_qualitative_rendering
 from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch
 from src.tasks.blcs.models import build_blcs_discriminator, build_blcs_model
 from src.tasks.blcs.training.losses import BLCSLoss
@@ -27,7 +28,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     This module supports both single-view and multiview BLCS training.
     """
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: DictConfig) -> None:
         """Initialize the Lightning module.
 
         Args:
@@ -37,49 +38,53 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         super().__init__(config)
 
         self.model = build_blcs_model(self.config)
+        self.qualitative_rendering = parse_qualitative_rendering(self.config)
 
-        train_cfg = self.config.get("training", {})
-        trainer_cfg = train_cfg.get("trainer", {}) or {}
-        self.max_epochs = int(trainer_cfg.get("max_epochs") or self.max_epochs)  # type: ignore[has-type]
+        train_cfg = self.config.training
+        self.max_epochs = int(train_cfg.trainer.max_epochs)
         # The gravity prior needs an absolute physical scale: derive the
         # output-frame dt and g from the run config (rally / physics) rather than
         # hard-coding, so a change to output_fps or gravity flows through.
-        rally_cfg = self.config.get("rally", {}) or {}
-        physics_cfg = self.config.get("physics", {}) or {}
-        output_fps = float(rally_cfg.get("output_fps", 30.0))
+        rally_cfg = self.config.rally
+        physics_cfg = self.config.physics
+        output_fps = float(rally_cfg.output_fps)
         self.loss_fn = BLCSLoss(
-            position_weight=train_cfg.get("position_loss_weight", 1.0),
-            reprojection_weight=train_cfg.get("reprojection_loss_weight", 0.0),
-            position_axis_weights=train_cfg.get("position_axis_weights"),
-            smoothness_weight=train_cfg.get("smoothness_loss_weight", 0.0),
-            gravity_weight=train_cfg.get("gravity_loss_weight", 0.0),
-            smoothness_order=int(train_cfg.get("smoothness_order", 3)),
-            smoothness_beta=float(train_cfg.get("smoothness_beta", 1e-3)),
-            smoothness_axis_weights=train_cfg.get("smoothness_axis_weights"),
-            gravity_beta=float(train_cfg.get("gravity_beta", 5e-3)),
-            gravity=float(physics_cfg.get("gravity", 9.81)),
+            position_weight=train_cfg.position_loss_weight,
+            reprojection_weight=train_cfg.reprojection_loss_weight,
+            position_axis_weights=train_cfg.position_axis_weights,
+            smoothness_weight=train_cfg.smoothness_loss_weight,
+            gravity_weight=train_cfg.gravity_loss_weight,
+            smoothness_order=int(train_cfg.smoothness_order),
+            smoothness_beta=float(train_cfg.smoothness_beta),
+            smoothness_axis_weights=train_cfg.smoothness_axis_weights,
+            gravity_beta=float(train_cfg.gravity_beta),
+            gravity=float(physics_cfg.gravity),
             frame_dt=1.0 / output_fps,
         )
-        gan_enabled = bool((train_cfg.get("gan", {}) or {}).get("enabled", False))
+        gan_enabled = bool(train_cfg.gan.enabled)
         self._initialize_manual_gan(
-            discriminator=build_blcs_discriminator(self.config) if gan_enabled else None,
+            discriminator=build_blcs_discriminator(self.config)
+            if gan_enabled
+            else None,
         )
 
-        metrics_cfg = self.config.get("metrics", {})
+        metrics_cfg = self.config.metrics
         self.train_metrics = BLCSMetrics(
-            position_threshold_m=metrics_cfg.get("position_threshold_m", 0.3),
-            endpoint_threshold_m=metrics_cfg.get("endpoint_threshold_m", 0.5),
+            position_threshold_m=metrics_cfg.position_threshold_m,
+            endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
         )
         self.val_metrics = BLCSMetrics(
-            position_threshold_m=metrics_cfg.get("position_threshold_m", 0.3),
-            endpoint_threshold_m=metrics_cfg.get("endpoint_threshold_m", 0.5),
+            position_threshold_m=metrics_cfg.position_threshold_m,
+            endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
         )
         self.test_metrics = BLCSMetrics(
-            position_threshold_m=metrics_cfg.get("position_threshold_m", 0.3),
-            endpoint_threshold_m=metrics_cfg.get("endpoint_threshold_m", 0.5),
+            position_threshold_m=metrics_cfg.position_threshold_m,
+            endpoint_threshold_m=metrics_cfg.endpoint_threshold_m,
         )
 
-    def _forward_from_batch(self, batch: BLCSBatch | BLCSMultiViewBatch) -> dict[str, Tensor]:
+    def _forward_from_batch(
+        self, batch: BLCSBatch | BLCSMultiViewBatch
+    ) -> dict[str, Tensor]:
         """Forward model from a batch."""
         result: dict[str, Tensor] = self.model(
             ball_uv=batch["ball_uv"],
@@ -90,7 +95,9 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         )
         return result
 
-    def _normalize_loss_mask(self, batch: BLCSBatch | BLCSMultiViewBatch) -> Tensor | None:
+    def _normalize_loss_mask(
+        self, batch: BLCSBatch | BLCSMultiViewBatch
+    ) -> Tensor | None:
         """Normalize loss/metric mask to shape (B, T)."""
         return normalize_padding_mask(batch.get("ball_mask"))
 
@@ -152,10 +159,16 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             payload["mask"] = mask
         return payload
 
-    def _log_stage_metrics(self, stage: str, loss: Tensor, metrics: dict[str, Any]) -> None:
+    def _log_stage_metrics(
+        self, stage: str, loss: Tensor, metrics: dict[str, Any]
+    ) -> None:
         prog_bar = stage != "test"
         self.log(f"{stage}/loss", loss, prog_bar=prog_bar)
-        self.log(f"{stage}/pos_error_m", metrics.get("position_error_m", 0), prog_bar=prog_bar)
+        self.log(
+            f"{stage}/pos_error_m",
+            metrics["position_error_m"],
+            prog_bar=prog_bar,
+        )
         self._log_gan_metrics(stage, metrics)
 
     def _metric_tracker_for_stage(self, stage: str) -> BLCSMetrics:
@@ -193,7 +206,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         )
 
         device = next(self.parameters()).device
-        renderer = BLCSSceneRenderer()
+        renderer = BLCSSceneRenderer(style=self.qualitative_rendering.style)
 
         for i, batch in enumerate(batches):
             batch_dev = {
@@ -202,7 +215,9 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             }
 
             with torch.no_grad():
-                out = self._forward_from_batch(batch_dev)
+                out = self._forward_from_batch(
+                    cast("BLCSBatch | BLCSMultiViewBatch", batch_dev)
+                )
 
             gt, pred = batch_to_trajectory_arrays(batch, out, sample_idx=0)
 
@@ -217,5 +232,5 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 tb_writer=tb_writer,
                 tag=f"qualitative/blcs/batch{i:02d}",
                 global_step=global_step,
-                fps=10.0,
+                fps=self.qualitative_rendering.fps,
             )

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from src.tasks.base.visualization.io import BaseSceneBundle, resolve_cameras
-from src.tasks.plcs.generate_dataset.io.dataset_io import load_scene
+from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene
 
 
 @dataclass(frozen=True)
@@ -20,10 +20,10 @@ class SceneBundle(BaseSceneBundle):
 def load_scene_bundle(
     scene_path: Path,
     camera: int,
-    cameras: list[int] | str | None,
+    cameras: tuple[int, ...] | Literal["all"] | None,
 ) -> SceneBundle:
     """Load scene and resolve selected cameras/fps for visualization."""
-    scene = load_scene(scene_path)
+    scene: Any = load_scene(scene_path)
     num_cameras = int(scene.num_cameras)
     selected_cameras = resolve_cameras(
         num_cameras,

@@ -6,7 +6,7 @@ import math
 import random
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
 import torch
 from torch import Tensor
@@ -36,9 +36,10 @@ class Camera:
 
 def make_look_at_camera(
     center: Iterable[float],
-    look_at: Iterable[float] = (0.0, 0.0, 0.5),
-    image_size: tuple[int, int] = (1280, 720),
-    hfov_deg: float = 60.0,
+    *,
+    look_at: Iterable[float],
+    image_size: tuple[int, int],
+    hfov_deg: float,
 ) -> Camera:
     """Create a pinhole camera pointed at ``look_at``.
 
@@ -99,32 +100,26 @@ def project_points(cam: Camera, xyz: Tensor) -> tuple[Tensor, Tensor]:
     return uv, mask
 
 
-def camera_from_mapping(params: _CameraConfigMapping) -> Camera:
+def camera_from_mapping(params: dict[str, Any]) -> Camera:
     """Reconstruct a :class:`Camera` from serialized scene parameters."""
     required = ("C", "R", "f", "cx", "cy", "w", "h")
-    missing = [key for key in required if params.get(key, None) is None]
+    missing = [key for key in required if key not in params or params[key] is None]
     if missing:
         raise KeyError(f"Serialized camera parameters are missing: {missing}")
     return Camera(
-        C=torch.as_tensor(params.get("C"), dtype=torch.float32),
-        R=torch.as_tensor(params.get("R"), dtype=torch.float32),
-        f=float(params.get("f")),
-        cx=float(params.get("cx")),
-        cy=float(params.get("cy")),
-        w=int(params.get("w")),
-        h=int(params.get("h")),
+        C=torch.as_tensor(params["C"], dtype=torch.float32),
+        R=torch.as_tensor(params["R"], dtype=torch.float32),
+        f=float(params["f"]),
+        cx=float(params["cx"]),
+        cy=float(params["cy"]),
+        w=int(params["w"]),
+        h=int(params["h"]),
     )
 
 
 FIXED_LAYOUT = "fixed"
 BROADCAST_LAYOUT = "broadcast"
 SUPPORTED_LAYOUTS = (FIXED_LAYOUT, BROADCAST_LAYOUT)
-
-
-class _CameraConfigMapping(Protocol):
-    """Minimal config interface shared by dict and OmegaConf DictConfig."""
-
-    def get(self, key: str, default: Any = ...) -> Any: ...
 
 
 @dataclass
@@ -136,7 +131,7 @@ class CameraConfig:
 
     Two camera layouts are available, selected by ``layout``:
 
-    - ``"fixed"`` (default): the surveillance-style 6-camera rig
+    - ``"fixed"``: the surveillance-style 6-camera rig
       (4 fence corners + 2 baseline midpoints). See :meth:`CameraProjector.fixed_cameras`.
     - ``"broadcast"``: two TV "high main" cameras, one behind each baseline,
       centred on the court and elevated, looking down the court's length.
@@ -145,31 +140,31 @@ class CameraConfig:
       See :meth:`CameraProjector.broadcast_cameras`.
     """
 
-    z_min: float = 3.0
-    z_max: float = 5.0
-    hfov_deg: float = 60.0
-    image_size: tuple[int, int] = (1280, 720)
-    fixed_look_at: tuple[float, float, float] = (0.0, 0.0, 0.0)
-    fixed_baseline_clear_extra: float = 0.0
-    fixed_position_noise_radius: float = 2.0
-    fixed_look_at_xy_radius: float = 1.0
+    z_min: float
+    z_max: float
+    hfov_deg: float
+    image_size: tuple[int, int]
+    fixed_look_at: tuple[float, float, float]
+    fixed_baseline_clear_extra: float
+    fixed_position_noise_radius: float
+    fixed_look_at_xy_radius: float
 
     # Camera layout selector. See class docstring for supported values.
-    layout: str = FIXED_LAYOUT
+    layout: str
 
     # --- Broadcast ("high main") layout parameters ---------------------
     # Grounded by overlaying the projected court on a real ATP broadcast frame:
     # a distant, elevated telephoto camera ~20 m behind the baseline, ~7 m high,
     # ~35 deg HFOV, framing the whole court with realistic perspective
     # compression.
-    broadcast_setback: float = 20.0  # metres behind the baseline (beyond HALF_LENGTH)
-    broadcast_height: float = 7.0  # camera elevation above the court (m)
-    broadcast_hfov_deg: float = 35.0  # telephoto horizontal FOV (deg)
-    broadcast_look_at_y: float = 0.0  # look-at target Y (0 = court centre)
-    broadcast_look_at_height: float = 0.5  # look-at target Z above the court (m)
-    broadcast_position_noise_radius: float = 1.0  # per-scene center jitter (m)
-    broadcast_look_at_xy_radius: float = 1.0  # per-scene look-at jitter on z=0 plane (m)
-    broadcast_hfov_jitter_deg: float = 2.0  # per-scene zoom (HFOV) jitter (deg)
+    broadcast_setback: float  # metres behind the baseline (beyond HALF_LENGTH)
+    broadcast_height: float  # camera elevation above the court (m)
+    broadcast_hfov_deg: float  # telephoto horizontal FOV (deg)
+    broadcast_look_at_y: float  # look-at target Y (0 = court centre)
+    broadcast_look_at_height: float  # look-at target Z above the court (m)
+    broadcast_position_noise_radius: float  # per-scene center jitter (m)
+    broadcast_look_at_xy_radius: float  # per-scene look-at jitter on z=0 plane (m)
+    broadcast_hfov_jitter_deg: float  # per-scene zoom (HFOV) jitter (deg)
 
     # --- Optional wide per-camera randomization (sim-to-real) -----------
     # When a range is set it replaces the corresponding fixed value above and
@@ -178,84 +173,9 @@ class CameraConfig:
     # u-span as a fraction of image width) and solves the HFOV that realizes
     # it, guaranteeing sane framing across the whole setback/height range;
     # it is mutually exclusive with ``broadcast_hfov_jitter_deg`` > 0.
-    broadcast_setback_range: tuple[float, float] | None = None
-    broadcast_height_range: tuple[float, float] | None = None
-    broadcast_court_width_frac_range: tuple[float, float] | None = None
-
-
-def _optional_range(
-    cfg: _CameraConfigMapping, key: str
-) -> tuple[float, float] | None:
-    """Parse an optional ``[lo, hi]`` range from a camera config mapping."""
-    value = cfg.get(key, None)
-    if value is None:
-        return None
-    lo, hi = (float(v) for v in value)
-    if lo > hi:
-        raise ValueError(f"{key} must satisfy lo <= hi, got [{lo}, {hi}].")
-    return lo, hi
-
-
-def camera_config_from_mapping(cfg: _CameraConfigMapping) -> CameraConfig:
-    """Build a :class:`CameraConfig` from a Hydra/OmegaConf ``camera`` section.
-
-    Centralises the mapping used by both the BLCS and PLCS scene generators so
-    the two do not drift. Any key absent from ``cfg`` falls back to the
-    :class:`CameraConfig` default, which keeps existing ``camera/default.yaml``
-    files (that predate the broadcast-layout fields) working unchanged.
-
-    Args:
-        cfg: A mapping-like config (``dict`` or OmegaConf ``DictConfig``).
-    """
-    if not hasattr(cfg, "get"):
-        raise TypeError(
-            "camera_config_from_mapping expects a mapping-like config with a "
-            f".get() method, got {type(cfg).__name__}."
-        )
-
-    defaults = CameraConfig()
-
-    def _f(key: str, default: float) -> float:
-        return float(cfg.get(key, default))
-
-    return CameraConfig(
-        z_min=_f("z_min", defaults.z_min),
-        z_max=_f("z_max", defaults.z_max),
-        hfov_deg=_f("hfov_deg", defaults.hfov_deg),
-        image_size=tuple(cfg.get("image_size", defaults.image_size)),
-        fixed_look_at=tuple(cfg.get("fixed_look_at", defaults.fixed_look_at)),
-        fixed_baseline_clear_extra=_f(
-            "fixed_baseline_clear_extra", defaults.fixed_baseline_clear_extra
-        ),
-        fixed_position_noise_radius=_f(
-            "fixed_position_noise_radius", defaults.fixed_position_noise_radius
-        ),
-        fixed_look_at_xy_radius=_f(
-            "fixed_look_at_xy_radius", defaults.fixed_look_at_xy_radius
-        ),
-        layout=str(cfg.get("layout", defaults.layout)),
-        broadcast_setback=_f("broadcast_setback", defaults.broadcast_setback),
-        broadcast_height=_f("broadcast_height", defaults.broadcast_height),
-        broadcast_hfov_deg=_f("broadcast_hfov_deg", defaults.broadcast_hfov_deg),
-        broadcast_look_at_y=_f("broadcast_look_at_y", defaults.broadcast_look_at_y),
-        broadcast_look_at_height=_f(
-            "broadcast_look_at_height", defaults.broadcast_look_at_height
-        ),
-        broadcast_position_noise_radius=_f(
-            "broadcast_position_noise_radius", defaults.broadcast_position_noise_radius
-        ),
-        broadcast_look_at_xy_radius=_f(
-            "broadcast_look_at_xy_radius", defaults.broadcast_look_at_xy_radius
-        ),
-        broadcast_hfov_jitter_deg=_f(
-            "broadcast_hfov_jitter_deg", defaults.broadcast_hfov_jitter_deg
-        ),
-        broadcast_setback_range=_optional_range(cfg, "broadcast_setback_range"),
-        broadcast_height_range=_optional_range(cfg, "broadcast_height_range"),
-        broadcast_court_width_frac_range=_optional_range(
-            cfg, "broadcast_court_width_frac_range"
-        ),
-    )
+    broadcast_setback_range: tuple[float, float] | None
+    broadcast_height_range: tuple[float, float] | None
+    broadcast_court_width_frac_range: tuple[float, float] | None
 
 
 @dataclass
@@ -275,10 +195,11 @@ class CameraProjector:
 
     def __init__(
         self,
-        config: CameraConfig | None = None,
-        court_config: CourtConfig | None = None,
+        config: CameraConfig,
+        *,
+        court_config: CourtConfig,
     ) -> None:
-        self.config = config or CameraConfig()
+        self.config = config
         self.court_config = court_config
         self.court_kp_3d = court_keypoints_3d(court_config)
 
@@ -476,9 +397,7 @@ class CameraProjector:
                 f"(center={cam.C.tolist()})."
             )
         f_new = cam.f * (width_frac / span_norm)
-        return Camera(
-            C=cam.C, R=cam.R, f=f_new, cx=cam.cx, cy=cam.cy, w=cam.w, h=cam.h
-        )
+        return Camera(C=cam.C, R=cam.R, f=f_new, cx=cam.cx, cy=cam.cy, w=cam.w, h=cam.h)
 
     def cameras(self) -> list[Camera]:
         """Return the camera rig for the configured ``layout``.
@@ -515,10 +434,7 @@ class CameraProjector:
         uv[:, 1] /= float(camera.h)
 
         in_bounds = (
-            (uv[:, 0] >= 0)
-            & (uv[:, 0] <= 1)
-            & (uv[:, 1] >= 0)
-            & (uv[:, 1] <= 1)
+            (uv[:, 0] >= 0) & (uv[:, 0] <= 1) & (uv[:, 1] >= 0) & (uv[:, 1] <= 1)
         )
         visible = in_bounds & in_front
 

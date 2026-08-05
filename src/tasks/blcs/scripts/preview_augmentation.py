@@ -24,9 +24,7 @@ Notes:
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -38,6 +36,7 @@ from src.tasks.base.preview import (
     enable_all_augmentation_blocks,
     resolve_sample_indices,
 )
+from src.tasks.blcs.configuration import PreviewConfig, parse_preview_config
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
 from src.tasks.blcs.data.dataset import BallTrajectoryDataset
 from src.utils.hydra import hydra_main
@@ -59,16 +58,18 @@ _FIGURE_FACECOLOR = "#101010"
     config_path="../configs",
     config_name="preview_augmentation",
     version_base="1.3",
+    validation_boundary="blcs.preview_augmentation",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
+    preview = parse_preview_config(cfg)
     matplotlib.use("Agg")
-    output_dir = Path(str(cfg.preview.output_dir)).expanduser()
+    output_dir = preview.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    split_name = str(cfg.preview.split)
+    split_name = preview.split
     dataset = BallTrajectoryDataset(
-        scene_dir=str(cfg.data.scene_dir),
+        scene_dir=preview.scene_dir,
         split_file=f"{split_name}.txt",
         config=cfg,
         augment=False,
@@ -77,12 +78,12 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         enable_all_augmentation_blocks(cfg.data.augmentation)
     )
 
-    seed = int(cfg.preview.seed)
-    num_augmented = int(cfg.preview.num_augmented)
-    if num_augmented < 1:
-        raise ValueError("preview.num_augmented must be >= 1.")
+    seed = preview.seed
+    num_augmented = preview.num_augmented
 
-    sample_indices = resolve_sample_indices(cfg, dataset_size=len(dataset), min_samples=1)
+    sample_indices = resolve_sample_indices(
+        cfg, dataset_size=len(dataset), min_samples=1
+    )
     manifest: list[dict[str, Any]] = []
     for sample_index in sample_indices:
         # Seed the scene RNG so camera selection and the (center) window draw
@@ -100,11 +101,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             base_sample=base_sample,
             variants=variants,
             scene_name=scene_name,
-            cfg=cfg,
+            config=preview,
         )
         file_stem = f"{sample_index:06d}_{scene_name}"
         image_path = output_dir / f"{file_stem}.png"
-        figure.savefig(image_path, dpi=int(cfg.preview.figure.dpi))
+        figure.savefig(image_path, dpi=preview.dpi)
         plt.close(figure)
 
         metadata = {
@@ -140,19 +141,17 @@ def _render_contact_sheet(
     base_sample: BLCSMultiViewSample,
     variants: list[BLCSMultiViewSample],
     scene_name: str,
-    cfg: DictConfig,
+    config: PreviewConfig,
 ) -> Figure:
     """Compose a (1 + num_augmented) x num_cameras grid of camera views."""
-    num_cameras = min(
-        int(base_sample["ball_uv"].shape[0]), int(cfg.preview.max_cameras)
-    )
+    num_cameras = min(int(base_sample["ball_uv"].shape[0]), config.max_cameras)
     rows: list[tuple[str, BLCSMultiViewSample]] = [("original", base_sample)]
     rows.extend(
         (f"augmented #{index}", variant) for index, variant in enumerate(variants)
     )
 
-    panel_width = float(cfg.preview.figure.panel_width)
-    panel_height = float(cfg.preview.figure.panel_height)
+    panel_width = config.panel_width
+    panel_height = config.panel_height
     figure, axes = plt.subplots(
         len(rows),
         num_cameras,
@@ -173,9 +172,7 @@ def _render_contact_sheet(
                 court_renderer=court_renderer,
                 ball_renderer=ball_renderer,
             )
-            ax.set_title(
-                f"cam {camera_index} | {row_title}", color="white", fontsize=9
-            )
+            ax.set_title(f"cam {camera_index} | {row_title}", color="white", fontsize=9)
 
     seq_len = int(base_sample["ball_uv"].shape[1])
     figure.suptitle(
@@ -183,7 +180,8 @@ def _render_contact_sheet(
         color="white",
     )
     figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.96))
-    return cast("Figure", figure)
+    rendered: Figure = figure
+    return rendered
 
 
 def _render_camera_view(
@@ -224,4 +222,4 @@ def _render_camera_view(
 
 
 if __name__ == "__main__":
-    sys.exit(cast(Callable[[], int], main)())
+    sys.exit(main())

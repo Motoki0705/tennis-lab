@@ -7,17 +7,15 @@ from pathlib import Path
 
 import torch
 
-from src.submodules.models._base import BaseInferenceModel
-from src.submodules.vendor.gvhmr.body_model import (
-    SMPLX2SMPL_SPARSE_PATH,
-    make_smplx,
+from src.submodules.configuration import (
+    BundledModelAssetPaths,
+    require_absolute_path,
 )
+from src.submodules.models._base import BaseInferenceModel
+from src.submodules.vendor.gvhmr.body_model import make_smplx
 from src.submodules.vendor.gvhmr.pipeline import GvhmrDemoModel, build_gvhmr_demo_model
 from src.submodules.vendor.gvhmr.utils.geo_transform import compute_cam_angvel
 from src.submodules.vendor.gvhmr.utils.hmr_cam import estimate_K
-from src.utils.paths import PROJECT_ROOT
-
-DEFAULT_GVHMR_CHECKPOINT = PROJECT_ROOT / "ckpt/gvhmr/gvhmr_siga24_release.ckpt"
 
 
 @dataclass(frozen=True)
@@ -42,9 +40,9 @@ class GvhmrRequest:
     f_imgseq: torch.Tensor
     width: int
     height: int
+    static_cam: bool
     K_fullimg: torch.Tensor | None = None
     R_w2c: torch.Tensor | None = None
-    static_cam: bool = True
 
 
 @dataclass(frozen=True)
@@ -70,17 +68,32 @@ class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
 
     def __init__(
         self,
-        checkpoint: str | Path = DEFAULT_GVHMR_CHECKPOINT,
-        device: str | torch.device = "auto",
+        checkpoint: str | Path,
+        body_models_dir: str | Path,
+        *,
+        device: str | torch.device,
+        allow_device_fallback: bool,
+        bundled_assets: BundledModelAssetPaths,
     ) -> None:
-        super().__init__(device)
-        self.checkpoint = Path(checkpoint)
+        super().__init__(device, allow_device_fallback=allow_device_fallback)
+        self.checkpoint = require_absolute_path(checkpoint, name="GVHMR checkpoint")
+        self.body_models_dir = require_absolute_path(
+            body_models_dir, name="GVHMR body-model directory"
+        )
+        if not isinstance(bundled_assets, BundledModelAssetPaths):
+            raise TypeError("bundled_assets must be BundledModelAssetPaths.")
+        bundled_assets.require_files()
+        self.bundled_assets = bundled_assets
         self._model: GvhmrDemoModel | None = None
 
     def _load_impl(self) -> None:
         if not self.checkpoint.exists():
             raise FileNotFoundError(f"GVHMR checkpoint not found: {self.checkpoint}")
-        model = build_gvhmr_demo_model(str(self.checkpoint))
+        model = build_gvhmr_demo_model(
+            checkpoint_path=self.checkpoint,
+            body_models_dir=self.body_models_dir,
+            bundled_assets=self.bundled_assets,
+        )
         self._model = model.eval().to(self._device)
 
     def _unload_impl(self) -> None:
@@ -130,26 +143,43 @@ class SmplVertexReconstructor:
 
     def __init__(
         self,
-        device: str | torch.device = "auto",
-        body_models_dir: str | Path | None = None,
+        body_models_dir: str | Path,
+        *,
+        device: str | torch.device,
+        allow_device_fallback: bool,
+        bundled_assets: BundledModelAssetPaths,
     ) -> None:
         from src.utils.device import resolve_device
 
-        self._device = resolve_device(device)
-        self._body_models_dir = body_models_dir
+        if type(allow_device_fallback) is not bool:
+            raise TypeError("allow_device_fallback must be a bool.")
+        self._device = resolve_device(
+            device,
+            allow_fallback=allow_device_fallback,
+        )
+        self._body_models_dir = require_absolute_path(
+            body_models_dir, name="SMPL-X body-model directory"
+        )
+        if not isinstance(bundled_assets, BundledModelAssetPaths):
+            raise TypeError("bundled_assets must be BundledModelAssetPaths.")
+        bundled_assets.require_files()
+        self._bundled_assets = bundled_assets
         self._smplx: torch.nn.Module | None = None
         self._smplx2smpl: torch.Tensor | None = None
 
     def _ensure_loaded(self) -> None:
         if self._smplx is not None:
             return
-        kwargs: dict[str, object] = {}
-        if self._body_models_dir is not None:
-            kwargs["model_path"] = Path(self._body_models_dir)
-        smplx = make_smplx("supermotion", **kwargs)
+        smplx = make_smplx(
+            "supermotion",
+            model_path=self._body_models_dir,
+            bundled_assets=self._bundled_assets,
+        )
         self._smplx = smplx.to(self._device).eval()
         smplx2smpl = torch.load(
-            SMPLX2SMPL_SPARSE_PATH, map_location="cpu", weights_only=False
+            self._bundled_assets.smplx_to_smpl,
+            map_location="cpu",
+            weights_only=False,
         )
         if not isinstance(smplx2smpl, torch.Tensor):
             smplx2smpl = torch.as_tensor(smplx2smpl)

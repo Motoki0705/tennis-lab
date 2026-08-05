@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import torch
+from omegaconf import OmegaConf
 
 from src.tasks.base.generate_dataset.timeline_composer import TimelineConfig
 from src.tasks.plcs.data.tracking_dataset import PLCSTrackingDataset
@@ -11,6 +14,69 @@ from src.tasks.plcs.generate_dataset.multi_object_scene_generator import (
 )
 from src.tasks.plcs.generate_dataset.scene_generator import CameraData, SceneData
 from src.utils.projection.camera_projector import CameraConfig, CameraProjector
+from src.utils.schema.court import NET_POST_OFFSET_X, CourtConfig
+
+_AUGMENTATION_CONFIG = (
+    Path(__file__).resolve().parents[5]
+    / "src/tasks/plcs/configs/data/_augmentation.yaml"
+)
+
+
+def _camera_config() -> CameraConfig:
+    return CameraConfig(
+        z_min=3.0,
+        z_max=5.0,
+        hfov_deg=60.0,
+        image_size=(1280, 720),
+        fixed_look_at=(0.0, 0.0, 0.0),
+        fixed_baseline_clear_extra=0.0,
+        fixed_position_noise_radius=0.0,
+        fixed_look_at_xy_radius=0.0,
+        layout="fixed",
+        broadcast_setback=20.0,
+        broadcast_height=7.0,
+        broadcast_hfov_deg=35.0,
+        broadcast_look_at_y=0.0,
+        broadcast_look_at_height=0.5,
+        broadcast_position_noise_radius=1.0,
+        broadcast_look_at_xy_radius=1.0,
+        broadcast_hfov_jitter_deg=2.0,
+        broadcast_setback_range=None,
+        broadcast_height_range=None,
+        broadcast_court_width_frac_range=None,
+    )
+
+
+def _timeline(*, min_tracks: int = 2) -> TimelineConfig:
+    return TimelineConfig(
+        num_frames=12,
+        min_tracks=min_tracks,
+        max_tracks=2,
+        max_concurrent=2,
+        min_reuse_gap_frames=4,
+        start_index_range=(-2, 8),
+        min_active_frames=2,
+        overlap_probability=0.5,
+        min_gap_frames=1,
+        max_gap_frames=3,
+    )
+
+
+def _tracking_config() -> dict[str, object]:
+    return {
+        "data": {
+            "seq_len_range": [12, 12],
+            "num_views_range": [6, 6],
+            "camera_mode": "first",
+            "lifecycle": {
+                "pack_to_query_slots": True,
+                "min_reuse_gap_frames": 0,
+                "randomize_slots_train": False,
+            },
+            "augmentation": OmegaConf.load(_AUGMENTATION_CONFIG).augmentation,
+        },
+        "model": {"num_queries": 2},
+    }
 
 
 class _MotionSceneStub:
@@ -18,7 +84,11 @@ class _MotionSceneStub:
 
     def __init__(self) -> None:
         self.camera_projector = CameraProjector(
-            CameraConfig(fixed_position_noise_radius=0.0, fixed_look_at_xy_radius=0.0)
+            _camera_config(),
+            court_config=CourtConfig(
+                net_post_offset_x=NET_POST_OFFSET_X,
+                net_post_offset_x_range=None,
+            ),
         )
         self.calls = 0
 
@@ -86,17 +156,7 @@ class _MotionSceneStub:
 def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     scene = MultiPersonSceneGenerator(
         _MotionSceneStub(),
-        timeline=TimelineConfig(
-            num_frames=12,
-            min_tracks=2,
-            max_tracks=2,
-            max_concurrent=2,
-            start_index_range=(-2, 8),
-            min_active_frames=2,
-            overlap_probability=0.5,
-            min_gap_frames=1,
-            max_gap_frames=3,
-        ),
+        timeline=_timeline(),
     ).generate_scene("scene_000000")
     assert scene.num_persons == 2
     assert scene.person_present is not None
@@ -106,23 +166,16 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
     assert len(scene.track_instances) == 2
     assert not scene.cameras[0].human_kp_visible[~scene.person_present].any()
 
-    writer = PLCSDatasetWriter(tmp_path)
+    dataset_root = tmp_path / "dataset"
+    writer = PLCSDatasetWriter(dataset_root)
     scene_path = writer.save_scene(scene)
-    (tmp_path / "train.txt").write_text("scene_000000\n")
+    (dataset_root / "train.txt").write_text("scene_000000\n")
     assert (scene_path / "position.npy").exists()
     assert (scene_path / "cam_0_human_kp_uv.npy").exists()
     sample = PLCSTrackingDataset(
-        scene_dir=tmp_path,
+        scene_dir=dataset_root,
         split_file="train.txt",
-        config={
-            "data": {
-                "seq_len_range": [12, 12],
-                "num_views_range": [6, 6],
-                "camera_mode": "first",
-                "lifecycle": {"min_reuse_gap_frames": 0},
-            },
-            "model": {"num_queries": 2},
-        },
+        config=_tracking_config(),
     )[0]
     assert sample["human_kp"].shape[:4] == (6, 12, 2, 17)
     assert "bbox" not in sample
@@ -141,4 +194,4 @@ def test_multi_person_uses_motion_scenes_and_canonical_writer(tmp_path) -> None:
 
 def test_invalid_person_cardinality_is_rejected() -> None:
     with np.testing.assert_raises(ValueError):
-        TimelineConfig(min_tracks=0)
+        _timeline(min_tracks=0)

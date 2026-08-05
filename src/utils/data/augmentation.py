@@ -6,8 +6,8 @@ and other modules to avoid code duplication.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 import torch
@@ -18,25 +18,6 @@ IMAGENET_STD: tuple[float, float, float] = (0.229, 0.224, 0.225)
 # float32 array views with identical values, for numpy-based normalization paths.
 _IMAGENET_MEAN_ARR = np.asarray(IMAGENET_MEAN, dtype=np.float32)
 _IMAGENET_STD_ARR = np.asarray(IMAGENET_STD, dtype=np.float32)
-
-
-def _as_dict(value: Any) -> dict[str, Any]:
-    """Convert plain dicts or DictConfig-like objects into a shallow dict."""
-    if value is None:
-        return {}
-    if isinstance(value, Mapping):
-        return dict(value)
-    if hasattr(value, "items"):
-        return dict(value.items())
-    return {}
-
-
-def _enabled(config: Mapping[str, Any], *, default: bool = False) -> bool:
-    return bool(config.get("enabled", default))
-
-
-def _prob(config: Mapping[str, Any], *, default: float = 1.0) -> float:
-    return float(config.get("prob", default))
 
 
 def _should_apply(prob: float, reference: Tensor) -> bool:
@@ -123,7 +104,8 @@ def tensor_images_to_uint8_rgb(images: Tensor) -> np.ndarray:
             f"got {tuple(images.shape)}."
         )
     array = images.detach().cpu().float().clamp(0.0, 1.0).movedim(-3, -1).numpy()
-    return cast("np.ndarray", (array * 255.0).astype(np.uint8))
+    rgb: np.ndarray = (array * 255.0).astype(np.uint8)
+    return rgb
 
 
 def normalize_frames_imagenet(
@@ -188,7 +170,9 @@ def _validate_uv_tensor(uv: Tensor) -> None:
 def _validate_temporal_uv_tensor(uv: Tensor) -> None:
     _validate_uv_tensor(uv)
     if uv.ndim < 2:
-        raise ValueError(f"uv must include a temporal dimension, got {tuple(uv.shape)}.")
+        raise ValueError(
+            f"uv must include a temporal dimension, got {tuple(uv.shape)}."
+        )
 
 
 def scale_uv_with_visibility(
@@ -271,11 +255,14 @@ def random_visibility_dropout(
     if drop_prob <= 0:
         return visibility
 
-    drop_mask = _rand_like_shape(
-        visibility,
-        visibility.shape,
-        generator=generator,
-    ) < drop_prob
+    drop_mask = (
+        _rand_like_shape(
+            visibility,
+            visibility.shape,
+            generator=generator,
+        )
+        < drop_prob
+    )
     return _update_visibility_from_mask(visibility, ~drop_mask)
 
 
@@ -379,7 +366,9 @@ def apply_burst_visibility_dropout(
                     generator=generator,
                 ).item()
             )
-            flat[track, start : start + burst_len] = False if out.dtype == torch.bool else 0.0
+            flat[track, start : start + burst_len] = (
+                False if out.dtype == torch.bool else 0.0
+            )
     return out
 
 
@@ -431,9 +420,13 @@ def inject_false_positive_observations(
     if after_dropout_mask is not None and after_dropout_prob > 0:
         near_dropout = dilate_temporal_mask(after_dropout_mask, after_dropout_window)
         fp_mask |= (
-            _rand_like_shape(visibility, visibility.shape, generator=generator)
-            < after_dropout_prob
-        ) & absent & near_dropout
+            (
+                _rand_like_shape(visibility, visibility.shape, generator=generator)
+                < after_dropout_prob
+            )
+            & absent
+            & near_dropout
+        )
 
     if not fp_mask.any():
         return uv, visibility
@@ -546,8 +539,10 @@ def apply_speed_conditioned_localization_error(
 
     visible = visibility > 0
     apply_mask = (
-        _rand_like_shape(visibility, visibility.shape, generator=generator) < prob
-    ) & speed_mask & visible
+        (_rand_like_shape(visibility, visibility.shape, generator=generator) < prob)
+        & speed_mask
+        & visible
+    )
     if not apply_mask.any():
         return uv, visibility
 

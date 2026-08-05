@@ -1,8 +1,10 @@
 defaults:
+  - paths: default
   - model: track_query
   - data: tracking_chunked
   - training: default
   - loss: tracking
+  - tracking_metrics: default
   - run: train
   - generation: multi_object
   - physics: default
@@ -29,7 +31,7 @@ training:
 
 hydra:
   run:
-    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
   output_subdir: null
   job:
     chdir: false

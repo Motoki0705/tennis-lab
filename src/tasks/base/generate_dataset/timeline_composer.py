@@ -25,16 +25,16 @@ from torch import Tensor
 class TimelineConfig:
     """Validated common BLCS/PLCS lifecycle generation schema."""
 
-    num_frames: int = 1024
-    min_tracks: int = 3
-    max_tracks: int = 10
-    max_concurrent: int = 4
-    min_reuse_gap_frames: int = 4
-    start_index_range: tuple[int, int] = (-128, 992)
-    min_active_frames: int = 32
-    overlap_probability: float = 0.3
-    min_gap_frames: int = 8
-    max_gap_frames: int = 256
+    num_frames: int
+    min_tracks: int
+    max_tracks: int
+    max_concurrent: int
+    min_reuse_gap_frames: int
+    start_index_range: tuple[int, int]
+    min_active_frames: int
+    overlap_probability: float
+    min_gap_frames: int
+    max_gap_frames: int
 
     def __post_init__(self) -> None:
         if self.num_frames <= 0:
@@ -44,17 +44,13 @@ class TimelineConfig:
                 "timeline track count must satisfy 1 <= min_tracks <= max_tracks."
             )
         if self.max_concurrent <= 0 or self.max_concurrent > self.max_tracks:
-            raise ValueError(
-                "timeline.max_concurrent must be in [1, max_tracks]."
-            )
+            raise ValueError("timeline.max_concurrent must be in [1, max_tracks].")
         if self.min_reuse_gap_frames < 0:
             raise ValueError("timeline.min_reuse_gap_frames must be non-negative.")
         if self.start_index_range[0] > self.start_index_range[1]:
             raise ValueError("timeline.start_index_range must be increasing.")
         if self.min_active_frames <= 0 or self.min_active_frames > self.num_frames:
-            raise ValueError(
-                "timeline.min_active_frames must be in [1, num_frames]."
-            )
+            raise ValueError("timeline.min_active_frames must be in [1, num_frames].")
         if not 0.0 <= self.overlap_probability <= 1.0:
             raise ValueError("timeline.overlap_probability must be in [0, 1].")
         if self.min_gap_frames < 0 or self.max_gap_frames < self.min_gap_frames:
@@ -217,12 +213,16 @@ class TimelineComposer:
     ) -> TimelineComposition:
         """Sample a valid global placement for the supplied source tracks."""
         if len(source_scene_ids) != len(source_lengths):
-            raise ValueError("source_scene_ids and source_lengths must have equal length.")
+            raise ValueError(
+                "source_scene_ids and source_lengths must have equal length."
+            )
         if not self.config.min_tracks <= len(source_lengths) <= self.config.max_tracks:
             raise ValueError(
                 "Number of source tracks must be within timeline min/max_tracks."
             )
-        if any(int(length) < self.config.min_active_frames for length in source_lengths):
+        if any(
+            int(length) < self.config.min_active_frames for length in source_lengths
+        ):
             raise ValueError(
                 "Every source track must contain at least timeline.min_active_frames."
             )
@@ -250,7 +250,7 @@ class TimelineComposer:
                         self.config.num_frames,
                         placement.death_frame + self.config.min_reuse_gap_frames,
                     )
-                    slot_occupancy[placement.birth_frame:occupied_until] += 1
+                    slot_occupancy[placement.birth_frame : occupied_until] += 1
             except RuntimeError as error:
                 last_error = error
                 continue
@@ -347,9 +347,7 @@ class TimelineComposer:
             if lower <= upper:
                 return self.rng.randint(lower, upper)
 
-        gap = self.rng.randint(
-            self.config.min_gap_frames, self.config.max_gap_frames
-        )
+        gap = self.rng.randint(self.config.min_gap_frames, self.config.max_gap_frames)
         if self.rng.random() < 0.5:
             return min(start_max, anchor.death_frame + gap)
         return max(start_min, anchor.birth_frame - gap - source_length)
@@ -393,7 +391,7 @@ class TimelineComposer:
             self.config.num_frames,
             placement.death_frame + self.config.min_reuse_gap_frames,
         )
-        interval = slot_occupancy[placement.birth_frame:occupied_until]
+        interval = slot_occupancy[placement.birth_frame : occupied_until]
         return bool(np.all(interval < self.config.max_concurrent))
 
 

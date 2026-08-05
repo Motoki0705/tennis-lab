@@ -17,9 +17,10 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import numpy as np
+from numpy.typing import NDArray
 
 from src.utils.schema.court import (
     CENTER_MARK_LENGTH,
@@ -28,6 +29,7 @@ from src.utils.schema.court import (
     HALF_LENGTH,
     NET_HEIGHT_CENTER,
     NET_HEIGHT_POST,
+    STANDARD_COURT_CONFIG,
     court_keypoints_3d,
     net_height_at_x,
 )
@@ -131,7 +133,7 @@ class CourtLines:
 
         """
         # Get 3D keypoints from shared geometry definition
-        pts = court_keypoints_3d().numpy()  # (20, 3)
+        pts = court_keypoints_3d(STANDARD_COURT_CONFIG).numpy()  # (20, 3)
 
         segments = []
 
@@ -141,18 +143,20 @@ class CourtLines:
             # Skip if either keypoint is part of the net structure (14..19)
             if i >= 14 or j >= 14:
                 continue
-            
+
             p1 = pts[i]
             p2 = pts[j]
-            segments.append(((float(p1[0]), float(p1[1])), (float(p2[0]), float(p2[1]))))
+            segments.append(
+                ((float(p1[0]), float(p1[1])), (float(p2[0]), float(p2[1])))
+            )
 
         # 2. Add Center Marks (not in COURT_SKELETON but needed for rendering)
         # Center mark is a small line extending from baseline inward
         # Coordinates: (0, +/-HALF_LENGTH) to (0, +/-HALF_LENGTH -/+ CENTER_MARK_LENGTH)
-        
+
         # Far center mark
         segments.append(((0.0, HALF_LENGTH), (0.0, HALF_LENGTH - CENTER_MARK_LENGTH)))
-        
+
         # Near center mark
         segments.append(((0.0, -HALF_LENGTH), (0.0, -HALF_LENGTH + CENTER_MARK_LENGTH)))
 
@@ -402,7 +406,9 @@ class CourtRenderer:
                     continue
 
                 alpha = visible_line_alpha
-                if partial_line_alpha is not None and not (visibility[i] and visibility[j]):
+                if partial_line_alpha is not None and not (
+                    visibility[i] and visibility[j]
+                ):
                     alpha = partial_line_alpha
 
                 (x0, y0), (x1, y1) = clipped
@@ -586,11 +592,13 @@ class CourtRenderer:
         # Horizontal strands: full width below the centre-strap height, split
         # into the two outer sections where the sag drops below the strand.
         sag_range = NET_HEIGHT_POST - NET_HEIGHT_CENTER
-        for h in np.arange(_NET_STRAND_SPACING_Z, NET_HEIGHT_POST, _NET_STRAND_SPACING_Z):
+        for h in np.arange(
+            _NET_STRAND_SPACING_Z, NET_HEIGHT_POST, _NET_STRAND_SPACING_Z
+        ):
             if h <= NET_HEIGHT_CENTER:
                 spans = [(-HALF_DOUBLES_WIDTH, HALF_DOUBLES_WIDTH)]
             else:
-                x_h = HALF_DOUBLES_WIDTH * (h - NET_HEIGHT_CENTER) / sag_range
+                x_h = float(HALF_DOUBLES_WIDTH * (h - NET_HEIGHT_CENTER) / sag_range)
                 spans = [(-HALF_DOUBLES_WIDTH, -x_h), (x_h, HALF_DOUBLES_WIDTH)]
             for x0, x1 in spans:
                 ax.plot(
@@ -613,10 +621,17 @@ class CourtRenderer:
             alpha=0.9,
             zorder=3,
         )
-        ax.plot(x_top, np.zeros_like(x_top), z_top, color=style.band_color, linewidth=2, zorder=3)
+        ax.plot(
+            x_top,
+            np.zeros_like(x_top),
+            z_top,
+            color=style.band_color,
+            linewidth=2,
+            zorder=3,
+        )
 
         # Net posts (CourtKP20 indices 15..18) and centre strap (14 -> 19).
-        kp = court_keypoints_3d().numpy()
+        kp = court_keypoints_3d(STANDARD_COURT_CONFIG).numpy()
         for base_idx, top_idx in ((15, 16), (17, 18)):
             base, top = kp[base_idx], kp[top_idx]
             ax.plot(
@@ -638,7 +653,7 @@ class CourtRenderer:
             zorder=3,
         )
 
-    def get_court_keypoints_3d(self) -> np.ndarray:
+    def get_court_keypoints_3d(self) -> NDArray[np.float32]:
         """Get 3D coordinates of standard court keypoints (CourtKP20).
 
         Returns CourtKP20 keypoints as defined in `src.utils.schema.court.court_keypoints_3d()`
@@ -656,4 +671,7 @@ class CourtRenderer:
             Array of shape (20, 3) containing CourtKP20 keypoint positions in meters.
 
         """
-        return cast(np.ndarray, np.asarray(court_keypoints_3d().cpu().numpy(), dtype=np.float32))
+        return np.asarray(
+            court_keypoints_3d(STANDARD_COURT_CONFIG).cpu().numpy(),
+            dtype=np.float32,
+        )

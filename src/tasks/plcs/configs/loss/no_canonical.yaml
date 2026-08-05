@@ -1,4 +1,7 @@
 # PLCS loss configuration WITHOUT canonical-pose supervision.
+defaults:
+  - _base
+  - _self_
 # Use with models where model.predict_canonical_pose: false (the default).
 # Only position + rotation are supervised; the pose-naturalness terms require a
 # canonical pose and are therefore omitted here (left at their 0.0 default).

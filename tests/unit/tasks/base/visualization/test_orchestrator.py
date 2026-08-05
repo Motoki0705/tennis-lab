@@ -1,46 +1,103 @@
-"""Unit tests for visualization orchestration parsing helpers."""
+"""Unit tests for the canonical shared visualization configuration contract."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-from src.tasks.base.visualization.orchestrator import parse_cameras, resolve_device
+from src.tasks.base.configuration import SceneVisualizationConfig
+from src.utils.configuration import (
+    ConfigurationTypeError,
+    MissingConfigurationKeyError,
+    PathResolver,
+    RuntimePathRoots,
+    SemanticConfigurationError,
+    UnknownConfigurationKeyError,
+)
 
 pytestmark = pytest.mark.unit
 
 
-@pytest.mark.parametrize("raw", [None, "", "   "])
-def test_parse_cameras_empty_returns_none(raw) -> None:
-    assert parse_cameras(raw) is None
+def _resolver(tmp_path: Path) -> PathResolver:
+    roots = RuntimePathRoots.from_mapping(
+        {
+            "project_root": ".",
+            "data_root": "data",
+            "checkpoint_root": "checkpoints",
+            "artifact_root": "artifacts",
+            "output_root": "outputs",
+            "cache_root": ".cache",
+            "external_asset_root": "external",
+        },
+        repository_root=tmp_path,
+    )
+    return PathResolver(roots)
 
 
-def test_parse_cameras_all_keyword() -> None:
-    assert parse_cameras("all") == "all"
-    assert parse_cameras("  all  ") == "all"
+def _visualization_config(**overrides: object) -> dict[str, object]:
+    config: dict[str, object] = {
+        "mode": "prediction",
+        "scene_path": "scenes/scene_0001",
+        "checkpoint": None,
+        "device": "cpu",
+        "animation_view": "3d",
+        "fps": 30.0,
+        "save": None,
+        "camera": 0,
+        "cameras": None,
+        "info": False,
+        "style": {},
+        "view_3d": {},
+    }
+    config.update(overrides)
+    return config
 
 
-def test_parse_cameras_comma_string() -> None:
-    assert parse_cameras("0,1,2") == [0, 1, 2]
-    assert parse_cameras(" 3 , 4 ") == [3, 4]
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (None, None),
+        ("all", "all"),
+        ("0,1,2", (0, 1, 2)),
+        ([0, 2, 5], (0, 2, 5)),
+        ((1, 3), (1, 3)),
+    ],
+)
+def test_camera_selection_uses_typed_canonical_contract(
+    tmp_path: Path,
+    raw: object,
+    expected: tuple[int, ...] | str | None,
+) -> None:
+    parsed = SceneVisualizationConfig.from_mapping(
+        _visualization_config(cameras=raw), resolver=_resolver(tmp_path)
+    )
+    assert parsed.cameras == expected
 
 
-def test_parse_cameras_iterable() -> None:
-    assert parse_cameras([0, 2, 5]) == [0, 2, 5]
-    assert parse_cameras((1, 3)) == [1, 3]
+def test_invalid_camera_string_raises(tmp_path: Path) -> None:
+    with pytest.raises(SemanticConfigurationError, match="comma-separated integers"):
+        SceneVisualizationConfig.from_mapping(
+            _visualization_config(cameras="a,b"), resolver=_resolver(tmp_path)
+        )
 
 
-def test_parse_cameras_invalid_string_raises() -> None:
-    with pytest.raises(ValueError):
-        parse_cameras("a,b")
+def test_camera_list_rejects_non_exact_int(tmp_path: Path) -> None:
+    with pytest.raises(ConfigurationTypeError, match="exact int"):
+        SceneVisualizationConfig.from_mapping(
+            _visualization_config(cameras=[0, True]), resolver=_resolver(tmp_path)
+        )
 
 
-def test_resolve_device_explicit_passthrough() -> None:
-    assert resolve_device("cpu") == "cpu"
-    assert resolve_device("cuda:1") == "cuda:1"
+def test_missing_camera_key_raises(tmp_path: Path) -> None:
+    config = _visualization_config()
+    del config["cameras"]
+    with pytest.raises(MissingConfigurationKeyError, match="visualization.cameras"):
+        SceneVisualizationConfig.from_mapping(config, resolver=_resolver(tmp_path))
 
 
-def test_resolve_device_auto_returns_valid_device() -> None:
-    import torch
-
-    expected = "cuda" if torch.cuda.is_available() else "cpu"
-    assert resolve_device("auto") == expected
+def test_removed_or_unknown_key_raises(tmp_path: Path) -> None:
+    with pytest.raises(UnknownConfigurationKeyError, match="visualization.camera_ids"):
+        SceneVisualizationConfig.from_mapping(
+            _visualization_config(camera_ids=[0, 1]), resolver=_resolver(tmp_path)
+        )

@@ -3,26 +3,22 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Literal
+from typing import Literal, cast
 
 from torch import Tensor, nn
 
+from src.tasks.blcs.configuration import AxialModelConfig
 from src.tasks.blcs.models.components.heads import Trajectory3DHead, VelocityHead
 from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    default_ffn_dim,
     precompute_freqs_cis_nd,
-    resolve_rope_bases,
+    resolve_axial_rope_bases,
 )
 from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
 from src.utils.models.components.ops.time_local import build_local_attention_keep_mask
 from src.utils.models.embeddings import CourtBallGroupEmbedding, InvisibleTokenEmbedding
-from src.utils.schema.court import NUM_COURT_KP
-
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
 
 
 class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
@@ -30,44 +26,39 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
 
     def __init__(
         self,
-        hidden_dim: int = 256,
-        num_heads: int = 8,
-        attention_type: Literal["mha", "gqa"] = "mha",
-        num_kv_heads: int | None = None,
-        ffn_dim: int | None = None,
-        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
-        dropout: float = 0.1,
-        rope_dim: int | None = None,
-        rope_theta: float = 10000.0,
-        rope_theta_time: float | None = None,
-        rope_theta_camera: float | None = None,
-        num_layers: int = 4,
-        predict_velocity: bool = False,
-        max_seq_len: int = 120,
-        max_num_cameras: int = 8,
-        invisible_init_std: float = 0.02,
-        num_court_tokens: int = NUM_COURT_KP,
-        time_window_radius: int = 16,
-        camera_layers_per_stage: Sequence[int] | None = None,
-        time_layers_per_stage: Sequence[int] | None = None,
-        time_global_stage_mask: Sequence[bool] | None = None,
+        *,
+        hidden_dim: int,
+        num_heads: int,
+        attention_type: Literal["mha", "gqa"],
+        num_kv_heads: int | None,
+        ffn_dim: int,
+        ffn_type: Literal["swiglu", "mlp"],
+        dropout: float,
+        rope_dim: int,
+        rope_theta_time: float,
+        rope_theta_camera: float,
+        num_layers: int,
+        predict_velocity: bool,
+        max_seq_len: int,
+        max_num_cameras: int,
+        invisible_init_std: float,
+        num_court_tokens: int,
+        time_window_radius: int,
+        camera_layers_per_stage: Sequence[int],
+        time_layers_per_stage: Sequence[int],
+        time_global_stage_mask: Sequence[bool],
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
         num_layers = int(num_layers)
         camera_layers_per_stage = self._normalize_stage_ints(
             camera_layers_per_stage,
-            num_layers=num_layers,
-            default_value=1,
         )
         time_layers_per_stage = self._normalize_stage_ints(
             time_layers_per_stage,
-            num_layers=num_layers,
-            default_value=1,
         )
         time_global_stage_mask = self._normalize_stage_mask(
             time_global_stage_mask,
-            num_layers=num_layers,
         )
 
         self._validate_init_args(
@@ -96,18 +87,13 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             )
 
         head_dim = self.hidden_dim // num_heads
-        rope_dim = head_dim if rope_dim is None else int(rope_dim)
         self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
 
         self.rope_dim = int(rope_dim)
-        self.rope_bases = resolve_rope_bases(
-            rope_theta,
-            rope_theta_time,
-            rope_theta_camera,
+        self.rope_bases = resolve_axial_rope_bases(
+            rope_theta_time=rope_theta_time,
+            rope_theta_camera=rope_theta_camera,
         )
-
-        if ffn_dim is None:
-            ffn_dim = default_ffn_dim(self.hidden_dim)
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
@@ -235,44 +221,37 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 f"{len(time_global_stage_mask)} and {num_layers}"
             )
         if any(layer_count <= 0 for layer_count in camera_layers_per_stage):
-            raise ValueError("camera_layers_per_stage must contain only positive integers")
+            raise ValueError(
+                "camera_layers_per_stage must contain only positive integers"
+            )
         if any(layer_count <= 0 for layer_count in time_layers_per_stage):
-            raise ValueError("time_layers_per_stage must contain only positive integers")
+            raise ValueError(
+                "time_layers_per_stage must contain only positive integers"
+            )
 
     @staticmethod
     def _normalize_stage_ints(
-        values: Sequence[int] | None,
-        *,
-        num_layers: int,
-        default_value: int,
+        values: Sequence[int],
     ) -> tuple[int, ...]:
-        if values is None:
-            return tuple(default_value for _ in range(num_layers))
         return tuple(int(value) for value in values)
 
     @staticmethod
     def _normalize_stage_mask(
-        values: Sequence[bool] | None,
-        *,
-        num_layers: int,
+        values: Sequence[bool],
     ) -> tuple[bool, ...]:
-        if values is None:
-            return tuple(False for _ in range(num_layers))
         return tuple(bool(value) for value in values)
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> BLCSMultiViewAxialModel:
+    def from_config(cls, config: AxialModelConfig) -> BLCSMultiViewAxialModel:
         """Create model from Hydra/OmegaConf config."""
-        model_cfg = config.get("model", {})
-        data_cfg = config.get("data", {})
-        raw_attention_type = str(model_cfg.get("attention_type", "mha"))
+        raw_attention_type = config.attention_type
         if raw_attention_type == "mha":
             attention_type: Literal["mha", "gqa"] = "mha"
         elif raw_attention_type == "gqa":
             attention_type = "gqa"
         else:
             raise ValueError(f"Unsupported attention_type={raw_attention_type!r}")
-        raw_ffn_type = str(model_cfg.get("ffn_type", "swiglu"))
+        raw_ffn_type = config.ffn_type
         if raw_ffn_type == "swiglu":
             ffn_type: Literal["swiglu", "mlp"] = "swiglu"
         elif raw_ffn_type == "mlp":
@@ -281,33 +260,26 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             raise ValueError(f"Unsupported ffn_type={raw_ffn_type!r}")
 
         return cls(
-            hidden_dim=int(model_cfg.get("hidden_dim", 256)),
-            num_heads=int(model_cfg.get("num_heads", 8)),
+            hidden_dim=config.hidden_dim,
+            num_heads=config.num_heads,
             attention_type=attention_type,
-            num_kv_heads=model_cfg.get("num_kv_heads", None),
-            ffn_dim=model_cfg.get("ffn_dim", None),
+            num_kv_heads=config.num_kv_heads,
+            ffn_dim=config.ffn_dim,
             ffn_type=ffn_type,
-            dropout=float(model_cfg.get("dropout", 0.1)),
-            rope_dim=model_cfg.get("rope_dim", None),
-            rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            rope_theta_time=model_cfg.get("rope_theta_time", None),
-            rope_theta_camera=model_cfg.get("rope_theta_camera", None),
-            num_layers=int(model_cfg.get("num_layers", 4)),
-            predict_velocity=bool(model_cfg.get("predict_velocity", False)),
-            max_seq_len=int(
-                model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))
-            ),
-            max_num_cameras=int(model_cfg.get("max_num_cameras", 8)),
-            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
-            num_court_tokens=int(
-                model_cfg.get(
-                    "num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP)
-                )
-            ),
-            time_window_radius=int(model_cfg.get("time_window_radius", 16)),
-            camera_layers_per_stage=model_cfg.get("camera_layers_per_stage", None),
-            time_layers_per_stage=model_cfg.get("time_layers_per_stage", None),
-            time_global_stage_mask=model_cfg.get("time_global_stage_mask", None),
+            dropout=config.dropout,
+            rope_dim=config.rope_dim,
+            rope_theta_time=config.rope_theta_time,
+            rope_theta_camera=config.rope_theta_camera,
+            num_layers=config.num_layers,
+            predict_velocity=config.predict_velocity,
+            max_seq_len=config.max_seq_len,
+            max_num_cameras=config.max_num_cameras,
+            invisible_init_std=config.invisible_init_std,
+            num_court_tokens=config.num_court_tokens,
+            time_window_radius=config.time_window_radius,
+            camera_layers_per_stage=config.camera_layers_per_stage,
+            time_layers_per_stage=config.time_layers_per_stage,
+            time_global_stage_mask=config.time_global_stage_mask,
         )
 
     @staticmethod
@@ -345,8 +317,11 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             freqs_cis=time_freqs,
             attn_mask=attn_mask,
         )
-        return x_time.reshape(batch_size, n_cams, seq_len, self.hidden_dim).permute(
-            0, 2, 1, 3
+        return cast(
+            Tensor,
+            x_time.reshape(batch_size, n_cams, seq_len, self.hidden_dim).permute(
+                0, 2, 1, 3
+            ),
         )
 
     def forward(
@@ -416,12 +391,20 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             radius=self.time_window_radius,
         )
 
-        for stage_index, (camera_stage_layers, time_stage_layers) in enumerate(zip(
-            self.camera_layers,
-            self.time_layers,
-            strict=True,
-        )):
+        for stage_index, (camera_stage_layers, time_stage_layers) in enumerate(
+            zip(
+                self.camera_layers,
+                self.time_layers,
+                strict=True,
+            )
+        ):
+            if not isinstance(camera_stage_layers, nn.ModuleList) or not isinstance(
+                time_stage_layers, nn.ModuleList
+            ):
+                raise TypeError("Axial stages must contain ModuleList instances.")
             for camera_layer in camera_stage_layers:
+                if not isinstance(camera_layer, TransformerBlock):
+                    raise TypeError("Axial camera layers must be TransformerBlock.")
                 x_camera = x.reshape(batch_size * seq_len_in, n_cams, self.hidden_dim)
                 x_camera = camera_layer(
                     x_camera,
@@ -432,6 +415,8 @@ class BLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
 
             time_layers_in_stage = len(time_stage_layers)
             for time_layer_index, time_layer in enumerate(time_stage_layers):
+                if not isinstance(time_layer, TransformerBlock):
+                    raise TypeError("Axial time layers must be TransformerBlock.")
                 x = self._apply_time_attention_layer(
                     x,
                     time_layer=time_layer,

@@ -14,9 +14,7 @@ def build_ball_detection_discriminator(
     config: DictConfig,
 ) -> TransformerSequenceDiscriminator:
     """Build the configured ball detection discriminator."""
-    train_cfg = config.get("training", {}) or {}
-    gan_cfg = train_cfg.get("gan", {}) or {}
-    disc_name = str(gan_cfg.get("discriminator", {}).get("name", "trajectory_transformer"))
+    disc_name = str(config.training.gan.discriminator.name)
     if disc_name != "trajectory_transformer":
         raise ValueError(
             "Unknown ball_detection discriminator name="

@@ -3,20 +3,21 @@
 from __future__ import annotations
 
 import csv
-import json
-from collections.abc import Sequence
+from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytorch_lightning as pl
 from PIL import Image
 from torch.utils.data import DataLoader
 
+from src.tasks.ball_detection.configuration import BallRuntimePaths, validate_data
 from src.tasks.ball_detection.data.components.augmentation import (
     BallDetectionAugmentation,
 )
 from src.tasks.ball_detection.data.dataset import BallDetectionDataset
 from src.tasks.ball_detection.data.types import ClipWindow, FrameLabel
+from src.utils.configuration import PathRole
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -32,22 +33,34 @@ class TrackNetDataModule(pl.LightningDataModule):
         config: Full Hydra configuration dictionary.
     """
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: DictConfig) -> None:
         super().__init__()
-        self.config = config or {}
+        self.config = config
+        paths = BallRuntimePaths.from_config(config)
+        data_cfg = validate_data(config, paths=paths)
+        self.path_resolver = paths.resolver
+        self.data_relative_dir = str(data_cfg["data_dir"])
+        self.data_dir = paths.data(self.data_relative_dir)
+        self.batch_size = int(data_cfg["batch_size"])
+        self.num_workers = int(data_cfg["num_workers"])
+        self.pin_memory = bool(data_cfg["pin_memory"])
+        self.num_frames = int(config.model.num_frames)
+        self.sample_stride = int(data_cfg["sample_stride"])
 
-        data_cfg = self.config.get("data", {})
-        self.data_dir = Path(str(data_cfg.get("data_dir", "data/tennis/tracknet")))
-        self.batch_size = int(data_cfg.get("batch_size", 4))
-        self.num_workers = int(data_cfg.get("num_workers", 4))
-        self.pin_memory = bool(data_cfg.get("pin_memory", True))
-        self.num_frames = int(self.config.get("model", {}).get("num_frames", 8))
-        self.sample_stride = int(data_cfg.get("sample_stride", 1))
-
-        split_cfg = data_cfg.get("split", {})
-        self.train_split_file = str(split_cfg.get("train_file", ""))
-        self.val_split_file = str(split_cfg.get("val_file", ""))
-        self.test_split_file = str(split_cfg.get("test_file", ""))
+        split_cfg = data_cfg["split"]
+        if not isinstance(split_cfg, Mapping):
+            raise TypeError("data.split must be a mapping after validation.")
+        self.split_root_role = PathRole(str(split_cfg["root_role"]))
+        self.train_split_file = self.path_resolver.resolve(
+            self.split_root_role, str(split_cfg["train_file"])
+        )
+        self.val_split_file = self.path_resolver.resolve(
+            self.split_root_role, str(split_cfg["val_file"])
+        )
+        self.test_split_file = self.path_resolver.resolve(
+            self.split_root_role, str(split_cfg["test_file"])
+        )
+        self.augmentation_config = data_cfg["augmentation"]
 
         self.train_dataset: BallDetectionDataset | None = None
         self.val_dataset: BallDetectionDataset | None = None
@@ -60,7 +73,7 @@ class TrackNetDataModule(pl.LightningDataModule):
 
     def setup(self, stage: str | None = None) -> None:
         """Set up datasets for each stage."""
-        aug_cfg = self.config.get("data", {}).get("augmentation", {})
+        aug_cfg = self.augmentation_config
 
         if stage == "fit" or stage is None:
             train_aug = BallDetectionAugmentation(aug_cfg)
@@ -114,9 +127,6 @@ class TrackNetDataModule(pl.LightningDataModule):
         """
         resolved_split_file = self._resolve_split_file(Path(split_file).expanduser())
         windows = self._build_labeled_windows(resolved_split_file)
-        manifest_paths = self._pseudo_manifest_paths_for_split(split_name)
-        if manifest_paths:
-            windows.extend(self._build_pseudo_windows(manifest_paths))
         if not windows:
             raise RuntimeError(
                 "No supervised ball detection windows were found. "
@@ -125,20 +135,19 @@ class TrackNetDataModule(pl.LightningDataModule):
         return windows
 
     def _resolve_split_file(self, split_file: Path) -> Path:
-        if split_file.is_absolute():
-            resolved = split_file
-        else:
-            candidates = [
-                Path.cwd() / split_file,
-                self.data_dir / split_file,
-                self.data_dir / "splits" / split_file,
-            ]
-            resolved = next(
-                (candidate for candidate in candidates if candidate.exists()),
-                split_file,
+        """Validate the one role-resolved split path selected at composition."""
+        if not split_file.is_absolute():
+            raise ValueError(
+                "TrackNet split paths must be resolved by data.split.root_role "
+                f"before dataset construction; got {split_file}."
             )
+        resolved: Path = self.path_resolver.validate(
+            self.split_root_role, split_file
+        )
         if not resolved.exists():
             raise FileNotFoundError(f"Split file not found: {resolved}")
+        if not resolved.is_file():
+            raise ValueError(f"Split path must be a file: {resolved}")
         return resolved
 
     def _build_labeled_windows(self, split_file: Path) -> list[ClipWindow]:
@@ -171,60 +180,6 @@ class TrackNetDataModule(pl.LightningDataModule):
                     )
         return windows
 
-    def _build_pseudo_windows(
-        self,
-        manifest_paths: Sequence[Path],
-    ) -> list[ClipWindow]:
-        windows: list[ClipWindow] = []
-        for manifest_path in manifest_paths:
-            with manifest_path.open("r", encoding="utf-8") as handle:
-                for line in handle:
-                    record = line.strip()
-                    if not record:
-                        continue
-                    entry = json.loads(record)
-                    image_dir = Path(str(entry["image_dir"])).expanduser()
-                    label_csv = Path(str(entry["label_csv"])).expanduser()
-                    frame_count = int(entry["frame_count"])
-                    accepted_starts = [
-                        int(start) for start in entry.get("accepted_starts", [])
-                    ]
-                    original_size = (
-                        int(entry["original_width"]),
-                        int(entry["original_height"]),
-                    )
-                    if frame_count < self.num_frames or not accepted_starts:
-                        continue
-                    if not image_dir.exists():
-                        raise FileNotFoundError(
-                            f"Pseudo image_dir not found: {image_dir}"
-                        )
-                    if not label_csv.exists():
-                        raise FileNotFoundError(
-                            f"Pseudo label_csv not found: {label_csv}"
-                        )
-                    frame_names = tuple(
-                        f"{frame_index:06d}.jpg"
-                        for frame_index in range(frame_count)
-                    )
-                    labels = self._read_label_csv(label_csv)
-                    for start_index in accepted_starts:
-                        if (
-                            start_index < 0
-                            or start_index + self.num_frames > frame_count
-                        ):
-                            continue
-                        windows.append(
-                            ClipWindow(
-                                clip_dir=image_dir,
-                                frame_names=frame_names,
-                                labels=labels,
-                                original_size=original_size,
-                                start_index=start_index,
-                            )
-                        )
-        return windows
-
     def _read_split_entries(self, split_file: Path) -> list[str]:
         with split_file.open("r", encoding="utf-8") as handle:
             entries = [
@@ -237,8 +192,19 @@ class TrackNetDataModule(pl.LightningDataModule):
         return entries
 
     def _resolve_entry_path(self, entry: str) -> Path:
-        """Resolve one split entry to its path."""
-        return self.data_dir / entry
+        """Resolve one split entry below the declared data source root."""
+        entry_path = Path(entry)
+        if entry_path.is_absolute() or ".." in entry_path.parts:
+            raise ValueError(
+                "TrackNet split entries must be relative children of "
+                f"data.data_dir; got {entry!r}."
+            )
+        resolved: Path = self.path_resolver.resolve(
+            PathRole.DATA,
+            self.data_relative_dir,
+            entry_path,
+        )
+        return resolved
 
     def _expand_entry(self, entry: str) -> list[Path]:
         entry_path = self._resolve_entry_path(entry)
@@ -315,33 +281,10 @@ class TrackNetDataModule(pl.LightningDataModule):
             for frame_name, frame_labels in labels.items()
         }
 
-    def _pseudo_manifest_paths_for_split(self, split_name: str) -> list[Path]:
-        data_cfg = self.config.get("data", {}) or {}
-        configured: Any = data_cfg.get("pseudo_manifest_paths", [])
-        if hasattr(configured, "get") and not isinstance(
-            configured,
-            (str, bytes),
-        ):
-            configured = configured.get(split_name, [])
-        elif split_name != "train":
-            configured = []
-        if isinstance(configured, (str, Path)):
-            configured = [configured]
-
-        resolved_paths: list[Path] = []
-        for manifest_path in configured or []:
-            candidate = Path(str(manifest_path)).expanduser()
-            if not candidate.is_absolute():
-                candidate = Path.cwd() / candidate
-            if not candidate.exists():
-                raise FileNotFoundError(
-                    f"Pseudo manifest not found: {candidate}"
-                )
-            resolved_paths.append(candidate)
-        return resolved_paths
-
     def train_dataloader(self) -> DataLoader:
         """Return training dataloader."""
+        if self.train_dataset is None:
+            raise RuntimeError("setup('fit') must run before train_dataloader().")
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -353,6 +296,8 @@ class TrackNetDataModule(pl.LightningDataModule):
 
     def val_dataloader(self) -> DataLoader:
         """Return validation dataloader."""
+        if self.val_dataset is None:
+            raise RuntimeError("setup('fit') must run before val_dataloader().")
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
@@ -363,6 +308,8 @@ class TrackNetDataModule(pl.LightningDataModule):
 
     def test_dataloader(self) -> DataLoader:
         """Return test dataloader."""
+        if self.test_dataset is None:
+            raise RuntimeError("setup('test') must run before test_dataloader().")
         return DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,

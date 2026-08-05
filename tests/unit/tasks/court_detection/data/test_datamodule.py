@@ -6,12 +6,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from omegaconf import OmegaConf
+from hydra import compose, initialize_config_dir
 
 from src.tasks.court_detection.data import datamodule as dm_mod
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
 
 pytestmark = pytest.mark.unit
+
+_CONFIG_DIR = Path(__file__).resolve().parents[5] / "src/tasks/court_detection/configs"
 
 
 def test_setup_test_uses_data_val_json_split_for_kp(monkeypatch, tmp_path: Path) -> None:
@@ -38,24 +40,23 @@ def test_setup_test_uses_data_val_json_split_for_kp(monkeypatch, tmp_path: Path)
             return 0
 
     monkeypatch.setattr(dm_mod, "CourtKPDataset", _FakeCourtKPDataset)
-    datamodule = CourtDetectionDataModule(
-        OmegaConf.create(
-            {
-            "data": {
-                "task": "kp",
-                "data_dir": str(tmp_path),
-                "batch_size": 2,
-                "num_workers": 0,
-                "pin_memory": False,
-            }
-            }
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train",
+            overrides=["data=court_kp", "loss=kp"],
         )
-    )
+    config.paths.project_root = str(tmp_path)
+    config.paths.data_root = "data"
+    config.data.data_dir = "court"
+    config.data.batch_size = 2
+    config.data.num_workers = 0
+    config.data.pin_memory = False
+    datamodule = CourtDetectionDataModule(config)
 
     datamodule.setup("test")
 
     assert len(created) == 1
-    assert created[0]["root"] == tmp_path
+    assert created[0]["root"] == tmp_path / "data" / "court"
     assert created[0]["split"] == "val"
     assert created[0]["is_train"] is False
     assert datamodule.test_dataset is not None

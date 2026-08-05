@@ -46,7 +46,16 @@ def _make_adapter(dim: int = 16, depth: int = 2) -> DINOv3BackboneAdapter:
 class TestApplyDINOv3LoRA:
     def test_requires_enabled_config(self) -> None:
         with pytest.raises(ValueError, match="enabled"):
-            apply_dinov3_lora(_make_adapter(), LoRAConfig(enabled=False))
+            apply_dinov3_lora(
+                _make_adapter(),
+                LoRAConfig(
+                    enabled=False,
+                    rank=0,
+                    alpha=0.0,
+                    dropout=0.0,
+                    target_modules=(),
+                ),
+            )
 
     def test_freezes_base_and_wraps_targets(self) -> None:
         adapter = _make_adapter(depth=2)
@@ -56,6 +65,7 @@ class TestApplyDINOv3LoRA:
                 enabled=True,
                 rank=4,
                 alpha=8.0,
+                dropout=0.0,
                 target_modules=("qkv", "proj", "fc1", "fc2"),
             ),
         )
@@ -74,7 +84,14 @@ class TestConfigureTrainabilityWithLoRA:
         configure_dinov3_trainability(
             adapter,
             train_mode="frozen",
-            lora=LoRAConfig(enabled=True, rank=2, alpha=4.0, target_modules=("qkv",)),
+            last_n_blocks=0,
+            lora=LoRAConfig(
+                enabled=True,
+                rank=2,
+                alpha=4.0,
+                dropout=0.0,
+                target_modules=("qkv",),
+            ),
         )
         assert isinstance(adapter.module.blocks[0].attn.qkv, LoRALinear)
         trainable = {name for name, p in adapter.named_parameters() if p.requires_grad}
@@ -88,7 +105,14 @@ class TestConfigureTrainabilityWithLoRA:
         configure_dinov3_trainability(
             adapter,
             train_mode="full",
-            lora=LoRAConfig(enabled=False),
+            last_n_blocks=0,
+            lora=LoRAConfig(
+                enabled=False,
+                rank=0,
+                alpha=0.0,
+                dropout=0.0,
+                target_modules=(),
+            ),
         )
         assert not isinstance(adapter.module.blocks[0].attn.qkv, LoRALinear)
         assert all(p.requires_grad for p in adapter.parameters())

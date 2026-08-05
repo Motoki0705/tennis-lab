@@ -2,7 +2,7 @@
 
 The optimizer/backward machinery requires a real LightningModule + Trainer and
 is covered by the integration smoke suite. Here we test the deterministic state
-logic: weight clamping, phase activation, step routing, and epoch-end scheduler
+logic: weight validation, phase activation, step routing, and epoch-end scheduler
 stepping (with fake schedulers).
 """
 
@@ -41,12 +41,32 @@ def test_activate_phase_sets_flags() -> None:
     assert s.start_epoch == 5
 
 
-def test_set_weight_clamps_negative_to_zero() -> None:
+def test_activate_phase_rejects_negative_epoch() -> None:
+    with pytest.raises(ValueError, match="start_epoch"):
+        _strategy().activate_phase(-1)
+
+
+def test_strategy_rejects_invalid_scheduler_interval() -> None:
+    with pytest.raises(ValueError, match="scheduler_interval"):
+        _strategy("batch")
+
+
+@pytest.mark.parametrize("clip", [-1.0, float("inf"), float("nan")])
+def test_strategy_rejects_invalid_gradient_clip(clip: float) -> None:
+    with pytest.raises(ValueError, match="finite value >= 0"):
+        ManualGANTrainingStrategy(
+            generator_gradient_clip_val=clip,
+            discriminator_gradient_clip_val=None,
+            scheduler_interval="step",
+        )
+
+
+def test_set_weight_rejects_negative_value() -> None:
     s = _strategy()
     s.set_weight(0.3)
     assert s.current_weight == pytest.approx(0.3)
-    s.set_weight(-1.0)
-    assert s.current_weight == 0.0
+    with pytest.raises(ValueError, match="finite value >= 0"):
+        s.set_weight(-1.0)
 
 
 def test_shared_step_routes_supervised_when_inactive() -> None:
@@ -68,11 +88,12 @@ def test_shared_step_routes_supervised_when_inactive() -> None:
     s._supervised_step = lambda module, batch, stage: ("sup", stage)  # type: ignore
     s._gan_step = lambda module, batch, stage: ("gan", stage)  # type: ignore
 
-    assert s.shared_step(_Module(), None, "val") == ("sup", "val")
-    assert s.shared_step(_Module(), None, "train") == ("sup", "train")  # inactive
+    shared_step: Any = s.shared_step
+    assert shared_step(_Module(), None, "val") == ("sup", "val")
+    assert shared_step(_Module(), None, "train") == ("sup", "train")  # inactive
     s.activate_phase(0)
-    assert s.shared_step(_Module(), None, "train") == ("gan", "train")  # active
-    assert s.shared_step(_Module(), None, "val") == ("sup", "val")  # non-train always sup
+    assert shared_step(_Module(), None, "train") == ("gan", "train")  # active
+    assert shared_step(_Module(), None, "val") == ("sup", "val")  # non-train always sup
 
 
 def test_on_train_epoch_end_steps_schedulers_epoch_interval() -> None:

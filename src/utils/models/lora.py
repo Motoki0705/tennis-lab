@@ -20,8 +20,6 @@ from typing import Any
 import torch
 from torch import nn
 
-DEFAULT_LORA_TARGET_MODULES: tuple[str, ...] = ("qkv", "proj")
-
 
 @dataclass(frozen=True)
 class LoRAConfig:
@@ -36,11 +34,11 @@ class LoRAConfig:
             (for example ``("qkv", "proj")`` for attention projections).
     """
 
-    enabled: bool = False
-    rank: int = 8
-    alpha: float = 16.0
-    dropout: float = 0.0
-    target_modules: tuple[str, ...] = DEFAULT_LORA_TARGET_MODULES
+    enabled: bool
+    rank: int
+    alpha: float
+    dropout: float
+    target_modules: tuple[str, ...]
 
     def __post_init__(self) -> None:
         if self.enabled:
@@ -56,24 +54,42 @@ class LoRAConfig:
     @classmethod
     def from_mapping(
         cls,
-        mapping: Mapping[str, Any] | None,
-        *,
-        default_target_modules: Sequence[str] = DEFAULT_LORA_TARGET_MODULES,
+        mapping: Mapping[str, Any],
     ) -> LoRAConfig:
-        """Build a config from a (possibly ``None``) Hydra/OmegaConf mapping."""
-        if not mapping:
-            return cls(enabled=False, target_modules=tuple(default_target_modules))
-        raw_targets = mapping.get("target_modules")
-        if raw_targets is None:
-            target_modules = tuple(default_target_modules)
-        else:
-            target_modules = tuple(str(name) for name in raw_targets)
+        """Build a config from a complete, validated Hydra/OmegaConf mapping."""
+        expected = {"enabled", "rank", "alpha", "dropout", "target_modules"}
+        missing = expected - set(mapping)
+        unknown = set(mapping) - expected
+        if missing or unknown:
+            raise ValueError(
+                "Invalid LoRA config keys: "
+                f"missing={sorted(missing)}, unknown={sorted(unknown)}"
+            )
+        enabled = mapping["enabled"]
+        rank = mapping["rank"]
+        alpha = mapping["alpha"]
+        dropout = mapping["dropout"]
+        target_modules = mapping["target_modules"]
+        if type(enabled) is not bool:
+            raise TypeError("LoRA enabled must be exactly bool.")
+        if type(rank) is not int:
+            raise TypeError("LoRA rank must be exactly int.")
+        if type(alpha) is not float:
+            raise TypeError("LoRA alpha must be exactly float.")
+        if type(dropout) is not float:
+            raise TypeError("LoRA dropout must be exactly float.")
+        if not isinstance(target_modules, Sequence) or isinstance(
+            target_modules, str | bytes
+        ):
+            raise TypeError("LoRA target_modules must be a sequence of strings.")
+        if any(type(name) is not str for name in target_modules):
+            raise TypeError("Every LoRA target module must be exactly str.")
         return cls(
-            enabled=bool(mapping.get("enabled", False)),
-            rank=int(mapping.get("rank", 8)),
-            alpha=float(mapping.get("alpha", 16.0)),
-            dropout=float(mapping.get("dropout", 0.0)),
-            target_modules=target_modules,
+            enabled=enabled,
+            rank=rank,
+            alpha=alpha,
+            dropout=dropout,
+            target_modules=tuple(target_modules),
         )
 
 
@@ -86,7 +102,7 @@ class LoRALinear(nn.Module):
         *,
         rank: int,
         alpha: float,
-        dropout: float = 0.0,
+        dropout: float,
     ) -> None:
         super().__init__()
         if not isinstance(base_linear, nn.Linear):
@@ -145,8 +161,8 @@ def apply_lora(
     *,
     rank: int,
     alpha: float,
-    dropout: float = 0.0,
-    target_modules: Sequence[str] = DEFAULT_LORA_TARGET_MODULES,
+    dropout: float,
+    target_modules: Sequence[str],
 ) -> list[str]:
     """Replace matching ``nn.Linear`` children with :class:`LoRALinear` in place.
 
@@ -201,7 +217,6 @@ def mark_only_lora_as_trainable(module: nn.Module) -> None:
 
 
 __all__ = [
-    "DEFAULT_LORA_TARGET_MODULES",
     "LoRAConfig",
     "LoRALinear",
     "apply_lora",

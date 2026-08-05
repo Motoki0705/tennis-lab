@@ -1,26 +1,10 @@
 task: line
-image_source: data/court/images
-checkpoint: outputs/court_detection/line/logs/versino_0/checkpoints/court-detection-epoch=19.ckpt
-save: assets/court_detection/line.gif
+image_source: court/images
+checkpoint: court_detection/line/logs/version_0/checkpoints/court-detection-epoch=19.ckpt
+save: court_detection/line.gif
 fps: 6
 max_frames: 24
 info: false
-
-draw:
-  kp_radius: 4
-  kp_color_rgb: [96, 255, 128]
-  kp_thickness: -1
-  line_threshold: 0.5
-
-layout:
-  header_height: 36
-  display_width: 640
-  tile_gap: 12
-  text_scale: 0.52
-  text_thickness: 1
-  background_rgb: [18, 18, 18]
-  text_color_rgb: [245, 245, 245]
-  panel_label_height: 24
 
 gif:
   loop: 0

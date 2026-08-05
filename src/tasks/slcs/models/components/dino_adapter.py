@@ -27,7 +27,9 @@ def sincos_position_embedding_2d(grid_h: int, grid_w: int, dim: int) -> Tensor:
     (each as interleaved sin/cos of geometrically spaced frequencies).
     """
     if dim % 4 != 0:
-        raise ValueError(f"dim must be divisible by 4 for 2D sin-cos embedding, got {dim}.")
+        raise ValueError(
+            f"dim must be divisible by 4 for 2D sin-cos embedding, got {dim}."
+        )
     dim_axis = dim // 2
 
     def encode(pos: Tensor) -> Tensor:
@@ -62,11 +64,13 @@ class DinoTokenEncoder(nn.Module):
         dim: int,
         grid_h: int,
         grid_w: int,
-        downsample_factor: int = 1,
+        downsample_factor: int,
     ) -> None:
         super().__init__()
         if input_dim <= 0 or dim <= 0:
-            raise ValueError(f"input_dim and dim must be positive, got {input_dim}, {dim}.")
+            raise ValueError(
+                f"input_dim and dim must be positive, got {input_dim}, {dim}."
+            )
         if grid_h <= 0 or grid_w <= 0:
             raise ValueError(f"grid must be positive, got ({grid_h}, {grid_w}).")
         if downsample_factor <= 0:
@@ -145,7 +149,7 @@ class DinoTokenEncoder(nn.Module):
 
         x = self.norm(self.proj(tokens))
         spatial_pos = cast(Tensor, self.spatial_pos)
-        return x + spatial_pos.to(dtype=x.dtype)[None, None, :, :]
+        return cast(Tensor, x + spatial_pos.to(dtype=x.dtype)[None, None, :, :])
 
 
 __all__ = ["DinoTokenEncoder", "sincos_position_embedding_2d"]

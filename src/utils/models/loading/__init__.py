@@ -1,9 +1,7 @@
 """Reusable model-loading helpers."""
 
 from src.utils.models.loading.dinov3 import (
-    DEFAULT_DINOV3_CHECKPOINT,
     DEFAULT_DINOV3_LORA_TARGET_MODULES,
-    DEFAULT_DINOV3_REPOSITORY,
     DINOv3BackboneAdapter,
     DINOv3TrainMode,
     apply_dinov3_lora,
@@ -12,9 +10,7 @@ from src.utils.models.loading.dinov3 import (
 )
 
 __all__ = [
-    "DEFAULT_DINOV3_CHECKPOINT",
     "DEFAULT_DINOV3_LORA_TARGET_MODULES",
-    "DEFAULT_DINOV3_REPOSITORY",
     "DINOv3BackboneAdapter",
     "DINOv3TrainMode",
     "apply_dinov3_lora",

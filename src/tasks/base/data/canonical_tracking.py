@@ -24,15 +24,15 @@ def validate_lifecycle_capacity(
     num_queries: int,
 ) -> None:
     """Reject generation settings that cannot be packed by the dataset."""
-    max_concurrent = int(timeline_config.get("max_concurrent"))
+    max_concurrent = int(timeline_config["max_concurrent"])
     if max_concurrent > num_queries:
         raise ValueError(
             "generation.timeline.max_concurrent must not exceed "
             f"model.num_queries ({max_concurrent} > {num_queries})."
         )
-    generation_gap = int(timeline_config.get("min_reuse_gap_frames"))
-    lifecycle_config = data_config.get("lifecycle", {}) or {}
-    packing_gap = int(lifecycle_config.get("min_reuse_gap_frames", 0))
+    generation_gap = int(timeline_config["min_reuse_gap_frames"])
+    lifecycle_config = data_config["lifecycle"]
+    packing_gap = int(lifecycle_config["min_reuse_gap_frames"])
     if generation_gap < packing_gap:
         raise ValueError(
             "generation.timeline.min_reuse_gap_frames must be at least "
@@ -53,36 +53,24 @@ class CanonicalTrackingDataset(SceneDatasetBase[dict[str, Tensor]]):
         augment: bool = False,
         rng: np.random.Generator | None = None,
     ) -> None:
-        self.hydra_cfg = config or {}
+        if config is None:
+            raise ValueError("CanonicalTrackingDataset requires a validated config.")
+        self.hydra_cfg = config
         self.augment = augment
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
-        seq_len_range = self._parse_int_range(
-            data_cfg, "seq_len_range", default=(1, 1024)
-        )
-        num_views_range = self._parse_int_range(
-            data_cfg, "num_views_range", default=(1, 64)
-        )
-        lifecycle_cfg = data_cfg.get("lifecycle", {}) or {}
-        self.pack_to_query_slots = bool(
-            lifecycle_cfg.get("pack_to_query_slots", True)
-        )
-        self.min_reuse_gap_frames = int(
-            lifecycle_cfg.get("min_reuse_gap_frames", 0)
-        )
-        self.randomize_slots_train = bool(
-            lifecycle_cfg.get("randomize_slots_train", False)
-        )
-        model_cfg = (
-            self.hydra_cfg.get("model", {})
-            if hasattr(self.hydra_cfg, "get")
-            else {}
-        )
-        raw_num_queries = model_cfg.get("num_queries") if model_cfg else None
-        self.num_queries = (
-            int(raw_num_queries) if raw_num_queries is not None else None
-        )
+        seq_len_range = self._parse_int_range(data_cfg, "seq_len_range")
+        num_views_range = self._parse_int_range(data_cfg, "num_views_range")
+        lifecycle_cfg = data_cfg["lifecycle"]
+        self.pack_to_query_slots = bool(lifecycle_cfg["pack_to_query_slots"])
+        self.min_reuse_gap_frames = int(lifecycle_cfg["min_reuse_gap_frames"])
+        self.randomize_slots_train = bool(lifecycle_cfg["randomize_slots_train"])
+        model_cfg = self.hydra_cfg["model"]
+        raw_num_queries = model_cfg["num_queries"]
+        self.num_queries = int(raw_num_queries) if raw_num_queries is not None else None
         if self.min_reuse_gap_frames < 0:
-            raise ValueError("data.lifecycle.min_reuse_gap_frames must be non-negative.")
+            raise ValueError(
+                "data.lifecycle.min_reuse_gap_frames must be non-negative."
+            )
 
         super().__init__(
             config=SceneDatasetConfig(
@@ -92,6 +80,8 @@ class CanonicalTrackingDataset(SceneDatasetBase[dict[str, Tensor]]):
                 num_views_range=num_views_range,
                 camera_mode=self._parse_camera_mode(data_cfg),
                 crop_mode="random" if augment else "center",
+                min_num_frames=1,
+                min_num_cameras=1,
             ),
             rng=rng,
         )
@@ -164,8 +154,8 @@ def pad_and_stack_tracking_batch(
     dimensions: dict[str, tuple[int, ...]] = {
         key: (dimension,) for key, dimension in (time_dimensions or {}).items()
     }
-    for key, value in (padding_dimensions or {}).items():
-        dimensions[key] = tuple(int(dimension) for dimension in value)
+    for key, dimension_sequence in (padding_dimensions or {}).items():
+        dimensions[key] = tuple(int(dimension) for dimension in dimension_sequence)
     fill_values = pad_values or {}
 
     collated: dict[str, Tensor] = {}
@@ -177,8 +167,8 @@ def pad_and_stack_tracking_batch(
             for dimension in key_dimensions
         }
         padded_values: list[Tensor] = []
-        for value in values:
-            padded = value
+        for tensor in values:
+            padded = tensor
             for dimension in sorted(key_dimensions):
                 pad_size = target_sizes[dimension] - int(padded.shape[dimension])
                 if pad_size <= 0:

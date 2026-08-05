@@ -17,6 +17,7 @@ from src.tasks.ball_detection.data.components.augmentation import (
     normalize_tensor_images_imagenet,
 )
 from src.tasks.ball_detection.inference import BallDetectionPredictor
+from src.utils.configuration import PathResolver
 from src.utils.data.heatmaps import heatmaps_to_peaks
 from src.utils.io import (
     load_json,
@@ -67,6 +68,11 @@ class CandidatePredictionConfig:
     max_candidates_per_frame: int
     aggregation: str
     overwrite: bool
+    resolver: PathResolver
+    allow_device_fallback: bool
+    subpixel_refine: bool
+    strict: bool
+    weights_only: bool
 
 
 @dataclass
@@ -101,7 +107,9 @@ def run_candidate_selection(
 
     candidates = _candidate_documents(staging_dir)
     resume_index = _resume_index(candidates, len(records)) if config.resume else 0
-    start_index = resume_index if config.start_index is None else int(config.start_index)
+    start_index = (
+        resume_index if config.start_index is None else int(config.start_index)
+    )
     if start_index >= len(records):
         print(
             f"[clip_and_predict] selection complete for {video_id}: "
@@ -236,13 +244,15 @@ def create_candidate(
             extension = source_path.suffix or ".jpg"
             file_name = f"{offset:06d}{extension}"
             _copy_frame(source_path, temporary / file_name, config.copy_mode)
-            candidate_frames.append({
-                "frame_id": record["frame_id"],
-                "file_name": file_name,
-                "source_image_path": record["image_path"],
-                "source_frame_index": record["source_frame_index"],
-                "timestamp_sec": record["timestamp_sec"],
-            })
+            candidate_frames.append(
+                {
+                    "frame_id": record["frame_id"],
+                    "file_name": file_name,
+                    "source_image_path": record["image_path"],
+                    "source_frame_index": record["source_frame_index"],
+                    "timestamp_sec": record["timestamp_sec"],
+                }
+            )
         first = selected[0]
         candidate = {
             "schema_name": "ball_youtube_candidate_clip_v2",
@@ -291,7 +301,9 @@ def predict_candidates(
     _validate_prediction_config(config)
     candidate_paths = sorted(staging_dir.glob("clip_*/candidate.json"))
     if not candidate_paths:
-        raise FileNotFoundError(f"No selected candidates found for {video_id}: {staging_dir}")
+        raise FileNotFoundError(
+            f"No selected candidates found for {video_id}: {staging_dir}"
+        )
     candidate_docs = [load_json(path) for path in candidate_paths]
     if any(str(document.get("video_id")) != video_id for document in candidate_docs):
         raise ValueError(f"Staging directory contains a video other than {video_id}.")
@@ -302,23 +314,28 @@ def predict_candidates(
         if config.overwrite or document.get("status") == "selected"
     ]
     if not pending:
-        print(f"[clip_and_predict] no selected candidates require prediction for {video_id}")
+        print(
+            f"[clip_and_predict] no selected candidates require prediction for {video_id}"
+        )
         return 0
 
     predictor = BallDetectionPredictor.load_from_checkpoint(
         config.checkpoint,
+        resolver=config.resolver,
         device=config.device,
+        allow_device_fallback=config.allow_device_fallback,
+        subpixel_refine=config.subpixel_refine,
+        strict=config.strict,
+        weights_only=config.weights_only,
     )
-    checkpoint_frames = predictor.model_config.get("num_frames")
-    if checkpoint_frames is not None and int(checkpoint_frames) != config.sequence_length:
+    checkpoint_frames = int(cast(Any, predictor.model_config["num_frames"]))
+    if checkpoint_frames != config.sequence_length:
         raise ValueError(
             "prediction.sequence_length does not match checkpoint model.num_frames: "
             f"{config.sequence_length} != {checkpoint_frames}."
         )
 
-    print(
-        f"[clip_and_predict] mode=predict video={video_id} candidates={len(pending)}"
-    )
+    print(f"[clip_and_predict] mode=predict video={video_id} candidates={len(pending)}")
     for candidate_path, document in pending:
         predictions = _predict_candidate(
             candidate_dir=candidate_path.parent,
@@ -415,9 +432,13 @@ def _predict_candidate(
                 )
 
     if heatmap_sums is None or heatmap_maxima is None:
-        raise RuntimeError(f"No prediction windows were produced for {document['clip_id']}.")
+        raise RuntimeError(
+            f"No prediction windows were produced for {document['clip_id']}."
+        )
     if config.aggregation == "mean_heatmap":
-        aggregated = heatmap_sums / torch.from_numpy(prediction_counts).clamp_min(1).view(-1, 1, 1)
+        aggregated = heatmap_sums / torch.from_numpy(prediction_counts).clamp_min(
+            1
+        ).view(-1, 1, 1)
     else:
         aggregated = heatmap_maxima
     peak_coords, peak_values, peak_valid = heatmaps_to_peaks(
@@ -434,19 +455,23 @@ def _predict_candidate(
         candidates = []
         valid_indices = torch.nonzero(peak_valid[index], as_tuple=False).flatten()
         for rank, peak_index in enumerate(valid_indices.tolist(), start=1):
-            candidates.append({
-                "prediction_id": f"p{rank:03d}",
-                "rank": rank,
-                "x": float(peak_coords[index, peak_index, 0] * max(width - 1, 0)),
-                "y": float(peak_coords[index, peak_index, 1] * max(height - 1, 0)),
-                "confidence": float(peak_values[index, peak_index]),
-            })
-        predictions.append({
-            "frame_id": frame["frame_id"],
-            "method": "local_peak_nms",
-            "candidates": candidates,
-            "prediction_count": int(prediction_counts[index]),
-        })
+            candidates.append(
+                {
+                    "prediction_id": f"p{rank:03d}",
+                    "rank": rank,
+                    "x": float(peak_coords[index, peak_index, 0] * max(width - 1, 0)),
+                    "y": float(peak_coords[index, peak_index, 1] * max(height - 1, 0)),
+                    "confidence": float(peak_values[index, peak_index]),
+                }
+            )
+        predictions.append(
+            {
+                "frame_id": frame["frame_id"],
+                "method": "local_peak_nms",
+                "candidates": candidates,
+                "prediction_count": int(prediction_counts[index]),
+            }
+        )
     return predictions
 
 
@@ -476,8 +501,7 @@ def _resume_index(candidates: list[JSONDict], frame_count: int) -> int:
 
 def _candidate_documents(staging_dir: Path) -> list[JSONDict]:
     return [
-        load_json(path)
-        for path in sorted(staging_dir.glob("clip_*/candidate.json"))
+        load_json(path) for path in sorted(staging_dir.glob("clip_*/candidate.json"))
     ]
 
 
@@ -498,7 +522,9 @@ def _validate_selection_config(config: CandidateSelectionConfig) -> None:
     if config.skip_large > 50:
         raise ValueError("select.skip_large must be at most 50.")
     if not (config.skip_small <= config.skip_medium <= config.skip_large):
-        raise ValueError("Selection skip sizes must be ordered small <= medium <= large.")
+        raise ValueError(
+            "Selection skip sizes must be ordered small <= medium <= large."
+        )
     if config.min_frames <= 0:
         raise ValueError("select.min_frames must be positive.")
     if config.copy_mode not in {"hardlink", "copy"}:
@@ -629,4 +655,3 @@ def _copy_frame(source: Path, target: Path, mode: str) -> None:
 def _resolve_path(root: Path, value: Any) -> Path:
     path = Path(str(value))
     return path if path.is_absolute() else root / path
-

@@ -9,7 +9,7 @@ io:
 hidden_dim: ???
 num_layers: ???
 num_heads: ???
-ffn_dim: null
+ffn_dim: ???
 ffn_type: swiglu
 dropout: 0.1
 invisible_init_std: 0.02
@@ -17,8 +17,7 @@ invisible_init_std: 0.02
 max_views: 6
 max_seq_len: 10240
 
-rope_dim: null
-rope_theta: 10000.0
+rope_dim: ???
 rope_theta_time: 1000.0
 rope_theta_camera: 1000.0
 predict_canonical_pose: true

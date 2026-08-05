@@ -1,5 +1,5 @@
 schema: ball_detection_evaluation_manifest_v1
-output_dir: outputs/ball_detection/3dgs_blcs/evaluation_real_v1
+output_dir: ball_detection/3dgs_blcs/evaluation_real_v1
 device: auto
 resume: true
 fail_fast: true
@@ -27,8 +27,10 @@ datasets:
 
 models:
   - id: deployed-i618-ft
+    enabled: true
     category: architecture-controlled
-    checkpoint: ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
+    checkpoint: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
     expected_model_name: conv_next_unet
     datasets: [tracknet-real-v1]
     strict: true
+    weights_only: false

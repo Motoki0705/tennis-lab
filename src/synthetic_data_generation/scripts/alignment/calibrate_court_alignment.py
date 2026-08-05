@@ -27,7 +27,6 @@ import cv2
 import numpy as np
 import pytorch_lightning
 import torch
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
 from src.synthetic_data_generation.alignment.artifacts.calibration import (
@@ -75,13 +74,16 @@ from src.synthetic_data_generation.alignment.stage_result import (
     json_artifact_handle,
     print_stage_result,
 )
+from src.synthetic_data_generation.configuration import validate_config
+from src.utils.configuration import PathRole
 from src.utils.hydra import hydra_main
 
 
 @hydra_main(
     version_base="1.3",
-    config_path="../../configs/alignment",
-    config_name="calibrate_court_alignment",
+    config_path="../../configs",
+    config_name="alignment/calibrate_court_alignment",
+    validation_boundary="synthetic.alignment.calibrate_court_alignment",
 )
 def main(cfg: DictConfig) -> int:
     """Run the stage through its shared orchestration entry point."""
@@ -91,10 +93,15 @@ def main(cfg: DictConfig) -> int:
 
 def run(cfg: DictConfig) -> StageResult:
     """Compute and publish fit-side metrics before holdout inference."""
-    repo_root = Path(to_absolute_path(".")).resolve()
-    provider_path = _path(cfg.provider_bundle)
-    line_path = _path(cfg.ground_line_artifact)
-    geometry_path = _path(cfg.geometry_artifact)
+    runtime = validate_config("synthetic.alignment.calibrate_court_alignment", cfg)
+    repo_root = runtime.resolver.roots.project_root
+    provider_path = runtime.path(PathRole.DATA, "provider_bundle")
+    line_path = runtime.path(PathRole.DATA, "ground_line_artifact")
+    geometry_path = runtime.path(PathRole.DATA, "geometry_artifact")
+    line_checkpoint = runtime.path(PathRole.CHECKPOINT, "line_checkpoint")
+    backbone_repository = runtime.path(PathRole.EXTERNAL_ASSET, "backbone_repository")
+    backbone_checkpoint = runtime.path(PathRole.EXTERNAL_ASSET, "backbone_checkpoint")
+    output_dir = runtime.path(PathRole.DATA, "output_dir")
     line_manifest, line_arrays = load_ground_line_map_artifact(line_path)
     geometry = load_court_geometry_artifact(geometry_path)
     if line_manifest["split"]["holdout_inference_status"] != "not_run":
@@ -124,11 +131,12 @@ def run(cfg: DictConfig) -> StageResult:
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
     detector = load_line_detector(
-        _path(cfg.line_checkpoint),
-        backbone_repository=_path(cfg.backbone_repository),
-        backbone_checkpoint=_path(cfg.backbone_checkpoint),
+        line_checkpoint,
+        backbone_repository=backbone_repository,
+        backbone_checkpoint=backbone_checkpoint,
         device=str(cfg.device),
         expected_short_side=int(cfg.expected_short_side),
+        resolver=runtime.resolver,
     )
     plane = GroundPlaneEstimate(**line_manifest["ground_plane"]["estimate"])
     bounds = cast(
@@ -247,8 +255,8 @@ def run(cfg: DictConfig) -> StageResult:
             "holdout_inference_status": "not_run",
         },
         "detector": {
-            "checkpoint": str(_path(cfg.line_checkpoint)),
-            "backbone_checkpoint": str(_path(cfg.backbone_checkpoint)),
+            "checkpoint": str(line_checkpoint),
+            "backbone_checkpoint": str(backbone_checkpoint),
             "short_side": detector.predictor.short_side,
             "checkpoint_epoch19_val_dice": float(cfg.checkpoint_val_dice),
             "training_best_val_dice": float(cfg.checkpoint_best_val_dice),
@@ -287,7 +295,7 @@ def run(cfg: DictConfig) -> StageResult:
     }
     published = publish_calibration_artifact(
         payload,
-        output_dir=_path(cfg.output_dir),
+        output_dir=output_dir,
     )
     published_payload = load_calibration_artifact(published)
     handle = json_artifact_handle(published, published_payload)
@@ -451,10 +459,6 @@ def _git(root: Path, *args: str) -> str:
 
 def _relative(path: Path, root: Path) -> str:
     return path.resolve().relative_to(root).as_posix()
-
-
-def _path(value: Any) -> Path:
-    return Path(to_absolute_path(str(value))).resolve()
 
 
 if __name__ == "__main__":

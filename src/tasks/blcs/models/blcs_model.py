@@ -14,19 +14,19 @@ Uses shared components from src.utils.models.components.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, cast
+from typing import Literal, cast
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
+from src.tasks.blcs.configuration import SingleModelConfig
 from src.tasks.blcs.models.components.heads import Trajectory3DHead, VelocityHead
 from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
     build_self_attn_mask,
-    default_ffn_dim,
     precompute_freqs_cis_nd,
     resolve_rope_bases,
 )
@@ -35,11 +35,6 @@ from src.utils.models.embeddings import (
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
 )
-from src.utils.schema.court import NUM_COURT_KP
-
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
-
 
 # -------------------------
 # Main model (legacy alias preserved)
@@ -71,21 +66,22 @@ class BLCSModel(nn.Module):
 
     def __init__(
         self,
-        hidden_dim: int = 256,
-        num_layers: int = 6,
-        num_heads: int = 8,
-        ffn_dim: int | None = None,
-        dropout: float = 0.1,
-        rope_dim: int | None = None,
-        rope_theta: float = 10000.0,
-        rope_theta_time: float | None = None,
-        rope_theta_camera: float | None = None,
-        rope_theta_type: float = 100.0,
-        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
-        predict_velocity: bool = False,
-        max_seq_len: int = 120,
-        invisible_init_std: float = 0.02,
-        num_court_tokens: int = NUM_COURT_KP,
+        *,
+        hidden_dim: int,
+        num_layers: int,
+        num_heads: int,
+        ffn_dim: int,
+        dropout: float,
+        rope_dim: int,
+        rope_theta: float,
+        rope_theta_time: float,
+        rope_theta_camera: float,
+        rope_theta_type: float,
+        ffn_type: Literal["swiglu", "mlp"],
+        predict_velocity: bool,
+        max_seq_len: int,
+        invisible_init_std: float,
+        num_court_tokens: int,
     ) -> None:
         """Initialize the BLCS model.
 
@@ -111,30 +107,23 @@ class BLCSModel(nn.Module):
         self._validate_init_args(hidden_dim=hidden_dim, num_heads=num_heads)
         head_dim = hidden_dim // num_heads
 
-        rope_dim = head_dim if rope_dim is None else rope_dim
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
         self.rope_bases = resolve_rope_bases(
-            self.rope_theta,
-            rope_theta_time,
-            rope_theta_camera,
-            rope_theta_type,
+            rope_theta_time=rope_theta_time,
+            rope_theta_camera=rope_theta_camera,
+            rope_theta_type=rope_theta_type,
         )
-
-        if ffn_dim is None:
-            ffn_dim = default_ffn_dim(hidden_dim)
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=hidden_dim, init_std=invisible_init_std
         )
         self.court_embed = CourtKPUVEmbedding(
             dim=hidden_dim,
-            dropout=dropout,
             invisible_token=self.invisible_token,
         )
         self.ball_embed = BallUVEmbedding(
             dim=hidden_dim,
-            dropout=dropout,
             invisible_token=self.invisible_token,
         )
 
@@ -148,6 +137,8 @@ class BLCSModel(nn.Module):
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
+                        attention_type="mha",
+                        n_kv_heads=None,
                         rope_base=self.rope_theta,
                         ffn_type=ffn_type,
                     )
@@ -189,7 +180,7 @@ class BLCSModel(nn.Module):
             )
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> BLCSModel:
+    def from_config(cls, config: SingleModelConfig) -> BLCSModel:
         """Create model from configuration.
 
         Args:
@@ -198,27 +189,22 @@ class BLCSModel(nn.Module):
         Returns:
             BLCSModel: Initialized model.
         """
-        model_cfg = config.get("model", {})
-        data_cfg = config.get("data", {})
-
         return cls(
-            hidden_dim=model_cfg.get("hidden_dim", 256),
-            num_layers=model_cfg.get("num_layers", 6),
-            num_heads=model_cfg.get("num_heads", 8),
-            ffn_dim=model_cfg.get("ffn_dim", None),
-            dropout=model_cfg.get("dropout", 0.1),
-            rope_dim=model_cfg.get("rope_dim", None),
-            rope_theta=model_cfg.get("rope_theta", 10000.0),
-            rope_theta_time=model_cfg.get("rope_theta_time", None),
-            rope_theta_camera=model_cfg.get("rope_theta_camera", None),
-            rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
-            ffn_type=cast(
-                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
-            ),
-            predict_velocity=model_cfg.get("predict_velocity", False),
-            max_seq_len=model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120)),
-            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
-            num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
+            hidden_dim=config.hidden_dim,
+            num_layers=config.num_layers,
+            num_heads=config.num_heads,
+            ffn_dim=config.ffn_dim,
+            dropout=config.dropout,
+            rope_dim=config.rope_dim,
+            rope_theta=config.rope_theta,
+            rope_theta_time=config.rope_theta_time,
+            rope_theta_camera=config.rope_theta_camera,
+            rope_theta_type=config.rope_theta_type,
+            ffn_type=config.ffn_type,
+            predict_velocity=config.predict_velocity,
+            max_seq_len=config.max_seq_len,
+            invisible_init_std=config.invisible_init_std,
+            num_court_tokens=config.num_court_tokens,
         )
 
     def _build_rope_positions(self) -> Tensor:

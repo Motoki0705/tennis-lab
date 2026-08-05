@@ -1,11 +1,15 @@
+defaults:
+  - paths: default
+  - _self_
+
 analysis:
-  arrays: null
+  arrays: REQUIRED/eval_arrays.npz
   calibration_bins: 10
-  output_dir: outputs/slcs/analysis/${now:%Y-%m-%d_%H-%M-%S}
+  output_dir: slcs/analysis/${now:%Y-%m-%d_%H-%M-%S}
 
 hydra:
   run:
-    dir: ${analysis.output_dir}
+    dir: ${tennis_lab_path:output,${paths.output_root},${analysis.output_dir}}
   output_subdir: null
   job:
     chdir: false

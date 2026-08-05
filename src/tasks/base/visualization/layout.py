@@ -115,7 +115,9 @@ def compose_grid(
     ]
 
     row_width = row_images[0].shape[1]
-    canvas_height = sum(row.shape[0] for row in row_images) + (len(row_images) - 1) * tile_gap
+    canvas_height = (
+        sum(row.shape[0] for row in row_images) + (len(row_images) - 1) * tile_gap
+    )
     canvas = np.full((canvas_height, row_width, 3), background_rgb, dtype=np.uint8)
 
     cursor_y = 0

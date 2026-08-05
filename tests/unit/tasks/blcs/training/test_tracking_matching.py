@@ -23,7 +23,12 @@ def test_matching_uses_same_axis_balance_as_position_loss() -> None:
         present,
         torch.ones(1, 2, dtype=torch.bool),
         torch.ones(1, 1, dtype=torch.bool),
+        position_cost_weight=1.0,
         presence_cost_weight=0.0,
+        presence_inactive_weight=0.25,
+        presence_active_weight=1.0,
+        presence_transition_weight=2.0,
+        transition_radius=2,
         position_axis_weights=(1.0, 1.0, 0.1),
     )
 

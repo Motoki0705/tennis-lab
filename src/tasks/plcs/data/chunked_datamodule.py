@@ -10,13 +10,10 @@ from src.tasks.plcs.data.datamodule import PLCSDataModule
 class ChunkedPLCSDataModule(BaseChunkedDataModule, PLCSDataModule):
     """PLCS datamodule that rotates background-generated training chunks."""
 
-    def _default_chunks_dir(self) -> str:
-        return "data/plcs/chunks"
-
     def _build_chunk_manager(self) -> ChunkManager:
         return ChunkManager(
             chunks_dir=self.chunks_dir,
-            config=self.config,
+            config=self.plcs_runtime.raw,
             scenes_per_chunk=self.scenes_per_chunk,
             epochs_per_chunk=self.epochs_per_chunk,
             prefetch_chunks=self.prefetch_chunks,

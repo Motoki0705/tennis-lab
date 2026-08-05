@@ -40,13 +40,11 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    default_ffn_dim,
 )
-from src.utils.schema.court import NUM_COURT_KP
 from src.utils.schema.player import NUM_HUMAN_KP
 
 if TYPE_CHECKING:
-    from omegaconf import DictConfig
+    from src.tasks.plcs.configuration import PLCSModelConfig
 
 
 class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
@@ -54,43 +52,35 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
 
     def __init__(
         self,
-        hidden_dim: int = 256,
-        num_layers: int = 0,
-        num_task_layers: int = 6,
-        rot_num_task_layers: int | None = None,
-        pose_num_task_layers: int | None = None,
-        canonical_on_rotation_branch: bool = True,
-        aux_position_on_rotation_branch: bool = True,
-        detach_pose_branch: bool = False,
-        num_heads: int = 8,
-        ffn_dim: int | None = None,
-        dropout: float = 0.1,
-        rope_dim: int | None = None,
-        rope_theta: float = 10000.0,
-        rope_theta_time: float | None = None,
-        rope_theta_camera: float | None = None,
-        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
-        predict_canonical_pose: bool = False,
-        max_views: int = 8,
-        max_seq_len: int = 120,
-        invisible_init_std: float = 0.02,
-        num_court_tokens: int = NUM_COURT_KP,
+        *,
+        hidden_dim: int,
+        num_layers: int,
+        num_task_layers: int,
+        rot_num_task_layers: int,
+        pose_num_task_layers: int,
+        canonical_on_rotation_branch: bool,
+        aux_position_on_rotation_branch: bool,
+        detach_pose_branch: bool,
+        num_heads: int,
+        ffn_dim: int,
+        dropout: float,
+        rope_dim: int,
+        rope_theta_time: float,
+        rope_theta_camera: float,
+        ffn_type: Literal["swiglu", "mlp"],
+        predict_canonical_pose: bool,
+        max_views: int,
+        max_seq_len: int,
+        invisible_init_std: float,
+        num_court_tokens: int,
     ) -> None:
         if num_task_layers <= 0:
             raise ValueError(
                 "PLCSMultiViewAxialSplitModel requires num_task_layers > 0; "
                 "use PLCSMultiViewAxialModel for a shared trunk."
             )
-        # Asymmetric-capacity option (issue #525/#535 follow-up): the rotation and
-        # pose trunks may each be deeper than the shared ``num_task_layers``
-        # default. Because the two trunks are isolated, spending extra depth on one
-        # cannot contaminate the other (the shared-trunk depth-collapse seen in
-        # #525 does not apply). ``None`` keeps the symmetric default
-        # (== num_task_layers), so existing configs are unchanged.
-        if rot_num_task_layers is None:
-            rot_num_task_layers = num_task_layers
-        if pose_num_task_layers is None:
-            pose_num_task_layers = num_task_layers
+        # The validated model contract resolves symmetric/asymmetric branch
+        # depths before construction; the constructor never supplies a default.
         if rot_num_task_layers <= 0 or pose_num_task_layers <= 0:
             raise ValueError("rot/pose_num_task_layers must be > 0 when set.")
         super().__init__(
@@ -100,7 +90,6 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
             ffn_dim=ffn_dim,
             dropout=dropout,
             rope_dim=rope_dim,
-            rope_theta=rope_theta,
             rope_theta_time=rope_theta_time,
             rope_theta_camera=rope_theta_camera,
             ffn_type=ffn_type,
@@ -118,9 +107,6 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         self.aux_position_on_rotation_branch = bool(aux_position_on_rotation_branch)
         self.detach_pose_branch = bool(detach_pose_branch)
 
-        if ffn_dim is None:
-            ffn_dim = default_ffn_dim(self.hidden_dim)
-
         def _axial_stack(rope_base: float, depth: int) -> nn.ModuleList:
             return nn.ModuleList(
                 [
@@ -132,6 +118,8 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
                             head_dim=self.head_dim,
                             rope_dim=self.rope_dim,
                             attn_dropout=dropout,
+                            attention_type="mha",
+                            n_kv_heads=None,
                             rope_base=rope_base,
                             ffn_type=ffn_type,
                         )
@@ -142,10 +130,18 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
 
         # rope_bases = (time_base, camera_base). Rotation and pose trunks can each
         # carry an independent depth (asymmetric capacity, issue #525/#535).
-        self.rot_camera_layers = _axial_stack(self.rope_bases[1], self.rot_num_task_layers)
-        self.rot_time_layers = _axial_stack(self.rope_bases[0], self.rot_num_task_layers)
-        self.pose_camera_layers = _axial_stack(self.rope_bases[1], self.pose_num_task_layers)
-        self.pose_time_layers = _axial_stack(self.rope_bases[0], self.pose_num_task_layers)
+        self.rot_camera_layers = _axial_stack(
+            self.rope_bases[1], self.rot_num_task_layers
+        )
+        self.rot_time_layers = _axial_stack(
+            self.rope_bases[0], self.rot_num_task_layers
+        )
+        self.pose_camera_layers = _axial_stack(
+            self.rope_bases[1], self.pose_num_task_layers
+        )
+        self.pose_time_layers = _axial_stack(
+            self.rope_bases[0], self.pose_num_task_layers
+        )
         self.rot_final_norm = RMSNorm(self.hidden_dim)
         self.pose_final_norm = RMSNorm(self.hidden_dim)
 
@@ -163,53 +159,34 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
             )
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> PLCSMultiViewAxialSplitModel:
+    def from_config(
+        cls, config: PLCSModelConfig, *, num_court_tokens: int
+    ) -> PLCSMultiViewAxialSplitModel:
         """Create the split model from a hydra config."""
-        model_cfg = config.get("model", {})
-        data_cfg = config.get("data", {})
-
+        num_task_layers = config.integer("num_task_layers")
         return cls(
-            hidden_dim=int(model_cfg.get("hidden_dim", 256)),
-            num_layers=int(model_cfg.get("num_layers", 0)),
-            num_task_layers=int(model_cfg.get("num_task_layers", 6)),
-            rot_num_task_layers=(
-                int(model_cfg["rot_num_task_layers"])
-                if model_cfg.get("rot_num_task_layers", None) is not None
-                else None
+            hidden_dim=config.integer("hidden_dim"),
+            num_layers=config.integer("num_layers"),
+            num_task_layers=num_task_layers,
+            rot_num_task_layers=config.integer("rot_num_task_layers"),
+            pose_num_task_layers=config.integer("pose_num_task_layers"),
+            canonical_on_rotation_branch=config.boolean("canonical_on_rotation_branch"),
+            aux_position_on_rotation_branch=config.boolean(
+                "aux_position_on_rotation_branch"
             ),
-            pose_num_task_layers=(
-                int(model_cfg["pose_num_task_layers"])
-                if model_cfg.get("pose_num_task_layers", None) is not None
-                else None
-            ),
-            canonical_on_rotation_branch=bool(
-                model_cfg.get("canonical_on_rotation_branch", True)
-            ),
-            aux_position_on_rotation_branch=bool(
-                model_cfg.get("aux_position_on_rotation_branch", True)
-            ),
-            detach_pose_branch=bool(model_cfg.get("detach_pose_branch", False)),
-            num_heads=int(model_cfg.get("num_heads", 8)),
-            ffn_dim=model_cfg.get("ffn_dim", None),
-            dropout=float(model_cfg.get("dropout", 0.1)),
-            rope_dim=model_cfg.get("rope_dim", None),
-            rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            rope_theta_time=model_cfg.get("rope_theta_time", None),
-            rope_theta_camera=model_cfg.get("rope_theta_camera", None),
-            ffn_type=cast(
-                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
-            ),
-            predict_canonical_pose=bool(model_cfg.get("predict_canonical_pose", False)),
-            max_views=int(model_cfg.get("max_views", 8)),
-            max_seq_len=int(
-                model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))
-            ),
-            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
-            num_court_tokens=int(
-                model_cfg.get(
-                    "num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP)
-                )
-            ),
+            detach_pose_branch=config.boolean("detach_pose_branch"),
+            num_heads=config.integer("num_heads"),
+            ffn_dim=config.integer("ffn_dim"),
+            dropout=config.number("dropout"),
+            rope_dim=config.integer("rope_dim"),
+            rope_theta_time=config.number("rope_theta_time"),
+            rope_theta_camera=config.number("rope_theta_camera"),
+            ffn_type=cast(Literal["swiglu", "mlp"], config.string("ffn_type")),
+            predict_canonical_pose=config.boolean("predict_canonical_pose"),
+            max_views=config.integer("max_views"),
+            max_seq_len=config.integer("max_seq_len"),
+            invisible_init_std=config.number("invisible_init_std"),
+            num_court_tokens=num_court_tokens,
         )
 
     def _run_axial_stack(
@@ -229,7 +206,9 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
         """Run alternating camera/time self-attention over ``x`` (B,T,N,hidden)."""
         for camera_layer, time_layer in zip(camera_layers, time_layers, strict=True):
             x_camera = x.reshape(batch_size * seq_len, n_cams, self.hidden_dim)
-            x_camera = camera_layer(x_camera, freqs_cis=camera_freqs, attn_mask=camera_mask)
+            x_camera = camera_layer(
+                x_camera, freqs_cis=camera_freqs, attn_mask=camera_mask
+            )
             x = x_camera.reshape(batch_size, seq_len, n_cams, self.hidden_dim)
 
             x_time = x.permute(0, 2, 1, 3).reshape(
@@ -299,24 +278,43 @@ class PLCSMultiViewAxialSplitModel(PLCSMultiViewAxialModel):
             batch_size=batch_size, seq_len=seq_len_in, n_cams=n_cams
         )
 
-        stack_kwargs = {
-            "batch_size": batch_size,
-            "seq_len": seq_len_in,
-            "n_cams": n_cams,
-            "camera_freqs": camera_freqs,
-            "time_freqs": time_freqs,
-            "camera_mask": camera_mask,
-            "time_mask": time_mask,
-        }
-
         # Optional shared trunk (num_layers may be 0 -> identity), then split.
-        x = self._run_axial_stack(x, self.camera_layers, self.time_layers, **stack_kwargs)
+        x = self._run_axial_stack(
+            x,
+            self.camera_layers,
+            self.time_layers,
+            batch_size=batch_size,
+            seq_len=seq_len_in,
+            n_cams=n_cams,
+            camera_freqs=camera_freqs,
+            time_freqs=time_freqs,
+            camera_mask=camera_mask,
+            time_mask=time_mask,
+        )
         x_rot = self._run_axial_stack(
-            x, self.rot_camera_layers, self.rot_time_layers, **stack_kwargs
+            x,
+            self.rot_camera_layers,
+            self.rot_time_layers,
+            batch_size=batch_size,
+            seq_len=seq_len_in,
+            n_cams=n_cams,
+            camera_freqs=camera_freqs,
+            time_freqs=time_freqs,
+            camera_mask=camera_mask,
+            time_mask=time_mask,
         )
         pose_input = x.detach() if self.detach_pose_branch else x
         x_pose = self._run_axial_stack(
-            pose_input, self.pose_camera_layers, self.pose_time_layers, **stack_kwargs
+            pose_input,
+            self.pose_camera_layers,
+            self.pose_time_layers,
+            batch_size=batch_size,
+            seq_len=seq_len_in,
+            n_cams=n_cams,
+            camera_freqs=camera_freqs,
+            time_freqs=time_freqs,
+            camera_mask=camera_mask,
+            time_mask=time_mask,
         )
 
         rot_feat = self.rot_final_norm(x_rot[:, :, 0, :])

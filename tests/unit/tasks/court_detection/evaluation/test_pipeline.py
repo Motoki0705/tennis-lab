@@ -58,13 +58,25 @@ def _write_valid_dataset(root: Path, *, name: str) -> CourtAnnotationDatasetSpec
         name=name,
         annotation_json=annotation_json,
         image_dir=image_dir,
+        image_extensions=(".png", ".jpg", ".jpeg"),
     )
 
 
 def _criteria() -> HomographyEvaluationCriteria:
     return HomographyEvaluationCriteria(
+        ransac_reproj_threshold_normalized=0.012,
+        min_inliers=12,
+        min_template_x_span_ratio=0.5,
+        min_template_y_span_ratio=0.7,
+        max_inlier_rms_normalized=0.006,
+        min_visible_fraction=0.98,
         min_court_area_ratio=0.001,
+        max_court_area_ratio=0.95,
         min_line_edge_support=0.8,
+        line_distance_tolerance_px=3.0,
+        line_evidence_max_side=900,
+        require_ground_view=True,
+        max_opposite_edge_ratio=0.95,
     )
 
 
@@ -97,6 +109,7 @@ def test_pipeline_evaluates_multiple_named_datasets_and_writes_aggregate(
         [first, second],
         criteria=_criteria(),
         workers=1,
+        use_refined_keypoints=True,
     )
     summary_path = write_evaluation_results(
         results,
@@ -119,6 +132,11 @@ def test_pipeline_rejects_ambiguous_image_extensions(tmp_path: Path) -> None:
     assert image is not None
     assert cv2.imwrite(str(duplicate), image)
 
-    result = evaluate_annotation_dataset(dataset, criteria=_criteria())
+    result = evaluate_annotation_dataset(
+        dataset,
+        criteria=_criteria(),
+        workers=1,
+        use_refined_keypoints=True,
+    )
 
     assert result.records[0]["rejection_reasons"] == ["ambiguous_image_extension"]

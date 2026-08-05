@@ -3,20 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Literal, cast
 
 import torch
 from torch import Tensor
 
 from src.tasks.base.data.augmentation import BaseObservationAugmentation
+from src.tasks.plcs.configuration import validate_augmentation
 from src.utils.data.augmentation import (
-    _as_dict,
     add_temporally_correlated_jitter,
     apply_burst_visibility_dropout,
     apply_edge_aware_degradation,
     apply_speed_conditioned_localization_error,
     inject_false_positive_observations,
-    parse_float_range,
     random_visibility_dropout,
     scale_uv_with_visibility,
 )
@@ -25,13 +24,20 @@ from src.utils.tensor_utils import clone_tensor_dict
 PLCSSample = dict[str, Tensor]
 
 
-def _entity_value(
+def _float_object(value: object) -> float:
+    return float(cast("float | int", value))
+
+
+def _int_object(value: object) -> int:
+    return cast("int", value)
+
+
+def _entity_setting(
     config: Mapping[str, Any],
-    entity: str,
+    entity: Literal["human", "court"],
     key: str,
-    default: Any,
 ) -> Any:
-    return config.get(f"{entity}_{key}", config.get(key, default))
+    return config[f"{entity}_{key}"]
 
 
 def _flatten_temporal_tracks(
@@ -67,7 +73,9 @@ def _restore_temporal_tracks(
 ) -> tuple[Tensor, Tensor]:
     keypoints = flat_keypoints.reshape(*prefix_shape, num_tracks, time_len, 2)
     visibility = flat_visibility.reshape(*prefix_shape, num_tracks, time_len)
-    return keypoints.transpose(-3, -2).contiguous(), visibility.transpose(-2, -1).contiguous()
+    return keypoints.transpose(-3, -2).contiguous(), visibility.transpose(
+        -2, -1
+    ).contiguous()
 
 
 def _mask_keypoints(keypoints: Tensor, visibility: Tensor) -> Tensor:
@@ -86,50 +94,27 @@ def _add_visible_gaussian_noise(
     return (keypoints + noise * visible).clamp(0.0, 1.0)
 
 
-class PLCSObservationAugmentation(BaseObservationAugmentation):
+class PLCSObservationAugmentation(BaseObservationAugmentation[PLCSSample]):
     """Apply configured observation corruption to PLCS keypoint inputs."""
 
+    def __init__(self, config: Mapping[str, Any]) -> None:
+        super().__init__(validate_augmentation(config))
+
     def _uv_scale_config(self) -> dict[str, Any]:
-        if "uv_scale" in self.config:
-            return _as_dict(self.config.get("uv_scale"))
-        scale_range = self.config.get("scale_range", [1.0, 1.0])
-        scale_min, scale_max = parse_float_range(scale_range, "augmentation.scale_range")
-        return {
-            "enabled": not (scale_min == 1.0 and scale_max == 1.0),
-            "prob": 1.0,
-            "scale_range": [scale_min, scale_max],
-            "apply_to_human": True,
-            "apply_to_court": True,
-        }
+        return dict(cast(Mapping[str, Any], self.config["uv_scale"]))
 
     def _gaussian_config(self) -> dict[str, Any]:
-        if "gaussian_noise" in self.config:
-            return _as_dict(self.config.get("gaussian_noise"))
-        noise_std = float(self.config.get("keypoint_noise_std", 0.0))
-        return {
-            "enabled": noise_std > 0,
-            "prob": 1.0,
-            "human_std": noise_std,
-            "court_std": noise_std,
-        }
+        return dict(cast(Mapping[str, Any], self.config["gaussian_noise"]))
 
     def _visibility_dropout_config(self) -> dict[str, Any]:
-        if "visibility_dropout" in self.config:
-            return _as_dict(self.config.get("visibility_dropout"))
-        drop_prob = float(self.config.get("visibility_drop_prob", 0.0))
-        return {
-            "enabled": drop_prob > 0,
-            "prob": 1.0,
-            "human_drop_prob": drop_prob,
-            "court_drop_prob": drop_prob,
-        }
+        return dict(cast(Mapping[str, Any], self.config["visibility_dropout"]))
 
     def forward(self, sample: PLCSSample) -> PLCSSample:
         """Return an augmented PLCS sample."""
         if not self.enabled:
             return sample
 
-        out = clone_tensor_dict(sample)
+        out: PLCSSample = clone_tensor_dict(sample)
         human_dropped_mask = torch.zeros_like(out["human_vis"], dtype=torch.bool)
         court_dropped_mask = torch.zeros_like(out["court_vis"], dtype=torch.bool)
 
@@ -236,13 +221,13 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         )
         if abs(scale - 1.0) < 1e-8:
             return
-        if bool(cfg.get("apply_to_human", True)):
+        if bool(cfg["apply_to_human"]):
             sample["human_kp"], sample["human_vis"] = scale_uv_with_visibility(
                 sample["human_kp"],
                 sample["human_vis"],
                 float(scale),
             )
-        if bool(cfg.get("apply_to_court", True)):
+        if bool(cfg["apply_to_court"]):
             sample["court_kp"], sample["court_vis"] = scale_uv_with_visibility(
                 sample["court_kp"],
                 sample["court_vis"],
@@ -253,8 +238,8 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         cfg = self.gaussian_cfg
         if not self._active(cfg, sample["human_kp"]):
             return
-        human_std = float(cfg.get("human_std", cfg.get("keypoint_noise_std", 0.0)))
-        court_std = float(cfg.get("court_std", human_std))
+        human_std = float(cfg["human_std"])
+        court_std = float(cfg["court_std"])
         sample["human_kp"] = _add_visible_gaussian_noise(
             sample["human_kp"],
             sample["human_vis"],
@@ -271,25 +256,27 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         keypoints: Tensor,
         visibility: Tensor,
         *,
-        entity: str,
+        entity: Literal["human", "court"],
     ) -> Tensor:
         cfg = self.temporal_jitter_cfg
         if not self._active(cfg, keypoints):
             return keypoints
-        jitter_std = float(_entity_value(cfg, entity, "jitter_std", 0.0))
-        drift_std = float(_entity_value(cfg, entity, "drift_std", 0.0))
+        jitter_std = float(_entity_setting(cfg, entity, "jitter_std"))
+        drift_std = float(_entity_setting(cfg, entity, "drift_std"))
         if jitter_std <= 0 and drift_std <= 0:
             return keypoints
-        flat_keypoints, flat_visibility, prefix_shape, time_len, num_tracks = _flatten_temporal_tracks(
-            keypoints,
-            visibility,
+        flat_keypoints, flat_visibility, prefix_shape, time_len, num_tracks = (
+            _flatten_temporal_tracks(
+                keypoints,
+                visibility,
+            )
         )
         flat_keypoints = add_temporally_correlated_jitter(
             flat_keypoints,
             flat_visibility,
             jitter_std=jitter_std,
             drift_std=drift_std,
-            drift_decay=float(cfg.get("drift_decay", 0.9)),
+            drift_decay=_float_object(cfg["drift_decay"]),
         )
         restored_keypoints, _ = _restore_temporal_tracks(
             flat_keypoints,
@@ -305,30 +292,27 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         keypoints: Tensor,
         visibility: Tensor,
         *,
-        entity: str,
+        entity: Literal["human", "court"],
     ) -> tuple[Tensor, Tensor]:
         cfg = self.speed_conditioned_cfg
         if not self._active(cfg, keypoints):
             return keypoints, visibility
-        frame_prob = float(_entity_value(cfg, entity, "frame_prob", 0.0))
+        frame_prob = float(_entity_setting(cfg, entity, "frame_prob"))
         if frame_prob <= 0:
             return keypoints, visibility
-        flat_keypoints, flat_visibility, prefix_shape, time_len, num_tracks = _flatten_temporal_tracks(
-            keypoints,
-            visibility,
+        flat_keypoints, flat_visibility, prefix_shape, time_len, num_tracks = (
+            _flatten_temporal_tracks(
+                keypoints,
+                visibility,
+            )
         )
         flat_keypoints, flat_visibility = apply_speed_conditioned_localization_error(
             flat_keypoints,
             flat_visibility,
             prob=frame_prob,
-            speed_threshold=float(_entity_value(cfg, entity, "speed_threshold", 0.025)),
-            lag_overshoot_range=_entity_value(
-                cfg,
-                entity,
-                "lag_overshoot_range",
-                [-0.2, 0.3],
-            ),
-            noise_std=float(_entity_value(cfg, entity, "noise_std", 0.0)),
+            speed_threshold=float(_entity_setting(cfg, entity, "speed_threshold")),
+            lag_overshoot_range=_entity_setting(cfg, entity, "lag_overshoot_range"),
+            noise_std=float(_entity_setting(cfg, entity, "noise_std")),
         )
         return _restore_temporal_tracks(
             flat_keypoints,
@@ -343,24 +327,26 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         keypoints: Tensor,
         visibility: Tensor,
         *,
-        entity: str,
+        entity: Literal["human", "court"],
     ) -> tuple[Tensor, Tensor]:
         cfg = self.edge_degradation_cfg
         if not self._active(cfg, keypoints):
             return keypoints, visibility
-        noise_std = float(_entity_value(cfg, entity, "noise_std", 0.0))
-        drop_prob = float(_entity_value(cfg, entity, "drop_prob", 0.0))
-        clip_out_prob = float(_entity_value(cfg, entity, "clip_out_prob", 0.0))
+        noise_std = float(_entity_setting(cfg, entity, "noise_std"))
+        drop_prob = float(_entity_setting(cfg, entity, "drop_prob"))
+        clip_out_prob = float(_entity_setting(cfg, entity, "clip_out_prob"))
         if noise_std <= 0 and drop_prob <= 0 and clip_out_prob <= 0:
             return keypoints, visibility
-        flat_keypoints, flat_visibility, prefix_shape, time_len, num_tracks = _flatten_temporal_tracks(
-            keypoints,
-            visibility,
+        flat_keypoints, flat_visibility, prefix_shape, time_len, num_tracks = (
+            _flatten_temporal_tracks(
+                keypoints,
+                visibility,
+            )
         )
         flat_keypoints, flat_visibility = apply_edge_aware_degradation(
             flat_keypoints,
             flat_visibility,
-            edge_margin=float(cfg.get("edge_margin", 0.08)),
+            edge_margin=_float_object(cfg["edge_margin"]),
             noise_std=noise_std,
             drop_prob=drop_prob,
             clip_out_prob=clip_out_prob,
@@ -377,54 +363,62 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
         self,
         visibility: Tensor,
         *,
-        entity: str,
+        entity: Literal["human", "court"],
     ) -> Tensor:
         cfg = self.visibility_dropout_cfg
         if not self._active(cfg, visibility):
             return visibility
-        drop_prob = float(_entity_value(cfg, entity, "drop_prob", 0.0))
+        drop_prob = float(_entity_setting(cfg, entity, "drop_prob"))
         return random_visibility_dropout(visibility, drop_prob)
 
     def _apply_burst_dropout(
         self,
         visibility: Tensor,
         *,
-        entity: str,
+        entity: Literal["human", "court"],
     ) -> Tensor:
         cfg = self.burst_dropout_cfg
         if not self._active(cfg, visibility):
             return visibility
-        track_prob = float(_entity_value(cfg, entity, "track_prob", 0.0))
+        track_prob = float(_entity_setting(cfg, entity, "track_prob"))
         if track_prob <= 0:
             return visibility
         flat_visibility = visibility.transpose(-2, -1).reshape(-1, visibility.shape[-2])
         flat_visibility = apply_burst_visibility_dropout(
             flat_visibility,
             prob=track_prob,
-            min_len=int(cfg.get("min_len", 2)),
-            max_len=int(cfg.get("max_len", 6)),
-            max_bursts=int(cfg.get("max_bursts", 1)),
+            min_len=_int_object(cfg["min_len"]),
+            max_len=_int_object(cfg["max_len"]),
+            max_bursts=_int_object(cfg["max_bursts"]),
         )
-        return flat_visibility.reshape(*visibility.shape[:-2], visibility.shape[-1], visibility.shape[-2]).transpose(-2, -1).contiguous()
+        return (
+            flat_visibility.reshape(
+                *visibility.shape[:-2], visibility.shape[-1], visibility.shape[-2]
+            )
+            .transpose(-2, -1)
+            .contiguous()
+        )
 
     def _apply_false_positive(
         self,
         keypoints: Tensor,
         visibility: Tensor,
         *,
-        entity: str,
+        entity: Literal["human", "court"],
         dropped_mask: Tensor,
     ) -> tuple[Tensor, Tensor]:
         cfg = self.false_positive_cfg
         if not self._active(cfg, keypoints):
             return keypoints, visibility
-        absent_prob = float(_entity_value(cfg, entity, "prob_absent", 0.0))
-        after_dropout_prob = float(_entity_value(cfg, entity, "prob_after_dropout", 0.0))
+        absent_prob = float(_entity_setting(cfg, entity, "prob_absent"))
+        after_dropout_prob = float(_entity_setting(cfg, entity, "prob_after_dropout"))
         if absent_prob <= 0 and after_dropout_prob <= 0:
             return keypoints, visibility
-        flat_keypoints, flat_visibility, prefix_shape, time_len, num_tracks = _flatten_temporal_tracks(
-            keypoints,
-            visibility,
+        flat_keypoints, flat_visibility, prefix_shape, time_len, num_tracks = (
+            _flatten_temporal_tracks(
+                keypoints,
+                visibility,
+            )
         )
         _, flat_dropped_mask, _, _, _ = _flatten_temporal_tracks(
             keypoints,
@@ -436,7 +430,9 @@ class PLCSObservationAugmentation(BaseObservationAugmentation):
             false_positive_prob=absent_prob,
             after_dropout_mask=flat_dropped_mask > 0,
             after_dropout_prob=after_dropout_prob,
-            after_dropout_window=int(_entity_value(cfg, entity, "after_dropout_window", 0)),
+            after_dropout_window=int(
+                _entity_setting(cfg, entity, "after_dropout_window")
+            ),
         )
         return _restore_temporal_tracks(
             flat_keypoints,

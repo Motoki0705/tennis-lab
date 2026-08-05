@@ -8,9 +8,9 @@ hidden_dim: ???
 num_heads: ???
 num_stages: ???
 
-ffn_dim: null
+ffn_dim: ???
 num_queries: 4
-rope_dim: null
+rope_dim: ???
 dropout: 0.1
 role_rope_enabled: true
 mask_invisible_observations: true

@@ -9,10 +9,10 @@ import torch
 
 import src.submodules.models as submodule_models
 from src.tennis_scene.pipeline.components.gvhmr import (
-    GVHMRConfig,
     GVHMRModule,
     GVHMRResult,
 )
+from tests.unit.tennis_scene.pipeline.config_factories import make_gvhmr_config
 
 
 def make_result(with_vertices: bool = True) -> GVHMRResult:
@@ -43,6 +43,8 @@ class TestGVHMRResultRoundTrip:
             loaded.smpl_body_pose, result.smpl_body_pose, rtol=1e-6
         )
         np.testing.assert_allclose(loaded.smpl_betas, result.smpl_betas, rtol=1e-6)
+        assert loaded.smpl_vertices_local is not None
+        assert result.smpl_vertices_local is not None
         np.testing.assert_allclose(
             loaded.smpl_vertices_local, result.smpl_vertices_local, rtol=1e-6
         )
@@ -62,22 +64,26 @@ class TestGVHMRResultRoundTrip:
 
 
 class TestGVHMRConfig:
-    def test_defaults_point_to_ckpt_symlinks(self):
-        config = GVHMRConfig(gvhmr_checkpoint="ckpt/gvhmr/gvhmr_siga24_release.ckpt")
-        assert str(config.yolo_checkpoint).startswith("ckpt/")
-        assert str(config.dino_checkpoint).startswith("ckpt/")
+    def test_explicit_assets_and_model_choices_are_preserved(
+        self, tmp_path: Path
+    ) -> None:
+        config = make_gvhmr_config(tmp_path)
+        assert config.yolo_checkpoint == (tmp_path / "ckpt/yolo.pt").resolve()
+        assert config.dino_checkpoint == (tmp_path / "ckpt/dino.pth").resolve()
         assert config.detector == "dino"
-        assert str(config.vitpose_checkpoint).startswith("ckpt/")
-        assert str(config.hmr2_checkpoint).startswith("ckpt/")
+        assert config.vitpose_checkpoint == (tmp_path / "ckpt/vitpose.pth").resolve()
+        assert config.hmr2_checkpoint == (tmp_path / "ckpt/hmr2.ckpt").resolve()
         assert config.track_selection == "auto"
+        assert config.runtime.allow_device_fallback is False
 
-    def test_rejects_unknown_detector(self):
+    def test_rejects_unknown_detector(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="detector must be"):
-            GVHMRConfig(gvhmr_checkpoint="gvhmr.ckpt", detector="unknown")
+            make_gvhmr_config(tmp_path, detector="unknown")
 
 
 def test_load_selects_dino_detector_and_existing_tracker(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     constructed: dict[str, Any] = {}
 
@@ -105,21 +111,23 @@ def test_load_selects_dino_detector_and_existing_tracker(
     monkeypatch.setattr(submodule_models, "SmplVertexReconstructor", FakeModel)
 
     module = GVHMRModule(
-        GVHMRConfig(
-            gvhmr_checkpoint="gvhmr.ckpt",
+        make_gvhmr_config(
+            tmp_path,
             detector="dino",
-            dino_checkpoint="dino.pth",
             dino_confidence=0.42,
-            device="cpu",
         )
     )
     module.load()
 
     tracker = constructed["dino_tracker"]
     assert tracker.kwargs == {
-        "checkpoint": "dino.pth",
+        "checkpoint": (tmp_path / "ckpt/dino.pth").resolve(),
+        "repository": (tmp_path / "third_party/DINO").resolve(),
         "device": "cpu",
+        "allow_device_fallback": False,
         "confidence": 0.42,
+        "short_side": 800,
+        "max_long_side": 1333,
     }
 
 
@@ -129,7 +137,8 @@ class _FakeTrackResult:
     def __init__(self) -> None:
         self.requests: list[int] = []
 
-    def bbx_xys(self, track_id: int) -> torch.Tensor:
+    def bbx_xys(self, track_id: int, *, base_enlarge: float) -> torch.Tensor:
+        assert base_enlarge == 1.2
         self.requests.append(track_id)
         return torch.full((5, 3), float(track_id), dtype=torch.float32)
 
@@ -146,11 +155,10 @@ class _FakeTracker:
 
 def test_process_runs_direct_chain_and_saves_result(tmp_path: Path) -> None:
     output_path = tmp_path / "gvhmr_result.json"
-    config = GVHMRConfig(
-        gvhmr_checkpoint="dummy-gvhmr.ckpt",
+    config = make_gvhmr_config(
+        tmp_path,
         track_selection="auto",
         num_tracks=2,
-        device="cpu",
         save_result=True,
         output_path=output_path,
     )
@@ -182,7 +190,7 @@ def test_process_runs_direct_chain_and_saves_result(tmp_path: Path) -> None:
 
     module._run_track = fake_run_track  # type: ignore[method-assign]
 
-    result = module.process("video.mp4", max_frames=3)
+    result = module.process(Path("video.mp4"), max_frames=3)
 
     assert tracker.request is not None
     assert str(tracker.request.video_path) == "video.mp4"

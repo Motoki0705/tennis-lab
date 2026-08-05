@@ -26,17 +26,17 @@ class TransformerSequenceDiscriminator(nn.Module):
         self,
         *,
         input_dim: int,
-        hidden_dim: int = 128,
-        num_layers: int = 4,
-        num_heads: int = 4,
-        ffn_dim: int | None = None,
-        dropout: float = 0.1,
-        rope_dim: int | None = None,
-        rope_theta: float = 10000.0,
-        ffn_type: str = "swiglu",
-        max_seq_len: int = 120,
-        invalid_init_std: float = 0.02,
-        cls_init_std: float = 0.02,
+        hidden_dim: int,
+        num_layers: int,
+        num_heads: int,
+        ffn_dim: int,
+        dropout: float,
+        rope_dim: int,
+        rope_theta: float,
+        ffn_type: str,
+        max_seq_len: int,
+        invalid_init_std: float,
+        cls_init_std: float,
     ) -> None:
         super().__init__()
 
@@ -48,17 +48,14 @@ class TransformerSequenceDiscriminator(nn.Module):
             )
         if max_seq_len <= 0:
             raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
+        if ffn_dim <= 0:
+            raise ValueError(f"ffn_dim must be positive, got {ffn_dim}")
 
         head_dim = hidden_dim // num_heads
-        rope_dim = head_dim if rope_dim is None else int(rope_dim)
         if rope_dim % 2 != 0:
             raise ValueError(f"rope_dim must be even, got {rope_dim}")
         if rope_dim > head_dim:
             raise ValueError(f"rope_dim={rope_dim} cannot exceed head_dim={head_dim}")
-        if ffn_dim is None:
-            ffn_dim = int((8 * hidden_dim) / 3)
-            ffn_dim = (ffn_dim + 63) // 64 * 64
-
         self.input_dim = int(input_dim)
         self.hidden_dim = int(hidden_dim)
         self.max_seq_len = int(max_seq_len)
@@ -69,7 +66,9 @@ class TransformerSequenceDiscriminator(nn.Module):
         self.invalid_token = nn.Parameter(
             torch.randn(1, 1, self.hidden_dim) * float(invalid_init_std)
         )
-        self.cls_token = nn.Parameter(torch.randn(1, 1, self.hidden_dim) * float(cls_init_std))
+        self.cls_token = nn.Parameter(
+            torch.randn(1, 1, self.hidden_dim) * float(cls_init_std)
+        )
         self.blocks = nn.ModuleList(
             [
                 TransformerBlock(
@@ -80,6 +79,8 @@ class TransformerSequenceDiscriminator(nn.Module):
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=float(dropout),
+                        attention_type="mha",
+                        n_kv_heads=None,
                         rope_base=float(rope_theta),
                         ffn_type=cast(Literal["swiglu", "mlp"], ffn_type),
                     )
@@ -118,15 +119,16 @@ class TransformerSequenceDiscriminator(nn.Module):
             )
 
         if mask is None:
-            seq_mask = torch.ones(batch_size, seq_len, device=sequence.device, dtype=torch.bool)
+            seq_mask = torch.ones(
+                batch_size, seq_len, device=sequence.device, dtype=torch.bool
+            )
         else:
             seq_mask = mask > 0
             if seq_mask.ndim == 1:
                 seq_mask = seq_mask.unsqueeze(1)
             if seq_mask.ndim != 2:
                 raise ValueError(
-                    "mask must be (B,) or (B, T), "
-                    f"got shape {tuple(seq_mask.shape)}"
+                    f"mask must be (B,) or (B, T), got shape {tuple(seq_mask.shape)}"
                 )
             if seq_mask.shape != (batch_size, seq_len):
                 raise ValueError(
@@ -142,7 +144,7 @@ class TransformerSequenceDiscriminator(nn.Module):
         cls = self.cls_token.expand(batch_size, -1, -1)
         x = torch.cat([cls, x], dim=1)
 
-        freqs_cis = cast(Tensor, self.freqs_cis[: seq_len + 1])
+        freqs_cis = self.get_buffer("freqs_cis")[: seq_len + 1]
         if freqs_cis.device != x.device:
             freqs_cis = freqs_cis.to(x.device)
 
@@ -162,36 +164,69 @@ def build_trajectory_discriminator(
     *,
     input_dim: int,
     disc_cfg: Mapping[str, Any],
-    default_max_seq_len: int,
 ) -> TransformerSequenceDiscriminator:
     """Build a :class:`TransformerSequenceDiscriminator` from a GAN config.
 
     Replicates the kwarg parsing performed by the task-specific discriminator
-    wrappers (ball detection / BLCS), including the ``invisible_init_std`` to
-    ``invalid_init_std`` rename.
+    wrappers (ball detection / BLCS).
 
     Args:
         input_dim: Feature dimension of the scored sequences (e.g. 2 for
             image-space ball trajectories, 3 for 3D trajectories).
         disc_cfg: The ``training.gan.discriminator`` config mapping.
-        default_max_seq_len: Fallback for ``max_seq_len`` when the config does
-            not provide one (e.g. ``model.num_frames`` for ball detection or
-            ``data.max_seq_len`` for BLCS).
-
     Returns:
         TransformerSequenceDiscriminator: The configured discriminator.
     """
+    if type(input_dim) is not int:
+        raise TypeError("input_dim must be exactly int.")
+    expected = {
+        "hidden_dim",
+        "num_layers",
+        "num_heads",
+        "ffn_dim",
+        "dropout",
+        "rope_dim",
+        "rope_theta",
+        "ffn_type",
+        "max_seq_len",
+        "invalid_init_std",
+        "cls_init_std",
+    }
+    missing = expected - set(disc_cfg)
+    unknown = set(disc_cfg) - expected
+    if missing or unknown:
+        raise ValueError(
+            "Invalid trajectory discriminator keys: "
+            f"missing={sorted(missing)}, unknown={sorted(unknown)}"
+        )
+    for key in (
+        "hidden_dim",
+        "num_layers",
+        "num_heads",
+        "ffn_dim",
+        "rope_dim",
+        "max_seq_len",
+    ):
+        if type(disc_cfg[key]) is not int:
+            raise TypeError(f"trajectory discriminator {key} must be exactly int.")
+    for key in ("dropout", "rope_theta", "invalid_init_std", "cls_init_std"):
+        if type(disc_cfg[key]) is not float:
+            raise TypeError(f"trajectory discriminator {key} must be exactly float.")
+    if type(disc_cfg["ffn_type"]) is not str:
+        raise TypeError("trajectory discriminator ffn_type must be exactly str.")
+    if disc_cfg["ffn_type"] not in {"swiglu", "mlp"}:
+        raise ValueError("trajectory discriminator ffn_type must be 'swiglu' or 'mlp'.")
     return TransformerSequenceDiscriminator(
-        input_dim=int(input_dim),
-        hidden_dim=int(disc_cfg.get("hidden_dim", 128)),
-        num_layers=int(disc_cfg.get("num_layers", 4)),
-        num_heads=int(disc_cfg.get("num_heads", 4)),
-        ffn_dim=disc_cfg.get("ffn_dim", None),
-        dropout=float(disc_cfg.get("dropout", 0.1)),
-        rope_dim=disc_cfg.get("rope_dim", None),
-        rope_theta=float(disc_cfg.get("rope_theta", 10000.0)),
-        ffn_type=str(disc_cfg.get("ffn_type", "swiglu")),
-        max_seq_len=int(disc_cfg.get("max_seq_len", default_max_seq_len)),
-        invalid_init_std=float(disc_cfg.get("invisible_init_std", 0.02)),
-        cls_init_std=float(disc_cfg.get("cls_init_std", 0.02)),
+        input_dim=input_dim,
+        hidden_dim=disc_cfg["hidden_dim"],
+        num_layers=disc_cfg["num_layers"],
+        num_heads=disc_cfg["num_heads"],
+        ffn_dim=disc_cfg["ffn_dim"],
+        dropout=disc_cfg["dropout"],
+        rope_dim=disc_cfg["rope_dim"],
+        rope_theta=disc_cfg["rope_theta"],
+        ffn_type=disc_cfg["ffn_type"],
+        max_seq_len=disc_cfg["max_seq_len"],
+        invalid_init_std=disc_cfg["invalid_init_std"],
+        cls_init_std=disc_cfg["cls_init_std"],
     )

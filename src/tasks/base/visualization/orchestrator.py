@@ -8,21 +8,26 @@ device resolution, Hydra camera-selection parsing, and animation save/show.
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence, Set
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import matplotlib.pyplot as plt
-from hydra.utils import to_absolute_path
-from omegaconf import DictConfig
 
+from src.tasks.base.configuration import (
+    SceneVisualizationConfig,
+    as_config_mapping,
+    require_config_mapping,
+)
 from src.tasks.base.visualization.style import (
     SceneStyleConfig,
     parse_scene_style,
     parse_view_3d,
 )
+from src.utils.configuration import PathResolver, RuntimePathRoots
 from src.utils.device import resolve_device as _resolve_torch_device
+from src.utils.paths import PROJECT_ROOT
 from src.utils.rendering.camera_view import CameraController
 
 logger = logging.getLogger(__name__)
@@ -45,7 +50,7 @@ class BaseVisualizationRuntimeConfig:
     fps: float | None
     save: Path | None
     camera: int
-    cameras: list[int] | str | None
+    cameras: tuple[int, ...] | Literal["all"] | None
     info: bool
     style: SceneStyleConfig
     view_3d: CameraController
@@ -64,37 +69,39 @@ def resolve_device(device: str) -> str:
 
 def parse_hw(value: object, *, name: str) -> tuple[int, int]:
     """Parse a length-2 ``(height, width)`` int pair from a Hydra config value."""
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 2:
-        raise ValueError(f"{name} must be a length-2 sequence.")
-    return int(value[0]), int(value[1])
+    if type(value) not in (list, tuple):
+        raise TypeError(f"{name} must be exactly list or tuple.")
+    sequence = cast("Sequence[object]", value)
+    if len(sequence) != 2 or any(type(item) is not int for item in sequence):
+        raise TypeError(f"{name} must contain exactly two int values.")
+    return cast("int", sequence[0]), cast("int", sequence[1])
 
 
 def parse_rgb(value: object, *, name: str) -> tuple[int, int, int]:
     """Parse a length-3 RGB int triple from a Hydra config value."""
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 3:
-        raise ValueError(f"{name} must be a length-3 RGB sequence.")
-    return int(value[0]), int(value[1]), int(value[2])
+    if type(value) not in (list, tuple):
+        raise TypeError(f"{name} must be exactly list or tuple.")
+    sequence = cast("Sequence[object]", value)
+    if len(sequence) != 3 or any(type(item) is not int for item in sequence):
+        raise TypeError(f"{name} must contain exactly three int values.")
+    rgb = cast("tuple[int, int, int]", tuple(sequence))
+    if any(channel < 0 or channel > 255 for channel in rgb):
+        raise ValueError(f"{name} channels must be within [0, 255].")
+    return rgb
 
 
 def parse_float_triplet(value: object, *, name: str) -> tuple[float, float, float]:
     """Parse a length-3 float triple from a Hydra config value."""
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 3:
-        raise ValueError(f"{name} must be a length-3 sequence.")
-    return float(value[0]), float(value[1]), float(value[2])
-
-
-def parse_cameras(raw_value: object) -> list[int] | str | None:
-    """Parse Hydra camera selection value into optional list[int]."""
-    if raw_value is None or raw_value == "":
-        return None
-    if isinstance(raw_value, str):
-        stripped = raw_value.strip()
-        if stripped == "":
-            return None
-        if stripped == "all":
-            return "all"
-        return [int(part.strip()) for part in stripped.split(",")]
-    return [int(v) for v in cast("Iterable[Any]", raw_value)]
+    if type(value) not in (list, tuple):
+        raise TypeError(f"{name} must be exactly list or tuple.")
+    sequence = cast("Sequence[object]", value)
+    if len(sequence) != 3 or any(type(item) not in (float, int) for item in sequence):
+        raise TypeError(f"{name} must contain exactly three numeric values.")
+    return (
+        float(cast("float | int", sequence[0])),
+        float(cast("float | int", sequence[1])),
+        float(cast("float | int", sequence[2])),
+    )
 
 
 def save_or_show_animation(
@@ -112,30 +119,46 @@ def save_or_show_animation(
         plt.show()
 
 
-def build_scene_runtime_config(cfg: DictConfig) -> BaseVisualizationRuntimeConfig:
+def build_scene_runtime_config(
+    cfg: object,
+    *,
+    visualization_extension_keys: Set[str] = frozenset(),
+) -> BaseVisualizationRuntimeConfig:
     """Build the shared scene-visualization runtime config from a Hydra config.
 
     Common to the PLCS and BLCS orchestrators: resolves scene/checkpoint/save
     paths to absolute, resolves the device (preferring ``run.device`` then
     ``visualization.device``), and parses the Hydra camera selection.
     """
-    vis = cfg.visualization
-    run = cfg.get("run", {})
-    run_device = run.get("device", vis.get("device", "auto"))
+    root = as_config_mapping(cfg, path="configuration")
+    vis = require_config_mapping(root, "visualization", path="configuration")
+    resolver = PathResolver(
+        RuntimePathRoots.from_mapping(
+            require_config_mapping(root, "paths", path="configuration"),
+            repository_root=PROJECT_ROOT,
+        )
+    )
+    common = SceneVisualizationConfig.from_mapping(
+        vis,
+        resolver=resolver,
+        extension_keys=visualization_extension_keys,
+    )
 
     return BaseVisualizationRuntimeConfig(
-        mode=str(vis.mode),
-        scene_path=Path(to_absolute_path(str(vis.scene_path))),
-        checkpoint=(
-            Path(to_absolute_path(str(vis.checkpoint))) if vis.checkpoint else None
+        mode=common.mode,
+        scene_path=common.scene_path,
+        checkpoint=common.checkpoint,
+        device=resolve_device(common.device),
+        animation_view=common.animation_view,
+        fps=common.fps,
+        save=common.save,
+        camera=common.camera,
+        cameras=common.cameras,
+        info=common.info,
+        style=parse_scene_style(
+            require_config_mapping(vis, "style", path="visualization")
         ),
-        device=resolve_device(str(run_device)),
-        animation_view=str(vis.animation_view),
-        fps=float(vis.fps) if vis.fps is not None else None,
-        save=Path(to_absolute_path(str(vis.save))) if vis.save else None,
-        camera=int(vis.get("camera", 0)),
-        cameras=parse_cameras(vis.get("cameras")),
-        info=bool(vis.info),
-        style=parse_scene_style(vis.get("style")),
-        view_3d=parse_view_3d(vis.get("view_3d")),
+        view_3d=parse_view_3d(
+            require_config_mapping(vis, "view_3d", path="visualization")
+        ),
     )

@@ -6,7 +6,7 @@ shared ``rendering/`` layer without duplicating image-decoding logic.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import torch
@@ -49,7 +49,8 @@ def logits_to_seg_mask(logits: torch.Tensor) -> np.ndarray:
     Returns:
         ``(H, W)`` int NumPy array of class indices.
     """
-    return cast("np.ndarray", logits.argmax(dim=0).cpu().numpy().astype(np.int32))
+    mask: np.ndarray = logits.argmax(dim=0).cpu().numpy().astype(np.int32)
+    return mask
 
 
 def logits_to_kp_prediction(logits: torch.Tensor) -> KpFramePrediction:
@@ -89,4 +90,7 @@ def logits_to_line_prob(logits: torch.Tensor) -> np.ndarray:
     Returns:
         ``(H, W)`` float NumPy array in ``[0, 1]``.
     """
-    return cast("np.ndarray", torch.sigmoid(logits).squeeze(0).cpu().numpy().astype(np.float32))
+    probability: np.ndarray = (
+        torch.sigmoid(logits).squeeze(0).cpu().numpy().astype(np.float32)
+    )
+    return probability

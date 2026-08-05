@@ -5,12 +5,13 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import torch
 
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.utils.configuration import PathResolver
 from src.utils.inference.windowed import blend_windows, window_slices
 from src.utils.io import load_json, save_json
 
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class PLCSConfig:
     """Configuration for PLCS module.
 
@@ -43,14 +44,23 @@ class PLCSConfig:
             visibility is binary — thresholding restores that contract.
     """
 
-    checkpoint: str | Path
-    device: str = "cuda"
-    save_result: bool = False
-    output_path: str | Path | None = None
-    load_path: str | Path | None = None
-    window_size: int = 256
-    window_overlap: int = 64
-    human_vis_threshold: float = 0.35
+    checkpoint: Path
+    source: Literal["execute", "load"]
+    device: str
+    allow_device_fallback: bool
+    save_result: bool
+    output_path: Path
+    load_path: Path | None
+    window_size: int
+    window_overlap: int
+    human_vis_threshold: float
+    resolver: PathResolver
+
+    def __post_init__(self) -> None:
+        if (self.source == "load") != (self.load_path is not None):
+            raise ValueError(
+                "PLCS source='load' requires load_path; execute forbids it"
+            )
 
 
 @dataclass
@@ -133,7 +143,7 @@ class PLCSModule(BasePipelineModule):
 
     def __init__(self, config: PLCSConfig) -> None:
         self.config = config
-        self.checkpoint = Path(self.config.checkpoint)
+        self.checkpoint = self.config.checkpoint
         self.device = self.config.device
         self._predictor: PLCSPredictor | None = None
 
@@ -145,7 +155,10 @@ class PLCSModule(BasePipelineModule):
         from src.tasks.plcs.inference.predictor import PLCSPredictor
 
         self._predictor = PLCSPredictor.load_from_checkpoint(
-            self.checkpoint, device=self.device
+            self.checkpoint,
+            resolver=self.config.resolver,
+            device=self.device,
+            allow_device_fallback=self.config.allow_device_fallback,
         )
         self._validate_pipeline_checkpoint_profile()
 
@@ -201,14 +214,15 @@ class PLCSModule(BasePipelineModule):
         Returns:
             PLCSResult with position/yaw in (P, T, ...).
         """
-        if self.config.load_path is not None:
-            load_path = Path(self.config.load_path)
-            if load_path.exists():
-                LOGGER.info(f"Loading PLCS result from {load_path} (skipping inference)")
+        if self.config.source == "load":
+            assert self.config.load_path is not None
+            load_path = self.config.load_path
+            if load_path.is_file():
+                LOGGER.info(
+                    f"Loading PLCS result from {load_path} (skipping inference)"
+                )
                 return PLCSResult.load(load_path)
-            LOGGER.warning(
-                f"load_path specified but not found: {load_path}, running inference"
-            )
+            raise FileNotFoundError(f"PLCS artifact not found: {load_path}")
 
         if not self.is_loaded:
             self.load()
@@ -218,8 +232,7 @@ class PLCSModule(BasePipelineModule):
 
         if human_kp_2d.ndim != 5 or human_kp_2d.shape[3:] != (17, 2):
             raise ValueError(
-                "human_kp_2d shape must be (P, N, T, 17, 2), "
-                f"got {human_kp_2d.shape}"
+                f"human_kp_2d shape must be (P, N, T, 17, 2), got {human_kp_2d.shape}"
             )
 
         num_players, num_cameras, num_frames = human_kp_2d.shape[:3]
@@ -230,8 +243,7 @@ class PLCSModule(BasePipelineModule):
             17,
         ):
             raise ValueError(
-                "human_kp_vis shape must match (P, N, T, 17), "
-                f"got {human_kp_vis.shape}"
+                f"human_kp_vis shape must match (P, N, T, 17), got {human_kp_vis.shape}"
             )
 
         if track_ids is None:
@@ -281,9 +293,9 @@ class PLCSModule(BasePipelineModule):
         if human_kp_vis is not None:
             # Real detectors emit continuous confidences; training visibility
             # is binary, so threshold before the model's (vis > 0) masking.
-            binary_vis = (
-                human_kp_vis >= self.config.human_vis_threshold
-            ).astype(np.float32)
+            binary_vis = (human_kp_vis >= self.config.human_vis_threshold).astype(
+                np.float32
+            )
             dropped = float((human_kp_vis > 0).mean() - binary_vis.mean())
             LOGGER.info(
                 "Thresholded human keypoint confidence at "
@@ -341,8 +353,7 @@ class PLCSModule(BasePipelineModule):
             )
         if yaws.shape != (num_players, num_frames):
             raise ValueError(
-                "PLCS predictor yaw_radians must have shape (P, T), "
-                f"got {yaws.shape}"
+                f"PLCS predictor yaw_radians must have shape (P, T), got {yaws.shape}"
             )
 
         result = PLCSResult(
@@ -351,7 +362,7 @@ class PLCSModule(BasePipelineModule):
             track_ids=track_ids.astype(np.int32),
         )
 
-        if self.config.save_result and self.config.output_path is not None:
+        if self.config.save_result:
             result.save(self.config.output_path)
 
         return result

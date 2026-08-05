@@ -15,8 +15,6 @@ import torch
 from gsplat.rendering import rasterization
 from PIL import Image
 
-REPO_ROOT = Path(__file__).resolve().parents[5]
-
 from src.synthetic_data_generation.composition.contracts import (  # noqa: E402
     load_gaussian_scene_manifest,
 )
@@ -24,6 +22,10 @@ from src.synthetic_data_generation.composition.gaussians import (  # noqa: E402
     GaussianTensorSet,
     compose_gaussians,
     transform_gaussians,
+)
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
 )
 from src.synthetic_data_generation.dataset.blcs.artifacts.asset_registry import (  # noqa: E402
     verify_local_gaussian_asset,
@@ -36,12 +38,17 @@ from src.synthetic_data_generation.dataset.blcs.rendering.nht import (  # noqa: 
     _relative_file_ref,
     _sha256_file,
 )
-from src.synthetic_data_generation.rendering.nht.runtime_paths import (  # noqa: E402
-    installed_gsplat_root,
-)
 from src.synthetic_data_generation.scene_contract import (  # noqa: E402
     SceneCamera,
     SimilarityTransform,
+)
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
 )
 
 PLAN_SCHEMA = "tennis_plcs_gaussian_scene_plan_v1"
@@ -68,12 +75,42 @@ _TENSOR_KEYS = {
     "features",
     "instance_ids",
 }
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.plcs.nht_render",
+    fields=(
+        BoundaryPathField(
+            "plan_dir",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "background_composition",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "gsplat_repository",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output_dir", PathRole.DATA, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+    ),
+)
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan-dir", type=Path, required=True)
     parser.add_argument("--background-composition", type=Path, required=True)
+    parser.add_argument("--gsplat-repository", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument(
         "--frame-indices",
@@ -83,6 +120,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=480)
     parser.add_argument("--instance-alpha-threshold", type=float, default=1.0e-4)
     parser.add_argument("--aov-alpha-consistency-tolerance", type=float, default=0.005)
+    add_path_roots_argument(parser)
     return parser.parse_args()
 
 
@@ -200,6 +238,7 @@ def _load_pose_assets(
     *,
     appearance_space_sha256: str,
     device: torch.device,
+    resolver: PathResolver,
 ) -> tuple[GaussianTensorSet, ...]:
     pose_assets = manifest.get("pose_assets")
     if not isinstance(pose_assets, list) or len(pose_assets) != len(POSE_IDS):
@@ -216,7 +255,9 @@ def _load_pose_assets(
             or record.get("feature_dim") != 48
         ):
             raise ValueError(f"PLCS pose asset {expected_index} differs.")
-        path = _file_uri_path(record.get("uri"))
+        path = resolver.validate(
+            PathRole.ARTIFACT, _file_uri_path(record.get("uri"))
+        )
         if (
             not path.is_file()
             or path.stat().st_size != record.get("size_bytes")
@@ -546,9 +587,20 @@ def _verify_output(root: Path) -> dict[str, Any]:
 
 def main() -> None:
     args = _parse_args()
-    plan_dir = args.plan_dir.resolve()
-    composition_path = args.background_composition.resolve()
-    output_dir = args.output_dir.resolve()
+    resolver = non_hydra_path_resolver(args.path_roots)
+    paths = PATH_BOUNDARY.validate(
+        {
+            "plan_dir": args.plan_dir,
+            "background_composition": args.background_composition,
+            "gsplat_repository": args.gsplat_repository,
+            "output_dir": args.output_dir,
+        },
+        resolver=resolver,
+    )
+    plan_dir = paths.declared("plan_dir").path
+    composition_path = paths.declared("background_composition").path
+    gsplat_repository = paths.declared("gsplat_repository").path
+    output_dir = paths.declared("output_dir").path
     if output_dir.exists():
         raise SystemExit(f"Refusing to overwrite output: {output_dir}")
     if args.width <= 1:
@@ -579,8 +631,7 @@ def main() -> None:
     if background_asset.appearance_space_sha256 != appearance_space:
         raise ValueError("PLCS avatar and background appearance spaces differ.")
 
-    gsplat_path = installed_gsplat_root()
-    renderer_commit = _git_head(gsplat_path)
+    renderer_commit = _git_head(gsplat_repository)
 
     device = torch.device("cuda:0")
     background = _load_tensor_set(
@@ -592,6 +643,7 @@ def main() -> None:
         manifest,
         appearance_space_sha256=appearance_space,
         device=device,
+        resolver=resolver,
     )
     if any(asset.feature_dim != background.feature_dim for asset in pose_assets):
         raise ValueError("PLCS pose and background feature dimensions differ.")

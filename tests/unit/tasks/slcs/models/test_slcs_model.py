@@ -8,6 +8,39 @@ import torch
 from src.tasks.slcs.models.slcs_model import SLCSFusionModel
 
 
+def _model(
+    *,
+    num_shared_layers: int,
+    num_position_layers: int = 0,
+    num_rotation_layers: int = 0,
+) -> SLCSFusionModel:
+    return SLCSFusionModel(
+        hidden_dim=32,
+        num_shared_layers=num_shared_layers,
+        num_position_layers=num_position_layers,
+        num_rotation_layers=num_rotation_layers,
+        num_heads=4,
+        ffn_dim=64,
+        dropout=0.0,
+        rope_dim=8,
+        rope_theta_time=10000.0,
+        rope_theta_entity=10000.0,
+        attention_type="mha",
+        ffn_type="swiglu",
+        num_players=2,
+        num_court_kp=14,
+        max_seq_len=8,
+        invisible_init_std=0.02,
+        dino_embed_dim=8,
+        dino_grid_h=3,
+        dino_grid_w=4,
+        dino_patch_downsample_factor=1,
+        dino_cross_attn_every=1,
+        log_b_min=-6.0,
+        log_b_max=3.0,
+    )
+
+
 def _inputs() -> dict[str, torch.Tensor]:
     batch, players, frames, joints, court_kp = 2, 2, 8, 17, 14
     return {
@@ -26,17 +59,7 @@ def _inputs() -> dict[str, torch.Tensor]:
 
 
 def test_forward_shapes_and_finite_rotation_pairs() -> None:
-    model = SLCSFusionModel(
-        hidden_dim=32,
-        num_shared_layers=2,
-        num_heads=4,
-        dropout=0.0,
-        max_seq_len=8,
-        dino_embed_dim=8,
-        dino_grid_h=3,
-        dino_grid_w=4,
-        dino_cross_attn_every=1,
-    )
+    model = _model(num_shared_layers=2)
     output = model(**_inputs())
     assert output["player_position"].shape == (2, 2, 8, 3)
     assert output["player_rotation"].shape == (2, 2, 8, 2)
@@ -48,15 +71,7 @@ def test_forward_shapes_and_finite_rotation_pairs() -> None:
 
 
 def test_sparse_dino_inputs_are_all_or_none() -> None:
-    model = SLCSFusionModel(
-        hidden_dim=32,
-        num_shared_layers=1,
-        num_heads=4,
-        max_seq_len=8,
-        dino_embed_dim=8,
-        dino_grid_h=3,
-        dino_grid_w=4,
-    )
+    model = _model(num_shared_layers=1)
     inputs = _inputs()
     inputs.pop("dino_frame_idx")
     with pytest.raises(ValueError, match="provided together"):
@@ -64,17 +79,10 @@ def test_sparse_dino_inputs_are_all_or_none() -> None:
 
 
 def test_fully_split_trunks_isolate_position_and_rotation_gradients() -> None:
-    model = SLCSFusionModel(
-        hidden_dim=32,
+    model = _model(
         num_shared_layers=0,
         num_position_layers=1,
         num_rotation_layers=1,
-        num_heads=4,
-        dropout=0.0,
-        max_seq_len=8,
-        dino_embed_dim=8,
-        dino_grid_h=3,
-        dino_grid_w=4,
     )
     inputs = _inputs()
     inputs.pop("dino_tokens")
@@ -92,16 +100,10 @@ def test_fully_split_trunks_isolate_position_and_rotation_gradients() -> None:
 
 
 def test_all_shared_configuration_has_no_task_trunk_parameters() -> None:
-    model = SLCSFusionModel(
-        hidden_dim=32,
+    model = _model(
         num_shared_layers=2,
         num_position_layers=0,
         num_rotation_layers=0,
-        num_heads=4,
-        max_seq_len=8,
-        dino_embed_dim=8,
-        dino_grid_h=3,
-        dino_grid_w=4,
     )
 
     assert len(model.entity_layers) == 2

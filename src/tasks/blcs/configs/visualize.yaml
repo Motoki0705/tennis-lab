@@ -1,11 +1,11 @@
 defaults:
+  - paths: default
   - visualization: multiview
-  - run: visualize
   - _self_
 
 hydra:
   run:
-    dir: outputs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},hydra/blcs/visualize}/${now:%Y-%m-%d}/${now:%H-%M-%S}
   output_subdir: null
   job:
     chdir: false

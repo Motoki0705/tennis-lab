@@ -15,13 +15,13 @@ def match_player_tracks(
     prediction: dict[str, torch.Tensor],
     batch: dict[str, torch.Tensor],
     *,
-    position_cost_weight: float = 1.0,
-    rotation_cost_weight: float = 1.0,
-    presence_cost_weight: float = 1.0,
-    presence_inactive_weight: float = 0.25,
-    presence_active_weight: float = 1.0,
-    presence_transition_weight: float = 2.0,
-    transition_radius: int = 2,
+    position_cost_weight: float,
+    rotation_cost_weight: float,
+    presence_cost_weight: float,
+    presence_inactive_weight: float,
+    presence_active_weight: float,
+    presence_transition_weight: float,
+    transition_radius: int,
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Match query slots to valid GT persons with padded frames excluded."""
     pred_position = prediction["position"]
@@ -63,9 +63,9 @@ def match_player_tracks(
             if target_active.any():
                 position = F.smooth_l1_loss(
                     pred_position[batch_index],
-                    batch["target_position"][batch_index, :, target_index, None].expand_as(
-                        pred_position[batch_index]
-                    ),
+                    batch["target_position"][
+                        batch_index, :, target_index, None
+                    ].expand_as(pred_position[batch_index]),
                     reduction="none",
                 ).mean(-1)
                 position = (position * target_active[:, None]).sum(

@@ -1,10 +1,11 @@
 defaults:
+  - paths: default
   - data: court_kp
   - _self_
 
 hydra:
   run:
-    dir: ${preview.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null
   job:
     chdir: false
@@ -14,7 +15,7 @@ preview:
   sample_indices: [0, 8, 16]
   max_samples: 3
   ratios: [0.003, 0.006, 0.012, 0.024]
-  output_dir: outputs/court_detection/heatmap_preview
+  output_dir: court_detection/heatmap_preview
   layout:
     tile_gap: 12
     header_height: 30

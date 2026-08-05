@@ -9,13 +9,14 @@ tensors; ``*_meters`` / ``*_radians`` keys carry denormalized units.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any
+from typing import ParamSpec, TypeVar
 
 import torch
 from torch import Tensor
 
+from src.tasks.base.inference.grad_mode import no_grad
 from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.slcs.data.contract import ClipManifest
 from src.tasks.slcs.data.dataset import (
@@ -28,13 +29,24 @@ from src.tasks.slcs.data.dino_tokens import load_dino_tokens
 from src.tasks.slcs.data.types import SLCSSample
 from src.tasks.slcs.data.windows import plan_windows
 from src.tasks.slcs.training.lightning_module import SLCSLightningModule
+from src.utils.configuration import PathResolver
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+
+def _typed_no_grad(function: Callable[_P, _R]) -> Callable[_P, _R]:
+    decorator: Callable[[Callable[_P, _R]], Callable[_P, _R]] = no_grad
+    return decorator(function)
 
 
 class SLCSPredictor(BasePredictor):
     """Inference wrapper around a trained :class:`SLCSFusionModel`."""
 
-    def __init__(self, lightning_module: SLCSLightningModule, device: torch.device) -> None:
+    def __init__(
+        self, lightning_module: SLCSLightningModule, device: torch.device
+    ) -> None:
         self.lightning_module = lightning_module.to(device)
         self.lightning_module.eval()
         self.model = lightning_module.model
@@ -44,28 +56,32 @@ class SLCSPredictor(BasePredictor):
     def load_from_checkpoint(
         cls,
         checkpoint_path: str | Path | Iterable[str | Path],
-        device: str | torch.device = "cpu",
-        **kwargs: Any,
+        *,
+        resolver: PathResolver,
+        device: str | torch.device,
+        strict: bool,
+        weights_only: bool,
     ) -> SLCSPredictor:
         """Load a predictor from an SLCS Lightning checkpoint."""
         module, resolved_device = cls._load_single_lightning_module(
             checkpoint_path,
             SLCSLightningModule,
-            device,
-            strict=bool(kwargs.pop("strict", False)),
-            weights_only=bool(kwargs.pop("weights_only", False)),
-            **kwargs,
+            resolver=resolver,
+            device=device,
+            allow_device_fallback=False,
+            strict=strict,
+            weights_only=weights_only,
         )
         return cls(module, resolved_device)
 
     # ------------------------------------------------------------------
 
-    @torch.no_grad()  # type: ignore[untyped-decorator, unused-ignore]
+    @_typed_no_grad
     def predict(
         self,
         batch: dict[str, Tensor],
         *,
-        denormalize: bool = True,
+        denormalize: bool,
     ) -> dict[str, Tensor]:
         """Run one collated SLCS batch; returns CPU tensors.
 
@@ -100,21 +116,21 @@ class SLCSPredictor(BasePredictor):
 
     # ------------------------------------------------------------------
 
-    @torch.no_grad()  # type: ignore[untyped-decorator, unused-ignore]
+    @_typed_no_grad
     def predict_clip(
         self,
         clip_dir: str | Path,
         camera_id: str,
         *,
         data_config: SLCSDataConfig,
-        stride: int | None = None,
-        batch_size: int = 4,
-        denormalize: bool = True,
+        stride: int,
+        batch_size: int,
+        denormalize: bool,
     ) -> dict[str, Tensor]:
         """Predict the full timeline of one clip camera.
 
-        Windows follow ``data_config.window_size`` with ``stride`` (default:
-        ``data_config.eval_stride``); overlapping predictions are averaged.
+        Windows follow ``data_config.window_size`` with the explicit ``stride``;
+        overlapping predictions are averaged.
 
         Returns full-length tensors: ``player_position (P, T, 3)``,
         ``player_rotation (P, T, 2)``, ``ball_position (T, 3)``, the
@@ -124,7 +140,6 @@ class SLCSPredictor(BasePredictor):
         manifest = ClipManifest.load(clip_dir)
         clip = load_clip_arrays(manifest, config=data_config)
         spec = data_config.dino_spec
-        assert spec is not None  # enforced by SLCSDataConfig
         dino_arrays = (
             load_dino_tokens(manifest, camera_id, expected_spec=spec)[:2]
             if data_config.require_dino
@@ -134,7 +149,7 @@ class SLCSPredictor(BasePredictor):
         plans = plan_windows(
             clip.num_frames,
             window_size=data_config.window_size,
-            stride=int(stride if stride is not None else data_config.eval_stride),
+            stride=stride,
         )
         samples: list[SLCSSample] = [
             build_window_sample(
@@ -159,15 +174,21 @@ class SLCSPredictor(BasePredictor):
         }
         coverage = torch.zeros(num_frames)
 
-        for start in range(0, len(samples), max(1, batch_size)):
-            chunk = samples[start : start + max(1, batch_size)]
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive.")
+        for start in range(0, len(samples), batch_size):
+            chunk = samples[start : start + batch_size]
             batch = collate_slcs(chunk)
             outputs = self.predict(batch, denormalize=False)
             for i, plan in enumerate(plans[start : start + len(chunk)]):
                 t0, length = plan.start, plan.length
                 sl = slice(t0, t0 + length)
-                acc["player_position"][:, sl] += outputs["player_position"][i, :, :length]
-                acc["player_rotation"][:, sl] += outputs["player_rotation"][i, :, :length]
+                acc["player_position"][:, sl] += outputs["player_position"][
+                    i, :, :length
+                ]
+                acc["player_rotation"][:, sl] += outputs["player_rotation"][
+                    i, :, :length
+                ]
                 acc["ball_position"][sl] += outputs["ball_position"][i, :length]
                 acc["player_position_log_b"][:, sl] += outputs["player_position_log_b"][
                     i, :, :length
@@ -175,7 +196,9 @@ class SLCSPredictor(BasePredictor):
                 acc["player_rotation_log_b"][:, sl] += outputs["player_rotation_log_b"][
                     i, :, :length
                 ]
-                acc["ball_position_log_b"][sl] += outputs["ball_position_log_b"][i, :length]
+                acc["ball_position_log_b"][sl] += outputs["ball_position_log_b"][
+                    i, :length
+                ]
                 coverage[sl] += 1.0
 
         if bool((coverage == 0).any()):
@@ -191,8 +214,10 @@ class SLCSPredictor(BasePredictor):
                 acc["player_rotation"] / denom_frames[None, :, None], dim=-1
             ),
             "ball_position": acc["ball_position"] / denom_frames[:, None],
-            "player_position_log_b": acc["player_position_log_b"] / denom_frames[None, :],
-            "player_rotation_log_b": acc["player_rotation_log_b"] / denom_frames[None, :],
+            "player_position_log_b": acc["player_position_log_b"]
+            / denom_frames[None, :],
+            "player_rotation_log_b": acc["player_rotation_log_b"]
+            / denom_frames[None, :],
             "ball_position_log_b": acc["ball_position_log_b"] / denom_frames,
             "coverage": coverage,
         }

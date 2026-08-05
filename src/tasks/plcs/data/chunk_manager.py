@@ -10,7 +10,7 @@ from omegaconf import DictConfig
 from src.tasks.base.data.chunk_manager import (
     ChunkManager as BaseChunkManager,
 )
-from src.tasks.plcs.generate_dataset.config import prepare_generation_config
+from src.tasks.plcs.generate_dataset.config import resolve_generation_paths
 from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
 from src.tasks.plcs.generate_dataset.utils.parallel_runner import (
     generate_parallel_scenes,
@@ -71,14 +71,14 @@ class ChunkManager(BaseChunkManager):
         *,
         chunks_dir: str | Path,
         config: DictConfig,
-        scenes_per_chunk: int = 1000,
-        epochs_per_chunk: int = 3,
-        prefetch_chunks: int = 1,
-        generator_device: str = "cpu",
-        generation_workers: int = 1,
+        scenes_per_chunk: int,
+        epochs_per_chunk: int,
+        prefetch_chunks: int,
+        generator_device: str,
+        generation_workers: int,
     ) -> None:
         self.generation_workers = generation_workers
-        self.config = prepare_generation_config(config)
+        self.config = resolve_generation_paths(config)
         self.generator_device = generator_device
 
         super().__init__(

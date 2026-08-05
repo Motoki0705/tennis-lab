@@ -100,13 +100,11 @@ class BLCSSceneData:
 class GeneratorConfig:
     """Configuration for scene generator."""
 
-    physics: PhysicsConfig = field(default_factory=PhysicsConfig)
-    rally: RallyConfig = field(default_factory=RallyConfig)
-    camera: CameraConfig = field(default_factory=CameraConfig)
-    targeted_velocity: TargetedVelocityConfig = field(
-        default_factory=TargetedVelocityConfig
-    )
-    court: CourtConfig = field(default_factory=CourtConfig)
+    physics: PhysicsConfig
+    rally: RallyConfig
+    camera: CameraConfig
+    targeted_velocity: TargetedVelocityConfig
+    court: CourtConfig
 
 
 class BLCSSceneGenerator:
@@ -114,10 +112,11 @@ class BLCSSceneGenerator:
 
     def __init__(
         self,
-        config: GeneratorConfig | None = None,
-        device: str | torch.device = "cpu",
+        *,
+        config: GeneratorConfig,
+        device: str | torch.device,
     ) -> None:
-        self.config = config or GeneratorConfig()
+        self.config = config
         self.device = torch.device(device)
 
         self.cell_manager = CellManager()
@@ -300,9 +299,7 @@ class BLCSSceneGenerator:
                     )
 
         if scene_counter < num_scenes:
-            logger.warning(
-                f"Only generated {scene_counter}/{num_scenes} scenes "
-            )
+            logger.warning(f"Only generated {scene_counter}/{num_scenes} scenes ")
 
         stats = self.get_statistics()
         logger.info(f"Generation complete. Total scenes: {scene_counter}")

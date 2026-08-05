@@ -75,7 +75,8 @@ class PLCSTrackingLoss(nn.Module):
                         )
                     )
                     target_rotation = F.normalize(
-                        batch["target_rotation"][batch_index, active, target_index], dim=-1
+                        batch["target_rotation"][batch_index, active, target_index],
+                        dim=-1,
                     )
                     rotation_terms.append(
                         (

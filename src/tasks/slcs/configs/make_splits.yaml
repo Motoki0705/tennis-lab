@@ -1,4 +1,5 @@
 defaults:
+  - paths: default
   - data: default
   - _self_
 
@@ -12,7 +13,7 @@ splits:
 
 hydra:
   run:
-    dir: outputs/slcs/make_splits/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},slcs/make_splits,${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null
   job:
     chdir: false

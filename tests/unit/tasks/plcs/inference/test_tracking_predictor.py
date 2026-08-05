@@ -3,6 +3,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor, nn
 
+from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.plcs.inference.tracking_predictor import PLCSTrackingPredictor
 
 
@@ -48,6 +49,11 @@ def test_predictor_returns_cpu_lifecycle_and_yaw_outputs() -> None:
         court_vis=torch.ones(1, 2, 3, 14, dtype=torch.bool),
         frame_mask=torch.ones(1, 3, dtype=torch.bool),
         view_mask=torch.ones(1, 2, dtype=torch.bool),
+        tracking_metrics=TrackingMetricConfig(
+            presence_threshold=0.5,
+            duplicate_distance=0.05,
+        ),
+        denormalize=True,
     )
 
     assert result["position_meters"].shape == (1, 3, 2, 3)

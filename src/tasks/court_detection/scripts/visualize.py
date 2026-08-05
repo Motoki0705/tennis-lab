@@ -4,7 +4,7 @@ Usage:
     python -m src.tasks.court_detection.scripts.visualize
     python -m src.tasks.court_detection.scripts.visualize visualization=seg
     python -m src.tasks.court_detection.scripts.visualize visualization=line \
-        visualization.image_source=data/court/images/foo.png
+        visualization.image_source=court/images/foo.png
 
 Notes:
     - Hydra loads configuration from `src/tasks/court_detection/configs/visualize.yaml`.
@@ -14,8 +14,6 @@ Notes:
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
-from typing import cast
 
 from omegaconf import DictConfig
 
@@ -23,10 +21,24 @@ from src.tasks.court_detection.visualization.orchestrator import (
     build_runtime_config,
     run_visualization,
 )
-from src.utils.hydra import hydra_main
+from src.utils.hydra import hydra_main, register_boundary_validator
+
+_BOUNDARY = "court_detection.visualize"
 
 
-@hydra_main(config_path="../configs", config_name="visualize", version_base="1.3")
+def _validate_boundary(config: DictConfig) -> None:
+    build_runtime_config(config)
+
+
+register_boundary_validator(_BOUNDARY, _validate_boundary)
+
+
+@hydra_main(
+    config_path="../configs",
+    config_name="visualize",
+    version_base="1.3",
+    validation_boundary=_BOUNDARY,
+)
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
     runtime = build_runtime_config(cfg)
@@ -34,4 +46,4 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    sys.exit(cast(Callable[[], int], main)())
+    sys.exit(main())

@@ -1,5 +1,5 @@
 # Checkpoint and dataset root for rotation-error sample visualization.
-checkpoint: outputs/plcs/plcs_multiview_axial/logs/version_2/checkpoints/last.ckpt
-scene_dir: data/plcs
-output_dir: outputs/plcs/plcs_multiview_axial/logs/version_2/rotation_error_samples
+checkpoint: plcs/plcs_multiview_axial/logs/version_2/checkpoints/last.ckpt
+scene_dir: plcs
+output_dir: plcs/plcs_multiview_axial/logs/version_2/rotation_error_samples
 seed: 42

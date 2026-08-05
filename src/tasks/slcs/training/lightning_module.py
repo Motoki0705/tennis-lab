@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 import numpy as np
 import torch
+from omegaconf import DictConfig
 from torch import Tensor
 
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.slcs.configuration import SLCSTrainingRuntimeConfig
 from src.tasks.slcs.models import build_slcs_model
-from src.tasks.slcs.training.losses import SLCSLoss, SLCSLossConfig
+from src.tasks.slcs.training.losses import SLCSLoss
 from src.tasks.slcs.training.metrics import SLCSMetrics
-
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
 
 _FORWARD_KEYS = (
     "player_kp",
@@ -34,14 +33,16 @@ _FORWARD_KEYS = (
 class SLCSLightningModule(BaseLightningModule):
     """Supervised training of :class:`SLCSFusionModel` on pseudo-labels."""
 
-    def __init__(self, config: DictConfig | None = None) -> None:
-        super().__init__(config)
-        if config is None:
-            raise ValueError("SLCSLightningModule requires a config.")
-        self.max_epochs = int(config.training.trainer.max_epochs)
-        self.model = build_slcs_model(config)
-        loss_cfg = config.get("loss", {}) or {}
-        self.loss_fn = SLCSLoss(SLCSLossConfig.from_dict(dict(loss_cfg)))
+    def __init__(self, config: SLCSTrainingRuntimeConfig | DictConfig) -> None:
+        runtime = (
+            SLCSTrainingRuntimeConfig.from_config(config)
+            if isinstance(config, DictConfig)
+            else config
+        )
+        super().__init__(runtime.raw)
+        self.max_epochs = runtime.training.trainer.max_epochs
+        self.model = build_slcs_model(runtime.model, runtime.data)
+        self.loss_fn = SLCSLoss(runtime.loss)
         self._metrics = {
             "train": SLCSMetrics(),
             "val": SLCSMetrics(),
@@ -97,14 +98,10 @@ class SLCSLightningModule(BaseLightningModule):
             self.collect_test_predictions(batch, {"outputs": outputs})
         return cast(Tensor, losses["total"])
 
-    def training_step(
-        self, batch: dict[str, Tensor], batch_idx: int
-    ) -> Tensor:
+    def training_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
         return self._step(batch, "train")
 
-    def validation_step(
-        self, batch: dict[str, Tensor], batch_idx: int
-    ) -> Tensor:
+    def validation_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:
         return self._step(batch, "val")
 
     def test_step(self, batch: dict[str, Tensor], batch_idx: int) -> Tensor:

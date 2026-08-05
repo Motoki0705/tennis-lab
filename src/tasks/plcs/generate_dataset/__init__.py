@@ -8,4 +8,3 @@ This package contains the implementation of synthetic PLCS scene generation:
 
 The Hydra CLI entrypoint is `src/tasks/plcs/scripts/generate_dataset.py`.
 """
-

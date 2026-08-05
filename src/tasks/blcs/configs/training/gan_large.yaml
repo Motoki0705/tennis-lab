@@ -8,3 +8,4 @@ gan:
   discriminator:
     hidden_dim: 256
     num_layers: 8
+    rope_dim: 64

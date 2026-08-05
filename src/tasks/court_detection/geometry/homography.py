@@ -2,20 +2,25 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 import cv2
 import numpy as np
 from numpy.typing import NDArray
 
-from src.utils.schema.court import court_keypoints_3d
+from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 
 
 def court_template_xy(num_keypoints: int = 14) -> NDArray[np.float32]:
     """Return the canonical court-plane template points in ``(x, y)`` order."""
     if num_keypoints <= 0:
         raise ValueError(f"num_keypoints must be positive, got {num_keypoints}")
-    points = court_keypoints_3d()[:num_keypoints].detach().cpu().numpy()[:, :2]
+    points = (
+        court_keypoints_3d(STANDARD_COURT_CONFIG)[:num_keypoints]
+        .detach()
+        .cpu()
+        .numpy()[:, :2]
+    )
     return np.asarray(points, dtype=np.float32)
 
 
@@ -64,16 +69,16 @@ def estimate_homography(
         raise ValueError(f"At least 4 points are required, got {src.shape[0]}.")
     if ransac_reproj_threshold <= 0:
         raise ValueError(
-            "ransac_reproj_threshold must be positive, "
-            f"got {ransac_reproj_threshold}."
+            f"ransac_reproj_threshold must be positive, got {ransac_reproj_threshold}."
         )
 
-    homography_raw, _status = cv2.findHomography(
+    raw_result: Any = cv2.findHomography(
         src,
         dst,
         method,
         float(ransac_reproj_threshold),
     )
+    homography_raw, _status = cast("tuple[object | None, object]", raw_result)
     if homography_raw is None:
         return None
     homography = np.asarray(homography_raw, dtype=np.float64)
@@ -90,8 +95,12 @@ def project_points(
     points = _as_point_array("points_xy", points_xy)
     matrix = np.asarray(homography, dtype=np.float32)
     if matrix.shape != (3, 3) or not np.isfinite(matrix).all():
-        raise ValueError(f"homography must be finite with shape (3, 3), got {matrix.shape}.")
-    projected = cv2.perspectiveTransform(points.reshape(1, -1, 2), matrix).reshape(-1, 2)
+        raise ValueError(
+            f"homography must be finite with shape (3, 3), got {matrix.shape}."
+        )
+    projected = cv2.perspectiveTransform(points.reshape(1, -1, 2), matrix).reshape(
+        -1, 2
+    )
     if not np.isfinite(projected).all():
         raise ValueError("Projected points contain non-finite coordinates.")
     return cast(NDArray[np.float32], np.asarray(projected, dtype=np.float32))

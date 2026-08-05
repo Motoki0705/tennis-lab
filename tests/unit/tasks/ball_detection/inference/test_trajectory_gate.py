@@ -46,6 +46,9 @@ def test_rejects_single_frame_teleport_on_noisy_parabola() -> None:
         visibility,
         score,
         max_residual_px=60.0,
+        k_support=2,
+        max_support_gap=5,
+        max_passes=2,
     )
 
     assert diagnostics.rejected_indices == [12]
@@ -64,6 +67,9 @@ def test_keeps_normal_fast_motion_at_twenty_pixels_per_frame() -> None:
         visibility,
         score,
         max_residual_px=60.0,
+        k_support=2,
+        max_support_gap=5,
+        max_passes=2,
     )
 
     np.testing.assert_array_equal(gated_visibility, visibility)
@@ -82,6 +88,8 @@ def test_rejects_two_frame_false_run_after_second_pass() -> None:
         visibility,
         score,
         max_residual_px=60.0,
+        k_support=2,
+        max_support_gap=5,
         max_passes=2,
     )
 
@@ -102,6 +110,9 @@ def test_keeps_isolated_visible_detection_without_support() -> None:
         visibility,
         score,
         max_residual_px=60.0,
+        k_support=2,
+        max_support_gap=5,
+        max_passes=2,
     )
 
     np.testing.assert_array_equal(gated_visibility, visibility)
@@ -122,6 +133,7 @@ def test_support_gap_boundary_is_inclusive() -> None:
         max_residual_px=60.0,
         k_support=1,
         max_support_gap=5,
+        max_passes=2,
     )
     gated_beyond_boundary, diagnostics_beyond_boundary = apply_trajectory_gate(
         positions,
@@ -130,6 +142,7 @@ def test_support_gap_boundary_is_inclusive() -> None:
         max_residual_px=60.0,
         k_support=1,
         max_support_gap=4,
+        max_passes=2,
     )
 
     assert diagnostics_at_boundary.rejected_indices == [10]
@@ -147,7 +160,15 @@ def test_apply_trajectory_gate_does_not_mutate_inputs() -> None:
     original_visibility = visibility.copy()
     original_score = score.copy()
 
-    apply_trajectory_gate(positions, visibility, score, max_residual_px=60.0)
+    apply_trajectory_gate(
+        positions,
+        visibility,
+        score,
+        max_residual_px=60.0,
+        k_support=2,
+        max_support_gap=5,
+        max_passes=2,
+    )
 
     np.testing.assert_array_equal(positions, original_positions)
     np.testing.assert_array_equal(visibility, original_visibility)
@@ -160,4 +181,12 @@ def test_rejects_ambiguous_input_shapes() -> None:
     score: NDArray[np.float32] = np.ones(4, dtype=np.float32)
 
     with pytest.raises(ValueError, match="visibility length must match"):
-        apply_trajectory_gate(positions, visibility, score)
+        apply_trajectory_gate(
+            positions,
+            visibility,
+            score,
+            max_residual_px=60.0,
+            k_support=2,
+            max_support_gap=5,
+            max_passes=2,
+        )

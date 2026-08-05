@@ -1,7 +1,7 @@
 # Shared base for all court detection data configs. Task presets
 # (court_kp / court_line / court_seg) compose from this, select an augmentation
 # preset, and add task-specific fields (task, class count, hflip_swap_pairs).
-data_dir: data/court
+data_dir: court
 batch_size: 8
 num_workers: 4
 pin_memory: true

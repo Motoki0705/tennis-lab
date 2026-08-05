@@ -15,6 +15,21 @@ from src.tasks.slcs.data.quality import (
 )
 
 
+def _quality(
+    *,
+    min_player_confidence: float = 0.3,
+    min_ball_cameras: int = 1,
+    label_weight_power: float = 1.0,
+    min_window_label_ratio: float = 0.1,
+) -> QualityConfig:
+    return QualityConfig(
+        min_player_confidence=min_player_confidence,
+        min_ball_cameras=min_ball_cameras,
+        label_weight_power=label_weight_power,
+        min_window_label_ratio=min_window_label_ratio,
+    )
+
+
 def _inputs(
     num_players: int = 2, num_cameras: int = 2, num_frames: int = 6
 ) -> dict[str, np.ndarray]:
@@ -37,7 +52,7 @@ def test_confidences_are_coverage_means() -> None:
 
 
 def test_masks_all_valid_when_fully_observed() -> None:
-    masks = build_label_masks(config=QualityConfig(), **_inputs())
+    masks = build_label_masks(config=_quality(), **_inputs())
     assert masks["player_label_valid"].all()
     assert masks["ball_label_valid"].all()
     assert np.allclose(masks["player_label_weight"], 1.0)
@@ -48,7 +63,7 @@ def test_low_confidence_player_frames_masked() -> None:
     inputs = _inputs()
     inputs["human_kp_vis"][0, :, 2, :] = 0.1  # frame 2 of player 0 barely observed
     masks = build_label_masks(
-        config=QualityConfig(min_player_confidence=0.3), **inputs
+        config=_quality(min_player_confidence=0.3), **inputs
     )
     assert not masks["player_label_valid"][0, 2]
     assert masks["player_label_weight"][0, 2] == 0.0
@@ -59,7 +74,7 @@ def test_ball_camera_threshold() -> None:
     inputs = _inputs(num_cameras=2)
     inputs["ball_vis"][:, 3] = False
     inputs["ball_vis"][1, 4] = False
-    masks = build_label_masks(config=QualityConfig(min_ball_cameras=2), **inputs)
+    masks = build_label_masks(config=_quality(min_ball_cameras=2), **inputs)
     assert not masks["ball_label_valid"][3]  # zero cameras
     assert not masks["ball_label_valid"][4]  # one of two cameras
     assert masks["ball_label_valid"][0]
@@ -69,20 +84,20 @@ def test_non_finite_labels_always_invalid() -> None:
     inputs = _inputs()
     inputs["player_position"][0, 1, 0] = np.nan
     inputs["ball_3d"][2, 1] = np.inf
-    masks = build_label_masks(config=QualityConfig(), **inputs)
+    masks = build_label_masks(config=_quality(), **inputs)
     assert not masks["player_label_valid"][0, 1]
     assert not masks["ball_label_valid"][2]
 
 
 def test_min_ball_cameras_above_camera_count_is_error() -> None:
     with pytest.raises(ValueError, match="min_ball_cameras"):
-        build_label_masks(config=QualityConfig(min_ball_cameras=3), **_inputs())
+        build_label_masks(config=_quality(min_ball_cameras=3), **_inputs())
 
 
 def test_label_weight_power() -> None:
     inputs = _inputs()
     inputs["human_kp_vis"][...] = 0.5
-    masks = build_label_masks(config=QualityConfig(label_weight_power=2.0), **inputs)
+    masks = build_label_masks(config=_quality(label_weight_power=2.0), **inputs)
     assert np.allclose(masks["player_label_weight"], 0.25)
 
 
@@ -97,8 +112,8 @@ def test_window_label_ratio() -> None:
 
 def test_quality_config_validation() -> None:
     with pytest.raises(ValueError):
-        QualityConfig(min_player_confidence=1.5)
+        _quality(min_player_confidence=1.5)
     with pytest.raises(ValueError):
-        QualityConfig(min_ball_cameras=0)
+        _quality(min_ball_cameras=0)
     with pytest.raises(ValueError):
-        QualityConfig(min_window_label_ratio=-0.1)
+        _quality(min_window_label_ratio=-0.1)

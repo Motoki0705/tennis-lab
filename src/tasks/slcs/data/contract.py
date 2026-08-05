@@ -35,7 +35,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, TypeAlias
 
 import numpy as np
 
@@ -43,7 +43,6 @@ from src.tennis_scene.generate_dataset.manifest import (
     CLIP_MANIFEST_FILENAME,
     DATASET_MANIFEST_FILENAME,
     ClipManifest,
-    DatasetClipRecord,
     DatasetManifestError,
     UnsupportedDatasetVersionError,
     file_sha256,
@@ -80,15 +79,31 @@ REQUIRED_SCENE_ARRAYS: tuple[str, ...] = (
 )
 
 
-DatasetContractError = DatasetManifestError
-UnsupportedFormatVersionError = UnsupportedDatasetVersionError
+DatasetContractError: TypeAlias = DatasetManifestError
+UnsupportedFormatVersionError: TypeAlias = UnsupportedDatasetVersionError
 
 
 class IncompleteAnnotationError(DatasetContractError):
     """An annotation directory has no completion marker (generation unfinished)."""
 
 
-ClipRef = DatasetClipRecord
+class ClipRef(Protocol):
+    """Read-only dataset-index record fields consumed by SLCS."""
+
+    @property
+    def clip_id(self) -> str:
+        """Canonical ``<recording_id>/<clip_name>`` identifier."""
+        ...
+
+    @property
+    def recording_id(self) -> str:
+        """Recording group used to prevent split leakage."""
+        ...
+
+    @property
+    def path(self) -> str:
+        """Canonical role-relative clip directory."""
+        ...
 
 
 @dataclass(frozen=True)
@@ -133,11 +148,15 @@ def _validate_marker(marker: dict[str, Any], *, source: Path) -> dict[str, Any]:
         )
     arrays = marker.get("arrays")
     if not isinstance(arrays, dict) or not arrays:
-        raise DatasetContractError(f"{source}: marker must record an 'arrays' shape spec.")
+        raise DatasetContractError(
+            f"{source}: marker must record an 'arrays' shape spec."
+        )
     return arrays
 
 
-def _validate_scene_against_manifest(scene: SceneResult, manifest: ClipManifest) -> None:
+def _validate_scene_against_manifest(
+    scene: SceneResult, manifest: ClipManifest
+) -> None:
     if scene.num_frames != manifest.num_frames:
         raise DatasetContractError(
             f"{manifest.clip_id}: scene num_frames={scene.num_frames} != "
@@ -218,7 +237,9 @@ def load_tennis_scene_annotation(
 
     scene_path = ann_dir / SCENE_NPZ_NAME
     if not scene_path.is_file():
-        raise DatasetContractError(f"{manifest.clip_id}: scene archive missing: {scene_path}")
+        raise DatasetContractError(
+            f"{manifest.clip_id}: scene archive missing: {scene_path}"
+        )
     scene = SceneResult.load(scene_path)
     _validate_scene_against_manifest(scene, manifest)
     _validate_scene_arrays(scene, arrays_spec, clip_id=manifest.clip_id)

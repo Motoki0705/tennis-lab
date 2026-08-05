@@ -24,16 +24,23 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class PlayerAssociationConfig:
     """Configuration for manual player association."""
 
-    mode: Literal["manual_ui"] = "manual_ui"
-    initial_frame_index: int = 0
-    reference_camera: str | int = 0
-    save_result: bool = False
-    output_path: str | Path | None = None
-    load_path: str | Path | None = None
+    source: Literal["execute", "load"]
+    mode: Literal["manual_ui"]
+    initial_frame_index: int
+    reference_camera: str | int
+    save_result: bool
+    output_path: Path
+    load_path: Path | None
+
+    def __post_init__(self) -> None:
+        if (self.source == "load") != (self.load_path is not None):
+            raise ValueError(
+                "PlayerAssociation source='load' requires load_path; execute forbids it"
+            )
 
 
 @dataclass
@@ -231,7 +238,7 @@ class PlayerAssociationModule(BasePipelineModule):
         self,
         *,
         gvhmr_results: Sequence[GVHMRResult],
-        video_paths: Sequence[str | Path],
+        video_paths: Sequence[Path],
         video_infos: Sequence[VideoInfo],
         camera_ids: Sequence[str],
     ) -> PlayerAssociationResult:
@@ -240,24 +247,21 @@ class PlayerAssociationModule(BasePipelineModule):
         num_frames = int(gvhmr_results[0].human_kp_2d.shape[1])
         camera_ids = [str(camera_id) for camera_id in camera_ids]
 
-        if self.config.load_path is not None:
-            load_path = Path(self.config.load_path)
-            if load_path.exists():
-                LOGGER.info(
-                    f"Loading player association result from {load_path} "
-                    "(skipping UI)"
+        if self.config.source == "load":
+            assert self.config.load_path is not None
+            load_path = self.config.load_path
+            if not load_path.is_file():
+                raise FileNotFoundError(
+                    f"Player association artifact not found: {load_path}"
                 )
-                result = PlayerAssociationResult.load(load_path)
-                self._validate_or_raise(
-                    result,
-                    num_frames=num_frames,
-                    local_player_counts=local_player_counts,
-                )
-                return result
-            LOGGER.warning(
-                f"load_path specified but not found: {load_path}, "
-                "creating association from current inputs"
+            LOGGER.info(f"Loading player association result from {load_path}")
+            result = PlayerAssociationResult.load(load_path)
+            self._validate_or_raise(
+                result,
+                num_frames=num_frames,
+                local_player_counts=local_player_counts,
             )
+            return result
 
         if len(camera_ids) == 1:
             result = self._process_single_camera_identity(
@@ -270,7 +274,7 @@ class PlayerAssociationModule(BasePipelineModule):
                 num_frames=num_frames,
                 local_player_counts=local_player_counts,
             )
-            if self.config.save_result and self.config.output_path is not None:
+            if self.config.save_result:
                 result.save(self.config.output_path)
             return result
 
@@ -288,7 +292,7 @@ class PlayerAssociationModule(BasePipelineModule):
             local_player_counts=local_player_counts,
         )
 
-        if self.config.save_result and self.config.output_path is not None:
+        if self.config.save_result:
             result.save(self.config.output_path)
         return result
 
@@ -364,7 +368,7 @@ class PlayerAssociationModule(BasePipelineModule):
         self,
         *,
         gvhmr_results: Sequence[GVHMRResult],
-        video_paths: Sequence[str | Path],
+        video_paths: Sequence[Path],
         video_infos: Sequence[VideoInfo],
         camera_ids: Sequence[str],
         num_frames: int,
@@ -381,10 +385,7 @@ class PlayerAssociationModule(BasePipelineModule):
                 start_frame=0,
                 end_frame=num_frames,
                 assignments=np.stack(
-                    [
-                        np.arange(num_players, dtype=np.int32)
-                        for _ in camera_ids
-                    ],
+                    [np.arange(num_players, dtype=np.int32) for _ in camera_ids],
                     axis=1,
                 ),
             )
@@ -431,9 +432,9 @@ class PlayerAssociationModule(BasePipelineModule):
                     player_index = int(parts[2])
                     camera_index = self._parse_camera(parts[3], camera_ids)
                     local_player_index = int(parts[4])
-                    segments[segment_index].assignments[
-                        player_index, camera_index
-                    ] = local_player_index
+                    segments[segment_index].assignments[player_index, camera_index] = (
+                        local_player_index
+                    )
                     continue
                 print(f"Unknown command: {command}")
         finally:
@@ -495,7 +496,7 @@ class PlayerAssociationModule(BasePipelineModule):
     def _draw_association_frame(
         self,
         *,
-        video_paths: Sequence[str | Path],
+        video_paths: Sequence[Path],
         video_infos: Sequence[VideoInfo],
         gvhmr_results: Sequence[GVHMRResult],
         camera_ids: Sequence[str],
@@ -561,7 +562,9 @@ class PlayerAssociationModule(BasePipelineModule):
         local_player_index: int,
         track_id: int,
     ) -> str:
-        canonical_matches = np.where(segment.assignments[:, camera_index] == local_player_index)[0]
+        canonical_matches = np.where(
+            segment.assignments[:, camera_index] == local_player_index
+        )[0]
         canonical_text = (
             f"P{int(canonical_matches[0])}" if canonical_matches.size else "unassigned"
         )
@@ -640,11 +643,17 @@ def apply_player_association(
         frame_slice = slice(segment.start_frame, segment.end_frame)
         for player_index in range(num_players):
             for camera_index, video_info in enumerate(video_infos):
-                local_player_index = int(segment.assignments[player_index, camera_index])
-                local_human = gvhmr_results[camera_index].human_kp_2d[
-                    local_player_index,
-                    frame_slice,
-                ].copy()
+                local_player_index = int(
+                    segment.assignments[player_index, camera_index]
+                )
+                local_human = (
+                    gvhmr_results[camera_index]
+                    .human_kp_2d[
+                        local_player_index,
+                        frame_slice,
+                    ]
+                    .copy()
+                )
                 local_human[..., 0] /= video_info.width
                 local_human[..., 1] /= video_info.height
                 human_kp_2d[player_index, camera_index, frame_slice] = local_human
@@ -665,7 +674,10 @@ def apply_player_association(
                     frame_slice,
                 ]
             )
-            if smpl_vertices_local is not None and reference_result.smpl_vertices_local is not None:
+            if (
+                smpl_vertices_local is not None
+                and reference_result.smpl_vertices_local is not None
+            ):
                 smpl_vertices_local[player_index, frame_slice] = (
                     reference_result.smpl_vertices_local[
                         reference_local_player,

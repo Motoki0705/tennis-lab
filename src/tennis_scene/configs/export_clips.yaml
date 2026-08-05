@@ -1,25 +1,18 @@
 defaults:
+  - paths: default
   - _self_
-
-# Standard layout root and match. project_path may override the derived path.
-data_root: data/tennis_multivew
-match_id: null
-project_path: null  # null -> <data_root>/processed/<match_id>/project.json
-
-# Clips to export; null exports every clip in the project.
+project_path: tennis_scene/clip_studio/project.json
 clip_names: null
-
 export:
-  output_dir: null           # structured dataset root; null -> <project dir>/dataset
-  fps: null                  # null -> all sources must share fps
-  width: null                # null (with height) -> all sources must share size
+  output_dir: tennis_scene/dataset
+  fps: null
+  width: null
   height: null
   crf: 17
   overwrite: false
-
 hydra:
   run:
-    dir: outputs/clip_studio/hydra/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},clip_studio/hydra,${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null
   job:
     chdir: false

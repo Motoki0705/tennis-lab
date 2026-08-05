@@ -11,7 +11,8 @@ import torch
 from torch import Tensor
 
 from src.tasks.plcs.models import PLCSModel, PLCSMultiViewAxialModel
-from src.tennis_scene.pipeline.components.plcs import PLCSConfig, PLCSModule
+from src.tennis_scene.pipeline.components.plcs import PLCSModule
+from tests.unit.tennis_scene.pipeline.config_factories import make_plcs_config
 
 
 class _FakePLCSPredictor:
@@ -36,8 +37,8 @@ class _FakePLCSPredictor:
         }
 
 
-def test_process_passes_single_camera_as_multiview_n_equals_one() -> None:
-    module = PLCSModule(PLCSConfig(checkpoint="dummy.ckpt", device="cpu"))
+def test_process_passes_single_camera_as_multiview_n_equals_one(tmp_path) -> None:
+    module = PLCSModule(make_plcs_config(tmp_path))
     module._predictor = cast(Any, _FakePLCSPredictor())
     result = module.process(
         human_kp_2d=np.zeros((2, 1, 4, 17, 2), dtype=np.float32),
@@ -51,29 +52,23 @@ def test_process_passes_single_camera_as_multiview_n_equals_one() -> None:
     np.testing.assert_array_equal(result.track_ids, np.array([0, 1], dtype=np.int32))
 
 
-def test_validate_pipeline_checkpoint_rejects_frame_model() -> None:
-    module = PLCSModule(PLCSConfig(checkpoint="dummy.ckpt", device="cpu"))
+def test_validate_pipeline_checkpoint_rejects_frame_model(tmp_path) -> None:
+    module = PLCSModule(make_plcs_config(tmp_path))
     module._predictor = cast(
         Any,
-        SimpleNamespace(model=PLCSModel(hidden_dim=16, num_layers=1, num_heads=4)),
+        SimpleNamespace(model=object.__new__(PLCSModel)),
     )
 
     with pytest.raises(ValueError, match="requires a multiview PLCS checkpoint"):
         module._validate_pipeline_checkpoint_profile()
 
 
-def test_validate_pipeline_checkpoint_accepts_multiview_model() -> None:
-    module = PLCSModule(PLCSConfig(checkpoint="dummy.ckpt", device="cpu"))
+def test_validate_pipeline_checkpoint_accepts_multiview_model(tmp_path) -> None:
+    module = PLCSModule(make_plcs_config(tmp_path))
     module._predictor = cast(
         Any,
         SimpleNamespace(
-            model=PLCSMultiViewAxialModel(
-                hidden_dim=16,
-                num_layers=1,
-                num_heads=4,
-                max_views=1,
-                max_seq_len=4,
-            )
+            model=object.__new__(PLCSMultiViewAxialModel)
         ),
     )
 

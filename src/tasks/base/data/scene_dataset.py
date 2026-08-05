@@ -21,6 +21,7 @@ from typing import Any, Generic, Literal, TypeVar
 import numpy as np
 from torch.utils.data import Dataset
 
+from src.tasks.base.configuration import as_config_mapping, require_config_mapping
 from src.utils.data.scene_io import load_scene_payload
 
 SampleT = TypeVar("SampleT")
@@ -32,12 +33,12 @@ class SceneDatasetConfig:
 
     scene_dir: Path
     split_file: Path
-    seq_len_range: tuple[int, int] = (1, 1024)
-    num_views_range: tuple[int, int] = (1, 1)
-    camera_mode: str | int = "random"
-    crop_mode: Literal["random", "center"] = "random"
-    min_num_frames: int = 1
-    min_num_cameras: int = 1
+    seq_len_range: tuple[int, int]
+    num_views_range: tuple[int, int]
+    camera_mode: str | int
+    crop_mode: Literal["random", "center"]
+    min_num_frames: int
+    min_num_cameras: int
 
 
 @dataclass(frozen=True)
@@ -104,7 +105,9 @@ class Scene:
         """Raise :class:`KeyError` if *key* is not in the payload."""
         if key not in self.data:
             available = ", ".join(sorted(self.data.keys()))
-            raise KeyError(f"Missing key '{key}' in {self.path}. Available: {available}")
+            raise KeyError(
+                f"Missing key '{key}' in {self.path}. Available: {available}"
+            )
 
     @property
     def scene_id(self) -> str | None:
@@ -155,7 +158,8 @@ class Scene:
 
     def _copy_array(self, key: str) -> np.ndarray:
         self.require_key(key)
-        return np.asarray(self.data[key]).copy()
+        copied: np.ndarray = np.asarray(self.data[key]).copy()
+        return copied
 
     def _copy_temporal_array(
         self,
@@ -270,47 +274,35 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
 
     @staticmethod
     def _resolve_data_cfg(hydra_cfg: Any) -> dict[str, Any]:
-        """Extract the ``data`` section from a Hydra-style config.
-
-        Handles plain dicts, OmegaConf ``DictConfig`` objects, and ``None``.
-        """
-        data_cfg = hydra_cfg.get("data", {}) if hasattr(hydra_cfg, "get") else {}
-        return data_cfg or {}
+        """Extract the required ``data`` section from a Hydra-style config."""
+        root = as_config_mapping(hydra_cfg, path="configuration")
+        return dict(require_config_mapping(root, "data", path="configuration"))
 
     @staticmethod
     def _parse_int_range(
         data_cfg: dict[str, Any],
         key: str,
-        *,
-        default: tuple[int, int] | None = None,
     ) -> tuple[int, int]:
-        """Parse a ``(min, max)`` integer range from *data_cfg*.
-
-        Args:
-            data_cfg: Data configuration dictionary.
-            key: Config key whose value is a two-element sequence.
-            default: Fallback when *key* is absent.  If ``None`` and the key is
-                missing, ``KeyError`` is raised.
-        """
+        """Parse one required ``(min, max)`` integer range from *data_cfg*."""
         if key not in data_cfg:
-            if default is not None:
-                return default
-            raise KeyError(
-                f"Required config key '{key}' not found in data config"
-            )
+            raise KeyError(f"Required config key 'data.{key}' was not composed.")
         cfg = data_cfg[key]
         return (int(cfg[0]), int(cfg[1]))
 
     @staticmethod
     def _parse_camera_mode(
         data_cfg: dict[str, Any],
-        *,
-        default: str | int = "random",
     ) -> str | int:
-        """Parse camera selection mode from *data_cfg*."""
-        mode = data_cfg.get("camera_mode", default)
+        """Parse the required camera selection mode from *data_cfg*."""
+        if "camera_mode" not in data_cfg:
+            raise KeyError("Required config key 'data.camera_mode' was not composed.")
+        mode = data_cfg["camera_mode"]
         if isinstance(mode, str):
             mode = mode.lower()
+        if not isinstance(mode, (str, int)):
+            raise TypeError(
+                f"data.camera_mode must be str or int, got {type(mode).__name__}."
+            )
         return mode
 
     def _configure_task(self, data_cfg: dict[str, Any]) -> None:
@@ -341,6 +333,8 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
             num_views_range=(1, 1),
             camera_mode=self._parse_camera_mode(data_cfg),
             crop_mode="random" if self.augment else "center",
+            min_num_frames=1,
+            min_num_cameras=1,
         )
 
     def _resolve_scene_files(self, scene_dir: Path, split_file: Path) -> list[Path]:
@@ -375,8 +369,13 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
         return dict(meta_raw) if isinstance(meta_raw, dict) else {}
 
     def _fallback_num_frames_from_payload(self, payload: dict[str, Any]) -> int:
-        for key in ("ball_pos_norm", "ball_pos_world", "cam_0_ball_uv",
-                     "cam_0_human_kp_uv", "position"):
+        for key in (
+            "ball_pos_norm",
+            "ball_pos_world",
+            "cam_0_ball_uv",
+            "cam_0_human_kp_uv",
+            "position",
+        ):
             value = payload.get(key)
             if value is None:
                 continue
@@ -448,7 +447,9 @@ class SceneDatasetBase(Dataset, Generic[SampleT]):
         return max(int(self.config.min_num_frames), int(self.config.seq_len_range[0]))
 
     def _required_min_cameras(self) -> int:
-        return max(int(self.config.min_num_cameras), int(self.config.num_views_range[0]))
+        return max(
+            int(self.config.min_num_cameras), int(self.config.num_views_range[0])
+        )
 
     def _passes_filters(self, header: SceneHeader) -> bool:
         return (

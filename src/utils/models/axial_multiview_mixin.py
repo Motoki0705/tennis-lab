@@ -37,10 +37,6 @@ class AxialMultiViewMixin:
     token_freqs_cis: Tensor
 
     @staticmethod
-    def _coalesce_theta(theta: float | None, fallback: float) -> float:
-        return fallback if theta is None else float(theta)
-
-    @staticmethod
     def _validate_rope_dim(*, rope_dim: int, head_dim: int) -> None:
         validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
 

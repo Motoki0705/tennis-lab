@@ -15,6 +15,9 @@ from src.utils.paths import PROJECT_ROOT
 VITPOSE_CKPT = PROJECT_ROOT / "ckpt/vitpose/vitpose-h-multi-coco.pth"
 HMR2_CKPT = PROJECT_ROOT / "ckpt/hmr2/epoch=10-step=25000.ckpt"
 GVHMR_CKPT = PROJECT_ROOT / "ckpt/gvhmr/gvhmr_siga24_release.ckpt"
+HMR2_MEAN_PARAMS = (
+    PROJECT_ROOT / "src/submodules/vendor/gvhmr/hmr2/smpl_mean_params.npz"
+)
 
 
 def _needs(path: Path):
@@ -28,8 +31,21 @@ class TestCheckpointCompatibility:
     @_needs(VITPOSE_CKPT)
     def test_vitpose_strict_load_and_forward(self):
         from src.submodules.vendor.gvhmr.vitpose import build_vitpose_huge
+        from src.submodules.vendor.gvhmr.vitpose.heatmap_head import ViTPoseHeadConfig
 
-        model = build_vitpose_huge(str(VITPOSE_CKPT)).eval()
+        model = build_vitpose_huge(
+            str(VITPOSE_CKPT),
+            head_config=ViTPoseHeadConfig(
+                in_channels=1280,
+                out_channels=17,
+                num_deconv_layers=2,
+                num_deconv_filters=(256, 256),
+                num_deconv_kernels=(4, 4),
+                final_conv_kernel=1,
+                num_conv_layers=0,
+                num_conv_kernels=(),
+            ),
+        ).eval()
         with torch.no_grad():
             heatmap = model(torch.rand(1, 3, 256, 192))
         assert heatmap.shape == (1, 17, 64, 48)
@@ -38,7 +54,7 @@ class TestCheckpointCompatibility:
     def test_hmr2_strict_load_and_forward(self):
         from src.submodules.vendor.gvhmr.hmr2 import load_hmr2
 
-        model = load_hmr2(str(HMR2_CKPT)).eval()
+        model = load_hmr2(str(HMR2_CKPT), mean_params_path=HMR2_MEAN_PARAMS).eval()
         with torch.no_grad():
             features = model({"img": torch.rand(1, 3, 256, 256)})
         assert features.shape == (1, 1024)

@@ -1,25 +1,164 @@
 from __future__ import annotations
 
+import importlib
+import json
 import os
 import shutil
+import sys
+from importlib.machinery import ModuleSpec
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
-TRUE_VALUES = {"1", "true", "yes", "on"}
-PROJECT_ROOT = Path(__file__).resolve().parents[5]
-DINO_OPS_SOURCE = PROJECT_ROOT / "third_party/DINO/models/dino/ops/src"
-DINO_OPS_BUILD_SOURCE = PROJECT_ROOT / "build/tennis_lab_dino_ops/src"
+BUILD_CUDA_OPS = "TENNIS_LAB_BUILD_CUDA_OPS"
+DINO_OPS_BUILD_CONFIG = "TENNIS_LAB_DINO_OPS_BUILD_CONFIG"
+
+_OPERATIONS_MODULE = "src.utils.configuration.operations"
+_OPERATIONS_RELATIVE_PATH = Path("src/utils/configuration/operations.py")
+_BOOTSTRAP_NAMESPACE_PATHS = (
+    ("src", Path("src")),
+    ("src.utils", Path("src/utils")),
+    ("src.utils.configuration", Path("src/utils/configuration")),
+    ("src.utils.models", Path("src/utils/models")),
+    ("src.utils.models.components", Path("src/utils/models/components")),
+    ("src.utils.models.components.ops", Path("src/utils/models/components/ops")),
+)
+
 _OLD_DISPATCH = "AT_DISPATCH_FLOATING_TYPES(value.type(),"
 _NEW_DISPATCH = "AT_DISPATCH_FLOATING_TYPES(value.scalar_type(),"
 
 
+def parse_build_cuda_ops(raw: str | None, /) -> bool:
+    """Parse the one packaging-safe CUDA build switch without importing ``src``."""
+    if raw is None or raw == "0":
+        return False
+    if raw == "1":
+        return True
+    raise ValueError(
+        f"{BUILD_CUDA_OPS} must be exactly '0' or '1'; got {raw!r}."
+    )
+
+
 def should_build_cuda_ops() -> bool:
-    return os.environ.get("TENNIS_LAB_BUILD_CUDA_OPS", "").lower() in TRUE_VALUES
+    """Return the strict build switch without importing the source package."""
+    try:
+        raw = os.environ[BUILD_CUDA_OPS]
+    except KeyError:
+        raw = None
+    return parse_build_cuda_ops(raw)
+
+
+def _required_build_json() -> str:
+    if DINO_OPS_BUILD_CONFIG not in os.environ:
+        raise ValueError(
+            f"{DINO_OPS_BUILD_CONFIG} is required when {BUILD_CUDA_OPS}=1."
+        )
+    raw = os.environ[DINO_OPS_BUILD_CONFIG]
+    if not raw:
+        raise ValueError(f"{DINO_OPS_BUILD_CONFIG} must be a non-empty JSON string.")
+    return raw
+
+
+def _bootstrap_project_root(raw: str) -> Path:
+    """Read only the absolute project root needed to import the full contract."""
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{DINO_OPS_BUILD_CONFIG} must contain valid JSON.") from error
+    if type(value) is not dict:
+        raise TypeError(f"{DINO_OPS_BUILD_CONFIG} must decode to a JSON object.")
+    if "paths" not in value or type(value["paths"]) is not dict:
+        raise TypeError(
+            f"{DINO_OPS_BUILD_CONFIG}.paths must be a JSON object containing "
+            "project_root."
+        )
+    paths = value["paths"]
+    if "project_root" not in paths or type(paths["project_root"]) is not str:
+        raise TypeError(
+            f"{DINO_OPS_BUILD_CONFIG}.paths.project_root must be an absolute string."
+        )
+    raw_root = paths["project_root"]
+    if not raw_root or raw_root != raw_root.strip():
+        raise ValueError(
+            f"{DINO_OPS_BUILD_CONFIG}.paths.project_root must be non-empty and trimmed."
+        )
+    project_root = Path(raw_root)
+    if not project_root.is_absolute():
+        raise ValueError(
+            f"{DINO_OPS_BUILD_CONFIG}.paths.project_root must be absolute; "
+            f"got {raw_root!r}."
+        )
+    if project_root == Path(project_root.anchor):
+        raise ValueError(
+            f"{DINO_OPS_BUILD_CONFIG}.paths.project_root must not be the filesystem root."
+        )
+    if project_root.resolve(strict=False) != project_root:
+        raise ValueError(
+            f"{DINO_OPS_BUILD_CONFIG}.paths.project_root must already be resolved; "
+            f"got {raw_root!r}."
+        )
+    operations_path = project_root / _OPERATIONS_RELATIVE_PATH
+    if not operations_path.is_file():
+        raise FileNotFoundError(
+            "Canonical operation contract was not found below the configured "
+            f"project_root: {operations_path}"
+        )
+    return project_root
+
+
+def _load_operations(project_root: Path) -> ModuleType:
+    """Import and authenticate the canonical contract from one explicit root."""
+    for name, relative_path in _BOOTSTRAP_NAMESPACE_PATHS:
+        if name in sys.modules:
+            continue
+        package_path = project_root / relative_path
+        package = ModuleType(name)
+        package.__package__ = name
+        package.__dict__["__path__"] = [str(package_path)]
+        package_spec = ModuleSpec(name, loader=None, is_package=True)
+        package_spec.submodule_search_locations = [str(package_path)]
+        package.__spec__ = package_spec
+        sys.modules[name] = package
+
+    root_text = str(project_root)
+    added_to_path = root_text not in sys.path
+    if added_to_path:
+        sys.path.insert(0, root_text)
+    try:
+        module = importlib.import_module(_OPERATIONS_MODULE)
+    finally:
+        if added_to_path:
+            sys.path.remove(root_text)
+
+    loaded_file = module.__file__
+    expected_file = project_root / _OPERATIONS_RELATIVE_PATH
+    if loaded_file is None or Path(loaded_file).resolve(strict=False) != expected_file:
+        raise RuntimeError(
+            "Canonical operation contract resolved from an unexpected module path: "
+            f"expected {expected_file}, got {loaded_file!r}."
+        )
+    return module
+
+
+def _enabled_build_paths() -> Any | None:
+    if not should_build_cuda_ops():
+        return None
+    raw = _required_build_json()
+    project_root = _bootstrap_project_root(raw)
+    operations = _load_operations(project_root)
+    environment = operations.operation_environment()
+    if environment.build_cuda_ops is not True:
+        raise RuntimeError(
+            "Canonical operation contract disagrees with the enabled packaging switch."
+        )
+    return environment.require_dino_build_config(repository_root=project_root)
 
 
 def get_extensions() -> list[Any]:
-    if not should_build_cuda_ops():
+    build_paths = _enabled_build_paths()
+    if build_paths is None:
         return []
+    build_paths.require_inputs()
 
     try:
         from torch.utils.cpp_extension import CUDA_HOME, CUDAExtension
@@ -37,24 +176,24 @@ def get_extensions() -> list[Any]:
         "nvcc": ["-O3", "--use_fast_math"],
     }
     dino_ops_src = _prepare_dino_ops_sources(
-        DINO_OPS_SOURCE,
-        DINO_OPS_BUILD_SOURCE,
+        build_paths.source,
+        build_paths.destination,
     )
 
     return [
         CUDAExtension(
             name="src.utils.models.components.ops.moe._C",
             sources=[
-                "src/utils/models/components/ops/moe/bindings.cpp",
-                "src/utils/models/components/ops/moe/kernels.cu",
+                str(build_paths.moe_bindings),
+                str(build_paths.moe_kernels),
             ],
             extra_compile_args=common_compile_args,
         ),
         CUDAExtension(
             name="src.utils.models.components.ops.time_local._C",
             sources=[
-                "src/utils/models/components/ops/time_local/bindings.cpp",
-                "src/utils/models/components/ops/time_local/kernels.cu",
+                str(build_paths.time_local_bindings),
+                str(build_paths.time_local_kernels),
             ],
             extra_compile_args=common_compile_args,
         ),
@@ -85,8 +224,7 @@ def _prepare_dino_ops_sources(source: Path, destination: Path) -> Path:
     cuda_source = source / "cuda/ms_deform_attn_cuda.cu"
     if not cuda_source.is_file():
         raise FileNotFoundError(
-            "DINO git submodule is not initialized. Run: "
-            "git submodule update --init third_party/DINO "
+            "The configured DINO external asset is not initialized. "
             f"(missing: {cuda_source})"
         )
 
@@ -106,7 +244,7 @@ def _prepare_dino_ops_sources(source: Path, destination: Path) -> Path:
 
 
 def get_cmdclass() -> dict[str, Any]:
-    if not should_build_cuda_ops():
+    if _enabled_build_paths() is None:
         return {}
 
     try:

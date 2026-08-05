@@ -7,31 +7,43 @@ import torch
 from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig
 
+from src.tasks.blcs.configuration import TrackQueryModelConfig, parse_model_config
 from src.tasks.blcs.models import BLCSTrackQueryModel
+from src.utils.configuration import ConfigurationTypeError
+from src.utils.models import TransformerBlock
 from src.utils.models.embeddings import CourtBallGroupEmbedding
 
 _CONFIG_DIR = Path("src/tasks/blcs/configs").resolve()
 
 
-def _model_config() -> DictConfig:
+def _composed_config(*, mask_invisible: bool = True) -> DictConfig:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(config_name="train_tracking")
-    return config.model
+    config.model.mask_invisible_observations = mask_invisible
+    return config
 
 
-def _point_attention_model_config() -> DictConfig:
+def _model_config(*, mask_invisible: bool = True) -> TrackQueryModelConfig:
+    parsed = parse_model_config(_composed_config(mask_invisible=mask_invisible))
+    if not isinstance(parsed, TrackQueryModelConfig):
+        raise AssertionError("train_tracking must compose a track-query model.")
+    return parsed
+
+
+def _point_attention_model_config() -> TrackQueryModelConfig:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
         config = compose(
             config_name="train_tracking",
             overrides=["model=track_query_large_point_attention"],
         )
-    return config.model
+    parsed = parse_model_config(config)
+    if not isinstance(parsed, TrackQueryModelConfig):
+        raise AssertionError("Point-attention config must compose a track-query model.")
+    return parsed
 
 
 def _model(*, mask_invisible: bool = True) -> BLCSTrackQueryModel:
-    config = _model_config()
-    config.mask_invisible_observations = mask_invisible
-    model = BLCSTrackQueryModel(config)
+    model = BLCSTrackQueryModel(_model_config(mask_invisible=mask_invisible))
     model.eval()
     return model
 
@@ -61,15 +73,24 @@ def test_spatial_coordinates_share_role_within_id_ordered_object_axis() -> None:
     )
 
 
-def test_model_resolves_default_ffn_and_rope_dimensions() -> None:
+def test_model_uses_composed_ffn_and_rope_dimensions() -> None:
     config = _model_config()
-    config.ffn_dim = None
-    config.rope_dim = None
-
     model = BLCSTrackQueryModel(config)
 
-    assert model.rope_dim == model.hidden_dim // model.num_heads
-    assert model.spatial_blocks[0].cfg.ffn_dim is None
+    assert model.rope_dim == config.rope_dim
+    block = model.spatial_blocks[0]
+    if not isinstance(block, TransformerBlock):
+        raise AssertionError("Track-query spatial trunk must use TransformerBlock.")
+    assert block.cfg.ffn_dim == config.ffn_dim
+
+
+@pytest.mark.parametrize("field", ["ffn_dim", "rope_dim"])
+def test_model_config_rejects_null_architecture_fields(field: str) -> None:
+    config = _composed_config()
+    config.model[field] = None
+
+    with pytest.raises(ConfigurationTypeError, match=rf"model\.{field}"):
+        parse_model_config(config)
 
 
 def test_default_model_uses_shared_court_ball_group_embedding() -> None:
@@ -168,6 +189,8 @@ def test_invisible_token_memory_ablation_controls_gradient(
     (
         output["position"].square().sum() + output["presence_logits"].square().sum()
     ).backward()
+    if model.invisible_token is None:
+        raise AssertionError("Linear observation fusion requires an invisible token.")
     gradient = model.invisible_token.token.grad
     has_gradient = gradient is not None and bool(gradient.abs().sum() > 0)
     assert has_gradient is expect_gradient

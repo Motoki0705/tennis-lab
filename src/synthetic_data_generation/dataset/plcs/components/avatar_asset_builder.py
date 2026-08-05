@@ -12,9 +12,14 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from src.submodules.configuration import BundledModelAssetPaths
 from src.submodules.vendor.gvhmr.body_model.smplx_lite import (
     SmplxLite,
     batch_rigid_transform_v2,
+)
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
 )
 from src.synthetic_data_generation.dataset.plcs.components.avatar_asset import (
     build_surface_gaussian_asset,
@@ -23,11 +28,75 @@ from src.synthetic_data_generation.dataset.plcs.components.avatar_asset import (
 from src.synthetic_data_generation.dataset.plcs.components.avatar_control import (
     embed_points_on_posed_mesh,
 )
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
 from src.utils.geometry.rotation_conversions import axis_angle_to_matrix
 
 SCHEMA = "plcs_smplx_gaussian_asset_fixture_v1"
 SEED = 20260728
 POSE_IDS = ("canonical", "ready", "forehand")
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.plcs.avatar_asset_builder",
+    fields=(
+        BoundaryPathField(
+            "model",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "target_appearance",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "hmr2_mean_params",
+            PathRole.PROJECT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "smplx_to_smpl",
+            PathRole.PROJECT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "smpl_coco17_regressor",
+            PathRole.PROJECT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "smplx_verts437",
+            PathRole.PROJECT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "smpl_neutral_joint_regressor",
+            PathRole.PROJECT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output", PathRole.ARTIFACT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+    ),
+)
 
 
 def _sha256(path: Path) -> str:
@@ -143,17 +212,34 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--target-appearance", type=Path, required=True)
+    parser.add_argument("--hmr2-mean-params", type=Path, required=True)
+    parser.add_argument("--smplx-to-smpl", type=Path, required=True)
+    parser.add_argument("--smpl-coco17-regressor", type=Path, required=True)
+    parser.add_argument("--smplx-verts437", type=Path, required=True)
+    parser.add_argument("--smpl-neutral-joint-regressor", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--gaussian-count", type=int, default=4096)
+    add_path_roots_argument(parser)
     args = parser.parse_args()
 
-    output = args.output.resolve()
-    model_path = args.model.resolve()
-    appearance_path = args.target_appearance.resolve()
+    paths = PATH_BOUNDARY.validate(
+        {
+            "model": args.model,
+            "target_appearance": args.target_appearance,
+            "hmr2_mean_params": args.hmr2_mean_params,
+            "smplx_to_smpl": args.smplx_to_smpl,
+            "smpl_coco17_regressor": args.smpl_coco17_regressor,
+            "smplx_verts437": args.smplx_verts437,
+            "smpl_neutral_joint_regressor": args.smpl_neutral_joint_regressor,
+            "output": args.output,
+        },
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    output = paths.declared("output").path
+    model_path = paths.declared("model").path
+    appearance_path = paths.declared("target_appearance").path
     if output.exists():
         raise SystemExit(f"Refusing to overwrite output: {output}")
-    if not model_path.is_file() or not appearance_path.is_file():
-        raise SystemExit("SMPL-X model and target NHT appearance must exist.")
     appearance = torch.load(appearance_path, map_location="cpu", weights_only=True)
     if not isinstance(appearance, dict) or set(appearance) != {"config", "state_dict"}:
         raise SystemExit("Target NHT appearance has an unsupported payload.")
@@ -163,7 +249,19 @@ def main() -> None:
     feature_dim = int(config["feature_dim"])
 
     torch.manual_seed(SEED)
-    model = SmplxLite(model_path=model_path).eval()
+    bundled_assets = BundledModelAssetPaths(
+        hmr2_mean_params=paths.declared("hmr2_mean_params").path,
+        smplx_to_smpl=paths.declared("smplx_to_smpl").path,
+        smpl_coco17_regressor=paths.declared("smpl_coco17_regressor").path,
+        smplx_verts437=paths.declared("smplx_verts437").path,
+        smpl_neutral_joint_regressor=paths.declared(
+            "smpl_neutral_joint_regressor"
+        ).path,
+    )
+    model = SmplxLite(
+        model_path=model_path,
+        bundled_assets=bundled_assets,
+    ).eval()
     body, betas, global_orient, translations = _motion()
     with torch.inference_mode():
         vertices = model(body, betas, global_orient, translations)[0]

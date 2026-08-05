@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
@@ -132,7 +132,7 @@ class CameraController:
             raise ValueError(f"orbit_period_s must be positive, got {orbit_period_s}")
         self.orbit_period_s = orbit_period_s
 
-        self.keyframes: list[CameraKeyframe] = list(keyframes or [])
+        self.keyframes = [] if keyframes is None else list(keyframes)
         if mode == "keyframes":
             if len(self.keyframes) < 2:
                 raise ValueError(
@@ -186,53 +186,122 @@ class CameraController:
             - ``keyframes``: list of mappings, each with ``frame`` plus either
               ``preset`` or ``elev``/``azim`` (and optional ``zoom``).
         """
+        allowed = {
+            "preset",
+            "elev",
+            "azim",
+            "zoom",
+            "mode",
+            "orbit_period_s",
+            "keyframes",
+        }
+        unknown = set(cfg) - allowed
+        missing = allowed - set(cfg)
+        if missing or unknown:
+            raise ValueError(
+                "Invalid camera controller keys: "
+                f"missing={sorted(missing)}, unknown={sorted(unknown)}"
+            )
+
         base = _view_from_mapping(cfg, context="camera")
-        mode = str(cfg.get("mode", "static"))
+        mode = cfg["mode"]
+        if type(mode) is not str:
+            raise TypeError(
+                f"camera.mode must be exactly str, got {type(mode).__name__}"
+            )
         if mode not in _VALID_MODES:
             raise ValueError(f"Unknown camera mode '{mode}'. Available: {_VALID_MODES}")
 
         keyframes: list[CameraKeyframe] | None = None
-        raw_keyframes = cfg.get("keyframes")
+        raw_keyframes = cfg["keyframes"]
         if raw_keyframes is not None:
+            if not isinstance(raw_keyframes, Sequence) or isinstance(
+                raw_keyframes, str | bytes
+            ):
+                raise TypeError("camera.keyframes must be a sequence or null.")
             keyframes = []
             for i, raw in enumerate(raw_keyframes):
+                if not isinstance(raw, Mapping):
+                    raise TypeError(f"keyframes[{i}] must be a mapping.")
+                unknown_keyframe = set(raw) - {
+                    "frame",
+                    "preset",
+                    "elev",
+                    "azim",
+                    "zoom",
+                }
+                if unknown_keyframe:
+                    raise ValueError(
+                        f"keyframes[{i}] has unknown keys: {sorted(unknown_keyframe)}"
+                    )
                 if "frame" not in raw:
                     raise ValueError(f"keyframes[{i}] is missing required key 'frame'")
+                frame = raw["frame"]
+                if type(frame) is not int:
+                    raise TypeError(
+                        f"keyframes[{i}].frame must be exactly int, "
+                        f"got {type(frame).__name__}"
+                    )
                 keyframes.append(
                     CameraKeyframe(
-                        frame=int(raw["frame"]),
+                        frame=frame,
                         view=_view_from_mapping(raw, context=f"keyframes[{i}]"),
                     )
                 )
 
-        orbit_period_s = float(cfg.get("orbit_period_s", 24.0))
+        orbit_period_s = cfg["orbit_period_s"]
+        if type(orbit_period_s) is not float:
+            raise TypeError(
+                "camera.orbit_period_s must be exactly float, "
+                f"got {type(orbit_period_s).__name__}"
+            )
         return cls(
             base,
-            mode=mode,  # type: ignore[arg-type]  # validated against _VALID_MODES above
+            mode=cast(CameraMode, mode),
             orbit_period_s=orbit_period_s,
             keyframes=keyframes,
         )
 
 
+def _optional_mapping_value(raw: Mapping[str, Any], key: str) -> Any:
+    """Read one schema-declared optional key without synthesizing a value."""
+    try:
+        return raw[key]
+    except KeyError:
+        return None
+
+
 def _view_from_mapping(raw: Mapping[str, Any], *, context: str) -> CameraView3D:
     """Resolve a view from ``preset`` or explicit ``elev``/``azim`` keys."""
-    preset = raw.get("preset")
-    has_angles = raw.get("elev") is not None or raw.get("azim") is not None
+    preset = _optional_mapping_value(raw, "preset")
+    elev = _optional_mapping_value(raw, "elev")
+    azim = _optional_mapping_value(raw, "azim")
+    zoom = _optional_mapping_value(raw, "zoom")
+    has_angles = elev is not None or azim is not None
     if preset is not None and has_angles:
         raise ValueError(
             f"{context}: specify either 'preset' or explicit 'elev'/'azim', not both"
         )
     if preset is not None:
-        view = resolve_camera_view(str(preset))
-    elif raw.get("elev") is not None and raw.get("azim") is not None:
-        view = CameraView3D(elev=float(raw["elev"]), azim=float(raw["azim"]))
+        if type(preset) is not str:
+            raise TypeError(
+                f"{context}.preset must be exactly str, got {type(preset).__name__}"
+            )
+        view = resolve_camera_view(preset)
+    elif elev is not None and azim is not None:
+        if type(elev) is not float or type(azim) is not float:
+            raise TypeError(f"{context}.elev and {context}.azim must be exactly float.")
+        view = CameraView3D(elev=elev, azim=azim, zoom=1.0)
     else:
         raise ValueError(
             f"{context}: requires 'preset' or both 'elev' and 'azim', got {dict(raw)}"
         )
-    zoom = raw.get("zoom")
     if zoom is not None:
-        view = CameraView3D(elev=view.elev, azim=view.azim, zoom=float(zoom))
+        if type(zoom) is not float:
+            raise TypeError(
+                f"{context}.zoom must be exactly float, got {type(zoom).__name__}"
+            )
+        view = CameraView3D(elev=view.elev, azim=view.azim, zoom=zoom)
     return view
 
 

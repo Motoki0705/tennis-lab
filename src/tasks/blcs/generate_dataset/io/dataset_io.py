@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 class BLCSDatasetWriter(BaseDatasetWriter):
     """Writes BLCS scene data to disk as npy + json directories."""
+
     scenes_dir: Path
 
     def __init__(self, output_dir: str | Path) -> None:

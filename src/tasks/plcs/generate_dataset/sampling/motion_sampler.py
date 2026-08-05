@@ -9,7 +9,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import torch
@@ -49,7 +49,7 @@ class MotionSourceConfig:
     """Configuration for a motion source category."""
 
     paths: list[str]
-    weight: float = 1.0
+    weight: float
 
 
 class MotionSampler:
@@ -63,8 +63,8 @@ class MotionSampler:
 
     def __init__(
         self,
-        config: DictConfig | None = None,
-        smplh_model_path: Path | str = "data/smplx/smplh",
+        config: DictConfig,
+        smplh_model_path: Path | str,
         device: str | torch.device = "cpu",
     ) -> None:
         """Initialize the motion sampler.
@@ -75,7 +75,7 @@ class MotionSampler:
             device: Device for SMPL-H computation.
 
         """
-        self.config = config or {}
+        self.config = config
         self.smplh_model_path = Path(smplh_model_path)
         self.device = torch.device(device)
 
@@ -92,23 +92,13 @@ class MotionSampler:
 
     def _parse_motion_sources(self) -> None:
         """Parse motion source configuration."""
-        sources_cfg = self.config.get("motion_sources", {})
-
-        if not sources_cfg:
-            # Default: use all ACCAD data
-            self._motion_sources["default"] = MotionSourceConfig(
-                paths=["data/ACCAD"],
-                weight=1.0,
-            )
-            return
+        sources_cfg = self.config.motion_sources
 
         for category, cfg in sources_cfg.items():
-            # Handle both dict and OmegaConf DictConfig
-            if hasattr(cfg, "get"):
-                self._motion_sources[category] = MotionSourceConfig(
-                    paths=list(cfg.get("paths", [])),
-                    weight=float(cfg.get("weight", 1.0)),
-                )
+            self._motion_sources[category] = MotionSourceConfig(
+                paths=[str(path) for path in cfg.paths],
+                weight=float(cfg.weight),
+            )
 
     def _index_motion_files(self) -> None:
         """Index all available motion files by category."""
@@ -142,7 +132,7 @@ class MotionSampler:
         gender_lower = gender.lower()
         if gender_lower not in self._smplh_models:
             try:
-                import smplx
+                import smplx  # type: ignore[import-untyped]
 
                 model = smplx.create(
                     model_path=str(self.smplh_model_path.parent),
@@ -206,12 +196,16 @@ class MotionSampler:
             weights = [self._motion_sources[c].weight for c in categories]
             # Filter out categories with no files
             valid = [
-                (c, w) for c, w in zip(categories, weights, strict=True) if self._motion_files.get(c)
+                (c, w)
+                for c, w in zip(categories, weights, strict=True)
+                if self._motion_files.get(c)
             ]
             if not valid:
                 raise RuntimeError("No motion files available")
-            categories, weights = zip(*valid, strict=True)
-            selected_category = random.choices(categories, weights=weights, k=1)[0]
+            valid_categories, valid_weights = zip(*valid, strict=True)
+            selected_category = random.choices(
+                valid_categories, weights=valid_weights, k=1
+            )[0]
 
         # Select random file from category
         files = self._motion_files[selected_category]
@@ -304,7 +298,12 @@ class MotionSampler:
         right_hand_pose = aa[:, 22:37].reshape(T, -1)  # (T, 45)
 
         # Prepare betas (truncate to model's num_betas)
-        model_num_betas = int(getattr(model, "num_betas", betas.shape[0]))
+        raw_model_num_betas = getattr(model, "num_betas", None)
+        model_num_betas = (
+            int(betas.shape[0])
+            if raw_model_num_betas is None
+            else int(raw_model_num_betas)
+        )
         num_betas = min(betas.shape[0], model_num_betas)
         betas_truncated = betas[:num_betas]
 
@@ -334,7 +333,7 @@ class MotionSampler:
                     .repeat(batch_t, 1)
                 )
 
-                output = model(
+                output = cast(Any, model)(
                     betas=betas_t,
                     global_orient=global_orient_t,
                     body_pose=body_pose_t,
@@ -350,7 +349,7 @@ class MotionSampler:
         joints_3d = np.concatenate(all_joints, axis=0)  # (T, J, 3)
         motion.joints_3d = joints_3d
 
-        return joints_3d
+        return cast(np.ndarray, joints_3d)
 
     def get_available_categories(self) -> list[str]:
         """Get list of available motion categories.

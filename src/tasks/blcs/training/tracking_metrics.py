@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 
 from src.tasks.base.training.tracking_metrics import (
+    TrackingMetricConfig,
     common_lifecycle_tracking_metrics,
 )
 from src.tasks.blcs.training.tracking_losses import Assignment
@@ -32,10 +33,10 @@ def _position_mae_meters(
                 terms.append(
                     (
                         pred_position[batch_index, active, query_index]
-                        - batch["target_position"][
-                            batch_index, active, target_index
-                        ]
-                    ).abs().mean(0)
+                        - batch["target_position"][batch_index, active, target_index]
+                    )
+                    .abs()
+                    .mean(0)
                     * scale
                 )
     if terms:
@@ -48,16 +49,14 @@ def blcs_tracking_metrics(
     batch: dict[str, torch.Tensor],
     assignments: list[Assignment],
     *,
-    presence_threshold: float = 0.5,
-    duplicate_distance: float = 0.05,
+    config: TrackingMetricConfig,
 ) -> dict[str, torch.Tensor]:
     """Compute shared lifecycle metrics for BLCS predictions."""
     metrics: dict[str, torch.Tensor] = common_lifecycle_tracking_metrics(
         prediction,
         batch,
         assignments,
-        presence_threshold=presence_threshold,
-        duplicate_distance=duplicate_distance,
+        config=config,
     )
     position_mae_m = _position_mae_meters(prediction, batch, assignments)
     metrics.update(

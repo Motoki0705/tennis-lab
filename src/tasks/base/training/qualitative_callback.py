@@ -9,12 +9,25 @@ from __future__ import annotations
 
 import random
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.loggers import TensorBoardLogger
+
+
+@runtime_checkable
+class _QualitativeRenderer(Protocol):
+    def render_qualitative_samples(
+        self,
+        batches: list[dict[str, Any]],
+        outputs: list[dict[str, Any]],
+        artifact_dir: Path,
+        tb_writer: Any | None,
+        global_step: int,
+        epoch: int,
+    ) -> None: ...
 
 
 class QualitativeLoggingCallback(pl.Callback):
@@ -32,15 +45,18 @@ class QualitativeLoggingCallback(pl.Callback):
 
     def __init__(
         self,
-        every_n_epochs: int = 1,
-        num_samples: int = 4,
-        enabled: bool = True,
-        selection_mode: str = "random",
-        selected_indices: list[int] | None = None,
+        *,
+        every_n_epochs: int,
+        num_samples: int,
+        enabled: bool,
+        selection_mode: str,
+        selected_indices: list[int] | None,
     ) -> None:
         super().__init__()
-        self.every_n_epochs = max(every_n_epochs, 1)
-        self.num_samples = max(num_samples, 1)
+        if every_n_epochs <= 0 or num_samples <= 0:
+            raise ValueError("every_n_epochs and num_samples must be positive.")
+        self.every_n_epochs = every_n_epochs
+        self.num_samples = num_samples
         self.enabled = enabled
         self.selection_mode = selection_mode
         self.selected_indices = selected_indices
@@ -126,7 +142,7 @@ class QualitativeLoggingCallback(pl.Callback):
         global_step = trainer.global_step
 
         # Delegate rendering to the task LightningModule
-        if hasattr(pl_module, "render_qualitative_samples"):
+        if isinstance(pl_module, _QualitativeRenderer):
             pl_module.render_qualitative_samples(
                 batches=self._collected_batches,
                 outputs=self._collected_outputs,
@@ -174,7 +190,8 @@ class QualitativeLoggingCallback(pl.Callback):
             return False
         if trainer.sanity_checking:
             return False
-        return (trainer.current_epoch % self.every_n_epochs) == 0
+        should_log: bool = (trainer.current_epoch % self.every_n_epochs) == 0
+        return should_log
 
     def _estimate_total_batches(self, trainer: pl.Trainer) -> int:
         """Estimate the total number of validation batches."""
@@ -229,9 +246,11 @@ def _detach_to_cpu(data: Any) -> Any:
 def _get_log_dir(trainer: pl.Trainer) -> Path:
     """Get the log directory from the trainer's logger."""
     logger = trainer.logger
-    if isinstance(logger, TensorBoardLogger):
-        return Path(logger.log_dir)
-    return Path("outputs")
+    if not isinstance(logger, TensorBoardLogger):
+        raise RuntimeError(
+            "Qualitative logging requires a TensorBoardLogger with an explicit log_dir."
+        )
+    return Path(logger.log_dir)
 
 
 def save_image_to_tensorboard(

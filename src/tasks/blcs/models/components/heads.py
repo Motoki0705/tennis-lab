@@ -19,11 +19,12 @@ class Trajectory3DHead(MLPHead):
 
     def __init__(
         self,
-        input_dim: int = 256,
-        hidden_dim: int = 128,
-        output_dim: int = 3,
-        num_layers: int = 2,
-        dropout: float = 0.1,
+        *,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        num_layers: int,
+        dropout: float,
     ) -> None:
         """Initialize the trajectory head.
 
@@ -51,11 +52,12 @@ class VelocityHead(MLPHead):
 
     def __init__(
         self,
-        input_dim: int = 256,
-        hidden_dim: int = 128,
-        output_dim: int = 3,
-        num_layers: int = 2,
-        dropout: float = 0.1,
+        *,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        num_layers: int,
+        dropout: float,
     ) -> None:
         """Initialize the velocity head.
 

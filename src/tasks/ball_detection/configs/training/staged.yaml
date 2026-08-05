@@ -8,6 +8,11 @@ trainer:
   precision: bf16-mixed
   log_every_n_steps: 25
   check_val_every_n_epoch: 1
+  accumulate_grad_batches: 1
+  reload_dataloaders_every_n_epochs: 0
+  enable_progress_bar: true
+  enable_model_summary: true
+  benchmark: false
 
 # ---- Manual-optimization / variable-T settings ----
 staged:
@@ -22,7 +27,9 @@ staged:
 learning_rate: 1.0e-4
 weight_decay: 1.0e-4
 warmup_epochs: 1
+warmup_steps: null
 min_lr: 1.0e-6
+steps_per_epoch: null
 
 optimizer:
   name: adamw
@@ -47,6 +54,7 @@ early_stopping:
   mode: min
   patience: 5
   min_delta: 2.0e-6
+  check_on_train_epoch_end: false
 
 lr_monitor:
   enabled: true
@@ -56,3 +64,46 @@ qualitative_logging:
   enabled: true
   every_n_epochs: 1
   num_samples: 4
+  selection_mode: random
+  selected_indices: null
+
+qualitative_rendering:
+  fps: 5.0
+  draw:
+    gt_radius: 6
+    pred_radius: 6
+    thickness: 2
+    gt_color_rgb: [0, 255, 0]
+    pred_color_rgb: [255, 80, 80]
+    text_color_rgb: [255, 255, 255]
+    muted_text_color_rgb: [160, 160, 160]
+  layout:
+    header_height: 48
+    tile_gap: 4
+    text_scale: 0.55
+    text_thickness: 1
+    background_rgb: [30, 30, 30]
+    panel_label_height: 22
+
+gan:
+  enabled: false
+  target_weight: 0.0
+  warmup_epochs: 1
+  generator_gradient_clip_val: null
+  discriminator_gradient_clip_val: null
+  soft_argmax_temperature: 1.0
+  transition:
+    start_epoch: 0
+  discriminator:
+    name: trajectory_transformer
+    hidden_dim: 128
+    num_layers: 4
+    num_heads: 4
+    ffn_dim: 256
+    ffn_type: swiglu
+    dropout: 0.1
+    rope_dim: 32
+    rope_theta: 10000.0
+    max_seq_len: ${model.num_frames}
+    invalid_init_std: 0.02
+    cls_init_std: 0.02

@@ -14,8 +14,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
-from plyfile import PlyData, PlyElement
 
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
+)
 from src.synthetic_data_generation.dataset.blcs.artifacts.calibration import (
     BALL_CALIBRATION_CAPTURE_SCHEMA,
 )
@@ -23,6 +26,7 @@ from src.synthetic_data_generation.dataset.blcs.components.asset_preparation imp
     ASSET_PREPARATION_ENTRY_SCHEMA,
 )
 from src.synthetic_data_generation.dataset.blcs.rendering.feature_fit import (
+    FeatureFitRuntimeAssets,
     SourceGeometry,
     _absolute_file_ref,
     _canonical_sha256,
@@ -33,8 +37,65 @@ from src.synthetic_data_generation.dataset.blcs.rendering.feature_fit import (
     _sha256_file,
     _write_json,
 )
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
 
 FIXTURE_SCHEMA = "tennis_ball_nht_feature_fit_fixture_v2"
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.blcs.feature_fit_fixture",
+    fields=(
+        BoundaryPathField(
+            "teacher_tensors",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "target_appearance",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output_dir", PathRole.ARTIFACT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+        BoundaryPathField(
+            "runtime_pins",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "nht_repository",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "gsplat_repository",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "worker_source",
+            PathRole.PROJECT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+    ),
+)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -49,6 +110,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--camera-radius-m", type=float, default=0.24)
     parser.add_argument("--focal-length-px", type=float, default=150.0)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--runtime-pins", type=Path, required=True)
+    parser.add_argument("--nht-repository", type=Path, required=True)
+    parser.add_argument("--gsplat-repository", type=Path, required=True)
+    parser.add_argument("--worker-source", type=Path, required=True)
+    add_path_roots_argument(parser)
     return parser.parse_args()
 
 
@@ -150,6 +216,8 @@ def _write_independent_source(
 
 
 def _write_vanilla_ply(path: Path, geometry: SourceGeometry) -> None:
+    from plyfile import PlyData, PlyElement  # noqa: PLC0415
+
     property_names = [
         "x",
         "y",
@@ -189,7 +257,19 @@ def _write_vanilla_ply(path: Path, geometry: SourceGeometry) -> None:
 
 def main() -> None:
     args = _parse_args()
-    output_dir = args.output_dir.resolve()
+    paths = PATH_BOUNDARY.validate(
+        {
+            "teacher_tensors": args.teacher_tensors,
+            "target_appearance": args.target_appearance,
+            "output_dir": args.output_dir,
+            "runtime_pins": args.runtime_pins,
+            "nht_repository": args.nht_repository,
+            "gsplat_repository": args.gsplat_repository,
+            "worker_source": args.worker_source,
+        },
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    output_dir = paths.declared("output_dir").path
     if output_dir.exists():
         raise SystemExit(f"Refusing to overwrite output directory: {output_dir}")
     if args.width <= 1 or args.height <= 1:
@@ -202,11 +282,16 @@ def main() -> None:
         raise SystemExit("camera radius and focal length must be positive.")
     if not torch.cuda.is_available():
         raise SystemExit("CUDA is unavailable.")
-    teacher_path = args.teacher_tensors.resolve()
-    appearance_path = args.target_appearance.resolve()
-    if not teacher_path.is_file() or not appearance_path.is_file():
-        raise SystemExit("Teacher tensors and target appearance must both exist.")
-    runtime = _runtime_revisions()
+    teacher_path = paths.declared("teacher_tensors").path
+    appearance_path = paths.declared("target_appearance").path
+    runtime = _runtime_revisions(
+        FeatureFitRuntimeAssets(
+            pins=paths.declared("runtime_pins").path,
+            nht_repository=paths.declared("nht_repository").path,
+            gsplat_repository=paths.declared("gsplat_repository").path,
+            worker_source=paths.declared("worker_source").path,
+        )
+    )
     geometry_cpu, teacher_features_cpu = _load_teacher(teacher_path)
     device = torch.device(args.device)
     shader, target_feature_dim, shader_config = _load_shader(

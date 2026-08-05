@@ -10,39 +10,44 @@ from __future__ import annotations
 from torch import Tensor
 
 
+def _require_rope_theta(value: float, *, axis: str) -> float:
+    if type(value) is not float:
+        raise TypeError(
+            f"rope_theta_{axis} must be exactly float; got {type(value).__name__}."
+        )
+    if value <= 0.0:
+        raise ValueError(f"rope_theta_{axis} must be > 0; got {value}.")
+    return value
+
+
 def resolve_rope_bases(
-    rope_theta: float,
-    rope_theta_time: float | None,
-    rope_theta_camera: float | None,
-    rope_theta_type: float | None = None,
-) -> tuple[float, ...]:
-    """Resolve per-axis RoPE theta bases with fallback to ``rope_theta``.
+    *,
+    rope_theta_time: float,
+    rope_theta_camera: float,
+    rope_theta_type: float,
+) -> tuple[float, float, float]:
+    """Return explicit ``(time, camera, type)`` RoPE bases.
 
-    Reproduces the ``rope_bases`` tuple construction shared by the PLCS/BLCS
-    frame models (3-tuple including a type axis) and the axial multi-view
-    models (2-tuple, no type axis).
-
-    Each axis-specific theta falls back to ``rope_theta`` when ``None``; the
-    resulting bases are ``(time, camera[, type])``.  The third (``type``)
-    element is only included when ``rope_theta_type is not None``.
-
-    Args:
-        rope_theta: Default RoPE theta used when an axis value is ``None``.
-        rope_theta_time: Theta for the time axis, or ``None`` to fall back.
-        rope_theta_camera: Theta for the camera axis, or ``None`` to fall back.
-        rope_theta_type: Theta for the type axis.  When ``None``, the type
-            axis is omitted (yielding a 2-tuple); otherwise it is included.
-
-    Returns:
-        tuple[float, ...]: ``(time, camera)`` or ``(time, camera, type)``.
+    Every axis must be selected by the validated model contract.  This helper
+    never derives an axis value from another model field.
     """
-    bases = [
-        float(rope_theta if rope_theta_time is None else rope_theta_time),
-        float(rope_theta if rope_theta_camera is None else rope_theta_camera),
-    ]
-    if rope_theta_type is not None:
-        bases.append(float(rope_theta_type))
-    return tuple(bases)
+    return (
+        _require_rope_theta(rope_theta_time, axis="time"),
+        _require_rope_theta(rope_theta_camera, axis="camera"),
+        _require_rope_theta(rope_theta_type, axis="type"),
+    )
+
+
+def resolve_axial_rope_bases(
+    *,
+    rope_theta_time: float,
+    rope_theta_camera: float,
+) -> tuple[float, float]:
+    """Return explicit ``(time, camera)`` RoPE bases for axial models."""
+    return (
+        _require_rope_theta(rope_theta_time, axis="time"),
+        _require_rope_theta(rope_theta_camera, axis="camera"),
+    )
 
 
 def build_self_attn_mask(valid: Tensor) -> tuple[Tensor, Tensor]:

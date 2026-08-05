@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 source: web
-data_dir: data/tennis/web/unified
+data_dir: tennis/web/unified
 
 batch_size: 16
 num_workers: 8

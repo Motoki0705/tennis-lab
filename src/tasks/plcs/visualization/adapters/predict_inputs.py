@@ -48,17 +48,23 @@ def build_sequence_inputs(scene: Any, camera_idx: int) -> dict[str, torch.Tensor
     }
 
 
-def build_frame_inputs(scene: Any, camera_idx: int, frame_idx: int) -> dict[str, torch.Tensor]:
+def build_frame_inputs(
+    scene: Any, camera_idx: int, frame_idx: int
+) -> dict[str, torch.Tensor]:
     """Build frame-model inputs for one frame of one camera."""
     cam = scene.cameras[camera_idx]
     return {
         "human_kp": torch.from_numpy(cam.human_kp_uv[frame_idx]).float().unsqueeze(0),
         "court_kp": torch.from_numpy(cam.court_kp_uv[frame_idx]).float().unsqueeze(0),
-        "human_vis": torch.from_numpy(cam.human_kp_visible[frame_idx].astype(np.float32))
+        "human_vis": torch.from_numpy(
+            cam.human_kp_visible[frame_idx].astype(np.float32)
+        )
         .float()
         .unsqueeze(0),
         "human_mask": torch.ones((1,), dtype=torch.float32),
-        "court_vis": torch.from_numpy(cam.court_kp_visible[frame_idx].astype(np.float32))
+        "court_vis": torch.from_numpy(
+            cam.court_kp_visible[frame_idx].astype(np.float32)
+        )
         .float()
         .unsqueeze(0),
     }

@@ -11,9 +11,6 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from src.tasks.ball_detection.evaluation.adapters import (
-    resolve_evaluation_device,
-)
 from src.tasks.ball_detection.evaluation.configuration import load_data_config
 from src.tasks.ball_detection.evaluation.contracts import (
     DatasetSpec,
@@ -21,15 +18,12 @@ from src.tasks.ball_detection.evaluation.contracts import (
     ModelSpec,
 )
 from src.tasks.ball_detection.evaluation.dataset_provenance import sha256_file
-from src.tasks.ball_detection.evaluation.evaluator import (
-    DefaultJobEvaluator,
-    JobEvaluator,
-)
+from src.tasks.ball_detection.evaluation.evaluator import JobEvaluator
 from src.tasks.ball_detection.evaluation.reporting import (
     write_comparison_reports,
 )
+from src.utils.configuration import PathRole
 from src.utils.io import ensure_dir, load_json, save_json
-from src.utils.paths import resolve_project_path
 
 _EVALUATOR_SCHEMA = "ball_detection_evaluator_v1"
 
@@ -41,19 +35,14 @@ class EvaluationPipeline:
         self,
         manifest: EvaluationManifest,
         *,
-        evaluator: JobEvaluator | None = None,
-        output_dir: str | Path | None = None,
-        resume: bool | None = None,
-        fail_fast: bool | None = None,
+        evaluator: JobEvaluator,
     ) -> None:
         self.manifest = manifest
-        self.output_dir = ensure_dir(output_dir or manifest.output_dir)
+        self.output_dir = ensure_dir(manifest.output_dir)
         self.results_dir = ensure_dir(self.output_dir / "results")
-        self.resume = manifest.resume if resume is None else resume
-        self.fail_fast = manifest.fail_fast if fail_fast is None else fail_fast
-        self.evaluator = evaluator or DefaultJobEvaluator(
-            device=resolve_evaluation_device(manifest.device)
-        )
+        self.resume = manifest.resume
+        self.fail_fast = manifest.fail_fast
+        self.evaluator = evaluator
         self._checkpoint_hashes: dict[Path, str] = {}
         self._dataset_fingerprints: dict[tuple[str, str], dict[str, Any]] = {}
 
@@ -191,16 +180,19 @@ class EvaluationPipeline:
         data_config = load_data_config(
             dataset.config,
             overrides=dataset.overrides,
+            resolver=self.manifest.resolver,
         )
         resolved_config = OmegaConf.to_container(data_config, resolve=True)
-        source = str(data_config.get("source", "tracknet"))
-        data_dir = resolve_project_path(str(data_config.get("data_dir", "")))
+        source = str(data_config.source)
+        data_dir = self.manifest.resolver.resolve(
+            PathRole.DATA, str(data_config.data_dir)
+        )
         if source == "web":
             split_artifact = data_dir / "manifest.json"
         else:
-            split_config = data_config.get("split", {}) or {}
-            split_artifact = resolve_project_path(
-                str(split_config.get(f"{split}_file", ""))
+            split_role = PathRole(str(data_config.split.root_role))
+            split_artifact = self.manifest.resolver.resolve(
+                split_role, str(data_config.split[f"{split}_file"])
             )
         fingerprint = {
             "spec": asdict(dataset),
@@ -245,9 +237,7 @@ def _manifest_payload(manifest: EvaluationManifest) -> dict[str, Any]:
         "fail_fast": manifest.fail_fast,
         "metrics": asdict(manifest.metrics),
         "performance": asdict(manifest.performance),
-        "datasets": {
-            key: asdict(value) for key, value in manifest.datasets.items()
-        },
+        "datasets": {key: asdict(value) for key, value in manifest.datasets.items()},
         "models": [
             {**asdict(model), "checkpoint": str(model.checkpoint)}
             for model in manifest.models

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any
 
 import torch
 from torch import Tensor
@@ -15,13 +15,13 @@ from src.utils.tensor_utils import clone_tensor_dict
 class PLCSTrackingDetectionAugmentation:
     """Apply single-person corruption after flattening detection/joint axes."""
 
-    def __init__(self, config: Mapping[str, Any] | None = None) -> None:
-        self.config = config or {}
+    def __init__(self, config: Mapping[str, Any]) -> None:
+        self.config = config
         self.observation = PLCSObservationAugmentation(self.config)
 
     def forward(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
         """Corrupt only detection/court inputs and preserve clean GT tensors."""
-        output = clone_tensor_dict(sample)
+        output: dict[str, Tensor] = clone_tensor_dict(sample)
         views, frames, detections, joints, _ = output["human_kp"].shape
         clean_detection = output["detection_mask"].clone()
         court_keypoints = output["court_kp"].clone()
@@ -53,7 +53,7 @@ class PLCSTrackingDetectionAugmentation:
             output["detection_gt_index"],
             -1,
         )
-        return cast(dict[str, Tensor], output)
+        return output
 
     def __call__(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
         """Delegate callable use to :meth:`forward` with a typed contract."""

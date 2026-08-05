@@ -201,13 +201,16 @@ def test_tracking_task_runs_one_training_and_validation_step(
     config_dir = Path(f"src/tasks/{task}/configs").resolve()
     with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
         config = compose(config_name="train_tracking")
-    dataset_dir = tmp_path / task
+    config.paths.project_root = str(tmp_path)
+    config.paths.data_root = "data"
+    dataset_dir = tmp_path / "data" / task
     materialize(dataset_dir)
-    config.data.scene_dir = str(dataset_dir)
+    config.data.scene_dir = task
     config.data.batch_size = 2
     config.data.seq_len_range = [8, 8]
     config.data.num_views_range = [2, 2]
     config.data.camera_mode = "first"
+    config.training.warmup_steps = 0
     datamodule = datamodule_class(config)
     datamodule.setup("fit")
     first_val = datamodule.val_dataset[0]
