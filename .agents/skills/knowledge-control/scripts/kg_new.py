@@ -15,7 +15,7 @@ from datetime import date as _date
 from typing import Any
 
 from kg_lib import (
-    EVIDENCE_LEVELS,
+    PAPER_EVIDENCE_LEVELS,
     ID_RE,
     NODE_TYPES,
     PAPER_STATUSES,
@@ -150,7 +150,7 @@ def main() -> int:
     parser.add_argument("--date")
     parser.add_argument("--status")
     parser.add_argument("--published-at")
-    parser.add_argument("--evidence-level", choices=sorted(EVIDENCE_LEVELS))
+    parser.add_argument("--evidence-level", choices=sorted(PAPER_EVIDENCE_LEVELS))
     parser.add_argument("--external-id", action="append", default=[])
     parser.add_argument("--source", action="append", default=[])
     parser.add_argument("--task", action="append", default=[])

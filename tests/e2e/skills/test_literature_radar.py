@@ -317,3 +317,27 @@ def test_supported_proposal_requires_run_evidence(tmp_path: Path) -> None:
 
     result = kg_lib.validate(kg_lib.load_nodes(nodes))
     assert any("requires non-empty 'evidence_runs'" in error for error in result.errors)
+
+
+def test_abstract_only_paper_is_not_formal_knowledge(tmp_path: Path) -> None:
+    nodes = tmp_path / "nodes"
+    nodes.mkdir()
+    (nodes / "paper-example.md").write_text(
+        node_text(
+            {
+                "id": "paper-example",
+                "type": "paper",
+                "title": "paper",
+                "status": "reviewed",
+                "external_ids": {"doi": "10.1/example"},
+                "evidence_level": "abstract",
+                "tasks": ["blcs"],
+                "repo_paths": ["src/tasks/blcs"],
+                "sources": [{"url": "https://example.test"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = kg_lib.validate(kg_lib.load_nodes(nodes))
+    assert any("paper evidence_level" in error for error in result.errors)
