@@ -15,9 +15,9 @@ from datetime import date as _date
 from typing import Any
 
 from kg_lib import (
-    PAPER_EVIDENCE_LEVELS,
     ID_RE,
     NODE_TYPES,
+    PAPER_EVIDENCE_LEVELS,
     PAPER_STATUSES,
     PROPOSAL_STATUSES,
     RUN_STATUSES,
