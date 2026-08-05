@@ -1,0 +1,50 @@
+name: Queue local GPU training
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: Short queue job name
+        required: true
+        type: string
+      command:
+        description: Exact training command; do not include secrets
+        required: true
+        type: string
+      issue:
+        description: Related GitHub issue number (optional)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tennis-lab-local-gpu
+  cancel-in-progress: false
+
+jobs:
+  enqueue:
+    if: >-
+      ${{ github.actor == github.repository_owner &&
+          vars.LOCAL_GPU_ACTIONS_ENABLED == 'true' }}
+    environment: local-gpu
+    runs-on: [self-hosted, linux, x64, local-gpu, cuda, wsl2, tennis-lab]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout trusted ref
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          clean: true
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+
+      - name: Create persistent checkout and enqueue
+        shell: bash
+        env:
+          TRAINING_COMMAND: ${{ inputs.command }}
+          TRAINING_ISSUE: ${{ inputs.issue }}
+          TRAINING_NAME: ${{ inputs.name }}
+        run: bash scripts/github_actions/enqueue_training.sh
