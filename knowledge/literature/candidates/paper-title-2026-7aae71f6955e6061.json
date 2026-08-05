@@ -1,0 +1,105 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": [
+      "geometry"
+    ],
+    "discovery_count": 1,
+    "max_novelty_score": 96,
+    "max_relevance_score": 99,
+    "mean_relevance_score": 99.0,
+    "repo_paths": [
+      "src/tasks/blcs/generate_dataset/simulation/ball_physics.py",
+      "src/tasks/blcs/models/components/differentiable_projection.py",
+      "src/tasks/blcs/training/tracking_losses.py",
+      "src/tennis_scene/pipeline/components/blcs.py"
+    ],
+    "tasks": [
+      "blcs",
+      "tennis_scene"
+    ]
+  },
+  "curation": {
+    "decision": null,
+    "issue": null,
+    "paper_node": null,
+    "proposal_nodes": [],
+    "reason_ja": null,
+    "reviewed_at": null
+  },
+  "discoveries": [
+    {
+      "collector_id": "geometry",
+      "discovered_at": "2026-08-05T17:22:02+09:00",
+      "schedule_run_id": "geometry-20260805T172202+0900-p7f2",
+      "screening": {
+        "applicability_ja": "現行BLCSはtracking_losses.pyで予測位置の二階差分に対するsmoothnessと固定gravity targetを課すが、抗力・Magnus・区間ごとの有効重力を観測から同定しない。一方、DifferentiableProjectionは固定cameraから予測3D位置をUVへ微分可能に再投影でき、BallPhysicsはgravity、二乗抗力、Magnus、wind、bounce、net collisionを既に実装している。したがって、BLCSModuleが出力した軌道をbounce・racket contact間のarcへ分割し、既存projectionとphysics simulatorを再利用して、放物線、fitg、drag+Magnusの各refinementを同一初期軌道から最適化する後処理を追加できる。論文のmodel-ranking reversalをテニスのmulti-view観測で再検証することで、複雑なphysics lossを学習へ追加する前に、観測ノイズ下で必要な物理モデルの最小複雑度を決定できる。",
+        "candidate_experiment_ja": "baselineは固定BLCS test splitと同期・校正済み実テニスclipに対する現行checkpointの未補正ball_3dとする。各ground-truth bounce/contact間を1 arcとして、同じ初期軌道からA:固定重力放物線、B:有効重力と抗力をfitするfitg、C:既存BallPhysicsの抗力+Magnusをfitする3条件をDifferentiableProjectionの可視camera再投影誤差で最適化する。metricはposition_error_m、着地点誤差m、bounce時刻誤差frame、可視camera再投影誤差px、arc失敗率、処理時間/arcとし、2D noise・dropout強度別にも集計する。3 seed平均でbaseline比position_error_mまたは着地点誤差が5%以上改善し、arc失敗率2%以下、処理時間200 ms/arc以下なら有効とする。最初の200 arcで全条件の改善が2%未満、fit parameterの20%以上が許容範囲端へ張り付く、または処理時間が1 s/arcを超える場合は停止する。BがCと同等以上なら複雑なMagnus fittingを学習lossへ導入しない。",
+        "evidence_level": "fulltext-code-data",
+        "novelty_score": 96,
+        "relevance_score": 99,
+        "repo_paths": [
+          "src/tasks/blcs/training/tracking_losses.py",
+          "src/tasks/blcs/models/components/differentiable_projection.py",
+          "src/tasks/blcs/generate_dataset/simulation/ball_physics.py",
+          "src/tennis_scene/pipeline/components/blcs.py"
+        ],
+        "risks_ja": "サッカーとテニスでは球径、速度、回転量、空力係数、接触頻度、ネット・バウンド条件が異なり、サッカーで最良のfitgがテニスへそのまま移る保証はない。論文は主に単眼再構成を対象とするため、同期済みmulti-viewを入力するBLCSでは幾何曖昧性が小さくなり、複雑なdrag・Magnus modelの順位が変わり得る。実映像ではracket contactとbounceの区間境界が未注釈で、誤分割が最適化を破綻させる可能性がある。物理parameterは短いarcや欠損観測では非同定になりやすく、post-hoc optimizationの計算量も増える。code・annotationはCC-BY-NC-SA-4.0で、raw broadcast footageには非商用研究・再配布禁止の追加条件があるため、直接取り込む場合は利用範囲を分離する必要がある。",
+        "summary_ja": "本論文は、単眼サッカー映像のボール軌道を接触イベントで飛行区間へ分割し、各区間について物理シミュレーションした3D軌道の画像再投影誤差を最小化する再構成パイプラインを比較する。重力のみの放物線から、二乗抗力、適合重力、Magnus力、初期スピン、MuJoCoの流体力を含む7種類のarc modelを、約6000区間・5データセットで評価した。単眼end-to-end条件では重力加速度を自由パラメータとするfitgが全設定で最良だった一方、3D ground truthへ直接fitする条件ではspin decomposition modelが5データセット中4件で最良となり、複雑な物理表現よりも観測ノイズと単眼幾何の曖昧性が支配的であることを示した。公式codeと、三角測量3D ground truth・接触区間注釈を含むデータを公開している。",
+        "tasks": [
+          "blcs",
+          "tennis_scene"
+        ]
+      },
+      "sources": [
+        {
+          "checked_at": "2026-08-05T17:22:02+09:00",
+          "kind": "paper",
+          "url": "https://openaccess.thecvf.com/content/CVPR2026W/CVsports/html/Grad_Physics-Based_3D_Ball_Trajectory_Reconstruction_from_Monocular_Soccer_Video_A_CVPRW_2026_paper.html"
+        },
+        {
+          "checked_at": "2026-08-05T17:22:02+09:00",
+          "kind": "project",
+          "url": "https://lukaszgrad.github.io/soccer-ball3d/"
+        },
+        {
+          "checked_at": "2026-08-05T17:22:02+09:00",
+          "kind": "code",
+          "url": "https://github.com/lukaszgrad/ball3d"
+        },
+        {
+          "checked_at": "2026-08-05T17:22:02+09:00",
+          "kind": "dataset",
+          "url": "https://github.com/lukaszgrad/ball3d/blob/main/DATA.md"
+        }
+      ]
+    }
+  ],
+  "first_seen": "2026-08-05T17:22:02+09:00",
+  "id": "paper-title-2026-7aae71f6955e6061",
+  "last_seen": "2026-08-05T17:22:02+09:00",
+  "paper": {
+    "authors": [
+      "Łukasz Grad",
+      "Krzysztof M. Czajkowski",
+      "Aliaksandr Varashylau"
+    ],
+    "identifiers": {
+      "arxiv": null,
+      "doi": null,
+      "openreview": null
+    },
+    "title": "Physics-Based 3D Ball Trajectory Reconstruction from Monocular Soccer Video: A Multi-Model Benchmark",
+    "urls": {
+      "code": "https://github.com/lukaszgrad/ball3d",
+      "dataset": "https://github.com/lukaszgrad/ball3d/blob/main/DATA.md",
+      "paper": "https://openaccess.thecvf.com/content/CVPR2026W/CVsports/papers/Grad_Physics-Based_3D_Ball_Trajectory_Reconstruction_from_Monocular_Soccer_Video_A_CVPRW_2026_paper.pdf",
+      "primary": "https://openaccess.thecvf.com/content/CVPR2026W/CVsports/html/Grad_Physics-Based_3D_Ball_Trajectory_Reconstruction_from_Monocular_Soccer_Video_A_CVPRW_2026_paper.html",
+      "project": "https://lukaszgrad.github.io/soccer-ball3d/"
+    },
+    "venue": "CVPR 2026 Workshops (CVSports)",
+    "year": 2026
+  },
+  "schema_version": 1,
+  "state": "inbox"
+}
