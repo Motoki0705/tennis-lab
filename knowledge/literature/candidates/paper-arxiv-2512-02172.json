@@ -1,0 +1,119 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": [
+      "systems"
+    ],
+    "discovery_count": 1,
+    "max_novelty_score": 88,
+    "max_relevance_score": 91,
+    "mean_relevance_score": 91.0,
+    "repo_paths": [
+      "src/synthetic_data_generation/configs/dataset/pipeline.yaml",
+      "src/synthetic_data_generation/dataset/court/rendering/nht.py",
+      "src/synthetic_data_generation/dataset/court/rendering/orbit_preview.py",
+      "src/synthetic_data_generation/dataset/execution.py"
+    ],
+    "tasks": [
+      "synthetic_data_generation"
+    ]
+  },
+  "curation": {
+    "decision": null,
+    "issue": null,
+    "paper_node": null,
+    "proposal_nodes": [],
+    "reason_ja": null,
+    "reviewed_at": null
+  },
+  "discoveries": [
+    {
+      "collector_id": "systems",
+      "discovered_at": "2026-08-06T02:19:50+09:00",
+      "schedule_run_id": "systems-20260806T021950+0900-sr4m",
+      "screening": {
+        "applicability_ja": "現行のcourt NHT rendererはorbit planのcamera poseを使い、既定幅320で背景RGB・alpha・depthを生成し、同一frameで幾何由来heatmapとlabelsを公開する。SplatSuReの選択的SR監督をNHT背景checkpoint生成側へ導入し、同じorbit family、camera list、label projectionを固定してRGB背景だけを再学習すれば、コート線・ネット・境界の高周波情報を増やしつつ、各ビューを独立SRした場合のmulti-view blurを抑えられる。generic pipelineのrenderer.commandとrender job manifestを利用してbaselineとtreatmentを同一のpath contractで実行でき、既存label schemaを変更せず比較できる。",
+        "candidate_experiment_ja": "baselineは同一court scene、split seed、orbit family、NHT camera、label projectionを固定し、現行背景checkpointを幅320と640でrenderする。treatmentは同じ入力ビューへ4x SISRを適用し、LR modelからGaussian fidelity scoreとper-view weight mapを生成して選択的SR監督で背景を再学習し、同じcamera listをrenderする。held-out実画像に対するPSNR・LPIPS、camera間reprojection consistency、court lineとheatmap peakのRGB alignment error、既存court detectorのline IoUまたはkeypoint error、1 frameのrender時間、checkpoint sizeを比較する。3 sceneまたは3 camera-family seed平均でline IoUが2 points以上またはkeypoint errorが10%以上改善し、LPIPS悪化なし、RGB-label alignment中央値1 px以内、render時間1.5倍以内なら継続する。5000 iteration時点でalignment errorが2 pxを超える、LPIPSが5%以上悪化する、またはVRAM上限を超える場合は停止する。",
+        "evidence_level": "fulltext-code-data",
+        "novelty_score": 88,
+        "relevance_score": 91,
+        "repo_paths": [
+          "src/synthetic_data_generation/dataset/court/rendering/nht.py",
+          "src/synthetic_data_generation/dataset/court/rendering/orbit_preview.py",
+          "src/synthetic_data_generation/dataset/execution.py",
+          "src/synthetic_data_generation/configs/dataset/pipeline.yaml"
+        ],
+        "risks_ja": "公開実装はvanilla 3DGSとStableSRを前提とし、NHTのdeferred featureおよびappearance spaceへ直接移植できる保証はない。SISR hallucinationがコート線幅、交点、ネット形状を歪めると、厳密な幾何ラベルとRGBの対応が悪化する。公開コードは元3DGSの非商用研究・評価限定licenseを継承しており、StableSR、配布画像、派生rasterizerのlicenseも個別確認が必要である。高解像度再学習はGPU時間、VRAM、checkpoint容量を増やし、論文sceneとtennis orbit familyではview sampling分布が異なるためratio thresholdの再調整が必要になる。",
+        "score_breakdown": {
+          "adoption_feasibility": 7,
+          "evidence_quality": 20,
+          "experiment_quality": 14,
+          "repo_fit": 22,
+          "task_fit": 28
+        },
+        "summary_ja": "SplatSuReは、すべての入力ビューへ単画像super-resolutionを一律適用する代わりに、低解像度3DGSの各Gaussianが複数カメラで占めるscreen-space半径の最大・最小比からfidelity scoreを計算し、近接ビューから十分な高周波監督を受けていない領域だけへSR教師を注入する。Gaussian単位のsampling scoreとview単位のweight mapをLR-SR混合目的関数へ組み込み、Tanks & Temples、Deep Blending、Mip-NeRF 360で画質・知覚品質を改善し、特に局所前景で大きな改善を報告している。",
+        "tasks": [
+          "synthetic_data_generation"
+        ],
+        "topic": "synthetic_data"
+      },
+      "sources": [
+        {
+          "checked_at": "2026-08-06T02:19:50+09:00",
+          "kind": "paper",
+          "url": "https://arxiv.org/abs/2512.02172"
+        },
+        {
+          "checked_at": "2026-08-06T02:19:50+09:00",
+          "kind": "project",
+          "url": "https://splatsure.github.io/"
+        },
+        {
+          "checked_at": "2026-08-06T02:19:50+09:00",
+          "kind": "code",
+          "url": "https://github.com/pranav-asthana/SplatSuRe"
+        },
+        {
+          "checked_at": "2026-08-06T02:19:50+09:00",
+          "kind": "dataset",
+          "url": "https://drive.google.com/drive/folders/1mhEKcvJtxhPCrsTveRFbEkTSqerJyjvb"
+        },
+        {
+          "checked_at": "2026-08-06T02:19:50+09:00",
+          "kind": "dataset",
+          "url": "https://drive.google.com/drive/folders/1iNMynWtvRg1N--YyqpB1HaPkt-kURj04"
+        }
+      ]
+    }
+  ],
+  "first_seen": "2026-08-06T02:19:50+09:00",
+  "id": "paper-arxiv-2512-02172",
+  "last_seen": "2026-08-06T02:19:50+09:00",
+  "paper": {
+    "authors": [
+      "Pranav Asthana",
+      "Alex Hanson",
+      "Allen Tu",
+      "Tom Goldstein",
+      "Matthias Zwicker",
+      "Amitabh Varshney"
+    ],
+    "identifiers": {
+      "arxiv": "2512.02172",
+      "doi": null,
+      "openreview": null
+    },
+    "title": "SplatSuRe: Selective Super-Resolution for Multi-view Consistent 3D Gaussian Splatting",
+    "urls": {
+      "code": "https://github.com/pranav-asthana/SplatSuRe",
+      "dataset": "https://drive.google.com/drive/folders/1mhEKcvJtxhPCrsTveRFbEkTSqerJyjvb",
+      "paper": "https://arxiv.org/abs/2512.02172",
+      "primary": "https://arxiv.org/abs/2512.02172",
+      "project": "https://splatsure.github.io/"
+    },
+    "venue": "CVPR 2026",
+    "year": 2026
+  },
+  "schema_version": 1,
+  "state": "inbox"
+}
