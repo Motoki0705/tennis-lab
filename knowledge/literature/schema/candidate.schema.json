@@ -79,8 +79,10 @@
       "additionalProperties": false,
       "required": [
         "tasks",
+        "topic",
         "repo_paths",
         "relevance_score",
+        "score_breakdown",
         "novelty_score",
         "evidence_level",
         "summary_ja",
@@ -108,6 +110,22 @@
             ]
           }
         },
+        "topic": {
+          "enum": [
+            "ball_detection",
+            "court_detection",
+            "multi_object_tracking",
+            "human_pose_2d",
+            "player_3d",
+            "ball_3d",
+            "scene_alignment",
+            "scene_geometry",
+            "avatar_rendering",
+            "synthetic_data",
+            "self_supervised_learning",
+            "systems_optimization"
+          ]
+        },
         "repo_paths": {
           "type": "array",
           "minItems": 1,
@@ -119,13 +137,31 @@
           "minimum": 0,
           "maximum": 100
         },
+        "score_breakdown": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "task_fit",
+            "repo_fit",
+            "evidence_quality",
+            "experiment_quality",
+            "adoption_feasibility"
+          ],
+          "properties": {
+            "task_fit": { "type": "integer", "minimum": 0, "maximum": 30 },
+            "repo_fit": { "type": "integer", "minimum": 0, "maximum": 25 },
+            "evidence_quality": { "type": "integer", "minimum": 0, "maximum": 20 },
+            "experiment_quality": { "type": "integer", "minimum": 0, "maximum": 15 },
+            "adoption_feasibility": { "type": "integer", "minimum": 0, "maximum": 10 }
+          }
+        },
         "novelty_score": {
           "type": "integer",
           "minimum": 0,
           "maximum": 100
         },
         "evidence_level": {
-          "enum": ["abstract", "fulltext", "fulltext-code", "fulltext-code-data"]
+          "enum": ["fulltext", "fulltext-code", "fulltext-code-data"]
         },
         "summary_ja": { "type": "string", "minLength": 1 },
         "applicability_ja": { "type": "string", "minLength": 1 },
