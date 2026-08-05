@@ -43,6 +43,9 @@ bash "$Q" add "python -m src.tasks.plcs.scripts.train ..." --name exp_b
 bash "$Q" start --after-pid 12345
 bash "$Q" start                       # start immediately
 
+# Supervisors such as systemd use the foreground entry point instead.
+bash "$Q" serve --idle-timeout 2147483647
+
 # 3. Observe / control.
 bash "$Q" status      # worker state + queued/running/done/failed counts
 bash "$Q" list        # pending jobs in run order
@@ -108,6 +111,10 @@ read the per-provider workflow under [`reference/`](./reference/):
 ## Notes
 
 - Exactly one worker runs at a time (`start` refuses if one is already alive).
+- `serve` holds the same singleton lock as `start` and is the supported
+  foreground entry point for systemd or another process supervisor.
+- Set `TRAINING_QUEUE_LOCK_FILE` to an advisory lock path when queued training
+  must serialize GPU access with another process such as a CUDA CI workflow.
 - A job's exit code is appended to its log; non-zero moves it to `failed/`.
 - Put per-run env vars (e.g. `PYTORCH_CUDA_ALLOC_CONF=...`) inside the command string.
 - This is a developer workflow tool under `.agents/skills/`; it is not a
