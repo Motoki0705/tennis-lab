@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "repository": "Motoki0705/tennis-lab",
+  "timezone": "Asia/Tokyo",
+  "active_branch_pattern": "automation/literature-radar/{date}",
+  "daily_issue_title_pattern": "[Literature Radar] {date}",
+  "daily_pr_title_pattern": "docs(knowledge): {date} literature radar",
+  "evidence_levels": [
+    "abstract",
+    "fulltext",
+    "fulltext-code",
+    "fulltext-code-data"
+  ],
+  "allowed_tasks": [
+    "ball_detection",
+    "court_detection",
+    "plcs",
+    "blcs",
+    "tennis_scene",
+    "synthetic_data_generation",
+    "multi_object_tracking",
+    "human_pose",
+    "scene_alignment",
+    "cross_cutting"
+  ],
+  "collectors": {
+    "perception": {
+      "queue_branch": "automation/literature-inbox/perception",
+      "tasks": [
+        "ball_detection",
+        "court_detection",
+        "multi_object_tracking",
+        "human_pose"
+      ],
+      "focus": "2D perception, detection, segmentation, keypoints, pose and identity tracking"
+    },
+    "geometry": {
+      "queue_branch": "automation/literature-inbox/geometry",
+      "tasks": [
+        "plcs",
+        "blcs",
+        "scene_alignment",
+        "tennis_scene"
+      ],
+      "focus": "multi-view geometry, 3D reconstruction, trajectory reasoning and physical constraints"
+    },
+    "systems": {
+      "queue_branch": "automation/literature-inbox/systems",
+      "tasks": [
+        "synthetic_data_generation",
+        "tennis_scene",
+        "cross_cutting",
+        "human_pose"
+      ],
+      "focus": "synthetic data, 3DGS/avatar rendering, SSL, optimization, data engines and system-level methods"
+    }
+  },
+  "ingestion": {
+    "minimum_relevance_score": 80,
+    "max_candidates_per_hourly_run": 1,
+    "max_candidates_per_collector_per_day": 4,
+    "max_candidates_total_per_day": 12,
+    "max_open_candidates": 60,
+    "canonical_id_precedence": [
+      "doi",
+      "arxiv",
+      "openreview",
+      "title_hash"
+    ],
+    "dedup_branch_window_days": 14
+  },
+  "curation": {
+    "max_full_reviews_per_day": 6,
+    "max_new_proposals_per_day": 3,
+    "max_open_literature_issues": 5,
+    "issue_label": "research",
+    "issue_per_day": 1,
+    "pull_request_per_day": 1,
+    "create_issue_only_when_candidates_exist": true,
+    "create_pull_request_only_when_diff_exists": true
+  }
+}
