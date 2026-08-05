@@ -29,6 +29,38 @@ class AcceptanceItem(NamedTuple):
 
 
 TEMPLATES = {
+    "00-feasibility/feasibility.md": """# Feasibility
+
+- Issue: #{number}
+- Attempt: {attempt}
+- Status: PENDING
+- Frozen issue SHA-256: `{issue_hash}`
+- Frozen acceptance checklist SHA-256: `{checklist_hash}`
+
+## Allowed and prohibited changes
+
+## Required checks and baseline
+
+## Breaking-change and compatibility impact
+
+## Acceptance checklist feasibility
+
+| ID | Issue checklist item | Verdict | Required change and evidence |
+|---|---|---|---|
+{feasibility_rows}
+
+## Constraint conflicts
+
+None
+
+## Final feasibility verdict
+
+PENDING
+
+## Blocker resolution required
+
+None
+""",
     "01-exploration/exploration.md": """# Exploration
 
 - Issue: #{number}
@@ -106,6 +138,31 @@ TEMPLATES = {
 
 ## Handoff
 """,
+    "03-implementation/preflight.md": """# Preflight
+
+- Issue: #{number}
+- Attempt: {attempt}
+- Test cycle: 1
+- Status: PENDING
+
+## Changed scope
+
+## Deterministic policy checks
+
+## Focused checks
+
+## Canonical required checks
+
+## Baseline comparison
+
+## Commands and exact outcomes
+
+## Final preflight verdict
+
+PENDING
+
+## RETURN implementation findings
+""",
     "03-implementation/tests.md": """# Tests
 
 - Issue: #{number}
@@ -175,7 +232,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--refresh-issue",
         action="store_true",
-        help="Refresh issue.md and restart at exploration without replacing phase files.",
+        help="Refresh issue.md and restart at feasibility without replacing later phase files.",
     )
     return parser.parse_args()
 
@@ -265,6 +322,14 @@ def render_acceptance_list(items: list[AcceptanceItem]) -> str:
     )
 
 
+def render_feasibility_rows(items: list[AcceptanceItem]) -> str:
+    return "\n".join(
+        f"| {item.item_id} | {escape_table_cell(item.text)} | UNKNOWN | "
+        "Replace this evidence |"
+        for item in items
+    )
+
+
 def render_plan_rows(items: list[AcceptanceItem]) -> str:
     return "\n".join(
         f"| {item.item_id} | {escape_table_cell(item.text)} | PENDING | PENDING |"
@@ -323,18 +388,27 @@ def render_state(
 ) -> str:
     now = datetime.now(UTC).isoformat()
     return (
-        "schema_version = 3\n"
+        "schema_version = 4\n"
         f"issue_number = {payload['number']}\n"
         f"issue_url = {json.dumps(payload['url'])}\n"
         f"issue_sha256 = {json.dumps(digest)}\n"
         f"acceptance_checklist_sha256 = {json.dumps(checklist_digest)}\n"
         f"acceptance_checklist_count = {checklist_count}\n"
         f"attempt = {attempt}\n"
+        'feasibility_verdict = ""\n'
+        "preflight_cycle = 0\n"
+        'preflight_verdict = ""\n'
         "test_cycle = 0\n"
         'test_verdict = ""\n'
-        'phase = "exploration"\n'
+        "test_return_count = 0\n"
+        "return_review_required = false\n"
+        'return_review_action = ""\n'
+        'return_review_reason = ""\n'
+        'phase = "feasibility"\n'
         'status = "in_progress"\n'
         'verdict = ""\n'
+        'block_kind = ""\n'
+        'block_reason = ""\n'
         f"updated_at = {json.dumps(now)}\n"
     )
 
@@ -387,6 +461,7 @@ def main() -> int:
             "attempt": attempt,
             "issue_hash": digest,
             "checklist_hash": checklist_digest,
+            "feasibility_rows": render_feasibility_rows(items),
             "plan_rows": render_plan_rows(items),
             "test_rows": render_test_rows(items),
             "validation_rows": render_validation_rows(items),
@@ -394,7 +469,8 @@ def main() -> int:
         for relative_path, template in TEMPLATES.items():
             path = task_dir / relative_path
             path.parent.mkdir(parents=True, exist_ok=True)
-            if not path.exists():
+            should_replace = relative_path == "00-feasibility/feasibility.md"
+            if not path.exists() or should_replace:
                 path.write_text(template.format(**format_values), encoding="utf-8")
 
         print(task_dir)
