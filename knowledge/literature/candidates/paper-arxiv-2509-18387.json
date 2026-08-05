@@ -1,9 +1,7 @@
 {
   "aggregate": {
     "collector_count": 1,
-    "collectors": [
-      "perception"
-    ],
+    "collectors": ["perception"],
     "discovery_count": 1,
     "max_novelty_score": 94,
     "max_relevance_score": 97,
@@ -15,17 +13,15 @@
       "src/tasks/ball_detection/training/lightning_module.py",
       "src/utils/data/heatmaps.py"
     ],
-    "tasks": [
-      "ball_detection"
-    ]
+    "tasks": ["ball_detection"]
   },
   "curation": {
-    "decision": null,
-    "issue": null,
-    "paper_node": null,
-    "proposal_nodes": [],
-    "reason_ja": null,
-    "reviewed_at": null
+    "decision": "promoted",
+    "issue": 698,
+    "paper_node": "paper-arxiv-2509-18387",
+    "proposal_nodes": ["proposal-ball-blur-aware-targets"],
+    "reason_ja": "公式本文・project・MIT code・公開datasetを確認した。streak中央labelとblur-aware heatmapは、現行の点Gaussian教師だけを変更する低リスクablationとして直接検証できる。table tennisからtennisへのdomain gap、直線blur仮定、dataset固有licenseが残るため、外部paperを昇格し、ローカル有効性はproposalとして未検証のまま分離する。",
+    "reviewed_at": "2026-08-06T00:20:00+09:00"
   },
   "discoveries": [
     {
@@ -47,31 +43,13 @@
         ],
         "risks_ja": "公開データはテーブルテニスかつ固定カメラ中心で、テニス放送映像へのドメイン移行は未検証である。ぼけを直線とみなす仮定はバウンド、ラケット接触、曲率が大きい場面で破綻し得る。既存TrackNet形式にはぼけ属性がないため追加アノテーションまたは公開データ用parserが必要で、教師契約、augmentation、予測保存、評価契約まで変更が波及する。コードはMITだが、配布データの利用条件は確認できた一次情報内で明示されていないため、再配布前に別途確認が必要である。公式実装は重複フレームに敏感とされ、再エンコード映像では前処理差が交絡要因になる。",
         "summary_ja": "高速なラケット競技映像でボールが点ではなくストリーク状に写ることを明示的な教師信号として扱う研究である。64,119フレームのテーブルテニスデータに、ボール中心、ぼけ方向、ぼけ半長を付与し、従来のぼけ先端ではなくストリーク中央を位置ラベルとする。HRNet系の多フレーム検出器にSqueeze-and-Excitationを加え、点状Gaussianではなくぼけ形状を含むheatmapを学習する。論文の同一データ上ではWASBの1-step F1 96.00に対し、閾値調整済みBlurBallが97.17を示し、位置とぼけを併用した軌道予測の中央値誤差も28.4 pxから19.9 pxへ低下した。",
-        "tasks": [
-          "ball_detection"
-        ]
+        "tasks": ["ball_detection"]
       },
       "sources": [
-        {
-          "checked_at": "2026-08-05T16:19:40+09:00",
-          "kind": "paper",
-          "url": "https://openaccess.thecvf.com/content/CVPR2026W/CVsports/html/Gossard_BlurBall_Joint_Ball_and_Motion_Blur_Estimation_for_Table_Tennis_CVPRW_2026_paper.html"
-        },
-        {
-          "checked_at": "2026-08-05T16:19:40+09:00",
-          "kind": "project",
-          "url": "https://cogsys-tuebingen.github.io/blurball/"
-        },
-        {
-          "checked_at": "2026-08-05T16:19:40+09:00",
-          "kind": "code",
-          "url": "https://github.com/cogsys-tuebingen/blurball"
-        },
-        {
-          "checked_at": "2026-08-05T16:19:40+09:00",
-          "kind": "dataset",
-          "url": "https://cloud.cs.uni-tuebingen.de/index.php/s/C3pJEPKWQAkono7"
-        }
+        {"checked_at": "2026-08-05T16:19:40+09:00", "kind": "paper", "url": "https://openaccess.thecvf.com/content/CVPR2026W/CVsports/html/Gossard_BlurBall_Joint_Ball_and_Motion_Blur_Estimation_for_Table_Tennis_CVPRW_2026_paper.html"},
+        {"checked_at": "2026-08-05T16:19:40+09:00", "kind": "project", "url": "https://cogsys-tuebingen.github.io/blurball/"},
+        {"checked_at": "2026-08-05T16:19:40+09:00", "kind": "code", "url": "https://github.com/cogsys-tuebingen/blurball"},
+        {"checked_at": "2026-08-05T16:19:40+09:00", "kind": "dataset", "url": "https://cloud.cs.uni-tuebingen.de/index.php/s/C3pJEPKWQAkono7"}
       ]
     }
   ],
@@ -79,28 +57,13 @@
   "id": "paper-arxiv-2509-18387",
   "last_seen": "2026-08-05T16:19:40+09:00",
   "paper": {
-    "authors": [
-      "Thomas Gossard",
-      "Filip Radovic",
-      "Andreas Ziegler",
-      "Andreas Zell"
-    ],
-    "identifiers": {
-      "arxiv": "2509.18387",
-      "doi": null,
-      "openreview": null
-    },
+    "authors": ["Thomas Gossard", "Filip Radovic", "Andreas Ziegler", "Andreas Zell"],
+    "identifiers": {"arxiv": "2509.18387", "doi": null, "openreview": null},
     "title": "BlurBall: Joint Ball and Motion Blur Estimation for Table Tennis Ball Tracking",
-    "urls": {
-      "code": "https://github.com/cogsys-tuebingen/blurball",
-      "dataset": "https://cloud.cs.uni-tuebingen.de/index.php/s/C3pJEPKWQAkono7",
-      "paper": "https://arxiv.org/abs/2509.18387",
-      "primary": "https://openaccess.thecvf.com/content/CVPR2026W/CVsports/html/Gossard_BlurBall_Joint_Ball_and_Motion_Blur_Estimation_for_Table_Tennis_CVPRW_2026_paper.html",
-      "project": "https://cogsys-tuebingen.github.io/blurball/"
-    },
+    "urls": {"code": "https://github.com/cogsys-tuebingen/blurball", "dataset": "https://cloud.cs.uni-tuebingen.de/index.php/s/C3pJEPKWQAkono7", "paper": "https://arxiv.org/abs/2509.18387", "primary": "https://openaccess.thecvf.com/content/CVPR2026W/CVsports/html/Gossard_BlurBall_Joint_Ball_and_Motion_Blur_Estimation_for_Table_Tennis_CVPRW_2026_paper.html", "project": "https://cogsys-tuebingen.github.io/blurball/"},
     "venue": "CVPR Workshops (CVSports) 2026",
     "year": 2026
   },
   "schema_version": 1,
-  "state": "inbox"
+  "state": "promoted"
 }
