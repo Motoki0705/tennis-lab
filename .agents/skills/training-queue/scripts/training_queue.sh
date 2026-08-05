@@ -14,6 +14,8 @@
 #                                   predictions were saved (issue #533).
 #   start [--after-pid PID] [--idle-timeout S]
 #                                   Launch the background worker (nohup-style).
+#   serve [--after-pid PID] [--idle-timeout S]
+#                                   Run the worker in the foreground (systemd).
 #   status                          Show worker state + queued/running/done jobs.
 #   list                            List pending jobs in run order.
 #   stop                            Ask the worker to stop after the current job.
@@ -21,6 +23,7 @@
 #
 # State dir: $TRAINING_QUEUE_DIR (default: .training_queue under the CWD).
 # Prune python: $TRAINING_QUEUE_PYTHON (default: $VIRTUAL_ENV or repo .venv).
+# GPU lock: $TRAINING_QUEUE_LOCK_FILE (optional advisory flock shared with CI).
 #
 # Examples:
 #   training_queue.sh add "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
@@ -38,6 +41,7 @@ FAILED_DIR="$QUEUE_DIR/failed"
 RUNNING_DIR="$QUEUE_DIR/running"
 REPRO_DIR="$QUEUE_DIR/repro"
 WORKER_PID_FILE="$QUEUE_DIR/worker.pid"
+WORKER_LOCK_FILE="$QUEUE_DIR/worker.lock"
 WORKER_LOG="$QUEUE_DIR/worker.log"
 STOP_FILE="$QUEUE_DIR/stop"
 
@@ -273,7 +277,16 @@ cmd_worker() {
     local log="$LOGS_DIR/${job%.job}.log"
     echo "[worker] $(date -Iseconds) running: $job (log: $log)"
     local rc=0
-    bash "$RUNNING_DIR/$job" > "$log" 2>&1 || rc=$?
+    if [ -n "${TRAINING_QUEUE_LOCK_FILE:-}" ]; then
+      mkdir -p "$(dirname "$TRAINING_QUEUE_LOCK_FILE")"
+      echo "[worker] waiting for shared lock: $TRAINING_QUEUE_LOCK_FILE"
+      (
+        flock -x 8
+        bash "$RUNNING_DIR/$job"
+      ) 8> "$TRAINING_QUEUE_LOCK_FILE" > "$log" 2>&1 || rc=$?
+    else
+      bash "$RUNNING_DIR/$job" > "$log" 2>&1 || rc=$?
+    fi
     if [ "$rc" -eq 0 ]; then
       mv "$RUNNING_DIR/$job" "$DONE_DIR/$job"
       echo "[worker] $(date -Iseconds) done: $job"
@@ -284,8 +297,27 @@ cmd_worker() {
       echo "[worker] $(date -Iseconds) FAILED (rc=$rc): $job"
     fi
   done
-  rm -f "$WORKER_PID_FILE"
   echo "[worker] $(date -Iseconds) worker exited."
+}
+
+# Foreground worker entry point for supervisors such as systemd. The lock is
+# held for the process lifetime, so start/serve cannot create duplicate workers.
+cmd_serve() {
+  _ensure_dirs
+  exec 9> "$WORKER_LOCK_FILE"
+  if ! flock -n 9; then
+    echo "worker already running (lock: $WORKER_LOCK_FILE)." >&2
+    exit 1
+  fi
+
+  echo "$$" > "$WORKER_PID_FILE"
+  _cleanup_serve() {
+    if [ "$(cat "$WORKER_PID_FILE" 2>/dev/null)" = "$$" ]; then
+      rm -f "$WORKER_PID_FILE"
+    fi
+  }
+  trap _cleanup_serve EXIT
+  cmd_worker "$@"
 }
 
 cmd_start() {
@@ -296,13 +328,27 @@ cmd_start() {
   fi
   # Detached background worker. Prefer a new session so agent/CI launchers that
   # tear down their own process group do not kill long-running training jobs.
-  local -a worker_cmd=(bash "$SCRIPT_PATH" __worker "$@")
+  local -a worker_cmd=(bash "$SCRIPT_PATH" serve "$@")
   if command -v setsid >/dev/null 2>&1; then
     worker_cmd=(setsid "${worker_cmd[@]}")
   fi
   nohup "${worker_cmd[@]}" >> "$WORKER_LOG" 2>&1 < /dev/null &
   local pid=$!
-  echo "$pid" > "$WORKER_PID_FILE"
+  local ready=0
+  for _ in $(seq 1 100); do
+    if [ "$(cat "$WORKER_PID_FILE" 2>/dev/null)" = "$pid" ]; then
+      ready=1
+      break
+    fi
+    if ! kill -0 "$pid" 2>/dev/null; then
+      break
+    fi
+    sleep 0.02
+  done
+  if [ "$ready" -ne 1 ]; then
+    echo "worker failed to start; inspect $WORKER_LOG" >&2
+    return 1
+  fi
   echo "worker started (PID $pid). log: $WORKER_LOG"
 }
 
@@ -350,6 +396,7 @@ main() {
   case "$sub" in
     add)              cmd_add "$@" ;;
     start)            cmd_start "$@" ;;
+    serve)            cmd_serve "$@" ;;
     __worker)         cmd_worker "$@" ;;
     __capture-repro)  cmd_capture_repro "$@" ;;
     status)   cmd_status "$@" ;;
