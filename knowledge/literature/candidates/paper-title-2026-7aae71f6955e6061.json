@@ -1,9 +1,7 @@
 {
   "aggregate": {
     "collector_count": 1,
-    "collectors": [
-      "geometry"
-    ],
+    "collectors": ["geometry"],
     "discovery_count": 1,
     "max_novelty_score": 96,
     "max_relevance_score": 99,
@@ -14,18 +12,15 @@
       "src/tasks/blcs/training/tracking_losses.py",
       "src/tennis_scene/pipeline/components/blcs.py"
     ],
-    "tasks": [
-      "blcs",
-      "tennis_scene"
-    ]
+    "tasks": ["blcs", "tennis_scene"]
   },
   "curation": {
-    "decision": null,
-    "issue": null,
-    "paper_node": null,
-    "proposal_nodes": [],
-    "reason_ja": null,
-    "reviewed_at": null
+    "decision": "promoted",
+    "issue": 698,
+    "paper_node": "paper-title-2026-7aae71f6955e6061",
+    "proposal_nodes": ["proposal-blcs-arc-physics-refinement"],
+    "reason_ja": "公式本文・supplement・code・datasetを確認した。約6000 arcと7物理modelの比較で、単眼再投影条件と3D oracle条件のmodel順位が反転する結果は、BLCSへ複雑なphysics lossを追加する前に最小modelを実測選択する根拠として直接的である。サッカーからテニスへの転移、arc境界、非商用ライセンスは未解決のため、paperの外部主張とproposalのローカル仮説を分離して昇格する。",
+    "reviewed_at": "2026-08-06T00:20:00+09:00"
   },
   "discoveries": [
     {
@@ -46,32 +41,13 @@
         ],
         "risks_ja": "サッカーとテニスでは球径、速度、回転量、空力係数、接触頻度、ネット・バウンド条件が異なり、サッカーで最良のfitgがテニスへそのまま移る保証はない。論文は主に単眼再構成を対象とするため、同期済みmulti-viewを入力するBLCSでは幾何曖昧性が小さくなり、複雑なdrag・Magnus modelの順位が変わり得る。実映像ではracket contactとbounceの区間境界が未注釈で、誤分割が最適化を破綻させる可能性がある。物理parameterは短いarcや欠損観測では非同定になりやすく、post-hoc optimizationの計算量も増える。code・annotationはCC-BY-NC-SA-4.0で、raw broadcast footageには非商用研究・再配布禁止の追加条件があるため、直接取り込む場合は利用範囲を分離する必要がある。",
         "summary_ja": "本論文は、単眼サッカー映像のボール軌道を接触イベントで飛行区間へ分割し、各区間について物理シミュレーションした3D軌道の画像再投影誤差を最小化する再構成パイプラインを比較する。重力のみの放物線から、二乗抗力、適合重力、Magnus力、初期スピン、MuJoCoの流体力を含む7種類のarc modelを、約6000区間・5データセットで評価した。単眼end-to-end条件では重力加速度を自由パラメータとするfitgが全設定で最良だった一方、3D ground truthへ直接fitする条件ではspin decomposition modelが5データセット中4件で最良となり、複雑な物理表現よりも観測ノイズと単眼幾何の曖昧性が支配的であることを示した。公式codeと、三角測量3D ground truth・接触区間注釈を含むデータを公開している。",
-        "tasks": [
-          "blcs",
-          "tennis_scene"
-        ]
+        "tasks": ["blcs", "tennis_scene"]
       },
       "sources": [
-        {
-          "checked_at": "2026-08-05T17:22:02+09:00",
-          "kind": "paper",
-          "url": "https://openaccess.thecvf.com/content/CVPR2026W/CVsports/html/Grad_Physics-Based_3D_Ball_Trajectory_Reconstruction_from_Monocular_Soccer_Video_A_CVPRW_2026_paper.html"
-        },
-        {
-          "checked_at": "2026-08-05T17:22:02+09:00",
-          "kind": "project",
-          "url": "https://lukaszgrad.github.io/soccer-ball3d/"
-        },
-        {
-          "checked_at": "2026-08-05T17:22:02+09:00",
-          "kind": "code",
-          "url": "https://github.com/lukaszgrad/ball3d"
-        },
-        {
-          "checked_at": "2026-08-05T17:22:02+09:00",
-          "kind": "dataset",
-          "url": "https://github.com/lukaszgrad/ball3d/blob/main/DATA.md"
-        }
+        {"checked_at": "2026-08-05T17:22:02+09:00", "kind": "paper", "url": "https://openaccess.thecvf.com/content/CVPR2026W/CVsports/html/Grad_Physics-Based_3D_Ball_Trajectory_Reconstruction_from_Monocular_Soccer_Video_A_CVPRW_2026_paper.html"},
+        {"checked_at": "2026-08-05T17:22:02+09:00", "kind": "project", "url": "https://lukaszgrad.github.io/soccer-ball3d/"},
+        {"checked_at": "2026-08-05T17:22:02+09:00", "kind": "code", "url": "https://github.com/lukaszgrad/ball3d"},
+        {"checked_at": "2026-08-05T17:22:02+09:00", "kind": "dataset", "url": "https://github.com/lukaszgrad/ball3d/blob/main/DATA.md"}
       ]
     }
   ],
@@ -79,16 +55,8 @@
   "id": "paper-title-2026-7aae71f6955e6061",
   "last_seen": "2026-08-05T17:22:02+09:00",
   "paper": {
-    "authors": [
-      "Łukasz Grad",
-      "Krzysztof M. Czajkowski",
-      "Aliaksandr Varashylau"
-    ],
-    "identifiers": {
-      "arxiv": null,
-      "doi": null,
-      "openreview": null
-    },
+    "authors": ["Łukasz Grad", "Krzysztof M. Czajkowski", "Aliaksandr Varashylau"],
+    "identifiers": {"arxiv": null, "doi": null, "openreview": null},
     "title": "Physics-Based 3D Ball Trajectory Reconstruction from Monocular Soccer Video: A Multi-Model Benchmark",
     "urls": {
       "code": "https://github.com/lukaszgrad/ball3d",
@@ -101,5 +69,5 @@
     "year": 2026
   },
   "schema_version": 1,
-  "state": "inbox"
+  "state": "promoted"
 }
