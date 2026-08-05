@@ -28,7 +28,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
 
 import torch
 import torch.nn as nn
@@ -43,33 +42,17 @@ from src.utils.tensor_utils import masked_mean
 class SLCSLossConfig:
     """Weights for the SLCS loss registry (0 disables a term)."""
 
-    player_position_weight: float = 1.0
-    player_rotation_weight: float = 1.0
-    player_angle_weight: float = 0.5
-    ball_position_weight: float = 1.0
-    player_position_nll_weight: float = 0.5
-    player_rotation_nll_weight: float = 0.25
-    ball_position_nll_weight: float = 0.5
-    player_position_smoothness_weight: float = 1.0
-    ball_position_smoothness_weight: float = 1.0
-    ground_penetration_weight: float = 1.0
-    smoothness_order: int = 3
-
-    @classmethod
-    def from_dict(cls, cfg: dict[str, Any]) -> SLCSLossConfig:
-        known = {f: getattr(cls, f) for f in cls.__dataclass_fields__}
-        unknown = set(cfg) - set(known)
-        if unknown:
-            raise ValueError(
-                f"Unknown SLCS loss config keys: {sorted(unknown)}. "
-                f"Known: {sorted(known)}."
-            )
-        kwargs: dict[str, Any] = {}
-        for name in cls.__dataclass_fields__:
-            if name in cfg:
-                value = cfg[name]
-                kwargs[name] = int(value) if name == "smoothness_order" else float(value)
-        return cls(**kwargs)
+    player_position_weight: float
+    player_rotation_weight: float
+    player_angle_weight: float
+    ball_position_weight: float
+    player_position_nll_weight: float
+    player_rotation_nll_weight: float
+    ball_position_nll_weight: float
+    player_position_smoothness_weight: float
+    ball_position_smoothness_weight: float
+    ground_penetration_weight: float
+    smoothness_order: int
 
 
 @dataclass(frozen=True)
@@ -139,7 +122,9 @@ def _wrapped_yaw_error(pred_rotation: Tensor, target_rotation: Tensor) -> Tensor
 
 def player_angle_loss_term(inputs: SLCSLossInputs) -> Tensor:
     """Wrapped-angle smooth-L1 (complements ``1 - cos`` near the antipode)."""
-    diff = _wrapped_yaw_error(inputs.pred_player_rotation, inputs.target_player_rotation)
+    diff = _wrapped_yaw_error(
+        inputs.pred_player_rotation, inputs.target_player_rotation
+    )
     per_frame = nn.functional.smooth_l1_loss(
         diff, torch.zeros_like(diff), reduction="none"
     )
@@ -161,7 +146,9 @@ def _laplace_nll(l1_error: Tensor, log_b: Tensor) -> Tensor:
 
 def player_position_nll_loss_term(inputs: SLCSLossInputs) -> Tensor:
     """Heteroscedastic Laplace NLL on player positions."""
-    l1 = (inputs.pred_player_position - inputs.target_player_position).abs().mean(dim=-1)
+    l1 = (
+        (inputs.pred_player_position - inputs.target_player_position).abs().mean(dim=-1)
+    )
     per_frame = _laplace_nll(l1, inputs.pred_player_position_log_b)
     return _weighted_mean(per_frame, inputs.player_mask, inputs.player_weight)
 
@@ -182,7 +169,9 @@ def ball_position_nll_loss_term(inputs: SLCSLossInputs) -> Tensor:
     return _weighted_mean(per_frame, inputs.ball_mask, inputs.ball_weight)
 
 
-def make_player_position_smoothness_term(order: int) -> Callable[[SLCSLossInputs], Tensor]:
+def make_player_position_smoothness_term(
+    order: int,
+) -> Callable[[SLCSLossInputs], Tensor]:
     """Jerk prior on player positions over all real (non-padded) frames."""
 
     def term(inputs: SLCSLossInputs) -> Tensor:
@@ -199,7 +188,9 @@ def make_player_position_smoothness_term(order: int) -> Callable[[SLCSLossInputs
     return term
 
 
-def make_ball_position_smoothness_term(order: int) -> Callable[[SLCSLossInputs], Tensor]:
+def make_ball_position_smoothness_term(
+    order: int,
+) -> Callable[[SLCSLossInputs], Tensor]:
     """Jerk prior on the ball trajectory over all real frames."""
 
     def term(inputs: SLCSLossInputs) -> Tensor:
@@ -226,9 +217,9 @@ SLCSLossTerm = Callable[[SLCSLossInputs], Tensor]
 class SLCSLoss(nn.Module):
     """Combined SLCS loss (registry pattern; see module docstring)."""
 
-    def __init__(self, config: SLCSLossConfig | None = None) -> None:
+    def __init__(self, config: SLCSLossConfig) -> None:
         super().__init__()
-        self.config = config or SLCSLossConfig()
+        self.config = config
         order = int(self.config.smoothness_order)
         self.loss_terms: dict[str, SLCSLossTerm] = {
             "player_position": player_position_loss_term,
@@ -242,9 +233,24 @@ class SLCSLoss(nn.Module):
             "ball_position_smoothness": make_ball_position_smoothness_term(order),
             "ground_penetration": ground_penetration_loss_term,
         }
+        self.loss_weights = {
+            "player_position": config.player_position_weight,
+            "player_rotation": config.player_rotation_weight,
+            "player_angle": config.player_angle_weight,
+            "ball_position": config.ball_position_weight,
+            "player_position_nll": config.player_position_nll_weight,
+            "player_rotation_nll": config.player_rotation_nll_weight,
+            "ball_position_nll": config.ball_position_nll_weight,
+            "player_position_smoothness": config.player_position_smoothness_weight,
+            "ball_position_smoothness": config.ball_position_smoothness_weight,
+            "ground_penetration": config.ground_penetration_weight,
+        }
 
     def weight_for(self, name: str) -> float:
-        return float(getattr(self.config, f"{name}_weight"))
+        try:
+            return self.loss_weights[name]
+        except KeyError as error:
+            raise KeyError(f"Unknown SLCS loss term {name!r}.") from error
 
     def forward(
         self,

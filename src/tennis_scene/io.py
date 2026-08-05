@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -95,31 +94,22 @@ class SceneResult:
             data["player_kp_3d"] = self.player_kp_3d
 
         np.savez_compressed(path, **data)
-        if self.metadata:
-            sidecar_path = self._metadata_sidecar_path(path)
-            with sidecar_path.open("w", encoding="utf-8") as f:
-                json.dump(self.metadata, f, ensure_ascii=False, indent=2)
+        sidecar_path = self._metadata_sidecar_path(path)
+        with sidecar_path.open("w", encoding="utf-8") as f:
+            json.dump(self.metadata, f, ensure_ascii=False, indent=2)
 
     @classmethod
     def load(cls, path: str | Path) -> SceneResult:
         path = Path(path)
         data = np.load(path, allow_pickle=False)
 
-        metadata = {}
         sidecar_path = cls._metadata_sidecar_path(path)
-        if sidecar_path.exists():
-            try:
-                with sidecar_path.open("r", encoding="utf-8") as f:
-                    metadata = json.load(f)
-            except Exception as exc:
-                warnings.warn(
-                    (
-                        f"Failed to load sidecar metadata from {sidecar_path}: {exc}. "
-                        "Proceeding without metadata."
-                    ),
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
+        if not sidecar_path.is_file():
+            raise FileNotFoundError(f"Scene metadata sidecar not found: {sidecar_path}")
+        with sidecar_path.open("r", encoding="utf-8") as f:
+            metadata = json.load(f)
+        if not isinstance(metadata, dict):
+            raise TypeError(f"Scene metadata must be a JSON object: {sidecar_path}")
 
         player_position = np.asarray(data["player_position"], dtype=np.float32)
         player_yaw = np.asarray(data["player_yaw"], dtype=np.float32)

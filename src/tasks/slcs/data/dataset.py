@@ -13,9 +13,9 @@ an ambiguous ordering (equal means) is an error.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 import torch
@@ -41,9 +41,6 @@ from src.tasks.slcs.data.windows import WindowPlan, plan_windows, select_window_
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 from src.utils.schema.player import NUM_HUMAN_KP
 
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
-
 # Normalized-UV sanity range for visible observations. Slightly outside [0, 1]
 # is legitimate (detections at the frame border); far outside means the data
 # is in pixel units and violates the contract.
@@ -54,16 +51,16 @@ _UV_TOLERANCE = 0.25
 class SLCSDataConfig:
     """Static configuration of the SLCS data pipeline."""
 
-    window_size: int = 120
-    train_stride: int = 60
-    eval_stride: int = 120
-    num_players: int = 2
-    num_court_kp: int = 14
-    require_dino: bool = True
-    cache_dino_tokens: bool = True
-    on_incomplete: Literal["error", "skip"] = "error"
-    dino_spec: DinoTokenSpec | None = None
-    quality: QualityConfig = field(default_factory=QualityConfig)
+    window_size: int
+    train_stride: int
+    eval_stride: int
+    num_players: int
+    num_court_kp: int
+    require_dino: bool
+    cache_dino_tokens: bool
+    on_incomplete: Literal["error", "skip"]
+    dino_spec: DinoTokenSpec
+    quality: QualityConfig
 
     def __post_init__(self) -> None:
         if self.window_size <= 0:
@@ -74,50 +71,10 @@ class SLCSDataConfig:
             raise ValueError(f"num_players must be positive, got {self.num_players}.")
         if self.num_court_kp <= 0:
             raise ValueError(f"num_court_kp must be positive, got {self.num_court_kp}.")
-        if self.dino_spec is None:
-            raise ValueError(
-                "dino_spec is required (even with require_dino=False) so token tensor "
-                "shapes are fixed by configuration rather than inferred from data."
-            )
         if self.on_incomplete not in ("error", "skip"):
             raise ValueError(
                 f"on_incomplete must be 'error' or 'skip', got {self.on_incomplete!r}."
             )
-
-    @classmethod
-    def from_config(cls, data_cfg: DictConfig | dict[str, Any]) -> SLCSDataConfig:
-        """Build from the ``data`` section of a Hydra config."""
-        get = data_cfg.get
-        dino_cfg = get("dino", None)
-        if dino_cfg is None:
-            raise ValueError(
-                "data config must declare a 'dino' section (backbone, patch_size, "
-                "image_height, image_width, embed_dim, frame_stride)."
-            )
-        dino_spec = DinoTokenSpec(
-            backbone=str(dino_cfg["backbone"]),
-            patch_size=int(dino_cfg["patch_size"]),
-            image_height=int(dino_cfg["image_height"]),
-            image_width=int(dino_cfg["image_width"]),
-            embed_dim=int(dino_cfg["embed_dim"]),
-            frame_stride=int(dino_cfg["frame_stride"]),
-        )
-        quality_cfg = get("quality", None)
-        quality = (
-            QualityConfig.from_dict(dict(quality_cfg)) if quality_cfg is not None else QualityConfig()
-        )
-        return cls(
-            window_size=int(get("window_size", 120)),
-            train_stride=int(get("train_stride", 60)),
-            eval_stride=int(get("eval_stride", 120)),
-            num_players=int(get("num_players", 2)),
-            num_court_kp=int(get("num_court_kp", 14)),
-            require_dino=bool(get("require_dino", True)),
-            cache_dino_tokens=bool(get("cache_dino_tokens", True)),
-            on_incomplete=str(get("on_incomplete", "error")),  # type: ignore[arg-type]
-            dino_spec=dino_spec,
-            quality=quality,
-        )
 
 
 @dataclass
@@ -151,7 +108,10 @@ class _WindowEntry:
 
 
 def _canonical_player_order(
-    player_position: NDArray[np.float32], player_label_valid: NDArray[np.bool_], *, clip_id: str
+    player_position: NDArray[np.float32],
+    player_label_valid: NDArray[np.bool_],
+    *,
+    clip_id: str,
 ) -> NDArray[np.int64]:
     """Near-side-first ordering of the player axis (see module docstring)."""
     num_players = player_position.shape[0]
@@ -180,7 +140,9 @@ def _check_visible_uv(
         return
     values = uv[visible]
     if not np.isfinite(values).all():
-        raise DatasetContractError(f"{context}: visible observations contain non-finite UV.")
+        raise DatasetContractError(
+            f"{context}: visible observations contain non-finite UV."
+        )
     if values.min() < -_UV_TOLERANCE or values.max() > 1.0 + _UV_TOLERANCE:
         raise DatasetContractError(
             f"{context}: visible UV outside [{-_UV_TOLERANCE}, {1 + _UV_TOLERANCE}] "
@@ -196,7 +158,7 @@ def load_clip_arrays(manifest: ClipManifest, *, config: SLCSDataConfig) -> ClipA
     exact same normalization, ordering and quality masks.
     """
     cfg = config
-    scene = load_tennis_scene_annotation(manifest)
+    scene = load_tennis_scene_annotation(manifest, verify_manifest_digest=True)
     clip_id = manifest.clip_id
 
     human_kp_2d = np.asarray(scene.human_kp_2d, dtype=np.float32)
@@ -292,9 +254,7 @@ def build_window_sample(
         )
     t0, t1 = plan.start, plan.start + plan.length
     if t1 > clip.num_frames:
-        raise ValueError(
-            f"window [{t0}, {t1}) exceeds clip length {clip.num_frames}."
-        )
+        raise ValueError(f"window [{t0}, {t1}) exceeds clip length {clip.num_frames}.")
     pad = plan.pad
 
     def pad_time(arr: NDArray[Any], time_axis: int) -> NDArray[Any]:
@@ -364,7 +324,9 @@ def build_window_sample(
         target_player_weight=torch.from_numpy(
             np.ascontiguousarray(target_player_weight)
         ),
-        target_ball_position=torch.from_numpy(np.ascontiguousarray(target_ball_position)),
+        target_ball_position=torch.from_numpy(
+            np.ascontiguousarray(target_ball_position)
+        ),
         target_ball_valid=torch.from_numpy(np.ascontiguousarray(target_ball_valid)),
         target_ball_weight=torch.from_numpy(np.ascontiguousarray(target_ball_weight)),
     )
@@ -380,23 +342,23 @@ class SLCSWindowDataset(Dataset[SLCSSample]):
         split_file: str | Path,
         split: str,
         config: SLCSDataConfig,
-        stride: int | None = None,
+        stride: int,
     ) -> None:
         if split not in ("train", "val", "test"):
             raise ValueError(f"split must be train/val/test, got {split!r}.")
         self.config = config
         self.split = split
-        self.stride = int(
-            stride
-            if stride is not None
-            else (config.train_stride if split == "train" else config.eval_stride)
-        )
+        self.stride = int(stride)
+        if self.stride <= 0:
+            raise ValueError(f"stride must be positive, got {self.stride}.")
 
         index = DatasetIndex.load(dataset_root)
         assignments = load_split_assignments(split_file, index)
 
         self._clips: dict[str, ClipArrays] = {}
-        self._dino_cache: dict[tuple[str, str], tuple[NDArray[np.float32], NDArray[np.int64]]] = {}
+        self._dino_cache: dict[
+            tuple[str, str], tuple[NDArray[np.float32], NDArray[np.int64]]
+        ] = {}
         self._entries: list[_WindowEntry] = []
         self.build_report: dict[str, int] = {
             "clips_in_split": 0,
@@ -540,7 +502,9 @@ def collate_slcs(samples: list[SLCSSample]) -> dict[str, torch.Tensor]:
     max_td = max(1, max(int(s["dino_tokens"].shape[0]) for s in sample_dicts))
     ref_tokens = sample_dicts[0]["dino_tokens"]
     if ref_tokens.ndim != 3:
-        raise ValueError(f"dino_tokens must be (T_d, S, C), got shape {tuple(ref_tokens.shape)}.")
+        raise ValueError(
+            f"dino_tokens must be (T_d, S, C), got shape {tuple(ref_tokens.shape)}."
+        )
     num_patches = int(ref_tokens.shape[1])
     embed_dim = int(ref_tokens.shape[2])
     for s in sample_dicts:
@@ -551,7 +515,9 @@ def collate_slcs(samples: list[SLCSSample]) -> dict[str, torch.Tensor]:
                 f"(*, {num_patches}, {embed_dim})."
             )
 
-    tokens_out = torch.zeros(len(samples), max_td, num_patches, embed_dim, dtype=torch.float32)
+    tokens_out = torch.zeros(
+        len(samples), max_td, num_patches, embed_dim, dtype=torch.float32
+    )
     frames_out = torch.zeros(len(samples), max_td, dtype=torch.int64)
     valid_out = torch.zeros(len(samples), max_td, dtype=torch.bool)
     for i, s in enumerate(sample_dicts):

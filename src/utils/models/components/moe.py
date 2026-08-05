@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
+from src.utils.models.components.ffn_layers import MLP, SwiGLU
 from src.utils.models.components.ops.moe import (
     MoEDispatchResult,
     moe_combine,
@@ -33,15 +33,15 @@ class MoEConfig:
 
     dim: int
     num_experts: int
-    top_k: int = 2
-    ffn_dim: int | None = None
-    ffn_type: FFNType = "swiglu"
-    router_bias: bool = False
-    router_jitter_noise: float = 0.0
-    normalize_router_weights: bool = True
-    capacity_factor: float | None = None
-    drop_policy: DropPolicy = "none"
-    use_cuda_ops: bool | None = None
+    top_k: int
+    ffn_dim: int
+    ffn_type: FFNType
+    router_bias: bool
+    router_jitter_noise: float
+    normalize_router_weights: bool
+    capacity_factor: float | None
+    drop_policy: DropPolicy
+    use_cuda_ops: bool | None
 
 
 class TopKRouter(nn.Module):
@@ -52,10 +52,10 @@ class TopKRouter(nn.Module):
         dim: int,
         num_experts: int,
         *,
-        top_k: int = 2,
-        bias: bool = False,
-        jitter_noise: float = 0.0,
-        normalize_router_weights: bool = True,
+        top_k: int,
+        bias: bool,
+        jitter_noise: float,
+        normalize_router_weights: bool,
     ) -> None:
         super().__init__()
         if dim <= 0:
@@ -129,9 +129,8 @@ class MoELayer(nn.Module):
             jitter_noise=cfg.router_jitter_noise,
             normalize_router_weights=cfg.normalize_router_weights,
         )
-        ffn_dim = default_ffn_dim(cfg.dim) if cfg.ffn_dim is None else int(cfg.ffn_dim)
         self.experts = nn.ModuleList(
-            self._make_expert(cfg.dim, ffn_dim, cfg.ffn_type)
+            self._make_expert(cfg.dim, cfg.ffn_dim, cfg.ffn_type)
             for _ in range(cfg.num_experts)
         )
 

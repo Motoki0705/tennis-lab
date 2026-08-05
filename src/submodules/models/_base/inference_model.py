@@ -33,8 +33,18 @@ ResultT = TypeVar("ResultT")
 class BaseInferenceModel(ABC, Generic[RequestT, ResultT]):
     """Lifecycle + typed ``predict`` contract for inference models."""
 
-    def __init__(self, device: str | torch.device = "auto") -> None:
-        self._device = resolve_device(device)
+    def __init__(
+        self,
+        device: str | torch.device,
+        *,
+        allow_device_fallback: bool,
+    ) -> None:
+        if type(allow_device_fallback) is not bool:
+            raise TypeError("allow_device_fallback must be a bool.")
+        self._device = resolve_device(
+            device,
+            allow_fallback=allow_device_fallback,
+        )
         self._loaded = False
 
     @property

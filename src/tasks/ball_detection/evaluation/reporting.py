@@ -64,9 +64,7 @@ def _flatten_result(result: dict[str, Any]) -> dict[str, Any]:
         "f1": aggregate["f1"],
         "mean_distance_px": aggregate["mean_distance_px"],
         "negative_frame_fpr": aggregate["negative_frame_fpr"],
-        "throughput_frames_per_second": performance[
-            "throughput_frames_per_second"
-        ],
+        "throughput_frames_per_second": performance["throughput_frames_per_second"],
         "latency_ms_per_batch": performance["latency_ms_per_batch"],
         "peak_vram_mb": performance["peak_vram_mb"],
     }

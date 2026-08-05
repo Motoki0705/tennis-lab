@@ -1,10 +1,21 @@
+defaults:
+  - paths: default
+  - _self_
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},court_detection/evaluate_homography_annotations,${now:%Y-%m-%d_%H-%M-%S}}
+  output_subdir: null
+  job:
+    chdir: false
+
 evaluate_homography_annotations:
   datasets:
     - name: canonical_val
-      annotation_json: data/court/data_val.json
-      image_dir: data/court/images
+      annotation_json: court/data_val.json
+      image_dir: court/images
       image_extensions: [".png", ".jpg", ".jpeg"]
-  output_dir: outputs/court_detection/homography_annotation_evaluation
+  output_dir: court_detection/homography_annotation_evaluation
   workers: 4
   overwrite: false
   use_refined_keypoints: true

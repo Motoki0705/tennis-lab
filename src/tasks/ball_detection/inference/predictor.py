@@ -14,6 +14,7 @@ from src.tasks.ball_detection.training.lightning_module import (
     BallDetectionLightningModule,
 )
 from src.tasks.base.inference.predictor import BasePredictor
+from src.utils.configuration import PathResolver
 from src.utils.data.heatmaps import heatmaps_to_argmax, refine_peaks_log_parabolic
 
 
@@ -35,14 +36,14 @@ class BallDetectionPredictor(BasePredictor):
         self,
         model: torch.nn.Module,
         device: torch.device,
-        model_config: dict[str, Any] | None = None,
+        model_config: dict[str, object],
         *,
-        subpixel_refine: bool = True,
+        subpixel_refine: bool,
     ) -> None:
         self.model = model
         self.device = device
-        self.model_config = model_config or {}
-        self.subpixel_refine = bool(subpixel_refine)
+        self.model_config = model_config
+        self.subpixel_refine = subpixel_refine
 
         self.model.to(self.device)
         self.model.eval()
@@ -51,7 +52,13 @@ class BallDetectionPredictor(BasePredictor):
     def load_from_checkpoint(
         cls,
         checkpoint_path: str | Path | Iterable[str | Path],
-        device: str | torch.device = "cpu",
+        *,
+        resolver: PathResolver,
+        device: str | torch.device,
+        allow_device_fallback: bool,
+        subpixel_refine: bool,
+        strict: bool,
+        weights_only: bool,
         **kwargs: Any,
     ) -> Self:
         """Load predictor from a Lightning checkpoint.
@@ -68,18 +75,19 @@ class BallDetectionPredictor(BasePredictor):
         Raises:
             FileNotFoundError: If checkpoint file does not exist.
         """
-        subpixel_refine = bool(kwargs.pop("subpixel_refine", True))
         lightning_module, resolved_device = cls._load_single_lightning_module(
             checkpoint_path,
             BallDetectionLightningModule,
-            device,
-            strict=bool(kwargs.pop("strict", False)),
-            weights_only=bool(kwargs.pop("weights_only", False)),
+            resolver=resolver,
+            device=device,
+            allow_device_fallback=allow_device_fallback,
+            strict=strict,
+            weights_only=weights_only,
             **kwargs,
         )
 
         model = lightning_module.model
-        model_config = dict(lightning_module.config.get("model", {}))
+        model_config = dict(lightning_module.config.model)
 
         return cls(
             model=model,
@@ -109,9 +117,14 @@ class BallDetectionPredictor(BasePredictor):
                   *return_heatmaps* is True.
         """
         with torch.no_grad():
-            (images,) = self._to_device(self.device, images)
+            moved_images = self._to_device(self.device, images)[0]
+            if moved_images is None:
+                raise TypeError("Ball detector input must be a tensor.")
+            images = moved_images
             model_input = to_model_input(images, self.model_config)
             logits = self.model(model_input)
+            if not isinstance(logits, Tensor):
+                raise TypeError("Ball detector output must be a tensor.")
 
             # (B, 1, T, H, W) -> (B, T, H, W)
             logits = logits.squeeze(1)

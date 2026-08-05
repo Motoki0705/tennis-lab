@@ -42,10 +42,11 @@ from typing import Any, cast
 
 import cv2
 import numpy as np
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 from tqdm import tqdm
 
+from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
+from src.tasks.ball_detection.configuration import BallRuntimePaths
 from src.utils.geometry.bbox import bbox_max_side_ratio
 from src.utils.hydra import hydra_main
 from src.utils.io import ensure_dir, load_json
@@ -311,9 +312,7 @@ def _export_samples(cfg: DictConfig, frames: list[FrameRatio], out_root: Path) -
             selected.append(frame)
 
     # Roboflow: still images on disk.
-    for frame in tqdm(
-        [f for f in selected if f.image_path], desc="export-roboflow"
-    ):
+    for frame in tqdm([f for f in selected if f.image_path], desc="export-roboflow"):
         image = cv2.imread(frame.image_path)
         if image is None:
             continue
@@ -345,12 +344,14 @@ def _export_samples(cfg: DictConfig, frames: list[FrameRatio], out_root: Path) -
     config_path="../configs",
     config_name="analyze_web_bbox_ratio",
     version_base="1.3",
+    validation_boundary="ball.web_tool",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Collect ratios, write the sweep tables, and export sample frames."""
     analyze = cfg.analyze
-    web_root = Path(to_absolute_path(str(analyze.web_root)))
-    out_root = Path(to_absolute_path(str(analyze.output_dir)))
+    paths = BallRuntimePaths.from_config(cfg)
+    web_root = paths.data(str(analyze.web_root))
+    out_root = paths.output(str(analyze.output_dir))
     ensure_dir(out_root)
 
     frames = _collect(analyze, web_root)

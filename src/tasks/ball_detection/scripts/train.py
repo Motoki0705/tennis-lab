@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from omegaconf import DictConfig
 
+from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
 from src.tasks.ball_detection.training.runner import BallDetectionTrainingRunner
 from src.utils.hydra import hydra_main
 
@@ -22,6 +23,7 @@ from src.utils.hydra import hydra_main
     version_base="1.3",
     config_path="../configs",
     config_name="train",
+    validation_boundary="ball.train",
 )
 def main(cfg: DictConfig) -> None:
     """Train ball detection model."""

@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING, Any
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
+from src.tasks.base.configuration import TrainingRuntimeConfig
 from src.tasks.base.training.runner import BaseTrainingRunner
+from src.tasks.blcs.configuration import parse_model_config, validate_training_boundary
 from src.tasks.blcs.data.datamodule import BLCSDataModule
 from src.tasks.blcs.training.lightning_module import BLCSLightningModule
 from src.tasks.blcs.training.tracking_lightning_module import (
@@ -30,8 +32,9 @@ class BLCSTrainingRunner(BaseTrainingRunner):
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
         """Build unified BLCS data module."""
-        tracking = str(config.get("model", {}).get("name")) == "blcs_track_query"
-        backend = str(config.get("data", {}).get("backend", "npz"))
+        model = parse_model_config(config)
+        tracking = model.name == "blcs_track_query"
+        backend = str(config.data.backend)
         if tracking:
             from src.tasks.blcs.data.tracking_datamodule import (
                 BLCSTrackingDataModule,
@@ -55,7 +58,8 @@ class BLCSTrainingRunner(BaseTrainingRunner):
                     "Use src.tasks.blcs.scripts.train with a chunked data config."
                 )
             return ChunkedBLCSDataModule(
-                config, generator_config=self.generator_config,
+                config,
+                generator_config=self.generator_config,
             )
         elif backend == "default":
             return BLCSDataModule(config)
@@ -72,7 +76,7 @@ class BLCSTrainingRunner(BaseTrainingRunner):
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
         """Build BLCS lightning module."""
-        if str(config.get("model", {}).get("name")) == "blcs_track_query":
+        if parse_model_config(config).name == "blcs_track_query":
             return BLCSTrackingLightningModule(config)
         return BLCSLightningModule(config)
 
@@ -92,9 +96,14 @@ class BLCSTrainingRunner(BaseTrainingRunner):
             )
 
             extras.append(ChunkRotationCallback())
-        return extras
+        return list(extras)
 
     def dry_run_postprocess(self, batch: Any, output_dir: Path) -> None:
         """Log model parameters after dry run batch loading."""
         # Model parameter logging is handled in build_lightning_module
         pass
+
+    def validate_runtime_config(self, config: Any) -> TrainingRuntimeConfig:
+        """Validate shared and BLCS-specific contracts before runner side effects."""
+        validate_training_boundary(config)
+        return super().validate_runtime_config(config)

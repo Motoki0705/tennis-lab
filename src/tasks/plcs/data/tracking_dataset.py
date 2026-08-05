@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 import torch
 from torch import Tensor
@@ -45,7 +45,7 @@ class PLCSTrackingDataset(CanonicalTrackingDataset):
         super().__init__(**kwargs)
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         self.tracking_augmentation = PLCSTrackingDetectionAugmentation(
-            data_cfg.get("augmentation", {})
+            data_cfg["augmentation"]
         )
 
     def build_sample(self, scene: Scene) -> dict[str, Tensor]:
@@ -157,34 +157,31 @@ def collate_plcs_tracking_batch(
     batch: list[dict[str, Tensor]],
 ) -> dict[str, Tensor]:
     """Pad variable camera/time/detection dimensions and stack PLCS scenes."""
-    return cast(
-        dict[str, Tensor],
-        pad_and_stack_tracking_batch(
-            batch,
-            padding_dimensions={
-                "human_kp": (0, 1, 2),
-                "human_vis": (0, 1, 2),
-                "detection_mask": (0, 1, 2),
-                "court_kp": (0, 1),
-                "court_vis": (0, 1),
-                "frame_mask": (0,),
-                "view_mask": (0,),
-                "target_position": (0, 1),
-                "target_rotation": (0, 1),
-                "target_canonical_pose_3d": (0, 1),
-                "target_human_kp_3d": (0, 1),
-                "target_presence": (0, 1),
-                "target_instance_id": (0, 1),
-                "target_slot_mask": (0,),
-                "clean_human_kp": (0, 1, 2),
-                "clean_human_visible": (0, 1, 2),
-                "detection_gt_index": (0, 1, 2),
-            },
-            pad_values={
-                "target_instance_id": -1,
-                "detection_gt_index": -1,
-            },
-        ),
+    return pad_and_stack_tracking_batch(
+        batch,
+        padding_dimensions={
+            "human_kp": (0, 1, 2),
+            "human_vis": (0, 1, 2),
+            "detection_mask": (0, 1, 2),
+            "court_kp": (0, 1),
+            "court_vis": (0, 1),
+            "frame_mask": (0,),
+            "view_mask": (0,),
+            "target_position": (0, 1),
+            "target_rotation": (0, 1),
+            "target_canonical_pose_3d": (0, 1),
+            "target_human_kp_3d": (0, 1),
+            "target_presence": (0, 1),
+            "target_instance_id": (0, 1),
+            "target_slot_mask": (0,),
+            "clean_human_kp": (0, 1, 2),
+            "clean_human_visible": (0, 1, 2),
+            "detection_gt_index": (0, 1, 2),
+        },
+        pad_values={
+            "target_instance_id": -1,
+            "detection_gt_index": -1,
+        },
     )
 
 

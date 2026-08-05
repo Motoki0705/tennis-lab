@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from typing import cast
+
 import torch
 import torch.nn.functional as F
-from torch import nn
+from torch import Tensor, nn
 
 from src.utils.models.components.rope import apply_rotary_emb
 
@@ -81,18 +83,12 @@ class MultiHeadSelfAttention(nn.Module):
         dim: int,
         n_heads: int,
         *,
-        head_dim: int | None = None,
-        rope_dim: int | None = None,
-        attn_dropout: float = 0.0,
-        bias: bool = False,
+        head_dim: int,
+        rope_dim: int,
+        attn_dropout: float,
+        bias: bool,
     ) -> None:
         super().__init__()
-        if head_dim is None:
-            if dim % n_heads != 0:
-                raise ValueError(f"dim={dim} must be divisible by n_heads={n_heads}")
-            head_dim = dim // n_heads
-        if rope_dim is None:
-            rope_dim = head_dim
         if rope_dim % 2 != 0:
             raise ValueError(f"rope_dim must be even, got {rope_dim}")
         if rope_dim > head_dim:
@@ -183,7 +179,7 @@ class MultiHeadSelfAttention(nn.Module):
             .contiguous()
             .view(bsz, q_len, self.n_heads * self.head_dim)
         )
-        return self.wo(out)
+        return cast(Tensor, self.wo(out))
 
 
 class GroupedQuerySelfAttention(nn.Module):
@@ -201,10 +197,10 @@ class GroupedQuerySelfAttention(nn.Module):
         n_heads: int,
         n_kv_heads: int,
         *,
-        head_dim: int | None = None,
-        rope_dim: int | None = None,
-        attn_dropout: float = 0.0,
-        bias: bool = False,
+        head_dim: int,
+        rope_dim: int,
+        attn_dropout: float,
+        bias: bool,
     ) -> None:
         super().__init__()
         if n_heads <= 0:
@@ -215,12 +211,6 @@ class GroupedQuerySelfAttention(nn.Module):
             raise ValueError(
                 f"n_heads={n_heads} must be divisible by n_kv_heads={n_kv_heads}"
             )
-        if head_dim is None:
-            if dim % n_heads != 0:
-                raise ValueError(f"dim={dim} must be divisible by n_heads={n_heads}")
-            head_dim = dim // n_heads
-        if rope_dim is None:
-            rope_dim = head_dim
         if rope_dim % 2 != 0:
             raise ValueError(f"rope_dim must be even, got {rope_dim}")
         if rope_dim > head_dim:
@@ -316,7 +306,7 @@ class GroupedQuerySelfAttention(nn.Module):
             .contiguous()
             .view(bsz, q_len, self.n_heads * self.head_dim)
         )
-        return self.wo(out)
+        return cast(Tensor, self.wo(out))
 
 
 class MultiHeadCrossAttention(nn.Module):
@@ -331,18 +321,12 @@ class MultiHeadCrossAttention(nn.Module):
         dim: int,
         n_heads: int,
         *,
-        head_dim: int | None = None,
-        rope_dim: int | None = None,
-        attn_dropout: float = 0.0,
-        bias: bool = False,
+        head_dim: int,
+        rope_dim: int,
+        attn_dropout: float,
+        bias: bool,
     ) -> None:
         super().__init__()
-        if head_dim is None:
-            if dim % n_heads != 0:
-                raise ValueError(f"dim={dim} must be divisible by n_heads={n_heads}")
-            head_dim = dim // n_heads
-        if rope_dim is None:
-            rope_dim = head_dim
         if rope_dim % 2 != 0:
             raise ValueError(f"rope_dim must be even, got {rope_dim}")
         if rope_dim > head_dim:
@@ -448,4 +432,4 @@ class MultiHeadCrossAttention(nn.Module):
             .contiguous()
             .view(bsz, q_len, self.n_heads * self.head_dim)
         )
-        return self.wo(out)
+        return cast(Tensor, self.wo(out))

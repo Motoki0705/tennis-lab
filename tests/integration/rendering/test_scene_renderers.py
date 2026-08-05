@@ -19,13 +19,14 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+import torch
 from matplotlib.animation import PillowWriter
 
 from src.tasks.base.visualization.style import SceneStyleConfig
 from src.tasks.blcs.visualization.rendering import BLCSSceneRenderer
 from src.tasks.plcs.visualization.contracts import PoseRenderScene
 from src.tasks.plcs.visualization.rendering import PLCSSceneRenderer
-from src.utils.rendering.camera_view import CAMERA_PRESETS
+from src.utils.rendering.camera_view import CAMERA_PRESETS, CameraController
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -64,6 +65,34 @@ def _assert_rich_3d_axes(ax: Any) -> None:
 
 def _hud_texts(ax: Any) -> list[str]:
     return [t.get_text() for t in ax.texts if "Frame" in t.get_text()]
+
+
+def _style(
+    theme: str,
+    *,
+    show_shadow: bool = True,
+    show_trail: bool = True,
+    trail_length: int = 30,
+    show_hud: bool = True,
+    show_minimap: bool = True,
+) -> SceneStyleConfig:
+    return SceneStyleConfig(
+        theme=theme,
+        show_shadow=show_shadow,
+        show_trail=show_trail,
+        trail_length=trail_length,
+        show_hud=show_hud,
+        show_minimap=show_minimap,
+    )
+
+
+@pytest.fixture
+def tennis_scene_assets(tmp_path: Path) -> tuple[Path, Path]:
+    faces_path = (tmp_path / "smpl_faces.npz").resolve()
+    regressor_path = (tmp_path / "smpl_joint_regressor.pt").resolve()
+    np.savez(faces_path, f=np.array([[0, 1, 2]], dtype=np.int64))
+    torch.save(torch.full((1, 6890), 1.0 / 6890), regressor_path)
+    return faces_path, regressor_path
 
 
 def _blcs_scene(num_frames: int = _NUM_FRAMES) -> dict[str, Any]:
@@ -114,7 +143,7 @@ def _plcs_scene(num_frames: int = _NUM_FRAMES) -> PoseRenderScene:
 
 class TestBLCSSceneRenderer:
     def test_dark_3d_animation_full_overlays(self, tmp_path: Path) -> None:
-        renderer = BLCSSceneRenderer(style=SceneStyleConfig(theme="dark"))
+        renderer = BLCSSceneRenderer(style=_style("dark"))
 
         anim = renderer.create_animation(_blcs_scene(), view="3d", fps=_FPS)
 
@@ -128,7 +157,7 @@ class TestBLCSSceneRenderer:
 
     def test_light_3d_animation_without_minimap(self, tmp_path: Path) -> None:
         renderer = BLCSSceneRenderer(
-            style=SceneStyleConfig(theme="light", show_minimap=False, show_hud=False)
+            style=_style("light", show_minimap=False, show_hud=False)
         )
 
         anim = renderer.create_animation(_blcs_scene(), view="3d", fps=_FPS)
@@ -142,7 +171,7 @@ class TestBLCSSceneRenderer:
         assert _hud_texts(ax) == []
 
     def test_multi_ball_3d_animation(self, tmp_path: Path) -> None:
-        renderer = BLCSSceneRenderer(style=SceneStyleConfig(theme="dark"))
+        renderer = BLCSSceneRenderer(style=_style("dark"))
 
         anim = renderer.create_animation(_multi_ball_blcs_scene(), view="3d", fps=_FPS)
 
@@ -160,7 +189,7 @@ class TestBLCSSceneRenderer:
         scene = _blcs_scene()
         gt = scene["ball_pos_world"]
         pred = gt + np.float32(0.3)
-        renderer = BLCSSceneRenderer(style=SceneStyleConfig(theme="dark"))
+        renderer = BLCSSceneRenderer(style=_style("dark"))
 
         anim = renderer.create_comparison_animation(
             gt, pred, view="3d", fps=_FPS, events=None
@@ -173,7 +202,7 @@ class TestBLCSSceneRenderer:
         assert len(fig.axes) == 2
 
     def test_2d_animation_unchanged(self, tmp_path: Path) -> None:
-        renderer = BLCSSceneRenderer(style=SceneStyleConfig(theme="dark"))
+        renderer = BLCSSceneRenderer(style=_style("dark"))
 
         anim = renderer.create_animation(_blcs_scene(), view="2d", fps=_FPS)
 
@@ -185,7 +214,7 @@ class TestBLCSSceneRenderer:
 
 class TestPLCSSceneRenderer:
     def test_dark_3d_animation_full_overlays(self, tmp_path: Path) -> None:
-        renderer = PLCSSceneRenderer(style=SceneStyleConfig(theme="dark"))
+        renderer = PLCSSceneRenderer(style=_style("dark"))
 
         anim = renderer.create_animation(_plcs_scene(), view="3d", fps=_FPS)
 
@@ -202,7 +231,7 @@ class TestPLCSSceneRenderer:
         pred = _plcs_scene()
         pred.position = pred.position + np.float32(0.05)
         renderer = PLCSSceneRenderer(
-            style=SceneStyleConfig(theme="light", show_minimap=False)
+            style=_style("light", show_minimap=False)
         )
 
         anim = renderer.create_comparison_animation(gt, pred, view="3d", fps=_FPS)
@@ -215,7 +244,7 @@ class TestPLCSSceneRenderer:
         assert "GT vs Prediction" in ax.get_title()
 
     def test_2d_topdown_animation_unchanged(self, tmp_path: Path) -> None:
-        renderer = PLCSSceneRenderer(style=SceneStyleConfig(theme="dark"))
+        renderer = PLCSSceneRenderer(style=_style("dark"))
 
         anim = renderer.create_animation(_plcs_scene(), view="2d_topdown", fps=_FPS)
 
@@ -225,7 +254,11 @@ class TestPLCSSceneRenderer:
 
 
 class TestTennisSceneRenderer:
-    def test_dark_animation_smoke(self, tmp_path: Path) -> None:
+    def test_dark_animation_smoke(
+        self,
+        tmp_path: Path,
+        tennis_scene_assets: tuple[Path, Path],
+    ) -> None:
         from src.tennis_scene.io import SceneResult
         from src.tennis_scene.rendering import TennisSceneRenderer, TennisSceneStyle
 
@@ -251,7 +284,13 @@ class TestTennisSceneRenderer:
             ball_3d=ball_3d,
             player_track_ids=np.array([0], dtype=np.int32),
         )
-        renderer = TennisSceneRenderer(TennisSceneStyle(theme="dark"))
+        faces_path, regressor_path = tennis_scene_assets
+        renderer = TennisSceneRenderer(
+            TennisSceneStyle(theme="dark"),
+            smpl_faces_path=faces_path,
+            smpl_joint_regressor_path=regressor_path,
+            camera=CameraController("broadcast"),
+        )
 
         anim = renderer.create_animation(scene, fps=_FPS)
 

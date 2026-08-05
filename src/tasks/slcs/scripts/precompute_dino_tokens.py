@@ -3,13 +3,15 @@ Precompute DINOv3 patch tokens for every clip of an issue #634 dataset.
 
 Usage:
     python -m src.tasks.slcs.scripts.precompute_dino_tokens
-    python -m src.tasks.slcs.scripts.precompute_dino_tokens data.dataset_root=data/tennis_scene_dataset
+    python -m src.tasks.slcs.scripts.precompute_dino_tokens data.dataset_root=tennis_scene_dataset
     python -m src.tasks.slcs.scripts.precompute_dino_tokens precompute.overwrite=true precompute.device=cuda
 
 Notes:
     - Configuration is loaded from `src/tasks/slcs/configs/precompute_dino_tokens.yaml`;
       the token spec (backbone, input size, stride) comes from `data.dino` so
       training and precompute cannot diverge.
+    - Dataset, checkpoint, and DINO repository paths are resolved from their
+      declared runtime roots before the encoder is loaded.
     - Tokens are written to `annotations/dino_v3/` per clip with a completion
       marker written last; completed clips are skipped unless overwrite=true.
     - Per-clip failures are reported at the end and the exit code is non-zero
@@ -25,26 +27,21 @@ import torch
 from numpy.typing import NDArray
 from omegaconf import DictConfig
 
-from src.tasks.slcs.data.dataset import SLCSDataConfig
-from src.tasks.slcs.data.dino_precompute import run_precompute
+from src.tasks.slcs.configuration import SLCSPrecomputeConfig
+from src.tasks.slcs.data.dino_precompute import FrameEncoder, run_precompute
 from src.utils.data.augmentation import IMAGENET_MEAN, IMAGENET_STD
 from src.utils.hydra import hydra_main
 from src.utils.models.loading.dinov3 import load_dinov3_backbone
 
 
-def _build_encoder(config: DictConfig) -> tuple[object, int, int]:
+def _build_encoder(config: SLCSPrecomputeConfig) -> tuple[FrameEncoder, int, int]:
     """Load the DINOv3 backbone and wrap it as a FrameEncoder."""
-    precompute_cfg = config.get("precompute", {})
-    device = torch.device(str(precompute_cfg.get("device", "cpu")))
+    device = torch.device(config.device)
     adapter = load_dinov3_backbone(
-        repository_path=str(precompute_cfg.get("repository_path", "third_party/dinov3")),
-        checkpoint_path=str(
-            precompute_cfg.get(
-                "checkpoint_path",
-                "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
-            )
-        ),
-        backbone_name=str(config.data.dino.backbone),
+        repository_path=config.repository_path,
+        checkpoint_path=config.checkpoint_path,
+        backbone_name=config.data.pipeline.dino_spec.backbone,
+        strict=config.strict,
     )
     adapter = adapter.to(device)
     adapter.eval()
@@ -64,10 +61,9 @@ def _build_encoder(config: DictConfig) -> tuple[object, int, int]:
 
 def run(config: DictConfig) -> int:
     """Execute precompute; returns a process exit code."""
-    data_config = SLCSDataConfig.from_config(config.data)
-    spec = data_config.dino_spec
-    assert spec is not None
-    encoder, embed_dim, patch_size = _build_encoder(config)
+    runtime = SLCSPrecomputeConfig.from_config(config)
+    spec = runtime.data.pipeline.dino_spec
+    encoder, embed_dim, patch_size = _build_encoder(runtime)
     if embed_dim != spec.embed_dim or patch_size != spec.patch_size:
         raise ValueError(
             f"Configured dino spec (embed_dim={spec.embed_dim}, patch_size="
@@ -75,16 +71,15 @@ def run(config: DictConfig) -> int:
             f"(embed_dim={embed_dim}, patch_size={patch_size})."
         )
 
-    precompute_cfg = config.get("precompute", {})
     report = run_precompute(
-        str(config.data.dataset_root),
-        encoder,  # type: ignore[arg-type, unused-ignore]
+        runtime.data.dataset_root,
+        encoder,
         spec,
-        batch_size=int(precompute_cfg.get("batch_size", 8)),
-        overwrite=bool(precompute_cfg.get("overwrite", False)),
+        batch_size=runtime.batch_size,
+        overwrite=runtime.overwrite,
         generator={
             "script": "src/tasks/slcs/scripts/precompute_dino_tokens.py",
-            "backbone": str(config.data.dino.backbone),
+            "backbone": spec.backbone,
         },
     )
     print(
@@ -97,7 +92,10 @@ def run(config: DictConfig) -> int:
 
 
 @hydra_main(
-    config_path="../configs", config_name="precompute_dino_tokens", version_base="1.3"
+    config_path="../configs",
+    config_name="precompute_dino_tokens",
+    version_base="1.3",
+    validation_boundary="slcs.precompute_dino_tokens",
 )
 def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
     """Hydra entry point for DINOv3 token precompute."""
@@ -107,4 +105,4 @@ def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    main()  # type: ignore[call-arg, unused-ignore]
+    main()

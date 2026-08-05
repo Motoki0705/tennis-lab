@@ -17,5 +17,5 @@ training:
     max_epochs: 5
 
 run:
-  output_dir: outputs/ball_detection/staged/phase1
+  output_dir: ball_detection/staged/phase1
   init_weights: null

@@ -12,19 +12,29 @@ import tempfile
 from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-from gsplat.nht.deferred_shader import DeferredShaderModule
-from gsplat.rendering import rasterization
 from PIL import Image
-from plyfile import PlyData
 
-REPO_ROOT = Path(__file__).resolve().parents[5]
+if TYPE_CHECKING:
+    from gsplat.nht.deferred_shader import DeferredShaderModule
 
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
+)
 from src.synthetic_data_generation.dataset.blcs.artifacts.calibration import (  # noqa: E402
     load_ball_calibration_bundle,
+)
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
 )
 
 CONVERSION_REPORT_SCHEMA = "tennis_ball_asset_conversion_report_v1"
@@ -45,6 +55,63 @@ MIN_VALIDATION_PSNR_DB = 20.0
 DEFAULT_FEATURE_LR = 0.015
 DEFAULT_FINAL_LR_FRACTION = 0.1
 DEFAULT_OPTIMIZATION_STEPS = 600
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.blcs.feature_fit",
+    fields=(
+        BoundaryPathField(
+            "source",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "calibration_bundle",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "target_appearance",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output_dir", PathRole.ARTIFACT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+        BoundaryPathField(
+            "runtime_pins",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "nht_repository",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "gsplat_repository",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "worker_source",
+            PathRole.PROJECT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+    ),
+)
 
 
 @dataclass(frozen=True)
@@ -97,6 +164,35 @@ class SourceGeometry:
         return int(self.means.shape[0])
 
 
+@dataclass(frozen=True, slots=True)
+class FeatureFitRequest:
+    """Fully typed values consumed by the reusable feature-fit worker."""
+
+    source: Path
+    source_format: str
+    calibration_bundle: Path
+    target_appearance: Path
+    target_appearance_space_sha256: str
+    output_dir: Path
+    optimization_steps: int
+    feature_lr: float
+    final_lr_fraction: float
+    min_validation_psnr_db: float
+    seed: int
+    device: str
+    runtime_assets: FeatureFitRuntimeAssets
+
+
+@dataclass(frozen=True, slots=True)
+class FeatureFitRuntimeAssets:
+    """Explicit provenance inputs for the pinned NHT execution environment."""
+
+    pins: Path
+    nht_repository: Path
+    gsplat_repository: Path
+    worker_source: Path
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -130,6 +226,11 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--runtime-pins", type=Path, required=True)
+    parser.add_argument("--nht-repository", type=Path, required=True)
+    parser.add_argument("--gsplat-repository", type=Path, required=True)
+    parser.add_argument("--worker-source", type=Path, required=True)
+    add_path_roots_argument(parser)
     return parser.parse_args()
 
 
@@ -212,23 +313,28 @@ def _git_revision(path: Path) -> str:
     return revision
 
 
-def _runtime_revisions() -> dict[str, str]:
-    root = Path(__file__).resolve().parent
+def _runtime_revisions(assets: FeatureFitRuntimeAssets) -> dict[str, str]:
+    if not isinstance(assets, FeatureFitRuntimeAssets):
+        raise TypeError("runtime assets must be FeatureFitRuntimeAssets.")
     expected: dict[str, str] = {}
-    for line in (root / "pins.env").read_text(encoding="utf-8").splitlines():
+    for line in assets.pins.read_text(encoding="utf-8").splitlines():
         if line and not line.startswith("#") and "=" in line:
             key, value = line.split("=", 1)
             expected[key] = value
-    nht_revision = _git_revision(root / "upstream")
-    gsplat_revision = _git_revision(root / "upstream" / "gsplat")
-    if nht_revision != expected.get("NHT_COMMIT"):
+    if set(expected) != {"NHT_COMMIT", "GSPLAT_COMMIT"}:
+        raise RuntimeError(
+            "Runtime pins must contain exactly NHT_COMMIT and GSPLAT_COMMIT."
+        )
+    nht_revision = _git_revision(assets.nht_repository)
+    gsplat_revision = _git_revision(assets.gsplat_repository)
+    if nht_revision != expected["NHT_COMMIT"]:
         raise RuntimeError(f"NHT revision differs from pins.env: {nht_revision}.")
-    if gsplat_revision != expected.get("GSPLAT_COMMIT"):
+    if gsplat_revision != expected["GSPLAT_COMMIT"]:
         raise RuntimeError(f"gsplat revision differs from pins.env: {gsplat_revision}.")
     return {
         "nht_commit": nht_revision,
         "gsplat_commit": gsplat_revision,
-        "worker_sha256": _sha256_file(Path(__file__).resolve()),
+        "worker_sha256": _sha256_file(assets.worker_source),
         "torch_version": torch.__version__,
         "torch_cuda_version": str(torch.version.cuda),
         "numpy_version": np.__version__,
@@ -308,6 +414,8 @@ def _numeric_property_names(names: list[str], prefix: str) -> list[str]:
 
 
 def _load_vanilla_3dgs(path: Path) -> SourceGeometry:
+    from plyfile import PlyData  # noqa: PLC0415
+
     ply = PlyData.read(path)
     if "vertex" not in ply:
         raise ValueError("Vanilla 3DGS PLY has no vertex element.")
@@ -390,6 +498,8 @@ def _load_shader(
     *,
     device: torch.device,
 ) -> tuple[DeferredShaderModule, int, dict[str, object]]:
+    from gsplat.nht.deferred_shader import DeferredShaderModule  # noqa: PLC0415
+
     payload = torch.load(appearance_path, map_location="cpu", weights_only=True)
     if not isinstance(payload, dict) or set(payload) != {"config", "state_dict"}:
         raise ValueError("Target appearance must contain only config and state_dict.")
@@ -416,6 +526,8 @@ def _render(
     width: int,
     height: int,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    from gsplat.rendering import rasterization  # noqa: PLC0415
+
     rendered_features, alpha, _ = rasterization(
         means=geometry.means,
         quats=geometry.quats,
@@ -505,7 +617,7 @@ def _save_diagnostic(
     Image.fromarray(panel).save(path)
 
 
-def _validate_hyperparameters(args: argparse.Namespace) -> None:
+def _validate_hyperparameters(args: FeatureFitRequest) -> None:
     if args.optimization_steps <= 0:
         raise SystemExit("optimization-steps must be positive.")
     if not math.isfinite(args.feature_lr) or args.feature_lr <= 0.0:
@@ -526,21 +638,19 @@ def _validate_hyperparameters(args: argparse.Namespace) -> None:
         raise SystemExit("seed must be non-negative.")
 
 
-def main() -> None:
-    args = _parse_args()
+def run_feature_fit(args: FeatureFitRequest) -> None:
+    """Execute one already-resolved feature-fit request."""
     _validate_hyperparameters(args)
-    output_dir = args.output_dir.resolve()
+    output_dir = args.output_dir
     if output_dir.exists():
         raise SystemExit(f"Refusing to overwrite output directory: {output_dir}")
-    source_path = args.source.resolve()
-    appearance_path = args.target_appearance.resolve()
-    if not appearance_path.is_file():
-        raise SystemExit(f"Target appearance is missing: {appearance_path}")
+    source_path = args.source
+    appearance_path = args.target_appearance
     appearance_space = _sha256(
         args.target_appearance_space_sha256,
         name="target appearance-space SHA-256",
     )
-    runtime = _runtime_revisions()
+    runtime = _runtime_revisions(args.runtime_assets)
     loaded_bundle = load_ball_calibration_bundle(args.calibration_bundle)
     source_geometry_cpu = load_source_geometry(source_path, args.source_format)
     if not torch.cuda.is_available():
@@ -770,3 +880,43 @@ def main() -> None:
         shutil.rmtree(temporary, ignore_errors=True)
         raise
     print(json.dumps(report, sort_keys=True))
+
+
+def main() -> None:
+    """Validate raw callable arguments and invoke the internal worker."""
+    args = _parse_args()
+    paths = PATH_BOUNDARY.validate(
+        {
+            "source": args.source,
+            "calibration_bundle": args.calibration_bundle,
+            "target_appearance": args.target_appearance,
+            "output_dir": args.output_dir,
+            "runtime_pins": args.runtime_pins,
+            "nht_repository": args.nht_repository,
+            "gsplat_repository": args.gsplat_repository,
+            "worker_source": args.worker_source,
+        },
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    run_feature_fit(
+        FeatureFitRequest(
+            source=paths.declared("source").path,
+            source_format=args.source_format,
+            calibration_bundle=paths.declared("calibration_bundle").path,
+            target_appearance=paths.declared("target_appearance").path,
+            target_appearance_space_sha256=args.target_appearance_space_sha256,
+            output_dir=paths.declared("output_dir").path,
+            optimization_steps=args.optimization_steps,
+            feature_lr=args.feature_lr,
+            final_lr_fraction=args.final_lr_fraction,
+            min_validation_psnr_db=args.min_validation_psnr_db,
+            seed=args.seed,
+            device=args.device,
+            runtime_assets=FeatureFitRuntimeAssets(
+                pins=paths.declared("runtime_pins").path,
+                nht_repository=paths.declared("nht_repository").path,
+                gsplat_repository=paths.declared("gsplat_repository").path,
+                worker_source=paths.declared("worker_source").path,
+            ),
+        )
+    )

@@ -37,9 +37,7 @@ class ExactSourceMixBatchSampler(Sampler[list[int]]):
         if batch_size <= 0:
             raise ValueError("batch_size must be positive.")
         if not 0 <= synthetic_per_batch < batch_size:
-            raise ValueError(
-                "synthetic_per_batch must be in [0, batch_size)."
-            )
+            raise ValueError("synthetic_per_batch must be in [0, batch_size).")
         if synthetic_per_batch > 0 and synthetic_size == 0:
             raise ValueError(
                 "synthetic_size must be positive when synthetic samples are enabled."
@@ -88,8 +86,7 @@ class ExactSourceMixBatchSampler(Sampler[list[int]]):
             for step in range(self.steps_per_epoch)
         ]
         real_counts = [
-            self.batch_size - synthetic_count
-            for synthetic_count in synthetic_counts
+            self.batch_size - synthetic_count for synthetic_count in synthetic_counts
         ]
         real_indices = self._shuffled_cycles(
             size=self.real_size,
@@ -110,9 +107,7 @@ class ExactSourceMixBatchSampler(Sampler[list[int]]):
         ):
             batch = real_indices[real_start : real_start + real_count]
             batch.extend(
-                synthetic_indices[
-                    synthetic_start : synthetic_start + synthetic_count
-                ]
+                synthetic_indices[synthetic_start : synthetic_start + synthetic_count]
             )
             real_start += real_count
             synthetic_start += synthetic_count

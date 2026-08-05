@@ -16,6 +16,10 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
+)
 from src.synthetic_data_generation.dataset.plcs.artifacts.scene_plan import (
     POSE_IDS,
     build_person_schedule,
@@ -25,11 +29,61 @@ from src.synthetic_data_generation.scene_contract import (
     SceneCamera,
     load_scene_contract,
 )
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
 
 SCHEMA = "tennis_plcs_gaussian_scene_plan_v1"
 P4_SCHEMA = "plcs_avatar_p4_acceptance_report_v1"
 NHT_SCHEMA = "plcs_avatar_nht_fit_and_pose_render_v1"
 EXPORT_SCHEMA = "cycle09_export_reload_verification_v1"
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.plcs.scene_plan_builder",
+    fields=(
+        BoundaryPathField(
+            "scene_contract",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "export_verification",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "p4_acceptance",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "avatar_nht",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "background_composition",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output", PathRole.ARTIFACT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+    ),
+)
 
 
 def _sha256(path: Path) -> str:
@@ -204,19 +258,28 @@ def main() -> None:
     parser.add_argument("--avatar-nht", type=Path, required=True)
     parser.add_argument("--background-composition", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    add_path_roots_argument(parser)
     args = parser.parse_args()
 
-    output = args.output.resolve()
+    paths = PATH_BOUNDARY.validate(
+        {
+            "scene_contract": args.scene_contract,
+            "export_verification": args.export_verification,
+            "p4_acceptance": args.p4_acceptance,
+            "avatar_nht": args.avatar_nht,
+            "background_composition": args.background_composition,
+            "output": args.output,
+        },
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    output = paths.declared("output").path
     if output.exists():
         raise SystemExit(f"Refusing to overwrite output: {output}")
-    contract_path = args.scene_contract.resolve()
-    export_path = args.export_verification.resolve()
-    p4_path = args.p4_acceptance.resolve()
-    nht_root = args.avatar_nht.resolve()
-    composition_path = args.background_composition.resolve()
-    for path in (contract_path, export_path, p4_path, composition_path):
-        if not path.is_file():
-            raise SystemExit(f"Required artifact is missing: {path}")
+    contract_path = paths.declared("scene_contract").path
+    export_path = paths.declared("export_verification").path
+    p4_path = paths.declared("p4_acceptance").path
+    nht_root = paths.declared("avatar_nht").path
+    composition_path = paths.declared("background_composition").path
 
     contract = load_scene_contract(contract_path)
     export = json.loads(export_path.read_text())
@@ -246,10 +309,11 @@ def main() -> None:
         bundle_fingerprint=export["bundle_fingerprint"],
         scene_fingerprint=contract.scene_fingerprint,
     )
-    if (
-        composition.get("background", {}).get("appearance_space_sha256")
-        != nht["target_appearance"]["appearance_space_sha256"]
-    ):
+    background = composition["background"]
+    if not isinstance(background, dict):
+        raise ValueError("Background composition 'background' must be a JSON object.")
+    appearance_space_sha256 = background["appearance_space_sha256"]
+    if appearance_space_sha256 != nht["target_appearance"]["appearance_space_sha256"]:
         raise RuntimeError("Background composition differs from avatar space.")
 
     schedule = build_person_schedule(

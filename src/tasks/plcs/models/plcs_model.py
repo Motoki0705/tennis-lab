@@ -35,7 +35,6 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    default_ffn_dim,
     precompute_freqs_cis_nd,
     resolve_rope_bases,
 )
@@ -44,11 +43,10 @@ from src.utils.models.embeddings import (
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
 )
-from src.utils.schema.court import NUM_COURT_KP
 from src.utils.schema.player import NUM_HUMAN_KP
 
 if TYPE_CHECKING:
-    from omegaconf import DictConfig
+    from src.tasks.plcs.configuration import PLCSModelConfig
 
 
 class PLCSModel(nn.Module):
@@ -80,23 +78,24 @@ class PLCSModel(nn.Module):
 
     def __init__(
         self,
-        hidden_dim: int = 256,
-        num_layers: int = 4,
-        num_heads: int = 8,
-        ffn_dim: int | None = None,
-        dropout: float = 0.1,
-        rope_dim: int | None = None,
-        rope_theta: float = 10000.0,
-        rope_theta_time: float | None = None,
-        rope_theta_camera: float | None = None,
-        rope_theta_type: float = 100.0,
-        num_register_tokens: int = 4,
-        use_kp_id_embedding: bool = True,
-        use_rope: bool = True,
-        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
-        predict_canonical_pose: bool = False,
-        invisible_init_std: float = 0.02,
-        num_court_tokens: int = NUM_COURT_KP,
+        *,
+        hidden_dim: int,
+        num_layers: int,
+        num_heads: int,
+        ffn_dim: int,
+        dropout: float,
+        rope_dim: int,
+        rope_theta: float,
+        rope_theta_time: float,
+        rope_theta_camera: float,
+        rope_theta_type: float,
+        num_register_tokens: int,
+        use_kp_id_embedding: bool,
+        use_rope: bool,
+        ffn_type: Literal["swiglu", "mlp"],
+        predict_canonical_pose: bool,
+        invisible_init_std: float,
+        num_court_tokens: int,
     ) -> None:
         """Initialize the PLCS model.
 
@@ -125,18 +124,13 @@ class PLCSModel(nn.Module):
         self.max_tokens = int(self.num_court_tokens + NUM_HUMAN_KP)
 
         head_dim = hidden_dim // num_heads
-        rope_dim = head_dim if rope_dim is None else rope_dim
-        self.rope_dim = int(rope_dim)
+        self.rope_dim = rope_dim
         self.rope_theta = float(rope_theta)
         self.rope_bases = resolve_rope_bases(
-            self.rope_theta,
-            rope_theta_time,
-            rope_theta_camera,
-            rope_theta_type,
+            rope_theta_time=rope_theta_time,
+            rope_theta_camera=rope_theta_camera,
+            rope_theta_type=rope_theta_type,
         )
-
-        if ffn_dim is None:
-            ffn_dim = default_ffn_dim(hidden_dim)
 
         self._validate_init_args(num_register_tokens=self.num_register_tokens)
 
@@ -146,12 +140,10 @@ class PLCSModel(nn.Module):
         )
         self.court_embed = CourtKPUVEmbedding(
             dim=hidden_dim,
-            dropout=dropout,
             invisible_token=self.invisible_token,
         )
         self.player_embed = PlayerKPUVEmbedding(
             dim=hidden_dim,
-            dropout=dropout,
             invisible_token=self.invisible_token,
         )
 
@@ -182,6 +174,8 @@ class PLCSModel(nn.Module):
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
+                        attention_type="mha",
+                        n_kv_heads=None,
                         rope_base=self.rope_theta,
                         ffn_type=ffn_type,
                     )
@@ -212,6 +206,7 @@ class PLCSModel(nn.Module):
                 hidden_dim=hidden_dim // 2,
                 num_layers=2,
                 dropout=dropout,
+                num_keypoints=NUM_HUMAN_KP,
             )
 
         if self.use_rope:
@@ -230,7 +225,9 @@ class PLCSModel(nn.Module):
             )
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> PLCSModel:
+    def from_config(
+        cls, config: PLCSModelConfig, *, num_court_tokens: int
+    ) -> PLCSModel:
         """Create model from configuration.
 
         Args:
@@ -240,29 +237,24 @@ class PLCSModel(nn.Module):
             PLCSModel: Initialized model.
 
         """
-        model_cfg = config.get("model", {})
-        data_cfg = config.get("data", {})
-
         return cls(
-            hidden_dim=model_cfg.get("hidden_dim", 256),
-            num_layers=model_cfg.get("num_layers", 4),
-            num_heads=model_cfg.get("num_heads", 8),
-            ffn_dim=model_cfg.get("ffn_dim", None),
-            dropout=model_cfg.get("dropout", 0.1),
-            rope_dim=model_cfg.get("rope_dim", None),
-            rope_theta=model_cfg.get("rope_theta", 10000.0),
-            rope_theta_time=model_cfg.get("rope_theta_time", None),
-            rope_theta_camera=model_cfg.get("rope_theta_camera", None),
-            rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
-            num_register_tokens=int(model_cfg.get("num_register_tokens", 4)),
-            use_kp_id_embedding=bool(model_cfg.get("use_kp_id_embedding", True)),
-            use_rope=bool(model_cfg.get("use_rope", True)),
-            ffn_type=cast(
-                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
-            ),
-            predict_canonical_pose=bool(model_cfg.get("predict_canonical_pose", False)),
-            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
-            num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
+            hidden_dim=config.integer("hidden_dim"),
+            num_layers=config.integer("num_layers"),
+            num_heads=config.integer("num_heads"),
+            ffn_dim=config.integer("ffn_dim"),
+            dropout=config.number("dropout"),
+            rope_dim=config.integer("rope_dim"),
+            rope_theta=config.number("rope_theta"),
+            rope_theta_time=config.number("rope_theta_time"),
+            rope_theta_camera=config.number("rope_theta_camera"),
+            rope_theta_type=config.number("rope_theta_type"),
+            num_register_tokens=config.integer("num_register_tokens"),
+            use_kp_id_embedding=config.boolean("use_kp_id_embedding"),
+            use_rope=config.boolean("use_rope"),
+            ffn_type=cast(Literal["swiglu", "mlp"], config.string("ffn_type")),
+            predict_canonical_pose=config.boolean("predict_canonical_pose"),
+            invisible_init_std=config.number("invisible_init_std"),
+            num_court_tokens=num_court_tokens,
         )
 
     def _build_body_rope_positions(self) -> Tensor:

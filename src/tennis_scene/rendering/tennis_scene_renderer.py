@@ -26,10 +26,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
 
-from src.submodules.vendor.gvhmr.body_model import (
-    SMPL_NEUTRAL_J_REGRESSOR_PATH,
-    load_smpl_faces,
-)
+from src.submodules.vendor.gvhmr.body_model import load_smpl_faces
+from src.utils.configuration import SemanticConfigurationError
 from src.utils.geometry.matrices import (
     axis_angle_to_rotation_matrix,
     rotation_matrix_z,
@@ -73,9 +71,6 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from src.tennis_scene.io import SceneResult
-
-DEFAULT_SMPL_MODEL_PATH = Path("data/smplh/neutral/model.npz")
-DEFAULT_SMPL_JOINT_REGRESSOR_PATH = SMPL_NEUTRAL_J_REGRESSOR_PATH
 
 _FIXED_VIEW_MARGIN = 2.0
 
@@ -132,24 +127,27 @@ class TennisSceneRenderer:
 
     def __init__(
         self,
-        style: TennisSceneStyle | None = None,
-        smpl_model_path: str | Path | None = None,
-        smpl_joint_regressor_path: str | Path | None = None,
-        camera: CameraController | None = None,
+        style: TennisSceneStyle,
+        *,
+        smpl_faces_path: Path,
+        smpl_joint_regressor_path: Path,
+        camera: CameraController,
     ) -> None:
-        self.style = style or TennisSceneStyle()
-        self.camera = camera or CameraController("broadcast")
+        self.style = style
+        self.camera = camera
         self.theme = resolve_theme(self.style.theme)
-        court_style = self.style.court_style or self.theme.court_style
+        court_style = self.style.court_style
+        if court_style is None:
+            court_style = self.theme.court_style
         self.court_renderer = CourtRenderer(court_style)
         self.ball_renderer = BallRenderer(self.style.ball_style)
         self.skeleton_renderer = SkeletonRenderer(
             skeleton_type="smpl",
             style=self.style.skeleton_style,
         )
-        self.hud_style = self.style.hud_style or HudStyle(
-            text_color=self.theme.text_color
-        )
+        self.hud_style = self.style.hud_style
+        if self.hud_style is None:
+            self.hud_style = HudStyle(text_color=self.theme.text_color)
         self.minimap_renderer = MinimapRenderer(self.style.minimap_style)
 
         self._mesh_renderer: MeshRenderer | None = None
@@ -159,28 +157,57 @@ class TennisSceneRenderer:
         self._scene_ball_speeds_cache: dict[int, NDArray[np.float32]] = {}
         self._scene_bounce_frames_cache: dict[int, NDArray[np.int64]] = {}
 
-        regressor_path = smpl_joint_regressor_path or DEFAULT_SMPL_JOINT_REGRESSOR_PATH
+        faces_path = self._require_resolved_asset_path(
+            smpl_faces_path,
+            name="SMPL faces body-model asset",
+        )
+        regressor_path = self._require_resolved_asset_path(
+            smpl_joint_regressor_path,
+            name="SMPL joint-regressor asset",
+        )
+
+        # Validate both configured assets for every representation. Skeleton mode
+        # still derives joints from SMPL vertices, and must not silently accept an
+        # invalid faces/body-model path merely because it does not draw the mesh.
+        faces = load_smpl_faces(faces_path)
         self._smpl_joint_regressor = self._load_smpl_joint_regressor(regressor_path)
 
         if self.style.player_representation == "smpl":
-            model_path = smpl_model_path or DEFAULT_SMPL_MODEL_PATH
-            self._mesh_renderer = MeshRenderer(load_smpl_faces(model_path))
+            self._mesh_renderer = MeshRenderer(faces)
+
+    @staticmethod
+    def _require_resolved_asset_path(path: Path, *, name: str) -> Path:
+        if not isinstance(path, Path) or not path.is_absolute():
+            raise SemanticConfigurationError(
+                f"{name} must be an absolute pathlib.Path resolved by "
+                f"PathResolver; got {path!r}."
+            )
+        resolved = path.resolve(strict=False)
+        if path != resolved:
+            raise SemanticConfigurationError(
+                f"{name} must already be normalized by PathResolver; got {path!r}."
+            )
+        if not resolved.is_file():
+            raise FileNotFoundError(f"{name} not found: {resolved}.")
+        return resolved
 
     def _load_smpl_joint_regressor(
         self,
-        regressor_path: str | Path,
+        regressor_path: Path,
     ) -> NDArray[np.float32]:
-        path = Path(regressor_path)
-        if not path.exists():
-            raise FileNotFoundError(
-                f"SMPL joint regressor not found: {path}. SMPL rendering requires this file."
-            )
         import torch
 
-        reg = torch.load(path, map_location="cpu", weights_only=False)
+        reg = torch.load(regressor_path, map_location="cpu", weights_only=False)
         if isinstance(reg, torch.Tensor):
-            return reg.cpu().numpy().astype(np.float32)
-        return np.asarray(reg, dtype=np.float32)
+            result = reg.cpu().numpy().astype(np.float32)
+        else:
+            result = np.asarray(reg, dtype=np.float32)
+        if result.ndim != 2:
+            raise ValueError(
+                "SMPL joint-regressor asset must contain a 2D (joints, vertices) "
+                f"array, got shape {result.shape}."
+            )
+        return result
 
     def _player_color(self, player_idx: int) -> str:
         return _DEFAULT_PLAYER_COLORS[player_idx % len(_DEFAULT_PLAYER_COLORS)]
@@ -193,7 +220,9 @@ class TennisSceneRenderer:
     def _get_players_position(self, scene: SceneResult) -> NDArray[np.float32]:
         return scene.player_position
 
-    def _axis_angle_to_matrix(self, axis_angle: NDArray[np.float32]) -> NDArray[np.float32]:
+    def _axis_angle_to_matrix(
+        self, axis_angle: NDArray[np.float32]
+    ) -> NDArray[np.float32]:
         return axis_angle_to_rotation_matrix(axis_angle)
 
     def _rotation_matrix_z(self, yaw: NDArray[np.float32]) -> NDArray[np.float32]:
@@ -210,7 +239,9 @@ class TennisSceneRenderer:
                 f"{missing_str}."
             )
 
-    def _build_players_smpl_vertices_court(self, scene: SceneResult) -> NDArray[np.float32]:
+    def _build_players_smpl_vertices_court(
+        self, scene: SceneResult
+    ) -> NDArray[np.float32]:
         cache_key = id(scene)
         cached = self._scene_vertices_cache.get(cache_key)
         if cached is not None:
@@ -242,11 +273,12 @@ class TennisSceneRenderer:
             )
         if players_yaw.shape != verts_local.shape[:2]:
             raise RuntimeError(
-                "player_yaw must have shape (P, T), "
-                f"got {players_yaw.shape}."
+                f"player_yaw must have shape (P, T), got {players_yaw.shape}."
             )
 
-        roots = np.einsum("jv,ptvc->ptjc", self._smpl_joint_regressor, verts_local)[:, :, 0, :]
+        roots = np.einsum("jv,ptvc->ptjc", self._smpl_joint_regressor, verts_local)[
+            :, :, 0, :
+        ]
         verts_centered = verts_local - roots[:, :, None, :]
 
         orient_rot = self._axis_angle_to_matrix(global_orient)
@@ -273,9 +305,9 @@ class TennisSceneRenderer:
         players_smpl = self._build_players_smpl_vertices_court(scene)
         players_kp_3d = cast(
             "NDArray[np.float32]",
-            np.einsum(
-                "jv,ptvc->ptjc", self._smpl_joint_regressor, players_smpl
-            ).astype(np.float32),
+            np.einsum("jv,ptvc->ptjc", self._smpl_joint_regressor, players_smpl).astype(
+                np.float32
+            ),
         )
         self._scene_joints_cache[cache_key] = players_kp_3d
         return players_kp_3d
@@ -319,7 +351,8 @@ class TennisSceneRenderer:
         """
         fig = None
         if ax is None:
-            fig = plt.figure(figsize=figsize or self.style.figsize)
+            selected_figsize = self.style.figsize if figsize is None else figsize
+            fig = plt.figure(figsize=selected_figsize)
             apply_figure_theme(fig, self.theme)
             ax = fig.add_subplot(111, projection="3d")
             apply_axes_layout_3d(ax, self.theme)
@@ -348,7 +381,8 @@ class TennisSceneRenderer:
         if end_frame is None:
             end_frame = scene.num_frames
 
-        fig = plt.figure(figsize=figsize or self.style.figsize)
+        selected_figsize = self.style.figsize if figsize is None else figsize
+        fig = plt.figure(figsize=selected_figsize)
         apply_figure_theme(fig, self.theme)
         ax = fig.add_subplot(111, projection="3d")
         apply_axes_layout_3d(ax, self.theme)
@@ -364,12 +398,14 @@ class TennisSceneRenderer:
                 self._render_minimap(minimap_ax, scene, frame_idx)
             return []
 
-        return FuncAnimation(fig, update, frames=frames_range, interval=interval, blit=False)
+        return FuncAnimation(
+            fig, update, frames=frames_range, interval=interval, blit=False
+        )
 
     def save_animation(
         self,
         scene: SceneResult,
-        output_path: str | Path,
+        output_path: Path,
         *,
         fps: float | None = None,
         figsize: tuple[float, float] | None = None,
@@ -379,22 +415,27 @@ class TennisSceneRenderer:
         writer: str = "ffmpeg",
     ) -> None:
         """Save 3D animation as video file."""
-        output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        selected_fps = scene.fps if fps is None else fps
 
         anim = self.create_animation(
             scene,
-            fps=fps,
+            fps=selected_fps,
             figsize=figsize,
             start_frame=start_frame,
             end_frame=end_frame,
         )
-        anim.save(str(output_path), writer=writer, fps=int(round(fps or scene.fps)), dpi=dpi)
+        anim.save(
+            str(output_path), writer=writer, fps=int(round(selected_fps)), dpi=dpi
+        )
 
     def _add_minimap_axes(self, fig: Figure) -> Axes:
         return fig.add_axes(_MINIMAP_RECT)
 
-    def _render_minimap(self, minimap_ax: Axes, scene: SceneResult, frame_idx: int) -> None:
+    def _render_minimap(
+        self, minimap_ax: Axes, scene: SceneResult, frame_idx: int
+    ) -> None:
         """Extract plain arrays for the current frame and draw the minimap."""
         dots: list[tuple[tuple[float, float], str]] = []
         for player_idx in range(scene.player_position.shape[0]):
@@ -426,11 +467,15 @@ class TennisSceneRenderer:
             event_marks_xy=event_marks_xy,
         )
 
-    def _render_bounce_rings(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
+    def _render_bounce_rings(
+        self, ax: Axes3D, scene: SceneResult, frame_idx: int
+    ) -> None:
         bounce_frames = self._get_bounce_frames(scene)
         if bounce_frames is None or scene.ball_3d is None:
             return
-        duration_frames = max(1, int(round(self.style.bounce_marker_duration_s * scene.fps)))
+        duration_frames = max(
+            1, int(round(self.style.bounce_marker_duration_s * scene.fps))
+        )
         for b in bounce_frames.tolist():
             age_frames = frame_idx - b
             if age_frames < 0 or age_frames > duration_frames:
@@ -491,10 +536,26 @@ class TennisSceneRenderer:
                 style_override = SkeletonStyle(
                     joint_color=color,
                     bone_color=color,
-                    joint_size=(self.style.skeleton_style.joint_size if self.style.skeleton_style else 5.0),
-                    bone_width=(self.style.skeleton_style.bone_width if self.style.skeleton_style else 2.0),
-                    joint_alpha=(self.style.skeleton_style.joint_alpha if self.style.skeleton_style else 1.0),
-                    bone_alpha=(self.style.skeleton_style.bone_alpha if self.style.skeleton_style else 0.8),
+                    joint_size=(
+                        self.style.skeleton_style.joint_size
+                        if self.style.skeleton_style
+                        else 5.0
+                    ),
+                    bone_width=(
+                        self.style.skeleton_style.bone_width
+                        if self.style.skeleton_style
+                        else 2.0
+                    ),
+                    joint_alpha=(
+                        self.style.skeleton_style.joint_alpha
+                        if self.style.skeleton_style
+                        else 1.0
+                    ),
+                    bone_alpha=(
+                        self.style.skeleton_style.bone_alpha
+                        if self.style.skeleton_style
+                        else 0.8
+                    ),
                 )
                 self.skeleton_renderer.render_3d(
                     ax,
@@ -532,7 +593,9 @@ class TennisSceneRenderer:
         if ball_valid:
             if self.style.show_ball_shadow:
                 # Fade the contact shadow out as the ball rises.
-                height_ratio = float(np.clip(ball_pos[2] / DEFAULT_VIEW_Z_LIMIT, 0.0, 1.0))
+                height_ratio = float(
+                    np.clip(ball_pos[2] / DEFAULT_VIEW_Z_LIMIT, 0.0, 1.0)
+                )
                 render_ground_shadow(
                     ax,
                     (float(ball_pos[0]), float(ball_pos[1])),
@@ -557,7 +620,9 @@ class TennisSceneRenderer:
             lines.append(f"Bounces {int((bounce_frames <= frame_idx).sum())}")
         render_hud_text(ax, lines, self.hud_style)
 
-    def _render_3d_internal(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
+    def _render_3d_internal(
+        self, ax: Axes3D, scene: SceneResult, frame_idx: int
+    ) -> None:
         enable_explicit_layering(ax)
         apply_axes_theme_3d(ax, self.theme)
 
@@ -580,4 +645,6 @@ class TennisSceneRenderer:
         if self.theme.name != "dark":
             # In dark mode the HUD already shows the frame clock and a title
             # above the full-bleed axes would be clipped anyway.
-            ax.set_title(f"Frame: {frame_idx}/{scene.num_frames}", color=self.theme.text_color)
+            ax.set_title(
+                f"Frame: {frame_idx}/{scene.num_frames}", color=self.theme.text_color
+            )

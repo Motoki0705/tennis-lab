@@ -2,35 +2,110 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Mapping
+from typing import cast
 
+from src.tasks.base.configuration import require_config_value
 from src.utils.models.architectures import TransformerSequenceDiscriminator
-
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
 
 
 class PLCSPoseSequenceDiscriminator(TransformerSequenceDiscriminator):
     """Discriminator over concatenated PLCS position and rotation outputs."""
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> PLCSPoseSequenceDiscriminator:
-        train_cfg = config.get("training", {}) or {}
-        gan_cfg = train_cfg.get("gan", {}) or {}
-        disc_cfg = gan_cfg.get("discriminator", {}) or {}
-        model_cfg = config.get("model", {}) or {}
-
+    def from_config(cls, config: Mapping[str, object]) -> PLCSPoseSequenceDiscriminator:
         return cls(
             input_dim=5,
-            hidden_dim=int(disc_cfg.get("hidden_dim", 128)),
-            num_layers=int(disc_cfg.get("num_layers", 4)),
-            num_heads=int(disc_cfg.get("num_heads", 4)),
-            ffn_dim=disc_cfg.get("ffn_dim", None),
-            dropout=float(disc_cfg.get("dropout", 0.1)),
-            rope_dim=disc_cfg.get("rope_dim", None),
-            rope_theta=float(disc_cfg.get("rope_theta", 10000.0)),
-            ffn_type=str(disc_cfg.get("ffn_type", "swiglu")),
-            max_seq_len=int(disc_cfg.get("max_seq_len", model_cfg.get("max_seq_len", 120))),
-            invalid_init_std=float(disc_cfg.get("invalid_init_std", 0.02)),
-            cls_init_std=float(disc_cfg.get("cls_init_std", 0.02)),
+            hidden_dim=cast(
+                "int",
+                require_config_value(
+                    config, "hidden_dim", int, path="training.gan.discriminator"
+                ),
+            ),
+            num_layers=cast(
+                "int",
+                require_config_value(
+                    config, "num_layers", int, path="training.gan.discriminator"
+                ),
+            ),
+            num_heads=cast(
+                "int",
+                require_config_value(
+                    config, "num_heads", int, path="training.gan.discriminator"
+                ),
+            ),
+            ffn_dim=cast(
+                "int",
+                require_config_value(
+                    config,
+                    "ffn_dim",
+                    int,
+                    path="training.gan.discriminator",
+                ),
+            ),
+            dropout=float(
+                cast(
+                    "float | int",
+                    require_config_value(
+                        config,
+                        "dropout",
+                        (float, int),
+                        path="training.gan.discriminator",
+                    ),
+                )
+            ),
+            rope_dim=cast(
+                "int",
+                require_config_value(
+                    config,
+                    "rope_dim",
+                    int,
+                    path="training.gan.discriminator",
+                ),
+            ),
+            rope_theta=float(
+                cast(
+                    "float | int",
+                    require_config_value(
+                        config,
+                        "rope_theta",
+                        (float, int),
+                        path="training.gan.discriminator",
+                    ),
+                )
+            ),
+            ffn_type=cast(
+                "str",
+                require_config_value(
+                    config, "ffn_type", str, path="training.gan.discriminator"
+                ),
+            ),
+            max_seq_len=cast(
+                "int",
+                require_config_value(
+                    config, "max_seq_len", int, path="training.gan.discriminator"
+                ),
+            ),
+            invalid_init_std=float(
+                cast(
+                    "float | int",
+                    require_config_value(
+                        config,
+                        "invalid_init_std",
+                        (float, int),
+                        path="training.gan.discriminator",
+                    ),
+                )
+            ),
+            cls_init_std=float(
+                cast(
+                    "float | int",
+                    require_config_value(
+                        config,
+                        "cls_init_std",
+                        (float, int),
+                        path="training.gan.discriminator",
+                    ),
+                )
+            ),
         )

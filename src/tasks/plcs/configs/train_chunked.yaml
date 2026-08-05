@@ -4,15 +4,20 @@ defaults:
   - training: default
   - loss: canonical
   - metrics: default
+  - qualitative: default
   - run: train
+  - generation: single_object
   - paths: default
   - camera: default
   - motion_sources: default
   - _self_
 
+external_assets:
+  smplh_model_path: smplx/smplh
+
 hydra:
   run:
-    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
   output_subdir: null
   job:
     chdir: false

@@ -1,5 +1,13 @@
 """Base module for shared abstractions."""
 
+from src.tasks.base.configuration import (
+    BaseDataConfig,
+    BaseRunConfig,
+    BaseTrainingConfig,
+    ChunkDataConfig,
+    SceneVisualizationConfig,
+    TrainingRuntimeConfig,
+)
 from src.tasks.base.data import (
     BaseDatasetWriter,
     CameraSelection,
@@ -14,21 +22,32 @@ from src.tasks.base.data import (
     TemporalWindow,
 )
 from src.tasks.base.inference.predictor import BasePredictor
-from src.tasks.base.training import BaseLightningModule, ChunkRotationCallback
+from src.tasks.base.training import (
+    BaseLightningModule,
+    ChunkRotationCallback,
+    TrackingMetricConfig,
+)
 
 __all__ = [
+    "BaseDataConfig",
     "BaseDatasetWriter",
     "BaseLightningModule",
     "BasePredictor",
+    "BaseRunConfig",
+    "BaseTrainingConfig",
     "CameraSelection",
     "ChunkGenerator",
     "ChunkInfo",
     "ChunkManager",
     "ChunkRotationCallback",
     "ChunkState",
+    "ChunkDataConfig",
     "Scene",
     "SceneDatasetBase",
     "SceneHeader",
+    "SceneVisualizationConfig",
     "SceneDatasetConfig",
     "TemporalWindow",
+    "TrainingRuntimeConfig",
+    "TrackingMetricConfig",
 ]

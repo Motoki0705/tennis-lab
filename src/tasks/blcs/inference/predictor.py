@@ -11,6 +11,7 @@ from torch import Tensor, nn
 
 from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.blcs.training.lightning_module import BLCSLightningModule
+from src.utils.configuration import PathResolver
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
@@ -56,7 +57,10 @@ class BLCSPredictor(BasePredictor):
     def load_from_checkpoint(
         cls,
         checkpoint_path: str | Path | Iterable[str | Path],
-        device: str | torch.device = "cpu",
+        *,
+        resolver: PathResolver,
+        device: str | torch.device,
+        allow_device_fallback: bool,
         **kwargs: Any,
     ) -> Self:
         """Create a BLCSPredictor from a checkpoint file.
@@ -76,7 +80,9 @@ class BLCSPredictor(BasePredictor):
         model, resolved_device = cls._load_single_lightning_checkpoint(
             checkpoint_path,
             BLCSLightningModule,
-            device,
+            resolver=resolver,
+            device=device,
+            allow_device_fallback=allow_device_fallback,
             **kwargs,
         )
         return cls(model=model, device=resolved_device)
@@ -108,14 +114,11 @@ class BLCSPredictor(BasePredictor):
                            model outputs it, else in normalized units
 
         """
-        ball_uv, court_kp, ball_vis, ball_mask, court_vis = self._to_device(
-            self.device,
-            ball_uv,
-            court_kp,
-            ball_vis,
-            ball_mask,
-            court_vis,
-        )
+        ball_uv = ball_uv.to(self.device)
+        court_kp = court_kp.to(self.device)
+        ball_vis = None if ball_vis is None else ball_vis.to(self.device)
+        ball_mask = None if ball_mask is None else ball_mask.to(self.device)
+        court_vis = None if court_vis is None else court_vis.to(self.device)
 
         with torch.no_grad():
             outputs = self.model(
@@ -135,5 +138,7 @@ class BLCSPredictor(BasePredictor):
                     outputs["velocity"], self.norm_scale_xyz
                 )
 
-        outputs = {k: v.cpu() if isinstance(v, Tensor) else v for k, v in outputs.items()}
+        outputs = {
+            k: v.cpu() if isinstance(v, Tensor) else v for k, v in outputs.items()
+        }
         return outputs

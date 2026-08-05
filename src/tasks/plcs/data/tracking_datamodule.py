@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 from src.tasks.base.data.canonical_tracking import validate_lifecycle_capacity
 from src.tasks.base.data.chunked_datamodule import BaseChunkedDataModule
 from src.tasks.base.data.datamodule import SceneDirectoryDataModule
+from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.data.chunk_manager import ChunkManager
 from src.tasks.plcs.data.tracking_dataset import (
     PLCSTrackingDataset,
@@ -20,8 +21,9 @@ from src.tasks.plcs.data.tracking_dataset import (
 class PLCSTrackingDataModule(SceneDirectoryDataModule):
     """Read fixed train/val/test multi-person scenes from disk."""
 
-    default_scene_dir = "data/plcs/multi_object"
-    default_batch_size = 8
+    def __init__(self, config: object) -> None:
+        self.plcs_runtime = PLCSTrainingConfig.from_config(config)
+        super().__init__(config)
 
     def _build_collate_fn(self) -> Any:
         return collate_plcs_tracking_batch
@@ -32,7 +34,7 @@ class PLCSTrackingDataModule(SceneDirectoryDataModule):
         return PLCSTrackingDataset(
             scene_dir=scene_dir,
             split_file=split_file,
-            config=self.config,
+            config=self.plcs_runtime.raw,
             augment=augment,
         )
 
@@ -43,26 +45,20 @@ class PLCSTrackingDataModule(SceneDirectoryDataModule):
 class ChunkedPLCSTrackingDataModule(BaseChunkedDataModule, PLCSTrackingDataModule):
     """Generate only train scenes on the fly while keeping val/test fixed."""
 
-    def _default_chunks_dir(self) -> str:
-        return "data/plcs/multi_object_chunks"
-
     def _build_chunk_manager(self) -> ChunkManager:
-        generation_cfg: Any = self.config.get("generation")
-        if generation_cfg is None or str(generation_cfg.get("mode")) != "multi_object":
+        generation_cfg = self.plcs_runtime.raw.generation
+        if str(generation_cfg.mode) != "multi_object":
             raise ValueError(
                 "Chunked PLCS tracking requires generation.mode='multi_object'."
             )
-        timeline_cfg: Any = generation_cfg.get("timeline")
-        if timeline_cfg is None:
-            raise ValueError("Chunked PLCS tracking requires generation.timeline.")
         validate_lifecycle_capacity(
-            timeline_config=timeline_cfg,
-            data_config=self.config.get("data", {}),
-            num_queries=int(self.config.get("model", {}).get("num_queries")),
+            timeline_config=generation_cfg.timeline,
+            data_config=self.plcs_runtime.raw.data,
+            num_queries=self.plcs_runtime.model.integer("num_queries"),
         )
         return ChunkManager(
             chunks_dir=self.chunks_dir,
-            config=self.config,
+            config=self.plcs_runtime.raw,
             scenes_per_chunk=self.scenes_per_chunk,
             epochs_per_chunk=self.epochs_per_chunk,
             prefetch_chunks=self.prefetch_chunks,

@@ -1,6 +1,6 @@
 schema: ball_detection_evaluation_manifest_v1
 # evaluation/ holds pre-#618 legacy-protocol results; keep them separate.
-output_dir: outputs/ball_detection/evaluation_native
+output_dir: ball_detection/evaluation_native
 device: auto
 resume: true
 fail_fast: false
@@ -39,44 +39,52 @@ datasets:
 
 models:
   - id: convnext-tracknet
+    enabled: true
     category: architecture-controlled
-    checkpoint: outputs/ball_detection/convnext/logs/version_0/checkpoints/last.ckpt
+    checkpoint: ball_detection/convnext/logs/version_0/checkpoints/last.ckpt
     expected_model_name: conv_next_unet
     datasets: [tracknet]
     strict: true
+    weights_only: false
 
   # issue #618: val/f1-monitored fine-tune of convnext-tracknet; deployed as
   # ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt (2026-07-07).
   - id: convnext-v2-ft
+    enabled: true
     category: architecture-controlled
-    checkpoint: outputs/ball_detection/convnext_v2_ft/logs/version_0/checkpoints/ball-detection-epoch=13.ckpt
+    checkpoint: ball_detection/convnext_v2_ft/logs/version_0/checkpoints/ball-detection-epoch=13.ckpt
     expected_model_name: conv_next_unet
     datasets: [tracknet]
     strict: true
+    weights_only: false
 
   # issue #618: from-scratch retrain with the same val/f1-monitored recipe as
   # convnext-v2-ft (60-epoch budget, early-stopped at 36; best val/f1 at ep25).
   - id: convnext-v2-scratch
+    enabled: true
     category: architecture-controlled
-    checkpoint: outputs/ball_detection/convnext_v2_scratch/logs/version_0/checkpoints/ball-detection-epoch=25.ckpt
+    checkpoint: ball_detection/convnext_v2_scratch/logs/version_0/checkpoints/ball-detection-epoch=25.ckpt
     expected_model_name: conv_next_unet
     datasets: [tracknet]
     strict: true
+    weights_only: false
 
   # Enable after a TrackNet-only DINOv3 run is available.
   - id: dinov3-tracknet
     enabled: false
     category: architecture-controlled
-    checkpoint: outputs/ball_detection/dinov3_rope_tracknet/checkpoints/last.ckpt
+    checkpoint: ball_detection/dinov3_rope_tracknet/checkpoints/last.ckpt
     expected_model_name: dinov3_rope
     datasets: [tracknet]
     strict: true
+    weights_only: false
 
   # Enable after Web-static + temporal training is available.
   - id: dinov3-full
     enabled: false
     category: full-strategy
-    checkpoint: outputs/ball_detection/dinov3_rope_full/checkpoints/last.ckpt
+    checkpoint: ball_detection/dinov3_rope_full/checkpoints/last.ckpt
     expected_model_name: dinov3_rope
     datasets: [tracknet, web]
     strict: true
+    weights_only: false

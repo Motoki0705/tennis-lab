@@ -21,6 +21,6 @@ class ChunkRotationCallback(pl.Callback):
             and trainer.current_epoch + 1 >= max_epochs
         ):
             return
-        datamodule = trainer.datamodule
+        datamodule = getattr(trainer, "datamodule", None)
         if datamodule is not None and hasattr(datamodule, "on_train_epoch_end"):
             datamodule.on_train_epoch_end()

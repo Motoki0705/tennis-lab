@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 import torch
 from torch import Tensor
@@ -42,7 +42,7 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
         super().__init__(**kwargs)
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         self.tracking_augmentation = BLCSTrackingCandidateAugmentation(
-            data_cfg.get("augmentation", {})
+            data_cfg["augmentation"]
         )
 
     def build_sample(self, scene: Scene) -> dict[str, Tensor]:
@@ -140,31 +140,28 @@ def collate_blcs_tracking_batch(
     batch: list[dict[str, Tensor]],
 ) -> dict[str, Tensor]:
     """Pad variable camera/time/candidate dimensions and stack BLCS scenes."""
-    return cast(
-        dict[str, Tensor],
-        pad_and_stack_tracking_batch(
-            batch,
-            padding_dimensions={
-                "ball_uv": (0, 1, 2),
-                "ball_visible": (0, 1, 2),
-                "court_kp": (0, 1),
-                "court_vis": (0, 1),
-                "frame_mask": (0,),
-                "view_mask": (0,),
-                "target_position": (0, 1),
-                "target_velocity": (0, 1),
-                "target_presence": (0, 1),
-                "target_instance_id": (0, 1),
-                "target_slot_mask": (0,),
-                "clean_ball_uv": (0, 1, 2),
-                "clean_ball_visible": (0, 1, 2),
-                "candidate_gt_index": (0, 1, 2),
-            },
-            pad_values={
-                "target_instance_id": -1,
-                "candidate_gt_index": -1,
-            },
-        ),
+    return pad_and_stack_tracking_batch(
+        batch,
+        padding_dimensions={
+            "ball_uv": (0, 1, 2),
+            "ball_visible": (0, 1, 2),
+            "court_kp": (0, 1),
+            "court_vis": (0, 1),
+            "frame_mask": (0,),
+            "view_mask": (0,),
+            "target_position": (0, 1),
+            "target_velocity": (0, 1),
+            "target_presence": (0, 1),
+            "target_instance_id": (0, 1),
+            "target_slot_mask": (0,),
+            "clean_ball_uv": (0, 1, 2),
+            "clean_ball_visible": (0, 1, 2),
+            "candidate_gt_index": (0, 1, 2),
+        },
+        pad_values={
+            "target_instance_id": -1,
+            "candidate_gt_index": -1,
+        },
     )
 
 

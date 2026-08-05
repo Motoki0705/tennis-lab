@@ -12,10 +12,12 @@ from PIL import Image
 from torch import Tensor
 
 from src.tasks.base.inference.predictor import BasePredictor
+from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.inference.preprocess import preprocess_court_image
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
+from src.utils.configuration import PathResolver
 
 
 class _CourtMaskPredictor(BasePredictor):
@@ -28,7 +30,7 @@ class _CourtMaskPredictor(BasePredictor):
         self,
         model: torch.nn.Module,
         device: torch.device,
-        short_side: int = 640,
+        short_side: int,
     ) -> None:
         self.model = model
         self.device = device
@@ -41,22 +43,26 @@ class _CourtMaskPredictor(BasePredictor):
     def load_from_checkpoint(
         cls,
         checkpoint_path: str | Path | Iterable[str | Path],
-        device: str | torch.device = "cpu",
+        *,
+        resolver: PathResolver,
+        device: str | torch.device,
+        allow_device_fallback: bool,
         **kwargs: Any,
     ) -> Self:
         """Load predictor from a court-detection Lightning checkpoint."""
         lightning_module, resolved_device = cls._load_single_lightning_module(
             checkpoint_path,
             CourtDetectionLightningModule,
-            device,
-            weights_only=bool(kwargs.pop("weights_only", False)),
+            resolver=resolver,
+            device=device,
+            allow_device_fallback=allow_device_fallback,
+            weights_only=False,
             **kwargs,
         )
 
         model = lightning_module.model
-        data_cfg = dict(lightning_module.config.get("data", {}))
-        aug_cfg = data_cfg.get("augmentation", {})
-        short_side = int(aug_cfg.get("val_short_side", 640))
+        runtime = CourtTrainingConfig.from_config(lightning_module.config)
+        short_side = runtime.data.augmentation.val_short_side
 
         return cls(model=model, device=resolved_device, short_side=short_side)
 

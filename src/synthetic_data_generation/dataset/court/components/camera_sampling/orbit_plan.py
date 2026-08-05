@@ -13,6 +13,10 @@ from pathlib import Path
 
 import numpy as np
 
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
+)
 from src.synthetic_data_generation.dataset.court.artifacts.layout import (
     load_multi_court_layout,
 )
@@ -20,8 +24,44 @@ from src.synthetic_data_generation.dataset.court.components.camera_sampling.orbi
     sample_orbit_families,
 )
 from src.synthetic_data_generation.scene_contract import load_scene_contract
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
 
 SCHEMA = "tennis_multicourt_orbit_plan_v1"
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.court.orbit_plan",
+    fields=(
+        BoundaryPathField(
+            "contract",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "court_geometry",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "points_scene",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output", PathRole.ARTIFACT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+    ),
+)
 
 
 def _sha256(path: Path) -> str:
@@ -57,25 +97,35 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=26072814)
     parser.add_argument("--samples-per-orbit", type=int, default=24)
+    add_path_roots_argument(parser)
     args = parser.parse_args()
 
-    output = args.output.resolve()
+    paths = PATH_BOUNDARY.validate(
+        {
+            "contract": args.contract,
+            "court_geometry": args.court_geometry,
+            "points_scene": args.points_scene,
+            "output": args.output,
+        },
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    contract_path = paths.declared("contract").path
+    court_geometry = paths.declared("court_geometry").path
+    points_scene = paths.declared("points_scene").path
+    output = paths.declared("output").path
     if output.exists():
         raise SystemExit(f"Refusing to overwrite output: {output}")
-    for path in (args.contract, args.court_geometry, args.points_scene):
-        if not path.is_file():
-            raise FileNotFoundError(path)
 
-    contract = load_scene_contract(args.contract)
+    contract = load_scene_contract(contract_path)
     layout = load_multi_court_layout(
-        args.court_geometry,
+        court_geometry,
         contract,
         candidate_ids=("court-0", "court-1"),
     )
     result = sample_orbit_families(
         contract.cameras,
         layout,
-        np.load(args.points_scene, allow_pickle=False),
+        np.load(points_scene, allow_pickle=False),
         seed=args.seed,
         samples_per_orbit=args.samples_per_orbit,
     )
@@ -141,18 +191,18 @@ def main() -> None:
         "status": "passed",
         "source": {
             "scene_contract": {
-                "path": str(args.contract.resolve()),
-                "sha256": _sha256(args.contract),
+                "path": str(contract_path),
+                "sha256": _sha256(contract_path),
                 "scene_fingerprint": contract.scene_fingerprint,
             },
             "court_geometry": {
-                "path": str(args.court_geometry.resolve()),
-                "sha256": _sha256(args.court_geometry),
+                "path": str(court_geometry),
+                "sha256": _sha256(court_geometry),
                 "artifact_fingerprint": layout.geometry_artifact_fingerprint,
             },
             "points_scene": {
-                "path": str(args.points_scene.resolve()),
-                "sha256": _sha256(args.points_scene),
+                "path": str(points_scene),
+                "sha256": _sha256(points_scene),
             },
         },
         "label_schema": {

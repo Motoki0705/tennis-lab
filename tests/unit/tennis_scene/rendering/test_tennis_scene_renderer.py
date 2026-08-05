@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import Mock
 
 import matplotlib
@@ -18,6 +19,7 @@ from src.tennis_scene.rendering.tennis_scene_renderer import (
     TennisSceneRenderer,
     TennisSceneStyle,
 )
+from src.utils.rendering.camera_view import CameraController
 
 
 def _make_renderer_with_fake_regressor() -> TennisSceneRenderer:
@@ -29,6 +31,19 @@ def _make_renderer_with_fake_regressor() -> TennisSceneRenderer:
     renderer._scene_vertices_cache = {}
     renderer._scene_joints_cache = {}
     return renderer
+
+
+def _make_renderer(
+    style: TennisSceneStyle,
+    assets: tuple[Path, Path],
+) -> TennisSceneRenderer:
+    faces_path, regressor_path = assets
+    return TennisSceneRenderer(
+        style,
+        smpl_faces_path=faces_path,
+        smpl_joint_regressor_path=regressor_path,
+        camera=CameraController("broadcast"),
+    )
 
 
 def test_build_players_smpl_vertices_court_maps_smpl_y_up_to_court_z_up() -> None:
@@ -59,9 +74,12 @@ def test_build_players_smpl_vertices_court_maps_smpl_y_up_to_court_z_up() -> Non
     np.testing.assert_allclose(vertices[0, 0, 2], [10.2, 19.6, 1.5], atol=1e-6)
 
 
-def test_render_frame_dark_theme_smoke(tiny_scene: SceneResult) -> None:
+def test_render_frame_dark_theme_smoke(
+    tiny_scene: SceneResult,
+    smpl_renderer_assets: tuple[Path, Path],
+) -> None:
     """Full-feature frame render: bounce ring frame, HUD, minimap, dark theme."""
-    renderer = TennisSceneRenderer(TennisSceneStyle(theme="dark"))
+    renderer = _make_renderer(TennisSceneStyle(theme="dark"), smpl_renderer_assets)
 
     fig, ax = renderer.render_frame_3d(tiny_scene, 3)
 
@@ -82,9 +100,13 @@ def test_render_frame_dark_theme_smoke(tiny_scene: SceneResult) -> None:
         plt.close(fig)
 
 
-def test_render_frame_light_theme_keeps_axes(tiny_scene: SceneResult) -> None:
-    renderer = TennisSceneRenderer(
-        TennisSceneStyle(theme="light", show_minimap=False)
+def test_render_frame_light_theme_keeps_axes(
+    tiny_scene: SceneResult,
+    smpl_renderer_assets: tuple[Path, Path],
+) -> None:
+    renderer = _make_renderer(
+        TennisSceneStyle(theme="light", show_minimap=False),
+        smpl_renderer_assets,
     )
 
     fig, ax = renderer.render_frame_3d(tiny_scene, 0)
@@ -101,9 +123,11 @@ def test_render_frame_light_theme_keeps_axes(tiny_scene: SceneResult) -> None:
 def test_render_frame_does_not_draw_player_direction_arrows(
     tiny_scene: SceneResult,
     monkeypatch: pytest.MonkeyPatch,
+    smpl_renderer_assets: tuple[Path, Path],
 ) -> None:
-    renderer = TennisSceneRenderer(
-        TennisSceneStyle(theme="light", show_minimap=False)
+    renderer = _make_renderer(
+        TennisSceneStyle(theme="light", show_minimap=False),
+        smpl_renderer_assets,
     )
     quiver = Mock()
     monkeypatch.setattr(Axes3D, "quiver", quiver)
@@ -115,8 +139,13 @@ def test_render_frame_does_not_draw_player_direction_arrows(
         plt.close(fig)
 
 
-def test_render_into_external_axes_adds_no_minimap(tiny_scene: SceneResult) -> None:
-    renderer = TennisSceneRenderer(TennisSceneStyle(theme="dark"))
+def test_render_into_external_axes_adds_no_minimap(
+    tiny_scene: SceneResult,
+    smpl_renderer_assets: tuple[Path, Path],
+) -> None:
+    renderer = _make_renderer(
+        TennisSceneStyle(theme="dark"), smpl_renderer_assets
+    )
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
 

@@ -8,8 +8,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.base.training.runner import BaseTrainingRunner
+from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.data.datamodule import PLCSDataModule
-from src.tasks.plcs.generate_dataset.config import prepare_generation_config
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tasks.plcs.training.tracking_lightning_module import (
     PLCSTrackingLightningModule,
@@ -20,15 +20,13 @@ class PLCSTrainingRunner(BaseTrainingRunner):
     """Training runner for PLCS."""
 
     def prepare_config(self, config: Any) -> None:
-        backend = str(config.get("data", {}).get("backend", "default"))
-        tracking = str(config.get("model", {}).get("name")) == "plcs_track_query"
-        if backend == "chunked" and not tracking:
-            prepare_generation_config(config, resolve=False)
+        PLCSTrainingConfig.from_config(config)
         super().prepare_config(config)
 
     def build_datamodule(self, config: Any) -> pl.LightningDataModule:
-        backend = str(config.get("data", {}).get("backend", "default"))
-        tracking = str(config.get("model", {}).get("name")) == "plcs_track_query"
+        runtime = PLCSTrainingConfig.from_config(config)
+        backend = runtime.data.backend
+        tracking = runtime.model.name == "plcs_track_query"
         if tracking:
             from src.tasks.plcs.data.tracking_datamodule import (
                 ChunkedPLCSTrackingDataModule,
@@ -60,7 +58,8 @@ class PLCSTrainingRunner(BaseTrainingRunner):
         *,
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
-        if str(config.get("model", {}).get("name")) == "plcs_track_query":
+        runtime = PLCSTrainingConfig.from_config(config)
+        if runtime.model.name == "plcs_track_query":
             return PLCSTrackingLightningModule(config)
         return PLCSLightningModule(config)
 
@@ -72,7 +71,8 @@ class PLCSTrainingRunner(BaseTrainingRunner):
     ) -> list[Any]:
         extras = super().callbacks_extra(config, datamodule, logger)
 
-        if str(config.get("data", {}).get("backend", "default")) != "chunked":
+        runtime = PLCSTrainingConfig.from_config(config)
+        if runtime.data.backend != "chunked":
             return extras
 
         from src.tasks.base.training.chunk_rotation_callback import (

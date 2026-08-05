@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from torch import nn
 
+from src.tasks.ball_detection.configuration import validate_model
 from src.tasks.ball_detection.models.conv_next_unet import ConvNeXtUNet
 from src.tasks.ball_detection.models.dinov3_rope import DINOv3RoPEBallDetector
 from src.tasks.ball_detection.models.discriminators import (
@@ -25,8 +26,8 @@ if TYPE_CHECKING:
 
 def build_ball_detection_model(config: DictConfig) -> nn.Module:
     """Build a ball detection model from ``config.model.name``."""
-    model_cfg = config.get("model", {})
-    model_name = str(model_cfg.get("name", "stunet"))
+    model_cfg = validate_model(config)
+    model_name = str(model_cfg["name"])
     if model_name == "stunet":
         return SpatioTemporalUNet.from_config(config)
     if model_name == "conv_next_unet":

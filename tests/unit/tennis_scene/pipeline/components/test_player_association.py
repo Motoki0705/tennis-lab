@@ -10,12 +10,14 @@ import numpy as np
 from src.tennis_scene.pipeline.components import player_association as module_under_test
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRResult
 from src.tennis_scene.pipeline.components.player_association import (
-    PlayerAssociationConfig,
     PlayerAssociationModule,
     PlayerAssociationResult,
     PlayerAssociationSegment,
 )
 from src.utils.video import VideoInfo
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    make_player_association_config,
+)
 
 
 def _make_gvhmr_result(*, num_players: int = 2, num_frames: int = 3) -> GVHMRResult:
@@ -43,13 +45,14 @@ def _make_gvhmr_result(*, num_players: int = 2, num_frames: int = 3) -> GVHMRRes
 def test_single_camera_process_creates_identity_association_without_ui(
     monkeypatch,
     caplog,
+    tmp_path: Path,
 ) -> None:
     def _fail_named_window(*_args, **_kwargs) -> None:
         raise AssertionError("manual UI must not be opened for a single camera")
 
     monkeypatch.setattr(module_under_test.cv2, "namedWindow", _fail_named_window)
     association = PlayerAssociationModule(
-        PlayerAssociationConfig(reference_camera="cam0")
+        make_player_association_config(tmp_path, reference_camera="cam0")
     )
 
     with caplog.at_level(logging.INFO):
@@ -74,10 +77,12 @@ def test_single_camera_process_creates_identity_association_without_ui(
     assert "single camera -> identity association" in caplog.text
 
 
-def test_single_camera_identity_apply_preserves_reference_player_order() -> None:
+def test_single_camera_identity_apply_preserves_reference_player_order(
+    tmp_path: Path,
+) -> None:
     gvhmr = _make_gvhmr_result(num_players=2, num_frames=3)
     association = PlayerAssociationModule(
-        PlayerAssociationConfig(reference_camera=0)
+        make_player_association_config(tmp_path, reference_camera=0)
     )
     result = association.process(
         gvhmr_results=[gvhmr],
@@ -101,7 +106,10 @@ def test_single_camera_identity_apply_preserves_reference_player_order() -> None
     np.testing.assert_array_equal(applied.track_ids_by_camera[0], gvhmr.track_ids)
 
 
-def test_multicamera_process_still_delegates_to_manual_ui(monkeypatch) -> None:
+def test_multicamera_process_still_delegates_to_manual_ui(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
     expected = PlayerAssociationResult(
         camera_ids=["cam0", "cam1"],
         canonical_player_ids=np.array([0], dtype=np.int32),
@@ -123,7 +131,7 @@ def test_multicamera_process_still_delegates_to_manual_ui(monkeypatch) -> None:
 
     monkeypatch.setattr(PlayerAssociationModule, "_process_manual_ui", _fake_manual_ui)
     association = PlayerAssociationModule(
-        PlayerAssociationConfig(reference_camera="cam0")
+        make_player_association_config(tmp_path, reference_camera="cam0")
     )
 
     result = association.process(

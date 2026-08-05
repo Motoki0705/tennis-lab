@@ -1,0 +1,14 @@
+position_weight: 1.0
+rotation_weight: 1.0
+angle_weight: 0.0
+position_smoothness_weight: 0.0
+canonical_pose_weight: 0.0
+joint_angle_weight: 0.0
+torsion_angle_weight: 0.0
+torso_twist_weight: 0.0
+bone_length_weight: 0.0
+joint_angle_velocity_weight: 0.0
+torsion_angle_velocity_weight: 0.0
+torso_twist_velocity_weight: 0.0
+joint_angle_velocity_angle_weights: null
+torsion_angle_velocity_angle_weights: null

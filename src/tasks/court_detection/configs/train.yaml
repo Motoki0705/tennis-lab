@@ -1,14 +1,16 @@
 defaults:
+  - paths: default
   - data: court_seg
   - model: hierarchical
   - loss: seg
   - training: default
   - run: train
+  - render_style: default
   - _self_
 
 hydra:
   run:
-    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null
   job:
     chdir: false

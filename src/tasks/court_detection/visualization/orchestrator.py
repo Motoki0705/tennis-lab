@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
+from src.tasks.base.configuration import require_config_mapping, require_config_value
 from src.tasks.base.visualization.gif import save_gif
-from src.tasks.base.visualization.layout import PanelStyle
-from src.tasks.base.visualization.orchestrator import (
-    parse_rgb as _parse_rgb,
+from src.tasks.court_detection.configuration import (
+    CourtRenderConfig,
+    validate_paths_boundary,
 )
-from src.tasks.base.visualization.orchestrator import resolve_device
 from src.tasks.court_detection.visualization.api.predict import (
     predict_kp,
     predict_line,
@@ -27,10 +28,24 @@ from src.tasks.court_detection.visualization.rendering import (
     render_line_frames,
     render_seg_frames,
 )
+from src.utils.configuration import (
+    MissingConfigurationKeyError,
+    PathResolver,
+    PathRole,
+    UnknownConfigurationKeyError,
+)
 
 logger = logging.getLogger(__name__)
 
 _VALID_TASKS = {"kp", "seg", "line"}
+
+
+def _number(value: object) -> float:
+    return float(cast("float | int", value))
+
+
+def _integer(value: object) -> int:
+    return cast("int", value)
 
 
 @dataclass(frozen=True)
@@ -39,9 +54,11 @@ class RuntimeConfig:
 
     task: str
     image_source: str
-    checkpoint: Path
+    checkpoint: str
     save: Path
     device: str
+    allow_device_fallback: bool
+    resolver: PathResolver
     fps: float
     max_frames: int | None
     gif_loop: int
@@ -52,66 +69,96 @@ class RuntimeConfig:
 
 def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     """Build runtime config from composed Hydra config."""
-    vis = cfg.visualization
-    run = cfg.get("run", {})
-
-    task = str(vis.task).strip().lower()
-    if task not in _VALID_TASKS:
-        raise ValueError(f"visualization.task must be one of {sorted(_VALID_TASKS)}, got {task!r}.")
-
-    image_source = to_absolute_path(str(vis.image_source))
-    checkpoint = Path(to_absolute_path(str(vis.checkpoint)))
-    output_dir = Path(to_absolute_path(str(run.get("output_dir", "outputs/court_detection/visualization"))))
-    save_raw = vis.get("save")
-    save_path = (
-        Path(to_absolute_path(str(save_raw)))
-        if save_raw
-        else output_dir / f"{task}.gif"
+    root, resolver = validate_paths_boundary(
+        cfg, expected_sections={"visualization", "run", "render_style"}
+    )
+    vis = require_config_mapping(root, "visualization", path="configuration")
+    run = require_config_mapping(root, "run", path="configuration")
+    _require_exact(run, {"output_dir", "device", "allow_device_fallback"}, path="run")
+    _require_exact(
+        vis,
+        {
+            "task",
+            "image_source",
+            "checkpoint",
+            "save",
+            "fps",
+            "max_frames",
+            "info",
+            "gif",
+        },
+        path="visualization",
     )
 
-    fps = float(vis.get("fps", 6.0))
+    task = str(require_config_value(vis, "task", str, path="visualization"))
+    if task not in _VALID_TASKS:
+        raise ValueError(
+            f"visualization.task must be one of {sorted(_VALID_TASKS)}, got {task!r}."
+        )
+
+    image_source_raw = str(
+        require_config_value(vis, "image_source", str, path="visualization")
+    )
+    checkpoint = str(require_config_value(vis, "checkpoint", str, path="visualization"))
+    save_raw = str(require_config_value(vis, "save", str, path="visualization"))
+    image_source = str(resolver.resolve(PathRole.DATA, image_source_raw))
+    save_path = resolver.resolve(PathRole.ARTIFACT, save_raw)
+    resolver.resolve(
+        PathRole.OUTPUT,
+        str(require_config_value(run, "output_dir", str, path="run")),
+    )
+
+    fps = _number(require_config_value(vis, "fps", (float, int), path="visualization"))
     if fps <= 0:
         raise ValueError("visualization.fps must be positive.")
 
-    max_frames_raw = vis.get("max_frames")
-    max_frames = None if max_frames_raw in {None, "", 0} else int(max_frames_raw)
+    max_frames_raw = require_config_value(
+        vis, "max_frames", (int, type(None)), path="visualization"
+    )
+    max_frames = cast("int | None", max_frames_raw)
     if max_frames is not None and max_frames <= 0:
         raise ValueError("visualization.max_frames must be positive when set.")
 
-    draw_cfg = vis.get("draw", {})
-    layout_cfg = vis.get("layout", {})
-    gif_cfg = vis.get("gif", {})
-
-    style = CourtRenderStyle(
-        panel=PanelStyle(
-            background_rgb=_parse_rgb(layout_cfg.get("background_rgb", [18, 18, 18]), name="visualization.layout.background_rgb"),
-            text_color_rgb=_parse_rgb(layout_cfg.get("text_color_rgb", [245, 245, 245]), name="visualization.layout.text_color_rgb"),
-            text_scale=float(layout_cfg.get("text_scale", 0.52)),
-            text_thickness=int(layout_cfg.get("text_thickness", 1)),
-            tile_gap=int(layout_cfg.get("tile_gap", 12)),
-            panel_label_height=int(layout_cfg.get("panel_label_height", 24)),
-        ),
-        header_height=int(layout_cfg.get("header_height", 36)),
-        display_width=int(layout_cfg.get("display_width", 640)),
-        kp_radius=int(draw_cfg.get("kp_radius", 4)),
-        kp_color_rgb=_parse_rgb(draw_cfg.get("kp_color_rgb", [96, 255, 128]), name="visualization.draw.kp_color_rgb"),
-        kp_thickness=int(draw_cfg.get("kp_thickness", -1)),
-        line_threshold=float(draw_cfg.get("line_threshold", 0.5)),
-    )
+    gif_cfg = require_config_mapping(vis, "gif", path="visualization")
+    _require_exact(gif_cfg, {"loop"}, path="visualization.gif")
+    style = CourtRenderConfig.from_mapping(
+        require_config_mapping(root, "render_style", path="configuration")
+    ).build()
 
     return RuntimeConfig(
         task=task,
         image_source=image_source,
         checkpoint=checkpoint,
         save=save_path,
-        device=resolve_device(str(run.get("device", "auto"))),
+        device=str(require_config_value(run, "device", str, path="run")),
+        allow_device_fallback=cast(
+            "bool", require_config_value(run, "allow_device_fallback", bool, path="run")
+        ),
+        resolver=resolver,
         fps=fps,
         max_frames=max_frames,
-        gif_loop=int(gif_cfg.get("loop", 0)),
-        info=bool(vis.get("info", False)),
+        gif_loop=_integer(
+            require_config_value(gif_cfg, "loop", int, path="visualization.gif")
+        ),
+        info=cast(
+            "bool", require_config_value(vis, "info", bool, path="visualization")
+        ),
         clip_label=f"court/{task}",
         style=style,
     )
+
+
+def _require_exact(mapping: Mapping[str, object], keys: set[str], *, path: str) -> None:
+    unknown = sorted(set(mapping) - keys)
+    if unknown:
+        raise UnknownConfigurationKeyError(
+            f"Unknown configuration key(s): {', '.join(f'{path}.{key}' for key in unknown)}."
+        )
+    missing = sorted(keys - set(mapping))
+    if missing:
+        raise MissingConfigurationKeyError(
+            f"Missing required configuration key(s): {', '.join(f'{path}.{key}' for key in missing)}."
+        )
 
 
 def run_visualization(cfg: RuntimeConfig) -> int:
@@ -129,6 +176,8 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         predictions = predict_kp(
             checkpoint_path=cfg.checkpoint,
             device=cfg.device,
+            resolver=cfg.resolver,
+            allow_device_fallback=cfg.allow_device_fallback,
             frames=frames,
         )
         rendered = render_kp_frames(
@@ -141,6 +190,8 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         masks = predict_seg(
             checkpoint_path=cfg.checkpoint,
             device=cfg.device,
+            resolver=cfg.resolver,
+            allow_device_fallback=cfg.allow_device_fallback,
             frames=frames,
         )
         rendered = render_seg_frames(
@@ -153,6 +204,8 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         probs = predict_line(
             checkpoint_path=cfg.checkpoint,
             device=cfg.device,
+            resolver=cfg.resolver,
+            allow_device_fallback=cfg.allow_device_fallback,
             frames=frames,
         )
         rendered = render_line_frames(

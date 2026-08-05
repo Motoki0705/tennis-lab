@@ -42,7 +42,7 @@ def net_clearance_m(trajectory_sim: Tensor) -> float | None:
             # Already at y=0; use this point.
             x_at = float(trajectory_sim[i - 1, 0].item())
             z_at = float(trajectory_sim[i - 1, 2].item())
-            return z_at - net_height_at_x(x_at)
+            return float(z_at - net_height_at_x(x_at))
         if sign[i].item() == 0.0 or sign[i - 1].item() != sign[i].item():
             p0 = trajectory_sim[i - 1]
             p1 = trajectory_sim[i]
@@ -52,7 +52,6 @@ def net_clearance_m(trajectory_sim: Tensor) -> float | None:
             t = y0 / (y0 - y1 + 1e-8)
             x_at = float((p0[0] + t * (p1[0] - p0[0])).item())
             z_at = float((p0[2] + t * (p1[2] - p0[2])).item())
-            return z_at - net_height_at_x(x_at)
+            return float(z_at - net_height_at_x(x_at))
 
     return None
-

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 import cv2
 import torch
 from numpy.typing import NDArray
@@ -30,19 +28,5 @@ class BgrToTensorTransform:
         tensor = torch.from_numpy(frame_rgb).permute(2, 0, 1).contiguous()
         tensor = tensor.to(dtype=torch.float32).div_(255.0)
         if self.normalize_imagenet:
-            tensor = normalize_tensor_imagenet(tensor)
+            tensor = normalize_tensor_images_imagenet(tensor)
         return tensor
-
-
-def normalize_tensor_imagenet(
-    images: torch.Tensor,
-    *,
-    mean: Sequence[float] = (0.485, 0.456, 0.406),
-    std: Sequence[float] = (0.229, 0.224, 0.225),
-) -> torch.Tensor:
-    """Apply ImageNet normalization to ``(..., 3, H, W)`` tensors.
-
-    Thin alias kept for the video pipeline's public API; delegates to the
-    canonical :func:`src.utils.data.augmentation.normalize_tensor_images_imagenet`.
-    """
-    return normalize_tensor_images_imagenet(images, mean=mean, std=std)

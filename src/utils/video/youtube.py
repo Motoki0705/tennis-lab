@@ -117,21 +117,38 @@ def h264_encoder_args(
     if encoder not in {"h264_nvenc", "avc_nvenc"}:
         raise ValueError(f"Unsupported H.264 encoder: {encoder!r}")
 
+    nvenc_values = {
+        "tune": tune,
+        "rate_control": rate_control,
+        "cq": cq,
+        "bitrate": bitrate,
+    }
+    missing = [name for name, value in nvenc_values.items() if value is None]
+    if missing:
+        raise ValueError(
+            "NVENC encoding requires explicit values for tune, rate_control, cq, "
+            f"and bitrate; missing {', '.join(missing)}."
+        )
+    assert tune is not None
+    assert rate_control is not None
+    assert cq is not None
+    assert bitrate is not None
+
     args = [
         "-c:v",
         encoder,
         "-preset",
         preset,
         "-tune",
-        "hq" if tune is None else tune,
+        tune,
         "-rc",
-        "vbr" if rate_control is None else rate_control,
+        rate_control,
         "-cq",
-        "20" if cq is None else str(cq),
+        str(cq),
         "-pix_fmt",
         pix_fmt,
         "-b:v",
-        "0" if bitrate is None else bitrate,
+        bitrate,
     ]
     if maxrate is not None:
         args.extend(["-maxrate", maxrate])

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -28,7 +29,7 @@ def get_available_camera_indices(scene: dict[str, Any]) -> list[int]:
 def load_scene_bundle(
     scene_path: Path,
     camera: int,
-    cameras: list[int] | str | None,
+    cameras: Sequence[int] | str | None,
 ) -> SceneBundle:
     """Load scene and prepare GT/fps artifacts.
 

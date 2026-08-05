@@ -9,7 +9,9 @@ from typing import Any, cast
 import numpy as np
 import torch
 
+from src.tasks.base.configuration import as_config_mapping, require_config_mapping
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.blcs.models import build_blcs_model
 from src.tasks.blcs.training.tracking_losses import BLCSTrackingLoss
 from src.tasks.blcs.training.tracking_metrics import blcs_tracking_metrics
@@ -24,6 +26,10 @@ class BLCSTrackingLightningModule(BaseLightningModule):
         super().__init__(config)
         self.model = build_blcs_model(config)
         self.criterion = BLCSTrackingLoss(config.loss)
+        root = as_config_mapping(config, path="configuration")
+        self.tracking_metrics = TrackingMetricConfig.from_mapping(
+            require_config_mapping(root, "tracking_metrics", path="configuration")
+        )
 
     @staticmethod
     def _migrate_legacy_group_embedding_keys(
@@ -90,7 +96,10 @@ class BLCSTrackingLightningModule(BaseLightningModule):
                 self.log(f"{stage}/loss_{name}", value, on_step=False, on_epoch=True)
         if stage != "train":
             for name, value in blcs_tracking_metrics(
-                prediction, batch, assignments
+                prediction,
+                batch,
+                assignments,
+                config=self.tracking_metrics,
             ).items():
                 self.log(f"{stage}/{name}", value, on_step=False, on_epoch=True)
         return losses["total"], prediction

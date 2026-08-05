@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import torch
 
+from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.blcs.training.tracking_metrics import blcs_tracking_metrics
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
@@ -22,6 +23,10 @@ def test_tracking_metrics_report_per_axis_physical_mae() -> None:
         prediction,
         batch,
         [(torch.tensor([0]), torch.tensor([0]))],
+        config=TrackingMetricConfig(
+            presence_threshold=0.5,
+            duplicate_distance=0.05,
+        ),
     )
 
     scale = torch.tensor(COURT_COORD_SCALE_XYZ)

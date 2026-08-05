@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -27,15 +28,21 @@ if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-def _build_metrics(metrics_cfg: Any) -> BallDetectionMetrics:
+def _build_metrics(metrics_cfg: Mapping[str, Any]) -> BallDetectionMetrics:
     """Construct a :class:`BallDetectionMetrics` from a metrics config dict."""
     return BallDetectionMetrics(
-        peak_threshold=float(metrics_cfg.get("peak_threshold", 0.5)),
-        ball_distance_threshold=float(metrics_cfg.get("ball_distance_threshold", 4.0)),
-        nms_kernel=int(metrics_cfg.get("nms_kernel", 9)),
-        max_predictions_per_frame=int(metrics_cfg.get("max_predictions_per_frame", 8)),
-        subpixel_refine=bool(metrics_cfg.get("subpixel_refine", True)),
+        peak_threshold=float(metrics_cfg["peak_threshold"]),
+        ball_distance_threshold=float(metrics_cfg["ball_distance_threshold"]),
+        nms_kernel=int(metrics_cfg["nms_kernel"]),
+        max_predictions_per_frame=int(metrics_cfg["max_predictions_per_frame"]),
+        subpixel_refine=bool(metrics_cfg["subpixel_refine"]),
     )
+
+
+def _rgb_triplet(values: Any, *, name: str) -> tuple[int, int, int]:
+    if len(values) != 3:
+        raise ValueError(f"{name} must contain exactly three values.")
+    return int(values[0]), int(values[1]), int(values[2])
 
 
 class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
@@ -48,23 +55,20 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
     back to the heatmap model as an adversarial loss.
     """
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: DictConfig) -> None:
         super().__init__(config)
 
-        loss_cfg = self.config.get("loss", {})
-        metrics_cfg = self.config.get("metrics", {})
+        loss_cfg = self.config.loss
+        metrics_cfg = self.config.metrics
 
         self.model = build_ball_detection_model(self.config)
 
-        loss_gamma = float(loss_cfg.get("gamma", 2.0))
+        loss_gamma = float(loss_cfg.gamma)
         self.loss_fn = FocalBCEWithLogitsLoss(gamma=loss_gamma, validate_shape=True)
 
-        train_cfg = self.config.get("training", {})
-        gan_cfg = train_cfg.get("gan", {}) or {}
-        gan_enabled = bool(gan_cfg.get("enabled", False))
-        self.gan_soft_argmax_temperature = float(
-            gan_cfg.get("soft_argmax_temperature", 1.0)
-        )
+        gan_cfg = self.config.training.gan
+        gan_enabled = bool(gan_cfg.enabled)
+        self.gan_soft_argmax_temperature = float(gan_cfg.soft_argmax_temperature)
         self._initialize_manual_gan(
             discriminator=(
                 build_ball_detection_discriminator(self.config) if gan_enabled else None
@@ -84,11 +88,16 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         Returns:
             Logits of shape ``(B, 1, T, Hh, Wh)``.
         """
-        return self.model(images)
+        output = self.model(images)
+        if not isinstance(output, Tensor):
+            raise TypeError("Ball detector output must be a tensor.")
+        return output
 
-    def _predict_heatmap_logits(self, images: Tensor, target_size_hw: tuple[int, int]) -> Tensor:
+    def _predict_heatmap_logits(
+        self, images: Tensor, target_size_hw: tuple[int, int]
+    ) -> Tensor:
         """Predict per-frame heatmap logits resized to the target heatmap size."""
-        model_cfg = self.config.get("model", {})
+        model_cfg = self.config.model
         model_input = to_model_input(images, model_cfg)
 
         logits = self.model(model_input)
@@ -131,7 +140,7 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
         target_heatmaps = batch["heatmaps"]
         logits = self._predict_heatmap_logits(
             batch["images"],
-            target_heatmaps.shape[-2:],
+            (int(target_heatmaps.shape[-2]), int(target_heatmaps.shape[-1])),
         )
 
         loss = self.loss_fn(logits, target_heatmaps)
@@ -178,7 +187,9 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
             )
         tracker.reset()
 
-    def _log_stage_metrics(self, stage: str, loss: Tensor, metrics: dict[str, Any]) -> None:
+    def _log_stage_metrics(
+        self, stage: str, loss: Tensor, metrics: dict[str, Any]
+    ) -> None:
         self.log(f"{stage}/loss", loss, prog_bar=True, sync_dist=True)
         self._log_gan_metrics(stage, metrics)
 
@@ -202,14 +213,6 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
     # ------------------------------------------------------------------
     # Qualitative validation logging
     # ------------------------------------------------------------------
-
-    # Style parameters are stored as plain kwargs so the module never imports
-    # the visualization package at load time (which would create an import
-    # cycle: visualization -> api -> inference -> training.lightning_module).
-    # ``DrawStyle`` / ``LayoutStyle`` are constructed lazily in
-    # ``render_qualitative_samples`` after the deferred import.
-    _PEAK_THRESHOLD_DEFAULT: float = 0.5
-    _QUALITATIVE_FPS: float = 5.0
 
     def render_qualitative_samples(
         self,
@@ -237,44 +240,50 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
             render_animation_frames,
         )
 
-        # Styles are built here (not as class attributes) so the module never
-        # imports the visualization package at load time, which would create an
-        # import cycle (visualization -> api -> inference -> training).
+        qualitative_cfg = self.config.training.qualitative_rendering
+        draw_cfg = qualitative_cfg.draw
+        layout_cfg = qualitative_cfg.layout
         draw_style = DrawStyle(
-            gt_radius=6,
-            pred_radius=6,
-            thickness=2,
-            gt_color_rgb=(0, 255, 0),
-            pred_color_rgb=(255, 80, 80),
-            text_color_rgb=(255, 255, 255),
-            muted_text_color_rgb=(160, 160, 160),
+            gt_radius=int(draw_cfg.gt_radius),
+            pred_radius=int(draw_cfg.pred_radius),
+            thickness=int(draw_cfg.thickness),
+            gt_color_rgb=_rgb_triplet(
+                draw_cfg.gt_color_rgb, name="qualitative_rendering.draw.gt_color_rgb"
+            ),
+            pred_color_rgb=_rgb_triplet(
+                draw_cfg.pred_color_rgb,
+                name="qualitative_rendering.draw.pred_color_rgb",
+            ),
+            text_color_rgb=_rgb_triplet(
+                draw_cfg.text_color_rgb,
+                name="qualitative_rendering.draw.text_color_rgb",
+            ),
+            muted_text_color_rgb=_rgb_triplet(
+                draw_cfg.muted_text_color_rgb,
+                name="qualitative_rendering.draw.muted_text_color_rgb",
+            ),
         )
         layout_style = LayoutStyle(
-            header_height=48,
-            tile_gap=4,
-            text_scale=0.55,
-            text_thickness=1,
-            background_rgb=(30, 30, 30),
-            panel_label_height=22,
+            header_height=int(layout_cfg.header_height),
+            tile_gap=int(layout_cfg.tile_gap),
+            text_scale=float(layout_cfg.text_scale),
+            text_thickness=int(layout_cfg.text_thickness),
+            background_rgb=_rgb_triplet(
+                layout_cfg.background_rgb,
+                name="qualitative_rendering.layout.background_rgb",
+            ),
+            panel_label_height=int(layout_cfg.panel_label_height),
         )
 
         device = next(self.parameters()).device
 
-        normalize_cfg = dict(
-            self.config.get("data", {})
-            .get("augmentation", {})
-            .get("normalize_imagenet", {})
-            or {}
-        )
-        model_cfg = dict(self.config.get("model", {}) or {})
-        metrics_cfg = self.config.get("metrics", {})
-        peak_threshold = float(
-            metrics_cfg.get("peak_threshold", self._PEAK_THRESHOLD_DEFAULT)
-        )
+        normalize_cfg = dict(self.config.data.augmentation.normalize_imagenet)
+        model_cfg = dict(self.config.model)
+        peak_threshold = float(self.config.metrics.peak_threshold)
 
         for batch_idx, batch in enumerate(batches):
             images = batch["images"].to(device)  # (B, T, C, H, W)
-            heatmaps_gt = batch["heatmaps"]       # (B, T, Hh, Wh) – for sizing only
+            heatmaps_gt = batch["heatmaps"]  # (B, T, Hh, Wh) – for sizing only
 
             with torch.no_grad():
                 logits = self._predict_heatmap_logits(images, heatmaps_gt.shape[-2:])
@@ -303,5 +312,5 @@ class BallDetectionLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 tb_writer=tb_writer,
                 tag=f"qualitative/ball_detection/batch{batch_idx:02d}",
                 global_step=global_step,
-                fps=self._QUALITATIVE_FPS,
+                fps=float(qualitative_cfg.fps),
             )

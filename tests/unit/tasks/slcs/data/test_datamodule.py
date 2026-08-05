@@ -2,8 +2,7 @@
 
 from pathlib import Path
 
-from omegaconf import OmegaConf
-
+from src.tasks.slcs.configuration import SLCSDataRuntimeConfig
 from src.tasks.slcs.data.datamodule import SLCSDataModule
 from src.tasks.slcs.data.splits import generate_overfit_splits, save_split_file
 from src.tasks.slcs.data.synthetic import (
@@ -11,6 +10,7 @@ from src.tasks.slcs.data.synthetic import (
     SyntheticDatasetConfig,
     build_synthetic_dataset,
 )
+from src.utils.configuration import PathResolver, RuntimePathRoots
 
 
 def test_explicit_overfit_mode_reuses_train_windows_for_all_stages(
@@ -30,39 +30,51 @@ def test_explicit_overfit_mode_reuses_train_windows_for_all_stages(
         test_ratio=0.0,
     )
     spec = DEFAULT_TEST_DINO_SPEC
-    config = OmegaConf.create(
-        {
-            "data": {
-                "dataset_root": str(root),
-                "split_file": str(split_file),
-                "batch_size": 1,
-                "num_workers": 0,
-                "overfit": True,
-                "window_size": 8,
-                "train_stride": 8,
-                "eval_stride": 16,
-                "num_players": 2,
-                "num_court_kp": 14,
-                "require_dino": True,
-                "cache_dino_tokens": True,
-                "on_incomplete": "error",
-                "dino": {
-                    "backbone": spec.backbone,
-                    "patch_size": spec.patch_size,
-                    "image_height": spec.image_height,
-                    "image_width": spec.image_width,
-                    "embed_dim": spec.embed_dim,
-                    "frame_stride": spec.frame_stride,
-                },
-                "quality": {
-                    "min_player_confidence": 0.3,
-                    "min_ball_cameras": 1,
-                    "label_weight_power": 1.0,
-                    "min_window_label_ratio": 0.1,
-                },
-            }
-        }
+    resolver = PathResolver(
+        RuntimePathRoots.from_mapping(
+            {
+                "project_root": ".",
+                "data_root": ".",
+                "checkpoint_root": "checkpoints",
+                "artifact_root": "artifacts",
+                "output_root": "outputs",
+                "cache_root": "cache",
+                "external_asset_root": "external-assets",
+            },
+            repository_root=tmp_path,
+        )
     )
+    data: dict[str, object] = {
+        "dataset_root": "dataset",
+        "split_file": "dataset/splits.json",
+        "batch_size": 1,
+        "num_workers": 0,
+        "pin_memory": False,
+        "overfit": True,
+        "window_size": 8,
+        "train_stride": 8,
+        "eval_stride": 16,
+        "num_players": 2,
+        "num_court_kp": 14,
+        "require_dino": True,
+        "cache_dino_tokens": True,
+        "on_incomplete": "error",
+        "dino": {
+            "backbone": spec.backbone,
+            "patch_size": spec.patch_size,
+            "image_height": spec.image_height,
+            "image_width": spec.image_width,
+            "embed_dim": spec.embed_dim,
+            "frame_stride": spec.frame_stride,
+        },
+        "quality": {
+            "min_player_confidence": 0.3,
+            "min_ball_cameras": 1,
+            "label_weight_power": 1.0,
+            "min_window_label_ratio": 0.1,
+        },
+    }
+    config = SLCSDataRuntimeConfig.from_mapping(data, resolver)
 
     datamodule = SLCSDataModule(config)
     datamodule.setup()

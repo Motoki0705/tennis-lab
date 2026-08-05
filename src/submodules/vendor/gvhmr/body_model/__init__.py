@@ -5,9 +5,7 @@ require the licensed ``SMPLX_NEUTRAL.npz`` (see :mod:`smplx_lite`); the small
 regressor assets are bundled under ``data/``.
 """
 
-from pathlib import Path
-
-from src.utils.paths import PROJECT_ROOT
+from src.submodules.configuration import BundledModelAssetPaths, require_absolute_path
 
 from .body_model_smplx import BodyModelSMPLX
 from .smplx_lite import (
@@ -18,20 +16,18 @@ from .smplx_lite import (
     resolve_smplx_model_file,
 )
 
-DATA_DIR = Path(__file__).parent / "data"
-DEFAULT_BODY_MODELS_DIR = PROJECT_ROOT / "ckpt/body_models"
 
-SMPLX2SMPL_SPARSE_PATH = DATA_DIR / "smplx2smpl_sparse.pt"
-SMPL_NEUTRAL_J_REGRESSOR_PATH = DATA_DIR / "smpl_neutral_J_regressor.pt"
-
-
-def make_smplx(type="supermotion", **kwargs):
+def make_smplx(type, *, model_path, bundled_assets, **kwargs):
     """Build a body model used by GVHMR (trimmed to inference variants).
 
     - ``supermotion``: full SMPL-X (``BodyModelSMPLX``), predicts vertices.
     - ``supermotion_v437coco17``: 437 verts + COCO17 joints (EnDecoder FK).
     - ``supermotion_coco17`` / ``supermotion_smpl24``: joints-only variants.
     """
+    model_path = require_absolute_path(model_path, name="SMPL-X body-model directory")
+    if not isinstance(bundled_assets, BundledModelAssetPaths):
+        raise TypeError("bundled_assets must be BundledModelAssetPaths.")
+    bundled_assets.require_files()
     if type == "supermotion":
         bm_kwargs = {
             "model_type": "smplx",
@@ -40,16 +36,27 @@ def make_smplx(type="supermotion", **kwargs):
             "flat_hand_mean": False,
         }
         bm_kwargs.update(kwargs)
-        model_path = Path(bm_kwargs.pop("model_path", DEFAULT_BODY_MODELS_DIR))
         # Fail early with an actionable message if the licensed file is absent.
         resolve_smplx_model_file(model_path / "smplx", bm_kwargs["gender"])
         return BodyModelSMPLX(model_path=str(model_path), **bm_kwargs)
     if type == "supermotion_v437coco17":
-        return SmplxLiteV437Coco17(**kwargs)
+        return SmplxLiteV437Coco17(
+            model_path=model_path / "smplx",
+            bundled_assets=bundled_assets,
+            **kwargs,
+        )
     if type == "supermotion_coco17":
-        return SmplxLiteCoco17(**kwargs)
+        return SmplxLiteCoco17(
+            model_path=model_path / "smplx",
+            bundled_assets=bundled_assets,
+            **kwargs,
+        )
     if type == "supermotion_smpl24":
-        return SmplxLiteSmplN24(**kwargs)
+        return SmplxLiteSmplN24(
+            model_path=model_path / "smplx",
+            bundled_assets=bundled_assets,
+            **kwargs,
+        )
     raise NotImplementedError(f"Unknown body model type: {type}")
 
 
@@ -62,9 +69,6 @@ __all__ = [
     "load_smpl_faces",
     "make_smplx",
     "resolve_smplx_model_file",
-    "DEFAULT_BODY_MODELS_DIR",
-    "SMPLX2SMPL_SPARSE_PATH",
-    "SMPL_NEUTRAL_J_REGRESSOR_PATH",
 ]
 
 
@@ -78,7 +82,7 @@ def load_smpl_faces(path):
 
     import numpy as np
 
-    path = Path(path)
+    path = require_absolute_path(path, name="SMPL faces asset")
     if not path.exists():
         raise FileNotFoundError(
             f"SMPL body-model file not found: {path} (needed for mesh faces)"

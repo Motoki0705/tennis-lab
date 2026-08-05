@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
-from omegaconf import OmegaConf
+from hydra import compose, initialize_config_dir
 from torch.utils.data import Dataset
 
 import src.tasks.ball_detection.data.mixed_tracknet_datamodule as mixed_module
 from src.tasks.ball_detection.data.mixed_tracknet_datamodule import (
     MixedTrackNetDataModule,
 )
+
+_CONFIG_DIR = Path(__file__).resolve().parents[5] / "src/tasks/ball_detection/configs"
 
 
 class _TaggedDataset(Dataset[dict[str, str]]):
@@ -34,6 +37,7 @@ class _FakeTrackNetDataModule:
         data_dir = str(config.data.data_dir)
         self.source = "synthetic" if "synthetic" in data_dir else "real"
         self.train_split_file = str(config.data.split.train_file)
+        self.augmentation_config = config.data.augmentation
         self.train_dataset: _TaggedDataset | None = None
         self.val_dataset: _TaggedDataset | None = None
         self.test_dataset: _TaggedDataset | None = None
@@ -78,33 +82,27 @@ def _config(
     synthetic_per_batch: int,
     synthetic_batch_period: int = 1,
 ) -> Any:
-    return OmegaConf.create(
-        {
-            "model": {"num_frames": 8},
-            "data": {
-                "source": "mixed_tracknet",
-                "data_dir": "real",
-                "split": {
-                    "train_file": "real/train.txt",
-                    "val_file": "real/val.txt",
-                    "test_file": "real/test.txt",
-                },
-                "synthetic": {
-                    "data_dir": "synthetic",
-                    "split": {
-                        "train_file": "synthetic/train.txt",
-                    },
-                },
-                "batch_size": 3,
-                "synthetic_per_batch": synthetic_per_batch,
-                "synthetic_batch_period": synthetic_batch_period,
-                "steps_per_epoch": 2,
-                "sampling_seed": 17,
-                "num_workers": 0,
-                "pin_memory": False,
-            },
-        }
-    )
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train",
+            overrides=["data=3dgs_blcs_mixed", "model=stunet"],
+        )
+    config.data.data_dir = "real"
+    config.data.split.root_role = "data"
+    config.data.split.train_file = "real/train.txt"
+    config.data.split.val_file = "real/val.txt"
+    config.data.split.test_file = "real/test.txt"
+    config.data.synthetic.data_dir = "synthetic"
+    config.data.synthetic.split.root_role = "data"
+    config.data.synthetic.split.train_file = "synthetic/train.txt"
+    config.data.batch_size = 3
+    config.data.synthetic_per_batch = synthetic_per_batch
+    config.data.synthetic_batch_period = synthetic_batch_period
+    config.data.steps_per_epoch = 2
+    config.data.sampling_seed = 17
+    config.data.num_workers = 0
+    config.data.pin_memory = False
+    return config
 
 
 def test_control_does_not_read_synthetic_source() -> None:

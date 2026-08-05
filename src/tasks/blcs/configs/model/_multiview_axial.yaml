@@ -20,12 +20,11 @@ time_global_stage_mask: ???
 
 attention_type: mha
 num_kv_heads: null
-ffn_dim: null
+ffn_dim: ???
 ffn_type: swiglu
 dropout: 0.1
 
-rope_dim: null
-rope_theta: 10000.0
+rope_dim: ???
 rope_theta_time: 10000.0
 rope_theta_camera: 1000.0
 time_window_radius: 16
@@ -34,3 +33,4 @@ max_seq_len: 10240
 max_num_cameras: 6
 predict_velocity: true
 invisible_init_std: 0.02
+num_court_tokens: 20

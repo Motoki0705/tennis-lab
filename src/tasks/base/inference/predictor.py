@@ -5,20 +5,20 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Self
+from typing import Any
 
 import torch
 from torch import Tensor, nn
 
+from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import resolve_device
 
 
 class BasePredictor(ABC):
     """Abstract base class for inference predictors.
 
-    All predictors must implement two methods:
-    - load_from_checkpoint: Create instance from checkpoint file.
-    - predict: Run batch inference.
+    All predictors implement ``predict``. Checkpoint factories remain
+    task-specific because their validated options differ by model family.
 
     Attributes:
         model: The model used for inference.
@@ -33,30 +33,6 @@ class BasePredictor(ABC):
     model: torch.nn.Module
     device: torch.device
 
-    @classmethod
-    @abstractmethod
-    def load_from_checkpoint(
-        cls,
-        checkpoint_path: str | Path | Iterable[str | Path],
-        device: str | torch.device = "cpu",
-        **kwargs: Any,
-    ) -> Self:
-        """Create a predictor instance from a checkpoint file.
-
-        Args:
-            checkpoint_path: Path to the checkpoint file.
-            device: Device for inference ("cpu" or "cuda").
-            **kwargs: Implementation-specific additional arguments.
-
-        Returns:
-            Initialized predictor instance.
-
-        Raises:
-            FileNotFoundError: If checkpoint file does not exist.
-
-        """
-        ...
-
     @abstractmethod
     def predict(self, *args: Any, **kwargs: Any) -> dict[str, Tensor]:
         """Run batch inference.
@@ -66,12 +42,12 @@ class BasePredictor(ABC):
 
         Returns:
             Dictionary of inference results. All predictors must follow this contract:
-            
+
             **Return Type Contract:**
             - All values MUST be `torch.Tensor` (not numpy arrays)
             - All tensors MUST be on CPU (callers should not handle device transfers)
             - Batch dimension MUST be preserved in outputs
-            
+
             **Key Naming Contract:**
             - Use snake_case for all keys
             - Use descriptive names matching the semantic meaning
@@ -85,7 +61,7 @@ class BasePredictor(ABC):
               - `keypoints`: 2D/3D keypoint coordinates
               - `visibility`: Visibility flags/probabilities
               - `heatmaps`: Spatial probability maps
-            
+
             Implementation-specific keys are allowed but should follow the naming convention.
 
         """
@@ -95,7 +71,7 @@ class BasePredictor(ABC):
     def _resolve_device(
         device: str | torch.device,
         *,
-        allow_fallback: bool = True,
+        allow_fallback: bool,
     ) -> torch.device:
         """Resolve device string to torch.device with optional CUDA fallback.
 
@@ -114,6 +90,8 @@ class BasePredictor(ABC):
     @staticmethod
     def _ensure_checkpoint(
         checkpoint_path: str | Path | Iterable[str | Path],
+        *,
+        resolver: PathResolver,
     ) -> list[Path]:
         """Normalize and validate checkpoint paths.
 
@@ -130,7 +108,12 @@ class BasePredictor(ABC):
         paths = checkpoint_path
         if isinstance(paths, (str, Path)):
             paths = [paths]
-        checkpoints: list[Path] = [Path(p) for p in paths]
+        checkpoints = [
+            resolver.validate(PathRole.CHECKPOINT, candidate)
+            if (candidate := Path(path)).is_absolute()
+            else resolver.resolve(PathRole.CHECKPOINT, candidate)
+            for path in paths
+        ]
         if not checkpoints:
             raise ValueError("checkpoint_path must be non-empty")
         for path in checkpoints:
@@ -143,7 +126,10 @@ class BasePredictor(ABC):
         cls,
         checkpoint_path: str | Path | Iterable[str | Path],
         lightning_module_cls: Any,
-        device: str | torch.device = "cpu",
+        *,
+        resolver: PathResolver,
+        device: str | torch.device,
+        allow_device_fallback: bool,
         **kwargs: Any,
     ) -> tuple[Any, torch.device]:
         """Load a single Lightning checkpoint and return the Lightning module.
@@ -167,13 +153,15 @@ class BasePredictor(ABC):
         Raises:
             ValueError: If not exactly one checkpoint is provided.
         """
-        checkpoints = cls._ensure_checkpoint(checkpoint_path)
+        checkpoints = cls._ensure_checkpoint(checkpoint_path, resolver=resolver)
         if len(checkpoints) != 1:
             raise ValueError(
                 f"{cls.__name__} expects a single checkpoint, "
                 f"got {len(checkpoints)} checkpoints."
             )
-        resolved_device = cls._resolve_device(device)
+        resolved_device = cls._resolve_device(
+            device, allow_fallback=allow_device_fallback
+        )
         lightning_module = lightning_module_cls.load_from_checkpoint(
             checkpoints[0],
             map_location=resolved_device,
@@ -186,7 +174,10 @@ class BasePredictor(ABC):
         cls,
         checkpoint_path: str | Path | Iterable[str | Path],
         lightning_module_cls: Any,
-        device: str | torch.device = "cpu",
+        *,
+        resolver: PathResolver,
+        device: str | torch.device,
+        allow_device_fallback: bool,
         **kwargs: Any,
     ) -> tuple[nn.Module, torch.device]:
         """Load a single Lightning checkpoint and return its inner model.
@@ -212,7 +203,9 @@ class BasePredictor(ABC):
         lightning_module, resolved_device = cls._load_single_lightning_module(
             checkpoint_path,
             lightning_module_cls,
-            device,
+            resolver=resolver,
+            device=device,
+            allow_device_fallback=allow_device_fallback,
             strict=bool(kwargs.pop("strict", False)),
             weights_only=bool(kwargs.pop("weights_only", False)),
             **kwargs,
@@ -228,7 +221,9 @@ class BasePredictor(ABC):
         )
 
     @staticmethod
-    def _to_device(device: torch.device, *tensors: Tensor | None) -> tuple[Tensor | None, ...]:
+    def _to_device(
+        device: torch.device, *tensors: Tensor | None
+    ) -> tuple[Tensor | None, ...]:
         """Move tensors to the requested device, preserving None entries.
 
         Args:

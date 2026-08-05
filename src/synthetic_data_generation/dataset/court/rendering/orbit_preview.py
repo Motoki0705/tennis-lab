@@ -21,10 +21,12 @@ from PIL import Image, ImageDraw
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt  # noqa: E402
 
-REPO_ROOT = Path(__file__).resolve().parents[5]
-
 from src.synthetic_data_generation.composition.contracts import (  # noqa: E402
     load_gaussian_scene_manifest,
+)
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
 )
 from src.synthetic_data_generation.dataset.blcs.artifacts.asset_registry import (  # noqa: E402
     verify_local_gaussian_asset,
@@ -49,12 +51,17 @@ from src.synthetic_data_generation.dataset.court.components.labels import (  # n
     project_multi_court,
     rescale_projection,
 )
-from src.synthetic_data_generation.rendering.nht.runtime_paths import (  # noqa: E402
-    installed_gsplat_root,
-)
 from src.synthetic_data_generation.scene_contract import (  # noqa: E402
     SceneCamera,
     load_scene_contract,
+)
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
 )
 
 PLAN_SCHEMA = "tennis_multicourt_orbit_plan_v1"
@@ -70,12 +77,42 @@ _CLASS_COLOURS = (
     (255, 127, 80),
     (255, 255, 255),
 )
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.court.orbit_preview",
+    fields=(
+        BoundaryPathField(
+            "plan_dir",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "background_composition",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "gsplat_repository",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output_dir", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+    ),
+)
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan-dir", type=Path, required=True)
     parser.add_argument("--background-composition", type=Path, required=True)
+    parser.add_argument("--gsplat-repository", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--width", type=int, default=320)
     parser.add_argument("--frames-per-family", type=int, default=1)
@@ -84,10 +121,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--depth-absolute-tolerance", type=float, default=0.03)
     parser.add_argument("--depth-relative-tolerance", type=float, default=0.03)
     parser.add_argument("--visibility-sample-radius-px", type=int, default=2)
+    add_path_roots_argument(parser)
     return parser.parse_args()
 
 
-def _load_verified_plan(path: Path) -> dict[str, Any]:
+def _load_verified_plan(path: Path, resolver: PathResolver) -> dict[str, Any]:
     manifest_path = path / "manifest.json"
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     if payload.get("schema") != PLAN_SCHEMA or payload.get("status") != "passed":
@@ -109,7 +147,7 @@ def _load_verified_plan(path: Path) -> dict[str, Any]:
     if payload.get("label_schema") != expected_policy:
         raise RuntimeError("Orbit plan label policy differs from the approved schema.")
     for record in payload["source"].values():
-        source_path = Path(record["path"])
+        source_path = resolver.validate(PathRole.ARTIFACT, Path(record["path"]))
         if not source_path.is_file() or _sha256_file(source_path) != record["sha256"]:
             raise RuntimeError(f"Orbit plan source changed: {source_path}")
     return cast(dict[str, Any], payload)
@@ -558,9 +596,20 @@ def _verify_output(root: Path) -> dict[str, Any]:
 
 def main() -> None:
     args = _parse_args()
-    plan_dir = args.plan_dir.resolve()
-    composition_path = args.background_composition.resolve()
-    output_dir = args.output_dir.resolve()
+    resolver = non_hydra_path_resolver(args.path_roots)
+    paths = PATH_BOUNDARY.validate(
+        {
+            "plan_dir": args.plan_dir,
+            "background_composition": args.background_composition,
+            "gsplat_repository": args.gsplat_repository,
+            "output_dir": args.output_dir,
+        },
+        resolver=resolver,
+    )
+    plan_dir = paths.declared("plan_dir").path
+    composition_path = paths.declared("background_composition").path
+    gsplat_repository = paths.declared("gsplat_repository").path
+    output_dir = paths.declared("output_dir").path
     if output_dir.exists():
         raise SystemExit(f"Refusing to overwrite output directory: {output_dir}")
     if args.width <= 1 or args.frames_per_family <= 0:
@@ -574,15 +623,21 @@ def main() -> None:
     if not torch.cuda.is_available():
         raise SystemExit("CUDA is unavailable.")
 
-    plan = _load_verified_plan(plan_dir)
+    plan = _load_verified_plan(plan_dir, resolver)
     selected = _representative_frames(
         plan,
         frames_per_family=args.frames_per_family,
     )
     source = plan["source"]
-    contract = load_scene_contract(Path(source["scene_contract"]["path"]))
+    contract = load_scene_contract(
+        resolver.validate(
+            PathRole.ARTIFACT, Path(source["scene_contract"]["path"])
+        )
+    )
     layout = load_multi_court_layout(
-        Path(source["court_geometry"]["path"]),
+        resolver.validate(
+            PathRole.ARTIFACT, Path(source["court_geometry"]["path"])
+        ),
         contract,
         candidate_ids=("court-0", "court-1"),
     )
@@ -590,8 +645,7 @@ def main() -> None:
     background_asset = composition.background
     verify_local_gaussian_asset(background_asset)
 
-    gsplat_path = installed_gsplat_root()
-    renderer_commit = _git_head(gsplat_path)
+    renderer_commit = _git_head(gsplat_repository)
 
     device = torch.device("cuda:0")
     background = _load_tensor_set(

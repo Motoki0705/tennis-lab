@@ -6,13 +6,18 @@ import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import cv2
 import numpy as np
 
-from src.utils.io import find_existing_file, save_json_atomic
-from src.utils.schema.court import COURT_KP_NAMES, court_keypoints_3d
+from src.utils.configuration import PathResolver, PathRole
+from src.utils.io import save_json_atomic
+from src.utils.schema.court import (
+    COURT_KP_NAMES,
+    STANDARD_COURT_CONFIG,
+    court_keypoints_3d,
+)
 
 COURT_KP20_COUNT = 20
 GROUND_KEYPOINT_COUNT = 14
@@ -51,10 +56,11 @@ class AnnotationSessionConfig:
     """Runtime settings for a CourtKP20 annotation session."""
 
     root: Path
+    root_fragment: str
+    resolver: PathResolver
+    source_path: Path
+    target_path: Path
     split: str
-    source_file_pattern: str
-    target_file_pattern: str
-    target_file_name: str | None
     manual_adjusted_field: str
     image_id: str | None
     start_index: int
@@ -66,12 +72,12 @@ class AnnotationSessionConfig:
     required_indices: tuple[int, ...]
     drag_radius_px: float
     drag_start_threshold_px: float
-    annotation_format: str = "legacy_kps"
-    image_path_key: str = "image_path"
-    homography_auto_fill: bool = False
-    start_after_last_completed: bool = False
-    keypoint_format: str = "kp20"
-    include_source_types: tuple[str, ...] = ()
+    annotation_format: str
+    image_path_key: str
+    homography_auto_fill: bool
+    start_after_last_completed: bool
+    keypoint_format: str
+    include_source_types: tuple[str, ...]
 
 
 @dataclass
@@ -105,18 +111,17 @@ class AnnotationDocument:
 
 def run_annotation_session(config: AnnotationSessionConfig) -> int:
     """Run an interactive CourtKP20 annotation session."""
-    source_path = config.root / config.source_file_pattern.format(split=config.split)
-    if config.target_file_name is not None:
-        target_path = config.root / config.target_file_name
-    else:
-        target_path = config.root / config.target_file_pattern.format(split=config.split)
+    source_path = config.source_path
+    target_path = config.target_path
     if not source_path.exists():
         raise FileNotFoundError(f"Source annotation file not found: {source_path}")
 
     source_doc = read_annotation_document(source_path)
     target_doc = read_annotation_document(target_path)
     all_source_entries = source_doc.items
-    source_entries = filter_source_entries(all_source_entries, config.include_source_types)
+    source_entries = filter_source_entries(
+        all_source_entries, config.include_source_types
+    )
     target_entries = target_doc.items
     target_by_id = {str(entry["id"]): entry for entry in target_entries}
     if not source_entries:
@@ -133,7 +138,6 @@ def run_annotation_session(config: AnnotationSessionConfig) -> int:
         drag_start_threshold_px=config.drag_start_threshold_px,
     )
 
-    images_dir = config.root / "images"
     cv2.namedWindow(config.window_name, cv2.WINDOW_NORMAL)
     print(
         f"[court_kp20_annotation] split={config.split} source={source_path} "
@@ -144,18 +148,7 @@ def run_annotation_session(config: AnnotationSessionConfig) -> int:
         while True:
             source_entry = source_entries[current_index]
             image_id = str(source_entry["id"])
-            image_path = find_image_for_entry(config.root, images_dir, source_entry, image_id, config)
-            if image_path is None:
-                print(f"  SKIP (missing image): {image_id}")
-                current_index = advance_index(
-                    source_entries,
-                    target_by_id,
-                    current_index,
-                    1,
-                    skip_completed=False,
-                    config=config,
-                )
-                continue
+            image_path = find_image_for_entry(source_entry, image_id, config)
 
             image_bgr = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
             if image_bgr is None:
@@ -174,7 +167,9 @@ def run_annotation_session(config: AnnotationSessionConfig) -> int:
             kps, visibility = display_keypoints(source_entry, target_by_id, config)
             ui.auto_filled_indices.clear()
             maybe_auto_fill_ground_keypoints(kps, visibility, ui, config)
-            ui.selected_keypoint = first_missing_keypoint(kps, config.editable_indices, visibility)
+            ui.selected_keypoint = first_missing_keypoint(
+                kps, config.editable_indices, visibility
+            )
             set_mouse_callback(config.window_name, kps, visibility, ui, config)
 
             while True:
@@ -184,7 +179,9 @@ def run_annotation_session(config: AnnotationSessionConfig) -> int:
                     image_id=image_id,
                     index=current_index,
                     total=len(source_entries),
-                    completed_count=completed_count(source_entries, target_by_id, config),
+                    completed_count=completed_count(
+                        source_entries, target_by_id, config
+                    ),
                     ui=ui,
                     config=config,
                     visibility=visibility,
@@ -214,7 +211,9 @@ def run_annotation_session(config: AnnotationSessionConfig) -> int:
                         )
                         ui.selected_keypoint = config.editable_indices[0]
                         break
-                    print(f"[court_kp20_annotation] Complete requires indices={list(config.required_indices)}.")
+                    print(
+                        f"[court_kp20_annotation] Complete requires indices={list(config.required_indices)}."
+                    )
 
                 if key == 255:
                     continue
@@ -256,7 +255,9 @@ def run_annotation_session(config: AnnotationSessionConfig) -> int:
                         )
                         ui.selected_keypoint = config.editable_indices[0]
                         break
-                    print(f"[court_kp20_annotation] Complete requires indices={list(config.required_indices)}.")
+                    print(
+                        f"[court_kp20_annotation] Complete requires indices={list(config.required_indices)}."
+                    )
                 elif key == ord("g"):
                     center = compute_net_center(to_numpy(kps))
                     if center is not None:
@@ -265,10 +266,14 @@ def run_annotation_session(config: AnnotationSessionConfig) -> int:
                 elif key == ord("h"):
                     ui.show_help = not ui.show_help
                 elif key == ord("r"):
-                    kps, visibility = display_keypoints(source_entry, target_by_id, config)
+                    kps, visibility = display_keypoints(
+                        source_entry, target_by_id, config
+                    )
                     ui.auto_filled_indices.clear()
                     maybe_auto_fill_ground_keypoints(kps, visibility, ui, config)
-                    ui.selected_keypoint = first_missing_keypoint(kps, config.editable_indices, visibility)
+                    ui.selected_keypoint = first_missing_keypoint(
+                        kps, config.editable_indices, visibility
+                    )
                     set_mouse_callback(config.window_name, kps, visibility, ui, config)
                 elif key == ord("v"):
                     ui.input_visibility = 1
@@ -320,7 +325,9 @@ def run_annotation_session(config: AnnotationSessionConfig) -> int:
                     ui.selected_keypoint = config.editable_indices[0]
                     break
                 elif key == ord("q"):
-                    print("[court_kp20_annotation] Quit without writing incomplete edits.")
+                    print(
+                        "[court_kp20_annotation] Quit without writing incomplete edits."
+                    )
                     return 0
     finally:
         cv2.destroyWindow(config.window_name)
@@ -330,43 +337,31 @@ def read_json(path: Path) -> list[dict[str, Any]]:
     """Read a JSON list, returning an empty list when the file does not exist."""
     if not path.exists():
         return []
-    return json.loads(path.read_text(encoding="utf-8"))
+    return cast("list[dict[str, Any]]", json.loads(path.read_text(encoding="utf-8")))
 
 
 def read_annotation_document(path: Path) -> AnnotationDocument:
-    """Read either a legacy JSON list or a metadata-wrapped annotation document."""
+    """Read the sole metadata-wrapped annotation document format."""
     if not path.exists():
         return AnnotationDocument(metadata=None, items=[])
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if isinstance(payload, list):
-        return AnnotationDocument(metadata=None, items=payload)
-    if isinstance(payload, dict) and isinstance(payload.get("items"), list):
-        metadata = dict(payload)
-        items = metadata.pop("items")
-        return AnnotationDocument(metadata=metadata, items=items)
-    raise ValueError(f"Unsupported annotation JSON shape: {path}")
+    if not isinstance(payload, dict) or "items" not in payload:
+        raise ValueError(
+            f"Annotation document must be an object containing 'items': {path}"
+        )
+    items = payload["items"]
+    if not isinstance(items, list) or any(not isinstance(item, dict) for item in items):
+        raise ValueError(f"Annotation document 'items' must contain objects: {path}")
+    metadata = dict(payload)
+    del metadata["items"]
+    return AnnotationDocument(metadata=metadata, items=items)
 
 
-def normalize_serialized_keypoints(raw_kps: Any) -> list[list[float | None]]:
-    """Normalize a serialized keypoint list to CourtKP20 shape."""
-    normalized: list[list[float | None]] = []
-    for point in list(raw_kps)[:COURT_KP20_COUNT]:
-        if point is None:
-            normalized.append([None, None])
-            continue
-        point_values = list(point)
-        if len(point_values) < 2:
-            normalized.append([None, None])
-            continue
-        normalized.append([optional_float(point_values[0]), optional_float(point_values[1])])
-    while len(normalized) < COURT_KP20_COUNT:
-        normalized.append([None, None])
-    return normalized
-
-
-def normalize_named_keypoints(entry: dict[str, Any]) -> tuple[list[list[float | None]], list[int]]:
+def normalize_named_keypoints(
+    entry: dict[str, Any],
+) -> tuple[list[list[float | None]], list[int]]:
     """Normalize named keypoints to ordered coordinates and visibility labels."""
-    kps = [[None, None] for _ in range(COURT_KP20_COUNT)]
+    kps: list[list[float | None]] = [[None, None] for _ in range(COURT_KP20_COUNT)]
     visibility = [0 for _ in range(COURT_KP20_COUNT)]
     raw_keypoints = entry.get("keypoints", [])
     if not isinstance(raw_keypoints, list):
@@ -400,7 +395,7 @@ def keypoint_index(point: dict[str, Any]) -> int | None:
     raw_name = point.get("name")
     if raw_name is not None:
         try:
-            return COURT_KP_NAMES.index(str(raw_name))
+            return int(COURT_KP_NAMES.index(str(raw_name)))
         except ValueError:
             return None
     return None
@@ -412,7 +407,9 @@ def normalize_visibility(value: Any) -> int:
         return 0
     visibility = int(value)
     if visibility not in (0, 1, 2, 3):
-        raise ValueError(f"Unsupported visibility={value!r}; expected one of 0, 1, 2, 3.")
+        raise ValueError(
+            f"Unsupported visibility={value!r}; expected one of 0, 1, 2, 3."
+        )
     return visibility
 
 
@@ -428,7 +425,7 @@ def optional_float(value: Any) -> float | None:
 
 def to_numpy(kps: list[list[float | None]]) -> np.ndarray:
     """Convert keypoints with None values to a float array with NaNs."""
-    arr = np.full((len(kps), 2), np.nan, dtype=np.float32)
+    arr: np.ndarray = np.full((len(kps), 2), np.nan, dtype=np.float32)
     for idx, point in enumerate(kps):
         if point[0] is not None and point[1] is not None:
             arr[idx] = (float(point[0]), float(point[1]))
@@ -440,11 +437,7 @@ def source_keypoints(
     config: AnnotationSessionConfig,
 ) -> tuple[list[list[float | None]], list[int]]:
     """Build a KP20 draft from a source entry."""
-    if config.annotation_format == "named_keypoints":
-        kps, visibility = normalize_named_keypoints(source_entry)
-    else:
-        kps = normalize_serialized_keypoints(source_entry.get("kps", []))
-        visibility = [1 if point[0] is not None and point[1] is not None else 0 for point in kps]
+    kps, visibility = normalize_named_keypoints(source_entry)
 
     center = compute_net_center(to_numpy(kps))
     if center is not None:
@@ -461,14 +454,11 @@ def display_keypoints(
     """Return target KP20 if available, otherwise a draft from the source entry."""
     image_id = str(source_entry["id"])
     target_entry = target_by_id.get(image_id)
-    if config.annotation_format == "named_keypoints":
-        if target_entry is not None and len(target_entry.get("keypoints", [])) == COURT_KP20_COUNT:
-            return normalize_named_keypoints(target_entry)
-        return source_keypoints(source_entry, config)
-
-    if target_entry is not None and len(target_entry.get("kps", [])) == COURT_KP20_COUNT:
-        kps = normalize_serialized_keypoints(target_entry["kps"])
-        return kps, [1 if point[0] is not None and point[1] is not None else 0 for point in kps]
+    if (
+        target_entry is not None
+        and len(target_entry.get("keypoints", [])) == COURT_KP20_COUNT
+    ):
+        return normalize_named_keypoints(target_entry)
     return source_keypoints(source_entry, config)
 
 
@@ -479,7 +469,7 @@ def compute_net_center(kps: np.ndarray) -> np.ndarray | None:
     intersection = line_intersection(kps[0], kps[3], kps[1], kps[2])
     if intersection is not None:
         return intersection.astype(np.float32)
-    return np.mean(kps[:4], axis=0).astype(np.float32)
+    return cast("np.ndarray", np.mean(kps[:4], axis=0).astype(np.float32))
 
 
 def maybe_auto_fill_ground_keypoints(
@@ -520,7 +510,7 @@ def maybe_auto_fill_ground_keypoints(
             continue
         projected_point = [float(projected[idx, 0]), float(projected[idx, 1])]
         if is_inside_image(projected_point, ui):
-            kps[idx] = projected_point
+            kps[idx] = cast("list[float | None]", projected_point)
             visibility[idx] = 1
         else:
             kps[idx] = [None, None]
@@ -579,16 +569,22 @@ def project_ground_keypoints_from_anchors(
     if not all(is_finite_idx(image_points, idx) for idx in anchor_indices):
         return None
 
-    court_xy = court_keypoints_3d()[: NET_CENTER_IDX + 1].numpy()[:, :2].astype(np.float32)
+    court_xy = (
+        court_keypoints_3d(STANDARD_COURT_CONFIG)[: NET_CENTER_IDX + 1]
+        .numpy()[:, :2]
+        .astype(np.float32)
+    )
     source_points = court_xy[list(anchor_indices)]
-    target_points = image_points[list(anchor_indices)].astype(np.float32)
+    target_points: np.ndarray = image_points[list(anchor_indices)].astype(np.float32)
     homography, _status = cv2.findHomography(source_points, target_points, 0)
     if homography is None or not np.isfinite(homography).all():
         return None
-    projected = cv2.perspectiveTransform(court_xy.reshape(1, -1, 2), homography).reshape(-1, 2)
+    projected = cv2.perspectiveTransform(
+        court_xy.reshape(1, -1, 2), homography
+    ).reshape(-1, 2)
     if not np.isfinite(projected).all():
         return None
-    return projected
+    return cast("np.ndarray", projected)
 
 
 def line_intersection(
@@ -605,7 +601,7 @@ def line_intersection(
         return None
     delta = b0 - a0
     t = float(delta[0] * db[1] - delta[1] * db[0]) / cross
-    return a0 + t * da
+    return cast("np.ndarray", a0 + t * da)
 
 
 def is_finite_idx(kps: np.ndarray, idx: int) -> bool:
@@ -618,26 +614,21 @@ def is_complete(
     required_indices: tuple[int, ...],
     *,
     visibility: list[int] | None = None,
-    annotation_format: str = "legacy_kps",
 ) -> bool:
     """Return whether all required indices are present."""
-    if annotation_format == "named_keypoints":
-        arr = to_numpy(kps)
-        for idx in required_indices:
-            if idx >= len(visibility or []):
-                return False
-            state = (visibility or [])[idx]
-            if state in (1, 2):
-                if not is_finite_idx(arr, idx):
-                    return False
-            elif state == 3:
-                continue
-            else:
-                return False
-        return True
-
     arr = to_numpy(kps)
-    return all(is_finite_idx(arr, idx) for idx in required_indices)
+    for idx in required_indices:
+        if idx >= len(visibility or []):
+            return False
+        state = (visibility or [])[idx]
+        if state in (1, 2):
+            if not is_finite_idx(arr, idx):
+                return False
+        elif state == 3:
+            continue
+        else:
+            return False
+    return True
 
 
 def is_completed_id(
@@ -649,16 +640,12 @@ def is_completed_id(
     target_entry = target_by_id.get(image_id)
     if target_entry is None:
         return False
-    if config.annotation_format == "named_keypoints":
-        kps, visibility = normalize_named_keypoints(target_entry)
-        return is_complete(
-            kps,
-            config.required_indices,
-            visibility=visibility,
-            annotation_format=config.annotation_format,
-        )
-    kps = normalize_serialized_keypoints(target_entry.get("kps", []))
-    return is_complete(kps, config.required_indices)
+    kps, visibility = normalize_named_keypoints(target_entry)
+    return is_complete(
+        kps,
+        config.required_indices,
+        visibility=visibility,
+    )
 
 
 def first_missing_keypoint(
@@ -682,7 +669,10 @@ def completed_count(
     config: AnnotationSessionConfig,
 ) -> int:
     """Count complete target entries among source entries."""
-    return sum(is_completed_id(str(entry["id"]), target_by_id, config) for entry in source_entries)
+    return sum(
+        is_completed_id(str(entry["id"]), target_by_id, config)
+        for entry in source_entries
+    )
 
 
 def save_completed_kp20(
@@ -700,20 +690,15 @@ def save_completed_kp20(
         kps,
         config.required_indices,
         visibility=visibility,
-        annotation_format=config.annotation_format,
     ):
         return False
     image_id = str(source_entry["id"])
     existing_entry = dict(target_by_id.get(image_id, {}))
-    if config.annotation_format == "named_keypoints":
-        existing_entry.update(named_annotation_entry(source_entry, existing_entry, kps, visibility, config))
-    else:
-        existing_entry.update({
-            "id": image_id,
-            "metric": source_entry.get("metric"),
-            "kps": [[float(point[0]), float(point[1])] for point in kps[:COURT_KP20_COUNT]],
-            config.manual_adjusted_field: True,
-        })
+    existing_entry.update(
+        named_annotation_entry(
+            source_entry, existing_entry, kps, visibility, config
+        )
+    )
     target_by_id[image_id] = existing_entry
     write_annotation_entries_atomic(
         target_path,
@@ -742,7 +727,9 @@ def named_annotation_entry(
     output["annotation_status"] = "completed"
     output[config.manual_adjusted_field] = True
     output["keypoint_format"] = config.keypoint_format
-    output["labeled_keypoint_indices"] = list(labeled_keypoint_indices(config.keypoint_format))
+    output["labeled_keypoint_indices"] = list(
+        labeled_keypoint_indices(config.keypoint_format)
+    )
     output["is_yastrebksv_kp15"] = bool(source_entry.get("is_yastrebksv_kp15", False))
     source = dict(output.get("source", {}))
     for key in ("dataset", "keypoint_format", "labeled_keypoint_indices"):
@@ -756,7 +743,9 @@ def named_annotation_entry(
             "name": COURT_KP_NAMES[idx],
             "x": optional_point_value(kps[idx][0]),
             "y": optional_point_value(kps[idx][1]),
-            "visibility": normalize_visibility(visibility[idx] if idx < len(visibility) else 0),
+            "visibility": normalize_visibility(
+                visibility[idx] if idx < len(visibility) else 0
+            ),
         }
         for idx in range(COURT_KP20_COUNT)
     ]
@@ -805,11 +794,7 @@ def write_annotation_entries_atomic(
     config: AnnotationSessionConfig,
     metadata: dict[str, Any] | None,
 ) -> None:
-    """Write entries in either legacy-list or named-document format."""
-    if config.annotation_format != "named_keypoints":
-        save_json_atomic(entries, path)
-        return
-
+    """Write the canonical metadata-wrapped annotation document."""
     payload = dict(metadata or {})
     payload["items"] = entries
     save_json_atomic(payload, path)
@@ -833,27 +818,31 @@ def ordered_target_entries(
     return ordered
 
 
-def find_image(images_dir: Path, image_id: str) -> Path | None:
-    """Find an image file for a dataset id."""
-    return find_existing_file(images_dir, image_id, (".png", ".jpg", ".jpeg"))
-
-
 def find_image_for_entry(
-    root: Path,
-    images_dir: Path,
     entry: dict[str, Any],
     image_id: str,
     config: AnnotationSessionConfig,
-) -> Path | None:
-    """Find an image path using entry metadata before legacy image lookup."""
-    image_path_value = entry.get(config.image_path_key)
-    if image_path_value:
-        image_path = Path(str(image_path_value))
-        if not image_path.is_absolute():
-            image_path = root / image_path
-        if image_path.exists():
-            return image_path
-    return find_image(images_dir, image_id)
+) -> Path:
+    """Resolve the required canonical entry path under the configured DATA root."""
+    if config.image_path_key not in entry:
+        raise ValueError(
+            f"Annotation entry {image_id!r} is missing {config.image_path_key!r}."
+        )
+    raw_path = entry[config.image_path_key]
+    if type(raw_path) is not str or not raw_path:
+        raise ValueError(
+            f"Annotation entry {image_id!r} has an invalid {config.image_path_key!r}."
+        )
+    image_path: Path = config.resolver.resolve(
+        PathRole.DATA,
+        config.root_fragment,
+        raw_path,
+    )
+    if not image_path.is_file():
+        raise FileNotFoundError(
+            f"Annotation image does not exist for {image_id!r}: {image_path}"
+        )
+    return image_path
 
 
 def find_start_index(
@@ -866,17 +855,28 @@ def find_start_index(
         for index, entry in enumerate(source_entries):
             if str(entry["id"]) == config.image_id:
                 return index
-        raise ValueError(f"image_id={config.image_id!r} was not found in split={config.split!r}.")
+        raise ValueError(
+            f"image_id={config.image_id!r} was not found in split={config.split!r}."
+        )
 
     start_index = min(max(config.start_index, 0), max(len(source_entries) - 1, 0))
     if config.start_after_last_completed:
-        last_completed_index = find_last_completed_index(source_entries, target_by_id, config)
+        last_completed_index = find_last_completed_index(
+            source_entries, target_by_id, config
+        )
         if last_completed_index is not None:
             return (last_completed_index + 1) % len(source_entries)
 
     if not config.skip_completed:
         return start_index
-    return advance_index(source_entries, target_by_id, start_index - 1, 1, skip_completed=True, config=config)
+    return advance_index(
+        source_entries,
+        target_by_id,
+        start_index - 1,
+        1,
+        skip_completed=True,
+        config=config,
+    )
 
 
 def find_last_completed_index(
@@ -931,10 +931,14 @@ def render(
 
     for start_idx, end_idx in GROUND_DRAW_PAIRS:
         if start_idx < arr.shape[0] and end_idx < arr.shape[0]:
-            draw_line(canvas, arr[start_idx], arr[end_idx], color=(80, 80, 80), thickness=1)
+            draw_line(
+                canvas, arr[start_idx], arr[end_idx], color=(80, 80, 80), thickness=1
+            )
 
     for start_idx, end_idx in NET_DRAW_PAIRS:
-        draw_line(canvas, arr[start_idx], arr[end_idx], color=(0, 220, 255), thickness=2)
+        draw_line(
+            canvas, arr[start_idx], arr[end_idx], color=(0, 220, 255), thickness=2
+        )
 
     for idx in range(min(GROUND_KEYPOINT_COUNT, arr.shape[0])):
         color = (80, 220, 255) if idx in config.editable_indices else (170, 170, 170)
@@ -952,8 +956,19 @@ def render(
         radius = 8 if idx == ui.selected_keypoint else 5
         thickness = 3 if idx == ui.selected_keypoint else 2
         draw_point(canvas, arr[idx], color=color, radius=radius, thickness=thickness)
-        label_xy = tuple(np.round(arr[idx] + np.array([8.0, -8.0])).astype(np.int32).tolist())
-        cv2.putText(canvas, str(idx), label_xy, cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2, lineType=cv2.LINE_AA)
+        label_xy = tuple(
+            np.round(arr[idx] + np.array([8.0, -8.0])).astype(np.int32).tolist()
+        )
+        cv2.putText(
+            canvas,
+            str(idx),
+            label_xy,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            color,
+            2,
+            lineType=cv2.LINE_AA,
+        )
 
     header = (
         f"{index + 1}/{total} {image_id} | completed {completed_count}/{total} | "
@@ -972,7 +987,9 @@ def render(
         ]
         draw_text_box(canvas, help_lines, origin=(12, 54))
 
-    display, scale = resize_for_display(canvas, config.max_display_width, config.max_display_height)
+    display, scale = resize_for_display(
+        canvas, config.max_display_width, config.max_display_height
+    )
     ui.display_scale = scale
     draw_complete_button(
         display,
@@ -980,7 +997,6 @@ def render(
             kps,
             config.required_indices,
             visibility=visibility,
-            annotation_format=config.annotation_format,
         ),
         ui=ui,
     )
@@ -1069,10 +1085,20 @@ def draw_complete_button(display: np.ndarray, *, enabled: bool, ui: UiState) -> 
     text_size, _baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.68, 2)
     text_x = x1 + (x2 - x1 - text_size[0]) // 2
     text_y = y1 + (y2 - y1 + text_size[1]) // 2
-    cv2.putText(display, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.68, (255, 255, 255), 2)
+    cv2.putText(
+        display,
+        text,
+        (text_x, text_y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.68,
+        (255, 255, 255),
+        2,
+    )
 
 
-def point_in_rect(point: tuple[int, int], rect: tuple[int, int, int, int] | None) -> bool:
+def point_in_rect(
+    point: tuple[int, int], rect: tuple[int, int, int, int] | None
+) -> bool:
     """Return whether a point is inside a rectangle."""
     if rect is None:
         return False
@@ -1081,17 +1107,23 @@ def point_in_rect(point: tuple[int, int], rect: tuple[int, int, int, int] | None
     return x1 <= x <= x2 and y1 <= y <= y2
 
 
-def draw_text_box(canvas: np.ndarray, lines: list[str], origin: tuple[int, int]) -> None:
+def draw_text_box(
+    canvas: np.ndarray, lines: list[str], origin: tuple[int, int]
+) -> None:
     """Draw a small translucent text box."""
     if not lines:
         return
     x, y = origin
     line_height = 22
-    widths = [cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1)[0][0] for line in lines]
+    widths = [
+        cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1)[0][0] for line in lines
+    ]
     box_w = max(widths) + 18
     box_h = line_height * len(lines) + 10
     overlay = canvas.copy()
-    cv2.rectangle(overlay, (x - 8, y - 20), (x - 8 + box_w, y - 20 + box_h), (0, 0, 0), -1)
+    cv2.rectangle(
+        overlay, (x - 8, y - 20), (x - 8 + box_w, y - 20 + box_h), (0, 0, 0), -1
+    )
     cv2.addWeighted(overlay, 0.58, canvas, 0.42, 0.0, dst=canvas)
     for offset, line in enumerate(lines):
         cv2.putText(
@@ -1116,7 +1148,11 @@ def resize_for_display(
     scale = min(float(max_width) / float(width), float(max_height) / float(height), 1.0)
     if scale >= 0.999:
         return image, 1.0
-    resized = cv2.resize(image, (int(round(width * scale)), int(round(height * scale))), interpolation=cv2.INTER_AREA)
+    resized = cv2.resize(
+        image,
+        (int(round(width * scale)), int(round(height * scale))),
+        interpolation=cv2.INTER_AREA,
+    )
     return resized, scale
 
 
@@ -1139,7 +1175,11 @@ def set_mouse_callback(
             ui.drag_started = False
             return
 
-        if event == cv2.EVENT_MOUSEMOVE and ui.mouse_down_display_xy is not None and ui.dragging_idx is not None:
+        if (
+            event == cv2.EVENT_MOUSEMOVE
+            and ui.mouse_down_display_xy is not None
+            and ui.dragging_idx is not None
+        ):
             if not (flags & cv2.EVENT_FLAG_LBUTTON):
                 return
             dx = x - ui.mouse_down_display_xy[0]
@@ -1147,33 +1187,49 @@ def set_mouse_callback(
             if ui.drag_started or float(np.hypot(dx, dy)) >= ui.drag_start_threshold_px:
                 ui.drag_started = True
                 ui.selected_keypoint = ui.dragging_idx
-                kps[ui.dragging_idx] = display_to_original_xy((x, y), ui)
+                kps[ui.dragging_idx] = cast(
+                    "list[float | None]", display_to_original_xy((x, y), ui)
+                )
                 visibility[ui.dragging_idx] = ui.input_visibility
                 ui.auto_filled_indices.discard(ui.dragging_idx)
-                maybe_auto_fill_ground_keypoints(kps, visibility, ui, config, changed_idx=ui.dragging_idx)
+                maybe_auto_fill_ground_keypoints(
+                    kps, visibility, ui, config, changed_idx=ui.dragging_idx
+                )
             return
 
         if event == cv2.EVENT_LBUTTONUP:
             if ui.mouse_down_display_xy is None:
                 return
             if ui.drag_started and ui.dragging_idx is not None:
-                kps[ui.dragging_idx] = display_to_original_xy((x, y), ui)
+                kps[ui.dragging_idx] = cast(
+                    "list[float | None]", display_to_original_xy((x, y), ui)
+                )
                 visibility[ui.dragging_idx] = ui.input_visibility
                 ui.auto_filled_indices.discard(ui.dragging_idx)
-                maybe_auto_fill_ground_keypoints(kps, visibility, ui, config, changed_idx=ui.dragging_idx)
+                maybe_auto_fill_ground_keypoints(
+                    kps, visibility, ui, config, changed_idx=ui.dragging_idx
+                )
                 ui.selected_keypoint = ui.dragging_idx
             elif not point_in_rect((x, y), ui.complete_button_rect):
                 clicked_idx = ui.dragging_idx if ui.input_visibility == 2 else None
-                changed_idx = clicked_idx if clicked_idx is not None else ui.selected_keypoint
+                changed_idx = (
+                    clicked_idx if clicked_idx is not None else ui.selected_keypoint
+                )
                 ui.selected_keypoint = changed_idx
                 if clicked_idx is None:
-                    kps[changed_idx] = display_to_original_xy((x, y), ui)
+                    kps[changed_idx] = cast(
+                        "list[float | None]", display_to_original_xy((x, y), ui)
+                    )
                 visibility[changed_idx] = ui.input_visibility
                 ui.auto_filled_indices.discard(changed_idx)
-                auto_filled = maybe_auto_fill_ground_keypoints(kps, visibility, ui, config, changed_idx=changed_idx)
+                auto_filled = maybe_auto_fill_ground_keypoints(
+                    kps, visibility, ui, config, changed_idx=changed_idx
+                )
                 if clicked_idx is None:
                     if auto_filled:
-                        ui.selected_keypoint = first_missing_keypoint(kps, ui.editable_indices, visibility)
+                        ui.selected_keypoint = first_missing_keypoint(
+                            kps, ui.editable_indices, visibility
+                        )
                     else:
                         advance_selected_keypoint(ui)
             ui.mouse_down_display_xy = None
@@ -1186,7 +1242,10 @@ def set_mouse_callback(
 def display_to_original_xy(point: tuple[int, int], ui: UiState) -> list[float]:
     """Convert display coordinates to original image coordinates."""
     x, y = point
-    return [float(x) / max(ui.display_scale, 1e-6), float(y) / max(ui.display_scale, 1e-6)]
+    return [
+        float(x) / max(ui.display_scale, 1e-6),
+        float(y) / max(ui.display_scale, 1e-6),
+    ]
 
 
 def nearest_editable_keypoint(

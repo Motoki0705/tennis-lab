@@ -3,7 +3,7 @@
 Usage:
     python -m src.tasks.blcs.scripts.generate_dataset
     python -m src.tasks.blcs.scripts.generate_dataset generator.num_scenes=100
-    python -m src.tasks.blcs.scripts.generate_dataset run.output_dir=data/blcs generator.num_scenes=500
+    python -m src.tasks.blcs.scripts.generate_dataset run.output_dir=blcs generator.num_scenes=500
     python -m src.tasks.blcs.scripts.generate_dataset run.num_workers=4
 
 Notes:
@@ -17,21 +17,18 @@ from __future__ import annotations
 
 import logging
 import sys
-from collections.abc import Callable
-from pathlib import Path
-from typing import TypeVar, cast
+from typing import cast
 
-import hydra
-import torch
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from tqdm.auto import tqdm
 
+from src.tasks.blcs.configuration import parse_generation_run
 from src.tasks.blcs.generate_dataset.config import build_generator_config
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
 from src.tasks.blcs.generate_dataset.utils.parallel_runner import (
     generate_parallel_scenes,
 )
+from src.utils.hydra import hydra_main
 from src.utils.seeding import seed_everything
 
 logging.basicConfig(
@@ -40,31 +37,27 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-F = TypeVar("F", bound=Callable[..., int])
 
-
-def _hydra_main(func: F) -> F:
-    return cast(
-        F,
-        hydra.main(config_path="../configs", config_name="generate_dataset", version_base="1.3")(
-            func
-        ),
-    )
-
-
-@_hydra_main
+@hydra_main(
+    config_path="../configs",
+    config_name="generate_dataset",
+    version_base="1.3",
+    validation_boundary="blcs.generate_dataset",
+)
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Generate scenes and write them to disk."""
+    run, _resolver = parse_generation_run(cfg)
+    generator_config = build_generator_config(cfg)
     logger.info("=" * 60)
     logger.info("BLCS Dataset Generator")
     logger.info("=" * 60)
 
-    output_dir = Path(to_absolute_path(str(cfg.run.output_dir)))
+    output_dir = run.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
     OmegaConf.save(cfg, output_dir / "config.yaml")
 
-    seed = int(cfg.run.seed)
+    seed = run.seed
     seed_everything(seed)
 
     generation_mode = str(cfg.generation.mode)
@@ -74,8 +67,8 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             "Supported: ['single_object', 'multi_object']"
         )
 
-    train_ratio = float(cfg.run.train_ratio)
-    val_ratio = float(cfg.run.val_ratio)
+    train_ratio = run.train_ratio
+    val_ratio = run.val_ratio
     test_ratio = 1.0 - train_ratio - val_ratio
     if test_ratio < 0:
         raise ValueError(
@@ -83,20 +76,13 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         )
 
     num_scenes = int(cfg.generator.num_scenes)
-    num_workers = int(cfg.run.get("num_workers", 1))
-    device = str(cfg.run.device)
-    generator_config = build_generator_config(cfg)
+    num_workers = run.num_workers
+    device = run.device
 
     logger.info("Output directory: %s", output_dir)
     logger.info("Number of scenes: %s", num_scenes)
     logger.info("Max rallies per scene: %s", cfg.rally.max_rallies)
     logger.info("Device: %s", device)
-
-    if torch.device(device).type != "cpu":
-        raise ValueError(
-            "Parallel BLCS dataset generation requires run.device=cpu when "
-            f"run.num_workers={num_workers}"
-        )
 
     writer = BLCSDatasetWriter(output_dir)
 
@@ -111,13 +97,18 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         device=device,
         num_scenes=num_scenes,
         num_workers=num_workers,
+        start_index=0,
         seed=seed,
         multi_object=generation_mode == "multi_object",
         timeline_config=(
-            cast(dict[str, object], OmegaConf.to_container(cfg.generation.timeline, resolve=True))
+            cast(
+                dict[str, object],
+                OmegaConf.to_container(cfg.generation.timeline, resolve=True),
+            )
             if generation_mode == "multi_object"
             else None
         ),
+        chunksize=run.chunksize,
     )
 
     for scene_data in tqdm(
@@ -147,7 +138,10 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         seed=seed,
     )
 
-    writer.save_meta_json(config=OmegaConf.to_container(cfg, resolve=True))
+    resolved_config = OmegaConf.to_container(cfg, resolve=True)
+    if not isinstance(resolved_config, dict):
+        raise TypeError("BLCS generator configuration must resolve to a mapping.")
+    writer.save_meta_json(config=resolved_config)
 
     logger.info("=" * 60)
     logger.info("Dataset generation complete!")
@@ -159,4 +153,4 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    sys.exit(cast(Callable[[], int], main)())
+    sys.exit(main())

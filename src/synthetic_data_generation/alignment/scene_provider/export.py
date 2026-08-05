@@ -36,7 +36,9 @@ from src.synthetic_data_generation.alignment.scene_provider.bundle import (
     sha256_file,
     write_scene_provider_bundle_manifest,
 )
+from src.synthetic_data_generation.configuration import VerifiedSystemExecutable
 from src.synthetic_data_generation.scene_contract import ArtifactRef, SceneCamera
+from src.utils.configuration import PathContractError, PathResolver, PathRole
 
 _OPENCV_CAMERA_MODEL_ID = 4
 _OPENCV_NUM_PARAMS = 8
@@ -71,13 +73,15 @@ class ProviderExportSettings:
     bundle_id: str
     provider_backend: str
     output_dir: Path
+    external_asset_scope: Path
     cameras_bin: Path
     images_bin: Path
     points3d_bin: Path
     original_image_dir: Path
     factor_image_dir: Path
-    geometry_python: Path
+    geometry_executable: VerifiedSystemExecutable
     geometry_bridge: Path
+    resolver: PathResolver
     factor: int
     group_size: int
     source_artifacts: tuple[SourceArtifactInput, ...]
@@ -92,6 +96,59 @@ class ProviderExportSettings:
             raise ValueError("group_size must be positive.")
         if not self.source_artifacts:
             raise ValueError("source_artifacts must not be empty.")
+        role_paths = {
+            "output_dir": (PathRole.DATA, self.output_dir),
+            "external_asset_scope": (
+                PathRole.EXTERNAL_ASSET,
+                self.external_asset_scope,
+            ),
+            "cameras_bin": (PathRole.EXTERNAL_ASSET, self.cameras_bin),
+            "images_bin": (PathRole.EXTERNAL_ASSET, self.images_bin),
+            "points3d_bin": (PathRole.EXTERNAL_ASSET, self.points3d_bin),
+            "original_image_dir": (
+                PathRole.EXTERNAL_ASSET,
+                self.original_image_dir,
+            ),
+            "factor_image_dir": (PathRole.EXTERNAL_ASSET, self.factor_image_dir),
+            "geometry_bridge": (PathRole.PROJECT, self.geometry_bridge),
+        }
+        for name, (role, path) in role_paths.items():
+            object.__setattr__(self, name, self.resolver.validate(role, path))
+        for name, (role, _) in role_paths.items():
+            path = cast(Path, getattr(self, name))
+            if (
+                role is PathRole.EXTERNAL_ASSET
+                and name != "external_asset_scope"
+                and (
+                    path == self.external_asset_scope
+                    or not path.is_relative_to(self.external_asset_scope)
+                )
+            ):
+                raise PathContractError(
+                    f"Provider external asset {name!r} is outside its declared "
+                    f"scope: {path} (scope: {self.external_asset_scope})."
+                )
+        object.__setattr__(
+            self,
+            "source_artifacts",
+            tuple(
+                SourceArtifactInput(
+                    artifact_id=item.artifact_id,
+                    path=self.resolver.validate(PathRole.EXTERNAL_ASSET, item.path),
+                    sha256=item.sha256,
+                )
+                for item in self.source_artifacts
+            ),
+        )
+        for item in self.source_artifacts:
+            if item.path == self.external_asset_scope or not item.path.is_relative_to(
+                self.external_asset_scope
+            ):
+                raise PathContractError(
+                    f"Provider source artifact {item.artifact_id!r} is outside its "
+                    f"declared scope: {item.path} (scope: {self.external_asset_scope})."
+                )
+        self.geometry_executable.verify()
 
 
 @dataclass(frozen=True)
@@ -237,10 +294,11 @@ def collect_exporter_provenance(
     repo_root: Path,
     code_paths: tuple[Path, ...],
     command: str,
-    geometry_python: Path,
+    geometry_executable: VerifiedSystemExecutable,
     geometry_bridge: Path,
 ) -> ExporterProvenance:
     """Collect git, code-content, and runtime identity for an export."""
+    geometry_python = geometry_executable.verify()
     git_revision = _run_git(repo_root, "rev-parse", "HEAD")
     git_status = _run_git(repo_root, "status", "--porcelain")
     code_digest = hashlib.sha256()
@@ -315,24 +373,52 @@ def _load_provider_geometry(
     sorted_images: tuple[_ColmapImage, ...],
     exporter: ExporterProvenance,
 ) -> _ProviderGeometry:
-    with tempfile.TemporaryDirectory(prefix="tennis-scene-geometry-") as raw_dir:
+    bridge_cache = settings.resolver.resolve(PathRole.CACHE, "geometry_bridge")
+    bridge_cache.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix="tennis-scene-geometry-",
+        dir=bridge_cache,
+    ) as raw_dir:
         temporary_dir = Path(raw_dir)
         request_path = temporary_dir / "request.json"
         output_path = temporary_dir / "geometry.npz"
         request_path.write_text(
             json.dumps(
                 {
-                    "cameras_bin": str(settings.cameras_bin.resolve()),
-                    "images_bin": str(settings.images_bin.resolve()),
-                    "points3d_bin": str(settings.points3d_bin.resolve()),
+                    "cameras_bin": {
+                        "role": PathRole.EXTERNAL_ASSET.value,
+                        "path": str(
+                            settings.resolver.validate(
+                                PathRole.EXTERNAL_ASSET, settings.cameras_bin
+                            )
+                        ),
+                    },
+                    "images_bin": {
+                        "role": PathRole.EXTERNAL_ASSET.value,
+                        "path": str(
+                            settings.resolver.validate(
+                                PathRole.EXTERNAL_ASSET, settings.images_bin
+                            )
+                        ),
+                    },
+                    "points3d_bin": {
+                        "role": PathRole.EXTERNAL_ASSET.value,
+                        "path": str(
+                            settings.resolver.validate(
+                                PathRole.EXTERNAL_ASSET, settings.points3d_bin
+                            )
+                        ),
+                    },
                 },
                 sort_keys=True,
             ),
             encoding="utf-8",
         )
         _run_geometry_subprocess(
-            settings.geometry_python,
+            settings.geometry_executable.verify(),
             settings.geometry_bridge,
+            "--path-roots",
+            json.dumps(settings.resolver.roots.as_mapping(), sort_keys=True),
             str(request_path),
             str(output_path),
         )
@@ -418,7 +504,7 @@ def _run_geometry_subprocess(
         "import runpy,sys;"
         "sys.argv=sys.argv[1:];"
         "namespace=runpy.run_path(sys.argv[0]);"
-        "raise SystemExit(namespace['main']())"
+        "raise SystemExit(namespace['provider_main'](sys.argv[1:]))"
     )
     result = subprocess.run(
         [
@@ -855,11 +941,11 @@ def _verify_source_artifacts(
 
 
 def _validate_input_files(settings: ProviderExportSettings) -> None:
+    settings.geometry_executable.verify()
     for path in (
         settings.cameras_bin,
         settings.images_bin,
         settings.points3d_bin,
-        settings.geometry_python,
         settings.geometry_bridge,
     ):
         if not path.is_file():

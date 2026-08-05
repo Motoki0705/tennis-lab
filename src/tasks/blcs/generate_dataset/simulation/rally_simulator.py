@@ -63,39 +63,39 @@ class RallyConfig:
     """Configuration for rally simulation."""
 
     # Initial condition ranges
-    z_range: tuple[float, float] = (0.8, 1.4)
-    spin_x_range: tuple[float, float] = (-20.0, 20.0)
-    spin_y_range: tuple[float, float] = (-80.0, -40.0)
-    spin_z_range: tuple[float, float] = (-20.0, 20.0)
+    z_range: tuple[float, float]
+    spin_x_range: tuple[float, float]
+    spin_y_range: tuple[float, float]
+    spin_z_range: tuple[float, float]
 
     # Simulation parameters
-    max_sim_frames: int = 2000
-    output_fps: int = 30
-    sim_fps: int = 240
+    max_sim_frames: int
+    output_fps: int
+    sim_fps: int
 
-    max_rallies: int = 10
-    max_total_frames: int = 12000
-    hit_timing_range: tuple[float, float] = (0.2, 0.8)
-    return_z_range: tuple[float, float] = (0.8, 1.4)
+    max_rallies: int
+    max_total_frames: int
+    hit_timing_range: tuple[float, float]
+    return_z_range: tuple[float, float]
 
     # --- Serve ---
-    serve_probability: float = 0.3
-    serve_z_range: tuple[float, float] = (2.0, 2.8)
-    toss_vz_range: tuple[float, float] = (4.5, 7.0)
-    toss_xy_noise_range: tuple[float, float] = (-0.35, 0.35)
-    toss_max_frames: int = 240
-    toss_z0_tolerance: float = 0.03
+    serve_probability: float
+    serve_z_range: tuple[float, float]
+    toss_vz_range: tuple[float, float]
+    toss_xy_noise_range: tuple[float, float]
+    toss_max_frames: int
+    toss_z0_tolerance: float
 
     # --- Volley / multi-bounce ---
-    volley_probability: float = 0.05
-    normal_return_probability: float = 0.85
-    late_return_probability: float = 0.10
+    volley_probability: float
+    normal_return_probability: float
+    late_return_probability: float
 
     # --- Target cell sampling ---
     # Probability of intentionally aiming at an out-court cell (rally-ending
     # fault). Directly controls the rally-length distribution: per-shot
     # continuation probability is roughly (1 - this value).
-    out_court_target_probability: float = 0.15
+    out_court_target_probability: float
 
 
 @dataclass
@@ -195,11 +195,12 @@ class RallySimulator:
 
     def __init__(
         self,
-        physics_config: PhysicsConfig | None = None,
-        rally_config: RallyConfig | None = None,
-        cell_manager: CellManager | None = None,
-        targeted_velocity_config: TargetedVelocityConfig | None = None,
-        device: str | torch.device = "cpu",
+        *,
+        physics_config: PhysicsConfig,
+        rally_config: RallyConfig,
+        cell_manager: CellManager,
+        targeted_velocity_config: TargetedVelocityConfig,
+        device: str | torch.device,
     ) -> None:
         """Initialize rally simulator.
 
@@ -211,9 +212,9 @@ class RallySimulator:
             device: Torch device.
         """
         self.physics = BallPhysics(physics_config)
-        self.physics_config = physics_config or PhysicsConfig()
-        self.rally_config = rally_config or RallyConfig()
-        self.cell_manager = cell_manager or CellManager()
+        self.physics_config = physics_config
+        self.rally_config = rally_config
+        self.cell_manager = cell_manager
         self.device = torch.device(device)
 
         self.targeted_velocity_sampler = TargetedVelocitySampler(
@@ -304,10 +305,17 @@ class RallySimulator:
             positions.append(state.position.clone())
             velocities.append(state.velocity.clone())
 
-            if prev_vz > 0.0 and float(state.velocity[2].item()) <= 0.0 and apex_idx == 0:
+            if (
+                prev_vz > 0.0
+                and float(state.velocity[2].item()) <= 0.0
+                and apex_idx == 0
+            ):
                 apex_idx = len(positions) - 1
 
-            if apex_idx > 0 and float(state.position[2].item()) <= z0 + cfg.toss_z0_tolerance:
+            if (
+                apex_idx > 0
+                and float(state.position[2].item()) <= z0 + cfg.toss_z0_tolerance
+            ):
                 return_idx = len(positions) - 1
                 break
             return_idx = len(positions) - 1
@@ -329,8 +337,8 @@ class RallySimulator:
 
     def _sample_serve_with_toss(self, from_side: str) -> InitialConditionResult:
         """Sample serve by generating toss first, then serve initial state."""
-        toss_positions, toss_velocities, contact_pos = self._simulate_toss_until_contact(
-            from_side=from_side
+        toss_positions, toss_velocities, contact_pos = (
+            self._simulate_toss_until_contact(from_side=from_side)
         )
         target_side = "far" if from_side == "near" else "near"
         target_cell = self._sample_serve_target_cell()
@@ -406,8 +414,8 @@ class RallySimulator:
                     net_pos = pos_at_net
                     hit_net_before_bounce = True
                     state = self.physics.apply_net_collision(state, net_pos=pos_at_net)
-                hit_fence, pos_at_fence, fence_normal = self.physics.check_fence_collision(
-                    prev_pos, state.position
+                hit_fence, pos_at_fence, fence_normal = (
+                    self.physics.check_fence_collision(prev_pos, state.position)
                 )
                 if hit_fence and pos_at_fence is not None and fence_normal is not None:
                     hit_fence_before_bounce = True
@@ -570,8 +578,10 @@ class RallySimulator:
             # Return between 2nd and 3rd bounce
             if t_bounce2_sim >= 0:
                 start = t_bounce2_sim
-                end = t_bounce3_sim if t_bounce3_sim >= 0 else min(
-                    t_bounce2_sim + 240, max_idx
+                end = (
+                    t_bounce3_sim
+                    if t_bounce3_sim >= 0
+                    else min(t_bounce2_sim + 240, max_idx)
                 )
             else:
                 # No 2nd bounce -> fallback to normal timing
@@ -580,11 +590,7 @@ class RallySimulator:
                 end = min(estimated_b2, max_idx)
         else:  # normal
             start = max(0, t_bounce1_sim)
-            end = (
-                t_bounce2_sim
-                if t_bounce2_sim >= 0
-                else min(start + 240, max_idx)
-            )
+            end = t_bounce2_sim if t_bounce2_sim >= 0 else min(start + 240, max_idx)
 
         end = min(end, max_idx)
         if start > end:
@@ -640,7 +646,9 @@ class RallySimulator:
         Returns a random in-court cell with bias toward service boxes and
         back court, with small probability of out-court targeting.
         """
-        p_out = max(0.0, min(1.0, float(self.rally_config.out_court_target_probability)))
+        p_out = max(
+            0.0, min(1.0, float(self.rally_config.out_court_target_probability))
+        )
         r = torch.rand(1).item()
         if r >= p_out:
             # In-court (0-5)
@@ -702,8 +710,8 @@ class RallySimulator:
                     t_net_sim = frame + 1
                     hit_net_before_bounce = True
                     state = self.physics.apply_net_collision(state, net_pos=pos_at_net)
-                hit_fence, pos_at_fence, fence_normal = self.physics.check_fence_collision(
-                    prev_pos, state.position
+                hit_fence, pos_at_fence, fence_normal = (
+                    self.physics.check_fence_collision(prev_pos, state.position)
                 )
                 if hit_fence and pos_at_fence is not None and fence_normal is not None:
                     hit_fence_before_bounce = True
@@ -851,7 +859,9 @@ class RallySimulator:
                 from_side=current_side,
                 from_cell=current_cell,
                 t_start=t_offset // downsample,
-                t_net=self._convert_time(shot_result["t_net_sim"], downsample, t_offset),
+                t_net=self._convert_time(
+                    shot_result["t_net_sim"], downsample, t_offset
+                ),
                 t_bounce1=self._convert_time(
                     shot_result["t_bounce1_sim"], downsample, t_offset
                 ),
@@ -1004,27 +1014,3 @@ class RallySimulator:
     def generate_rally(self, from_cell: int, from_side: str) -> RallyResult:
         """Generate a complete rally from sampling to simulation."""
         return self.simulate_rally(from_cell, from_side)
-
-
-if __name__ == "__main__":
-    torch.manual_seed(0)
-
-    simulator = RallySimulator(device="cpu")
-
-    result = simulator.generate_rally(from_cell=0, from_side="near")
-    assert result.rally_length == len(result.shot_events)
-
-    for idx, ev in enumerate(result.shot_events):
-        assert ev.shot_index == idx
-        if ev.category == ShotCategory.IN_COURT:
-            assert 0 <= ev.to_cell < NUM_IN_COURT_CELLS
-        elif ev.category == ShotCategory.OUT_COURT:
-            assert NUM_IN_COURT_CELLS <= ev.to_cell < NUM_CELLS_PER_SIDE
-        elif ev.category == ShotCategory.DIRECT_NET:
-            assert ev.to_cell == -1
-
-    print(
-        "smoke ok:",
-        f"rally_length={result.rally_length}",
-        f"end_reason={result.end_reason.value}",
-    )

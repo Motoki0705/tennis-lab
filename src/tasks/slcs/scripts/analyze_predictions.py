@@ -3,12 +3,13 @@ Analyze SLCS evaluation arrays: error distributions, temporal error profile,
 observation-missing-rate breakdown and confidence calibration.
 
 Usage:
-    python -m src.tasks.slcs.scripts.analyze_predictions analysis.arrays=outputs/slcs/evaluate/.../eval_arrays.npz
-    python -m src.tasks.slcs.scripts.analyze_predictions analysis.arrays=... analysis.output_dir=outputs/slcs/analysis/run1
+    python -m src.tasks.slcs.scripts.analyze_predictions analysis.arrays=slcs/evaluate/run/eval_arrays.npz
+    python -m src.tasks.slcs.scripts.analyze_predictions analysis.arrays=... analysis.output_dir=slcs/analysis/run1
     python -m src.tasks.slcs.scripts.analyze_predictions analysis.arrays=... analysis.calibration_bins=8
 
 Notes:
     - Configuration is loaded from `src/tasks/slcs/configs/analyze_predictions.yaml`.
+    - Input and output paths are relative to `paths.output_root`.
     - Input is the `eval_arrays.npz` produced by `scripts/evaluate.py`.
     - Writes PNG plots (error histograms, error-vs-window-offset, observed vs
       missing observation breakdown, sigma reliability curves) plus a
@@ -29,6 +30,7 @@ import numpy as np
 from numpy.typing import NDArray
 from omegaconf import DictConfig
 
+from src.tasks.slcs.configuration import SLCSAnalysisConfig
 from src.utils.hydra import hydra_main
 from src.utils.io import save_json
 
@@ -78,7 +80,9 @@ def _plot_histograms(data: dict[str, NDArray[np.float64]], path: Path) -> None:
         if values.size:
             ax.hist(values, bins=40, color="tab:blue", alpha=0.8)
             ax.axvline(
-                float(np.median(values)), color="tab:red", linestyle="--",
+                float(np.median(values)),
+                color="tab:red",
+                linestyle="--",
                 label=f"median={np.median(values):.3f}",
             )
             ax.legend(fontsize=8)
@@ -91,14 +95,11 @@ def _plot_histograms(data: dict[str, NDArray[np.float64]], path: Path) -> None:
 
 def run(config: DictConfig) -> None:
     """Run the analysis and write plots + analysis.json."""
-    analysis_cfg = config.analysis
-    arrays_path = analysis_cfg.get("arrays")
-    if not arrays_path:
-        raise ValueError("analysis.arrays must point to an eval_arrays.npz file.")
-    arrays = np.load(str(arrays_path), allow_pickle=False)
-    output_dir = Path(str(analysis_cfg.output_dir))
+    runtime = SLCSAnalysisConfig.from_config(config)
+    arrays = np.load(runtime.arrays, allow_pickle=False)
+    output_dir = runtime.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
-    bins = int(analysis_cfg.get("calibration_bins", 10))
+    bins = runtime.calibration_bins
 
     player_mask = arrays["player_mask"]
     ball_mask = arrays["ball_mask"]
@@ -112,8 +113,12 @@ def run(config: DictConfig) -> None:
         "num_windows": int(frame_mask.shape[0]),
         "player_frames": int(player_mask.sum()),
         "ball_frames": int(ball_mask.sum()),
-        "label_missing_rate_player": float(1.0 - player_mask.sum() / max(frame_mask.sum() * player_mask.shape[1], 1)),
-        "label_missing_rate_ball": float(1.0 - ball_mask.sum() / max(frame_mask.sum(), 1)),
+        "label_missing_rate_player": float(
+            1.0 - player_mask.sum() / max(frame_mask.sum() * player_mask.shape[1], 1)
+        ),
+        "label_missing_rate_ball": float(
+            1.0 - ball_mask.sum() / max(frame_mask.sum(), 1)
+        ),
     }
 
     # 1. Error distributions ------------------------------------------------
@@ -205,7 +210,9 @@ def run(config: DictConfig) -> None:
             _masked_values(arrays["player_sigma_m"], player_mask), player_err, bins
         ),
         "player_rotation": _calibration_curve(
-            _masked_values(arrays["player_rot_sigma_deg"], player_mask), player_ang, bins
+            _masked_values(arrays["player_rot_sigma_deg"], player_mask),
+            player_ang,
+            bins,
         ),
         "ball_position": _calibration_curve(
             _masked_values(arrays["ball_sigma_m"], ball_mask), ball_err, bins
@@ -230,7 +237,10 @@ def run(config: DictConfig) -> None:
 
 
 @hydra_main(
-    config_path="../configs", config_name="analyze_predictions", version_base="1.3"
+    config_path="../configs",
+    config_name="analyze_predictions",
+    version_base="1.3",
+    validation_boundary="slcs.analyze_predictions",
 )
 def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
     """Hydra entry point for prediction analysis."""
@@ -238,4 +248,4 @@ def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    main()  # type: ignore[call-arg, unused-ignore]
+    main()

@@ -42,8 +42,8 @@ def evaluate_annotation_datasets(
     datasets: list[CourtAnnotationDatasetSpec],
     *,
     criteria: HomographyEvaluationCriteria,
-    workers: int = 1,
-    use_refined_keypoints: bool = True,
+    workers: int,
+    use_refined_keypoints: bool,
 ) -> list[DatasetEvaluationResult]:
     """Evaluate multiple datasets in one deterministic invocation."""
     if not datasets:
@@ -66,8 +66,8 @@ def evaluate_annotation_dataset(
     dataset: CourtAnnotationDatasetSpec,
     *,
     criteria: HomographyEvaluationCriteria,
-    workers: int = 1,
-    use_refined_keypoints: bool = True,
+    workers: int,
+    use_refined_keypoints: bool,
 ) -> DatasetEvaluationResult:
     """Evaluate one ``data_train.json``-compatible annotation file."""
     if workers <= 0:
@@ -225,7 +225,9 @@ def _evaluate_entry(
     diversity: dict[str, float | str] = {}
     projected = quality.projected_keypoints_normalized
     if projected is not None:
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray: NDArray[np.uint8] = np.asarray(
+            cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), dtype=np.uint8
+        )
         support = line_edge_support(
             gray,
             projected,

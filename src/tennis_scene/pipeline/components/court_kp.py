@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.utils.configuration import PathResolver
 from src.utils.io import load_json, save_json
 from src.utils.video import OpenCVVideoFrameReader, probe_video_info, read_video_frame
 
@@ -23,17 +24,17 @@ LOGGER = logging.getLogger(__name__)
 NUM_COURT_KEYPOINTS = 14
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class CourtKPPostprocessConfig:
     """Configuration for model-mode court keypoint post-processing."""
 
-    enabled: bool = False
-    min_score: float = 0.3
-    ransac_reproj_threshold: float = 3.0
-    temporal_median_window: int = 0
+    enabled: bool
+    min_score: float
+    ransac_reproj_threshold: float
+    temporal_median_window: int
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class CourtKPConfig:
     """Configuration for CourtKP module.
 
@@ -48,16 +49,24 @@ class CourtKPConfig:
 
     """
 
-    checkpoint: str | Path
-    mode: Literal["model", "manual_ui"] = "model"
-    device: str = "cuda"
-    num_keypoints: int = NUM_COURT_KEYPOINTS
-    save_result: bool = False
-    output_path: str | Path | None = None
-    load_path: str | Path | None = None
-    postprocess: CourtKPPostprocessConfig = field(
-        default_factory=CourtKPPostprocessConfig
-    )
+    checkpoint: Path
+    source: Literal["execute", "load"]
+    mode: Literal["model", "manual_ui"]
+    device: str
+    allow_device_fallback: bool
+    subpixel_refine: bool
+    num_keypoints: int
+    save_result: bool
+    output_path: Path
+    load_path: Path | None
+    postprocess: CourtKPPostprocessConfig
+    resolver: PathResolver
+
+    def __post_init__(self) -> None:
+        if (self.source == "load") != (self.load_path is not None):
+            raise ValueError(
+                "CourtKP source='load' requires load_path; execute forbids it"
+            )
 
 
 @dataclass
@@ -170,13 +179,15 @@ class CourtKPModule(BasePipelineModule):
     def __init__(self, config: CourtKPConfig) -> None:
         """Initialize the module."""
         self.config = config
-        self.checkpoint = Path(self.config.checkpoint)
+        self.checkpoint = self.config.checkpoint
         self.mode = self.config.mode
         self.device = self.config.device
         self.num_keypoints = int(self.config.num_keypoints)
         self.postprocess = self.config.postprocess
         if self.num_keypoints <= 0:
-            raise ValueError(f"num_keypoints must be positive, got {self.num_keypoints}")
+            raise ValueError(
+                f"num_keypoints must be positive, got {self.num_keypoints}"
+            )
         self._predictor: Any | None = None
         self._manual_keypoints: NDArray[np.float32] | None = None
         self._manual_needs_normalization = False
@@ -193,7 +204,11 @@ class CourtKPModule(BasePipelineModule):
         from src.tasks.court_detection.inference.predictor import CourtKeypointPredictor
 
         self._predictor = CourtKeypointPredictor.load_from_checkpoint(
-            self.checkpoint, device=self.device
+            self.checkpoint,
+            resolver=self.config.resolver,
+            device=self.device,
+            allow_device_fallback=self.config.allow_device_fallback,
+            subpixel_refine=self.config.subpixel_refine,
         )
 
     @property
@@ -290,34 +305,31 @@ class CourtKPModule(BasePipelineModule):
 
     def process(
         self,
-        video_paths: Sequence[str | Path],
+        video_paths: Sequence[Path],
         max_frames: int | None = None,
         annotation_frame_index: int = 0,
     ) -> CourtKPResult:
         """Detect court keypoints over synchronized video sequences."""
-        video_paths = [Path(video_path) for video_path in video_paths]
+        video_paths = list(video_paths)
         if not video_paths:
             raise ValueError("video_paths must contain at least one video")
 
-        if self.config.load_path is not None:
-            load_path = Path(self.config.load_path)
-            if load_path.exists():
-                LOGGER.info(
-                    f"Loading CourtKP result from {load_path} (skipping detection)"
+        if self.config.source == "load":
+            assert self.config.load_path is not None
+            load_path = self.config.load_path
+            if not load_path.is_file():
+                raise FileNotFoundError(f"CourtKP artifact not found: {load_path}")
+            LOGGER.info(f"Loading CourtKP result from {load_path}")
+            result = CourtKPResult.load(load_path)
+            is_valid, errors = result.validate(num_keypoints=self.num_keypoints)
+            if not is_valid:
+                raise ValueError(f"Invalid CourtKP result: {errors}")
+            if result.keypoints.shape[0] != len(video_paths):
+                raise ValueError(
+                    "Loaded CourtKP result camera count must match video_paths, "
+                    f"got {result.keypoints.shape[0]} and {len(video_paths)}"
                 )
-                result = CourtKPResult.load(load_path)
-                is_valid, errors = result.validate(num_keypoints=self.num_keypoints)
-                if not is_valid:
-                    raise ValueError(f"Invalid CourtKP result: {errors}")
-                if result.keypoints.shape[0] != len(video_paths):
-                    raise ValueError(
-                        "Loaded CourtKP result camera count must match video_paths, "
-                        f"got {result.keypoints.shape[0]} and {len(video_paths)}"
-                    )
-                return result
-            LOGGER.warning(
-                f"load_path specified but not found: {load_path}, running detection"
-            )
+            return result
 
         if self.mode == "manual_ui":
             result = self._process_manual_video(
@@ -332,14 +344,14 @@ class CourtKPModule(BasePipelineModule):
         if not is_valid:
             raise ValueError(f"Invalid CourtKP result: {errors}")
 
-        if self.config.save_result and self.config.output_path is not None:
+        if self.config.save_result:
             result.save(self.config.output_path)
 
         return result
 
     def _process_manual_video(
         self,
-        video_paths: Sequence[str | Path],
+        video_paths: Sequence[Path],
         *,
         max_frames: int | None,
         annotation_frame_index: int,
@@ -382,11 +394,16 @@ class CourtKPModule(BasePipelineModule):
                 )
 
             packet = read_video_frame(video_path, annotation_frame_index)
-            frame_rgb = cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB)
+            frame_rgb = cast(
+                "NDArray[np.uint8]",
+                cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB),
+            )
             self._manual_keypoints = None
             self._collect_manual_keypoints_ui(frame_rgb)
 
-            manual_keypoints = cast("NDArray[np.float32] | None", self._manual_keypoints)
+            manual_keypoints = cast(
+                "NDArray[np.float32] | None", self._manual_keypoints
+            )
             if manual_keypoints is None:
                 raise RuntimeError("Manual court keypoint UI did not produce keypoints")
             keypoints = np.array(manual_keypoints, copy=True)
@@ -412,7 +429,7 @@ class CourtKPModule(BasePipelineModule):
 
     def _process_model_video(
         self,
-        video_paths: Sequence[str | Path],
+        video_paths: Sequence[Path],
         *,
         max_frames: int | None,
     ) -> CourtKPResult:
@@ -431,7 +448,10 @@ class CourtKPModule(BasePipelineModule):
             image_width: int | None = None
             image_height: int | None = None
             for packet in OpenCVVideoFrameReader(video_path, max_frames=max_frames):
-                frame_rgb = cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB)
+                frame_rgb = cast(
+                    "NDArray[np.uint8]",
+                    cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB),
+                )
                 frame_keypoints_px, frame_scores = self._predict_frame_pixels(frame_rgb)
                 keypoints_px.append(frame_keypoints_px)
                 scores.append(frame_scores)
@@ -476,9 +496,7 @@ class CourtKPModule(BasePipelineModule):
                     ransac_reproj_threshold=float(
                         self.postprocess.ransac_reproj_threshold
                     ),
-                    temporal_median_window=int(
-                        self.postprocess.temporal_median_window
-                    ),
+                    temporal_median_window=int(self.postprocess.temporal_median_window),
                 )
                 camera_keypoints_px = postprocess_result.keypoints
                 camera_visibility = postprocess_result.visibility
@@ -569,22 +587,3 @@ def _normalize_keypoints(
     keypoints[..., 0] /= max(image_width - 1, 1)
     keypoints[..., 1] /= max(image_height - 1, 1)
     return keypoints.astype(np.float32)
-
-
-if __name__ == "__main__":
-    # Quick smoke test for module instantiation
-    print("CourtKPModule: court keypoint detection module")
-    print("Use CourtKPModule(CourtKPConfig(...)) to create")
-
-    # Test config creation
-    config = CourtKPConfig(
-        checkpoint="test.ckpt",
-        mode="manual_ui",
-        device="cpu",
-        save_result=True,
-        output_path="test_output.json",
-    )
-    print(f"Config: {config}")
-    assert config.device == "cpu"
-    assert config.mode == "manual_ui"
-    print("Smoke test passed.")

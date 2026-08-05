@@ -2,18 +2,29 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any, Self, cast
+from typing import Any, ParamSpec, Self, TypeVar, cast
 
 import torch
 from torch import Tensor, nn
 
+from src.tasks.base.inference.grad_mode import no_grad
 from src.tasks.base.inference.predictor import BasePredictor
+from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 from src.tasks.plcs.training.tracking_lightning_module import (
     PLCSTrackingLightningModule,
 )
+from src.utils.configuration import PathResolver
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+
+def _typed_no_grad(function: Callable[_P, _R]) -> Callable[_P, _R]:
+    decorator: Callable[[Callable[_P, _R]], Callable[_P, _R]] = no_grad
+    return decorator(function)
 
 
 class PLCSTrackingPredictor(BasePredictor):
@@ -27,18 +38,23 @@ class PLCSTrackingPredictor(BasePredictor):
     def load_from_checkpoint(
         cls,
         checkpoint_path: str | Path | Iterable[str | Path],
-        device: str | torch.device = "cpu",
+        *,
+        resolver: PathResolver,
+        device: str | torch.device,
+        allow_device_fallback: bool,
         **kwargs: Any,
     ) -> Self:
         model, resolved_device = cls._load_single_lightning_checkpoint(
             checkpoint_path,
             PLCSTrackingLightningModule,
-            device,
+            resolver=resolver,
+            device=device,
+            allow_device_fallback=allow_device_fallback,
             **kwargs,
         )
         return cls(model=model, device=resolved_device)
 
-    @torch.no_grad()  # type: ignore[untyped-decorator]
+    @_typed_no_grad
     def predict(
         self,
         *,
@@ -48,12 +64,10 @@ class PLCSTrackingPredictor(BasePredictor):
         court_vis: Tensor,
         frame_mask: Tensor,
         view_mask: Tensor,
-        presence_threshold: float = 0.5,
-        denormalize: bool = True,
+        tracking_metrics: TrackingMetricConfig,
+        denormalize: bool,
     ) -> dict[str, Tensor]:
         """Return query position/rotation and lifecycle presence outputs."""
-        if not 0.0 < presence_threshold < 1.0:
-            raise ValueError("presence_threshold must be in (0, 1).")
         inputs = {
             "human_kp": human_kp,
             "detection_mask": detection_mask,
@@ -75,7 +89,7 @@ class PLCSTrackingPredictor(BasePredictor):
         }
         probability = result["presence_logits"].sigmoid()
         result["presence_probability"] = probability
-        result["presence"] = probability >= presence_threshold
+        result["presence"] = probability >= tracking_metrics.presence_threshold
         if denormalize:
             result["position_meters"] = self._denormalize_coords(
                 position, COURT_COORD_SCALE_XYZ

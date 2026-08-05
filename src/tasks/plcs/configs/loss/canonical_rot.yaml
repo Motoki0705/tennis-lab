@@ -1,4 +1,7 @@
 # PLCS loss config: canonical-pose supervision + rotation-focused objective.
+defaults:
+  - _base
+  - _self_
 # Use with models where model.predict_canonical_pose: true.
 #
 # Motivation (experiment: feat/plcs-rotation-improvement, exp1):

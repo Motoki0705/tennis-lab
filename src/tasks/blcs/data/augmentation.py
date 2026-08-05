@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 import torch
 from torch import Tensor
 
+from src.tasks.base.configuration import as_config_mapping, require_config_value
 from src.tasks.base.data.augmentation import BaseObservationAugmentation
 from src.tasks.blcs.data.types import BLCSMultiViewSample
+from src.utils.configuration import (
+    MissingConfigurationKeyError,
+    UnknownConfigurationKeyError,
+)
 from src.utils.data.augmentation import (
-    _as_dict,
     add_gaussian_noise,
     add_temporally_correlated_jitter,
     apply_burst_visibility_dropout,
@@ -25,7 +29,16 @@ from src.utils.data.augmentation import (
 from src.utils.tensor_utils import clone_tensor_dict
 
 
-class BLCSBallObservationAugmentation(BaseObservationAugmentation):
+def _float_value(config: Mapping[str, object], key: str, *, path: str) -> float:
+    value = require_config_value(config, key, (float, int), path=path)
+    return float(cast("float | int", value))
+
+
+def _int_value(config: Mapping[str, object], key: str, *, path: str) -> int:
+    return cast("int", require_config_value(config, key, int, path=path))
+
+
+class BLCSBallObservationAugmentation(BaseObservationAugmentation[BLCSMultiViewSample]):
     """Apply configured detector-like corruption to BLCS ball observations.
 
     The class intentionally modifies only observation tensors.  Clean 3D labels
@@ -33,45 +46,100 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation):
     preserved for reprojection-style losses before input corruption is applied.
     """
 
-    def __init__(self, config: Mapping[str, Any] | None = None) -> None:
+    def __init__(self, config: Mapping[str, Any]) -> None:
+        blocks = {
+            "uv_scale": {
+                "enabled",
+                "prob",
+                "scale_range",
+                "apply_to_ball",
+                "apply_to_court",
+            },
+            "gaussian_noise": {"enabled", "prob", "ball_std", "court_std"},
+            "visibility_dropout": {"enabled", "prob", "drop_prob"},
+            "temporal_jitter": {
+                "enabled",
+                "prob",
+                "jitter_std",
+                "drift_std",
+                "drift_decay",
+            },
+            "burst_dropout": {
+                "enabled",
+                "prob",
+                "track_prob",
+                "min_len",
+                "max_len",
+                "max_bursts",
+            },
+            "false_positive": {
+                "enabled",
+                "prob",
+                "prob_absent",
+                "prob_after_dropout",
+                "after_dropout_window",
+            },
+            "edge_degradation": {
+                "enabled",
+                "prob",
+                "edge_margin",
+                "noise_std",
+                "drop_prob",
+                "clip_out_prob",
+            },
+            "speed_conditioned": {
+                "enabled",
+                "prob",
+                "frame_prob",
+                "speed_threshold",
+                "lag_overshoot_range",
+                "noise_std",
+            },
+        }
+        required = {"enabled", "preserve_clean_targets", *blocks}
+        self._require_exact_keys(config, required, path="data.augmentation")
+        for name, keys in blocks.items():
+            child = as_config_mapping(config[name], path=f"data.augmentation.{name}")
+            self._require_exact_keys(child, keys, path=f"data.augmentation.{name}")
         super().__init__(config)
-        self.preserve_clean_targets = bool(
-            self.config.get("preserve_clean_targets", True)
-        )
+        self.preserve_clean_targets = bool(self.config["preserve_clean_targets"])
+
+    @staticmethod
+    def _require_exact_keys(
+        config: Mapping[str, Any], keys: set[str], *, path: str
+    ) -> None:
+        missing = sorted(keys - set(config))
+        if missing:
+            raise MissingConfigurationKeyError(
+                f"Missing required configuration key(s): {', '.join(f'{path}.{key}' for key in missing)}."
+            )
+        unknown = sorted(set(config) - keys)
+        if unknown:
+            raise UnknownConfigurationKeyError(
+                f"Unknown configuration key(s): {', '.join(f'{path}.{key}' for key in unknown)}."
+            )
 
     def _uv_scale_config(self) -> dict[str, Any]:
-        if "uv_scale" in self.config:
-            return _as_dict(self.config.get("uv_scale"))
-        scale_range = self.config.get("scale_range", [1.0, 1.0])
-        scale_min, scale_max = parse_float_range(scale_range, "augmentation.scale_range")
-        return {
-            "enabled": not (scale_min == 1.0 and scale_max == 1.0),
-            "prob": 1.0,
-            "scale_range": [scale_min, scale_max],
-            "apply_to_ball": True,
-            "apply_to_court": True,
-        }
+        return dict(
+            as_config_mapping(
+                self.config["uv_scale"], path="data.augmentation.uv_scale"
+            )
+        )
 
     def _gaussian_config(self) -> dict[str, Any]:
-        if "gaussian_noise" in self.config:
-            return _as_dict(self.config.get("gaussian_noise"))
-        uv_noise_std = float(self.config.get("uv_noise_std", 0.005))
-        return {
-            "enabled": uv_noise_std > 0,
-            "prob": 1.0,
-            "ball_std": uv_noise_std,
-            "court_std": uv_noise_std,
-        }
+        return dict(
+            as_config_mapping(
+                self.config["gaussian_noise"], path="data.augmentation.gaussian_noise"
+            )
+        )
 
     def _visibility_dropout_config(self) -> dict[str, Any]:
-        if "visibility_dropout" in self.config:
-            return _as_dict(self.config.get("visibility_dropout"))
-        drop_prob = float(self.config.get("visibility_drop_prob", 0.1))
-        return {
-            "enabled": drop_prob > 0,
-            "prob": 1.0,
-            "drop_prob": drop_prob,
-        }
+        return dict(
+            as_config_mapping(
+                self.config["visibility_dropout"],
+                path="data.augmentation.visibility_dropout",
+            )
+        )
 
     def forward(self, sample: BLCSMultiViewSample) -> BLCSMultiViewSample:
         """Return an augmented BLCS sample."""
@@ -135,13 +203,13 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation):
         )
         if abs(scale - 1.0) < 1e-8:
             return
-        if bool(cfg.get("apply_to_ball", True)):
+        if bool(cfg["apply_to_ball"]):
             sample["ball_uv"], sample["ball_vis"] = scale_uv_with_visibility(
                 uv=sample["ball_uv"],
                 visibility=sample["ball_vis"],
                 scale=float(scale),
             )
-        if bool(cfg.get("apply_to_court", True)):
+        if bool(cfg["apply_to_court"]):
             sample["court_kp"], sample["court_vis"] = scale_uv_with_visibility(
                 uv=sample["court_kp"],
                 visibility=sample["court_vis"],
@@ -152,8 +220,12 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation):
         cfg = self.gaussian_cfg
         if not self._active(cfg, sample["ball_uv"]):
             return
-        ball_std = float(cfg.get("ball_std", cfg.get("uv_noise_std", 0.0)))
-        court_std = float(cfg.get("court_std", ball_std))
+        ball_std = _float_value(
+            cfg, "ball_std", path="data.augmentation.gaussian_noise"
+        )
+        court_std = _float_value(
+            cfg, "court_std", path="data.augmentation.gaussian_noise"
+        )
         if ball_std > 0:
             sample["ball_uv"] = add_gaussian_noise(
                 sample["ball_uv"],
@@ -172,9 +244,15 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation):
         return add_temporally_correlated_jitter(
             ball_uv,
             ball_vis,
-            jitter_std=float(cfg.get("jitter_std", 0.0)),
-            drift_std=float(cfg.get("drift_std", 0.0)),
-            drift_decay=float(cfg.get("drift_decay", 0.9)),
+            jitter_std=_float_value(
+                cfg, "jitter_std", path="data.augmentation.temporal_jitter"
+            ),
+            drift_std=_float_value(
+                cfg, "drift_std", path="data.augmentation.temporal_jitter"
+            ),
+            drift_decay=_float_value(
+                cfg, "drift_decay", path="data.augmentation.temporal_jitter"
+            ),
         )
 
     def _apply_speed_conditioned(
@@ -185,13 +263,23 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation):
         cfg = self.speed_conditioned_cfg
         if not self._active(cfg, ball_uv):
             return ball_uv, ball_vis
+        lag_range = parse_float_range(
+            cfg["lag_overshoot_range"],
+            "data.augmentation.speed_conditioned.lag_overshoot_range",
+        )
         return apply_speed_conditioned_localization_error(
             ball_uv,
             ball_vis,
-            prob=float(cfg.get("frame_prob", 1.0)),
-            speed_threshold=float(cfg.get("speed_threshold", 0.025)),
-            lag_overshoot_range=cfg.get("lag_overshoot_range", [-0.2, 0.3]),
-            noise_std=float(cfg.get("noise_std", 0.0)),
+            prob=_float_value(
+                cfg, "frame_prob", path="data.augmentation.speed_conditioned"
+            ),
+            speed_threshold=_float_value(
+                cfg, "speed_threshold", path="data.augmentation.speed_conditioned"
+            ),
+            lag_overshoot_range=lag_range,
+            noise_std=_float_value(
+                cfg, "noise_std", path="data.augmentation.speed_conditioned"
+            ),
         )
 
     def _apply_edge_degradation(
@@ -205,10 +293,18 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation):
         return apply_edge_aware_degradation(
             ball_uv,
             ball_vis,
-            edge_margin=float(cfg.get("edge_margin", 0.08)),
-            noise_std=float(cfg.get("noise_std", 0.0)),
-            drop_prob=float(cfg.get("drop_prob", 0.0)),
-            clip_out_prob=float(cfg.get("clip_out_prob", 0.0)),
+            edge_margin=_float_value(
+                cfg, "edge_margin", path="data.augmentation.edge_degradation"
+            ),
+            noise_std=_float_value(
+                cfg, "noise_std", path="data.augmentation.edge_degradation"
+            ),
+            drop_prob=_float_value(
+                cfg, "drop_prob", path="data.augmentation.edge_degradation"
+            ),
+            clip_out_prob=_float_value(
+                cfg, "clip_out_prob", path="data.augmentation.edge_degradation"
+            ),
         )
 
     def _apply_visibility_dropout(self, ball_vis: Tensor) -> Tensor:
@@ -217,7 +313,7 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation):
             return ball_vis
         return random_visibility_dropout(
             ball_vis,
-            float(cfg.get("drop_prob", cfg.get("visibility_drop_prob", 0.0))),
+            _float_value(cfg, "drop_prob", path="data.augmentation.visibility_dropout"),
         )
 
     def _apply_burst_dropout(self, ball_vis: Tensor) -> Tensor:
@@ -226,10 +322,14 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation):
             return ball_vis
         return apply_burst_visibility_dropout(
             ball_vis,
-            prob=float(cfg.get("track_prob", 1.0)),
-            min_len=int(cfg.get("min_len", 2)),
-            max_len=int(cfg.get("max_len", 6)),
-            max_bursts=int(cfg.get("max_bursts", 1)),
+            prob=_float_value(
+                cfg, "track_prob", path="data.augmentation.burst_dropout"
+            ),
+            min_len=_int_value(cfg, "min_len", path="data.augmentation.burst_dropout"),
+            max_len=_int_value(cfg, "max_len", path="data.augmentation.burst_dropout"),
+            max_bursts=_int_value(
+                cfg, "max_bursts", path="data.augmentation.burst_dropout"
+            ),
         )
 
     def _apply_false_positive(
@@ -245,10 +345,16 @@ class BLCSBallObservationAugmentation(BaseObservationAugmentation):
         return inject_false_positive_observations(
             ball_uv,
             ball_vis,
-            false_positive_prob=float(cfg.get("prob_absent", 0.0)),
+            false_positive_prob=_float_value(
+                cfg, "prob_absent", path="data.augmentation.false_positive"
+            ),
             after_dropout_mask=dropped_mask,
-            after_dropout_prob=float(cfg.get("prob_after_dropout", 0.0)),
-            after_dropout_window=int(cfg.get("after_dropout_window", 0)),
+            after_dropout_prob=_float_value(
+                cfg, "prob_after_dropout", path="data.augmentation.false_positive"
+            ),
+            after_dropout_window=_int_value(
+                cfg, "after_dropout_window", path="data.augmentation.false_positive"
+            ),
         )
 
 

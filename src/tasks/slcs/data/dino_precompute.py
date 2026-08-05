@@ -67,7 +67,9 @@ def read_frames_at(
     """
     wanted = {int(i) for i in frame_indices}
     if len(wanted) != len(frame_indices):
-        raise DatasetContractError(f"frame_indices contain duplicates: {frame_indices}.")
+        raise DatasetContractError(
+            f"frame_indices contain duplicates: {frame_indices}."
+        )
     frames: dict[int, NDArray[np.uint8]] = {}
     last_wanted = int(frame_indices[-1])
     reader: Iterator = iter(OpenCVVideoFrameReader(video_path))
@@ -95,8 +97,8 @@ def precompute_clip_tokens(
     encoder: FrameEncoder,
     spec: DinoTokenSpec,
     *,
-    batch_size: int = 8,
-    overwrite: bool = False,
+    batch_size: int,
+    overwrite: bool,
     generator: dict[str, object] | None = None,
 ) -> Path:
     """Encode all cameras of one clip and write the token annotation."""
@@ -139,8 +141,8 @@ def run_precompute(
     encoder: FrameEncoder,
     spec: DinoTokenSpec,
     *,
-    batch_size: int = 8,
-    overwrite: bool = False,
+    batch_size: int,
+    overwrite: bool,
     generator: dict[str, object] | None = None,
 ) -> PrecomputeReport:
     """Precompute tokens for every clip in the dataset index."""
@@ -162,7 +164,8 @@ def run_precompute(
                 generator=generator,
             )
             report.processed.append(ref.clip_id)
-        except Exception as exc:  # noqa: BLE001 - per-clip isolation, reported at the end
+        # Continue across clips so the report contains every per-clip failure.
+        except Exception as exc:
             report.failed[ref.clip_id] = f"{type(exc).__name__}: {exc}"
     return report
 

@@ -7,7 +7,7 @@ datasets loaded from ``data/blcs/``.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from src.tasks.base.data.chunked_datamodule import BaseChunkedDataModule
 from src.tasks.blcs.data.chunk_manager import ChunkManager
@@ -27,17 +27,15 @@ class ChunkedBLCSDataModule(BaseChunkedDataModule, BLCSDataModule):
 
     def __init__(
         self,
-        config: DictConfig | None = None,
+        config: DictConfig,
         *,
         generator_config: GeneratorConfig,
     ) -> None:
         super().__init__(config)
         self.generator_config = generator_config
 
-    def _default_chunks_dir(self) -> str:
-        return "data/blcs/chunks"
-
     def _build_chunk_manager(self) -> ChunkManager:
+        config: Any = self.config
         return ChunkManager(
             chunks_dir=self.chunks_dir,
             generator_config=self.generator_config,
@@ -46,4 +44,8 @@ class ChunkedBLCSDataModule(BaseChunkedDataModule, BLCSDataModule):
             prefetch_chunks=self.prefetch_chunks,
             generator_device=self.generator_device,
             generation_workers=self.generation_workers,
+            generation_chunksize=int(config.data.chunk.generation_chunksize),
+            generation_seed=int(config.run.seed),
+            multi_object=False,
+            timeline_config=None,
         )

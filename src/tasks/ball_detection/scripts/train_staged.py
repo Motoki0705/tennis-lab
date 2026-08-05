@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from omegaconf import DictConfig
 
+from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
 from src.tasks.ball_detection.training.staged_runner import (
     StagedBallDetectionTrainingRunner,
 )
@@ -29,6 +30,7 @@ from src.utils.hydra import hydra_main
     version_base="1.3",
     config_path="../configs",
     config_name="train_staged",
+    validation_boundary="ball.train_staged",
 )
 def main(cfg: DictConfig) -> None:
     """Train one staged ball-detection phase."""

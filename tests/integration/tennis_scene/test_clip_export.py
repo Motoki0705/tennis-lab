@@ -20,6 +20,25 @@ from src.utils.video.writer import save_video_rgb
 FPS = 30.0
 
 
+def export_settings(
+    tmp_path: Path,
+    *,
+    fps: float | None = None,
+    width: int | None = None,
+    height: int | None = None,
+    crf: int = 17,
+    overwrite: bool = False,
+) -> ExportSettings:
+    return ExportSettings(
+        output_dir=tmp_path / "clips",
+        fps=fps,
+        width=width,
+        height=height,
+        crf=crf,
+        overwrite=overwrite,
+    )
+
+
 def encode_local_index(index: int) -> tuple[int, int]:
     """Map a local frame index to (R, G) intensities robust to H.264 loss."""
     return ((index % 16) * 16 + 8, (index // 16) * 16 + 8)
@@ -66,9 +85,7 @@ class TestClipExportRoundTrip:
     def test_exported_clip_satisfies_pipeline_contract(
         self, synced_project: ClipStudioProject, tmp_path: Path
     ) -> None:
-        settings = ExportSettings(
-            output_dir=tmp_path / "clips", width=96, height=64, crf=10
-        )
+        settings = export_settings(tmp_path, width=96, height=64, crf=10)
         results = export_clips(synced_project, settings)
         assert len(results) == 1
         clip_dir = results[0].clip_dir
@@ -86,9 +103,7 @@ class TestClipExportRoundTrip:
     def test_frame_content_maps_to_synced_source_frames(
         self, synced_project: ClipStudioProject, tmp_path: Path
     ) -> None:
-        settings = ExportSettings(
-            output_dir=tmp_path / "clips", width=96, height=64, crf=10
-        )
+        settings = export_settings(tmp_path, width=96, height=64, crf=10)
         clip_dir = export_clips(synced_project, settings)[0].clip_dir
 
         cam0 = read_video_rgb(clip_dir / "media" / "cam0.mp4")
@@ -102,9 +117,7 @@ class TestClipExportRoundTrip:
     def test_manifest_plugs_into_pipeline(
         self, synced_project: ClipStudioProject, tmp_path: Path
     ) -> None:
-        settings = ExportSettings(
-            output_dir=tmp_path / "clips", width=96, height=64, crf=10
-        )
+        settings = export_settings(tmp_path, width=96, height=64, crf=10)
         result = export_clips(synced_project, settings)[0]
         manifest = load_json(result.manifest_path)
 
@@ -131,7 +144,7 @@ class TestClipExportRoundTrip:
     def test_mixed_resolution_without_target_raises(
         self, synced_project: ClipStudioProject, tmp_path: Path
     ) -> None:
-        settings = ExportSettings(output_dir=tmp_path / "clips")
+        settings = export_settings(tmp_path)
         with pytest.raises(ValueError, match="mixed resolutions"):
             export_clips(synced_project, settings)
 
@@ -139,23 +152,19 @@ class TestClipExportRoundTrip:
         self, synced_project: ClipStudioProject, tmp_path: Path
     ) -> None:
         synced_project.clips = [Clip(name="early", start_sec=-0.4, end_sec=0.5)]
-        settings = ExportSettings(
-            output_dir=tmp_path / "clips", width=96, height=64
-        )
+        settings = export_settings(tmp_path, width=96, height=64)
         with pytest.raises(ValueError, match="cam0.*does not cover"):
             export_clips(synced_project, settings)
 
     def test_overwrite_protection(
         self, synced_project: ClipStudioProject, tmp_path: Path
     ) -> None:
-        settings = ExportSettings(
-            output_dir=tmp_path / "clips", width=96, height=64, crf=10
-        )
+        settings = export_settings(tmp_path, width=96, height=64, crf=10)
         export_clips(synced_project, settings)
         with pytest.raises(ValueError, match="not empty"):
             export_clips(synced_project, settings)
-        overwrite_settings = ExportSettings(
-            output_dir=tmp_path / "clips", width=96, height=64, crf=10, overwrite=True
+        overwrite_settings = export_settings(
+            tmp_path, width=96, height=64, crf=10, overwrite=True
         )
         assert len(export_clips(synced_project, overwrite_settings)) == 1
 
@@ -163,9 +172,7 @@ class TestClipExportRoundTrip:
         self, synced_project: ClipStudioProject, tmp_path: Path
     ) -> None:
         synced_project.clips.append(Clip(name="clip_001", start_sec=3.0, end_sec=3.5))
-        settings = ExportSettings(
-            output_dir=tmp_path / "clips", width=96, height=64, crf=10
-        )
+        settings = export_settings(tmp_path, width=96, height=64, crf=10)
         results = export_clips(synced_project, settings, clip_names=["clip_001"])
         assert len(results) == 1
         assert results[0].clip_dir.name == "clip_001"

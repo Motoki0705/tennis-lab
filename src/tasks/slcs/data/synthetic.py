@@ -63,7 +63,9 @@ def make_synthetic_scene(
     num_players = config.num_players
     num_cameras = config.num_cameras
     yaw = rng.uniform(-np.pi, np.pi, size=(num_players, num_frames)).astype(np.float32)
-    position = rng.uniform(-0.5, 0.5, size=(num_players, num_frames, 3)).astype(np.float32)
+    position = rng.uniform(-0.5, 0.5, size=(num_players, num_frames, 3)).astype(
+        np.float32
+    )
     for player in range(num_players):
         # Alternate near (-y) / far (+y) so canonical ordering is unambiguous.
         offset = -5.0 if player % 2 == 0 else 5.0
@@ -111,7 +113,10 @@ def build_synthetic_dataset(
         for clip_index in range(cfg.clips_per_recording):
             media = {
                 camera_id: rng.integers(
-                    0, 255, size=(cfg.num_frames, cfg.height, cfg.width, 3), dtype=np.uint8
+                    0,
+                    255,
+                    size=(cfg.num_frames, cfg.height, cfg.width, 3),
+                    dtype=np.uint8,
                 )
                 for camera_id in camera_ids
             }
@@ -125,10 +130,14 @@ def build_synthetic_dataset(
                 height=cfg.height,
                 media_videos=media,
                 source={"origin": "synthetic"},
+                overwrite=False,
             )
             scene = make_synthetic_scene(cfg, rng)
             write_tennis_scene_annotation(
-                manifest, scene, generator={"generator": "synthetic"}
+                manifest,
+                scene,
+                generator={"generator": "synthetic"},
+                overwrite=False,
             )
             frame_idx = sample_frame_indices(cfg.num_frames, cfg.dino_spec.frame_stride)
             tokens_by_camera = {
@@ -144,7 +153,12 @@ def build_synthetic_dataset(
                 )
                 for camera_id in camera_ids
             }
-            write_dino_tokens(manifest, tokens_by_camera, cfg.dino_spec)
+            write_dino_tokens(
+                manifest,
+                tokens_by_camera,
+                cfg.dino_spec,
+                overwrite=False,
+            )
             append_dataset_index(dataset_root, manifest)
     return DatasetIndex.load(dataset_root)
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import torch
 
 from src.tasks.base.training.tracking_metrics import (
+    TrackingMetricConfig,
     common_lifecycle_tracking_metrics,
 )
 
@@ -32,6 +33,10 @@ def test_metrics_measure_two_segments_as_one_legal_query_reuse() -> None:
             "frame_mask": torch.ones(1, 12, dtype=torch.bool),
         },
         [(torch.tensor([0]), torch.tensor([0]))],
+        config=TrackingMetricConfig(
+            presence_threshold=0.5,
+            duplicate_distance=0.1,
+        ),
     )
 
     assert metrics["birth_frame_error"].item() == 0.0
@@ -40,4 +45,3 @@ def test_metrics_measure_two_segments_as_one_legal_query_reuse() -> None:
     assert metrics["query_reuse_count"].item() == 1.0
     assert metrics["segment_id_switches"].item() == 0.0
     assert metrics["illegal_overlap_count"].item() == 0.0
-

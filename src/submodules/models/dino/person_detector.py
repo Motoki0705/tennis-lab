@@ -15,11 +15,9 @@ import torch
 from numpy.typing import NDArray
 from torchvision.transforms import functional as transform_functional
 
+from src.submodules.configuration import require_absolute_path
 from src.submodules.models._base import BaseInferenceModel
-from src.utils.paths import PROJECT_ROOT
 
-DEFAULT_DINO_CHECKPOINT = PROJECT_ROOT / "ckpt/dino/checkpoint0029_4scale_swin.pth"
-DEFAULT_DINO_REPOSITORY = PROJECT_ROOT / "third_party/DINO"
 COCO_PERSON_CLASS_ID = 1
 _DINO_MODELS_PACKAGE = "_tennis_lab_third_party_dino_models"
 
@@ -46,14 +44,20 @@ class DinoPersonDetector(
 
     def __init__(
         self,
-        checkpoint: str | Path = DEFAULT_DINO_CHECKPOINT,
-        repository: str | Path = DEFAULT_DINO_REPOSITORY,
-        device: str | torch.device = "auto",
-        confidence: float = 0.3,
-        short_side: int = 800,
-        max_long_side: int = 1333,
+        checkpoint: str | Path,
+        repository: str | Path,
+        *,
+        device: str | torch.device,
+        allow_device_fallback: bool,
+        confidence: float,
+        short_side: int,
+        max_long_side: int,
     ) -> None:
-        super().__init__(device)
+        super().__init__(device, allow_device_fallback=allow_device_fallback)
+        if type(confidence) is not float:
+            raise TypeError("confidence must be a float.")
+        if type(short_side) is not int or type(max_long_side) is not int:
+            raise TypeError("short_side and max_long_side must be integers.")
         if not 0.0 < confidence < 1.0:
             raise ValueError(f"confidence must be in (0, 1), got {confidence}")
         if short_side <= 0 or max_long_side < short_side:
@@ -61,8 +65,8 @@ class DinoPersonDetector(
                 "Expected 0 < short_side <= max_long_side, got "
                 f"{short_side} and {max_long_side}"
             )
-        self.checkpoint = Path(checkpoint)
-        self.repository = Path(repository)
+        self.checkpoint = require_absolute_path(checkpoint, name="DINO checkpoint")
+        self.repository = require_absolute_path(repository, name="DINO repository")
         self.confidence = confidence
         self.short_side = short_side
         self.max_long_side = max_long_side
@@ -328,10 +332,13 @@ def _preprocess_frame(
         scale = max_long_side / max(height, width)
     target_size = [int(round(height * scale)), int(round(width * scale))]
     image = transform_functional.resize(image, target_size, antialias=True)
-    return transform_functional.normalize(
-        image,
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225],
+    return cast(
+        torch.Tensor,
+        transform_functional.normalize(
+            image,
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225],
+        ),
     )
 
 

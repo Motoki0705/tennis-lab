@@ -10,6 +10,34 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
+)
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.plcs.avatar_control_comparison",
+    fields=(
+        BoundaryPathField(
+            "artifact",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.FILE
+        ),
+    ),
+)
+
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -98,7 +126,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--artifact", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    add_path_roots_argument(parser)
     args = parser.parse_args()
-    render_preview(artifact=args.artifact, output=args.output)
-    print(f"preview={args.output}")
-    print(f"sha256={_sha256(args.output)}")
+    paths = PATH_BOUNDARY.validate(
+        {"artifact": args.artifact, "output": args.output},
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    artifact = paths.declared("artifact").path
+    output = paths.declared("output").path
+    render_preview(artifact=artifact, output=output)
+    print(f"preview={output}")
+    print(f"sha256={_sha256(output)}")

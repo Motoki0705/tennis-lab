@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from torch import nn
 
+from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.models.components import (
     CanonicalPoseHead,
     PositionHead,
@@ -23,24 +22,34 @@ from src.tasks.plcs.models.plcs_multiview_axial_split_model import (
 from src.tasks.plcs.models.plcs_multiview_model import PLCSMultiViewModel
 from src.tasks.plcs.models.plcs_track_query_model import PLCSTrackQueryModel
 
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
 
-
-def build_plcs_model(config: DictConfig) -> nn.Module:
+def build_plcs_model(config: PLCSTrainingConfig) -> nn.Module:
     """Build a PLCS model from ``config.model.name``."""
-    model_cfg = config.get("model", {})
-    model_name = str(model_cfg.get("name", "plcs"))
+    model_cfg = config.model
+    model_name = model_cfg.name
+    num_court_tokens = (
+        14 if model_name == "plcs_track_query" else config.data.num_court_tokens
+    )
+    if num_court_tokens is None:
+        raise AssertionError("Non-tracking PLCS model requires num_court_tokens.")
     if model_name == "plcs":
-        return PLCSModel.from_config(config)
+        return PLCSModel.from_config(model_cfg, num_court_tokens=num_court_tokens)
     if model_name == "plcs_multiview":
-        return PLCSMultiViewModel.from_config(config)
+        return PLCSMultiViewModel.from_config(
+            model_cfg, num_court_tokens=num_court_tokens
+        )
     if model_name == "plcs_multiview_axial":
-        return PLCSMultiViewAxialModel.from_config(config)
+        return PLCSMultiViewAxialModel.from_config(
+            model_cfg, num_court_tokens=num_court_tokens
+        )
     if model_name == "plcs_multiview_axial_split":
-        return PLCSMultiViewAxialSplitModel.from_config(config)
+        return PLCSMultiViewAxialSplitModel.from_config(
+            model_cfg, num_court_tokens=num_court_tokens
+        )
     if model_name == "plcs_multiview_axial_camtoken":
-        return PLCSMultiViewAxialCamTokenModel.from_config(config)
+        return PLCSMultiViewAxialCamTokenModel.from_config(
+            model_cfg, num_court_tokens=num_court_tokens
+        )
     if model_name == "plcs_track_query":
         return PLCSTrackQueryModel(model_cfg)
     raise ValueError(

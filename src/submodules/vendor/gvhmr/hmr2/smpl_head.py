@@ -4,8 +4,6 @@ The yacs config dependency is replaced with explicit constructor defaults that
 match HMR2.0a's ``model_config.yaml``.
 """
 
-from pathlib import Path
-
 import einops
 import numpy as np
 import torch
@@ -13,8 +11,6 @@ import torch.nn as nn
 
 from .geometry import rot6d_to_rotmat
 from .pose_transformer import TransformerDecoder
-
-DEFAULT_MEAN_PARAMS = Path(__file__).parent / "smpl_mean_params.npz"
 
 
 class SMPLTransformerDecoderHead(nn.Module):
@@ -29,7 +25,8 @@ class SMPLTransformerDecoderHead(nn.Module):
         heads=8,
         mlp_dim=1024,
         dim_head=64,
-        mean_params_path=DEFAULT_MEAN_PARAMS,
+        *,
+        mean_params_path,
     ):
         super().__init__()
         self.joint_rep_type = "6d"
@@ -56,8 +53,12 @@ class SMPLTransformerDecoderHead(nn.Module):
         self.deccam = nn.Linear(dim, 3)
 
         mean_params = np.load(mean_params_path)
-        init_body_pose = torch.from_numpy(mean_params["pose"].astype(np.float32)).unsqueeze(0)
-        init_betas = torch.from_numpy(mean_params["shape"].astype("float32")).unsqueeze(0)
+        init_body_pose = torch.from_numpy(
+            mean_params["pose"].astype(np.float32)
+        ).unsqueeze(0)
+        init_betas = torch.from_numpy(mean_params["shape"].astype("float32")).unsqueeze(
+            0
+        )
         init_cam = torch.from_numpy(mean_params["cam"].astype(np.float32)).unsqueeze(0)
         self.register_buffer("init_body_pose", init_body_pose)
         self.register_buffer("init_betas", init_betas)
@@ -99,11 +100,17 @@ class SMPLTransformerDecoderHead(nn.Module):
 
         pred_smpl_params_list = {}
         pred_smpl_params_list["body_pose"] = torch.cat(
-            [rot6d_to_rotmat(pbp).view(batch_size, -1, 3, 3)[:, 1:, :, :] for pbp in pred_body_pose_list], dim=0
+            [
+                rot6d_to_rotmat(pbp).view(batch_size, -1, 3, 3)[:, 1:, :, :]
+                for pbp in pred_body_pose_list
+            ],
+            dim=0,
         )
         pred_smpl_params_list["betas"] = torch.cat(pred_betas_list, dim=0)
         pred_smpl_params_list["cam"] = torch.cat(pred_cam_list, dim=0)
-        pred_body_pose = rot6d_to_rotmat(pred_body_pose).view(batch_size, self.num_body_joints + 1, 3, 3)
+        pred_body_pose = rot6d_to_rotmat(pred_body_pose).view(
+            batch_size, self.num_body_joints + 1, 3, 3
+        )
 
         pred_smpl_params = {
             "global_orient": pred_body_pose[:, [0]],

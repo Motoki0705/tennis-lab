@@ -56,7 +56,9 @@ def refine_court_keypoints_with_homography(
     )
 
     refined = frame_keypoints.copy()
-    visibility: NDArray[np.float32] = np.zeros(frame_keypoints.shape[:2], dtype=np.float32)
+    visibility: NDArray[np.float32] = np.zeros(
+        frame_keypoints.shape[:2], dtype=np.float32
+    )
     frame_diagnostics: list[dict[str, Any]] = []
 
     for frame_index in range(frame_keypoints.shape[0]):
@@ -88,7 +90,9 @@ def refine_court_keypoints_with_homography(
             "temporal_median_window": int(temporal_median_window),
         },
         "num_frames": int(frame_keypoints.shape[0]),
-        "num_success": int(sum(1 for item in frame_diagnostics if bool(item["success"]))),
+        "num_success": int(
+            sum(1 for item in frame_diagnostics if bool(item["success"]))
+        ),
         "frames": frame_diagnostics,
     }
     return HomographyPostprocessResult(
@@ -172,7 +176,9 @@ def _refine_frame(
         diagnostics["reason"] = "degenerate_homography"
         return None, diagnostics
 
-    refit_inlier_projection = project_points(template[full_inlier_mask], refit_homography)
+    refit_inlier_projection = project_points(
+        template[full_inlier_mask], refit_homography
+    )
     refit_residuals = _point_distances(
         refit_inlier_projection,
         keypoints[full_inlier_mask],
@@ -271,10 +277,12 @@ def _as_keypoints_array(keypoints: NDArray[np.floating]) -> NDArray[np.float32]:
     if array.ndim != 3 or array.shape[-1] != 2:
         raise ValueError(f"keypoints must have shape (T, K, 2), got {array.shape}.")
     if array.shape[0] <= 0 or array.shape[1] <= 0:
-        raise ValueError(f"keypoints must contain at least one frame and KP, got {array.shape}.")
+        raise ValueError(
+            f"keypoints must contain at least one frame and KP, got {array.shape}."
+        )
     if not np.isfinite(array).all():
         raise ValueError("keypoints must contain only finite coordinates.")
-    return cast(NDArray[np.float32], array)
+    return array
 
 
 def _as_scores_array(
@@ -287,7 +295,7 @@ def _as_scores_array(
         raise ValueError(f"scores must have shape {expected_shape}, got {array.shape}.")
     if not np.isfinite(array).all():
         raise ValueError("scores must contain only finite values.")
-    return cast(NDArray[np.float32], array)
+    return array
 
 
 def _as_template_array(
@@ -297,10 +305,12 @@ def _as_template_array(
 ) -> NDArray[np.float32]:
     template = np.asarray(template_xy, dtype=np.float32)
     if template.shape != (expected_count, 2):
-        raise ValueError(f"template_xy must have shape ({expected_count}, 2), got {template.shape}.")
+        raise ValueError(
+            f"template_xy must have shape ({expected_count}, 2), got {template.shape}."
+        )
     if not np.isfinite(template).all():
         raise ValueError("template_xy must contain only finite coordinates.")
-    return cast(NDArray[np.float32], template)
+    return template
 
 
 def _validate_options(
@@ -313,8 +323,7 @@ def _validate_options(
         raise ValueError(f"min_score must be in [0, 1], got {min_score}.")
     if ransac_reproj_threshold <= 0:
         raise ValueError(
-            "ransac_reproj_threshold must be positive, "
-            f"got {ransac_reproj_threshold}."
+            f"ransac_reproj_threshold must be positive, got {ransac_reproj_threshold}."
         )
     if temporal_median_window < 0 or (
         temporal_median_window != 0 and temporal_median_window % 2 == 0

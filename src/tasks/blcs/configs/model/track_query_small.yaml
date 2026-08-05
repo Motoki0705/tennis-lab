@@ -5,3 +5,5 @@ defaults:
 hidden_dim: 256
 num_heads: 4
 num_stages: 8
+ffn_dim: 704
+rope_dim: 64

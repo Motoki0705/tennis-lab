@@ -15,13 +15,16 @@ from __future__ import annotations
 
 import logging
 from abc import abstractmethod
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+from src.tasks.base.configuration import (
+    ChunkDataConfig,
+    as_config_mapping,
+    require_config_mapping,
+)
 from src.tasks.base.data.datamodule import SceneDirectoryDataModule
-
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
+from src.utils.configuration import PathResolver, RuntimePathRoots
+from src.utils.paths import PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 
@@ -33,18 +36,26 @@ class BaseChunkedDataModule(SceneDirectoryDataModule):
     parent :class:`SceneDirectoryDataModule`.
     """
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: object) -> None:
         super().__init__(config)
+        root = as_config_mapping(config, path="configuration")
+        resolver = PathResolver(
+            RuntimePathRoots.from_mapping(
+                require_config_mapping(root, "paths", path="configuration"),
+                repository_root=PROJECT_ROOT,
+            )
+        )
+        chunk_config = ChunkDataConfig.from_validated_task_mapping(
+            require_config_mapping(root, "data", path="configuration"),
+            resolver=resolver,
+        )
 
-        data_cfg = self.config.get("data", {}) or {}
-        chunk_cfg = data_cfg.get("chunk", {}) or {}
-
-        self.scenes_per_chunk = int(chunk_cfg.get("scenes_per_chunk", 1000))
-        self.epochs_per_chunk = int(chunk_cfg.get("epochs_per_chunk", 3))
-        self.prefetch_chunks = int(chunk_cfg.get("prefetch_chunks", 1))
-        self.chunks_dir = Path(chunk_cfg.get("chunks_dir", self._default_chunks_dir()))
-        self.generation_workers = int(chunk_cfg.get("generation_workers", 1))
-        self.generator_device = str(data_cfg.get("generator_device", "cpu"))
+        self.scenes_per_chunk = chunk_config.scenes_per_chunk
+        self.epochs_per_chunk = chunk_config.epochs_per_chunk
+        self.prefetch_chunks = chunk_config.prefetch_chunks
+        self.chunks_dir = chunk_config.chunks_dir
+        self.generation_workers = chunk_config.generation_workers
+        self.generator_device = chunk_config.generator_device
 
         self.chunk_manager: Any | None = None
         self._current_chunk_id: int | None = None
@@ -55,10 +66,6 @@ class BaseChunkedDataModule(SceneDirectoryDataModule):
     @abstractmethod
     def _build_chunk_manager(self) -> Any:
         """Construct the task-specific (unstarted) chunk manager."""
-
-    @abstractmethod
-    def _default_chunks_dir(self) -> str:
-        """Return the default ``data.chunk.chunks_dir`` value."""
 
     # -- shared lifecycle ------------------------------------------------------
 

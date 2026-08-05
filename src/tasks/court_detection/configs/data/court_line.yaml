@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 task: line
-num_classes: 1
+output_channels: 1
 mask_dir_name: line_masks
 
 hflip_swap_pairs: []

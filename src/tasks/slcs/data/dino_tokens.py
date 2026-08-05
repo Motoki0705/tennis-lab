@@ -49,17 +49,30 @@ class DinoTokenSpec:
     frame_stride: int
 
     def __post_init__(self) -> None:
+        if not self.backbone:
+            raise DatasetContractError("backbone must not be empty.")
         if self.patch_size <= 0:
-            raise DatasetContractError(f"patch_size must be positive, got {self.patch_size}.")
+            raise DatasetContractError(
+                f"patch_size must be positive, got {self.patch_size}."
+            )
+        if self.image_height <= 0 or self.image_width <= 0:
+            raise DatasetContractError(
+                "image_height and image_width must be positive, got "
+                f"{(self.image_height, self.image_width)}."
+            )
         if self.image_height % self.patch_size or self.image_width % self.patch_size:
             raise DatasetContractError(
                 f"image size {(self.image_height, self.image_width)} must be divisible "
                 f"by patch_size={self.patch_size}."
             )
         if self.embed_dim <= 0:
-            raise DatasetContractError(f"embed_dim must be positive, got {self.embed_dim}.")
+            raise DatasetContractError(
+                f"embed_dim must be positive, got {self.embed_dim}."
+            )
         if self.frame_stride <= 0:
-            raise DatasetContractError(f"frame_stride must be positive, got {self.frame_stride}.")
+            raise DatasetContractError(
+                f"frame_stride must be positive, got {self.frame_stride}."
+            )
 
     @property
     def grid_h(self) -> int:
@@ -75,17 +88,38 @@ class DinoTokenSpec:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DinoTokenSpec:
-        try:
-            return cls(
-                backbone=str(data["backbone"]),
-                patch_size=int(data["patch_size"]),
-                image_height=int(data["image_height"]),
-                image_width=int(data["image_width"]),
-                embed_dim=int(data["embed_dim"]),
-                frame_stride=int(data["frame_stride"]),
+        expected = {
+            "backbone": str,
+            "patch_size": int,
+            "image_height": int,
+            "image_width": int,
+            "embed_dim": int,
+            "frame_stride": int,
+        }
+        unknown = sorted(set(data) - set(expected))
+        missing = sorted(set(expected) - set(data))
+        if unknown or missing:
+            raise DatasetContractError(
+                "dino token spec must use the exact current key set; "
+                f"missing={missing}, unknown={unknown}."
             )
-        except KeyError as exc:
-            raise DatasetContractError(f"dino token spec is missing key {exc}.") from exc
+        wrong_types = {
+            key: type(data[key]).__name__
+            for key, expected_type in expected.items()
+            if type(data[key]) is not expected_type
+        }
+        if wrong_types:
+            raise DatasetContractError(
+                f"dino token spec contains wrong exact types: {wrong_types}."
+            )
+        return cls(
+            backbone=data["backbone"],
+            patch_size=data["patch_size"],
+            image_height=data["image_height"],
+            image_width=data["image_width"],
+            embed_dim=data["embed_dim"],
+            frame_stride=data["frame_stride"],
+        )
 
 
 def sample_frame_indices(num_frames: int, frame_stride: int) -> NDArray[np.int64]:
@@ -93,7 +127,9 @@ def sample_frame_indices(num_frames: int, frame_stride: int) -> NDArray[np.int64
     if num_frames <= 0:
         raise DatasetContractError(f"num_frames must be positive, got {num_frames}.")
     if frame_stride <= 0:
-        raise DatasetContractError(f"frame_stride must be positive, got {frame_stride}.")
+        raise DatasetContractError(
+            f"frame_stride must be positive, got {frame_stride}."
+        )
     indices = list(range(0, num_frames, frame_stride))
     if indices[-1] != num_frames - 1:
         indices.append(num_frames - 1)
@@ -137,10 +173,15 @@ def write_dino_tokens(
         tokens = np.asarray(tokens, dtype=np.float16)
         frame_idx = np.asarray(frame_idx, dtype=np.int64)
         _validate_token_arrays(
-            tokens, frame_idx, spec=spec, num_frames=manifest.num_frames,
+            tokens,
+            frame_idx,
+            spec=spec,
+            num_frames=manifest.num_frames,
             context=f"{manifest.clip_id}/{camera_id}",
         )
-        np.savez_compressed(out_dir / f"{camera_id}.npz", tokens=tokens, frame_idx=frame_idx)
+        np.savez_compressed(
+            out_dir / f"{camera_id}.npz", tokens=tokens, frame_idx=frame_idx
+        )
         cameras[camera_id] = {
             "file": f"{camera_id}.npz",
             "num_samples": int(tokens.shape[0]),
@@ -215,7 +256,9 @@ def load_dino_spec(clip_dir: Path) -> DinoTokenSpec:
         )
     spec_raw = marker.get("spec")
     if not isinstance(spec_raw, dict):
-        raise DatasetContractError(f"{marker_path}: marker must record a 'spec' mapping.")
+        raise DatasetContractError(
+            f"{marker_path}: marker must record a 'spec' mapping."
+        )
     return DinoTokenSpec.from_dict(spec_raw)
 
 
@@ -250,7 +293,10 @@ def load_dino_tokens(
     tokens = np.asarray(data["tokens"], dtype=np.float16)
     frame_idx = np.asarray(data["frame_idx"], dtype=np.int64)
     _validate_token_arrays(
-        tokens, frame_idx, spec=spec, num_frames=manifest.num_frames,
+        tokens,
+        frame_idx,
+        spec=spec,
+        num_frames=manifest.num_frames,
         context=f"{manifest.clip_id}/{camera_id}",
     )
     return tokens.astype(np.float32), frame_idx, spec

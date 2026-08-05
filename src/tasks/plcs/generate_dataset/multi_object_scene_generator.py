@@ -54,7 +54,9 @@ class MultiPersonSceneGenerator:
             for index in range(num_persons)
         ]
         if any(scene.human_kp_3d is None for scene in objects):
-            raise RuntimeError("PLCS scene generation must provide COCO17 world joints.")
+            raise RuntimeError(
+                "PLCS scene generation must provide COCO17 world joints."
+            )
         composition = self.composer.compose(
             [str(scene.meta["scene_id"]) for scene in objects],
             [int(scene.position.shape[0]) for scene in objects],
@@ -106,8 +108,7 @@ class MultiPersonSceneGenerator:
                     human_kp_visible=human_visible,
                     court_kp_visible=court_visible,
                     human_visibility_ratio=float(
-                        human_visible[:, :num_persons].any(axis=-1).sum()
-                        / active_count
+                        human_visible[:, :num_persons].any(axis=-1).sum() / active_count
                     ),
                     court_visibility_count=base_camera.court_visibility_count,
                 )

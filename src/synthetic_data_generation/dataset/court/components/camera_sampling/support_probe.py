@@ -12,15 +12,62 @@ from pathlib import Path
 
 import numpy as np
 
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
+)
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.sfm_neighborhood import (
     NovelViewThresholds,
     pose_distance_score,
     sample_safe_novel_views,
 )
 from src.synthetic_data_generation.scene_contract import load_scene_contract
-from src.utils.schema.court import court_keypoints_3d
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 
 SCHEMA = "court_novel_view_probe_v1"
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.court.support_probe",
+    fields=(
+        BoundaryPathField(
+            "contract",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "points_scene",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "research",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "pins",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output", PathRole.ARTIFACT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+    ),
+)
 
 
 def _sha256(path: Path) -> str:
@@ -72,22 +119,34 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=26072813)
     parser.add_argument("--proposals-per-anchor", type=int, default=64)
     parser.add_argument("--max-views", type=int, default=256)
+    add_path_roots_argument(parser)
     args = parser.parse_args()
 
-    output = args.output.resolve()
+    paths = PATH_BOUNDARY.validate(
+        {
+            "contract": args.contract,
+            "points_scene": args.points_scene,
+            "research": args.research,
+            "pins": args.pins,
+            "output": args.output,
+        },
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    contract_path = paths.declared("contract").path
+    points_scene_path = paths.declared("points_scene").path
+    research_path = paths.declared("research").path
+    pins_path = paths.declared("pins").path
+    output = paths.declared("output").path
     if output.exists():
         raise SystemExit(f"Refusing to overwrite output: {output}")
-    for path in (args.contract, args.points_scene, args.research, args.pins):
-        if not path.is_file():
-            raise FileNotFoundError(path)
 
-    contract = load_scene_contract(args.contract)
-    points_scene = np.load(args.points_scene, allow_pickle=False)
+    contract = load_scene_contract(contract_path)
+    points_scene = np.load(points_scene_path, allow_pickle=False)
     thresholds = NovelViewThresholds()
     result = sample_safe_novel_views(
         contract.cameras,
         contract.alignment.court_from_scene,
-        court_keypoints_3d().numpy(),
+        court_keypoints_3d(STANDARD_COURT_CONFIG).numpy(),
         points_scene,
         seed=args.seed,
         proposals_per_anchor=args.proposals_per_anchor,
@@ -165,21 +224,21 @@ def main() -> None:
         "p6_sampling_probe_passed": True,
         "source": {
             "scene_contract": {
-                "path": str(args.contract.resolve()),
-                "sha256": _sha256(args.contract),
+                "path": str(contract_path),
+                "sha256": _sha256(contract_path),
                 "scene_fingerprint": contract.scene_fingerprint,
             },
             "points_scene": {
-                "path": str(args.points_scene.resolve()),
-                "sha256": _sha256(args.points_scene),
+                "path": str(points_scene_path),
+                "sha256": _sha256(points_scene_path),
             },
             "research": {
-                "path": str(args.research.resolve()),
-                "sha256": _sha256(args.research),
+                "path": str(research_path),
+                "sha256": _sha256(research_path),
             },
             "pins": {
-                "path": str(args.pins.resolve()),
-                "sha256": _sha256(args.pins),
+                "path": str(pins_path),
+                "sha256": _sha256(pins_path),
             },
         },
         "thresholds": asdict(thresholds),

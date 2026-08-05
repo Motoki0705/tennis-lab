@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Literal, cast
 
 import torch
 import torch.nn.functional as F
 from torch import nn
 
+from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.data.tracking_types import PLCSTrackingPrediction
 from src.utils.models import (
     RMSNorm,
@@ -26,19 +27,17 @@ from src.utils.models.embeddings import (
 class PLCSTrackQueryModel(nn.Module):
     """Alternate unified spatial and per-slot temporal self-attention."""
 
-    def __init__(self, config: Any) -> None:
+    def __init__(self, config: PLCSModelConfig) -> None:
         super().__init__()
-        self.hidden_dim = int(config.hidden_dim)
-        self.num_heads = int(config.num_heads)
-        self.num_queries = int(config.num_queries)
-        self.num_stages = int(config.num_stages)
-        self.num_joints = int(config.num_joints)
-        self.role_rope_enabled = bool(config.role_rope_enabled)
-        self.mask_invisible_observations = bool(
-            config.get("mask_invisible_observations", True)
-        )
+        self.hidden_dim = config.integer("hidden_dim")
+        self.num_heads = config.integer("num_heads")
+        self.num_queries = config.integer("num_queries")
+        self.num_stages = config.integer("num_stages")
+        self.num_joints = config.integer("num_joints")
+        self.role_rope_enabled = config.boolean("role_rope_enabled")
+        self.mask_invisible_observations = config.boolean("mask_invisible_observations")
         head_dim = self.hidden_dim // self.num_heads
-        self.rope_dim = int(config.get("rope_dim", head_dim))
+        self.rope_dim = config.integer("rope_dim")
         if self.hidden_dim % self.num_heads != 0:
             raise ValueError("hidden_dim must be divisible by num_heads.")
         if self.rope_dim > head_dim or self.rope_dim % 2:
@@ -48,7 +47,7 @@ class PLCSTrackQueryModel(nn.Module):
         self.num_court_tokens = 14
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
-            init_std=float(config.get("invisible_init_std", 0.02)),
+            init_std=config.number("invisible_init_std"),
         )
         self.group_embed = CourtPlayerGroupEmbedding(
             dim=self.hidden_dim,
@@ -61,9 +60,14 @@ class PLCSTrackQueryModel(nn.Module):
         block_config = TransformerBlockConfig(
             dim=self.hidden_dim,
             n_heads=self.num_heads,
-            ffn_dim=int(config.ffn_dim),
+            ffn_dim=config.integer("ffn_dim"),
+            head_dim=head_dim,
             rope_dim=self.rope_dim,
-            attn_dropout=float(config.dropout),
+            attn_dropout=config.number("dropout"),
+            attention_type="mha",
+            n_kv_heads=None,
+            rope_base=config.number("rope_theta"),
+            ffn_type=cast(Literal["swiglu", "mlp"], config.string("ffn_type")),
         )
         self.spatial_blocks = nn.ModuleList(
             [TransformerBlock(block_config) for _ in range(self.num_stages)]

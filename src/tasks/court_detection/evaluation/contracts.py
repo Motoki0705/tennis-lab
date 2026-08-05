@@ -14,7 +14,7 @@ class CourtAnnotationDatasetSpec:
     name: str
     annotation_json: Path
     image_dir: Path
-    image_extensions: tuple[str, ...] = (".png", ".jpg", ".jpeg")
+    image_extensions: tuple[str, ...]
 
     def __post_init__(self) -> None:
         if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", self.name) is None:
@@ -35,19 +35,19 @@ class CourtAnnotationDatasetSpec:
 class HomographyEvaluationCriteria:
     """Thresholds used to accept a 14-keypoint court annotation."""
 
-    ransac_reproj_threshold_normalized: float = 0.012
-    min_inliers: int = 12
-    min_template_x_span_ratio: float = 0.5
-    min_template_y_span_ratio: float = 0.7
-    max_inlier_rms_normalized: float = 0.006
-    min_visible_fraction: float = 0.98
-    min_court_area_ratio: float = 0.015
-    max_court_area_ratio: float = 0.95
-    min_line_edge_support: float = 0.55
-    line_distance_tolerance_px: float = 3.0
-    line_evidence_max_side: int = 900
-    require_ground_view: bool = True
-    max_opposite_edge_ratio: float = 0.95
+    ransac_reproj_threshold_normalized: float
+    min_inliers: int
+    min_template_x_span_ratio: float
+    min_template_y_span_ratio: float
+    max_inlier_rms_normalized: float
+    min_visible_fraction: float
+    min_court_area_ratio: float
+    max_court_area_ratio: float
+    min_line_edge_support: float
+    line_distance_tolerance_px: float
+    line_evidence_max_side: int
+    require_ground_view: bool
+    max_opposite_edge_ratio: float
 
     def __post_init__(self) -> None:
         _require_positive(

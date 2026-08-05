@@ -1,2 +1,3 @@
-output_dir: outputs/court_detection/visualization
+output_dir: court_detection/visualization
 device: auto
+allow_device_fallback: false

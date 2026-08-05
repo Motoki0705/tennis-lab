@@ -19,7 +19,6 @@ from typing import Any
 
 import pytorch_lightning as pl
 import torch
-from hydra.utils import to_absolute_path
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.tasks.ball_detection.data.staged_datamodule import StagedBallDataModule
@@ -47,10 +46,9 @@ class StagedBallDetectionTrainingRunner(BallDetectionTrainingRunner):
         steps_per_epoch: int | None = None,
     ) -> pl.LightningModule:
         module = StagedBallDetectionLightningModule(config)
-        module.set_effective_batch_size(
-            int(getattr(datamodule, "effective_batch_size", module.effective_batch_size))
-        )
-        self._maybe_init_weights(config, module)
+        if not isinstance(datamodule, StagedBallDataModule):
+            raise TypeError("Staged runner requires StagedBallDataModule.")
+        module.set_effective_batch_size(datamodule.effective_batch_size)
         return module
 
     def build_logger(self, config: Any, output_dir: Any) -> TensorBoardLogger:
@@ -63,11 +61,13 @@ class StagedBallDetectionTrainingRunner(BallDetectionTrainingRunner):
         if not torch.cuda.is_available():
             print("[staged] CUDA unavailable; using config batch_size_by_t as-is.")
             return
-        staged_cfg = (config.get("training", {}) or {}).get("staged", {}) or {}
-        token_budget = int(staged_cfg.get("calibration_token_budget", 24))
-        safety = float(staged_cfg.get("calibration_safety", 0.9))
+        staged_cfg = config.training.staged
+        token_budget = int(staged_cfg.calibration_token_budget)
+        safety = float(staged_cfg.calibration_safety)
         t_values = sorted(datamodule.t_probs)
-        print(f"[staged] calibrating B(T) for T={t_values} (token_budget={token_budget})...")
+        print(
+            f"[staged] calibrating B(T) for T={t_values} (token_budget={token_budget})..."
+        )
         table = probe_batch_size_by_t(
             config,
             t_values,
@@ -77,7 +77,7 @@ class StagedBallDetectionTrainingRunner(BallDetectionTrainingRunner):
         )
         effective_batch = (
             datamodule.effective_batch_size
-            if getattr(datamodule, "t_distribution", "variable") == "fixed"
+            if datamodule.t_distribution == "fixed"
             else table[min(table)]
         )
         datamodule.set_batch_plan(
@@ -85,29 +85,6 @@ class StagedBallDetectionTrainingRunner(BallDetectionTrainingRunner):
             effective_batch,
         )
         print(f"[staged] calibrated B(T)={table}; EBS={effective_batch}")
-
-    def _maybe_init_weights(self, config: Any, module: pl.LightningModule) -> None:
-        init_weights = config.run.get("init_weights")
-        if not init_weights:
-            return
-        if bool(config.run.dry_run):
-            # Dry run validates one phase's mechanics, not the cross-phase chain;
-            # the previous phase's checkpoint need not exist yet.
-            print("[staged] dry run: skipping init_weights load.")
-            return
-        path = to_absolute_path(str(init_weights))
-        checkpoint = torch.load(path, map_location="cpu", weights_only=False)
-        state_dict = checkpoint.get("state_dict", checkpoint)
-        model_state = {
-            key[len("model.") :]: value
-            for key, value in state_dict.items()
-            if key.startswith("model.")
-        }
-        missing, unexpected = module.model.load_state_dict(model_state, strict=False)
-        print(
-            f"[staged] initialized model weights from {path} "
-            f"(missing={len(missing)}, unexpected={len(unexpected)})."
-        )
 
 
 __all__ = ["StagedBallDetectionTrainingRunner"]

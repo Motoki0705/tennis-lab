@@ -20,7 +20,7 @@ class AlignmentJob:
     alignment_id: str
     scene_id: str
     provider_bundle: Path
-    output_root: Path
+    artifact_root: Path
     config_overrides: Mapping[str, Any]
 
 

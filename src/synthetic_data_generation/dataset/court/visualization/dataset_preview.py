@@ -14,6 +14,10 @@ import matplotlib
 import numpy as np
 from PIL import Image, ImageDraw
 
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
+)
 from src.synthetic_data_generation.dataset.blcs.rendering.nht import (
     _canonical_sha256,
     _relative_file_ref,
@@ -28,14 +32,35 @@ from src.synthetic_data_generation.dataset.court.rendering.orbit_preview import 
     _CLASS_COLOURS,
     _draw_marker,
 )
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
 
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt  # noqa: E402
 
-REPO_ROOT = Path(__file__).resolve().parents[5]
 DIAGNOSTIC_SCHEMA = "tennis_multicourt_dataset_diagnostic_v1"
 _BUCKETS = ("full", "near_full", "partial", "sparse")
 _SPLITS = ("train", "validation", "test")
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.court.dataset_preview",
+    fields=(
+        BoundaryPathField(
+            "dataset_dir",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output_dir", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+    ),
+)
 
 
 def _load_dataset(root: Path) -> dict[str, Any]:
@@ -199,9 +224,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    add_path_roots_argument(parser)
     args = parser.parse_args()
-    dataset_root = args.dataset_dir.resolve()
-    output_dir = args.output_dir.resolve()
+    paths = PATH_BOUNDARY.validate(
+        {"dataset_dir": args.dataset_dir, "output_dir": args.output_dir},
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    dataset_root = paths.declared("dataset_dir").path
+    output_dir = paths.declared("output_dir").path
     if output_dir.exists():
         raise SystemExit(f"Refusing to overwrite output directory: {output_dir}")
 

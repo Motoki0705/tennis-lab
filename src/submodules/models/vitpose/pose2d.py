@@ -9,14 +9,13 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
+from src.submodules.configuration import require_absolute_path
 from src.submodules.models._base import BaseInferenceModel
 from src.submodules.vendor.gvhmr.hmr2.preproc import get_batch
 from src.submodules.vendor.gvhmr.vitpose import build_vitpose_huge
 from src.submodules.vendor.gvhmr.vitpose.flip_utils import flip_heatmap_coco17
+from src.submodules.vendor.gvhmr.vitpose.heatmap_head import ViTPoseHeadConfig
 from src.submodules.vendor.gvhmr.vitpose.kp2d_utils import keypoints_from_heatmaps
-from src.utils.paths import PROJECT_ROOT
-
-DEFAULT_VITPOSE_CHECKPOINT = PROJECT_ROOT / "ckpt/vitpose/vitpose-h-multi-coco.pth"
 
 
 @dataclass(frozen=True)
@@ -45,21 +44,40 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest, Pose2DResult]):
 
     def __init__(
         self,
-        checkpoint: str | Path = DEFAULT_VITPOSE_CHECKPOINT,
-        device: str | torch.device = "auto",
-        flip_test: bool = True,
-        batch_size: int = 16,
+        checkpoint: str | Path,
+        *,
+        device: str | torch.device,
+        allow_device_fallback: bool,
+        flip_test: bool,
+        batch_size: int,
+        head_config: ViTPoseHeadConfig,
     ) -> None:
-        super().__init__(device)
-        self.checkpoint = Path(checkpoint)
+        super().__init__(device, allow_device_fallback=allow_device_fallback)
+        if type(flip_test) is not bool:
+            raise TypeError("flip_test must be a bool.")
+        if type(batch_size) is not int:
+            raise TypeError("batch_size must be an integer.")
+        if batch_size <= 0:
+            raise ValueError(f"batch_size must be positive, got {batch_size}")
+        self.checkpoint = require_absolute_path(checkpoint, name="ViTPose checkpoint")
         self.flip_test = flip_test
         self.batch_size = batch_size
+        if not isinstance(head_config, ViTPoseHeadConfig):
+            raise TypeError("head_config must be a validated ViTPoseHeadConfig.")
+        self.head_config = head_config
         self._pose: torch.nn.Module | None = None
 
     def _load_impl(self) -> None:
         if not self.checkpoint.exists():
             raise FileNotFoundError(f"ViTPose checkpoint not found: {self.checkpoint}")
-        self._pose = build_vitpose_huge(str(self.checkpoint)).to(self._device).eval()
+        self._pose = (
+            build_vitpose_huge(
+                str(self.checkpoint),
+                head_config=self.head_config,
+            )
+            .to(self._device)
+            .eval()
+        )
 
     def _unload_impl(self) -> None:
         self._pose = None
@@ -87,7 +105,10 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest, Pose2DResult]):
             heatmap_np = heatmap.cpu().numpy()
             center = bbx_xys_batch[:, :2].numpy()
             scale = (
-                torch.cat((bbx_xys_batch[:, [2]] * 24 / 32, bbx_xys_batch[:, [2]]), dim=1) / 200
+                torch.cat(
+                    (bbx_xys_batch[:, [2]] * 24 / 32, bbx_xys_batch[:, [2]]), dim=1
+                )
+                / 200
             ).numpy()
             preds, maxvals = keypoints_from_heatmaps(
                 heatmaps=heatmap_np, center=center, scale=scale, use_udp=True

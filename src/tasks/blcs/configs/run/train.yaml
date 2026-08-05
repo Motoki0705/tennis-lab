@@ -1,7 +1,8 @@
-output_dir: outputs/blcs/${model.name}
+output_dir: blcs/${model.name}
 seed: 42
 gpus: 1
 resume: null
 init_weights: null  # weight-only fine-tune (fresh optimizer/epoch); mutually exclusive with resume
 fast_dev_run: false
 dry_run: false
+test_after_fit: true

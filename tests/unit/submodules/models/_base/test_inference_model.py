@@ -9,7 +9,7 @@ class DoublingModel(BaseInferenceModel[int, int]):
     """Minimal concrete model for lifecycle testing."""
 
     def __init__(self) -> None:
-        super().__init__(device="cpu")
+        super().__init__(device="cpu", allow_device_fallback=False)
         self.load_calls = 0
         self.unload_calls = 0
         self.grad_enabled_during_predict: bool | None = None

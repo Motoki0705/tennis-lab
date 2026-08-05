@@ -2,7 +2,7 @@
 
 Usage:
     python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution
-    python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution run.output_dir=outputs/plcs/analysis/dataset_distribution analysis.max_scenes=200
+    python -m src.tasks.plcs.scripts.analysis.analyze_dataset_distribution run.output_dir=plcs/analysis/dataset_distribution analysis.max_scenes=200
 
 Notes:
     - Configuration is loaded from `src/tasks/plcs/configs/analyze_dataset_distribution.yaml`.
@@ -15,15 +15,14 @@ from __future__ import annotations
 import csv
 import math
 import random
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
+from src.tasks.plcs.configuration import PLCSAnalysisRuntimeConfig
 from src.utils.hydra import hydra_main
 from src.utils.io import load_json, save_json
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
@@ -81,15 +80,10 @@ class RunningStats:
         }
 
 
-def _prepare_paths(cfg: DictConfig) -> DictConfig:
-    cfg.run.output_dir = to_absolute_path(str(cfg.run.output_dir))
-    cfg.data.scene_dir = to_absolute_path(str(cfg.data.scene_dir))
-    return cfg
-
-
-def _iter_scene_files(scene_dir: Path) -> list[Path]:
-    scenes_subdir = scene_dir / "scenes"
-    files = sorted(p for p in scenes_subdir.iterdir() if p.is_dir() and p.name.startswith("scene_"))
+def _iter_scene_files(scenes_subdir: Path) -> list[Path]:
+    files = sorted(
+        p for p in scenes_subdir.iterdir() if p.is_dir() and p.name.startswith("scene_")
+    )
     if not files:
         raise ValueError(f"No scene directories found in {scenes_subdir}")
     return files
@@ -117,20 +111,23 @@ def _circular_mean_from_sincos(sum_sin: float, sum_cos: float) -> float | None:
     config_path="../../configs",
     config_name="analyze_dataset_distribution",
     version_base="1.3",
+    validation_boundary="plcs.analyze_dataset_distribution",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
-    cfg = _prepare_paths(cfg)
+    runtime = PLCSAnalysisRuntimeConfig.distribution(cfg)
 
     seed = int(cfg.run.seed)
     random.seed(seed)
     np.random.seed(seed)
 
-    scene_dir = Path(str(cfg.data.scene_dir))
-    out_dir = Path(str(cfg.run.output_dir))
+    if runtime.scene_dir is None or runtime.scene_records_dir is None:
+        raise AssertionError("PLCS distribution data paths were not resolved.")
+    scene_dir = runtime.scene_dir
+    out_dir = runtime.output_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     OmegaConf.save(cfg, out_dir / "config.yaml")
 
-    scene_files = _iter_scene_files(scene_dir)
+    scene_files = _iter_scene_files(runtime.scene_records_dir)
     max_scenes = cfg.analysis.max_scenes
     if max_scenes is not None:
         max_scenes = int(max_scenes)
@@ -216,7 +213,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
             init_yaw = float(meta.get("initial_yaw", float("nan")))
 
             position_path = scene_path / "position.npy"
-            num_frames = int(meta.get("num_frames", int(np.load(position_path, mmap_mode="r").shape[0])))
+            num_frames = int(
+                meta.get(
+                    "num_frames", int(np.load(position_path, mmap_mode="r").shape[0])
+                )
+            )
             num_cameras = int(scalars.get("num_cameras", 0))
 
             writer.writerow(
@@ -237,11 +238,20 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                 total_scenes_used += 1
                 continue
 
-            pos_norm = np.asarray(np.load(scene_path / "position.npy"), dtype=np.float64)  # (T, 3)
-            rot = np.asarray(np.load(scene_path / "rotation.npy"), dtype=np.float64)  # (T, 2) as (cos, sin)
+            pos_norm = np.asarray(
+                np.load(scene_path / "position.npy"), dtype=np.float64
+            )  # (T, 3)
+            rot = np.asarray(
+                np.load(scene_path / "rotation.npy"), dtype=np.float64
+            )  # (T, 2) as (cos, sin)
 
-            if max_frames_per_scene is not None and pos_norm.shape[0] > max_frames_per_scene:
-                idx = np.random.choice(pos_norm.shape[0], size=max_frames_per_scene, replace=False)
+            if (
+                max_frames_per_scene is not None
+                and pos_norm.shape[0] > max_frames_per_scene
+            ):
+                idx = np.random.choice(
+                    pos_norm.shape[0], size=max_frames_per_scene, replace=False
+                )
                 pos_norm = pos_norm[idx]
                 rot = rot[idx]
 
@@ -279,12 +289,22 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
             total_scenes_used += 1
 
     xy_within_frac = (
-        {str(t): (xy_within_counts[t] / total_frames_used if total_frames_used else None) for t in thresholds}
+        {
+            str(t): (
+                xy_within_counts[t] / total_frames_used if total_frames_used else None
+            )
+            for t in thresholds
+        }
         if mode != "initial_only"
         else {}
     )
     xyz_within_frac = (
-        {str(t): (xyz_within_counts[t] / total_frames_used if total_frames_used else None) for t in thresholds}
+        {
+            str(t): (
+                xyz_within_counts[t] / total_frames_used if total_frames_used else None
+            )
+            for t in thresholds
+        }
         if mode != "initial_only"
         else {}
     )
@@ -320,7 +340,9 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
 
     save_json(summary, out_dir / "summary.json")
 
-    np.savez_compressed(out_dir / "hist_xy.npz", hist=xy_hist, x_edges=x_edges, y_edges=y_edges)
+    np.savez_compressed(
+        out_dir / "hist_xy.npz", hist=xy_hist, x_edges=x_edges, y_edges=y_edges
+    )
     np.savez_compressed(out_dir / "hist_yaw.npz", hist=yaw_hist, yaw_edges=yaw_edges)
 
     if bool(cfg.plots.enabled):
@@ -331,7 +353,12 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
             im = ax.imshow(
                 xy_hist.T,
                 origin="lower",
-                extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]],
+                extent=(
+                    float(x_edges[0]),
+                    float(x_edges[-1]),
+                    float(y_edges[0]),
+                    float(y_edges[-1]),
+                ),
                 aspect="auto",
             )
             ax.set_title("PLCS position histogram (meters): x vs y")
@@ -368,4 +395,4 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
 
 
 if __name__ == "__main__":
-    raise SystemExit(cast(Callable[[], int], main)())
+    raise SystemExit(main())

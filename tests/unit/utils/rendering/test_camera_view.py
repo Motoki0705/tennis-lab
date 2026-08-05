@@ -158,41 +158,64 @@ class TestKeyframesMode:
 
 
 class TestFromConfig:
+    @staticmethod
+    def _config(**overrides: object) -> dict[str, object]:
+        config: dict[str, object] = {
+            "preset": "broadcast",
+            "elev": None,
+            "azim": None,
+            "zoom": None,
+            "mode": "static",
+            "orbit_period_s": 10.0,
+            "keyframes": None,
+        }
+        config.update(overrides)
+        return config
+
     def test_preset_with_zoom_override(self) -> None:
-        controller = CameraController.from_config({"preset": "broadcast", "zoom": 2.5})
+        controller = CameraController.from_config(self._config(zoom=2.5))
         assert controller.base.elev == CAMERA_PRESETS["broadcast"].elev
         assert controller.base.zoom == pytest.approx(2.5)
 
     def test_explicit_angles(self) -> None:
-        controller = CameraController.from_config({"elev": 45.0, "azim": 30.0})
+        controller = CameraController.from_config(
+            self._config(preset=None, elev=45.0, azim=30.0)
+        )
         assert controller.base == CameraView3D(45.0, 30.0)
 
     def test_null_zoom_keeps_preset_zoom(self) -> None:
-        controller = CameraController.from_config({"preset": "broadcast", "zoom": None})
+        controller = CameraController.from_config(self._config())
         assert controller.base.zoom == CAMERA_PRESETS["broadcast"].zoom
 
     def test_preset_and_angles_together_raise(self) -> None:
         with pytest.raises(ValueError, match="not both"):
-            CameraController.from_config({"preset": "broadcast", "elev": 10.0, "azim": 0.0})
+            CameraController.from_config(self._config(elev=10.0, azim=0.0))
 
     def test_missing_view_spec_raises(self) -> None:
         with pytest.raises(ValueError, match="requires 'preset' or both"):
-            CameraController.from_config({"elev": 10.0})
+            CameraController.from_config(
+                self._config(preset=None, elev=10.0, azim=None)
+            )
+
+    def test_missing_controller_key_raises(self) -> None:
+        config = self._config()
+        del config["orbit_period_s"]
+        with pytest.raises(ValueError, match="missing=.*orbit_period_s"):
+            CameraController.from_config(config)
 
     def test_unknown_mode_raises(self) -> None:
         with pytest.raises(ValueError, match="Unknown camera mode"):
-            CameraController.from_config({"preset": "broadcast", "mode": "dolly"})
+            CameraController.from_config(self._config(mode="dolly"))
 
     def test_keyframes_parsed(self) -> None:
         controller = CameraController.from_config(
-            {
-                "preset": "broadcast",
-                "mode": "keyframes",
-                "keyframes": [
+            self._config(
+                mode="keyframes",
+                keyframes=[
                     {"frame": 0, "preset": "broadcast"},
                     {"frame": 60, "elev": 40.0, "azim": -45.0, "zoom": 1.4},
                 ],
-            }
+            )
         )
         assert controller.keyframes[0].view == CAMERA_PRESETS["broadcast"]
         assert controller.keyframes[1].view == CameraView3D(40.0, -45.0, 1.4)
@@ -200,9 +223,7 @@ class TestFromConfig:
     def test_keyframe_missing_frame_raises(self) -> None:
         with pytest.raises(ValueError, match="missing required key 'frame'"):
             CameraController.from_config(
-                {
-                    "preset": "broadcast",
-                    "mode": "keyframes",
-                    "keyframes": [{"preset": "broadcast"}],
-                }
+                self._config(
+                    mode="keyframes", keyframes=[{"preset": "broadcast"}]
+                )
             )

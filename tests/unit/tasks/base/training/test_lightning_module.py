@@ -28,9 +28,89 @@ pytestmark = pytest.mark.unit
 class _TinyModule(BaseLightningModule):
     """Concrete module with a single trainable parameter for optimizer tests."""
 
-    def __init__(self, config=None) -> None:
+    def __init__(self, config: dict[str, object]) -> None:
         super().__init__(config)
         self.lin = nn.Linear(2, 2)
+
+
+def _config(
+    *,
+    artifact_root: Path = Path("/tmp/tennis-lab-test-artifacts"),
+    max_epochs: int = 1,
+    steps_per_epoch: int | None = 1,
+    warmup_steps: int | None = 0,
+    warmup_epochs: int | None = None,
+    learning_rate: float = 1.0e-3,
+    weight_decay: float = 0.0,
+    betas: tuple[float, float] = (0.9, 0.999),
+) -> dict[str, object]:
+    return {
+        "paths": {
+            "project_root": ".",
+            "data_root": "data",
+            "checkpoint_root": "checkpoints",
+            "artifact_root": str(artifact_root),
+            "output_root": "outputs",
+            "cache_root": ".cache",
+            "external_asset_root": "external",
+        },
+        "training": {
+            "trainer": {
+                "max_epochs": max_epochs,
+                "gradient_clip_val": None,
+                "deterministic": True,
+                "precision": "32-true",
+                "log_every_n_steps": 1,
+                "check_val_every_n_epoch": 1,
+                "accumulate_grad_batches": 1,
+                "reload_dataloaders_every_n_epochs": 0,
+                "enable_progress_bar": False,
+                "enable_model_summary": False,
+                "benchmark": False,
+            },
+            "learning_rate": learning_rate,
+            "weight_decay": weight_decay,
+            "warmup_steps": warmup_steps,
+            "warmup_epochs": warmup_epochs,
+            "min_lr": 0.0,
+            "steps_per_epoch": steps_per_epoch,
+            "optimizer": {"betas": betas},
+            "checkpoint": {
+                "enabled": False,
+                "filename": "model-{epoch}",
+                "monitor": "val/loss",
+                "mode": "min",
+                "save_top_k": 1,
+                "save_last": False,
+            },
+            "early_stopping": {
+                "enabled": False,
+                "monitor": "val/loss",
+                "mode": "min",
+                "patience": 1,
+                "min_delta": 0.0,
+                "check_on_train_epoch_end": False,
+            },
+            "lr_monitor": {"enabled": False, "interval": "step"},
+            "qualitative_logging": {
+                "enabled": False,
+                "every_n_epochs": 1,
+                "num_samples": 1,
+                "selection_mode": "random",
+                "selected_indices": None,
+            },
+            "gan": {
+                "enabled": False,
+                "target_weight": 0.0,
+                "warmup_epochs": 1,
+                "generator_gradient_clip_val": None,
+                "discriminator_gradient_clip_val": None,
+                "transition": {"start_epoch": 0},
+            },
+            "matmul_precision": "high",
+            "allow_tf32": False,
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -67,31 +147,20 @@ def test_concat_padded_low_dim_arrays_concatenated() -> None:
 
 
 def test_estimate_total_steps_from_steps_per_epoch_attr() -> None:
-    m = _TinyModule({"training": {"max_epochs": 4}})
+    m = _TinyModule(_config(max_epochs=4))
     m.steps_per_epoch = 50
     assert m._estimate_total_steps() == 200
 
 
 def test_estimate_total_steps_from_config_steps_per_epoch() -> None:
-    m = _TinyModule({"training": {"max_epochs": 3, "steps_per_epoch": 10}})
+    m = _TinyModule(_config(max_epochs=3, steps_per_epoch=10))
     assert m._estimate_total_steps() == 30
 
 
-def test_estimate_total_steps_from_num_samples() -> None:
-    m = _TinyModule(
-        {
-            "training": {"max_epochs": 2},
-            "data": {"num_samples_per_epoch": 100, "batch_size": 10},
-        }
-    )
-    # steps_per_epoch = 100 // 10 = 10 -> * 2 epochs
-    assert m._estimate_total_steps() == 20
-
-
-def test_estimate_total_steps_default_fallback() -> None:
-    m = _TinyModule({"training": {"max_epochs": 1}})
-    # default num_samples=10000, batch_size=64 -> 156 steps * 1
-    assert m._estimate_total_steps() == (10000 // 64) * 1
+def test_estimate_total_steps_rejects_unresolved_count() -> None:
+    m = _TinyModule(_config(steps_per_epoch=None))
+    with pytest.raises(RuntimeError, match="step count is unresolved"):
+        m._estimate_total_steps()
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +169,7 @@ def test_estimate_total_steps_default_fallback() -> None:
 
 
 def test_configure_optimizers_step_interval_no_warmup() -> None:
-    m = _TinyModule({"training": {"max_epochs": 2, "steps_per_epoch": 5}})
+    m = _TinyModule(_config(max_epochs=2, steps_per_epoch=5))
     cfg = m.configure_optimizers()
     assert isinstance(cfg["optimizer"], AdamW)
     assert cfg["lr_scheduler"]["interval"] == "step"
@@ -108,7 +177,14 @@ def test_configure_optimizers_step_interval_no_warmup() -> None:
 
 
 def test_configure_optimizers_epoch_warmup_uses_sequential() -> None:
-    m = _TinyModule({"training": {"max_epochs": 10, "warmup_epochs": 3}})
+    m = _TinyModule(
+        _config(
+            max_epochs=10,
+            steps_per_epoch=None,
+            warmup_steps=None,
+            warmup_epochs=3,
+        )
+    )
     cfg = m.configure_optimizers()
     assert cfg["lr_scheduler"]["interval"] == "epoch"
     assert isinstance(cfg["lr_scheduler"]["scheduler"], SequentialLR)
@@ -116,15 +192,12 @@ def test_configure_optimizers_epoch_warmup_uses_sequential() -> None:
 
 def test_configure_optimizers_respects_lr_and_betas() -> None:
     m = _TinyModule(
-        {
-            "training": {
-                "max_epochs": 1,
-                "learning_rate": 5e-4,
-                "weight_decay": 0.01,
-                "steps_per_epoch": 1,
-                "optimizer": {"betas": [0.8, 0.95]},
-            }
-        }
+        _config(
+            learning_rate=5e-4,
+            weight_decay=0.01,
+            steps_per_epoch=1,
+            betas=(0.8, 0.95),
+        )
     )
     opt = m.configure_optimizers()["optimizer"]
     group = opt.param_groups[0]
@@ -133,9 +206,9 @@ def test_configure_optimizers_respects_lr_and_betas() -> None:
     assert group["betas"] == (0.8, 0.95)
 
 
-def test_optimizer_betas_none_when_unset() -> None:
-    m = _TinyModule({"training": {"max_epochs": 1}})
-    assert m.optimizer_betas is None
+def test_optimizer_betas_are_explicit() -> None:
+    m = _TinyModule(_config())
+    assert m.optimizer_betas == (0.9, 0.999)
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +217,7 @@ def test_optimizer_betas_none_when_unset() -> None:
 
 
 def test_default_payload_empty_and_collect_noop() -> None:
-    m = _TinyModule({})
+    m = _TinyModule(_config())
     assert m.test_prediction_payload(batch=None, result={}) == {}
     # collecting an empty payload must not create a buffer
     m.collect_test_predictions(batch=None, result={})
@@ -156,7 +229,7 @@ def test_save_test_predictions_writes_npz(tmp_path: Path, monkeypatch) -> None:
         def test_prediction_payload(self, batch, result):
             return {"position": result["position"]}
 
-    m = _PredModule({})
+    m = _PredModule(_config(artifact_root=tmp_path))
     monkeypatch.setenv("TENNIS_REPRO_DIR", str(tmp_path))
     m._reset_test_prediction_buffer()
 
@@ -175,6 +248,6 @@ def test_save_test_predictions_writes_npz(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_save_test_predictions_none_when_empty(tmp_path: Path, monkeypatch) -> None:
-    m = _TinyModule({})
+    m = _TinyModule(_config(artifact_root=tmp_path))
     monkeypatch.setenv("TENNIS_REPRO_DIR", str(tmp_path))
     assert m.save_test_predictions() is None  # nothing collected

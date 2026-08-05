@@ -8,6 +8,7 @@ import torch
 import torch.nn.functional as F
 
 from src.tasks.base.training.tracking_metrics import (
+    TrackingMetricConfig,
     common_lifecycle_tracking_metrics,
 )
 from src.tasks.plcs.training.tracking_losses import Assignment
@@ -18,16 +19,14 @@ def plcs_tracking_metrics(
     batch: dict[str, torch.Tensor],
     assignments: list[Assignment],
     *,
-    presence_threshold: float = 0.5,
-    duplicate_distance: float = 0.05,
+    config: TrackingMetricConfig,
 ) -> dict[str, torch.Tensor]:
     """Compute shared lifecycle metrics plus matched angular error."""
     metrics = common_lifecycle_tracking_metrics(
         prediction,
         batch,
         assignments,
-        presence_threshold=presence_threshold,
-        duplicate_distance=duplicate_distance,
+        config=config,
     )
     angular_errors: list[torch.Tensor] = []
     for batch_index, (query_indices, target_indices) in enumerate(assignments):
@@ -41,18 +40,20 @@ def plcs_tracking_metrics(
             if not active.any():
                 continue
             cosine = (
-                F.normalize(
-                    prediction["rotation"][batch_index, active, query_index],
-                    dim=-1,
+                (
+                    F.normalize(
+                        prediction["rotation"][batch_index, active, query_index],
+                        dim=-1,
+                    )
+                    * F.normalize(
+                        batch["target_rotation"][batch_index, active, target_index],
+                        dim=-1,
+                    )
                 )
-                * F.normalize(
-                    batch["target_rotation"][batch_index, active, target_index],
-                    dim=-1,
-                )
-            ).sum(-1).clamp(-1.0, 1.0)
-            angular_errors.append(
-                torch.acos(cosine).mean() * (180.0 / math.pi)
+                .sum(-1)
+                .clamp(-1.0, 1.0)
             )
+            angular_errors.append(torch.acos(cosine).mean() * (180.0 / math.pi))
     zero = prediction["position"].new_zeros(())
     metrics["angular_error_deg"] = (
         torch.stack(angular_errors).mean() if angular_errors else zero

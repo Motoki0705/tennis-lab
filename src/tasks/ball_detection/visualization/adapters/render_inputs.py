@@ -44,8 +44,10 @@ def build_mdd_frames_from_images(
     Returns:
         List of T ``(H, W, 3)`` uint8 RGB arrays.
     """
-    cfg = model_cfg or {}
-    input_mode = str(cfg.get("input_mode", "rgb")).strip().lower()
+    if model_cfg is None:
+        raise ValueError("model_cfg is required for render input adaptation.")
+    cfg = model_cfg
+    input_mode = str(cfg["input_mode"]).strip().lower()
 
     t_frames = images_btchw.shape[1]
     h = images_btchw.shape[3]
@@ -62,12 +64,12 @@ def build_mdd_frames_from_images(
 
     # Use the first sample in the batch.
     brighten = features[0, 0].clamp(0.0, 1.0).cpu().numpy()  # (T, H, W)
-    darken = features[0, 1].clamp(0.0, 1.0).cpu().numpy()    # (T, H, W)
+    darken = features[0, 1].clamp(0.0, 1.0).cpu().numpy()  # (T, H, W)
 
     mdd_frames: list[np.ndarray] = []
     for t in range(brighten.shape[0]):
         rgb = np.zeros((h, w, 3), dtype=np.uint8)
-        rgb[..., 0] = (darken[t] * 255.0).astype(np.uint8)    # red  = darken
+        rgb[..., 0] = (darken[t] * 255.0).astype(np.uint8)  # red  = darken
         rgb[..., 1] = (brighten[t] * 255.0).astype(np.uint8)  # green = brighten
         mdd_frames.append(rgb)
     return mdd_frames
@@ -104,16 +106,18 @@ def build_render_animation_inputs(
         Dict with all keyword arguments for ``render_animation_frames``.
         The caller can pass it directly as ``render_animation_frames(**inputs)``.
     """
-    cfg = normalize_cfg or {}
+    if normalize_cfg is None:
+        raise ValueError("normalize_cfg is required for render input adaptation.")
+    cfg = normalize_cfg
     b, t, c, h, w = images_btchw.shape
 
     # ------------------------------------------------------------------ images
     frames_tensor = images_btchw[sample_idx].detach().cpu()  # (T, C, H, W)
-    if bool(cfg.get("enabled", False)):
+    if bool(cfg["enabled"]):
         frames_tensor = denormalize_tensor_images_imagenet(
             frames_tensor,
-            mean=cfg.get("mean", (0.485, 0.456, 0.406)),
-            std=cfg.get("std", (0.229, 0.224, 0.225)),
+            mean=cfg["mean"],
+            std=cfg["std"],
         )
     frames_rgb: list[np.ndarray] = list(tensor_images_to_uint8_rgb(frames_tensor))
 

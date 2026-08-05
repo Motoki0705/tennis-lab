@@ -5,6 +5,8 @@ defaults:
 hidden_dim: 256
 num_layers: 8
 num_heads: 4
+ffn_dim: 704
+rope_dim: 64
 
 camera_layers_per_stage: [1, 1, 1, 1, 1, 1, 1, 1]
 time_layers_per_stage: [1, 1, 1, 1, 1, 1, 1, 1]

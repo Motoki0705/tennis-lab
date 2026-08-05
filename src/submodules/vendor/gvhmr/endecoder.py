@@ -18,7 +18,13 @@ from src.utils.geometry.rotation_conversions import (
 
 
 class EnDecoder(nn.Module):
-    def __init__(self, stats_name="DEFAULT_01"):
+    def __init__(
+        self,
+        body_model_path,
+        *,
+        bundled_assets,
+        stats_name="DEFAULT_01",
+    ):
         super().__init__()
         # Load mean, std
         stats = getattr(stats_compose, stats_name)
@@ -26,7 +32,11 @@ class EnDecoder(nn.Module):
         self.register_buffer("std", torch.tensor(stats["std"]).float(), False)
 
         # smpl
-        self.smplx_model = make_smplx("supermotion_v437coco17")
+        self.smplx_model = make_smplx(
+            "supermotion_v437coco17",
+            model_path=body_model_path,
+            bundled_assets=bundled_assets,
+        )
         parents = self.smplx_model.parents[:22]
         self.register_buffer("parents_tensor", parents, False)
         self.parents = parents.tolist()

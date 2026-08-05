@@ -18,9 +18,7 @@ from __future__ import annotations
 import logging
 import shlex
 import sys
-from pathlib import Path
 
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, ListConfig
 
 from src.synthetic_data_generation.alignment.scene_provider.export import (
@@ -30,23 +28,27 @@ from src.synthetic_data_generation.alignment.scene_provider.export import (
     collect_exporter_provenance,
     export_scene_provider_bundle,
 )
+from src.synthetic_data_generation.configuration import (
+    SyntheticRuntimeConfig,
+    validate_config,
+)
+from src.utils.configuration import PathRole
 from src.utils.hydra import hydra_main
 
 LOGGER = logging.getLogger(__name__)
 
 
-def _path(value: object) -> Path:
-    return Path(to_absolute_path(str(value)))
-
-
-def _source_artifacts(cfg: DictConfig) -> tuple[SourceArtifactInput, ...]:
+def _source_artifacts(
+    cfg: DictConfig,
+    runtime: SyntheticRuntimeConfig,
+) -> tuple[SourceArtifactInput, ...]:
     raw_artifacts = cfg.source_artifacts
     if not isinstance(raw_artifacts, (list, tuple, ListConfig)):
         raise TypeError("source_artifacts must be a list.")
     return tuple(
         SourceArtifactInput(
             artifact_id=str(item.artifact_id),
-            path=_path(item.path),
+            path=runtime.resolver.resolve(PathRole.EXTERNAL_ASSET, str(item.path)),
             sha256=str(item.sha256),
         )
         for item in raw_artifacts
@@ -55,16 +57,15 @@ def _source_artifacts(cfg: DictConfig) -> tuple[SourceArtifactInput, ...]:
 
 @hydra_main(
     version_base="1.3",
-    config_path="../../configs/alignment",
-    config_name="export_scene_provider",
+    config_path="../../configs",
+    config_name="alignment/export_scene_provider",
+    validation_boundary="synthetic.alignment.export_scene_provider",
 )
 def main(cfg: DictConfig) -> int:
     """Export a verified provider bundle from explicitly configured files."""
-    repo_root = Path(to_absolute_path("."))
-    geometry_bridge = (
-        repo_root
-        / "src/synthetic_data_generation/alignment/scene_provider/geometry_bridge.py"
-    )
+    runtime = validate_config("synthetic.alignment.export_scene_provider", cfg)
+    repo_root = runtime.resolver.roots.project_root
+    geometry_bridge = runtime.path(PathRole.PROJECT, "geometry_bridge")
     code_paths = (
         repo_root / "src/synthetic_data_generation/alignment/scene_provider/bundle.py",
         repo_root / "src/synthetic_data_generation/alignment/scene_provider/export.py",
@@ -78,17 +79,22 @@ def main(cfg: DictConfig) -> int:
     settings = ProviderExportSettings(
         bundle_id=str(cfg.bundle_id),
         provider_backend=str(cfg.provider_backend),
-        output_dir=_path(cfg.output_dir),
-        cameras_bin=_path(cfg.cameras_bin),
-        images_bin=_path(cfg.images_bin),
-        points3d_bin=_path(cfg.points3d_bin),
-        original_image_dir=_path(cfg.original_image_dir),
-        factor_image_dir=_path(cfg.factor_image_dir),
-        geometry_python=_path(cfg.geometry_python),
+        output_dir=runtime.path(PathRole.DATA, "output_dir"),
+        external_asset_scope=runtime.path(
+            PathRole.EXTERNAL_ASSET,
+            "external_asset_scope",
+        ),
+        cameras_bin=runtime.path(PathRole.EXTERNAL_ASSET, "cameras_bin"),
+        images_bin=runtime.path(PathRole.EXTERNAL_ASSET, "images_bin"),
+        points3d_bin=runtime.path(PathRole.EXTERNAL_ASSET, "points3d_bin"),
+        original_image_dir=runtime.path(PathRole.EXTERNAL_ASSET, "original_image_dir"),
+        factor_image_dir=runtime.path(PathRole.EXTERNAL_ASSET, "factor_image_dir"),
+        geometry_executable=runtime.system_executable("geometry_executable"),
         geometry_bridge=geometry_bridge,
+        resolver=runtime.resolver,
         factor=int(cfg.factor),
         group_size=int(cfg.group_size),
-        source_artifacts=_source_artifacts(cfg),
+        source_artifacts=_source_artifacts(cfg, runtime),
         expectations=ProviderExportExpectations(
             camera_count=int(cfg.expectations.camera_count),
             image_width=int(cfg.expectations.image_width),
@@ -109,7 +115,7 @@ def main(cfg: DictConfig) -> int:
                 *sys.argv[1:],
             ]
         ),
-        geometry_python=settings.geometry_python,
+        geometry_executable=settings.geometry_executable,
         geometry_bridge=settings.geometry_bridge,
     )
     output_dir = export_scene_provider_bundle(settings, exporter=exporter)

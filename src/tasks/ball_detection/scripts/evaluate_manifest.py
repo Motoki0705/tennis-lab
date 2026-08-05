@@ -11,16 +11,16 @@ Notes:
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from pathlib import Path
-from typing import cast
-
 from omegaconf import DictConfig
 
+from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
+from src.tasks.ball_detection.configuration import BallRuntimePaths
 from src.tasks.ball_detection.evaluation import (
     EvaluationPipeline,
     load_evaluation_manifest,
 )
+from src.tasks.ball_detection.evaluation.adapters import resolve_evaluation_device
+from src.tasks.ball_detection.evaluation.evaluator import DefaultJobEvaluator
 from src.utils.hydra import hydra_main
 
 
@@ -28,22 +28,18 @@ from src.utils.hydra import hydra_main
     config_path="../configs",
     config_name="evaluate_manifest",
     version_base="1.3",
+    validation_boundary="ball.evaluate_manifest",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Run all evaluation jobs in the configured manifest."""
-    manifest = load_evaluation_manifest(str(cfg.manifest_path))
+    paths = BallRuntimePaths.from_config(cfg)
+    manifest = load_evaluation_manifest(
+        paths.project(str(cfg.manifest_path)), resolver=paths.resolver
+    )
     pipeline = EvaluationPipeline(
         manifest,
-        output_dir=(
-            None if cfg.get("output_dir") is None else Path(str(cfg.output_dir))
-        ),
-        resume=(
-            None if cfg.get("resume") is None else bool(cfg.get("resume"))
-        ),
-        fail_fast=(
-            None
-            if cfg.get("fail_fast") is None
-            else bool(cfg.get("fail_fast"))
+        evaluator=DefaultJobEvaluator(
+            device=resolve_evaluation_device(manifest.device)
         ),
     )
     summary = pipeline.run()
@@ -56,4 +52,4 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    raise SystemExit(cast(Callable[[], int], main)())
+    raise SystemExit(main())

@@ -1,15 +1,13 @@
 """Visualize tennis scene reconstruction results.
 
 Usage:
-    python -m src.tennis_scene.scripts.visualization input=outputs/tennis_scene/clip.npz
-    python -m src.tennis_scene.scripts.visualization input=... output=animation.mp4 style.player_representation=skeleton
-    python -m src.tennis_scene.scripts.visualization input=... camera.preset=corner camera.mode=orbit style.theme=light
-    python -m src.tennis_scene.scripts.visualization input=... display=true
+    python -m src.tennis_scene.scripts.visualization input=tennis_scene/clip.npz
+    python -m src.tennis_scene.scripts.visualization input=tennis_scene/clip.npz output=tennis_scene/animation.mp4
 
 Notes:
     - The visualizer can render an interactive matplotlib 3D animation or save an MP4 file.
     - Configuration is loaded from `src/tennis_scene/configs/visualization.yaml`.
-    - Hydra handles runtime overrides.
+    - Input/output fragments are resolved under their declared artifact/output roots.
     - `camera` selects viewpoint and motion (presets: broadcast/side/top/corner/behind_far;
       modes: static/orbit/keyframes). `style.theme=dark` gives a broadcast-style look with
       HUD (ball speed, bounce count) and a top-down minimap.
@@ -18,19 +16,20 @@ Notes:
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.utils.hydra import hydra_main
+from src.tennis_scene.configuration import validate_visualization_boundary
+from src.utils.hydra import hydra_main, register_boundary_validator
 
 if TYPE_CHECKING:
     from src.tennis_scene.io import SceneResult
 
 LOGGER = logging.getLogger(__name__)
+_BOUNDARY = "tennis_scene.visualization"
+register_boundary_validator(_BOUNDARY, validate_visualization_boundary)
 
 _REQUIRED_SMPL_FIELDS = (
     "smpl_vertices_local",
@@ -48,8 +47,7 @@ def _validate_scene_for_smpl(scene: SceneResult) -> None:
     if missing:
         missing_str = ", ".join(missing)
         raise RuntimeError(
-            "Visualization requires SMPL reconstruction fields: "
-            f"{missing_str}."
+            f"Visualization requires SMPL reconstruction fields: {missing_str}."
         )
 
 
@@ -57,84 +55,66 @@ def _validate_scene_for_smpl(scene: SceneResult) -> None:
     version_base="1.3",
     config_path="../configs",
     config_name="visualization",
+    validation_boundary=_BOUNDARY,
 )
 def main(cfg: DictConfig) -> int:
     """Visualize tennis scene results."""
-    from omegaconf import OmegaConf
-
+    from src.tennis_scene.configuration import parse_visualization_config
     from src.tennis_scene.io import SceneResult
     from src.tennis_scene.rendering import TennisSceneRenderer
     from src.tennis_scene.rendering.tennis_scene_renderer import TennisSceneStyle
-    from src.utils.rendering.camera_view import CameraController
 
-    # Load input
-    input_path = Path(to_absolute_path(str(cfg.input)))
-    if not input_path.exists():
-        LOGGER.error(f"Input file not found: {input_path}")
-        return 1
+    runtime = parse_visualization_config(cfg)
+    if not runtime.input_path.is_file():
+        raise FileNotFoundError(f"Input file not found: {runtime.input_path}")
 
-    LOGGER.info(f"Loading scene from {input_path}")
-    scene = SceneResult.load(input_path)
+    LOGGER.info(f"Loading scene from {runtime.input_path}")
+    scene = SceneResult.load(runtime.input_path)
 
     LOGGER.info(f"Scene: {scene.num_frames} frames, {scene.fps:.1f} FPS")
     LOGGER.info(f"Resolution: {scene.width}x{scene.height}")
     _validate_scene_for_smpl(scene)
 
-    player_representation = str(cfg.style.player_representation)
-    if player_representation not in ("smpl", "skeleton"):
-        raise ValueError(
-            "style.player_representation must be 'smpl' or 'skeleton', "
-            f"got '{player_representation}'"
-        )
-    theme = str(cfg.style.theme)
-    if theme not in ("light", "dark"):
-        raise ValueError(f"style.theme must be 'light' or 'dark', got '{theme}'")
-
-    # Create style
     style = TennisSceneStyle(
-        trail_length=int(cfg.style.trail_length),
-        show_trail=bool(cfg.style.show_trail),
-        figsize=tuple(cfg.style.figsize),
-        player_representation=cast(Literal["smpl", "skeleton"], player_representation),
-        mesh_alpha=float(cfg.style.mesh_alpha),
-        theme=cast(Literal["light", "dark"], theme),
-        show_ball_shadow=bool(cfg.style.show_ball_shadow),
-        show_player_shadow=bool(cfg.style.show_player_shadow),
-        show_player_trail=bool(cfg.style.show_player_trail),
-        player_trail_length=int(cfg.style.player_trail_length),
-        show_bounces=bool(cfg.style.show_bounces),
-        show_hud=bool(cfg.style.show_hud),
-        show_minimap=bool(cfg.style.show_minimap),
+        trail_length=runtime.style.trail_length,
+        show_trail=runtime.style.show_trail,
+        figsize=runtime.style.figsize,
+        player_representation=runtime.style.player_representation,
+        mesh_alpha=runtime.style.mesh_alpha,
+        theme=runtime.style.theme,
+        show_ball_shadow=runtime.style.show_ball_shadow,
+        show_player_shadow=runtime.style.show_player_shadow,
+        show_player_trail=runtime.style.show_player_trail,
+        player_trail_length=runtime.style.player_trail_length,
+        show_bounces=runtime.style.show_bounces,
+        show_hud=runtime.style.show_hud,
+        show_minimap=runtime.style.show_minimap,
     )
 
-    camera_cfg = OmegaConf.to_container(cfg.camera, resolve=True)
-    if not isinstance(camera_cfg, dict):
-        raise TypeError(f"cfg.camera must be a mapping, got {type(camera_cfg)}")
-    camera = CameraController.from_config(camera_cfg)
+    camera = runtime.camera
     LOGGER.info(
         f"Camera: mode={camera.mode}, base=({camera.base.elev:.0f}, "
         f"{camera.base.azim:.0f}, zoom={camera.base.zoom:.2f})"
     )
 
-    renderer = TennisSceneRenderer(style, camera=camera)
+    renderer = TennisSceneRenderer(
+        style,
+        smpl_faces_path=runtime.smpl_faces_path,
+        smpl_joint_regressor_path=runtime.smpl_joint_regressor_path,
+        camera=camera,
+    )
 
     # Determine frame range
-    start_frame = int(cfg.get("start_frame", 0))
-    end_frame = cfg.get("end_frame")
-    end_frame = int(end_frame) if end_frame is not None else scene.num_frames
-
-    fps = cfg.get("fps")
-    fps = float(fps) if fps is not None else scene.fps
-
-    display = bool(cfg.get("display", False))
+    start_frame = runtime.start_frame
+    end_frame = runtime.end_frame if runtime.end_frame is not None else scene.num_frames
+    fps = runtime.fps if runtime.fps is not None else scene.fps
+    display = runtime.display
 
     LOGGER.info(f"3D mode, FPS: {fps:.1f}")
     LOGGER.info(f"Frame range: {start_frame}-{end_frame}")
 
     # Output path
-    output_path = cfg.get("output")
-    if output_path is not None:
-        output_path = Path(to_absolute_path(str(output_path)))
+    output_path = runtime.output_path
 
     # Create animation
     if output_path is not None:
@@ -145,8 +125,8 @@ def main(cfg: DictConfig) -> int:
             fps=fps,
             start_frame=start_frame,
             end_frame=end_frame,
-            dpi=int(cfg.get("dpi", 100)),
-            writer=str(cfg.get("writer", "ffmpeg")),
+            dpi=runtime.dpi,
+            writer=runtime.writer,
         )
         LOGGER.info("Animation saved successfully")
 
@@ -166,8 +146,9 @@ def main(cfg: DictConfig) -> int:
         LOGGER.info("Rendering single frame preview")
         frame_idx = start_frame
         fig, ax = renderer.render_frame_3d(scene, frame_idx)
-        plt.savefig("preview.png", dpi=150)
-        LOGGER.info("Saved preview to preview.png")
+        runtime.preview_output.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(runtime.preview_output, dpi=150)
+        LOGGER.info(f"Saved preview to {runtime.preview_output}")
         plt.close()
 
     return 0

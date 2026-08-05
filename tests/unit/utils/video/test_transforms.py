@@ -5,11 +5,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from src.utils.data.augmentation import normalize_tensor_images_imagenet
-from src.utils.video.transforms import (
-    BgrToTensorTransform,
-    normalize_tensor_imagenet,
-)
+from src.utils.video.transforms import BgrToTensorTransform
 
 
 class TestBgrToTensorTransform:
@@ -36,12 +32,3 @@ class TestBgrToTensorTransform:
             frame_bgr
         )
         assert not torch.allclose(plain, normed)
-
-
-class TestNormalizeTensorImagenetAlias:
-    def test_matches_canonical_implementation(self) -> None:
-        images = torch.rand(3, 5, 5)
-        assert torch.allclose(
-            normalize_tensor_imagenet(images),
-            normalize_tensor_images_imagenet(images),
-        )

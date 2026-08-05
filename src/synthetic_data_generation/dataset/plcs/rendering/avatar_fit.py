@@ -16,8 +16,13 @@ import numpy as np
 import torch
 from PIL import Image
 
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
+)
 from src.synthetic_data_generation.dataset.blcs.rendering.feature_fit import (
     INDEPENDENT_NHT_SOURCE,
+    FeatureFitRuntimeAssets,
     SourceGeometry,
     _load_shader,
     _masked_mse,
@@ -25,10 +30,67 @@ from src.synthetic_data_generation.dataset.blcs.rendering.feature_fit import (
     _runtime_revisions,
     load_source_geometry,
 )
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
 
 SCHEMA = "plcs_avatar_nht_fit_and_pose_render_v1"
 FIXTURE_SCHEMA = "plcs_smplx_gaussian_asset_fixture_v1"
 SEED = 20260728
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.plcs.avatar_fit",
+    fields=(
+        BoundaryPathField(
+            "fixture",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "target_appearance",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output", PathRole.ARTIFACT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+        BoundaryPathField(
+            "runtime_pins",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "nht_repository",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "gsplat_repository",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "worker_source",
+            PathRole.PROJECT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+    ),
+)
 
 
 def _sha256(path: Path) -> str:
@@ -206,17 +268,33 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=192)
     parser.add_argument("--height", type=int, default=256)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--runtime-pins", type=Path, required=True)
+    parser.add_argument("--nht-repository", type=Path, required=True)
+    parser.add_argument("--gsplat-repository", type=Path, required=True)
+    parser.add_argument("--worker-source", type=Path, required=True)
+    add_path_roots_argument(parser)
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
-    output = args.output.resolve()
-    appearance_path = args.target_appearance.resolve()
+    paths = PATH_BOUNDARY.validate(
+        {
+            "fixture": args.fixture,
+            "target_appearance": args.target_appearance,
+            "output": args.output,
+            "runtime_pins": args.runtime_pins,
+            "nht_repository": args.nht_repository,
+            "gsplat_repository": args.gsplat_repository,
+            "worker_source": args.worker_source,
+        },
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    fixture_path = paths.declared("fixture").path
+    output = paths.declared("output").path
+    appearance_path = paths.declared("target_appearance").path
     if output.exists():
         raise SystemExit(f"Refusing to overwrite output: {output}")
-    if not appearance_path.is_file():
-        raise SystemExit(f"Target appearance is missing: {appearance_path}")
     if len(args.appearance_space_sha256) != 64 or any(
         character not in "0123456789abcdef"
         for character in args.appearance_space_sha256
@@ -227,7 +305,7 @@ def main() -> None:
     if not torch.cuda.is_available() or torch.device(args.device).type != "cuda":
         raise SystemExit("PLCS NHT fitting requires CUDA.")
 
-    fixture_root, fixture = _load_fixture(args.fixture)
+    fixture_root, fixture = _load_fixture(fixture_path)
     target_reference = fixture.get("target_nht_appearance")
     if not isinstance(target_reference, dict):
         raise SystemExit("Fixture target NHT appearance provenance is missing.")
@@ -247,7 +325,14 @@ def main() -> None:
     torch.manual_seed(SEED)
     torch.cuda.manual_seed_all(SEED)
     torch.use_deterministic_algorithms(True)
-    runtime = _runtime_revisions()
+    runtime = _runtime_revisions(
+        FeatureFitRuntimeAssets(
+            pins=paths.declared("runtime_pins").path,
+            nht_repository=paths.declared("nht_repository").path,
+            gsplat_repository=paths.declared("gsplat_repository").path,
+            worker_source=paths.declared("worker_source").path,
+        )
+    )
     runtime["plcs_fit_worker_sha256"] = _sha256(Path(__file__).resolve())
     runtime["shared_runtime_module"] = (
         "src.synthetic_data_generation.dataset.blcs.rendering.feature_fit"

@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypeAlias, cast
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.tasks.court_detection.configuration import CourtEncoderConfig
 from src.utils.models.blocks import Conv2dWiseWiseBlock
 from src.utils.models.loading import (
-    DEFAULT_DINOV3_CHECKPOINT,
-    DEFAULT_DINOV3_LORA_TARGET_MODULES,
-    DEFAULT_DINOV3_REPOSITORY,
     DINOv3BackboneAdapter,
     DINOv3TrainMode,
     configure_dinov3_trainability,
@@ -30,7 +28,7 @@ class CourtDefaultEncoder(nn.Module):
 
     feature_channels = (64, 128, 256, 512)
 
-    def __init__(self, in_channels: int = 3) -> None:
+    def __init__(self, in_channels: int) -> None:
         super().__init__()
         self.in_channels = int(in_channels)
 
@@ -90,19 +88,28 @@ class CourtDINOv3Encoder(nn.Module):
     def __init__(
         self,
         *,
-        in_channels: int = 3,
-        repository_path: str | Path = DEFAULT_DINOV3_REPOSITORY,
-        checkpoint_path: str | Path = DEFAULT_DINOV3_CHECKPOINT,
-        backbone_name: str = "dinov3_vitb16",
-        strict: bool = True,
-        train_mode: DINOv3TrainMode = "frozen",
-        last_n_blocks: int = 0,
-        lora: LoRAConfig | None = None,
-        out_indices: Sequence[int] | None = None,
-        layer_mode: IntermediateLayerMode = "uniform",
-        backbone: DINOv3BackboneAdapter | None = None,
+        out_indices: Sequence[int],
+        in_channels: int,
+        repository_path: str | Path | None,
+        checkpoint_path: str | Path | None,
+        backbone_name: str | None,
+        strict: bool | None,
+        train_mode: DINOv3TrainMode,
+        last_n_blocks: int,
+        lora: LoRAConfig,
+        layer_mode: IntermediateLayerMode,
+        backbone: DINOv3BackboneAdapter | None,
     ) -> None:
         super().__init__()
+        if backbone is None and None in (
+            repository_path,
+            checkpoint_path,
+            backbone_name,
+            strict,
+        ):
+            raise ValueError(
+                "CourtDINOv3Encoder requires explicit DINOv3 asset settings."
+            )
         self._validate_init_args(
             in_channels=in_channels,
             out_indices=out_indices,
@@ -110,15 +117,19 @@ class CourtDINOv3Encoder(nn.Module):
         )
         self.in_channels = int(in_channels)
         self.train_mode = train_mode
-        self.lora_enabled = bool(lora is not None and lora.enabled)
+        self.lora_enabled = lora.enabled
         self.layer_mode = layer_mode
 
-        self.backbone = backbone or load_dinov3_backbone(
-            repository_path=repository_path,
-            checkpoint_path=checkpoint_path,
-            backbone_name=backbone_name,
-            strict=strict,
-        )
+        if backbone is None:
+            assert repository_path is not None and checkpoint_path is not None
+            assert backbone_name is not None and strict is not None
+            backbone = load_dinov3_backbone(
+                repository_path=Path(repository_path),
+                checkpoint_path=Path(checkpoint_path),
+                backbone_name=backbone_name,
+                strict=strict,
+            )
+        self.backbone = backbone
         configure_dinov3_trainability(
             self.backbone,
             train_mode=train_mode,
@@ -127,7 +138,7 @@ class CourtDINOv3Encoder(nn.Module):
         )
         self.patch_size = self.backbone.patch_size
         self.feature_channels = tuple([self.backbone.embed_dim] * 4)
-        self.out_indices = self._resolve_out_indices(out_indices)
+        self.out_indices = tuple(out_indices)
 
     @staticmethod
     def _validate_init_args(
@@ -194,7 +205,9 @@ class CourtDINOv3Encoder(nn.Module):
             return x
         return F.pad(x, (0, pad_w, 0, pad_h), mode="replicate")
 
-    def _call_get_intermediate_layers(self, x: torch.Tensor) -> tuple[torch.Tensor, ...]:
+    def _call_get_intermediate_layers(
+        self, x: torch.Tensor
+    ) -> tuple[torch.Tensor, ...]:
         get_intermediate_layers = getattr(
             self.backbone.module,
             "get_intermediate_layers",
@@ -219,7 +232,9 @@ class CourtDINOv3Encoder(nn.Module):
                 "get_intermediate_layers must return exactly four tensors, "
                 f"got {len(outputs)}."
             )
-        tokens = tuple(self._normalize_intermediate_output(output) for output in outputs)
+        tokens = tuple(
+            self._normalize_intermediate_output(output) for output in outputs
+        )
         for token in tokens:
             if token.ndim != 3:
                 raise ValueError(
@@ -248,19 +263,6 @@ class CourtDINOv3Encoder(nn.Module):
             "whose first item is a tensor."
         )
 
-    def _resolve_out_indices(self, out_indices: Sequence[int] | None) -> tuple[int, ...]:
-        if out_indices is not None:
-            return tuple(int(index) for index in out_indices)
-
-        depth = len(self.backbone.transformer_blocks())
-        if depth < 4:
-            raise ValueError(f"DINOv3 backbone depth must be at least 4, got {depth}.")
-        if self.layer_mode == "last":
-            return tuple(range(depth - 4, depth))
-        return tuple(
-            round(depth * fraction) - 1 for fraction in (0.25, 0.5, 0.75, 1.0)
-        )
-
     def _validate_forward_input(self, x: torch.Tensor) -> None:
         if x.ndim != 4:
             raise ValueError(
@@ -276,53 +278,65 @@ class CourtDINOv3Encoder(nn.Module):
 
 
 def _build_dinov3_encoder(
-    *,
-    in_channels: int,
-    encoder_config: Mapping[str, Any],
+    *, in_channels: int, config: CourtEncoderConfig
 ) -> CourtDINOv3Encoder:
-    lora = LoRAConfig.from_mapping(
-        encoder_config.get("lora"),
-        default_target_modules=DEFAULT_DINOV3_LORA_TARGET_MODULES,
+    if None in (
+        config.repository_path,
+        config.checkpoint_path,
+        config.backbone_name,
+        config.strict,
+        config.train_mode,
+        config.last_n_blocks,
+        config.out_indices,
+        config.layer_mode,
+        config.lora,
+    ):
+        raise AssertionError("Validated DINOv3 encoder configuration is incomplete.")
+    domain_lora = config.lora
+    assert domain_lora is not None
+    lora = LoRAConfig(
+        enabled=domain_lora.enabled,
+        rank=domain_lora.rank,
+        alpha=domain_lora.alpha,
+        dropout=domain_lora.dropout,
+        target_modules=domain_lora.target_modules,
     )
     return CourtDINOv3Encoder(
         in_channels=in_channels,
-        repository_path=encoder_config.get("repository_path", DEFAULT_DINOV3_REPOSITORY),
-        checkpoint_path=encoder_config.get("checkpoint_path", DEFAULT_DINOV3_CHECKPOINT),
-        backbone_name=str(encoder_config.get("backbone_name", "dinov3_vitb16")),
-        strict=bool(encoder_config.get("strict", True)),
-        train_mode=cast(
-            DINOv3TrainMode,
-            str(encoder_config.get("train_mode", "frozen")),
-        ),
-        last_n_blocks=int(encoder_config.get("last_n_blocks", 0)),
+        repository_path=cast("Path", config.repository_path),
+        checkpoint_path=cast("Path", config.checkpoint_path),
+        backbone_name=cast("str", config.backbone_name),
+        strict=cast("bool", config.strict),
+        train_mode=cast("DINOv3TrainMode", config.train_mode),
+        last_n_blocks=cast("int", config.last_n_blocks),
         lora=lora,
-        out_indices=encoder_config.get("out_indices"),
-        layer_mode=cast(
-            IntermediateLayerMode,
-            str(encoder_config.get("layer_mode", "uniform")),
-        ),
+        out_indices=cast("tuple[int, ...]", config.out_indices),
+        layer_mode=cast("IntermediateLayerMode", config.layer_mode),
+        backbone=None,
     )
 
 
 def build_court_encoder(
     *,
-    encoder_name: str = "default",
-    in_channels: int = 3,
-    encoder_config: Mapping[str, Any] | None = None,
-) -> nn.Module:
+    config: CourtEncoderConfig,
+    in_channels: int,
+) -> CourtEncoder:
     """Build the requested court encoder."""
 
-    resolved_encoder_name = str(encoder_name)
+    resolved_encoder_name = config.name
     if resolved_encoder_name == "default":
         return CourtDefaultEncoder(in_channels=in_channels)
     if resolved_encoder_name == "dinov3":
         return _build_dinov3_encoder(
             in_channels=in_channels,
-            encoder_config=encoder_config or {},
+            config=config,
         )
     raise ValueError(
-        f"Unknown court encoder '{encoder_name}'. Supported: ['default', 'dinov3']."
+        f"Unknown court encoder '{config.name}'. Supported: ['default', 'dinov3']."
     )
+
+
+CourtEncoder: TypeAlias = CourtDefaultEncoder | CourtDINOv3Encoder
 
 
 __all__ = ["CourtDINOv3Encoder", "CourtDefaultEncoder", "build_court_encoder"]

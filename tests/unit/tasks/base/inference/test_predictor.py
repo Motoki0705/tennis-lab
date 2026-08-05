@@ -8,6 +8,7 @@ import pytest
 import torch
 
 from src.tasks.base.inference.predictor import BasePredictor
+from src.utils.configuration import PathResolver, RuntimePathRoots
 
 pytestmark = pytest.mark.unit
 
@@ -23,6 +24,22 @@ class _Predictor(BasePredictor):
         raise NotImplementedError
 
 
+def _resolver(checkpoint_root: Path) -> PathResolver:
+    return PathResolver(
+        RuntimePathRoots.from_mapping(
+            {
+                "project_root": str(checkpoint_root),
+                "data_root": "data",
+                "checkpoint_root": str(checkpoint_root),
+                "artifact_root": "artifacts",
+                "output_root": "outputs",
+                "cache_root": ".cache",
+                "external_asset_root": "external",
+            },
+            repository_root=checkpoint_root,
+        )
+    )
+
 def test_cannot_instantiate_abstract() -> None:
     with pytest.raises(TypeError):
         BasePredictor()  # type: ignore[abstract]
@@ -31,10 +48,11 @@ def test_cannot_instantiate_abstract() -> None:
 def test_ensure_checkpoint_accepts_single_path(tmp_path: Path) -> None:
     ckpt = tmp_path / "model.ckpt"
     ckpt.write_text("x")
-    result = _Predictor._ensure_checkpoint(ckpt)
+    resolver = _resolver(tmp_path)
+    result = _Predictor._ensure_checkpoint(ckpt, resolver=resolver)
     assert result == [ckpt]
     # string form too
-    assert _Predictor._ensure_checkpoint(str(ckpt)) == [ckpt]
+    assert _Predictor._ensure_checkpoint(str(ckpt), resolver=resolver) == [ckpt]
 
 
 def test_ensure_checkpoint_accepts_iterable(tmp_path: Path) -> None:
@@ -42,30 +60,28 @@ def test_ensure_checkpoint_accepts_iterable(tmp_path: Path) -> None:
     b = tmp_path / "b.ckpt"
     a.write_text("x")
     b.write_text("y")
-    assert _Predictor._ensure_checkpoint([a, b]) == [a, b]
+    assert _Predictor._ensure_checkpoint([a, b], resolver=_resolver(tmp_path)) == [a, b]
 
 
 def test_ensure_checkpoint_missing_raises(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="Checkpoint not found"):
-        _Predictor._ensure_checkpoint(tmp_path / "nope.ckpt")
+        _Predictor._ensure_checkpoint(
+            tmp_path / "nope.ckpt", resolver=_resolver(tmp_path)
+        )
 
 
-def test_ensure_checkpoint_empty_raises() -> None:
+def test_ensure_checkpoint_empty_raises(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="non-empty"):
-        _Predictor._ensure_checkpoint([])
-
-
-def test_resolve_device_cpu() -> None:
-    dev = _Predictor._resolve_device("cpu")
-    assert isinstance(dev, torch.device)
-    assert dev.type == "cpu"
+        _Predictor._ensure_checkpoint([], resolver=_resolver(tmp_path))
 
 
 def test_to_device_preserves_none() -> None:
     a = torch.zeros(2)
     moved = _Predictor._to_device(torch.device("cpu"), a, None, torch.ones(3))
+    assert isinstance(moved[0], torch.Tensor)
     assert moved[0].device.type == "cpu"
     assert moved[1] is None
+    assert isinstance(moved[2], torch.Tensor)
     assert moved[2].device.type == "cpu"
 
 

@@ -11,12 +11,14 @@ exact same machinery degenerates to plain single-frame batches.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from collections.abc import Mapping, Sized
+from typing import Any, cast
 
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader, Dataset
 
+from src.tasks.ball_detection.configuration import validate_data
 from src.tasks.ball_detection.data.components.staged_sampler import (
     ConcatVariableTDataset,
     FixedTDataset,
@@ -26,9 +28,6 @@ from src.tasks.ball_detection.data.components.staged_sampler import (
 from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
 from src.tasks.ball_detection.data.types import BallDetectionSample
 from src.tasks.ball_detection.data.web_datamodule import WebBallDataModule
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
 
 LOGGER = logging.getLogger(__name__)
 
@@ -50,23 +49,23 @@ _SHARED_DATA_KEYS = (
 class StagedBallDataModule(pl.LightningDataModule):
     """Mixed TrackNet+Web datamodule with a variable-T training schedule."""
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: DictConfig) -> None:
         super().__init__()
-        self.config = config or {}
-        data_cfg = self.config.get("data", {}) or {}
+        self.config = config
+        data_cfg = validate_data(config)
 
-        self.t_max = int(data_cfg.get("t_max", 1))
+        self.t_max = int(data_cfg["t_max"])
         if self.t_max < 1:
             raise ValueError("data.t_max must be >= 1.")
-        self.val_num_frames = int(data_cfg.get("val_num_frames", 1))
+        self.val_num_frames = int(data_cfg["val_num_frames"])
         if not 1 <= self.val_num_frames <= self.t_max:
             raise ValueError("data.val_num_frames must be in [1, t_max].")
-        self.num_workers = int(data_cfg.get("num_workers", 4))
-        self.pin_memory = bool(data_cfg.get("pin_memory", True))
-        self.sampling_seed = int(data_cfg.get("seed", 1234))
-        self.val_batch_size = int(data_cfg.get("val_batch_size", 8))
+        self.num_workers = int(data_cfg["num_workers"])
+        self.pin_memory = bool(data_cfg["pin_memory"])
+        self.sampling_seed = int(data_cfg["seed"])
+        self.val_batch_size = int(data_cfg["val_batch_size"])
 
-        self.t_distribution = str(data_cfg.get("t_distribution", "variable")).lower()
+        self.t_distribution = str(data_cfg["t_distribution"]).lower()
         if self.t_distribution not in _VALID_T_DISTRIBUTIONS:
             raise ValueError(
                 "data.t_distribution must be one of "
@@ -74,7 +73,7 @@ class StagedBallDataModule(pl.LightningDataModule):
             )
         self.t1_prob: float | None
         if self.t_distribution == "variable":
-            self.t1_prob = float(data_cfg.get("t1_prob", 0.5))
+            self.t1_prob = float(data_cfg["t1_prob"])
             self.t_probs = linear_decreasing_t_probs(self.t_max, self.t1_prob)
         else:
             self.t1_prob = None
@@ -85,38 +84,42 @@ class StagedBallDataModule(pl.LightningDataModule):
             )
             LOGGER.info(message)
 
-        sources_cfg = data_cfg.get("sources", {}) or {}
+        sources_cfg = cast(Mapping[str, object], data_cfg["sources"])
         self.source_splits = self._parse_source_splits(sources_cfg)
         self.enabled_sources = [
             name
             for name in ("tracknet", "web")
-            if bool((sources_cfg.get(name, {}) or {}).get("enabled", False))
+            if bool(cast(Mapping[str, object], sources_cfg[name])["enabled"])
         ]
         if not self.enabled_sources:
-            raise ValueError("At least one of data.sources.{tracknet,web} must be enabled.")
+            raise ValueError(
+                "At least one of data.sources.{tracknet,web} must be enabled."
+            )
 
         # B(T) physical batch table + effective batch size. Defaults here are a
         # safe fallback; the runner overrides them from OOM calibration.
         self.batch_size_by_t = {
             int(t): int(b)
-            for t, b in (data_cfg.get("batch_size_by_t", {1: 4}) or {1: 4}).items()
+            for t, b in cast(Mapping[Any, Any], data_cfg["batch_size_by_t"]).items()
         }
-        self.effective_batch_size = int(
-            data_cfg.get("effective_batch_size") or self.batch_size_by_t.get(1, 4)
-        )
+        self.effective_batch_size = int(cast(Any, data_cfg["effective_batch_size"]))
 
-        self._submodules: dict[str, pl.LightningDataModule] = {}
+        self._submodules: dict[str, TrackNetDataModule | WebBallDataModule] = {}
         self.train_dataset: Dataset[BallDetectionSample] | None = None
         self.val_dataset: Dataset[BallDetectionSample] | None = None
         self.test_dataset: Dataset[BallDetectionSample] | None = None
 
-    def _parse_source_splits(self, sources_cfg: Any) -> dict[str, frozenset[str]]:
+    def _parse_source_splits(
+        self, sources_cfg: Mapping[str, object]
+    ) -> dict[str, frozenset[str]]:
         parsed: dict[str, frozenset[str]] = {}
-        for source_name, source_cfg in (sources_cfg or {}).items():
+        for source_name, source_cfg in sources_cfg.items():
             source = str(source_name)
             if source not in {"tracknet", "web"}:
                 raise ValueError(f"Unknown staged source: {source!r}.")
-            raw_splits = (source_cfg or {}).get("splits", tuple(_VALID_SPLITS))
+            if not isinstance(source_cfg, Mapping):
+                raise TypeError(f"data.sources.{source} must be a mapping.")
+            raw_splits = source_cfg["splits"]
             if isinstance(raw_splits, str):
                 raise ValueError(
                     f"data.sources.{source}.splits must be a list of split names, "
@@ -132,8 +135,6 @@ class StagedBallDataModule(pl.LightningDataModule):
             if not splits:
                 raise ValueError(f"data.sources.{source}.splits must not be empty.")
             parsed[source] = splits
-        for source in ("tracknet", "web"):
-            parsed.setdefault(source, _VALID_SPLITS)
         return parsed
 
     # ------------------------------------------------------------------
@@ -145,25 +146,31 @@ class StagedBallDataModule(pl.LightningDataModule):
         self.effective_batch_size = int(effective_batch_size)
 
     def _sub_config(self, source_name: str) -> DictConfig:
-        data_cfg = self.config.get("data", {}) or {}
-        source_cfg = dict((data_cfg.get("sources", {}) or {}).get(source_name, {}) or {})
-        source_cfg.pop("enabled", None)
-        source_cfg.pop("splits", None)
+        resolved = OmegaConf.to_container(self.config, resolve=True)
+        if not isinstance(resolved, dict):
+            raise TypeError("Ball staged config must resolve to a mapping.")
+        data_cfg = cast(dict[str, Any], resolved["data"])
+        sources_cfg = cast(dict[str, Any], data_cfg["sources"])
+        source_cfg = dict(cast(dict[str, Any], sources_cfg[source_name]))
+        del source_cfg["enabled"]
+        del source_cfg["splits"]
+        source_cfg["source"] = source_name
         merged: dict[str, Any] = {"batch_size": 1}
         for key in _SHARED_DATA_KEYS:
             if key in data_cfg:
-                merged[key] = OmegaConf.to_container(
-                    OmegaConf.create({key: data_cfg[key]}), resolve=True
-                )[key]
+                merged[key] = data_cfg[key]
         merged.update(source_cfg)
-        return OmegaConf.create(
-            {"data": merged, "model": {"num_frames": self.t_max}}
-        )
+        resolved["data"] = merged
+        cast(dict[str, Any], resolved["model"])["num_frames"] = self.t_max
+        sub_config = OmegaConf.create(resolved)
+        if not isinstance(sub_config, DictConfig):
+            raise TypeError("Staged sub-config must resolve to a mapping.")
+        return sub_config
 
     def _build_submodules(self) -> None:
         if self._submodules:
             return
-        builders: dict[str, type[pl.LightningDataModule]] = {
+        builders: dict[str, type[TrackNetDataModule] | type[WebBallDataModule]] = {
             "tracknet": TrackNetDataModule,
             "web": WebBallDataModule,
         }
@@ -174,7 +181,10 @@ class StagedBallDataModule(pl.LightningDataModule):
         """Build per-source datasets and concatenate them per split."""
         self._build_submodules()
         for module in self._submodules.values():
-            module.setup(stage=stage)
+            if stage is None:
+                module.setup()
+            else:
+                module.setup(stage=stage)
 
         if stage in (None, "fit"):
             self.train_dataset = self._concat("train", "train_dataset")
@@ -210,7 +220,7 @@ class StagedBallDataModule(pl.LightningDataModule):
     def train_dataloader(self) -> DataLoader:
         assert self.train_dataset is not None
         sampler = VariableTBatchSampler(
-            num_samples=len(self.train_dataset),
+            num_samples=len(cast(Sized, self.train_dataset)),
             t_probs=self.t_probs,
             batch_size_by_t=self.batch_size_by_t,
             effective_batch=self.effective_batch_size,

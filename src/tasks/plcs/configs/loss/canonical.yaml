@@ -1,4 +1,7 @@
 # PLCS loss configuration WITH canonical-pose supervision + naturalness terms.
+defaults:
+  - _base
+  - _self_
 # Use with models where model.predict_canonical_pose: true.
 #
 # Why these weights (derived from the loss-dominance analysis on data/plcs

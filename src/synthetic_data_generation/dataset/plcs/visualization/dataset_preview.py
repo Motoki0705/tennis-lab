@@ -9,6 +9,18 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
 
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
+)
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
 COLORS = np.asarray(
     [
         [255, 48, 48],
@@ -17,6 +29,21 @@ COLORS = np.asarray(
     ],
     dtype=np.float32,
 )
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.plcs.dataset_preview",
+    fields=(
+        BoundaryPathField(
+            "render_root",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.FILE
+        ),
+    ),
+)
 
 
 def main() -> None:
@@ -24,9 +51,14 @@ def main() -> None:
     parser.add_argument("--render-root", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--panel-width", type=int, default=288)
+    add_path_roots_argument(parser)
     args = parser.parse_args()
-    root = args.render_root.resolve()
-    output = args.output.resolve()
+    paths = PATH_BOUNDARY.validate(
+        {"render_root": args.render_root, "output": args.output},
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    root = paths.declared("render_root").path
+    output = paths.declared("output").path
     if output.exists():
         raise SystemExit(f"Refusing to overwrite output: {output}")
     manifest = json.loads((root / "manifest.json").read_text())

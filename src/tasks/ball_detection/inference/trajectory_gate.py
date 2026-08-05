@@ -20,20 +20,15 @@ from numpy.typing import NDArray
 class TrajectoryGateConfig:
     """Configuration for the local linear trajectory gate.
 
-    The defaults are intentionally conservative for issue #620: tennis_clip
-    normal visible-frame jumps had p99 around 20 px, while the observed
-    scratch-checkpoint teleport was 179.9 px. ``max_residual_px=60`` sits well
-    between those values, ``k_support=2`` gives a local constant-velocity fit
-    without smoothing over longer rallies, ``max_support_gap=5`` avoids linking
-    across long occlusions, and ``max_passes=2`` lets a first rejection stop a
-    neighboring false detection from acting as support in the second pass.
+    Values are supplied by the validated runtime contract. The conservative
+    issue #620 profile lives in the corresponding YAML configuration.
     """
 
-    enabled: bool = False
-    max_residual_px: float = 60.0
-    k_support: int = 2
-    max_support_gap: int = 5
-    max_passes: int = 2
+    enabled: bool
+    max_residual_px: float
+    k_support: int
+    max_support_gap: int
+    max_passes: int
 
     def __post_init__(self) -> None:
         """Validate gate parameters eagerly."""
@@ -82,10 +77,10 @@ def apply_trajectory_gate(
     visibility: NDArray[np.bool_],
     score: NDArray[np.floating[Any]],
     *,
-    max_residual_px: float = 60.0,
-    k_support: int = 2,
-    max_support_gap: int = 5,
-    max_passes: int = 2,
+    max_residual_px: float,
+    k_support: int,
+    max_support_gap: int,
+    max_passes: int,
 ) -> tuple[NDArray[np.bool_], TrajectoryGateDiagnostics]:
     """Reject visible detections that violate a local linear trajectory.
 
@@ -97,18 +92,10 @@ def apply_trajectory_gate(
         score: Detection confidence, shape ``(T,)``. Scores are validated and
             copied into diagnostics, but the gate decision is purely geometric.
         max_residual_px: Reject only when every available local prediction is
-            farther than this many pixels. The default 60 px is between the
-            tennis_clip normal-jump p99 (~20 px) and the issue #620 teleport
-            example (179.9 px).
-        k_support: Maximum visible support points to take from each side. The
-            default 2 estimates local constant velocity without using distant
-            rally history.
-        max_support_gap: Maximum frame distance for a support point. The
-            default 5 frames avoids linking across longer occlusion gaps while
-            still covering short missed spans.
-        max_passes: Number of rejection/re-evaluation passes. The default 2
-            handles short runs of false detections by removing first-pass
-            outliers from the support set before the second pass.
+            farther than this many pixels.
+        k_support: Maximum visible support points to take from each side.
+        max_support_gap: Maximum frame distance for a support point.
+        max_passes: Number of rejection/re-evaluation passes.
 
     Returns:
         A new boolean visibility mask and diagnostics. Inputs are never
@@ -136,9 +123,9 @@ def apply_trajectory_gate(
     passes_run = 0
     for pass_index in range(1, config.max_passes + 1):
         passes_run = pass_index
-        visible_indices: NDArray[np.int64] = np.flatnonzero(
-            current_visibility
-        ).astype(np.int64)
+        visible_indices: NDArray[np.int64] = np.flatnonzero(current_visibility).astype(
+            np.int64
+        )
         pass_rejections: list[TrajectoryGateRejection] = []
 
         for target_index_raw in visible_indices:
@@ -214,7 +201,9 @@ def _validate_inputs(
             f"visibility must have shape (T,), got {visibility_array.shape}"
         )
     if visibility_array.dtype != np.bool_:
-        raise ValueError(f"visibility must have bool dtype, got {visibility_array.dtype}")
+        raise ValueError(
+            f"visibility must have bool dtype, got {visibility_array.dtype}"
+        )
     if scores.ndim != 1:
         raise ValueError(f"score must have shape (T,), got {scores.shape}")
     if visibility_array.shape[0] != positions.shape[0]:
@@ -288,7 +277,7 @@ def _predict_position(
     target_index: int,
 ) -> NDArray[np.float64]:
     if support_indices.size == 1:
-        return positions[int(support_indices[0])].copy()
+        return np.asarray(positions[int(support_indices[0])].copy(), dtype=np.float64)
 
     support_times = support_indices.astype(np.float64)
     support_positions = positions[support_indices]
@@ -299,8 +288,14 @@ def _predict_position(
         raise ValueError(f"support_indices must be unique, got {support_indices}")
 
     position_mean = np.mean(support_positions, axis=0)
-    slope = np.sum(
-        centered_time[:, np.newaxis] * (support_positions - position_mean),
-        axis=0,
-    ) / denominator
-    return position_mean + slope * (float(target_index) - time_mean)
+    slope = (
+        np.sum(
+            centered_time[:, np.newaxis] * (support_positions - position_mean),
+            axis=0,
+        )
+        / denominator
+    )
+    return np.asarray(
+        position_mean + slope * (float(target_index) - time_mean),
+        dtype=np.float64,
+    )

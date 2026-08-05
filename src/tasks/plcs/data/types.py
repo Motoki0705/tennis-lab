@@ -34,7 +34,6 @@ class PLCSBatch(TypedDict):
     rotation: torch.Tensor
 
 
-
 @dataclass(frozen=True)
 class PLCSSceneMeta:
     """Metadata schema for PLCS scene files.

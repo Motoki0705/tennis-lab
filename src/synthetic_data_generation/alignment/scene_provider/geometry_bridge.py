@@ -10,19 +10,48 @@ from __future__ import annotations
 
 import json
 import platform
-import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pycolmap  # type: ignore[import-not-found]
 from numpy.typing import NDArray
+
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+)
 
 _REQUEST_KEYS = {"cameras_bin", "images_bin", "points3d_bin"}
 
 
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.geometry_bridge",
+    fields=(
+        BoundaryPathField(
+            "request",
+            PathRole.CACHE,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output",
+            PathRole.CACHE,
+            PathDirection.OUTPUT,
+            PathKind.FILE,
+        ),
+    ),
+)
+
+
 def _runtime_versions() -> dict[str, str]:
+    import pycolmap  # type: ignore[import-not-found]
+
     return {
         "python": platform.python_version(),
         "numpy": np.__version__,
@@ -30,21 +59,44 @@ def _runtime_versions() -> dict[str, str]:
     }
 
 
-def _load_request(path: Path) -> tuple[Path, Path, Path]:
+def _load_request(
+    path: Path,
+    *,
+    resolver: PathResolver,
+) -> tuple[Path, Path, Path]:
     with path.open(encoding="utf-8") as handle:
         value = json.load(handle)
     if not isinstance(value, Mapping):
         raise TypeError("Geometry bridge request must be a JSON object.")
+    if any(type(key) is not str for key in value):
+        raise TypeError("Geometry bridge request keys must be strings.")
     raw = {str(key): item for key, item in value.items()}
-    if set(raw) != _REQUEST_KEYS or not all(
-        isinstance(raw[key], str) for key in _REQUEST_KEYS
-    ):
+    if set(raw) != _REQUEST_KEYS:
         raise ValueError(
-            "Geometry bridge request must contain exactly three string paths."
+            "Geometry bridge request must contain exactly three role-tagged paths."
         )
-    cameras_bin = Path(raw["cameras_bin"]).resolve()
-    images_bin = Path(raw["images_bin"]).resolve()
-    points3d_bin = Path(raw["points3d_bin"]).resolve()
+    resolved: dict[str, Path] = {}
+    for key in sorted(_REQUEST_KEYS):
+        declaration = raw[key]
+        if not isinstance(declaration, Mapping) or any(
+            type(item) is not str for item in declaration
+        ):
+            raise TypeError(f"Geometry bridge request {key} must be an object.")
+        if set(declaration) != {"role", "path"}:
+            raise ValueError(
+                f"Geometry bridge request {key} requires exactly role and path."
+            )
+        if declaration["role"] != PathRole.EXTERNAL_ASSET.value:
+            raise ValueError(
+                f"Geometry bridge request {key}.role must be 'external_asset'."
+            )
+        raw_path = declaration["path"]
+        if type(raw_path) is not str or not raw_path:
+            raise TypeError(f"Geometry bridge request {key}.path must be a string.")
+        resolved[key] = resolver.validate(PathRole.EXTERNAL_ASSET, Path(raw_path))
+    cameras_bin = resolved["cameras_bin"]
+    images_bin = resolved["images_bin"]
+    points3d_bin = resolved["points3d_bin"]
     expected_names = {
         cameras_bin: "cameras.bin",
         images_bin: "images.bin",
@@ -176,8 +228,15 @@ def _normalize_scene(
     return cameras, transformed_points, transform
 
 
-def _export_geometry(request_path: Path, output_path: Path) -> None:
-    cameras_bin, _, _ = _load_request(request_path)
+def _export_geometry(
+    request_path: Path,
+    output_path: Path,
+    *,
+    resolver: PathResolver,
+) -> None:
+    import pycolmap
+
+    cameras_bin, _, _ = _load_request(request_path, resolver=resolver)
     if output_path.exists():
         raise FileExistsError(f"Refusing to overwrite geometry output: {output_path}")
     reconstruction = pycolmap.Reconstruction(str(cameras_bin.parent))
@@ -224,12 +283,22 @@ def _export_geometry(request_path: Path, output_path: Path) -> None:
     )
 
 
-def main() -> int:
-    """Run the provider-side geometry bridge."""
-    if sys.argv[1:] == ["--runtime-json"]:
-        print(json.dumps(_runtime_versions(), sort_keys=True))
-        return 0
-    if len(sys.argv) != 3:
-        raise ValueError("Usage: provider_geometry_bridge.py REQUEST.json OUTPUT.npz")
-    _export_geometry(Path(sys.argv[1]), Path(sys.argv[2]))
-    return 0
+def run_geometry_bridge(
+    request: Path,
+    output: Path,
+    *,
+    resolver: PathResolver,
+) -> None:
+    """Validate the shared boundary and export provider geometry."""
+    paths = PATH_BOUNDARY.validate(
+        {"request": request, "output": output},
+        resolver=resolver,
+    )
+    _export_geometry(
+        paths.declared("request").path,
+        paths.declared("output").path,
+        resolver=resolver,
+    )
+
+
+__all__ = ["PATH_BOUNDARY", "_runtime_versions", "run_geometry_bridge"]

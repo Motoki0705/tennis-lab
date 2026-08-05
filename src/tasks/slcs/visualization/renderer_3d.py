@@ -18,6 +18,7 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
+from mpl_toolkits.mplot3d.axes3d import Axes3D
 from numpy.typing import NDArray
 
 from src.utils.rendering.court_renderer import CourtRenderer
@@ -39,11 +40,11 @@ class SceneRenderInputs:
     player_position_m: NDArray[np.float32]  # (P, T, 3)
     player_yaw_rad: NDArray[np.float32]  # (P, T)
     ball_position_m: NDArray[np.float32]  # (T, 3)
-    gt_player_position_m: NDArray[np.float32] | None = None  # (P, T, 3)
-    gt_player_yaw_rad: NDArray[np.float32] | None = None  # (P, T)
-    gt_ball_position_m: NDArray[np.float32] | None = None  # (T, 3)
-    gt_player_valid: NDArray[np.bool_] | None = None  # (P, T)
-    gt_ball_valid: NDArray[np.bool_] | None = None  # (T,)
+    gt_player_position_m: NDArray[np.float32] | None  # (P, T, 3)
+    gt_player_yaw_rad: NDArray[np.float32] | None  # (P, T)
+    gt_ball_position_m: NDArray[np.float32] | None  # (T, 3)
+    gt_player_valid: NDArray[np.bool_] | None  # (P, T)
+    gt_ball_valid: NDArray[np.bool_] | None  # (T,)
 
     def __post_init__(self) -> None:
         if self.player_position_m.ndim != 3 or self.player_position_m.shape[2] != 3:
@@ -61,6 +62,42 @@ class SceneRenderInputs:
                 f"ball_position_m must be (T, 3)=({num_frames}, 3), "
                 f"got {self.ball_position_m.shape}."
             )
+        ground_truth = (
+            self.gt_player_position_m,
+            self.gt_player_yaw_rad,
+            self.gt_ball_position_m,
+            self.gt_player_valid,
+            self.gt_ball_valid,
+        )
+        if any(value is None for value in ground_truth) and not all(
+            value is None for value in ground_truth
+        ):
+            raise ValueError(
+                "SLCS ground-truth render arrays and masks must be provided together."
+            )
+        if self.gt_player_position_m is not None:
+            if self.gt_player_position_m.shape != (num_players, num_frames, 3):
+                raise ValueError(
+                    "gt_player_position_m must match the prediction shape "
+                    f"{(num_players, num_frames, 3)}."
+                )
+            if self.gt_player_yaw_rad is None or self.gt_player_yaw_rad.shape != (
+                num_players,
+                num_frames,
+            ):
+                raise ValueError("gt_player_yaw_rad must match player timeline shape.")
+            if self.gt_ball_position_m is None or self.gt_ball_position_m.shape != (
+                num_frames,
+                3,
+            ):
+                raise ValueError("gt_ball_position_m must match ball timeline shape.")
+            if self.gt_player_valid is None or self.gt_player_valid.shape != (
+                num_players,
+                num_frames,
+            ):
+                raise ValueError("gt_player_valid must match player timeline shape.")
+            if self.gt_ball_valid is None or self.gt_ball_valid.shape != (num_frames,):
+                raise ValueError("gt_ball_valid must match ball timeline shape.")
 
     @property
     def num_frames(self) -> int:
@@ -74,7 +111,11 @@ class SceneRenderInputs:
 class SLCSSceneRenderer:
     """Render an SLCS scene timeline to video (3D view + top-down view)."""
 
-    def __init__(self, *, figsize: tuple[float, float] = (12.0, 6.0), dpi: int = 100) -> None:
+    def __init__(self, *, figsize: tuple[float, float], dpi: int) -> None:
+        if figsize[0] <= 0.0 or figsize[1] <= 0.0:
+            raise ValueError(f"figsize must be positive, got {figsize}.")
+        if dpi <= 0:
+            raise ValueError(f"dpi must be positive, got {dpi}.")
         self.figsize = figsize
         self.dpi = dpi
         self._court = CourtRenderer()
@@ -84,8 +125,8 @@ class SLCSSceneRenderer:
         inputs: SceneRenderInputs,
         output_path: str | Path,
         *,
-        fps: float = 30.0,
-        frame_step: int = 1,
+        fps: float,
+        frame_step: int,
     ) -> Path:
         """Render the timeline and write an H.264 video; returns the path."""
         if frame_step <= 0:
@@ -104,7 +145,7 @@ class SLCSSceneRenderer:
         if not 0 <= t < inputs.num_frames:
             raise ValueError(f"frame {t} out of range [0, {inputs.num_frames}).")
         fig = plt.figure(figsize=self.figsize, dpi=self.dpi)
-        ax3d = fig.add_subplot(1, 2, 1, projection="3d")
+        ax3d = cast(Axes3D, fig.add_subplot(1, 2, 1, projection="3d"))
         ax2d = fig.add_subplot(1, 2, 2)
         self._draw_3d(ax3d, inputs, t)
         self._draw_topdown(ax2d, inputs, t)
@@ -118,37 +159,53 @@ class SLCSSceneRenderer:
 
     # ------------------------------------------------------------------
 
-    def _draw_3d(self, ax: object, inputs: SceneRenderInputs, t: int) -> None:
+    def _draw_3d(self, ax: Axes3D, inputs: SceneRenderInputs, t: int) -> None:
         self._court.render_3d(ax)
         trail = slice(max(0, t - _TRAIL_FRAMES), t + 1)
         ball = inputs.ball_position_m
-        ax.plot(  # type: ignore[attr-defined]
-            ball[trail, 0], ball[trail, 1], ball[trail, 2],
-            color="tab:green", linewidth=2, label="ball (pred)",
+        ax.plot(
+            ball[trail, 0],
+            ball[trail, 1],
+            ball[trail, 2],
+            color="tab:green",
+            linewidth=2,
+            label="ball (pred)",
         )
-        ax.scatter(  # type: ignore[attr-defined]
-            [ball[t, 0]], [ball[t, 1]], [ball[t, 2]], color="tab:green", s=40
-        )
+        ax.scatter([ball[t, 0]], [ball[t, 1]], [ball[t, 2]], color="tab:green", s=40)
         if inputs.gt_ball_position_m is not None:
             gt_ball = inputs.gt_ball_position_m
-            ax.plot(  # type: ignore[attr-defined]
-                gt_ball[trail, 0], gt_ball[trail, 1], gt_ball[trail, 2],
-                color="tab:green", linewidth=1, linestyle="--", alpha=0.6,
+            ax.plot(
+                gt_ball[trail, 0],
+                gt_ball[trail, 1],
+                gt_ball[trail, 2],
+                color="tab:green",
+                linewidth=1,
+                linestyle="--",
+                alpha=0.6,
                 label="ball (label)",
             )
         for p in range(inputs.num_players):
             pos = inputs.player_position_m[p, t]
-            ax.scatter(  # type: ignore[attr-defined]
-                [pos[0]], [pos[1]], [pos[2]], color=_PLAYER_COLORS[p % 2], s=60,
+            ax.scatter(
+                [pos[0]],
+                [pos[1]],
+                [pos[2]],
+                color=_PLAYER_COLORS[p % 2],
+                s=60,
                 label=f"player {p} (pred)",
             )
             if inputs.gt_player_position_m is not None:
                 gt = inputs.gt_player_position_m[p, t]
-                ax.scatter(  # type: ignore[attr-defined]
-                    [gt[0]], [gt[1]], [gt[2]], color=_PLAYER_COLORS[p % 2], s=40,
-                    marker="x", alpha=0.7,
+                ax.scatter(
+                    [gt[0]],
+                    [gt[1]],
+                    [gt[2]],
+                    color=_PLAYER_COLORS[p % 2],
+                    s=40,
+                    marker="x",
+                    alpha=0.7,
                 )
-        ax.legend(loc="upper left", fontsize=7)  # type: ignore[attr-defined]
+        ax.legend(loc="upper left", fontsize=7)
 
     def _draw_topdown(self, ax: plt.Axes, inputs: SceneRenderInputs, t: int) -> None:
         self._court.render_2d(ax, show_fence=True)
@@ -162,24 +219,37 @@ class SLCSSceneRenderer:
             yaw = float(inputs.player_yaw_rad[p, t])
             ax.scatter([pos[0]], [pos[1]], color=color, s=60)
             ax.arrow(
-                float(pos[0]), float(pos[1]),
-                _ARROW_LEN_M * np.cos(yaw), _ARROW_LEN_M * np.sin(yaw),
-                color=color, width=0.05, head_width=0.35, length_includes_head=True,
+                float(pos[0]),
+                float(pos[1]),
+                _ARROW_LEN_M * np.cos(yaw),
+                _ARROW_LEN_M * np.sin(yaw),
+                color=color,
+                width=0.05,
+                head_width=0.35,
+                length_includes_head=True,
             )
             if inputs.gt_player_position_m is not None:
-                valid = (
-                    inputs.gt_player_valid is None or bool(inputs.gt_player_valid[p, t])
+                valid = inputs.gt_player_valid is None or bool(
+                    inputs.gt_player_valid[p, t]
                 )
                 if valid:
                     gt = inputs.gt_player_position_m[p, t]
-                    ax.scatter([gt[0]], [gt[1]], color=color, s=40, marker="x", alpha=0.7)
+                    ax.scatter(
+                        [gt[0]], [gt[1]], color=color, s=40, marker="x", alpha=0.7
+                    )
                     if inputs.gt_player_yaw_rad is not None:
                         gt_yaw = float(inputs.gt_player_yaw_rad[p, t])
                         ax.arrow(
-                            float(gt[0]), float(gt[1]),
-                            _ARROW_LEN_M * np.cos(gt_yaw), _ARROW_LEN_M * np.sin(gt_yaw),
-                            color=color, width=0.02, head_width=0.2, alpha=0.5,
-                            length_includes_head=True, linestyle="--",
+                            float(gt[0]),
+                            float(gt[1]),
+                            _ARROW_LEN_M * np.cos(gt_yaw),
+                            _ARROW_LEN_M * np.sin(gt_yaw),
+                            color=color,
+                            width=0.02,
+                            head_width=0.2,
+                            alpha=0.5,
+                            length_includes_head=True,
+                            linestyle="--",
                         )
         ax.set_title("top-down (pred=solid, label=x/dashed)", fontsize=8)
 

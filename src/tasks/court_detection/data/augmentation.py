@@ -15,7 +15,7 @@ import math
 import random
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
 import cv2
 import numpy as np
@@ -44,7 +44,7 @@ from src.utils.geometry.image_size import resize_short_side_aligned
 
 def _pil_to_tensor_image(img: Image.Image) -> Tensor:
     """Convert PIL Image to float tensor ``[C, H, W]`` in ``[0, 1]``."""
-    return TF.to_tensor(img)
+    return cast("Tensor", TF.to_tensor(img))
 
 
 def _mask_pil_to_tensor(mask: Image.Image) -> Tensor:
@@ -74,7 +74,9 @@ def _sample_perspective_h(
     if cv2.contourArea(dst.astype(np.float32)) < 1.0:
         return None
 
-    h_mat: np.ndarray = np.asarray(cv2.getPerspectiveTransform(src, dst), dtype=np.float32)
+    h_mat: np.ndarray = np.asarray(
+        cv2.getPerspectiveTransform(src, dst), dtype=np.float32
+    )
     return h_mat
 
 
@@ -127,10 +129,24 @@ def _random_affine_matrix(
     )
 
 
-def _warp_pil_affine(img: Image.Image, matrix: AffineMatrix, *, resample: int) -> Image.Image:
+def _warp_pil_affine(
+    img: Image.Image,
+    matrix: AffineMatrix,
+    *,
+    resample: Image.Resampling,
+) -> Image.Image:
     """Warp a PIL image with the inverse of a source->destination affine matrix."""
     coeffs = to_pil_affine_coefficients(invert_homogeneous_matrix(matrix))
-    return img.transform(img.size, Image.AFFINE, coeffs, resample, fillcolor=0)
+    transformed: Any = img.transform(
+        img.size,
+        Image.Transform.AFFINE,
+        coeffs,
+        resample=resample,
+        fillcolor=0,
+    )
+    if not isinstance(transformed, Image.Image):
+        raise TypeError("PIL affine transform must return an Image.")
+    return transformed
 
 
 # ── Joint Spatial Transforms (Segmentation) ──────────────────────
@@ -143,13 +159,15 @@ class SegMultiScaleResize:
         self.scales = list(scales)
 
     def __call__(
-        self, img: Image.Image, mask: Image.Image,
+        self,
+        img: Image.Image,
+        mask: Image.Image,
     ) -> tuple[Image.Image, Image.Image]:
         short_side = random.choice(self.scales)
         w, h = img.size
         new_w, new_h = resize_short_side_aligned(w, h, short_side)
-        img = img.resize((new_w, new_h), Image.BILINEAR)
-        mask = mask.resize((new_w, new_h), Image.NEAREST)
+        img = img.resize((new_w, new_h), Image.Resampling.BILINEAR)
+        mask = mask.resize((new_w, new_h), Image.Resampling.NEAREST)
         return img, mask
 
 
@@ -160,12 +178,14 @@ class SegFixedResize:
         self.short_side = short_side
 
     def __call__(
-        self, img: Image.Image, mask: Image.Image,
+        self,
+        img: Image.Image,
+        mask: Image.Image,
     ) -> tuple[Image.Image, Image.Image]:
         w, h = img.size
         new_w, new_h = resize_short_side_aligned(w, h, self.short_side)
-        img = img.resize((new_w, new_h), Image.BILINEAR)
-        mask = mask.resize((new_w, new_h), Image.NEAREST)
+        img = img.resize((new_w, new_h), Image.Resampling.BILINEAR)
+        mask = mask.resize((new_w, new_h), Image.Resampling.NEAREST)
         return img, mask
 
 
@@ -174,20 +194,24 @@ class SegRandomResizedCrop:
 
     def __init__(
         self,
-        scale: tuple[float, float] = (0.3, 1.0),
-        ratio: tuple[float, float] = (0.75, 1.333),
+        scale: tuple[float, float],
+        ratio: tuple[float, float],
     ) -> None:
         self.scale = scale
         self.ratio = ratio
 
     def __call__(
-        self, img: Image.Image, mask: Image.Image,
+        self,
+        img: Image.Image,
+        mask: Image.Image,
     ) -> tuple[Image.Image, Image.Image]:
         w, h = img.size
         area = h * w
         for _ in range(10):
             target_area = random.uniform(self.scale[0], self.scale[1]) * area
-            aspect = math.exp(random.uniform(math.log(self.ratio[0]), math.log(self.ratio[1])))
+            aspect = math.exp(
+                random.uniform(math.log(self.ratio[0]), math.log(self.ratio[1]))
+            )
             crop_w = int(round(math.sqrt(target_area * aspect)))
             crop_h = int(round(math.sqrt(target_area / aspect)))
             if 0 < crop_w <= w and 0 < crop_h <= h:
@@ -213,7 +237,9 @@ class SegRandomHorizontalFlip:
         self.swap_pairs = swap_pairs
 
     def __call__(
-        self, img: Image.Image, mask: Image.Image,
+        self,
+        img: Image.Image,
+        mask: Image.Image,
     ) -> tuple[Image.Image, Image.Image]:
         if random.random() < self.p:
             img = TF.hflip(img)
@@ -232,10 +258,10 @@ class SegRandomAffine:
 
     def __init__(
         self,
-        degrees: float = 15.0,
-        translate: tuple[float, float] = (0.1, 0.1),
-        scale: tuple[float, float] = (0.8, 1.2),
-        shear: float = 10.0,
+        degrees: float,
+        translate: tuple[float, float],
+        scale: tuple[float, float],
+        shear: float,
     ) -> None:
         self.degrees = degrees
         self.translate = translate
@@ -243,27 +269,35 @@ class SegRandomAffine:
         self.shear = shear
 
     def __call__(
-        self, img: Image.Image, mask: Image.Image,
+        self,
+        img: Image.Image,
+        mask: Image.Image,
     ) -> tuple[Image.Image, Image.Image]:
         w, h = img.size
         matrix = _random_affine_matrix(
-            width=w, height=h, degrees=self.degrees,
-            translate=self.translate, scale=self.scale, shear=self.shear,
+            width=w,
+            height=h,
+            degrees=self.degrees,
+            translate=self.translate,
+            scale=self.scale,
+            shear=self.shear,
         )
-        img = _warp_pil_affine(img, matrix, resample=Image.BILINEAR)
-        mask = _warp_pil_affine(mask, matrix, resample=Image.NEAREST)
+        img = _warp_pil_affine(img, matrix, resample=Image.Resampling.BILINEAR)
+        mask = _warp_pil_affine(mask, matrix, resample=Image.Resampling.NEAREST)
         return img, mask
 
 
 class SegRandomPerspective:
     """Random perspective transform applied jointly to image + mask."""
 
-    def __init__(self, distortion_scale: float = 0.15, p: float = 0.3) -> None:
+    def __init__(self, distortion_scale: float, p: float) -> None:
         self.distortion_scale = distortion_scale
         self.p = p
 
     def __call__(
-        self, img: Image.Image, mask: Image.Image,
+        self,
+        img: Image.Image,
+        mask: Image.Image,
     ) -> tuple[Image.Image, Image.Image]:
         if random.random() >= self.p:
             return img, mask
@@ -273,8 +307,12 @@ class SegRandomPerspective:
         if h_mat is None:
             return img, mask
 
-        img = _warp_perspective_pil(img, h_mat, interpolation=cv2.INTER_LINEAR, fill_value=0)
-        mask = _warp_perspective_pil(mask, h_mat, interpolation=cv2.INTER_NEAREST, fill_value=0)
+        img = _warp_perspective_pil(
+            img, h_mat, interpolation=cv2.INTER_LINEAR, fill_value=0
+        )
+        mask = _warp_perspective_pil(
+            mask, h_mat, interpolation=cv2.INTER_NEAREST, fill_value=0
+        )
         return img, mask
 
 
@@ -322,7 +360,9 @@ class KPParamTransform(Generic[P]):
         return w, h
 
     def __call__(
-        self, img: Image.Image, kps: np.ndarray,
+        self,
+        img: Image.Image,
+        kps: np.ndarray,
     ) -> tuple[Image.Image, np.ndarray]:
         w, h = img.size
         params, _, _ = self.sample_params(w, h)
@@ -370,12 +410,18 @@ class PerspectiveParams:
 class _KPResizeBase(KPParamTransform[ResizeParams]):
     """Shared application logic for short-side resizes."""
 
-    def _params_for(self, w: int, h: int, short_side: int) -> tuple[ResizeParams, int, int]:
+    def _params_for(
+        self, w: int, h: int, short_side: int
+    ) -> tuple[ResizeParams, int, int]:
         new_w, new_h = resize_short_side_aligned(w, h, short_side)
-        return ResizeParams(sx=new_w / w, sy=new_h / h, new_w=new_w, new_h=new_h), new_w, new_h
+        return (
+            ResizeParams(sx=new_w / w, sy=new_h / h, new_w=new_w, new_h=new_h),
+            new_w,
+            new_h,
+        )
 
     def apply_to_image(self, img: Image.Image, params: ResizeParams) -> Image.Image:
-        return img.resize((params.new_w, params.new_h), Image.BILINEAR)
+        return img.resize((params.new_w, params.new_h), Image.Resampling.BILINEAR)
 
     def apply_to_kps(self, kps: np.ndarray, params: ResizeParams) -> np.ndarray:
         kps = kps.copy()
@@ -412,8 +458,8 @@ class KPRandomResizedCrop(KPParamTransform[CropParams]):
 
     def __init__(
         self,
-        scale: tuple[float, float] = (0.3, 1.0),
-        ratio: tuple[float, float] = (0.75, 1.333),
+        scale: tuple[float, float],
+        ratio: tuple[float, float],
     ) -> None:
         self.scale = scale
         self.ratio = ratio
@@ -422,21 +468,36 @@ class KPRandomResizedCrop(KPParamTransform[CropParams]):
         area = h * w
         for _ in range(10):
             target_area = random.uniform(self.scale[0], self.scale[1]) * area
-            aspect = math.exp(random.uniform(math.log(self.ratio[0]), math.log(self.ratio[1])))
+            aspect = math.exp(
+                random.uniform(math.log(self.ratio[0]), math.log(self.ratio[1]))
+            )
             crop_w = int(round(math.sqrt(target_area * aspect)))
             crop_h = int(round(math.sqrt(target_area / aspect)))
             if 0 < crop_w <= w and 0 < crop_h <= h:
                 top = random.randint(0, h - crop_h)
                 left = random.randint(0, w - crop_w)
-                return CropParams(top=top, left=left, crop_h=crop_h, crop_w=crop_w), crop_w, crop_h
+                return (
+                    CropParams(top=top, left=left, crop_h=crop_h, crop_w=crop_w),
+                    crop_w,
+                    crop_h,
+                )
         crop_h = min(h, w)
         crop_w = crop_h
         top = (h - crop_h) // 2
         left = (w - crop_w) // 2
-        return CropParams(top=top, left=left, crop_h=crop_h, crop_w=crop_w), crop_w, crop_h
+        return (
+            CropParams(top=top, left=left, crop_h=crop_h, crop_w=crop_w),
+            crop_w,
+            crop_h,
+        )
 
     def apply_to_image(self, img: Image.Image, params: CropParams) -> Image.Image:
-        return TF.crop(img, params.top, params.left, params.crop_h, params.crop_w)
+        cropped: Any = TF.crop(
+            img, params.top, params.left, params.crop_h, params.crop_w
+        )
+        if not isinstance(cropped, Image.Image):
+            raise TypeError("PIL crop must return an Image.")
+        return cropped
 
     def apply_to_kps(self, kps: np.ndarray, params: CropParams) -> np.ndarray:
         kps = kps.copy()
@@ -484,10 +545,10 @@ class KPRandomAffine(KPParamTransform[AffineParams]):
 
     def __init__(
         self,
-        degrees: float = 15.0,
-        translate: tuple[float, float] = (0.1, 0.1),
-        scale: tuple[float, float] = (0.8, 1.2),
-        shear: float = 10.0,
+        degrees: float,
+        translate: tuple[float, float],
+        scale: tuple[float, float],
+        shear: float,
     ) -> None:
         self.degrees = degrees
         self.translate = translate
@@ -519,16 +580,20 @@ class KPRandomAffine(KPParamTransform[AffineParams]):
         )
 
     def apply_to_image(self, img: Image.Image, params: AffineParams) -> Image.Image:
-        return _warp_pil_affine(img, self._matrix(params), resample=Image.BILINEAR)
+        return _warp_pil_affine(
+            img,
+            self._matrix(params),
+            resample=Image.Resampling.BILINEAR,
+        )
 
     def apply_to_kps(self, kps: np.ndarray, params: AffineParams) -> np.ndarray:
-        return transform_points(kps, self._matrix(params))
+        return cast("np.ndarray", transform_points(kps, self._matrix(params)))
 
 
 class KPRandomPerspective(KPParamTransform[PerspectiveParams]):
     """Random perspective transform applied jointly to image + keypoints."""
 
-    def __init__(self, distortion_scale: float = 0.15, p: float = 0.3) -> None:
+    def __init__(self, distortion_scale: float, p: float) -> None:
         self.distortion_scale = distortion_scale
         self.p = p
 
@@ -538,11 +603,16 @@ class KPRandomPerspective(KPParamTransform[PerspectiveParams]):
             h_mat = _sample_perspective_h(w, h, self.distortion_scale)
         return PerspectiveParams(h_mat=h_mat), w, h
 
-    def apply_to_image(self, img: Image.Image, params: PerspectiveParams) -> Image.Image:
+    def apply_to_image(
+        self, img: Image.Image, params: PerspectiveParams
+    ) -> Image.Image:
         if params.h_mat is None:
             return img
         return _warp_perspective_pil(
-            img, params.h_mat, interpolation=cv2.INTER_LINEAR, fill_value=0,
+            img,
+            params.h_mat,
+            interpolation=cv2.INTER_LINEAR,
+            fill_value=0,
         )
 
     def apply_to_kps(self, kps: np.ndarray, params: PerspectiveParams) -> np.ndarray:
@@ -550,7 +620,8 @@ class KPRandomPerspective(KPParamTransform[PerspectiveParams]):
             return kps
         kps_in: np.ndarray = kps.astype(np.float32).reshape(-1, 1, 2)
         kps_out: np.ndarray = np.asarray(
-            cv2.perspectiveTransform(kps_in, params.h_mat), dtype=np.float32,
+            cv2.perspectiveTransform(kps_in, params.h_mat),
+            dtype=np.float32,
         ).reshape(-1, 2)
         return kps_out
 
@@ -561,8 +632,8 @@ class KPVisibilityConstrainedPipeline:
     def __init__(
         self,
         transforms: Sequence[KPParamTransform],
-        min_visible_kp: int = 0,
-        max_retries: int = 20,
+        min_visible_kp: int,
+        max_retries: int,
     ) -> None:
         if min_visible_kp < 0:
             raise ValueError(f"min_visible_kp must be >= 0, got {min_visible_kp}")
@@ -573,7 +644,10 @@ class KPVisibilityConstrainedPipeline:
         self.max_retries = max_retries
 
     def _sample_chain(
-        self, w: int, h: int, kps: np.ndarray,
+        self,
+        w: int,
+        h: int,
+        kps: np.ndarray,
     ) -> tuple[list[object], np.ndarray, np.ndarray]:
         """Draw one parameter chain and apply it to the keypoints only."""
         chain: list[object] = []
@@ -587,7 +661,10 @@ class KPVisibilityConstrainedPipeline:
         return chain, out, mask
 
     def draw_params(
-        self, w: int, h: int, kps: np.ndarray,
+        self,
+        w: int,
+        h: int,
+        kps: np.ndarray,
     ) -> tuple[list[object], np.ndarray, np.ndarray, int]:
         """Sample parameter chains until the visibility constraint is met."""
         target = min(self.min_visible_kp, int(kp_in_bounds_mask(kps, w, h).sum()))
@@ -608,7 +685,9 @@ class KPVisibilityConstrainedPipeline:
         return best[0], best[1], best[2], attempts
 
     def transform_with_visibility(
-        self, img: Image.Image, kps: np.ndarray,
+        self,
+        img: Image.Image,
+        kps: np.ndarray,
     ) -> tuple[Image.Image, np.ndarray, np.ndarray]:
         """Transform and additionally return the cumulative visibility mask."""
         w, h = img.size
@@ -618,7 +697,9 @@ class KPVisibilityConstrainedPipeline:
         return img, out_kps, mask
 
     def __call__(
-        self, img: Image.Image, kps: np.ndarray,
+        self,
+        img: Image.Image,
+        kps: np.ndarray,
     ) -> tuple[Image.Image, np.ndarray]:
         img, kps, _ = self.transform_with_visibility(img, kps)
         return img, kps
@@ -632,10 +713,10 @@ class ImageColorJitter:
 
     def __init__(
         self,
-        brightness: float = 0.3,
-        contrast: float = 0.3,
-        saturation: float = 0.3,
-        hue: float = 0.1,
+        brightness: float,
+        contrast: float,
+        saturation: float,
+        hue: float,
     ) -> None:
         self.brightness = brightness
         self.contrast = contrast
@@ -645,7 +726,15 @@ class ImageColorJitter:
     def __call__(self, img: Image.Image) -> Image.Image:
         from torchvision.transforms import ColorJitter as _CJ
 
-        return _CJ(self.brightness, self.contrast, self.saturation, self.hue)(img)
+        jittered: Any = _CJ(
+            self.brightness,
+            self.contrast,
+            self.saturation,
+            self.hue,
+        )(img)
+        if not isinstance(jittered, Image.Image):
+            raise TypeError("ColorJitter must return a PIL Image.")
+        return jittered
 
 
 class ImageGaussianBlur:
@@ -653,19 +742,25 @@ class ImageGaussianBlur:
 
     def __init__(
         self,
-        kernel_size: list[int] | None = None,
-        sigma: tuple[float, float] = (0.1, 2.0),
-        p: float = 0.3,
+        kernel_size: list[int],
+        sigma: tuple[float, float],
+        p: float,
     ) -> None:
-        self.kernel_size = kernel_size or [3, 7]
+        if not kernel_size or any(
+            kernel <= 0 or kernel % 2 == 0 for kernel in kernel_size
+        ):
+            raise ValueError("kernel_size must contain only positive odd integers.")
+        if not 0.0 < sigma[0] <= sigma[1]:
+            raise ValueError("sigma must be positive and ordered.")
+        if not 0.0 <= p <= 1.0:
+            raise ValueError("p must be in [0, 1].")
+        self.kernel_size = kernel_size
         self.sigma = sigma
         self.p = p
 
     def __call__(self, img: Image.Image) -> Image.Image:
         if random.random() < self.p:
             k = random.choice(self.kernel_size)
-            if k % 2 == 0:
-                k += 1
             s = random.uniform(self.sigma[0], self.sigma[1])
             img = TF.gaussian_blur(img, kernel_size=[k, k], sigma=[s, s])
         return img
@@ -677,45 +772,53 @@ class ImageGaussianBlur:
 def build_seg_transforms(
     *,
     is_train: bool,
-    train_scales: list[int] | None = None,
-    val_short_side: int = 640,
-    crop_scale: tuple[float, float] = (0.3, 1.0),
-    crop_ratio: tuple[float, float] = (0.75, 1.333),
-    hflip_prob: float = 0.5,
-    swap_pairs: list[tuple[int, int]] | None = None,
-    affine_degrees: float = 15.0,
-    affine_translate: tuple[float, float] = (0.1, 0.1),
-    affine_scale: tuple[float, float] = (0.8, 1.2),
-    affine_shear: float = 10.0,
-    perspective_distortion: float = 0.15,
-    perspective_prob: float = 0.3,
-    color_jitter: tuple[float, float, float, float] = (0.3, 0.3, 0.3, 0.1),
-    gaussian_blur_kernel: list[int] | None = None,
-    gaussian_blur_sigma: tuple[float, float] = (0.1, 2.0),
-    gaussian_blur_prob: float = 0.3,
+    train_scales: list[int],
+    val_short_side: int,
+    crop_scale: tuple[float, float],
+    crop_ratio: tuple[float, float],
+    hflip_prob: float,
+    swap_pairs: list[tuple[int, int]],
+    affine_degrees: float,
+    affine_translate: tuple[float, float],
+    affine_scale: tuple[float, float],
+    affine_shear: float,
+    perspective_distortion: float,
+    perspective_prob: float,
+    color_jitter: tuple[float, float, float, float],
+    gaussian_blur_kernel: list[int],
+    gaussian_blur_sigma: tuple[float, float],
+    gaussian_blur_prob: float,
 ) -> tuple[list, list]:
     """Build joint spatial + image-only transforms for segmentation."""
-    if swap_pairs is None:
-        swap_pairs = [(1, 2), (3, 4), (5, 6)]
-
     spatial: list = []
     image_only: list = []
 
     if is_train:
-        spatial.append(SegMultiScaleResize(train_scales or [480, 512, 544, 576, 608, 640]))
+        spatial.append(SegMultiScaleResize(train_scales))
         spatial.append(SegRandomResizedCrop(scale=crop_scale, ratio=crop_ratio))
         spatial.append(SegRandomHorizontalFlip(p=hflip_prob, swap_pairs=swap_pairs))
-        spatial.append(SegRandomAffine(
-            degrees=affine_degrees, translate=affine_translate,
-            scale=affine_scale, shear=affine_shear,
-        ))
-        spatial.append(SegRandomPerspective(
-            distortion_scale=perspective_distortion, p=perspective_prob,
-        ))
+        spatial.append(
+            SegRandomAffine(
+                degrees=affine_degrees,
+                translate=affine_translate,
+                scale=affine_scale,
+                shear=affine_shear,
+            )
+        )
+        spatial.append(
+            SegRandomPerspective(
+                distortion_scale=perspective_distortion,
+                p=perspective_prob,
+            )
+        )
         image_only.append(ImageColorJitter(*color_jitter))
-        image_only.append(ImageGaussianBlur(
-            kernel_size=gaussian_blur_kernel, sigma=gaussian_blur_sigma, p=gaussian_blur_prob,
-        ))
+        image_only.append(
+            ImageGaussianBlur(
+                kernel_size=gaussian_blur_kernel,
+                sigma=gaussian_blur_sigma,
+                p=gaussian_blur_prob,
+            )
+        )
     else:
         spatial.append(SegFixedResize(val_short_side))
 
@@ -725,53 +828,65 @@ def build_seg_transforms(
 def build_kp_transforms(
     *,
     is_train: bool,
-    train_scales: list[int] | None = None,
-    val_short_side: int = 640,
-    crop_scale: tuple[float, float] = (0.3, 1.0),
-    crop_ratio: tuple[float, float] = (0.75, 1.333),
-    hflip_prob: float = 0.5,
-    swap_pairs: list[tuple[int, int]] | None = None,
-    affine_degrees: float = 15.0,
-    affine_translate: tuple[float, float] = (0.1, 0.1),
-    affine_scale: tuple[float, float] = (0.8, 1.2),
-    affine_shear: float = 10.0,
-    perspective_distortion: float = 0.15,
-    perspective_prob: float = 0.3,
-    color_jitter: tuple[float, float, float, float] = (0.3, 0.3, 0.3, 0.1),
-    gaussian_blur_kernel: list[int] | None = None,
-    gaussian_blur_sigma: tuple[float, float] = (0.1, 2.0),
-    gaussian_blur_prob: float = 0.3,
-    min_visible_kp: int = 0,
-    visibility_max_retries: int = 20,
+    train_scales: list[int],
+    val_short_side: int,
+    crop_scale: tuple[float, float],
+    crop_ratio: tuple[float, float],
+    hflip_prob: float,
+    swap_pairs: list[tuple[int, int]],
+    affine_degrees: float,
+    affine_translate: tuple[float, float],
+    affine_scale: tuple[float, float],
+    affine_shear: float,
+    perspective_distortion: float,
+    perspective_prob: float,
+    color_jitter: tuple[float, float, float, float],
+    gaussian_blur_kernel: list[int],
+    gaussian_blur_sigma: tuple[float, float],
+    gaussian_blur_prob: float,
+    min_visible_kp: int,
+    visibility_max_retries: int,
 ) -> tuple[KPVisibilityConstrainedPipeline, list]:
     """Build the spatial pipeline + image-only transforms for keypoint heatmaps."""
-    if swap_pairs is None:
-        swap_pairs = [(0, 1), (2, 3), (4, 6), (5, 7), (8, 9), (10, 11)]
-
     transforms: list[KPParamTransform] = []
     image_only: list = []
 
     if is_train:
-        transforms.append(KPMultiScaleResize(train_scales or [480, 512, 544, 576, 608, 640]))
+        transforms.append(KPMultiScaleResize(train_scales))
         transforms.append(KPRandomResizedCrop(scale=crop_scale, ratio=crop_ratio))
         transforms.append(KPRandomHorizontalFlip(p=hflip_prob, swap_pairs=swap_pairs))
-        transforms.append(KPRandomAffine(
-            degrees=affine_degrees, translate=affine_translate,
-            scale=affine_scale, shear=affine_shear,
-        ))
-        transforms.append(KPRandomPerspective(
-            distortion_scale=perspective_distortion, p=perspective_prob,
-        ))
+        transforms.append(
+            KPRandomAffine(
+                degrees=affine_degrees,
+                translate=affine_translate,
+                scale=affine_scale,
+                shear=affine_shear,
+            )
+        )
+        transforms.append(
+            KPRandomPerspective(
+                distortion_scale=perspective_distortion,
+                p=perspective_prob,
+            )
+        )
         image_only.append(ImageColorJitter(*color_jitter))
-        image_only.append(ImageGaussianBlur(
-            kernel_size=gaussian_blur_kernel, sigma=gaussian_blur_sigma, p=gaussian_blur_prob,
-        ))
+        image_only.append(
+            ImageGaussianBlur(
+                kernel_size=gaussian_blur_kernel,
+                sigma=gaussian_blur_sigma,
+                p=gaussian_blur_prob,
+            )
+        )
         spatial = KPVisibilityConstrainedPipeline(
             transforms,
             min_visible_kp=min_visible_kp,
             max_retries=visibility_max_retries,
         )
     else:
-        spatial = KPVisibilityConstrainedPipeline([KPFixedResize(val_short_side)])
+        spatial = KPVisibilityConstrainedPipeline(
+            [KPFixedResize(val_short_side)],
+            min_visible_kp=0,
+            max_retries=1,
+        )
 
     return spatial, image_only

@@ -44,6 +44,7 @@ NET_POST_OFFSET_X: float = 0.914
 # Configurable Court Geometry
 # -----------------------------
 
+
 @dataclass
 class CourtConfig:
     """Court geometry variation parameters.
@@ -59,8 +60,8 @@ class CourtConfig:
             uniformly from this range for each scene.
     """
 
-    net_post_offset_x: float = NET_POST_OFFSET_X
-    net_post_offset_x_range: tuple[float, float] | None = None
+    net_post_offset_x: float
+    net_post_offset_x_range: tuple[float, float] | None
 
     def sample(self) -> CourtConfig:
         """Return a new config with stochastic parameters sampled."""
@@ -72,6 +73,13 @@ class CourtConfig:
             net_post_offset_x=offset,
             net_post_offset_x_range=None,  # sampled config is deterministic
         )
+
+
+STANDARD_COURT_CONFIG = CourtConfig(
+    net_post_offset_x=NET_POST_OFFSET_X,
+    net_post_offset_x_range=None,
+)
+
 
 # -----------------------------
 # Fence (Run-off) Dimensions
@@ -118,7 +126,7 @@ COURT_KP_NAMES: tuple[str, ...] = (
 COURT_KP_IDX: dict[str, int] = {name: i for i, name in enumerate(COURT_KP_NAMES)}
 
 
-def court_keypoints_3d(config: CourtConfig | None = None) -> Tensor:
+def court_keypoints_3d(config: CourtConfig) -> Tensor:
     """Return 20 court keypoints (idx 0..19) as a (20, 3) tensor.
 
     Keypoint indices follow the CourtKP20 specification:
@@ -132,18 +140,18 @@ def court_keypoints_3d(config: CourtConfig | None = None) -> Tensor:
     19:    center strap top
 
     Args:
-        config: Optional court geometry configuration. When provided, net post
-            positions use ``config.net_post_offset_x`` instead of the default.
+        config: Explicit court geometry configuration. Net post positions use
+            ``config.net_post_offset_x``.
     """
-    cfg = config or CourtConfig()
+    net_post_offset_x = config.net_post_offset_x
 
     xs = HALF_SINGLES_WIDTH
     xd = HALF_DOUBLES_WIDTH
     yB = HALF_LENGTH
     yS = SERVICE_LINE_DISTANCE
 
-    x_post_L = -(xd + cfg.net_post_offset_x)
-    x_post_R = +(xd + cfg.net_post_offset_x)
+    x_post_L = -(xd + net_post_offset_x)
+    x_post_R = +(xd + net_post_offset_x)
 
     pts = [
         (-xd, +yB, 0.0),  # 0 far doubles corner left
@@ -180,11 +188,9 @@ COURT_SKELETON: list[tuple[int, int]] = [
     # --- Baselines ---
     (0, 1),  # far doubles baseline
     (2, 3),  # near doubles baseline
-    
     # --- Doubles Sidelines ---
     (0, 2),  # left doubles sideline
     (1, 3),  # right doubles sideline
-    
     # --- Singles Sidelines ---
     # Split into 3 segments: (far baseline -> far service), (far service -> near service), (near service -> near baseline)
     # Using existing keypoints for better connectivity graph
@@ -192,29 +198,24 @@ COURT_SKELETON: list[tuple[int, int]] = [
     (4, 8),  # far left singles corner -> far left service
     (6, 9),  # far right singles corner -> far right service
     # Middle part (Service box sides)
-    (8, 10), # far left service -> near left service
-    (9, 11), # far right service -> near right service
+    (8, 10),  # far left service -> near left service
+    (9, 11),  # far right service -> near right service
     # Near part
-    (10, 5), # near left service -> near left singles corner
-    (11, 7), # near right service -> near right singles corner
-    
+    (10, 5),  # near left service -> near left singles corner
+    (11, 7),  # near right service -> near right singles corner
     # --- Service Lines ---
-    (8, 9),   # far service line
-    (10, 11), # near service line
-    
+    (8, 9),  # far service line
+    (10, 11),  # near service line
     # --- Center Service Line ---
-    (12, 13), # far T -> near T
-    
+    (12, 13),  # far T -> near T
     # --- Net Structure ---
     # Net posts (vertical)
-    (15, 16), # left net post
-    (17, 18), # right net post
+    (15, 16),  # left net post
+    (17, 18),  # right net post
     # Net top cable (via center strap)
-    (16, 19), # left post top -> center strap
-    (19, 18), # center strap -> right post top
+    (16, 19),  # left post top -> center strap
+    (19, 18),  # center strap -> right post top
 ]
-
-
 
 
 # -----------------------------

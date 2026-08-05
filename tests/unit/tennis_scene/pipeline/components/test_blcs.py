@@ -11,7 +11,8 @@ import torch
 from torch import Tensor
 
 from src.tasks.blcs.models import BLCSModel, BLCSMultiViewAxialModel
-from src.tennis_scene.pipeline.components.blcs import BLCSConfig, BLCSModule, BLCSResult
+from src.tennis_scene.pipeline.components.blcs import BLCSModule, BLCSResult
+from tests.unit.tennis_scene.pipeline.config_factories import make_blcs_config
 
 
 class _FakeBLCSPredictor:
@@ -40,8 +41,10 @@ class _FakeBLCSPredictor:
         return {"position": torch.ones(1, 4, 3)}
 
 
-def test_process_keeps_detector_visibility_for_invisible_tokens_without_zero_filling() -> None:
-    module = BLCSModule(BLCSConfig(checkpoint="dummy.ckpt", device="cpu"))
+def test_process_keeps_detector_visibility_for_invisible_tokens_without_zero_filling(
+    tmp_path,
+) -> None:
+    module = BLCSModule(make_blcs_config(tmp_path))
     module._predictor = cast(Any, _FakeBLCSPredictor())
     result = module.process(
         ball_uv=np.zeros((1, 4, 2), dtype=np.float32),
@@ -77,29 +80,23 @@ def test_result_validate_allows_inferred_positions_for_invisible_frames() -> Non
     assert errors == []
 
 
-def test_validate_pipeline_checkpoint_rejects_single_model() -> None:
-    module = BLCSModule(BLCSConfig(checkpoint="dummy.ckpt", device="cpu"))
+def test_validate_pipeline_checkpoint_rejects_single_model(tmp_path) -> None:
+    module = BLCSModule(make_blcs_config(tmp_path))
     module._predictor = cast(
         Any,
-        SimpleNamespace(model=BLCSModel(hidden_dim=16, num_layers=1, num_heads=4)),
+        SimpleNamespace(model=object.__new__(BLCSModel)),
     )
 
     with pytest.raises(ValueError, match="requires a multiview BLCS checkpoint"):
         module._validate_pipeline_checkpoint_profile()
 
 
-def test_validate_pipeline_checkpoint_accepts_multiview_model() -> None:
-    module = BLCSModule(BLCSConfig(checkpoint="dummy.ckpt", device="cpu"))
+def test_validate_pipeline_checkpoint_accepts_multiview_model(tmp_path) -> None:
+    module = BLCSModule(make_blcs_config(tmp_path))
     module._predictor = cast(
         Any,
         SimpleNamespace(
-            model=BLCSMultiViewAxialModel(
-                hidden_dim=16,
-                num_layers=1,
-                num_heads=4,
-                max_num_cameras=1,
-                max_seq_len=4,
-            )
+            model=object.__new__(BLCSMultiViewAxialModel)
         ),
     )
 

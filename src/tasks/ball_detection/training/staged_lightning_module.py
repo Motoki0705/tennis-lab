@@ -25,20 +25,19 @@ if TYPE_CHECKING:
 class StagedBallDetectionLightningModule(BallDetectionLightningModule):
     """Ball detection with per-group gradient accumulation for variable T."""
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: DictConfig) -> None:
         super().__init__(config)
         if self.gan_enabled:
             raise ValueError("Staged training does not support the GAN path.")
         # Manual optimization: we control backward/step/scheduler ourselves.
         self.automatic_optimization = False
 
-        train_cfg = self.config.get("training", {}) or {}
-        staged_cfg = train_cfg.get("staged", {}) or {}
-        self.effective_batch_size = int(staged_cfg.get("effective_batch_size", 4))
+        staged_cfg = self.config.training.staged
+        self.effective_batch_size = int(staged_cfg.effective_batch_size)
         # Clip lives under training.staged (NOT training.trainer): Lightning
         # forbids Trainer-level gradient_clip_val under manual optimization, so
         # we clip here via self.clip_gradients instead.
-        clip = staged_cfg.get("gradient_clip_val", 1.0)
+        clip = staged_cfg.gradient_clip_val
         self.gradient_clip_val = None if clip is None else float(clip)
 
         self._accum_count = 0
@@ -70,6 +69,8 @@ class StagedBallDetectionLightningModule(BallDetectionLightningModule):
 
         result = self._compute_supervised_result(batch, "train")
         loss = result["loss"]
+        if not isinstance(loss, Tensor):
+            raise TypeError("Supervised training loss must be a tensor.")
         self.manual_backward(loss / accumulate)
         self._accum_count += 1
 

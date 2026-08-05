@@ -19,10 +19,9 @@ from src.tasks.blcs.data.dataset import (
 class BLCSDataModule(SceneDirectoryDataModule):
     """Lightning DataModule for unified BLCS single/multiview training."""
 
-    default_scene_dir = "data/blcs"
-
     def _build_collate_fn(self) -> Callable[..., Any] | None:
-        self.input_profile = str(self.config["model"]["io"]["input_profile"])
+        config: Any = self.config
+        self.input_profile = str(config["model"]["io"]["input_profile"])
         if self.input_profile not in {"single", "multiview"}:
             raise ValueError(
                 "Invalid model.io.input_profile="

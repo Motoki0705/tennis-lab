@@ -165,7 +165,10 @@ def split_ball_tracks(scene: dict[str, Any]) -> list[NDArray[np.float32]]:
         raise ValueError(
             f"Expected ball positions shaped (T, Q, 3), got {positions.shape}."
         )
-    num_balls = int(scene.get("num_balls", positions.shape[1]))
+    raw_num_balls = scene["num_balls"] if "num_balls" in scene else positions.shape[1]
+    if type(raw_num_balls) is not int:
+        raise TypeError("scene.num_balls must be exactly int when present.")
+    num_balls = raw_num_balls
     if not 1 <= num_balls <= positions.shape[1]:
         raise ValueError(
             f"num_balls must be within [1, {positions.shape[1]}], got {num_balls}."
@@ -200,9 +203,10 @@ class BLCSSceneRenderer:
 
     def __init__(
         self,
+        *,
+        style: SceneStyleConfig,
         court_renderer: CourtRenderer | None = None,
         ball_renderer: BallRenderer | None = None,
-        style: SceneStyleConfig | None = None,
         camera: CameraController | None = None,
     ) -> None:
         """Initialize BLCS scene renderer.
@@ -217,7 +221,7 @@ class BLCSSceneRenderer:
                 broadcast preset.
 
         """
-        self.style = style or SceneStyleConfig()
+        self.style = style
         self.theme = resolve_theme(self.style.theme)
         self.camera = camera or CameraController("broadcast")
         self.court_renderer = court_renderer or CourtRenderer(self.theme.court_style)

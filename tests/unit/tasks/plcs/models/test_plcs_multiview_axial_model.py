@@ -3,29 +3,27 @@
 from __future__ import annotations
 
 import torch
-from omegaconf import OmegaConf
 
-from src.tasks.plcs.models import build_plcs_model
+from src.tasks.plcs.models import PLCSMultiViewAxialModel
 
 
 def test_multiview_axial_model_forward_accepts_single_view() -> None:
     torch.manual_seed(0)
-    model = build_plcs_model(
-        OmegaConf.create(
-            {
-                "model": {
-                    "name": "plcs_multiview_axial",
-                    "io": {"input_profile": "multiview"},
-                    "hidden_dim": 16,
-                    "num_layers": 1,
-                    "num_heads": 4,
-                    "max_views": 1,
-                    "max_seq_len": 4,
-                    "dropout": 0.0,
-                },
-                "data": {"num_court_kp": 20},
-            }
-        )
+    model = PLCSMultiViewAxialModel(
+        hidden_dim=16,
+        num_layers=1,
+        num_heads=4,
+        ffn_dim=64,
+        dropout=0.0,
+        rope_dim=4,
+        rope_theta_time=10000.0,
+        rope_theta_camera=10000.0,
+        ffn_type="swiglu",
+        predict_canonical_pose=False,
+        max_views=1,
+        max_seq_len=4,
+        invisible_init_std=0.02,
+        num_court_tokens=20,
     ).eval()
 
     with torch.no_grad():
