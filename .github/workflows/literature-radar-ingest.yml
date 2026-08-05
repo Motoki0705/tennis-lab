@@ -12,8 +12,6 @@ on:
 permissions:
   contents: write
 
-# All three hourly collectors may push at the same time. Their queue branches
-# are independent, while commits to the shared daily branch must be serialized.
 concurrency:
   group: literature-radar-ingest
   cancel-in-progress: false
@@ -22,41 +20,34 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
       - name: Checkout collector queue branch
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Collect raw candidate files from this commit
+      - name: Collect raw candidate from this commit
         id: inputs
         shell: bash
         run: |
           set -euo pipefail
           mapfile -t files < <(
             git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" -- \
-              knowledge/literature/incoming \
-              | grep -E '\.json$' || true
+              knowledge/literature/incoming | grep -E '\.json$' || true
           )
           if (( ${#files[@]} == 0 )); then
-            echo "No candidate JSON changed."
             echo "count=0" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
-          mkdir -p /tmp/literature-radar-inputs
-          : > /tmp/literature-radar-input-list
-          for file in "${files[@]}"; do
-            target="/tmp/literature-radar-inputs/$(basename "$file")"
-            cp "$file" "$target"
-            printf '%s\n' "$target" >> /tmp/literature-radar-input-list
-          done
           if (( ${#files[@]} > 1 )); then
-            echo "One hourly collector commit may contain at most one candidate JSON." >&2
+            echo "One hourly commit may contain at most one candidate JSON." >&2
             exit 1
           fi
-          echo "count=${#files[@]}" >> "$GITHUB_OUTPUT"
+          mkdir -p /tmp/literature-radar-inputs
+          target="/tmp/literature-radar-inputs/$(basename "${files[0]}")"
+          cp "${files[0]}" "$target"
+          echo "$target" > /tmp/literature-radar-input-list
+          echo "count=1" >> "$GITHUB_OUTPUT"
           echo "collector=${GITHUB_REF_NAME##*/}" >> "$GITHUB_OUTPUT"
 
       - name: Resolve target daily branch
@@ -65,17 +56,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          first_input="$(head -n 1 /tmp/literature-radar-input-list)"
+          input="$(head -n 1 /tmp/literature-radar-input-list)"
           date="$(
-            python3 .agents/skills/literature-radar/scripts/radar_ingest.py \
-              date "$first_input" --repo-root . \
+            python3 .agents/skills/literature-radar/scripts/radar_hardening.py \
+              date "$input" --repo-root . \
               --expected-collector "${{ steps.inputs.outputs.collector }}"
           )"
-          branch="automation/literature-radar/$date"
           echo "date=$date" >> "$GITHUB_OUTPUT"
-          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "branch=automation/literature-radar/$date" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout target daily branch and fetch deduplication refs
+      - name: Checkout target daily branch and deduplication refs
         if: steps.inputs.outputs.count != '0'
         shell: bash
         env:
@@ -86,7 +76,7 @@ jobs:
             '+refs/heads/automation/literature-radar/*:refs/remotes/origin/automation/literature-radar/*'
           if ! git show-ref --verify --quiet "refs/remotes/origin/$DAILY_BRANCH"; then
             echo "Daily branch $DAILY_BRANCH does not exist." >&2
-            echo "Run the daily curator initialization before hourly collectors." >&2
+            echo "Run daily curator initialization first." >&2
             exit 1
           fi
           git switch --detach "refs/remotes/origin/$DAILY_BRANCH"
@@ -97,13 +87,14 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t inputs < /tmp/literature-radar-input-list
-          python3 .agents/skills/literature-radar/scripts/radar_ingest.py ingest \
+          python3 .agents/skills/literature-radar/scripts/radar_hardening.py ingest \
             "${inputs[@]}" \
             --repo-root . \
             --dedup-ref-prefix refs/remotes/origin/automation/literature-radar \
             --expected-collector "${{ steps.inputs.outputs.collector }}" \
-            --update-digest
-          python3 .agents/skills/literature-radar/scripts/radar_ingest.py \
+            --update-digest \
+            --update-status
+          python3 .agents/skills/literature-radar/scripts/radar_hardening.py \
             validate --repo-root .
 
       - name: Commit canonical knowledge changes
@@ -116,7 +107,10 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add knowledge/literature/candidates knowledge/literature/digests
+          git add \
+            knowledge/literature/candidates \
+            knowledge/literature/digests \
+            knowledge/literature/status
           if git diff --cached --quiet; then
             echo "No canonical knowledge change after deduplication/quota checks."
             exit 0
