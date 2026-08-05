@@ -1,0 +1,79 @@
+name: Patch literature evidence boundary
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.head_ref == 'feat/literature-radar-knowledge'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/literature-radar-knowledge
+          fetch-depth: 0
+
+      - name: Require full text for formal paper nodes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          kg_lib = Path('.agents/skills/knowledge-control/scripts/kg_lib.py')
+          text = kg_lib.read_text(encoding='utf-8')
+          if 'PAPER_EVIDENCE_LEVELS' not in text:
+              text = text.replace(
+                  'EVIDENCE_LEVELS = {"abstract", "fulltext", "fulltext-code", "fulltext-code-data"}\n',
+                  'EVIDENCE_LEVELS = {"abstract", "fulltext", "fulltext-code", "fulltext-code-data"}\n'
+                  'PAPER_EVIDENCE_LEVELS = EVIDENCE_LEVELS - {"abstract"}\n',
+              )
+              text = text.replace(
+                  'if evidence_level not in EVIDENCE_LEVELS:\n'
+                  '        res.errors.append(\n'
+                  '            f"{loc}: evidence_level must be one of {sorted(EVIDENCE_LEVELS)}, "',
+                  'if evidence_level not in PAPER_EVIDENCE_LEVELS:\n'
+                  '        res.errors.append(\n'
+                  '            f"{loc}: paper evidence_level must be one of "\n'
+                  '            f"{sorted(PAPER_EVIDENCE_LEVELS)}, "',
+              )
+              kg_lib.write_text(text, encoding='utf-8')
+
+          kg_new = Path('.agents/skills/knowledge-control/scripts/kg_new.py')
+          text = kg_new.read_text(encoding='utf-8')
+          text = text.replace('    EVIDENCE_LEVELS,\n', '    PAPER_EVIDENCE_LEVELS,\n')
+          text = text.replace(
+              'choices=sorted(EVIDENCE_LEVELS)',
+              'choices=sorted(PAPER_EVIDENCE_LEVELS)',
+          )
+          kg_new.write_text(text, encoding='utf-8')
+
+          tests = Path('tests/e2e/skills/test_literature_radar.py')
+          text = tests.read_text(encoding='utf-8')
+          marker = 'def test_abstract_only_paper_is_not_formal_knowledge'
+          if marker not in text:
+              text += '''\n\ndef test_abstract_only_paper_is_not_formal_knowledge(tmp_path: Path) -> None:\n    nodes = tmp_path / "nodes"\n    nodes.mkdir()\n    (nodes / "paper-example.md").write_text(\n        node_text(\n            {\n                "id": "paper-example",\n                "type": "paper",\n                "title": "paper",\n                "status": "reviewed",\n                "external_ids": {"doi": "10.1/example"},\n                "evidence_level": "abstract",\n                "tasks": ["blcs"],\n                "repo_paths": ["src/tasks/blcs"],\n                "sources": [{"url": "https://example.test"}],\n            }\n        ),\n        encoding="utf-8",\n    )\n\n    result = kg_lib.validate(kg_lib.load_nodes(nodes))\n    assert any("paper evidence_level" in error for error in result.errors)\n'''
+              tests.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "Evidence boundary already applied."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .agents/skills/knowledge-control/scripts/kg_lib.py \
+            .agents/skills/knowledge-control/scripts/kg_new.py \
+            tests/e2e/skills/test_literature_radar.py
+          git commit -m "fix(knowledge): require full text for paper nodes"
+          git push origin HEAD:feat/literature-radar-knowledge
