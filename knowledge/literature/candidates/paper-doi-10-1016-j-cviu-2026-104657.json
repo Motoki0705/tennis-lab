@@ -1,9 +1,7 @@
 {
   "aggregate": {
     "collector_count": 1,
-    "collectors": [
-      "perception"
-    ],
+    "collectors": ["perception"],
     "discovery_count": 1,
     "max_novelty_score": 82,
     "max_relevance_score": 96,
@@ -16,17 +14,15 @@
       "src/tasks/ball_detection/training/lightning_module.py",
       "src/tasks/ball_detection/training/metrics.py"
     ],
-    "tasks": [
-      "ball_detection"
-    ]
+    "tasks": ["ball_detection"]
   },
   "curation": {
-    "decision": null,
-    "issue": null,
-    "paper_node": null,
+    "decision": "promoted",
+    "issue": 698,
+    "paper_node": "paper-doi-10-1016-j-cviu-2026-104657",
     "proposal_nodes": [],
-    "reason_ja": null,
-    "reviewed_at": null
+    "reason_ja": "publisher/arXiv本文、MIT code、TTA access条件を確認した。visibility 0〜3を保持したweighted lossとlevel別評価は、現行の二値化contractを改善する直接的な知識であり、遮蔽augmentationとmotion cueの効果もablationで分離されている。TTAの研究目的限定・再配布禁止と遮蔽label信頼性のriskを明記してpaper nodeへ昇格する。",
+    "reviewed_at": "2026-08-06T00:20:00+09:00"
   },
   "discoveries": [
     {
@@ -49,31 +45,13 @@
         ],
         "risks_ja": "TTAデータセットは申請制かつ研究目的限定で、商用利用と再配布が禁止されており、MITのコードライセンスとは別管理である。arXiv版と2026年のジャーナル版でTTAの収録数が更新されているため、使用版を固定する必要がある。完全遮蔽座標の信頼性と既存TrackNetラベルの可視性定義を確認しないまま重み付けすると誤教師を強調する。RAFT等の光フロー導入は計算量と依存を増やし、offline精度重視の設計は実時間推論要件に合わない可能性がある。",
         "summary_ja": "ラケットスポーツ動画の遮蔽下ボール追跡を対象に、時間軸を保持する2D・3D畳み込み、明示的な運動手掛かり、ボール領域の遮蔽augmentation、可視性レベル別の重み付きBCEと評価プロトコルを組み合わせる。Tennis、TTA、Badminton、TTの4データセットで比較し、TTAの完全遮蔽フレームではRMSE 7.19、accuracy 0.80を報告している。",
-        "tasks": [
-          "ball_detection"
-        ]
+        "tasks": ["ball_detection"]
       },
       "sources": [
-        {
-          "checked_at": "2026-08-05T15:42:10+09:00",
-          "kind": "publisher",
-          "url": "https://doi.org/10.1016/j.cviu.2026.104657"
-        },
-        {
-          "checked_at": "2026-08-05T15:42:10+09:00",
-          "kind": "paper",
-          "url": "https://arxiv.org/abs/2508.09650"
-        },
-        {
-          "checked_at": "2026-08-05T15:42:10+09:00",
-          "kind": "code",
-          "url": "https://github.com/AugustRushG/TOTNet"
-        },
-        {
-          "checked_at": "2026-08-05T15:42:10+09:00",
-          "kind": "dataset",
-          "url": "https://huggingface.co/datasets/AugustRushG123/TTA_Tracking"
-        }
+        {"checked_at": "2026-08-05T15:42:10+09:00", "kind": "publisher", "url": "https://doi.org/10.1016/j.cviu.2026.104657"},
+        {"checked_at": "2026-08-05T15:42:10+09:00", "kind": "paper", "url": "https://arxiv.org/abs/2508.09650"},
+        {"checked_at": "2026-08-05T15:42:10+09:00", "kind": "code", "url": "https://github.com/AugustRushG/TOTNet"},
+        {"checked_at": "2026-08-05T15:42:10+09:00", "kind": "dataset", "url": "https://huggingface.co/datasets/AugustRushG123/TTA_Tracking"}
       ]
     }
   ],
@@ -81,30 +59,13 @@
   "id": "paper-doi-10-1016-j-cviu-2026-104657",
   "last_seen": "2026-08-05T15:42:10+09:00",
   "paper": {
-    "authors": [
-      "Hao Xu",
-      "Arbind Agrahari Baniya",
-      "Sam Wells",
-      "Mohamed Reda Bouadjenek",
-      "Richard Dazely",
-      "Sunil Aryal"
-    ],
-    "identifiers": {
-      "arxiv": "2508.09650",
-      "doi": "10.1016/j.cviu.2026.104657",
-      "openreview": null
-    },
+    "authors": ["Hao Xu", "Arbind Agrahari Baniya", "Sam Wells", "Mohamed Reda Bouadjenek", "Richard Dazely", "Sunil Aryal"],
+    "identifiers": {"arxiv": "2508.09650", "doi": "10.1016/j.cviu.2026.104657", "openreview": null},
     "title": "TOTNet: Occlusion-Aware Temporal Tracking for Robust Ball Detection in Sports Videos",
-    "urls": {
-      "code": "https://github.com/AugustRushG/TOTNet",
-      "dataset": "https://huggingface.co/datasets/AugustRushG123/TTA_Tracking",
-      "paper": "https://arxiv.org/abs/2508.09650",
-      "primary": "https://doi.org/10.1016/j.cviu.2026.104657",
-      "project": null
-    },
+    "urls": {"code": "https://github.com/AugustRushG/TOTNet", "dataset": "https://huggingface.co/datasets/AugustRushG123/TTA_Tracking", "paper": "https://arxiv.org/abs/2508.09650", "primary": "https://doi.org/10.1016/j.cviu.2026.104657", "project": null},
     "venue": "Computer Vision and Image Understanding",
     "year": 2026
   },
   "schema_version": 1,
-  "state": "inbox"
+  "state": "promoted"
 }
