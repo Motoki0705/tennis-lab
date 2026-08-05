@@ -1,0 +1,73 @@
+name: Local GPU tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tennis-lab-local-gpu
+  cancel-in-progress: false
+
+jobs:
+  cuda-tests:
+    if: >-
+      ${{ github.actor == github.repository_owner &&
+          vars.LOCAL_GPU_ACTIONS_ENABLED == 'true' }}
+    environment: local-gpu
+    runs-on: [self-hosted, linux, x64, local-gpu, cuda, wsl2, tennis-lab]
+    timeout-minutes: 180
+    env:
+      GPU_LOCK_FILE: /var/lib/tennis-lab-actions/gpu.lock
+      RUNNER_ASSET_ROOT: /var/lib/tennis-lab-actions/assets
+
+    steps:
+      - name: Checkout trusted ref
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          clean: true
+          persist-credentials: false
+          submodules: false
+
+      - name: Link read-only local assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for asset_name in data ckpt; do
+            asset_source="$RUNNER_ASSET_ROOT/$asset_name"
+            asset_target="$GITHUB_WORKSPACE/$asset_name"
+            if [[ ! -d "$asset_source" ]]; then
+              echo "Missing runner asset mount: $asset_source" >&2
+              exit 1
+            fi
+            if [[ -e "$asset_target" || -L "$asset_target" ]]; then
+              echo "Checkout unexpectedly contains $asset_name." >&2
+              exit 1
+            fi
+            ln -s "$asset_source" "$asset_target"
+          done
+
+      - name: Run CUDA tests under the shared GPU lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! flock --exclusive --timeout 5 "$GPU_LOCK_FILE" bash <<'BASH'
+          set -euo pipefail
+          nvidia-smi
+          uv run --locked python - <<'PY'
+          import torch
+
+          if not torch.cuda.is_available():
+              raise SystemExit("torch.cuda.is_available() is false")
+          value = torch.arange(16, device="cuda", dtype=torch.float32).square().sum()
+          torch.cuda.synchronize()
+          print(f"torch={torch.__version__} cuda={torch.version.cuda}")
+          print(f"gpu={torch.cuda.get_device_name(0)} smoke_value={value.item()}")
+          PY
+          uv run --locked spin test --all --serial -m cuda --no-cov
+          BASH
+          then
+            echo "The local GPU is occupied by queued training; retry after it finishes." >&2
+            exit 1
+          fi
