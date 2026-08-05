@@ -1,0 +1,110 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": [
+      "geometry"
+    ],
+    "discovery_count": 1,
+    "max_novelty_score": 92,
+    "max_relevance_score": 95,
+    "mean_relevance_score": 95.0,
+    "repo_paths": [
+      "src/synthetic_data_generation/scripts/alignment/calibrate_court_alignment.py",
+      "src/tennis_scene/configs/pipeline.yaml",
+      "src/tennis_scene/pipeline/components/gvhmr.py",
+      "src/tennis_scene/pipeline/dependency_graph.py",
+      "src/tennis_scene/pipeline/orchestrator.py"
+    ],
+    "tasks": [
+      "plcs",
+      "scene_alignment",
+      "tennis_scene"
+    ]
+  },
+  "curation": {
+    "decision": null,
+    "issue": null,
+    "paper_node": null,
+    "proposal_nodes": [],
+    "reason_ja": null,
+    "reviewed_at": null
+  },
+  "discoveries": [
+    {
+      "collector_id": "geometry",
+      "discovered_at": "2026-08-05T18:20:05+09:00",
+      "schedule_run_id": "geometry-20260805T182005+0900-s8k4",
+      "screening": {
+        "applicability_ja": "現行tennis_sceneのdependency graphにはcamera calibration stageがなく、pipeline.yamlは固定camera動画を入力し、GVHMRResultがcameraごとのCOCO17 2D keypointとvisibilityを出した後にmanual player associationとPLCSへ進む。dependency_graph.pyとorchestrator.pyへ任意のcamera_calibration stageを追加し、GVHMRのhuman_kp_2d/human_kp_vis、別adapterで得るracquetのhandle-end/head-tip 2D点、既知intrinsics、実測racquet長を入力して本論文の3段BAを実装すれば、camera extrinsicsとmetric scaleをPLCS前に明示的に復元できる。court keypoint由来の既存幾何を初期値または独立baselineとして併用し、calibrate_court_alignment.pyのcourt-line residual・subset stabilityと、人体+racquet BAのreprojection・camera pose stabilityを同じcamera groupで比較できる。得られたextrinsicsはPLCSの実映像評価用triangulation baseline、player associationのepipolar constraint、SceneResultのcamera metadataへ接続可能である。",
+        "candidate_experiment_ja": "baselineは既存PLCS合成sceneの既知camera extrinsicsを最大5度・0.5 mだけ摂動し、14 court keypointだけで各cameraをrefineするcourt-only BAとする。変更条件は同じ初期値にCOCO17人体keypointと、手首から固定長0.686 mで生成したsynthetic racquet両端点を追加し、論文のunscaled BA、scale recovery、length+temporal制約付きBAを適用する。3〜6 camera、60 clipを固定し、court keypoint dropout 0/50/75%、2D Gaussian noise 1/3/5 px、racquet endpoint dropout 0/30%で評価する。metricはcamera rotation error度、camera-center translation error m、court reprojection error px、人体/racquet reprojection error px、同じ観測を既存PLCSへ通したposition_error_m・angular_error_deg、optimization失敗率、処理時間/clipとする。court dropout 50%以上の条件でtranslation errorをbaseline比20%以上、PLCS position_error_mを10%以上低下させ、rotation error悪化0.1度以内、失敗率5%以下なら実映像12 clipへ進む。60 clip終了時にtranslation改善が5%未満、10%以上でoptimizerが非収束、またはracquet端点が2 camera以上で観測できないframeが30%を超える場合は停止する。",
+        "evidence_level": "fulltext-code-data",
+        "novelty_score": 92,
+        "relevance_score": 95,
+        "repo_paths": [
+          "src/tennis_scene/pipeline/dependency_graph.py",
+          "src/tennis_scene/pipeline/orchestrator.py",
+          "src/tennis_scene/pipeline/components/gvhmr.py",
+          "src/tennis_scene/configs/pipeline.yaml",
+          "src/synthetic_data_generation/scripts/alignment/calibrate_court_alignment.py"
+        ],
+        "risks_ja": "手法はcamera同期、既知intrinsics、複数cameraで重なる人体・用具端点、用具長の正確な事前値を前提とする。tennis racquetは棒より面積があり、head-tipとhandle-endはmotion blur、手による遮蔽、遠景で検出が不安定になりやすく、個体ごとの長さも異なるため実測値が必要である。論文の主要な定量結果は合成50-frame sequence上で、実屋外評価は定性的であり、tennis courtの長距離camera配置やbroadcast映像への一般化は未検証である。公式MIT repositoryは160本の合成data、評価script、helperを公開する一方、README上で論文の3段optimizerを再実行する明確なend-to-end entrypointが示されておらず、数式からの再実装が必要になる可能性がある。現行tennis_sceneはcamera intrinsics/extrinsicsをstage contractとして保持していないため、schema・orchestrator・保存形式の変更範囲が広い。",
+        "summary_ja": "本論文は、同期済みRGBカメラと既知intrinsicsのみから、人体2D keypointと既知長の棒状スポーツ用具の両端点を使ってmetric-scaleのcamera extrinsicsを自己校正する。camera pairごとのessential matrixをRANSACで推定し、inlier数を重みにしたmaximum spanning treeで初期camera poseを伝播し、DLTで人体関節と用具端点を三角測量する。続いて、可視性mask付きrobust reprojection lossによるunscaled joint bundle adjustment、平均再構成用具長によるclosed-form scale recovery、既知長制約と二階差分のtemporal smoothnessを加えたscale-aware bundle adjustmentの3段階で最適化する。3〜10 camera、4競技、5段階の2D noiseからなる160本の合成benchmarkでは平均rotation error 0.020度、translation error 0.001 mを報告し、length constraint除去時は0.091度・0.011 mへ悪化した。実屋外golfではfine-tuned YOLOv11で人体とclub端点を検出し、定量ground truthなしだがmetric 3D motionを再構成している。",
+        "tasks": [
+          "scene_alignment",
+          "plcs",
+          "tennis_scene"
+        ]
+      },
+      "sources": [
+        {
+          "checked_at": "2026-08-05T18:20:05+09:00",
+          "kind": "paper",
+          "url": "https://arxiv.org/abs/2604.17567"
+        },
+        {
+          "checked_at": "2026-08-05T18:20:05+09:00",
+          "kind": "project",
+          "url": "https://fandulu.github.io/sport_stick_multi_cam_calib/"
+        },
+        {
+          "checked_at": "2026-08-05T18:20:05+09:00",
+          "kind": "code",
+          "url": "https://github.com/fandulu/sport_stick_multi_cam_calib"
+        },
+        {
+          "checked_at": "2026-08-05T18:20:05+09:00",
+          "kind": "dataset",
+          "url": "https://github.com/fandulu/sport_stick_multi_cam_calib/tree/main/data"
+        }
+      ]
+    }
+  ],
+  "first_seen": "2026-08-05T18:20:05+09:00",
+  "id": "paper-doi-10-48550-arxiv-2604-17567",
+  "last_seen": "2026-08-05T18:20:05+09:00",
+  "paper": {
+    "authors": [
+      "Fan Yang",
+      "Changsoo Jung",
+      "Ryosuke Kawamura",
+      "Hon Yung Wong"
+    ],
+    "identifiers": {
+      "arxiv": "2604.17567",
+      "doi": "10.48550/arxiv.2604.17567",
+      "openreview": null
+    },
+    "title": "Multi-Camera Self-Calibration in Sports Motion Capture: Leveraging Human and Stick Poses",
+    "urls": {
+      "code": "https://github.com/fandulu/sport_stick_multi_cam_calib",
+      "dataset": "https://github.com/fandulu/sport_stick_multi_cam_calib/tree/main/data",
+      "paper": "https://arxiv.org/pdf/2604.17567",
+      "primary": "https://arxiv.org/abs/2604.17567",
+      "project": "https://fandulu.github.io/sport_stick_multi_cam_calib/"
+    },
+    "venue": "2026 IEEE 20th International Conference on Automatic Face and Gesture Recognition (FG 2026)",
+    "year": 2026
+  },
+  "schema_version": 1,
+  "state": "inbox"
+}
