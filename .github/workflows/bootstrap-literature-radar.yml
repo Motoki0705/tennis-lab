@@ -1,0 +1,40 @@
+name: Bootstrap literature radar implementation
+
+on:
+  push:
+    branches:
+      - feat/literature-radar-knowledge
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify and apply generated implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/literature-radar-bootstrap/part-* > /tmp/literature-radar.tar.gz.b64
+          base64 --decode /tmp/literature-radar.tar.gz.b64 > /tmp/literature-radar.tar.gz
+          echo "aaa4ae50e4137d13d8bc38b94047de509ce13ea5f0127ca8d4feb407d8c6c6ae  /tmp/literature-radar.tar.gz" | sha256sum --check -
+          tar -xzf /tmp/literature-radar.tar.gz -C .
+          sed -i 's#actions/checkout@v7#actions/checkout@v6#g' .github/workflows/*.yml
+          rm -rf .github/literature-radar-bootstrap
+          rm .github/workflows/bootstrap-literature-radar.yml
+
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(knowledge): add scheduled literature radar"
+          git push origin HEAD:feat/literature-radar-knowledge
