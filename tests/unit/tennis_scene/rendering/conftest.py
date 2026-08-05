@@ -2,12 +2,28 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
+import torch
 
 from src.tennis_scene.io import SceneResult
 
 SMPL_NUM_VERTICES = 6890
+
+
+@pytest.fixture
+def smpl_renderer_assets(tmp_path: Path) -> tuple[Path, Path]:
+    """Create the two mandatory, already-resolved renderer assets."""
+    faces_path = (tmp_path / "smpl_faces.npz").resolve()
+    regressor_path = (tmp_path / "smpl_joint_regressor.pt").resolve()
+    np.savez(faces_path, f=np.array([[0, 1, 2]], dtype=np.int64))
+    torch.save(
+        torch.full((1, SMPL_NUM_VERTICES), 1.0 / SMPL_NUM_VERTICES),
+        regressor_path,
+    )
+    return faces_path, regressor_path
 
 
 @pytest.fixture

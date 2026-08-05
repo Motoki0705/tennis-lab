@@ -1,5 +1,5 @@
 # Checkpoint + hparams of the trained run to analyze, and where to write the report.
-checkpoint: outputs/plcs/plcs_multiview_axial/logs/version_2/checkpoints/last.ckpt
-hparams: outputs/plcs/plcs_multiview_axial/logs/version_2/hparams.yaml
-output_dir: outputs/plcs/plcs_multiview_axial/logs/version_2
+checkpoint: plcs/plcs_multiview_axial/logs/version_2/checkpoints/last.ckpt
+hparams: plcs/plcs_multiview_axial/logs/version_2/hparams.yaml
+output_dir: plcs/plcs_multiview_axial/logs/version_2
 seed: 42

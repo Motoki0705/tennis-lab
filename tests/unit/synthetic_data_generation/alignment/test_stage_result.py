@@ -31,7 +31,7 @@ def test_alignment_job_is_immutable(tmp_path: Path) -> None:
         alignment_id="alignment-v1",
         scene_id="scene-v1",
         provider_bundle=tmp_path / "provider",
-        output_root=tmp_path / "output",
+        artifact_root=tmp_path / "artifacts",
         config_overrides={},
     )
 

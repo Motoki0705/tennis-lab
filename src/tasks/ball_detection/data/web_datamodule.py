@@ -13,7 +13,7 @@ inputs.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -22,6 +22,7 @@ import numpy as np
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
+from src.tasks.ball_detection.configuration import BallRuntimePaths, validate_data
 from src.tasks.ball_detection.data.components.augmentation import (
     BallDetectionAugmentation,
 )
@@ -52,7 +53,7 @@ class WebBallDetectionDataset(BallDetectionDataset):
         *,
         store: WebFrameStore,
         sample_windows: Iterable[Sequence[int]],
-        config: DictConfig | None = None,
+        config: DictConfig,
         augmentation: BallDetectionAugmentation | None = None,
     ) -> None:
         self.store = store
@@ -102,40 +103,47 @@ class WebBallDataModule(pl.LightningDataModule):
         config: Full Hydra configuration dictionary.
     """
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: DictConfig) -> None:
         super().__init__()
-        self.config = config or {}
-
-        data_cfg = self.config.get("data", {})
-        self.data_dir = Path(str(data_cfg.get("data_dir", "data/tennis/web/unified")))
-        self.batch_size = int(data_cfg.get("batch_size", 4))
-        self.num_workers = int(data_cfg.get("num_workers", 4))
-        self.pin_memory = bool(data_cfg.get("pin_memory", True))
-        sources = data_cfg.get("sources", None)
+        self.config = config
+        paths = BallRuntimePaths.from_config(config)
+        data_cfg = validate_data(config, paths=paths)
+        self.data_dir = paths.data(str(data_cfg["data_dir"]))
+        self.batch_size = int(data_cfg["batch_size"])
+        self.num_workers = int(data_cfg["num_workers"])
+        self.pin_memory = bool(data_cfg["pin_memory"])
+        sources = data_cfg["sources"]
         self.sources = (
-            None if sources in (None, "all") else [str(name) for name in sources]
+            None
+            if sources == "all"
+            else [str(name) for name in cast(Sequence[object], sources)]
         )
-        sampling_cfg = data_cfg.get("sampling", {}) or {}
-        self.sample_mode = str(sampling_cfg.get("mode", "static")).lower()
-        if bool(data_cfg.get("temporal_only", False)):
-            self.sample_mode = "temporal"
+        sampling_cfg = data_cfg["sampling"]
+        if not isinstance(sampling_cfg, Mapping):
+            raise TypeError("data.sampling must be a mapping after validation.")
+        self.sample_mode = str(sampling_cfg["mode"]).lower()
         if self.sample_mode not in {"static", "temporal"}:
             raise ValueError(
                 "data.sampling.mode must be one of ['static', 'temporal'], "
                 f"got {self.sample_mode!r}."
             )
-        self.sampling_seed = int(sampling_cfg.get("seed", 1234))
+        self.sampling_seed = int(sampling_cfg["seed"])
         self.train_negative_fraction = self._parse_negative_fraction(
-            sampling_cfg.get("train_negative_fraction")
+            sampling_cfg["train_negative_fraction"]
         )
-        temporal_cfg = sampling_cfg.get("temporal", {}) or {}
-        self.temporal_frame_step = int(temporal_cfg.get("frame_step", 1))
-        self.temporal_sample_stride = int(temporal_cfg.get("sample_stride", 1))
-        max_frame_gap = temporal_cfg.get("max_frame_gap")
+        temporal_cfg = sampling_cfg["temporal"]
+        if not isinstance(temporal_cfg, Mapping):
+            raise TypeError(
+                "data.sampling.temporal must be a mapping after validation."
+            )
+        self.temporal_frame_step = int(temporal_cfg["frame_step"])
+        self.temporal_sample_stride = int(temporal_cfg["sample_stride"])
+        max_frame_gap = temporal_cfg["max_frame_gap"]
         self.temporal_max_frame_gap = (
             None if max_frame_gap is None else int(max_frame_gap)
         )
-        self.num_frames = int((self.config.get("model", {}) or {}).get("num_frames", 8))
+        self.num_frames = int(config.model.num_frames)
+        self.augmentation_config = data_cfg["augmentation"]
         if self.num_frames <= 0:
             raise ValueError("model.num_frames must be positive.")
 
@@ -148,7 +156,7 @@ class WebBallDataModule(pl.LightningDataModule):
         """Open the store and build datasets for each stage."""
         if self.store is None:
             self.store = WebFrameStore(self.data_dir)
-        aug_cfg = self.config.get("data", {}).get("augmentation", {})
+        aug_cfg = self.augmentation_config
 
         if stage == "fit" or stage is None:
             self.train_dataset = self._create_dataset(
@@ -217,7 +225,7 @@ class WebBallDataModule(pl.LightningDataModule):
         seed: int,
     ) -> np.ndarray:
         assert self.store is not None
-        positive = np.asarray(
+        positive: np.ndarray = np.asarray(
             [
                 index
                 for index in indices.tolist()
@@ -225,7 +233,7 @@ class WebBallDataModule(pl.LightningDataModule):
             ],
             dtype=np.int64,
         )
-        negative = np.asarray(
+        negative: np.ndarray = np.asarray(
             [
                 index
                 for index in indices.tolist()
@@ -234,7 +242,7 @@ class WebBallDataModule(pl.LightningDataModule):
             dtype=np.int64,
         )
         if fraction == 0.0 or negative.size == 0:
-            return cast(np.ndarray, positive)
+            return positive
         if positive.size == 0:
             raise RuntimeError(
                 "Cannot enforce a negative fraction without positive samples."
@@ -247,12 +255,17 @@ class WebBallDataModule(pl.LightningDataModule):
                 size=max_negative,
                 replace=False,
             )
-        return cast(np.ndarray, np.sort(np.concatenate([positive, negative])))
+        balanced: np.ndarray = np.sort(np.concatenate([positive, negative]))
+        return balanced
 
     @staticmethod
     def _parse_negative_fraction(value: Any) -> float | None:
-        if value in (None, "all"):
+        if value is None:
             return None
+        if not isinstance(value, int | float) or isinstance(value, bool):
+            raise TypeError(
+                "data.sampling.train_negative_fraction must be a number or null."
+            )
         fraction = float(value)
         if not 0.0 <= fraction < 1.0:
             raise ValueError(
@@ -263,6 +276,8 @@ class WebBallDataModule(pl.LightningDataModule):
 
     def train_dataloader(self) -> DataLoader:
         """Return training dataloader."""
+        if self.train_dataset is None:
+            raise RuntimeError("setup('fit') must run before train_dataloader().")
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -274,6 +289,8 @@ class WebBallDataModule(pl.LightningDataModule):
 
     def val_dataloader(self) -> DataLoader:
         """Return validation dataloader."""
+        if self.val_dataset is None:
+            raise RuntimeError("setup('validate') must run before val_dataloader().")
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
@@ -284,6 +301,8 @@ class WebBallDataModule(pl.LightningDataModule):
 
     def test_dataloader(self) -> DataLoader:
         """Return test dataloader."""
+        if self.test_dataset is None:
+            raise RuntimeError("setup('test') must run before test_dataloader().")
         return DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,

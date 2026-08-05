@@ -41,7 +41,7 @@ def batch_to_trajectory_arrays(
     else:
         pred_np = np.asarray(pred_raw, dtype=np.float32)
 
-    gt: np.ndarray = gt_np[sample_idx].astype(np.float32)    # (T, 3)
+    gt: np.ndarray = gt_np[sample_idx].astype(np.float32)  # (T, 3)
     pred: np.ndarray = pred_np[sample_idx].astype(np.float32)  # (T, 3)
 
     # Trim to valid frames if ball_mask is available

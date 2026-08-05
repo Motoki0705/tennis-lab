@@ -9,6 +9,7 @@ import numpy as np
 from numpy.typing import NDArray
 from omegaconf import OmegaConf
 
+from src.tasks.ball_detection.configuration import validate_youtube_boundary
 from src.tasks.ball_detection.scripts.youtube.prepare_dinov3_ssl_images import (
     _cleanup_video_files,
     _failed_gate_decision,
@@ -24,20 +25,34 @@ def test_prepare_dinov3_ssl_images_promotes_mock_accepted_frames(
     _write_tiny_video(source_video, frame_count=8)
     cfg = OmegaConf.create(
         {
+            "paths": {
+                "project_root": str(tmp_path),
+                "data_root": ".",
+                "checkpoint_root": "checkpoints",
+                "artifact_root": "artifacts",
+                "output_root": ".",
+                "cache_root": ".cache",
+                "external_asset_root": str(Path(sys.executable).resolve().parent),
+            },
             "workflow": {
-                "root": str(tmp_path / "dino_ssl"),
+                "root": "dino_ssl",
                 "sources": [
                     {
                         "video_id": "local_tennis",
                         "url": "https://www.youtube.com/watch?v=local_tennis",
-                        "local_video": str(source_video),
-                        "title": "tennis rally test clip",
+                        "local_video": {
+                            "role": "data",
+                            "path": source_video.name,
+                        },
                     }
                 ],
                 "discovery": {
                     "enabled": False,
                     "queries": [],
                     "max_results_per_query": 0,
+                    "min_duration_sec": 20,
+                    "max_duration_sec": 3000,
+                    "allow_unknown_duration": False,
                 },
                 "paths": {
                     "videos_dir": "videos",
@@ -53,6 +68,7 @@ def test_prepare_dinov3_ssl_images_promotes_mock_accepted_frames(
                     "cleanup_videos_after_processing": False,
                     "cleanup_keep_info_json": True,
                 },
+                "storage": {"enabled": False, "max_root_gb": 20},
                 "download": {
                     "enabled": False,
                     "format": "best",
@@ -65,6 +81,7 @@ def test_prepare_dinov3_ssl_images_promotes_mock_accepted_frames(
                 },
                 "transcode": {
                     "enabled": True,
+                    "fallback_on_decode_error": True,
                     "ffmpeg_binary": "ffmpeg",
                     "encoder": "libx264",
                     "hwaccel": None,
@@ -103,13 +120,30 @@ def test_prepare_dinov3_ssl_images_promotes_mock_accepted_frames(
                         "max_tokens": 4096,
                         "accept_labels": ["tennis"],
                         "extra_body": {},
+                        "server": {
+                            "enabled": False,
+                            "executable_role": "external_asset",
+                            "executable": Path(sys.executable).resolve().name,
+                            "command": [],
+                            "env": {},
+                            "cwd": None,
+                            "health_url": "http://127.0.0.1:8000/v1/models",
+                            "startup_timeout_sec": 10,
+                            "poll_interval_sec": 0.1,
+                            "request_timeout_sec": 1,
+                            "shutdown_timeout_sec": 5,
+                            "stop_on_exit": True,
+                            "log_path": None,
+                            "preflight": {"enabled": False, "command": []},
+                        },
                         "prompt": "",
                     },
                 },
-            }
+            },
         }
     )
 
+    validate_youtube_boundary(cfg)
     result = run_pipeline(cfg)
 
     images = sorted((tmp_path / "dino_ssl" / "images").glob("*.jpg"))
@@ -207,20 +241,34 @@ ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1])), Handler).serve_forever()
     )
     cfg = OmegaConf.create(
         {
+            "paths": {
+                "project_root": str(tmp_path),
+                "data_root": ".",
+                "checkpoint_root": "checkpoints",
+                "artifact_root": "artifacts",
+                "output_root": ".",
+                "cache_root": ".cache",
+                "external_asset_root": str(Path(sys.executable).resolve().parent),
+            },
             "workflow": {
-                "root": str(tmp_path / "dino_ssl"),
+                "root": "dino_ssl",
                 "sources": [
                     {
                         "video_id": "local_tennis_managed",
                         "url": "https://www.youtube.com/watch?v=local_tennis_managed",
-                        "local_video": str(source_video),
-                        "title": "tennis rally test clip",
+                        "local_video": {
+                            "role": "data",
+                            "path": source_video.name,
+                        },
                     }
                 ],
                 "discovery": {
                     "enabled": False,
                     "queries": [],
                     "max_results_per_query": 0,
+                    "min_duration_sec": 20,
+                    "max_duration_sec": 3000,
+                    "allow_unknown_duration": False,
                 },
                 "paths": {
                     "videos_dir": "videos",
@@ -236,6 +284,7 @@ ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1])), Handler).serve_forever()
                     "cleanup_videos_after_processing": False,
                     "cleanup_keep_info_json": True,
                 },
+                "storage": {"enabled": False, "max_root_gb": 20},
                 "download": {
                     "enabled": False,
                     "format": "best",
@@ -289,7 +338,9 @@ ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1])), Handler).serve_forever()
                         "extra_body": {},
                         "server": {
                             "enabled": True,
-                            "command": [sys.executable, str(server_script), str(port)],
+                            "executable_role": "external_asset",
+                            "executable": Path(sys.executable).resolve().name,
+                            "command": [str(server_script), str(port)],
                             "env": {},
                             "health_url": f"http://127.0.0.1:{port}/v1/models",
                             "startup_timeout_sec": 10,
@@ -297,16 +348,18 @@ ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1])), Handler).serve_forever()
                             "request_timeout_sec": 1,
                             "shutdown_timeout_sec": 5,
                             "stop_on_exit": True,
-                            "log_path": str(tmp_path / "server.log"),
+                            "cwd": None,
+                            "log_path": "server.log",
                             "preflight": {"enabled": False, "command": []},
                         },
                         "prompt": "Return JSON.",
                     },
                 },
-            }
+            },
         }
     )
 
+    validate_youtube_boundary(cfg)
     result = run_pipeline(cfg)
 
     assert result["image_count"] == 4

@@ -1,0 +1,14 @@
+# @package _global_
+defaults:
+  - /roots: runtime
+  - _self_
+
+request: geometry_bridge/request.json
+output: geometry_bridge/geometry.npz
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${roots.output_root},hydra/synthetic_data_generation/geometry_bridge,${now:%Y-%m-%d_%H-%M-%S}}
+  output_subdir: null
+  job:
+    chdir: false

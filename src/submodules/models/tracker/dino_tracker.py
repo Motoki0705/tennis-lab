@@ -13,7 +13,6 @@ from tqdm import tqdm
 
 from src.submodules.models._base import BaseInferenceModel
 from src.submodules.models.dino import (
-    DEFAULT_DINO_CHECKPOINT,
     DinoPersonDetector,
     PersonDetectionRequest,
     PersonDetectionResult,
@@ -82,17 +81,24 @@ class DinoPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
 
     def __init__(
         self,
-        checkpoint: str | Path = DEFAULT_DINO_CHECKPOINT,
-        device: str | torch.device = "auto",
-        confidence: float = 0.3,
+        checkpoint: str | Path,
+        repository: str | Path,
         *,
-        detector: DinoPersonDetector | None = None,
+        device: str | torch.device,
+        allow_device_fallback: bool,
+        confidence: float,
+        short_side: int,
+        max_long_side: int,
     ) -> None:
-        super().__init__(device)
-        self._detector = detector or DinoPersonDetector(
+        super().__init__(device, allow_device_fallback=allow_device_fallback)
+        self._detector = DinoPersonDetector(
             checkpoint=checkpoint,
+            repository=repository,
             device=self.device,
+            allow_device_fallback=allow_device_fallback,
             confidence=confidence,
+            short_side=short_side,
+            max_long_side=max_long_side,
         )
 
     def _load_impl(self) -> None:

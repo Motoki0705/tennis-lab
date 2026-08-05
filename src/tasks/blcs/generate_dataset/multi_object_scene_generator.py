@@ -51,7 +51,10 @@ def _shift_shots(scene: BLCSSceneData, placement: TrackPlacement) -> list[dict]:
     )
     for shot in scene.shots:
         start = shot.get("t_start")
-        if start is None or not placement.source_start <= int(start) < placement.source_end:
+        if (
+            start is None
+            or not placement.source_start <= int(start) < placement.source_end
+        ):
             continue
         entry = dict(shot)
         for key in timestamp_keys:

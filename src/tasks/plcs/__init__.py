@@ -4,6 +4,8 @@ This module provides models and utilities for estimating player position
 and rotation in tennis court coordinates from 2D pose observations.
 """
 
+from typing import Any
+
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.models.plcs_model import PLCSModel
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
@@ -15,7 +17,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy import for optional modules."""
     if name == "rendering":
         from src.tasks.plcs import rendering

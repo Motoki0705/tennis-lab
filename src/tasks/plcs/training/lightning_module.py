@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import torch
 from torch import Tensor, nn
 
+from src.tasks.base.configuration import require_config_mapping, require_config_value
 from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
+from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.models import build_plcs_discriminator, build_plcs_model
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.mcmc import LangevinNoiseInjector, MCMCConfig
@@ -32,46 +34,52 @@ logger = logging.getLogger(__name__)
 class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     """Lightning module for unified PLCS I/O training."""
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: DictConfig) -> None:
+        runtime = PLCSTrainingConfig.from_config(config)
         super().__init__(config)
+        self.plcs_runtime = runtime
 
-        self.model: nn.Module = build_plcs_model(self.config)
-        self.predict_canonical_pose = bool(
-            (self.config.get("model", {}) or {}).get("predict_canonical_pose", False)
-        )
+        self.model: nn.Module = build_plcs_model(runtime)
+        self.predict_canonical_pose = runtime.model.boolean("predict_canonical_pose")
 
-        loss_cfg_dict = self.config.get("loss", {})
-        if loss_cfg_dict:
-            loss_cfg = PLCSLossConfig.from_dict(dict(loss_cfg_dict))
-        else:
-            train_cfg = self.config.get("training", {})
-            loss_cfg = PLCSLossConfig(
-                position_weight=float(train_cfg.get("position_loss_weight", 1.0)),
-                rotation_weight=float(train_cfg.get("rotation_loss_weight", 1.0)),
-                canonical_pose_weight=float(train_cfg.get("canonical_pose_weight", 0.0)),
-            )
+        root = runtime.raw
+        loss_cfg = PLCSLossConfig.from_dict(dict(root.loss))
         self.loss_fn = PLCSLoss(config=loss_cfg)
 
         # MCMC (SGLD) training strategy (issue #519): optional Langevin noise
         # injection to escape the 180deg rotation flat-saddle local optimum.
-        mcmc_cfg = MCMCConfig.from_dict(
-            dict((self.config.get("training", {}) or {}).get("mcmc", {}) or {})
-        )
+        mcmc_cfg = MCMCConfig.from_dict(dict(root.training.mcmc))
         self.mcmc_injector = (
             LangevinNoiseInjector(mcmc_cfg) if mcmc_cfg.enabled else None
         )
 
-        gan_enabled = bool(((self.config.get("training", {}) or {}).get("gan", {}) or {}).get("enabled", False))
+        gan_enabled = runtime.shared.training.gan.enabled
         self._initialize_manual_gan(
-            discriminator=build_plcs_discriminator(self.config) if gan_enabled else None,
+            discriminator=build_plcs_discriminator(runtime) if gan_enabled else None,
         )
 
-        metrics_cfg = self.config.get("metrics", {})
+        metrics_cfg = require_config_mapping(root, "metrics", path="configuration")
+        position_threshold = float(
+            cast(
+                "float | int",
+                require_config_value(
+                    metrics_cfg, "position_threshold_m", (float, int), path="metrics"
+                ),
+            )
+        )
+        angle_threshold = float(
+            cast(
+                "float | int",
+                require_config_value(
+                    metrics_cfg, "angle_threshold_deg", (float, int), path="metrics"
+                ),
+            )
+        )
 
         def _build_metrics() -> PLCSMetrics:
             return PLCSMetrics(
-                position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
-                angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
+                position_threshold_m=position_threshold,
+                angle_threshold_deg=angle_threshold,
             )
 
         self.train_metrics = _build_metrics()
@@ -152,9 +160,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         # the rotation trunk the multiview triangulation that rotation depends on,
         # while the dedicated pose trunk still produces the precise position.
         # Each entry maps an output key -> (target batch key, loss kind, weight).
-        aux_specs = (
-            ("aux_position", "position", "position", "position"),
-        )
+        aux_specs = (("aux_position", "position", "position", "position"),)
         for out_key, target_key, kind, weight_name in aux_specs:
             if out_key not in outputs:
                 continue
@@ -186,10 +192,16 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             "gan_mask": frame_mask,
         }
 
-    def _log_stage_metrics(self, stage: str, loss: Tensor, metrics: dict[str, Any]) -> None:
+    def _log_stage_metrics(
+        self, stage: str, loss: Tensor, metrics: dict[str, Any]
+    ) -> None:
         prog_bar = stage != "test"
         self.log(f"{stage}/loss", loss, prog_bar=prog_bar)
-        self.log(f"{stage}/pos_error_m", metrics.get("position_error_m", 0.0), prog_bar=prog_bar)
+        self.log(
+            f"{stage}/pos_error_m",
+            metrics.get("position_error_m", 0.0),
+            prog_bar=prog_bar,
+        )
         self.log(
             f"{stage}/ang_error_deg",
             metrics.get("angular_error_deg", 0.0),
@@ -218,9 +230,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     def configure_optimizers(self) -> Any:
         return self.configure_gan_optimizers(self.model.parameters())
 
-    def on_train_batch_end(
-        self, outputs: Any, batch: Any, batch_idx: int
-    ) -> None:
+    def on_train_batch_end(self, outputs: Any, batch: Any, batch_idx: int) -> None:
         """Inject SGLD/Langevin noise after the optimizer step (issue #519).
 
         Runs in both automatic (baseline) and manual (GAN) optimization modes
@@ -277,7 +287,10 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         )
 
         device = next(self.parameters()).device
-        renderer = PLCSSceneRenderer()
+        renderer = PLCSSceneRenderer(
+            style=self.plcs_runtime.qualitative_style,
+            camera=self.plcs_runtime.qualitative_view_3d,
+        )
 
         for batch_idx, batch in enumerate(batches):
             batch_dev = {
@@ -291,12 +304,10 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
                 # Build CPU-side scenes (adapter handles .cpu() internally)
                 batch_cpu = {
-                    k: v.cpu() if isinstance(v, Tensor) else v
-                    for k, v in batch.items()
+                    k: v.cpu() if isinstance(v, Tensor) else v for k, v in batch.items()
                 }
                 out_cpu = {
-                    k: v.cpu() if isinstance(v, Tensor) else v
-                    for k, v in out.items()
+                    k: v.cpu() if isinstance(v, Tensor) else v for k, v in out.items()
                 }
                 gt_scene, pred_scene = batch_to_pose_render_scenes(
                     batch_cpu, out_cpu, sample_idx=0
@@ -315,6 +326,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                     gt_scene,
                     pred_scene,
                     view=view,
+                    fps=self.plcs_runtime.qualitative_fps,
                 )
                 save_qualitative_animation(
                     animation=anim,
@@ -323,6 +335,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                     tb_writer=tb_writer,
                     tag=f"qualitative/plcs/batch{batch_idx:02d}",
                     global_step=global_step,
+                    fps=self.plcs_runtime.qualitative_fps,
                 )
             except Exception:
                 logger.exception(

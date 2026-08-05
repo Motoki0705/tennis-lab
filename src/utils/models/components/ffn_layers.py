@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from typing import cast
+
 import torch
 import torch.nn.functional as F
-from torch import nn
+from torch import Tensor, nn
 
 
 def default_ffn_dim(hidden_dim: int) -> int:
@@ -24,7 +26,7 @@ class SwiGLU(nn.Module):
         self.w3 = nn.Linear(dim, ffn_dim, bias=bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.w2(F.silu(self.w1(x)) * self.w3(x))
+        return cast(Tensor, self.w2(F.silu(self.w1(x)) * self.w3(x)))
 
 
 class MLP(nn.Module):
@@ -36,7 +38,7 @@ class MLP(nn.Module):
         self.fc2 = nn.Linear(ffn_dim, dim, bias=bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.fc2(F.gelu(self.fc1(x), approximate="tanh"))
+        return cast(Tensor, self.fc2(F.gelu(self.fc1(x), approximate="tanh")))
 
 
 if __name__ == "__main__":

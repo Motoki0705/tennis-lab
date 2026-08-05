@@ -9,6 +9,7 @@ import pytest
 from src.tasks.slcs.data.contract import DatasetIndex
 from src.tasks.slcs.data.dataset import SLCSDataConfig
 from src.tasks.slcs.data.dino_tokens import DinoTokenSpec
+from src.tasks.slcs.data.quality import QualityConfig
 from src.tasks.slcs.data.splits import generate_recording_splits, save_split_file
 from src.tasks.slcs.data.synthetic import (
     DEFAULT_TEST_DINO_SPEC,
@@ -49,5 +50,14 @@ def data_config(dino_spec: DinoTokenSpec) -> SLCSDataConfig:
         eval_stride=16,
         num_players=2,
         num_court_kp=14,
+        require_dino=True,
+        cache_dino_tokens=True,
+        on_incomplete="error",
         dino_spec=dino_spec,
+        quality=QualityConfig(
+            min_player_confidence=0.3,
+            min_ball_cameras=1,
+            label_weight_power=1.0,
+            min_window_label_ratio=0.1,
+        ),
     )

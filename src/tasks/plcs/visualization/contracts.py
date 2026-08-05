@@ -29,8 +29,8 @@ class PoseRenderScene:
         num_cameras: Number of cameras (may be 0 for non-camera views).
     """
 
-    position: np.ndarray          # (T, 3)
-    rotation: np.ndarray          # (T, 2)
+    position: np.ndarray  # (T, 3)
+    rotation: np.ndarray  # (T, 2)
     canonical_pose_3d: np.ndarray | None  # (T, J, 3) or None
     meta: dict[str, Any] = field(default_factory=dict)
     cameras: list[Any] = field(default_factory=list)

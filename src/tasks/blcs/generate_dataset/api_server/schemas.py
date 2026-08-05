@@ -6,7 +6,8 @@ from Next.js without custom binary encoders.
 
 from __future__ import annotations
 
-from typing import Literal
+from collections.abc import Callable
+from typing import Literal, TypeVar, cast
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -15,6 +16,18 @@ from src.tasks.blcs.generate_dataset.simulation.cell_manager import NUM_CELLS_PE
 Side = Literal["near", "far"]
 TargetMode = Literal["none", "cell", "point"]
 MAX_CELL_ID = NUM_CELLS_PER_SIDE - 1
+_ModelT = TypeVar("_ModelT", bound=BaseModel)
+
+
+def _after_model_validator(
+    validator: Callable[[_ModelT], _ModelT],
+) -> Callable[[_ModelT], _ModelT]:
+    """Preserve the concrete self type across Pydantic's untyped decorator."""
+    decorator = cast(
+        Callable[[Callable[[_ModelT], _ModelT]], Callable[[_ModelT], _ModelT]],
+        model_validator(mode="after"),
+    )
+    return decorator(validator)
 
 
 class Vec3(BaseModel):
@@ -53,7 +66,7 @@ class SimParams(BaseModel):
     sim_fps: int | None = Field(default=None, gt=0)
     output_fps: int | None = Field(default=None, gt=0)
 
-    @model_validator(mode="after")
+    @_after_model_validator
     def _validate_fps(self) -> SimParams:
         if (
             self.sim_fps is not None
@@ -91,7 +104,7 @@ class SimulateShotRequest(BaseModel):
 
     seed: int | None = None
 
-    @model_validator(mode="after")
+    @_after_model_validator
     def _validate_target(self) -> SimulateShotRequest:
         if self.target_mode == "cell" and self.to_cell is None:
             raise ValueError("to_cell is required when target_mode='cell'")

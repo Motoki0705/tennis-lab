@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
-from pathlib import Path
-
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
 from src.tasks.blcs.generate_dataset.simulation.ball_physics import PhysicsConfig
@@ -13,7 +10,7 @@ from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyConf
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
 )
-from src.utils.projection.camera_projector import camera_config_from_mapping
+from src.utils.projection.camera_projector import CameraConfig
 from src.utils.schema.court import CourtConfig
 
 
@@ -67,7 +64,42 @@ def build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         out_court_target_probability=float(cfg.rally.out_court_target_probability),
     )
 
-    camera_config = camera_config_from_mapping(cfg.camera)
+    camera_config = CameraConfig(
+        z_min=float(cfg.camera.z_min),
+        z_max=float(cfg.camera.z_max),
+        hfov_deg=float(cfg.camera.hfov_deg),
+        image_size=tuple(cfg.camera.image_size),
+        fixed_look_at=tuple(cfg.camera.fixed_look_at),
+        fixed_baseline_clear_extra=float(cfg.camera.fixed_baseline_clear_extra),
+        fixed_position_noise_radius=float(cfg.camera.fixed_position_noise_radius),
+        fixed_look_at_xy_radius=float(cfg.camera.fixed_look_at_xy_radius),
+        layout=str(cfg.camera.layout),
+        broadcast_setback=float(cfg.camera.broadcast_setback),
+        broadcast_height=float(cfg.camera.broadcast_height),
+        broadcast_hfov_deg=float(cfg.camera.broadcast_hfov_deg),
+        broadcast_look_at_y=float(cfg.camera.broadcast_look_at_y),
+        broadcast_look_at_height=float(cfg.camera.broadcast_look_at_height),
+        broadcast_position_noise_radius=float(
+            cfg.camera.broadcast_position_noise_radius
+        ),
+        broadcast_look_at_xy_radius=float(cfg.camera.broadcast_look_at_xy_radius),
+        broadcast_hfov_jitter_deg=float(cfg.camera.broadcast_hfov_jitter_deg),
+        broadcast_setback_range=(
+            tuple(cfg.camera.broadcast_setback_range)
+            if cfg.camera.broadcast_setback_range is not None
+            else None
+        ),
+        broadcast_height_range=(
+            tuple(cfg.camera.broadcast_height_range)
+            if cfg.camera.broadcast_height_range is not None
+            else None
+        ),
+        broadcast_court_width_frac_range=(
+            tuple(cfg.camera.broadcast_court_width_frac_range)
+            if cfg.camera.broadcast_court_width_frac_range is not None
+            else None
+        ),
+    )
 
     court_cfg = cfg.generator.court
     court_config = CourtConfig(
@@ -104,21 +136,3 @@ def build_generator_config(cfg: DictConfig) -> GeneratorConfig:
         targeted_velocity=targeted_velocity_config,
         court=court_config,
     )
-
-
-@lru_cache(maxsize=1)
-def build_default_generator_config() -> GeneratorConfig:
-    """Build the default BLCS generator config without Hydra composition."""
-    config_root = Path(__file__).resolve().parents[1] / "configs"
-    cfg = OmegaConf.create(
-        {
-            "physics": OmegaConf.load(config_root / "physics" / "default.yaml"),
-            "rally": OmegaConf.load(config_root / "rally" / "default.yaml"),
-            "camera": OmegaConf.load(config_root / "camera" / "default.yaml"),
-            "targeted_velocity": OmegaConf.load(
-                config_root / "targeted_velocity" / "default.yaml"
-            ),
-            "generator": OmegaConf.load(config_root / "generator" / "default.yaml"),
-        }
-    )
-    return build_generator_config(cfg)

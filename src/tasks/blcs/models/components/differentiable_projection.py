@@ -37,6 +37,8 @@ class DifferentiableProjection(nn.Module):
         u_{\\text{norm}} = u_{\\text{px}} / w, \\quad v_{\\text{norm}} = v_{\\text{px}} / h
     """
 
+    scale_xyz: Tensor
+
     def __init__(
         self,
         scale_xyz: tuple[float, float, float] = COURT_COORD_SCALE_XYZ,

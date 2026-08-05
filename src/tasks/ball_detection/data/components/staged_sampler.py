@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import bisect
 from collections.abc import Iterator, Mapping, Sequence
+from typing import cast
 
 import numpy as np
 from torch.utils.data import Dataset, Sampler
@@ -166,8 +167,8 @@ class ConcatVariableTDataset(Dataset[BallDetectionSample]):
         local_index = global_index - offset
         dataset = self.datasets[dataset_index]
         if num_frames is None:
-            return dataset[local_index]
-        return dataset[(local_index, num_frames)]
+            return cast(BallDetectionSample, dataset[local_index])
+        return cast(BallDetectionSample, dataset[(local_index, num_frames)])
 
 
 class FixedTDataset(Dataset[BallDetectionSample]):
@@ -181,7 +182,7 @@ class FixedTDataset(Dataset[BallDetectionSample]):
         return len(self.base)
 
     def __getitem__(self, index: int) -> BallDetectionSample:
-        return self.base[(int(index), self.num_frames)]
+        return cast(BallDetectionSample, self.base[(int(index), self.num_frames)])
 
 
 __all__ = [

@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Sized
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from torch.utils.data import Dataset
 
 from src.tasks.ball_detection.data.web_datamodule import WebBallDetectionDataset
+from src.utils.configuration import PathResolver, PathRole
 from src.utils.io import load_json
-from src.utils.paths import resolve_project_path
 
 
 class SequentialSourceResolver:
@@ -25,7 +26,7 @@ class SequentialSourceResolver:
         """Return source names for the next sequential batch."""
         start = self.cursor
         stop = start + batch_size
-        if stop > len(self.dataset):
+        if stop > len(cast(Sized, self.dataset)):
             raise RuntimeError(
                 "Evaluation dataloader yielded more samples than its dataset."
             )
@@ -53,10 +54,11 @@ def build_split_provenance(
     data_config: Any,
     split: str,
     dataset: Dataset[Any],
+    resolver: PathResolver,
 ) -> dict[str, Any]:
     """Record schema and fixed split identity without reading train data."""
-    source = str(data_config.get("source", "tracknet"))
-    data_dir = resolve_project_path(str(data_config.get("data_dir", "")))
+    source = str(data_config.source)
+    data_dir = resolver.resolve(PathRole.DATA, str(data_config.data_dir))
     if isinstance(dataset, WebBallDetectionDataset):
         manifest_path = data_dir / "manifest.json"
         manifest = load_json(manifest_path)
@@ -72,9 +74,9 @@ def build_split_provenance(
             "sample_count": len(dataset),
         }
 
-    split_config = data_config.get("split", {}) or {}
     split_key = f"{split}_file"
-    split_path = resolve_project_path(str(split_config.get(split_key, "")))
+    split_role = PathRole(str(data_config.split.root_role))
+    split_path = resolver.resolve(split_role, str(data_config.split[split_key]))
     if not split_path.is_file():
         raise FileNotFoundError(
             f"Configured {split} split file not found: {split_path}"
@@ -86,7 +88,7 @@ def build_split_provenance(
         "split": split,
         "split_file": str(split_path),
         "split_sha256": sha256_file(split_path),
-        "sample_count": len(dataset),
+        "sample_count": len(cast(Sized, dataset)),
     }
 
 

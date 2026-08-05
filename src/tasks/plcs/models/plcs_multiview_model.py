@@ -26,17 +26,15 @@ from src.utils.models import (
     precompute_freqs_cis_nd,
     resolve_rope_bases,
 )
-from src.utils.models.components.ffn_layers import default_ffn_dim
 from src.utils.models.embeddings import (
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
     PlayerKPUVEmbedding,
 )
-from src.utils.schema.court import NUM_COURT_KP
 from src.utils.schema.player import NUM_HUMAN_KP
 
 if TYPE_CHECKING:
-    from omegaconf import DictConfig
+    from src.tasks.plcs.configuration import PLCSModelConfig
 
 
 class PLCSMultiViewModel(nn.Module):
@@ -44,22 +42,23 @@ class PLCSMultiViewModel(nn.Module):
 
     def __init__(
         self,
-        hidden_dim: int = 256,
-        num_layers: int = 6,
-        num_heads: int = 8,
-        ffn_dim: int | None = None,
-        dropout: float = 0.1,
-        rope_dim: int | None = None,
-        rope_theta: float = 10000.0,
-        rope_theta_time: float | None = None,
-        rope_theta_camera: float | None = None,
-        rope_theta_type: float = 100.0,
-        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
-        predict_canonical_pose: bool = False,
-        max_views: int = 8,
-        max_seq_len: int = 120,
-        invisible_init_std: float = 0.02,
-        num_court_tokens: int = NUM_COURT_KP,
+        *,
+        hidden_dim: int,
+        num_layers: int,
+        num_heads: int,
+        ffn_dim: int,
+        dropout: float,
+        rope_dim: int,
+        rope_theta: float,
+        rope_theta_time: float,
+        rope_theta_camera: float,
+        rope_theta_type: float,
+        ffn_type: Literal["swiglu", "mlp"],
+        predict_canonical_pose: bool,
+        max_views: int,
+        max_seq_len: int,
+        invisible_init_std: float,
+        num_court_tokens: int,
     ) -> None:
         super().__init__()
 
@@ -72,32 +71,25 @@ class PLCSMultiViewModel(nn.Module):
         self.frame_block_tokens = 2 + NUM_HUMAN_KP
 
         head_dim = hidden_dim // num_heads
-        rope_dim = head_dim if rope_dim is None else rope_dim
-        self.rope_dim = int(rope_dim)
+        self.rope_dim = rope_dim
         self.rope_theta = float(rope_theta)
         self.rope_bases = resolve_rope_bases(
-            self.rope_theta,
-            rope_theta_time,
-            rope_theta_camera,
-            rope_theta_type,
+            rope_theta_time=rope_theta_time,
+            rope_theta_camera=rope_theta_camera,
+            rope_theta_type=rope_theta_type,
         )
 
         self._validate_init_args(rope_dim=self.rope_dim)
-
-        if ffn_dim is None:
-            ffn_dim = default_ffn_dim(hidden_dim)
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=hidden_dim, init_std=invisible_init_std
         )
         self.court_embed = CourtKPUVEmbedding(
             dim=hidden_dim,
-            dropout=dropout,
             invisible_token=self.invisible_token,
         )
         self.player_embed = PlayerKPUVEmbedding(
             dim=hidden_dim,
-            dropout=dropout,
             invisible_token=self.invisible_token,
         )
 
@@ -116,6 +108,9 @@ class PLCSMultiViewModel(nn.Module):
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
+                        attention_type="mha",
+                        n_kv_heads=None,
+                        rope_base=self.rope_theta,
                         ffn_type=ffn_type,
                     )
                 )
@@ -144,6 +139,7 @@ class PLCSMultiViewModel(nn.Module):
                 hidden_dim=hidden_dim // 2,
                 num_layers=2,
                 dropout=dropout,
+                num_keypoints=NUM_HUMAN_KP,
             )
 
     @staticmethod
@@ -152,30 +148,27 @@ class PLCSMultiViewModel(nn.Module):
             raise ValueError(f"RoPE requires an even rope_dim, got {rope_dim}")
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> PLCSMultiViewModel:
+    def from_config(
+        cls, config: PLCSModelConfig, *, num_court_tokens: int
+    ) -> PLCSMultiViewModel:
         """Create model from hydra config."""
-        model_cfg = config.get("model", {})
-        data_cfg = config.get("data", {})
-
         return cls(
-            hidden_dim=model_cfg.get("hidden_dim", 256),
-            num_layers=model_cfg.get("num_layers", 6),
-            num_heads=model_cfg.get("num_heads", 8),
-            ffn_dim=model_cfg.get("ffn_dim", None),
-            dropout=model_cfg.get("dropout", 0.1),
-            rope_dim=model_cfg.get("rope_dim", None),
-            rope_theta=model_cfg.get("rope_theta", 10000.0),
-            rope_theta_time=model_cfg.get("rope_theta_time", None),
-            rope_theta_camera=model_cfg.get("rope_theta_camera", None),
-            rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
-            ffn_type=cast(
-                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
-            ),
-            predict_canonical_pose=bool(model_cfg.get("predict_canonical_pose", False)),
-            max_views=model_cfg.get("max_views", 8),
-            max_seq_len=model_cfg.get("max_seq_len", 120),
-            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
-            num_court_tokens=int(data_cfg.get("num_court_kp", NUM_COURT_KP)),
+            hidden_dim=config.integer("hidden_dim"),
+            num_layers=config.integer("num_layers"),
+            num_heads=config.integer("num_heads"),
+            ffn_dim=config.integer("ffn_dim"),
+            dropout=config.number("dropout"),
+            rope_dim=config.integer("rope_dim"),
+            rope_theta=config.number("rope_theta"),
+            rope_theta_time=config.number("rope_theta_time"),
+            rope_theta_camera=config.number("rope_theta_camera"),
+            rope_theta_type=config.number("rope_theta_type"),
+            ffn_type=cast(Literal["swiglu", "mlp"], config.string("ffn_type")),
+            predict_canonical_pose=config.boolean("predict_canonical_pose"),
+            max_views=config.integer("max_views"),
+            max_seq_len=config.integer("max_seq_len"),
+            invisible_init_std=config.number("invisible_init_std"),
+            num_court_tokens=num_court_tokens,
         )
 
     def _build_positions_3d(

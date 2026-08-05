@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 task: kp
-num_keypoints: 14
+output_channels: 14
 sigma_ratio: 0.012
 
 hflip_swap_pairs:

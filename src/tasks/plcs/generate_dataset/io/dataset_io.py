@@ -10,9 +10,6 @@ import numpy as np
 
 from src.tasks.base.data.dataset_writer import BaseDatasetWriter
 from src.tasks.plcs.data.types import PLCSSceneMeta
-
-# Re-export load_scene for backwards compatibility
-from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene as load_scene
 from src.tasks.plcs.generate_dataset.scene_generator import SceneData
 
 logger = logging.getLogger(__name__)
@@ -20,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 class PLCSDatasetWriter(BaseDatasetWriter):
     """Writes PLCS scene data to disk as npy + json directories."""
+
     scenes_dir: Path
 
     def __init__(self, output_dir: str | Path) -> None:
@@ -71,9 +69,7 @@ class PLCSDatasetWriter(BaseDatasetWriter):
 
         # Store pre-computed COCO17 world joints when available
         if scene.human_kp_3d is not None:
-            arrays["human_kp_3d"] = np.asarray(scene.human_kp_3d).astype(
-                np.float32
-            )
+            arrays["human_kp_3d"] = np.asarray(scene.human_kp_3d).astype(np.float32)
 
         camera_metas = []
         for i, cam in enumerate(scene.cameras):

@@ -27,10 +27,14 @@ from typing import Any, Protocol, cast
 
 import av
 import requests
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from PIL import Image
 
+from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
+from src.tasks.ball_detection.configuration import (
+    BallRuntimePaths,
+    BallYoutubePathContract,
+)
 from src.utils.hydra import hydra_main
 from src.utils.io import (
     JSONDict,
@@ -121,32 +125,39 @@ class MockTennisGate:
 class ManagedOpenAICompatibleServer:
     """Lifecycle manager for a local OpenAI-compatible VLM server."""
 
-    def __init__(self, cfg: DictConfig | None, *, base_url: str) -> None:
-        self.enabled = bool(cfg is not None and cfg.get("enabled", False))
+    def __init__(
+        self,
+        cfg: DictConfig,
+        *,
+        base_url: str,
+        paths: BallRuntimePaths,
+    ) -> None:
+        self.enabled = bool(cfg.enabled)
         self.base_url = base_url.rstrip("/")
         self.health_url = (
-            str(cfg.get("health_url")).rstrip("/")
-            if cfg is not None and cfg.get("health_url") is not None
+            str(cfg.health_url).rstrip("/")
+            if cfg.health_url is not None
             else f"{self.base_url}/models"
         )
-        self.startup_timeout_sec = (
-            float(cfg.get("startup_timeout_sec", 300)) if cfg is not None else 300.0
+        self.startup_timeout_sec = float(cfg.startup_timeout_sec)
+        self.poll_interval_sec = float(cfg.poll_interval_sec)
+        self.request_timeout_sec = float(cfg.request_timeout_sec)
+        self.shutdown_timeout_sec = float(cfg.shutdown_timeout_sec)
+        self.stop_on_exit = bool(cfg.stop_on_exit)
+        executable_role = str(cfg.executable_role)
+        if executable_role == "cache":
+            executable = paths.cache(str(cfg.executable))
+        elif executable_role == "external_asset":
+            executable = paths.external_asset(str(cfg.executable))
+        else:
+            raise ValueError(f"Unsupported VLM executable role: {executable_role!r}")
+        self.command = [str(executable), *_command_list(cfg.command)]
+        self.env = _env_mapping(cfg.env)
+        self.cwd = None if cfg.cwd is None else paths.project(str(cfg.cwd))
+        self.log_path = (
+            None if cfg.log_path is None else paths.output(str(cfg.log_path))
         )
-        self.poll_interval_sec = (
-            float(cfg.get("poll_interval_sec", 5)) if cfg is not None else 5.0
-        )
-        self.request_timeout_sec = (
-            float(cfg.get("request_timeout_sec", 5)) if cfg is not None else 5.0
-        )
-        self.shutdown_timeout_sec = (
-            float(cfg.get("shutdown_timeout_sec", 20)) if cfg is not None else 20.0
-        )
-        self.stop_on_exit = bool(cfg is not None and cfg.get("stop_on_exit", True))
-        self.command = _command_list(cfg.get("command", [])) if cfg is not None else []
-        self.env = _env_mapping(cfg.get("env", {})) if cfg is not None else {}
-        self.cwd = _optional_path(cfg.get("cwd")) if cfg is not None else None
-        self.log_path = _optional_path(cfg.get("log_path")) if cfg is not None else None
-        self.preflight = cfg.get("preflight") if cfg is not None else None
+        self.preflight = cfg.preflight
         self.process: subprocess.Popen[str] | None = None
         self.log_file: Any | None = None
 
@@ -224,10 +235,10 @@ class ManagedOpenAICompatibleServer:
             return False
 
     def _run_preflight(self) -> None:
-        if self.preflight is None or not bool(self.preflight.get("enabled", False)):
+        if not bool(self.preflight.enabled):
             return
-        command = _command_list(self.preflight.get("command", []))
-        if not command:
+        command = [self.command[0], *_command_list(self.preflight.command)]
+        if len(command) == 1:
             raise RuntimeError("VLM server preflight is enabled but command is empty.")
         completed = subprocess.run(
             command,
@@ -240,29 +251,35 @@ class ManagedOpenAICompatibleServer:
         if completed.returncode != 0:
             detail = (completed.stderr or completed.stdout).strip()
             raise RuntimeError(
-                "VLM server preflight failed "
-                f"(code={completed.returncode}): {detail}"
+                f"VLM server preflight failed (code={completed.returncode}): {detail}"
             )
 
 
 class OpenAICompatibleGate:
     """Call a local OpenAI-compatible VLM endpoint."""
 
-    def __init__(self, cfg: DictConfig, *, backend: str) -> None:
+    def __init__(
+        self,
+        cfg: DictConfig,
+        *,
+        backend: str,
+        paths: BallRuntimePaths,
+    ) -> None:
         self.base_url = str(cfg.base_url).rstrip("/")
         self.backend = backend
         self.model = str(cfg.model)
         self.prompt = str(cfg.prompt)
         self.timeout_sec = float(cfg.timeout_sec)
-        self.max_tokens = int(cfg.get("max_tokens", 128))
+        self.max_tokens = int(cfg.max_tokens)
         self.accept_labels = {str(value).lower() for value in cfg.accept_labels}
         self.extra_body = cast(
             JSONDict,
-            OmegaConf.to_container(cfg.get("extra_body", {}), resolve=True),
+            OmegaConf.to_container(cfg.extra_body, resolve=True),
         )
         self.server = ManagedOpenAICompatibleServer(
-            cfg.get("server"),
+            cfg.server,
             base_url=self.base_url,
+            paths=paths,
         )
 
     def start(self) -> None:
@@ -329,14 +346,15 @@ class OpenAICompatibleGate:
 class VllmGate(OpenAICompatibleGate):
     """Call a local vLLM OpenAI-compatible VLM endpoint."""
 
-    def __init__(self, cfg: DictConfig) -> None:
-        super().__init__(cfg, backend="vllm")
+    def __init__(self, cfg: DictConfig, *, paths: BallRuntimePaths) -> None:
+        super().__init__(cfg, backend="vllm", paths=paths)
 
 
 @hydra_main(
     config_path="../../configs",
     config_name="prepare_dinov3_ssl_images",
     version_base="1.3",
+    validation_boundary="ball.youtube",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
@@ -347,7 +365,9 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 def run_pipeline(cfg: DictConfig) -> dict[str, int]:
     """Run the YouTube-to-DINOv3-SSL image pipeline."""
     workflow = cfg.workflow
-    root = Path(to_absolute_path(str(workflow.root))).resolve()
+    youtube_paths = BallYoutubePathContract.from_config(cfg)
+    runtime_paths = youtube_paths.paths
+    root = youtube_paths.workflow_root
     paths = workflow.paths
     videos_dir = root / str(paths.videos_dir)
     source_dir = videos_dir / str(paths.source_dir)
@@ -356,12 +376,12 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
     images_dir = root / str(paths.images_dir)
     manifests_dir = root / str(paths.manifests_dir)
     ensure_dirs([source_dir, h264_dir, sampled_dir, images_dir, manifests_dir])
-    storage_cfg = workflow.get("storage")
+    storage_cfg = workflow.storage
     _check_storage_budget(root, storage_cfg, stage="start")
 
     sources = _collect_sources(workflow)
     existing_video_ids = _existing_video_ids(manifests_dir, images_dir)
-    gate = _build_gate(workflow.gate)
+    gate = _build_gate(workflow.gate, paths=runtime_paths)
 
     source_records = read_jsonl(manifests_dir / "sources.jsonl")
     sample_records = read_jsonl(manifests_dir / "sampled_frames.jsonl")
@@ -389,10 +409,13 @@ def run_pipeline(cfg: DictConfig) -> dict[str, int]:
             print(f"[prepare_dinov3_ssl_images] source={video_id}")
             processed_new += 1
             source_records.append(dict(source))
-            local_video_supplied = bool(source.get("local_video"))
+            local_video_supplied = source["local_video"] is not None
             try:
                 source_video = _resolve_source_video(
-                    source, source_dir, workflow.download
+                    source,
+                    source_dir,
+                    workflow.download,
+                    path_contract=youtube_paths,
                 )
             except Exception as exc:
                 failed_video_count += 1
@@ -556,7 +579,7 @@ def _write_pipeline_manifests(
 
 
 def _collect_sources(workflow: DictConfig) -> list[JSONDict]:
-    manual_sources = _manual_sources(workflow.get("sources", []))
+    manual_sources = _manual_sources(workflow.sources)
     discovered_sources = _discover_sources(workflow.discovery)
     deduped: dict[str, JSONDict] = {}
     for source in [*manual_sources, *discovered_sources]:
@@ -569,16 +592,24 @@ def _collect_sources(workflow: DictConfig) -> list[JSONDict]:
 def _manual_sources(raw_sources: Iterable[Any]) -> list[JSONDict]:
     sources: list[JSONDict] = []
     for raw_source in raw_sources:
-        source = cast(JSONDict, OmegaConf.to_container(raw_source, resolve=True))
-        url = str(source.get("url") or "")
-        video_id = str(source.get("video_id") or source.get("source_id") or "")
-        if not video_id:
-            video_id = _video_id_from_url(url)
-        if not video_id:
+        source = OmegaConf.to_container(raw_source, resolve=True)
+        if not isinstance(source, dict):
+            raise TypeError("Each manual source must be a mapping.")
+        expected = {"video_id", "url", "local_video"}
+        if set(source) != expected:
             raise ValueError(
-                f"Manual source must define video_id/source_id or url: {source}"
+                f"Manual source requires exactly {sorted(expected)}; got {sorted(source)}."
             )
-        sources.append({**source, "video_id": video_id, "url": url})
+        video_id = source["video_id"]
+        url = source["url"]
+        local_video = source["local_video"]
+        if type(video_id) is not str or type(url) is not str:
+            raise TypeError("Manual source video_id and url must be strings.")
+        if local_video is not None and not isinstance(local_video, dict):
+            raise TypeError("Manual source local_video must be a mapping or null.")
+        if not video_id or not url:
+            raise ValueError("Manual source video_id and url must be non-empty.")
+        sources.append(cast(JSONDict, source))
     return sources
 
 
@@ -625,6 +656,7 @@ def _discover_sources(cfg: DictConfig) -> list[JSONDict]:
                         "url": url,
                         "title": entry.get("title"),
                         "duration_sec": duration_sec,
+                        "local_video": None,
                         "query": str(query),
                         "source": "ytsearch",
                     }
@@ -649,36 +681,31 @@ def _existing_video_ids(manifests_dir: Path, images_dir: Path) -> set[str]:
 
 
 def _resolve_source_video(
-    source: Mapping[str, Any], source_dir: Path, cfg: DictConfig
+    source: Mapping[str, Any],
+    source_dir: Path,
+    cfg: DictConfig,
+    *,
+    path_contract: BallYoutubePathContract,
 ) -> Path:
-    local_video = source.get("local_video")
-    if local_video:
-        return Path(to_absolute_path(str(local_video))).resolve()
-    archive = None
-    if cfg.get("download_archive") is not None:
-        archive = Path(to_absolute_path(str(cfg.download_archive))).resolve()
-    return cast(
-        Path,
-        download_youtube_video(
-            url=str(source["url"]),
-            video_id=str(source["video_id"]),
-            output_dir=source_dir,
-            format_selector=str(cfg.format),
-            merge_output_format=str(cfg.merge_output_format),
-            enabled=bool(cfg.enabled),
-            overwrite=bool(cfg.overwrite),
-            js_runtimes=None
-            if cfg.get("js_runtimes") is None
-            else str(cfg.js_runtimes),
-            remote_components=(
-                None
-                if cfg.get("remote_components") is None
-                else str(cfg.remote_components)
-            ),
-            download_archive=archive,
-            extra_args=[str(value) for value in cfg.get("extra_args", [])],
+    local_video = path_contract.local_video_for(str(source["video_id"]))
+    if local_video is not None:
+        return local_video
+    downloaded: Path = download_youtube_video(
+        url=str(source["url"]),
+        video_id=str(source["video_id"]),
+        output_dir=source_dir,
+        format_selector=str(cfg.format),
+        merge_output_format=str(cfg.merge_output_format),
+        enabled=bool(cfg.enabled),
+        overwrite=bool(cfg.overwrite),
+        js_runtimes=None if cfg.js_runtimes is None else str(cfg.js_runtimes),
+        remote_components=(
+            None if cfg.remote_components is None else str(cfg.remote_components)
         ),
+        download_archive=path_contract.download_archive,
+        extra_args=[str(value) for value in cfg.extra_args],
     )
+    return downloaded
 
 
 def _transcode_source_video(
@@ -690,35 +717,31 @@ def _transcode_source_video(
     if not bool(cfg.enabled):
         print(f"  transcode disabled; sampling source video directly: {source_video}")
         return source_video
-    return cast(
-        Path,
-        transcode_h264_video(
-            source_video=source_video,
-            output_path=h264_dir / f"{video_id}.mp4",
-            enabled=bool(cfg.enabled),
-            overwrite=bool(cfg.overwrite),
-            ffmpeg_binary=str(cfg.ffmpeg_binary),
-            encoder=str(cfg.encoder),
-            hwaccel=None if cfg.get("hwaccel") is None else str(cfg.hwaccel),
-            hwaccel_output_format=(
-                None
-                if cfg.get("hwaccel_output_format") is None
-                else str(cfg.hwaccel_output_format)
-            ),
-            preset=str(cfg.preset),
-            tune=None if cfg.get("tune") is None else str(cfg.tune),
-            rate_control=None
-            if cfg.get("rate_control") is None
-            else str(cfg.rate_control),
-            cq=None if cfg.get("cq") is None else cfg.cq,
-            bitrate=None if cfg.get("bitrate") is None else str(cfg.bitrate),
-            maxrate=None if cfg.get("maxrate") is None else str(cfg.maxrate),
-            bufsize=None if cfg.get("bufsize") is None else str(cfg.bufsize),
-            profile=None if cfg.get("profile") is None else str(cfg.profile),
-            pix_fmt=str(cfg.pix_fmt),
-            crf=cfg.crf,
+    transcoded: Path = transcode_h264_video(
+        source_video=source_video,
+        output_path=h264_dir / f"{video_id}.mp4",
+        enabled=bool(cfg.enabled),
+        overwrite=bool(cfg.overwrite),
+        ffmpeg_binary=str(cfg.ffmpeg_binary),
+        encoder=str(cfg.encoder),
+        hwaccel=None if cfg.hwaccel is None else str(cfg.hwaccel),
+        hwaccel_output_format=(
+            None
+            if cfg.hwaccel_output_format is None
+            else str(cfg.hwaccel_output_format)
         ),
+        preset=str(cfg.preset),
+        tune=None if cfg.tune is None else str(cfg.tune),
+        rate_control=None if cfg.rate_control is None else str(cfg.rate_control),
+        cq=None if cfg.cq is None else cfg.cq,
+        bitrate=None if cfg.bitrate is None else str(cfg.bitrate),
+        maxrate=None if cfg.maxrate is None else str(cfg.maxrate),
+        bufsize=None if cfg.bufsize is None else str(cfg.bufsize),
+        profile=None if cfg.profile is None else str(cfg.profile),
+        pix_fmt=str(cfg.pix_fmt),
+        crf=cfg.crf,
     )
+    return transcoded
 
 
 def _force_transcode_source_video(
@@ -727,35 +750,31 @@ def _force_transcode_source_video(
     h264_dir: Path,
     cfg: DictConfig,
 ) -> Path:
-    return cast(
-        Path,
-        transcode_h264_video(
-            source_video=source_video,
-            output_path=h264_dir / f"{video_id}.mp4",
-            enabled=True,
-            overwrite=bool(cfg.overwrite),
-            ffmpeg_binary=str(cfg.ffmpeg_binary),
-            encoder=str(cfg.encoder),
-            hwaccel=None if cfg.get("hwaccel") is None else str(cfg.hwaccel),
-            hwaccel_output_format=(
-                None
-                if cfg.get("hwaccel_output_format") is None
-                else str(cfg.hwaccel_output_format)
-            ),
-            preset=str(cfg.preset),
-            tune=None if cfg.get("tune") is None else str(cfg.tune),
-            rate_control=None
-            if cfg.get("rate_control") is None
-            else str(cfg.rate_control),
-            cq=None if cfg.get("cq") is None else cfg.cq,
-            bitrate=None if cfg.get("bitrate") is None else str(cfg.bitrate),
-            maxrate=None if cfg.get("maxrate") is None else str(cfg.maxrate),
-            bufsize=None if cfg.get("bufsize") is None else str(cfg.bufsize),
-            profile=None if cfg.get("profile") is None else str(cfg.profile),
-            pix_fmt=str(cfg.pix_fmt),
-            crf=cfg.crf,
+    transcoded: Path = transcode_h264_video(
+        source_video=source_video,
+        output_path=h264_dir / f"{video_id}.mp4",
+        enabled=True,
+        overwrite=bool(cfg.overwrite),
+        ffmpeg_binary=str(cfg.ffmpeg_binary),
+        encoder=str(cfg.encoder),
+        hwaccel=None if cfg.hwaccel is None else str(cfg.hwaccel),
+        hwaccel_output_format=(
+            None
+            if cfg.hwaccel_output_format is None
+            else str(cfg.hwaccel_output_format)
         ),
+        preset=str(cfg.preset),
+        tune=None if cfg.tune is None else str(cfg.tune),
+        rate_control=None if cfg.rate_control is None else str(cfg.rate_control),
+        cq=None if cfg.cq is None else cfg.cq,
+        bitrate=None if cfg.bitrate is None else str(cfg.bitrate),
+        maxrate=None if cfg.maxrate is None else str(cfg.maxrate),
+        bufsize=None if cfg.bufsize is None else str(cfg.bufsize),
+        profile=None if cfg.profile is None else str(cfg.profile),
+        pix_fmt=str(cfg.pix_fmt),
+        crf=cfg.crf,
     )
+    return transcoded
 
 
 def _probe_video_info(video_path: Path) -> VideoInfo:
@@ -825,10 +844,10 @@ def _sample_video_frames(
 ) -> list[JSONDict]:
     manifest_path = output_dir / "frames.jsonl"
     if manifest_path.exists() and not bool(cfg.overwrite):
-        existing_records = read_jsonl(manifest_path)
+        existing_records: list[JSONDict] = read_jsonl(manifest_path)
         if existing_records:
             print(f"  sampled frames exist: {len(existing_records)} -> {output_dir}")
-            return cast(list[JSONDict], existing_records)
+            return existing_records
 
     ensure_dirs([output_dir])
     info = _probe_video_info(video_path)
@@ -970,14 +989,12 @@ def _cleanup_video_files(
     return deleted
 
 
-def _build_gate(cfg: DictConfig) -> FrameGate:
+def _build_gate(cfg: DictConfig, *, paths: BallRuntimePaths) -> FrameGate:
     backend = str(cfg.backend)
     if backend == "mock":
         return MockTennisGate(accept_all=bool(cfg.mock.accept_all))
-    if backend == "openai_compatible":
-        return OpenAICompatibleGate(cfg.openai_compatible, backend=backend)
     if backend == "vllm":
-        return VllmGate(cfg.vllm)
+        return VllmGate(cfg.vllm, paths=paths)
     raise ValueError(f"Unsupported gate.backend={backend!r}.")
 
 
@@ -1041,14 +1058,14 @@ def _is_relative_to(path: Path, root: Path) -> bool:
 
 def _check_storage_budget(
     root: Path,
-    cfg: DictConfig | None,
+    cfg: DictConfig,
     *,
     stage: str,
 ) -> int:
     size_bytes = _directory_size_bytes(root)
-    if cfg is None or not bool(cfg.get("enabled", True)):
+    if not bool(cfg.enabled):
         return size_bytes
-    max_root_gb = cfg.get("max_root_gb")
+    max_root_gb = cfg.max_root_gb
     if max_root_gb is None:
         return size_bytes
     max_bytes = int(float(max_root_gb) * 1024**3)
@@ -1080,8 +1097,6 @@ def _command_list(value: Any) -> list[str]:
     if not isinstance(values, list):
         raise TypeError(f"Expected command list, got {type(values).__name__}.")
     command = [str(item) for item in values]
-    if command and "/" in command[0]:
-        command[0] = str(Path(to_absolute_path(command[0])).expanduser())
     return command
 
 
@@ -1090,12 +1105,6 @@ def _env_mapping(value: Any) -> dict[str, str]:
     if not isinstance(values, dict):
         raise TypeError(f"Expected env mapping, got {type(values).__name__}.")
     return {str(key): str(env_value) for key, env_value in values.items()}
-
-
-def _optional_path(value: Any) -> Path | None:
-    if value is None:
-        return None
-    return Path(to_absolute_path(str(value))).expanduser()
 
 
 def _parse_gate_label(text: str) -> str:
@@ -1152,7 +1161,9 @@ def _parse_json_object(text: str) -> JSONDict | None:
         if isinstance(parsed, dict):
             return cast(JSONDict, parsed)
         if isinstance(parsed, list):
-            first_object = next((item for item in parsed if isinstance(item, dict)), None)
+            first_object = next(
+                (item for item in parsed if isinstance(item, dict)), None
+            )
             if first_object is not None:
                 return cast(JSONDict, first_object)
     return None
@@ -1181,8 +1192,8 @@ def _duration_seconds(value: Any) -> float | None:
 def _duration_allowed(duration_sec: float | None, cfg: DictConfig) -> bool:
     if duration_sec is None:
         return bool(cfg.allow_unknown_duration)
-    min_duration = cfg.get("min_duration_sec")
-    max_duration = cfg.get("max_duration_sec")
+    min_duration = cfg.min_duration_sec
+    max_duration = cfg.max_duration_sec
     if min_duration is not None and duration_sec < float(min_duration):
         return False
     return not (max_duration is not None and duration_sec > float(max_duration))
@@ -1197,4 +1208,4 @@ def _video_id_from_url(url: str) -> str:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())  # type: ignore[call-arg]
+    raise SystemExit(main())

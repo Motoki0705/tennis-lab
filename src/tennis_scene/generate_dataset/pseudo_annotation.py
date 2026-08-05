@@ -150,7 +150,13 @@ def _publish_annotation(
     pipeline_config_yaml: str,
     overwrite: bool,
 ) -> Path:
-    clip_dir = dataset_dir / record.path
+    record_path: object = record.path
+    if type(record_path) is not str:
+        raise TypeError(
+            "DatasetClipRecord.path must be exactly str; "
+            f"got {type(record_path).__name__}."
+        )
+    clip_dir = dataset_dir / record_path
     destination = clip_dir / ANNOTATION_RELATIVE_DIR
     completion_marker = destination / "annotation.json"
     if completion_marker.exists() and not overwrite:
@@ -204,7 +210,7 @@ def _publish_annotation(
 
 
 def generate_pseudo_annotations(
-    dataset_dir: str | Path,
+    dataset_dir: Path,
     runner: SceneRunner,
     *,
     pipeline_config_yaml: str,
@@ -213,7 +219,14 @@ def generate_pseudo_annotations(
     continue_on_error: bool = True,
 ) -> list[AnnotationGenerationResult]:
     """Generate missing pseudo annotations while preserving per-clip outcomes."""
-    root = Path(dataset_dir).resolve()
+    if (
+        not dataset_dir.is_absolute()
+        or dataset_dir.resolve(strict=False) != dataset_dir
+    ):
+        raise ValueError(
+            "dataset_dir must be an absolute normalized Path from PathResolver."
+        )
+    root = dataset_dir
     dataset = load_dataset_manifest(root)
     selected_ids = sorted(dataset.clips) if clip_ids is None else list(clip_ids)
     unknown = [clip_id for clip_id in selected_ids if clip_id not in dataset.clips]
@@ -256,7 +269,9 @@ def generate_pseudo_annotations(
             )
         except Exception as error:
             message = f"{type(error).__name__}: {error}"
-            failure_path = root / record.path / "annotations" / "tennis_scene.failure.json"
+            failure_path = (
+                root / record.path / "annotations" / "tennis_scene.failure.json"
+            )
             save_json_atomic(
                 {
                     "clip_id": clip_id,

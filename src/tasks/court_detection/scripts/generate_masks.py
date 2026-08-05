@@ -17,7 +17,7 @@ Label map
 
 Usage:
     python -m src.tasks.court_detection.scripts.generate_masks
-    python -m src.tasks.court_detection.scripts.generate_masks generate_masks.root=data/court
+    python -m src.tasks.court_detection.scripts.generate_masks generate_masks.root=court
 
 Notes:
     - Hydra loads configuration from `src/tasks/court_detection/configs/generate_masks.yaml`.
@@ -34,8 +34,11 @@ import cv2
 import numpy as np
 from omegaconf import DictConfig
 
+from src.tasks.base.configuration import require_config_mapping, require_config_value
+from src.tasks.court_detection.configuration import validate_paths_boundary
 from src.tasks.court_detection.geometry import compute_template_to_image_homography
-from src.utils.hydra import hydra_main
+from src.utils.configuration import PathRole
+from src.utils.hydra import hydra_main, register_boundary_validator
 from src.utils.schema.court import (
     HALF_DOUBLES_WIDTH,
     HALF_LENGTH,
@@ -50,12 +53,12 @@ _yB = HALF_LENGTH
 
 # label → (x_min, x_max, y_min, y_max)
 CELL_BOUNDS: dict[int, tuple[float, float, float, float]] = {
-    1: (-_xs, 0.0,  0.0,  _ys),
-    2: (0.0,  _xs,  0.0,  _ys),
-    3: (-_xs, 0.0,  _ys,  _yB),
-    4: (0.0,  _xs,  _ys,  _yB),
-    5: (-_xd, -_xs, 0.0,  _yB),
-    6: (_xs,  _xd,  0.0,  _yB),
+    1: (-_xs, 0.0, 0.0, _ys),
+    2: (0.0, _xs, 0.0, _ys),
+    3: (-_xs, 0.0, _ys, _yB),
+    4: (0.0, _xs, _ys, _yB),
+    5: (-_xd, -_xs, 0.0, _yB),
+    6: (_xs, _xd, 0.0, _yB),
 }
 
 LABEL_COLORS: dict[int, tuple[int, int, int]] = {
@@ -68,23 +71,74 @@ LABEL_COLORS: dict[int, tuple[int, int, int]] = {
     6: (80, 255, 255),
 }
 
+_BOUNDARY = "court_detection.generate_masks"
+
+
+def _runtime(cfg: DictConfig) -> tuple[Path, str | None, bool, str]:
+    root, resolver = validate_paths_boundary(cfg, expected_sections={"generate_masks"})
+    section = require_config_mapping(root, "generate_masks", path="configuration")
+    expected = {"root", "image_id", "write_color_mask", "color_dir_name"}
+    if set(section) != expected:
+        raise ValueError(f"generate_masks requires exactly {sorted(expected)}.")
+    root_raw = cast(
+        "str", require_config_value(section, "root", str, path="generate_masks")
+    )
+    image_id = cast(
+        "str | None",
+        require_config_value(
+            section, "image_id", (str, type(None)), path="generate_masks"
+        ),
+    )
+    color_dir_name = cast(
+        "str",
+        require_config_value(section, "color_dir_name", str, path="generate_masks"),
+    )
+    if image_id == "":
+        raise ValueError("generate_masks.image_id must be null or non-empty.")
+    resolver.resolve(PathRole.DATA, root_raw, color_dir_name)
+    return (
+        resolver.resolve(PathRole.DATA, root_raw),
+        image_id,
+        cast(
+            "bool",
+            require_config_value(
+                section, "write_color_mask", bool, path="generate_masks"
+            ),
+        ),
+        color_dir_name,
+    )
+
+
+def _validate_boundary(cfg: DictConfig) -> None:
+    _runtime(cfg)
+
+
+register_boundary_validator(_BOUNDARY, _validate_boundary)
+
 
 def _cell_corners(
-    x_min: float, x_max: float, y_min: float, y_max: float,
+    x_min: float,
+    x_max: float,
+    y_min: float,
+    y_max: float,
 ) -> np.ndarray:
-    return cast(
-        np.ndarray,
-        np.array([
+    corners: np.ndarray = np.array(
+        [
             [x_min, y_min],
             [x_max, y_min],
             [x_max, y_max],
             [x_min, y_max],
-        ], dtype=np.float32),
+        ],
+        dtype=np.float32,
     )
+    return corners
 
 
 def _mirror_bounds_origin(
-    x_min: float, x_max: float, y_min: float, y_max: float,
+    x_min: float,
+    x_max: float,
+    y_min: float,
+    y_max: float,
 ) -> tuple[float, float, float, float]:
     return -x_max, -x_min, -y_max, -y_min
 
@@ -116,7 +170,10 @@ def generate_mask(h: int, w: int, kps_2d: np.ndarray) -> np.ndarray | None:
         cv2.fillPoly(mask, [corners_img], int(label))
 
         nx_min, nx_max, ny_min, ny_max = _mirror_bounds_origin(
-            x_min, x_max, y_min, y_max,
+            x_min,
+            x_max,
+            y_min,
+            y_max,
         )
         corners_near = _cell_corners(nx_min, nx_max, ny_min, ny_max)
         corners_near_img = cast(
@@ -134,14 +191,15 @@ def generate_mask(h: int, w: int, kps_2d: np.ndarray) -> np.ndarray | None:
     config_path="../configs",
     config_name="generate_masks",
     version_base="1.3",
+    validation_boundary=_BOUNDARY,
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
-    root = Path(str(cfg.generate_masks.root)).expanduser()
+    root, image_id_filter, write_color_mask, color_dir_name = _runtime(cfg)
     masks_dir = root / "masks"
     masks_dir.mkdir(parents=True, exist_ok=True)
-    color_masks_dir = root / str(cfg.generate_masks.color_dir_name)
-    if bool(cfg.generate_masks.write_color_mask):
+    color_masks_dir = root / color_dir_name
+    if write_color_mask:
         color_masks_dir.mkdir(parents=True, exist_ok=True)
     images_dir = root / "images"
 
@@ -159,7 +217,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
         print(f"[generate_masks] Processing {split}: {len(entries)} samples")
         for entry in entries:
-            image_id_filter = cfg.generate_masks.image_id
             if image_id_filter is not None and entry["id"] != str(image_id_filter):
                 continue
             total += 1
@@ -189,7 +246,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
             out_path = masks_dir / f"{image_id}.png"
             cv2.imwrite(str(out_path), mask)
-            if bool(cfg.generate_masks.write_color_mask):
+            if write_color_mask:
                 color_mask = colorize_mask(mask)
                 color_out_path = color_masks_dir / f"{image_id}.png"
                 cv2.imwrite(str(color_out_path), color_mask)

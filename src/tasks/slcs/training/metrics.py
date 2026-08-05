@@ -83,7 +83,9 @@ class SLCSMetrics:
             pos_b = (
                 outputs["player_position_log_b"][player_mask].exp() * self._scale_mean
             )
-            rot_b = outputs["player_rotation_log_b"][player_mask].exp() * 180.0 / math.pi
+            rot_b = (
+                outputs["player_rotation_log_b"][player_mask].exp() * 180.0 / math.pi
+            )
             self._player_pos_errors.append(pos_err.detach().cpu())
             self._player_ang_errors.append(ang_err_deg.detach().cpu())
             self._player_pos_b.append(pos_b.detach().cpu())

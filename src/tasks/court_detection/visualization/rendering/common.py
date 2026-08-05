@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import cast
 
 import cv2
@@ -38,13 +38,13 @@ COURT_SEG_PALETTE_RGB: tuple[tuple[int, int, int], ...] = (
 class CourtRenderStyle:
     """Styling for court visualization panels."""
 
-    panel: PanelStyle = field(default_factory=PanelStyle)
-    header_height: int = 36
-    display_width: int = 640
-    kp_radius: int = 4
-    kp_color_rgb: tuple[int, int, int] = (96, 255, 128)
-    kp_thickness: int = -1
-    line_threshold: float = 0.5
+    panel: PanelStyle
+    header_height: int
+    display_width: int
+    kp_radius: int
+    kp_color_rgb: tuple[int, int, int]
+    kp_thickness: int
+    line_threshold: float
 
 
 def denormalize_tensor_to_rgb(
@@ -66,7 +66,7 @@ def denormalize_tensor_to_rgb(
         ``(H, W, 3)`` uint8 NumPy array in RGB order.
     """
     img = denormalize_tensor_images_imagenet(tensor.cpu().float(), mean=mean, std=std)
-    return cast("np.ndarray", tensor_images_to_uint8_rgb(img))
+    return tensor_images_to_uint8_rgb(img)
 
 
 def resize_for_display(rgb: np.ndarray, max_width: int) -> np.ndarray:
@@ -116,7 +116,9 @@ def compose_two_panel(
     """
     height, width = left_rgb.shape[:2]
     if right_rgb.shape[:2] != (height, width):
-        right_rgb = cv2.resize(right_rgb, (width, height), interpolation=cv2.INTER_NEAREST)
+        right_rgb = cv2.resize(
+            right_rgb, (width, height), interpolation=cv2.INTER_NEAREST
+        )
 
     panel = style.panel
     left = label_panel(

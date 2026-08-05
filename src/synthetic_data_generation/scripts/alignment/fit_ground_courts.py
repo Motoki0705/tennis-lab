@@ -26,7 +26,6 @@ from typing import Any, cast
 
 import numpy as np
 import scipy
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
 from src.synthetic_data_generation.alignment.artifacts.court_geometry import (
@@ -50,13 +49,16 @@ from src.synthetic_data_generation.alignment.stage_result import (
     json_artifact_handle,
     print_stage_result,
 )
+from src.synthetic_data_generation.configuration import validate_config
+from src.utils.configuration import PathRole
 from src.utils.hydra import hydra_main
 
 
 @hydra_main(
     version_base="1.3",
-    config_path="../../configs/alignment",
-    config_name="fit_ground_courts",
+    config_path="../../configs",
+    config_name="alignment/fit_ground_courts",
+    validation_boundary="synthetic.alignment.fit_ground_courts",
 )
 def main(cfg: DictConfig) -> int:
     """Run the stage through its shared orchestration entry point."""
@@ -66,9 +68,10 @@ def main(cfg: DictConfig) -> int:
 
 def run(cfg: DictConfig) -> StageResult:
     """Fit and publish distinct court candidates from fit-only evidence."""
-    repo_root = Path(to_absolute_path(".")).resolve()
-    ground_line_path = _path(cfg.ground_line_artifact)
-    output_dir = _path(cfg.output_dir)
+    runtime = validate_config("synthetic.alignment.fit_ground_courts", cfg)
+    repo_root = runtime.resolver.roots.project_root
+    ground_line_path = runtime.path(PathRole.DATA, "ground_line_artifact")
+    output_dir = runtime.path(PathRole.DATA, "output_dir")
     manifest, arrays = load_ground_line_map_artifact(ground_line_path)
     if manifest["split"]["holdout_inference_status"] != "not_run":
         raise ValueError("Ground-line holdout images must remain uninferred.")
@@ -244,10 +247,6 @@ def _family_metrics(candidates: tuple[Any, ...]) -> dict[str, float | None]:
             abs(first.scale_scene_per_metre - second.scale_scene_per_metre) / mean_scale
         ),
     }
-
-
-def _path(value: Any) -> Path:
-    return Path(to_absolute_path(str(value))).resolve()
 
 
 def _provenance_path(path: Path, *, repo_root: Path) -> tuple[str, str]:

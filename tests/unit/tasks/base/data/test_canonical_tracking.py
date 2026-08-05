@@ -21,7 +21,21 @@ def test_dataset_resolves_explicit_scene_split(tmp_path) -> None:
     np.save(scene / "ball_pos_norm.npy", np.zeros((2, 3), dtype=np.float32))
     (tmp_path / "train.txt").write_text("scene_a\n")
     dataset = CanonicalTrackingDataset(
-        scene_dir=tmp_path, split_file="train.txt"
+        scene_dir=tmp_path,
+        split_file="train.txt",
+        config={
+            "data": {
+                "seq_len_range": [1, 2],
+                "num_views_range": [1, 1],
+                "camera_mode": "first",
+                "lifecycle": {
+                    "pack_to_query_slots": True,
+                    "min_reuse_gap_frames": 0,
+                    "randomize_slots_train": False,
+                },
+            },
+            "model": {"num_queries": 1},
+        },
     )
     assert len(dataset) == 1
     assert dataset.scenes == [tmp_path / "scenes" / "scene_a"]

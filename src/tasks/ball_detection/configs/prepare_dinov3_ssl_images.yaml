@@ -1,12 +1,12 @@
 hydra:
   run:
-    dir: outputs/ball_detection/prepare_dinov3_ssl_images/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},ball_detection/prepare_dinov3_ssl_images,${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null
   job:
     chdir: false
 
 workflow:
-  root: data/tennis/dino_ssl
+  root: tennis/dino_ssl
 
   sources: []
 
@@ -95,7 +95,7 @@ workflow:
     merge_output_format: mkv
     js_runtimes: node
     remote_components: null
-    download_archive: data/tennis/dino_ssl/manifests/download_archive.txt
+    download_archive: manifests/download_archive.txt
     overwrite: false
     extra_args:
       - --match-filter
@@ -115,7 +115,7 @@ workflow:
     bitrate: null
     maxrate: null
     bufsize: null
-    profile: high
+    profile: null
     pix_fmt: yuv420p
     crf: 24
     overwrite: false
@@ -147,11 +147,10 @@ workflow:
           enable_thinking: false
       server:
         enabled: true
-        # CPU vLLM is a separate runtime from the project .venv. Override this
-        # path with VLLM_CPU_PYTHON, or replace command with an OpenAI-compatible
-        # llama.cpp server command if vLLM CPU is not suitable on the host.
+        # CPU vLLM is a separate runtime under the declared cache root.
+        executable_role: cache
+        executable: vllm-cpu/bin/python
         command:
-          - ${oc.env:VLLM_CPU_PYTHON,/home/kamimura/.cache/tennis-lab/vllm-cpu/bin/python}
           - -m
           - vllm.entrypoints.openai.api_server
           - --model
@@ -182,11 +181,14 @@ workflow:
         request_timeout_sec: 5
         shutdown_timeout_sec: 20
         stop_on_exit: true
-        log_path: outputs/ball_detection/prepare_dinov3_ssl_images/vllm_cpu_server.log
+        cwd: null
+        log_path: ball_detection/prepare_dinov3_ssl_images/vllm_cpu_server.log
         preflight:
           enabled: true
           command:
-            - ${oc.env:VLLM_CPU_PYTHON,/home/kamimura/.cache/tennis-lab/vllm-cpu/bin/python}
             - -c
             - "from vllm.platforms import current_platform; assert current_platform.is_cpu(), f'vLLM runtime must use CPU backend, got {current_platform.device_type}'"
       prompt: "Classify the image grid for a DINOv3 tennis SSL corpus. Return JSON only, with keys label, confidence, and reason. label must be tennis, non_tennis, or unknown. Use tennis only when a tennis court, player, racket, or net is visible."
+defaults:
+  - paths: default
+  - _self_

@@ -14,10 +14,11 @@ class PlayerPositionHead(MLPHead):
 
     def __init__(
         self,
-        input_dim: int = 256,
-        hidden_dim: int = 128,
-        num_layers: int = 2,
-        dropout: float = 0.1,
+        *,
+        input_dim: int,
+        hidden_dim: int,
+        num_layers: int,
+        dropout: float,
     ) -> None:
         super().__init__(
             input_dim=input_dim,
@@ -33,10 +34,11 @@ class PlayerRotationHead(MLPHead):
 
     def __init__(
         self,
-        input_dim: int = 256,
-        hidden_dim: int = 128,
-        num_layers: int = 2,
-        dropout: float = 0.1,
+        *,
+        input_dim: int,
+        hidden_dim: int,
+        num_layers: int,
+        dropout: float,
     ) -> None:
         super().__init__(
             input_dim=input_dim,
@@ -52,10 +54,11 @@ class BallPositionHead(MLPHead):
 
     def __init__(
         self,
-        input_dim: int = 256,
-        hidden_dim: int = 128,
-        num_layers: int = 2,
-        dropout: float = 0.1,
+        *,
+        input_dim: int,
+        hidden_dim: int,
+        num_layers: int,
+        dropout: float,
     ) -> None:
         super().__init__(
             input_dim=input_dim,
@@ -75,10 +78,11 @@ class LogScaleHead(MLPHead):
 
     def __init__(
         self,
-        input_dim: int = 256,
-        hidden_dim: int = 64,
-        num_layers: int = 1,
-        dropout: float = 0.1,
+        *,
+        input_dim: int,
+        hidden_dim: int,
+        num_layers: int,
+        dropout: float,
     ) -> None:
         super().__init__(
             input_dim=input_dim,

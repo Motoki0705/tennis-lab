@@ -9,8 +9,28 @@ from src.tennis_scene.clip_studio.project import Clip, ClipStudioProject
 from src.utils.video import VideoInfo
 
 
-def make_settings(tmp_path: Path, **kwargs: object) -> ExportSettings:
-    return ExportSettings(output_dir=tmp_path / "clips", **kwargs)  # type: ignore[arg-type]
+def make_settings(
+    tmp_path: Path,
+    *,
+    fps: float | None = None,
+    width: int | None = None,
+    height: int | None = None,
+    crf: int = 17,
+    overwrite: bool = False,
+) -> ExportSettings:
+    return ExportSettings(
+        output_dir=tmp_path / "clips",
+        fps=fps,
+        width=width,
+        height=height,
+        crf=crf,
+        overwrite=overwrite,
+    )
+
+
+def test_export_settings_rejects_the_removed_implicit_defaults(tmp_path: Path) -> None:
+    with pytest.raises(TypeError, match="required positional arguments"):
+        ExportSettings(output_dir=tmp_path / "clips")  # type: ignore[call-arg]
 
 
 class TestPlanClipExport:

@@ -7,21 +7,24 @@ Usage:
 
 Notes:
     - Hydra loads configuration from `src/synthetic_data_generation/configs/dataset`.
-    - Empty `renderer.command` uses passthrough copies for prepared render inputs.
+    - `renderer.mode=prepared_outputs` explicitly selects prepared-output copies.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
 from typing import Any, cast
 
 from omegaconf import DictConfig, OmegaConf
 
-from src.synthetic_data_generation.dataset.execution import execute_pipeline
+from src.synthetic_data_generation.configuration import validate_config
+from src.synthetic_data_generation.dataset.execution import (
+    execute_pipeline,
+    validate_pipeline_inputs,
+)
 from src.synthetic_data_generation.dataset.pipeline import PathPipelineManifest
+from src.utils.configuration import PathRole
 from src.utils.hydra import hydra_main
-from src.utils.paths import PROJECT_ROOT
 
 
 def _mapping(value: DictConfig) -> Mapping[str, object]:
@@ -41,30 +44,42 @@ def _renderer_command(value: object) -> tuple[str, ...]:
 
 @hydra_main(
     version_base="1.3",
-    config_path="../../configs/dataset",
-    config_name="pipeline",
+    config_path="../../configs",
+    config_name="dataset/pipeline",
+    validation_boundary="synthetic.dataset.pipeline",
 )
 def main(cfg: DictConfig) -> int:
     """Write the shared path manifest and optionally execute every stage."""
-    project_root = Path(str(cfg.project_root))
-    if not project_root.is_absolute():
-        project_root = PROJECT_ROOT / project_root
-    project_root = project_root.resolve()
+    runtime = validate_config("synthetic.dataset.pipeline", cfg)
     manifest = PathPipelineManifest.from_config(
         _mapping(cfg.paths),
-        project_root=project_root,
+        resolver=runtime.resolver,
     )
-    manifest.write()
-    if not bool(cfg.execute):
+    execute = cast(bool, runtime.values["execute"])
+    if not execute:
+        manifest.write()
         return 0
     command = _renderer_command(
         OmegaConf.to_container(cfg.renderer.command, resolve=True)
     )
-    working_directory = Path(str(cfg.renderer.working_directory))
-    if not working_directory.is_absolute():
-        working_directory = project_root / working_directory
+    working_directory = runtime.path(
+        PathRole.EXTERNAL_ASSET,
+        "renderer.working_directory",
+    )
+    renderer = runtime.values["renderer"]
+    if not isinstance(renderer, Mapping):
+        raise AssertionError("Validated renderer configuration is not a mapping.")
+    renderer_mode = cast(str, renderer["mode"])
+    validate_pipeline_inputs(
+        manifest,
+        renderer_mode=renderer_mode,
+        renderer_command=command,
+        working_directory=working_directory,
+    )
+    manifest.write()
     execute_pipeline(
         manifest,
+        renderer_mode=renderer_mode,
         renderer_command=command,
         working_directory=working_directory,
     )

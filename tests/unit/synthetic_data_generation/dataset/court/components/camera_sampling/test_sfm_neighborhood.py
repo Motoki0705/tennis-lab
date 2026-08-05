@@ -15,7 +15,7 @@ from src.synthetic_data_generation.scene_contract import (
     SceneCamera,
     SimilarityTransform,
 )
-from src.utils.schema.court import court_keypoints_3d
+from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 
 
 def _look_at(
@@ -67,7 +67,7 @@ def test_same_seed_is_exact_and_all_selected_views_pass_gates() -> None:
     kwargs = {
         "cameras": cameras,
         "court_from_scene": identity,
-        "court_keypoints_court": court_keypoints_3d().numpy(),
+        "court_keypoints_court": court_keypoints_3d(STANDARD_COURT_CONFIG).numpy(),
         "support_points_scene": _support_points(),
         "seed": 17,
         "proposals_per_anchor": 32,
@@ -121,7 +121,7 @@ def test_narrow_intrinsics_fail_without_relaxing_framing_gate() -> None:
         sample_safe_novel_views(
             (narrow,),
             identity,
-            court_keypoints_3d().numpy(),
+            court_keypoints_3d(STANDARD_COURT_CONFIG).numpy(),
             _support_points(),
             seed=0,
             proposals_per_anchor=4,
@@ -149,7 +149,7 @@ def test_invalid_output_count_is_rejected() -> None:
         sample_safe_novel_views(
             (_camera("camera_0"),),
             identity,
-            court_keypoints_3d().numpy(),
+            court_keypoints_3d(STANDARD_COURT_CONFIG).numpy(),
             _support_points(),
             seed=0,
             proposals_per_anchor=4,

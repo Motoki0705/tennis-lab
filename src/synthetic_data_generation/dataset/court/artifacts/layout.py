@@ -16,7 +16,7 @@ from src.synthetic_data_generation.scene_contract import (
     SceneContract,
     SimilarityTransform,
 )
-from src.utils.schema.court import court_keypoints_3d
+from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 
 _MATRIX_ATOL = 1.0e-6
 
@@ -50,7 +50,7 @@ class CourtInstance:
     def keypoints_scene(self) -> NDArray[np.float64]:
         """Return CourtKP20 in provider scene coordinates."""
         points = np.asarray(
-            court_keypoints_3d().numpy(),
+            court_keypoints_3d(STANDARD_COURT_CONFIG).numpy(),
             dtype=np.float64,
         )
         return np.asarray(

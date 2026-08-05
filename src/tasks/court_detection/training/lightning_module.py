@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -11,6 +11,7 @@ from torch import Tensor
 
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_saving import save_qualitative_clip
+from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.models import build_court_detection_model
 from src.tasks.court_detection.training.losses import (
     BinaryDiceLoss,
@@ -19,9 +20,6 @@ from src.tasks.court_detection.training.losses import (
 )
 from src.tasks.court_detection.training.metrics import CourtDetectionMetrics
 from src.utils.data.heatmaps import heatmaps_to_pixel_coords
-
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
 
 
 class CourtDetectionLightningModule(BaseLightningModule):
@@ -37,64 +35,70 @@ class CourtDetectionLightningModule(BaseLightningModule):
     :class:`~src.tasks.base.training.lightning_module.BaseLightningModule`.
     """
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: object) -> None:
         super().__init__(config)
         self.save_hyperparameters()
-
-        data_cfg = self.config.get("data", {})
-        loss_cfg = self.config.get("loss", {})
-        self.task = str(data_cfg.get("task", "seg"))
+        runtime = CourtTrainingConfig.from_config(config)
+        self.task = runtime.data.task
+        self.qualitative_fps = runtime.qualitative_fps
+        self.qualitative_style = runtime.render_style
 
         # Model
         self.model = build_court_detection_model(self.config)
 
         # Task-specific loss
         if self.task == "seg":
-            seg_cfg = loss_cfg.get("seg", {})
-            num_classes = int(data_cfg.get("num_classes", 7))
-            self.ce_weight = float(seg_cfg.get("ce_weight", 1.0))
-            self.dice_weight = float(seg_cfg.get("dice_weight", 1.0))
+            self.ce_weight = runtime.loss.ce_weight
+            self.dice_weight = runtime.loss.dice_weight
             self.ce_loss_fn = nn.CrossEntropyLoss()
-            self.dice_loss_fn = DiceLoss(num_classes=num_classes)
+            self.dice_loss_fn: DiceLoss | BinaryDiceLoss = DiceLoss(
+                num_classes=runtime.data.output_channels
+            )
         elif self.task == "kp":
-            kp_cfg = loss_cfg.get("kp", {})
             self.loss_fn = FocalBCEWithLogitsLoss(
-                gamma=float(kp_cfg.get("focal_gamma", 2.0)),
+                gamma=runtime.loss.focal_gamma,
             )
         elif self.task == "line":
-            line_cfg = loss_cfg.get("line", {})
-            self.bce_weight = float(line_cfg.get("bce_weight", 1.0))
-            self.dice_weight = float(line_cfg.get("dice_weight", 1.0))
-            pos_weight = torch.tensor([float(line_cfg.get("pos_weight", 8.0))])
+            self.bce_weight = runtime.loss.bce_weight
+            self.dice_weight = runtime.loss.dice_weight
+            pos_weight = torch.tensor([runtime.loss.pos_weight])
             self.bce_loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             self.dice_loss_fn = BinaryDiceLoss()
 
         # Metrics
-        self.train_metrics = CourtDetectionMetrics(self.task, data_cfg)
-        self.val_metrics = CourtDetectionMetrics(self.task, data_cfg)
-        self.test_metrics = CourtDetectionMetrics(self.task, data_cfg)
+        self.train_metrics = CourtDetectionMetrics(
+            self.task, runtime.data.output_channels
+        )
+        self.val_metrics = CourtDetectionMetrics(
+            self.task, runtime.data.output_channels
+        )
+        self.test_metrics = CourtDetectionMetrics(
+            self.task, runtime.data.output_channels
+        )
 
     def forward(self, images: Tensor) -> Tensor:
-        return self.model(images)
+        return self.model.forward(images)
 
     def _compute_loss(self, logits: Tensor, batch: dict[str, Tensor]) -> Tensor:
         """Compute task-specific loss."""
         if self.task == "seg":
             masks = batch["mask"]
-            loss_ce = self.ce_loss_fn(logits, masks)
-            loss_dice = self.dice_loss_fn(logits, masks)
+            loss_ce = self.ce_loss_fn.forward(logits, masks)
+            loss_dice = self.dice_loss_fn.forward(logits, masks)
             return self.ce_weight * loss_ce + self.dice_weight * loss_dice
         elif self.task == "kp":
             heatmaps = batch["heatmap"]
-            return self.loss_fn(logits, heatmaps)
+            return self.loss_fn.forward(logits, heatmaps)
         else:  # line
             masks = batch["mask"]
-            loss_bce = self.bce_loss_fn(logits, masks)
-            loss_dice = self.dice_loss_fn(logits, masks)
+            loss_bce = self.bce_loss_fn.forward(logits, masks)
+            loss_dice = self.dice_loss_fn.forward(logits, masks)
             return self.bce_weight * loss_bce + self.dice_weight * loss_dice
 
     def _shared_step(
-        self, batch: dict[str, Tensor], stage: str,
+        self,
+        batch: dict[str, Tensor],
+        stage: str,
     ) -> dict[str, Tensor]:
         """Shared computation for train/val/test steps."""
         images = batch["image"]
@@ -173,7 +177,9 @@ class CourtDetectionLightningModule(BaseLightningModule):
             payload.update(
                 {
                     "pred_mask_flat": logits.argmax(dim=1).reshape(logits.shape[0], -1),
-                    "target_mask_flat": batch["mask"].reshape(batch["mask"].shape[0], -1),
+                    "target_mask_flat": batch["mask"].reshape(
+                        batch["mask"].shape[0], -1
+                    ),
                     "padded_size": logits.new_tensor(
                         [logits.shape[-2], logits.shape[-1]],
                         dtype=torch.int64,
@@ -224,14 +230,13 @@ class CourtDetectionLightningModule(BaseLightningModule):
             logits_to_seg_mask,
         )
         from src.tasks.court_detection.visualization.rendering import (  # noqa: PLC0415
-            CourtRenderStyle,
             render_kp_frames,
             render_line_frames,
             render_seg_frames,
         )
 
         device = next(self.parameters()).device
-        style = CourtRenderStyle()
+        style = self.qualitative_style.build()
 
         for batch_idx, batch in enumerate(batches):
             images = batch["image"].to(device)
@@ -275,4 +280,5 @@ class CourtDetectionLightningModule(BaseLightningModule):
                 tb_writer=tb_writer,
                 tag=f"qualitative/court_detection/batch{batch_idx:02d}",
                 global_step=global_step,
+                fps=self.qualitative_fps,
             )

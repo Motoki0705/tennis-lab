@@ -8,12 +8,10 @@ from pathlib import Path
 import torch
 from tqdm import tqdm
 
+from src.submodules.configuration import require_absolute_path
 from src.submodules.models._base import BaseInferenceModel
 from src.submodules.vendor.gvhmr.hmr2 import load_hmr2
 from src.submodules.vendor.gvhmr.hmr2.preproc import get_batch
-from src.utils.paths import PROJECT_ROOT
-
-DEFAULT_HMR2_CHECKPOINT = PROJECT_ROOT / "ckpt/hmr2/epoch=10-step=25000.ckpt"
 
 
 @dataclass(frozen=True)
@@ -42,19 +40,41 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
 
     def __init__(
         self,
-        checkpoint: str | Path = DEFAULT_HMR2_CHECKPOINT,
-        device: str | torch.device = "auto",
-        batch_size: int = 16,
+        checkpoint: str | Path,
+        *,
+        device: str | torch.device,
+        allow_device_fallback: bool,
+        batch_size: int,
+        mean_params_path: str | Path,
     ) -> None:
-        super().__init__(device)
-        self.checkpoint = Path(checkpoint)
+        super().__init__(device, allow_device_fallback=allow_device_fallback)
+        if type(batch_size) is not int:
+            raise TypeError("batch_size must be an integer.")
+        if batch_size <= 0:
+            raise ValueError(f"batch_size must be positive, got {batch_size}")
+        self.checkpoint = require_absolute_path(checkpoint, name="HMR2 checkpoint")
+        self.mean_params_path = require_absolute_path(
+            mean_params_path,
+            name="HMR2 mean-parameter asset",
+        )
         self.batch_size = batch_size
         self._model: torch.nn.Module | None = None
 
     def _load_impl(self) -> None:
         if not self.checkpoint.exists():
             raise FileNotFoundError(f"HMR2 checkpoint not found: {self.checkpoint}")
-        self._model = load_hmr2(str(self.checkpoint)).to(self._device).eval()
+        if not self.mean_params_path.is_file():
+            raise FileNotFoundError(
+                f"HMR2 mean-parameter asset not found: {self.mean_params_path}"
+            )
+        self._model = (
+            load_hmr2(
+                str(self.checkpoint),
+                mean_params_path=self.mean_params_path,
+            )
+            .to(self._device)
+            .eval()
+        )
 
     def _unload_impl(self) -> None:
         self._model = None
@@ -70,4 +90,6 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
             feature = self._model({"img": imgs_batch})
             features.append(feature.detach().cpu())
 
-        return ImageFeatureResult(features=torch.cat(features, dim=0).float())  # (F, 1024)
+        return ImageFeatureResult(
+            features=torch.cat(features, dim=0).float()
+        )  # (F, 1024)

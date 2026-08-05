@@ -8,6 +8,8 @@ no checkpoints, minimal data.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 import pytorch_lightning as pl
 import torch
@@ -61,15 +63,108 @@ def _trainer(tmp_path) -> pl.Trainer:
     )
 
 
+def _config(
+    tmp_path: Path,
+    *,
+    max_epochs: int,
+    steps_per_epoch: int | None,
+    warmup_steps: int | None,
+    warmup_epochs: int | None,
+) -> dict[str, object]:
+    return {
+        "paths": {
+            "project_root": str(tmp_path),
+            "data_root": "data",
+            "checkpoint_root": "checkpoints",
+            "artifact_root": "artifacts",
+            "output_root": "outputs",
+            "cache_root": ".cache",
+            "external_asset_root": "external",
+        },
+        "training": {
+            "trainer": {
+                "max_epochs": max_epochs,
+                "gradient_clip_val": None,
+                "deterministic": True,
+                "precision": "32-true",
+                "log_every_n_steps": 1,
+                "check_val_every_n_epoch": 1,
+                "accumulate_grad_batches": 1,
+                "reload_dataloaders_every_n_epochs": 0,
+                "enable_progress_bar": False,
+                "enable_model_summary": False,
+                "benchmark": False,
+            },
+            "learning_rate": 1.0e-3,
+            "weight_decay": 0.0,
+            "warmup_steps": warmup_steps,
+            "warmup_epochs": warmup_epochs,
+            "min_lr": 0.0,
+            "steps_per_epoch": steps_per_epoch,
+            "optimizer": {"betas": [0.9, 0.999]},
+            "checkpoint": {
+                "enabled": False,
+                "filename": "model-{epoch}",
+                "monitor": "val/loss",
+                "mode": "min",
+                "save_top_k": 1,
+                "save_last": False,
+            },
+            "early_stopping": {
+                "enabled": False,
+                "monitor": "val/loss",
+                "mode": "min",
+                "patience": 1,
+                "min_delta": 0.0,
+                "check_on_train_epoch_end": False,
+            },
+            "lr_monitor": {"enabled": False, "interval": "step"},
+            "qualitative_logging": {
+                "enabled": False,
+                "every_n_epochs": 1,
+                "num_samples": 1,
+                "selection_mode": "random",
+                "selected_indices": None,
+            },
+            "gan": {
+                "enabled": False,
+                "target_weight": 0.0,
+                "warmup_epochs": 1,
+                "generator_gradient_clip_val": None,
+                "discriminator_gradient_clip_val": None,
+                "transition": {"start_epoch": 0},
+            },
+            "matmul_precision": "high",
+            "allow_tf32": False,
+        },
+    }
+
+
 def test_one_step_with_step_scheduler(tmp_path) -> None:
-    module = _SmokeModule({"training": {"max_epochs": 1, "steps_per_epoch": 2}})
+    module = _SmokeModule(
+        _config(
+            tmp_path,
+            max_epochs=1,
+            steps_per_epoch=2,
+            warmup_steps=0,
+            warmup_epochs=None,
+        )
+    )
     trainer = _trainer(tmp_path)
     trainer.fit(module, _loader(), _loader())
     assert trainer.global_step == 1
 
 
 def test_one_step_with_epoch_warmup_scheduler(tmp_path) -> None:
-    module = _SmokeModule({"training": {"max_epochs": 4, "warmup_epochs": 2}})
+    module = _SmokeModule(
+        _config(
+            tmp_path,
+            max_epochs=4,
+            steps_per_epoch=None,
+            warmup_steps=None,
+            warmup_epochs=2,
+        )
+    )
     trainer = _trainer(tmp_path)
     trainer.fit(module, _loader(), _loader())
     assert trainer.global_step == 1

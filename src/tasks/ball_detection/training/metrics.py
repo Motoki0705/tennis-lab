@@ -23,13 +23,18 @@ class BallDetectionMetrics(Metric):
     def __init__(
         self,
         *,
-        peak_threshold: float = 0.5,
-        ball_distance_threshold: float = 4.0,
-        nms_kernel: int = 9,
-        max_predictions_per_frame: int = 8,
-        subpixel_refine: bool = True,
+        peak_threshold: float,
+        ball_distance_threshold: float,
+        nms_kernel: int,
+        max_predictions_per_frame: int,
+        subpixel_refine: bool,
     ) -> None:
         super().__init__()
+        self.tp: Tensor
+        self.fp: Tensor
+        self.fn: Tensor
+        self.distance_sum: Tensor
+        self.distance_count: Tensor
         self.peak_threshold = float(peak_threshold)
         self.ball_distance_threshold = float(ball_distance_threshold)
         self.nms_kernel = int(nms_kernel)
@@ -48,7 +53,9 @@ class BallDetectionMetrics(Metric):
         self.add_state("fp", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.add_state("fn", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.add_state("distance_sum", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("distance_count", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state(
+            "distance_count", default=torch.tensor(0.0), dist_reduce_fx="sum"
+        )
 
     def update(
         self,

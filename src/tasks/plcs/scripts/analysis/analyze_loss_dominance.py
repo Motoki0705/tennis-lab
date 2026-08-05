@@ -27,20 +27,21 @@ Notes:
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
 import torch
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
+from src.tasks.plcs.configuration import (
+    PLCSAnalysisRuntimeConfig,
+    PLCSTrainingConfig,
+)
 from src.tasks.plcs.data.datamodule import PLCSDataModule
 from src.tasks.plcs.training.lightning_module import PLCSLightningModule
 from src.tasks.plcs.training.losses import PLCSLoss, PLCSLossConfig
 from src.tasks.plcs.training.metrics import PLCSMetrics
-from src.utils.device import resolve_device
 from src.utils.hydra import hydra_main
 from src.utils.io import save_json
 
@@ -48,9 +49,17 @@ from src.utils.io import save_json
 def _load_hparams_config(hparams_path: Path) -> DictConfig:
     """Load the ``config`` block stored in a Lightning ``hparams.yaml``."""
     raw = OmegaConf.load(hparams_path)
-    config = raw.get("config", raw)
+    if not isinstance(raw, DictConfig):
+        raise TypeError(f"Lightning hparams must be a mapping: {hparams_path}")
+    if "config" not in raw:
+        raise ValueError(
+            f"Lightning hparams file has no canonical 'config' block: {hparams_path}"
+        )
+    config = raw["config"]
     if not isinstance(config, DictConfig):
         config = OmegaConf.create(config)
+    if not isinstance(config, DictConfig):
+        raise TypeError("Lightning hparams config must resolve to a mapping.")
     return config
 
 
@@ -107,6 +116,7 @@ def analyze(
 ) -> dict[str, Any]:
     """Run the dominance analysis and return a result dict."""
     config = _load_hparams_config(hparams)
+    runtime = PLCSTrainingConfig.from_config(config)
 
     # Model weights from the checkpoint, all settings from hparams.yaml.
     module = PLCSLightningModule.load_from_checkpoint(
@@ -123,19 +133,18 @@ def analyze(
     # (including the pose-naturalness losses) without hard-coded names. Loss
     # weights default to the checkpoint's hparams, optionally overridden to
     # preview a candidate weighting.
-    loss_weights = dict(config.get("loss", {}))
+    loss_weights = dict(config.loss)
     if loss_overrides:
         loss_weights.update(loss_overrides)
     loss_fn = PLCSLoss(config=PLCSLossConfig.from_dict(loss_weights))
     term_names = tuple(loss_fn.loss_terms)
 
-    metrics_cfg = config.get("metrics", {})
     metrics = PLCSMetrics(
-        position_threshold_m=float(metrics_cfg.get("position_threshold_m", 0.5)),
-        angle_threshold_deg=float(metrics_cfg.get("angle_threshold_deg", 15.0)),
+        position_threshold_m=float(config.metrics.position_threshold_m),
+        angle_threshold_deg=float(config.metrics.angle_threshold_deg),
     )
 
-    torch.manual_seed(int(config.get("run", {}).get("seed", 42)))
+    torch.manual_seed(runtime.shared.run.seed)
     datamodule = PLCSDataModule(config)
     datamodule.setup("test")
     if split != "test":
@@ -331,54 +340,51 @@ def _plot_distribution(result: dict[str, Any], out_path: Path, dpi: int) -> None
     plt.close(fig)
 
 
-def _resolve_device(device_cfg: Any) -> torch.device:
-    if device_cfg is None:
-        return resolve_device("auto")
-    return resolve_device(str(device_cfg))
-
-
 @hydra_main(
     config_path="../../configs",
     config_name="analyze_loss_dominance",
     version_base="1.3",
+    validation_boundary="plcs.analyze_loss_dominance",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
+    runtime = PLCSAnalysisRuntimeConfig.loss_dominance(cfg)
     max_batches = cfg.analysis.max_batches
     loss_overrides: dict[str, Any] | None = None
-    if cfg.analysis.loss_config is not None:
-        loaded = OmegaConf.load(to_absolute_path(str(cfg.analysis.loss_config)))
+    if runtime.loss_config is not None:
+        loaded = OmegaConf.load(runtime.loss_config)
         loss_overrides = cast(
             dict[str, Any], OmegaConf.to_container(loaded, resolve=True)
         )
+    if (
+        runtime.checkpoint is None
+        or runtime.hparams is None
+        or runtime.result_path is None
+        or runtime.device is None
+    ):
+        raise AssertionError("PLCS loss-dominance paths were not resolved.")
     result = analyze(
-        checkpoint=Path(to_absolute_path(str(cfg.run.checkpoint))),
-        hparams=Path(to_absolute_path(str(cfg.run.hparams))),
+        checkpoint=runtime.checkpoint,
+        hparams=runtime.hparams,
         split=str(cfg.analysis.split),
-        device=_resolve_device(cfg.analysis.device),
+        device=torch.device(runtime.device),
         max_batches=int(max_batches) if max_batches is not None else None,
         loss_overrides=loss_overrides,
     )
     _print_report(result)
 
-    out_dir = Path(to_absolute_path(str(cfg.run.output_dir)))
+    out_dir = runtime.output_dir
     out_dir.mkdir(parents=True, exist_ok=True)
-    report_filename = str(
-        cfg.analysis.get("report_filename", cfg.analysis.get("output_filename"))
-    )
-    out_path = out_dir / report_filename
+    out_path = runtime.result_path
     save_json(result, out_path)
     print(f"Saved JSON report to {out_path}")
 
-    plot_filename = cfg.analysis.get("plot_filename")
-    if plot_filename is not None:
-        plot_path = out_dir / str(plot_filename)
-        _plot_distribution(
-            result, plot_path, dpi=int(cfg.analysis.get("plot_dpi", 160))
-        )
+    if runtime.plot_path is not None:
+        plot_path = runtime.plot_path
+        _plot_distribution(result, plot_path, dpi=int(cfg.analysis.plot_dpi))
         if plot_path.exists():
             print(f"Saved loss distribution plot to {plot_path}")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(cast(Callable[[], int], main)())
+    raise SystemExit(main())

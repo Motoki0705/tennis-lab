@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Self, cast
+from typing import Any, Self
 
 import numpy as np
 import torch
@@ -12,10 +12,12 @@ from PIL import Image
 from torch import Tensor
 
 from src.tasks.base.inference.predictor import BasePredictor
+from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.inference.preprocess import preprocess_court_image
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
+from src.utils.configuration import PathResolver
 from src.utils.data.heatmaps import heatmaps_to_argmax, refine_peaks_log_parabolic
 
 
@@ -34,7 +36,7 @@ class CourtKeypointPredictor(BasePredictor):
         self,
         model: torch.nn.Module,
         device: torch.device,
-        short_side: int = 640,
+        short_side: int | None = None,
         *,
         subpixel_refine: bool = True,
     ) -> None:
@@ -50,7 +52,11 @@ class CourtKeypointPredictor(BasePredictor):
     def load_from_checkpoint(
         cls,
         checkpoint_path: str | Path | Iterable[str | Path],
-        device: str | torch.device = "cpu",
+        *,
+        resolver: PathResolver,
+        device: str | torch.device,
+        allow_device_fallback: bool,
+        subpixel_refine: bool,
         **kwargs: Any,
     ) -> Self:
         """Load predictor from a Lightning checkpoint.
@@ -66,19 +72,19 @@ class CourtKeypointPredictor(BasePredictor):
         -------
         CourtKeypointPredictor
         """
-        subpixel_refine = bool(kwargs.pop("subpixel_refine", True))
         lightning_module, resolved_device = cls._load_single_lightning_module(
             checkpoint_path,
             CourtDetectionLightningModule,
-            device,
-            weights_only=bool(kwargs.pop("weights_only", False)),
+            resolver=resolver,
+            device=device,
+            allow_device_fallback=allow_device_fallback,
+            weights_only=False,
             **kwargs,
         )
 
         model = lightning_module.model
-        data_cfg = dict(lightning_module.config.get("data", {}))
-        aug_cfg = data_cfg.get("augmentation", {})
-        short_side = int(aug_cfg.get("val_short_side", 640))
+        runtime = CourtTrainingConfig.from_config(lightning_module.config)
+        short_side = runtime.data.augmentation.val_short_side
 
         return cls(
             model=model,
@@ -95,14 +101,14 @@ class CourtKeypointPredictor(BasePredictor):
         tuple
             (tensor ``[1, 3, H', W']``, original_height, original_width)
         """
-        return cast(
-            "tuple[Tensor, int, int]",
-            preprocess_court_image(
-                image,
-                short_side=self.short_side,
-                device=self.device,
-            ),
+        if self.short_side is None:
+            raise RuntimeError("short_side is required for raw-image preprocessing.")
+        prepared: tuple[Tensor, int, int] = preprocess_court_image(
+            image,
+            short_side=self.short_side,
+            device=self.device,
         )
+        return prepared
 
     def predict(
         self,
@@ -132,7 +138,9 @@ class CourtKeypointPredictor(BasePredictor):
             logits = self.model(image_tensor)  # [1, K, H, W]
 
         heatmaps = torch.sigmoid(logits)
-        use_subpixel = self.subpixel_refine if subpixel_refine is None else subpixel_refine
+        use_subpixel = (
+            self.subpixel_refine if subpixel_refine is None else subpixel_refine
+        )
         coords_normalized, scores = self._heatmaps_to_coords(
             heatmaps,
             subpixel_refine=bool(use_subpixel),

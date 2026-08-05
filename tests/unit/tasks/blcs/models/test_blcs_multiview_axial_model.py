@@ -8,28 +8,39 @@ from omegaconf import OmegaConf
 from src.tasks.blcs.models import build_blcs_model
 
 
+def _config(*, max_num_cameras: int, max_seq_len: int) -> dict[str, object]:
+    return {
+        "model": {
+            "name": "blcs_multiview_axial",
+            "io": {"input_profile": "multiview"},
+            "hidden_dim": 16,
+            "num_layers": 1,
+            "num_heads": 4,
+            "attention_type": "mha",
+            "num_kv_heads": None,
+            "ffn_dim": 64,
+            "ffn_type": "swiglu",
+            "camera_layers_per_stage": [1],
+            "time_layers_per_stage": [1],
+            "time_global_stage_mask": [False],
+            "max_num_cameras": max_num_cameras,
+            "max_seq_len": max_seq_len,
+            "dropout": 0.0,
+            "rope_dim": 4,
+            "rope_theta_time": 10000.0,
+            "rope_theta_camera": 10000.0,
+            "predict_velocity": False,
+            "invisible_init_std": 0.02,
+            "num_court_tokens": 20,
+            "time_window_radius": 2,
+        }
+    }
+
+
 def test_multiview_axial_model_forward_accepts_single_view() -> None:
     torch.manual_seed(0)
     model = build_blcs_model(
-        OmegaConf.create(
-            {
-                "model": {
-                    "name": "blcs_multiview_axial",
-                    "io": {"input_profile": "multiview"},
-                    "hidden_dim": 16,
-                    "num_layers": 1,
-                    "num_heads": 4,
-                    "camera_layers_per_stage": [1],
-                    "time_layers_per_stage": [1],
-                    "time_global_stage_mask": [False],
-                    "max_num_cameras": 1,
-                    "max_seq_len": 4,
-                    "dropout": 0.0,
-                    "time_window_radius": 2,
-                },
-                "data": {"num_court_kp": 20},
-            }
-        )
+        OmegaConf.create(_config(max_num_cameras=1, max_seq_len=4))
     ).eval()
 
     with torch.no_grad():
@@ -47,25 +58,7 @@ def test_multiview_axial_model_forward_accepts_single_view() -> None:
 def test_multiview_axial_model_masks_invisible_court_coordinates() -> None:
     torch.manual_seed(1)
     model = build_blcs_model(
-        OmegaConf.create(
-            {
-                "model": {
-                    "name": "blcs_multiview_axial",
-                    "io": {"input_profile": "multiview"},
-                    "hidden_dim": 16,
-                    "num_layers": 1,
-                    "num_heads": 4,
-                    "camera_layers_per_stage": [1],
-                    "time_layers_per_stage": [1],
-                    "time_global_stage_mask": [False],
-                    "max_num_cameras": 2,
-                    "max_seq_len": 3,
-                    "dropout": 0.0,
-                    "time_window_radius": 2,
-                },
-                "data": {"num_court_kp": 20},
-            }
-        )
+        OmegaConf.create(_config(max_num_cameras=2, max_seq_len=3))
     ).eval()
     inputs = {
         "ball_uv": torch.rand(1, 2, 3, 2),

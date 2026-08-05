@@ -17,7 +17,7 @@ from src.utils.video.sampling import (
     sample_step_seconds,
     sample_uniform_frame_indices,
 )
-from src.utils.video.transforms import BgrToTensorTransform, normalize_tensor_imagenet
+from src.utils.video.transforms import BgrToTensorTransform
 from src.utils.video.types import FramePacket, TemporalBatch, TemporalWindow, VideoInfo
 from src.utils.video.windows import (
     build_window_starts,
@@ -52,7 +52,6 @@ __all__ = [
     "download_youtube_video",
     "find_downloaded_video",
     "h264_encoder_args",
-    "normalize_tensor_imagenet",
     "parse_time_seconds",
     "probe_video_info",
     "read_audio_mono",

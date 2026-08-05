@@ -34,10 +34,10 @@ from numpy.typing import NDArray
 class QualityConfig:
     """Thresholds controlling pseudo-label filtering."""
 
-    min_player_confidence: float = 0.3
-    min_ball_cameras: int = 1
-    label_weight_power: float = 1.0
-    min_window_label_ratio: float = 0.1
+    min_player_confidence: float
+    min_ball_cameras: int
+    label_weight_power: float
+    min_window_label_ratio: float
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.min_player_confidence <= 1.0:
@@ -45,7 +45,9 @@ class QualityConfig:
                 f"min_player_confidence must be in [0, 1], got {self.min_player_confidence}."
             )
         if self.min_ball_cameras < 1:
-            raise ValueError(f"min_ball_cameras must be >= 1, got {self.min_ball_cameras}.")
+            raise ValueError(
+                f"min_ball_cameras must be >= 1, got {self.min_ball_cameras}."
+            )
         if self.label_weight_power < 0.0:
             raise ValueError(
                 f"label_weight_power must be >= 0, got {self.label_weight_power}."
@@ -54,15 +56,6 @@ class QualityConfig:
             raise ValueError(
                 f"min_window_label_ratio must be in [0, 1], got {self.min_window_label_ratio}."
             )
-
-    @classmethod
-    def from_dict(cls, cfg: dict[str, Any]) -> QualityConfig:
-        return cls(
-            min_player_confidence=float(cfg.get("min_player_confidence", 0.3)),
-            min_ball_cameras=int(cfg.get("min_ball_cameras", 1)),
-            label_weight_power=float(cfg.get("label_weight_power", 1.0)),
-            min_window_label_ratio=float(cfg.get("min_window_label_ratio", 0.1)),
-        )
 
 
 def player_label_confidence(human_kp_vis: NDArray[np.float32]) -> NDArray[np.float32]:
@@ -75,7 +68,9 @@ def player_label_confidence(human_kp_vis: NDArray[np.float32]) -> NDArray[np.flo
         ``(P, T)`` mean visibility over cameras and joints.
     """
     if human_kp_vis.ndim != 4:
-        raise ValueError(f"human_kp_vis must be (P, N, T, J), got shape {human_kp_vis.shape}.")
+        raise ValueError(
+            f"human_kp_vis must be (P, N, T, J), got shape {human_kp_vis.shape}."
+        )
     return np.asarray(
         human_kp_vis.astype(np.float32).mean(axis=(1, 3)), dtype=np.float32
     )
@@ -114,9 +109,7 @@ def build_label_masks(
     """
     num_cameras = ball_vis.shape[0]
     player_conf = player_label_confidence(human_kp_vis)
-    player_finite = (
-        np.isfinite(player_position).all(axis=-1) & np.isfinite(player_yaw)
-    )
+    player_finite = np.isfinite(player_position).all(axis=-1) & np.isfinite(player_yaw)
     if player_conf.shape != player_finite.shape:
         raise ValueError(
             f"pose coverage shape {player_conf.shape} does not match player label "
@@ -141,9 +134,9 @@ def build_label_masks(
             f"count {num_cameras}; lower the threshold or exclude the clip explicitly."
         )
     ball_valid = ball_finite & (ball_conf >= min_fraction - 1e-9)
-    ball_weight = np.where(ball_valid, ball_conf**config.label_weight_power, 0.0).astype(
-        np.float32
-    )
+    ball_weight = np.where(
+        ball_valid, ball_conf**config.label_weight_power, 0.0
+    ).astype(np.float32)
 
     return {
         "player_label_valid": player_valid,

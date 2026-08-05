@@ -11,7 +11,7 @@ player position/trail.
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -56,12 +56,13 @@ class PLCSSceneRenderer:
 
     def __init__(
         self,
+        *,
+        style: SceneStyleConfig,
         court_renderer: CourtRenderer | None = None,
         skeleton_renderer: SkeletonRenderer | None = None,
-        style: SceneStyleConfig | None = None,
         camera: CameraController | None = None,
     ) -> None:
-        self.style = style or SceneStyleConfig()
+        self.style = style
         self.theme = resolve_theme(self.style.theme)
         self.camera = camera or CameraController("broadcast")
         self.court_renderer = court_renderer or CourtRenderer(self.theme.court_style)
@@ -85,7 +86,10 @@ class PLCSSceneRenderer:
         position = np.asarray(scene.position)
         if position.ndim == 2:
             return [scene]
-        num_persons = int(getattr(scene, "num_persons", position.shape[1]))
+        raw_num_persons = getattr(scene, "num_persons", None)
+        num_persons = (
+            int(position.shape[1]) if raw_num_persons is None else int(raw_num_persons)
+        )
         return [
             SimpleNamespace(
                 position=position[:, index],
@@ -108,7 +112,9 @@ class PLCSSceneRenderer:
         figsize: tuple[float, float] = (12, 8),
     ) -> FuncAnimation:
         """Create scene animation for a single view."""
-        num_frames = int(getattr(scene, "meta", {}).get("num_frames", len(scene.position)))
+        num_frames = int(
+            getattr(scene, "meta", {}).get("num_frames", len(scene.position))
+        )
         player_scenes = self._player_scenes(scene)
         interval = 1000.0 / fps
 
@@ -126,7 +132,11 @@ class PLCSSceneRenderer:
                 self._render_3d_frame(
                     ax,
                     [
-                        (player, _PLAYER_COLORS[index % len(_PLAYER_COLORS)], f"Player {index + 1}")
+                        (
+                            player,
+                            _PLAYER_COLORS[index % len(_PLAYER_COLORS)],
+                            f"Player {index + 1}",
+                        )
                         for index, player in enumerate(player_scenes)
                     ],
                     frame_idx,
@@ -170,14 +180,18 @@ class PLCSSceneRenderer:
             def update_cam(frame_idx: int) -> list[Any]:
                 ax.clear()
                 self._render_camera_subplot(ax, scene, frame_idx, camera_idx)
-                ax.set_title(f"Camera {camera_idx} | Frame {frame_idx}/{num_frames - 1}")
+                ax.set_title(
+                    f"Camera {camera_idx} | Frame {frame_idx}/{num_frames - 1}"
+                )
                 return []
 
             return FuncAnimation(
                 fig, update_cam, frames=num_frames, interval=interval, blit=False
             )
 
-        raise ValueError(f"Unknown view type: {view}. Use '3d', '2d_topdown', or 'camera'.")
+        raise ValueError(
+            f"Unknown view type: {view}. Use '3d', '2d_topdown', or 'camera'."
+        )
 
     def create_comparison_animation(
         self,
@@ -192,7 +206,9 @@ class PLCSSceneRenderer:
     ) -> FuncAnimation:
         """Create GT vs prediction comparison animation."""
         _ = camera_idx
-        gt_frames = int(getattr(gt_scene, "meta", {}).get("num_frames", len(gt_scene.position)))
+        gt_frames = int(
+            getattr(gt_scene, "meta", {}).get("num_frames", len(gt_scene.position))
+        )
         pred_frames = int(
             getattr(pred_scene, "meta", {}).get("num_frames", len(pred_scene.position))
         )
@@ -214,7 +230,10 @@ class PLCSSceneRenderer:
                 ax.clear()
                 self._render_3d_frame(
                     ax,
-                    [(gt_scene, _GT_COLOR, "GT"), (pred_scene, _PRED_COLOR, "Prediction")],
+                    [
+                        (gt_scene, _GT_COLOR, "GT"),
+                        (pred_scene, _PRED_COLOR, "Prediction"),
+                    ],
                     frame_idx,
                     num_frames,
                     fps,
@@ -307,7 +326,7 @@ class PLCSSceneRenderer:
 
         if self.style.show_trail:
             trail_start = max(0, frame_idx - self.style.trail_length)
-            trail = world[trail_start : frame_idx + 1].copy()
+            trail = world[trail_start : frame_idx + 1].astype(np.float32, copy=True)
             if trail.shape[1] > 2:
                 trail[:, 2] = 0.02
             render_fading_line_3d(
@@ -391,8 +410,17 @@ class PLCSSceneRenderer:
         for scene, color in scenes:
             world = self._world_positions(scene)
             trail_start = max(0, frame_idx - self.style.trail_length)
-            trails.append((world[trail_start : frame_idx + 1, :2], color))
-            dots.append(((float(world[frame_idx, 0]), float(world[frame_idx, 1])), color))
+            trails.append(
+                (
+                    world[trail_start : frame_idx + 1, :2].astype(
+                        np.float32, copy=False
+                    ),
+                    color,
+                )
+            )
+            dots.append(
+                ((float(world[frame_idx, 0]), float(world[frame_idx, 1])), color)
+            )
         self.minimap_renderer.render(minimap_ax, dots=dots, trails=trails)
 
     def _render_2d_subplot(self, ax: Axes, scene: Any, frame_idx: int) -> None:
@@ -432,7 +460,8 @@ class PLCSSceneRenderer:
         world_pose[:, 0] += x
         world_pose[:, 1] += y
         world_pose[:, 2] += z
-        return cast(np.ndarray, np.asarray(world_pose, dtype=np.float64))
+        pose: np.ndarray = np.asarray(world_pose, dtype=np.float64)
+        return pose
 
     def _render_2d_comparison_subplot(
         self,

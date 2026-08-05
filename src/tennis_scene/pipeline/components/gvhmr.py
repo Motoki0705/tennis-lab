@@ -10,11 +10,12 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import torch
 
+from src.submodules.configuration import BundledModelAssetPaths, SubmoduleRuntimeConfig
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
 from src.utils.io import load_json, save_json
 
@@ -33,26 +34,32 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class GVHMRConfig:
     """Configuration for GVHMR module."""
 
-    gvhmr_checkpoint: str | Path
-    detector: str = "dino"
-    yolo_checkpoint: str | Path = "ckpt/yolo/yolov8x.pt"
-    dino_checkpoint: str | Path = "ckpt/dino/checkpoint0029_4scale_swin.pth"
-    dino_confidence: float = 0.3
-    vitpose_checkpoint: str | Path = "ckpt/vitpose/vitpose-h-multi-coco.pth"
-    hmr2_checkpoint: str | Path = "ckpt/hmr2/epoch=10-step=25000.ckpt"
-    device: str = "cuda"
-    smplx_body_model_path: str | Path | None = None
-    track_selection: str = "auto"  # "interactive" or "auto"
-    num_tracks: int = 2  # used when track_selection == "auto"
-    save_result: bool = False
-    output_path: str | Path | None = None
-    load_path: str | Path | None = None
+    gvhmr_checkpoint: Path
+    source: Literal["execute", "load"]
+    detector: str
+    yolo_checkpoint: Path
+    dino_checkpoint: Path
+    dino_repository: Path
+    vitpose_checkpoint: Path
+    hmr2_checkpoint: Path
+    body_models_dir: Path
+    bundled_assets: BundledModelAssetPaths
+    runtime: SubmoduleRuntimeConfig
+    track_selection: str
+    num_tracks: int
+    save_result: bool
+    output_path: Path
+    load_path: Path | None
 
     def __post_init__(self) -> None:
+        if (self.source == "load") != (self.load_path is not None):
+            raise ValueError(
+                "GVHMR source='load' requires load_path; execute forbids it"
+            )
         if self.detector not in {"yolo", "dino"}:
             raise ValueError(
                 f"detector must be 'yolo' or 'dino', got {self.detector!r}"
@@ -167,31 +174,55 @@ class GVHMRModule(BasePipelineModule):
             YoloPersonTracker,
         )
 
-        device = self.config.device
+        runtime = self.config.runtime
+        device = runtime.device
+        allow_device_fallback = runtime.allow_device_fallback
         if self.config.detector == "yolo":
             self._tracker = YoloPersonTracker(
-                checkpoint=self.config.yolo_checkpoint, device=device
+                checkpoint=self.config.yolo_checkpoint,
+                device=device,
+                allow_device_fallback=allow_device_fallback,
+                confidence=runtime.tracking.yolo_confidence,
             )
         elif self.config.detector == "dino":
             self._tracker = DinoPersonTracker(
                 checkpoint=self.config.dino_checkpoint,
+                repository=self.config.dino_repository,
                 device=device,
-                confidence=self.config.dino_confidence,
+                allow_device_fallback=allow_device_fallback,
+                confidence=runtime.dino_detector.confidence,
+                short_side=runtime.dino_detector.short_side,
+                max_long_side=runtime.dino_detector.max_long_side,
             )
         else:
             raise AssertionError(f"Unvalidated detector: {self.config.detector}")
         self._pose_model = ViTPosePose2D(
-            checkpoint=self.config.vitpose_checkpoint, device=device
+            checkpoint=self.config.vitpose_checkpoint,
+            device=device,
+            allow_device_fallback=allow_device_fallback,
+            flip_test=runtime.vitpose.flip_test,
+            batch_size=runtime.vitpose.batch_size,
+            head_config=runtime.vitpose.head,
         )
         self._feature_model = Hmr2FeatureExtractor(
-            checkpoint=self.config.hmr2_checkpoint, device=device
+            checkpoint=self.config.hmr2_checkpoint,
+            device=device,
+            allow_device_fallback=allow_device_fallback,
+            batch_size=runtime.hmr2.batch_size,
+            mean_params_path=self.config.bundled_assets.hmr2_mean_params,
         )
         self._mesh_model = GvhmrMeshRecovery(
-            checkpoint=self.config.gvhmr_checkpoint, device=device
+            checkpoint=self.config.gvhmr_checkpoint,
+            body_models_dir=self.config.body_models_dir,
+            device=device,
+            allow_device_fallback=allow_device_fallback,
+            bundled_assets=self.config.bundled_assets,
         )
         self._vertex_reconstructor = SmplVertexReconstructor(
+            body_models_dir=self.config.body_models_dir,
             device=device,
-            body_models_dir=self.config.smplx_body_model_path,
+            allow_device_fallback=allow_device_fallback,
+            bundled_assets=self.config.bundled_assets,
         )
         self._mesh_model.load()
 
@@ -201,7 +232,7 @@ class GVHMRModule(BasePipelineModule):
 
     def process(
         self,
-        video_path: str | Path,
+        video_path: Path,
         max_frames: int | None = None,
     ) -> GVHMRResult:
         """Run GVHMR preprocessing and inference.
@@ -209,16 +240,13 @@ class GVHMRModule(BasePipelineModule):
         Returns:
             GVHMRResult with shapes based on (P, T, ...).
         """
-        if self.config.load_path is not None:
-            load_path = Path(self.config.load_path)
-            if load_path.exists():
-                LOGGER.info(
-                    f"Loading GVHMR result from {load_path} (skipping inference)"
-                )
-                return GVHMRResult.load(load_path)
-            LOGGER.warning(
-                f"load_path specified but not found: {load_path}, running inference"
-            )
+        if self.config.source == "load":
+            assert self.config.load_path is not None
+            load_path = self.config.load_path
+            if not load_path.is_file():
+                raise FileNotFoundError(f"GVHMR artifact not found: {load_path}")
+            LOGGER.info(f"Loading GVHMR result from {load_path}")
+            return GVHMRResult.load(load_path)
 
         from src.submodules.models.tracker import TrackRequest
 
@@ -239,7 +267,10 @@ class GVHMRModule(BasePipelineModule):
 
         players: list[dict[str, Any]] = []
         for track_id in track_ids:
-            bbx_xys = track_result.bbx_xys(track_id)
+            bbx_xys = track_result.bbx_xys(
+                track_id,
+                base_enlarge=self.config.runtime.tracking.bbox_enlarge,
+            )
             if max_frames is not None and len(bbx_xys) > max_frames:
                 bbx_xys = bbx_xys[:max_frames]
 
@@ -267,14 +298,14 @@ class GVHMRModule(BasePipelineModule):
             track_ids=np.array(track_ids, dtype=np.int32),
         )
 
-        if self.config.save_result and self.config.output_path is not None:
+        if self.config.save_result:
             result.save(self.config.output_path)
 
         return result
 
     def _run_track(
         self,
-        video_path: str | Path,
+        video_path: Path,
         track_id: int,
         bbx_xys: torch.Tensor,
     ) -> dict[str, Any]:
@@ -304,7 +335,7 @@ class GVHMRModule(BasePipelineModule):
                 f_imgseq=features.features,
                 width=info.width,
                 height=info.height,
-                static_cam=True,
+                static_cam=self.config.runtime.static_cam,
             )
         )
 

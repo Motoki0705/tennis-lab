@@ -13,8 +13,9 @@ Produces two artifacts:
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -26,6 +27,8 @@ from src.utils.geometry.angles import angular_error
 from src.utils.io import save_json
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
+SavezCompressed = Callable[..., None]
+
 
 def evaluate_split(
     predictor: SLCSPredictor,
@@ -34,7 +37,7 @@ def evaluate_split(
     split_file: str | Path,
     split: str,
     data_config: SLCSDataConfig,
-    batch_size: int = 4,
+    batch_size: int,
 ) -> tuple[dict[str, float], dict[str, np.ndarray]]:
     """Evaluate a split; returns (aggregate metrics, per-frame arrays)."""
     dataset = SLCSWindowDataset(
@@ -42,6 +45,9 @@ def evaluate_split(
         split_file=split_file,
         split=split,
         config=data_config,
+        stride=(
+            data_config.train_stride if split == "train" else data_config.eval_stride
+        ),
     )
     metrics = SLCSMetrics()
     scale = torch.tensor(list(COURT_COORD_SCALE_XYZ), dtype=torch.float32)
@@ -62,7 +68,9 @@ def evaluate_split(
     }
 
     for start in range(0, len(dataset), batch_size):
-        samples = [dataset[i] for i in range(start, min(start + batch_size, len(dataset)))]
+        samples = [
+            dataset[i] for i in range(start, min(start + batch_size, len(dataset)))
+        ]
         batch = collate_slcs(samples)
         outputs = predictor.predict(batch, denormalize=False)
 
@@ -79,9 +87,9 @@ def evaluate_split(
             * 180.0
             / math.pi
         )
-        ball_err = ((outputs["ball_position"] - batch["target_ball_position"]) * scale).norm(
-            dim=-1
-        )
+        ball_err = (
+            (outputs["ball_position"] - batch["target_ball_position"]) * scale
+        ).norm(dim=-1)
 
         collected["player_pos_error_m"].append(player_err.numpy())
         collected["player_ang_error_deg"].append(ang_err.numpy())
@@ -123,7 +131,8 @@ def save_evaluation(
         payload["context"] = context
     metrics_path = save_json(payload, out / "metrics.json")
     arrays_path = out / "eval_arrays.npz"
-    np.savez_compressed(arrays_path, **arrays)  # type: ignore[arg-type]
+    savez_compressed = cast(SavezCompressed, np.savez_compressed)
+    savez_compressed(arrays_path, **arrays)
     return Path(metrics_path), arrays_path
 
 

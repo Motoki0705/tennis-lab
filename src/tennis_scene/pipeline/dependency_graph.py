@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
 
 
 class Stage(StrEnum):
@@ -87,9 +84,17 @@ class PipelineDependencyGraph:
         for stage in self.specs:
             visit(stage)
 
-    def resolve_from_config(self, cfg: DictConfig) -> ResolutionResult:
-        """Resolve enabled stages from config with dependency handling."""
-        requested = {stage for stage, spec in self.specs.items() if self._is_requested(cfg, spec)}
+    def resolve_from_enabled(self, configured: Mapping[str, bool]) -> ResolutionResult:
+        """Resolve explicitly enabled stages with dependency handling."""
+        expected = {spec.config_key for spec in self.specs.values()}
+        if set(configured) != expected:
+            raise ValueError(
+                "Enabled-stage keys must exactly match the dependency graph: "
+                f"expected {sorted(expected)}, got {sorted(configured)}"
+            )
+        requested = {
+            stage for stage, spec in self.specs.items() if configured[spec.config_key]
+        }
         enabled = set(requested)
         disabled_reasons: dict[Stage, str] = {}
 
@@ -97,7 +102,9 @@ class PipelineDependencyGraph:
         while changed:
             changed = False
             for stage in list(enabled):
-                missing = [dep for dep in self.specs[stage].depends_on if dep not in enabled]
+                missing = [
+                    dep for dep in self.specs[stage].depends_on if dep not in enabled
+                ]
                 if not missing:
                     continue
 
@@ -127,7 +134,9 @@ class PipelineDependencyGraph:
             disabled_reasons=disabled_reasons,
         )
 
-    def validate_resolution(self, order: tuple[Stage, ...], enabled: set[Stage]) -> None:
+    def validate_resolution(
+        self, order: tuple[Stage, ...], enabled: set[Stage]
+    ) -> None:
         """Validate resolved execution plan consistency."""
         if set(order) != enabled:
             raise ValueError("Resolved order and enabled set are inconsistent")
@@ -145,17 +154,14 @@ class PipelineDependencyGraph:
     def format_resolution_messages(self, result: ResolutionResult) -> list[str]:
         """Build human-readable messages for logs."""
         messages = [
-            "Enabled stages: " + ", ".join(stage.value for stage in result.enabled_order)
+            "Enabled stages: "
+            + ", ".join(stage.value for stage in result.enabled_order)
         ]
-        for stage, reason in sorted(result.disabled_reasons.items(), key=lambda item: item[0].value):
+        for stage, reason in sorted(
+            result.disabled_reasons.items(), key=lambda item: item[0].value
+        ):
             messages.append(f"Disabled stage '{stage.value}': {reason}")
         return messages
-
-    def _is_requested(self, cfg: DictConfig, spec: StageSpec) -> bool:
-        if spec.config_key not in cfg:
-            return spec.default_enabled
-        section = cfg[spec.config_key]
-        return not bool(section.get("skip", not spec.default_enabled))
 
     def _topological_order(self, enabled: set[Stage]) -> list[Stage]:
         visited: set[Stage] = set()

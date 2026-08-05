@@ -45,7 +45,9 @@ def read_audio_mono(
     chunks: list[NDArray[np.float32]] = []
     total_samples = 0
     with av.open(str(path)) as container:
-        audio_streams = [stream for stream in container.streams if stream.type == "audio"]
+        audio_streams = [
+            stream for stream in container.streams if stream.type == "audio"
+        ]
         if not audio_streams:
             raise ValueError(f"No audio stream found in: {path}")
         stream = audio_streams[0]
@@ -54,13 +56,19 @@ def read_audio_mono(
         def append_frames(frames: list[av.AudioFrame]) -> None:
             nonlocal total_samples
             for out_frame in frames:
-                samples = np.asarray(out_frame.to_ndarray(), dtype=np.float32).reshape(-1)
+                samples = np.asarray(out_frame.to_ndarray(), dtype=np.float32).reshape(
+                    -1
+                )
                 if samples.size == 0:
                     continue
                 chunks.append(samples)
                 total_samples += samples.size
 
         for frame in container.decode(stream):
+            if not isinstance(frame, av.AudioFrame):
+                raise TypeError(
+                    "Decoding the selected audio stream returned a non-audio frame."
+                )
             append_frames(resampler.resample(frame))
             if max_samples is not None and total_samples >= max_samples:
                 break
@@ -117,7 +125,7 @@ def audio_envelope(
         )
     trimmed = samples[: num_windows * hop].astype(np.float64).reshape(num_windows, hop)
     rms = np.sqrt(np.mean(np.square(trimmed), axis=1))
-    return rms.astype(np.float32)
+    return np.asarray(rms, dtype=np.float32)
 
 
 __all__ = ["audio_envelope", "read_audio_mono"]

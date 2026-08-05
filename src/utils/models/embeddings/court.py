@@ -16,7 +16,6 @@ class CourtKPUVEmbedding(nn.Module):
 
     Args:
         dim: Embedding dimension.
-        dropout: Retained for API compatibility; ignored by the current projection stack.
         invisible_token: Shared invisible token module.
     """
 
@@ -24,7 +23,6 @@ class CourtKPUVEmbedding(nn.Module):
         self,
         *,
         dim: int,
-        dropout: float = 0.0,
         invisible_token: InvisibleTokenEmbedding,
     ) -> None:
         super().__init__()

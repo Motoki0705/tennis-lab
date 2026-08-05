@@ -29,35 +29,35 @@ class TargetedVelocityConfig:
     """Configuration for targeted velocity sampling."""
 
     # Elevation ranges for profile sampling (degrees)
-    drive_elevation_range_deg: tuple[float, float] = (5.0, 25.0)
-    lob_elevation_range_deg: tuple[float, float] = (35.0, 70.0)
-    lob_probability: float = 0.0
+    drive_elevation_range_deg: tuple[float, float]
+    lob_elevation_range_deg: tuple[float, float]
+    lob_probability: float
 
     # Maximum gravity-only apex for any targeted shot. This prevents a long
     # target combined with a high lob angle from creating implausible 20m+
     # trajectories while preserving the requested landing point.
-    max_ballistic_apex_height_m: float = 8.0
+    max_ballistic_apex_height_m: float
 
     # Gravity for projectile calculation (m/s²)
-    gravity: float = 9.81
+    gravity: float
 
     # Net-hit resampling
-    net_retry_max_attempts: int = 12
-    net_check_max_frames: int = 600
-    net_elevation_step_deg: float = 2.0
+    net_retry_max_attempts: int
+    net_check_max_frames: int
+    net_elevation_step_deg: float
 
     # Physics-based landing refinement (shooting method). Enabled whenever a
     # physics simulator is passed to the sampler. Each iteration simulates the
     # shot to its first bounce and shifts a virtual aim point by the landing
     # error so drag/Magnus/wind are compensated.
-    landing_refine_enabled: bool = True
-    landing_refine_max_iters: int = 14
-    landing_refine_tolerance_m: float = 0.25
-    landing_sim_max_frames: int = 1200
+    landing_refine_enabled: bool
+    landing_refine_max_iters: int
+    landing_refine_tolerance_m: float
+    landing_sim_max_frames: int
 
     # Margin (metres) from cell edges when sampling target bounce positions.
     # Keeps refined landings clear of court boundaries despite residual error.
-    target_margin_m: float = 0.35
+    target_margin_m: float
 
 
 @dataclass(frozen=True)
@@ -93,9 +93,10 @@ class TargetedVelocitySampler:
 
     def __init__(
         self,
-        cell_manager: CellManager | None = None,
-        config: TargetedVelocityConfig | None = None,
-        device: str | torch.device = "cpu",
+        *,
+        cell_manager: CellManager,
+        config: TargetedVelocityConfig,
+        device: str | torch.device,
     ) -> None:
         """Initialize targeted velocity sampler.
 
@@ -105,11 +106,8 @@ class TargetedVelocitySampler:
             device: Torch device.
 
         """
-        # Import here to avoid circular dependency
-        from src.tasks.blcs.generate_dataset.simulation.cell_manager import CellManager
-
-        self.cell_manager = cell_manager or CellManager()
-        self.config = config or TargetedVelocityConfig()
+        self.cell_manager = cell_manager
+        self.config = config
         self.device = torch.device(device)
         if self.config.max_ballistic_apex_height_m <= 0.0:
             raise ValueError("max_ballistic_apex_height_m must be positive.")

@@ -5,12 +5,13 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import torch
 
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.utils.configuration import PathResolver
 from src.utils.inference.windowed import blend_windows, window_slices
 from src.utils.io import load_json, save_json
 
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class BLCSConfig:
     """Configuration for BLCS module.
 
@@ -40,13 +41,22 @@ class BLCSConfig:
 
     """
 
-    checkpoint: str | Path
-    device: str = "cuda"
-    save_result: bool = False
-    output_path: str | Path | None = None
-    load_path: str | Path | None = None
-    window_size: int = 256
-    window_overlap: int = 64
+    checkpoint: Path
+    source: Literal["execute", "load"]
+    device: str
+    allow_device_fallback: bool
+    save_result: bool
+    output_path: Path
+    load_path: Path | None
+    window_size: int
+    window_overlap: int
+    resolver: PathResolver
+
+    def __post_init__(self) -> None:
+        if (self.source == "load") != (self.load_path is not None):
+            raise ValueError(
+                "BLCS source='load' requires load_path; execute forbids it"
+            )
 
 
 @dataclass
@@ -130,7 +140,7 @@ class BLCSModule(BasePipelineModule):
 
         """
         self.config = config
-        self.checkpoint = Path(self.config.checkpoint)
+        self.checkpoint = self.config.checkpoint
         self.device = self.config.device
         self._predictor: BLCSPredictor | None = None
 
@@ -144,7 +154,10 @@ class BLCSModule(BasePipelineModule):
         from src.tasks.blcs.inference.predictor import BLCSPredictor
 
         self._predictor = BLCSPredictor.load_from_checkpoint(
-            self.checkpoint, device=self.device
+            self.checkpoint,
+            resolver=self.config.resolver,
+            device=self.device,
+            allow_device_fallback=self.config.allow_device_fallback,
         )
         self._validate_pipeline_checkpoint_profile()
 
@@ -191,13 +204,15 @@ class BLCSModule(BasePipelineModule):
 
         """
         # Check if we should load from pre-computed result
-        if self.config.load_path is not None:
-            load_path = Path(self.config.load_path)
-            if load_path.exists():
-                LOGGER.info(f"Loading BLCS result from {load_path} (skipping inference)")
+        if self.config.source == "load":
+            assert self.config.load_path is not None
+            load_path = self.config.load_path
+            if load_path.is_file():
+                LOGGER.info(
+                    f"Loading BLCS result from {load_path} (skipping inference)"
+                )
                 return BLCSResult.load(load_path)
-            else:
-                LOGGER.warning(f"load_path specified but not found: {load_path}, running inference")
+            raise FileNotFoundError(f"BLCS artifact not found: {load_path}")
 
         if not self.is_loaded:
             self.load()
@@ -287,24 +302,7 @@ class BLCSModule(BasePipelineModule):
 
         result = BLCSResult(ball_3d=ball_3d, visibility=output_visibility)
 
-        if self.config.save_result and self.config.output_path is not None:
+        if self.config.save_result:
             result.save(self.config.output_path)
 
         return result
-
-
-if __name__ == "__main__":
-    # Quick smoke test for module instantiation
-    print("BLCSModule: 3D ball localization module")
-    print("Use BLCSModule(BLCSConfig(...)) to create")
-
-    # Test config creation
-    config = BLCSConfig(
-        checkpoint="test.ckpt",
-        device="cpu",
-        save_result=True,
-        output_path="test_output.json",
-    )
-    print(f"Config: {config}")
-    assert config.device == "cpu"
-    print("Smoke test passed.")

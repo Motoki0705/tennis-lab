@@ -33,16 +33,17 @@ sources:
   tracknet:
     enabled: true
     splits: [train, val, test]
-    data_dir: data/tennis/tracknet
+    data_dir: tennis/tracknet
     sample_stride: 4
     split:
+      root_role: project
       train_file: src/tasks/ball_detection/configs/data/splits/train.txt
       val_file: src/tasks/ball_detection/configs/data/splits/val.txt
       test_file: src/tasks/ball_detection/configs/data/splits/test.txt
   web:
     enabled: false
     splits: [train, val, test]
-    data_dir: data/tennis/web/unified
+    data_dir: tennis/web/unified
     sources: all
     sampling:
       mode: temporal

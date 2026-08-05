@@ -15,6 +15,7 @@ from typing import Any
 import pytest
 
 from src.tasks.base.training.gan_transition_callback import GANTransitionCallback
+from src.utils.configuration import MissingConfigurationKeyError
 
 pytestmark = pytest.mark.unit
 
@@ -40,7 +41,68 @@ class _FakeModule:
 
 
 def _cfg(**gan: Any) -> dict[str, Any]:
-    return {"training": {"gan": gan}}
+    gan_config: dict[str, Any] = {
+        "enabled": False,
+        "target_weight": 0.0,
+        "warmup_epochs": 1,
+        "generator_gradient_clip_val": None,
+        "discriminator_gradient_clip_val": None,
+        "transition": {"start_epoch": 0},
+    }
+    gan_config.update(gan)
+    if gan_config["enabled"] and "target_weight" not in gan:
+        gan_config["target_weight"] = 0.1
+    return {
+        "training": {
+            "trainer": {
+                "max_epochs": 200,
+                "gradient_clip_val": None,
+                "deterministic": True,
+                "precision": "32-true",
+                "log_every_n_steps": 1,
+                "check_val_every_n_epoch": 1,
+                "accumulate_grad_batches": 1,
+                "reload_dataloaders_every_n_epochs": 0,
+                "enable_progress_bar": False,
+                "enable_model_summary": False,
+                "benchmark": False,
+            },
+            "learning_rate": 1.0e-3,
+            "weight_decay": 0.0,
+            "warmup_steps": 0,
+            "warmup_epochs": None,
+            "min_lr": 0.0,
+            "steps_per_epoch": None,
+            "optimizer": {"betas": [0.9, 0.999]},
+            "checkpoint": {
+                "enabled": False,
+                "filename": "model-{epoch}",
+                "monitor": "val/loss",
+                "mode": "min",
+                "save_top_k": 1,
+                "save_last": False,
+            },
+            "early_stopping": {
+                "enabled": False,
+                "monitor": "val/loss",
+                "mode": "min",
+                "patience": 1,
+                "min_delta": 0.0,
+                "check_on_train_epoch_end": False,
+            },
+            "lr_monitor": {"enabled": False, "interval": "step"},
+            "qualitative_logging": {
+                "enabled": False,
+                "every_n_epochs": 1,
+                "num_samples": 1,
+                "selection_mode": "random",
+                "selected_indices": None,
+            },
+            "gan": gan_config,
+            "matmul_precision": "high",
+            "allow_tf32": False,
+        }
+    }
 
 
 def _run_epoch(cb: GANTransitionCallback, module: _FakeModule, epoch: int) -> None:
@@ -50,8 +112,8 @@ def _run_epoch(cb: GANTransitionCallback, module: _FakeModule, epoch: int) -> No
 # --------------------------------------------------------------------------- #
 # Config parsing / validation
 # --------------------------------------------------------------------------- #
-def test_disabled_by_default() -> None:
-    cb = GANTransitionCallback({})
+def test_disabled_explicitly() -> None:
+    cb = GANTransitionCallback(_cfg(enabled=False))
     assert cb.enabled is False
     assert cb.has_switched_to_gan is False
     assert cb.start_epoch == 0
@@ -73,13 +135,17 @@ def test_config_parsing() -> None:
 
 
 def test_missing_start_epoch_when_enabled_raises() -> None:
-    with pytest.raises(ValueError, match="start_epoch is required"):
-        GANTransitionCallback(_cfg(enabled=True))
+    config = _cfg(enabled=True)
+    del config["training"]["gan"]["transition"]["start_epoch"]
+    with pytest.raises(MissingConfigurationKeyError, match="start_epoch"):
+        GANTransitionCallback(config)
 
 
-def test_missing_start_epoch_when_disabled_defaults_to_zero() -> None:
-    cb = GANTransitionCallback(_cfg(enabled=False))
-    assert cb.start_epoch == 0
+def test_missing_start_epoch_when_disabled_still_raises() -> None:
+    config = _cfg(enabled=False)
+    del config["training"]["gan"]["transition"]["start_epoch"]
+    with pytest.raises(MissingConfigurationKeyError, match="start_epoch"):
+        GANTransitionCallback(config)
 
 
 def test_negative_start_epoch_raises() -> None:

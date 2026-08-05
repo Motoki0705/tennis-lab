@@ -3,26 +3,67 @@ defaults:
   - _self_
   - override hydra/job_logging: stdout
 
-video_path: data/samples/tennis_clip.mp4
-output_dir: outputs/gvhmr_demo
-output_name: null # defaults to <video stem>_incam.mp4
+paths:
+  project_root: .
+  data_root: data
+  checkpoint_root: ckpt
+  artifact_root: artifacts
+  output_root: outputs
+  cache_root: .cache
+  external_asset_root: third_party
+
+assets:
+  checkpoints:
+    yolo: yolo/yolov8x.pt
+    dino: dino/checkpoint0029_4scale_swin.pth
+    vitpose: vitpose/vitpose-h-multi-coco.pth
+    hmr2: hmr2/epoch=10-step=25000.ckpt
+    gvhmr: gvhmr/gvhmr_siga24_release.ckpt
+  dino_repository: DINO
+  body_models_dir: body_models
+  smpl_faces: smplh/neutral/model.npz
+  bundled:
+    hmr2_mean_params: src/submodules/vendor/gvhmr/hmr2/smpl_mean_params.npz
+    smplx_to_smpl: src/submodules/vendor/gvhmr/body_model/data/smplx2smpl_sparse.pt
+    smpl_coco17_regressor: src/submodules/vendor/gvhmr/body_model/data/smpl_coco17_J_regressor.pt
+    smplx_verts437: src/submodules/vendor/gvhmr/body_model/data/smplx_verts437.pt
+    smpl_neutral_joint_regressor: src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt
+
+video: samples/tennis_clip.mp4
+output_directory: gvhmr_demo
+output_name: tennis_clip_incam.mp4
 
 # Tracking
 num_tracks: 2 # persons to reconstruct (largest first)
 interactive_tracks: false # open the track-selection UI instead
 max_frames: null
 
-# Models
-device: auto
-static_cam: true
-checkpoints:
-  yolo: ckpt/yolo/yolov8x.pt
-  vitpose: ckpt/vitpose/vitpose-h-multi-coco.pth
-  hmr2: ckpt/hmr2/epoch=10-step=25000.ckpt
-  gvhmr: ckpt/gvhmr/gvhmr_siga24_release.ckpt
-
-# SMPL faces source (SMPL and SMPL-H share topology)
-smpl_faces_path: data/smplh/neutral/model.npz
+# Runtime defaults are selected here and required explicitly by every model wrapper.
+runtime:
+  device: auto
+  allow_device_fallback: false
+  tracking:
+    yolo_confidence: 0.5
+    bbox_enlarge: 1.2
+  dino_detector:
+    confidence: 0.3
+    short_side: 800
+    max_long_side: 1333
+  vitpose:
+    flip_test: true
+    batch_size: 16
+    head:
+      in_channels: 1280
+      out_channels: 17
+      num_deconv_layers: 2
+      num_deconv_filters: [256, 256]
+      num_deconv_kernels: [4, 4]
+      final_conv_kernel: 1
+      num_conv_layers: 0
+      num_conv_kernels: []
+  hmr2:
+    batch_size: 16
+  static_cam: true
 
 # Rendering
 mesh_alpha: 0.85
@@ -31,4 +72,6 @@ video_crf: 20
 hydra:
   output_subdir: null
   run:
-    dir: .
+    dir: ${tennis_lab_path:output,${paths.output_root},${output_directory},hydra,${now:%Y-%m-%d_%H-%M-%S}}
+  job:
+    chdir: false

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import torch
 from torch import nn
 
+from src.tasks.blcs.configuration import TrackQueryModelConfig
 from src.tasks.blcs.data.tracking_types import BLCSTrackingPrediction
 from src.tasks.blcs.models.components import CourtBallPointFusion
 from src.utils.models import (
@@ -23,22 +22,17 @@ from src.utils.models.embeddings import CourtBallGroupEmbedding, InvisibleTokenE
 class BLCSTrackQueryModel(nn.Module):
     """Alternate spatial candidate aggregation and per-slot temporal attention."""
 
-    def __init__(self, config: Any) -> None:
+    def __init__(self, config: TrackQueryModelConfig) -> None:
         super().__init__()
         self.hidden_dim = int(config.hidden_dim)
         self.num_heads = int(config.num_heads)
         self.num_queries = int(config.num_queries)
         self.num_stages = int(config.num_stages)
         self.role_rope_enabled = bool(config.role_rope_enabled)
-        self.mask_invisible_observations = bool(
-            config.get("mask_invisible_observations", True)
-        )
-        self.observation_fusion = str(config.get("observation_fusion", "linear"))
+        self.mask_invisible_observations = config.mask_invisible_observations
+        self.observation_fusion = config.observation_fusion
         head_dim = self.hidden_dim // self.num_heads
-        configured_rope_dim = config.get("rope_dim", None)
-        self.rope_dim = (
-            head_dim if configured_rope_dim is None else int(configured_rope_dim)
-        )
+        self.rope_dim = config.rope_dim
         if self.hidden_dim % self.num_heads != 0:
             raise ValueError("hidden_dim must be divisible by num_heads.")
         if self.rope_dim > head_dim or self.rope_dim % 2:
@@ -50,7 +44,7 @@ class BLCSTrackQueryModel(nn.Module):
         self.invisible_token: InvisibleTokenEmbedding | None = None
         self.group_embed: CourtBallGroupEmbedding | None = None
         self.point_fusion: CourtBallPointFusion | None = None
-        invisible_init_std = float(config.get("invisible_init_std", 0.02))
+        invisible_init_std = config.invisible_init_std
         if self.observation_fusion == "linear":
             self.invisible_token = InvisibleTokenEmbedding(
                 dim=self.hidden_dim,
@@ -62,7 +56,7 @@ class BLCSTrackQueryModel(nn.Module):
                 num_court_tokens=self.num_court_tokens,
             )
         elif self.observation_fusion == "point_attention":
-            point_fusion_config = config.get("point_fusion")
+            point_fusion_config = config.point_fusion
             if point_fusion_config is None:
                 raise ValueError(
                     "model.point_fusion is required when observation_fusion="
@@ -85,9 +79,14 @@ class BLCSTrackQueryModel(nn.Module):
         block_config = TransformerBlockConfig(
             dim=self.hidden_dim,
             n_heads=self.num_heads,
-            ffn_dim=config.get("ffn_dim", None),
+            ffn_dim=config.ffn_dim,
+            head_dim=head_dim,
             rope_dim=self.rope_dim,
-            attn_dropout=float(config.dropout),
+            attn_dropout=config.dropout,
+            attention_type="mha",
+            n_kv_heads=None,
+            rope_base=10000.0,
+            ffn_type="swiglu",
         )
         self.spatial_blocks = nn.ModuleList(
             [TransformerBlock(block_config) for _ in range(self.num_stages)]

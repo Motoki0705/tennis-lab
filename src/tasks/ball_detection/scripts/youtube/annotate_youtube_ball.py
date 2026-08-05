@@ -13,11 +13,10 @@ Notes:
 
 from __future__ import annotations
 
-from pathlib import Path
-
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
+from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
+from src.tasks.ball_detection.configuration import BallRuntimePaths
 from src.tasks.ball_detection.generate_dataset import (
     BallAnnotationSessionConfig,
     FinalizeConfig,
@@ -31,15 +30,16 @@ from src.utils.hydra import hydra_main
     config_path="../../configs",
     config_name="annotate_youtube_ball",
     version_base="1.3",
+    validation_boundary="ball.annotation",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - interactive CLI
     """Hydra entry point."""
     ann = cfg.annotate
     zoom = ann.zoom
     finalize = ann.finalize
-    return run_annotation_session(
+    status: int = run_annotation_session(
         BallAnnotationSessionConfig(
-            root=Path(to_absolute_path(str(ann.root))).resolve(),
+            root=BallRuntimePaths.from_config(cfg).data(str(ann.root)),
             video_id=str(ann.video_id),
             candidate_id=None if ann.candidate_id is None else str(ann.candidate_id),
             start_index=None if ann.start_index is None else int(ann.start_index),
@@ -59,6 +59,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - interactive CLI
             ),
         )
     )
+    return status
 
 
 if __name__ == "__main__":

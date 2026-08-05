@@ -45,7 +45,7 @@ Laplace log-scales as aleatoric uncertainty:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal
 
 import torch
 from torch import Tensor, nn
@@ -63,7 +63,6 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    default_ffn_dim,
     precompute_freqs_cis_nd,
 )
 from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
@@ -72,10 +71,11 @@ from src.utils.models.embeddings import (
     CourtPlayerGroupEmbedding,
     InvisibleTokenEmbedding,
 )
+from src.utils.models.transformer_utils import resolve_axial_rope_bases
 from src.utils.schema.player import NUM_HUMAN_KP
 
 if TYPE_CHECKING:
-    from omegaconf import DictConfig
+    from src.tasks.slcs.configuration import SLCSDataRuntimeConfig, SLCSModelConfig
 
 
 class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
@@ -83,29 +83,29 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
 
     def __init__(
         self,
-        hidden_dim: int = 256,
-        num_shared_layers: int = 6,
-        num_position_layers: int = 0,
-        num_rotation_layers: int = 0,
-        num_heads: int = 8,
-        ffn_dim: int | None = None,
-        dropout: float = 0.1,
-        rope_dim: int | None = None,
-        rope_theta: float = 10000.0,
-        rope_theta_time: float | None = None,
-        rope_theta_entity: float | None = None,
-        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
-        num_players: int = 2,
-        num_court_kp: int = 14,
-        max_seq_len: int = 120,
-        invisible_init_std: float = 0.02,
-        dino_embed_dim: int = 768,
-        dino_grid_h: int = 16,
-        dino_grid_w: int = 28,
-        dino_patch_downsample_factor: int = 1,
-        dino_cross_attn_every: int = 2,
-        log_b_min: float = -6.0,
-        log_b_max: float = 3.0,
+        hidden_dim: int,
+        num_shared_layers: int,
+        num_position_layers: int,
+        num_rotation_layers: int,
+        num_heads: int,
+        ffn_dim: int,
+        dropout: float,
+        rope_dim: int,
+        rope_theta_time: float,
+        rope_theta_entity: float,
+        attention_type: Literal["mha"],
+        ffn_type: Literal["swiglu", "mlp"],
+        num_players: int,
+        num_court_kp: int,
+        max_seq_len: int,
+        invisible_init_std: float,
+        dino_embed_dim: int,
+        dino_grid_h: int,
+        dino_grid_w: int,
+        dino_patch_downsample_factor: int,
+        dino_cross_attn_every: int,
+        log_b_min: float,
+        log_b_max: float,
     ) -> None:
         super().__init__()
 
@@ -140,18 +140,22 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             max_seq_len=self.max_seq_len,
         )
 
+        if ffn_dim <= 0:
+            raise ValueError(f"ffn_dim must be positive, got {ffn_dim}.")
+        if attention_type != "mha":
+            raise ValueError(
+                "SLCSFusionModel supports only the canonical MHA architecture; "
+                f"got {attention_type!r}."
+            )
+
         head_dim = self.hidden_dim // num_heads
-        rope_dim = head_dim if rope_dim is None else int(rope_dim)
         self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
         self.head_dim = int(head_dim)
         self.rope_dim = int(rope_dim)
-        self.rope_bases = (
-            self._coalesce_theta(rope_theta_time, rope_theta),
-            self._coalesce_theta(rope_theta_entity, rope_theta),
+        self.rope_bases = resolve_axial_rope_bases(
+            rope_theta_time=rope_theta_time,
+            rope_theta_camera=rope_theta_entity,
         )
-
-        if ffn_dim is None:
-            ffn_dim = default_ffn_dim(self.hidden_dim)
 
         # ---- Observation embeddings -----------------------------------
         self.invisible_token = InvisibleTokenEmbedding(
@@ -179,7 +183,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         )
 
         # ---- Axial trunk with interleaved cross-attention --------------
-        def block() -> TransformerBlock:
+        def block(*, rope_base: float) -> TransformerBlock:
             return TransformerBlock(
                 TransformerBlockConfig(
                     dim=self.hidden_dim,
@@ -188,47 +192,63 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
                     head_dim=head_dim,
                     rope_dim=self.rope_dim,
                     attn_dropout=dropout,
-                    rope_base=self.rope_bases,  # type: ignore[arg-type, unused-ignore]
+                    attention_type=attention_type,
+                    n_kv_heads=None,
+                    rope_base=rope_base,
                     ffn_type=ffn_type,
                 )
             )
 
         def cross_layers(depth: int) -> nn.ModuleDict:
-            return nn.ModuleDict({
-                str(layer_idx): CrossAttnBlock(
-                    CrossAttnBlockConfig(
-                        dim=self.hidden_dim,
-                        n_heads=num_heads,
-                        ffn_dim=ffn_dim,
-                        head_dim=head_dim,
-                        rope_dim=self.rope_dim,
-                        attn_dropout=dropout,
-                        ffn_type=ffn_type,
+            return nn.ModuleDict(
+                {
+                    str(layer_idx): CrossAttnBlock(
+                        CrossAttnBlockConfig(
+                            dim=self.hidden_dim,
+                            n_heads=num_heads,
+                            ffn_dim=ffn_dim,
+                            head_dim=head_dim,
+                            rope_dim=self.rope_dim,
+                            attn_dropout=dropout,
+                            ffn_type=ffn_type,
+                        )
                     )
-                )
-                for layer_idx in range(depth)
-                if (layer_idx + 1) % self.dino_cross_attn_every == 0
-            })
+                    for layer_idx in range(depth)
+                    if (layer_idx + 1) % self.dino_cross_attn_every == 0
+                }
+            )
 
         self.entity_layers = nn.ModuleList(
-            [block() for _ in range(self.num_shared_layers)]
+            [block(rope_base=self.rope_bases[1]) for _ in range(self.num_shared_layers)]
         )
         self.time_layers = nn.ModuleList(
-            [block() for _ in range(self.num_shared_layers)]
+            [block(rope_base=self.rope_bases[0]) for _ in range(self.num_shared_layers)]
         )
         self.dino_cross_layers = cross_layers(self.num_shared_layers)
         self.position_entity_layers = nn.ModuleList(
-            [block() for _ in range(self.num_position_layers)]
+            [
+                block(rope_base=self.rope_bases[1])
+                for _ in range(self.num_position_layers)
+            ]
         )
         self.position_time_layers = nn.ModuleList(
-            [block() for _ in range(self.num_position_layers)]
+            [
+                block(rope_base=self.rope_bases[0])
+                for _ in range(self.num_position_layers)
+            ]
         )
         self.position_dino_cross_layers = cross_layers(self.num_position_layers)
         self.rotation_entity_layers = nn.ModuleList(
-            [block() for _ in range(self.num_rotation_layers)]
+            [
+                block(rope_base=self.rope_bases[1])
+                for _ in range(self.num_rotation_layers)
+            ]
         )
         self.rotation_time_layers = nn.ModuleList(
-            [block() for _ in range(self.num_rotation_layers)]
+            [
+                block(rope_base=self.rope_bases[0])
+                for _ in range(self.num_rotation_layers)
+            ]
         )
         self.rotation_dino_cross_layers = cross_layers(self.num_rotation_layers)
 
@@ -246,22 +266,40 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         # ---- Heads ------------------------------------------------------
         head_hidden = self.hidden_dim // 2
         self.player_position_head = PlayerPositionHead(
-            input_dim=self.hidden_dim, hidden_dim=head_hidden, dropout=dropout
+            input_dim=self.hidden_dim,
+            hidden_dim=head_hidden,
+            num_layers=2,
+            dropout=dropout,
         )
         self.player_rotation_head = PlayerRotationHead(
-            input_dim=self.hidden_dim, hidden_dim=head_hidden, dropout=dropout
+            input_dim=self.hidden_dim,
+            hidden_dim=head_hidden,
+            num_layers=2,
+            dropout=dropout,
         )
         self.ball_position_head = BallPositionHead(
-            input_dim=self.hidden_dim, hidden_dim=head_hidden, dropout=dropout
+            input_dim=self.hidden_dim,
+            hidden_dim=head_hidden,
+            num_layers=2,
+            dropout=dropout,
         )
         self.player_position_scale_head = LogScaleHead(
-            input_dim=self.hidden_dim, hidden_dim=head_hidden // 2, dropout=dropout
+            input_dim=self.hidden_dim,
+            hidden_dim=head_hidden // 2,
+            num_layers=1,
+            dropout=dropout,
         )
         self.player_rotation_scale_head = LogScaleHead(
-            input_dim=self.hidden_dim, hidden_dim=head_hidden // 2, dropout=dropout
+            input_dim=self.hidden_dim,
+            hidden_dim=head_hidden // 2,
+            num_layers=1,
+            dropout=dropout,
         )
         self.ball_position_scale_head = LogScaleHead(
-            input_dim=self.hidden_dim, hidden_dim=head_hidden // 2, dropout=dropout
+            input_dim=self.hidden_dim,
+            hidden_dim=head_hidden // 2,
+            num_layers=1,
+            dropout=dropout,
         )
 
         # RoPE table over (time, entity-or-visual-stream) positions. Time axis
@@ -302,53 +340,35 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> SLCSFusionModel:
-        """Create the model from a Hydra config (``model`` + ``data`` sections)."""
-        model_cfg = config.get("model", {})
-        data_cfg = config.get("data", {})
-        dino_cfg = data_cfg.get("dino", {})
-
-        def dino_dim(key: str, default: int) -> int:
-            value = model_cfg.get(f"dino_{key}", dino_cfg.get(key))
-            return int(value) if value is not None else int(default)
-
-        patch = int(dino_cfg.get("patch_size", 16))
-        grid_h_default = int(dino_cfg.get("image_height", 256)) // patch
-        grid_w_default = int(dino_cfg.get("image_width", 448)) // patch
+    def from_config(
+        cls, model: SLCSModelConfig, data: SLCSDataRuntimeConfig
+    ) -> SLCSFusionModel:
+        """Create the model from the validated canonical model/data contract."""
+        dino = data.pipeline.dino_spec
         return cls(
-            hidden_dim=int(model_cfg.get("hidden_dim", 256)),
-            num_shared_layers=int(model_cfg.get("num_shared_layers", 6)),
-            num_position_layers=int(model_cfg.get("num_position_layers", 0)),
-            num_rotation_layers=int(model_cfg.get("num_rotation_layers", 0)),
-            num_heads=int(model_cfg.get("num_heads", 8)),
-            ffn_dim=model_cfg.get("ffn_dim", None),
-            dropout=float(model_cfg.get("dropout", 0.1)),
-            rope_dim=model_cfg.get("rope_dim", None),
-            rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            rope_theta_time=model_cfg.get("rope_theta_time", None),
-            rope_theta_entity=model_cfg.get("rope_theta_entity", None),
-            ffn_type=cast(
-                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
-            ),
-            num_players=int(
-                model_cfg.get("num_players", data_cfg.get("num_players", 2))
-            ),
-            num_court_kp=int(
-                model_cfg.get("num_court_kp", data_cfg.get("num_court_kp", 14))
-            ),
-            max_seq_len=int(
-                model_cfg.get("max_seq_len", data_cfg.get("window_size", 120))
-            ),
-            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
-            dino_embed_dim=dino_dim("embed_dim", 768),
-            dino_grid_h=int(model_cfg.get("dino_grid_h", grid_h_default)),
-            dino_grid_w=int(model_cfg.get("dino_grid_w", grid_w_default)),
-            dino_patch_downsample_factor=int(
-                model_cfg.get("dino_patch_downsample_factor", 1)
-            ),
-            dino_cross_attn_every=int(model_cfg.get("dino_cross_attn_every", 2)),
-            log_b_min=float(model_cfg.get("log_b_min", -6.0)),
-            log_b_max=float(model_cfg.get("log_b_max", 3.0)),
+            hidden_dim=model.hidden_dim,
+            num_shared_layers=model.num_shared_layers,
+            num_position_layers=model.num_position_layers,
+            num_rotation_layers=model.num_rotation_layers,
+            num_heads=model.num_heads,
+            ffn_dim=model.ffn_dim,
+            dropout=model.dropout,
+            rope_dim=model.rope_dim,
+            rope_theta_time=model.rope_theta_time,
+            rope_theta_entity=model.rope_theta_entity,
+            attention_type=model.attention_type,
+            ffn_type=model.ffn_type,
+            num_players=data.pipeline.num_players,
+            num_court_kp=data.pipeline.num_court_kp,
+            max_seq_len=data.pipeline.window_size,
+            invisible_init_std=model.invisible_init_std,
+            dino_embed_dim=dino.embed_dim,
+            dino_grid_h=dino.grid_h,
+            dino_grid_w=dino.grid_w,
+            dino_patch_downsample_factor=model.dino_patch_downsample_factor,
+            dino_cross_attn_every=model.dino_cross_attn_every,
+            log_b_min=model.log_b_min,
+            log_b_max=model.log_b_max,
         )
 
     # ------------------------------------------------------------------
@@ -407,9 +427,7 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         player_flat = player_kp.reshape(
             batch_size * num_players * seq_len, NUM_HUMAN_KP, 2
         )
-        player_token_valid = (
-            (player_valid > 0) & frame_valid.unsqueeze(1)
-        )  # (B, P, T)
+        player_token_valid = (player_valid > 0) & frame_valid.unsqueeze(1)  # (B, P, T)
         player_tokens = self.player_embed(
             court_for_players,
             player_flat,
@@ -431,7 +449,9 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
         # Attention validity: padded frames are masked on the time axis; all
         # entity slots of a real frame participate (invisible observations are
         # already represented by the invisible token).
-        token_valid = frame_valid.unsqueeze(-1).expand(batch_size, seq_len, num_entities)
+        token_valid = frame_valid.unsqueeze(-1).expand(
+            batch_size, seq_len, num_entities
+        )
         entity_axis_valid = token_valid.reshape(batch_size * seq_len, num_entities)
         time_axis_valid = token_valid.permute(0, 2, 1).reshape(
             batch_size * num_entities, seq_len
@@ -452,36 +472,47 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
             batch_size=batch_size,
         )
 
-        trunk_kwargs = {
-            "batch_size": batch_size,
-            "seq_len": seq_len,
-            "num_entities": num_entities,
-            "entity_freqs": entity_freqs,
-            "time_freqs": time_freqs,
-            "entity_mask": entity_mask,
-            "time_mask": time_mask,
-            "dino_ctx": dino_ctx,
-        }
         x = self._run_axial_trunk(
             x,
             self.entity_layers,
             self.time_layers,
             self.dino_cross_layers,
-            **trunk_kwargs,
+            batch_size=batch_size,
+            seq_len=seq_len,
+            num_entities=num_entities,
+            entity_freqs=entity_freqs,
+            time_freqs=time_freqs,
+            entity_mask=entity_mask,
+            time_mask=time_mask,
+            dino_ctx=dino_ctx,
         )
         position_x = self._run_axial_trunk(
             x,
             self.position_entity_layers,
             self.position_time_layers,
             self.position_dino_cross_layers,
-            **trunk_kwargs,
+            batch_size=batch_size,
+            seq_len=seq_len,
+            num_entities=num_entities,
+            entity_freqs=entity_freqs,
+            time_freqs=time_freqs,
+            entity_mask=entity_mask,
+            time_mask=time_mask,
+            dino_ctx=dino_ctx,
         )
         rotation_x = self._run_axial_trunk(
             x,
             self.rotation_entity_layers,
             self.rotation_time_layers,
             self.rotation_dino_cross_layers,
-            **trunk_kwargs,
+            batch_size=batch_size,
+            seq_len=seq_len,
+            num_entities=num_entities,
+            entity_freqs=entity_freqs,
+            time_freqs=time_freqs,
+            entity_mask=entity_mask,
+            time_mask=time_mask,
+            dino_ctx=dino_ctx,
         )
 
         if self.num_position_layers == 0 and self.num_rotation_layers == 0:
@@ -549,9 +580,9 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
                 batch_size * num_entities, seq_len, self.hidden_dim
             )
             x_time = time_layer(x_time, freqs_cis=time_freqs, attn_mask=time_mask)
-            x = x_time.reshape(batch_size, num_entities, seq_len, self.hidden_dim).permute(
-                0, 2, 1, 3
-            )
+            x = x_time.reshape(
+                batch_size, num_entities, seq_len, self.hidden_dim
+            ).permute(0, 2, 1, 3)
 
             layer_key = str(layer_idx)
             if layer_key in dino_cross_layers and dino_ctx is not None:
@@ -575,11 +606,12 @@ class SLCSFusionModel(AxialMultiViewMixin, nn.Module):
     def _query_freqs(self, *, batch_size: int, seq_len: int) -> Tensor:
         """RoPE frequencies for cross-attention queries, layout ``(B, T*E, r/2)``."""
         freqs = self.token_freqs_cis[:seq_len, : self.num_entities]  # (T, E, r/2)
-        return (
+        expanded: Tensor = (
             freqs.reshape(seq_len * self.num_entities, self.rope_dim // 2)
             .unsqueeze(0)
             .expand(batch_size, seq_len * self.num_entities, self.rope_dim // 2)
         )
+        return expanded
 
     def _encode_dino(
         self,

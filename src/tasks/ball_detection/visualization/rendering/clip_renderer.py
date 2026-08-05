@@ -121,7 +121,9 @@ def render_animation_frames(
             dtype=np.uint8,
         )
 
-        header_line_1 = f"{clip_label} | frame {frame_index + 1}/{total_frames} | {frame_name}"
+        header_line_1 = (
+            f"{clip_label} | frame {frame_index + 1}/{total_frames} | {frame_name}"
+        )
         threshold_suffix = "drawn" if pred_is_visible else f"below {peak_threshold:.2f}"
         header_line_2 = f"Pred confidence: {pred_confidence:.3f} ({threshold_suffix})"
 
@@ -137,7 +139,9 @@ def render_animation_frames(
             header,
             header_line_2,
             (8, max(layout.header_height - 10, 30)),
-            color_rgb=draw.text_color_rgb if pred_is_visible else draw.muted_text_color_rgb,
+            color_rgb=draw.text_color_rgb
+            if pred_is_visible
+            else draw.muted_text_color_rgb,
             scale=layout.text_scale,
             thickness=layout.text_thickness,
         )
@@ -154,17 +158,14 @@ def _label(
     draw: DrawStyle,
     layout: LayoutStyle,
 ) -> np.ndarray:
-    return cast(
-        "np.ndarray",
-        label_panel(
-            panel,
-            text=text,
-            label_height=layout.panel_label_height,
-            background_rgb=layout.background_rgb,
-            text_color_rgb=draw.text_color_rgb,
-            text_scale=layout.text_scale,
-            text_thickness=layout.text_thickness,
-        ),
+    return label_panel(
+        panel,
+        text=text,
+        label_height=layout.panel_label_height,
+        background_rgb=layout.background_rgb,
+        text_color_rgb=draw.text_color_rgb,
+        text_scale=layout.text_scale,
+        text_thickness=layout.text_thickness,
     )
 
 

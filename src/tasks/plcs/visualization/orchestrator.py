@@ -8,17 +8,20 @@ from typing import cast
 
 from omegaconf import DictConfig
 
+from src.tasks.base.configuration import require_config_value
 from src.tasks.base.visualization.orchestrator import (
     BaseVisualizationRuntimeConfig,
     build_scene_runtime_config,
     save_or_show_animation,
 )
+from src.tasks.plcs.configuration import PLCSPathConfig
 from src.tasks.plcs.visualization.api.predict import (
     CanonicalPoseSource,
     predict_scene,
 )
 from src.tasks.plcs.visualization.io.scene import load_scene_bundle
 from src.tasks.plcs.visualization.rendering import PLCSSceneRenderer
+from src.utils.configuration import PathResolver
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +33,24 @@ class RuntimeConfig(BaseVisualizationRuntimeConfig):
     """PLCS visualization settings resolved from Hydra configuration."""
 
     canonical_pose_source: CanonicalPoseSource
+    resolver: PathResolver
 
 
 def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     """Resolve shared settings plus the PLCS canonical pose source."""
-    base = build_scene_runtime_config(cfg)
-    source = str(cfg.visualization.get("canonical_pose_source", "gt"))
+    base = build_scene_runtime_config(
+        cfg, visualization_extension_keys={"canonical_pose_source"}
+    )
+    source = cast(
+        "str",
+        require_config_value(
+            cfg.visualization,
+            "canonical_pose_source",
+            str,
+            path="visualization",
+        ),
+    )
+    path_config = PLCSPathConfig.from_config(cfg)
     if source not in {"gt", "prediction"}:
         raise ValueError(
             "visualization.canonical_pose_source must be 'gt' or 'prediction', "
@@ -55,6 +70,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         style=base.style,
         view_3d=base.view_3d,
         canonical_pose_source=cast(CanonicalPoseSource, source),
+        resolver=path_config.resolver,
     )
 
 
@@ -67,7 +83,9 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             camera=cfg.camera,
             cameras=cfg.cameras,
         )
-        logger.info(f"Scene loaded successfully. Num frames: {len(bundle.scene.position)}")
+        logger.info(
+            f"Scene loaded successfully. Num frames: {len(bundle.scene.position)}"
+        )
     except ValueError as exc:
         logger.error(f"Error: {exc}")
         return 1
@@ -78,13 +96,17 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         return 0
 
     if cfg.animation_view not in {"3d", "2d_topdown", "camera"}:
-        logger.error("Error: visualization.animation_view must be one of '3d', '2d_topdown', 'camera'.")
+        logger.error(
+            "Error: visualization.animation_view must be one of '3d', '2d_topdown', 'camera'."
+        )
         return 1
 
     mode = cfg.mode.strip().lower()
     if mode == "predict":
         if cfg.checkpoint is None:
-            logger.error("Error: visualization.checkpoint must be set for predict mode.")
+            logger.error(
+                "Error: visualization.checkpoint must be set for predict mode."
+            )
             return 1
         logger.info(f"Predict mode: loading model with checkpoint: {cfg.checkpoint}")
         try:
@@ -94,6 +116,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
                 scene=bundle.scene,
                 cameras=bundle.cameras,
                 canonical_pose_source=cfg.canonical_pose_source,
+                resolver=cfg.resolver,
             )
         except ValueError as exc:
             logger.error(f"Error: {exc}")
@@ -111,7 +134,9 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         logger.error(f"Error: unknown visualization.mode '{cfg.mode}'.")
         return 1
 
-    fps = cfg.fps or bundle.fps
+    if cfg.fps is None:
+        raise ValueError("PLCS visualization requires an explicit visualization.fps.")
+    fps = cfg.fps
     camera_idx = bundle.cameras[0]
     logger.info(f"Creating {cfg.animation_view} animation...")
     if mode == "predict":

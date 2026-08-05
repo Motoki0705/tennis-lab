@@ -1,18 +1,26 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import pytest
 import torch
 from omegaconf import OmegaConf
 
+from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.models import PLCSTrackQueryModel
 from src.utils.models.embeddings import CourtPlayerGroupEmbedding
 
 
 def _model(*, mask_invisible: bool = True) -> PLCSTrackQueryModel:
-    config = OmegaConf.load(Path("src/tasks/plcs/configs/model/track_query.yaml"))
-    config.mask_invisible_observations = mask_invisible
+    raw = OmegaConf.load(Path("src/tasks/plcs/configs/model/track_query.yaml"))
+    raw.mask_invisible_observations = mask_invisible
+    config = PLCSModelConfig.from_mapping(
+        cast(
+            "dict[str, object]",
+            OmegaConf.to_container(raw, resolve=True),
+        )
+    )
     model = PLCSTrackQueryModel(config)
     model.eval()
     return model

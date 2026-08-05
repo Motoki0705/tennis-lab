@@ -6,7 +6,6 @@ import torch
 from torch import Tensor
 
 from src.utils.models.heads import MLPHead
-from src.utils.schema.player import NUM_HUMAN_KP
 
 
 class PositionHead(MLPHead):
@@ -14,11 +13,12 @@ class PositionHead(MLPHead):
 
     def __init__(
         self,
-        input_dim: int = 256,
-        hidden_dim: int = 128,
-        output_dim: int = 3,
-        num_layers: int = 2,
-        dropout: float = 0.1,
+        *,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        num_layers: int,
+        dropout: float,
     ) -> None:
         super().__init__(
             input_dim=input_dim,
@@ -30,7 +30,10 @@ class PositionHead(MLPHead):
 
     def forward(self, x: Tensor) -> Tensor:
         """Predict position from features."""
-        return self.mlp(x)
+        output = self.mlp(x)
+        if not isinstance(output, Tensor):
+            raise TypeError("PositionHead must return a Tensor.")
+        return output
 
 
 class RotationHead(MLPHead):
@@ -38,10 +41,11 @@ class RotationHead(MLPHead):
 
     def __init__(
         self,
-        input_dim: int = 256,
-        hidden_dim: int = 128,
-        num_layers: int = 2,
-        dropout: float = 0.1,
+        *,
+        input_dim: int,
+        hidden_dim: int,
+        num_layers: int,
+        dropout: float,
     ) -> None:
         super().__init__(
             input_dim=input_dim,
@@ -54,6 +58,8 @@ class RotationHead(MLPHead):
     def forward(self, x: Tensor) -> Tensor:
         """Predict unit-normalized (cos, sin)."""
         out = self.mlp(x)
+        if not isinstance(out, Tensor):
+            raise TypeError("RotationHead must return a Tensor.")
         return torch.nn.functional.normalize(out, dim=-1)
 
 
@@ -62,11 +68,12 @@ class CanonicalPoseHead(MLPHead):
 
     def __init__(
         self,
-        input_dim: int = 256,
-        hidden_dim: int = 128,
-        num_layers: int = 2,
-        dropout: float = 0.1,
-        num_keypoints: int = NUM_HUMAN_KP,
+        *,
+        input_dim: int,
+        hidden_dim: int,
+        num_layers: int,
+        dropout: float,
+        num_keypoints: int,
     ) -> None:
         n_kp = int(num_keypoints)
         super().__init__(
@@ -81,4 +88,6 @@ class CanonicalPoseHead(MLPHead):
     def forward(self, x: Tensor) -> Tensor:
         """Predict canonical joints with shape ``(..., K, 3)``."""
         out = self.mlp(x)
+        if not isinstance(out, Tensor):
+            raise TypeError("CanonicalPoseHead must return a Tensor.")
         return out.reshape(*x.shape[:-1], self.num_keypoints, 3)

@@ -9,8 +9,42 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
+)
 from src.synthetic_data_generation.scene_contract import load_scene_contract
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
 from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.court.camera_support",
+    fields=(
+        BoundaryPathField(
+            "contract",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "probe",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.FILE
+        ),
+    ),
+)
 
 
 def main() -> None:
@@ -18,12 +52,20 @@ def main() -> None:
     parser.add_argument("--contract", type=Path, required=True)
     parser.add_argument("--probe", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    add_path_roots_argument(parser)
     args = parser.parse_args()
-    if args.output.exists():
-        raise SystemExit(f"Refusing to overwrite output: {args.output}")
+    paths = PATH_BOUNDARY.validate(
+        {"contract": args.contract, "probe": args.probe, "output": args.output},
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    contract_path = paths.declared("contract").path
+    probe_path = paths.declared("probe").path
+    output = paths.declared("output").path
+    if output.exists():
+        raise SystemExit(f"Refusing to overwrite output: {output}")
 
-    contract = load_scene_contract(args.contract)
-    probe = json.loads(args.probe.read_text())
+    contract = load_scene_contract(contract_path)
+    probe = json.loads(probe_path.read_text())
     views = probe.get("views") if isinstance(probe, dict) else None
     if probe.get("status") != "passed" or not isinstance(views, list):
         raise ValueError("Probe is not a passed court_novel_view_probe_v1 artifact.")
@@ -154,6 +196,6 @@ def main() -> None:
         "B00 safe novel-view probe: local support + hard gates + FVS",
         fontsize=14,
     )
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    figure.savefig(args.output, dpi=160)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output, dpi=160)
     plt.close(figure)

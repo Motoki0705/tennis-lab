@@ -5,8 +5,8 @@
 #   python -m src.tasks.ball_detection.scripts.analyze_web_bbox_ratio
 #   python -m src.tasks.ball_detection.scripts.analyze_web_bbox_ratio analyze.samples_per_bin=64
 analyze:
-  web_root: data/tennis/web
-  output_dir: outputs/web_bbox_ratio_sweep
+  web_root: tennis/web
+  output_dir: web_bbox_ratio_sweep
 
   # Which bbox-bearing sources to analyze. The temporal point-only sources
   # (racketvision, kaggle) carry no bbox and are skipped by construction.
@@ -30,3 +30,12 @@ analyze:
 
   # JPEG quality used when decoding ball_yolo video frames for export.
   jpeg_quality: 90
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${analyze.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
+  output_subdir: null
+  job:
+    chdir: false
+defaults:
+  - paths: default
+  - _self_

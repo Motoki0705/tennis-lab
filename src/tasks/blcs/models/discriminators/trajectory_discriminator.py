@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from torch import Tensor
 
+from src.tasks.base.configuration import as_config_mapping, require_config_mapping
 from src.utils.models.architectures import (
     TransformerSequenceDiscriminator,
     build_trajectory_discriminator,
 )
-
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
 
 
 class BLCSTrajectoryDiscriminator(TransformerSequenceDiscriminator):
@@ -24,17 +20,17 @@ class BLCSTrajectoryDiscriminator(TransformerSequenceDiscriminator):
     def __init__(
         self,
         *,
-        hidden_dim: int = 128,
-        num_layers: int = 4,
-        num_heads: int = 4,
-        ffn_dim: int | None = None,
-        dropout: float = 0.1,
-        rope_dim: int | None = None,
-        rope_theta: float = 10000.0,
-        ffn_type: str = "swiglu",
-        max_seq_len: int = 120,
-        invisible_init_std: float = 0.02,
-        cls_init_std: float = 0.02,
+        hidden_dim: int,
+        num_layers: int,
+        num_heads: int,
+        ffn_dim: int,
+        dropout: float,
+        rope_dim: int,
+        rope_theta: float,
+        ffn_type: str,
+        max_seq_len: int,
+        invalid_init_std: float,
+        cls_init_std: float,
     ) -> None:
         super().__init__(
             input_dim=3,
@@ -47,26 +43,41 @@ class BLCSTrajectoryDiscriminator(TransformerSequenceDiscriminator):
             rope_theta=rope_theta,
             ffn_type=ffn_type,
             max_seq_len=max_seq_len,
-            invalid_init_std=invisible_init_std,
+            invalid_init_std=invalid_init_std,
             cls_init_std=cls_init_std,
         )
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> TransformerSequenceDiscriminator:
+    def from_config(cls, config: object) -> TransformerSequenceDiscriminator:
         """Build discriminator from ``training.gan.discriminator`` config.
 
         Delegates kwarg parsing to the shared
         :func:`build_trajectory_discriminator` factory (``input_dim=3``).
         """
-        train_cfg = config.get("training", {}) or {}
-        gan_cfg = train_cfg.get("gan", {}) or {}
-        disc_cfg = gan_cfg.get("discriminator", {}) or {}
-        data_cfg = config.get("data", {}) or {}
+        root = as_config_mapping(config, path="configuration")
+        training = require_config_mapping(root, "training", path="configuration")
+        gan = require_config_mapping(training, "gan", path="training")
+        disc_cfg = require_config_mapping(gan, "discriminator", path="training.gan")
 
+        shared = {
+            key: disc_cfg[key]
+            for key in (
+                "hidden_dim",
+                "num_layers",
+                "num_heads",
+                "ffn_dim",
+                "dropout",
+                "rope_dim",
+                "rope_theta",
+                "ffn_type",
+                "max_seq_len",
+                "invalid_init_std",
+                "cls_init_std",
+            )
+        }
         return build_trajectory_discriminator(
             input_dim=3,
-            disc_cfg=disc_cfg,
-            default_max_seq_len=int(data_cfg.get("max_seq_len", 120)),
+            disc_cfg=shared,
         )
 
     def forward(self, position_3d: Tensor, *, mask: Tensor | None = None) -> Tensor:

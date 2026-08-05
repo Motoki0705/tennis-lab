@@ -5,8 +5,8 @@
 #   python -m src.tasks.ball_detection.scripts.convert_web_dataset convert.sources.racketvision=false
 #   python -m src.tasks.ball_detection.scripts.convert_web_dataset convert.limit_per_source=50 convert.overwrite=true
 convert:
-  web_root: data/tennis/web
-  output_dir: data/tennis/web/unified
+  web_root: tennis/web
+  output_dir: tennis/web/unified
   overwrite: false
 
   # Packing / encoding.
@@ -39,3 +39,12 @@ convert:
     racketvision: true
     kaggle: true
     ball_yolo: true
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},ball_detection/convert_web_dataset,${now:%Y-%m-%d_%H-%M-%S}}
+  output_subdir: null
+  job:
+    chdir: false
+defaults:
+  - paths: default
+  - _self_

@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+from src.tasks.ball_detection.configuration import validate_data
 from src.tasks.ball_detection.data.components.augmentation import (
     BallDetectionAugmentation,
     make_sample_rng,
@@ -32,27 +33,27 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
         self,
         *,
         windows: Sequence[ClipWindow],
-        config: DictConfig | None = None,
+        config: DictConfig,
         augmentation: BallDetectionAugmentation | None = None,
     ) -> None:
         super().__init__()
-        self.config = config or {}
+        self.config = config
         self.augmentation = augmentation
 
-        data_cfg = self.config.get("data", {}) or {}
-        model_cfg = self.config.get("model", {}) or {}
+        data_cfg = validate_data(config)
+        model_cfg = config.model
 
-        self.num_frames = int(model_cfg.get("num_frames", 8))
+        self.num_frames = int(model_cfg.num_frames)
         self.image_size = self._parse_size(
-            data_cfg.get("image_size", [288, 512]),
+            data_cfg["image_size"],
             name="data.image_size",
         )
         self.heatmap_size = self._parse_size(
-            data_cfg.get("heatmap_size", [144, 256]),
+            data_cfg["heatmap_size"],
             name="data.heatmap_size",
         )
-        self.sigma_ratio = float(data_cfg.get("sigma_ratio", 0.0066))
-        self.max_instances = int(data_cfg.get("max_instances", 8))
+        self.sigma_ratio = float(data_cfg["sigma_ratio"])
+        self.max_instances = int(data_cfg["max_instances"])
 
         if self.num_frames <= 0:
             raise ValueError("model.num_frames must be positive.")
@@ -76,9 +77,7 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
     def __len__(self) -> int:
         return len(self.windows)
 
-    def __getitem__(
-        self, index: int | tuple[int, int]
-    ) -> BallDetectionSample:
+    def __getitem__(self, index: int | tuple[int, int]) -> BallDetectionSample:
         """Build one sample.
 
         ``index`` is either an ``int`` (use ``self.num_frames`` frames) or a
@@ -97,9 +96,7 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
             )
         return self._make_sample(window_index, num_frames)
 
-    def _make_sample(
-        self, window_index: int, num_frames: int
-    ) -> BallDetectionSample:
+    def _make_sample(self, window_index: int, num_frames: int) -> BallDetectionSample:
         window = self.windows[window_index]
         index = window_index
         image_h, image_w = self.image_size
@@ -174,9 +171,9 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
             if normalized_centers:
                 instance_heatmaps = generate_gaussian_heatmaps(
                     size_hw=self.heatmap_size,
-                    centers_xy=normalized_centers,
+                    centers_xy=torch.tensor(normalized_centers, dtype=torch.float32),
                     sigma_ratio=self.sigma_ratio,
-                    visibility=frame_visibility,
+                    visibility=torch.tensor(frame_visibility, dtype=torch.bool),
                 )
                 heatmaps.append(instance_heatmaps.amax(dim=0).cpu().numpy())
             else:
@@ -209,7 +206,9 @@ class BallDetectionDataset(Dataset[BallDetectionSample]):
             "heatmaps": torch.from_numpy(np.stack(heatmaps)).to(torch.float32),
             "coords": torch.tensor(coords_original, dtype=torch.float32),
             "visibility": torch.tensor(visibility_padded, dtype=torch.float32),
-            "original_size": torch.tensor([original_w, original_h], dtype=torch.float32),
+            "original_size": torch.tensor(
+                [original_w, original_h], dtype=torch.float32
+            ),
             "heatmap_size": torch.tensor([heatmap_w, heatmap_h], dtype=torch.float32),
             "window_id": f"{window.clip_dir.parent.name}/{window.clip_dir.name}:{window.start_index}",
         }

@@ -42,7 +42,9 @@ def trajectory_position_loss(
     """
     loss = nn.functional.smooth_l1_loss(pred, target, reduction="none")
     if axis_weights is not None:
-        loss = loss * axis_weights.to(device=loss.device, dtype=loss.dtype).view(1, 1, 3)
+        loss = loss * axis_weights.to(device=loss.device, dtype=loss.dtype).view(
+            1, 1, 3
+        )
     return masked_mean(loss, mask, eps=1e-8)
 
 
@@ -97,7 +99,9 @@ def reprojection_loss(
     if mask is not None:
         effective_mask = effective_mask * mask.unsqueeze(1)  # broadcast (B,1,T)
 
-    loss = nn.functional.smooth_l1_loss(pred_uv, target_uv, reduction="none")  # (B, N, T, 2)
+    loss = nn.functional.smooth_l1_loss(
+        pred_uv, target_uv, reduction="none"
+    )  # (B, N, T, 2)
     return masked_mean(loss, effective_mask.unsqueeze(-1).expand_as(loss), eps=1e-8)
 
 
@@ -119,18 +123,18 @@ class BLCSLoss(nn.Module):
 
     def __init__(
         self,
-        position_weight: float = 1.0,
-        reprojection_weight: float = 0.0,
-        position_axis_weights: Sequence[float] | None = None,
+        position_weight: float,
+        reprojection_weight: float,
+        position_axis_weights: Sequence[float] | None,
         *,
-        smoothness_weight: float = 0.0,
-        gravity_weight: float = 0.0,
-        smoothness_order: int = 3,
-        smoothness_beta: float = 1e-3,
-        smoothness_axis_weights: Sequence[float] | None = None,
-        gravity_beta: float = 5e-3,
-        gravity: float = 9.81,
-        frame_dt: float = 1.0 / 30.0,
+        smoothness_weight: float,
+        gravity_weight: float,
+        smoothness_order: int,
+        smoothness_beta: float,
+        smoothness_axis_weights: Sequence[float] | None,
+        gravity_beta: float,
+        gravity: float,
+        frame_dt: float,
         height_scale: float = COURT_COORD_SCALE_Z,
     ) -> None:
         """Initialize the loss module.

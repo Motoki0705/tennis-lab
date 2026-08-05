@@ -1,27 +1,26 @@
 running:
   paths:
-    - data/ACCAD/Female1Running_c3d
-    - data/ACCAD/Male1Running_c3d
-    - data/ACCAD/Male2Running_c3d
-    - data/ACCAD/s008
-    - data/ACCAD/s009
+    - ACCAD/Female1Running_c3d
+    - ACCAD/Male1Running_c3d
+    - ACCAD/Male2Running_c3d
+    - ACCAD/s008
+    - ACCAD/s009
   weight: 0.5
 
 walking:
   paths:
-    - data/ACCAD/Female1Walking_c3d
-    - data/ACCAD/Male1Walking_c3d
-    - data/ACCAD/Male2Walking_c3d
-    - data/ACCAD/s007
-    - data/ACCAD/s011
+    - ACCAD/Female1Walking_c3d
+    - ACCAD/Male1Walking_c3d
+    - ACCAD/Male2Walking_c3d
+    - ACCAD/s007
+    - ACCAD/s011
   weight: 0.4
 
 general:
   paths:
-    - data/ACCAD/Female1General_c3d
-    - data/ACCAD/Female1Gestures_c3d
-    - data/ACCAD/Male1General_c3d
-    - data/ACCAD/Male2General_c3d
-    - data/ACCAD/s001
+    - ACCAD/Female1General_c3d
+    - ACCAD/Female1Gestures_c3d
+    - ACCAD/Male1General_c3d
+    - ACCAD/Male2General_c3d
+    - ACCAD/s001
   weight: 0.1
-

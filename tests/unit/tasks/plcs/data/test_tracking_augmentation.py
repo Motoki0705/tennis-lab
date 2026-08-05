@@ -1,10 +1,41 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import torch
+from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.plcs.data.tracking_augmentation import (
     PLCSTrackingDetectionAugmentation,
 )
+
+_AUGMENTATION_CONFIG = (
+    Path(__file__).resolve().parents[5]
+    / "src/tasks/plcs/configs/data/_augmentation.yaml"
+)
+
+
+def _augmentation_config(*, enabled: bool, gaussian_noise: bool = False) -> DictConfig:
+    config = OmegaConf.load(_AUGMENTATION_CONFIG).augmentation
+    if not isinstance(config, DictConfig):
+        raise AssertionError("PLCS augmentation config must be a mapping.")
+    config.enabled = enabled
+    for block_name in (
+        "uv_scale",
+        "gaussian_noise",
+        "visibility_dropout",
+        "temporal_jitter",
+        "burst_dropout",
+        "false_positive",
+        "edge_degradation",
+        "speed_conditioned",
+    ):
+        config[block_name].enabled = False
+    config.gaussian_noise.enabled = gaussian_noise
+    config.gaussian_noise.prob = 1.0
+    config.gaussian_noise.human_std = 0.001
+    config.gaussian_noise.court_std = 0.001
+    return config
 
 
 def test_tracking_augmentation_preserves_id_order_without_permutation() -> None:
@@ -21,9 +52,7 @@ def test_tracking_augmentation_preserves_id_order_without_permutation() -> None:
         "clean_human_kp": human_kp.clone(),
     }
     augmentation = PLCSTrackingDetectionAugmentation(
-        {
-            "enabled": False,
-        }
+        _augmentation_config(enabled=False)
     )
 
     result = augmentation(sample)
@@ -53,22 +82,7 @@ def test_tracking_noise_changes_keypoints_without_reordering_object_ids() -> Non
         "court_vis": torch.ones(1, 2, 14, dtype=torch.bool),
     }
     augmentation = PLCSTrackingDetectionAugmentation(
-        {
-            "enabled": True,
-            "gaussian_noise": {
-                "enabled": True,
-                "prob": 1.0,
-                "human_std": 0.001,
-                "court_std": 0.001,
-            },
-            "uv_scale": {"enabled": False},
-            "visibility_dropout": {"enabled": False},
-            "temporal_jitter": {"enabled": False},
-            "burst_dropout": {"enabled": False},
-            "false_positive": {"enabled": False},
-            "edge_degradation": {"enabled": False},
-            "speed_conditioned": {"enabled": False},
-        }
+        _augmentation_config(enabled=True, gaussian_noise=True)
     )
 
     result = augmentation(sample)

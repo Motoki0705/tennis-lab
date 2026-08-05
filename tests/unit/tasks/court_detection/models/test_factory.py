@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import torch.nn as nn
-from omegaconf import OmegaConf
+from hydra import compose, initialize_config_dir
 
 from src.tasks.court_detection.models import build_court_detection_model
 from src.tasks.court_detection.models.hierarchical_model import CourtHierarchicalModel
+
+_CONFIG_DIR = Path(__file__).resolve().parents[5] / "src/tasks/court_detection/configs"
 
 
 class DummyModel(nn.Module):
@@ -19,17 +23,16 @@ def test_dinov3_dpt_can_build_for_keypoint_heatmaps(monkeypatch) -> None:
         return expected
 
     monkeypatch.setattr(CourtHierarchicalModel, "from_config", fake_from_config)
-    config = OmegaConf.create(
-        {
-            "data": {"task": "kp", "num_keypoints": 14},
-            "model": {
-                "name": "court_hierarchical",
-                "num_classes": 14,
-                "encoder": {"name": "dinov3"},
-                "decoder": {"name": "dpt"},
-            },
-        }
-    )
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(
+            config_name="train",
+            overrides=[
+                "data=court_kp",
+                "model/encoder=dinov3",
+                "model/decoder=dpt",
+                "loss=kp",
+            ],
+        )
 
     model = build_court_detection_model(config)
 

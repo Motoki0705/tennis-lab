@@ -5,36 +5,33 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING
 
-from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
 from src.tennis_scene.io import SceneResult
 from src.tennis_scene.pipeline.components.ball_detection import (
-    BallDetectionConfig,
     BallDetectionModule,
 )
-from src.tennis_scene.pipeline.components.blcs import BLCSConfig, BLCSModule
+from src.tennis_scene.pipeline.components.blcs import BLCSModule
 from src.tennis_scene.pipeline.components.court_kp import (
-    CourtKPConfig,
     CourtKPModule,
-    CourtKPPostprocessConfig,
 )
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRConfig, GVHMRModule
 from src.tennis_scene.pipeline.components.player_association import (
-    PlayerAssociationConfig,
     PlayerAssociationModule,
 )
-from src.tennis_scene.pipeline.components.plcs import PLCSConfig, PLCSModule
+from src.tennis_scene.pipeline.components.plcs import PLCSModule
 from src.tennis_scene.pipeline.dependency_graph import (
     ResolutionResult,
     Stage,
     build_default_dependency_graph,
 )
+from src.utils.configuration import PathResolver, PathRole
 from src.utils.video import probe_video_info
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
+    from src.tennis_scene.configuration import PipelineRuntimeConfig
     from src.tennis_scene.pipeline.components.gvhmr import GVHMRResult
     from src.tennis_scene.pipeline.components.player_association import (
         PlayerAssociationApplied,
@@ -45,27 +42,20 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-def _size_hw(value: Any) -> tuple[int, int]:
-    """Coerce a config size sequence into a validated (height, width) pair."""
-    items = [int(v) for v in value]
-    if len(items) != 2:
-        raise ValueError(f"image_size must have exactly 2 entries, got {items!r}")
-    return items[0], items[1]
-
-
 class TennisSceneOrchestrator:
     """Orchestrator for tennis scene 3D reconstruction."""
 
     def __init__(
         self,
         court_kp_module: CourtKPModule,
-        gvhmr_config: dict[str, Any] | None,
+        gvhmr_config: GVHMRConfig | None,
         player_association_module: PlayerAssociationModule,
         ball_detection_module: BallDetectionModule | None,
         plcs_module: PLCSModule,
         blcs_module: BLCSModule | None,
         resolution: ResolutionResult,
-        device: str = "cuda",
+        device: str,
+        resolver: PathResolver,
     ) -> None:
         self.court_kp_module = court_kp_module
         self.gvhmr_config = gvhmr_config
@@ -77,208 +67,52 @@ class TennisSceneOrchestrator:
         self.enabled_stages = resolution.enabled_set
         self.execution_order = resolution.enabled_order
         self.device = device
+        self.resolver = resolver
+
+    @classmethod
+    def from_runtime_config(cls, cfg: PipelineRuntimeConfig) -> TennisSceneOrchestrator:
+        """Build every stage from an already validated runtime contract."""
+        graph = build_default_dependency_graph()
+        resolution = graph.resolve_from_enabled(cfg.enabled)
+        for line in graph.format_resolution_messages(resolution):
+            LOGGER.info(line)
+        return cls(
+            court_kp_module=CourtKPModule(cfg.court_kp),
+            gvhmr_config=cfg.gvhmr if Stage.GVHMR in resolution.enabled_set else None,
+            player_association_module=PlayerAssociationModule(cfg.player_association),
+            ball_detection_module=(
+                BallDetectionModule(cfg.ball_detection)
+                if Stage.BALL_DETECTION in resolution.enabled_set
+                else None
+            ),
+            plcs_module=PLCSModule(cfg.plcs),
+            blcs_module=(
+                BLCSModule(cfg.blcs) if Stage.BLCS in resolution.enabled_set else None
+            ),
+            resolution=resolution,
+            device=cfg.device,
+            resolver=cfg.resolver,
+        )
 
     @classmethod
     def from_config(cls, cfg: DictConfig) -> TennisSceneOrchestrator:
-        from hydra.utils import to_absolute_path
-        from omegaconf import ListConfig
+        """Validate a composed Hydra config before constructing any stage."""
+        from src.tennis_scene.configuration import PipelineRuntimeConfig
 
-        device = str(cfg.device)
-        output_dir = Path(to_absolute_path(cfg.output_dir))
-        graph = build_default_dependency_graph()
-        resolution = graph.resolve_from_config(cfg)
-        for line in graph.format_resolution_messages(resolution):
-            LOGGER.info(line)
-
-        def load_path(section: str) -> str | None:
-            value = cfg[section].get("load_path")
-            return str(to_absolute_path(str(value))) if value is not None else None
-
-        def load_paths(section: str) -> str | list[str] | None:
-            value = cfg[section].get("load_path")
-            if value is None:
-                return None
-            if isinstance(value, (list, tuple, ListConfig)):
-                return [str(to_absolute_path(str(item))) for item in value]
-            return str(to_absolute_path(str(value)))
-
-        def output_path(section: str, default_name: str) -> str:
-            value = cfg[section].get("output_path")
-            if value is not None:
-                return str(to_absolute_path(str(value)))
-            return str(output_dir / default_name)
-
-        if Stage.COURT_KP not in resolution.enabled_set:
-            raise ValueError("COURT_KP stage must be enabled.")
-        court_postprocess_cfg = cfg.court_kp.get("postprocess", {})
-        court_kp_mode_raw = str(cfg.court_kp.get("mode", "model"))
-        if court_kp_mode_raw not in ("model", "manual_ui"):
-            raise ValueError(f"Unsupported court_kp.mode: {court_kp_mode_raw!r}")
-        court_kp_mode = cast(Literal["model", "manual_ui"], court_kp_mode_raw)
-        court_kp_module = CourtKPModule(
-            CourtKPConfig(
-                checkpoint=to_absolute_path(cfg.court_kp.checkpoint),
-                mode=court_kp_mode,
-                device=device,
-                num_keypoints=int(cfg.court_kp.get("num_keypoints", 14)),
-                save_result=cfg.court_kp.get("save_result", True),
-                output_path=output_path("court_kp", "court_kp_result.json"),
-                load_path=load_path("court_kp"),
-                postprocess=CourtKPPostprocessConfig(
-                    enabled=bool(court_postprocess_cfg.get("enabled", False)),
-                    min_score=float(court_postprocess_cfg.get("min_score", 0.3)),
-                    ransac_reproj_threshold=float(
-                        court_postprocess_cfg.get("ransac_reproj_threshold", 3.0)
-                    ),
-                    temporal_median_window=int(
-                        court_postprocess_cfg.get("temporal_median_window", 0)
-                    ),
-                ),
-            )
-        )
-
-        gvhmr_config = None
-        if Stage.GVHMR in resolution.enabled_set:
-            smplx_body_model_path = cfg.gvhmr.get("smplx_body_model_path")
-            gvhmr_config = {
-                "gvhmr_checkpoint": to_absolute_path(cfg.gvhmr.gvhmr_checkpoint),
-                "detector": str(cfg.gvhmr.get("detector", "dino")),
-                "yolo_checkpoint": to_absolute_path(cfg.gvhmr.yolo_checkpoint),
-                "dino_checkpoint": to_absolute_path(
-                    cfg.gvhmr.get(
-                        "dino_checkpoint",
-                        "ckpt/dino/checkpoint0029_4scale_swin.pth",
-                    )
-                ),
-                "dino_confidence": float(cfg.gvhmr.get("dino_confidence", 0.3)),
-                "vitpose_checkpoint": to_absolute_path(cfg.gvhmr.vitpose_checkpoint),
-                "hmr2_checkpoint": to_absolute_path(cfg.gvhmr.hmr2_checkpoint),
-                "smplx_body_model_path": (
-                    to_absolute_path(str(smplx_body_model_path))
-                    if smplx_body_model_path is not None
-                    else None
-                ),
-                "track_selection": str(cfg.gvhmr.get("track_selection", "interactive")),
-                "num_tracks": int(cfg.gvhmr.get("num_tracks", 2)),
-                "save_result": bool(cfg.gvhmr.get("save_result", True)),
-                "output_path": output_path("gvhmr", "gvhmr_result.json"),
-                "load_path": load_paths("gvhmr"),
-                "device": device,
-            }
-
-        player_association_cfg = cfg.get("player_association", {})
-        player_association_module = PlayerAssociationModule(
-            PlayerAssociationConfig(
-                mode=str(player_association_cfg.get("mode", "manual_ui")),
-                initial_frame_index=int(player_association_cfg.get("frame_index", 0)),
-                reference_camera=player_association_cfg.get("reference_camera", 0),
-                save_result=bool(player_association_cfg.get("save_result", True)),
-                output_path=output_path(
-                    "player_association", "player_association_result.json"
-                ),
-                load_path=load_path("player_association"),
-            )
-        )
-
-        ball_detection_module = None
-        if Stage.BALL_DETECTION in resolution.enabled_set:
-            bcfg = cfg.ball_detection
-            trajectory_gate_cfg = bcfg.get("trajectory_gate", {}) or {}
-            ball_detection_module = BallDetectionModule(
-                BallDetectionConfig(
-                    checkpoint=to_absolute_path(bcfg.checkpoint),
-                    batch_size=int(bcfg.batch_size),
-                    device=device,
-                    image_size=_size_hw(bcfg.get("image_size", [288, 512])),
-                    normalize_imagenet=bool(bcfg.get("normalize_imagenet", True)),
-                    score_threshold=float(bcfg.get("score_threshold", 0.5)),
-                    subpixel_refine=bool(bcfg.get("subpixel_refine", True)),
-                    prefetch_batches=int(bcfg.get("prefetch_batches", 2)),
-                    window_stride=(
-                        None
-                        if bcfg.get("window_stride", None) is None
-                        else int(bcfg.window_stride)
-                    ),
-                    tail_policy=str(bcfg.get("tail_policy", "backfill")),
-                    overlap_aggregation=str(
-                        bcfg.get("overlap_aggregation", "last_window_wins")
-                    ),
-                    pin_memory=bool(bcfg.get("pin_memory", True)),
-                    trajectory_gate=TrajectoryGateConfig(
-                        enabled=bool(trajectory_gate_cfg.get("enabled", False)),
-                        max_residual_px=float(
-                            trajectory_gate_cfg.get("max_residual_px", 60.0)
-                        ),
-                        k_support=int(trajectory_gate_cfg.get("k_support", 2)),
-                        max_support_gap=int(
-                            trajectory_gate_cfg.get("max_support_gap", 5)
-                        ),
-                        max_passes=int(trajectory_gate_cfg.get("max_passes", 2)),
-                    ),
-                    save_result=bcfg.get("save_result", True),
-                    output_path=output_path(
-                        "ball_detection", "ball_detection_result.json"
-                    ),
-                    load_path=load_path("ball_detection"),
-                )
-            )
-
-        if Stage.PLCS not in resolution.enabled_set:
-            raise ValueError("PLCS stage must be enabled.")
-        plcs_module = PLCSModule(
-            PLCSConfig(
-                checkpoint=to_absolute_path(cfg.plcs.checkpoint),
-                device=device,
-                save_result=cfg.plcs.get("save_result", True),
-                output_path=output_path("plcs", "plcs_result.json"),
-                load_path=load_path("plcs"),
-                window_size=int(cfg.plcs.get("window_size", 256)),
-                window_overlap=int(cfg.plcs.get("window_overlap", 64)),
-                human_vis_threshold=float(cfg.plcs.get("human_vis_threshold", 0.35)),
-            )
-        )
-
-        blcs_module = None
-        if Stage.BLCS in resolution.enabled_set:
-            blcs_module = BLCSModule(
-                BLCSConfig(
-                    checkpoint=to_absolute_path(cfg.blcs.checkpoint),
-                    device=device,
-                    save_result=cfg.blcs.get("save_result", True),
-                    output_path=output_path("blcs", "blcs_result.json"),
-                    load_path=load_path("blcs"),
-                    window_size=int(cfg.blcs.get("window_size", 256)),
-                    window_overlap=int(cfg.blcs.get("window_overlap", 64)),
-                )
-            )
-
-        return cls(
-            court_kp_module=court_kp_module,
-            gvhmr_config=gvhmr_config,
-            player_association_module=player_association_module,
-            ball_detection_module=ball_detection_module,
-            plcs_module=plcs_module,
-            blcs_module=blcs_module,
-            resolution=resolution,
-            device=device,
-        )
+        return cls.from_runtime_config(PipelineRuntimeConfig.from_config(cfg))
 
     @staticmethod
-    def _camera_artifact_path(path: str | Path, camera_index: int) -> Path:
-        path = Path(path)
+    def _camera_artifact_path(path: Path, camera_index: int) -> Path:
         return path.with_name(f"{path.stem}_cam{camera_index}{path.suffix}")
 
     @classmethod
     def _select_camera_artifact_path(
         cls,
-        path_config: Any,
+        path: Path,
         *,
         camera_index: int,
         num_cameras: int,
     ) -> Path:
-        if isinstance(path_config, (list, tuple)):
-            return Path(path_config[camera_index])
-        path = Path(path_config)
         if num_cameras == 1:
             return path
         return cls._camera_artifact_path(path, camera_index)
@@ -294,7 +128,7 @@ class TennisSceneOrchestrator:
         if self.gvhmr_config is None:
             raise RuntimeError("GVHMR config not set")
 
-        load_path_config = self.gvhmr_config.get("load_path")
+        load_path_config = self.gvhmr_config.load_path
         load_path = (
             self._select_camera_artifact_path(
                 load_path_config,
@@ -305,7 +139,7 @@ class TennisSceneOrchestrator:
             else None
         )
         output_path = self._select_camera_artifact_path(
-            self.gvhmr_config["output_path"],
+            self.gvhmr_config.output_path,
             camera_index=camera_index,
             num_cameras=num_cameras,
         )
@@ -313,20 +147,20 @@ class TennisSceneOrchestrator:
         LOGGER.info(f"Running GVHMR in-process for camera {camera_index}...")
         module = GVHMRModule(
             GVHMRConfig(
-                gvhmr_checkpoint=self.gvhmr_config["gvhmr_checkpoint"],
-                detector=self.gvhmr_config.get("detector", "dino"),
-                yolo_checkpoint=self.gvhmr_config["yolo_checkpoint"],
-                dino_checkpoint=self.gvhmr_config.get(
-                    "dino_checkpoint", "ckpt/dino/checkpoint0029_4scale_swin.pth"
-                ),
-                dino_confidence=float(self.gvhmr_config.get("dino_confidence", 0.3)),
-                vitpose_checkpoint=self.gvhmr_config["vitpose_checkpoint"],
-                hmr2_checkpoint=self.gvhmr_config["hmr2_checkpoint"],
-                smplx_body_model_path=self.gvhmr_config.get("smplx_body_model_path"),
-                track_selection=self.gvhmr_config["track_selection"],
-                num_tracks=self.gvhmr_config["num_tracks"],
-                device=self.gvhmr_config["device"],
-                save_result=bool(self.gvhmr_config.get("save_result", True)),
+                gvhmr_checkpoint=self.gvhmr_config.gvhmr_checkpoint,
+                source=self.gvhmr_config.source,
+                detector=self.gvhmr_config.detector,
+                yolo_checkpoint=self.gvhmr_config.yolo_checkpoint,
+                dino_checkpoint=self.gvhmr_config.dino_checkpoint,
+                dino_repository=self.gvhmr_config.dino_repository,
+                vitpose_checkpoint=self.gvhmr_config.vitpose_checkpoint,
+                hmr2_checkpoint=self.gvhmr_config.hmr2_checkpoint,
+                body_models_dir=self.gvhmr_config.body_models_dir,
+                bundled_assets=self.gvhmr_config.bundled_assets,
+                runtime=self.gvhmr_config.runtime,
+                track_selection=self.gvhmr_config.track_selection,
+                num_tracks=self.gvhmr_config.num_tracks,
+                save_result=self.gvhmr_config.save_result,
                 output_path=output_path,
                 load_path=load_path,
             )
@@ -347,23 +181,24 @@ class TennisSceneOrchestrator:
 
     def run(
         self,
-        video_paths: Sequence[str | Path],
-        max_frames: int | None = None,
-        frame_index: int = 0,
-        camera_ids: Sequence[str] | None = None,
+        video_paths: Sequence[Path],
+        *,
+        video_role: PathRole,
+        max_frames: int | None,
+        frame_index: int,
+        camera_ids: Sequence[str],
     ) -> SceneResult:
-        resolved_video_paths = [Path(video_path) for video_path in video_paths]
+        resolved_video_paths = [
+            self.resolver.validate(video_role, video_path) for video_path in video_paths
+        ]
         if not resolved_video_paths:
             raise ValueError("video_paths must contain at least one video")
-        if camera_ids is None:
-            camera_ids = [f"cam{idx}" for idx in range(len(resolved_video_paths))]
-        else:
-            camera_ids = [str(camera_id) for camera_id in camera_ids]
-            if len(camera_ids) != len(resolved_video_paths):
-                raise ValueError(
-                    f"camera_ids length must match video_paths length, "
-                    f"got {len(camera_ids)} and {len(resolved_video_paths)}"
-                )
+        camera_ids = [str(camera_id) for camera_id in camera_ids]
+        if len(camera_ids) != len(resolved_video_paths):
+            raise ValueError(
+                f"camera_ids length must match video_paths length, "
+                f"got {len(camera_ids)} and {len(resolved_video_paths)}"
+            )
 
         video_infos = self._probe_synced_video_infos(
             resolved_video_paths, max_frames=max_frames

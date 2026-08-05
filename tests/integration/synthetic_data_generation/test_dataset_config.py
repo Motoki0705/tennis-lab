@@ -8,19 +8,21 @@ from typing import cast
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
+from src.synthetic_data_generation.configuration import validate_config
 from src.synthetic_data_generation.dataset.pipeline import PathPipelineManifest
 from src.utils.paths import PROJECT_ROOT
 
 
 def test_dataset_config_composes_to_conventional_path_layout() -> None:
-    config_dir = PROJECT_ROOT / "src/synthetic_data_generation/configs/dataset"
+    config_dir = PROJECT_ROOT / "src/synthetic_data_generation/configs"
     with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
-        config = compose(config_name="pipeline")
+        config = compose(config_name="dataset/pipeline")
+        runtime = validate_config("synthetic.dataset.pipeline", config)
         paths = OmegaConf.to_container(config.paths, resolve=True)
         assert isinstance(paths, dict)
         manifest = PathPipelineManifest.from_config(
             cast(Mapping[str, object], paths),
-            project_root=PROJECT_ROOT,
+            resolver=runtime.resolver,
         )
 
     assert manifest.source_root == PROJECT_ROOT / "third_party/nht/data"

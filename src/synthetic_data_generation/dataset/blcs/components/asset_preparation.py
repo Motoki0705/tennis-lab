@@ -9,13 +9,16 @@ import math
 import re
 import subprocess
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[5]
-
 from src.synthetic_data_generation.composition.contracts import (  # noqa: E402
     load_gaussian_scene_manifest,
+)
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
 )
 from src.synthetic_data_generation.dataset.blcs.artifacts.asset_registry import (  # noqa: E402
     load_ball_asset_registry,
@@ -38,6 +41,14 @@ from src.synthetic_data_generation.scene_contract import (  # noqa: E402
     ArtifactRef,
     SimilarityTransform,
 )
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+)
 
 ASSET_PREPARATION_ENTRY_SCHEMA = "tennis_ball_asset_preparation_entry_v1"
 ASSET_PREPARATION_REQUEST_SCHEMA = "tennis_ball_asset_preparation_request_v1"
@@ -45,6 +56,36 @@ ASSET_PREPARATION_RUN_SCHEMA = "tennis_ball_asset_preparation_run_v1"
 ASSET_PREPARATION_FAILURE_SCHEMA = "tennis_ball_asset_preparation_failure_v1"
 _SOURCE_FORMATS = {INDEPENDENT_NHT_SOURCE, VANILLA_3DGS_SOURCE}
 _ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.blcs.asset_preparation",
+    fields=(
+        BoundaryPathField(
+            "asset_spec",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            many=True,
+        ),
+        BoundaryPathField(
+            "calibration_import",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "background_composition",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output_dir", PathRole.ARTIFACT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+    ),
+)
 
 
 @dataclass(frozen=True)
@@ -93,6 +134,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--min-validation-psnr-db", type=float, default=20.0)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device", default="cuda:0")
+    add_path_roots_argument(parser)
     return parser.parse_args()
 
 
@@ -140,7 +182,7 @@ def _load_entry(path: Path) -> PreparationEntry:
     )
 
 
-def _load_entries(paths: list[Path]) -> tuple[PreparationEntry, ...]:
+def _load_entries(paths: Sequence[Path]) -> tuple[PreparationEntry, ...]:
     entries = tuple(
         sorted((_load_entry(path) for path in paths), key=lambda x: x.variant_id)
     )
@@ -181,35 +223,43 @@ def _feature_fit_command(
     appearance_space_sha256: str,
     output_dir: Path,
     args: argparse.Namespace,
+    resolver: PathResolver,
 ) -> list[str]:
+    roots = [
+        f"roots.{role.value}_root={resolver.roots.root(role)}" for role in PathRole
+    ]
+    source = resolver.validate(
+        PathRole.EXTERNAL_ASSET,
+        verify_local_ball_artifact(entry.source),
+    ).relative_to(resolver.roots.external_asset_root)
+    calibration = resolver.validate(
+        PathRole.ARTIFACT,
+        calibration_bundle,
+    ).relative_to(resolver.roots.artifact_root)
+    appearance = resolver.validate(
+        PathRole.ARTIFACT,
+        target_appearance,
+    ).relative_to(resolver.roots.artifact_root)
+    output = resolver.validate(PathRole.ARTIFACT, output_dir).relative_to(
+        resolver.roots.artifact_root
+    )
     return [
         sys.executable,
         "-m",
-        "src.synthetic_data_generation.dataset.blcs.rendering.feature_fit",
-        "--source",
-        str(verify_local_ball_artifact(entry.source)),
-        "--source-format",
-        entry.source_format,
-        "--calibration-bundle",
-        str(calibration_bundle),
-        "--target-appearance",
-        str(target_appearance),
-        "--target-appearance-space-sha256",
-        appearance_space_sha256,
-        "--output-dir",
-        str(output_dir),
-        "--optimization-steps",
-        str(args.optimization_steps),
-        "--feature-lr",
-        str(args.feature_lr),
-        "--final-lr-fraction",
-        str(args.final_lr_fraction),
-        "--min-validation-psnr-db",
-        str(args.min_validation_psnr_db),
-        "--seed",
-        str(args.seed),
-        "--device",
-        args.device,
+        "src.synthetic_data_generation.scripts.dataset.fit_blcs_features",
+        *roots,
+        f"source={source.as_posix()}",
+        f"source_format={entry.source_format}",
+        f"calibration_bundle={calibration.as_posix()}",
+        f"target_appearance={appearance.as_posix()}",
+        f"target_appearance_space_sha256={appearance_space_sha256}",
+        f"output_dir={output.as_posix()}",
+        f"optimization_steps={args.optimization_steps}",
+        f"feature_lr={args.feature_lr}",
+        f"final_lr_fraction={args.final_lr_fraction}",
+        f"min_validation_psnr_db={args.min_validation_psnr_db}",
+        f"seed={args.seed}",
+        f"device={args.device}",
     ]
 
 
@@ -253,19 +303,35 @@ def _write_failure(
 
 def main() -> None:
     args = _parse_args()
-    output_dir = args.output_dir.resolve()
+    resolver = non_hydra_path_resolver(args.path_roots)
+    paths = PATH_BOUNDARY.validate(
+        {
+            "asset_spec": args.asset_spec,
+            "calibration_import": args.calibration_import,
+            "background_composition": args.background_composition,
+            "output_dir": args.output_dir,
+        },
+        resolver=resolver,
+    )
+    output_dir = paths.declared("output_dir").path
     if output_dir.exists():
         raise SystemExit(f"Refusing to overwrite output directory: {output_dir}")
     _validate_options(args)
-    entries = _load_entries(args.asset_spec)
-    calibration = load_ball_calibration_import(args.calibration_import)
-    composition_path = args.background_composition.resolve()
+    asset_specs = tuple(item.path for item in paths.declared_many("asset_spec"))
+    entries = _load_entries(asset_specs)
+    calibration = load_ball_calibration_import(
+        paths.declared("calibration_import").path
+    )
+    composition_path = paths.declared("background_composition").path
     composition = load_gaussian_scene_manifest(composition_path)
     verify_local_gaussian_asset(composition.background)
     target_appearance = verify_local_ball_artifact(
         composition.background.appearance_payload
     )
-    feature_worker = Path(__file__).resolve().parent.parent / "rendering/feature_fit.py"
+    feature_worker = (
+        resolver.roots.project_root
+        / "src/synthetic_data_generation/scripts/dataset/fit_blcs_features.py"
+    )
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir()
     (output_dir / "logs").mkdir()
@@ -317,6 +383,7 @@ def main() -> None:
                 ),
                 output_dir=fit_dir,
                 args=args,
+                resolver=resolver,
             )
             result = subprocess.run(
                 command,

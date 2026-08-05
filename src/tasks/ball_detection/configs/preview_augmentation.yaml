@@ -1,11 +1,12 @@
 defaults:
+  - paths: default
   - model: stunet
   - data: rgb_sequence
   - _self_
 
 hydra:
   run:
-    dir: ${preview.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},${preview.output_dir},${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null
   job:
     chdir: false
@@ -15,7 +16,7 @@ preview:
   sample_indices: [0]
   max_samples: 4
   seed: 42
-  output_dir: outputs/ball_detection/augmentation_preview
+  output_dir: ball_detection/augmentation_preview
   draw:
     radius: 5
     thickness: 2

@@ -36,9 +36,7 @@ def resolve_image_paths(
         paths = [source_path]
     elif source_path.is_dir():
         paths = sorted(
-            p
-            for p in source_path.iterdir()
-            if p.suffix.lower() in _IMAGE_EXTENSIONS
+            p for p in source_path.iterdir() if p.suffix.lower() in _IMAGE_EXTENSIONS
         )
     else:
         paths = sorted(Path(p) for p in globlib.glob(str(source)))

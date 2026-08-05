@@ -4,6 +4,7 @@ from typing import Any
 
 import pytorch_lightning as pl
 
+from src.tasks.ball_detection.configuration import validate_data
 from src.tasks.ball_detection.data.components.augmentation import (
     BallDetectionAugmentation,
 )
@@ -28,7 +29,7 @@ from src.tasks.ball_detection.data.youtube_datamodule import YouTubeDataModule
 
 def build_ball_detection_datamodule(config: Any) -> pl.LightningDataModule:
     """Build the configured dataset-specific DataModule."""
-    source = str(config.get("data", {}).get("source", "tracknet")).lower()
+    source = str(validate_data(config)["source"]).lower()
     datamodule_types: dict[str, type[pl.LightningDataModule]] = {
         "tracknet": TrackNetDataModule,
         "mixed_tracknet": MixedTrackNetDataModule,

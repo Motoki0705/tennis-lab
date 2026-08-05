@@ -1,12 +1,12 @@
 hydra:
   run:
-    dir: outputs/ball_detection/annotate_youtube_ball/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},ball_detection/annotate_youtube_ball,${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null
   job:
     chdir: false
 
 annotate:
-  root: data/tennis/youtube
+  root: tennis/youtube
   video_id: video_000001
   candidate_id: null
   start_index: null
@@ -24,3 +24,6 @@ annotate:
   finalize:
     key: f
     overwrite: false
+defaults:
+  - paths: default
+  - _self_

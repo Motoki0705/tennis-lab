@@ -9,6 +9,8 @@ Usage:
 Notes:
     - Configuration is loaded from `src/tasks/slcs/configs/predict_clip.yaml`;
       dataset location comes from the shared `data` group.
+    - Checkpoint and output paths are relative to `paths.checkpoint_root` and
+      `paths.output_root`, respectively.
     - Writes `predictions.npz` (full-timeline positions/yaw/uncertainty in
       meters and normalized units), an optional 3D+top-down comparison video
       and an optional 2D overlay video (observations + homography-based
@@ -17,14 +19,17 @@ Notes:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import torch
 from omegaconf import DictConfig
 
+from src.tasks.slcs.configuration import SLCSPredictConfig
 from src.tasks.slcs.data.contract import CLIPS_DIR_NAME, ClipManifest, split_clip_id
-from src.tasks.slcs.data.dataset import SLCSDataConfig, load_clip_arrays
+from src.tasks.slcs.data.dataset import load_clip_arrays
 from src.tasks.slcs.inference.predictor import SLCSPredictor
 from src.tasks.slcs.visualization.overlay_2d import render_overlay_video
 from src.tasks.slcs.visualization.renderer_3d import (
@@ -34,49 +39,56 @@ from src.tasks.slcs.visualization.renderer_3d import (
 from src.utils.hydra import hydra_main
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
+SavezCompressed = Callable[..., None]
+
 
 def run(config: DictConfig) -> None:
     """Predict one clip camera and write artifacts."""
-    predict_cfg = config.predict
-    checkpoint = predict_cfg.get("checkpoint")
-    clip_id = predict_cfg.get("clip_id")
-    if not checkpoint or not clip_id:
-        raise ValueError("predict.checkpoint and predict.clip_id are required.")
-    recording_id, clip_name = split_clip_id(str(clip_id))
-    clip_dir = Path(str(config.data.dataset_root)) / CLIPS_DIR_NAME / recording_id / clip_name
+    runtime = SLCSPredictConfig.from_config(config)
+    recording_id, clip_name = split_clip_id(runtime.clip_id)
+    clip_dir = runtime.data.dataset_root / CLIPS_DIR_NAME / recording_id / clip_name
 
-    data_config = SLCSDataConfig.from_config(config.data)
+    data_config = runtime.data.pipeline
     manifest = ClipManifest.load(clip_dir)
-    camera_id_cfg = predict_cfg.get("camera_id")
-    camera_id = (
-        str(camera_id_cfg) if camera_id_cfg is not None else manifest.camera_ids[0]
-    )
+    camera_id = runtime.camera_id
+    manifest.camera_index(camera_id)
 
     predictor = SLCSPredictor.load_from_checkpoint(
-        str(checkpoint), device=str(predict_cfg.get("device", "cpu"))
-    )  # type: ignore[arg-type, unused-ignore]
+        runtime.checkpoint,
+        resolver=runtime.resolver,
+        device=runtime.device,
+        strict=runtime.checkpoint_strict,
+        weights_only=runtime.checkpoint_weights_only,
+    )
     result = predictor.predict_clip(
         clip_dir,
         camera_id,
         data_config=data_config,
-        batch_size=int(predict_cfg.get("batch_size", 4)),
+        stride=data_config.eval_stride,
+        batch_size=runtime.batch_size,
+        denormalize=True,
     )
 
-    output_dir = Path(str(predict_cfg.output_dir))
+    output_dir = runtime.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     npz_path = output_dir / "predictions.npz"
-    np.savez_compressed(
-        npz_path,
-        **{key: value.numpy() for key, value in result.items()},
-        clip_id=np.asarray(manifest.clip_id),
-        camera_id=np.asarray(camera_id),
-    )
+    prediction_arrays = {key: value.numpy() for key, value in result.items()}
+    prediction_arrays["clip_id"] = np.asarray(manifest.clip_id)
+    prediction_arrays["camera_id"] = np.asarray(camera_id)
+    savez_compressed = cast(SavezCompressed, np.savez_compressed)
+    savez_compressed(Path(npz_path), **prediction_arrays)
     print(f"predictions -> {npz_path}")
 
     clip = load_clip_arrays(manifest, config=data_config)
     scale = np.asarray(COURT_COORD_SCALE_XYZ, dtype=np.float32)
-    if bool(predict_cfg.get("render_3d", True)):
-        renderer = SLCSSceneRenderer()
+    if runtime.render_3d:
+        renderer = SLCSSceneRenderer(
+            figsize=(
+                runtime.visualization.figure_width,
+                runtime.visualization.figure_height,
+            ),
+            dpi=runtime.visualization.dpi,
+        )
         gt_yaw = np.arctan2(clip.player_rotation[..., 1], clip.player_rotation[..., 0])
         video_path = renderer.render_video(
             SceneRenderInputs(
@@ -91,10 +103,10 @@ def run(config: DictConfig) -> None:
             ),
             output_dir / "scene_3d.mp4",
             fps=clip.fps,
-            frame_step=int(predict_cfg.get("frame_step", 1)),
+            frame_step=runtime.frame_step,
         )
         print(f"3D render  -> {video_path}")
-    if bool(predict_cfg.get("render_overlay", True)):
+    if runtime.render_overlay:
         overlay_path, missing = render_overlay_video(
             clip,
             manifest.camera_index(camera_id),
@@ -102,11 +114,21 @@ def run(config: DictConfig) -> None:
             player_yaw_rad=result["player_yaw_radians"].numpy(),
             ball_position_m=result["ball_position_meters"].numpy(),
             output_path=output_dir / "overlay_2d.mp4",
+            court_kp_indices=runtime.visualization.court_kp_indices,
+            min_homography_points=runtime.visualization.homography_min_points,
+            court_visibility_threshold=(
+                runtime.visualization.court_visibility_threshold
+            ),
         )
         print(f"2D overlay -> {overlay_path} (frames without homography: {missing})")
 
 
-@hydra_main(config_path="../configs", config_name="predict_clip", version_base="1.3")
+@hydra_main(
+    config_path="../configs",
+    config_name="predict_clip",
+    version_base="1.3",
+    validation_boundary="slcs.predict_clip",
+)
 def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
     """Hydra entry point for SLCS clip inference."""
     with torch.no_grad():
@@ -114,4 +136,4 @@ def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    main()  # type: ignore[call-arg, unused-ignore]
+    main()

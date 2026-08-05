@@ -3,20 +3,33 @@
 from __future__ import annotations
 
 import json
-import os
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any, Protocol, cast
 
 import numpy as np
 import pytorch_lightning as pl
+from pytorch_lightning.utilities.types import OptimizerLRScheduler
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
+from torch.optim.lr_scheduler import (
+    CosineAnnealingLR,
+    LinearLR,
+    LRScheduler,
+    SequentialLR,
+)
 
+from src.tasks.base.configuration import (
+    BaseTrainingConfig,
+    as_config_mapping,
+    require_config_mapping,
+)
+from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
+from src.utils.paths import PROJECT_ROOT
 from src.utils.tensor_utils import to_numpy
 
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
+
+class _SavezCompressed(Protocol):
+    def __call__(self, file: str | Path, **arrays: np.ndarray) -> None: ...
 
 
 def _concat_padded(chunks: list[np.ndarray]) -> np.ndarray:
@@ -38,7 +51,8 @@ def _concat_padded(chunks: list[np.ndarray]) -> np.ndarray:
                 c = np.pad(c, pad_width)
             padded.append(c)
         chunks = padded
-    return np.concatenate(chunks, axis=0)  # type: ignore[no-any-return]
+    concatenated: np.ndarray = np.asarray(np.concatenate(chunks, axis=0))
+    return concatenated
 
 
 class BaseLightningModule(pl.LightningModule):
@@ -48,22 +62,32 @@ class BaseLightningModule(pl.LightningModule):
     dataset sizing under `config.data`.
     """
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    steps_per_epoch: int | None = None
+
+    def __init__(self, config: Any) -> None:
         super().__init__()
         self.save_hyperparameters()
 
-        self.config = config or {}
+        root = as_config_mapping(config, path="configuration")
+        self.config = config
+        self.training_config = BaseTrainingConfig.from_validated_task_mapping(
+            require_config_mapping(root, "training", path="configuration")
+        )
+        self.path_resolver = PathResolver(
+            RuntimePathRoots.from_mapping(
+                require_config_mapping(root, "paths", path="configuration"),
+                repository_root=PROJECT_ROOT,
+            )
+        )
 
-        train_cfg = self.config.get("training", {})
-        self.learning_rate = train_cfg.get("learning_rate", 1e-4)
-        self.weight_decay = train_cfg.get("weight_decay", 1e-5)
-        self.warmup_steps = train_cfg.get("warmup_steps")
-        self.warmup_epochs = train_cfg.get("warmup_epochs")
-        self.max_epochs = train_cfg.get("max_epochs", 100)
-        self.min_lr = train_cfg.get("min_lr", 1e-6)
-        optimizer_cfg = train_cfg.get("optimizer", {}) or {}
-        betas = optimizer_cfg.get("betas")
-        self.optimizer_betas = tuple(betas) if betas is not None else None
+        optimizer = self.training_config.optimizer
+        self.learning_rate = optimizer.learning_rate
+        self.weight_decay = optimizer.weight_decay
+        self.warmup_steps = optimizer.warmup_steps
+        self.warmup_epochs = optimizer.warmup_epochs
+        self.max_epochs = optimizer.max_epochs
+        self.min_lr = optimizer.min_lr
+        self.optimizer_betas = optimizer.betas
 
     # ------------------------------------------------------------------
     # Qualitative validation logging hook
@@ -133,9 +157,15 @@ class BaseLightningModule(pl.LightningModule):
         sampler), so a running cursor over ``test_dataset.scenes`` recovers the
         scene id per sample without threading it through the collate fn.
         """
-        dm = getattr(self._safe_trainer(), "datamodule", None)
-        scenes = getattr(getattr(dm, "test_dataset", None), "scenes", None)
-        start = getattr(self, "_test_pred_cursor", 0)
+        trainer = self._safe_trainer()
+        dm = trainer.datamodule if trainer is not None else None
+        dataset = dm.test_dataset if dm is not None else None
+        scenes = (
+            dataset.scenes
+            if dataset is not None and hasattr(dataset, "scenes")
+            else None
+        )
+        start = self._test_pred_cursor
         ids: list[str] = []
         for i in range(batch_size):
             gi = start + i
@@ -148,7 +178,8 @@ class BaseLightningModule(pl.LightningModule):
 
     @staticmethod
     def _to_numpy(value: Any) -> np.ndarray:
-        return to_numpy(value)
+        array: np.ndarray = to_numpy(value)
+        return array
 
     def collect_test_predictions(self, batch: Any, result: dict[str, Any]) -> None:
         """Accumulate one test batch's prediction arrays into the buffer."""
@@ -163,14 +194,11 @@ class BaseLightningModule(pl.LightningModule):
         for key, arr in arrays.items():
             self._test_pred_arrays[key].append(arr)
 
-    def _test_predictions_dir(self) -> Path | None:
-        base = os.environ.get("TENNIS_REPRO_DIR")
-        if base:
-            return Path(base) / "predictions"
-        log_dir = getattr(self._safe_trainer(), "log_dir", None)
-        if log_dir:
-            return Path(log_dir) / "predictions"
-        return None
+    def _test_predictions_dir(self) -> Path:
+        resolved: Path = self.path_resolver.resolve(
+            PathRole.ARTIFACT, "test_predictions"
+        )
+        return resolved
 
     def save_test_predictions(
         self, metrics: dict[str, Any] | None = None
@@ -180,11 +208,9 @@ class BaseLightningModule(pl.LightningModule):
         Returns the npz path, or ``None`` if there is nothing to save / no target
         directory could be resolved.
         """
-        if not getattr(self, "_test_pred_arrays", None):
+        if not hasattr(self, "_test_pred_arrays") or not self._test_pred_arrays:
             return None
         out_dir = self._test_predictions_dir()
-        if out_dir is None:
-            return None
         out_dir.mkdir(parents=True, exist_ok=True)
         arrays: dict[str, np.ndarray] = {
             key: _concat_padded(chunks)
@@ -193,7 +219,7 @@ class BaseLightningModule(pl.LightningModule):
         # Fixed-width unicode (not object) so np.load works without allow_pickle.
         arrays["scene_ids"] = np.asarray(self._test_pred_scene_ids)
         npz_path = out_dir / "pred_test.npz"
-        np.savez_compressed(npz_path, **arrays)  # type: ignore[arg-type]
+        cast("_SavezCompressed", np.savez_compressed)(npz_path, **arrays)
         if metrics is not None:
             (out_dir / "metrics.json").write_text(
                 json.dumps(metrics, indent=2, ensure_ascii=False), encoding="utf-8"
@@ -201,35 +227,32 @@ class BaseLightningModule(pl.LightningModule):
         return npz_path
 
     def _estimate_total_steps(self) -> int:
-        steps_per_epoch_attr = getattr(self, "steps_per_epoch", None)
-        if steps_per_epoch_attr:
-            return int(steps_per_epoch_attr) * int(self.max_epochs)
+        max_epochs = int(self.max_epochs)
+        if hasattr(self, "steps_per_epoch") and self.steps_per_epoch is not None:
+            total_steps = int(self.steps_per_epoch) * max_epochs
+            if total_steps <= 0:
+                raise RuntimeError("Resolved total training steps must be > 0.")
+            return total_steps
 
         estimated_steps = None
-        if getattr(self, "_trainer", None) is not None:
-            estimated_steps = getattr(self._trainer, "estimated_stepping_batches", None)
+        if hasattr(self, "_trainer") and self._trainer is not None:
+            estimated_steps = self._trainer.estimated_stepping_batches
         if estimated_steps is not None:
-            return int(estimated_steps)
+            total_steps = int(estimated_steps)
+            if total_steps <= 0:
+                raise RuntimeError("Resolved total training steps must be > 0.")
+            return total_steps
 
-        data_cfg = self.config.get("data", {})
-        sim_cfg = self.config.get("simulation", {})
-        train_cfg = self.config.get("training", {})
-        steps_per_epoch = train_cfg.get("steps_per_epoch")
+        steps_per_epoch = self.training_config.optimizer.steps_per_epoch
         if steps_per_epoch is not None:
-            return int(steps_per_epoch) * int(self.max_epochs)
-
-        num_samples = data_cfg.get("num_scenes_per_epoch")
-        if num_samples is None:
-            num_samples = data_cfg.get("num_samples_per_epoch")
-        if num_samples is None:
-            num_samples = train_cfg.get("num_samples_per_epoch")
-        if num_samples is None:
-            num_samples = sim_cfg.get("num_train_scenes")
-        if num_samples is None:
-            num_samples = 10000
-        batch_size = data_cfg.get("batch_size", 64)
-        steps_per_epoch = max(num_samples // batch_size, 1)
-        return steps_per_epoch * self.max_epochs
+            total_steps = int(steps_per_epoch) * max_epochs
+            if total_steps <= 0:
+                raise RuntimeError("Resolved total training steps must be > 0.")
+            return total_steps
+        raise RuntimeError(
+            "Training step count is unresolved: set training.steps_per_epoch or "
+            "attach the module to a Trainer before configuring the scheduler."
+        )
 
     def optimizer_param_groups(self) -> list[dict[str, Any]] | None:
         """Optional parameter groups for the optimizer."""
@@ -238,27 +261,32 @@ class BaseLightningModule(pl.LightningModule):
     def _build_optimizer(self) -> AdamW:
         params = self.optimizer_param_groups()
         if params is None:
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 "lr": self.learning_rate,
                 "weight_decay": self.weight_decay,
+                "betas": self.optimizer_betas,
             }
-            if self.optimizer_betas is not None:
-                kwargs["betas"] = self.optimizer_betas
             return AdamW(self.parameters(), **kwargs)
-        for group in params:
-            group.setdefault("lr", self.learning_rate)
-            group.setdefault("weight_decay", self.weight_decay)
-            if self.optimizer_betas is not None:
-                group.setdefault("betas", self.optimizer_betas)
-        return AdamW(params)
+        completed_groups: list[dict[str, Any]] = []
+        for raw_group in params:
+            group = dict(raw_group)
+            if "lr" not in group:
+                group["lr"] = self.learning_rate
+            if "weight_decay" not in group:
+                group["weight_decay"] = self.weight_decay
+            if "betas" not in group:
+                group["betas"] = self.optimizer_betas
+            completed_groups.append(group)
+        return AdamW(completed_groups)
 
-    def configure_optimizers(self) -> dict[str, Any]:
+    def configure_optimizers(self) -> OptimizerLRScheduler:
         """Configure optimizer and scheduler.
 
         Returns:
             dict: Optimizer and scheduler configuration.
         """
         optimizer = self._build_optimizer()
+        scheduler: LRScheduler
 
         if self.warmup_epochs is not None:
             warmup_epochs = int(self.warmup_epochs)
@@ -271,7 +299,7 @@ class BaseLightningModule(pl.LightningModule):
                 )
                 cosine_scheduler = CosineAnnealingLR(
                     optimizer,
-                    T_max=max(int(self.max_epochs) - warmup_epochs, 1),
+                    T_max=int(self.max_epochs) - warmup_epochs,
                     eta_min=self.min_lr,
                 )
                 scheduler = SequentialLR(
@@ -282,13 +310,22 @@ class BaseLightningModule(pl.LightningModule):
             else:
                 scheduler = CosineAnnealingLR(
                     optimizer,
-                    T_max=max(int(self.max_epochs), 1),
+                    T_max=int(self.max_epochs),
                     eta_min=self.min_lr,
                 )
             interval = "epoch"
         else:
-            warmup_steps = int(self.warmup_steps or 0)
+            if self.warmup_steps is None:
+                raise RuntimeError(
+                    "Validated optimizer config has no explicit warmup_steps."
+                )
+            warmup_steps = self.warmup_steps
             total_steps = self._estimate_total_steps()
+            if warmup_steps and warmup_steps >= total_steps:
+                raise RuntimeError(
+                    "training.warmup_steps must be less than the resolved total "
+                    "training steps."
+                )
             if warmup_steps > 0:
                 warmup_scheduler = LinearLR(
                     optimizer,
@@ -298,7 +335,7 @@ class BaseLightningModule(pl.LightningModule):
                 )
                 cosine_scheduler = CosineAnnealingLR(
                     optimizer,
-                    T_max=max(total_steps - warmup_steps, 1),
+                    T_max=total_steps - warmup_steps,
                     eta_min=self.min_lr,
                 )
                 scheduler = SequentialLR(
@@ -309,7 +346,7 @@ class BaseLightningModule(pl.LightningModule):
             else:
                 scheduler = CosineAnnealingLR(
                     optimizer,
-                    T_max=max(total_steps, 1),
+                    T_max=total_steps,
                     eta_min=self.min_lr,
                 )
             interval = "step"

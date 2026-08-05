@@ -10,14 +10,16 @@ from src.tasks.base.training.gan_transition_callback import GANTransitionCallbac
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
 from src.tasks.base.training.runner import BaseTrainingRunner
+from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
 
 __all__ = [
-	"BaseLightningModule",
-	"BaseTrainingRunner",
-	"ChunkRotationCallback",
-	"GANTransitionCallback",
-	"LSGANLoss",
-	"ManualGANSupportMixin",
-	"ManualGANTrainingStrategy",
-	"QualitativeLoggingCallback",
+    "BaseLightningModule",
+    "BaseTrainingRunner",
+    "ChunkRotationCallback",
+    "GANTransitionCallback",
+    "LSGANLoss",
+    "ManualGANSupportMixin",
+    "ManualGANTrainingStrategy",
+    "QualitativeLoggingCallback",
+    "TrackingMetricConfig",
 ]

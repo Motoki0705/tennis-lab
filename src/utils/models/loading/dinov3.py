@@ -10,12 +10,7 @@ import torch
 from torch import nn
 
 from src.utils.models.lora import LoRAConfig, apply_lora
-from src.utils.paths import resolve_project_path
 
-DEFAULT_DINOV3_REPOSITORY = Path("third_party/dinov3")
-DEFAULT_DINOV3_CHECKPOINT = Path(
-    "third_party/dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth"
-)
 DINOv3TrainMode = Literal["frozen", "last_n_blocks", "full"]
 # Attention (qkv/proj) and MLP (fc1/fc2) projections inside each DINOv3 block.
 DEFAULT_DINOV3_LORA_TARGET_MODULES: tuple[str, ...] = ("qkv", "proj", "fc1", "fc2")
@@ -49,7 +44,12 @@ class DINOv3BackboneAdapter(nn.Module):
         outputs = cast(Any, self.module).forward_features(inputs)
         if not isinstance(outputs, Mapping):
             raise TypeError("DINOv3 forward_features must return a mapping.")
-        patch_tokens = outputs.get("x_norm_patchtokens")
+        try:
+            patch_tokens = outputs["x_norm_patchtokens"]
+        except KeyError as exc:
+            raise KeyError(
+                "DINOv3 forward_features is missing required x_norm_patchtokens."
+            ) from exc
         if not isinstance(patch_tokens, torch.Tensor):
             raise TypeError(
                 "DINOv3 forward_features did not return tensor patch tokens."
@@ -79,26 +79,28 @@ class DINOv3BackboneAdapter(nn.Module):
 
 def load_dinov3_backbone(
     *,
-    repository_path: str | Path = DEFAULT_DINOV3_REPOSITORY,
-    checkpoint_path: str | Path = DEFAULT_DINOV3_CHECKPOINT,
-    backbone_name: str = "dinov3_vitb16",
-    strict: bool = True,
+    repository_path: Path,
+    checkpoint_path: Path,
+    backbone_name: str,
+    strict: bool,
 ) -> DINOv3BackboneAdapter:
-    """Load a DINOv3 backbone from the vendored repository and local weights."""
-    repository = resolve_project_path(repository_path)
-    checkpoint = resolve_project_path(checkpoint_path)
-    if not repository.is_dir():
-        raise FileNotFoundError(f"DINOv3 repository not found: {repository}")
-    if not checkpoint.is_file():
-        raise FileNotFoundError(f"DINOv3 checkpoint not found: {checkpoint}")
+    """Load a DINOv3 backbone from explicit, already-resolved runtime paths."""
+    if not isinstance(repository_path, Path) or not repository_path.is_absolute():
+        raise ValueError("repository_path must be an absolute pathlib.Path.")
+    if not isinstance(checkpoint_path, Path) or not checkpoint_path.is_absolute():
+        raise ValueError("checkpoint_path must be an absolute pathlib.Path.")
+    if not repository_path.is_dir():
+        raise FileNotFoundError(f"DINOv3 repository not found: {repository_path}")
+    if not checkpoint_path.is_file():
+        raise FileNotFoundError(f"DINOv3 checkpoint not found: {checkpoint_path}")
 
     backbone: nn.Module = torch.hub.load(
-        str(repository),
+        str(repository_path),
         backbone_name,
         source="local",
         pretrained=False,
     )
-    state = torch.load(checkpoint, map_location="cpu", weights_only=True)
+    state = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     if isinstance(state, Mapping) and "model" in state:
         state = state["model"]
     if not isinstance(state, Mapping):
@@ -142,8 +144,8 @@ def configure_dinov3_trainability(
     backbone: DINOv3BackboneAdapter,
     *,
     train_mode: DINOv3TrainMode,
-    last_n_blocks: int = 0,
-    lora: LoRAConfig | None = None,
+    last_n_blocks: int,
+    lora: LoRAConfig | None,
 ) -> None:
     """Configure ``frozen``, ``last_n_blocks``, ``full``, or LoRA training.
 
@@ -187,9 +189,7 @@ def configure_dinov3_trainability(
 
 
 __all__ = [
-    "DEFAULT_DINOV3_CHECKPOINT",
     "DEFAULT_DINOV3_LORA_TARGET_MODULES",
-    "DEFAULT_DINOV3_REPOSITORY",
     "DINOv3BackboneAdapter",
     "DINOv3TrainMode",
     "apply_dinov3_lora",

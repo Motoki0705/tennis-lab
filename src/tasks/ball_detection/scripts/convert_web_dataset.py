@@ -20,10 +20,11 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 from tqdm import tqdm
 
+from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
+from src.tasks.ball_detection.configuration import BallRuntimePaths
 from src.tasks.ball_detection.data.components.web.data_access_layer.web_store import (
     INDEX_FILE,
     SCHEMA_VERSION,
@@ -53,12 +54,14 @@ from src.utils.io import ensure_dir, load_json
     config_path="../configs",
     config_name="convert_web_dataset",
     version_base="1.3",
+    validation_boundary="ball.web_tool",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Run the configured raw-to-unified conversion."""
     convert = cfg.convert
-    web_root = Path(to_absolute_path(str(convert.web_root)))
-    output_dir = Path(to_absolute_path(str(convert.output_dir)))
+    paths = BallRuntimePaths.from_config(cfg)
+    web_root = paths.data(str(convert.web_root))
+    output_dir = paths.data(str(convert.output_dir))
     index_path = output_dir / INDEX_FILE
 
     if index_path.exists() and not bool(convert.overwrite):
@@ -101,7 +104,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
             build_dir,
             index,
             writer,
-            max_bbox_side_ratio=_optional_float(convert.get("max_bbox_side_ratio")),
+            max_bbox_side_ratio=_optional_float(convert.max_bbox_side_ratio),
         )
         write_store_readme(build_dir)
         publish_store(build_dir, output_dir)
@@ -137,7 +140,7 @@ def _build_parsers(convert: Any, web_root: Path) -> list[WebDatasetParser]:
         seed=int(convert.split_seed),
     )
     quality = int(convert.jpeg_quality)
-    max_ratio = _optional_float(convert.get("max_bbox_side_ratio"))
+    max_ratio = _optional_float(convert.max_bbox_side_ratio)
     parsers: list[WebDatasetParser] = []
     if bool(convert.sources.roboflow):
         parsers.append(RoboflowParser(web_root, split_config, max_ratio))

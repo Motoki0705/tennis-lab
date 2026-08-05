@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,7 +10,8 @@ from typing import Any, Literal, cast
 
 from omegaconf import OmegaConf
 
-from src.utils.paths import resolve_project_path
+from src.tasks.ball_detection.configuration import exact_mapping
+from src.utils.configuration import PathResolver, PathRole
 
 EvaluationCategory = Literal["architecture-controlled", "full-strategy"]
 _CATEGORIES = {"architecture-controlled", "full-strategy"}
@@ -21,19 +23,19 @@ _ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 class MetricsSpec:
     """Detection thresholds shared by every comparison job."""
 
-    peak_threshold: float = 0.5
-    ball_distance_threshold: float = 4.0
-    nms_kernel: int = 9
-    max_predictions_per_frame: int = 8
-    subpixel_refine: bool = True
+    peak_threshold: float
+    ball_distance_threshold: float
+    nms_kernel: int
+    max_predictions_per_frame: int
+    subpixel_refine: bool
 
 
 @dataclass(frozen=True)
 class PerformanceSpec:
     """Inference timing controls."""
 
-    warmup_batches: int = 1
-    max_batches_per_split: int | None = None
+    warmup_batches: int
+    max_batches_per_split: int | None
 
 
 @dataclass(frozen=True)
@@ -55,9 +57,9 @@ class ModelSpec:
     checkpoint: Path
     expected_model_name: str
     datasets: tuple[str, ...]
-    enabled: bool = True
-    strict: bool = True
-    weights_only: bool = False
+    enabled: bool
+    strict: bool
+    weights_only: bool
 
 
 @dataclass(frozen=True)
@@ -73,59 +75,111 @@ class EvaluationManifest:
     performance: PerformanceSpec
     datasets: dict[str, DatasetSpec]
     models: tuple[ModelSpec, ...]
+    resolver: PathResolver
 
 
-def load_evaluation_manifest(path: str | Path) -> EvaluationManifest:
+def load_evaluation_manifest(
+    path: str | Path, *, resolver: PathResolver
+) -> EvaluationManifest:
     """Load and validate an evaluation manifest from YAML."""
-    manifest_path = resolve_project_path(path)
+    manifest_path = Path(path)
+    if not manifest_path.is_absolute():
+        raise ValueError("Evaluation manifest path must be absolute.")
     if not manifest_path.is_file():
         raise FileNotFoundError(f"Evaluation manifest not found: {manifest_path}")
     raw = OmegaConf.to_container(OmegaConf.load(manifest_path), resolve=True)
     if not isinstance(raw, dict):
         raise TypeError("Evaluation manifest root must be a mapping.")
 
-    schema = str(raw.get("schema", ""))
+    raw = dict(
+        exact_mapping(
+            raw,
+            path="manifest",
+            required={
+                "schema",
+                "output_dir",
+                "device",
+                "resume",
+                "fail_fast",
+                "metrics",
+                "performance",
+                "datasets",
+                "models",
+            },
+        )
+    )
+    schema = _string(raw["schema"], name="manifest.schema")
     if schema != "ball_detection_evaluation_manifest_v1":
         raise ValueError(
             "Unsupported evaluation manifest schema: "
             f"{schema!r}; expected 'ball_detection_evaluation_manifest_v1'."
         )
-    datasets = _parse_datasets(raw.get("datasets"))
-    models = _parse_models(raw.get("models"), datasets)
-    metrics_raw = _mapping(raw.get("metrics", {}), name="metrics")
-    performance_raw = _mapping(raw.get("performance", {}), name="performance")
+    datasets = _parse_datasets(raw["datasets"])
+    models = _parse_models(raw["models"], datasets, resolver=resolver)
+    metrics_raw = dict(
+        exact_mapping(
+            raw["metrics"],
+            path="manifest.metrics",
+            required={
+                "peak_threshold",
+                "ball_distance_threshold",
+                "nms_kernel",
+                "max_predictions_per_frame",
+                "subpixel_refine",
+            },
+        )
+    )
+    performance_raw = dict(
+        exact_mapping(
+            raw["performance"],
+            path="manifest.performance",
+            required={"warmup_batches", "max_batches_per_split"},
+        )
+    )
     metrics = MetricsSpec(
-        peak_threshold=float(metrics_raw.get("peak_threshold", 0.5)),
-        ball_distance_threshold=float(
-            metrics_raw.get("ball_distance_threshold", 4.0)
+        peak_threshold=_number(
+            metrics_raw["peak_threshold"], name="manifest.metrics.peak_threshold"
         ),
-        nms_kernel=int(metrics_raw.get("nms_kernel", 9)),
-        max_predictions_per_frame=int(
-            metrics_raw.get("max_predictions_per_frame", 8)
+        ball_distance_threshold=_number(
+            metrics_raw["ball_distance_threshold"],
+            name="manifest.metrics.ball_distance_threshold",
         ),
-        subpixel_refine=bool(metrics_raw.get("subpixel_refine", True)),
+        nms_kernel=_integer(
+            metrics_raw["nms_kernel"], name="manifest.metrics.nms_kernel"
+        ),
+        max_predictions_per_frame=_integer(
+            metrics_raw["max_predictions_per_frame"],
+            name="manifest.metrics.max_predictions_per_frame",
+        ),
+        subpixel_refine=_boolean(
+            metrics_raw["subpixel_refine"],
+            name="manifest.metrics.subpixel_refine",
+        ),
     )
     performance = PerformanceSpec(
-        warmup_batches=int(performance_raw.get("warmup_batches", 1)),
-        max_batches_per_split=_optional_int(
-            performance_raw.get("max_batches_per_split")
+        warmup_batches=_integer(
+            performance_raw["warmup_batches"],
+            name="manifest.performance.warmup_batches",
         ),
+        max_batches_per_split=_optional_int(performance_raw["max_batches_per_split"]),
     )
     _validate_thresholds(metrics, performance)
 
-    output_dir = resolve_project_path(
-        str(raw.get("output_dir", "outputs/ball_detection/evaluation"))
+    output_dir = resolver.resolve(
+        PathRole.OUTPUT,
+        _string(raw["output_dir"], name="manifest.output_dir"),
     )
     return EvaluationManifest(
         schema=schema,
         output_dir=output_dir,
-        device=str(raw.get("device", "auto")),
-        resume=bool(raw.get("resume", True)),
-        fail_fast=bool(raw.get("fail_fast", False)),
+        device=_string(raw["device"], name="manifest.device"),
+        resume=_boolean(raw["resume"], name="manifest.resume"),
+        fail_fast=_boolean(raw["fail_fast"], name="manifest.fail_fast"),
         metrics=metrics,
         performance=performance,
         datasets=datasets,
         models=models,
+        resolver=resolver,
     )
 
 
@@ -135,9 +189,18 @@ def _parse_datasets(value: object) -> dict[str, DatasetSpec]:
         raise ValueError("Evaluation manifest must define at least one dataset.")
     parsed: dict[str, DatasetSpec] = {}
     for dataset_id, raw_spec in raw_datasets.items():
-        _validate_identifier(str(dataset_id), name="dataset id")
-        spec = _mapping(raw_spec, name=f"datasets.{dataset_id}")
-        splits = tuple(str(split) for split in _list(spec.get("splits"), "splits"))
+        _validate_identifier(dataset_id, name="dataset id")
+        spec = dict(
+            exact_mapping(
+                raw_spec,
+                path=f"manifest.datasets.{dataset_id}",
+                required={"config", "splits", "overrides"},
+            )
+        )
+        splits = tuple(
+            _string(split, name=f"datasets.{dataset_id}.splits item")
+            for split in _list(spec["splits"], "splits")
+        )
         if not splits:
             raise ValueError(f"datasets.{dataset_id}.splits must not be empty.")
         unsupported = set(splits).difference(_ALLOWED_SPLITS)
@@ -149,23 +212,27 @@ def _parse_datasets(value: object) -> dict[str, DatasetSpec]:
         if len(set(splits)) != len(splits):
             raise ValueError(f"datasets.{dataset_id}.splits contains duplicates.")
         overrides = _mapping(
-            spec.get("overrides", {}),
+            spec["overrides"],
             name=f"datasets.{dataset_id}.overrides",
         )
-        parsed[str(dataset_id)] = DatasetSpec(
-            id=str(dataset_id),
-            config=str(spec.get("config", "")).strip(),
+        config_name = _string(
+            spec["config"], name=f"datasets.{dataset_id}.config"
+        )
+        _validate_identifier(config_name, name=f"datasets.{dataset_id}.config")
+        parsed[dataset_id] = DatasetSpec(
+            id=dataset_id,
+            config=config_name,
             splits=splits,
             overrides=overrides,
         )
-        if not parsed[str(dataset_id)].config:
-            raise ValueError(f"datasets.{dataset_id}.config must not be empty.")
     return parsed
 
 
 def _parse_models(
     value: object,
     datasets: dict[str, DatasetSpec],
+    *,
+    resolver: PathResolver,
 ) -> tuple[ModelSpec, ...]:
     raw_models = _list(value, "models")
     if not raw_models:
@@ -173,23 +240,36 @@ def _parse_models(
     parsed: list[ModelSpec] = []
     seen_ids: set[str] = set()
     for index, raw_model in enumerate(raw_models):
-        spec = _mapping(raw_model, name=f"models[{index}]")
-        model_id = str(spec.get("id", "")).strip()
-        if not model_id:
-            raise ValueError(f"models[{index}].id must not be empty.")
+        spec = dict(
+            exact_mapping(
+                raw_model,
+                path=f"manifest.models[{index}]",
+                required={
+                    "id",
+                    "category",
+                    "checkpoint",
+                    "expected_model_name",
+                    "datasets",
+                    "enabled",
+                    "strict",
+                    "weights_only",
+                },
+            )
+        )
+        model_id = _string(spec["id"], name=f"models[{index}].id")
         _validate_identifier(model_id, name=f"models[{index}].id")
         if model_id in seen_ids:
             raise ValueError(f"Duplicate model id: {model_id!r}.")
         seen_ids.add(model_id)
-        category = str(spec.get("category", ""))
+        category = _string(spec["category"], name=f"models[{index}].category")
         if category not in _CATEGORIES:
             raise ValueError(
                 f"models[{index}].category must be one of {sorted(_CATEGORIES)}, "
                 f"got {category!r}."
             )
         dataset_ids = tuple(
-            str(dataset_id)
-            for dataset_id in _list(spec.get("datasets"), "datasets")
+            _string(dataset_id, name=f"models[{index}].datasets item")
+            for dataset_id in _list(spec["datasets"], "datasets")
         )
         if not dataset_ids:
             raise ValueError(f"models[{index}].datasets must not be empty.")
@@ -200,28 +280,30 @@ def _parse_models(
             raise ValueError(
                 f"models[{index}] references unknown datasets {sorted(missing)}."
             )
-        checkpoint_value = str(spec.get("checkpoint", "")).strip()
-        if not checkpoint_value:
-            raise ValueError(f"models[{index}].checkpoint must not be empty.")
-        checkpoint = resolve_project_path(checkpoint_value)
+        checkpoint_value = _string(
+            spec["checkpoint"], name=f"models[{index}].checkpoint"
+        )
+        checkpoint = resolver.resolve(PathRole.CHECKPOINT, checkpoint_value)
+        expected_model_name = _string(
+            spec["expected_model_name"],
+            name=f"models[{index}].expected_model_name",
+        )
         parsed.append(
             ModelSpec(
                 id=model_id,
                 category=cast(EvaluationCategory, category),
                 checkpoint=checkpoint,
-                expected_model_name=str(
-                    spec.get("expected_model_name", "")
-                ).strip(),
+                expected_model_name=expected_model_name,
                 datasets=dataset_ids,
-                enabled=bool(spec.get("enabled", True)),
-                strict=bool(spec.get("strict", True)),
-                weights_only=bool(spec.get("weights_only", False)),
+                enabled=_boolean(spec["enabled"], name=f"models[{index}].enabled"),
+                strict=_boolean(spec["strict"], name=f"models[{index}].strict"),
+                weights_only=_boolean(
+                    spec["weights_only"], name=f"models[{index}].weights_only"
+                ),
             )
         )
-        if not parsed[-1].expected_model_name:
-            raise ValueError(
-                f"models[{index}].expected_model_name must not be empty."
-            )
+    if not any(model.enabled for model in parsed):
+        raise ValueError("Evaluation manifest must enable at least one model.")
     return tuple(parsed)
 
 
@@ -229,10 +311,13 @@ def _validate_thresholds(
     metrics: MetricsSpec,
     performance: PerformanceSpec,
 ) -> None:
-    if metrics.peak_threshold < 0:
-        raise ValueError("metrics.peak_threshold must be non-negative.")
-    if metrics.ball_distance_threshold < 0:
-        raise ValueError("metrics.ball_distance_threshold must be non-negative.")
+    if not math.isfinite(metrics.peak_threshold) or not 0 <= metrics.peak_threshold <= 1:
+        raise ValueError("metrics.peak_threshold must be in [0, 1].")
+    if (
+        not math.isfinite(metrics.ball_distance_threshold)
+        or metrics.ball_distance_threshold < 0
+    ):
+        raise ValueError("metrics.ball_distance_threshold must be finite and non-negative.")
     if metrics.nms_kernel <= 0 or metrics.nms_kernel % 2 == 0:
         raise ValueError("metrics.nms_kernel must be a positive odd integer.")
     if metrics.max_predictions_per_frame <= 0:
@@ -243,15 +328,15 @@ def _validate_thresholds(
         performance.max_batches_per_split is not None
         and performance.max_batches_per_split <= 0
     ):
-        raise ValueError(
-            "performance.max_batches_per_split must be positive when set."
-        )
+        raise ValueError("performance.max_batches_per_split must be positive when set.")
 
 
 def _mapping(value: object, *, name: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise TypeError(f"{name} must be a mapping.")
-    return {str(key): item for key, item in value.items()}
+    if any(type(key) is not str for key in value):
+        raise TypeError(f"{name} keys must be strings.")
+    return cast(dict[str, Any], value)
 
 
 def _list(value: object, name: str) -> list[Any]:
@@ -263,9 +348,34 @@ def _list(value: object, name: str) -> list[Any]:
 def _optional_int(value: object) -> int | None:
     if value is None:
         return None
-    if not isinstance(value, (int, str)):
-        raise TypeError("Expected an integer or null.")
-    return int(value)
+    return _integer(value, name="manifest.performance.max_batches_per_split")
+
+
+def _string(value: object, *, name: str) -> str:
+    if type(value) is not str:
+        raise TypeError(f"{name} must be a string.")
+    result = value
+    if not result.strip() or result != result.strip():
+        raise ValueError(f"{name} must be a non-empty trimmed string.")
+    return result
+
+
+def _boolean(value: object, *, name: str) -> bool:
+    if type(value) is not bool:
+        raise TypeError(f"{name} must be a boolean.")
+    return value
+
+
+def _integer(value: object, *, name: str) -> int:
+    if type(value) is not int:
+        raise TypeError(f"{name} must be an integer.")
+    return value
+
+
+def _number(value: object, *, name: str) -> float:
+    if type(value) not in (float, int):
+        raise TypeError(f"{name} must be a number.")
+    return float(cast(float | int, value))
 
 
 def _validate_identifier(value: str, *, name: str) -> None:

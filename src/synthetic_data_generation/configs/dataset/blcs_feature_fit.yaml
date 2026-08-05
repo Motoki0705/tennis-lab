@@ -1,0 +1,28 @@
+# @package _global_
+defaults:
+  - /roots: runtime
+  - _self_
+
+source: nht/data/ball-assets/source.pt
+source_format: independent_nht_tensor_pack_v1
+calibration_bundle: synthetic-data/ball-calibration
+target_appearance: synthetic-data/appearance.pt
+target_appearance_space_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+output_dir: synthetic-data/ball-feature-fit
+optimization_steps: 600
+feature_lr: 0.015
+final_lr_fraction: 0.1
+min_validation_psnr_db: 20.0
+seed: 0
+device: cuda:0
+runtime_pins: nht/pins.env
+nht_repository: nht/upstream
+gsplat_repository: nht/upstream/gsplat
+worker_source: src/synthetic_data_generation/dataset/blcs/rendering/feature_fit.py
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${roots.output_root},hydra/synthetic_data_generation/blcs_feature_fit,${now:%Y-%m-%d_%H-%M-%S}}
+  output_subdir: null
+  job:
+    chdir: false

@@ -7,11 +7,11 @@ to keep visualization and simulation in the same coordinate system.
 from __future__ import annotations
 
 from src.tasks.blcs.generate_dataset.api_server.schemas import CourtGeometryResponse
-from src.utils.schema.court import court_keypoints_3d
+from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 
 
 def build_court_geometry_response() -> CourtGeometryResponse:
-    kp = court_keypoints_3d()  # (20, 3)
+    kp = court_keypoints_3d(STANDARD_COURT_CONFIG)  # (20, 3)
 
     # Line segments defined over CourtKP20 indices.
     # The intent is to create a "recognizable tennis court" with minimal lines.
@@ -56,4 +56,3 @@ def build_court_geometry_response() -> CourtGeometryResponse:
         keypoints=kp.tolist(),
         segments=segments,
     )
-

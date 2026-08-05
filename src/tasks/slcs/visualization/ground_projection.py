@@ -17,7 +17,7 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from src.utils.schema.court import court_keypoints_3d
+from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 
 
 class GroundProjectionError(RuntimeError):
@@ -49,9 +49,9 @@ def ground_homography_from_court(
     *,
     width: int,
     height: int,
-    court_kp_indices: tuple[int, ...] | None = None,
-    min_points: int = 4,
-    vis_threshold: float = 0.5,
+    court_kp_indices: tuple[int, ...],
+    min_points: int,
+    vis_threshold: float,
 ) -> NDArray[np.float64]:
     """Estimate the world-ground -> pixel homography for one frame.
 
@@ -59,8 +59,8 @@ def ground_homography_from_court(
         court_kp_uv: ``(K, 2)`` normalized UV court keypoints.
         court_vis: ``(K,)`` visibility scores.
         width / height: Image size in pixels (UV is denormalized with these).
-        court_kp_indices: CourtKP20 index per row (default mapping for K in
-            {14, 20}); rows mapping to elevated keypoints (z>0) are excluded.
+        court_kp_indices: Explicit CourtKP20 index per row; rows mapping to
+            elevated keypoints (z>0) are excluded.
         min_points: Minimum usable ground correspondences.
 
     Returns:
@@ -77,16 +77,24 @@ def ground_homography_from_court(
         raise GroundProjectionError(
             f"court_vis must be (K,)={num_kp}, got {court_vis.shape}."
         )
-    indices = (
-        default_court_kp_indices(num_kp) if court_kp_indices is None else court_kp_indices
-    )
+    if min_points < 4:
+        raise GroundProjectionError(
+            f"min_points must be at least four, got {min_points}."
+        )
+    if not 0.0 <= vis_threshold <= 1.0:
+        raise GroundProjectionError(
+            f"vis_threshold must be in [0, 1], got {vis_threshold}."
+        )
+    indices = court_kp_indices
     if len(indices) != num_kp:
         raise GroundProjectionError(
             f"court_kp_indices has {len(indices)} entries for K={num_kp} keypoints."
         )
-    kp20: NDArray[np.float32] = court_keypoints_3d().numpy()
+    kp20: NDArray[np.float32] = court_keypoints_3d(STANDARD_COURT_CONFIG).numpy()
     if any(not 0 <= i < kp20.shape[0] for i in indices):
-        raise GroundProjectionError(f"court_kp_indices out of CourtKP20 range: {indices}.")
+        raise GroundProjectionError(
+            f"court_kp_indices out of CourtKP20 range: {indices}."
+        )
 
     world_pts: list[NDArray[np.float32]] = []
     image_pts: list[NDArray[np.float32]] = []

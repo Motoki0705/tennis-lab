@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import os
-
 import torch
 
+from src.utils.configuration import OperationEnvironmentConfig, operation_environment
 from src.utils.models.components.ops.loader import get_time_local_cuda_extension
 from src.utils.models.components.ops.time_local.reference import (
     reference_time_local_attention,
@@ -21,7 +20,8 @@ def time_local_attention(
     training: bool = False,
     use_cuda: bool | None = None,
 ) -> torch.Tensor:
-    if _should_use_cuda(query, use_cuda):
+    environment = operation_environment()
+    if _should_use_cuda(query, use_cuda, environment):
         from src.utils.models.components.ops.time_local._autograd import (  # pragma: no cover - optional CUDA path
             cuda_time_local_attention,
         )
@@ -46,19 +46,13 @@ def time_local_attention(
     )
 
 
-def _should_use_cuda(tensor: torch.Tensor, use_cuda: bool | None) -> bool:
-    force_reference = os.environ.get("TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE", "") in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
-    prefer_cuda = os.environ.get("TENNIS_LAB_USE_TIME_LOCAL_CUDA", "") in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+def _should_use_cuda(
+    tensor: torch.Tensor,
+    use_cuda: bool | None,
+    environment: OperationEnvironmentConfig,
+) -> bool:
+    force_reference = environment.force_time_local_reference
+    prefer_cuda = environment.use_time_local_cuda
     if use_cuda is False or force_reference:
         if use_cuda is True and force_reference:
             raise RuntimeError("TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE is set")

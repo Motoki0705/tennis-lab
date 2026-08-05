@@ -27,13 +27,27 @@ def _perspective_keypoints(*, width: int, height: int) -> NDArray[np.float32]:
     return normalized * np.asarray([width - 1, height - 1], dtype=np.float32)
 
 
-def _geometry_only_criteria(**overrides: object) -> HomographyEvaluationCriteria:
-    values: dict[str, object] = {
-        "min_line_edge_support": 0.0,
-        "min_court_area_ratio": 0.001,
-    }
-    values.update(overrides)
-    return HomographyEvaluationCriteria(**values)  # type: ignore[arg-type]
+def _geometry_only_criteria(
+    *,
+    min_inliers: int = 12,
+    require_ground_view: bool = False,
+    max_opposite_edge_ratio: float = 0.95,
+) -> HomographyEvaluationCriteria:
+    return HomographyEvaluationCriteria(
+        ransac_reproj_threshold_normalized=0.012,
+        min_inliers=min_inliers,
+        min_template_x_span_ratio=0.5,
+        min_template_y_span_ratio=0.7,
+        max_inlier_rms_normalized=0.006,
+        min_visible_fraction=0.98,
+        min_court_area_ratio=0.001,
+        max_court_area_ratio=0.95,
+        min_line_edge_support=0.0,
+        line_distance_tolerance_px=3.0,
+        line_evidence_max_side=900,
+        require_ground_view=require_ground_view,
+        max_opposite_edge_ratio=max_opposite_edge_ratio,
+    )
 
 
 def test_homography_quality_refits_two_annotation_outliers() -> None:

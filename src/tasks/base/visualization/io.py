@@ -7,7 +7,7 @@ expansion differ per task and are injected by the caller.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 
@@ -22,7 +22,7 @@ class BaseSceneBundle:
 def resolve_cameras(
     num_cameras: int,
     camera: int,
-    cameras: list[int] | str | None,
+    cameras: Sequence[int] | str | None,
     all_camera_fn: Callable[[], list[int]],
 ) -> list[int]:
     """Resolve and validate camera indices.
@@ -38,7 +38,7 @@ def resolve_cameras(
     """
     if cameras == "all":
         selected = all_camera_fn()
-    elif isinstance(cameras, list) and cameras:
+    elif isinstance(cameras, Sequence) and not isinstance(cameras, str) and cameras:
         selected = list(cameras)
     else:
         selected = [camera]
@@ -48,7 +48,5 @@ def resolve_cameras(
 
     for cam_idx in selected:
         if cam_idx < 0 or cam_idx >= num_cameras:
-            raise ValueError(
-                f"Camera {cam_idx} out of range (0-{num_cameras - 1})."
-            )
+            raise ValueError(f"Camera {cam_idx} out of range (0-{num_cameras - 1}).")
     return selected

@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 backend: default
-scene_dir: data/blcs
+scene_dir: blcs
 num_court_kp: 20
 
 num_workers: 4

@@ -24,12 +24,16 @@ class _BLCSChunkGenerator:
         generator_config: GeneratorConfig,
         generator_device: str,
         generation_workers: int,
+        generation_chunksize: int,
+        generation_seed: int,
         multi_object: bool,
         timeline_config: Mapping[str, Any] | None,
     ) -> None:
         self.generator_config = generator_config
         self.generator_device = generator_device
         self.generation_workers = generation_workers
+        self.generation_chunksize = generation_chunksize
+        self.generation_seed = generation_seed
         self.multi_object = multi_object
         self.timeline_config = (
             dict(timeline_config) if timeline_config is not None else None
@@ -52,8 +56,10 @@ class _BLCSChunkGenerator:
             num_scenes=num_scenes,
             num_workers=self.generation_workers,
             start_index=start_index,
+            seed=self.generation_seed,
             multi_object=self.multi_object,
             timeline_config=self.timeline_config,
+            chunksize=self.generation_chunksize,
         ):
             if stop_event.is_set():
                 break
@@ -68,13 +74,15 @@ class ChunkManager(BaseChunkManager):
         *,
         chunks_dir: str | Path,
         generator_config: GeneratorConfig,
-        scenes_per_chunk: int = 1000,
-        epochs_per_chunk: int = 3,
-        prefetch_chunks: int = 1,
-        generator_device: str = "cpu",
-        generation_workers: int = 1,
-        multi_object: bool = False,
-        timeline_config: Mapping[str, Any] | None = None,
+        scenes_per_chunk: int,
+        epochs_per_chunk: int,
+        prefetch_chunks: int,
+        generator_device: str,
+        generation_workers: int,
+        generation_chunksize: int,
+        generation_seed: int,
+        multi_object: bool,
+        timeline_config: Mapping[str, Any] | None,
     ) -> None:
         self.generator_config = generator_config
         self.generator_device = generator_device
@@ -86,6 +94,8 @@ class ChunkManager(BaseChunkManager):
                 generator_config=generator_config,
                 generator_device=generator_device,
                 generation_workers=self.generation_workers,
+                generation_chunksize=generation_chunksize,
+                generation_seed=generation_seed,
                 multi_object=multi_object,
                 timeline_config=timeline_config,
             ),

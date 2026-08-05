@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 import numpy as np
 
@@ -16,6 +16,7 @@ from src.tasks.ball_detection.inference.trajectory_gate import (
     apply_trajectory_gate,
 )
 from src.tennis_scene.pipeline.components.base import BasePipelineModule
+from src.utils.configuration import PathResolver
 from src.utils.io import load_json, save_json
 from src.utils.video import (
     BgrToTensorTransform,
@@ -33,7 +34,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class BallDetectionConfig:
     """Configuration for the scene ball-detection module.
 
@@ -58,22 +59,33 @@ class BallDetectionConfig:
 
     """
 
-    checkpoint: str | Path
-    batch_size: int = 4
-    device: str = "cuda"
-    image_size: tuple[int, int] = (288, 512)
-    normalize_imagenet: bool = True
-    score_threshold: float = 0.5
-    subpixel_refine: bool = True
-    prefetch_batches: int = 2
-    window_stride: int | None = None
-    tail_policy: str = "backfill"
-    overlap_aggregation: str = "last_window_wins"
-    pin_memory: bool = True
-    trajectory_gate: TrajectoryGateConfig = field(default_factory=TrajectoryGateConfig)
-    save_result: bool = False
-    output_path: str | Path | None = None
-    load_path: str | Path | None = None
+    checkpoint: Path
+    source: Literal["execute", "load"]
+    batch_size: int
+    device: str
+    image_size: tuple[int, int]
+    normalize_imagenet: bool
+    score_threshold: float
+    subpixel_refine: bool
+    allow_device_fallback: bool
+    checkpoint_strict: bool
+    checkpoint_weights_only: bool
+    prefetch_batches: int
+    window_stride: int | None
+    tail_policy: str
+    overlap_aggregation: str
+    pin_memory: bool
+    trajectory_gate: TrajectoryGateConfig
+    save_result: bool
+    output_path: Path
+    load_path: Path | None
+    resolver: PathResolver
+
+    def __post_init__(self) -> None:
+        if (self.source == "load") != (self.load_path is not None):
+            raise ValueError(
+                "BallDetection source='load' requires load_path; execute forbids it"
+            )
 
 
 @dataclass
@@ -207,8 +219,12 @@ class BallDetectionModule(BasePipelineModule):
         LOGGER.info(f"Loading ball detection model from {self.config.checkpoint}")
         self._pipeline = BallDetectionPredictor.load_from_checkpoint(
             self.config.checkpoint,
+            resolver=self.config.resolver,
             device=self.config.device,
+            allow_device_fallback=self.config.allow_device_fallback,
             subpixel_refine=self.config.subpixel_refine,
+            strict=self.config.checkpoint_strict,
+            weights_only=self.config.checkpoint_weights_only,
         )
 
     @property
@@ -218,7 +234,7 @@ class BallDetectionModule(BasePipelineModule):
 
     def process(
         self,
-        video_paths: Sequence[str | Path],
+        video_paths: Sequence[Path],
         max_frames: int | None = None,
         image_width: int | None = None,
         image_height: int | None = None,
@@ -235,14 +251,15 @@ class BallDetectionModule(BasePipelineModule):
             BallDetectionResult with ball positions shaped (N, T, ...).
 
         """
-        video_paths = [Path(video_path) for video_path in video_paths]
+        video_paths = list(video_paths)
         if not video_paths:
             raise ValueError("video_paths must contain at least one video")
 
         # Check if we should load from pre-computed result
-        if self.config.load_path is not None:
-            load_path = Path(self.config.load_path)
-            if load_path.exists():
+        if self.config.source == "load":
+            assert self.config.load_path is not None
+            load_path = self.config.load_path
+            if load_path.is_file():
                 LOGGER.info(
                     f"Loading ball detection result from {load_path} "
                     "(skipping inference)"
@@ -262,9 +279,7 @@ class BallDetectionModule(BasePipelineModule):
                 if not is_valid:
                     raise ValueError(f"Invalid gated ball detection result: {errors}")
                 return result
-            LOGGER.warning(
-                f"load_path specified but not found: {load_path}, running inference"
-            )
+            raise FileNotFoundError(f"Ball detection artifact not found: {load_path}")
 
         if not self.is_loaded:
             self.load()
@@ -278,7 +293,9 @@ class BallDetectionModule(BasePipelineModule):
 
         for camera_index, video_path in enumerate(video_paths):
             video_info = probe_video_info(video_path)
-            original_width = image_width if image_width is not None else video_info.width
+            original_width = (
+                image_width if image_width is not None else video_info.width
+            )
             original_height = (
                 image_height if image_height is not None else video_info.height
             )
@@ -327,7 +344,7 @@ class BallDetectionModule(BasePipelineModule):
         if not is_valid:
             raise ValueError(f"Invalid ball detection result: {errors}")
 
-        if self.config.save_result and self.config.output_path is not None:
+        if self.config.save_result:
             ball_detection_result.save(self.config.output_path)
 
         return ball_detection_result
@@ -389,7 +406,7 @@ class BallDetectionModule(BasePipelineModule):
 
     def _predict_video(
         self,
-        video_path: str | Path,
+        video_path: Path,
         *,
         max_frames: int | None,
     ) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
@@ -397,13 +414,8 @@ class BallDetectionModule(BasePipelineModule):
         if self._pipeline is None:
             raise RuntimeError("Ball detection predictor is not loaded.")
 
-        model_config = getattr(self._pipeline, "model_config", {}) or {}
-        _num_frames_raw = model_config.get("num_frames")
-        if _num_frames_raw is None:
-            LOGGER.warning(
-                "model_config.num_frames not found; falling back to sequence_length=8"
-            )
-        sequence_length = int(_num_frames_raw if _num_frames_raw is not None else 8)
+        model_config = self._pipeline.model_config
+        sequence_length = cast("int", model_config["num_frames"])
         if sequence_length <= 0:
             raise ValueError(
                 f"model.num_frames must be positive, got {sequence_length}"
@@ -502,20 +514,3 @@ class BallDetectionModule(BasePipelineModule):
             "overlap_aggregation must be one of ['last_window_wins', 'max_score'], "
             f"got '{self.config.overlap_aggregation}'."
         )
-
-
-if __name__ == "__main__":
-    # Quick smoke test for module instantiation
-    print("BallDetectionModule: scene ball detection module")
-    print("Use BallDetectionModule(BallDetectionConfig(...))")
-
-    # Test config creation
-    config = BallDetectionConfig(
-        checkpoint="test.ckpt",
-        device="cpu",
-        save_result=True,
-        output_path="test_output.json",
-    )
-    print(f"Config: {config}")
-    assert config.device == "cpu"
-    print("Smoke test passed.")

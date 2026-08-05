@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import os
 from typing import Literal
 
 import torch
 
+from src.utils.configuration import OperationEnvironmentConfig, operation_environment
 from src.utils.models.components.ops.loader import get_moe_cuda_extension
 from src.utils.models.components.ops.moe._autograd import (
     cuda_moe_combine,
@@ -32,6 +32,7 @@ def moe_dispatch(
     capacity: int | None = None,
     use_cuda: bool | None = None,
 ) -> MoEDispatchResult:
+    environment = operation_environment()
     expert_indices, expert_weights = validate_moe_routing(
         tokens,
         expert_indices,
@@ -45,7 +46,7 @@ def moe_dispatch(
         drop_policy=drop_policy,
         capacity=capacity,
     )
-    if _should_use_cuda(tokens, use_cuda):
+    if _should_use_cuda(tokens, use_cuda, environment):
         return cuda_moe_dispatch(
             tokens,
             expert_indices,
@@ -70,19 +71,19 @@ def moe_combine(
     *,
     use_cuda: bool | None = None,
 ) -> torch.Tensor:
+    environment = operation_environment()
     _validate_combine_inputs(expert_outputs, dispatch_result)
-    if _should_use_cuda(expert_outputs, use_cuda):
+    if _should_use_cuda(expert_outputs, use_cuda, environment):
         return cuda_moe_combine(expert_outputs, dispatch_result)
     return reference_moe_combine(expert_outputs, dispatch_result)
 
 
-def _should_use_cuda(tensor: torch.Tensor, use_cuda: bool | None) -> bool:
-    force_reference = os.environ.get("TENNIS_LAB_FORCE_MOE_REFERENCE", "") in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+def _should_use_cuda(
+    tensor: torch.Tensor,
+    use_cuda: bool | None,
+    environment: OperationEnvironmentConfig,
+) -> bool:
+    force_reference = environment.force_moe_reference
     if use_cuda is False or force_reference:
         if use_cuda is True and force_reference:
             raise RuntimeError("TENNIS_LAB_FORCE_MOE_REFERENCE is set")

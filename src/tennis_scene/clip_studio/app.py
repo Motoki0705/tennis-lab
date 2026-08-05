@@ -30,6 +30,7 @@ from src.tennis_scene.clip_studio.render import (
 )
 from src.tennis_scene.clip_studio.sources import PreviewSource, PreviewSourcePool
 from src.tennis_scene.clip_studio.state import ClipStudioState
+from src.utils.configuration import PathResolver
 
 LOGGER = logging.getLogger(__name__)
 
@@ -50,16 +51,17 @@ class ClipStudioAppConfig:
     """Runtime configuration of the GUI application."""
 
     project_path: Path
+    resolver: PathResolver
     export: ExportSettings
-    canvas_width: int = 1600
-    tile_width: int = 640
-    cache_frames: int = 96
-    seek_grab_threshold: int = 24
-    window_name: str = "Tennis Clip Studio"
-    audio_sample_rate: int = 8000
-    audio_envelope_rate: float = 100.0
-    audio_max_seconds: float | None = None
-    zoom_step: float = 1.5
+    canvas_width: int
+    tile_width: int
+    cache_frames: int
+    seek_grab_threshold: int
+    window_name: str
+    audio_sample_rate: int
+    audio_envelope_rate: float
+    audio_max_seconds: float | None
+    zoom_step: float
 
 
 class ClipStudioApp:
@@ -129,7 +131,10 @@ class ClipStudioApp:
             state.mark_in_sec,
             state.mark_out_sec,
             tuple(source.offset_sec for source in state.project.sources),
-            tuple((clip.name, clip.start_sec, clip.end_sec) for clip in state.project.clips),
+            tuple(
+                (clip.name, clip.start_sec, clip.end_sec)
+                for clip in state.project.clips
+            ),
             state.dirty,
             round(state.view_start_sec, 4),
             round(state.view_end_sec, 4),
@@ -183,9 +188,7 @@ class ClipStudioApp:
                     state.select_camera(camera_index)
             elif key in {KEY_UP, KEY_DOWN}:
                 step = -1 if key == KEY_UP else 1
-                state.select_camera(
-                    (state.selected_camera + step) % state.num_cameras
-                )
+                state.select_camera((state.selected_camera + step) % state.num_cameras)
             elif key in {ord("["), ord("]"), ord("{"), ord("}")}:
                 frame_sec = 1.0 / state.reference_fps()
                 delta = {
@@ -239,7 +242,9 @@ class ClipStudioApp:
             if layout.in_clip_row(x, y):
                 selected = self.state.select_clip_at(timeline.x_to_sec(x))
                 if selected is not None:
-                    self._set_status(f"selected {self.state.project.clips[selected].name}")
+                    self._set_status(
+                        f"selected {self.state.project.clips[selected].name}"
+                    )
             elif timeline.contains(x, y):
                 self._dragging = True
                 self.state.seek(timeline.x_to_sec(x))
@@ -252,14 +257,12 @@ class ClipStudioApp:
         elif event == cv2.EVENT_LBUTTONUP:
             self._dragging = False
         elif event == cv2.EVENT_MOUSEWHEEL and timeline.contains(x, y):
-            factor = (
-                1.0 / self.config.zoom_step if flags > 0 else self.config.zoom_step
-            )
+            factor = 1.0 / self.config.zoom_step if flags > 0 else self.config.zoom_step
             self.state.zoom_view(factor, anchor_sec=timeline.x_to_sec(x))
 
     # ------------------------------------------------------------ operations
     def _save_project(self, *, reason: str) -> None:
-        self.state.project.save(self.config.project_path)
+        self.state.project.save(self.config.project_path, self.config.resolver)
         self.state.mark_saved()
         self._set_status(f"{reason}: {self.config.project_path}")
 

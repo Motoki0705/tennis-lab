@@ -15,6 +15,8 @@ defaults:
 
 hidden_dim: 768
 num_heads: 12
+ffn_dim: 2048
 rope_dim: 16
 num_task_layers: 6
 rot_num_task_layers: 10
+pose_num_task_layers: 6

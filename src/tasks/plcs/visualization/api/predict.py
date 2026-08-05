@@ -17,6 +17,7 @@ from src.tasks.plcs.visualization.adapters.predict_inputs import (
     build_frame_inputs,
     build_multiview_inputs,
 )
+from src.utils.configuration import PathResolver
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,9 @@ def _predict_frame_model(
             denormalize=False,
         )
         if (frame_idx + 1) % 10 == 0 or frame_idx == 0 or frame_idx == num_frames - 1:
-            logger.info(f"  [Inference] Processing frame {frame_idx + 1}/{num_frames}...")
+            logger.info(
+                f"  [Inference] Processing frame {frame_idx + 1}/{num_frames}..."
+            )
         pred_pos_list.append(outputs["position"].squeeze(0).numpy())
         pred_rot_list.append(outputs["rotation"].squeeze(0).numpy())
         canonical_pose = outputs.get("canonical_pose")
@@ -50,7 +53,11 @@ def _predict_frame_model(
     pred_canonical_pose = None
     if pred_canonical_pose_list:
         pred_canonical_pose = np.stack(pred_canonical_pose_list, axis=0)
-    return np.stack(pred_pos_list, axis=0), np.stack(pred_rot_list, axis=0), pred_canonical_pose
+    return (
+        np.stack(pred_pos_list, axis=0),
+        np.stack(pred_rot_list, axis=0),
+        pred_canonical_pose,
+    )
 
 
 def _predict_multiview_model(
@@ -91,8 +98,7 @@ def _apply_canonical_pose_source(
         return
     if source != "prediction":
         raise ValueError(
-            "canonical_pose_source must be 'gt' or 'prediction', "
-            f"got '{source}'."
+            f"canonical_pose_source must be 'gt' or 'prediction', got '{source}'."
         )
     if predicted_canonical_pose is None:
         raise ValueError(
@@ -124,6 +130,8 @@ def predict_scene(
     scene: Any,
     cameras: list[int],
     canonical_pose_source: CanonicalPoseSource = "gt",
+    *,
+    resolver: PathResolver,
 ) -> Any:
     """Run PLCS prediction and return a scene whose pose is replaced by prediction.
 
@@ -144,7 +152,9 @@ def predict_scene(
 
     predictor = PLCSPredictor.load_from_checkpoint(
         checkpoint_path=checkpoint_path,
+        resolver=resolver,
         device=device,
+        allow_device_fallback=False,
     )
     logger.info(f"Model loaded successfully on {device}.")
     model = predictor.model

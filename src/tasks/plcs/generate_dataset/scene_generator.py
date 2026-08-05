@@ -12,7 +12,7 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import torch
@@ -22,8 +22,8 @@ from src.tasks.plcs.generate_dataset.sampling.motion_sampler import (
     MotionSequence,
 )
 from src.utils.projection.camera_projector import (
+    CameraConfig,
     CameraProjector,
-    camera_config_from_mapping,
 )
 from src.utils.schema.court import (
     COURT_COORD_SCALE_X,
@@ -31,6 +31,7 @@ from src.utils.schema.court import (
     COURT_COORD_SCALE_Z,
     HALF_LENGTH,
     HALF_SINGLES_WIDTH,
+    STANDARD_COURT_CONFIG,
 )
 from src.utils.schema.player import (
     FACE_KEYPOINT_OFFSETS,
@@ -52,7 +53,9 @@ class CameraData:
     court_kp_visible: np.ndarray  # (T, 20)
 
     # Visibility metrics recorded for analysis/debugging.
-    human_visibility_ratio: float  # Fraction of frames with at least one visible human keypoint
+    human_visibility_ratio: (
+        float  # Fraction of frames with at least one visible human keypoint
+    )
     court_visibility_count: float  # Average visible court keypoints
 
 
@@ -93,7 +96,7 @@ class SceneGenerator:
 
     def __init__(
         self,
-        config: DictConfig | None = None,
+        config: DictConfig,
         motion_sampler: MotionSampler | None = None,
         device: str | torch.device = "cpu",
     ) -> None:
@@ -105,26 +108,75 @@ class SceneGenerator:
             device: Device for computation.
 
         """
-        self.config = config or {}
+        self.config = config
         self.device = torch.device(device)
 
         # Initialize motion sampler if not provided
         if motion_sampler is None:
-            smplh_path = self.config.get("smplh_model_path", "data/smplx/smplh")
             motion_sampler = MotionSampler(
                 config=config,
-                smplh_model_path=smplh_path,
+                smplh_model_path=str(config.external_assets.smplh_model_path),
                 device=device,
             )
         self.motion_sampler = motion_sampler
 
         # Get court keypoints (convert to numpy)
-        self.court_kp_3d = None
+        self.court_kp_3d: np.ndarray | None = None
 
         # Camera config
-        cam_cfg = self.config.get("camera", {})
-        camera_config = camera_config_from_mapping(cam_cfg)
-        self.camera_projector = CameraProjector(camera_config)
+        cam_cfg = self.config.camera
+        camera_config = CameraConfig(
+            z_min=float(cam_cfg.z_min),
+            z_max=float(cam_cfg.z_max),
+            hfov_deg=float(cam_cfg.hfov_deg),
+            image_size=(int(cam_cfg.image_size[0]), int(cam_cfg.image_size[1])),
+            fixed_look_at=cast(
+                "tuple[float, float, float]",
+                tuple(float(v) for v in cam_cfg.fixed_look_at),
+            ),
+            fixed_baseline_clear_extra=float(cam_cfg.fixed_baseline_clear_extra),
+            fixed_position_noise_radius=float(cam_cfg.fixed_position_noise_radius),
+            fixed_look_at_xy_radius=float(cam_cfg.fixed_look_at_xy_radius),
+            layout=str(cam_cfg.layout),
+            broadcast_setback=float(cam_cfg.broadcast_setback),
+            broadcast_height=float(cam_cfg.broadcast_height),
+            broadcast_hfov_deg=float(cam_cfg.broadcast_hfov_deg),
+            broadcast_look_at_y=float(cam_cfg.broadcast_look_at_y),
+            broadcast_look_at_height=float(cam_cfg.broadcast_look_at_height),
+            broadcast_position_noise_radius=float(
+                cam_cfg.broadcast_position_noise_radius
+            ),
+            broadcast_look_at_xy_radius=float(cam_cfg.broadcast_look_at_xy_radius),
+            broadcast_hfov_jitter_deg=float(cam_cfg.broadcast_hfov_jitter_deg),
+            broadcast_setback_range=(
+                cast(
+                    "tuple[float, float]",
+                    tuple(float(v) for v in cam_cfg.broadcast_setback_range),
+                )
+                if cam_cfg.broadcast_setback_range is not None
+                else None
+            ),
+            broadcast_height_range=(
+                cast(
+                    "tuple[float, float]",
+                    tuple(float(v) for v in cam_cfg.broadcast_height_range),
+                )
+                if cam_cfg.broadcast_height_range is not None
+                else None
+            ),
+            broadcast_court_width_frac_range=(
+                cast(
+                    "tuple[float, float]",
+                    tuple(float(v) for v in cam_cfg.broadcast_court_width_frac_range),
+                )
+                if cam_cfg.broadcast_court_width_frac_range is not None
+                else None
+            ),
+        )
+        self.camera_projector = CameraProjector(
+            camera_config,
+            court_config=STANDARD_COURT_CONFIG,
+        )
         self.image_size = self.camera_projector.config.image_size
 
     def _sample_initial_pose(self) -> tuple[float, float, float]:
@@ -206,7 +258,7 @@ class SceneGenerator:
         court_trans[:, 1] += init_y
 
         # Normalize positions
-        positions = np.zeros((T, 3), dtype=np.float32)
+        positions: np.ndarray = np.zeros((T, 3), dtype=np.float32)
         positions[:, 0] = court_trans[:, 0] / COURT_COORD_SCALE_X
         positions[:, 1] = court_trans[:, 1] / COURT_COORD_SCALE_Y
         positions[:, 2] = court_trans[:, 2] / COURT_COORD_SCALE_Z
@@ -215,7 +267,7 @@ class SceneGenerator:
         relative_yaw = self._wrap_angle(motion_yaw - motion_yaw[0])  # t=0 -> 0
         world_yaw = self._wrap_angle(relative_yaw + init_yaw)  # add random initial yaw
 
-        rotations = np.zeros((T, 2), dtype=np.float32)
+        rotations: np.ndarray = np.zeros((T, 2), dtype=np.float32)
         rotations[:, 0] = np.cos(world_yaw).astype(np.float32)  # cos(yaw)
         rotations[:, 1] = np.sin(world_yaw).astype(np.float32)  # sin(yaw)
 
@@ -373,7 +425,7 @@ class SceneGenerator:
 
         # Get world-space joints for projection
         T = motion.num_frames
-        pelvis_world = np.zeros((T, 3), dtype=np.float32)
+        pelvis_world: np.ndarray = np.zeros((T, 3), dtype=np.float32)
         pelvis_world[:, 0] = positions[:, 0] * COURT_COORD_SCALE_X
         pelvis_world[:, 1] = positions[:, 1] * COURT_COORD_SCALE_Y
         pelvis_world[:, 2] = positions[:, 2] * COURT_COORD_SCALE_Z
@@ -406,8 +458,8 @@ class SceneGenerator:
         cameras_data = []
         for camera in self.camera_projector.cameras():
             # Project human keypoints
-            human_uv = np.zeros((T, 17, 2), dtype=np.float32)
-            human_vis = np.zeros((T, 17), dtype=bool)
+            human_uv: np.ndarray = np.zeros((T, 17, 2), dtype=np.float32)
+            human_vis: np.ndarray = np.zeros((T, 17), dtype=bool)
             for t in range(T):
                 points_t = torch.from_numpy(coco17_joints[t]).float()
                 uv_t, vis_t = self.camera_projector.project_points_to_uv(

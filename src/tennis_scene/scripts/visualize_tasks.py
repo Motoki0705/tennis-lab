@@ -14,31 +14,28 @@ in isolation, writing the results back into the same run directory:
 Usage:
     python -m src.tennis_scene.scripts.visualize_tasks
     python -m src.tennis_scene.scripts.visualize_tasks \
-        run_dir=outputs/tennis_scene/tennis_clip_full
+        scene_path=tennis_scene/tennis_clip.npz
     python -m src.tennis_scene.scripts.visualize_tasks tasks='[plcs,blcs]'
 
 Notes:
     - Hydra loads configuration from `src/tennis_scene/configs/visualize_tasks.yaml`.
-    - All arrays are read from the SceneResult npz; the source video path is
-      taken from the `<stem>.metadata.json` sidecar (`video_paths[0]`).
+    - Scene and source-video paths are explicit role-relative configuration values.
     - 2D overlays are written with OpenCV (mp4v); the court top-view animations
       are written with matplotlib + ffmpeg.
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import sys
-from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 
-from src.utils.hydra import hydra_main
+from src.tennis_scene.configuration import validate_visualize_tasks_boundary
+from src.utils.hydra import hydra_main, register_boundary_validator
 from src.utils.schema.player import COCO17_SKELETON
 
 if TYPE_CHECKING:
@@ -46,13 +43,15 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 LOGGER = logging.getLogger(__name__)
+_BOUNDARY = "tennis_scene.visualize_tasks"
+register_boundary_validator(_BOUNDARY, validate_visualize_tasks_boundary)
 
 # Per-player colors (BGR for OpenCV) matching the 3D renderer palette.
 _PLAYER_BGR: list[tuple[int, int, int]] = [
-    (81, 111, 231),   # #E76F51 orange
-    (143, 157, 42),   # #2A9D8F teal
+    (81, 111, 231),  # #E76F51 orange
+    (143, 157, 42),  # #2A9D8F teal
     (106, 196, 233),  # #E9C46A yellow
-    (83, 70, 38),     # #264653 dark
+    (83, 70, 38),  # #264653 dark
 ]
 _BALL_BGR: tuple[int, int, int] = (0, 220, 255)  # amber
 _COURT_KP_BGR: tuple[int, int, int] = (60, 255, 60)  # green
@@ -75,22 +74,11 @@ def _denorm(uv: NDArray[np.float32], width: int, height: int) -> NDArray[np.floa
     return out
 
 
-def _load_run(run_dir: Path, npz_name: str) -> tuple[dict[str, NDArray], Path]:
-    """Load SceneResult arrays and resolve the source video path."""
-    npz_path = run_dir / npz_name
-    if not npz_path.exists():
-        raise FileNotFoundError(f"SceneResult npz not found: {npz_path}")
-    data = dict(np.load(npz_path, allow_pickle=True))
-
-    meta_path = npz_path.with_suffix(".metadata.json")
-    if not meta_path.exists():
-        raise FileNotFoundError(f"metadata sidecar not found: {meta_path}")
-    meta = json.loads(meta_path.read_text())
-    video_paths = meta.get("video_paths")
-    if not video_paths:
-        raise RuntimeError(f"metadata has no video_paths: {meta_path}")
-    video_path = Path(video_paths[0])
-    return data, video_path
+def _load_run(scene_path: Path) -> dict[str, NDArray]:
+    """Load canonical non-pickle SceneResult arrays."""
+    if not scene_path.is_file():
+        raise FileNotFoundError(f"SceneResult npz not found: {scene_path}")
+    return dict(np.load(scene_path, allow_pickle=False))
 
 
 def _read_frames(video_path: Path, num_frames: int) -> list[NDArray[np.uint8]]:
@@ -118,7 +106,7 @@ def _read_frames(video_path: Path, num_frames: int) -> list[NDArray[np.uint8]]:
 def _open_writer(path: Path, fps: float, width: int, height: int) -> cv2.VideoWriter:
     import cv2
 
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
+    fourcc = cv2.VideoWriter.fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(path), fourcc, fps, (width, height))
     if not writer.isOpened():
         raise RuntimeError(f"failed to open VideoWriter for {path}")
@@ -156,8 +144,14 @@ def _render_ball_detection(
             cv2.circle(frame, (x, y), 6, _BALL_BGR, 2, cv2.LINE_AA)
             cv2.circle(frame, (x, y), 1, _BALL_BGR, -1, cv2.LINE_AA)
         cv2.putText(
-            frame, f"ball_detection  frame {t}", (8, 20),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA,
+            frame,
+            f"ball_detection  frame {t}",
+            (8, 20),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
         )
         writer.write(frame)
     writer.release()
@@ -188,12 +182,24 @@ def _render_court_kp(
             x, y = int(kp[t, k, 0]), int(kp[t, k, 1])
             cv2.circle(frame, (x, y), 4, _COURT_KP_BGR, -1, cv2.LINE_AA)
             cv2.putText(
-                frame, str(k), (x + 4, y - 4),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.35, _COURT_KP_BGR, 1, cv2.LINE_AA,
+                frame,
+                str(k),
+                (x + 4, y - 4),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.35,
+                _COURT_KP_BGR,
+                1,
+                cv2.LINE_AA,
             )
         cv2.putText(
-            frame, f"court_kp ({num_kp})  frame {t}", (8, 20),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA,
+            frame,
+            f"court_kp ({num_kp})  frame {t}",
+            (8, 20),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
         )
         writer.write(frame)
     writer.release()
@@ -232,19 +238,34 @@ def _render_gvhmr_pose(
             for j in range(kp.shape[2]):
                 if good[j]:
                     cv2.circle(
-                        frame, (int(kp[p, t, j, 0]), int(kp[p, t, j, 1])),
-                        3, color, -1, cv2.LINE_AA,
+                        frame,
+                        (int(kp[p, t, j, 0]), int(kp[p, t, j, 1])),
+                        3,
+                        color,
+                        -1,
+                        cv2.LINE_AA,
                     )
             # Label near the nose (joint 0) when confident.
             if good[0]:
                 cv2.putText(
-                    frame, f"P{track_ids[p]}",
+                    frame,
+                    f"P{track_ids[p]}",
                     (int(kp[p, t, 0, 0]) + 6, int(kp[p, t, 0, 1]) - 6),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA,
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    color,
+                    1,
+                    cv2.LINE_AA,
                 )
         cv2.putText(
-            frame, f"gvhmr 2D pose  frame {t}", (8, 20),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA,
+            frame,
+            f"gvhmr 2D pose  frame {t}",
+            (8, 20),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
         )
         writer.write(frame)
     writer.release()
@@ -294,12 +315,25 @@ def _render_plcs(
         for p in range(num_players):
             rgb = _to_rgb01(_player_bgr(p))
             s = max(frame_range.start, t - trail_length)
-            ax.plot(pos[p, s : t + 1, 0], pos[p, s : t + 1, 1],
-                    color=rgb, alpha=0.5, linewidth=1.5)
+            ax.plot(
+                pos[p, s : t + 1, 0],
+                pos[p, s : t + 1, 1],
+                color=rgb,
+                alpha=0.5,
+                linewidth=1.5,
+            )
             x, y, hd = pos[p, t, 0], pos[p, t, 1], yaw[p, t]
             ax.scatter([x], [y], color=rgb, s=60, zorder=5)
-            ax.arrow(x, y, np.sin(hd) * 1.5, np.cos(hd) * 1.5,
-                     color=rgb, width=0.06, head_width=0.35, zorder=6)
+            ax.arrow(
+                x,
+                y,
+                np.sin(hd) * 1.5,
+                np.cos(hd) * 1.5,
+                color=rgb,
+                width=0.06,
+                head_width=0.35,
+                zorder=6,
+            )
             ax.text(x + 0.3, y + 0.3, f"P{track_ids[p]}", color=rgb, fontsize=9)
         ax.set_title(f"plcs (position + yaw)  frame {t}")
         ax.set_xlabel("court x [m]")
@@ -359,15 +393,29 @@ def _render_blcs(
         seg = ball[s : t + 1]
         seg_ok = np.isfinite(seg).all(axis=-1)
         if seg_ok.sum() > 1:
-            ax_top.plot(seg[seg_ok, 0], seg[seg_ok, 1],
-                        color=ball_rgb, alpha=0.6, linewidth=1.5)
-            ax_side.plot(seg[seg_ok, 1], seg[seg_ok, 2],
-                         color=ball_rgb, alpha=0.6, linewidth=1.5)
+            ax_top.plot(
+                seg[seg_ok, 0], seg[seg_ok, 1], color=ball_rgb, alpha=0.6, linewidth=1.5
+            )
+            ax_side.plot(
+                seg[seg_ok, 1], seg[seg_ok, 2], color=ball_rgb, alpha=0.6, linewidth=1.5
+            )
         if finite[t]:
-            ax_top.scatter([ball[t, 0]], [ball[t, 1]],
-                           color=ball_rgb, s=50, zorder=5, edgecolors="k")
-            ax_side.scatter([ball[t, 1]], [ball[t, 2]],
-                            color=ball_rgb, s=50, zorder=5, edgecolors="k")
+            ax_top.scatter(
+                [ball[t, 0]],
+                [ball[t, 1]],
+                color=ball_rgb,
+                s=50,
+                zorder=5,
+                edgecolors="k",
+            )
+            ax_side.scatter(
+                [ball[t, 1]],
+                [ball[t, 2]],
+                color=ball_rgb,
+                s=50,
+                zorder=5,
+                edgecolors="k",
+            )
 
         ax_top.set_title(f"blcs top view (x-y)  frame {t}")
         ax_top.set_xlabel("court x [m]")
@@ -391,58 +439,80 @@ _PLOT_TASKS = {"plcs", "blcs"}
     version_base="1.3",
     config_path="../configs",
     config_name="visualize_tasks",
+    validation_boundary=_BOUNDARY,
 )
 def main(cfg: DictConfig) -> int:
     """Render the requested per-task visualizations for one run directory."""
-    run_dir = Path(to_absolute_path(str(cfg.run_dir)))
-    tasks = [str(t) for t in cfg.tasks]
-    unknown = set(tasks) - (_VIDEO_TASKS | _PLOT_TASKS)
-    if unknown:
-        raise ValueError(f"unknown tasks: {sorted(unknown)}")
+    from src.tennis_scene.configuration import parse_visualize_tasks_config
 
-    data, video_path = _load_run(run_dir, str(cfg.npz_name))
-    if not video_path.is_absolute():
-        video_path = Path(to_absolute_path(str(video_path)))
+    runtime = parse_visualize_tasks_config(cfg)
+    tasks = list(runtime.tasks)
+    data = _load_run(runtime.scene_path)
+    video_path = runtime.video_paths[0]
     num_frames = int(np.asarray(data["num_frames"]))
-    fps = float(cfg.fps) if cfg.get("fps") is not None else float(np.asarray(data["fps"]))
+    fps = runtime.fps if runtime.fps is not None else float(np.asarray(data["fps"]))
 
-    start = int(cfg.start_frame)
-    end = int(cfg.end_frame) if cfg.get("end_frame") is not None else num_frames
+    start = runtime.start_frame
+    end = runtime.end_frame if runtime.end_frame is not None else num_frames
     frame_range = range(start, end)
-    trail_length = int(cfg.trail_length)
+    trail_length = runtime.trail_length
+    output_dir = runtime.output_directory
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    LOGGER.info("run_dir=%s  frames=%d  fps=%.1f  tasks=%s", run_dir, num_frames, fps, tasks)
+    LOGGER.info(
+        "scene=%s  frames=%d  fps=%.1f  tasks=%s",
+        runtime.scene_path,
+        num_frames,
+        fps,
+        tasks,
+    )
 
     if _VIDEO_TASKS & set(tasks):
         LOGGER.info("reading source video %s", video_path)
         frames = _read_frames(video_path, num_frames)
         if "ball_detection" in tasks:
             _render_ball_detection(
-                frames, data, run_dir / "ball_detection_viz.mp4",
-                fps=fps, frame_range=frame_range, trail_length=trail_length,
+                frames,
+                data,
+                output_dir / "ball_detection_viz.mp4",
+                fps=fps,
+                frame_range=frame_range,
+                trail_length=trail_length,
             )
         if "court_kp" in tasks:
             _render_court_kp(
-                frames, data, run_dir / "court_kp_viz.mp4",
-                fps=fps, frame_range=frame_range,
+                frames,
+                data,
+                output_dir / "court_kp_viz.mp4",
+                fps=fps,
+                frame_range=frame_range,
             )
         if "gvhmr" in tasks:
             _render_gvhmr_pose(
-                frames, data, run_dir / "gvhmr_viz.mp4",
-                fps=fps, frame_range=frame_range,
-                conf_threshold=float(cfg.kp_conf_threshold),
+                frames,
+                data,
+                output_dir / "gvhmr_viz.mp4",
+                fps=fps,
+                frame_range=frame_range,
+                conf_threshold=runtime.kp_conf_threshold,
             )
 
     if "plcs" in tasks:
         _render_plcs(
-            data, run_dir / "plcs_viz.mp4",
-            fps=fps, frame_range=frame_range, dpi=int(cfg.dpi),
+            data,
+            output_dir / "plcs_viz.mp4",
+            fps=fps,
+            frame_range=frame_range,
+            dpi=runtime.dpi,
             trail_length=trail_length,
         )
     if "blcs" in tasks:
         _render_blcs(
-            data, run_dir / "blcs_viz.mp4",
-            fps=fps, frame_range=frame_range, dpi=int(cfg.dpi),
+            data,
+            output_dir / "blcs_viz.mp4",
+            fps=fps,
+            frame_range=frame_range,
+            dpi=runtime.dpi,
             trail_length=trail_length,
         )
 
@@ -451,4 +521,4 @@ def main(cfg: DictConfig) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(cast("Callable[[], int]", main)())
+    sys.exit(main())
