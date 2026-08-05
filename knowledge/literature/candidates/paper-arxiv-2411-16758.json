@@ -1,0 +1,105 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": [
+      "systems"
+    ],
+    "discovery_count": 1,
+    "max_novelty_score": 92,
+    "max_relevance_score": 93,
+    "mean_relevance_score": 93.0,
+    "repo_paths": [
+      "src/synthetic_data_generation/dataset/execution.py",
+      "src/synthetic_data_generation/dataset/plcs/components/avatar_control.py",
+      "src/synthetic_data_generation/dataset/plcs/rendering/nht.py",
+      "src/tennis_scene/pipeline/components/gvhmr.py"
+    ],
+    "tasks": [
+      "human_pose",
+      "synthetic_data_generation"
+    ]
+  },
+  "curation": {
+    "decision": null,
+    "issue": null,
+    "paper_node": null,
+    "proposal_nodes": [],
+    "reason_ja": null,
+    "reviewed_at": null
+  },
+  "discoveries": [
+    {
+      "collector_id": "systems",
+      "discovered_at": "2026-08-05T17:19:02+09:00",
+      "schedule_run_id": "systems-20260805T171902+0900-mad9c4",
+      "screening": {
+        "applicability_ja": "現行のPLCS NHT rendererはframeごとに単一のpose_indicesとscene_from_assetを選び、1回のrasterizationでRGB・depth・instance maskを生成するため、露光中の連続運動とmotion blurを表現しない。avatar_control.pyへ隣接frameのSMPL transformからsub-frame joint trajectoryを生成する明示的な補間contractを追加し、rendering/nht.pyで同一Gaussian assetを複数sub-frameへ変形・renderしてRGBを平均すれば、blur-awareなPLCS synthetic dataと対応するsharp middle-frame labelを同時生成できる。次段階ではgvhmr.pyの粗いSMPL推定を初期値としてsub-frame trajectoryだけを画像再構成損失で補正し、実写の高速スイング時にpose・avatar品質が改善するか検証できる。",
+        "candidate_experiment_ja": "baselineは現行PLCS NHT rendererで同一の背景、人物asset、camera、30 fps trajectoryから各frameを1 pose・1 rasterizationで生成する。treatmentは前後frameのscene_from_assetを5 sub-frameのB-splineで補間し、各sub-frameをrenderしてRGBを平均する一方、depth・mask・3D pose labelは中央sub-frameを正解として保存する。実写tennis clipから抽出した高速移動20区間について、露光時間を1/120、1/60、1/30秒の3条件で合成し、実写blur frameとのLPIPS・SSIM、optical-flow magnitude分布、人物mask IoU、1 frame wall time、peak VRAMを比較する。LPIPSが単一pose baseline比10%以上改善し、mask IoU低下が0.02以下、追加時間がbaselineの6倍以内、peak VRAM増加が2 GB以下なら3 seedのdownstream human-pose学習へ進む。改善が5%未満、NaN、OOM、または中央frame labelと平均renderの人物centroid差が5 pxを超えた場合は停止する。",
+        "evidence_level": "fulltext-code-data",
+        "novelty_score": 92,
+        "relevance_score": 93,
+        "repo_paths": [
+          "src/synthetic_data_generation/dataset/plcs/components/avatar_control.py",
+          "src/synthetic_data_generation/dataset/plcs/rendering/nht.py",
+          "src/synthetic_data_generation/dataset/execution.py",
+          "src/tennis_scene/pipeline/components/gvhmr.py"
+        ],
+        "risks_ja": "論文と公式実装は単一人物、calibrated multi-view、粗いSMPL初期値を前提とし、複数playerの相互遮蔽、racket、屋外背景、camera motion blurやrolling shutterは対象外である。現行tennis-labのpose assetはcanonical・ready・forehandの離散assetで、連続SMPL変形可能なGaussianを直接保持していないため、単純なtransform補間だけでは衣服や四肢の非剛体運動を再現できない。sub-frame数に比例してrasterization時間とVRAMが増える。BlurZJUはZJU-MoCapの利用規約、BS-Humanは配布条件、SMPLは個別ライセンスに従う必要がある。公式repositoryには独立したLICENSEファイルを確認できず、コード内には上流3DGS由来の非商用・研究評価用途の著作権表示があるため、再利用範囲を事前確認する必要がある。",
+        "summary_ja": "動体ぶれを含むマルチビュー人物映像から、鮮明でアニメーション可能な3D Gaussian avatarと露光中の人体運動を同時推定する。正準空間のGaussianをSMPL/LBSで複数の露光内時刻へ変形して各時刻のsharp imageをrenderし、その平均を観測blur frameとして再構成する3D blur formation modelを用いる。露光内の関節軌道はB-splineで表現し、pose deformation residualと隣接frame間の運動連続性正則化を併用する。公式実装はBlurZJUと実写BS-Humanを提供し、PSNR・SSIM・LPIPSで鮮明avatar再構成を評価する。",
+        "tasks": [
+          "synthetic_data_generation",
+          "human_pose"
+        ]
+      },
+      "sources": [
+        {
+          "checked_at": "2026-08-05T17:19:02+09:00",
+          "kind": "paper",
+          "url": "https://arxiv.org/abs/2411.16758"
+        },
+        {
+          "checked_at": "2026-08-05T17:19:02+09:00",
+          "kind": "code",
+          "url": "https://github.com/MyNiuuu/MAD-Avatar"
+        },
+        {
+          "checked_at": "2026-08-05T17:19:02+09:00",
+          "kind": "dataset",
+          "url": "https://drive.google.com/file/d/1FXFILsI3WjxVL5ercZUHnSatL9dAbEib/view?usp=sharing"
+        }
+      ]
+    }
+  ],
+  "first_seen": "2026-08-05T17:19:02+09:00",
+  "id": "paper-arxiv-2411-16758",
+  "last_seen": "2026-08-05T17:19:02+09:00",
+  "paper": {
+    "authors": [
+      "Muyao Niu",
+      "Yifan Zhan",
+      "Qingtian Zhu",
+      "Zhuoxiao Li",
+      "Wei Wang",
+      "Zhihang Zhong",
+      "Xiao Sun",
+      "Yinqiang Zheng"
+    ],
+    "identifiers": {
+      "arxiv": "2411.16758",
+      "doi": null,
+      "openreview": null
+    },
+    "title": "Motion-Aware Animatable Gaussian Avatars Deblurring",
+    "urls": {
+      "code": "https://github.com/MyNiuuu/MAD-Avatar",
+      "dataset": "https://drive.google.com/file/d/1FXFILsI3WjxVL5ercZUHnSatL9dAbEib/view?usp=sharing",
+      "paper": "https://arxiv.org/pdf/2411.16758",
+      "primary": "https://arxiv.org/abs/2411.16758",
+      "project": null
+    },
+    "venue": "CVPR 2026",
+    "year": 2026
+  },
+  "schema_version": 1,
+  "state": "inbox"
+}
