@@ -1,0 +1,92 @@
+{
+  "date": "2026-08-06",
+  "generated_at": "2026-08-06T01:24:23+09:00",
+  "ingestion": {
+    "accepted_candidates": 1,
+    "collectors": {
+      "geometry": {
+        "accepted": 0,
+        "limit": 2,
+        "remaining": 2
+      },
+      "perception": {
+        "accepted": 0,
+        "limit": 2,
+        "remaining": 2
+      },
+      "systems": {
+        "accepted": 1,
+        "limit": 2,
+        "remaining": 1
+      }
+    },
+    "daily_limit": 6,
+    "open_candidates": 1,
+    "open_limit": 30,
+    "topics": {
+      "avatar_rendering": {
+        "accepted": 1,
+        "limit": 1,
+        "remaining": 0
+      },
+      "ball_3d": {
+        "accepted": 0,
+        "limit": 1,
+        "remaining": 1
+      },
+      "ball_detection": {
+        "accepted": 0,
+        "limit": 1,
+        "remaining": 1
+      },
+      "court_detection": {
+        "accepted": 0,
+        "limit": 1,
+        "remaining": 1
+      },
+      "human_pose_2d": {
+        "accepted": 0,
+        "limit": 1,
+        "remaining": 1
+      },
+      "multi_object_tracking": {
+        "accepted": 0,
+        "limit": 1,
+        "remaining": 1
+      },
+      "player_3d": {
+        "accepted": 0,
+        "limit": 1,
+        "remaining": 1
+      },
+      "scene_alignment": {
+        "accepted": 0,
+        "limit": 1,
+        "remaining": 1
+      },
+      "scene_geometry": {
+        "accepted": 0,
+        "limit": 1,
+        "remaining": 1
+      },
+      "self_supervised_learning": {
+        "accepted": 0,
+        "limit": 1,
+        "remaining": 1
+      },
+      "synthetic_data": {
+        "accepted": 0,
+        "limit": 1,
+        "remaining": 1
+      },
+      "systems_optimization": {
+        "accepted": 0,
+        "limit": 1,
+        "remaining": 1
+      }
+    }
+  },
+  "initialized_at": null,
+  "last_curated_at": null,
+  "schema_version": 1
+}
