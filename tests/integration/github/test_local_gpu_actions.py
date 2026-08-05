@@ -59,6 +59,7 @@ def test_local_gpu_workflows_are_manual_owner_gated_and_read_only() -> None:
 def test_cuda_workflow_runs_serial_marker_tests_under_shared_lock() -> None:
     _, text = _load_workflow("local-gpu-tests.yml")
 
+    assert "git submodule update --init --depth 1 third_party/DINO" in text
     assert "torch.cuda.is_available()" in text
     assert "flock --exclusive --timeout 5" in text
     assert "spin test --all --serial -m cuda --no-cov" in text
@@ -99,3 +100,4 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
     enqueue = (SCRIPTS / "enqueue_training.sh").read_text(encoding="utf-8")
     assert 'TRAINING_QUEUE_DIR="$STATE_ROOT/training-queue"' in enqueue
     assert 'readonly EXPECTED_REPOSITORY="Motoki0705/tennis-lab"' in enqueue
+    assert "submodule update --init --recursive --depth 1" in enqueue
