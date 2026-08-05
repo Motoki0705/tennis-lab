@@ -31,6 +31,7 @@ PROPOSAL_STATUSES = {
 }
 PROPOSAL_EVIDENCE_STATUSES = {"supported", "refuted", "inconclusive", "adopted"}
 EVIDENCE_LEVELS = {"abstract", "fulltext", "fulltext-code", "fulltext-code-data"}
+PAPER_EVIDENCE_LEVELS = EVIDENCE_LEVELS - {"abstract"}
 PROVIDERS = {"claude", "codex", "gemini", "human", "other"}
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.DOTALL)
@@ -224,9 +225,10 @@ def _validate_paper(node: Node, res: ValidationResult) -> None:
         )
 
     evidence_level = str(node.meta.get("evidence_level", ""))
-    if evidence_level not in EVIDENCE_LEVELS:
+    if evidence_level not in PAPER_EVIDENCE_LEVELS:
         res.errors.append(
-            f"{loc}: evidence_level must be one of {sorted(EVIDENCE_LEVELS)}, "
+            f"{loc}: paper evidence_level must be one of "
+            f"{sorted(PAPER_EVIDENCE_LEVELS)}, "
             f"got '{evidence_level}'"
         )
 
