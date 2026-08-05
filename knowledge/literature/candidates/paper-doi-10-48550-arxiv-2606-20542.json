@@ -1,9 +1,7 @@
 {
   "aggregate": {
     "collector_count": 1,
-    "collectors": [
-      "geometry"
-    ],
+    "collectors": ["geometry"],
     "discovery_count": 1,
     "max_novelty_score": 92,
     "max_relevance_score": 96,
@@ -14,19 +12,15 @@
       "src/tasks/plcs/training/metrics.py",
       "src/tennis_scene/pipeline/components/plcs.py"
     ],
-    "tasks": [
-      "plcs",
-      "scene_alignment",
-      "tennis_scene"
-    ]
+    "tasks": ["plcs", "scene_alignment", "tennis_scene"]
   },
   "curation": {
-    "decision": null,
-    "issue": null,
-    "paper_node": null,
-    "proposal_nodes": [],
-    "reason_ja": null,
-    "reviewed_at": null
+    "decision": "promoted",
+    "issue": 698,
+    "paper_node": "paper-doi-10-48550-arxiv-2606-20542",
+    "proposal_nodes": ["proposal-plcs-caltennis-cross-view-eval"],
+    "reason_ja": "公式全文・project・公開datasetを確認した。実tennisの2〜6同期viewとcourt calibrationを用いるlabel-free cross-view評価は、合成教師3D中心のPLCSへ独立したreal-domain評価軸を追加でき、現行課題への直接性が高い。absolute ground truthではないこと、非商用条件、SMPL-X contract差を明記し、paperと外部評価proposalへ分離して昇格する。",
+    "reviewed_at": "2026-08-06T00:20:00+09:00"
   },
   "discoveries": [
     {
@@ -47,28 +41,12 @@
         ],
         "risks_ja": "公開データはCC BY-NC 4.0で商用利用に制約があり、full splitは約122 GBである。絶対的なMoCap真値はなく、multi-view不一致は誤差の下限にすぎないため、複数ビューに共通するbiasは検出できない。iPhone 14以降・固定三脚・特定のコート配置に依存するdomain gapがあり、SMPL-X評価とtennis-labのCOCO17/SMPL-H・court座標契約の変換も必要である。公式projectではcodeがcoming soonのため、現時点では評価実装を論文記述から再構成する必要がある。",
         "summary_ja": "CalTennisは、40名・51時間・約1,103万フレームのテニス映像を2〜6台の同期カメラで60 Hz収録した実環境ベンチマークである。標準化されたコート線交点から各カメラの外部パラメータを推定し、連続時刻上のオフセット最適化で映像を同期して、各単眼3D人体推定を共通コート座標へ持ち上げる。MoCap真値の代わりに、同一人物についてビュー間の3D平行移動、pelvis相対pose、足速度・高さ、安定性、体型の不一致を評価する。5手法の比較では、関節姿勢よりも絶対深度、接地、体型の一貫性が主要な失敗点だった。",
-        "tasks": [
-          "plcs",
-          "scene_alignment",
-          "tennis_scene"
-        ]
+        "tasks": ["plcs", "scene_alignment", "tennis_scene"]
       },
       "sources": [
-        {
-          "checked_at": "2026-08-05T15:45:30+09:00",
-          "kind": "paper",
-          "url": "https://arxiv.org/abs/2606.20542"
-        },
-        {
-          "checked_at": "2026-08-05T15:45:30+09:00",
-          "kind": "project",
-          "url": "https://ilonadem.github.io/caltennis-website/"
-        },
-        {
-          "checked_at": "2026-08-05T15:45:30+09:00",
-          "kind": "dataset",
-          "url": "https://huggingface.co/datasets/demalenk/caltennis"
-        }
+        {"checked_at": "2026-08-05T15:45:30+09:00", "kind": "paper", "url": "https://arxiv.org/abs/2606.20542"},
+        {"checked_at": "2026-08-05T15:45:30+09:00", "kind": "project", "url": "https://ilonadem.github.io/caltennis-website/"},
+        {"checked_at": "2026-08-05T15:45:30+09:00", "kind": "dataset", "url": "https://huggingface.co/datasets/demalenk/caltennis"}
       ]
     }
   ],
@@ -76,29 +54,13 @@
   "id": "paper-doi-10-48550-arxiv-2606-20542",
   "last_seen": "2026-08-05T15:45:30+09:00",
   "paper": {
-    "authors": [
-      "Ilona Demler",
-      "Xinran Xie",
-      "Blake Werner",
-      "Anna Szczuka",
-      "Pietro Perona"
-    ],
-    "identifiers": {
-      "arxiv": "2606.20542",
-      "doi": "10.48550/arxiv.2606.20542",
-      "openreview": null
-    },
+    "authors": ["Ilona Demler", "Xinran Xie", "Blake Werner", "Anna Szczuka", "Pietro Perona"],
+    "identifiers": {"arxiv": "2606.20542", "doi": "10.48550/arxiv.2606.20542", "openreview": null},
     "title": "CalTennis: Large Multi-View Tennis Video Dataset and Benchmark of Monocular-to-3D Pose Estimation",
-    "urls": {
-      "code": null,
-      "dataset": "https://huggingface.co/datasets/demalenk/caltennis",
-      "paper": "https://arxiv.org/pdf/2606.20542",
-      "primary": "https://arxiv.org/abs/2606.20542",
-      "project": "https://ilonadem.github.io/caltennis-website/"
-    },
+    "urls": {"code": null, "dataset": "https://huggingface.co/datasets/demalenk/caltennis", "paper": "https://arxiv.org/pdf/2606.20542", "primary": "https://arxiv.org/abs/2606.20542", "project": "https://ilonadem.github.io/caltennis-website/"},
     "venue": null,
     "year": 2026
   },
   "schema_version": 1,
-  "state": "inbox"
+  "state": "promoted"
 }
