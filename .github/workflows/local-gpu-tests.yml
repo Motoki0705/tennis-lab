@@ -30,6 +30,10 @@ jobs:
           persist-credentials: false
           submodules: false
 
+      - name: Initialize DINO submodule
+        shell: bash
+        run: git submodule update --init --depth 1 third_party/DINO
+
       - name: Link read-only local assets
         shell: bash
         run: |

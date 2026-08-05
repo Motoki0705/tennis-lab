@@ -55,6 +55,7 @@ git clone --no-local --no-checkout "$GITHUB_WORKSPACE" "$run_repository"
 git -C "$run_repository" remote set-url origin \
   "https://github.com/$GITHUB_REPOSITORY.git"
 git -C "$run_repository" checkout --detach "$GITHUB_SHA"
+git -C "$run_repository" submodule update --init --recursive --depth 1
 actual_sha="$(git -C "$run_repository" rev-parse HEAD)"
 if [ "$actual_sha" != "$GITHUB_SHA" ]; then
   echo "Persistent checkout resolved to $actual_sha, expected $GITHUB_SHA." >&2
