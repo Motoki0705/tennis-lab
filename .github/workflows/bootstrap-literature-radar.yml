@@ -1,9 +1,6 @@
 name: Bootstrap literature radar implementation
 
 on:
-  push:
-    branches:
-      - feat/literature-radar-knowledge
   pull_request:
     branches:
       - main
@@ -13,7 +10,7 @@ permissions:
 
 jobs:
   apply:
-    if: github.event_name == 'push' || github.head_ref == 'feat/literature-radar-knowledge'
+    if: github.head_ref == 'feat/literature-radar-knowledge'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -22,19 +19,26 @@ jobs:
           ref: feat/literature-radar-knowledge
           fetch-depth: 0
 
-      - name: Verify and apply generated implementation
+      - name: Verify and prepare implementation
+        id: prepare
         shell: bash
         run: |
           set -euo pipefail
+          if [[ -f knowledge/literature/README.md ]]; then
+            echo "apply=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           cat .github/literature-radar-bootstrap/part-* > /tmp/literature-radar.tar.gz.b64
           base64 --decode /tmp/literature-radar.tar.gz.b64 > /tmp/literature-radar.tar.gz
           echo "aaa4ae50e4137d13d8bc38b94047de509ce13ea5f0127ca8d4feb407d8c6c6ae  /tmp/literature-radar.tar.gz" | sha256sum --check -
           tar -xzf /tmp/literature-radar.tar.gz -C .
-          sed -i 's#actions/checkout@v7#actions/checkout@v6#g' .github/workflows/*.yml
+          git checkout HEAD -- .github/workflows/ci.yml
+          rm -f .github/workflows/literature-radar-ingest.yml
           rm -rf .github/literature-radar-bootstrap
-          rm .github/workflows/bootstrap-literature-radar.yml
+          echo "apply=true" >> "$GITHUB_OUTPUT"
 
-      - name: Commit implementation
+      - name: Commit non-workflow implementation
+        if: steps.prepare.outputs.apply == 'true'
         shell: bash
         run: |
           set -euo pipefail
