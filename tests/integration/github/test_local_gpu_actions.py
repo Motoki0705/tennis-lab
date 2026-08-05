@@ -60,6 +60,8 @@ def test_cuda_workflow_runs_serial_marker_tests_under_shared_lock() -> None:
     _, text = _load_workflow("local-gpu-tests.yml")
 
     assert "git submodule update --init --depth 1 third_party/DINO" in text
+    assert "TENNIS_LAB_BUILD_CUDA_OPS=1" in text
+    assert "python setup.py build_ext --inplace" in text
     assert "torch.cuda.is_available()" in text
     assert "flock --exclusive --timeout 5" in text
     assert "spin test --all --serial -m cuda --no-cov" in text
