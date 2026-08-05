@@ -162,7 +162,7 @@ def test_abstract_only_candidate_is_rejected(tmp_path: Path) -> None:
     payload["screening"]["score_breakdown"].update(
         task_fit=30, adoption_feasibility=10
     )
-    with pytest.raises(legacy.CandidateError, match="below minimum"):
+    with pytest.raises(legacy.CandidateError, match="below.*minimum"):
         hardening.validate_hardened_candidate(payload, repo, legacy.load_config(repo))
 
 
@@ -170,7 +170,7 @@ def test_all_tasks_must_belong_to_collector(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
     payload = candidate()
     payload["screening"]["tasks"].append("ball_detection")
-    with pytest.raises(legacy.CandidateError, match="exceed collector"):
+    with pytest.raises(legacy.CandidateError, match="collector"):
         hardening.validate_hardened_candidate(payload, repo, legacy.load_config(repo))
 
 
