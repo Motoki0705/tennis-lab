@@ -4,128 +4,119 @@ Use `fork_turns = "none"` whenever selecting a custom `agent_type`. Always provi
 
 ## Default delegation policy
 
-The parent must actively search for safe parallelism before each exploration or implementation wave.
+The parent actively searches for safe parallelism, but subagent count is not a quality metric.
 
-- Partition broad work into the smallest useful independent questions or non-overlapping production ownership units.
-- When at least two independent units exist, spawn at least two agents concurrently by default.
-- Do not default to one broad assignment when several narrow assignments would produce independent evidence or shorten the critical path.
-- Do not create redundant agents that answer the same question or own overlapping files.
-- Record the delegation map before spawning: task name, question or ownership, expected output, and dependency wave.
-- Wait for and join every agent in a wave before starting work that depends on the joined result.
-- A configured concurrency limit is capacity, not a target. Use only the parallelism justified by independent work.
-- If decomposable work is handled by a single Scout or Implementer, record the concrete reason: unavoidable ownership overlap, sequential dependency, artifact contention, or no additional independent evidence.
+- Partition independent semantic questions or non-overlapping production ownership.
+- Use at least two agents by default when at least two useful independent units exist.
+- Do not create duplicate questions, overlapping file ownership, or shared artifact writers.
+- Do not spawn an agent for a deterministic complete inventory that a repository command, AST script, or policy check can produce.
+- Record the delegation map before spawning and join the complete wave before dependent work.
+- Use one long or event-driven wait where available. Do not repeatedly issue short waits when agent state has not changed.
+- Send a running agent another message only when constraints, ownership, or evidence changed.
 
-Keep one authoritative Explorer, Test Writer, and Validator per cycle so formal artifacts and final verdicts have a single owner. These agents may use bounded child agents where explicitly allowed below.
+Keep one authoritative Explorer, Test Writer, and Validator per cycle. Child responses are compact: status, direct evidence or changed files, commands and outcomes, unresolved risks, and artifact/log paths. Raw logs stay in the child thread or `.codex/tasks/issue-<n>/logs/`.
+
+## Feasibility lookup
+
+The parent owns the feasibility verdict. It may use deterministic commands or bounded Scouts before formal exploration to answer questions such as:
+
+- Which tests encode behavior the Issue removes?
+- Can every required check pass within the allowed write scope?
+- Does an AC require editing a prohibited directory?
+- Is a required external authority or environment unavailable?
+
+These Scouts collect evidence only. They do not decide PASS or BLOCKED and do not modify formal artifacts.
 
 ## Scout
 
 ```json
 {
   "task_name": "issue_<n>_scout_<question>",
-  "message": "Read .codex/tasks/issue-<n>/issue.md and answer only this bounded repository question: <question>. Locate candidate files, symbols, references, tests, and configuration with direct evidence. Do not modify files or GitHub. State ambiguities and whether formal exploration must broaden the scope.",
+  "message": "Read issue.md and answer only this bounded repository question: <question>. Return candidate files, direct evidence, relevant tests/configuration, ambiguity, and whether formal exploration must broaden the scope. Do not modify files, artifacts, or GitHub. Keep raw search output out of the parent summary.",
   "agent_type": "codebase_scout",
   "fork_turns": "none"
 }
 ```
 
-For cross-cutting Issues, prefer a wave of several narrow Scouts partitioned by subsystem, execution stage, configuration domain, or evidence question. Run multiple Scouts concurrently whenever their questions are independent. Scout output is advisory and never replaces formal exploration.
-
-Examples of useful Scout partitions:
-
-- one subsystem or package per Scout;
-- configuration definition versus runtime consumption;
-- entry points versus tests and fixtures;
-- current implementation versus stale aliases and references;
-- one independent AC evidence question per Scout.
+Use Scouts for bounded semantic lookups, not for mechanical repository-wide counts. Scout output is advisory and never replaces formal exploration.
 
 ## Explorer
 
 ```json
 {
   "task_name": "issue_<n>_exploration",
-  "message": "Read .codex/tasks/issue-<n>/issue.md, including the normalized AC checklist. Investigate the repository and replace 01-exploration/exploration.md. This is attempt <attempt>. Independently verify the joined Scout leads: <leads-or-none>. Do not modify code or GitHub.",
+  "message": "Read issue.md and replace 01-exploration/exploration.md for attempt <attempt>. Independently verify these joined Scout leads: <compact-leads-or-none>. Trace real entry points, contracts, tests, risks, and unresolved questions. Do not modify code or GitHub. Return only a compact handoff; the artifact is authoritative.",
   "agent_type": "codebase_explorer",
   "fork_turns": "none"
 }
 ```
 
-Spawn one authoritative Explorer after all Scout tasks in the current wave have joined. The Explorer must independently verify Scout evidence rather than concatenate it. For validator RETURN, append only the Validator’s concrete exploration questions and affected AC IDs. Do not pass the old plan as authority.
+Spawn one authoritative Explorer after the Scout wave. For Validator RETURN, pass only the unresolved AC IDs and concrete questions, not the old plan or expected conclusion.
 
 ## Implementer: initial cycle
 
 ```json
 {
   "task_name": "issue_<n>_implementation_<unit>",
-  "message": "Implement work unit <unit> for attempt <attempt>, test cycle <cycle>. Read issue.md, exploration.md, and plan.md. Own only: <files-or-modules>. Do not edit tests. Report code changes and handoff evidence to the designated artifact integrator.",
+  "message": "Implement work unit <unit> for attempt <attempt>, test cycle <cycle>. Read issue.md, exploration.md, and plan.md. Own only: <files-or-modules>. Respect the plan's allowed test ownership. Run focused checks and return changed files, commands/outcomes, and unresolved risks to the artifact integrator. Do not write shared artifacts or GitHub.",
   "agent_type": "issue_implementer",
   "fork_turns": "none"
 }
 ```
 
-Before spawning Implementers, the parent must create an ownership matrix. When the plan contains two or more disjoint production units, spawn multiple Implementers concurrently by default. Assign each production file to exactly one owner for that wave.
+Before spawning, create an ownership matrix and assign every production file to exactly one owner in that wave. Join every Implementer before preflight.
 
-Join every Implementer before starting the Test Writer. Designate one parent or Implementer as the artifact integrator; only that integrator replaces `implementation.md`. Parallel Implementers must not concurrently write the shared artifact.
-
-## Implementer: tester RETURN
+## Implementer: preflight or Tester RETURN
 
 ```json
 {
   "task_name": "issue_<n>_implementation_retry_<cycle>_<unit>",
-  "message": "Address work unit <unit> from the independent tester RETURN for attempt <attempt>, next test cycle <cycle>. Read issue.md, exploration.md, plan.md, and the current 03-implementation/tests.md RETURN findings. Affected AC IDs: <ids>. Failing commands and behavior: <failures>. Own only: <production-files>. Do not edit or weaken tests. Report the repair and evidence to the designated artifact integrator.",
+  "message": "Repair work unit <unit> for attempt <attempt>, next test cycle <cycle>. Read the authoritative artifacts. New failure bundle only: affected AC IDs <ids>; commands and observed behavior <failures>; source <preflight|tester>. Own only <files>. Do not weaken tests or broaden scope. Return the repair, focused evidence, and remaining risk to the integrator.",
   "agent_type": "issue_implementer",
   "fork_turns": "none"
 }
 ```
 
-Partition independent tester failures into non-overlapping repair units and spawn multiple retry Implementers concurrently when safe. Tester RETURN does not trigger Explorer or planning unless the failure reveals that the plan or codebase model is invalid rather than merely incomplete implementation. In that exceptional case, the parent must explicitly restart exploration rather than silently broaden implementation scope.
+Do not repeat the full Issue narrative in retry messages. Partition independent failures and use multiple repair agents only for non-overlapping ownership.
+
+## Artifact integrator and preflight
+
+The parent or one designated Integrator is the sole writer of `implementation.md` and `preflight.md`.
+
+- Join all Implementers.
+- Reduce child handoffs; do not paste every raw log into the formal artifact.
+- Run deterministic policy checks, focused checks, then canonical required checks.
+- On preflight RETURN, route concrete failures directly to Implementers and do not spawn the Test Writer.
+- Record PASS or RETURN with `preflight-verdict`.
 
 ## Test writer
 
-Run one authoritative Test Writer only after all implementation work is integrated.
+Spawn only after a matching preflight PASS.
 
 ```json
 {
   "task_name": "issue_<n>_tests_<cycle>",
-  "message": "Independently test attempt <attempt>, test cycle <cycle>. Read issue.md and plan.md. Inspect current code and diff, but do not read implementation.md. Do not modify production code. Own only these test paths: <paths>. Replace tests.md with one exact ordered row per AC item and a standalone PASS or RETURN. On RETURN, include exact failing commands, observed behavior, affected AC IDs, and actionable implementation findings.",
+  "message": "Independently test attempt <attempt>, test cycle <cycle>. Read issue.md and plan.md. Inspect current code and diff; do not read implementation.md or preflight.md. Respect the Issue and plan's allowed test ownership. Replace tests.md with one exact ordered row per AC item and a standalone PASS or RETURN. On RETURN include exact commands, observed behavior, affected AC IDs, and actionable production findings. Return only a compact verdict summary.",
   "agent_type": "test_writer",
   "fork_turns": "none"
 }
 ```
 
-After the Test Writer completes, the parent must run:
-
-```bash
-python .agents/skills/issue-subagent-workflow/scripts/manage_issue_task.py test-verdict .codex/tasks/issue-<n> <PASS|RETURN>
-```
-
-Do not enter validation until tester PASS is recorded.
+After completion, apply `test-verdict`. A second Tester RETURN triggers mandatory parent `return-review` before another preflight.
 
 ## Validator
-
-Run one authoritative Validator. Its message is intentionally sparse:
 
 ```json
 {
   "task_name": "issue_<n>_validation",
-  "message": "Use .codex/tasks/issue-<n>/issue.md as the sole task specification. Treat its normalized AC checklist as authoritative. Independently inspect the current repository revision and replace validation.md. Emit exactly one ordered PASS, FAIL, or NOT VERIFIED row for every AC ID and a final PASS or RETURN. Do not read any other file under .codex/tasks/issue-<n>/.",
+  "message": "Use issue.md as the sole task specification. Independently inspect the current revision and replace validation.md. Emit exactly one ordered PASS, FAIL, or NOT VERIFIED row per AC ID and a final PASS or RETURN. Do not read any other workflow artifact.",
   "agent_type": "issue_validator",
   "fork_turns": "none"
 }
 ```
 
-Do not include plan, implementation, test-artifact summaries, expected verdicts, or prior Validator conclusions.
+Do not include plan, feasibility, implementation, preflight, Tester summaries, expected verdicts, or prior Validator conclusions.
 
 ### Validator children
 
-The Validator should actively partition independent evidence questions and spawn multiple bounded child Explorers concurrently when this improves coverage or latency. Suitable partitions include separate AC groups, subsystems, runtime commands, or static searches. Child agents collect evidence only; they do not decide the overall verdict.
-
-```json
-{
-  "task_name": "issue_<n>_validation_<question>",
-  "message": "Use issue.md as the sole task specification. Inspect only checklist item(s) <AC-IDs> and this evidence question: <question>. Do not read other workflow artifacts. Return concrete file, symbol, command, artifact, and behavior evidence. Do not decide the overall verdict.",
-  "agent_type": "explorer",
-  "fork_turns": "none"
-}
-```
-
-The authoritative Validator joins all child evidence, independently checks load-bearing claims, writes the single `validation.md`, and owns the final PASS or RETURN.
+The Validator may spawn bounded child Explorers for independent AC evidence questions. Children receive only issue.md, explicit AC IDs, and one evidence question. They collect evidence but do not decide the final verdict. The authoritative Validator joins their compact summaries, verifies load-bearing claims, and owns `validation.md`.
