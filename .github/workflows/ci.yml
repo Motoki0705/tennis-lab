@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
         with:
           submodules: false
 
@@ -29,3 +29,37 @@ jobs:
         # `spin ci` is the shared local/CI entry point. This runner is CPU-only
         # and has no large local datasets, so it excludes those pytest markers.
         run: uv run --locked spin ci
+
+      - name: Validate formal and staged knowledge
+        run: |
+          uv run --locked python \
+            .agents/skills/knowledge-control/scripts/kg_validate.py
+          uv run --locked python \
+            .agents/skills/literature-radar/scripts/radar_ingest.py \
+            validate --repo-root .
+
+  knowledge-webui:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: knowledge/webui
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: knowledge/webui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build knowledge Web UI
+        run: npm run build

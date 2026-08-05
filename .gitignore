@@ -190,6 +190,9 @@ experiments_mcmc/
 !knowledge/runs/
 !knowledge/runs/**
 
+# Literature Radar uses JSON as its reviewed interface and canonical record
+# format. These files must remain git-tracked despite the generic *.json rule.
+!knowledge/literature/**/*.json
 
 # Persist loop decisions in Markdown while keeping heavyweight validation output
 # local and immutable at the paths recorded by STATE.md.

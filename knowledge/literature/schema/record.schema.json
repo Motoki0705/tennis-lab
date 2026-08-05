@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Motoki0705/tennis-lab/knowledge/literature/schema/record.schema.json",
+  "title": "tennis-lab canonical literature candidate record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "state",
+    "first_seen",
+    "last_seen",
+    "paper",
+    "aggregate",
+    "discoveries",
+    "curation"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^paper-[a-z0-9-]+$" },
+    "state": { "enum": ["inbox", "reviewed", "rejected", "promoted"] },
+    "first_seen": { "type": "string", "format": "date-time" },
+    "last_seen": { "type": "string", "format": "date-time" },
+    "paper": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "authors", "year", "venue", "identifiers", "urls"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "authors": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "year": { "type": "integer", "minimum": 1900, "maximum": 2100 },
+        "venue": { "type": ["string", "null"] },
+        "identifiers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["doi", "arxiv", "openreview"],
+          "properties": {
+            "doi": { "type": ["string", "null"] },
+            "arxiv": { "type": ["string", "null"] },
+            "openreview": { "type": ["string", "null"] }
+          }
+        },
+        "urls": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": ["string", "null"] },
+          "properties": {
+            "primary": { "type": "string", "format": "uri" }
+          },
+          "required": ["primary"]
+        }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "collector_count",
+        "collectors",
+        "discovery_count",
+        "max_relevance_score",
+        "mean_relevance_score",
+        "max_novelty_score",
+        "tasks",
+        "repo_paths"
+      ],
+      "properties": {
+        "collector_count": { "type": "integer", "minimum": 1 },
+        "collectors": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["perception", "geometry", "systems"] }
+        },
+        "discovery_count": { "type": "integer", "minimum": 1 },
+        "max_relevance_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "mean_relevance_score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "max_novelty_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "tasks": { "type": "array", "items": { "type": "string" } },
+        "repo_paths": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "discoveries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "collector_id",
+          "schedule_run_id",
+          "discovered_at",
+          "screening",
+          "sources"
+        ],
+        "properties": {
+          "collector_id": { "enum": ["perception", "geometry", "systems"] },
+          "schedule_run_id": { "type": "string", "minLength": 1 },
+          "discovered_at": { "type": "string", "format": "date-time" },
+          "screening": { "type": "object" },
+          "sources": { "type": "array", "minItems": 1 }
+        }
+      }
+    },
+    "curation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewed_at",
+        "decision",
+        "reason_ja",
+        "paper_node",
+        "proposal_nodes",
+        "issue"
+      ],
+      "properties": {
+        "reviewed_at": { "type": ["string", "null"], "format": "date-time" },
+        "decision": {
+          "type": ["string", "null"],
+          "enum": [null, "reviewed", "rejected", "promoted"]
+        },
+        "reason_ja": { "type": ["string", "null"] },
+        "paper_node": { "type": ["string", "null"] },
+        "proposal_nodes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^proposal-[a-z0-9-]+$" }
+        },
+        "issue": { "type": ["integer", "null"] }
+      }
+    }
+  }
+}
