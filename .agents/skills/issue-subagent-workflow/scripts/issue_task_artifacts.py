@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from issue_task_state import (
     REQUIRED_HEADINGS,
@@ -28,7 +29,7 @@ ARTIFACT_PATHS = {
 }
 
 
-def _expected_cycle(state: dict[str, object]) -> int:
+def _expected_cycle(state: dict[str, Any]) -> int:
     cycle = int(state.get("test_cycle", 0))
     return cycle + 1 if state.get("phase") == "implementation" else cycle
 
