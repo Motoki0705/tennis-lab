@@ -59,6 +59,8 @@ jobs:
           if ! flock --exclusive --timeout 5 "$GPU_LOCK_FILE" bash <<'BASH'
           set -euo pipefail
           nvidia-smi
+          TENNIS_LAB_BUILD_CUDA_OPS=1 \
+            uv run --locked python setup.py build_ext --inplace
           uv run --locked python - <<'PY'
           import torch
 

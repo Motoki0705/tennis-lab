@@ -58,8 +58,9 @@ Windowsの電源・sleep設定もそれに合わせる。
 
 GitHubの **Actions** タブから次を手動実行する。
 
-- **Local GPU tests**: CUDA preflightの後、`spin test --all --serial -m cuda`
-  を実行する。学習中ならGPU lockを取得できず、明示的に失敗する。
+- **Local GPU tests**: DINOを初期化してrepositoryのCUDA extensionsをbuildし、
+  CUDA preflightの後、`spin test --all --serial -m cuda` を実行する。学習中なら
+  GPU lockを取得できず、明示的に失敗する。
 - **Queue local GPU training**: `name`、正確な学習`command`、任意のIssue番号を
   入力する。task固有のコマンドは各task READMEを正とし、isolated checkout内で
   依存関係を再現できる `uv run --locked ...` 形式を使う。
