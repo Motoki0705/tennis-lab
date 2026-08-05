@@ -7,18 +7,14 @@ from pathlib import Path
 import torch
 from tqdm import tqdm
 
+from src.submodules.configuration import require_absolute_path
 from src.submodules.models._base import BaseInferenceModel
 from src.submodules.models.tracker.common import (
     TrackRequest,
     TrackResult,
-    build_track_tensor,
     select_and_complete_tracks,
-    sort_tracks,
 )
-from src.utils.paths import PROJECT_ROOT
 from src.utils.video.reader import probe_video_info
-
-DEFAULT_YOLO_CHECKPOINT = PROJECT_ROOT / "ckpt/yolo/yolov8x.pt"
 
 
 class YoloPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
@@ -26,13 +22,19 @@ class YoloPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
 
     def __init__(
         self,
-        checkpoint: str | Path = DEFAULT_YOLO_CHECKPOINT,
-        device: str | torch.device = "auto",
-        conf: float = 0.5,
+        checkpoint: str | Path,
+        *,
+        device: str | torch.device,
+        allow_device_fallback: bool,
+        confidence: float,
     ) -> None:
-        super().__init__(device)
-        self.checkpoint = Path(checkpoint)
-        self.conf = conf
+        super().__init__(device, allow_device_fallback=allow_device_fallback)
+        if type(confidence) is not float:
+            raise TypeError("confidence must be a float.")
+        if not 0.0 < confidence <= 1.0:
+            raise ValueError(f"confidence must be in (0, 1], got {confidence}")
+        self.checkpoint = require_absolute_path(checkpoint, name="YOLO checkpoint")
+        self.confidence = confidence
         self._yolo: object | None = None
 
     def _load_impl(self) -> None:
@@ -58,7 +60,7 @@ class YoloPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
         results = self._yolo.track(  # type: ignore[attr-defined]
             video_path,
             device=self._device,
-            conf=self.conf,
+            conf=self.confidence,
             classes=0,  # human
             verbose=False,
             stream=True,
@@ -76,8 +78,3 @@ class YoloPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
                 frame = []
             track_history.append(frame)
         return track_history
-
-
-# Backward-compatible helper names for callers that imported the old module.
-_sort_tracks = sort_tracks
-_build_track_tensor = build_track_tensor

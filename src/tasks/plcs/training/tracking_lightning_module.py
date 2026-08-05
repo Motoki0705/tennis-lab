@@ -8,6 +8,7 @@ import numpy as np
 import torch
 
 from src.tasks.base.training.lightning_module import BaseLightningModule
+from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.models import build_plcs_model
 from src.tasks.plcs.training.tracking_losses import PLCSTrackingLoss
 from src.tasks.plcs.training.tracking_metrics import plcs_tracking_metrics
@@ -17,9 +18,13 @@ class PLCSTrackingLightningModule(BaseLightningModule):
     """Train and evaluate clip-local player slots."""
 
     def __init__(self, config: Any) -> None:
+        runtime = PLCSTrainingConfig.from_config(config)
         super().__init__(config)
-        self.model = build_plcs_model(config)
+        self.model = build_plcs_model(runtime)
         self.criterion = PLCSTrackingLoss(config.loss)
+        if runtime.tracking_metrics is None:
+            raise ValueError("PLCS tracking requires tracking_metrics configuration.")
+        self.tracking_metric_config = runtime.tracking_metrics
 
     @staticmethod
     def _model_inputs(batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -49,7 +54,10 @@ class PLCSTrackingLightningModule(BaseLightningModule):
                 self.log(f"{stage}/loss_{name}", value, on_step=False, on_epoch=True)
         if stage != "train":
             for name, value in plcs_tracking_metrics(
-                prediction, batch, assignments
+                prediction,
+                batch,
+                assignments,
+                config=self.tracking_metric_config,
             ).items():
                 self.log(f"{stage}/{name}", value, on_step=False, on_epoch=True)
         return losses["total"], prediction

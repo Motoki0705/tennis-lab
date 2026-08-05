@@ -46,14 +46,19 @@ def render_overlay_video(
     player_yaw_rad: NDArray[np.float32],  # (P, T)
     ball_position_m: NDArray[np.float32],  # (T, 3)
     output_path: str | Path,
-    court_kp_indices: tuple[int, ...] | None = None,
+    court_kp_indices: tuple[int, ...],
+    min_homography_points: int,
+    court_visibility_threshold: float,
 ) -> tuple[Path, int]:
     """Render the overlay video; returns ``(path, frames_without_homography)``."""
     manifest = clip.manifest
     camera_id = manifest.camera_ids[camera_index]
     video_path = manifest.media_path(camera_id)
     num_frames = clip.num_frames
-    if player_position_m.shape[1] != num_frames or ball_position_m.shape[0] != num_frames:
+    if (
+        player_position_m.shape[1] != num_frames
+        or ball_position_m.shape[0] != num_frames
+    ):
         raise ValueError(
             f"prediction timeline ({player_position_m.shape[1]} / "
             f"{ball_position_m.shape[0]} frames) does not match clip length {num_frames}."
@@ -76,12 +81,20 @@ def render_overlay_video(
                 width=width,
                 height=height,
                 court_kp_indices=court_kp_indices,
+                min_points=min_homography_points,
+                vis_threshold=court_visibility_threshold,
             )
         except GroundProjectionError:
             frames_without_homography += 1
             cv2.putText(
-                frame, "no ground homography (court occluded)", (10, height - 12),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA,
+                frame,
+                "no ground homography (court occluded)",
+                (10, height - 12),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 0, 255),
+                1,
+                cv2.LINE_AA,
             )
         else:
             _draw_ground_predictions(
@@ -115,7 +128,9 @@ def _draw_observations(
     for k in range(clip.court_kp.shape[2]):
         if clip.court_vis[cam, t, k] > 0.5:
             u, v = clip.court_kp[cam, t, k]
-            cv2.circle(frame, (int(u * width), int(v * height)), 3, _COURT_COLOR_BGR, -1)
+            cv2.circle(
+                frame, (int(u * width), int(v * height)), 3, _COURT_COLOR_BGR, -1
+            )
     for p in range(clip.human_kp_2d.shape[0]):
         color = _PLAYER_COLORS_BGR[p % 2]
         kp = clip.human_kp_2d[p, cam, t]
@@ -155,12 +170,23 @@ def _draw_ground_predictions(
         center = (int(base_px[0]), int(base_px[1]))
         cv2.drawMarker(frame, center, color, cv2.MARKER_TILTED_CROSS, 14, 2)
         cv2.arrowedLine(
-            frame, center, (int(tip_px[0]), int(tip_px[1])), color, 2, cv2.LINE_AA,
+            frame,
+            center,
+            (int(tip_px[0]), int(tip_px[1])),
+            color,
+            2,
+            cv2.LINE_AA,
             tipLength=0.3,
         )
         cv2.putText(
-            frame, f"P{p} ground", (center[0] + 6, center[1] - 6),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1, cv2.LINE_AA,
+            frame,
+            f"P{p} ground",
+            (center[0] + 6, center[1] - 6),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.4,
+            color,
+            1,
+            cv2.LINE_AA,
         )
     shadow_px = project_ground_points(homography, ball_position_m[None, :2])[0]
     center = (int(shadow_px[0]), int(shadow_px[1]))
@@ -169,7 +195,11 @@ def _draw_ground_predictions(
         frame,
         f"ball shadow (z={float(ball_position_m[2]):.2f}m)",
         (center[0] + 8, center[1] + 4),
-        cv2.FONT_HERSHEY_SIMPLEX, 0.4, _BALL_COLOR_BGR, 1, cv2.LINE_AA,
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.4,
+        _BALL_COLOR_BGR,
+        1,
+        cv2.LINE_AA,
     )
 
 

@@ -1,48 +1,32 @@
 defaults:
+  - paths: default
   - _self_
 
-# Standard layout:
-#   raw/<match_id>/cam{0,1,2}.mp4
-#   processed/<match_id>/project.json
-#   processed/<match_id>/dataset/
-data_root: data/tennis_multivew
-match_id: null
-
-# null -> <data_root>/processed/<match_id>/project.json
-project_path: null
-
-# null -> match_id. Used as clips/<recording_id>/<clip_name>.
-recording_id: null
-
-# null on first creation -> <data_root>/raw/<match_id>/cam{0,1,2}.mp4.
-# Existing projects always load their source paths from project.json.
-video_paths: null
-camera_ids: null  # null -> cam0, cam1, ...
-
+project_path: tennis_scene/clip_studio/project.json
+recording_id: recording
+video_paths: [tennis_multivew/raw/recording/cam0.mp4]
+camera_ids: [cam0]
 gui:
   canvas_width: 1600
-  tile_width: 640            # preview decode width per camera tile
-  cache_frames: 96           # LRU preview frames kept per camera
-  seek_grab_threshold: 24    # forward frames bridged by grab() before seeking
-  window_name: "Tennis Clip Studio"
+  tile_width: 640
+  cache_frames: 96
+  seek_grab_threshold: 24
+  window_name: Tennis Clip Studio
   zoom_step: 1.5
-
 audio_sync:
   sample_rate: 8000
-  envelope_rate: 100.0       # Hz; sets offset resolution (100 -> 10 ms)
-  max_seconds: null          # cap decoded audio duration per video
-
+  envelope_rate: 100.0
+  max_seconds: null
 export:
-  output_dir: null           # null -> <project dir>/dataset
-  fps: null                  # null -> all sources must share fps
-  width: null                # null (with height) -> all sources must share size
+  output_dir: tennis_scene/dataset
+  fps: null
+  width: null
   height: null
   crf: 17
   overwrite: false
-
 hydra:
   run:
-    dir: outputs/clip_studio/hydra/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},clip_studio/hydra,${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null
   job:
     chdir: false

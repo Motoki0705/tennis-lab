@@ -24,9 +24,7 @@ Notes:
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -38,6 +36,7 @@ from src.tasks.base.preview import (
     enable_all_augmentation_blocks,
     resolve_sample_indices,
 )
+from src.tasks.plcs.configuration import PLCSPreviewRuntimeConfig
 from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
 from src.tasks.plcs.data.dataset import SceneDataset
 from src.utils.hydra import hydra_main
@@ -58,16 +57,18 @@ _FIGURE_FACECOLOR = "#101010"
     config_path="../configs",
     config_name="preview_augmentation",
     version_base="1.3",
+    validation_boundary="plcs.preview_augmentation",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
     matplotlib.use("Agg")
-    output_dir = Path(str(cfg.preview.output_dir)).expanduser()
+    runtime = PLCSPreviewRuntimeConfig.from_config(cfg)
+    output_dir = runtime.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
     split_name = str(cfg.preview.split)
     dataset = SceneDataset(
-        scene_dir=str(cfg.data.scene_dir),
+        scene_dir=runtime.scene_dir,
         split_file=f"{split_name}.txt",
         config=cfg,
         augment=False,
@@ -81,7 +82,9 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     if num_augmented < 1:
         raise ValueError("preview.num_augmented must be >= 1.")
 
-    sample_indices = resolve_sample_indices(cfg, dataset_size=len(dataset), min_samples=1)
+    sample_indices = resolve_sample_indices(
+        cfg, dataset_size=len(dataset), min_samples=1
+    )
     manifest: list[dict[str, Any]] = []
     for sample_index in sample_indices:
         # Seed the scene RNG so camera selection and the (center) window draw
@@ -180,9 +183,7 @@ def _render_contact_sheet(
                 skeleton_renderer=skeleton_renderer,
                 pose_frames=pose_frames,
             )
-            ax.set_title(
-                f"cam {camera_index} | {row_title}", color="white", fontsize=9
-            )
+            ax.set_title(f"cam {camera_index} | {row_title}", color="white", fontsize=9)
 
     seq_len = int(base_sample["human_kp"].shape[1])
     figure.suptitle(
@@ -190,7 +191,8 @@ def _render_contact_sheet(
         color="white",
     )
     figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.96))
-    return cast("Figure", figure)
+    rendered: Figure = figure
+    return rendered
 
 
 def _render_camera_view(
@@ -239,4 +241,4 @@ def _render_camera_view(
 
 
 if __name__ == "__main__":
-    sys.exit(cast(Callable[[], int], main)())
+    sys.exit(main())

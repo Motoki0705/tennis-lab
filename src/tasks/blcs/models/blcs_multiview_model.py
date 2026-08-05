@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, cast
+from typing import Literal
 
 import torch
 from torch import Tensor, nn
 
+from src.tasks.blcs.configuration import MultiViewModelConfig
 from src.tasks.blcs.models.components.heads import Trajectory3DHead, VelocityHead
 from src.utils.models import (
     CrossAttnBlock,
@@ -15,7 +16,6 @@ from src.utils.models import (
     TransformerBlock,
     TransformerBlockConfig,
     build_self_attn_mask,
-    default_ffn_dim,
     precompute_freqs_cis_nd,
     resolve_rope_bases,
     validate_rope_dim,
@@ -25,10 +25,6 @@ from src.utils.models.embeddings import (
     CourtKPUVEmbedding,
     InvisibleTokenEmbedding,
 )
-from src.utils.schema.court import NUM_COURT_KP
-
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
 
 
 class BLCSMultiViewModel(nn.Module):
@@ -44,23 +40,24 @@ class BLCSMultiViewModel(nn.Module):
 
     def __init__(
         self,
-        hidden_dim: int = 256,
-        num_heads: int = 8,
-        ffn_dim: int | None = None,
-        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
-        dropout: float = 0.1,
-        rope_dim: int | None = None,
-        rope_theta: float = 10000.0,
-        rope_theta_time: float | None = None,
-        rope_theta_camera: float | None = None,
-        rope_theta_type: float = 100.0,
-        num_layers: int = 4,
-        predict_velocity: bool = False,
-        max_seq_len: int = 120,
-        max_num_cameras: int = 8,
-        num_court_tokens: int = NUM_COURT_KP,
-        invisible_init_std: float = 0.02,
-        query_init_std: float = 0.02,
+        *,
+        hidden_dim: int,
+        num_heads: int,
+        ffn_dim: int,
+        ffn_type: Literal["swiglu", "mlp"],
+        dropout: float,
+        rope_dim: int,
+        rope_theta: float,
+        rope_theta_time: float,
+        rope_theta_camera: float,
+        rope_theta_type: float,
+        num_layers: int,
+        predict_velocity: bool,
+        max_seq_len: int,
+        max_num_cameras: int,
+        num_court_tokens: int,
+        invisible_init_std: float,
+        query_init_std: float,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -79,19 +76,14 @@ class BLCSMultiViewModel(nn.Module):
         self.num_court_tokens = int(num_court_tokens)
 
         head_dim = self.hidden_dim // num_heads
-        rope_dim = head_dim if rope_dim is None else int(rope_dim)
         self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
         self.rope_dim = int(rope_dim)
         self.rope_theta = float(rope_theta)
         self.rope_bases = resolve_rope_bases(
-            self.rope_theta,
-            rope_theta_time,
-            rope_theta_camera,
-            rope_theta_type,
+            rope_theta_time=rope_theta_time,
+            rope_theta_camera=rope_theta_camera,
+            rope_theta_type=rope_theta_type,
         )
-
-        if ffn_dim is None:
-            ffn_dim = default_ffn_dim(self.hidden_dim)
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
@@ -99,12 +91,10 @@ class BLCSMultiViewModel(nn.Module):
         )
         self.court_embed = CourtKPUVEmbedding(
             dim=self.hidden_dim,
-            dropout=dropout,
             invisible_token=self.invisible_token,
         )
         self.ball_embed = BallUVEmbedding(
             dim=self.hidden_dim,
-            dropout=dropout,
             invisible_token=self.invisible_token,
         )
 
@@ -138,6 +128,8 @@ class BLCSMultiViewModel(nn.Module):
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
+                        attention_type="mha",
+                        n_kv_heads=None,
                         rope_base=self.rope_theta,
                         ffn_type=ffn_type,
                     )
@@ -206,37 +198,26 @@ class BLCSMultiViewModel(nn.Module):
         validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> BLCSMultiViewModel:
+    def from_config(cls, config: MultiViewModelConfig) -> BLCSMultiViewModel:
         """Create model from Hydra/OmegaConf config."""
-        model_cfg = config.get("model", {})
-        data_cfg = config.get("data", {})
-
         return cls(
-            hidden_dim=int(model_cfg.get("hidden_dim", 256)),
-            num_heads=int(model_cfg.get("num_heads", 8)),
-            ffn_dim=model_cfg.get("ffn_dim", None),
-            ffn_type=cast(
-                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
-            ),
-            dropout=float(model_cfg.get("dropout", 0.1)),
-            rope_dim=model_cfg.get("rope_dim", None),
-            rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            rope_theta_time=model_cfg.get("rope_theta_time", None),
-            rope_theta_camera=model_cfg.get("rope_theta_camera", None),
-            rope_theta_type=model_cfg.get("rope_theta_type", 100.0),
-            num_layers=int(model_cfg.get("num_layers", 4)),
-            predict_velocity=bool(model_cfg.get("predict_velocity", False)),
-            max_seq_len=int(
-                model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))
-            ),
-            max_num_cameras=int(model_cfg.get("max_num_cameras", 8)),
-            num_court_tokens=int(
-                model_cfg.get(
-                    "num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP)
-                )
-            ),
-            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
-            query_init_std=float(model_cfg.get("query_init_std", 0.02)),
+            hidden_dim=config.hidden_dim,
+            num_heads=config.num_heads,
+            ffn_dim=config.ffn_dim,
+            ffn_type=config.ffn_type,
+            dropout=config.dropout,
+            rope_dim=config.rope_dim,
+            rope_theta=config.rope_theta,
+            rope_theta_time=config.rope_theta_time,
+            rope_theta_camera=config.rope_theta_camera,
+            rope_theta_type=config.rope_theta_type,
+            num_layers=config.num_layers,
+            predict_velocity=config.predict_velocity,
+            max_seq_len=config.max_seq_len,
+            max_num_cameras=config.max_num_cameras,
+            num_court_tokens=config.num_court_tokens,
+            invisible_init_std=config.invisible_init_std,
+            query_init_std=config.query_init_std,
         )
 
     def _build_frame_positions(
@@ -541,3 +522,6 @@ class BLCSMultiViewModel(nn.Module):
                 f"got {tuple(ball_mask.shape)}"
             )
         return court_kp, ball_vis, ball_mask, court_vis, batch_size, n_cams, seq_len_in
+
+    query_freqs_cis: Tensor
+    frame_freqs_cis: Tensor

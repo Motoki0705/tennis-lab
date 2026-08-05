@@ -18,10 +18,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from src.utils.configuration import PathResolver, PathRole
 from src.utils.io import load_json, save_json_atomic
 
 PROJECT_SCHEMA_VERSION = 2
 IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def _require_exact_keys(data: dict[str, Any], expected: set[str], *, name: str) -> None:
+    actual = set(data)
+    if actual != expected:
+        raise ValueError(
+            f"{name} keys must be exactly {sorted(expected)}, got {sorted(actual)}"
+        )
 
 
 def _validate_identifier(value: str, *, field_name: str) -> str | None:
@@ -52,17 +61,28 @@ class ClipSource:
     camera_id: str
     offset_sec: float = 0.0
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, resolver: PathResolver) -> dict[str, Any]:
+        resolved = resolver.validate(PathRole.DATA, self.path)
         return {
-            "path": str(self.path),
+            "path": resolved.relative_to(resolver.roots.data_root).as_posix(),
             "camera_id": self.camera_id,
             "offset_sec": float(self.offset_sec),
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ClipSource:
+    def from_dict(
+        cls,
+        data: dict[str, Any],
+        resolver: PathResolver,
+    ) -> ClipSource:
+        _require_exact_keys(
+            data, {"path", "camera_id", "offset_sec"}, name="clip source"
+        )
+        raw_path = data["path"]
+        if type(raw_path) is not str or not raw_path:
+            raise ValueError("clip source path must be a non-empty role-relative string")
         return cls(
-            path=Path(str(data["path"])),
+            path=resolver.resolve(PathRole.DATA, raw_path),
             camera_id=str(data["camera_id"]),
             offset_sec=float(data["offset_sec"]),
         )
@@ -92,6 +112,7 @@ class Clip:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Clip:
+        _require_exact_keys(data, {"name", "start_sec", "end_sec"}, name="clip")
         return cls(
             name=str(data["name"]),
             start_sec=float(data["start_sec"]),
@@ -158,48 +179,49 @@ class ClipStudioProject:
                 return index
         raise KeyError(f"clip '{name}' not found")
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, resolver: PathResolver) -> dict[str, Any]:
         return {
             "version": PROJECT_SCHEMA_VERSION,
             "recording_id": self.recording_id,
-            "sources": [source.to_dict() for source in self.sources],
+            "sources": [source.to_dict(resolver) for source in self.sources],
             "clips": [clip.to_dict() for clip in self.clips],
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ClipStudioProject:
-        version = data.get("version")
+    def from_dict(
+        cls,
+        data: dict[str, Any],
+        resolver: PathResolver,
+    ) -> ClipStudioProject:
+        version = data["version"]
         if version != PROJECT_SCHEMA_VERSION:
             raise ValueError(
                 f"Unsupported project version {version!r}; "
                 f"expected {PROJECT_SCHEMA_VERSION}"
             )
+        _require_exact_keys(
+            data, {"version", "recording_id", "sources", "clips"}, name="project"
+        )
         return cls(
             recording_id=str(data["recording_id"]),
-            sources=[ClipSource.from_dict(item) for item in data["sources"]],
+            sources=[ClipSource.from_dict(item, resolver) for item in data["sources"]],
             clips=[Clip.from_dict(item) for item in data["clips"]],
         )
 
-    def save(self, path: str | Path) -> Path:
+    def save(self, path: Path, resolver: PathResolver) -> Path:
         """Validate and atomically write the project JSON."""
+        project_path = resolver.validate(PathRole.ARTIFACT, path)
         errors = self.validate()
         if errors:
             raise ValueError(f"Invalid project: {errors}")
-        saved_path: Path = save_json_atomic(self.to_dict(), path)
+        saved_path: Path = save_json_atomic(self.to_dict(resolver), project_path)
         return saved_path
 
     @classmethod
-    def load(cls, path: str | Path) -> ClipStudioProject:
-        """Load and validate a project JSON.
-
-        Relative source paths are resolved against the project file's parent
-        directory so a project directory can be moved as a unit.
-        """
-        project_path = Path(path)
-        project = cls.from_dict(load_json(project_path))
-        for source in project.sources:
-            if not source.path.is_absolute():
-                source.path = (project_path.parent / source.path).resolve()
+    def load(cls, path: Path, resolver: PathResolver) -> ClipStudioProject:
+        """Load one ARTIFACT project with DATA-role source paths."""
+        project_path = resolver.validate(PathRole.ARTIFACT, path)
+        project = cls.from_dict(load_json(project_path), resolver)
         errors = project.validate()
         if errors:
             raise ValueError(f"Invalid project at {project_path}: {errors}")

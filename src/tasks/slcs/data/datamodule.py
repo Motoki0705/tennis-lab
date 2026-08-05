@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
-from src.tasks.slcs.data.dataset import SLCSDataConfig, SLCSWindowDataset, collate_slcs
-
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
+from src.tasks.slcs.configuration import SLCSDataRuntimeConfig
+from src.tasks.slcs.data.dataset import SLCSWindowDataset, collate_slcs
 
 
 class SLCSDataModule(pl.LightningDataModule):
@@ -21,22 +19,16 @@ class SLCSDataModule(pl.LightningDataModule):
     ``dino`` section, ...).
     """
 
-    def __init__(self, config: DictConfig) -> None:
+    def __init__(self, config: SLCSDataRuntimeConfig) -> None:
         super().__init__()
         self.config = config
-        data_cfg = config.get("data")
-        if data_cfg is None:
-            raise ValueError("config must contain a 'data' section.")
-        dataset_root = data_cfg.get("dataset_root")
-        split_file = data_cfg.get("split_file")
-        if not dataset_root or not split_file:
-            raise ValueError("config.data must set dataset_root and split_file.")
-        self.dataset_root = str(dataset_root)
-        self.split_file = str(split_file)
-        self.batch_size = int(data_cfg.get("batch_size", 8))
-        self.num_workers = int(data_cfg.get("num_workers", 0))
-        self.overfit = bool(data_cfg.get("overfit", False))
-        self.data_config = SLCSDataConfig.from_config(data_cfg)
+        self.dataset_root = config.dataset_root
+        self.split_file = config.split_file
+        self.batch_size = config.batch_size
+        self.num_workers = config.num_workers
+        self.pin_memory = config.pin_memory
+        self.overfit = config.overfit
+        self.data_config = config.pipeline
 
         self.train_dataset: SLCSWindowDataset | None = None
         self.val_dataset: SLCSWindowDataset | None = None
@@ -58,6 +50,11 @@ class SLCSDataModule(pl.LightningDataModule):
             split_file=self.split_file,
             split=source_split,
             config=self.data_config,
+            stride=(
+                self.data_config.train_stride
+                if source_split == "train"
+                else self.data_config.eval_stride
+            ),
         )
 
     def _loader(self, dataset: SLCSWindowDataset, *, shuffle: bool) -> DataLoader[Any]:
@@ -68,6 +65,7 @@ class SLCSDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             collate_fn=collate_slcs,
             drop_last=False,
+            pin_memory=self.pin_memory,
             persistent_workers=self.num_workers > 0,
         )
 

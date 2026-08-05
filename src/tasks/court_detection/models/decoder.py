@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TypeAlias, cast
 
 import torch
 import torch.nn as nn
@@ -92,7 +93,7 @@ class CourtFPNDecoder(nn.Module):
                 )
             x = torch.cat([x, lateral_feat], dim=1)
             x = self.fusion_blocks[block_index](x)
-        return x
+        return cast("torch.Tensor", x)
 
     def _validate_forward_inputs(self, feats: Sequence[torch.Tensor]) -> None:
         if len(feats) != len(self.encoder_channels):
@@ -181,7 +182,7 @@ class CourtUNetDecoder(nn.Module):
                     align_corners=False,
                 )
             x = self.decode_blocks[block_index](torch.cat([x, skip], dim=1))
-        return x
+        return cast("torch.Tensor", x)
 
     def _validate_forward_inputs(self, feats: Sequence[torch.Tensor]) -> None:
         if len(feats) != len(self.encoder_channels):
@@ -214,7 +215,7 @@ class DPTFeatureFusionBlock(nn.Module):
                     align_corners=False,
                 )
             x = x + self.skip_block(skip)
-        return self.output_block(x)
+        return cast("torch.Tensor", self.output_block(x))
 
 
 class CourtDPTDecoder(nn.Module):
@@ -224,8 +225,8 @@ class CourtDPTDecoder(nn.Module):
         self,
         *,
         encoder_channels: Sequence[int],
-        decoder_channels: int = 256,
-        reassemble_factors: Sequence[float] = (4.0, 2.0, 1.0, 0.5),
+        decoder_channels: int,
+        reassemble_factors: Sequence[float],
     ) -> None:
         super().__init__()
         self.encoder_channels = tuple(int(channel) for channel in encoder_channels)
@@ -240,7 +241,9 @@ class CourtDPTDecoder(nn.Module):
         self.output_channels = self.decoder_channels
         self.projections = nn.ModuleList(
             nn.Sequential(
-                nn.Conv2d(in_channels, self.decoder_channels, kernel_size=1, bias=False),
+                nn.Conv2d(
+                    in_channels, self.decoder_channels, kernel_size=1, bias=False
+                ),
                 nn.GroupNorm(1, self.decoder_channels),
                 nn.GELU(),
             )
@@ -289,7 +292,7 @@ class CourtDPTDecoder(nn.Module):
             strict=True,
         ):
             x = block(x, skip)
-        return x
+        return cast("torch.Tensor", x)
 
     @staticmethod
     def _resize_by_factor(x: torch.Tensor, factor: float) -> torch.Tensor:
@@ -315,8 +318,8 @@ def build_court_decoder(
     decoder_name: str,
     encoder_channels: Sequence[int],
     decoder_channels: Sequence[int] | int,
-    reassemble_factors: Sequence[float] | None = None,
-) -> nn.Module:
+    reassemble_factors: Sequence[float] | None,
+) -> CourtDecoder:
     """Build a court decoder from a decoder name."""
 
     resolved_decoder_name = str(decoder_name).lower()
@@ -334,9 +337,18 @@ def build_court_decoder(
         return CourtDPTDecoder(
             encoder_channels=encoder_channels,
             decoder_channels=_parse_decoder_channel_scalar(decoder_channels),
-            reassemble_factors=reassemble_factors or (4.0, 2.0, 1.0, 0.5),
+            reassemble_factors=_require_reassemble_factors(reassemble_factors),
         )
     raise ValueError(f"Unsupported court decoder: {decoder_name}")
+
+
+CourtDecoder: TypeAlias = CourtFPNDecoder | CourtUNetDecoder | CourtDPTDecoder
+
+
+def _require_reassemble_factors(value: Sequence[float] | None) -> Sequence[float]:
+    if value is None:
+        raise ValueError("DPT decoder requires reassemble_factors.")
+    return value
 
 
 def _parse_decoder_channel_sequence(value: Sequence[int] | int) -> tuple[int, ...]:

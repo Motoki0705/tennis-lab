@@ -11,6 +11,8 @@ name: plcs_multiview_axial_split
 # 0 shared layers + a 6-deep stack per task trunk (rotation / pose).
 num_layers: 0
 num_task_layers: 6
+rot_num_task_layers: 6
+pose_num_task_layers: 6
 # Rotation trunk carries the canonical-pose head (geometry regularisation) and
 # an auxiliary position head (teaches multiview triangulation); the dedicated
 # pose trunk produces the precise final position.

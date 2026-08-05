@@ -17,41 +17,39 @@ Notes:
 from __future__ import annotations
 
 import shutil
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig
 from tqdm import tqdm
 
-from src.tasks.base.visualization.style import SceneStyleConfig
-from src.tasks.plcs.generate_dataset.io.dataset_io import load_scene
+from src.tasks.base.visualization.style import (
+    SceneStyleConfig,
+    parse_scene_style,
+    parse_view_3d,
+)
+from src.tasks.plcs.configuration import PLCSAnalysisRuntimeConfig
+from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene
 from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.visualization.adapters.predict_inputs import build_multiview_inputs
 from src.tasks.plcs.visualization.orchestrator import RuntimeConfig, run_visualization
-from src.utils.device import resolve_device
+from src.utils.configuration import PathResolver, PathRole
 from src.utils.hydra import hydra_main
 from src.utils.io import load_json_if_exists, save_json
 from src.utils.rendering.camera_view import CameraController
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
-def _resolve_device(device_cfg: Any) -> str:
-    return str(resolve_device(str(device_cfg)))
-
-
 def _resolve_cameras(raw: Any, num_cameras: int) -> list[int]:
-    if raw is None or str(raw).strip() == "" or str(raw).strip() == "all":
+    if raw == "all":
         return list(range(num_cameras))
     if isinstance(raw, str):
         return [int(part.strip()) for part in raw.split(",")]
     return [int(v) for v in raw]
 
 
-def _scene_names(scene_dir: Path, split: str) -> list[str]:
-    split_path = scene_dir / f"{split}.txt"
+def _scene_names(split_path: Path) -> list[str]:
     if not split_path.exists():
         raise FileNotFoundError(f"Split file not found: {split_path}")
     return [
@@ -93,7 +91,7 @@ def _score_scene(
     cameras_cfg: Any,
     candidates_per_scene: int,
 ) -> list[dict[str, Any]]:
-    scene = load_scene(scene_path)
+    scene: Any = load_scene(scene_path)
     cameras = _resolve_cameras(cameras_cfg, int(scene.num_cameras))
     outputs = predictor.predict(
         denormalize=False,
@@ -229,6 +227,9 @@ def _render_sample(
     animation_view: str,
     fps: float,
     save_path: Path,
+    resolver: PathResolver,
+    style: SceneStyleConfig,
+    view_3d: CameraController,
 ) -> None:
     runtime = RuntimeConfig(
         mode="predict",
@@ -239,11 +240,12 @@ def _render_sample(
         fps=fps,
         save=save_path,
         camera=0,
-        cameras=list(sample["cameras"]),
+        cameras=tuple(cast("list[int]", sample["cameras"])),
         info=False,
-        style=SceneStyleConfig(),
-        view_3d=CameraController("broadcast"),
+        style=style,
+        view_3d=view_3d,
         canonical_pose_source="gt",
+        resolver=resolver,
     )
     exit_code = run_visualization(runtime)
     if exit_code != 0:
@@ -254,24 +256,46 @@ def _render_sample(
     config_path="../../configs",
     config_name="analyze_rotation_error_samples",
     version_base="1.3",
+    validation_boundary="plcs.analyze_rotation_error_samples",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
-    scene_dir = Path(to_absolute_path(str(cfg.run.scene_dir)))
-    checkpoint = Path(to_absolute_path(str(cfg.run.checkpoint)))
-    out_dir = Path(to_absolute_path(str(cfg.run.output_dir)))
+    runtime_config = PLCSAnalysisRuntimeConfig.rotation_error(cfg)
+    resolver = runtime_config.resolver
+    if (
+        runtime_config.scene_dir is None
+        or runtime_config.scene_records_dir is None
+        or runtime_config.split_path is None
+        or runtime_config.checkpoint is None
+        or runtime_config.scene_output_dir is None
+        or runtime_config.result_path is None
+        or runtime_config.device is None
+    ):
+        raise AssertionError("PLCS rotation-analysis paths were not resolved.")
+    scene_dir = runtime_config.scene_dir
+    checkpoint = runtime_config.checkpoint
+    out_dir = runtime_config.output_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    device = _resolve_device(cfg.analysis.device)
-    predictor = PLCSPredictor.load_from_checkpoint(checkpoint, device=device)
-    scene_base = scene_dir / "scenes"
-
+    device = runtime_config.device
+    predictor = PLCSPredictor.load_from_checkpoint(
+        checkpoint,
+        resolver=resolver,
+        device=device,
+        allow_device_fallback=False,
+    )
     candidates: list[dict[str, Any]] = []
-    names = _scene_names(scene_dir, str(cfg.analysis.split))
+    names = _scene_names(runtime_config.split_path)
     for scene_name in tqdm(names, desc="scoring scenes"):
+        scene_path = resolver.resolve(
+            PathRole.DATA,
+            str(cfg.run.scene_dir),
+            "scenes",
+            scene_name,
+        )
         candidates.extend(
             _score_scene(
                 predictor,
-                scene_base / scene_name,
+                scene_path,
                 cfg.analysis.cameras,
                 candidates_per_scene=int(cfg.analysis.candidates_per_scene),
             )
@@ -283,7 +307,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         unique_scenes=bool(cfg.analysis.unique_scenes),
     )
 
-    scene_out_dir = out_dir / str(cfg.analysis.scene_subdir)
+    scene_out_dir = runtime_config.scene_output_dir
     scene_out_dir.mkdir(parents=True, exist_ok=True)
     for rank, item in enumerate(selected, start=1):
         item["rank"] = rank
@@ -313,6 +337,9 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
                 animation_view=str(cfg.analysis.animation_view),
                 fps=float(cfg.analysis.fps),
                 save_path=save_path,
+                resolver=resolver,
+                style=parse_scene_style(cfg.visualization.style),
+                view_3d=parse_view_3d(cfg.visualization.view_3d),
             )
 
     report = {
@@ -328,11 +355,11 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         "num_scenes": len(names),
         "samples": selected,
     }
-    report_path = out_dir / str(cfg.analysis.report_filename)
+    report_path = runtime_config.result_path
     save_json(report, report_path)
     print(f"Saved rotation-error sample report to {report_path}")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(cast(Callable[[], int], main)())
+    raise SystemExit(main())

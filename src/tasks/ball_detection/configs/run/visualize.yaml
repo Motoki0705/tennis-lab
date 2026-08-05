@@ -1,2 +1,3 @@
-output_dir: outputs/ball_detection/visualization
+output_dir: ball_detection/visualization
 device: auto
+allow_device_fallback: false

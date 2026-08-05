@@ -1,4 +1,5 @@
 defaults:
+  - paths: default
   - model: conv_next_unet
   - data: 3dgs_blcs_mixed
   - loss: default
@@ -7,8 +8,8 @@ defaults:
   - run: train
   - _self_
 
-model:
-  nms_kernel: 3
+paths:
+  checkpoint_root: ckpt
 
 metrics:
   nms_kernel: 3
@@ -29,14 +30,14 @@ training:
     enabled: false
 
 run:
-  output_dir: outputs/ball_detection/3dgs_blcs_paired_v1/treatment/seed_${run.seed}
+  output_dir: ball_detection/3dgs_blcs_paired_v1/treatment/seed_${run.seed}
   seed: 731
-  init_weights: ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
+  init_weights: ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
   test_after_fit: false
 
 hydra:
   run:
-    dir: ${run.output_dir}
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}
   output_subdir: null
   job:
     chdir: false

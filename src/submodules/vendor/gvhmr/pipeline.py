@@ -55,7 +55,7 @@ class Pipeline(nn.Module):
             self.register_buffer("cam_angvel_mean", torch.tensor(cam_angvel_stats["mean"]), persistent=False)
             self.register_buffer("cam_angvel_std", torch.tensor(cam_angvel_stats["std"]), persistent=False)
 
-    def forward(self, inputs, postproc=True, static_cam=False):
+    def forward(self, inputs, postproc=True, *, static_cam):
         outputs = dict()
         length = inputs["length"]  # (B,) effective length of each sample
 
@@ -187,7 +187,7 @@ class GvhmrDemoModel(nn.Module):
         self.pipeline = pipeline
 
     @torch.no_grad()
-    def predict(self, data, static_cam=False):
+    def predict(self, data, *, static_cam):
         """Run GVHMR on a single-person sequence (batch dim is added).
 
         data: {
@@ -230,11 +230,19 @@ class GvhmrDemoModel(nn.Module):
             _LOGGER.warning("Unexpected keys: %s", unexpected)
 
 
-def build_gvhmr_demo_model(ckpt_path=None) -> GvhmrDemoModel:
+def build_gvhmr_demo_model(
+    checkpoint_path,
+    body_models_dir,
+    *,
+    bundled_assets,
+) -> GvhmrDemoModel:
     """Build the GVHMR demo model with the released SIGA24 configuration."""
     denoiser3d = NetworkEncoderRoPE()
-    endecoder = EnDecoder(stats_name=DEMO_ENDECODER_STATS)
+    endecoder = EnDecoder(
+        body_model_path=body_models_dir,
+        bundled_assets=bundled_assets,
+        stats_name=DEMO_ENDECODER_STATS,
+    )
     model = GvhmrDemoModel(Pipeline(denoiser3d, endecoder, normalize_cam_angvel=True))
-    if ckpt_path is not None:
-        model.load_pretrained_model(ckpt_path)
+    model.load_pretrained_model(checkpoint_path)
     return model

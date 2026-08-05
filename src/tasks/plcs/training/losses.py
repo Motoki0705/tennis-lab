@@ -6,15 +6,22 @@ Temporal consistency is enforced by the GAN discriminator.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import dataclasses
+import math
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import partial
+from typing import cast
 
 import torch
 import torch.nn as nn
 from torch import Tensor
 
 from src.tasks.plcs.utils.pose_geometry import world_pose_to_canonical_pose
+from src.utils.configuration import (
+    ConfigurationTypeError,
+    SemanticConfigurationError,
+)
 from src.utils.geometry.angles import wrapped_angle_diff as _wrapped_angle_diff
 from src.utils.geometry.skeleton import (
     compute_bone_lengths,
@@ -63,60 +70,112 @@ class PLCSLossConfig:
 
     """
 
-    position_weight: float = 1.0
-    rotation_weight: float = 1.0
-    angle_weight: float = 0.0
+    position_weight: float
+    rotation_weight: float
+    angle_weight: float
     # Temporal jerk prior on predicted player position (removes per-frame
     # jitter / inference velocity spikes). See src/utils/losses/temporal.py.
-    position_smoothness_weight: float = 0.0
-    canonical_pose_weight: float = 0.0
-    joint_angle_weight: float = 0.0
-    torsion_angle_weight: float = 0.0
-    torso_twist_weight: float = 0.0
-    bone_length_weight: float = 0.0
+    position_smoothness_weight: float
+    canonical_pose_weight: float
+    joint_angle_weight: float
+    torsion_angle_weight: float
+    torso_twist_weight: float
+    bone_length_weight: float
     # Angular-velocity (temporal) loss weights on canonical-pose angles (#521).
-    joint_angle_velocity_weight: float = 0.0
-    torsion_angle_velocity_weight: float = 0.0
-    torso_twist_velocity_weight: float = 0.0
+    joint_angle_velocity_weight: float
+    torsion_angle_velocity_weight: float
+    torso_twist_velocity_weight: float
     # Optional per-angle dominance weights (GT-derived) for the velocity terms.
     # None -> uniform. Lengths: 12 joint angles, 4 torsion angles, 1 twist.
-    joint_angle_velocity_angle_weights: tuple[float, ...] | None = None
-    torsion_angle_velocity_angle_weights: tuple[float, ...] | None = None
+    joint_angle_velocity_angle_weights: tuple[float, ...] | None
+    torsion_angle_velocity_angle_weights: tuple[float, ...] | None
 
     @classmethod
-    def from_dict(cls, cfg: dict) -> PLCSLossConfig:
+    def from_dict(cls, cfg: dict[str, object]) -> PLCSLossConfig:
         """Create config from dictionary, e.g. loaded from YAML."""
+        fields = {field.name for field in dataclasses.fields(cls)}
+        unknown = sorted(set(cfg) - fields)
+        missing = sorted(fields - set(cfg))
+        if unknown or missing:
+            raise ValueError(
+                f"Invalid PLCS loss keys: missing={missing}, unknown={unknown}."
+            )
 
-        def _opt_weights(key: str) -> tuple[float, ...] | None:
-            value = cfg.get(key)
-            return None if value is None else tuple(float(v) for v in value)
+        scalar_keys = fields - {
+            "joint_angle_velocity_angle_weights",
+            "torsion_angle_velocity_angle_weights",
+        }
+
+        def _weight(key: str) -> float:
+            value = cfg[key]
+            if type(value) not in {float, int}:
+                raise ConfigurationTypeError(
+                    f"loss.{key}: expected float | int, got {type(value).__name__}."
+                )
+            result = float(cast("float | int", value))
+            if not math.isfinite(result) or result < 0.0:
+                raise SemanticConfigurationError(
+                    f"loss.{key} must be finite and non-negative."
+                )
+            return result
+
+        weights = {key: _weight(key) for key in scalar_keys}
+
+        def _opt_weights(key: str, *, expected_length: int) -> tuple[float, ...] | None:
+            value = cfg[key]
+            if value is None:
+                return None
+            if type(value) not in {list, tuple}:
+                raise ConfigurationTypeError(
+                    f"loss.{key}: expected list | tuple | None, "
+                    f"got {type(value).__name__}."
+                )
+            raw_values: tuple[object, ...] = tuple(
+                cast("Sequence[object]", value)
+            )
+            if len(raw_values) != expected_length:
+                raise SemanticConfigurationError(
+                    f"loss.{key} must contain exactly {expected_length} values."
+                )
+            parsed: list[float] = []
+            for index, raw in enumerate(raw_values):
+                if type(raw) not in {float, int}:
+                    raise ConfigurationTypeError(
+                        f"loss.{key}[{index}]: expected float | int, "
+                        f"got {type(raw).__name__}."
+                    )
+                number = float(cast("float | int", raw))
+                if not math.isfinite(number) or number < 0.0:
+                    raise SemanticConfigurationError(
+                        f"loss.{key}[{index}] must be finite and non-negative."
+                    )
+                parsed.append(number)
+            if not any(parsed):
+                raise SemanticConfigurationError(
+                    f"loss.{key} must contain at least one positive value."
+                )
+            return tuple(parsed)
 
         return cls(
-            position_weight=float(cfg.get("position_weight", 1.0)),
-            rotation_weight=float(cfg.get("rotation_weight", 1.0)),
-            angle_weight=float(cfg.get("angle_weight", 0.0)),
-            position_smoothness_weight=float(
-                cfg.get("position_smoothness_weight", 0.0)
-            ),
-            canonical_pose_weight=float(cfg.get("canonical_pose_weight", 0.0)),
-            joint_angle_weight=float(cfg.get("joint_angle_weight", 0.0)),
-            torsion_angle_weight=float(cfg.get("torsion_angle_weight", 0.0)),
-            torso_twist_weight=float(cfg.get("torso_twist_weight", 0.0)),
-            bone_length_weight=float(cfg.get("bone_length_weight", 0.0)),
-            joint_angle_velocity_weight=float(
-                cfg.get("joint_angle_velocity_weight", 0.0)
-            ),
-            torsion_angle_velocity_weight=float(
-                cfg.get("torsion_angle_velocity_weight", 0.0)
-            ),
-            torso_twist_velocity_weight=float(
-                cfg.get("torso_twist_velocity_weight", 0.0)
-            ),
+            position_weight=weights["position_weight"],
+            rotation_weight=weights["rotation_weight"],
+            angle_weight=weights["angle_weight"],
+            position_smoothness_weight=weights["position_smoothness_weight"],
+            canonical_pose_weight=weights["canonical_pose_weight"],
+            joint_angle_weight=weights["joint_angle_weight"],
+            torsion_angle_weight=weights["torsion_angle_weight"],
+            torso_twist_weight=weights["torso_twist_weight"],
+            bone_length_weight=weights["bone_length_weight"],
+            joint_angle_velocity_weight=weights["joint_angle_velocity_weight"],
+            torsion_angle_velocity_weight=weights[
+                "torsion_angle_velocity_weight"
+            ],
+            torso_twist_velocity_weight=weights["torso_twist_velocity_weight"],
             joint_angle_velocity_angle_weights=_opt_weights(
-                "joint_angle_velocity_angle_weights"
+                "joint_angle_velocity_angle_weights", expected_length=12
             ),
             torsion_angle_velocity_angle_weights=_opt_weights(
-                "torsion_angle_velocity_angle_weights"
+                "torsion_angle_velocity_angle_weights", expected_length=4
             ),
         )
 
@@ -454,6 +513,8 @@ def canonical_pose_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """Canonical-pose term: masked smooth-L1 between canonical joint positions."""
     if not inputs.has_canonical:
         return inputs.zero
+    if inputs.pred_canonical_pose is None or inputs.target_canonical_pose is None:
+        raise AssertionError("has_canonical requires both canonical pose tensors.")
 
     per_frame = nn.functional.smooth_l1_loss(
         inputs.pred_canonical_pose,
@@ -470,6 +531,8 @@ def joint_angle_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """
     if not inputs.has_canonical:
         return inputs.zero
+    if inputs.pred_canonical_pose is None or inputs.target_canonical_pose is None:
+        raise AssertionError("has_canonical requires both canonical pose tensors.")
 
     per_frame = joint_angle_loss(
         inputs.pred_canonical_pose,
@@ -486,6 +549,8 @@ def torsion_angle_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """
     if not inputs.has_canonical:
         return inputs.zero
+    if inputs.pred_canonical_pose is None or inputs.target_canonical_pose is None:
+        raise AssertionError("has_canonical requires both canonical pose tensors.")
 
     per_frame = torsion_angle_loss(
         inputs.pred_canonical_pose,
@@ -502,6 +567,8 @@ def torso_twist_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """
     if not inputs.has_canonical:
         return inputs.zero
+    if inputs.pred_canonical_pose is None or inputs.target_canonical_pose is None:
+        raise AssertionError("has_canonical requires both canonical pose tensors.")
 
     per_frame = torso_twist_loss(
         inputs.pred_canonical_pose,
@@ -515,6 +582,8 @@ def bone_length_loss_term(inputs: PLCSLossInputs) -> Tensor:
     """Bone-length consistency term on canonical joints."""
     if not inputs.has_canonical:
         return inputs.zero
+    if inputs.pred_canonical_pose is None or inputs.target_canonical_pose is None:
+        raise AssertionError("has_canonical requires both canonical pose tensors.")
 
     per_frame = bone_length_loss(
         inputs.pred_canonical_pose,
@@ -581,9 +650,7 @@ def _angle_velocity_loss_term(
     frame_mask = inputs.frame_mask
     if frame_mask is not None and frame_mask.shape == pred_a.shape[:-1]:
         velocity_mask = (frame_mask[..., 1:] > 0) & (frame_mask[..., :-1] > 0)
-        return masked_mean(
-            per_frame, velocity_mask, binarize=True, denom_min=1.0
-        )
+        return masked_mean(per_frame, velocity_mask, binarize=True, denom_min=1.0)
     return per_frame.mean()
 
 
@@ -654,29 +721,19 @@ class PLCSLoss(nn.Module):
 
     def __init__(
         self,
-        config: PLCSLossConfig | None = None,
+        config: PLCSLossConfig,
         *,
-        position_weight: float = 1.0,
-        rotation_weight: float = 1.0,
         loss_terms: dict[str, PLCSLossTerm] | None = None,
     ) -> None:
         """Initialize the loss module.
 
         Args:
-            config: Loss configuration. If provided, overrides legacy weights.
-            position_weight: Legacy position-loss weight.
-            rotation_weight: Legacy rotation-loss weight.
+            config: Complete validated loss configuration.
             loss_terms: Optional custom loss registry.
 
         """
         super().__init__()
-        if config is not None:
-            self.config = config
-        else:
-            self.config = PLCSLossConfig(
-                position_weight=position_weight,
-                rotation_weight=rotation_weight,
-            )
+        self.config = config
 
         self.loss_terms: dict[str, PLCSLossTerm] = (
             dict(DEFAULT_LOSS_TERMS) if loss_terms is None else dict(loss_terms)
@@ -710,8 +767,8 @@ class PLCSLoss(nn.Module):
             )
 
     def weight_for(self, name: str) -> float:
-        """Return the configured weight for a loss term, or 0.0 if unset."""
-        return float(getattr(self.config, f"{name}_weight", 0.0))
+        """Return the configured weight for a registered loss term."""
+        return float(getattr(self.config, f"{name}_weight"))
 
     def _requires_canonical_pose(self) -> bool:
         """Whether any enabled registered term needs canonical pose tensors."""

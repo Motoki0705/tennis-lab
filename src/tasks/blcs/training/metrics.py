@@ -16,8 +16,9 @@ class BLCSMetrics:
 
     def __init__(
         self,
-        position_threshold_m: float = 0.3,
-        endpoint_threshold_m: float = 0.5,
+        *,
+        position_threshold_m: float,
+        endpoint_threshold_m: float,
         scale_xyz: tuple[float, float, float] = COURT_COORD_SCALE_XYZ,
     ) -> None:
         """Initialize metrics tracker.
@@ -48,7 +49,7 @@ class BLCSMetrics:
         self.total_y_error = 0.0
         self.total_z_error = 0.0
         self.total_endpoint_error = 0.0
-        self.num_frames = 0
+        self.num_frames: float = 0.0
         self.num_sequences = 0
         self.num_correct_frames = [0.0 for _ in self.position_thresholds_m]
         self.num_correct_endpoints = [0.0 for _ in self.endpoint_thresholds_m]

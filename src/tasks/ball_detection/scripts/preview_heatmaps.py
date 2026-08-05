@@ -13,7 +13,6 @@ Notes:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import cv2
@@ -21,7 +20,10 @@ import numpy as np
 import torch
 from omegaconf import DictConfig
 
+from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
+from src.tasks.ball_detection.configuration import BallRuntimePaths
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
+from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
 from src.tasks.base.preview import (
     compose_titled_row as _compose_row,
 )
@@ -41,14 +43,17 @@ from src.utils.io import save_json
     config_path="../configs",
     config_name="preview_heatmaps",
     version_base="1.3",
+    validation_boundary="ball.preview",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
-    output_dir = Path(str(cfg.preview.output_dir)).expanduser()
+    output_dir = BallRuntimePaths.from_config(cfg).output(str(cfg.preview.output_dir))
     output_dir.mkdir(parents=True, exist_ok=True)
 
     split_name = str(cfg.preview.split)
     datamodule = build_ball_detection_datamodule(cfg)
+    if not isinstance(datamodule, TrackNetDataModule):
+        raise TypeError("Heatmap previews require a TrackNet-compatible datamodule.")
     dataset = datamodule.create_dataset(
         split_name=split_name,
         split_file=resolve_split_file(cfg, split_name),
@@ -80,9 +85,9 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         for sigma_ratio in ratios:
             instance_heatmaps = generate_gaussian_heatmaps(
                 size_hw=(height, width),
-                centers_xy=centers_xy,
+                centers_xy=torch.tensor(centers_xy, dtype=torch.float32),
                 sigma_ratio=sigma_ratio,
-                visibility=visibility,
+                visibility=torch.tensor(visibility, dtype=torch.bool),
             )
             heatmap = (
                 instance_heatmaps.amax(dim=0)
@@ -96,7 +101,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
                 sigma_ratio=sigma_ratio,
                 gt_centers_xy=centers_xy,
                 gt_visibility=visibility,
-                argmax_xy=tuple(float(v) for v in argmax_xy.tolist()),
+                argmax_xy=(float(argmax_xy[0].item()), float(argmax_xy[1].item())),
                 peak_value=float(peak_value.item()),
                 cfg=cfg,
             )
@@ -109,7 +114,9 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
                 }
             )
 
-        canvas = _compose_row(panels, ["original", *[f"ratio={ratio:.4f}" for ratio in ratios]], cfg)
+        canvas = _compose_row(
+            panels, ["original", *[f"ratio={ratio:.4f}" for ratio in ratios]], cfg
+        )
         file_stem = f"sample_{sample_index:05d}_frame_{frame_index:02d}"
         image_path = output_dir / f"{file_stem}.png"
         cv2.imwrite(str(image_path), cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR))
@@ -135,9 +142,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
 def _select_frame_index(visibility: torch.Tensor) -> int:
     frame_visibility = (
-        (visibility > 0.5).any(dim=-1)
-        if visibility.ndim == 2
-        else visibility > 0.5
+        (visibility > 0.5).any(dim=-1) if visibility.ndim == 2 else visibility > 0.5
     )
     visible_indices = torch.nonzero(frame_visibility, as_tuple=False).flatten()
     if len(visible_indices) > 0:
@@ -162,8 +167,8 @@ def _frame_centers_xy(
 
 def _tensor_to_image(image: torch.Tensor) -> np.ndarray:
     image_np = image.detach().cpu().permute(1, 2, 0).numpy()
-    image_np = np.clip(image_np * 255.0, 0, 255).astype(np.uint8)
-    return image_np
+    rendered: np.ndarray = np.clip(image_np * 255.0, 0, 255).astype(np.uint8)
+    return rendered
 
 
 def _annotate_original(
@@ -199,7 +204,9 @@ def _render_ratio_panel(
 ) -> np.ndarray:
     overlay = image.copy()
     heatmap_np = np.clip(heatmap.detach().cpu().numpy(), 0.0, 1.0)
-    heatmap_cm = cv2.applyColorMap((heatmap_np * 255).astype(np.uint8), cv2.COLORMAP_JET)
+    heatmap_cm = cv2.applyColorMap(
+        (heatmap_np * 255).astype(np.uint8), cv2.COLORMAP_JET
+    )
     heatmap_cm = cv2.cvtColor(heatmap_cm, cv2.COLOR_BGR2RGB)
     overlay = cv2.addWeighted(overlay, 0.55, heatmap_cm, 0.45, 0.0)
 
@@ -221,7 +228,8 @@ def _render_ratio_panel(
             color=(255, 80, 80),
             thickness=1,
         )
-    return overlay
+    rendered: np.ndarray = np.asarray(overlay)
+    return rendered
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point

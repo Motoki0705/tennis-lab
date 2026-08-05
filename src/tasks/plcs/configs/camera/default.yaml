@@ -8,3 +8,14 @@ fixed_look_at: [0.0, 0.0, 0.0]
 fixed_baseline_clear_extra: 0.0
 fixed_position_noise_radius: 2.0
 fixed_look_at_xy_radius: 1.0
+broadcast_setback: 20.0
+broadcast_height: 7.0
+broadcast_hfov_deg: 35.0
+broadcast_look_at_y: 0.0
+broadcast_look_at_height: 0.5
+broadcast_position_noise_radius: 1.0
+broadcast_look_at_xy_radius: 1.0
+broadcast_hfov_jitter_deg: 2.0
+broadcast_setback_range: null
+broadcast_height_range: null
+broadcast_court_width_frac_range: null

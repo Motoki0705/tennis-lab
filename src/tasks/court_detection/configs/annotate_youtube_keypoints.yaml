@@ -1,12 +1,16 @@
+defaults:
+  - paths: default
+  - _self_
+
 hydra:
   run:
-    dir: outputs/court_detection/annotate_youtube_keypoints/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},court_detection/annotate_youtube_keypoints,${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null
   job:
     chdir: false
 
 annotate:
-  root: data/court/youtube
+  root: court/youtube
   split: train
   source_file_pattern: annotations/{split}.json
   target_file_pattern: annotations/{split}.json

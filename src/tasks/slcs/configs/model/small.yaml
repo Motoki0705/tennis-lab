@@ -5,12 +5,12 @@ num_shared_layers: 2
 num_position_layers: 0
 num_rotation_layers: 0
 num_heads: 4
-ffn_dim: null
+ffn_dim: 192
 dropout: 0.1
-rope_dim: null
-rope_theta: 10000.0
-rope_theta_time: null
-rope_theta_entity: null
+rope_dim: 16
+rope_theta_time: 10000.0
+rope_theta_entity: 10000.0
+attention_type: mha
 ffn_type: swiglu
 invisible_init_std: 0.02
 dino_patch_downsample_factor: 1

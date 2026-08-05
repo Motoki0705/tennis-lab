@@ -5,3 +5,9 @@ defaults:
 
 gan:
   enabled: true
+
+trainer:
+  gradient_clip_val: null
+
+early_stopping:
+  enabled: false

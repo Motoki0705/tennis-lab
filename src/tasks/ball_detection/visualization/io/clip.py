@@ -87,7 +87,9 @@ def load_clip_sequence(
 
         render_frames_rgb.append(torch.from_numpy(resized_rgb.copy()).to(torch.uint8))
 
-        model_frame = torch.from_numpy(resized_rgb.transpose(2, 0, 1)).to(torch.float32) / 255.0
+        model_frame = (
+            torch.from_numpy(resized_rgb.transpose(2, 0, 1)).to(torch.float32) / 255.0
+        )
         model_frames.append(model_frame)
 
         label = labels.get(frame_path.name, FrameLabel(visibility=0.0, x=0.0, y=0.0))
@@ -129,7 +131,9 @@ def _read_label_csv(path: Path) -> dict[str, FrameLabel]:
         required_fields = {"file name", "visibility", "x-coordinate", "y-coordinate"}
         missing = required_fields.difference(reader.fieldnames or [])
         if missing:
-            raise ValueError(f"Missing required CSV columns in {path}: {sorted(missing)}")
+            raise ValueError(
+                f"Missing required CSV columns in {path}: {sorted(missing)}"
+            )
         for row in reader:
             frame_name = str(row["file name"]).strip()
             labels[frame_name] = FrameLabel(

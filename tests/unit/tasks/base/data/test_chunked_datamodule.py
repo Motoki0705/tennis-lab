@@ -8,6 +8,7 @@ import pytest
 from torch.utils.data import Dataset
 
 from src.tasks.base.data.chunked_datamodule import BaseChunkedDataModule
+from src.utils.configuration import MissingConfigurationKeyError
 
 pytestmark = pytest.mark.unit
 
@@ -66,40 +67,72 @@ class _DM(BaseChunkedDataModule):
     def _build_chunk_manager(self):
         return _FakeChunkManager()
 
-    def _default_chunks_dir(self) -> str:
-        return "outputs/chunks"
+
+def _config(
+    root: Path,
+    *,
+    scenes_per_chunk: int = 1000,
+    epochs_per_chunk: int = 3,
+    prefetch_chunks: int = 1,
+    generation_workers: int = 1,
+    generator_device: str = "cpu",
+) -> dict[str, object]:
+    return {
+        "paths": {
+            "project_root": str(root.parent),
+            "data_root": str(root.parent),
+            "checkpoint_root": "checkpoints",
+            "artifact_root": str(root.parent),
+            "output_root": "outputs",
+            "cache_root": ".cache",
+            "external_asset_root": "external",
+        },
+        "data": {
+            "scene_dir": root.name,
+            "batch_size": 2,
+            "num_workers": 0,
+            "pin_memory": False,
+            "chunk": {
+                "scenes_per_chunk": scenes_per_chunk,
+                "epochs_per_chunk": epochs_per_chunk,
+                "prefetch_chunks": prefetch_chunks,
+                "chunks_dir": "chunks",
+                "generation_workers": generation_workers,
+            },
+            "generator_device": generator_device,
+        },
+    }
 
 
-def test_chunk_config_parsing() -> None:
+def test_chunk_config_parsing(tmp_path: Path) -> None:
+    scene_root = tmp_path / "dataset_fixture"
     dm = _DM(
-        {
-            "data": {
-                "chunk": {
-                    "scenes_per_chunk": 500,
-                    "epochs_per_chunk": 2,
-                    "prefetch_chunks": 3,
-                    "chunks_dir": "/tmp/chunks",
-                    "generation_workers": 4,
-                },
-                "generator_device": "cuda",
-            }
-        }
+        _config(
+            scene_root,
+            scenes_per_chunk=500,
+            epochs_per_chunk=2,
+            prefetch_chunks=3,
+            generation_workers=4,
+            generator_device="cuda",
+        )
     )
     assert dm.scenes_per_chunk == 500
     assert dm.epochs_per_chunk == 2
     assert dm.prefetch_chunks == 3
-    assert dm.chunks_dir == Path("/tmp/chunks")
+    assert dm.chunks_dir == tmp_path / "chunks"
     assert dm.generation_workers == 4
     assert dm.generator_device == "cuda"
 
 
-def test_chunk_config_defaults() -> None:
-    dm = _DM({})
-    assert dm.scenes_per_chunk == 1000
-    assert dm.epochs_per_chunk == 3
-    assert dm.prefetch_chunks == 1
-    assert dm.chunks_dir == Path("outputs/chunks")
-    assert dm.generator_device == "cpu"
+def test_chunk_config_allows_zero_prefetch(tmp_path: Path) -> None:
+    dm = _DM(_config(tmp_path / "dataset_fixture", prefetch_chunks=0))
+
+    assert dm.prefetch_chunks == 0
+
+
+def test_chunk_config_rejects_missing_contract() -> None:
+    with pytest.raises(MissingConfigurationKeyError, match="configuration.paths"):
+        _DM({})
 
 
 def test_epoch_end_rotates_after_epochs_per_chunk(tmp_path: Path) -> None:
@@ -108,7 +141,7 @@ def test_epoch_end_rotates_after_epochs_per_chunk(tmp_path: Path) -> None:
     for s in ("train", "val", "test"):
         (root / f"{s}.txt").write_text("scene_0000\n", encoding="utf-8")
 
-    dm = _DM({"data": {"scene_dir": str(root), "chunk": {"epochs_per_chunk": 2}}})
+    dm = _DM(_config(root, epochs_per_chunk=2))
     dm.setup("fit")
     assert dm.chunk_manager.started is True  # type: ignore[union-attr]
     assert dm._current_chunk_id == 0
@@ -137,7 +170,7 @@ def test_teardown_stops_manager(tmp_path: Path) -> None:
     root.mkdir()
     for s in ("train", "val", "test"):
         (root / f"{s}.txt").write_text("scene_0000\n", encoding="utf-8")
-    dm = _DM({"data": {"scene_dir": str(root)}})
+    dm = _DM(_config(root))
     dm.setup("fit")
     manager = dm.chunk_manager
     dm.teardown("fit")
@@ -158,6 +191,6 @@ def test_load_next_chunk_raises_when_none(tmp_path: Path) -> None:
     root.mkdir()
     for s in ("train", "val", "test"):
         (root / f"{s}.txt").write_text("scene_0000\n", encoding="utf-8")
-    dm = _DMNone({"data": {"scene_dir": str(root)}})
+    dm = _DMNone(_config(root))
     with pytest.raises(RuntimeError, match="no ready chunk"):
         dm.setup("fit")

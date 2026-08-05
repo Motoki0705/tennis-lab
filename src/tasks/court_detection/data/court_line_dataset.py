@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import torch
@@ -13,6 +12,7 @@ from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
 
+from src.tasks.court_detection.configuration import CourtDataConfig
 from src.tasks.court_detection.data.augmentation import (
     IMAGENET_MEAN,
     IMAGENET_STD,
@@ -28,10 +28,10 @@ class CourtLineDataset(Dataset):
     def __init__(
         self,
         root: str | Path,
-        split: str = "train",
-        is_train: bool = True,
-        config: dict[str, Any] | None = None,
-        mask_dir_name: str = "line_masks",
+        split: str,
+        is_train: bool,
+        config: CourtDataConfig,
+        mask_dir_name: str,
     ) -> None:
         super().__init__()
         self.root = Path(root)
@@ -47,29 +47,28 @@ class CourtLineDataset(Dataset):
             self._entries: list[dict] = json.load(f)
 
         self._entries = [
-            e for e in self._entries
-            if (self.masks_dir / f"{e['id']}.png").exists()
+            e for e in self._entries if (self.masks_dir / f"{e['id']}.png").exists()
         ]
 
-        cfg = config or {}
+        aug = config.augmentation
         self.spatial_transforms, self.image_transforms = build_seg_transforms(
             is_train=is_train,
-            train_scales=cfg.get("train_scales"),
-            val_short_side=cfg.get("val_short_side", 640),
-            crop_scale=cfg.get("crop_scale", (0.3, 1.0)),
-            crop_ratio=cfg.get("crop_ratio", (0.75, 1.333)),
-            hflip_prob=cfg.get("hflip_prob", 0.5),
-            swap_pairs=cfg.get("hflip_swap_pairs"),
-            affine_degrees=cfg.get("affine_degrees", 15.0),
-            affine_translate=cfg.get("affine_translate", (0.1, 0.1)),
-            affine_scale=cfg.get("affine_scale", (0.8, 1.2)),
-            affine_shear=cfg.get("affine_shear", 10.0),
-            perspective_distortion=cfg.get("perspective_distortion", 0.15),
-            perspective_prob=cfg.get("perspective_prob", 0.3),
-            color_jitter=cfg.get("color_jitter", (0.3, 0.3, 0.3, 0.1)),
-            gaussian_blur_kernel=cfg.get("gaussian_blur_kernel"),
-            gaussian_blur_sigma=cfg.get("gaussian_blur_sigma", (0.1, 2.0)),
-            gaussian_blur_prob=cfg.get("gaussian_blur_prob", 0.3),
+            train_scales=list(aug.train_scales),
+            val_short_side=aug.val_short_side,
+            crop_scale=aug.crop_scale,
+            crop_ratio=aug.crop_ratio,
+            hflip_prob=aug.hflip_prob,
+            swap_pairs=list(config.hflip_swap_pairs),
+            affine_degrees=aug.affine_degrees,
+            affine_translate=aug.affine_translate,
+            affine_scale=aug.affine_scale,
+            affine_shear=aug.affine_shear,
+            perspective_distortion=aug.perspective_distortion,
+            perspective_prob=aug.perspective_prob,
+            color_jitter=aug.color_jitter,
+            gaussian_blur_kernel=list(aug.gaussian_blur_kernel),
+            gaussian_blur_sigma=aug.gaussian_blur_sigma,
+            gaussian_blur_prob=aug.gaussian_blur_prob,
         )
 
     def __len__(self) -> int:
@@ -79,9 +78,11 @@ class CourtLineDataset(Dataset):
         entry = self._entries[idx]
         image_id: str = entry["id"]
 
-        img_path = find_existing_file(
-            self.images_dir, image_id, (".png", ".jpg")
-        ) or (self.images_dir / f"{image_id}.jpg")
+        img_path = find_existing_file(self.images_dir, image_id, (".png", ".jpg"))
+        if img_path is None:
+            raise FileNotFoundError(
+                f"Image not found for image_id={image_id!r} under {self.images_dir}."
+            )
         img = Image.open(img_path).convert("RGB")
 
         mask_path = self.masks_dir / f"{image_id}.png"

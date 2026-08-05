@@ -30,7 +30,7 @@ def build_cells_response(cell_manager: CellManager | None = None) -> CellsRespon
             cells.append(
                 CellInfo(
                     cell_id=cell_id,
-                    side=side,  # type: ignore[arg-type]
+                    side=side,
                     bounds=CellBounds(
                         x_min=b.x_min,
                         x_max=b.x_max,
@@ -42,4 +42,3 @@ def build_cells_response(cell_manager: CellManager | None = None) -> CellsRespon
             )
 
     return CellsResponse(cells=cells)
-

@@ -83,8 +83,7 @@ class RoboflowParser(WebDatasetParser):
         if self.max_bbox_side_ratio is None:
             return False
         return any(
-            bbox_max_side_ratio(box_w, box_h, img_w, img_h)
-            >= self.max_bbox_side_ratio
+            bbox_max_side_ratio(box_w, box_h, img_w, img_h) >= self.max_bbox_side_ratio
             for _cx, _cy, box_w, box_h, _vis in boxes
         )
 

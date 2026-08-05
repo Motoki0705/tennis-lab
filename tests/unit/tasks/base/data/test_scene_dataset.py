@@ -15,6 +15,7 @@ from src.tasks.base.data.scene_dataset import (
     SceneDatasetConfig,
     TemporalWindow,
 )
+from src.utils.configuration import MissingConfigurationKeyError
 
 pytestmark = pytest.mark.unit
 
@@ -133,10 +134,9 @@ def test_validate_range_ok() -> None:
     SceneDatasetBase._validate_range((1, 1024), name="r")  # no raise
 
 
-def test_parse_int_range_present_and_default() -> None:
+def test_parse_int_range_present() -> None:
     cfg = {"seq_len_range": [3, 9]}
     assert SceneDatasetBase._parse_int_range(cfg, "seq_len_range") == (3, 9)
-    assert SceneDatasetBase._parse_int_range({}, "missing", default=(1, 2)) == (1, 2)
 
 
 def test_parse_int_range_missing_no_default_raises() -> None:
@@ -147,13 +147,17 @@ def test_parse_int_range_missing_no_default_raises() -> None:
 def test_parse_camera_mode_lowercases_strings() -> None:
     assert SceneDatasetBase._parse_camera_mode({"camera_mode": "RANDOM"}) == "random"
     assert SceneDatasetBase._parse_camera_mode({"camera_mode": 2}) == 2
-    assert SceneDatasetBase._parse_camera_mode({}) == "random"
+    with pytest.raises(KeyError, match="data.camera_mode"):
+        SceneDatasetBase._parse_camera_mode({})
 
 
-def test_resolve_data_cfg_handles_none_and_dict() -> None:
-    assert SceneDatasetBase._resolve_data_cfg(None) == {}
+def test_resolve_data_cfg_requires_explicit_data_mapping() -> None:
     assert SceneDatasetBase._resolve_data_cfg({"data": {"a": 1}}) == {"a": 1}
     assert SceneDatasetBase._resolve_data_cfg({"data": {}}) == {}
+    with pytest.raises(TypeError, match="configuration: expected mapping"):
+        SceneDatasetBase._resolve_data_cfg(None)
+    with pytest.raises(MissingConfigurationKeyError, match="configuration.data"):
+        SceneDatasetBase._resolve_data_cfg({})
 
 
 # ---------------------------------------------------------------------------
@@ -287,6 +291,10 @@ def test_dataset_filters_short_scenes(make_scene_dataset, scene_writer, tmp_path
         split_file=root / "train.txt",
         seq_len_range=(5, 10),
         num_views_range=(1, 1),
+        camera_mode="random",
+        crop_mode="random",
+        min_num_frames=1,
+        min_num_cameras=1,
     )
     ds = make_scene_dataset(config=cfg, root=root, n_scenes=0)
     assert len(ds) == 1
@@ -300,6 +308,11 @@ def test_dataset_missing_split_file_raises(make_scene_dataset, tmp_path: Path) -
         scene_dir=scene_dir,
         split_file=scene_dir / "train.txt",
         seq_len_range=(1, 4),
+        num_views_range=(1, 1),
+        camera_mode="random",
+        crop_mode="random",
+        min_num_frames=1,
+        min_num_cameras=1,
     )
     with pytest.raises(FileNotFoundError, match="Split file not found"):
         make_scene_dataset(config=cfg, root=scene_dir, n_scenes=0)
@@ -339,8 +352,17 @@ def test_resolve_num_frames_uses_fallback_when_invalid(make_scene_dataset) -> No
     assert n == 7
 
 
-def test_scene_dataset_config_defaults() -> None:
-    cfg = SceneDatasetConfig(scene_dir=Path("/a"), split_file=Path("/a/train.txt"))
+def test_scene_dataset_config_preserves_explicit_contract() -> None:
+    cfg = SceneDatasetConfig(
+        scene_dir=Path("/a"),
+        split_file=Path("/a/train.txt"),
+        seq_len_range=(1, 1024),
+        num_views_range=(1, 1),
+        camera_mode="random",
+        crop_mode="random",
+        min_num_frames=1,
+        min_num_cameras=1,
+    )
     assert cfg.seq_len_range == (1, 1024)
     assert cfg.num_views_range == (1, 1)
     assert cfg.camera_mode == "random"

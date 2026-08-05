@@ -1,0 +1,20 @@
+defaults:
+  - paths: default
+  - physics: default
+  - rally: default
+  - camera: default
+  - targeted_velocity: default
+  - generator: default
+  - _self_
+
+server:
+  host: 127.0.0.1
+  port: 8001
+  log_level: info
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},hydra/blcs/api_server}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  output_subdir: null
+  job:
+    chdir: false

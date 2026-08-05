@@ -3,11 +3,64 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import cast
 
 import torch
 from torch import Tensor
 
+from src.tasks.base.configuration import exact_config_mapping, require_config_value
+from src.utils.configuration import ConfigurationTypeError, SemanticConfigurationError
+
 Assignment = tuple[Tensor, Tensor]
+
+
+@dataclass(frozen=True, slots=True)
+class TrackingMetricConfig:
+    """Single composed-config authority for lifecycle metric thresholds."""
+
+    presence_threshold: float
+    duplicate_distance: float
+
+    def __post_init__(self) -> None:
+        for name in ("presence_threshold", "duplicate_distance"):
+            value = getattr(self, name)
+            if type(value) is not float:
+                raise ConfigurationTypeError(
+                    f"tracking_metrics.{name}: expected float, "
+                    f"got {type(value).__name__}."
+                )
+        if not 0.0 < self.presence_threshold < 1.0:
+            raise SemanticConfigurationError(
+                "tracking_metrics.presence_threshold must be within (0, 1)."
+            )
+        if self.duplicate_distance <= 0.0:
+            raise SemanticConfigurationError(
+                "tracking_metrics.duplicate_distance must be > 0."
+            )
+
+    @classmethod
+    def from_mapping(cls, value: object) -> TrackingMetricConfig:
+        """Parse the exact two-key tracking-metric mapping with no defaults."""
+        mapping = exact_config_mapping(
+            value,
+            path="tracking_metrics",
+            required_keys=frozenset({"presence_threshold", "duplicate_distance"}),
+        )
+        return cls(
+            presence_threshold=cast(
+                "float",
+                require_config_value(
+                    mapping, "presence_threshold", float, path="tracking_metrics"
+                ),
+            ),
+            duplicate_distance=cast(
+                "float",
+                require_config_value(
+                    mapping, "duplicate_distance", float, path="tracking_metrics"
+                ),
+            ),
+        )
 
 
 def _boolean_segments(mask: Tensor) -> list[tuple[int, int]]:
@@ -33,9 +86,7 @@ def _instance_segments(
     values = instance_ids.tolist()
     valid = valid_frames.bool().tolist()
     for index in range(len(values) + 1):
-        instance_id = (
-            int(values[index]) if index < len(values) and valid[index] else -1
-        )
+        instance_id = int(values[index]) if index < len(values) and valid[index] else -1
         if instance_id != current_id:
             if current_id >= 0 and start is not None:
                 segments.append((start, index, current_id))
@@ -119,12 +170,11 @@ def common_lifecycle_tracking_metrics(
     batch: dict[str, Tensor],
     assignments: Sequence[Assignment],
     *,
-    presence_threshold: float = 0.5,
-    duplicate_distance: float = 0.05,
+    config: TrackingMetricConfig,
 ) -> dict[str, Tensor]:
     """Compute common metrics without connecting IDs across inactive gaps."""
     pred_position = prediction["position"]
-    pred_active = prediction["presence_logits"].sigmoid() >= presence_threshold
+    pred_active = prediction["presence_logits"].sigmoid() >= config.presence_threshold
     aligned_presence = torch.zeros_like(pred_active)
     position_errors: list[Tensor] = []
     birth_errors: list[Tensor] = []
@@ -141,8 +191,7 @@ def common_lifecycle_tracking_metrics(
             query_indices.tolist(), target_indices.tolist(), strict=True
         ):
             active = (
-                batch["target_presence"][batch_index, :, target_index]
-                & valid_frames
+                batch["target_presence"][batch_index, :, target_index] & valid_frames
             )
             aligned_presence[batch_index, :, query_index] = active
             if active.any():
@@ -169,18 +218,14 @@ def common_lifecycle_tracking_metrics(
             query_reuse += reuse
 
             for birth, death, _ in target_segments:
-                segment_range = torch.arange(
-                    birth, death, device=pred_position.device
-                )
+                segment_range = torch.arange(birth, death, device=pred_position.device)
                 distances = torch.linalg.vector_norm(
                     pred_position[batch_index, segment_range]
                     - batch["target_position"][
                         batch_index, segment_range, target_index, None
                     ],
                     dim=-1,
-                ).masked_fill(
-                    ~pred_active[batch_index, segment_range], float("inf")
-                )
+                ).masked_fill(~pred_active[batch_index, segment_range], float("inf"))
                 has_prediction = pred_active[batch_index, segment_range].any(-1)
                 nearest = distances.argmin(-1)
                 consecutive = has_prediction[:-1] & has_prediction[1:]
@@ -210,9 +255,11 @@ def common_lifecycle_tracking_metrics(
             & unmatched[None]
             & batch["frame_mask"][batch_index, :, None]
         ).sum()
-        for frame_index in torch.nonzero(
-            batch["frame_mask"][batch_index], as_tuple=False
-        ).flatten().tolist():
+        for frame_index in (
+            torch.nonzero(batch["frame_mask"][batch_index], as_tuple=False)
+            .flatten()
+            .tolist()
+        ):
             active_queries = torch.nonzero(
                 pred_active[batch_index, frame_index], as_tuple=False
             ).flatten()
@@ -223,15 +270,17 @@ def common_lifecycle_tracking_metrics(
                 pred_position[batch_index, frame_index, active_queries],
             )
             duplicate += torch.triu(
-                distances < duplicate_distance, diagonal=1
+                distances < config.duplicate_distance, diagonal=1
             ).sum()
 
     illegal_overlap = pred_position.new_zeros(())
     target_ids = batch["target_instance_id"]
     for batch_index in range(target_ids.shape[0]):
-        for frame_index in torch.nonzero(
-            batch["frame_mask"][batch_index], as_tuple=False
-        ).flatten().tolist():
+        for frame_index in (
+            torch.nonzero(batch["frame_mask"][batch_index], as_tuple=False)
+            .flatten()
+            .tolist()
+        ):
             active_ids = target_ids[batch_index, frame_index]
             active_ids = active_ids[active_ids >= 0]
             if active_ids.numel() > 1:
@@ -262,4 +311,8 @@ def common_lifecycle_tracking_metrics(
     }
 
 
-__all__ = ["Assignment", "common_lifecycle_tracking_metrics"]
+__all__ = [
+    "Assignment",
+    "TrackingMetricConfig",
+    "common_lifecycle_tracking_metrics",
+]

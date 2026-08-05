@@ -48,7 +48,9 @@ def resolve_split_file(cfg: DictConfig, split_name: str) -> str:
     key = f"{split_name}_file"
     if key not in split_cfg:
         available = ", ".join(sorted(split_cfg.keys()))
-        raise ValueError(f"Unknown preview.split={split_name!r}. Available: {available}")
+        raise ValueError(
+            f"Unknown preview.split={split_name!r}. Available: {available}"
+        )
     return str(split_cfg[key])
 
 
@@ -93,7 +95,9 @@ def draw_normalized_point(
     height, width = image.shape[:2]
     x_px = int(round(center_xy[0] * max(width - 1, 0)))
     y_px = int(round(center_xy[1] * max(height - 1, 0)))
-    cv2.circle(image, (x_px, y_px), radius, color, thickness=thickness, lineType=cv2.LINE_AA)
+    cv2.circle(
+        image, (x_px, y_px), radius, color, thickness=thickness, lineType=cv2.LINE_AA
+    )
 
 
 def compose_titled_row(
@@ -110,7 +114,9 @@ def compose_titled_row(
 
     height, width = panels[0].shape[:2]
     row_width = len(panels) * width + (len(panels) - 1) * tile_gap
-    canvas = np.full((header_height + height, row_width, 3), background_rgb, dtype=np.uint8)
+    canvas = np.full(
+        (header_height + height, row_width, 3), background_rgb, dtype=np.uint8
+    )
 
     cursor_x = 0
     for panel, title in zip(panels, titles, strict=True):

@@ -1,6 +1,8 @@
-defaults:
-  - /model@_model: multiview_axial_base
-  - _self_
+trainer:
+  gradient_clip_val: null
+
+early_stopping:
+  enabled: false
 
 gan:
   enabled: false
@@ -23,8 +25,8 @@ gan:
     ffn_dim: 256
     ffn_type: swiglu
     dropout: 0.1
-    rope_dim: null
+    rope_dim: ???
     rope_theta: 10000.0
-    max_seq_len: ${_model.max_seq_len}
+    max_seq_len: ${model.max_seq_len}
     invalid_init_std: 0.02
     cls_init_std: 0.02

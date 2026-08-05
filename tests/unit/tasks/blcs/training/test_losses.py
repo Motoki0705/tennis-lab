@@ -6,6 +6,38 @@ import pytest
 import torch
 
 from src.tasks.blcs.training.losses import BLCSLoss, trajectory_position_loss
+from src.utils.schema.court import COURT_COORD_SCALE_Z
+
+
+def _loss(
+    *,
+    position_weight: float = 1.0,
+    reprojection_weight: float = 0.0,
+    position_axis_weights: tuple[float, ...] | None = None,
+    smoothness_weight: float = 0.0,
+    gravity_weight: float = 0.0,
+    smoothness_order: int = 3,
+    smoothness_beta: float = 1e-3,
+    smoothness_axis_weights: tuple[float, ...] | None = None,
+    gravity_beta: float = 5e-3,
+    gravity: float = 9.81,
+    frame_dt: float = 1.0 / 30.0,
+) -> BLCSLoss:
+    """Build the complete loss contract with explicit test-owned values."""
+    return BLCSLoss(
+        position_weight=position_weight,
+        reprojection_weight=reprojection_weight,
+        position_axis_weights=position_axis_weights,
+        smoothness_weight=smoothness_weight,
+        gravity_weight=gravity_weight,
+        smoothness_order=smoothness_order,
+        smoothness_beta=smoothness_beta,
+        smoothness_axis_weights=smoothness_axis_weights,
+        gravity_beta=gravity_beta,
+        gravity=gravity,
+        frame_dt=frame_dt,
+        height_scale=COURT_COORD_SCALE_Z,
+    )
 
 
 def test_trajectory_position_loss_accepts_axis_weights() -> None:
@@ -39,16 +71,16 @@ def test_trajectory_position_loss_accepts_axis_weights() -> None:
 
 def test_blcs_loss_rejects_invalid_axis_weights() -> None:
     with pytest.raises(ValueError, match="exactly 3"):
-        BLCSLoss(position_axis_weights=(1.0, 2.0))
+        _loss(position_axis_weights=(1.0, 2.0))
 
     with pytest.raises(ValueError, match="non-negative"):
-        BLCSLoss(position_axis_weights=(1.0, -1.0, 1.0))
+        _loss(position_axis_weights=(1.0, -1.0, 1.0))
 
 
 def test_blcs_loss_uses_axis_weights_for_position_term() -> None:
     pred = torch.zeros(1, 1, 3)
     target = torch.tensor([[[0.0, 0.5, 0.0]]])
-    loss_fn = BLCSLoss(position_axis_weights=(1.0, 4.0, 1.0))
+    loss_fn = _loss(position_axis_weights=(1.0, 4.0, 1.0))
 
     losses = loss_fn(pred_position=pred, target_position=target)
 
@@ -62,8 +94,12 @@ def test_blcs_loss_uses_axis_weights_for_position_term() -> None:
     assert losses["total"] == pytest.approx(expected)
 
 
-def test_physics_priors_off_by_default() -> None:
-    loss_fn = BLCSLoss(position_weight=1.0)
+def test_zero_weight_physics_priors_are_off() -> None:
+    loss_fn = _loss(
+        position_weight=1.0,
+        smoothness_weight=0.0,
+        gravity_weight=0.0,
+    )
     pred = torch.randn(1, 20, 3)
     target = torch.randn(1, 20, 3)
     losses = loss_fn(pred_position=pred, target_position=target)
@@ -72,7 +108,7 @@ def test_physics_priors_off_by_default() -> None:
 
 
 def test_smoothness_prior_penalizes_jitter() -> None:
-    loss_fn = BLCSLoss(position_weight=0.0, smoothness_weight=1.0)
+    loss_fn = _loss(position_weight=0.0, smoothness_weight=1.0)
     t = torch.linspace(0, 1, 40).view(1, 40, 1).repeat(1, 1, 3)
     smooth = loss_fn(pred_position=t, target_position=t)["smoothness"]
     jittery = t + 0.05 * torch.randn(1, 40, 3)
@@ -81,7 +117,7 @@ def test_smoothness_prior_penalizes_jitter() -> None:
 
 
 def test_gravity_prior_prefers_ballistic_curvature() -> None:
-    loss_fn = BLCSLoss(position_weight=0.0, gravity_weight=1.0)
+    loss_fn = _loss(position_weight=0.0, gravity_weight=1.0)
     target_2nd = loss_fn._gravity_target  # normalized ballistic 2nd difference
     steps = torch.arange(40.0)
     xy = torch.zeros(1, 40, 2)
@@ -96,7 +132,7 @@ def test_gravity_prior_prefers_ballistic_curvature() -> None:
 
 
 def test_physics_priors_contribute_to_total() -> None:
-    loss_fn = BLCSLoss(
+    loss_fn = _loss(
         position_weight=1.0, smoothness_weight=1.0, gravity_weight=0.5
     )
     pred = torch.randn(1, 30, 3)
@@ -112,9 +148,12 @@ def test_physics_priors_contribute_to_total() -> None:
 
 def test_blcs_loss_rejects_invalid_smoothness_axis_weights() -> None:
     with pytest.raises(ValueError, match="exactly 3 values"):
-        BLCSLoss(smoothness_weight=1.0, smoothness_axis_weights=(1.0, 1.0))
+        _loss(smoothness_weight=1.0, smoothness_axis_weights=(1.0, 1.0))
     with pytest.raises(ValueError, match="non-negative"):
-        BLCSLoss(smoothness_weight=1.0, smoothness_axis_weights=(1.0, 1.0, -1.0))
+        _loss(
+            smoothness_weight=1.0,
+            smoothness_axis_weights=(1.0, 1.0, -1.0),
+        )
 
 
 def test_smoothness_axis_weights_exclude_height_axis() -> None:
@@ -122,9 +161,9 @@ def test_smoothness_axis_weights_exclude_height_axis() -> None:
     torch.manual_seed(0)
     traj = torch.zeros(1, 30, 3)
     traj[..., 2] = torch.randn(1, 30)  # z-only jitter
-    uniform = BLCSLoss(position_weight=0.0, smoothness_weight=1.0)
+    uniform = _loss(position_weight=0.0, smoothness_weight=1.0)
     # [1, 1, 0] drops the height axis -> the z jitter must not be penalized.
-    zeroed_z = BLCSLoss(
+    zeroed_z = _loss(
         position_weight=0.0,
         smoothness_weight=1.0,
         smoothness_axis_weights=(1.0, 1.0, 0.0),
@@ -139,7 +178,7 @@ def test_smoothness_axis_weights_exclude_height_axis() -> None:
 def test_gravity_target_scales_with_output_fps() -> None:
     # dt = 1/fps enters the ballistic target quadratically: halving fps (doubling
     # dt) must quadruple the magnitude of the (negative) target 2nd difference.
-    fast = BLCSLoss(gravity_weight=1.0, frame_dt=1.0 / 60.0)._gravity_target
-    slow = BLCSLoss(gravity_weight=1.0, frame_dt=1.0 / 30.0)._gravity_target
+    fast = _loss(gravity_weight=1.0, frame_dt=1.0 / 60.0)._gravity_target
+    slow = _loss(gravity_weight=1.0, frame_dt=1.0 / 30.0)._gravity_target
     assert fast < 0 and slow < 0
     assert slow == pytest.approx(4.0 * fast, rel=1e-6)

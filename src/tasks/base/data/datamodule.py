@@ -15,35 +15,46 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader, Dataset
 
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
+from src.tasks.base.configuration import (
+    BaseDataConfig,
+    as_config_mapping,
+    require_config_mapping,
+)
+from src.utils.configuration import PathResolver, RuntimePathRoots
+from src.utils.paths import PROJECT_ROOT
 
 
 class SceneDirectoryDataModule(pl.LightningDataModule):
     """Lightning DataModule backed by a scene directory with split files.
 
-    Class-level overridable defaults:
-        default_scene_dir: Fallback ``data.scene_dir`` value.
-        default_batch_size: Fallback ``data.batch_size`` value.
+    Loader settings and the scene path must already exist in the composed
+    configuration.  The scene path is resolved against ``data_root``.
     """
 
-    default_scene_dir: str = "data"
-    default_batch_size: int = 32
-
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: object) -> None:
         super().__init__()
-        self.config: DictConfig | dict[str, Any] = config or {}
+        root = as_config_mapping(config, path="configuration")
+        self.config = config
+        resolver = PathResolver(
+            RuntimePathRoots.from_mapping(
+                require_config_mapping(root, "paths", path="configuration"),
+                repository_root=PROJECT_ROOT,
+            )
+        )
+        self.data_config = BaseDataConfig.from_validated_task_mapping(
+            require_config_mapping(root, "data", path="configuration"),
+            resolver=resolver,
+        )
 
-        data_cfg = self.config.get("data", {})
-        self.batch_size = int(data_cfg.get("batch_size", self.default_batch_size))
-        self.num_workers = int(data_cfg.get("num_workers", 4))
-        self.pin_memory = bool(data_cfg.get("pin_memory", True))
-        self.scene_dir = Path(data_cfg.get("scene_dir", self.default_scene_dir))
+        self.batch_size = self.data_config.batch_size
+        self.num_workers = self.data_config.num_workers
+        self.pin_memory = self.data_config.pin_memory
+        self.scene_dir = self.data_config.scene_dir
 
         self.collate_fn: Callable[..., Any] | None = self._build_collate_fn()
 

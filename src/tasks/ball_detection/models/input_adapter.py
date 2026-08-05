@@ -11,25 +11,20 @@ from torch import Tensor
 _RGB_TO_LUMINANCE = (0.299, 0.587, 0.114)
 
 
-def resolve_input_mode(model_cfg: Mapping[str, Any] | Any) -> str:
+def resolve_input_mode(model_cfg: Mapping[str, Any]) -> str:
     """Resolve and validate the configured model input mode."""
-    input_mode = str(model_cfg.get("input_mode", "rgb")).strip().lower()
+    input_mode = str(model_cfg["input_mode"]).strip().lower()
     if input_mode not in {"rgb", "mdd"}:
         raise ValueError(
-            "model.input_mode must be one of ['rgb', 'mdd'], "
-            f"got '{input_mode}'."
+            f"model.input_mode must be one of ['rgb', 'mdd'], got '{input_mode}'."
         )
     return input_mode
 
 
-def resolve_model_in_channels(model_cfg: Mapping[str, Any] | Any) -> int:
+def resolve_model_in_channels(model_cfg: Mapping[str, Any]) -> int:
     """Return the effective model input channel count for the configured mode."""
     input_mode = resolve_input_mode(model_cfg)
-    configured_channels = model_cfg.get("in_channels")
-    if configured_channels is None:
-        return 3 if input_mode == "rgb" else 2
-
-    in_channels = int(configured_channels)
+    in_channels = int(model_cfg["in_channels"])
     expected_channels = 3 if input_mode == "rgb" else 2
     if in_channels != expected_channels:
         raise ValueError(
@@ -39,9 +34,9 @@ def resolve_model_in_channels(model_cfg: Mapping[str, Any] | Any) -> int:
     return in_channels
 
 
-def resolve_input_layout(model_cfg: Mapping[str, Any] | Any) -> str:
+def resolve_input_layout(model_cfg: Mapping[str, Any]) -> str:
     """Resolve the 5D tensor layout expected by the selected model."""
-    input_layout = str(model_cfg.get("input_layout", "bcthw")).strip().lower()
+    input_layout = str(model_cfg["input_layout"]).strip().lower()
     if input_layout not in {"bcthw", "btchw"}:
         raise ValueError(
             "model.input_layout must be one of ['bcthw', 'btchw'], "
@@ -50,12 +45,11 @@ def resolve_input_layout(model_cfg: Mapping[str, Any] | Any) -> str:
     return input_layout
 
 
-def to_model_input(images: Tensor, model_cfg: Mapping[str, Any] | Any) -> Tensor:
+def to_model_input(images: Tensor, model_cfg: Mapping[str, Any]) -> Tensor:
     """Convert ``(B, T, C, H, W)`` RGB frames into the configured model input."""
     if images.ndim != 5:
         raise ValueError(
-            "Expected images with shape (B, T, C, H, W), "
-            f"got {tuple(images.shape)}."
+            f"Expected images with shape (B, T, C, H, W), got {tuple(images.shape)}."
         )
 
     input_mode = resolve_input_mode(model_cfg)
@@ -70,7 +64,7 @@ def to_model_input(images: Tensor, model_cfg: Mapping[str, Any] | Any) -> Tensor
     return mdd
 
 
-def _rgb_frames_to_mdd(images: Tensor, model_cfg: Mapping[str, Any] | Any) -> Tensor:
+def _rgb_frames_to_mdd(images: Tensor, model_cfg: Mapping[str, Any]) -> Tensor:
     """Convert RGB frame sequences into ``(B, 2, T, H, W)`` MDD features."""
     if images.shape[2] != 3:
         raise ValueError(
@@ -86,16 +80,20 @@ def _rgb_frames_to_mdd(images: Tensor, model_cfg: Mapping[str, Any] | Any) -> Te
     if images.shape[1] > 1:
         frame_diffs = luminance[:, 1:] - luminance[:, :-1]
         gain, offset = _resolve_mdd_normalization(model_cfg)
-        brighten[:, 1:] = _power_normalize(torch.clamp(frame_diffs, min=0.0), gain, offset)
-        darken[:, 1:] = _power_normalize(torch.clamp(-frame_diffs, min=0.0), gain, offset)
+        brighten[:, 1:] = _power_normalize(
+            torch.clamp(frame_diffs, min=0.0), gain, offset
+        )
+        darken[:, 1:] = _power_normalize(
+            torch.clamp(-frame_diffs, min=0.0), gain, offset
+        )
 
     return torch.stack([brighten, darken], dim=1)
 
 
-def _resolve_mdd_normalization(model_cfg: Mapping[str, Any] | Any) -> tuple[float, float]:
+def _resolve_mdd_normalization(model_cfg: Mapping[str, Any]) -> tuple[float, float]:
     """Resolve the experiments-compatible MDD normalization constants."""
-    a_raw = float(model_cfg.get("mdd_a", 0.2))
-    b_raw = float(model_cfg.get("mdd_b", 0.15))
+    a_raw = float(model_cfg["mdd_a"])
+    b_raw = float(model_cfg["mdd_b"])
     a_val = abs(float(torch.tanh(torch.tensor(a_raw)).item()))
     b_val = float(torch.tanh(torch.tensor(b_raw)).item())
     gain = 5.0 / (0.45 * a_val + 1.0e-6)

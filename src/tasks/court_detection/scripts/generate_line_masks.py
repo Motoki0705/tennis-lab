@@ -6,7 +6,7 @@ image, and writes a binary mask to ``data/court/line_masks/{id}.png``.
 
 Usage:
     python -m src.tasks.court_detection.scripts.generate_line_masks
-    python -m src.tasks.court_detection.scripts.generate_line_masks generate_line_masks.root=data/court
+    python -m src.tasks.court_detection.scripts.generate_line_masks generate_line_masks.root=court
 
 Notes:
     - Hydra loads configuration from `src/tasks/court_detection/configs/generate_line_masks.yaml`.
@@ -24,18 +24,87 @@ import cv2
 import numpy as np
 from omegaconf import DictConfig
 
+from src.tasks.base.configuration import require_config_mapping, require_config_value
+from src.tasks.court_detection.configuration import validate_paths_boundary
 from src.tasks.court_detection.geometry import compute_template_to_image_homography
-from src.utils.hydra import hydra_main
+from src.utils.configuration import PathRole
+from src.utils.hydra import hydra_main, register_boundary_validator
 from src.utils.schema.court import (
     CENTER_MARK_LENGTH,
     COURT_SKELETON,
     HALF_LENGTH,
+    STANDARD_COURT_CONFIG,
     court_keypoints_3d,
 )
 
 LINE_WIDTH_METERS = 0.05
 BASELINE_WIDTH_METERS = 0.10
 MASK_VALUE = 255
+_BOUNDARY = "court_detection.generate_line_masks"
+
+
+def _runtime(cfg: DictConfig) -> tuple[Path, str | None, str, Path, int]:
+    root, resolver = validate_paths_boundary(
+        cfg, expected_sections={"generate_line_masks"}
+    )
+    section = require_config_mapping(root, "generate_line_masks", path="configuration")
+    expected = {
+        "root",
+        "image_id",
+        "mask_dir_name",
+        "preview_dir",
+        "preview_count_per_split",
+    }
+    if set(section) != expected:
+        raise ValueError(f"generate_line_masks requires exactly {sorted(expected)}.")
+    root_raw = cast(
+        "str",
+        require_config_value(section, "root", str, path="generate_line_masks"),
+    )
+    image_id = cast(
+        "str | None",
+        require_config_value(
+            section, "image_id", (str, type(None)), path="generate_line_masks"
+        ),
+    )
+    mask_dir_name = cast(
+        "str",
+        require_config_value(section, "mask_dir_name", str, path="generate_line_masks"),
+    )
+    preview_count = cast(
+        "int",
+        require_config_value(
+            section, "preview_count_per_split", int, path="generate_line_masks"
+        ),
+    )
+    if image_id == "":
+        raise ValueError("generate_line_masks.image_id must be null or non-empty.")
+    if preview_count < 0:
+        raise ValueError(
+            "generate_line_masks.preview_count_per_split must be non-negative."
+        )
+    resolver.resolve(PathRole.DATA, root_raw, mask_dir_name)
+    return (
+        resolver.resolve(PathRole.DATA, root_raw),
+        image_id,
+        mask_dir_name,
+        resolver.resolve(
+            PathRole.OUTPUT,
+            str(
+                require_config_value(
+                    section, "preview_dir", str, path="generate_line_masks"
+                )
+            ),
+        ),
+        preview_count,
+    )
+
+
+def _validate_boundary(cfg: DictConfig) -> None:
+    _runtime(cfg)
+
+
+register_boundary_validator(_BOUNDARY, _validate_boundary)
 
 
 @dataclass(frozen=True)
@@ -55,19 +124,25 @@ def _segment_to_quad(start: np.ndarray, end: np.ndarray, width_m: float) -> np.n
     tangent = direction / length
     normal = np.array([-tangent[1], tangent[0]], dtype=np.float32)
     offset = normal * (width_m * 0.5)
-    return cast(
-        np.ndarray,
-        np.stack(
-            [start - offset, end - offset, end + offset, start + offset],
-            axis=0,
-        ).astype(np.float32),
-    )
+    quad: np.ndarray = np.stack(
+        [start - offset, end - offset, end + offset, start + offset],
+        axis=0,
+    ).astype(np.float32)
+    return quad
 
 
 def _center_mark_segments() -> list[MetricLine]:
     return [
-        MetricLine((0.0, HALF_LENGTH), (0.0, HALF_LENGTH - CENTER_MARK_LENGTH), LINE_WIDTH_METERS),
-        MetricLine((0.0, -HALF_LENGTH), (0.0, -HALF_LENGTH + CENTER_MARK_LENGTH), LINE_WIDTH_METERS),
+        MetricLine(
+            (0.0, HALF_LENGTH),
+            (0.0, HALF_LENGTH - CENTER_MARK_LENGTH),
+            LINE_WIDTH_METERS,
+        ),
+        MetricLine(
+            (0.0, -HALF_LENGTH),
+            (0.0, -HALF_LENGTH + CENTER_MARK_LENGTH),
+            LINE_WIDTH_METERS,
+        ),
     ]
 
 
@@ -76,14 +151,18 @@ def _point_tuple(point: np.ndarray) -> tuple[float, float]:
 
 
 def _build_metric_lines() -> list[MetricLine]:
-    kp2d = court_keypoints_3d()[:14].numpy()[:, :2]
+    kp2d = court_keypoints_3d(STANDARD_COURT_CONFIG)[:14].numpy()[:, :2]
     baseline_pairs = {(0, 1), (2, 3)}
 
     lines: list[MetricLine] = []
     for idx_a, idx_b in COURT_SKELETON:
         if idx_a >= 14 or idx_b >= 14:
             continue
-        width_m = BASELINE_WIDTH_METERS if (idx_a, idx_b) in baseline_pairs else LINE_WIDTH_METERS
+        width_m = (
+            BASELINE_WIDTH_METERS
+            if (idx_a, idx_b) in baseline_pairs
+            else LINE_WIDTH_METERS
+        )
         lines.append(
             MetricLine(
                 _point_tuple(kp2d[idx_a]),
@@ -98,7 +177,9 @@ def _build_metric_lines() -> list[MetricLine]:
 METRIC_LINES = _build_metric_lines()
 
 
-def generate_line_mask(height: int, width: int, kps_2d: np.ndarray) -> np.ndarray | None:
+def generate_line_mask(
+    height: int, width: int, kps_2d: np.ndarray
+) -> np.ndarray | None:
     """Generate a binary white-line mask for one sample."""
     H = compute_template_to_image_homography(kps_2d, ransac_reproj_threshold=5.0)
     if H is None:
@@ -139,15 +220,14 @@ def _sample_preview_ids(entries: list[dict], count: int) -> set[str]:
     config_path="../configs",
     config_name="generate_line_masks",
     version_base="1.3",
+    validation_boundary=_BOUNDARY,
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
-    script_cfg = cfg.generate_line_masks
-    root = Path(str(script_cfg.root)).expanduser()
+    root, image_id_filter, mask_dir_name, preview_dir, preview_count = _runtime(cfg)
     images_dir = root / "images"
-    masks_dir = root / str(script_cfg.mask_dir_name)
+    masks_dir = root / mask_dir_name
     masks_dir.mkdir(parents=True, exist_ok=True)
-    preview_dir = Path(str(script_cfg.preview_dir)).expanduser()
     preview_dir.mkdir(parents=True, exist_ok=True)
 
     total = 0
@@ -164,13 +244,12 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
         entries: list[dict] = json.loads(json_path.read_text())
         preview_ids = _sample_preview_ids(
             entries,
-            int(script_cfg.preview_count_per_split),
+            preview_count,
         )
         print(f"[generate_line_masks] Processing {split}: {len(entries)} samples")
 
         for entry in entries:
             image_id = str(entry["id"])
-            image_id_filter = script_cfg.image_id
             if image_id_filter is not None and image_id != str(image_id_filter):
                 continue
 

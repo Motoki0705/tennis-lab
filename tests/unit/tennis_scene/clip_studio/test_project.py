@@ -9,6 +9,7 @@ from src.tennis_scene.clip_studio.project import (
     ClipSource,
     ClipStudioProject,
 )
+from src.utils.configuration import PathContractError, PathResolver, PathRole
 from src.utils.io import load_json, save_json_atomic
 
 
@@ -81,23 +82,25 @@ class TestNaming:
 
 class TestPersistence:
     def test_round_trip(
-        self, two_camera_project: ClipStudioProject, tmp_path: Path
+        self,
+        two_camera_project: ClipStudioProject,
+        path_resolver: PathResolver,
     ) -> None:
         project = two_camera_project
-        project.sources[0].path = tmp_path / "cam0.mp4"
-        project.sources[1].path = tmp_path / "cam1.mp4"
-        path = tmp_path / "project.json"
-        project.save(path)
+        path = path_resolver.resolve(PathRole.ARTIFACT, "project.json")
+        project.save(path, path_resolver)
 
-        loaded = ClipStudioProject.load(path)
-        assert [source.to_dict() for source in loaded.sources] == [
-            source.to_dict() for source in project.sources
+        loaded = ClipStudioProject.load(path, path_resolver)
+        assert [source.to_dict(path_resolver) for source in loaded.sources] == [
+            source.to_dict(path_resolver) for source in project.sources
         ]
         assert [clip.to_dict() for clip in loaded.clips] == [
             clip.to_dict() for clip in project.clips
         ]
 
-    def test_relative_paths_resolved_against_project_dir(self, tmp_path: Path) -> None:
+    def test_relative_paths_resolved_against_data_root(
+        self, path_resolver: PathResolver
+    ) -> None:
         data = {
             "version": 2,
             "recording_id": "match-001",
@@ -106,26 +109,49 @@ class TestPersistence:
             ],
             "clips": [],
         }
-        path = tmp_path / "nested" / "project.json"
+        path = path_resolver.resolve(PathRole.ARTIFACT, "nested/project.json")
         save_json_atomic(data, path)
-        loaded = ClipStudioProject.load(path)
-        assert loaded.sources[0].path == (tmp_path / "nested" / "videos/cam0.mp4").resolve()
+        loaded = ClipStudioProject.load(path, path_resolver)
+        assert loaded.sources[0].path == path_resolver.resolve(
+            PathRole.DATA, "videos/cam0.mp4"
+        )
 
-    def test_save_invalid_raises(self, tmp_path: Path) -> None:
+    def test_absolute_source_path_is_rejected(
+        self, path_resolver: PathResolver
+    ) -> None:
+        data = {
+            "version": 2,
+            "recording_id": "match-001",
+            "sources": [
+                {"path": "/etc/passwd", "camera_id": "cam0", "offset_sec": 0.0}
+            ],
+            "clips": [],
+        }
+        path = path_resolver.resolve(PathRole.ARTIFACT, "absolute.json")
+        save_json_atomic(data, path)
+        with pytest.raises(PathContractError, match="must be relative"):
+            ClipStudioProject.load(path, path_resolver)
+
+    def test_save_invalid_raises(self, path_resolver: PathResolver) -> None:
         with pytest.raises(ValueError, match="Invalid project"):
-            ClipStudioProject().save(tmp_path / "bad.json")
+            ClipStudioProject().save(
+                path_resolver.resolve(PathRole.ARTIFACT, "bad.json"),
+                path_resolver,
+            )
 
-    def test_version_mismatch_raises(self, tmp_path: Path) -> None:
-        path = tmp_path / "old.json"
+    def test_version_mismatch_raises(self, path_resolver: PathResolver) -> None:
+        path = path_resolver.resolve(PathRole.ARTIFACT, "old.json")
         save_json_atomic({"version": 0, "sources": [], "clips": []}, path)
         with pytest.raises(ValueError, match="Unsupported project version"):
-            ClipStudioProject.load(path)
+            ClipStudioProject.load(path, path_resolver)
 
     def test_saved_json_is_plain_data(
-        self, two_camera_project: ClipStudioProject, tmp_path: Path
+        self,
+        two_camera_project: ClipStudioProject,
+        path_resolver: PathResolver,
     ) -> None:
-        path = tmp_path / "project.json"
-        two_camera_project.save(path)
+        path = path_resolver.resolve(PathRole.ARTIFACT, "project.json")
+        two_camera_project.save(path, path_resolver)
         data = load_json(path)
         assert data["version"] == 2
         assert data["recording_id"] == "match-001"

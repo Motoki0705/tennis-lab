@@ -9,7 +9,7 @@ import torch.nn as nn
 
 from src.submodules.vendor.gvhmr.hmr2.vit import ViT
 
-from .heatmap_head import TopdownHeatmapSimpleHead
+from .heatmap_head import TopdownHeatmapSimpleHead, ViTPoseHeadConfig
 
 
 class VitPoseModel(nn.Module):
@@ -24,7 +24,7 @@ class VitPoseModel(nn.Module):
         return x
 
 
-def build_vitpose_huge(checkpoint_path):
+def build_vitpose_huge(checkpoint_path, *, head_config: ViTPoseHeadConfig):
     """Build ViTPose-H (COCO 256x192) and load the released checkpoint."""
     backbone = ViT(
         img_size=(256, 192),
@@ -38,16 +38,11 @@ def build_vitpose_huge(checkpoint_path):
         qkv_bias=True,
         drop_path_rate=0.55,
     )
-    head = TopdownHeatmapSimpleHead(
-        in_channels=1280,
-        out_channels=17,
-        num_deconv_layers=2,
-        num_deconv_filters=(256, 256),
-        num_deconv_kernels=(4, 4),
-        extra={"final_conv_kernel": 1},
-    )
+    head = TopdownHeatmapSimpleHead(head_config)
     pose = VitPoseModel(backbone, head)
 
-    state_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=False)["state_dict"]
+    state_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=False)[
+        "state_dict"
+    ]
     pose.load_state_dict(state_dict, strict=True)
     return pose

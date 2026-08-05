@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast
 
 import torch
 from torch import nn
@@ -11,7 +11,7 @@ from src.utils.models.components.attention import (
     MultiHeadCrossAttention,
     MultiHeadSelfAttention,
 )
-from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
+from src.utils.models.components.ffn_layers import MLP, SwiGLU
 from src.utils.models.components.norm import RMSNorm
 
 
@@ -34,17 +34,17 @@ class TransformerBlockConfig:
 
     dim: int
     n_heads: int
-    ffn_dim: int | None = None
+    ffn_dim: int
     # attention
-    head_dim: int | None = None
-    rope_dim: int | None = None
-    attn_dropout: float = 0.0
-    attention_type: Literal["mha", "gqa"] = "mha"
-    n_kv_heads: int | None = None
+    head_dim: int
+    rope_dim: int
+    attn_dropout: float
+    attention_type: Literal["mha", "gqa"]
+    n_kv_heads: int | None
     # RoPE
-    rope_base: float = 10000.0
+    rope_base: float
     # FFN
-    ffn_type: Literal["swiglu", "mlp"] = "swiglu"
+    ffn_type: Literal["swiglu", "mlp"]
 
 
 class TransformerBlock(nn.Module):
@@ -57,6 +57,7 @@ class TransformerBlock(nn.Module):
         self.cfg = cfg
 
         self.attn_norm = RMSNorm(cfg.dim)
+        self.attn: MultiHeadSelfAttention | GroupedQuerySelfAttention
         if cfg.attention_type == "mha":
             self.attn = MultiHeadSelfAttention(
                 dim=cfg.dim,
@@ -64,6 +65,7 @@ class TransformerBlock(nn.Module):
                 head_dim=cfg.head_dim,
                 rope_dim=cfg.rope_dim,
                 attn_dropout=cfg.attn_dropout,
+                bias=False,
             )
         elif cfg.attention_type == "gqa":
             if cfg.n_kv_heads is None:
@@ -75,16 +77,16 @@ class TransformerBlock(nn.Module):
                 head_dim=cfg.head_dim,
                 rope_dim=cfg.rope_dim,
                 attn_dropout=cfg.attn_dropout,
+                bias=False,
             )
         else:
             raise ValueError(f"Unsupported attention_type={cfg.attention_type}")
 
         self.ffn_norm = RMSNorm(cfg.dim)
-        ffn_dim = default_ffn_dim(cfg.dim) if cfg.ffn_dim is None else int(cfg.ffn_dim)
         if cfg.ffn_type == "swiglu":
-            self.ffn: nn.Module = SwiGLU(cfg.dim, ffn_dim)
+            self.ffn: nn.Module = SwiGLU(cfg.dim, cfg.ffn_dim)
         elif cfg.ffn_type == "mlp":
-            self.ffn = MLP(cfg.dim, ffn_dim)
+            self.ffn = MLP(cfg.dim, cfg.ffn_dim)
         else:
             raise ValueError(f"Unsupported ffn_type={cfg.ffn_type}")
 
@@ -100,7 +102,10 @@ class TransformerBlock(nn.Module):
             freqs_cis=freqs_cis,
             attn_mask=attn_mask,
         )
-        x_fnn = x_attn + self.ffn(self.ffn_norm(x_attn))
+        ffn_output = self.ffn(self.ffn_norm(x_attn))
+        if not isinstance(ffn_output, torch.Tensor):
+            raise TypeError("Transformer FFN must return a tensor.")
+        x_fnn = cast(torch.Tensor, x_attn + ffn_output)
         return x_fnn
 
 
@@ -110,13 +115,13 @@ class CrossAttnBlockConfig:
 
     dim: int
     n_heads: int
-    ffn_dim: int | None = None
+    ffn_dim: int
     # attention
-    head_dim: int | None = None
-    rope_dim: int | None = None
-    attn_dropout: float = 0.0
+    head_dim: int
+    rope_dim: int
+    attn_dropout: float
     # FFN
-    ffn_type: Literal["swiglu", "mlp"] = "swiglu"
+    ffn_type: Literal["swiglu", "mlp"]
 
 
 class CrossAttnBlock(nn.Module):
@@ -134,13 +139,13 @@ class CrossAttnBlock(nn.Module):
             head_dim=cfg.head_dim,
             rope_dim=cfg.rope_dim,
             attn_dropout=cfg.attn_dropout,
+            bias=False,
         )
         self.ffn_norm = RMSNorm(cfg.dim)
-        ffn_dim = default_ffn_dim(cfg.dim) if cfg.ffn_dim is None else int(cfg.ffn_dim)
         if cfg.ffn_type == "swiglu":
-            self.ffn: nn.Module = SwiGLU(cfg.dim, ffn_dim)
+            self.ffn: nn.Module = SwiGLU(cfg.dim, cfg.ffn_dim)
         elif cfg.ffn_type == "mlp":
-            self.ffn = MLP(cfg.dim, ffn_dim)
+            self.ffn = MLP(cfg.dim, cfg.ffn_dim)
         else:
             raise ValueError(f"Unsupported ffn_type={cfg.ffn_type}")
 

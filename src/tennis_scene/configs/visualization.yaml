@@ -1,35 +1,24 @@
 defaults:
+  - paths: default
   - _self_
-
-# Input scene result file (required)
-input: outputs/tennis_scene/baseline/tennis_clip.npz
-
-# Output video path (optional, if null only displays or saves preview)
-output: outputs/tennis_scene/baseline/tennis_clip.gif
-
-# Display animation in matplotlib window
+assets:
+  smpl_faces: smplh/neutral/model.npz
+  smpl_joint_regressor: GVHMR/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt
+input: tennis_scene/tennis_clip.npz
+output: tennis_scene/tennis_clip.gif
+preview_output: tennis_scene/preview.png
 display: false
-
-# Frame range
 start_frame: 0
-end_frame: null  # null for all frames
-
-# FPS (null to use scene's original FPS)
+end_frame: null
 fps: null
-
-# Video output settings
 dpi: 100
 writer: ffmpeg
-
-# Rendering style
 style:
   trail_length: 30
   show_trail: true
   figsize: [12, 8]
-  # "smpl" or "skeleton"
   player_representation: skeleton
   mesh_alpha: 0.6
-  # "light" (matplotlib axes visible) or "dark" (broadcast-style look)
   theme: dark
   show_ball_shadow: true
   show_player_shadow: true
@@ -38,26 +27,17 @@ style:
   show_bounces: true
   show_hud: true
   show_minimap: true
-
-# Virtual camera work
 camera:
-  # Named preset (broadcast/side/top/corner/behind_far), or set elev/azim instead
   preset: broadcast
-  # Zoom override (null keeps the preset zoom; >1 zooms in)
+  elev: null
+  azim: null
   zoom: null
-  # "static", "orbit" (slow azimuth revolution), or "keyframes"
   mode: static
-  # Seconds per full revolution in orbit mode
   orbit_period_s: 24.0
-  # Keyframed camera moves (mode: keyframes), e.g.
-  #   keyframes:
-  #     - {frame: 0, preset: broadcast}
-  #     - {frame: 120, preset: corner}
   keyframes: null
-
 hydra:
   run:
-    dir: outputs/visualization/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},visualization/hydra,${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null
   job:
     chdir: false

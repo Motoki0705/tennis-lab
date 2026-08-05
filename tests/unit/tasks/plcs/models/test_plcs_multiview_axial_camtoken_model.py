@@ -21,8 +21,16 @@ def _make_model(
         hidden_dim=32,
         num_layers=2,
         num_heads=4,
+        ffn_dim=128,
+        dropout=0.0,
+        rope_dim=8,
+        rope_theta_time=10000.0,
+        rope_theta_camera=10000.0,
+        ffn_type="swiglu",
         max_views=4,
         max_seq_len=16,
+        invisible_init_std=0.02,
+        num_court_tokens=14,
         predict_canonical_pose=predict_canonical_pose,
     )
 

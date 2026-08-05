@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import cast
 
 import torch
 from torch import Tensor
@@ -16,9 +16,6 @@ from src.tasks.base.data.scene_dataset import (
 )
 from src.tasks.blcs.data.augmentation import BLCSBallObservationAugmentation
 from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch, BLCSMultiViewSample
-
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
 
 
 class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
@@ -39,35 +36,37 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         *,
         scene_dir: str | Path,
         split_file: str | Path,
-        config: DictConfig | None = None,
+        config: object,
         augment: bool = True,
     ) -> None:
-        self.hydra_cfg = config or {}
+        self.hydra_cfg = config
         self.augment = augment
         data_cfg = self._resolve_data_cfg(self.hydra_cfg)
         self._configure_task(data_cfg)
         super().__init__(
             config=self._build_scene_dataset_config(
-                scene_dir=scene_dir, split_file=split_file, data_cfg=data_cfg,
+                scene_dir=scene_dir,
+                split_file=split_file,
+                data_cfg=data_cfg,
             )
         )
 
     # -- Composed-method hooks ------------------------------------------
 
-    def _configure_task(self, data_cfg: dict) -> None:  # type: ignore[override]
+    def _configure_task(self, data_cfg: dict) -> None:
         # Multiview ranges
         self.seq_len_range = self._parse_int_range(data_cfg, "seq_len_range")
         self.num_views_range = self._parse_int_range(data_cfg, "num_views_range")
         self.camera_mode = self._parse_camera_mode(data_cfg)
 
         # Number of court keypoints to use (first N from the canonical order)
-        self.num_court_kp = int(data_cfg.get("num_court_kp", 20))
+        self.num_court_kp = int(data_cfg["num_court_kp"])
 
         # Augmentation pipeline
-        aug_cfg = data_cfg.get("augmentation", {})
+        aug_cfg = data_cfg["augmentation"]
         self.augmentation_pipeline = BLCSBallObservationAugmentation(aug_cfg)
 
-    def _build_scene_dataset_config(  # type: ignore[override]
+    def _build_scene_dataset_config(
         self,
         *,
         scene_dir: str | Path,
@@ -81,10 +80,14 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
             num_views_range=self.num_views_range,
             camera_mode=self.camera_mode,
             crop_mode=("random" if self.augment else "center"),
+            min_num_frames=self.seq_len_range[0],
+            min_num_cameras=self.num_views_range[0],
         )
 
     def build_sample(self, scene: Scene) -> BLCSMultiViewSample:
-        cams = self.select_cameras(scene, num_views_range=self.num_views_range, camera_mode=self.camera_mode)
+        cams = self.select_cameras(
+            scene, num_views_range=self.num_views_range, camera_mode=self.camera_mode
+        )
         # Use camera trajectory length to guard against metadata drift.
         primary_len = int(scene.get_camera_array(cams.primary, "ball_uv").shape[0])
         pos_len = int(scene.data["ball_pos_norm"].shape[0])
@@ -104,10 +107,18 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         cam_h_list: list[Tensor] = []
 
         for cam_idx in cams.indices:
-            ball_uv = torch.from_numpy(scene.get_camera_array(cam_idx, "ball_uv", window=window)).float()
-            ball_vis = torch.from_numpy(scene.get_camera_array(cam_idx, "ball_visible", window=window)).float()
-            court_kp = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_uv")).float()
-            court_vis = torch.from_numpy(scene.get_camera_array(cam_idx, "court_kp_visible")).float()
+            ball_uv = torch.from_numpy(
+                scene.get_camera_array(cam_idx, "ball_uv", window=window)
+            ).float()
+            ball_vis = torch.from_numpy(
+                scene.get_camera_array(cam_idx, "ball_visible", window=window)
+            ).float()
+            court_kp = torch.from_numpy(
+                scene.get_camera_array(cam_idx, "court_kp_uv")
+            ).float()
+            court_vis = torch.from_numpy(
+                scene.get_camera_array(cam_idx, "court_kp_visible")
+            ).float()
             court_kp = court_kp[: self.num_court_kp]
             court_vis = court_vis[: self.num_court_kp]
 
@@ -135,11 +146,17 @@ class BallTrajectoryDataset(SceneDatasetBase[BLCSMultiViewSample]):
         sample: BLCSMultiViewSample = {
             "ball_uv": torch.stack(ball_uv_list, dim=0),
             "ball_vis": torch.stack(ball_vis_list, dim=0),
-            "ball_mask": torch.ones(len(cams.indices), window.seq_len, dtype=torch.float32),
+            "ball_mask": torch.ones(
+                len(cams.indices), window.seq_len, dtype=torch.float32
+            ),
             "court_kp": torch.stack(court_kp_list, dim=0),
             "court_vis": torch.stack(court_vis_list, dim=0),
-            "position_3d": torch.from_numpy(scene.get_array("ball_pos_norm", window=window)).float(),
-            "velocity_3d": torch.from_numpy(scene.get_array("ball_vel_world", window=window)).float(),
+            "position_3d": torch.from_numpy(
+                scene.get_array("ball_pos_norm", window=window)
+            ).float(),
+            "velocity_3d": torch.from_numpy(
+                scene.get_array("ball_vel_world", window=window)
+            ).float(),
             "seq_len": torch.tensor(window.seq_len, dtype=torch.long),
             "camera_R": torch.stack(cam_R_list, dim=0),
             "camera_C": torch.stack(cam_C_list, dim=0),
@@ -167,10 +184,9 @@ def collate_multiview_trajectories(
 ) -> BLCSMultiViewBatch:
     """Collate canonical BLCS samples into padded canonical batch tensors."""
     max_views = max(int(sample["ball_uv"].shape[0]) for sample in batch)
-    max_seq_len = max(sample["seq_len"].item() for sample in batch)
+    max_seq_len = max(int(sample["seq_len"].item()) for sample in batch)
     has_clean_targets = any(
-        "ball_uv_target" in sample and "ball_vis_target" in sample
-        for sample in batch
+        "ball_uv_target" in sample and "ball_vis_target" in sample for sample in batch
     )
 
     ball_uv_batch = []
@@ -192,13 +208,15 @@ def collate_multiview_trajectories(
     cam_h_batch: list[Tensor] = []
     for sample in batch:
         n_views = int(sample["ball_uv"].shape[0])
-        seq_len = sample["seq_len"].item()
+        seq_len = int(sample["seq_len"].item())
         pad_views = max_views - n_views
         pad_seq = max_seq_len - seq_len
 
         ball_uv = sample["ball_uv"]
         ball_vis = sample["ball_vis"]
-        ball_uv_target = sample.get("ball_uv_target", ball_uv) if has_clean_targets else None
+        ball_uv_target = (
+            sample.get("ball_uv_target", ball_uv) if has_clean_targets else None
+        )
         ball_vis_target = (
             sample.get("ball_vis_target", ball_vis) if has_clean_targets else None
         )
@@ -232,13 +250,19 @@ def collate_multiview_trajectories(
                     dim=1,
                 )
             ball_mask = torch.cat([ball_mask, torch.zeros(n_views, pad_seq)], dim=1)
-            court_kp = torch.cat([court_kp, torch.zeros(n_views, pad_seq, n_kp, 2)], dim=1)
-            court_vis = torch.cat([court_vis, torch.zeros(n_views, pad_seq, n_kp)], dim=1)
+            court_kp = torch.cat(
+                [court_kp, torch.zeros(n_views, pad_seq, n_kp, 2)], dim=1
+            )
+            court_vis = torch.cat(
+                [court_vis, torch.zeros(n_views, pad_seq, n_kp)], dim=1
+            )
             position_3d = torch.cat([position_3d, torch.zeros(pad_seq, 3)], dim=0)
             velocity_3d = torch.cat([velocity_3d, torch.zeros(pad_seq, 3)], dim=0)
 
         if pad_views > 0:
-            ball_uv = torch.cat([ball_uv, torch.zeros(pad_views, max_seq_len, 2)], dim=0)
+            ball_uv = torch.cat(
+                [ball_uv, torch.zeros(pad_views, max_seq_len, 2)], dim=0
+            )
             ball_vis = torch.cat([ball_vis, torch.zeros(pad_views, max_seq_len)], dim=0)
             if has_clean_targets:
                 assert ball_uv_target is not None
@@ -251,16 +275,24 @@ def collate_multiview_trajectories(
                     [ball_vis_target, torch.zeros(pad_views, max_seq_len)],
                     dim=0,
                 )
-            ball_mask = torch.cat([ball_mask, torch.zeros(pad_views, max_seq_len)], dim=0)
-            court_kp = torch.cat([court_kp, torch.zeros(pad_views, max_seq_len, n_kp, 2)], dim=0)
-            court_vis = torch.cat([court_vis, torch.zeros(pad_views, max_seq_len, n_kp)], dim=0)
+            ball_mask = torch.cat(
+                [ball_mask, torch.zeros(pad_views, max_seq_len)], dim=0
+            )
+            court_kp = torch.cat(
+                [court_kp, torch.zeros(pad_views, max_seq_len, n_kp, 2)], dim=0
+            )
+            court_vis = torch.cat(
+                [court_vis, torch.zeros(pad_views, max_seq_len, n_kp)], dim=0
+            )
             # Pad camera parameters with zeros for extra views
             cam_R = torch.cat([cam_R, torch.zeros(pad_views, 3, 3)], dim=0)
             cam_C = torch.cat([cam_C, torch.zeros(pad_views, 3)], dim=0)
             cam_f = torch.cat([cam_f, torch.zeros(pad_views)], dim=0)
             cam_cx = torch.cat([cam_cx, torch.zeros(pad_views)], dim=0)
             cam_cy = torch.cat([cam_cy, torch.zeros(pad_views)], dim=0)
-            cam_w = torch.cat([cam_w, torch.ones(pad_views)], dim=0)  # ones to avoid div-by-zero
+            cam_w = torch.cat(
+                [cam_w, torch.ones(pad_views)], dim=0
+            )  # ones to avoid div-by-zero
             cam_h = torch.cat([cam_h, torch.ones(pad_views)], dim=0)
 
         ball_uv_batch.append(ball_uv)
@@ -303,7 +335,7 @@ def collate_multiview_trajectories(
     if has_clean_targets:
         collated["ball_uv_target"] = torch.stack(ball_uv_target_batch, dim=0)
         collated["ball_vis_target"] = torch.stack(ball_vis_target_batch, dim=0)
-    return collated
+    return cast("BLCSMultiViewBatch", collated)
 
 
 def adapt_batch_for_model_profile(
@@ -339,7 +371,7 @@ def adapt_batch_for_model_profile(
         if "ball_uv_target" in batch and "ball_vis_target" in batch:
             adapted["ball_uv_target"] = batch["ball_uv_target"][:, :1]
             adapted["ball_vis_target"] = batch["ball_vis_target"][:, :1]
-        return adapted
+        return cast("BLCSBatch", adapted)
     raise ValueError(
         "Unknown model input profile: "
         f"{input_profile}. Supported: ['single', 'multiview']"

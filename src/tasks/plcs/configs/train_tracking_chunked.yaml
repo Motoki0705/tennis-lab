@@ -3,13 +3,17 @@ defaults:
   - data: tracking_chunked
   - training: default
   - loss: tracking
+  - tracking_metrics: default
+  - qualitative: default
   - run: train
   - generation: multi_object
   - paths: default
-  - simulation: default
   - camera: default
   - motion_sources: default
   - _self_
+
+external_assets:
+  smplh_model_path: smplx/smplh
 
 training:
   trainer:
@@ -28,7 +32,7 @@ training:
 
 hydra:
   run:
-    dir: ${run.output_dir}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir}}/${now:%Y-%m-%d_%H-%M-%S}
   output_subdir: null
   job:
     chdir: false

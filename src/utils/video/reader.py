@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
+from typing import cast
 
 import cv2
 import numpy as np
@@ -44,6 +45,7 @@ def read_video_frame(
         ok, frame_bgr = cap.read()
         if not ok:
             raise RuntimeError(f"Failed to read frame {frame_index} from {video_path}")
+        frame_bgr = cast(NDArray[np.uint8], np.asarray(frame_bgr, dtype=np.uint8))
         original_size = (int(frame_bgr.shape[1]), int(frame_bgr.shape[0]))
         return FramePacket(
             index=frame_index,
@@ -74,6 +76,9 @@ class OpenCVVideoFrameReader:
                 ok, frame_bgr = cap.read()
                 if not ok:
                     break
+                frame_bgr = cast(
+                    NDArray[np.uint8], np.asarray(frame_bgr, dtype=np.uint8)
+                )
                 original_size = (int(frame_bgr.shape[1]), int(frame_bgr.shape[0]))
                 yield FramePacket(
                     index=frame_index,
@@ -176,8 +181,15 @@ def read_video_rgb(
     for packet in OpenCVVideoFrameReader(video_path, max_frames=max_frames):
         frame_bgr = packet.frame
         if scale != 1.0:
-            frame_bgr = cv2.resize(
-                frame_bgr, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA
+            frame_bgr = np.asarray(
+                cv2.resize(
+                    frame_bgr,
+                    None,
+                    fx=scale,
+                    fy=scale,
+                    interpolation=cv2.INTER_AREA,
+                ),
+                dtype=np.uint8,
             )
         frames.append(frame_bgr[..., ::-1])
     if not frames:

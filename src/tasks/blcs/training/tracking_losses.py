@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import Any
 
 import torch
@@ -39,14 +38,7 @@ class BLCSTrackingLoss(nn.Module):
         self.gravity_target = float(config.gravity_target)
         self.match_position_weight = float(config.match_position_weight)
         self.match_presence_weight = float(config.match_presence_weight)
-        configured_axis_weights = config.get("position_axis_weights")
-        if configured_axis_weights is None:
-            warnings.warn(
-                "Legacy BLCS tracking config has no position_axis_weights; "
-                "using [1, 1, 1]. New runs must configure this explicitly.",
-                stacklevel=2,
-            )
-            configured_axis_weights = (1.0, 1.0, 1.0)
+        configured_axis_weights = config.position_axis_weights
         self.register_buffer(
             "position_axis_weights",
             position_axis_weight_tensor(configured_axis_weights),

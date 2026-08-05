@@ -14,41 +14,46 @@ same recipe is re-run across the physics-prior / architecture experiments.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any, Protocol, runtime_checkable
 
 import pytorch_lightning as pl
 
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
+from src.tasks.base.configuration import (
+    BaseTrainingConfig,
+    as_config_mapping,
+    require_config_mapping,
+)
+
+
+@runtime_checkable
+class _GANPhaseModule(Protocol):
+    def set_gan_weight(self, weight: float) -> None: ...
+
+    def activate_gan_phase(self, current_epoch: int) -> None: ...
+
+
+def _require_gan_phase_module(module: pl.LightningModule) -> _GANPhaseModule:
+    if not isinstance(module, _GANPhaseModule):
+        raise TypeError(
+            "GANTransitionCallback requires set_gan_weight() and activate_gan_phase()."
+        )
+    return module
 
 
 class GANTransitionCallback(pl.Callback):
     """Activate hybrid GAN training at a fixed, pre-scheduled epoch."""
 
-    def __init__(self, config: DictConfig) -> None:
+    def __init__(self, config: Any) -> None:
         super().__init__()
-
-        gan_cfg = (config.get("training", {}) or {}).get("gan", {}) or {}
-        transition_cfg = gan_cfg.get("transition", {}) or {}
-
-        self.enabled = bool(gan_cfg.get("enabled", False))
-
-        start_epoch = transition_cfg.get("start_epoch")
-        if start_epoch is None:
-            if self.enabled:
-                # A GAN run with no transition schedule is a config error, not a
-                # silent "never switch" no-op (AGENTS.md: no quiet fallbacks).
-                raise ValueError(
-                    "training.gan.transition.start_epoch is required when GAN is "
-                    "enabled (deterministic epoch-based transition)."
-                )
-            start_epoch = 0
-        self.start_epoch = int(start_epoch)
-        if self.start_epoch < 0:
-            raise ValueError(f"start_epoch must be >= 0, got {self.start_epoch}.")
-
-        self.gan_target_weight = float(gan_cfg.get("target_weight", 0.1))
-        self.gan_warmup_epochs = int(gan_cfg.get("warmup_epochs", 5))
+        root = as_config_mapping(config, path="configuration")
+        training = BaseTrainingConfig.from_validated_task_mapping(
+            require_config_mapping(root, "training", path="configuration")
+        )
+        gan = training.gan
+        self.enabled: bool = gan.enabled
+        self.start_epoch: int = gan.transition.start_epoch
+        self.gan_target_weight: float = gan.target_weight
+        self.gan_warmup_epochs: int = gan.warmup_epochs
 
         # Process-local guard so the one-time phase activation (which rebuilds the
         # optimizer/scheduler state) runs exactly once. Intentionally NOT persisted
@@ -58,11 +63,12 @@ class GANTransitionCallback(pl.Callback):
         self.has_switched_to_gan = False
 
     def on_fit_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
-        pl_module.set_gan_weight(0.0)
+        gan_module = _require_gan_phase_module(pl_module)
+        gan_module.set_gan_weight(0.0)
         if not self.enabled:
             return
 
-        max_epochs = getattr(trainer, "max_epochs", None)
+        max_epochs = trainer.max_epochs
         if max_epochs is not None and self.start_epoch >= int(max_epochs):
             raise ValueError(
                 f"training.gan.transition.start_epoch ({self.start_epoch}) must be "
@@ -83,9 +89,13 @@ class GANTransitionCallback(pl.Callback):
             # Pass the *actual* current epoch (== start_epoch on the normal
             # transition, > start_epoch when resuming into the GAN phase) so the
             # GAN-phase LR schedule is scaled over the true remaining epochs.
-            pl_module.activate_gan_phase(trainer.current_epoch)
+            _require_gan_phase_module(pl_module).activate_gan_phase(
+                trainer.current_epoch
+            )
 
-        pl_module.set_gan_weight(self._ramp_weight(trainer.current_epoch))
+        _require_gan_phase_module(pl_module).set_gan_weight(
+            self._ramp_weight(trainer.current_epoch)
+        )
 
     def _ramp_weight(self, current_epoch: int) -> float:
         # Warmup is anchored to ``start_epoch`` (not the activation epoch) so a

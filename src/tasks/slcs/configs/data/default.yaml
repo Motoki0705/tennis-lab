@@ -1,10 +1,10 @@
-# Issue #634 structured dataset location. Paths are repo-relative unless absolute.
-dataset_root: data/tennis_scene_dataset
-split_file: data/tennis_scene_dataset/splits.json
+# Paths are relative to paths.data_root.
+dataset_root: tennis_scene_dataset
+split_file: tennis_scene_dataset/splits.json
 
-backend: default
 batch_size: 8
 num_workers: 4
+pin_memory: true
 # Explicit memorization mode: reuse train-assigned recordings for val/test.
 overfit: false
 

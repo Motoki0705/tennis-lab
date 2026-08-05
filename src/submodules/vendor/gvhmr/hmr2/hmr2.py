@@ -11,7 +11,7 @@ from .vit import ViT
 
 
 class HMR2(nn.Module):
-    def __init__(self):
+    def __init__(self, *, mean_params_path):
         super().__init__()
         self.backbone = ViT(
             img_size=(256, 192),
@@ -25,7 +25,7 @@ class HMR2(nn.Module):
             qkv_bias=True,
             drop_path_rate=0.55,
         )
-        self.smpl_head = SMPLTransformerDecoderHead()
+        self.smpl_head = SMPLTransformerDecoderHead(mean_params_path=mean_params_path)
 
     def forward(self, batch, feat_mode=True):
         """

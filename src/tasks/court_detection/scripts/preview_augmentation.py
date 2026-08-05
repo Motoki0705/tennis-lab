@@ -15,14 +15,14 @@ Notes:
     - Each sample renders one original panel plus `preview.num_augmented`
       independently seeded augmentation draws, with task-specific annotations
       (kp: keypoint circles, seg/line: mask overlay).
-    - Outputs are written under `outputs/court_detection/augmentation_preview`.
+    - Outputs are resolved beneath `paths.output_root`.
 """
 
 from __future__ import annotations
 
 import random
 import sys
-from collections.abc import Callable, Sized
+from collections.abc import Sized
 from pathlib import Path
 from typing import Any, cast
 
@@ -31,27 +31,121 @@ import numpy as np
 import torch
 from omegaconf import DictConfig
 
+from src.tasks.base.configuration import require_config_mapping, require_config_value
 from src.tasks.base.preview import compose_titled_row, resolve_sample_indices
+from src.tasks.court_detection.configuration import (
+    CourtDataConfig,
+    validate_paths_boundary,
+)
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
 from src.tasks.court_detection.visualization.rendering.common import (
     colorize_seg_mask,
     denormalize_tensor_to_rgb,
 )
-from src.utils.hydra import hydra_main
+from src.utils.configuration import PathRole
+from src.utils.hydra import hydra_main, register_boundary_validator
 from src.utils.io import save_json
 
 _LINE_OVERLAY_RGB = (255, 96, 96)
 _KP_COLOR_RGB = (255, 80, 80)
+_BOUNDARY = "court_detection.preview_augmentation"
+
+
+def _runtime(cfg: DictConfig) -> tuple[Path, CourtDataConfig]:
+    root, resolver = validate_paths_boundary(cfg, expected_sections={"data", "preview"})
+    data = CourtDataConfig.from_mapping(
+        require_config_mapping(root, "data", path="configuration"), resolver=resolver
+    )
+    preview = require_config_mapping(root, "preview", path="configuration")
+    expected = {
+        "split",
+        "sample_indices",
+        "max_samples",
+        "num_augmented",
+        "seed",
+        "output_dir",
+        "draw",
+        "layout",
+    }
+    if set(preview) != expected:
+        raise ValueError(f"preview requires exactly {sorted(expected)}.")
+    for key in ("max_samples", "num_augmented", "seed"):
+        require_config_value(preview, key, int, path="preview")
+    if cast("int", preview["max_samples"]) <= 0:
+        raise ValueError("preview.max_samples must be positive.")
+    if cast("int", preview["num_augmented"]) < 1:
+        raise ValueError("preview.num_augmented must be >= 1.")
+    split = cast("str", require_config_value(preview, "split", str, path="preview"))
+    if split not in {"train", "val"}:
+        raise ValueError("preview.split must be train or val.")
+    sample_indices = cast(
+        "list[object] | tuple[object, ...]",
+        require_config_value(preview, "sample_indices", (list, tuple), path="preview"),
+    )
+    if any(type(index) is not int or index < 0 for index in sample_indices):
+        raise ValueError("preview.sample_indices must contain non-negative integers.")
+    draw = require_config_mapping(preview, "draw", path="preview")
+    layout = require_config_mapping(preview, "layout", path="preview")
+    if set(draw) != {"kp_radius", "kp_thickness", "mask_alpha"}:
+        raise ValueError("preview.draw has an invalid field set.")
+    if set(layout) != {
+        "tile_gap",
+        "header_height",
+        "text_scale",
+        "text_thickness",
+        "background_rgb",
+    }:
+        raise ValueError("preview.layout has an invalid field set.")
+    for key in ("kp_radius", "kp_thickness"):
+        require_config_value(draw, key, int, path="preview.draw")
+    require_config_value(draw, "mask_alpha", (float, int), path="preview.draw")
+    for key in ("tile_gap", "header_height", "text_thickness"):
+        require_config_value(layout, key, int, path="preview.layout")
+    require_config_value(layout, "text_scale", (float, int), path="preview.layout")
+    require_config_value(layout, "background_rgb", list, path="preview.layout")
+    background = cast("list[object]", layout["background_rgb"])
+    if len(background) != 3 or any(
+        type(channel) is not int or not 0 <= channel <= 255 for channel in background
+    ):
+        raise ValueError("preview.layout.background_rgb must be three RGB integers.")
+    if any(cast("int", draw[key]) <= 0 for key in ("kp_radius", "kp_thickness")):
+        raise ValueError("preview keypoint draw sizes must be positive.")
+    mask_alpha = float(cast("float | int", draw["mask_alpha"]))
+    if not 0.0 <= mask_alpha <= 1.0:
+        raise ValueError("preview.draw.mask_alpha must be in [0, 1].")
+    if cast("int", layout["tile_gap"]) < 0 or any(
+        cast("int", layout[key]) <= 0 for key in ("header_height", "text_thickness")
+    ):
+        raise ValueError("preview.layout sizes are invalid.")
+    if float(cast("float | int", layout["text_scale"])) <= 0:
+        raise ValueError("preview.layout.text_scale must be positive.")
+    output_dir = cast(
+        "str", require_config_value(preview, "output_dir", str, path="preview")
+    )
+    if not output_dir:
+        raise ValueError("preview.output_dir must not be empty.")
+    return resolver.resolve(
+        PathRole.OUTPUT,
+        output_dir,
+    ), data
+
+
+def _validate_boundary(cfg: DictConfig) -> None:
+    _runtime(cfg)
+
+
+register_boundary_validator(_BOUNDARY, _validate_boundary)
 
 
 @hydra_main(
     config_path="../configs",
     config_name="preview_augmentation",
     version_base="1.3",
+    validation_boundary=_BOUNDARY,
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
-    output_dir = Path(str(cfg.preview.output_dir)).expanduser()
+    output_dir, _ = _runtime(cfg)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     split_name = str(cfg.preview.split)
@@ -174,7 +268,9 @@ def _blend_where(
 ) -> np.ndarray:
     """Alpha-blend ``colored`` into ``rgb`` only where ``region`` is true."""
     overlay = rgb.copy()
-    blended = rgb.astype(np.float32) * (1.0 - alpha) + colored.astype(np.float32) * alpha
+    blended = (
+        rgb.astype(np.float32) * (1.0 - alpha) + colored.astype(np.float32) * alpha
+    )
     overlay[region] = np.clip(blended[region], 0.0, 255.0).astype(np.uint8)
     return overlay
 
@@ -200,4 +296,4 @@ def _pad_panels_to_common_size(
 
 
 if __name__ == "__main__":
-    sys.exit(cast(Callable[[], int], main)())
+    sys.exit(main())

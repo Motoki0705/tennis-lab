@@ -15,82 +15,59 @@ Notes:
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
-from hydra.utils import to_absolute_path
-from omegaconf import DictConfig, ListConfig
+from omegaconf import DictConfig
 
-from src.utils.hydra import hydra_main
+from src.tennis_scene.configuration import validate_pipeline_boundary
+from src.utils.configuration import PathRole
+from src.utils.hydra import hydra_main, register_boundary_validator
 
 LOGGER = logging.getLogger(__name__)
+_BOUNDARY = "tennis_scene.pipeline"
+register_boundary_validator(_BOUNDARY, validate_pipeline_boundary)
 
 
 @hydra_main(
     version_base="1.3",
     config_path="../configs",
     config_name="pipeline",
+    validation_boundary=_BOUNDARY,
 )
 def main(cfg: DictConfig) -> int:
     """Run the tennis scene reconstruction pipeline."""
+    from src.tennis_scene.configuration import PipelineRuntimeConfig
     from src.tennis_scene.pipeline import TennisSceneOrchestrator
 
-    raw_video_paths = cfg.get("video_paths")
-    if not isinstance(raw_video_paths, (list, tuple, ListConfig)) or not raw_video_paths:
-        LOGGER.error("video_paths must be a non-empty list")
-        return 1
-    video_paths = [Path(to_absolute_path(str(video_path))) for video_path in raw_video_paths]
-    missing_paths = [video_path for video_path in video_paths if not video_path.exists()]
+    runtime = PipelineRuntimeConfig.from_config(cfg)
+    missing_paths = [path for path in runtime.video_paths if not path.is_file()]
     if missing_paths:
-        LOGGER.error(f"Video not found: {missing_paths[0]}")
-        return 1
-
-    raw_camera_ids = cfg.get("camera_ids")
-    camera_ids = None
-    if raw_camera_ids is not None:
-        if not isinstance(raw_camera_ids, (list, tuple, ListConfig)):
-            LOGGER.error("camera_ids must be null or a list")
-            return 1
-        camera_ids = [str(camera_id) for camera_id in raw_camera_ids]
-        if len(camera_ids) != len(video_paths):
-            LOGGER.error("camera_ids length must match video_paths length")
-            return 1
-
-    output_dir = Path(to_absolute_path(str(cfg.output_dir)))
-    output_name = cfg.get("output_name")
-    if output_name is None:
-        output_name = video_paths[0].stem
-
-    output_path = output_dir / f"{output_name}.npz"
-
-    max_frames = cfg.get("max_frames")
-    frame_index = int(cfg.court_kp.get("frame_index", 0))
+        raise FileNotFoundError(f"Video not found: {missing_paths[0]}")
 
     LOGGER.info("Configuration:")
-    LOGGER.info(f"  Device: {cfg.device}")
-    LOGGER.info(f"  Cameras: {len(video_paths)}")
-    for index, video_path in enumerate(video_paths):
-        camera_label = camera_ids[index] if camera_ids is not None else f"cam{index}"
+    LOGGER.info(f"  Device: {runtime.device}")
+    LOGGER.info(f"  Cameras: {len(runtime.video_paths)}")
+    for camera_label, video_path in zip(
+        runtime.camera_ids, runtime.video_paths, strict=True
+    ):
         LOGGER.info(f"    {camera_label}: {video_path}")
-    LOGGER.info(f"  Max frames: {max_frames}")
-    LOGGER.info(f"  Court KP frame index: {frame_index}")
-    LOGGER.info(f"  Skip GVHMR: {cfg.gvhmr.get('skip', False)}")
-    LOGGER.info(f"  Skip ball: {cfg.ball_detection.get('skip', False)}")
-    LOGGER.info(f"  Skip BLCS: {cfg.blcs.get('skip', False)}")
+    LOGGER.info(f"  Max frames: {runtime.max_frames}")
+    LOGGER.info(f"  Court KP frame index: {runtime.frame_index}")
 
-    orchestrator = TennisSceneOrchestrator.from_config(cfg)
+    orchestrator = TennisSceneOrchestrator.from_runtime_config(runtime)
 
     LOGGER.info("Running pipeline...")
     result = orchestrator.run(
-        video_paths=video_paths,
-        max_frames=max_frames,
-        frame_index=frame_index,
-        camera_ids=camera_ids,
+        video_paths=runtime.video_paths,
+        video_role=PathRole.DATA,
+        max_frames=runtime.max_frames,
+        frame_index=runtime.frame_index,
+        camera_ids=runtime.camera_ids,
     )
 
     LOGGER.info("Saving results...")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    result.save(output_path)
-    LOGGER.info(f"Saved: {output_path}")
+    runtime.output_path.parent.mkdir(parents=True, exist_ok=True)
+    result.save(runtime.output_path)
+    LOGGER.info(f"Saved: {runtime.output_path}")
 
     LOGGER.info("=" * 60)
     LOGGER.info("Pipeline Summary:")

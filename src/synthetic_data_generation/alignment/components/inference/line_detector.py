@@ -23,6 +23,7 @@ from src.synthetic_data_generation.alignment.components.ground.projection import
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
 from src.tasks.court_detection.inference import CourtLinePredictor
+from src.utils.configuration import PathResolver
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,7 @@ def load_line_detector(
     backbone_checkpoint: Path,
     device: str,
     expected_short_side: int,
+    resolver: PathResolver,
 ) -> LineDetector:
     """Load the configured line model and explicit local backbone paths."""
     if not checkpoint.is_file():
@@ -69,18 +71,25 @@ def load_line_detector(
     raw: Any = torch.load(checkpoint, map_location="cpu", weights_only=False)
     if not isinstance(raw, dict):
         raise ValueError("Line checkpoint payload must be a mapping.")
-    hyper_parameters = raw.get("hyper_parameters")
+    if "hyper_parameters" not in raw:
+        raise ValueError("Line checkpoint has no hyper_parameters mapping.")
+    hyper_parameters = raw["hyper_parameters"]
     if not isinstance(hyper_parameters, dict):
         raise ValueError("Line checkpoint has no hyper_parameters mapping.")
-    embedded = hyper_parameters.get("config")
+    if "config" not in hyper_parameters:
+        raise ValueError("Line checkpoint has no embedded config mapping.")
+    embedded = hyper_parameters["config"]
     if not isinstance(embedded, Mapping):
         raise ValueError("Line checkpoint has no embedded config mapping.")
     config = _plain_mapping(embedded)
     model = _required_mapping(config, "model")
     encoder = _required_mapping(model, "encoder")
-    embedded_path = str(encoder.get("checkpoint_path", ""))
-    if not embedded_path:
+    if "checkpoint_path" not in encoder:
         raise ValueError("Line checkpoint config has no encoder checkpoint_path.")
+    embedded_value = encoder["checkpoint_path"]
+    if not isinstance(embedded_value, str) or not embedded_value:
+        raise ValueError("Line checkpoint encoder checkpoint_path must be a string.")
+    embedded_path = embedded_value
     if Path(embedded_path).name != backbone_checkpoint.name:
         raise ValueError(
             "Configured DINOv3 backbone file does not match checkpoint config: "
@@ -90,7 +99,9 @@ def load_line_detector(
     encoder["checkpoint_path"] = str(backbone_checkpoint)
     predictor = CourtLinePredictor.load_from_checkpoint(
         checkpoint,
+        resolver=resolver,
         device=device,
+        allow_device_fallback=False,
         weights_only=False,
         config=config,
     )
@@ -188,7 +199,9 @@ def _plain_value(value: object) -> Any:
 
 
 def _required_mapping(value: Mapping[str, Any], key: str) -> dict[str, Any]:
-    nested = value.get(key)
+    if key not in value:
+        raise ValueError(f"Line checkpoint config has no {key} mapping.")
+    nested = value[key]
     if not isinstance(nested, dict):
         raise ValueError(f"Line checkpoint config has no {key} mapping.")
     return nested

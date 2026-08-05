@@ -1,12 +1,12 @@
 hydra:
   run:
-    dir: outputs/ball_detection/prepare_youtube_dataset/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},ball_detection/prepare_youtube_dataset,${now:%Y-%m-%d_%H-%M-%S}}
   output_subdir: null
   job:
     chdir: false
 
 workflow:
-  root: data/tennis/youtube
+  root: tennis/youtube
 
   sources:
     - source_id: video_000001
@@ -59,7 +59,7 @@ workflow:
     merge_output_format: mkv
     js_runtimes: node
     remote_components: null
-    download_archive: data/tennis/youtube/manifests/download_archive.txt
+    download_archive: manifests/download_archive.txt
     overwrite: false
     extra_args: []
 
@@ -73,12 +73,12 @@ workflow:
     tune: hq
     rate_control: vbr
     cq: 20
-    bitrate: null
+    bitrate: "0"
     maxrate: null
     bufsize: null
     profile: high
     pix_fmt: yuv420p
-    crf: 20
+    crf: null
     overwrite: false
 
   frames:
@@ -87,3 +87,6 @@ workflow:
     jpeg_quality: 95
     max_frames_per_video: null
     overwrite: false
+defaults:
+  - paths: default
+  - _self_

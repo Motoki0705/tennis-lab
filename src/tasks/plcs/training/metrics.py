@@ -29,8 +29,9 @@ class PLCSMetrics:
 
     def __init__(
         self,
-        position_threshold_m: float = 0.5,
-        angle_threshold_deg: float = 15.0,
+        *,
+        position_threshold_m: float,
+        angle_threshold_deg: float,
     ) -> None:
         """Initialize the metrics tracker.
 

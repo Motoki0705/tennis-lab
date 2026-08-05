@@ -7,13 +7,20 @@ trainer:
   log_every_n_steps: 20
   check_val_every_n_epoch: 1
   accumulate_grad_batches: 1
+  reload_dataloaders_every_n_epochs: 0
+  enable_progress_bar: true
+  enable_model_summary: true
+  benchmark: false
 
 # ---- Optimizer / schedule (LightningModule references) ----
 learning_rate: 1.0e-4
 weight_decay: 1.0e-5
 warmup_steps: 500
-scheduler: cosine
+warmup_epochs: null
 min_lr: 1.0e-6
+steps_per_epoch: null
+optimizer:
+  betas: [0.9, 0.999]
 
 # ---- Callbacks (BaseTrainingRunner references) ----
 checkpoint:
@@ -38,3 +45,19 @@ lr_monitor:
 
 qualitative_logging:
   enabled: false
+  every_n_epochs: 1
+  num_samples: 4
+  selection_mode: random
+  selected_indices: null
+
+gan:
+  enabled: false
+  target_weight: 0.0
+  warmup_epochs: 1
+  generator_gradient_clip_val: null
+  discriminator_gradient_clip_val: null
+  transition:
+    start_epoch: 0
+
+matmul_precision: high
+allow_tf32: true

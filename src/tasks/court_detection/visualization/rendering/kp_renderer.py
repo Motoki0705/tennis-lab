@@ -74,7 +74,10 @@ def _draw_keypoints(
     for x_coord, y_coord in keypoints_px:
         cv2.circle(
             image_rgb,
-            (int(round(float(x_coord) * scale_x)), int(round(float(y_coord) * scale_y))),
+            (
+                int(round(float(x_coord) * scale_x)),
+                int(round(float(y_coord) * scale_y)),
+            ),
             style.kp_radius,
             style.kp_color_rgb,
             thickness=style.kp_thickness,

@@ -6,7 +6,7 @@ import csv
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import cv2
 import numpy as np
@@ -98,7 +98,9 @@ def run_annotation_session(config: BallAnnotationSessionConfig) -> int:
                 candidate_id=requested_candidate,
             )
             if candidate_path is None:
-                print(f"[annotate_youtube_ball] no pending candidates for {config.video_id}")
+                print(
+                    f"[annotate_youtube_ball] no pending candidates for {config.video_id}"
+                )
                 return 0
             requested_candidate = None
             result = _run_candidate(
@@ -179,7 +181,9 @@ def _run_candidate(
             continue
         if character == config.zoom.key.lower():
             if _zoom_point(frame, state.selected_ball_index) is None:
-                print("[annotate_youtube_ball] no ball or model prediction available for zoom")
+                print(
+                    "[annotate_youtube_ball] no ball or model prediction available for zoom"
+                )
             else:
                 state.zoom_enabled = not state.zoom_enabled
             continue
@@ -217,8 +221,10 @@ def _mouse_callback(
     x: int,
     y: int,
     flags: int,
-    userdata: UiState,
+    userdata: Any | None,
 ) -> None:
+    if not isinstance(userdata, UiState):
+        raise TypeError("Annotation mouse callback requires UiState userdata.")
     is_drag = event == cv2.EVENT_MOUSEMOVE and bool(flags & cv2.EVENT_FLAG_LBUTTON)
     if event != cv2.EVENT_LBUTTONDOWN and not is_drag:
         return
@@ -247,16 +253,18 @@ def _mouse_callback(
         if len(balls) >= state.document.get("max_balls_per_frame", 16):
             print("[annotate_youtube_ball] maximum balls per frame reached")
             return
-        balls.append({
-            "ball_id": _next_ball_id(balls),
-            "prediction_id": None,
-            "x": original_x,
-            "y": original_y,
-            "state": "visible",
-            "role": "target",
-            "confidence": None,
-            "label_source": "manual",
-        })
+        balls.append(
+            {
+                "ball_id": _next_ball_id(balls),
+                "prediction_id": None,
+                "x": original_x,
+                "y": original_y,
+                "state": "visible",
+                "role": "target",
+                "confidence": None,
+                "label_source": "manual",
+            }
+        )
         state.selected_ball_index = len(balls) - 1
     elif event == cv2.EVENT_LBUTTONDOWN:
         state.selected_ball_index = _nearest_ball_index(
@@ -567,7 +575,9 @@ def _cycle_selected_ball_role(state: UiState) -> None:
         return
     roles = ("target", "secondary", "distractor")
     current = str(ball.get("role", "target"))
-    ball["role"] = roles[(roles.index(current) + 1) % len(roles)] if current in roles else "target"
+    ball["role"] = (
+        roles[(roles.index(current) + 1) % len(roles)] if current in roles else "target"
+    )
     ball["label_source"] = "manual"
     frame["review_status"] = "pending"
 
@@ -575,15 +585,18 @@ def _cycle_selected_ball_role(state: UiState) -> None:
 def _register_final_clip(root: Path, clip: JSONDict, target_dir: Path) -> None:
     split = str(clip["split"])
     annotation_path = root / "annotations" / f"{split}.json"
-    payload = (
-        load_json(annotation_path)
-        if annotation_path.exists()
-        else {"schema_name": "ball_youtube_dataset_v1", "split": split, "items": []}
+    payload = cast(
+        JSONDict,
+        (
+            load_json(annotation_path)
+            if annotation_path.exists()
+            else {"schema_name": "ball_youtube_dataset_v1", "split": split, "items": []}
+        ),
     )
     item = {
         "clip_id": clip["clip_id"],
         "clip_path": str(target_dir.relative_to(root)),
-        "dataset_entry": str(target_dir.relative_to(root.parent)),
+        "dataset_entry": str(target_dir.relative_to(root)),
         "annotation_path": str((target_dir / "clip.json").relative_to(root)),
         "label_csv": str((target_dir / "Label.csv").relative_to(root)),
         "video_id": clip["video_id"],
@@ -593,11 +606,17 @@ def _register_final_clip(root: Path, clip: JSONDict, target_dir: Path) -> None:
         "annotation_status": "completed",
         "source": {"type": "youtube"},
     }
-    items_by_id = {str(existing["clip_id"]): existing for existing in payload.get("items", [])}
+    items = payload.get("items", [])
+    if not isinstance(items, list):
+        raise TypeError(f"Annotation registry items must be a list: {annotation_path}")
+    items_by_id = {str(existing["clip_id"]): existing for existing in items}
     items_by_id[str(clip["clip_id"])] = item
     payload["items"] = list(items_by_id.values())
     save_json_atomic(payload, annotation_path)
-    entries = sorted(str(existing["dataset_entry"]) for existing in payload["items"])
+    entries = sorted(
+        str(existing["dataset_entry"])
+        for existing in cast(list[JSONDict], payload["items"])
+    )
     _write_text_atomic(
         root / "annotations" / f"{split}.txt",
         "".join(f"{entry}\n" for entry in entries),
@@ -623,33 +642,37 @@ def _write_label_csv(path: Path, frames: list[JSONDict]) -> None:
         for frame in frames:
             balls = frame.get("balls", [])
             if not balls:
-                writer.writerow({
-                    "file name": frame["file_name"],
-                    "instance id": "",
-                    "prediction id": "",
-                    "visibility": 0,
-                    "x-coordinate": 0.0,
-                    "y-coordinate": 0.0,
-                    "ball state": "absent",
-                    "role": "",
-                    "label source": "manual",
-                    "source frame index": frame["source_frame_index"],
-                })
+                writer.writerow(
+                    {
+                        "file name": frame["file_name"],
+                        "instance id": "",
+                        "prediction id": "",
+                        "visibility": 0,
+                        "x-coordinate": 0.0,
+                        "y-coordinate": 0.0,
+                        "ball state": "absent",
+                        "role": "",
+                        "label source": "manual",
+                        "source frame index": frame["source_frame_index"],
+                    }
+                )
                 continue
             for ball in balls:
                 visible = str(ball["state"]) in VISIBLE_STATES
-                writer.writerow({
-                    "file name": frame["file_name"],
-                    "instance id": ball["ball_id"],
-                    "prediction id": ball.get("prediction_id") or "",
-                    "visibility": 1 if visible else 0,
-                    "x-coordinate": float(ball["x"]) if visible else 0.0,
-                    "y-coordinate": float(ball["y"]) if visible else 0.0,
-                    "ball state": ball["state"],
-                    "role": ball.get("role", "target"),
-                    "label source": ball.get("label_source", "manual"),
-                    "source frame index": frame["source_frame_index"],
-                })
+                writer.writerow(
+                    {
+                        "file name": frame["file_name"],
+                        "instance id": ball["ball_id"],
+                        "prediction id": ball.get("prediction_id") or "",
+                        "visibility": 1 if visible else 0,
+                        "x-coordinate": float(ball["x"]) if visible else 0.0,
+                        "y-coordinate": float(ball["y"]) if visible else 0.0,
+                        "ball state": ball["state"],
+                        "role": ball.get("role", "target"),
+                        "label source": ball.get("label_source", "manual"),
+                        "source frame index": frame["source_frame_index"],
+                    }
+                )
 
 
 def _next_candidate_path(
@@ -701,14 +724,18 @@ def _prediction_candidates(frame: JSONDict) -> list[JSONDict]:
         if isinstance(candidates, list):
             return candidates
     prediction = frame.get("prediction")
-    return [prediction] if isinstance(prediction, dict) and _finite_point(prediction) else []
+    return (
+        [prediction]
+        if isinstance(prediction, dict) and _finite_point(prediction)
+        else []
+    )
 
 
 def _selected_ball(frame: JSONDict, selected_ball_index: int) -> JSONDict | None:
     balls = frame.get("balls", [])
     if not balls:
         return None
-    return balls[min(max(selected_ball_index, 0), len(balls) - 1)]
+    return cast(JSONDict, balls[min(max(selected_ball_index, 0), len(balls) - 1)])
 
 
 def _nearest_ball_index(
@@ -778,13 +805,15 @@ def _normalize_document_schema(document: JSONDict) -> None:
             legacy_prediction = frame.get("prediction")
             candidates = []
             if isinstance(legacy_prediction, dict) and _finite_point(legacy_prediction):
-                candidates.append({
-                    "prediction_id": "p001",
-                    "rank": 1,
-                    "x": legacy_prediction["x"],
-                    "y": legacy_prediction["y"],
-                    "confidence": legacy_prediction.get("confidence"),
-                })
+                candidates.append(
+                    {
+                        "prediction_id": "p001",
+                        "rank": 1,
+                        "x": legacy_prediction["x"],
+                        "y": legacy_prediction["y"],
+                        "confidence": legacy_prediction.get("confidence"),
+                    }
+                )
             frame["predictions"] = {
                 "frame_id": frame.get("frame_id"),
                 "method": "legacy_top1",
@@ -798,22 +827,28 @@ def _normalize_document_schema(document: JSONDict) -> None:
                 and legacy_ball.get("state") in VISIBLE_STATES
                 and _finite_point(legacy_ball) is not None
             ):
-                frame["balls"] = [{
-                    "ball_id": "b001",
-                    "prediction_id": "p001" if _prediction_candidates(frame) else None,
-                    "x": legacy_ball["x"],
-                    "y": legacy_ball["y"],
-                    "state": legacy_ball["state"],
-                    "role": "target",
-                    "confidence": legacy_ball.get("confidence"),
-                    "label_source": legacy_ball.get("label_source", "pseudo"),
-                }]
+                frame["balls"] = [
+                    {
+                        "ball_id": "b001",
+                        "prediction_id": "p001"
+                        if _prediction_candidates(frame)
+                        else None,
+                        "x": legacy_ball["x"],
+                        "y": legacy_ball["y"],
+                        "state": legacy_ball["state"],
+                        "role": "target",
+                        "confidence": legacy_ball.get("confidence"),
+                        "label_source": legacy_ball.get("label_source", "pseudo"),
+                    }
+                ]
             else:
                 frame["balls"] = []
         frame.setdefault("rejected_prediction_ids", [])
 
 
-def _to_display(point: tuple[float, float], transform: ViewTransform) -> tuple[int, int]:
+def _to_display(
+    point: tuple[float, float], transform: ViewTransform
+) -> tuple[int, int]:
     return (
         int(round((point[0] - transform.origin_x) * transform.scale)),
         int(round((point[1] - transform.origin_y) * transform.scale)),

@@ -20,9 +20,7 @@ class _FrameCounts:
 
     def to_dict(self) -> dict[str, int | float | None]:
         negative_fpr = (
-            None
-            if self.negative == 0
-            else self.negative_false_positive / self.negative
+            None if self.negative == 0 else self.negative_false_positive / self.negative
         )
         return {
             "frames": self.total,
@@ -140,9 +138,7 @@ class StratifiedBallMetrics:
         pred_present = pred_valid.any(dim=-1)
         counts.total += int(target_present.numel())
         counts.negative += int(negative.sum().item())
-        counts.negative_false_positive += int(
-            (negative & pred_present).sum().item()
-        )
+        counts.negative_false_positive += int((negative & pred_present).sum().item())
 
 
 def _metric_values(

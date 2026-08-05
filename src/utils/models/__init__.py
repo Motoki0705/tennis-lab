@@ -56,6 +56,7 @@ from src.utils.models.lora import (
 )
 from src.utils.models.transformer_utils import (
     build_self_attn_mask,
+    resolve_axial_rope_bases,
     resolve_rope_bases,
     validate_rope_dim,
 )
@@ -110,6 +111,7 @@ __all__ = [
     "mark_only_lora_as_trainable",
     # Shared transformer utilities
     "build_self_attn_mask",
+    "resolve_axial_rope_bases",
     "resolve_rope_bases",
     "validate_rope_dim",
 ]

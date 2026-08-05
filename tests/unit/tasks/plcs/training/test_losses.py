@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict, replace
+
 import torch
 
 from src.tasks.plcs.training.losses import (
@@ -11,6 +13,25 @@ from src.tasks.plcs.training.losses import (
     PLCSLossInputs,
     position_smoothness_loss_term,
 )
+
+
+def _loss_config() -> PLCSLossConfig:
+    return PLCSLossConfig(
+        position_weight=1.0,
+        rotation_weight=1.0,
+        angle_weight=0.0,
+        position_smoothness_weight=0.0,
+        canonical_pose_weight=0.0,
+        joint_angle_weight=0.0,
+        torsion_angle_weight=0.0,
+        torso_twist_weight=0.0,
+        bone_length_weight=0.0,
+        joint_angle_velocity_weight=0.0,
+        torsion_angle_velocity_weight=0.0,
+        torso_twist_velocity_weight=0.0,
+        joint_angle_velocity_angle_weights=None,
+        torsion_angle_velocity_angle_weights=None,
+    )
 
 
 def _inputs(pred_position: torch.Tensor, mask: torch.Tensor | None) -> PLCSLossInputs:
@@ -25,14 +46,17 @@ def _inputs(pred_position: torch.Tensor, mask: torch.Tensor | None) -> PLCSLossI
     )
 
 
-def test_registered_and_off_by_default() -> None:
+def test_registered_term_is_off_when_composed_weight_is_zero() -> None:
     assert "position_smoothness" in DEFAULT_LOSS_TERMS
-    assert PLCSLossConfig().position_smoothness_weight == 0.0
-    assert PLCSLoss().weight_for("position_smoothness") == 0.0
+    config = _loss_config()
+    assert config.position_smoothness_weight == 0.0
+    assert PLCSLoss(config).weight_for("position_smoothness") == 0.0
 
 
 def test_from_dict_parses_weight() -> None:
-    cfg = PLCSLossConfig.from_dict({"position_smoothness_weight": 4.0})
+    raw = asdict(_loss_config())
+    raw["position_smoothness_weight"] = 4.0
+    cfg = PLCSLossConfig.from_dict(raw)
     assert cfg.position_smoothness_weight == 4.0
 
 
@@ -53,8 +77,11 @@ def test_jitter_penalized_more_than_smooth() -> None:
 
 def test_contributes_to_total_via_forward() -> None:
     torch.manual_seed(1)
-    cfg = PLCSLossConfig(
-        position_weight=0.0, rotation_weight=0.0, position_smoothness_weight=4.0
+    cfg = replace(
+        _loss_config(),
+        position_weight=0.0,
+        rotation_weight=0.0,
+        position_smoothness_weight=4.0,
     )
     loss_fn = PLCSLoss(config=cfg)
     pred_pos = torch.randn(1, 20, 3)

@@ -1,14 +1,15 @@
 mode: visualize  # visualize | predict
-scene_path: data/plcs/scenes/scene_000000
+scene_path: plcs/scenes/scene_000000
 # Single-view camera index used when cameras is unset.
 camera: 0
 # Optional multi-camera selector: "all" or comma-separated "0,1,2"
-cameras: null
+cameras: [0]
 animation_view: 3d  # 3d | 2d_topdown | camera
-fps: 30
-save: assets/plcs/gt.gif           # Optional output file for comparison animation (e.g., .mp4, .gif)
+fps: 30.0
+save: plcs/gt.gif           # Optional output file for comparison animation (e.g., .mp4, .gif)
 info: false
-checkpoint: checkpoints/plcs/frame/last.ckpt
+checkpoint: plcs/frame/last.ckpt
+device: ${run.device}
 # Canonical pose used for the Prediction skeleton: gt | prediction
 canonical_pose_source: gt
 
@@ -27,3 +28,8 @@ style:
 view_3d:
   preset: broadcast    # broadcast | side | top | corner | behind_far
   mode: static         # static | orbit | keyframes
+  elev: null
+  azim: null
+  zoom: null
+  orbit_period_s: 10.0
+  keyframes: null

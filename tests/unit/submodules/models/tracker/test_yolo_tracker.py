@@ -4,12 +4,12 @@ import numpy as np
 import pytest
 import torch
 
-from src.submodules.models.tracker.common import select_and_complete_tracks
-from src.submodules.models.tracker.yolo_tracker import (
+from src.submodules.models.tracker.common import (
     TrackRequest,
     TrackResult,
-    _build_track_tensor,
-    _sort_tracks,
+    build_track_tensor,
+    select_and_complete_tracks,
+    sort_tracks,
 )
 
 
@@ -27,7 +27,7 @@ def make_history() -> list[list[dict]]:
 
 class TestSortTracks:
     def test_orders_by_accumulated_area(self):
-        id_to_frame_ids, id_to_bbx_xyxys, ids_by_area = _sort_tracks(make_history())
+        id_to_frame_ids, id_to_bbx_xyxys, ids_by_area = sort_tracks(make_history())
         # id 1: 3 frames of 100x200 >> id 2: 4 frames of 10x20
         assert ids_by_area == [1, 2]
         assert id_to_frame_ids[1] == [0, 1, 3]
@@ -35,17 +35,15 @@ class TestSortTracks:
         assert id_to_bbx_xyxys[1].shape == (3, 4)
 
     def test_empty_history(self):
-        id_to_frame_ids, _, ids_by_area = _sort_tracks([[], []])
+        id_to_frame_ids, _, ids_by_area = sort_tracks([[], []])
         assert ids_by_area == []
         assert id_to_frame_ids == {}
 
 
 class TestBuildTrackTensor:
     def test_interpolates_and_covers_all_frames(self):
-        id_to_frame_ids, id_to_bbx_xyxys, _ = _sort_tracks(make_history())
-        track = _build_track_tensor(
-            id_to_frame_ids[1], id_to_bbx_xyxys[1], num_frames=4
-        )
+        id_to_frame_ids, id_to_bbx_xyxys, _ = sort_tracks(make_history())
+        track = build_track_tensor(id_to_frame_ids[1], id_to_bbx_xyxys[1], num_frames=4)
 
         assert track.shape == (4, 4)
         assert track.dtype == torch.float32
@@ -75,6 +73,6 @@ def test_requested_track_count_must_be_available() -> None:
     with pytest.raises(RuntimeError, match="Requested 2 person tracks"):
         select_and_complete_tracks(
             one_track_history,
-            TrackRequest("video.mp4", num_tracks=2),
+            TrackRequest("video.mp4", num_tracks=2, interactive=False),
             num_frames=2,
         )

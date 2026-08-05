@@ -3,20 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytorch_lightning as pl
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+from src.tasks.court_detection.configuration import CourtTrainingConfig
 from src.tasks.court_detection.data.court_kp_dataset import CourtKPDataset
 from src.tasks.court_detection.data.court_line_dataset import CourtLineDataset
 from src.tasks.court_detection.data.court_seg_dataset import CourtSegDataset
-
-if TYPE_CHECKING:
-    from omegaconf import DictConfig
-
 
 # ── Padding helpers (shared by collate functions) ─────────────────
 
@@ -56,7 +52,7 @@ def _pad_collate_seg(batch: list[dict]) -> dict:
         padded_mask = torch.zeros(max_h, max_w, dtype=b["mask"].dtype)
         padded_mask[:h, :w] = b["mask"]
         masks.append(padded_mask)
-        sizes.append(b.get("image_size", torch.tensor([h, w], dtype=torch.int64)))
+        sizes.append(b["image_size"])
         ids.append(b["image_id"])
 
     return {
@@ -80,7 +76,7 @@ def _pad_collate_line(batch: list[dict]) -> dict:
         padded_mask[:, :mh, :mw] = b["mask"]
         masks.append(padded_mask)
         _, h, w = b["image"].shape
-        sizes.append(b.get("image_size", torch.tensor([h, w], dtype=torch.int64)))
+        sizes.append(b["image_size"])
         ids.append(b["image_id"])
 
     return {
@@ -106,7 +102,7 @@ def _pad_collate_kp(batch: list[dict]) -> dict:
         keypoints.append(b["keypoints"])
         visibles.append(b["kp_visible"])
         _, h, w = b["image"].shape
-        sizes.append(b.get("image_size", torch.tensor([h, w], dtype=torch.int64)))
+        sizes.append(b["image_size"])
         ids.append(b["image_id"])
 
     return {
@@ -129,46 +125,19 @@ class CourtDetectionDataModule(pl.LightningDataModule):
     ``seg``, ``kp``, ``line``.
     """
 
-    def __init__(self, config: DictConfig | None = None) -> None:
+    def __init__(self, config: object) -> None:
         super().__init__()
-        self.config: DictConfig | dict[str, Any] = config or {}
-
-        data_cfg = self.config.get("data", {})
-        self.task = str(data_cfg.get("task", "seg"))
-        self.data_dir = Path(str(data_cfg.get("data_dir", "data/court")))
-        self.batch_size = int(data_cfg.get("batch_size", 8))
-        self.num_workers = int(data_cfg.get("num_workers", 4))
-        self.pin_memory = bool(data_cfg.get("pin_memory", True))
+        runtime = CourtTrainingConfig.from_config(config)
+        self.data_config = runtime.data
+        self.task = runtime.data.task
+        self.data_dir = runtime.data.data_dir
+        self.batch_size = runtime.data.batch_size
+        self.num_workers = runtime.data.num_workers
+        self.pin_memory = runtime.data.pin_memory
 
         self.train_dataset: Dataset[Any] | None = None
         self.val_dataset: Dataset[Any] | None = None
         self.test_dataset: Dataset[Any] | None = None
-
-    def _build_config_dict(self) -> dict:
-        """Build a flat config dict for dataset constructors."""
-        data_cfg = self.config.get("data", {})
-        aug_cfg = data_cfg.get("augmentation", {})
-        return {
-            "train_scales": list(aug_cfg.get("train_scales", [288])),
-            "val_short_side": int(aug_cfg.get("val_short_side", 288)),
-            "crop_scale": tuple(aug_cfg.get("crop_scale", (0.2, 1.0))),
-            "crop_ratio": tuple(aug_cfg.get("crop_ratio", (0.5, 2.0))),
-            "hflip_prob": float(aug_cfg.get("hflip_prob", 0.7)),
-            "hflip_swap_pairs": [tuple(pair) for pair in data_cfg.get("hflip_swap_pairs", [])],
-            "affine_degrees": float(aug_cfg.get("affine_degrees", 25.0)),
-            "affine_translate": tuple(aug_cfg.get("affine_translate", (0.18, 0.18))),
-            "affine_scale": tuple(aug_cfg.get("affine_scale", (0.65, 1.5))),
-            "affine_shear": float(aug_cfg.get("affine_shear", 18.0)),
-            "perspective_distortion": float(aug_cfg.get("perspective_distortion", 0.25)),
-            "perspective_prob": float(aug_cfg.get("perspective_prob", 0.6)),
-            "color_jitter": tuple(aug_cfg.get("color_jitter", (0.5, 0.5, 0.5, 0.2))),
-            "gaussian_blur_kernel": list(aug_cfg.get("gaussian_blur_kernel", [3, 5, 7, 9])),
-            "gaussian_blur_sigma": tuple(aug_cfg.get("gaussian_blur_sigma", (0.1, 3.0))),
-            "gaussian_blur_prob": float(aug_cfg.get("gaussian_blur_prob", 0.5)),
-            "min_visible_kp": int(aug_cfg.get("min_visible_kp", 0)),
-            "visibility_max_retries": int(aug_cfg.get("visibility_max_retries", 20)),
-            "sigma_ratio": float(self.config.get("data", {}).get("sigma_ratio", 0.01)),
-        }
 
     def create_dataset(self, *, split: str, is_train: bool) -> Dataset[Any]:
         """Build one task-specific dataset for ``split``.
@@ -176,21 +145,30 @@ class CourtDetectionDataModule(pl.LightningDataModule):
         ``is_train`` selects the full training augmentation pipeline; with
         ``False`` only the deterministic validation resize is applied.
         """
-        cfg_dict = self._build_config_dict()
         if self.task == "seg":
             return CourtSegDataset(
-                self.data_dir, split=split, is_train=is_train, config=cfg_dict,
+                self.data_dir,
+                split=split,
+                is_train=is_train,
+                config=self.data_config,
             )
         if self.task == "kp":
             return CourtKPDataset(
-                self.data_dir, split=split, is_train=is_train, config=cfg_dict,
+                self.data_dir,
+                split=split,
+                is_train=is_train,
+                config=self.data_config,
             )
         if self.task == "line":
-            data_cfg = self.config.get("data", {})
-            mask_dir = str(data_cfg.get("mask_dir_name", "line_masks"))
+            mask_dir = self.data_config.mask_dir_name
+            if mask_dir is None:
+                raise AssertionError("line data requires mask_dir_name")
             return CourtLineDataset(
-                self.data_dir, split=split, is_train=is_train,
-                config=cfg_dict, mask_dir_name=mask_dir,
+                self.data_dir,
+                split=split,
+                is_train=is_train,
+                config=self.data_config,
+                mask_dir_name=mask_dir,
             )
         raise ValueError(f"Unknown task: {self.task!r}")
 
@@ -216,7 +194,9 @@ class CourtDetectionDataModule(pl.LightningDataModule):
     @staticmethod
     def _require_dataset(dataset: Dataset[Any] | None, *, stage: str) -> Dataset[Any]:
         if dataset is None:
-            raise RuntimeError(f"CourtDetectionDataModule.setup({stage!r}) was not called.")
+            raise RuntimeError(
+                f"CourtDetectionDataModule.setup({stage!r}) was not called."
+            )
         return dataset
 
     def train_dataloader(self) -> DataLoader:

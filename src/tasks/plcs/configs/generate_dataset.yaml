@@ -7,9 +7,12 @@ defaults:
   - run: generate_dataset
   - _self_
 
+external_assets:
+  smplh_model_path: smplx/smplh
+
 hydra:
   run:
-    dir: outputs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ${tennis_lab_path:output,${paths.output_root},hydra/plcs/generate_dataset}/${now:%Y-%m-%d}/${now:%H-%M-%S}
   output_subdir: null
   job:
     chdir: false

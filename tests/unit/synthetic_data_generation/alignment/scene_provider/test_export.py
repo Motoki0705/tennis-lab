@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import inspect
 import struct
 from pathlib import Path
@@ -12,11 +13,21 @@ import pytest
 
 import src.synthetic_data_generation.alignment.scene_provider.export as provider_export_module
 from src.synthetic_data_generation.alignment.scene_provider.export import (
+    ProviderExportExpectations,
+    ProviderExportSettings,
+    SourceArtifactInput,
     _map_factor_images,
     _quaternion_to_rotation,
     _read_cameras_binary,
     _read_images_binary,
     _read_points3d_binary,
+)
+from src.synthetic_data_generation.configuration import VerifiedSystemExecutable
+from src.utils.configuration import (
+    PathContractError,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
 )
 
 
@@ -140,3 +151,142 @@ def test_provider_export_has_no_external_application_imports() -> None:
         for module in imported_modules
         for prefix in forbidden
     )
+
+
+def _resolver(tmp_path: Path) -> PathResolver:
+    roots = {
+        f"{role.value}_root": str((tmp_path / f"{role.value}-root").resolve())
+        for role in PathRole
+    }
+    return PathResolver(
+        RuntimePathRoots.from_mapping(
+            roots,
+            repository_root=tmp_path.resolve(),
+        )
+    )
+
+
+def _system_executable(tmp_path: Path) -> VerifiedSystemExecutable:
+    root = (tmp_path / "system-bin").resolve()
+    root.mkdir()
+    path = root / "geometry-python"
+    path.write_bytes(b"#!/bin/sh\nexit 0\n")
+    path.chmod(0o755)
+    return VerifiedSystemExecutable(
+        root=root,
+        relative_path=Path(path.name),
+        sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+    )
+
+
+def _settings(
+    tmp_path: Path,
+    *,
+    source_artifact: Path,
+    geometry_executable: VerifiedSystemExecutable,
+) -> ProviderExportSettings:
+    resolver = _resolver(tmp_path)
+    asset_scope = resolver.resolve(PathRole.EXTERNAL_ASSET, "provider")
+    return ProviderExportSettings(
+        bundle_id="bundle",
+        provider_backend="provider",
+        output_dir=resolver.resolve(PathRole.DATA, "provider-bundle"),
+        external_asset_scope=asset_scope,
+        cameras_bin=resolver.resolve(
+            PathRole.EXTERNAL_ASSET,
+            "provider/scene/cameras.bin",
+        ),
+        images_bin=resolver.resolve(
+            PathRole.EXTERNAL_ASSET,
+            "provider/scene/images.bin",
+        ),
+        points3d_bin=resolver.resolve(
+            PathRole.EXTERNAL_ASSET,
+            "provider/scene/points3D.bin",
+        ),
+        original_image_dir=resolver.resolve(
+            PathRole.EXTERNAL_ASSET,
+            "provider/scene/images",
+        ),
+        factor_image_dir=resolver.resolve(
+            PathRole.EXTERNAL_ASSET,
+            "provider/scene/images_2",
+        ),
+        geometry_executable=geometry_executable,
+        geometry_bridge=resolver.resolve(PathRole.PROJECT, "src/geometry_bridge.py"),
+        resolver=resolver,
+        factor=2,
+        group_size=32,
+        source_artifacts=(
+            SourceArtifactInput(
+                artifact_id="source",
+                path=source_artifact,
+                sha256="0" * 64,
+            ),
+        ),
+        expectations=ProviderExportExpectations(
+            camera_count=1,
+            image_width=1,
+            image_height=1,
+            camera_array_sha256="0" * 64,
+            shared_intrinsics_sha256="0" * 64,
+            normalization_sha256="0" * 64,
+        ),
+    )
+
+
+def test_export_settings_reject_out_of_root_source_before_output_creation(
+    tmp_path: Path,
+) -> None:
+    executable = _system_executable(tmp_path)
+    output = tmp_path / "data-root/provider-bundle"
+
+    with pytest.raises(PathContractError, match="outside its root"):
+        _settings(
+            tmp_path,
+            source_artifact=(tmp_path / "outside/source.bin").resolve(),
+            geometry_executable=executable,
+        )
+
+    assert not output.exists()
+
+
+def test_export_settings_reject_source_outside_narrow_asset_scope(
+    tmp_path: Path,
+) -> None:
+    executable = _system_executable(tmp_path)
+    sibling_source = (
+        tmp_path / "external_asset-root/sibling-project/source.bin"
+    ).resolve()
+    output = tmp_path / "data-root/provider-bundle"
+
+    with pytest.raises(PathContractError, match="outside its declared scope"):
+        _settings(
+            tmp_path,
+            source_artifact=sibling_source,
+            geometry_executable=executable,
+        )
+
+    assert not output.exists()
+
+
+def test_export_settings_recheck_executable_digest_before_output_creation(
+    tmp_path: Path,
+) -> None:
+    executable = _system_executable(tmp_path)
+    executable.path.write_bytes(b"tampered\n")
+    resolver = _resolver(tmp_path)
+    source_artifact = resolver.resolve(
+        PathRole.EXTERNAL_ASSET,
+        "provider/scene/source.bin",
+    )
+    output = tmp_path / "data-root/provider-bundle"
+
+    with pytest.raises(PathContractError, match="SHA-256 mismatch"):
+        _settings(
+            tmp_path,
+            source_artifact=source_artifact,
+            geometry_executable=executable,
+        )
+
+    assert not output.exists()

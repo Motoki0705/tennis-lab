@@ -63,6 +63,29 @@ def test_sample_frame_indices_by_time_ranges_deduplicates_and_limits() -> None:
     assert indices == [0, 1, 2, 3]
 
 
+@pytest.mark.parametrize(
+    "time_range",
+    [
+        {"end": 1.0},
+        {"start": 0.0},
+        {"start": 0.0, "end": 1.0, "legacy_duration": 1.0},
+    ],
+)
+def test_sample_frame_indices_rejects_missing_or_unknown_range_keys(
+    time_range: dict[str, float],
+) -> None:
+    with pytest.raises(ValueError, match="time range keys must be exactly"):
+        sample_frame_indices_by_time_ranges(
+            [time_range],
+            duration=2.0,
+            fps=2.0,
+            sample_mode="interval_seconds",
+            interval_seconds=0.5,
+            target_fps=1.0,
+            every_n_frames=1,
+        )
+
+
 def test_sample_uniform_frame_indices_spans_video() -> None:
     assert sample_uniform_frame_indices(100, 5) == [0, 25, 50, 74, 99]
     assert sample_uniform_frame_indices(3, 10) == [0, 1, 2]

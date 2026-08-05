@@ -1,0 +1,16 @@
+fps: 30.0
+style:
+  theme: dark
+  show_shadow: true
+  show_trail: true
+  trail_length: 60
+  show_hud: true
+  show_minimap: true
+view_3d:
+  preset: broadcast
+  mode: static
+  elev: null
+  azim: null
+  zoom: null
+  orbit_period_s: 10.0
+  keyframes: null

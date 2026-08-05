@@ -14,8 +14,7 @@ Notes:
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable, Sequence
-from pathlib import Path
+from collections.abc import Sequence
 from typing import Any, cast
 
 import cv2
@@ -23,12 +22,15 @@ import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
 
+from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
+from src.tasks.ball_detection.configuration import BallRuntimePaths
 from src.tasks.ball_detection.data import build_ball_detection_datamodule
 from src.tasks.ball_detection.data.components.augmentation import (
     BallDetectionAugmentation,
     denormalize_tensor_images_imagenet,
 )
-from src.tasks.ball_detection.data.types import ClipWindow
+from src.tasks.ball_detection.data.tracknet_datamodule import TrackNetDataModule
+from src.tasks.ball_detection.data.types import BallDetectionSample, ClipWindow
 from src.tasks.base.preview import resolve_sample_indices, resolve_split_file
 from src.utils.hydra import hydra_main
 from src.utils.io import save_json
@@ -38,15 +40,20 @@ from src.utils.io import save_json
     config_path="../configs",
     config_name="preview_augmentation",
     version_base="1.3",
+    validation_boundary="ball.preview",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
-    output_dir = Path(str(cfg.preview.output_dir)).expanduser()
+    output_dir = BallRuntimePaths.from_config(cfg).output(str(cfg.preview.output_dir))
     output_dir.mkdir(parents=True, exist_ok=True)
 
     split_name = str(cfg.preview.split)
     split_file = resolve_split_file(cfg, split_name)
     datamodule = build_ball_detection_datamodule(cfg)
+    if not isinstance(datamodule, TrackNetDataModule):
+        raise TypeError(
+            "Augmentation previews require a TrackNet-compatible datamodule."
+        )
     base_dataset = datamodule.create_dataset(
         split_name=split_name,
         split_file=split_file,
@@ -54,15 +61,26 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     )
     augmented_cfg = _build_augmented_config(cfg)
     augmented_datamodule = build_ball_detection_datamodule(augmented_cfg)
+    if not isinstance(augmented_datamodule, TrackNetDataModule):
+        raise TypeError(
+            "Augmentation previews require a TrackNet-compatible datamodule."
+        )
+    augmentation_container = OmegaConf.to_container(
+        augmented_cfg.data.augmentation, resolve=True
+    )
+    if not isinstance(augmentation_container, dict):
+        raise TypeError("data.augmentation must resolve to a mapping.")
     augmented_dataset = augmented_datamodule.create_dataset(
         split_name=split_name,
         split_file=split_file,
         augmentation=BallDetectionAugmentation(
-            OmegaConf.to_container(augmented_cfg.data.augmentation, resolve=True)
+            cast(dict[str, Any], augmentation_container)
         ),
     )
 
-    sample_indices = resolve_sample_indices(cfg, dataset_size=len(base_dataset), min_samples=1)
+    sample_indices = resolve_sample_indices(
+        cfg, dataset_size=len(base_dataset), min_samples=1
+    )
     manifest: list[dict[str, Any]] = []
     for sample_index in sample_indices:
         torch.manual_seed(int(cfg.preview.seed) + sample_index)
@@ -106,6 +124,8 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 def _build_augmented_config(cfg: DictConfig) -> DictConfig:
     """Return a config copy with every configured augmentation enabled."""
     augmented_cfg = OmegaConf.create(OmegaConf.to_container(cfg, resolve=False))
+    if not isinstance(augmented_cfg, DictConfig):
+        raise TypeError("Preview config must resolve to a mapping.")
     if "data" not in augmented_cfg or "augmentation" not in augmented_cfg.data:
         raise ValueError("Expected data.augmentation to exist in the config.")
 
@@ -115,7 +135,15 @@ def _build_augmented_config(cfg: DictConfig) -> DictConfig:
             transform_cfg.enabled = True
         elif isinstance(transform_cfg, dict) and "enabled" in transform_cfg:
             transform_cfg["enabled"] = True
-        elif name in {"camera_rotation", "horizontal_flip", "brightness_gain", "contrast", "gamma", "gaussian_noise", "gaussian_blur"}:
+        elif name in {
+            "camera_rotation",
+            "horizontal_flip",
+            "brightness_gain",
+            "contrast",
+            "gamma",
+            "gaussian_noise",
+            "gaussian_blur",
+        }:
             raise ValueError(
                 f"Expected data.augmentation.{name}.enabled to exist in the config."
             )
@@ -124,8 +152,8 @@ def _build_augmented_config(cfg: DictConfig) -> DictConfig:
 
 def _render_contact_sheet(
     *,
-    base_sample: dict[str, torch.Tensor],
-    augmented_sample: dict[str, torch.Tensor],
+    base_sample: BallDetectionSample,
+    augmented_sample: BallDetectionSample,
     window: ClipWindow,
     cfg: DictConfig,
 ) -> np.ndarray:
@@ -158,7 +186,9 @@ def _render_contact_sheet(
     )
 
     frame_names = list(
-        window.frame_names[window.start_index : window.start_index + len(annotated_base)]
+        window.frame_names[
+            window.start_index : window.start_index + len(annotated_base)
+        ]
     )
     tile_gap = int(cfg.preview.layout.tile_gap)
     header_height = int(cfg.preview.layout.header_height)
@@ -252,12 +282,8 @@ def _annotate_frames(
         for coord, visible in zip(frame_coords, frame_visibility, strict=True):
             if float(visible) <= 0.0:
                 continue
-            x_pos = int(
-                round(float(coord[0]) * frame_width / max(original_width, 1))
-            )
-            y_pos = int(
-                round(float(coord[1]) * frame_height / max(original_height, 1))
-            )
+            x_pos = int(round(float(coord[0]) * frame_width / max(original_width, 1)))
+            y_pos = int(round(float(coord[1]) * frame_height / max(original_height, 1)))
             cv2.circle(
                 overlay,
                 center=(x_pos, y_pos),
@@ -302,7 +328,9 @@ def _compose_row(
         thickness=text_thickness,
         color=(235, 235, 235),
     )
-    for frame_index, (frame, frame_name) in enumerate(zip(frames, frame_names, strict=True)):
+    for frame_index, (frame, frame_name) in enumerate(
+        zip(frames, frame_names, strict=True)
+    ):
         x0 = frame_index * (frame_width + tile_gap)
         row[header_height : header_height + frame_height, x0 : x0 + frame_width] = frame
         _put_label(
@@ -346,4 +374,4 @@ def _sample_stem(*, window: ClipWindow, sample_index: int) -> str:
 
 
 if __name__ == "__main__":
-    sys.exit(cast(Callable[[], int], main)())
+    sys.exit(main())

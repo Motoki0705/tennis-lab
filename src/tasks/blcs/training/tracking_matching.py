@@ -22,17 +22,13 @@ def match_ball_tracks(
     target_mask: torch.Tensor,
     frame_mask: torch.Tensor,
     *,
-    position_cost_weight: float = 1.0,
-    presence_cost_weight: float = 1.0,
-    presence_inactive_weight: float = 0.25,
-    presence_active_weight: float = 1.0,
-    presence_transition_weight: float = 2.0,
-    transition_radius: int = 2,
-    position_axis_weights: tuple[float, float, float] | torch.Tensor = (
-        1.0,
-        1.0,
-        1.0,
-    ),
+    position_cost_weight: float,
+    presence_cost_weight: float,
+    presence_inactive_weight: float,
+    presence_active_weight: float,
+    presence_transition_weight: float,
+    transition_radius: int,
+    position_axis_weights: tuple[float, float, float] | torch.Tensor,
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Match `Q` predictions to valid `P` targets using clip-level costs."""
     pred_position = prediction["position"]

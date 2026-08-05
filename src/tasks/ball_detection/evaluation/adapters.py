@@ -41,7 +41,7 @@ class LightningBallPredictionAdapter:
     ) -> None:
         self.module = module.to(device).eval()
         self.device = device
-        self.model_config = module.config.get("model", {}) or {}
+        self.model_config = module.config.model
 
     @classmethod
     def load(

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import cast
 
 import torch
 from torch import Tensor, nn
 
+from src.tasks.blcs.configuration import PointFusionConfig
 from src.utils.models import (
     RMSNorm,
     TransformerBlock,
@@ -31,7 +32,7 @@ class CourtBallPointFusion(nn.Module):
         *,
         output_dim: int,
         num_court_points: int,
-        config: Any,
+        config: PointFusionConfig,
         invisible_init_std: float,
     ) -> None:
         super().__init__()
@@ -46,10 +47,7 @@ class CourtBallPointFusion(nn.Module):
         if self.token_dim % self.num_heads != 0:
             raise ValueError("point_fusion token_dim must be divisible by num_heads.")
         head_dim = self.token_dim // self.num_heads
-        configured_rope_dim = config.get("rope_dim", None)
-        self.rope_dim = (
-            head_dim if configured_rope_dim is None else int(configured_rope_dim)
-        )
+        self.rope_dim = config.rope_dim
         if self.rope_dim > head_dim or self.rope_dim % 2:
             raise ValueError(
                 "point_fusion rope_dim must be even and no larger than its head dim."
@@ -68,9 +66,14 @@ class CourtBallPointFusion(nn.Module):
         block_config = TransformerBlockConfig(
             dim=self.token_dim,
             n_heads=self.num_heads,
-            ffn_dim=config.get("ffn_dim", None),
+            ffn_dim=config.ffn_dim,
+            head_dim=head_dim,
             rope_dim=self.rope_dim,
-            attn_dropout=float(config.get("dropout", 0.0)),
+            attn_dropout=config.dropout,
+            attention_type="mha",
+            n_kv_heads=None,
+            rope_base=10000.0,
+            ffn_type="swiglu",
         )
         self.blocks = nn.ModuleList(
             [TransformerBlock(block_config) for _ in range(self.num_layers)]
@@ -182,7 +185,7 @@ class CourtBallPointFusion(nn.Module):
             else ball_context_valid
         )
         fused_ball = self.output_projection(self.output_norm(fused_ball))
-        return fused_ball * ball_state_valid.unsqueeze(-1)
+        return cast(Tensor, fused_ball * ball_state_valid.unsqueeze(-1))
 
 
 __all__ = ["CourtBallPointFusion"]

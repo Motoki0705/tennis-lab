@@ -101,28 +101,28 @@ class CellManager:
     """
 
     # Court geometry (precomputed for fast lookup)
-    _xs: float = HALF_SINGLES_WIDTH   # 4.115
-    _xd: float = HALF_DOUBLES_WIDTH   # 5.485
+    _xs: float = HALF_SINGLES_WIDTH  # 4.115
+    _xd: float = HALF_DOUBLES_WIDTH  # 5.485
     _ys: float = SERVICE_LINE_DISTANCE  # 6.40
-    _yB: float = HALF_LENGTH           # 11.885
-    _x_min: float = X_MIN             # -9.145
-    _x_max: float = X_MAX             # +9.145
-    _y_max: float = abs(Y_MAX)        # 18.285
+    _yB: float = HALF_LENGTH  # 11.885
+    _x_min: float = X_MIN  # -9.145
+    _x_max: float = X_MAX  # +9.145
+    _y_max: float = abs(Y_MAX)  # 18.285
 
     def __init__(self) -> None:
         """Initialize cell manager with geometry boundaries."""
         # Build cell bounds table (far side orientation, y >= 0)
         self._cell_bounds_raw: list[tuple[float, float, float, float]] = [
             # In-court cells
-            (-self._xs, 0.0,       0.0,       self._ys),  # 0: Deuce Svc Box
-            (0.0,       self._xs,  0.0,       self._ys),  # 1: Ad Svc Box
-            (-self._xs, 0.0,       self._ys,  self._yB),  # 2: Deuce Back Court
-            (0.0,       self._xs,  self._ys,  self._yB),  # 3: Ad Back Court
-            (-self._xd, -self._xs, 0.0,       self._yB),  # 4: Deuce Doubles Alley
-            (self._xs,  self._xd,  0.0,       self._yB),  # 5: Ad Doubles Alley
+            (-self._xs, 0.0, 0.0, self._ys),  # 0: Deuce Svc Box
+            (0.0, self._xs, 0.0, self._ys),  # 1: Ad Svc Box
+            (-self._xs, 0.0, self._ys, self._yB),  # 2: Deuce Back Court
+            (0.0, self._xs, self._ys, self._yB),  # 3: Ad Back Court
+            (-self._xd, -self._xs, 0.0, self._yB),  # 4: Deuce Doubles Alley
+            (self._xs, self._xd, 0.0, self._yB),  # 5: Ad Doubles Alley
             # Out-court cells
-            (self._x_min, -self._xd, 0.0,       self._yB),  # 6: Deuce Side Out
-            (self._xd,    self._x_max, 0.0,     self._yB),  # 7: Ad Side Out
+            (self._x_min, -self._xd, 0.0, self._yB),  # 6: Deuce Side Out
+            (self._xd, self._x_max, 0.0, self._yB),  # 7: Ad Side Out
             (self._x_min, self._x_max, self._yB, self._y_max),  # 8: Behind Baseline
         ]
 
@@ -281,7 +281,7 @@ class CellManager:
         hi_m = hi - margin
         if lo_m >= hi_m:
             return (lo + hi) / 2.0
-        return lo_m + torch.rand(1).item() * (hi_m - lo_m)
+        return float(lo_m + torch.rand(1).item() * (hi_m - lo_m))
 
     def get_cell_center(
         self,

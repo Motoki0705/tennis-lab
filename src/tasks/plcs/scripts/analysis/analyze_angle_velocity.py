@@ -11,7 +11,7 @@ Usage:
     python -m src.tasks.plcs.scripts.analysis.analyze_angle_velocity
     python -m src.tasks.plcs.scripts.analysis.analyze_angle_velocity \
         analysis.split=train analysis.max_batches=50 \
-        run.output_dir=outputs/plcs/analysis/angle_velocity
+        run.output_dir=plcs/analysis/angle_velocity
 
 Notes:
     - Configuration is loaded from
@@ -28,18 +28,15 @@ Notes:
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
-from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
 import torch
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 from torch import Tensor
 
-from src.tasks.plcs.data.datamodule import PLCSDataModule
-from src.tasks.plcs.data.dataset import collate_plcs_batch
+from src.tasks.plcs.configuration import PLCSAnalysisRuntimeConfig
+from src.tasks.plcs.data.dataset import SceneDataset, collate_plcs_batch
 from src.tasks.plcs.training.losses import (
     compute_joint_angles,
     compute_torsion_angles,
@@ -91,7 +88,9 @@ class ChannelStats:
         # Guard against division by zero on the very first update.
         safe_n_total = np.where(n_total > 0, n_total, 1.0)
         self._mean = self._mean + delta * n_new / safe_n_total
-        self._m2 = self._m2 + batch_m2 + (delta * delta) * self._count * n_new / safe_n_total
+        self._m2 = (
+            self._m2 + batch_m2 + (delta * delta) * self._count * n_new / safe_n_total
+        )
         self._count = n_total
         self._sum_abs += batch_sum_abs
 
@@ -153,15 +152,18 @@ def _angles_to_numpy(t: Tensor) -> np.ndarray:
 
 
 def analyze_angle_velocity(
-    datamodule: PLCSDataModule,
+    dataset: SceneDataset,
     split: str,
+    batch_size: int,
+    num_workers: int,
     max_batches: int | None,
 ) -> dict[str, Any]:
     """Compute per-angle GT angular-velocity statistics on the given split.
 
     Args:
-        datamodule: Configured :class:`PLCSDataModule`.
-        split: Split name, e.g. ``"train"``.
+        dataset: Strictly configured PLCS scene dataset.
+        batch_size: Analysis loader batch size.
+        num_workers: Analysis loader worker count.
         max_batches: Optional cap on the number of batches processed.
 
     Returns:
@@ -170,22 +172,17 @@ def analyze_angle_velocity(
     """
     # Build the dataset directly without the collate adapter so that we always
     # have human_kp_3d, position, rotation, and human_mask in the batch.
-    dataset = datamodule._build_dataset(
-        scene_dir=datamodule.scene_dir,
-        split_file=f"{split}.txt",
-        augment=False,
-    )
-    loader = torch.utils.data.DataLoader(
+    loader: torch.utils.data.DataLoader[dict[str, Tensor]] = torch.utils.data.DataLoader(
         dataset,
-        batch_size=int(datamodule.batch_size),
+        batch_size=batch_size,
         shuffle=False,
-        num_workers=int(datamodule.num_workers),
+        num_workers=num_workers,
         pin_memory=False,
         drop_last=False,
         collate_fn=collate_plcs_batch,
     )
 
-    n_joint = len(JOINT_ANGLE_TRIPLETS)   # 12
+    n_joint = len(JOINT_ANGLE_TRIPLETS)  # 12
     n_torsion = len(TORSION_QUADRUPLETS)  # 4
     n_twist = 1
 
@@ -199,9 +196,7 @@ def analyze_angle_velocity(
         if max_batches is not None and batches_processed >= max_batches:
             break
 
-        human_kp_3d: Tensor | None = cast(
-            "Tensor | None", batch.get("human_kp_3d")
-        )
+        human_kp_3d: Tensor | None = cast("Tensor | None", batch.get("human_kp_3d"))
         position: Tensor | None = cast("Tensor | None", batch.get("position"))
         rotation: Tensor | None = cast("Tensor | None", batch.get("rotation"))
         human_mask: Tensor | None = cast("Tensor | None", batch.get("human_mask"))
@@ -228,7 +223,7 @@ def analyze_angle_velocity(
         if human_mask is not None:
             if human_mask.ndim == 3:
                 # (B, N, T) -> (B, T): valid if ANY camera says valid
-                mask_bt: Tensor = (human_mask.max(dim=1).values > 0)
+                mask_bt: Tensor = human_mask.max(dim=1).values > 0
             elif human_mask.ndim == 2:
                 mask_bt = human_mask > 0
             else:
@@ -263,13 +258,13 @@ def analyze_angle_velocity(
         trans_mask = mask_bt[:, 1:] & mask_bt[:, :-1]  # (B, T-1) bool
 
         # Gather valid transitions into numpy arrays (N_valid, C)
-        joint_np = _angles_to_numpy(joint_vel)       # (B, T-1, 12)
-        torsion_np = _angles_to_numpy(torsion_vel)   # (B, T-1, 4)
-        twist_np = _angles_to_numpy(twist_vel)       # (B, T-1, 1)
-        trans_np = trans_mask.cpu().numpy()           # (B, T-1) bool
+        joint_np = _angles_to_numpy(joint_vel)  # (B, T-1, 12)
+        torsion_np = _angles_to_numpy(torsion_vel)  # (B, T-1, 4)
+        twist_np = _angles_to_numpy(twist_vel)  # (B, T-1, 1)
+        trans_np = trans_mask.cpu().numpy()  # (B, T-1) bool
 
         # Flatten batch x time and filter by mask
-        flat_mask = trans_np.reshape(-1)              # (B*(T-1),)
+        flat_mask = trans_np.reshape(-1)  # (B*(T-1),)
         joint_flat = joint_np.reshape(-1, n_joint)[flat_mask]
         torsion_flat = torsion_np.reshape(-1, n_torsion)[flat_mask]
         twist_flat = twist_np.reshape(-1, n_twist)[flat_mask]
@@ -294,10 +289,18 @@ def analyze_angle_velocity(
     torsion_weights = _normalize_weights(torsion_std)
 
     joint_labels = [
-        "L_elbow", "R_elbow", "L_knee", "R_knee",
-        "L_shoulder", "R_shoulder", "L_hip", "R_hip",
-        "L_shoulder_torso", "R_shoulder_torso",
-        "R_hip_torso", "L_hip_torso",
+        "L_elbow",
+        "R_elbow",
+        "L_knee",
+        "R_knee",
+        "L_shoulder",
+        "R_shoulder",
+        "L_hip",
+        "R_hip",
+        "L_shoulder_torso",
+        "R_shoulder_torso",
+        "R_hip_torso",
+        "L_hip_torso",
     ]
     torsion_labels = ["L_arm", "R_arm", "L_leg", "R_leg"]
 
@@ -390,13 +393,15 @@ def _print_report(result: dict[str, Any]) -> None:
     config_path="../../configs",
     config_name="analyze_angle_velocity",
     version_base="1.3",
+    validation_boundary="plcs.analyze_angle_velocity",
 )
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
     seed = int(cfg.run.seed)
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    out_dir = Path(to_absolute_path(str(cfg.run.output_dir)))
+    runtime = PLCSAnalysisRuntimeConfig.angle_velocity(cfg)
+    out_dir = runtime.output_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     OmegaConf.save(cfg, out_dir / "config.yaml")
 
@@ -406,17 +411,20 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
 
     split = str(cfg.analysis.split)
 
-    # Build datamodule with a minimal config that skips model/collate adaptation.
-    # We pass only the data section so PLCSDataModule uses its defaults for
-    # batch_size / num_workers / scene_dir from cfg.data.
-    datamodule = PLCSDataModule(cfg)
-    # Resolve scene_dir against project root if relative.
-    scene_dir_str = str(cfg.data.get("scene_dir", "data/plcs"))
-    datamodule.scene_dir = Path(to_absolute_path(scene_dir_str))
+    if runtime.scene_dir is None or runtime.result_path is None:
+        raise AssertionError("PLCS angle-velocity paths were not resolved.")
+    dataset = SceneDataset(
+        scene_dir=runtime.scene_dir,
+        split_file=f"{split}.txt",
+        config=cfg,
+        augment=False,
+    )
 
     result = analyze_angle_velocity(
-        datamodule=datamodule,
+        dataset=dataset,
         split=split,
+        batch_size=int(cfg.data.batch_size),
+        num_workers=int(cfg.data.num_workers),
         max_batches=max_batches,
     )
 
@@ -437,7 +445,7 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
             return [_to_python(v) for v in obj]
         return obj
 
-    out_path = out_dir / str(cfg.analysis.output_filename)
+    out_path = runtime.result_path
     save_json(_to_python(result), out_path)
     print(f"Saved results to {out_path}")
 
@@ -445,4 +453,4 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
 
 
 if __name__ == "__main__":
-    raise SystemExit(cast(Callable[[], int], main)())
+    raise SystemExit(main())

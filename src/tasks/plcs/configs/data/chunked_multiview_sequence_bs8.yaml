@@ -4,7 +4,8 @@ defaults:
   - _multiview
   - _self_
 
-scene_dir: data/plcs
+scene_dir: plcs
+adapter_camera_index: 0
 num_court_kp: 20
 
 batch_size: 8

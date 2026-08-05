@@ -14,6 +14,7 @@ from src.synthetic_data_generation.dataset.execution import (
     render_dataset,
 )
 from src.synthetic_data_generation.dataset.pipeline import PathPipelineManifest
+from src.utils.configuration import PathContractError, RuntimePathRoots
 
 
 def _manifest(tmp_path: Path) -> PathPipelineManifest:
@@ -22,6 +23,15 @@ def _manifest(tmp_path: Path) -> PathPipelineManifest:
     outputs = tmp_path / "outputs/synthetic_data_generation"
     dataset = tmp_path / "data/synthetic_data_generation"
     return PathPipelineManifest(
+        runtime_roots=RuntimePathRoots(
+            project_root=tmp_path,
+            data_root=tmp_path / "data",
+            checkpoint_root=tmp_path / "ckpt",
+            artifact_root=tmp_path / "third_party/nht/artifacts",
+            output_root=tmp_path / "outputs",
+            cache_root=tmp_path / ".cache",
+            external_asset_root=tmp_path / "third_party",
+        ),
         source_root=source,
         artifact_root=artifacts,
         execution_root=outputs,
@@ -54,6 +64,7 @@ def _write_inputs(manifest: PathPipelineManifest) -> None:
                         "input": "prepared-render.bin",
                         "output": "renders/sample.bin",
                         "reference": "reference.bin",
+                        "arguments": [],
                     }
                 ]
             }
@@ -71,8 +82,9 @@ def test_poor_metrics_are_written_and_never_stop_downstream_stages(
 
     visualization = execute_pipeline(
         manifest,
+        renderer_mode="prepared_outputs",
         renderer_command=(),
-        working_directory=tmp_path,
+        working_directory=manifest.source_root,
     )
 
     alignment = json.loads(manifest.alignment_metrics.read_text())
@@ -102,6 +114,8 @@ def test_missing_input_and_malformed_jobs_remain_errors(tmp_path: Path) -> None:
                         "name": "missing",
                         "input": "missing.bin",
                         "output": "render.bin",
+                        "reference": None,
+                        "arguments": [],
                     }
                 ]
             }
@@ -122,4 +136,80 @@ def test_actual_renderer_failure_stops_execution(tmp_path: Path) -> None:
     )
 
     with pytest.raises(RuntimeError, match="exit code 7"):
-        render_dataset(manifest, working_directory=tmp_path)
+        render_dataset(
+            manifest,
+            renderer_mode="execute",
+            working_directory=manifest.source_root,
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("input", "/tmp/outside-input.bin"),
+        ("output", "/tmp/outside-output.bin"),
+        ("reference", "/tmp/outside-reference.bin"),
+        ("input", "../outside-input.bin"),
+        ("output", "../outside-output.bin"),
+        ("reference", "../outside-reference.bin"),
+    ],
+)
+def test_render_jobs_reject_absolute_and_escaping_paths_before_output(
+    tmp_path: Path,
+    field: str,
+    value: str,
+) -> None:
+    manifest = _manifest(tmp_path)
+    _write_inputs(manifest)
+    payload = json.loads(manifest.render_jobs.read_text(encoding="utf-8"))
+    payload["jobs"][0][field] = value
+    manifest.render_jobs.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(PathContractError):
+        build_dataset_plan(manifest, renderer_command=())
+
+    assert not manifest.dataset_plan.exists()
+
+
+def test_tampered_dataset_plan_paths_are_rejected_before_side_effects(
+    tmp_path: Path,
+) -> None:
+    manifest = _manifest(tmp_path)
+    _write_inputs(manifest)
+    build_dataset_plan(manifest, renderer_command=())
+    plan = json.loads(manifest.dataset_plan.read_text(encoding="utf-8"))
+    plan["jobs"][0]["output"] = str(tmp_path / "outside.bin")
+    manifest.dataset_plan.write_text(json.dumps(plan), encoding="utf-8")
+
+    with pytest.raises(PathContractError):
+        render_dataset(
+            manifest,
+            renderer_mode="prepared_outputs",
+            working_directory=manifest.source_root,
+        )
+
+    assert not (tmp_path / "outside.bin").exists()
+    assert not (manifest.execution_root / "renderer-logs").exists()
+
+
+def test_render_jobs_require_explicit_closed_schema(tmp_path: Path) -> None:
+    manifest = _manifest(tmp_path)
+    _write_inputs(manifest)
+    payload = json.loads(manifest.render_jobs.read_text(encoding="utf-8"))
+    del payload["jobs"][0]["arguments"]
+    manifest.render_jobs.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="missing=.*arguments"):
+        build_dataset_plan(manifest, renderer_command=())
+
+
+def test_renderer_placeholder_typos_fail_before_plan_publication(
+    tmp_path: Path,
+) -> None:
+    manifest = _manifest(tmp_path)
+    _write_inputs(manifest)
+
+    with pytest.raises(ValueError, match="Unknown renderer path placeholder"):
+        build_dataset_plan(manifest, renderer_command=("renderer", "{ouptut}"))
+
+    assert not manifest.dataset_plan.exists()

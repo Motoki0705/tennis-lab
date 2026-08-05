@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
-from omegaconf import OmegaConf
+from hydra import compose, initialize_config_dir
 
 import src.tasks.ball_detection.data.staged_datamodule as staged_module
 from src.tasks.ball_detection.data.components.staged_sampler import (
@@ -14,6 +15,8 @@ from src.tasks.ball_detection.data.components.staged_sampler import (
     accumulation_for,
 )
 from src.tasks.ball_detection.data.staged_datamodule import StagedBallDataModule
+
+_CONFIG_DIR = Path(__file__).resolve().parents[5] / "src/tasks/ball_detection/configs"
 
 
 class _TaggedDataset:
@@ -78,37 +81,28 @@ def _config(
     web_enabled: bool = True,
     web_splits: list[str] | None = None,
 ) -> Any:
-    return OmegaConf.create(
-        {
-            "data": {
-                "t_max": t_max,
-                "t_distribution": t_distribution,
-                "t1_prob": 0.5,
-                "val_num_frames": min(2, t_max),
-                "num_workers": 0,
-                "pin_memory": False,
-                "effective_batch_size": 8,
-                "batch_size_by_t": {1: 8, 2: 4, 3: 3, 4: 2},
-                "sources": {
-                    "tracknet": {
-                        "enabled": True,
-                        "splits": ["train", "val", "test"],
-                    },
-                    "web": {
-                        "enabled": web_enabled,
-                        "splits": web_splits or ["train", "val", "test"],
-                    },
-                },
-            }
-        }
-    )
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="train_staged", overrides=["model=stunet"])
+    config.data.t_max = t_max
+    config.data.t_distribution = t_distribution
+    config.data.t1_prob = 0.5
+    config.data.val_num_frames = min(2, t_max)
+    config.data.num_workers = 0
+    config.data.pin_memory = False
+    config.data.effective_batch_size = 8
+    config.data.batch_size_by_t = {1: 8, 2: 4, 3: 3, 4: 2}
+    config.data.sources.tracknet.enabled = True
+    config.data.sources.tracknet.splits = ["train", "val", "test"]
+    config.data.sources.web.enabled = web_enabled
+    config.data.sources.web.splits = web_splits or ["train", "val", "test"]
+    return config
 
 
 def _concat_sources(dataset: Any) -> list[str]:
     if isinstance(dataset, FixedTDataset):
         dataset = dataset.base
     concat = cast(ConcatVariableTDataset, dataset)
-    return [child.source for child in concat.datasets]
+    return [cast(_TaggedDataset, child).source for child in concat.datasets]
 
 
 def test_source_splits_gate_web_to_train_only(fake_sources: None) -> None:

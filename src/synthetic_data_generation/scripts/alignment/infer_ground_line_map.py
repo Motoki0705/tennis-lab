@@ -30,7 +30,6 @@ import cv2
 import numpy as np
 import pytorch_lightning
 import torch
-from hydra.utils import to_absolute_path
 from omegaconf import DictConfig, OmegaConf
 
 from src.synthetic_data_generation.alignment.artifacts.ground_line_map import (
@@ -66,6 +65,8 @@ from src.synthetic_data_generation.alignment.stage_result import (
     directory_artifact_handle,
     print_stage_result,
 )
+from src.synthetic_data_generation.configuration import validate_config
+from src.utils.configuration import PathRole
 from src.utils.hydra import hydra_main
 
 LOGGER = logging.getLogger(__name__)
@@ -73,8 +74,9 @@ LOGGER = logging.getLogger(__name__)
 
 @hydra_main(
     version_base="1.3",
-    config_path="../../configs/alignment",
-    config_name="infer_ground_line_map",
+    config_path="../../configs",
+    config_name="alignment/infer_ground_line_map",
+    validation_boundary="synthetic.alignment.infer_ground_line_map",
 )
 def main(cfg: DictConfig) -> int:
     """Run the stage through its shared orchestration entry point."""
@@ -84,12 +86,13 @@ def main(cfg: DictConfig) -> int:
 
 def run(cfg: DictConfig) -> StageResult:
     """Run fit-only ground-plane estimation and court-line aggregation."""
-    repo_root = Path(to_absolute_path(".")).resolve()
-    provider_path = _path(cfg.provider_bundle)
-    line_checkpoint = _path(cfg.line_checkpoint)
-    backbone_repository = _path(cfg.backbone_repository)
-    backbone_checkpoint = _path(cfg.backbone_checkpoint)
-    output_dir = _path(cfg.output_dir)
+    runtime = validate_config("synthetic.alignment.infer_ground_line_map", cfg)
+    repo_root = runtime.resolver.roots.project_root
+    provider_path = runtime.path(PathRole.DATA, "provider_bundle")
+    line_checkpoint = runtime.path(PathRole.CHECKPOINT, "line_checkpoint")
+    backbone_repository = runtime.path(PathRole.EXTERNAL_ASSET, "backbone_repository")
+    backbone_checkpoint = runtime.path(PathRole.EXTERNAL_ASSET, "backbone_checkpoint")
+    output_dir = runtime.path(PathRole.DATA, "output_dir")
     device = str(cfg.device)
     if device.startswith("cuda") and not torch.cuda.is_available():
         raise RuntimeError(
@@ -162,6 +165,7 @@ def run(cfg: DictConfig) -> StageResult:
         backbone_checkpoint=backbone_checkpoint,
         device=device,
         expected_short_side=int(cfg.expected_short_side),
+        resolver=runtime.resolver,
     )
 
     image_files = {image.camera_id: image for image in bundle.manifest.images}
@@ -405,10 +409,6 @@ def _quantile_or_none(
     quantile: float,
 ) -> float | None:
     return float(np.quantile(values, quantile)) if len(values) else None
-
-
-def _path(value: object) -> Path:
-    return Path(to_absolute_path(str(value))).resolve()
 
 
 def _git(root: Path, *args: str) -> str:

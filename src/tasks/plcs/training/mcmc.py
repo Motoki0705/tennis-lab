@@ -27,34 +27,98 @@ from typing import Any
 import torch
 from torch import nn
 
+from src.utils.configuration import (
+    ConfigurationTypeError,
+    SemanticConfigurationError,
+)
+
 
 @dataclass
 class MCMCConfig:
     """Configuration for SGLD / Langevin-dynamics noise injection."""
 
-    enabled: bool = False
+    enabled: bool
     # Multiplier on the base Langevin noise std (sqrt(2 * lr * temperature)).
-    noise_scale: float = 1.0
+    noise_scale: float
     # SGLD temperature; >1 explores more, <1 stays closer to MAP.
-    temperature: float = 1.0
+    temperature: float
     # Skip noise for the first ``warmup_epochs`` epochs (let the model settle
     # into a sensible region before exploring).
-    warmup_epochs: int = 0
+    warmup_epochs: int
     # Noise annealing schedule over training progress: "none" | "cosine" | "linear".
-    decay: str = "cosine"
+    decay: str
     # Which parameters receive noise: "all" or "rotation" (rotation-related only).
-    target: str = "all"
+    target: str
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> MCMCConfig:
-        data = dict(data or {})
+    def from_dict(cls, data: dict[str, Any]) -> MCMCConfig:
+        expected = {
+            "enabled",
+            "noise_scale",
+            "temperature",
+            "warmup_epochs",
+            "decay",
+            "target",
+        }
+        if set(data) != expected:
+            raise ValueError(
+                f"Invalid training.mcmc keys: missing={sorted(expected - set(data))}, "
+                f"unknown={sorted(set(data) - expected)}."
+            )
+        if type(data["enabled"]) is not bool:
+            raise ConfigurationTypeError("training.mcmc.enabled must be exact bool.")
+        for key in {"noise_scale", "temperature"}:
+            value = data[key]
+            if type(value) not in {float, int}:
+                raise ConfigurationTypeError(
+                    f"training.mcmc.{key} must be exact float | int."
+                )
+        if type(data["warmup_epochs"]) is not int:
+            raise ConfigurationTypeError(
+                "training.mcmc.warmup_epochs must be exact int."
+            )
+        for key in {"decay", "target"}:
+            if type(data[key]) is not str:
+                raise ConfigurationTypeError(
+                    f"training.mcmc.{key} must be exact str."
+                )
+        noise_scale = float(data["noise_scale"])
+        temperature = float(data["temperature"])
+        if not math.isfinite(noise_scale) or noise_scale < 0.0:
+            raise SemanticConfigurationError(
+                "training.mcmc.noise_scale must be finite and non-negative."
+            )
+        if not math.isfinite(temperature) or temperature <= 0.0:
+            raise SemanticConfigurationError(
+                "training.mcmc.temperature must be finite and positive."
+            )
+        enabled = data["enabled"]
+        if enabled and noise_scale == 0.0:
+            raise SemanticConfigurationError(
+                "training.mcmc.noise_scale must be positive when MCMC is enabled."
+            )
+        warmup_epochs = data["warmup_epochs"]
+        if warmup_epochs < 0:
+            raise SemanticConfigurationError(
+                "training.mcmc.warmup_epochs must be non-negative."
+            )
+        decay = data["decay"]
+        if decay not in {"none", "cosine", "linear"}:
+            raise SemanticConfigurationError(
+                "training.mcmc.decay must be 'none', 'cosine', or 'linear'."
+            )
+        target = data["target"]
+        if target not in {"all", "rotation"}:
+            raise SemanticConfigurationError(
+                "training.mcmc.target must be 'all' or 'rotation'."
+            )
         return cls(
-            enabled=bool(data.get("enabled", False)),
-            noise_scale=float(data.get("noise_scale", 1.0)),
-            temperature=float(data.get("temperature", 1.0)),
-            warmup_epochs=int(data.get("warmup_epochs", 0)),
-            decay=str(data.get("decay", "cosine")),
-            target=str(data.get("target", "all")),
+            enabled=enabled,
+            noise_scale=noise_scale,
+            temperature=temperature,
+            warmup_epochs=warmup_epochs,
+            decay=decay,
+            target=target,
         )
 
 

@@ -13,11 +13,10 @@ Notes:
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
-from typing import cast
 
 from omegaconf import DictConfig
 
+from src.tasks.ball_detection import configuration as _configuration  # noqa: F401
 from src.tasks.ball_detection.visualization.orchestrator import (
     build_runtime_config,
     run_visualization,
@@ -25,7 +24,12 @@ from src.tasks.ball_detection.visualization.orchestrator import (
 from src.utils.hydra import hydra_main
 
 
-@hydra_main(config_path="../configs", config_name="visualize", version_base="1.3")
+@hydra_main(
+    config_path="../configs",
+    config_name="visualize",
+    version_base="1.3",
+    validation_boundary="ball.visualize",
+)
 def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
     """Hydra entry point."""
     runtime = build_runtime_config(cfg)
@@ -33,4 +37,4 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry point
 
 
 if __name__ == "__main__":
-    sys.exit(cast(Callable[[], int], main)())
+    sys.exit(main())

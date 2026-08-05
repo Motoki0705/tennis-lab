@@ -9,6 +9,22 @@ from omegaconf import OmegaConf
 from src.synthetic_data_generation.alignment.components.inference import (
     line_detector,
 )
+from src.utils.configuration import PathResolver, RuntimePathRoots
+
+
+def _resolver(root: Path) -> PathResolver:
+    absolute_root = root.resolve()
+    return PathResolver(
+        RuntimePathRoots(
+            project_root=absolute_root,
+            data_root=absolute_root / "data",
+            checkpoint_root=absolute_root,
+            artifact_root=absolute_root / "artifacts",
+            output_root=absolute_root / "outputs",
+            cache_root=absolute_root / ".cache",
+            external_asset_root=absolute_root,
+        )
+    )
 
 
 def test_load_detector_accepts_checkpoint_dictconfig(
@@ -71,6 +87,7 @@ def test_load_detector_accepts_checkpoint_dictconfig(
         backbone_checkpoint=backbone,
         device="cpu",
         expected_short_side=256,
+        resolver=_resolver(tmp_path),
     )
 
     assert detector.embedded_backbone_path == "backbone.pth"

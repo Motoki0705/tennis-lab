@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -46,7 +46,7 @@ def _smplh_to_coco17(joints_3d: np.ndarray, yaw: float | np.ndarray) -> np.ndarr
         )
         coco17[:, coco_idx, :] = head_pos + rotated_offset
 
-    return coco17
+    return cast(np.ndarray, coco17)
 
 
 def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
@@ -60,7 +60,7 @@ def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
         kp = np.asarray(scene["human_kp_3d"], dtype=np.float32)
         if kp.ndim == 2:
             kp = kp[None, ...]
-        return kp
+        return cast(np.ndarray, kp)
 
     canonical = np.asarray(scene["canonical_pose_3d"], dtype=np.float32)
     if canonical.ndim == 2:
@@ -87,8 +87,12 @@ def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
             cos_yaw = rot_cs[:, 0].astype(np.float32)
             sin_yaw = rot_cs[:, 1].astype(np.float32)
         else:
-            cos_yaw = np.full((canonical.shape[0],), math.cos(init_yaw), dtype=np.float32)
-            sin_yaw = np.full((canonical.shape[0],), math.sin(init_yaw), dtype=np.float32)
+            cos_yaw = np.full(
+                (canonical.shape[0],), math.cos(init_yaw), dtype=np.float32
+            )
+            sin_yaw = np.full(
+                (canonical.shape[0],), math.sin(init_yaw), dtype=np.float32
+            )
     else:
         cos_yaw = np.full((canonical.shape[0],), math.cos(init_yaw), dtype=np.float32)
         sin_yaw = np.full((canonical.shape[0],), math.sin(init_yaw), dtype=np.float32)

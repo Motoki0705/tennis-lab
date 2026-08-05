@@ -39,20 +39,6 @@ if TYPE_CHECKING:
     pass
 
 
-# Default physics constants
-DEFAULT_GRAVITY = 9.81
-DEFAULT_K_DRAG = 0.01
-DEFAULT_K_MAGNUS = 0.001
-DEFAULT_E_Z = 0.75
-DEFAULT_MU = 0.1
-DEFAULT_ALPHA_NET = 0.3
-DEFAULT_ALPHA_NET_CORD = 0.1
-DEFAULT_ALPHA_FENCE = 0.3
-DEFAULT_NET_HALF_THICKNESS = 0.03
-DEFAULT_NET_CORD_RADIUS = 0.03
-DEFAULT_DT = 1 / 240
-
-
 @dataclass
 class PhysicsConfig:
     """Configuration for ball physics simulation.
@@ -61,31 +47,31 @@ class PhysicsConfig:
     ``sample()`` draws from them uniformly to create a stochastic config.
     """
 
-    gravity: float = DEFAULT_GRAVITY
-    k_drag: float = DEFAULT_K_DRAG
-    k_magnus: float = DEFAULT_K_MAGNUS
-    e_z: float = DEFAULT_E_Z
-    mu: float = DEFAULT_MU
-    alpha_net: float = DEFAULT_ALPHA_NET
-    alpha_net_cord: float = DEFAULT_ALPHA_NET_CORD
-    alpha_fence: float = DEFAULT_ALPHA_FENCE
-    net_half_thickness: float = DEFAULT_NET_HALF_THICKNESS
-    net_cord_radius: float = DEFAULT_NET_CORD_RADIUS
-    dt: float = DEFAULT_DT
-    use_drag: bool = True
-    use_magnus: bool = True
+    gravity: float
+    k_drag: float
+    k_magnus: float
+    e_z: float
+    mu: float
+    alpha_net: float
+    alpha_net_cord: float
+    alpha_fence: float
+    net_half_thickness: float
+    net_cord_radius: float
+    dt: float
+    use_drag: bool
+    use_magnus: bool
 
     # Wind velocity (m/s) in world frame (x, y, z)
-    wind: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    wind: tuple[float, float, float]
 
     # --- Per-scene perturbation ranges (None = use base value) ---
-    gravity_range: tuple[float, float] | None = None
-    k_drag_range: tuple[float, float] | None = None
-    k_magnus_range: tuple[float, float] | None = None
-    e_z_range: tuple[float, float] | None = None
-    mu_range: tuple[float, float] | None = None
-    wind_speed_range: tuple[float, float] | None = None
-    wind_direction_range_deg: tuple[float, float] | None = None
+    gravity_range: tuple[float, float] | None
+    k_drag_range: tuple[float, float] | None
+    k_magnus_range: tuple[float, float] | None
+    e_z_range: tuple[float, float] | None
+    mu_range: tuple[float, float] | None
+    wind_speed_range: tuple[float, float] | None
+    wind_direction_range_deg: tuple[float, float] | None
 
     def sample(self) -> PhysicsConfig:
         """Return a new config with stochastic parameters sampled.
@@ -98,7 +84,7 @@ class PhysicsConfig:
             if rng is None:
                 return base
             lo, hi = rng
-            return lo + torch.rand(1).item() * (hi - lo)
+            return float(lo + torch.rand(1).item() * (hi - lo))
 
         gravity = _u(self.gravity, self.gravity_range)
         k_drag = _u(self.k_drag, self.k_drag_range)
@@ -211,13 +197,13 @@ class BallPhysics:
     - Fence boundary detection
     """
 
-    def __init__(self, config: PhysicsConfig | None = None) -> None:
+    def __init__(self, config: PhysicsConfig) -> None:
         """Initialize ball physics.
 
         Args:
-            config: Physics configuration. Uses defaults if None.
+            config: Validated physics configuration.
         """
-        self.config = config or PhysicsConfig()
+        self.config = config
         self._wind_vec: Tensor | None = None
 
     @property
@@ -411,7 +397,7 @@ class BallPhysics:
             return float("inf")
 
         net_height = self._net_height_at_x(x_at_net)
-        return z_at_net - net_height
+        return float(z_at_net - net_height)
 
     def apply_net_collision(
         self,
@@ -520,7 +506,7 @@ class BallPhysics:
 
     def _net_height_at_x(self, x_at_net: float) -> float:
         """Get net height at a given x position (metres)."""
-        return net_height_at_x(x_at_net)
+        return float(net_height_at_x(x_at_net))
 
     def check_fence_collision(
         self,
@@ -556,25 +542,41 @@ class BallPhysics:
             t = (X_MIN - prev_x) / dx
             if 0.0 <= t <= 1.0:
                 plane_candidates.append(
-                    (t, X_MIN, torch.tensor([1.0, 0.0, 0.0], device=device, dtype=dtype))
+                    (
+                        t,
+                        X_MIN,
+                        torch.tensor([1.0, 0.0, 0.0], device=device, dtype=dtype),
+                    )
                 )
         if curr_x > X_MAX and abs(dx) > 1e-8:
             t = (X_MAX - prev_x) / dx
             if 0.0 <= t <= 1.0:
                 plane_candidates.append(
-                    (t, X_MAX, torch.tensor([-1.0, 0.0, 0.0], device=device, dtype=dtype))
+                    (
+                        t,
+                        X_MAX,
+                        torch.tensor([-1.0, 0.0, 0.0], device=device, dtype=dtype),
+                    )
                 )
         if curr_y < Y_MIN and abs(dy) > 1e-8:
             t = (Y_MIN - prev_y) / dy
             if 0.0 <= t <= 1.0:
                 plane_candidates.append(
-                    (t, Y_MIN, torch.tensor([0.0, 1.0, 0.0], device=device, dtype=dtype))
+                    (
+                        t,
+                        Y_MIN,
+                        torch.tensor([0.0, 1.0, 0.0], device=device, dtype=dtype),
+                    )
                 )
         if curr_y > Y_MAX and abs(dy) > 1e-8:
             t = (Y_MAX - prev_y) / dy
             if 0.0 <= t <= 1.0:
                 plane_candidates.append(
-                    (t, Y_MAX, torch.tensor([0.0, -1.0, 0.0], device=device, dtype=dtype))
+                    (
+                        t,
+                        Y_MAX,
+                        torch.tensor([0.0, -1.0, 0.0], device=device, dtype=dtype),
+                    )
                 )
 
         if not plane_candidates:
@@ -625,9 +627,9 @@ class BallPhysics:
             return False
 
         if target_side == "far":
-            return 0 < y <= HALF_LENGTH
+            return bool(0 < y <= HALF_LENGTH)
         else:
-            return -HALF_LENGTH <= y < 0
+            return bool(-HALF_LENGTH <= y < 0)
 
     def normalize_position(self, pos: Tensor) -> Tensor:
         """Normalize position to BLCS coordinates.

@@ -79,6 +79,7 @@ class DefaultJobEvaluator:
             checkpoint_config=checkpoint_config,
             dataset_spec=dataset,
             metrics_spec=manifest.metrics,
+            resolver=manifest.resolver,
         )
         datamodule = build_ball_detection_datamodule(evaluation_config)
         dataloader = build_evaluation_dataloader(datamodule, split)
@@ -148,10 +149,16 @@ def build_evaluation_dataloader(
     """Construct only the requested val/test dataset; never initialize train."""
     if split == "val":
         datamodule.setup(stage="validate")
-        return datamodule.val_dataloader()
+        loader = datamodule.val_dataloader()
+        if not isinstance(loader, DataLoader):
+            raise TypeError("Validation dataloader must be a DataLoader.")
+        return loader
     if split == "test":
         datamodule.setup(stage="test")
-        return datamodule.test_dataloader()
+        loader = datamodule.test_dataloader()
+        if not isinstance(loader, DataLoader):
+            raise TypeError("Test dataloader must be a DataLoader.")
+        return loader
     raise ValueError(f"Evaluation split must be val or test, got {split!r}.")
 
 
@@ -167,7 +174,7 @@ def evaluate_dataloader(
     dataset = dataloader.dataset
     source_resolver = SequentialSourceResolver(
         dataset,
-        default_source=str(data_config.get("source", "tracknet")),
+        default_source=str(data_config.source),
     )
     metrics = StratifiedBallMetrics(manifest.metrics)
     timings: list[float] = []
@@ -215,9 +222,7 @@ def evaluate_dataloader(
                 original_size,
                 sources=sources,
             )
-            processed_frames += int(
-                pred_heatmaps.shape[0] * pred_heatmaps.shape[1]
-            )
+            processed_frames += int(pred_heatmaps.shape[0] * pred_heatmaps.shape[1])
             processed_batches += 1
 
     total_seconds = sum(timings)
@@ -226,9 +231,7 @@ def evaluate_dataloader(
         "frames": processed_frames,
         "total_inference_seconds": total_seconds,
         "latency_ms_per_batch": (
-            None
-            if not timings
-            else 1000.0 * total_seconds / len(timings)
+            None if not timings else 1000.0 * total_seconds / len(timings)
         ),
         "throughput_frames_per_second": (
             None if total_seconds <= 0 else processed_frames / total_seconds
@@ -244,6 +247,7 @@ def evaluate_dataloader(
             data_config=data_config,
             split=split,
             dataset=dataset,
+            resolver=manifest.resolver,
         ),
     }
 
@@ -291,9 +295,7 @@ def _reset_peak_memory(device: torch.device) -> None:
 def _peak_vram_mb(device: torch.device) -> float | None:
     if device.type != "cuda":
         return None
-    return float(
-        torch.cuda.max_memory_allocated(device) / (1024.0 * 1024.0)
-    )
+    return float(torch.cuda.max_memory_allocated(device) / (1024.0 * 1024.0))
 
 
 def _git_revision() -> str:

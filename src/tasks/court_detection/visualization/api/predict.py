@@ -26,6 +26,7 @@ from src.tasks.court_detection.visualization.io.frames import (
     CourtFrame,
     KpFramePrediction,
 )
+from src.utils.configuration import PathResolver
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +35,17 @@ def predict_kp(
     *,
     checkpoint_path: str | Path,
     device: str,
+    resolver: PathResolver,
+    allow_device_fallback: bool,
     frames: list[CourtFrame],
 ) -> list[KpFramePrediction]:
     """Predict keypoints + averaged heatmap for every frame."""
     predictor = CourtKeypointPredictor.load_from_checkpoint(
         checkpoint_path=checkpoint_path,
         device=device,
+        resolver=resolver,
+        allow_device_fallback=allow_device_fallback,
+        subpixel_refine=True,
     )
     logger.info("Court keypoint model loaded on %s.", device)
     predictions: list[KpFramePrediction] = []
@@ -60,12 +66,16 @@ def predict_seg(
     *,
     checkpoint_path: str | Path,
     device: str,
+    resolver: PathResolver,
+    allow_device_fallback: bool,
     frames: list[CourtFrame],
 ) -> list[np.ndarray]:
     """Predict a class mask ``(h', w')`` (int) for every frame."""
     predictor = CourtSegPredictor.load_from_checkpoint(
         checkpoint_path=checkpoint_path,
         device=device,
+        resolver=resolver,
+        allow_device_fallback=allow_device_fallback,
     )
     logger.info("Court segmentation model loaded on %s.", device)
     masks: list[np.ndarray] = []
@@ -80,12 +90,16 @@ def predict_line(
     *,
     checkpoint_path: str | Path,
     device: str,
+    resolver: PathResolver,
+    allow_device_fallback: bool,
     frames: list[CourtFrame],
 ) -> list[np.ndarray]:
     """Predict a line-probability map ``(h', w')`` (float) for every frame."""
     predictor = CourtLinePredictor.load_from_checkpoint(
         checkpoint_path=checkpoint_path,
         device=device,
+        resolver=resolver,
+        allow_device_fallback=allow_device_fallback,
     )
     logger.info("Court line model loaded on %s.", device)
     probs: list[np.ndarray] = []

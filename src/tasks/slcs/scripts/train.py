@@ -30,11 +30,16 @@ def run_training(config: DictConfig) -> None:
     runner.run(config)
 
 
-@hydra_main(config_path="../configs", config_name="train", version_base="1.3")
+@hydra_main(
+    config_path="../configs",
+    config_name="train",
+    version_base="1.3",
+    validation_boundary="slcs.train",
+)
 def main(config: DictConfig) -> None:  # pragma: no cover - CLI entry point
     """Hydra entry point for SLCS training."""
     run_training(config)
 
 
 if __name__ == "__main__":
-    main()  # type: ignore[call-arg, unused-ignore]
+    main()

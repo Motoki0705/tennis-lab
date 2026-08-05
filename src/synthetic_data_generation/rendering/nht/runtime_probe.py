@@ -9,19 +9,52 @@ from pathlib import Path
 
 import torch
 
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
+)
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.nht.runtime_probe",
+    fields=(
+        BoundaryPathField(
+            "nht_repository",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.FILE
+        ),
+    ),
+)
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--nht-repository", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    add_path_roots_argument(parser)
     return parser.parse_args()
 
 
 def main() -> None:
     """Publish runtime identity after importing CUDA and gsplat dependencies."""
     args = _parse_args()
-    repository = args.nht_repository.resolve()
-    output = args.output.resolve()
+    paths = PATH_BOUNDARY.validate(
+        {"nht_repository": args.nht_repository, "output": args.output},
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    repository = paths.declared("nht_repository").path
+    output = paths.declared("output").path
     if output.exists():
         raise FileExistsError(f"NHT runtime probe refuses overwrite: {output}")
     import gsplat  # noqa: PLC0415

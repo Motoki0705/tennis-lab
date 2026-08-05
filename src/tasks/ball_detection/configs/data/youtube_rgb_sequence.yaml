@@ -3,9 +3,10 @@ defaults:
   - _self_
 
 source: youtube
-data_dir: data/tennis/youtube
+data_dir: tennis/youtube
 
 split:
-  train_file: annotations/train.txt
-  val_file: annotations/val.txt
-  test_file: annotations/test.txt
+  root_role: data
+  train_file: tennis/youtube/annotations/train.txt
+  val_file: tennis/youtube/annotations/val.txt
+  test_file: tennis/youtube/annotations/test.txt

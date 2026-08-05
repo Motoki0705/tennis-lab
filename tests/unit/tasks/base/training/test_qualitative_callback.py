@@ -14,45 +14,56 @@ from src.tasks.base.training.qualitative_callback import (
 pytestmark = pytest.mark.unit
 
 
-def test_init_clamps_minimums() -> None:
-    cb = QualitativeLoggingCallback(every_n_epochs=0, num_samples=0)
-    assert cb.every_n_epochs == 1
-    assert cb.num_samples == 1
+def _callback(**overrides: object) -> QualitativeLoggingCallback:
+    config: dict[str, object] = {
+        "every_n_epochs": 1,
+        "num_samples": 1,
+        "enabled": True,
+        "selection_mode": "random",
+        "selected_indices": None,
+    }
+    config.update(overrides)
+    return QualitativeLoggingCallback(**config)  # type: ignore[arg-type]
+
+
+def test_init_rejects_non_positive_intervals() -> None:
+    with pytest.raises(ValueError, match="must be positive"):
+        _callback(every_n_epochs=0, num_samples=0)
 
 
 def test_select_random_subset_bounded() -> None:
-    cb = QualitativeLoggingCallback(num_samples=3, selection_mode="random")
+    cb = _callback(num_samples=3, selection_mode="random")
     selected = cb._select_batch_indices(total=10)
     assert len(selected) == 3
     assert selected <= set(range(10))
 
 
 def test_select_random_caps_at_total() -> None:
-    cb = QualitativeLoggingCallback(num_samples=20, selection_mode="random")
+    cb = _callback(num_samples=20, selection_mode="random")
     selected = cb._select_batch_indices(total=5)
     assert selected == set(range(5))
 
 
 def test_select_zero_total_empty() -> None:
-    cb = QualitativeLoggingCallback(num_samples=4)
+    cb = _callback(num_samples=4)
     assert cb._select_batch_indices(total=0) == set()
 
 
 def test_fixed_indices_mode() -> None:
-    cb = QualitativeLoggingCallback(
+    cb = _callback(
         selection_mode="fixed_indices", selected_indices=[0, 2, 4]
     )
     assert cb._select_batch_indices(total=6) == {0, 2, 4}
 
 
 def test_fixed_indices_requires_list() -> None:
-    cb = QualitativeLoggingCallback(selection_mode="fixed_indices", selected_indices=None)
+    cb = _callback(selection_mode="fixed_indices", selected_indices=None)
     with pytest.raises(ValueError, match="non-empty selected_indices"):
         cb._select_batch_indices(total=6)
 
 
 def test_fixed_indices_out_of_range_raises() -> None:
-    cb = QualitativeLoggingCallback(
+    cb = _callback(
         selection_mode="fixed_indices", selected_indices=[0, 7]
     )
     with pytest.raises(ValueError, match="out-of-range"):
@@ -60,7 +71,7 @@ def test_fixed_indices_out_of_range_raises() -> None:
 
 
 def test_unknown_selection_mode_raises() -> None:
-    cb = QualitativeLoggingCallback(selection_mode="bogus")
+    cb = _callback(selection_mode="bogus")
     with pytest.raises(ValueError, match="must be 'random' or"):
         cb._select_batch_indices(total=5)
 
@@ -72,17 +83,17 @@ class _Trainer:
 
 
 def test_should_log_respects_enabled_flag() -> None:
-    cb = QualitativeLoggingCallback(enabled=False)
+    cb = _callback(enabled=False)
     assert cb._should_log(_Trainer()) is False
 
 
 def test_should_log_skips_sanity_check() -> None:
-    cb = QualitativeLoggingCallback(enabled=True)
+    cb = _callback(enabled=True)
     assert cb._should_log(_Trainer(sanity=True)) is False
 
 
 def test_should_log_every_n_epochs() -> None:
-    cb = QualitativeLoggingCallback(enabled=True, every_n_epochs=3)
+    cb = _callback(enabled=True, every_n_epochs=3)
     assert cb._should_log(_Trainer(enabled_epoch=0)) is True
     assert cb._should_log(_Trainer(enabled_epoch=3)) is True
     assert cb._should_log(_Trainer(enabled_epoch=1)) is False

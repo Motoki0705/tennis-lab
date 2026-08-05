@@ -21,17 +21,17 @@ class BallTrajectoryDiscriminator(TransformerSequenceDiscriminator):
     def __init__(
         self,
         *,
-        hidden_dim: int = 128,
-        num_layers: int = 4,
-        num_heads: int = 4,
-        ffn_dim: int | None = None,
-        dropout: float = 0.1,
-        rope_dim: int | None = None,
-        rope_theta: float = 10000.0,
-        ffn_type: str = "swiglu",
-        max_seq_len: int = 64,
-        invisible_init_std: float = 0.02,
-        cls_init_std: float = 0.02,
+        hidden_dim: int,
+        num_layers: int,
+        num_heads: int,
+        ffn_dim: int,
+        dropout: float,
+        rope_dim: int,
+        rope_theta: float,
+        ffn_type: str,
+        max_seq_len: int,
+        invalid_init_std: float,
+        cls_init_std: float,
     ) -> None:
         super().__init__(
             input_dim=2,
@@ -44,7 +44,7 @@ class BallTrajectoryDiscriminator(TransformerSequenceDiscriminator):
             rope_theta=rope_theta,
             ffn_type=ffn_type,
             max_seq_len=max_seq_len,
-            invalid_init_std=invisible_init_std,
+            invalid_init_std=invalid_init_std,
             cls_init_std=cls_init_std,
         )
 
@@ -55,15 +55,9 @@ class BallTrajectoryDiscriminator(TransformerSequenceDiscriminator):
         Delegates kwarg parsing to the shared
         :func:`build_trajectory_discriminator` factory (``input_dim=2``).
         """
-        train_cfg = config.get("training", {}) or {}
-        gan_cfg = train_cfg.get("gan", {}) or {}
-        disc_cfg = gan_cfg.get("discriminator", {}) or {}
-        model_cfg = config.get("model", {}) or {}
-
         return build_trajectory_discriminator(
             input_dim=2,
-            disc_cfg=disc_cfg,
-            default_max_seq_len=int(model_cfg.get("num_frames", 8)),
+            disc_cfg=config.training.gan.discriminator,
         )
 
     def forward(self, ball_xy: Tensor, *, mask: Tensor | None = None) -> Tensor:

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import torch
 import torch.nn as nn
 
+from src.tasks.ball_detection.configuration import validate_model
 from src.tasks.ball_detection.models.input_adapter import resolve_model_in_channels
 from src.utils.models.blocks import Conv2dWiseWiseBlock
 from src.utils.tensor_utils import flatten_time_to_batch, restore_time_from_batch
@@ -33,7 +34,10 @@ class Conv3dBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Apply the 3D convolution stack."""
-        return self.conv3d_2(self.conv3d_1(x))
+        output = self.conv3d_2(self.conv3d_1(x))
+        if not isinstance(output, torch.Tensor):
+            raise TypeError("Conv3dBlock must return a tensor.")
+        return output
 
 
 class EncoderBlock(nn.Module):
@@ -100,7 +104,7 @@ class SpatioTemporalUNet(nn.Module):
         ``(B, num_classes, T, H/2, W/2)``
     """
 
-    def __init__(self, in_channels: int = 3, num_classes: int = 1) -> None:
+    def __init__(self, *, in_channels: int, num_classes: int) -> None:
         super().__init__()
         self._validate_init_args(in_channels=in_channels, num_classes=num_classes)
 
@@ -142,10 +146,10 @@ class SpatioTemporalUNet(nn.Module):
     @classmethod
     def from_config(cls, config: DictConfig) -> SpatioTemporalUNet:
         """Create the model from a composed Hydra config."""
-        model_cfg = config.get("model", {}) or {}
+        model_cfg = validate_model(config)
         return cls(
             in_channels=resolve_model_in_channels(model_cfg),
-            num_classes=int(model_cfg.get("num_classes", 1)),
+            num_classes=int(model_cfg["num_classes"]),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -166,7 +170,12 @@ class SpatioTemporalUNet(nn.Module):
         x = self.dec2(x, s3d_2, s2d_2)
         x = self.upsample(x)
         x = self.dec1(x, s3d_1, s2d_1)
-        return self.final_conv(x)
+        output = self.final_conv(x)
+        if not isinstance(output, torch.Tensor):
+            raise TypeError(
+                "SpatioTemporalUNet final convolution must return a tensor."
+            )
+        return output
 
     def _validate_forward_input(self, x: torch.Tensor) -> None:
         if x.ndim != 5:

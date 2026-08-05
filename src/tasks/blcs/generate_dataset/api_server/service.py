@@ -8,6 +8,8 @@ This is the only layer that knows about:
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import torch
 
 from src.tasks.blcs.generate_dataset.api_server.metrics import (
@@ -23,14 +25,10 @@ from src.tasks.blcs.generate_dataset.api_server.schemas import (
     SimulateShotResponse,
     Vec3,
 )
-from src.tasks.blcs.generate_dataset.simulation.ball_physics import (
-    BallState,
-    PhysicsConfig,
-)
-from src.tasks.blcs.generate_dataset.simulation.rally_simulator import (
-    RallyConfig,
-    RallySimulator,
-)
+from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
+from src.tasks.blcs.generate_dataset.simulation.ball_physics import BallState
+from src.tasks.blcs.generate_dataset.simulation.cell_manager import CellManager
+from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallySimulator
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
     TargetedVelocitySampler,
@@ -38,7 +36,9 @@ from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import
 from src.utils.seeding import seed_everything
 
 
-def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
+def simulate_shot(
+    req: SimulateShotRequest, *, generator_config: GeneratorConfig
+) -> SimulateShotResponse:
     if req.seed is not None:
         seed_everything(req.seed)
 
@@ -63,57 +63,81 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
         sim_fps = sim_fps_from_dt
         dt = dt_req
     else:
-        sim_fps = sim_fps_req if sim_fps_req is not None else 240
+        sim_fps = (
+            sim_fps_req if sim_fps_req is not None else generator_config.rally.sim_fps
+        )
         dt = 1.0 / float(sim_fps)
 
-    output_fps = int(req.sim.output_fps) if req.sim.output_fps is not None else 30
+    output_fps = (
+        int(req.sim.output_fps)
+        if req.sim.output_fps is not None
+        else generator_config.rally.output_fps
+    )
     if sim_fps % output_fps != 0:
         # Redundant with schema validation when both are provided, but also catches defaults.
-        raise ValueError(f"sim_fps ({sim_fps}) must be divisible by output_fps ({output_fps})")
+        raise ValueError(
+            f"sim_fps ({sim_fps}) must be divisible by output_fps ({output_fps})"
+        )
 
     max_sim_frames = (
-        int(req.sim.max_sim_frames) if req.sim.max_sim_frames is not None else 2000
+        int(req.sim.max_sim_frames)
+        if req.sim.max_sim_frames is not None
+        else generator_config.rally.max_sim_frames
     )
 
     # ---- Physics config ----
-    physics = PhysicsConfig(
-        gravity=float(req.physics.gravity) if req.physics.gravity is not None else 9.81,
-        k_drag=float(req.physics.k_drag) if req.physics.k_drag is not None else 0.01,
+    base_physics = generator_config.physics
+    physics = replace(
+        base_physics,
+        gravity=float(req.physics.gravity)
+        if req.physics.gravity is not None
+        else base_physics.gravity,
+        k_drag=float(req.physics.k_drag)
+        if req.physics.k_drag is not None
+        else base_physics.k_drag,
         k_magnus=float(req.physics.k_magnus)
         if req.physics.k_magnus is not None
-        else 0.001,
-        e_z=float(req.physics.e_z) if req.physics.e_z is not None else 0.75,
-        mu=float(req.physics.mu) if req.physics.mu is not None else 0.1,
+        else base_physics.k_magnus,
+        e_z=float(req.physics.e_z) if req.physics.e_z is not None else base_physics.e_z,
+        mu=float(req.physics.mu) if req.physics.mu is not None else base_physics.mu,
         alpha_net=float(req.physics.alpha_net)
         if req.physics.alpha_net is not None
-        else 0.3,
+        else base_physics.alpha_net,
         alpha_net_cord=float(req.physics.alpha_net_cord)
         if req.physics.alpha_net_cord is not None
-        else 0.5,
+        else base_physics.alpha_net_cord,
         alpha_fence=float(req.physics.alpha_fence)
         if req.physics.alpha_fence is not None
-        else 0.3,
+        else base_physics.alpha_fence,
         net_half_thickness=float(req.physics.net_half_thickness)
         if req.physics.net_half_thickness is not None
-        else 0.03,
+        else base_physics.net_half_thickness,
         net_cord_radius=float(req.physics.net_cord_radius)
         if req.physics.net_cord_radius is not None
-        else 0.03,
+        else base_physics.net_cord_radius,
         dt=dt,
-        use_drag=bool(req.physics.use_drag) if req.physics.use_drag is not None else True,
+        use_drag=bool(req.physics.use_drag)
+        if req.physics.use_drag is not None
+        else base_physics.use_drag,
         use_magnus=bool(req.physics.use_magnus)
         if req.physics.use_magnus is not None
-        else True,
+        else base_physics.use_magnus,
     )
 
-    rally_cfg = RallyConfig(
-        # Keep defaults unless we explicitly expose these.
+    rally_cfg = replace(
+        generator_config.rally,
         max_sim_frames=max_sim_frames,
         sim_fps=sim_fps,
         output_fps=output_fps,
     )
 
-    simulator = RallySimulator(physics_config=physics, rally_config=rally_cfg, device="cpu")
+    simulator = RallySimulator(
+        physics_config=physics,
+        rally_config=rally_cfg,
+        cell_manager=CellManager(),
+        targeted_velocity_config=generator_config.targeted_velocity,
+        device="cpu",
+    )
 
     # ---- Initial state sampling / overrides ----
     # Position:
@@ -132,7 +156,12 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
     if req.shot.velocity is not None:
         vel = _vec3_to_tensor(req.shot.velocity)
     else:
-        vel = _sample_velocity(req, pos, simulator=simulator)
+        vel = _sample_velocity(
+            req,
+            pos,
+            simulator=simulator,
+            targeted_velocity_config=generator_config.targeted_velocity,
+        )
 
     # Spin:
     if req.shot.spin is not None:
@@ -177,14 +206,20 @@ def simulate_shot(req: SimulateShotRequest) -> SimulateShotResponse:
 
 
 def _sample_velocity(
-    req: SimulateShotRequest, pos: torch.Tensor, simulator: RallySimulator
+    req: SimulateShotRequest,
+    pos: torch.Tensor,
+    simulator: RallySimulator,
+    targeted_velocity_config: TargetedVelocityConfig,
 ) -> torch.Tensor:
     # Targeted velocity for `cell` / `point`, otherwise random target-cell sampling.
     if req.target_mode == "cell":
         target_side = "far" if req.from_side == "near" else "near"
         sampler = TargetedVelocitySampler(
             cell_manager=simulator.cell_manager,
-            config=TargetedVelocityConfig(gravity=simulator.physics.config.gravity),
+            config=replace(
+                targeted_velocity_config,
+                gravity=simulator.physics.config.gravity,
+            ),
             device="cpu",
         )
         assert req.to_cell is not None
@@ -198,7 +233,10 @@ def _sample_velocity(
     if req.target_mode == "point":
         sampler = TargetedVelocitySampler(
             cell_manager=simulator.cell_manager,
-            config=TargetedVelocityConfig(gravity=simulator.physics.config.gravity),
+            config=replace(
+                targeted_velocity_config,
+                gravity=simulator.physics.config.gravity,
+            ),
             device="cpu",
         )
         assert req.target_point is not None
@@ -207,13 +245,18 @@ def _sample_velocity(
             dtype=torch.float32,
             device="cpu",
         )
-        return sampler.compute_velocity_to_target(pos, target_pos, from_side=req.from_side)
+        return sampler.compute_velocity_to_target(
+            pos, target_pos, from_side=req.from_side
+        )
 
     target_side = "far" if req.from_side == "near" else "near"
     target_cell = simulator._sample_target_cell()
     sampler = TargetedVelocitySampler(
         cell_manager=simulator.cell_manager,
-        config=TargetedVelocityConfig(gravity=simulator.physics.config.gravity),
+        config=replace(
+            targeted_velocity_config,
+            gravity=simulator.physics.config.gravity,
+        ),
         device="cpu",
     )
     return sampler.sample_velocity_for_target_cell(

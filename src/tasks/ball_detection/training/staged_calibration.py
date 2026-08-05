@@ -20,17 +20,24 @@ if TYPE_CHECKING:
 
 
 def _image_hw(config: Any) -> tuple[int, int]:
-    model_cfg = config.get("model", {}) or {}
-    data_cfg = config.get("data", {}) or {}
-    size = model_cfg.get("image_size") or data_cfg.get("image_size") or [288, 512]
+    size = config.data.image_size
     return int(size[0]), int(size[1])
 
 
-def _fits(model: Any, model_cfg: Any, batch: int, t: int, hw: tuple[int, int], device: torch.device) -> bool:
+def _fits(
+    model: Any,
+    model_cfg: Any,
+    batch: int,
+    t: int,
+    hw: tuple[int, int],
+    device: torch.device,
+) -> bool:
     """Whether one fwd+bwd of ``(batch, t, 3, H, W)`` fits without OOM."""
     height, width = hw
     try:
-        frames = torch.randn(batch, t, 3, height, width, device=device, requires_grad=False)
+        frames = torch.randn(
+            batch, t, 3, height, width, device=device, requires_grad=False
+        )
         logits = model(to_model_input(frames, model_cfg))
         loss = logits.float().pow(2).mean()
         loss.backward()
@@ -63,7 +70,7 @@ def probe_batch_size_by_t(
     the largest fitting batch down to leave headroom for optimizer state and
     fragmentation.
     """
-    model_cfg = config.get("model", {}) or {}
+    model_cfg = config.model
     model = build_ball_detection_model(config).to(device)
     model.train()
     hw = _image_hw(config)

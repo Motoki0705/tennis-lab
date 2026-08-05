@@ -48,9 +48,13 @@ def generate_recording_splits(
     weights: dict[str, int] = {}
     for ref in index.clips:
         manifest = ClipManifest.load(index.clip_dir(ref))
-        weights[ref.recording_id] = weights.get(ref.recording_id, 0) + manifest.num_frames
+        weights[ref.recording_id] = (
+            weights.get(ref.recording_id, 0) + manifest.num_frames
+        )
     if not weights:
-        raise DatasetContractError(f"dataset at {index.root} contains no clips to split.")
+        raise DatasetContractError(
+            f"dataset at {index.root} contains no clips to split."
+        )
     assignments: dict[str, str] = make_group_split_map(
         weights,
         GroupSplitConfig(val_ratio=val_ratio, test_ratio=test_ratio, seed=seed),
@@ -105,7 +109,9 @@ def load_split_assignments(path: str | Path, index: DatasetIndex) -> dict[str, s
         )
     assignments_raw = payload.get("assignments")
     if not isinstance(assignments_raw, dict) or not assignments_raw:
-        raise DatasetContractError(f"{split_path} must contain a non-empty 'assignments' map.")
+        raise DatasetContractError(
+            f"{split_path} must contain a non-empty 'assignments' map."
+        )
     assignments = {str(k): str(v) for k, v in assignments_raw.items()}
     for recording_id, split in assignments.items():
         if split not in SPLIT_NAMES:

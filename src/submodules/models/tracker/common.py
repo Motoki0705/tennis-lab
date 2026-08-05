@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import torch
@@ -23,8 +24,8 @@ class TrackRequest:
     """Request for person tracking on a video."""
 
     video_path: str | Path
-    num_tracks: int = 1
-    interactive: bool = False
+    num_tracks: int
+    interactive: bool
 
 
 @dataclass(frozen=True)
@@ -38,9 +39,14 @@ class TrackResult:
     def track_ids(self) -> list[int]:
         return sorted(self.tracks)
 
-    def bbx_xys(self, track_id: int, base_enlarge: float = 1.2) -> torch.Tensor:
+    def bbx_xys(self, track_id: int, *, base_enlarge: float) -> torch.Tensor:
         """Convert a track to downstream ``(center_x, center_y, size)`` boxes."""
         from src.submodules.vendor.gvhmr.utils.hmr_cam import get_bbx_xys_from_xyxy
+
+        if type(base_enlarge) is not float:
+            raise TypeError("base_enlarge must be a float.")
+        if base_enlarge <= 0.0:
+            raise ValueError(f"base_enlarge must be positive, got {base_enlarge}")
 
         xys: torch.Tensor = get_bbx_xys_from_xyxy(
             self.tracks[track_id], base_enlarge=base_enlarge
@@ -124,4 +130,4 @@ def build_track_tensor(
         raise RuntimeError("Track interpolation left empty frames")
     track = moving_average_smooth(track, window_size=5, dim=0)
     track = moving_average_smooth(track, window_size=5, dim=0)
-    return track.float()
+    return cast(torch.Tensor, track.float())

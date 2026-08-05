@@ -1,0 +1,2 @@
+presence_threshold: 0.5
+duplicate_distance: 0.05

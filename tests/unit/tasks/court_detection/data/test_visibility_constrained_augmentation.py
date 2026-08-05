@@ -77,7 +77,9 @@ def test_cumulative_visibility_rejects_reentering_keypoint() -> None:
     kps = np.array([[10.0, 50.0], [200.0, 50.0]], dtype=np.float32)
     crop = _FixedCrop(CropParams(top=0, left=100, crop_h=H, crop_w=200))
     shift = _FixedShift(dx=95.0)
-    pipeline = KPVisibilityConstrainedPipeline([crop, shift], min_visible_kp=0)
+    pipeline = KPVisibilityConstrainedPipeline(
+        [crop, shift], min_visible_kp=0, max_retries=1
+    )
 
     _, out_kps, mask = pipeline.transform_with_visibility(img, kps)
 
@@ -125,13 +127,33 @@ def test_constraint_raises_visible_keypoint_count() -> None:
 
 def test_invalid_visibility_constraint_args() -> None:
     with pytest.raises(ValueError):
-        KPVisibilityConstrainedPipeline([], min_visible_kp=-1)
+        KPVisibilityConstrainedPipeline([], min_visible_kp=-1, max_retries=1)
     with pytest.raises(ValueError):
-        KPVisibilityConstrainedPipeline([], max_retries=0)
+        KPVisibilityConstrainedPipeline([], min_visible_kp=0, max_retries=0)
 
 
 def test_val_pipeline_visibility_mask_matches_resize_bounds() -> None:
-    pipeline, image_only = build_kp_transforms(is_train=False, val_short_side=90)
+    pipeline, image_only = build_kp_transforms(
+        is_train=False,
+        train_scales=[288],
+        val_short_side=90,
+        crop_scale=(0.2, 1.0),
+        crop_ratio=(0.5, 2.0),
+        hflip_prob=0.7,
+        swap_pairs=[(0, 1)],
+        affine_degrees=25.0,
+        affine_translate=(0.18, 0.18),
+        affine_scale=(0.65, 1.5),
+        affine_shear=18.0,
+        perspective_distortion=0.25,
+        perspective_prob=0.6,
+        color_jitter=(0.5, 0.5, 0.5, 0.2),
+        gaussian_blur_kernel=[3, 5, 7, 9],
+        gaussian_blur_sigma=(0.1, 3.0),
+        gaussian_blur_prob=0.5,
+        min_visible_kp=12,
+        visibility_max_retries=10,
+    )
     assert image_only == []
     img = Image.new("RGB", (W, H))
     kps = np.array(

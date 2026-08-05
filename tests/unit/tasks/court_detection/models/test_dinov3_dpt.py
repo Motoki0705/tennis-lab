@@ -6,6 +6,7 @@ from torch import nn
 from src.tasks.court_detection.models.decoder import CourtDPTDecoder
 from src.tasks.court_detection.models.encoders import CourtDINOv3Encoder
 from src.utils.models.loading import DINOv3BackboneAdapter
+from src.utils.models.lora import LoRAConfig
 
 
 class FakeDINOv3(nn.Module):
@@ -52,6 +53,21 @@ def test_dinov3_encoder_reassembles_four_intermediate_token_maps() -> None:
     encoder = CourtDINOv3Encoder(
         backbone=DINOv3BackboneAdapter(fake),
         out_indices=(2, 5, 8, 11),
+        in_channels=3,
+        repository_path=None,
+        checkpoint_path=None,
+        backbone_name=None,
+        strict=None,
+        train_mode="frozen",
+        last_n_blocks=0,
+        lora=LoRAConfig(
+            enabled=False,
+            rank=8,
+            alpha=16.0,
+            dropout=0.0,
+            target_modules=("qkv", "proj", "fc1", "fc2"),
+        ),
+        layer_mode="uniform",
     )
 
     features = encoder(torch.randn(2, 3, 16, 20))
@@ -71,6 +87,21 @@ def test_dinov3_encoder_pads_inputs_to_patch_grid() -> None:
     encoder = CourtDINOv3Encoder(
         backbone=DINOv3BackboneAdapter(fake),
         out_indices=(2, 5, 8, 11),
+        in_channels=3,
+        repository_path=None,
+        checkpoint_path=None,
+        backbone_name=None,
+        strict=None,
+        train_mode="frozen",
+        last_n_blocks=0,
+        lora=LoRAConfig(
+            enabled=False,
+            rank=8,
+            alpha=16.0,
+            dropout=0.0,
+            target_modules=("qkv", "proj", "fc1", "fc2"),
+        ),
+        layer_mode="uniform",
     )
 
     features = encoder(torch.randn(2, 3, 17, 19))

@@ -17,19 +17,18 @@ from src.utils.models import (
     RMSNorm,
     TransformerBlock,
     TransformerBlockConfig,
-    default_ffn_dim,
     precompute_freqs_cis_nd,
+    resolve_axial_rope_bases,
 )
 from src.utils.models.axial_multiview_mixin import AxialMultiViewMixin
 from src.utils.models.embeddings import (
     CourtPlayerGroupEmbedding,
     InvisibleTokenEmbedding,
 )
-from src.utils.schema.court import NUM_COURT_KP
 from src.utils.schema.player import NUM_HUMAN_KP
 
 if TYPE_CHECKING:
-    from omegaconf import DictConfig
+    from src.tasks.plcs.configuration import PLCSModelConfig
 
 
 class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
@@ -37,21 +36,21 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
 
     def __init__(
         self,
-        hidden_dim: int = 256,
-        num_layers: int = 6,
-        num_heads: int = 8,
-        ffn_dim: int | None = None,
-        dropout: float = 0.1,
-        rope_dim: int | None = None,
-        rope_theta: float = 10000.0,
-        rope_theta_time: float | None = None,
-        rope_theta_camera: float | None = None,
-        ffn_type: Literal["swiglu", "mlp"] = "swiglu",
-        predict_canonical_pose: bool = False,
-        max_views: int = 8,
-        max_seq_len: int = 120,
-        invisible_init_std: float = 0.02,
-        num_court_tokens: int = NUM_COURT_KP,
+        *,
+        hidden_dim: int,
+        num_layers: int,
+        num_heads: int,
+        ffn_dim: int,
+        dropout: float,
+        rope_dim: int,
+        rope_theta_time: float,
+        rope_theta_camera: float,
+        ffn_type: Literal["swiglu", "mlp"],
+        predict_canonical_pose: bool,
+        max_views: int,
+        max_seq_len: int,
+        invisible_init_std: float,
+        num_court_tokens: int,
     ) -> None:
         super().__init__()
 
@@ -70,18 +69,14 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
         )
 
         head_dim = self.hidden_dim // num_heads
-        rope_dim = head_dim if rope_dim is None else int(rope_dim)
         self._validate_rope_dim(rope_dim=rope_dim, head_dim=head_dim)
 
         self.head_dim = int(head_dim)
         self.rope_dim = int(rope_dim)
-        self.rope_bases = (
-            self._coalesce_theta(rope_theta_time, rope_theta),
-            self._coalesce_theta(rope_theta_camera, rope_theta),
+        self.rope_bases = resolve_axial_rope_bases(
+            rope_theta_time=rope_theta_time,
+            rope_theta_camera=rope_theta_camera,
         )
-
-        if ffn_dim is None:
-            ffn_dim = default_ffn_dim(self.hidden_dim)
 
         self.invisible_token = InvisibleTokenEmbedding(
             dim=self.hidden_dim,
@@ -103,6 +98,8 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
+                        attention_type="mha",
+                        n_kv_heads=None,
                         rope_base=self.rope_bases[1],
                         ffn_type=ffn_type,
                     )
@@ -120,6 +117,8 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                         head_dim=head_dim,
                         rope_dim=self.rope_dim,
                         attn_dropout=dropout,
+                        attention_type="mha",
+                        n_kv_heads=None,
                         rope_base=self.rope_bases[0],
                         ffn_type=ffn_type,
                     )
@@ -150,6 +149,7 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
                 hidden_dim=self.hidden_dim // 2,
                 num_layers=2,
                 dropout=dropout,
+                num_keypoints=NUM_HUMAN_KP,
             )
 
         token_freqs = precompute_freqs_cis_nd(
@@ -183,35 +183,25 @@ class PLCSMultiViewAxialModel(AxialMultiViewMixin, nn.Module):
             raise ValueError(f"max_seq_len must be positive, got {max_seq_len}")
 
     @classmethod
-    def from_config(cls, config: DictConfig) -> PLCSMultiViewAxialModel:
+    def from_config(
+        cls, config: PLCSModelConfig, *, num_court_tokens: int
+    ) -> PLCSMultiViewAxialModel:
         """Create model from hydra config."""
-        model_cfg = config.get("model", {})
-        data_cfg = config.get("data", {})
-
         return cls(
-            hidden_dim=int(model_cfg.get("hidden_dim", 256)),
-            num_layers=int(model_cfg.get("num_layers", 6)),
-            num_heads=int(model_cfg.get("num_heads", 8)),
-            ffn_dim=model_cfg.get("ffn_dim", None),
-            dropout=float(model_cfg.get("dropout", 0.1)),
-            rope_dim=model_cfg.get("rope_dim", None),
-            rope_theta=float(model_cfg.get("rope_theta", 10000.0)),
-            rope_theta_time=model_cfg.get("rope_theta_time", None),
-            rope_theta_camera=model_cfg.get("rope_theta_camera", None),
-            ffn_type=cast(
-                Literal["swiglu", "mlp"], str(model_cfg.get("ffn_type", "swiglu"))
-            ),
-            predict_canonical_pose=bool(model_cfg.get("predict_canonical_pose", False)),
-            max_views=int(model_cfg.get("max_views", 8)),
-            max_seq_len=int(
-                model_cfg.get("max_seq_len", data_cfg.get("max_seq_len", 120))
-            ),
-            invisible_init_std=float(model_cfg.get("invisible_init_std", 0.02)),
-            num_court_tokens=int(
-                model_cfg.get(
-                    "num_court_tokens", data_cfg.get("num_court_kp", NUM_COURT_KP)
-                )
-            ),
+            hidden_dim=config.integer("hidden_dim"),
+            num_layers=config.integer("num_layers"),
+            num_heads=config.integer("num_heads"),
+            ffn_dim=config.integer("ffn_dim"),
+            dropout=config.number("dropout"),
+            rope_dim=config.integer("rope_dim"),
+            rope_theta_time=config.number("rope_theta_time"),
+            rope_theta_camera=config.number("rope_theta_camera"),
+            ffn_type=cast(Literal["swiglu", "mlp"], config.string("ffn_type")),
+            predict_canonical_pose=config.boolean("predict_canonical_pose"),
+            max_views=config.integer("max_views"),
+            max_seq_len=config.integer("max_seq_len"),
+            invisible_init_std=config.number("invisible_init_std"),
+            num_court_tokens=num_court_tokens,
         )
 
     def forward(

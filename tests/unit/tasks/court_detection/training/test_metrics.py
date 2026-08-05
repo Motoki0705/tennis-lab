@@ -19,7 +19,7 @@ def _logits_with_peaks(coords: torch.Tensor, h: int = 16, w: int = 16) -> torch.
 
 
 def test_kp_metric_ignores_invisible_keypoints() -> None:
-    metrics = CourtDetectionMetrics("kp", {"num_keypoints": 2})
+    metrics = CourtDetectionMetrics("kp", 2)
     gt = torch.tensor([[[4.0, 4.0], [10.0, 10.0]]])
     pred = torch.tensor([[[4.0, 4.0], [0.0, 0.0]]])
     batch = {
@@ -33,7 +33,7 @@ def test_kp_metric_ignores_invisible_keypoints() -> None:
 
 
 def test_kp_metric_counts_visible_error() -> None:
-    metrics = CourtDetectionMetrics("kp", {"num_keypoints": 2})
+    metrics = CourtDetectionMetrics("kp", 2)
     gt = torch.tensor([[[4.0, 4.0], [10.0, 10.0]]])
     pred = torch.tensor([[[7.0, 8.0], [10.0, 10.0]]])
     batch = {
@@ -47,7 +47,7 @@ def test_kp_metric_counts_visible_error() -> None:
 
 
 def test_kp_metric_all_invisible_is_zero() -> None:
-    metrics = CourtDetectionMetrics("kp", {"num_keypoints": 1})
+    metrics = CourtDetectionMetrics("kp", 1)
     batch = {
         "keypoints": torch.tensor([[[4.0, 4.0]]]),
         "kp_visible": torch.tensor([[False]]),

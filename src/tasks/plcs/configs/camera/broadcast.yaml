@@ -15,6 +15,16 @@
 # sensibly regardless of setback/height.
 layout: broadcast
 image_size: [1280, 720]
+z_min: 3.0
+z_max: 5.0
+hfov_deg: 60.0
+fixed_look_at: [0.0, 0.0, 0.0]
+fixed_baseline_clear_extra: 0.0
+fixed_position_noise_radius: 2.0
+fixed_look_at_xy_radius: 1.0
+broadcast_setback: 20.0
+broadcast_height: 7.0
+broadcast_hfov_deg: 35.0
 
 broadcast_setback_range: [15.0, 40.0]   # metres behind the baseline
 broadcast_height_range: [5.0, 15.0]     # camera elevation (m)

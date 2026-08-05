@@ -10,6 +10,7 @@ from src.submodules.models.dino import DinoPersonDetector, PersonDetectionReques
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 CHECKPOINT = PROJECT_ROOT / "ckpt/dino/checkpoint0029_4scale_swin.pth"
+REPOSITORY = PROJECT_ROOT / "third_party/DINO"
 
 
 @pytest.mark.cuda
@@ -20,7 +21,15 @@ def test_dino_checkpoint_loads_strictly_and_runs_one_frame() -> None:
     if not CHECKPOINT.exists():
         pytest.skip(f"DINO checkpoint is unavailable: {CHECKPOINT}")
 
-    detector = DinoPersonDetector(checkpoint=CHECKPOINT, device="cuda")
+    detector = DinoPersonDetector(
+        checkpoint=CHECKPOINT,
+        repository=REPOSITORY,
+        device="cuda",
+        allow_device_fallback=False,
+        confidence=0.35,
+        short_side=800,
+        max_long_side=1333,
+    )
     try:
         result = detector.predict(
             PersonDetectionRequest(frame_bgr=np.zeros((180, 320, 3), dtype=np.uint8))

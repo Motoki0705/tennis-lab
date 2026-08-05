@@ -12,6 +12,10 @@ import src.tennis_scene.pipeline.orchestrator as orchestrator_module
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRResult
 from src.tennis_scene.pipeline.dependency_graph import ResolutionResult, Stage
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    make_gvhmr_config,
+    make_resolver,
+)
 
 
 def _make_orchestrator(tmp_path: Path) -> TennisSceneOrchestrator:
@@ -23,28 +27,20 @@ def _make_orchestrator(tmp_path: Path) -> TennisSceneOrchestrator:
     )
     return TennisSceneOrchestrator(
         court_kp_module=cast(Any, object()),
-        gvhmr_config={
-            "gvhmr_checkpoint": "gvhmr.ckpt",
-            "detector": "dino",
-            "yolo_checkpoint": "yolo.pt",
-            "dino_checkpoint": "dino.pth",
-            "dino_confidence": 0.35,
-            "vitpose_checkpoint": "vitpose.pth",
-            "hmr2_checkpoint": "hmr2.ckpt",
-            "smplx_body_model_path": None,
-            "track_selection": "auto",
-            "num_tracks": 2,
-            "save_result": True,
-            "output_path": tmp_path / "gvhmr_result.json",
-            "load_path": [tmp_path / "cam0.json", tmp_path / "cam1.json"],
-            "device": "cpu",
-        },
+        gvhmr_config=make_gvhmr_config(
+            tmp_path,
+            source="load",
+            save_result=True,
+            output_path=tmp_path / "gvhmr_result.json",
+            load_path=tmp_path / "gvhmr_result.json",
+        ),
         player_association_module=cast(Any, object()),
         ball_detection_module=None,
         plcs_module=cast(Any, object()),
         blcs_module=None,
         resolution=resolution,
         device="cpu",
+        resolver=make_resolver(tmp_path),
     )
 
 
@@ -87,11 +83,11 @@ def test_run_gvhmr_invokes_module_in_process_with_camera_paths(
     config, video_path, max_frames = calls[0]
     assert video_path == Path("cam1.mp4")
     assert max_frames == 2
-    assert config.gvhmr_checkpoint == "gvhmr.ckpt"
+    assert config.gvhmr_checkpoint == (tmp_path / "ckpt/gvhmr.ckpt").resolve()
     assert config.detector == "dino"
-    assert config.dino_checkpoint == "dino.pth"
-    assert config.dino_confidence == 0.35
+    assert config.dino_checkpoint == (tmp_path / "ckpt/dino.pth").resolve()
+    assert config.runtime.dino_detector.confidence == 0.35
     assert config.track_selection == "auto"
     assert config.save_result is True
-    assert config.load_path == tmp_path / "cam1.json"
+    assert config.load_path == tmp_path / "gvhmr_result_cam1.json"
     assert config.output_path == tmp_path / "gvhmr_result_cam1.json"

@@ -20,8 +20,6 @@ from gsplat.nht.deferred_shader import DeferredShaderModule
 from gsplat.rendering import rasterization
 from PIL import Image
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-
 from src.synthetic_data_generation.alignment.scene_provider.bundle import (  # noqa: E402
     load_scene_provider_bundle,
 )
@@ -43,12 +41,50 @@ from src.synthetic_data_generation.composition.gaussians import (  # noqa: E402
     compose_gaussians,
     transform_gaussians,
 )
-from src.synthetic_data_generation.rendering.nht.runtime_paths import (  # noqa: E402
-    installed_gsplat_root,
+from src.synthetic_data_generation.configuration import (
+    add_path_roots_argument,
+    non_hydra_path_resolver,
 )
 from src.synthetic_data_generation.scene_contract import (  # noqa: E402
     ArtifactRef,
     SimilarityTransform,
+)
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathRole,
+)
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.nht.composition_smoke",
+    fields=(
+        BoundaryPathField(
+            "checkpoint",
+            PathRole.CHECKPOINT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "provider_bundle",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "gsplat_repository",
+            PathRole.EXTERNAL_ASSET,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+        ),
+        BoundaryPathField(
+            "output_dir", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY
+        ),
+    ),
 )
 
 
@@ -56,10 +92,12 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--provider-bundle", type=Path, required=True)
+    parser.add_argument("--gsplat-repository", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--camera-id", default="frame_000000")
     parser.add_argument("--width", type=int, default=480)
     parser.add_argument("--asset-count", type=int, default=512)
+    add_path_roots_argument(parser)
     return parser.parse_args()
 
 
@@ -292,24 +330,32 @@ def _load_shader(
         "center_ray_encoding": False,
     }
     shader = DeferredShaderModule(**config).to(device)
-    shader.load_state_dict(checkpoint["deferred_module"])
-    state = checkpoint.get("deferred_ema")
-    if state is not None:
-        for name, parameter in shader.named_parameters():
-            if name not in state:
-                raise RuntimeError(f"EMA state is missing deferred parameter {name}.")
-            parameter.data.copy_(state[name])
+    state = checkpoint["deferred_ema"]
+    if not isinstance(state, dict):
+        raise RuntimeError("NHT checkpoint deferred_ema must be a state mapping.")
+    for name, parameter in shader.named_parameters():
+        if name not in state:
+            raise RuntimeError(f"EMA state is missing deferred parameter {name}.")
+        parameter.data.copy_(state[name])
     shader.eval()
     return shader, config
 
 
 def main() -> None:
     args = _parse_args()
-    checkpoint_path = args.checkpoint.resolve()
-    provider_path = args.provider_bundle.resolve()
-    output_dir = args.output_dir.resolve()
-    if not checkpoint_path.is_file():
-        raise SystemExit(f"NHT checkpoint does not exist: {checkpoint_path}")
+    paths = PATH_BOUNDARY.validate(
+        {
+            "checkpoint": args.checkpoint,
+            "provider_bundle": args.provider_bundle,
+            "gsplat_repository": args.gsplat_repository,
+            "output_dir": args.output_dir,
+        },
+        resolver=non_hydra_path_resolver(args.path_roots),
+    )
+    checkpoint_path = paths.declared("checkpoint").path
+    provider_path = paths.declared("provider_bundle").path
+    gsplat_repository = paths.declared("gsplat_repository").path
+    output_dir = paths.declared("output_dir").path
     if output_dir.exists():
         raise SystemExit(f"Refusing to overwrite output directory: {output_dir}")
     if args.width <= 1 or args.asset_count <= 0:
@@ -330,7 +376,9 @@ def main() -> None:
         weights_only=True,
     )
     splats = checkpoint["splats"]
-    deferred_source = checkpoint.get("deferred_ema", checkpoint["deferred_module"])
+    if "deferred_ema" not in checkpoint:
+        raise RuntimeError("NHT checkpoint is missing required deferred_ema state.")
+    deferred_source = checkpoint["deferred_ema"]
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     temporary_dir = Path(
         tempfile.mkdtemp(
@@ -483,7 +531,7 @@ def main() -> None:
                 ),
             ),
             renderer_backend="nht-gsplat",
-            renderer_commit=_git_head(installed_gsplat_root()),
+            renderer_commit=_git_head(gsplat_repository),
         )
         write_gaussian_scene_manifest(
             temporary_dir / "composition.json",

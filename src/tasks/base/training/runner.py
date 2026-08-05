@@ -16,7 +16,6 @@ from typing import Any
 
 import pytorch_lightning as pl
 import torch
-from hydra.utils import to_absolute_path
 from omegaconf import OmegaConf
 from pytorch_lightning.callbacks import (
     EarlyStopping,
@@ -27,8 +26,11 @@ from pytorch_lightning.callbacks import (
 )
 from pytorch_lightning.loggers import TensorBoardLogger
 
+from src.tasks.base.configuration import TrainingRuntimeConfig
 from src.tasks.base.training.qualitative_callback import QualitativeLoggingCallback
+from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import select_accelerator
+from src.utils.paths import PROJECT_ROOT
 
 
 class BaseTrainingRunner:
@@ -43,11 +45,12 @@ class BaseTrainingRunner:
 
     def run(self, config: Any) -> None:
         """Run training with the provided config."""
+        runtime = self.validate_runtime_config(config)
         self.prepare_config(config)
-        self.seed_everything(config)
-        self.apply_runtime_settings(config)
+        self.seed_everything(runtime)
+        self.apply_runtime_settings(runtime)
 
-        output_dir = self.prepare_output_dir(config)
+        output_dir = self.prepare_output_dir(runtime)
         output_dir.mkdir(parents=True, exist_ok=True)
         self.save_config(config, output_dir)
 
@@ -62,12 +65,12 @@ class BaseTrainingRunner:
         lightning_module = self.build_lightning_module(
             config, datamodule, steps_per_epoch=steps_per_epoch
         )
-        self.maybe_load_init_weights(config, lightning_module)
+        self.maybe_load_init_weights(runtime, lightning_module)
 
         logger = self.build_logger(config, output_dir)
         callbacks = self.build_callbacks(config, datamodule, logger)
         trainer = self.build_trainer(config, callbacks, logger)
-        resume_ckpt = self.resolve_resume(config, output_dir)
+        resume_ckpt = self.resolve_resume(runtime, output_dir)
 
         with self.resume_checkpoint_load_env(resume_ckpt):
             trainer.fit(
@@ -97,37 +100,37 @@ class BaseTrainingRunner:
         raise NotImplementedError
 
     # ---- overridable hooks ----
-    def prepare_output_dir(self, config: Any) -> Path:
+    def validate_runtime_config(self, config: Any) -> TrainingRuntimeConfig:
+        """Build the shared strict contract before any processing or writes."""
+        return TrainingRuntimeConfig.from_config(config, repository_root=PROJECT_ROOT)
+
+    def prepare_output_dir(self, config: TrainingRuntimeConfig) -> Path:
         """Prepare output directory path."""
-        return Path(self._ensure_absolute(str(config.run.output_dir)))
+        return config.run.output_dir
 
     def _gan_enabled(self, config: Any) -> bool:
-        train_cfg = config.get("training", {}) or {}
-        return bool((train_cfg.get("gan", {}) or {}).get("enabled", False))
-
-    def _apply_gan_runtime_config(self, config: Any) -> None:
-        if not self._gan_enabled(config):
-            raise RuntimeError(
-                "GAN runtime config should only be applied when GAN is enabled."
-            )
-        config.training.early_stopping.enabled = False
-        config.training.trainer.gradient_clip_val = None
+        runtime = self.validate_runtime_config(config)
+        return runtime.training.gan.enabled
 
     def prepare_config(self, config: Any) -> None:
-        """Apply task-specific config mutations before the run starts."""
-        if self._gan_enabled(config):
-            self._apply_gan_runtime_config(config)
+        """Validate task-specific configuration before the run starts.
+
+        Subclasses may override this hook to construct their task-owned typed
+        runtime contract. Configuration mutation is intentionally unsupported:
+        all shared values must be explicit and valid at the entry boundary.
+        """
+        _ = config
         return None
 
-    def resolve_resume(self, config: Any, output_dir: Path) -> str | None:
+    def resolve_resume(
+        self, config: TrainingRuntimeConfig, output_dir: Path
+    ) -> str | None:
         """Resolve resume checkpoint path."""
-        resume = config.run.resume
-        if not resume:
-            return None
-        return self._ensure_absolute(str(resume))
+        _ = output_dir
+        return str(config.run.resume) if config.run.resume is not None else None
 
     def maybe_load_init_weights(
-        self, config: Any, lightning_module: pl.LightningModule
+        self, config: TrainingRuntimeConfig, lightning_module: pl.LightningModule
     ) -> None:
         """Load model weights only (no optimizer/epoch state) for fine-tuning.
 
@@ -137,23 +140,20 @@ class BaseTrainingRunner:
         fine-tune-from-pretrained path (e.g. refine a converged model with an
         added loss term without the from-scratch dynamics).
         """
-        run_cfg = config.run
-        init = run_cfg.get("init_weights") if hasattr(run_cfg, "get") else None
-        if not init:
+        init_path = config.run.init_weights
+        if init_path is None:
             return
-        if config.run.resume:
-            raise ValueError(
-                "run.init_weights (weight-only fine-tune) and run.resume "
-                "(full-state resume) are mutually exclusive; set only one."
-            )
-        init_path = self._ensure_absolute(str(init))
         # Trusted local checkpoint: Lightning ckpts carry non-tensor payloads,
         # so weights_only=False is required.
         checkpoint = torch.load(init_path, map_location="cpu", weights_only=False)
-        state_dict = checkpoint.get("state_dict", checkpoint)
+        if not isinstance(checkpoint, dict) or "state_dict" not in checkpoint:
+            raise ValueError(
+                f"init_weights checkpoint {init_path} has no required 'state_dict'."
+            )
+        state_dict = checkpoint["state_dict"]
         result = lightning_module.load_state_dict(state_dict, strict=False)
-        missing = list(getattr(result, "missing_keys", []))
-        unexpected = list(getattr(result, "unexpected_keys", []))
+        missing = list(result.missing_keys)
+        unexpected = list(result.unexpected_keys)
         loaded = len(state_dict) - len(unexpected)
         print(
             f"[init_weights] loaded {loaded}/{len(state_dict)} tensors from "
@@ -215,11 +215,9 @@ class BaseTrainingRunner:
         return None
 
     # ---- shared helpers (config-driven) ----
-    def seed_everything(self, config: Any) -> None:
+    def seed_everything(self, config: TrainingRuntimeConfig) -> None:
         """Seed all random number generators."""
-        seed = config.run.seed
-        if seed is not None:
-            pl.seed_everything(int(seed))
+        pl.seed_everything(config.run.seed)
 
     def is_dry_run(self, config: Any) -> bool:
         """Check if dry run mode is enabled."""
@@ -233,14 +231,24 @@ class BaseTrainingRunner:
         """Save resolved config to output directory."""
         # Some callers invoke runner methods directly without going through run(),
         # so prepare task-specific runtime config here as well before persisting it.
+        runtime = self.validate_runtime_config(config)
         self.prepare_config(config)
-        OmegaConf.save(config, output_dir / "config.yaml")
+        config_path = runtime.resolver.resolve_beneath(
+            PathRole.OUTPUT,
+            output_dir,
+            "config.yaml",
+        )
+        OmegaConf.save(config, config_path)
 
     def build_logger(self, config: Any, output_dir: Path) -> TensorBoardLogger:
         """Build TensorBoard logger."""
-        return TensorBoardLogger(save_dir=str(output_dir), name="logs")
+        runtime = self.validate_runtime_config(config)
+        validated_output_dir = runtime.resolver.validate(PathRole.OUTPUT, output_dir)
+        return TensorBoardLogger(save_dir=str(validated_output_dir), name="logs")
 
-    def _record_ckpt_dir_pointer(self, checkpoint_dir: Path) -> None:
+    def _record_ckpt_dir_pointer(
+        self, checkpoint_dir: Path, resolver: PathResolver
+    ) -> None:
         """Record this run's checkpoint dir into the repro bundle (issue #533).
 
         When the run is launched via the training queue, ``TENNIS_REPRO_DIR``
@@ -251,18 +259,12 @@ class BaseTrainingRunner:
         checkpoints once the predictions are saved. Best-effort: never raise, so
         a bookkeeping hiccup cannot abort training.
         """
-        repro_dir = os.environ.get("TENNIS_REPRO_DIR")
-        if not repro_dir:
-            return
-        try:
-            target = Path(repro_dir)
-            target.mkdir(parents=True, exist_ok=True)
-            resolved_checkpoint_dir = checkpoint_dir.resolve()
-            (target / "output_dir.txt").write_text(
-                f"{resolved_checkpoint_dir}\n", encoding="utf-8"
-            )
-        except OSError:
-            pass
+        target = resolver.resolve(PathRole.ARTIFACT, "repro")
+        target.mkdir(parents=True, exist_ok=True)
+        resolved_checkpoint_dir = checkpoint_dir.resolve()
+        (target / "output_dir.txt").write_text(
+            f"{resolved_checkpoint_dir}\n", encoding="utf-8"
+        )
 
     def build_callbacks(
         self, config: Any, datamodule: pl.LightningDataModule, logger: TensorBoardLogger
@@ -271,10 +273,21 @@ class BaseTrainingRunner:
         callbacks: list[Any] = []
 
         # Checkpoint callback (required)
-        checkpoint_cfg = config.training.checkpoint
+        runtime = self.validate_runtime_config(config)
+        checkpoint_cfg = runtime.training.checkpoint
         if checkpoint_cfg.enabled:
-            checkpoint_dir = Path(logger.log_dir) / "checkpoints"
-            self._record_ckpt_dir_pointer(checkpoint_dir)
+            validated_log_dir = runtime.resolver.validate(
+                PathRole.OUTPUT, Path(logger.log_dir)
+            )
+            # ``checkpoints`` is an immutable Lightning artifact-layout child,
+            # not a configured path fragment. The central child resolver rejects
+            # this reserved root alias, so validate both its typed parent and the
+            # resulting fixed child explicitly.
+            checkpoint_dir = runtime.resolver.validate(
+                PathRole.OUTPUT,
+                validated_log_dir / "checkpoints",
+            )
+            self._record_ckpt_dir_pointer(checkpoint_dir, runtime.resolver)
             callbacks.append(
                 ModelCheckpoint(
                     dirpath=checkpoint_dir,
@@ -287,38 +300,36 @@ class BaseTrainingRunner:
             )
 
         # Early stopping callback (optional)
-        early_cfg = config.training.early_stopping
+        early_cfg = runtime.training.early_stopping
         if early_cfg.enabled:
             kwargs: dict[str, Any] = {
                 "monitor": early_cfg.monitor,
                 "patience": early_cfg.patience,
                 "mode": early_cfg.mode,
+                "min_delta": early_cfg.min_delta,
+                "check_on_train_epoch_end": early_cfg.check_on_train_epoch_end,
             }
-            if early_cfg.min_delta is not None:
-                kwargs["min_delta"] = early_cfg.min_delta
             callbacks.append(EarlyStopping(**kwargs))
 
         # LR monitor callback (optional)
-        lr_cfg = config.training.lr_monitor
+        lr_cfg = runtime.training.lr_monitor
         if lr_cfg.enabled:
             callbacks.append(LearningRateMonitor(logging_interval=lr_cfg.interval))
 
         # Qualitative validation logging callback (optional)
-        qual_cfg = config.training.get("qualitative_logging", {})
-        if qual_cfg.get("enabled", False):
-            selected_indices_cfg = qual_cfg.get("selected_indices")
-            selected_indices = (
-                [int(idx) for idx in selected_indices_cfg]
-                if selected_indices_cfg is not None
-                else None
-            )
+        qual_cfg = runtime.training.qualitative_logging
+        if qual_cfg.enabled:
             callbacks.append(
                 QualitativeLoggingCallback(
-                    every_n_epochs=int(qual_cfg.get("every_n_epochs", 1)),
-                    num_samples=int(qual_cfg.get("num_samples", 4)),
+                    every_n_epochs=qual_cfg.every_n_epochs,
+                    num_samples=qual_cfg.num_samples,
                     enabled=True,
-                    selection_mode=str(qual_cfg.get("selection_mode", "random")),
-                    selected_indices=selected_indices,
+                    selection_mode=qual_cfg.selection_mode,
+                    selected_indices=(
+                        list(qual_cfg.selected_indices)
+                        if qual_cfg.selected_indices is not None
+                        else None
+                    ),
                 )
             )
 
@@ -327,7 +338,7 @@ class BaseTrainingRunner:
 
         # Lightning 2.6 defaults to RichProgressBar when no explicit progress
         # callback is provided, which is noisy in notebook environments.
-        if config.training.trainer.get("enable_progress_bar", True) and not any(
+        if runtime.training.trainer.enable_progress_bar and not any(
             isinstance(callback, ProgressBar) for callback in callbacks
         ):
             callbacks.append(TQDMProgressBar())
@@ -339,7 +350,8 @@ class BaseTrainingRunner:
     ) -> pl.Trainer:
         """Build PyTorch Lightning Trainer from config."""
         accelerator, devices = self.select_devices(config)
-        trainer_cfg = config.training.trainer
+        runtime = self.validate_runtime_config(config)
+        trainer_cfg = runtime.training.trainer
 
         kwargs: dict[str, Any] = {
             "max_epochs": trainer_cfg.max_epochs,
@@ -350,73 +362,53 @@ class BaseTrainingRunner:
             "deterministic": trainer_cfg.deterministic,
             "log_every_n_steps": trainer_cfg.log_every_n_steps,
             "check_val_every_n_epoch": trainer_cfg.check_val_every_n_epoch,
-            "fast_dev_run": bool(config.run.fast_dev_run),
+            "fast_dev_run": runtime.run.fast_dev_run,
         }
-        if hasattr(trainer_cfg, "benchmark"):
-            kwargs["benchmark"] = trainer_cfg.benchmark
+        kwargs["benchmark"] = trainer_cfg.benchmark
 
         # Optional parameters
         if trainer_cfg.gradient_clip_val is not None:
             kwargs["gradient_clip_val"] = trainer_cfg.gradient_clip_val
 
-        if trainer_cfg.precision is not None:
-            precision = trainer_cfg.precision
-            if (
-                str(precision) == "bf16-mixed"
-                and torch.cuda.is_available()
-                and not torch.cuda.is_bf16_supported()
-            ):
-                precision = "16-mixed"
-                print(
-                    "bf16-mixed is not supported on this GPU. Falling back to 16-mixed."
-                )
-            kwargs["precision"] = precision
+        precision = trainer_cfg.precision
+        if (
+            precision == "bf16-mixed"
+            and torch.cuda.is_available()
+            and not torch.cuda.is_bf16_supported()
+        ):
+            raise RuntimeError(
+                "training.trainer.precision='bf16-mixed' is not supported "
+                "by the selected GPU; select an explicit supported precision."
+            )
+        kwargs["precision"] = precision
 
-        optional_trainer_keys = (
-            "max_steps",
-            "accumulate_grad_batches",
-            "reload_dataloaders_every_n_epochs",
-            "limit_train_batches",
-            "limit_val_batches",
-            "limit_test_batches",
-            "num_sanity_val_steps",
-            "enable_progress_bar",
-            "enable_model_summary",
+        kwargs["accumulate_grad_batches"] = trainer_cfg.accumulate_grad_batches
+        kwargs["reload_dataloaders_every_n_epochs"] = (
+            trainer_cfg.reload_dataloaders_every_n_epochs
         )
-        for key in optional_trainer_keys:
-            if hasattr(trainer_cfg, key):
-                value = getattr(trainer_cfg, key)
-                if value is not None:
-                    kwargs[key] = value
+        kwargs["enable_progress_bar"] = trainer_cfg.enable_progress_bar
+        kwargs["enable_model_summary"] = trainer_cfg.enable_model_summary
 
         return pl.Trainer(**kwargs)
 
     def select_devices(self, config: Any) -> tuple[str, int]:
         """Select accelerator and device count."""
         accelerator_and_devices: tuple[str, int] = select_accelerator(
-            int(config.run.gpus)
+            self.validate_runtime_config(config).run.gpus
         )
         return accelerator_and_devices
 
-    def apply_runtime_settings(self, config: Any) -> None:
+    def apply_runtime_settings(self, config: TrainingRuntimeConfig) -> None:
         """Apply backend/runtime settings from training config."""
-        train_cfg = config.get("training", {})
-        trainer_cfg = train_cfg.get("trainer", {})
+        training = config.training
+        torch.set_float32_matmul_precision(training.matmul_precision)
 
-        matmul_precision = str(train_cfg.get("matmul_precision", "high"))
-        torch.set_float32_matmul_precision(matmul_precision)
-
-        allow_tf32 = bool(train_cfg.get("allow_tf32", True))
+        allow_tf32 = training.allow_tf32
         if hasattr(torch.backends, "cuda") and torch.cuda.is_available():
             torch.backends.cuda.matmul.allow_tf32 = allow_tf32
         if hasattr(torch.backends, "cudnn"):
             torch.backends.cudnn.allow_tf32 = allow_tf32
-            deterministic = bool(trainer_cfg.get("deterministic", False))
-            benchmark_cfg = trainer_cfg.get("benchmark")
-            if benchmark_cfg is None:
-                torch.backends.cudnn.benchmark = not deterministic
-            else:
-                torch.backends.cudnn.benchmark = bool(benchmark_cfg)
+            torch.backends.cudnn.benchmark = training.trainer.benchmark
 
     def run_dry_run(self, config: Any, output_dir: Path) -> None:
         """Run dry run mode without full training."""
@@ -456,13 +448,10 @@ class BaseTrainingRunner:
         trainer.fit(lightning_module, datamodule=datamodule)
         print(f"Dry run complete. Outputs saved to {output_dir}")
 
-    def _ensure_absolute(self, path: str) -> str:
-        """Convert path to absolute path."""
-        return str(to_absolute_path(path))
-
     def _force_cpu_for_dry_run(self) -> None:
         """Force CPU usage during dry run."""
-        os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
+        if "CUDA_VISIBLE_DEVICES" not in os.environ:
+            os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
         torch.cuda.is_available = types.MethodType(lambda *_a, **_k: False, torch.cuda)
         torch.cuda.device_count = types.MethodType(lambda *_a, **_k: 0, torch.cuda)
         torch.cuda.current_device = types.MethodType(lambda *_a, **_k: 0, torch.cuda)

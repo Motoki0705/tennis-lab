@@ -44,7 +44,9 @@ def _get_worker_scene_generator(
         )
         if multi_object:
             if timeline_config is None:
-                raise ValueError("Multi-object BLCS generation requires timeline config.")
+                raise ValueError(
+                    "Multi-object BLCS generation requires timeline config."
+                )
             _WORKER_SCENE_GENERATOR = MultiBallSceneGenerator(
                 base,
                 timeline=timeline_config,
@@ -91,14 +93,16 @@ def _generate_scene_task(
 
 
 def generate_parallel_scenes(
+    *,
     generator_config: GeneratorConfig,
     device: str,
     num_scenes: int,
     num_workers: int,
-    start_index: int = 0,
-    seed: int = 0,
-    multi_object: bool = False,
-    timeline_config: dict[str, Any] | None = None,
+    start_index: int,
+    seed: int,
+    multi_object: bool,
+    timeline_config: dict[str, Any] | None,
+    chunksize: int,
 ) -> Iterator[BLCSSceneData]:
     # Keep a BLCS-specific guard so the task-specific error message is raised
     # before delegating (the shared runner raises a generic message).
@@ -117,4 +121,5 @@ def generate_parallel_scenes(
         multi_object,
         timeline_config,
         num_workers=num_workers,
+        chunksize=chunksize,
     )

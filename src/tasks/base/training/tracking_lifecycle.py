@@ -26,8 +26,10 @@ def lifecycle_transition_mask(
     if target_presence.shape[-2] < 2:
         return transition.squeeze(-1) if squeeze_slot else transition
     changes = (
-        target_presence[..., 1:, :] != target_presence[..., :-1, :]
-    ) & valid_frames[..., 1:, :] & valid_frames[..., :-1, :]
+        (target_presence[..., 1:, :] != target_presence[..., :-1, :])
+        & valid_frames[..., 1:, :]
+        & valid_frames[..., :-1, :]
+    )
     boundaries = torch.zeros_like(target_presence, dtype=torch.bool)
     boundaries[..., 1:, :] = changes
     transition |= boundaries
@@ -66,9 +68,7 @@ def weighted_presence_bce_with_logits(
     )
     weights = torch.where(
         transition,
-        torch.as_tensor(
-            transition_weight, dtype=logits.dtype, device=logits.device
-        ),
+        torch.as_tensor(transition_weight, dtype=logits.dtype, device=logits.device),
         weights,
     )
     weights = weights * valid_frames.to(dtype=logits.dtype)

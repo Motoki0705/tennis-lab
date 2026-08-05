@@ -9,13 +9,21 @@ trainer:
   precision: "bf16-mixed"
   log_every_n_steps: 100
   check_val_every_n_epoch: 1
+  accumulate_grad_batches: 1
+  reload_dataloaders_every_n_epochs: 0
+  enable_progress_bar: true
+  enable_model_summary: true
+  benchmark: false
 
 # ---- Optimizer / schedule (LightningModule references) ----
 learning_rate: 1.0e-4
 weight_decay: 1.0e-5
 warmup_steps: 200
-scheduler: cosine
+warmup_epochs: null
 min_lr: 1.0e-6
+steps_per_epoch: null
+optimizer:
+  betas: [0.9, 0.999]
 
 # ---- Loss weights ----
 position_loss_weight: 1.0
@@ -53,6 +61,7 @@ early_stopping:
   mode: min
   patience: 10
   min_delta: 1.0e-3
+  check_on_train_epoch_end: false
 
 lr_monitor:
   enabled: true
@@ -63,3 +72,40 @@ qualitative_logging:
   enabled: true
   every_n_epochs: 5
   num_samples: 4
+  selection_mode: random
+  selected_indices: null
+
+qualitative_rendering:
+  fps: 10.0
+  style:
+    theme: light
+    show_shadow: true
+    show_trail: true
+    trail_length: 60
+    show_hud: true
+    show_minimap: true
+
+matmul_precision: high
+allow_tf32: true
+
+gan:
+  enabled: false
+  target_weight: 2.0
+  warmup_epochs: 10
+  generator_gradient_clip_val: 1.0
+  discriminator_gradient_clip_val: 1.0
+  transition:
+    start_epoch: 50
+  discriminator:
+    name: trajectory_transformer
+    hidden_dim: 128
+    num_layers: 4
+    num_heads: 4
+    ffn_dim: 256
+    ffn_type: swiglu
+    dropout: 0.1
+    rope_dim: 32
+    rope_theta: 10000.0
+    max_seq_len: 10240
+    invalid_init_std: 0.02
+    cls_init_std: 0.02

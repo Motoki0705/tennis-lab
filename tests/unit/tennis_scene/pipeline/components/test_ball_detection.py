@@ -5,15 +5,14 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
 from src.tennis_scene.pipeline.components.ball_detection import (
-    BallDetectionConfig,
     BallDetectionModule,
     BallDetectionResult,
 )
+from tests.unit.tennis_scene.pipeline.config_factories import make_ball_config
 
 
-def test_trajectory_gate_zeroes_rejected_pipeline_frames() -> None:
+def test_trajectory_gate_zeroes_rejected_pipeline_frames(tmp_path) -> None:
     frame: NDArray[np.float32] = np.arange(12, dtype=np.float32)
     ball_uv_px = np.stack(
         [
@@ -32,13 +31,7 @@ def test_trajectory_gate_zeroes_rejected_pipeline_frames() -> None:
         visibility=np.ones((1, 12), dtype=np.bool_),
         score=np.full((1, 12), 0.9, dtype=np.float32),
     )
-    module = BallDetectionModule(
-        BallDetectionConfig(
-            checkpoint="dummy.ckpt",
-            device="cpu",
-            trajectory_gate=TrajectoryGateConfig(enabled=True),
-        )
-    )
+    module = BallDetectionModule(make_ball_config(tmp_path))
 
     gated = module._apply_trajectory_gate(result)
 

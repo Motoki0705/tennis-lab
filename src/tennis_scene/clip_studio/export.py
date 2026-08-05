@@ -63,11 +63,11 @@ class ExportSettings:
     """
 
     output_dir: Path
-    fps: float | None = None
-    width: int | None = None
-    height: int | None = None
-    crf: int = 17
-    overwrite: bool = False
+    fps: float | None
+    width: int | None
+    height: int | None
+    crf: int
+    overwrite: bool
 
 
 @dataclass(frozen=True)
@@ -277,9 +277,7 @@ def _build_manifest(plan: ClipExportPlan) -> dict[str, Any]:
         "global_start_sec": plan.global_start_sec,
         "global_end_sec": plan.global_end_sec,
         "camera_ids": [camera.camera_id for camera in plan.cameras],
-        "video_paths": [
-            f"media/{camera.camera_id}.mp4" for camera in plan.cameras
-        ],
+        "video_paths": [f"media/{camera.camera_id}.mp4" for camera in plan.cameras],
         "cameras": cameras,
         "sync_source": "clip_studio",
         "exported_at": utc_now_iso(),
@@ -335,10 +333,10 @@ def export_clip(plan: ClipExportPlan, settings: ExportSettings) -> ClipExportRes
         _verify_exported_video(video_path, plan)
         video_paths.append(video_path)
 
-    manifest_path = save_json_atomic(_build_manifest(plan), clip_dir / MANIFEST_FILENAME)
-    register_exported_clip(
-        dataset_dir, manifest_path, allow_replace=settings.overwrite
+    manifest_path = save_json_atomic(
+        _build_manifest(plan), clip_dir / MANIFEST_FILENAME
     )
+    register_exported_clip(dataset_dir, manifest_path, allow_replace=settings.overwrite)
     LOGGER.info(f"Exported clip '{plan.clip_name}' to {clip_dir}")
     return ClipExportResult(
         clip_dir=clip_dir, video_paths=video_paths, manifest_path=manifest_path

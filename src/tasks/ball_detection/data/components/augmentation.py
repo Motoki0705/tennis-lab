@@ -33,12 +33,16 @@ Visibility = list[list[float]]
 
 def _resolve_border_mode(name: str) -> int:
     """Map config border mode names to OpenCV constants."""
-    return {
+    modes = {
         "constant": cv2.BORDER_CONSTANT,
         "reflect": cv2.BORDER_REFLECT,
         "reflect101": cv2.BORDER_REFLECT_101,
         "replicate": cv2.BORDER_REPLICATE,
-    }.get(name, cv2.BORDER_REFLECT_101)
+    }
+    try:
+        return modes[name]
+    except KeyError as error:
+        raise ValueError(f"Unsupported augmentation border_mode={name!r}.") from error
 
 
 def _apply_affine_to_sequence(
@@ -73,11 +77,14 @@ def _apply_affine_to_sequence(
         transformed_visibility: list[float] = []
         if frame_coords:
             transformed_points = transform_points(
-                np.asarray(frame_coords, dtype=np.float64), matrix,
+                np.asarray(frame_coords, dtype=np.float64),
+                matrix,
             )
         else:
             transformed_points = np.empty((0, 2), dtype=np.float32)
-        for (new_x, new_y), vis in zip(transformed_points, frame_visibility, strict=True):
+        for (new_x, new_y), vis in zip(
+            transformed_points, frame_visibility, strict=True
+        ):
             if vis > 0 and 0 <= new_x < width and 0 <= new_y < height:
                 transformed_coords.append((float(new_x), float(new_y)))
                 transformed_visibility.append(float(vis))
@@ -93,8 +100,8 @@ def _apply_affine_to_sequence(
 class BaseAugmentation:
     """Base interface for one sequence augmentation."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
-        self.config = config or {}
+    def __init__(self, config: dict[str, Any]) -> None:
+        self.config = config
 
     def forward(
         self,
@@ -111,15 +118,15 @@ class BaseAugmentation:
 class CameraRotationAugmentation(BaseAugmentation):
     """Apply sequence-consistent camera rotation."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
-        self.enabled = bool(self.config.get("enabled", False))
-        self.prob = float(self.config.get("prob", 0.0))
-        self.max_center_angle_deg = float(self.config.get("max_center_angle_deg", 0.0))
+        self.enabled = bool(self.config["enabled"])
+        self.prob = float(self.config["prob"])
+        self.max_center_angle_deg = float(self.config["max_center_angle_deg"])
         self.max_angular_velocity_deg_per_frame = float(
-            self.config.get("max_angular_velocity_deg_per_frame", 0.0)
+            self.config["max_angular_velocity_deg_per_frame"]
         )
-        self.border_mode = str(self.config.get("border_mode", "reflect101"))
+        self.border_mode = str(self.config["border_mode"])
 
     def forward(
         self,
@@ -188,10 +195,10 @@ class CameraRotationAugmentation(BaseAugmentation):
 class HorizontalFlipAugmentation(BaseAugmentation):
     """Apply sequence-consistent horizontal flipping."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
-        self.enabled = bool(self.config.get("enabled", False))
-        self.prob = float(self.config.get("prob", 0.0))
+        self.enabled = bool(self.config["enabled"])
+        self.prob = float(self.config["prob"])
 
     def forward(
         self,
@@ -229,10 +236,10 @@ class HorizontalFlipAugmentation(BaseAugmentation):
 class BrightnessGainAugmentation(BaseAugmentation):
     """Apply sequence-consistent brightness gain jitter."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
-        self.enabled = bool(self.config.get("enabled", False))
-        self.jitter = float(self.config.get("jitter", 0.0))
+        self.enabled = bool(self.config["enabled"])
+        self.jitter = float(self.config["jitter"])
 
     def forward(
         self,
@@ -255,10 +262,10 @@ class BrightnessGainAugmentation(BaseAugmentation):
 class ContrastAugmentation(BaseAugmentation):
     """Apply sequence-consistent contrast jitter."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
-        self.enabled = bool(self.config.get("enabled", False))
-        self.jitter = float(self.config.get("jitter", 0.0))
+        self.enabled = bool(self.config["enabled"])
+        self.jitter = float(self.config["jitter"])
 
     def forward(
         self,
@@ -282,10 +289,10 @@ class ContrastAugmentation(BaseAugmentation):
 class GammaAugmentation(BaseAugmentation):
     """Apply sequence-consistent gamma jitter."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
-        self.enabled = bool(self.config.get("enabled", False))
-        self.jitter = float(self.config.get("jitter", 0.0))
+        self.enabled = bool(self.config["enabled"])
+        self.jitter = float(self.config["jitter"])
 
     def forward(
         self,
@@ -309,10 +316,10 @@ class GammaAugmentation(BaseAugmentation):
 class GaussianNoiseAugmentation(BaseAugmentation):
     """Apply sequence-consistent Gaussian noise scale."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
-        self.enabled = bool(self.config.get("enabled", False))
-        self.std = float(self.config.get("std", 0.0))
+        self.enabled = bool(self.config["enabled"])
+        self.std = float(self.config["std"])
 
     def forward(
         self,
@@ -343,35 +350,35 @@ class GaussianNoiseAugmentation(BaseAugmentation):
 class AffineAugmentation(BaseAugmentation):
     """Apply one sequence-consistent affine transform."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
-        self.enabled = bool(self.config.get("enabled", False))
-        self.prob = float(self.config.get("prob", 0.0))
+        self.enabled = bool(self.config["enabled"])
+        self.prob = float(self.config["prob"])
         self.rotation_deg_range = parse_float_range(
-            self.config.get("rotation_deg_range", (0.0, 0.0)),
+            self.config["rotation_deg_range"],
             "rotation_deg_range",
         )
         self.scale_range = parse_float_range(
-            self.config.get("scale_range", (1.0, 1.0)),
+            self.config["scale_range"],
             "scale_range",
         )
         self.translate_x_ratio_range = parse_float_range(
-            self.config.get("translate_x_ratio_range", (0.0, 0.0)),
+            self.config["translate_x_ratio_range"],
             "translate_x_ratio_range",
         )
         self.translate_y_ratio_range = parse_float_range(
-            self.config.get("translate_y_ratio_range", (0.0, 0.0)),
+            self.config["translate_y_ratio_range"],
             "translate_y_ratio_range",
         )
         self.shear_x_deg_range = parse_float_range(
-            self.config.get("shear_x_deg_range", (0.0, 0.0)),
+            self.config["shear_x_deg_range"],
             "shear_x_deg_range",
         )
         self.shear_y_deg_range = parse_float_range(
-            self.config.get("shear_y_deg_range", (0.0, 0.0)),
+            self.config["shear_y_deg_range"],
             "shear_y_deg_range",
         )
-        self.border_mode = str(self.config.get("border_mode", "reflect101"))
+        self.border_mode = str(self.config["border_mode"])
 
     def forward(
         self,
@@ -418,11 +425,11 @@ class AffineAugmentation(BaseAugmentation):
 class GaussianBlurAugmentation(BaseAugmentation):
     """Apply sequence-consistent Gaussian blur."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
-        self.enabled = bool(self.config.get("enabled", False))
-        self.prob = float(self.config.get("prob", 0.0))
-        self.kernel_size = int(self.config.get("kernel_size", 3))
+        self.enabled = bool(self.config["enabled"])
+        self.prob = float(self.config["prob"])
+        self.kernel_size = int(self.config["kernel_size"])
 
     def forward(
         self,
@@ -451,15 +458,15 @@ class GaussianBlurAugmentation(BaseAugmentation):
 class ScaleAndCropAugmentation(BaseAugmentation):
     """Scale around the image center, then center-crop back to the original size."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
-        self.enabled = bool(self.config.get("enabled", False))
-        self.prob = float(self.config.get("prob", 0.0))
+        self.enabled = bool(self.config["enabled"])
+        self.prob = float(self.config["prob"])
         self.scale_range = parse_float_range(
-            self.config.get("scale_range", (1.0, 1.0)),
+            self.config["scale_range"],
             "scale_range",
         )
-        self.border_mode = str(self.config.get("border_mode", "reflect101"))
+        self.border_mode = str(self.config["border_mode"])
 
     def forward(
         self,
@@ -509,20 +516,20 @@ class ScaleAndCropAugmentation(BaseAugmentation):
 class BallAreaZeroMaskAugmentation(BaseAugmentation):
     """Zero-mask a rectangle around the visible ball for sampled frames."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
-        self.enabled = bool(self.config.get("enabled", False))
-        self.prob = float(self.config.get("prob", 0.0))
+        self.enabled = bool(self.config["enabled"])
+        self.prob = float(self.config["prob"])
         self.mask_width_ratio_range = self._parse_ratio_range(
-            self.config.get("mask_width_ratio_range", (0.0, 0.0)),
+            self.config["mask_width_ratio_range"],
             "mask_width_ratio_range",
         )
         self.mask_height_ratio_range = self._parse_ratio_range(
-            self.config.get("mask_height_ratio_range", (0.0, 0.0)),
+            self.config["mask_height_ratio_range"],
             "mask_height_ratio_range",
         )
         self.num_frames_range = self._parse_int_range(
-            self.config.get("num_frames_range", (0, 0)),
+            self.config["num_frames_range"],
             "num_frames_range",
         )
 
@@ -573,9 +580,7 @@ class BallAreaZeroMaskAugmentation(BaseAugmentation):
             return frames, coords, visibility
 
         selected_indices = rng.sample(visible_indices, k=num_frames)
-        out_frames: Frames = [
-            frame.astype(np.float32, copy=True) for frame in frames
-        ]
+        out_frames: Frames = [frame.astype(np.float32, copy=True) for frame in frames]
 
         for frame_idx in selected_indices:
             frame = out_frames[frame_idx]
@@ -613,11 +618,11 @@ class BallAreaZeroMaskAugmentation(BaseAugmentation):
 class ImageNetNormalizeAugmentation(BaseAugmentation):
     """Apply ImageNet channel normalization with DINO-compatible constants."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
-        self.enabled = bool(self.config.get("enabled", True))
-        mean = self.config.get("mean", IMAGENET_MEAN)
-        std = self.config.get("std", IMAGENET_STD)
+        self.enabled = bool(self.config["enabled"])
+        mean = self.config["mean"]
+        std = self.config["std"]
         if not isinstance(mean, Sequence) or len(mean) != 3:
             raise ValueError("normalize_imagenet.mean must contain 3 values.")
         if not isinstance(std, Sequence) or len(std) != 3:
@@ -646,41 +651,33 @@ class ImageNetNormalizeAugmentation(BaseAugmentation):
 class BallDetectionAugmentation:
     """Compose and apply all configured sequence augmentations."""
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
-        config = config or {}
+    def __init__(self, config: dict[str, Any]) -> None:
         self.transforms: list[BaseAugmentation] = [
-            CameraRotationAugmentation(dict(config.get("camera_rotation", {}) or {})),
-            HorizontalFlipAugmentation(dict(config.get("horizontal_flip", {}) or {})),
-            AffineAugmentation(dict(config.get("affine", {}) or {})),
-            ScaleAndCropAugmentation(dict(config.get("scale_and_crop", {}) or {})),
-            BrightnessGainAugmentation(dict(config.get("brightness_gain", {}) or {})),
-            ContrastAugmentation(dict(config.get("contrast", {}) or {})),
-            GammaAugmentation(dict(config.get("gamma", {}) or {})),
-            GaussianNoiseAugmentation(dict(config.get("gaussian_noise", {}) or {})),
-            GaussianBlurAugmentation(dict(config.get("gaussian_blur", {}) or {})),
-            BallAreaZeroMaskAugmentation(
-                dict(config.get("ball_area_zero_mask", {}) or {})
-            ),
-            ImageNetNormalizeAugmentation(
-                dict(config.get("normalize_imagenet", {}) or {})
-            ),
+            CameraRotationAugmentation(dict(config["camera_rotation"])),
+            HorizontalFlipAugmentation(dict(config["horizontal_flip"])),
+            AffineAugmentation(dict(config["affine"])),
+            ScaleAndCropAugmentation(dict(config["scale_and_crop"])),
+            BrightnessGainAugmentation(dict(config["brightness_gain"])),
+            ContrastAugmentation(dict(config["contrast"])),
+            GammaAugmentation(dict(config["gamma"])),
+            GaussianNoiseAugmentation(dict(config["gaussian_noise"])),
+            GaussianBlurAugmentation(dict(config["gaussian_blur"])),
+            BallAreaZeroMaskAugmentation(dict(config["ball_area_zero_mask"])),
+            ImageNetNormalizeAugmentation(dict(config["normalize_imagenet"])),
         ]
 
     @classmethod
     def from_eval_config(
         cls,
-        config: dict[str, Any] | None = None,
+        config: dict[str, Any],
     ) -> BallDetectionAugmentation | None:
         """Build an eval-only pipeline that keeps deterministic preprocessing."""
-        config = config or {}
-        normalize_cfg = dict(config.get("normalize_imagenet", {}) or {})
-        if not bool(normalize_cfg.get("enabled", False)):
+        normalize_cfg = dict(config["normalize_imagenet"])
+        if not bool(normalize_cfg["enabled"]):
             return None
-        return cls(
-            {
-                "normalize_imagenet": normalize_cfg,
-            }
-        )
+        instance = cls.__new__(cls)
+        instance.transforms = [ImageNetNormalizeAugmentation(normalize_cfg)]
+        return instance
 
     def forward(
         self,
@@ -691,9 +688,7 @@ class BallDetectionAugmentation:
         rng: random.Random,
     ) -> tuple[Frames, Coords, Visibility]:
         """Apply all configured augmentations in sequence."""
-        out_frames: Frames = [
-            frame.astype(np.float32, copy=True) for frame in frames
-        ]
+        out_frames: Frames = [frame.astype(np.float32, copy=True) for frame in frames]
         out_coords: Coords = [list(frame_coords) for frame_coords in coords]
         out_visibility: Visibility = [
             list(frame_visibility) for frame_visibility in visibility
