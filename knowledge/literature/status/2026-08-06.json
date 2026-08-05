@@ -1,8 +1,8 @@
 {
   "date": "2026-08-06",
-  "generated_at": "2026-08-06T01:29:07+09:00",
+  "generated_at": "2026-08-06T02:25:03+09:00",
   "ingestion": {
-    "accepted_candidates": 3,
+    "accepted_candidates": 4,
     "collectors": {
       "geometry": {
         "accepted": 1,
@@ -10,9 +10,9 @@
         "remaining": 1
       },
       "perception": {
-        "accepted": 1,
+        "accepted": 2,
         "limit": 2,
-        "remaining": 1
+        "remaining": 0
       },
       "systems": {
         "accepted": 1,
@@ -21,7 +21,7 @@
       }
     },
     "daily_limit": 6,
-    "open_candidates": 3,
+    "open_candidates": 4,
     "open_limit": 30,
     "topics": {
       "avatar_rendering": {
@@ -45,9 +45,9 @@
         "remaining": 1
       },
       "human_pose_2d": {
-        "accepted": 0,
+        "accepted": 1,
         "limit": 1,
-        "remaining": 1
+        "remaining": 0
       },
       "multi_object_tracking": {
         "accepted": 1,
