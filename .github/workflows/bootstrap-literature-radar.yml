@@ -4,17 +4,22 @@ on:
   push:
     branches:
       - feat/literature-radar-knowledge
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   apply:
+    if: github.event_name == 'push' || github.head_ref == 'feat/literature-radar-knowledge'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: feat/literature-radar-knowledge
           fetch-depth: 0
 
       - name: Verify and apply generated implementation
