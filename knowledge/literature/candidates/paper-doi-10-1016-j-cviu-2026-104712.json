@@ -1,0 +1,97 @@
+{
+  "aggregate": {
+    "collector_count": 1,
+    "collectors": [
+      "perception"
+    ],
+    "discovery_count": 1,
+    "max_novelty_score": 89,
+    "max_relevance_score": 95,
+    "mean_relevance_score": 95.0,
+    "repo_paths": [
+      "src/tasks/court_detection/evaluation/homography_quality.py",
+      "src/tasks/court_detection/evaluation/image_evidence.py",
+      "src/tasks/court_detection/geometry/postprocess.py",
+      "src/tasks/court_detection/inference/mask_predictor.py"
+    ],
+    "tasks": [
+      "court_detection"
+    ]
+  },
+  "curation": {
+    "decision": null,
+    "issue": null,
+    "paper_node": null,
+    "proposal_nodes": [],
+    "reason_ja": null,
+    "reviewed_at": null
+  },
+  "discoveries": [
+    {
+      "collector_id": "perception",
+      "discovered_at": "2026-08-05T18:20:45+09:00",
+      "schedule_run_id": "perception-20260805T182045+0900-pnl7c2",
+      "screening": {
+        "applicability_ja": "現行のcourt detectionは、postprocess.pyとhomography_quality.pyで14 keypointにRANSAC homographyを当てて点だけでrefitし、image_evidence.pyのline_edge_supportは推定後の採否指標としてのみ使う。既存のline predictorが出すline maskから線分を抽出し、同じRANSAC homographyを初期値として、14点の再投影誤差と9本のcourt lineへの距離を共同最小化すれば、部分遮蔽や低confidence keypoint時にも画像上の線情報を推定値へ直接反映できる。最初はintrinsic/extrinsicの完全推定へ広げず、既存契約と互換な8自由度homography refinementとして導入できる。",
+        "candidate_experiment_ja": "手動14点annotationを持ち、full court・partial court・選手遮蔽を均等に含む固定200 frameを用いる。baselineは現行refine_court_keypoints_with_homographyとevaluate_homography_qualityによる点RANSAC/refit、treatmentは同じkeypoint予測と初期homographyを固定し、CourtLinePredictorのmaskから抽出した線分を加えて点再投影誤差と線距離を共同最小化する8自由度homography refinementとする。metricは14点median error px、all_residual_rms_normalized、line_edge_support、geometry_valid率、追加wall time/frameとする。median point errorがbaseline比10%以上低下し、line_edge_supportが0.05以上増加し、valid率の低下が2 percentage point以内、追加時間が50 ms/frame以内なら次の3 seed・動画評価へ進む。NaNまたは発散が5%以上、median point errorが5%以上悪化、あるいは線支持だけ改善して点誤差が悪化した場合は停止する。",
+        "evidence_level": "fulltext-code",
+        "novelty_score": 89,
+        "relevance_score": 95,
+        "repo_paths": [
+          "src/tasks/court_detection/geometry/postprocess.py",
+          "src/tasks/court_detection/evaluation/homography_quality.py",
+          "src/tasks/court_detection/evaluation/image_evidence.py",
+          "src/tasks/court_detection/inference/mask_predictor.py"
+        ],
+        "risks_ja": "論文の検出器、階層keypoint、3D field model、checkpointはサッカー向けであり、テニスの14点・9線、細い白線、ネットや選手による遮蔽へそのまま転移しない。線maskの途切れや観客席の直線を誤対応すると非線形最適化が局所解へ収束し、点のみのRANSACより悪化し得る。完全camera calibrationは既知または安定したintrinsicと歪みmodelを必要とするため、初期実験ではhomographyに限定する必要がある。公式codeはGPL-2.0であり、実装を直接取り込む場合はtennis-lab全体へのcopyleft影響を確認し、必要なら論文記述に基づく独立実装または外部process分離を行う。",
+        "summary_ja": "スポーツフィールド登録を、keypoint検出とline extremity検出から得た点・線の双方で解く手法である。まず検出点と線同士の交点から初期camera calibrationまたはhomographyを推定し、その後、点の再投影誤差とfield lineへの距離を同時に最小化する非線形PnL refinementを適用する。SoccerNet-Calibration、WorldCup 2014、TS-WorldCupでsingle-view・multi-view camera calibrationとhomography推定を評価し、特に初期推定へPnL refinementを加えることで登録精度とfull-field成功率を改善した。公式repositoryには学習・推論・評価コードとkeypoint/line detectorのcheckpointが公開されている。",
+        "tasks": [
+          "court_detection"
+        ]
+      },
+      "sources": [
+        {
+          "checked_at": "2026-08-05T18:20:45+09:00",
+          "kind": "publisher",
+          "url": "https://doi.org/10.1016/j.cviu.2026.104712"
+        },
+        {
+          "checked_at": "2026-08-05T18:20:45+09:00",
+          "kind": "paper",
+          "url": "https://arxiv.org/abs/2404.08401"
+        },
+        {
+          "checked_at": "2026-08-05T18:20:45+09:00",
+          "kind": "code",
+          "url": "https://github.com/mguti97/PnLCalib"
+        }
+      ]
+    }
+  ],
+  "first_seen": "2026-08-05T18:20:45+09:00",
+  "id": "paper-doi-10-1016-j-cviu-2026-104712",
+  "last_seen": "2026-08-05T18:20:45+09:00",
+  "paper": {
+    "authors": [
+      "Marc Gutiérrez-Pérez",
+      "Antonio Agudo"
+    ],
+    "identifiers": {
+      "arxiv": "2404.08401",
+      "doi": "10.1016/j.cviu.2026.104712",
+      "openreview": null
+    },
+    "title": "PnLCalib: Sports Field Registration via Points and Lines Optimization",
+    "urls": {
+      "code": "https://github.com/mguti97/PnLCalib",
+      "dataset": null,
+      "paper": "https://arxiv.org/abs/2404.08401",
+      "primary": "https://doi.org/10.1016/j.cviu.2026.104712",
+      "project": null
+    },
+    "venue": "Computer Vision and Image Understanding",
+    "year": 2026
+  },
+  "schema_version": 1,
+  "state": "inbox"
+}
