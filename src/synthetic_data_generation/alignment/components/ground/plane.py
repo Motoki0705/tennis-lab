@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -129,7 +129,7 @@ class GroundPlaneEstimate:
         array = _points(points)
         origin = np.asarray(self.origin, dtype=np.float64)
         basis = np.stack((self.basis_u, self.basis_v), axis=1)
-        return (array - origin) @ basis
+        return cast("NDArray[np.float64]", (array - origin) @ basis)
 
     def from_uv(
         self,
@@ -143,7 +143,7 @@ class GroundPlaneEstimate:
             raise ValueError("points_uv must contain only finite values.")
         origin = np.asarray(self.origin, dtype=np.float64)
         basis = np.stack((self.basis_u, self.basis_v), axis=0)
-        return array @ basis + origin
+        return cast("NDArray[np.float64]", array @ basis + origin)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-compatible representation."""
@@ -300,7 +300,7 @@ def estimate_ground_plane(
         offset=offset,
         origin=_triple(origin),
         basis_u=_triple(basis_u),
-        basis_v=_triple(basis_v),
+        basis_v=_triple(np.asarray(basis_v, dtype=np.float64)),
         support_uv_bounds=(
             float(uv_low[0]),
             float(uv_high[0]),

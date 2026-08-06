@@ -180,7 +180,6 @@ _COURT_SCHEMA = StrictConfigSchema(
         "frame_index": ConfigField.of(int),
         "mode": ConfigField.of(str),
         "num_keypoints": ConfigField.of(int),
-        "allow_device_fallback": ConfigField.of(bool),
         "subpixel_refine": ConfigField.of(bool),
         "postprocess": ConfigField.mapping(_POSTPROCESS_SCHEMA),
     },
@@ -234,7 +233,6 @@ _BALL_SCHEMA = StrictConfigSchema(
         "normalize_imagenet": ConfigField.of(bool),
         "score_threshold": ConfigField.of(float),
         "subpixel_refine": ConfigField.of(bool),
-        "allow_device_fallback": ConfigField.of(bool),
         "checkpoint_strict": ConfigField.of(bool),
         "checkpoint_weights_only": ConfigField.of(bool),
         "prefetch_batches": ConfigField.of(int),
@@ -254,7 +252,6 @@ _PLCS_SCHEMA = StrictConfigSchema(
         "window_size": ConfigField.of(int),
         "window_overlap": ConfigField.of(int),
         "human_vis_threshold": ConfigField.of(float),
-        "allow_device_fallback": ConfigField.of(bool),
     },
 )
 _BLCS_SCHEMA = StrictConfigSchema(
@@ -265,7 +262,6 @@ _BLCS_SCHEMA = StrictConfigSchema(
         "checkpoint": ConfigField.of(str),
         "window_size": ConfigField.of(int),
         "window_overlap": ConfigField.of(int),
-        "allow_device_fallback": ConfigField.of(bool),
     },
 )
 _PIPELINE_SCHEMA = StrictConfigSchema(
@@ -371,7 +367,6 @@ class PipelineRuntimeConfig:
             source=cast(Literal["execute", "load"], court["source"]),
             mode=cast(Literal["model", "manual_ui"], mode),
             device=device,
-            allow_device_fallback=cast(bool, court["allow_device_fallback"]),
             subpixel_refine=cast(bool, court["subpixel_refine"]),
             num_keypoints=num_keypoints,
             save_result=cast(bool, court["save_result"]),
@@ -517,7 +512,6 @@ class PipelineRuntimeConfig:
             normalize_imagenet=cast(bool, ball["normalize_imagenet"]),
             score_threshold=score_threshold,
             subpixel_refine=cast(bool, ball["subpixel_refine"]),
-            allow_device_fallback=cast(bool, ball["allow_device_fallback"]),
             checkpoint_strict=cast(bool, ball["checkpoint_strict"]),
             checkpoint_weights_only=cast(bool, ball["checkpoint_weights_only"]),
             prefetch_batches=prefetch_batches,
@@ -551,7 +545,6 @@ class PipelineRuntimeConfig:
             ),
             source=cast(Literal["execute", "load"], plcs["source"]),
             device=device,
-            allow_device_fallback=cast(bool, plcs["allow_device_fallback"]),
             save_result=cast(bool, plcs["save_result"]),
             output_path=plcs_output,
             load_path=plcs_load,
@@ -571,7 +564,6 @@ class PipelineRuntimeConfig:
             ),
             source=cast(Literal["execute", "load"], blcs["source"]),
             device=device,
-            allow_device_fallback=cast(bool, blcs["allow_device_fallback"]),
             save_result=cast(bool, blcs["save_result"]),
             output_path=blcs_output,
             load_path=blcs_load,

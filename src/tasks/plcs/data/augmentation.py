@@ -44,20 +44,9 @@ def _flatten_temporal_tracks(
     keypoints: Tensor,
     visibility: Tensor,
 ) -> tuple[Tensor, Tensor, tuple[int, ...], int, int]:
-    if keypoints.shape[:-1] != visibility.shape:
-        raise ValueError(
-            "visibility shape must match keypoints without coordinate dimension: "
-            f"got visibility={tuple(visibility.shape)}, keypoints={tuple(keypoints.shape)}."
-        )
-    if keypoints.ndim < 3:
-        raise ValueError(
-            "keypoints must include temporal and track dimensions, got "
-            f"{tuple(keypoints.shape)}."
-        )
-
-    prefix_shape = tuple(int(dim) for dim in keypoints.shape[:-3])
-    time_len = int(keypoints.shape[-3])
-    num_tracks = int(keypoints.shape[-2])
+    prefix_shape = tuple(keypoints.shape[:-3])
+    time_len = keypoints.shape[-3]
+    num_tracks = keypoints.shape[-2]
     flat_keypoints = keypoints.transpose(-3, -2).reshape(-1, time_len, 2)
     flat_visibility = visibility.transpose(-2, -1).reshape(-1, time_len)
     return flat_keypoints, flat_visibility, prefix_shape, time_len, num_tracks
@@ -99,6 +88,8 @@ class PLCSObservationAugmentation(BaseObservationAugmentation[PLCSSample]):
 
     def __init__(self, config: Mapping[str, Any]) -> None:
         super().__init__(validate_augmentation(config))
+        self.scale_human_uv = bool(self.uv_scale_cfg["apply_to_human"])
+        self.scale_court_uv = bool(self.uv_scale_cfg["apply_to_court"])
 
     def _uv_scale_config(self) -> dict[str, Any]:
         return dict(cast(Mapping[str, Any], self.config["uv_scale"]))
@@ -221,13 +212,13 @@ class PLCSObservationAugmentation(BaseObservationAugmentation[PLCSSample]):
         )
         if abs(scale - 1.0) < 1e-8:
             return
-        if bool(cfg["apply_to_human"]):
+        if self.scale_human_uv:
             sample["human_kp"], sample["human_vis"] = scale_uv_with_visibility(
                 sample["human_kp"],
                 sample["human_vis"],
                 float(scale),
             )
-        if bool(cfg["apply_to_court"]):
+        if self.scale_court_uv:
             sample["court_kp"], sample["court_vis"] = scale_uv_with_visibility(
                 sample["court_kp"],
                 sample["court_vis"],

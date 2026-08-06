@@ -31,5 +31,7 @@ def load_scene_bundle(
         cameras,
         lambda: list(range(num_cameras)),
     )
-    fps = float(scene.meta.get("fps", 30.0))
+    fps = float(scene.meta["fps"])
+    if fps <= 0.0:
+        raise ValueError("PLCS scene meta.fps must be positive.")
     return SceneBundle(scene=scene, cameras=selected_cameras, fps=fps)

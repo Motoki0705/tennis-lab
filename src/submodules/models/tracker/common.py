@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
@@ -32,8 +32,8 @@ class TrackRequest:
 class TrackResult:
     """Per-person full-length bounding-box tracks in xyxy pixels."""
 
-    tracks: dict[int, torch.Tensor] = field(default_factory=dict)
-    num_frames: int = 0
+    tracks: dict[int, torch.Tensor]
+    num_frames: int
 
     @property
     def track_ids(self) -> list[int]:

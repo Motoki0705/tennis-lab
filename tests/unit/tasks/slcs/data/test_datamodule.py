@@ -5,21 +5,21 @@ from pathlib import Path
 from src.tasks.slcs.configuration import SLCSDataRuntimeConfig
 from src.tasks.slcs.data.datamodule import SLCSDataModule
 from src.tasks.slcs.data.splits import generate_overfit_splits, save_split_file
-from src.tasks.slcs.data.synthetic import (
-    DEFAULT_TEST_DINO_SPEC,
-    SyntheticDatasetConfig,
-    build_synthetic_dataset,
-)
 from src.utils.configuration import PathResolver, RuntimePathRoots
+from tests.support.tasks.slcs.dataset import (
+    DEFAULT_FIXTURE_DINO_SPEC,
+    SLCSFixtureDatasetConfig,
+    build_slcs_dataset_fixture,
+)
 
 
 def test_explicit_overfit_mode_reuses_train_windows_for_all_stages(
     tmp_path: Path,
 ) -> None:
     root = tmp_path / "dataset"
-    index = build_synthetic_dataset(
+    index = build_slcs_dataset_fixture(
         root,
-        SyntheticDatasetConfig(recordings=("only",), num_frames=16),
+        SLCSFixtureDatasetConfig(recordings=("only",), num_frames=16),
     )
     split_file = root / "splits.json"
     save_split_file(
@@ -29,7 +29,7 @@ def test_explicit_overfit_mode_reuses_train_windows_for_all_stages(
         val_ratio=0.0,
         test_ratio=0.0,
     )
-    spec = DEFAULT_TEST_DINO_SPEC
+    spec = DEFAULT_FIXTURE_DINO_SPEC
     resolver = PathResolver(
         RuntimePathRoots.from_mapping(
             {

@@ -1,77 +1,79 @@
-"""Output head modules for BLCS.
-
-These modules decode latent representations into 3D trajectory outputs.
-They are thin specializations of the shared :class:`MLPHead`, preserving the
-``self.mlp`` attribute (and therefore the ``mlp.*`` state_dict keys).
-"""
+"""Preselected BLCS trajectory output implementations."""
 
 from __future__ import annotations
+
+from typing import TypeAlias
+
+from torch import Tensor, nn
 
 from src.utils.models.heads import MLPHead
 
 
-class Trajectory3DHead(MLPHead):
-    """Predict 3D positions from sequence features.
+class PositionTrajectoryOutput(nn.Module):
+    """Decode trajectory features into a fixed position-only mapping."""
 
-    Outputs normalized (x, y, z) coordinates in court coordinate system
-    for each frame in the sequence.
-    """
-
-    def __init__(
-        self,
-        *,
-        input_dim: int,
-        hidden_dim: int,
-        output_dim: int,
-        num_layers: int,
-        dropout: float,
-    ) -> None:
-        """Initialize the trajectory head.
-
-        Args:
-            input_dim: Input feature dimension.
-            hidden_dim: Hidden layer dimension.
-            output_dim: Output dimension (default 3 for x, y, z).
-            num_layers: Number of hidden layers.
-            dropout: Dropout probability.
-        """
-        super().__init__(
+    def __init__(self, *, input_dim: int, dropout: float) -> None:
+        super().__init__()
+        self.position = MLPHead(
             input_dim=input_dim,
-            hidden_dim=hidden_dim,
-            output_dim=output_dim,
-            num_layers=num_layers,
+            hidden_dim=input_dim // 2,
+            output_dim=3,
+            num_layers=2,
             dropout=dropout,
         )
 
+    def forward(self, features: Tensor) -> dict[str, Tensor]:
+        """Return the preselected position-only raw model output."""
+        return {"position": self.position(features)}
 
-class VelocityHead(MLPHead):
-    """Predict 3D velocities from sequence features.
 
-    Optional head for velocity supervision during training.
-    """
+class PositionVelocityTrajectoryOutput(nn.Module):
+    """Decode trajectory features into a fixed position/velocity mapping."""
 
-    def __init__(
-        self,
-        *,
-        input_dim: int,
-        hidden_dim: int,
-        output_dim: int,
-        num_layers: int,
-        dropout: float,
-    ) -> None:
-        """Initialize the velocity head.
-
-        Args:
-            input_dim: Input feature dimension.
-            hidden_dim: Hidden layer dimension.
-            output_dim: Output dimension (3 for vx, vy, vz).
-            num_layers: Number of hidden layers.
-            dropout: Dropout probability.
-        """
-        super().__init__(
+    def __init__(self, *, input_dim: int, dropout: float) -> None:
+        super().__init__()
+        self.position = MLPHead(
             input_dim=input_dim,
-            hidden_dim=hidden_dim,
-            output_dim=output_dim,
-            num_layers=num_layers,
+            hidden_dim=input_dim // 2,
+            output_dim=3,
+            num_layers=2,
             dropout=dropout,
         )
+        self.velocity = MLPHead(
+            input_dim=input_dim,
+            hidden_dim=input_dim // 2,
+            output_dim=3,
+            num_layers=2,
+            dropout=dropout,
+        )
+
+    def forward(self, features: Tensor) -> dict[str, Tensor]:
+        """Return the preselected position/velocity raw model output."""
+        return {
+            "position": self.position(features),
+            "velocity": self.velocity(features),
+        }
+
+
+TrajectoryOutput: TypeAlias = (
+    PositionTrajectoryOutput | PositionVelocityTrajectoryOutput
+)
+
+
+def build_trajectory_output(
+    *, input_dim: int, dropout: float, predict_velocity: bool
+) -> TrajectoryOutput:
+    """Select one fixed trajectory decoder during model construction."""
+    if predict_velocity:
+        return PositionVelocityTrajectoryOutput(
+            input_dim=input_dim,
+            dropout=dropout,
+        )
+    return PositionTrajectoryOutput(input_dim=input_dim, dropout=dropout)
+
+
+__all__ = [
+    "PositionTrajectoryOutput",
+    "PositionVelocityTrajectoryOutput",
+    "build_trajectory_output",
+]

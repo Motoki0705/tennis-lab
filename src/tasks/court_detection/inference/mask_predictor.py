@@ -1,10 +1,10 @@
-"""Inference predictors for court segmentation and line detection."""
+"""Typed inference predictors for court segmentation and line detection."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, TypeAlias
 
 import numpy as np
 import torch
@@ -12,31 +12,40 @@ from PIL import Image
 from torch import Tensor
 
 from src.tasks.base.inference.predictor import BasePredictor
-from src.tasks.court_detection.configuration import CourtTrainingConfig
-from src.tasks.court_detection.inference.preprocess import preprocess_court_image
+from src.tasks.base.model_io import BoundModelIO, bind_model_io
+from src.tasks.court_detection.model_io.adapters import (
+    CourtLineModelIO,
+    CourtSegmentationModelIO,
+)
+from src.tasks.court_detection.model_io.contracts import (
+    CourtLinePrediction,
+    CourtModelIOError,
+    CourtSegmentationPrediction,
+)
+from src.tasks.court_detection.model_io.images import prepare_court_image
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
 from src.utils.configuration import PathResolver
 
+CourtImage: TypeAlias = np.ndarray | Image.Image | Tensor
+CourtBoundModelIO: TypeAlias = BoundModelIO[Mapping[str, object], Tensor, Tensor]
 
-class _CourtMaskPredictor(BasePredictor):
-    """Shared base for dense (per-pixel) court predictors.
 
-    Subclasses only need to implement :meth:`_postprocess`.
-    """
+class CourtSegPredictor(BasePredictor[CourtSegmentationPrediction]):
+    """Predict multi-class court segmentation through one selected adapter."""
 
-    def __init__(
-        self,
-        model: torch.nn.Module,
-        device: torch.device,
-        short_side: int,
-    ) -> None:
-        self.model = model
+    def __init__(self, model_io: CourtBoundModelIO, device: torch.device) -> None:
+        if not isinstance(model_io.adapter, CourtSegmentationModelIO):
+            raise CourtModelIOError(
+                "CourtSegPredictor requires a segmentation model-I/O adapter."
+            )
+        self.model_io = model_io
+        self.model = model_io.model
+        self.adapter = model_io.adapter
         self.device = device
-        self.short_side = short_side
-
-        self.model.to(self.device)
+        self.adapter.validate_model_pair(self.model)
+        self.model.to(device)
         self.model.eval()
 
     @classmethod
@@ -46,81 +55,115 @@ class _CourtMaskPredictor(BasePredictor):
         *,
         resolver: PathResolver,
         device: str | torch.device,
-        allow_device_fallback: bool,
         **kwargs: Any,
     ) -> Self:
-        """Load predictor from a court-detection Lightning checkpoint."""
-        lightning_module, resolved_device = cls._load_single_lightning_module(
+        """Load one segmentation checkpoint and preserve its bound adapter."""
+        module, resolved_device = cls._load_single_lightning_module(
             checkpoint_path,
             CourtDetectionLightningModule,
             resolver=resolver,
             device=device,
-            allow_device_fallback=allow_device_fallback,
             weights_only=False,
             **kwargs,
         )
+        adapter = module.model_io
+        adapter.validate_model_pair(module.model)
+        return cls(bind_model_io(module.model, adapter), resolved_device)
 
-        model = lightning_module.model
-        runtime = CourtTrainingConfig.from_config(lightning_module.config)
-        short_side = runtime.data.augmentation.val_short_side
-
-        return cls(model=model, device=resolved_device, short_side=short_side)
-
-    def predict(
-        self,
-        image: np.ndarray | Image.Image | Tensor,
-        return_logits: bool = False,
-    ) -> dict[str, Tensor]:
-        """Run inference on a single image and return dense predictions."""
-        if isinstance(image, (np.ndarray, Image.Image)):
-            image_tensor, _, _ = preprocess_court_image(
-                image,
-                short_side=self.short_side,
-                device=self.device,
-            )
-        else:
-            image_tensor = image.to(self.device)
-            if image_tensor.ndim == 3:
-                image_tensor = image_tensor.unsqueeze(0)
-
+    def predict(self, image: CourtImage) -> CourtSegmentationPrediction:
+        """Return a label mask and raw segmentation logits on CPU."""
+        images, original_size_hw = _prepare_images(
+            image,
+            adapter=self.adapter,
+            device=self.device,
+        )
         with torch.no_grad():
-            logits = self.model(image_tensor)  # [1, C, H, W]
-        return self._postprocess(logits[0].cpu(), return_logits=return_logits)
+            call = self.adapter.prepare_images(images)
+            logits = self.model(*call.model_args)
+        return self.adapter.decode_prediction(
+            logits,
+            original_size_hw=original_size_hw,
+            subpixel_refine=False,
+        )
 
-    def _postprocess(
-        self,
-        logits: Tensor,
+
+class CourtLinePredictor(BasePredictor[CourtLinePrediction]):
+    """Predict court-line probabilities through one selected adapter."""
+
+    def __init__(self, model_io: CourtBoundModelIO, device: torch.device) -> None:
+        if not isinstance(model_io.adapter, CourtLineModelIO):
+            raise CourtModelIOError(
+                "CourtLinePredictor requires a line model-I/O adapter."
+            )
+        self.model_io = model_io
+        self.model = model_io.model
+        self.adapter = model_io.adapter
+        self.device = device
+        self.adapter.validate_model_pair(self.model)
+        self.model.to(device)
+        self.model.eval()
+
+    @classmethod
+    def load_from_checkpoint(
+        cls,
+        checkpoint_path: str | Path | Iterable[str | Path],
         *,
-        return_logits: bool,
-    ) -> dict[str, Tensor]:
-        raise NotImplementedError
+        resolver: PathResolver,
+        device: str | torch.device,
+        **kwargs: Any,
+    ) -> Self:
+        """Load one line checkpoint and preserve its bound adapter."""
+        module, resolved_device = cls._load_single_lightning_module(
+            checkpoint_path,
+            CourtDetectionLightningModule,
+            resolver=resolver,
+            device=device,
+            weights_only=False,
+            **kwargs,
+        )
+        adapter = module.model_io
+        adapter.validate_model_pair(module.model)
+        return cls(bind_model_io(module.model, adapter), resolved_device)
+
+    def predict(self, image: CourtImage) -> CourtLinePrediction:
+        """Return a probability mask and raw line logits on CPU."""
+        images, original_size_hw = _prepare_images(
+            image,
+            adapter=self.adapter,
+            device=self.device,
+        )
+        with torch.no_grad():
+            call = self.adapter.prepare_images(images)
+            logits = self.model(*call.model_args)
+        return self.adapter.decode_prediction(
+            logits,
+            original_size_hw=original_size_hw,
+            subpixel_refine=False,
+        )
 
 
-class CourtSegPredictor(_CourtMaskPredictor):
-    """Predictor for multi-class court cell segmentation."""
+def _prepare_images(
+    image: CourtImage,
+    *,
+    adapter: CourtSegmentationModelIO | CourtLineModelIO,
+    device: torch.device,
+) -> tuple[Tensor, tuple[int, int]]:
+    if isinstance(image, Tensor):
+        if image.ndim not in {3, 4}:
+            raise CourtModelIOError(
+                "Court predictor tensors must have shape (C,H,W) or (1,C,H,W)."
+            )
+        original_size_hw = (image.shape[-2], image.shape[-1])
+        images = image.unsqueeze(0) if image.ndim == 3 else image
+        if images.shape[0] != 1:
+            raise CourtModelIOError("Court predictors accept exactly one image.")
+        return images.to(device), original_size_hw
+    images, original_height, original_width = prepare_court_image(
+        image,
+        short_side=adapter.spec.short_side,
+        device=device,
+    )
+    return images, (original_height, original_width)
 
-    def _postprocess(
-        self,
-        logits: Tensor,
-        *,
-        return_logits: bool,
-    ) -> dict[str, Tensor]:
-        result: dict[str, Tensor] = {"seg_mask": logits.argmax(0).to(torch.long)}
-        if return_logits:
-            result["seg_logits"] = logits
-        return result
 
-
-class CourtLinePredictor(_CourtMaskPredictor):
-    """Predictor for binary court white-line segmentation."""
-
-    def _postprocess(
-        self,
-        logits: Tensor,
-        *,
-        return_logits: bool,
-    ) -> dict[str, Tensor]:
-        result: dict[str, Tensor] = {"line_prob": torch.sigmoid(logits.squeeze(0))}
-        if return_logits:
-            result["line_logits"] = logits
-        return result
+__all__ = ["CourtLinePredictor", "CourtSegPredictor"]

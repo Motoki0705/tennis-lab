@@ -13,7 +13,7 @@ from torch import Tensor
 
 def normalize_vector(v: Tensor, *, eps: float = 1e-8) -> Tensor:
     """Normalize vectors along the last dimension with a safe denominator."""
-    return v / v.norm(dim=-1, keepdim=True).clamp_min(eps)
+    return torch.div(v, v.norm(dim=-1, keepdim=True).clamp_min(eps))
 
 
 def wrapped_angle_diff(pred_angle: Tensor, target_angle: Tensor) -> Tensor:

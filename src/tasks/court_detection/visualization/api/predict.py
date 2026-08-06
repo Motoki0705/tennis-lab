@@ -1,15 +1,10 @@
-"""Prediction API for court-detection visualization.
-
-One entry point per task (``kp`` / ``seg`` / ``line``); each loads the matching
-predictor once and runs it over every frame, returning per-frame results in a
-display-agnostic form (original-pixel keypoints, averaged heatmap, or a dense
-mask at model resolution) for the renderers to draw.
-"""
+"""Once-selected prediction and rendering pipelines for court visualization."""
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Protocol
 
 import numpy as np
 import torch
@@ -19,6 +14,7 @@ from src.tasks.court_detection.inference import (
     CourtLinePredictor,
     CourtSegPredictor,
 )
+from src.tasks.court_detection.model_io.contracts import CourtModelIOError, CourtTask
 from src.tasks.court_detection.visualization.adapters.predict_inputs import (
     to_predictor_input,
 )
@@ -26,90 +22,150 @@ from src.tasks.court_detection.visualization.io.frames import (
     CourtFrame,
     KpFramePrediction,
 )
+from src.tasks.court_detection.visualization.rendering import (
+    CourtRenderStyle,
+    render_kp_frames,
+    render_line_frames,
+    render_seg_frames,
+)
 from src.utils.configuration import PathResolver
 
 logger = logging.getLogger(__name__)
 
 
-def predict_kp(
+class CourtVisualizationPipeline(Protocol):
+    """Predict and render frames under one checkpoint-selected task."""
+
+    def render(
+        self,
+        frames: list[CourtFrame],
+        *,
+        style: CourtRenderStyle,
+        clip_label: str,
+    ) -> list[np.ndarray]:
+        """Predict and render every frame without task dispatch."""
+        ...
+
+
+class _KeypointVisualizationPipeline:
+    def __init__(self, predictor: CourtKeypointPredictor) -> None:
+        self.predictor = predictor
+
+    def render(
+        self,
+        frames: list[CourtFrame],
+        *,
+        style: CourtRenderStyle,
+        clip_label: str,
+    ) -> list[np.ndarray]:
+        predictions: list[KpFramePrediction] = []
+        for index, frame in enumerate(frames):
+            output = self.predictor.predict(to_predictor_input(frame))
+            predictions.append(
+                KpFramePrediction(
+                    keypoints_px=output.keypoints.numpy(),
+                    mean_heatmap=torch.sigmoid(output.heatmaps).mean(0).numpy(),
+                )
+            )
+            _log_progress(index, len(frames))
+        rendered: list[np.ndarray] = render_kp_frames(
+            frames=frames,
+            predictions=predictions,
+            style=style,
+            clip_label=clip_label,
+        )
+        return rendered
+
+
+class _SegmentationVisualizationPipeline:
+    def __init__(self, predictor: CourtSegPredictor) -> None:
+        self.predictor = predictor
+
+    def render(
+        self,
+        frames: list[CourtFrame],
+        *,
+        style: CourtRenderStyle,
+        clip_label: str,
+    ) -> list[np.ndarray]:
+        masks: list[np.ndarray] = []
+        for index, frame in enumerate(frames):
+            output = self.predictor.predict(to_predictor_input(frame))
+            masks.append(output.mask.numpy().astype(np.uint8))
+            _log_progress(index, len(frames))
+        rendered: list[np.ndarray] = render_seg_frames(
+            frames=frames,
+            masks=masks,
+            style=style,
+            clip_label=clip_label,
+        )
+        return rendered
+
+
+class _LineVisualizationPipeline:
+    def __init__(self, predictor: CourtLinePredictor) -> None:
+        self.predictor = predictor
+
+    def render(
+        self,
+        frames: list[CourtFrame],
+        *,
+        style: CourtRenderStyle,
+        clip_label: str,
+    ) -> list[np.ndarray]:
+        probabilities: list[np.ndarray] = []
+        for index, frame in enumerate(frames):
+            output = self.predictor.predict(to_predictor_input(frame))
+            probabilities.append(output.probability.numpy())
+            _log_progress(index, len(frames))
+        rendered: list[np.ndarray] = render_line_frames(
+            frames=frames,
+            probs=probabilities,
+            style=style,
+            clip_label=clip_label,
+        )
+        return rendered
+
+
+def build_court_visualization_pipeline(
+    task: CourtTask,
     *,
     checkpoint_path: str | Path,
     device: str,
     resolver: PathResolver,
-    allow_device_fallback: bool,
-    frames: list[CourtFrame],
-) -> list[KpFramePrediction]:
-    """Predict keypoints + averaged heatmap for every frame."""
-    predictor = CourtKeypointPredictor.load_from_checkpoint(
-        checkpoint_path=checkpoint_path,
-        device=device,
-        resolver=resolver,
-        allow_device_fallback=allow_device_fallback,
-        subpixel_refine=True,
-    )
-    logger.info("Court keypoint model loaded on %s.", device)
-    predictions: list[KpFramePrediction] = []
-    for index, frame in enumerate(frames):
-        outputs = predictor.predict(to_predictor_input(frame), return_heatmaps=True)
-        mean_heatmap = torch.sigmoid(outputs["heatmaps"]).mean(0).numpy()
-        predictions.append(
-            KpFramePrediction(
-                keypoints_px=outputs["keypoints"].numpy(),
-                mean_heatmap=mean_heatmap,
+) -> CourtVisualizationPipeline:
+    """Select and load the exact task pipeline once before the frame loop."""
+    if task == "kp":
+        return _KeypointVisualizationPipeline(
+            CourtKeypointPredictor.load_from_checkpoint(
+                checkpoint_path,
+                device=device,
+                resolver=resolver,
+                subpixel_refine=True,
             )
         )
-        _log_progress(index, len(frames))
-    return predictions
-
-
-def predict_seg(
-    *,
-    checkpoint_path: str | Path,
-    device: str,
-    resolver: PathResolver,
-    allow_device_fallback: bool,
-    frames: list[CourtFrame],
-) -> list[np.ndarray]:
-    """Predict a class mask ``(h', w')`` (int) for every frame."""
-    predictor = CourtSegPredictor.load_from_checkpoint(
-        checkpoint_path=checkpoint_path,
-        device=device,
-        resolver=resolver,
-        allow_device_fallback=allow_device_fallback,
-    )
-    logger.info("Court segmentation model loaded on %s.", device)
-    masks: list[np.ndarray] = []
-    for index, frame in enumerate(frames):
-        outputs = predictor.predict(to_predictor_input(frame))
-        masks.append(outputs["seg_mask"].numpy().astype(np.uint8))
-        _log_progress(index, len(frames))
-    return masks
-
-
-def predict_line(
-    *,
-    checkpoint_path: str | Path,
-    device: str,
-    resolver: PathResolver,
-    allow_device_fallback: bool,
-    frames: list[CourtFrame],
-) -> list[np.ndarray]:
-    """Predict a line-probability map ``(h', w')`` (float) for every frame."""
-    predictor = CourtLinePredictor.load_from_checkpoint(
-        checkpoint_path=checkpoint_path,
-        device=device,
-        resolver=resolver,
-        allow_device_fallback=allow_device_fallback,
-    )
-    logger.info("Court line model loaded on %s.", device)
-    probs: list[np.ndarray] = []
-    for index, frame in enumerate(frames):
-        outputs = predictor.predict(to_predictor_input(frame))
-        probs.append(outputs["line_prob"].numpy())
-        _log_progress(index, len(frames))
-    return probs
+    if task == "seg":
+        return _SegmentationVisualizationPipeline(
+            CourtSegPredictor.load_from_checkpoint(
+                checkpoint_path,
+                device=device,
+                resolver=resolver,
+            )
+        )
+    if task == "line":
+        return _LineVisualizationPipeline(
+            CourtLinePredictor.load_from_checkpoint(
+                checkpoint_path,
+                device=device,
+                resolver=resolver,
+            )
+        )
+    raise CourtModelIOError(f"Unsupported court visualization task {task!r}.")
 
 
 def _log_progress(index: int, total: int) -> None:
     if (index + 1) % 10 == 0 or index == 0 or index == total - 1:
         logger.info("  [Inference] Processing frame %d/%d...", index + 1, total)
+
+
+__all__ = ["CourtVisualizationPipeline", "build_court_visualization_pipeline"]

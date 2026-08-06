@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -12,11 +13,14 @@ from src.tasks.base.training.gan_training import ManualGANSupportMixin
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_saving import save_qualitative_animation
 from src.tasks.blcs.configuration import parse_qualitative_rendering
-from src.tasks.blcs.data.types import BLCSBatch, BLCSMultiViewBatch
-from src.tasks.blcs.models import build_blcs_discriminator, build_blcs_model
+from src.tasks.blcs.model_io import (
+    BLCSTrajectoryPrediction,
+    TrajectoryBoundModelIO,
+    TrajectoryModelIOAdapter,
+)
+from src.tasks.blcs.models import build_blcs_discriminator
 from src.tasks.blcs.training.losses import BLCSLoss
 from src.tasks.blcs.training.metrics import BLCSMetrics
-from src.utils.tensor_utils import normalize_padding_mask
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -28,7 +32,12 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
     This module supports both single-view and multiview BLCS training.
     """
 
-    def __init__(self, config: DictConfig) -> None:
+    def __init__(
+        self,
+        config: DictConfig,
+        *,
+        model_io: TrajectoryBoundModelIO,
+    ) -> None:
         """Initialize the Lightning module.
 
         Args:
@@ -37,7 +46,9 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         """
         super().__init__(config)
 
-        self.model = build_blcs_model(self.config)
+        self.model_io = model_io
+        self.model = model_io.model
+        self.io_adapter = cast("TrajectoryModelIOAdapter", model_io.adapter)
         self.qualitative_rendering = parse_qualitative_rendering(self.config)
 
         train_cfg = self.config.training
@@ -83,52 +94,41 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         )
 
     def _forward_from_batch(
-        self, batch: BLCSBatch | BLCSMultiViewBatch
-    ) -> dict[str, Tensor]:
-        """Forward model from a batch."""
-        result: dict[str, Tensor] = self.model(
-            ball_uv=batch["ball_uv"],
-            court_kp=batch["court_kp"],
-            ball_vis=batch.get("ball_vis"),
-            ball_mask=batch.get("ball_mask"),
-            court_vis=batch.get("court_vis"),
-        )
-        return result
-
-    def _normalize_loss_mask(
-        self, batch: BLCSBatch | BLCSMultiViewBatch
-    ) -> Tensor | None:
-        """Normalize loss/metric mask to shape (B, T)."""
-        return normalize_padding_mask(batch.get("ball_mask"))
+        self, batch: Mapping[str, object]
+    ) -> BLCSTrajectoryPrediction:
+        """Delegate a validated model invocation to the bound adapter."""
+        return self.model_io.run(batch)
 
     def _compute_supervised_result(
         self,
-        batch: BLCSBatch | BLCSMultiViewBatch,
+        batch: Mapping[str, object],
         stage: str,
     ) -> dict[str, Any]:
         """Compute forward pass, supervised losses, and metrics."""
-        outputs = self._forward_from_batch(batch)
-        mask = self._normalize_loss_mask(batch)
+        prepared = self.io_adapter.build_training_batch(batch)
+        outputs = self.model_io.decode_output(
+            self.model_io.execute_call(prepared.call)
+        )
 
         losses = self.loss_fn(
-            pred_position=outputs["position"],
-            target_position=batch.get("position_3d"),
-            mask=mask,
-            target_uv=batch.get("ball_uv_target", batch.get("ball_uv")),
-            target_vis=batch.get("ball_vis_target", batch.get("ball_vis")),
-            camera_R=batch.get("camera_R"),
-            camera_C=batch.get("camera_C"),
-            camera_f=batch.get("camera_f"),
-            camera_cx=batch.get("camera_cx"),
-            camera_cy=batch.get("camera_cy"),
-            camera_w=batch.get("camera_w"),
-            camera_h=batch.get("camera_h"),
+            pred_position=outputs.position,
+            target_position=prepared.position,
+            mask=prepared.loss_mask,
+            target_uv=prepared.target_uv,
+            target_vis=prepared.target_vis,
+            camera_R=prepared.camera_R,
+            camera_C=prepared.camera_C,
+            camera_f=prepared.camera_f,
+            camera_cx=prepared.camera_cx,
+            camera_cy=prepared.camera_cy,
+            camera_w=prepared.camera_w,
+            camera_h=prepared.camera_h,
         )
 
         metrics = self._metric_tracker_for_stage(stage).update(
-            outputs["position"],
-            batch["position_3d"],
-            mask,
+            outputs.position,
+            prepared.position,
+            prepared.loss_mask,
         )
 
         return {
@@ -139,20 +139,21 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 **{f"loss_{k}": v.item() for k, v in losses.items()},
             },
             "outputs": outputs,
-            "mask": mask,
-            "gan_fake": outputs["position"],
-            "gan_real": batch["position_3d"],
-            "gan_mask": mask,
+            "mask": prepared.loss_mask,
+            "gan_fake": outputs.position,
+            "gan_real": prepared.position,
+            "gan_mask": prepared.loss_mask,
         }
 
     def test_prediction_payload(
-        self, batch: BLCSBatch | BLCSMultiViewBatch, result: dict[str, Any]
+        self, batch: Mapping[str, object], result: dict[str, Any]
     ) -> dict[str, Any]:
         """Ball 3D position predictions + targets to persist for the test split."""
-        outputs = result["outputs"]
+        outputs = cast("BLCSTrajectoryPrediction", result["outputs"])
+        target = self.io_adapter.build_training_batch(batch)
         payload: dict[str, Any] = {
-            "pred_position": outputs["position"],
-            "target_position": batch["position_3d"],
+            "pred_position": outputs.position,
+            "target_position": target.position,
         }
         mask = result.get("mask")
         if mask is not None:
@@ -198,9 +199,6 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         """Render GT vs predicted 3D ball trajectories using BLCSSceneRenderer."""
         # Deferred imports to avoid circular dependency:
         #   lightning_module <- inference.predictor <- visualization <- lightning_module
-        from src.tasks.blcs.visualization.adapters.render_inputs import (
-            batch_to_trajectory_arrays,  # noqa: PLC0415
-        )
         from src.tasks.blcs.visualization.rendering.scene_renderer import (
             BLCSSceneRenderer,  # noqa: PLC0415
         )
@@ -215,13 +213,20 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             }
 
             with torch.no_grad():
-                out = self._forward_from_batch(
-                    cast("BLCSBatch | BLCSMultiViewBatch", batch_dev)
-                )
+                out = self._forward_from_batch(batch_dev)
 
-            gt, pred = batch_to_trajectory_arrays(batch, out, sample_idx=0)
+            gt, pred = self.io_adapter.trajectory_arrays(
+                batch,
+                out,
+                sample_index=0,
+            )
 
-            anim = renderer.create_comparison_animation(gt, pred, view="3d")
+            anim = renderer.create_comparison_animation(
+                gt,
+                pred,
+                view="3d",
+                events=[],
+            )
             if anim is None:
                 continue
 

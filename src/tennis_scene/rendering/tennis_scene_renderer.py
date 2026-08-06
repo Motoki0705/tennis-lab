@@ -70,7 +70,7 @@ if TYPE_CHECKING:
     from mpl_toolkits.mplot3d import Axes3D
     from numpy.typing import NDArray
 
-    from src.tennis_scene.io import SceneResult
+    from src.tennis_scene.schema import SceneResult
 
 _FIXED_VIEW_MARGIN = 2.0
 
@@ -220,14 +220,6 @@ class TennisSceneRenderer:
     def _get_players_position(self, scene: SceneResult) -> NDArray[np.float32]:
         return scene.player_position
 
-    def _axis_angle_to_matrix(
-        self, axis_angle: NDArray[np.float32]
-    ) -> NDArray[np.float32]:
-        return axis_angle_to_rotation_matrix(axis_angle)
-
-    def _rotation_matrix_z(self, yaw: NDArray[np.float32]) -> NDArray[np.float32]:
-        return rotation_matrix_z(yaw)
-
     def _validate_required_smpl_fields(self, scene: SceneResult) -> None:
         missing: list[str] = []
         if scene.smpl_vertices_local is None:
@@ -281,11 +273,11 @@ class TennisSceneRenderer:
         ]
         verts_centered = verts_local - roots[:, :, None, :]
 
-        orient_rot = self._axis_angle_to_matrix(global_orient)
+        orient_rot = axis_angle_to_rotation_matrix(global_orient)
         verts_pose_local = np.einsum("ptji,ptvj->ptvi", orient_rot, verts_centered)
 
         verts_court_local = smpl_y_up_to_court_z_up(verts_pose_local)
-        plcs_rot = self._rotation_matrix_z(players_yaw)
+        plcs_rot = rotation_matrix_z(players_yaw)
         verts_court = np.einsum("ptij,ptvj->ptvi", plcs_rot, verts_court_local)
         verts_court = verts_court + players_position[:, :, None, :]
         verts_court = cast("NDArray[np.float32]", verts_court.astype(np.float32))

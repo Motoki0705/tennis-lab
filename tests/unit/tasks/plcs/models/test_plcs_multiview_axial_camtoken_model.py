@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import torch
 
-from src.tasks.plcs.models import PLCSMultiViewAxialCamTokenModel
+from src.tasks.plcs.model_io.attention_masks import prepare_axial_attention_masks
+from src.tasks.plcs.models.plcs_multiview_axial_camtoken_model import (
+    PLCSMultiViewAxialCamTokenModel,
+)
 from src.utils.schema.player import NUM_HUMAN_KP
 
 
@@ -43,11 +46,26 @@ def _make_inputs(model: PLCSMultiViewAxialCamTokenModel, *, n_cams: int):
     return human_kp, court_kp
 
 
+def _forward(model, human_kp, court_kp):
+    mask_shape = human_kp.shape[:3]
+    human_mask = torch.ones(*mask_shape)
+    camera_mask, time_mask = prepare_axial_attention_masks(human_mask)
+    return model(
+        human_kp,
+        court_kp,
+        torch.ones(*human_kp.shape[:-1]),
+        human_mask,
+        torch.ones(*court_kp.shape[:-1]),
+        camera_mask,
+        time_mask,
+    )
+
+
 def test_output_shapes() -> None:
     model = _make_model(predict_canonical_pose=True).eval()
     human_kp, court_kp = _make_inputs(model, n_cams=3)
     with torch.no_grad():
-        out = model(human_kp, court_kp)
+        out = _forward(model, human_kp, court_kp)
     b, t = human_kp.shape[0], human_kp.shape[2]
     assert out["position"].shape == (b, t, 3)
     assert out["rotation"].shape == (b, t, 2)
@@ -72,7 +90,7 @@ def _capture_head_inputs(model: PLCSMultiViewAxialCamTokenModel, human_kp, court
     ]
     try:
         with torch.no_grad():
-            model(human_kp, court_kp)
+            _forward(model, human_kp, court_kp)
     finally:
         for h in handles:
             h.remove()
@@ -85,11 +103,3 @@ def test_pose_and_rotation_read_distinct_camera_tokens() -> None:
     human_kp, court_kp = _make_inputs(model, n_cams=3)
     captured = _capture_head_inputs(model, human_kp, court_kp)
     assert not torch.allclose(captured["pose"], captured["rot"])
-
-
-def test_single_view_falls_back_to_shared_token() -> None:
-    """With a single view the rotation head reuses the camera-0 token."""
-    model = _make_model().eval()
-    human_kp, court_kp = _make_inputs(model, n_cams=1)
-    captured = _capture_head_inputs(model, human_kp, court_kp)
-    assert torch.allclose(captured["pose"], captured["rot"])

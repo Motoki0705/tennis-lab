@@ -1,24 +1,19 @@
-"""SLCS predictor: batch inference and sliding-window clip inference.
+"""SLCS predictor for batched and sliding-window clip inference.
 
-``predict`` runs one collated window batch. ``predict_clip`` covers a full
-clip camera with overlapping windows and aggregates per-frame outputs:
-positions and log-scales are averaged over covering windows, rotations are
-averaged in ``(cos, sin)`` space and renormalized. All outputs are CPU
-tensors; ``*_meters`` / ``*_radians`` keys carry denormalized units.
+Batch and overlapping-window clip inference return distinct typed CPU outputs.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from typing import ParamSpec, TypeVar
 
 import torch
 from torch import Tensor
 
-from src.tasks.base.inference.grad_mode import no_grad
 from src.tasks.base.inference.predictor import BasePredictor
-from src.tasks.slcs.data.contract import ClipManifest
+from src.tasks.base.model_io import BoundModelIO
 from src.tasks.slcs.data.dataset import (
     SLCSDataConfig,
     build_window_sample,
@@ -28,20 +23,24 @@ from src.tasks.slcs.data.dataset import (
 from src.tasks.slcs.data.dino_tokens import load_dino_tokens
 from src.tasks.slcs.data.types import SLCSSample
 from src.tasks.slcs.data.windows import plan_windows
+from src.tasks.slcs.model_io import (
+    SLCSClipPrediction,
+    SLCSDecodedOutput,
+    SLCSModelIOAdapter,
+    SLCSRawOutput,
+    SLCSTrainingTargets,
+)
+from src.tasks.slcs.models.slcs_model import SLCSFusionModel
 from src.tasks.slcs.training.lightning_module import SLCSLightningModule
+from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.utils.configuration import PathResolver
-from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
+_no_grad: Callable[[Callable[_P, _R]], Callable[_P, _R]] = torch.no_grad()
 
 
-def _typed_no_grad(function: Callable[_P, _R]) -> Callable[_P, _R]:
-    decorator: Callable[[Callable[_P, _R]], Callable[_P, _R]] = no_grad
-    return decorator(function)
-
-
-class SLCSPredictor(BasePredictor):
+class SLCSPredictor(BasePredictor[SLCSDecodedOutput]):
     """Inference wrapper around a trained :class:`SLCSFusionModel`."""
 
     def __init__(
@@ -49,7 +48,11 @@ class SLCSPredictor(BasePredictor):
     ) -> None:
         self.lightning_module = lightning_module.to(device)
         self.lightning_module.eval()
-        self.model = lightning_module.model
+        self.model: SLCSFusionModel = lightning_module.model
+        self.model_io: BoundModelIO[
+            Mapping[str, object], SLCSRawOutput, SLCSDecodedOutput
+        ] = lightning_module.model_io
+        self.model_adapter: SLCSModelIOAdapter = lightning_module.model_adapter
         self.device = device
 
     @classmethod
@@ -68,7 +71,6 @@ class SLCSPredictor(BasePredictor):
             SLCSLightningModule,
             resolver=resolver,
             device=device,
-            allow_device_fallback=False,
             strict=strict,
             weights_only=weights_only,
         )
@@ -76,47 +78,30 @@ class SLCSPredictor(BasePredictor):
 
     # ------------------------------------------------------------------
 
-    @_typed_no_grad
+    @_no_grad
     def predict(
         self,
         batch: dict[str, Tensor],
-        *,
-        denormalize: bool,
-    ) -> dict[str, Tensor]:
-        """Run one collated SLCS batch; returns CPU tensors.
+    ) -> SLCSDecodedOutput:
+        """Validate and run one collated batch; return typed CPU predictions."""
+        moved = {key: value.to(self.device) for key, value in batch.items()}
+        output: SLCSDecodedOutput = self.model_io.run(moved)
+        return output.detached_cpu()
 
-        Keys: ``player_position``, ``player_rotation``, ``ball_position``,
-        ``*_log_b`` (normalized domain), plus ``player_position_meters``,
-        ``player_yaw_radians``, ``ball_position_meters`` and per-frame
-        ``*_sigma`` uncertainty when ``denormalize=True``.
-        """
-        moved = {
-            key: value.to(self.device) if isinstance(value, Tensor) else value
-            for key, value in batch.items()
-        }
-        outputs = self.lightning_module.forward_batch(moved)
-        result = {key: value.detach().cpu() for key, value in outputs.items()}
-        if denormalize:
-            result.update(self._denormalize(result))
-        return result
-
-    def _denormalize(self, outputs: dict[str, Tensor]) -> dict[str, Tensor]:
-        scale = torch.tensor(list(COURT_COORD_SCALE_XYZ), dtype=torch.float32)
-        scale_mean = float(scale.mean().item())
-        rotation = torch.nn.functional.normalize(outputs["player_rotation"], dim=-1)
-        return {
-            "player_position_meters": outputs["player_position"] * scale,
-            "player_yaw_radians": torch.atan2(rotation[..., 1], rotation[..., 0]),
-            "ball_position_meters": outputs["ball_position"] * scale,
-            "player_position_sigma_m": outputs["player_position_log_b"].exp()
-            * scale_mean,
-            "player_rotation_sigma_rad": outputs["player_rotation_log_b"].exp(),
-            "ball_position_sigma_m": outputs["ball_position_log_b"].exp() * scale_mean,
-        }
+    @_no_grad
+    def predict_with_targets(
+        self, batch: dict[str, Tensor]
+    ) -> tuple[SLCSDecodedOutput, SLCSTrainingTargets]:
+        """Validate all targets before executing an evaluation model call."""
+        moved = {key: value.to(self.device) for key, value in batch.items()}
+        call = self.model_io.build_call(moved)
+        targets = self.model_adapter.build_training_targets(moved)
+        output = self.model_io.decode_output(self.model_io.execute_call(call))
+        return output.detached_cpu(), targets.detached_cpu()
 
     # ------------------------------------------------------------------
 
-    @_typed_no_grad
+    @_no_grad
     def predict_clip(
         self,
         clip_dir: str | Path,
@@ -125,17 +110,15 @@ class SLCSPredictor(BasePredictor):
         data_config: SLCSDataConfig,
         stride: int,
         batch_size: int,
-        denormalize: bool,
-    ) -> dict[str, Tensor]:
+    ) -> SLCSClipPrediction:
         """Predict the full timeline of one clip camera.
 
         Windows follow ``data_config.window_size`` with the explicit ``stride``;
         overlapping predictions are averaged.
 
-        Returns full-length tensors: ``player_position (P, T, 3)``,
-        ``player_rotation (P, T, 2)``, ``ball_position (T, 3)``, the
-        corresponding ``*_log_b`` averages, ``coverage (T,)`` (windows per
-        frame) and denormalized keys as in :meth:`predict`.
+        The returned ``normalized`` and ``physical`` fields contain the
+        aggregated predictions. ``coverage (T,)`` records the number of
+        windows contributing to each frame.
         """
         manifest = ClipManifest.load(clip_dir)
         clip = load_clip_arrays(manifest, config=data_config)
@@ -179,24 +162,24 @@ class SLCSPredictor(BasePredictor):
         for start in range(0, len(samples), batch_size):
             chunk = samples[start : start + batch_size]
             batch = collate_slcs(chunk)
-            outputs = self.predict(batch, denormalize=False)
+            outputs = self.predict(batch)
             for i, plan in enumerate(plans[start : start + len(chunk)]):
                 t0, length = plan.start, plan.length
                 sl = slice(t0, t0 + length)
-                acc["player_position"][:, sl] += outputs["player_position"][
+                acc["player_position"][:, sl] += outputs.player_position[
                     i, :, :length
                 ]
-                acc["player_rotation"][:, sl] += outputs["player_rotation"][
+                acc["player_rotation"][:, sl] += outputs.player_rotation[
                     i, :, :length
                 ]
-                acc["ball_position"][sl] += outputs["ball_position"][i, :length]
-                acc["player_position_log_b"][:, sl] += outputs["player_position_log_b"][
-                    i, :, :length
-                ]
-                acc["player_rotation_log_b"][:, sl] += outputs["player_rotation_log_b"][
-                    i, :, :length
-                ]
-                acc["ball_position_log_b"][sl] += outputs["ball_position_log_b"][
+                acc["ball_position"][sl] += outputs.ball_position[i, :length]
+                acc["player_position_log_b"][
+                    :, sl
+                ] += outputs.player_position_log_b[i, :, :length]
+                acc["player_rotation_log_b"][
+                    :, sl
+                ] += outputs.player_rotation_log_b[i, :, :length]
+                acc["ball_position_log_b"][sl] += outputs.ball_position_log_b[
                     i, :length
                 ]
                 coverage[sl] += 1.0
@@ -208,22 +191,23 @@ class SLCSPredictor(BasePredictor):
                 f"(total {len(uncovered)}). This indicates broken window planning."
             )
         denom_frames = coverage.clamp(min=1.0)
-        result: dict[str, Tensor] = {
-            "player_position": acc["player_position"] / denom_frames[None, :, None],
-            "player_rotation": torch.nn.functional.normalize(
+        normalized = SLCSDecodedOutput(
+            player_position=acc["player_position"] / denom_frames[None, :, None],
+            player_rotation=torch.nn.functional.normalize(
                 acc["player_rotation"] / denom_frames[None, :, None], dim=-1
             ),
-            "ball_position": acc["ball_position"] / denom_frames[:, None],
-            "player_position_log_b": acc["player_position_log_b"]
+            ball_position=acc["ball_position"] / denom_frames[:, None],
+            player_position_log_b=acc["player_position_log_b"]
             / denom_frames[None, :],
-            "player_rotation_log_b": acc["player_rotation_log_b"]
+            player_rotation_log_b=acc["player_rotation_log_b"]
             / denom_frames[None, :],
-            "ball_position_log_b": acc["ball_position_log_b"] / denom_frames,
-            "coverage": coverage,
-        }
-        if denormalize:
-            result.update(self._denormalize(result))
-        return result
+            ball_position_log_b=acc["ball_position_log_b"] / denom_frames,
+        )
+        return SLCSClipPrediction(
+            normalized=normalized,
+            physical=self.model_adapter.to_physical(normalized),
+            coverage=coverage,
+        )
 
 
 __all__ = ["SLCSPredictor"]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import Any
 
@@ -97,12 +98,13 @@ def _apply_affine_to_sequence(
     return out_frames, out_coords, out_visibility
 
 
-class BaseAugmentation:
+class BaseAugmentation(ABC):
     """Base interface for one sequence augmentation."""
 
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
 
+    @abstractmethod
     def forward(
         self,
         frames: Frames,
@@ -112,7 +114,7 @@ class BaseAugmentation:
         rng: random.Random,
     ) -> tuple[Frames, Coords, Visibility]:
         """Apply the augmentation to images and targets."""
-        raise NotImplementedError
+        ...
 
 
 class CameraRotationAugmentation(BaseAugmentation):
@@ -126,7 +128,7 @@ class CameraRotationAugmentation(BaseAugmentation):
         self.max_angular_velocity_deg_per_frame = float(
             self.config["max_angular_velocity_deg_per_frame"]
         )
-        self.border_mode = str(self.config["border_mode"])
+        self.border_mode = _resolve_border_mode(str(self.config["border_mode"]))
 
     def forward(
         self,
@@ -151,8 +153,6 @@ class CameraRotationAugmentation(BaseAugmentation):
             theta0 + omega * (frame_idx - t_ref) for frame_idx in range(len(frames))
         ]
 
-        border_mode = _resolve_border_mode(self.border_mode)
-
         out_frames: Frames = []
         out_coords: Coords = []
         out_visibility: Visibility = []
@@ -169,7 +169,7 @@ class CameraRotationAugmentation(BaseAugmentation):
                 matrix,
                 (width, height),
                 flags=cv2.INTER_LINEAR,
-                borderMode=border_mode,
+                borderMode=self.border_mode,
             )
             transformed_coords: list[tuple[float, float]] = []
             transformed_visibility: list[float] = []
@@ -378,7 +378,7 @@ class AffineAugmentation(BaseAugmentation):
             self.config["shear_y_deg_range"],
             "shear_y_deg_range",
         )
-        self.border_mode = str(self.config["border_mode"])
+        self.border_mode = _resolve_border_mode(str(self.config["border_mode"]))
 
     def forward(
         self,
@@ -418,7 +418,7 @@ class AffineAugmentation(BaseAugmentation):
             coords,
             visibility,
             matrix=matrix,
-            border_mode=_resolve_border_mode(self.border_mode),
+            border_mode=self.border_mode,
         )
 
 
@@ -466,7 +466,7 @@ class ScaleAndCropAugmentation(BaseAugmentation):
             self.config["scale_range"],
             "scale_range",
         )
-        self.border_mode = str(self.config["border_mode"])
+        self.border_mode = _resolve_border_mode(str(self.config["border_mode"]))
 
     def forward(
         self,
@@ -509,7 +509,7 @@ class ScaleAndCropAugmentation(BaseAugmentation):
             coords,
             visibility,
             matrix=matrix,
-            border_mode=_resolve_border_mode(self.border_mode),
+            border_mode=self.border_mode,
         )
 
 

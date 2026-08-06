@@ -148,6 +148,7 @@ class _PhysicalSceneStub:
             sim_fps=120,
             physics_config_dict={},
             court_config_dict={},
+            num_balls=1,
         )
 
 

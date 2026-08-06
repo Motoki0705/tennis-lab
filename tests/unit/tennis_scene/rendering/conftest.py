@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import torch
 
-from src.tennis_scene.io import SceneResult
+from src.tennis_scene.schema import SceneResult
 
 SMPL_NUM_VERTICES = 6890
 

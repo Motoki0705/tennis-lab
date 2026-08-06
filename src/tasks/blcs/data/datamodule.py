@@ -3,34 +3,23 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from functools import partial
 from pathlib import Path
 from typing import Any
 
 from torch.utils.data import Dataset
 
 from src.tasks.base.data.datamodule import SceneDirectoryDataModule
-from src.tasks.blcs.data.dataset import (
-    BallTrajectoryDataset,
-    collate_and_adapt_blcs_batch,
-)
+from src.tasks.blcs.data.dataset import BallTrajectoryDataset
 
 
-class BLCSDataModule(SceneDirectoryDataModule):
-    """Lightning DataModule for unified BLCS single/multiview training."""
+class BLCSDataModuleHooks:
+    """Task-local dataset/collate hooks shared by fixed and chunked loaders."""
+
+    config: object
+    _collate_fn: Callable[..., Any]
 
     def _build_collate_fn(self) -> Callable[..., Any] | None:
-        config: Any = self.config
-        self.input_profile = str(config["model"]["io"]["input_profile"])
-        if self.input_profile not in {"single", "multiview"}:
-            raise ValueError(
-                "Invalid model.io.input_profile="
-                f"'{self.input_profile}'. Supported: ['single', 'multiview']"
-            )
-        return partial(
-            collate_and_adapt_blcs_batch,
-            input_profile=self.input_profile,
-        )
+        return self._collate_fn
 
     def _build_dataset(
         self,
@@ -47,3 +36,11 @@ class BLCSDataModule(SceneDirectoryDataModule):
 
     def _dataset_name(self) -> str:
         return "blcs"
+
+
+class BLCSDataModule(BLCSDataModuleHooks, SceneDirectoryDataModule):
+    """Lightning DataModule for unified BLCS single/multiview training."""
+
+    def __init__(self, config: Any, *, collate_fn: Callable[..., Any]) -> None:
+        self._collate_fn = collate_fn
+        super().__init__(config)

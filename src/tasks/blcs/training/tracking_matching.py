@@ -10,13 +10,13 @@ from src.tasks.base.training.tracking_lifecycle import (
     weighted_presence_bce_with_logits,
 )
 from src.tasks.blcs.training.tracking_position import (
-    position_axis_weight_tensor,
     weighted_position_axis_mean,
 )
 
 
 def match_ball_tracks(
-    prediction: dict[str, torch.Tensor],
+    pred_position: torch.Tensor,
+    pred_presence: torch.Tensor,
     target_position: torch.Tensor,
     target_presence: torch.Tensor,
     target_mask: torch.Tensor,
@@ -28,13 +28,12 @@ def match_ball_tracks(
     presence_active_weight: float,
     presence_transition_weight: float,
     transition_radius: int,
-    position_axis_weights: tuple[float, float, float] | torch.Tensor,
+    position_axis_weights: torch.Tensor,
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Match `Q` predictions to valid `P` targets using clip-level costs."""
-    pred_position = prediction["position"]
-    pred_presence = prediction["presence_logits"]
-    axis_weights = position_axis_weight_tensor(position_axis_weights).to(
-        pred_position.device
+    axis_weights = position_axis_weights.to(
+        device=pred_position.device,
+        dtype=pred_position.dtype,
     )
     batch_size, _, num_queries, _ = pred_position.shape
     assignments: list[tuple[torch.Tensor, torch.Tensor]] = []

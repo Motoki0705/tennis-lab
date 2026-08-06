@@ -86,10 +86,7 @@ class PLCSSceneRenderer:
         position = np.asarray(scene.position)
         if position.ndim == 2:
             return [scene]
-        raw_num_persons = getattr(scene, "num_persons", None)
-        num_persons = (
-            int(position.shape[1]) if raw_num_persons is None else int(raw_num_persons)
-        )
+        num_persons = int(scene.num_persons)
         return [
             SimpleNamespace(
                 position=position[:, index],
@@ -108,13 +105,11 @@ class PLCSSceneRenderer:
         view: str = "3d",
         camera_idx: int = 0,
         *,
-        fps: float = 30.0,
+        fps: float,
         figsize: tuple[float, float] = (12, 8),
     ) -> FuncAnimation:
         """Create scene animation for a single view."""
-        num_frames = int(
-            getattr(scene, "meta", {}).get("num_frames", len(scene.position))
-        )
+        num_frames = len(scene.position)
         player_scenes = self._player_scenes(scene)
         interval = 1000.0 / fps
 
@@ -200,18 +195,14 @@ class PLCSSceneRenderer:
         view: str = "3d",
         camera_idx: int = 0,
         *,
-        fps: float = 30.0,
+        fps: float,
         figsize: tuple[float, float] = (12, 8),
         title: str = "GT vs Prediction",
     ) -> FuncAnimation:
         """Create GT vs prediction comparison animation."""
         _ = camera_idx
-        gt_frames = int(
-            getattr(gt_scene, "meta", {}).get("num_frames", len(gt_scene.position))
-        )
-        pred_frames = int(
-            getattr(pred_scene, "meta", {}).get("num_frames", len(pred_scene.position))
-        )
+        gt_frames = len(gt_scene.position)
+        pred_frames = len(pred_scene.position)
         num_frames = min(gt_frames, pred_frames)
         if num_frames <= 0:
             raise ValueError("No frames available for comparison animation.")
@@ -288,7 +279,7 @@ class PLCSSceneRenderer:
         print(f"Gender: {meta.get('gender', 'unknown')}")
         print(f"Frames: {meta.get('num_frames', 'unknown')}")
         print(f"FPS: {meta.get('fps', 'unknown')}")
-        print(f"Cameras: {int(getattr(scene, 'num_cameras', len(scene.cameras)))}")
+        print(f"Cameras: {int(scene.num_cameras)}")
 
         pos = np.asarray(scene.position).reshape(len(scene.position), -1, 3)
         rot = np.asarray(scene.rotation).reshape(len(scene.rotation), -1, 2)
@@ -556,7 +547,7 @@ class PLCSSceneRenderer:
         if human_uv.ndim == 2:
             self.skeleton_renderer.render_2d(ax, human_uv, human_vis)
             return
-        num_persons = int(getattr(scene, "num_persons", human_uv.shape[0]))
+        num_persons = int(scene.num_persons)
         for person_index in range(num_persons):
             self.skeleton_renderer.render_2d(
                 ax, human_uv[person_index], human_vis[person_index]

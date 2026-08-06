@@ -8,17 +8,21 @@ from src.tasks.base.training.tracking_metrics import (
     TrackingMetricConfig,
     common_lifecycle_tracking_metrics,
 )
+from src.tasks.blcs.model_io import (
+    BLCSTrackQueryPrediction,
+    BLCSTrackQueryTrainingBatch,
+)
 from src.tasks.blcs.training.tracking_losses import Assignment
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
 
 def _position_mae_meters(
-    prediction: dict[str, torch.Tensor],
-    batch: dict[str, torch.Tensor],
+    prediction: BLCSTrackQueryPrediction,
+    batch: BLCSTrackQueryTrainingBatch,
     assignments: list[Assignment],
 ) -> torch.Tensor:
     """Return matched per-axis MAE in physical metres."""
-    pred_position = prediction["position"]
+    pred_position = prediction.position
     scale = pred_position.new_tensor(COURT_COORD_SCALE_XYZ)
     terms: list[torch.Tensor] = []
     for batch_index, (query_indices, target_indices) in enumerate(assignments):
@@ -26,14 +30,14 @@ def _position_mae_meters(
             query_indices.tolist(), target_indices.tolist(), strict=True
         ):
             active = (
-                batch["target_presence"][batch_index, :, target_index]
-                & batch["frame_mask"][batch_index]
+                batch.target_presence[batch_index, :, target_index]
+                & batch.frame_mask[batch_index]
             )
             if active.any():
                 terms.append(
                     (
                         pred_position[batch_index, active, query_index]
-                        - batch["target_position"][batch_index, active, target_index]
+                        - batch.target_position[batch_index, active, target_index]
                     )
                     .abs()
                     .mean(0)
@@ -45,16 +49,24 @@ def _position_mae_meters(
 
 
 def blcs_tracking_metrics(
-    prediction: dict[str, torch.Tensor],
-    batch: dict[str, torch.Tensor],
+    prediction: BLCSTrackQueryPrediction,
+    batch: BLCSTrackQueryTrainingBatch,
     assignments: list[Assignment],
     *,
     config: TrackingMetricConfig,
 ) -> dict[str, torch.Tensor]:
     """Compute shared lifecycle metrics for BLCS predictions."""
     metrics: dict[str, torch.Tensor] = common_lifecycle_tracking_metrics(
-        prediction,
-        batch,
+        {
+            "position": prediction.position,
+            "presence_logits": prediction.presence_logits,
+        },
+        {
+            "target_position": batch.target_position,
+            "target_presence": batch.target_presence,
+            "target_instance_id": batch.target_instance_id,
+            "frame_mask": batch.frame_mask,
+        },
         assignments,
         config=config,
     )

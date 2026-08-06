@@ -351,8 +351,8 @@ def main() -> None:
             )
             mask_views.append(mask.detach().cpu().numpy().astype(np.bool_))
             alpha_coverages.append(float(mask.float().mean()))
-    rgb = np.stack(rgb_views)
-    mask = np.stack(mask_views)
+    rgb_images = np.stack(rgb_views)
+    mask_images = np.stack(mask_views)
     split = np.zeros((args.view_count,), dtype=np.uint8)
     split[-args.validation_views :] = 1
 
@@ -375,8 +375,8 @@ def main() -> None:
             view_id = f"view-{index:03d}"
             rgb_path = rgb_root / f"{view_id}.png"
             mask_path = mask_root / f"{view_id}.png"
-            Image.fromarray(rgb[index]).save(rgb_path)
-            Image.fromarray(mask[index].astype(np.uint8) * 255).save(mask_path)
+            Image.fromarray(rgb_images[index]).save(rgb_path)
+            Image.fromarray(mask_images[index].astype(np.uint8) * 255).save(mask_path)
             capture_views.append(
                 {
                     "view_id": view_id,

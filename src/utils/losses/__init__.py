@@ -7,15 +7,15 @@ Submodules:
 """
 
 from src.utils.losses.temporal import (
-    ballistic_gravity_penalty,
+    BallisticGravityPenalty,
+    TemporalSmoothnessPenalty,
     ballistic_second_difference,
     finite_difference,
-    smoothness_penalty,
 )
 
 __all__ = [
-    "ballistic_gravity_penalty",
+    "BallisticGravityPenalty",
+    "TemporalSmoothnessPenalty",
     "ballistic_second_difference",
     "finite_difference",
-    "smoothness_penalty",
 ]

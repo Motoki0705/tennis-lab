@@ -74,7 +74,7 @@ def load_scene(filepath: str | Path) -> dict[str, Any]:
         canonical_pose_3d=np.load(scene_dir / "canonical_pose_3d.npy"),
         num_cameras=num_cameras,
         cameras=cameras,
-        num_persons=int(scalars.get("num_persons", 1)),
+        num_persons=int(scalars["num_persons"]),
     )
 
     # Include pre-computed COCO17 world joints when stored (AthletePose3D path).

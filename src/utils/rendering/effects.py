@@ -14,7 +14,7 @@ Primitives shared by the tennis scene renderer (and any other 3D plot):
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 from matplotlib.colors import to_rgba
@@ -58,7 +58,7 @@ def render_fading_line_3d(
     if pts.ndim != 2 or pts.shape[1] != 3:
         raise ValueError(f"positions must have shape (T, 3), got {pts.shape}")
 
-    finite = np.isfinite(pts).all(axis=1)
+    finite = cast("NDArray[np.bool_]", np.isfinite(pts).all(axis=1))
     num_segments_total = pts.shape[0] - 1
     segments: list[NDArray[np.float64]] = []
     ramps: list[float] = []

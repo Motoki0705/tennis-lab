@@ -258,6 +258,29 @@ def test_independent_oracle_finds_mapping_and_verified_path_dataflow(
     )
 
 
+def test_regeneration_tracks_typed_configuration_casts(tmp_path: Path) -> None:
+    source_root = tmp_path / "src"
+    source_root.mkdir()
+    (source_root / "sample.py").write_text(
+        "from typing import cast\n"
+        "class FeatureConfig:\n"
+        "    enabled: bool\n"
+        "def enabled(runtime: FeatureConfig) -> bool:\n"
+        "    return cast(FeatureConfig, runtime).enabled\n",
+        encoding="utf-8",
+    )
+
+    rows = regenerate_migration_rows(source_root)
+
+    assert any(
+        row[1] == "src.sample"
+        and row[2] == "enabled"
+        and row[7] == "configuration-reference"
+        and "cast(FeatureConfig, runtime).enabled" in str(row[5])
+        for row in rows
+    )
+
+
 def test_independent_oracle_rejects_numeric_division_path_false_positive(
     tmp_path: Path,
 ) -> None:

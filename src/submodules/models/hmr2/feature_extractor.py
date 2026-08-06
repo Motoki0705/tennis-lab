@@ -9,7 +9,7 @@ import torch
 from tqdm import tqdm
 
 from src.submodules.configuration import require_absolute_path
-from src.submodules.models._base import BaseInferenceModel
+from src.submodules.models._base.inference_model import BaseInferenceModel
 from src.submodules.vendor.gvhmr.hmr2 import load_hmr2
 from src.submodules.vendor.gvhmr.hmr2.preproc import get_batch
 
@@ -43,11 +43,10 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
         checkpoint: str | Path,
         *,
         device: str | torch.device,
-        allow_device_fallback: bool,
         batch_size: int,
         mean_params_path: str | Path,
     ) -> None:
-        super().__init__(device, allow_device_fallback=allow_device_fallback)
+        super().__init__(device)
         if type(batch_size) is not int:
             raise TypeError("batch_size must be an integer.")
         if batch_size <= 0:
@@ -80,7 +79,8 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
         self._model = None
 
     def _predict_impl(self, request: ImageFeatureRequest) -> ImageFeatureResult:
-        assert self._model is not None
+        if self._model is None:
+            raise RuntimeError("HMR2 model did not load before prediction.")
         imgs, _ = get_batch(str(request.video_path), request.bbx_xys, img_ds=0.5)
 
         num_frames = imgs.shape[0]

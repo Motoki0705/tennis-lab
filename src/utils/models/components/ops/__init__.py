@@ -8,18 +8,18 @@ from src.utils.models.components.ops.loader import (
 )
 from src.utils.models.components.ops.moe import (
     MoEDispatchResult,
-    moe_combine,
-    moe_dispatch,
+    MoEOperations,
+    resolve_moe_operations,
 )
 
 __all__ = [
     "MoEDispatchResult",
+    "MoEOperations",
     "get_moe_cuda_extension",
     "get_time_local_cuda_extension",
     "is_moe_cuda_available",
     "is_time_local_cuda_available",
-    "moe_combine",
-    "moe_dispatch",
     "require_moe_cuda_extension",
     "require_time_local_cuda_extension",
+    "resolve_moe_operations",
 ]

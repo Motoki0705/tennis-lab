@@ -14,52 +14,6 @@ from src.utils.schema.court import NUM_COURT_KP
 from src.utils.schema.player import NUM_HUMAN_KP
 
 
-def _flatten_court_kp(court_kp: Tensor, *, num_court_tokens: int) -> Tensor:
-    if court_kp.dim() >= 2 and tuple(court_kp.shape[-2:]) == (num_court_tokens, 2):
-        return court_kp.reshape(*court_kp.shape[:-2], num_court_tokens * 2)
-    if court_kp.dim() >= 1 and court_kp.shape[-1] == num_court_tokens * 2:
-        return court_kp
-    raise ValueError(
-        "court_kp must have shape "
-        f"(..., {num_court_tokens}, 2) or (..., {num_court_tokens * 2}).",
-    )
-
-
-def _flatten_ball_uv(ball_uv: Tensor) -> Tensor:
-    if ball_uv.dim() >= 2 and tuple(ball_uv.shape[-2:]) == (1, 2):
-        return ball_uv.reshape(*ball_uv.shape[:-2], 2)
-    if ball_uv.dim() >= 1 and ball_uv.shape[-1] == 2:
-        return ball_uv
-    raise ValueError("ball_uv must have shape (..., 2) or (..., 1, 2).")
-
-
-def _flatten_human_kp(human_kp: Tensor) -> Tensor:
-    if human_kp.dim() >= 2 and tuple(human_kp.shape[-2:]) == (NUM_HUMAN_KP, 2):
-        return human_kp.reshape(*human_kp.shape[:-2], NUM_HUMAN_KP * 2)
-    if human_kp.dim() >= 1 and human_kp.shape[-1] == NUM_HUMAN_KP * 2:
-        return human_kp
-    raise ValueError(
-        "human_kp must have shape (..., NUM_HUMAN_KP, 2) or (..., NUM_HUMAN_KP * 2).",
-    )
-
-
-def _normalize_group_visibility(
-    group_vis: Tensor | None,
-    *,
-    expected_shape: torch.Size,
-) -> Tensor | None:
-    if group_vis is None:
-        return None
-
-    mask = group_vis if group_vis.dtype == torch.bool else group_vis > 0
-    if tuple(mask.shape) != tuple(expected_shape):
-        raise ValueError(
-            "group_vis must match the group token leading shape "
-            f"{tuple(expected_shape)}, got {tuple(mask.shape)}.",
-        )
-    return mask
-
-
 class _CourtContextGroupEmbedding(nn.Module):
     """Project one court/object pair without changing its leading-axis order."""
 
@@ -84,19 +38,10 @@ class _CourtContextGroupEmbedding(nn.Module):
         *,
         court_flat: Tensor,
         group_flat: Tensor,
-        group_vis: Tensor | None,
+        group_vis: Tensor,
     ) -> Tensor:
-        if tuple(court_flat.shape[:-1]) != tuple(group_flat.shape[:-1]):
-            raise ValueError(
-                "court and group inputs must share the same leading dimensions."
-            )
-
         feat = self.proj(torch.cat((court_flat, group_flat), dim=-1))
-        visible = _normalize_group_visibility(
-            group_vis,
-            expected_shape=court_flat.shape[:-1],
-        )
-        return apply_visibility_mask(feat, visible, self.invisible_token)
+        return apply_visibility_mask(feat, group_vis, self.invisible_token)
 
 
 class CourtBallGroupEmbedding(_CourtContextGroupEmbedding):
@@ -127,14 +72,13 @@ class CourtBallGroupEmbedding(_CourtContextGroupEmbedding):
         self,
         court_kp: Tensor,
         ball_uv: Tensor,
-        group_vis: Tensor | None = None,
+        group_vis: Tensor,
     ) -> Tensor:
         """Return one embedding token for each leading court/ball element."""
-        court_flat = _flatten_court_kp(court_kp, num_court_tokens=self.num_court_tokens)
-        ball_flat = _flatten_ball_uv(ball_uv)
+        court_flat = court_kp.flatten(-2)
         return self._embed_group(
             court_flat=court_flat,
-            group_flat=ball_flat,
+            group_flat=ball_uv,
             group_vis=group_vis,
         )
 
@@ -167,11 +111,11 @@ class CourtPlayerGroupEmbedding(_CourtContextGroupEmbedding):
         self,
         court_kp: Tensor,
         human_kp: Tensor,
-        group_vis: Tensor | None = None,
+        group_vis: Tensor,
     ) -> Tensor:
         """Return one embedding token for each leading court/player element."""
-        court_flat = _flatten_court_kp(court_kp, num_court_tokens=self.num_court_tokens)
-        human_flat = _flatten_human_kp(human_kp)
+        court_flat = court_kp.flatten(-2)
+        human_flat = human_kp.flatten(-2)
         return self._embed_group(
             court_flat=court_flat,
             group_flat=human_flat,

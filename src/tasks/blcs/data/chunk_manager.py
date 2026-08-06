@@ -67,7 +67,7 @@ class _BLCSChunkGenerator:
 
 
 class ChunkManager(BaseChunkManager):
-    """BLCS-compatible wrapper around the shared chunk manager."""
+    """Bind BLCS scene generation to the shared chunk lifecycle."""
 
     def __init__(
         self,

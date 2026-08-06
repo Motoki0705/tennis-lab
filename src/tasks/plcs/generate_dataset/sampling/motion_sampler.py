@@ -88,7 +88,7 @@ class MotionSampler:
         self._index_motion_files()
 
         # SMPL-H models (loaded on demand)
-        self._smplh_models: dict[str, object] = {}
+        self._smplh_models: dict[str, Any] = {}
 
     def _parse_motion_sources(self) -> None:
         """Parse motion source configuration."""
@@ -119,7 +119,7 @@ class MotionSampler:
         for cat, files in self._motion_files.items():
             print(f"  - {cat}: {len(files)} files")
 
-    def _get_smplh_model(self, gender: str) -> object:
+    def _get_smplh_model(self, gender: str) -> Any:
         """Get or create SMPL-H model for given gender.
 
         Args:
@@ -247,8 +247,11 @@ class MotionSampler:
         # Clean up gender string (e.g., "b'female'" -> "female")
         gender = gender.strip("b'\"").lower()
 
-        # Get FPS
-        fps = float(data.get("mocap_framerate", np.array([60.0])).item())
+        if "mocap_framerate" not in data:
+            raise ValueError(
+                f"Motion archive {path} is missing required mocap_framerate metadata."
+            )
+        fps = float(data["mocap_framerate"].item())
 
         # Truncate if needed
         if max_frames is not None and poses.shape[0] > max_frames:
@@ -298,12 +301,7 @@ class MotionSampler:
         right_hand_pose = aa[:, 22:37].reshape(T, -1)  # (T, 45)
 
         # Prepare betas (truncate to model's num_betas)
-        raw_model_num_betas = getattr(model, "num_betas", None)
-        model_num_betas = (
-            int(betas.shape[0])
-            if raw_model_num_betas is None
-            else int(raw_model_num_betas)
-        )
+        model_num_betas = int(model.num_betas)
         num_betas = min(betas.shape[0], model_num_betas)
         betas_truncated = betas[:num_betas]
 

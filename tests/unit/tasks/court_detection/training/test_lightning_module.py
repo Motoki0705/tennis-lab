@@ -5,6 +5,12 @@ from __future__ import annotations
 import pytest
 import torch
 
+from src.tasks.court_detection.model_io.adapters import (
+    CourtKeypointModelIO,
+    CourtLineModelIO,
+    CourtSegmentationModelIO,
+)
+from src.tasks.court_detection.model_io.contracts import CourtModelSpec, CourtTask
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
 )
@@ -12,14 +18,39 @@ from src.tasks.court_detection.training.lightning_module import (
 pytestmark = pytest.mark.unit
 
 
-def _module_for_task(task: str) -> CourtDetectionLightningModule:
+def _module_for_task(
+    task: CourtTask,
+    *,
+    output_channels: int,
+) -> CourtDetectionLightningModule:
     module = object.__new__(CourtDetectionLightningModule)
-    module.task = task
+    torch.nn.Module.__init__(module)
+    spec = CourtModelSpec(
+        task=task,
+        in_channels=3,
+        output_channels=output_channels,
+        short_side=32,
+    )
+    if task == "kp":
+        module.model_io = CourtKeypointModelIO(spec, focal_gamma=2.0)
+    elif task == "seg":
+        module.model_io = CourtSegmentationModelIO(
+            spec,
+            ce_weight=1.0,
+            dice_weight=1.0,
+        )
+    else:
+        module.model_io = CourtLineModelIO(
+            spec,
+            bce_weight=1.0,
+            dice_weight=1.0,
+            pos_weight=1.0,
+        )
     return module
 
 
 def test_kp_test_prediction_payload_saves_predicted_and_target_keypoints() -> None:
-    module = _module_for_task("kp")
+    module = _module_for_task("kp", output_channels=3)
     logits = torch.zeros(2, 3, 4, 5)
     logits[0, :, 1, 2] = 10.0
     logits[1, :, 3, 4] = 10.0
@@ -40,7 +71,7 @@ def test_kp_test_prediction_payload_saves_predicted_and_target_keypoints() -> No
 
 
 def test_seg_test_prediction_payload_flattens_variable_spatial_masks() -> None:
-    module = _module_for_task("seg")
+    module = _module_for_task("seg", output_channels=4)
     logits = torch.zeros(2, 4, 2, 3)
     logits[:, 2] = 1.0
     target = torch.ones(2, 2, 3, dtype=torch.long)
@@ -59,7 +90,7 @@ def test_seg_test_prediction_payload_flattens_variable_spatial_masks() -> None:
 
 
 def test_line_test_prediction_payload_flattens_probabilities_and_targets() -> None:
-    module = _module_for_task("line")
+    module = _module_for_task("line", output_channels=1)
     logits = torch.zeros(2, 1, 2, 3)
     target = torch.ones(2, 1, 2, 3)
     batch = {

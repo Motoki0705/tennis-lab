@@ -28,7 +28,6 @@ This subclass overrides ``forward`` only; ``__init__``, the heads, and
 
 from __future__ import annotations
 
-import torch
 from torch import Tensor
 
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
@@ -47,34 +46,19 @@ class PLCSMultiViewAxialCamTokenModel(PLCSMultiViewAxialModel):
         self,
         human_kp: Tensor,
         court_kp: Tensor,
-        human_vis: Tensor | None = None,
-        human_mask: Tensor | None = None,
-        court_vis: Tensor | None = None,
+        human_vis: Tensor,
+        human_mask: Tensor,
+        court_vis: Tensor,
+        camera_attention_mask: Tensor,
+        time_attention_mask: Tensor,
     ) -> dict[str, Tensor]:
         """Forward pass: pose reads camera-0 token, rotation reads camera-1 token."""
-        batch_size, n_cams, seq_len_in = self._validate_forward_inputs(
-            human_kp=human_kp,
-            court_kp=court_kp,
-            human_vis=human_vis,
-            human_mask=human_mask,
-            court_vis=court_vis,
-        )
+        batch_size, n_cams, seq_len_in = human_kp.shape[:3]
 
-        if human_vis is not None:
-            human_kp = human_kp * (human_vis > 0).unsqueeze(-1).to(dtype=human_kp.dtype)
-        if court_vis is not None:
-            court_kp = court_kp * (court_vis > 0).unsqueeze(-1).to(dtype=court_kp.dtype)
+        human_kp = human_kp * (human_vis > 0).unsqueeze(-1).to(dtype=human_kp.dtype)
+        court_kp = court_kp * (court_vis > 0).unsqueeze(-1).to(dtype=court_kp.dtype)
 
-        if human_mask is not None:
-            token_valid = human_mask > 0
-        else:
-            token_valid = torch.ones(
-                batch_size,
-                n_cams,
-                seq_len_in,
-                dtype=torch.bool,
-                device=human_kp.device,
-            )
+        token_valid = human_mask > 0
 
         court_flat = court_kp.reshape(
             batch_size * n_cams * seq_len_in, self.num_court_tokens, 2
@@ -92,13 +76,6 @@ class PLCSMultiViewAxialCamTokenModel(PLCSMultiViewAxialModel):
             .permute(0, 2, 1, 3)
         )
 
-        token_valid_t = token_valid.permute(0, 2, 1)
-        camera_valid = token_valid_t.reshape(batch_size * seq_len_in, n_cams)
-        time_valid = token_valid_t.permute(0, 2, 1).reshape(
-            batch_size * n_cams, seq_len_in
-        )
-        camera_mask, _ = self._build_self_attn_mask(camera_valid)
-        time_mask, _ = self._build_self_attn_mask(time_valid)
         camera_freqs = self._camera_freqs(
             batch_size=batch_size,
             seq_len=seq_len_in,
@@ -119,7 +96,7 @@ class PLCSMultiViewAxialCamTokenModel(PLCSMultiViewAxialModel):
             x_camera = camera_layer(
                 x_camera,
                 freqs_cis=camera_freqs,
-                attn_mask=camera_mask,
+                attn_mask=camera_attention_mask,
             )
             x = x_camera.reshape(batch_size, seq_len_in, n_cams, self.hidden_dim)
 
@@ -129,28 +106,16 @@ class PLCSMultiViewAxialCamTokenModel(PLCSMultiViewAxialModel):
             x_time = time_layer(
                 x_time,
                 freqs_cis=time_freqs,
-                attn_mask=time_mask,
+                attn_mask=time_attention_mask,
             )
             x = x_time.reshape(batch_size, n_cams, seq_len_in, self.hidden_dim).permute(
                 0, 2, 1, 3
             )
 
         # x: (B, T, N, hidden). Read a distinct camera token per task. Each token
-        # has already attended across all cameras/time, so both are valid summary
-        # tokens for the camera-invariant per-time targets. Fall back to camera 0
-        # for the rotation head when only a single view is present.
-        rot_cam_idx = (
-            self.ROT_CAM_IDX if n_cams > self.ROT_CAM_IDX else self.POSE_CAM_IDX
-        )
         pose_feat = self.final_norm(x[:, :, self.POSE_CAM_IDX, :])
-        rot_feat = self.final_norm(x[:, :, rot_cam_idx, :])
+        rot_feat = self.final_norm(x[:, :, self.ROT_CAM_IDX, :])
 
-        out = {
-            "position": self.position_head(pose_feat),
-            "rotation": self.rotation_head(rot_feat),
-        }
-        # Mirror the split-model EX10 recipe: the canonical-pose head (3D geometry
-        # regularisation) rides the rotation branch.
-        if self.predict_canonical_pose and self.canonical_pose_head is not None:
-            out["canonical_pose"] = self.canonical_pose_head(rot_feat)
-        return out
+        # Mirror the split-model EX10 recipe: canonical geometry rides the
+        # rotation readout when that head was selected during construction.
+        return self._decode_readouts(pose_feat, rot_feat)

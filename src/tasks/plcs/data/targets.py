@@ -74,9 +74,6 @@ def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
     pelvis_world[:, 1] = position_norm[:, 1] * COURT_COORD_SCALE_Y
     pelvis_world[:, 2] = position_norm[:, 2] * COURT_COORD_SCALE_Z
 
-    meta = scene.get("meta", {})
-    init_yaw = float(meta.get("initial_yaw", 0.0))
-
     # Use per-frame rotation (cos, sin) when available.
     if "rotation" in scene:
         rot_cs = np.asarray(scene["rotation"], dtype=np.float32)
@@ -87,13 +84,12 @@ def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
             cos_yaw = rot_cs[:, 0].astype(np.float32)
             sin_yaw = rot_cs[:, 1].astype(np.float32)
         else:
-            cos_yaw = np.full(
-                (canonical.shape[0],), math.cos(init_yaw), dtype=np.float32
-            )
-            sin_yaw = np.full(
-                (canonical.shape[0],), math.sin(init_yaw), dtype=np.float32
+            raise ValueError(
+                "PLCS scene rotation must have shape (2,) or (T,2), got "
+                f"{rot_cs.shape}."
             )
     else:
+        init_yaw = float(scene["meta"]["initial_yaw"])
         cos_yaw = np.full((canonical.shape[0],), math.cos(init_yaw), dtype=np.float32)
         sin_yaw = np.full((canonical.shape[0],), math.sin(init_yaw), dtype=np.float32)
 

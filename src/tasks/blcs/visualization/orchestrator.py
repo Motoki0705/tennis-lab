@@ -16,7 +16,6 @@ from src.tasks.blcs.configuration import (
     build_path_resolver,
     validate_visualization_boundary,
 )
-from src.tasks.blcs.visualization.adapters.predict_inputs import build_predict_inputs
 from src.tasks.blcs.visualization.api.predict import predict_positions
 from src.tasks.blcs.visualization.io.scene import load_scene_bundle
 from src.tasks.blcs.visualization.rendering import (
@@ -83,15 +82,12 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         if cfg.checkpoint is None:
             raise RuntimeError("Validated predict mode requires a checkpoint.")
         logger.info(f"Predict mode: loading model with checkpoint: {cfg.checkpoint}")
-        predict_inputs = build_predict_inputs(
-            scene=bundle.scene,
-            cameras=bundle.cameras,
-        )
         pred_positions = predict_positions(
             checkpoint_path=cfg.checkpoint,
             resolver=cfg.resolver,
             device=cfg.device,
-            inputs=predict_inputs,
+            scene=bundle.scene,
+            cameras=bundle.cameras,
         )
         logger.info("Creating comparison animation...")
         anim = renderer.create_comparison_animation(

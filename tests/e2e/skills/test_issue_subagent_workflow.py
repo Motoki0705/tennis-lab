@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
+from typing import cast
 
 import pytest
 
@@ -393,7 +394,10 @@ def advance_to_validation(root: Path, task: Path) -> str:
     manage.apply_preflight_verdict(task, "PASS")
 
     (root / "tests.txt").write_text("new test\n", encoding="utf-8")
-    test_fp = candidate.compute_candidate_fingerprint(task, manage.load_state(task))
+    test_fp = cast(
+        str,
+        candidate.compute_candidate_fingerprint(task, manage.load_state(task)),
+    )
     assert test_fp != fp
     write_tests(task, 1, test_fp)
     assert manage.run_check(task, "test", "py-ok") == 0

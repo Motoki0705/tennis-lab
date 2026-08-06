@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import torch
@@ -14,6 +15,16 @@ from src.tasks.base.training.tracking_lifecycle import (
 from src.tasks.plcs.training.tracking_matching import match_player_tracks
 
 Assignment = tuple[torch.Tensor, torch.Tensor]
+
+
+@dataclass(frozen=True, slots=True)
+class PLCSTrackingLossInputs:
+    """Precomputed tensor terms entering the loss module hot path."""
+
+    position: torch.Tensor
+    rotation: torch.Tensor
+    presence: torch.Tensor
+    track_smoothness: torch.Tensor
 
 
 class PLCSTrackingLoss(nn.Module):
@@ -33,11 +44,12 @@ class PLCSTrackingLoss(nn.Module):
         self.match_rotation_weight = float(config.match_rotation_weight)
         self.match_presence_weight = float(config.match_presence_weight)
 
-    def forward(
+    def prepare_inputs(
         self,
         prediction: dict[str, torch.Tensor],
         batch: dict[str, torch.Tensor],
-    ) -> tuple[dict[str, torch.Tensor], list[Assignment]]:
+    ) -> tuple[PLCSTrackingLossInputs, list[Assignment]]:
+        """Match tracks and prepare tensor loss terms outside ``forward``."""
         assignments = match_player_tracks(
             prediction,
             batch,
@@ -112,16 +124,25 @@ class PLCSTrackingLoss(nn.Module):
         position = torch.stack(position_terms).mean() if position_terms else zero
         rotation = torch.stack(rotation_terms).mean() if rotation_terms else zero
         smoothness = torch.stack(smoothness_terms).mean() if smoothness_terms else zero
+        return PLCSTrackingLossInputs(
+            position=position,
+            rotation=rotation,
+            presence=presence,
+            track_smoothness=smoothness,
+        ), assignments
+
+    def forward(self, inputs: PLCSTrackingLossInputs) -> dict[str, torch.Tensor]:
+        """Combine boundary-prepared tensor terms with configured weights."""
         total = (
-            self.position_weight * position
-            + self.rotation_weight * rotation
-            + self.presence_weight * presence
-            + self.track_smoothness_weight * smoothness
+            self.position_weight * inputs.position
+            + self.rotation_weight * inputs.rotation
+            + self.presence_weight * inputs.presence
+            + self.track_smoothness_weight * inputs.track_smoothness
         )
         return {
             "total": total,
-            "position": position,
-            "rotation": rotation,
-            "presence": presence,
-            "track_smoothness": smoothness,
-        }, assignments
+            "position": inputs.position,
+            "rotation": inputs.rotation,
+            "presence": inputs.presence,
+            "track_smoothness": inputs.track_smoothness,
+        }

@@ -101,14 +101,14 @@ def load_line_detector(
         checkpoint,
         resolver=resolver,
         device=device,
-        allow_device_fallback=False,
         weights_only=False,
         config=config,
     )
-    if predictor.short_side != expected_short_side:
+    loaded_short_side = predictor.adapter.spec.short_side
+    if loaded_short_side != expected_short_side:
         raise ValueError(
             "Line-checkpoint preprocessing mismatch: "
-            f"expected {expected_short_side}, loaded {predictor.short_side}."
+            f"expected {expected_short_side}, loaded {loaded_short_side}."
         )
     if device.startswith("cuda") and predictor.device.type != "cuda":
         raise RuntimeError(
@@ -134,7 +134,7 @@ def infer_line_projection(
         raise ValueError(
             f"Provider image shape mismatch for {camera.camera_id}: {image_rgb.shape}."
         )
-    probability = detector.predictor.predict(image_rgb)["line_prob"].numpy()
+    probability = detector.predictor.predict(image_rgb).probability.numpy()
     pixels_xy, selected_probability = line_pixels_in_original_image(
         probability,
         original_width=camera.width,

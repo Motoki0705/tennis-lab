@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
 import torch.nn.functional as F
 
-from src.tasks.base.training.losses import FocalBCEWithLogitsLoss
+from src.tasks.base.training.losses import (
+    FocalBCEWithLogitsLoss,
+    validate_focal_bce_inputs,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -61,17 +62,9 @@ def test_negative_gamma_raises() -> None:
         FocalBCEWithLogitsLoss(gamma=-0.1)
 
 
-def test_validate_shape_raises_on_mismatch() -> None:
-    loss = FocalBCEWithLogitsLoss(validate_shape=True)
+def test_boundary_validator_rejects_mismatched_shapes() -> None:
     with pytest.raises(ValueError, match="same"):
-        loss(torch.randn(2, 3), torch.randn(2, 4))
-
-
-def test_no_validate_shape_allows_broadcastable() -> None:
-    """Without validate_shape, broadcastable shapes do not raise."""
-    loss = FocalBCEWithLogitsLoss(validate_shape=False)
-    out = loss(torch.zeros(2, 1), torch.zeros(2, 1))
-    assert math.isfinite(out.item())
+        validate_focal_bce_inputs(torch.randn(2, 3), torch.randn(2, 4))
 
 
 def test_perfect_prediction_near_zero_loss() -> None:

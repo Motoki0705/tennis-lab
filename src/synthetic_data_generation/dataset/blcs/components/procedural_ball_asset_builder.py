@@ -318,12 +318,12 @@ def main() -> None:
         mask_root.mkdir()
         split_start = args.view_count - args.validation_views
         capture_views: list[dict[str, object]] = []
-        for index, (rgb, mask) in enumerate(zip(rgb_views, mask_views, strict=True)):
+        for index, (rgb_image, mask_image) in enumerate(zip(rgb_views, mask_views, strict=True)):
             view_id = f"view-{index:03d}"
             rgb_path = rgb_root / f"{view_id}.png"
             mask_path = mask_root / f"{view_id}.png"
-            Image.fromarray(rgb).save(rgb_path)
-            Image.fromarray(mask.astype(np.uint8) * 255).save(mask_path)
+            Image.fromarray(rgb_image).save(rgb_path)
+            Image.fromarray(mask_image.astype(np.uint8) * 255).save(mask_path)
             capture_views.append(
                 {
                     "view_id": view_id,

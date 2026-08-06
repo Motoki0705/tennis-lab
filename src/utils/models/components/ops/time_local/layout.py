@@ -3,9 +3,26 @@ from __future__ import annotations
 import torch
 
 
+def build_local_attention_keep_mask(
+    valid_mask: torch.Tensor,
+    window_radius: int,
+) -> torch.Tensor:
+    """Prepare the local-attention keep-mask and empty-row policy at a boundary."""
+    seq_len = valid_mask.shape[1]
+    positions = torch.arange(seq_len, device=valid_mask.device)
+
+    local_keep = (positions[:, None] - positions[None, :]).abs() <= window_radius
+    keep_mask = valid_mask[:, None, :] & local_keep.unsqueeze(0)
+    fallback_keep = valid_mask[:, None, :].expand_as(keep_mask)
+    has_key = keep_mask.any(dim=-1, keepdim=True)
+    return torch.where(has_key, keep_mask, fallback_keep)
+
+
 def normalize_valid_mask(valid_mask: torch.Tensor) -> torch.Tensor:
     if valid_mask.ndim != 2:
-        raise ValueError(f"valid_mask must have shape [B, T], got {tuple(valid_mask.shape)}")
+        raise ValueError(
+            f"valid_mask must have shape [B, T], got {tuple(valid_mask.shape)}"
+        )
     valid_fixed = valid_mask.bool()
     fully_masked = ~valid_fixed.any(dim=1)
     if fully_masked.any():
@@ -21,9 +38,6 @@ def build_sliding_window_layout(
     device: torch.device,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     positions = torch.arange(seq_len, device=device, dtype=torch.long)
-
-    if window_radius < 0:
-        raise ValueError(f"window_radius must be non-negative, got {window_radius}")
 
     offsets = torch.arange(
         -window_radius,

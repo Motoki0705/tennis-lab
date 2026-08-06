@@ -28,6 +28,7 @@ from src.utils.models.components.ffn_layers import MLP, SwiGLU, default_ffn_dim
 from src.utils.models.components.moe import MoEConfig, MoELayer, MoERouting, TopKRouter
 from src.utils.models.components.norm import LayerNorm, RMSNorm
 from src.utils.models.components.rope import (
+    RotaryFrequencyComputer,
     apply_rotary_emb,
     precompute_freqs_cis,
     precompute_freqs_cis_nd,
@@ -42,6 +43,7 @@ __all__ = [
     "RMSNorm",
     "LayerNorm",
     # RoPE
+    "RotaryFrequencyComputer",
     "precompute_freqs_cis",
     "precompute_freqs_cis_nd",
     "apply_rotary_emb",

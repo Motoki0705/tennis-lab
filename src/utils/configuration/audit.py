@@ -1,8 +1,7 @@
-"""Executable AST audit for prohibited configuration and path resolution routes."""
+"""AST audit for prohibited configuration and path resolution routes."""
 
 from __future__ import annotations
 
-import argparse
 import ast
 import base64
 import hashlib
@@ -14,6 +13,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import src.utils.configuration.discovery as configuration_discovery
+from src.utils.configuration.catalog import ADAPTER_CONTRACTS
 from src.utils.configuration.inventory import (
     DEFAULT_AUDIT_INVENTORY,
     EXPECTED_AUDIT_EXEMPTIONS,
@@ -24,7 +25,6 @@ from src.utils.configuration.inventory import (
     AuditExemption,
     AuditInventory,
     AuditRule,
-    BoundaryKind,
     MigrationAuthorityKind,
     MigrationCategory,
     MigrationRecord,
@@ -39,16 +39,15 @@ from src.utils.configuration.source_oracle import inspect_raw_source, occurrence
 
 __all__ = [
     "AuditFinding",
+    "AuditOptions",
     "AuditReport",
     "BoundaryAuditIssue",
-    "DiscoveredRuntimeBoundary",
     "MigrationAuditIssue",
     "audit_source",
-    "discover_runtime_boundaries",
     "inspect_source",
-    "main",
     "regenerate_exemption_rows",
     "regenerate_migration_rows",
+    "run_configuration_audit",
     "write_generated_inventory_data",
 ]
 
@@ -65,6 +64,18 @@ class AuditFinding:
 
 
 @dataclass(frozen=True, slots=True)
+class AuditOptions:
+    """Explicit presentation and inventory-update choices for one audit run."""
+
+    show_ledger: bool
+    show_contracts: bool
+    show_discovered_boundaries: bool
+    regenerate_ledger: bool
+    write_generated_data: bool
+    source_revision: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class AuditReport:
     """Unclassified sites, stale exemptions, and migration-ledger violations."""
 
@@ -72,7 +83,9 @@ class AuditReport:
     stale_exemptions: tuple[AuditExemption, ...]
     migration_issues: tuple[MigrationAuditIssue, ...]
     boundary_issues: tuple[BoundaryAuditIssue, ...] = field(default_factory=tuple)
-    discovered_boundaries: tuple[DiscoveredRuntimeBoundary, ...] = field(
+    discovered_boundaries: tuple[
+        configuration_discovery.DiscoveredRuntimeBoundary, ...
+    ] = field(
         default_factory=tuple
     )
 
@@ -101,19 +114,6 @@ class BoundaryAuditIssue:
 
     boundary_id: str
     reason: str
-
-
-@dataclass(frozen=True, slots=True, order=True)
-class DiscoveredRuntimeBoundary:
-    """Source-only discovery result for one actual invocation boundary."""
-
-    module: str
-    callable_name: str
-    kind: BoundaryKind
-    executable_module: bool
-    validator_key: str | None
-    validator_callable: str | None
-    subprocess_invokers: tuple[str, ...] = ()
 
 
 class _Visitor(ast.NodeVisitor):
@@ -596,7 +596,7 @@ def _scope_nodes(body: Sequence[ast.stmt]) -> tuple[ast.AST, ...]:
 def _call_returns_mapping(node: ast.AST, mapping_names: set[str]) -> bool:
     if not isinstance(node, ast.Call):
         return False
-    name = _call_name(node).lower()
+    name = configuration_discovery.ast_call_name(node).lower()
     if name in _MAPPING_CALL_NAMES:
         return True
     configuration_arguments = (*node.args, *(item.value for item in node.keywords))
@@ -612,9 +612,7 @@ def _call_returns_mapping(node: ast.AST, mapping_names: set[str]) -> bool:
             for argument in configuration_arguments
         )
     if name == "cast" and len(node.args) >= 2:
-        return "mapping" in ast.unparse(node.args[0]).lower() or "dict" in ast.unparse(
-            node.args[0]
-        ).lower()
+        return _mapping_annotation(node.args[0])
     return False
 
 
@@ -694,7 +692,7 @@ def _iterates_verified_path(node: ast.AST, path_names: set[str]) -> bool:
         return True
     if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
         return any(_is_verified_path_value(item, path_names) for item in node.elts)
-    if isinstance(node, ast.Call) and _call_name(node) in {
+    if isinstance(node, ast.Call) and configuration_discovery.ast_call_name(node) in {
         "sorted",
         "list",
         "tuple",
@@ -946,7 +944,8 @@ def _is_explicit_boolean_value(node: ast.AST) -> bool:
         or isinstance(node, ast.Constant)
         and type(node.value) is bool
         or isinstance(node, ast.Call)
-        and _call_name(node) in {"all", "any", "bool", "isinstance", "issubclass"}
+        and configuration_discovery.ast_call_name(node)
+        in {"all", "any", "bool", "isinstance", "issubclass"}
     )
 
 
@@ -988,484 +987,6 @@ def _is_path_construction_call(
     } and _contains_configuration_route(node, mapping_names)
 
 
-def _module_name(source_root: Path, path: Path) -> str:
-    return ".".join(path.relative_to(source_root.parent).with_suffix("").parts)
-
-
-def _module_string_constants(tree: ast.Module) -> dict[str, str]:
-    constants: dict[str, str] = {}
-    for statement in tree.body:
-        if isinstance(statement, ast.Assign):
-            targets: Sequence[ast.expr] = statement.targets
-            assigned_value: ast.expr | None = statement.value
-        elif isinstance(statement, ast.AnnAssign):
-            targets = (statement.target,)
-            assigned_value = statement.value
-        else:
-            continue
-        if isinstance(assigned_value, ast.Constant) and isinstance(
-            assigned_value.value, str
-        ):
-            for target in targets:
-                if isinstance(target, ast.Name):
-                    constants[target.id] = assigned_value.value
-    return constants
-
-
-def _resolved_string(node: ast.AST, constants: Mapping[str, str]) -> str | None:
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return node.value
-    if isinstance(node, ast.Name):
-        return constants.get(node.id)
-    return None
-
-
-def _call_name(node: ast.Call) -> str:
-    if isinstance(node.func, ast.Name):
-        return node.func.id
-    if isinstance(node.func, ast.Attribute):
-        return node.func.attr
-    return ""
-
-
-def _contains_named_call(node: ast.AST, name: str) -> bool:
-    return any(
-        isinstance(child, ast.Call) and _call_name(child) == name
-        for child in ast.walk(node)
-    )
-
-
-def _has_executable_edge(tree: ast.Module) -> bool:
-    for statement in tree.body:
-        if (
-            isinstance(statement, ast.If)
-            and "__main__" in ast.unparse(statement.test)
-            and any(isinstance(child, ast.Call) for child in ast.walk(statement))
-        ):
-            return True
-        if (
-            isinstance(statement, ast.Expr)
-            and isinstance(statement.value, ast.Call)
-            and _call_name(statement.value) in {"main", "_main"}
-        ):
-            return True
-        if isinstance(statement, ast.Raise) and _contains_named_call(statement, "main"):
-            return True
-    return False
-
-
-def _hydra_boundary_key(
-    call: ast.Call,
-    constants: Mapping[str, str],
-) -> str | None:
-    for keyword in call.keywords:
-        if keyword.arg == "validation_boundary":
-            return _resolved_string(keyword.value, constants)
-    return None
-
-
-def _hydra_call(node: ast.AST) -> ast.Call | None:
-    for child in ast.walk(node):
-        if isinstance(child, ast.Call) and _call_name(child) == "hydra_main":
-            return child
-    return None
-
-
-def _validator_callable_symbol(
-    module: str,
-    node: ast.AST,
-    line: int,
-    imports: Mapping[str, str],
-) -> str:
-    if isinstance(node, ast.Name):
-        return imports.get(node.id, f"{module}.{node.id}")
-    if isinstance(node, ast.Lambda):
-        return f"{module}.<lambda>@{line}"
-    return f"{module}.{ast.unparse(node)}"
-
-
-def _validator_registrations(
-    module: str,
-    tree: ast.Module,
-    constants: Mapping[str, str],
-) -> dict[str, str]:
-    registrations: dict[str, str] = {}
-    imports = {
-        alias.asname or alias.name: f"{statement.module}.{alias.name}"
-        for statement in tree.body
-        if isinstance(statement, ast.ImportFrom) and statement.module is not None
-        for alias in statement.names
-    }
-    string_sets: dict[str, tuple[str, ...]] = {}
-    for statement in tree.body:
-        if not isinstance(statement, (ast.Assign, ast.AnnAssign)):
-            continue
-        value = statement.value
-        target_nodes = (
-            statement.targets
-            if isinstance(statement, ast.Assign)
-            else (statement.target,)
-        )
-        values: tuple[str, ...] = ()
-        if isinstance(value, ast.Dict):
-            values = tuple(
-                key.value
-                for key in value.keys
-                if isinstance(key, ast.Constant) and isinstance(key.value, str)
-            )
-        elif isinstance(value, (ast.Tuple, ast.List, ast.Set)):
-            values = tuple(
-                item.value
-                for item in value.elts
-                if isinstance(item, ast.Constant) and isinstance(item.value, str)
-            )
-        for target in target_nodes:
-            if isinstance(target, ast.Name) and values:
-                string_sets[target.id] = values
-
-    for node in ast.walk(tree):
-        if (
-            not isinstance(node, ast.Call)
-            or _call_name(node) != "register_boundary_validator"
-        ):
-            continue
-        if len(node.args) != 2:
-            continue
-        key = _resolved_string(node.args[0], constants)
-        if key is not None:
-            registrations[key] = _validator_callable_symbol(
-                module, node.args[1], node.lineno, imports
-            )
-
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.For) or not isinstance(node.target, ast.Name):
-            continue
-        if not isinstance(node.iter, ast.Name):
-            continue
-        for call in (
-            child
-            for statement in node.body
-            for child in ast.walk(statement)
-            if isinstance(child, ast.Call)
-            and _call_name(child) == "register_boundary_validator"
-            and len(child.args) == 2
-            and isinstance(child.args[0], ast.Name)
-            and child.args[0].id == node.target.id
-        ):
-            for key in string_sets.get(node.iter.id, ()):
-                validator_expression = call.args[1]
-                if (
-                    isinstance(validator_expression, ast.Call)
-                    and len(validator_expression.args) == 1
-                    and isinstance(validator_expression.args[0], ast.Name)
-                    and validator_expression.args[0].id == node.target.id
-                ):
-                    rendered = f"{ast.unparse(validator_expression.func)}({key!r})"
-                else:
-                    rendered = ast.unparse(validator_expression)
-                registrations[key] = f"{module}.{rendered}"
-    return registrations
-
-
-def _non_hydra_validator_declarations(
-    module: str,
-    tree: ast.Module,
-) -> dict[str, str]:
-    declarations: dict[str, str] = {}
-    for statement in tree.body:
-        if not isinstance(statement, (ast.Assign, ast.AnnAssign)):
-            continue
-        value = statement.value
-        if (
-            not isinstance(value, ast.Call)
-            or _call_name(value) != "NonHydraPathBoundary"
-        ):
-            continue
-        name_node: ast.AST | None = value.args[0] if value.args else None
-        if name_node is None:
-            name_node = next(
-                (keyword.value for keyword in value.keywords if keyword.arg == "name"),
-                None,
-            )
-        if name_node is None:
-            continue
-        boundary_name = _resolved_string(name_node, {})
-        if boundary_name is None:
-            continue
-        targets = (
-            statement.targets
-            if isinstance(statement, ast.Assign)
-            else (statement.target,)
-        )
-        for target in targets:
-            if isinstance(target, ast.Name):
-                declarations[target.id] = boundary_name
-    invoked = {
-        child.func.value.id
-        for child in ast.walk(tree)
-        if isinstance(child, ast.Call)
-        and isinstance(child.func, ast.Attribute)
-        and child.func.attr == "validate"
-        and isinstance(child.func.value, ast.Name)
-    }
-    imported_boundary = next(
-        (
-            f"{statement.module}.NonHydraPathBoundary.validate"
-            for statement in tree.body
-            if isinstance(statement, ast.ImportFrom)
-            and statement.module is not None
-            and any(alias.name == "NonHydraPathBoundary" for alias in statement.names)
-        ),
-        None,
-    )
-    validator_callable = imported_boundary or f"{module}.NonHydraPathBoundary.validate"
-    if validator_callable == "src.utils.configuration.NonHydraPathBoundary.validate":
-        validator_callable = (
-            "src.utils.configuration.paths.NonHydraPathBoundary.validate"
-        )
-    return {
-        name: validator_callable
-        for variable, name in declarations.items()
-        if variable in invoked
-    }
-
-
-_SELF_VALIDATING_COMMANDS = frozenset(
-    {
-        "src.configuration_validation",
-        "src.synthetic_data_generation.config_validation",
-        "src.tasks.ball_detection.validation",
-        "src.tasks.blcs.validation",
-        "src.tasks.plcs.validation_matrix",
-        "src.utils.configuration.audit",
-        "src.utils.configuration.validation",
-    }
-)
-
-
-def _subprocess_module_targets(tree: ast.Module) -> tuple[str, ...]:
-    targets: set[str] = set()
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.List, ast.Tuple)):
-            continue
-        for index, item in enumerate(node.elts[:-1]):
-            next_item = node.elts[index + 1]
-            if (
-                isinstance(item, ast.Constant)
-                and item.value == "-m"
-                and isinstance(next_item, ast.Constant)
-                and isinstance(next_item.value, str)
-            ):
-                targets.add(next_item.value)
-    return tuple(sorted(targets))
-
-
-def discover_runtime_boundaries(
-    source_root: Path,
-) -> tuple[DiscoveredRuntimeBoundary, ...]:
-    """Discover runtime callables and their actual validator bindings from source."""
-    trees: dict[str, ast.Module] = {}
-    constants_by_module: dict[str, dict[str, str]] = {}
-    registrations: dict[str, str] = {}
-    subprocess_invokers: dict[str, set[str]] = {}
-    for path in sorted(source_root.rglob("*.py")):
-        module = _module_name(source_root, path)
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        trees[module] = tree
-        constants = _module_string_constants(tree)
-        constants_by_module[module] = constants
-        for key, callable_symbol in _validator_registrations(
-            module, tree, constants
-        ).items():
-            if key in registrations and registrations[key] != callable_symbol:
-                registrations[key] = "<multiple-bindings>"
-            else:
-                registrations[key] = callable_symbol
-        for target in _subprocess_module_targets(tree):
-            subprocess_invokers.setdefault(target, set()).add(module)
-
-    discovered: dict[tuple[str, str], DiscoveredRuntimeBoundary] = {}
-    for module, tree in trees.items():
-        constants = constants_by_module[module]
-        executable = _has_executable_edge(tree)
-        non_hydra_validators = _non_hydra_validator_declarations(module, tree)
-        functions = {
-            function.name: function
-            for function in tree.body
-            if isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef))
-        }
-        parser_functions = tuple(
-            function
-            for function in functions.values()
-            if _contains_named_call(function, "ArgumentParser")
-        )
-        path_validation_functions = tuple(
-            function
-            for function in functions.values()
-            if any(
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute)
-                and node.func.attr == "validate"
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == "PATH_BOUNDARY"
-                for node in ast.walk(function)
-            )
-        )
-        raw_boundaries = (
-            path_validation_functions
-            if non_hydra_validators and path_validation_functions
-            else parser_functions
-        )
-        for function in raw_boundaries:
-            validator_key = (
-                next(iter(non_hydra_validators))
-                if function in path_validation_functions
-                else None
-            )
-            validator_callable = (
-                non_hydra_validators[validator_key]
-                if validator_key is not None
-                else None
-            )
-            discovered[(module, function.name)] = DiscoveredRuntimeBoundary(
-                module=module,
-                callable_name=function.name,
-                kind=(
-                    BoundaryKind.VALIDATION_COMMAND
-                    if module in _SELF_VALIDATING_COMMANDS
-                    else BoundaryKind.ARGPARSE
-                    if parser_functions
-                    else BoundaryKind.CALLABLE
-                ),
-                executable_module=executable,
-                validator_key=validator_key,
-                validator_callable=validator_callable,
-                subprocess_invokers=tuple(sorted(subprocess_invokers.get(module, ()))),
-            )
-
-        for function in functions.values():
-            for decorator in function.decorator_list:
-                hydra_call = _hydra_call(decorator)
-                if hydra_call is None:
-                    continue
-                validator_key = _hydra_boundary_key(hydra_call, constants)
-                discovered[(module, function.name)] = DiscoveredRuntimeBoundary(
-                    module=module,
-                    callable_name=function.name,
-                    kind=BoundaryKind.HYDRA,
-                    executable_module=executable,
-                    validator_key=validator_key,
-                    validator_callable=(
-                        registrations.get(validator_key)
-                        if validator_key is not None
-                        else None
-                    ),
-                    subprocess_invokers=tuple(
-                        sorted(subprocess_invokers.get(module, ()))
-                    ),
-                )
-
-            for nested in ast.walk(function):
-                if nested is function or not isinstance(
-                    nested, (ast.FunctionDef, ast.AsyncFunctionDef)
-                ):
-                    continue
-                for decorator in nested.decorator_list:
-                    hydra_call = _hydra_call(decorator)
-                    if hydra_call is None:
-                        continue
-                    validator_key = _hydra_boundary_key(hydra_call, constants)
-                    discovered[(module, function.name)] = DiscoveredRuntimeBoundary(
-                        module=module,
-                        callable_name=function.name,
-                        kind=BoundaryKind.HYDRA,
-                        executable_module=executable,
-                        validator_key=validator_key,
-                        validator_callable=(
-                            registrations.get(validator_key)
-                            if validator_key is not None
-                            else None
-                        ),
-                        subprocess_invokers=tuple(
-                            sorted(subprocess_invokers.get(module, ()))
-                        ),
-                    )
-
-        if module == "src.synthetic_data_generation.scripts.alignment.geometry_bridge":
-            provider = functions.get("provider_main")
-            if provider is not None:
-                discovered[(module, "provider_main")] = DiscoveredRuntimeBoundary(
-                    module=module,
-                    callable_name="provider_main",
-                    kind=BoundaryKind.CALLABLE,
-                    executable_module=executable,
-                    validator_key="synthetic.geometry_bridge",
-                    validator_callable=(
-                        "src.utils.configuration.paths.NonHydraPathBoundary.validate"
-                    ),
-                    subprocess_invokers=tuple(
-                        sorted(subprocess_invokers.get(module, ()))
-                    ),
-                )
-
-        for statement in tree.body:
-            if not isinstance(statement, (ast.Assign, ast.AnnAssign)):
-                continue
-            targets = (
-                statement.targets
-                if isinstance(statement, ast.Assign)
-                else (statement.target,)
-            )
-            if not any(
-                isinstance(target, ast.Name) and target.id == "main"
-                for target in targets
-            ):
-                continue
-            if statement.value is None:
-                continue
-            hydra_call = _hydra_call(statement.value)
-            if hydra_call is None:
-                continue
-            validator_key = _hydra_boundary_key(hydra_call, constants)
-            discovered[(module, "main")] = DiscoveredRuntimeBoundary(
-                module=module,
-                callable_name="main",
-                kind=BoundaryKind.HYDRA,
-                executable_module=executable,
-                validator_key=validator_key,
-                validator_callable=(
-                    registrations.get(validator_key)
-                    if validator_key is not None
-                    else None
-                ),
-                subprocess_invokers=tuple(sorted(subprocess_invokers.get(module, ()))),
-            )
-
-        if not parser_functions and not any(key[0] == module for key in discovered):
-            main_function = functions.get("main")
-            if main_function is not None:
-                kind = (
-                    BoundaryKind.VALIDATION_COMMAND
-                    if module in _SELF_VALIDATING_COMMANDS
-                    else BoundaryKind.SUBPROCESS_MODULE
-                    if module in subprocess_invokers
-                    or module.endswith(".geometry_bridge")
-                    else BoundaryKind.CALLABLE
-                )
-                discovered[(module, "main")] = DiscoveredRuntimeBoundary(
-                    module=module,
-                    callable_name="main",
-                    kind=kind,
-                    executable_module=executable,
-                    validator_key=None,
-                    validator_callable=None,
-                    subprocess_invokers=tuple(
-                        sorted(subprocess_invokers.get(module, ()))
-                    ),
-                )
-    return tuple(sorted(discovered.values()))
-
-
 def regenerate_migration_rows(
     source_root: Path,
     *,
@@ -1483,7 +1004,9 @@ def regenerate_migration_rows(
     source_expressions: set[tuple[str, str, str]] = set()
     for path in sorted(source_root.rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        visitor = _Visitor(_module_name(source_root, path), tree)
+        visitor = _Visitor(
+            configuration_discovery.source_module_name(source_root, path), tree
+        )
         visitor.visit(tree)
         sites.extend(visitor.route_sites)
         route_counts.update(visitor.migration_routes)
@@ -1686,7 +1209,7 @@ def regenerate_exemption_rows(
     findings: list[AuditFinding] = []
     sites: list[tuple[str, str, int, MigrationCategory, str]] = []
     for path in sorted(source_root.rglob("*.py")):
-        module = _module_name(source_root, path)
+        module = configuration_discovery.source_module_name(source_root, path)
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         visitor = _Visitor(module, tree)
         visitor.visit(tree)
@@ -1993,7 +1516,9 @@ def inspect_source(
     symbols: set[str] = set()
     for path in sorted(source_root.rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        visitor = _Visitor(_module_name(source_root, path), tree)
+        visitor = _Visitor(
+            configuration_discovery.source_module_name(source_root, path), tree
+        )
         visitor.visit(tree)
         findings.extend(visitor.findings)
         routes.update(visitor.migration_routes)
@@ -2034,7 +1559,9 @@ def inspect_source(
             )
         )
     )
-    discovered_boundaries = discover_runtime_boundaries(source_root)
+    discovered_boundaries = configuration_discovery.discover_runtime_boundaries(
+        source_root
+    )
     boundary_issues = _inspect_boundaries(
         inventory,
         discovered=discovered_boundaries,
@@ -2051,7 +1578,7 @@ def inspect_source(
 def _inspect_yaml(source_root: Path) -> tuple[AuditFinding, ...]:
     findings: list[AuditFinding] = []
     for path in sorted((*source_root.rglob("*.yaml"), *source_root.rglob("*.yml"))):
-        module = _module_name(source_root, path)
+        module = configuration_discovery.source_module_name(source_root, path)
         hydra_indent: int | None = None
         for line_number, line in enumerate(
             path.read_text(encoding="utf-8").splitlines(), start=1
@@ -2166,7 +1693,7 @@ def _inspect_source_oracle(
 def _inspect_boundaries(
     inventory: AuditInventory,
     *,
-    discovered: Sequence[DiscoveredRuntimeBoundary],
+    discovered: Sequence[configuration_discovery.DiscoveredRuntimeBoundary],
 ) -> tuple[BoundaryAuditIssue, ...]:
     issues: list[BoundaryAuditIssue] = []
     expected = {
@@ -2231,7 +1758,7 @@ def _inspect_boundaries(
                     f"source={actual_boundary.validator_callable!r}",
                 )
             )
-        if actual_boundary.kind is not BoundaryKind.VALIDATION_COMMAND and (
+        if (
             actual_boundary.validator_key is None
             or actual_boundary.validator_callable is None
         ):
@@ -2563,8 +2090,6 @@ def _render_boundary(inventory: AuditInventory) -> str:
 
 def _render_adapter_contracts() -> str:
     """Render every typed adapter field from the single source catalog."""
-    from src.configuration_contracts import ADAPTER_CONTRACTS
-
     return "\n".join(
         "\t".join(
             (
@@ -2581,50 +2106,16 @@ def _render_adapter_contracts() -> str:
     )
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def run_configuration_audit(source_root: Path, options: AuditOptions) -> int:
     """Run the source audit, returning nonzero for unclassified findings."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source_root", type=Path)
-    parser.add_argument(
-        "--show-ledger",
-        action="store_true",
-        help="render every exact migration record as tab-separated data",
-    )
-    parser.add_argument(
-        "--show-contracts",
-        action="store_true",
-        help="render required/optional/default/precedence authorities",
-    )
-    parser.add_argument(
-        "--show-discovered-boundaries",
-        action="store_true",
-        help="render source-discovered callable, executable, and validator bindings",
-    )
-    parser.add_argument(
-        "--regenerate-ledger",
-        action="store_true",
-        help="emit deterministic candidate ledger JSON without changing embedded data",
-    )
-    parser.add_argument(
-        "--write-generated-data",
-        action="store_true",
-        help=(
-            "freeze re-anchored exemptions and ledger metadata in migration_data.py "
-            "and exemption_data.py; fails on every newly unclassified construct"
-        ),
-    )
-    parser.add_argument(
-        "--source-revision",
-        help="immutable revision label required by --write-generated-data",
-    )
-    arguments = parser.parse_args(argv)
-    if arguments.write_generated_data:
-        if arguments.source_revision is None:
-            parser.error("--write-generated-data requires --source-revision")
+    resolved_source_root = source_root.resolve()
+    if options.write_generated_data:
+        if options.source_revision is None:
+            raise ValueError("write_generated_data requires source_revision")
         try:
             migration_count, exemption_count = write_generated_inventory_data(
-                arguments.source_root.resolve(),
-                source_revision=arguments.source_revision,
+                resolved_source_root,
+                source_revision=options.source_revision,
             )
         except RuntimeError as error:
             print(error)
@@ -2634,14 +2125,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"{migration_count} migration rows, {exemption_count} exemptions."
         )
         return 0
-    report = inspect_source(arguments.source_root.resolve())
-    if arguments.show_ledger:
+    report = inspect_source(resolved_source_root)
+    if options.show_ledger:
         for record in DEFAULT_AUDIT_INVENTORY.migrations:
             print(_render_migration(record))
-    if arguments.show_contracts:
+    if options.show_contracts:
         print(_render_boundary(DEFAULT_AUDIT_INVENTORY))
         print(_render_adapter_contracts())
-    if arguments.show_discovered_boundaries:
+    if options.show_discovered_boundaries:
         for boundary in report.discovered_boundaries:
             print(
                 "\t".join(
@@ -2656,10 +2147,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                     )
                 )
             )
-    if arguments.regenerate_ledger:
+    if options.regenerate_ledger:
         print(
             json.dumps(
-                regenerate_migration_rows(arguments.source_root.resolve()),
+                regenerate_migration_rows(resolved_source_root),
                 ensure_ascii=True,
                 separators=(",", ":"),
             )
@@ -2689,7 +2180,3 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"migration ledger exact ({len(DEFAULT_AUDIT_INVENTORY.migrations)} records)."
     )
     return 0
-
-
-if __name__ == "__main__":  # pragma: no cover - executable audit boundary
-    raise SystemExit(main())

@@ -1,6 +1,7 @@
 """Tests for the vendored SmplxLite body model using a synthetic SMPL-X npz."""
 
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pytest
@@ -77,7 +78,8 @@ class TestSmplxLite:
             global_orient=torch.zeros(1, 1, 3),
             transl=transl,
         )
-        expected = model.v_template[None, None] + transl[..., None, :]
+        template = cast(torch.Tensor, model.v_template)
+        expected = template[None, None] + transl[..., None, :]
         torch.testing.assert_close(verts, expected, atol=1e-5, rtol=0)
 
     def test_get_skeleton_shape(self, synthetic_smplx_npz: Path):
@@ -87,7 +89,8 @@ class TestSmplxLite:
         )
         skeleton = model.get_skeleton(torch.zeros(2, 10))
         assert skeleton.shape == (2, NUM_JOINTS, 3)
-        torch.testing.assert_close(skeleton, model.J_template.expand(2, -1, -1))
+        joint_template = cast(torch.Tensor, model.J_template)
+        torch.testing.assert_close(skeleton, joint_template.expand(2, -1, -1))
 
     def test_missing_model_file_error(self, tmp_path: Path):
         with pytest.raises(FileNotFoundError, match="smpl-x.is.tue.mpg.de"):

@@ -11,8 +11,8 @@ import torch
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-from src.submodules.models._base import BaseInferenceModel
-from src.submodules.models.dino import (
+from src.submodules.models._base.inference_model import BaseInferenceModel
+from src.submodules.models.dino.person_detector import (
     DinoPersonDetector,
     PersonDetectionRequest,
     PersonDetectionResult,
@@ -85,17 +85,15 @@ class DinoPersonTracker(BaseInferenceModel[TrackRequest, TrackResult]):
         repository: str | Path,
         *,
         device: str | torch.device,
-        allow_device_fallback: bool,
         confidence: float,
         short_side: int,
         max_long_side: int,
     ) -> None:
-        super().__init__(device, allow_device_fallback=allow_device_fallback)
+        super().__init__(device)
         self._detector = DinoPersonDetector(
             checkpoint=checkpoint,
             repository=repository,
             device=self.device,
-            allow_device_fallback=allow_device_fallback,
             confidence=confidence,
             short_side=short_side,
             max_long_side=max_long_side,

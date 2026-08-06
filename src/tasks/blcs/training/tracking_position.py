@@ -19,9 +19,7 @@ def position_axis_weight_tensor(value: Sequence[float] | Tensor) -> Tensor:
 
 
 def weighted_position_axis_mean(values: Tensor, axis_weights: Tensor) -> Tensor:
-    """Reduce the final XYZ axis using normalized positive weights."""
-    if values.shape[-1] != 3:
-        raise ValueError("Position values must have XYZ as their final axis.")
+    """Reduce the boundary-validated final XYZ axis using fixed weights."""
     weights = axis_weights.to(device=values.device, dtype=values.dtype)
     return (values * weights).sum(-1) / weights.sum()
 

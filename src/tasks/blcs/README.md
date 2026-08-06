@@ -19,40 +19,46 @@
 
 ### data/
 - **`types.py`**: `BLCSSample`/`BLCSBatch`/`BLCSMultiViewSample`/`BLCSMultiViewBatch` のバッチ契約。
-- **`dataset.py`**: `BallTrajectoryDataset`。canonical multiviewサンプルを返し、collate/adapt関数を提供。
-- **`datamodule.py`**: `BLCSDataModule`。`input_profile`(`single`/`multiview`)に応じたcollate構築。
+- **`dataset.py`**: `BallTrajectoryDataset`。canonical multiviewサンプルとcanonical collateを提供。
+- **`datamodule.py`**: `BLCSDataModule`。composition rootで選択済みのcollateを受け取り、model variantを認識しない。
 - **`augmentation.py`**: `BLCSBallObservationAugmentation`。detector誤差を模した8段のUVノイズパイプライン。
 - **`chunk_manager.py` / `chunked_datamodule.py`**: バックグラウンドchunk生成によるtrain datamodule。
 - **`tracking_dataset.py` / `tracking_datamodule.py`**: scene読込後にclip/viewをsampleし、object観測をscene object IDの昇順で保持したまま、物理trackをlifecycle slotへpackingするDataset/DataModule。通常backendは固定splitを読み、chunked backendだけがtrain sceneを逐次生成する。val/testは常に`scene_dir`上の固定splitを使う。
 - **`tracking_augmentation.py`**: object列を並べ替えず、clean GTを保持したまま観測だけへdetector noise/dropout/false-positiveを適用するshape adapter。
 
 ### models/
-- **`__init__.py`**: `build_blcs_model(config)`。`model.name` で3実装を切替。
 - **`blcs_model.py`**: `BLCSModel`。single-view用decoder-only Transformer(court+ballトークン)。
 - **`blcs_multiview_model.py`**: `BLCSMultiViewModel`。クエリのcross-attention+時間self-attentionによる反復更新モデル。
 - **`blcs_multiview_axial_model.py`**: `BLCSMultiViewAxialModel`(現行デフォルト)。camera軸/time軸交互self-attention。
 - **`blcs_track_query_model.py`**: `BLCSTrackQueryModel`。object ID順のcamera観測からclip-localな固定query slotで複数ボール軌道とpresenceを推定する。
-- **`components/heads.py`**: `Trajectory3DHead`/`VelocityHead`。
+- **`components/heads.py`**: constructor時に選択されるposition-only / position+velocity出力module。
+- **`components/observation_fusion.py`**: track-query用に選択済みのlinear / point-attention観測融合module。
 - **`components/differentiable_projection.py`**: `DifferentiableProjection`。予測3D位置をカメラへ再投影。
-- **`discriminators/`**: `BLCSTrajectoryDiscriminator` と工場関数 `build_blcs_discriminator`。
+- **`discriminators/`**: 共有trajectory discriminatorを構築するcanonical factory。
+
+### model_io/
+- **`contracts.py`**: trajectory / track-queryのtyped predictionと、学習に必要な全tensorを持つvalidated batch契約。
+- **`attention_masks.py`**: single / multiview / axial / track-query / point-fusion用のattention maskとempty-row修復をmodel実行前に準備する。
+- **`adapters.py`**: single / multiview / axial / track-queryごとの入力検証・prepared attention tensorを含むmodel call構築・出力decode。shape、dtype、device、semantic制約はmodel `forward`前にここで検証する。
+- **`factory.py`**: modelと対応adapterを同時に構築して一度だけbindingするcomposition root。学習・推論loopはmodel名や出力keyを分岐しない。
+- **`training.py`**: binding、collate、DataModule、LightningModuleを一括構成する学習runtime root。
 
 ### training/
-- **`runner.py`**: `BLCSTrainingRunner`。`data.backend` でdefault/chunked datamoduleを切替。
-- **`lightning_module.py`**: `BLCSLightningModule`。supervised+reprojection+GAN損失を統括。
+- **`runner.py`**: `BLCSTrainingRunner`。構成済みruntimeを実行し、model固有I/Oを認識しない。
+- **`lightning_module.py`**: `BLCSLightningModule`。typed prediction/batchによるsupervised+reprojection+GAN損失を統括。
 - **`losses.py`**: `BLCSLoss`。`trajectory_position_loss` + 任意の `reprojection_loss`。
 - **`metrics.py`**: `BLCSMetrics`。メートル換算L2誤差・閾値内accuracyを集計。
-- **`tracking_{matching,losses,metrics,lightning_module}.py`**: clip-level Hungarian matchingによるmulti-ball tracking学習。
+- **`tracking_{matching,losses,metrics,lightning_module}.py`**: clip-level Hungarian matching・forward前のloss term準備・multi-ball固有metrics/payloadを所有し、Lightning stage lifecycleは`tasks/base/training/tracking_lightning_module.py`へ委譲する。
 
 ### inference/
-- **`predictor.py`**: `BLCSPredictor`。`predict(denormalize=True)` でメートル系3D軌道を返す。
+- **`predictor.py`**: `BLCSPredictor`。checkpoint内の必須configからmodel/adapter bindingを厳密に復元し、`predict_scene()` / `predict_multiview_arrays()`でtyped trajectoryを返す。
+- **`tracking_predictor.py`**: `BLCSTrackingPredictor`。track-query bindingによりposition、presence logits/probability/判定を一度だけdecodeする。
 
 ### visualization/
 - **`orchestrator.py`**: `run_visualization()`。visualize/predictモードを統括。
-- **`adapters/predict_inputs.py`**: single/multiview入力構築。
-- **`adapters/render_inputs.py`**: バッチ/出力からGT・予測軌道配列を抽出。
 - **`api/predict.py`**: `predict_positions()`。checkpointからメートル単位軌道を返す。
 - **`io/scene.py`**: `SceneBundle`。シーン読込とカメラ選択。
-- **`rendering/scene_renderer.py`**: `BLCSSceneRenderer`。single/multi-ballの3D/2D/カメラ視点アニメーションとGT・予測比較を描画する。3Dは `src.utils.rendering` の共有プリミティブ(テーマ・レイヤ規約・カメラ・フェード軌道・影・バウンスリング・HUD・ミニマップ)を利用。バウンス表示はmetaのイベント優先、無いときのみ `detect_bounces()` へfallback(`resolve_bounce_frames()`)。style/視点は `visualization.style` / `visualization.view_3d` で設定。
+- **`rendering/scene_renderer.py`**: `BLCSSceneRenderer`。single/multi-ballの3D/2D/カメラ視点アニメーションとGT・予測比較を描画する。3Dは `src.utils.rendering` の共有プリミティブ(テーマ・レイヤ規約・カメラ・フェード軌道・影・バウンスリング・HUD・ミニマップ)を利用。バウンス表示は明示的なscene eventのみを使用し、軌道から意味を推測するfallbackは持たない。style/視点は `visualization.style` / `visualization.view_3d` で設定。
 
 ### scripts/
 - **`generate_dataset.py`**: 合成データ生成エントリポイント。

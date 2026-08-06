@@ -1,21 +1,5 @@
-"""Training components for court detection."""
+"""Training implementation package for court detection.
 
-from src.tasks.court_detection.training.lightning_module import (
-    CourtDetectionLightningModule,
-)
-from src.tasks.court_detection.training.losses import (
-    BinaryDiceLoss,
-    DiceLoss,
-    FocalBCEWithLogitsLoss,
-)
-from src.tasks.court_detection.training.metrics import CourtDetectionMetrics
-from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
-
-__all__ = [
-    "BinaryDiceLoss",
-    "CourtDetectionLightningModule",
-    "CourtDetectionMetrics",
-    "CourtDetectionTrainingRunner",
-    "DiceLoss",
-    "FocalBCEWithLogitsLoss",
-]
+Import concrete components from their defining modules. Keeping this package
+root non-eager prevents the model-I/O loss boundary from importing Lightning.
+"""

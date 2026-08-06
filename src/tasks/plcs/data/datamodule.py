@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +10,7 @@ from torch.utils.data import Dataset
 
 from src.tasks.base.data.datamodule import SceneDirectoryDataModule
 from src.tasks.plcs.configuration import PLCSTrainingConfig
-from src.tasks.plcs.data.dataset import SceneDataset, collate_and_adapt_plcs_batch
+from src.tasks.plcs.data.dataset import SceneDataset, collate_plcs_batch
 
 
 class PLCSDataModule(SceneDirectoryDataModule):
@@ -22,17 +21,7 @@ class PLCSDataModule(SceneDirectoryDataModule):
         super().__init__(config)
 
     def _build_collate_fn(self) -> Callable[..., Any] | None:
-        self.adapter_camera_index = self.plcs_runtime.data.adapter_camera_index
-        input_profile = self.plcs_runtime.data.input_profile
-        if input_profile is None:
-            raise ValueError("Non-tracking PLCS data requires model.io.input_profile.")
-        self.input_profile = input_profile
-
-        return partial(
-            collate_and_adapt_plcs_batch,
-            input_profile=self.input_profile,
-            camera_index=self.adapter_camera_index,
-        )
+        return collate_plcs_batch
 
     def _build_dataset(
         self,

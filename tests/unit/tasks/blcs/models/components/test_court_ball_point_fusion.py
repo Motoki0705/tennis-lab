@@ -1,27 +1,67 @@
 from __future__ import annotations
 
-import torch
-from omegaconf import OmegaConf
+from typing import TypedDict, cast
 
-from src.tasks.blcs.models.components import CourtBallPointFusion
+import torch
+
+from src.tasks.blcs.configuration import PointFusionConfig
+from src.tasks.blcs.model_io.attention_masks import prepare_point_attention_mask
+from src.tasks.blcs.models.components.court_ball_point_fusion import (
+    CourtBallPointFusion,
+)
 
 
 def _fusion() -> CourtBallPointFusion:
     return CourtBallPointFusion(
         output_dim=64,
         num_court_points=14,
-        config=OmegaConf.create(
-            {
-                "token_dim": 32,
-                "num_heads": 4,
-                "num_layers": 1,
-                "ffn_dim": 64,
-                "rope_dim": 8,
-                "dropout": 0.0,
-            }
+        config=PointFusionConfig(
+            token_dim=32,
+            num_heads=4,
+            num_layers=1,
+            ffn_dim=64,
+            rope_dim=8,
+            dropout=0.0,
         ),
         invisible_init_std=0.02,
     )
+
+
+def _forward(
+    fusion: CourtBallPointFusion,
+    *,
+    court_kp: torch.Tensor,
+    court_visible: torch.Tensor,
+    ball_uv: torch.Tensor,
+    ball_visible: torch.Tensor,
+    context_valid: torch.Tensor,
+    mask_invisible_ball: bool = True,
+) -> torch.Tensor:
+    ball_state_valid, attention_mask = prepare_point_attention_mask(
+        ball_visible=ball_visible,
+        court_visible=court_visible,
+        context_valid=context_valid,
+        mask_invisible_observations=mask_invisible_ball,
+    )
+    return cast(
+        torch.Tensor,
+        fusion(
+            court_kp=court_kp,
+            court_visible=court_visible,
+            ball_uv=ball_uv,
+            ball_visible=ball_visible,
+            ball_state_valid=ball_state_valid,
+            attention_mask=attention_mask,
+        ),
+    )
+
+
+class _FusionInputs(TypedDict):
+    court_kp: torch.Tensor
+    court_visible: torch.Tensor
+    ball_uv: torch.Tensor
+    ball_visible: torch.Tensor
+    context_valid: torch.Tensor
 
 
 def test_rope_coordinates_use_independent_court_and_ball_axes() -> None:
@@ -39,13 +79,13 @@ def test_rope_coordinates_use_independent_court_and_ball_axes() -> None:
 
 def test_fusion_uses_32_dim_tokens_and_projects_only_ball_outputs() -> None:
     fusion = _fusion()
-    output = fusion(
+    output = _forward(
+        fusion,
         court_kp=torch.rand(2, 3, 14, 2),
         court_visible=torch.ones(2, 3, 14, dtype=torch.bool),
         ball_uv=torch.rand(2, 3, 5, 2),
         ball_visible=torch.ones(2, 3, 5, dtype=torch.bool),
         context_valid=torch.ones(2, 3, dtype=torch.bool),
-        mask_invisible_ball=True,
     )
 
     assert fusion.token_dim == 32
@@ -59,13 +99,13 @@ def test_ball_output_receives_gradient_from_visible_court_tokens() -> None:
     torch.manual_seed(4)
     fusion = _fusion()
     court_kp = torch.rand(1, 14, 2, requires_grad=True)
-    output = fusion(
+    output = _forward(
+        fusion,
         court_kp=court_kp,
         court_visible=torch.ones(1, 14, dtype=torch.bool),
         ball_uv=torch.rand(1, 2, 2),
         ball_visible=torch.ones(1, 2, dtype=torch.bool),
         context_valid=torch.ones(1, dtype=torch.bool),
-        mask_invisible_ball=True,
     )
 
     output.square().sum().backward()
@@ -77,25 +117,27 @@ def test_ball_output_receives_gradient_from_visible_court_tokens() -> None:
 def test_masked_coordinates_cannot_change_outputs_and_invalid_ball_is_zero() -> None:
     torch.manual_seed(5)
     fusion = _fusion().eval()
-    inputs = {
+    inputs: _FusionInputs = {
         "court_kp": torch.rand(1, 14, 2),
         "court_visible": torch.ones(1, 14, dtype=torch.bool),
         "ball_uv": torch.rand(1, 2, 2),
         "ball_visible": torch.tensor([[True, False]]),
         "context_valid": torch.ones(1, dtype=torch.bool),
-        "mask_invisible_ball": True,
     }
     inputs["court_visible"][0, 3] = False
-    changed = {
-        key: value.clone() if isinstance(value, torch.Tensor) else value
-        for key, value in inputs.items()
+    changed: _FusionInputs = {
+        "court_kp": inputs["court_kp"].clone(),
+        "court_visible": inputs["court_visible"].clone(),
+        "ball_uv": inputs["ball_uv"].clone(),
+        "ball_visible": inputs["ball_visible"].clone(),
+        "context_valid": inputs["context_valid"].clone(),
     }
     changed["court_kp"][0, 3] = torch.nan
     changed["ball_uv"][0, 1] = torch.nan
 
     with torch.no_grad():
-        output = fusion(**inputs)
-        changed_output = fusion(**changed)
+        output = _forward(fusion, **inputs)
+        changed_output = _forward(fusion, **changed)
 
     torch.testing.assert_close(output, changed_output)
     torch.testing.assert_close(output[0, 1], torch.zeros_like(output[0, 1]))
@@ -104,7 +146,8 @@ def test_masked_coordinates_cannot_change_outputs_and_invalid_ball_is_zero() -> 
 def test_unmasked_invisible_ball_remains_learnable_context_memory() -> None:
     torch.manual_seed(6)
     fusion = _fusion()
-    output = fusion(
+    output = _forward(
+        fusion,
         court_kp=torch.rand(1, 14, 2),
         court_visible=torch.ones(1, 14, dtype=torch.bool),
         ball_uv=torch.rand(1, 2, 2),

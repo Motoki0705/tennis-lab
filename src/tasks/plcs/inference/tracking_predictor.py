@@ -1,37 +1,44 @@
-"""Inference wrapper for lifecycle-aware multi-person track queries."""
+"""Inference boundary for a once-bound PLCS track-query model."""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, ParamSpec, Self, TypeVar, cast
+from typing import Any, Self
 
 import torch
 from torch import Tensor, nn
 
-from src.tasks.base.inference.grad_mode import no_grad
 from src.tasks.base.inference.predictor import BasePredictor
+from src.tasks.base.model_io import ModelCall, ModelInputContractError
 from src.tasks.base.training.tracking_metrics import TrackingMetricConfig
+from src.tasks.plcs.model_io import (
+    PLCSPreparedBatch,
+    PLCSTrackingBoundModelIO,
+    PLCSTrackQueryIOAdapter,
+    bind_plcs_model_io,
+)
 from src.tasks.plcs.training.tracking_lightning_module import (
     PLCSTrackingLightningModule,
 )
 from src.utils.configuration import PathResolver
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
-
-
-def _typed_no_grad(function: Callable[_P, _R]) -> Callable[_P, _R]:
-    decorator: Callable[[Callable[_P, _R]], Callable[_P, _R]] = no_grad
-    return decorator(function)
-
 
 class PLCSTrackingPredictor(BasePredictor):
-    """Predict fixed lifecycle queries from ID-ordered per-camera observations."""
+    """Predict fixed lifecycle queries through the track-query adapter."""
 
-    def __init__(self, model: nn.Module, device: torch.device) -> None:
-        self.model = model.to(device).eval()
+    def __init__(
+        self,
+        *,
+        model: nn.Module,
+        adapter: PLCSTrackQueryIOAdapter,
+        device: torch.device,
+    ) -> None:
+        bound = bind_plcs_model_io(model, adapter)
+        self.model_io: PLCSTrackingBoundModelIO = bound
+        self.model = self.model_io.model.to(device).eval()
+        self.io_adapter = adapter
         self.device = device
 
     @classmethod
@@ -41,20 +48,28 @@ class PLCSTrackingPredictor(BasePredictor):
         *,
         resolver: PathResolver,
         device: str | torch.device,
-        allow_device_fallback: bool,
         **kwargs: Any,
     ) -> Self:
-        model, resolved_device = cls._load_single_lightning_checkpoint(
+        lightning_module, resolved_device = cls._load_single_lightning_module(
             checkpoint_path,
             PLCSTrackingLightningModule,
             resolver=resolver,
             device=device,
-            allow_device_fallback=allow_device_fallback,
+            strict=bool(kwargs.pop("strict", True)),
+            weights_only=bool(kwargs.pop("weights_only", False)),
             **kwargs,
         )
-        return cls(model=model, device=resolved_device)
+        adapter = lightning_module.io_adapter
+        if not isinstance(adapter, PLCSTrackQueryIOAdapter):
+            raise ModelInputContractError(
+                "Loaded checkpoint does not contain a PLCS track-query adapter."
+            )
+        return cls(
+            model=lightning_module.model,
+            adapter=adapter,
+            device=resolved_device,
+        )
 
-    @_typed_no_grad
     def predict(
         self,
         *,
@@ -68,34 +83,44 @@ class PLCSTrackingPredictor(BasePredictor):
         denormalize: bool,
     ) -> dict[str, Tensor]:
         """Return query position/rotation and lifecycle presence outputs."""
-        inputs = {
-            "human_kp": human_kp,
-            "detection_mask": detection_mask,
-            "court_kp": court_kp,
-            "court_vis": court_vis,
-            "frame_mask": frame_mask,
-            "view_mask": view_mask,
-        }
-        outputs = cast(
-            dict[str, Tensor],
-            self.model(**{key: value.to(self.device) for key, value in inputs.items()}),
-        )
-        position = outputs["position"]
-        rotation = outputs["rotation"]
-        result = {
-            "position": position,
-            "rotation": rotation,
-            "presence_logits": outputs["presence_logits"],
-        }
-        probability = result["presence_logits"].sigmoid()
-        result["presence_probability"] = probability
-        result["presence"] = probability >= tracking_metrics.presence_threshold
-        if denormalize:
-            result["position_meters"] = self._denormalize_coords(
-                position, COURT_COORD_SCALE_XYZ
+        with torch.no_grad():
+            prepared = PLCSPreparedBatch(
+                call=self.io_adapter.build_call(
+                    {
+                        "human_kp": human_kp,
+                        "detection_mask": detection_mask,
+                        "court_kp": court_kp,
+                        "court_vis": court_vis,
+                        "frame_mask": frame_mask,
+                        "view_mask": view_mask,
+                    }
+                )
             )
-            result["yaw_radians"] = torch.atan2(rotation[..., 1], rotation[..., 0])
-        return {key: value.detach().cpu() for key, value in result.items()}
+            moved = ModelCall(
+                kwargs={
+                    key: value.to(self.device) if isinstance(value, Tensor) else None
+                    for key, value in prepared.call.kwargs.items()
+                }
+            )
+            raw_output = self.model_io.execute_call(moved)
+            decoded = self.model_io.decode_output(raw_output)
+            presence_logits = decoded.presence_logits
+            probability = presence_logits.sigmoid()
+            result = {
+                "position": decoded.position,
+                "rotation": decoded.rotation,
+                "presence_logits": presence_logits,
+                "presence_probability": probability,
+                "presence": probability >= tracking_metrics.presence_threshold,
+            }
+            if denormalize:
+                result["position_meters"] = self._denormalize_coords(
+                    decoded.position, COURT_COORD_SCALE_XYZ
+                )
+                result["yaw_radians"] = torch.atan2(
+                    decoded.rotation[..., 1], decoded.rotation[..., 0]
+                )
+            return {key: value.detach().cpu() for key, value in result.items()}
 
 
 __all__ = ["PLCSTrackingPredictor"]

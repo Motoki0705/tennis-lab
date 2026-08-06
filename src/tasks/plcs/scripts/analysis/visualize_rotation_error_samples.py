@@ -32,7 +32,6 @@ from src.tasks.base.visualization.style import (
 from src.tasks.plcs.configuration import PLCSAnalysisRuntimeConfig
 from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene
 from src.tasks.plcs.inference.predictor import PLCSPredictor
-from src.tasks.plcs.visualization.adapters.predict_inputs import build_multiview_inputs
 from src.tasks.plcs.visualization.orchestrator import RuntimeConfig, run_visualization
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.hydra import hydra_main
@@ -93,12 +92,10 @@ def _score_scene(
 ) -> list[dict[str, Any]]:
     scene: Any = load_scene(scene_path)
     cameras = _resolve_cameras(cameras_cfg, int(scene.num_cameras))
-    outputs = predictor.predict(
-        denormalize=False,
-        **build_multiview_inputs(scene, cameras),
-    )
-    pred_position = np.asarray(outputs["position"].squeeze(0).numpy())
-    pred_rotation = np.asarray(outputs["rotation"].squeeze(0).numpy())
+    predictor.require_input_profile("multiview")
+    outputs = predictor.predict_scene(scene, cameras)
+    pred_position = np.asarray(outputs.position.squeeze(0).numpy())
+    pred_rotation = np.asarray(outputs.rotation.squeeze(0).numpy())
     gt_position = np.asarray(scene.position)
     gt_rotation = np.asarray(scene.rotation)
 
@@ -281,7 +278,6 @@ def main(cfg: DictConfig) -> int:  # pragma: no cover - CLI entry
         checkpoint,
         resolver=resolver,
         device=device,
-        allow_device_fallback=False,
     )
     candidates: list[dict[str, Any]] = []
     names = _scene_names(runtime_config.split_path)

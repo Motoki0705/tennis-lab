@@ -17,7 +17,6 @@ from src.utils.configuration import ConfigurationError, PathResolver, RuntimePat
 def _runtime_mapping() -> dict[str, object]:
     return {
         "device": "cpu",
-        "allow_device_fallback": False,
         "tracking": {"yolo_confidence": 0.25, "bbox_enlarge": 1.2},
         "dino_detector": {
             "confidence": 0.35,
@@ -56,6 +55,14 @@ def test_vitpose_released_head_is_complete_and_typed() -> None:
         num_conv_layers=0,
         num_conv_kernels=(),
     )
+
+
+def test_runtime_rejects_removed_device_fallback_toggle() -> None:
+    mapping = _runtime_mapping()
+    mapping["allow_device_fallback"] = False
+
+    with pytest.raises(ConfigurationError, match="allow_device_fallback"):
+        SubmoduleRuntimeConfig.from_mapping(mapping)
 
 
 @pytest.mark.parametrize("failure", ["missing", "unknown", "wrong_type"])

@@ -11,12 +11,13 @@ from typing import Literal
 
 import numpy as np
 
+from src.tennis_scene.archive import save_scene_result
 from src.tennis_scene.generate_dataset.manifest import (
     ClipManifest,
     DatasetClipRecord,
     load_dataset_manifest,
 )
-from src.tennis_scene.io import SceneResult
+from src.tennis_scene.schema import SceneResult
 from src.utils.io import save_json_atomic, utc_now_iso
 
 ANNOTATION_SCHEMA_VERSION = 1
@@ -182,7 +183,7 @@ def _publish_annotation(
         "clip_manifest": str(clip_manifest_path.relative_to(dataset_dir)),
     }
     scene_path = staging / "scene.npz"
-    result.save(scene_path)
+    save_scene_result(result, scene_path)
     (staging / "pipeline_config.yaml").write_text(
         pipeline_config_yaml, encoding="utf-8"
     )

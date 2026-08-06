@@ -74,8 +74,6 @@ class CourtFPNDecoder(nn.Module):
             raise ValueError("decoder_channels must contain positive integers.")
 
     def forward(self, feats: Sequence[torch.Tensor]) -> torch.Tensor:
-        self._validate_forward_inputs(feats)
-
         projected_feats = [
             lateral_block(feat)
             for lateral_block, feat in zip(self.lateral_blocks, feats, strict=True)
@@ -84,22 +82,15 @@ class CourtFPNDecoder(nn.Module):
 
         for block_index, level in enumerate(range(len(projected_feats) - 2, -1, -1)):
             lateral_feat = projected_feats[level]
-            if x.shape[-2:] != lateral_feat.shape[-2:]:
-                x = F.interpolate(
-                    x,
-                    size=lateral_feat.shape[-2:],
-                    mode="bilinear",
-                    align_corners=False,
-                )
+            x = F.interpolate(
+                x,
+                size=lateral_feat.shape[-2:],
+                mode="bilinear",
+                align_corners=False,
+            )
             x = torch.cat([x, lateral_feat], dim=1)
             x = self.fusion_blocks[block_index](x)
         return cast("torch.Tensor", x)
-
-    def _validate_forward_inputs(self, feats: Sequence[torch.Tensor]) -> None:
-        if len(feats) != len(self.encoder_channels):
-            raise ValueError(
-                f"CourtFPNDecoder expects four feature levels, got {len(feats)}."
-            )
 
 
 class CourtUNetDecoder(nn.Module):
@@ -164,8 +155,6 @@ class CourtUNetDecoder(nn.Module):
             raise ValueError("decoder_channels must contain positive integers.")
 
     def forward(self, feats: Sequence[torch.Tensor]) -> torch.Tensor:
-        self._validate_forward_inputs(feats)
-
         projected_feats = [
             projection(feat)
             for projection, feat in zip(self.projections, feats, strict=True)
@@ -174,21 +163,14 @@ class CourtUNetDecoder(nn.Module):
 
         for block_index, level in enumerate(range(len(projected_feats) - 2, -1, -1)):
             skip = projected_feats[level]
-            if x.shape[-2:] != skip.shape[-2:]:
-                x = F.interpolate(
-                    x,
-                    size=skip.shape[-2:],
-                    mode="bilinear",
-                    align_corners=False,
-                )
+            x = F.interpolate(
+                x,
+                size=skip.shape[-2:],
+                mode="bilinear",
+                align_corners=False,
+            )
             x = self.decode_blocks[block_index](torch.cat([x, skip], dim=1))
         return cast("torch.Tensor", x)
-
-    def _validate_forward_inputs(self, feats: Sequence[torch.Tensor]) -> None:
-        if len(feats) != len(self.encoder_channels):
-            raise ValueError(
-                f"CourtUNetDecoder expects four feature levels, got {len(feats)}."
-            )
 
 
 class DPTFeatureFusionBlock(nn.Module):
@@ -204,17 +186,15 @@ class DPTFeatureFusionBlock(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        skip: torch.Tensor | None = None,
+        skip: torch.Tensor,
     ) -> torch.Tensor:
-        if skip is not None:
-            if x.shape[-2:] != skip.shape[-2:]:
-                x = F.interpolate(
-                    x,
-                    size=skip.shape[-2:],
-                    mode="bilinear",
-                    align_corners=False,
-                )
-            x = x + self.skip_block(skip)
+        x = F.interpolate(
+            x,
+            size=skip.shape[-2:],
+            mode="bilinear",
+            align_corners=False,
+        )
+        x = x + self.skip_block(skip)
         return cast("torch.Tensor", self.output_block(x))
 
 
@@ -249,6 +229,17 @@ class CourtDPTDecoder(nn.Module):
             )
             for in_channels in self.encoder_channels
         )
+        self.reassembly = nn.ModuleList(
+            nn.Identity()
+            if factor == 1.0
+            else nn.Upsample(
+                scale_factor=factor,
+                mode="bilinear",
+                align_corners=False,
+                recompute_scale_factor=False,
+            )
+            for factor in self.reassemble_factors
+        )
         self.fusion_blocks = nn.ModuleList(
             DPTFeatureFusionBlock(self.decoder_channels)
             for _ in range(len(self.encoder_channels))
@@ -274,43 +265,33 @@ class CourtDPTDecoder(nn.Module):
             raise ValueError("reassemble_factors must be positive.")
 
     def forward(self, feats: Sequence[torch.Tensor]) -> torch.Tensor:
-        self._validate_forward_inputs(feats)
         projected_feats = [
-            self._resize_by_factor(projection(feat), factor)
-            for projection, feat, factor in zip(
+            _apply_tensor_module(
+                reassemble,
+                _apply_tensor_module(projection, feat),
+            )
+            for projection, reassemble, feat in zip(
                 self.projections,
+                self.reassembly,
                 feats,
-                self.reassemble_factors,
                 strict=True,
             )
         ]
 
-        x = self.fusion_blocks[-1](projected_feats[-1])
+        deepest_fusion = cast("DPTFeatureFusionBlock", self.fusion_blocks[-1])
+        x = deepest_fusion.output_block(projected_feats[-1])
         for block, skip in zip(
             reversed(self.fusion_blocks[:-1]),
             reversed(projected_feats[:-1]),
             strict=True,
         ):
-            x = block(x, skip)
+            x = cast("DPTFeatureFusionBlock", block)(x, skip)
         return cast("torch.Tensor", x)
 
-    @staticmethod
-    def _resize_by_factor(x: torch.Tensor, factor: float) -> torch.Tensor:
-        if factor == 1.0:
-            return x
-        return F.interpolate(
-            x,
-            scale_factor=factor,
-            mode="bilinear",
-            align_corners=False,
-            recompute_scale_factor=False,
-        )
 
-    def _validate_forward_inputs(self, feats: Sequence[torch.Tensor]) -> None:
-        if len(feats) != len(self.encoder_channels):
-            raise ValueError(
-                f"CourtDPTDecoder expects four feature levels, got {len(feats)}."
-            )
+def _apply_tensor_module(module: nn.Module, tensor: torch.Tensor) -> torch.Tensor:
+    """Invoke a module whose configured contract is tensor-to-tensor."""
+    return cast("torch.Tensor", module(tensor))
 
 
 def build_court_decoder(

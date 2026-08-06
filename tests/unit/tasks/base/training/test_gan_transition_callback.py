@@ -10,9 +10,10 @@ stand-ins exercise the pure decision logic.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
+import pytorch_lightning as pl
 
 from src.tasks.base.training.gan_transition_callback import GANTransitionCallback
 from src.utils.configuration import MissingConfigurationKeyError
@@ -26,10 +27,11 @@ class _FakeTrainer:
         self.max_epochs = max_epochs
 
 
-class _FakeModule:
+class _FakeModule(pl.LightningModule):
     """Records the calls the callback makes into the LightningModule."""
 
     def __init__(self) -> None:
+        super().__init__()
         self.weights: list[float] = []
         self.activated_at: list[int] = []
 
@@ -106,7 +108,10 @@ def _cfg(**gan: Any) -> dict[str, Any]:
 
 
 def _run_epoch(cb: GANTransitionCallback, module: _FakeModule, epoch: int) -> None:
-    cb.on_train_epoch_start(_FakeTrainer(current_epoch=epoch), module)
+    cb.on_train_epoch_start(
+        cast(pl.Trainer, _FakeTrainer(current_epoch=epoch)),
+        module,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -159,7 +164,7 @@ def test_negative_start_epoch_raises() -> None:
 def test_on_fit_start_zeroes_weight() -> None:
     cb = GANTransitionCallback(_cfg(enabled=True, transition={"start_epoch": 5}))
     module = _FakeModule()
-    cb.on_fit_start(_FakeTrainer(max_epochs=10), module)
+    cb.on_fit_start(cast(pl.Trainer, _FakeTrainer(max_epochs=10)), module)
     assert module.weights == [0.0]
 
 
@@ -167,14 +172,14 @@ def test_on_fit_start_rejects_start_epoch_ge_max_epochs() -> None:
     cb = GANTransitionCallback(_cfg(enabled=True, transition={"start_epoch": 100}))
     module = _FakeModule()
     with pytest.raises(ValueError, match="never activates"):
-        cb.on_fit_start(_FakeTrainer(max_epochs=100), module)
+        cb.on_fit_start(cast(pl.Trainer, _FakeTrainer(max_epochs=100)), module)
 
 
 def test_on_fit_start_disabled_still_zeroes_and_skips_guard() -> None:
     # Disabled: even a start_epoch >= max_epochs must not raise (no GAN at all).
     cb = GANTransitionCallback(_cfg(enabled=False, transition={"start_epoch": 100}))
     module = _FakeModule()
-    cb.on_fit_start(_FakeTrainer(max_epochs=100), module)
+    cb.on_fit_start(cast(pl.Trainer, _FakeTrainer(max_epochs=100)), module)
     assert module.weights == [0.0]
 
 

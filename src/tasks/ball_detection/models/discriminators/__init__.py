@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from omegaconf import DictConfig
 
-from src.tasks.ball_detection.models.discriminators.trajectory_discriminator import (
-    BallTrajectoryDiscriminator,
+from src.utils.models.architectures import (
+    TransformerSequenceDiscriminator,
+    build_trajectory_discriminator,
 )
-from src.utils.models.architectures import TransformerSequenceDiscriminator
 
 
 def build_ball_detection_discriminator(
@@ -20,10 +20,12 @@ def build_ball_detection_discriminator(
             "Unknown ball_detection discriminator name="
             f"'{disc_name}'. Supported: ['trajectory_transformer']"
         )
-    return BallTrajectoryDiscriminator.from_config(config)
+    return build_trajectory_discriminator(
+        input_dim=2,
+        disc_cfg=config.training.gan.discriminator,
+    )
 
 
 __all__ = [
-    "BallTrajectoryDiscriminator",
     "build_ball_detection_discriminator",
 ]

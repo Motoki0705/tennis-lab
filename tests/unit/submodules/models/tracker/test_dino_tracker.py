@@ -3,7 +3,7 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from src.submodules.models.dino import PersonDetectionResult
+from src.submodules.models import PersonDetectionResult
 from src.submodules.models.tracker.dino_tracker import BotSortAssociator
 
 

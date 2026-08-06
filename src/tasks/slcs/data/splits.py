@@ -25,10 +25,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from src.tasks.slcs.data.contract import (
+from src.tasks.slcs.data.annotation import SLCSDataIndex
+from src.tennis_scene.generate_dataset.manifest import (
     ClipManifest,
-    DatasetContractError,
-    DatasetIndex,
+    DatasetManifestError,
 )
 from src.utils.data.splits import GroupSplitConfig, make_group_split_map
 from src.utils.io import load_json, save_json_atomic
@@ -38,7 +38,7 @@ SPLIT_NAMES = ("train", "val", "test")
 
 
 def generate_recording_splits(
-    index: DatasetIndex,
+    index: SLCSDataIndex,
     *,
     val_ratio: float,
     test_ratio: float,
@@ -52,7 +52,7 @@ def generate_recording_splits(
             weights.get(ref.recording_id, 0) + manifest.num_frames
         )
     if not weights:
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"dataset at {index.root} contains no clips to split."
         )
     assignments: dict[str, str] = make_group_split_map(
@@ -62,11 +62,11 @@ def generate_recording_splits(
     return assignments
 
 
-def generate_overfit_splits(index: DatasetIndex) -> dict[str, str]:
+def generate_overfit_splits(index: SLCSDataIndex) -> dict[str, str]:
     """Assign every recording to train for an explicit memorization experiment."""
     recording_ids = index.recording_ids()
     if not recording_ids:
-        raise DatasetContractError(f"dataset at {index.root} contains no recordings.")
+        raise DatasetManifestError(f"dataset at {index.root} contains no recordings.")
     return {recording_id: "train" for recording_id in recording_ids}
 
 
@@ -81,7 +81,7 @@ def save_split_file(
     """Write a split file (atomic)."""
     for recording_id, split in assignments.items():
         if split not in SPLIT_NAMES:
-            raise DatasetContractError(
+            raise DatasetManifestError(
                 f"assignment {recording_id!r} -> {split!r} is not one of {SPLIT_NAMES}."
             )
     payload: dict[str, Any] = {
@@ -94,28 +94,28 @@ def save_split_file(
     return Path(save_json_atomic(payload, path))
 
 
-def load_split_assignments(path: str | Path, index: DatasetIndex) -> dict[str, str]:
+def load_split_assignments(path: str | Path, index: SLCSDataIndex) -> dict[str, str]:
     """Load a split file and verify it exactly covers the dataset's recordings."""
     split_path = Path(path)
     if not split_path.is_file():
-        raise DatasetContractError(f"split file not found: {split_path}")
+        raise DatasetManifestError(f"split file not found: {split_path}")
     payload = load_json(split_path)
     if not isinstance(payload, dict):
-        raise DatasetContractError(f"{split_path} must contain a JSON object.")
+        raise DatasetManifestError(f"{split_path} must contain a JSON object.")
     if payload.get("format_version") != SPLIT_FORMAT_VERSION:
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"{split_path} declares format_version={payload.get('format_version')!r}; "
             f"supported: {SPLIT_FORMAT_VERSION}."
         )
     assignments_raw = payload.get("assignments")
     if not isinstance(assignments_raw, dict) or not assignments_raw:
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"{split_path} must contain a non-empty 'assignments' map."
         )
     assignments = {str(k): str(v) for k, v in assignments_raw.items()}
     for recording_id, split in assignments.items():
         if split not in SPLIT_NAMES:
-            raise DatasetContractError(
+            raise DatasetManifestError(
                 f"{split_path}: {recording_id!r} assigned to unknown split {split!r}."
             )
 
@@ -124,7 +124,7 @@ def load_split_assignments(path: str | Path, index: DatasetIndex) -> dict[str, s
     missing = dataset_recordings - split_recordings
     stale = split_recordings - dataset_recordings
     if missing or stale:
-        raise DatasetContractError(
+        raise DatasetManifestError(
             f"{split_path} does not match the dataset: "
             f"recordings missing from the split file: {sorted(missing)}; "
             f"stale split entries with no dataset recording: {sorted(stale)}. "

@@ -73,13 +73,13 @@ class SceneData:
 
     # Per-camera data
     cameras: list[CameraData]
+    num_persons: int
 
     # Optional: pre-computed COCO17 world-coordinate joints (bypasses SMPL-H mapping)
     human_kp_3d: np.ndarray | None = None  # (T, 17, 3) if provided
 
     # Present for multi-object scenes. Object arrays then use shape (T, O, ...).
     person_present: np.ndarray | None = None
-    num_persons: int = 1
     track_instances: list[dict] = field(default_factory=list)
 
 
@@ -521,5 +521,6 @@ class SceneGenerator:
             rotation=rotations,
             canonical_pose_3d=canonical_poses,
             cameras=cameras_data,
+            num_persons=1,
             human_kp_3d=coco17_joints,
         )

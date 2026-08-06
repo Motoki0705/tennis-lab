@@ -34,9 +34,11 @@ def test_rejects_single_frame_teleport_on_noisy_parabola() -> None:
         ],
         axis=1,
     ).astype(np.float32)
-    positions += np.random.default_rng(0).normal(0.0, 0.7, size=positions.shape).astype(
-        np.float32
+    noise = np.asarray(
+        np.random.default_rng(0).normal(0.0, 0.7, size=positions.shape),
+        dtype=np.float32,
     )
+    positions += noise
     positions[12, 0] += 180.0
     visibility = np.ones(positions.shape[0], dtype=np.bool_)
     score = np.full(positions.shape[0], 0.9, dtype=np.float32)

@@ -48,14 +48,20 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
     def build_sample(self, scene: Scene) -> dict[str, Tensor]:
         position = torch.from_numpy(scene.get_array("ball_pos_norm")).float()
         velocity = torch.from_numpy(scene.get_array("ball_vel_world")).float()
-        if position.ndim == 2:
-            position = position[:, None]
-            velocity = velocity[:, None]
+        if position.ndim != 3 or velocity.shape != position.shape:
+            raise ValueError(
+                "Tracking scenes require explicit (T,P,3) position/velocity arrays."
+            )
         num_frames, num_physical = position.shape[:2]
-        if scene.has_key("ball_present"):
-            physical_presence = torch.from_numpy(scene.get_array("ball_present")).bool()
-        else:
-            physical_presence = torch.ones((num_frames, num_physical), dtype=torch.bool)
+        if not scene.has_key("ball_present"):
+            raise ValueError(
+                "Tracking scene is incompatible: required ball_present is missing."
+            )
+        physical_presence = torch.from_numpy(scene.get_array("ball_present")).bool()
+        if physical_presence.shape != (num_frames, num_physical):
+            raise ValueError(
+                "ball_present must match the explicit (T,P) physical object axes."
+            )
         window = self.select_window(scene, full_len=num_frames)
         cameras = self.select_cameras(scene)
         position = position[window.sl]
@@ -133,14 +139,15 @@ class BLCSTrackingDataset(CanonicalTrackingDataset):
     def augment_sample(self, sample: dict[str, Tensor]) -> dict[str, Tensor]:
         if not self.augment:
             return sample
-        return self.tracking_augmentation(sample)
+        augmented: dict[str, Tensor] = self.tracking_augmentation(sample)
+        return augmented
 
 
 def collate_blcs_tracking_batch(
     batch: list[dict[str, Tensor]],
 ) -> dict[str, Tensor]:
     """Pad variable camera/time/candidate dimensions and stack BLCS scenes."""
-    return pad_and_stack_tracking_batch(
+    collated: dict[str, Tensor] = pad_and_stack_tracking_batch(
         batch,
         padding_dimensions={
             "ball_uv": (0, 1, 2),
@@ -163,6 +170,7 @@ def collate_blcs_tracking_batch(
             "candidate_gt_index": -1,
         },
     )
+    return collated
 
 
 __all__ = [

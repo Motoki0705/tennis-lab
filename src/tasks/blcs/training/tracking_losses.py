@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import torch
@@ -11,6 +12,10 @@ from torch import nn
 from src.tasks.base.training.tracking_lifecycle import (
     weighted_presence_bce_with_logits,
 )
+from src.tasks.blcs.model_io import (
+    BLCSTrackQueryPrediction,
+    BLCSTrackQueryTrainingBatch,
+)
 from src.tasks.blcs.training.tracking_matching import match_ball_tracks
 from src.tasks.blcs.training.tracking_position import (
     position_axis_weight_tensor,
@@ -18,6 +23,17 @@ from src.tasks.blcs.training.tracking_position import (
 )
 
 Assignment = tuple[torch.Tensor, torch.Tensor]
+
+
+@dataclass(frozen=True, slots=True)
+class BLCSTrackingLossInputs:
+    """Boundary-prepared scalar tensors entering the loss hot path."""
+
+    position: torch.Tensor
+    position_per_axis: torch.Tensor
+    presence: torch.Tensor
+    smoothness: torch.Tensor
+    gravity: torch.Tensor
 
 
 class BLCSTrackingLoss(nn.Module):
@@ -46,20 +62,22 @@ class BLCSTrackingLoss(nn.Module):
         )
 
     @staticmethod
-    def _zero(prediction: dict[str, torch.Tensor]) -> torch.Tensor:
-        return prediction["position"].sum() * 0.0
+    def _zero(prediction: BLCSTrackQueryPrediction) -> torch.Tensor:
+        return prediction.position.sum() * 0.0
 
-    def forward(
+    def prepare_inputs(
         self,
-        prediction: dict[str, torch.Tensor],
-        batch: dict[str, torch.Tensor],
-    ) -> tuple[dict[str, torch.Tensor], list[Assignment]]:
+        prediction: BLCSTrackQueryPrediction,
+        batch: BLCSTrackQueryTrainingBatch,
+    ) -> tuple[BLCSTrackingLossInputs, list[Assignment]]:
+        """Match clips and prepare all task tensors outside ``forward``."""
         assignments = match_ball_tracks(
-            prediction,
-            batch["target_position"],
-            batch["target_presence"],
-            batch["target_slot_mask"],
-            batch["frame_mask"],
+            prediction.position,
+            prediction.presence_logits,
+            batch.target_position,
+            batch.target_presence,
+            batch.target_slot_mask,
+            batch.frame_mask,
             position_cost_weight=self.match_position_weight,
             presence_cost_weight=self.match_presence_weight,
             presence_inactive_weight=self.presence_inactive_weight,
@@ -68,8 +86,8 @@ class BLCSTrackingLoss(nn.Module):
             transition_radius=self.transition_radius,
             position_axis_weights=self.position_axis_weights,
         )
-        pred_position = prediction["position"]
-        pred_presence = prediction["presence_logits"]
+        pred_position = prediction.position
+        pred_presence = prediction.presence_logits
         presence_target = torch.zeros_like(pred_presence)
         position_terms: list[torch.Tensor] = []
         position_axis_terms: list[torch.Tensor] = []
@@ -80,16 +98,16 @@ class BLCSTrackingLoss(nn.Module):
                 query_indices.tolist(), target_indices.tolist(), strict=True
             ):
                 active = (
-                    batch["target_presence"][batch_index, :, target_index]
-                    & batch["frame_mask"][batch_index]
+                    batch.target_presence[batch_index, :, target_index]
+                    & batch.frame_mask[batch_index]
                 )
-                presence_target[batch_index, :, query_index] = batch["target_presence"][
+                presence_target[batch_index, :, query_index] = batch.target_presence[
                     batch_index, :, target_index
                 ].float()
                 if active.any():
                     position_error_xyz = F.smooth_l1_loss(
                         pred_position[batch_index, active, query_index],
-                        batch["target_position"][batch_index, active, target_index],
+                        batch.target_position[batch_index, active, target_index],
                         reduction="none",
                     )
                     position_per_axis = position_error_xyz.mean(0)
@@ -123,7 +141,7 @@ class BLCSTrackingLoss(nn.Module):
                             )
                         )
 
-        valid_frames = batch["frame_mask"].unsqueeze(-1).expand_as(pred_presence)
+        valid_frames = batch.frame_mask.unsqueeze(-1).expand_as(pred_presence)
         presence = weighted_presence_bce_with_logits(
             pred_presence,
             presence_target.bool(),
@@ -142,19 +160,32 @@ class BLCSTrackingLoss(nn.Module):
         )
         smoothness = torch.stack(smoothness_terms).mean() if smoothness_terms else zero
         gravity = torch.stack(gravity_terms).mean() if gravity_terms else zero
+        return BLCSTrackingLossInputs(
+            position=position,
+            position_per_axis=position_per_axis,
+            presence=presence,
+            smoothness=smoothness,
+            gravity=gravity,
+        ), assignments
+
+    def forward(self, inputs: BLCSTrackingLossInputs) -> dict[str, torch.Tensor]:
+        """Combine boundary-prepared tensor terms with configured weights."""
         total = (
-            self.position_weight * position
-            + self.presence_weight * presence
-            + self.smoothness_weight * smoothness
-            + self.gravity_weight * gravity
+            self.position_weight * inputs.position
+            + self.presence_weight * inputs.presence
+            + self.smoothness_weight * inputs.smoothness
+            + self.gravity_weight * inputs.gravity
         )
         return {
             "total": total,
-            "position": position,
-            "position_x": position_per_axis[0],
-            "position_y": position_per_axis[1],
-            "position_z": position_per_axis[2],
-            "presence": presence,
-            "smoothness": smoothness,
-            "gravity": gravity,
-        }, assignments
+            "position": inputs.position,
+            "position_x": inputs.position_per_axis[0],
+            "position_y": inputs.position_per_axis[1],
+            "position_z": inputs.position_per_axis[2],
+            "presence": inputs.presence,
+            "smoothness": inputs.smoothness,
+            "gravity": inputs.gravity,
+        }
+
+
+__all__ = ["Assignment", "BLCSTrackingLoss", "BLCSTrackingLossInputs"]

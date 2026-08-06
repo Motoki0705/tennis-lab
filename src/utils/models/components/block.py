@@ -94,8 +94,8 @@ class TransformerBlock(nn.Module):
         self,
         x: torch.Tensor,
         *,
-        freqs_cis: torch.Tensor | None = None,
-        attn_mask: torch.Tensor | None = None,
+        freqs_cis: torch.Tensor,
+        attn_mask: torch.Tensor,
     ) -> torch.Tensor:
         x_attn = x + self.attn(
             self.attn_norm(x),
@@ -103,8 +103,6 @@ class TransformerBlock(nn.Module):
             attn_mask=attn_mask,
         )
         ffn_output = self.ffn(self.ffn_norm(x_attn))
-        if not isinstance(ffn_output, torch.Tensor):
-            raise TypeError("Transformer FFN must return a tensor.")
         x_fnn = cast(torch.Tensor, x_attn + ffn_output)
         return x_fnn
 
@@ -125,7 +123,7 @@ class CrossAttnBlockConfig:
 
 
 class CrossAttnBlock(nn.Module):
-    """Pre-norm cross-attention block with optional RoPE on query/key."""
+    """Pre-norm cross-attention block over boundary-prepared tensors."""
 
     def __init__(self, cfg: CrossAttnBlockConfig) -> None:
         super().__init__()
@@ -154,30 +152,12 @@ class CrossAttnBlock(nn.Module):
         q: torch.Tensor,
         kv: torch.Tensor,
         *,
-        key_valid: torch.Tensor | None = None,
-        freqs_q_cis: torch.Tensor | None = None,
-        freqs_k_cis: torch.Tensor | None = None,
+        attn_mask: torch.Tensor,
+        freqs_q_cis: torch.Tensor,
+        freqs_k_cis: torch.Tensor,
     ) -> torch.Tensor:
-        bsz, q_len, _ = q.shape
-        _, k_len, _ = kv.shape
-
         q_norm = self.q_norm(q)
         kv_norm = self.kv_norm(kv)
-
-        attn_mask: torch.Tensor | None = None
-        if key_valid is not None:
-            if key_valid.shape != (bsz, k_len):
-                raise ValueError(
-                    f"key_valid must have shape {(bsz, k_len)}, got {tuple(key_valid.shape)}"
-                )
-            key_keep = key_valid > 0
-            fully_masked = ~key_keep.any(dim=1)
-            if fully_masked.any():
-                key_keep = key_keep.clone()
-                key_keep[fully_masked, 0] = True
-                kv_norm = kv_norm.clone()
-                kv_norm[fully_masked] = 0.0
-            attn_mask = key_keep[:, None, :].expand(bsz, q_len, k_len)
 
         q = q + self.attn(
             q_norm,

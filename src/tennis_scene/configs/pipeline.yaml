@@ -14,7 +14,6 @@ court_kp:
   frame_index: 0
   mode: model
   num_keypoints: 14
-  allow_device_fallback: false
   subpixel_refine: true
   postprocess:
     enabled: true
@@ -44,7 +43,6 @@ gvhmr:
     smpl_neutral_joint_regressor: src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt
   runtime:
     device: ${device}
-    allow_device_fallback: false
     tracking:
       yolo_confidence: 0.5
       bbox_enlarge: 1.2
@@ -91,7 +89,6 @@ ball_detection:
   normalize_imagenet: true
   score_threshold: 0.5
   subpixel_refine: true
-  allow_device_fallback: false
   checkpoint_strict: true
   checkpoint_weights_only: false
   prefetch_batches: 2
@@ -119,7 +116,6 @@ plcs:
   window_size: 1024
   window_overlap: 64
   human_vis_threshold: 0.15
-  allow_device_fallback: false
 
 blcs:
   enabled: true
@@ -130,7 +126,6 @@ blcs:
   load_path: null
   window_size: 1024
   window_overlap: 64
-  allow_device_fallback: false
 
 max_frames: null
 

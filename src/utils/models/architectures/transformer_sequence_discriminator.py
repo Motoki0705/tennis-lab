@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, cast
 
 import torch
@@ -17,6 +18,15 @@ from src.utils.models.components import (
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from typing import Any
+
+
+@dataclass(frozen=True)
+class SequenceDiscriminatorInputs:
+    """Boundary-validated sequence tensors and prepared attention policy."""
+
+    sequence: Tensor
+    token_mask: Tensor
+    attention_mask: Tensor
 
 
 class TransformerSequenceDiscriminator(nn.Module):
@@ -98,66 +108,78 @@ class TransformerSequenceDiscriminator(nn.Module):
         )
         self.register_buffer("freqs_cis", freqs_cis, persistent=False)
 
-    def forward(self, sequence: Tensor, *, mask: Tensor | None = None) -> Tensor:
-        """Score sequence tensors as real or fake."""
-        if sequence.ndim == 2:
-            sequence = sequence.unsqueeze(1)
-        if sequence.ndim != 3:
-            raise ValueError(
-                "sequence must be (B, F) or (B, T, F), "
-                f"got shape {tuple(sequence.shape)}"
-            )
-
-        batch_size, seq_len, feature_dim = sequence.shape
-        if feature_dim != self.input_dim:
-            raise ValueError(
-                f"Expected feature dimension {self.input_dim}, got {feature_dim}."
-            )
-        if seq_len > self.max_seq_len:
-            raise ValueError(
-                f"seq_len={seq_len} exceeds max_seq_len={self.max_seq_len}."
-            )
-
-        if mask is None:
-            seq_mask = torch.ones(
-                batch_size, seq_len, device=sequence.device, dtype=torch.bool
-            )
-        else:
-            seq_mask = mask > 0
-            if seq_mask.ndim == 1:
-                seq_mask = seq_mask.unsqueeze(1)
-            if seq_mask.ndim != 2:
-                raise ValueError(
-                    f"mask must be (B,) or (B, T), got shape {tuple(seq_mask.shape)}"
-                )
-            if seq_mask.shape != (batch_size, seq_len):
-                raise ValueError(
-                    "mask shape must match sequence length, "
-                    f"got {tuple(seq_mask.shape)} vs {(batch_size, seq_len)}"
-                )
+    def forward(
+        self,
+        sequence: Tensor,
+        *,
+        token_mask: Tensor,
+        attention_mask: Tensor,
+    ) -> Tensor:
+        """Score boundary-validated ``(B, T, F)`` sequence tensors."""
+        batch_size, seq_len, _ = sequence.shape
 
         x = self.input_projection(sequence)
         invalid = self.invalid_token.expand(batch_size, seq_len, -1)
-        x = torch.where(seq_mask.unsqueeze(-1), x, invalid)
+        x = torch.where(token_mask.unsqueeze(-1), x, invalid)
         x = self.input_dropout(x)
 
         cls = self.cls_token.expand(batch_size, -1, -1)
         x = torch.cat([cls, x], dim=1)
 
         freqs_cis = self.get_buffer("freqs_cis")[: seq_len + 1]
-        if freqs_cis.device != x.device:
-            freqs_cis = freqs_cis.to(x.device)
-
-        cls_valid = torch.ones(batch_size, 1, device=x.device, dtype=torch.bool)
-        attn_valid = torch.cat([cls_valid, seq_mask], dim=1)
-        attn_mask = attn_valid[:, None, :].expand(batch_size, seq_len + 1, seq_len + 1)
 
         for block in self.blocks:
-            x = cast(Tensor, block(x, freqs_cis=freqs_cis, attn_mask=attn_mask))
+            x = cast(
+                Tensor,
+                block(x, freqs_cis=freqs_cis, attn_mask=attention_mask),
+            )
 
         x = cast(Tensor, self.final_norm(x))
         logits = cast(Tensor, self.head(x[:, 0, :]))
         return logits.squeeze(-1)
+
+
+def prepare_sequence_discriminator_inputs(
+    discriminator: TransformerSequenceDiscriminator,
+    sequence: Tensor,
+    *,
+    mask: Tensor,
+) -> SequenceDiscriminatorInputs:
+    """Validate inputs and prepare mask policy before discriminator execution."""
+    if sequence.ndim != 3:
+        raise ValueError(
+            f"sequence must be (B, T, F), got shape {tuple(sequence.shape)}"
+        )
+    batch_size, seq_len, feature_dim = sequence.shape
+    if feature_dim != discriminator.input_dim:
+        raise ValueError(
+            f"Expected feature dimension {discriminator.input_dim}, got {feature_dim}."
+        )
+    if seq_len > discriminator.max_seq_len:
+        raise ValueError(
+            f"seq_len={seq_len} exceeds max_seq_len={discriminator.max_seq_len}."
+        )
+    if mask.shape != (batch_size, seq_len):
+        raise ValueError(
+            "mask must have shape (B, T), "
+            f"got {tuple(mask.shape)} vs {(batch_size, seq_len)}"
+        )
+    if mask.dtype != torch.bool:
+        raise ValueError(f"mask must use torch.bool, got {mask.dtype}.")
+    if mask.device != sequence.device:
+        raise ValueError("mask and sequence must be on the same device.")
+    cls_valid = torch.ones(batch_size, 1, device=mask.device, dtype=torch.bool)
+    attention_valid = torch.cat([cls_valid, mask], dim=1)
+    attention_mask = attention_valid[:, None, :].expand(
+        batch_size,
+        seq_len + 1,
+        seq_len + 1,
+    )
+    return SequenceDiscriminatorInputs(
+        sequence=sequence,
+        token_mask=mask,
+        attention_mask=attention_mask,
+    )
 
 
 def build_trajectory_discriminator(

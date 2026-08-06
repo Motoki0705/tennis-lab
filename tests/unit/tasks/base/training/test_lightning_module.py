@@ -9,6 +9,7 @@ smoke suite.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TypedDict, cast
 
 import numpy as np
 import pytest
@@ -16,6 +17,7 @@ import torch
 import torch.nn as nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, SequentialLR
+from torch.optim.optimizer import Optimizer
 
 from src.tasks.base.training.lightning_module import (
     BaseLightningModule,
@@ -31,6 +33,20 @@ class _TinyModule(BaseLightningModule):
     def __init__(self, config: dict[str, object]) -> None:
         super().__init__(config)
         self.lin = nn.Linear(2, 2)
+
+
+class _SchedulerResult(TypedDict):
+    interval: str
+    scheduler: object
+
+
+class _OptimizerResult(TypedDict):
+    optimizer: Optimizer
+    lr_scheduler: _SchedulerResult
+
+
+def _configure_optimizer(module: _TinyModule) -> _OptimizerResult:
+    return cast(_OptimizerResult, module.configure_optimizers())
 
 
 def _config(
@@ -170,7 +186,7 @@ def test_estimate_total_steps_rejects_unresolved_count() -> None:
 
 def test_configure_optimizers_step_interval_no_warmup() -> None:
     m = _TinyModule(_config(max_epochs=2, steps_per_epoch=5))
-    cfg = m.configure_optimizers()
+    cfg = _configure_optimizer(m)
     assert isinstance(cfg["optimizer"], AdamW)
     assert cfg["lr_scheduler"]["interval"] == "step"
     assert isinstance(cfg["lr_scheduler"]["scheduler"], CosineAnnealingLR)
@@ -185,7 +201,7 @@ def test_configure_optimizers_epoch_warmup_uses_sequential() -> None:
             warmup_epochs=3,
         )
     )
-    cfg = m.configure_optimizers()
+    cfg = _configure_optimizer(m)
     assert cfg["lr_scheduler"]["interval"] == "epoch"
     assert isinstance(cfg["lr_scheduler"]["scheduler"], SequentialLR)
 
@@ -199,7 +215,7 @@ def test_configure_optimizers_respects_lr_and_betas() -> None:
             betas=(0.8, 0.95),
         )
     )
-    opt = m.configure_optimizers()["optimizer"]
+    opt = _configure_optimizer(m)["optimizer"]
     group = opt.param_groups[0]
     assert group["lr"] == pytest.approx(5e-4)
     assert group["weight_decay"] == pytest.approx(0.01)

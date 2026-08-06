@@ -39,16 +39,3 @@ class MLP(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return cast(Tensor, self.fc2(F.gelu(self.fc1(x), approximate="tanh")))
-
-
-if __name__ == "__main__":
-    torch.manual_seed(0)
-    demo_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    demo_input = torch.randn(2, 3, 16, device=demo_device)
-
-    demo_swiglu = SwiGLU(dim=16, ffn_dim=32).eval().to(demo_device)
-    demo_mlp = MLP(dim=16, ffn_dim=32).eval().to(demo_device)
-
-    with torch.no_grad():
-        print(demo_swiglu(demo_input))
-        print(demo_mlp(demo_input))

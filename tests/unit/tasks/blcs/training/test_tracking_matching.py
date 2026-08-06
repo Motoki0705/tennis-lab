@@ -6,19 +6,18 @@ from src.tasks.blcs.training.tracking_matching import match_ball_tracks
 
 
 def test_matching_uses_same_axis_balance_as_position_loss() -> None:
-    prediction = {
-        "position": torch.tensor(
-            [[[[0.0, 0.0, 0.0], [10.0, 0.0, 10.0]]]]
-        ),
-        "presence_logits": torch.zeros(1, 1, 2),
-    }
+    pred_position = torch.tensor(
+        [[[[0.0, 0.0, 0.0], [10.0, 0.0, 10.0]]]]
+    )
+    pred_presence = torch.zeros(1, 1, 2)
     target_position = torch.tensor(
         [[[[0.0, 0.0, 10.0], [10.0, 0.0, 0.0]]]]
     )
     present = torch.ones(1, 1, 2, dtype=torch.bool)
 
     assignments = match_ball_tracks(
-        prediction,
+        pred_position,
+        pred_presence,
         target_position,
         present,
         torch.ones(1, 2, dtype=torch.bool),
@@ -29,7 +28,7 @@ def test_matching_uses_same_axis_balance_as_position_loss() -> None:
         presence_active_weight=1.0,
         presence_transition_weight=2.0,
         transition_radius=2,
-        position_axis_weights=(1.0, 1.0, 0.1),
+        position_axis_weights=torch.tensor((1.0, 1.0, 0.1)),
     )
 
     query_indices, target_indices = assignments[0]
