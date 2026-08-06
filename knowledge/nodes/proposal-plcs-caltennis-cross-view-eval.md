@@ -23,7 +23,7 @@ evaluation:
 parents:
   - run-i518-baseline
 relations:
-  - to: paper-doi-10-48550-arxiv-2606-20542
+  - to: paper-arxiv-2606-20542
     rel: derived-from
 tags: [literature, plcs, caltennis, external-evaluation]
 ---
