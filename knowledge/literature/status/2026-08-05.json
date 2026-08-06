@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "date": "2026-08-05",
+  "initialized_at": "2026-08-05T00:05:00+09:00",
+  "last_curated_at": "2026-08-07T00:06:06+09:00",
+  "generated_at": "2026-08-07T00:06:06+09:00",
+  "ingestion": {
+    "accepted_candidates": 12,
+    "daily_limit": 6,
+    "open_candidates": 0,
+    "open_limit": 30,
+    "collectors": {
+      "perception": {"accepted": 4, "limit": 2, "remaining": 0},
+      "geometry": {"accepted": 4, "limit": 2, "remaining": 0},
+      "systems": {"accepted": 4, "limit": 2, "remaining": 0}
+    },
+    "topics": {
+      "ball_detection": {"accepted": 2, "limit": 1, "remaining": 0},
+      "court_detection": {"accepted": 1, "limit": 1, "remaining": 0},
+      "multi_object_tracking": {"accepted": 1, "limit": 1, "remaining": 0},
+      "human_pose_2d": {"accepted": 0, "limit": 1, "remaining": 1},
+      "player_3d": {"accepted": 2, "limit": 1, "remaining": 0},
+      "ball_3d": {"accepted": 1, "limit": 1, "remaining": 0},
+      "scene_alignment": {"accepted": 1, "limit": 1, "remaining": 0},
+      "scene_geometry": {"accepted": 0, "limit": 1, "remaining": 1},
+      "avatar_rendering": {"accepted": 4, "limit": 1, "remaining": 0},
+      "synthetic_data": {"accepted": 0, "limit": 1, "remaining": 1},
+      "self_supervised_learning": {"accepted": 0, "limit": 1, "remaining": 1},
+      "systems_optimization": {"accepted": 0, "limit": 1, "remaining": 1}
+    }
+  }
+}
