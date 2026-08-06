@@ -29,7 +29,13 @@ jobs:
             echo 'No staged update present.'
             exit 0
           fi
-          cat .workflow-update/part-* > /tmp/issue-workflow-update.tar.gz
+          cat \
+            .workflow-update/part-00 \
+            .workflow-update/part-01 \
+            .workflow-update/part-02-0 \
+            .workflow-update/part-02-1 \
+            .workflow-update/part-03 \
+            > /tmp/issue-workflow-update.tar.gz
           echo 'df456569022f2be3fff6070f2cbe437892874d2594edffb9b0e4b235a2fe4f52  /tmp/issue-workflow-update.tar.gz' | sha256sum -c -
           tar -xzf /tmp/issue-workflow-update.tar.gz -C "$GITHUB_WORKSPACE"
           python -m compileall -q .agents/skills/issue-subagent-workflow/scripts
