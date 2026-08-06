@@ -1,8 +1,8 @@
 {
   "date": "2026-08-07",
-  "generated_at": "2026-08-07T00:25:13+09:00",
+  "generated_at": "2026-08-07T00:31:38+09:00",
   "ingestion": {
-    "accepted_candidates": 1,
+    "accepted_candidates": 2,
     "collectors": {
       "geometry": {
         "accepted": 1,
@@ -10,9 +10,9 @@
         "remaining": 1
       },
       "perception": {
-        "accepted": 0,
+        "accepted": 1,
         "limit": 2,
-        "remaining": 2
+        "remaining": 1
       },
       "systems": {
         "accepted": 0,
@@ -21,7 +21,7 @@
       }
     },
     "daily_limit": 6,
-    "open_candidates": 1,
+    "open_candidates": 2,
     "open_limit": 30,
     "topics": {
       "avatar_rendering": {
@@ -35,9 +35,9 @@
         "remaining": 0
       },
       "ball_detection": {
-        "accepted": 0,
+        "accepted": 1,
         "limit": 1,
-        "remaining": 1
+        "remaining": 0
       },
       "court_detection": {
         "accepted": 0,
